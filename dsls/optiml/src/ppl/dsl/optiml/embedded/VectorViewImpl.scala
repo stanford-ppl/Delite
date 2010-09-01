@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.direct
+package ppl.dsl.optiml.embedded
 
 class VectorViewImpl[T : ClassManifest](x: Array[T], offset: Int, str: Int, len: Int, row_vec: Boolean) extends VectorView[T]{
 
@@ -12,6 +12,9 @@ class VectorViewImpl[T : ClassManifest](x: Array[T], offset: Int, str: Int, len:
   def stride = _stride
   def length = _length
   def is_row = _is_row  
+
+  // TODO: fix
+  def idx(n: Int) = n
 
   def apply(n: Int) : T = {
     _data(chkIndex(idx(n)))

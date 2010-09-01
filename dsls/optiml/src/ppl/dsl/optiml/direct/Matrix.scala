@@ -1,9 +1,11 @@
 package ppl.dsl.optiml.direct
 
+import scala.reflect.ClassManifest
+
 object Matrix {
 
   def apply[A : ClassManifest](numRows : Int, numCols : Int) : Matrix[A] = newMatrix[A](numRows, numCols)
-
+  
   def zeros(numRows : Int, numCols : Int) : Matrix[Double] = {
     OP_zeros(numRows, numCols).task
   }
@@ -16,7 +18,7 @@ object Matrix {
   /**
    *  these are the kernels that could be pre-processed by a generator to generate other device kernels off to the side
    */
-
+  
   protected[optiml] case class OP_zeros( numRows : Int, numCols : Int) {
     def task = newMatrix[Double](numRows, numCols)
   }
@@ -68,7 +70,7 @@ trait Matrix[T] {
   def vview(start: Int, stride: Int, length: Int, is_row: Boolean) : Vector[T]
 
   def +=(x: Vector[T]): Matrix[T] = insertRow(numRows, x)
-  def insertRow[A <: T](pos: Int, x: Vector[A]): Matrix[T]
+  def insertRow[A <: T](pos: Int, x: Vector[A]): Matrix[T]  
 
   def getRow(row: Int) : Vector[T] = {
     vview(row*numCols, 1, numCols, true)
@@ -80,3 +82,4 @@ trait Matrix[T] {
 
 
 }
+

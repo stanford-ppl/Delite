@@ -2,11 +2,11 @@ package ppl.dsl.optiml.apps.gda
 
 import ppl.dsl.optiml.embedded._
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.ppl.{ScalaOpsPkg, ScalaOps}
+import scala.virtualization.lms.ppl.{EmbeddingPkg, ScalaOpsPkg, ScalaOps}
 
 trait GDA {
 
-  this: MatrixOps with VectorOps with ScalaOpsPkg with MLInputReaderOps with Variables with Equal with IfThenElse with Functions =>
+  this: OptiML with ScalaOpsPkg with EmbeddingPkg =>
 
   def print_usage = {
     println("Usage: GDA <input data file> <output label data file>")
@@ -17,7 +17,7 @@ trait GDA {
     if (args.length < 2) print_usage
 
     val x : Rep[Matrix[Double]] = MLInputReader.read(args(0))
-    // TODO: how do we get the lambda out of client code?
+    // TODO: get the doLambda out of client code (why doesn't the implicit doLambda with type inference work here?)
     val y : Rep[Vector[Boolean]] = MLInputReader.readVector(args(1)).toBoolean(doLambda[Double,Boolean](a => if (a <= 0) false else true))
 
 
@@ -45,6 +45,7 @@ trait GDA {
     * where n is the width of x, and sigma is an n x n matrix.
     */
 
+    // TODO: get unit out of client code (currently needed due to bug in common embedding Variables.scala)
     var y_ones : Rep[Double] = unit(0.0); var y_zeros : Rep[Double] = unit(0.0)
     var mu0_num = Vector.zeros(n); var mu1_num = Vector.zeros(n);
 

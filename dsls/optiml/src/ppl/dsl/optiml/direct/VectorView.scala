@@ -1,4 +1,7 @@
+
 package ppl.dsl.optiml.direct
+
+import scala.reflect.ClassManifest
 
 trait VectorView[T] extends Vector[T] {
   def start: Int

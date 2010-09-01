@@ -2,7 +2,6 @@ package ppl.dsl.optiml.direct
 
 import java.io.{BufferedReader, FileReader}
 import scala.collection.mutable.ArrayBuffer
-import ppl.dsl.optiml.direct.Matrix
 
 // file format is m lines with n floats per line, each float separated by whitespaces
 // (same as matlab .dat)

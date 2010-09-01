@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.direct
+package ppl.dsl.optiml.embedded
 
 object MatrixImpl {
 
@@ -27,7 +27,7 @@ private class MatrixImpl[T: ClassManifest](nRows: Int, nCols: Int) extends Matri
     new VectorViewImpl[T](_data, start, stride, length, is_row)
   }
 
-  def insertRow[A <: T](pos: Int, x: Vector[A]): Matrix[T] = {
+  def insertRow[A <: T](pos: Int, x: VectorImpl[A]): Matrix[T] = {
     val idx = pos*_numCols
     insertSpace(idx, _numCols)
     for (i <- idx until idx+_numCols){

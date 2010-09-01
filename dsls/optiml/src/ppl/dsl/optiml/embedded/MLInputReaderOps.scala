@@ -1,7 +1,6 @@
 package ppl.dsl.optiml.embedded
 
 import java.io.{PrintWriter}
-import ppl.dsl.optiml.embedded.{Vector, Matrix}
 import scala.virtualization.lms.internal.ScalaCodegen
 import scala.virtualization.lms.common.{BaseExp, Base}
 
@@ -36,9 +35,8 @@ trait MLInputReaderOpsRepExp extends MLInputReaderOps with BaseExp {
 }
 
 
-/* codegen piece */
-trait ScalaCodegenMLInputReader extends ScalaCodegen { this: MLInputReaderOpsRepExp =>
-  private val base = "ppl.dsl.optiml.direct.MLInputReader"
+trait ScalaGenMLInputReader extends ScalaCodegen { this: MLInputReaderOpsRepExp =>
+  private val base = "ppl.delite.polymorphic.dsl.optiml.direct.MLInputReader"
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case MLInputRead(filename) => emitValDef(sym, base + ".read(" + quote(filename) + ")")

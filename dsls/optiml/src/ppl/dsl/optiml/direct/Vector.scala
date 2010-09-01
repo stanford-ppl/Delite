@@ -1,9 +1,12 @@
 package ppl.dsl.optiml.direct
 
+import scala.reflect.ClassManifest
+import ppl.dsl.optiml.direct.{Matrix}
+
 object Vector {
 
   def apply[A : ClassManifest](len: Int, is_row: Boolean = true) : Vector[A] = newVector[A](len, is_row)
-
+  
   def zeros(length: Int) : Vector[Double] = {
     OP_zeros(length).task
   }
@@ -110,7 +113,7 @@ trait Vector[T] {
                           print(e)
                           print(" ]\n")
       })
-    }
+    }      
   }
 
   /* Real length of the vector; underlying raw data may be allocated more. */
