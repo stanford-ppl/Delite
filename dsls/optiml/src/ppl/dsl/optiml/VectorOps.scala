@@ -1,10 +1,10 @@
-package ppl.dsl.optiml.embedded
+package ppl.dsl.optiml
 
 import java.io.{PrintWriter}
 
 import scala.virtualization.lms.internal.ScalaCodegen
-import scala.virtualization.lms.common.{FunctionsExp, EffectExp, Base}
 import scala.virtualization.lms.ppl.{DSLOpsExp, TupleOpsExp}
+import scala.virtualization.lms.common._
 
 trait Vector[T]
 
@@ -17,6 +17,7 @@ trait VectorOps extends Base {
 
   implicit def repVecToRepVecOps[A](x: Rep[Vector[A]]) = new vecRepCls(x)
   implicit def vecToRepVecOps[A](x: Vector[A]) = new vecRepCls(x)
+  implicit def varToRepVecOps[A](x: Var[Vector[A]]) : vecRepCls[A]
 
   class vecRepCls[A](x: Rep[Vector[A]]) {
     def apply(n: Rep[Int]) = vector_apply(x, n)
@@ -57,8 +58,9 @@ trait VectorOps extends Base {
   def vector_new[A : Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorOpsRepExp extends VectorOps with VectorImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp {
-   
+trait VectorOpsRepExp extends VectorOps with VectorImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp with VariablesExp {
+  implicit def varToRepVecOps[A](x: Var[Vector[A]]) = new vecRepCls(varToRep(x))
+
   // implemented via method on real data structure
   case class VectorApply[A](x: Exp[Vector[A]], n: Exp[Int]) extends Def[A]
   case class VectorUpdate[A](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]) extends Def[Unit]
@@ -101,7 +103,7 @@ trait VectorOpsRepExp extends VectorOps with VectorImplOps with DSLOpsExp with F
   def vector_apply[A](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(x, n)
   def vector_update[A](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectEffect(VectorUpdate(x,n,y))
   def vector_length[A](x: Exp[Vector[A]]) = VectorLength(x)
-  def vector_plusequals[A](x: Exp[Vector[A]], y: Exp[A]) = VectorPlusEquals(x, y)
+  def vector_plusequals[A](x: Exp[Vector[A]], y: Exp[A]) = reflectEffect(VectorPlusEquals(x, y))
   def vector_is_row[A](x: Exp[Vector[A]]) = VectorIsRow(x)
 
   def vector_obj_zeros(len: Exp[Int]) = reflectEffect(VectorObjectZeros(len))
@@ -139,7 +141,7 @@ trait ScalaGenVector extends ScalaCodegen with VectorOpsRepExp {
     
     // these are the ops that call through to the underlying real data structure
     case VectorApply(x, n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
-    case VectorUpdate(x,n,y) => stream.println(quote(x) + "(" + quote(n) + ") = " + quote(y))
+    case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
     case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
     case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
     case VectorPlusEquals(x,y) => emitValDef(sym, quote(x) + " += " + quote(y))

@@ -1,10 +1,10 @@
-package ppl.dsl.optiml.embedded
+package ppl.dsl.optiml
 
 object MatrixImpl {
 
 }
 
-private class MatrixImpl[T: ClassManifest](nRows: Int, nCols: Int) extends Matrix[T] {
+class MatrixImpl[T: ClassManifest](nRows: Int, nCols: Int) extends Matrix[T] {
   import MatrixImpl._
   
   protected var _numRows = nRows
@@ -15,6 +15,10 @@ private class MatrixImpl[T: ClassManifest](nRows: Int, nCols: Int) extends Matri
   def numCols = _numCols
   def size = _numRows*_numCols
 
+  def apply(i: Int) : VectorViewImpl[T] = {
+    vview(i*numCols, 1, numCols, true)
+  }
+
   def apply(i: Int, j: Int) : T = {
     _data(chkPos(i*numCols+j))
   }
@@ -23,11 +27,11 @@ private class MatrixImpl[T: ClassManifest](nRows: Int, nCols: Int) extends Matri
     _data(chkPos(row*numCols+col)) = x
   }
 
-  def vview(start: Int, stride: Int, length: Int, is_row: Boolean) : Vector[T] = {
+  def vview(start: Int, stride: Int, length: Int, is_row: Boolean) : VectorViewImpl[T] = {
     new VectorViewImpl[T](_data, start, stride, length, is_row)
   }
 
-  def insertRow[A <: T](pos: Int, x: VectorImpl[A]): Matrix[T] = {
+  def insertRow[A <: T](pos: Int, x: VectorImpl[A]): MatrixImpl[T] = {
     val idx = pos*_numCols
     insertSpace(idx, _numCols)
     for (i <- idx until idx+_numCols){

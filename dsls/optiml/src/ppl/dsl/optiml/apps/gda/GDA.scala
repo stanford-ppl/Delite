@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.apps.gda
 
-import ppl.dsl.optiml.embedded._
+import ppl.dsl.optiml._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.ppl.{EmbeddingPkg, ScalaOpsPkg, ScalaOps}
 

@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.embedded
+package ppl.dsl.optiml
 
 import scala.virtualization.lms.common.Base
 

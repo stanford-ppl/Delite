@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.embedded
+package ppl.dsl.optiml
 
 import scala.virtualization.lms.ppl.ScalaOpsPkg
 
@@ -31,7 +31,7 @@ class VectorImpl[T: ClassManifest](len: Int, isRow: Boolean) extends Vector[T] {
     _data(index) = x
   }
 
-  def +=[A <: T](x: A): Vector[T] = {
+  def +=[A <: T](x: A): VectorImpl[T] = {
     ensureExtra(1)
     _data(_length) = x
     _length += 1

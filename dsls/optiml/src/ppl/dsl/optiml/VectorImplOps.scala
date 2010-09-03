@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.embedded
+package ppl.dsl.optiml
 
 import scala.virtualization.lms.internal.Utils
 import scala.virtualization.lms.ppl._
@@ -25,19 +25,19 @@ trait VectorImplOpsStandard extends VectorImplOps with MatrixImplOps with Vector
   with EmbeddingPkgExp with ScalaOpsPkgExp {
   //this: Functions with VectorOps with RangeOps with TupleOps with BooleanOps =>
 
-  private val base = "ppl.dsl.optiml.embedding"
+  private val base = "ppl.dsl.optiml"
 
   ///////////////
   // helpers
 
-  protected[optiml] def newVector[A](length: Exp[Int], is_row: Exp[Boolean])(implicit mA: Manifest[A]) = {
+  private def newVector[A](length: Exp[Int], is_row: Exp[Boolean])(implicit mA: Manifest[A]) = {
     External[Vector[A]]("new " + base + ".VectorImpl[" + mA + "](%s,%s)", List(length, is_row))
   }
 
   private def map[A,B:Manifest](v: Exp[Vector[A]], f: Exp[A] => Exp[B]) = {
     // bad! update happens on the External directly, instead of on a NewVector node
     //val out = newVector[B](v.length, v.is_row)
-    val out = vector_new[B](v.length, v.is_row)
+    val out = Vector[B](v.length, v.is_row)
     for (i <- 0 until v.length){
       out(i) = f(v(i))
     }
@@ -47,7 +47,7 @@ trait VectorImplOpsStandard extends VectorImplOps with MatrixImplOps with Vector
   // TODO: fix: two versions of map that do the same thing with different representations of a function?
   // we could transform the above to this, at the cost of an unnecessary wrapping in a Lambda object
   private def mapl[A,B:Manifest](v: Exp[Vector[A]], f: Exp[A => B]) = {
-    val out = vector_new[B](v.length, v.is_row)
+    val out = Vector[B](v.length, v.is_row)
     for (i <- 0 until v.length){
       out(i) = f(v(i))
     }
@@ -55,7 +55,7 @@ trait VectorImplOpsStandard extends VectorImplOps with MatrixImplOps with Vector
   }
 
   private def zipWith[A,B:Manifest](v1: Exp[Vector[A]], v2: Exp[Vector[A]], f: (Exp[A],Exp[A]) => Exp[B]) = {
-    val out = vector_new[B](v1.length, v1.is_row)
+    val out = Vector[B](v1.length, v1.is_row)
     for (i <- 0 until v1.length){
       out(i) = f(v1(i), v2(i))
     }
@@ -81,7 +81,7 @@ trait VectorImplOpsStandard extends VectorImplOps with MatrixImplOps with Vector
     val collA = t._1
     val collB = t._2
 
-    val out = matrix_new[A](collA.length, collA.length)
+    val out = Matrix[A](collA.length, collA.length)
     for (i <- 0 until collA.length ){
       for (j <- 0 until collB.length ){
         out(i,j) = collA(i)*collB(i)
@@ -96,19 +96,19 @@ trait VectorImplOpsStandard extends VectorImplOps with MatrixImplOps with Vector
       for (i <- 0 until v.length){
         print(v(i)); print(" ");
       }
-      print("]\n")
+      print("]\\n")
     }
     else{
       for (i <- 0 until v.length){
         print("[")
         print(v(i))
-        print(" ]\n")
+        print(" ]\\n")
       }
     }
   }
 
   def vector_trans_impl[A](implicit mA: Manifest[A], vA: Manifest[Vector[A]]) = v => {
-    val out = vector_new[A](v.length, !v.is_row)
+    val out = Vector[A](v.length, !v.is_row)
     for (i <- 0 until v.length){
       out(i) = v(i)
     }
