@@ -1,8 +1,10 @@
 package ppl.delite.framework
 
-import scala.virtualization.lms.ppl.ScalaOpsPkgExp
+import scala.virtualization.lms.ppl.{ScalaGenScalaOpsPkg, ScalaOpsPkgExp}
+import scala.virtualization.lms.internal.ScalaCompile
+import java.io.PrintWriter
 
-trait DeliteApplication extends ScalaOpsPkgExp {
+trait DeliteApplication extends ScalaGenScalaOpsPkg with ScalaCompile {
 
   var args: Rep[Array[String]] = _
 
@@ -10,7 +12,9 @@ trait DeliteApplication extends ScalaOpsPkgExp {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
     this.args = args;
     println("Running the main function to extract the AST")
-    main()
+    main
+    //val main_m = (x: Rep[Any]) => liftedMain()
+    //emitScalaSource(main_m, "Application", new PrintWriter(System.out))
 
   }
 
@@ -20,6 +24,8 @@ trait DeliteApplication extends ScalaOpsPkgExp {
    * user code
    */
   def main(): Unit
+
+  def liftedMain(): Rep[Unit] = main
 
 
   //so that our main doesn't itself get lifted
