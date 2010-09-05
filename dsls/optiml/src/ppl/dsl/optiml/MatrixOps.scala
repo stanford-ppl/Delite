@@ -5,16 +5,19 @@ import java.io.{PrintWriter}
 
 import scala.virtualization.lms.internal.ScalaCodegen
 import scala.virtualization.lms.ppl.{TupleOpsExp, DSLOpsExp}
-import scala.virtualization.lms.common.{VariablesExp, FunctionsExp, EffectExp, Base}
+import scala.virtualization.lms.common._
 
 trait Matrix[T]
 
-trait MatrixOps extends Base {
+trait MatrixOps extends Base with Variables {
 
   object Matrix {
     def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]] = matrix_new(numRows, numCols)
     def zeros(numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[Double]] = matrix_new(numRows, numCols)
   }
+
+  implicit def matRepArith[A](x: Rep[Matrix[A]]) = new matRepCls(x)
+  implicit def varToRepMatOps[A](x: Var[Matrix[A]]) : matRepCls[A]
 
   class matRepCls[A](x: Rep[Matrix[A]]) {
     def apply(i: Rep[Int]) = matrix_apply1(x,i)
@@ -30,8 +33,6 @@ trait MatrixOps extends Base {
     def +=(y: Rep[Vector[A]]) = matrix_plusequals(x,y)
     def insertRow(pos: Rep[Int], v: Rep[Vector[A]]) = matrix_insertrow(x,pos,v)
   }
-  implicit def matRepArith[A](x: Rep[Matrix[A]]) = new matRepCls(x)
-  implicit def varToRepMatOps[A](x: Var[Matrix[A]]) : matRepCls[A]
 
   // class defs
   def matrix_apply1[A](x: Rep[Matrix[A]], i: Rep[Int]): Rep[Vector[A]]

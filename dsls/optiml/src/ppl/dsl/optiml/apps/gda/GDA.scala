@@ -20,10 +20,10 @@ trait GDA {
     // TODO: get the doLambda out of client code (why doesn't the implicit doLambda with type inference work here?)
     val y : Rep[Vector[Boolean]] = MLInputReader.readVector(args(1)).toBoolean(doLambda[Double,Boolean](a => if (a <= 0) false else true))
 
-    println("X: ")
-    x.pprint
-    println("Y: ")
-    y.pprint
+//    println("X: ")
+//    x.pprint
+//    println("Y: ")
+//    y.pprint
 
     /* number of training samples */
     val m = y.length
@@ -43,18 +43,13 @@ trait GDA {
     * where n is the width of x, and sigma is an n x n matrix.
     */
 
-    // TODO: fix: compiler bug like this
-    var y_ones = 0.0; var y_zeros = 0.0
-    // this implicitly converts prematurely, so the read is lost later
-    //var y_ones : Rep[Double] = unit(0.0); var y_zeros : Rep[Double] = unit(0.0)
+    // TODO: get unit out of client code
+    var y_ones = unit(0.0); var y_zeros = unit(0.0)
     var mu0_num = Vector.zeros(n); var mu1_num = Vector.zeros(n);
-
-    //println("HERE: m is " + m)
 
     /* This loop calculates all of the needed statistics with a single pass
        through the data.  */
     for (i <- 0 until m){
-      //println("(loop 1) i: " + i)
       if (y(i) == false){
         y_zeros = y_zeros + 1
         mu0_num = mu0_num + x(i)
@@ -65,20 +60,17 @@ trait GDA {
       }
     }
 
-    println("y_zeros: " + y_zeros)
-    println("y_ones: " + y_ones)
+    //println("y_zeros: " + y_zeros)
+    //println("y_ones: " + y_ones)
 
     val phi = 1./m * y_ones
     val mu0 = mu0_num / y_zeros
     val mu1 = mu1_num / y_ones
 
-    //println("HERE 2")
-
     /* calculate covariance matrix sigma */
     /* x(i) is a row vector for us, while it is defined a column vector in the formula */
     var sigma = Matrix.zeros(n,n)
     for (i <- 0 until m){
-      //println("(loop 2) i: " + i)
       if (y(i) == false){
         sigma = sigma + ((x(i)-mu0).trans).outer(x(i)-mu0)
       }

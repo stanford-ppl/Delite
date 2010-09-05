@@ -8,7 +8,7 @@ import scala.virtualization.lms.common._
 
 trait Vector[T]
 
-trait VectorOps extends Base {
+trait VectorOps extends Base with Variables {
 
   object Vector {
     def apply[A : Manifest](len: Rep[Int], is_row : Rep[Boolean] = true) : Rep[Vector[A]] = vector_new(len, is_row)
