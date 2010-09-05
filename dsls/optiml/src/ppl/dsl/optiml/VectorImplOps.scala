@@ -84,7 +84,7 @@ trait VectorImplOpsStandard extends VectorImplOps with MatrixImplOps with Vector
     val out = Matrix[A](collA.length, collA.length)
     for (i <- 0 until collA.length ){
       for (j <- 0 until collB.length ){
-        out(i,j) = collA(i)*collB(i)
+        out(i,j) = collA(i)*collB(j)
       }
     }
     out

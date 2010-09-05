@@ -34,7 +34,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps with VectorImplOps with Matrix
   }
 
   private def zipWith[A,B:Manifest](m1: Exp[Matrix[A]], m2: Exp[Matrix[A]], f: (Exp[A],Exp[A]) => Exp[B]) = {
-    val out = Matrix[B](m1.numRows, m2.numCols)
+    val out = Matrix[B](m1.numRows, m1.numCols)
     for (i <- 0 until m1.numRows){
       for (j <- 0 until m1.numCols){
         out(i,j) = f(m1(i,j), m2(i,j))

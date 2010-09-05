@@ -44,13 +44,13 @@ object TestGeneratedCode {
                   "dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1y.dat")
 
      // this is the pre-generated test
-     val prog = new generated.GDA2
-     prog(a)
+     //val prog = new generated.GDA2
+     //prog(a)
 
      //this dynamically re-generates and compiles
-//     import GDAScalaCompile._
-//     val runm = (argus:Rep[Array[String]]) => GDAScalaCompile.run(argus)
-//     val g = compile(runm)
-//     g(a)
+     import GDAScalaCompile._
+     val runm = (argus:Rep[Array[String]]) => GDAScalaCompile.run(argus)
+     val g = compile(runm)
+     g(a)
   }
 }
