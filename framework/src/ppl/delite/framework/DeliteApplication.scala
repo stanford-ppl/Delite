@@ -3,10 +3,10 @@ package ppl.delite.framework
 import codegen.CodeGenerator
 import codegen.scala.CodeGeneratorScala
 import scala.virtualization.lms.ppl.{ScalaGenScalaOpsPkg, ScalaOpsPkgExp}
-import scala.virtualization.lms.internal.ScalaCompile
 import java.io.PrintWriter
+import scala.virtualization.lms.internal.{GenericNestedCodegen, ScalaCompile}
 
-trait DeliteApplication extends ScalaGenScalaOpsPkg {
+trait DeliteApplication extends ScalaGenScalaOpsPkg with GenericNestedCodegen {
 
   var args: Rep[Array[String]] = _
 
@@ -14,13 +14,16 @@ trait DeliteApplication extends ScalaGenScalaOpsPkg {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
     this.args = args;
     println("Running the main function to extract the AST")
-    val main_m = {x: Rep[Any] => liftedMain()}
+    val main_m = {x: Exp[Any] => liftedMain()}
     println("******Usual Gen******")
     emitScalaSource(main_m, "Application", new PrintWriter(System.out))
     //resetting
     globalDefs = List()
     println("******MY GEN*********")
-    CodeGeneratorScala.emitSource(this,main_m,"Application", new PrintWriter(System.out))
+    val cg = new CodeGeneratorScala {
+      val intermediate: this.type = this
+    }
+    //cg.emitSource(this,main_m,"Application", new PrintWriter(System.out))
 
 
   }
@@ -32,7 +35,7 @@ trait DeliteApplication extends ScalaGenScalaOpsPkg {
    */
   def main(): Unit
 
-  def liftedMain(): Rep[Unit] = main
+  def liftedMain(): Exp[Unit] = main
 
 
   //so that our main doesn't itself get lifted

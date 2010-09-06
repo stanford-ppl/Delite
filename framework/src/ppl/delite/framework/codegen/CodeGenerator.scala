@@ -1,10 +1,14 @@
 package ppl.delite.framework.codegen
 
-import _root_.scala.virtualization.lms.internal.{GenericNestedCodegen, GenericCodegen}
+import _root_.scala.virtualization.lms.common.BaseExp
+import _root_.scala.virtualization.lms.internal.{GenericNestedCodegen}
 import java.io.PrintWriter
 
-abstract class CodeGenerator {
+trait CodeGenerator {
 
-  def emitSource[A,B, Exp[T]](app:GenericNestedCodegen, f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit
+  val intermediate: BaseExp
+  import intermediate._
+
+  def emitSource[A,B](app:GenericNestedCodegen, f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit
   
 }
