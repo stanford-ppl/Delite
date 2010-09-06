@@ -12,9 +12,8 @@ trait DeliteApplication extends ScalaGenScalaOpsPkg with ScalaCompile {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
     this.args = args;
     println("Running the main function to extract the AST")
-    main
-    //val main_m = (x: Rep[Any]) => liftedMain()
-    //emitScalaSource(main_m, "Application", new PrintWriter(System.out))
+    val main_m = (x: Rep[Any]) => liftedMain()
+    emitScalaSource(main_m, "Application", new PrintWriter(System.out))
 
   }
 
