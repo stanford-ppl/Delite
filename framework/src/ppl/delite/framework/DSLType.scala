@@ -8,8 +8,9 @@ trait DSLType extends EffectExp {
 
   def scalar[T](name: String, tp: Type): ScalarField = nop
   //todo rework this as a collection hiearchy similar to Scala collections
-
   def array[T](name: String, tp: Type)(size: Int) = nop
+
+  //def addCodeGenerator(cg: CodeGenerator)
 
 
   def nop = throw new RuntimeException("not implemented")

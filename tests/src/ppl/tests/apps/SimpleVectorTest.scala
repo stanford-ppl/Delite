@@ -10,11 +10,6 @@ object SimpleVectorTest extends DeliteApplication with SimpleFloatVector {
     val vec1 = zeros(10)
     val vec2 = zeros(10)
 
-    for(i <- 0 until 10) {
-      vec1(i) = i.toFloat
-      vec2(i) = (2*i).toFloat
-    }
-
     val vec3 = vec1 + vec2
 
     println(vec3.pprint)

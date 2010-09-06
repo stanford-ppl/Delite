@@ -13,7 +13,7 @@ trait SimpleFloatVector extends DSLType with ScalaGenEffect with ScalaGenFunctio
   case class VectorUpdate(v: Rep[SimpleFloatVector], i: Rep[Int], f: Rep[Float]) extends Def[Unit]
   case class PPrint(v: Rep[SimpleFloatVector]) extends Def[String]
 
-  def zeros(n: Rep[Int]): Rep[SimpleFloatVector] = Zeros(n)
+  def zeros(n: Rep[Int]): Rep[SimpleFloatVector] = reflectEffect(Zeros(n))
   def __ext__+(v1: Rep[SimpleFloatVector], v2: Rep[SimpleFloatVector]): Rep[SimpleFloatVector] = VectorPlus(v1, v2)
 
   //todo could we extend the __ext__ feature to handle this like apply
