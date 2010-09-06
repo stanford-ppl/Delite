@@ -1,5 +1,6 @@
 package ppl.delite.framework
 
+import codegen.c.CodeGeneratorC
 import codegen.CodeGenerator
 import codegen.scala.CodeGeneratorScala
 import scala.virtualization.lms.ppl.{ScalaGenScalaOpsPkg, ScalaOpsPkgExp}
@@ -10,22 +11,28 @@ trait DeliteApplication extends ScalaGenScalaOpsPkg with GenericNestedCodegen {
 
   var args: Rep[Array[String]] = _
 
+  var generators: List[CodeGenerator]= List()
+
   final def main(args: Array[String]) {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
     this.args = args;
     println("Running the main function to extract the AST")
-    val main_m = {x: Exp[Any] => liftedMain()}
+    val main_m = {x: Rep[Any] => liftedMain()}
     println("******Usual Gen******")
     emitScalaSource(main_m, "Application", new PrintWriter(System.out))
     //resetting
     globalDefs = List()
-    println("******MY GEN*********")
-    val cg = new CodeGeneratorScala {
-      val intermediate: this.type = this
+    println("******MY GENs*********")
+    for(cg <- generators) {
+     cg.emitSource(main_m,"Application", new PrintWriter(System.out))
     }
-    //cg.emitSource(this,main_m,"Application", new PrintWriter(System.out))
 
-
+    /*
+    val cg2 = new CodeGeneratorC {
+      val intermediate: DeliteApplication.this.type = DeliteApplication.this
+    }
+    cg2.emitSource(main_m, "Application", new PrintWriter(System.out))
+    */
   }
 
   /**
@@ -35,7 +42,7 @@ trait DeliteApplication extends ScalaGenScalaOpsPkg with GenericNestedCodegen {
    */
   def main(): Unit
 
-  def liftedMain(): Exp[Unit] = main
+  def liftedMain(): Rep[Unit] = main
 
 
   //so that our main doesn't itself get lifted

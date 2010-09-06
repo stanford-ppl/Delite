@@ -1,9 +1,18 @@
 package ppl.tests.apps
 
 import ppl.delite.framework.DeliteApplication
-import ppl.tests.dsls.SimpleFloatVector
+import ppl.tests.dsls.{SimpleFloatVectorGeneratorC, SimpleFloatVectorGeneratorScala, SimpleFloatVector}
 
 object SimpleVectorTest extends DeliteApplication with SimpleFloatVector {
+
+  //todo remove this from here
+  val scg = new SimpleFloatVectorGeneratorScala {
+    val intermediate: DeliteApplication.this.type = DeliteApplication.this
+  }
+  val ccg = new SimpleFloatVectorGeneratorC {
+    val intermediate: DeliteApplication.this.type = DeliteApplication.this
+  }
+  generators = generators :: scg :: ccg 
 
   def main() {
     println("SimpleVectorTest")

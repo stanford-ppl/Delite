@@ -3,6 +3,7 @@ package ppl.tests.dsls
 import ppl.delite.framework.DSLType
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{ScalaGenFunctions, ScalaGenEffect}
+import ppl.delite.framework.codegen.scala.CodeGeneratorScala
 
 
 trait SimpleFloatVector extends DSLType with ScalaGenEffect with ScalaGenFunctions {
@@ -26,6 +27,14 @@ trait SimpleFloatVector extends DSLType with ScalaGenEffect with ScalaGenFunctio
   //todo, need to be able to only import this stuff automatically
   implicit def injectOpsSFV(v:Rep[SimpleFloatVector]) = new SimpleFloatVectorOps(v)
 
+}
+
+//code generation
+trait SimpleFloatVectorGeneratorScala extends CodeGeneratorScala {
+
+  val intermediate: SimpleFloatVector
+  import intermediate._
+  
   //code generation bit
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case Zeros(n) => emitValDef(sym, "Vector.zeros(" + quote(n) + ")")
@@ -33,8 +42,23 @@ trait SimpleFloatVector extends DSLType with ScalaGenEffect with ScalaGenFunctio
     case VectorApply(v,i) => emitValDef(sym, quote(v) + "(" + quote(i) + ")")
     case VectorUpdate(v,i,d) => emitValDef(sym, quote(v) + "(" + quote(i) + ") = " + quote(d))
     case PPrint(v) => emitValDef(sym, quote(v) + ".pprint")
-    case _ => super.emitNode(sym, rhs)  
+    case _ => super.emitNode(sym, rhs)
   }
 }
 
-//abstract class SimpleFloatVector
+//code generation
+trait SimpleFloatVectorGeneratorC extends CodeGeneratorC {
+
+  val intermediate: SimpleFloatVector
+  import intermediate._
+
+  //code generation bit
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    case Zeros(n) => emitValDef(sym, "Vector.zeros(" + quote(n) + ")")
+    case VectorPlus(v1,v2) => emitValDef(sym, quote(v1) + " + " + quote (v2))
+    case VectorApply(v,i) => emitValDef(sym, quote(v) + "(" + quote(i) + ")")
+    case VectorUpdate(v,i,d) => emitValDef(sym, quote(v) + "(" + quote(i) + ") = " + quote(d))
+    case PPrint(v) => emitValDef(sym, quote(v) + ".pprint")
+    case _ => super.emitNode(sym, rhs)
+  }
+}
