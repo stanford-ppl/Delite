@@ -28,6 +28,16 @@ trait SimpleFloatVector extends DSLType with ScalaGenEffect with ScalaGenFunctio
   //todo, need to be able to only import this stuff automatically
   implicit def injectOpsSFV(v:Rep[SimpleFloatVector]) = new SimpleFloatVectorOps(v)
 
+  //code generation bit
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    case Zeros(n) => emitValDef(sym, "Vector.zeros(" + quote(n) + ")")
+    case VectorPlus(v1,v2) => emitValDef(sym, quote(v1) + " + " + quote (v2))
+    case VectorApply(v,i) => emitValDef(sym, quote(v) + "(" + quote(i) + ")")
+    case VectorUpdate(v,i,d) => emitValDef(sym, quote(v) + "(" + quote(i) + ") = " + quote(d))
+    case PPrint(v) => emitValDef(sym, quote(v) + ".pprint")
+    case _ => super.emitNode(sym, rhs)
+  }
+
 }
 
 //code generation
