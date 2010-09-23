@@ -7,12 +7,12 @@ object SimpleVectorTest extends DeliteApplication with SimpleFloatVector {
 
   //todo remove this from here
   val scg = new SimpleFloatVectorGeneratorScala {
-    val intermediate: DeliteApplication.this.type = DeliteApplication.this
+    val intermediate: SimpleVectorTest.this.type = SimpleVectorTest.this
   }
   val ccg = new SimpleFloatVectorGeneratorC {
-    val intermediate: DeliteApplication.this.type = DeliteApplication.this
+    val intermediate: SimpleVectorTest.this.type = SimpleVectorTest.this
   }
-  generators = generators :: scg :: ccg 
+  //generators = generators :: scg :: ccg 
 
   def main() {
     println("SimpleVectorTest")

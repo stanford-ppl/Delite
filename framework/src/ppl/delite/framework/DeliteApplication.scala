@@ -24,7 +24,7 @@ trait DeliteApplication extends ScalaGenScalaOpsPkg with GenericNestedCodegen {
     globalDefs = List()
     println("******MY GENs*********")
     for(cg <- generators) {
-     cg.emitSource(main_m,"Application", new PrintWriter(System.out))
+     //cg.emitSource(main_m,"Application", new PrintWriter(System.out))
     }
 
     /*

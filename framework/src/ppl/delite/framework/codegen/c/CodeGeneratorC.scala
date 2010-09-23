@@ -8,7 +8,7 @@ import java.io.PrintWriter
 
 trait CodeGeneratorC extends CodeGenerator {
 
-  val intermediate: GenericNestedCodegen with ScalaOpsPkgExp
+  //val intermediate: GenericNestedCodegen with ScalaOpsPkgExp
   import intermediate._
 
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
@@ -30,10 +30,10 @@ trait CodeGeneratorC extends CodeGenerator {
     )
     //println("class "+className+" extends (("+sA+")=>("+sB+")) {")
     println("int main(int argc, char** argv) {") 
-    println("def apply("+ intermediate.quote(x)+":"+sA+"): "+sB+" = {")
+    println("def apply("+ quote(x)+":"+sA+"): "+sB+" = {")
 
-    intermediate.emitBlock(y)(stream)
-    println(intermediate.quote(intermediate.getBlockResult(y)))
+    emitBlock(y)(stream)
+    println(quote(getBlockResult(y)))
 
     //println("}")
     println("}")

@@ -4,6 +4,7 @@ import ppl.delite.framework.DSLType
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{ScalaGenFunctions, ScalaGenEffect}
 import ppl.delite.framework.codegen.scala.CodeGeneratorScala
+import ppl.delite.framework.codegen.c.CodeGeneratorC
 
 
 trait SimpleFloatVector extends DSLType with ScalaGenEffect with ScalaGenFunctions {

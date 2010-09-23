@@ -9,14 +9,16 @@ import scala.virtualization.lms.util.GraphUtil
 
 trait CodeGeneratorScala extends CodeGenerator {
 
-  val intermediate: ScalaOpsPkgExp
+  //todo should be ScalaExp
+  //val intermediate: BaseExp
   import intermediate._
 
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
 
     val x = intermediate.fresh 
     //todo note that I am reifying effects, I don't think we still need a pure version of emitSource
-    val y =  reifyEffects(f(x))    
+    //val y =  reifyEffects(f(x))
+    val y = f(x)
 
     val sA = mA.toString
     val sB = mB.toString
