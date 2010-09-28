@@ -1,38 +1,33 @@
 package ppl.delite.framework
 
-import codegen.c.CodeGeneratorC
+import codegen.c.CodeGeneratorCBase
 import codegen.CodeGenerator
-import codegen.scala.CodeGeneratorScala
-import scala.virtualization.lms.ppl.{ScalaGenScalaOpsPkg, ScalaOpsPkgExp}
+import codegen.scala.CodeGeneratorScalaBase
+import scala.virtualization.lms.ppl.{ScalaOpsPkgExp}
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{GenericNestedCodegen, ScalaCompile}
+import collection.mutable.ListBuffer
 
-trait DeliteApplication extends ScalaGenScalaOpsPkg with GenericNestedCodegen {
+trait DeliteApplication extends ScalaOpsPkgExp {
 
   var args: Rep[Array[String]] = _
 
-  var generators: List[CodeGenerator]= List()
+  var generators = new ListBuffer[CodeGenerator{val intermediate: DeliteApplication.this.type}]
 
   final def main(args: Array[String]) {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
     this.args = args;
     println("Running the main function to extract the AST")
     val main_m = {x: Rep[Any] => liftedMain()}
-    println("******Usual Gen******")
-    emitScalaSource(main_m, "Application", new PrintWriter(System.out))
-    //resetting
-    globalDefs = List()
     println("******MY GENs*********")
     for(cg <- generators) {
-     //cg.emitSource(main_m,"Application", new PrintWriter(System.out))
+      //resetting
+      println("Using Generator: " + cg.name)
+      globalDefs = List()
+      cg.emitSource(main_m,"Application", new PrintWriter(System.out))
     }
 
-    /*
-    val cg2 = new CodeGeneratorC {
-      val intermediate: DeliteApplication.this.type = DeliteApplication.this
-    }
-    cg2.emitSource(main_m, "Application", new PrintWriter(System.out))
-    */
+
   }
 
   /**

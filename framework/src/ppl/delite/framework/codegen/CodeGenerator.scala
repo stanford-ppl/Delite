@@ -10,11 +10,14 @@ trait CodeGenerator {
   val intermediate: BaseExp with Effects
   import intermediate._
 
+  val name: String
+
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit
 
 
   //Codegen piece
-  def emitValDef(sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit
+  def emitValDef(tp: String, sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit
+  def emitVarDef(tp: String, sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit
 
   def quote(x: Exp[_]) = x match {
     case Const(s: String) => "\""+s+"\""

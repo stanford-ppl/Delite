@@ -7,18 +7,20 @@ import scala.virtualization.lms.common.BaseExp
 import scala.virtualization.lms.ppl.ScalaOpsPkgExp
 import scala.virtualization.lms.util.GraphUtil
 
-trait CodeGeneratorScala extends CodeGenerator {
+trait CodeGeneratorScalaBase extends CodeGenerator {
 
   //todo should be ScalaExp
   //val intermediate: BaseExp
   import intermediate._
 
+
+  val name ="Scala Code Generator"
+
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
 
     val x = intermediate.fresh 
     //todo note that I am reifying effects, I don't think we still need a pure version of emitSource
-    //val y =  reifyEffects(f(x))
-    val y = f(x)
+    val y =  reifyEffects(f(x))
 
     val sA = mA.toString
     val sB = mB.toString
@@ -41,10 +43,10 @@ trait CodeGeneratorScala extends CodeGenerator {
     stream.flush
   }
 
-  def emitValDef(sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
+  def emitValDef(tp: String="", sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
     stream.println("val " + quote(sym) + " = " + rhs)
   }
-  def emitVarDef(sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
+  def emitVarDef(tp: String="", sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
     stream.println("var " + quote(sym) + " = " + rhs)
   }
   def emitAssignment(lhs: String, rhs: String)(implicit stream: PrintWriter): Unit = {

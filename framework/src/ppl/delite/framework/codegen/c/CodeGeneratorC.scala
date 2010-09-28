@@ -6,10 +6,12 @@ import scala.virtualization.lms.ppl.ScalaOpsPkgExp
 import java.io.PrintWriter
 
 
-trait CodeGeneratorC extends CodeGenerator {
+trait CodeGeneratorCBase extends CodeGenerator {
 
   //val intermediate: GenericNestedCodegen with ScalaOpsPkgExp
   import intermediate._
+
+  val name = "C Code Generator"
 
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
 
@@ -30,10 +32,9 @@ trait CodeGeneratorC extends CodeGenerator {
     )
     //println("class "+className+" extends (("+sA+")=>("+sB+")) {")
     println("int main(int argc, char** argv) {") 
-    println("def apply("+ quote(x)+":"+sA+"): "+sB+" = {")
 
     emitBlock(y)(stream)
-    println(quote(getBlockResult(y)))
+    //println(quote(getBlockResult(y)))
 
     //println("}")
     println("}")
@@ -46,8 +47,13 @@ trait CodeGeneratorC extends CodeGenerator {
 
   }
 
-  def emitValDef(sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
-    stream.println("type " + quote(sym) + " = " + rhs)
+
+  def emitValDef(tp: String, sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
+    stream.print("const ")
+    emitVarDef(tp, sym, rhs)
+  }
+  def emitVarDef(tp: String, sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
+    stream.println(tp + " " + quote(sym) + " = " + rhs + ";")
   }
 
   

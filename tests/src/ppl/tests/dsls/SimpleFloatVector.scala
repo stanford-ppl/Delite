@@ -1,13 +1,13 @@
 package ppl.tests.dsls
 
-import ppl.delite.framework.DSLType
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{ScalaGenFunctions, ScalaGenEffect}
-import ppl.delite.framework.codegen.scala.CodeGeneratorScala
-import ppl.delite.framework.codegen.c.CodeGeneratorC
+import ppl.delite.framework.codegen.c.CodeGeneratorCBase
+import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
+import ppl.delite.framework.embedded.scala.{CodeGeneratorCMisc, CodeGeneratorScalaMisc}
 
-
-trait SimpleFloatVector extends DSLType with ScalaGenEffect with ScalaGenFunctions {
+//todo need to add ScalaGenFunctions functionality and also remove ScalaOpsExp Stuff
+trait SimpleFloatVector extends DSLType { this: DeliteApplication =>
 
   case class Zeros(n: Rep[Int]) extends Def[SimpleFloatVector]
   case class VectorPlus(v1: Rep[SimpleFloatVector], v2: Rep[SimpleFloatVector]) extends Def[SimpleFloatVector]
@@ -28,48 +28,48 @@ trait SimpleFloatVector extends DSLType with ScalaGenEffect with ScalaGenFunctio
   //todo, need to be able to only import this stuff automatically
   implicit def injectOpsSFV(v:Rep[SimpleFloatVector]) = new SimpleFloatVectorOps(v)
 
-  //code generation bit
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case Zeros(n) => emitValDef(sym, "Vector.zeros(" + quote(n) + ")")
-    case VectorPlus(v1,v2) => emitValDef(sym, quote(v1) + " + " + quote (v2))
-    case VectorApply(v,i) => emitValDef(sym, quote(v) + "(" + quote(i) + ")")
-    case VectorUpdate(v,i,d) => emitValDef(sym, quote(v) + "(" + quote(i) + ") = " + quote(d))
-    case PPrint(v) => emitValDef(sym, quote(v) + ".pprint")
-    case _ => super.emitNode(sym, rhs)
+  //register my code generators
+  //todo these should hook into some option parser for our applications
+  generators +=  new SimpleFloatVectorGeneratorScala {
+    val intermediate: SimpleFloatVector.this.type = SimpleFloatVector.this
+  }
+  generators += new SimpleFloatVectorGeneratorC {
+    val intermediate: SimpleFloatVector.this.type = SimpleFloatVector.this
   }
 
 }
 
 //code generation
-trait SimpleFloatVectorGeneratorScala extends CodeGeneratorScala {
+trait SimpleFloatVectorGeneratorScala extends CodeGeneratorScalaBase with CodeGeneratorScalaMisc {
 
-  val intermediate: SimpleFloatVector
+  val intermediate: SimpleFloatVector with DeliteApplication
   import intermediate._
   
   //code generation bit
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case Zeros(n) => emitValDef(sym, "Vector.zeros(" + quote(n) + ")")
-    case VectorPlus(v1,v2) => emitValDef(sym, quote(v1) + " + " + quote (v2))
-    case VectorApply(v,i) => emitValDef(sym, quote(v) + "(" + quote(i) + ")")
-    case VectorUpdate(v,i,d) => emitValDef(sym, quote(v) + "(" + quote(i) + ") = " + quote(d))
-    case PPrint(v) => emitValDef(sym, quote(v) + ".pprint")
+    case Zeros(n) => emitValDef("",sym, "Vector.zeros(" + quote(n) + ")")
+    case VectorPlus(v1,v2) => emitValDef("",sym, quote(v1) + " + " + quote (v2))
+    case VectorApply(v,i) => emitValDef("",sym, quote(v) + "(" + quote(i) + ")")
+    case VectorUpdate(v,i,d) => emitValDef("",sym, quote(v) + "(" + quote(i) + ") = " + quote(d))
+    case PPrint(v) => emitValDef("",sym, quote(v) + ".pprint")
     case _ => super.emitNode(sym, rhs)
   }
 }
 
 //code generation
-trait SimpleFloatVectorGeneratorC extends CodeGeneratorC {
-
-  val intermediate: SimpleFloatVector
+trait SimpleFloatVectorGeneratorC extends CodeGeneratorCBase with CodeGeneratorCMisc {
+  
+  val intermediate: SimpleFloatVector with DeliteApplication
   import intermediate._
 
   //code generation bit
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case Zeros(n) => emitValDef(sym, "Vector.zeros(" + quote(n) + ")")
-    case VectorPlus(v1,v2) => emitValDef(sym, quote(v1) + " + " + quote (v2))
-    case VectorApply(v,i) => emitValDef(sym, quote(v) + "(" + quote(i) + ")")
-    case VectorUpdate(v,i,d) => emitValDef(sym, quote(v) + "(" + quote(i) + ") = " + quote(d))
-    case PPrint(v) => emitValDef(sym, quote(v) + ".pprint")
+    //todo replace the manifest with embedded types
+    case Zeros(n) => emitValDef("vector", sym, "Vector.zeros(" + quote(n) + ")")
+    case VectorPlus(v1,v2) => emitValDef("vector", sym, quote(v1) + " + " + quote (v2))
+    case VectorApply(v,i) => emitValDef("vector", sym, quote(v) + "(" + quote(i) + ")")
+    case VectorUpdate(v,i,d) => stream.println(quote(v) + "(" + quote(i) + ")" + " = " + quote(d) + ";")
+    case PPrint(v) => stream.println("printf(\"%s\"," + quote(v) + ".pprint());")
     case _ => super.emitNode(sym, rhs)
   }
 }
