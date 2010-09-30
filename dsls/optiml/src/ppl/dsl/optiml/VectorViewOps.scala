@@ -33,7 +33,7 @@ trait VectorViewOpsRepExp extends VectorViewOps with VectorViewImplOps with DSLO
   case class VectorViewStride[A](x: Exp[VectorView[A]]) extends Def[Int]
 
   case class VectorViewNew[A : Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Exp[Int], is_row: Exp[Boolean])
-    extends DSLOp(vectorview_new_impl[A], (x, offset, stride, len, is_row))
+    extends DSLOp(reifyEffects(vectorview_new_impl[A](x, offset, stride, len, is_row)))
 
   def vectorview_start[A](x: Exp[VectorView[A]]) = VectorViewStart(x)
   def vectorview_stride[A](x: Exp[VectorView[A]]) = VectorViewStride(x)

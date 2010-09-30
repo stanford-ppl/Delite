@@ -1,29 +1,25 @@
 package ppl.dsl.optiml
 
-import scala.virtualization.lms.common.{Base, FunctionsExp}
-import scala.virtualization.lms.ppl.{EmbeddingPkgExp, ScalaOpsPkgExp}
+import scala.virtualization.lms.common.Base
+import scala.virtualization.lms.ppl.{EmbeddingPkg, ScalaOpsPkg}
 
 trait MatrixImplOps extends Base {
-  def matrix_new_impl[A:Manifest] : Rep[Tuple2[Int,Int]] => Rep[Matrix[A]]
+  def matrix_new_impl[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]]
 
-  def matrix_plus_impl[A:Manifest:Numeric] : Rep[Tuple2[Matrix[A],Matrix[A]]] => Rep[Matrix[A]]
-  def matrix_plusequals_impl[A] : Rep[Tuple2[Matrix[A],Vector[A]]] => Rep[Matrix[A]]
-  def matrix_pprint_impl[A] : Rep[Matrix[A]] => Rep[Unit]
+  def matrix_plus_impl[A:Manifest:Numeric](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) : Rep[Matrix[A]]
+  def matrix_plusequals_impl[A](m: Rep[Matrix[A]], v: Rep[Vector[A]]) : Rep[Matrix[A]]
+  def matrix_pprint_impl[A](m: Rep[Matrix[A]]) : Rep[Unit]
 }
 
-trait MatrixImplOpsStandard extends MatrixImplOps with VectorImplOps with MatrixOpsRepExp with VectorOpsRepExp
-  with EmbeddingPkgExp with ScalaOpsPkgExp {
+trait MatrixImplOpsStandard extends MatrixImplOps with MatrixOps with VectorOps
+  with EmbeddingPkg with ScalaOpsPkg {
   
   private val base = "ppl.dsl.optiml"
 
   ///////////////
   // helpers
 
-  private def newMatrix[A](numRows: Exp[Int], numCols: Exp[Int])(implicit mA: Manifest[A]) = {
-    External[Matrix[A]]("new " + base + ".MatrixImpl[" + mA + "](%s,%s)", List(numRows, numCols))
-  }
-
-  private def map[A,B:Manifest](m: Exp[Matrix[A]], f: Exp[A] => Exp[B]) = {
+  private def map[A,B:Manifest](m: Rep[Matrix[A]], f: Rep[A] => Rep[B]) = {
     val out = Matrix[B](m.numRows, m.numCols)
     for (i <- 0 until m.numRows){
       for (j <- 0 until m.numCols){
@@ -33,7 +29,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps with VectorImplOps with Matrix
     out
   }
 
-  private def zipWith[A,B:Manifest](m1: Exp[Matrix[A]], m2: Exp[Matrix[A]], f: (Exp[A],Exp[A]) => Exp[B]) = {
+  private def zipWith[A,B:Manifest](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], f: (Rep[A],Rep[A]) => Rep[B]) = {
     val out = Matrix[B](m1.numRows, m1.numCols)
     for (i <- 0 until m1.numRows){
       for (j <- 0 until m1.numCols){
@@ -46,12 +42,14 @@ trait MatrixImplOpsStandard extends MatrixImplOps with VectorImplOps with Matrix
   ///////////////
   // kernels
 
-  def matrix_new_impl[A:Manifest] = t => newMatrix(t._1, t._2)
+  def matrix_new_impl[A](numRows: Rep[Int], numCols: Rep[Int])(implicit mA: Manifest[A]) =
+    External[Matrix[A]]("new " + base + ".MatrixImpl[" + mA + "](%s,%s)", List(numRows, numCols))
 
-  def matrix_plusequals_impl[A] = t => t._1.insertRow(t._1.numRows, t._2)
-  def matrix_plus_impl[A:Manifest:Numeric]  = t => zipWith[A,A](t._1, t._2, (a,b) => a+b)
+  def matrix_plusequals_impl[A](m: Rep[Matrix[A]], v: Rep[Vector[A]]) = m.insertRow(m.numRows, v)
 
-  def matrix_pprint_impl[A] = m => {
+  def matrix_plus_impl[A:Manifest:Numeric](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])  = zipWith[A,A](m1, m2, (a,b) => a+b)
+
+  def matrix_pprint_impl[A](m: Rep[Matrix[A]]) = {
     for (i <- 0 until m.numRows){
       print("[ ")
       for (j <- 0 until m.numCols){

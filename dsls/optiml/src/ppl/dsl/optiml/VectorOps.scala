@@ -23,7 +23,7 @@ trait VectorOps extends Base with Variables {
     def apply(n: Rep[Int]) = vector_apply(x, n)
     def update(n: Rep[Int], y: Rep[A]) = vector_update(x,n,y)
     def length = vector_length(x)
-    def toBoolean(implicit conv: Rep[A => Boolean]) = vector_toboolean(x)
+    def toBoolean(implicit conv: Rep[A] => Rep[Boolean]) = vector_toboolean(x)
     def +(y: Rep[Vector[A]])(implicit mA: Manifest[A], n: Numeric[A]) = vector_plus(x,y)
     def -(y: Rep[Vector[A]])(implicit mA: Manifest[A], n: Numeric[A]) = vector_minus(x,y)
     def *(y: Rep[Vector[A]])(implicit mA: Manifest[A], n: Numeric[A]) = vector_times(x,y)
@@ -45,7 +45,7 @@ trait VectorOps extends Base with Variables {
   def vector_length[A](x: Rep[Vector[A]]): Rep[Int]
   def vector_plusequals[A](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
   def vector_is_row[A](x: Rep[Vector[A]]): Rep[Boolean]
-  def vector_toboolean[A](x: Rep[Vector[A]])(implicit conv: Rep[A => Boolean]): Rep[Vector[Boolean]]
+  def vector_toboolean[A](x: Rep[Vector[A]])(implicit conv: Rep[A] => Rep[Boolean]): Rep[Vector[Boolean]]
   def vector_plus[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_minus[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_times[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
@@ -59,7 +59,7 @@ trait VectorOps extends Base with Variables {
 }
 
 trait VectorOpsRepExp extends VectorOps with VectorImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp with VariablesExp {
-  implicit def varToRepVecOps[A](x: Var[Vector[A]]) = new vecRepCls(varToRep(x))
+  implicit def varToRepVecOps[A](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
   // implemented via method on real data structure
   case class VectorApply[A](x: Exp[Vector[A]], n: Exp[Int]) extends Def[A]
@@ -70,34 +70,34 @@ trait VectorOpsRepExp extends VectorOps with VectorImplOps with DSLOpsExp with F
 
   // implemented via kernel embedding
   case class VectorObjectZeros(len: Exp[Int])
-    extends DSLOp(vector_obj_zeros_impl, len)
+    extends DSLOp(reifyEffects(vector_obj_zeros_impl(len)))
 
-  case class VectorToBoolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A => Boolean])
-    extends DSLOp(vector_toboolean_impl[A], (x,conv))
+  case class VectorToBoolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean])
+    extends DSLOp(reifyEffects(vector_toboolean_impl[A](x,conv)))
 
   case class VectorPlus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DSLOp(vector_plus_impl[A], (x,y))
+    extends DSLOp(reifyEffects(vector_plus_impl[A](x,y)))
 
   case class VectorMinus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DSLOp(vector_minus_impl[A], (x,y))
-
-  case class VectorTimes[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends Def[Vector[A]]
+    extends DSLOp(reifyEffects(vector_minus_impl[A](x,y)))
 
   case class VectorDivide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A])
-    extends DSLOp(vector_divide_impl[A], (x,y))
-
-  case class VectorTrans[A:Manifest](x: Exp[Vector[A]])
-    extends DSLOp(vector_trans_impl[A], x)
+    extends DSLOp(reifyEffects(vector_divide_impl[A](x,y)))
 
   case class VectorOuter[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DSLOp(vector_outer_impl[A], (x,y))
+    extends DSLOp(reifyEffects(vector_outer_impl[A](x,y)))
   
   case class VectorPPrint[A](x: Exp[Vector[A]])
-    extends DSLOp(vector_pprint_impl[A], x)
+    extends DSLOp(reifyEffects(vector_pprint_impl[A](x)))
+
+  case class VectorTrans[A:Manifest](x: Exp[Vector[A]])
+      extends DSLOp(reifyEffects(vector_trans_impl[A](x)))
+
+  case class VectorTimes[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
+      extends Def[Vector[A]]
 
   case class VectorNew[A : Manifest](len: Exp[Int], is_row: Exp[Boolean])
-    extends DSLOp(vector_new_impl[A], (len, is_row))
+    extends DSLOp(reifyEffects(vector_new_impl[A](len, is_row)))
 
 
   def vector_apply[A](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(x, n)
@@ -107,7 +107,7 @@ trait VectorOpsRepExp extends VectorOps with VectorImplOps with DSLOpsExp with F
   def vector_is_row[A](x: Exp[Vector[A]]) = VectorIsRow(x)
 
   def vector_obj_zeros(len: Exp[Int]) = reflectEffect(VectorObjectZeros(len))
-  def vector_toboolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A => Boolean]) = VectorToBoolean(x)
+  def vector_toboolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean]) = VectorToBoolean(x)
   def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(x, y)
   def vector_minus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(x, y)
   def vector_times[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(x, y)

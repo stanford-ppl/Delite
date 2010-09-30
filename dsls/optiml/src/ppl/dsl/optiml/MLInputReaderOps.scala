@@ -21,8 +21,8 @@ trait MLInputReaderOps extends Base {
 }
 
 trait MLInputReaderOpsRepExp extends MLInputReaderOps with BaseExp with MLInputReaderImplOps with DSLOpsExp {
-  case class MLInputRead(filename: Exp[String]) extends DSLOp(mlinput_read_impl, filename)
-  case class MLInputReadVector(filename: Exp[String]) extends DSLOp(mlinput_read_vector_impl, filename)
+  case class MLInputRead(filename: Exp[String]) extends DSLOp(reifyEffects(mlinput_read_impl(filename)))
+  case class MLInputReadVector(filename: Exp[String]) extends DSLOp(reifyEffects(mlinput_read_vector_impl(filename)))
 
   def obj_mlinput_read(filename: Exp[String]) = reflectEffect(MLInputRead(filename))
   def obj_mlinput_read_vector(filename: Exp[String]) = reflectEffect(MLInputReadVector(filename))

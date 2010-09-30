@@ -54,7 +54,7 @@ trait MatrixOps extends Base with Variables {
 
 
 trait MatrixOpsRepExp extends MatrixOps with MatrixImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp with VariablesExp {
-  implicit def varToRepMatOps[A](x: Var[Matrix[A]]) = new matRepCls(varToRep(x))
+  implicit def varToRepMatOps[A](x: Var[Matrix[A]]) = new matRepCls(readVar(x))
 
   // implemented via method on real data structure
   case class MatrixApply1[A](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[Vector[A]]
@@ -66,16 +66,16 @@ trait MatrixOpsRepExp extends MatrixOps with MatrixImplOps with DSLOpsExp with F
 
   // implemented via kernel embedding
   case class MatrixPlus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
-    extends DSLOp(matrix_plus_impl[A], (x,y))
+    extends DSLOp(reifyEffects(matrix_plus_impl[A](x,y)))
 
   case class MatrixPPrint[A](x: Exp[Matrix[A]])
-    extends DSLOp(matrix_pprint_impl[A], x)
+    extends DSLOp(reifyEffects(matrix_pprint_impl[A](x)))
 
   case class MatrixPlusEquals[A](x: Exp[Matrix[A]], y: Exp[Vector[A]])
-    extends DSLOp(matrix_plusequals_impl[A], (x,y))
+    extends DSLOp(reifyEffects(matrix_plusequals_impl[A](x,y)))
 
   case class MatrixNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int])
-    extends DSLOp(matrix_new_impl[A], (numRows,numCols))
+    extends DSLOp(reifyEffects(matrix_new_impl[A](numRows,numCols)))
 
   case class MatrixTimes[A](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) extends Def[Matrix[A]]
   case class MatrixInverse[A](x: Exp[Matrix[A]]) extends Def[Matrix[A]]

@@ -1,8 +1,7 @@
 package ppl.dsl.optiml.apps.gda
 
 import ppl.dsl.optiml._
-import scala.virtualization.lms.common._
-import scala.virtualization.lms.ppl.{EmbeddingPkg, ScalaOpsPkg, ScalaOps}
+import scala.virtualization.lms.ppl.{EmbeddingPkg, ScalaOpsPkg}
 
 trait GDA {
 
@@ -16,9 +15,9 @@ trait GDA {
   def run(args: Rep[Array[String]]): Rep[Unit] = {
     if (args.length < 2) print_usage
 
-    val x : Rep[Matrix[Double]] = MLInputReader.read(args(0))
+    val x = MLInputReader.read(args(0))
     // TODO: get the doLambda out of client code (why doesn't the implicit doLambda with type inference work here?)
-    val y : Rep[Vector[Boolean]] = MLInputReader.readVector(args(1)).toBoolean(doLambda[Double,Boolean](a => if (a <= 0) false else true))
+    val y = MLInputReader.readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
 
 //    println("X: ")
 //    x.pprint

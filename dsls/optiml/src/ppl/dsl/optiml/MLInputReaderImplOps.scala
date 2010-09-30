@@ -1,21 +1,20 @@
 package ppl.dsl.optiml
 
 import scala.virtualization.lms.common.Base
-import scala.virtualization.lms.ppl.{EmbeddingPkgExp, ScalaOpsPkgExp}
+import scala.virtualization.lms.ppl.{EmbeddingPkg, ScalaOpsPkg}
 
 trait MLInputReaderImplOps extends Base {
-  def mlinput_read_impl : Rep[String] => Rep[Matrix[Double]]
-  def mlinput_read_vector_impl : Rep[String] => Rep[Vector[Double]]
+  def mlinput_read_impl(filename: Rep[String]) : Rep[Matrix[Double]]
+  def mlinput_read_vector_impl(filename : Rep[String]) : Rep[Vector[Double]]
 }
 
-trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps with MatrixImplOps with VectorImplOps
-  with MLInputReaderOpsRepExp with MatrixOpsRepExp with VectorOpsRepExp
-  with EmbeddingPkgExp with ScalaOpsPkgExp {
+trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps
+  with MLInputReaderOps with MatrixOps with VectorOps with EmbeddingPkg with ScalaOpsPkg {
   
   ///////////////
   // kernels
 
-  def mlinput_read_impl = filename => {
+  def mlinput_read_impl(filename: Rep[String]) = {
     val xfs = BufferedReader(FileReader(filename))
     var line = xfs.readLine()
     line = line.trim()
@@ -42,7 +41,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps with MatrixImplO
     x
   }
 
-  def mlinput_read_vector_impl = filename => {
+  def mlinput_read_vector_impl(filename: Rep[String]) = {
     val x = Vector[Double](0)
 
     val xfs = BufferedReader(FileReader(filename))
