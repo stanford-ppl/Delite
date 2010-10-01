@@ -13,5 +13,5 @@ trait DSLType extends EffectExp {
   //def addCodeGenerator(cg: CodeGenerator)
 
 
-  def nop = throw new RuntimeException("not implemented")
+  private def nop = throw new RuntimeException("not implemented")
 }
