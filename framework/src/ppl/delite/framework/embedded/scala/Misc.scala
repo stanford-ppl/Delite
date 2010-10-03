@@ -1,20 +1,21 @@
 package ppl.delite.framework.embedded.scala
 
-import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
 import ppl.delite.framework.DSLType
 import scala.virtualization.lms.ppl.ScalaOpsExp
 import java.io.PrintWriter
 import scala.virtualization.lms.common.BaseExp
 import scala.virtualization.lms.internal.Effects
 import ppl.delite.framework.codegen.CodeGenerator
-import ppl.delite.framework.codegen.c.CodeGeneratorCBase
+import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
+import ppl.delite.framework.codegen.c.{CodeGeneratorCBase, TargetC}
 
 trait Misc extends DSLType {
   //put my stuff here
 }
 
+
 //todo replace ScalaOpsExp with our own hiearchy
-trait CodeGeneratorScalaMisc extends CodeGeneratorScalaBase { //this: CodeGenerator =>
+trait CodeGeneratorScalaMisc extends CodeGeneratorScalaBase {
 
   val intermediate: BaseExp with Effects with ScalaOpsExp
   import intermediate._
@@ -31,7 +32,7 @@ trait CodeGeneratorScalaMisc extends CodeGeneratorScalaBase { //this: CodeGenera
 //todo factor out commonality
 trait CodeGeneratorCMisc extends CodeGeneratorCBase {
 
-   val intermediate: BaseExp with Effects with ScalaOpsExp
+  val intermediate: BaseExp with Effects with ScalaOpsExp
   import intermediate._
 
   abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

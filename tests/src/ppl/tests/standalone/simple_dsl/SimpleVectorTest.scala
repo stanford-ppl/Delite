@@ -1,7 +1,7 @@
 package ppl.tests.standalone.simple_dsl
 
 import ppl.delite.framework.DeliteApplication
-import ppl.tests.dsls.{SimpleFloatVectorGeneratorC, SimpleFloatVectorGeneratorScala, SimpleFloatVector}
+import ppl.tests.dsls.{SimpleFloatVector}
 
 
 object SimpleVectorTest extends DeliteApplication with SimpleFloatVector with SimpleFloatMatrix {

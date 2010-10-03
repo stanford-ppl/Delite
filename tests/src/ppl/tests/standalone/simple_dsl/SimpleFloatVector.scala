@@ -4,7 +4,6 @@ import java.io.PrintWriter
 import ppl.delite.framework.codegen.c.CodeGeneratorCBase
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
-import ppl.delite.framework.embedded.scala.{CodeGeneratorCMisc, CodeGeneratorScalaMisc}
 
 //todo need to add ScalaGenFunctions functionality and also remove ScalaOpsExp Stuff
 trait SimpleFloatVector extends DSLType { this: DeliteApplication =>
@@ -31,24 +30,26 @@ trait SimpleFloatVector extends DSLType { this: DeliteApplication =>
   //register my code generators
   //todo these should hook into some option parser for our applications,
   // also this doesn't actually work as you need to mix different generators together
-  generators +=  new SimpleFloatVectorGeneratorScala {
+
+  targetCodeGenerators.get("Scala").getOrElse(
+    throw new RuntimeException("Couldn't find Scala code generator")  
+  ) += new SimpleFloatVectorGeneratorScala {
     val intermediate: SimpleFloatVector.this.type = SimpleFloatVector.this
   }
-  generators += new SimpleFloatVectorGeneratorC {
+  targetCodeGenerators.get("C").getOrElse(
+    throw new RuntimeException("Couldn't find C code generator")
+  ) += new SimpleFloatVectorGeneratorC {
     val intermediate: SimpleFloatVector.this.type = SimpleFloatVector.this
-  }
-
-  //register myself for code generation
-  dsls2generate += this
-
+  }  
 
   //todo need to clean up these ErasureFixes
   class VectorErasureFix
   implicit val vef = new VectorErasureFix
+
 }
 
 //code generation
-trait SimpleFloatVectorGeneratorScala extends CodeGeneratorScalaBase with CodeGeneratorScalaMisc {
+trait SimpleFloatVectorGeneratorScala extends CodeGeneratorScalaBase {
 
   val intermediate: SimpleFloatVector with DeliteApplication
   import intermediate._
@@ -64,8 +65,9 @@ trait SimpleFloatVectorGeneratorScala extends CodeGeneratorScalaBase with CodeGe
   }
 }
 
+
 //code generation
-trait SimpleFloatVectorGeneratorC extends CodeGeneratorCBase with CodeGeneratorCMisc {
+trait SimpleFloatVectorGeneratorC extends CodeGeneratorCBase {
   
   val intermediate: SimpleFloatVector with DeliteApplication
   import intermediate._
@@ -77,7 +79,7 @@ trait SimpleFloatVectorGeneratorC extends CodeGeneratorCBase with CodeGeneratorC
     case VectorPlus(v1,v2) => emitValDef("vector", sym, quote(v1) + " + " + quote (v2))
     case VectorApply(v,i) => emitValDef("vector", sym, quote(v) + "(" + quote(i) + ")")
     case VectorUpdate(v,i,d) => stream.println(quote(v) + "(" + quote(i) + ")" + " = " + quote(d) + ";")
-    case VectorPPrint(v) => stream.println("printf(\"%s\"," + quote(v) + ".pprint());")
+    case VectorPPrint(v) => emitValDef("vector", sym, quote(v) + ".pprint()")
     case _ => super.emitNode(sym, rhs)
   }
 }
