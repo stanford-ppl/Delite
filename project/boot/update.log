@@ -354,7 +354,7 @@ Module descriptor is processed : org.scala-tools.sbt#precompiled-2.8.0.rc2_2.8.0
 	[NOT REQUIRED] org.scala-tools.sbt#control_2.7.7;0.7.4!control_2.7.7.jar
 	[NOT REQUIRED] jline#jline;0.9.94!jline.jar
 	[NOT REQUIRED] org.scala-tools.sbt#precompiled-2.8.0.rc2_2.8.0.RC2;0.7.4!compiler-interface-bin.jar
-:: resolution report :: resolve 148ms :: artifacts dl 10ms
+:: resolution report :: resolve 160ms :: artifacts dl 10ms
 Nbr of module to sort : 14
 Sort dependencies of : org.scala-tools.sbt#sbt_2.7.7;0.7.4 / Number of dependencies = 10
 Sort dependencies of : com.jcraft#jsch;0.1.31 / Number of dependencies = 1
@@ -405,7 +405,7 @@ Module descriptor is processed : org.scala-tools.sbt#compiler-interface;0.7.4
 Module descriptor is processed : jline#jline;0.9.94
 Module descriptor is processed : org.scala-tools.sbt#precompiled-2.8.0.rc2_2.8.0.RC2;0.7.4
 	report for org.scala-tools.sbt#boot-app;1.0 default produced in C:\Users\mmwu\.ivy2\cache\org.scala-tools.sbt-boot-app-default.xml
-	resolve done (148ms resolve - 10ms download)
+	resolve done (160ms resolve - 10ms download)
 :: retrieving :: org.scala-tools.sbt#boot-app
 	checkUpToDate=true
 no explicit confs given for retrieve, using ivy file: C:\Users\mmwu\.ivy2\cache\resolved-org.scala-tools.sbt-boot-app-1.0.xml
@@ -442,5 +442,5 @@ pre 1.3 ivy file: using exactOrRegexp as default matcher
 		to D:\Code\PPL\Delite\project\boot\scala-2.7.7\org.scala-tools.sbt\sbt\0.7.4\ivy_2.7.7-0.7.4.jar
 	retrieving C:\Users\mmwu\.ivy2\cache\com.jcraft\jsch\jars\jsch-0.1.31.jar
 		to D:\Code\PPL\Delite\project\boot\scala-2.7.7\org.scala-tools.sbt\sbt\0.7.4\jsch-0.1.31.jar
-	15 artifacts copied, 0 already retrieved (4096kB/62ms)
-	retrieve done (62ms)
+	15 artifacts copied, 0 already retrieved (4096kB/67ms)
+	retrieve done (67ms)

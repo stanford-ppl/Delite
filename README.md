@@ -81,7 +81,20 @@ Until we have a project file checked into the repository, you will have to creat
 
     virtualization-lms-core only depends on scala-virtualized.
 
-33. You should be able to build successfully with Build->Make Project
+33. Create a local.properties file inside the Delite folder with the following lines. Replace the paths with ones that apply to your system
+
+        #Project local properties
+        #Sun Oct 03 18:46:56 PDT 2010
+        scala.virtualized.home=../scala-virtualized
+        virtualization_lms_core.home=../virtualization-lms-core
+    
+34. Create a local.properties file inside the virtualization-lms-core folder with the following lines. Replace the paths with ones that apply to your system
+
+        #Project local properties
+        #Sun Oct 03 18:46:56 PDT 2010
+        scala.virtualized.home=../scala-virtualized
+                
+35. You should be able to build successfully with Build->Make Project
 
 ### Short and sweet instructions
 
@@ -101,4 +114,17 @@ Until we have a project file checked into the repository, you will have to creat
     tests depends on framework, optiml, runtime, virtualization-lms-core
 
     virtualization-lms-core only depends on scala-virtualized.
-7. Test the project structure with Build->Make Project
+7. Create a local.properties file inside the Delite folder with the following lines. Replace the paths with ones that apply to your system
+
+        #Project local properties
+        #Sun Oct 03 18:46:56 PDT 2010
+        scala.virtualized.home=../scala-virtualized
+        virtualization_lms_core.home=../virtualization-lms-core
+    
+8. Create a local.properties file inside the virtualization-lms-core folder with the following lines. Replace the paths with ones that apply to your system
+
+        #Project local properties
+        #Sun Oct 03 18:46:56 PDT 2010
+        scala.virtualized.home=../scala-virtualized
+        
+9. Test the project structure with Build->Make Project
