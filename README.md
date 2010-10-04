@@ -5,14 +5,14 @@ Dependencies
 ------------
 
 ### IDE
-* [IDEA IntelliJ](http://www.jetbrains.com/idea/download/). You may want to configure the VM options for IDEA.
+* [IDEA IntelliJ](http://www.jetbrains.com/idea/download/). You may want to configure the memory parameters in the VM options for IDEA.
 * Scala plugin
 
 ### Git
 * [Git for Windows](http://code.google.com/p/msysgit/)
 
-### Light Modular Staging library
-* [LMS Core](http://github.com/TiarkRompf/virtualization-lms-core)
+### Virtualization Light Modular Staging library
+* [Virtualization LMS Core](http://github.com/TiarkRompf/virtualization-lms-core)
 
 ### Virtualized Scala
 * [Virtualized Scala](http://github.com/TiarkRompf/scala-virtualized)
@@ -20,7 +20,7 @@ Dependencies
 
 ### Simple Build Tool
 * [Simple Build Tool](http://code.google.com/p/simple-build-tool/)
-* You will want to create some kind of launcher for sbt. See sbt [setup instructions](http://code.google.com/p/simple-build-tool/wiki/Setup).mar
+* You will want to create some kind of launcher for sbt. See sbt [setup instructions](http://code.google.com/p/simple-build-tool/wiki/Setup).
 
 ### Source code
 * [Delite](http://github.com/stanford-ppl/Delite)
