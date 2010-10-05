@@ -11,12 +11,14 @@ Dependencies
 ### Git
 * [Git for Windows](http://code.google.com/p/msysgit/)
 
-### Virtualization Light Modular Staging library
-* [Virtualization LMS Core](http://github.com/TiarkRompf/virtualization-lms-core)
-
 ### Virtualized Scala
 * [Virtualized Scala](http://github.com/TiarkRompf/scala-virtualized)
 (this one is missing some things for now, get compiler from our file store)
+* Note: sbt test-compile does not like it if a custom scala compiler is located outside the project directory. Place virtualized-scala in the Delite directory
+
+### Virtualization Light Modular Staging library
+* [Virtualization LMS Core](http://github.com/TiarkRompf/virtualization-lms-core)
+* Note: because of the above restriction on the location of virtualized-scala, place virtualization-lms-core in the Delite directory.
 
 ### Simple Build Tool
 * [Simple Build Tool](http://code.google.com/p/simple-build-tool/)
@@ -90,15 +92,13 @@ Until we have a project file checked into the repository, you will have to creat
 34. Create a local.properties file inside the Delite folder with the following lines. Replace the paths with ones that apply to your system
 
         #Project local properties
-        #Sun Oct 03 18:46:56 PDT 2010
-        scala.virtualized.home=../scala-virtualized
-        virtualization_lms_core.home=../virtualization-lms-core
+        scala.virtualized.home=scala-virtualized
+        virtualization_lms_core.home=virtualization-lms-core
     
-35. Create a local.properties file inside the virtualization-lms-core folder with the following lines. Replace the paths with ones that apply to your system
+35. Create a local.properties file inside the virtualization-lms-core folder with the following lines. Replace the paths with ones that apply to your system. Relative paths should be relative to the Delite folder. Otherwise absolute paths can be used.
 
         #Project local properties
-        #Sun Oct 03 18:46:56 PDT 2010
-        scala.virtualized.home=../scala-virtualized
+        scala.virtualized.home=scala-virtualized
 
 36. You should be able to run sbt from the Delite directory.
 
@@ -126,14 +126,12 @@ Until we have a project file checked into the repository, you will have to creat
 8. Create a local.properties file inside the Delite folder with the following lines. Replace the paths with ones that apply to your system
 
         #Project local properties
-        #Sun Oct 03 18:46:56 PDT 2010
-        scala.virtualized.home=../scala-virtualized
-        virtualization_lms_core.home=../virtualization-lms-core
+        scala.virtualized.home=scala-virtualized
+        virtualization_lms_core.home=virtualization-lms-core
     
-9. Create a local.properties file inside the virtualization-lms-core folder with the following lines. Replace the paths with ones that apply to your system
+9. Create a local.properties file inside the virtualization-lms-core folder with the following lines. Replace the paths with ones that apply to your system. Relative paths should be relative to the Delite folder. Otherwise absolute paths can be used.
 
         #Project local properties
-        #Sun Oct 03 18:46:56 PDT 2010
-        scala.virtualized.home=../scala-virtualized
+        scala.virtualized.home=scala-virtualized
 
 10. You should be able to run sbt from the Delite directory.

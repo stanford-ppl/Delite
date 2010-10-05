@@ -1,4 +1,4 @@
 #Project local properties properties
 #Sun Oct 03 18:46:56 PDT 2010
-scala.virtualized.home=../scala-virtualized
-virtualization_lms_core.home=../virtualization-lms-core
+scala.virtualized.home=scala-virtualized
+virtualization_lms_core.home=virtualization-lms-core
