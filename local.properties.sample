@@ -1,4 +1,7 @@
 #Project local properties properties
-#Sun Oct 03 18:46:56 PDT 2010
-scala.virtualized.home=scala-virtualized
-virtualization_lms_core.home=virtualization-lms-core
+# Select one of the double hashed lines depending on your system and replace with paths that apply to your system.
+# Absolute paths must be used unless the scala-virtualized folder is within both projects.
+# Windows
+## scala.virtualized.home=C:/ppl/scala-virtualized
+# Unix
+## scala.virtualized.home=/ppl/scala-virtualized

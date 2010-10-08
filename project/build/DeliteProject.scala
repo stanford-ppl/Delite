@@ -9,7 +9,6 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
       def log = DeliteProject.this.log
       def envBackingPath = info.projectPath / "local.properties"
       lazy val scalaVirtualizedHome = property[String]
-      lazy val virtualization_lms_coreHome = property[String]
   }
   
   // use the local scala-virtualized compiler and library
@@ -17,7 +16,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     defineScala("2.8.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
       log.error("scala.virtualized.home needs to be defined in local.properties and "+
       "must point to a valid scala-virtualized home directory"); "<undefined>"
-    }))::Nil 
+    }))::Nil
 
   // Options
   // Parallelism!
@@ -33,26 +32,29 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   class FlatProject(info: ProjectInfo) extends DefaultProject(info) {
     // Source tree layout
     override def mainScalaSourcePath = "src"
+    val virtualization_lms_core = "scala" % "virtualization-lms-core_2.8.x-virtualized-SNAPSHOT" % "0.1"
+    override def localScala =
+    defineScala("2.8.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
+      log.error("scala.virtualized.home needs to be defined in local.properties and "+
+      "must point to a valid scala-virtualized home directory"); "<undefined>"
+    }))::Nil 
   }
   
   // Define projects
-  lazy val virtualization_lms_core = project(Path.fromFile(local.virtualization_lms_coreHome.get.getOrElse {
-      log.error("virtualization_lms_core.home needs to be defined in local.properties and "+
-      "must point to a valid virtualization lms core home directory"); "<undefined>"
-    }))
+  lazy val framework = project("framework", "Delite Framework", new FlatProject(_))
+  lazy val runtime = project("runtime", "Delite Runtime", new FlatProject(_), framework)
   
-  lazy val framework = project("framework", "Delite Framework", new FlatProject(_), virtualization_lms_core)
-  lazy val runtime = project("runtime", "Delite Runtime", new FlatProject(_), framework, virtualization_lms_core)
-  
-  lazy val dsls = project("dsls", "DSLs", new DSLs(_), framework, virtualization_lms_core)
+  lazy val dsls = project("dsls", "DSLs", new DSLs(_), framework)
    
   class DSLs(info: ProjectInfo) extends DefaultProject(info) {
-    lazy val optiml = project("optiml", "OptiML", new FlatProject(_), framework, virtualization_lms_core)
+    lazy val optiml = project("optiml", "OptiML", new FlatProject(_), framework)
   }
   
-  lazy val tests = project("tests", "Tests", new Tests(_), framework, runtime, dsls, virtualization_lms_core)
+  lazy val tests = project("tests", "Tests", new Tests(_), framework, runtime, dsls)
     
   // Unsure, may have to do sub sub projects
-  class Tests(info: ProjectInfo) extends ParentProject(info) {
+  class Tests(info: ProjectInfo) extends DefaultProject(info) {
   }
+  
+  
 }
