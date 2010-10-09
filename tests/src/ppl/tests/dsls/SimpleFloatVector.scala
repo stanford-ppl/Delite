@@ -6,7 +6,7 @@ import ppl.delite.framework.DSLType
 trait SimpleFloatVector extends DSLType {
 
   def zeros(n: Rep[Int]): Rep[SimpleFloatVector] = nop
-  def __ext__+(v1: Rep[SimpleFloatVector], v2: Rep[SimpleFloatVector]): Rep[SimpleFloatVector] = nop
+  def infix_+(v1: Rep[SimpleFloatVector], v2: Rep[SimpleFloatVector]): Rep[SimpleFloatVector] = nop
 
   //todo could we extend the __ext__ feature to handle this like apply
   class SimpleFloatVectorOps(v: Rep[SimpleFloatVector]) {
