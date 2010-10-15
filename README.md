@@ -156,8 +156,29 @@ Until we have a project file checked into the repository, you will have to creat
 Testing
 --------------------------
 
-`sbt` will automatically pick up any tests in the `tests` directory. Currently it is configured with [ScalaTest](http://www.scalatest.org/), which supports many types of tests, including JUnit.
+`sbt` will automatically pick up any tests in the `tests/src` directory of any project or subproject. Currently it is configured with [ScalaTest](http://www.scalatest.org/), which supports many types of tests, including JUnit.
 
-Test resources can be added under the `DECIDE A DIRECTORY` directory under `Delite` or any sub-project. These files will be added onto the classpath and be included in the test jar.
+Test resources can be added under the `tests/resources` directory under `Delite` or any sub-project. These files will be added onto the classpath and be included in the test jar.
 
-FILL IN THIS SECTION
+A simple example test that will be picked up and run if it is placed in the `tests/src` directory:
+
+    import org.scalatest.Spec
+    import org.scalatest.matchers.ShouldMatchers
+    import scala.collection.mutable.Stack
+
+    class StackSpec extends Spec with ShouldMatchers {
+      describe("A Stack") {
+        describe("(when empty)") {
+          val stack = new Stack[Int]
+          
+          it("should be empty") {
+            stack should be ('empty)
+          }
+          
+          it("should complain when popped") {
+            evaluating { stack.pop() } should produce [NoSuchElementException]
+          }
+        }
+      }
+    }
+
