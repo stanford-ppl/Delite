@@ -2,8 +2,10 @@ package ppl.dsl.optiml
 
 import scala.virtualization.lms.common.Base
 import scala.virtualization.lms.ppl.{EmbeddingPkg, ScalaOpsPkg}
+import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.embedded.scala.ScalaOpsPkg3
 
-trait MatrixImplOps extends Base {
+trait MatrixImplOps { this: DeliteApplication =>
   def matrix_new_impl[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]]
 
   def matrix_plus_impl[A:Manifest:Numeric](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) : Rep[Matrix[A]]
@@ -11,8 +13,8 @@ trait MatrixImplOps extends Base {
   def matrix_pprint_impl[A](m: Rep[Matrix[A]]) : Rep[Unit]
 }
 
-trait MatrixImplOpsStandard extends MatrixImplOps with MatrixOps with VectorOps
-  with EmbeddingPkg with ScalaOpsPkg {
+trait MatrixImplOpsStandard extends MatrixImplOps {
+  this: DeliteApplication with MatrixOps with VectorOps with ScalaOpsPkg3 =>
   
   private val base = "ppl.dsl.optiml"
 

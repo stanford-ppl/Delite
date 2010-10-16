@@ -1,8 +1,16 @@
 package ppl.dsl.optiml
 
-trait OptiML extends VectorOps with MatrixOps with MLInputReaderOps
+import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.embedded.scala.{VariablesExp, Variables, ScalaOpsPkg3, ScalaOpsPkgExp3}
 
-trait OptiMLExp extends OptiML with VectorOpsRepExp with MatrixOpsRepExp with MLInputReaderOpsRepExp
-  with VectorImplOpsStandard with MatrixImplOpsStandard with MLInputReaderImplOpsStandard
+trait OptiML extends ScalaOpsPkg3 with VectorOps with MatrixOps with MLInputReaderOps { 
+  this: DeliteApplication =>
+}
 
-trait OptiMLCodeGen extends OptiMLExp with ScalaGenVector with ScalaGenMatrix with ScalaGenMLInputReader
+trait OptiMLExp extends OptiML with ScalaOpsPkgExp3 with VectorOpsExp with MatrixOpsExp with MLInputReaderOpsExp
+  with VectorImplOpsStandard with MatrixImplOpsStandard with MLInputReaderImplOpsStandard {
+
+  this: DeliteApplication =>
+}
+
+//trait OptiMLCodeGen extends OptiMLExp with ScalaGenVector with ScalaGenMatrix with ScalaGenMLInputReader

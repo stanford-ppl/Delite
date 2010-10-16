@@ -1,14 +1,15 @@
 package ppl.dsl.optiml
 
-import scala.virtualization.lms.common.{FunctionsExp, Base}
 import scala.virtualization.lms.ppl.{TupleOpsExp, DSLOpsExp}
 import scala.virtualization.lms.internal.ScalaCodegen
 import java.io.PrintWriter
-
+import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
+import scala.virtualization.lms.common.{EffectExp, FunctionsExp, Base}
 
 trait VectorView[T] extends Vector[T]
 
-trait VectorViewOps extends Base {
+trait VectorViewOps extends DSLType { this: DeliteApplication =>
 
   implicit def repVecViewToRepVecViewOps[A](x: Rep[VectorView[A]]) = new vecViewRepCls(x)
   implicit def vecViewToRepVecViewOps[A](x: VectorView[A]) = new vecViewRepCls(x)
@@ -26,7 +27,7 @@ trait VectorViewOps extends Base {
   def vectorview_new[A : Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorViewOpsRepExp extends VectorViewOps with VectorViewImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp {
+trait VectorViewOpsExp extends VectorViewOps { this: DeliteApplication with VectorViewImplOps with DSLOpsExp =>
 
   // implemented via method on real data structure
   case class VectorViewStart[A](x: Exp[VectorView[A]]) extends Def[Int]
@@ -42,7 +43,11 @@ trait VectorViewOpsRepExp extends VectorViewOps with VectorViewImplOps with DSLO
     = reflectEffect(VectorViewNew[A](x, offset, stride, len, is_row))
 }
 
-trait ScalaGenVectorView extends ScalaCodegen with VectorViewOpsRepExp {
+trait CodeGeneratorScalaVectorView extends CodeGeneratorScalaBase {
+
+  val intermediate: DeliteApplication with VectorViewOpsExp with EffectExp
+  import intermediate._
+
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
 
     // these are the ops that call through to the underlying real data structure

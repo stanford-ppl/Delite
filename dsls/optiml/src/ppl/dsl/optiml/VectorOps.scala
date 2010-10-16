@@ -2,13 +2,14 @@ package ppl.dsl.optiml
 
 import java.io.{PrintWriter}
 
-import scala.virtualization.lms.internal.ScalaCodegen
-import scala.virtualization.lms.ppl.{DSLOpsExp, TupleOpsExp}
-import scala.virtualization.lms.common._
+import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
+import ppl.delite.framework.embedded.scala.{DSLOpsExp, VariablesExp, Variables}
+import scala.virtualization.lms.common.EffectExp
 
 trait Vector[T]
 
-trait VectorOps extends Base with Variables {
+trait VectorOps extends DSLType { this: DeliteApplication with Variables =>
 
   object Vector {
     def apply[A : Manifest](len: Rep[Int], is_row : Rep[Boolean] = true) : Rep[Vector[A]] = vector_new(len, is_row)
@@ -58,7 +59,7 @@ trait VectorOps extends Base with Variables {
   def vector_new[A : Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorOpsRepExp extends VectorOps with VectorImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp with VariablesExp {
+trait VectorOpsExp extends VectorOps { this: DeliteApplication with VectorImplOps with VariablesExp with DSLOpsExp =>
   implicit def varToRepVecOps[A](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
   // implemented via method on real data structure
@@ -117,26 +118,37 @@ trait VectorOpsRepExp extends VectorOps with VectorImplOps with DSLOpsExp with F
   def vector_pprint[A](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
 
   def vector_new[A : Manifest](len: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorNew[A](len, is_row))
+
+  targets.get("Scala").getOrElse(
+    throw new RuntimeException("Couldn't find Scala code generator")
+  ) .generators += new CodeGeneratorScalaVector {
+    val intermediate: VectorOpsExp.this.type = VectorOpsExp.this
+  }
 }
 
 /**
  * Optimizations for composite VectorOps operations.
  */
 
-trait VectorOpsRepExpOpt extends VectorOpsRepExp {
-  override def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
-    // (TB + TD) == T(B + D)
-    case (Def(VectorTimes(a, b)), Def(VectorTimes(c, d))) if (a == c) => VectorTimes[A](a.asInstanceOf[Exp[Vector[A]]], VectorPlus[A](b.asInstanceOf[Exp[Vector[A]]],d.asInstanceOf[Exp[Vector[A]]]))
-    // ...
-    case _ => super.vector_plus(x, y)
-  }
+// TODO: why doesn't this work?
+//trait VectorOpsExpOpt extends VectorOpsExp { this: DeliteApplication with VectorImplOps with VariablesExp with DSLOpsExp =>
+//  override def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
+//    // (TB + TD) == T(B + D)
+//    case (Def(VectorTimes(a, b)), Def(VectorTimes(c, d))) if (a == c) => VectorTimes[A](a.asInstanceOf[Exp[Vector[A]]], VectorPlus[A](b.asInstanceOf[Exp[Vector[A]]],d.asInstanceOf[Exp[Vector[A]]]))
+//    // ...
+//    case _ => super.vector_plus(x, y)
+//  }
+//
+//  override def vector_times[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
+//    case _ => super.vector_times(x, y)
+//  }
+//}
 
-  override def vector_times[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
-    case _ => super.vector_times(x, y)
-  }
-}
+trait CodeGeneratorScalaVector extends CodeGeneratorScalaBase {
 
-trait ScalaGenVector extends ScalaCodegen with VectorOpsRepExp {
+  val intermediate: DeliteApplication with VectorOpsExp with EffectExp
+  import intermediate._
+
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     
     // these are the ops that call through to the underlying real data structure

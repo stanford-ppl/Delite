@@ -1,22 +1,20 @@
 package ppl.dsl.optiml.apps.gda
 
 import ppl.dsl.optiml._
-import scala.virtualization.lms.ppl.{EmbeddingPkg, ScalaOpsPkg}
+import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.embedded.scala.ScalaOpsPkgExp3
 
-trait GDA {
-
-  this: OptiML with ScalaOpsPkg with EmbeddingPkg =>
+object GDA extends DeliteApplication with OptiMLExp {
 
   def print_usage = {
     println("Usage: GDA <input data file> <output label data file>")
     exit(-1)
   }
 
-  def run(args: Rep[Array[String]]): Rep[Unit] = {
+  def main() = {
     if (args.length < 2) print_usage
 
     val x = MLInputReader.read(args(0))
-    // TODO: get the doLambda out of client code (why doesn't the implicit doLambda with type inference work here?)
     val y = MLInputReader.readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
 
 //    println("X: ")
@@ -84,5 +82,6 @@ trait GDA {
     println("  mu1 = " ); mu1.pprint
     println("  sigma = "); sigma.pprint
     //sigma
+    
   }
 }

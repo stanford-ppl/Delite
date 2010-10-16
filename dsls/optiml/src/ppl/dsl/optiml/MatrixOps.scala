@@ -3,13 +3,14 @@ package ppl.dsl.optiml
 
 import java.io.{PrintWriter}
 
-import scala.virtualization.lms.internal.ScalaCodegen
-import scala.virtualization.lms.ppl.{TupleOpsExp, DSLOpsExp}
-import scala.virtualization.lms.common._
+import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
+import scala.virtualization.lms.common.EffectExp
+import ppl.delite.framework.embedded.scala.{DSLOpsExp, VariablesExp, Variables}
 
 trait Matrix[T]
 
-trait MatrixOps extends Base with Variables {
+trait MatrixOps extends DSLType { this: DeliteApplication with Variables =>
 
   object Matrix {
     def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]] = matrix_new(numRows, numCols)
@@ -53,7 +54,8 @@ trait MatrixOps extends Base with Variables {
 }
 
 
-trait MatrixOpsRepExp extends MatrixOps with MatrixImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp with VariablesExp {
+trait MatrixOpsExp extends MatrixOps with MatrixImplOps { this: DeliteApplication with VariablesExp with DSLOpsExp =>
+//trait MatrixOpsRepExp extends MatrixOps with MatrixImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp with VariablesExp {
   implicit def varToRepMatOps[A](x: Var[Matrix[A]]) = new matRepCls(readVar(x))
 
   // implemented via method on real data structure
@@ -98,49 +100,61 @@ trait MatrixOpsRepExp extends MatrixOps with MatrixImplOps with DSLOpsExp with F
   def matrix_transpose[A](x: Exp[Matrix[A]]) = MatrixTranspose(x)
   def matrix_pprint[A](x: Exp[Matrix[A]]) = reflectEffect(MatrixPPrint(x))
   def matrix_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixNew[A](numRows,numCols))
+
+  targets.get("Scala").getOrElse(
+    throw new RuntimeException("Couldn't find Scala code generator")
+  ) .generators += new CodeGeneratorScalaMatrix {
+    val intermediate: MatrixOpsExp.this.type = MatrixOpsExp.this
+  }
 }
 
 /**
  * Optimizations for composite MatrixOps operations.
  */
 
-trait MatrixOpsRepExpOpt extends MatrixOpsRepExp {
-  override def matrix_plus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
-    // (AB + AD) == A(B + D)
-    case (Def(MatrixTimes(a, b)), Def(MatrixTimes(c, d))) if (a == c) => MatrixTimes[A](a.asInstanceOf[Exp[Matrix[A]]], MatrixPlus[A](b.asInstanceOf[Exp[Matrix[A]]],d.asInstanceOf[Exp[Matrix[A]]]))
-    // ...
-    case _ => super.matrix_plus(x, y)
-  }
+// TODO: why doesn't this work?
+//trait MatrixOpsExpOpt extends MatrixOpsExp { this: DeliteApplication with VariablesExp with DSLOpsExp =>
+//  override def matrix_plus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
+//    // (AB + AD) == A(B + D)
+//    case (Def(MatrixTimes(a, b)), Def(MatrixTimes(c, d))) if (a == c) => MatrixTimes[A](a.asInstanceOf[Exp[Matrix[A]]], MatrixPlus[A](b.asInstanceOf[Exp[Matrix[A]]],d.asInstanceOf[Exp[Matrix[A]]]))
+//    // ...
+//    case _ => super.matrix_plus(x, y)
+//  }
+//
+//  override def matrix_times[A](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
+//    // X^-1*X = X*X^-1 = I (if X is non-singular)
+//    case (Def(MatrixInverse(a)), b) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])
+//    case (b, Def(MatrixInverse(a))) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])
+//
+//    // X*I = I*X = X
+//    case (Def(MatrixIdentity(a)), b) if (a == b) => a.asInstanceOf[Exp[Matrix[A]]]
+//    case (a, Def(MatrixIdentity(b))) if (a == b) => a.asInstanceOf[Exp[Matrix[A]]]
+//
+//    // else
+//    case _ => super.matrix_times(x, y)
+//  }
+//
+//  override def matrix_inverse[A](x: Exp[Matrix[A]]) = x match {
+//    // (X^-1)^-1 = X (if X is non-singular)
+//    case (Def(MatrixInverse(a))) => a.asInstanceOf[Exp[Matrix[A]]]
+//    case _ => super.matrix_inverse(x)
+//  }
+//
+//  override def matrix_transpose[A](x: Exp[Matrix[A]]) = x match {
+//    // (X^T)^T = X
+//    case (Def(MatrixTranspose(a))) => a.asInstanceOf[Exp[Matrix[A]]]
+//    case _ => super.matrix_transpose(x)
+//  }
+//
+//
+//}
 
-  override def matrix_times[A](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
-    // X^-1*X = X*X^-1 = I (if X is non-singular)
-    case (Def(MatrixInverse(a)), b) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])
-    case (b, Def(MatrixInverse(a))) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])
 
-    // X*I = I*X = X
-    case (Def(MatrixIdentity(a)), b) if (a == b) => a.asInstanceOf[Exp[Matrix[A]]]
-    case (a, Def(MatrixIdentity(b))) if (a == b) => a.asInstanceOf[Exp[Matrix[A]]]
+trait CodeGeneratorScalaMatrix extends CodeGeneratorScalaBase {
 
-    // else
-    case _ => super.matrix_times(x, y)
-  }
+  val intermediate: DeliteApplication with MatrixOpsExp with EffectExp
+  import intermediate._
 
-  override def matrix_inverse[A](x: Exp[Matrix[A]]) = x match {
-    // (X^-1)^-1 = X (if X is non-singular)
-    case (Def(MatrixInverse(a))) => a.asInstanceOf[Exp[Matrix[A]]]
-    case _ => super.matrix_inverse(x)
-  }
-
-  override def matrix_transpose[A](x: Exp[Matrix[A]]) = x match {
-    // (X^T)^T = X
-    case (Def(MatrixTranspose(a))) => a.asInstanceOf[Exp[Matrix[A]]]
-    case _ => super.matrix_transpose(x)
-  }
-
-
-}
-
-trait ScalaGenMatrix extends ScalaCodegen with MatrixOpsRepExp { 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
 
     // these are the ops that call through to the underlying real data structure

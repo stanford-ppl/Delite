@@ -1,7 +1,5 @@
 package ppl.dsl.optiml
 
-import scala.virtualization.lms.ppl.ScalaOpsPkg
-
 object VectorImpl {
 
 }

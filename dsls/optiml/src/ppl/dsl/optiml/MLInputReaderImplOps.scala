@@ -1,15 +1,16 @@
 package ppl.dsl.optiml
 
 import scala.virtualization.lms.common.Base
-import scala.virtualization.lms.ppl.{EmbeddingPkg, ScalaOpsPkg}
+import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.embedded.scala.ScalaOpsPkg3
 
-trait MLInputReaderImplOps extends Base {
+trait MLInputReaderImplOps { this: DeliteApplication =>
   def mlinput_read_impl(filename: Rep[String]) : Rep[Matrix[Double]]
   def mlinput_read_vector_impl(filename : Rep[String]) : Rep[Vector[Double]]
 }
 
-trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps
-  with MLInputReaderOps with MatrixOps with VectorOps with EmbeddingPkg with ScalaOpsPkg {
+trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
+  this: DeliteApplication with MLInputReaderOps with MatrixOps with VectorOps with ScalaOpsPkg3 =>
   
   ///////////////
   // kernels
