@@ -12,10 +12,10 @@ trait NumericOps extends DSLType { this: DeliteApplication with Variables =>
   implicit def repNumericToNumericOps[T:Numeric](x: Rep[T]) = new NumericOpsCls(x)
   //implicit def numericToNumericOps[T:Numeric](x: T) = new NumericOpsCls(x)
 
-  def __ext__*[T:Numeric](lhs: Rep[T], rhs: Rep[T]) = numeric_times(lhs,rhs)
-  def __ext__+(lhs: Rep[Double], rhs: Rep[Double]) = numeric_plus(lhs,rhs)
-  //def __ext__+[T:Numeric](lhs: Rep[T], rhs: Rep[T]) = numeric_plus(lhs,rhs)
-  def __ext__-[T:Numeric](lhs: Rep[T], rhs: Rep[T]) = numeric_minus(lhs,rhs)
+  def infix_*[T:Numeric](lhs: Rep[T], rhs: Rep[T]) = numeric_times(lhs,rhs)
+  def infix_+(lhs: Rep[Double], rhs: Rep[Double]) = numeric_plus(lhs,rhs)
+  //def infix_+[T:Numeric](lhs: Rep[T], rhs: Rep[T]) = numeric_plus(lhs,rhs)
+  def infix_-[T:Numeric](lhs: Rep[T], rhs: Rep[T]) = numeric_minus(lhs,rhs)
 
   class NumericOpsCls[T:Numeric](lhs: Rep[T]) {
     def +(rhs: Rep[T]) = numeric_plus(lhs,rhs)

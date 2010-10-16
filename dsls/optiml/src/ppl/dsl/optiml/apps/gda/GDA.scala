@@ -2,7 +2,6 @@ package ppl.dsl.optiml.apps.gda
 
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.embedded.scala.ScalaOpsPkgExp3
 
 object GDA extends DeliteApplication with OptiMLExp {
 

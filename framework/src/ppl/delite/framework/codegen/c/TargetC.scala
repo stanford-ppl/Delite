@@ -1,9 +1,7 @@
 package ppl.delite.framework.codegen.c
 
-import java.io.PrintWriter
 import collection.mutable.ListBuffer
 import ppl.delite.framework.codegen.{CodeGenerator, Target}
-import ppl.delite.framework.embedded.scala.CodeGeneratorCMisc
 
 trait TargetC extends Target with EmitterC {
   import intermediate._
