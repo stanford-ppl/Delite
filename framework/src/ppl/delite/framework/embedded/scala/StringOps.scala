@@ -13,10 +13,10 @@ trait StringOps extends DSLType with OverloadHack { this: DeliteApplication with
 
   // NOTE: with infix methods, if something doesn't get lifted, this won't give you a compile time error,
   //       since string concat is defined on all objects
-  def infix_+(s1: String, s2: Rep[Any]) = string_plus(s1,s2)
-  def infix_+(s1: Rep[Any], s2: String)(implicit o: Overloaded1) = string_plus(s1,s2)
-  def infix_+(s1: String, s2: Var[Any])(implicit o: Overloaded4) = string_plus(s1,readVar(s2))
-  def infix_+(s1: Var[Any], s2: String)(implicit o: Overloaded5) = string_plus(readVar(s1),s2)
+  def __ext__+(s1: String, s2: Rep[Any]) = string_plus(s1,s2)
+  def __ext__+(s1: Rep[Any], s2: String)(implicit o: Overloaded1) = string_plus(s1,s2)
+  def __ext__+(s1: String, s2: Var[Any])(implicit o: Overloaded4) = string_plus(s1,readVar(s2))
+  def __ext__+(s1: Var[Any], s2: String)(implicit o: Overloaded5) = string_plus(readVar(s1),s2)
 
   class RepStrOpsCls(s: Rep[String]) {
     def trim() = string_trim(s);
