@@ -1,7 +1,9 @@
 package ppl.delite.framework.codegen.scala
 
+import java.io.PrintWriter
 import collection.mutable.ListBuffer
 import ppl.delite.framework.codegen.{CodeGenerator, Target}
+import ppl.delite.framework.embedded.scala.CodeGeneratorScalaMisc
 
 
 trait TargetScala extends Target with EmitterScala {

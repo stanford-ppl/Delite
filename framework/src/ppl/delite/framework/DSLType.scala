@@ -2,6 +2,7 @@ package ppl.delite.framework
 
 import datafields.ScalarField
 import types.Type
+import scala.virtualization.lms.common.{EffectExp}
 
 trait DSLType {
 

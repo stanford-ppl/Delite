@@ -10,6 +10,11 @@ trait Emitter {
   val intermediate: DeliteApplication with BaseExp with Effects
   import intermediate._
 
+
+  //Codegen piece
+  //def emitValDef[A](sym: Sym[_], rhs: String)(implicit stream: PrintWriter, mA: Manifest[A]): Unit
+  //def emitVarDef[A](sym: Sym[_], rhs: String)(implicit stream: PrintWriter, mA: Manifest[A]): Unit
+
   def quote(x: Exp[_]) : String = x match {
     case Const(s: String) => "\""+s+"\""
     case Const(z) => z.toString
@@ -60,7 +65,7 @@ trait Emitter {
         // because of the Reflect dependencies. it's still a good
         // sanity check though
 
-        val effects = effects0.map { case s: Sym[_] => findDefinition(s).get }
+        val effects = effects0.map { case s: Sym[a] => findDefinition(s).get }
         val actual = e4.filter(effects contains _)
 
         // actual must be a prefix of effects!
@@ -106,6 +111,7 @@ trait Emitter {
     val st = findSyms(start, target, shallow)
     GraphUtil.stronglyConnectedComponents[TP[_]](st.flatMap(e => findDefinition(e).toList), { d =>
       //println("dep"+d +"="+dep(d.rhs))
+      //todo had to add toAtom
       dep2(toAtom(d.rhs), target, shallow).flatMap { e =>
         //println(d + "->" + e)
         findDefinition(e).toList

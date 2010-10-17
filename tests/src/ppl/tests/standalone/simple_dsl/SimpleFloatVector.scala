@@ -15,9 +15,9 @@
 //  case class VectorPPrint(v: Rep[SimpleFloatVector]) extends Def[String]
 //
 //  def vzeros(n: Rep[Int]): Rep[SimpleFloatVector] = reflectEffect(VectorZeros(n))
-//  def infix_+(v1: Rep[SimpleFloatVector], v2: Rep[SimpleFloatVector])(implicit ef: VectorErasureFix): Rep[SimpleFloatVector] = VectorPlus(v1, v2)
+//  def __ext__+(v1: Rep[SimpleFloatVector], v2: Rep[SimpleFloatVector])(implicit ef: VectorErasureFix): Rep[SimpleFloatVector] = VectorPlus(v1, v2)
 //
-//  //todo could we extend the infix_ feature to handle this like apply
+//  //todo could we extend the __ext__ feature to handle this like apply
 //  class SimpleFloatVectorOps(v: Rep[SimpleFloatVector]) {
 //    def apply(i: Rep[Int]): Rep[Float] = VectorApply(v,i)
 //    def update(i: Rep[Int], f: Rep[Float]) = reflectEffect(VectorUpdate(v,i,f))

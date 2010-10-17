@@ -12,7 +12,7 @@
 //  case class MatrixPPrint(v: Rep[SimpleFloatMatrix]) extends Def[String]
 //
 //  def mzeros(n: Rep[Int]): Rep[SimpleFloatMatrix] = reflectEffect(MatrixZeros(n))
-//  def infix_+(m1: Rep[SimpleFloatMatrix], m2: Rep[SimpleFloatMatrix])(implicit ef: MatrixErasureFix): Rep[SimpleFloatMatrix] = MatrixPlus(m1, m2)
+//  def __ext__+(m1: Rep[SimpleFloatMatrix], m2: Rep[SimpleFloatMatrix])(implicit ef: MatrixErasureFix): Rep[SimpleFloatMatrix] = MatrixPlus(m1, m2)
 //
 //  class SimpleFloatMatrixOps(m: Rep[SimpleFloatMatrix]) {
 //    def pprint: Rep[String] = MatrixPPrint(m)

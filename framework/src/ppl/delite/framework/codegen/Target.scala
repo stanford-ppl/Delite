@@ -2,7 +2,8 @@ package ppl.delite.framework.codegen
 
 import _root_.scala.virtualization.lms.common.BaseExp
 import _root_.scala.virtualization.lms.internal.Effects
-import collection.mutable.ListBuffer
+import _root_.scala.virtualization.lms.util.GraphUtil
+import collection.mutable.{HashMap, ListBuffer}
 import java.io.PrintWriter
 
 
@@ -24,7 +25,8 @@ trait Target {
 
   def emitSource[A,B](args: Exp[A], f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit
   
-  def emitTargetNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) {
+  def emitTargetNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter){
+    //println("calling emit node on " + sym)
     var gen = generators.head
     var rest = generators.tail
     var success = false

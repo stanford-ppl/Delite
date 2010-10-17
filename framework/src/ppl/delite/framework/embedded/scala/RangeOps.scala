@@ -10,7 +10,7 @@ trait RangeOps extends DSLType { this: DeliteApplication =>
   implicit def repRangeToRepRangeOps(r: Rep[Range]) = new RepRangeOpsCls(r)
   implicit def rangeToRepRangeOps(r: Range) = new RepRangeOpsCls(r)
 
-  def infix_until(start: Rep[Int], end: Rep[Int]) = range_until(start,end)
+  def __ext__until(start: Rep[Int], end: Rep[Int]) = range_until(start,end)
 
   class RepRangeOpsCls(r: Rep[Range]) {
     def start : Rep[Int] = range_start(r)
