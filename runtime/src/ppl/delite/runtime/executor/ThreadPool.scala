@@ -2,6 +2,7 @@ package ppl.delite.runtime.executor
 
 import ppl.delite.io.Config
 import ppl.delite.walktime.codegen.DeliteExecutable
+import ppl.delite.walktime.scheduler.StaticSchedule
 
 /**
  * Author: Kevin J. Brown
@@ -30,12 +31,28 @@ class ThreadPool(numThreads: Int) {
       pool(i) = worker
       val thread = new Thread(worker, "ExecutionThread-"+i) //spawn new machine thread
       thread.setDaemon(true) //to handle shutdown
+      thread.start
       i += 1
     }
   }
 
-  def submit(id: Int, work: DeliteExecutable) {
+  def submitOne(id: Int, work: DeliteExecutable) {
     pool(id).queue.put(work)
+  }
+
+  /**
+   * Puts a static schedule into the appropriate thread queues for execution
+   * This method is destructive on the input schedule contents
+   *
+   * @param the StaticSchedule to be submitted for execution
+   */
+  def submitAll(schedule: StaticSchedule) {
+    assert(pool.length == schedule.resources.length)
+    for (i <- 0 until pool.length) {
+      for (j <- 0 until schedule.resources(i).size) {
+        pool(i).queue.put(schedule.resources(i).poll)
+      }
+    }
   }
 
 }

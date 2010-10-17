@@ -20,7 +20,10 @@ class SMPExecutor {
 
   def run(schedule: StaticSchedule) {
     threadPool.init
-    println("Executor running")
+    println("Executor initialized")
+    threadPool.submitAll(schedule)
+    //TODO: we need a hook to return
+    println("Executor exiting")
   }
 
 }

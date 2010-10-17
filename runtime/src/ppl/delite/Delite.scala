@@ -19,8 +19,10 @@ object Delite {
 
 
   private def printArgs(args: Array[String]) {
-    if (args.length != 0) println("This program does not take input")
-    exit(-1)
+    if (args.length != 0) {
+      println("This program does not take input")
+      exit(-1)
+    }
   }
 
   def main(args: Array[String]) {
@@ -40,7 +42,10 @@ object Delite {
 
     //load task graph
     //TODO: this is a compile hack
-    val graph = new DeliteTaskGraph{ def root = new TestOP }
+    val graph = new DeliteTaskGraph {
+      val node = new TestOP
+      def root = node 
+    }
 
     //load kernels
 
