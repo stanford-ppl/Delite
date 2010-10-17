@@ -4,7 +4,6 @@ import java.io.PrintWriter
 import scala.virtualization.lms.internal.Effects
 import ppl.delite.framework.codegen.CodeGenerator
 import ppl.delite.framework.codegen.c.{CodeGeneratorCBase, TargetC}
-import scala.virtualization.lms.ppl.{ScalaOps, ScalaOpsExp}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
 import scala.virtualization.lms.common.{EffectExp, BaseExp}

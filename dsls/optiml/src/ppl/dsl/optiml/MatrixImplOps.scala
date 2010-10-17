@@ -1,7 +1,6 @@
 package ppl.dsl.optiml
 
 import scala.virtualization.lms.common.Base
-import scala.virtualization.lms.ppl.{EmbeddingPkg, ScalaOpsPkg}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.embedded.scala.ScalaOpsPkg3
 

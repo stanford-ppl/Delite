@@ -1,11 +1,11 @@
 package ppl.dsl.optiml
 
-import scala.virtualization.lms.ppl.{TupleOpsExp, DSLOpsExp}
 import scala.virtualization.lms.internal.ScalaCodegen
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
 import scala.virtualization.lms.common.{EffectExp, FunctionsExp, Base}
+import ppl.delite.framework.embedded.scala.DSLOpsExp
 
 trait VectorView[T] extends Vector[T]
 
