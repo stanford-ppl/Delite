@@ -160,25 +160,5 @@ Testing
 
 Test resources can be added under the `tests/resources` directory under `Delite` or any sub-project. These files will be added onto the classpath and be included in the test jar.
 
-A simple example test that will be picked up and run if it is placed in the `tests/src` directory:
-
-    import org.scalatest.Spec
-    import org.scalatest.matchers.ShouldMatchers
-    import scala.collection.mutable.Stack
-
-    class StackSpec extends Spec with ShouldMatchers {
-      describe("A Stack") {
-        describe("(when empty)") {
-          val stack = new Stack[Int]
-          
-          it("should be empty") {
-            stack should be ('empty)
-          }
-          
-          it("should complain when popped") {
-            evaluating { stack.pop() } should produce [NoSuchElementException]
-          }
-        }
-      }
-    }
+An example test can be found under `tests/src/BasicTest.scala`. It tests a basic Scala class and resource loading. Test output comparison can then be done by loading up the resource as a stream and comparing it to whatever output is generated.
 

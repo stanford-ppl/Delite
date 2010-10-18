@@ -22,8 +22,11 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   // Parallelism!
   override def parallelExecution = true
   
+  override def mainScalaSourcePath = "src"
+  override def mainResourcesPath = "resources"
+  
   override def testScalaSourcePath = "tests" / "src"
-  override def testResourcesPath = "tests" / "resouces"
+  override def testResourcesPath = "tests" / "resources"
   
   val virtualization_lms_core = "scala" % "virtualization-lms-core_2.8.x-virtualized-SNAPSHOT" % "0.1"
   
@@ -34,9 +37,10 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   class FlatProject(info: ProjectInfo) extends DefaultProject(info) {
     // Source tree layout
     override def mainScalaSourcePath = "src"
+    override def mainResourcesPath = "resources"
     
     override def testScalaSourcePath = "tests" / "src"
-    override def testResourcesPath = "tests" / "resouces"
+    override def testResourcesPath = "tests" / "resources"
     
     val virtualization_lms_core = "scala" % "virtualization-lms-core_2.8.x-virtualized-SNAPSHOT" % "0.1"
     
