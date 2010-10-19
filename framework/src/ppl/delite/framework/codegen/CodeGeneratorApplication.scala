@@ -10,4 +10,9 @@ trait CodeGeneratorApplication extends CodeGenerator {
   import intermediate._
 
   def emitSource[A,B](x: Exp[A], f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B] ): Unit
+
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    error("Application Code Generator cannot generate a node")
+  }
+
 }

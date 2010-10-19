@@ -49,14 +49,17 @@ trait CodeGeneratorScalaOrdering extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with OrderingOpsExp 
   import intermediate._
   
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case OrderingLT(a,b) => emitValDef(sym, quote(a) + " < " + quote(b))
-    case OrderingLTEQ(a,b) => emitValDef(sym, quote(a) + " <= " + quote(b))
-    case OrderingGT(a,b) => emitValDef(sym, quote(a) + " > " + quote(b))
-    case OrderingGTEQ(a,b) => emitValDef(sym, quote(a) + " >= " + quote(b))
-    case OrderingEquiv(a,b) => emitValDef(sym, quote(a) + " equiv " + quote(b))
-    case OrderingMax(a,b) => emitValDef(sym, quote(a) + " max " + quote(b))
-    case OrderingMin(a,b) => emitValDef(sym, quote(a) + " min " + quote(b))
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case OrderingLT(a,b) => emitValDef(sym, quote(a) + " < " + quote(b))
+      case OrderingLTEQ(a,b) => emitValDef(sym, quote(a) + " <= " + quote(b))
+      case OrderingGT(a,b) => emitValDef(sym, quote(a) + " > " + quote(b))
+      case OrderingGTEQ(a,b) => emitValDef(sym, quote(a) + " >= " + quote(b))
+      case OrderingEquiv(a,b) => emitValDef(sym, quote(a) + " equiv " + quote(b))
+      case OrderingMax(a,b) => emitValDef(sym, quote(a) + " max " + quote(b))
+      case OrderingMin(a,b) => emitValDef(sym, quote(a) + " min " + quote(b))
+      case _ => return false
+    }
+    true
   }
 }

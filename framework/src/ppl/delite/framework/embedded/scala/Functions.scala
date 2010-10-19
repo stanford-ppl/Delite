@@ -63,16 +63,20 @@ trait CodeGeneratorScalaFunctions extends CodeGeneratorScalaBase {
     case Lambda(f, x, y) if shallow => Some(Nil) // in shallow mode, don't count deps from nested blocks
     case _ => None
   }
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case e@Lambda(fun, x, y) =>
-      stream.println("val " + quote(sym) + " = {" + quote(x) + ": (" + e.mA + ") => ")
-      emitBlock(y, intermediate.targets.get("Scala").get)
-      stream.println(quote(getBlockResult(y)))
-      stream.println("}")
 
-    case Apply(fun, arg) => 
-      emitValDef(sym, quote(fun) + "(" + quote(arg) + ")")
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case e@Lambda(fun, x, y) =>
+        stream.println("val " + quote(sym) + " = {" + quote(x) + ": (" + e.mA + ") => ")
+        emitBlock(y, intermediate.targets.get("Scala").get)
+        stream.println(quote(getBlockResult(y)))
+        stream.println("}")
 
-    case _ => super.emitNode(sym, rhs)
+      case Apply(fun, arg) =>
+        emitValDef(sym, quote(fun) + "(" + quote(arg) + ")")
+
+      case _ => return false
+    }
+    true
   }
 }

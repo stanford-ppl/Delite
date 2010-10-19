@@ -39,10 +39,13 @@ trait CodeGeneratorScalaString extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with StringOpsExp
   import intermediate._
   
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case StringPlus(s1,s2) => emitValDef(sym, "%s+%s".format(quote(s1), quote(s2)))
-    case StringTrim(s) => emitValDef(sym, "%s.trim()".format(quote(s)))
-    case StringSplit(s, sep) => emitValDef(sym, "%s.split(%s)".format(quote(s), quote(sep)))
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case StringPlus(s1,s2) => emitValDef(sym, "%s+%s".format(quote(s1), quote(s2)))
+      case StringTrim(s) => emitValDef(sym, "%s.trim()".format(quote(s)))
+      case StringSplit(s, sep) => emitValDef(sym, "%s.split(%s)".format(quote(s), quote(sep)))
+      case _ => return false
+    }
+    true
   }
 }

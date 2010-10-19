@@ -48,12 +48,15 @@ trait CodeGeneratorScalaMisc extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with MiscOpsExp
   import intermediate._
 
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case PrintLn(s) => emitValDef(sym, "println(" + quote(s) + ")")
-    case Print(s) => emitValDef(sym, "print(" + quote(s) + ")")
-    case Exit(a) => emitValDef(sym, "exit(" + quote(a) + ")")
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case PrintLn(s) => emitValDef(sym, "println(" + quote(s) + ")")
+      case Print(s) => emitValDef(sym, "print(" + quote(s) + ")")
+      case Exit(a) => emitValDef(sym, "exit(" + quote(a) + ")")
 
-    case _ => super.emitNode(sym, rhs)
+      case _ => return false
+    }
+    true
   }
 }
 
@@ -64,12 +67,15 @@ trait CodeGeneratorCMisc extends CodeGeneratorCBase {
   val intermediate: DeliteApplication with MiscOpsExp
   import intermediate._
   
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case PrintLn(s) => stream.println("printf(\"%s\\n\"," + quote(s) + ");")
-    case Print(s) => stream.println("printf(\"%s\"," + quote(s) + ");")
-    case Exit(a) => stream.println("exit(" + quote(a) + ");")
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case PrintLn(s) => stream.println("printf(\"%s\\n\"," + quote(s) + ");")
+      case Print(s) => stream.println("printf(\"%s\"," + quote(s) + ");")
+      case Exit(a) => stream.println("exit(" + quote(a) + ");")
 
-    case _ => super.emitNode(sym, rhs)
+      case _ => return false
+    }
+    true
   }
 
 }

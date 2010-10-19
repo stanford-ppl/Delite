@@ -55,11 +55,14 @@ trait CodeGeneratorScalaVariables extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with VariablesExp
   import intermediate._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case ReadVar(Variable(a)) => emitValDef(sym, quote(a))
-    case NewVar(init) => emitVarDef(sym, quote(init))
-    case Assign(Variable(a), b) => emitAssignment(quote(a), quote(b))
-    //case Assign(a, b) => emitAssignment(quote(a), quote(b))
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case ReadVar(Variable(a)) => emitValDef(sym, quote(a))
+      case NewVar(init) => emitVarDef(sym, quote(init))
+      case Assign(Variable(a), b) => emitAssignment(quote(a), quote(b))
+      //case Assign(a, b) => emitAssignment(quote(a), quote(b))
+      case _ => return false
+    }
+    true
   }
 }

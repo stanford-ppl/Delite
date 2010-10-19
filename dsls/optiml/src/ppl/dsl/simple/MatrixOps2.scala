@@ -64,12 +64,15 @@ trait CodeGeneratorScalaMatrix extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with MatrixOpsExp2 with EffectExp
   import intermediate._
 
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case MatrixNew(numRows,numCols) => emitValDef(sym, "new matrix")
-    case MatrixPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
-    case MatrixPPrint(a) => emitValDef(sym, "exit(" + quote(a) + ")")
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case MatrixNew(numRows,numCols) => emitValDef(sym, "new matrix")
+      case MatrixPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
+      case MatrixPPrint(a) => emitValDef(sym, "exit(" + quote(a) + ")")
 
-    case _ => super.emitNode(sym, rhs)
+      case _ => return false
+    }
+    true
   }
 }
 
@@ -79,11 +82,14 @@ trait CodeGeneratorCMatrix extends CodeGeneratorCBase {
   import intermediate._
 
   //code generation bit
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    //todo replace the manifest with embedded types
-    case MatrixNew(n1,n2) => emitConstDef("matrix", sym, "Matrix.zeros(" + quote(n1) + ")")
-    case MatrixPlus(m1,m2) => emitConstDef("matrix", sym, quote(m1) + " + " + quote (m2))
-    case MatrixPPrint(m) => emitConstDef("matrix", sym, quote(m) + ".pprint()")
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      //todo replace the manifest with embedded types
+      case MatrixNew(n1,n2) => emitConstDef("matrix", sym, "Matrix.zeros(" + quote(n1) + ")")
+      case MatrixPlus(m1,m2) => emitConstDef("matrix", sym, quote(m1) + " + " + quote (m2))
+      case MatrixPPrint(m) => emitConstDef("matrix", sym, quote(m) + ".pprint()")
+      case _ => return false
+    }
+    true
   }
 }

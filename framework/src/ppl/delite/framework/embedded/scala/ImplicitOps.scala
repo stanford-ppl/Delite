@@ -28,10 +28,13 @@ trait CodeGeneratorScalaImplicit extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with ImplicitOpsExp
   import intermediate._
 
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    // TODO: this valDef is redundant; we really just want the conversion to be a no-op in the generated code.
-    // TODO: but we still need to link the defs together
-    case ImplicitConvert(x) => emitValDef(sym, quote(x))
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      // TODO: this valDef is redundant; we really just want the conversion to be a no-op in the generated code.
+      // TODO: but we still need to link the defs together
+      case ImplicitConvert(x) => emitValDef(sym, quote(x))
+      case _ => return false
+    }
+    true
   }
 }

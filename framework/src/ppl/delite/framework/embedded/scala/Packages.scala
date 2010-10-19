@@ -14,4 +14,4 @@ trait ScalaOpsPkgExp3 extends ScalaOpsPkg3
     with ImplicitOpsExp with NumericOpsExp with FractionalOpsExp with OrderingOpsExp with StringOpsExp
     with RangeOpsExp with IOOpsExp with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp
     with FunctionsExp with EqualExp with IfThenElseExp with VariablesExp with WhileExp
-    with DSLOpsExp { this: DeliteApplication => }
+    with DSLOpsExp with EffectOps { this: DeliteApplication => }

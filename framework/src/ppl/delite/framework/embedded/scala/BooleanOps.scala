@@ -25,8 +25,11 @@ trait CodeGeneratorScalaBoolean extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with BooleanOpsExp 
   import intermediate._
 
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case BooleanNegate(b) => emitValDef(sym, "!" + quote(b))
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case BooleanNegate(b) => emitValDef(sym, "!" + quote(b))
+      case _ => return false
+    }
+    true
   }
 }

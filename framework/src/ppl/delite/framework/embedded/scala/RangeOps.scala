@@ -41,17 +41,19 @@ trait CodeGeneratorScalaRange extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with RangeOpsExp
   import intermediate._
 
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case Until(start, end) => emitValDef(sym, "" + quote(start) + " until " + quote(end))
 
-    case Until(start, end) => emitValDef(sym, "" + quote(start) + " until " + quote(end))
+      case RangeForeach(r,f) => {
+        stream.println("val " + quote(sym) + " = " + quote(r) + ".foreach{ ")
+        emitBlock(f, intermediate.targets.get("Scala").get)
+        stream.println(quote(getBlockResult(f)))
+        stream.println("}")
+      }
 
-    case RangeForeach(r,f) => {
-      stream.println("val " + quote(sym) + " = " + quote(r) + ".foreach{ ")
-      emitBlock(f, intermediate.targets.get("Scala").get)
-      stream.println(quote(getBlockResult(f)))
-      stream.println("}")
+      case _ => return false
     }
-
-    case _ => super.emitNode(sym, rhs)
+    true
   }
 }

@@ -19,13 +19,16 @@ trait CodeGeneratorScalaDSL extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with DSLOpsExp
   import intermediate._
   
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {    
-    case op@DSLOp(b) =>
-      stream.println("val " + quote(sym) + " = { ")
-      emitBlock(b, intermediate.targets.get("Scala").get)
-      stream.println(quote(getBlockResult(b)))
-      stream.println("}")
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case op@DSLOp(b) =>
+        stream.println("val " + quote(sym) + " = { ")
+        emitBlock(b, intermediate.targets.get("Scala").get)
+        stream.println(quote(getBlockResult(b)))
+        stream.println("}")
 
-    case _ => super.emitNode(sym, rhs)
+      case _ => return false
+    }
+    true
   }
 }

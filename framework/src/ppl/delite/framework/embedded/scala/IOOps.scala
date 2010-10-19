@@ -52,9 +52,12 @@ trait CodeGeneratorScalaIO extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with IOOpsExp
   import intermediate._
   
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case BrReadline(b) => emitValDef(sym, quote(b) + ".readLine()")
-    case BrClose(b) => emitValDef(sym, quote(b) + ".close()")
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case BrReadline(b) => emitValDef(sym, quote(b) + ".readLine()")
+      case BrClose(b) => emitValDef(sym, quote(b) + ".close()")
+      case _ => return false
+    }
+    true
   }
 }

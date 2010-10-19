@@ -65,12 +65,15 @@ trait CodeGeneratorScalaVector extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with VectorOpsExp2 with EffectExp
   import intermediate._
 
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case VectorObjectZeros(s) => emitValDef(sym, "println(" + quote(s) + ")")
-    case VectorPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
-    case VectorPPrint(a) => emitValDef(sym, "exit(" + quote(a) + ")")
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case VectorObjectZeros(s) => emitValDef(sym, "println(" + quote(s) + ")")
+      case VectorPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
+      case VectorPPrint(a) => emitValDef(sym, "exit(" + quote(a) + ")")
 
-    case _ => super.emitNode(sym, rhs)
+      case _ => return false
+    }
+    true
   }
 }
 
@@ -81,11 +84,14 @@ trait CodeGeneratorCVector extends CodeGeneratorCBase {
   import intermediate._
 
   //code generation bit
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    //todo replace the manifest with embedded types
-    case VectorObjectZeros(n) => emitConstDef("vector", sym, "Vector.zeros(" + quote(n) + ")")
-    case VectorPlus(v1,v2) => emitConstDef("vector", sym, quote(v1) + " + " + quote (v2))
-    case VectorPPrint(v) => emitConstDef("vector", sym, quote(v) + ".pprint()")
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      //todo replace the manifest with embedded types
+      case VectorObjectZeros(n) => emitConstDef("vector", sym, "Vector.zeros(" + quote(n) + ")")
+      case VectorPlus(v1,v2) => emitConstDef("vector", sym, quote(v1) + " + " + quote (v2))
+      case VectorPPrint(v) => emitConstDef("vector", sym, quote(v) + ".pprint()")
+      case _ => return false
+    }
+    true
   }
 }

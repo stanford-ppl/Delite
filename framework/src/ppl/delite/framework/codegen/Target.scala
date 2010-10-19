@@ -28,28 +28,15 @@ trait Target {
 
   //def emitSource[A,B](args: Exp[A], f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit
   
-  def emitTargetNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter){
-    //println("calling emit node on " + sym)
-    var gen = generators.head
-    var rest = generators.tail
-    var success = false
-    var finished = false
-    var excStr = ""
-    while(!success && !finished) {
-      try{
-        gen.emitNode(sym, rhs)
-        success = true
-      } catch {
-        case e => {
-          excStr = e.getMessage
-          if(rest.isEmpty == false) {
-            gen = rest.head
-            rest = rest.tail
-          } else finished = true
-        }
-      }
+  def emitTargetNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) {
+    val iter = generators.iterator
+    try {
+      while (!iter.next.emitNode(sym, rhs)) { } //loop until codegen succeeds
     }
-    if(!success) throw new RuntimeException("[" + name + "]Generation Failed: " + excStr)
+    catch {
+      case e: NoSuchElementException => error("[" + name + "]Generation Failed: " + rhs.toString)
+      case other => throw other
+    }
   }
 
   def getTargetSyms(e: Any, shallow: Boolean) : Option[List[Sym[Any]]] = {

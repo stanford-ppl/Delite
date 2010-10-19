@@ -47,15 +47,18 @@ trait CodeGeneratorScalaIfThenElse extends CodeGeneratorScalaBase {
     case _ => None
   }
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case IfThenElse(c,a,b) =>  
-      stream.println("val " + quote(sym) + " = if (" + quote(c) + ") {")
-      emitBlock(a, intermediate.targets.get("Scala").get)
-      stream.println(quote(getBlockResult(a)))
-      stream.println("} else {")
-      emitBlock(b, intermediate.targets.get("Scala").get)
-      stream.println(quote(getBlockResult(b)))
-      stream.println("}")
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case IfThenElse(c,a,b) =>
+        stream.println("val " + quote(sym) + " = if (" + quote(c) + ") {")
+        emitBlock(a, intermediate.targets.get("Scala").get)
+        stream.println(quote(getBlockResult(a)))
+        stream.println("} else {")
+        emitBlock(b, intermediate.targets.get("Scala").get)
+        stream.println(quote(getBlockResult(b)))
+        stream.println("}")
+      case _ => return false
+    }
+    true
   }
 }

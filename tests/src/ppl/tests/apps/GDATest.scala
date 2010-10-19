@@ -44,7 +44,7 @@ object TestGeneratedCode {
                   "dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1y.dat")
 
      // this is the pre-generated test
-     val prog = new generated.GDA_merged
+     val prog = new generated.GDA_N
      prog(a)
 
      //this dynamically re-generates and compiles

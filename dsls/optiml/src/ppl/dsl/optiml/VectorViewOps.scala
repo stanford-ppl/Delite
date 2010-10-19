@@ -41,12 +41,14 @@ trait CodeGeneratorScalaVectorView extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with VectorViewOpsExp
   import intermediate._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      // these are the ops that call through to the underlying real data structure
+      case VectorViewStart(x)    => emitValDef(sym, quote(x) + ".start")
+      case VectorViewStride(x)     => emitValDef(sym, quote(x) + ".stride")
 
-    // these are the ops that call through to the underlying real data structure
-    case VectorViewStart(x)    => emitValDef(sym, quote(x) + ".start")
-    case VectorViewStride(x)     => emitValDef(sym, quote(x) + ".stride")
-
-    case _ => super.emitNode(sym, rhs)
+      case _ => return false
+    }
+    true
   }
 }

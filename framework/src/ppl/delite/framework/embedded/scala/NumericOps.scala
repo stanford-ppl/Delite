@@ -43,10 +43,13 @@ trait CodeGeneratorScalaNumeric extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with NumericOpsExp
   import intermediate._
   
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case NumericPlus(a,b) => emitValDef(sym, quote(a) + " + " + quote(b))
-    case NumericMinus(a,b) => emitValDef(sym, quote(a) + " - " + quote(b))
-    case NumericTimes(a,b) => emitValDef(sym, quote(a) + " * " + quote(b))
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case NumericPlus(a,b) => emitValDef(sym, quote(a) + " + " + quote(b))
+      case NumericMinus(a,b) => emitValDef(sym, quote(a) + " - " + quote(b))
+      case NumericTimes(a,b) => emitValDef(sym, quote(a) + " * " + quote(b))
+      case _ => return false
+    }
+    true
   }
 }

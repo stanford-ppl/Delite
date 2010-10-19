@@ -25,9 +25,11 @@ trait CodeGeneratorScalaPrimitive extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with PrimitiveOpsExp
   import intermediate._
   
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
     case ObjDoubleParseDouble(s) => emitValDef(sym, "java.lang.Double.parseDouble(" + quote(s) + ")")
-    case _ => super.emitNode(sym, rhs)
+    case _ => return false
+    }
+    true
   }
 }

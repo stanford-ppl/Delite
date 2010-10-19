@@ -34,16 +34,20 @@ trait CodeGeneratorScalaWhile extends CodeGeneratorScalaBase {
     case While(c, b) if shallow => Some(Nil)
     case _ => None
   }
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case While(c,b) =>
-      val c_blk = reifyEffects(c())
-      stream.print("while ({")
-      emitBlock(c_blk, intermediate.targets.get("Scala").get)
-      stream.print(quote(getBlockResult(c_blk)))
-      stream.println("}) {")
-      emitBlock(b, intermediate.targets.get("Scala").get)
-      stream.println(quote(getBlockResult(b)))
-      stream.println("}")
-    case _ => super.emitNode(sym, rhs)
+
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case While(c,b) =>
+        val c_blk = reifyEffects(c())
+        stream.print("while ({")
+        emitBlock(c_blk, intermediate.targets.get("Scala").get)
+        stream.print(quote(getBlockResult(c_blk)))
+        stream.println("}) {")
+        emitBlock(b, intermediate.targets.get("Scala").get)
+        stream.println(quote(getBlockResult(b)))
+        stream.println("}")
+      case _ => return false
+    }
+    true
   }
 }

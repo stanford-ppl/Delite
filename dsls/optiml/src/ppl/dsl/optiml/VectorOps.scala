@@ -149,16 +149,18 @@ trait CodeGeneratorScalaVector extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with VectorOpsExp
   import intermediate._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    
-    // these are the ops that call through to the underlying real data structure
-    case VectorApply(x, n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
-    case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
-    case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
-    case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
-    case VectorPlusEquals(x,y) => emitValDef(sym, quote(x) + " += " + quote(y))
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      // these are the ops that call through to the underlying real data structure
+      case VectorApply(x, n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
+      case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+      case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
+      case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
+      case VectorPlusEquals(x,y) => emitValDef(sym, quote(x) + " += " + quote(y))
 
-    case _ => super.emitNode(sym, rhs)
+      case _ => return false
+    }
+    true
   }
 }
 

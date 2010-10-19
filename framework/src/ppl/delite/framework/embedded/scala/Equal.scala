@@ -55,9 +55,12 @@ trait CodeGeneratorScalaEqual extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with EqualExp
   import intermediate._
   
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case Equal(a,b) =>  emitValDef(sym, quote(a) + " == " + quote(b))
-    case NotEqual(a,b) =>  emitValDef(sym, quote(a) + " != " + quote(b))
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case Equal(a,b) =>  emitValDef(sym, quote(a) + " == " + quote(b))
+      case NotEqual(a,b) =>  emitValDef(sym, quote(a) + " != " + quote(b))
+      case _ => return false
+    }
+    true
   }
 }

@@ -38,9 +38,12 @@ trait CodeGeneratorScalaArray extends CodeGeneratorScalaBase {
   val intermediate: DeliteApplication with ArrayOpsExp
   import intermediate._
 
-  abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case ArrayLength(x) => emitValDef(sym, "" + quote(x) + ".length")
-    case ArrayApply(x,n) => emitValDef(sym, "" + quote(x) + "(" + quote(n) + ")")
-    case _ => super.emitNode(sym, rhs)
+  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
+    rhs match {
+      case ArrayLength(x) => emitValDef(sym, "" + quote(x) + ".length")
+      case ArrayApply(x,n) => emitValDef(sym, "" + quote(x) + "(" + quote(n) + ")")
+      case _ => return false
+    }
+    true
   }
 }
