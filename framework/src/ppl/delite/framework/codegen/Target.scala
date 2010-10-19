@@ -18,8 +18,6 @@ trait Target {
 
   val name: String
 
-  var _applicationGenerator : CodeGeneratorApplication{val intermediate: Target.this.intermediate.type} = null
-
   def applicationGenerator : CodeGeneratorApplication{val intermediate: Target.this.intermediate.type}
   
   val generators : ListBuffer[CodeGenerator{val intermediate: Target.this.intermediate.type}]

@@ -3,7 +3,6 @@ package ppl.delite.framework.embedded.scala
 import java.io.PrintWriter
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
-import scala.virtualization.lms.common.{BaseExp, EffectExp, Base}
 
 trait IfThenElse { this: DeliteApplication =>
   def __ifThenElse[T](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]): Rep[T]
@@ -40,7 +39,7 @@ trait IfThenElseExp extends IfThenElse { this: DeliteApplication =>
 
 trait CodeGeneratorScalaIfThenElse extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with IfThenElseExp with EffectExp
+  val intermediate: DeliteApplication with IfThenElseExp
   import intermediate._
 
   override def syms2(e: Any, shallow: Boolean): Option[List[Sym[Any]]] = e match {

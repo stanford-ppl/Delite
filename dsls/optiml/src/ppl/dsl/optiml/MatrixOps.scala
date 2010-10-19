@@ -5,7 +5,6 @@ import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
-import scala.virtualization.lms.common.EffectExp
 import ppl.delite.framework.embedded.scala.{DSLOpsExp, VariablesExp, Variables}
 
 trait Matrix[T]
@@ -20,6 +19,7 @@ trait MatrixOps extends DSLType { this: DeliteApplication with Variables =>
   implicit def matRepArith[A](x: Rep[Matrix[A]]) = new matRepCls(x)
   implicit def varToRepMatOps[A](x: Var[Matrix[A]]) : matRepCls[A]
 
+  // could convert to infix, but apply doesn't work with it anyways yet
   class matRepCls[A](x: Rep[Matrix[A]]) {
     def apply(i: Rep[Int]) = matrix_apply1(x,i)
     def apply(i: Rep[Int], j: Rep[Int]) = matrix_apply2(x,i,j)
@@ -152,7 +152,7 @@ trait MatrixOpsExp extends MatrixOps with MatrixImplOps { this: DeliteApplicatio
 
 trait CodeGeneratorScalaMatrix extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with MatrixOpsExp with EffectExp
+  val intermediate: DeliteApplication with MatrixOpsExp
   import intermediate._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

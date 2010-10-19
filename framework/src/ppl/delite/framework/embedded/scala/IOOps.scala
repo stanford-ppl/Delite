@@ -3,24 +3,18 @@ package ppl.delite.framework.embedded.scala
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import java.io.{FileReader, BufferedReader, PrintWriter}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
-import scala.virtualization.lms.common.EffectExp
 
 trait IOOps extends DSLType { this: DeliteApplication =>
 
   /**
    * BufferedReader
    */
-  implicit def repBrToRepBrOps(b: Rep[BufferedReader]) = new RepBrOpsCls(b)
-  implicit def brToRepBrOps(b: BufferedReader) = new RepBrOpsCls(b)
-
   object BufferedReader {
     def apply(f: Rep[FileReader]) = obj_br_apply(f)
   }
+  def infix_readLine(b: Rep[BufferedReader]) = br_readline(b)
+  def infix_close(b: Rep[BufferedReader]) = br_close(b)
 
-  class RepBrOpsCls(b: Rep[BufferedReader]) {
-    def readLine() = br_readline(b)
-    def close() = br_close(b)
-  }
   def obj_br_apply(f: Rep[FileReader]) : Rep[BufferedReader]
   def br_readline(b: Rep[BufferedReader]) : Rep[String]
   def br_close(b: Rep[BufferedReader]) : Rep[Unit]
@@ -55,7 +49,7 @@ trait IOOpsExp extends IOOps { this: DeliteApplication with DSLOpsExp =>
 
 trait CodeGeneratorScalaIO extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with IOOpsExp with EffectExp
+  val intermediate: DeliteApplication with IOOpsExp
   import intermediate._
   
   abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

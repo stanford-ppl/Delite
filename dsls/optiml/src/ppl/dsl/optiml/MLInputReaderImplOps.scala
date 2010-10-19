@@ -19,7 +19,6 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val xfs = BufferedReader(FileReader(filename))
     var line = xfs.readLine()
     line = line.trim()
-    // TODO: somehow the assigment above is not getting scheduled before the split, despite reflectEffect
     // TODO: weirdness with StringOps, losing a \        
     var dbls = line.split("\\\\s+")
     val x = Matrix[Double](0, dbls.length)

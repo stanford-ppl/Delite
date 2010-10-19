@@ -3,7 +3,6 @@ package ppl.delite.framework.embedded.scala
 import java.io.PrintWriter
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
-import scala.virtualization.lms.common.{EffectExp, Base}
 
 trait While { this: DeliteApplication =>
   def __whileDo(cond: => Rep[Boolean], body: => Rep[Unit])
@@ -28,7 +27,7 @@ trait WhileExp extends While { this: DeliteApplication with FunctionsExp =>
 
 trait CodeGeneratorScalaWhile extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with WhileExp with EffectExp
+  val intermediate: DeliteApplication with WhileExp
   import intermediate._
 
   override def syms2(e: Any, shallow: Boolean): Option[List[Sym[Any]]] = e match {

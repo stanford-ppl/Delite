@@ -4,24 +4,17 @@ import java.io.PrintWriter
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.common.EffectExp
 
 trait StringOps extends DSLType with OverloadHack { this: DeliteApplication with Variables =>
-  implicit def varToRepStrOps(s: Var[String]) : RepStrOpsCls
-  implicit def repStrToRepStrOps(s: Rep[String]) = new RepStrOpsCls(s)
-  implicit def strToRepStrOps(s: String) = new RepStrOpsCls(s)
-
-  // NOTE: with infix methods, if something doesn't get lifted, this won't give you a compile time error,
+  // NOTE: if something doesn't get lifted, this won't give you a compile time error,
   //       since string concat is defined on all objects
   def infix_+(s1: String, s2: Rep[Any]) = string_plus(s1,s2)
   def infix_+(s1: Rep[Any], s2: String)(implicit o: Overloaded1) = string_plus(s1,s2)
-  def infix_+(s1: String, s2: Var[Any])(implicit o: Overloaded4) = string_plus(s1,readVar(s2))
-  def infix_+(s1: Var[Any], s2: String)(implicit o: Overloaded5) = string_plus(readVar(s1),s2)
+  def infix_+(s1: String, s2: Var[Any])(implicit o: Overloaded4) = string_plus(s1,s2)
+  def infix_+(s1: Var[Any], s2: String)(implicit o: Overloaded5) = string_plus(s1,s2)
 
-  class RepStrOpsCls(s: Rep[String]) {
-    def trim() = string_trim(s);
-    def split(separators: String) = string_split(s, separators);
-  }
+  def infix_trim(s: Rep[String]) = string_trim(s)
+  def infix_split(s: Rep[String], separators: Rep[String]) = string_split(s, separators)
 
   def string_plus(s: Rep[Any], o: Rep[Any]): Rep[String]
   def string_trim(s: Rep[String]) : Rep[String]
@@ -29,8 +22,6 @@ trait StringOps extends DSLType with OverloadHack { this: DeliteApplication with
 }
 
 trait StringOpsExp extends StringOps { this: DeliteApplication with VariablesExp =>
-  implicit def varToRepStrOps(s: Var[String]) = new RepStrOpsCls(readVar(s))
-
   case class StringPlus(s: Exp[Any], o: Exp[Any]) extends Def[String]
   case class StringTrim(s: Exp[String]) extends Def[String]
   case class StringSplit(s: Exp[String], separators: Exp[String]) extends Def[Array[String]]
@@ -45,7 +36,7 @@ trait StringOpsExp extends StringOps { this: DeliteApplication with VariablesExp
 
 trait CodeGeneratorScalaString extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with StringOpsExp with EffectExp
+  val intermediate: DeliteApplication with StringOpsExp
   import intermediate._
   
   abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

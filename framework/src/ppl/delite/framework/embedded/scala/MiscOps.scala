@@ -6,7 +6,6 @@ import ppl.delite.framework.codegen.CodeGenerator
 import ppl.delite.framework.codegen.c.{CodeGeneratorCBase, TargetC}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
-import scala.virtualization.lms.common.{EffectExp, BaseExp}
 
 
 trait MiscOps extends DSLType { this: DeliteApplication =>
@@ -46,7 +45,7 @@ trait MiscOpsExp extends MiscOps { this: DeliteApplication =>
 
 trait CodeGeneratorScalaMisc extends CodeGeneratorScalaBase { 
 
-  val intermediate: DeliteApplication with MiscOpsExp with EffectExp
+  val intermediate: DeliteApplication with MiscOpsExp
   import intermediate._
 
   abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
@@ -62,7 +61,7 @@ trait CodeGeneratorScalaMisc extends CodeGeneratorScalaBase {
 //todo factor out commonality
 trait CodeGeneratorCMisc extends CodeGeneratorCBase {
 
-  val intermediate: DeliteApplication with MiscOpsExp with EffectExp
+  val intermediate: DeliteApplication with MiscOpsExp
   import intermediate._
   
   abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

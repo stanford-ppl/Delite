@@ -3,10 +3,11 @@ package ppl.delite.framework.embedded.scala
 import java.io.PrintWriter
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
-import scala.virtualization.lms.common.EffectExp
 
 trait ArrayOps extends DSLType { this: DeliteApplication with Variables =>
 
+  // multiple definitions needed because implicits won't chain
+  // not using infix here because apply doesn't work with infix methods
   implicit def varToRepArrayOps[A](x: Var[Array[A]]) = new RepArrayOpsCls(readVar(x))
   implicit def repArrayToRepArrayOps[T](a: Rep[Array[T]]) = new RepArrayOpsCls(a)
   implicit def arrayToRepArrayOps[T](a: Array[T]) = new RepArrayOpsCls(a)
@@ -15,9 +16,9 @@ trait ArrayOps extends DSLType { this: DeliteApplication with Variables =>
     def apply(n: Rep[Int]) = array_apply(a, n)
     def length = array_length(a)
   }
-
+    
   def array_apply[T](x: Rep[Array[T]], n: Rep[Int]): Rep[T]
-  def array_length[T](a: Rep[Array[T]]) : Rep[Int]
+  def array_length[T](x: Rep[Array[T]]) : Rep[Int]
 
 }
 
@@ -34,7 +35,7 @@ trait ArrayOpsExp extends ArrayOps { this: DeliteApplication with VariablesExp =
 
 trait CodeGeneratorScalaArray extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with ArrayOpsExp with EffectExp
+  val intermediate: DeliteApplication with ArrayOpsExp
   import intermediate._
 
   abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

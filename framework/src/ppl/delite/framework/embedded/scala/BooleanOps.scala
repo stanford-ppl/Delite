@@ -3,21 +3,15 @@ package ppl.delite.framework.embedded.scala
 import java.io.PrintWriter
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
-import scala.virtualization.lms.common.EffectExp
 
-trait BooleanOps extends DSLType { this: DeliteApplication with ImplicitOps =>
+trait BooleanOps extends DSLType { this: DeliteApplication with Variables with ImplicitOps =>
 
-  implicit def repBooleanToBooleanOps(x: Rep[Boolean]) = new BooleanOpsCls(x)
-  implicit def booleanToBooleanOps(x: Boolean) = new BooleanOpsCls(x)
-
-  class BooleanOpsCls(lhs: Rep[Boolean]) {
-    def unary_! = boolean_negate(lhs)
-  }
+  def infix_unary_!(x: Rep[Boolean]) = boolean_negate(x)
 
   def boolean_negate(lhs: Rep[Boolean]): Rep[Boolean]
 }
 
-trait BooleanOpsExp extends BooleanOps { this: DeliteApplication with ImplicitOpsExp =>
+trait BooleanOpsExp extends BooleanOps { this: DeliteApplication with Variables with ImplicitOpsExp =>
   case class BooleanNegate(lhs: Exp[Boolean]) extends Def[Boolean]
   
   def boolean_negate(lhs: Exp[Boolean]) : Rep[Boolean] = BooleanNegate(lhs)
@@ -28,7 +22,7 @@ trait BooleanOpsExp extends BooleanOps { this: DeliteApplication with ImplicitOp
 
 trait CodeGeneratorScalaBoolean extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with BooleanOpsExp with EffectExp
+  val intermediate: DeliteApplication with BooleanOpsExp 
   import intermediate._
 
   abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

@@ -1,23 +1,16 @@
 package ppl.dsl.optiml
 
-import scala.virtualization.lms.internal.ScalaCodegen
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
-import scala.virtualization.lms.common.{EffectExp, FunctionsExp, Base}
 import ppl.delite.framework.embedded.scala.DSLOpsExp
 
 trait VectorView[T] extends Vector[T]
 
 trait VectorViewOps extends DSLType { this: DeliteApplication =>
 
-  implicit def repVecViewToRepVecViewOps[A](x: Rep[VectorView[A]]) = new vecViewRepCls(x)
-  implicit def vecViewToRepVecViewOps[A](x: VectorView[A]) = new vecViewRepCls(x)
-
-  class vecViewRepCls[A](x: Rep[VectorView[A]]) {
-    def start = vectorview_start(x)
-    def stride = vectorview_stride(x)
-  }
+  def infix_start[A](v: Rep[VectorView[A]]) = vectorview_start(v)
+  def infix_stride[A](v: Rep[VectorView[A]]) = vectorview_stride(v)
 
   // class defs
   def vectorview_start[A](x: Rep[VectorView[A]]): Rep[Int]
@@ -45,7 +38,7 @@ trait VectorViewOpsExp extends VectorViewOps { this: DeliteApplication with Vect
 
 trait CodeGeneratorScalaVectorView extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with VectorViewOpsExp with EffectExp
+  val intermediate: DeliteApplication with VectorViewOpsExp
   import intermediate._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

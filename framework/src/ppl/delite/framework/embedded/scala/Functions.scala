@@ -3,7 +3,6 @@ package ppl.delite.framework.embedded.scala
 import java.io.PrintWriter
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
-import scala.virtualization.lms.common.{EffectExp, Base}
 
 trait Functions { this: DeliteApplication =>
 
@@ -57,7 +56,7 @@ trait FunctionsExp extends Functions { this: DeliteApplication =>
 
 trait CodeGeneratorScalaFunctions extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with FunctionsExp with EffectExp
+  val intermediate: DeliteApplication with FunctionsExp
   import intermediate._
 
   override def syms2(e: Any, shallow: Boolean): Option[List[Sym[Any]]] = e match {

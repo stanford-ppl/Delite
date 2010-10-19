@@ -4,7 +4,6 @@ import java.io.PrintWriter
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.common.{EffectExp, Base}
 
 trait Variables extends OverloadHack { this: DeliteApplication =>
   type Var[+T]
@@ -53,7 +52,7 @@ trait VariablesExp extends Variables { this: DeliteApplication =>
 
 trait CodeGeneratorScalaVariables extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with VariablesExp with EffectExp
+  val intermediate: DeliteApplication with VariablesExp
   import intermediate._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

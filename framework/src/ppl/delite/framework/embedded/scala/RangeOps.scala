@@ -3,21 +3,13 @@ package ppl.delite.framework.embedded.scala
 import java.io.PrintWriter
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
-import scala.virtualization.lms.common.EffectExp
 
 trait RangeOps extends DSLType { this: DeliteApplication =>
-
-  implicit def repRangeToRepRangeOps(r: Rep[Range]) = new RepRangeOpsCls(r)
-  implicit def rangeToRepRangeOps(r: Range) = new RepRangeOpsCls(r)
-
   def infix_until(start: Rep[Int], end: Rep[Int]) = range_until(start,end)
-
-  class RepRangeOpsCls(r: Rep[Range]) {
-    def start : Rep[Int] = range_start(r)
-    def step : Rep[Int] = range_step(r)
-    def end : Rep[Int] = range_end(r)
-    def foreach(f: (Rep[Int])=>Rep[Unit]):Rep[Unit] = range_foreach(r,f)
-  }
+  def infix_start(r: Rep[Range]) = range_start(r)
+  def infix_step(r: Rep[Range]) = range_step(r)
+  def infix_end(r: Rep[Range]) = range_end(r)
+  def infix_foreach(r: Rep[Range], f: Rep[Int] => Rep[Unit]) = range_foreach(r, f)
 
   def range_until(start: Rep[Int], end: Rep[Int]): Rep[Range]
   def range_start(r: Rep[Range]) : Rep[Int]
@@ -46,7 +38,7 @@ trait RangeOpsExp extends RangeOps { this: DeliteApplication with FunctionsExp =
 
 trait CodeGeneratorScalaRange extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with RangeOpsExp with EffectExp
+  val intermediate: DeliteApplication with RangeOpsExp
   import intermediate._
 
   abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

@@ -5,7 +5,6 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
 import ppl.delite.framework.embedded.scala.{DSLOpsExp, VariablesExp, Variables}
-import scala.virtualization.lms.common.EffectExp
 
 trait Vector[T]
 
@@ -20,6 +19,7 @@ trait VectorOps extends DSLType { this: DeliteApplication with Variables =>
   implicit def vecToRepVecOps[A](x: Vector[A]) = new vecRepCls(x)
   implicit def varToRepVecOps[A](x: Var[Vector[A]]) : vecRepCls[A]
 
+  // could convert to infix, but apply doesn't work with it anyways yet
   class vecRepCls[A](x: Rep[Vector[A]]) {
     def apply(n: Rep[Int]) = vector_apply(x, n)
     def update(n: Rep[Int], y: Rep[A]) = vector_update(x,n,y)
@@ -146,7 +146,7 @@ trait VectorOpsExp extends VectorOps { this: DeliteApplication with VectorImplOp
 
 trait CodeGeneratorScalaVector extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with VectorOpsExp with EffectExp
+  val intermediate: DeliteApplication with VectorOpsExp
   import intermediate._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

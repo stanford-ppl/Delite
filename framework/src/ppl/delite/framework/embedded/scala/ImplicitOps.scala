@@ -3,7 +3,6 @@ package ppl.delite.framework.embedded.scala
 import java.io.PrintWriter
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.codegen.scala.{TargetScala, CodeGeneratorScalaBase}
-import scala.virtualization.lms.common.EffectExp
 
 trait ImplicitOps extends DSLType { this: DeliteApplication =>
   /**
@@ -26,7 +25,7 @@ trait ImplicitOpsExp extends ImplicitOps { this: DeliteApplication =>
 
 trait CodeGeneratorScalaImplicit extends CodeGeneratorScalaBase {
 
-  val intermediate: DeliteApplication with ImplicitOpsExp with EffectExp
+  val intermediate: DeliteApplication with ImplicitOpsExp
   import intermediate._
 
   abstract override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
