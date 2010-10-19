@@ -1,16 +1,16 @@
 package ppl.delite.framework.codegen.c
 
-import ppl.delite.framework.codegen.Emitter
 import java.io.PrintWriter
+import ppl.delite.framework.codegen.CodeGeneratorApplication
 
 
-trait EmitterC extends Emitter {
+trait CodeGeneratorCApplication extends CodeGeneratorApplication with CodeGeneratorCBase {
   import intermediate._
-
-  def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
+  
+  def emitSource[A,B](x: Exp[A], f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
 
     def println(s:String) = stream.println(s)
-    val x = intermediate.fresh
+    //val x = intermediate.fresh
     //todo note that I am reifying effects, I don't think we still need a pure version of emitSource
     val y =  reifyEffects(f(x))
 
@@ -39,14 +39,4 @@ trait EmitterC extends Emitter {
     stream.flush
 
   }
-
-  def emitConstDef(tp: String, sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
-    stream.print("const ")
-    emitVarDef(tp, sym, rhs)
-  }
-  
-  def emitVarDef(tp: String, sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
-    stream.println(tp + " " + quote(sym) + " = " + rhs + ";")
-  }
-
 }

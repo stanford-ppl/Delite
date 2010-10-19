@@ -1,7 +1,7 @@
 package ppl.delite.framework
 
 import codegen.c.TargetC
-import codegen.scala.TargetScala
+import codegen.scala.{CodeGeneratorScalaApplication, TargetScala}
 import codegen.{Target, CodeGenerator}
 import embedded.scala._
 import java.io.PrintWriter
@@ -41,7 +41,7 @@ trait DeliteApplication extends EffectExp {
     for(e <- targets) {
       val tgt = e._2
       globalDefs = List()
-      tgt.emitSource(this.args, main_m, "Application", new PrintWriter(System.out))
+      tgt.applicationGenerator.emitSource(this.args, main_m, "Application", new PrintWriter(System.out))
     }
 
   }
@@ -60,6 +60,7 @@ trait DeliteApplication extends EffectExp {
   def targets : HashMap[String, DeliteApplicationTarget] = {
     if (_targets == null) {
       _targets = new HashMap[String, DeliteApplicationTarget]
+
       addTarget(new TargetScala{val intermediate: DeliteApplication.this.type = DeliteApplication.this})
       //addTarget(new TargetC{val intermediate: DeliteApplication.this.type = DeliteApplication.this})
     }

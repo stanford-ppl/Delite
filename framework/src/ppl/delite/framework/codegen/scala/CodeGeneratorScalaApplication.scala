@@ -1,11 +1,10 @@
 package ppl.delite.framework.codegen.scala
 
-import ppl.delite.framework.codegen.Emitter
 import java.io.PrintWriter
+import ppl.delite.framework.codegen.CodeGeneratorApplication
 
 
-trait EmitterScala extends Emitter {
-  
+trait CodeGeneratorScalaApplication extends CodeGeneratorApplication with CodeGeneratorScalaBase {
   import intermediate._
 
   def emitSource[A,B](x: Exp[A], f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B] ): Unit = {
@@ -35,20 +34,4 @@ trait EmitterScala extends Emitter {
     stream.flush
   }
 
-  def emitValDef(sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
-    stream.println("val " + quote(sym) + " = " + rhs)
-  }
-
-  def emitVarDef(sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
-    stream.println("var " + quote(sym) + " = " + rhs)
-  }
-
-  def emitAssignment(lhs: String, rhs: String)(implicit stream: PrintWriter): Unit = {
-    stream.println(lhs + " = " + rhs)
-  }
-
-  override def quote(x: Exp[_]) = x match { // TODO: quirk!
-    case Sym(-1) => "_"
-    case _ => super.quote(x)
-  }
 }
