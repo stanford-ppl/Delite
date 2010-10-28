@@ -1,7 +1,7 @@
 package generated
 
 /*****************************************
-  Emitting Scala Generated Code
+  Emitting Generated Code
 *******************************************/
 class GDA_merged extends ((Array[java.lang.String])=>(Unit)) {
 def apply(x0:Array[java.lang.String]): Unit = {
@@ -565,6 +565,5 @@ x418
 }
 }
 /*****************************************
-  End of Scala Generated Code
+  End of Generated Code
 *******************************************/
-

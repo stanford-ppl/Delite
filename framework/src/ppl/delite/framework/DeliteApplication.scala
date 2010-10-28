@@ -11,9 +11,8 @@ import scala.virtualization.lms.internal.GenericCodegen
 
 trait DeliteApplication extends ScalaOpsPkgExp {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
-  //type DSLCodeGenPkg <: GenericCodegen{ val IR: DeliteApplication.this.type }
-
-  //def getCodeGenPkg(t: Target{val IR: DeliteApplication.this.type}) : GenericCodegen{val IR: DeliteApplication.this.type}
+  
+  def getCodeGenPkg(t: Target{val IR: DeliteApplication.this.type}) : GenericCodegen{val IR: DeliteApplication.this.type}
 
   lazy val targets = ListBuffer[DeliteApplicationTarget](
                        //new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this},
@@ -26,8 +25,7 @@ trait DeliteApplication extends ScalaOpsPkgExp {
 
   final def main(args: Array[String]) {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
-    val main_m = {x: Rep[Array[String]] => liftedMain()}
-
+    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}
 
     println("******Generating the program*********")
     // TODO: this loop blows up scalac somewhere/somehow
@@ -39,25 +37,11 @@ trait DeliteApplication extends ScalaOpsPkgExp {
 
     // temp until scalac issue can be resolved
     val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
+    //val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
     //scalaTarget.generator.emitSource(main_m, "Application", new PrintWriter(System.out))
-    //getCodeGenPkg(scalaTarget).emitSource(main_m, "Application", new PrintWriter(System.out))
-
+    getCodeGenPkg(scalaTarget).emitSource(main_m, "Application", new PrintWriter(System.out))
+    //getCodeGenPkg(cTarget).emitSource(main_m, "Application", new PrintWriter(System.out))
   }
-
-//  def addTarget(tgt: DeliteApplicationTarget) = {
-//    targets += tgt.name -> tgt
-//    tgt
-//  }
-//
-//  def targets : HashMap[String, DeliteApplicationTarget] = {
-//    if (_targets == null) {
-//      _targets = new HashMap[String, DeliteApplicationTarget]
-//
-//      addTarget()
-//      //addTarget(new TargetC{val intermediate: DeliteApplication.this.type = DeliteApplication.this})
-//    }
-//    _targets
-//  }
 
   def registerDSLType(name: String): DSLTypeRepresentation = nop
 

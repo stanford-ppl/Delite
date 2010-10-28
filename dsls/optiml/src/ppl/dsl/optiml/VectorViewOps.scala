@@ -5,12 +5,13 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.{Base}
 import scala.virtualization.lms.common.embedded.scala.DSLOpsExp
 import scala.virtualization.lms.internal.ScalaGenBase
+import scala.virtualization.lms.util.OverloadHack
 
 trait VectorView[T] extends Vector[T]
 
-trait VectorViewOps extends DSLType with Base {
+trait VectorViewOps extends DSLType with Base with OverloadHack {
 
-  def infix_start[A](v: Rep[VectorView[A]]) = vectorview_start(v)
+  def infix_start[A](v: Rep[VectorView[A]])(implicit o: Overloaded1) = vectorview_start(v)
   def infix_stride[A](v: Rep[VectorView[A]]) = vectorview_stride(v)
 
   // class defs

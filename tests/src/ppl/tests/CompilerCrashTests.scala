@@ -21,7 +21,7 @@ trait Foo extends ScalaOpsPkg {
 
   lazy val myFooBars = ListBuffer[FooBar]()
 
-  for (fb <- myFooBars){
-    println("x")
-  }
+  //for (fb <- myFooBars){
+  //  println("x")
+  //}
 }
