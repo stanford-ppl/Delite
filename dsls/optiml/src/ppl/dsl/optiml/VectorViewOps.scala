@@ -2,12 +2,13 @@ package ppl.dsl.optiml
 
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
-import ppl.delite.framework.embedded.scala.DSLOpsExp
+import scala.virtualization.lms.common.{Base}
+import scala.virtualization.lms.common.embedded.scala.DSLOpsExp
+import scala.virtualization.lms.internal.ScalaGenBase
 
 trait VectorView[T] extends Vector[T]
 
-trait VectorViewOps extends DSLType { this: DeliteApplication =>
+trait VectorViewOps extends DSLType with Base {
 
   def infix_start[A](v: Rep[VectorView[A]]) = vectorview_start(v)
   def infix_stride[A](v: Rep[VectorView[A]]) = vectorview_stride(v)
@@ -20,7 +21,7 @@ trait VectorViewOps extends DSLType { this: DeliteApplication =>
   def vectorview_new[A : Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorViewOpsExp extends VectorViewOps { this: DeliteApplication with VectorViewImplOps with DSLOpsExp =>
+trait VectorViewOpsExp extends VectorViewOps with VectorViewImplOps with DSLOpsExp {
 
   // implemented via method on real data structure
   case class VectorViewStart[A](x: Exp[VectorView[A]]) extends Def[Int]
@@ -36,19 +37,15 @@ trait VectorViewOpsExp extends VectorViewOps { this: DeliteApplication with Vect
     = reflectEffect(VectorViewNew[A](x, offset, stride, len, is_row))
 }
 
-trait CodeGeneratorScalaVectorView extends CodeGeneratorScalaBase {
+trait ScalaGenVectorViewOps extends ScalaGenBase {
+  val IR: VectorViewOpsExp
+  import IR._
 
-  val intermediate: DeliteApplication with VectorViewOpsExp
-  import intermediate._
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    // these are the ops that call through to the underlying real data structure
+    case VectorViewStart(x)    => emitValDef(sym, quote(x) + ".start")
+    case VectorViewStride(x)     => emitValDef(sym, quote(x) + ".stride")
 
-  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
-    rhs match {
-      // these are the ops that call through to the underlying real data structure
-      case VectorViewStart(x)    => emitValDef(sym, quote(x) + ".start")
-      case VectorViewStride(x)     => emitValDef(sym, quote(x) + ".stride")
-
-      case _ => return false
-    }
-    true
+    case _ => super.emitNode(sym, rhs)
   }
 }

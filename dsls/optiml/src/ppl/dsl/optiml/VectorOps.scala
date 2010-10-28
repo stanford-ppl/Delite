@@ -3,12 +3,13 @@ package ppl.dsl.optiml
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
-import ppl.delite.framework.embedded.scala.{DSLOpsExp, VariablesExp, Variables}
+import scala.virtualization.lms.common.embedded.scala.DSLOpsExp
+import scala.virtualization.lms.internal.ScalaGenBase
+import scala.virtualization.lms.common.{VariablesExp, Variables}
 
 trait Vector[T]
 
-trait VectorOps extends DSLType { this: DeliteApplication with Variables =>
+trait VectorOps extends DSLType with Variables {
 
   object Vector {
     def apply[A : Manifest](len: Rep[Int], is_row : Rep[Boolean] = true) : Rep[Vector[A]] = vector_new(len, is_row)
@@ -59,7 +60,7 @@ trait VectorOps extends DSLType { this: DeliteApplication with Variables =>
   def vector_new[A : Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorOpsExp extends VectorOps { this: DeliteApplication with VectorImplOps with VariablesExp with DSLOpsExp =>
+trait VectorOpsExp extends VectorOps with VectorImplOps with VariablesExp with DSLOpsExp {
   implicit def varToRepVecOps[A](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
   // implemented via method on real data structure
@@ -118,12 +119,6 @@ trait VectorOpsExp extends VectorOps { this: DeliteApplication with VectorImplOp
   def vector_pprint[A](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
 
   def vector_new[A : Manifest](len: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorNew[A](len, is_row))
-
-  targets.get("Scala").getOrElse(
-    throw new RuntimeException("Couldn't find Scala code generator")
-  ) .generators += new CodeGeneratorScalaVector {
-    val intermediate: VectorOpsExp.this.type = VectorOpsExp.this
-  }
 }
 
 /**
@@ -144,23 +139,19 @@ trait VectorOpsExp extends VectorOps { this: DeliteApplication with VectorImplOp
 //  }
 //}
 
-trait CodeGeneratorScalaVector extends CodeGeneratorScalaBase {
+trait ScalaGenVectorOps extends ScalaGenBase {
+  val IR: VectorOpsExp
+  import IR._
 
-  val intermediate: DeliteApplication with VectorOpsExp
-  import intermediate._
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    // these are the ops that call through to the underlying real data structure
+    case VectorApply(x, n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
+    case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+    case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
+    case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
+    case VectorPlusEquals(x,y) => emitValDef(sym, quote(x) + " += " + quote(y))
 
-  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
-    rhs match {
-      // these are the ops that call through to the underlying real data structure
-      case VectorApply(x, n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
-      case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
-      case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
-      case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
-      case VectorPlusEquals(x,y) => emitValDef(sym, quote(x) + " += " + quote(y))
-
-      case _ => return false
-    }
-    true
+    case _ => super.emitNode(sym, rhs)
   }
 }
 

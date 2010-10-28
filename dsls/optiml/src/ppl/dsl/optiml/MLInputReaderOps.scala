@@ -2,13 +2,13 @@ package ppl.dsl.optiml
 
 import java.io.{PrintWriter}
 import ppl.delite.framework.{DSLType, DeliteApplication}
-import ppl.delite.framework.embedded.scala.DSLOpsExp
+import scala.virtualization.lms.common.embedded.scala.DSLOpsExp
+import scala.virtualization.lms.common.Base
 
 // file format is m lines with n floats per line, each float separated by whitespaces
 // (same as matlab .dat)
 
-trait MLInputReaderOps extends DSLType { this: DeliteApplication =>
-
+trait MLInputReaderOps extends DSLType with Base {
   object MLInputReader {
     def read(filename: Rep[String]) : Rep[Matrix[Double]] = obj_mlinput_read(filename)
     def readVector(filename: Rep[String]) : Rep[Vector[Double]] = obj_mlinput_read_vector(filename)
@@ -18,7 +18,7 @@ trait MLInputReaderOps extends DSLType { this: DeliteApplication =>
   def obj_mlinput_read_vector(filename: Rep[String]) : Rep[Vector[Double]]
 }
 
-trait MLInputReaderOpsExp extends MLInputReaderOps with MLInputReaderImplOps { this: DeliteApplication with DSLOpsExp =>
+trait MLInputReaderOpsExp extends MLInputReaderOps with MLInputReaderImplOps with DSLOpsExp {
   case class MLInputRead(filename: Exp[String]) extends DSLOp(reifyEffects(mlinput_read_impl(filename)))
   case class MLInputReadVector(filename: Exp[String]) extends DSLOp(reifyEffects(mlinput_read_vector_impl(filename)))
 
@@ -27,11 +27,10 @@ trait MLInputReaderOpsExp extends MLInputReaderOps with MLInputReaderImplOps { t
 }
 
 
-//trait CodeGeneratorScalaMLInputReader extends CodeGeneratorScalaBase {
+//trait ScalaGenMLInputReaderOps extends ScalaGenBase {
+//  val IR: MLInputReaderOpsExp
+//  import IR._
 //
-//  val intermediate: MatrixOpsExp
-//  import intermediate._
-
 //  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
 //    case MLInputRead(filename) => emitValDef(sym, base + ".read(" + quote(filename) + ")")
 //    case MLInputReadVector(filename) => emitValDef(sym, base + ".readVector(" + quote(filename) + ")")

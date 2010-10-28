@@ -1,15 +1,15 @@
-
 package ppl.dsl.optiml
 
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
-import ppl.delite.framework.embedded.scala.{DSLOpsExp, VariablesExp, Variables}
+import scala.virtualization.lms.common.embedded.scala.DSLOpsExp
+import scala.virtualization.lms.common.{VariablesExp, Variables}
+import scala.virtualization.lms.internal.ScalaGenBase
 
 trait Matrix[T]
 
-trait MatrixOps extends DSLType { this: DeliteApplication with Variables =>
+trait MatrixOps extends DSLType with Variables {
 
   object Matrix {
     def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]] = matrix_new(numRows, numCols)
@@ -54,7 +54,7 @@ trait MatrixOps extends DSLType { this: DeliteApplication with Variables =>
 }
 
 
-trait MatrixOpsExp extends MatrixOps with MatrixImplOps { this: DeliteApplication with VariablesExp with DSLOpsExp =>
+trait MatrixOpsExp extends MatrixOps with MatrixImplOps with VariablesExp with DSLOpsExp {
 //trait MatrixOpsRepExp extends MatrixOps with MatrixImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp with VariablesExp {
   implicit def varToRepMatOps[A](x: Var[Matrix[A]]) = new matRepCls(readVar(x))
 
@@ -99,13 +99,7 @@ trait MatrixOpsExp extends MatrixOps with MatrixImplOps { this: DeliteApplicatio
   def matrix_inverse[A](x: Exp[Matrix[A]]) = MatrixInverse(x)
   def matrix_transpose[A](x: Exp[Matrix[A]]) = MatrixTranspose(x)
   def matrix_pprint[A](x: Exp[Matrix[A]]) = reflectEffect(MatrixPPrint(x))
-  def matrix_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixNew[A](numRows,numCols))
-
-  targets.get("Scala").getOrElse(
-    throw new RuntimeException("Couldn't find Scala code generator")
-  ) .generators += new CodeGeneratorScalaMatrix {
-    val intermediate: MatrixOpsExp.this.type = MatrixOpsExp.this
-  }
+  def matrix_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixNew[A](numRows,numCols))  
 }
 
 /**
@@ -150,24 +144,19 @@ trait MatrixOpsExp extends MatrixOps with MatrixImplOps { this: DeliteApplicatio
 //}
 
 
-trait CodeGeneratorScalaMatrix extends CodeGeneratorScalaBase {
+trait ScalaGenMatrixOps extends ScalaGenBase {
+  val IR: MatrixOpsExp
+  import IR._
 
-  val intermediate: DeliteApplication with MatrixOpsExp
-  import intermediate._
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    // these are the ops that call through to the underlying real data structure
+    case MatrixApply1(x,i) => emitValDef(sym, quote(x) + "(" + quote(i) + ")")
+    case MatrixApply2(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
+    case MatrixUpdate(x,i,j,y)  => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
+    case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
+    case MatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
+    case MatrixInsertRow(x, pos, y)  => emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
 
-  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
-    rhs match {
-      // these are the ops that call through to the underlying real data structure
-      case MatrixApply1(x,i) => emitValDef(sym, quote(x) + "(" + quote(i) + ")")
-      case MatrixApply2(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
-      case MatrixUpdate(x,i,j,y)  => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
-      case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
-      case MatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
-      case MatrixInsertRow(x, pos, y)  => emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
-
-      case _ => return false
-    }
-    true
+    case _ => super.emitNode(sym, rhs)
   }
-  
 }

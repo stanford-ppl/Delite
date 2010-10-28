@@ -1,7 +1,7 @@
 package ppl.delite.framework.codegen
 
 import _root_.scala.virtualization.lms.common.BaseExp
-import _root_.scala.virtualization.lms.internal.Effects
+import _root_.scala.virtualization.lms.internal.{GenericCodegen, Effects}
 import _root_.scala.virtualization.lms.util.GraphUtil
 import collection.mutable.{HashMap, ListBuffer}
 import java.io.PrintWriter
@@ -18,39 +18,5 @@ trait Target {
 
   val name: String
 
-  def applicationGenerator : CodeGeneratorApplication{val intermediate: Target.this.intermediate.type}
-  
-  val generators : ListBuffer[CodeGenerator{val intermediate: Target.this.intermediate.type}]
-
-  def addGenerator(c: CodeGenerator{val intermediate: Target.this.intermediate.type}) {
-    generators += c
-  }
-
-  //def emitSource[A,B](args: Exp[A], f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit
-  
-  def emitTargetNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) {
-    val iter = generators.iterator
-    try {
-      while (!iter.next.emitNode(sym, rhs)) { } //loop until codegen succeeds
-    }
-    catch {
-      case e: NoSuchElementException => error("[" + name + "]Generation Failed: " + rhs.toString)
-      case other => throw other
-    }
-  }
-
-  def getTargetSyms(e: Any, shallow: Boolean) : Option[List[Sym[Any]]] = {
-    //println("calling target syms on " + e)
-    var i = 0
-    while (i < generators.length){
-      val syms = generators(i).syms2(e, shallow)
-      if (!syms.isEmpty) {
-        //println("found overridden dependency")
-        return syms
-      }
-      i += 1
-    }
-    None
-  }
-
+  def generator : GenericCodegen{val IR: Target.this.intermediate.type}
 }

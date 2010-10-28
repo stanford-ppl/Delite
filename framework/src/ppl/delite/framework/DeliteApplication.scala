@@ -1,39 +1,25 @@
 package ppl.delite.framework
 
 import codegen.c.TargetC
-import codegen.scala.{CodeGeneratorScalaApplication, TargetScala}
-import codegen.{Target, CodeGenerator}
-import embedded.scala._
+import codegen.scala.TargetScala
+import codegen.Target
 import java.io.PrintWriter
 import collection.mutable.{HashMap, ListBuffer}
 import scala.virtualization.lms.common.{EffectExp, BaseExp}
+import scala.virtualization.lms.common.embedded.scala.ScalaOpsPkgExp
 
-trait DeliteApplication extends EffectExp { 
-//trait DeliteApplication extends ScalaOpsPkgExp3 {
+trait DeliteApplication extends ScalaOpsPkgExp {
 
   type DeliteApplicationTarget = Target{val intermediate: DeliteApplication.this.type}
 
   var args: Rep[Array[String]] = _
   private var _targets: HashMap[String, DeliteApplicationTarget] = _
-  //val targetCodeGenerators = new HashMap[String, ListBuffer[CodeGenerator{val intermediate: DeliteApplication.this.type}]]
-//  val dsls2generate = new ListBuffer[DSLTypeRepresentation]
 
-  println("******Adding Requested Target*******")
-  //todo this should be implemented via some option parsing framework
-  //addTarget(new TargetScala{val intermediate: DeliteApplication.this.type = DeliteApplication.this})
-
-  //val sgenlist = new ListBuffer[CodeGenerator{val intermediate: DeliteApplication.this.type}]
-  //sgenlist += new CodeGeneratorScalaMisc{val intermediate: DeliteApplication.this.type = DeliteApplication.this}
-  //targetCodeGenerators += stgt.name ->  sgenlist
-//  //todo move this repetition into a function
-//  val ctgt = addTarget(new TargetC{val intermediate: DeliteApplication.this.type = DeliteApplication.this})
-//  val cgenlist = new ListBuffer[CodeGenerator{val intermediate: DeliteApplication.this.type}]
-//  cgenlist += new CodeGeneratorCMisc{val intermediate: DeliteApplication.this.type = DeliteApplication.this}
-//  targetCodeGenerators += ctgt.name ->  cgenlist
+  // DeliteApplication should have a list of targets -- each target contains a single generator object that mixes in
+  // all of the DSL generator classes
 
   final def main(args: Array[String]) {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
-    this.args = fresh //args;
     val main_m = {x: Rep[Array[String]] => liftedMain()}
 
 
@@ -41,7 +27,7 @@ trait DeliteApplication extends EffectExp {
     for(e <- targets) {
       val tgt = e._2
       globalDefs = List()
-      tgt.applicationGenerator.emitSource(this.args, main_m, "Application", new PrintWriter(System.out))
+      tgt.generator.emitSource(main_m, "Application", new PrintWriter(System.out))
     }
 
   }
