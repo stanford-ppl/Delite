@@ -1,9 +1,9 @@
 package ppl.dsl.optiml
 
-import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.embedded.scala.ScalaOpsPkg3
+import scala.virtualization.lms.common.embedded.scala.ScalaOpsPkg
+import scala.virtualization.lms.common.{BaseExp, Base}
 
-trait VectorImplOps { this: DeliteApplication =>
+trait VectorImplOps { this: Base =>
 
   def vector_obj_zeros_impl(length: Rep[Int]) : Rep[Vector[Double]]
 
@@ -21,7 +21,7 @@ trait VectorImplOps { this: DeliteApplication =>
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
-  this: DeliteApplication with VectorOps with MatrixOps with ScalaOpsPkg3 =>
+  this: BaseExp with ScalaOpsPkg with VectorOps with MatrixOps =>
   
   private val base = "ppl.dsl.optiml"
 
@@ -100,7 +100,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
 
 }
 
-trait VectorImplOpsBLAS extends VectorImplOpsStandard { this: DeliteApplication with VectorOps with MatrixOps with ScalaOpsPkg3 =>
+trait VectorImplOpsBLAS extends VectorImplOpsStandard { this: BaseExp with ScalaOpsPkg with VectorOps with MatrixOps =>
   //this: Functions with VectorOps with RangeOps with TupleOps with BooleanOps =>
   
   //override def vector_obj_plus_impl = External(..)

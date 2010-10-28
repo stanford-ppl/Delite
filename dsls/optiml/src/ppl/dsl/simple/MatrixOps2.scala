@@ -1,16 +1,14 @@
 package ppl.dsl.simple
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import ppl.delite.framework.codegen.scala.CodeGeneratorScalaBase
 import java.io.PrintWriter
-import ppl.delite.framework.embedded.scala.CodeGeneratorCMisc
-import ppl.delite.framework.codegen.c.CodeGeneratorCBase
-import scala.virtualization.lms.common.EffectExp
+import scala.virtualization.lms.common.{Base, EffectExp}
+import scala.virtualization.lms.internal.{CGenBase, ScalaGenBase}
 
 
 trait Matrix[T]
 
-trait MatrixOps2 extends DSLType { this: DeliteApplication =>
+trait MatrixOps2 extends DSLType with Base {
 
   object Matrix {
     def zeros(numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[Double]] = matrix_new(numRows, numCols)
@@ -31,7 +29,7 @@ trait MatrixOps2 extends DSLType { this: DeliteApplication =>
   def matrix_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]]
 }
 
-trait MatrixOpsExp2 extends MatrixOps2 { this: DeliteApplication =>
+trait MatrixOpsExp2 extends MatrixOps2 with EffectExp { 
   case class MatrixPlus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends Def[Matrix[A]]
 
@@ -44,52 +42,29 @@ trait MatrixOpsExp2 extends MatrixOps2 { this: DeliteApplication =>
   def matrix_plus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixPlus(x, y)
   def matrix_pprint[A](x: Exp[Matrix[A]]) = reflectEffect(MatrixPPrint(x))
   def matrix_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixNew[A](numRows,numCols))
-
-  targets.get("Scala").getOrElse(
-    throw new RuntimeException("Couldn't find Scala code generator")
-  ) .generators += new CodeGeneratorScalaMatrix {
-    val intermediate: MatrixOpsExp2.this.type = MatrixOpsExp2.this
-  }
-
-  targets.get("C").getOrElse(
-    throw new RuntimeException("Couldn't find C code generator")
-  ) .generators += new CodeGeneratorCMatrix {
-    val intermediate: MatrixOpsExp2.this.type = MatrixOpsExp2.this
-  }
-
 }
 
-trait CodeGeneratorScalaMatrix extends CodeGeneratorScalaBase {
+trait ScalaGenMatrixOps2 extends ScalaGenBase {
+  val IR: MatrixOpsExp2
+  import IR._
 
-  val intermediate: DeliteApplication with MatrixOpsExp2 with EffectExp
-  import intermediate._
-
-  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
-    rhs match {
-      case MatrixNew(numRows,numCols) => emitValDef(sym, "new matrix")
-      case MatrixPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
-      case MatrixPPrint(a) => emitValDef(sym, "exit(" + quote(a) + ")")
-
-      case _ => return false
-    }
-    true
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    case MatrixNew(numRows,numCols) => emitValDef(sym, "new matrix")
+    case MatrixPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
+    case MatrixPPrint(a) => emitValDef(sym, "exit(" + quote(a) + ")")
+    case _ => super.emitNode(sym, rhs)
   }
 }
 
-trait CodeGeneratorCMatrix extends CodeGeneratorCBase {
+trait CGenMatrixOps2 extends CGenBase {
+  val IR: MatrixOpsExp2
+  import IR._
 
-  val intermediate: DeliteApplication with MatrixOpsExp2 with EffectExp
-  import intermediate._
-
-  //code generation bit
-  def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter): Boolean = {
-    rhs match {
-      //todo replace the manifest with embedded types
-      case MatrixNew(n1,n2) => emitConstDef("matrix", sym, "Matrix.zeros(" + quote(n1) + ")")
-      case MatrixPlus(m1,m2) => emitConstDef("matrix", sym, quote(m1) + " + " + quote (m2))
-      case MatrixPPrint(m) => emitConstDef("matrix", sym, quote(m) + ".pprint()")
-      case _ => return false
-    }
-    true
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    //todo replace the manifest with embedded types
+    case MatrixNew(n1,n2) => emitConstDef("matrix", sym, "Matrix.zeros(" + quote(n1) + ")")
+    case MatrixPlus(m1,m2) => emitConstDef("matrix", sym, quote(m1) + " + " + quote (m2))
+    case MatrixPPrint(m) => emitConstDef("matrix", sym, quote(m) + ".pprint()")
+    case _ => super.emitNode(sym, rhs)
   }
 }

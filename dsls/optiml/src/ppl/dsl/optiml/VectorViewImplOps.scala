@@ -1,16 +1,15 @@
 package ppl.dsl.optiml
 
-import scala.virtualization.lms.common.Base
-import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.embedded.scala.ScalaOpsPkg3
+import scala.virtualization.lms.common.embedded.scala.ScalaOpsPkg
+import scala.virtualization.lms.common.{BaseExp, Base}
 
-trait VectorViewImplOps { this: DeliteApplication =>
+trait VectorViewImplOps { this: Base =>
 
   def vectorview_new_impl[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], str: Rep[Int], len: Rep[Int], is_row: Rep[Boolean]) : Rep[VectorView[A]]
 }
 
 trait VectorViewImplOpsStandard extends VectorViewImplOps {
-  this: DeliteApplication with ScalaOpsPkg3 with VectorViewOps with MatrixOps =>
+  this: BaseExp with ScalaOpsPkg with VectorViewOps with MatrixOps =>
 
   private val base = "ppl.dsl.optiml.embedding"
 

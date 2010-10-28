@@ -60,7 +60,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_new[A : Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorOpsExp extends VectorOps with VectorImplOps with VariablesExp with DSLOpsExp {
+trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: VectorImplOps =>
   implicit def varToRepVecOps[A](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
   // implemented via method on real data structure
@@ -125,19 +125,18 @@ trait VectorOpsExp extends VectorOps with VectorImplOps with VariablesExp with D
  * Optimizations for composite VectorOps operations.
  */
 
-// TODO: why doesn't this work?
-//trait VectorOpsExpOpt extends VectorOpsExp { this: DeliteApplication with VectorImplOps with VariablesExp with DSLOpsExp =>
-//  override def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
-//    // (TB + TD) == T(B + D)
-//    case (Def(VectorTimes(a, b)), Def(VectorTimes(c, d))) if (a == c) => VectorTimes[A](a.asInstanceOf[Exp[Vector[A]]], VectorPlus[A](b.asInstanceOf[Exp[Vector[A]]],d.asInstanceOf[Exp[Vector[A]]]))
-//    // ...
-//    case _ => super.vector_plus(x, y)
-//  }
-//
-//  override def vector_times[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
-//    case _ => super.vector_times(x, y)
-//  }
-//}
+trait VectorOpsExpOpt extends VectorOpsExp { this: VectorImplOps =>
+  override def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
+    // (TB + TD) == T(B + D)
+    case (Def(VectorTimes(a, b)), Def(VectorTimes(c, d))) if (a == c) => VectorTimes[A](a.asInstanceOf[Exp[Vector[A]]], VectorPlus[A](b.asInstanceOf[Exp[Vector[A]]],d.asInstanceOf[Exp[Vector[A]]]))
+    // ...
+    case _ => super.vector_plus(x, y)
+  }
+
+  override def vector_times[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
+    case _ => super.vector_times(x, y)
+  }
+}
 
 trait ScalaGenVectorOps extends ScalaGenBase {
   val IR: VectorOpsExp

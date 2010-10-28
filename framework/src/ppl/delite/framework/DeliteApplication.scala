@@ -5,18 +5,24 @@ import codegen.scala.TargetScala
 import codegen.Target
 import java.io.PrintWriter
 import collection.mutable.{HashMap, ListBuffer}
-import scala.virtualization.lms.common.{EffectExp, BaseExp}
 import scala.virtualization.lms.common.embedded.scala.ScalaOpsPkgExp
+import scala.virtualization.lms.common.{Base, EffectExp, BaseExp}
+import scala.virtualization.lms.internal.GenericCodegen
 
 trait DeliteApplication extends ScalaOpsPkgExp {
+  type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
+  //type DSLCodeGenPkg <: GenericCodegen{ val IR: DeliteApplication.this.type }
 
-  type DeliteApplicationTarget = Target{val intermediate: DeliteApplication.this.type}
+  //def getCodeGenPkg(t: Target{val IR: DeliteApplication.this.type}) : GenericCodegen{val IR: DeliteApplication.this.type}
 
+  lazy val targets = ListBuffer[DeliteApplicationTarget](
+                       //new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this},
+                       //new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
+                     )
+                                                                 
+  
   var args: Rep[Array[String]] = _
-  private var _targets: HashMap[String, DeliteApplicationTarget] = _
-
-  // DeliteApplication should have a list of targets -- each target contains a single generator object that mixes in
-  // all of the DSL generator classes
+  //private var _targets: HashMap[String, DeliteApplicationTarget] = _
 
   final def main(args: Array[String]) {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
@@ -24,34 +30,34 @@ trait DeliteApplication extends ScalaOpsPkgExp {
 
 
     println("******Generating the program*********")
-    for(e <- targets) {
-      val tgt = e._2
-      globalDefs = List()
-      tgt.generator.emitSource(main_m, "Application", new PrintWriter(System.out))
-    }
+    // TODO: this loop blows up scalac somewhere/somehow
+//    for(tgt <- targets) {
+//      //val tgt = e._2
+//      globalDefs = List()
+//      tgt.generator.emitSource(main_m, "Application", new PrintWriter(System.out))
+//    }
+
+    // temp until scalac issue can be resolved
+    val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
+    //scalaTarget.generator.emitSource(main_m, "Application", new PrintWriter(System.out))
+    //getCodeGenPkg(scalaTarget).emitSource(main_m, "Application", new PrintWriter(System.out))
 
   }
 
-  // temporary, for code gen: we need one copy of these globals shared between code generators and targets
-  //var shallow = false
-
-  var scope: List[TP[_]] = Nil
-
-
-  def addTarget(tgt: DeliteApplicationTarget) = {
-    targets += tgt.name -> tgt
-    tgt
-  }
-
-  def targets : HashMap[String, DeliteApplicationTarget] = {
-    if (_targets == null) {
-      _targets = new HashMap[String, DeliteApplicationTarget]
-
-      addTarget(new TargetScala{val intermediate: DeliteApplication.this.type = DeliteApplication.this})
-      //addTarget(new TargetC{val intermediate: DeliteApplication.this.type = DeliteApplication.this})
-    }
-    _targets
-  }
+//  def addTarget(tgt: DeliteApplicationTarget) = {
+//    targets += tgt.name -> tgt
+//    tgt
+//  }
+//
+//  def targets : HashMap[String, DeliteApplicationTarget] = {
+//    if (_targets == null) {
+//      _targets = new HashMap[String, DeliteApplicationTarget]
+//
+//      addTarget()
+//      //addTarget(new TargetC{val intermediate: DeliteApplication.this.type = DeliteApplication.this})
+//    }
+//    _targets
+//  }
 
   def registerDSLType(name: String): DSLTypeRepresentation = nop
 

@@ -1,6 +1,6 @@
 package ppl.dsl.simple
 
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.embedded.scala.ScalaOpsPkgExp3
+import scala.virtualization.lms.common.embedded.scala.ScalaOpsPkgExp
 
-trait OptiML2 extends ScalaOpsPkgExp3 with VectorOpsExp2 with MatrixOpsExp2 { this: DeliteApplication => }
+trait OptiML2 extends ScalaOpsPkgExp with VectorOpsExp2 with MatrixOpsExp2 { this: DeliteApplication => }

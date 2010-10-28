@@ -3,15 +3,12 @@ package ppl.delite.framework.codegen.c
 import java.io.PrintWriter
 import collection.mutable.ListBuffer
 import ppl.delite.framework.codegen.Target
-import scala.virtualization.lms.common.embedded.scala.CGenMiscOps
+import scala.virtualization.lms.common.embedded.scala.{CCodeGenPkg, CGenMiscOps}
 
 trait TargetC extends Target {
-  import intermediate._
+  import IR._
 
   val name = "C"
 
-  lazy val generator = new CCodeGenPkg { val IR: TargetC.this.intermediate.type = TargetC.this.intermediate }
+  //lazy val generator = new CCodeGenPkg with DSLCodeGenPkg { val IR: TargetC.this.IR.type = TargetC.this.IR }
 }
-
-// TODO: move to Packages.scala?
-trait CCodeGenPkg extends CGenMiscOps

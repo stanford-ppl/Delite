@@ -4,13 +4,12 @@ import java.io.PrintWriter
 import collection.mutable.ListBuffer
 import scala.virtualization.lms.common.embedded.scala.ScalaCodeGenPkg
 import ppl.delite.framework.codegen.Target
-
+import scala.virtualization.lms.internal.{ScalaCodegen}
 
 trait TargetScala extends Target {
-
-  import intermediate._
+  import IR._
 
   val name = "Scala"
 
-  lazy val generator = new ScalaCodeGenPkg { val IR: TargetScala.this.intermediate.type = TargetScala.this.intermediate }  
+  //lazy val generator = new ScalaCodeGenPkg with DSLCodeGenPkg { val IR: TargetScala.this.IR.type = TargetScala.this.IR }
 }

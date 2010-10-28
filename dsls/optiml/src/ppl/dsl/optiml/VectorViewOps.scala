@@ -21,7 +21,7 @@ trait VectorViewOps extends DSLType with Base {
   def vectorview_new[A : Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorViewOpsExp extends VectorViewOps with VectorViewImplOps with DSLOpsExp {
+trait VectorViewOpsExp extends VectorViewOps with DSLOpsExp { this: VectorViewImplOps =>
 
   // implemented via method on real data structure
   case class VectorViewStart[A](x: Exp[VectorView[A]]) extends Def[Int]

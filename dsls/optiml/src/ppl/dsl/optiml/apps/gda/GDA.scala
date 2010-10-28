@@ -2,7 +2,6 @@ package ppl.dsl.optiml.apps.gda
 
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.embedded.scala.ScalaOpsPkgExp3
 
 object GDA extends DeliteApplication with OptiMLExp {
 
@@ -16,11 +15,6 @@ object GDA extends DeliteApplication with OptiMLExp {
 
     val x = MLInputReader.read(args(0))
     val y = MLInputReader.readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
-
-//    println("X: ")
-//    x.pprint
-//    println("Y: ")
-//    y.pprint
 
     /* number of training samples */
     val m = y.length

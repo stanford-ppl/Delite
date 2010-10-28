@@ -54,7 +54,7 @@ trait MatrixOps extends DSLType with Variables {
 }
 
 
-trait MatrixOpsExp extends MatrixOps with MatrixImplOps with VariablesExp with DSLOpsExp {
+trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: MatrixImplOps =>
 //trait MatrixOpsRepExp extends MatrixOps with MatrixImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp with VariablesExp {
   implicit def varToRepMatOps[A](x: Var[Matrix[A]]) = new matRepCls(readVar(x))
 
@@ -106,42 +106,41 @@ trait MatrixOpsExp extends MatrixOps with MatrixImplOps with VariablesExp with D
  * Optimizations for composite MatrixOps operations.
  */
 
-// TODO: why doesn't this work?
-//trait MatrixOpsExpOpt extends MatrixOpsExp { this: DeliteApplication with VariablesExp with DSLOpsExp =>
-//  override def matrix_plus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
-//    // (AB + AD) == A(B + D)
-//    case (Def(MatrixTimes(a, b)), Def(MatrixTimes(c, d))) if (a == c) => MatrixTimes[A](a.asInstanceOf[Exp[Matrix[A]]], MatrixPlus[A](b.asInstanceOf[Exp[Matrix[A]]],d.asInstanceOf[Exp[Matrix[A]]]))
-//    // ...
-//    case _ => super.matrix_plus(x, y)
-//  }
-//
-//  override def matrix_times[A](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
-//    // X^-1*X = X*X^-1 = I (if X is non-singular)
-//    case (Def(MatrixInverse(a)), b) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])
-//    case (b, Def(MatrixInverse(a))) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])
-//
-//    // X*I = I*X = X
-//    case (Def(MatrixIdentity(a)), b) if (a == b) => a.asInstanceOf[Exp[Matrix[A]]]
-//    case (a, Def(MatrixIdentity(b))) if (a == b) => a.asInstanceOf[Exp[Matrix[A]]]
-//
-//    // else
-//    case _ => super.matrix_times(x, y)
-//  }
-//
-//  override def matrix_inverse[A](x: Exp[Matrix[A]]) = x match {
-//    // (X^-1)^-1 = X (if X is non-singular)
-//    case (Def(MatrixInverse(a))) => a.asInstanceOf[Exp[Matrix[A]]]
-//    case _ => super.matrix_inverse(x)
-//  }
-//
-//  override def matrix_transpose[A](x: Exp[Matrix[A]]) = x match {
-//    // (X^T)^T = X
-//    case (Def(MatrixTranspose(a))) => a.asInstanceOf[Exp[Matrix[A]]]
-//    case _ => super.matrix_transpose(x)
-//  }
-//
-//
-//}
+trait MatrixOpsExpOpt extends MatrixOpsExp { this: MatrixImplOps =>
+  override def matrix_plus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
+    // (AB + AD) == A(B + D)
+    case (Def(MatrixTimes(a, b)), Def(MatrixTimes(c, d))) if (a == c) => MatrixTimes[A](a.asInstanceOf[Exp[Matrix[A]]], MatrixPlus[A](b.asInstanceOf[Exp[Matrix[A]]],d.asInstanceOf[Exp[Matrix[A]]]))
+    // ...
+    case _ => super.matrix_plus(x, y)
+  }
+
+  override def matrix_times[A](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
+    // X^-1*X = X*X^-1 = I (if X is non-singular)
+    case (Def(MatrixInverse(a)), b) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])
+    case (b, Def(MatrixInverse(a))) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])
+
+    // X*I = I*X = X
+    case (Def(MatrixIdentity(a)), b) if (a == b) => a.asInstanceOf[Exp[Matrix[A]]]
+    case (a, Def(MatrixIdentity(b))) if (a == b) => a.asInstanceOf[Exp[Matrix[A]]]
+
+    // else
+    case _ => super.matrix_times(x, y)
+  }
+
+  override def matrix_inverse[A](x: Exp[Matrix[A]]) = x match {
+    // (X^-1)^-1 = X (if X is non-singular)
+    case (Def(MatrixInverse(a))) => a.asInstanceOf[Exp[Matrix[A]]]
+    case _ => super.matrix_inverse(x)
+  }
+
+  override def matrix_transpose[A](x: Exp[Matrix[A]]) = x match {
+    // (X^T)^T = X
+    case (Def(MatrixTranspose(a))) => a.asInstanceOf[Exp[Matrix[A]]]
+    case _ => super.matrix_transpose(x)
+  }
+
+
+}
 
 
 trait ScalaGenMatrixOps extends ScalaGenBase {
