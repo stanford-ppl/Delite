@@ -11,6 +11,6 @@ package ppl.delite.walktime.codegen
 
 abstract class DeliteExecutable {
 
-  def task : Unit
+  def run() : Unit
 
 }

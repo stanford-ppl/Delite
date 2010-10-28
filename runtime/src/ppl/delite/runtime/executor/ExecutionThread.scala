@@ -36,6 +36,6 @@ class ExecutionThread extends Runnable {
   }
 
   // how to execute work
-  private def executeWork(work: DeliteExecutable) = work.task
+  private def executeWork(work: DeliteExecutable) = work.run
 
 }

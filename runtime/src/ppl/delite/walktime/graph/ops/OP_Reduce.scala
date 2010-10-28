@@ -13,17 +13,12 @@ import ppl.delite.data.Data
 
 abstract class OP_Reduce[A] extends DeliteOP {
 
+  final def isDataParallel = true
+
   val coll: Data[A]
 
   def func: (A,A) => A
 
-  def task {
-    var res = coll(0)
-    var i = 1
-    while (i < coll.size) {
-      res = func(res, coll(i))
-      i += 1
-    }
-  }
+  def task = in => println("OP_Reduce")
 
 }

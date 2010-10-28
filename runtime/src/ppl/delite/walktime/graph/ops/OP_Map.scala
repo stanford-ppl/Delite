@@ -13,18 +13,15 @@ import ppl.delite.data.Data
 
 abstract class OP_Map[A,B] extends DeliteOP {
 
+  final def isDataParallel = true
+
   val coll: Data[A]
 
   val out: Data[B]
 
   def func: A => B
 
-  def task {
-    var i = 0
-    while (i < coll.size) {
-      out(i) = func(coll(i))
-      i += 1
-    }
-  }
+  //TOOD: still need to decide how chunking is executed in the kernel model (how much is on the codegen side, how much on the runtime side)
+  def task = in => println("OP_Map")
 
 }

@@ -13,7 +13,8 @@ import ppl.delite.walktime.graph.DeliteTaskGraph
 
 abstract class DeliteOP {
 
-  def task : Unit
+  //TODO: really want a reference to a kernel here (change type signature when that's more concrete)
+  def task : Seq[Any] => Any
 
   def getDependencies : Seq[DeliteOP]
 

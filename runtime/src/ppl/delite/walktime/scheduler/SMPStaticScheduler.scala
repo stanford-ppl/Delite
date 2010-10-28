@@ -3,8 +3,9 @@ package ppl.delite.walktime.scheduler
 import ppl.delite.walktime.graph.DeliteTaskGraph
 import ppl.delite.io.Config
 import ppl.delite.walktime.graph.ops.DeliteOP
-import java.util.ArrayDeque
-import ppl.delite.walktime.codegen.DeliteExecutable
+import java.util.concurrent.locks.{Condition, Lock, ReentrantLock}
+import ppl.delite.walktime.codegen.{SingleOPExecutable, DeliteExecutable}
+import java.util.{HashMap, ArrayDeque}
 
 /**
  * Author: Kevin J. Brown
@@ -22,7 +23,7 @@ import ppl.delite.walktime.codegen.DeliteExecutable
  *
  */
 
-class SMPStaticScheduler {
+final class SMPStaticScheduler {
 
   private val numThreads = Config.numThreads
 
@@ -54,7 +55,6 @@ class SMPStaticScheduler {
 
   //NOTE: this is currently the simple scheduler from Delite 1.0
   var nextThread = 0
-  var lastOP: DeliteOP = _
 
   private def scheduleOne(op: DeliteOP) {
     if (op.isDataParallel) {
@@ -79,6 +79,7 @@ class SMPStaticScheduler {
         nextThread = (nextThread + 1) % numThreads
       }
     }
+    op.isScheduled = true
   }
 
   private def enqueueRoots(graph: DeliteTaskGraph) {
@@ -104,19 +105,48 @@ class SMPStaticScheduler {
   private def processScheduledWork: Array[ArrayDeque[DeliteExecutable]] = {
     val queues = new Array[ArrayDeque[DeliteExecutable]](numThreads)
     for (i <- 0 until numThreads) queues(i) = new ArrayDeque[DeliteExecutable]
-    //generate executable for all the ops in each proc
-    //TODO: perform code generation / fusion here
-    for (i <- 0 until numThreads) {
-      for (j <- 0 until procs(i).size) {
-        val work = new DeliteExecutable{def task = println("Hello World")} //TODO: how do we link kernels here?
-        queues(i).add(work)
-      }
-    }
+    //generate executable(s) for all the ops in each proc
+    createExecutables(procs, queues)
     queues
   }
 
   private def createStaticSchedule(queues: Array[ArrayDeque[DeliteExecutable]]): StaticSchedule = {
     new StaticSchedule(queues)
+  }
+
+  //TODO: these helper methods are hacks used until I add code generation with fusion
+  //TODO: should refactor this out of scheduler and into codegen
+  private def createExecutables(opQueues: Array[ArrayDeque[DeliteOP]], workQueues: Array[ArrayDeque[DeliteExecutable]]) {
+    val table = new HashMap[DeliteOP, SingleOPExecutable[_]]
+    //create all executables
+    for (i <- 0 until numThreads) {
+      val iter = opQueues(i).iterator
+      while (iter.hasNext) {
+        val op = iter.next
+        val work = new SingleOPExecutable[Any](op.task)
+        table.put(op, work)
+      }
+    }
+    //add dependencies
+    for (i <- 0 until numThreads) {
+      val iter = opQueues(i).iterator
+      while (iter.hasNext) {
+        val op = iter.next
+        val work = table.get(op)
+        for (dep <- op.getDependencies) {
+          work.addDependency(table.get(dep))
+        }
+        workQueues(i).add(work)
+      }
+    }
+  }
+
+  private def addExecutable(opQueue: ArrayDeque[DeliteOP], workQueue: ArrayDeque[DeliteExecutable]) {
+    for (i <- 0 until opQueue.size) {
+      val op = opQueue.poll
+      val work = new SingleOPExecutable[Any](op.task)
+      workQueue.add(work)
+    }
   }
 
 }

@@ -2,8 +2,8 @@ package ppl.delite
 
 import io.Config
 import runtime.executor._
-import walktime.graph.DeliteTaskGraph
-import walktime.graph.ops.DeliteOP
+import walktime.graph.ops.{TestOP, DeliteOP}
+import walktime.graph.{TestGraph, DeliteTaskGraph}
 import walktime.scheduler._
 
 /**
@@ -42,10 +42,7 @@ object Delite {
 
     //load task graph
     //TODO: this is a compile hack
-    val graph = new DeliteTaskGraph {
-      val node = new TestOP
-      def root = node 
-    }
+    val graph = new TestGraph
 
     //load kernels
 
@@ -57,16 +54,6 @@ object Delite {
     //execute
     executor.run(schedule)
     
-  }
-
-  private class TestOP extends DeliteOP {
-    def task { }
-    def getDependencies = Seq()
-    def getConsumers = Seq()
-    def nested = null
-    def cost = 0
-    def size = 0
-    def isDataParallel = false   
   }
 
 }
