@@ -1,17 +1,17 @@
 package ppl.dsl.optiml
 
-import scala.virtualization.lms.common.embedded.scala.ScalaCodeGenPkg
 import scala.virtualization.lms.internal.GenericCodegen
 
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
+import scala.virtualization.lms.common.embedded.scala.{ScalaOpsPkgExp, ScalaOpsPkg, ScalaCodeGenPkg}
 
-trait OptiML extends VectorOps with MatrixOps with MLInputReaderOps {
+trait OptiML extends ScalaOpsPkg with VectorOps with MatrixOps with MLInputReaderOps {
   this: DeliteApplication =>
 }
 
-trait OptiMLExp extends OptiML with VectorOpsExp with VectorViewOpsExp with MatrixOpsExp with MLInputReaderOpsExp
+trait OptiMLExp extends OptiML with ScalaOpsPkgExp with VectorOpsExp with VectorViewOpsExp with MatrixOpsExp with MLInputReaderOpsExp
   with VectorImplOpsStandard with VectorViewImplOpsStandard with MatrixImplOpsStandard with MLInputReaderImplOpsStandard {
   this: DeliteApplication =>
 
