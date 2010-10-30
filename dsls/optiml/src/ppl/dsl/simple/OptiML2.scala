@@ -1,6 +1,6 @@
 package ppl.dsl.simple
 
-import scala.virtualization.lms.common.embedded.scala.{CCodeGenPkg, ScalaCodeGenPkg, ScalaOpsPkgExp}
+import scala.virtualization.lms.common.{CCodeGenPkg, ScalaCodeGenPkg, ScalaOpsPkgExp}
 import scala.virtualization.lms.internal.GenericCodegen
 
 import ppl.delite.framework.DeliteApplication

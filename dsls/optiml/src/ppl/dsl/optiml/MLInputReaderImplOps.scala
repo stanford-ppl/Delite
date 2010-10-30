@@ -1,7 +1,7 @@
 package ppl.dsl.optiml
 
 import scala.virtualization.lms.common.Base
-import scala.virtualization.lms.common.embedded.scala.ScalaOpsPkg
+import scala.virtualization.lms.common.ScalaOpsPkg
 
 trait MLInputReaderImplOps { this: Base =>
   def mlinput_read_impl(filename: Rep[String]) : Rep[Matrix[Double]]

@@ -1,6 +1,6 @@
 package ppl.dsl.optiml
 
-import scala.virtualization.lms.common.embedded.scala.ScalaOpsPkg
+import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 
 trait MatrixImplOps { this: Base =>

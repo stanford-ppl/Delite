@@ -3,7 +3,7 @@ package ppl.dsl.optiml
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.{Base}
-import scala.virtualization.lms.common.embedded.scala.DSLOpsExp
+import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.internal.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
 

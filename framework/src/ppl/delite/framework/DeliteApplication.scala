@@ -5,17 +5,21 @@ import codegen.scala.TargetScala
 import codegen.Target
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{BaseExp, Base}
-import scala.virtualization.lms.internal.{ScalaCompile, GenericCodegen}
+import scala.virtualization.lms.internal.{ScalaCompile, GenericCodegen, ScalaCodegen}
 
-trait DeliteApplication extends BaseExp /*with ScalaCompile*/ {
+trait DeliteApplication extends BaseExp with ScalaCompile {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
   def getCodeGenPkg(t: DeliteApplicationTarget) : GenericCodegen{val IR: DeliteApplication.this.type}
 
-  lazy val targets = List[DeliteApplicationTarget](
-                       new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}//,
-                       //new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
-                     )
+  lazy val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  //lazy val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
+
+  lazy val targets = List[DeliteApplicationTarget](scalaTarget /*, cTarget*/)
+
+  // TODO: refactor, this is from ScalaCompile trait
+  lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
+    getCodeGenPkg(scalaTarget).asInstanceOf[ScalaCodegen { val IR: DeliteApplication.this.type }]
                                                                    
   var args: Rep[Array[String]] = _
   
@@ -30,17 +34,15 @@ trait DeliteApplication extends BaseExp /*with ScalaCompile*/ {
     }
   }
 
-//  final def execute(args: Array[String]) {
-//    println("Delite Application Being Executed:[" + this.getClass.getSimpleName + "]")
-//    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}
-//
-//    println("******Executing the program*********")
-//    for(tgt <- targets) {
-//      globalDefs = List()
-//      val g = compile(main_m)
-//      g(args)
-//    }
-//  }
+  final def execute(args: Array[String]) {
+    println("Delite Application Being Executed:[" + this.getClass.getSimpleName + "]")
+    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}
+
+    println("******Executing the program*********")
+    globalDefs = List()
+    val g = compile(main_m)
+    g(args)
+  }
 
   def registerDSLType(name: String): DSLTypeRepresentation = nop
 

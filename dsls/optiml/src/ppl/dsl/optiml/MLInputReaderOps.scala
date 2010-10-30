@@ -2,7 +2,7 @@ package ppl.dsl.optiml
 
 import java.io.{PrintWriter}
 import ppl.delite.framework.{DSLType, DeliteApplication}
-import scala.virtualization.lms.common.embedded.scala.DSLOpsExp
+import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.Base
 
 // file format is m lines with n floats per line, each float separated by whitespaces

@@ -5,7 +5,7 @@ import scala.virtualization.lms.internal.GenericCodegen
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
-import scala.virtualization.lms.common.embedded.scala.{ScalaOpsPkgExp, ScalaOpsPkg, ScalaCodeGenPkg}
+import scala.virtualization.lms.common.{ScalaOpsPkgExp, ScalaOpsPkg, ScalaCodeGenPkg}
 
 trait OptiML extends ScalaOpsPkg with VectorOps with MatrixOps with MLInputReaderOps {
   this: DeliteApplication =>
