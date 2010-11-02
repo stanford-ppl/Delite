@@ -4,3 +4,4 @@
 *.iws
 *.idea
 *.DS_Store
+/local.properties
