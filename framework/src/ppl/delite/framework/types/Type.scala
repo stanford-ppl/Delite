@@ -3,8 +3,8 @@ package ppl.delite.framework.types
 /**
  * Type provides hooks so that we are able to generate these types to a variety of architectures
  */
-abstract class Type
+abstract class Type[T]
 
-case class IntT extends Type
-case class FloatT extends Type
-case class BoolT extends Type
+case class IntT extends Type[Int]
+case class FloatT extends Type[Float]
+case class BoolT extends Type[Boolean]

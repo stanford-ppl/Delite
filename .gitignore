@@ -1,1 +1,6 @@
+*.class
 *.iml
+*.ipr
+*.iws
+*.idea
+*.DS_Store
