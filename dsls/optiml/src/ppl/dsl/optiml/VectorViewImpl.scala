@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.direct
+package ppl.dsl.optiml
 
 class VectorViewImpl[T : ClassManifest](x: Array[T], offset: Int, str: Int, len: Int, row_vec: Boolean) extends VectorView[T]{
 
@@ -11,7 +11,9 @@ class VectorViewImpl[T : ClassManifest](x: Array[T], offset: Int, str: Int, len:
   def start = _start
   def stride = _stride
   def length = _length
-  def is_row = _is_row
+  def is_row = _is_row  
+
+  def idx(n: Int) = _start + n*_stride
 
   def apply(n: Int) : T = {
     _data(chkIndex(idx(n)))
@@ -19,6 +21,10 @@ class VectorViewImpl[T : ClassManifest](x: Array[T], offset: Int, str: Int, len:
 
   def update(n: Int, x: T) {
     _data(chkIndex(idx(n))) = x
+  }
+
+  def +=[A <: T](x: A): VectorViewImpl[T] = {
+    throw new UnsupportedOperationException("operations on views not supported yet")
   }
 
   protected def chkIndex(index: Int) = {
