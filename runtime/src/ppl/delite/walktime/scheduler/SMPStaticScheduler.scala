@@ -4,8 +4,8 @@ import ppl.delite.walktime.graph.DeliteTaskGraph
 import ppl.delite.io.Config
 import ppl.delite.walktime.graph.ops.DeliteOP
 import java.util.concurrent.locks.{Condition, Lock, ReentrantLock}
-import ppl.delite.walktime.codegen.{SingleOPExecutable, DeliteExecutable}
 import java.util.{HashMap, ArrayDeque}
+import ppl.delite.walktime.codegen.{ExecutableGenerator, SingleOPExecutable, DeliteExecutable}
 
 /**
  * Author: Kevin J. Brown
@@ -59,7 +59,7 @@ final class SMPStaticScheduler {
   private def scheduleOne(op: DeliteOP) {
     if (op.isDataParallel) {
       //split op across all available threads
-      for (proc <- procs) proc.add(op)
+      for (proc <- procs) proc.add(op) //TODO: should probably create new objects here
     }
     else {
       //look for best place to put this op (simple nearest-neighbor clustering clustering)
@@ -69,6 +69,7 @@ final class SMPStaticScheduler {
       while (i < numThreads && notDone) {
         if (deps.contains(procs(i).peekLast)) {
           procs(i).add(op)
+          op.scheduledResource = i
           notDone = false
         }
         i += 1
@@ -76,6 +77,7 @@ final class SMPStaticScheduler {
       //else submit op to next thread in the rotation (round-robin)
       if (notDone) {
         procs(nextThread).add(op)
+        op.scheduledResource = nextThread
         nextThread = (nextThread + 1) % numThreads
       }
     }
@@ -104,9 +106,13 @@ final class SMPStaticScheduler {
 
   private def processScheduledWork: Array[ArrayDeque[DeliteExecutable]] = {
     val queues = new Array[ArrayDeque[DeliteExecutable]](numThreads)
-    for (i <- 0 until numThreads) queues(i) = new ArrayDeque[DeliteExecutable]
     //generate executable(s) for all the ops in each proc
-    createExecutables(procs, queues)
+    val executables = ExecutableGenerator.makeExecutables(procs)
+
+    for (i <- 0 until numThreads) {
+      queues(i) = new ArrayDeque[DeliteExecutable]
+      queues(i).add(executables(i))
+    }
     queues
   }
 
@@ -114,6 +120,7 @@ final class SMPStaticScheduler {
     new StaticSchedule(queues)
   }
 
+  /*
   //TODO: these helper methods are hacks used until I add code generation with fusion
   //TODO: should refactor this out of scheduler and into codegen
   private def createExecutables(opQueues: Array[ArrayDeque[DeliteOP]], workQueues: Array[ArrayDeque[DeliteExecutable]]) {
@@ -148,5 +155,6 @@ final class SMPStaticScheduler {
       workQueue.add(work)
     }
   }
+  */
 
 }

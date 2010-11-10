@@ -19,6 +19,6 @@ abstract class OP_Reduce[A] extends DeliteOP {
 
   def func: (A,A) => A
 
-  def task = in => println("OP_Reduce")
+  def task = "println"
 
 }

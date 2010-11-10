@@ -22,6 +22,6 @@ abstract class OP_Map[A,B] extends DeliteOP {
   def func: A => B
 
   //TOOD: still need to decide how chunking is executed in the kernel model (how much is on the codegen side, how much on the runtime side)
-  def task = in => println("OP_Map")
+  def task = "println"
 
 }

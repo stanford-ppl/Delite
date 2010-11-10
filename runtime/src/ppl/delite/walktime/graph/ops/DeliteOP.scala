@@ -13,12 +13,19 @@ import ppl.delite.walktime.graph.DeliteTaskGraph
 
 abstract class DeliteOP {
 
-  //TODO: really want a reference to a kernel here (change type signature when that's more concrete)
-  def task : Seq[Any] => Any
+  /**
+   * these methods should be instantiated from parsing the Delite Execution Graph input
+   */
+  def task : String
+
+  def outputType: String
 
   def getDependencies : Seq[DeliteOP]
 
   def getConsumers : Seq[DeliteOP]
+
+  //this is a subset of getDependencies and contains the inputs in the order required to call the task
+  def getInputs : Seq[DeliteOP]
 
   def nested : DeliteTaskGraph
 
@@ -28,6 +35,9 @@ abstract class DeliteOP {
 
   def isDataParallel : Boolean
 
+  /**
+   * these methods/state are used for scheduling
+   */
   var isSchedulable = false
 
   var isScheduled = false
@@ -40,4 +50,12 @@ abstract class DeliteOP {
     if (free) isSchedulable = true
   }
 
+  /**
+   * these methods/state are used for code generation
+   */
+  var scheduledResource = -1
+
+  def id: Int = {
+    System.identityHashCode(this)
+  }
 }

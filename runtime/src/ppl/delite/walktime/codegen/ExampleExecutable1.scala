@@ -127,6 +127,6 @@ object ExampleExecutable1 extends DeliteExecutable {
   //ignore everything below
   def kernel1_run(arg0: Int): Data[Int] = null
 
-  def kernel2_run(arg0: Data[Int]): Int = null
+  def kernel2_run(arg0: Data[Int]): Int = 0
 
 }

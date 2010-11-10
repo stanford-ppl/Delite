@@ -9,11 +9,15 @@ package ppl.delite.walktime.graph.ops
  * Stanford University
  */
 
-class TestOP(str: String)(deps: TestOP*) extends DeliteOP {
+class TestOP(kernel: String)(deps: TestOP*) extends DeliteOP {
 
-  def task = in => println(str)
+  def task = kernel
 
   def getDependencies = deps
+
+  def getInputs = Seq()
+
+  def outputType = "Unit"
 
   def getConsumers = consumerList
   private var consumerList: Seq[TestOP] = Seq()
