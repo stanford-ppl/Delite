@@ -1,14 +1,21 @@
-package ppl.dsl.optiml.direct
+package ppl.dsl.optiml
 
 object VectorImpl {
 
 }
 
-private class VectorImpl[T: ClassManifest](row_vec: Boolean, len: Int) extends Vector[T] {
+/**
+ * This is the actual class that gets instantiated in the generated code. Ops corresponding to public operations
+ * here must have CodeGen methods defined by the DSL on them.
+ *
+ * Alternatively, everything in this class could be lifted, and we could generate a concrete class to be instantiated
+ * in the generated code.
+ */
+class VectorImpl[T: ClassManifest](len: Int, isRow: Boolean) extends Vector[T] {
   import VectorImpl._
 
   protected var _length = len
-  protected var _is_row = row_vec
+  protected var _is_row = isRow
   protected var _data: Array[T] = new Array[T](_length)
 
   def length = _length
@@ -22,13 +29,13 @@ private class VectorImpl[T: ClassManifest](row_vec: Boolean, len: Int) extends V
     _data(index) = x
   }
 
-  def +=[A <: T](x: A): Vector[T] = {
+  def +=[A <: T](x: A): VectorImpl[T] = {
     ensureExtra(1)
     _data(_length) = x
     _length += 1
     this
   }
-
+  
   protected def ensureExtra(extra: Int) {
     if (_data.length - _length < extra) {
       realloc(_length + extra)
