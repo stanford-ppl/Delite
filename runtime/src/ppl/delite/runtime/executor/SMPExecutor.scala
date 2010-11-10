@@ -23,7 +23,7 @@ class SMPExecutor {
     println("Executor initialized")
     threadPool.submitAll(schedule)
     //TODO: we need a hook to return
-    
+    Thread.sleep(5000)
     println("Executor exiting")
   }
 

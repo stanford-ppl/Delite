@@ -53,6 +53,9 @@ object ExecutableGenerator {
     //the sync methods/objects
     addSync(syncList, out)
 
+    //an accessor method for the object
+    addAccessor(out)
+
     //the footer
     out.append('}')
     out.append('\n')
@@ -184,6 +187,7 @@ object ExecutableGenerator {
 
     //the footer
     out.append('}')
+    out.append('\n')
   }
 
   private def getSym(op: DeliteOP): String = {
@@ -194,24 +198,26 @@ object ExecutableGenerator {
     "Result"+op.id
   }
 
+  private def addAccessor(out: StringBuilder) {
+    out.append("def self = this\n")
+  }
+
   private def compile(sources: Array[String]) = {
     val classLoader = ScalaCompile.compile(sources)
-    val classes = new Array[DeliteExecutable](sources.length)
-    for (i <- 0 until classes.length) {
+    val objects = new Array[DeliteExecutable](sources.length)
+    for (i <- 0 until objects.length) {
       val cls = classLoader.loadClass("Executable"+i)
-      classes(i) = null
+      objects(i) = cls.getMethod("self").invoke(null).asInstanceOf[DeliteExecutable] //retrieve the singleton instance
     }
-    classes
+    objects
   }
 
   //for debugging
-  private def printSource(sources: Array[String]) = {
+  private def printSource(sources: Array[String]) {
     for (i <- 0 until sources.length) {
       print(sources(i))
       print("\n /*********/ \n \n")
     }
-    exit(-1)
-    new Array[DeliteExecutable](0)
   }
 
 }
