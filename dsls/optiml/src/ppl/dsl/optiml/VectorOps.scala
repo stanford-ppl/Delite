@@ -18,7 +18,7 @@ trait VectorOps extends DSLType with Variables {
 
   implicit def repVecToRepVecOps[A](x: Rep[Vector[A]]) = new vecRepCls(x)
   implicit def vecToRepVecOps[A](x: Vector[A]) = new vecRepCls(x)
-  implicit def varToRepVecOps[A](x: Var[Vector[A]]) : vecRepCls[A]
+  implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) : vecRepCls[A]
 
   // could convert to infix, but apply doesn't work with it anyways yet
   class vecRepCls[A](x: Rep[Vector[A]]) {
@@ -61,7 +61,7 @@ trait VectorOps extends DSLType with Variables {
 }
 
 trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: VectorImplOps =>
-  implicit def varToRepVecOps[A](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
+  implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
   // implemented via method on real data structure
   case class VectorApply[A](x: Exp[Vector[A]], n: Exp[Int]) extends Def[A]

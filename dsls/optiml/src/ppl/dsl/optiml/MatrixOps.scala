@@ -17,7 +17,7 @@ trait MatrixOps extends DSLType with Variables {
   }
 
   implicit def matRepArith[A](x: Rep[Matrix[A]]) = new matRepCls(x)
-  implicit def varToRepMatOps[A](x: Var[Matrix[A]]) : matRepCls[A]
+  implicit def varToRepMatOps[A:Manifest](x: Var[Matrix[A]]) : matRepCls[A]
 
   // could convert to infix, but apply doesn't work with it anyways yet
   class matRepCls[A](x: Rep[Matrix[A]]) {
@@ -56,7 +56,7 @@ trait MatrixOps extends DSLType with Variables {
 
 trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: MatrixImplOps =>
 //trait MatrixOpsRepExp extends MatrixOps with MatrixImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp with VariablesExp {
-  implicit def varToRepMatOps[A](x: Var[Matrix[A]]) = new matRepCls(readVar(x))
+  implicit def varToRepMatOps[A:Manifest](x: Var[Matrix[A]]) = new matRepCls(readVar(x))
 
   // implemented via method on real data structure
   case class MatrixApply1[A](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[Vector[A]]
