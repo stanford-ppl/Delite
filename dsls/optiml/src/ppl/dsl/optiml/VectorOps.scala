@@ -3,9 +3,8 @@ package ppl.dsl.optiml
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import scala.virtualization.lms.common.DSLOpsExp
-import scala.virtualization.lms.internal.ScalaGenBase
-import scala.virtualization.lms.common.{VariablesExp, Variables}
+import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.common._
 
 trait Vector[T]
 
@@ -60,7 +59,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_new[A : Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: VectorImplOps =>
+trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with RangeOpsExp with FunctionsExp with FractionalOpsExp with NumericOpsExp { this: VectorImplOps =>
   implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
   // implemented via method on real data structure
@@ -84,7 +83,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: Ve
     extends DSLOp(reifyEffects(vector_minus_impl[A](x,y)))
 
   case class VectorDivide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A])
-    extends DSLOp(reifyEffects(vector_divide_impl[A](x,y)))
+    extends DSLMap[A,A,Vector](x, reifyEffects(vector_new[A](x.length,x.is_row)), reifyEffects(range_until(0,x.length)), doLambda[A,A](a=>a/y))
+  //case class VectorDivide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A])
+  //  extends DSLOp(reifyEffects(vector_divide_impl[A](x,y)))
 
   case class VectorOuter[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
     extends DSLOp(reifyEffects(vector_outer_impl[A](x,y)))
@@ -148,6 +149,23 @@ trait ScalaGenVectorOps extends ScalaGenBase {
     case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
     case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
     case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
+    case VectorPlusEquals(x,y) => emitValDef(sym, quote(x) + " += " + quote(y))
+
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+
+trait CudaGenVectorOps extends CudaGenBase {
+  val IR: VectorOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    // these are the ops that call through to the underlying real data structure
+    case va@VectorApply(x, n) => emitValDef(va.mA.toString, sym, quote(x) + ".get(" + quote(n) + ")")
+    case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + ".set(" + quote(n) + ", " + quote(y) + ")")
+    case VectorLength(x)    => emitValDef("Int", sym, quote(x) + ".length")
+    case VectorIsRow(x)     => emitValDef("Bool", sym, quote(x) + ".is_row")
     case VectorPlusEquals(x,y) => emitValDef(sym, quote(x) + " += " + quote(y))
 
     case _ => super.emitNode(sym, rhs)

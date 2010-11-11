@@ -1,6 +1,7 @@
 package ppl.delite.framework
 
 import codegen.c.TargetC
+import codegen.cuda.TargetCuda
 import codegen.scala.TargetScala
 import codegen.Target
 import java.io.PrintWriter
@@ -14,8 +15,9 @@ trait DeliteApplication extends BaseExp with ScalaCompile {
 
   lazy val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
   //lazy val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  lazy val cudaTarget = new TargetCuda{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
-  lazy val targets = List[DeliteApplicationTarget](scalaTarget /*, cTarget*/)
+  lazy val targets = List[DeliteApplicationTarget](scalaTarget, cudaTarget /*, cTarget*/)
 
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
