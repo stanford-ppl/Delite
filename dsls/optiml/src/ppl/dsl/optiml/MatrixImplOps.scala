@@ -7,7 +7,7 @@ trait MatrixImplOps { this: Base =>
   def matrix_new_impl[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]]
 
   def matrix_plus_impl[A:Manifest:Numeric](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) : Rep[Matrix[A]]
-  def matrix_plusequals_impl[A](m: Rep[Matrix[A]], v: Rep[Vector[A]]) : Rep[Matrix[A]]
+  def matrix_plusequals_impl[A:Manifest](m: Rep[Matrix[A]], v: Rep[Vector[A]]) : Rep[Matrix[A]]
   def matrix_pprint_impl[A:Manifest](m: Rep[Matrix[A]]) : Rep[Unit]
 }
 
@@ -45,7 +45,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   def matrix_new_impl[A](numRows: Rep[Int], numCols: Rep[Int])(implicit mA: Manifest[A]) =
     External[Matrix[A]]("new " + base + ".MatrixImpl[" + mA + "](%s,%s)", List(numRows, numCols))
 
-  def matrix_plusequals_impl[A](m: Rep[Matrix[A]], v: Rep[Vector[A]]) = m.insertRow(m.numRows, v)
+  def matrix_plusequals_impl[A:Manifest](m: Rep[Matrix[A]], v: Rep[Vector[A]]) = m.insertRow(m.numRows, v)
 
   def matrix_plus_impl[A:Manifest:Numeric](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])  = zipWith[A,A](m1, m2, (a,b) => a+b)
 

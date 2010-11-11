@@ -60,6 +60,11 @@ object GDA extends DeliteApplication with OptiMLExp {
 
     /* calculate covariance matrix sigma */
     /* x(i) is a row vector for us, while it is defined a column vector in the formula */
+
+    // An example statement that generates error when manifest is added
+    // Error : reflect is not an enclosing class
+    val ddd = (x(0)-mu0) + (x(0)-mu0)
+
     var sigma = Matrix.zeros(n,n)
     for (i <- 0 until m){
       if (y(i) == false){
