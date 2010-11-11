@@ -16,24 +16,23 @@ trait VectorOps extends DSLType with Variables {
     def zeros(len: Rep[Int]) : Rep[Vector[Double]] = vector_obj_zeros(len)
   }
 
-  implicit def repVecToRepVecOps[A](x: Rep[Vector[A]]) = new vecRepCls(x)
-  implicit def vecToRepVecOps[A](x: Vector[A]) = new vecRepCls(x)
+  implicit def repVecToRepVecOps[A:Manifest](x: Rep[Vector[A]]) = new vecRepCls(x)
+  implicit def vecToRepVecOps[A:Manifest](x: Vector[A]) = new vecRepCls(x)
   implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) : vecRepCls[A]
 
   // could convert to infix, but apply doesn't work with it anyways yet
-  class vecRepCls[A](x: Rep[Vector[A]]) {
-    def apply(n: Rep[Int])(implicit mA: Manifest[A]) = vector_apply(x, n)
+  class vecRepCls[A](x: Rep[Vector[A]])(implicit mA: Manifest[A]) {
+    def apply(n: Rep[Int]) = vector_apply(x, n)
     def update(n: Rep[Int], y: Rep[A]) = vector_update(x,n,y)
     def length = vector_length(x)
-    def toBoolean(conv: Rep[A] => Rep[Boolean])(implicit mA: Manifest[A]) = vector_toboolean(x, conv)
-    
-    def +(y: Rep[Vector[A]])(implicit mA: Manifest[A], n: Numeric[A]) = vector_plus(x,y)
-    def -(y: Rep[Vector[A]])(implicit mA: Manifest[A], n: Numeric[A]) = vector_minus(x,y)
-    def *(y: Rep[Vector[A]])(implicit mA: Manifest[A], n: Numeric[A]) = vector_times(x,y)
-    def /(y: Rep[A])(implicit mA: Manifest[A], f: Fractional[A]) = vector_divide(x,y)
-    def outer(y: Rep[Vector[A]])(implicit mA: Manifest[A], n: Numeric[A]) = vector_outer(x,y)
-    def trans(implicit mA: Manifest[A])  = vector_trans(x)
-    def pprint(implicit mA: Manifest[A]) = vector_pprint(x)
+    def toBoolean(implicit conv: Rep[A] => Rep[Boolean]) = vector_toboolean(x)
+    def +(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_plus(x,y)
+    def -(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_minus(x,y)
+    def *(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_times(x,y)
+    def /(y: Rep[A])(implicit f: Fractional[A]) = vector_divide(x,y)
+    def outer(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_outer(x,y)
+    def trans  = vector_trans(x)
+    def pprint = vector_pprint(x)
     def is_row = vector_is_row(x)
  
     def +=(y: Rep[A]) = vector_plusequals(x,y)
@@ -48,7 +47,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_length[A](x: Rep[Vector[A]]): Rep[Int]
   def vector_plusequals[A](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
   def vector_is_row[A](x: Rep[Vector[A]]): Rep[Boolean]
-  def vector_toboolean[A](x: Rep[Vector[A]], conv: Rep[A] => Rep[Boolean])(implicit mA: Manifest[A]): Rep[Vector[Boolean]]
+  def vector_toboolean[A](x: Rep[Vector[A]])(implicit conv: Rep[A] => Rep[Boolean], mA: Manifest[A]): Rep[Vector[Boolean]]
   def vector_plus[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_minus[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_times[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
@@ -75,7 +74,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: Ve
   case class VectorObjectZeros(len: Exp[Int])
     extends DSLOp(reifyEffects(vector_obj_zeros_impl(len)))
 
-  case class VectorToBoolean[A](x: Exp[Vector[A]], conv: Exp[A] => Exp[Boolean])(implicit val mA: Manifest[A])
+  case class VectorToBoolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], val mA: Manifest[A])
     extends DSLOp(reifyEffects(vector_toboolean_impl[A](x,conv)))
 
   case class VectorPlus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
@@ -110,7 +109,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: Ve
   def vector_is_row[A](x: Exp[Vector[A]]) = VectorIsRow(x)
 
   def vector_obj_zeros(len: Exp[Int]) = reflectEffect(VectorObjectZeros(len))
-  def vector_toboolean[A](x: Exp[Vector[A]], conv: Exp[A] => Exp[Boolean])(implicit mA: Manifest[A]) = VectorToBoolean(x, conv)
+  def vector_toboolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], mA: Manifest[A]) = VectorToBoolean(x)
   def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(x, y)
   def vector_minus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(x, y)
   def vector_times[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(x, y)
