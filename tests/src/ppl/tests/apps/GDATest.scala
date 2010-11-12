@@ -14,7 +14,7 @@ object TestPreGeneratedCode {
   }
 }
 
-object TestGenCode {
+object TestCompileCode {
   def main(args: Array[String]) {
     val a = Array("dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1x.dat",
                   "dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1y.dat")
@@ -22,5 +22,16 @@ object TestGenCode {
     //this dynamically re-generates and compiles
     import ppl.dsl.optiml.apps.gda.GDA
     GDA.execute(a)
+  }
+}
+
+object TestGenCode {
+  def main(args: Array[String]) {
+    val a = Array("dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1x.dat",
+                  "dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1y.dat")
+
+    //this just generates
+    import ppl.dsl.optiml.apps.gda.GDA
+    GDA.main(a)
   }
 }
