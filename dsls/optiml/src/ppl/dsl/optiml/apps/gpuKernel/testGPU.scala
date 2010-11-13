@@ -5,14 +5,38 @@ import ppl.delite.framework.DeliteApplication
 object testGPU extends DeliteApplication with OptiMLExp {
 
   def main() = {
-    val a = Vector[Double](100)
+
+    val a = Const(3)
+    val b = Const(5)
+    val cc = a + b
+    val c = cc + Const(1)
+
+    val dd = doLambda{y:Rep[Int] =>
+        if(y == 0) {
+        println(cc)
+      }
+        c * y
+    }
+    
+    val d = doLambda{x:Rep[Int] =>
+      val q = x + Const(10)
+      val r = c - x
+      val s = r * q + dd(r)
+
+      s
+    }
+
+
+    println(d)
+
+    //val a = Vector[Double](100)
     //val b = Vector[Double](100)
 
-    val b = a(0)
-    val c = a / b
+    //val b = a(0)
+    //val c = a / b
     //val c = a + b
     //val d = a - b
-    println(c)
+    //println(c)
     //println(d)
 
     /*
