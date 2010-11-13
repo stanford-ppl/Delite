@@ -65,7 +65,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: Ve
 
   // implemented via method on real data structure
   case class VectorApply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) extends Def[A]
-  case class VectorUpdate[A:Manifest](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]) extends Def[Unit]
+  case class VectorUpdate[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
   case class VectorLength[A:Manifest](x: Exp[Vector[A]]) extends Def[Int]
   case class VectorPlusEquals[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) extends Def[Vector[A]]
   case class VectorIsRow[A:Manifest](x: Exp[Vector[A]]) extends Def[Boolean]

@@ -7,7 +7,7 @@ import java.io.PrintWriter
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{ScalaCompile, GenericCodegen, ScalaCodegen}
 
-trait DeliteApplication extends BaseExp with ScalaCompile {
+trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
   def getCodeGenPkg(t: DeliteApplicationTarget) : GenericCodegen{val IR: DeliteApplication.this.type}
@@ -20,7 +20,7 @@ trait DeliteApplication extends BaseExp with ScalaCompile {
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
     getCodeGenPkg(scalaTarget).asInstanceOf[ScalaCodegen { val IR: DeliteApplication.this.type }]
-                                                                   
+
   var args: Rep[Array[String]] = _
   
   final def main(args: Array[String]) {
@@ -28,10 +28,14 @@ trait DeliteApplication extends BaseExp with ScalaCompile {
     val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}
 
     println("******Generating the program*********")
-    for(tgt <- targets) {
-      globalDefs = List()
-      getCodeGenPkg(tgt).emitSource(main_m, "Application", new PrintWriter(System.out))
-    }
+    val kernelGenerators: List[GenericCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
+    val deliteTgGenerator : GenericCodegen{ val IR: DeliteApplication.this.type } = new DeliteGenTaskGraph { val IR : DeliteApplication.this.type = DeliteApplication.this; val generators = kernelGenerators }
+
+    deliteTgGenerator.emitSource(main_m, "Application", new PrintWriter(System.out))
+    //for(tgt <- targets) {
+    //  globalDefs = List()
+    //  getCodeGenPkg(tgt).emitSource(main_m, "Application", new PrintWriter(System.out))
+    //}
   }
 
   final def execute(args: Array[String]) {
