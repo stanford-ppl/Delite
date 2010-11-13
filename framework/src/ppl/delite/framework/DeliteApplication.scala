@@ -1,10 +1,12 @@
 package ppl.delite.framework
 
 import codegen.c.TargetC
+import codegen.delite.generators.DeliteGenTaskGraph
 import codegen.delite.TargetDelite
 import codegen.scala.TargetScala
 import codegen.Target
 import java.io.PrintWriter
+import ops.DeliteOpsExp
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{ScalaCompile, GenericCodegen, ScalaCodegen}
 
@@ -28,7 +30,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   
   final def main(args: Array[String]) {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
-    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}
+    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}                                   
 
     println("******Generating the program*********")
     val kernelGenerators: List[GenericCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
