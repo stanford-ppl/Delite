@@ -5,6 +5,6 @@ package ppl.delite.framework.types
  */
 abstract class Type[T]
 
-case class IntT extends Type[Int]
-case class FloatT extends Type[Float]
-case class BoolT extends Type[Boolean]
+case class IntT() extends Type[Int]
+case class FloatT() extends Type[Float]
+case class BoolT() extends Type[Boolean]

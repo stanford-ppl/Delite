@@ -8,4 +8,5 @@
 *target
 *lib_managed
 project/boot
-
+delite-gen
+embedding-gen

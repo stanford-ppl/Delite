@@ -85,7 +85,7 @@ final class SMPStaticScheduler {
   }
 
   private def enqueueRoots(graph: DeliteTaskGraph) {
-    val end = graph.root
+    val end = graph.result
     traverse(end)
   }
 

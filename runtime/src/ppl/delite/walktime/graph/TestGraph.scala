@@ -23,5 +23,5 @@ class TestGraph extends DeliteTaskGraph {
   val node8 = new TestOP(base+"2d")(node7)
   val node9 = new TestOP(base+"3")(node4,node8)
 
-  def root = node9
+  _result = node9
 }

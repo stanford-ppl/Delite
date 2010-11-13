@@ -11,10 +11,10 @@ trait VectorImplOps { this: Base =>
   def vector_minus_impl[A:Manifest:Numeric](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Vector[A]]
   def vector_divide_impl[A:Manifest:Fractional](v1: Rep[Vector[A]], y: Rep[A]) : Rep[Vector[A]]
   def vector_outer_impl[A:Manifest:Numeric](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Matrix[A]]
-  def vector_pprint_impl[A](v: Rep[Vector[A]]) : Rep[Unit]
+  def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]) : Rep[Unit]
 
   def vector_trans_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], vA: Manifest[Vector[A]]) : Rep[Vector[A]]
-  def vector_toboolean_impl[A](v: Rep[Vector[A]], conv: Rep[A] => Rep[Boolean]) : Rep[Vector[Boolean]]
+  def vector_toboolean_impl[A:Manifest](v: Rep[Vector[A]], conv: Rep[A] => Rep[Boolean]) : Rep[Vector[Boolean]]
 
   def vector_new_impl[A:Manifest](length: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 
@@ -28,7 +28,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   ///////////////
   // helpers
 
-  private def map[A,B:Manifest](v: Rep[Vector[A]], f: Rep[A] => Rep[B]) = {
+  private def map[A:Manifest,B:Manifest](v: Rep[Vector[A]], f: Rep[A] => Rep[B]) = {
     val out = Vector[B](v.length, v.is_row)
     for (i <- 0 until v.length){
       out(i) = f(v(i))
@@ -36,7 +36,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     out
   }
 
-  private def zipWith[A,B:Manifest](v1: Rep[Vector[A]], v2: Rep[Vector[A]], f: (Rep[A],Rep[A]) => Rep[B]) = {
+  private def zipWith[A:Manifest,B:Manifest](v1: Rep[Vector[A]], v2: Rep[Vector[A]], f: (Rep[A],Rep[A]) => Rep[B]) = {
     val out = Vector[B](v1.length, v1.is_row)
     for (i <- 0 until v1.length){
       out(i) = f(v1(i), v2(i))
@@ -68,7 +68,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     out
   }
 
-  def vector_pprint_impl[A](v: Rep[Vector[A]]) = {
+  def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]) = {
     if (v.is_row){
       print("[ ")
       for (i <- 0 until v.length){
@@ -93,7 +93,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     out  
   }
 
-  def vector_toboolean_impl[A](v: Rep[Vector[A]], conv: Rep[A] => Rep[Boolean]) = map[A,Boolean](v, conv)
+  def vector_toboolean_impl[A:Manifest](v: Rep[Vector[A]], conv: Rep[A] => Rep[Boolean]) = map[A,Boolean](v, conv)
 
   def vector_new_impl[A](length: Rep[Int], is_row: Rep[Boolean])(implicit mA: Manifest[A])
     = External[Vector[A]]("new " + base + ".VectorImpl[" + mA + "](%s,%s)", List(length, is_row))

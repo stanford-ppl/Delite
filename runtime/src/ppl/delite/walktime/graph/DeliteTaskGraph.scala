@@ -1,6 +1,7 @@
 package ppl.delite.walktime.graph
 
 import ops.DeliteOP
+import collection.mutable.ArrayBuffer
 
 /**
  * Author: Kevin J. Brown
@@ -11,8 +12,17 @@ import ops.DeliteOP
  * Stanford University
  */
 
-abstract class DeliteTaskGraph {
+class DeliteTaskGraph {
 
-  def root : DeliteOP
+
+  val ops = new ArrayBuffer[DeliteOP]
+  var _result:DeliteOP = _
+
+  def addOP(kernelId: String, opType: DeliteOP)(deps: DeliteOP*) = {
+    
+  }
+
+  
+  def result : DeliteOP = _result
 
 }
