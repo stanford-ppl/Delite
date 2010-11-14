@@ -20,7 +20,7 @@ trait VectorOps extends DSLType with Variables {
   implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) : vecRepCls[A]
 
   // could convert to infix, but apply doesn't work with it anyways yet
-  class vecRepCls[A:Manifest](x: Rep[Vector[A]]) {
+  class vecRepCls[A](x: Rep[Vector[A]])(implicit mA: Manifest[A]) {
     def apply(n: Rep[Int]) = vector_apply(x, n)
     def update(n: Rep[Int], y: Rep[A]) = vector_update(x,n,y)
     def length = vector_length(x)
