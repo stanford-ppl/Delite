@@ -2,7 +2,6 @@ package ppl.delite
 
 import io.Config
 import runtime.executor._
-import walktime.graph.ops.{TestOP, DeliteOP}
 import walktime.graph.{TestGraph, DeliteTaskGraph}
 import walktime.scheduler._
 
@@ -16,7 +15,6 @@ import walktime.scheduler._
  */
 
 object Delite {
-
 
   private def printArgs(args: Array[String]) {
     if (args.length != 0) {

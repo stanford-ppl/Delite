@@ -11,17 +11,31 @@ import ppl.delite.data.Data
  * Stanford University
  */
 
-abstract class OP_Map[A,B] extends DeliteOP {
+class OP_Map extends DeliteOP {
 
   final def isDataParallel = true
 
-  val coll: Data[A]
-
-  val out: Data[B]
-
-  def func: A => B
-
-  //TOOD: still need to decide how chunking is executed in the kernel model (how much is on the codegen side, how much on the runtime side)
   def task = "println"
+
+  def outputType = "Unit"
+
+  /**
+   * Since the semantics of the map are to mutate the elements in a collection all consumer (true) dependency edges already exist in graph
+   * Chunking needs to add additional anti-dependency edges for each chunk to ensure all chunks are complete
+   * Chunks require same dependency & input lists
+   */
+  def chunk: OP_Map = {
+    val r = new OP_Map
+    r.dependencyList = dependencyList //lists are immutable so can be shared
+    r.inputList = inputList
+    r.consumerList = consumerList
+    for (dep <- getDependencies) dep.addConsumer(r)
+    for (c <- getConsumers) c.addDependency(r)
+    r
+  }
+
+  def nested = null
+  def cost = 0
+  def size = 0
 
 }

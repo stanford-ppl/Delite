@@ -44,3 +44,15 @@ object TestKernel2d {
 object TestKernel3 {
   def apply() = println("op3")
 }
+
+object TestKernelBegin {
+  def apply() = println("begin")
+}
+
+object TestKernelMap {
+  def apply() = println("map")  
+}
+
+object TestKernelEnd {
+  def apply() = println("end")
+}

@@ -9,28 +9,32 @@ package ppl.delite.walktime.graph.ops
  * Stanford University
  */
 
-class TestOP(kernel: String)(deps: TestOP*) extends DeliteOP {
+class TestOP(kernel: String)(deps: DeliteOP*) extends DeliteOP {
 
   def task = kernel
 
-  def getDependencies = deps
-
-  def getInputs = Seq()
-
   def outputType = "Unit"
-
-  def getConsumers = consumerList
-  private var consumerList: Seq[TestOP] = Seq()
-  def addConsumer(c: TestOP) { consumerList ++= Seq(c) }
 
   //initialize
   for (dep <- deps) {
-    dep.addConsumer(this)  
+    this.addDependency(dep)
+    dep.addConsumer(this)
   }
 
   def nested = null
   def cost = 0
   def size = 0
   def isDataParallel = false
+
+}
+
+class TestMap(kernel: String)(deps: DeliteOP*) extends OP_Map {
+
+  override def task = kernel
+
+  for (dep <- deps) {
+    this.addDependency(dep)
+    dep.addConsumer(this)
+  }
 
 }
