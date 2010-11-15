@@ -6,38 +6,46 @@ object testGPU extends DeliteApplication with OptiMLExp {
 
   def main() = {
 
+
+    /*
     val a = Const(3)
     val b = Const(5)
     val cc = a + b
     val c = cc + Const(1)
 
-    val dd = doLambda{y:Rep[Int] =>
-        if(y == 0) {
+    //def myFunc(x:Rep[Int], y:Rep[Int]) : Rep[Int] = {x + y}
+
+    val ddd = doLambda{ y: Rep[(Int,Int)] => c }
+    
+    val dd = doLambda{ y:Rep[Int] =>
+        if(cc == 0) {
         println(cc)
       }
-        c * y
+        c * c
     }
     
     val d = doLambda{x:Rep[Int] =>
       val q = x + Const(10)
       val r = c - x
-      val s = r * q + dd(r)
-
+      val s = r * q + dd(q) // + myFunc(r,r)
       s
     }
 
 
-    println(d)
+    println(d(3))
+    */
 
-    //val a = Vector[Double](100)
-    //val b = Vector[Double](100)
+    /*
+    val a = Vector[Double](100)
+    val b = Vector[Double](100)
+    val c = a + b
+    println(c)
+    */
 
-    //val b = a(0)
-    //val c = a / b
-    //val c = a + b
-    //val d = a - b
-    //println(c)
-    //println(d)
+    val a = Vector[Double](100)
+    val b = a(0)
+    val c = a / b
+    println(c)
 
     /*
     val myFunc = (x:Rep[Double]) => if(x>0.0) true else false
