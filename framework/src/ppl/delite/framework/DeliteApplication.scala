@@ -2,13 +2,13 @@ package ppl.delite.framework
 
 import codegen.c.TargetC
 import codegen.delite.generators.DeliteGenTaskGraph
-import codegen.delite.TargetDelite
+import codegen.delite.{DeliteCodegen, TargetDelite}
 import codegen.scala.TargetScala
 import codegen.Target
-import java.io.PrintWriter
 import ops.DeliteOpsExp
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{ScalaCompile, GenericCodegen, ScalaCodegen}
+import java.io.{FileWriter, File, PrintWriter}
 
 trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
@@ -17,10 +17,10 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
   lazy val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
-  lazy val deliteTarget = new TargetDelite{val IR: DeliteApplication.this.type = DeliteApplication.this}  
 
   // TODO: this should be handled via command line options
-  lazy val targets = List[DeliteApplicationTarget](scalaTarget , cTarget, deliteTarget)
+  lazy val targets = List[DeliteApplicationTarget](scalaTarget , cTarget)
+  val kernelGenerators: List[GenericCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
 
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
@@ -33,10 +33,17 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}                                   
 
     println("******Generating the program*********")
-    val kernelGenerators: List[GenericCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
-    val deliteTgGenerator : GenericCodegen{ val IR: DeliteApplication.this.type } = new DeliteGenTaskGraph { val IR : DeliteApplication.this.type = DeliteApplication.this; val generators = kernelGenerators }
 
-    deliteTgGenerator.emitSource(main_m, "Application", new PrintWriter(System.out))
+    val deliteGenerator = new DeliteGenTaskGraph { val IR : DeliteApplication.this.type = DeliteApplication.this; val generators = kernelGenerators }
+
+    //clean up the code gen directory
+    Util.deleteDirectory(new File(Config.build_dir))
+
+    val deliteDegFile = new PrintWriter(new FileWriter(Config.deg_filename))
+
+    deliteGenerator.emitSource(main_m, "Application", deliteDegFile)
+    deliteGenerator.reset
+    deliteGenerator.emitSource(main_m, "Application", new PrintWriter(System.out))
     //for(tgt <- targets) {
     //  globalDefs = List()
     //  getCodeGenPkg(tgt).emitSource(main_m, "Application", new PrintWriter(System.out))
