@@ -61,11 +61,11 @@ trait VectorOps extends DSLType with Variables {
   def vector_new[A:Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with RangeOpsExp with FunctionsExp with FractionalOpsExp  { this: VectorImplOps =>
+trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with RangeOpsExp with FunctionsExp with FractionalOpsExp with NumericOpsExp { this: VectorImplOps =>
   implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
   // implemented via method on real data structure
-  case class VectorApply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) extends Def[A]
+  case class VectorApply[A](x: Exp[Vector[A]], n: Exp[Int]) extends Def[A]
   case class VectorUpdate[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
   case class VectorLength[A:Manifest](x: Exp[Vector[A]]) extends Def[Int]
   case class VectorPlusEquals[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) extends Def[Vector[A]]
@@ -82,7 +82,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Range
     extends DSLOp(reifyEffects(vector_plus_impl[A](x,y)))
 
   case class VectorMinus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DSLOp(reifyEffects(vector_minus_impl[A](x,y)))
+    extends DSLZipwith[A,A,A,Vector](x,y,reifyEffects(vector_new[A](x.length,x.is_row)), reifyEffects(range_until(0,x.length)), doLambda2[A,A,A]((a1,a2) => a1-a2))
+  //case class VectorMinus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
+  //  extends DSLOp(reifyEffects(vector_minus_impl[A](x,y)))
 
   case class VectorDivide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A])
     extends DSLMap[A,A,Vector](x, reifyEffects(vector_new[A](x.length,x.is_row)), reifyEffects(range_until(0,x.length)), doLambda[A,A](a=>a/y))
@@ -164,10 +166,10 @@ trait CudaGenVectorOps extends CudaGenBase {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case va@VectorApply(x, n) => emitValDef(x.Type.toString, sym, quote(x) + ".get(" + quote(n) + ")")
-    case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + ".set(" + quote(n) + ", " + quote(y) + ")")
-    case VectorLength(x)    => emitValDef("Int", sym, quote(x) + ".length")
-    case VectorIsRow(x)     => emitValDef("Bool", sym, quote(x) + ".is_row")
+    case VectorApply(x, n) => emitValDef(CudaInnerType(x.Type.toString), sym, quote(x) + ".apply(" + quote(n) + ")")
+    case VectorUpdate(x,n,y) => stream.println(addTab() + "%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
+    case VectorLength(x)    => emitValDef("int", sym, quote(x) + ".length")
+    case VectorIsRow(x)     => emitValDef("bool", sym, quote(x) + ".is_row")
     case VectorPlusEquals(x,y) => emitValDef(sym, quote(x) + " += " + quote(y))
 
     case _ => super.emitNode(sym, rhs)

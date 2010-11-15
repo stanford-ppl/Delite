@@ -5,7 +5,7 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
-import scala.virtualization.lms.internal.ScalaGenBase
+import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
 
 trait Matrix[T]
 
@@ -153,6 +153,23 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixApply1(x,i) => emitValDef(sym, quote(x) + "(" + quote(i) + ")")
     case MatrixApply2(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatrixUpdate(x,i,j,y)  => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
+    case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
+    case MatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
+    case MatrixInsertRow(x, pos, y)  => emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
+
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait CudaGenMatrixOps extends CudaGenBase {
+  val IR: MatrixOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    // these are the ops that call through to the underlying real data structure
+    case MatrixApply1(x,i) => emitValDef("Vector<"+CudaInnerType(x.Type.toString)+">", sym, quote(x) + ".apply(" + quote(i) + ")") // TODO: 
+    case MatrixApply2(x,i,j) => emitValDef(CudaInnerType(x.Type.toString), sym, quote(x) + ".apply(" + quote(i) + ", " + quote(j) + ")")
+    case MatrixUpdate(x,i,j,y)  => stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
     case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case MatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
     case MatrixInsertRow(x, pos, y)  => emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")

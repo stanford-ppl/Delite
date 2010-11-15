@@ -29,5 +29,5 @@ trait OptiMLCodeGenScala extends ScalaCodeGenPkg with ScalaGenVectorOps with Sca
   { val IR: DeliteApplication with OptiMLExp }
 
 
-trait OptiMLCodeGenCuda extends CudaCodeGenPkg with CudaGenVectorOps //with ScalaGenMLInputReaderOps {
+trait OptiMLCodeGenCuda extends CudaCodeGenPkg with CudaGenVectorOps with CudaGenMatrixOps //with ScalaGenMLInputReaderOps {
   { val IR: DeliteApplication with OptiMLExp }
