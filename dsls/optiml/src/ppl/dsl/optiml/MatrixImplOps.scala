@@ -19,7 +19,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   ///////////////
   // helpers
 
-  private def map[A,B:Manifest](m: Rep[Matrix[A]], f: Rep[A] => Rep[B]) = {
+  private def map[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[A] => Rep[B]) = {
     val out = Matrix[B](m.numRows, m.numCols)
     for (i <- 0 until m.numRows){
       for (j <- 0 until m.numCols){
@@ -29,7 +29,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out
   }
 
-  private def zipWith[A,B:Manifest](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], f: (Rep[A],Rep[A]) => Rep[B]) = {
+  private def zipWith[A:Manifest,B:Manifest](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], f: (Rep[A],Rep[A]) => Rep[B]) = {
     val out = Matrix[B](m1.numRows, m1.numCols)
     for (i <- 0 until m1.numRows){
       for (j <- 0 until m1.numCols){
@@ -49,7 +49,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 
   def matrix_plus_impl[A:Manifest:Numeric](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])  = zipWith[A,A](m1, m2, (a,b) => a+b)
 
-  def matrix_pprint_impl[A](m: Rep[Matrix[A]]) = {
+  def matrix_pprint_impl[A:Manifest](m: Rep[Matrix[A]]) = {
     for (i <- 0 until m.numRows){
       print("[ ")
       for (j <- 0 until m.numCols){

@@ -20,7 +20,8 @@ trait VectorOps extends DSLType with Variables {
   implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) : vecRepCls[A]
 
   // could convert to infix, but apply doesn't work with it anyways yet
-  class vecRepCls[A](x: Rep[Vector[A]])(implicit mA: Manifest[A]) {
+  class vecRepCls[A:Manifest](x: Rep[Vector[A]]) {
+
     def apply(n: Rep[Int]) = vector_apply(x, n)
     def update(n: Rep[Int], y: Rep[A]) = vector_update(x,n,y)
     def length = vector_length(x)
@@ -42,10 +43,11 @@ trait VectorOps extends DSLType with Variables {
 
   // class defs
   def vector_apply[A:Manifest](x: Rep[Vector[A]], n: Rep[Int]): Rep[A]
-  def vector_update[A](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
-  def vector_length[A](x: Rep[Vector[A]]): Rep[Int]
-  def vector_plusequals[A](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
-  def vector_is_row[A](x: Rep[Vector[A]]): Rep[Boolean]
+  def vector_update[A:Manifest](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
+  def vector_length[A:Manifest](x: Rep[Vector[A]]): Rep[Int]
+  def vector_plusequals[A:Manifest](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
+  def vector_is_row[A:Manifest](x: Rep[Vector[A]]): Rep[Boolean]
+
   def vector_toboolean[A](x: Rep[Vector[A]])(implicit conv: Rep[A] => Rep[Boolean], mA: Manifest[A]): Rep[Vector[Boolean]]
   def vector_plus[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_minus[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
@@ -56,24 +58,24 @@ trait VectorOps extends DSLType with Variables {
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
 
   // impl defs
-  def vector_new[A : Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
+  def vector_new[A:Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with RangeOpsExp with FunctionsExp with FractionalOpsExp with NumericOpsExp { this: VectorImplOps =>
+trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with RangeOpsExp with FunctionsExp with FractionalOpsExp  { this: VectorImplOps =>
   implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
   // implemented via method on real data structure
-  case class VectorApply[A](x: Exp[Vector[A]], n: Exp[Int])(implicit val mA: Manifest[A]) extends Def[A]
-  case class VectorUpdate[A](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]) extends Def[Unit]
-  case class VectorLength[A](x: Exp[Vector[A]]) extends Def[Int]
-  case class VectorPlusEquals[A](x: Exp[Vector[A]], y: Exp[A]) extends Def[Vector[A]]
-  case class VectorIsRow[A](x: Exp[Vector[A]]) extends Def[Boolean]
+  case class VectorApply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) extends Def[A]
+  case class VectorUpdate[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
+  case class VectorLength[A:Manifest](x: Exp[Vector[A]]) extends Def[Int]
+  case class VectorPlusEquals[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) extends Def[Vector[A]]
+  case class VectorIsRow[A:Manifest](x: Exp[Vector[A]]) extends Def[Boolean]
 
   // implemented via kernel embedding
   case class VectorObjectZeros(len: Exp[Int])
     extends DSLOp(reifyEffects(vector_obj_zeros_impl(len)))
 
-  case class VectorToBoolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], val mA: Manifest[A])
+  case class VectorToBoolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], mA: Manifest[A])
     extends DSLOp(reifyEffects(vector_toboolean_impl[A](x,conv)))
 
   case class VectorPlus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
@@ -99,15 +101,15 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Range
   case class VectorTimes[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
       extends Def[Vector[A]]
 
-  case class VectorNew[A : Manifest](len: Exp[Int], is_row: Exp[Boolean])
+  case class VectorNew[A:Manifest](len: Exp[Int], is_row: Exp[Boolean])
     extends DSLOp(reifyEffects(vector_new_impl[A](len, is_row)))
 
 
   def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(x, n)
-  def vector_update[A](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectEffect(VectorUpdate(x,n,y))
-  def vector_length[A](x: Exp[Vector[A]]) = VectorLength(x)
-  def vector_plusequals[A](x: Exp[Vector[A]], y: Exp[A]) = reflectEffect(VectorPlusEquals(x, y))
-  def vector_is_row[A](x: Exp[Vector[A]]) = VectorIsRow(x)
+  def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectEffect(VectorUpdate(x,n,y))
+  def vector_length[A:Manifest](x: Exp[Vector[A]]) = VectorLength(x)
+  def vector_plusequals[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) = reflectEffect(VectorPlusEquals(x, y))
+  def vector_is_row[A:Manifest](x: Exp[Vector[A]]) = VectorIsRow(x)
 
   def vector_obj_zeros(len: Exp[Int]) = reflectEffect(VectorObjectZeros(len))
   def vector_toboolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], mA: Manifest[A]) = VectorToBoolean(x)
@@ -119,7 +121,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Range
   def vector_outer[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorOuter(x, y)
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
 
-  def vector_new[A : Manifest](len: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorNew[A](len, is_row))
+  def vector_new[A:Manifest](len: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorNew[A](len, is_row))
 }
 
 /**
@@ -162,7 +164,7 @@ trait CudaGenVectorOps extends CudaGenBase {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case va@VectorApply(x, n) => emitValDef(va.mA.toString, sym, quote(x) + ".get(" + quote(n) + ")")
+    case va@VectorApply(x, n) => emitValDef(x.Type.toString, sym, quote(x) + ".get(" + quote(n) + ")")
     case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + ".set(" + quote(n) + ", " + quote(y) + ")")
     case VectorLength(x)    => emitValDef("Int", sym, quote(x) + ".length")
     case VectorIsRow(x)     => emitValDef("Bool", sym, quote(x) + ".is_row")

@@ -36,18 +36,19 @@ trait MatrixOps extends DSLType with Variables {
   }
 
   // class defs
-  def matrix_apply1[A](x: Rep[Matrix[A]], i: Rep[Int]): Rep[Vector[A]]
-  def matrix_apply2[A](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
-  def matrix_update[A](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int], y: Rep[A]): Rep[Unit]
+  def matrix_apply1[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int]): Rep[Vector[A]]
+  def matrix_apply2[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
+  def matrix_update[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int], y: Rep[A]): Rep[Unit]
   def matrix_plus[A:Manifest:Numeric](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
-  def matrix_times[A](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
-  def matrix_inverse[A](x: Rep[Matrix[A]]): Rep[Matrix[A]]
-  def matrix_transpose[A](x: Rep[Matrix[A]]): Rep[Matrix[A]]
-  def matrix_numrows[A](x: Rep[Matrix[A]]): Rep[Int]
-  def matrix_numcols[A](x: Rep[Matrix[A]]): Rep[Int]
+  def matrix_times[A:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_inverse[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_transpose[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_numrows[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
+  def matrix_numcols[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
   def matrix_pprint[A:Manifest](x: Rep[Matrix[A]]): Rep[Unit]
   def matrix_plusequals[A:Manifest](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Matrix[A]]
-  def matrix_insertrow[A](x: Rep[Matrix[A]], pos: Rep[Int], v: Rep[Vector[A]]) : Rep[Matrix[A]]
+  def matrix_insertrow[A:Manifest](x: Rep[Matrix[A]], pos: Rep[Int], v: Rep[Vector[A]]) : Rep[Matrix[A]]
+
 
   // impl defs
   def matrix_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]]
@@ -59,18 +60,18 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
   implicit def varToRepMatOps[A:Manifest](x: Var[Matrix[A]]) = new matRepCls(readVar(x))
 
   // implemented via method on real data structure
-  case class MatrixApply1[A](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[Vector[A]]
-  case class MatrixApply2[A](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) extends Def[A]
-  case class MatrixUpdate[A](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) extends Def[Unit]
-  case class MatrixNumRows[A](x: Exp[Matrix[A]]) extends Def[Int]
-  case class MatrixNumCols[A](x: Exp[Matrix[A]]) extends Def[Int]
-  case class MatrixInsertRow[A](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) extends Def[Matrix[A]]
+  case class MatrixApply1[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[Vector[A]]
+  case class MatrixApply2[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) extends Def[A]
+  case class MatrixUpdate[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) extends Def[Unit]
+  case class MatrixNumRows[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
+  case class MatrixNumCols[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
+  case class MatrixInsertRow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) extends Def[Matrix[A]]
 
   // implemented via kernel embedding
   case class MatrixPlus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends DSLOp(reifyEffects(matrix_plus_impl[A](x,y)))
 
-  case class MatrixPPrint[A](x: Exp[Matrix[A]])
+  case class MatrixPPrint[A:Manifest](x: Exp[Matrix[A]])
     extends DSLOp(reifyEffects(matrix_pprint_impl[A](x)))
 
   case class MatrixPlusEquals[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]])
@@ -79,26 +80,26 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
   case class MatrixNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int])
     extends DSLOp(reifyEffects(matrix_new_impl[A](numRows,numCols)))
 
-  case class MatrixTimes[A](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) extends Def[Matrix[A]]
-  case class MatrixInverse[A](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
-  case class MatrixTranspose[A](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
+  case class MatrixTimes[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) extends Def[Matrix[A]]
+  case class MatrixInverse[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
+  case class MatrixTranspose[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
 
   // if x is an m x n MatrixOps, Identity(x) is an n x n square MatrixOps with ones on the diagonal and zeroes elsewhere
-  case class MatrixIdentity[A](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
+  case class MatrixIdentity[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
 
-  def matrix_apply1[A](x: Exp[Matrix[A]], i: Exp[Int]) = MatrixApply1[A](x,i)
-  def matrix_apply2[A](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) = MatrixApply2[A](x,i,j)
-  def matrix_update[A](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) = reflectEffect(MatrixUpdate[A](x,i,j,y))
-  def matrix_numrows[A](x: Exp[Matrix[A]]) = MatrixNumRows(x)
-  def matrix_numcols[A](x: Exp[Matrix[A]]) = MatrixNumCols(x)
-  def matrix_insertrow[A](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectEffect(MatrixInsertRow(x,pos,y))
+  def matrix_apply1[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = MatrixApply1[A](x,i)
+  def matrix_apply2[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) = MatrixApply2[A](x,i,j)
+  def matrix_update[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) = reflectEffect(MatrixUpdate[A](x,i,j,y))
+  def matrix_numrows[A:Manifest](x: Exp[Matrix[A]]) = MatrixNumRows(x)
+  def matrix_numcols[A:Manifest](x: Exp[Matrix[A]]) = MatrixNumCols(x)
+  def matrix_insertrow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectEffect(MatrixInsertRow(x,pos,y))
 
   def matrix_plusequals[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = reflectEffect(MatrixPlusEquals(x,y))
   def matrix_plus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixPlus(x, y)
-  def matrix_times[A](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixTimes(x, y)
-  def matrix_inverse[A](x: Exp[Matrix[A]]) = MatrixInverse(x)
-  def matrix_transpose[A](x: Exp[Matrix[A]]) = MatrixTranspose(x)
-  def matrix_pprint[A](x: Exp[Matrix[A]]) = reflectEffect(MatrixPPrint(x))
+  def matrix_times[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixTimes(x, y)
+  def matrix_inverse[A:Manifest](x: Exp[Matrix[A]]) = MatrixInverse(x)
+  def matrix_transpose[A:Manifest](x: Exp[Matrix[A]]) = MatrixTranspose(x)
+  def matrix_pprint[A:Manifest](x: Exp[Matrix[A]]) = reflectEffect(MatrixPPrint(x))
   def matrix_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixNew[A](numRows,numCols))  
 }
 
@@ -114,7 +115,7 @@ trait MatrixOpsExpOpt extends MatrixOpsExp { this: MatrixImplOps =>
     case _ => super.matrix_plus(x, y)
   }
 
-  override def matrix_times[A](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
+  override def matrix_times[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
     // X^-1*X = X*X^-1 = I (if X is non-singular)
     case (Def(MatrixInverse(a)), b) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])
     case (b, Def(MatrixInverse(a))) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])
@@ -127,13 +128,13 @@ trait MatrixOpsExpOpt extends MatrixOpsExp { this: MatrixImplOps =>
     case _ => super.matrix_times(x, y)
   }
 
-  override def matrix_inverse[A](x: Exp[Matrix[A]]) = x match {
+  override def matrix_inverse[A:Manifest](x: Exp[Matrix[A]]) = x match {
     // (X^-1)^-1 = X (if X is non-singular)
     case (Def(MatrixInverse(a))) => a.asInstanceOf[Exp[Matrix[A]]]
     case _ => super.matrix_inverse(x)
   }
 
-  override def matrix_transpose[A](x: Exp[Matrix[A]]) = x match {
+  override def matrix_transpose[A:Manifest](x: Exp[Matrix[A]]) = x match {
     // (X^T)^T = X
     case (Def(MatrixTranspose(a))) => a.asInstanceOf[Exp[Matrix[A]]]
     case _ => super.matrix_transpose(x)
