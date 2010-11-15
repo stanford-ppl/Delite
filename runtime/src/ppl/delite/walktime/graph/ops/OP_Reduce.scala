@@ -11,14 +11,29 @@ import ppl.delite.data.Data
  * Stanford University
  */
 
-abstract class OP_Reduce[A] extends DeliteOP {
+class OP_Reduce extends DeliteOP {
 
   final def isDataParallel = true
 
-  val coll: Data[A]
-
-  def func: (A,A) => A
-
   def task = "println"
+
+  def outputType = "String" //TODO: this a placeholder; probably want Manifests
+
+  /**
+   * Since the semantics of Reduce are to return an A, all chunks are necessarily complete before the final A can be returned
+   * Therefore additional chunks do not need edges to consumers
+   * Chunks require same dependency & input lists
+   */
+  def chunk: OP_Reduce = {
+    val r = new OP_Reduce
+    r.dependencyList = dependencyList //lists are immutable so can be shared
+    r.inputList = inputList
+    for (dep <- getDependencies) dep.addConsumer(r)
+    r
+  }
+
+  def nested = null
+  def cost = 0
+  def size = 0
 
 }

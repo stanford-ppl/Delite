@@ -20,12 +20,30 @@ abstract class DeliteOP {
 
   def outputType: String
 
-  def getDependencies : Seq[DeliteOP]
+  protected var dependencyList: List[DeliteOP] = Nil
 
-  def getConsumers : Seq[DeliteOP]
+  final def getDependencies : Seq[DeliteOP] = dependencyList
+
+  final def addDependency(dep: DeliteOP) {
+    dependencyList = dep :: dependencyList
+  }
+
+  protected var consumerList: List[DeliteOP] = Nil
+
+  final def getConsumers : Seq[DeliteOP] = consumerList
+
+  final def addConsumer(c: DeliteOP) {
+    consumerList = c :: consumerList
+  }
 
   //this is a subset of getDependencies and contains the inputs in the order required to call the task
-  def getInputs : Seq[DeliteOP]
+  protected var inputList: List[DeliteOP] = Nil
+
+  final def getInputs : Seq[DeliteOP] = inputList
+
+  final def addInput(input: DeliteOP) {
+    inputList = input :: inputList
+  }
 
   def nested : DeliteTaskGraph
 
@@ -33,6 +51,8 @@ abstract class DeliteOP {
 
   def size: Int
 
+  //TODO: more versatile/useful to match on the specific type of OP rather than simply dataParallel/sequential buckets?
+  //TODO: should revisit this when we have more complex dataParallel patterns
   def isDataParallel : Boolean
 
   /**
@@ -55,7 +75,10 @@ abstract class DeliteOP {
    */
   var scheduledResource = -1
 
+  //TODO: need an implementation that *guarantees* a unique ID for every OP object in the system
+  //TODO: could be assigned while parsing DEG input (e.g., related to kernel ID)
   def id: Int = {
     System.identityHashCode(this)
   }
+
 }

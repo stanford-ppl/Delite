@@ -1,6 +1,6 @@
 package ppl.delite.walktime.graph
 
-import ops.TestOP
+import ops.{TestMap, TestOP}
 
 /**
  * Author: Kevin J. Brown
@@ -25,3 +25,14 @@ class TestGraph extends DeliteTaskGraph {
 
   _result = node9
 }
+
+/* Simple Data Parallel Test
+class TestGraph extends DeliteTaskGraph {
+  val base = "ppl.delite.walktime.graph.TestKernel"
+  val node1 = new TestOP(base+"Begin")()
+  val node2 = new TestMap(base+"Map")(node1)
+  val node3 = new TestOP(base+"End")(node2)
+
+  _result = node3
+}
+*/

@@ -2,10 +2,9 @@ package ppl.delite.walktime.scheduler
 
 import ppl.delite.walktime.graph.DeliteTaskGraph
 import ppl.delite.io.Config
-import ppl.delite.walktime.graph.ops.DeliteOP
-import java.util.concurrent.locks.{Condition, Lock, ReentrantLock}
-import java.util.{HashMap, ArrayDeque}
-import ppl.delite.walktime.codegen.{ExecutableGenerator, SingleOPExecutable, DeliteExecutable}
+import java.util.ArrayDeque
+import ppl.delite.walktime.codegen.{ExecutableGenerator, DeliteExecutable}
+import ppl.delite.walktime.graph.ops._
 
 /**
  * Author: Kevin J. Brown
@@ -58,11 +57,10 @@ final class SMPStaticScheduler {
 
   private def scheduleOne(op: DeliteOP) {
     if (op.isDataParallel) {
-      //split op across all available threads
-      for (proc <- procs) proc.add(op) //TODO: should probably create new objects here
+      split(op) //split and schedule op across all threads
     }
     else {
-      //look for best place to put this op (simple nearest-neighbor clustering clustering)
+      //look for best place to put this op (simple nearest-neighbor clustering)
       var i = 0
       var notDone = true
       val deps = op.getDependencies
@@ -71,6 +69,7 @@ final class SMPStaticScheduler {
           procs(i).add(op)
           op.scheduledResource = i
           notDone = false
+          if (nextThread == i) nextThread = (nextThread + 1) % numThreads
         }
         i += 1
       }
@@ -80,8 +79,8 @@ final class SMPStaticScheduler {
         op.scheduledResource = nextThread
         nextThread = (nextThread + 1) % numThreads
       }
+      op.isScheduled = true
     }
-    op.isScheduled = true
   }
 
   private def enqueueRoots(graph: DeliteTaskGraph) {
@@ -104,6 +103,35 @@ final class SMPStaticScheduler {
     }
   }
 
+  private def split(op: DeliteOP) {
+    op match { //NOTE: match on OP type since different data parallel ops can have different semantics / scheduling implications
+      case map: OP_Map => {
+        procs(0).add(map)
+        map.isScheduled = true
+        map.scheduledResource = 0
+        for (i <- 1 until procs.length) {
+          val chunk = map.chunk
+          procs(i).add(chunk)
+          chunk.isScheduled = true
+          chunk.scheduledResource = i
+        }
+      }
+      case reduce: OP_Reduce => {
+        procs(0).add(reduce)
+        reduce.isScheduled = true
+        reduce.scheduledResource = 0
+        for (i <- 1 until procs.length) {
+          val chunk = reduce.chunk
+          procs(i).add(chunk)
+          chunk.isScheduled = true
+          chunk.scheduledResource = i
+        }
+      }
+      case other => error("OP type not recognized: " + other.getClass.getSimpleName)
+    }
+  }
+
+
   private def processScheduledWork: Array[ArrayDeque[DeliteExecutable]] = {
     val queues = new Array[ArrayDeque[DeliteExecutable]](numThreads)
     //generate executable(s) for all the ops in each proc
@@ -119,42 +147,5 @@ final class SMPStaticScheduler {
   private def createStaticSchedule(queues: Array[ArrayDeque[DeliteExecutable]]): StaticSchedule = {
     new StaticSchedule(queues)
   }
-
-  /*
-  //TODO: these helper methods are hacks used until I add code generation with fusion
-  //TODO: should refactor this out of scheduler and into codegen
-  private def createExecutables(opQueues: Array[ArrayDeque[DeliteOP]], workQueues: Array[ArrayDeque[DeliteExecutable]]) {
-    val table = new HashMap[DeliteOP, SingleOPExecutable[_]]
-    //create all executables
-    for (i <- 0 until numThreads) {
-      val iter = opQueues(i).iterator
-      while (iter.hasNext) {
-        val op = iter.next
-        val work = new SingleOPExecutable[Any](op.task)
-        table.put(op, work)
-      }
-    }
-    //add dependencies
-    for (i <- 0 until numThreads) {
-      val iter = opQueues(i).iterator
-      while (iter.hasNext) {
-        val op = iter.next
-        val work = table.get(op)
-        for (dep <- op.getDependencies) {
-          work.addDependency(table.get(dep))
-        }
-        workQueues(i).add(work)
-      }
-    }
-  }
-
-  private def addExecutable(opQueue: ArrayDeque[DeliteOP], workQueue: ArrayDeque[DeliteExecutable]) {
-    for (i <- 0 until opQueue.size) {
-      val op = opQueue.poll
-      val work = new SingleOPExecutable[Any](op.task)
-      workQueue.add(work)
-    }
-  }
-  */
 
 }

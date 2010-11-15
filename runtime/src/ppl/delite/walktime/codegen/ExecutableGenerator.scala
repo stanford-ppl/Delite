@@ -1,9 +1,7 @@
 package ppl.delite.walktime.codegen
 
-import java.io.{StringWriter, PrintWriter}
 import ppl.delite.walktime.graph.ops.DeliteOP
-import reflect.ClassManifest
-import java.util.{ArrayList, HashMap, ArrayDeque}
+import java.util.{ArrayList, ArrayDeque}
 
 /**
  * Author: Kevin J. Brown
@@ -33,7 +31,7 @@ object ExecutableGenerator {
     for (i <- 0 until schedule.length) {
       sources(i) = makeExecutable(schedule(i), i)
     }
-    //printSource(sources)
+    //printSource(sources) //TODO: this could be a debug flag
     compile(sources)
   }
 
