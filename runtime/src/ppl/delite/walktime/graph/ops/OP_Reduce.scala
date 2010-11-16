@@ -28,7 +28,7 @@ class OP_Reduce[T: Manifest](func: String) extends DeliteOP {
   def outputType = manifest[T].toString
 
   /**
-   * Since the semantics of Reduce are to return an A, all chunks are necessarily complete before the final A can be returned
+   * Since the semantics of Reduce are to return a T, all chunks are necessarily complete before the final T can be returned
    * Therefore additional chunks do not need edges to consumers
    * Chunks require same dependency & input lists
    */

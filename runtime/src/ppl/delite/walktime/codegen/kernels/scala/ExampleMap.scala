@@ -22,15 +22,12 @@ object ExampleMap {
     free0(bound0)-free1
   }
 
-  private val chunkIdx: Int = 3
-  private val numChunks: Int = 4
-
   //this is the kernel
   //note: the types are probably some DSL type rather than Array
-  def apply(out: Array[Double], in: Array[Int], free0: Array[Double], free1: Double) = {
+  def apply(out: Array[Double], in: Array[Int], free0: Array[Double], free1: Double) {
     val size = in.length //for a DSL type extending DeliteCollection this should really be "in.size"
-    var i = size*chunkIdx/numChunks
-    val end = size*(chunkIdx+1)/numChunks
+    var i = size*2/4 //size*chunkIdx/numChunks
+    val end = size*3/4 //size*(chunkIdx+1)/numChunks
     while (i < end) {
       out(i) = func(in(i), free0, free1)
       i += 1

@@ -12,28 +12,31 @@ import ppl.delite.walktime.graph.ops.OP_Map
  * Stanford University
  */
 
+/**
+ * Creates a chunk for OP_Map and generates an executable kernel for that chunk
+ * The generated kernels are designed to run in parallel on multiple threads in an SMP system
+ * This implementation of Map is optimized for a DSL collection that is backed by an Array
+ */
+
 object Map_SMP_Array_Generator {
 
-  def makeChunk(op: OP_Map, idx: Int, numChunks: Int): OP_Map = {
-    val chunk = if (idx == 0) op else op.chunk
-    ScalaCompile.addSource(makeKernel(chunk, idx, numChunks))
+  def makeChunk(op: OP_Map, chunkIdx: Int, numChunks: Int): OP_Map = {
+    val chunk = if (chunkIdx == 0) op else op.chunk
+    ScalaCompile.addSource(makeKernel(chunk, chunkIdx, numChunks))
     chunk
   }
 
-  private def makeKernel(op: OP_Map, idx: Int, total: Int) = {
+  private def makeKernel(op: OP_Map, chunkIdx: Int, numChunks: Int) = {
     val out = new StringBuilder
 
     //update the op with this kernel
-    updateOP(op, idx)
+    updateOP(op, chunkIdx)
 
     //the header
-    writeHeader(out, op, idx)
-
-    //the state
-    writeState(out, idx, total)
+    writeHeader(out, op, chunkIdx)
 
     //the kernel
-    writeKernel(out, op)
+    writeKernel(out, op, chunkIdx, numChunks)
 
     //the footer
     out.append('}')
@@ -52,17 +55,7 @@ object Map_SMP_Array_Generator {
     out.append(" {\n")
   }
 
-  private def writeState(out: StringBuilder, idx: Int, total: Int) {
-    out.append("private val chunkIdx: Int = ")
-    out.append(idx)
-    out.append('\n')
-
-    out.append("private val numChunks: Int = ")
-    out.append(total)
-    out.append('\n')
-  }
-
-  private def writeKernel(out: StringBuilder, op: OP_Map) {
+  private def writeKernel(out: StringBuilder, op: OP_Map, chunkIdx: Int, numChunks: Int) {
     out.append("def apply(")
     val inputs = op.getInputs.iterator
     var inIdx = 0
@@ -76,10 +69,18 @@ object Map_SMP_Array_Generator {
       out.append(": ")
       out.append(inputs.next.outputType)
     }
-    out.append(") = {\n")
+    out.append(") {\n")
     out.append("val size = in1.size\n") //assume the input to the map is the second input to the op and assume a "size" method exists
-    out.append("var idx = size*chunkIdx/numChunks\n")
-    out.append("val end = size*(chunkIdx+1)/numChunks\n")
+    out.append("var idx = size*") //var idx = size*chunkIdx/numChunks
+    out.append(chunkIdx)
+    out.append('/')
+    out.append(numChunks)
+    out.append('\n')
+    out.append("val end = size*") //vl end = size*(chunkIdx+1)/numChunks
+    out.append(chunkIdx+1)
+    out.append('/')
+    out.append(numChunks)
+    out.append('\n')
     out.append("while (idx < end) {\n")
     out.append("in0(idx) = ") //assume the output of the map is the first input to the op
     out.append(op.function)

@@ -5,7 +5,7 @@ import ppl.delite.io.Config
 import java.util.ArrayDeque
 import ppl.delite.walktime.codegen.{ExecutableGenerator, DeliteExecutable}
 import ppl.delite.walktime.graph.ops._
-import ppl.delite.walktime.codegen.kernels.scala.Map_SMP_Array_Generator
+import ppl.delite.walktime.codegen.kernels.scala.{Reduce_SMP_Array_Generator, Map_SMP_Array_Generator}
 
 /**
  * Author: Kevin J. Brown
@@ -116,14 +116,14 @@ final class SMPStaticScheduler {
           chunk.scheduledResource = i
         }
       }
-      /* case reduce: OP_Reduce => {
+      case reduce: OP_Reduce[_] => {
         for (i <- 0 until numThreads) {
           val chunk = Reduce_SMP_Array_Generator.makeChunk(reduce, i, numThreads)
           procs(i).add(chunk)
           chunk.isScheduled = true
           chunk.scheduledResource = i
         }
-      } */
+      }
       case other => error("OP type not recognized: " + other.getClass.getSimpleName)
     }
   }

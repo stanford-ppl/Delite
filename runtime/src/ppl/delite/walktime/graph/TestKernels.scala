@@ -53,6 +53,14 @@ object TestKernelMap {
   def apply(e: Int) = e + 1
 }
 
+object TestKernelReduce {
+  def apply(left: Int, right: Int) = left + right
+}
+
+object TestKernelPrint {
+  def apply(result: Int) { println(result) }
+}
+
 object TestKernelEnd {
   def apply(out: Array[Int]) = {
     for (e <- out) print(e)

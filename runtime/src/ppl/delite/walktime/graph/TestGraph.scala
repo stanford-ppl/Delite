@@ -11,8 +11,10 @@ import ops._
  * Stanford University
  */
 
+class TestGraph extends MapGraph //test choice
+
 //Scheduling & Optimized Execution Test
-/* class TestGraph extends DeliteTaskGraph {
+class SingleGraph extends DeliteTaskGraph {
   val base = "ppl.delite.walktime.graph.TestKernel"
   val node1 = new TestOP(base+"1a")()
   val node2 = new TestOP(base+"1b")(node1)
@@ -25,14 +27,24 @@ import ops._
   val node9 = new TestOP(base+"3")(node4,node8)
 
   _result = node9
-} */
+}
 
-//Simple Data Parallel Test
-class TestGraph extends DeliteTaskGraph {
+//Simple Map Test
+class MapGraph extends DeliteTaskGraph {
   val base = "ppl.delite.walktime.graph.TestKernel"
   val node1 = new TestSingle[Array[Int]](base+"Begin")()()
   val node2 = new TestMap(base+"Map")(node1)(node1, node1) //write output to input
   val node3 = new TestSingle[Unit](base+"End")(node1,node2)(node1)
+
+  _result = node3
+}
+
+//Simple Reduce Test
+class ReduceGraph extends DeliteTaskGraph {
+  val base = "ppl.delite.walktime.graph.TestKernel"
+  val node1 = new TestSingle[Array[Int]](base+"Begin")()()
+  val node2 = new TestReduce[Int](base+"Reduce")(node1)(node1)
+  val node3 = new TestSingle[Unit](base+"Print")(node2)(node2)
 
   _result = node3
 }
