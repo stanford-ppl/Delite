@@ -11,11 +11,19 @@ import ppl.delite.data.Data
  * Stanford University
  */
 
-class OP_Map extends DeliteOP {
+class OP_Map(func: String) extends DeliteOP {
 
   final def isDataParallel = true
 
-  def task = "println"
+  def task = kernelName
+
+  private var kernelName: String = ""
+
+  def setKernelName(name: String) {
+    kernelName = name
+  }
+
+  def function = func
 
   def outputType = "Unit"
 
@@ -25,7 +33,7 @@ class OP_Map extends DeliteOP {
    * Chunks require same dependency & input lists
    */
   def chunk: OP_Map = {
-    val r = new OP_Map
+    val r = new OP_Map(function)
     r.dependencyList = dependencyList //lists are immutable so can be shared
     r.inputList = inputList
     r.consumerList = consumerList

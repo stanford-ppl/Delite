@@ -27,12 +27,10 @@ import java.util.{ArrayList, ArrayDeque}
 object ExecutableGenerator {
 
   def makeExecutables(schedule: Array[ArrayDeque[DeliteOP]]): Array[DeliteExecutable] = {
-    val sources = new Array[String](schedule.length)
     for (i <- 0 until schedule.length) {
-      sources(i) = makeExecutable(schedule(i), i)
+      ScalaCompile.addSource(makeExecutable(schedule(i), i))
     }
-    //printSource(sources) //TODO: this could be a debug flag
-    compile(sources)
+    compile(schedule.length)
   }
 
   private def makeExecutable(resource: ArrayDeque[DeliteOP], location: Int) = {
@@ -175,8 +173,8 @@ object ExecutableGenerator {
     //the getter
     out.append("def get : ")
     out.append(op.outputType)
-    out.append(" = if (notReady) block; _result\n")
-    out.append("def block { lock.lock; try { while(notReady) { condition.await } } finally { lock.unlock } }\n")
+    out.append(" = { if (notReady) block; _result }\n")
+    out.append("def block { lock.lock; try { while (notReady) { condition.await } } finally { lock.unlock } }\n")
 
     //the setter
     out.append("def set(result : ")
@@ -200,22 +198,15 @@ object ExecutableGenerator {
     out.append("def self = this\n")
   }
 
-  private def compile(sources: Array[String]) = {
-    val classLoader = ScalaCompile.compile(sources)
-    val objects = new Array[DeliteExecutable](sources.length)
-    for (i <- 0 until objects.length) {
+  private def compile(numSources: Int) = {
+    //ScalaCompile.printSources
+    val classLoader = ScalaCompile.compile
+    val objects = new Array[DeliteExecutable](numSources)
+    for (i <- 0 until numSources) {
       val cls = classLoader.loadClass("Executable"+i)
       objects(i) = cls.getMethod("self").invoke(null).asInstanceOf[DeliteExecutable] //retrieve the singleton instance
     }
     objects
-  }
-
-  //for debugging
-  private def printSource(sources: Array[String]) {
-    for (i <- 0 until sources.length) {
-      print(sources(i))
-      print("\n /*********/ \n \n")
-    }
   }
 
 }

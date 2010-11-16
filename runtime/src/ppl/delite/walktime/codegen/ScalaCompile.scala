@@ -6,13 +6,16 @@ import scala.tools.nsc.reporters._
 import scala.tools.nsc.io._
 import scala.tools.nsc.interpreter.AbstractFileClassLoader
 import java.io.PrintWriter
+import collection.mutable.ArrayBuffer
 
 object ScalaCompile {
 
-  var compiler: Global = _
-  var reporter: ConsoleReporter = _
+  private var compiler: Global = _
+  private var reporter: ConsoleReporter = _
 
-  def setupCompiler() = {
+  private val sourceBuffer = new ArrayBuffer[String]
+
+  private def setupCompiler() = {
 
     val settings = new Settings()
 
@@ -28,7 +31,17 @@ object ScalaCompile {
     compiler = new Global(settings, reporter)
   }
 
-  def compile(sources: Array[String]) = {
+  def addSource(source: String) {
+    sourceBuffer += source
+  }
+
+  def compile: ClassLoader = {
+    val sources = sourceBuffer.toArray
+    sourceBuffer.clear
+    compile(sources)
+  }
+
+  def compile(sources: Array[String]): ClassLoader = {
     if (this.compiler eq null)
       setupCompiler()
 
@@ -56,4 +69,12 @@ object ScalaCompile {
     val loader = new AbstractFileClassLoader(fileSystem, this.getClass.getClassLoader)
     loader
   }
+
+  def printSources {
+    for (i <- 0 until sourceBuffer.length) {
+      print(sourceBuffer(i))
+      print("\n /*********/ \n \n")
+    }
+  }
+
 }

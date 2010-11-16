@@ -46,13 +46,16 @@ object TestKernel3 {
 }
 
 object TestKernelBegin {
-  def apply() = println("begin")
+  def apply() = Array[Int](0,1,2,3,4,5,6,7,8)
 }
 
 object TestKernelMap {
-  def apply() = println("map")  
+  def apply(e: Int) = e + 1
 }
 
 object TestKernelEnd {
-  def apply() = println("end")
+  def apply(out: Array[Int]) = {
+    for (e <- out) print(e)
+    print('\n')
+  }
 }

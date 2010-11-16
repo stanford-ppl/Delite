@@ -25,11 +25,10 @@ object ExampleMap {
   private val chunkIdx: Int = 3
   private val numChunks: Int = 4
 
-  //TODO: should these types be "Array" or some DSL type that uses an array as its backing store?
-  //TODO: dependent on just how we decide to lift & represent DSL data structures in the Delite runtime
-  //TODO: the size of the collection and length of the array may not be the same
+  //this is the kernel
+  //note: the types are probably some DSL type rather than Array
   def apply(out: Array[Double], in: Array[Int], free0: Array[Double], free1: Double) = {
-    val size = in.length
+    val size = in.length //for a DSL type extending DeliteCollection this should really be "in.size"
     var i = size*chunkIdx/numChunks
     val end = size*(chunkIdx+1)/numChunks
     while (i < end) {

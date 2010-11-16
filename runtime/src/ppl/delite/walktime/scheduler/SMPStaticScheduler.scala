@@ -5,6 +5,7 @@ import ppl.delite.io.Config
 import java.util.ArrayDeque
 import ppl.delite.walktime.codegen.{ExecutableGenerator, DeliteExecutable}
 import ppl.delite.walktime.graph.ops._
+import ppl.delite.walktime.codegen.kernels.scala.Map_SMP_Array_Generator
 
 /**
  * Author: Kevin J. Brown
@@ -89,8 +90,10 @@ final class SMPStaticScheduler {
   }
 
   private def traverse(op: DeliteOP) {
-    op.processSchedulable
-    if (op.isSchedulable) opQueue.add(op)
+    if (!op.isSchedulable) { //not already in opQueue
+      op.processSchedulable
+      if (op.isSchedulable) opQueue.add(op)
+    }
     for (dep <- op.getDependencies) {
       traverse(dep)
     }
@@ -106,27 +109,21 @@ final class SMPStaticScheduler {
   private def split(op: DeliteOP) {
     op match { //NOTE: match on OP type since different data parallel ops can have different semantics / scheduling implications
       case map: OP_Map => {
-        procs(0).add(map)
-        map.isScheduled = true
-        map.scheduledResource = 0
-        for (i <- 1 until procs.length) {
-          val chunk = map.chunk
+        for (i <- 0 until numThreads) {
+          val chunk = Map_SMP_Array_Generator.makeChunk(map, i, numThreads)
           procs(i).add(chunk)
           chunk.isScheduled = true
           chunk.scheduledResource = i
         }
       }
-      case reduce: OP_Reduce => {
-        procs(0).add(reduce)
-        reduce.isScheduled = true
-        reduce.scheduledResource = 0
-        for (i <- 1 until procs.length) {
-          val chunk = reduce.chunk
+      /* case reduce: OP_Reduce => {
+        for (i <- 0 until numThreads) {
+          val chunk = Reduce_SMP_Array_Generator.makeChunk(reduce, i, numThreads)
           procs(i).add(chunk)
           chunk.isScheduled = true
           chunk.scheduledResource = i
         }
-      }
+      } */
       case other => error("OP type not recognized: " + other.getClass.getSimpleName)
     }
   }
