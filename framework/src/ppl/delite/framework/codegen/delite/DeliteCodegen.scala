@@ -1,11 +1,11 @@
 package ppl.delite.framework.codegen.delite
 
-import generators.DeliteGenMiscOps
+import generators.{DeliteGenTaskGraph, DeliteGenMiscOps}
 import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 
 /**
- * Notice that this is using Effects by default
+ * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
  */
 trait DeliteCodegen extends GenericNestedCodegen {
   val IR: Expressions with Effects
@@ -19,17 +19,14 @@ trait DeliteCodegen extends GenericNestedCodegen {
     val sA = mA.toString
     val sB = mB.toString
 
-    stream.println("#*****************************************\n"+
-                   "#  Emitting Delite Execution Graph        \n"+
-                   "#******************************************/")
-  
+    stream.println("{\"DEG\":{\n"+
+                   "\"version\" : 0.1,\n"+
+                   "\"nodes\": [")
+
     emitBlock(y)(stream)
     //stream.println(quote(getBlockResult(y)))
+    stream.println("{\"type\":\"EOF\"}\n]}}")
 
-
-    stream.println("#*****************************************\n"+
-                   "#  End of Delite Execution Graph                 \n"+
-                   "#*******************************************/")
 
     stream.flush
   }
@@ -52,6 +49,6 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
 }
 
-trait DeliteCodeGenPkg extends DeliteGenMiscOps
+trait DeliteCodeGenPkg extends DeliteGenTaskGraph
 
 
