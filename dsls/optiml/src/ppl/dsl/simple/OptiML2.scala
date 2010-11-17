@@ -1,18 +1,17 @@
 package ppl.dsl.simple
 
 import scala.virtualization.lms.common.{CCodeGenPkg, ScalaCodeGenPkg, ScalaOpsPkgExp}
-import scala.virtualization.lms.internal.GenericCodegen
-
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.{DeliteCodeGenPkg, TargetDelite}
+import scala.virtualization.lms.internal.{GenericNestedCodegen, GenericCodegen}
 
 trait OptiML2 extends ScalaOpsPkgExp with VectorOpsExp2 with MatrixOpsExp2 {
   this: DeliteApplication =>
 
-  def getCodeGenPkg(t: Target{val IR: OptiML2.this.type}) : GenericCodegen{val IR: OptiML2.this.type} = {
+  def getCodeGenPkg(t: Target{val IR: OptiML2.this.type}) : GenericNestedCodegen{val IR: OptiML2.this.type} = {
     t match {
       case _:TargetScala => new OptiML2CodeGenScala{val IR: OptiML2.this.type = OptiML2.this}
       case _:TargetC => new OptiML2CodeGenC{val IR: OptiML2.this.type = OptiML2.this}

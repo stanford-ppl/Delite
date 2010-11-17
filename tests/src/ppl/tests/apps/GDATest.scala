@@ -14,6 +14,18 @@ object TestPreGeneratedCode {
   }
 }
 
+object TestPreGeneratedKernels {
+  def main(args: Array[String]) {
+
+    val a = Array("dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1x.dat",
+                  "dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1y.dat")
+
+    // this is the pre-generated test
+    val prog = new generated.GDA_kernels
+    prog(a)
+  }
+}
+
 object TestCompileCode {
   def main(args: Array[String]) {
     val a = Array("dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1x.dat",
