@@ -33,27 +33,14 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   val scalaToolsSnapshots = ScalaToolsSnapshots
   val scalatest = "org.scalatest" % "scalatest" % "1.2.1-SNAPSHOT"
   
-  /**
-    * Hacks to move build directory outside of src directory. should never be checked in.
-    */
-  val deliteBuildPath = Path.fromFile("/Users/asujeeth/build/sbt/delite")
-  val deliteSrcPath = Path.fromFile("/Users/asujeeth/src/workspace/delite2/")
-  val root = Path.fromFile("/")
-  
-  override def outputPath = deliteBuildPath
-  override def managedDependencyPath = outputPath / "lib_managed"
-
-  override def compileOptions = super.compileOptions ++ compileOptions("-Xmx2g")
-
   // Define project class with default source tree layout
-  class FlatProject(info: ProjectInfo, moduleName: String, hackhack: String) extends DefaultProject(info) {
+  class FlatProject(info: ProjectInfo) extends DefaultProject(info) {
     // Source tree layout
-    override def mainScalaSourcePath = deliteSrcPath / moduleName / hackhack / "src"
-    override def mainResourcesPath = deliteSrcPath / moduleName / hackhack / "resources"
-    override def testScalaSourcePath = deliteSrcPath / moduleName / hackhack / "tests" / "src"
-    override def testResourcesPath = deliteSrcPath / moduleName / hackhack / "tests" / "resources"
-    override def outputPath = deliteBuildPath / moduleName
-    override def managedDependencyPath = outputPath / "lib_managed"
+    override def mainScalaSourcePath = "src"
+    override def mainResourcesPath = "resources"
+    
+    override def testScalaSourcePath = "tests" / "src"
+    override def testResourcesPath = "tests" / "resources"
     
     val virtualization_lms_core = "scala" % "virtualization-lms-core_2.8.x-virtualized-SNAPSHOT" % "0.1"
     
@@ -68,15 +55,13 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   }
   
   // Define projects
-  lazy val framework = project(root, "Delite Framework", new FlatProject(_, "framework",""))
-  lazy val runtime = project(root, "Delite Runtime", new FlatProject(_, "runtime",""), framework)
+  lazy val framework = project("framework", "Delite Framework", new FlatProject(_))
+  lazy val runtime = project("runtime", "Delite Runtime", new FlatProject(_))
   
-  lazy val dsls = project(root, "DSLs", new DSLs(_, "dsls"), framework)
-   
-  class DSLs(info: ProjectInfo, moduleName: String) extends DefaultProject(info) {
-    override def outputPath = deliteBuildPath / moduleName
-    override def managedDependencyPath = outputPath / "lib_managed"
-    
-    lazy val optiml = project(root, "OptiML", new FlatProject(_, "optiml", moduleName), framework)
+  lazy val dsls = project("dsls", "DSLs", new DSLs(_), framework)
+     class DSLs(info: ProjectInfo) extends DefaultProject(info) {
+    lazy val optiml = project("optiml", "OptiML", new FlatProject(_){
+      override def mainClass = Some("ppl.dsl.tests.SimpleVectorTest")
+    }, framework)
   }
 }

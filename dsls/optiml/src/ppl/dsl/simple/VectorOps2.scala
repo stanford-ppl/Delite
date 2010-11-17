@@ -4,6 +4,7 @@ import ppl.delite.framework.{DSLType, DeliteApplication}
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{Base, EffectExp, BaseExp}
 import scala.virtualization.lms.internal.{CGenBase, ScalaGenBase, Effects}
+import ppl.delite.framework.codegen.delite.DeliteCodegen
 
 
 trait Vector[T]
@@ -46,9 +47,9 @@ trait ScalaGenVectorOps2 extends ScalaGenBase {
   import IR._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case VectorObjectZeros(s) => emitValDef(sym, "println(" + quote(s) + ")")
+    case VectorObjectZeros(s) => emitValDef(sym, "Vector.Zeros(" + quote(s) + ")")
     case VectorPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
-    case VectorPPrint(a) => emitValDef(sym, "exit(" + quote(a) + ")")
+    case VectorPPrint(a) => emitValDef(sym, quote(a) + ".pprint")
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -65,5 +66,17 @@ trait CGenVectorOps2 extends CGenBase {
     case VectorPlus(v1,v2) => emitConstDef("vector", sym, quote(v1) + " + " + quote (v2))
     case VectorPPrint(v) => emitConstDef("vector", sym, quote(v) + ".pprint()")
     case _ => super.emitNode(sym, rhs)    
+  }
+}
+
+trait DeliteGenVectorOps2 extends DeliteCodegen {
+  val IR: VectorOpsExp2
+  import IR._
+
+  //code generation bit
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {    case VectorObjectZeros(s) => emitValDef(sym, "Vector.Zeros(" + quote(s) + ")")
+    case VectorPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
+    case VectorPPrint(a) => emitValDef(sym, quote(a) + ".pprint")
+    case _ => super.emitNode(sym, rhs)
   }
 }

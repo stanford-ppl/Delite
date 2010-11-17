@@ -47,25 +47,31 @@ object testGPU extends DeliteApplication with OptiMLExp {
     println(a)
     */
 
+    
+    val bb = Vector[Double](100)
+    val a1 = Vector[Double](bb.length)
+    val b1 = Vector[Double](100)
+    val c1 = a1 + b1
+    println(c1)
 
-    val a = Vector[Double](100)
-    val b = Vector[Double](100)
-    val c = a outer b
-    println(c)
- 
-    /*
-    val a = Vector[Double](100)
-    val b = Vector[Double](100)
-    val c = a - b
-    println(c)
-    */
+    while(a1.is_row) {
+      println(c1)
+    }
+    
+    val a2 = Vector[Double](100)
+    val b2 = Vector[Double](100)
+    val c2 = a2 - b2
+    println(c2)
 
-        /*
-    val a = Vector[Double](100)
-    val b = a(0)
-    val c = a / b
-    println(c)
-    */
+    val a3 = Vector[Double](100)
+    val b3 = a3(0)
+    val c3 = a3 / b3
+    println(c3)
+
+    val a4 = Vector[Double](100)
+    val b4 = Vector[Double](100)
+    val c4 = a4 outer b4
+    println(c4)
 
     /*
     val myFunc = (x:Rep[Double]) => if(x>0.0) true else false

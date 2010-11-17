@@ -2,22 +2,26 @@ package ppl.delite.framework
 
 import codegen.c.TargetC
 import codegen.cuda.TargetCuda
+import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.scala.TargetScala
 import codegen.Target
-import java.io.PrintWriter
+import ops.DeliteOpsExp
 import scala.virtualization.lms.common.{BaseExp, Base}
-import scala.virtualization.lms.internal.{ScalaCompile, GenericCodegen, ScalaCodegen}
+import java.io.{FileWriter, File, PrintWriter}
+import scala.virtualization.lms.internal.{GenericNestedCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
 
 trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
-  def getCodeGenPkg(t: DeliteApplicationTarget) : GenericCodegen{val IR: DeliteApplication.this.type}
+  def getCodeGenPkg(t: DeliteApplicationTarget) : GenericNestedCodegen{val IR: DeliteApplication.this.type}
 
   lazy val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
-  //lazy val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val cudaTarget = new TargetCuda{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  lazy val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
+  // TODO: this should be handled via command line options
   lazy val targets = List[DeliteApplicationTarget](scalaTarget, cudaTarget /*, cTarget*/)
+  val kernelGenerators: List[GenericNestedCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
 
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
@@ -27,13 +31,28 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   
   final def main(args: Array[String]) {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
-    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}
+    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}                                   
 
     println("******Generating the program*********")
-    val kernelGenerators: List[GenericCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
-    val deliteTgGenerator : GenericCodegen{ val IR: DeliteApplication.this.type } = new DeliteGenTaskGraph { val IR : DeliteApplication.this.type = DeliteApplication.this; val generators = kernelGenerators }
 
-    //deliteTgGenerator.emitSource(main_m, "Application", new PrintWriter(System.out))
+    val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
+                                                 val generators = kernelGenerators }
+
+    //clean up the code gen directory
+    Util.deleteDirectory(new File(Config.build_dir))
+
+    val stream =
+      if (Config.deg_filename == ""){
+        new PrintWriter(System.out)
+      }
+      else {
+        new PrintWriter(new FileWriter(Config.deg_filename))
+      }
+
+    //codegen.emitSource(main_m, "Application", stream) // whole scala application (for testing)
+    //deliteGenerator.emitSource(main_m, "Application", stream)
+
+    //For now, just print the kernels to stdout 
     for(tgt <- targets) {
       globalDefs = List()
       getCodeGenPkg(tgt).emitSource(main_m, "Application", new PrintWriter(System.out))
