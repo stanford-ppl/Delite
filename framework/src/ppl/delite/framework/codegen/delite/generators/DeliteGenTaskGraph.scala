@@ -82,8 +82,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print(",\"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "]\n")
     val inputsStr = if(inputs.isEmpty) "" else inputs.map(quote(_)).mkString("\"","\",\"","\"")
     stream.print("  \"inputs\":[" + inputsStr + "],\n")
-    val controlDepsStr = if(control_deps.isEmpty) "" else control_deps.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"dependencies\":[" + controlDepsStr + "]\n")
+    val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
+    stream.print("  \"anti-dependencies\":[" + antiDepsStr + "]\n")
     stream.println("},")
   }
   def emitMap(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = nop

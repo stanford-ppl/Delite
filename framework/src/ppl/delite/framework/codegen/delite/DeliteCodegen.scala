@@ -44,7 +44,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
     emitBlock(y)(stream)
     //stream.println(quote(getBlockResult(y)))
-    stream.println("{\"type\":\"EOF\"}\n]}}")
+    stream.println("{\"type\":\"EOP\"}\n]}}")
 
 
     stream.flush
