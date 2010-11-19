@@ -8,6 +8,6 @@
 *target
 *lib_managed
 project/boot
+generated
 delite-gen
-embedding-gen
 output.deg

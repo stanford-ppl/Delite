@@ -11,40 +11,37 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   val IR: DeliteOpsExp
   import IR._
 
-  private def unwrapSym(sym: Sym[_]) : Option[Exp[_]] =
-    findDefinition(sym).flatMap {
-      _.rhs match {
-        //case Reflect(s, effects) => Some(toAtom(s))
-        case Reify(s, effects) => None
-        case _ => Some(sym)
-      }
-    }
+  private def vals(sym: Sym[_]) : List[Sym[_]] = sym match {
+    case Def(Reify(s, effects)) => Nil
+    case Def(Reflect(NewVar(v), effects)) => Nil
+    case _ => List(sym)
+  }
+
+  private def vars(sym: Sym[_]) : List[Sym[_]] = sym match {
+    case Def(Reflect(NewVar(v), effects)) => List(sym)
+    case _ => Nil
+  }
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) : Unit = {
     assert(generators.length >= 1)
+
+    var resultIsVar = false
 
     // we will try to generate any node that is not purely an effect node
     rhs match {
       case Reflect(s, effects) => super.emitNode(sym, rhs); return
       case Reify(s, effects) => super.emitNode(sym, rhs); return
+      case NewVar(x) => resultIsVar = true // if sym is a NewVar - if so, we must mangle the result type
       case _ => // continue and attempt to generate kernel
     }
 
-    val params = scala.collection.mutable.Queue[Exp[Any]]()
     // TODO: validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
-    val data_deps = (generators(0).inputs(rhs) ++ generators(0).getFreeVarNode(rhs)).distinct
-    for (input <- data_deps) {
-      input match {
-        case c: Const[Any] => // don't need to pass in
-        case d: Def[Any] => params += toAtom(d)
-        case Variable(e) => params += e
-        case s: Sym[Any] => val o = unwrapSym(s); if (!o.isEmpty) params += o.get
-        case e: Exp[Any] => params += e
-        case _ => println("encountered unexpected input symbol in kernel generation: "
-                          + input + " for symbol: " + quote(sym) )
-      }
-    }
-    //val params = data_deps.map(param(_)).flatMap(_.getOrElse(Nil))
+    generators(0).shallow = true
+    val dataDeps = (generators(0).syms(rhs) ++ generators(0).getFreeVarNode(rhs)).distinct
+    generators(0).shallow = false
+
+    val inVals = dataDeps.flatMap(vals(_))
+    val inVars = dataDeps.flatMap(vars(_))
 
     implicit val supportedTargets = new ListBuffer[String]
     for (gen <- generators) {
@@ -55,23 +52,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
       try{
         // emit kernel
-        kstream.println("package embedding." + gen + ".gen")
-        kstream.println("object kernel_" + quote(sym) + "{")
-        kstream.println("def apply(")
-        kstream.println(params.map(p => quote(p) + ":" + gen.remap(p.Type)).mkString(","))
-        kstream.println(") = {")
-
+        gen.emitKernelHeader(sym, inVals, inVars, resultIsVar)(kstream)
         gen.emitNode(sym, rhs)(kstream)
-
-        kstream.println("}}")
+        gen.emitKernelFooter(sym, inVals, inVars, resultIsVar)(kstream)
 
         //record that this kernel was succesfully generated
-        gen.toString match {
-          case "c" => supportedTargets += "Native"
-          case "CUDA" => supportedTargets += "GPU"
-          case "scala" => supportedTargets += "JVM"          
-          case _ => //not supported
-        }
+        supportedTargets += gen.toString
       }
       catch {
         case e: Exception => // no generator found
@@ -82,16 +68,16 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     }
 
     // emit task graph node
+    val inputs = inVals ++ inVars
     rhs match {
-      case DeliteOP_SingleTask(block) => emitSingleTask(sym, params.toList, List())
-      case DeliteOP_Map(block) => emitMap(sym, List(), List())
-      case DeliteOP_ZipWith(block) => emitZipWith(sym, List(), List())
-      case _ => emitSingleTask(sym, List(), List()) // things that are not specified as DeliteOPs, emit as SingleTask nodes
+      case DeliteOP_SingleTask(block) => emitSingleTask(sym, inputs, List())
+      case DeliteOP_Map(block) => emitMap(sym, inputs, List())
+      case DeliteOP_ZipWith(block) => emitZipWith(sym, inputs, List())
+      case _ => emitSingleTask(sym, inputs, List()) // things that are not specified as DeliteOPs, emit as SingleTask nodes
     }
 
-
     // whole program gen (for testing)
-    //emitValDef(sym, "embedding.scala.gen.kernel_" + quote(sym) + "(" + (params.map(quote(_))).mkString(",") + ")")
+    //emitValDef(sym, "embedding.scala.gen.kernel_" + quote(sym) + "(" + inputs.map(quote(_)).mkString(",") + ")")
   }
 
   def emitSingleTask(sym: Sym[_], inputs: List[Exp[_]], control_deps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = {

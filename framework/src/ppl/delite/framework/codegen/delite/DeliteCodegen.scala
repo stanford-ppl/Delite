@@ -1,6 +1,6 @@
 package ppl.delite.framework.codegen.delite
 
-import generators.{DeliteGenTaskGraph}
+import generators.{DeliteGenScalaVariables, DeliteGenTaskGraph}
 import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 import ppl.delite.framework.DeliteApplication
@@ -117,14 +117,6 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
 }
 
-// because the syms and getFreeVars functions are defined as members of individual generators, we need them
-// to be included in the Delite code gen object to properly find dependencies.
-// TODO: think about how to refactor this - this may be a problem with DSL ops that need to refine their dependencies
-// this is actually incorrect, because we don't know that an arbitrary DeliteApplication even contains these ops in its IR rep
-// somehow we need to kick back to one of the member generators to build the initial schedule
 trait DeliteCodeGenPkg extends DeliteGenTaskGraph
-//                       with BaseGenFunctions with BaseGenIfThenElse with BaseGenRangeOps with BaseGenWhile {
-//  val IR: DeliteApplication with FunctionsExp with IfThenElseExp with RangeOpsExp with WhileExp
-//}
 
-
+trait DeliteCodeGenOverridesScala extends DeliteGenScalaVariables
