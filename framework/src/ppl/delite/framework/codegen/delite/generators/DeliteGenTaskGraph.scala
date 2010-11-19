@@ -75,7 +75,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print(",\"kernelId\":\"" + quote(sym) + "\"")
     stream.print(",\"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "]\n")
     val inputsStr = if(inputs.isEmpty) "" else inputs.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"inputs\":[" + inputsStr + "]")
+    stream.print("  \"inputs\":[" + inputsStr + "],\n")
+    val controlDepsStr = if(control_deps.isEmpty) "" else control_deps.map(quote(_)).mkString("\"","\",\"","\"")
+    stream.print("  \"dependencies\":[" + controlDepsStr + "]\n")
     stream.println("},")
 
     //emitValDef(sym, "embedding.scala-gen." + quote(sym) + "(" + (inputs.map(quote(_))).mkString(",") + ")")  

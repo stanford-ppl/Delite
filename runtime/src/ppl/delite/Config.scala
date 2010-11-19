@@ -1,4 +1,4 @@
-package ppl.delite.io
+package ppl.delite
 
 /**
  * Author: Kevin J. Brown

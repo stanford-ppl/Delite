@@ -1,8 +1,8 @@
 package ppl.delite.runtime.executor
 
 import java.util.concurrent.LinkedBlockingQueue
-import ppl.delite.io.Config
 import ppl.delite.walktime.codegen.DeliteExecutable
+import ppl.delite.Config
 
 /**
  * Author: Kevin J. Brown

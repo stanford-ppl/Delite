@@ -1,11 +1,12 @@
 package ppl.delite.walktime.scheduler
 
 import ppl.delite.walktime.graph.DeliteTaskGraph
-import ppl.delite.io.Config
 import java.util.ArrayDeque
 import ppl.delite.walktime.codegen.{ExecutableGenerator, DeliteExecutable}
 import ppl.delite.walktime.graph.ops._
 import ppl.delite.walktime.codegen.kernels.scala.{Reduce_SMP_Array_Generator, Map_SMP_Array_Generator}
+import ppl.delite.Config
+
 
 /**
  * Author: Kevin J. Brown

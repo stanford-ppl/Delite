@@ -1,7 +1,7 @@
 package ppl.delite.runtime.executor
 
-import ppl.delite.io.Config
 import ppl.delite.walktime.scheduler.StaticSchedule
+import ppl.delite.Config
 
 /**
  * Author: Kevin J. Brown

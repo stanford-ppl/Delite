@@ -1,6 +1,5 @@
 package ppl.delite
 
-import io.Config
 import runtime.executor._
 import walktime.graph.{TestGraph, DeliteTaskGraph}
 import walktime.scheduler._
@@ -17,10 +16,12 @@ import walktime.scheduler._
 object Delite {
 
   private def printArgs(args: Array[String]) {
-    if (args.length != 0) {
-      println("This program does not take input")
+    if(args.size == 0) {
+      println("Not enough arguments.\nUsage: [Launch Runtime Comman] filename.deg arguments*")
       exit(-1)
     }
+    println("Delite Runtime executing with following arguments:")
+    println(args.mkString(","))
   }
 
   def main(args: Array[String]) {
