@@ -31,24 +31,20 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     rhs match {
       case Reflect(s, effects) => super.emitNode(sym, rhs); return
       case Reify(s, effects) => super.emitNode(sym, rhs); return
-      case NewVar(x) => resultIsVar = true // if sym is a NewVar - if so, we must mangle the result type
+      case NewVar(x) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
       case _ => // continue and attempt to generate kernel
     }
 
-    // TODO: validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
-    generators(0).shallow = true
-    val dataDeps = (generators(0).syms(rhs) ++ generators(0).getFreeVarNode(rhs)).distinct
-    generators(0).shallow = false
-
-    val inVals = dataDeps.flatMap(vals(_))
-    val inVars = dataDeps.flatMap(vars(_))
+    // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
+    val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)    
+    val inVals = dataDeps flatMap { vals(_) }
+    val inVars = dataDeps flatMap { vars(_) }
 
     implicit val supportedTargets = new ListBuffer[String]
     for (gen <- generators) {
-      val build_path = Config.build_dir + gen + "/"
-      val outf = new File(build_path)
-      outf.mkdirs()
-      val kstream = new PrintWriter(new FileWriter(build_path + quote(sym) + "." + gen.kernelFileExt))
+      val buildPath = Config.build_dir + gen + "/"
+      val outDir = new File(buildPath); outDir.mkdirs()
+      val kstream = new PrintWriter(new FileWriter(buildPath + quote(sym) + "." + gen.kernelFileExt))
 
       try{
         // emit kernel
@@ -75,12 +71,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       case DeliteOP_ZipWith(block) => emitZipWith(sym, inputs, List())
       case _ => emitSingleTask(sym, inputs, List()) // things that are not specified as DeliteOPs, emit as SingleTask nodes
     }
-
+    
     // whole program gen (for testing)
     //emitValDef(sym, "embedding.scala.gen.kernel_" + quote(sym) + "(" + inputs.map(quote(_)).mkString(",") + ")")
   }
 
-  def emitSingleTask(sym: Sym[_], inputs: List[Exp[_]], control_deps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = {
+  def emitSingleTask(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = {
     stream.print("{\"type\":\"SingleTask\"")
     stream.print(",\"kernelId\":\"" + quote(sym) + "\"")
     stream.print(",\"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "]\n")
@@ -88,8 +84,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("  \"inputs\":[" + inputsStr + "]")
     stream.println("},")
   }
-  def emitMap(sym: Sym[_], inputs: List[Exp[_]], control_deps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = nop
-  def emitZipWith(sym: Sym[_], inputs: List[Exp[_]], control_deps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = nop
+  def emitMap(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = nop
+  def emitZipWith(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = nop
 
   def nop = throw new RuntimeException("Not Implemented Yet")
 

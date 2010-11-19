@@ -19,7 +19,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
   // TODO: this should be handled via command line options
   lazy val targets = List[DeliteApplicationTarget](scalaTarget/*, cTarget*/)
-  val kernelGenerators: List[GenericNestedCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
+  val kernelGenerators: List[GenericNestedCodegen{ val IR: DeliteApplication.this.type }] = targets map { getCodeGenPkg(_) }
 
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
