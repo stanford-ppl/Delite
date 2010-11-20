@@ -3,8 +3,8 @@ package ppl.delite.framework.codegen.delite
 import generators.{DeliteGenScalaVariables, DeliteGenTaskGraph}
 import java.io.PrintWriter
 import scala.virtualization.lms.internal._
-import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common._
+import ppl.delite.framework.{Config, DeliteApplication}
 
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
@@ -40,7 +40,8 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
     stream.println("{\"DEG\":{\n"+
                    "\"version\" : 0.1,\n"+
-                   "\"nodes\": [")
+                   "\"kernelpath\" : \"" + Config.kernel_path  + "\"\n"+
+                   "\"ops\": [")
 
     emitBlock(y)(stream)
     //stream.println(quote(getBlockResult(y)))

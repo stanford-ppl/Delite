@@ -41,8 +41,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     val inVars = dataDeps flatMap { vars(_) }
 
     implicit val supportedTargets = new ListBuffer[String]
+    implicit val returnTypes = new ListBuffer[Pair[String, String]]
     for (gen <- generators) {
-      val buildPath = Config.build_dir + gen + "/"
+      val buildPath = Config.kernel_path + gen + "/"
       val outDir = new File(buildPath); outDir.mkdirs()
       val kstream = new PrintWriter(new FileWriter(buildPath + quote(sym) + "." + gen.kernelFileExt))
 
@@ -54,6 +55,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
         //record that this kernel was succesfully generated
         supportedTargets += gen.toString
+        returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.Type)) {
+          override def toString = "\"target\" : \"" + _1 + "\" , \"type\" : \"" + _2 + "\""
+        }
       }
       catch {
         case e: Exception => // no generator found
@@ -76,14 +80,17 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     //emitValDef(sym, "embedding.scala.gen.kernel_" + quote(sym) + "(" + inputs.map(quote(_)).mkString(",") + ")")
   }
 
-  def emitSingleTask(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = {
+  def emitSingleTask(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
     stream.print("{\"type\":\"SingleTask\"")
     stream.print(",\"kernelId\":\"" + quote(sym) + "\"")
     stream.print(",\"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "]\n")
     val inputsStr = if(inputs.isEmpty) "" else inputs.map(quote(_)).mkString("\"","\",\"","\"")
     stream.print("  \"inputs\":[" + inputsStr + "],\n")
     val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"anti-dependencies\":[" + antiDepsStr + "]\n")
+    stream.print("  \"anti-dependencies\":[" + antiDepsStr + "],\n")
+    val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString("{" , "},{", "}")
+    stream.print("  \"return-types\":[" + returnTypesStr + "]\n")
     stream.println("},")
   }
   def emitMap(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = nop

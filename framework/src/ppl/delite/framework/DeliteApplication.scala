@@ -37,7 +37,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
                                                  val generators = kernelGenerators }
 
     //clean up the code gen directory
-    Util.deleteDirectory(new File(Config.build_dir))
+    Util.deleteDirectory(new File(Config.kernel_path))
 
     val stream =
       if (Config.deg_filename == ""){
