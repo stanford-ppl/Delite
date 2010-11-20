@@ -1,6 +1,6 @@
 package ppl.delite.runtime.tests
 
-import ppl.delite.walktime.graph.DeliteTaskGraph
+import ppl.delite.runtime.walktime.graph.DeliteTaskGraph
 
 
 /**
