@@ -83,6 +83,23 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   def emitSingleTask(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
     stream.print("{\"type\":\"SingleTask\"")
+    emitOpCommon(sym, inputs, antiDeps)
+  }
+
+  def emitMap(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
+    stream.print("{\"type\":\"Map\"")
+    emitOpCommon(sym, inputs, antiDeps)
+  }
+
+  def emitZipWith(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
+    stream.print("{\"type\":\"ZipWith\"")
+    emitOpCommon(sym, inputs, antiDeps)
+  }
+
+  def emitOpCommon(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
     stream.print(",\"kernelId\":\"" + quote(sym) + "\"")
     stream.print(",\"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "]\n")
     val inputsStr = if(inputs.isEmpty) "" else inputs.map(quote(_)).mkString("\"","\",\"","\"")
@@ -91,10 +108,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("  \"anti-dependencies\":[" + antiDepsStr + "],\n")
     val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString("{" , "},{", "}")
     stream.print("  \"return-types\":[" + returnTypesStr + "]\n")
-    stream.println("},")
+    stream.println("},")  
   }
-  def emitMap(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = nop
-  def emitZipWith(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])(implicit stream: PrintWriter, supportedTgt: ListBuffer[String]) = nop
 
   def nop = throw new RuntimeException("Not Implemented Yet")
 
