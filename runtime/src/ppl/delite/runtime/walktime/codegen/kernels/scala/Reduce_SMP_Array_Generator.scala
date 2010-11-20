@@ -1,4 +1,4 @@
-package ppl.delite.runtime.walktime.codegen.kernels.scala
+package ppl.delite.walktime.codegen.kernels.scala
 
 import ppl.delite.runtime.walktime.graph.ops.OP_Reduce
 import ppl.delite.runtime.walktime.codegen.ScalaCompile

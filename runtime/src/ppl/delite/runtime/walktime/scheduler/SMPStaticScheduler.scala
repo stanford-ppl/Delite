@@ -2,7 +2,7 @@ package ppl.delite.runtime.walktime.scheduler
 
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.walktime.codegen.{ExecutableGenerator, DeliteExecutable}
-import ppl.delite.runtime.walktime.codegen.kernels.scala.{Reduce_SMP_Array_Generator, Map_SMP_Array_Generator}
+import ppl.delite.walktime.codegen.kernels.scala.{Reduce_SMP_Array_Generator, Map_SMP_Array_Generator}
 import ppl.delite.runtime.walktime.graph.ops.{OP_Reduce, OP_Map, DeliteOP}
 import ppl.delite.runtime.walktime.graph.DeliteTaskGraph
 import java.util.ArrayDeque
