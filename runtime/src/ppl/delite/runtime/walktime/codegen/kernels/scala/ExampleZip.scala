@@ -1,4 +1,4 @@
-package ppl.delite.runtime.walktime.codegen.kernels.scala
+package ppl.delite.walktime.codegen.kernels.scala
 
 /**
  * Author: Kevin J. Brown
