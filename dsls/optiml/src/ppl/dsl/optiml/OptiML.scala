@@ -6,6 +6,7 @@ import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import scala.virtualization.lms.common.{ScalaOpsPkgExp, ScalaOpsPkg, ScalaCodeGenPkg, CudaCodeGenPkg}
 import scala.virtualization.lms.internal.{GenericNestedCodegen, GenericCodegen}
+import ppl.delite.framework.codegen.delite.DeliteCodeGenOverridesScala
 
 trait OptiML extends ScalaOpsPkg with VectorOps with MatrixOps with MLInputReaderOps {
   this: DeliteApplication =>
@@ -24,20 +25,26 @@ trait OptiMLExp extends OptiML with ScalaOpsPkgExp with VectorOpsExp with Vector
   }
 }
 
-trait OptiMLCodeGenScala extends ScalaCodeGenPkg with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps //with ScalaGenMLInputReaderOps {
-{
-    val IR: DeliteApplication with OptiMLExp
+trait OptiMLCodeGenScala extends ScalaCodeGenPkg with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
+  with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
 
-    override def remap[A](m: Manifest[A]) : String = m.toString match {
-      // TODO: make more robust
-      case "ppl.dsl.optiml.Vector[Double]" => "ppl.dsl.optiml.VectorImpl[Double]"
-      case "ppl.dsl.optiml.Vector[Boolean]" => "ppl.dsl.optiml.VectorImpl[Boolean]"
-      case "ppl.dsl.optiml.Matrix[Double]" => "ppl.dsl.optiml.MatrixImpl[Double]"
-      case _ => super.remap(m)
-    }
+
+  val IR: DeliteApplication with OptiMLExp
+
+  override def remap[A](m: Manifest[A]) : String = m.toString match {
+    // TODO: make more robust
+    case "ppl.dsl.optiml.Vector[Double]" => "ppl.dsl.optiml.VectorImpl[Double]"
+    case "ppl.dsl.optiml.Vector[Boolean]" => "ppl.dsl.optiml.VectorImpl[Boolean]"
+    case "ppl.dsl.optiml.Matrix[Double]" => "ppl.dsl.optiml.MatrixImpl[Double]"
+    case _ => super.remap(m)
+  }
 
 }
 
-trait OptiMLCodeGenCuda extends CudaCodeGenPkg with CudaGenVectorOps with CudaGenMatrixOps //with ScalaGenMLInputReaderOps {
-  { val IR: DeliteApplication with OptiMLExp }
+trait OptiMLCodeGenCuda extends CudaCodeGenPkg with CudaGenVectorOps with CudaGenMatrixOps // with CudaGenVectorViewOps
+ // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps   //TODO:DliteCodeGenOverrideScala needed?
+{
 
+  val IR: DeliteApplication with OptiMLExp
+
+}

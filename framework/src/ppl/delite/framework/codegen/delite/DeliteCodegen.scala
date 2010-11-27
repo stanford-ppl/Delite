@@ -1,6 +1,6 @@
 package ppl.delite.framework.codegen.delite
 
-import generators.{DeliteGenTaskGraph}
+import generators.{DeliteGenScalaVariables, DeliteGenTaskGraph}
 import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 import ppl.delite.framework.DeliteApplication
@@ -14,7 +14,21 @@ trait DeliteCodegen extends GenericNestedCodegen {
   import IR._
 
   // these are the target-specific kernel generators (e.g. scala, cuda, etc.)
-  val generators : List[GenericNestedCodegen{val IR: DeliteCodegen.this.IR.type}]
+  type Generator = GenericNestedCodegen{val IR: DeliteCodegen.this.IR.type}
+  val generators : List[Generator]
+
+  def ifGenAgree[A](f: Generator => A, shallow: Boolean): A = {
+    val save = generators map { _.shallow }
+    generators foreach { _.shallow = shallow }
+    val result = generators map f
+    if (result.distinct.length != 1){
+      throw new RuntimeException("DeliteCodegen: generators disagree")
+    }
+    for (i <- 0 until generators.length) {
+      generators(i).shallow = save(i)
+    }
+    result(0)
+  }
 
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
 
@@ -48,17 +62,8 @@ trait DeliteCodegen extends GenericNestedCodegen {
     if (generators.length < 1) return
 
     // verify our single schedule assumption
-    val deepSchedules = generators.map(_.buildScheduleForResult(start))
-    generators.foreach(_.shallow = true)
-    val shallowSchedules = generators.map(_.buildScheduleForResult(start))
-    generators.foreach(_.shallow = false)
-    
-    if ((deepSchedules.distinct.length != 1) || (shallowSchedules.distinct.length != 1)) {
-      throw new RuntimeException("DeliteCodegen: distinct schedules found for different generators")
-    }
-
-    val e1 = deepSchedules(0)
-    val e2 = shallowSchedules(0)
+    val e1 = ifGenAgree(_.buildScheduleForResult(start), false) // deep
+    val e2 = ifGenAgree(_.buildScheduleForResult(start), true) // shallow
 
     //println("==== deep")
     //e1.foreach(println)
@@ -71,7 +76,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
     val save = scope
     scope = e4 ::: scope
-    generators.foreach(_.scope = scope)
+    generators foreach { _.scope = scope }
     
     for (TP(sym, rhs) <- e4) {
       emitNode(sym, rhs)
@@ -117,14 +122,6 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
 }
 
-// because the syms and getFreeVars functions are defined as members of individual generators, we need them
-// to be included in the Delite code gen object to properly find dependencies.
-// TODO: think about how to refactor this - this may be a problem with DSL ops that need to refine their dependencies
-// this is actually incorrect, because we don't know that an arbitrary DeliteApplication even contains these ops in its IR rep
-// somehow we need to kick back to one of the member generators to build the initial schedule
 trait DeliteCodeGenPkg extends DeliteGenTaskGraph
-//                       with BaseGenFunctions with BaseGenIfThenElse with BaseGenRangeOps with BaseGenWhile {
-//  val IR: DeliteApplication with FunctionsExp with IfThenElseExp with RangeOpsExp with WhileExp
-//}
 
-
+trait DeliteCodeGenOverridesScala extends DeliteGenScalaVariables

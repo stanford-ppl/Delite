@@ -3,12 +3,14 @@ package generated
 class GDA_kernels extends ((Array[java.lang.String])=>(Unit)) {
 def apply(x0:Array[java.lang.String]): Unit = {
   /*
-  val x1 = embedding.scala.gen.kernel_x1()
+   * this test requires the generated kernels and the Ref scaffolding to be in the classpath to execute
+
+  val x1 = embedding.scala.gen.kernel_x1(x0)
   val x2 = embedding.scala.gen.kernel_x2(x1)
   val x6 = embedding.scala.gen.kernel_x6(x2)
-  val x7 = embedding.scala.gen.kernel_x7()
+  val x7 = embedding.scala.gen.kernel_x7(x0)
   val x54 = embedding.scala.gen.kernel_x54(x7)
-  val x55 = embedding.scala.gen.kernel_x55()
+  val x55 = embedding.scala.gen.kernel_x55(x0)
   val x73 = embedding.scala.gen.kernel_x73(x55)
   val x89 = embedding.scala.gen.kernel_x89()
   val x90 = embedding.scala.gen.kernel_x90()
@@ -20,7 +22,7 @@ def apply(x0:Array[java.lang.String]): Unit = {
   val x86 = embedding.scala.gen.kernel_x86(x73)
   val x87 = embedding.scala.gen.kernel_x87(x86)
   val x99 = embedding.scala.gen.kernel_x99(x87)
-  val x144 = embedding.scala.gen.kernel_x144(x99,x90,x94,x54,x89,x98,x86)
+  val x144 = embedding.scala.gen.kernel_x144(x99,x54,x86,x90,x94,x89,x98)
   val x147 = embedding.scala.gen.kernel_x147(x89)
   val x149 = embedding.scala.gen.kernel_x149(x94)
   val x150 = embedding.scala.gen.kernel_x150(x90)
@@ -30,7 +32,7 @@ def apply(x0:Array[java.lang.String]): Unit = {
   val x180 = embedding.scala.gen.kernel_x180(x179)
   val x163 = embedding.scala.gen.kernel_x163(x149,x150)
   val x178 = embedding.scala.gen.kernel_x178(x164,x165)
-  val x322 = embedding.scala.gen.kernel_x322(x99,x163,x180,x54,x178,x86)
+  val x322 = embedding.scala.gen.kernel_x322(x99,x163,x54,x178,x86,x180)
   val x323 = embedding.scala.gen.kernel_x323()
   val x145 = embedding.scala.gen.kernel_x145(x87)
   val x146 = embedding.scala.gen.kernel_x146(x145)
