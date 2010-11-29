@@ -103,9 +103,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: Ve
 
 
   def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(x, n)
-  def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectEffect(VectorUpdate(x,n,y))
+  def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(x,n,y))
   def vector_length[A:Manifest](x: Exp[Vector[A]]) = VectorLength(x)
-  def vector_plusequals[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) = reflectEffect(VectorPlusEquals(x, y))
+  def vector_plusequals[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) = reflectMutation(VectorPlusEquals(x, y))
   def vector_is_row[A:Manifest](x: Exp[Vector[A]]) = VectorIsRow(x)
 
   def vector_obj_zeros(len: Exp[Int]) = reflectEffect(VectorObjectZeros(len))

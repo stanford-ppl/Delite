@@ -88,12 +88,12 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
 
   def matrix_apply1[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = MatrixApply1[A](x,i)
   def matrix_apply2[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) = MatrixApply2[A](x,i,j)
-  def matrix_update[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) = reflectEffect(MatrixUpdate[A](x,i,j,y))
+  def matrix_update[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) = reflectMutation(MatrixUpdate[A](x,i,j,y))
   def matrix_numrows[A:Manifest](x: Exp[Matrix[A]]) = MatrixNumRows(x)
   def matrix_numcols[A:Manifest](x: Exp[Matrix[A]]) = MatrixNumCols(x)
-  def matrix_insertrow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectEffect(MatrixInsertRow(x,pos,y))
+  def matrix_insertrow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(MatrixInsertRow(x,pos,y))
 
-  def matrix_plusequals[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = reflectEffect(MatrixPlusEquals(x,y))
+  def matrix_plusequals[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = reflectMutation(MatrixPlusEquals(x,y))
   def matrix_plus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixPlus(x, y)
   def matrix_times[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixTimes(x, y)
   def matrix_inverse[A:Manifest](x: Exp[Matrix[A]]) = MatrixInverse(x)
