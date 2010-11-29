@@ -166,11 +166,21 @@ trait CudaGenVectorOps extends CudaGenBase {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case VectorApply(x, n) => emitValDef(CudaInnerType(x.Type.toString), sym, quote(x) + ".apply(" + quote(n) + ")")
-    case VectorUpdate(x,n,y) => stream.println(addTab() + "%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
-    case VectorLength(x)    => emitValDef("int", sym, quote(x) + ".length")
-    case VectorIsRow(x)     => emitValDef("bool", sym, quote(x) + ".is_row")
-    case VectorPlusEquals(x,y) => emitValDef(sym, quote(x) + " += " + quote(y))
+    case VectorApply(x, n) =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else emitValDef(CudaInnerType(x.Type.toString), sym, quote(x) + ".apply(" + quote(n) + ")")
+    case VectorUpdate(x,n,y) =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else stream.println(addTab() + "%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
+    case VectorLength(x)    =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else emitValDef("int", sym, quote(x) + ".length")
+    case VectorIsRow(x)     =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else emitValDef("bool", sym, quote(x) + ".is_row")
+    case VectorPlusEquals(x,y) =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else emitValDef(sym, quote(x) + " += " + quote(y))
 
     case _ => super.emitNode(sym, rhs)
   }

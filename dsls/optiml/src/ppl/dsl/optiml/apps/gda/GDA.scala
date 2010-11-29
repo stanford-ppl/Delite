@@ -63,7 +63,7 @@ object GDA extends DeliteApplication with OptiMLExp {
 
     // An example statement that generates error when manifest is added
     // Error : reflect is not an enclosing class
-    val ddd = (x(0)-mu0) + (x(0)-mu0)
+    //val ddd = (x(0)-mu0) + (x(0)-mu0)
 
     var sigma = Matrix.zeros(n,n)
     for (i <- 0 until m){

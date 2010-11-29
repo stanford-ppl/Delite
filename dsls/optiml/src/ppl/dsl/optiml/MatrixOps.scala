@@ -167,12 +167,24 @@ trait CudaGenMatrixOps extends CudaGenBase {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case MatrixApply1(x,i) => emitValDef("Vector<"+CudaInnerType(x.Type.toString)+">", sym, quote(x) + ".apply(" + quote(i) + ")") // TODO: 
-    case MatrixApply2(x,i,j) => emitValDef(CudaInnerType(x.Type.toString), sym, quote(x) + ".apply(" + quote(i) + ", " + quote(j) + ")")
-    case MatrixUpdate(x,i,j,y)  => stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
-    case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
-    case MatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
-    case MatrixInsertRow(x, pos, y)  => emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
+    case MatrixApply1(x,i) =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else emitValDef("Vector<"+CudaInnerType(x.Type.toString)+">", sym, quote(x) + ".apply(" + quote(i) + ")") // TODO:
+    case MatrixApply2(x,i,j) =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else emitValDef(CudaInnerType(x.Type.toString), sym, quote(x) + ".apply(" + quote(i) + ", " + quote(j) + ")")
+    case MatrixUpdate(x,i,j,y)  =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
+    case MatrixNumRows(x)  =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else emitValDef(sym, quote(x) + ".numRows")
+    case MatrixNumCols(x)  =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else emitValDef(sym, quote(x) + ".numCols")
+    case MatrixInsertRow(x, pos, y)  =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
 
     case _ => super.emitNode(sym, rhs)
   }

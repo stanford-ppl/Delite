@@ -51,13 +51,13 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       }
 
     //codegen.emitSource(main_m, "Application", stream) // whole scala application (for testing)
-    //deliteGenerator.emitSource(main_m, "Application", stream)
+    deliteGenerator.emitSource(main_m, "Application", stream)
 
     //For now, just print the kernels to stdout 
-    for(tgt <- targets) {
-      globalDefs = List()
-      getCodeGenPkg(tgt).emitSource(main_m, "Application", new PrintWriter(System.out))
-    }
+    //for(tgt <- targets) {
+    //  globalDefs = List()
+    //  getCodeGenPkg(tgt).emitSource(main_m, "Application", new PrintWriter(System.out))
+    //}
   }
 
   final def execute(args: Array[String]) {
