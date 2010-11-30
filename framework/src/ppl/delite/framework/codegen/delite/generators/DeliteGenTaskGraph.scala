@@ -22,6 +22,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     case _ => Nil
   }
 
+  private def mutating(kernelContext: State, sym: Sym[_]) : List[Sym[_]] =
+    kernelContext flatMap {
+      //case Def(Reflect(x,effects)) => if (syms(x) contains sym) List(sym) else Nil
+      case Def(Mutation(x,effects)) => if (syms(x) contains sym) List(sym) else Nil
+      case _ => Nil: List[Sym[_]]
+    }
+
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) : Unit = {
     assert(generators.length >= 1)
 
@@ -67,48 +74,83 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       }
     }
 
-    // emit task graph node
     val inputs = inVals ++ inVars
-    rhs match {
-      case DeliteOP_SingleTask(block) => emitSingleTask(sym, inputs, List())
-      case DeliteOP_Map(block) => emitMap(sym, inputs, List())
-      case DeliteOP_ZipWith(block) => emitZipWith(sym, inputs, List())
-      case _ => emitSingleTask(sym, inputs, List()) // things that are not specified as DeliteOPs, emit as SingleTask nodes
-    }
+    //val kernelContext = getEffectsKernel(sym, rhs)
+    val kernelContext = ifGenAgree( _.getEffectsBlock(sym), true )
+    val inMutating = (inputs flatMap { mutating(kernelContext, _) }).distinct
+
+    // additional data deps: for each of my inputs, look at the kernels already generated and see if any of them
+    // mutate it, and if so, add that kernel as a data-dep
+    val extraDataDeps = (kernelMutatingDeps filter { case (s, mutates) => (!(inputs intersect mutates).isEmpty) }).keys
+    val inControlDeps = (controlDeps ++ extraDataDeps).distinct
+
+    // anti deps: for each of my mutating inputs, look at the kernels already generated and see if any of them
+    // read it, add that kernel as an anti-dep
+    val antiDeps = (kernelInputDeps filter { case (s, in) => (!(inMutating intersect in).isEmpty) }).keys.toList
+
+    // add this kernel to global generated state
+    kernelInputDeps += { sym -> inputs }
+    kernelMutatingDeps += { sym -> inMutating }
+
+    // debug
+    /*
+    stream.println("inputs: " + inputs)
+    stream.println("mutating inputs: " + inMutating)
+    stream.println("extra data deps: " + extraDataDeps)
+    stream.println("control deps: " + inControlDeps)
+    stream.println("anti deps:" + antiDeps)
+    */
     
+    // emit task graph node
+    rhs match {
+      case DeliteOP_SingleTask(block) => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
+      case DeliteOP_Map(block) => emitMap(sym, inputs, inControlDeps, antiDeps)
+      case DeliteOP_ZipWith(block) => emitZipWith(sym, inputs, inControlDeps, antiDeps)
+      case _ => emitSingleTask(sym, inputs, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
+    }
+
     // whole program gen (for testing)
     //emitValDef(sym, "embedding.scala.gen.kernel_" + quote(sym) + "(" + inputs.map(quote(_)).mkString(",") + ")")
   }
 
-  def emitSingleTask(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])
+
+  /**
+   * @param sym         the symbol representing the kernel
+   * @param inputs      a list of real kernel dependencies (formal kernel parameters)
+   * @param controlDeps a list of control dependencies (must execute before this kernel)
+   * @param antiDeps    a list of WAR dependencies (need to be committed in program order)
+   */
+  def emitSingleTask(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
     stream.print("{\"type\":\"SingleTask\"")
-    emitOpCommon(sym, inputs, antiDeps)
+    emitOpCommon(sym, inputs, controlDeps, antiDeps)
   }
 
-  def emitMap(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])
+  def emitMap(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
     stream.print("{\"type\":\"Map\"")
-    emitOpCommon(sym, inputs, antiDeps)
+    emitOpCommon(sym, inputs, controlDeps, antiDeps)
   }
 
-  def emitZipWith(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])
+  def emitZipWith(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
     stream.print("{\"type\":\"ZipWith\"")
-    emitOpCommon(sym, inputs, antiDeps)
+    emitOpCommon(sym, inputs, controlDeps, antiDeps)
   }
 
-  def emitOpCommon(sym: Sym[_], inputs: List[Exp[_]], antiDeps: List[Sym[_]])
+  def emitOpCommon(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
-    stream.print(",\"kernelId\":\"" + quote(sym) + "\"")
-    stream.print(",\"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "]\n")
+    stream.print(" , \"kernelId\" : \"" + quote(sym) + "\" ")
+    stream.print(" , \"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "],\n")
     val inputsStr = if(inputs.isEmpty) "" else inputs.map(quote(_)).mkString("\"","\",\"","\"")
     stream.print("  \"inputs\":[" + inputsStr + "],\n")
+    val controlDepsStr = if(controlDeps.isEmpty) "" else controlDeps.map(quote(_)).mkString("\"","\",\"","\"")
+    stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
     val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"anti-dependencies\":[" + antiDepsStr + "],\n")
+    stream.print("  \"antiDeps\":[" + antiDepsStr + "],\n")
     val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString("{" , "},{", "}")
     stream.print("  \"return-types\":[" + returnTypesStr + "]\n")
-    stream.println("},")  
+    stream.println("},")
   }
 
   def nop = throw new RuntimeException("Not Implemented Yet")

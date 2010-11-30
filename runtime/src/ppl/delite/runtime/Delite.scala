@@ -1,8 +1,9 @@
 package ppl.delite.runtime
 
 import runtime.executor.SMPExecutor
-import walktime.graph.TestGraph
+import walktime.graph.{DeliteTaskGraph, TestGraph}
 import walktime.scheduler.SMPStaticScheduler
+import java.io.File
 
 /**
  * Author: Kevin J. Brown
@@ -41,7 +42,8 @@ object Delite {
 
     //load task graph
     //TODO: this is a compile hack
-    val graph = new TestGraph
+    val graph = loadDeliteDEG(args(0))  
+
 
     //load kernels
 
@@ -55,4 +57,10 @@ object Delite {
     
   }
 
+  def loadDeliteDEG(filename: String) = {
+    val file = new File(filename)
+    if(file.isFile == false) throw new RuntimeException(filename + " doesn't appear to be a valid file")
+    val graph = DeliteTaskGraph(file)
+    new TestGraph     
+  }
 }

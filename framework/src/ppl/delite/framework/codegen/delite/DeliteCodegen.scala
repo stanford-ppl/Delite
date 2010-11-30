@@ -5,6 +5,8 @@ import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 import scala.virtualization.lms.common._
 import ppl.delite.framework.{Config, DeliteApplication}
+import collection.mutable.HashMap
+
 
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
@@ -16,6 +18,13 @@ trait DeliteCodegen extends GenericNestedCodegen {
   // these are the target-specific kernel generators (e.g. scala, cuda, etc.)
   type Generator = GenericNestedCodegen{val IR: DeliteCodegen.this.IR.type}
   val generators : List[Generator]
+
+  // per kernel, used by DeliteGenTaskGraph
+  var controlDeps : List[Sym[_]] = _
+
+  // global, used by DeliteGenTaskGraph
+  val kernelMutatingDeps : HashMap[Sym[_],List[Sym[_]]] = new HashMap() // from kernel to its mutating deps    
+  val kernelInputDeps : HashMap[Sym[_],List[Sym[_]]] = new HashMap() // from kernel to its input deps
 
   def ifGenAgree[A](f: Generator => A, shallow: Boolean): A = {
     val save = generators map { _.shallow }
@@ -40,7 +49,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
     stream.println("{\"DEG\":{\n"+
                    "\"version\" : 0.1,\n"+
-                   "\"kernelpath\" : \"" + Config.kernel_path  + "\"\n"+
+                   "\"kernelpath\" : \"" + Config.kernel_path  + "\",\n"+
                    "\"ops\": [")
 
     emitBlock(y)(stream)
@@ -75,11 +84,22 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
     val e4 = e3.filterNot(scope contains _) // remove stuff already emitted
 
+    val effects = start match {
+      case Def(Reify(x, effects0)) =>
+        val effects = effects0.map { case s: Sym[a] => findDefinition(s).get }
+        e4.filter(effects contains _)
+      case _ => Nil
+    }
+
     val save = scope
     scope = e4 ::: scope
     generators foreach { _.scope = scope }
-    
-    for (TP(sym, rhs) <- e4) {
+
+    for (t@TP(sym, rhs) <- e4) {
+      // we only care about effects that are scheduled to be generated before us, i.e.
+      // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
+      // n3 we want controlDeps to contain e1 and e2
+      controlDeps = e4.take(e4.indexOf(t)) filter { effects contains _ } map { _.sym }
       emitNode(sym, rhs)
     }
 
@@ -104,6 +124,30 @@ trait DeliteCodegen extends GenericNestedCodegen {
     scope = save
   }
 
+  /*
+  def getEffectsKernel(start: Sym[_], rhs: Def[_]): List[Sym[_]] = {
+    val e1 = ifGenAgree(_.buildScheduleForResult(start), false) // deep
+    val params = ifGenAgree(_.syms(rhs), true)
+    val e2 = params map { s => ifGenAgree(_.buildScheduleForResult(s), false) }
+    val e3 = if (!e2.isEmpty) e2 reduceLeft { (a,b) => a union b } else Nil
+
+    // e3 is missing some effect dependencies outside of the block
+    // shallow might contain those? (nope)
+
+    // we almost want a "deep on everything except this symbol" search
+
+    val e4 = ifGenAgree(_.buildScheduleForResult(start), true) // shallow
+    //val e3 = scope.drop(scope.indexOf(findDefinition(start).get)) filter { e2 contains _ }
+    val e5 = e1 filterNot { d => (e3 contains d) || (e4 contains d) }
+
+    e5 flatMap { e =>
+      e.sym match {
+        case Def(Reflect(x, effects)) => List(e.sym): List[Sym[_]]
+        case _ => Nil
+      }
+    }
+  }
+  */
 
 
   def emitValDef(sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
