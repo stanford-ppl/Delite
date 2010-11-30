@@ -60,16 +60,15 @@ object GDA extends DeliteApplication with OptiMLExp {
 
     /* calculate covariance matrix sigma */
     /* x(i) is a row vector for us, while it is defined a column vector in the formula */
-    var sigma = Matrix.zeros(n,n)
-    for (i <- 0 until m){
+    val sigma = sum(0, m) { i =>
       if (y(i) == false){
-        sigma = sigma + ((x(i)-mu0).trans).outer(x(i)-mu0)
+       (((x(i)-mu0).trans).outer(x(i)-mu0))
       }
       else{
-        sigma = sigma + ((x(i)-mu1).trans).outer(x(i)-mu1)
+       (((x(i)-mu1).trans).outer(x(i)-mu1))
       }
     }
-
+    
     print("GDA parameter calculation finished: ")
     println("  phi = " + phi)
     println("  mu0 = " ); mu0.pprint

@@ -14,6 +14,8 @@ trait VectorOps extends DSLType with Variables {
   object Vector {
     def apply[A : Manifest](len: Rep[Int], is_row : Rep[Boolean] = true) : Rep[Vector[A]] = vector_new(len, is_row)
     def zeros(len: Rep[Int]) : Rep[Vector[Double]] = vector_obj_zeros(len)
+    def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = 1, is_row: Rep[Boolean] = true) =
+      vector_obj_range(start, end, stride, is_row)
   }
 
   implicit def repVecToRepVecOps[A:Manifest](x: Rep[Vector[A]]) = new vecRepCls(x)
@@ -36,10 +38,14 @@ trait VectorOps extends DSLType with Variables {
     def is_row = vector_is_row(x)
  
     def +=(y: Rep[A]) = vector_plusequals(x,y)
+
+    def map[B:Manifest](f: Rep[A] => Rep[B]) = vector_map(x,f)
+    def sum(implicit ops: ArithOps[Rep[A]]) : Rep[A] = vector_sum(x)
   }
 
   // object defs
   def vector_obj_zeros(len: Rep[Int]): Rep[Vector[Double]]
+  def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], is_row: Rep[Boolean]): Rep[Vector[Int]]  
 
   // class defs
   def vector_apply[A:Manifest](x: Rep[Vector[A]], n: Rep[Int]): Rep[A]
@@ -55,9 +61,32 @@ trait VectorOps extends DSLType with Variables {
   def vector_trans[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_outer[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Matrix[A]]
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
+  def vector_map[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[B]): Rep[Vector[B]]
+  def vector_sum[A](x: Rep[Vector[A]])(implicit mA: Manifest[A], ops: ArithOps[Rep[A]]) : Rep[A]
 
   // impl defs
   def vector_new[A:Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
+
+  /**
+   * Machinery
+   */
+  /*
+  implicit val doubleMVecArithOps = vectorArithOps[Double]
+  implicit def vectorArithOps[T](implicit ops: ArithOps[T], c: ClassManifest[T]) : ArithOps[Vector[T]] = new ArithOps[Vector[T]] {
+    def +=(a: Vector[T], b: Vector[T]) = a.+=(b)
+    def +(a: Vector[T], b: Vector[T]) = a + b
+    def -(a: Vector[T], b: Vector[T]) = a - b
+    def *(a: Vector[T], b: Vector[T]) = a * b
+    def /(a: Vector[T], b: Vector[T]) = a / b
+    def zero = throw new UnsupportedOperationException() //TODO: figure out the size
+    def unary_-(a: Vector[T]) = throw new UnsupportedOperationException()
+    def abs(a: Vector[T]) = a.abs
+    def exp(a: Vector[T]) = throw new UnsupportedOperationException()
+    def >(a: Vector[T], b: Vector[T]) = throw new UnsupportedOperationException()
+    def <(a: Vector[T], b: Vector[T]) = throw new UnsupportedOperationException()
+  }
+  */
+
 }
 
 trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: VectorImplOps =>
@@ -101,6 +130,14 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: Ve
   case class VectorNew[A:Manifest](len: Exp[Int], is_row: Exp[Boolean])
     extends DSLOp(reifyEffects(vector_new_impl[A](len, is_row)))
 
+  case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], is_row: Exp[Boolean])
+    extends DSLOp(reifyEffects(vector_obj_range_impl(start,end,stride,is_row)))
+
+  case class VectorMap[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[B])
+    extends DSLOp(reifyEffects(vector_map_impl(x, f)))
+
+  case class VectorSum[A](x: Exp[Vector[A]])(implicit mA: Manifest[A], ops: ArithOps[Rep[A]])
+    extends DSLOp(reifyEffects(vector_sum_impl(x)))
 
   def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(x, n)
   def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(x,n,y))
@@ -119,6 +156,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: Ve
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
 
   def vector_new[A:Manifest](len: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorNew[A](len, is_row))
+
+  def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorObjectRange(start, end, stride, is_row))
+  def vector_map[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[B]) = VectorMap(x, f)
+  def vector_sum[A](x: Exp[Vector[A]])(implicit mA: Manifest[A], ops: ArithOps[Rep[A]]) = VectorSum(x)
 }
 
 /**

@@ -12,6 +12,7 @@ trait DeliteGenScalaVariables extends ScalaGenEffect {
     case ReadVar(Variable(a)) => emitValDef(sym, quote(a) + ".get")
     case NewVar(init) => emitValDef(sym, "generated.Ref(" + quote(init) + ")")
     case Assign(Variable(a), b) => stream.println(quote(a) + ".set(" + quote(b) + ")")
+    case VarPlusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get +" + quote(b) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }
