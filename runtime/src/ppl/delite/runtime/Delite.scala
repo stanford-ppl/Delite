@@ -60,7 +60,8 @@ object Delite {
   def loadDeliteDEG(filename: String) = {
     val file = new File(filename)
     if(file.isFile == false) throw new RuntimeException(filename + " doesn't appear to be a valid file")
-    val graph = DeliteTaskGraph(file)
+    DeliteTaskGraph(file)
+    // REMOVE FOLLOWING LINE TO ACTUALLY USED DEG FILE
     new TestGraph     
   }
 }

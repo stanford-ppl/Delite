@@ -63,7 +63,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
         //record that this kernel was succesfully generated
         supportedTargets += gen.toString
         returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.Type)) {
-          override def toString = "\"target\" : \"" + _1 + "\" , \"type\" : \"" + _2 + "\""
+          override def toString = "\"" + _1 + "\" : \"" + _2 + "\"" 
         }
       }
       catch {
@@ -148,8 +148,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
     val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
     stream.print("  \"antiDeps\":[" + antiDepsStr + "],\n")
-    val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString("{" , "},{", "}")
-    stream.print("  \"return-types\":[" + returnTypesStr + "]\n")
+    val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString(",")
+    stream.print("  \"return-types\":{" + returnTypesStr + "}\n")
     stream.println("},")
   }
 

@@ -73,7 +73,10 @@ class TestZip(func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP,
 
 }
 
-class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*) extends OP_Single[T](kernel) {
+class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*) extends OP_Single {
+
+  kernelId = kernel
+  scalaResultType = manifest[T].toString
 
   for (dep <- deps) {
     this.addDependency(dep)

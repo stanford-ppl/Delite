@@ -10,13 +10,16 @@ package ppl.delite.runtime.walktime.graph.ops
  */
 
 //TODO: given that instances of this class will be created by parsing an input file, is it better to simply pass the type in as a String argument? (rather than having the type parameter)
-class OP_Single[T: Manifest](kernel: String) extends DeliteOP {
+class OP_Single extends DeliteOP {
+
+  var kernelId: String = _
+  var scalaResultType: String = _
 
   final def isDataParallel = false
 
-  def task = kernel
+  def task = kernelId
 
-  def outputType = manifest[T].toString
+  def outputType = scalaResultType
 
   def nested = null
   def cost = 0
