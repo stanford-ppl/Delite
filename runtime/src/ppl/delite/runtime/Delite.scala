@@ -1,8 +1,9 @@
 package ppl.delite.runtime
 
-import runtime.executor.SMPExecutor
-import walktime.graph.{DeliteTaskGraph, TestGraph}
-import walktime.scheduler.SMPStaticScheduler
+import executor.SMPExecutor
+import graph.ops.Arguments
+import graph.{DeliteTaskGraph, TestGraph}
+import scheduler.SMPStaticScheduler
 import java.io.File
 
 /**
@@ -27,6 +28,8 @@ object Delite {
 
   def main(args: Array[String]) {
     printArgs(args)
+    //extract application arguments
+    Arguments.args = args.drop(1)
 
     val scheduler = Config.scheduler match {
       case "SMPStaticScheduler" => new SMPStaticScheduler
@@ -41,7 +44,6 @@ object Delite {
     }
 
     //load task graph
-    //TODO: this is a compile hack
     val graph = loadDeliteDEG(args(0))  
 
 
@@ -60,8 +62,7 @@ object Delite {
   def loadDeliteDEG(filename: String) = {
     val file = new File(filename)
     if(file.isFile == false) throw new RuntimeException(filename + " doesn't appear to be a valid file")
-    DeliteTaskGraph(file)
-    // REMOVE FOLLOWING LINE TO ACTUALLY USED DEG FILE
-    new TestGraph     
+    DeliteTaskGraph(file)  
   }
+
 }

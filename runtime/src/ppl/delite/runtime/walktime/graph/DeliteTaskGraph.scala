@@ -1,9 +1,9 @@
-package ppl.delite.runtime.walktime.graph
+package ppl.delite.runtime.graph
 
 import java.io.File
 import _root_.scala.util.parsing.json.JSON
 import collection.mutable.HashMap
-import ops.{OP_Single, DeliteOP}
+import ops.{Arguments, EOP, OP_Single, DeliteOP}
 
 object DeliteTaskGraph {
 
@@ -30,8 +30,8 @@ object DeliteTaskGraph {
 
   def parseDEGMap(degm: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val deg = getFieldMap(degm, "DEG")
-    graph.version = getFieldDouble(deg, "version")
-    graph.kernelPath = getFieldString(deg, "kernelpath")
+    graph._version = getFieldDouble(deg, "version")
+    graph._kernelPath = getFieldString(deg, "kernelpath")
     parseOps(getFieldList(deg, "ops"))            
   }
 
@@ -42,6 +42,7 @@ object DeliteTaskGraph {
       val opType = getFieldString(op, "type")
       opType match {
         case "SingleTask" => processSingleTask(op)
+        case "Arguments" => processArgumentsTask(op)
         case "EOP" => processEOPTask(op)
         case err@_ => unsupportedType(err)
       }
@@ -91,7 +92,6 @@ object DeliteTaskGraph {
   }
 
   def processSingleTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
-    //println("Found Single Task: " + op)
     val newop = new OP_Single
     newop.kernelId = getFieldString(op, "kernelId")
     val types = getFieldMap(op, "return-types")
@@ -100,7 +100,7 @@ object DeliteTaskGraph {
     //handle inputs
     val inputs = getFieldList(op, "inputs")
     for(i <- inputs) {
-      val input = getOp(graph.ops, i)
+      val input = getOp(graph._ops, i)
       newop.addInput(input)
       newop.addDependency(input)
       input.addConsumer(newop)
@@ -109,7 +109,7 @@ object DeliteTaskGraph {
     //handle anti dependencies
     val antiDeps = getFieldList(op, "antiDeps")
     for(a <- antiDeps) {
-      val antiDep = getOp(graph.ops, a)
+      val antiDep = getOp(graph._ops, a)
       newop.addDependency(antiDep)
       antiDep.addConsumer(newop)
     }
@@ -117,21 +117,39 @@ object DeliteTaskGraph {
     //handle control dependencies
     val controlDeps = getFieldList(op, "controlDeps")
     for(c <- controlDeps) {
-      val controlDep = getOp(graph.ops, c)
+      val controlDep = getOp(graph._ops, c)
       newop.addDependency(controlDep)
       controlDep.addConsumer(newop)
     }
 
     //add new op to graph list of ops
-    graph.ops += newop.kernelId -> newop
+    graph._ops += newop.kernelId -> newop
 
     //last op will be result op
     graph._result = newop
 
   }
 
+  /**
+   * Add the Arguments op to the task graph
+   * This op feeds all application ops that consume command line arguments
+   * By definition it has no dependencies
+   */
+  def processArgumentsTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
+    val kernelId = getFieldString(op, "kernelId")
+    graph._ops += kernelId -> Arguments
+    graph._result = Arguments
+  }
+
+  /**
+   * Add the EOP op to the task graph
+   * This op follows the application result
+   */
   def processEOPTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
-    //println("Found EOP Task: " + op)
+    val result = graph._result
+    EOP.addDependency(result) //EOP depends on "result" of application
+    result.addConsumer(EOP)
+    graph._result = EOP //set EOP as "result" for scheduler
   }
 
   def unsupportedType(err:String) = throw new RuntimeException("Unsupported Op Type found: " + err)
@@ -145,14 +163,17 @@ object DeliteTaskGraph {
 class DeliteTaskGraph {
 
 
-  val ops = new HashMap[String, DeliteOP]
-  var _result:DeliteOP = _
+  val _ops = new HashMap[String, DeliteOP]
+  var _result: DeliteOP = _
 
-  var version = 0.0
-  var kernelPath = ""
+  var _version = 0.0
+  var _kernelPath = ""
 
 
   
   def result : DeliteOP = _result
+  def version: Double = _version
+  def kernelPath: String = _kernelPath
+  def ops: Iterable[DeliteOP] = _ops.values
 
 }
