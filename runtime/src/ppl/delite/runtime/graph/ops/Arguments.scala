@@ -32,5 +32,5 @@ object Arguments extends DeliteOP {
 }
 
 object ArgsKernel {
-  def apply: Array[String] = Arguments.args
+  def apply(): Array[String] = Arguments.args
 }
