@@ -93,13 +93,14 @@ object DeliteTaskGraph {
 
   def processSingleTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val newop = new OP_Single
-    newop.kernelId = getFieldString(op, "kernelId")
+    val id = getFieldString(op, "kernelId")
+    newop.kernelId = "kernel_" + getFieldString(op, "kernelId") //TODO: hack
     val types = getFieldMap(op, "return-types")
     newop.scalaResultType = getFieldString(types, "scala")
 
     //handle inputs
     val inputs = getFieldList(op, "inputs")
-    for(i <- inputs) {
+    for(i <- inputs.reverse) {
       val input = getOp(graph._ops, i)
       newop.addInput(input)
       newop.addDependency(input)
@@ -123,7 +124,7 @@ object DeliteTaskGraph {
     }
 
     //add new op to graph list of ops
-    graph._ops += newop.kernelId -> newop
+    graph._ops += id -> newop
 
     //last op will be result op
     graph._result = newop

@@ -62,12 +62,20 @@ object ExecutableGenerator {
   private def writeHeader(out: StringBuilder, location: Int, kernelPath: String) {
     out.append("import ppl.delite.runtime.codegen.DeliteExecutable\n") //base trait
     out.append("import java.util.concurrent.locks._\n") //locking primitives
-    out.append("import ")
-    out.append(kernelPath.replace('/','.')) //application kernels
-    out.append("._\n") //TODO: make this robust to "/" at begin and end of kernelPath
+    //out.append("import ")
+    //out.append(makePath(kernelPath)) //application kernels
+    //out.append("._\n")
     out.append("object Executable")
     out.append(location)
     out.append(" extends DeliteExecutable {\n")
+  }
+
+  private def makePath(kernelPath: String): String = {
+    var begin = 0
+    var end = kernelPath.length
+    if (kernelPath.startsWith("/")) begin += 1
+    if (kernelPath.endsWith("/")) end -= 1
+    kernelPath.replace('/','.').substring(begin,end)
   }
 
   private def addKernelCalls(resource: ArrayDeque[DeliteOP], location: Int, out: StringBuilder, syncList: ArrayList[DeliteOP]) {
