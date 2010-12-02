@@ -81,15 +81,15 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Range
   case class VectorPlus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
     extends DSLOp(reifyEffects(vector_plus_impl[A](x,y)))
 
-  case class VectorMinus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DSLZipwith[A,A,A,Vector](x,y,reifyEffects(vector_new[A](x.length,x.is_row)), reifyEffects(range_until(0,x.length)), doLambda2[A,A,A]((a1,a2) => a1-a2))
   //case class VectorMinus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-  //  extends DSLOp(reifyEffects(vector_minus_impl[A](x,y)))
+  //  extends DSLZipwith[A,A,A,Vector](x,y,reifyEffects(vector_new[A](x.length,x.is_row)), reifyEffects(range_until(0,x.length)), doLambda2[A,A,A]((a1,a2) => a1-a2))
+  case class VectorMinus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
+    extends DSLOp(reifyEffects(vector_minus_impl[A](x,y)))
 
-  case class VectorDivide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A])
-    extends DSLMap[A,A,Vector](x, reifyEffects(vector_new[A](x.length,x.is_row)), reifyEffects(range_until(0,x.length)), doLambda[A,A](a=>a/y))
   //case class VectorDivide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A])
-  //  extends DSLOp(reifyEffects(vector_divide_impl[A](x,y)))
+  //  extends DSLMap[A,A,Vector](x, reifyEffects(vector_new[A](x.length,x.is_row)), reifyEffects(range_until(0,x.length)), doLambda[A,A](a=>a/y))
+  case class VectorDivide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A])
+    extends DSLOp(reifyEffects(vector_divide_impl[A](x,y)))
 
   case class VectorOuter[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
     extends DSLOp(reifyEffects(vector_outer_impl[A](x,y)))
@@ -166,6 +166,12 @@ trait CudaGenVectorOps extends CudaGenBase {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
+    case VectorObjectZeros(len) =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      println("Metadata: Generating a new Vector(%s) of attribute(%s,%s)".format(quote(sym), quote(len), true))
+    case VectorNew(len,is_row) =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      println("Metadata: Generating a new Vector(%s) of size(%s,%s)".format(quote(sym), quote(len), quote(is_row)))
     case VectorApply(x, n) =>
       if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
       else emitValDef(CudaInnerType(x.Type.toString), sym, quote(x) + ".apply(" + quote(n) + ")")

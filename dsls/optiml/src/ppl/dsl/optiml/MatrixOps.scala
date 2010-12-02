@@ -167,6 +167,9 @@ trait CudaGenMatrixOps extends CudaGenBase {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
+    case MatrixNew(numRows,numCols) =>
+      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
+      else println("Metadata: Generating a new Matrix(%s) of size(%s,%s)".format(quote(sym), quote(numRows), quote(numCols)))
     case MatrixApply1(x,i) =>
       if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
       else emitValDef("Vector<"+CudaInnerType(x.Type.toString)+">", sym, quote(x) + ".apply(" + quote(i) + ")") // TODO:

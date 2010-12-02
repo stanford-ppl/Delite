@@ -54,18 +54,17 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
         //record that this kernel was succesfully generated
         supportedTargets += gen.toString
-        //kstream.close()
+        kstream.close()
       }
       catch {
         case e: Exception => // no generator found
-          //kstream.close()
-          //(new File(buildPath+quote(sym)+"."+gen.kernelFileExt)).delete
+          gen.exceptionHandler(buildPath+quote(sym)+"."+gen.kernelFileExt, kstream)
       }
-
+      /*
       finally {
         kstream.close()
       }
-      
+      */
     }
 
     // emit task graph node
