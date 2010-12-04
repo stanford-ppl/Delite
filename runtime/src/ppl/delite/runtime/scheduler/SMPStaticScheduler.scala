@@ -32,16 +32,13 @@ final class SMPStaticScheduler {
 
   private val opQueue = new ArrayDeque[DeliteOP]
 
-  def schedule(graph: DeliteTaskGraph) : StaticSchedule = {
+  def schedule(graph: DeliteTaskGraph) : PartialSchedule = {
     //traverse nesting & schedule sub-graphs
     //TODO: implement functionality for nested graphs
     scheduleFlat(graph)
 
-    //code gen
-    val queues = processScheduledWork(graph)
-
     //return schedule
-    createStaticSchedule(queues)
+    createPartialSchedule
   }
 
   private def scheduleFlat(graph: DeliteTaskGraph) {
@@ -122,7 +119,7 @@ final class SMPStaticScheduler {
           chunk.scheduledResource = i
         }
       }
-      case reduce: OP_Reduce[_] => {
+      case reduce: OP_Reduce => {
         for (i <- 0 until numThreads) {
           val chunk = Reduce_SMP_Array_Generator.makeChunk(reduce, i, numThreads)
           procs(i).add(chunk)
@@ -134,21 +131,8 @@ final class SMPStaticScheduler {
     }
   }
 
-
-  private def processScheduledWork(graph: DeliteTaskGraph): Array[ArrayDeque[DeliteExecutable]] = {
-    val queues = new Array[ArrayDeque[DeliteExecutable]](numThreads)
-    //generate executable(s) for all the ops in each proc
-    val executables = ExecutableGenerator.makeExecutables(procs, graph.kernelPath)
-
-    for (i <- 0 until numThreads) {
-      queues(i) = new ArrayDeque[DeliteExecutable]
-      queues(i).add(executables(i))
-    }
-    queues
-  }
-
-  private def createStaticSchedule(queues: Array[ArrayDeque[DeliteExecutable]]): StaticSchedule = {
-    new StaticSchedule(queues)
+  private def createPartialSchedule = {
+    new PartialSchedule(procs)
   }
 
 }

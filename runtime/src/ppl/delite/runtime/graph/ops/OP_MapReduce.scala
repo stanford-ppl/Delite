@@ -2,14 +2,14 @@ package ppl.delite.runtime.graph.ops
 
 /**
  * Author: Kevin J. Brown
- * Date: Oct 11, 2010
- * Time: 1:27:00 AM
+ * Date: Dec 2, 2010
+ * Time: 8:11:07 PM
  * 
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
 
-class OP_Reduce(func: String, resultType: String) extends DeliteOP {
+class OP_MapReduce(mapFunc: String, reduceFunc: String, resultType: String) extends DeliteOP {
 
   final def isDataParallel = true
 
@@ -21,7 +21,27 @@ class OP_Reduce(func: String, resultType: String) extends DeliteOP {
     kernelName = name
   }
 
-  def function = func
+  object Map extends DeliteOP{
+    def function = mapFunc
+
+    def isDataParallel = true
+    def task = null
+    def outputType = null
+    def nested = null
+    def cost = 0
+    def size = 0
+  }
+
+  object Reduce extends DeliteOP {
+    def function = reduceFunc
+
+    def isDataParallel = true
+    def task = null
+    def outputType = null
+    def nested = null
+    def cost = 0
+    def size = 0
+  }
 
   def outputType = resultType
 
@@ -30,8 +50,8 @@ class OP_Reduce(func: String, resultType: String) extends DeliteOP {
    * Therefore additional chunks do not need edges to consumers
    * Chunks require same dependency & input lists
    */
-  def chunk: OP_Reduce = {
-    val r = new OP_Reduce(function, "Unit")
+  def chunk: OP_MapReduce = {
+    val r = new OP_MapReduce(Map.function, Reduce.function, "Unit")
     r.dependencyList = dependencyList //lists are immutable so can be shared
     r.inputList = inputList
     for (dep <- getDependencies) dep.addConsumer(r)

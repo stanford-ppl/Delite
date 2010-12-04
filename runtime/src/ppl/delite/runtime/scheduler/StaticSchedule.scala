@@ -2,6 +2,7 @@ package ppl.delite.runtime.scheduler
 
 import java.util.ArrayDeque
 import ppl.delite.runtime.codegen.DeliteExecutable
+import ppl.delite.runtime.graph.ops.DeliteOP
 
 /**
  * Author: Kevin J. Brown
@@ -20,6 +21,15 @@ class StaticSchedule(val resources: Array[ArrayDeque[DeliteExecutable]]) {
    * Currently this class only holds a single scheduling object
    * The outer array represents the resources scheduled across
    * The inner ArrayDeque is the schedule for that resource
+   * Designed to grow
+   */
+}
+
+class PartialSchedule(val resources: Array[ArrayDeque[DeliteOP]]) {
+  /**
+   * Currently this class only holds a single scheduling object
+   * The outer array represents the resources scheduled across
+   * The inner ArrayDeque is the partial schedule of ops for that resource
    * Designed to grow
    */
 }

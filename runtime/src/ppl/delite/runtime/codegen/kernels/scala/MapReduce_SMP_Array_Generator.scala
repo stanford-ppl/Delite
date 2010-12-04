@@ -1,34 +1,34 @@
 package ppl.delite.runtime.codegen.kernels.scala
 
-import ppl.delite.runtime.graph.ops.OP_Reduce
 import ppl.delite.runtime.codegen.ScalaCompile
+import ppl.delite.runtime.graph.ops.OP_MapReduce
 
 /**
  * Author: Kevin J. Brown
- * Date: Nov 15, 2010
- * Time: 10:07:52 PM
+ * Date: Dec 2, 2010
+ * Time: 8:06:07 PM
  * 
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
 
 /**
- * Creates a chunk for OP_Reduce and generates an executable kernel for that chunk
+ * Creates a chunk for OP_MapReduce and generates an executable kernel for that chunk
  * The generated kernels are designed to run in parallel on multiple threads in an SMP system
- * This implementation of Reduce is optimized for a DSL collection that is backed by an Array
- * WARNING: this implementation of Reduce assumes that the number of chunks <= the size of the collection:
+ * This implementation of MapReduce is optimized for a DSL collection that is backed by an Array
+ * WARNING: this implementation of MapReduce assumes that the number of chunks <= the size of the collection:
  *  creating more chunks than there are elements in the collection being reduced will produce an INCORRECT result
  */
 
-object Reduce_SMP_Array_Generator {
+object MapReduce_SMP_Array_Generator {
 
-  def makeChunk(op: OP_Reduce, chunkIdx: Int, numChunks: Int): OP_Reduce = {
+  def makeChunk(op: OP_MapReduce, chunkIdx: Int, numChunks: Int): OP_MapReduce = {
     val chunk = if (chunkIdx == 0) op else op.chunk
     ScalaCompile.addSource(makeKernel(chunk, op, chunkIdx, numChunks))
     chunk
   }
 
-  private def makeKernel(op: OP_Reduce, master: OP_Reduce, chunkIdx: Int, numChunks: Int) = {
+  private def makeKernel(op: OP_MapReduce, master: OP_MapReduce, chunkIdx: Int, numChunks: Int) = {
     val out = new StringBuilder
 
     //update the op with this kernel
@@ -55,18 +55,18 @@ object Reduce_SMP_Array_Generator {
     out.toString
   }
 
-  private def updateOP(op: OP_Reduce, master: OP_Reduce, idx: Int) {
+  private def updateOP(op: OP_MapReduce, master: OP_MapReduce, idx: Int) {
     op.setKernelName(kernelName(master, idx))
   }
 
-  private def writeHeader(out: StringBuilder, master: OP_Reduce, idx: Int) {
+  private def writeHeader(out: StringBuilder, master: OP_MapReduce, idx: Int) {
     out.append("object ")
     out.append(kernelName(master, idx))
     out.append(" {\n")
   }
 
-  private def writeKernel(out: StringBuilder, op: OP_Reduce, master: OP_Reduce, chunkIdx: Int, numChunks: Int) {
-    out.append("def apply(")
+  private def writeKernel(out: StringBuilder, op: OP_MapReduce, master: OP_MapReduce, chunkIdx: Int, numChunks: Int) {
+    out.append("def apply(") //TODO: generate all free vars
     val inputs = op.getInputs.iterator
     var inIdx = 0
     var first = true
@@ -85,7 +85,7 @@ object Reduce_SMP_Array_Generator {
 
     //tree reduction
     //first every chunk performs its primary reduction
-    out.append("var acc = collReduce(in0")
+    out.append("var acc = collMapReduce(in0")
     writeFreeVars(out, inIdx)
     out.append(')')
     out.append('\n')
@@ -98,11 +98,11 @@ object Reduce_SMP_Array_Generator {
       step *= 2
 
       out.append("acc = ")
-      out.append(op.function)
+      out.append(op.Reduce.function)
       out.append("(acc, ")
       out.append(kernelName(master, neighbor))
       out.append(".get")
-      writeFreeVars(out,inIdx)
+      writeFreeVars(out,inIdx) //TODO: freeVars for reduce only
       out.append(')')
       out.append('\n')
     }
@@ -116,12 +116,12 @@ object Reduce_SMP_Array_Generator {
     out.append('\n')
   }
 
-  private def writeReduce(out: StringBuilder, op: OP_Reduce, outputType: String, chunkIdx: Int, numChunks: Int) {
-    out.append("private def collReduce(")
+  private def writeReduce(out: StringBuilder, op: OP_MapReduce, outputType: String, chunkIdx: Int, numChunks: Int) {
+    out.append("private def collMapReduce(")
     val inputs = op.getInputs.iterator
     var inIdx = 0
     var first = true
-    while (inputs.hasNext) {
+    while (inputs.hasNext) { //TODO: generate all free vars
       if (!first) out.append(", ")
       first = false
       out.append("in")
@@ -145,13 +145,20 @@ object Reduce_SMP_Array_Generator {
     out.append('/')
     out.append(numChunks)
     out.append('\n')
-    out.append("var acc = in0(idx)\n")
+    out.append("var acc = ")
+
+    out.append(op.Map.function)
+    out.append("(in0(idx)\n")
+    writeFreeVars(out, inIdx) //TODO: free vars for map only
+
     out.append("idx += 1\n")
     out.append("while (idx < end) {\n")
     out.append("acc = ")
-    out.append(op.function)
+
+    out.append(op.Reduce.function)
     out.append("(acc, in0(idx)")
-    writeFreeVars(out, inIdx)
+    writeFreeVars(out, inIdx) //TODO: free vars for reduce only
+
     out.append(')')
     out.append('\n')
     out.append("idx += 1\n")
@@ -181,8 +188,8 @@ object Reduce_SMP_Array_Generator {
     out.append(") { _result = result; notReady = false }\n")
   }
 
-  private def kernelName(master: OP_Reduce, idx: Int) = {
-    "Reduce_SMP_Array_" + master.id + "_Chunk_" + idx
+  private def kernelName(master: OP_MapReduce, idx: Int) = {
+    "MapReduce_SMP_Array_" + master.id + "_Chunk_" + idx
   }
 
 }

@@ -1,10 +1,12 @@
 package ppl.delite.runtime
 
+import codegen.{ScalaCompile, Compilers}
 import executor.SMPExecutor
-import graph.ops.Arguments
-import graph.{DeliteTaskGraph, TestGraph}
-import scheduler.SMPStaticScheduler
+import graph.DeliteTaskGraph
 import java.io.File
+import graph.ops.Arguments
+import scheduler.SMPStaticScheduler
+import tools.nsc.io.Directory
 
 /**
  * Author: Kevin J. Brown
@@ -47,15 +49,17 @@ object Delite {
     val graph = loadDeliteDEG(args(0))  
 
 
-    //load kernels
-
-    //load data structures
+    //load kernels & data structures
+    loadScalaSources(graph)
 
     //schedule
     val schedule = scheduler.schedule(graph)
 
+    //compile
+    val executable = Compilers.compileSchedule(schedule, graph)
+
     //execute
-    executor.run(schedule)
+    executor.run(executable)
     
   }
 
@@ -63,6 +67,11 @@ object Delite {
     val file = new File(filename)
     if(file.isFile == false) throw new RuntimeException(filename + " doesn't appear to be a valid file")
     DeliteTaskGraph(file)  
+  }
+
+  def loadScalaSources(graph: DeliteTaskGraph) {
+    val sourceFiles = new Directory(new File(graph.kernelPath+"scala/")).deepFiles //obtain all files in path
+    for (file <- sourceFiles) ScalaCompile.addSourcePath(file.path)
   }
 
 }

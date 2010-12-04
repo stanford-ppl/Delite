@@ -92,11 +92,10 @@ object DeliteTaskGraph {
   }
 
   def processSingleTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
-    val newop = new OP_Single
-    val id = getFieldString(op, "kernelId")
-    newop.kernelId = "kernel_" + getFieldString(op, "kernelId") //TODO: hack
+    val id = getFieldString(op, "kernelId")    
     val types = getFieldMap(op, "return-types")
-    newop.scalaResultType = getFieldString(types, "scala")
+    //val returnMap = Map[String,String]("scala",getFieldString(types, "scala"))
+    val newop = new OP_Single("kernel_"+id, getFieldString(types, "scala"))
 
     //handle inputs
     val inputs = getFieldList(op, "inputs")
@@ -175,6 +174,7 @@ class DeliteTaskGraph {
   def result : DeliteOP = _result
   def version: Double = _version
   def kernelPath: String = _kernelPath
+  def ids: Iterable[String] = _ops.keys
   def ops: Iterable[DeliteOP] = _ops.values
 
 }

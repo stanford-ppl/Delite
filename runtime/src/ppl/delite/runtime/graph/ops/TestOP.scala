@@ -9,7 +9,8 @@ package ppl.delite.runtime.graph.ops
  * Stanford University
  */
 
-class TestOP(kernel: String)(deps: DeliteOP*) extends DeliteOP {
+class TestOP(kernel: String)(deps: DeliteOP*)
+        extends DeliteOP {
 
   def task = kernel
 
@@ -28,7 +29,8 @@ class TestOP(kernel: String)(deps: DeliteOP*) extends DeliteOP {
 
 }
 
-class TestMap(func: String)(deps: DeliteOP*)(output: DeliteOP, input: DeliteOP, free: DeliteOP*) extends OP_Map(func) {
+class TestMap(func: String)(deps: DeliteOP*)(output: DeliteOP, input: DeliteOP, free: DeliteOP*)
+        extends OP_Map(func) {
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -43,7 +45,8 @@ class TestMap(func: String)(deps: DeliteOP*)(output: DeliteOP, input: DeliteOP, 
 
 }
 
-class TestReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*) extends OP_Reduce[T](func) {
+class TestReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
+        extends OP_Reduce(func, manifest[T].toString) {
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -57,7 +60,30 @@ class TestReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, fr
 
 }
 
-class TestZip(func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP, input2: DeliteOP, free: DeliteOP*) extends OP_Zip(func) {
+class TestMapReduce[T: Manifest](mapFunc: String, reduceFunc: String)(deps: DeliteOP*)(input: DeliteOP)(mapFree: DeliteOP*)(reduceFree: DeliteOP*)
+        extends OP_MapReduce(mapFunc, reduceFunc, manifest[T].toString) {
+
+  for (dep <- deps) {
+    this.addDependency(dep)
+    dep.addConsumer(this)
+  }
+
+  for (f <- mapFree.reverse) {
+    this.Map.addInput(f)
+  }
+  //this.Map.addInput(input)
+
+  for (f <- reduceFree.reverse) {
+    this.Reduce.addInput(f)
+  }
+  //this.Reduce.addInput(this.Map)
+
+  inputList = input :: this.Map.getInputs.toList ::: this.Reduce.getInputs.toList
+
+}
+
+class TestZip(func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP, input2: DeliteOP, free: DeliteOP*)
+        extends OP_Zip(func) {
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -73,10 +99,8 @@ class TestZip(func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP,
 
 }
 
-class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*) extends OP_Single {
-
-  kernelId = kernel
-  scalaResultType = manifest[T].toString
+class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*)
+        extends OP_Single(kernel, manifest[T].toString) {
 
   for (dep <- deps) {
     this.addDependency(dep)

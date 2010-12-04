@@ -1,7 +1,8 @@
 package ppl.delite.runtime.codegen
 
-import java.util.{ArrayList, ArrayDeque}
 import ppl.delite.runtime.graph.ops.DeliteOP
+import ppl.delite.runtime.scheduler.PartialSchedule
+import java.util.{ArrayDeque, ArrayList}
 
 /**
  * Author: Kevin J. Brown
@@ -26,11 +27,10 @@ import ppl.delite.runtime.graph.ops.DeliteOP
 
 object ExecutableGenerator {
 
-  def makeExecutables(schedule: Array[ArrayDeque[DeliteOP]], kernelPath: String): Array[DeliteExecutable] = {
-    for (i <- 0 until schedule.length) {
-      ScalaCompile.addSource(makeExecutable(schedule(i), i, kernelPath))
+  def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
+    for (i <- 0 until schedule.resources.length) {
+      ScalaCompile.addSource(makeExecutable(schedule.resources(i), i, kernelPath))
     }
-    compile(schedule.length)
   }
 
   private def makeExecutable(resource: ArrayDeque[DeliteOP], location: Int, kernelPath: String) = {
@@ -59,7 +59,7 @@ object ExecutableGenerator {
     out.toString
   }
 
-  private def writeHeader(out: StringBuilder, location: Int, kernelPath: String) {
+  private[codegen] def writeHeader(out: StringBuilder, location: Int, kernelPath: String) {
     out.append("import ppl.delite.runtime.codegen.DeliteExecutable\n") //base trait
     out.append("import java.util.concurrent.locks._\n") //locking primitives
     //out.append("import ")
@@ -146,7 +146,7 @@ object ExecutableGenerator {
     out.append('\n')
   }
 
-  private def addSync(list: ArrayList[DeliteOP], out: StringBuilder) {
+  private[codegen] def addSync(list: ArrayList[DeliteOP], out: StringBuilder) {
     val iter = list.iterator
     while (iter.hasNext) { //foreach op
       val op = iter.next
@@ -205,19 +205,8 @@ object ExecutableGenerator {
     "Result"+op.id
   }
 
-  private def addAccessor(out: StringBuilder) {
+  private[codegen] def addAccessor(out: StringBuilder) {
     out.append("def self = this\n")
-  }
-
-  private def compile(numSources: Int) = {
-    ScalaCompile.printSources
-    val classLoader = ScalaCompile.compile
-    val objects = new Array[DeliteExecutable](numSources)
-    for (i <- 0 until numSources) {
-      val cls = classLoader.loadClass("Executable"+i)
-      objects(i) = cls.getMethod("self").invoke(null).asInstanceOf[DeliteExecutable] //retrieve the singleton instance
-    }
-    objects
   }
 
 }

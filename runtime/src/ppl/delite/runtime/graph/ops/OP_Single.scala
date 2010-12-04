@@ -9,16 +9,13 @@ package ppl.delite.runtime.graph.ops
  * Stanford University
  */
 
-class OP_Single extends DeliteOP {
-
-  var kernelId: String = _
-  var scalaResultType: String = _
+class OP_Single(kernel: String, resultType: String) extends DeliteOP {
 
   final def isDataParallel = false
 
-  def task = kernelId
+  def task = kernel
 
-  def outputType = scalaResultType
+  def outputType = resultType
 
   def nested = null
   def cost = 0

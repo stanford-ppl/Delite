@@ -14,6 +14,7 @@ object ScalaCompile {
   private var reporter: ConsoleReporter = _
 
   private val sourceBuffer = new ArrayBuffer[String]
+  private val pathBuffer = new ArrayBuffer[String]
 
   private def setupCompiler() = {
 
@@ -35,13 +36,19 @@ object ScalaCompile {
     sourceBuffer += source
   }
 
+  def addSourcePath(path: String) {
+    pathBuffer += path
+  }
+
   def compile: ClassLoader = {
     val sources = sourceBuffer.toArray
     sourceBuffer.clear
-    compile(sources)
+    val paths = pathBuffer.toArray
+    pathBuffer.clear
+    compile(sources, paths)
   }
 
-  def compile(sources: Array[String]): ClassLoader = {
+  def compile(sources: Array[String], paths: Array[String]): ClassLoader = {
     if (this.compiler eq null)
       setupCompiler()
 
@@ -55,6 +62,11 @@ object ScalaCompile {
     var sourceFiles: List[SourceFile] = Nil
     for (i <- 0 until sources.length) {
       val file = new BatchSourceFile("source"+i, sources(i))
+      sourceFiles = file :: sourceFiles
+    }
+
+    for (i <- 0 until paths.length) {
+      val file = new BatchSourceFile(AbstractFile.getFile(paths(i)))
       sourceFiles = file :: sourceFiles
     }
 
