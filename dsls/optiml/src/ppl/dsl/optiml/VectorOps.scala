@@ -1,10 +1,9 @@
 package ppl.dsl.optiml
 
-import java.io.{PrintWriter}
-
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
 import scala.virtualization.lms.common._
+import java.io.{StringWriter, PrintWriter}
 
 trait Vector[T]
 
@@ -164,17 +163,41 @@ trait CudaGenVectorOps extends CudaGenBase {
   val IR: VectorOpsExp
   import IR._
 
+  // The statements that will be included in the gpu memory allocation helper function
+  def allocStmts(sym:Sym[_], length: String, isRow:String): String = {
+    val str = new StringWriter()
+    val stream = new PrintWriter(str)
+    val typeStr = CudaType(sym.Type.toString)
+    val targTypeStr = CudaType(sym.Type.typeArguments(0).toString)
+
+    stream.println("\tvoid *devPtr;")
+    stream.println("\tDeliteCudaMalloc(%s,%s*sizeof(%s));".format("&devPtr",length,targTypeStr))
+    stream.println("\t%s *newVector = new %s(%s,%s,%s);".format(typeStr,typeStr,length,isRow,"devPtr"))
+    stream.println("\treturn *newVector;")
+    stream.flush
+    str.toString
+  }
+
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
+
+    case VectorDivide(x,y) =>
+      gpuBlockSizeX = quote(x)+".length"
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(%s, (%s.apply(%s))/%s);".format(quote(sym),"idxX",quote(x),"idxX",quote(y)))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      // Add allocation helper function
+      emitAlloc(sym,allocStmts(sym,quote(x)+".length",quote(x)+".is_row"))
+
     case VectorObjectZeros(len) =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      println("Metadata: Generating a new Vector(%s) of attribute(%s,%s)".format(quote(sym), quote(len), true))
+      throw new RuntimeException("CudaGen: Not GPUable")
     case VectorNew(len,is_row) =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      println("Metadata: Generating a new Vector(%s) of size(%s,%s)".format(quote(sym), quote(len), quote(is_row)))
+      throw new RuntimeException("CudaGen: Not GPUable")
     case VectorApply(x, n) =>
       if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else emitValDef(CudaInnerType(x.Type.toString), sym, quote(x) + ".apply(" + quote(n) + ")")
+      else emitValDef(CudaType(sym.Type.typeArguments(0).toString), sym, quote(x) + ".apply(" + quote(n) + ")")
     case VectorUpdate(x,n,y) =>
       if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
       else stream.println(addTab() + "%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
