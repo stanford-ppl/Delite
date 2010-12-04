@@ -28,7 +28,7 @@ trait MatrixOps extends DSLType with Variables {
     def +=(y: Rep[Matrix[A]])(implicit n: Numeric[A]) = matrix_plusequals(x,y)
     def *(y: Rep[Matrix[A]]) = matrix_times(x,y)
     def inv = matrix_inverse(x)
-    def trans = matrix_transpose(x)
+    def ~ = matrix_transpose(x)
     def numRows = matrix_numrows(x)
     def numCols = matrix_numcols(x)
     def pprint = matrix_pprint(x)
@@ -52,28 +52,6 @@ trait MatrixOps extends DSLType with Variables {
 
   // impl defs
   def matrix_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]]
-
-  /**
-   * Machinery
-   */
-  
-  implicit val doubleMatArithOps = matrixArithOps[Double]
-  implicit def matrixArithOps[T:Numeric:Manifest] : ArithOps[Rep[Matrix[T]]] = new ArithOps[Rep[Matrix[T]]] {
-    def +=(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = matRepArith(a).+=(b)
-    /*
-    def +(a: Matrix[T], b: Matrix[T]) = a + b
-    def -(a: Matrix[T], b: Matrix[T]) = a - b
-    def *(a: Matrix[T], b: Matrix[T]) = a dot b
-    def /(a: Matrix[T], b: Matrix[T]) = a / b
-    def zero = throw new UnsupportedOperationException() //TODO: figure out the size
-    def unary_-(a: Matrix[T]) = -a
-    def abs(a: Matrix[T]) = a.abs
-    def exp(a: Matrix[T]) = a.exp
-    def >(a: Matrix[T], b: Matrix[T]) = a > b
-    def <(a: Matrix[T], b: Matrix[T]) = a < b
-    */
-  }
-
 }
 
 

@@ -24,7 +24,7 @@ class RangeVectorImpl(start: Int, end: Int, stride: Int, isRow: Boolean) extends
     throw new IllegalArgumentException("RangeVector cannot be updated")
   }
 
-  override def +=[A <: Int](x: A): VectorImpl[Int] = {
+  override def insert[A <: Int](pos: Int, x: A): VectorImpl[Int] = {
     throw new IllegalArgumentException("RangeVector cannot be updated")
   }
 

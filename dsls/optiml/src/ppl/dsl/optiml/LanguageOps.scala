@@ -12,18 +12,16 @@ import scala.virtualization.lms.common.{DSLOpsExp, Base}
  *
  */
 
-trait LanguageOps extends Base {
-  def sum[A](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A])(implicit mA: Manifest[A], ops: ArithOps[Rep[A]])
-    = optiml_sum(start, end, block)
+trait LanguageOps extends Base { this: ArithImplicits =>
+  def sum[A:Manifest:ArithOps](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A]) = optiml_sum(start, end, block)
 
-  def optiml_sum[A](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A])(implicit mA: Manifest[A], ops: ArithOps[Rep[A]]) : Rep[A]
+  def optiml_sum[A:Manifest:ArithOps](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A]) : Rep[A]
 }
 
-trait LanguageOpsExp extends LanguageOps with DSLOpsExp { this: LanguageImplOps =>
+trait LanguageOpsExp extends LanguageOps with DSLOpsExp { this: LanguageImplOps with ArithImplicits =>
   // implemented via kernel embedding
-  case class Sum[A](start: Exp[Int], end: Exp[Int], block: Rep[Int] => Rep[A])(implicit mA: Manifest[A], ops: ArithOps[Rep[A]])
+  case class Sum[A:Manifest:ArithOps](start: Exp[Int], end: Exp[Int], block: Rep[Int] => Rep[A])
     extends DSLOp(reifyEffects(optiml_sum_impl(start, end, block)))
 
-  def optiml_sum[A](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A])
-                   (implicit mA: Manifest[A], ops: ArithOps[Rep[A]]) = Sum(start, end, block)
+  def optiml_sum[A:Manifest:ArithOps](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A]) = Sum(start, end, block)
 }

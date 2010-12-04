@@ -35,21 +35,18 @@ object GDA extends DeliteApplication with OptiMLExp {
     */
 
     // TODO: get unit out of client code
-    var y_ones = unit(0.0); var y_zeros = unit(0.0)
-    var mu0_num = Vector.zeros(n); var mu1_num = Vector.zeros(n);
 
     /* This loop calculates all of the needed statistics with a single pass
        through the data.  */
-    for (i <- 0 until m){
+
+    val (y_zeros, y_ones, mu0_num, mu1_num) = t4( sum(0,m) { i =>
       if (y(i) == false){
-        y_zeros = y_zeros + 1
-        mu0_num = mu0_num + x(i)
+        (unit(1.),unit(0.),x(i),Vector.zeros(x.numCols))
       }
-      else{
-        y_ones = y_ones + 1
-        mu1_num = mu1_num + x(i)
+      else {
+        (unit(0.),unit(1.),Vector.zeros(x.numCols),x(i))
       }
-    }
+    })
 
     //println("y_zeros: " + y_zeros)
     //println("y_ones: " + y_ones)
@@ -57,15 +54,15 @@ object GDA extends DeliteApplication with OptiMLExp {
     val phi = 1./m * y_ones
     val mu0 = mu0_num / y_zeros
     val mu1 = mu1_num / y_ones
-
+        
     /* calculate covariance matrix sigma */
     /* x(i) is a row vector for us, while it is defined a column vector in the formula */
     val sigma = sum(0, m) { i =>
       if (y(i) == false){
-       (((x(i)-mu0).trans).outer(x(i)-mu0))
+       (((x(i)-mu0)~)**(x(i)-mu0))
       }
       else{
-       (((x(i)-mu1).trans).outer(x(i)-mu1))
+       (((x(i)-mu1)~)**(x(i)-mu1))
       }
     }
     

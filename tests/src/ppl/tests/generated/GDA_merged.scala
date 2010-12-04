@@ -99,7 +99,7 @@ val x62 = x61.trim()
 x60 = x62
 val x64 = x60
 val x65 = java.lang.Double.parseDouble(x64)
-val x66 = x56 += x65
+val x66 = x56.insert(x56.length,x65)
 val x67 = x58.readLine()
 x60 = x67
 ()

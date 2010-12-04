@@ -99,7 +99,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
         x61 = x63
         val x65 = x61
         val x66 = java.lang.Double.parseDouble(x65)
-        val x67 = x57 += x66
+        val x67 = x57.insert(x57.length,x66)
         val x68 = x59.readLine()
         x61 = x68
         ()

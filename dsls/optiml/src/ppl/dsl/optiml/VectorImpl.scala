@@ -29,13 +29,18 @@ class VectorImpl[T: ClassManifest](len: Int, isRow: Boolean) extends Vector[T] {
     _data(index) = x
   }
 
-  def +=[A <: T](x: A): VectorImpl[T] = {
-    ensureExtra(1)
-    _data(_length) = x
-    _length += 1
+  def insert[A <: T](pos: Int, x: A): VectorImpl[T] = {
+    insertSpace(pos, 1)
+    _data(pos) = x    
     this
   }
-  
+
+  protected def insertSpace(pos: Int, len: Int) {
+    ensureExtra(len)
+    Array.copy(_data, pos, _data, pos + len, _length - pos)
+    _length += len
+  }
+
   protected def ensureExtra(extra: Int) {
     if (_data.length - _length < extra) {
       realloc(_length + extra)
