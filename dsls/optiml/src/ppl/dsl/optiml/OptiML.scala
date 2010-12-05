@@ -49,4 +49,11 @@ trait OptiMLCodeGenCuda extends CudaCodeGenPkg with CudaGenVectorOps with CudaGe
 
   val IR: DeliteApplication with OptiMLExp
 
+  override def remap[A](m: Manifest[A]) : String = m.toString match {
+    case "ppl.dsl.optiml.Vector[Double]" => "Vector<double>"
+    case "ppl.dsl.optiml.Vector[Boolean]" => "Vector<bool>"
+    case "ppl.dsl.optiml.Matrix[Double]" => "Matrix<double>"
+    case _ => super.remap(m)
+  }
+
 }

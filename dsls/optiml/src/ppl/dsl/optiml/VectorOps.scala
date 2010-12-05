@@ -213,8 +213,11 @@ trait CudaGenVectorOps extends CudaGenBase {
 
     stream.println("\t%s *devPtr;".format(targTypeStr))
     stream.println("\tDeliteCudaMalloc((void**)%s,%s*sizeof(%s));".format("&devPtr",length,targTypeStr))
-    stream.println("\t%s *newVector = new %s(%s,%s,%s);".format(typeStr,typeStr,length,isRow,"devPtr"))
-    stream.println("\treturn *newVector;")
+    stream.println("\t%s %s;".format(typeStr,quote(sym)))
+    stream.println("\t%s.length = %s;".format(quote(sym),length))
+    stream.println("\t%s.is_row = %s;".format(quote(sym),isRow))
+    stream.println("\t%s.data = %s;".format(quote(sym),"devPtr"))
+    stream.println("\treturn %s;".format(quote(sym)))
     stream.flush
     str.toString
   }
@@ -232,6 +235,15 @@ trait CudaGenVectorOps extends CudaGenBase {
       // Add allocation helper function
       emitAlloc(sym,allocStmts(sym,quote(x)+".length",quote(x)+".is_row"))
 
+    case VectorSum(x) =>
+      gpuBlockSizeX = quote(x)+".length"
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
+      tabWidth += 1
+      stream.println("Function Body")
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitAlloc(sym,allocStmts(sym,quote(x)+".length",quote(x)+".is_row"))
+    
     case VectorObjectZeros(len) =>
       throw new RuntimeException("CudaGen: Not GPUable")
     case VectorNew(len,is_row) =>
