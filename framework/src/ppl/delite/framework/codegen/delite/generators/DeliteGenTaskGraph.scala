@@ -132,8 +132,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     val controlDepsStr = if(controlDeps.isEmpty) "" else controlDeps.map(quote(_)).mkString("\"","\",\"","\"")
     stream.print("  \"controlDeps\":[" + controlDepsStr + "]\n")
     val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"antiDeps\":[" + antiDepsStr + "]")
-    stream.println("  \"inputs\":[" + inputsStr + "]")
+    stream.print("  \"antiDeps\":[" + antiDepsStr + "]\n")
     stream.println("  \"metadata\":"+metaData.toString)
     stream.println("},")
   }
