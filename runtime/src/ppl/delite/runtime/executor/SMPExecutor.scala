@@ -13,7 +13,7 @@ import ppl.delite.runtime.graph.ops.EOP
  * Stanford University
  */
 
-class SMPExecutor {
+class SMPExecutor extends Executor {
 
   val numThreads = Config.numThreads
 
@@ -23,8 +23,6 @@ class SMPExecutor {
     threadPool.init
     println("SMP Executor initialized with " + numThreads + " threads")
     threadPool.submitAll(schedule)
-    EOP.await //await the end of the application program
-    println("Executor exiting")
   }
 
 }

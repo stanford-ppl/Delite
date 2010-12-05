@@ -1,5 +1,7 @@
 package ppl.delite.runtime.graph.ops
 
+import ppl.delite.runtime.graph.Targets
+
 /**
  * Author: Kevin J. Brown
  * Date: Nov 14, 2010
@@ -9,13 +11,14 @@ package ppl.delite.runtime.graph.ops
  * Stanford University
  */
 
-class OP_Single(kernel: String, resultType: String) extends DeliteOP {
+class OP_Single(kernel: String, resultType: Map[Targets.Value, String]) extends DeliteOP {
 
   final def isDataParallel = false
 
   def task = kernel
 
-  def outputType = resultType
+  def outputType = resultType(Targets.Scala)
+  def outputType(target: Targets.Value) = resultType(target)
 
   def nested = null
   def cost = 0

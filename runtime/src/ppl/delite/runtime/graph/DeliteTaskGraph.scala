@@ -94,8 +94,8 @@ object DeliteTaskGraph {
   def processSingleTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val id = getFieldString(op, "kernelId")    
     val types = getFieldMap(op, "return-types")
-    //val returnMap = Map[String,String]("scala",getFieldString(types, "scala"))
-    val newop = new OP_Single("kernel_"+id, getFieldString(types, "scala"))
+    val resultMap = Map[Targets.Value,String]((Targets.Scala,getFieldString(types, "scala")), (Targets.Cuda, getFieldString(types, "cuda")))
+    val newop = new OP_Single("kernel_"+id, resultMap)
 
     //handle inputs
     val inputs = getFieldList(op, "inputs")

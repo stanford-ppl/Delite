@@ -1,6 +1,6 @@
 package ppl.delite.runtime.graph.ops
 
-import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.graph.{Targets, DeliteTaskGraph}
 
 /**
  * Author: Kevin J. Brown
@@ -18,6 +18,8 @@ abstract class DeliteOP {
    */
   def task : String
 
+  //def outputType: String = outputType(Targets.Scala)
+  //def outputType(target: Targets.Value): String
   def outputType: String
 
   protected var dependencyList: List[DeliteOP] = Nil

@@ -13,10 +13,14 @@ object Config {
 
   val numThreads: Int = System.getProperty("numThreads", "1").toInt
 
+  val numGPUs: Int = System.getProperty("numGPUs", "0").toInt
+
   val queueSize: Int = System.getProperty("queueSize", "128").toInt
 
   val scheduler: String = System.getProperty("scheduler", "default")
 
   val executor: String = System.getProperty("executor", "default")
+
+  val printSources: Boolean = if (System.getProperty("debug-printSources") == null) false else true
 
 }

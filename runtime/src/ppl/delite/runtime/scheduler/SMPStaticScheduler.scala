@@ -23,7 +23,7 @@ import java.util.ArrayDeque
  *
  */
 
-final class SMPStaticScheduler {
+final class SMPStaticScheduler extends StaticScheduler {
 
   private val numThreads = Config.numThreads
 

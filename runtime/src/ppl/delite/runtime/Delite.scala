@@ -1,18 +1,18 @@
 package ppl.delite.runtime
 
-import codegen.{ScalaCompile, Compilers}
-import executor.SMPExecutor
+import codegen._
+import executor._
 import graph.DeliteTaskGraph
+import graph.ops.{EOP, Arguments}
 import java.io.File
-import graph.ops.Arguments
-import scheduler.SMPStaticScheduler
+import scheduler._
 import tools.nsc.io.Directory
 
 /**
  * Author: Kevin J. Brown
  * Date: Oct 11, 2010
  * Time: 5:02:38 PM
- * 
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
@@ -35,22 +35,27 @@ object Delite {
 
     val scheduler = Config.scheduler match {
       case "SMPStaticScheduler" => new SMPStaticScheduler
+      case "StressTest" => new DieRollStaticScheduler
+      case "GPUOnlyStaticScheduler" => new GPUOnlyStaticScheduler
       case "default" => new SMPStaticScheduler
       case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
     }
 
     val executor = Config.executor match {
       case "SMPExecutor" => new SMPExecutor
+      case "GPUExecutor" => new GPUExecutor
+      case "SMP+GPUExecutor" => new SMP_GPU_Executor
       case "default" => new SMPExecutor
       case _ => throw new IllegalArgumentException("Requested executor type is not recognized")
     }
 
     //load task graph
-    val graph = loadDeliteDEG(args(0))  
+    val graph = loadDeliteDEG(args(0))
 
 
     //load kernels & data structures
     loadScalaSources(graph)
+    loadCudaSources(graph)
 
     //schedule
     val schedule = scheduler.schedule(graph)
@@ -60,18 +65,25 @@ object Delite {
 
     //execute
     executor.run(executable)
-    
+
+    EOP.await //await the end of the application program
+
   }
 
   def loadDeliteDEG(filename: String) = {
     val file = new File(filename)
     if(file.isFile == false) throw new RuntimeException(filename + " doesn't appear to be a valid file")
-    DeliteTaskGraph(file)  
+    DeliteTaskGraph(file)
   }
 
   def loadScalaSources(graph: DeliteTaskGraph) {
     val sourceFiles = new Directory(new File(graph.kernelPath+"scala/")).deepFiles //obtain all files in path
     for (file <- sourceFiles) ScalaCompile.addSourcePath(file.path)
+  }
+
+  def loadCudaSources(graph: DeliteTaskGraph) {
+    val sourceFiles = new Directory(new File(graph.kernelPath+"cuda/")).deepFiles //obtain all files in path
+    for (file <- sourceFiles) CudaCompile.addSourcePath(file.path)
   }
 
 }

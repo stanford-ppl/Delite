@@ -1,5 +1,7 @@
 package ppl.delite.runtime.graph.ops
 
+import ppl.delite.runtime.graph.Targets
+
 /**
  * Author: Kevin J. Brown
  * Date: Oct 20, 2010
@@ -100,7 +102,7 @@ class TestZip(func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP,
 }
 
 class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*)
-        extends OP_Single(kernel, manifest[T].toString) {
+        extends OP_Single(kernel, Map[Targets.Value,String]((Targets.Scala, manifest[T].toString))) {
 
   for (dep <- deps) {
     this.addDependency(dep)

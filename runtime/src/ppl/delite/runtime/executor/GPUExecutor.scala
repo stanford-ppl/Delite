@@ -1,7 +1,6 @@
-package ppl.delite.runtime.executor.gpu
+package ppl.delite.runtime.executor
 
 import ppl.delite.runtime.scheduler.StaticSchedule
-import ppl.delite.runtime.executor.ExecutionThread
 
 /**
  * Author: Kevin J. Brown
@@ -14,10 +13,9 @@ import ppl.delite.runtime.executor.ExecutionThread
 
 /**
  * A runtime Executor for a single GPU device
- * This executor creates a pool of streams (analogous to a CPU thread pool)
+ * This executor spawns a host thread to manage the device
  */
-//TODO: can multiple GPUs be supported through multiple instances of this class?
-class GPUExecutor {
+class GPUExecutor extends Executor {
 
   //TODO: how do we choose the appropriate number of streams for the device?
   val numStreams = 1
@@ -30,6 +28,7 @@ class GPUExecutor {
    * The CUDA model requires exactly one host thread per GPU device
    */
   def run(schedule: StaticSchedule) {
+    submitAll(schedule)
     val thread = new Thread(host, "GPUHostThread-"+deviceNum) //spawn new machine thread to host GPU device
     thread.setDaemon(true) //to handle shutdown
     thread.start

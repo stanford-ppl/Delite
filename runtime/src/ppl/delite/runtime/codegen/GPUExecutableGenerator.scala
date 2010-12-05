@@ -65,10 +65,6 @@ object GPUExecutableGenerator {
     //the event function
     writeEventFunction(out)
 
-    //the footer
-    out.append('}')
-    out.append('\n')
-
     out.toString
   }
 
@@ -198,14 +194,16 @@ object GPUExecutableGenerator {
   }
 
   private def writeEventFunction(out: StringBuilder) {
-    out.append("void addEvent(cudaStream_t fromStream, cudaStream_t toStream) {")
+    out.append("void addEvent(cudaStream_t fromStream, cudaStream_t toStream) {\n")
     out.append("cudaEvent_t event;\n")
     out.append("cudaEventCreateWithFlags(&event, cudaEventDisableTiming);\n")
-    out.append("cudaEventRecord(event,fromStream);\n");
+    out.append("cudaEventRecord(event, fromStream);\n");
 
-    out.append("cudaStreamWaitEvent(toStream,event,0);\n")
+    out.append("cudaStreamWaitEvent(toStream, event, 0);\n")
 
     out.append("cudaEventDestroy(event);\n")
+    out.append('}')
+    out.append('\n')
   }
 
   private def emitScala(location: Int, syncList: ArrayList[DeliteOP]): String = {
@@ -224,7 +222,7 @@ object GPUExecutableGenerator {
     out.append("@native def hostGPU : Unit\n")
 
     //link the native code upon object creation
-    out.append("System.loadLibrary(\"cuda\")")
+    out.append("System.loadLibrary(\"cudaHost.so\")\n")
 
     //the sync methods/objects
     ExecutableGenerator.addSync(syncList, out)
