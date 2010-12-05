@@ -170,7 +170,7 @@ trait CudaGenVectorOps extends CudaGenBase {
     val typeStr = CudaType(sym.Type.toString)
     val targTypeStr = CudaType(sym.Type.typeArguments(0).toString)
 
-    stream.println("\tvoid *devPtr;")
+    stream.println("\t%s *devPtr;".format(targTypeStr))
     stream.println("\tDeliteCudaMalloc(%s,%s*sizeof(%s));".format("&devPtr",length,targTypeStr))
     stream.println("\t%s *newVector = new %s(%s,%s,%s);".format(typeStr,typeStr,length,isRow,"devPtr"))
     stream.println("\treturn *newVector;")

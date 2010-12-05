@@ -5,10 +5,8 @@
 
 template <class T>
 class Matrix {
-private:
-    T *data;
-
 public:
+    T *data;
 	int numRows;
 	int numCols;
 	
@@ -26,10 +24,10 @@ public:
 	}
 
 	// Accessor Functions
-	T apply(int idxR, int idxC) {
+	__device__ T apply(int idxR, int idxC) {
 		return data[idxR*numCols+idxC];
 	}
-	void update(int idxR, int idxC, T newVal) {
+	__device__ void update(int idxR, int idxC, T newVal) {
 		data[idxR*numCols+idxC] = newVal;
 	}
 };

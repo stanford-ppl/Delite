@@ -5,10 +5,8 @@
 
 template <class T>
 class Vector {
-private:
-    T *data;
-
 public:
+    T *data;
     int length;
     bool is_row;
 
@@ -26,11 +24,11 @@ public:
     }
 
     // Accessor Functions
-    T apply(int idx) {
+    __device__ T apply(int idx) {
         return data[idx];
     }
 
-    void update(int idx, T newVal) {
+    __device__ void update(int idx, T newVal) {
         data[idx] = newVal;
     }
 };
