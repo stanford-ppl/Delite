@@ -8,12 +8,14 @@ import scala.virtualization.lms.common.{ScalaOpsPkgExp, ScalaOpsPkg, ScalaCodeGe
 import scala.virtualization.lms.internal.{GenericNestedCodegen, GenericCodegen}
 import ppl.delite.framework.codegen.delite.DeliteCodeGenOverridesScala
 
-trait OptiML extends ScalaOpsPkg with VectorOps with MatrixOps with MLInputReaderOps {
+trait OptiML extends ScalaOpsPkg with ArithImplicits with VectorOps with MatrixOps with MLInputReaderOps {
   this: DeliteApplication =>
 }
 
-trait OptiMLExp extends OptiML with ScalaOpsPkgExp with VectorOpsExp with VectorViewOpsExp with MatrixOpsExp with MLInputReaderOpsExp
-  with VectorImplOpsStandard with VectorViewImplOpsStandard with MatrixImplOpsStandard with MLInputReaderImplOpsStandard {
+trait OptiMLExp extends OptiML with ScalaOpsPkgExp with LanguageOpsExp with VectorOpsExpOpt with VectorViewOpsExp
+  with MatrixOpsExpOpt with MLInputReaderOpsExp
+  with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
+  with MatrixImplOpsStandard with MLInputReaderImplOpsStandard {
   this: DeliteApplication =>
 
   def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericNestedCodegen{val IR: OptiMLExp.this.type} = {

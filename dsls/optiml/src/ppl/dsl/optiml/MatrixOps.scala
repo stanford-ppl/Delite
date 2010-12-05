@@ -25,13 +25,14 @@ trait MatrixOps extends DSLType with Variables {
     def apply(i: Rep[Int], j: Rep[Int]) = matrix_apply2(x,i,j)
     def update(i: Rep[Int], j: Rep[Int], y: Rep[A]) = matrix_update(x,i,j,y)
     def +(y: Rep[Matrix[A]])(implicit n: Numeric[A]) = matrix_plus(x,y)
+    def +=(y: Rep[Matrix[A]])(implicit n: Numeric[A]) = matrix_plusequals(x,y)
     def *(y: Rep[Matrix[A]]) = matrix_times(x,y)
     def inv = matrix_inverse(x)
-    def trans = matrix_transpose(x)
+    def ~ = matrix_transpose(x)
     def numRows = matrix_numrows(x)
     def numCols = matrix_numcols(x)
     def pprint = matrix_pprint(x)
-    def +=(y: Rep[Vector[A]]) = matrix_plusequals(x,y)
+    def +=(y: Rep[Vector[A]]) = matrix_insertrow(x,x.numRows,y)
     def insertRow(pos: Rep[Int], v: Rep[Vector[A]]) = matrix_insertrow(x,pos,v)
   }
 
@@ -40,13 +41,13 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_apply2[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
   def matrix_update[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int], y: Rep[A]): Rep[Unit]
   def matrix_plus[A:Manifest:Numeric](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_plusequals[A:Manifest:Numeric](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_times[A:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_inverse[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_transpose[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_numrows[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
   def matrix_numcols[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
   def matrix_pprint[A:Manifest](x: Rep[Matrix[A]]): Rep[Unit]
-  def matrix_plusequals[A:Manifest](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Matrix[A]]
   def matrix_insertrow[A:Manifest](x: Rep[Matrix[A]], pos: Rep[Int], v: Rep[Vector[A]]) : Rep[Matrix[A]]
 
 
@@ -74,7 +75,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
   case class MatrixPPrint[A:Manifest](x: Exp[Matrix[A]])
     extends DSLOp(reifyEffects(matrix_pprint_impl[A](x)))
 
-  case class MatrixPlusEquals[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]])
+  case class MatrixPlusEquals[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends DSLOp(reifyEffects(matrix_plusequals_impl[A](x,y)))
 
   case class MatrixNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int])
@@ -89,12 +90,12 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
 
   def matrix_apply1[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = MatrixApply1[A](x,i)
   def matrix_apply2[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) = MatrixApply2[A](x,i,j)
-  def matrix_update[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) = reflectEffect(MatrixUpdate[A](x,i,j,y))
+  def matrix_update[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) = reflectMutation(MatrixUpdate[A](x,i,j,y))
   def matrix_numrows[A:Manifest](x: Exp[Matrix[A]]) = MatrixNumRows(x)
   def matrix_numcols[A:Manifest](x: Exp[Matrix[A]]) = MatrixNumCols(x)
-  def matrix_insertrow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectEffect(MatrixInsertRow(x,pos,y))
+  def matrix_insertrow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(MatrixInsertRow(x,pos,y))
 
-  def matrix_plusequals[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = reflectEffect(MatrixPlusEquals(x,y))
+  def matrix_plusequals[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectMutation(MatrixPlusEquals(x,y))
   def matrix_plus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixPlus(x, y)
   def matrix_times[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixTimes(x, y)
   def matrix_inverse[A:Manifest](x: Exp[Matrix[A]]) = MatrixInverse(x)
@@ -104,7 +105,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
 }
 
 /**
- * Optimizations for composite MatrixOps operations.
+ *  Optimizations for composite MatrixOps operations.
  */
 
 trait MatrixOpsExpOpt extends MatrixOpsExp { this: MatrixImplOps =>
