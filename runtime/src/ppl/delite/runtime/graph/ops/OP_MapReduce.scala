@@ -1,5 +1,7 @@
 package ppl.delite.runtime.graph.ops
 
+import ppl.delite.runtime.graph.targets.Targets
+
 /**
  * Author: Kevin J. Brown
  * Date: Dec 2, 2010
@@ -9,7 +11,7 @@ package ppl.delite.runtime.graph.ops
  * Stanford University
  */
 
-class OP_MapReduce(mapFunc: String, reduceFunc: String, resultType: String) extends DeliteOP {
+class OP_MapReduce(mapFunc: String, reduceFunc: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
 
   final def isDataParallel = true
 
@@ -26,7 +28,8 @@ class OP_MapReduce(mapFunc: String, reduceFunc: String, resultType: String) exte
 
     def isDataParallel = true
     def task = null
-    def outputType = null
+    def supportsTarget(target: Targets.Value) = false
+    def outputType(target: Targets.Value) = null
     def nested = null
     def cost = 0
     def size = 0
@@ -37,21 +40,25 @@ class OP_MapReduce(mapFunc: String, reduceFunc: String, resultType: String) exte
 
     def isDataParallel = true
     def task = null
-    def outputType = null
+    def supportsTarget(target: Targets.Value) = false
+    def outputType(target: Targets.Value) = null
     def nested = null
     def cost = 0
     def size = 0
   }
 
-  def outputType = resultType
+  def supportsTarget(target: Targets.Value) = resultType.contains(target)
+
+  def outputType(target: Targets.Value) = resultType(target)
+  override def outputType: String = resultType(Targets.Scala)
 
   /**
-   * Since the semantics of Reduce are to return a T, all chunks are necessarily complete before the final T can be returned
+   * Since the semantics of MapReduce are to return a T, all chunks are necessarily complete before the final T can be returned
    * Therefore additional chunks do not need edges to consumers
    * Chunks require same dependency & input lists
    */
   def chunk: OP_MapReduce = {
-    val r = new OP_MapReduce(Map.function, Reduce.function, "Unit")
+    val r = new OP_MapReduce(Map.function, Reduce.function, Targets.unitTypes(resultType))
     r.dependencyList = dependencyList //lists are immutable so can be shared
     r.inputList = inputList
     for (dep <- getDependencies) dep.addConsumer(r)

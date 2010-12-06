@@ -201,7 +201,7 @@ object ExecutableGenerator {
     "x"+op.id
   }
 
-  private def getSync(op: DeliteOP): String = {
+  private[codegen] def getSync(op: DeliteOP): String = {
     "Result"+op.id
   }
 

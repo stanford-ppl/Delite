@@ -30,7 +30,7 @@ object Compilers {
       CudaCompile.printSources
     }
 
-    CudaCompile.compile
+    CudaCompile.compile(graph.kernelPath)
 
     val classLoader = ScalaCompile.compile
     val queues = new Array[ArrayDeque[DeliteExecutable]](schedule.resources.length)

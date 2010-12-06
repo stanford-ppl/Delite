@@ -1,6 +1,6 @@
 package ppl.delite.runtime.graph.ops
 
-import ppl.delite.runtime.graph.Targets
+import ppl.delite.runtime.graph.targets._
 
 /**
  * Author: Kevin J. Brown
@@ -17,7 +17,8 @@ class OP_Single(kernel: String, resultType: Map[Targets.Value, String]) extends 
 
   def task = kernel
 
-  def outputType = resultType(Targets.Scala)
+  def supportsTarget(target: Targets.Value) = resultType.contains(target)
+
   def outputType(target: Targets.Value) = resultType(target)
 
   def nested = null

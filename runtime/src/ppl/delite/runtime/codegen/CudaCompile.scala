@@ -1,6 +1,7 @@
 package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
+import java.io.{FileWriter, FileOutputStream, File}
 
 /**
  * Author: Kevin J. Brown
@@ -14,50 +15,34 @@ import collection.mutable.ArrayBuffer
 object CudaCompile {
 
   private val sourceBuffer = new ArrayBuffer[String]
-  private val pathBuffer = new ArrayBuffer[String]
 
   def addSource(source: String) {
     sourceBuffer += source
   }
 
-  def addSourcePath(path: String) {
-    pathBuffer += path
-  }
-
-  def compile {
-    if (sourceBuffer.length == 0) return //escape if no sources to compile
-    val sources = sourceBuffer.toArray
+  def compile(path: String) {
+    if (sourceBuffer.length == 0) return
+    val source = sourceBuffer(0)
     sourceBuffer.clear
-    val paths = pathBuffer.toArray
-    pathBuffer.clear
-    compile(sources, paths)
+    compile(source, path)
   }
 
-  def compile(sources: Array[String], paths: Array[String]) {
-    //TODO: this is fragile: requires a specific linux setup
-    for (i <- 0 until sources.length) {
-      val process = Runtime.getRuntime.exec(Array[String](
-        "nvcc",
-        "-I{java.dir}/include", "-I{java.dir}/include/linux", //jni
-        "-O2", //optimized
-        "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
-        "-o", "cudaHost"+i+".so", //output name
-        "cudaHost"+i+".cpp" //input name
-        ))
-      if (process.getErrorStream.read != -1) error("nvcc compilation failed")
-    }
+  //TODO: handle more than one source
+  def compile(source: String, path: String) {
+    val write = new FileWriter(path+"cuda/cudaHost.cu")
+    write.write(source)
+    write.close
 
-    //TODO: do we want to put the loop inside instead?
-    for (i <- 0 until paths.length) {
-      val process = Runtime.getRuntime.exec(Array[String](
-        "nvcc",
-        "-O2", //optimized
-        "-ptx", //generate ptx
-        "-o kernels", //output name
-        "kernels.cu" //input name
-        ))
-      if (process.getErrorStream.read != -1) error("nvcc compilation failed")
-    }
+    //TODO: this is fragile: requires a specific linux setup
+    val process = Runtime.getRuntime.exec(Array[String](
+      "nvcc",
+      "-I{java.dir}/include", "-I{java.dir}/include/linux", //jni
+      "-O2", //optimized
+      "-shared", "-Xcompiler \'-fPIC\'", //dynamic shared library
+      "-o cudaHost.so", //output name
+      "cudaHost.cu" //input name
+      ), Array[String](), new File(path+"cuda/"))
+    if (process.getErrorStream.read != -1) error("nvcc compilation failed")
   }
 
   def printSources {

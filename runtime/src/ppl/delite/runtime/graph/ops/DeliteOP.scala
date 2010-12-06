@@ -1,6 +1,7 @@
 package ppl.delite.runtime.graph.ops
 
-import ppl.delite.runtime.graph.{Targets, DeliteTaskGraph}
+import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.graph.targets._
 
 /**
  * Author: Kevin J. Brown
@@ -18,9 +19,10 @@ abstract class DeliteOP {
    */
   def task : String
 
-  //def outputType: String = outputType(Targets.Scala)
-  //def outputType(target: Targets.Value): String
-  def outputType: String
+  def outputType(target: Targets.Value) : String
+  def outputType : String = outputType(Targets.Scala)
+
+  def supportsTarget(target: Targets.Value) : Boolean
 
   protected var dependencyList: List[DeliteOP] = Nil
 
@@ -56,6 +58,9 @@ abstract class DeliteOP {
   //TODO: more versatile/useful to match on the specific type of OP rather than simply dataParallel/sequential buckets?
   //TODO: should revisit this when we have more complex dataParallel patterns
   def isDataParallel : Boolean
+
+  //TODO: do all OP subtypes support CUDA? (maybe shouldn't be here)
+  val cudaMetadata = new CudaMetadata
 
   /**
    * these methods/state are used for scheduling

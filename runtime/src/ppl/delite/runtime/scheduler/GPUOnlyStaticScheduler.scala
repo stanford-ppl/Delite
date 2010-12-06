@@ -3,6 +3,8 @@ package ppl.delite.runtime.scheduler
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.ops.DeliteOP
 import java.util.ArrayDeque
+import ppl.delite.runtime.Config
+import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * Author: Kevin J. Brown
@@ -13,13 +15,20 @@ import java.util.ArrayDeque
  * Stanford University
  */
 
+/**
+ * A simply static scheduler that mimics the classic CUDA programming model
+ * All OPs that can be executed on the GPU do so
+ * The remaining ops execute in a single CPU thread
+ */
 final class GPUOnlyStaticScheduler extends StaticScheduler {
 
-  private val resource = new ArrayDeque[DeliteOP]
+  private val gpuResource = new ArrayDeque[DeliteOP] //one GPU stream
+  private val cpuResource = new ArrayDeque[DeliteOP] //one CPU thread
 
   private val opQueue = new ArrayDeque[DeliteOP]
 
   def schedule(graph: DeliteTaskGraph): PartialSchedule = {
+    assert(Config.numThreads == 1 && Config.numGPUs == 1)
     scheduleFlat(graph)
     createPartialSchedule
   }
@@ -34,8 +43,14 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
   }
 
   private def scheduleOne(op: DeliteOP) {
-    resource.add(op)
-    op.scheduledResource = 0
+    if (op.supportsTarget(Targets.Cuda)) { //schedule on GPU resource
+      gpuResource.add(op)
+      op.scheduledResource = 1
+    }
+    else { //schedule on CPU resource
+      cpuResource.add(op)
+      op.scheduledResource = 0
+    }
     op.isScheduled = true
   }
 
@@ -56,7 +71,7 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
   }
 
   private def createPartialSchedule = {
-    new PartialSchedule(Array[ArrayDeque[DeliteOP]](resource))
+    new PartialSchedule(Array[ArrayDeque[DeliteOP]](cpuResource, gpuResource))
   }
 
 }

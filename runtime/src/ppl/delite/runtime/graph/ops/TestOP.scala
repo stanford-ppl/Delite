@@ -1,6 +1,6 @@
 package ppl.delite.runtime.graph.ops
 
-import ppl.delite.runtime.graph.Targets
+import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * Author: Kevin J. Brown
@@ -16,7 +16,17 @@ class TestOP(kernel: String)(deps: DeliteOP*)
 
   def task = kernel
 
-  def outputType = "Unit"
+  def supportsTarget(target: Targets.Value): Boolean = {
+    if (target == Targets.Scala) true
+    else false
+  }
+
+  def outputType(target: Targets.Value): String = {
+    if (target == Targets.Scala) outputType
+    else error("EOP does not support targets other than Scala")
+  }
+
+  override def outputType = "Unit"
 
   //initialize
   for (dep <- deps) {
@@ -32,7 +42,7 @@ class TestOP(kernel: String)(deps: DeliteOP*)
 }
 
 class TestMap(func: String)(deps: DeliteOP*)(output: DeliteOP, input: DeliteOP, free: DeliteOP*)
-        extends OP_Map(func) {
+        extends OP_Map(func, Map[Targets.Value,String](Targets.Scala -> "Unit")) {
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -48,7 +58,7 @@ class TestMap(func: String)(deps: DeliteOP*)(output: DeliteOP, input: DeliteOP, 
 }
 
 class TestReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
-        extends OP_Reduce(func, manifest[T].toString) {
+        extends OP_Reduce(func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -63,7 +73,7 @@ class TestReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, fr
 }
 
 class TestMapReduce[T: Manifest](mapFunc: String, reduceFunc: String)(deps: DeliteOP*)(input: DeliteOP)(mapFree: DeliteOP*)(reduceFree: DeliteOP*)
-        extends OP_MapReduce(mapFunc, reduceFunc, manifest[T].toString) {
+        extends OP_MapReduce(mapFunc, reduceFunc, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -85,7 +95,7 @@ class TestMapReduce[T: Manifest](mapFunc: String, reduceFunc: String)(deps: Deli
 }
 
 class TestZip(func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP, input2: DeliteOP, free: DeliteOP*)
-        extends OP_Zip(func) {
+        extends OP_Zip(func, Map[Targets.Value,String](Targets.Scala -> "Unit")) {
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -102,7 +112,7 @@ class TestZip(func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP,
 }
 
 class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*)
-        extends OP_Single(kernel, Map[Targets.Value,String]((Targets.Scala, manifest[T].toString))) {
+        extends OP_Single(kernel, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
 
   for (dep <- deps) {
     this.addDependency(dep)

@@ -1,5 +1,7 @@
 package ppl.delite.runtime.graph.ops
 
+import ppl.delite.runtime.graph.targets.Targets
+
 /**
  * Author: Kevin J. Brown
  * Date: Nov 30, 2010
@@ -18,7 +20,17 @@ object Arguments extends DeliteOP {
 
   def task = "ppl.delite.runtime.graph.ops.ArgsKernel"
 
-  def outputType = "Array[String]"
+  def supportsTarget(target: Targets.Value): Boolean = {
+    if (target == Targets.Scala) true
+    else false
+  }
+
+  def outputType(target: Targets.Value): String = {
+    if (target == Targets.Scala) outputType
+    else error("Arguments OP does not support targets other than Scala")
+  }
+
+  override def outputType = "Array[String]"
 
   def nested = null
   def cost = 0

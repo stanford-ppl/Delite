@@ -1,6 +1,7 @@
 package ppl.delite.runtime.graph.ops
 
 import java.util.concurrent.locks.ReentrantLock
+import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * Author: Kevin J. Brown
@@ -25,7 +26,17 @@ object EOP extends DeliteOP {
 
   def task = "ppl.delite.runtime.graph.ops.EOP_Kernel"
 
-  def outputType = "Unit"
+  def supportsTarget(target: Targets.Value): Boolean = {
+    if (target == Targets.Scala) true
+    else false
+  }
+
+  def outputType(target: Targets.Value): String = {
+    if (target == Targets.Scala) outputType
+    else error("EOP does not support targets other than Scala")
+  }
+
+  override def outputType = "Unit"
 
   def nested = null
   def cost = 0

@@ -2,8 +2,9 @@ package ppl.delite.runtime.graph
 
 import java.io.File
 import _root_.scala.util.parsing.json.JSON
-import collection.mutable.HashMap
 import ops.{Arguments, EOP, OP_Single, DeliteOP}
+import collection.mutable.HashMap
+import targets._
 
 object DeliteTaskGraph {
 
@@ -93,8 +94,16 @@ object DeliteTaskGraph {
 
   def processSingleTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val id = getFieldString(op, "kernelId")    
+
+    val targets = getFieldList(op, "supportedTargets")
     val types = getFieldMap(op, "return-types")
-    val resultMap = Map[Targets.Value,String]((Targets.Scala,getFieldString(types, "scala")), (Targets.Cuda, getFieldString(types, "cuda")))
+    var resultMap = Map[Targets.Value,String]()
+    for (target <- Targets.values) {
+      if (targets.contains(target.toString)) {
+        resultMap += target -> getFieldString(types, target.toString)
+      }
+    }
+
     val newop = new OP_Single("kernel_"+id, resultMap)
 
     //handle inputs
@@ -121,6 +130,9 @@ object DeliteTaskGraph {
       newop.addDependency(controlDep)
       controlDep.addConsumer(newop)
     }
+
+    //process target metadata
+    if (resultMap.contains(Targets.Cuda)) processCudaMetadata(op, newop)
 
     //add new op to graph list of ops
     graph._ops += id -> newop
@@ -150,6 +162,33 @@ object DeliteTaskGraph {
     EOP.addDependency(result) //EOP depends on "result" of application
     result.addConsumer(EOP)
     graph._result = EOP //set EOP as "result" for scheduler
+  }
+
+  /**
+   * Extract the required Cuda metadata from the DEG
+   */
+  def processCudaMetadata(op: Map[Any, Any], newop: DeliteOP)(implicit graph: DeliteTaskGraph) {
+    val metadataMap = getFieldMap(op, "metadata")
+    val cudaMetadata = newop.cudaMetadata
+    cudaMetadata.blockSizeX = getFieldString(metadataMap, "gpuBlockSizeX")
+    cudaMetadata.blockSizeY = getFieldString(metadataMap, "gpuBlockSizeY")
+    cudaMetadata.blockSizeZ = getFieldString(metadataMap, "gpuBlockSizeZ")
+    cudaMetadata.dimSizeX = getFieldString(metadataMap, "gpuDimSizeX")
+    cudaMetadata.dimSizeY = getFieldString(metadataMap, "gpuDimSizeY")
+    cudaMetadata.outputAlloc = getFieldString(metadataMap, "gpuOutput") //output allocation
+    cudaMetadata.outputSet = getFieldString(metadataMap, "gpuOutputReturn") //copy gpu output to cpu
+    //input list
+    for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //copy cpu output to gpu
+      cudaMetadata.inputs ::= input
+    }
+    //input types list
+    for (inputType <- getFieldList(metadataMap, "gpuInputTypes").reverse) { //Cuda type of the object
+      cudaMetadata.inputTypes ::= inputType
+    }
+    //temporaries list
+    for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) { //temporary allocation
+      cudaMetadata.temps ::= temp
+    }
   }
 
   def unsupportedType(err:String) = throw new RuntimeException("Unsupported Op Type found: " + err)

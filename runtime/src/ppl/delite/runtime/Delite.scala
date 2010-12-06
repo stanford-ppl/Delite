@@ -55,7 +55,6 @@ object Delite {
 
     //load kernels & data structures
     loadScalaSources(graph)
-    loadCudaSources(graph)
 
     //schedule
     val schedule = scheduler.schedule(graph)
@@ -79,11 +78,6 @@ object Delite {
   def loadScalaSources(graph: DeliteTaskGraph) {
     val sourceFiles = new Directory(new File(graph.kernelPath+"scala/")).deepFiles //obtain all files in path
     for (file <- sourceFiles) ScalaCompile.addSourcePath(file.path)
-  }
-
-  def loadCudaSources(graph: DeliteTaskGraph) {
-    val sourceFiles = new Directory(new File(graph.kernelPath+"cuda/")).deepFiles //obtain all files in path
-    for (file <- sourceFiles) CudaCompile.addSourcePath(file.path)
   }
 
 }
