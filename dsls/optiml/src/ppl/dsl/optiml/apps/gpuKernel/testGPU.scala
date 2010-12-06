@@ -6,6 +6,25 @@ object testGPU extends DeliteApplication with OptiMLExp {
 
   def main() = {
 
+    val x = Vector[Double](100)
+    val y = Vector[Double](100)
+    val z = Matrix[Double](100,100)
+    //val sigma = x ** y
+    //val sigma = if(x.is_row) x/10 else x~
+
+  
+    val sigma = sum(0, 10) { i =>
+       //z(i) ** z(i+1)
+        if(x(i) > 5)
+          (((z(i)-x)~)**(z(i)-x))
+      else
+          (((z(i)-y)~)**(z(i)-y))
+    }
+
+    //val z = Vector[Double](100)
+    //z += x
+    println(sigma)
+    //println(z)
 
     /*
     val a = Const(3)

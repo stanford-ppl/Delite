@@ -143,7 +143,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Range
   def vector_obj_zeros(len: Exp[Int]) = reflectEffect(VectorObjectZeros(len))
   def vector_toboolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], mA: Manifest[A]) = VectorToBoolean(x)
   def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(x, y)
-  def vector_plusequals[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlusEquals(x, y)
+  def vector_plusequals[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectEffect(VectorPlusEquals(x, y))
   def vector_minus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(x, y)
   def vector_times[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(x, y)
   def vector_divide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A]) = VectorDivide(x, y)
@@ -204,24 +204,6 @@ trait CudaGenVectorOps extends CudaGenBase {
   val IR: VectorOpsExp
   import IR._
 
-  // The statements that will be included in the gpu memory allocation helper function
-  def allocStmts(sym:Sym[_], length: String, isRow:String): String = {
-    val str = new StringWriter()
-    val stream = new PrintWriter(str)
-    val typeStr = CudaType(sym.Type.toString)
-    val targTypeStr = CudaType(sym.Type.typeArguments(0).toString)
-
-    stream.println("\t%s *devPtr;".format(targTypeStr))
-    stream.println("\tDeliteCudaMalloc((void**)%s,%s*sizeof(%s));".format("&devPtr",length,targTypeStr))
-    stream.println("\t%s %s;".format(typeStr,quote(sym)))
-    stream.println("\t%s.length = %s;".format(quote(sym),length))
-    stream.println("\t%s.is_row = %s;".format(quote(sym),isRow))
-    stream.println("\t%s.data = %s;".format(quote(sym),"devPtr"))
-    stream.println("\treturn %s;".format(quote(sym)))
-    stream.flush
-    str.toString
-  }
-
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
 
@@ -230,39 +212,65 @@ trait CudaGenVectorOps extends CudaGenBase {
       stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
       tabWidth += 1
       stream.println(addTab()+"%s.update(%s, (%s.apply(%s))/%s);".format(quote(sym),"idxX",quote(x),"idxX",quote(y)))
+      if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      // Add allocation helper function
-      emitAlloc(sym,allocStmts(sym,quote(x)+".length",quote(x)+".is_row"))
-
-    case VectorSum(x) =>
+      emitVectorAlloc(sym,"%s.length".format(quote(x)),"%s.is_row".format(quote(x)))
+    
+    case VectorMinus(x,y) =>
       gpuBlockSizeX = quote(x)+".length"
       stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
       tabWidth += 1
-      stream.println("Function Body")
+      stream.println(addTab()+"%s.update(%s, (%s.apply(%s))-(%s.apply(%s)));".format(quote(sym),"idxX",quote(x),"idxX",quote(y),"idxX"))
+      if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitAlloc(sym,allocStmts(sym,quote(x)+".length",quote(x)+".is_row"))
+      emitVectorAlloc(sym,"%s.length".format(quote(x)),"%s.is_row".format(quote(x)))
+    
+    case VectorTrans(x) =>
+      gpuBlockSizeX = quote(x)+".length"
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(sym),"idxX",quote(x),"idxX"))
+      if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitVectorAlloc(sym,"%s.length".format(quote(x)),"!%s.is_row".format(quote(x)))
+
+    case VectorOuter(x,y) =>
+      gpuBlockSizeX = quote(x)+".length"
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
+      tabWidth += 1
+      stream.println(addTab()+"for(int i=0; i<%s.length; i++) {".format(quote(x))); tabWidth += 1
+      stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s)*%s.apply(%s));".format(quote(sym),"i","idxX",quote(x),"idxX",quote(y),"i"))
+      if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s,%s));".format(quote(varLink.get(sym).get),"i","idxX",quote(sym),"i","idxX"))
+      tabWidth -= 1; stream.println(addTab()+"}")
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s.length".format(quote(x)),"%s.length".format(quote(x)))
+
+    case VectorPlusEquals(x,y) =>
+      gpuBlockSizeX = quote(x)+".length"
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(%s, (%s.apply(%s)) + (%s.apply(%s)));".format(quote(sym),"idxX",quote(x),"idxX",quote(y),"idxX"))
+      if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
+      tabWidth -= 1
+      stream.println(addTab()+"}") 
+      emitVectorAllocSym(sym,x.asInstanceOf[Sym[_]])
     
     case VectorObjectZeros(len) =>
       throw new RuntimeException("CudaGen: Not GPUable")
     case VectorNew(len,is_row) =>
       throw new RuntimeException("CudaGen: Not GPUable")
     case VectorApply(x, n) =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else emitValDef(CudaType(sym.Type.typeArguments(0).toString), sym, quote(x) + ".apply(" + quote(n) + ")")
+      emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case VectorUpdate(x,n,y) =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else stream.println(addTab() + "%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
+      stream.println(addTab() + "%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
     case VectorLength(x)    =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else emitValDef("int", sym, quote(x) + ".length")
+      emitValDef(sym, quote(x) + ".length")
     case VectorIsRow(x)     =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else emitValDef("bool", sym, quote(x) + ".is_row")
-    case VectorPlusEquals(x,y) =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else emitValDef(sym, quote(x) + " += " + quote(y))
+      emitValDef(sym, quote(x) + ".is_row")
 
     case _ => super.emitNode(sym, rhs)
   }

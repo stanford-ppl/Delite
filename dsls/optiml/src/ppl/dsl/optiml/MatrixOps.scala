@@ -167,27 +167,42 @@ trait CudaGenMatrixOps extends CudaGenBase {
   import IR._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+
+    case MatrixPlusEquals(x,y) =>
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".numCols"))
+      tabWidth += 1
+      stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x))); tabWidth += 1
+      stream.println(addTab()+"%s.update(%s, %s, (%s.apply(%s,%s)) + (%s.apply(%s,%s)));".format(quote(sym),"i","idxX",quote(x),"i","idxX",quote(y),"i","idxX"))
+      if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s, %s));".format(quote(varLink.get(sym).get),"i","idxX",quote(sym),"i","idxX"))
+      tabWidth -= 1; stream.println(addTab()+"}")
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
+
     // these are the ops that call through to the underlying real data structure
     case MatrixNew(numRows,numCols) =>
       throw new RuntimeException("CudaGen: Not GPUable")
+
     case MatrixApply1(x,i) =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else emitValDef("Vector<"+CudaType(sym.Type.typeArguments(0).toString)+">", sym, quote(x) + ".apply(" + quote(i) + ")") // TODO:
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".numCols"))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(%s, (%s.apply(%s,%s)));".format(quote(sym),"idxX",quote(x),quote(i),"idxX"))
+      if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true")
+
     case MatrixApply2(x,i,j) =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else emitValDef(CudaType(sym.Type.typeArguments(0).toString), sym, quote(x) + ".apply(" + quote(i) + ", " + quote(j) + ")")
+      emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
     case MatrixUpdate(x,i,j,y)  =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
+      stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
     case MatrixNumRows(x)  =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else emitValDef(sym, quote(x) + ".numRows")
+      emitValDef(sym, quote(x) + ".numRows")
     case MatrixNumCols(x)  =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else emitValDef(sym, quote(x) + ".numCols")
+      emitValDef(sym, quote(x) + ".numCols")
     case MatrixInsertRow(x, pos, y)  =>
-      if(!isGPUable) throw new RuntimeException("CudaGen: Not GPUable")
-      else emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
+      throw new RuntimeException("CudaGen: Not GPUable")
+      //emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
 
     case _ => super.emitNode(sym, rhs)
   }

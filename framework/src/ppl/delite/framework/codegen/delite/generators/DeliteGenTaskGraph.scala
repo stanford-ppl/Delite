@@ -1,12 +1,12 @@
 package ppl.delite.framework.codegen.delite.generators
 
-import java.io.{FileWriter, File, PrintWriter}
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{ScalaGenEffect, GenericCodegen}
 import ppl.delite.framework.{Util, Config}
 import collection.mutable.ListBuffer
 import java.util.ArrayList
+import java.io.{StringWriter, FileWriter, File, PrintWriter}
 
 trait DeliteGenTaskGraph extends DeliteCodegen {
   val IR: DeliteOpsExp
@@ -58,14 +58,22 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       val outFile = new File(buildPath + quote(sym) + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(new FileWriter(outFile))
 
+      val bodyString = new StringWriter()
+      val bodyStream = new PrintWriter(bodyString)
       
       try{
-        // emit kernel
+        // Initialize
+        gen.init(sym, inVals, inVars, resultIsVar)
+
+        // emit kernel to bodyStream
+        gen.emitNode(sym, rhs)(bodyStream)
+        bodyStream.flush
+        
+        // emit to file 
         gen.emitKernelHeader(sym, inVals, inVars, resultIsVar)(kstream)
-        gen.emitNode(sym, rhs)(kstream)
+        kstream.println(bodyString.toString)
         gen.emitKernelFooter(sym, inVals, inVars, resultIsVar)(kstream)
 
-        
         //record that this kernel was succesfully generated
         supportedTargets += gen.toString
         returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.Type)) {

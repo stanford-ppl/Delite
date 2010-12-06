@@ -27,7 +27,7 @@ trait OptiMLExp extends OptiML with ScalaOpsPkgExp with LanguageOpsExp with Vect
   }
 }
 
-trait OptiMLCodeGenScala extends ScalaCodeGenPkg with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
+trait OptiMLCodeGenScala extends ScalaCodeGenPkg with ScalaGenLanguageOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
 
 
@@ -43,17 +43,10 @@ trait OptiMLCodeGenScala extends ScalaCodeGenPkg with ScalaGenVectorOps with Sca
 
 }
 
-trait OptiMLCodeGenCuda extends CudaCodeGenPkg with CudaGenVectorOps with CudaGenMatrixOps // with CudaGenVectorViewOps
+trait OptiMLCodeGenCuda extends CudaCodeGenPkg with CudaGenLanguageOps with CudaGenVectorOps with CudaGenMatrixOps // with CudaGenVectorViewOps
  // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps   //TODO:DliteCodeGenOverrideScala needed?
 {
 
   val IR: DeliteApplication with OptiMLExp
-
-  override def remap[A](m: Manifest[A]) : String = m.toString match {
-    case "ppl.dsl.optiml.Vector[Double]" => "Vector<double>"
-    case "ppl.dsl.optiml.Vector[Boolean]" => "Vector<bool>"
-    case "ppl.dsl.optiml.Matrix[Double]" => "Matrix<double>"
-    case _ => super.remap(m)
-  }
 
 }
