@@ -173,7 +173,8 @@ trait CudaGenMatrixOps extends CudaGenBase {
       tabWidth += 1
       stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x))); tabWidth += 1
       stream.println(addTab()+"%s.update(%s, %s, (%s.apply(%s,%s)) + (%s.apply(%s,%s)));".format(quote(sym),"i","idxX",quote(x),"i","idxX",quote(y),"i","idxX"))
-      if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s, %s));".format(quote(varLink.get(sym).get),"i","idxX",quote(sym),"i","idxX"))
+      //if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s, %s));".format(quote(varLink.get(sym).get),"i","idxX",quote(sym),"i","idxX"))
+      if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s, %s));".format(quote(getVarLink(sym)),"i","idxX",quote(sym),"i","idxX"))
       tabWidth -= 1; stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
@@ -187,7 +188,8 @@ trait CudaGenMatrixOps extends CudaGenBase {
       stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".numCols"))
       tabWidth += 1
       stream.println(addTab()+"%s.update(%s, (%s.apply(%s,%s)));".format(quote(sym),"idxX",quote(x),quote(i),"idxX"))
-      if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
+      //if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
+      if(getVarLink(sym) != null) if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(getVarLink(sym)),"idxX",quote(sym),"idxX"))
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true")

@@ -3,6 +3,7 @@ package ppl.dsl.optiml
 import scala.virtualization.lms.common.{DSLOpsExp, Base}
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{ScalaGenBase, GenericNestedCodegen, CudaGenBase}
+import collection.mutable.LinkedList
 
 /* Machinery provided by OptiML itself (language features and control structures).
  *
@@ -79,15 +80,15 @@ trait CudaGenLanguageOps extends CudaGenBase with BaseGenLanguageOps {
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
       rhs match {
         case Sum(start,end,block,x,y,op) =>
-          varLink.put(getBlockResult(y).asInstanceOf[Sym[_]] , sym)
           stream.println(addTab()+"int %s = %s;".format(quote(x),quote(start)))
+          addVarLink(getBlockResult(y).asInstanceOf[Sym[_]],sym)
           emitBlock(y)
-          varLink.remove(getBlockResult(y).asInstanceOf[Sym[_]])
+          removeVarLink(getBlockResult(y).asInstanceOf[Sym[_]],sym)
           stream.println(addTab()+"for(int %s=%s; %s<%s; %s++) {".format(quote(x),quote(start)+"+1",quote(x),quote(end),quote(x)))
           tabWidth += 1
-          varLink.put(getBlockResult(op).asInstanceOf[Sym[_]] , sym)
+          addVarLink(getBlockResult(op).asInstanceOf[Sym[_]],sym)
           emitBlock(op)
-          varLink.remove(getBlockResult(op).asInstanceOf[Sym[_]])
+          removeVarLink(getBlockResult(op).asInstanceOf[Sym[_]],sym)
           tabWidth -= 1
           stream.println(addTab()+"}")
           allocOutput(sym,getBlockResult(y).asInstanceOf[Sym[_]])
