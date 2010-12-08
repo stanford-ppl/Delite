@@ -33,15 +33,24 @@ object CudaCompile {
     write.write(source)
     write.close
 
-    //TODO: this is fragile: requires a specific linux setup
+    //figure out where the jni header files are for this machine
+    val javaHome = System.getProperty("java.home")
+    val os = System.getProperty("os.name")
+    val suffix =
+      if (os.contains("Linux")) "linux"
+      else if (os.contains("Windows")) "win32"
+      //else if (os.contains("Mac")) "??"
+      else error("OS " + os + " not currently supported with CUDA")
+
     val process = Runtime.getRuntime.exec(Array[String](
       "nvcc",
-      "-I$JDK_HOME/include", "-I$JDK_HOME/include/linux", //jni
+      "-w", //suppress warnings
+      "-I" + javaHome + "/../include", "-I" + javaHome + "/../include/" + suffix, //jni
       "-O2", //optimized
       "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
       "-o", "cudaHost.so", //output name
       "cudaHost.cu" //input name
-      ), Array[String](), new File(path+"cuda/"))
+      ), null, new File(path+"cuda/"))
 
     process.waitFor //wait for compilation to complete
     val first = process.getErrorStream.read
