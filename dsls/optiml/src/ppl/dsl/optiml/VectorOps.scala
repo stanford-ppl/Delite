@@ -2,17 +2,21 @@ package ppl.dsl.optiml
 
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.{DeliteCollection, DeliteApplication, DSLType}
+import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.internal.ScalaGenBase
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 
-trait Vector[T] {
+trait Vector[T] extends DeliteCollection[T] {
   // fields required on real underlying data structure impl
   def length : Int
   def is_row : Boolean
   def apply(n: Int) : T
   def update(index: Int, x: T)
+
+  // DeliteCollection
+  def size = length
 }
 
 trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
@@ -76,7 +80,7 @@ trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
   def vector_new[A:Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: VectorImplOps with ArithImplicits =>
+trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with DeliteOpsExp { this: VectorImplOps with ArithImplicits =>
   implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
   // implemented via method on real data structure
@@ -123,8 +127,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: Ve
   case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], is_row: Exp[Boolean])
     extends DSLOp(reifyEffects(vector_obj_range_impl(start,end,stride,is_row)))
 
-  case class VectorMap[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[B])
-    extends DSLOp(reifyEffects(vector_map_impl(x, f)))
+  case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], out: Exp[Vector[B]], v: Exp[A], func: Exp[B])
+    extends DeliteOpMap[A,B,Vector]
+    //extends DSLOp(reifyEffects(vector_map_impl(x, f)))      
 
   case class VectorSum[A:Manifest:ArithOps](x: Exp[Vector[A]])
     extends DSLOp(reifyEffects(vector_sum_impl(x)))
@@ -149,7 +154,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp { this: Ve
   def vector_new[A:Manifest](len: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorNew[A](len, is_row))
 
   def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorObjectRange(start, end, stride, is_row))
-  def vector_map[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[B]) = VectorMap(x, f)
+  def vector_map[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[B]) = {
+    val out = Vector[B](x.length, x.is_row)
+    val v = fresh[A]
+    val func = reifyEffects(f(v))
+    VectorMap(x, out, v, func)
+  }
   def vector_sum[A:Manifest:ArithOps](x: Exp[Vector[A]]) = VectorSum(x)
 }
 

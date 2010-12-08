@@ -47,8 +47,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
         new PrintWriter(new FileWriter(Config.deg_filename))
       }
 
-    codegen.emitSource(main_m, "Application", stream) // whole scala application (for testing)
-    //deliteGenerator.emitSource(main_m, "Application", stream)
+    //codegen.emitSource(main_m, "Application", stream) // whole scala application (for testing)
+    deliteGenerator.emitSource(main_m, "Application", stream)
   }
 
   final def execute(args: Array[String]) {

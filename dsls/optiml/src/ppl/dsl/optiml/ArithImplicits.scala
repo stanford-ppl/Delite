@@ -1,6 +1,7 @@
 package ppl.dsl.optiml
 
 import scala.virtualization.lms.common.{ScalaOpsPkg, Base}
+import scala.virtualization.lms.util.OverloadHack
 
 /* ArithOps definitions for OptiML supported types.
  *
@@ -12,11 +13,10 @@ import scala.virtualization.lms.common.{ScalaOpsPkg, Base}
  *
  */
 
-trait ArithImplicits extends Base {
-  this: ScalaOpsPkg with VectorOps with MatrixOps =>
+trait ArithImplicits extends Base with OverloadHack {
+  this: ScalaOpsPkg with LanguageOps with VectorOps with MatrixOps =>
 
   type ArithOps[X] = ArithOpsInternal[Rep,X]
-
 
   /**
    * Vector
@@ -24,6 +24,7 @@ trait ArithImplicits extends Base {
 
   implicit def vectorArithOps[T:Numeric:Manifest] : ArithOps[Vector[T]] = new ArithOps[Vector[T]] {
     def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a += b
+    def +=(a: Rep[Vector[T]], b: Zero[Vector[T]])(implicit o: Overloaded1) = a
     def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a + b
 }
 

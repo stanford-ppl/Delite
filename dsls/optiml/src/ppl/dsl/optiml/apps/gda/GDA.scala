@@ -39,12 +39,23 @@ object GDA extends DeliteApplication with OptiMLExp {
     /* This loop calculates all of the needed statistics with a single pass
        through the data.  */
 
+    // the major problem here is the sum function is expanded statically, including instantiation and looping over vectors,
+    // but the conditional means that whether or not we are adding with a zerovector is only known dynamically
+    // -- the issue MUST be resolved in the generated code, via dynamic checks.. but how?
+    // + will generate a ZipWith kernel with 2 vectors, one of which may be a Zero
+    // perhaps the preamble to ZipWith is a test for Zero and shortcircuit - screws up cost predictions though
+    // Zero generates a references to a static object ZeroVector which is dynamically matched against in the generated code
+    // on the other hand, is a dynamic check for a zero vector on every += worth it?
+    // (current solution): an alternative is to implement ZeroVector apply
+    // to always return 0 -- this is space efficient, but a += will still be time inefficient (n additions of zero).. jit magic to the rescue?
     val (y_zeros, y_ones, mu0_num, mu1_num) = t4( sum(0,m) { i =>
       if (y(i) == false){
-        (unit(1.),unit(0.),x(i),Vector.zeros(x.numCols))
+        // TODO: ZeroExp gets confused when both are used.. somehow CSE is kicking in
+        //(unit(1.),<>[Double],x(i),<>[Vector[Double]])
+        (unit(1.),unit(0.),x(i),<>[Vector[Double]])
       }
       else {
-        (unit(0.),unit(1.),Vector.zeros(x.numCols),x(i))
+        (unit(0.),unit(1.),<>[Vector[Double]],x(i))
       }
     })
 

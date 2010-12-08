@@ -55,15 +55,20 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
       try{
         // emit kernel
-        gen.emitKernelHeader(sym, inVals, inVars, resultIsVar)(kstream)
+        val resultType = rhs match {
+          case mapR:DeliteOpMapReduce[_,_,_] => "generated.DeliteOpMapReduce[" + remap(mapR.mV.Type) + "," + remap(mapR.acc.Type) + "]"
+          case _ =>  remap(sym.Type)
+        }
+
+        gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar)(kstream)
         gen.emitNode(sym, rhs)(kstream)
-        gen.emitKernelFooter(sym, inVals, inVars, resultIsVar)(kstream)
+        gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar)(kstream)
 
         //record that this kernel was succesfully generated
         supportedTargets += gen.toString
       }
       catch {
-        case e: Exception => // no generator found
+        case e: Exception => e.printStackTrace()// no generator found
       }
       finally {
         kstream.close()
@@ -99,9 +104,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     
     // emit task graph node
     rhs match {
-      case DeliteOP_SingleTask(block) => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
-      case DeliteOP_Map(block) => emitMap(sym, inputs, inControlDeps, antiDeps)
-      case DeliteOP_ZipWith(block) => emitZipWith(sym, inputs, inControlDeps, antiDeps)
+      case DeliteOpSingleTask(block) => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
+      case m:DeliteOpMap[_,_,_] => emitMap(sym, inputs, inControlDeps, antiDeps)
+      case z:DeliteOpZipWith[_,_,_,_] => emitZipWith(sym, inputs, inControlDeps, antiDeps)
       case _ => emitSingleTask(sym, inputs, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
     }
 
