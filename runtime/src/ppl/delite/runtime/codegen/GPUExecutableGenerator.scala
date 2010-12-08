@@ -4,6 +4,7 @@ import ppl.delite.runtime.scheduler.PartialSchedule
 import java.util.{ArrayDeque, ArrayList}
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph.ops.{OP_Single, DeliteOP}
+import java.io.File
 
 /**
  * Author: Kevin J. Brown
@@ -33,7 +34,7 @@ import ppl.delite.runtime.graph.ops.{OP_Single, DeliteOP}
 
 object GPUExecutableGenerator {
 
-  def makeExecutable(schedule: PartialSchedule) {
+  def makeExecutable(schedule: PartialSchedule, kernelPath: String) {
     assert(schedule.resources.length == 1) //this implementation does not attempt to create an Executable than can efficiently handle hosting multiple kernel streams
 
     val location = schedule.resources(0).peek.scheduledResource //look up location id for this GPU device resource
@@ -42,7 +43,7 @@ object GPUExecutableGenerator {
     val cppSource = emitCpp(schedule.resources(0), location, syncList)
     CudaCompile.addSource(cppSource)
 
-    val scalaSource = emitScala(location, syncList)
+    val scalaSource = emitScala(location, syncList, kernelPath)
     ScalaCompile.addSource(scalaSource)
   }
 
@@ -341,7 +342,7 @@ object GPUExecutableGenerator {
     out.append('\n')
   }
 
-  private def emitScala(location: Int, syncList: ArrayList[DeliteOP]): String = {
+  private def emitScala(location: Int, syncList: ArrayList[DeliteOP], kernelPath: String): String = {
     val out = new StringBuilder
 
     //the header
@@ -357,7 +358,10 @@ object GPUExecutableGenerator {
     out.append("@native def hostGPU : Unit\n")
 
     //link the native code upon object creation
-    out.append("System.loadLibrary(\"cudaHost.so\")\n")
+    out.append("System.load(\"")
+    val file = new File(kernelPath+"cuda/") //create a file to turn relative path into absolute path
+    out.append(file.getAbsolutePath)
+    out.append("/cudaHost.so\")\n")
 
     //the sync methods/objects
     ExecutableGenerator.addSync(syncList, out)

@@ -23,7 +23,7 @@ object Compilers {
     val numGPUs = Config.numGPUs
     assert((numThreads + numGPUs) == schedule.resources.length)
     ExecutableGenerator.makeExecutables(new PartialSchedule(schedule.resources.slice(0,numThreads)), graph.kernelPath)
-    for (i <- 0 until numGPUs) GPUExecutableGenerator.makeExecutable(new PartialSchedule(schedule.resources.slice(numThreads+i, numThreads+i+1)))
+    for (i <- 0 until numGPUs) GPUExecutableGenerator.makeExecutable(new PartialSchedule(schedule.resources.slice(numThreads+i, numThreads+i+1)), graph.kernelPath)
 
     if (Config.printSources) { //DEBUG option
       ScalaCompile.printSources
