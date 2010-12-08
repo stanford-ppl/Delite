@@ -62,20 +62,22 @@ object ExecutableGenerator {
   private[codegen] def writeHeader(out: StringBuilder, location: Int, kernelPath: String) {
     out.append("import ppl.delite.runtime.codegen.DeliteExecutable\n") //base trait
     out.append("import java.util.concurrent.locks._\n") //locking primitives
-    //out.append("import ")
-    //out.append(makePath(kernelPath)) //application kernels
-    //out.append("._\n")
+    writePath(kernelPath, out) //package of scala kernels
     out.append("object Executable")
     out.append(location)
     out.append(" extends DeliteExecutable {\n")
   }
 
-  private def makePath(kernelPath: String): String = {
+  private[codegen] def writePath(kernelPath: String, out: StringBuilder) {
+    if (kernelPath == "") return
+    out.append("import ")    
     var begin = 0
     var end = kernelPath.length
     if (kernelPath.startsWith("/")) begin += 1
     if (kernelPath.endsWith("/")) end -= 1
-    kernelPath.replace('/','.').substring(begin,end)
+    val packageName = kernelPath.replace('/','.').substring(begin,end)
+    out.append(packageName)
+    out.append(".scala._\n")
   }
 
   private def addKernelCalls(resource: ArrayDeque[DeliteOP], location: Int, out: StringBuilder, syncList: ArrayList[DeliteOP]) {

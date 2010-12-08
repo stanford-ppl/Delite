@@ -36,13 +36,23 @@ object CudaCompile {
     //TODO: this is fragile: requires a specific linux setup
     val process = Runtime.getRuntime.exec(Array[String](
       "nvcc",
-      "-I{java.dir}/include", "-I{java.dir}/include/linux", //jni
+      "-I$JDK_HOME/include", "-I$JDK_HOME/include/linux", //jni
       "-O2", //optimized
-      "-shared", "-Xcompiler \'-fPIC\'", //dynamic shared library
-      "-o cudaHost.so", //output name
+      "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
+      "-o", "cudaHost.so", //output name
       "cudaHost.cu" //input name
       ), Array[String](), new File(path+"cuda/"))
-    if (process.getErrorStream.read != -1) error("nvcc compilation failed")
+
+    process.waitFor //wait for compilation to complete
+    val first = process.getErrorStream.read
+    if (first != -1) { //compilation failed
+      val errorBuffer = new Array[Byte](1000)
+      val num = process.getErrorStream.read(errorBuffer)
+      print(first.asInstanceOf[Char])
+      for (i <- 0 until num) print(errorBuffer(i).asInstanceOf[Char])
+      println()
+      error("nvcc compilation failed")
+    }
   }
 
   def printSources {

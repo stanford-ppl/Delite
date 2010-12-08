@@ -52,11 +52,14 @@ object GPUExecutableGenerator {
     //the header
     writeHeader(out)
 
+    //write stream globals (used for linking)
+    writeGlobalStreams(out)
+
     //the event function
     writeEventFunction(out)
 
     //the JNI method
-    out.append("JNIEXPORT void JNICALL Java_hostGPU(JNIEnv* env, jobject object) {\n")
+    writeFunctionHeader(location, out)
 
     //initialize
     writeJNIInitializer(location, out)
@@ -77,12 +80,24 @@ object GPUExecutableGenerator {
     out.append("#include \"dsl.h\"\n") //imports all dsl kernels and helper functions //TODO: is there a cleaner way?
   }
 
-  private def writeStreamInitializer(out: StringBuilder) {
+  private def writeFunctionHeader(location: Int, out: StringBuilder) {
+    val function = "JNIEXPORT void JNICALL Java_Executable" + location + "_00024_hostGPU(JNIEnv* env, jobject object)"
+    out.append("extern \"C\" ") //necessary because of JNI
+    out.append(function)
+    out.append(";\n")
+    out.append(function)
+    out.append(" {\n")
+  }
+
+  private def writeGlobalStreams(out: StringBuilder) {
     out.append("cudaStream_t kernelStream;\n")
-    out.append("cudaStreamCreate(&kernelStream);\n")
     out.append("cudaStream_t h2dStream;\n")
-    out.append("cudaStreamCreate(&h2dStream);\n")
     out.append("cudaStream_t d2hStream;\n")
+  }
+
+  private def writeStreamInitializer(out: StringBuilder) {
+    out.append("cudaStreamCreate(&kernelStream);\n")
+    out.append("cudaStreamCreate(&h2dStream);\n")
     out.append("cudaStreamCreate(&d2hStream);\n")
   }
 
