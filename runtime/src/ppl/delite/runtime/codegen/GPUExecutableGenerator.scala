@@ -192,7 +192,7 @@ object GPUExecutableGenerator {
       out.append(temp)
       out.append('(')
       writeInputs(op, out)
-      out.append(");\n")
+      out.append(')')
     }
   }
 
@@ -252,10 +252,14 @@ object GPUExecutableGenerator {
 
   private def writeGetter(op: DeliteOP, out: StringBuilder) {
     //get data from CPU
-    out.append(getJNIType(op.outputType))
-    out.append(' ')
-    out.append(getSymCPU(op))
-    out.append(" = env->CallStatic")
+    val jtype = getJNIType(op.outputType)
+    if (jtype != "void") { //skip the variable declaration if return type is "void"
+      out.append(jtype)
+      out.append(' ')
+      out.append(getSymCPU(op))
+      out.append(" = ")
+    }
+    out.append("env->CallStatic")
     out.append(getJNIFuncType(op.outputType))
     out.append("Method(cls")
     out.append(op.scheduledResource)
@@ -282,12 +286,12 @@ object GPUExecutableGenerator {
   }
 
   private def writeInputCast(op: DeliteOP, out: StringBuilder) {
-    out.append(op.outputType(Targets.Cuda)) //C primitive
+    out.append(getCPrimitiveType(op.outputType)) //C primitive
     out.append(' ')
     out.append(getSymGPU(op))
     out.append(" = ")
     out.append('(') //cast
-    out.append(op.outputType(Targets.Cuda)) //C primitive
+    out.append(getCPrimitiveType(op.outputType)) //C primitive
     out.append(')')
     out.append(getSymCPU(op)) //J primitive
     out.append(';')
@@ -433,19 +437,30 @@ object GPUExecutableGenerator {
     } //TODO: this does not handle array types properly
   }
 
-  private def getJNIFuncType(scalaType: String): String = {
-    scalaType match {
-      case "Unit" => "Void"
-      case "Int" => "Int"
-      case "Long" => "Long"
-      case "Float" => "Float"
-      case "Double" => "Double"
-      case "Boolean" => "Boolean"
-      case "Short" => "Short"
-      case "Char" => "Char"
-      case "Byte" => "Byte"
-      case _ => "Object"//all other types are objects
-    }
+  private def getJNIFuncType(scalaType: String): String = scalaType match {
+    case "Unit" => "Void"
+    case "Int" => "Int"
+    case "Long" => "Long"
+    case "Float" => "Float"
+    case "Double" => "Double"
+    case "Boolean" => "Boolean"
+    case "Short" => "Short"
+    case "Char" => "Char"
+    case "Byte" => "Byte"
+    case _ => "Object"//all other types are objects
+  }
+
+  private def getCPrimitiveType(scalaType: String): String = scalaType match {
+    case "Unit" => "void"
+    case "Int" => "int"
+    case "Long" => "long"
+    case "Float" => "float"
+    case "Double" => "double"
+    case "Boolean" => "bool"
+    case "Short" => "short"
+    case "Char" => "char"
+    case "Byte" => "byte"
+    case other => error(other + " is not a primitive type")
   }
 
 }
