@@ -52,6 +52,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
                    "\"kernelpath\" : \"" + Config.kernel_path  + "\",\n"+
                    "\"ops\": [")
 
+    stream.println("{\"type\" : \"Arguments\" , \"kernelId\" : \"x0\"},")
     emitBlock(y)(stream)
     //stream.println(quote(getBlockResult(y)))
     stream.println("{\"type\":\"EOP\"}\n]}}")
