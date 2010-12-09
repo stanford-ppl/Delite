@@ -168,7 +168,8 @@ object DeliteTaskGraph {
    * Extract the required Cuda metadata from the DEG
    */
   def processCudaMetadata(op: Map[Any, Any], newop: DeliteOP)(implicit graph: DeliteTaskGraph) {
-    val metadataMap = getFieldMap(op, "metadata")
+    val metadataAll = getFieldMap(op, "metadata")
+    val metadataMap = getFieldMap(metadataAll, "cuda")
     val cudaMetadata = newop.cudaMetadata
     cudaMetadata.blockSizeX = getFieldString(metadataMap, "gpuBlockSizeX")
     cudaMetadata.blockSizeY = getFieldString(metadataMap, "gpuBlockSizeY")
