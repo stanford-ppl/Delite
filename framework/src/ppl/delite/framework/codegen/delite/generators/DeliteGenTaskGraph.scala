@@ -53,7 +53,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     implicit val returnTypes = new ListBuffer[Pair[String, String]]
     
     for (gen <- generators) {
-      val buildPath = Config.build_dir + gen + "/"
+      val buildPath = Config.kernel_path + gen + "/"
       val outDir = new File(buildPath); outDir.mkdirs()
       val outFile = new File(buildPath + quote(sym) + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(new FileWriter(outFile))
