@@ -3,28 +3,33 @@ package ppl.dsl.optiml
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
-import scala.virtualization.lms.common.{ScalaOpsPkgExp, ScalaOpsPkg, ScalaCodeGenPkg}
+import ppl.delite.framework.codegen.cuda.TargetCuda
+import scala.virtualization.lms.common.{ScalaOpsPkgExp, ScalaOpsPkg, ScalaCodeGenPkg, CudaCodeGenPkg}
 import scala.virtualization.lms.internal.{GenericNestedCodegen, GenericCodegen}
 import ppl.delite.framework.codegen.delite.DeliteCodeGenOverridesScala
 
-trait OptiML extends ScalaOpsPkg with VectorOps with MatrixOps with MLInputReaderOps {
+trait OptiML extends ScalaOpsPkg with ArithImplicits with VectorOps with MatrixOps with MLInputReaderOps {
   this: DeliteApplication =>
 }
 
-trait OptiMLExp extends OptiML with ScalaOpsPkgExp with VectorOpsExp with VectorViewOpsExp with MatrixOpsExp with MLInputReaderOpsExp
-  with VectorImplOpsStandard with VectorViewImplOpsStandard with MatrixImplOpsStandard with MLInputReaderImplOpsStandard {
+trait OptiMLExp extends OptiML with ScalaOpsPkgExp with LanguageOpsExp with VectorOpsExpOpt with VectorViewOpsExp
+  with MatrixOpsExpOpt with MLInputReaderOpsExp
+  with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
+  with MatrixImplOpsStandard with MLInputReaderImplOpsStandard {
   this: DeliteApplication =>
 
   def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericNestedCodegen{val IR: OptiMLExp.this.type} = {
     t match {
       case _:TargetScala => new OptiMLCodeGenScala{val IR: OptiMLExp.this.type = OptiMLExp.this}
+      case _:TargetCuda => new OptiMLCodeGenCuda{val IR: OptiMLExp.this.type = OptiMLExp.this} 
       case _ => throw new RuntimeException("optiml does not support this target")
     }
   }
 }
 
-trait OptiMLCodeGenScala extends ScalaCodeGenPkg with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
+trait OptiMLCodeGenScala extends ScalaCodeGenPkg with ScalaGenLanguageOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
+
 
   val IR: DeliteApplication with OptiMLExp
 
@@ -35,5 +40,13 @@ trait OptiMLCodeGenScala extends ScalaCodeGenPkg with ScalaGenVectorOps with Sca
     case "ppl.dsl.optiml.Matrix[Double]" => "ppl.dsl.optiml.MatrixImpl[Double]"
     case _ => super.remap(m)
   }
+
+}
+
+trait OptiMLCodeGenCuda extends CudaCodeGenPkg with CudaGenLanguageOps with CudaGenVectorOps with CudaGenMatrixOps // with CudaGenVectorViewOps
+ // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps   //TODO:DliteCodeGenOverrideScala needed?
+{
+
+  val IR: DeliteApplication with OptiMLExp
 
 }

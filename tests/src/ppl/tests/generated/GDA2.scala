@@ -103,7 +103,7 @@ val x179 = x178.trim()
 x177 = x179
 val x181 = x177
 val x182 = java.lang.Double.parseDouble(x181)
-val x183 = x173 += x182
+val x183 = x173.insert(x173.length,x182)
 val x184 = x175.readLine()
 x177 = x184
 ()

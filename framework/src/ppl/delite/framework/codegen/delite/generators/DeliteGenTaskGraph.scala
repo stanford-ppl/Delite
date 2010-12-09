@@ -1,11 +1,12 @@
 package ppl.delite.framework.codegen.delite.generators
 
-import java.io.{FileWriter, File, PrintWriter}
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{ScalaGenEffect, GenericCodegen}
 import ppl.delite.framework.{Util, Config}
 import collection.mutable.ListBuffer
+import java.util.ArrayList
+import java.io.{StringWriter, FileWriter, File, PrintWriter}
 
 trait DeliteGenTaskGraph extends DeliteCodegen {
   val IR: DeliteOpsExp
@@ -46,31 +47,47 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)    
     val inVals = dataDeps flatMap { vals(_) }
     val inVars = dataDeps flatMap { vars(_) }
-
+    val metaData = new ArrayList[String]
+    
     implicit val supportedTargets = new ListBuffer[String]
     implicit val returnTypes = new ListBuffer[Pair[String, String]]
+    
     for (gen <- generators) {
-      val buildPath = Config.kernel_path + gen + "/"
+      val buildPath = Config.build_dir + gen + "/"
       val outDir = new File(buildPath); outDir.mkdirs()
-      val kstream = new PrintWriter(new FileWriter(buildPath + quote(sym) + "." + gen.kernelFileExt))
+      val outFile = new File(buildPath + quote(sym) + "." + gen.kernelFileExt)
+      val kstream = new PrintWriter(new FileWriter(outFile))
 
+      val bodyString = new StringWriter()
+      val bodyStream = new PrintWriter(bodyString)
+      
       try{
-        // emit kernel
+        // Initialize
+        gen.init(sym, inVals, inVars, resultIsVar)
+
+        // emit kernel to bodyStream
+        gen.emitNode(sym, rhs)(bodyStream)
+        bodyStream.flush
+        
+        // emit to file 
         gen.emitKernelHeader(sym, inVals, inVars, resultIsVar)(kstream)
-        gen.emitNode(sym, rhs)(kstream)
+        kstream.println(bodyString.toString)
         gen.emitKernelFooter(sym, inVals, inVars, resultIsVar)(kstream)
 
         //record that this kernel was succesfully generated
         supportedTargets += gen.toString
         returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.Type)) {
-          override def toString = "\"" + _1 + "\" : \"" + _2 + "\"" 
+          override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
         }
+        
+        //add MetaData
+        if(gen.getMetaData!="") metaData.add(gen.getMetaData)
+
+        kstream.close()
       }
       catch {
         case e: Exception => // no generator found
-      }
-      finally {
-        kstream.close()
+          gen.exceptionHandler(outFile, kstream)
       }
     }
 
@@ -103,55 +120,44 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     
     // emit task graph node
     rhs match {
-      case DeliteOP_SingleTask(block) => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
-      case DeliteOP_Map(block) => emitMap(sym, inputs, inControlDeps, antiDeps)
-      case DeliteOP_ZipWith(block) => emitZipWith(sym, inputs, inControlDeps, antiDeps)
-      case _ => emitSingleTask(sym, inputs, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
+      case DeliteOP_SingleTask(block) => emitSingleTask(sym, inputs, inControlDeps, antiDeps, metaData)
+      case DeliteOP_Map(block) => emitMap(sym, inputs, inControlDeps, antiDeps, metaData)
+      case DeliteOP_ZipWith(block) => emitZipWith(sym, inputs, inControlDeps, antiDeps, metaData)
+      case _ => emitSingleTask(sym, inputs, inControlDeps, antiDeps, metaData) // things that are not specified as DeliteOPs, emit as SingleTask nodes
     }
 
     // whole program gen (for testing)
     //emitValDef(sym, "embedding.scala.gen.kernel_" + quote(sym) + "(" + inputs.map(quote(_)).mkString(",") + ")")
   }
 
-
   /**
    * @param sym         the symbol representing the kernel
    * @param inputs      a list of real kernel dependencies (formal kernel parameters)
    * @param controlDeps a list of control dependencies (must execute before this kernel)
    * @param antiDeps    a list of WAR dependencies (need to be committed in program order)
+   * @param metaData    a list of metaData strings
    */
-  def emitSingleTask(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+  def emitSingleTask(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]], metaData:ArrayList[String])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
     stream.print("{\"type\":\"SingleTask\"")
-    emitOpCommon(sym, inputs, controlDeps, antiDeps)
-  }
-
-  def emitMap(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
-    stream.print("{\"type\":\"Map\"")
-    emitOpCommon(sym, inputs, controlDeps, antiDeps)
-  }
-
-  def emitZipWith(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
-    stream.print("{\"type\":\"ZipWith\"")
-    emitOpCommon(sym, inputs, controlDeps, antiDeps)
-  }
-
-  def emitOpCommon(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = {
-    stream.print(" , \"kernelId\" : \"" + quote(sym) + "\" ")
-    stream.print(" , \"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "],\n")
+    stream.print(",\"kernelId\":\"" + quote(sym) + "\"")
+    stream.print(",\"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "]\n")
     val inputsStr = if(inputs.isEmpty) "" else inputs.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"inputs\":[" + inputsStr + "],\n")
+    stream.print("  \"inputs\":[" + inputsStr + "]\n")
     val controlDepsStr = if(controlDeps.isEmpty) "" else controlDeps.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
+    stream.print("  \"controlDeps\":[" + controlDepsStr + "]\n")
     val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"antiDeps\":[" + antiDepsStr + "],\n")
+    stream.print("  \"antiDeps\":[" + antiDepsStr + "]\n")
+    stream.print("  \"metadata\":"+metaData.toString+"\n")
     val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString(",")
     stream.print("  \"return-types\":{" + returnTypesStr + "}\n")
     stream.println("},")
   }
+  
+  def emitMap(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]], metaData:ArrayList[String])
+             (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = nop
+  def emitZipWith(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]], metaData:ArrayList[String])
+                 (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]]) = nop
 
   def nop = throw new RuntimeException("Not Implemented Yet")
 

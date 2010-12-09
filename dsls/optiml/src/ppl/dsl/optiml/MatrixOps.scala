@@ -5,7 +5,7 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
-import scala.virtualization.lms.internal.ScalaGenBase
+import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
 
 trait Matrix[T]
 
@@ -25,13 +25,14 @@ trait MatrixOps extends DSLType with Variables {
     def apply(i: Rep[Int], j: Rep[Int]) = matrix_apply2(x,i,j)
     def update(i: Rep[Int], j: Rep[Int], y: Rep[A]) = matrix_update(x,i,j,y)
     def +(y: Rep[Matrix[A]])(implicit n: Numeric[A]) = matrix_plus(x,y)
+    def +=(y: Rep[Matrix[A]])(implicit n: Numeric[A]) = matrix_plusequals(x,y)
     def *(y: Rep[Matrix[A]]) = matrix_times(x,y)
     def inv = matrix_inverse(x)
-    def trans = matrix_transpose(x)
+    def ~ = matrix_transpose(x)
     def numRows = matrix_numrows(x)
     def numCols = matrix_numcols(x)
     def pprint = matrix_pprint(x)
-    def +=(y: Rep[Vector[A]]) = matrix_plusequals(x,y)
+    def +=(y: Rep[Vector[A]]) = matrix_insertrow(x,x.numRows,y)
     def insertRow(pos: Rep[Int], v: Rep[Vector[A]]) = matrix_insertrow(x,pos,v)
   }
 
@@ -40,14 +41,15 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_apply2[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
   def matrix_update[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int], y: Rep[A]): Rep[Unit]
   def matrix_plus[A:Manifest:Numeric](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_plusequals[A:Manifest:Numeric](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_times[A:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_inverse[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_transpose[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_numrows[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
   def matrix_numcols[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
   def matrix_pprint[A:Manifest](x: Rep[Matrix[A]]): Rep[Unit]
-  def matrix_plusequals[A:Manifest](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Matrix[A]]
   def matrix_insertrow[A:Manifest](x: Rep[Matrix[A]], pos: Rep[Int], v: Rep[Vector[A]]) : Rep[Matrix[A]]
+
 
   // impl defs
   def matrix_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]]
@@ -73,7 +75,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
   case class MatrixPPrint[A:Manifest](x: Exp[Matrix[A]])
     extends DSLOp(reifyEffects(matrix_pprint_impl[A](x)))
 
-  case class MatrixPlusEquals[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]])
+  case class MatrixPlusEquals[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends DSLOp(reifyEffects(matrix_plusequals_impl[A](x,y)))
 
   case class MatrixNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int])
@@ -93,7 +95,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
   def matrix_numcols[A:Manifest](x: Exp[Matrix[A]]) = MatrixNumCols(x)
   def matrix_insertrow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(MatrixInsertRow(x,pos,y))
 
-  def matrix_plusequals[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = reflectMutation(MatrixPlusEquals(x,y))
+  def matrix_plusequals[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectMutation(MatrixPlusEquals(x,y))
   def matrix_plus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixPlus(x, y)
   def matrix_times[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixTimes(x, y)
   def matrix_inverse[A:Manifest](x: Exp[Matrix[A]]) = MatrixInverse(x)
@@ -103,7 +105,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
 }
 
 /**
- * Optimizations for composite MatrixOps operations.
+ *  Optimizations for composite MatrixOps operations.
  */
 
 trait MatrixOpsExpOpt extends MatrixOpsExp { this: MatrixImplOps =>
@@ -155,6 +157,54 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case MatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
     case MatrixInsertRow(x, pos, y)  => emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
+
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait CudaGenMatrixOps extends CudaGenBase {
+  val IR: MatrixOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+
+    case MatrixPlusEquals(x,y) =>
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".numCols"))
+      tabWidth += 1
+      stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x))); tabWidth += 1
+      stream.println(addTab()+"%s.update(%s, %s, (%s.apply(%s,%s)) + (%s.apply(%s,%s)));".format(quote(sym),"i","idxX",quote(x),"i","idxX",quote(y),"i","idxX"))
+      //if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s, %s));".format(quote(varLink.get(sym).get),"i","idxX",quote(sym),"i","idxX"))
+      if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s, %s));".format(quote(getVarLink(sym)),"i","idxX",quote(sym),"i","idxX"))
+      tabWidth -= 1; stream.println(addTab()+"}")
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
+
+    // these are the ops that call through to the underlying real data structure
+    case MatrixNew(numRows,numCols) =>
+      throw new RuntimeException("CudaGen: Not GPUable")
+
+    case MatrixApply1(x,i) =>
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".numCols"))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(%s, (%s.apply(%s,%s)));".format(quote(sym),"idxX",quote(x),quote(i),"idxX"))
+      //if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
+      if(getVarLink(sym) != null) if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(getVarLink(sym)),"idxX",quote(sym),"idxX"))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true")
+
+    case MatrixApply2(x,i,j) =>
+      emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
+    case MatrixUpdate(x,i,j,y)  =>
+      stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
+    case MatrixNumRows(x)  =>
+      emitValDef(sym, quote(x) + ".numRows")
+    case MatrixNumCols(x)  =>
+      emitValDef(sym, quote(x) + ".numCols")
+    case MatrixInsertRow(x, pos, y)  =>
+      throw new RuntimeException("CudaGen: Not GPUable")
+      //emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
 
     case _ => super.emitNode(sym, rhs)
   }

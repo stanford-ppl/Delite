@@ -1,6 +1,7 @@
 package ppl.delite.framework
 
 import codegen.c.TargetC
+import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.scala.TargetScala
 import codegen.Target
@@ -15,11 +16,13 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   def getCodeGenPkg(t: DeliteApplicationTarget) : GenericNestedCodegen{val IR: DeliteApplication.this.type}
 
   lazy val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  lazy val cudaTarget = new TargetCuda{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
   // TODO: this should be handled via command line options
-  lazy val targets = List[DeliteApplicationTarget](scalaTarget/*, cTarget*/)
-  val kernelGenerators: List[GenericNestedCodegen{ val IR: DeliteApplication.this.type }] = targets map { getCodeGenPkg(_) }
+  lazy val targets = List[DeliteApplicationTarget](scalaTarget , cudaTarget /*, cTarget*/)
+  val kernelGenerators: List[GenericNestedCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
+
 
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
@@ -46,7 +49,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       else {
         new PrintWriter(new FileWriter(Config.deg_filename))
       }
-
+    
     //codegen.emitSource(main_m, "Application", stream) // whole scala application (for testing)
     deliteGenerator.emitSource(main_m, "Application", stream)
   }
