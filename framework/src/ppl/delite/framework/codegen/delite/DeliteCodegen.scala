@@ -49,7 +49,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
     stream.println("{\"DEG\":{\n"+
                    "\"version\" : 0.1,\n"+
-                   "\"kernelpath\" : \"" + Config.kernel_path  + "\",\n"+
+                   "\"kernelpath\" : \"" + Config.build_dir  + "\",\n"+
                    "\"ops\": [")
 
     stream.println("{\"type\" : \"Arguments\" , \"kernelId\" : \"x0\"},")

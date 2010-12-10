@@ -2,10 +2,9 @@ package ppl.dsl.optiml
 
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{TupleOps, NumericOps, DSLOpsExp, Base}
-import scala.virtualization.lms.internal.ScalaGenEffect
 import java.io.PrintWriter
 import reflect.Manifest
-
+import scala.virtualization.lms.internal.{GenericNestedCodegen, CudaGenBase, ScalaGenEffect}
 /* Machinery provided by OptiML itself (language features and control structures).
  *
  * author: Arvind Sujeeth (asujeeth@stanford.edu)
@@ -67,8 +66,22 @@ trait LanguageOpsExp extends LanguageOps with TupleOps with NumericOps with Vect
   }
 }
 
-/*
-trait ScalaGenLanguageOps extends ScalaGenEffect {
+trait BaseGenLanguageOps extends GenericNestedCodegen {
+  val IR: LanguageOpsExp
+  import IR._
+
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    //case Sum(start,end,block,x,y,op) if shallow => syms(start) ::: syms(end) // in shallow mode, don't count deps from nested blocks
+    case _ => super.syms(e)
+  }
+
+  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
+    //case Sum(start,end,block,x,y,op) => getFreeVarBlock(y,List(x.asInstanceOf[Sym[_]]))
+    case _ => super.getFreeVarNode(rhs)
+  }
+}
+
+trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
   val IR: LanguageOpsExp
   import IR._
 
@@ -78,23 +91,6 @@ trait ScalaGenLanguageOps extends ScalaGenEffect {
     }
   }
 }
-*/
-
-
-trait BaseGenLanguageOps extends GenericNestedCodegen {
-  val IR: LanguageOpsExp
-  import IR._
-
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    case Sum(start,end,block,x,y,op) if shallow => syms(start) ::: syms(end) // in shallow mode, don't count deps from nested blocks
-    case _ => super.syms(e)
-  }
-
-  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
-    case Sum(start,end,block,x,y,op) => getFreeVarBlock(y,List(x.asInstanceOf[Sym[_]]))
-    case _ => super.getFreeVarNode(rhs)
-  }
-}
 
 trait CudaGenLanguageOps extends CudaGenBase with BaseGenLanguageOps {
   val IR: LanguageOpsExp
@@ -102,7 +98,7 @@ trait CudaGenLanguageOps extends CudaGenBase with BaseGenLanguageOps {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
       rhs match {
-        case Sum(start,end,block,x,y,op) =>
+      /*  case Sum(start,end,block,x,y,op) =>
           stream.println(addTab()+"int %s = %s;".format(quote(x),quote(start)))
           addVarLink(getBlockResult(y).asInstanceOf[Sym[_]],sym)
           emitBlock(y)
@@ -115,8 +111,8 @@ trait CudaGenLanguageOps extends CudaGenBase with BaseGenLanguageOps {
           tabWidth -= 1
           stream.println(addTab()+"}")
           allocOutput(sym,getBlockResult(y).asInstanceOf[Sym[_]])
-        
+        */
         case _ => super.emitNode(sym, rhs)
-      }
-    }
+     }
+  }
 }

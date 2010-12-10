@@ -5,9 +5,9 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.{DeliteCollection, DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.DSLOpsExp
-import scala.virtualization.lms.internal.ScalaGenBase
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import reflect.Manifest
+import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
 
 trait NilVector[T] extends Vector[T]
 trait Vector[T] extends DeliteCollection[T] {
@@ -36,7 +36,7 @@ trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
 
   // could convert to infix, but apply doesn't work with it anyways yet
   class vecRepCls[A:Manifest](x: Rep[Vector[A]]) {
-    def isInstanceOf[B](implicit mB: Manifest[B]) : Rep[Boolean] = vector_isinstanceof(x,manifest[A],mB)
+    def isInstanceOfL[B](implicit mB: Manifest[B]) : Rep[Boolean] = vector_isinstanceof(x,manifest[A],mB)
     def apply(n: Rep[Int]) = vector_apply(x, n)
     def update(n: Rep[Int], y: Rep[A]) = vector_update(x,n,y)
     def length = vector_length(x)
@@ -132,10 +132,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Delit
       extends Def[Vector[A]]
 
   case class VectorNew[A:Manifest](len: Exp[Int], is_row: Exp[Boolean])
-    extends DSLOp(reifyEffects(vector_new_impl[A](len, is_row)))
+    extends Def[Vector[A]] {
+    val mV = manifest[Vector[A]]
+  }
 
   case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], is_row: Exp[Boolean])
-    extends DSLOp(reifyEffects(vector_obj_range_impl(start,end,stride,is_row)))
+    extends Def[Vector[Int]]
 
   case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], out: Exp[Vector[B]], v: Exp[A], func: Exp[B])
     extends DeliteOpMap[A,B,Vector]
@@ -214,6 +216,8 @@ trait ScalaGenVectorOps extends ScalaGenBase {
       case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
       case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
       case VectorInsert(x,pos,y) => emitValDef(sym, quote(x) + ".insert(" + quote(pos) + ", " + quote(y) + ")")
+      case v@VectorNew(length, is_row) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(is_row) + ")")
+      case VectorObjectRange(start, end, stride, is_row) => emitValDef(sym, "new " + remap(manifest[Vector[Int]]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(is_row) + ")")
       // TODO: why!!!
       case v@VectorNil() => v.mA.toString match {
                               case "Int" => emitValDef(sym, "NilVectorIntImpl")

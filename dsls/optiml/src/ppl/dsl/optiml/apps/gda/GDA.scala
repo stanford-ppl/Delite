@@ -39,12 +39,21 @@ object GDA extends DeliteApplication with OptiMLExp {
     /* This loop calculates all of the needed statistics with a single pass
        through the data.  */
 
+    // the major problem here is the sum function is expanded statically, including instantiation and looping over vectors,
+    // but the conditional means that whether or not we are adding with a zerovector is only known dynamically
+    // -- the issue MUST be resolved in the generated code, via dynamic checks.. but how?
+    // + will generate a ZipWith kernel with 2 vectors, one of which may be a Zero
+    // perhaps the preamble to ZipWith is a test for Zero and shortcircuit - screws up cost predictions though
+    // Zero generates a references to a static object ZeroVector which is dynamically matched against in the generated code
+    // on the other hand, is a dynamic check for a zero vector on every += worth it?
+    // (current solution): an alternative is to implement ZeroVector apply
+    // to always return 0 -- this is space efficient, but a += will still be time inefficient (n additions of zero).. jit magic to the rescue?
     val (y_zeros, y_ones, mu0_num, mu1_num) = t4( sum(0,m) { i =>
       if (y(i) == false){
-        (unit(1.),unit(0.),x(i),Vector.zeros(x.numCols))
+        (unit(1.),unit(0.),x(i),NilV[Double])
       }
       else {
-        (unit(0.),unit(1.),Vector.zeros(x.numCols),x(i))
+        (unit(0.),unit(1.),NilV[Double],x(i))
       }
     })
 
@@ -54,31 +63,24 @@ object GDA extends DeliteApplication with OptiMLExp {
     val phi = 1./m * y_ones
     val mu0 = mu0_num / y_zeros
     val mu1 = mu1_num / y_ones
-        
+
     /* calculate covariance matrix sigma */
     /* x(i) is a row vector for us, while it is defined a column vector in the formula */
-
-    // An example statement that generates error when manifest is added
-    // Error : reflect is not an enclosing class
-    //val ddd = (x(0)-mu0) + (x(0)-mu0)
-
-    //var sigma = Matrix.zeros(n,n)
-    //for (i <- 0 until m){
     val sigma = sum(0, m) { i =>
       if (y(i) == false){
-       (((x(i)-mu0)~)**(x(i)-mu0))
+       (((x(i)-mu0).t)**(x(i)-mu0))
       }
       else{
-       (((x(i)-mu1)~)**(x(i)-mu1))
+       (((x(i)-mu1).t)**(x(i)-mu1))
       }
     }
-    
+
     print("GDA parameter calculation finished: ")
     println("  phi = " + phi)
     println("  mu0 = " ); mu0.pprint
     println("  mu1 = " ); mu1.pprint
     println("  sigma = "); sigma.pprint
     //sigma
-    
+
   }
 }

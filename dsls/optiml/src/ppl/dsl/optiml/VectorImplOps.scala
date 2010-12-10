@@ -17,9 +17,6 @@ trait VectorImplOps { this: Base with ArithImplicits =>
   def vector_trans_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], vA: Manifest[Vector[A]]) : Rep[Vector[A]]
   def vector_toboolean_impl[A:Manifest](v: Rep[Vector[A]], conv: Rep[A] => Rep[Boolean]) : Rep[Vector[Boolean]]
 
-  def vector_new_impl[A:Manifest](length: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
-
-  def vector_obj_range_impl(start: Rep[Int], end: Rep[Int], stride: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[Int]]
   def vector_map_impl[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[B]) : Rep[Vector[B]]
   def vector_sum_impl[A:Manifest:ArithOps](x: Rep[Vector[A]]) : Rep[A]
 }
@@ -106,12 +103,6 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
 
   def vector_toboolean_impl[A:Manifest](v: Rep[Vector[A]], conv: Rep[A] => Rep[Boolean]) = map[A,Boolean](v, conv)
-
-  def vector_new_impl[A](length: Rep[Int], is_row: Rep[Boolean])(implicit mA: Manifest[A])
-    = External[Vector[A]]("new " + base + ".VectorImpl[" + remap(mA) + "](%s,%s)", List(length, is_row))
-
-  def vector_obj_range_impl(start: Rep[Int], end: Rep[Int], stride: Rep[Int], is_row: Rep[Boolean])
-    = External[Vector[Int]]("new " + base + ".RangeVectorImpl(%s,%s,%s,%s)", List(start, end, stride, is_row))
 
   def vector_map_impl[A:Manifest,B:Manifest](v: Rep[Vector[A]], f: Rep[A] => Rep[B]) = map(v, f)
 

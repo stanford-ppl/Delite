@@ -12,7 +12,7 @@ object testGPU extends DeliteApplication with OptiMLExp {
     //val sigma = x ** y
     //val sigma = if(x.is_row) x/10 else x~
 
-  
+    /*
     val sigma = sum(0, 10) { i =>
        //z(i) ** z(i+1)
         if(x(i) > 5)
@@ -20,10 +20,11 @@ object testGPU extends DeliteApplication with OptiMLExp {
       else
           (((z(i)-y)~)**(z(i)-y))
     }
+    */
 
     //val z = Vector[Double](100)
     //z += x
-    println(sigma)
+    //println(sigma)
     //println(z)
 
     /*

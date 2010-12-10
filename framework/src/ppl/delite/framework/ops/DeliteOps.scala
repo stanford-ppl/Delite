@@ -1,9 +1,9 @@
 package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
-import scala.virtualization.lms.common.{VariablesExp, EffectExp}
 import ppl.delite.framework.DeliteCollection
-import scala.virtualization.lms.internal.{ScalaGenEffect, GenericCodegen, ScalaGenBase}
+import scala.virtualization.lms.internal._
+import scala.virtualization.lms.common.{TupleOpsExp, VariablesExp, EffectExp}
 
 trait DeliteOpsExp extends EffectExp with VariablesExp {
   // representation must be reified! this places the burden on the caller, but allows the caller to avoid the
@@ -49,18 +49,22 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
   }
 }
 
-trait ScalaGenDeliteOps extends ScalaGenEffect {
-  val IR: DeliteOpsExp
-  import IR._
+trait BaseGenDeliteOps extends GenericNestedCodegen {
+  val IR: DeliteOpsExp with TupleOpsExp
+   import IR._
 
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    // TODO: test -- else clause may not be necessary if productIterator still works on abstract case class
-    case map:DeliteOpMap[_,_,_] if shallow => syms(map.in) ++ syms(map.out) // in shallow mode, don't count deps from nested blocks
-    case map:DeliteOpMap[_,_,_] => syms(map.in) ++ syms(map.out) ++ syms(map.func)
-    case mapR: DeliteOpMapReduce[_,_,_] if shallow => syms(mapR.in)
-    case mapR: DeliteOpMapReduce[_,_,_] => syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
-    case _ => super.syms(e)
-  }
+   override def syms(e: Any): List[Sym[Any]] = e match {
+     // TODO: test -- else clause may not be necessary if productIterator still works on abstract case class
+     case map:DeliteOpMap[_,_,_] if shallow => syms(map.in) ++ syms(map.out) // in shallow mode, don't count deps from nested blocks
+     case map:DeliteOpMap[_,_,_] => syms(map.in) ++ syms(map.out) ++ syms(map.func)
+     case mapR: DeliteOpMapReduce[_,_,_] if shallow => syms(mapR.in)
+     case mapR: DeliteOpMapReduce[_,_,_] => syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
+     case _ => super.syms(e)
+   }
+}
+
+trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
+  import IR._
 
   /*
    override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
@@ -112,23 +116,28 @@ trait ScalaGenDeliteOps extends ScalaGenEffect {
       */
 
       // kernel
-      stream.println("val " + quote(sym) + "= new { ")
+      stream.println("val " + quote(sym) + "= new generated.DeliteOpMapReduce[" + remap(mapR.mV.Type) + "," + remap(mapR.reduce.Type) + "] {")
       stream.println("def in = " + quote(mapR.in))
       stream.println("")
       //stream.println("def mapreduce(" + quote(mapR.acc) + ": " + mapR.acc.Type + ", " + quote(mapR.mV) + ": " + mapR.mV.Type + ") = {")
       //emitBlock(mapR.mapreduce)
       //stream.println(quote(getBlockResult(mapR.mapreduce)))
-      stream.println("def map(" + quote(mapR.mV) + ": " + mapR.mV.Type + ") = {")
+      stream.println("def map(" + quote(mapR.mV) + ": " + remap(mapR.mV.Type) + ") = {")
       emitBlock(mapR.map)
       stream.println(quote(getBlockResult(mapR.map)))
       stream.println("}")
       stream.println("")
-      stream.println("def reduce(" + quote(mapR.rV) + ": " + mapR.rV.Type + ") = {")
+      //stream.println("def reduce(" + quote(t2(mapR.rV)._1) + ": " + remap(t2(mapR.rV)._1.Type) + "," + quote(t2(mapR.rV)._2) + ": " + remap(t2(mapR.rV)._2.Type) + ") = {")
+      stream.println("def reduce(" + quote(mapR.rV) + ": " + remap(mapR.rV.Type) + ") = {")
       emitBlock(mapR.reduce)
       stream.println(quote(getBlockResult(mapR.reduce)))
       stream.println("}")      
-      stream.println("} extends generated.DeliteOpMapReduce[" + remap(mapR.mV.Type) + "," + remap(mapR.reduce.Type) + "]" )
+      stream.println("}")
     }
     case _ => super.emitNode(sym,rhs)
   }
+}
+
+trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
+  import IR._
 }
