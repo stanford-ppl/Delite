@@ -1,5 +1,6 @@
 package ppl.dsl.optiml
 
+import datastruct.scala.{Vector,Matrix}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 

@@ -1,5 +1,6 @@
 package ppl.dsl.optiml
 
+import datastruct.scala.{Vector,Matrix}
 import java.io.{PrintWriter}
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import scala.virtualization.lms.common.DSLOpsExp

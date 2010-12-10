@@ -1,4 +1,4 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.datastruct.scala
 
 object MatrixImpl {
 

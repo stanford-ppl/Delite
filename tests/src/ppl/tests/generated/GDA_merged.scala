@@ -33,7 +33,7 @@ var x17 = x16
 val x18 = x17
 val x19 = x18.length
 val x20 = {
-new ppl.dsl.optiml.MatrixImpl[Double](0,x19)
+new ppl.dsl.optiml.datastruct.scala.MatrixImpl[Double](0,x19)
 }
 while ({val x394 = x11
 val x395 = x394 != null
@@ -41,7 +41,7 @@ x395}) {
 val x21 = x17
 val x22 = x21.length
 val x23 = {
-new ppl.dsl.optiml.VectorImpl[Double](x22,true)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x22,true)
 }
 val x24 = x17
 val x25 = x24.length
@@ -81,7 +81,7 @@ x20
 val x55 = x0(1)
 val x73 = {
 val x56 = {
-new ppl.dsl.optiml.VectorImpl[Double](0,true)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](0,true)
 }
 val x57 = {
 new java.io.FileReader(x55)
@@ -112,14 +112,14 @@ var x90 = 0.0
 val x88 = x54.numCols
 val x93 = {
 val x91 = {
-new ppl.dsl.optiml.VectorImpl[Double](x88,true)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x88,true)
 }
 x91
 }
 var x94 = x93
 val x97 = {
 val x95 = {
-new ppl.dsl.optiml.VectorImpl[Double](x88,true)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x88,true)
 }
 x95
 }
@@ -128,7 +128,7 @@ val x86 = {
 val x74 = x73.length
 val x75 = x73.is_row
 val x76 = {
-new ppl.dsl.optiml.VectorImpl[Boolean](x74,x75)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Boolean](x74,x75)
 }
 val x77 = 0 until x74
 val x84 = x77.foreach{ x78: Int =>
@@ -159,7 +159,7 @@ val x120 = {
 val x108 = x106.length
 val x109 = x106.is_row
 val x110 = {
-new ppl.dsl.optiml.VectorImpl[Double](x108,x109)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x108,x109)
 }
 val x111 = 0 until x108
 val x118 = x111.foreach{ x112: Int =>
@@ -183,7 +183,7 @@ val x139 = {
 val x127 = x126.length
 val x128 = x126.is_row
 val x129 = {
-new ppl.dsl.optiml.VectorImpl[Double](x127,x128)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x127,x128)
 }
 val x130 = 0 until x127
 val x137 = x130.foreach{ x131: Int =>
@@ -206,14 +206,14 @@ val x150 = x90
 val x164 = x98
 val x165 = x89
 val x179 = {
-new ppl.dsl.optiml.MatrixImpl[Double](x88,x88)
+new ppl.dsl.optiml.datastruct.scala.MatrixImpl[Double](x88,x88)
 }
 var x180 = x179
 val x163 = {
 val x151 = x149.length
 val x152 = x149.is_row
 val x153 = {
-new ppl.dsl.optiml.VectorImpl[Double](x151,x152)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x151,x152)
 }
 val x154 = 0 until x151
 val x161 = x154.foreach{ x155: Int =>
@@ -229,7 +229,7 @@ val x178 = {
 val x166 = x164.length
 val x167 = x164.is_row
 val x168 = {
-new ppl.dsl.optiml.VectorImpl[Double](x166,x167)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x166,x167)
 }
 val x169 = 0 until x166
 val x176 = x169.foreach{ x170: Int =>
@@ -251,7 +251,7 @@ val x198 = {
 val x186 = x185.length
 val x187 = x185.is_row
 val x188 = {
-new ppl.dsl.optiml.VectorImpl[Double](x186,x187)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x186,x187)
 }
 val x189 = 0 until x186
 val x196 = x189.foreach{ x190: Int =>
@@ -268,7 +268,7 @@ val x199 = x198.length
 val x200 = x198.is_row
 val x201 = !x200
 val x202 = {
-new ppl.dsl.optiml.VectorImpl[Double](x199,x201)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x199,x201)
 }
 val x203 = 0 until x199
 val x208 = x203.foreach{ x204: Int =>
@@ -281,7 +281,7 @@ x202
 val x234 = {
 val x220 = x210.length
 val x221 = {
-new ppl.dsl.optiml.MatrixImpl[Double](x220,x220)
+new ppl.dsl.optiml.datastruct.scala.MatrixImpl[Double](x220,x220)
 }
 val x222 = 0 until x220
 val x232 = x222.foreach{ x223: Int =>
@@ -302,7 +302,7 @@ val x251 = {
 val x235 = x184.numRows
 val x236 = x184.numCols
 val x237 = {
-new ppl.dsl.optiml.MatrixImpl[Double](x235,x236)
+new ppl.dsl.optiml.datastruct.scala.MatrixImpl[Double](x235,x236)
 }
 val x238 = 0 until x235
 val x249 = x238.foreach{ x239: Int =>
@@ -327,7 +327,7 @@ val x264 = {
 val x186 = x185.length
 val x187 = x185.is_row
 val x255 = {
-new ppl.dsl.optiml.VectorImpl[Double](x186,x187)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x186,x187)
 }
 val x189 = 0 until x186
 val x262 = x189.foreach{ x256: Int =>
@@ -344,7 +344,7 @@ val x265 = x264.length
 val x266 = x264.is_row
 val x267 = !x266
 val x268 = {
-new ppl.dsl.optiml.VectorImpl[Double](x265,x267)
+new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x265,x267)
 }
 val x269 = 0 until x265
 val x274 = x269.foreach{ x270: Int =>
@@ -357,7 +357,7 @@ x268
 val x300 = {
 val x286 = x276.length
 val x287 = {
-new ppl.dsl.optiml.MatrixImpl[Double](x286,x286)
+new ppl.dsl.optiml.datastruct.scala.MatrixImpl[Double](x286,x286)
 }
 val x288 = 0 until x286
 val x298 = x288.foreach{ x289: Int =>
@@ -378,7 +378,7 @@ val x317 = {
 val x301 = x254.numRows
 val x302 = x254.numCols
 val x303 = {
-new ppl.dsl.optiml.MatrixImpl[Double](x301,x302)
+new ppl.dsl.optiml.datastruct.scala.MatrixImpl[Double](x301,x302)
 }
 val x304 = 0 until x301
 val x315 = x304.foreach{ x305: Int =>

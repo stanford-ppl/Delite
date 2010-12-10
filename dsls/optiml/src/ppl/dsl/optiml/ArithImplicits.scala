@@ -1,5 +1,6 @@
 package ppl.dsl.optiml
 
+import datastruct.scala.{NilVector,Vector,Matrix}
 import scala.virtualization.lms.common.{ScalaOpsPkg, Base}
 import scala.virtualization.lms.util.OverloadHack
 
@@ -25,7 +26,7 @@ trait ArithImplicits extends Base with OverloadHack {
   implicit def vectorArithOps[T:Numeric:Manifest] : ArithOps[Vector[T]] = new ArithOps[Vector[T]] {
     def +=(a: Rep[Vector[T]], b: Rep[Vector[Nothing]])(implicit o: Overloaded1) = a // if we know statically
     def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (!b.isInstanceOfL[NilVector[T]]) a += b else a
-    def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a + b
+    def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (!b.isInstanceOfL[NilVector[T]]) a + b else a
 }
 
 

@@ -2,8 +2,8 @@ package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
 import ppl.delite.framework.DeliteCollection
-import scala.virtualization.lms.internal._
 import scala.virtualization.lms.common.{TupleOpsExp, VariablesExp, EffectExp}
+import scala.virtualization.lms.internal.{GenericCodegen, CudaGenEffect, GenericNestedCodegen, ScalaGenEffect}
 
 trait DeliteOpsExp extends EffectExp with VariablesExp {
   // representation must be reified! this places the burden on the caller, but allows the caller to avoid the
@@ -13,14 +13,14 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
 
   case class DeliteOpSingleTask[A](block: Exp[A]) extends DeliteOp[A]
   
-  abstract case class DeliteOpMap[A,B,C[X] <: DeliteCollection[X]] extends DeliteOp[C[B]] {
+  abstract case class DeliteOpMap[A,B,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
     val in: Exp[C[A]]
     val out: Exp[C[B]]
     val v: Exp[A]    // input symbol for func
     val func: Exp[B] // reified of Exp[A] => Exp[R]
   }
   
-  abstract case class DeliteOpZipWith[A,B,R,C[X] <: DeliteCollection[X]] extends DeliteOp[C[B]] {
+  abstract case class DeliteOpZipWith[A,B,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
     val inA: Exp[C[A]]
     val inB: Exp[C[B]]
     val out: Exp[C[R]]
@@ -28,13 +28,13 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
     val func: Exp[R]
   }
 
-  abstract case class DeliteOpReduce[A] extends DeliteOp[A] {
+  abstract case class DeliteOpReduce[A]() extends DeliteOp[A] {
     val in: Exp[DeliteCollection[A]]
     val v: Exp[(A,A)]
     val func: Exp[A] // reified of Exp[(A,A)] = Exp[A]
   }
 
-  abstract case class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]] extends DeliteOp[R] {
+  abstract case class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] {
     val in: Exp[C[A]]
     //val acc: Exp[R]
     val mV: Exp[A]
@@ -50,30 +50,34 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
 }
 
 trait BaseGenDeliteOps extends GenericNestedCodegen {
-  val IR: DeliteOpsExp with TupleOpsExp
-   import IR._
+  val IR: DeliteOpsExp
+  import IR._
 
-   override def syms(e: Any): List[Sym[Any]] = e match {
-     // TODO: test -- else clause may not be necessary if productIterator still works on abstract case class
-     case map:DeliteOpMap[_,_,_] if shallow => syms(map.in) ++ syms(map.out) // in shallow mode, don't count deps from nested blocks
-     case map:DeliteOpMap[_,_,_] => syms(map.in) ++ syms(map.out) ++ syms(map.func)
-     case mapR: DeliteOpMapReduce[_,_,_] if shallow => syms(mapR.in)
-     case mapR: DeliteOpMapReduce[_,_,_] => syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
-     case _ => super.syms(e)
-   }
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    // TODO: test -- else clause may not be necessary if productIterator still works on abstract case class
+    case map:DeliteOpMap[_,_,_] if shallow => syms(map.in) ++ syms(map.out) // in shallow mode, don't count deps from nested blocks
+    case map:DeliteOpMap[_,_,_] => syms(map.in) ++ syms(map.out) ++ syms(map.func)
+    case mapR: DeliteOpMapReduce[_,_,_] if shallow => syms(mapR.in)
+    case mapR: DeliteOpMapReduce[_,_,_] => syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
+    case _ => super.syms(e)
+  }
+
+  /*
+  // TODO: (tiark) weird error if this function is uncommented
+  //  class file needed by BaseGenDeliteOps is missing.
+  // reference type _$29 of (rhs: GenericNestedCodegen.this.IR.Def[_])List[GenericNestedCodegen.this.IR.Sym[_]] refers to nonexisting symbol.
+  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
+    case s:DeliteOpSingleTask[_] => getFreeVarBlock(s.block,Nil)
+    //case map:DeliteOpMap[_,_,_] => getFreeVarBlock(map.func,List(map.v.asInstanceOf[Sym[_]]))
+    //case mapR:DeliteOpMapReduce[_,_,_] => getFreeVarBlock(mapR.map, List(mapR.mV.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(mapR.reduce, List(mapR.rV.asInstanceOf[Sym[_]]))
+    case _ => super.getFreeVarNode(rhs)
+  }
+  */
+  
 }
 
 trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
   import IR._
-
-  /*
-   override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
-    case s:DeliteOpSingleTask[_] => getFreeVarBlock(s.block,Nil)
-    case map:DeliteOpMap[_,_,_] => getFreeVarBlock(map.func,List(map.v.asInstanceOf[Sym[_]]))
-    case mapR:DeliteOpMapReduce[_,_,_,_] => getFreeVarBlock(mapR.map, List(mapR.mV.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(mapR.reduce, List(mapR.rV.asInstanceOf[Sym[_]]))
-    case _ => super.getFreeVarNode(rhs)
-  }
-  */
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => {
@@ -116,7 +120,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       */
 
       // kernel
-      stream.println("val " + quote(sym) + "= new generated.DeliteOpMapReduce[" + remap(mapR.mV.Type) + "," + remap(mapR.reduce.Type) + "] {")
+      stream.println("val " + quote(sym) + "= new generated.scala.DeliteOpMapReduce[" + remap(mapR.mV.Type) + "," + remap(mapR.reduce.Type) + "] {")
       stream.println("def in = " + quote(mapR.in))
       stream.println("")
       //stream.println("def mapreduce(" + quote(mapR.acc) + ": " + mapR.acc.Type + ", " + quote(mapR.mV) + ": " + mapR.mV.Type + ") = {")

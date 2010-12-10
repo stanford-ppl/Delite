@@ -1,10 +1,12 @@
 package ppl.dsl.optiml
 
+import datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{TupleOps, NumericOps, DSLOpsExp, Base}
 import java.io.PrintWriter
 import reflect.Manifest
 import scala.virtualization.lms.internal.{GenericNestedCodegen, CudaGenBase, ScalaGenEffect}
+
 /* Machinery provided by OptiML itself (language features and control structures).
  *
  * author: Arvind Sujeeth (asujeeth@stanford.edu)
@@ -66,6 +68,7 @@ trait LanguageOpsExp extends LanguageOps with TupleOps with NumericOps with Vect
   }
 }
 
+/*
 trait BaseGenLanguageOps extends GenericNestedCodegen {
   val IR: LanguageOpsExp
   import IR._
@@ -116,3 +119,4 @@ trait CudaGenLanguageOps extends CudaGenBase with BaseGenLanguageOps {
      }
   }
 }
+*/

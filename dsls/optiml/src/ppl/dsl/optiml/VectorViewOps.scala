@@ -1,13 +1,12 @@
 package ppl.dsl.optiml
 
+import datastruct.scala.{VectorView, Vector, Matrix}
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.{Base}
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.internal.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
-
-trait VectorView[T] extends Vector[T]
 
 trait VectorViewOps extends DSLType with Base with OverloadHack {
 

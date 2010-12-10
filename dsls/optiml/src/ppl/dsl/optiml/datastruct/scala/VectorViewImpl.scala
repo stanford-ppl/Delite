@@ -1,4 +1,4 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.datastruct.scala
 
 class VectorViewImpl[T : ClassManifest](x: Array[T], offset: Int, str: Int, len: Int, row_vec: Boolean) extends VectorView[T]{
 

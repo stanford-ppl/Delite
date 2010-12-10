@@ -1,13 +1,12 @@
 package ppl.dsl.optiml
 
+import datastruct.scala.{Vector,Matrix}
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
-
-trait Matrix[+T]
 
 trait MatrixOps extends DSLType with Variables {
 
@@ -67,6 +66,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
   case class MatrixNumRows[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixNumCols[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixInsertRow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) extends Def[Matrix[A]]
+  case class MatrixNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends Def[Matrix[A]] {
+     val mM = manifest[Matrix[A]]
+  }
 
   // implemented via kernel embedding
   case class MatrixPlus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
@@ -77,9 +79,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
 
   case class MatrixPlusEquals[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends DSLOp(reifyEffects(matrix_plusequals_impl[A](x,y)))
-
-  case class MatrixNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int])
-    extends DSLOp(reifyEffects(matrix_new_impl[A](numRows,numCols)))
 
   case class MatrixTimes[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) extends Def[Matrix[A]]
   case class MatrixInverse[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
@@ -151,6 +150,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
+    case m@MatrixNew(numRows, numCols) => emitValDef(sym, "new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     case MatrixApply1(x,i) => emitValDef(sym, quote(x) + "(" + quote(i) + ")")
     case MatrixApply2(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatrixUpdate(x,i,j,y)  => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))

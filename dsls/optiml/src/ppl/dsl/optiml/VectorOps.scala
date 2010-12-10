@@ -1,5 +1,6 @@
 package ppl.dsl.optiml
 
+import datastruct.scala.{RangeVectorImpl, NilVector, Vector, Matrix}
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteCollection, DeliteApplication, DSLType}
@@ -8,18 +9,6 @@ import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import reflect.Manifest
 import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
-
-trait NilVector[T] extends Vector[T]
-trait Vector[T] extends DeliteCollection[T] {
-  // fields required on real underlying data structure impl
-  def length : Int
-  def is_row : Boolean
-  def apply(n: Int) : T
-  def update[A <: T](index: Int, x: A)
-
-  // DeliteCollection
-  def size = length
-}
 
 trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
 
@@ -217,7 +206,7 @@ trait ScalaGenVectorOps extends ScalaGenBase {
       case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
       case VectorInsert(x,pos,y) => emitValDef(sym, quote(x) + ".insert(" + quote(pos) + ", " + quote(y) + ")")
       case v@VectorNew(length, is_row) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(is_row) + ")")
-      case VectorObjectRange(start, end, stride, is_row) => emitValDef(sym, "new " + remap(manifest[Vector[Int]]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(is_row) + ")")
+      case VectorObjectRange(start, end, stride, is_row) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(is_row) + ")")
       // TODO: why!!!
       case v@VectorNil() => v.mA.toString match {
                               case "Int" => emitValDef(sym, "NilVectorIntImpl")

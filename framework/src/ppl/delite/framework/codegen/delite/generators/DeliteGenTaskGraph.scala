@@ -69,10 +69,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
         val resultType = if (gen.toString == "scala") {
           rhs match {
-            case mapR: DeliteOpMapReduce[_,_,_] => "generated.DeliteOpMapReduce[" + gen.remap(mapR.mV.Type) + "," + gen.remap(mapR.reduce.Type) + "]"
-            case _ => remap(sym.Type)
+            case mapR: DeliteOpMapReduce[_,_,_] => "generated.scala.DeliteOpMapReduce[" + gen.remap(mapR.mV.Type) + "," + gen.remap(mapR.reduce.Type) + "]"
+            case _ => gen.remap(sym.Type)
           }
-        } else remap(sym.Type)
+        } else gen.remap(sym.Type)
 
         // emit kernel
         gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar)(kstream)
@@ -82,7 +82,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
         //record that this kernel was successfully generated
         supportedTargets += gen.toString
         if (resultIsVar) {
-          returnTypes += new Pair[String,String](gen.toString,"generated.Ref[" + gen.remap(sym.Type) + "]") {
+          returnTypes += new Pair[String,String](gen.toString,"generated.scala.Ref[" + gen.remap(sym.Type) + "]") {
             override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
           }
         }
