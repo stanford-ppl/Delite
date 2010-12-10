@@ -1,6 +1,6 @@
 package ppl.delite.framework
 
 
-trait DeliteCollection[A] {
+trait DeliteCollection[T] {
   def size: Int
 }

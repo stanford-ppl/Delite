@@ -7,13 +7,15 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.internal.ScalaGenBase
 import scala.virtualization.lms.common.{VariablesExp, Variables}
+import reflect.Manifest
 
+trait NilVector[T] extends Vector[T]
 trait Vector[T] extends DeliteCollection[T] {
   // fields required on real underlying data structure impl
   def length : Int
   def is_row : Boolean
   def apply(n: Int) : T
-  def update(index: Int, x: T)
+  def update[A <: T](index: Int, x: A)
 
   // DeliteCollection
   def size = length
@@ -34,6 +36,7 @@ trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
 
   // could convert to infix, but apply doesn't work with it anyways yet
   class vecRepCls[A:Manifest](x: Rep[Vector[A]]) {
+    def isInstanceOf[B](implicit mB: Manifest[B]) : Rep[Boolean] = vector_isinstanceof(x,manifest[A],mB)
     def apply(n: Rep[Int]) = vector_apply(x, n)
     def update(n: Rep[Int], y: Rep[A]) = vector_update(x,n,y)
     def length = vector_length(x)
@@ -43,7 +46,7 @@ trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
     def *(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_times(x,y)
     def /(y: Rep[A])(implicit f: Fractional[A]) = vector_divide(x,y)
     def **(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_outer(x,y)
-    def ~ = vector_trans(x)
+    def t = vector_trans(x)
     def pprint = vector_pprint(x)
     def is_row = vector_is_row(x)
 
@@ -54,11 +57,14 @@ trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
     def sum(implicit ops: ArithOps[A]) : Rep[A] = vector_sum(x)
   }
 
+  def NilV[A:Manifest] = vector_nil
+
   // object defs
   def vector_obj_zeros(len: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], is_row: Rep[Boolean]): Rep[Vector[Int]]  
 
   // class defs
+  def vector_isinstanceof[A,B](x: Rep[Vector[A]], mA: Manifest[A], mB: Manifest[B]) : Rep[Boolean]
   def vector_apply[A:Manifest](x: Rep[Vector[A]], n: Rep[Int]): Rep[A]
   def vector_update[A:Manifest](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
   def vector_length[A:Manifest](x: Rep[Vector[A]]): Rep[Int]
@@ -76,6 +82,8 @@ trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
   def vector_map[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[B]): Rep[Vector[B]]
   def vector_sum[A:Manifest:ArithOps](x: Rep[Vector[A]]) : Rep[A]
 
+  def vector_nil[A:Manifest] : Rep[Vector[A]]
+
   // impl defs
   def vector_new[A:Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
@@ -89,6 +97,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Delit
   case class VectorLength[A:Manifest](x: Exp[Vector[A]]) extends Def[Int]
   case class VectorInsert[A:Manifest](x: Exp[Vector[A]], pos: Rep[Int], y: Exp[A]) extends Def[Vector[A]]
   case class VectorIsRow[A:Manifest](x: Exp[Vector[A]]) extends Def[Boolean]
+  case class VectorNil[A](implicit mA: Manifest[A]) extends Def[Vector[A]]
+  case class VectorIsInstanceOf[A,B](x: Exp[Vector[A]], mA: Manifest[A], mB: Manifest[B]) extends Def[Boolean]
 
   // implemented via kernel embedding
   case class VectorObjectZeros(len: Exp[Int])
@@ -134,6 +144,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Delit
   case class VectorSum[A:Manifest:ArithOps](x: Exp[Vector[A]])
     extends DSLOp(reifyEffects(vector_sum_impl(x)))
 
+  def vector_isinstanceof[A,B](x: Exp[Vector[A]], mA: Manifest[A], mB: Manifest[B]) = VectorIsInstanceOf(x,mA,mB)
   def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(x, n)
   def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(x,n,y))
   def vector_length[A:Manifest](x: Exp[Vector[A]]) = VectorLength(x)
@@ -150,6 +161,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Delit
   def vector_trans[A:Manifest](x: Exp[Vector[A]]) = VectorTrans(x)
   def vector_outer[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorOuter(x, y)
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
+
+  def vector_nil[A:Manifest] = VectorNil[A]()
 
   def vector_new[A:Manifest](len: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorNew[A](len, is_row))
 
@@ -192,15 +205,24 @@ trait ScalaGenVectorOps extends ScalaGenBase {
   val IR: VectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    // these are the ops that call through to the underlying real data structure
-    case VectorApply(x, n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
-    case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
-    case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
-    case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
-    case VectorInsert(x,pos,y) => emitValDef(sym, quote(x) + ".insert(" + quote(pos) + ", " + quote(y) + ")")
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+    rhs match {
+      // these are the ops that call through to the underlying real data structure
+      case VectorIsInstanceOf(x,mA,mB) => emitValDef(sym, quote(x) + ".isInstanceOf[" + remap(mB) + "]")
+      case VectorApply(x, n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
+      case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+      case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
+      case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
+      case VectorInsert(x,pos,y) => emitValDef(sym, quote(x) + ".insert(" + quote(pos) + ", " + quote(y) + ")")
+      // TODO: why!!!
+      case v@VectorNil() => v.mA.toString match {
+                              case "Int" => emitValDef(sym, "NilVectorIntImpl")
+                              case "Double" => emitValDef(sym, "NilVectorDoubleImpl")
+                              case _ => throw new UnsupportedOperationException("NilVector")
+                            }
 
-    case _ => super.emitNode(sym, rhs)
+      case _ => super.emitNode(sym, rhs)
+    }
   }
 }
 

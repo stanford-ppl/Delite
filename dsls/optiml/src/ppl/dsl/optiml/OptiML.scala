@@ -24,19 +24,19 @@ trait OptiMLExp extends OptiML with ScalaOpsPkgExp with LanguageOpsExp with Deli
       case _ => throw new RuntimeException("optiml does not support this target")
     }
   }
-}
-
-trait OptiMLCodeGenScala extends ScalaCodeGenPkg with ScalaGenLanguageOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
-  with ScalaGenDeliteOps with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
-
-  val IR: DeliteApplication with OptiMLExp
 
   override def remap[A](m: Manifest[A]) : String = m.toString match {
     // TODO: make more robust
+    case "ppl.dsl.optiml.NilVector[Double]" => "ppl.dsl.optiml.NilVectorDoubleImpl"
     case "ppl.dsl.optiml.Vector[Double]" => "ppl.dsl.optiml.VectorImpl[Double]"
     case "ppl.dsl.optiml.Vector[Boolean]" => "ppl.dsl.optiml.VectorImpl[Boolean]"
     case "ppl.dsl.optiml.Matrix[Double]" => "ppl.dsl.optiml.MatrixImpl[Double]"
     case _ => super.remap(m)
   }
+}
 
+trait OptiMLCodeGenScala extends ScalaCodeGenPkg with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
+  with ScalaGenDeliteOps with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
+
+  val IR: DeliteApplication with OptiMLExp
 }

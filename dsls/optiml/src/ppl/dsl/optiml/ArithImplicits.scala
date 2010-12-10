@@ -23,8 +23,8 @@ trait ArithImplicits extends Base with OverloadHack {
    */
 
   implicit def vectorArithOps[T:Numeric:Manifest] : ArithOps[Vector[T]] = new ArithOps[Vector[T]] {
-    def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a += b
-    def +=(a: Rep[Vector[T]], b: Zero[Vector[T]])(implicit o: Overloaded1) = a
+    def +=(a: Rep[Vector[T]], b: Rep[Vector[Nothing]])(implicit o: Overloaded1) = a // if we know statically
+    def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (!b.isInstanceOf[NilVector[T]]) a += b else a
     def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a + b
 }
 

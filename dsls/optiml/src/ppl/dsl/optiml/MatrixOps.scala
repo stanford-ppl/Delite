@@ -7,7 +7,7 @@ import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import scala.virtualization.lms.internal.ScalaGenBase
 
-trait Matrix[T]
+trait Matrix[+T]
 
 trait MatrixOps extends DSLType with Variables {
 

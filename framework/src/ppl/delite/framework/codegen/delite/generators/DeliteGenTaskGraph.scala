@@ -56,7 +56,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       try{
         // emit kernel
         val resultType = rhs match {
-          case mapR:DeliteOpMapReduce[_,_,_] => "generated.DeliteOpMapReduce[" + remap(mapR.mV.Type) + "," + remap(mapR.acc.Type) + "]"
+          case mapR:DeliteOpMapReduce[_,_,_] => "generated.DeliteOpMapReduce[" + remap(mapR.mV.Type) + "," + remap(mapR.reduce.Type) + "]"
           case _ =>  remap(sym.Type)
         }
 

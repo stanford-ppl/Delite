@@ -50,12 +50,10 @@ object GDA extends DeliteApplication with OptiMLExp {
     // to always return 0 -- this is space efficient, but a += will still be time inefficient (n additions of zero).. jit magic to the rescue?
     val (y_zeros, y_ones, mu0_num, mu1_num) = t4( sum(0,m) { i =>
       if (y(i) == false){
-        // TODO: ZeroExp gets confused when both are used.. somehow CSE is kicking in
-        //(unit(1.),<>[Double],x(i),<>[Vector[Double]])
-        (unit(1.),unit(0.),x(i),<>[Vector[Double]])
+        (unit(1.),unit(0.),x(i),NilV[Double])
       }
       else {
-        (unit(0.),unit(1.),<>[Vector[Double]],x(i))
+        (unit(0.),unit(1.),NilV[Double],x(i))
       }
     })
 
@@ -65,15 +63,15 @@ object GDA extends DeliteApplication with OptiMLExp {
     val phi = 1./m * y_ones
     val mu0 = mu0_num / y_zeros
     val mu1 = mu1_num / y_ones
-        
+
     /* calculate covariance matrix sigma */
     /* x(i) is a row vector for us, while it is defined a column vector in the formula */
     val sigma = sum(0, m) { i =>
       if (y(i) == false){
-       (((x(i)-mu0)~)**(x(i)-mu0))
+       (((x(i)-mu0).t)**(x(i)-mu0))
       }
       else{
-       (((x(i)-mu1)~)**(x(i)-mu1))
+       (((x(i)-mu1).t)**(x(i)-mu1))
       }
     }
     

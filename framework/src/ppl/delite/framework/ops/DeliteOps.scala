@@ -9,7 +9,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
   // representation must be reified! this places the burden on the caller, but allows the caller to avoid the
   // use of function values (which can be uglier).
 
-  abstract case class DeliteOp[A]() extends Def[A]
+  sealed abstract class DeliteOp[A]() extends Def[A]
 
   case class DeliteOpSingleTask[A](block: Exp[A]) extends DeliteOp[A]
   
@@ -36,11 +36,12 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
 
   abstract case class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]] extends DeliteOp[R] {
     val in: Exp[C[A]]
-    val acc: Exp[R]
+    //val acc: Exp[R]
     val mV: Exp[A]
 
     // for accumulating each partial sum
-    val mapreduce: Exp[R] // reified of Exp[(R,A)] => Exp[R] composition of map and reduce
+    //val mapreduce: Exp[R] // reified of Exp[(R,A)] => Exp[R] composition of map and reduce
+    val map: Exp[R] // reified of Exp[A] => Exp[R]
 
     // for reducing remaining partial sums
     val rV: Exp[(R,R)]
@@ -57,7 +58,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect {
     case map:DeliteOpMap[_,_,_] if shallow => syms(map.in) ++ syms(map.out) // in shallow mode, don't count deps from nested blocks
     case map:DeliteOpMap[_,_,_] => syms(map.in) ++ syms(map.out) ++ syms(map.func)
     case mapR: DeliteOpMapReduce[_,_,_] if shallow => syms(mapR.in)
-    case mapR: DeliteOpMapReduce[_,_,_] => syms(mapR.in) ++ syms(mapR.mapreduce) ++ syms(mapR.reduce)
+    case mapR: DeliteOpMapReduce[_,_,_] => syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
     case _ => super.syms(e)
   }
 
@@ -114,16 +115,19 @@ trait ScalaGenDeliteOps extends ScalaGenEffect {
       stream.println("val " + quote(sym) + "= new { ")
       stream.println("def in = " + quote(mapR.in))
       stream.println("")
-      stream.println("def mapreduce(" + quote(mapR.acc) + ": " + mapR.acc.Type + ", " + quote(mapR.mV) + ": " + mapR.mV.Type + ") = {")
-      emitBlock(mapR.mapreduce)
-      stream.println(quote(getBlockResult(mapR.mapreduce)))
+      //stream.println("def mapreduce(" + quote(mapR.acc) + ": " + mapR.acc.Type + ", " + quote(mapR.mV) + ": " + mapR.mV.Type + ") = {")
+      //emitBlock(mapR.mapreduce)
+      //stream.println(quote(getBlockResult(mapR.mapreduce)))
+      stream.println("def map(" + quote(mapR.mV) + ": " + mapR.mV.Type + ") = {")
+      emitBlock(mapR.map)
+      stream.println(quote(getBlockResult(mapR.map)))
       stream.println("}")
       stream.println("")
       stream.println("def reduce(" + quote(mapR.rV) + ": " + mapR.rV.Type + ") = {")
       emitBlock(mapR.reduce)
       stream.println(quote(getBlockResult(mapR.reduce)))
       stream.println("}")      
-      stream.println("} extends generated.DeliteOpMapReduce[" + remap(mapR.mV.Type) + "," + remap(mapR.acc.Type) + "]" )
+      stream.println("} extends generated.DeliteOpMapReduce[" + remap(mapR.mV.Type) + "," + remap(mapR.reduce.Type) + "]" )
     }
     case _ => super.emitNode(sym,rhs)
   }
