@@ -23,7 +23,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   lazy val targets = List[DeliteApplicationTarget](scalaTarget , cudaTarget /*, cTarget*/)
   val kernelGenerators: List[GenericNestedCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
 
-
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
     getCodeGenPkg(scalaTarget).asInstanceOf[ScalaCodegen { val IR: DeliteApplication.this.type }]
@@ -40,7 +39,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
                                                  val generators = kernelGenerators }
 
     //clean up the code gen directory
-    Util.deleteDirectory(new File(Config.kernel_path))
+    Util.deleteDirectory(new File(Config.build_dir))
 
     val stream =
       if (Config.deg_filename == ""){

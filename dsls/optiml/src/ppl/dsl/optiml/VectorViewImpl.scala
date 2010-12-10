@@ -19,7 +19,7 @@ class VectorViewImpl[T : ClassManifest](x: Array[T], offset: Int, str: Int, len:
     _data(chkIndex(idx(n)))
   }
 
-  def update(n: Int, x: T) {
+  def update[A <: T](n: Int, x: A) {
     _data(chkIndex(idx(n))) = x
   }
 

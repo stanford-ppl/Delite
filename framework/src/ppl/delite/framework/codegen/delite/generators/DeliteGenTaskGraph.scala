@@ -43,7 +43,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     }
 
     // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
-    val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)
+    val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)    
     val inVals = dataDeps flatMap { vals(_) }
     val inVars = dataDeps flatMap { vars(_) }
 
@@ -52,7 +52,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     implicit val metadata = new ArrayBuffer[Pair[String, String]]
 
     for (gen <- generators) {
-      val buildPath = Config.kernel_path + gen + "/"
+      val buildPath = Config.build_dir + gen + "/"
       val outDir = new File(buildPath); outDir.mkdirs()
       val outFile = new File(buildPath + quote(sym) + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(outFile)
@@ -68,9 +68,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
         bodyStream.flush
 
         // emit kernel
-        gen.emitKernelHeader(sym, inVals, inVars, resultIsVar)(kstream)
+        gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar)(kstream)
         kstream.println(bodyString.toString)
-        gen.emitKernelFooter(sym, inVals, inVars, resultIsVar)(kstream)
+        gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar)(kstream)
 
         //record that this kernel was successfully generated
         supportedTargets += gen.toString
@@ -129,16 +129,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     // emit task graph node
     rhs match {
-      case DeliteOP_SingleTask(block) => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
-      case DeliteOP_Map(block) => emitMap(sym, inputs, inControlDeps, antiDeps)
-      case DeliteOP_ZipWith(block) => emitZipWith(sym, inputs, inControlDeps, antiDeps)
+      case DeliteOpSingleTask(block) => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
+      case m:DeliteOpMap[_,_,_] => emitMap(sym, inputs, inControlDeps, antiDeps)
+      case z:DeliteOpZipWith[_,_,_,_] => emitZipWith(sym, inputs, inControlDeps, antiDeps)
       case _ => emitSingleTask(sym, inputs, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
     }
 
     // whole program gen (for testing)
     //emitValDef(sym, "embedding.scala.gen.kernel_" + quote(sym) + "(" + inputs.map(quote(_)).mkString(",") + ")")
   }
-
 
   /**
    * @param sym         the symbol representing the kernel
@@ -184,4 +183,3 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   def nop = throw new RuntimeException("Not Implemented Yet")
 
 }
-

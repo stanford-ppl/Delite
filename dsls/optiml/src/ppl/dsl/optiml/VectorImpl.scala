@@ -25,7 +25,7 @@ class VectorImpl[T: ClassManifest](len: Int, isRow: Boolean) extends Vector[T] {
     _data(n)
   }
 
-  def update(index: Int, x: T) {
+  def update[A <: T](index: Int, x: A) {
     _data(index) = x
   }
 
