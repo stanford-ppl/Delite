@@ -19,36 +19,45 @@ package ppl.delite.runtime.codegen.kernels.scala
 object ExampleMapReduce0 {
 
   //this is the apply method of another (kernel) object: shouldn't be generated
-  def reduceFunc(bound0: Double, bound1: Double, free0: Double): Double = {
-    bound0 + bound1
+  def kernel_apply(in0: Array[Double], in1: Double, in2: Double): MapReduce = {
+    new MapReduce {
+      def in = in0
+      //note that functions have fixed parameter lists
+      def map(elem: Double): Double = elem * in1 * in2
+      def reduce(acc: Double, elem: Double) = acc + elem
+    }
   }
 
-  def mapFunc(bound0: Double, free0: Double): Double = {
-    bound0 * bound0
+  abstract class MapReduce {
+    def in: Array[Double]
+    def map(elem: Double): Double
+    def reduce(acc: Double, elem: Double): Double
   }
 
   //apply for the master reducer returns the result
   def apply(in0: Array[Double], in1: Double, in2: Double): Double = {
+    val mapReduce = kernel_apply(in0, in1, in2)
     //first level of tree (log(numChunks) levels total)
-    var acc = collMapReduce(in0, in1, in2)
+    var acc = collMapReduce(mapReduce)
     //second level of tree
-    acc = reduceFunc(acc, ExampleReduce1.get, in2)
+    acc = mapReduce.reduce(acc, ExampleReduce1.get)
     //third level of tree
-    acc = reduceFunc(acc, ExampleReduce2.get, in2)
+    acc = mapReduce.reduce(acc, ExampleReduce2.get)
     //fourth level of tree
-    acc = reduceFunc(acc, ExampleReduce4.get, in2)
+    acc = mapReduce.reduce(acc, ExampleReduce4.get)
     //return result
     acc
   }
 
-  private def collMapReduce(in0: Array[Double], in1: Double, in2: Double): Double = {
-    val size = in0.size
+  private def collMapReduce(mapReduce: MapReduce): Double = {
+    val in = mapReduce.in
+    val size = in.size
     var idx = size*0/8 //size*chunkIdx/numChunks
     val end = size*1/8 //size*(chunkIdx+1)/numChunks
-    var acc = mapFunc(in0(idx), in1) //TODO: this assumes that (end - idx) >= 1; what should we do if 0?
+    var acc = mapReduce.map(in(idx)) //TODO: this assumes that (end - idx) >= 1; what should we do if 0?
     idx += 1
     while (idx < end) {
-      acc = reduceFunc(acc, mapFunc(in0(idx), in1), in2)
+      acc = mapReduce.reduce(acc, mapReduce.map(in(idx)))
       idx += 1
     }
     acc
@@ -59,20 +68,28 @@ object ExampleMapReduce0 {
 object ExampleMapReduce6 {
 
   //this is the apply method of another (kernel) object: shouldn't be generated
-  def reduceFunc(bound0: Double, bound1: Double, free0: Double): Double = {
-    bound0 + bound1 + free0
+  def kernel_apply(in0: Array[Double], in1: Double, in2: Double): MapReduce = {
+    new MapReduce {
+      def in = in0
+      //note that functions have fixed parameter lists
+      def map(elem: Double): Double = elem * in1 * in2
+      def reduce(acc: Double, elem: Double) = acc + elem
+    }
   }
 
-  def mapFunc(bound0: Double, free0: Double): Double = {
-    bound0 * bound0 * free0
+  abstract class MapReduce {
+    def in: Array[Double]
+    def map(elem: Double): Double
+    def reduce(acc: Double, elem: Double): Double
   }
 
   //apply for the helper reducers all return Unit
   def apply(in0: Array[Double], in1: Double, in2: Double) {
+    val mapReduce = kernel_apply(in0, in1, in2)
     //first level of tree
-    var acc = collMapReduce(in0, in1, in2)
+    var acc = collMapReduce(mapReduce)
     //second level of tree
-    acc = reduceFunc(acc, ExampleReduce7.get, in2)
+    acc = mapReduce.reduce(acc, ExampleReduce7.get)
     //this chunk doesn't participate in third level => return
     set(acc)
   }
@@ -93,14 +110,15 @@ object ExampleMapReduce6 {
     notReady = false
   }
 
-  private def collMapReduce(in0: Array[Double], in1: Double, in2: Double): Double = {
-    val size = in0.size
+  private def collMapReduce(mapReduce: MapReduce): Double = {
+    val in = mapReduce.in
+    val size = in.size
     var idx = size*6/8 //size*chunkIdx/numChunks
     val end = size*7/8 //size*(chunkIdx+1)/numChunks
-    var acc = mapFunc(in0(idx),in1)
+    var acc = mapReduce.map(in(idx))
     idx += 1
     while (idx < end) {
-      acc = reduceFunc(acc, mapFunc(in0(idx), in1), in2)
+      acc = mapReduce.reduce(acc, mapReduce.map(in(idx)))
       idx += 1
     }
     acc

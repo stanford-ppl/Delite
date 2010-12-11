@@ -41,7 +41,7 @@ object MapReduce_SMP_Array_Generator {
     writeKernel(out, op, master, chunkIdx, numChunks)
 
     //the first (primary) reduction
-    writeReduce(out, op, master.outputType, chunkIdx, numChunks)
+    //writeMapReduce(out, op, master.outputType, chunkIdx, numChunks)
 
     //the communication
     if (chunkIdx != 0) { //chunk 0 never needs to send result
@@ -66,7 +66,7 @@ object MapReduce_SMP_Array_Generator {
   }
 
   private def writeKernel(out: StringBuilder, op: OP_MapReduce, master: OP_MapReduce, chunkIdx: Int, numChunks: Int) {
-    out.append("def apply(") //TODO: generate all free vars
+    out.append("def apply(")
     val inputs = op.getInputs.iterator
     var inIdx = 0
     var first = true
@@ -83,12 +83,40 @@ object MapReduce_SMP_Array_Generator {
     out.append(op.outputType) //the chunk output type
     out.append(" = {\n")
 
-    //tree reduction
-    //first every chunk performs its primary reduction
-    out.append("var acc = collMapReduce(in0")
-    writeFreeVars(out, inIdx)
+    //call the kernel to get the functions
+    out.append("val mapReduce = ")
+    out.append(op.function)
+    out.append("(in0")
+    for (i <- 1 until inIdx) {
+      out.append(", in")
+      out.append(i)
+    }
     out.append(')')
     out.append('\n')
+
+    //tree reduction
+    //first every chunk performs its primary (map-)reduction
+    //out.append("var acc = collMapReduce(mapReduce)\n")
+    out.append("val in = mapReduce.in\n")
+    out.append("val size = in.size\n") //asume the input collection is the first input to the op and assume a "size" method exits
+    out.append("var idx = size*")
+    out.append(chunkIdx)
+    out.append('/')
+    out.append(numChunks)
+    out.append('\n')
+    out.append("val end = size*")
+    out.append(chunkIdx+1)
+    out.append('/')
+    out.append(numChunks)
+    out.append('\n')
+    out.append("var acc = mapReduce.map(in(idx))\n")
+    out.append("idx += 1\n")
+    out.append("while (idx < end) {\n")
+    out.append("acc = mapReduce.mapreduce(acc, in(idx))\n")
+    //out.append("acc = mapReduce.reduce(acc, mapReduce.map(in(idx)))\n")
+    out.append("idx += 1\n")
+    out.append("}\n") //return acc
+
 
     var half = chunkIdx
     var step = 1
@@ -97,12 +125,9 @@ object MapReduce_SMP_Array_Generator {
       val neighbor = chunkIdx + step //the index of the chunk to reduce with
       step *= 2
 
-      out.append("acc = ")
-      out.append(op.Reduce.function)
-      out.append("(acc, ")
+      out.append("acc = mapReduce.reduce(acc, ")
       out.append(kernelName(master, neighbor))
       out.append(".get")
-      writeFreeVars(out,inIdx) //TODO: freeVars for reduce only
       out.append(')')
       out.append('\n')
     }
@@ -116,25 +141,16 @@ object MapReduce_SMP_Array_Generator {
     out.append('\n')
   }
 
-  private def writeReduce(out: StringBuilder, op: OP_MapReduce, outputType: String, chunkIdx: Int, numChunks: Int) {
-    out.append("private def collMapReduce(")
-    val inputs = op.getInputs.iterator
-    var inIdx = 0
-    var first = true
-    while (inputs.hasNext) { //TODO: generate all free vars
-      if (!first) out.append(", ")
-      first = false
-      out.append("in")
-      out.append(inIdx)
-      inIdx += 1
-      out.append(": ")
-      out.append(inputs.next.outputType)
-    }
+  /*
+  private def writeMapReduce(out: StringBuilder, op: OP_MapReduce, outputType: String, chunkIdx: Int, numChunks: Int) {
+    out.append("private def collMapReduce(mapReduce: ")
+    out.append("**UNIT**") //todo: type
     out.append("): ")
     out.append(outputType) //the master output type
     out.append(" = {\n")
 
-    out.append("val size = in0.size\n") //asume the input collection is the first input to the op and assume a "size" method exits
+    out.append("val in = mapReduce.in\n")
+    out.append("val size = in.size\n") //asume the input collection is the first input to the op and assume a "size" method exits
     out.append("var idx = size*")
     out.append(chunkIdx)
     out.append('/')
@@ -145,33 +161,16 @@ object MapReduce_SMP_Array_Generator {
     out.append('/')
     out.append(numChunks)
     out.append('\n')
-    out.append("var acc = ")
-
-    out.append(op.Map.function)
-    out.append("(in0(idx)\n")
-    writeFreeVars(out, inIdx) //TODO: free vars for map only
-
+    out.append("var acc = mapReduce.map(in(idx))\n")
     out.append("idx += 1\n")
     out.append("while (idx < end) {\n")
-    out.append("acc = ")
-
-    out.append(op.Reduce.function)
-    out.append("(acc, in0(idx)")
-    writeFreeVars(out, inIdx) //TODO: free vars for reduce only
-
-    out.append(')')
-    out.append('\n')
+    out.append("acc = mapReduce.mapreduce(acc, in(idx))\n")
+    //out.append("acc = mapReduce.reduce(acc, mapReduce.map(in(idx)))\n")
     out.append("idx += 1\n")
     out.append("}\n acc\n }\n") //return acc
 
   }
-
-  private def writeFreeVars(out: StringBuilder, numVars: Int) {
-    for (i <- 1 until numVars) { //rest of inputs passed in as is (free vars)
-      out.append(", in")
-      out.append(i)
-    }
-  }
+  */
 
   private def writeSync(out: StringBuilder, outputType: String) {
     out.append("@volatile private var notReady: Boolean = true\n")
@@ -191,5 +190,5 @@ object MapReduce_SMP_Array_Generator {
   private def kernelName(master: OP_MapReduce, idx: Int) = {
     "MapReduce_SMP_Array_" + master.id + "_Chunk_" + idx
   }
-
+  
 }

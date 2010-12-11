@@ -1,6 +1,6 @@
 package ppl.delite.runtime.graph
 
-import ops.{TestReduce, TestMap, TestSingle, TestOP}
+import ops._
 
 /**
  * Author: Kevin J. Brown
@@ -11,7 +11,7 @@ import ops.{TestReduce, TestMap, TestSingle, TestOP}
  * Stanford University
  */
 
-class TestGraph extends MapGraph //test choice
+class TestGraph extends MapReduceGraph //test choice
 
 //Scheduling & Optimized Execution Test
 class SingleGraph extends DeliteTaskGraph {
@@ -26,6 +26,8 @@ class SingleGraph extends DeliteTaskGraph {
   val node8 = new TestOP(base+"2d")(node7)
   val node9 = new TestOP(base+"3")(node4,node8)
 
+  _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3, "node4"->node4, "node5"->node5,
+                                "node6"->node6, "node7"->node7, "node8"->node8, "node9"->node9)
   _result = node9
 }
 
@@ -36,6 +38,7 @@ class MapGraph extends DeliteTaskGraph {
   val node2 = new TestMap(base+"Map")(node1)(node1, node1) //write output to input
   val node3 = new TestSingle[Unit](base+"End")(node1,node2)(node1)
 
+  _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3)
   _result = node3
 }
 
@@ -46,5 +49,16 @@ class ReduceGraph extends DeliteTaskGraph {
   val node2 = new TestReduce[Int](base+"Reduce")(node1)(node1)
   val node3 = new TestSingle[Unit](base+"Print")(node2)(node2)
 
+  _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3)
+  _result = node3
+}
+
+class MapReduceGraph extends DeliteTaskGraph {
+  val base = "ppl.delite.runtime.graph.TestKernel"
+  val node1 = new TestSingle[Array[Int]](base+"Begin")()()
+  val node2 = new TestMapReduce[Int](base+"MapReduce")(node1)(node1)
+  val node3 = new TestSingle[Unit](base+"Print")(node2)(node2)
+
+  _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3)
   _result = node3
 }
