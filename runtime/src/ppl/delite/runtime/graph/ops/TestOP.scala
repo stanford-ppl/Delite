@@ -72,25 +72,18 @@ class TestReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, fr
 
 }
 
-class TestMapReduce[T: Manifest](mapFunc: String, reduceFunc: String)(deps: DeliteOP*)(input: DeliteOP)(mapFree: DeliteOP*)(reduceFree: DeliteOP*)
-        extends OP_MapReduce(mapFunc, reduceFunc, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+class TestMapReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
+        extends OP_MapReduce(func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
 
   for (dep <- deps) {
     this.addDependency(dep)
     dep.addConsumer(this)
   }
 
-  for (f <- mapFree.reverse) {
-    this.Map.addInput(f)
+  for (f <- free.reverse) {
+    this.addInput(f)
   }
-  //this.Map.addInput(input)
-
-  for (f <- reduceFree.reverse) {
-    this.Reduce.addInput(f)
-  }
-  //this.Reduce.addInput(this.Map)
-
-  inputList = input :: this.Map.getInputs.toList ::: this.Reduce.getInputs.toList
+  this.addInput(input)
 
 }
 

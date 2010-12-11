@@ -11,7 +11,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-class OP_MapReduce(mapFunc: String, reduceFunc: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
+class OP_MapReduce(func: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
 
   final def isDataParallel = true
 
@@ -23,29 +23,7 @@ class OP_MapReduce(mapFunc: String, reduceFunc: String, resultType: Map[Targets.
     kernelName = name
   }
 
-  object Map extends DeliteOP{
-    def function = mapFunc
-
-    def isDataParallel = true
-    def task = null
-    def supportsTarget(target: Targets.Value) = false
-    def outputType(target: Targets.Value) = null
-    def nested = null
-    def cost = 0
-    def size = 0
-  }
-
-  object Reduce extends DeliteOP {
-    def function = reduceFunc
-
-    def isDataParallel = true
-    def task = null
-    def supportsTarget(target: Targets.Value) = false
-    def outputType(target: Targets.Value) = null
-    def nested = null
-    def cost = 0
-    def size = 0
-  }
+  def function = func
 
   def supportsTarget(target: Targets.Value) = resultType.contains(target)
 
@@ -58,7 +36,7 @@ class OP_MapReduce(mapFunc: String, reduceFunc: String, resultType: Map[Targets.
    * Chunks require same dependency & input lists
    */
   def chunk: OP_MapReduce = {
-    val r = new OP_MapReduce(Map.function, Reduce.function, Targets.unitTypes(resultType))
+    val r = new OP_MapReduce(function, Targets.unitTypes(resultType))
     r.dependencyList = dependencyList //lists are immutable so can be shared
     r.inputList = inputList
     for (dep <- getDependencies) dep.addConsumer(r)

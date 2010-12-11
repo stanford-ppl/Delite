@@ -2,8 +2,8 @@ package ppl.delite.runtime
 
 import codegen._
 import executor._
-import graph.DeliteTaskGraph
 import graph.ops.{EOP, Arguments}
+import graph.{TestGraph, DeliteTaskGraph}
 import java.io.File
 import scheduler._
 import tools.nsc.io.Directory
@@ -50,8 +50,8 @@ object Delite {
     }
 
     //load task graph
-    val graph = loadDeliteDEG(args(0))
-
+    //val graph = loadDeliteDEG(args(0))
+    val graph = new TestGraph
 
     //load kernels & data structures
     loadScalaSources(graph)

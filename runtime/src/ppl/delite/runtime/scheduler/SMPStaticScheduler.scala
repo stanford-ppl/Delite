@@ -2,10 +2,10 @@ package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.codegen.{ExecutableGenerator, DeliteExecutable}
-import ppl.delite.runtime.codegen.kernels.scala.{Reduce_SMP_Array_Generator, Map_SMP_Array_Generator}
-import ppl.delite.runtime.graph.ops.{OP_Reduce, OP_Map, DeliteOP}
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import java.util.ArrayDeque
+import ppl.delite.runtime.codegen.kernels.scala.{MapReduce_SMP_Array_Generator, Reduce_SMP_Array_Generator, Map_SMP_Array_Generator}
+import ppl.delite.runtime.graph.ops.{OP_MapReduce, OP_Reduce, OP_Map, DeliteOP}
 
 /**
  * Author: Kevin J. Brown
@@ -122,6 +122,14 @@ final class SMPStaticScheduler extends StaticScheduler {
       case reduce: OP_Reduce => {
         for (i <- 0 until numThreads) {
           val chunk = Reduce_SMP_Array_Generator.makeChunk(reduce, i, numThreads)
+          procs(i).add(chunk)
+          chunk.isScheduled = true
+          chunk.scheduledResource = i
+        }
+      }
+      case mapReduce: OP_MapReduce => {
+        for (i <- 0 until numThreads) {
+          val chunk = MapReduce_SMP_Array_Generator.makeChunk(mapReduce, i, numThreads)
           procs(i).add(chunk)
           chunk.isScheduled = true
           chunk.scheduledResource = i

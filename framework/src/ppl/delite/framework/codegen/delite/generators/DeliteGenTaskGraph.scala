@@ -141,6 +141,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     rhs match {
       case DeliteOpSingleTask(block) => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
       case m:DeliteOpMap[_,_,_] => emitMap(sym, inputs, inControlDeps, antiDeps)
+      case r:DeliteOpReduce[_] => emitReduce(sym, inputs, inControlDeps, antiDeps)
+      case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(sym, inputs,inControlDeps, antiDeps)
       case z:DeliteOpZipWith[_,_,_,_] => emitZipWith(sym, inputs, inControlDeps, antiDeps)
       case _ => emitSingleTask(sym, inputs, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
     }
@@ -164,6 +166,18 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   def emitMap(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Map\"")
+    emitOpCommon(sym, inputs, controlDeps, antiDeps)
+  }
+
+  def emitReduce(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+    stream.print("{\"type\":\"Reduce\"")
+    emitOpCommon(sym, inputs, controlDeps, antiDeps)
+  }
+
+  def emitMapReduce(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+    stream.print("{\"type\":\"MapReduce\"")
     emitOpCommon(sym, inputs, controlDeps, antiDeps)
   }
 

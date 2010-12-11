@@ -2,9 +2,9 @@ package ppl.delite.runtime.codegen
 
 import ppl.delite.runtime.scheduler.PartialSchedule
 import java.util.{ArrayDeque, ArrayList}
-import ppl.delite.runtime.graph.targets.Targets
-import ppl.delite.runtime.graph.ops.{OP_Single, DeliteOP}
 import java.io.File
+import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.graph.ops.DeliteOP
 
 /**
  * Author: Kevin J. Brown
@@ -78,7 +78,7 @@ object GPUExecutableGenerator {
     out.append("#include <jni.h>\n") //jni
     out.append("#include <cuda_runtime.h>\n") //Cuda runtime api
     out.append("#include \"DeliteCuda.cu\"\n") //Delite-Cuda interface for DSL
-    out.append("#include \"dsl.h\"\n") //imports all dsl kernels and helper functions //TODO: is there a cleaner way?
+    out.append("#include \"dsl.h\"\n") //imports all dsl kernels and helper functions
   }
 
   private def writeFunctionHeader(location: Int, out: StringBuilder) {
@@ -126,7 +126,6 @@ object GPUExecutableGenerator {
       //get kernel inputs (dependencies that could require a memory transfer)
       var addInputCopy = false
       val inputCopies = op.cudaMetadata.inputs.iterator //list of inputs that have a copy function
-      val inputTypes = op.cudaMetadata.inputTypes.iterator //list of types for inputs that have a copy function
       for (input <- op.getInputs) { //foreach input
         if(!available.contains(input)) { //this input does not yet exist on the device
           //add to available list
@@ -138,7 +137,8 @@ object GPUExecutableGenerator {
           //write a copy function for objects
           if (getJNIType(input.outputType) == "jobject") { //only perform a copy for object types
             addInputCopy = true
-            writeInputCopy(input, inputCopies.next, inputTypes.next, out)
+            val inData = inputCopies.next
+            writeInputCopy(input, inData.func, inData.resultType, out)
           }
           else writeInputCast(input, out) //if primitive type, simply cast to transform from "c" type into "g" type
         }
@@ -155,6 +155,8 @@ object GPUExecutableGenerator {
         out.append("addEvent(h2dStream, kernelStream);\n")
       }
 
+      //write the temporary allocations
+      writeTempAllocs(op, out)
       //write the output allocation
       writeOutputAlloc(op, out)
       //write the function call
@@ -182,17 +184,35 @@ object GPUExecutableGenerator {
     out.append(" = ")
     out.append(op.cudaMetadata.outputAlloc)
     out.append('(')
-    writeInputs(op, out)
+    writeInputList(op, "outputAlloc", out)
     out.append(");\n")
   }
 
   private def writeTempAllocs(op: DeliteOP, out: StringBuilder) {
-    for (temp <- op.cudaMetadata.temps) {
-      out.append(',')
-      out.append(temp)
+    for (temp <- op.cudaMetadata.temps; tempOp <- op.cudaMetadata.tempOps) {
+      out.append(temp.resultType)
+      out.append(' ')
+      out.append(getSymGPU(tempOp))
+      out.append(" = ")
+      out.append(temp.func)
       out.append('(')
-      writeInputs(op, out)
-      out.append(')')
+      var first = true
+      for (in <- temp.inputs) {
+        if (!first) out.append(',')
+        first = false
+        out.append(getSymGPU(in))
+      }
+      out.append(");\n")
+    }
+  }
+
+  private def writeInputList(op: DeliteOP, field: String, out: StringBuilder) {
+    val data = op.cudaMetadata(field)
+    var first = true
+    for (in <- data.inputs) {
+      if (!first) out.append(',')
+      first = false
+      out.append(getSymGPU(in))
     }
   }
 
@@ -205,12 +225,12 @@ object GPUExecutableGenerator {
     out.append('(')
     out.append(dims.dimSizeX)
     out.append('(')
-    writeInputs(op, out)
+    writeInputList(op, "gpuDimSizeX", out)
     out.append(')')
     out.append(',')
     out.append(dims.dimSizeY)
     out.append('(')
-    writeInputs(op, out)
+    writeInputList(op, "gpuDimSizeY", out)
     out.append(')')
     out.append(',')
     out.append('1')
@@ -221,17 +241,17 @@ object GPUExecutableGenerator {
     out.append('(')
     out.append(dims.blockSizeX)
     out.append('(')
-    writeInputs(op, out)
+    writeInputList(op, "gpuBlockSizeX", out)
     out.append(')')
     out.append(',')
     out.append(dims.blockSizeY)
     out.append('(')
-    writeInputs(op, out)
+    writeInputList(op, "gpuBlockSizeY", out)
     out.append(')')
     out.append(',')
     out.append(dims.blockSizeZ)
     out.append('(')
-    writeInputs(op, out)
+    writeInputList(op, "gpuBlockSizeZ", out)
     out.append(')')
     out.append(')')
     out.append(',')
@@ -244,9 +264,8 @@ object GPUExecutableGenerator {
 
     out.append('(')
     out.append(getSymGPU(op)) //first kernel input is OP output
-    out.append(',')
     writeInputs(op, out) //then all op inputs
-    writeTempAllocs(op, out) //then all op temporaries
+    writeTemps(op, out) //then all op temporaries
     out.append(");\n")
   }
 
@@ -299,11 +318,16 @@ object GPUExecutableGenerator {
   }
 
   private def writeInputs(op: DeliteOP, out: StringBuilder) {
-    var first = true
     for (input <- op.getInputs) {
-      if (!first) out.append(',')
-      first = false
+      out.append(',')
       out.append(getSymGPU(input))
+    }
+  }
+
+  private def writeTemps(op: DeliteOP, out: StringBuilder) {
+    for (temp <- op.cudaMetadata.tempOps) {
+      out.append(',')
+      out.append(getSymGPU(temp))
     }
   }
 

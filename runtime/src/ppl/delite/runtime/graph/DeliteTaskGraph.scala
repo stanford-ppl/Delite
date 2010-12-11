@@ -2,7 +2,7 @@ package ppl.delite.runtime.graph
 
 import java.io.File
 import _root_.scala.util.parsing.json.JSON
-import ops.{Arguments, EOP, OP_Single, DeliteOP}
+import ops._
 import collection.mutable.HashMap
 import targets._
 
@@ -26,14 +26,14 @@ object DeliteTaskGraph {
       case degm: Map[Any,Any] => parseDEGMap(degm)
       case err@_ => mapNotFound(err)
     }
-    graph    
+    graph
   }
 
   def parseDEGMap(degm: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val deg = getFieldMap(degm, "DEG")
     graph._version = getFieldDouble(deg, "version")
     graph._kernelPath = getFieldString(deg, "kernelpath")
-    parseOps(getFieldList(deg, "ops"))            
+    parseOps(getFieldList(deg, "ops"))
   }
 
   def parseOps(ops: List[Any])(implicit graph: DeliteTaskGraph) {
@@ -42,7 +42,8 @@ object DeliteTaskGraph {
       val op = _op.asInstanceOf[Map[Any, Any]]
       val opType = getFieldString(op, "type")
       opType match {
-        case "SingleTask" => processSingleTask(op)
+        case "SingleTask" => processCommon(op, "OP_Single")
+        case "MapReduce" => processCommon(op, "OP_MapReduce")
         case "Arguments" => processArgumentsTask(op)
         case "EOP" => processEOPTask(op)
         case err@_ => unsupportedType(err)
@@ -92,8 +93,8 @@ object DeliteTaskGraph {
     }
   }
 
-  def processSingleTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
-    val id = getFieldString(op, "kernelId")    
+  def processCommon(op: Map[Any, Any], opType: String)(implicit graph: DeliteTaskGraph) {
+    val id = getFieldString(op, "kernelId")
 
     val targets = getFieldList(op, "supportedTargets")
     val types = getFieldMap(op, "return-types")
@@ -104,7 +105,11 @@ object DeliteTaskGraph {
       }
     }
 
-    val newop = new OP_Single("kernel_"+id, resultMap)
+    val newop = opType match {
+      case "OP_Single" => new OP_Single("kernel_"+id, resultMap)
+      case "OP_MapReduce" => new OP_MapReduce("kernel_"+id, resultMap)
+      case other => error("OP Type not recognized: " + other)
+    }
 
     //handle inputs
     val inputs = getFieldList(op, "inputs")
@@ -171,25 +176,56 @@ object DeliteTaskGraph {
     val metadataAll = getFieldMap(op, "metadata")
     val metadataMap = getFieldMap(metadataAll, "cuda")
     val cudaMetadata = newop.cudaMetadata
-    cudaMetadata.blockSizeX = getFieldString(metadataMap, "gpuBlockSizeX")
-    cudaMetadata.blockSizeY = getFieldString(metadataMap, "gpuBlockSizeY")
-    cudaMetadata.blockSizeZ = getFieldString(metadataMap, "gpuBlockSizeZ")
-    cudaMetadata.dimSizeX = getFieldString(metadataMap, "gpuDimSizeX")
-    cudaMetadata.dimSizeY = getFieldString(metadataMap, "gpuDimSizeY")
-    cudaMetadata.outputAlloc = getFieldString(metadataMap, "gpuOutput") //output allocation
-    cudaMetadata.outputSet = getFieldString(metadataMap, "gpuOutputReturn") //copy gpu output to cpu
-    //input list
-    for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //copy cpu output to gpu
-      cudaMetadata.inputs ::= input
+
+    def fill(field: String) {
+      val list = getFieldList(metadataMap, field)
+      val data = cudaMetadata(field)
+      data.func = list.head
+      for (sym <- list.tail.head.asInstanceOf[List[String]].reverse) data.inputs ::= getOp(graph._ops, sym)
     }
-    //input types list
-    for (inputType <- getFieldList(metadataMap, "gpuInputTypes").reverse) { //Cuda type of the object
-      cudaMetadata.inputTypes ::= inputType
+
+    fill("gpuBlockSizeX") //threads/block - x
+    fill("gpuBlockSizeY") //threads/block - y
+    fill("gpuBlockSizeZ") //threads/block - z
+    fill("gpuDimSizeX") //blocks in grid - x
+    fill("gpuDimSizeY") //blocks in grid - y
+
+    for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
+      val value = (input.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
+      val data = cudaMetadata.newInput
+      data.resultType = value.head
+      data.func = value.tail.head
     }
-    //temporaries list
-    for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) { //temporary allocation
-      cudaMetadata.temps ::= temp
+
+    val tempSyms = new HashMap[String,DeliteOP]
+    for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) {
+      val tempOp = new OP_Single(null, null)
+      tempSyms += temp.toString -> tempOp
+      cudaMetadata.tempOps ::= tempOp
     }
+
+    def getOpLike(sym: String) = graph._ops.getOrElse(sym, tempSyms(sym))
+
+    for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) { //temporaries list
+      val value = (temp.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
+      val data = cudaMetadata.newTemp
+      data.resultType = value.head
+      data.func = value.tail.head
+      for (sym <- value.tail.tail.head.asInstanceOf[List[String]].reverse) {
+        data.inputs ::= getOpLike(sym)
+      }
+    }
+
+    //output allocation
+    val outList = getFieldMap(metadataMap, "gpuOutput").values.head.asInstanceOf[List[Any]]
+    cudaMetadata.outputAlloc.resultType = outList.head
+    cudaMetadata.outputAlloc.func = outList.tail.head
+    for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
+      cudaMetadata.outputAlloc.inputs ::= getOpLike(sym)
+    }
+    //output copy
+    cudaMetadata.outputSet.func = outList.tail.tail.tail.head
+
   }
 
   def unsupportedType(err:String) = throw new RuntimeException("Unsupported Op Type found: " + err)
@@ -210,7 +246,7 @@ class DeliteTaskGraph {
   var _kernelPath = ""
 
 
-  
+
   def result : DeliteOP = _result
   def version: Double = _version
   def kernelPath: String = _kernelPath
