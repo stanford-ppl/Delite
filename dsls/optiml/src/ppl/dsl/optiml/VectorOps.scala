@@ -3,7 +3,7 @@ package ppl.dsl.optiml
 import datastruct.scala.{RangeVectorImpl, NilVector, Vector, Matrix}
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteCollection, DeliteApplication, DSLType}
+import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}

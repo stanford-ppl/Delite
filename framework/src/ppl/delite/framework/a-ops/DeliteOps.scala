@@ -1,9 +1,9 @@
 package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
-import ppl.delite.framework.DeliteCollection
 import scala.virtualization.lms.common.{TupleOpsExp, VariablesExp, EffectExp}
 import scala.virtualization.lms.internal.{GenericCodegen, CudaGenEffect, GenericNestedCodegen, ScalaGenEffect}
+import ppl.delite.framework.DeliteCollection
 
 trait DeliteOpsExp extends EffectExp with VariablesExp {
   // representation must be reified! this places the burden on the caller, but allows the caller to avoid the
@@ -54,11 +54,8 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
   import IR._
 
   override def syms(e: Any): List[Sym[Any]] = e match {
-    // TODO: test -- else clause may not be necessary if productIterator still works on abstract case class
-    case map:DeliteOpMap[_,_,_] if shallow => syms(map.in) ++ syms(map.out) // in shallow mode, don't count deps from nested blocks
-    case map:DeliteOpMap[_,_,_] => syms(map.in) ++ syms(map.out) ++ syms(map.func)
-    case mapR: DeliteOpMapReduce[_,_,_] if shallow => syms(mapR.in)
-    case mapR: DeliteOpMapReduce[_,_,_] => syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
+    case map:DeliteOpMap[_,_,_] => if (shallow) syms(map.in) ++ syms(map.out) else syms(map.in) ++ syms(map.out) ++ syms(map.func)
+    case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
     case _ => super.syms(e)
   }
 

@@ -1,12 +1,17 @@
 package ppl.dsl.optiml.datastruct.scala
 
-import ppl.delite.framework.DeliteCollection
+/**
+ * Delite
+ */
+
+trait DeliteOpMapReduce[A,R]
+trait DeliteCollection[T]
 
 /**
  * Vector
  */
 
-trait Vector[T] extends DeliteCollection[T] {
+trait Vector[T] extends ppl.delite.framework.DeliteCollection[T] {
   // fields required on real underlying data structure impl
   def length : Int
   def is_row : Boolean
@@ -26,12 +31,6 @@ trait VectorView[T] extends Vector[T]
  */
 trait Matrix[T]
 
-
-/**
- * Delite Ops
- */
-
-trait DeliteOpMapReduce[A,R] 
 
 /**
  * Ref
