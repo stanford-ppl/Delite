@@ -64,7 +64,7 @@ trait LanguageOpsExp extends LanguageOps with TupleOps with NumericOps with Vect
     val rV = fresh[(A,A)]
     val reduce = reifyEffects(ops.+=(rV._1,rV._2))
 
-    Sum(in, mV, map, rV, reduce)
+    reflectEffect(Sum(in, mV, map, rV, reduce))
   }
 }
 

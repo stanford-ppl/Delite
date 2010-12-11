@@ -80,7 +80,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with ScalaCodeGenPkg //with S
   }
 }
 
-trait OptiMLCodeGenCuda extends CudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDeliteOps// with CudaGenVectorViewOps
+trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with CudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDeliteOps// with CudaGenVectorViewOps
  // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps   //TODO:DeliteCodeGenOverrideScala needed?
 {
 

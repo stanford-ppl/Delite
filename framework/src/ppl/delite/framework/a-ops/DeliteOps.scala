@@ -62,17 +62,12 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
     case _ => super.syms(e)
   }
 
-  /*
-  // TODO: (tiark) weird error if this function is uncommented
-  //  class file needed by BaseGenDeliteOps is missing.
-  // reference type _$29 of (rhs: GenericNestedCodegen.this.IR.Def[_])List[GenericNestedCodegen.this.IR.Sym[_]] refers to nonexisting symbol.
   override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
     case s:DeliteOpSingleTask[_] => getFreeVarBlock(s.block,Nil)
-    //case map:DeliteOpMap[_,_,_] => getFreeVarBlock(map.func,List(map.v.asInstanceOf[Sym[_]]))
-    //case mapR:DeliteOpMapReduce[_,_,_] => getFreeVarBlock(mapR.map, List(mapR.mV.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(mapR.reduce, List(mapR.rV.asInstanceOf[Sym[_]]))
+    case map:DeliteOpMap[_,_,_] => getFreeVarBlock(map.func,List(map.v.asInstanceOf[Sym[_]]))
+    case mapR:DeliteOpMapReduce[_,_,_] => getFreeVarBlock(mapR.map, List(mapR.mV.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(mapR.reduce, List(mapR.rV.asInstanceOf[Sym[_]]))
     case _ => super.getFreeVarNode(rhs)
   }
-  */
   
 }
 
