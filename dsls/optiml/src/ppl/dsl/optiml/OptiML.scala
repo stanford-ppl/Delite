@@ -71,12 +71,14 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with ScalaCodeGenPkg //with S
          "scala.Tuple2[generated.scala.MatrixImpl[Double], generated.scala.MatrixImpl[Double]]"
     case "scala.Tuple4[Double, Double, ppl.dsl.optiml.datastruct.scala.Vector[Double], ppl.dsl.optiml.datastruct.scala.Vector[Double]]" =>
          "scala.Tuple4[Double, Double, generated.scala.VectorImpl[Double], generated.scala.VectorImpl[Double]]"
+    case "scala.Tuple2[scala.Tuple4[Double, Double, ppl.dsl.optiml.datastruct.scala.Vector[Double], ppl.dsl.optiml.datastruct.scala.Vector[Double]], scala.Tuple4[Double, Double, ppl.dsl.optiml.datastruct.scala.Vector[Double], ppl.dsl.optiml.datastruct.scala.Vector[Double]]]" =>
+         "scala.Tuple2[scala.Tuple4[Double, Double, generated.scala.VectorImpl[Double], generated.scala.VectorImpl[Double]], scala.Tuple4[Double, Double, generated.scala.VectorImpl[Double], generated.scala.VectorImpl[Double]]]"
     case _ => super.remap(m)
   }
 
   override def dsmap(line: String) : String = {
     var res = line.replaceAll("ppl.dsl.optiml.datastruct", "generated")
-    res = res.replaceAll("ppl.delite.framework", "generated")
+    res = res.replaceAll("ppl.delite.framework", "generated.scala")
     res
   }
 }
