@@ -64,11 +64,13 @@ object Delite {
     val executable = Compilers.compileSchedule(schedule, graph)
 
     //execute
-    executor.run(executable)
-
-    EOP.await //await the end of the application program
-
-    Stopwatch.print()
+    val numTimes = Config.numRuns
+    for (i <- 0 until numTimes) {
+      EOP.reset
+      executor.run(executable)
+      EOP.await //await the end of the application program
+      Stopwatch.print()
+    }
 
   }
 

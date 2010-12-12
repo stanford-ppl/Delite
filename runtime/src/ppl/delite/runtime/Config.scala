@@ -23,4 +23,6 @@ object Config {
 
   val printSources: Boolean = if (System.getProperty("debug-printSources") == null) false else true
 
+  val numRuns: Int = System.getProperty("numRuns", "1").toInt
+
 }

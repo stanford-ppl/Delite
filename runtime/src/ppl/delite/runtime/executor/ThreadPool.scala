@@ -41,15 +41,15 @@ class ThreadPool(numThreads: Int) {
 
   /**
    * Puts a static schedule into the appropriate thread queues for execution
-   * This method is destructive on the input schedule contents
    *
    * @param the StaticSchedule to be submitted for execution
    */
   def submitAll(schedule: StaticSchedule) {
     assert(pool.length == schedule.resources.length)
     for (i <- 0 until pool.length) {
-      for (j <- 0 until schedule.resources(i).size) {
-        pool(i).queue.put(schedule.resources(i).poll)
+      val iter = schedule.resources(i).iterator
+      while (iter.hasNext) {
+        pool(i).queue.put(iter.next)
       }
     }
   }

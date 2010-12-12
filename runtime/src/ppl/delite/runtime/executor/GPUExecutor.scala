@@ -36,14 +36,14 @@ class GPUExecutor extends Executor {
 
   /**
    * Puts a static schedule into the appropriate thread queues for execution
-   * This method is destructive on the input schedule contents
    *
    * @param the StaticSchedule to be submitted for execution
    */
   def submitAll(schedule: StaticSchedule) {
     assert(1 == schedule.resources.length)
-    for (j <- 0 until schedule.resources(0).size) {
-      host.queue.put(schedule.resources(0).poll)
+    val iter = schedule.resources(0).iterator
+    while (iter.hasNext) {
+      host.queue.put(iter.next)
     }
   }
 

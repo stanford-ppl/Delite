@@ -49,6 +49,10 @@ object EOP extends DeliteOP {
   private val cond = lock.newCondition
   private var notDone: Boolean = true
 
+  def reset() {
+    notDone = true
+  }
+
   def signalAll {
     lock.lock
     try {

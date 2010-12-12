@@ -4,7 +4,7 @@ object MatrixImpl {
 
 }
 
-class MatrixImpl[T: ClassManifest](nRows: Int, nCols: Int) extends Matrix[T] {
+class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends Matrix[T] {
   import MatrixImpl._
   
   protected var _numRows = nRows

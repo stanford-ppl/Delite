@@ -11,7 +11,7 @@ object VectorImpl {
  * Alternatively, everything in this class could be lifted, and we could generate a concrete class to be instantiated
  * in the generated code.
  */
-class VectorImpl[T: ClassManifest](len: Int, isRow: Boolean) extends Vector[T] {
+class VectorImpl[@specialized T: ClassManifest](len: Int, isRow: Boolean) extends Vector[T] {
   import VectorImpl._
 
   protected var _length = len
