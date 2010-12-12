@@ -49,6 +49,8 @@ abstract class DeliteOP {
     inputList = input :: inputList
   }
 
+  var id: String = _
+
   def nested : DeliteTaskGraph
 
   def cost: Int
@@ -81,11 +83,5 @@ abstract class DeliteOP {
    * these methods/state are used for code generation
    */
   var scheduledResource = -1
-
-  //TODO: need an implementation that *guarantees* a unique ID for every OP object in the system
-  //TODO: could be assigned while parsing DEG input (e.g., related to kernel ID)
-  def id: Int = {
-    System.identityHashCode(this)
-  }
 
 }

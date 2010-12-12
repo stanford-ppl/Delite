@@ -47,8 +47,8 @@ object CudaCompile {
       "-w", //suppress warnings
       "-I" + javaHome + "/../include", "-I" + javaHome + "/../include/" + suffix, //jni
       "-O2", //optimized
-      "-arch", "compute_13",
-      "-code", "sm_13",
+      "-arch", "compute_20",
+      "-code", "sm_20",
       "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
       "-o", "cudaHost.so", //output name
       "cudaHost.cu" //input name

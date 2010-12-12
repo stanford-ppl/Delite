@@ -388,7 +388,7 @@ object GPUExecutableGenerator {
     //link the native code upon object creation
     out.append("System.load(\"")
     val file = new File(kernelPath+"cuda/") //create a file to turn relative path into absolute path
-    out.append(file.getAbsolutePath)
+    out.append(file.getAbsolutePath.replace("\\","/")) //for consistency with the rest of the path below
     out.append("/cudaHost.so\")\n")
 
     //the sync methods/objects

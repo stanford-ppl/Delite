@@ -26,6 +26,8 @@ object ScalaCompile {
     settings.encoding.value = "UTF-8"
     settings.outdir.value = "."
     settings.extdirs.value = ""
+    settings.nowarn.value = true
+    //settings.unchecked.value = true
     //settings.verbose.value = true
 
     reporter = new ConsoleReporter(settings, null, new PrintWriter(System.out))//writer

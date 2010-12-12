@@ -111,6 +111,8 @@ object DeliteTaskGraph {
       case other => error("OP Type not recognized: " + other)
     }
 
+    newop.id = id
+
     //handle inputs
     val inputs = getFieldList(op, "inputs")
     for(i <- inputs.reverse) {
@@ -155,6 +157,7 @@ object DeliteTaskGraph {
    */
   def processArgumentsTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val kernelId = getFieldString(op, "kernelId")
+    Arguments.id = kernelId
     graph._ops += kernelId -> Arguments
     graph._result = Arguments
   }

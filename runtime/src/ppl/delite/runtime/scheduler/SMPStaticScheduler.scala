@@ -4,8 +4,8 @@ import ppl.delite.runtime.Config
 import ppl.delite.runtime.codegen.{ExecutableGenerator, DeliteExecutable}
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import java.util.ArrayDeque
-import ppl.delite.runtime.codegen.kernels.scala.{MapReduce_SMP_Array_Generator, Reduce_SMP_Array_Generator, Map_SMP_Array_Generator}
-import ppl.delite.runtime.graph.ops.{OP_MapReduce, OP_Reduce, OP_Map, DeliteOP}
+import ppl.delite.runtime.codegen.kernels.scala._
+import ppl.delite.runtime.graph.ops._
 
 /**
  * Author: Kevin J. Brown
@@ -109,6 +109,7 @@ final class SMPStaticScheduler extends StaticScheduler {
     }
   }
 
+  //TODO: since codegen of data parallel ops is non-optional, some of this should be factored out of the different schedulers
   private def split(op: DeliteOP) {
     op match { //NOTE: match on OP type since different data parallel ops can have different semantics / scheduling implications
       case map: OP_Map => {
