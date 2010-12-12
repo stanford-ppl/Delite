@@ -1,0 +1,3 @@
+#!/bin/bash
+
+java -server $JAVA_OPTS -cp $HOME/delite/runtime/target/scala_2.8.1/classes:$HOME/scala/scala-2.8.1.final/lib/scala-library.jar:$HOME/scala/scala-2.8.1.final/lib/scala-compiler.jar "$@"
