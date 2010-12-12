@@ -5,6 +5,7 @@ import executor._
 import graph.ops.{EOP, Arguments}
 import graph.{TestGraph, DeliteTaskGraph}
 import java.io.File
+import profiler.Stopwatch
 import scheduler._
 import tools.nsc.io.Directory
 
@@ -66,6 +67,8 @@ object Delite {
     executor.run(executable)
 
     EOP.await //await the end of the application program
+
+    Stopwatch.print()
 
   }
 

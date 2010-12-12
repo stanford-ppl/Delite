@@ -91,8 +91,8 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
     rhs match {
-      case ProfileStart() => stream.println("ppl.delite.runtime.profiler.stopwatch.start()")
-      case ProfileStop() => stream.println("ppl.delite.runtime.profiler.stopwatch.stop()")
+      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.Stopwatch.start()")
+      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.Stopwatch.stop()")
       case _ => super.emitNode(sym, rhs)
     }
   }
