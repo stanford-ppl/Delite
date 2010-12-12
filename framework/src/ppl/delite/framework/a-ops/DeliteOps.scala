@@ -137,4 +137,28 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
 
 trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
   import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+      //case s:DeliteOpSingleTask[_] =>
+      //case map:DeliteOpMap[_,_,_] =>
+      case mapR:DeliteOpMapReduce[_,_,_] => {
+        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
+        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+        stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
+        addVarLink(getBlockResult(mapR.map).asInstanceOf[Sym[_]],sym)
+        emitBlock(mapR.map)
+        removeVarLink(getBlockResult(mapR.map).asInstanceOf[Sym[_]],sym)
+        stream.println(addTab()+"for(int cnt=1; cnt<%s.length; cnt++) {".format(quote(mapR.in)))
+        tabWidth += 1
+        stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
+        emitBlock(mapR.map)
+        addVarLink(getBlockResult(mapR.reduce).asInstanceOf[Sym[_]],sym)
+        emitBlock(mapR.reduce)
+        removeVarLink(getBlockResult(mapR.reduce).asInstanceOf[Sym[_]],sym)
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        allocOutput(sym,getBlockResult(mapR.reduce).asInstanceOf[Sym[_]])
+      }
+      case _ => super.emitNode(sym,rhs)
+  }
 }
