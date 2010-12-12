@@ -53,36 +53,14 @@ trait OptiMLCodeGenBase extends GenericCodegen {
   }
 }
 
-trait OptiMLCodeGenScala extends OptiMLCodeGenBase with ScalaCodeGenPkg //with ScalaGenLanguageOps
+trait OptiMLCodeGenScala extends OptiMLCodeGenBase with ScalaCodeGenPkg with ScalaGenLanguageOps
   with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with ScalaGenDeliteOps with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
 
   val IR: DeliteApplication with OptiMLExp
 
-  override def remap[A](m: Manifest[A]) : String = m.toString match {
-    // TODO: make more robust
-    case "ppl.dsl.optiml.datastruct.scala.NilVector[Double]" => "generated.scala.NilVector[Double]"
-    case "ppl.dsl.optiml.datastruct.scala.RangeVectorImpl" => "generated.scala.RangeVectorImpl"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "generated.scala.Vector[Double]"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => "generated.scala.Vector[Int]"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "generated.scala.Vector[Boolean]"
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => "generated.scala.Matrix[Double]"
-    case "scala.Tuple2[ppl.dsl.optiml.datastruct.scala.Matrix[Double], ppl.dsl.optiml.datastruct.scala.Matrix[Double]]" =>
-         "scala.Tuple2[generated.scala.Matrix[Double], generated.scala.Matrix[Double]]"
-    case "scala.Tuple4[Double, Double, ppl.dsl.optiml.datastruct.scala.Vector[Double], ppl.dsl.optiml.datastruct.scala.Vector[Double]]" =>
-         "scala.Tuple4[Double, Double, generated.scala.Vector[Double], generated.scala.Vector[Double]]"
-    case "scala.Tuple2[scala.Tuple4[Double, Double, ppl.dsl.optiml.datastruct.scala.Vector[Double], ppl.dsl.optiml.datastruct.scala.Vector[Double]], scala.Tuple4[Double, Double, ppl.dsl.optiml.datastruct.scala.Vector[Double], ppl.dsl.optiml.datastruct.scala.Vector[Double]]]" =>
-         "scala.Tuple2[scala.Tuple4[Double, Double, generated.scala.Vector[Double], generated.scala.Vector[Double]], scala.Tuple4[Double, Double, generated.scala.Vector[Double], generated.scala.Vector[Double]]]"
-    case _ => super.remap(m)
-  }
-
-    override def remapImpl[A](m: Manifest[A]) : String = m.toString match {
-    // TODO: make more robust
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "generated.scala.VectorImpl[Double]"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => "generated.scala.VectorImpl[Int]"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "generated.scala.VectorImpl[Boolean]"
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => "generated.scala.MatrixImpl[Double]"
-    case _ => remap(m)
+  override def remap[A](m: Manifest[A]) : String = {
+    dsmap(super.remap(m))
   }
 
   override def dsmap(line: String) : String = {

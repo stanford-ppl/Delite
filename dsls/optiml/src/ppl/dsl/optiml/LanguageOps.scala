@@ -68,11 +68,11 @@ trait LanguageOpsExp extends LanguageOps with TupleOps with NumericOps with Vect
   }
 }
 
-/*
 trait BaseGenLanguageOps extends GenericNestedCodegen {
   val IR: LanguageOpsExp
   import IR._
 
+  /*
   override def syms(e: Any): List[Sym[Any]] = e match {
     //case Sum(start,end,block,x,y,op) if shallow => syms(start) ::: syms(end) // in shallow mode, don't count deps from nested blocks
     case _ => super.syms(e)
@@ -82,6 +82,7 @@ trait BaseGenLanguageOps extends GenericNestedCodegen {
     //case Sum(start,end,block,x,y,op) => getFreeVarBlock(y,List(x.asInstanceOf[Sym[_]]))
     case _ => super.getFreeVarNode(rhs)
   }
+  */
 }
 
 trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
@@ -90,11 +91,13 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
     rhs match {
+      case ProfileStart() => stream.println("ppl.delite.runtime.profiler.stopwatch.start()")
+      case ProfileStop() => stream.println("ppl.delite.runtime.profiler.stopwatch.stop()")
       case _ => super.emitNode(sym, rhs)
     }
   }
 }
-
+/*
 trait CudaGenLanguageOps extends CudaGenBase with BaseGenLanguageOps {
   val IR: LanguageOpsExp
   import IR._

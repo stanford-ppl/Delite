@@ -16,6 +16,8 @@ object GDA extends DeliteApplication with OptiMLExp {
     val x = MLInputReader.read(args(0))
     val y = MLInputReader.readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
 
+    tic
+
     /* number of training samples */
     val m = y.length
     //val m = 2
@@ -74,6 +76,8 @@ object GDA extends DeliteApplication with OptiMLExp {
        (((x(i)-mu1).t)**(x(i)-mu1))
       }
     }
+
+    toc
 
     print("GDA parameter calculation finished: ")
     println("  phi = " + phi)

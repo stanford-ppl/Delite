@@ -1,6 +1,6 @@
 package ppl.dsl.optiml
 
-import datastruct.scala.{Vector,Matrix}
+import datastruct.scala.{MatrixImpl, Vector, Matrix}
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
@@ -67,7 +67,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
   case class MatrixNumCols[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixInsertRow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) extends Def[Matrix[A]]
   case class MatrixNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends Def[Matrix[A]] {
-     val mM = manifest[Matrix[A]]
+     val mM = manifest[MatrixImpl[A]]
   }
 
   // implemented via kernel embedding
@@ -150,7 +150,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case m@MatrixNew(numRows, numCols) => emitValDef(sym, "new " + remapImpl(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@MatrixNew(numRows, numCols) => emitValDef(sym, "new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     case MatrixApply1(x,i) => emitValDef(sym, quote(x) + "(" + quote(i) + ")")
     case MatrixApply2(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatrixUpdate(x,i,j,y)  => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
