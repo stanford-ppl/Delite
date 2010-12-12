@@ -42,10 +42,14 @@ object CudaCompile {
       //else if (os.contains("Mac")) "??"
       else error("OS " + os + " not currently supported with CUDA")
 
+    val pathSep = System.getProperty("file.separator")
+    val deliteHome = System.getProperty("user.dir") //TODO: this requires program to be executed from delite home, should probably have a delite.home property
+
     val process = Runtime.getRuntime.exec(Array[String](
       "nvcc",
       "-w", //suppress warnings
-      "-I" + javaHome + "/../include", "-I" + javaHome + "/../include/" + suffix, //jni
+      "-I" + javaHome + pathSep + ".." + pathSep + "include", "-I" + javaHome + pathSep + ".." + pathSep + "include" + pathSep + suffix, //jni
+      "-I" + deliteHome + pathSep + "runtime" + pathSep + "cuda",
       "-O2", //optimized
       "-arch", "compute_20",
       "-code", "sm_20",
