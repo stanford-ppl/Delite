@@ -1,7 +1,5 @@
 package ppl.delite.runtime.graph
 
-import generated.DeliteOPMapReduce
-
 /**
  * Author: Kevin J. Brown
  * Date: Nov 9, 2010
@@ -68,6 +66,12 @@ object TestKernelEnd {
     for (e <- out) print(e)
     print('\n')
   }
+}
+
+abstract class DeliteOPMapReduce[C, A, R] {
+  def in: C
+  def map(elem: A): R
+  def reduce(acc: R, elem: R): R
 }
 
 object TestKernelMapReduce {
