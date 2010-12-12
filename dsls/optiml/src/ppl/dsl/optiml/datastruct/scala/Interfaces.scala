@@ -18,13 +18,13 @@ trait DeliteOpMapReduce[@specialized A, @specialized R] {
   /**
    *  Reduce: (R,R) => R
    */
-  def reduce(tup: (R, R)): R
+  def reduce(r1: R, r2: R): R
 
   /**
    * default implementation of map-reduce is simply to compose the map and reduce functions
    * A subclass can override to fuse the implementations
    */
-  def mapreduce(acc: R, elem: A): R = reduce((acc, map(elem)))
+  def mapreduce(acc: R, elem: A): R = reduce(acc, map(elem))
 
 }
 

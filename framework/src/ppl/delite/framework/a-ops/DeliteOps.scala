@@ -44,7 +44,8 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
     val map: Exp[R] // reified of Exp[A] => Exp[R]
 
     // for reducing remaining partial sums
-    val rV: Exp[(R,R)]
+    //val rV: Exp[(R,R)]
+    val rV: (Exp[R],Exp[R])
     val reduce: Exp[R] // reified of Exp[(R,R)] => Exp[R]
   }
 }
@@ -62,7 +63,7 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
   override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
     case s:DeliteOpSingleTask[_] => getFreeVarBlock(s.block,Nil)
     case map:DeliteOpMap[_,_,_] => getFreeVarBlock(map.func,List(map.v.asInstanceOf[Sym[_]]))
-    case mapR:DeliteOpMapReduce[_,_,_] => getFreeVarBlock(mapR.map, List(mapR.mV.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(mapR.reduce, List(mapR.rV.asInstanceOf[Sym[_]]))
+    case mapR:DeliteOpMapReduce[_,_,_] => getFreeVarBlock(mapR.map, List(mapR.mV.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(mapR.reduce, List(mapR.rV._1.asInstanceOf[Sym[_]], mapR.rV._2.asInstanceOf[Sym[_]]))
     case _ => super.getFreeVarNode(rhs)
   }
   
@@ -123,8 +124,8 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       stream.println(quote(getBlockResult(mapR.map)))
       stream.println("}")
       stream.println("")
-      //stream.println("def reduce(" + quote(t2(mapR.rV)._1) + ": " + remap(t2(mapR.rV)._1.Type) + "," + quote(t2(mapR.rV)._2) + ": " + remap(t2(mapR.rV)._2.Type) + ") = {")
-      stream.println("def reduce(" + quote(mapR.rV) + ": " + remap(mapR.rV.Type) + ") = {")
+      stream.println("def reduce(" + quote(mapR.rV._1) + ": " + remap(mapR.rV._1.Type) + "," + quote(mapR.rV._2) + ": " + remap(mapR.rV._2.Type) + ") = {")
+      //stream.println("def reduce(" + quote(mapR.rV) + ": " + remap(mapR.rV.Type) + ") = {")
       emitBlock(mapR.reduce)
       stream.println(quote(getBlockResult(mapR.reduce)))
       stream.println("}")      

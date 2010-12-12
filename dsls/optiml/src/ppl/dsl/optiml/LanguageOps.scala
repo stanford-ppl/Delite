@@ -42,7 +42,7 @@ trait LanguageOpsExp extends LanguageOps with TupleOps with NumericOps with Vect
   def profile_start() = reflectEffect(ProfileStart())
   def profile_stop() = reflectEffect(ProfileStop())
 
-  case class Sum[A:Manifest:ArithOps](in: Exp[Vector[Int]], mV: Exp[Int], map: Exp[A], rV: Exp[(A,A)], reduce: Exp[A])
+  case class Sum[A:Manifest:ArithOps](in: Exp[Vector[Int]], mV: Exp[Int], map: Exp[A], rV: (Exp[A],Exp[A]), reduce: Exp[A])
     extends DeliteOpMapReduce[Int,A,Vector]
 
   // implemented via kernel embedding
@@ -61,7 +61,7 @@ trait LanguageOpsExp extends LanguageOps with TupleOps with NumericOps with Vect
     val mV = fresh[Int]
     val map = reifyEffects(block(mV))
     //val mapreduce = reifyEffects(ops.+=(acc, reifyEffects(block(mV))))
-    val rV = fresh[(A,A)]
+    val rV = (fresh[A],fresh[A])
     val reduce = reifyEffects(ops.+=(rV._1,rV._2))
 
     reflectEffect(Sum(in, mV, map, rV, reduce))
