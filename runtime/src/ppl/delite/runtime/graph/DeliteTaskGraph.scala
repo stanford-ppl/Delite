@@ -181,19 +181,6 @@ object DeliteTaskGraph {
     val metadataMap = getFieldMap(metadataAll, "cuda")
     val cudaMetadata = newop.cudaMetadata
 
-    def fill(field: String) {
-      val list = getFieldList(metadataMap, field)
-      val data = cudaMetadata(field)
-      data.func = list.head
-      for (sym <- list.tail.head.asInstanceOf[List[String]].reverse) data.inputs ::= getOp(graph._ops, sym)
-    }
-
-    fill("gpuBlockSizeX") //threads/block - x
-    fill("gpuBlockSizeY") //threads/block - y
-    fill("gpuBlockSizeZ") //threads/block - z
-    fill("gpuDimSizeX") //blocks in grid - x
-    fill("gpuDimSizeY") //blocks in grid - y
-
     for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
       val value = (input.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
       val data = cudaMetadata.newInput
@@ -203,8 +190,9 @@ object DeliteTaskGraph {
 
     val tempSyms = new HashMap[String,DeliteOP]
     for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) {
+      val key = (temp.asInstanceOf[Map[String,Any]].keys.head)
       val tempOp = new OP_Single(null, null)
-      tempSyms += temp.toString -> tempOp
+      tempSyms += key -> tempOp
       cudaMetadata.tempOps ::= tempOp
     }
 
@@ -229,6 +217,19 @@ object DeliteTaskGraph {
     }
     //output copy
     cudaMetadata.outputSet.func = outList.tail.tail.tail.head
+
+    def fill(field: String) {
+      val list = getFieldList(metadataMap, field)
+      val data = cudaMetadata(field)
+      data.func = list.head
+      for (sym <- list.tail.head.asInstanceOf[List[String]].reverse) data.inputs ::= getOpLike(sym)
+    }
+
+    fill("gpuBlockSizeX") //threads/block - x
+    fill("gpuBlockSizeY") //threads/block - y
+    fill("gpuBlockSizeZ") //threads/block - z
+    fill("gpuDimSizeX") //blocks in grid - x
+    fill("gpuDimSizeY") //blocks in grid - y
 
   }
 
