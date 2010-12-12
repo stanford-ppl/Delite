@@ -205,7 +205,7 @@ trait ScalaGenVectorOps extends ScalaGenBase {
       case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
       case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
       case VectorInsert(x,pos,y) => emitValDef(sym, quote(x) + ".insert(" + quote(pos) + ", " + quote(y) + ")")
-      case v@VectorNew(length, is_row) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(is_row) + ")")
+      case v@VectorNew(length, is_row) => emitValDef(sym, "new " + remapImpl(v.mV) + "(" + quote(length) + "," + quote(is_row) + ")")
       case VectorObjectRange(start, end, stride, is_row) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(is_row) + ")")
       // TODO: why!!!
       case v@VectorNil() => v.mA.toString match {

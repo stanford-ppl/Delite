@@ -23,7 +23,7 @@ class MatrixImpl[T: ClassManifest](nRows: Int, nCols: Int) extends Matrix[T] {
     _data(chkPos(i*numCols+j))
   }
 
-  def update(row: Int, col: Int, x: T) = {
+  def update[A <: T](row: Int, col: Int, x: A) = {
     _data(chkPos(row*numCols+col)) = x
   }
 
@@ -31,7 +31,7 @@ class MatrixImpl[T: ClassManifest](nRows: Int, nCols: Int) extends Matrix[T] {
     new VectorViewImpl[T](_data, start, stride, length, is_row)
   }
 
-  def insertRow[A <: T](pos: Int, x: VectorImpl[A]): MatrixImpl[T] = {
+  def insertRow[A <: T](pos: Int, x: Vector[A]): MatrixImpl[T] = {
     val idx = pos*_numCols
     insertSpace(idx, _numCols)
     for (i <- idx until idx+_numCols){

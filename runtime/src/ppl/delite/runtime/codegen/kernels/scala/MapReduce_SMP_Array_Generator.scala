@@ -60,6 +60,7 @@ object MapReduce_SMP_Array_Generator {
   }
 
   private def writeHeader(out: StringBuilder, master: OP_MapReduce, idx: Int) {
+    out.append("import generated.scala._\n") //TODO: this should be obtained from path
     out.append("object ")
     out.append(kernelName(master, idx))
     out.append(" {\n")
@@ -112,7 +113,8 @@ object MapReduce_SMP_Array_Generator {
     out.append("var acc = mapReduce.map(in(idx))\n")
     out.append("idx += 1\n")
     out.append("while (idx < end) {\n")
-    out.append("acc = mapReduce.mapreduce(acc, in(idx))\n")
+    //TODO: get rid of the Tuple
+    out.append("acc = mapReduce.reduce((acc, mapReduce.map(in(idx))))\n")
     //out.append("acc = mapReduce.reduce(acc, mapReduce.map(in(idx)))\n")
     out.append("idx += 1\n")
     out.append("}\n") //return acc

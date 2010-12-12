@@ -50,8 +50,8 @@ object Delite {
     }
 
     //load task graph
-    //val graph = loadDeliteDEG(args(0))
-    val graph = new TestGraph
+    val graph = loadDeliteDEG(args(0))
+    //val graph = new TestGraph
 
     //load kernels & data structures
     loadScalaSources(graph)

@@ -136,11 +136,12 @@ object DeliteTaskGraph {
       controlDep.addConsumer(newop)
     }
 
-    //process target metadata
-    if (resultMap.contains(Targets.Cuda)) processCudaMetadata(op, newop)
-
+    
     //add new op to graph list of ops
     graph._ops += id -> newop
+
+    //process target metadata
+    if (resultMap.contains(Targets.Cuda)) processCudaMetadata(op, newop)
 
     //last op will be result op
     graph._result = newop

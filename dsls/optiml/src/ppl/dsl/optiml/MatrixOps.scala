@@ -150,7 +150,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case m@MatrixNew(numRows, numCols) => emitValDef(sym, "new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@MatrixNew(numRows, numCols) => emitValDef(sym, "new " + remapImpl(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     case MatrixApply1(x,i) => emitValDef(sym, quote(x) + "(" + quote(i) + ")")
     case MatrixApply2(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatrixUpdate(x,i,j,y)  => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
