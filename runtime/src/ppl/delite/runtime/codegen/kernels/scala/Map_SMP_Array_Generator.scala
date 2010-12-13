@@ -21,7 +21,7 @@ import ppl.delite.runtime.graph.ops.OP_Map
 object Map_SMP_Array_Generator {
 
   def makeChunk(op: OP_Map, chunkIdx: Int, numChunks: Int): OP_Map = {
-    val chunk = if (chunkIdx == 0) op else op.chunk
+    val chunk = if (chunkIdx == 0) op else op.chunk(chunkIdx)
     ScalaCompile.addSource(makeKernel(chunk, chunkIdx, numChunks))
     chunk
   }

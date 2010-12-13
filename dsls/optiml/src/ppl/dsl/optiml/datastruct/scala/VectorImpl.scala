@@ -1,7 +1,7 @@
 package ppl.dsl.optiml.datastruct.scala
 
 object VectorImpl {
-
+  def getDoubleManifest = classManifest[Double]
 }
 
 /**
@@ -21,6 +21,7 @@ class VectorImpl[@specialized T: ClassManifest](len: Int, isRow: Boolean) extend
   def length = _length
   def is_row = _is_row
   def data = _data
+  def doubleData: Array[Double] = _data.asInstanceOf[Array[Double]]
 
   def apply(n: Int) : T = {
     _data(n)
