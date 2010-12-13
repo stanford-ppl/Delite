@@ -1,10 +1,11 @@
 package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.graph.DeliteTaskGraph
-import ppl.delite.runtime.graph.ops.DeliteOP
 import java.util.ArrayDeque
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.codegen.kernels.scala._
+import ppl.delite.runtime.graph.ops._
 
 /**
  * Author: Kevin J. Brown
@@ -44,12 +45,22 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
 
   private def scheduleOne(op: DeliteOP) {
     if (op.supportsTarget(Targets.Cuda)) { //schedule on GPU resource
-      gpuResource.add(op)
-      op.scheduledResource = 1
+      if (op.isDataParallel) {
+        splitGPU(op)
+      }
+      else {
+        gpuResource.add(op)
+        op.scheduledResource = 1
+      }
     }
     else { //schedule on CPU resource
-      cpuResource.add(op)
-      op.scheduledResource = 0
+      if (op.isDataParallel) {
+        split(op)
+      }
+      else {
+        cpuResource.add(op)
+        op.scheduledResource = 0
+      }
     }
     op.isScheduled = true
   }
@@ -68,6 +79,31 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
         if (c.isSchedulable) opQueue.add(c)
       }
     }
+  }
+
+  //TODO: since codegen of data parallel ops is non-optional, some of this should be factored out of the different schedulers
+  private def split(op: DeliteOP) {
+    val chunk = op match { //NOTE: match on OP type since different data parallel ops can have different semantics / scheduling implications
+      case map: OP_Map => Map_SMP_Array_Generator.makeChunk(map, 0, 1)
+      case reduce: OP_Reduce => Reduce_SMP_Array_Generator.makeChunk(reduce, 0, 1)
+      case mapReduce: OP_MapReduce => MapReduce_SMP_Array_Generator.makeChunk(mapReduce, 0, 1)
+      case other => error("OP type not recognized: " + other.getClass.getSimpleName)
+    }
+    cpuResource.add(chunk)
+    chunk.scheduledResource = 0
+    chunk.isScheduled = true
+  }
+
+  private def splitGPU(op: DeliteOP) {
+    val chunk = op match { //NOTE: match on OP type since different data parallel ops can have different semantics / scheduling implications
+      case map: OP_Map => map.setKernelName(map.function); map
+      case reduce: OP_Reduce => reduce.setKernelName(reduce.function); reduce
+      case mapReduce: OP_MapReduce => mapReduce.setKernelName(mapReduce.function); mapReduce
+      case other => error("OP type not recognized: " + other.getClass.getSimpleName)
+    }
+    gpuResource.add(chunk)
+    chunk.scheduledResource = 1
+    chunk.isScheduled = true
   }
 
   private def createPartialSchedule = {

@@ -51,6 +51,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
     for (g <- generators) {
       g.emitDataStructures()
+      g.generatorInit(Config.build_dir + "/" + g.toString + "/")
     }
     
     //codegen.emitSource(main_m, "Application", stream) // whole scala application (for testing)

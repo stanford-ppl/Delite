@@ -1,7 +1,7 @@
 package ppl.dsl.optiml.datastruct.scala
 
 object MatrixImpl {
-
+  def getDoubleManifest = classManifest[Double]
 }
 
 class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends Matrix[T] {
@@ -14,7 +14,10 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
   def numRows = _numRows
   def numCols = _numCols
   def size = _numRows*_numCols
+  def data = _data
 
+  def doubleData = _data.asInstanceOf[Array[Double]]
+  
   def apply(i: Int) : VectorViewImpl[T] = {
     vview(i*numCols, 1, numCols, true)
   }
@@ -23,7 +26,7 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
     _data(chkPos(i*numCols+j))
   }
 
-  def update[A <: T](row: Int, col: Int, x: A) = {
+  def update(row: Int, col: Int, x: T) = {
     _data(chkPos(row*numCols+col)) = x
   }
 
@@ -31,7 +34,7 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
     new VectorViewImpl[T](_data, start, stride, length, is_row)
   }
 
-  def insertRow[A <: T](pos: Int, x: Vector[A]): MatrixImpl[T] = {
+  def insertRow(pos: Int, x: Vector[T]): MatrixImpl[T] = {
     val idx = pos*_numCols
     insertSpace(idx, _numCols)
     for (i <- idx until idx+_numCols){

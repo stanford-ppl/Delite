@@ -127,6 +127,7 @@ object GPUExecutableGenerator {
       var addInputCopy = false
       val inputCopies = op.cudaMetadata.inputs.iterator //list of inputs that have a copy function
       for (input <- op.getInputs) { //foreach input
+        val inData = if (getJNIType(input.outputType) == "jobject") inputCopies.next else op.cudaMetadata.outputAlloc //outputAlloc should never be used
         if(!available.contains(input)) { //this input does not yet exist on the device
           //add to available list
           available.add(input)
@@ -137,7 +138,6 @@ object GPUExecutableGenerator {
           //write a copy function for objects
           if (getJNIType(input.outputType) == "jobject") { //only perform a copy for object types
             addInputCopy = true
-            val inData = inputCopies.next
             writeInputCopy(input, inData.func, inData.resultType, out)
           }
           else writeInputCast(input, out) //if primitive type, simply cast to transform from "c" type into "g" type
@@ -189,7 +189,9 @@ object GPUExecutableGenerator {
   }
 
   private def writeTempAllocs(op: DeliteOP, out: StringBuilder) {
-    for (temp <- op.cudaMetadata.temps; tempOp <- op.cudaMetadata.tempOps) {
+    val iter = op.cudaMetadata.tempOps.iterator
+    for (temp <- op.cudaMetadata.temps) {
+      val tempOp = iter.next
       out.append(temp.resultType)
       out.append(' ')
       out.append(getSymGPU(tempOp))
@@ -389,7 +391,8 @@ object GPUExecutableGenerator {
     out.append("System.load(\"")
     val file = new File(kernelPath+"cuda/") //create a file to turn relative path into absolute path
     out.append(file.getAbsolutePath)
-    out.append("/cudaHost.so\")\n")
+    out.append(System.getProperty("file.separator"))
+    out.append("cudaHost.so\")\n")
 
     //the sync methods/objects
     ExecutableGenerator.addSync(syncList, out)
@@ -409,7 +412,7 @@ object GPUExecutableGenerator {
     val iter = list.iterator
     while (iter.hasNext) {
       val op = iter.next
-      out.append("private def set")
+      out.append("def set")
       out.append(op.id)
       out.append("(result : ")
       out.append(op.outputType)
