@@ -20,16 +20,17 @@ class VectorImpl[@specialized T: ClassManifest](len: Int, isRow: Boolean) extend
 
   def length = _length
   def is_row = _is_row
+  def data = _data
 
   def apply(n: Int) : T = {
     _data(n)
   }
 
-  def update[A <: T](index: Int, x: A) {
+  def update(index: Int, x: T) {
     _data(index) = x
   }
 
-  def insert[A <: T](pos: Int, x: A): VectorImpl[T] = {
+  def insert(pos: Int, x: T): VectorImpl[T] = {
     insertSpace(pos, 1)
     _data(pos) = x    
     this

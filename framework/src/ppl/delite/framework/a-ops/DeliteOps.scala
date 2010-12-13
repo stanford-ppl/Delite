@@ -157,7 +157,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         removeVarLink(getBlockResult(mapR.reduce).asInstanceOf[Sym[_]],sym)
         tabWidth -= 1
         stream.println(addTab()+"}")
-        allocOutput(sym,getBlockResult(mapR.reduce).asInstanceOf[Sym[_]])
+        allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
       }
       case _ => super.emitNode(sym,rhs)
   }
