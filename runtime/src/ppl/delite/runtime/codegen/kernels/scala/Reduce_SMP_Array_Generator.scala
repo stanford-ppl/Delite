@@ -23,7 +23,7 @@ import ppl.delite.runtime.codegen.ScalaCompile
 object Reduce_SMP_Array_Generator {
 
   def makeChunk(op: OP_Reduce, chunkIdx: Int, numChunks: Int): OP_Reduce = {
-    val chunk = if (chunkIdx == 0) op else op.chunk
+    val chunk = if (chunkIdx == 0) op else op.chunk(chunkIdx)
     ScalaCompile.addSource(makeKernel(chunk, op, chunkIdx, numChunks))
     chunk
   }

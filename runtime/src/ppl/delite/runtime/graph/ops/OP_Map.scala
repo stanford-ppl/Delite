@@ -36,8 +36,9 @@ class OP_Map(func: String, resultType: Map[Targets.Value,String]) extends Delite
    * Chunking needs to add additional anti-dependency edges for each chunk to ensure all chunks are complete
    * Chunks require same dependency & input lists
    */
-  def chunk: OP_Map = {
+  def chunk(i: Int): OP_Map = {
     val r = new OP_Map(function, Targets.unitTypes(resultType)) //chunks all return Unit
+    r.id = this.id + "_" + i
     r.dependencyList = dependencyList //lists are immutable so can be shared
     r.inputList = inputList
     r.consumerList = consumerList

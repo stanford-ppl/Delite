@@ -232,8 +232,6 @@ object DeliteTaskGraph {
     fill("gpuDimSizeX") //blocks in grid - x
     fill("gpuDimSizeY") //blocks in grid - y
 
-    println("")
-
   }
 
   def unsupportedType(err:String) = throw new RuntimeException("Unsupported Op Type found: " + err)

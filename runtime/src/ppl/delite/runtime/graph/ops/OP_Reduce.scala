@@ -35,8 +35,9 @@ class OP_Reduce(func: String, resultType: Map[Targets.Value,String]) extends Del
    * Therefore additional chunks do not need edges to consumers
    * Chunks require same dependency & input lists
    */
-  def chunk: OP_Reduce = {
+  def chunk(i: Int): OP_Reduce = {
     val r = new OP_Reduce(function, Targets.unitTypes(resultType)) //chunks all return Unit
+    r.id = this.id + "_" + i
     r.dependencyList = dependencyList //lists are immutable so can be shared
     r.inputList = inputList
     for (dep <- getDependencies) dep.addConsumer(r)
