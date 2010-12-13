@@ -29,7 +29,8 @@ class ExecutionThread extends Runnable {
 
   //this infinite loop should be terminated by making the thread executing this Runnable a daemon
   def run {
-    while(true) {
+    //TODO: this should be a while loop, but need a way to exit the run method
+    if(true) {
       val work = queue.take //blocking
       executeWork(work)
     }
