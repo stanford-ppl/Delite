@@ -61,7 +61,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
       try{
         //initialize
-        gen.init(sym, inVals, inVars, resultIsVar)
+        gen.kernelInit(sym, inVals, inVars, resultIsVar)
 
         // emit kernel to bodyStream //TODO: must kernel body be emitted before kernel header?
         gen.emitNode(sym, rhs)(bodyStream)
