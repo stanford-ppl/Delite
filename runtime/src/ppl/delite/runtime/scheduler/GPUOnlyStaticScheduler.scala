@@ -45,8 +45,13 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
 
   private def scheduleOne(op: DeliteOP) {
     if (op.supportsTarget(Targets.Cuda)) { //schedule on GPU resource
-      gpuResource.add(op)
-      op.scheduledResource = 1
+      if (op.isDataParallel) {
+        splitGPU(op)
+      }
+      else {
+        gpuResource.add(op)
+        op.scheduledResource = 1
+      }
     }
     else { //schedule on CPU resource
       if (op.isDataParallel) {
@@ -55,9 +60,9 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
       else {
         cpuResource.add(op)
         op.scheduledResource = 0
-        op.isScheduled = true
       }
     }
+    op.isScheduled = true
   }
 
   private def enqueueRoots(graph: DeliteTaskGraph) {
@@ -86,6 +91,18 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
     }
     cpuResource.add(chunk)
     chunk.scheduledResource = 0
+    chunk.isScheduled = true
+  }
+
+  private def splitGPU(op: DeliteOP) {
+    val chunk = op match { //NOTE: match on OP type since different data parallel ops can have different semantics / scheduling implications
+      case map: OP_Map => map.setKernelName(map.function); map
+      case reduce: OP_Reduce => reduce.setKernelName(reduce.function); reduce
+      case mapReduce: OP_MapReduce => mapReduce.setKernelName(mapReduce.function); mapReduce
+      case other => error("OP type not recognized: " + other.getClass.getSimpleName)
+    }
+    gpuResource.add(chunk)
+    chunk.scheduledResource = 1
     chunk.isScheduled = true
   }
 

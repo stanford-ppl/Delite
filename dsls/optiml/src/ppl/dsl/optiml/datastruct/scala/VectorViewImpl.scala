@@ -19,11 +19,11 @@ class VectorViewImpl[@specialized T : ClassManifest](x: Array[T], offset: Int, s
     _data(chkIndex(idx(n)))
   }
 
-  def update[A <: T](n: Int, x: A) {
+  def update(n: Int, x: T) {
     _data(chkIndex(idx(n))) = x
   }
 
-  def insert[A <: T](pos:Int, x: A): VectorViewImpl[T] = {
+  def insert(pos:Int, x: T): VectorViewImpl[T] = {
     throw new UnsupportedOperationException("operations on views not supported yet")
   }
 

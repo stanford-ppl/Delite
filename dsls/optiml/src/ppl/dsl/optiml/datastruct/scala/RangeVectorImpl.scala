@@ -20,11 +20,11 @@ class RangeVectorImpl(start: Int, end: Int, stride: Int, isRow: Boolean) extends
 
   // TODO: could make this a lazy initialization and allow updates,
   //       but update would be slow due to the check
-  override def update[A <: Int](index: Int, x: A) {
+  override def update(index: Int, x: Int) {
     throw new IllegalArgumentException("RangeVector cannot be updated")
   }
 
-  override def insert[A <: Int](pos: Int, x: A): VectorImpl[Int] = {
+  override def insert(pos: Int, x: Int): VectorImpl[Int] = {
     throw new IllegalArgumentException("RangeVector cannot be updated")
   }
 
