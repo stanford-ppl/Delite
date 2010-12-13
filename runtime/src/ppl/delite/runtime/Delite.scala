@@ -5,7 +5,7 @@ import executor._
 import graph.ops.{EOP, Arguments}
 import graph.{TestGraph, DeliteTaskGraph}
 import java.io.File
-import profiler.Stopwatch
+import profiler._
 import scheduler._
 import tools.nsc.io.Directory
 
@@ -33,7 +33,9 @@ object Delite {
     printArgs(args)
     //extract application arguments
     Arguments.args = args.drop(1)
+    //execute
 
+    
     val scheduler = Config.scheduler match {
       case "SMPStaticScheduler" => new SMPStaticScheduler
       case "StressTest" => new DieRollStaticScheduler
@@ -63,12 +65,14 @@ object Delite {
     //compile
     val executable = Compilers.compileSchedule(schedule, graph)
 
-    //execute
     val numTimes = Config.numRuns
-    for (i <- 0 until numTimes) {
+    for (i <- 0 until numTimes) {   
       EOP.reset
+      PerformanceTimer.start("all", false) 
       executor.run(executable)
       EOP.await //await the end of the application program
+      PerformanceTimer.stop("all", false)   
+      PerformanceTimer.print("all")   
       Stopwatch.print()
     }
 
