@@ -4,6 +4,7 @@
 *.iws
 *.idea
 *.DS_Store
+*.~
 /local.properties
 *target
 *lib_managed

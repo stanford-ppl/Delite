@@ -35,8 +35,9 @@ class OP_MapReduce(func: String, resultType: Map[Targets.Value,String]) extends 
    * Therefore additional chunks do not need edges to consumers
    * Chunks require same dependency & input lists
    */
-  def chunk: OP_MapReduce = {
+  def chunk(i: Int): OP_MapReduce = {
     val r = new OP_MapReduce(function, Targets.unitTypes(resultType))
+    r.id = this.id + "_" + i
     r.dependencyList = dependencyList //lists are immutable so can be shared
     r.inputList = inputList
     for (dep <- getDependencies) dep.addConsumer(r)
