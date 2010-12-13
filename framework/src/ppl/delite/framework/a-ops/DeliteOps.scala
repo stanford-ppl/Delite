@@ -14,8 +14,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
   case class DeliteOpSingleTask[A](block: Exp[A]) extends DeliteOp[A]
 
   /**
-   * @param  out   defined as a def to avoid being picked up as a control dependency; however,
-   *               should be implemented as a val, or spurious references will be introduced!
+   * @param  out   must be reified if it is produced from an effectful operation!
    */
   abstract case class DeliteOpMap[A,B,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
     val in: Exp[C[A]]
@@ -25,15 +24,14 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
   }
 
   /**
-   * @param  out   defined as a def to avoid being picked up as a control dependency; however,
-   *               should be implemented as a val, or spurious references will be introduced!
+   * @param  out   must be reified if it is produced from an effectful operation!
    */
   abstract case class DeliteOpZipWith[A,B,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
     val inA: Exp[C[A]]
     val inB: Exp[C[B]]
     val v: (Exp[A],Exp[B])
     val func: Exp[R]
-    def out: Exp[C[R]]
+    val out: Exp[C[R]]
   }
 
   abstract case class DeliteOpReduce[A]() extends DeliteOp[A] {
@@ -64,7 +62,7 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
   override def syms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteOpSingleTask[_] => if (shallow) Nil else syms(s.block)
     case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) ++ syms(map.out) else syms(map.in) ++ syms(map.out) ++ syms(map.func)
-    case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) else syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.func)
+    case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.out) else syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.func) ++ syms(zip.out)
     case red: DeliteOpReduce[_] => if (shallow) syms(red.in) else syms(red.in) ++ syms(red.func)
     case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
     case _ => super.syms(e)
@@ -111,7 +109,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       }
       else {
         nested = true
-        stream.println("val " + quote(sym) + "= new generated.scala.DeliteOpMap[" + remap(map.v.Type) + "," + remap(map.func.Type) + "," + remap(map.out.Type) + "] {")
+        stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpMap[" + remap(map.v.Type) + "," + remap(map.func.Type) + "," + remap(map.out.Type) + "] {")
         stream.println("def in = " + quote(map.in))
         stream.println("def out = " + quote(map.out))
         stream.println("def map(" + quote(map.v) + ": " + remap(map.v.Type) + ") = {")
@@ -123,35 +121,31 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
 
     }
     case zip: DeliteOpZipWith[_,_,_,_] => {
+      val zipout = zip.out match {
+        case Def(Reify(x, effects)) => x
+        case x => x
+      }
       if (nested == true){
         stream.println("val " + quote(sym) + " = {")
-        stream.println("val " + quote(zip.out) + " = {")
-        emitBlock(zip.out)
-        stream.println(quote(getBlockResult(zip.out)))
-        stream.println("}")
         stream.println("var zipIdx = 0")
         stream.println("while (zipIdx < " + quote(zip.inA) + ".length) {")
         stream.println("val " + quote(zip.v._1) + " = " + quote(zip.inA) + "(zipIdx)")
         stream.println("val " + quote(zip.v._2) + " = " + quote(zip.inB) + "(zipIdx)")
-        stream.println(quote(zip.out) + "(zipIdx)" + " = {")
+        stream.println(quote(zipout) + "(zipIdx)" + " = {")
         emitBlock(zip.func)
         stream.println(quote(getBlockResult(zip.func)))
         stream.println("}")
         stream.println("zipIdx += 1")
         stream.println("} // end while")
-        stream.println(quote(zip.out))
+        stream.println(quote(zipout))
         stream.println("}")
       }
       else {
         nested = true
-        stream.println("val " + quote(sym) + "= new generated.scala.DeliteOpZipWith[" + remap(zip.v._1.Type) + "," + remap(zip.v._2.Type) + "," + remap(zip.func.Type) + "," + remap(zip.out.Type) +"] {")
-        stream.println("val " + quote(zip.out) + " = {")
-        emitBlock(zip.out)
-        stream.println(quote(getBlockResult(zip.out)))
-        stream.println("}")
+        stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpZipWith[" + remap(zip.v._1.Type) + "," + remap(zip.v._2.Type) + "," + remap(zip.func.Type) + "," + remap(zipout.Type) +"] {")
         stream.println("def inA = " + quote(zip.inA))
         stream.println("def inB = " + quote(zip.inB))
-        stream.println("def out = " + quote(zip.out))
+        stream.println("def out = " + quote(zipout))
         stream.println("def zip(" + quote(zip.v._1) + ": " + remap(zip.v._1.Type) + ", " + quote(zip.v._2) + ": " + remap(zip.v._2.Type) + ") = {")
         emitBlock(zip.func)
         stream.println(quote(getBlockResult(zip.func)))
@@ -177,7 +171,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       }
       else {
         nested = true
-        stream.println("val " + quote(sym) + "= new generated.scala.DeliteOpReduce[" + remap(red.func.Type) + "] {")
+        stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpReduce[" + remap(red.func.Type) + "] {")
         stream.println("def in = " + quote(red.in))
         stream.println("def reduce(" + quote(red.v._1) + ": " + remap(red.v._1.Type) + "," + quote(red.v._2) + ": " + remap(red.v._2.Type) + ") = {")
         emitBlock(red.func)
@@ -214,7 +208,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       else {
         // kernel
         nested = true
-        stream.println("val " + quote(sym) + "= new generated.scala.DeliteOpMapReduce[" + remap(mapR.mV.Type) + "," + remap(mapR.reduce.Type) + "] {")
+        stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpMapReduce[" + remap(mapR.mV.Type) + "," + remap(mapR.reduce.Type) + "] {")
         stream.println("def in = " + quote(mapR.in))
         stream.println("def map(" + quote(mapR.mV) + ": " + remap(mapR.mV.Type) + ") = {")
         emitBlock(mapR.map)
