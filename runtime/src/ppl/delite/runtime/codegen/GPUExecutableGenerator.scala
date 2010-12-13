@@ -127,6 +127,7 @@ object GPUExecutableGenerator {
       var addInputCopy = false
       val inputCopies = op.cudaMetadata.inputs.iterator //list of inputs that have a copy function
       for (input <- op.getInputs) { //foreach input
+        val inData = if (getJNIType(input.outputType) == "jobject") inputCopies.next else op.cudaMetadata.outputAlloc //outputAlloc should never be used
         if(!available.contains(input)) { //this input does not yet exist on the device
           //add to available list
           available.add(input)
@@ -137,7 +138,6 @@ object GPUExecutableGenerator {
           //write a copy function for objects
           if (getJNIType(input.outputType) == "jobject") { //only perform a copy for object types
             addInputCopy = true
-            val inData = inputCopies.next
             writeInputCopy(input, inData.func, inData.resultType, out)
           }
           else writeInputCast(input, out) //if primitive type, simply cast to transform from "c" type into "g" type
