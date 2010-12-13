@@ -172,13 +172,12 @@ trait CudaGenMatrixOps extends CudaGenBase {
       stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".numCols"))
       tabWidth += 1
       stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x))); tabWidth += 1
-      stream.println(addTab()+"%s.update(%s, %s, (%s.apply(%s,%s)) + (%s.apply(%s,%s)));".format(quote(sym),"i","idxX",quote(x),"i","idxX",quote(y),"i","idxX"))
-      //if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s, %s));".format(quote(varLink.get(sym).get),"i","idxX",quote(sym),"i","idxX"))
-      if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s, %s));".format(quote(getVarLink(sym)),"i","idxX",quote(sym),"i","idxX"))
+      stream.println(addTab()+"%s.update(%s, %s, (%s.apply(%s,%s)) + (%s.apply(%s,%s)));".format(quote(x),"i","idxX",quote(x),"i","idxX",quote(y),"i","idxX"))
+      if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s, %s));".format(quote(getVarLink(sym)),"i","idxX",quote(x),"i","idxX"))
       tabWidth -= 1; stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
+      //emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
 
     // these are the ops that call through to the underlying real data structure
     case MatrixNew(numRows,numCols) =>
