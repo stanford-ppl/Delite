@@ -55,9 +55,9 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
       else {
         cpuResource.add(op)
         op.scheduledResource = 0
-        op.isScheduled = true
       }
     }
+    op.isScheduled = true
   }
 
   private def enqueueRoots(graph: DeliteTaskGraph) {

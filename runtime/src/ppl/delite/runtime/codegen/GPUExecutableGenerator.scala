@@ -189,7 +189,9 @@ object GPUExecutableGenerator {
   }
 
   private def writeTempAllocs(op: DeliteOP, out: StringBuilder) {
-    for (temp <- op.cudaMetadata.temps; tempOp <- op.cudaMetadata.tempOps) {
+    val iter = op.cudaMetadata.tempOps.iterator
+    for (temp <- op.cudaMetadata.temps) {
+      val tempOp = iter.next
       out.append(temp.resultType)
       out.append(' ')
       out.append(getSymGPU(tempOp))
@@ -410,7 +412,7 @@ object GPUExecutableGenerator {
     val iter = list.iterator
     while (iter.hasNext) {
       val op = iter.next
-      out.append("private def set")
+      out.append("def set")
       out.append(op.id)
       out.append("(result : ")
       out.append(op.outputType)

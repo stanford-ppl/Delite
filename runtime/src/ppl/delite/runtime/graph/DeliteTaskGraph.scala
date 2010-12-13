@@ -192,6 +192,7 @@ object DeliteTaskGraph {
     for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) {
       val key = (temp.asInstanceOf[Map[String,Any]].keys.head)
       val tempOp = new OP_Single(null, null)
+      tempOp.id = key
       tempSyms += key -> tempOp
       cudaMetadata.tempOps ::= tempOp
     }
@@ -230,6 +231,8 @@ object DeliteTaskGraph {
     fill("gpuBlockSizeZ") //threads/block - z
     fill("gpuDimSizeX") //blocks in grid - x
     fill("gpuDimSizeY") //blocks in grid - y
+
+    println("")
 
   }
 
