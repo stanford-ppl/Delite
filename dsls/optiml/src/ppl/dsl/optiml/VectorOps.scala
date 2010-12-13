@@ -1,14 +1,13 @@
 package ppl.dsl.optiml
 
-import datastruct.scala._
+import datastruct.scala.{Vector, Matrix, VectorImpl, RangeVectorImpl}
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.common.DSLOpsExp
-import scala.virtualization.lms.common.{VariablesExp, Variables}
 import reflect.Manifest
 import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.common.{NumericOpsExp, DSLOpsExp, VariablesExp, Variables}
 
 trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
 
@@ -77,7 +76,9 @@ trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
   def vector_new[A:Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with DeliteOpsExp { this: VectorImplOps with ArithImplicits =>
+trait VectorOpsExp extends VectorOps with VariablesExp with NumericOpsExp with DSLOpsExp with DeliteOpsExp {
+  this: VectorImplOps with ArithImplicits =>
+
   implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
   // implemented via method on real data structure
@@ -102,9 +103,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Delit
   case class VectorPlusEquals[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
     extends DSLOp(reifyEffects(vector_plusequals_impl[A](x,y)))
 
-  case class VectorMinus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DSLOp(reifyEffects(vector_minus_impl[A](x,y)))
-
   case class VectorDivide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A])
     extends DSLOp(reifyEffects(vector_divide_impl[A](x,y)))
 
@@ -128,12 +126,19 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Delit
   case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], is_row: Exp[Boolean])
     extends Def[Vector[Int]]
 
+  case class VectorSum[A:Manifest:ArithOps](x: Exp[Vector[A]])
+      extends DSLOp(reifyEffects(vector_sum_impl(x)))
+
+  // implemented via delite ops
   case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], out: Exp[Vector[B]], v: Exp[A], func: Exp[B])
     extends DeliteOpMap[A,B,Vector]
     //extends DSLOp(reifyEffects(vector_map_impl(x, f)))      
 
-  case class VectorSum[A:Manifest:ArithOps](x: Exp[Vector[A]])
-    extends DSLOp(reifyEffects(vector_sum_impl(x)))
+  case class VectorMinus[A:Manifest:Numeric](inA: Exp[Vector[A]], inB: Exp[Vector[A]], out: Exp[Vector[A]], v: (Exp[A],Exp[A]), func: Exp[A])
+    extends DeliteOpZipWith[A,A,A,Vector]
+
+  //case class VectorMinus[A:Manifest:Numeric](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
+    //extends DSLOp(reifyEffects(vector_minus_impl[A](inA,inB)))
 
   def vector_isinstanceof[A,B](x: Exp[Vector[A]], mA: Manifest[A], mB: Manifest[B]) = VectorIsInstanceOf(x,mA,mB)
   def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(x, n)
@@ -146,7 +151,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Delit
   def vector_toboolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], mA: Manifest[A]) = VectorToBoolean(x)
   def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(x, y)
   def vector_plusequals[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorPlusEquals(x, y))
-  def vector_minus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(x, y)
+  def vector_minus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = {
+    val out = reifyEffects(Vector[A](x.length, x.is_row))
+    val v = (fresh[A],fresh[A])
+    val func = v._1 - v._2
+    VectorMinus(x, y, out, v, func)
+  }
   def vector_times[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(x, y)
   def vector_divide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A]) = VectorDivide(x, y)
   def vector_trans[A:Manifest](x: Exp[Vector[A]]) = VectorTrans(x)
@@ -238,7 +248,7 @@ trait CudaGenVectorOps extends CudaGenBase {
       stream.println(addTab()+"}")
       emitVectorAlloc(sym,"%s.length".format(quote(x)),"%s.is_row".format(quote(x)))
     
-    case VectorMinus(x,y) =>
+    case VectorMinus(x,y,out,v,zip) =>
       gpuBlockSizeX = quote(x)+".length"
       stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
       tabWidth += 1
