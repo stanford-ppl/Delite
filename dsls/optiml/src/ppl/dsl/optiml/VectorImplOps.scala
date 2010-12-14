@@ -4,27 +4,27 @@ import datastruct.scala.{Vector,Matrix}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 
-trait VectorImplOps { this: Base with ArithImplicits =>
+trait VectorImplOps { this: OptiML =>
 
   def vector_obj_zeros_impl(length: Rep[Int]) : Rep[Vector[Double]]
 
-  def vector_plus_impl[A:Manifest:Numeric](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Vector[A]]
-  def vector_plusequals_impl[A:Manifest:Numeric](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Vector[A]]
-  def vector_minus_impl[A:Manifest:Numeric](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Vector[A]]
-  def vector_divide_impl[A:Manifest:Fractional](v1: Rep[Vector[A]], y: Rep[A]) : Rep[Vector[A]]
-  def vector_outer_impl[A:Manifest:Numeric](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Matrix[A]]
+  def vector_plus_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Vector[A]]
+  def vector_plusequals_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Vector[A]]
+  def vector_minus_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Vector[A]]
+  def vector_divide_impl[A:Manifest:Arith](v1: Rep[Vector[A]], y: Rep[A]) : Rep[Vector[A]]
+  def vector_outer_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Matrix[A]]
   def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]) : Rep[Unit]
 
   def vector_trans_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], vA: Manifest[Vector[A]]) : Rep[Vector[A]]
   def vector_toboolean_impl[A:Manifest](v: Rep[Vector[A]], conv: Rep[A] => Rep[Boolean]) : Rep[Vector[Boolean]]
 
   def vector_map_impl[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[B]) : Rep[Vector[B]]
-  def vector_sum_impl[A:Manifest:ArithOps](x: Rep[Vector[A]]) : Rep[A]
+  def vector_sum_impl[A:Manifest:Arith](x: Rep[Vector[A]]) : Rep[A]
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
-  this: BaseExp with ScalaOpsPkg with ArithImplicits with VectorOps with MatrixOps =>
-  
+  this: OptiML =>
+
   private val base = "ppl.dsl.optiml"
 
   ///////////////
@@ -54,9 +54,9 @@ trait VectorImplOpsStandard extends VectorImplOps {
 
   def vector_obj_zeros_impl(length: Rep[Int]) = Vector[Double](length, true)
 
-  def vector_plus_impl[A:Manifest:Numeric](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = zipWith[A,A](v1, v2, (a,b) => a+b)
+  def vector_plus_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = zipWith[A,A](v1, v2, (a,b) => a+b)
 
-  def vector_plusequals_impl[A:Manifest:Numeric](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
+  def vector_plusequals_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
     val out = v1
     for (i <- 0 until v1.length){
       out(i) = v1(i) + v2(i)
@@ -64,11 +64,11 @@ trait VectorImplOpsStandard extends VectorImplOps {
     out
   }
 
-  def vector_minus_impl[A:Manifest:Numeric](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = zipWith[A,A](v1, v2, (a,b) => a-b)
+  def vector_minus_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = zipWith[A,A](v1, v2, (a,b) => a-b)
 
-  def vector_divide_impl[A:Manifest:Fractional](v1: Rep[Vector[A]], y: Rep[A]) = map[A,A](v1, e => e / y)
+  def vector_divide_impl[A:Manifest:Arith](v1: Rep[Vector[A]], y: Rep[A]) = map[A,A](v1, e => e / y)
 
-  def vector_outer_impl[A:Manifest:Numeric](collA: Rep[Vector[A]], collB: Rep[Vector[A]]) = {
+  def vector_outer_impl[A:Manifest:Arith](collA: Rep[Vector[A]], collB: Rep[Vector[A]]) = {
     val out = Matrix[A](collA.length, collA.length)
     for (i <- 0 until collA.length ){
       for (j <- 0 until collB.length ){
@@ -107,17 +107,17 @@ trait VectorImplOpsStandard extends VectorImplOps {
 
   def vector_map_impl[A:Manifest,B:Manifest](v: Rep[Vector[A]], f: Rep[A] => Rep[B]) = map(v, f)
 
-  def vector_sum_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], ops: ArithOps[A]) : Rep[A] = {
+  def vector_sum_impl[A:Manifest:Arith](v: Rep[Vector[A]]) : Rep[A] = {
     var acc = v(0)
     for (i <- 1 until v.length) {
-      acc = ops.+=(acc, v(i))
+      acc += v(i)
+      ()
     }
     acc
   }
 }
 
-trait VectorImplOpsBLAS extends VectorImplOpsStandard { this: BaseExp with ArithImplicits with ScalaOpsPkg with VectorOps with MatrixOps =>
-  //this: Functions with VectorOps with RangeOps with TupleOps with BooleanOps =>
+trait VectorImplOpsBLAS extends VectorImplOpsStandard { this: OptiML =>
   
   //override def vector_obj_plus_impl = External(..)
 }

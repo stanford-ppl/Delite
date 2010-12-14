@@ -139,7 +139,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     // emit task graph node
     rhs match {
-      case DeliteOpSingleTask(block) => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
+      case s:DeliteOpSingleTask[_] => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
       case m:DeliteOpMap[_,_,_] => emitMap(sym, inputs, inControlDeps, antiDeps)
       case r:DeliteOpReduce[_] => emitReduce(sym, inputs, inControlDeps, antiDeps)
       case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(sym, inputs,inControlDeps, antiDeps)

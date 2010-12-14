@@ -6,27 +6,48 @@ import scala.virtualization.lms.internal.{GenericCodegen, CudaGenEffect, Generic
 import ppl.delite.framework.DeliteCollection
 
 trait DeliteOpsExp extends EffectExp with VariablesExp {
-  // representation must be reified! this places the burden on the caller, but allows the caller to avoid the
-  // use of function values (which can be uglier).
-
+  /**
+   * The base type of the DeliteOp hierarchy.
+   */
   sealed abstract class DeliteOp[A]() extends Def[A]
 
-  case class DeliteOpSingleTask[A](block: Exp[A]) extends DeliteOp[A]
+  /**
+   * A sequential task - will execute block in a single thread and respect any free variable dependencies inside it.
+   *
+   * @param  block   the task to execute; must be reified if it contains effectful operations!
+   */
+  class DeliteOpSingleTask[A](val block: Exp[A]) extends DeliteOp[A]
 
   /**
-   * @param  out   must be reified if it is produced from an effectful operation!
+   * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
+   * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
+   *
+   * @param  in    the input collection
+   * @param  v     the bound symbol that the mapping function operates over
+   * @param  func  the mapping function; reified version of Exp[A] => Exp[B]
+   * @param  out   the output collection. if it is the same as the input collection, the operation is mutable.
+   *               must be reified if it is constructed from an effectful operation!
    */
-  abstract case class DeliteOpMap[A,B,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
+  abstract class DeliteOpMap[A,B,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
     val in: Exp[C[A]]
-    val v: Exp[A]    // input symbol for func
-    val func: Exp[B] // reified of Exp[A] => Exp[R]
-    def out: Exp[C[B]]
+    val v: Exp[A]
+    val func: Exp[B]
+    val out: Exp[C[B]]
   }
 
   /**
-   * @param  out   must be reified if it is produced from an effectful operation!
+   * Parallel 2 element zipWith from (DeliteCollection[A],DeliteCollection[B]) => DeliteCollection[R].
+   * Input functions can depend on free variables, but they cannot depend on other elements of the input or
+   * output collection (disjoint access).
+   *
+   * @param  inA   the first input collection
+   * @param  inB   the second input collection
+   * @param  v     the bound symbol that the zipWith function operates over
+   * @param  func  the zipWith function; reified version of ([Exp[A],Exp[B]) => Exp[R]
+   * @param  out   the output collection. if it is the same as the input collection, the operation is mutable.
+   *               must be reified if it is constructed from an effectful operation!
    */
-  abstract case class DeliteOpZipWith[A,B,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
+  abstract class DeliteOpZipWith[A,B,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
     val inA: Exp[C[A]]
     val inB: Exp[C[B]]
     val v: (Exp[A],Exp[B])
@@ -34,20 +55,37 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
     val out: Exp[C[R]]
   }
 
-  abstract case class DeliteOpReduce[A]() extends DeliteOp[A] {
+  /**
+   * Parallel reduction of a DeliteCollection[A]. Reducing function must be associative.
+   *
+   * @param  in    the input collection
+   * @param  v     the bound symbol that the reducing function operates over
+   * @param  func  the reduction function; reified version of ([Exp[A],Exp[A]) => Exp[A]. Must be associative.
+   */
+  abstract class DeliteOpReduce[A]() extends DeliteOp[A] {
     val in: Exp[DeliteCollection[A]]
     val v: (Exp[A],Exp[A])
     val func: Exp[A]
   }
 
-  abstract case class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] {
+  /**
+   * Parallel map-reduction from a DeliteCollection[A] => R. The map-reduce is composed, so no temporary collection
+   * is instantiated to hold the result of the map.
+   *
+   * @param  in      the input collection
+   * @param  mV      the bound symbol that the mapping function operates over
+   * @param  map     the mapping function; reified version of Exp[A] => Exp[R]
+   * @param  rV      the bound symbol that the reducing function operates over
+   * @param  reduce  the reduction function; reified version of ([Exp[R],Exp[R]) => Exp[R]. Must be associative.
+   */
+  abstract class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] {
     val in: Exp[C[A]]
     //val acc: Exp[R]
     val mV: Exp[A]
 
     // for accumulating each partial sum
     //val mapreduce: Exp[R] // reified of Exp[(R,A)] => Exp[R] composition of map and reduce
-    val map: Exp[R] // reified of Exp[A] => Exp[R]
+    val map: Exp[R]
 
     // for reducing remaining partial sums
     val rV: (Exp[R],Exp[R])
@@ -96,7 +134,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       if (nested == true){
         stream.println("val " + quote(sym) + " = {")
         stream.println("var mapIdx = 0")
-        stream.println("while (mapIdx < " + quote(map.in) + ".length) {")
+        stream.println("while (mapIdx < " + quote(map.in) + ".size) {")
         stream.println("val " + quote(map.v) + " = " + quote(map.in) + "(mapIdx)")
         stream.println(quote(map.out) + "(mapIdx)" + "= {")
         emitBlock(map.func)
@@ -128,7 +166,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       if (nested == true){
         stream.println("val " + quote(sym) + " = {")
         stream.println("var zipIdx = 0")
-        stream.println("while (zipIdx < " + quote(zip.inA) + ".length) {")
+        stream.println("while (zipIdx < " + quote(zip.inA) + ".size) {")
         stream.println("val " + quote(zip.v._1) + " = " + quote(zip.inA) + "(zipIdx)")
         stream.println("val " + quote(zip.v._2) + " = " + quote(zip.inB) + "(zipIdx)")
         stream.println(quote(zipout) + "(zipIdx)" + " = {")
@@ -158,7 +196,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("val " + quote(sym) + " = {")
         stream.println("var " + quote(red.v._1) + " = " + quote(red.in) + "(0)")
         stream.println("var reduceIdx = 1")
-        stream.println("while (reduceIdx < " + quote(red.in) + ".length) {")
+        stream.println("while (reduceIdx < " + quote(red.in) + ".size) {")
         stream.println("val " + quote(red.v._2) + " = " + quote(red.in) + "(reduceIdx)")
         stream.println(quote(red.v._1) + " = {")
         emitBlock(red.func)
@@ -190,7 +228,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println(quote(getBlockResult(mapR.map)))
         stream.println("}")
         stream.println("var mapReduceIdx = 1")
-        stream.println("while (mapReduceIdx < " + quote(mapR.in) + ".length) {")
+        stream.println("while (mapReduceIdx < " + quote(mapR.in) + ".size) {")
         stream.println("val " + quote(mapR.mV) + " = " + quote(mapR.in) + "(mapReduceIdx)")
         stream.println("val " + quote(mapR.rV._2) + " = {")
         emitBlock(mapR.map)

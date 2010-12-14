@@ -19,7 +19,7 @@ trait MLInputReaderOps extends DSLType with Base {
   def obj_mlinput_read_vector(filename: Rep[String]) : Rep[Vector[Double]]
 }
 
-trait MLInputReaderOpsExp extends MLInputReaderOps with DSLOpsExp { this: MLInputReaderImplOps =>
+trait MLInputReaderOpsExp extends MLInputReaderOps { this: MLInputReaderImplOps with DSLOpsExp =>
   case class MLInputRead(filename: Exp[String]) extends DSLOp(reifyEffects(mlinput_read_impl(filename)))
   case class MLInputReadVector(filename: Exp[String]) extends DSLOp(reifyEffects(mlinput_read_vector_impl(filename)))
 

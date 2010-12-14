@@ -10,7 +10,7 @@ trait MLInputReaderImplOps { this: Base =>
 }
 
 trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
-  this: ScalaOpsPkg with MLInputReaderOps with MatrixOps with VectorOps =>
+  this: OptiML =>
   
   ///////////////
   // kernels
