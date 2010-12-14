@@ -1,7 +1,8 @@
-package ppl.delite.runtime.codegen
+package ppl.delite.runtime.codegen.examples
 
 import ppl.delite.runtime.data.Data
 import java.util.concurrent.locks.ReentrantLock
+import ppl.delite.runtime.codegen.DeliteExecutable
 
 /**
  * Author: Kevin J. Brown

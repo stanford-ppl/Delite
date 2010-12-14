@@ -26,11 +26,11 @@ class ExecutionThread extends Runnable {
   // synchronization is handled by the queue implementation
   private[executor] val queue = new LinkedBlockingQueue[DeliteExecutable](Config.queueSize) //work queue
 
+  private[executor] var continue: Boolean = true
 
-  //this infinite loop should be terminated by making the thread executing this Runnable a daemon
+  //this loop should be terminated by executing a special shutdown Executable
   def run {
-    //TODO: this should be a while loop, but need a way to exit the run method
-    if(true) {
+    while(continue) {
       val work = queue.take //blocking
       executeWork(work)
     }

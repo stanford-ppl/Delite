@@ -49,34 +49,76 @@ object TestKernelBegin {
   def apply() = Array[Int](0,1,2,3,4,5,6,7,8)
 }
 
-object TestKernelMap {
-  def apply(e: Int) = e + 1
-}
-
-object TestKernelReduce {
-  def apply(left: Int, right: Int) = left + right
-}
-
 object TestKernelPrint {
   def apply(result: Int) { println(result) }
 }
 
 object TestKernelEnd {
   def apply(out: Array[Int]) = {
-    for (e <- out) print(e)
-    print('\n')
+    print("[ ")
+    for (e <- out) print(e + " ")
+    print(" ]\n")
   }
 }
 
-abstract class DeliteOPMapReduce[C, A, R] {
-  def in: C
+abstract class DeliteOPMap[A,B, CA,CB] {
+  def in: CA
+  def out: CB
+  def map(a: A): B
+}
+
+object TestKernelMap {
+  def apply(in0: Array[Int], in1: Array[Int]): DeliteOPMap[Int,Int, Array[Int],Array[Int]] = {
+    new DeliteOPMap[Int,Int, Array[Int],Array[Int]] {
+      def in = in1
+      def out = in0
+      def map(a: Int) = a + 1
+    }
+  }
+}
+
+abstract class DeliteOPReduce[R, CA] {
+  def in: CA
+  def reduce(r1: R, r2: R): R
+}
+
+object TestKernelReduce {
+  def apply(in0: Array[Int]): DeliteOPReduce[Int, Array[Int]] = {
+    new DeliteOPReduce[Int, Array[Int]] {
+      def in = in0
+      def reduce(r1: Int, r2: Int) = r1 + r2
+    }
+  }
+}
+
+abstract class DeliteOPZip[A,B,R, CA,CB,CR] {
+  def inA: CA
+  def inB: CB
+  def out: CR
+  def zip(a: A, b: B): R
+}
+
+object TestKernelZip {
+  def apply(in0: Array[Int], in1: Array[Int], in2: Array[Int]): DeliteOPZip[Int,Int,Int, Array[Int],Array[Int],Array[Int]] = {
+    new DeliteOPZip[Int,Int,Int, Array[Int],Array[Int],Array[Int]] {
+      def inA = in1
+      def inB = in2
+      def out = in0
+      def zip(a: Int, b: Int) = a + b
+    }
+  }
+}
+
+abstract class DeliteOPMapReduce[A,R, CA] {
+  def in: CA
   def map(elem: A): R
-  def reduce(acc: R, elem: R): R
+  def reduce(r1: R, r2: R): R
+  def mapreduce(acc: R, elem: A) = reduce(acc, map(elem))
 }
 
 object TestKernelMapReduce {
-  def apply(in0: Array[Int]): DeliteOPMapReduce[Array[Int],Int,Int] = {
-    new DeliteOPMapReduce[Array[Int],Int,Int] {
+  def apply(in0: Array[Int]): DeliteOPMapReduce[Int,Int, Array[Int]] = {
+    new DeliteOPMapReduce[Int,Int, Array[Int]] {
       def in = in0
       def map(elem: Int): Int = elem * elem
       def reduce(acc: Int, elem: Int): Int = acc + elem

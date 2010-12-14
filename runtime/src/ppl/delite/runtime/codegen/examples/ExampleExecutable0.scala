@@ -1,6 +1,8 @@
-package ppl.delite.runtime.codegen
+package ppl.delite.runtime.codegen.examples
 
 import ppl.delite.runtime.data.Data
+import ppl.delite.runtime.codegen.DeliteExecutable
+import ppl.delite.runtime.graph.ops.EOP_Kernel
 
 /**
  * Author: Kevin J. Brown
@@ -32,7 +34,7 @@ object ExampleExecutable0 extends DeliteExecutable {
     val x4 = thread1.get2
     val x5 = kernel3_run(x3,x4)
 
-    //TODO: report "done" at this point to someone (who?)
+    val x6 = EOP_Kernel()
 
   }
 

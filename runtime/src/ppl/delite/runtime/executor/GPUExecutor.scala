@@ -15,23 +15,27 @@ import ppl.delite.runtime.scheduler.StaticSchedule
  * A runtime Executor for a single GPU device
  * This executor spawns a host thread to manage the device
  */
-class GPUExecutor extends Executor {
+class GPUExecutor(val deviceNum: Int) extends Executor {
 
   //TODO: how do we choose the appropriate number of streams for the device?
   val numStreams = 1
 
-  val deviceNum = 0
-
-  val host = new ExecutionThread
+  private val host = new GPUExecutionThread(deviceNum)
 
   /**
    * The CUDA model requires exactly one host thread per GPU device
    */
   def run(schedule: StaticSchedule) {
     submitAll(schedule)
-    val thread = new Thread(host, "GPUHostThread-"+deviceNum) //spawn new machine thread to host GPU device
-    thread.setDaemon(true) //to handle shutdown
+  }
+
+  def init() {
+    val thread = new Thread(host, "GPUHostThread-"+deviceNum)
     thread.start
+  }
+
+  def shutdown() {
+    host.queue.put(new Shutdown(host))
   }
 
   /**

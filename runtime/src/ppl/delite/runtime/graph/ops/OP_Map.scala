@@ -11,7 +11,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-class OP_Map(func: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
+class OP_Map(val id: String, func: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
 
   final def isDataParallel = true
 
@@ -27,7 +27,6 @@ class OP_Map(func: String, resultType: Map[Targets.Value,String]) extends Delite
 
   def supportsTarget(target: Targets.Value) = resultType.contains(target)
 
-  //TODO: may want output allocation to be a part of the OP => need to remove the below requirement
   assert(resultType == Targets.unitTypes(resultType)) //map must always mutate the elements of a collection and return Unit
   def outputType(target: Targets.Value) = resultType(target)
 
@@ -37,8 +36,7 @@ class OP_Map(func: String, resultType: Map[Targets.Value,String]) extends Delite
    * Chunks require same dependency & input lists
    */
   def chunk(i: Int): OP_Map = {
-    val r = new OP_Map(function, Targets.unitTypes(resultType)) //chunks all return Unit
-    r.id = this.id + "_" + i
+    val r = new OP_Map(id+"_"+i, function, Targets.unitTypes(resultType)) //chunks all return Unit
     r.dependencyList = dependencyList //lists are immutable so can be shared
     r.inputList = inputList
     r.consumerList = consumerList
