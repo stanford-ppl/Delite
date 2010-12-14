@@ -32,10 +32,10 @@ trait VectorOps extends DSLType with Variables {
     def toBoolean(implicit conv: Rep[A] => Rep[Boolean]) = vector_toboolean(x)
     def +(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_plus(x,y)
     def -(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_minus(x,y)
-    def *(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_times(x,y)
+    def **(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_times(x,y)
     def /(y: Rep[Vector[A]])(implicit a: Arith[A], o: Overloaded1) = vector_divide(x,y)
     def /(y: Rep[A])(implicit a: Arith[A]) = vector_divide_scalar(x,y)    
-    def **(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_outer(x,y)
+    def *(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_outer(x,y)
     def t = vector_trans(x)
     def pprint = vector_pprint(x)
     def is_row = vector_is_row(x)
@@ -81,7 +81,7 @@ trait VectorOps extends DSLType with Variables {
 
 trait VectorOpsExp extends VectorOps with VariablesExp {
 
-  this: VectorImplOps with ArithOpsExp with DSLOpsExp with DeliteOpsExp =>
+  this: VectorImplOps with ArithOpsExp with DeliteOpsExp =>
 
   implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
@@ -108,19 +108,19 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   // implemented via kernel embedding
 
   case class VectorObjectZeros(len: Exp[Int])
-    extends DSLOp(reifyEffects(vector_obj_zeros_impl(len)))
+    extends DeliteOpSingleTask(reifyEffects(vector_obj_zeros_impl(len)))
 
   case class VectorToBoolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], mA: Manifest[A])
-    extends DSLOp(reifyEffects(vector_toboolean_impl[A](x,conv)))
+    extends DeliteOpSingleTask(reifyEffects(vector_toboolean_impl[A](x,conv)))
 
   case class VectorOuter[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DSLOp(reifyEffects(vector_outer_impl[A](x,y)))
+    extends DeliteOpSingleTask(reifyEffects(vector_outer_impl[A](x,y)))
 
   case class VectorPPrint[A:Manifest](x: Exp[Vector[A]])
-    extends DSLOp(reifyEffects(vector_pprint_impl[A](x)))
+    extends DeliteOpSingleTask(reifyEffects(vector_pprint_impl[A](x)))
 
   case class VectorTrans[A:Manifest](x: Exp[Vector[A]])
-      extends DSLOp(reifyEffects(vector_trans_impl[A](x)))
+    extends DeliteOpSingleTask(reifyEffects(vector_trans_impl[A](x)))
 
 
 
@@ -156,7 +156,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
     val out = reifyEffects(Vector[A](inA.length, inA.is_row))
     val v = (fresh[A],fresh[A])
-    val func = v._1 + v._2
+    val func = v._1 * v._2
   }
 
   case class VectorDivide[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])

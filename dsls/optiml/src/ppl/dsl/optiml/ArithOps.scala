@@ -31,11 +31,11 @@ trait ArithOps extends Variables with OverloadHack {
   implicit def varArithToArithOps[T:Arith:Manifest](n: Var[T]) = new ArithOpsCls(readVar(n))
 
   class ArithOpsCls[T](lhs: Rep[T])(implicit mT: Manifest[T], arith: Arith[T]){
-    def +=(rhs: Rep[T]) = arith.+=(lhs,rhs)
-    def +(rhs: Rep[T]) = arith.+(lhs,rhs)
-    def -(rhs: Rep[T]) = arith.-(lhs,rhs)
-    def *(rhs: Rep[T]) = arith.*(lhs,rhs)
-    def /(rhs: Rep[T]) = arith./(lhs,rhs)
+    def +=[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.+=(lhs,implicit_convert[A,T](rhs))
+    def +[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.+(lhs,implicit_convert[A,T](rhs))
+    def -[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.-(lhs,implicit_convert[A,T](rhs))
+    def *[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.*(lhs,implicit_convert[A,T](rhs))
+    def /[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith./(lhs,implicit_convert[A,T](rhs))
   }
 
 
@@ -50,7 +50,7 @@ trait ArithOps extends Variables with OverloadHack {
                                                   else if (b.isInstanceOfL[NilVector[T]]) a
                                                   else a+b
     def -(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a-b
-    def *(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a*b
+    def *(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a**b
     def /(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a/b
 }
 

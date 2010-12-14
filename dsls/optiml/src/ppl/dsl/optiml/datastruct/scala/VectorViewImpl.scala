@@ -16,11 +16,11 @@ class VectorViewImpl[@specialized T: ClassManifest](x: Array[T], offset: Int, st
   def idx(n: Int) = _start + n*_stride
 
   def apply(n: Int) : T = {
-    _data(chkIndex(idx(n)))
+    _data(idx(n))
   }
 
   def update(n: Int, x: T) {
-    _data(chkIndex(idx(n))) = x
+    _data(idx(n)) = x
   }
 
   def insert(pos:Int, x: T): VectorViewImpl[T] = {

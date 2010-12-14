@@ -49,10 +49,11 @@ trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ArithOpsExp with DeliteOpsExp
+trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ArithOpsExp
   with VectorOpsExpOpt with VectorViewOpsExp with MatrixOpsExpOpt with MLInputReaderOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
-  with MatrixImplOpsStandard with MLInputReaderImplOpsStandard {
+  with MatrixImplOpsStandard with MLInputReaderImplOpsStandard
+  with DeliteOpsExp {
   this: DeliteApplication =>
 
   def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericNestedCodegen{val IR: OptiMLExp.this.type} = {

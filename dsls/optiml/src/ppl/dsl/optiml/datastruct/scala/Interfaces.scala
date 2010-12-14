@@ -42,8 +42,8 @@ trait DeliteOpMapReduce[@specialized A, @specialized R] {
 
 trait DeliteCollection[@specialized T] {
   def size: Int
-  def apply(idx: Int): T
-  def update(idx: Int, x: T)
+  def dcApply(idx: Int): T
+  def dcUpdate(idx: Int, x: T)
 }
 
 /**
@@ -57,6 +57,9 @@ trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def apply(n: Int) : T
   def update(index: Int, x: T)
 
+  def dcApply(idx: Int) = apply(idx)
+  def dcUpdate(idx: Int, x: T) = update(idx, x)
+
   // DeliteCollection
   def size = length
 }
@@ -68,7 +71,7 @@ trait VectorView[@specialized T] extends Vector[T]
 /**
  * Matrix
  */
-trait Matrix[@specialized T] {
+trait Matrix[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   // fields required on real underlying data structure impl
   def numRows: Int
   def numCols: Int

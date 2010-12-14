@@ -5,7 +5,8 @@ import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.internal.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.common.{BaseExp, Base, DSLOpsExp}
+import scala.virtualization.lms.common.{BaseExp, Base}
+import ppl.delite.framework.ops.DeliteOpsExp
 
 trait VectorViewOps extends DSLType with Base with OverloadHack {
 
@@ -20,7 +21,7 @@ trait VectorViewOps extends DSLType with Base with OverloadHack {
   def vectorview_new[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorViewOpsExp extends VectorViewOps with BaseExp { this: VectorViewImplOps with DSLOpsExp =>
+trait VectorViewOpsExp extends VectorViewOps with BaseExp { this: VectorViewImplOps with DeliteOpsExp =>
 
   // implemented via method on real data structure
   case class VectorViewStart[A](x: Exp[VectorView[A]]) extends Def[Int]
