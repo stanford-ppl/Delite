@@ -70,7 +70,9 @@ object Zip_SMP_Array_Generator {
       out.append(": ")
       out.append(inputs.next.outputType)
     }
-    out.append(") {\n")
+    out.append("): ")
+    out.append(op.outputType)
+    out.append(" = {\n")
 
     //call the kernel to get the functions
     out.append("val zip = ")
@@ -100,7 +102,9 @@ object Zip_SMP_Array_Generator {
     out.append("while (idx < end) {\n")
     out.append("out(idx) = zip.zip(inA(idx), inB(idx))\n")
     out.append("idx += 1\n")
-    out.append("}\n}\n")
+    out.append("}\n")
+    if (chunkIdx == 0) out.append("out\n")
+    out.append("}\n")
   }
 
   private def kernelName(op: OP_Zip, idx: Int) = {
