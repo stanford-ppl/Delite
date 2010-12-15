@@ -49,7 +49,7 @@ abstract class DeliteOP {
     inputList = input :: inputList
   }
 
-  var id: String = _
+  def id: String
 
   def nested : DeliteTaskGraph
 

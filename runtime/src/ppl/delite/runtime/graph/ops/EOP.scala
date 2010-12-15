@@ -38,7 +38,7 @@ object EOP extends DeliteOP {
 
   override def outputType = "Unit"
 
-  id = "eop"
+  def id = "eop"
 
   def nested = null
   def cost = 0

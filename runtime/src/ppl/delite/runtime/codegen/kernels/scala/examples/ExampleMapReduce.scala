@@ -1,4 +1,4 @@
-package ppl.delite.runtime.codegen.kernels.scala
+package ppl.delite.runtime.codegen.kernels.scala.examples
 
 /**
  * Author: Kevin J. Brown

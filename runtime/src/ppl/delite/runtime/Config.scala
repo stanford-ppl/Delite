@@ -25,4 +25,6 @@ object Config {
 
   val numRuns: Int = System.getProperty("numRuns", "1").toInt
 
+  val deliteHome: String = System.getProperty("delite.home", System.getProperty("user.dir"))
+
 }
