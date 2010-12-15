@@ -27,8 +27,8 @@ class OP_Map(val id: String, func: String, resultType: Map[Targets.Value,String]
 
   def supportsTarget(target: Targets.Value) = resultType.contains(target)
 
-  assert(resultType == Targets.unitTypes(resultType)) //map must always mutate the elements of a collection and return Unit
   def outputType(target: Targets.Value) = resultType(target)
+  override def outputType: String = resultType(Targets.Scala)
 
   /**
    * Since the semantics of the map are to mutate the elements in a collection all consumer (true) dependency edges already exist in graph

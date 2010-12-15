@@ -57,7 +57,7 @@ object TestKernelEnd {
   def apply(out: Array[Int]) = {
     print("[ ")
     for (e <- out) print(e + " ")
-    print(" ]\n")
+    print("]\n")
   }
 }
 

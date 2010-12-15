@@ -43,8 +43,8 @@ class TestOP(kernel: String)(deps: DeliteOP*)
 
 }
 
-class TestMap(func: String)(deps: DeliteOP*)(output: DeliteOP, input: DeliteOP, free: DeliteOP*)
-        extends OP_Map("", func, Map[Targets.Value,String](Targets.Scala -> "Unit")) {
+class TestMap[T: Manifest](func: String)(deps: DeliteOP*)(output: DeliteOP, input: DeliteOP, free: DeliteOP*)
+        extends OP_Map("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
 
   override val id = System.identityHashCode(this).toString
 
@@ -95,8 +95,8 @@ class TestMapReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP,
 
 }
 
-class TestZip(func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP, input2: DeliteOP, free: DeliteOP*)
-        extends OP_Zip("", func, Map[Targets.Value,String](Targets.Scala -> "Unit")) {
+class TestZip[T: Manifest](func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP, input2: DeliteOP, free: DeliteOP*)
+        extends OP_Zip("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
 
   override val id = System.identityHashCode(this).toString
 
