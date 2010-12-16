@@ -1,12 +1,12 @@
 package ppl.dsl.optiml
 
-import datastruct.scala.{VectorView, Vector, Matrix}
+import datastruct.scala.{VectorViewImpl, VectorView, Vector, Matrix}
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import scala.virtualization.lms.common.{Base}
-import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.internal.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
+import scala.virtualization.lms.common.{BaseExp, Base}
+import ppl.delite.framework.ops.DeliteOpsExp
 
 trait VectorViewOps extends DSLType with Base with OverloadHack {
 
@@ -18,22 +18,23 @@ trait VectorViewOps extends DSLType with Base with OverloadHack {
   def vectorview_stride[A](x: Rep[VectorView[A]]): Rep[Int]
 
   // impl defs
-  def vectorview_new[A : Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
+  def vectorview_new[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorViewOpsExp extends VectorViewOps with DSLOpsExp { this: VectorViewImplOps =>
+trait VectorViewOpsExp extends VectorViewOps with BaseExp { this: VectorViewImplOps with DeliteOpsExp =>
 
   // implemented via method on real data structure
   case class VectorViewStart[A](x: Exp[VectorView[A]]) extends Def[Int]
   case class VectorViewStride[A](x: Exp[VectorView[A]]) extends Def[Int]
-
-  case class VectorViewNew[A : Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Exp[Int], is_row: Exp[Boolean])
-    extends DSLOp(reifyEffects(vectorview_new_impl[A](x, offset, stride, len, is_row)))
+  case class VectorViewNew[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Exp[Int], is_row: Exp[Boolean])
+    extends Def[Vector[A]] {
+    val mV = manifest[VectorViewImpl[A]]
+  }
 
   def vectorview_start[A](x: Exp[VectorView[A]]) = VectorViewStart(x)
   def vectorview_stride[A](x: Exp[VectorView[A]]) = VectorViewStride(x)
 
-  def vectorview_new[A : Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Exp[Int], is_row: Exp[Boolean])
+  def vectorview_new[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Exp[Int], is_row: Exp[Boolean])
     = reflectEffect(VectorViewNew[A](x, offset, stride, len, is_row))
 }
 
@@ -43,8 +44,10 @@ trait ScalaGenVectorViewOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case VectorViewStart(x)    => emitValDef(sym, quote(x) + ".start")
-    case VectorViewStride(x)     => emitValDef(sym, quote(x) + ".stride")
+    case v@VectorViewNew(x, offset, stride, len, is_row) =>
+      emitValDef(sym, "new " + remap(v.mV) + "(" + quote(x) + "," + quote(offset) + "," + quote(stride) + "," + quote(len) + "," + quote(is_row) + ")")
+    case VectorViewStart(x)   => emitValDef(sym, quote(x) + ".start")
+    case VectorViewStride(x)  => emitValDef(sym, quote(x) + ".stride")
 
     case _ => super.emitNode(sym, rhs)
   }

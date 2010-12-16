@@ -11,7 +11,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-class OP_Reduce(func: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
+class OP_Reduce(val id: String, func: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
 
   final def isDataParallel = true
 
@@ -36,8 +36,7 @@ class OP_Reduce(func: String, resultType: Map[Targets.Value,String]) extends Del
    * Chunks require same dependency & input lists
    */
   def chunk(i: Int): OP_Reduce = {
-    val r = new OP_Reduce(function, Targets.unitTypes(resultType)) //chunks all return Unit
-    r.id = this.id + "_" + i
+    val r = new OP_Reduce(id+"_"+i, function, Targets.unitTypes(resultType)) //chunks all return Unit
     r.dependencyList = dependencyList //lists are immutable so can be shared
     r.inputList = inputList
     for (dep <- getDependencies) dep.addConsumer(r)

@@ -1,16 +1,16 @@
 package ppl.dsl.optiml
 
-import datastruct.scala._
+import datastruct.scala.{Vector, Matrix, VectorImpl, RangeVectorImpl}
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.common.DSLOpsExp
-import scala.virtualization.lms.common.{VariablesExp, Variables}
 import reflect.Manifest
 import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.common._
 
-trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
+trait VectorOps extends DSLType with Variables {
+  this: ArithOps =>
 
   object Vector {
     def apply[A : Manifest](len: Rep[Int], is_row : Rep[Boolean] = true) : Rep[Vector[A]] = vector_new(len, is_row)
@@ -30,27 +30,28 @@ trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
     def update(n: Rep[Int], y: Rep[A]) = vector_update(x,n,y)
     def length = vector_length(x)
     def toBoolean(implicit conv: Rep[A] => Rep[Boolean]) = vector_toboolean(x)
-    def +(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_plus(x,y)
-    def -(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_minus(x,y)
-    def *(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_times(x,y)
-    def /(y: Rep[A])(implicit f: Fractional[A]) = vector_divide(x,y)
-    def **(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_outer(x,y)
+    def +(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_plus(x,y)
+    def -(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_minus(x,y)
+    def **(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_times(x,y)
+    def /(y: Rep[Vector[A]])(implicit a: Arith[A], o: Overloaded1) = vector_divide(x,y)
+    def /(y: Rep[A])(implicit a: Arith[A]) = vector_divide_scalar(x,y)    
+    def *(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_outer(x,y)
     def t = vector_trans(x)
     def pprint = vector_pprint(x)
     def is_row = vector_is_row(x)
 
-    def +=(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_plusequals(x,y)
+    def +=(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_plusequals(x,y)
     def +=(y: Rep[A]) = vector_insert(x,x.length,y)
 
     def map[B:Manifest](f: Rep[A] => Rep[B]) = vector_map(x,f)
-    def sum(implicit ops: ArithOps[A]) : Rep[A] = vector_sum(x)
+    def sum(implicit a: Arith[A]) : Rep[A] = vector_sum(x)
   }
 
   def NilV[A:Manifest] = vector_nil
 
   // object defs
   def vector_obj_zeros(len: Rep[Int]): Rep[Vector[Double]]
-  def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], is_row: Rep[Boolean]): Rep[Vector[Int]]  
+  def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], is_row: Rep[Boolean]): Rep[Vector[Int]]
 
   // class defs
   def vector_isinstanceof[A,B](x: Rep[Vector[A]], mA: Manifest[A], mB: Manifest[B]) : Rep[Boolean]
@@ -60,16 +61,17 @@ trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
   def vector_insert[A:Manifest](x: Rep[Vector[A]], pos: Rep[Int], y: Rep[A]): Rep[Vector[A]]
   def vector_is_row[A:Manifest](x: Rep[Vector[A]]): Rep[Boolean]
   def vector_toboolean[A](x: Rep[Vector[A]])(implicit conv: Rep[A] => Rep[Boolean], mA: Manifest[A]): Rep[Vector[Boolean]]
-  def vector_plus[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
-  def vector_plusequals[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
-  def vector_minus[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
-  def vector_times[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
-  def vector_divide[A:Manifest:Fractional](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
+  def vector_plus[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_plusequals[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_minus[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_times[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_divide[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_divide_scalar[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
   def vector_trans[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
-  def vector_outer[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Matrix[A]]
+  def vector_outer[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Matrix[A]]
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
   def vector_map[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[B]): Rep[Vector[B]]
-  def vector_sum[A:Manifest:ArithOps](x: Rep[Vector[A]]) : Rep[A]
+  def vector_sum[A:Manifest:Arith](x: Rep[Vector[A]]) : Rep[A]
 
   def vector_nil[A:Manifest] : Rep[Vector[A]]
 
@@ -77,10 +79,15 @@ trait VectorOps extends DSLType with Variables { this: ArithImplicits =>
   def vector_new[A:Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with DeliteOpsExp { this: VectorImplOps with ArithImplicits =>
+trait VectorOpsExp extends VectorOps with VariablesExp {
+
+  this: VectorImplOps with ArithOpsExp with DeliteOpsExp =>
+
   implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
+  ///////////////////////////////////////////////////
   // implemented via method on real data structure
+
   case class VectorApply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) extends Def[A]
   case class VectorUpdate[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
   case class VectorLength[A:Manifest](x: Exp[Vector[A]]) extends Def[Int]
@@ -88,52 +95,103 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Delit
   case class VectorIsRow[A:Manifest](x: Exp[Vector[A]]) extends Def[Boolean]
   case class VectorNil[A](implicit mA: Manifest[A]) extends Def[Vector[A]]
   case class VectorIsInstanceOf[A,B](x: Exp[Vector[A]], mA: Manifest[A], mB: Manifest[B]) extends Def[Boolean]
-
-  // implemented via kernel embedding
-  case class VectorObjectZeros(len: Exp[Int])
-    extends DSLOp(reifyEffects(vector_obj_zeros_impl(len)))
-
-  case class VectorToBoolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], mA: Manifest[A])
-    extends DSLOp(reifyEffects(vector_toboolean_impl[A](x,conv)))
-
-  case class VectorPlus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DSLOp(reifyEffects(vector_plus_impl[A](x,y)))
-
-  case class VectorPlusEquals[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DSLOp(reifyEffects(vector_plusequals_impl[A](x,y)))
-
-  case class VectorMinus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DSLOp(reifyEffects(vector_minus_impl[A](x,y)))
-
-  case class VectorDivide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A])
-    extends DSLOp(reifyEffects(vector_divide_impl[A](x,y)))
-
-  case class VectorOuter[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DSLOp(reifyEffects(vector_outer_impl[A](x,y)))
-  
-  case class VectorPPrint[A:Manifest](x: Exp[Vector[A]])
-    extends DSLOp(reifyEffects(vector_pprint_impl[A](x)))
-
-  case class VectorTrans[A:Manifest](x: Exp[Vector[A]])
-      extends DSLOp(reifyEffects(vector_trans_impl[A](x)))
-
-  case class VectorTimes[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]])
-      extends Def[Vector[A]]
-
   case class VectorNew[A:Manifest](len: Exp[Int], is_row: Exp[Boolean])
     extends Def[Vector[A]] {
     val mV = manifest[VectorImpl[A]]
   }
-
   case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], is_row: Exp[Boolean])
     extends Def[Vector[Int]]
 
-  case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], out: Exp[Vector[B]], v: Exp[A], func: Exp[B])
-    extends DeliteOpMap[A,B,Vector]
-    //extends DSLOp(reifyEffects(vector_map_impl(x, f)))      
 
-  case class VectorSum[A:Manifest:ArithOps](x: Exp[Vector[A]])
-    extends DSLOp(reifyEffects(vector_sum_impl(x)))
+
+  //////////////////////////////////////
+  // implemented via kernel embedding
+
+  case class VectorObjectZeros(len: Exp[Int])
+    extends DeliteOpSingleTask(reifyEffects(vector_obj_zeros_impl(len)))
+
+  case class VectorToBoolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], mA: Manifest[A])
+    extends DeliteOpSingleTask(reifyEffects(vector_toboolean_impl[A](x,conv)))
+
+  case class VectorOuter[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]])
+    extends DeliteOpSingleTask(reifyEffects(vector_outer_impl[A](x,y)))
+
+  case class VectorPPrint[A:Manifest](x: Exp[Vector[A]])
+    extends DeliteOpSingleTask(reifyEffects(vector_pprint_impl[A](x)))
+
+  case class VectorTrans[A:Manifest](x: Exp[Vector[A]])
+    extends DeliteOpSingleTask(reifyEffects(vector_trans_impl[A](x)))
+
+
+
+  ////////////////////////////////
+  // implemented via delite ops
+
+  case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
+    extends DeliteOpZipWith[A,A,A,Vector] {
+
+    val out = reifyEffects(Vector[A](inA.length, inA.is_row))
+    val v = (fresh[A],fresh[A])
+    val func = v._1 + v._2
+  }
+
+  case class VectorPlusEquals[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
+    extends DeliteOpZipWith[A,A,A,Vector] {
+
+    val out = inA
+    val v = (fresh[A],fresh[A])
+    val func = v._1 + v._2
+  }
+
+  case class VectorMinus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
+    extends DeliteOpZipWith[A,A,A,Vector] {
+
+    val out = reifyEffects(Vector[A](inA.length, inA.is_row))
+    val v = (fresh[A],fresh[A])
+    val func = v._1 - v._2
+  }
+
+  case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
+    extends DeliteOpZipWith[A,A,A,Vector] {
+
+    val out = reifyEffects(Vector[A](inA.length, inA.is_row))
+    val v = (fresh[A],fresh[A])
+    val func = v._1 * v._2
+  }
+
+  case class VectorDivide[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
+    extends DeliteOpZipWith[A,A,A,Vector] {
+
+    val out = reifyEffects(Vector[A](inA.length, inA.is_row))
+    val v = (fresh[A],fresh[A])
+    val func = v._1 / v._2
+  }
+
+  case class VectorDivideScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
+    extends DeliteOpMap[A,A,Vector] {
+
+    val out = Vector[A](in.length, in.is_row)
+    val v = fresh[A]
+    val func = v / y
+  }
+
+  case class VectorSum[A:Manifest:Arith](in: Exp[Vector[A]])
+    extends DeliteOpReduce[A] {
+
+    val v = (fresh[A],fresh[A])
+    val func = v._1 + v._2
+  }
+
+  case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[B])
+    extends DeliteOpMap[A,B,Vector] {
+
+    val out = Vector[B](in.length, in.is_row)
+  }
+
+
+
+  //////////////
+  // interface
 
   def vector_isinstanceof[A,B](x: Exp[Vector[A]], mA: Manifest[A], mB: Manifest[B]) = VectorIsInstanceOf(x,mA,mB)
   def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(x, n)
@@ -144,13 +202,14 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Delit
 
   def vector_obj_zeros(len: Exp[Int]) = reflectEffect(VectorObjectZeros(len))
   def vector_toboolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], mA: Manifest[A]) = VectorToBoolean(x)
-  def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(x, y)
-  def vector_plusequals[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorPlusEquals(x, y))
-  def vector_minus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(x, y)
-  def vector_times[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(x, y)
-  def vector_divide[A:Manifest:Fractional](x: Exp[Vector[A]], y: Exp[A]) = VectorDivide(x, y)
+  def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(x, y)
+  def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorPlusEquals(x, y))
+  def vector_minus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(x,y)
+  def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(x, y)
+  def vector_divide[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorDivide(x, y)
+  def vector_divide_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorDivideScalar(x, y)
   def vector_trans[A:Manifest](x: Exp[Vector[A]]) = VectorTrans(x)
-  def vector_outer[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorOuter(x, y)
+  def vector_outer[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorOuter(x, y)
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
 
   def vector_nil[A:Manifest] = VectorNil[A]()
@@ -159,35 +218,35 @@ trait VectorOpsExp extends VectorOps with VariablesExp with DSLOpsExp with Delit
 
   def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorObjectRange(start, end, stride, is_row))
   def vector_map[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[B]) = {
-    val out = Vector[B](x.length, x.is_row)
     val v = fresh[A]
     val func = reifyEffects(f(v))
-    VectorMap(x, out, v, func)
+    VectorMap(x, v, func)
   }
-  def vector_sum[A:Manifest:ArithOps](x: Exp[Vector[A]]) = VectorSum(x)
+  def vector_sum[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorSum(x)
 }
 
 /**
  * Optimizations for composite VectorOps operations.
  */
 
-trait VectorOpsExpOpt extends VectorOpsExp { this: VectorImplOps with ArithImplicits =>
-  override def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
+trait VectorOpsExpOpt extends VectorOpsExp {
+  this: VectorImplOps with ArithOpsExp with DSLOpsExp with DeliteOpsExp =>
+
+  override def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
     // (TB + TD) == T(B + D)
     case (Def(VectorTimes(a, b)), Def(VectorTimes(c, d))) if (a == c) => VectorTimes[A](a.asInstanceOf[Exp[Vector[A]]], VectorPlus[A](b.asInstanceOf[Exp[Vector[A]]],d.asInstanceOf[Exp[Vector[A]]]))
     // ...
     case _ => super.vector_plus(x, y)
   }
 
-  // allows sum to be expressive without actually doing pointless accumulations
-  override def vector_plusequals[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
+  override def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
     // remove runtime check on zero vector being same length as argument
     case (a, Def(VectorObjectZeros(len))) => a
     case (Def(VectorObjectZeros(len)), b) => b
     case _ => super.vector_plusequals(x,y)
   }
 
-  override def vector_times[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
+  override def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
     case _ => super.vector_times(x, y)
   }
 }

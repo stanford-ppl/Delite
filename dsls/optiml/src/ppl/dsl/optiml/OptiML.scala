@@ -3,21 +3,57 @@ package ppl.dsl.optiml
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
-import scala.virtualization.lms.common.{ScalaOpsPkgExp, ScalaOpsPkg, ScalaCodeGenPkg, CudaCodeGenPkg}
+import scala.virtualization.lms.common._
 import ppl.delite.framework.codegen.delite.DeliteCodeGenOverridesScala
 import ppl.delite.framework.ops.{CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
 import scala.virtualization.lms.internal.{ScalaGenBase, GenericNestedCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
 import java.io._
 
-trait OptiML extends ScalaOpsPkg with LanguageOps with ArithImplicits with VectorOps with MatrixOps with MLInputReaderOps {
+/**
+ * These are the portions of Scala imported into OptiML's scope.
+ */
+trait OptiMLScalaOpsPkg extends Base
+    with ImplicitOps with OrderingOps with StringOps
+    with RangeOps with IOOps with ArrayOps with BooleanOps with PrimitiveOps with MiscOps
+    with Equal with IfThenElse with Variables with While with TupleOps
+
+trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg
+    with ImplicitOpsExp with OrderingOpsExp with StringOpsExp
+    with RangeOpsExp with IOOpsExp with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp
+    with FunctionsExp with EqualExp with IfThenElseExp with VariablesExp with WhileExp with TupleOpsExp
+    with DSLOpsExp
+
+trait OptiMLScalaCodeGenPkg extends ScalaGenImplicitOps with ScalaGenOrderingOps
+    with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps with ScalaGenArrayOps with ScalaGenBooleanOps
+    with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenFunctions with ScalaGenEqual with ScalaGenIfThenElse
+    with ScalaGenVariables with ScalaGenWhile with ScalaGenTupleOps with ScalaGenDSLOps { val IR: OptiMLScalaOpsPkgExp  }
+
+trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
+    with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
+    with CudaGenPrimitiveOps with CudaGenMiscOps with CudaGenFunctions with CudaGenEqual with CudaGenIfThenElse
+    with CudaGenVariables with CudaGenWhile { val IR: OptiMLScalaOpsPkgExp  }
+
+
+/**
+ * This the trait that every OptiML application must extend.
+ */
+trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps
+  with VectorOps with MatrixOps with MLInputReaderOps {
+
   this: DeliteApplication =>
+
 }
 
-trait OptiMLExp extends OptiML with ScalaOpsPkgExp with LanguageOpsExp with DeliteOpsExp
+
+/**
+ * These are the corresponding IR nodes for OptiML.
+ */
+trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ArithOpsExp
   with VectorOpsExpOpt with VectorViewOpsExp with MatrixOpsExpOpt with MLInputReaderOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
-  with MatrixImplOpsStandard with MLInputReaderImplOpsStandard {
+  with MatrixImplOpsStandard with MLInputReaderImplOpsStandard
+  with DeliteOpsExp {
   this: DeliteApplication =>
 
   def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericNestedCodegen{val IR: OptiMLExp.this.type} = {
@@ -30,6 +66,10 @@ trait OptiMLExp extends OptiML with ScalaOpsPkgExp with LanguageOpsExp with Deli
 
 }
 
+
+/**
+ * OptiML code generators
+ */
 trait OptiMLCodeGenBase extends GenericCodegen {
   def dsmap(line: String) = line
 
@@ -59,7 +99,7 @@ trait OptiMLCodeGenBase extends GenericCodegen {
   }
 }
 
-trait OptiMLCodeGenScala extends OptiMLCodeGenBase with ScalaCodeGenPkg with ScalaGenLanguageOps
+trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenLanguageOps with ScalaGenArithOps
   with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with ScalaGenDeliteOps with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
 
@@ -104,7 +144,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with ScalaCodeGenPkg with Sca
   }
 }
 
-trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with CudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDeliteOps// with CudaGenVectorViewOps
+trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDeliteOps// with CudaGenVectorViewOps
  // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps   //TODO:DeliteCodeGenOverrideScala needed?
 {
 

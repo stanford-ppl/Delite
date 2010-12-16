@@ -29,9 +29,14 @@ class ThreadPool(numThreads: Int) {
       val worker = new ExecutionThread
       pool(i) = worker
       val thread = new Thread(worker, "ExecutionThread-"+i) //spawn new machine thread
-      thread.setDaemon(true) //to handle shutdown
       thread.start
       i += 1
+    }
+  }
+
+  def shutdown {
+    for (i <- 0 until pool.length) {
+      pool(i).queue.put(new Shutdown(pool(i)))
     }
   }
 

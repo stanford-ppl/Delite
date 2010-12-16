@@ -23,12 +23,15 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
   }
 
   def apply(i: Int, j: Int) : T = {
-    _data(chkPos(i*numCols+j))
+    _data(i*numCols+j)
   }
 
   def update(row: Int, col: Int, x: T) = {
-    _data(chkPos(row*numCols+col)) = x
+    _data(row*numCols+col) = x
   }
+
+  def dcApply(idx: Int) : T = _data(idx)
+  def dcUpdate(idx: Int, x: T) = { _data(idx) = x }
 
   def vview(start: Int, stride: Int, length: Int, is_row: Boolean) : VectorViewImpl[T] = {
     new VectorViewImpl[T](_data, start, stride, length, is_row)

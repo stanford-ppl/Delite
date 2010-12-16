@@ -1,4 +1,4 @@
-package ppl.delite.runtime.codegen.kernels.scala
+package ppl.delite.runtime.codegen.kernels.scala.examples
 
 /**
  * Author: Kevin J. Brown
@@ -19,32 +19,43 @@ package ppl.delite.runtime.codegen.kernels.scala
 object ExampleReduce0 {
 
   //this is the apply method of another (kernel) object: shouldn't be generated
-  def func(bound0: Double, bound1: Double): Double = {
-    bound0 + bound1
+  def kernel_apply(in0: Array[Double], in1: Double): Reduce = {
+    new Reduce {
+      def in = in0
+      //note that functions have fixed parameter lists
+      def reduce(r1: Double, r2: Double): Double = r1 + r2 + in1
+    }
+  }
+
+  abstract class Reduce {
+    def in: Array[Double]
+    def reduce(r1: Double, r2: Double): Double
   }
 
   //apply for the master reducer returns the result
-  def apply(in: Array[Double]): Double = {
+  def apply(in0: Array[Double], in1: Double): Double = {
+    val reduce = kernel_apply(in0, in1)
     //first level of tree (log(numChunks) levels total)
-    var acc = collReduce(in)
+    var acc = collReduce(reduce)
     //second level of tree
-    acc = func(acc, ExampleReduce1.get)
+    acc = reduce.reduce(acc, ExampleReduce1.get)
     //third level of tree
-    acc = func(acc, ExampleReduce2.get)
+    acc = reduce.reduce(acc, ExampleReduce2.get)
     //fourth level of tree
-    acc = func(acc, ExampleReduce4.get)
+    acc = reduce.reduce(acc, ExampleReduce4.get)
     //return result
     acc
   }
 
-  private def collReduce(in: Array[Double]): Double = {
+  private def collReduce(reduce: Reduce): Double = {
+    val in = reduce.in
     val size = in.size
     var idx = size*0/8 //size*chunkIdx/numChunks
     val end = size*1/8 //size*(chunkIdx+1)/numChunks
     var acc = in(idx) //TODO: this assumes that (end - idx) >= 1; what should we do if 0?
     idx += 1
     while (idx < end) {
-      acc = func(acc, in(idx))
+      acc = reduce.reduce(acc, in(idx))
       idx += 1
     }
     acc
@@ -55,16 +66,26 @@ object ExampleReduce0 {
 object ExampleReduce6 {
 
   //this is the apply method of another (kernel) object: shouldn't be generated
-  def func(bound0: Double, bound1: Double): Double = {
-    bound0 + bound1
+  def kernel_apply(in0: Array[Double], in1: Double): Reduce = {
+    new Reduce {
+      def in = in0
+      //note that functions have fixed parameter lists
+      def reduce(r1: Double, r2: Double): Double = r1 + r2 + in1
+    }
+  }
+
+  abstract class Reduce {
+    def in: Array[Double]
+    def reduce(r1: Double, r2: Double): Double
   }
 
   //apply for the helper reducers all return Unit
-  def apply(in: Array[Double]) {
-    //first level of tree
-    var acc = collReduce(in)
+  def apply(in0: Array[Double], in1: Double) {
+    val reduce = kernel_apply(in0, in1)
+    //first level of tree (log(numChunks) levels total)
+    var acc = collReduce(reduce)
     //second level of tree
-    acc = func(acc, ExampleReduce7.get)
+    acc = reduce.reduce(acc, ExampleReduce7.get)
     //this chunk doesn't participate in third level => return
     set(acc)
   }
@@ -85,14 +106,15 @@ object ExampleReduce6 {
     notReady = false
   }
 
-  private def collReduce(in: Array[Double]): Double = {
+  private def collReduce(reduce: Reduce): Double = {
+    val in = reduce.in
     val size = in.size
     var idx = size*6/8 //size*chunkIdx/numChunks
     val end = size*7/8 //size*(chunkIdx+1)/numChunks
     var acc = in(idx)
     idx += 1
     while (idx < end) {
-      acc = func(acc, in(idx))
+      acc = reduce.reduce(acc, in(idx))
       idx += 1
     }
     acc

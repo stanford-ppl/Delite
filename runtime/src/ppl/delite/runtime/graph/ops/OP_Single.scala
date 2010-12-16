@@ -11,7 +11,7 @@ import ppl.delite.runtime.graph.targets._
  * Stanford University
  */
 
-class OP_Single(kernel: String, resultType: Map[Targets.Value, String]) extends DeliteOP {
+class OP_Single(val id: String, kernel: String, resultType: Map[Targets.Value, String]) extends DeliteOP {
 
   final def isDataParallel = false
 

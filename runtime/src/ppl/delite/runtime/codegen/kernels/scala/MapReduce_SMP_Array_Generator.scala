@@ -1,7 +1,7 @@
 package ppl.delite.runtime.codegen.kernels.scala
 
-import ppl.delite.runtime.codegen.ScalaCompile
 import ppl.delite.runtime.graph.ops.OP_MapReduce
+import ppl.delite.runtime.codegen.{ExecutableGenerator, ScalaCompile}
 
 /**
  * Author: Kevin J. Brown
@@ -22,20 +22,20 @@ import ppl.delite.runtime.graph.ops.OP_MapReduce
 
 object MapReduce_SMP_Array_Generator {
 
-  def makeChunk(op: OP_MapReduce, chunkIdx: Int, numChunks: Int): OP_MapReduce = {
+  def makeChunk(op: OP_MapReduce, chunkIdx: Int, numChunks: Int, kernelPath: String): OP_MapReduce = {
     val chunk = if (chunkIdx == 0) op else op.chunk(chunkIdx)
-    ScalaCompile.addSource(makeKernel(chunk, op, chunkIdx, numChunks))
+    ScalaCompile.addSource(makeKernel(chunk, op, chunkIdx, numChunks, kernelPath))
     chunk
   }
 
-  private def makeKernel(op: OP_MapReduce, master: OP_MapReduce, chunkIdx: Int, numChunks: Int) = {
+  private def makeKernel(op: OP_MapReduce, master: OP_MapReduce, chunkIdx: Int, numChunks: Int, kernelPath: String) = {
     val out = new StringBuilder
 
     //update the op with this kernel
     updateOP(op, master, chunkIdx)
 
     //the header
-    writeHeader(out, master, chunkIdx)
+    writeHeader(out, master, chunkIdx, kernelPath)
 
     //the kernel
     writeKernel(out, op, master, chunkIdx, numChunks)
@@ -59,8 +59,8 @@ object MapReduce_SMP_Array_Generator {
     op.setKernelName(kernelName(master, idx))
   }
 
-  private def writeHeader(out: StringBuilder, master: OP_MapReduce, idx: Int) {
-    out.append("import generated.scala._\n") //TODO: this should be obtained from path
+  private def writeHeader(out: StringBuilder, master: OP_MapReduce, idx: Int, kernelPath: String) {
+    ExecutableGenerator.writePath(kernelPath, out)
     out.append("object ")
     out.append(kernelName(master, idx))
     out.append(" {\n")
@@ -110,11 +110,11 @@ object MapReduce_SMP_Array_Generator {
     out.append('/')
     out.append(numChunks)
     out.append('\n')
-    out.append("var acc = mapReduce.map(in(idx))\n")
+    out.append("var acc = mapReduce.map(in.dcApply(idx))\n")
     out.append("idx += 1\n")
     out.append("while (idx < end) {\n")
-    //out.append("acc = mapReduce.reduce(acc, mapReduce.map(in(idx)))\n")
-    out.append("acc = mapReduce.mapreduce(acc, in(idx))\n")
+    //out.append("acc = mapReduce.reduce(acc, mapReduce.map(in.dcApply(idx)))\n")
+    out.append("acc = mapReduce.mapreduce(acc, in.dcApply(idx))\n")
     out.append("idx += 1\n")
     out.append("}\n") //return acc
 
@@ -162,11 +162,11 @@ object MapReduce_SMP_Array_Generator {
     out.append('/')
     out.append(numChunks)
     out.append('\n')
-    out.append("var acc = mapReduce.map(in(idx))\n")
+    out.append("var acc = mapReduce.map(in.dcApply(idx))\n")
     out.append("idx += 1\n")
     out.append("while (idx < end) {\n")
-    out.append("acc = mapReduce.mapreduce(acc, in(idx))\n")
-    //out.append("acc = mapReduce.reduce(acc, mapReduce.map(in(idx)))\n")
+    out.append("acc = mapReduce.mapreduce(acc, in.dcApply(idx))\n")
+    //out.append("acc = mapReduce.reduce(acc, mapReduce.map(in.dcApply(idx)))\n")
     out.append("idx += 1\n")
     out.append("}\n acc\n }\n") //return acc
 

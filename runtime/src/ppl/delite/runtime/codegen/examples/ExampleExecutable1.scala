@@ -1,7 +1,8 @@
-package ppl.delite.runtime.codegen
+package ppl.delite.runtime.codegen.examples
 
 import java.util.concurrent.locks.ReentrantLock
 import ppl.delite.runtime.data.Data
+import ppl.delite.runtime.codegen.DeliteExecutable
 
 /**
  * Author: Kevin J. Brown
@@ -29,8 +30,6 @@ object ExampleExecutable1 extends DeliteExecutable {
 
     val x2 = kernel2_run(x1)
     Res2.set(x2)
-
-    //TODO: mark done
 
   }
 

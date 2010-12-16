@@ -19,10 +19,16 @@ class SMPExecutor extends Executor {
 
   val threadPool = new ThreadPool(numThreads)
 
-  def run(schedule: StaticSchedule) {
+  def init() {
     threadPool.init
-    println("SMP Executor initialized with " + numThreads + " threads")
+  }
+
+  def run(schedule: StaticSchedule) {
     threadPool.submitAll(schedule)
+  }
+
+  def shutdown() {
+    threadPool.shutdown
   }
 
 }

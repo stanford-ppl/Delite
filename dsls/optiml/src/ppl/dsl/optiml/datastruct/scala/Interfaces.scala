@@ -4,20 +4,33 @@ package ppl.dsl.optiml.datastruct.scala
  * Delite
  */
 
-trait DeliteOpMapReduce[@specialized A, @specialized R] {
-    /**
-   * The input collection
-   */
+/**
+ * @tparam CR  A subtype of DeliteCollection[B]; passed as a separate parameter to avoid requiring a higher kinded type.
+ */
+trait DeliteOpMap[@specialized A, @specialized B, CR] {
   def in: DeliteCollection[A]
+  def out: CR
+  def map(a: A): B
+}
 
-  /**
-   * Map: A => R
-   */
+/**
+ * @tparam CR  A subtype of DeliteCollection[R]; passed as a separate parameter to avoid requiring a higher kinded type.
+ */
+trait DeliteOpZipWith[@specialized A, @specialized B, @specialized R, CR] {
+  def inA: DeliteCollection[A]
+  def inB: DeliteCollection[B]
+  def out: CR
+  def zip(a: A, b: B): R
+}
+
+trait DeliteOpReduce[@specialized R] {
+  def in: DeliteCollection[R]
+  def reduce(r1: R, r2: R): R
+}
+
+trait DeliteOpMapReduce[@specialized A, @specialized R] {
+  def in: DeliteCollection[A]
   def map(elem: A): R
-
-  /**
-   *  Reduce: (R,R) => R
-   */
   def reduce(r1: R, r2: R): R
 
   /**
@@ -25,13 +38,12 @@ trait DeliteOpMapReduce[@specialized A, @specialized R] {
    * A subclass can override to fuse the implementations
    */
   def mapreduce(acc: R, elem: A): R = reduce(acc, map(elem))
-
 }
 
 trait DeliteCollection[@specialized T] {
   def size: Int
-  def apply(idx: Int): T
-  def update(idx: Int, x: T)
+  def dcApply(idx: Int): T
+  def dcUpdate(idx: Int, x: T)
 }
 
 /**
@@ -45,6 +57,9 @@ trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def apply(n: Int) : T
   def update(index: Int, x: T)
 
+  def dcApply(idx: Int) = apply(idx)
+  def dcUpdate(idx: Int, x: T) = update(idx, x)
+
   // DeliteCollection
   def size = length
 }
@@ -56,7 +71,7 @@ trait VectorView[@specialized T] extends Vector[T]
 /**
  * Matrix
  */
-trait Matrix[@specialized T] {
+trait Matrix[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   // fields required on real underlying data structure impl
   def numRows: Int
   def numCols: Int

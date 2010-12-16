@@ -20,4 +20,8 @@ abstract class Executor {
 
   def run(schedule: StaticSchedule): Unit
 
+  def init(): Unit
+
+  def shutdown(): Unit
+
 }

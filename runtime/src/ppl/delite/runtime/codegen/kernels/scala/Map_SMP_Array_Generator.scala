@@ -1,7 +1,7 @@
 package ppl.delite.runtime.codegen.kernels.scala
 
-import ppl.delite.runtime.codegen.ScalaCompile
 import ppl.delite.runtime.graph.ops.OP_Map
+import ppl.delite.runtime.codegen.{ExecutableGenerator, ScalaCompile}
 
 /**
  * Author: Kevin J. Brown
@@ -20,20 +20,20 @@ import ppl.delite.runtime.graph.ops.OP_Map
 
 object Map_SMP_Array_Generator {
 
-  def makeChunk(op: OP_Map, chunkIdx: Int, numChunks: Int): OP_Map = {
+  def makeChunk(op: OP_Map, chunkIdx: Int, numChunks: Int, kernelPath: String): OP_Map = {
     val chunk = if (chunkIdx == 0) op else op.chunk(chunkIdx)
-    ScalaCompile.addSource(makeKernel(chunk, chunkIdx, numChunks))
+    ScalaCompile.addSource(makeKernel(chunk, chunkIdx, numChunks, kernelPath))
     chunk
   }
 
-  private def makeKernel(op: OP_Map, chunkIdx: Int, numChunks: Int) = {
+  private def makeKernel(op: OP_Map, chunkIdx: Int, numChunks: Int, kernelPath: String) = {
     val out = new StringBuilder
 
     //update the op with this kernel
     updateOP(op, chunkIdx)
 
     //the header
-    writeHeader(out, op, chunkIdx)
+    writeHeader(out, op, chunkIdx, kernelPath)
 
     //the kernel
     writeKernel(out, op, chunkIdx, numChunks)
@@ -49,7 +49,8 @@ object Map_SMP_Array_Generator {
     op.setKernelName(kernelName(op, idx))
   }
 
-  private def writeHeader(out: StringBuilder, op: OP_Map, idx: Int) {
+  private def writeHeader(out: StringBuilder, op: OP_Map, idx: Int, kernelPath: String) {
+    ExecutableGenerator.writePath(kernelPath, out)
     out.append("object ")
     out.append(kernelName(op, idx))
     out.append(" {\n")
@@ -69,31 +70,40 @@ object Map_SMP_Array_Generator {
       out.append(": ")
       out.append(inputs.next.outputType)
     }
-    out.append(") {\n")
-    out.append("val size = in1.size\n") //assume the input to the map is the second input to the op and assume a "size" method exists
-    out.append("var idx = size*") //var idx = size*chunkIdx/numChunks
-    out.append(chunkIdx)
-    out.append('/')
-    out.append(numChunks)
-    out.append('\n')
-    out.append("val end = size*") //vl end = size*(chunkIdx+1)/numChunks
-    out.append(chunkIdx+1)
-    out.append('/')
-    out.append(numChunks)
-    out.append('\n')
-    out.append("while (idx < end) {\n")
-    out.append("in0(idx) = ") //assume the output of the map is the first input to the op
+    out.append("): ")
+    out.append(op.outputType)
+    out.append(" = {\n")
+
+    //call the kernel to get the functions
+    out.append("val map = ")
     out.append(op.function)
-    out.append('(')
-    out.append("in1(idx)") //in1 is the input collection element
-    for (i <- 2 until inIdx) { //rest of inputs passed in as is (free vars)
+    out.append("(in0")
+    for (i <- 1 until inIdx) {
       out.append(", in")
       out.append(i)
     }
     out.append(')')
     out.append('\n')
+
+    out.append("val in = map.in\n")
+    out.append("val out = map.out\n")
+    out.append("val size = in.size\n")
+    out.append("var idx = size*") //var idx = size*chunkIdx/numChunks
+    out.append(chunkIdx)
+    out.append('/')
+    out.append(numChunks)
+    out.append('\n')
+    out.append("val end = size*") //val end = size*(chunkIdx+1)/numChunks
+    out.append(chunkIdx+1)
+    out.append('/')
+    out.append(numChunks)
+    out.append('\n')
+    out.append("while (idx < end) {\n")
+    out.append("out.dcUpdate(idx, map.map(in.dcApply(idx)))\n")
     out.append("idx += 1\n")
-    out.append("}\n}\n")
+    out.append("}\n")
+    if (chunkIdx == 0) out.append("out\n")
+    out.append("}\n")
   }
 
   private def kernelName(op: OP_Map, idx: Int) = {

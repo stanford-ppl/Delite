@@ -45,7 +45,7 @@ final class SMPStaticScheduler extends StaticScheduler {
     enqueueRoots(graph)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
-      scheduleOne(op)
+      scheduleOne(op, graph)
       processConsumers(op)
     }
   }
@@ -53,9 +53,9 @@ final class SMPStaticScheduler extends StaticScheduler {
   //NOTE: this is currently the simple scheduler from Delite 1.0
   var nextThread = 0
 
-  private def scheduleOne(op: DeliteOP) {
+  private def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph) {
     if (op.isDataParallel) {
-      split(op) //split and schedule op across all threads
+      split(op, graph) //split and schedule op across all threads
     }
     else {
       //look for best place to put this op (simple nearest-neighbor clustering)
@@ -110,11 +110,11 @@ final class SMPStaticScheduler extends StaticScheduler {
   }
 
   //TODO: since codegen of data parallel ops is non-optional, some of this should be factored out of the different schedulers
-  private def split(op: DeliteOP) {
+  private def split(op: DeliteOP, graph: DeliteTaskGraph) {
     op match { //NOTE: match on OP type since different data parallel ops can have different semantics / scheduling implications
       case map: OP_Map => {
         for (i <- 0 until numThreads) {
-          val chunk = Map_SMP_Array_Generator.makeChunk(map, i, numThreads)
+          val chunk = Map_SMP_Array_Generator.makeChunk(map, i, numThreads, graph.kernelPath)
           procs(i).add(chunk)
           chunk.isScheduled = true
           chunk.scheduledResource = i
@@ -122,7 +122,15 @@ final class SMPStaticScheduler extends StaticScheduler {
       }
       case reduce: OP_Reduce => {
         for (i <- 0 until numThreads) {
-          val chunk = Reduce_SMP_Array_Generator.makeChunk(reduce, i, numThreads)
+          val chunk = Reduce_SMP_Array_Generator.makeChunk(reduce, i, numThreads, graph.kernelPath)
+          procs(i).add(chunk)
+          chunk.isScheduled = true
+          chunk.scheduledResource = i
+        }
+      }
+      case zip: OP_Zip => {
+        for (i <- 0 until numThreads) {
+          val chunk = Zip_SMP_Array_Generator.makeChunk(zip, i, numThreads, graph.kernelPath)
           procs(i).add(chunk)
           chunk.isScheduled = true
           chunk.scheduledResource = i
@@ -130,7 +138,7 @@ final class SMPStaticScheduler extends StaticScheduler {
       }
       case mapReduce: OP_MapReduce => {
         for (i <- 0 until numThreads) {
-          val chunk = MapReduce_SMP_Array_Generator.makeChunk(mapReduce, i, numThreads)
+          val chunk = MapReduce_SMP_Array_Generator.makeChunk(mapReduce, i, numThreads, graph.kernelPath)
           procs(i).add(chunk)
           chunk.isScheduled = true
           chunk.scheduledResource = i

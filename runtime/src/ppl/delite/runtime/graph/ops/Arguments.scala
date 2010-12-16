@@ -30,6 +30,10 @@ object Arguments extends DeliteOP {
     else error("Arguments OP does not support targets other than Scala")
   }
 
+  var _id: String = _
+  def id = _id
+  private[graph] def id_=(ID: String) { _id = ID }
+
   override def outputType = "Array[String]"
 
   def nested = null

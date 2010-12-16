@@ -2,6 +2,7 @@ package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
 import java.io.{FileWriter, FileOutputStream, File}
+import ppl.delite.runtime.Config
 
 /**
  * Author: Kevin J. Brown
@@ -43,7 +44,7 @@ object CudaCompile {
       else error("OS " + os + " not currently supported with CUDA")
 
     val pathSep = System.getProperty("file.separator")
-    val deliteHome = System.getProperty("user.dir") //TODO: this requires program to be executed from delite home, should probably have a delite.home property
+    val deliteHome = Config.deliteHome
 
     val process = Runtime.getRuntime.exec(Array[String](
       "nvcc",
