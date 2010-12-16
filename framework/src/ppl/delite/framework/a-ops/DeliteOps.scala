@@ -129,13 +129,14 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => {
+      val save = deliteKernel
       deliteKernel = false
       val b = s.block
       stream.println("val " + quote(sym) + " = { ")
       emitBlock(b)
       stream.println(quote(getBlockResult(b)))
       stream.println("}")
-      deliteKernel = true
+      deliteKernel = save
     }
     case map:DeliteOpMap[_,_,_] => {
       val mapout = getReifiedOutput(map.out)
