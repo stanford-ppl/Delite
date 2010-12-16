@@ -109,10 +109,10 @@ object Reduce_SMP_Array_Generator {
     out.append('/')
     out.append(numChunks)
     out.append('\n')
-    out.append("var acc = in(idx)\n")
+    out.append("var acc = in.dcApply(idx)\n")
     out.append("idx += 1\n")
     out.append("while (idx < end) {\n")
-    out.append("acc = reduce.reduce(acc, in(idx))\n")
+    out.append("acc = reduce.reduce(acc, in.dcApply(idx))\n")
     out.append("idx += 1\n")
     out.append("}\n") //return acc
 
@@ -160,10 +160,10 @@ object Reduce_SMP_Array_Generator {
     out.append('/')
     out.append(numChunks)
     out.append('\n')
-    out.append("var acc = in(idx)\n")
+    out.append("var acc = in.dcApply(idx)\n")
     out.append("idx += 1\n")
     out.append("while (idx < end) {\n")
-    out.append("acc = reduce.reduce(acc, in(idx))\n")
+    out.append("acc = reduce.reduce(acc, in.dcApply(idx))\n")
     out.append("idx += 1\n")
     out.append("}\n acc\n }\n") //return acc
 

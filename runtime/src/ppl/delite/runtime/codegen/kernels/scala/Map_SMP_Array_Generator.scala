@@ -99,7 +99,7 @@ object Map_SMP_Array_Generator {
     out.append(numChunks)
     out.append('\n')
     out.append("while (idx < end) {\n")
-    out.append("out(idx) = map.map(in(idx))\n")
+    out.append("out.dcUpdate(idx, map.map(in.dcApply(idx)))\n")
     out.append("idx += 1\n")
     out.append("}\n")
     if (chunkIdx == 0) out.append("out\n")

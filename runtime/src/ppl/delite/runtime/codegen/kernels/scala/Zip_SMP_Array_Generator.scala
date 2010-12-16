@@ -100,7 +100,7 @@ object Zip_SMP_Array_Generator {
     out.append(numChunks)
     out.append('\n')
     out.append("while (idx < end) {\n")
-    out.append("out(idx) = zip.zip(inA(idx), inB(idx))\n")
+    out.append("out.dcUpdate(idx, zip.zip(inA.dcApply(idx), inB.dcApply(idx)))\n")
     out.append("idx += 1\n")
     out.append("}\n")
     if (chunkIdx == 0) out.append("out\n")
