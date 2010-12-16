@@ -23,6 +23,6 @@ object Stopwatch {
   }
 
   def print() {
-    println("Stopwatch time: " + theTime/1e3 + " s")
+    println("Stopwatch time: " + theTime/1000D +"s")
   }
 }

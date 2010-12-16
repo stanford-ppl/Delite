@@ -76,6 +76,7 @@ object Delite {
       Stopwatch.print()
     }
 
+    PerformanceTimer.dumpStats
   }
 
   def loadDeliteDEG(filename: String) = {
