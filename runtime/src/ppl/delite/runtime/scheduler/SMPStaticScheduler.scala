@@ -144,6 +144,14 @@ final class SMPStaticScheduler extends StaticScheduler {
           chunk.scheduledResource = i
         }
       }
+      case foreach: OP_Foreach => {
+        for (i <- 0 until numThreads) {
+          val chunk = Foreach_SMP_Array_Generator.makeChunk(foreach, i, numThreads, graph.kernelPath)
+          procs(i).add(chunk)
+          chunk.isScheduled = true
+          chunk.scheduledResource = i
+        }
+      }
       case other => error("OP type not recognized: " + other.getClass.getSimpleName)
     }
   }

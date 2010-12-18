@@ -46,6 +46,7 @@ object DeliteTaskGraph {
         case "Map" => processCommon(op, "OP_Map")
         case "Reduce" => processCommon(op, "OP_Reduce")
         case "ZipWith" => processCommon(op, "OP_Zip")
+        case "Foreach" => processCommon(op, "OP_Foreach")
         case "Arguments" => processArgumentsTask(op)
         case "EOP" => processEOPTask(op)
         case err@_ => unsupportedType(err)
@@ -112,6 +113,7 @@ object DeliteTaskGraph {
       case "OP_Map" => new OP_Map(id, "kernel_"+id, resultMap)
       case "OP_Reduce" => new OP_Reduce(id, "kernel_"+id, resultMap)
       case "OP_Zip" => new OP_Zip(id, "kernel_"+id, resultMap)
+      case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap)
       case other => error("OP Type not recognized: " + other)
     }
 

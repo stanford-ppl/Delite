@@ -143,3 +143,33 @@ object TestKernelMapReduce {
     }
   }
 }
+
+abstract class DeliteOPForeach[A] {
+  def in: DeliteCollection[A]
+  def foreach(elem: A): Unit
+  def sync(idx: Int): List[_]
+}
+
+object TestKernelForeach {
+  def apply(in0: ArrayColl[Int], out: ArrayColl[Int]): DeliteOPForeach[Int] = {
+    new DeliteOPForeach[Int] {
+      def in = in0
+      def foreach(elem: Int) {
+        val old = out.dcApply(0)
+        Thread.sleep(10) //to magnify the race condition
+        val now = old + elem
+        out.dcUpdate(0, now)
+        //println(old + " + " + elem + " = " + now)
+      }
+      def sync(idx: Int) = List(in0)
+    }
+  }
+}
+
+object TestKernelOut {
+  def apply() = new ArrayColl[Int](1)
+}
+
+object TestKernelPrint0 {
+  def apply(in: ArrayColl[Int]) = println(in.dcApply(0))
+}

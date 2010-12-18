@@ -129,3 +129,20 @@ class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*
   }
 
 }
+
+class TestForeach(func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
+        extends OP_Foreach("", func, Map[Targets.Value,String](Targets.Scala -> "Unit")) {
+
+  override val id = System.identityHashCode(this).toString
+
+  for (dep <- deps) {
+    this.addDependency(dep)
+    dep.addConsumer(this)
+  }
+
+  for (f <- free.reverse) { //need a reverse to preserve order (addInput prepends)
+    this.addInput(f)
+  }
+  this.addInput(input)
+
+}
