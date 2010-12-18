@@ -40,6 +40,15 @@ object DeliteOpTests extends DeliteApplication with OptiMLExp {
     println(x)
   }
 
+  def testForeachK() = {
+    val v = Vector.range(0, 10)
+    for (e <- v) {
+      if ((e > 0) && (e < v.length)) {
+        println(v(e-1) + v(e+1))
+      }
+    }
+  }
+
 
   // straight-line (nested)
   def testMapS() = {
@@ -77,6 +86,7 @@ object DeliteOpTests extends DeliteApplication with OptiMLExp {
 
 
   def main() = {
+    /*
     testMapK()
     testZipK()
     testReduceK()
@@ -86,6 +96,8 @@ object DeliteOpTests extends DeliteApplication with OptiMLExp {
     testZipS()
     testReduceS()
     testMapReduceS()
+    */
+    testForeachK()
   }
 
 }

@@ -101,13 +101,15 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
    * @param  in     the input collection
    * @param  v      the bound symbol that the foreach function operates over
    * @param  func   the foreach function; reified version of Exp[A] => Exp[Unit]
-   * @param  sync   a function from v to a list of objects that should be locked, in a total ordering,
-   *                prior to chunk execution, and unlocked after; reified version of Exp[A] => Exp[List[_]]
+   * @param  i      the bound symbol that the sync function operates over
+   * @param  sync   a function from an index to a list of objects that should be locked, in a total ordering,
+   *                prior to chunk execution, and unlocked after; reified version of Exp[Int] => Exp[List[_]]
    */
   abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] {
     val in: Exp[C[A]]
     val v: Exp[A]
     val func: Exp[Unit]
+    val i: Exp[Int]
     val sync: Exp[List[_]]
   }
 
@@ -129,7 +131,7 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
     case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) ++ syms(getReifiedOutput(zip.out)) else syms(zip.inA) ++ syms(zip.inB) ++ syms(getReifiedOutput(zip.out)) ++ syms(zip.func)
     case red: DeliteOpReduce[_] => if (shallow) syms(red.in) else syms(red.in) ++ syms(red.func)
     case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
-    case foreach: DeliteOpForeach[_,_] => if (shallow) syms(foreach.in) ++ syms(foreach.sync) else syms(foreach.in) ++ syms(foreach.sync) ++ syms(foreach.func)
+    case foreach: DeliteOpForeach[_,_] => if (shallow) syms(foreach.in) else syms(foreach.in) ++ syms(foreach.func)
     case _ => super.syms(e)
   }
 
@@ -300,7 +302,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         deliteKernel = false
         stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpForeach[" + remap(foreach.v.Type) + "] {")
         stream.println("def in = " + quote(foreach.in))
-        stream.println("def sync(" + quote(foreach.v) + ": " + remap(foreach.v.Type) + ") = {")
+        stream.println("def sync(" + quote(foreach.i) + ": " + remap(foreach.i.Type) + ") = {")
         emitBlock(foreach.sync)
         stream.println(quote(getBlockResult(foreach.sync)))
         stream.println("}")

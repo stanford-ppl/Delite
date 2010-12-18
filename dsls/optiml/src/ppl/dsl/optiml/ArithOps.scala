@@ -6,15 +6,16 @@ import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
 import java.io.PrintWriter
 
-/* Arith definitions for OptiML supported types.
-*
-* author:  Arvind Sujeeth (asujeeth@stanford.edu)
-* created: Dec 2, 2010
-*
-* Pervasive Parallelism Laboratory (PPL)
-* Stanford University
-*
-*/
+/*
+ * Arith definitions for OptiML supported types.
+ *
+ * author:  Arvind Sujeeth (asujeeth@stanford.edu)
+ * created: Dec 2, 2010
+ *
+ * Pervasive Parallelism Laboratory (PPL)
+ * Stanford University
+ *
+ */
 
 trait ArithOps extends Variables with OverloadHack {
   this: OptiML =>
@@ -31,6 +32,12 @@ trait ArithOps extends Variables with OverloadHack {
   implicit def varArithToArithOps[T:Arith:Manifest](n: Var[T]) = new ArithOpsCls(readVar(n))
 
   class ArithOpsCls[T](lhs: Rep[T])(implicit mT: Manifest[T], arith: Arith[T]){
+    def +=(rhs: Rep[T]) = arith.+=(lhs,rhs)
+    def +(rhs: Rep[T]) = arith.+(lhs,rhs)
+    def -(rhs: Rep[T]) = arith.-(lhs,rhs)
+    def *(rhs: Rep[T]) = arith.*(lhs,rhs)
+    def /(rhs: Rep[T]) = arith./(lhs,rhs)
+
     def +=[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.+=(lhs,implicit_convert[A,T](rhs))
     def +[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.+(lhs,implicit_convert[A,T](rhs))
     def -[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.-(lhs,implicit_convert[A,T](rhs))

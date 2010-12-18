@@ -39,6 +39,7 @@ trait VectorOps extends DSLType with Variables {
     def t = vector_trans(x)
     def pprint = vector_pprint(x)
     def is_row = vector_is_row(x)
+    def foreach(block: Rep[A] => Rep[Unit]) = vector_foreach(x, block)
 
     def +=(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_plusequals(x,y)
     def +=(y: Rep[A]) = vector_insert(x,x.length,y)
@@ -72,6 +73,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
   def vector_map[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[B]): Rep[Vector[B]]
   def vector_sum[A:Manifest:Arith](x: Rep[Vector[A]]) : Rep[A]
+  def vector_foreach[A:Manifest](x: Rep[Vector[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
 
   def vector_nil[A:Manifest] : Rep[Vector[A]]
 
@@ -81,7 +83,7 @@ trait VectorOps extends DSLType with Variables {
 
 trait VectorOpsExp extends VectorOps with VariablesExp {
 
-  this: VectorImplOps with ArithOpsExp with DeliteOpsExp =>
+  this: VectorImplOps with OptiMLExp =>
 
   implicit def varToRepVecOps[A:Manifest](x: Var[Vector[A]]) = new vecRepCls(readVar(x))
 
@@ -188,6 +190,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val out = Vector[B](in.length, in.is_row)
   }
 
+  case class VectorForeach[A:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[Unit])
+    extends DeliteOpForeach[A,Vector] {
+
+    val i = fresh[Int]
+    val sync = reifyEffects(if ((i > 0) && (i < in.length)) List(in(i-1),in(i),in(i+1)) else List(in(i)))
+  }
 
 
   //////////////
@@ -223,6 +231,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     VectorMap(x, v, func)
   }
   def vector_sum[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorSum(x)
+  def vector_foreach[A:Manifest](x: Rep[Vector[A]], block: Rep[A] => Rep[Unit]) = {
+    val v = fresh[A]
+    val func = reifyEffects(block(v))
+    reflectEffect(VectorForeach(x, v, func))
+  }
+
 }
 
 /**
@@ -230,7 +244,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
  */
 
 trait VectorOpsExpOpt extends VectorOpsExp {
-  this: VectorImplOps with ArithOpsExp with DSLOpsExp with DeliteOpsExp =>
+  this: VectorImplOps with OptiMLExp =>
 
   override def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
     // (TB + TD) == T(B + D)

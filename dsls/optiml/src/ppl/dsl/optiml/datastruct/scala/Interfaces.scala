@@ -42,8 +42,8 @@ trait DeliteOpMapReduce[@specialized A, @specialized R] {
 
 trait DeliteOpForeach[@specialized A] {
   def in: DeliteCollection[A]
-  def foreach: Unit
-  def sync(elem: A): List[_]
+  def foreach(idx: Int): Unit
+  def sync(idx: Int): List[_]
 }
 
 trait DeliteCollection[@specialized T] {
