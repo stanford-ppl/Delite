@@ -32,7 +32,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
     val in: Exp[C[A]]
     val v: Exp[A]
     val func: Exp[B]
-    val out: Exp[C[B]]
+    val alloc: Exp[C[B]]
   }
 
   /**
@@ -52,7 +52,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
     val inB: Exp[C[B]]
     val v: (Exp[A],Exp[B])
     val func: Exp[R]
-    val out: Exp[C[R]]
+    val alloc: Exp[C[R]]
   }
 
   /**
@@ -106,8 +106,8 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
 
   override def syms(e: Any): List[Sym[Any]] = e match {
     //case s: DeliteOpSingleTask[_] => if (shallow) Nil else syms(s.block)
-    case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) ++ syms(getReifiedOutput(map.out)) else syms(map.in) ++ syms(getReifiedOutput(map.out)) ++ syms(map.func)
-    case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) ++ syms(getReifiedOutput(zip.out)) else syms(zip.inA) ++ syms(zip.inB) ++ syms(getReifiedOutput(zip.out)) ++ syms(zip.func)
+    case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) else syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
+    case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) else syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
     case red: DeliteOpReduce[_] => if (shallow) syms(red.in) else syms(red.in) ++ syms(red.func)
     case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
     case _ => super.syms(e)
@@ -115,8 +115,8 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
 
   override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
     case s: DeliteOpSingleTask[_] => getFreeVarBlock(s.block,Nil)
-    case map: DeliteOpMap[_,_,_] => getFreeVarBlock(map.func,List(map.v.asInstanceOf[Sym[_]]))
-    case zip: DeliteOpZipWith[_,_,_,_] => getFreeVarBlock(zip.func,List(zip.v._1.asInstanceOf[Sym[_]], zip.v._2.asInstanceOf[Sym[_]]))
+    case map: DeliteOpMap[_,_,_] => getFreeVarBlock(List(map.func,map.alloc),List(map.v.asInstanceOf[Sym[_]]))
+    case zip: DeliteOpZipWith[_,_,_,_] => getFreeVarBlock(List(zip.func,zip.alloc),List(zip.v._1.asInstanceOf[Sym[_]], zip.v._2.asInstanceOf[Sym[_]]))
     case red: DeliteOpReduce[_] => getFreeVarBlock(red.func,List(red.v._1.asInstanceOf[Sym[_]], red.v._2.asInstanceOf[Sym[_]]))
     case mapR: DeliteOpMapReduce[_,_,_] => getFreeVarBlock(mapR.map, List(mapR.mV.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(mapR.reduce, List(mapR.rV._1.asInstanceOf[Sym[_]], mapR.rV._2.asInstanceOf[Sym[_]]))
     case _ => super.getFreeVarNode(rhs)
@@ -139,26 +139,29 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       deliteKernel = save
     }
     case map:DeliteOpMap[_,_,_] => {
-      val mapout = getReifiedOutput(map.out)
       if (deliteKernel == false){
         stream.println("val " + quote(sym) + " = {")
+        emitBlock(map.alloc)
         stream.println("var mapIdx = 0")
         stream.println("while (mapIdx < " + quote(map.in) + ".size) {")
         stream.println("val " + quote(map.v) + " = " + quote(map.in) + ".dcApply(mapIdx)")
-        stream.println(quote(mapout) + ".dcUpdate(mapIdx, " + " {")
+        stream.println(quote(getBlockResult(map.alloc)) + ".dcUpdate(mapIdx, " + " {")
         emitBlock(map.func)
         stream.println(quote(getBlockResult(map.func)))
         stream.println("})")
         stream.println("mapIdx += 1")
         stream.println("} // end while")
-        stream.println(quote(mapout))
+        stream.println(quote(getBlockResult(map.alloc)))
         stream.println("}")
       }
       else {
         deliteKernel = false
-        stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpMap[" + remap(map.v.Type) + "," + remap(map.func.Type) + "," + remap(mapout.Type) + "] {")
+        stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpMap[" + remap(map.v.Type) + "," + remap(map.func.Type) + "," + remap(getBlockResult(map.func).Type) + "] {")
         stream.println("def in = " + quote(map.in))
-        stream.println("def out = " + quote(mapout))
+        stream.println("def alloc = {")
+        emitBlock(map.alloc)
+        stream.println(quote(getBlockResult(map.alloc)))
+        stream.println("}")
         stream.println("def map(" + quote(map.v) + ": " + remap(map.v.Type) + ") = {")
         emitBlock(map.func)
         stream.println(quote(getBlockResult(map.func)))
@@ -168,28 +171,31 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
 
     }
     case zip: DeliteOpZipWith[_,_,_,_] => {
-      val zipout = getReifiedOutput(zip.out)
       if (deliteKernel == false){
         stream.println("val " + quote(sym) + " = {")
+        emitBlock(zip.alloc)
         stream.println("var zipIdx = 0")
         stream.println("while (zipIdx < " + quote(zip.inA) + ".size) {")
         stream.println("val " + quote(zip.v._1) + " = " + quote(zip.inA) + ".dcApply(zipIdx)")
         stream.println("val " + quote(zip.v._2) + " = " + quote(zip.inB) + ".dcApply(zipIdx)")
-        stream.println(quote(zipout) + ".dcUpdate(zipIdx, " + " {")
+        stream.println(quote(getBlockResult(zip.alloc)) + ".dcUpdate(zipIdx, " + " {")
         emitBlock(zip.func)
         stream.println(quote(getBlockResult(zip.func)))
         stream.println("})")
         stream.println("zipIdx += 1")
         stream.println("} // end while")
-        stream.println(quote(zipout))
+        stream.println(quote(getBlockResult(zip.alloc)))
         stream.println("}")
       }
       else {
         deliteKernel = false
-        stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpZipWith[" + remap(zip.v._1.Type) + "," + remap(zip.v._2.Type) + "," + remap(zip.func.Type) + "," + remap(zipout.Type) +"] {")
+        stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpZipWith[" + remap(zip.v._1.Type) + "," + remap(zip.v._2.Type) + "," + remap(zip.func.Type) + "," + remap(getBlockResult(zip.func).Type) +"] {")
         stream.println("def inA = " + quote(zip.inA))
         stream.println("def inB = " + quote(zip.inB))
-        stream.println("def out = " + quote(zipout))
+        stream.println("def alloc = {")
+        emitBlock(zip.alloc)
+        stream.println(quote(getBlockResult(zip.alloc)))
+        stream.println("}")
         stream.println("def zip(" + quote(zip.v._1) + ": " + remap(zip.v._1.Type) + ", " + quote(zip.v._2) + ": " + remap(zip.v._2.Type) + ") = {")
         emitBlock(zip.func)
         stream.println(quote(getBlockResult(zip.func)))

@@ -9,7 +9,7 @@ package ppl.dsl.optiml.datastruct.scala
  */
 trait DeliteOpMap[@specialized A, @specialized B, CR] {
   def in: DeliteCollection[A]
-  def out: CR
+  def alloc: CR
   def map(a: A): B
 }
 
@@ -19,7 +19,7 @@ trait DeliteOpMap[@specialized A, @specialized B, CR] {
 trait DeliteOpZipWith[@specialized A, @specialized B, @specialized R, CR] {
   def inA: DeliteCollection[A]
   def inB: DeliteCollection[B]
-  def out: CR
+  def alloc: CR
   def zip(a: A, b: B): R
 }
 
