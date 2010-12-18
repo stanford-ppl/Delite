@@ -11,7 +11,7 @@ import ops._
  * Stanford University
  */
 
-class TestGraph extends MapReduceGraph { //test choice
+class TestGraph extends ForeachGraph { //test choice
   EOP.addDependency(_result)
   _result.addConsumer(EOP)
   _result = EOP
@@ -79,4 +79,17 @@ abstract class MapReduceGraph extends DeliteTaskGraph {
 
   _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3)
   _result = node3
+}
+
+//simple foreach test
+abstract class ForeachGraph extends DeliteTaskGraph {
+  val base = "ppl.delite.runtime.graph.TestKernel"
+  val node1 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node2 = new TestSingle[ArrayColl[Int]](base+"Out")()()
+  val node3 = new TestForeach(base+"Foreach")(node1,node2)(node1,node2)
+  val node4 = new TestSingle[Unit](base+"Print0")(node3)(node2)
+
+  _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3, "node4"->node4)
+  _result = node4
+
 }
