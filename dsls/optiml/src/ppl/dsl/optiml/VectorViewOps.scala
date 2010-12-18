@@ -18,7 +18,7 @@ trait VectorViewOps extends DSLType with Base with OverloadHack {
   def vectorview_stride[A](x: Rep[VectorView[A]]): Rep[Int]
 
   // impl defs
-  def vectorview_new[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
+  def vectorview_new[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Rep[Int], isRow: Rep[Boolean]) : Rep[Vector[A]]
 }
 
 trait VectorViewOpsExp extends VectorViewOps with BaseExp { this: VectorViewImplOps with DeliteOpsExp =>
@@ -26,7 +26,7 @@ trait VectorViewOpsExp extends VectorViewOps with BaseExp { this: VectorViewImpl
   // implemented via method on real data structure
   case class VectorViewStart[A](x: Exp[VectorView[A]]) extends Def[Int]
   case class VectorViewStride[A](x: Exp[VectorView[A]]) extends Def[Int]
-  case class VectorViewNew[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Exp[Int], is_row: Exp[Boolean])
+  case class VectorViewNew[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Exp[Int], isRow: Exp[Boolean])
     extends Def[Vector[A]] {
     val mV = manifest[VectorViewImpl[A]]
   }
@@ -34,8 +34,8 @@ trait VectorViewOpsExp extends VectorViewOps with BaseExp { this: VectorViewImpl
   def vectorview_start[A](x: Exp[VectorView[A]]) = VectorViewStart(x)
   def vectorview_stride[A](x: Exp[VectorView[A]]) = VectorViewStride(x)
 
-  def vectorview_new[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Exp[Int], is_row: Exp[Boolean])
-    = reflectEffect(VectorViewNew[A](x, offset, stride, len, is_row))
+  def vectorview_new[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Exp[Int], isRow: Exp[Boolean])
+    = reflectEffect(VectorViewNew[A](x, offset, stride, len, isRow))
 }
 
 trait ScalaGenVectorViewOps extends ScalaGenBase {
@@ -44,8 +44,8 @@ trait ScalaGenVectorViewOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case v@VectorViewNew(x, offset, stride, len, is_row) =>
-      emitValDef(sym, "new " + remap(v.mV) + "(" + quote(x) + "," + quote(offset) + "," + quote(stride) + "," + quote(len) + "," + quote(is_row) + ")")
+    case v@VectorViewNew(x, offset, stride, len, isRow) =>
+      emitValDef(sym, "new " + remap(v.mV) + "(" + quote(x) + "," + quote(offset) + "," + quote(stride) + "," + quote(len) + "," + quote(isRow) + ")")
     case VectorViewStart(x)   => emitValDef(sym, quote(x) + ".start")
     case VectorViewStride(x)  => emitValDef(sym, quote(x) + ".stride")
 

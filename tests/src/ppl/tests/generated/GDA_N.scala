@@ -126,7 +126,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
     var x100 = x99
     val x88 = {
       val x75 = x74.length
-      val x76 = x74.is_row
+      val x76 = x74.isRow
       val x77 = {
         new ppl.dsl.optiml.datastruct.scala.VectorImpl[Boolean](x75,x76)
       }
@@ -160,7 +160,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
         val x109 = x55(x102)
         val x123 = {
           val x110 = x108.length
-          val x111 = x108.is_row
+          val x111 = x108.isRow
           val x112 = {
             new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x110,x111)
           }
@@ -187,7 +187,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
         val x109 = x55(x102)
         val x143 = {
           val x130 = x129.length
-          val x131 = x129.is_row
+          val x131 = x129.isRow
           val x132 = {
             new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x130,x131)
           }
@@ -223,7 +223,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
     var x187 = x186
     val x169 = {
       val x156 = x154.length
-      val x157 = x154.is_row
+      val x157 = x154.isRow
       val x158 = {
         new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x156,x157)
       }
@@ -242,7 +242,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
     }
     val x185 = {
       val x172 = x170.length
-      val x173 = x170.is_row
+      val x173 = x170.isRow
       val x174 = {
         new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x172,x173)
       }
@@ -267,7 +267,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
         val x192 = x55(x188)
         val x206 = {
           val x193 = x192.length
-          val x194 = x192.is_row
+          val x194 = x192.isRow
           val x195 = {
             new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x193,x194)
           }
@@ -286,7 +286,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
         }
         val x219 = {
           val x207 = x206.length
-          val x208 = x206.is_row
+          val x208 = x206.isRow
           val x209 = !x208
           val x210 = {
             new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x207,x209)
@@ -361,7 +361,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
         val x192 = x55(x188)
         val x279 = {
           val x193 = x192.length
-          val x194 = x192.is_row
+          val x194 = x192.isRow
           val x269 = {
             new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x193,x194)
           }
@@ -380,7 +380,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
         }
         val x292 = {
           val x280 = x279.length
-          val x281 = x279.is_row
+          val x281 = x279.isRow
           val x282 = !x281
           val x283 = {
             new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x280,x282)
@@ -464,7 +464,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
     val x347 = println(x346)
     val x348 = println("  mu0 = ")
     val x373 = {
-      val x349 = x169.is_row
+      val x349 = x169.isRow
       val x371 = if (x349) {
         val x350 = print("[ ")
         val x351 = x169.length
@@ -499,7 +499,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
     }
     val x374 = println("  mu1 = ")
     val x399 = {
-      val x375 = x185.is_row
+      val x375 = x185.isRow
       val x397 = if (x375) {
         val x376 = print("[ ")
         val x377 = x185.length

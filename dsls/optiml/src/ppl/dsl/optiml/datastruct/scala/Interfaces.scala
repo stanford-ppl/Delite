@@ -59,7 +59,7 @@ trait DeliteCollection[@specialized T] {
 trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   // fields required on real underlying data structure impl
   def length : Int
-  def is_row : Boolean
+  def isRow : Boolean
   def apply(n: Int) : T
   def update(index: Int, x: T)
 
@@ -86,7 +86,7 @@ trait Matrix[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def apply(i: Int) : VectorView[T]
   def apply(i: Int, j: Int) : T
   def update(row: Int, col: Int, x: T)
-  def vview(start: Int, stride: Int, length: Int, is_row: Boolean) : VectorView[T]
+  def vview(start: Int, stride: Int, length: Int, isRow: Boolean) : VectorView[T]
   def insertRow(pos: Int, x: Vector[T]): Matrix[T]
 }
 

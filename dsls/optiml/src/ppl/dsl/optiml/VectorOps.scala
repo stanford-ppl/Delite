@@ -13,10 +13,10 @@ trait VectorOps extends DSLType with Variables {
   this: ArithOps =>
 
   object Vector {
-    def apply[A : Manifest](len: Rep[Int], is_row : Rep[Boolean] = true) : Rep[Vector[A]] = vector_new(len, is_row)
+    def apply[A : Manifest](len: Rep[Int], isRow : Rep[Boolean] = true) : Rep[Vector[A]] = vector_new(len, isRow)
     def zeros(len: Rep[Int]) : Rep[Vector[Double]] = vector_obj_zeros(len)
-    def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = 1, is_row: Rep[Boolean] = true) =
-      vector_obj_range(start, end, stride, is_row)
+    def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = 1, isRow: Rep[Boolean] = true) =
+      vector_obj_range(start, end, stride, isRow)
   }
 
   implicit def repVecToRepVecOps[A:Manifest](x: Rep[Vector[A]]) = new vecRepCls(x)
@@ -38,7 +38,7 @@ trait VectorOps extends DSLType with Variables {
     def *(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_outer(x,y)
     def t = vector_trans(x)
     def pprint = vector_pprint(x)
-    def is_row = vector_is_row(x)
+    def isRow = vector_isRow(x)
     def foreach(block: Rep[A] => Rep[Unit]) = vector_foreach(x, block)
 
     def +=(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_plusequals(x,y)
@@ -52,7 +52,7 @@ trait VectorOps extends DSLType with Variables {
 
   // object defs
   def vector_obj_zeros(len: Rep[Int]): Rep[Vector[Double]]
-  def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], is_row: Rep[Boolean]): Rep[Vector[Int]]
+  def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], isRow: Rep[Boolean]): Rep[Vector[Int]]
 
   // class defs
   def vector_isinstanceof[A,B](x: Rep[Vector[A]], mA: Manifest[A], mB: Manifest[B]) : Rep[Boolean]
@@ -60,7 +60,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_update[A:Manifest](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
   def vector_length[A:Manifest](x: Rep[Vector[A]]): Rep[Int]
   def vector_insert[A:Manifest](x: Rep[Vector[A]], pos: Rep[Int], y: Rep[A]): Rep[Vector[A]]
-  def vector_is_row[A:Manifest](x: Rep[Vector[A]]): Rep[Boolean]
+  def vector_isRow[A:Manifest](x: Rep[Vector[A]]): Rep[Boolean]
   def vector_toboolean[A](x: Rep[Vector[A]])(implicit conv: Rep[A] => Rep[Boolean], mA: Manifest[A]): Rep[Vector[Boolean]]
   def vector_plus[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_plusequals[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
@@ -78,7 +78,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_nil[A:Manifest] : Rep[Vector[A]]
 
   // impl defs
-  def vector_new[A:Manifest](len: Rep[Int], is_row: Rep[Boolean]) : Rep[Vector[A]]
+  def vector_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) : Rep[Vector[A]]
 }
 
 trait VectorOpsExp extends VectorOps with VariablesExp {
@@ -97,11 +97,11 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorIsRow[A:Manifest](x: Exp[Vector[A]]) extends Def[Boolean]
   case class VectorNil[A](implicit mA: Manifest[A]) extends Def[Vector[A]]
   case class VectorIsInstanceOf[A,B](x: Exp[Vector[A]], mA: Manifest[A], mB: Manifest[B]) extends Def[Boolean]
-  case class VectorNew[A:Manifest](len: Exp[Int], is_row: Exp[Boolean])
+  case class VectorNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean])
     extends Def[Vector[A]] {
     val mV = manifest[VectorImpl[A]]
   }
-  case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], is_row: Exp[Boolean])
+  case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean])
     extends Def[Vector[Int]]
 
 
@@ -132,7 +132,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {
 
-    val out = reifyEffects(Vector[A](inA.length, inA.is_row))
+    val out = reifyEffects(Vector[A](inA.length, inA.isRow))
     val v = (fresh[A],fresh[A])
     val func = v._1 + v._2
   }
@@ -148,7 +148,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorMinus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {
 
-    val out = reifyEffects(Vector[A](inA.length, inA.is_row))
+    val out = reifyEffects(Vector[A](inA.length, inA.isRow))
     val v = (fresh[A],fresh[A])
     val func = v._1 - v._2
   }
@@ -156,7 +156,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {
 
-    val out = reifyEffects(Vector[A](inA.length, inA.is_row))
+    val out = reifyEffects(Vector[A](inA.length, inA.isRow))
     val v = (fresh[A],fresh[A])
     val func = v._1 * v._2
   }
@@ -164,7 +164,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorDivide[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {
 
-    val out = reifyEffects(Vector[A](inA.length, inA.is_row))
+    val out = reifyEffects(Vector[A](inA.length, inA.isRow))
     val v = (fresh[A],fresh[A])
     val func = v._1 / v._2
   }
@@ -172,7 +172,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorDivideScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
     extends DeliteOpMap[A,A,Vector] {
 
-    val out = Vector[A](in.length, in.is_row)
+    val out = Vector[A](in.length, in.isRow)
     val v = fresh[A]
     val func = v / y
   }
@@ -187,7 +187,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[B])
     extends DeliteOpMap[A,B,Vector] {
 
-    val out = Vector[B](in.length, in.is_row)
+    val out = Vector[B](in.length, in.isRow)
   }
 
   case class VectorForeach[A:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[Unit])
@@ -206,7 +206,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(x,n,y))
   def vector_length[A:Manifest](x: Exp[Vector[A]]) = VectorLength(x)
   def vector_insert[A:Manifest](x: Exp[Vector[A]], pos: Rep[Int], y: Exp[A]) = reflectMutation(VectorInsert(x, pos, y))
-  def vector_is_row[A:Manifest](x: Exp[Vector[A]]) = VectorIsRow(x)
+  def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = VectorIsRow(x)
 
   def vector_obj_zeros(len: Exp[Int]) = reflectEffect(VectorObjectZeros(len))
   def vector_toboolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], mA: Manifest[A]) = VectorToBoolean(x)
@@ -222,9 +222,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
   def vector_nil[A:Manifest] = VectorNil[A]()
 
-  def vector_new[A:Manifest](len: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorNew[A](len, is_row))
+  def vector_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorNew[A](len, isRow))
 
-  def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], is_row: Exp[Boolean]) = reflectEffect(VectorObjectRange(start, end, stride, is_row))
+  def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorObjectRange(start, end, stride, isRow))
   def vector_map[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[B]) = {
     val v = fresh[A]
     val func = reifyEffects(f(v))
@@ -276,10 +276,10 @@ trait ScalaGenVectorOps extends ScalaGenBase {
       case VectorApply(x, n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
       case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
       case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
-      case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".is_row")
+      case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
       case VectorInsert(x,pos,y) => emitValDef(sym, quote(x) + ".insert(" + quote(pos) + ", " + quote(y) + ")")
-      case v@VectorNew(length, is_row) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(is_row) + ")")
-      case VectorObjectRange(start, end, stride, is_row) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(is_row) + ")")
+      case v@VectorNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
+      case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
       // TODO: why!!!
       case v@VectorNil() => v.mA.toString match {
                               case "Int" => emitValDef(sym, "NilVectorIntImpl")
@@ -309,7 +309,7 @@ trait CudaGenVectorOps extends CudaGenBase {
       if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(getVarLink(sym)),"idxX",quote(sym),"idxX"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.length".format(quote(x)),"%s.is_row".format(quote(x)))
+      emitVectorAlloc(sym,"%s.length".format(quote(x)),"%s.isRow".format(quote(x)))
     
     case VectorMinus(x,y) =>
       gpuBlockSizeX = quote(x)+".length"
@@ -320,7 +320,7 @@ trait CudaGenVectorOps extends CudaGenBase {
       if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(getVarLink(sym)),"idxX",quote(sym),"idxX"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.length".format(quote(x)),"%s.is_row".format(quote(x)))
+      emitVectorAlloc(sym,"%s.length".format(quote(x)),"%s.isRow".format(quote(x)))
     
     case VectorTrans(x) =>
       gpuBlockSizeX = quote(x)+".length"
@@ -331,7 +331,7 @@ trait CudaGenVectorOps extends CudaGenBase {
       if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(getVarLink(sym)),"idxX",quote(sym),"idxX"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.length".format(quote(x)),"!%s.is_row".format(quote(x)))
+      emitVectorAlloc(sym,"%s.length".format(quote(x)),"!%s.isRow".format(quote(x)))
 
     case VectorOuter(x,y) =>
       gpuBlockSizeX = quote(x)+".length"
@@ -359,7 +359,7 @@ trait CudaGenVectorOps extends CudaGenBase {
     
     case VectorObjectZeros(len) =>
       throw new RuntimeException("CudaGen: Not GPUable")
-    case VectorNew(len,is_row) =>
+    case VectorNew(len,isRow) =>
       throw new RuntimeException("CudaGen: Not GPUable")
     case VectorApply(x, n) =>
       emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
@@ -368,7 +368,7 @@ trait CudaGenVectorOps extends CudaGenBase {
     case VectorLength(x)    =>
       emitValDef(sym, quote(x) + ".length")
     case VectorIsRow(x)     =>
-      emitValDef(sym, quote(x) + ".is_row")
+      emitValDef(sym, quote(x) + ".isRow")
 
     case _ => super.emitNode(sym, rhs)
   }

@@ -31,7 +31,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   // helpers
 
   private def map[A:Manifest,B:Manifest](v: Rep[Vector[A]], f: Rep[A] => Rep[B]) = {
-    val out = Vector[B](v.length, v.is_row)
+    val out = Vector[B](v.length, v.isRow)
     for (i <- 0 until v.length){
       out(i) = f(v(i))
     }
@@ -39,7 +39,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
 
   private def zipWith[A:Manifest,B:Manifest](v1: Rep[Vector[A]], v2: Rep[Vector[A]], f: (Rep[A],Rep[A]) => Rep[B]) = {
-    val out = Vector[B](v1.length, v1.is_row)
+    val out = Vector[B](v1.length, v1.isRow)
     for (i <- 0 until v1.length){
       out(i) = f(v1(i), v2(i))
     }
@@ -79,7 +79,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
 
   def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]) = {
-    if (v.is_row){
+    if (v.isRow){
       print("[ ")
       for (i <- 0 until v.length){
         print(v(i)); print(" ");
@@ -96,7 +96,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
 
   def vector_trans_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], vA: Manifest[Vector[A]]) = {
-    val out = Vector[A](v.length, !v.is_row)
+    val out = Vector[A](v.length, !v.isRow)
     for (i <- 0 until v.length){
       out(i) = v(i)
     }

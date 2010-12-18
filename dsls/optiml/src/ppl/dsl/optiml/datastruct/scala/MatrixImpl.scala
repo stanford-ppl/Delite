@@ -33,8 +33,8 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
   def dcApply(idx: Int) : T = _data(idx)
   def dcUpdate(idx: Int, x: T) = { _data(idx) = x }
 
-  def vview(start: Int, stride: Int, length: Int, is_row: Boolean) : VectorViewImpl[T] = {
-    new VectorViewImpl[T](_data, start, stride, length, is_row)
+  def vview(start: Int, stride: Int, length: Int, isRow: Boolean) : VectorViewImpl[T] = {
+    new VectorViewImpl[T](_data, start, stride, length, isRow)
   }
 
   def insertRow(pos: Int, x: Vector[T]): MatrixImpl[T] = {
