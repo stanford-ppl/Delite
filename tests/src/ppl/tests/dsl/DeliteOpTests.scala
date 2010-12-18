@@ -43,7 +43,7 @@ object DeliteOpTests extends DeliteApplication with OptiMLExp {
   def testForeachK() = {
     val v = Vector.range(0, 10)
     for (e <- v) {
-      if ((e > 0) && (e < v.length)) {
+      if ((e > 0) && (e < v.length-1)) {
         println(v(e-1) + v(e+1))
       }
     }
@@ -84,20 +84,31 @@ object DeliteOpTests extends DeliteApplication with OptiMLExp {
     println(res(0))
   }
 
+  def testForeachS() = {
+    val res = Vector[Double](1) map { e =>
+      val v = Vector.range(0, 10)
+      for (e <- v) {
+        if ((e > 0) && (e < v.length-1)) {
+          println(v(e-1) + v(e+1))
+        }
+      }
+    }
+    println(res(0))
+  }
+
 
   def main() = {
-    /*
     testMapK()
     testZipK()
     testReduceK()
     testMapReduceK()
+    testForeachK()
 
     testMapS()
     testZipS()
     testReduceS()
     testMapReduceS()
-    */
-    testForeachK()
+    testForeachS()
   }
 
 }
