@@ -40,6 +40,12 @@ trait DeliteOpMapReduce[@specialized A, @specialized R] {
   def mapreduce(acc: R, elem: A): R = reduce(acc, map(elem))
 }
 
+trait DeliteOpForeach[@specialized A] {
+  def in: DeliteCollection[A]
+  def foreach: Unit
+  def sync(elem: A): List[_]
+}
+
 trait DeliteCollection[@specialized T] {
   def size: Int
   def dcApply(idx: Int): T

@@ -68,6 +68,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
     val func: Exp[A]
   }
 
+
   /**
    * Parallel map-reduction from a DeliteCollection[A] => R. The map-reduce is composed, so no temporary collection
    * is instantiated to hold the result of the map.
@@ -92,6 +93,24 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
     val reduce: Exp[R]
   }
 
+
+  /**
+   * Parallel foreach from DeliteCollection[A] => Unit. Input functions must specify any free variables that it
+   * requires are protected (e.g. locked before chunk execution) using the sync list.
+   *
+   * @param  in     the input collection
+   * @param  v      the bound symbol that the foreach function operates over
+   * @param  func   the foreach function; reified version of Exp[A] => Exp[Unit]
+   * @param  sync   a function from v to a list of objects that should be locked, in a total ordering,
+   *                prior to chunk execution, and unlocked after; reified version of Exp[A] => Exp[List[_]]
+   */
+  abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] {
+    val in: Exp[C[A]]
+    val v: Exp[A]
+    val func: Exp[Unit]
+    val sync: Exp[List[_]]
+  }
+
   var deliteKernel : Boolean = _ // used by code generators to handle nested delite ops
 
   def getReifiedOutput(out: Exp[_]) = out match {
@@ -110,6 +129,7 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
     case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) ++ syms(getReifiedOutput(zip.out)) else syms(zip.inA) ++ syms(zip.inB) ++ syms(getReifiedOutput(zip.out)) ++ syms(zip.func)
     case red: DeliteOpReduce[_] => if (shallow) syms(red.in) else syms(red.in) ++ syms(red.func)
     case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
+    case foreach: DeliteOpForeach[_,_] => if (shallow) syms(foreach.in) ++ syms(foreach.sync) else syms(foreach.in) ++ syms(foreach.sync) ++ syms(foreach.func)
     case _ => super.syms(e)
   }
 
@@ -119,6 +139,7 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
     case zip: DeliteOpZipWith[_,_,_,_] => getFreeVarBlock(zip.func,List(zip.v._1.asInstanceOf[Sym[_]], zip.v._2.asInstanceOf[Sym[_]]))
     case red: DeliteOpReduce[_] => getFreeVarBlock(red.func,List(red.v._1.asInstanceOf[Sym[_]], red.v._2.asInstanceOf[Sym[_]]))
     case mapR: DeliteOpMapReduce[_,_,_] => getFreeVarBlock(mapR.map, List(mapR.mV.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(mapR.reduce, List(mapR.rV._1.asInstanceOf[Sym[_]], mapR.rV._2.asInstanceOf[Sym[_]]))
+    case foreach: DeliteOpForeach[_,_] => getFreeVarBlock(foreach.func,List(foreach.v.asInstanceOf[Sym[_]]))
     case _ => super.getFreeVarNode(rhs)
   }
 
@@ -165,7 +186,6 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("}}")
         deliteKernel = true
       }
-
     }
     case zip: DeliteOpZipWith[_,_,_,_] => {
       val zipout = getReifiedOutput(zip.out)
@@ -260,6 +280,33 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("def reduce(" + quote(mapR.rV._1) + ": " + remap(mapR.rV._1.Type) + "," + quote(mapR.rV._2) + ": " + remap(mapR.rV._2.Type) + ") = {")
         emitBlock(mapR.reduce)
         stream.println(quote(getBlockResult(mapR.reduce)))
+        stream.println("}}")
+        deliteKernel = true
+      }
+    }
+    case foreach:DeliteOpForeach[_,_] => {
+      if (deliteKernel == false){
+        stream.println("val " + quote(sym) + " = {")
+        stream.println("var forIdx = 0")
+        stream.println("while (forIdx < " + quote(foreach.in) + ".size) {")
+        stream.println("val " + quote(foreach.v) + " = " + quote(foreach.in) + ".dcApply(forIdx)")
+        emitBlock(foreach.func)
+        stream.println(quote(getBlockResult(foreach.func)))
+        stream.println("forIdx += 1")
+        stream.println("} // end while")
+        stream.println("}")
+      }
+      else {
+        deliteKernel = false
+        stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpForeach[" + remap(foreach.v.Type) + "] {")
+        stream.println("def in = " + quote(foreach.in))
+        stream.println("def sync(" + quote(foreach.v) + ": " + remap(foreach.v.Type) + ") = {")
+        emitBlock(foreach.sync)
+        stream.println(quote(getBlockResult(foreach.sync)))
+        stream.println("}")
+        stream.println("def foreach(" + quote(foreach.v) + ": " + remap(foreach.v.Type) + ") = {")
+        emitBlock(foreach.func)
+        stream.println(quote(getBlockResult(foreach.func)))
         stream.println("}}")
         deliteKernel = true
       }
