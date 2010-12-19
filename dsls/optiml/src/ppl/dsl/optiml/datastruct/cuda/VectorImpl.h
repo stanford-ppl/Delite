@@ -8,18 +8,18 @@ class Vector {
 public:
     T *data;
     int length;
-    bool is_row;
+    bool isRow;
 
     // Constructors
     Vector() {
         length = 0;
-        is_row = true;
+        isRow = true;
         data = NULL;
     }
 
     Vector(int _length, bool _isRow, T *_data) {
         length = _length;
-        is_row = _isRow;
+        isRow = _isRow;
         data = _data;
     }
 

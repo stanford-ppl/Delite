@@ -306,7 +306,7 @@ trait CudaGenVectorOps extends CudaGenBase {
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
 
-    case VectorDivide(x,y) =>
+    case VectorDivideScalar(x,y) =>
       gpuBlockSizeX = quote(x)+".length"
       stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
       tabWidth += 1
