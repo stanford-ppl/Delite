@@ -4,7 +4,7 @@ package ppl.delite.runtime.graph
  * Author: Kevin J. Brown
  * Date: Nov 9, 2010
  * Time: 3:17:02 AM
- * 
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
@@ -95,6 +95,16 @@ object TestKernelMap {
   }
 }
 
+object TestKernelImmutableMap {
+  def apply(in0: ArrayColl[Int]): DeliteOPMap[Int,Int, ArrayColl[Int]] = {
+    new DeliteOPMap[Int,Int, ArrayColl[Int]] {
+      def in = in0
+      def out = new ArrayColl[Int](in0.length)
+      def map(a: Int) = a + 1
+    }
+  }
+}
+
 abstract class DeliteOPReduce[R] {
   def in: DeliteCollection[R]
   def reduce(r1: R, r2: R): R
@@ -122,6 +132,17 @@ object TestKernelZip {
       def inA = in1
       def inB = in2
       def out = in0
+      def zip(a: Int, b: Int) = a + b
+    }
+  }
+}
+
+object TestKernelImmutableZip {
+  def apply(in0: ArrayColl[Int], in1: ArrayColl[Int]): DeliteOPZip[Int,Int,Int, ArrayColl[Int]] = {
+    new DeliteOPZip[Int,Int,Int, ArrayColl[Int]] {
+      def inA = in0
+      def inB = in1
+      def out = new ArrayColl[Int](in0.length)
       def zip(a: Int, b: Int) = a + b
     }
   }

@@ -61,6 +61,23 @@ class TestMap[T: Manifest](func: String)(deps: DeliteOP*)(output: DeliteOP, inpu
 
 }
 
+class TestImmutableMap[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
+        extends OP_Map("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+
+  override val id = System.identityHashCode(this).toString
+
+  for (dep <- deps) {
+    this.addDependency(dep)
+    dep.addConsumer(this)
+  }
+
+  for (f <- free.reverse) { //need a reverse to preserve order (addInput prepends)
+    this.addInput(f)
+  }
+  this.addInput(input)
+
+}
+
 class TestReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
         extends OP_Reduce("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
 
@@ -111,6 +128,24 @@ class TestZip[T: Manifest](func: String)(deps: DeliteOP*)(output: DeliteOP, inpu
   this.addInput(input2)
   this.addInput(input1)
   this.addInput(output)
+
+}
+
+class TestImmutableZip[T: Manifest](func: String)(deps: DeliteOP*)(input1: DeliteOP, input2: DeliteOP, free: DeliteOP*)
+        extends OP_Zip("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+
+  override val id = System.identityHashCode(this).toString
+
+  for (dep <- deps) {
+    this.addDependency(dep)
+    dep.addConsumer(this)
+  }
+
+  for (f <- free.reverse) {
+    this.addInput(f)
+  }
+  this.addInput(input2)
+  this.addInput(input1)
 
 }
 

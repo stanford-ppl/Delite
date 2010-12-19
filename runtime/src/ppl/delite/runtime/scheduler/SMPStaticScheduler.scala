@@ -4,8 +4,7 @@ import ppl.delite.runtime.Config
 import ppl.delite.runtime.codegen.{ExecutableGenerator, DeliteExecutable}
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import java.util.ArrayDeque
-import ppl.delite.runtime.codegen.kernels.scala._
-import ppl.delite.runtime.graph.ops._
+import ppl.delite.runtime.graph.ops.DeliteOP
 
 /**
  * Author: Kevin J. Brown
@@ -82,21 +81,9 @@ final class SMPStaticScheduler extends StaticScheduler {
   }
 
   private def enqueueRoots(graph: DeliteTaskGraph) {
-    //val end = graph.result
-    //traverse(end)
     for (op <- graph.ops) {
       op.processSchedulable
       if (op.isSchedulable) opQueue.add(op)
-    }
-  }
-
-  private def traverse(op: DeliteOP) {
-    if (!op.isSchedulable) { //not already in opQueue
-      op.processSchedulable
-      if (op.isSchedulable) opQueue.add(op)
-    }
-    for (dep <- op.getDependencies) {
-      traverse(dep)
     }
   }
 
@@ -109,50 +96,13 @@ final class SMPStaticScheduler extends StaticScheduler {
     }
   }
 
-  //TODO: since codegen of data parallel ops is non-optional, some of this should be factored out of the different schedulers
   private def split(op: DeliteOP, graph: DeliteTaskGraph) {
-    op match { //NOTE: match on OP type since different data parallel ops can have different semantics / scheduling implications
-      case map: OP_Map => {
-        for (i <- 0 until numThreads) {
-          val chunk = Map_SMP_Array_Generator.makeChunk(map, i, numThreads, graph.kernelPath)
-          procs(i).add(chunk)
-          chunk.isScheduled = true
-          chunk.scheduledResource = i
-        }
-      }
-      case reduce: OP_Reduce => {
-        for (i <- 0 until numThreads) {
-          val chunk = Reduce_SMP_Array_Generator.makeChunk(reduce, i, numThreads, graph.kernelPath)
-          procs(i).add(chunk)
-          chunk.isScheduled = true
-          chunk.scheduledResource = i
-        }
-      }
-      case zip: OP_Zip => {
-        for (i <- 0 until numThreads) {
-          val chunk = Zip_SMP_Array_Generator.makeChunk(zip, i, numThreads, graph.kernelPath)
-          procs(i).add(chunk)
-          chunk.isScheduled = true
-          chunk.scheduledResource = i
-        }
-      }
-      case mapReduce: OP_MapReduce => {
-        for (i <- 0 until numThreads) {
-          val chunk = MapReduce_SMP_Array_Generator.makeChunk(mapReduce, i, numThreads, graph.kernelPath)
-          procs(i).add(chunk)
-          chunk.isScheduled = true
-          chunk.scheduledResource = i
-        }
-      }
-      case foreach: OP_Foreach => {
-        for (i <- 0 until numThreads) {
-          val chunk = Foreach_SMP_Array_Generator.makeChunk(foreach, i, numThreads, graph.kernelPath)
-          procs(i).add(chunk)
-          chunk.isScheduled = true
-          chunk.scheduledResource = i
-        }
-      }
-      case other => error("OP type not recognized: " + other.getClass.getSimpleName)
+    scheduleOne(OpHelper.expand(op, numThreads, graph), graph)
+    for (i <- 0 until numThreads) {
+      val chunk = OpHelper.split(op, i, numThreads, graph.kernelPath)
+      procs(i).add(chunk)
+      chunk.scheduledResource = i
+      chunk.isScheduled = true
     }
   }
 

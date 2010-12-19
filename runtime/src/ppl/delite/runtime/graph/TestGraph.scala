@@ -46,6 +46,16 @@ abstract class MapGraph extends DeliteTaskGraph {
   _result = node3
 }
 
+abstract class ImmutableMapGraph extends DeliteTaskGraph {
+  val base = "ppl.delite.runtime.graph.TestKernel"
+  val node1 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node2 = new TestImmutableMap[ArrayColl[Int]](base+"ImmutableMap")(node1)(node1)
+  val node3 = new TestSingle[Unit](base+"End")(node2)(node2)
+
+  _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3)
+  _result = node3
+}
+
 //Simple Reduce Test
 abstract class ReduceGraph extends DeliteTaskGraph {
   val base = "ppl.delite.runtime.graph.TestKernel"
@@ -68,6 +78,17 @@ abstract class ZipGraph extends DeliteTaskGraph {
 
   _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3, "node4"->node4, "node5"->node5)
   _result = node5
+}
+
+abstract class ImmutableZipGraph extends DeliteTaskGraph {
+  val base = "ppl.delite.runtime.graph.TestKernel"
+  val node1 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node2 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node3 = new TestImmutableZip[ArrayColl[Int]](base+"ImmutableZip")(node1,node2)(node1,node2)
+  val node4 = new TestSingle[Unit](base+"End")(node3)(node3)
+
+  _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3, "node4"->node4)
+  _result = node4
 }
 
 //Simple MapReduce Test

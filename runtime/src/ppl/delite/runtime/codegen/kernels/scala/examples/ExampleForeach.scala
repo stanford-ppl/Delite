@@ -18,7 +18,11 @@ import java.util.concurrent.locks.ReentrantLock
  * This is an example of what a generated Map kernel for an Array should look like; it should not be invoked
  */
 
-object ExampleForeach {
+object ExampleForeachHeader {
+  def apply(in0: Array[Int], in1: Array[Double], in2: Double) = new ExampleForeachHeader(in0, in1, in2)
+}
+
+final class ExampleForeachHeader(in0: Array[Int], in1: Array[Double], in2: Double) {
 
   //this is the apply method of another (kernel) object: shouldn't be generated
   def kernel_apply(in0: Array[Int], in1: Array[Double], in2: Double): Foreach = {
@@ -35,28 +39,29 @@ object ExampleForeach {
     def sync(idx: Int): List[_]
   }
 
-  //this is only defined in the master chunk (chunk 0)
-  //accessed by all chunks
-  val lockMap = new ConcurrentHashMap[Any,ReentrantLock]
+  val closure = kernel_apply(in0, in1, in2)
+  val lockMap = new ConcurrentHashMap[Any, ReentrantLock]
+}
 
-  def apply(in0: Array[Int], in1: Array[Double], in2: Double) {
-    val foreach = kernel_apply(in0, in1, in2)
-    val in = foreach.in
+object ExampleForeach {
+
+  def apply(foreach: ExampleForeachHeader) {
+    val in = foreach.closure.in
     val size = in.size
     var i = size*2/4 //size*chunkIdx/numChunks
     val end = size*3/4 //size*(chunkIdx+1)/numChunks
 
     while (i < end) {
-      val sync = foreach.sync(i).sortBy(System.identityHashCode(_))
+      val sync = foreach.closure.sync(i).sortBy(System.identityHashCode(_)) //TODO: optimize locking mechanism
       for (e <- sync) {
-        ExampleForeach.lockMap.putIfAbsent(e, new ReentrantLock)
-        ExampleForeach.lockMap.get(e).lock
+        foreach.lockMap.putIfAbsent(e, new ReentrantLock)
+        foreach.lockMap.get(e).lock
       }
 
-      foreach.foreach(in(i))
+      foreach.closure.foreach(in(i))
 
       for (e <- sync.reverse) {
-        ExampleForeach.lockMap.get(e).unlock
+        foreach.lockMap.get(e).unlock
       }
 
       i += 1
