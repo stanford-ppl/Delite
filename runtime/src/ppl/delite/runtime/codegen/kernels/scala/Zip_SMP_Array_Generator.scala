@@ -174,7 +174,7 @@ object Zip_SMP_Array_Header_Generator {
 
     out.append("val out: ")
     out.append(op.outputType)
-    out.append(" = closure.out\n")
+    out.append(" = closure.alloc\n")
   }
 
   private def kernelName(op: OP_Zip) = {

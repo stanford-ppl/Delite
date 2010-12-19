@@ -24,7 +24,7 @@ final class ExampleMapHeader(in0: Array[Int], in1: Double) {
   def kernel_apply(in0: Array[Int], in1: Double): Map = {
     new Map {
       def in = in0
-      def out = new Array[Double](in0.length)
+      def alloc = new Array[Double](in0.length)
       //note that functions have fixed parameter lists
       def map(elem: Int): Double = elem*in1
     }
@@ -32,12 +32,12 @@ final class ExampleMapHeader(in0: Array[Int], in1: Double) {
 
   abstract class Map {
     def in: Array[Int]
-    def out: Array[Double] //can allocate a new output structure (immutable map) or pass a reference to an existing one (mutable map)
+    def alloc: Array[Double] //can allocate a new output structure (immutable map) or pass a reference to an existing one (mutable map)
     def map(elem: Int): Double
   }
 
   val closure = kernel_apply(in0, in1)
-  val out: Array[Double] = closure.out
+  val out: Array[Double] = closure.alloc
 
 }
 

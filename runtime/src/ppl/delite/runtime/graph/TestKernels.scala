@@ -81,7 +81,7 @@ class ArrayColl[T: Manifest](val length: Int) extends DeliteCollection[T] {
 
 abstract class DeliteOPMap[A,B, CR <: DeliteCollection[B]] {
   def in: DeliteCollection[A]
-  def out: CR
+  def alloc: CR
   def map(a: A): B
 }
 
@@ -89,7 +89,7 @@ object TestKernelMap {
   def apply(in0: ArrayColl[Int], in1: ArrayColl[Int]): DeliteOPMap[Int,Int, ArrayColl[Int]] = {
     new DeliteOPMap[Int,Int, ArrayColl[Int]] {
       def in = in1
-      def out = in0
+      def alloc = in0
       def map(a: Int) = a + 1
     }
   }
@@ -99,7 +99,7 @@ object TestKernelImmutableMap {
   def apply(in0: ArrayColl[Int]): DeliteOPMap[Int,Int, ArrayColl[Int]] = {
     new DeliteOPMap[Int,Int, ArrayColl[Int]] {
       def in = in0
-      def out = new ArrayColl[Int](in0.length)
+      def alloc = new ArrayColl[Int](in0.length)
       def map(a: Int) = a + 1
     }
   }
@@ -122,7 +122,7 @@ object TestKernelReduce {
 abstract class DeliteOPZip[A,B,R, CR <: DeliteCollection[R]] {
   def inA: DeliteCollection[A]
   def inB: DeliteCollection[B]
-  def out: CR
+  def alloc: CR
   def zip(a: A, b: B): R
 }
 
@@ -131,7 +131,7 @@ object TestKernelZip {
     new DeliteOPZip[Int,Int,Int, ArrayColl[Int]] {
       def inA = in1
       def inB = in2
-      def out = in0
+      def alloc = in0
       def zip(a: Int, b: Int) = a + b
     }
   }
@@ -142,7 +142,7 @@ object TestKernelImmutableZip {
     new DeliteOPZip[Int,Int,Int, ArrayColl[Int]] {
       def inA = in0
       def inB = in1
-      def out = new ArrayColl[Int](in0.length)
+      def alloc = new ArrayColl[Int](in0.length)
       def zip(a: Int, b: Int) = a + b
     }
   }

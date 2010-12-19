@@ -132,7 +132,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {
 
-    val out = reifyEffects(Vector[A](inA.length, inA.isRow))
+    //val out = reifyEffects(Vector[A](inA.length, inA.isRow))
+    val alloc = reifyEffects(vector_new[A](inA.length, inA.isRow))
     val v = (fresh[A],fresh[A])
     val func = v._1 + v._2
   }
@@ -140,7 +141,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorPlusEquals[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {
 
-    val out = inA
+    //val out = inA
+    val alloc = inA
     val v = (fresh[A],fresh[A])
     val func = v._1 + v._2
   }
@@ -148,7 +150,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorMinus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {
 
-    val out = reifyEffects(Vector[A](inA.length, inA.isRow))
+    //val out = reifyEffects(Vector[A](inA.length, inA.isRow))
+    val alloc = reifyEffects(vector_new[A](inA.length, inA.isRow))
     val v = (fresh[A],fresh[A])
     val func = v._1 - v._2
   }
@@ -156,7 +159,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {
 
-    val out = reifyEffects(Vector[A](inA.length, inA.isRow))
+    //val out = reifyEffects(Vector[A](inA.length, inA.isRow))
+    val alloc = reifyEffects(vector_new[A](inA.length, inA.isRow))
     val v = (fresh[A],fresh[A])
     val func = v._1 * v._2
   }
@@ -164,7 +168,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorDivide[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {
 
-    val out = reifyEffects(Vector[A](inA.length, inA.isRow))
+    //val out = reifyEffects(Vector[A](inA.length, inA.isRow))
+    val alloc = reifyEffects(vector_new[A](inA.length, inA.isRow))
     val v = (fresh[A],fresh[A])
     val func = v._1 / v._2
   }
@@ -172,7 +177,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorDivideScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
     extends DeliteOpMap[A,A,Vector] {
 
-    val out = Vector[A](in.length, in.isRow)
+    //val out = Vector[A](in.length, in.isRow)
+    val alloc = reifyEffects(vector_new[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v / y
   }
@@ -187,7 +193,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[B])
     extends DeliteOpMap[A,B,Vector] {
 
-    val out = Vector[B](in.length, in.isRow)
+    //val out = Vector[B](in.length, in.isRow)
+    val alloc = reifyEffects(vector_new[B](in.length, in.isRow))
   }
 
   case class VectorForeach[A:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[Unit])
@@ -196,7 +203,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val i = fresh[Int]
     val sync = reifyEffects(if ((i > 0) && (i < in.length)) List(in(i-1),in(i),in(i+1)) else List(in(i)))
   }
-
 
   //////////////
   // interface

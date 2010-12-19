@@ -25,7 +25,7 @@ final class ExampleZipHeader(in0: Array[Int], in1: Array[Int]) {
     new Zip {
       def inA = in0
       def inB = in1
-      def out = new Array[Int](in0.length)
+      def alloc = new Array[Int](in0.length)
       //note that functions have fixed parameter lists
       def zip(a: Int, b: Int): Int = a + b
     }
@@ -34,12 +34,12 @@ final class ExampleZipHeader(in0: Array[Int], in1: Array[Int]) {
   abstract class Zip {
     def inA: Array[Int]
     def inB: Array[Int]
-    def out: Array[Int] //can allocate a new output structure (immutable Zip) or pass a reference to an existing one (mutable Zip)
+    def alloc: Array[Int] //can allocate a new output structure (immutable Zip) or pass a reference to an existing one (mutable Zip)
     def zip(a: Int, b: Int): Int
   }
 
   val closure = kernel_apply(in0, in1)
-  val out: Array[Int] = closure.out
+  val out: Array[Int] = closure.alloc
 
 }
 
