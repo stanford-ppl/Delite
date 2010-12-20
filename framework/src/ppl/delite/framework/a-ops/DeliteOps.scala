@@ -1,11 +1,11 @@
 package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
-import scala.virtualization.lms.common.{TupleOpsExp, VariablesExp, EffectExp}
+import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericCodegen, CudaGenEffect, GenericNestedCodegen, ScalaGenEffect}
 import ppl.delite.framework.DeliteCollection
 
-trait DeliteOpsExp extends EffectExp with VariablesExp {
+trait DeliteOpsExp extends EffectExp with VariablesExp  {
   /**
    * The base type of the DeliteOp hierarchy.
    */

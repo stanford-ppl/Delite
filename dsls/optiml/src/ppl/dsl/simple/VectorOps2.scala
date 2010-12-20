@@ -5,6 +5,7 @@ import java.io.PrintWriter
 import scala.virtualization.lms.common.{Base, EffectExp, BaseExp}
 import scala.virtualization.lms.internal.{CGenBase, ScalaGenBase, Effects}
 import ppl.delite.framework.codegen.delite.DeliteCodegen
+import ppl.delite.framework.ops.DeliteOpsExp
 
 
 trait Vector[T]
@@ -20,6 +21,8 @@ trait VectorOps2 extends DSLType with Base {
 
   class vecRepCls[A:Manifest](x: Rep[Vector[A]]) {
     def +(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_plus(x,y)
+    def -(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_minus(x,y)
+    def length = vector_length(x)
     def pprint = vector_pprint(x)
   }
 
@@ -28,17 +31,23 @@ trait VectorOps2 extends DSLType with Base {
 
   // class defs
   def vector_plus[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_minus[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_length[A:Manifest](x: Rep[Vector[A]]): Rep[Int]
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
 
 }
 
-trait VectorOpsExp2 extends VectorOps2 with EffectExp {
-  case class VectorObjectZeros[A:Manifest](n: Exp[Int]) extends Def[A]
+trait VectorOpsExp2 extends VectorOps2 with DeliteOpsExp {
+  case class VectorObjectZeros[A:Manifest](n: Exp[Int]) extends Def[Vector[A]]
   case class VectorPlus[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) extends Def[Vector[A]]
+  case class VectorMinus[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) extends Def[Vector[A]]
+  case class VectorLength[A:Manifest](x: Exp[Vector[A]]) extends Def[Int]
   case class VectorPPrint[A:Manifest](x: Exp[Vector[A]]) extends Def[Unit]
 
   def vector_obj_zeros(len: Exp[Int]) = reflectEffect(VectorObjectZeros(len))
   def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(x, y)
+  def vector_minus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(x, y)
+  def vector_length[A:Manifest](x: Rep[Vector[A]]) = VectorLength(x)
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
 }
 
@@ -49,11 +58,14 @@ trait ScalaGenVectorOps2 extends ScalaGenBase {
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case VectorObjectZeros(s) => emitValDef(sym, "Vector.Zeros(" + quote(s) + ")")
     case VectorPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
+    case VectorMinus(x,y) => emitValDef(sym, quote(x) + " - " + quote(y))
+    case VectorLength(x) => emitValDef(sym, quote(x) + ".length")
     case VectorPPrint(a) => emitValDef(sym, quote(a) + ".pprint")
     case _ => super.emitNode(sym, rhs)
   }
 }
 
+/*
 ////code generation
 trait CGenVectorOps2 extends CGenBase {
   val IR: VectorOpsExp2
@@ -69,14 +81,4 @@ trait CGenVectorOps2 extends CGenBase {
   }
 }
 
-trait DeliteGenVectorOps2 extends DeliteCodegen {
-  val IR: VectorOpsExp2
-  import IR._
-
-  //code generation bit
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {    case VectorObjectZeros(s) => emitValDef(sym, "Vector.Zeros(" + quote(s) + ")")
-    case VectorPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
-    case VectorPPrint(a) => emitValDef(sym, quote(a) + ".pprint")
-    case _ => super.emitNode(sym, rhs)
-  }
-}
+*/
