@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.apps.testGPU
+package ppl.dsl.optiml.apps.gpuKernel
 
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
@@ -6,9 +6,13 @@ object testGPU extends DeliteApplication with OptiMLExp {
 
   def main() = {
 
-    val x = Vector[Double](100)
-    val y = Vector[Double](100)
-    val z = Matrix[Double](100,100)
+    val x = Matrix[Double](10,100)
+    val y = Matrix[Double](100,10)
+    val z = x * y
+    println(z)
+    //val x = Vector[Double](100)
+    //val y = Vector[Double](100)
+    //val z = Matrix[Double](100,100)
     //val sigma = x ** y
     //val sigma = if(x.isRow) x/10 else x~
 
