@@ -27,6 +27,7 @@ trait MatrixOps extends DSLType with Variables {
     def update(i: Rep[Int], j: Rep[Int], y: Rep[A]) = matrix_update(x,i,j,y)
     def +(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_plus(x,y)
     def +=(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_plusequals(x,y)
+    def *(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_multiply(x,y)
     def **(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_times(x,y)
     def inv = matrix_inverse(x)
     def ~ = matrix_transpose(x)
@@ -43,6 +44,7 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_update[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int], y: Rep[A]): Rep[Unit]
   def matrix_plus[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_plusequals[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_multiply[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_times[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_inverse[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_transpose[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
@@ -104,6 +106,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v._1 + v._2
   }
 
+  case class MatrixMultiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
+    extends DeliteOpSingleTask(reifyEffects(matrix_multiply_impl[A](x,y)))
+
+
   case class MatrixPlusEquals[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
     extends DeliteOpZipWith[A,A,A,Matrix] {
 
@@ -132,6 +138,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   def matrix_plusequals[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectMutation(MatrixPlusEquals(x,y))
   def matrix_plus[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixPlus(x, y)
+  def matrix_multiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixMultiply(x, y)
   def matrix_times[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixTimes(x, y)
   def matrix_inverse[A:Manifest](x: Exp[Matrix[A]]) = MatrixInverse(x)
   def matrix_transpose[A:Manifest](x: Exp[Matrix[A]]) = MatrixTranspose(x)
@@ -216,6 +223,18 @@ trait CudaGenMatrixOps extends CudaGenBase {
       tabWidth -= 1
       stream.println(addTab()+"}")
       //emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
+
+    case MatrixMultiply(x,y) =>
+      val callStream = "cublasSetKernelStream(stream);"
+      var callKernel = ""
+      if(remap(x.Type.typeArguments(0)) == "double")
+        callKernel = "cublasDgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
+      else if(remap(x.Type.typeArguments(0)) == "float")
+        callKernel = "cublasSgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
+      else
+        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatrixMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0).Type)))
+      emitLibCall(sym,List(callStream,callKernel))
+      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(y)))
 
     // these are the ops that call through to the underlying real data structure
     case MatrixNew(numRows,numCols) =>

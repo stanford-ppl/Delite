@@ -10,12 +10,7 @@ package ppl.dsl.optiml.datastruct.scala
  *
  */
 
-class RangeVectorImpl(__start: Int, __end: Int, __stride: Int, __isRow: Boolean) extends Vector[Int] {
-
-  protected var _start = __start
-  protected var _end = __end
-  protected var _stride = __stride
-  protected var _isRow = __isRow
+class RangeVectorImpl(protected val _start: Int, protected val _end: Int, protected val _stride: Int, protected val _isRow: Boolean) extends Vector[Int] {
 
   def start = _start
   def end = _end

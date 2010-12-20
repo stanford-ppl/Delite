@@ -8,6 +8,7 @@ trait MatrixImplOps { this: OptiML =>
   def matrix_plus_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) : Rep[Matrix[A]]
   def matrix_plusequals_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) : Rep[Matrix[A]]
   def matrix_pprint_impl[A:Manifest](m: Rep[Matrix[A]]) : Rep[Unit]
+  def matrix_multiply_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2:Rep[Matrix[A]]) : Rep[Matrix[A]]
 }
 
 trait MatrixImplOpsStandard extends MatrixImplOps {
@@ -64,5 +65,16 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     }
   }
 
+  def matrix_multiply_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[Matrix[A]] = {
+    val out = Matrix[A](m1.numRows, m2.numCols)
+    for (i <- 0 until m1.numRows) {
+      for(j <- 0 until m2.numCols) {
+        //TODO: Put 'zero' for out(i,j) here
+        for(k <- 0 until m1.numCols)
+          out(i,j) = out(i,j) + m1(i,k) * m2(k,j)
+      }
+    }
+    out
+  }
 
 }
