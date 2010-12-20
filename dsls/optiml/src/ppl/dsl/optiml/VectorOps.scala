@@ -121,13 +121,21 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorPPrint[A:Manifest](x: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffects(vector_pprint_impl[A](x)))
 
-  case class VectorTrans[A:Manifest](x: Exp[Vector[A]])
-    extends DeliteOpSingleTask(reifyEffects(vector_trans_impl[A](x)))
+  //case class VectorTrans[A:Manifest](x: Exp[Vector[A]])
+  //  extends DeliteOpSingleTask(reifyEffects(vector_trans_impl[A](x)))
 
 
 
   ////////////////////////////////
   // implemented via delite ops
+
+  case class VectorTrans[A:Manifest](in: Exp[Vector[A]])
+    extends DeliteOpMap[A,A,Vector] {
+    
+    val alloc = reifyEffects(vector_new[A](in.length, !in.isRow))
+    val v = fresh[A]
+    val func = v 
+  }
 
   case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {
@@ -304,40 +312,6 @@ trait CudaGenVectorOps extends CudaGenBase {
   import IR._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    // these are the ops that call through to the underlying real data structure
-
-    case VectorDivideScalar(x,y) =>
-      gpuBlockSizeX = quote(x)+".length"
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(%s, (%s.apply(%s))/%s);".format(quote(sym),"idxX",quote(x),"idxX",quote(y)))
-      //if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
-      if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(getVarLink(sym)),"idxX",quote(sym),"idxX"))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.length".format(quote(x)),"%s.isRow".format(quote(x)))
-    
-    case VectorMinus(x,y) =>
-      gpuBlockSizeX = quote(x)+".length"
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(%s, (%s.apply(%s))-(%s.apply(%s)));".format(quote(sym),"idxX",quote(x),"idxX",quote(y),"idxX"))
-      //if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
-      if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(getVarLink(sym)),"idxX",quote(sym),"idxX"))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.length".format(quote(x)),"%s.isRow".format(quote(x)))
-    
-    case VectorTrans(x) =>
-      gpuBlockSizeX = quote(x)+".length"
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(sym),"idxX",quote(x),"idxX"))
-      //if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
-      if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(getVarLink(sym)),"idxX",quote(sym),"idxX"))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.length".format(quote(x)),"!%s.isRow".format(quote(x)))
 
     case VectorOuter(x,y) =>
       gpuBlockSizeX = quote(x)+".length"
@@ -345,28 +319,16 @@ trait CudaGenVectorOps extends CudaGenBase {
       tabWidth += 1
       stream.println(addTab()+"for(int i=0; i<%s.length; i++) {".format(quote(x))); tabWidth += 1
       stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s)*%s.apply(%s));".format(quote(sym),"i","idxX",quote(x),"i",quote(y),"idxX"))
-      //if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s,%s));".format(quote(varLink.get(sym).get),"i","idxX",quote(sym),"i","idxX"))
       if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s,%s));".format(quote(getVarLink(sym)),"i","idxX",quote(sym),"i","idxX"))
       tabWidth -= 1; stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s.length".format(quote(x)),"%s.length".format(quote(x)))
 
-    case VectorPlusEquals(x,y) =>
-      gpuBlockSizeX = quote(x)+".length"
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(%s, (%s.apply(%s)) + (%s.apply(%s)));".format(quote(sym),"idxX",quote(x),"idxX",quote(y),"idxX"))
-      //if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
-      if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(getVarLink(sym)),"idxX",quote(sym),"idxX"))
-      tabWidth -= 1
-      stream.println(addTab()+"}") 
-      emitVectorAllocSym(sym,x.asInstanceOf[Sym[_]])
-    
     case VectorObjectZeros(len) =>
-      throw new RuntimeException("CudaGen: Not GPUable")
+      throw new RuntimeException("CudaGen: Not GPUable (Dynamic memory allocation is not allowed)")
     case VectorNew(len,isRow) =>
-      throw new RuntimeException("CudaGen: Not GPUable")
+      throw new RuntimeException("CudaGen: Not GPUable (Dynamic memory allocation is not allowed)")
     case VectorApply(x, n) =>
       emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case VectorUpdate(x,n,y) =>
