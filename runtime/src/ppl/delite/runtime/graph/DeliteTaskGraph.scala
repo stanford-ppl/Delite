@@ -47,6 +47,7 @@ object DeliteTaskGraph {
         case "Reduce" => processCommon(op, "OP_Reduce")
         case "ZipWith" => processCommon(op, "OP_Zip")
         case "Foreach" => processCommon(op, "OP_Foreach")
+        case "IfThenElSE" => processIfThenElseTask(op)
         case "Arguments" => processArgumentsTask(op)
         case "EOP" => processEOPTask(op)
         case err@_ => unsupportedType(err)
@@ -151,6 +152,37 @@ object DeliteTaskGraph {
     //last op will be result op
     graph._result = newop
 
+  }
+
+  def processIfThenElseTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
+    // get id
+    val id = getFieldString(op,"outputId")
+    //get then and else kernels
+    val thenOp = getOp(graph._ops, getFieldString(op, "thenKernelId"))
+    val elseOp = getOp(graph._ops, getFieldString(op, "elseKernelId"))
+    val newop = new OP_Condition(id, thenOp, elseOp)
+
+    //handle anti dependencies
+    val antiDeps = getFieldList(op, "antiDeps")
+    for(a <- antiDeps) {
+      val antiDep = getOp(graph._ops, a)
+      newop.addDependency(antiDep)
+      //antiDep.addConsumer(newop)
+    }
+
+    //handle control dependencies
+    val controlDeps = getFieldList(op, "controlDeps")
+    for(c <- controlDeps) {
+      val controlDep = getOp(graph._ops, c)
+      newop.addDependency(controlDep)
+      //controlDep.addConsumer(newop)
+    }
+
+    //add new op to graph list of ops
+    //graph._ops += id -> op
+
+    //last op will be result op
+    //graph._result = newop
   }
 
   /**

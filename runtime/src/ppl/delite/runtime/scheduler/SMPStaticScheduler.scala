@@ -4,7 +4,7 @@ import ppl.delite.runtime.Config
 import ppl.delite.runtime.codegen.{ExecutableGenerator, DeliteExecutable}
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import java.util.ArrayDeque
-import ppl.delite.runtime.graph.ops.DeliteOP
+import ppl.delite.runtime.graph.ops.{DeliteOPBase, DeliteOP}
 
 /**
  * Author: Kevin J. Brown
