@@ -19,6 +19,15 @@ trait DeliteOpsExp extends EffectExp with VariablesExp  {
   class DeliteOpSingleTask[A](val block: Exp[A]) extends DeliteOp[A]
 
   /**
+   * A Conditional task - will emit a Conditional DEG node as well as kernels for the then and else clauses
+   *
+   * @param  cond    the condition of the Conditional
+   * @param  thenp   the Then block to execute if condition is true
+   * @param  elsep   the Else block to execute if condition is false
+   */
+  case class DeliteOpCondition[A](cond: Exp[Boolean], thenp: Exp[A], elsep: Exp[A]) extends DeliteOp[A]
+
+  /**
    * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
    * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
    *

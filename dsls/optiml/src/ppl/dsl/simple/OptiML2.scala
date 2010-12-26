@@ -14,7 +14,7 @@ import ppl.delite.framework.codegen.delite.overrides.{DeliteOverridesExp, Delite
  */
 trait OptiML2ScalaOpsPkg extends Base with OrderingOps with MiscOps with IfThenElse
 
-trait OptiML2ScalaOpsPkgExp extends OptiML2ScalaOpsPkg with OrderingOpsExp with MiscOpsExp with DeliteIfThenElseExp
+trait OptiML2ScalaOpsPkgExp extends OptiML2ScalaOpsPkg with OrderingOpsExp with MiscOpsExp
 
 trait OptiML2ScalaCodeGenPkg extends ScalaGenOrderingOps with ScalaGenMiscOps {
   val IR: OptiML2ScalaOpsPkgExp
@@ -25,7 +25,7 @@ trait OptiML2 extends OptiML2ScalaOpsPkg with VectorOps2 with MatrixOps2 {
 }
 
 trait OptiML2Exp extends OptiML2ScalaOpsPkgExp with VectorOpsExp2 with MatrixOpsExp2
-  with DeliteOpsExp with DeliteOverridesExp { this: DeliteApplication =>
+  with DeliteOpsExp with DeliteOverridesExp  { this: DeliteApplication =>
 
   def getCodeGenPkg(t: Target{val IR: OptiML2Exp.this.type}) : GenericNestedCodegen{val IR: OptiML2Exp.this.type} = {
     t match {

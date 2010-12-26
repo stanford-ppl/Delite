@@ -22,21 +22,21 @@ trait OptiMLScalaOpsPkg extends Base
 trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg
     with ImplicitOpsExp with OrderingOpsExp with StringOpsExp
     with RangeOpsExp with IOOpsExp with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp
-    //with FunctionsExp with EqualExp with IfThenElseExp with VariablesExp with WhileExp with TupleOpsExp
-    with FunctionsExp with EqualExp with VariablesExp with WhileExp with TupleOpsExp
+    with FunctionsExp with EqualExp with IfThenElseExp with VariablesExp with WhileExp with TupleOpsExp
+    //with FunctionsExp with EqualExp with VariablesExp with WhileExp with TupleOpsExp
     with ListOpsExp with DSLOpsExp
 
 trait OptiMLScalaCodeGenPkg extends ScalaGenImplicitOps with ScalaGenOrderingOps
     with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps with ScalaGenArrayOps with ScalaGenBooleanOps
-    //with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenFunctions with ScalaGenEqual with ScalaGenIfThenElse
-    with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenFunctions with ScalaGenEqual
+    with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenFunctions with ScalaGenEqual with ScalaGenIfThenElse
+    //with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenFunctions with ScalaGenEqual
     with ScalaGenVariables with ScalaGenWhile with ScalaGenTupleOps with ScalaGenListOps
     with ScalaGenDSLOps { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
     with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
-    //with CudaGenPrimitiveOps with CudaGenMiscOps with CudaGenFunctions with CudaGenEqual with CudaGenIfThenElse
-    with CudaGenPrimitiveOps with CudaGenMiscOps with CudaGenFunctions with CudaGenEqual
+    with CudaGenPrimitiveOps with CudaGenMiscOps with CudaGenFunctions with CudaGenEqual with CudaGenIfThenElse
+    //with CudaGenPrimitiveOps with CudaGenMiscOps with CudaGenFunctions with CudaGenEqual
     with CudaGenVariables with CudaGenWhile { val IR: OptiMLScalaOpsPkgExp  }
 
 
