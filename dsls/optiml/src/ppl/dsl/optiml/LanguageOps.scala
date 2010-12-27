@@ -18,6 +18,49 @@ import scala.virtualization.lms.common._
  */
 
 trait LanguageOps extends Base { this: ArithOps =>
+
+  /**
+   * random
+   */
+
+  private val INITIAL_SEED = 100
+
+  // these are thread-safe
+  private var _randRef = new scala.util.Random(INITIAL_SEED)
+  private var _intRandRef = new scala.util.Random(INITIAL_SEED)
+
+  // this version is for optiml's use exclusively, so it does not interfere with application behavior
+  private def _random[A](implicit mA: Manifest[A]): Rep[A] =
+    mA match {
+      case Manifest.Double => unit(_intRandRef.nextDouble().asInstanceOf[A])
+      case Manifest.Float => unit(_intRandRef.nextFloat().asInstanceOf[A])
+      case Manifest.Int => unit(_intRandRef.nextInt().asInstanceOf[A])
+      case Manifest.Long => unit(_intRandRef.nextLong().asInstanceOf[A])
+      case Manifest.Boolean => unit(_intRandRef.nextBoolean().asInstanceOf[A])
+      case _ => throw new UnsupportedOperationException()
+  }
+
+  // public version for application use
+  def random[A](implicit mA: Manifest[A]): Rep[A] =
+    mA match {
+      case Manifest.Double => unit(_randRef.nextDouble().asInstanceOf[A])
+      case Manifest.Float => unit(_randRef.nextFloat().asInstanceOf[A])
+      case Manifest.Int => unit(_randRef.nextInt().asInstanceOf[A])
+      case Manifest.Long => unit(_randRef.nextLong().asInstanceOf[A])
+      case Manifest.Boolean => unit(_randRef.nextBoolean().asInstanceOf[A])
+      case _ => throw new UnsupportedOperationException()
+  }
+
+  def randomInt(end: Int) = unit(_randRef.nextInt(end))
+  def randomGaussian = unit(_randRef.nextGaussian())
+
+  def reseed {
+    // reseeds for all threads
+    //_randRef = new _randCls
+    _randRef.setSeed(INITIAL_SEED)
+    _intRandRef.setSeed(INITIAL_SEED)
+  }
+
   // TODO: type class should probable be Zeroable[A] or something
   //def <>[A:Manifest:Arith] = optiml_zero
   
