@@ -17,6 +17,6 @@ trait VectorOpsInlinedExp extends VectorOpsInlined {
 
   // this works
   //object VectorZeros extends ApplyExtractor[Int,Vector[Double]](vector_obj_zeros_impl)
-  //def vector_obj_zeros(len: Exp[Int]) = VectorZeros(len)
+  //def vector_obj_double_zeros(len: Exp[Int]) = VectorZeros(len)
 
 }

@@ -28,6 +28,16 @@ trait DeliteOpsExp extends EffectExp with VariablesExp  {
   case class DeliteOpCondition[A](cond: Exp[Boolean], thenp: Exp[A], elsep: Exp[A]) extends DeliteOp[A]
 
   /**
+   * An indexed loop - will emit an indexed loop DEG node as well as a kernel for the body
+   *
+   * @param  start  starting index
+   * @param  end    ending index (not included in loop)
+   * @param  idx    index id that will be refered to in the body, this could be passed in as input to the body or the body could be inlined
+   * @param  body   the body of the loop
+   */
+  case class DeliteOpIndexedLoop(_start: Exp[Int], _end: Exp[Int], _idx: Exp[Int], _body: Exp[Unit]) extends DeliteOp[Unit]
+
+  /**
    * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
    * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
    *

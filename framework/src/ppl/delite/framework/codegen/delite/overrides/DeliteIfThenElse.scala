@@ -7,7 +7,6 @@ trait DeliteIfThenElseExp extends IfThenElse with EffectExp {
 
   this: DeliteOpsExp =>
 
-  //todo change this to use DeliteConditional
   case class DeliteIfThenElse[T:Manifest](c: Exp[Boolean], t: Exp[T], e: Exp[T]) extends DeliteOpCondition[T](c, t, e)
 
   override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]) = {

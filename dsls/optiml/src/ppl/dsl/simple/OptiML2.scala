@@ -12,11 +12,13 @@ import ppl.delite.framework.codegen.delite.overrides.{DeliteOverridesExp, Delite
 /**
  * Imports from the Scala language
  */
-trait OptiML2ScalaOpsPkg extends Base with OrderingOps with MiscOps with IfThenElse
+trait OptiML2ScalaOpsPkg extends Base with OrderingOps with MiscOps with IfThenElse with RangeOps with PrimitiveOps
 
-trait OptiML2ScalaOpsPkgExp extends OptiML2ScalaOpsPkg with OrderingOpsExp with MiscOpsExp
+trait OptiML2ScalaOpsPkgExp extends OptiML2ScalaOpsPkg with OrderingOpsExp with MiscOpsExp with IfThenElseExp with RangeOpsExp with PrimitiveOpsExp
 
-trait OptiML2ScalaCodeGenPkg extends ScalaGenOrderingOps with ScalaGenMiscOps {
+trait OptiML2ScalaCodeGenPkg extends ScalaGenOrderingOps
+  with ScalaGenMiscOps with ScalaGenIfThenElse with ScalaGenRangeOps
+  with ScalaGenPrimitiveOps {
   val IR: OptiML2ScalaOpsPkgExp
 }
 
