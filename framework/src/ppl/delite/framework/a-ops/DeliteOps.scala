@@ -38,6 +38,14 @@ trait DeliteOpsExp extends EffectExp with VariablesExp  {
   case class DeliteOpIndexedLoop(_start: Exp[Int], _end: Exp[Int], _idx: Exp[Int], _body: Exp[Unit]) extends DeliteOp[Unit]
 
   /**
+   * An while loop - will emit an while loop DEG node as well as a kernel for the body
+   *
+   * @param  _cond  condition expression, will be emitted as a kernel
+   * @param  body   the body of the loop
+   */
+  case class DeliteOpWhileLoop(_cond: Exp[Boolean], _body: Exp[Unit]) extends DeliteOp[Unit]
+
+  /**
    * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
    * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
    *

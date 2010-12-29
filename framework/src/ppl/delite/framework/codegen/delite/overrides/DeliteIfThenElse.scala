@@ -2,8 +2,9 @@ package ppl.delite.framework.codegen.delite.overrides
 
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
+import scala.virtualization.lms.internal.GenericNestedCodegen
 
-trait DeliteIfThenElseExp extends IfThenElse with EffectExp {
+trait DeliteIfThenElseExp extends IfThenElseExp {
 
   this: DeliteOpsExp =>
 
@@ -19,3 +20,20 @@ trait DeliteIfThenElseExp extends IfThenElse with EffectExp {
   }
 
 }
+
+trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
+  val IR: DeliteIfThenElseExp
+  import IR._
+
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c, t, e) if shallow => syms(c) // in shallow mode, don't count deps from nested blocks
+    case _ => super.syms(e)
+  }
+
+ override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
+    case DeliteIfThenElse(c, t, e) => getFreeVarBlock(c,Nil) ::: getFreeVarBlock(t,Nil) ::: getFreeVarBlock(e,Nil)
+    case _ => super.getFreeVarNode(rhs)
+  }
+}
+
+trait DeliteScalaGenIfThenElse extends  DeliteBaseGenWhile

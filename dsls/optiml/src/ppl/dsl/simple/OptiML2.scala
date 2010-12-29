@@ -6,8 +6,7 @@ import ppl.delite.framework.codegen.scala.TargetScala
 import scala.virtualization.lms.internal.{GenericNestedCodegen, GenericCodegen}
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.delite.framework.codegen.delite.DeliteCodeGenOverridesScala
-import ppl.delite.framework.codegen.delite.overrides.{DeliteOverridesExp, DeliteIfThenElseExp}
+import ppl.delite.framework.codegen.delite.overrides.{DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 
 /**
  * Imports from the Scala language
@@ -27,7 +26,7 @@ trait OptiML2 extends OptiML2ScalaOpsPkg with VectorOps2 with MatrixOps2 {
 }
 
 trait OptiML2Exp extends OptiML2ScalaOpsPkgExp with VectorOpsExp2 with MatrixOpsExp2
-  with DeliteOpsExp with DeliteOverridesExp  { this: DeliteApplication =>
+  with DeliteOpsExp with DeliteAllOverridesExp  { this: DeliteApplication =>
 
   def getCodeGenPkg(t: Target{val IR: OptiML2Exp.this.type}) : GenericNestedCodegen{val IR: OptiML2Exp.this.type} = {
     t match {
@@ -45,5 +44,5 @@ trait OptiML2CodeGenBase extends GenericCodegen {
 
 
 trait OptiML2CodeGenScala extends OptiML2CodeGenBase with OptiML2ScalaCodeGenPkg with ScalaGenVectorOps2
-with ScalaGenMatrixOps2 with DeliteCodeGenOverridesScala
+with ScalaGenMatrixOps2 with DeliteScalaGenAllOverrides
   { val IR: DeliteApplication with OptiML2Exp }

@@ -1,11 +1,13 @@
-package ppl.delite.framework.codegen.delite.generators
+package ppl.delite.framework.codegen.delite.overrides
 
 import scala.virtualization.lms.common.VariablesExp
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.ScalaGenEffect
 
-trait DeliteGenScalaVariables extends ScalaGenEffect {
-  val IR: VariablesExp
+trait DeliteVariablesExp extends VariablesExp
+
+trait DeliteScalaGenVariables extends ScalaGenEffect {
+  val IR: DeliteVariablesExp
   import IR._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {

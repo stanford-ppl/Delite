@@ -1,8 +1,8 @@
 package ppl.delite.framework.codegen.delite
 
-import generators.{DeliteGenScalaVariables, DeliteGenTaskGraph}
+import generators.{DeliteGenTaskGraph}
 import java.io.PrintWriter
-import overrides.DeliteOverridesExp
+import overrides.{DeliteScalaGenVariables, DeliteAllOverridesExp}
 import scala.virtualization.lms.internal._
 import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.HashMap
@@ -169,7 +169,3 @@ trait DeliteCodegen extends GenericNestedCodegen {
 }
 
 trait DeliteCodeGenPkg extends DeliteGenTaskGraph
-
-trait DeliteCodeGenOverridesScala extends DeliteGenScalaVariables  {
-  val IR: DeliteApplication with DeliteOverridesExp
-}

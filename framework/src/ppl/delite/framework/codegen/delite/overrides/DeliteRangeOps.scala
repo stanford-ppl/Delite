@@ -2,6 +2,7 @@ package ppl.delite.framework.codegen.delite.overrides
 
 import scala.virtualization.lms.common.RangeOpsExp
 import ppl.delite.framework.ops.DeliteOpsExp
+import scala.virtualization.lms.internal.GenericNestedCodegen
 
 trait DeliteRangeOpsExp extends RangeOpsExp {
   this: DeliteOpsExp =>
@@ -19,3 +20,20 @@ trait DeliteRangeOpsExp extends RangeOpsExp {
     reflectEffect(DeliteRangeForEach(start, end, i, reifyEffects(block(i))))
   }
 }
+
+trait DeliteBaseGenRangeOps extends GenericNestedCodegen {
+  val IR: DeliteRangeOpsExp
+  import IR._
+
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    case DeliteRangeForEach(start, end, i, body) if shallow => syms(start) ::: syms(end) // in shallow mode, don't count deps from nested blocks
+    case _ => super.syms(e)
+  }
+
+  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
+    case DeliteRangeForEach(start, end, i, body) => getFreeVarBlock(body,List(i.asInstanceOf[Sym[_]]))
+    case _ => super.getFreeVarNode(rhs)
+  }
+}
+
+trait DeliteScalaGenRange extends DeliteBaseGenRangeOps

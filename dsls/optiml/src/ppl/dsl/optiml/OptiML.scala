@@ -4,12 +4,11 @@ import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import scala.virtualization.lms.common._
-import ppl.delite.framework.codegen.delite.DeliteCodeGenOverridesScala
 import ppl.delite.framework.ops.{CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
 import scala.virtualization.lms.internal.{ScalaGenBase, GenericNestedCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
 import java.io._
-import ppl.delite.framework.codegen.delite.overrides.{DeliteOverridesExp, DeliteIfThenElseExp}
+import ppl.delite.framework.codegen.delite.overrides.{DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 
 /**
  * These are the portions of Scala imported into OptiML's scope.
@@ -58,7 +57,7 @@ trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp wit
   with VectorOpsExpOpt with VectorViewOpsExp with MatrixOpsExpOpt with MLInputReaderOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard
-  with DeliteOpsExp with DeliteOverridesExp {
+  with DeliteOpsExp with DeliteAllOverridesExp {
   this: DeliteApplication =>
 
   def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericNestedCodegen{val IR: OptiMLExp.this.type} = {
@@ -106,7 +105,7 @@ trait OptiMLCodeGenBase extends GenericCodegen {
 
 trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenLanguageOps with ScalaGenArithOps
   with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
-  with ScalaGenDeliteOps with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
+  with ScalaGenDeliteOps with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
 
   val IR: DeliteApplication with OptiMLExp
 
