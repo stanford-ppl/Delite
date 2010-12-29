@@ -35,6 +35,8 @@ class RangeVectorImpl(__start: Int, __end: Int, __stride: Int, __isRow: Boolean)
 
   override def clone = { val v = new VectorImpl[Int](0, isRow); v.insertAll(0, this); v }
 
+  def sort(implicit o: Ordering[Int]) = this
+
   // TODO: could make this a lazy initialization and allow updates,
   //       but update would be slow due to the check
   def update(index: Int, x: Int) {

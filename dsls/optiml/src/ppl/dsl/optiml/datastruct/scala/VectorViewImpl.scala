@@ -32,6 +32,7 @@ class VectorViewImpl[@specialized T: ClassManifest](x: Array[T], offset: Int, st
 
   // TODO: these semantics are ambiguous/ill-defined. e.g., copy on insert but write-through on update.
   // need to decide on a clean semantics and stick with it.
+  def sort(implicit o: Ordering[T]) = clone.sort
   def insert(pos:Int, x: T) = clone.insert(pos,x)
   def insertAll(pos: Int, xs: Vector[T]) = clone.insertAll(pos,xs)
   def copyFrom(pos: Int, xs: Vector[T]) = clone.copyFrom(pos, xs)

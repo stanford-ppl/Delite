@@ -16,6 +16,11 @@ trait VectorImplOps { this: OptiML =>
   def vector_outer_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Matrix[A]]
   def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]) : Rep[Unit]
   def vector_trans_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], vA: Manifest[Vector[A]]) : Rep[Vector[A]]
+  def vector_median_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) : Rep[A]
+  def vector_filter_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) : Rep[Vector[A]]
+  def vector_partition_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) : (Rep[Vector[A]],Rep[Vector[A]])
+  def vector_contains_impl[A:Manifest](v: Rep[Vector[A]], elem: Rep[A]) : Rep[Boolean]
+  def vector_distinct_impl[A:Manifest](v: Rep[Vector[A]]) : Rep[Vector[A]]
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
@@ -104,6 +109,53 @@ trait VectorImplOpsStandard extends VectorImplOps {
     }
     out  
   }
+
+  def vector_median_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
+    // TODO: this isn't the proper definition of median
+    v.sort
+    v(v.length / 2)
+  }
+
+  def vector_filter_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
+    val result = Vector[A](0, v.isRow)
+    for (i <- 0 until v.length) {
+      val x = v(i)
+      if (pred(x)) result += x
+    }
+
+    result
+  }
+
+  def vector_partition_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
+    val resultT = Vector[A](0, v.isRow)
+    val resultF = Vector[A](0, v.isRow)
+    for (i <- 0 until v.length) {
+      val x = v(i)
+      (if (pred(x)) resultT else resultF) += x
+    }
+
+    (resultT, resultF)
+  }
+
+  def vector_contains_impl[A:Manifest](v: Rep[Vector[A]], elem: Rep[A]): Rep[Boolean] = {
+    var i = unit(0)
+    while (i < v.length) {
+      if (v(i) == elem) return true
+      i += 1
+    }
+    return false
+  }
+
+  def vector_distinct_impl[A:Manifest](v: Rep[Vector[A]]) = {
+    val result = Vector[A](0, v.isRow)
+    var i = unit(0)
+    while (i < v.length) {
+     if (!result.contains(v(i))) result += v(i)
+     i += 1
+    }
+    result
+  }
+
 }
 
 trait VectorImplOpsBLAS extends VectorImplOpsStandard { this: OptiML =>

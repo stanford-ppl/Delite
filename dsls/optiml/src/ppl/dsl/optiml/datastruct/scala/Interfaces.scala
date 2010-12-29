@@ -71,21 +71,25 @@ trait DeliteCollection[@specialized T] {
 
 trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   // methods required on real underlying data structure impl
+  // we need these for:
+  //   1) accessors to data fields
+  //   2) setters to data fields (alternatively, methods that can mutate data fields)
+  //   3) methods that the runtime expects
   def length : Int
   def isRow : Boolean
   def apply(n: Int) : T
   def update(index: Int, x: T)
   def mtrans: Vector[T]
+  def sort(implicit o: Ordering[T]): Vector[T] // because we use the underlying data field to sort
   def copyFrom(pos: Int, xs: Vector[T])
   def insert(pos: Int, x: T)
   def insertAll(pos: Int, xs: Vector[T])
   def removeAll(pos: Int, len: Int)
   def trim
 
+  // DeliteCollection
   def dcApply(idx: Int) = apply(idx)
   def dcUpdate(idx: Int, x: T) = update(idx, x)
-
-  // DeliteCollection
   def size = length
 }
 
@@ -94,12 +98,13 @@ trait NilVector[@specialized T] extends Vector[T] {
   def apply(i: Int) = throw new UnsupportedOperationException()
   def isRow : Boolean = throw new UnsupportedOperationException()
   def update(index: Int, x: T) = throw new UnsupportedOperationException()
+  def mtrans = throw new UnsupportedOperationException()
+  def sort(implicit o: Ordering[T]) = throw new UnsupportedOperationException()
   def insert(pos: Int, x: T) = throw new UnsupportedOperationException()
   def insertAll(pos: Int, xs: Vector[T]) = throw new UnsupportedOperationException()
   def copyFrom(pos: Int, xs: Vector[T]) = throw new UnsupportedOperationException()
   def removeAll(pos: Int, len: Int) = throw new UnsupportedOperationException()
   def trim = throw new UnsupportedOperationException()
-  def mtrans = throw new UnsupportedOperationException()
   override def clone = throw new UnsupportedOperationException()
 }
 
