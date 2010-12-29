@@ -43,6 +43,9 @@ trait ArithOps extends Variables with OverloadHack {
     def -[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.-(lhs,implicit_convert[A,T](rhs))
     def *[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.*(lhs,implicit_convert[A,T](rhs))
     def /[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith./(lhs,implicit_convert[A,T](rhs))
+
+    def abs = arith.abs(lhs)
+    def exp = arith.exp(lhs)
   }
 
 
@@ -57,8 +60,11 @@ trait ArithOps extends Variables with OverloadHack {
                                                   else if (b.isInstanceOfL[NilVector[T]]) a
                                                   else a+b
     def -(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a-b
-    def *(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a**b
+    def *(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a*b
     def /(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a/b
+
+    def abs(a: Rep[Vector[T]]) = a.abs
+    def exp(a: Rep[Vector[T]]) = a.exp
 }
 
 
@@ -72,11 +78,11 @@ trait ArithOps extends Variables with OverloadHack {
     def -(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = throw new UnsupportedOperationException()
     def *(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = throw new UnsupportedOperationException()
     def /(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = throw new UnsupportedOperationException()
+    def abs(a: Rep[Matrix[T]]) = throw new UnsupportedOperationException()
+    def exp(a: Rep[Matrix[T]]) = throw new UnsupportedOperationException()
     /*
     def zero = throw new UnsupportedOperationException() //TODO: figure out the size
     def unary_-(a: Rep[Matrix[T]]) = -a
-    def abs(a: Rep[Matrix[T]]) = a.abs
-    def exp(a: Rep[Matrix[T]]) = a.exp
     */
   }
 
@@ -104,6 +110,12 @@ trait ArithOps extends Variables with OverloadHack {
 
       def /(a: Rep[Tuple4[A,B,C,D]], b: Rep[Tuple4[A,B,C,D]]) =
         Tuple4(a._1/b._1, a._2/b._2, a._3/b._3, a._4/b._4)
+
+      def abs(a: Rep[Tuple4[A,B,C,D]]) =
+        Tuple4(a._1.abs, a._2.abs, a._3.abs, a._4.abs)
+
+      def exp(a: Rep[Tuple4[A,B,C,D]]) =
+        Tuple4(a._1.exp, a._2.exp, a._3.exp, a._4.exp)
     }
 
 
@@ -121,10 +133,10 @@ trait ArithOps extends Variables with OverloadHack {
     def -(a: Rep[Double], b: Rep[Double]) = arith_minus(a,b)
     def *(a: Rep[Double], b: Rep[Double]) = arith_times(a,b)
     def /(a: Rep[Double], b: Rep[Double]) = arith_fractional_divide(a,b)
+    def abs(a: Rep[Double]) = arith_abs(a)
+    def exp(a: Rep[Double]) = arith_exp(a)
     //def zero = 0
     //def unary_-(a: Rep[Double]) = -a
-    //def abs(a: Rep[Double]) = Math.abs(a)
-    //def exp(a: Rep[Double]) = Math.exp(a)
   }
 
   implicit val floatArith : Arith[Float] = new Arith[Float] {
@@ -133,10 +145,10 @@ trait ArithOps extends Variables with OverloadHack {
     def -(a: Rep[Float], b: Rep[Float]) = arith_minus(a,b)
     def *(a: Rep[Float], b: Rep[Float]) = arith_times(a,b)
     def /(a: Rep[Float], b: Rep[Float]) = arith_fractional_divide(a,b)
+    def abs(a: Rep[Float]) = arith_abs(a)
+    def exp(a: Rep[Float]) = arith_exp(a).asInstanceOfL[Float]
     //def zero = 0
     //def unary_-(a: Rep[Float]) = -a
-    //def abs(a: Rep[Float]) = Math.abs(a)
-    //def exp(a: Rep[Float]) = Math.exp(a).asInstanceOf[Rep[Float]]
   }
 
   implicit val intArith : Arith[Int] = new Arith[Int] {
@@ -145,16 +157,18 @@ trait ArithOps extends Variables with OverloadHack {
     def -(a: Rep[Int], b: Rep[Int]) = arith_minus(a,b)
     def *(a: Rep[Int], b: Rep[Int]) = arith_times(a,b)
     def /(a: Rep[Int], b: Rep[Int]) = int_divide(a,b)
+    def abs(a: Rep[Int]) = arith_abs(a)
+    def exp(a: Rep[Int]) = arith_exp(a).asInstanceOfL[Int]
     //def zero = 0
     //def unary_-(a: Rep[Int]) = -a
-    //def abs(a: Rep[Int]) = Math.abs(a)
-    //def exp(a: Rep[Int]) = math.exp(a).asInstanceOf[Rep[Int]]
   }
   
   def arith_plus[T:Manifest:Numeric](lhs: Rep[T], rhs: Rep[T]): Rep[T]
   def arith_minus[T:Manifest:Numeric](lhs: Rep[T], rhs: Rep[T]): Rep[T]
   def arith_times[T:Manifest:Numeric](lhs: Rep[T], rhs: Rep[T]): Rep[T]
   def arith_fractional_divide[T:Manifest:Fractional](lhs: Rep[T], rhs: Rep[T]) : Rep[T]
+  def arith_abs[T:Manifest:Numeric](lhs: Rep[T]): Rep[T]
+  def arith_exp[T:Manifest:Numeric](lhs: Rep[T]): Rep[Double]
 }
 
 trait ArithOpsExp extends ArithOps with VariablesExp {
@@ -165,11 +179,15 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   case class ArithMinus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
   case class ArithTimes[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
   case class ArithFractionalDivide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
+  case class ArithAbs[T:Manifest:Numeric](lhs: Exp[T]) extends Def[T]
+  case class ArithExp[T:Manifest:Numeric](lhs: Exp[T]) extends Def[Double]
 
   def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithPlus(lhs, rhs)
   def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithMinus(lhs, rhs)
   def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithTimes(lhs, rhs)
   def arith_fractional_divide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithFractionalDivide(lhs, rhs)
+  def arith_abs[T:Manifest:Numeric](lhs: Exp[T]) = ArithAbs(lhs)
+  def arith_exp[T:Manifest:Numeric](lhs: Exp[T]) = ArithExp(lhs)
 }
 
 trait ScalaGenArithOps extends ScalaGenBase {
@@ -181,6 +199,8 @@ trait ScalaGenArithOps extends ScalaGenBase {
     case ArithMinus(a,b) => emitValDef(sym, quote(a) + " - " + quote(b))
     case ArithTimes(a,b) => emitValDef(sym, quote(a) + " * " + quote(b))
     case ArithFractionalDivide(a,b) => emitValDef(sym, quote(a) + " / " + quote(b))
+    case ArithAbs(a) => emitValDef(sym, "Math.abs(" + quote(a) + ")")
+    case ArithExp(a) => emitValDef(sym, "Math.exp(" + quote(a) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

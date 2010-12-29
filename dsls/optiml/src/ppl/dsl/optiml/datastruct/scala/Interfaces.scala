@@ -40,6 +40,19 @@ trait DeliteOpMapReduce[@specialized A, @specialized R] {
   def mapreduce(acc: R, elem: A): R = reduce(acc, map(elem))
 }
 
+trait DeliteOpZipWithReduce[@specialized A, @specialized B, @specialized R] {
+  def inA: DeliteCollection[A]
+  def inB: DeliteCollection[B]
+  def zip(a: A, b: B): R
+  def reduce(r1: R, r2: R): R
+
+  /**
+   * default implementation of zip-reduce is simply to compose the zip and reduce functions
+   * A subclass can override to fuse the implementations
+   */
+  def zipreduce(acc: R, a: A, b: B): R = reduce(acc, zip(a,b))
+}
+
 trait DeliteOpForeach[@specialized A] {
   def in: DeliteCollection[A]
   def foreach(elem: A): Unit
@@ -57,11 +70,17 @@ trait DeliteCollection[@specialized T] {
  */
 
 trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
-  // fields required on real underlying data structure impl
+  // methods required on real underlying data structure impl
   def length : Int
   def isRow : Boolean
   def apply(n: Int) : T
   def update(index: Int, x: T)
+  def mtrans: Vector[T]
+  def copyFrom(pos: Int, xs: Vector[T])
+  def insert(pos: Int, x: T)
+  def insertAll(pos: Int, xs: Vector[T])
+  def removeAll(pos: Int, len: Int)
+  def trim
 
   def dcApply(idx: Int) = apply(idx)
   def dcUpdate(idx: Int, x: T) = update(idx, x)
@@ -70,9 +89,25 @@ trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def size = length
 }
 
-trait NilVector[@specialized T] extends Vector[T]
+trait NilVector[@specialized T] extends Vector[T] {
+  def length : Int = 0
+  def apply(i: Int) = throw new UnsupportedOperationException()
+  def isRow : Boolean = throw new UnsupportedOperationException()
+  def update(index: Int, x: T) = throw new UnsupportedOperationException()
+  def insert(pos: Int, x: T) = throw new UnsupportedOperationException()
+  def insertAll(pos: Int, xs: Vector[T]) = throw new UnsupportedOperationException()
+  def copyFrom(pos: Int, xs: Vector[T]) = throw new UnsupportedOperationException()
+  def removeAll(pos: Int, len: Int) = throw new UnsupportedOperationException()
+  def trim = throw new UnsupportedOperationException()
+  def mtrans = throw new UnsupportedOperationException()
+  override def clone = throw new UnsupportedOperationException()
+}
 
 trait VectorView[@specialized T] extends Vector[T]
+
+trait RangeVector extends Vector[Int]
+
+trait IndexVector extends Vector[Int]
 
 /**
  * Matrix

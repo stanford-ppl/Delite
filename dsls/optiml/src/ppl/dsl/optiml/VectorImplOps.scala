@@ -11,6 +11,8 @@ trait VectorImplOps { this: OptiML =>
   def vector_obj_zeros_impl(length: Rep[Int]) : Rep[Vector[Double]]
   def vector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[Vector[Double]]
 
+  def vector_slice_impl[A:Manifest](v: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]): Rep[Vector[A]]
+  //def vector_times_matrix_impl[A:Manifest:Arith](v: Rep[Vector[A]], m: Rep[Matrix[A]]): Rep[Vector[A]]
   def vector_outer_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Matrix[A]]
   def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]) : Rep[Unit]
   def vector_trans_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], vA: Manifest[Vector[A]]) : Rep[Vector[A]]
@@ -52,6 +54,21 @@ trait VectorImplOpsStandard extends VectorImplOps {
     }
     out
   }
+
+  def vector_slice_impl[A:Manifest](v: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]) = {
+    //v.chkRange(start, end)
+    val out = Vector[A](end-start, v.isRow)
+    for (i <- start until end){
+      out(i-start) = v(i)
+    }
+    out
+  }
+
+  //def vector_times_matrix_impl[A:Manifest:Arith](v: Rep[Vector[A]], m: Rep[Matrix[A]]) = {
+  //  v.chkVecMatAgree(v, m)
+  //   val v_trans = v.t
+  //   m.t.mapRowsToVec(a_row => a_row :* v_trans))
+  //}
 
   def vector_outer_impl[A:Manifest:Arith](collA: Rep[Vector[A]], collB: Rep[Vector[A]]) = {
     val out = Matrix[A](collA.length, collA.length)

@@ -82,12 +82,35 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
   abstract class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] {
     val in: Exp[C[A]]
     //val acc: Exp[R]
-    val mV: Exp[A]
 
     // for accumulating each partial sum
+    val mV: Exp[A]
     //val mapreduce: Exp[R] // reified of Exp[(R,A)] => Exp[R] composition of map and reduce
     val map: Exp[R]
 
+    // for reducing remaining partial sums
+    val rV: (Exp[R],Exp[R])
+    val reduce: Exp[R]
+  }
+
+
+  /**
+   * Parallel zipWith-reduction from a (DeliteCollection[A],DeliteCollection[A]) => R. The map-reduce is composed,
+   * so no temporary collection is instantiated to hold the result of the map.
+   *
+   * @param  inA     the first input collection
+   * @param  inB     the second input collection
+   * @param  zV      the bound symbol that the zipWith function operates over
+   * @param  zip     the zipWith function; reified version of (Exp[A],Exp[B]) => Exp[R]
+   * @param  rV      the bound symbol that the reducing function operates over
+   * @param  reduce  the reduction function; reified version of ([Exp[R],Exp[R]) => Exp[R]. Must be associative.
+   */
+  abstract class DeliteOpZipWithReduce[A,B,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] {
+    val inA: Exp[C[A]]
+    val inB: Exp[C[B]]
+    // for accumulating each partial sum
+    val zV: (Exp[A],Exp[B])
+    val zip: Exp[R]
     // for reducing remaining partial sums
     val rV: (Exp[R],Exp[R])
     val reduce: Exp[R]
@@ -132,6 +155,7 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
     case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) else syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
     case red: DeliteOpReduce[_] => if (shallow) syms(red.in) else syms(red.in) ++ syms(red.func)
     case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => if (shallow) syms(zipR.inA) ++ syms(zipR.inB) else syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
     case foreach: DeliteOpForeach[_,_] => if (shallow) syms(foreach.in) else syms(foreach.in) ++ syms(foreach.func)
     case _ => super.syms(e)
   }
@@ -142,6 +166,7 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
     case zip: DeliteOpZipWith[_,_,_,_] => getFreeVarBlock(List(zip.func,zip.alloc),List(zip.v._1.asInstanceOf[Sym[_]], zip.v._2.asInstanceOf[Sym[_]]))
     case red: DeliteOpReduce[_] => getFreeVarBlock(red.func,List(red.v._1.asInstanceOf[Sym[_]], red.v._2.asInstanceOf[Sym[_]]))
     case mapR: DeliteOpMapReduce[_,_,_] => getFreeVarBlock(mapR.map, List(mapR.mV.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(mapR.reduce, List(mapR.rV._1.asInstanceOf[Sym[_]], mapR.rV._2.asInstanceOf[Sym[_]]))
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => getFreeVarBlock(zipR.zip, List(zipR.zV._1.asInstanceOf[Sym[_]], zipR.zV._2.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(zipR.reduce, List(zipR.rV._1.asInstanceOf[Sym[_]], zipR.rV._2.asInstanceOf[Sym[_]]))
     case foreach: DeliteOpForeach[_,_] => getFreeVarBlock(foreach.func,List(foreach.v.asInstanceOf[Sym[_]]))
     case _ => super.getFreeVarNode(rhs)
   }
@@ -289,6 +314,49 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("def reduce(" + quote(mapR.rV._1) + ": " + remap(mapR.rV._1.Type) + "," + quote(mapR.rV._2) + ": " + remap(mapR.rV._2.Type) + ") = {")
         emitBlock(mapR.reduce)
         stream.println(quote(getBlockResult(mapR.reduce)))
+        stream.println("}}")
+        deliteKernel = true
+      }
+    }
+    case zipR:DeliteOpZipWithReduce[_,_,_,_] => {
+      if (deliteKernel == false){
+        stream.println("val " + quote(sym) + " = {")
+        stream.println("val " + quote(zipR.zV._1) + " = " + quote(zipR.inA) + ".dcApply(0)")
+        stream.println("val " + quote(zipR.zV._2) + " = " + quote(zipR.inB) + ".dcApply(0)")
+        stream.println("var " + quote(zipR.rV._1) + " = {")
+        emitBlock(zipR.zip)
+        stream.println(quote(getBlockResult(zipR.zip)))
+        stream.println("}")
+        stream.println("var zipReduceIdx = 1")
+        stream.println("while (zipReduceIdx < " + quote(zipR.inA) + ".size) {")
+        stream.println("val " + quote(zipR.zV._1) + " = " + quote(zipR.inA) + ".dcApply(zipIdx)")
+        stream.println("val " + quote(zipR.zV._2) + " = " + quote(zipR.inB) + ".dcApply(zipIdx)")
+        stream.println("val " + quote(zipR.rV._2) + " = {")
+        emitBlock(zipR.zip)
+        stream.println(quote(getBlockResult(zipR.zip)))
+        stream.println("}")
+        stream.println(quote(zipR.rV._1) + " = {")
+        emitBlock(zipR.reduce)
+        stream.println(quote(getBlockResult(zipR.reduce)))
+        stream.println("}")
+        stream.println("zipReduceIdx += 1")
+        stream.println("} // end while")
+        stream.println(quote(zipR.rV._1))
+        stream.println("}")
+      }
+      else {
+        deliteKernel = false
+        stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpZipWithReduce[" + remap(zipR.zV._1.Type) + "," + remap(zipR.zV._2.Type) + "," + remap(zipR.reduce.Type) + "] {")
+        stream.println("def inA = " + quote(zipR.inA))
+        stream.println("def inB = " + quote(zipR.inB))
+        stream.println("def zip(" + quote(zipR.zV._1) + ": " + remap(zipR.zV._1.Type) + ", " + quote(zipR.zV._2) + ": " + remap(zipR.zV._2.Type) + ") = {")
+        emitBlock(zipR.zip)
+        stream.println(quote(getBlockResult(zipR.zip)))
+        stream.println("}")
+        stream.println("")
+        stream.println("def reduce(" + quote(zipR.rV._1) + ": " + remap(zipR.rV._1.Type) + "," + quote(zipR.rV._2) + ": " + remap(zipR.rV._2.Type) + ") = {")
+        emitBlock(zipR.reduce)
+        stream.println(quote(getBlockResult(zipR.reduce)))
         stream.println("}}")
         deliteKernel = true
       }

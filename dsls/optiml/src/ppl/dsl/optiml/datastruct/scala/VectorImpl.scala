@@ -31,9 +31,43 @@ class VectorImpl[@specialized T: ClassManifest](len: Int, isrow: Boolean) extend
     _data(index) = x
   }
 
-  def insert(pos: Int, x: T): VectorImpl[T] = {
+  override def clone = { val v = new VectorImpl[T](0, isRow); v.insertAll(0, this); v }
+
+  def insert(pos: Int, x: T) {
     insertSpace(pos, 1)
-    _data(pos) = x    
+    _data(pos) = x
+  }
+
+  def insertAll(pos: Int, xs: Vector[T]) {
+    insertSpace(pos, xs.length)
+    copyFrom(pos, xs)
+  }
+
+  def copyFrom(pos: Int, xs: Vector[T]) {
+    //chkRange(pos, pos + xs.length)
+    var i = 0
+    while (i < xs.length) {
+      _data(pos + i) = xs(i)
+      i += 1
+    }
+  }
+
+  def removeAll(pos: Int, len: Int) {
+    //chkRange(pos, pos + len)
+    Array.copy(_data, pos + len, _data, pos, _length - (pos + len))
+    _length -= len
+  }
+
+  def trim {
+    if (_length < _data.length) {
+      val d = new Array[T](_length)
+      Array.copy(_data, 0, d, 0, _length)
+      _data = d
+    }
+  }
+
+  def mtrans = {
+    _isRow = !_isRow
     this
   }
 

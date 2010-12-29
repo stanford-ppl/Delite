@@ -17,7 +17,7 @@ import scala.virtualization.lms.common._
  *
  */
 
-trait LanguageOps extends Base { this: ArithOps =>
+trait LanguageOps extends Base { this: OptiML =>
 
   /**
    * random
@@ -61,23 +61,45 @@ trait LanguageOps extends Base { this: ArithOps =>
     _intRandRef.setSeed(INITIAL_SEED)
   }
 
+  /**
+   * Zero
+   */
   // TODO: type class should probable be Zeroable[A] or something
   //def <>[A:Manifest:Arith] = optiml_zero
-  
+
+  /**
+   * Sum
+   */
   def sum[A:Manifest:Arith](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A]) = optiml_sum(start, end, block)
 
+  def optiml_sum[A:Manifest:Arith](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A]) : Rep[A]
+
+
+  /**
+   * IndexVector construction
+   */
+  implicit def intToIndexOp(i : Int) = new IndexOp(i)
+  implicit def repIntToIndexOp(i : Rep[Int]) = new IndexOp(i)
+
+  class IndexOp(val _end : Rep[Int]) {
+    def ::(_start : Int) = indexvector_range(_start, _end)
+    def ::(_start : Rep[Int]) = indexvector_range(_start, _end)
+  }
+
+
+  /**
+   *  Profiling
+   */
   // lightweight profiling, matlab style
   def tic() = profile_start()
   def toc() = profile_stop()
-
-  def optiml_sum[A:Manifest:Arith](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A]) : Rep[A]
 
   def profile_start() : Rep[Unit]
   def profile_stop() : Rep[Unit]
 }
 
 trait LanguageOpsExp extends LanguageOps with EffectExp {
-  this: LanguageImplOps with ArithOps with VectorOpsExp with DSLOpsExp with DeliteOpsExp =>
+  this: OptiMLExp with LanguageImplOps =>
 
   case class ProfileStart() extends Def[Unit]
   case class ProfileStop() extends Def[Unit]

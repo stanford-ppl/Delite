@@ -23,9 +23,20 @@ class VectorViewImpl[@specialized T: ClassManifest](x: Array[T], offset: Int, st
     _data(idx(n)) = x
   }
 
-  def insert(pos:Int, x: T): VectorViewImpl[T] = {
-    throw new UnsupportedOperationException("operations on views not supported yet")
+  def mtrans = {
+    _isRow = !_isRow
+    this
   }
+
+  override def clone = { val v = new VectorImpl[T](0, isRow); v.insertAll(0, this); v }
+
+  // TODO: these semantics are ambiguous/ill-defined. e.g., copy on insert but write-through on update.
+  // need to decide on a clean semantics and stick with it.
+  def insert(pos:Int, x: T) = clone.insert(pos,x)
+  def insertAll(pos: Int, xs: Vector[T]) = clone.insertAll(pos,xs)
+  def copyFrom(pos: Int, xs: Vector[T]) = clone.copyFrom(pos, xs)
+  def removeAll(pos: Int, len: Int) = clone.removeAll(pos, len)
+  def trim = clone.trim
 
   protected def chkIndex(index: Int) = {
     if (index < 0 || index >= _data.length)

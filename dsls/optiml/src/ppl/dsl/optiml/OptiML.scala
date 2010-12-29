@@ -44,7 +44,7 @@ trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with Cu
  * This the trait that every OptiML application must extend.
  */
 trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps
-  with VectorOps with MatrixOps with MLInputReaderOps {
+  with VectorOps with MatrixOps with MLInputReaderOps with VectorViewOps with IndexVectorOps  {
 
   this: DeliteApplication =>
 
@@ -55,7 +55,7 @@ trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ArithOpsExp
-  with VectorOpsExpOpt with VectorViewOpsExp with MatrixOpsExpOpt with MLInputReaderOpsExp
+  with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with VectorViewOpsExp with IndexVectorOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard
   with DeliteOpsExp {
@@ -105,7 +105,7 @@ trait OptiMLCodeGenBase extends GenericCodegen {
 }
 
 trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenLanguageOps with ScalaGenArithOps
-  with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
+  with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps
   with ScalaGenDeliteOps with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
 
   val IR: DeliteApplication with OptiMLExp

@@ -18,7 +18,7 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
 
   def doubleData = _data.asInstanceOf[Array[Double]]
   
-  def apply(i: Int) : VectorViewImpl[T] = {
+  def apply(i: Int) : VectorView[T] = {
     vview(i*numCols, 1, numCols, true)
   }
 
@@ -33,11 +33,11 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
   def dcApply(idx: Int) : T = _data(idx)
   def dcUpdate(idx: Int, x: T) = { _data(idx) = x }
 
-  def vview(start: Int, stride: Int, length: Int, isRow: Boolean) : VectorViewImpl[T] = {
+  def vview(start: Int, stride: Int, length: Int, isRow: Boolean) : VectorView[T] = {
     new VectorViewImpl[T](_data, start, stride, length, isRow)
   }
 
-  def insertRow(pos: Int, x: Vector[T]): MatrixImpl[T] = {
+  def insertRow(pos: Int, x: Vector[T]): Matrix[T] = {
     val idx = pos*_numCols
     insertSpace(idx, _numCols)
     for (i <- idx until idx+_numCols){
