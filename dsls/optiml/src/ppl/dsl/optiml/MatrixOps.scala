@@ -1,5 +1,6 @@
 package ppl.dsl.optiml
 
+import datastruct.CudaGenDataStruct
 import datastruct.scala.{MatrixImpl, Vector, Matrix}
 import java.io.{PrintWriter}
 
@@ -200,7 +201,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
   }
 }
 
-trait CudaGenMatrixOps extends CudaGenBase {
+trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
   val IR: MatrixOpsExp
   import IR._
 

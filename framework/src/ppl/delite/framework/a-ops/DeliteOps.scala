@@ -328,6 +328,8 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => throw new RuntimeException("CudaGen: DeliteOpSingleTask is not GPUable.")
+      // TODO: Generate single thread version of this work
+      //if(idxX == 0) {}
     case map:DeliteOpMap[_,_,_] => {
       if (deliteKernel == false) throw new RuntimeException("CudaGen: Nested DeliteOpMap is not GPUable.")
       gpuBlockSizeX = quote(map)+".size"
