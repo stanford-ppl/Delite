@@ -37,6 +37,14 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
     new VectorViewImpl[T](_data, start, stride, length, isRow)
   }
 
+  override def clone = {
+    val res = new MatrixImpl[T](numRows, numCols)
+    for (i <- 0 until size){
+      res.dcUpdate(i, _data(i))
+    }
+    res
+  }
+
   def insertRow(pos: Int, x: Vector[T]) {
     val idx = pos*_numCols
     insertSpace(idx, _numCols)

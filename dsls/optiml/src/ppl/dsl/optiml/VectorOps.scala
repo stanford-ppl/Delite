@@ -79,6 +79,7 @@ trait VectorOps extends DSLType with Variables {
     // general
     def t = vector_trans(x)
     def mt() = vector_mutable_trans(x)
+    def cloneL = vector_clone(x)
     def pprint() = vector_pprint(x)
 
     // data operations
@@ -118,9 +119,9 @@ trait VectorOps extends DSLType with Variables {
     def median(implicit o: Ordering[A]) = vector_median(x)
 
     // bulk operations
-    def foreach(block: Rep[A] => Rep[Unit]) = vector_foreach(x, block)
     def map[B:Manifest](f: Rep[A] => Rep[B]) = vector_map(x,f)
     def mmap(f: Rep[A] => Rep[A]) = vector_mmap(x,f)
+    def foreach(block: Rep[A] => Rep[Unit]) = vector_foreach(x, block)
     def zip[B:Manifest,R:Manifest](y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[R]) = vector_zipwith(x,y,f)
     def reduce(f: (Rep[A],Rep[A]) => Rep[A]) = vector_reduce(x,f)
     def filter(pred: Rep[A] => Rep[Boolean]) = vector_filter(x,pred)
@@ -153,6 +154,7 @@ trait VectorOps extends DSLType with Variables {
 
   def vector_trans[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_mutable_trans[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_clone[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
 
   def vector_update[A:Manifest](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
@@ -185,9 +187,9 @@ trait VectorOps extends DSLType with Variables {
   //def vector_maxIndex[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[Int]
   def vector_median[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[A]
 
-  def vector_foreach[A:Manifest](x: Rep[Vector[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
   def vector_map[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[B]): Rep[Vector[B]]
   def vector_mmap[A:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[A]): Rep[Vector[A]]
+  def vector_foreach[A:Manifest](x: Rep[Vector[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
   def vector_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[Vector[R]]
   def vector_reduce[A:Manifest](x: Rep[Vector[A]], f: (Rep[A],Rep[A]) => Rep[A]): Rep[A]
   def vector_filter[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Vector[A]]
@@ -224,6 +226,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorRemoveAll[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], len: Exp[Int]) extends Def[Unit]
   case class VectorTrim[A:Manifest](x: Exp[Vector[A]]) extends Def[Unit]
   case class VectorMutableTrans[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
+  case class VectorClone[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
   // TODO: right now we just use the underlying data structure sort, but we should implement our own fast parallel sort
   // with delite ops
   case class VectorSort[A:Manifest:Ordering](x: Exp[Vector[A]]) extends Def[Vector[A]]
@@ -423,13 +426,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   //  val func = if (v._1 > v._2) v._1.index else v._2.index
   //}
 
-  case class VectorForeach[A:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[Unit])
-    extends DeliteOpForeach[A,Vector] {
-
-    val i = fresh[Int]
-    val sync = reifyEffects(if ((i > 0) && (i < in.length)) List(in(i-1),in(i),in(i+1)) else List(in(i)))
-  }
-
   case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[B])
     extends DeliteOpMap[A,B,Vector] {
 
@@ -440,6 +436,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     extends DeliteOpMap[A,A,Vector] {
 
     val alloc = in
+  }
+
+  case class VectorForeach[A:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[Unit])
+    extends DeliteOpForeach[A,Vector] {
+
+    val i = fresh[Int]
+    val sync = reifyEffects(if ((i > 0) && (i < in.length)) List(in(i-1),in(i),in(i+1)) else List(in(i)))
   }
 
   case class VectorZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]],
@@ -480,6 +483,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
   def vector_trans[A:Manifest](x: Exp[Vector[A]]) = VectorTrans(x)
   def vector_mutable_trans[A:Manifest](x: Exp[Vector[A]]) = VectorMutableTrans(x)
+  def vector_clone[A:Manifest](x: Exp[Vector[A]]) = VectorClone(x)
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
 
   def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(x, n, y))
@@ -505,18 +509,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_abs[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorAbs(x)
   def vector_exp[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorExp(x)
 
-  def vector_sort[A:Manifest:Ordering](x: Rep[Vector[A]]) = VectorSort(x)
-  def vector_min[A:Manifest:Ordering](x: Rep[Vector[A]]) = VectorMin(x)
-  //def vector_minIndex[A:Manifest:Ordering](x: Rep[Vector[A]]) = VectorMinIndex(x)
-  def vector_max[A:Manifest:Ordering](x: Rep[Vector[A]]) = VectorMax(x)
-  //def vector_maxIndex[A:Manifest:Ordering](x: Rep[Vector[A]]) = VectorMaxIndex(x)
-  def vector_median[A:Manifest:Ordering](x: Rep[Vector[A]]) = VectorMedian(x)
+  def vector_sort[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorSort(x)
+  def vector_min[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMin(x)
+  //def vector_minIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMinIndex(x)
+  def vector_max[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMax(x)
+  //def vector_maxIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMaxIndex(x)
+  def vector_median[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMedian(x)
 
-  def vector_foreach[A:Manifest](x: Rep[Vector[A]], block: Rep[A] => Rep[Unit]) = {
-    val v = fresh[A]
-    val func = reifyEffects(block(v))
-    reflectEffect(VectorForeach(x, v, func))
-  }
   def vector_map[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[B]) = {
     val v = fresh[A]
     val func = reifyEffects(f(v))
@@ -526,6 +525,11 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val v = fresh[A]
     val func = reifyEffects(f(v))
     VectorMutableMap(x, v, func)
+  }
+  def vector_foreach[A:Manifest](x: Exp[Vector[A]], block: Exp[A] => Exp[Unit]) = {
+    val v = fresh[A]
+    val func = reifyEffects(block(v))
+    reflectEffect(VectorForeach(x, v, func))
   }
   def vector_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], f: (Exp[A],Exp[B]) => Exp[R]) = {
     val v = (fresh[A], fresh[B])
@@ -614,6 +618,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenBase {
       case VectorInsertAll(x,pos,y) => emitValDef(sym, quote(x) + ".insertAll(" + quote(pos) + ", " + quote(y) + ")")
       case VectorRemoveAll(x,pos,len) => emitValDef(sym, quote(x) + ".removeAll(" + quote(pos) + ", " + quote(len) + ")")
       case VectorTrim(x) => emitValDef(sym, quote(x) + ".trim")
+      case VectorClone(x) => emitValDef(sym, quote(x) + ".clone")
       case v@VectorNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
       case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
       // TODO: why!!!
