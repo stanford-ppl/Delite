@@ -25,6 +25,9 @@ trait LanguageOps extends Base { this: OptiML =>
 
   private val INITIAL_SEED = 100
 
+  // TODO: all of this needs to be lifted.. but how (and where) to generate the random vars?
+  // maybe we keep them in global pre-generated datastructure (optiml's predef?)
+
   // these are thread-safe
   private var _randRef = new scala.util.Random(INITIAL_SEED)
   private var _intRandRef = new scala.util.Random(INITIAL_SEED)

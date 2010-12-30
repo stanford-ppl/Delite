@@ -21,7 +21,20 @@ object VectorUITests extends DeliteApplication with OptiMLExp {
     v1.pprint
     v2.pprint
   }
+
+  def testLoop() = {
+   val vec1 = Vector.rand(5)
+   val vec2 = Vector.rand(5)
+
+   var idx = unit(0)
+   while(idx < 0) {
+     vec2(idx) = vec1(idx)
+   }
+   vec2.pprint
+  }
+
   def main() = {
-    testInit()
+    //testInit()
+    testLoop()
   }
 }

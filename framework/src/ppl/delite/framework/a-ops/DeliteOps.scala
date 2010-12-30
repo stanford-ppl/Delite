@@ -47,7 +47,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
    * @param  alloc function returning the output collection. if it is the same as the input collection,
    *               the operation is mutable; reified version of Unit => DeliteCollection[B].
    */
-  abstract class DeliteOpZipWith[A,B,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
+  abstract class DeliteOpZipWith[A,B,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[R]] {
     val inA: Exp[C[A]]
     val inB: Exp[C[B]]
     val v: (Exp[A],Exp[B])

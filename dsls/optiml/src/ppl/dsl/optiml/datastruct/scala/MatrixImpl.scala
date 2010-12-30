@@ -26,25 +26,99 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
     _data(i*numCols+j)
   }
 
-  def update(row: Int, col: Int, x: T) = {
+  def update(row: Int, col: Int, x: T) {
     _data(row*numCols+col) = x
   }
 
   def dcApply(idx: Int) : T = _data(idx)
-  def dcUpdate(idx: Int, x: T) = { _data(idx) = x }
+  def dcUpdate(idx: Int, x: T) { _data(idx) = x }
 
   def vview(start: Int, stride: Int, length: Int, isRow: Boolean) : VectorView[T] = {
     new VectorViewImpl[T](_data, start, stride, length, isRow)
   }
 
-  def insertRow(pos: Int, x: Vector[T]): Matrix[T] = {
+  def insertRow(pos: Int, x: Vector[T]) {
     val idx = pos*_numCols
     insertSpace(idx, _numCols)
     for (i <- idx until idx+_numCols){
       _data(i) = x(i-idx)
     }
     _numRows += 1
-    this
+  }
+
+  def insertAllRows(pos: Int, xs: Matrix[T]) {
+    //chkEquals(xs._numCols, _numCols)
+    val idx = pos*_numCols
+    val sz = _numCols*xs.numRows
+    insertSpace(idx, sz)
+    for (i <- idx until idx+sz){
+      _data(i) = xs.dcApply(i-idx)
+    }
+    _numRows += xs.numRows
+  }
+
+  def insertCol(pos: Int, x: Vector[T]) {
+    //chkEquals(x._length, _numRows)
+    val newCols = _numCols+1
+    val out_data = new Array[T](_numRows*newCols)
+    for (i <- 0 until _numRows){
+      var col = 0
+      for (j <- 0 until newCols) {
+        if (j == pos){
+          out_data(i*newCols+j) = x(i)
+        }
+        else{
+          out_data(i*newCols+j) = this(i,col)
+          col += 1
+        }
+      }
+    }
+    _data = out_data
+    _numCols += 1
+  }
+
+  def insertAllCols(pos: Int, xs: Matrix[T]) {
+    //m.chkEquals(xs._numRows, _numRows)
+    val newCols = _numCols+xs.numCols
+    val out_data = new Array[T](_numRows*newCols)
+    for (i <- 0 until _numRows){
+      var col = 0
+      for (j <- 0 until newCols){
+        if (j < pos || j >= pos+xs.numCols){
+          out_data(i*newCols+j) = this(i,col)
+          col += 1
+        }
+        else{
+          out_data(i*newCols+j) = xs(i,j-pos)
+        }
+      }
+    }
+    _data = out_data
+
+    _numCols += xs.numCols
+  }
+
+  def removeRows(pos: Int, num: Int) {
+    val idx = pos*_numCols
+    val len = num*_numCols
+    Array.copy(_data, idx + len, _data, idx, size - (idx + len))
+    _numRows -= num
+  }
+
+  def removeCols(pos:Int, num: Int) {
+    val newCols = _numCols-num
+    val out_data = new Array[T](_numRows*newCols)
+    for (i <- 0 until _numRows){
+      var col = 0
+      for (j <- 0 until _numCols){
+        if (j < pos || j >= pos+num){
+          out_data(i*newCols+col) = this(i,j)
+          col += 1
+        }
+      }
+    }
+    _data = out_data
+    _numCols -= num
   }
 
   protected def ensureExtra(extra: Int) {

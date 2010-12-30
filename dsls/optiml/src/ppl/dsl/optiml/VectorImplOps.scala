@@ -8,7 +8,11 @@ trait VectorImplOps { this: OptiML =>
 
   def vector_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[A]]): Rep[Vector[A]]
   def vector_obj_ones_impl(length: Rep[Int]) : Rep[Vector[Double]]
+  def vector_obj_onesf_impl(length: Rep[Int]) : Rep[Vector[Float]]
   def vector_obj_zeros_impl(length: Rep[Int]) : Rep[Vector[Double]]
+  def vector_obj_zerosf_impl(length: Rep[Int]) : Rep[Vector[Float]]
+  def vector_obj_rand_impl(length: Rep[Int]): Rep[Vector[Double]]
+  def vector_obj_randf_impl(length: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[Vector[Double]]
 
   def vector_slice_impl[A:Manifest](v: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]): Rep[Vector[A]]
@@ -42,13 +46,17 @@ trait VectorImplOpsStandard extends VectorImplOps {
     v
   }
 
-  def vector_obj_ones_impl(length: Rep[Int]) = Vector[Double](length, true) map { e => 1. }
+  def vector_obj_ones_impl(length: Rep[Int]) = Vector[Double](length, true) mmap { e => 1. }
+
+  def vector_obj_onesf_impl(length: Rep[Int]) = Vector[Float](length, true) mmap { e => 1f }
 
   def vector_obj_zeros_impl(length: Rep[Int]) = Vector[Double](length, true)
 
   def vector_obj_zerosf_impl(length: Rep[Int]) = Vector[Float](length, true)
 
-  def vector_obj_rand_impl(length: Rep[Int]) = Vector[Double](length, true) map { e => random[Double] }
+  def vector_obj_rand_impl(length: Rep[Int]) = Vector[Double](length, true) mmap { e => random[Double] }
+
+  def vector_obj_randf_impl(length: Rep[Int]) = Vector[Float](length, true) mmap { e => random[Float] }
 
   def vector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]) = {
     val length = Math.ceil((end-start)/step_size).asInstanceOfL[Int]

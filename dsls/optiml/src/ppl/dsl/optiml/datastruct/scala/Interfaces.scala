@@ -124,10 +124,20 @@ trait Matrix[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def size: Int
 
   def apply(i: Int) : VectorView[T]
-  def apply(i: Int, j: Int) : T
+  def apply(i: Int, j: Int): T
   def update(row: Int, col: Int, x: T)
-  def vview(start: Int, stride: Int, length: Int, isRow: Boolean) : VectorView[T]
-  def insertRow(pos: Int, x: Vector[T]): Matrix[T]
+  def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
+  def insertRow(pos: Int, x: Vector[T])
+  def insertAllRows(pos: Int, xs: Matrix[T])
+  def insertCol(pos: Int, x: Vector[T])
+  def insertAllCols(pos: Int, xs: Matrix[T])
+  def removeRows(pos: Int, len: Int)
+  def removeCols(pos: Int, len: Int)
+
+  // DeliteCollection
+  def dcApply(idx: Int): T
+  def dcUpdate(idx: Int, x: T): Unit
+
 }
 
 

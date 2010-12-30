@@ -13,10 +13,10 @@ trait VectorOps extends DSLType with Variables {
   this: OptiML =>
 
   object Vector {
-    def apply[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) : Rep[Vector[A]] = vector_obj_new(len, isRow)
+    def apply[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) = vector_obj_new(len, isRow)
     // this works, but generates painfully inefficient code because the Const(List(..)) symbol gets inlined each
     // time it is used, rather than stored as a value, because consts are not treated like dependencies in 'syms'.
-    def apply[A:Manifest](xs: A*) : Rep[Vector[A]] = {
+    def apply[A:Manifest](xs: A*) = {
       // Seq gets lifted into a WrappedArray Const, which can't be instantiated from generated code
       val xs2 = unit(xs.toList)
       vector_obj_fromseq(xs2)
@@ -29,10 +29,12 @@ trait VectorOps extends DSLType with Variables {
     // then we need a way of instantiating a manifest for Rep[A]
     //def flatten[A:Manifest](pieces: Rep[Vector[Vector[A]]])
 
-    def ones(len: Rep[Int]): Rep[Vector[Double]] = vector_obj_ones(len)
-    def zeros(len: Rep[Int]): Rep[Vector[Double]] = vector_obj_zeros(len)
-    def zerosf(len: Rep[Int]): Rep[Vector[Float]] = vector_obj_zerosf(len)
-    def rand(len: Rep[Int]): Rep[Vector[Double]] = vector_obj_rand(len)
+    def ones(len: Rep[Int]) = vector_obj_ones(len)
+    def onesf(len: Rep[Int]) = vector_obj_onesf(len)
+    def zeros(len: Rep[Int]) = vector_obj_zeros(len)
+    def zerosf(len: Rep[Int]) = vector_obj_zerosf(len)
+    def rand(len: Rep[Int]) = vector_obj_rand(len)
+    def randf(len: Rep[Int]) = vector_obj_randf(len)
     def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = 1, isRow: Rep[Boolean] = true) =
       vector_obj_range(start, end, stride, isRow)
     def uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean] = true) =
@@ -40,7 +42,7 @@ trait VectorOps extends DSLType with Variables {
   }
 
   implicit def repVecToVecOps[A:Manifest](x: Rep[Vector[A]]) = new vecOpsCls(x)
-  implicit def vecToVecOps[A:Manifest](x: Vector[A]) = new vecOpsCls(x)
+  //implicit def vecToVecOps[A:Manifest](x: Vector[A]) = new vecOpsCls(x)
   implicit def varToVecOps[A:Manifest](x: Var[Vector[A]]) : vecOpsCls[A]
 
   /**
@@ -119,6 +121,7 @@ trait VectorOps extends DSLType with Variables {
     def foreach(block: Rep[A] => Rep[Unit]) = vector_foreach(x, block)
     def map[B:Manifest](f: Rep[A] => Rep[B]) = vector_map(x,f)
     def mmap(f: Rep[A] => Rep[A]) = vector_mmap(x,f)
+    def zip[B:Manifest,R:Manifest](y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[R]) = vector_zipwith(x,y,f)
     def reduce(f: (Rep[A],Rep[A]) => Rep[A]) = vector_reduce(x,f)
     def filter(pred: Rep[A] => Rep[Boolean]) = vector_filter(x,pred)
     //def flatMap(f: Rep[A] => Rep[Vector[B]]) = vector_flatmap(x,f) // TODO: can't do this until we sort out the issue with Vector.flatten
@@ -132,9 +135,11 @@ trait VectorOps extends DSLType with Variables {
   def vector_obj_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]): Rep[Vector[A]]
   def vector_obj_fromseq[A:Manifest](xs: Rep[Seq[A]]): Rep[Vector[A]]
   def vector_obj_ones(len: Rep[Int]): Rep[Vector[Double]]
+  def vector_obj_onesf(len: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_zeros(len: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_zerosf(len: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_rand(len: Rep[Int]): Rep[Vector[Double]]
+  def vector_obj_randf(len: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], isRow: Rep[Boolean]): Rep[RangeVector]
   def vector_obj_uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[Vector[Double]]
 
@@ -183,6 +188,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_foreach[A:Manifest](x: Rep[Vector[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
   def vector_map[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[B]): Rep[Vector[B]]
   def vector_mmap[A:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[A]): Rep[Vector[A]]
+  def vector_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[Vector[R]]
   def vector_reduce[A:Manifest](x: Rep[Vector[A]], f: (Rep[A],Rep[A]) => Rep[A]): Rep[A]
   def vector_filter[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Vector[A]]
   //def vector_flatMap[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[Vector[B]]): Rep[Vector[B]]
@@ -232,6 +238,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorObjectOnes(len: Exp[Int])
     extends DeliteOpSingleTask(reifyEffects(vector_obj_ones_impl(len)))
 
+  case class VectorObjectOnesF(len: Exp[Int])
+    extends DeliteOpSingleTask(reifyEffects(vector_obj_onesf_impl(len)))
+
   case class VectorObjectZeros(len: Exp[Int])
     extends DeliteOpSingleTask(reifyEffects(vector_obj_zeros_impl(len)))
 
@@ -240,6 +249,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
   case class VectorObjectRand(len: Exp[Int])
     extends DeliteOpSingleTask(reifyEffects(vector_obj_rand_impl(len)))
+
+  case class VectorObjectRandF(len: Exp[Int])
+    extends DeliteOpSingleTask(reifyEffects(vector_obj_randf_impl(len)))
 
   case class VectorObjectUniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean])
     extends DeliteOpSingleTask(reifyEffects(vector_obj_uniform_impl(start, step_size, end, isRow)))
@@ -430,6 +442,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val alloc = in
   }
 
+  case class VectorZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]],
+                                                             v: (Exp[A],Exp[B]), func: Exp[R])
+    extends DeliteOpZipWith[A,B,R,Vector] {
+
+    val alloc = reifyEffects(Vector[R](inA.length, inA.isRow))
+  }
+
   case class VectorReduce[A:Manifest](in: Exp[Vector[A]], v: (Exp[A],Exp[A]), func: Exp[A])
     extends DeliteOpReduce[A]
 
@@ -440,9 +459,11 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorNew[A](len, isRow))
   def vector_obj_fromseq[A:Manifest](xs: Exp[Seq[A]]) = reflectEffect(VectorObjectFromSeq(xs))
   def vector_obj_ones(len: Exp[Int]) = reflectEffect(VectorObjectOnes(len))
+  def vector_obj_onesf(len: Exp[Int]) = reflectEffect(VectorObjectOnesF(len))
   def vector_obj_zeros(len: Exp[Int]) = reflectEffect(VectorObjectZeros(len))
   def vector_obj_zerosf(len: Exp[Int]) = reflectEffect(VectorObjectZerosF(len))
   def vector_obj_rand(len: Exp[Int]) = reflectEffect(VectorObjectRand(len))
+  def vector_obj_randf(len: Exp[Int]) = reflectEffect(VectorObjectRandF(len))
   def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorObjectRange(start, end, stride, isRow))
   def vector_obj_uniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean]) = reflectEffect(VectorObjectUniform(start, step_size, end, isRow))
 
@@ -505,6 +526,11 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val v = fresh[A]
     val func = reifyEffects(f(v))
     VectorMutableMap(x, v, func)
+  }
+  def vector_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], f: (Exp[A],Exp[B]) => Exp[R]) = {
+    val v = (fresh[A], fresh[B])
+    val func = reifyEffects(f(v._1,v._2))
+    VectorZipWith(x, y, v, func)
   }
   def vector_reduce[A:Manifest](x: Exp[Vector[A]], f: (Exp[A],Exp[A]) => Exp[A]) = {
     val v = (fresh[A],fresh[A])
