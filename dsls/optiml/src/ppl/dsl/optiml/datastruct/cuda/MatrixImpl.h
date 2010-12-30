@@ -30,6 +30,18 @@ public:
 	__device__ void update(int idxR, int idxC, T newVal) {
 		data[idxR*numCols+idxC] = newVal;
 	}
+
+    // DeliteCollection
+    __device__ int size() {
+        return numRows*numCols;
+    }
+    __device__ T dcApply(int idx) {
+        return data[idx];
+    }
+    __device__ void dcUpdate(int idx, T value) {
+        data[idx] = value;
+    }
+	
 };
 
 #endif
