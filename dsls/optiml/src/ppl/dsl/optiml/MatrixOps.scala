@@ -99,8 +99,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixPlus[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
     extends DeliteOpZipWith[A,A,A,Matrix] {
 
-    //val out = reifyEffects(Matrix[A](inA.numRows, inA.numCols))
-    val alloc = reifyEffects(matrix_new[A](inA.numRows, inA.numCols))
+    val alloc = reifyEffects(Matrix[A](inA.numRows, inA.numCols))
     val v = (fresh[A],fresh[A])
     val func = v._1 + v._2
   }
@@ -108,7 +107,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixPlusEquals[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
     extends DeliteOpZipWith[A,A,A,Matrix] {
 
-    //val out = inA
     val alloc = inA
     val v = (fresh[A],fresh[A])
     val func = v._1 + v._2
@@ -117,8 +115,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixTimes[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
     extends DeliteOpZipWith[A,A,A,Matrix] {
 
-    //val out = reifyEffects(Matrix[A](inA.numRows, inA.numCols))
-    val alloc = reifyEffects(matrix_new[A](inA.numRows, inA.numCols))
+    val alloc = reifyEffects(Matrix[A](inA.numRows, inA.numCols))
     val v = (fresh[A],fresh[A])
     val func = v._1 * v._2
   }

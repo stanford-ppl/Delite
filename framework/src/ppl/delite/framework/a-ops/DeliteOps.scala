@@ -25,8 +25,8 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
    * @param  in    the input collection
    * @param  v     the bound symbol that the mapping function operates over
    * @param  func  the mapping function; reified version of Exp[A] => Exp[B]
-   * @param  out   the output collection. if it is the same as the input collection, the operation is mutable.
-   *               must be reified if it is constructed from an effectful operation!
+   * @param  alloc function returning the output collection. if it is the same as the input collection,
+   *               the operation is mutable; reified version of Unit => DeliteCollection[B].
    */
   abstract class DeliteOpMap[A,B,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
     val in: Exp[C[A]]
@@ -44,8 +44,8 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
    * @param  inB   the second input collection
    * @param  v     the bound symbol that the zipWith function operates over
    * @param  func  the zipWith function; reified version of ([Exp[A],Exp[B]) => Exp[R]
-   * @param  out   the output collection. if it is the same as the input collection, the operation is mutable.
-   *               must be reified if it is constructed from an effectful operation!
+   * @param  alloc function returning the output collection. if it is the same as the input collection,
+   *               the operation is mutable; reified version of Unit => DeliteCollection[B].
    */
   abstract class DeliteOpZipWith[A,B,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
     val inA: Exp[C[A]]
