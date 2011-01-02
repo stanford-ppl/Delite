@@ -6,11 +6,12 @@ import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import scala.virtualization.lms.common._
 import ppl.delite.framework.codegen.delite.DeliteCodeGenOverridesScala
-import ppl.delite.framework.ops.{CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
 import scala.virtualization.lms.internal.{ScalaGenBase, GenericNestedCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
 import java.io._
 import scala.virtualization.lms.internal._
+import ppl.delite.framework.codegen.c.TargetC
+import ppl.delite.framework.ops.{CGenDeliteOps, CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
 
 /**
  * These are the portions of Scala imported into OptiML's scope.
@@ -37,6 +38,10 @@ trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with Cu
     with CudaGenPrimitiveOps with CudaGenMiscOps with CudaGenFunctions with CudaGenEqual with CudaGenIfThenElse
     with CudaGenVariables with CudaGenWhile { val IR: OptiMLScalaOpsPkgExp  }
 
+trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
+    with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
+    with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
+    with CGenVariables with CGenWhile { val IR: OptiMLScalaOpsPkgExp  }
 
 /**
  * This the trait that every OptiML application must extend.
@@ -62,7 +67,8 @@ trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp wit
   def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericNestedCodegen{val IR: OptiMLExp.this.type} = {
     t match {
       case _:TargetScala => new OptiMLCodeGenScala{val IR: OptiMLExp.this.type = OptiMLExp.this}
-      case _:TargetCuda => new OptiMLCodeGenCuda{val IR: OptiMLExp.this.type = OptiMLExp.this} 
+      case _:TargetCuda => new OptiMLCodeGenCuda{val IR: OptiMLExp.this.type = OptiMLExp.this}
+      case _:TargetC => new OptiMLCodeGenC{val IR: OptiMLExp.this.type = OptiMLExp.this} 
       case _ => throw new RuntimeException("optiml does not support this target")
     }
   }
@@ -247,4 +253,24 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     out.toString
   }
 
+}
+
+trait OptiMLCodeGenC extends OptiMLCodeGenBase with OptiMLCCodeGenPkg with CGenArithOps with CGenDeliteOps with CGenVectorOps with CGenMatrixOps 
+{
+  val IR: DeliteApplication with OptiMLExp
+  import IR._
+
+  override def remap[A](m: Manifest[A]) : String = m.toString match {
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Int]" => "Matrix<int>"
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Long]" => "Matrix<long>"
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Float]" => "Matrix<float>"
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => "Matrix<double>"
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Boolean]" => "Matrix<bool>"
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => "Vector<int>"
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Long]" => "Vector<long>"
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => "Vector<float>"
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
+    case _ => super.remap(m)
+  }
 }

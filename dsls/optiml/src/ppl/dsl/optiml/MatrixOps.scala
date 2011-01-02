@@ -7,8 +7,8 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
-import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
+import scala.virtualization.lms.internal.{CGenBase, CudaGenBase, ScalaGenBase}
 
 trait MatrixOps extends DSLType with Variables {
   this: ArithOps =>
@@ -244,6 +244,40 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       throw new RuntimeException("CudaGen: Not GPUable")
       //emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
 
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait CGenMatrixOps extends CGenBase {
+  val IR: MatrixOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+
+    case MatrixNew(numRows,numCols) =>
+      stream.println("%s *%s_data = malloc(sizeof(%s)*%s*%s);".format(remap(sym.Type.typeArguments(0)),quote(sym),remap(sym.Type.typeArguments(0)),quote(numRows),quote(numCols)))
+      stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
+      stream.println("%s.numRows = %s;".format(quote(sym),quote(numRows)))
+      stream.println("%s.numCols = %s;".format(quote(sym),quote(numCols)))
+      stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
+    case MatrixApply1(x,i) =>
+      stream.println("Vector<%s> %s;".format(remap(sym.Type.typeArguments(0)),quote(sym)))
+      stream.println("%s.len = %s.numCols;".format(quote(sym),quote(x)))
+      stream.println("%s.isRow = true;".format(quote(sym)))
+      stream.println("%s.data = %s.data+%s.numCols*%s;".format(quote(sym),quote(x),quote(x),quote(i)))
+    case MatrixApply2(x,i,j) =>
+      emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
+    case MatrixUpdate(x,i,j,y)  =>
+      stream.println("%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
+    case MatrixNumRows(x)  =>
+      emitValDef(sym, quote(x) + ".numRows")
+    case MatrixNumCols(x)  =>
+      emitValDef(sym, quote(x) + ".numCols")
+    case MatrixInsertRow(x, pos, y)  =>
+      stream.println("%s.data = (%s *)realloc(%s.data,sizeof(%s)*(%s.numRows+1)*%s.numCols);".format(quote(x),remap(x.Type.typeArguments(0)),quote(x),remap(x.Type.typeArguments(0)),quote(x),quote(x)))
+      stream.println("memcpy(%s.data+%s*%s.numCols,%s.data,sizeof(%s)*%s.length);".format(quote(x),quote(pos),quote(x),quote(y),remap(x.Type.typeArguments(0)),quote(y)))
+      stream.println("%s.numRows += 1;".format(quote(x)))
+      stream.println("%s %s = %s;".format(remap(sym.Type),quote(sym),quote(x)))
     case _ => super.emitNode(sym, rhs)
   }
 }

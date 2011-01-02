@@ -7,8 +7,8 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
-import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal.{CGenBase, CudaGenBase, ScalaGenBase}
 
 trait VectorOps extends DSLType with Variables {
   this: ArithOps =>
@@ -334,6 +334,37 @@ trait CudaGenVectorOps extends CudaGenBase with CudaGenDataStruct {
       emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case VectorUpdate(x,n,y) =>
       stream.println(addTab() + "%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
+    case VectorLength(x)    =>
+      emitValDef(sym, quote(x) + ".length")
+    case VectorIsRow(x)     =>
+      emitValDef(sym, quote(x) + ".isRow")
+
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait CGenVectorOps extends CGenBase {
+  val IR: VectorOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    case VectorObjectZeros(len) =>
+      stream.println("%s *%s_data = malloc(sizeof(%s)*%s);".format(remap(sym.Type.typeArguments(0)),quote(sym),remap(sym.Type.typeArguments(0)),quote(len)))
+      stream.println("memset(%s_data,0,sizeof(%s)*%s);".format(quote(sym),remap(sym.Type.typeArguments(0)),quote(len)))
+      stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
+      stream.println("%s.length = %s;".format(quote(sym),quote(len)))
+      stream.println("%s.isRow = true;".format(quote(sym)))
+      stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
+    case VectorNew(len,isRow) =>
+      stream.println("%s *%s_data = malloc(sizeof(%s)*%s);".format(remap(sym.Type.typeArguments(0)),quote(sym),remap(sym.Type.typeArguments(0)),quote(len)))
+      stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
+      stream.println("%s.length = %s;".format(quote(sym),quote(len)))
+      stream.println("%s.isRow = %s;".format(quote(sym),quote(isRow)))
+      stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
+    case VectorApply(x, n) =>
+      emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
+    case VectorUpdate(x,n,y) =>
+      stream.println("%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
     case VectorLength(x)    =>
       emitValDef(sym, quote(x) + ".length")
     case VectorIsRow(x)     =>

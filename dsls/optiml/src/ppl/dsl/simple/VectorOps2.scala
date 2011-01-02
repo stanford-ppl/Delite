@@ -54,6 +54,7 @@ trait ScalaGenVectorOps2 extends ScalaGenBase {
   }
 }
 
+/*
 ////code generation
 trait CGenVectorOps2 extends CGenBase {
   val IR: VectorOpsExp2
@@ -68,6 +69,7 @@ trait CGenVectorOps2 extends CGenBase {
     case _ => super.emitNode(sym, rhs)    
   }
 }
+*/
 
 trait DeliteGenVectorOps2 extends DeliteCodegen {
   val IR: VectorOpsExp2

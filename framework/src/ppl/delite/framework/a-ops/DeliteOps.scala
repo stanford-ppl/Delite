@@ -2,8 +2,8 @@ package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
 import scala.virtualization.lms.common.{TupleOpsExp, VariablesExp, EffectExp}
-import scala.virtualization.lms.internal.{GenericCodegen, CudaGenEffect, GenericNestedCodegen, ScalaGenEffect}
 import ppl.delite.framework.DeliteCollection
+import scala.virtualization.lms.internal._
 
 trait DeliteOpsExp extends EffectExp with VariablesExp {
   /**
@@ -380,6 +380,22 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       stream.println(addTab()+"}")
       allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
     }
+    case _ => super.emitNode(sym,rhs)
+  }
+}
+
+trait CGenDeliteOps extends CGenEffect with BaseGenDeliteOps {
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    case s:DeliteOpSingleTask[_] =>
+      emitBlock(s.block)
+      emitValDef(sym,quote(getBlockResult(s.block)))
+    
+    //TODO: implement deliteops
+    //case map:DeliteOpMap[_,_,_] =>
+    //case zip: DeliteOpZipWith[_,_,_,_] =>
+    //case mapR:DeliteOpMapReduce[_,_,_] =>
     case _ => super.emitNode(sym,rhs)
   }
 }
