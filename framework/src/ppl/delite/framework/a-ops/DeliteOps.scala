@@ -338,9 +338,9 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       tabWidth += 1
       emitDevFunc(map.func, map.alloc.Type.typeArguments(0), List(map.v)++freeVars)
       if(freeVars.length==0)
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s)));".format(quote(sym),"idxX",quote(map.func),quote(map.in),"idxX"))
+        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s)));".format(quote(sym),"idxX",devFuncIdx,quote(map.in),"idxX"))
       else
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s));".format(quote(sym),"idxX",quote(map.func),quote(map.in),"idxX",freeVars.map(quote).mkString(",")))
+        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s));".format(quote(sym),"idxX",devFuncIdx,quote(map.in),"idxX",freeVars.map(quote).mkString(",")))
       if(getVarLink(sym) != null) 
           stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
       tabWidth -= 1
@@ -356,9 +356,9 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       tabWidth += 1
       emitDevFunc(zip.func, zip.alloc.Type.typeArguments(0), List(zip.v._1, zip.v._2))
       if(freeVars.length==0)
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s)));".format(quote(sym),"idxX", quote(zip.func), quote(zip.inA),"idxX",quote(zip.inB),"idxX"))
+        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s)));".format(quote(sym),"idxX", devFuncIdx, quote(zip.inA),"idxX",quote(zip.inB),"idxX"))
       else
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),"idxX", quote(zip.func), quote(zip.inA),"idxX",quote(zip.inB),"idxX",freeVars.map(quote).mkString(",")))       
+        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),"idxX", devFuncIdx, quote(zip.inA),"idxX",quote(zip.inB),"idxX",freeVars.map(quote).mkString(",")))       
       if(getVarLink(sym) != null)
           stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))      
       tabWidth -= 1
