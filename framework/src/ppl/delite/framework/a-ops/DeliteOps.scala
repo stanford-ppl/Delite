@@ -332,26 +332,27 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       //if(idxX == 0) {}
     case map:DeliteOpMap[_,_,_] => {
       if (deliteKernel == false) throw new RuntimeException("CudaGen: Nested DeliteOpMap is not GPUable.")
-      gpuBlockSizeX = quote(map)+".size"
+      gpuBlockSizeX = quote(map)+".size()"
       val freeVars = getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(map.in)+".size"))
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(map.in)+".size()"))
       tabWidth += 1
       emitDevFunc(map.func, map.alloc.Type.typeArguments(0), List(map.v)++freeVars)
       if(freeVars.length==0)
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s)));".format(quote(sym),"idxX",quote(map.func),"idxX",quote(map.in)))
+        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s)));".format(quote(sym),"idxX",quote(map.func),quote(map.in),"idxX"))
       else
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s));".format(quote(sym),"idxX",quote(map.func),"idxX",quote(map.in),freeVars.map(quote).mkString(",")))
+        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s));".format(quote(sym),"idxX",quote(map.func),quote(map.in),"idxX",freeVars.map(quote).mkString(",")))
       if(getVarLink(sym) != null) 
           stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      allocOutput(sym,getBlockResult(map.alloc).asInstanceOf[Sym[_]])
+      //allocOutput(sym,getBlockResult(map.alloc).asInstanceOf[Sym[_]])
+      allocOutput(sym,map.in.asInstanceOf[Sym[_]])
     }
     case zip: DeliteOpZipWith[_,_,_,_] => {
       if (deliteKernel == false) throw new RuntimeException("CudaGen: Nested DeliteOpZipWith is not GPUable.")
-      gpuBlockSizeX = quote(zip)+".size"
+      gpuBlockSizeX = quote(zip)+".size()"
       val freeVars = getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(zip.inA)+".size"))
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(zip.inA)+".size()"))
       tabWidth += 1
       emitDevFunc(zip.func, zip.alloc.Type.typeArguments(0), List(zip.v._1, zip.v._2))
       if(freeVars.length==0)
@@ -362,7 +363,8 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
           stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))      
       tabWidth -= 1
       stream.println(addTab()+"}")
-      allocOutput(sym,getBlockResult(zip.alloc).asInstanceOf[Sym[_]])
+      //allocOutput(sym,getBlockResult(zip.alloc).asInstanceOf[Sym[_]])
+      allocOutput(sym,zip.inA.asInstanceOf[Sym[_]])
     } 
     case mapR:DeliteOpMapReduce[_,_,_] => {
       emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
@@ -379,6 +381,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       tabWidth -= 1
       stream.println(addTab()+"}")
       allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+      //allocOutput(sym,.asInstanceOf[Sym[_]])
     }
     case _ => super.emitNode(sym,rhs)
   }
