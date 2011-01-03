@@ -41,7 +41,17 @@ public:
     __host__ __device__ void dcUpdate(int idx, T value) {
         data[idx] = value;
     }
-	
+
+/*
+    __host__ __device__ Vector<T> vview(int _start, int _stride, int _length, bool _isRow) {
+      VectorView<T> res;
+      res.data = data;
+      res.length = _length;
+      res.isRow = _isRow;
+      res.start = _start;
+      res.stride = _stride;
+    }
+*/	
 };
 
 #endif

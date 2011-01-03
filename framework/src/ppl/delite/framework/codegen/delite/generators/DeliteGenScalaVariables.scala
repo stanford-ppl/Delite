@@ -2,7 +2,7 @@ package ppl.delite.framework.codegen.delite.generators
 
 import scala.virtualization.lms.common.VariablesExp
 import java.io.PrintWriter
-import scala.virtualization.lms.internal.ScalaGenEffect
+import scala.virtualization.lms.internal.{CudaGenEffect, ScalaGenEffect}
 
 trait DeliteGenScalaVariables extends ScalaGenEffect {
   val IR: VariablesExp
@@ -13,6 +13,21 @@ trait DeliteGenScalaVariables extends ScalaGenEffect {
     case NewVar(init) => emitValDef(sym, "generated.scala.Ref(" + quote(init) + ")")
     case Assign(Variable(a), b) => stream.println(quote(a) + ".set(" + quote(b) + ")")
     case VarPlusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get +" + quote(b) + ")")
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait DeliteGenCudaVariables extends CudaGenEffect {
+  val IR: VariablesExp
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    /*
+    case ReadVar(Variable(a)) => emitValDef(sym, quote(a) + ".get")
+    case NewVar(init) => emitValDef(sym, "generated.scala.Ref(" + quote(init) + ")")
+    case Assign(Variable(a), b) => stream.println(quote(a) + ".set(" + quote(b) + ")")
+    case VarPlusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get +" + quote(b) + ")")
+    */
     case _ => super.emitNode(sym, rhs)
   }
 }

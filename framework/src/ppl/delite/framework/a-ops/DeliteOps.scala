@@ -395,62 +395,116 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
 trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
   import IR._
 
+  var parallelMap: Boolean = _
+  var parallelZip: Boolean = _
+  var parallelMapR:Boolean = _
+  
+  override def kernelInit(sym: Sym[_], vals: List[Sym[_]], vars: List[Sym[_]], resultIsVar: Boolean): Unit = {
+    parallelMap = true
+    parallelZip = true
+    parallelMapR = true
+    super.kernelInit(sym,vals,vars,resultIsVar)
+  }
+  
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => throw new RuntimeException("CudaGen: DeliteOpSingleTask is not GPUable.")
       // TODO: Generate single thread version of this work
       //if(idxX == 0) {}
     case map:DeliteOpMap[_,_,_] => {
-      if (deliteKernel == false) throw new RuntimeException("CudaGen: Nested DeliteOpMap is not GPUable.")
-      gpuBlockSizeX = quote(map)+".size()"
-      val freeVars = getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(map.in)+".size()"))
-      tabWidth += 1
-      emitDevFunc(map.func, map.alloc.Type.typeArguments(0), List(map.v)++freeVars)
-      if(freeVars.length==0)
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s)));".format(quote(sym),"idxX",devFuncIdx,quote(map.in),"idxX"))
-      else
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s));".format(quote(sym),"idxX",devFuncIdx,quote(map.in),"idxX",freeVars.map(quote).mkString(",")))
-      if(getVarLink(sym) != null) 
-          stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      //allocOutput(sym,getBlockResult(map.alloc).asInstanceOf[Sym[_]])
-      allocOutput(sym,map.in.asInstanceOf[Sym[_]])
+      if (deliteKernel == false) {
+        throw new RuntimeException("CudaGen: Nested DeliteOpMap is not GPUable.")
+        /*
+        val freeVars = getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)
+        stream.println(addTab()+"for(int i=0;i<%s.size(); i++) {".format(quote(map.in)))
+        tabWidth += 1
+        val mapFunc = emitDevFunc(map.func, map.alloc.Type.typeArguments(0), List(map.v)++freeVars)
+        if(freeVars.length==0)
+          stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s)));".format(quote(sym),"i",mapFunc,quote(map.in),"i"))
+        else
+          stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),"i",mapFunc,quote(map.in),"i",freeVars.map(quote).mkString(",")))
+        if(getVarLink(sym) != null)
+            stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"i",quote(sym),"i"))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        allocOutput(sym,map.in.asInstanceOf[Sym[_]])
+        */
+      }
+      else {
+        deliteKernel = false
+        gpuBlockSizeX = quote(map)+".size()"
+        val freeVars = getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)
+        stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(map.in)+".size()"))
+        tabWidth += 1
+        val mapFunc = emitDevFunc(map.func, map.alloc.Type.typeArguments(0), List(map.v)++freeVars)
+        if(freeVars.length==0)
+          stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s)));".format(quote(sym),"idxX",mapFunc,quote(map.in),"idxX"))
+        else
+          stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),"idxX",mapFunc,quote(map.in),"idxX",freeVars.map(quote).mkString(",")))
+        if(getVarLink(sym) != null)
+            stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        allocOutput(sym,map.in.asInstanceOf[Sym[_]])
+        deliteKernel = true
+      }
     }
     case zip: DeliteOpZipWith[_,_,_,_] => {
-      if (deliteKernel == false) throw new RuntimeException("CudaGen: Nested DeliteOpZipWith is not GPUable.")
-      gpuBlockSizeX = quote(zip)+".size()"
-      val freeVars = getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(zip.inA)+".size()"))
-      tabWidth += 1
-      emitDevFunc(zip.func, zip.alloc.Type.typeArguments(0), List(zip.v._1, zip.v._2))
-      if(freeVars.length==0)
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s)));".format(quote(sym),"idxX", devFuncIdx, quote(zip.inA),"idxX",quote(zip.inB),"idxX"))
-      else
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),"idxX", devFuncIdx, quote(zip.inA),"idxX",quote(zip.inB),"idxX",freeVars.map(quote).mkString(",")))       
-      if(getVarLink(sym) != null)
-          stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))      
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      //allocOutput(sym,getBlockResult(zip.alloc).asInstanceOf[Sym[_]])
-      allocOutput(sym,zip.inA.asInstanceOf[Sym[_]])
-    } 
+      val curr = deliteKernel
+      if (deliteKernel == false) {
+        throw new RuntimeException("CudaGen: Nested DeliteOpZipWith is not GPUable.")
+      }
+      else {
+        gpuBlockSizeX = quote(zip)+".size()"
+        val freeVars = getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))
+        stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(zip.inA)+".size()"))
+        tabWidth += 1
+        val zipFunc = emitDevFunc(zip.func, zip.alloc.Type.typeArguments(0), List(zip.v._1, zip.v._2))
+        if(freeVars.length==0)
+          stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s)));".format(quote(sym),"idxX", zipFunc, quote(zip.inA),"idxX",quote(zip.inB),"idxX"))
+        else
+          stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),"idxX", zipFunc, quote(zip.inA),"idxX",quote(zip.inB),"idxX",freeVars.map(quote).mkString(",")))
+        if(getVarLink(sym) != null)
+            stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        allocOutput(sym,zip.inA.asInstanceOf[Sym[_]])
+      }
+    }
     case mapR:DeliteOpMapReduce[_,_,_] => {
-      emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
-      emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
-      stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
-      addVarLink(getBlockResult(mapR.map).asInstanceOf[Sym[_]],sym)
-      emitBlock(mapR.map)
-      removeVarLink(getBlockResult(mapR.map).asInstanceOf[Sym[_]],sym)
-      stream.println(addTab()+"for(int cnt=1; cnt<%s.length; cnt++) {".format(quote(mapR.in)))
-      tabWidth += 1
-      stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
-      emitBlock(mapR.map)
-      emitBlock(mapR.reduce)
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
-      //allocOutput(sym,.asInstanceOf[Sym[_]])
+      if (deliteKernel == false) {
+        // When nested, only pritimive type result can be generated
+        stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
+        emitBlock(mapR.map)
+        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map))) 
+        stream.println(addTab()+"for(int cnt=1; cnt<%s.length; cnt++) {".format(quote(mapR.in)))
+        tabWidth += 1
+        stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
+        emitBlock(mapR.map)
+        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+        emitBlock(mapR.reduce)
+        stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1.asInstanceOf[Sym[_]]),quote(getBlockResult(mapR.reduce))))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        stream.println(addTab()+"%s = %s;".format(quote(sym),quote(mapR.rV._1.asInstanceOf[Sym[_]])))
+      }
+      else {
+        //deliteKernel = false
+        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
+        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+        stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
+        addVarLink(getBlockResult(mapR.map),sym)
+        emitBlock(mapR.map)
+        removeVarLink(getBlockResult(mapR.map),sym)
+        stream.println(addTab()+"for(int cnt=1; cnt<%s.length; cnt++) {".format(quote(mapR.in)))
+        tabWidth += 1
+        stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
+        emitBlock(mapR.map)
+        emitBlock(mapR.reduce)
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+        //deliteKernel = true
+      }
     }
     case _ => super.emitNode(sym,rhs)
   }
