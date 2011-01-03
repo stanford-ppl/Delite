@@ -91,6 +91,56 @@ trait ArithOps extends Variables with OverloadHack {
    *  Tuple
    */
 
+  implicit def tuple2Arith[A:Manifest:Arith,B:Manifest:Arith] : Arith[Tuple2[A,B]] =
+    new Arith[Tuple2[A,B]] {
+      def +=(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]]) =
+        // += doesn't work for components if components are not guaranteed to be non-nil
+        Tuple2(a._1+b._1, a._2+b._2)
+
+      def +(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]]) =
+        Tuple2(a._1+b._1, a._2+b._2)
+
+      def -(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]]) =
+        Tuple2(a._1-b._1, a._2-b._2)
+
+      def *(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]]) =
+        Tuple2(a._1*b._1, a._2*b._2)
+
+      def /(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]]) =
+        Tuple2(a._1/b._1, a._2/b._2)
+
+      def abs(a: Rep[Tuple2[A,B]]) =
+        Tuple2(a._1.abs, a._2.abs)
+
+      def exp(a: Rep[Tuple2[A,B]]) =
+        Tuple2(a._1.exp, a._2.exp)
+    }
+  
+  implicit def tuple3Arith[A:Manifest:Arith,B:Manifest:Arith,C:Manifest:Arith,D:Manifest:Arith] : Arith[Tuple3[A,B,C]] =
+    new Arith[Tuple3[A,B,C]] {
+      def +=(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]]) =
+        // += doesn't work for components if components are not guaranteed to be non-nil
+        Tuple3(a._1+b._1, a._2+b._2, a._3+b._3)
+
+      def +(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]]) =
+        Tuple3(a._1+b._1, a._2+b._2, a._3+b._3)
+
+      def -(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]]) =
+        Tuple3(a._1-b._1, a._2-b._2, a._3-b._3)
+
+      def *(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]]) =
+        Tuple3(a._1*b._1, a._2*b._2, a._3*b._3)
+
+      def /(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]]) =
+        Tuple3(a._1/b._1, a._2/b._2, a._3/b._3)
+
+      def abs(a: Rep[Tuple3[A,B,C]]) =
+        Tuple3(a._1.abs, a._2.abs, a._3.abs)
+
+      def exp(a: Rep[Tuple3[A,B,C]]) =
+        Tuple3(a._1.exp, a._2.exp, a._3.exp)
+    }
+
   //implicit def tuple4Arith[A,B,C,D](implicit rA: A => Rep[A], rB: B => Rep[B], rC: C => Rep[C], rD: D => Rep[D], opsA: Arith[A], mA: Manifest[A], opsB: Arith[B], mB: Manifest[B],
   implicit def tuple4Arith[A:Manifest:Arith,B:Manifest:Arith,C:Manifest:Arith,D:Manifest:Arith] : Arith[Tuple4[A,B,C,D]] =
     new Arith[Tuple4[A,B,C,D]] {

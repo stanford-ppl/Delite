@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.apps.gda
+package ppl.apps.ml.gda
 
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication

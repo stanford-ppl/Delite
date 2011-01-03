@@ -19,7 +19,7 @@ trait OptiMLScalaOpsPkg extends Base
     with Equal with IfThenElse with Variables with While with Functions
     with ImplicitOps with OrderingOps with StringOps with RangeOps with IOOps
     with ArrayOps with BooleanOps with PrimitiveOps with MiscOps with TupleOps
-    with ListOps with SeqOps with MathOps with CastingOps
+    with ListOps with SeqOps with MathOps with CastingOps with CloneableOps
 
 trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg with DSLOpsExp
     with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
@@ -46,7 +46,8 @@ trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with Cu
  * This the trait that every OptiML application must extend.
  */
 trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps
-  with VectorOps with MatrixOps with MLInputReaderOps with VectorViewOps with IndexVectorOps  {
+  with VectorOps with MatrixOps with MLInputReaderOps with VectorViewOps with IndexVectorOps
+  with LabelsOps with TrainingSetOps {
 
   this: DeliteApplication =>
 
@@ -58,6 +59,7 @@ trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps
  */
 trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ArithOpsExp
   with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with VectorViewOpsExp with IndexVectorOpsExp
+  with LabelsOpsExp with TrainingSetOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard
   with DeliteOpsExp {
@@ -108,6 +110,7 @@ trait OptiMLCodeGenBase extends GenericCodegen {
 
 trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenLanguageOps with ScalaGenArithOps
   with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps
+  with ScalaGenLabelsOps with ScalaGenTrainingSetOps
   with ScalaGenDeliteOps with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
 
   val IR: DeliteApplication with OptiMLExp

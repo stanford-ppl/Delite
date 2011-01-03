@@ -1,5 +1,8 @@
 package ppl.dsl.optiml.datastruct.scala
 
+// TODO: putting everything in one file was convenient at first, but now that this is growing larger
+// it should be refactored into a more logical organization.
+
 /**
  * Delite
  */
@@ -140,6 +143,28 @@ trait Matrix[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
 
 }
 
+/**
+ * TrainingSet
+ */
+
+trait Labels[@specialized L] extends Vector[L] {
+  val numLabels = length
+}
+
+trait TrainingSet[@specialized T,L] extends Matrix[T] {
+  val numSamples = numRows
+  val numFeatures = numCols
+  def labels: Labels[L]
+
+  def transposed: TrainingSet[T,L]
+  override def update(row: Int, col: Int, x: T) = throw new UnsupportedOperationException("Training sets are immutable")
+  override def insertRow(pos: Int, x: Vector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+  override def insertAllRows(pos: Int, xs: Matrix[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+  override def insertCol(pos: Int, x: Vector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+  override def insertAllCols(pos: Int, xs: Matrix[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+  override def removeRows(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
+  override def removeCols(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
+}
 
 /**
  * Ref
