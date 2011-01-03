@@ -2,10 +2,11 @@
 #define _RANGEVECTORIMPL_H_
 
 #include <stdio.h>
-#include "VectorImpl.h"
+//#include "VectorImpl.h"
 
-template <class T>
-class RangeVector : public Vector<T> {
+//template <class T>
+//class RangeVector : public Vector<T> {
+class RangeVector {
 public:
     int start;
     int end;
