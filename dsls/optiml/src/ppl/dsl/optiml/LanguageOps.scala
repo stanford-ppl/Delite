@@ -111,7 +111,8 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    * abs
    */
-  def abs[A:Manifest:Arith](elem: Rep[A]) = elem.abs
+  // TODO: sbt fails without the explicit invocation of arithToArithOps, but IDEA compiles. wtf?
+  def abs[A:Manifest:Arith](elem: Rep[A]) = repArithToArithOps(elem).abs
   //def abs[A](vals: Rep[Vector[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = vals.abs
   //def abs[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded2) = vals.abs
 
