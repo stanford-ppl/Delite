@@ -5,12 +5,12 @@ import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import scala.virtualization.lms.common._
-import ppl.delite.framework.codegen.delite.DeliteCodeGenOverridesScala
 import ppl.delite.framework.ops.{CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
 import scala.virtualization.lms.internal.{ScalaGenBase, GenericNestedCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
 import java.io._
 import scala.virtualization.lms.internal._
+import ppl.delite.framework.codegen.delite.{DeliteCodeGenOverridesCuda, DeliteCodeGenOverridesScala}
 
 /**
  * These are the portions of Scala imported into OptiML's scope.
@@ -155,7 +155,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
 }
 
 trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct // with CudaGenVectorViewOps
- // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps   //TODO:DeliteCodeGenOverrideScala needed?
+ with DeliteCodeGenOverridesCuda // with CudaGenMLInputReaderOps  
 {
 
   val IR: DeliteApplication with OptiMLExp with Expressions
@@ -174,6 +174,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
     case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
     case "ppl.dsl.optiml.datastruct.scala.RangeVector" => "RangeVector"
+    case "ppl.dsl.optiml.datastruct.scala.IndexVector" => "RangeVector"
     case _ => super.remap(m)
   }
 

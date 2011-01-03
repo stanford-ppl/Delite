@@ -726,6 +726,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       throw new RuntimeException("CudaGen: Not GPUable")
 
     case MatrixGetRow(x,i) =>
+      /*
       stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".numCols"))
       tabWidth += 1
       stream.println(addTab()+"%s.update(%s, (%s.apply(%s,%s)));".format(quote(sym),"idxX",quote(x),quote(i),"idxX"))
@@ -733,7 +734,16 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       if(getVarLink(sym) != null) if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(getVarLink(sym)),"idxX",quote(sym),"idxX"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true")
+      */
+      //TODO: Need to determine whether this will be performed by each thread or done by helperfunctions
+      // if done by each thread
+      stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
+      stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
+      stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
+      stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
+      //emitValDef(sym,"%s.vview(%s.numCols*%s, 1, %s.numCols, true)".format(quote(x),quote(i),quote(x)))
+      //else
+      //emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true","%s.data+%s*%s.numCols".format(quote(x),quote(i),quote(x)))
 
     case MatrixApply(x,i,j) =>
       emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))

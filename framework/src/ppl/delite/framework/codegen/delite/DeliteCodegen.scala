@@ -1,6 +1,6 @@
 package ppl.delite.framework.codegen.delite
 
-import generators.{DeliteGenScalaVariables, DeliteGenTaskGraph}
+import generators.{DeliteGenCudaVariables, DeliteGenScalaVariables, DeliteGenTaskGraph}
 import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 import scala.virtualization.lms.common._
@@ -171,3 +171,4 @@ trait DeliteCodegen extends GenericNestedCodegen {
 trait DeliteCodeGenPkg extends DeliteGenTaskGraph
 
 trait DeliteCodeGenOverridesScala extends DeliteGenScalaVariables
+trait DeliteCodeGenOverridesCuda extends DeliteGenCudaVariables

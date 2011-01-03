@@ -211,7 +211,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
   // Generate & register temporary data structures (which could be the output) for GPU kernel
-  def emitVectorAlloc(newSym:Sym[_], length:String, isRow:String):Unit = {
+  def emitVectorAlloc(newSym:Sym[_], length:String, isRow:String, data:String=null):Unit = {
     //TODO: Check if both symbols are Vectors
 
     //Do not add the same temporary if it already exists
@@ -231,11 +231,20 @@ trait CudaGenDataStruct extends CudaCodegen {
     else
       out.append("%s gpuMemAlloc_%s_%s(%s) {\n".format(remap(newSym.Type),quote(kernelSymbol),quote(newSym),paramStrTemp))
     out.append("\t%s %s;\n".format(remap(newSym.Type),quote(newSym)))
-    out.append("\t%s *devPtr;\n".format(remap(newSym.Type.typeArguments(0))))
-    out.append("\tDeliteCudaMalloc((void**)%s,%s*sizeof(%s));\n".format("&devPtr",length,remap(newSym.Type.typeArguments(0))))
-    out.append("\t%s.length = %s;\n".format(quote(newSym),length))
-    out.append("\t%s.isRow = %s;\n".format(quote(newSym),isRow))
-    out.append("\t%s.data = devPtr;\n".format(quote(newSym)))
+
+    // Check if new allocation is needed
+    if(data==null) {
+      out.append("\t%s *devPtr;\n".format(remap(newSym.Type.typeArguments(0))))
+      out.append("\tDeliteCudaMalloc((void**)%s,%s*sizeof(%s));\n".format("&devPtr",length,remap(newSym.Type.typeArguments(0))))
+      out.append("\t%s.length = %s;\n".format(quote(newSym),length))
+      out.append("\t%s.isRow = %s;\n".format(quote(newSym),isRow))
+      out.append("\t%s.data = devPtr;\n".format(quote(newSym)))
+    }
+    else {
+      out.append("\t%s.length = %s;\n".format(quote(newSym),length))
+      out.append("\t%s.isRow = %s;\n".format(quote(newSym),isRow))
+      out.append("\t%s.data = %s;\n".format(quote(newSym),data))      
+    }
     out.append("\treturn %s;\n".format(quote(newSym)))
     out.append("}\n")
 
@@ -279,7 +288,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     helperFuncString.append(out.toString)
   }
 
-  def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String): Unit = {
+  def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, data:String=null): Unit = {
     //TODO: Check if both symbols are Matrices
 
     //Do not add the same temporary if it already exists
@@ -299,11 +308,20 @@ trait CudaGenDataStruct extends CudaCodegen {
     else
       out.append("%s gpuMemAlloc_%s_%s(%s) {\n".format(remap(newSym.Type),quote(kernelSymbol),quote(newSym),paramStrTemp))
     out.append("\t%s %s;\n".format(remap(newSym.Type),quote(newSym)))
-    out.append("\t%s *devPtr;\n".format(remap(newSym.Type.typeArguments(0))))
-    out.append("\tDeliteCudaMalloc((void**)%s,%s*%s*sizeof(%s));\n".format("&devPtr",numRows,numCols,remap(newSym.Type.typeArguments(0))))
-    out.append("\t%s.numRows = %s;\n".format(quote(newSym),numRows))
-    out.append("\t%s.numCols = %s;\n".format(quote(newSym),numCols))
-    out.append("\t%s.data = devPtr;\n".format(quote(newSym)))
+
+    // Check if new allocation is needed
+    if(data==null) {
+      out.append("\t%s *devPtr;\n".format(remap(newSym.Type.typeArguments(0))))
+      out.append("\tDeliteCudaMalloc((void**)%s,%s*%s*sizeof(%s));\n".format("&devPtr",numRows,numCols,remap(newSym.Type.typeArguments(0))))
+      out.append("\t%s.numRows = %s;\n".format(quote(newSym),numRows))
+      out.append("\t%s.numCols = %s;\n".format(quote(newSym),numCols))
+      out.append("\t%s.data = devPtr;\n".format(quote(newSym)))
+    }
+    else {
+      out.append("\t%s.numRows = %s;\n".format(quote(newSym),numRows))
+      out.append("\t%s.numCols = %s;\n".format(quote(newSym),numCols))
+      out.append("\t%s.data = %sr;\n".format(quote(newSym),data))
+    }
     out.append("\treturn %s;\n".format(quote(newSym)))
     out.append("}\n")
 
