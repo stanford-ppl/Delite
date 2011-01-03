@@ -24,7 +24,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val x = Matrix[Double](0, dbls.length)
 
     while (line != null){
-      val v = Vector[Double](dbls.length)
+      val v = Vector[Double](dbls.length, true)
       for (i <- 0 until dbls.length){
         v(i) = Double.parseDouble(dbls(i))
       }
@@ -42,7 +42,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   }
 
   def mlinput_read_vector_impl(filename: Rep[String]) = {
-    val x = Vector[Double](0)
+    val x = Vector[Double](0, true)
 
     val xfs = BufferedReader(FileReader(filename))
     var line = xfs.readLine()

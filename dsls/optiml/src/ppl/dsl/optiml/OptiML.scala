@@ -16,33 +16,37 @@ import scala.virtualization.lms.internal._
  * These are the portions of Scala imported into OptiML's scope.
  */
 trait OptiMLScalaOpsPkg extends Base
-    with ImplicitOps with OrderingOps with StringOps
-    with RangeOps with IOOps with ArrayOps with BooleanOps with PrimitiveOps with MiscOps
-    with Equal with IfThenElse with Variables with While with TupleOps with ListOps
+    with Equal with IfThenElse with Variables with While with Functions
+    with ImplicitOps with OrderingOps with StringOps with RangeOps with IOOps
+    with ArrayOps with BooleanOps with PrimitiveOps with MiscOps with TupleOps
+    with ListOps with SeqOps with MathOps with CastingOps
 
-trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg
-    with ImplicitOpsExp with OrderingOpsExp with StringOpsExp
-    with RangeOpsExp with IOOpsExp with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp
-    with FunctionsExp with EqualExp with IfThenElseExp with VariablesExp with WhileExp with TupleOpsExp
-    with ListOpsExp with DSLOpsExp
+trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg with DSLOpsExp
+    with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
+    with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
+    with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
+    with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp
 
-trait OptiMLScalaCodeGenPkg extends ScalaGenImplicitOps with ScalaGenOrderingOps
-    with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps with ScalaGenArrayOps with ScalaGenBooleanOps
-    with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenFunctions with ScalaGenEqual with ScalaGenIfThenElse
-    with ScalaGenVariables with ScalaGenWhile with ScalaGenTupleOps with ScalaGenListOps
-    with ScalaGenDSLOps { val IR: OptiMLScalaOpsPkgExp  }
+trait OptiMLScalaCodeGenPkg extends ScalaGenDSLOps
+    with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenFunctions
+    with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
+    with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenTupleOps
+    with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps
+    { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
+    with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenFunctions
     with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
-    with CudaGenPrimitiveOps with CudaGenMiscOps with CudaGenFunctions with CudaGenEqual with CudaGenIfThenElse
-    with CudaGenVariables with CudaGenWhile { val IR: OptiMLScalaOpsPkgExp  }
+    with CudaGenPrimitiveOps with CudaGenMiscOps
+    with CudaGenListOps with CudaGenSeqOps
+    { val IR: OptiMLScalaOpsPkgExp  }
 
 
 /**
  * This the trait that every OptiML application must extend.
  */
 trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps
-  with VectorOps with MatrixOps with MLInputReaderOps {
+  with VectorOps with MatrixOps with MLInputReaderOps with VectorViewOps with IndexVectorOps  {
 
   this: DeliteApplication =>
 
@@ -53,7 +57,7 @@ trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ArithOpsExp
-  with VectorOpsExpOpt with VectorViewOpsExp with MatrixOpsExpOpt with MLInputReaderOpsExp
+  with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with VectorViewOpsExp with IndexVectorOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard
   with DeliteOpsExp {
@@ -103,7 +107,7 @@ trait OptiMLCodeGenBase extends GenericCodegen {
 }
 
 trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenLanguageOps with ScalaGenArithOps
-  with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
+  with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps
   with ScalaGenDeliteOps with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
 
   val IR: DeliteApplication with OptiMLExp
@@ -166,6 +170,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => "Vector<float>"
     case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
     case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
+    case "ppl.dsl.optiml.datastruct.scala.RangeVector" => "RangeVector"
     case _ => super.remap(m)
   }
 
@@ -180,6 +185,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => true
     case "Vector<double>" => true
     case "Vector<bool>" => true
+    case "RangeVector" => true
     case _ => super.isObjectType(m)
   }
 
@@ -194,6 +200,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => vectorCopyHtoD(sym)
     case "Vector<double>" => vectorCopyHtoD(sym)
     case "Vector<bool>" => vectorCopyHtoD(sym)
+    case "RangeVector" => rangevectorCopyHtoD(sym)
     case _ => super.copyDataStructureHtoD(sym)
   }
 
@@ -208,6 +215,8 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => vectorCopyDtoH(sym)
     case "Vector<double>" => vectorCopyDtoH(sym)
     case "Vector<bool>" => vectorCopyDtoH(sym)
+    //case "RangeVector" => rangevectorCopyDtoH(sym)
+    case "RangeVector" => vectorCopyDtoH(sym)
     case _ => super.copyDataStructureDtoH(sym)
   }
 
@@ -222,6 +231,8 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => emitVectorAllocSym(newSym,sym)
     case "Vector<double>" => emitVectorAllocSym(newSym,sym)
     case "Vector<bool>" => emitVectorAllocSym(newSym,sym)
+    //case "RangeVector" => emitRangeVectorAllocSym(newSym,sym)
+    case "RangeVector" => emitVectorAllocSym(newSym,sym)
     case _ => super.allocOutput(newSym,sym)    
   }
 
@@ -236,6 +247,8 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => emitVectorAllocRef(newSym,sym)
     case "Vector<double>" => emitVectorAllocRef(newSym,sym)
     case "Vector<bool>" => emitVectorAllocRef(newSym,sym)
+    //case "RangeVector" => emitRangeVectorAllocRef(newSym,sym)
+    case "RangeVector" => emitVectorAllocRef(newSym,sym)
     case _ => super.allocReference(newSym,sym)
   }
 
@@ -243,7 +256,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     val out = new StringBuilder
     out.append("#include \"VectorImpl.h\"\n")
     out.append("#include \"MatrixImpl.h\"\n")
-    //out.append("#include \"RangeVectorImpl.h\"\n")
+    out.append("#include \"RangeVectorImpl.h\"\n")
     out.toString
   }
 

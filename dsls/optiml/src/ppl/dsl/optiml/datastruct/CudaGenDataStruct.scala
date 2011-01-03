@@ -63,6 +63,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 	  out.append("\tjboolean isRangeCls = env->IsInstanceOf(obj,rangeCls);\n");
 
 	  // If this is not RangeVector
+    // TODO: Now we don't need to check if range vector dynamically
 	  out.append("\tif(!isRangeCls) {\n");
     out.append("\t\t%s %s;\n".format(remap(sym.Type),quote(sym)))
     out.append("\t\t%s.length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
@@ -85,7 +86,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t\treturn %s;\n".format(quote(sym)))
 	  out.append("\t}\n")
 
-	  // If this is RangeVector
+	  // If this is RangeVector  (TODO: Below will be removed)
 	  out.append("\telse {\n");
     out.append("\t\t%s %s;\n".format(remap(sym.Type),quote(sym)))
     out.append("\t\t%s.length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
@@ -117,6 +118,37 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t\treturn (%s)%s;\n".format(remap(sym.Type),quote(sym)))
 	  */
 	  out.append("\t}\n")
+
+    out.toString
+  }
+
+  def rangevectorCopyHtoD(sym: Sym[_]): String = {
+    val out = new StringBuilder
+    val typeStr = "int"
+    val numBytesStr = "%s.length * sizeof(int)".format(quote(sym))
+
+    // Get class, method ID
+    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
+    out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"length\",\"()I\");\n")
+    out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"isRow\",\"()Z\");\n")
+
+    out.append("\t\t%s %s;\n".format(remap(sym.Type),quote(sym)))
+    out.append("\t\t%s.length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
+    out.append("\t\t%s.isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
+    out.append("\t\t%s *hostPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+    out.append("\t\t%s *devPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
+    out.append("\t\tjmethodID mid_start = env->GetMethodID(cls,\"start\",\"()I\");\n")
+    out.append("\t\tjmethodID mid_stride = env->GetMethodID(cls,\"stride\",\"()I\");\n")
+    out.append("\t\tint start = env->CallIntMethod(obj,mid_start);\n")
+    out.append("\t\tint stride = env->CallIntMethod(obj,mid_stride);\n")
+    out.append("\t\tfor(int i=0; i<%s.length; i++) {\n".format(quote(sym)))
+    out.append("\t\t\thostPtr[i] = start + i * stride;\n".format(quote(sym),quote(sym)))
+    out.append("\t\t}\n")
+    out.append("\t\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
+    out.append("\t\t%s.data = %s;\n".format(quote(sym),"devPtr"))
+    out.append("\t\treturn %s;\n".format(quote(sym)))
 
     out.toString
   }
