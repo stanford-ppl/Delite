@@ -84,7 +84,7 @@ trait MatrixOps extends DSLType with Variables {
     def +=(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_plusequals(x,y)
     def -(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_minus(x,y)
     def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = matrix_minus_scalar(x,y)
-    def :*(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_times(x,y)
+    def *:*(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_times(x,y)
     def *(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_multiply(x,y)
     def *(y: Rep[Vector[A]])(implicit a: Arith[A], o: Overloaded1) = matrix_times_vector(x,y)
     def *(y: Rep[A])(implicit a: Arith[A], o: Overloaded2) = matrix_times_scalar(x,y)
@@ -105,8 +105,6 @@ trait MatrixOps extends DSLType with Variables {
     def minRow(implicit a: Arith[A], o: Ordering[A]) = matrix_minrow(x)
     def max(implicit o: Ordering[A]) = matrix_max(x)
     def maxRow(implicit a: Arith[A], o: Ordering[A]) = matrix_maxrow(x)
-    // if A is a Doubble, Int, or Float, we would like to special case this, but that would have a different return signature
-    // one way is to use Arith, with zero and identity methods
     def :>(y: Rep[Matrix[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a > b }
     def :<(y: Rep[Matrix[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a < b }
 
@@ -121,6 +119,14 @@ trait MatrixOps extends DSLType with Variables {
     def reduceRows(f: (Rep[Vector[A]],Rep[Vector[A]]) => Rep[Vector[A]]) = matrix_reducerows(x,f)
     def filterRows(pred: Rep[Vector[A]] => Rep[Boolean]) = matrix_filterrows(x,pred)
   }
+
+  // special case overrides
+  def infix_:>(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]) = x.zip(y) { (a,b) => if (a > b) 1f else 0f }
+  def infix_:>(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded1) = x.zip(y) { (a,b) => if (a > b) 1. else 0. }
+  def infix_:>(x: Rep[Matrix[Int]], y: Rep[Matrix[Int]])(implicit o: Overloaded2) = x.zip(y) { (a,b) => if (a > b) 1 else 0 }
+  def infix_:<(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]) = x.zip(y) { (a,b) => if (a > b) 1f else 0f }
+  def infix_:<(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded1) = x.zip(y) { (a,b) => if (a > b) 1. else 0. }
+  def infix_:<(x: Rep[Matrix[Int]], y: Rep[Matrix[Int]])(implicit o: Overloaded2) = x.zip(y) { (a,b) => if (a > b) 1. else 0. }
 
   // object defs
   def matrix_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[A]]
@@ -376,7 +382,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
     val alloc = reifyEffects(Vector[A](x.numRows, false))
     val v = fresh[Vector[A]]
-    val func = v :* y
+    val func = v *:* y
   }
 
   case class MatrixDivide[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])

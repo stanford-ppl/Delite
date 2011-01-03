@@ -110,7 +110,8 @@ trait VectorOps extends DSLType with Variables {
     def *(y: Rep[A])(implicit a: Arith[A],o: Overloaded1) = vector_times_scalar(x,y)
     //def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2) = vector_times_matrix(x,y)
     def **(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_outer(x,y)
-    def :*(y: Rep[Vector[A]])(implicit a: Arith[A]) = {val v = x*y; v.sum} //TODO: this is less efficient (space-wise) than: //vector_dot_product(x,y)
+    def *:*(y: Rep[Vector[A]])(implicit a: Arith[A]) = {val v = x*y; v.sum} //TODO: this is less efficient (space-wise) than: //vector_dot_product(x,y)
+    def dot(y: Rep[Vector[A]])(implicit a: Arith[A]) = x *:* y
     def /(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_divide(x,y)
     def /(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_divide_scalar(x,y)
     def /[B](y: Rep[B])(implicit a: Arith[A], conv: Rep[B] => Rep[A]) = vector_divide_scalar(x,conv(y))

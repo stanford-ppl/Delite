@@ -55,8 +55,8 @@ object RBM extends DeliteApplication with OptiMLExp {
         val posprods = data.t * poshidprobs
         val poshidact = poshidprobs.sumCol
         val posvisact = data.sumCol
-        //val poshidstates = (poshidprobs :< Matrix.randf(numcases, numHiddenUnits))
-        val poshidstates = (poshidprobs zip Matrix.randf(numcases, numHiddenUnits)){ (a,b) => if (a < b) 0f else 1f }
+        val poshidstates = (poshidprobs :< Matrix.randf(numcases, numHiddenUnits))
+        //val poshidstates = (poshidprobs zip Matrix.randf(numcases, numHiddenUnits)){ (a,b) => if (a < b) 0f else 1f }
         //PerformanceTimer.stop("RBM-posphase", false)
 
         // Negative phase
