@@ -19,6 +19,7 @@ trait VectorImplOps { this: OptiML =>
   //def vector_times_matrix_impl[A:Manifest:Arith](v: Rep[Vector[A]], m: Rep[Matrix[A]]): Rep[Vector[A]]
   def vector_outer_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) : Rep[Matrix[A]]
   def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]) : Rep[Unit]
+  def vector_repmat_impl[A:Manifest](m: Rep[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
   def vector_trans_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], vA: Manifest[Vector[A]]) : Rep[Vector[A]]
   def vector_median_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) : Rep[A]
   def vector_filter_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) : Rep[Vector[A]]
@@ -107,6 +108,33 @@ trait VectorImplOpsStandard extends VectorImplOps {
         print(v(i))
         print(" ]\\n")
       }
+    }
+  }
+
+  def vector_repmat_impl[A:Manifest](v: Rep[Vector[A]], iRep: Rep[Int], jRep: Rep[Int]) = {
+    if (v.isRow) {
+      val out = Matrix[A](iRep, jRep*v.length)
+      for (col <- (0::jRep*v.length)){
+        val colToRep = col % v.length
+        var rI = unit(0)
+        while(rI < iRep){
+          out(rI, col) = v(colToRep)
+          rI += 1
+        }
+      }
+      out
+    }
+    else {
+      val out = Matrix[A](iRep*v.length, jRep)
+      for (row <- (0::iRep*v.length)){
+        val rowToRep = row % v.length
+        var cI = unit(0)
+        while(cI < jRep){
+          out(row, cI) = v(rowToRep)
+          cI += 1
+        }
+      }
+      out
     }
   }
 

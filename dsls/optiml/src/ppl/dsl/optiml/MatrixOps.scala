@@ -30,6 +30,7 @@ trait MatrixOps extends DSLType with Variables {
     def rand(numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_rand(numRows, numCols)
     def randf(numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_randf(numRows, numCols)
     def randn(numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_randn(numRows, numCols)
+    def randnf(numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_randnf(numRows, numCols)
   }
 
   implicit def repMatToMatOps[A:Manifest](x: Rep[Matrix[A]]) = new matRepCls(x)
@@ -60,7 +61,7 @@ trait MatrixOps extends DSLType with Variables {
     //override def clone = matrix_clone(x)
     def cloneL = matrix_clone(x)
     def pprint = matrix_pprint(x)
-    def repmat(i: Rep[Int], j: Rep[Int]) = matrix_repmat(x,i,j)
+    def replicate(i: Rep[Int], j: Rep[Int]) = matrix_repmat(x,i,j)
 
     // data operations
     def update(i: Rep[Int], j: Rep[Int], y: Rep[A]) = matrix_update(x,i,j,y)
@@ -97,12 +98,17 @@ trait MatrixOps extends DSLType with Variables {
     def sumCol(implicit a: Arith[A]) = matrix_sumcol(x)
     def inv(implicit conv: Rep[A] => Rep[Double]) = matrix_inverse(x)
     def sigmoid(implicit conv: Rep[A] => Rep[Double]) = matrix_sigmoid(x)
+    def sigmoidf(implicit conv: Rep[A] => Rep[Double]) = matrix_sigmoidf(x)
 
     // ordering operations
     def min(implicit o: Ordering[A]) = matrix_min(x)
     def minRow(implicit a: Arith[A], o: Ordering[A]) = matrix_minrow(x)
     def max(implicit o: Ordering[A]) = matrix_max(x)
     def maxRow(implicit a: Arith[A], o: Ordering[A]) = matrix_maxrow(x)
+    // if A is a Doubble, Int, or Float, we would like to special case this, but that would have a different return signature
+    // one way is to use Arith, with zero and identity methods
+    def :>(y: Rep[Matrix[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a > b }
+    def :<(y: Rep[Matrix[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a < b }
 
     // bulk operations
     def map[B:Manifest](f: Rep[A] => Rep[B]) = matrix_map(x,f)
@@ -111,7 +117,7 @@ trait MatrixOps extends DSLType with Variables {
     def mapRows[B:Manifest](f: Rep[Vector[A]] => Rep[B], isRow: Rep[Boolean] = true) = matrix_maprowstovec(x,f,isRow)
     def foreach(block: Rep[A] => Rep[Unit]) = matrix_foreach(x, block)
     def foreachRow(block: Rep[Vector[A]] => Rep[Unit]) = matrix_foreachrow(x, block)
-    def zip[B:Manifest,R:Manifest](y: Rep[Matrix[B]], f: (Rep[A],Rep[B]) => Rep[R]) = matrix_zipwith(x,y,f)
+    def zip[B:Manifest,R:Manifest](y: Rep[Matrix[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = matrix_zipwith(x,y,f)
     def reduceRows(f: (Rep[Vector[A]],Rep[Vector[A]]) => Rep[Vector[A]]) = matrix_reducerows(x,f)
     def filterRows(pred: Rep[Vector[A]] => Rep[Boolean]) = matrix_filterrows(x,pred)
   }
@@ -129,6 +135,7 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_obj_rand(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Double]]
   def matrix_obj_randf(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Float]]
   def matrix_obj_randn(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Double]]
+  def matrix_obj_randnf(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Float]]
 
   // class defs
   def matrix_apply[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
@@ -172,6 +179,7 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_sumcol[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]]
   def matrix_inverse[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
   def matrix_sigmoid[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
+  def matrix_sigmoidf[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]]
 
   def matrix_min[A:Manifest:Ordering](x: Rep[Matrix[A]]): Rep[A]
   def matrix_minrow[A:Manifest:Arith:Ordering](x: Rep[Matrix[A]]): Rep[Vector[A]]
@@ -181,7 +189,7 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_map[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[A] => Rep[B]): Rep[Matrix[B]]
   def matrix_mmap[A:Manifest](x: Rep[Matrix[A]], f: Rep[A] => Rep[A]): Rep[Matrix[A]]
   def matrix_maprows[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
-  def matrix_maprowstovec[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[B], isRow: Rep[Boolean] = true): Rep[Vector[B]]
+  def matrix_maprowstovec[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[B], isRow: Rep[Boolean]): Rep[Vector[B]]
   def matrix_foreach[A:Manifest](x: Rep[Matrix[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
   def matrix_foreachrow[A:Manifest](x: Rep[Matrix[A]], block: Rep[Vector[A]] => Rep[Unit]): Rep[Unit]
   def matrix_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[Matrix[R]]
@@ -252,6 +260,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   case class MatrixObjectRandn(numRows: Exp[Int], numCols: Exp[Int])
     extends DeliteOpSingleTask(reifyEffects(matrix_obj_randn_impl(numRows, numCols)))
+
+  case class MatrixObjectRandnF(numRows: Exp[Int], numCols: Exp[Int])
+    extends DeliteOpSingleTask(reifyEffects(matrix_obj_randnf_impl(numRows, numCols)))
 
   case class MatrixGetRow[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int])
     extends DeliteOpSingleTask(reifyEffects(matrix_getrow_impl(x,i)))
@@ -453,6 +464,14 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1))))
   }
 
+  case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
+    extends DeliteOpMap[A,Float,Matrix] {
+
+    val alloc = reifyEffects(Matrix[Float](in.numRows, in.numCols))
+    val v = fresh[A]
+    val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
+  }
+
   case class MatrixMin[A:Manifest:Ordering](in: Exp[Matrix[A]])
     extends DeliteOpReduce[A] {
 
@@ -537,10 +556,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_obj_zeros(numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixObjectZeros(numRows, numCols))
   def matrix_obj_zerosf(numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixObjectZerosF(numRows, numCols))
   def matrix_obj_ones(numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixObjectOnes(numRows, numCols))
-  def matrix_obj_onesf(numRows: Exp[Int], numCols: Exp[Int])= reflectEffect(MatrixObjectOnesF(numRows, numCols))
-  def matrix_obj_rand(numRows: Exp[Int], numCols: Exp[Int])= reflectEffect(MatrixObjectRand(numRows, numCols))
-  def matrix_obj_randf(numRows: Exp[Int], numCols: Exp[Int])= reflectEffect(MatrixObjectRandF(numRows, numCols))
-  def matrix_obj_randn(numRows: Exp[Int], numCols: Exp[Int])= reflectEffect(MatrixObjectRandn(numRows, numCols))
+  def matrix_obj_onesf(numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixObjectOnesF(numRows, numCols))
+  def matrix_obj_rand(numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixObjectRand(numRows, numCols))
+  def matrix_obj_randf(numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixObjectRandF(numRows, numCols))
+  def matrix_obj_randn(numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixObjectRandn(numRows, numCols))
+  def matrix_obj_randnf(numRows: Rep[Int], numCols: Rep[Int]) = reflectEffect(MatrixObjectRandnF(numRows, numCols))
 
 
   ///////////////////
@@ -587,6 +607,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_sumcol[A:Manifest:Arith](x: Exp[Matrix[A]]) = MatrixSumCol(x)
   def matrix_inverse[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = MatrixInverse(x)
   def matrix_sigmoid[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = MatrixSigmoid(x)
+  def matrix_sigmoidf[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = MatrixSigmoidF(x)
   
   def matrix_min[A:Manifest:Ordering](x: Exp[Matrix[A]]) = MatrixMin(x)
   def matrix_minrow[A:Manifest:Arith:Ordering](x: Exp[Matrix[A]]) = MatrixMinRow(x)

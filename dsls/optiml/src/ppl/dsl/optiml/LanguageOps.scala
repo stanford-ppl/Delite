@@ -99,6 +99,7 @@ trait LanguageOps extends Base { this: OptiML =>
   def max[A:Manifest:Ordering](vals: Rep[Vector[A]]) = repVecToVecOps(vals).max
   def max[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], o: Overloaded1) = repMatToMatOps(vals).max
   def max[A:Manifest:Ordering](vals: A*) = repVecToVecOps(Vector(vals: _*)).max
+  //def max[A:Manifest:Ordering](vals: Rep[A]*) = repVecToVecOps(Vector(vals: _*)).max
 
 
   /**
