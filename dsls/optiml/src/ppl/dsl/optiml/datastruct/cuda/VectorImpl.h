@@ -11,13 +11,13 @@ public:
     bool isRow;
 
     // Constructors
-    Vector() {
+    __host__ __device__ Vector() {
         length = 0;
         isRow = true;
         data = NULL;
     }
 
-    Vector(int _length, bool _isRow, T *_data) {
+    __host__ __device__ Vector(int _length, bool _isRow, T *_data) {
         length = _length;
         isRow = _isRow;
         data = _data;

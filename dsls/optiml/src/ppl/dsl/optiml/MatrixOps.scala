@@ -727,23 +727,23 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
 
     case MatrixGetRow(x,i) =>
       /*
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".numCols"))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(%s, (%s.apply(%s,%s)));".format(quote(sym),"idxX",quote(x),quote(i),"idxX"))
-      //if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(varLink.get(sym).get),"idxX",quote(sym),"idxX"))
-      if(getVarLink(sym) != null) if(varLink.contains(sym)) stream.println(addTab()+"%s.update(%s, %s.apply(%s));".format(quote(getVarLink(sym)),"idxX",quote(sym),"idxX"))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      */
-      //TODO: Need to determine whether this will be performed by each thread or done by helperfunctions
       // if done by each thread
-      stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
-      stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
-      stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
-      stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
-      //emitValDef(sym,"%s.vview(%s.numCols*%s, 1, %s.numCols, true)".format(quote(x),quote(i),quote(x)))
-      //else
-      //emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true","%s.data+%s*%s.numCols".format(quote(x),quote(i),quote(x)))
+      if(parallelCudagen == false) {
+        stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
+        stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
+        stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
+        stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
+        //TODO: Need to register this datastructure if it is used in subsequent helper functions
+        //emitValDef(sym,"%s.vview(%s.numCols*%s, 1, %s.numCols, true)".format(quote(x),quote(i),quote(x)))
+      }
+      else {
+      */
+        stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
+        stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
+        stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
+        stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
+        emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true","%s.data".format(quote(x),quote(x)))
+      //}
 
     case MatrixApply(x,i,j) =>
       emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))

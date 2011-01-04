@@ -13,7 +13,7 @@ public:
     int stride;
 
     // Constructors
-    Vector() {
+    __host__ __device__ Vector() {
         length = 0;
         isRow = true;
         data = NULL;
@@ -21,7 +21,7 @@ public:
         stride = 1;
     }
 
-    Vector(int _length, bool _isRow, T *_data, int _start, int _stride) {
+    __host__ __device__ Vector(int _length, bool _isRow, T *_data, int _start, int _stride) {
         length = _length;
         isRow = _isRow;
         data = _data;

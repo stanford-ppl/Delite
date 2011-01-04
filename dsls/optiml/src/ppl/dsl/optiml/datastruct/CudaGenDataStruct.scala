@@ -154,7 +154,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
 
     // Get data(array) of scala data structure
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"doubleData\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0))))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"%sData\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0)),typeStr))
     out.append("\tif(mid_data==NULL) std::cout << \"data access method NOT found\" << std::endl;\n")
     out.append("\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
@@ -193,7 +193,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
 
     // Get data(array) of scala data structure
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"doubleData\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0))))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"%sData\",\"()[%s\");\n".format(typeStr,JNITypeDescriptor(sym.Type.typeArguments(0))))
     out.append("\tif(mid_data==NULL) std::cout << \"data access method NOT found\" << std::endl;\n")
     out.append("\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
