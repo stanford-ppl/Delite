@@ -11,13 +11,13 @@ public:
 	int numCols;
 	
 	// Constructors
-	Matrix() {
+	__host__ __device__ Matrix() {
 		numRows = 0;
 		numCols = 0;
 		data = NULL;
 	}
 
-	Matrix(int _numRows, int _numCols, T *_data) {
+	__host__ __device__ Matrix(int _numRows, int _numCols, T *_data) {
 		numRows = _numRows;
 		numCols = _numCols;
 		data = _data;

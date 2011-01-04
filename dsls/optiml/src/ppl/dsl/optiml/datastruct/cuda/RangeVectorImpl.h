@@ -15,7 +15,7 @@ public:
     int length;
 
     // Constructors
-    RangeVector() {
+    __host__ __device__ RangeVector() {
         start = 0;
         end = 0;
         stride = 1;
@@ -23,7 +23,7 @@ public:
         length = 0;
     }
 
-    RangeVector(int _start, int _end, int _stride, bool _isRow) {
+    __host__ __device__ RangeVector(int _start, int _end, int _stride, bool _isRow) {
         start = _start;
         end = _end;
         stride = _stride;
