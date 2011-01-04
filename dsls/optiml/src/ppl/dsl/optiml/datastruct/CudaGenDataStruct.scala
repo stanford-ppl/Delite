@@ -138,15 +138,11 @@ trait CudaGenDataStruct extends CudaCodegen {
     val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
 
     // Allocate Scala object for the destination
-    out.append("\tjclass cls = env->FindClass(\"generated/scala/MatrixImpl\");\n")
+    out.append("\tjclass cls = env->FindClass(\"generated/scala/%sMatrixImpl\");\n".format(sym.Type.typeArguments(0)))
     out.append("\tif(cls==NULL) std::cout << \"class NOT found\" << std::endl;\n")
-    out.append("\tjmethodID manID = env->GetStaticMethodID(cls,\"getDoubleManifest\",\"()Lscala/reflect/ClassManifest;\");\n")
-    out.append("\tif(manID==NULL) std::cout << \"getDoubleManifest method NOT found\" << std::endl;\n")
-    out.append("\tjobject manifest = env->CallStaticObjectMethod(cls,manID);\n")
-    out.append("\tif(manifest==NULL) std::cout << \"manifest object NOT found\" << std::endl;\n")
-    out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(IILscala/reflect/ClassManifest;)V\");\n")
+    out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(II)V\");\n")
     out.append("\tif(mid==NULL) std::cout << \"constructor NOT found\" << std::endl;\n")
-    out.append("\tjobject obj = env->NewObject(cls,mid,%s.numRows,%s.numCols,manifest);\n".format(quote(sym),quote(sym)))
+    out.append("\tjobject obj = env->NewObject(cls,mid,%s.numRows,%s.numCols);\n".format(quote(sym),quote(sym)))
     out.append("\tif(obj==NULL) std::cout << \"new object NOT created\" << std::endl;\n")
 
     // Allocate pinned-memory
@@ -154,7 +150,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
 
     // Get data(array) of scala data structure
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"%sData\",\"()[%s\");\n".format(typeStr,JNITypeDescriptor(sym.Type.typeArguments(0))))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0))))
     out.append("\tif(mid_data==NULL) std::cout << \"data access method NOT found\" << std::endl;\n")
     out.append("\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
@@ -177,15 +173,11 @@ trait CudaGenDataStruct extends CudaCodegen {
     val numBytesStr = "%s.length * sizeof(%s)".format(quote(sym),remap(sym.Type.typeArguments(0)))
 
     // Allocate Scala object for the destination
-    out.append("\tjclass cls = env->FindClass(\"generated/scala/VectorImpl\");\n")
+    out.append("\tjclass cls = env->FindClass(\"generated/scala/%sVectorImpl\");\n".format(sym.Type.typeArguments(0)))
     out.append("\tif(cls==NULL) std::cout << \"class NOT found\" << std::endl;\n")
-    out.append("\tjmethodID manID = env->GetStaticMethodID(cls,\"getDoubleManifest\",\"()Lscala/reflect/ClassManifest;\");\n")
-    out.append("\tif(manID==NULL) std::cout << \"getDoubleManifest method NOT found\" << std::endl;\n")
-    out.append("\tjobject manifest = env->CallStaticObjectMethod(cls,manID);\n")
-    out.append("\tif(manifest==NULL) std::cout << \"manifest object NOT found\" << std::endl;\n")
-    out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(IZLscala/reflect/ClassManifest;)V\");\n")
+    out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(IZ)V\");\n")
     out.append("\tif(mid==NULL) std::cout << \"constructor NOT found\" << std::endl;\n")
-    out.append("\tjobject obj = env->NewObject(cls,mid,%s.length,%s.isRow,manifest);\n".format(quote(sym),quote(sym)))
+    out.append("\tjobject obj = env->NewObject(cls,mid,%s.length,%s.isRow);\n".format(quote(sym),quote(sym)))
     out.append("\tif(obj==NULL) std::cout << \"new object NOT created\" << std::endl;\n")
 
     // Allocate pinned-memory
@@ -193,7 +185,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
 
     // Get data(array) of scala data structure
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"%sData\",\"()[%s\");\n".format(typeStr,JNITypeDescriptor(sym.Type.typeArguments(0))))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0))))
     out.append("\tif(mid_data==NULL) std::cout << \"data access method NOT found\" << std::endl;\n")
     out.append("\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))

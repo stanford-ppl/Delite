@@ -1,7 +1,6 @@
 package ppl.dsl.optiml.datastruct.scala
 
 object MatrixImpl {
-  def getDoubleManifest = classManifest[Double]
 }
 
 class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends Matrix[T] {
@@ -15,8 +14,6 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
   def numCols = _numCols
   def size = _numRows*_numCols
   def data = _data
-
-  def doubleData = _data.asInstanceOf[Array[Double]]
   
   def apply(i: Int) : VectorView[T] = {
     vview(i*numCols, 1, numCols, true)

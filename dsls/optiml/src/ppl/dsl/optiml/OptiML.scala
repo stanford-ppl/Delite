@@ -118,7 +118,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala")
 
   override def genSpec(f: File, dsOut: String) {
-    for (s <- List("Double","Int")) {
+    for (s <- List("Double","Int","Float","Long","Boolean")) {
       val outFile = dsOut + "/" + s + f.getName()
       val out = new BufferedWriter(new FileWriter(outFile))
       for (line <- scala.io.Source.fromFile(f).getLines) {
@@ -146,10 +146,19 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
     res = res.replaceAll("ppl.delite.framework", "generated.scala")
     res = res.replaceAll("VectorImpl\\[Double\\]", "DoubleVectorImpl")
     res = res.replaceAll("VectorImpl\\[Int\\]", "IntVectorImpl")
+    res = res.replaceAll("VectorImpl\\[Float\\]", "FloatVectorImpl")
+    res = res.replaceAll("VectorImpl\\[Long\\]", "LongVectorImpl")
+    res = res.replaceAll("VectorImpl\\[Boolean\\]", "BooleanVectorImpl")
     res = res.replaceAll("VectorViewImpl\\[Double\\]", "DoubleVectorViewImpl")
     res = res.replaceAll("VectorViewImpl\\[Int\\]", "IntVectorViewImpl")
+    res = res.replaceAll("VectorViewImpl\\[Float\\]", "FloatVectorViewImpl")
+    res = res.replaceAll("VectorViewImpl\\[Long\\]", "LongVectorViewImpl")
+    res = res.replaceAll("VectorViewImpl\\[Boolean\\]", "BooleanVectorViewImpl")
     res = res.replaceAll("MatrixImpl\\[Double\\]", "DoubleMatrixImpl")
     res = res.replaceAll("MatrixImpl\\[Int\\]", "IntMatrixImpl")
+    res = res.replaceAll("MatrixImpl\\[Float\\]", "FloatMatrixImpl")
+    res = res.replaceAll("MatrixImpl\\[Long\\]", "LongMatrixImpl")
+    res = res.replaceAll("MatrixImpl\\[Boolean\\]", "BooleanMatrixImpl")
     res
   }
 }
