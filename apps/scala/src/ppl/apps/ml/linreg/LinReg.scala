@@ -55,7 +55,7 @@ object LinReg extends DeliteApplication with OptiMLExp {
       val W = Matrix.diag(weights.length, weights)
       val t1 = Xt*W
       val theta = ((t1*X).inv)*(t1*y) // relaxed v_prod, ignore is_row on y
-      (theta.t) :* (xref(e).t)
+      (theta.t) *:* (xref(e).t)
     })
 
     return guess

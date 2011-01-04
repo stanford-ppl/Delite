@@ -33,6 +33,10 @@ object VectorUITests extends DeliteApplication with OptiMLExp {
    vec2.pprint
   }
 
+  def testConversions() = {
+    // TODO: test int*double, double*int, vec[int]*vec[double], vec[double]*vec[int]
+  }
+
   def main() = {
     //testInit()
     testLoop()
