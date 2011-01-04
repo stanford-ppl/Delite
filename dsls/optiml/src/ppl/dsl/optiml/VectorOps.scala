@@ -24,6 +24,10 @@ trait VectorOps extends DSLType with Variables {
       val xs2 = unit(xs.toList)
       vector_obj_fromseq(xs2)
     }
+    // this doesn't work because if we don't lift the Seq, we can't generate code for it
+    // if we do lift the Seq, we have a Rep[Seq[Rep[A]], which has the problems discussed below
+    //def apply[A:Manifest](xs: Rep[A]*) = {}
+
     // this is problematic.. should this be Rep[Vector[Rep[Vector[A]]] or Rep[Vector[Vector[A]]]?
     // we have this issue for all containers; with the current implementation only the latter makes sense, but how
     // is it ever instantiated? Vector(Vector(1,2,3)) will return a Rep[Vector[Rep[Vector[Int]]]
@@ -84,6 +88,7 @@ trait VectorOps extends DSLType with Variables {
     def mt() = vector_mutable_trans(x)
     def cloneL = vector_clone(x)
     def pprint() = vector_pprint(x)
+    def replicate(i: Rep[Int], j: Rep[Int]) = vector_repmat(x,i,j)
 
     // data operations
     def update(n: Rep[Int], y: Rep[A]) = vector_update(x,n,y)
@@ -103,10 +108,13 @@ trait VectorOps extends DSLType with Variables {
     def -(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_minus(x,y)
     def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_minus_scalar(x,y)
     def *(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_times(x,y)
+    def *[B](y: Rep[Vector[B]])(implicit mB: Manifest[B], a: Arith[A], conv: Rep[B] => Rep[A]) = vector_times_withconvert(x,y,conv)
+    //def *[B](y: Rep[Vector[B]])(implicit mB: Manifest[B], a: Arith[A], conv: Rep[A] => Rep[B], o: Overloaded1) = vector_times_withconvertright(x,y,conv)
     def *(y: Rep[A])(implicit a: Arith[A],o: Overloaded1) = vector_times_scalar(x,y)
     //def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2) = vector_times_matrix(x,y)
     def **(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_outer(x,y)
-    def :*(y: Rep[Vector[A]])(implicit a: Arith[A]) = {val v = x*y; v.sum} //TODO: this is less efficient (space-wise) than: //vector_dot_product(x,y)
+    def *:*(y: Rep[Vector[A]])(implicit a: Arith[A]) = {val v = x*y; v.sum} //TODO: this is less efficient (space-wise) than: //vector_dot_product(x,y)
+    def dot(y: Rep[Vector[A]])(implicit a: Arith[A]) = x *:* y
     def /(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_divide(x,y)
     def /(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_divide_scalar(x,y)
     def /[B](y: Rep[B])(implicit a: Arith[A], conv: Rep[B] => Rep[A]) = vector_divide_scalar(x,conv(y))
@@ -121,12 +129,14 @@ trait VectorOps extends DSLType with Variables {
     def max(implicit o: Ordering[A]) = vector_max(x)
     //def maxIndex(implicit o: Ordering[A]) = vector_maxIndex(x)
     def median(implicit o: Ordering[A]) = vector_median(x)
+    def :>(y: Rep[Vector[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a > b }
+    def :<(y: Rep[Vector[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a < b }
 
     // bulk operations
     def map[B:Manifest](f: Rep[A] => Rep[B]) = vector_map(x,f)
     def mmap(f: Rep[A] => Rep[A]) = vector_mmap(x,f)
     def foreach(block: Rep[A] => Rep[Unit]) = vector_foreach(x, block)
-    def zip[B:Manifest,R:Manifest](y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[R]) = vector_zipwith(x,y,f)
+    def zip[B:Manifest,R:Manifest](y: Rep[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = vector_zipwith(x,y,f)
     def reduce(f: (Rep[A],Rep[A]) => Rep[A]) = vector_reduce(x,f)
     def filter(pred: Rep[A] => Rep[Boolean]) = vector_filter(x,pred)
     //def flatMap(f: Rep[A] => Rep[Vector[B]]) = vector_flatmap(x,f) // TODO: can't do this until we sort out the issue with Vector.flatten
@@ -160,6 +170,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_mutable_trans[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_clone[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
+  def vector_repmat[A:Manifest](x: Rep[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
 
   def vector_update[A:Manifest](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
   def vector_copyfrom[A:Manifest](x: Rep[Vector[A]], pos: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
@@ -174,6 +185,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_minus[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_minus_scalar[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
   def vector_times[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_times_withconvert[A:Manifest:Arith,B:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]],  conv: Rep[B] => Rep[A]): Rep[Vector[A]]
   def vector_times_scalar[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
   //def vector_times_matrix[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[A]): Rep[Vector[A]]
   def vector_outer[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Matrix[A]]
@@ -275,6 +287,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorPPrint[A:Manifest](x: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffects(vector_pprint_impl[A](x)))
 
+  case class VectorRepmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int])
+    extends DeliteOpSingleTask(reifyEffects(vector_repmat_impl[A](x,i,j)))
+
+  //TODO: Restore this SingleTask and remove DeliteOpMap version 20 lines below (HyoukJoong)
   //case class VectorTrans[A:Manifest](x: Exp[Vector[A]])
   //  extends DeliteOpSingleTask(reifyEffects(vector_trans_impl[A](x)))
 
@@ -351,6 +367,14 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
     val v = (fresh[A],fresh[A])
     val func = v._1 * v._2
+  }
+
+  case class VectorTimesWithConvert[A:Manifest:Arith,B:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]], conv: Exp[B] => Exp[A])
+    extends DeliteOpZipWith[A,B,A,Vector] {
+
+    val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
+    val v = (fresh[A],fresh[B])
+    val func = v._1 * conv(v._2)
   }
 
   case class VectorTimesScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
@@ -497,6 +521,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_mutable_trans[A:Manifest](x: Exp[Vector[A]]) = VectorMutableTrans(x)
   def vector_clone[A:Manifest](x: Exp[Vector[A]]) = VectorClone(x)
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
+  def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = VectorRepmat(x,i,j)
 
   def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(x, n, y))
   def vector_copyfrom[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorCopyFrom(x, pos, y))
@@ -511,6 +536,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_minus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(x,y)
   def vector_minus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorMinusScalar(x, y)
   def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(x, y)
+  def vector_times_withconvert[A:Manifest:Arith,B:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], conv: Exp[B] => Exp[A]) = VectorTimesWithConvert(x,y,conv)
   def vector_times_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorTimesScalar(x, y)
   //def vector_times_matrix[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = VectorTimesMatrix(x, y)
   def vector_outer[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorOuter(x, y)

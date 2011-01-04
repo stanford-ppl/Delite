@@ -38,10 +38,13 @@ trait ArithOps extends Variables with OverloadHack {
     def *(rhs: Rep[T]) = arith.*(lhs,rhs)
     def /(rhs: Rep[T]) = arith./(lhs,rhs)
 
+    // conversions can be either lhs to rhs (right-convert), or rhs to lhs (left-convert)
     def +=[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.+=(lhs,implicit_convert[A,T](rhs))
     def +[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.+(lhs,implicit_convert[A,T](rhs))
     def -[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.-(lhs,implicit_convert[A,T](rhs))
     def *[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.*(lhs,implicit_convert[A,T](rhs))
+    // TODO: this doesn't resolve as we would like.. there are issues doing things like Int*Double
+    //def *[A](rhs: Rep[A])(implicit mA: Manifest[A], a: Arith[A], c: T => A, o: Overloaded1) = a.*(implicit_convert[T,A](lhs),rhs)
     def /[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith./(lhs,implicit_convert[A,T](rhs))
 
     def abs = arith.abs(lhs)
