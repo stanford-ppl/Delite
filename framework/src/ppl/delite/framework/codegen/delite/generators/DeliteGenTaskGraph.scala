@@ -2,11 +2,11 @@ package ppl.delite.framework.codegen.delite.generators
 
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.internal.{ScalaGenEffect, GenericCodegen}
 import ppl.delite.framework.{Util, Config}
 import collection.mutable.{ArrayBuffer, ListBuffer}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
 import scala.virtualization.lms.common.IfThenElseExp
+import scala.virtualization.lms.internal.{GenericNestedCodegen, ScalaGenEffect}
 
 trait DeliteGenTaskGraph extends DeliteCodegen {
   val IR: DeliteOpsExp
@@ -37,14 +37,30 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     var skipEmission = false
     nestedEmission = false
     var nestedNode: TP[_] = null
+    implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
 
     // we will try to generate any node that is not purely an effect node
     rhs match {
       case Reflect(s, effects) => super.emitNode(sym, rhs); return
       case Reify(s, effects) => super.emitNode(sym, rhs); return
-      case DeliteOpCondition(c,t,e) => emitBlock(t); emitBlock(e); skipEmission = true
+      case DeliteOpCondition(c,t,e) => {
+        emitBlock(c)
+        emittedNodeList += controlDeps
+        emitBlock(t)
+        emittedNodeList += emittedNodes
+        emitBlock(e)
+        emittedNodeList += emittedNodes
+        skipEmission = true
+      }
       case DeliteOpIndexedLoop(s,e,i,b) => emitBlock(b); skipEmission = true
-      case DeliteOpWhileLoop(c,b) => emitBlock(c); emitBlock(b); skipEmission = true
+      case DeliteOpWhileLoop(c,b) => {
+        emitBlock(c)
+        emittedNodeList += controlDeps
+        emittedNodeList += emittedNodes
+        emitBlock(b)
+        emittedNodeList += emittedNodes
+        skipEmission = true
+      }
       case NewVar(x) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
       case _ => // continue and attempt to generate kernel
     }
@@ -171,9 +187,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     // emit task graph node
     rhs match {
-      case DeliteOpCondition(c,t,e) => emitIfThenElse(c, t, e, sym, inputs, inControlDeps, antiDeps)
+      case DeliteOpCondition(c,t,e) => emitIfThenElse(c,sym, inputs, inControlDeps, antiDeps)
       case DeliteOpIndexedLoop(s,e,i,b) => emitIndexedLoop(s,e,i,b, sym, inputs, inControlDeps, antiDeps)
-      case DeliteOpWhileLoop(c,b) => emitWhileLoop(c,b, sym, inputs, inControlDeps, antiDeps)
+      case DeliteOpWhileLoop(c,b) => emitWhileLoop(sym, inputs, inControlDeps, antiDeps)
       case s:DeliteOpSingleTask[_] => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
       case m:DeliteOpMap[_,_,_] => emitMap(sym, inputs, inControlDeps, antiDeps)
       case r:DeliteOpReduce[_] => emitReduce(sym, inputs, inControlDeps, antiDeps)
@@ -229,13 +245,20 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     emitExecutionOpCommon(sym, inputs, controlDeps, antiDeps)
   }
 
-  def emitIfThenElse(cond: Exp[Boolean], thenp: Exp[_], elsep: Exp[_], sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+  def emitIfThenElse(cond: Exp[Boolean], sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
     stream.print("{\"type\":\"Conditional\",")
-    stream.print("  \"outputId\" : \"" + quote(sym) + "\",\n")
+    stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
+    val controlDepsStr = if(emittedNodesList(0).isEmpty) "" else getEmittedNodeIds(0)
+    val thenS = getEmittedNodeIds(1)
+    val elseS = getEmittedNodeIds(2)
     stream.println("  \"conditionKernelId\" : \"" + quote(cond) + "\", ")
-    stream.println("  \"thenKernelId\" : \"" + quote(thenp) + "\", \"elseKernelID\" : \"" + quote(elsep) + "\", ")
-    emitDepsCommon(controlDeps, antiDeps, true)
+    stream.println("  \"thenKernelIds\" : [" + thenS + "],")
+    stream.println("  \"elseKernelIds\" : [" + elseS + "],")
+    stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
+    val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
+    stream.println("  \"antiDeps\":[" + antiDepsStr + "]")
+    stream.println("},")
     stream.println("},")
   }
 
@@ -256,20 +279,18 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.println("},")
   }
 
-  def emitWhileLoop(cond: Exp[Boolean], body: Exp[Unit], sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
-    stream.println("{\"type\":\"whileLoop\",")
-    def getRhs(e: Exp[_])= e match {
-      case s: Sym[_] => findDefinition(s).getOrElse(throw new RuntimeException("Cannot find " + s)).rhs match {
-        case Reify(x, _) => x
-      }
-      case _ => throw new RuntimeException("Constants in while loops not supported yet")
-    }
-    val condR = getRhs(cond)
-    val bodyR = getRhs(body)
-    stream.print("  \"condId\" : \"" + quote(condR) + "\",")
-    stream.println("  \"bodyId\" : \"" + quote(bodyR) + "\",")
-    emitDepsCommon(controlDeps, antiDeps, true)
+  def emitWhileLoop(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
+    stream.println("{\"type\":\"WhileLoop\",")
+
+    val controlDepsStr = if(emittedNodesList(0).isEmpty) "" else getEmittedNodeIds(0)
+    val conds = getEmittedNodeIds(1)
+    val bodys = getEmittedNodeIds(2)
+    stream.println("  \"condIds\" : [" + conds + "],")
+    stream.println("  \"bodyIds\" : [" + bodys + "],")
+    stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
+    val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
+    stream.println("  \"antiDeps\":[" + antiDepsStr + "]")
     stream.println("},")
   }
 
@@ -298,11 +319,18 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("  \"antiDeps\":[" + antiDepsStr + "]" + (if(last) "\n" else ",\n"))
   }
 
+  private def getEmittedNodeIds(idx: Int)(implicit emittedNodesList: ListBuffer[List[Sym[_]]]) = {
+    emittedNodesList(idx).map(quote(_)).mkString("\"","\",\"","\"")
+  }
+
   // more quirks
   override def quote(x: Exp[_]) = x match {
     case r:Reify[_] => quote(r.x)
     case _ => super.quote(x)
   }
+
+
+
 
   def nop = throw new RuntimeException("Not Implemented Yet")
 

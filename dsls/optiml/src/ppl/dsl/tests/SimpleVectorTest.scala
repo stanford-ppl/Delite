@@ -9,32 +9,48 @@ object SimpleVectorTest extends DeliteApplication with OptiML2Exp {
     //println("SimpleVectorTest")
     val vec1 = Vector.intZeros(10)
     val vec2 = Vector.intZeros(10)
-    /*
+
+//    val vec3 = {
+//      vec2(0) = vec1(0)
+//      vec2(1) = vec1(1)
+//      vec2(2) = vec1(2)
+//      vec1 + vec2
+//    }
+
     val vec3 = if(vec1.length > 10) {
-      if(vec2.length > 10) {
-        vec1 + vec2
-      } else {
-        vec2 - vec1
-      }
+      vec2(0) = vec1(0)
+      vec2(1) = vec1(1)
+      vec2(2) = vec1(2)
+//      if(vec2.length > 10) {
+//        vec1 + vec2
+//      } else {
+//        vec2 - vec1
+//      }
+      vec1 + vec2
     } else {
       vec1 - vec2
     }
 
+    /*
     for(i <- 0 until vec3(0)) {
       vec3(i) = vec1(i)
     }
     */
 
-
+    /*
     var idx = unit(0)
 
     while(idx < 10) {
       vec2(idx) = vec1(idx)
-      idx = unit(10)
+      vec2(idx) = vec1(idx)
+      vec2(idx) = vec1(idx)
+      vec2(idx) = vec1(idx)
+      //idx = unit(10)
     }
 
+    */
 
-    //println(vec3)
+    println(vec3)
 
   }
 }

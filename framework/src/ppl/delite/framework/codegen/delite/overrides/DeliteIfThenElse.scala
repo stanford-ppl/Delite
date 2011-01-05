@@ -36,4 +36,4 @@ trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
   }
 }
 
-trait DeliteScalaGenIfThenElse extends  DeliteBaseGenWhile
+trait DeliteScalaGenIfThenElse extends  DeliteBaseGenIfThenElse
