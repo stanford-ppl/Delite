@@ -30,7 +30,10 @@ object SimpleVectorTest extends DeliteApplication with OptiML2Exp {
 
     while(idx < 10) {
       vec2(idx) = vec1(idx)
-      idx = unit(10)
+      vec2(idx) = vec1(idx)
+      vec2(idx) = vec1(idx)
+      vec2(idx) = vec1(idx)
+      //idx = unit(10)
     }
 
 

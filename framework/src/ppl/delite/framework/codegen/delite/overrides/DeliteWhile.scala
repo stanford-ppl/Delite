@@ -3,6 +3,7 @@ package ppl.delite.framework.codegen.delite.overrides
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{WhileExp}
 import scala.virtualization.lms.internal.{ScalaGenEffect, GenericNestedCodegen}
+import java.io.PrintWriter
 
 trait DeliteWhileExp extends WhileExp {
 
