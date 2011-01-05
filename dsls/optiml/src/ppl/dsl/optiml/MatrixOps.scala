@@ -59,8 +59,8 @@ trait MatrixOps extends DSLType with Variables {
     def t = matrix_transpose(x)
     // TODO: implicit won't trigger
     //override def clone = matrix_clone(x)
-    def cloneL = matrix_clone(x)
-    def pprint = matrix_pprint(x)
+    def cloneL() = matrix_clone(x)
+    def pprint() = matrix_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int]) = matrix_repmat(x,i,j)
 
     // data operations
@@ -718,7 +718,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case MatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
-    case MatrixClone(x) => emitValDef(sym, quote(x) + ".clone")
+    case MatrixClone(x) => emitValDef(sym, quote(x) + ".cloneL")
     case MatrixUpdate(x,i,j,y)  => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
     case MatrixInsertRow(x,pos,y)  => emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
     case MatrixInsertAllRows(x,pos,y) => emitValDef(sym, quote(x) + ".insertAllRows(" + quote(pos) + "," + quote(y) + ")")

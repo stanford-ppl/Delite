@@ -82,6 +82,8 @@ trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def isRow : Boolean
   def apply(n: Int) : T
   def update(index: Int, x: T)
+  def data: Array[T]
+
   def mtrans: Vector[T]
   def sort(implicit o: Ordering[T]): Vector[T] // because we use the underlying data field to sort
   def copyFrom(pos: Int, xs: Vector[T])
@@ -89,6 +91,7 @@ trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def insertAll(pos: Int, xs: Vector[T])
   def removeAll(pos: Int, len: Int)
   def trim
+  def cloneL: Vector[T]
 
   // DeliteCollection
   def dcApply(idx: Int) = apply(idx)
@@ -101,6 +104,8 @@ trait NilVector[@specialized T] extends Vector[T] {
   def apply(i: Int) = throw new UnsupportedOperationException()
   def isRow : Boolean = throw new UnsupportedOperationException()
   def update(index: Int, x: T) = throw new UnsupportedOperationException()
+  def data = throw new UnsupportedOperationException()
+
   def mtrans = throw new UnsupportedOperationException()
   def sort(implicit o: Ordering[T]) = throw new UnsupportedOperationException()
   def insert(pos: Int, x: T) = throw new UnsupportedOperationException()
@@ -108,7 +113,7 @@ trait NilVector[@specialized T] extends Vector[T] {
   def copyFrom(pos: Int, xs: Vector[T]) = throw new UnsupportedOperationException()
   def removeAll(pos: Int, len: Int) = throw new UnsupportedOperationException()
   def trim = throw new UnsupportedOperationException()
-  override def clone = throw new UnsupportedOperationException()
+  def cloneL = throw new UnsupportedOperationException()
 }
 
 trait VectorView[@specialized T] extends Vector[T]
@@ -125,6 +130,7 @@ trait Matrix[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def numRows: Int
   def numCols: Int
   def size: Int
+  def data: Array[T]
 
   def apply(i: Int) : VectorView[T]
   def apply(i: Int, j: Int): T
@@ -136,6 +142,7 @@ trait Matrix[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def insertAllCols(pos: Int, xs: Matrix[T])
   def removeRows(pos: Int, len: Int)
   def removeCols(pos: Int, len: Int)
+  def cloneL: Matrix[T]
 
   // DeliteCollection
   def dcApply(idx: Int): T
@@ -148,12 +155,12 @@ trait Matrix[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
  */
 
 trait Labels[@specialized L] extends Vector[L] {
-  val numLabels = length
+  def numLabels = length
 }
 
 trait TrainingSet[@specialized T,L] extends Matrix[T] {
-  val numSamples = numRows
-  val numFeatures = numCols
+  def numSamples = numRows
+  def numFeatures = numCols
   def labels: Labels[L]
 
   def transposed: TrainingSet[T,L]

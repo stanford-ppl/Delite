@@ -15,7 +15,6 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
   def numCols = _numCols
   def size = _numRows*_numCols
   def data = _data
-
   def doubleData = _data.asInstanceOf[Array[Double]]
   
   def apply(i: Int) : VectorView[T] = {
@@ -37,7 +36,7 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
     new VectorViewImpl[T](_data, start, stride, length, isRow)
   }
 
-  override def clone = {
+  def cloneL = {
     val res = new MatrixImpl[T](numRows, numCols)
     for (i <- 0 until size){
       res.dcUpdate(i, _data(i))

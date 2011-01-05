@@ -83,7 +83,7 @@ trait VectorOps extends DSLType with Variables {
     // general
     def t = vector_trans(x)
     def mt() = vector_mutable_trans(x)
-    def cloneL = vector_clone(x)
+    def cloneL() = vector_clone(x)
     def pprint() = vector_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int]) = vector_repmat(x,i,j)
 
@@ -466,7 +466,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     extends DeliteOpForeach[A,Vector] {
 
     val i = fresh[Int]
-    val sync = reifyEffects(if ((i > 0) && (i < in.length)) List(in(i-1),in(i),in(i+1)) else List(in(i)))
+    val sync = reifyEffects(List())
+    //val sync = reifyEffects(if ((i > 0) && (i < in.length)) List(in(i-1),in(i),in(i+1)) else List(in(i)))
   }
 
   case class VectorZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]],
@@ -644,7 +645,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenBase {
       case VectorInsertAll(x,pos,y) => emitValDef(sym, quote(x) + ".insertAll(" + quote(pos) + ", " + quote(y) + ")")
       case VectorRemoveAll(x,pos,len) => emitValDef(sym, quote(x) + ".removeAll(" + quote(pos) + ", " + quote(len) + ")")
       case VectorTrim(x) => emitValDef(sym, quote(x) + ".trim")
-      case VectorClone(x) => emitValDef(sym, quote(x) + ".clone")
+      case VectorClone(x) => emitValDef(sym, quote(x) + ".cloneL")
       case v@VectorNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
       case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
       // TODO: why!!!

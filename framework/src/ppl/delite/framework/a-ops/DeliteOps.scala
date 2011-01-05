@@ -149,14 +149,23 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
   import IR._
 
   override def syms(e: Any): List[Sym[Any]] = e match {
-    // we should not intercept DeliteOpSingleTask ops, as they declare dependencies in the leaf case classes
-    //case s: DeliteOpSingleTask[_] => if (shallow) Nil else syms(s.block)
+    case s: DeliteOpSingleTask[_] => if (shallow) super.syms(e) else super.syms(e) ++ syms(s.block)
     case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) else syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
     case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) else syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
     case red: DeliteOpReduce[_] => if (shallow) syms(red.in) else syms(red.in) ++ syms(red.func)
     case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
     case zipR: DeliteOpZipWithReduce[_,_,_,_] => if (shallow) syms(zipR.inA) ++ syms(zipR.inB) else syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
     case foreach: DeliteOpForeach[_,_] => if (shallow) syms(foreach.in) else syms(foreach.in) ++ syms(foreach.func)
+
+    // always try to hoist free dependencies out of delite ops, if possible
+    /*
+    case map: DeliteOpMap[_,_,_] => syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
+    case zip: DeliteOpZipWith[_,_,_,_] => syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
+    case red: DeliteOpReduce[_] => syms(red.in) ++ syms(red.func)
+    case mapR: DeliteOpMapReduce[_,_,_] => syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
+    case foreach: DeliteOpForeach[_,_] => syms(foreach.in) ++ syms(foreach.func)
+    */
     case _ => super.syms(e)
   }
 
@@ -254,7 +263,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
     case red: DeliteOpReduce[_] => {
       if (deliteKernel == false){
         stream.println("val " + quote(sym) + " = {")
-        stream.println("var " + quote(red.v._1) + " = " + quote(red.in) + "(0)")
+        stream.println("var " + quote(red.v._1) + " = " + quote(red.in) + ".dcApply(0)")
         stream.println("var reduceIdx = 1")
         stream.println("while (reduceIdx < " + quote(red.in) + ".size) {")
         stream.println("val " + quote(red.v._2) + " = " + quote(red.in) + ".dcApply(reduceIdx)")

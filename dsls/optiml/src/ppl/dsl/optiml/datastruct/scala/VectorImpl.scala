@@ -37,7 +37,7 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
     _data(index) = x
   }
 
-  override def clone = { val v = new VectorImpl[T](0, isRow); v.insertAll(0, this); v }
+  def cloneL = { val v = new VectorImpl[T](0, isRow); v.insertAll(0, this); v }
 
   def sort(implicit o: Ordering[T]) = {
     val d = new Array[T](_length)

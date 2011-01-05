@@ -17,7 +17,7 @@ trait OptiMLScalaOpsPkg extends Base
     with Equal with IfThenElse with Variables with While with Functions
     with ImplicitOps with OrderingOps with StringOps with RangeOps with IOOps
     with ArrayOps with BooleanOps with PrimitiveOps with MiscOps with TupleOps
-    with ListOps with SeqOps with MathOps with CastingOps with CloneableOps
+    with ListOps with SeqOps with MathOps with CastingOps
 
 trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg with DSLOpsExp
     with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
@@ -43,7 +43,7 @@ trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with Cu
 /**
  * This the trait that every OptiML application must extend.
  */
-trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps
+trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps with CloneableOps
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps with IndexVectorOps
   with LabelsOps with TrainingSetOps {
 

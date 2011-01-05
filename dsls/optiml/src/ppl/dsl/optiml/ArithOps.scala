@@ -78,11 +78,11 @@ trait ArithOps extends Variables with OverloadHack {
   implicit def matrixArith[T:Arith:Manifest] : Arith[Matrix[T]] = new Arith[Matrix[T]] {
     def +=(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a += b
     def +(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a+b
-    def -(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = throw new UnsupportedOperationException()
-    def *(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = throw new UnsupportedOperationException()
-    def /(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = throw new UnsupportedOperationException()
-    def abs(a: Rep[Matrix[T]]) = throw new UnsupportedOperationException()
-    def exp(a: Rep[Matrix[T]]) = throw new UnsupportedOperationException()
+    def -(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a-b
+    def *(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a*b
+    def /(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a/b
+    def abs(a: Rep[Matrix[T]]) = a.abs
+    def exp(a: Rep[Matrix[T]]) = a.exp
     /*
     def zero = throw new UnsupportedOperationException() //TODO: figure out the size
     def unary_-(a: Rep[Matrix[T]]) = -a

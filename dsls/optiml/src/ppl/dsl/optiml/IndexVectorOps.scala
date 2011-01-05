@@ -11,12 +11,12 @@ trait IndexVectorOps extends DSLType with Base { this: OptiML =>
   implicit def repIndexVectorToIndexVectorOps(x: Rep[IndexVector]) = new IndexVectorOpsCls(x)
 
   class IndexVectorOpsCls(x: Rep[IndexVector]){
-    def apply[A:Manifest](block : Rep[Int] => Rep[A]) = indexvector_construct(x, block)
+    def apply[A:Manifest](block: Rep[Int] => Rep[A]) = indexvector_construct(x, block)
   }
 
   // impl defs
-  def indexvector_range(start: Rep[Int], end: Rep[Int]) : Rep[IndexVector]
-  def indexvector_seq(xs: Rep[Seq[Int]]) : Rep[IndexVector]
+  def indexvector_range(start: Rep[Int], end: Rep[Int]): Rep[IndexVector]
+  def indexvector_seq(xs: Rep[Seq[Int]]): Rep[IndexVector]
 
   // class defs
   def indexvector_construct[A:Manifest](x: Rep[IndexVector], block: Rep[Int] => Rep[A]): Rep[Vector[A]]
@@ -40,14 +40,16 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   }
 
   // impl defs
-  def indexvector_range(start: Exp[Int], end: Exp[Int]) = reflectEffect(IndexVectorRange(start, end))
+  def indexvector_range(start: Exp[Int], end: Exp[Int]) = IndexVectorRange(start, end)
   def indexvector_seq(xs: Exp[Seq[Int]]) = reflectEffect(IndexVectorSeq(xs))
 
   // class defs
   def indexvector_construct[A:Manifest](x: Exp[IndexVector], block: Exp[Int] => Exp[A]): Exp[Vector[A]] = {
     val v = fresh[Int]
     val func = reifyEffects(block(v))
-    IndexVectorConstruct(x, v, func)
+    // TODO: right now only effectful dependencies are getting hoisted out of loops, when any free dep should
+    //IndexVectorConstruct(x, v, func)
+    reflectEffect(IndexVectorConstruct(x, v, func))
   }
 
 }

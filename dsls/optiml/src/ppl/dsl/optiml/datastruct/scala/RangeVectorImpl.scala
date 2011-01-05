@@ -24,6 +24,10 @@ class RangeVectorImpl(__start: Int, __end: Int, __stride: Int, __isRow: Boolean)
   def stride = _stride
   def length = (_end-_start + _stride - 1)
 
+  // TODO (tiark): this crashes scalac for some reason
+  //lazy val data = Array.range(start, end, stride)
+  def data = throw new UnsupportedOperationException("there is a known bug with accessing data in RangeVectorImpl")
+
   def apply(n: Int) : Int = {
     _start + n*_stride
   }
@@ -33,7 +37,7 @@ class RangeVectorImpl(__start: Int, __end: Int, __stride: Int, __isRow: Boolean)
     this
   }
 
-  override def clone = { val v = new VectorImpl[Int](0, isRow); v.insertAll(0, this); v }
+  def cloneL = { val v = new VectorImpl[Int](0, isRow); v.insertAll(0, this); v }
 
   def sort(implicit o: Ordering[Int]) = this
 

@@ -38,7 +38,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 //      }
       iter += 1
       delta = diff(next, prev)
-      //println("(" + delta + ")")
+      println("(" + delta + ")")
     }
 
       if (iter == max_iter){
@@ -74,7 +74,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 
   private def vector_absdist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = (v1-v2).abs.sum
   //private def eucdist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = Math.sqrt(((v1-v2) map {e => e*e}).sum)
-  private def vector_eucdist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = throw new UnsupportedOperationException("not implemented yet")
+  private def vector_eucdist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED"); v1(0)}//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
   
   def optiml_matrixdistance_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int]) = {
     // match, exceptions are not lifted yet
@@ -96,5 +96,5 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   }
 
   private def matrix_absdist[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = (m1-m2).abs.sum
-  private def matrix_eucdist[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = throw new UnsupportedOperationException("not implemented yet")
+  private def matrix_eucdist[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED"); m1(0,0)}//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
 }

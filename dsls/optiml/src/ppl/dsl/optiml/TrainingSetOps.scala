@@ -22,7 +22,7 @@ trait TrainingSetOps extends DSLType with Variables with OverloadHack {
     def t = trainingset_transposed(x)
     def labels = trainingset_labels(x)
     def numSamples = x.numRows
-    val numFeatures = x.numCols
+    def numFeatures = x.numCols
 
     def update(i: Rep[Int], j: Rep[Int], y: Rep[A]) = throw new UnsupportedOperationException("Training sets are immutable")
     def update(i: Rep[Int], y: Rep[Vector[A]]) = throw new UnsupportedOperationException("Training sets are immutable")
@@ -57,7 +57,7 @@ trait TrainingSetOpsExp extends TrainingSetOps with BaseExp { this: DeliteOpsExp
   case class TrainingSetTransposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) extends Def[TrainingSet[A,B]]
   case class TrainingSetLabels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) extends Def[Labels[B]]
 
-  def trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Exp[Matrix[A]], labels: Exp[Labels[B]]) = TrainingSetObjectFromMat(xs, labels)
+  def trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Exp[Matrix[A]], labels: Exp[Labels[B]]) = reflectEffect(TrainingSetObjectFromMat(xs, labels))
   def trainingset_transposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = TrainingSetTransposed(x)
   def trainingset_labels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = TrainingSetLabels(x)
 }

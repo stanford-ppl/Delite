@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.datastruct.scala
 
-class TrainingSetImpl[T:Manifest,L:Manifest](xs: MatrixImpl[T], __labels: Labels[L]) extends MatrixImpl[T](0,0) with TrainingSet[T,L] {
+class TrainingSetImpl[T:Manifest,L:Manifest](xs: Matrix[T], __labels: Labels[L]) extends MatrixImpl[T](0,0) with TrainingSet[T,L] {
   var _labels: Labels[L] = __labels
   lazy val transposed: TrainingSet[T,L] = transpose()
 

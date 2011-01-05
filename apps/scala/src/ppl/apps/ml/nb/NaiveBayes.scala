@@ -29,7 +29,7 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
     val testSet = MLInputReader.readTokenMatrix(testFile)
     //println("phi_y1: " + phi_y1.pprint + " | phi_y0: " + phi_y0.pprint + " | phi_y: " + phi_y)
     val incorrect_classifications = test(testSet, phi_y1, phi_y0, phi_y)
-    println("Test error: " + String.valueOf(incorrect_classifications.doubleValue() / testSet.numSamples.doubleValue()))
+    println("Test error: " + incorrect_classifications.doubleValue() / testSet.numSamples.doubleValue())
 
     //PerformanceTimer.save("NaiveBayes")
   }
@@ -38,7 +38,7 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
     val numTrainDocs = ts.numSamples
     val numTokens = ts.numFeatures
 
-    val words_per_email = (0::ts.numFeatures){ i => ts(i).sum }
+    val words_per_email = (0::ts.numSamples){ i => ts(i).sum }
 
     println("Training model on " + numTrainDocs + " documents.")
 

@@ -75,7 +75,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     var header = xs.readLine()
 
     var line = xs.readLine()
-    val counts = line.trim().split("\\s+")
+    val counts = line.trim().split("\\\\s+")
     val numDocs = Integer.parseInt(counts(0))
     val numTokens = Integer.parseInt(counts(1))
     if ((numDocs < 0) || (numTokens < 0)) {
@@ -91,7 +91,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     for (m <- 0 until numDocs){
       line = xs.readLine()
       line = line.trim()
-      val nums = line.split("\\s+")
+      val nums = line.split("\\\\s+")
 
       trainCatSeq += Double.parseDouble(nums(0))
     }
@@ -105,7 +105,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     for (m <- 0 until numDocs) {
       line = xs.readLine()
       line = line.trim()
-      val nums = line.split("\\s+")
+      val nums = line.split("\\\\s+")
 
       var row = Vector[Double](numTokens,true)
       var cumsum = unit(0); var j = unit(1)

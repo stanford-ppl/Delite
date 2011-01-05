@@ -8,6 +8,8 @@ trait CloneableInternal[Rep[X],T] {
 }
 
 trait CloneableOps extends Variables {
+  this: OptiML =>
+
   type Cloneable[X] = CloneableInternal[Rep,X]
   
   implicit def cloneableToCloneableOps[T:Cloneable:Manifest](n: T) = new CloneableOpsCls(n)

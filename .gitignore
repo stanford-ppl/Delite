@@ -11,5 +11,6 @@
 project/boot
 runtime/project/boot
 generated
+data/
 *.deg
 *.debug

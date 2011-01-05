@@ -43,6 +43,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     }
 
     // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
+    val tmp = generators(0).syms(rhs)
     val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)    
     val inVals = dataDeps flatMap { vals(_) }
     val inVars = dataDeps flatMap { vars(_) }
@@ -113,7 +114,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       catch {
         case e: Exception => // no generator found
           //e.printStackTrace
-          gen.exceptionHandler(outFile, kstream)
+          gen.exceptionHandler(e, outFile, kstream)
       }
     }
 

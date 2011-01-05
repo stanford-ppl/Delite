@@ -269,7 +269,7 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
   
   def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
                                                   block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) =
-    UntilConverged(x, thresh, max_iter, clone_prev_val, block, diff)
+    reflectEffect(UntilConverged(x, thresh, max_iter, clone_prev_val, block, diff))
 
 
   /**
