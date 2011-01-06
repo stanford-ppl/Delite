@@ -31,7 +31,7 @@ trait VectorOps extends DSLType with Variables {
     // a Rep[Vector[Rep[Vector[Int]]]'s apply method would return a Rep[Rep[Vector[Int]]], which is obviously not what we want
     // one option is to make containers always contain Reps explicitly; but this is a bit uglier and
     // then we need a way of instantiating a manifest for Rep[A]
-    //def flatten[A:Manifest](pieces: Rep[Vector[Vector[A]]])
+    def flatten[A:Manifest](pieces: Rep[Vector[Vector[A]]]) = vector_obj_flatten(pieces)
 
     def ones(len: Rep[Int]) = vector_obj_ones(len)
     def onesf(len: Rep[Int]) = vector_obj_onesf(len)
@@ -88,6 +88,7 @@ trait VectorOps extends DSLType with Variables {
     def replicate(i: Rep[Int], j: Rep[Int]) = vector_repmat(x,i,j)
 
     // data operations
+    def ++(y: Rep[Vector[A]]) = vector_concatenate(x,y)
     def update(n: Rep[Int], y: Rep[A]) = vector_update(x,n,y)
     def +=(y: Rep[A]) = vector_insert(x,x.length,y)
     def ++=(y: Rep[Vector[A]]) = insertAll(length,y)
@@ -136,9 +137,8 @@ trait VectorOps extends DSLType with Variables {
     def zip[B:Manifest,R:Manifest](y: Rep[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = vector_zipwith(x,y,f)
     def reduce(f: (Rep[A],Rep[A]) => Rep[A]) = vector_reduce(x,f)
     def filter(pred: Rep[A] => Rep[Boolean]) = vector_filter(x,pred)
-    //def flatMap(f: Rep[A] => Rep[Vector[B]]) = vector_flatmap(x,f) // TODO: can't do this until we sort out the issue with Vector.flatten
+    def flatMap[B:Manifest](f: Rep[A] => Rep[Vector[B]]) = vector_flatmap(x,f)
     def partition(pred: Rep[A] => Rep[Boolean]) = vector_partition(x,pred)
-
   }
 
   def NilV[A:Manifest] = vector_nil
@@ -154,6 +154,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_obj_randf(len: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], isRow: Rep[Boolean]): Rep[RangeVector]
   def vector_obj_uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[Vector[Double]]
+  def vector_obj_flatten[A:Manifest](pieces: Rep[Vector[Vector[A]]]): Rep[Vector[A]]
 
   // class defs
   def vector_length[A:Manifest](x: Rep[Vector[A]]): Rep[Int]
@@ -169,6 +170,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
   def vector_repmat[A:Manifest](x: Rep[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
 
+  def vector_concatenate[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_update[A:Manifest](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
   def vector_copyfrom[A:Manifest](x: Rep[Vector[A]], pos: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
   def vector_insert[A:Manifest](x: Rep[Vector[A]], pos: Rep[Int], y: Rep[A]): Rep[Unit]
@@ -206,7 +208,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[Vector[R]]
   def vector_reduce[A:Manifest](x: Rep[Vector[A]], f: (Rep[A],Rep[A]) => Rep[A]): Rep[A]
   def vector_filter[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Vector[A]]
-  //def vector_flatMap[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[Vector[B]]): Rep[Vector[B]]
+  def vector_flatmap[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[Vector[B]]): Rep[Vector[B]]
   def vector_partition[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[Vector[A]], Rep[Vector[A]])
 
   // other defs
@@ -270,6 +272,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorObjectUniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean])
     extends DeliteOpSingleTask(reifyEffects(vector_obj_uniform_impl(start, step_size, end, isRow)))
 
+//  case class VectorObjectFlatten[A:Manifest](pieces: Exp[Vector[Vector[A]]])
+//    extends DeliteOpSingleTask(reifyEffects(vector_obj_flatten_impl(pieces)))
+
+  case class VectorConcatenate[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]])
+    extends DeliteOpSingleTask(reifyEffects(vector_concatenate_impl(x,y)))
+  
   case class VectorSlice[A:Manifest](x: Exp[Vector[A]], start: Exp[Int], end: Exp[Int])
     extends DeliteOpSingleTask(reifyEffects(vector_slice_impl(x,start,end)))
 
@@ -479,6 +487,24 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     extends DeliteOpReduce[A]
 
 
+  // TODO: this is an inefficient way to compute flatten (allocates a new buffer for every intermediate output)
+  // should use a scan that allocates the output once (precumulate)
+  case class VectorObjectFlatten[A:Manifest](in: Exp[Vector[Vector[A]]])
+    extends DeliteOpReduce[Vector[A]] {
+
+    val v = (fresh[Vector[A]], fresh[Vector[A]])
+    val func = reifyEffects(v._1 ++ v._2)
+  }
+
+  case class VectorFlatMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], mV: Exp[A], map: Exp[Vector[B]])
+    extends DeliteOpMapReduce[A,Vector[B],Vector] {
+
+    val alloc = reifyEffects(Vector[Vector[B]](in.length, in.isRow))
+    val rV = (fresh[Vector[B]],fresh[Vector[B]])
+    val reduce = reifyEffects(rV._1 ++ rV._2)
+  }
+
+
   /////////////////////
   // object interface
 
@@ -492,6 +518,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_obj_randf(len: Exp[Int]) = reflectEffect(VectorObjectRandF(len))
   def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorObjectRange(start, end, stride, isRow))
   def vector_obj_uniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean]) = reflectEffect(VectorObjectUniform(start, step_size, end, isRow))
+  def vector_obj_flatten[A:Manifest](pieces: Exp[Vector[Vector[A]]]) = VectorObjectFlatten(pieces)
 
 
   /////////////////////
@@ -510,6 +537,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
   def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = VectorRepmat(x,i,j)
 
+  def vector_concatenate[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorConcatenate(x,y)
   def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(x, n, y))
   def vector_copyfrom[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorCopyFrom(x, pos, y))
   def vector_insert[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[A]) = reflectMutation(VectorInsert(x, pos, y))
@@ -583,7 +611,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 //  }
   def vector_filter[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = VectorFilter(x, pred)
 
-  //def vector_flatMap[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[Vector[B]]): Rep[Vector[B]]
+  def vector_flatmap[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[Vector[B]]) = {
+    val v = fresh[A]
+    val func = reifyEffects(f(v))
+    VectorFlatMap(x, v, func)
+  }
+
   def vector_partition[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = t2(VectorPartition(x, pred))
 
   def vector_nil[A:Manifest] = VectorNil[A]()
