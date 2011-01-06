@@ -23,11 +23,13 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
     // Train Model
     val trainingSet = MLInputReader.readTokenMatrix(trainingFile)
     //val start_train = System.currentTimeMillis()
+    tic
     val (phi_y1, phi_y0, phi_y) = train(trainingSet)
+    toc
 
     // test
     val testSet = MLInputReader.readTokenMatrix(testFile)
-    //println("phi_y1: " + phi_y1.pprint + " | phi_y0: " + phi_y0.pprint + " | phi_y: " + phi_y)
+    println("phi_y1: "); phi_y1.pprint; println("phi_y0: "); phi_y0.pprint; println("phi_y: "+ phi_y)
     val incorrect_classifications = test(testSet, phi_y1, phi_y0, phi_y)
     println("Test error: " + incorrect_classifications.doubleValue() / testSet.numSamples.doubleValue())
 
@@ -37,6 +39,15 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
   def train(ts: Rep[TrainingSet[Double,Double]]) : (Rep[Vector[Double]], Rep[Vector[Double]], Rep[Double]) = {
     val numTrainDocs = ts.numSamples
     val numTokens = ts.numFeatures
+
+//    println("training set: ")
+//    ts.pprint
+//    println("training set transposed: ")
+//    ts.t.pprint
+//    println("training set again: ")
+//    ts.pprint
+//    println("training set transposed again: ")
+//    ts.t.pprint
 
     val words_per_email = (0::ts.numSamples){ i => ts(i).sum }
 
@@ -57,6 +68,9 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
           (unit(0.0), unit(0.0), ts.t(j,i), words_per_email(i))
         }
       })
+      //println("spamwordcount: " + spamwordcount)// + ", spam_totalwords: " + spam_totalwords)
+      //println("nonspamwordcount: " + nonspamwordcount)// + ", nonspam_totalwords: " + nonspam_totalwords)
+
       phi_y1(j) = (spamwordcount + 1) / (spam_totalwords + numTokens)
       phi_y0(j) = (nonspamwordcount + 1) / (nonspam_totalwords + numTokens)
     }
@@ -66,7 +80,7 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
     (phi_y1, phi_y0, phi_y)
   }
 
-  def test(ts: Rep[TrainingSet[Double,Double]], phi_y1: Rep[Vector[Double]], phi_y0: Rep[Vector[Double]], phi_y: Rep[Double]) : Rep[Int] = {
+  def test(ts: Rep[TrainingSet[Double,Double]], phi_y1: Rep[Vector[Double]], phi_y0: Rep[Vector[Double]], phi_y: Rep[Double]): Rep[Int] = {
     val numTestDocs = ts.numSamples
     val numTokens = ts.numFeatures
 
@@ -74,9 +88,10 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
 
     val output = (0::numTestDocs){j => {
       // compute log(p(x|y=1)p(y=1)) and log(p(x|y=0)p(y=0))
-      val (p_norm, p_spam) = t2( sum(0,numTestDocs) { i =>
+      val (p_norm, p_spam) = t2( sum(0,numTokens) { i =>
         if (ts(j,i) > 0){
-          ((Math.log(phi_y0(i)) + Math.log(1.-phi_y)) * ts(j,i), (Math.log(phi_y1(i)) + Math.log(phi_y)) * ts(j,i))
+          ((Math.log(phi_y0(i)) + Math.log(1.-phi_y)) * ts(j,i),
+           (Math.log(phi_y1(i)) + Math.log(phi_y)) * ts(j,i))
         }
         else{
           (unit(0.0), unit(0.0))
@@ -97,7 +112,6 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
       if (ts.labels(i) != output(i))
         incorrect_classifications += 1
     }
-
     incorrect_classifications
   }
 }

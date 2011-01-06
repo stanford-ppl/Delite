@@ -22,7 +22,9 @@ object kmeans extends DeliteApplication with OptiMLExp {
     //val mu = Matrix((0::32) { e => x(randomInt(x.numRows)) })
     val oldmu = Matrix.zeros(mu.numRows, x.numCols)
 
+    tic
     val (iter, mu2) = k_means(x, mu, oldmu)
+    toc
     println("finished in " + iter + " iterations")
     mu2.pprint
   }
@@ -35,7 +37,7 @@ object kmeans extends DeliteApplication with OptiMLExp {
 
     untilconverged(mu, tol){ mu =>
       iter += 1
-      println("iter: " + iter)
+      //println("iter: " + iter)
 
       // update c -- calculate distances to current centroids
       val c = (0::m){e => findNearestCluster(x(e), mu)}
@@ -45,23 +47,24 @@ object kmeans extends DeliteApplication with OptiMLExp {
       //for (j <- (0::k)) {
       for (j <- 0 until k) {
         //println("j: " + j)
-        val (weightedpoints, points) = t2( sum(0, m) { i =>
-          // TODO: the generated code is recalculating c every time!!  x321 line 166
-          if (c(i) == j){
-            (x(i), unit(1.))
-          }
-          else {
-            (NilV[Double], unit(0.))
-          }
-        })
-//        val weightedpoints = Vector.zeros(n)
-//        var points = unit(0)
-//        for (i <- 0 until m){
+        // this is much slower than the version below, even with variable boxing
+//        val (weightedpoints, points) = t2( sum(0, m) { i =>
+//          // TODO: the generated code is recalculating c every time!!  x321 line 166
 //          if (c(i) == j){
-//            weightedpoints += x(i)
-//            points += 1
+//            (x(i), unit(1.))
 //          }
-//        }
+//          else {
+//            (NilV[Double], unit(0.))
+//          }
+//        })
+        val weightedpoints = Vector.zeros(n)
+        var points = unit(0)
+        for (i <- 0 until m){
+          if (c(i) == j){
+            weightedpoints += x(i)
+            points += 1
+          }
+        }
         if (points == 0) mu(j) = Vector.zeros(n)
         else mu(j) = weightedpoints / points
       }
@@ -72,10 +75,10 @@ object kmeans extends DeliteApplication with OptiMLExp {
   }
 
   def findNearestCluster( x_i: Rep[Vector[Double]], mu: Rep[Matrix[Double]] ) : Rep[Int] = {
+    // TODO: need minIndex for this
+    //(mu mapRows { row => dist(x_i, row, SQUARE) }).minIndex
     var min_d = Double.PositiveInfinity
     var min_j = unit(-1)
-
-    // TODO: rewrite this: should be min_j = (mu mapRows { row => dist(x_i, row, (a,b) => (a-b)*(a-b)) }).min
     var j = unit(0)
     while( j < mu.numRows ){
       //println("-- j: " + j)

@@ -159,15 +159,16 @@ trait LanguageOps extends Base { this: OptiML =>
   def loadVector(filename: Rep[String]) = MLInputReader.readVector(filename)
 
   // distance metrics
-  val EUC_DISTANCE = 0
-  val ABS_DISTANCE = 1
+  val ABS = 0
+  val EUC = 1
+  val SQUARE = 2
 
   implicit val vecDiff : (Rep[Vector[Double]], Rep[Vector[Double]]) => Rep[Double] = (v1,v2) => dist(v1,v2)
   implicit val matDiff : (Rep[Matrix[Double]], Rep[Matrix[Double]]) => Rep[Double] = (m1,m2) => dist(m1,m2)
 
   // in 2.9, multiple overloaded values cannot all define default arguments
   def dist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
-    optiml_vector_dist(v1,v2,ABS_DISTANCE)
+    optiml_vector_dist(v1,v2,ABS)
   }
 
   def dist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int]) = {
@@ -176,7 +177,7 @@ trait LanguageOps extends Base { this: OptiML =>
 
   def dist[A](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
              (implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = {
-    optiml_matrix_dist(m1,m2,ABS_DISTANCE)
+    optiml_matrix_dist(m1,m2,ABS)
   }
  
   def dist[A](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int])
@@ -254,7 +255,8 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
 
     val mV = fresh[Int]
     val map = reifyEffects(block(mV))
-    Sum(start, end, mV, map)
+    // reflectEffect should not be necessary -- see IndexVectorConstruct for explanation
+    reflectEffect(Sum(start, end, mV, map))
   }
 
 

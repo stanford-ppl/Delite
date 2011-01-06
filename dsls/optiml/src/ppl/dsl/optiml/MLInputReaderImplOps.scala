@@ -107,7 +107,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
       line = line.trim()
       val nums = line.split("\\\\s+")
 
-      var row = Vector[Double](numTokens,true)
+      val row = Vector[Double](numTokens,true)
       var cumsum = unit(0); var j = unit(1)
       // this could be vectorized
       while (j < nums.length - 1){

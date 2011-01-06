@@ -77,6 +77,8 @@ object GDA extends DeliteApplication with OptiMLExp {
       }
     }
 
+    // TODO: nothing is really preventing toc from getting hoisted upwards in the schedule, resulting in the wrong time
+    // unless the above sum is a reflectEffect
     toc
 
     print("GDA parameter calculation finished: ")

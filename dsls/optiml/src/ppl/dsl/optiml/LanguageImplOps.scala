@@ -38,7 +38,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 //      }
       iter += 1
       delta = diff(next, prev)
-      println("(" + delta + ")")
+      //println("(" + delta + ")")
     }
 
       if (iter == max_iter){
@@ -60,11 +60,16 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 //     case EUC_DISTANCE => eucdist(v1, v2)
 //     case _ => throw new UnsupportedOperationException("unknown dist metric selected")
 //    }
-    if (metric == ABS_DISTANCE) {
-      vector_absdist(v1, v2)
+    if (metric == ABS) {
+      (v1-v2).abs.sum
     }
-    else if (metric == EUC_DISTANCE) {
-      vector_eucdist(v1, v2)
+    else if (metric == EUC) {
+      //Math.sqrt(((v1-v2) mmap {e => e*e}).sum)
+      println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")
+      v1(0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
+    }
+    else if (metric == SQUARE) {
+      ((v1 - v2) mmap { e => e*e}).sum
     }
     else {
       println("error: unknown dist metric selected")
@@ -72,10 +77,6 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     }
   }
 
-  private def vector_absdist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = (v1-v2).abs.sum
-  //private def eucdist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = Math.sqrt(((v1-v2) map {e => e*e}).sum)
-  private def vector_eucdist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED"); v1(0)}//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
-  
   def optiml_matrixdistance_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int]) = {
     // match, exceptions are not lifted yet
 //    metric match {
@@ -83,18 +84,19 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 //     case EUC_DISTANCE => eucdist(v1, v2)
 //     case _ => throw new UnsupportedOperationException("unknown dist metric selected")
 //    }
-    if (metric == ABS_DISTANCE) {
-      matrix_absdist(m1, m2)
+    if (metric == ABS) {
+      (m1-m2).abs.sum
     }
-    else if (metric == EUC_DISTANCE) {
-      matrix_eucdist(m1, m2)
+    else if (metric == EUC) {
+      println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")
+      m1(0,0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
+    }
+    else if (metric == SQUARE) {
+      ((m1 - m2) mmap { e => e*e}).sum
     }
     else {
       println("error: unknown dist metric selected")
       exit(0)
     }
   }
-
-  private def matrix_absdist[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = (m1-m2).abs.sum
-  private def matrix_eucdist[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED"); m1(0,0)}//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
 }

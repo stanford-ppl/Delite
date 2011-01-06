@@ -47,7 +47,7 @@ trait VectorOps extends DSLType with Variables {
 
   implicit def repVecToVecOps[A:Manifest](x: Rep[Vector[A]]) = new vecOpsCls(x)
   //implicit def vecToVecOps[A:Manifest](x: Vector[A]) = new vecOpsCls(x)
-  implicit def varToVecOps[A:Manifest](x: Var[Vector[A]]) : vecOpsCls[A]
+  implicit def varToVecOps[A:Manifest](x: Var[Vector[A]]) = new vecOpsCls(readVar(x))
 
   /**
    * This class defines the public interface for the Vector[T] class.
@@ -216,8 +216,6 @@ trait VectorOps extends DSLType with Variables {
 trait VectorOpsExp extends VectorOps with VariablesExp {
 
   this: VectorImplOps with OptiMLExp =>
-
-  implicit def varToVecOps[A:Manifest](x: Var[Vector[A]]) = new vecOpsCls(readVar(x))
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
