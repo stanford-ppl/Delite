@@ -784,6 +784,32 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       throw new RuntimeException("CudaGen: Not GPUable")
       //emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
 
+    /* Specialized CUDA code generations */
+    case MatrixObjectDiag(w, vals) =>
+      gpuBlockSizeX = "%s * %s".format(quote(w),quote(w))
+      stream.println(addTab()+"if( %s < %s*%s ) {".format("idxX",quote(w),quote(w)))
+      tabWidth += 1
+      stream.println(addTab()+"%s.data[%s] = 0;".format(quote(sym),"idxX"))
+      stream.println(addTab()+"if(%s == %s) {".format("idxX/"+quote(w),"idxX%"+quote(w)))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s));".format(quote(sym),"idxX/"+quote(w),"idxX/"+quote(w),quote(vals),"idxX/"+quote(w)))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s".format(quote(w)),"%s".format(quote(w)))
+
+    case MatrixTranspose(x) =>
+      gpuBlockSizeX = "%s.size()".format(quote(x))
+      stream.println(addTab()+"if( idxX < %s.size() ) {".format(quote(x)))
+      tabWidth += 1
+      stream.println(addTab()+"int i = idxX / %s.numCols;".format(quote(x)))
+      stream.println(addTab()+"int j = idxX %" + " %s.numCols;".format(quote(x)))
+      stream.println(addTab()+"%s.update(i, j, %s.apply(j,i));".format(quote(sym),quote(x)))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)))
+    
     case _ => super.emitNode(sym, rhs)
   }
 }
