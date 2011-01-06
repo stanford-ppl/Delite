@@ -19,8 +19,6 @@ object SVM extends DeliteApplication with OptiMLExp {
     val modelFile = args(2)
     val numTests = Integer.parseInt(args(3))
 
-    val runErrors = new java.util.Vector[Double]
-   
     //val f1 = File(trainfile)
     //val f2 = File(testfile)
     //if (!f1.exists || !f2.exists) print_usage
@@ -40,25 +38,23 @@ object SVM extends DeliteApplication with OptiMLExp {
 
     // run the SMO training algorithm
     val svm = new SVMModel { val IR = SVM.this }
-    svm.train(inMatrixTrain, YTrain, 1, .001, 10)
+    //val svm = new SVMModel(SVM.this)
+    val (weights, b) = svm.train(inMatrixTrain, YTrain, 1, .001, 10)
     //svm.computeWeights(inMatrixTrain, YTrain)
-    svm.saveModel(modelFile)
+    //svm.saveModel(weights, b, modelFile)
 
-    println("SVM training finished. Model saved to " + modelFile)
+    //println("SVM training finished. Model saved to " + modelFile)
 
     // TEST RESULTS
     val numTestDocs = inMatrixTest.numRows
-    val outputLabels = Vector.zeros(numTestDocs).toInt(e => e.asInstanceOfL[Int])
-    svm.load(modelFile)
-    for (i <- 0 until numTestDocs){
-      outputLabels(i) = svm.classify(inMatrixTest(i))
-    }
+    //svm.load(modelFile)
+    val outputLabels = (0::numTestDocs){ i => svm.classify(weights, b, inMatrixTest(i)) }
     println("SVM testing finished. Calculating error..")
     var errors = unit(0)
     for (i <- 0 until numTestDocs){
       if (YTest(i) != outputLabels(i)) errors +=1
       //println("predicted class: " + outputLabels(i) + ", actual: " + Y(i))
     }
-    printf("Classification error: %f\n", (errors.doubleValue()/numTestDocs.doubleValue()))
+    println("Classification error: " + (errors.doubleValue()/numTestDocs.doubleValue()))
   }
 }

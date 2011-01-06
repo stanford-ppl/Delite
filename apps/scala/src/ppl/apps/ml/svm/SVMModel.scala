@@ -21,14 +21,16 @@ trait SVMModel {
   import IR._
 
   // model data
-  private var weights: Rep[Vector[Double]] = null
-  private var b = unit(0.0)
+  // TODO: NPE here from IR being null until the constructor is finished and...
+  //private var weights: Var[Vector[Double]] = null
+  //private var b: Var[Double] = null
 
   // construct directly from model
   def load(modelFilename: Rep[String]) {
     val in = MLInputReader.readVector(modelFilename)
-    b = in(in.length-1)
-    weights = in.take(in.length-1)
+    val b = in(in.length-1)
+    val weights = in.take(in.length-1)
+    (weights, b)
   }
 
   /////////////
@@ -38,7 +40,8 @@ trait SVMModel {
     println("Training SVM using the SMO algorithm")
 
     // internal model storage
-    weights = Vector.zeros(X.numCols)
+    var weights = Vector.zeros(X.numCols)
+    var b = unit(0.0)
 
     // intermediate training info
     val alphas = Vector.zeros(X.numRows).t // col vector
@@ -97,8 +100,6 @@ trait SVMModel {
 
                 // compute the new b such that KKT conditions are satisfied
                 val old_b = b
-                // TODO: this is interesting; with deferral, we can compute both b1 and b2
-                // without wasting cycles on the one that actually never gets used.
                 val b1 = b - E_i - (X(i)*:*X(i))*Y(i)*(alphas(i)-old_ai) - (X(i)*:*(X(j)))*Y(j)*(alphas(j)-old_aj)
                 val b2 = b - E_j - (X(i)*:*X(j))*Y(i)*(alphas(i)-old_ai) - (X(j)*:*(X(j)))*Y(j)*(alphas(j)-old_aj)
                 if ((alphas(i) > 0) && (alphas(i) < C)){
@@ -122,7 +123,7 @@ trait SVMModel {
       if (num_changed_alphas == 0){
         passes += 1
       }else{
-        passes=0;
+        passes = 0;
       }
     } // while
 
@@ -131,13 +132,15 @@ trait SVMModel {
     for (i <- 0 until X.numRows){
       weights = weights + X(i)*alphas(i)*Y(i)
     }
-    print("\n")
+    print("\\n")
+
+    (weights, b)
   }
 
   ////////////
   // testing
 
-  def classify(test_pt : Rep[Vector[Double]]) : Rep[Int] = {
+  def classify(weights: Rep[Vector[Double]], b: Rep[Double], test_pt: Rep[Vector[Double]]): Rep[Int] = {
     // SVM prediction is W'*X + b
     if ((weights*:*test_pt + b) < 0){
       -1
@@ -148,7 +151,7 @@ trait SVMModel {
   ////////////
   // utility
 
-  def saveModel(filename : Rep[String]) = {
+  def saveModel(weights: Rep[Vector[Double]], b: Rep[Double], filename: Rep[String]) = {
     val out = weights.cloneL
     out += b
     MLOutputWriter.writeVector(out, filename)
