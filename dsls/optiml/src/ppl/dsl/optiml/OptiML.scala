@@ -38,7 +38,7 @@ trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with Cu
     with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenFunctions
     with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
     with CudaGenPrimitiveOps with CudaGenMiscOps
-    with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps
+    with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps
     { val IR: OptiMLScalaOpsPkgExp  }
 
 

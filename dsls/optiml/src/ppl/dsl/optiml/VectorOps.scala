@@ -709,7 +709,21 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       stream.println(addTab()+"%s.end = %s;".format(quote(sym),quote(end)))
       stream.println(addTab()+"%s.stride = %s;".format(quote(sym),quote(stride)))
       stream.println(addTab()+"%s.isRow = %s;".format(quote(sym),quote(isRow)))
-    
+
+        /* Specialized CUDA code generations */
+    case VectorRepmat(x,i,j) =>
+      gpuBlockSizeX = "%s.length * %s".format(quote(x),quote(i))
+      stream.println(addTab()+"if( idxX < %s.length*%s ) {".format(quote(x),quote(j)))
+      tabWidth += 1
+      stream.println(addTab()+"for(int i=0;i<%s;i++) {".format(quote(i)))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(i,%s,%s.apply(%s));".format(quote(sym),quote(j),quote(x),"idxX%"+quote(x)+".length"))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s.length*%s".format(quote(x),quote(i)),"%s.length*%s".format(quote(x),quote(j)))
+
     case _ => super.emitNode(sym, rhs)
   }
 }

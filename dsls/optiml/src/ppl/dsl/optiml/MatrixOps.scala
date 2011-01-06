@@ -809,7 +809,22 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)))
-    
+
+    case MatrixSumCol(x) =>
+      gpuBlockSizeX = "%s.numCols".format(quote(x))
+      stream.println(addTab()+"if( idxX < %s.numCols ) {".format(quote(x)))
+      tabWidth += 1
+      stream.println(addTab()+"%s reducVal = 0;".format(remap(x.Type.typeArguments(0))))
+      stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
+      tabWidth += 1
+      stream.println(addTab()+"reducVal += %s.apply(i,idxX);".format(quote(x)))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      stream.println(addTab()+"%s.update(idxX,reducVal);".format(quote(sym)))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true")
+
     case _ => super.emitNode(sym, rhs)
   }
 }
