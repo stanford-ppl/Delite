@@ -52,7 +52,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
         emittedNodeList += emittedNodes
         skipEmission = true
       }
-      case DeliteOpIndexedLoop(s,e,i,b) => emitBlock(b); skipEmission = true
+      case DeliteOpIndexedLoop(s,e,i,b) => {
+        emitBlock(b)
+        emittedNodeList += emittedNodes
+        skipEmission = true
+      }
       case DeliteOpWhileLoop(c,b) => {
         emitBlock(c)
         emittedNodeList += controlDeps
@@ -188,7 +192,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     // emit task graph node
     rhs match {
       case DeliteOpCondition(c,t,e) => emitIfThenElse(c,sym, inputs, inControlDeps, antiDeps)
-      case DeliteOpIndexedLoop(s,e,i,b) => emitIndexedLoop(s,e,i,b, sym, inputs, inControlDeps, antiDeps)
+      case DeliteOpIndexedLoop(s,e,i,b) => emitIndexedLoop(s,e,i, sym, inputs, inControlDeps, antiDeps)
       case DeliteOpWhileLoop(c,b) => emitWhileLoop(sym, inputs, inControlDeps, antiDeps)
       case s:DeliteOpSingleTask[_] => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
       case m:DeliteOpMap[_,_,_] => emitMap(sym, inputs, inControlDeps, antiDeps)
@@ -262,8 +266,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.println("},")
   }
 
-  def emitIndexedLoop(start: Exp[Int], end: Exp[Int], i: Exp[Int], body: Exp[Unit], sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+  def emitIndexedLoop(start: Exp[Int], end: Exp[Int], i: Exp[Int], sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
     stream.println("{\"type\":\"IndexedLoop\",")
     def getType(e: Exp[Int]) = e match {
       case c:Const[Int] => "const"
@@ -274,7 +278,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("  \"endType\" : \"" + getType(end) + "\",")
     stream.println(" \"endValue\" : \"" + quote(end) + "\",")
     stream.println("  \"indexId\" : \"" + quote(i) + "\",")
-    stream.println("  \"bodyId\" : \"" + quote(body) + "\",")
+    val bodyS = getEmittedNodeIds(0)
+    stream.println("  \"bodyIds\" : [" + bodyS + "],")
     emitDepsCommon(controlDeps, antiDeps, true)
     stream.println("},")
   }
