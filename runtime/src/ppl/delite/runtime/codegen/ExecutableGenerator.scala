@@ -1,8 +1,9 @@
 package ppl.delite.runtime.codegen
 
-import ppl.delite.runtime.graph.ops.DeliteOP
+import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.scheduler.PartialSchedule
 import java.util.{ArrayDeque, ArrayList}
+import collection.mutable.HashSet
 
 /**
  * Author: Kevin J. Brown
@@ -87,6 +88,7 @@ object ExecutableGenerator {
       val op = iter.next
       //add to available list
       available.add(op)
+
       //get dependencies
       for (dep <- op.getDependencies) { //foreach dependency
         if (!available.contains(dep)) { //this dependency does not yet exist on this resource
@@ -97,7 +99,10 @@ object ExecutableGenerator {
         }
       }
       //write the function call:
-      writeFunctionCall(op, out)
+
+      if (op.isInstanceOf[OP_Control]) writeControl(op, out)
+      else writeFunctionCall(op, out)
+
       //write the setter:
       var addSetter = false
       for (cons <- op.getConsumers) {
@@ -143,7 +148,7 @@ object ExecutableGenerator {
   private def writeSetter(op: DeliteOP, out: StringBuilder) {
     out.append(getSync(op))
     out.append(".set(")
-    out.append(getSym(op))
+    if (op.isInstanceOf[OP_Control]) out.append("()") else out.append(getSym(op))
     out.append(')')
     out.append('\n')
   }
@@ -176,27 +181,83 @@ object ExecutableGenerator {
     out.append( " {\n")
 
     //the state
-    out.append("private var notReady: Boolean = true\n")
+    out.append("private val numConsumers : Int = ")
+
+    val consumerSet = HashSet.empty[Int]
+    for (cons <- op.getConsumers) consumerSet += cons.scheduledResource
+    consumerSet -= op.scheduledResource
+    out.append(consumerSet.size)
+
+    out.append('\n')
+    out.append("private var count : Int = 0\n")
+    out.append("private var version : Int = 0\n")
+    out.append("private val getVersion = new ThreadLocal[Int]{ override def initialValue = 0 }\n")
     out.append("private var _result : ")
     out.append(op.outputType)
     out.append(" = _\n")
+
     out.append("private val lock = new ReentrantLock\n")
-    out.append("private val condition = lock.newCondition\n")
+    out.append("private val notEmpty = lock.newCondition\n")
+    out.append("private val notFull = lock.newCondition\n")
 
     //the getter
     out.append("def get : ")
     out.append(op.outputType)
-    out.append(" = { if (notReady) block; _result }\n")
-    out.append("def block { lock.lock; try { while (notReady) { condition.await } } finally { lock.unlock } }\n")
+    out.append(" = { val lock = this.lock; lock.lock; try { while (getVersion.get == version) { notEmpty.await }; extract } finally { lock.unlock } }\n")
+
+    out.append("private def extract : ")
+    out.append(op.outputType)
+    out.append(" = { val res = _result; getVersion.set(version); count -= 1; if (count == 0) { _result = null.asInstanceOf[")
+    out.append(op.outputType)
+    out.append("]; notFull.signal }; res }\n")
 
     //the setter
     out.append("def set(result : ")
     out.append(op.outputType)
-    out.append(") { lock.lock; try { _result = result; notReady = false; condition.signalAll } finally { lock.unlock } }\n")
+    out.append(") { val lock = this.lock; lock.lock; try { while ( count != 0) { notFull.await }; insert(result) } finally { lock.unlock } }\n")
+
+    out.append("private def insert(result: ")
+    out.append(op.outputType)
+    out.append(") { _result = result; count = numConsumers; version += 1; notEmpty.signalAll }\n")
 
     //the footer
     out.append('}')
     out.append('\n')
+  }
+
+  private def writeControl(op: DeliteOP, out: StringBuilder) {
+    op match {
+      case beginCond: OP_BeginCondition => {
+        out.append("if (")
+        out.append(getSym(beginCond.predicate))
+        out.append(") {\n")
+      }
+      case beginElse: OP_BeginElse => {
+        out.append("} else {\n")
+      }
+      case endCond: OP_EndCondition => {
+        out.append('}')
+        out.append('\n')
+      }
+      case beginWhile: OP_BeginWhile => {
+        val sym = getSym(op).dropRight(1) //the base sym for this while construct
+        out.append("var ")
+        out.append(sym)
+        out.append("p = ")
+        out.append(getSym(beginWhile.predicate))
+        out.append('\n')
+
+        out.append("while (")
+        out.append(sym)
+        out.append("p) {\n")
+      }
+      case endWhile: OP_EndWhile => {
+        out.append(getSym(op))
+        out.append("p = ")
+        out.append(getSym(endWhile.predicate))
+        out.append("\n}\n")
+      }
+    }
   }
 
   private def getSym(op: DeliteOP): String = {

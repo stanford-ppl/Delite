@@ -263,12 +263,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
     stream.println("  \"antiDeps\":[" + antiDepsStr + "]")
     stream.println("},")
-    stream.println("},")
   }
 
   def emitIndexedLoop(start: Exp[Int], end: Exp[Int], i: Exp[Int], sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
     stream.println("{\"type\":\"IndexedLoop\",")
+    stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
     def getType(e: Exp[Int]) = e match {
       case c:Const[Int] => "const"
       case s:Sym[Int]   => "symbol"
@@ -287,7 +287,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   def emitWhileLoop(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
     stream.println("{\"type\":\"WhileLoop\",")
-
+    stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
     val controlDepsStr = if(emittedNodesList(0).isEmpty) "" else getEmittedNodeIds(0)
     val conds = getEmittedNodeIds(1)
     val bodys = getEmittedNodeIds(2)

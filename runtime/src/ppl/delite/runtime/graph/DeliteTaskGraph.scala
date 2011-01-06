@@ -47,7 +47,8 @@ object DeliteTaskGraph {
         case "Reduce" => processCommon(op, "OP_Reduce")
         case "ZipWith" => processCommon(op, "OP_Zip")
         case "Foreach" => processCommon(op, "OP_Foreach")
-        case "IfThenElSE" => processIfThenElseTask(op)
+        case "Conditional" => processIfThenElseTask(op)
+        case "WhileLoop" => processWhileTask(op)
         case "Arguments" => processArgumentsTask(op)
         case "EOP" => processEOPTask(op)
         case err@_ => unsupportedType(err)
@@ -142,7 +143,7 @@ object DeliteTaskGraph {
       newop.addDependency(controlDep)
       controlDep.addConsumer(newop)
     }
-    
+
     //add new op to graph list of ops
     graph._ops += id -> newop
 
@@ -157,32 +158,130 @@ object DeliteTaskGraph {
   def processIfThenElseTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     // get id
     val id = getFieldString(op,"outputId")
-    //get then and else kernels
-    val thenOp = getOp(graph._ops, getFieldString(op, "thenKernelId"))
-    val elseOp = getOp(graph._ops, getFieldString(op, "elseKernelId"))
-    val newop = new OP_Condition(id, thenOp, elseOp)
+    //get predicate, then, and else kernels
+    val predOp = getOp(graph._ops, getFieldString(op, "conditionKernelId"))
+    val thenIds = getFieldList(op, "thenKernelIds")
+    val elseIds = getFieldList(op, "elseKernelIds")
+    val beginOp = new OP_BeginCondition(id+"b", predOp)
+    val beginElseOp = new OP_BeginElse(id+"e")
+    val endOp = new OP_EndCondition(id)
 
-    //handle anti dependencies
-    val antiDeps = getFieldList(op, "antiDeps")
-    for(a <- antiDeps) {
-      val antiDep = getOp(graph._ops, a)
-      newop.addDependency(antiDep)
-      //antiDep.addConsumer(newop)
+    //list of all dependencies of the if block, minus any dependencies within the block
+    val ifDeps = (getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")) filterNot { (thenIds ++ elseIds) contains }
+
+    //beginning depends on all exterior dependencies
+    for (depId <- ifDeps) {
+      val dep = getOp(graph._ops, depId)
+      beginOp.addDependency(dep)
+      dep.addConsumer(beginOp)
     }
 
-    //handle control dependencies
-    val controlDeps = getFieldList(op, "controlDeps")
-    for(c <- controlDeps) {
-      val controlDep = getOp(graph._ops, c)
-      newop.addDependency(controlDep)
-      //controlDep.addConsumer(newop)
+    //beginning depends on predicate resolution
+    beginOp.addDependency(predOp)
+    predOp.addConsumer(beginOp)
+
+    //all thenOps depend on beginning, and begin-else depends on them
+    for (thenId <- thenIds) {
+      val thenOp = getOp(graph._ops, thenId)
+      thenOp.addDependency(beginOp)
+      beginOp.addConsumer(thenOp)
+      thenOp.addConsumer(beginElseOp)
+      beginElseOp.addDependency(thenOp)
     }
 
-    //add new op to graph list of ops
-    //graph._ops += id -> op
+    //all elseOps depend on begin-else, ending depends on them
+    for (elseId <- elseIds) {
+      val elseOp = getOp(graph._ops, elseId)
+      elseOp.addDependency(beginElseOp)
+      beginElseOp.addConsumer(elseOp)
+      elseOp.addConsumer(endOp)
+      endOp.addDependency(elseOp)
+    }
 
-    //last op will be result op
-    //graph._result = newop
+    //add to graph
+    graph._ops += id+"b" -> beginOp
+    graph._ops += id+"e" -> beginElseOp
+    graph._ops += id -> endOp //endOp will be found by future ops when searching by graph id
+
+    graph._result = endOp
+  }
+
+  def processWhileTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
+    // get id
+    val id = getFieldString(op,"outputId")
+    //get predicate and body kernels
+    val predIds = getFieldList(op, "condIds")
+    val bodyIds = getFieldList(op, "bodyIds")
+
+    var predOps: List[DeliteOP] = Nil
+    var bodyOps: List[DeliteOP] = Nil
+    var contOps: List[DeliteOP] = Nil
+
+    //copy the predicate in order to run it after the body as well
+    for (predId <- predIds) {
+      val predOp = getOp(graph._ops, predId)
+      assert(predOp.isInstanceOf[OP_Single]) //TODO: should this be relaxed?
+      val contOp = predOp.asInstanceOf[OP_Single].duplicate(predOp.id+"p")
+      contOp.consumerList = Nil
+      graph._ops += contOp.id -> contOp
+
+      predOps ::= predOp
+      contOps ::= contOp
+    }
+    for (bodyId <- bodyIds) bodyOps ::= getOp(graph._ops, bodyId)
+
+    //fix up the internal dependencies of the copied predicate ops
+    for (contOp <- contOps) {
+      for (dep <- contOp.getDependencies) {
+        val idx = predOps findIndexOf { _ == dep }
+        if (idx != -1) {
+          val newOp = contOps(idx)
+          contOp.replaceDependency(dep, newOp)
+          newOp.addConsumer(contOp)
+        }
+      }
+      for (input <- contOp.getInputs) {
+        val idx = predOps findIndexOf { _ == input }
+        if (idx != -1) contOp.replaceInput(input, contOps(idx))
+      }
+    }
+
+    val beginOp = new OP_BeginWhile(id+"b", predOps.head)
+    val endOp = new OP_EndWhile(id, contOps.head)
+
+    //list of all dependencies of the while block, minus any dependencies within the block
+    val whileDeps = (getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")) filterNot { bodyIds contains }
+
+    //beginning depends on all exterior dependencies
+    for (depId <- whileDeps) {
+      val dep = getOp(graph._ops, depId)
+      beginOp.addDependency(dep)
+      dep.addConsumer(beginOp)
+    }
+
+    //beginning depends on initial predicate resolution
+    beginOp.addDependency(predOps.head)
+    predOps.head.addConsumer(beginOp)
+
+    //all bodyOps depend on beginning, predOps depend on them
+    for (bodyOp <- bodyOps) {
+      bodyOp.addDependency(beginOp)
+      beginOp.addConsumer(bodyOp)
+      for (contOp <- contOps) {
+        contOp.addDependency(bodyOp)
+        bodyOp.addConsumer(contOp)
+      }
+    }
+
+    //ending depends on final contOp
+    contOps.head.addConsumer(endOp)
+    endOp.addDependency(contOps.head)
+
+    //add to graph
+    graph._ops += id+"b" -> beginOp
+    graph._ops += id -> endOp //endOp will be found by future ops when searching by graph id
+
+    graph._result = endOp
   }
 
   /**
