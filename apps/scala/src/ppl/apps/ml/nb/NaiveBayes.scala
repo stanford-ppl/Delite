@@ -60,14 +60,28 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
 
     // TODO: this should be a tuple vector constructor
     for (j <- 0::numTokens) {
-      val (spamwordcount, spam_totalwords, nonspamwordcount, nonspam_totalwords) = t4( sum(0,numTrainDocs) { i =>
-         if (ts.labels(i) == 1){
-          (ts.t(j,i), words_per_email(i), unit(0.0), unit(0.0))
+      var spamwordcount = unit(0.0)
+      var spam_totalwords = unit(0.0)
+      var nonspamwordcount = unit(0.0)
+      var nonspam_totalwords = unit(0.0)
+      for (i <- 0::numTrainDocs) {
+        if (ts.labels(i) == 1){
+          spamwordcount += ts.t(j,i)
+          spam_totalwords += words_per_email(i)
         }
-        else{
-          (unit(0.0), unit(0.0), ts.t(j,i), words_per_email(i))
+        else {
+          nonspamwordcount += ts.t(j,i)
+          nonspam_totalwords += words_per_email(i)
         }
-      })
+      }
+//      val (spamwordcount, spam_totalwords, nonspamwordcount, nonspam_totalwords) = t4( sum(0,numTrainDocs) { i =>
+//         if (ts.labels(i) == 1){
+//          (ts.t(j,i), words_per_email(i), unit(0.0), unit(0.0))
+//        }
+//        else{
+//          (unit(0.0), unit(0.0), ts.t(j,i), words_per_email(i))
+//        }
+//      })
       //println("spamwordcount: " + spamwordcount)// + ", spam_totalwords: " + spam_totalwords)
       //println("nonspamwordcount: " + nonspamwordcount)// + ", nonspam_totalwords: " + nonspam_totalwords)
 

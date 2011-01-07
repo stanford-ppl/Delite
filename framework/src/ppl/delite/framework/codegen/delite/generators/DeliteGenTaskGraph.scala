@@ -52,6 +52,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     implicit val returnTypes = new ListBuffer[Pair[String, String]]
     implicit val metadata = new ArrayBuffer[Pair[String, String]]
 
+    // parameters for delite overrides
+    deliteInputs = (inVals ++ inVars)
+    deliteResult = Some(sym) //findDefinition(rhs) map { _.sym }
+
     for (gen <- generators) {
       val buildPath = Config.build_dir + gen + "/"
       val outDir = new File(buildPath); outDir.mkdirs()
@@ -65,7 +69,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
           case op:DeliteOp[_] => deliteKernel = true
           case _ => deliteKernel = false
         }
-
         //initialize
         gen.kernelInit(sym, inVals, inVars, resultIsVar)
 

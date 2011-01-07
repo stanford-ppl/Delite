@@ -39,7 +39,9 @@ object SVM extends DeliteApplication with OptiMLExp {
     // run the SMO training algorithm
     val svm = new SVMModel { val IR = SVM.this }
     //val svm = new SVMModel(SVM.this)
+    tic
     val (weights, b) = svm.train(inMatrixTrain, YTrain, 1, .001, 10)
+    toc
     //svm.computeWeights(inMatrixTrain, YTrain)
     //svm.saveModel(weights, b, modelFile)
 

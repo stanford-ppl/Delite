@@ -439,7 +439,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   //  extends DeliteOpReduce[A] {
   //
   //  val v = (fresh[A],fresh[A])
-  //  val func = if (v._1 < v._2) v._1.index else v._2.index
+  //  val func = if (v._1 < v._2) index(v._1) else index(v._2)
   //}
 
   case class VectorMax[A:Manifest:Ordering](in: Exp[Vector[A]])

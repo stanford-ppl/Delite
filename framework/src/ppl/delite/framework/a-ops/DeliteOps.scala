@@ -136,7 +136,10 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
     val sync: Exp[List[_]]
   }
 
-  var deliteKernel : Boolean = _ // used by code generators to handle nested delite ops
+  // used by delite code generators to handle nested delite ops
+  var deliteKernel: Boolean = _
+  var deliteResult: Option[Sym[Any]] = _
+  var deliteInputs: List[Sym[Any]] = _
 
   def getReifiedOutput(out: Exp[_]) = out match {
     case Def(Reify(x, effects)) => x
