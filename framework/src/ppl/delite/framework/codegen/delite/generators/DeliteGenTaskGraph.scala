@@ -3,9 +3,9 @@ package ppl.delite.framework.codegen.delite.generators
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{ScalaGenEffect, GenericCodegen}
-import ppl.delite.framework.{Util, Config}
 import collection.mutable.{ArrayBuffer, ListBuffer}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
+import ppl.delite.framework.{GenerationFailedException, Util, Config}
 
 trait DeliteGenTaskGraph extends DeliteCodegen {
   val IR: DeliteOpsExp
@@ -43,13 +43,17 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     }
 
     // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
-    val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)    
+    val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)
     val inVals = dataDeps flatMap { vals(_) }
     val inVars = dataDeps flatMap { vars(_) }
 
     implicit val supportedTargets = new ListBuffer[String]
     implicit val returnTypes = new ListBuffer[Pair[String, String]]
     implicit val metadata = new ArrayBuffer[Pair[String, String]]
+
+    // parameters for delite overrides
+    deliteInputs = (inVals ++ inVars)
+    deliteResult = Some(sym) //findDefinition(rhs) map { _.sym }
 
     for (gen <- generators) {
       val buildPath = Config.build_dir + gen + "/"
@@ -64,7 +68,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
           case op:DeliteOp[_] => deliteKernel = true
           case _ => deliteKernel = false
         }
-
         //initialize
         gen.kernelInit(sym, inVals, inVars, resultIsVar)
 
@@ -111,9 +114,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
         kstream.close()
       }
       catch {
-        case e: Exception => // no generator found
+        // TODO: HJ fix this
+        //case e:GenerationFailedException => // no generator found
+        case e:Exception =>
           //e.printStackTrace
-          gen.exceptionHandler(outFile, kstream)
+          gen.exceptionHandler(e, outFile, kstream)
+        //case e => throw(e)
       }
     }
 

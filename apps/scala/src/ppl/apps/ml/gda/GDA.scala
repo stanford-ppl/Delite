@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.apps.gda
+package ppl.apps.ml.gda
 
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
@@ -70,13 +70,15 @@ object GDA extends DeliteApplication with OptiMLExp {
     /* x(i) is a row vector for us, while it is defined a column vector in the formula */
     val sigma = sum(0, m) { i =>
       if (y(i) == false){
-       (((x(i)-mu0).t)*(x(i)-mu0))
+       (((x(i)-mu0).t)**(x(i)-mu0))
       }
       else{
-       (((x(i)-mu1).t)*(x(i)-mu1))
+       (((x(i)-mu1).t)**(x(i)-mu1))
       }
     }
 
+    // TODO: nothing is really preventing toc from getting hoisted upwards in the schedule, resulting in the wrong time
+    // unless the above sum is a reflectEffect
     toc
 
     print("GDA parameter calculation finished: ")

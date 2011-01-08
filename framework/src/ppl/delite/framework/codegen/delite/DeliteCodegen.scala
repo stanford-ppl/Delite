@@ -81,7 +81,10 @@ trait DeliteCodegen extends GenericNestedCodegen {
     //println("==== shallow")
     //e2.foreach(println)
 
-    val e3 = e1.filter(e2 contains _) // shallow, but with the ordering of deep!!
+    // val e3 = e1.filter(e2 contains _) // shallow, but with the ordering of deep!!
+    val bound = e1 flatMap { tp => ifGenAgree[List[Sym[Any]]](_.boundSyms(tp.rhs),true) }
+    val g1 = ifGenAgree(_.getDependentStuff(bound),true)
+    val e3 = e1.filter(z => (e2 contains z) && !(g1 contains z)) // shallow (but with the ordering of deep!!) and minus bound
 
     val e4 = e3.filterNot(scope contains _) // remove stuff already emitted
 

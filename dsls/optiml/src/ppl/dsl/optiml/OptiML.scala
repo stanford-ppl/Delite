@@ -17,37 +17,42 @@ import ppl.delite.framework.ops.{CGenDeliteOps, CudaGenDeliteOps, DeliteOpsExp, 
  * These are the portions of Scala imported into OptiML's scope.
  */
 trait OptiMLScalaOpsPkg extends Base
-    with ImplicitOps with OrderingOps with StringOps
-    with RangeOps with IOOps with ArrayOps with BooleanOps with PrimitiveOps with MiscOps
-    with Equal with IfThenElse with Variables with While with TupleOps with ListOps
+    with Equal with IfThenElse with Variables with While with Functions
+    with ImplicitOps with OrderingOps with StringOps with RangeOps with IOOps
+    with ArrayOps with BooleanOps with PrimitiveOps with MiscOps with TupleOps
+    with ListOps with SeqOps with MathOps with CastingOps
 
-trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg
-    with ImplicitOpsExp with OrderingOpsExp with StringOpsExp
-    with RangeOpsExp with IOOpsExp with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp
-    with FunctionsExp with EqualExp with IfThenElseExp with VariablesExp with WhileExp with TupleOpsExp
-    with ListOpsExp with DSLOpsExp
+trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg with DSLOpsExp
+    with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
+    with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
+    with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
+    with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp
 
-trait OptiMLScalaCodeGenPkg extends ScalaGenImplicitOps with ScalaGenOrderingOps
-    with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps with ScalaGenArrayOps with ScalaGenBooleanOps
-    with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenFunctions with ScalaGenEqual with ScalaGenIfThenElse
-    with ScalaGenVariables with ScalaGenWhile with ScalaGenTupleOps with ScalaGenListOps
-    with ScalaGenDSLOps { val IR: OptiMLScalaOpsPkgExp  }
+trait OptiMLScalaCodeGenPkg extends ScalaGenDSLOps
+    with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenFunctions
+    with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
+    with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenTupleOps
+    with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps
+    { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
+    with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenFunctions
     with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
-    with CudaGenPrimitiveOps with CudaGenMiscOps with CudaGenFunctions with CudaGenEqual with CudaGenIfThenElse
-    with CudaGenVariables with CudaGenWhile { val IR: OptiMLScalaOpsPkgExp  }
+    with CudaGenPrimitiveOps with CudaGenMiscOps
+    with CudaGenListOps with CudaGenSeqOps
+    { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
     with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
     with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
-    with CGenVariables with CGenWhile { val IR: OptiMLScalaOpsPkgExp  }
+    with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps { val IR: OptiMLScalaOpsPkgExp  }
 
 /**
  * This the trait that every OptiML application must extend.
  */
-trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps
-  with VectorOps with MatrixOps with MLInputReaderOps {
+trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps with CloneableOps
+  with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps with IndexVectorOps
+  with LabelsOps with TrainingSetOps {
 
   this: DeliteApplication =>
 
@@ -58,9 +63,10 @@ trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ArithOpsExp
-  with VectorOpsExpOpt with VectorViewOpsExp with MatrixOpsExpOpt with MLInputReaderOpsExp
+  with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp with IndexVectorOpsExp
+  with LabelsOpsExp with TrainingSetOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
-  with MatrixImplOpsStandard with MLInputReaderImplOpsStandard
+  with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard
   with DeliteOpsExp {
   this: DeliteApplication =>
 
@@ -109,7 +115,8 @@ trait OptiMLCodeGenBase extends GenericCodegen {
 }
 
 trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenLanguageOps with ScalaGenArithOps
-  with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
+  with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps
+  with ScalaGenLabelsOps with ScalaGenTrainingSetOps
   with ScalaGenDeliteOps with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
 
   val IR: DeliteApplication with OptiMLExp

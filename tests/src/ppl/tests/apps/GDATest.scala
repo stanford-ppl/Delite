@@ -9,8 +9,8 @@ object TestPreGeneratedCode {
                   "dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1y.dat")
 
     // this is the pre-generated test
-    val prog = new generated.GDA_merged
-    prog(a)
+    //val prog = new generated.GDA_merged
+    //prog(a)
   }
 }
 
@@ -21,8 +21,8 @@ object TestPreGeneratedKernels {
                   "dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1y.dat")
 
     // this is the pre-generated test
-    val prog = new generated.GDA_kernels
-    prog(a)
+    //val prog = new generated.GDA_kernels
+    //prog(a)
   }
 }
 
@@ -32,7 +32,7 @@ object TestCompileCode {
                   "dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1y.dat")
 
     //this dynamically re-generates and compiles
-    import ppl.dsl.optiml.apps.gda.GDA
+    import ppl.apps.ml.gda.GDA
     GDA.execute(a)
   }
 }
@@ -43,7 +43,7 @@ object TestGenCode {
                   "dsls/optiml/src/ppl/dsl/optiml/apps/gda/q1y.dat")
 
     //this just generates
-    import ppl.dsl.optiml.apps.gda.GDA
+    import ppl.apps.ml.gda.GDA
     GDA.main(a)
   }
 }
