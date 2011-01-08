@@ -440,11 +440,11 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
   import IR._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-    case s:DeliteOpSingleTask[_] => throw new RuntimeException("CudaGen: DeliteOpSingleTask is not GPUable.")
+    case s:DeliteOpSingleTask[_] => throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable.")
       // TODO: Generate single thread version of this work
       //if(idxX == 0) {}
     case map:DeliteOpMap[_,_,_] => {
-      if (deliteKernel == false) throw new RuntimeException("CudaGen: Nested DeliteOpMap is not GPUable.")
+      if (deliteKernel == false) throw new GenerationFailedException("CudaGen: Nested DeliteOpMap is not GPUable.")
       gpuBlockSizeX = quote(map)+".size"
       val freeVars = getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)
       stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(map.in)+".size"))
@@ -461,7 +461,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       allocOutput(sym,getBlockResult(map.alloc).asInstanceOf[Sym[_]])
     }
     case zip: DeliteOpZipWith[_,_,_,_] => {
-      if (deliteKernel == false) throw new RuntimeException("CudaGen: Nested DeliteOpZipWith is not GPUable.")
+      if (deliteKernel == false) throw new GenerationFailedException("CudaGen: Nested DeliteOpZipWith is not GPUable.")
       gpuBlockSizeX = quote(zip)+".size"
       val freeVars = getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))
       stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(zip.inA)+".size"))

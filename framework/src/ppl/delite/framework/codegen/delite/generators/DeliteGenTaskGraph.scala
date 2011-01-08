@@ -2,10 +2,10 @@ package ppl.delite.framework.codegen.delite.generators
 
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.internal.{ScalaGenEffect, GenericCodegen}
 import collection.mutable.{ArrayBuffer, ListBuffer}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
-import ppl.delite.framework.{GenerationFailedException, Util, Config}
+import ppl.delite.framework.{Util, Config}
+import scala.virtualization.lms.internal.{GenerationFailedException, ScalaGenEffect, GenericCodegen}
 
 trait DeliteGenTaskGraph extends DeliteCodegen {
   val IR: DeliteOpsExp
@@ -115,11 +115,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       }
       catch {
         // TODO: HJ fix this
-        //case e:GenerationFailedException => // no generator found
-        case e:Exception =>
-          //e.printStackTrace
+        case e:GenerationFailedException => // no generator found
           gen.exceptionHandler(e, outFile, kstream)
-        //case e => throw(e)
+          //e.printStackTrace
+        case e:Exception => throw(e)
       }
     }
 

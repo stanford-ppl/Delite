@@ -8,7 +8,7 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.internal.{CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.{GenerationFailedException, CGenBase, CudaGenBase, ScalaGenBase}
 
 trait MatrixOps extends DSLType with Variables {
   this: OptiML =>
@@ -750,7 +750,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
 
     // these are the ops that call through to the underlying real data structure
     case MatrixObjectNew(numRows,numCols) =>
-      throw new RuntimeException("CudaGen: Not GPUable")
+      throw new GenerationFailedException("CudaGen: Not GPUable")
 
     case MatrixGetRow(x,i) =>
       stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".numCols"))
@@ -771,7 +771,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
     case MatrixNumCols(x)  =>
       emitValDef(sym, quote(x) + ".numCols")
     case MatrixInsertRow(x, pos, y)  =>
-      throw new RuntimeException("CudaGen: Not GPUable")
+      throw new GenerationFailedException("CudaGen: Not GPUable")
       //emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
 
     case _ => super.emitNode(sym, rhs)

@@ -8,7 +8,7 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{GenericNestedCodegen, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen, CGenBase, CudaGenBase, ScalaGenBase}
 
 trait VectorOps extends DSLType with Variables {
   this: OptiML =>
@@ -720,9 +720,9 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       emitMatrixAlloc(sym,"%s.length".format(quote(x)),"%s.length".format(quote(x)))
 
     case VectorObjectZeros(len) =>
-      throw new RuntimeException("CudaGen: Not GPUable (Dynamic memory allocation is not allowed)")
+      throw new GenerationFailedException("CudaGen: Not GPUable (Dynamic memory allocation is not allowed)")
     case VectorNew(len,isRow) =>
-      throw new RuntimeException("CudaGen: Not GPUable (Dynamic memory allocation is not allowed)")
+      throw new GenerationFailedException("CudaGen: Not GPUable (Dynamic memory allocation is not allowed)")
     case VectorApply(x, n) =>
       emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case VectorUpdate(x,n,y) =>
