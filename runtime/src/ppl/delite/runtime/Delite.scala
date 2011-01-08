@@ -40,9 +40,7 @@ object Delite {
 
     //extract application arguments
     Arguments.args = args.drop(1)
-    //execute
 
-    
     val scheduler = Config.scheduler match {
       case "SMPStaticScheduler" => new SMPStaticScheduler
       case "StressTest" => new DieRollStaticScheduler
@@ -53,7 +51,6 @@ object Delite {
 
     val executor = Config.executor match {
       case "SMPExecutor" => new SMPExecutor
-      case "GPUExecutor" => new GPUExecutor
       case "SMP+GPUExecutor" => new SMP_GPU_Executor
       case "default" => new SMPExecutor
       case _ => throw new IllegalArgumentException("Requested executor type is not recognized")
@@ -74,20 +71,23 @@ object Delite {
     //compile
     val executable = Compilers.compileSchedule(schedule, graph)
 
-    //execute
+  //execute
     val numTimes = Config.numRuns
     for (i <- 1 to numTimes) {
       println("Beginning Execution Run " + numTimes)
-      PerformanceTimer.start("all", false) 
+      PerformanceTimer.start("all", false)
       executor.run(executable) //TODO: need to reset the executables
       EOP.await //await the end of the application program
       EOP.reset
-      PerformanceTimer.stop("all", false)   
-      PerformanceTimer.print("all")  
+      PerformanceTimer.stop("all", false)
+      PerformanceTimer.print("all")
       Stopwatch.print()
     }
 
     PerformanceTimer.dumpStats
+
+    executor.shutdown()
+
   }
 
   def loadDeliteDEG(filename: String) = {
@@ -102,3 +102,11 @@ object Delite {
   }
 
 }
+
+
+
+
+
+
+
+
