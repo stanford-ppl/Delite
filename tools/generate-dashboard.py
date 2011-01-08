@@ -1,4 +1,4 @@
-apps = ['gda']
+apps = ['gda', 'nb', 'linreg', 'kmeans', 'svm', 'lbp', 'rbm']
 procs = [ 1, 2, 4, 8]
 dataPath = "C:/Users/hchafi/Documents/Dropbox/ppl/ppl/delite/data/"
 outputFolder = "C:/Users/hchafi/Documents/Dropbox/ppl/ppl/delite/data/"
@@ -75,6 +75,9 @@ def main():
         parser.error("incorrect number of arguments")
     xlFile = args[0]
     
+	# check the required env variables
+	#if DATA_DIR is None:
+	#	exit("DATA_DIR not defined, needs to be set to point to directory that contains the data folder with datasets")
         
 	# load time files
     # list timesFolder and the datetimes
@@ -102,22 +105,32 @@ def main():
         print "Processing Times Directory: " + timesFolderDate + "\n======================================="
     # process times for each apps in this folder
     
+    
+    #Delite section
     appIdx = 0
     for app in apps:
         # load application 
         if options.verbose:
-            print "Loading times from application: " + app
-        appFile = open(dataPath + timesFolderDate + "/" + app + ".times", 'r')
-        numbers = appFile.readlines()
-        # convert to times
-        times = [float(t) for t in numbers]
-        times = times[5:len(numbers)]
-        mean = numpy.mean(times)
-        min = numpy.amin(times)
-        max = numpy.amax(times)
-        app_col = hdr_y_width + appIdx * app_data_pts
-        dataSheet.row(rowIdx).write(app_col, mean)
-        dataSheet.row(rowIdx).write(app_col + 1, 'n/a')
+            print "Loading times for application: " + app
+        procIdx = 0
+        for proc in procs:
+            app_row = rowIdx + procIdx
+            # put num threads in column
+            if appIdx == 0:
+                dataSheet.row(app_row).write(hdr_y_width - 1, str(proc) + " CPU")
+            appFile = open(dataPath + timesFolderDate + "/" + app + "-smp-" + str(proc) + ".times", 'r')
+            numbers = appFile.readlines()
+            # convert to times
+            times = [float(t) for t in numbers]
+            times = times[5:len(numbers)]
+            mean = numpy.mean(times)
+            min = numpy.amin(times)
+            max = numpy.amax(times)
+            app_col = hdr_y_width + appIdx * app_data_pts
+            
+            dataSheet.row(app_row).write(app_col, mean)
+            dataSheet.row(app_row).write(app_col + 1, 'n/a')
+            procIdx += 1
         appIdx += 1
         
     if options.verbose:
