@@ -86,7 +86,7 @@ trait OptiMLCodeGenBase extends GenericCodegen {
   def genSpec(f: File, outPath: String) = {}
 
   override def emitDataStructures() {
-    val dsRoot = "dsls/optiml/src/ppl/dsl/optiml/datastruct/" + this.toString
+    val dsRoot = Config.deliteHome  + "dsls/optiml/src/ppl/dsl/optiml/datastruct/" + this.toString
     val dsOut = Config.build_dir + "/" + this.toString + "/"
 
     val dsDir = new File(dsRoot)
