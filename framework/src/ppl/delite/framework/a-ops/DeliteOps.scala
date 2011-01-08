@@ -159,17 +159,47 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
     case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
     case zipR: DeliteOpZipWithReduce[_,_,_,_] => if (shallow) syms(zipR.inA) ++ syms(zipR.inB) else syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
     case foreach: DeliteOpForeach[_,_] => if (shallow) syms(foreach.in) else syms(foreach.in) ++ syms(foreach.func)
-
     // always try to hoist free dependencies out of delite ops, if possible
-    /*
-    case map: DeliteOpMap[_,_,_] => syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
-    case zip: DeliteOpZipWith[_,_,_,_] => syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
-    case red: DeliteOpReduce[_] => syms(red.in) ++ syms(red.func)
-    case mapR: DeliteOpMapReduce[_,_,_] => syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
-    case zipR: DeliteOpZipWithReduce[_,_,_,_] => syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
-    case foreach: DeliteOpForeach[_,_] => syms(foreach.in) ++ syms(foreach.func)
-    */
+//    case s: DeliteOpSingleTask[_] => if (shallow) super.syms(e) else super.syms(e) ++ syms(s.block)
+//    case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) ++ syms(map.func) else syms(map.in) ++ syms(map.func) ++ syms(map.alloc)
+//    case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.func) else syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
+//    case red: DeliteOpReduce[_] => syms(red.in) ++ syms(red.func)
+//    case mapR: DeliteOpMapReduce[_,_,_] => syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
+//    case zipR: DeliteOpZipWithReduce[_,_,_,_] => syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
+//    case foreach: DeliteOpForeach[_,_] => syms(foreach.in) ++ syms(foreach.func)
     case _ => super.syms(e)
+  }
+
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case map: DeliteOpMap[_,_,_] => map.func match {
+      case Def(Reify(y, es)) => map.v.asInstanceOf[Sym[Any]] :: syms(map.alloc) ::: es.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y)
+      case _ => map.v.asInstanceOf[Sym[Any]] :: syms(map.alloc) ::: boundSyms(map.func)
+    }
+    case zip: DeliteOpZipWith[_,_,_,_] => zip.func match {
+      case Def(Reify(y, es)) => zip.v._1.asInstanceOf[Sym[Any]] :: zip.v._2.asInstanceOf[Sym[Any]] :: es.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y)
+      case _ => zip.v._1.asInstanceOf[Sym[Any]] :: zip.v._2.asInstanceOf[Sym[Any]] :: boundSyms(zip.func)
+    }
+    case red: DeliteOpReduce[_] => red.func match {
+      case Def(Reify(y, es)) => red.v._1.asInstanceOf[Sym[Any]] :: red.v._2.asInstanceOf[Sym[Any]] :: es.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y)
+      case _ => red.v._1.asInstanceOf[Sym[Any]] :: red.v._2.asInstanceOf[Sym[Any]] :: boundSyms(red.func)
+    }
+    case mapR: DeliteOpMapReduce[_,_,_] => (mapR.map, mapR.reduce) match {
+      case (Def(Reify(y, es)), Def(Reify(y2,es2))) => mapR.mV.asInstanceOf[Sym[Any]] :: mapR.rV._1.asInstanceOf[Sym[Any]] :: mapR.rV._2.asInstanceOf[Sym[Any]] :: es.asInstanceOf[List[Sym[Any]]] ::: es2.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y) ::: boundSyms(y2)
+      case (Def(Reify(y, es)), y2) => mapR.mV.asInstanceOf[Sym[Any]] :: mapR.rV._1.asInstanceOf[Sym[Any]] :: mapR.rV._2.asInstanceOf[Sym[Any]] :: es.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y) ::: boundSyms(y2)
+      case (y, Def(Reify(y2, es2))) => mapR.mV.asInstanceOf[Sym[Any]] :: mapR.rV._1.asInstanceOf[Sym[Any]] :: mapR.rV._2.asInstanceOf[Sym[Any]] :: es2.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y) ::: boundSyms(y2)
+      case _ => mapR.mV.asInstanceOf[Sym[Any]] :: mapR.rV._1.asInstanceOf[Sym[Any]] :: mapR.rV._2.asInstanceOf[Sym[Any]] :: boundSyms(mapR.map) ::: boundSyms(mapR.reduce)
+    }
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => (zipR.zip, zipR.reduce) match {
+      case (Def(Reify(y, es)), Def(Reify(y2,es2))) => zipR.zV._1.asInstanceOf[Sym[Any]] :: zipR.zV._2.asInstanceOf[Sym[Any]] :: zipR.rV._1.asInstanceOf[Sym[Any]] :: zipR.rV._2.asInstanceOf[Sym[Any]] :: es.asInstanceOf[List[Sym[Any]]] ::: es2.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y) ::: boundSyms(y2)
+      case (Def(Reify(y, es)), y2) => zipR.zV._1.asInstanceOf[Sym[Any]] :: zipR.zV._2.asInstanceOf[Sym[Any]] :: zipR.rV._1.asInstanceOf[Sym[Any]] :: zipR.rV._2.asInstanceOf[Sym[Any]] :: es.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y) ::: boundSyms(y2)
+      case (y, Def(Reify(y2, es2))) => zipR.zV._1.asInstanceOf[Sym[Any]] :: zipR.zV._2.asInstanceOf[Sym[Any]] :: zipR.rV._1.asInstanceOf[Sym[Any]] :: zipR.rV._2.asInstanceOf[Sym[Any]] :: es2.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y) ::: boundSyms(y2)
+      case _ => zipR.zV._1.asInstanceOf[Sym[Any]] :: zipR.zV._2.asInstanceOf[Sym[Any]] :: zipR.rV._1.asInstanceOf[Sym[Any]] :: zipR.rV._2.asInstanceOf[Sym[Any]] :: boundSyms(zipR.zip) ::: boundSyms(zipR.reduce)
+    }
+    case foreach: DeliteOpForeach[_,_] => foreach.func match {
+      case Def(Reify(y, es)) => foreach.v.asInstanceOf[Sym[Any]] :: es.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y)
+      case _ => foreach.v.asInstanceOf[Sym[Any]] :: boundSyms(foreach.func)
+    }
+    case _ => super.boundSyms(e)
   }
 
   override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
