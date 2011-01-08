@@ -44,25 +44,30 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
   }
 
   private def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph) {
-    if (op.supportsTarget(Targets.Cuda)) { //schedule on GPU resource
-      if (op.isDataParallel) {
-        splitGPU(op)
-      }
-      else {
-        gpuResource.add(op)
-        op.scheduledResource = 1
+    op match {
+      case c: OP_Control => addControl(c)
+      case _ => {
+        if (op.supportsTarget(Targets.Cuda)) { //schedule on GPU resource
+          if (op.isDataParallel) {
+            splitGPU(op)
+          }
+          else {
+            gpuResource.add(op)
+            op.scheduledResource = 1
+          }
+        }
+        else { //schedule on CPU resource
+          if (op.isDataParallel) {
+            split(op, graph)
+          }
+          else {
+            cpuResource.add(op)
+            op.scheduledResource = 0
+          }
+        }
+        op.isScheduled = true
       }
     }
-    else { //schedule on CPU resource
-      if (op.isDataParallel) {
-        split(op, graph)
-      }
-      else {
-        cpuResource.add(op)
-        op.scheduledResource = 0
-      }
-    }
-    op.isScheduled = true
   }
 
   private def enqueueRoots(graph: DeliteTaskGraph) {
@@ -98,6 +103,18 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
     gpuResource.add(chunk)
     chunk.scheduledResource = 1
     chunk.isScheduled = true
+  }
+
+  private def addControl(op: OP_Control) {
+    val chunk0 = op.makeChunk(0)
+    cpuResource.add(chunk0)
+    chunk0.scheduledResource = 0
+    chunk0.isScheduled = true
+
+    val chunk1 = op.makeChunk(1)
+    gpuResource.add(chunk1)
+    chunk1.scheduledResource = 1
+    chunk1.isScheduled = true
   }
 
   private def createPartialSchedule = {

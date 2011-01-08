@@ -29,54 +29,62 @@ import java.util.ArrayList
  */
 
 /**
- * This is a blocking container (a blocking queue of capacity 1) specialized to the type T
+ * This is a blocking container specialized to the type T that allows storage of N items at a time
  * Allows one producer and an arbitrary but fixed number of consumers
+ * The producer and each consumer can run ahead/behind each other by up to the capacity of the container, which can be chosen freely
  */
 
 object ExampleContainer {
 
   type T = Array[Int] //T is specialized for each unique result
+  val capacity = 16 //the size sets the amount of run-ahead possible
 
   private val numConsumers: Int = 5 //this is known and injected from schedule
-  private var count: Int = 0 //the current number of outstanding consumptions, when 0 the container is empty
-  private var version: Int = 0 //count of how many results have been put into the container so far
-  private val getVersion = new ThreadLocal[Int]{ override def initialValue = 0 } //TODO: is this the most efficient way?
+  private val count = new Array[Int](capacity) //the current number of outstanding consumptions, when 0 the container entry is empty
+  private val takeIndex = new ThreadLocal[Int]{ override def initialValue = 0 } //TODO: is this the most efficient way?
 
-  private var _result: T = _
+  private var size: Int = 0 //current number of live results
+  private var putIndex: Int = 0 //index for next put
+  private val items = new Array[T](capacity)
 
   private val lock = new ReentrantLock
   private val notEmpty = lock.newCondition //condition for waiting gets
   private val notFull = lock.newCondition //condition for waiting sets
 
   def get: T = {
+    val takeIndex = this.takeIndex.get
     val lock = this.lock // b/c Doug Lea does it :-) (I assume making it local to the method helps the JIT somehow(?))
     lock.lock
     try {
-      while (getVersion.get == version)
+      while (takeIndex == putIndex)
         notEmpty.await
-      extract
+      extract(takeIndex)
     }
     finally {
       lock.unlock
     }
   }
 
-  private def extract: T = {
-    val res = _result
-    getVersion.set(version)
-    count -= 1
-    if (count == 0) {
-      _result = null.asInstanceOf[T] //clear container
+  private def extract(takeIndex: Int): T = {
+    val items = this.items
+    val res = items(takeIndex)
+    this.takeIndex.set((takeIndex + 1) % items.length)
+    val count = this.count
+    count(takeIndex) -= 1
+    if (count(takeIndex) == 0) {
+      items(takeIndex) = null.asInstanceOf[T] //clear container
+      size -= 1
       notFull.signal //one thread (producer) waiting
     }
     res
   }
 
   def set(result: T) {
+    val items = this.items
     val lock = this.lock
     lock.lock
     try {
-      while (count != 0)
+      while (size == items.length)
         notFull.await
       insert(result)
     }
@@ -86,9 +94,11 @@ object ExampleContainer {
   }
 
   private def insert(result: T) {
-    _result = result
-    count = numConsumers
-    version += 1
+    val items = this.items
+    items(putIndex) = result
+    count(putIndex) = numConsumers
+    putIndex = (putIndex + 1) % items.length
+    size += 1
     notEmpty.signalAll //n threads (all consumers) waiting
   }
 

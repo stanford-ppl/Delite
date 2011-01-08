@@ -190,8 +190,8 @@ object ExecutableGenerator {
 
     out.append('\n')
     out.append("private var count : Int = 0\n")
-    out.append("private var version : Int = 0\n")
-    out.append("private val getVersion = new ThreadLocal[Int]{ override def initialValue = 0 }\n")
+    out.append("private val takeIndex = new ThreadLocal[Int]{ override def initialValue = 0 }\n")
+    out.append("private var putIndex : Int = 0\n")
     out.append("private var _result : ")
     out.append(op.outputType)
     out.append(" = _\n")
@@ -203,22 +203,22 @@ object ExecutableGenerator {
     //the getter
     out.append("def get : ")
     out.append(op.outputType)
-    out.append(" = { val lock = this.lock; lock.lock; try { while (getVersion.get == version) { notEmpty.await }; extract } finally { lock.unlock } }\n")
+    out.append(" = { val takeIndex = this.takeIndex.get; val lock = this.lock; lock.lock; try { while (takeIndex == putIndex) { notEmpty.await }; extract(takeIndex) } finally { lock.unlock } }\n")
 
-    out.append("private def extract : ")
+    out.append("private def extract(takeIndex: Int) : ")
     out.append(op.outputType)
-    out.append(" = { val res = _result; getVersion.set(version); count -= 1; if (count == 0) { _result = null.asInstanceOf[")
+    out.append(" = { val res = _result; this.takeIndex.set(takeIndex + 1); count -= 1; if (count == 0) { _result = null.asInstanceOf[")
     out.append(op.outputType)
     out.append("]; notFull.signal }; res }\n")
 
     //the setter
     out.append("def set(result : ")
     out.append(op.outputType)
-    out.append(") { val lock = this.lock; lock.lock; try { while ( count != 0) { notFull.await }; insert(result) } finally { lock.unlock } }\n")
+    out.append(") { val lock = this.lock; lock.lock; try { while (count != 0) { notFull.await }; insert(result) } finally { lock.unlock } }\n")
 
     out.append("private def insert(result: ")
     out.append(op.outputType)
-    out.append(") { _result = result; count = numConsumers; version += 1; notEmpty.signalAll }\n")
+    out.append(") { _result = result; count = numConsumers; putIndex += 1; notEmpty.signalAll }\n")
 
     //the footer
     out.append('}')
