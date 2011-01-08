@@ -2,8 +2,8 @@ package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
 import scala.virtualization.lms.common.{TupleOpsExp, VariablesExp, EffectExp}
-import scala.virtualization.lms.internal.{GenericCodegen, CudaGenEffect, GenericNestedCodegen, ScalaGenEffect}
 import ppl.delite.framework.DeliteCollection
+import scala.virtualization.lms.internal._
 
 trait DeliteOpsExp extends EffectExp with VariablesExp {
   /**
@@ -327,26 +327,75 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
   import IR._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
-      //case s:DeliteOpSingleTask[_] =>
-      //case map:DeliteOpMap[_,_,_] =>
-      case mapR:DeliteOpMapReduce[_,_,_] => {
-        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
-        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
-        stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
-        addVarLink(getBlockResult(mapR.map).asInstanceOf[Sym[_]],sym)
-        emitBlock(mapR.map)
-        removeVarLink(getBlockResult(mapR.map).asInstanceOf[Sym[_]],sym)
-        stream.println(addTab()+"for(int cnt=1; cnt<%s.length; cnt++) {".format(quote(mapR.in)))
-        tabWidth += 1
-        stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
-        emitBlock(mapR.map)
-        addVarLink(getBlockResult(mapR.reduce).asInstanceOf[Sym[_]],sym)
-        emitBlock(mapR.reduce)
-        removeVarLink(getBlockResult(mapR.reduce).asInstanceOf[Sym[_]],sym)
-        tabWidth -= 1
-        stream.println(addTab()+"}")
-        allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
-      }
-      case _ => super.emitNode(sym,rhs)
+    case s:DeliteOpSingleTask[_] => throw new RuntimeException("CudaGen: DeliteOpSingleTask is not GPUable.")
+      // TODO: Generate single thread version of this work
+      //if(idxX == 0) {}
+    case map:DeliteOpMap[_,_,_] => {
+      if (deliteKernel == false) throw new RuntimeException("CudaGen: Nested DeliteOpMap is not GPUable.")
+      gpuBlockSizeX = quote(map)+".size"
+      val freeVars = getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(map.in)+".size"))
+      tabWidth += 1
+      emitDevFunc(map.func, map.alloc.Type.typeArguments(0), List(map.v)++freeVars)
+      if(freeVars.length==0)
+        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s)));".format(quote(sym),"idxX",quote(map.func),"idxX",quote(map.in)))
+      else
+        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s));".format(quote(sym),"idxX",quote(map.func),"idxX",quote(map.in),freeVars.map(quote).mkString(",")))
+      if(getVarLink(sym) != null) 
+          stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      allocOutput(sym,getBlockResult(map.alloc).asInstanceOf[Sym[_]])
+    }
+    case zip: DeliteOpZipWith[_,_,_,_] => {
+      if (deliteKernel == false) throw new RuntimeException("CudaGen: Nested DeliteOpZipWith is not GPUable.")
+      gpuBlockSizeX = quote(zip)+".size"
+      val freeVars = getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))
+      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(zip.inA)+".size"))
+      tabWidth += 1
+      emitDevFunc(zip.func, zip.alloc.Type.typeArguments(0), List(zip.v._1, zip.v._2))
+      if(freeVars.length==0)
+        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s)));".format(quote(sym),"idxX", quote(zip.func), quote(zip.inA),"idxX",quote(zip.inB),"idxX"))
+      else
+        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),"idxX", quote(zip.func), quote(zip.inA),"idxX",quote(zip.inB),"idxX",freeVars.map(quote).mkString(",")))       
+      if(getVarLink(sym) != null)
+          stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))      
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      allocOutput(sym,getBlockResult(zip.alloc).asInstanceOf[Sym[_]])
+    } 
+    case mapR:DeliteOpMapReduce[_,_,_] => {
+      emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
+      emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+      stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
+      addVarLink(getBlockResult(mapR.map).asInstanceOf[Sym[_]],sym)
+      emitBlock(mapR.map)
+      removeVarLink(getBlockResult(mapR.map).asInstanceOf[Sym[_]],sym)
+      stream.println(addTab()+"for(int cnt=1; cnt<%s.length; cnt++) {".format(quote(mapR.in)))
+      tabWidth += 1
+      stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
+      emitBlock(mapR.map)
+      emitBlock(mapR.reduce)
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+    }
+    case _ => super.emitNode(sym,rhs)
+  }
+}
+
+trait CGenDeliteOps extends CGenEffect with BaseGenDeliteOps {
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    case s:DeliteOpSingleTask[_] =>
+      emitBlock(s.block)
+      emitValDef(sym,quote(getBlockResult(s.block)))
+    
+    //TODO: implement deliteops
+    //case map:DeliteOpMap[_,_,_] =>
+    //case zip: DeliteOpZipWith[_,_,_,_] =>
+    //case mapR:DeliteOpMapReduce[_,_,_] =>
+    case _ => super.emitNode(sym,rhs)
   }
 }

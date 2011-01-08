@@ -1,14 +1,17 @@
 package ppl.dsl.optiml
 
+import datastruct.CudaGenDataStruct
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import scala.virtualization.lms.common._
 import ppl.delite.framework.codegen.delite.DeliteCodeGenOverridesScala
-import ppl.delite.framework.ops.{CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
 import scala.virtualization.lms.internal.{ScalaGenBase, GenericNestedCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
 import java.io._
+import scala.virtualization.lms.internal._
+import ppl.delite.framework.codegen.c.TargetC
+import ppl.delite.framework.ops.{CGenDeliteOps, CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
 
 /**
  * These are the portions of Scala imported into OptiML's scope.
@@ -35,6 +38,10 @@ trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with Cu
     with CudaGenPrimitiveOps with CudaGenMiscOps with CudaGenFunctions with CudaGenEqual with CudaGenIfThenElse
     with CudaGenVariables with CudaGenWhile { val IR: OptiMLScalaOpsPkgExp  }
 
+trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
+    with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
+    with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
+    with CGenVariables with CGenWhile { val IR: OptiMLScalaOpsPkgExp  }
 
 /**
  * This the trait that every OptiML application must extend.
@@ -60,7 +67,8 @@ trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp wit
   def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericNestedCodegen{val IR: OptiMLExp.this.type} = {
     t match {
       case _:TargetScala => new OptiMLCodeGenScala{val IR: OptiMLExp.this.type = OptiMLExp.this}
-      case _:TargetCuda => new OptiMLCodeGenCuda{val IR: OptiMLExp.this.type = OptiMLExp.this} 
+      case _:TargetCuda => new OptiMLCodeGenCuda{val IR: OptiMLExp.this.type = OptiMLExp.this}
+      case _:TargetC => new OptiMLCodeGenC{val IR: OptiMLExp.this.type = OptiMLExp.this} 
       case _ => throw new RuntimeException("optiml does not support this target")
     }
   }
@@ -145,11 +153,12 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   }
 }
 
-trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps// with CudaGenVectorViewOps
+trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct // with CudaGenVectorViewOps
  // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps   //TODO:DeliteCodeGenOverrideScala needed?
 {
 
-  val IR: DeliteApplication with OptiMLExp
+  val IR: DeliteApplication with OptiMLExp with Expressions
+  import IR._
 
   // Maps the scala type to cuda type
   override def remap[A](m: Manifest[A]) : String = m.toString match {
@@ -163,12 +172,105 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => "Vector<float>"
     case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
     case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
-    case "Int" => "int"
-    case "Long" => "long"
-    case "Float" => "float"
-    case "Double" => "double"
-    case "Boolean" => "bool"
-    case _ => throw new Exception("Undefined CUDA type: " + m)
+    case _ => super.remap(m)
   }
 
+  override def isObjectType(m: Manifest[_]) : Boolean = remap(m) match {
+    case "Matrix<int>" => true
+    case "Matrix<long>" => true
+    case "Matrix<float>" => true
+    case "Matrix<double>" => true
+    case "Matrix<bool>" => true
+    case "Vector<int>" => true
+    case "Vector<long>" => true
+    case "Vector<float>" => true
+    case "Vector<double>" => true
+    case "Vector<bool>" => true
+    case _ => super.isObjectType(m)
+  }
+
+  override def copyDataStructureHtoD(sym: Sym[_]) : String = remap(sym.Type) match {
+    case "Matrix<int>" => matrixCopyHtoD(sym)
+    case "Matrix<long>" => matrixCopyHtoD(sym)
+    case "Matrix<float>" => matrixCopyHtoD(sym)
+    case "Matrix<double>" => matrixCopyHtoD(sym)
+    case "Matrix<bool>" => matrixCopyHtoD(sym)
+    case "Vector<int>" => vectorCopyHtoD(sym)
+    case "Vector<long>" => vectorCopyHtoD(sym)
+    case "Vector<float>" => vectorCopyHtoD(sym)
+    case "Vector<double>" => vectorCopyHtoD(sym)
+    case "Vector<bool>" => vectorCopyHtoD(sym)
+    case _ => super.copyDataStructureHtoD(sym)
+  }
+
+  override def copyDataStructureDtoH(sym: Sym[_]) : String = remap(sym.Type) match {
+    case "Matrix<int>" => matrixCopyDtoH(sym)
+    case "Matrix<long>" => matrixCopyDtoH(sym)
+    case "Matrix<float>" => matrixCopyDtoH(sym)
+    case "Matrix<double>" => matrixCopyDtoH(sym)
+    case "Matrix<bool>" => matrixCopyDtoH(sym)
+    case "Vector<int>" => vectorCopyDtoH(sym)
+    case "Vector<long>" => vectorCopyDtoH(sym)
+    case "Vector<float>" => vectorCopyDtoH(sym)
+    case "Vector<double>" => vectorCopyDtoH(sym)
+    case "Vector<bool>" => vectorCopyDtoH(sym)
+    case _ => super.copyDataStructureDtoH(sym)
+  }
+
+  override def allocOutput(newSym: Sym[_], sym: Sym[_]) : Unit = remap(sym.Type) match {
+    case "Matrix<int>" => emitMatrixAllocSym(newSym,sym)
+    case "Matrix<long>" => emitMatrixAllocSym(newSym,sym)
+    case "Matrix<float>" => emitMatrixAllocSym(newSym,sym)
+    case "Matrix<double>" => emitMatrixAllocSym(newSym,sym)
+    case "Matrix<bool>" => emitMatrixAllocSym(newSym,sym)
+    case "Vector<int>" => emitVectorAllocSym(newSym,sym)
+    case "Vector<long>" => emitVectorAllocSym(newSym,sym)
+    case "Vector<float>" => emitVectorAllocSym(newSym,sym)
+    case "Vector<double>" => emitVectorAllocSym(newSym,sym)
+    case "Vector<bool>" => emitVectorAllocSym(newSym,sym)
+    case _ => super.allocOutput(newSym,sym)    
+  }
+
+  override def allocReference(newSym: Sym[_], sym: Sym[_]) : Unit = remap(sym.Type) match {
+    case "Matrix<int>" => emitMatrixAllocRef(newSym,sym)
+    case "Matrix<long>" => emitMatrixAllocRef(newSym,sym)
+    case "Matrix<float>" => emitMatrixAllocRef(newSym,sym)
+    case "Matrix<double>" => emitMatrixAllocRef(newSym,sym)
+    case "Matrix<bool>" => emitMatrixAllocRef(newSym,sym)
+    case "Vector<int>" => emitVectorAllocRef(newSym,sym)
+    case "Vector<long>" => emitVectorAllocRef(newSym,sym)
+    case "Vector<float>" => emitVectorAllocRef(newSym,sym)
+    case "Vector<double>" => emitVectorAllocRef(newSym,sym)
+    case "Vector<bool>" => emitVectorAllocRef(newSym,sym)
+    case _ => super.allocReference(newSym,sym)
+  }
+
+  override def getDSLHeaders: String = {
+    val out = new StringBuilder
+    out.append("#include \"VectorImpl.h\"\n")
+    out.append("#include \"MatrixImpl.h\"\n")
+    //out.append("#include \"RangeVectorImpl.h\"\n")
+    out.toString
+  }
+
+}
+
+trait OptiMLCodeGenC extends OptiMLCodeGenBase with OptiMLCCodeGenPkg with CGenArithOps with CGenDeliteOps with CGenVectorOps with CGenMatrixOps 
+{
+  val IR: DeliteApplication with OptiMLExp
+  import IR._
+
+  override def remap[A](m: Manifest[A]) : String = m.toString match {
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Int]" => "Matrix<int>"
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Long]" => "Matrix<long>"
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Float]" => "Matrix<float>"
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => "Matrix<double>"
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Boolean]" => "Matrix<bool>"
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => "Vector<int>"
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Long]" => "Vector<long>"
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => "Vector<float>"
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
+    case _ => super.remap(m)
+  }
 }

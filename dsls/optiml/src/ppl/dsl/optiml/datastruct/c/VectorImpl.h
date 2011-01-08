@@ -24,24 +24,24 @@ public:
     }
 
     // Accessor Functions
-    __device__ T apply(int idx) {
+    T apply(int idx) {
         return data[idx];
     }
 
-    __device__ void update(int idx, T newVal) {
+    void update(int idx, T newVal) {
         data[idx] = newVal;
     }
 
     // DeliteCoolection
-    __device__ int size() {
+    int size() {
         return length;
     }
 
-    __device__ T dcApply(int idx) {
+    T dcApply(int idx) {
         return data[idx];
     }
 
-    __device__ void dcUpdate(int idx, T value) {
+    void dcUpdate(int idx, T value) {
         data[idx] = value;
     }
     

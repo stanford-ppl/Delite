@@ -3,9 +3,8 @@ package ppl.dsl.optiml
 import datastruct.scala.{NilVector,Vector,Matrix}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
 import java.io.PrintWriter
-
+import scala.virtualization.lms.internal.{CGenBase, CLikeCodegen, CudaGenBase, ScalaGenBase}
 /*
  * Arith definitions for OptiML supported types.
  *
@@ -185,7 +184,7 @@ trait ScalaGenArithOps extends ScalaGenBase {
   }
 }
 
-trait CudaGenArithOps extends CudaGenBase {
+trait CLikeGenArithOps extends CLikeCodegen {
   val IR: ArithOpsExp
   import IR._
 
@@ -203,3 +202,7 @@ trait CudaGenArithOps extends CudaGenBase {
       }
     }
 }
+
+trait CudaGenArithOps extends CudaGenBase with CLikeGenArithOps
+trait CGenArithOps extends CGenBase with CLikeGenArithOps
+

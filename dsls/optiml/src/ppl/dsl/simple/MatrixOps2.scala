@@ -57,6 +57,7 @@ trait ScalaGenMatrixOps2 extends ScalaGenBase {
   }
 }
 
+/*
 trait CGenMatrixOps2 extends CGenBase {
   val IR: MatrixOpsExp2
   import IR._
@@ -69,6 +70,7 @@ trait CGenMatrixOps2 extends CGenBase {
     case _ => super.emitNode(sym, rhs)
   }
 }
+*/
 
 trait DeliteGenMatrixOps2 extends DeliteCodegen {
   val IR: MatrixOpsExp2
