@@ -16,6 +16,8 @@ class TestOP(kernel: String)(deps: DeliteOP*)
 
   def task = kernel
 
+  def id = System.identityHashCode(this).toString
+
   def supportsTarget(target: Targets.Value): Boolean = {
     if (target == Targets.Scala) true
     else false
@@ -41,8 +43,10 @@ class TestOP(kernel: String)(deps: DeliteOP*)
 
 }
 
-class TestMap(func: String)(deps: DeliteOP*)(output: DeliteOP, input: DeliteOP, free: DeliteOP*)
-        extends OP_Map(func, Map[Targets.Value,String](Targets.Scala -> "Unit")) {
+class TestMap[T: Manifest](func: String)(deps: DeliteOP*)(output: DeliteOP, input: DeliteOP, free: DeliteOP*)
+        extends OP_Map("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+
+  override val id = System.identityHashCode(this).toString
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -57,8 +61,27 @@ class TestMap(func: String)(deps: DeliteOP*)(output: DeliteOP, input: DeliteOP, 
 
 }
 
+class TestImmutableMap[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
+        extends OP_Map("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+
+  override val id = System.identityHashCode(this).toString
+
+  for (dep <- deps) {
+    this.addDependency(dep)
+    dep.addConsumer(this)
+  }
+
+  for (f <- free.reverse) { //need a reverse to preserve order (addInput prepends)
+    this.addInput(f)
+  }
+  this.addInput(input)
+
+}
+
 class TestReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
-        extends OP_Reduce(func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+        extends OP_Reduce("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+
+  override val id = System.identityHashCode(this).toString
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -73,7 +96,9 @@ class TestReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, fr
 }
 
 class TestMapReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
-        extends OP_MapReduce(func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+        extends OP_MapReduce("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+
+  override val id = System.identityHashCode(this).toString
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -87,8 +112,10 @@ class TestMapReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP,
 
 }
 
-class TestZip(func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP, input2: DeliteOP, free: DeliteOP*)
-        extends OP_Zip(func, Map[Targets.Value,String](Targets.Scala -> "Unit")) {
+class TestZip[T: Manifest](func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP, input2: DeliteOP, free: DeliteOP*)
+        extends OP_Zip("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+
+  override val id = System.identityHashCode(this).toString
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -104,8 +131,28 @@ class TestZip(func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP,
 
 }
 
+class TestImmutableZip[T: Manifest](func: String)(deps: DeliteOP*)(input1: DeliteOP, input2: DeliteOP, free: DeliteOP*)
+        extends OP_Zip("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+
+  override val id = System.identityHashCode(this).toString
+
+  for (dep <- deps) {
+    this.addDependency(dep)
+    dep.addConsumer(this)
+  }
+
+  for (f <- free.reverse) {
+    this.addInput(f)
+  }
+  this.addInput(input2)
+  this.addInput(input1)
+
+}
+
 class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*)
-        extends OP_Single(kernel, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+        extends OP_Single("", kernel, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+
+  override val id = System.identityHashCode(this).toString
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -115,5 +162,22 @@ class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*
   for (input <- inputs.reverse) { //need a reverse to preserve order (addInput prepends)
     this.addInput(input)
   }
+
+}
+
+class TestForeach(func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
+        extends OP_Foreach("", func, Map[Targets.Value,String](Targets.Scala -> "Unit")) {
+
+  override val id = System.identityHashCode(this).toString
+
+  for (dep <- deps) {
+    this.addDependency(dep)
+    dep.addConsumer(this)
+  }
+
+  for (f <- free.reverse) { //need a reverse to preserve order (addInput prepends)
+    this.addInput(f)
+  }
+  this.addInput(input)
 
 }

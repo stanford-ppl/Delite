@@ -36,7 +36,7 @@ trait VectorImplOpsInlinedExp extends VectorImplOpsInlined {
 //  }
 //
 //  def vector_trans_impl[A](implicit mA: Manifest[A], vA: Manifest[Vector[A]]) = doLambda[Vector[A], Vector[A]]{ v =>
-//    val out = vector_new[A](!v.is_row, v.length) //new VectorImpl[A](v.length, !v.is_row)
+//    val out = vector_new[A](!v.isRow, v.length) //new VectorImpl[A](v.length, !v.isRow)
 //    for (i <- 0 until v.length){
 //      out(i) = v(i)
 //    }
@@ -44,7 +44,7 @@ trait VectorImplOpsInlinedExp extends VectorImplOpsInlined {
 //  }
 
 //  def vector_toboolean_impl[A](v: Vector[A])(implicit conv: A => Boolean) : Vector[Boolean] = {
-//    val out = newVector[Boolean](v.length, v.is_row)
+//    val out = newVector[Boolean](v.length, v.isRow)
 //    for (i <- 0 until v.length){
 //      out(i) = conv(v(i))
 //    }
@@ -53,7 +53,7 @@ trait VectorImplOpsInlinedExp extends VectorImplOpsInlined {
 
 //    def vector_plus_impl[A] = vector_map_impl[A,A]( (a,b) => a + b )
 //    def vector_map_impl[A,B](f: A => B) = doLambda[Vector[A], Vector[B]]{ v =>
-//      val out = new VectorImpl[B](v.length, v.is_row)
+//      val out = new VectorImpl[B](v.length, v.isRow)
 //      for (i <- 0 until v.length){
 //        out(i) = f(v(i))
 //      }

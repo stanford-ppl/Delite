@@ -112,7 +112,7 @@ val x388 = x375.close()
 x373
 }
 val x11 = x10.length
-val x12 = x10.is_row
+val x12 = x10.isRow
 val x13 = {
 new ppl.dsl.optiml.datastruct.scala.VectorImpl[Boolean](x11,x12)
 }
@@ -163,7 +163,7 @@ val x43 = x31
 val x44 = x8(x37)
 val x58 = {
 val x45 = x43.length
-val x46 = x43.is_row
+val x46 = x43.isRow
 val x47 = {
 new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x45,x46)
 }
@@ -190,7 +190,7 @@ val x64 = x35
 val x44 = x8(x37)
 val x78 = {
 val x65 = x64.length
-val x66 = x64.is_row
+val x66 = x64.isRow
 val x67 = {
 new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x65,x66)
 }
@@ -226,7 +226,7 @@ new ppl.dsl.optiml.datastruct.scala.MatrixImpl[Double](x25,x25)
 var x121 = x120
 val x103 = {
 val x91 = x89.length
-val x92 = x89.is_row
+val x92 = x89.isRow
 val x93 = {
 new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x91,x92)
 }
@@ -244,7 +244,7 @@ x93
 }
 val x118 = {
 val x106 = x104.length
-val x107 = x104.is_row
+val x107 = x104.isRow
 val x108 = {
 new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x106,x107)
 }
@@ -268,7 +268,7 @@ val x125 = x121
 val x126 = x8(x122)
 val x140 = {
 val x127 = x126.length
-val x128 = x126.is_row
+val x128 = x126.isRow
 val x129 = {
 new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x127,x128)
 }
@@ -287,7 +287,7 @@ x129
 }
 val x153 = {
 val x141 = x140.length
-val x142 = x140.is_row
+val x142 = x140.isRow
 val x143 = !x142
 val x144 = {
 new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x141,x143)
@@ -362,7 +362,7 @@ val x186 = x121
 val x126 = x8(x122)
 val x197 = {
 val x127 = x126.length
-val x128 = x126.is_row
+val x128 = x126.isRow
 val x187 = {
 new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x127,x128)
 }
@@ -381,7 +381,7 @@ x187
 }
 val x210 = {
 val x198 = x197.length
-val x199 = x197.is_row
+val x199 = x197.isRow
 val x200 = !x199
 val x201 = {
 new ppl.dsl.optiml.datastruct.scala.VectorImpl[Double](x198,x200)
@@ -465,7 +465,7 @@ val x248 = "  phi = "+x88
 val x249 = println(x248)
 val x250 = println("  mu0 = ")
 val x275 = {
-val x251 = x103.is_row
+val x251 = x103.isRow
 val x273 = if (x251) {
 val x252 = print("[ ")
 val x253 = x103.length
@@ -500,7 +500,7 @@ x273
 }
 val x276 = println("  mu1 = ")
 val x301 = {
-val x277 = x118.is_row
+val x277 = x118.isRow
 val x299 = if (x277) {
 val x278 = print("[ ")
 val x279 = x118.length

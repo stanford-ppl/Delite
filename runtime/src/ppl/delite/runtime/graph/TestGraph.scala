@@ -11,10 +11,14 @@ import ops._
  * Stanford University
  */
 
-class TestGraph extends MapReduceGraph //test choice
+class TestGraph extends ForeachGraph { //test choice
+  EOP.addDependency(_result)
+  _result.addConsumer(EOP)
+  _result = EOP
+}
 
 //Scheduling & Optimized Execution Test
-class SingleGraph extends DeliteTaskGraph {
+abstract class SingleGraph extends DeliteTaskGraph {
   val base = "ppl.delite.runtime.graph.TestKernel"
   val node1 = new TestOP(base+"1a")()
   val node2 = new TestOP(base+"1b")(node1)
@@ -32,20 +36,30 @@ class SingleGraph extends DeliteTaskGraph {
 }
 
 //Simple Map Test
-class MapGraph extends DeliteTaskGraph {
+abstract class MapGraph extends DeliteTaskGraph {
   val base = "ppl.delite.runtime.graph.TestKernel"
-  val node1 = new TestSingle[Array[Int]](base+"Begin")()()
-  val node2 = new TestMap(base+"Map")(node1)(node1, node1) //write output to input
-  val node3 = new TestSingle[Unit](base+"End")(node1,node2)(node1)
+  val node1 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node2 = new TestMap[ArrayColl[Int]](base+"Map")(node1)(node1, node1) //write output to input
+  val node3 = new TestSingle[Unit](base+"End")(node2)(node2)
+
+  _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3)
+  _result = node3
+}
+
+abstract class ImmutableMapGraph extends DeliteTaskGraph {
+  val base = "ppl.delite.runtime.graph.TestKernel"
+  val node1 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node2 = new TestImmutableMap[ArrayColl[Int]](base+"ImmutableMap")(node1)(node1)
+  val node3 = new TestSingle[Unit](base+"End")(node2)(node2)
 
   _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3)
   _result = node3
 }
 
 //Simple Reduce Test
-class ReduceGraph extends DeliteTaskGraph {
+abstract class ReduceGraph extends DeliteTaskGraph {
   val base = "ppl.delite.runtime.graph.TestKernel"
-  val node1 = new TestSingle[Array[Int]](base+"Begin")()()
+  val node1 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
   val node2 = new TestReduce[Int](base+"Reduce")(node1)(node1)
   val node3 = new TestSingle[Unit](base+"Print")(node2)(node2)
 
@@ -53,12 +67,50 @@ class ReduceGraph extends DeliteTaskGraph {
   _result = node3
 }
 
-class MapReduceGraph extends DeliteTaskGraph {
+//Simple ZipWith Test
+abstract class ZipGraph extends DeliteTaskGraph {
   val base = "ppl.delite.runtime.graph.TestKernel"
-  val node1 = new TestSingle[Array[Int]](base+"Begin")()()
+  val node1 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node2 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node3 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node4 = new TestZip[ArrayColl[Int]](base+"Zip")(node1, node2, node3)(node3, node1, node2)
+  val node5 = new TestSingle[Unit](base+"End")(node4)(node4)
+
+  _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3, "node4"->node4, "node5"->node5)
+  _result = node5
+}
+
+abstract class ImmutableZipGraph extends DeliteTaskGraph {
+  val base = "ppl.delite.runtime.graph.TestKernel"
+  val node1 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node2 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node3 = new TestImmutableZip[ArrayColl[Int]](base+"ImmutableZip")(node1,node2)(node1,node2)
+  val node4 = new TestSingle[Unit](base+"End")(node3)(node3)
+
+  _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3, "node4"->node4)
+  _result = node4
+}
+
+//Simple MapReduce Test
+abstract class MapReduceGraph extends DeliteTaskGraph {
+  val base = "ppl.delite.runtime.graph.TestKernel"
+  val node1 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
   val node2 = new TestMapReduce[Int](base+"MapReduce")(node1)(node1)
   val node3 = new TestSingle[Unit](base+"Print")(node2)(node2)
 
   _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3)
   _result = node3
+}
+
+//simple foreach test
+abstract class ForeachGraph extends DeliteTaskGraph {
+  val base = "ppl.delite.runtime.graph.TestKernel"
+  val node1 = new TestSingle[ArrayColl[Int]](base+"Begin")()()
+  val node2 = new TestSingle[ArrayColl[Int]](base+"Out")()()
+  val node3 = new TestForeach(base+"Foreach")(node1,node2)(node1,node2)
+  val node4 = new TestSingle[Unit](base+"Print0")(node3)(node2)
+
+  _ops ++= Map[String,DeliteOP]("node1"->node1, "node2"->node2, "node3"->node3, "node4"->node4)
+  _result = node4
+
 }

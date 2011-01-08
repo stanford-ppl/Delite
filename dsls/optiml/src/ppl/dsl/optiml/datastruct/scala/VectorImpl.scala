@@ -11,15 +11,15 @@ object VectorImpl {
  * Alternatively, everything in this class could be lifted, and we could generate a concrete class to be instantiated
  * in the generated code.
  */
-class VectorImpl[@specialized T: ClassManifest](len: Int, isRow: Boolean) extends Vector[T] {
+class VectorImpl[@specialized T: ClassManifest](len: Int, isrow: Boolean) extends Vector[T] {
   import VectorImpl._
 
   protected var _length = len
-  protected var _is_row = isRow
+  protected var _isRow = isrow
   protected var _data: Array[T] = new Array[T](_length)
 
   def length = _length
-  def is_row = _is_row
+  def isRow = _isRow
   def data = _data
   def doubleData: Array[Double] = _data.asInstanceOf[Array[Double]]
 

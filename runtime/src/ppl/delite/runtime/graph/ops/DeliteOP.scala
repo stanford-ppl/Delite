@@ -24,7 +24,7 @@ abstract class DeliteOP {
 
   def supportsTarget(target: Targets.Value) : Boolean
 
-  protected var dependencyList: List[DeliteOP] = Nil
+  private[graph] var dependencyList: List[DeliteOP] = Nil
 
   final def getDependencies : Seq[DeliteOP] = dependencyList
 
@@ -32,7 +32,7 @@ abstract class DeliteOP {
     dependencyList = dep :: dependencyList
   }
 
-  protected var consumerList: List[DeliteOP] = Nil
+  private[graph] var consumerList: List[DeliteOP] = Nil
 
   final def getConsumers : Seq[DeliteOP] = consumerList
 
@@ -40,8 +40,12 @@ abstract class DeliteOP {
     consumerList = c :: consumerList
   }
 
+  final def replaceConsumer(old: DeliteOP, c: DeliteOP) {
+    consumerList = c :: (consumerList filterNot { _ == old })
+  }
+
   //this is a subset of getDependencies and contains the inputs in the order required to call the task
-  protected var inputList: List[DeliteOP] = Nil
+  private[graph] var inputList: List[DeliteOP] = Nil
 
   final def getInputs : Seq[DeliteOP] = inputList
 
@@ -49,7 +53,7 @@ abstract class DeliteOP {
     inputList = input :: inputList
   }
 
-  var id: String = _
+  def id: String
 
   def nested : DeliteTaskGraph
 

@@ -3,8 +3,8 @@ package ppl.dsl.optiml
 import datastruct.scala.{Vector,Matrix}
 import java.io.{PrintWriter}
 import ppl.delite.framework.{DSLType, DeliteApplication}
-import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.Base
+import ppl.delite.framework.ops.DeliteOpsExp
 
 // file format is m lines with n floats per line, each float separated by whitespaces
 // (same as matlab .dat)
@@ -19,9 +19,9 @@ trait MLInputReaderOps extends DSLType with Base {
   def obj_mlinput_read_vector(filename: Rep[String]) : Rep[Vector[Double]]
 }
 
-trait MLInputReaderOpsExp extends MLInputReaderOps with DSLOpsExp { this: MLInputReaderImplOps =>
-  case class MLInputRead(filename: Exp[String]) extends DSLOp(reifyEffects(mlinput_read_impl(filename)))
-  case class MLInputReadVector(filename: Exp[String]) extends DSLOp(reifyEffects(mlinput_read_vector_impl(filename)))
+trait MLInputReaderOpsExp extends MLInputReaderOps { this: MLInputReaderImplOps with DeliteOpsExp =>
+  case class MLInputRead(filename: Exp[String]) extends DeliteOpSingleTask(reifyEffects(mlinput_read_impl(filename)))
+  case class MLInputReadVector(filename: Exp[String]) extends DeliteOpSingleTask(reifyEffects(mlinput_read_vector_impl(filename)))
 
   def obj_mlinput_read(filename: Exp[String]) = reflectEffect(MLInputRead(filename))
   def obj_mlinput_read_vector(filename: Exp[String]) = reflectEffect(MLInputReadVector(filename))

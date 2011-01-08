@@ -10,9 +10,18 @@ package ppl.dsl.optiml.datastruct.scala
  *
  */
 
-class RangeVectorImpl(start: Int, end: Int, stride: Int, isRow: Boolean) extends VectorImpl[Int](end-start + stride - 1, isRow) {
-  protected var _start = start
-  protected var _stride = stride
+class RangeVectorImpl(__start: Int, __end: Int, __stride: Int, __isRow: Boolean) extends Vector[Int] {
+
+  protected var _start = __start
+  protected var _end = __end
+  protected var _stride = __stride
+  protected var _isRow = __isRow
+
+  def start = _start
+  def end = _end
+  def isRow = _isRow
+  def stride = _stride
+  def length = (_end-_start + _stride - 1)
 
   override def apply(n: Int) : Int = {
     _start + n*_stride
@@ -24,7 +33,7 @@ class RangeVectorImpl(start: Int, end: Int, stride: Int, isRow: Boolean) extends
     throw new IllegalArgumentException("RangeVector cannot be updated")
   }
 
-  override def insert(pos: Int, x: Int): VectorImpl[Int] = {
+  def insert(pos: Int, x: Int): Vector[Int] = {
     throw new IllegalArgumentException("RangeVector cannot be updated")
   }
 

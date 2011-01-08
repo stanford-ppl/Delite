@@ -25,12 +25,19 @@ object Delite {
       println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
       exit(-1)
     }
-    println("Delite Runtime executing with following arguments:")
+    println("Delite Runtime executing with the following arguments:")
     println(args.mkString(","))
+  }
+
+  private def printConfig {
+    println("Delite Runtime executing with " + Config.numThreads + " CPU thread(s) and " + Config.numGPUs + " GPU(s)")
   }
 
   def main(args: Array[String]) {
     printArgs(args)
+
+    printConfig
+
     //extract application arguments
     Arguments.args = args.drop(1)
     //execute
@@ -52,6 +59,8 @@ object Delite {
       case _ => throw new IllegalArgumentException("Requested executor type is not recognized")
     }
 
+    executor.init() //call this first because could take a while and can be done in parallel
+
     //load task graph
     val graph = loadDeliteDEG(args(0))
     //val graph = new TestGraph
@@ -65,14 +74,16 @@ object Delite {
     //compile
     val executable = Compilers.compileSchedule(schedule, graph)
 
+    //execute
     val numTimes = Config.numRuns
-    for (i <- 0 until numTimes) {   
-      EOP.reset
+    for (i <- 1 to numTimes) {
+      println("Beginning Execution Run " + numTimes)
       PerformanceTimer.start("all", false) 
-      executor.run(executable)
+      executor.run(executable) //TODO: need to reset the executables
       EOP.await //await the end of the application program
+      EOP.reset
       PerformanceTimer.stop("all", false)   
-      PerformanceTimer.print("all")   
+      PerformanceTimer.print("all")  
       Stopwatch.print()
     }
 

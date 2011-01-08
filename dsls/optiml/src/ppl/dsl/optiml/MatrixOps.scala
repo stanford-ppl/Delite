@@ -7,8 +7,10 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
+import ppl.delite.framework.ops.DeliteOpsExp
 
 trait MatrixOps extends DSLType with Variables {
+  this: ArithOps =>
 
   object Matrix {
     def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]] = matrix_new(numRows, numCols)
@@ -23,9 +25,9 @@ trait MatrixOps extends DSLType with Variables {
     def apply(i: Rep[Int]) = matrix_apply1(x,i)
     def apply(i: Rep[Int], j: Rep[Int]) = matrix_apply2(x,i,j)
     def update(i: Rep[Int], j: Rep[Int], y: Rep[A]) = matrix_update(x,i,j,y)
-    def +(y: Rep[Matrix[A]])(implicit n: Numeric[A]) = matrix_plus(x,y)
-    def +=(y: Rep[Matrix[A]])(implicit n: Numeric[A]) = matrix_plusequals(x,y)
-    def *(y: Rep[Matrix[A]]) = matrix_times(x,y)
+    def +(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_plus(x,y)
+    def +=(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_plusequals(x,y)
+    def **(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_times(x,y)
     def inv = matrix_inverse(x)
     def ~ = matrix_transpose(x)
     def numRows = matrix_numrows(x)
@@ -39,9 +41,9 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_apply1[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int]): Rep[Vector[A]]
   def matrix_apply2[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
   def matrix_update[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int], y: Rep[A]): Rep[Unit]
-  def matrix_plus[A:Manifest:Numeric](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
-  def matrix_plusequals[A:Manifest:Numeric](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
-  def matrix_times[A:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_plus[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_plusequals[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_times[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_inverse[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_transpose[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_numrows[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
@@ -55,11 +57,15 @@ trait MatrixOps extends DSLType with Variables {
 }
 
 
-trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: MatrixImplOps =>
-//trait MatrixOpsRepExp extends MatrixOps with MatrixImplOps with DSLOpsExp with FunctionsExp with TupleOpsExp with VariablesExp {
+trait MatrixOpsExp extends MatrixOps with VariablesExp {
+  this: MatrixImplOps with ArithOpsExp with DeliteOpsExp  =>
+
   implicit def varToRepMatOps[A:Manifest](x: Var[Matrix[A]]) = new matRepCls(readVar(x))
 
+
+  //////////////////////////////////////////////////
   // implemented via method on real data structure
+
   case class MatrixApply1[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[Vector[A]]
   case class MatrixApply2[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) extends Def[A]
   case class MatrixUpdate[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) extends Def[Unit]
@@ -70,22 +76,49 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
      val mM = manifest[MatrixImpl[A]]
   }
 
+
+
+  /////////////////////////////////////
   // implemented via kernel embedding
-  case class MatrixPlus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
-    extends DSLOp(reifyEffects(matrix_plus_impl[A](x,y)))
 
   case class MatrixPPrint[A:Manifest](x: Exp[Matrix[A]])
-    extends DSLOp(reifyEffects(matrix_pprint_impl[A](x)))
+    extends DeliteOpSingleTask(reifyEffects(matrix_pprint_impl[A](x)))
 
-  case class MatrixPlusEquals[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
-    extends DSLOp(reifyEffects(matrix_plusequals_impl[A](x,y)))
-
-  case class MatrixTimes[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) extends Def[Matrix[A]]
   case class MatrixInverse[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
   case class MatrixTranspose[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
 
   // if x is an m x n MatrixOps, Identity(x) is an n x n square MatrixOps with ones on the diagonal and zeroes elsewhere
   case class MatrixIdentity[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
+
+
+
+  ////////////////////////////////
+  // implemented via delite ops
+
+  case class MatrixPlus[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
+    extends DeliteOpZipWith[A,A,A,Matrix] {
+
+    val alloc = reifyEffects(Matrix[A](inA.numRows, inA.numCols))
+    val v = (fresh[A],fresh[A])
+    val func = v._1 + v._2
+  }
+
+  case class MatrixPlusEquals[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
+    extends DeliteOpZipWith[A,A,A,Matrix] {
+
+    val alloc = inA
+    val v = (fresh[A],fresh[A])
+    val func = v._1 + v._2
+  }
+
+  case class MatrixTimes[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
+    extends DeliteOpZipWith[A,A,A,Matrix] {
+
+    val alloc = reifyEffects(Matrix[A](inA.numRows, inA.numCols))
+    val v = (fresh[A],fresh[A])
+    val func = v._1 * v._2
+  }
+
 
   def matrix_apply1[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = MatrixApply1[A](x,i)
   def matrix_apply2[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) = MatrixApply2[A](x,i,j)
@@ -94,9 +127,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
   def matrix_numcols[A:Manifest](x: Exp[Matrix[A]]) = MatrixNumCols(x)
   def matrix_insertrow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(MatrixInsertRow(x,pos,y))
 
-  def matrix_plusequals[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectMutation(MatrixPlusEquals(x,y))
-  def matrix_plus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixPlus(x, y)
-  def matrix_times[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixTimes(x, y)
+  def matrix_plusequals[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectMutation(MatrixPlusEquals(x,y))
+  def matrix_plus[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixPlus(x, y)
+  def matrix_times[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = MatrixTimes(x, y)
   def matrix_inverse[A:Manifest](x: Exp[Matrix[A]]) = MatrixInverse(x)
   def matrix_transpose[A:Manifest](x: Exp[Matrix[A]]) = MatrixTranspose(x)
   def matrix_pprint[A:Manifest](x: Exp[Matrix[A]]) = reflectEffect(MatrixPPrint(x))
@@ -107,15 +140,17 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp with DSLOpsExp { this: Ma
  *  Optimizations for composite MatrixOps operations.
  */
 
-trait MatrixOpsExpOpt extends MatrixOpsExp { this: MatrixImplOps =>
-  override def matrix_plus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
+trait MatrixOpsExpOpt extends MatrixOpsExp {
+  this: MatrixImplOps with ArithOpsExp with DeliteOpsExp  =>
+
+  override def matrix_plus[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
     // (AB + AD) == A(B + D)
     case (Def(MatrixTimes(a, b)), Def(MatrixTimes(c, d))) if (a == c) => MatrixTimes[A](a.asInstanceOf[Exp[Matrix[A]]], MatrixPlus[A](b.asInstanceOf[Exp[Matrix[A]]],d.asInstanceOf[Exp[Matrix[A]]]))
     // ...
     case _ => super.matrix_plus(x, y)
   }
 
-  override def matrix_times[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
+  override def matrix_times[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
     // X^-1*X = X*X^-1 = I (if X is non-singular)
     case (Def(MatrixInverse(a)), b) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])
     case (b, Def(MatrixInverse(a))) if (a == b) => MatrixIdentity[A](a.asInstanceOf[Exp[Matrix[A]]])

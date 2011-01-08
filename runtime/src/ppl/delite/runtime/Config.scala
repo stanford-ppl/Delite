@@ -25,22 +25,21 @@ object Config {
 
   val numRuns: Int = System.getProperty("numRuns", "1").toInt
 
+  val deliteHome: String = System.getProperty("delite.home", System.getProperty("user.dir"))
 
   /***********
-   * Statistics and Metrics Section
-   */
-  val dumpStats: Boolean = if(System.getProperty("dump-stats") == null) false else true
+    * Statistics and Metrics Section
+    */
+   val dumpStats: Boolean = if(System.getProperty("dump-stats") == null) false else true
 
-  val dumpStatsComponent: String = System.getProperty("dumpStatsComponent", "all")
+   val dumpStatsComponent: String = System.getProperty("dumpStatsComponent", "all")
 
-  val dumpStatsOverwrite: Boolean = if(System.getProperty("dump-stats-overwrite")== null) false else true
+   val dumpStatsOverwrite: Boolean = if(System.getProperty("dump-stats-overwrite")== null) false else true
 
-  val statsOutputDirectory: String = System.getProperty("statsOutputDirectory")
-  if(dumpStats && statsOutputDirectory == null) throw new RuntimeException("dump-stats option enabled but did not provide a statsOutputDirectory")
+   val statsOutputDirectory: String = System.getProperty("statsOutputDirectory")
+   if(dumpStats && statsOutputDirectory == null) throw new RuntimeException("dump-stats option enabled but did not provide a statsOutputDirectory")
 
-  val statsOutputFilename: String = System.getProperty("statsOutputFilename")
-  if(dumpStats && statsOutputFilename == null) throw new RuntimeException("dump-stats option enabled but did not provide a statsOutputFilename")
-
-
-
+   val statsOutputFilename: String = System.getProperty("statsOutputFilename")
+   if(dumpStats && statsOutputFilename == null) throw new RuntimeException("dump-stats option enabled but did not provide a statsOutputFilename")
+  
 }

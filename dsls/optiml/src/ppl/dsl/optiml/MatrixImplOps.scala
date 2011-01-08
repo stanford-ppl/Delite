@@ -4,14 +4,14 @@ import datastruct.scala.{Vector,Matrix}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 
-trait MatrixImplOps { this: Base =>
-  def matrix_plus_impl[A:Manifest:Numeric](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) : Rep[Matrix[A]]
-  def matrix_plusequals_impl[A:Manifest:Numeric](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) : Rep[Matrix[A]]
+trait MatrixImplOps { this: OptiML =>
+  def matrix_plus_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) : Rep[Matrix[A]]
+  def matrix_plusequals_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) : Rep[Matrix[A]]
   def matrix_pprint_impl[A:Manifest](m: Rep[Matrix[A]]) : Rep[Unit]
 }
 
 trait MatrixImplOpsStandard extends MatrixImplOps {
-  this: BaseExp with ScalaOpsPkg with MatrixOps with VectorOps =>
+  this: OptiML =>
   
   private val base = "ppl.dsl.optiml"
 
@@ -41,7 +41,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   ///////////////
   // kernels
 
-  def matrix_plusequals_impl[A:Manifest:Numeric](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {
+  def matrix_plusequals_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {
     val out = m1
     for (i <- 0 until out.numRows) {
       for (j <- 0 until out.numCols) {
@@ -51,7 +51,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out
   }
 
-  def matrix_plus_impl[A:Manifest:Numeric](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])  = zipWith[A,A](m1, m2, (a,b) => a+b)
+  def matrix_plus_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])  = zipWith[A,A](m1, m2, (a,b) => a+b)
 
   def matrix_pprint_impl[A:Manifest](m: Rep[Matrix[A]]) = {
     for (i <- 0 until m.numRows){

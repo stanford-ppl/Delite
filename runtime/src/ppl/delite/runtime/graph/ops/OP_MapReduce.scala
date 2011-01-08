@@ -1,6 +1,7 @@
 package ppl.delite.runtime.graph.ops
 
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.graph.DeliteTaskGraph
 
 /**
  * Author: Kevin J. Brown
@@ -11,7 +12,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-class OP_MapReduce(func: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
+class OP_MapReduce(val id: String, func: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
 
   final def isDataParallel = true
 
@@ -36,12 +37,26 @@ class OP_MapReduce(func: String, resultType: Map[Targets.Value,String]) extends 
    * Chunks require same dependency & input lists
    */
   def chunk(i: Int): OP_MapReduce = {
-    val r = new OP_MapReduce(function, Targets.unitTypes(resultType))
-    r.id = this.id + "_" + i
+    val r = new OP_MapReduce(id+"_"+i, function, Targets.unitTypes(resultType))
     r.dependencyList = dependencyList //lists are immutable so can be shared
     r.inputList = inputList
     for (dep <- getDependencies) dep.addConsumer(r)
     r
+  }
+
+  def header(kernel: String, graph: DeliteTaskGraph): OP_Single = {
+    val h = new OP_Single(id+"_h", kernel, Map(Targets.Scala->kernel))
+    //header assumes all inputs of map
+    h.dependencyList = dependencyList
+    h.inputList = inputList
+    h.addConsumer(this)
+    for (dep <- getDependencies) dep.replaceConsumer(this, h)
+    //map consumes header, map's consumers remain unchanged
+    dependencyList = List(h)
+    inputList = List(h)
+
+    graph._ops += (id+"_h") -> h
+    h
   }
 
   def nested = null

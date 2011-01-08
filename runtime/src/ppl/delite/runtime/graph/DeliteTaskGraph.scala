@@ -37,19 +37,21 @@ object DeliteTaskGraph {
   }
 
   def parseOps(ops: List[Any])(implicit graph: DeliteTaskGraph) {
-    //println("Found: "  + ops)
     for(_op <- ops) {
       val op = _op.asInstanceOf[Map[Any, Any]]
       val opType = getFieldString(op, "type")
       opType match {
         case "SingleTask" => processCommon(op, "OP_Single")
         case "MapReduce" => processCommon(op, "OP_MapReduce")
+        case "Map" => processCommon(op, "OP_Map")
+        case "Reduce" => processCommon(op, "OP_Reduce")
+        case "ZipWith" => processCommon(op, "OP_Zip")
+        case "Foreach" => processCommon(op, "OP_Foreach")
         case "Arguments" => processArgumentsTask(op)
         case "EOP" => processEOPTask(op)
         case err@_ => unsupportedType(err)
       }
     }
-
   }
 
   def getFieldString(map: Map[Any, Any], field:String): String = {
@@ -106,12 +108,14 @@ object DeliteTaskGraph {
     }
 
     val newop = opType match {
-      case "OP_Single" => new OP_Single("kernel_"+id, resultMap)
-      case "OP_MapReduce" => new OP_MapReduce("kernel_"+id, resultMap)
+      case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
+      case "OP_MapReduce" => new OP_MapReduce(id, "kernel_"+id, resultMap)
+      case "OP_Map" => new OP_Map(id, "kernel_"+id, resultMap)
+      case "OP_Reduce" => new OP_Reduce(id, "kernel_"+id, resultMap)
+      case "OP_Zip" => new OP_Zip(id, "kernel_"+id, resultMap)
+      case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap)
       case other => error("OP Type not recognized: " + other)
     }
-
-    newop.id = id
 
     //handle inputs
     val inputs = getFieldList(op, "inputs")
@@ -137,7 +141,6 @@ object DeliteTaskGraph {
       newop.addDependency(controlDep)
       controlDep.addConsumer(newop)
     }
-
     
     //add new op to graph list of ops
     graph._ops += id -> newop
@@ -191,8 +194,7 @@ object DeliteTaskGraph {
     val tempSyms = new HashMap[String,DeliteOP]
     for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) {
       val key = (temp.asInstanceOf[Map[String,Any]].keys.head)
-      val tempOp = new OP_Single(null, null)
-      tempOp.id = key
+      val tempOp = new OP_Single(key, null, null)
       tempSyms += key -> tempOp
       cudaMetadata.tempOps ::= tempOp
     }
@@ -244,14 +246,11 @@ object DeliteTaskGraph {
 
 class DeliteTaskGraph {
 
-
   val _ops = new HashMap[String, DeliteOP]
   var _result: DeliteOP = _
 
   var _version = 0.0
   var _kernelPath = ""
-
-
 
   def result : DeliteOP = _result
   def version: Double = _version

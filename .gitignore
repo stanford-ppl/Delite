@@ -12,3 +12,4 @@ project/boot
 runtime/project/boot
 generated
 *.deg
+*.debug

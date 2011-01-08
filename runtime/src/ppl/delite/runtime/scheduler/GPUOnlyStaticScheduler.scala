@@ -38,12 +38,12 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
     enqueueRoots(graph)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
-      scheduleOne(op)
+      scheduleOne(op, graph)
       processConsumers(op)
     }
   }
 
-  private def scheduleOne(op: DeliteOP) {
+  private def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph) {
     if (op.supportsTarget(Targets.Cuda)) { //schedule on GPU resource
       if (op.isDataParallel) {
         splitGPU(op)
@@ -55,7 +55,7 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
     }
     else { //schedule on CPU resource
       if (op.isDataParallel) {
-        split(op)
+        split(op, graph)
       }
       else {
         cpuResource.add(op)
@@ -81,26 +81,20 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
     }
   }
 
-  //TODO: since codegen of data parallel ops is non-optional, some of this should be factored out of the different schedulers
-  private def split(op: DeliteOP) {
-    val chunk = op match { //NOTE: match on OP type since different data parallel ops can have different semantics / scheduling implications
-      case map: OP_Map => Map_SMP_Array_Generator.makeChunk(map, 0, 1)
-      case reduce: OP_Reduce => Reduce_SMP_Array_Generator.makeChunk(reduce, 0, 1)
-      case mapReduce: OP_MapReduce => MapReduce_SMP_Array_Generator.makeChunk(mapReduce, 0, 1)
-      case other => error("OP type not recognized: " + other.getClass.getSimpleName)
-    }
+  private def split(op: DeliteOP, graph: DeliteTaskGraph) {
+    val header = OpHelper.expand(op, 1, graph)
+    cpuResource.add(header)
+    header.scheduledResource = 0
+    header.isScheduled = true
+
+    val chunk = OpHelper.split(op, 0, 1, graph.kernelPath)
     cpuResource.add(chunk)
     chunk.scheduledResource = 0
     chunk.isScheduled = true
   }
 
   private def splitGPU(op: DeliteOP) {
-    val chunk = op match { //NOTE: match on OP type since different data parallel ops can have different semantics / scheduling implications
-      case map: OP_Map => map.setKernelName(map.function); map
-      case reduce: OP_Reduce => reduce.setKernelName(reduce.function); reduce
-      case mapReduce: OP_MapReduce => mapReduce.setKernelName(mapReduce.function); mapReduce
-      case other => error("OP type not recognized: " + other.getClass.getSimpleName)
-    }
+    val chunk = OpHelper.splitGPU(op)
     gpuResource.add(chunk)
     chunk.scheduledResource = 1
     chunk.isScheduled = true

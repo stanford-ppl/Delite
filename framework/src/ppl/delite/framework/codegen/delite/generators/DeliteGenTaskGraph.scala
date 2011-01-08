@@ -60,6 +60,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       val bodyStream = new PrintWriter(bodyString)
 
       try{
+        rhs match {
+          case op:DeliteOp[_] => deliteKernel = true
+          case _ => deliteKernel = false
+        }
+
         //initialize
         gen.kernelInit(sym, inVals, inVars, resultIsVar)
 
@@ -69,7 +74,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
         val resultType = if (gen.toString == "scala") {
           rhs match {
+            case map: DeliteOpMap[_,_,_] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
+            case zip: DeliteOpZipWith[_,_,_,_] => "generated.scala.DeliteOpZipWith[" + gen.remap(zip.v._1.Type) + "," + gen.remap(zip.v._2.Type) + "," + gen.remap(zip.func.Type) + "," + gen.remap(zip.alloc.Type) +"]"
+            case red: DeliteOpReduce[_] => "generated.scala.DeliteOpReduce[" + gen.remap(red.func.Type) + "]"
             case mapR: DeliteOpMapReduce[_,_,_] => "generated.scala.DeliteOpMapReduce[" + gen.remap(mapR.mV.Type) + "," + gen.remap(mapR.reduce.Type) + "]"
+            case foreach: DeliteOpForeach[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
             case _ => gen.remap(sym.Type)
           }
         } else gen.remap(sym.Type)
@@ -139,11 +148,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     // emit task graph node
     rhs match {
-      case DeliteOpSingleTask(block) => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
+      case s:DeliteOpSingleTask[_] => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
       case m:DeliteOpMap[_,_,_] => emitMap(sym, inputs, inControlDeps, antiDeps)
       case r:DeliteOpReduce[_] => emitReduce(sym, inputs, inControlDeps, antiDeps)
       case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(sym, inputs,inControlDeps, antiDeps)
       case z:DeliteOpZipWith[_,_,_,_] => emitZipWith(sym, inputs, inControlDeps, antiDeps)
+      case f:DeliteOpForeach[_,_] => emitForeach(sym, inputs, inControlDeps, antiDeps)
       case _ => emitSingleTask(sym, inputs, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
     }
 
@@ -184,6 +194,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   def emitZipWith(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"ZipWith\"")
+    emitOpCommon(sym, inputs, controlDeps, antiDeps)
+  }
+
+  def emitForeach(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+    stream.print("{\"type\":\"Foreach\"")
     emitOpCommon(sym, inputs, controlDeps, antiDeps)
   }
 
