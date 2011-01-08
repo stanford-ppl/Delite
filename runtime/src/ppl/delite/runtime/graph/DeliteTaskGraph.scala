@@ -184,6 +184,12 @@ object DeliteTaskGraph {
     val metadataMap = getFieldMap(metadataAll, "cuda")
     val cudaMetadata = newop.cudaMetadata
 
+    //check library call
+    cudaMetadata.libCall = metadataMap.get("gpuLibCall") match {
+      case Some(x) => x
+      case None => null
+    }
+
     for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
       val value = (input.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
       val data = cudaMetadata.newInput

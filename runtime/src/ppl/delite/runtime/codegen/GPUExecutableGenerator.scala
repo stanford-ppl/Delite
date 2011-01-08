@@ -160,7 +160,7 @@ object GPUExecutableGenerator {
       //write the output allocation
       writeOutputAlloc(op, out)
       //write the function call
-      writeFunctionCall(op, out)
+      if (op.cudaMetadata.libCall == null) writeFunctionCall(op, out) else writeLibraryCall(op, out)
       //write the setter
       var addSetter = false
       for (cons <- op.getConsumers) {
@@ -268,6 +268,15 @@ object GPUExecutableGenerator {
     out.append(getSymGPU(op)) //first kernel input is OP output
     writeInputs(op, out) //then all op inputs
     writeTemps(op, out) //then all op temporaries
+    out.append(");\n")
+  }
+
+  private def writeLibraryCall(op: DeliteOP, out: StringBuilder) {
+    out.append(op.cudaMetadata.libCall)
+    out.append('(')
+    out.append(getSymGPU(op)) //first kernel input is OP output
+    writeInputs(op, out) //then all op inputs
+    out.append(",kernelStream")
     out.append(");\n")
   }
 
