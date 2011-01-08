@@ -71,6 +71,8 @@ object ExecutableGenerator {
   private[codegen] def writePath(kernelPath: String, out: StringBuilder) {
     if (kernelPath == "") return
     out.append("import ")    
+    out.append("generated.scala._\n")
+    /*
     var begin = 0
     var end = kernelPath.length
     if (kernelPath.startsWith("/")) begin += 1
@@ -78,6 +80,7 @@ object ExecutableGenerator {
     val packageName = kernelPath.replace('/','.').substring(begin,end)
     out.append(packageName)
     out.append(".scala._\n")
+    */
   }
 
   private def addKernelCalls(resource: ArrayDeque[DeliteOP], location: Int, out: StringBuilder, syncList: ArrayList[DeliteOP]) {

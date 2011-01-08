@@ -5,21 +5,17 @@ import math
 from socket import gethostname
 from string import *
 
-delite_apps = ['gda']
-delite_threads = [ 1, 2, 4, 8, 16]
+delite_apps = ['gda']#, 'nb', 'linreg', 'kmeans', 'svm', 'lbp', 'rbm']
+delite_threads = [ 1]#, 2, 4, 8, 16]
 delite_gpus = [ 1, 2 ]
 matlab_apps = []
 c_apps = []
 
-statsFolder = "c:\\dev\stats\\"
-
-STATS_DIR = os.getenv("STATS_DIR")
 DATA_DIR = os.getenv("DATA_DIR")
-CONFIG_DIR = os.getenv("CONFIG_DIR")
 DELITE_HOME = os.getenv("DELITE_HOME")
 
 params = {}
-
+classes = {}
     
 
 def main():
@@ -33,24 +29,25 @@ def main():
     # check all the required environment variables
     if DATA_DIR is None:
         exit("DATA_DIR not defined, needs to be set to point to directory that contains the data folder with datasets")
-    if STATS_DIR is None:
-        exit("STATS_DIR not defined, needs to be set to point to directory with times file.\nThis should match the directory supplied to the Delite runtime to dump its stats")
-    if CONFIG_DIR is None:
-        exit("CONFIG_DIR not defined, need to be set to point to directory with configurations for each machine")
     if DELITE_HOME is None:
         exit("DELITE_HOME not defined, needs to be set to point to Delite home directory")
     loadParams()
+    loadClasses()
     
     # run the delite applications
     for app in delite_apps:
+        print "Running app: " + app + "\n===========================\nGenerating DEG file" 
+        os.putenv("GEN_OPTS", "-Ddelite-build-dir=" + DELITE_HOME +  "/generated/ -Ddelite-deg-filename=" + app + ".deg")
+        os.system(DELITE_HOME + "/bin/gen " + classes[app])
         #do it for each config of delite
         #do it for each thread configuration
         for numThreads in delite_threads:
-            opts = "-DnumThreads=" + str(numThreads) + " -Ddump-stats -Ddump-stats-overwrite -DstatsOutputDirectory=" + str(STATS_DIR) + "/times -D=statsOutputFilename=" + app + "-smp-" +str(numThreads) + ".times"         
+            opts = "-DnumThreads=" + str(numThreads) + " -Ddump-stats -Ddump-stats-overwrite -DstatsOutputDirectory=" + DELITE_HOME  + "/benchmark/times -DstatsOutputFilename=" + app + "-smp-" +str(numThreads) + ".times"         
             os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
             print "running: " + app + " " + params[app],
             print "with config: " + opts + "\n"
-            os.system(DELITE_HOME + "/bin" + app + params[app])
+            os.system(DELITE_HOME + "/bin/exec " + app + ".deg " + params[app])
+
 #        if app.find("gpu") < 0:
 #            for procnum in procnumbers:
 #                launchApp(app, int(procnum), options)
@@ -75,7 +72,7 @@ def main():
 		
 def launchApp(app, procnum, options):
     setApplicationVariables(procnum, options.native)
-    os.putenv("DELITE_BASE", CONFIG_DIR + "/../../")
+    #os.putenv("DELITE_BASE", CONFIG_DIR + "/../../")
     #os.system(CONFIG_DIR + "/" + app + params[app])
 
 def isTflop():
@@ -85,13 +82,22 @@ def isTflop():
     else:
         return False
 
+def loadClasses():
+    f = open(DELITE_HOME + "/benchmark/config/classes", 'r')
+    for line in f:
+        tokens = line.split('|')
+        app = tokens.pop(0)
+        clazz = tokens.pop(0)
+        classes[app] = clazz
+    f.close()
+
 def loadParams():
     if (isTflop()):
         hostname = 'tflop'
     else:
         hostname = 'default'
 		
-    f = open(CONFIG_DIR + 'datasets.' + hostname, 'r')
+    f = open(DELITE_HOME + '/benchmark/config/datasets.' + hostname, 'r')
     for line in f:
         settings = line.split('|')
         app = settings.pop(0)
@@ -104,7 +110,7 @@ def loadParams():
  
 def expand(param):
     if (param[0] == '$'):
-        return DATA_DIR + param[1:len(param)]
+        return DATA_DIR + "/" +  param[1:len(param)]
     else:
         return param   
     
