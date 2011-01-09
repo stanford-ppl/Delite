@@ -1,11 +1,11 @@
-package ppl.delite.framework.codegen.delite.generators
+package ppl.delite.framework.codegen.delite.overrides
 
 import scala.virtualization.lms.common.VariablesExp
 import java.io.PrintWriter
-import scala.virtualization.lms.internal.ScalaGenEffect
 import ppl.delite.framework.ops.DeliteOpsExp
+import scala.virtualization.lms.internal.{CGenEffect, CudaGenEffect, CLikeCodegen, ScalaGenEffect}
 
-trait DeliteGenScalaVariables extends ScalaGenEffect {
+trait DeliteScalaGenVariables extends ScalaGenEffect {
   val IR: VariablesExp with DeliteOpsExp
   import IR._
 
@@ -32,3 +32,15 @@ trait DeliteGenScalaVariables extends ScalaGenEffect {
     }
   }
 }
+
+trait DeliteCLikeGenVariables extends CLikeCodegen {
+  val IR: VariablesExp with DeliteOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = super.emitNode(sym, rhs)
+
+}
+
+trait DeliteCudaGenVariables extends CudaGenEffect with DeliteCLikeGenVariables
+
+trait DeliteCGenVariables extends CGenEffect with DeliteCLikeGenVariables

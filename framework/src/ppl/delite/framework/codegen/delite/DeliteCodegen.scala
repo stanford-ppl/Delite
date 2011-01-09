@@ -1,10 +1,11 @@
 package ppl.delite.framework.codegen.delite
 
-import generators.{DeliteGenScalaVariables, DeliteGenTaskGraph}
+import generators.{DeliteGenTaskGraph}
 import java.io.PrintWriter
+import overrides.{DeliteScalaGenVariables, DeliteAllOverridesExp}
 import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common._
 import ppl.delite.framework.{Config, DeliteApplication}
+import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
 
 
@@ -21,6 +22,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
   // per kernel, used by DeliteGenTaskGraph
   var controlDeps : List[Sym[_]] = _
+  var emittedNodes : List[Sym[_]] = _
 
   // global, used by DeliteGenTaskGraph
   val kernelMutatingDeps : HashMap[Sym[_],List[Sym[_]]] = new HashMap() // from kernel to its mutating deps    
@@ -99,11 +101,14 @@ trait DeliteCodegen extends GenericNestedCodegen {
     scope = e4 ::: scope
     generators foreach { _.scope = scope }
 
+
+    emittedNodes = Nil
     for (t@TP(sym, rhs) <- e4) {
       // we only care about effects that are scheduled to be generated before us, i.e.
       // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
       // n3 we want controlDeps to contain e1 and e2
       controlDeps = e4.take(e4.indexOf(t)) filter { effects contains _ } map { _.sym }
+      if(!rhs.isInstanceOf[Reify[_]]) emittedNodes = emittedNodes :+ t.sym
       emitNode(sym, rhs)
     }
 
@@ -172,5 +177,3 @@ trait DeliteCodegen extends GenericNestedCodegen {
 }
 
 trait DeliteCodeGenPkg extends DeliteGenTaskGraph
-
-trait DeliteCodeGenOverridesScala extends DeliteGenScalaVariables

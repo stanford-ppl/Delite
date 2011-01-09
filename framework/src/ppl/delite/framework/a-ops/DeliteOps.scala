@@ -19,6 +19,33 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
   class DeliteOpSingleTask[A](val block: Exp[A]) extends DeliteOp[A]
 
   /**
+   * A Conditional task - will emit a Conditional DEG node as well as kernels for the then and else clauses
+   *
+   * @param  cond    the condition of the Conditional
+   * @param  thenp   the Then block to execute if condition is true
+   * @param  elsep   the Else block to execute if condition is false
+   */
+  case class DeliteOpCondition[A](cond: Exp[Boolean], thenp: Exp[A], elsep: Exp[A]) extends DeliteOp[A]
+
+  /**
+   * An indexed loop - will emit an indexed loop DEG node as well as a kernel for the body
+   *
+   * @param  start  starting index
+   * @param  end    ending index (not included in loop)
+   * @param  idx    index id that will be refered to in the body, this could be passed in as input to the body or the body could be inlined
+   * @param  body   the body of the loop
+   */
+  case class DeliteOpIndexedLoop(_start: Exp[Int], _end: Exp[Int], _idx: Exp[Int], _body: Exp[Unit]) extends DeliteOp[Unit]
+
+  /**
+   * An while loop - will emit an while loop DEG node as well as a kernel for the body
+   *
+   * @param  _cond  condition expression, will be emitted as a kernel
+   * @param  body   the body of the loop
+   */
+  case class DeliteOpWhileLoop(_cond: Exp[Boolean], _body: Exp[Unit]) extends DeliteOp[Unit]
+
+  /**
    * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
    * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
    *
@@ -454,7 +481,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s)));".format(quote(sym),"idxX",quote(map.func),"idxX",quote(map.in)))
       else
         stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s));".format(quote(sym),"idxX",quote(map.func),"idxX",quote(map.in),freeVars.map(quote).mkString(",")))
-      if(getVarLink(sym) != null) 
+      if(getVarLink(sym) != null)
           stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
       tabWidth -= 1
       stream.println(addTab()+"}")
@@ -470,13 +497,13 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       if(freeVars.length==0)
         stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s)));".format(quote(sym),"idxX", quote(zip.func), quote(zip.inA),"idxX",quote(zip.inB),"idxX"))
       else
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),"idxX", quote(zip.func), quote(zip.inA),"idxX",quote(zip.inB),"idxX",freeVars.map(quote).mkString(",")))       
+        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),"idxX", quote(zip.func), quote(zip.inA),"idxX",quote(zip.inB),"idxX",freeVars.map(quote).mkString(",")))
       if(getVarLink(sym) != null)
-          stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))      
+          stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
       tabWidth -= 1
       stream.println(addTab()+"}")
       allocOutput(sym,getBlockResult(zip.alloc).asInstanceOf[Sym[_]])
-    } 
+    }
     case mapR:DeliteOpMapReduce[_,_,_] => {
       emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
       emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
@@ -504,7 +531,7 @@ trait CGenDeliteOps extends CGenEffect with BaseGenDeliteOps {
     case s:DeliteOpSingleTask[_] =>
       emitBlock(s.block)
       emitValDef(sym,quote(getBlockResult(s.block)))
-    
+
     //TODO: implement deliteops
     //case map:DeliteOpMap[_,_,_] =>
     //case zip: DeliteOpZipWith[_,_,_,_] =>

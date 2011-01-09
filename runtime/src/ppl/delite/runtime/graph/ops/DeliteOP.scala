@@ -7,7 +7,7 @@ import ppl.delite.runtime.graph.targets._
  * Author: Kevin J. Brown
  * Date: Oct 11, 2010
  * Time: 1:33:29 AM
- * 
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
@@ -32,6 +32,10 @@ abstract class DeliteOP {
     dependencyList = dep :: dependencyList
   }
 
+  final def replaceDependency(old: DeliteOP, dep: DeliteOP) {
+    dependencyList = dep :: (dependencyList filterNot { _ == old })
+  }
+
   private[graph] var consumerList: List[DeliteOP] = Nil
 
   final def getConsumers : Seq[DeliteOP] = consumerList
@@ -53,6 +57,10 @@ abstract class DeliteOP {
     inputList = input :: inputList
   }
 
+  final def replaceInput(old: DeliteOP, input: DeliteOP) {
+    inputList = input :: (inputList filterNot { _ == old })
+  }
+
   def id: String
 
   def nested : DeliteTaskGraph
@@ -66,7 +74,7 @@ abstract class DeliteOP {
   def isDataParallel : Boolean
 
   //TODO: do all OP subtypes support CUDA? (maybe shouldn't be here)
-  val cudaMetadata = new CudaMetadata
+  var cudaMetadata = new CudaMetadata
 
   /**
    * these methods/state are used for scheduling
@@ -78,7 +86,7 @@ abstract class DeliteOP {
   def processSchedulable {
     var free = true
     for (dep <- getDependencies) {
-      free &&= dep.isScheduled    
+      free &&= dep.isScheduled
     }
     if (free) isSchedulable = true
   }
