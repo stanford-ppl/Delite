@@ -9,8 +9,8 @@ object ErrorMessageTests extends DeliteApplication with OptiMLExp {
  
   def main() = {
     // create two length 3 Vectors of Point objects
-    val v1 = Vector[Point](3)
-    val v2 = Vector[Point](3)
+    val v1 = Vector[Point](3,true)
+    val v2 = Vector[Point](3,true)
 
     // ex. 1 try to add these vectors: produces a static error because Point is not a built-in DSL type and it does not
     // support the Numeric interface

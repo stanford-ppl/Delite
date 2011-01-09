@@ -4,7 +4,7 @@ import ppl.delite.runtime.scheduler.PartialSchedule
 import java.util.{ArrayDeque, ArrayList}
 import java.io.File
 import ppl.delite.runtime.graph.targets.Targets
-import ppl.delite.runtime.graph.ops.DeliteOP
+import ppl.delite.runtime.graph.ops._
 
 /**
  * Author: Kevin J. Brown
@@ -155,12 +155,17 @@ object GPUExecutableGenerator {
         out.append("addEvent(h2dStream, kernelStream);\n")
       }
 
-      //write the temporary allocations
-      writeTempAllocs(op, out)
-      //write the output allocation
-      writeOutputAlloc(op, out)
-      //write the function call
-      writeFunctionCall(op, out)
+      if (op.isInstanceOf[OP_Control])
+        writeControl(op, out)
+      else {
+        //write the temporary allocations
+        writeTempAllocs(op, out)
+        //write the output allocation
+        writeOutputAlloc(op, out)
+        //write the function call
+        writeFunctionCall(op, out)
+      }
+
       //write the setter
       var addSetter = false
       for (cons <- op.getConsumers) {
@@ -357,6 +362,41 @@ object GPUExecutableGenerator {
     out.append(")V\"),")
     out.append(getSymCPU(op))
     out.append(");\n")
+  }
+
+  private def writeControl(op: DeliteOP, out: StringBuilder) {
+    op match {
+      case beginCond: OP_BeginCondition => {
+        out.append("if (")
+        out.append(getSymGPU(beginCond.predicate))
+        out.append(") {\n")
+      }
+      case beginElse: OP_BeginElse => {
+        out.append("} else {\n")
+      }
+      case endCond: OP_EndCondition => {
+        out.append('}')
+        out.append('\n')
+      }
+      case beginWhile: OP_BeginWhile => {
+        val sym = getSymGPU(op).dropRight(1) //the base sym for this while construct
+        out.append("bool ")
+        out.append(sym)
+        out.append("p = ")
+        out.append(getSymGPU(beginWhile.predicate))
+        out.append('\n')
+
+        out.append("while (")
+        out.append(sym)
+        out.append("p) {\n")
+      }
+      case endWhile: OP_EndWhile => {
+        out.append(getSymGPU(op))
+        out.append("p = ")
+        out.append(getSymGPU(endWhile.predicate))
+        out.append("\n}\n")
+      }
+    }
   }
 
   private def writeEventFunction(out: StringBuilder) {

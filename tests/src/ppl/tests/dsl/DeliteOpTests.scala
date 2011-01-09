@@ -17,14 +17,14 @@ object DeliteOpTests extends DeliteApplication with OptiMLExp {
 
   // kernels
   def testMapK() = {
-    val v = Vector[Double](1000)
+    val v = Vector[Double](1000,true)
     val v2 = v map { e => 10 }
     v2.pprint
   }
 
   def testZipK() = {
-    val v1 = Vector[Double](1000)
-    val v2 = Vector[Double](1000) map { e => 2. }
+    val v1 = Vector[Double](1000,true)
+    val v2 = Vector[Double](1000,true) map { e => 2. }
     val v3 = v1 + v2
     v3.pprint
   }
@@ -52,24 +52,24 @@ object DeliteOpTests extends DeliteApplication with OptiMLExp {
 
   // straight-line (nested)
   def testMapS() = {
-    val res = Vector[Double](1) map { e =>
-      val v = Vector[Double](1000)
+    val res = Vector[Double](1,true) map { e =>
+      val v = Vector[Double](1000,true)
       v map { e => 10 }
     }
     res(0).pprint
   }
 
   def testZipS() = {
-    val res = Vector[Double](1) map { e =>
-      val v1 = Vector[Double](1000)
-      val v2 = Vector[Double](1000) map { e => 2. }
+    val res = Vector[Double](1,true) map { e =>
+      val v1 = Vector[Double](1000,true)
+      val v2 = Vector[Double](1000,true) map { e => 2. }
       v1 + v2
     }
     res(0).pprint
   }
 
   def testReduceS() = {
-    val res = Vector[Double](1) map { e =>
+    val res = Vector[Double](1,true) map { e =>
       val v = Vector.range(0, 1000)
       v.sum
     }
@@ -77,7 +77,7 @@ object DeliteOpTests extends DeliteApplication with OptiMLExp {
   }
 
   def testMapReduceS() = {
-    val res = Vector[Double](1) map { e =>
+    val res = Vector[Double](1,true) map { e =>
       val v = Vector.range(0, 1000)
       sum(0, v.length) { i => v(i) }
     }
@@ -85,7 +85,7 @@ object DeliteOpTests extends DeliteApplication with OptiMLExp {
   }
 
   def testForeachS() = {
-    val res = Vector[Double](1) map { e =>
+    val res = Vector[Double](1,true) map { e =>
       val v = Vector.range(0, 10)
       for (e <- v) {
         if ((e > 0) && (e < v.length-1)) {

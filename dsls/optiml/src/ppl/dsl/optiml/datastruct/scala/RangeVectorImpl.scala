@@ -2,6 +2,7 @@ package ppl.dsl.optiml.datastruct.scala
 
 /* A read-only RangeVector that does not allocate any data.
  *
+ *
  * author: Arvind Sujeeth (asujeeth@stanford.edu)
  * last modified: Nov 30, 2010
  *
@@ -10,7 +11,7 @@ package ppl.dsl.optiml.datastruct.scala
  *
  */
 
-class RangeVectorImpl(__start: Int, __end: Int, __stride: Int, __isRow: Boolean) extends Vector[Int] {
+class RangeVectorImpl(__start: Int, __end: Int, __stride: Int, __isRow: Boolean) extends RangeVector {
 
   protected var _start = __start
   protected var _end = __end
@@ -23,17 +24,46 @@ class RangeVectorImpl(__start: Int, __end: Int, __stride: Int, __isRow: Boolean)
   def stride = _stride
   def length = (_end-_start + _stride - 1)
 
-  override def apply(n: Int) : Int = {
+  // TODO (tiark): this crashes scalac for some reason
+  //lazy val data = Array.range(start, end, stride)
+  def data = throw new UnsupportedOperationException("there is a known bug with accessing data in RangeVectorImpl")
+
+  def apply(n: Int) : Int = {
     _start + n*_stride
   }
 
+  def mtrans = {
+    _isRow = !_isRow
+    this
+  }
+
+  def cloneL = { val v = new VectorImpl[Int](0, isRow); v.insertAll(0, this); v }
+
+  def sort(implicit o: Ordering[Int]) = this
+
   // TODO: could make this a lazy initialization and allow updates,
   //       but update would be slow due to the check
-  override def update(index: Int, x: Int) {
+  def update(index: Int, x: Int) {
     throw new IllegalArgumentException("RangeVector cannot be updated")
   }
 
-  def insert(pos: Int, x: Int): Vector[Int] = {
+  def insert(pos: Int, x: Int) {
+    throw new IllegalArgumentException("RangeVector cannot be updated")
+  }
+
+  def insertAll(pos: Int, xs: Vector[Int]) {
+    throw new IllegalArgumentException("RangeVector cannot be updated")
+  }
+
+  def copyFrom(pos: Int, xs: Vector[Int]) {
+    throw new IllegalArgumentException("RangeVector cannot be updated")
+  }
+
+  def removeAll(pos: Int, len: Int) {
+    throw new IllegalArgumentException("RangeVector cannot be updated")
+  }
+
+  def trim {
     throw new IllegalArgumentException("RangeVector cannot be updated")
   }
 

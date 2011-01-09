@@ -48,18 +48,14 @@ object EOP extends DeliteOP {
    * EOP implementation
    */
   private val lock = new ReentrantLock
-  private val cond = lock.newCondition
+  private val end = lock.newCondition
   private var notDone: Boolean = true
 
-  def reset() {
-    notDone = true
-  }
-
-  def signalAll {
+  def signal {
     lock.lock
     try {
       notDone = false
-      cond.signalAll
+      end.signal
     }
     finally {
       lock.unlock
@@ -69,7 +65,8 @@ object EOP extends DeliteOP {
   def await {
     lock.lock
     try {
-      while (notDone) cond.await
+      while (notDone) end.await
+      notDone = true //reset for re-use
     }
     finally {
       lock.unlock
@@ -81,7 +78,7 @@ object EOP extends DeliteOP {
 object EOP_Kernel {
 
   def apply() {
-    EOP.signalAll
+    EOP.signal
   }
 
 }
