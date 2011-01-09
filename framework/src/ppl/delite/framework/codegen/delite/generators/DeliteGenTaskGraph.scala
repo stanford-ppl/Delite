@@ -12,7 +12,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   import IR._
 
   private def vals(sym: Sym[_]) : List[Sym[_]] = sym match {
-    case Def(Reify(s, effects)) => Nil
+    case Def(Reify(s, effects)) => List(s.asInstanceOf[Sym[_]])
     case Def(Reflect(NewVar(v), effects)) => Nil
     case _ => List(sym)
   }

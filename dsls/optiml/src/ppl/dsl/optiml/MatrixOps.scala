@@ -646,7 +646,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
   def matrix_maprowstovec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[Vector[A]] => Exp[B], isRow: Exp[Boolean] = true) = {
     val v = fresh[Vector[A]]
-    val func = f(v)
+    val func = reifyEffects(f(v))
     MatrixMapRowsToVec(x,v,func,isRow)
   }
   def matrix_foreach[A:Manifest](x: Exp[Matrix[A]], block: Exp[A] => Exp[Unit]) = {
@@ -703,11 +703,11 @@ trait MatrixOpsExpOpt extends MatrixOpsExp {
 //    case _ => super.matrix_inverse(x)
 //  }
 
-  override def matrix_transpose[A:Manifest](x: Exp[Matrix[A]]) = x match {
-    // (X^T)^T = X
-    case (Def(MatrixTranspose(a))) => a.asInstanceOf[Exp[Matrix[A]]]
-    case _ => super.matrix_transpose(x)
-  }
+//  override def matrix_transpose[A:Manifest](x: Exp[Matrix[A]]) = x match {
+//    // (X^T)^T = X
+//    case (Def(MatrixTranspose(a))) => a.asInstanceOf[Exp[Matrix[A]]]
+//    case _ => super.matrix_transpose(x)
+//  }
 
 
 }
