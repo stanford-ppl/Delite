@@ -121,7 +121,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
 
   val IR: DeliteApplication with OptiMLExp
 
-  override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala")
+  override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala", "TrainingSetImpl.scala")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int")) {
@@ -139,6 +139,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
     var res = line.replaceAll("object ", "object " + t)
     res = res.replaceAll("import ", "import " + t)
     res = res.replaceAll("@specialized T: ClassManifest", t)
+    res = res.replaceAll("T:Manifest", t)
     res = res.replaceAll("\\bT\\b", t)
     dsmap(res)
   }
@@ -156,6 +157,8 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
     res = res.replaceAll("VectorViewImpl\\[Int\\]", "IntVectorViewImpl")
     res = res.replaceAll("MatrixImpl\\[Double\\]", "DoubleMatrixImpl")
     res = res.replaceAll("MatrixImpl\\[Int\\]", "IntMatrixImpl")
+    res = res.replaceAll("TrainingSetImpl\\[Double,", "DoubleTrainingSetImpl\\[")
+    res = res.replaceAll("TrainingSetImpl\\[Int,", "IntTrainingSetImpl\\[")
     res
   }
 }
