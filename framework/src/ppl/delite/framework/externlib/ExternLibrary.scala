@@ -8,10 +8,12 @@ object ExternLibrary {
   /* Emit and Compile external library */
   def init {
     if(Config.useBlas) {
-	  if(Config.deliteHome==".")
-		  throw new RuntimeException("ExternLibError: Need to set Config.deliteHome to absolute path")
-      emitLib
-      compileLib
+      if(Config.deliteHome==".")
+        throw new RuntimeException("ExternLibError: Need to set Config.deliteHome to absolute path")
+      else {
+        emitLib
+        compileLib
+      }
     }
   }
 
@@ -131,7 +133,7 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_matVMult_00024mDc_00024sp
       buildPath+"scalaBLAS.scala" //input name
       ), null, new File(Config.deliteHome))
     process1.waitFor
-	checkError(process1)
+	  checkError(process1)
 
     /* Compile JNI Implementation */
     val process2 = Runtime.getRuntime.exec(Array[String](
@@ -147,19 +149,18 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_matVMult_00024mDc_00024sp
       "scalaBLAS.c" //input name
       ), null, new File(buildPath))
     process2.waitFor
-	checkError(process2)
-
+	  checkError(process2)
   }
 
   def checkError(process:Process) {
-	val first = process.getErrorStream.read
-	if (first != -1) { //compilation failed
-	  val errorBuffer = new Array[Byte](1000)
-	  val num = process.getErrorStream.read(errorBuffer)
-	  print(first.asInstanceOf[Char])
-	  for (i <- 0 until num) print(errorBuffer(i).asInstanceOf[Char])
-	  println()
-	  error("MKL BLAS compilation failed")
-	}
+    val first = process.getErrorStream.read
+    if (first != -1) { //compilation failed
+      val errorBuffer = new Array[Byte](1000)
+      val num = process.getErrorStream.read(errorBuffer)
+      print(first.asInstanceOf[Char])
+      for (i <- 0 until num) print(errorBuffer(i).asInstanceOf[Char])
+      println()
+      error("MKL BLAS compilation failed")
+    }
   }
 }
