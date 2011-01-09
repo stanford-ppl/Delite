@@ -92,7 +92,7 @@ object Delite {
   }
 
   def loadScalaSources(graph: DeliteTaskGraph) {
-    val sourceFiles = new Directory(new File(graph.kernelPath+"scala/")).deepFiles //obtain all files in path
+    val sourceFiles = new Directory(new File(graph.kernelPath+"scala/")).deepFiles.filter(_.extension=="scala") //obtain all files in path
     for (file <- sourceFiles) ScalaCompile.addSourcePath(file.path)
   }
 
