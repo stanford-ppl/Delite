@@ -3,6 +3,7 @@ package ppl.delite.framework.codegen.delite.overrides
 import scala.virtualization.lms.common.RangeOpsExp
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.GenericNestedCodegen
+import java.io.PrintWriter
 
 trait DeliteRangeOpsExp extends RangeOpsExp {
   this: DeliteOpsExp =>
@@ -36,4 +37,20 @@ trait DeliteBaseGenRangeOps extends GenericNestedCodegen {
   }
 }
 
-trait DeliteScalaGenRange extends DeliteBaseGenRangeOps
+trait DeliteScalaGenRange extends DeliteBaseGenRangeOps {
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    case DeliteRangeForEach(start, end, i, body) => {
+      stream.println("var " + quote(i) + " : Int = " + quote(start))
+      stream.println("val " + quote(sym) + " = " + "while (" + quote(i) + " < " + quote(end) + ") {")
+      nestedEmission = true
+      emitBlock(body)
+      stream.println(quote(getBlockResult(body)))
+      stream.println(quote(i) + " = " + quote(i) + " + 1")
+      stream.println("}")
+    }
+
+    case _ => super.emitNode(sym, rhs)
+  }
+}

@@ -77,7 +77,6 @@ object Delite {
       println("Beginning Execution Run " + i)
       executor.run(executable)
       EOP.await //await the end of the application program
-      EOP.reset
       Stopwatch.print()
     }
 

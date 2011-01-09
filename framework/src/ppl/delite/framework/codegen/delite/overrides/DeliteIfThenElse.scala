@@ -3,6 +3,7 @@ package ppl.delite.framework.codegen.delite.overrides
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.GenericNestedCodegen
+import java.io.PrintWriter
 
 trait DeliteIfThenElseExp extends IfThenElseExp {
 
@@ -36,4 +37,33 @@ trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
   }
 }
 
-trait DeliteScalaGenIfThenElse extends  DeliteBaseGenIfThenElse
+trait DeliteScalaGenIfThenElse extends  DeliteBaseGenIfThenElse {
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    /**
+     * IfThenElse generates methods for each branch due to empirically discovered performance issues in the JVM
+     * when generating long blocks of straight-line code in each branch.
+     */
+    case DeliteIfThenElse(c,a,b) =>
+      stream.println("val " + quote(sym) + " = {")
+      stream.println("def " + quote(sym) + "thenb() = {")
+      emitBlock(a)
+      stream.println(quote(getBlockResult(a)))
+      stream.println("}")
+
+      stream.println("def " + quote(sym) + "elseb() = {")
+      emitBlock(b)
+      stream.println(quote(getBlockResult(b)))
+      stream.println("}")
+
+      stream.println("if (" + quote(c) + ") {")
+      stream.println(quote(sym) + "thenb()")
+      stream.println("} else {")
+      stream.println(quote(sym) + "elseb()")
+      stream.println("}")
+      stream.println("}")
+
+    case _ => super.emitNode(sym, rhs)
+  }
+}

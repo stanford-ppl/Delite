@@ -36,4 +36,19 @@ trait DeliteBaseGenWhile extends GenericNestedCodegen {
 
 }
 
-trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile
+trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+    case DeliteWhile(c,b) =>
+      stream.print("while ({")
+      emitBlock(c)
+      stream.print(quote(getBlockResult(c)))
+      stream.println("}) {")
+      emitBlock(b)
+      stream.println(quote(getBlockResult(b)))
+      stream.println("}")
+
+    case _ => super.emitNode(sym, rhs)
+  }
+}

@@ -198,6 +198,10 @@ object DeliteTaskGraph {
       endOp.addDependency(elseOp)
     }
 
+    //add a direct link between begin/end else because else block can be empty
+    endOp.addDependency(beginElseOp)
+    beginElseOp.addConsumer(endOp)
+
     //add to graph
     graph._ops += id+"b" -> beginOp
     graph._ops += id+"e" -> beginElseOp

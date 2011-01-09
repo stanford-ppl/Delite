@@ -146,7 +146,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
           // no generator found
           //e.printStackTrace
           gen.exceptionHandler(outFile, kstream)
-          //check if this is a nestedEmissio
+          //check if this is a nestedEmission
           if(gen.nestedEmission) {
             nestedEmission = true
             nestedNode = gen.lastNodeAttempted
@@ -325,7 +325,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   }
 
   private def getEmittedNodeIds(idx: Int)(implicit emittedNodesList: ListBuffer[List[Sym[_]]]) = {
-    emittedNodesList(idx).map(quote(_)).mkString("\"","\",\"","\"")
+    if (emittedNodesList(idx).isEmpty) "" else emittedNodesList(idx).map(quote(_)).mkString("\"","\",\"","\"")
   }
 
   // more quirks
