@@ -78,13 +78,13 @@ object Delite {
       PerformanceTimer.start("all", false)
       executor.run(executable) //TODO: need to reset the executables
       EOP.await //await the end of the application program
-      EOP.reset
       PerformanceTimer.stop("all", false)
       PerformanceTimer.print("all")
       Stopwatch.print()
     }
 
-    PerformanceTimer.dumpStats
+    if(Config.dumpStats)
+      PerformanceTimer.dumpStats
 
     executor.shutdown()
 
