@@ -727,6 +727,11 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixInsertAllCols(x,pos,y) => emitValDef(sym, quote(x) + ".insertAllCols(" + quote(pos) + "," + quote(y) + ")")
     case MatrixRemoveRows(x,pos,len) => emitValDef(sym, quote(x) + ".removeRows(" + quote(pos) + "," + quote(len) + ")")
     case MatrixRemoveCols(x,pos,len) => emitValDef(sym, quote(x) + ".removeCols(" + quote(pos) + "," + quote(len) + ")")
+
+    // BLAS calls
+    case m@MatrixMultiply(x,y) => 
+      emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(y) + ".numCols)")
+      stream.println("scalaBLAS.matMult(%s,%s,%s,%.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y))
     case _ => super.emitNode(sym, rhs)
   }
 }
