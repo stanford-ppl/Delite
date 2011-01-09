@@ -736,7 +736,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     // BLAS calls
     case m@MatrixMultiply(x,y) if (Config.useBlas) =>
       emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(y) + ".numCols)")
-      stream.println("scalaBLAS.matMult(%s,%s,%s,%s.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y)))
+      stream.println("scalaBLAS.matMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y)))
     case _ => super.emitNode(sym, rhs)
   }
 }

@@ -8,6 +8,8 @@ object ExternLibrary {
   /* Emit and Compile external library */
   def init {
     if(Config.useBlas) {
+	  if(Config.deliteHome==".")
+		  throw new RuntimeException("ExternLibError: Need to set Config.deliteHome to absolute path")
       emitLib
       compileLib
     }
@@ -28,7 +30,7 @@ object ExternLibrary {
     val jniPackageName = (Config.buildDir+"scala").replace("/","_")
     
     scalastream.println("""
-package generated.scala
+package %s
 object scalaBLAS {
   System.load("%s/scalaBLAS.so")
   @native
@@ -43,7 +45,7 @@ object scalaBLAS {
 #include <stdlib.h>
 #include <stdio.h>
 
-#include "scalaBLAS__.h"
+#include <jni.h>
 #include "mkl.h"
 
 JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_matMult_00024mDc_00024sp
@@ -126,30 +128,38 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_matVMult_00024mDc_00024sp
     /* Compile scala wrapper */
     val process1 = Runtime.getRuntime.exec(Array[String](
       "scalac",
-      "scalaBLAS.scala" //input name
-      ), null, new File(buildPath))
+      buildPath+"scalaBLAS.scala" //input name
+      ), null, new File(Config.deliteHome))
     process1.waitFor
-    
-    /* Call javah on the generated class file */
-    val process2 = Runtime.getRuntime.exec(Array[String](
-      "javah",
-      "scalaBLAS$" //input name
-      ), null, new File(buildPath))
-    process2.waitFor
+	checkError(process1)
 
     /* Compile JNI Implementation */
-    val process3 = Runtime.getRuntime.exec(Array[String](
+    val process2 = Runtime.getRuntime.exec(Array[String](
       "icc",
       "-O3",
-      "-I" + javaHome + "/include", "-I" + javaHome + "/include/linux",
+      "-I" + javaHome + "/../include", "-I" + javaHome + "/../include/linux",
       "-I" + Config.blasDir + "/mkl/include",
       "-L" + Config.blasDir + "/mkl/lib/em64t",
       "-L" + Config.blasDir + "/mkl/lib/em64t",
       "-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-lmkl_mc3", "-lmkl_def", "-lgfortran",
-      "-shared", "-fPIC'", //dynamic shared library
+      "-shared", "-fPIC", //dynamic shared library
       "-o", "scalaBLAS.so", //output name
       "scalaBLAS.c" //input name
       ), null, new File(buildPath))
-    process3.waitFor
+    process2.waitFor
+	checkError(process2)
+
+  }
+
+  def checkError(process:Process) {
+	val first = process.getErrorStream.read
+	if (first != -1) { //compilation failed
+	  val errorBuffer = new Array[Byte](1000)
+	  val num = process.getErrorStream.read(errorBuffer)
+	  print(first.asInstanceOf[Char])
+	  for (i <- 0 until num) print(errorBuffer(i).asInstanceOf[Char])
+	  println()
+	  error("MKL BLAS compilation failed")
+	}
   }
 }
