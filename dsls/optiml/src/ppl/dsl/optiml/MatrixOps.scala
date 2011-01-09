@@ -9,6 +9,7 @@ import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{GenerationFailedException, CGenBase, CudaGenBase, ScalaGenBase}
+import ppl.delite.framework.Config
 
 trait MatrixOps extends DSLType with Variables {
   this: OptiML =>
@@ -229,8 +230,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixInsertAllCols[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Matrix[A]]) extends Def[Unit]
   case class MatrixRemoveRows[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], len: Exp[Int]) extends Def[Unit]
   case class MatrixRemoveCols[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], len: Exp[Int]) extends Def[Unit]
-  case class MatrixMultiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) extends Def[Matrix[A]]
-
 
   /////////////////////////////////////
   // implemented via kernel embedding
@@ -309,6 +308,12 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   case class MatrixFilterRows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[Vector[A]] => Exp[Boolean])
     extends DeliteOpSingleTask(reifyEffects(matrix_filterrows_impl(x,pred)))
+
+  case class MatrixMultiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
+    extends DeliteOpSingleTask(reifyEffects(matrix_multiply_impl(x,y))) {
+
+    val mM = manifest[MatrixImpl[A]]
+  }
 
 
   ////////////////////////////////
@@ -729,9 +734,9 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixRemoveCols(x,pos,len) => emitValDef(sym, quote(x) + ".removeCols(" + quote(pos) + "," + quote(len) + ")")
 
     // BLAS calls
-    case m@MatrixMultiply(x,y) => 
+    case m@MatrixMultiply(x,y) if (Config.useBlas) =>
       emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(y) + ".numCols)")
-      stream.println("scalaBLAS.matMult(%s,%s,%s,%.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y))
+      stream.println("scalaBLAS.matMult(%s,%s,%s,%s.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y)))
     case _ => super.emitNode(sym, rhs)
   }
 }

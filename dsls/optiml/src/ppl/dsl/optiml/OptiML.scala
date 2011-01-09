@@ -93,7 +93,7 @@ trait OptiMLCodeGenBase extends GenericCodegen {
 
   override def emitDataStructures() {
     val dsRoot = "dsls/optiml/src/ppl/dsl/optiml/datastruct/" + this.toString
-    val dsOut = Config.build_dir + "/" + this.toString + "/"
+    val dsOut = Config.buildDir + "/" + this.toString + "/"
 
     val dsDir = new File(dsRoot)
     if (!dsDir.exists) return
@@ -114,10 +114,10 @@ trait OptiMLCodeGenBase extends GenericCodegen {
   }
 }
 
-trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenLanguageOps with ScalaGenArithOps
-  with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps
+trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
+  with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps
   with ScalaGenLabelsOps with ScalaGenTrainingSetOps
-  with ScalaGenDeliteOps with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
+  with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
 
   val IR: DeliteApplication with OptiMLExp
 

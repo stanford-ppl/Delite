@@ -39,19 +39,19 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
                                                  val generators = DeliteApplication.this.generators }
 
     //clean up the code gen directory
-    Util.deleteDirectory(new File(Config.build_dir))
+    Util.deleteDirectory(new File(Config.buildDir))
 
     val stream =
-      if (Config.deg_filename == ""){
+      if (Config.degFilename == ""){
         new PrintWriter(System.out)
       }
       else {
-        new PrintWriter(new FileWriter(Config.deg_filename))
+        new PrintWriter(new FileWriter(Config.degFilename))
       }
 
     for (g <- generators) {
       g.emitDataStructures()
-      g.generatorInit(Config.build_dir + "/" + g.toString + "/")
+      g.generatorInit(Config.buildDir + "/" + g.toString + "/")
     }
     
     //codegen.emitSource(main_m, "Application", stream) // whole scala application (for testing)

@@ -31,6 +31,8 @@ trait MatrixImplOps { this: OptiML =>
   def matrix_maprows_impl[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
   def matrix_foreachrow_impl[A:Manifest](m: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Unit]): Rep[Unit]
   def matrix_filterrows_impl[A:Manifest](m: Rep[Matrix[A]], pred: Rep[Vector[A]] => Rep[Boolean]): Rep[Matrix[A]]
+  def matrix_multiply_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
+
 }
 
 trait MatrixImplOpsStandard extends MatrixImplOps {
@@ -258,5 +260,26 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
         v += vv
     }
     Matrix[A](v)
+  }
+
+  def matrix_multiply_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]] = {
+
+    val yTrans = y.t
+    val out = Matrix[A](x.numRows, y.numCols)
+
+    for (rowIdx <- (0::x.numRows)) {
+      var i = unit(0)
+      while (i < out.numCols) {
+        var j = unit(1)
+        var acc = x(rowIdx, 0) * yTrans(i, 0)
+        while (j < yTrans.numCols) {
+          acc += x(rowIdx, j) * yTrans(i, j)
+          j += 1
+        }
+        out(rowIdx, i) = acc
+        i += 1
+      }
+    }
+    out
   }
 }

@@ -56,7 +56,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     deliteResult = Some(sym) //findDefinition(rhs) map { _.sym }
 
     for (gen <- generators) {
-      val buildPath = Config.build_dir + gen + "/"
+      val buildPath = Config.buildDir + gen + "/"
       val outDir = new File(buildPath); outDir.mkdirs()
       val outFile = new File(buildPath + quote(sym) + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(outFile)
