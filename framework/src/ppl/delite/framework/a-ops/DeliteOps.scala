@@ -140,11 +140,6 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
   var deliteKernel: Boolean = _
   var deliteResult: Option[Sym[Any]] = _
   var deliteInputs: List[Sym[Any]] = _
-
-  def getReifiedOutput(out: Exp[_]) = out match {
-    case Def(Reify(x, effects)) => x
-    case x => x
-  }
 }
 
 trait BaseGenDeliteOps extends GenericNestedCodegen {

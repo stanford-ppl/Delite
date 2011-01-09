@@ -26,6 +26,18 @@ object LinReg extends DeliteApplication with OptiMLExp {
     //val X = Matrix(x.map(ele => Vector(1., ele)))
     // could be (probably should be) written as an insertCol
     val X = Matrix[Double](x map {ele => val v = Vector[Double](2, true); v(0) = 1.; v(1) = ele; v})
+    //X.pprint
+    X.t.pprint
+
+    val t2 = X.t*X
+    println("t2: ")
+    t2.pprint
+    val t3 = t2.inv
+    println("t3: ")
+    t3.pprint
+    val t4 = X.t*y.t
+    println("t4: ")
+    t4.pprint
 
     // theta = inv(X.'X)*(X.'*y) (if y is a col vector)
     val theta = ((X.t*X).inv)*(X.t*y.t)
@@ -84,12 +96,12 @@ object LinReg extends DeliteApplication with OptiMLExp {
     println("Unweighted linear regression")
     println("theta: ")
     theta.pprint
-    print("\n")
+    print("\\n")
 
     println("Locally weighted linear regression")
     println("guess: ")
     guess.pprint
-    print("\n")
+    print("\\n")
 
     //PerformanceTimer.save("LinReg")
   }
