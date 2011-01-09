@@ -5,8 +5,8 @@ import math
 from socket import gethostname
 from string import *
 
-delite_apps = ['gda']#, 'nb', 'linreg', 'kmeans', 'svm', 'lbp', 'rbm']
-delite_threads = [ 1]#, 2, 4, 8, 16]
+delite_apps = ['gda', 'nb', 'linreg', 'kmeans', 'svm', 'lbp', 'rbm']
+delite_threads = [ 1, 2 , 4, 8, 16]
 delite_gpus = [ 1, 2 ]
 matlab_apps = []
 c_apps = []
@@ -37,12 +37,12 @@ def main():
     # run the delite applications
     for app in delite_apps:
         print "Running app: " + app + "\n===========================\nGenerating DEG file" 
-        os.putenv("GEN_OPTS", "-Ddelite-build-dir=" + DELITE_HOME +  "/generated/ -Ddelite-deg-filename=" + app + ".deg")
+        os.putenv("GEN_OPTS", "-Ddelite-home=" + DELITE_HOME + " -Ddelite-build-dir=" + DELITE_HOME +  "/generated/ -Ddelite-deg-filename=" + app + ".deg")
         os.system(DELITE_HOME + "/bin/gen " + classes[app])
         #do it for each config of delite
         #do it for each thread configuration
         for numThreads in delite_threads:
-            opts = "-DnumThreads=" + str(numThreads) + " -Ddump-stats -Ddump-stats-overwrite -DstatsOutputDirectory=" + DELITE_HOME  + "/benchmark/times -DstatsOutputFilename=" + app + "-smp-" +str(numThreads) + ".times"         
+            opts = "-DnumThreads=" + str(numThreads) + " -DnumRuns=10 -Ddump-stats -Ddump-stats-overwrite -DstatsOutputDirectory=" + DELITE_HOME  + "/benchmark/times -DstatsOutputFilename=" + app + "-smp-" +str(numThreads) + ".times"         
             os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
             print "running: " + app + " " + params[app],
             print "with config: " + opts + "\n"
