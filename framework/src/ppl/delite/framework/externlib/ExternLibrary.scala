@@ -7,40 +7,36 @@ object ExternLibrary {
 
   /* Emit and Compile external library */
   def init {
-    if(Config.useBlas) {
-      if(Config.deliteHome==".")
-        throw new RuntimeException("ExternLibError: Need to set Config.deliteHome to absolute path")
-      else {
-        emitLib
-        compileLib
-      }
+    if (Config.useBlas) {
+      emitLib
+      compileLib
     }
   }
 
   /* Emit source files for MKL BLAS library */
   def emitLib {
     
-    val buildPath = Config.buildDir + "scala/"
+    val sep = java.io.File.separator
+    val buildPath = Config.buildDir + sep + "scala" + sep
     val outDir = new File(buildPath); outDir.mkdirs()
     val outCFile = new File(buildPath + "scalaBLAS.c")
     val outScalaFile = new File(buildPath + "scalaBLAS.scala")
     val cstream = new PrintWriter(outCFile)
     val scalastream = new PrintWriter(outScalaFile)
     
-    val outPath = Config.deliteHome + "/" + Config.buildDir + "scala"
-    val packageName = (Config.buildDir+"scala").replace("/",".")
-    val jniPackageName = (Config.buildDir+"scala").replace("/","_")
+    val packageName = "generated.scala"
+    val jniPackageName = "generated_scala"
     
     scalastream.println("""
 package %s
 object scalaBLAS {
-  System.load("%s/scalaBLAS.so")
+  System.load("%sscalaBLAS.so")
   @native
   def matMult[@specialized(Double,Float) T](mat1:Array[T], mat2:Array[T], mat3:Array[T], mat1_r:Int, mat1_c:Int, mat2_c:Int)
   @native
   def matVMult[@specialized(Double,Float) T](mat1:Array[T], vec2:Array[T], vec3:Array[T], mat_row:Int, mat_col:Int, vec_offset:Int, vec_stride:Int)
 }
-""".format(packageName,outPath))
+""".format(packageName, buildPath))
     scalastream.flush
 
     cstream.println("""
@@ -125,31 +121,24 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_matVMult_00024mDc_00024sp
   def compileLib {
     val javaHome = System.getProperty("java.home")
     val deliteHome = Config.deliteHome
-    val buildPath = Config.buildDir + "scala/"
-
-    /* Compile scala wrapper */
-    val process1 = Runtime.getRuntime.exec(Array[String](
-      "scalac",
-      buildPath+"scalaBLAS.scala" //input name
-      ), null, new File(Config.deliteHome))
-    process1.waitFor
-	  checkError(process1)
+    val buildPath = Config.buildDir + java.io.File.separator + "scala" + java.io.File.separator
 
     /* Compile JNI Implementation */
-    val process2 = Runtime.getRuntime.exec(Array[String](
+    val process = Runtime.getRuntime.exec(Array[String](
       "icc",
+      "-w",
       "-O3",
       "-I" + javaHome + "/../include", "-I" + javaHome + "/../include/linux",
-      "-I" + Config.blasDir + "/mkl/include",
-      "-L" + Config.blasDir + "/mkl/lib/em64t",
-      "-L" + Config.blasDir + "/lib/intel64",
+      "-I" + Config.blasHome + "/mkl/include",
+      "-L" + Config.blasHome + "/mkl/lib/em64t",
+      "-L" + Config.blasHome + "/lib/intel64",
       "-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-liomp5", "-lmkl_mc3", "-lmkl_def", "-lgfortran",
       "-shared", "-fPIC", //dynamic shared library
       "-o", "scalaBLAS.so", //output name
       "scalaBLAS.c" //input name
       ), null, new File(buildPath))
-    process2.waitFor
-	  checkError(process2)
+    process.waitFor
+	  checkError(process)
   }
 
   def checkError(process:Process) {

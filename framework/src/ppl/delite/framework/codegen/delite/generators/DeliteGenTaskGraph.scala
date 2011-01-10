@@ -84,7 +84,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     for (gen <- generators) {
       // reset nested flag
       gen.nestedEmission = false
-      val buildPath = Config.buildDir + gen + "/"
+      val buildPath = Config.buildDir + java.io.File.separator + gen + java.io.File.separator
       val outDir = new File(buildPath); outDir.mkdirs()
       val outFile = new File(buildPath + quote(sym) + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(outFile)

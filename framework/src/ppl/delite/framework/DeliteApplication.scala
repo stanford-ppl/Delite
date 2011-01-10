@@ -52,7 +52,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
     for (g <- generators) {
       g.emitDataStructures()
-      g.generatorInit(Config.buildDir + "/" + g.toString + "/")
+      g.generatorInit(Config.buildDir + java.io.File.separator + g.toString + java.io.File.separator)
     }
 
     //Emit and Compile external library (MKL BLAS)
