@@ -27,7 +27,7 @@ object Arguments extends DeliteOP {
 
   def outputType(target: Targets.Value): String = {
     if (target == Targets.Scala) outputType
-    else error("Arguments OP does not support targets other than Scala")
+    else system.error("Arguments OP does not support targets other than Scala")
   }
 
   var _id: String = _

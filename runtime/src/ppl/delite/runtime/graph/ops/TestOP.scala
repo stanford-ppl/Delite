@@ -25,7 +25,7 @@ class TestOP(kernel: String)(deps: DeliteOP*)
 
   def outputType(target: Targets.Value): String = {
     if (target == Targets.Scala) outputType
-    else error("EOP does not support targets other than Scala")
+    else system.error("EOP does not support targets other than Scala")
   }
 
   override def outputType = "Unit"

@@ -487,7 +487,7 @@ object GPUExecutableGenerator {
     case "Short" => "short"
     case "Char" => "char"
     case "Byte" => "byte"
-    case other => error(other + " is not a primitive type")
+    case other => system.error(other + " is not a primitive type")
   }
 
 }

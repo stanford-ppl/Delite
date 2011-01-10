@@ -154,7 +154,7 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
     //case mapR: DeliteOpMapReduce[_,_,_] => /*if (shallow) syms(mapR.in) else*/ syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
     //case foreach: DeliteOpForeach[_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func)
     case _ => 
-      println("BOUNDSYMS super "+e)
+      //println("BOUNDSYMS super "+e)
       super.boundSyms(e)
   }
     
@@ -162,7 +162,12 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
   override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
     case s: DeliteOpSingleTask[_] => getFreeVarBlock(s.block,Nil)
     case map: DeliteOpMap[_,_,_] => getFreeVarBlock(List(map.func,map.alloc),List(map.v.asInstanceOf[Sym[_]]))
-    case zip: DeliteOpZipWith[_,_,_,_] => getFreeVarBlock(List(zip.func,zip.alloc),List(zip.v._1.asInstanceOf[Sym[_]], zip.v._2.asInstanceOf[Sym[_]]))
+    case zip: DeliteOpZipWith[_,_,_,_] => 
+      println("FREEVAR "+zip + "/" + List(zip.func,zip.alloc))
+      val z1 = getFreeVarBlock(zip.func, List(zip.v._1.asInstanceOf[Sym[_]], zip.v._2.asInstanceOf[Sym[_]]))
+      val z2 = getFreeVarBlock(zip.alloc, Nil)
+      println(z1 + "/" + z2)
+      z1:::z2
     case red: DeliteOpReduce[_] => getFreeVarBlock(red.func,List(red.v._1.asInstanceOf[Sym[_]], red.v._2.asInstanceOf[Sym[_]]))
     case mapR: DeliteOpMapReduce[_,_,_] => getFreeVarBlock(mapR.map, List(mapR.mV.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(mapR.reduce, List(mapR.rV._1.asInstanceOf[Sym[_]], mapR.rV._2.asInstanceOf[Sym[_]]))
     case foreach: DeliteOpForeach[_,_] => getFreeVarBlock(foreach.func,List(foreach.v.asInstanceOf[Sym[_]]))
