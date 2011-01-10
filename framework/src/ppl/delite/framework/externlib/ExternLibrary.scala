@@ -120,7 +120,6 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_matVMult_00024mDc_00024sp
   /* Compiles generated library files */
   def compileLib {
     val javaHome = System.getProperty("java.home")
-    val deliteHome = Config.deliteHome
     val buildPath = Config.buildDir + java.io.File.separator + "scala" + java.io.File.separator
 
     /* Compile JNI Implementation */
