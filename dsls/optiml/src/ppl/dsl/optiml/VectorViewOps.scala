@@ -3,9 +3,8 @@ package ppl.dsl.optiml
 import datastruct.scala.{VectorViewImpl, VectorView, Vector, Matrix}
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import scala.virtualization.lms.internal.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.common.{BaseExp, Base}
+import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 
 trait VectorViewOps extends DSLType with Base with OverloadHack {

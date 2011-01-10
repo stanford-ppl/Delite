@@ -1,8 +1,8 @@
 package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
-import scala.virtualization.lms.common.{TupleOpsExp, VariablesExp, EffectExp}
-import scala.virtualization.lms.internal.{GenericCodegen, CudaGenEffect, GenericNestedCodegen, ScalaGenEffect}
+import scala.virtualization.lms.common.{TupleOpsExp, VariablesExp, EffectExp, CudaGenEffect, ScalaGenEffect}
+import scala.virtualization.lms.internal.{GenericCodegen, GenericNestedCodegen}
 import ppl.delite.framework.DeliteCollection
 
 trait DeliteOpsExp extends EffectExp with VariablesExp {
@@ -125,16 +125,40 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
   val IR: DeliteOpsExp
   import IR._
 
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    //case s: DeliteOpSingleTask[_] => if (shallow) Nil else syms(s.block)
-    case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) else syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
-    case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) else syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
-    case red: DeliteOpReduce[_] => if (shallow) syms(red.in) else syms(red.in) ++ syms(red.func)
-    case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
-    case foreach: DeliteOpForeach[_,_] => if (shallow) syms(foreach.in) else syms(foreach.in) ++ syms(foreach.func)
+  override def syms(e: Any): List[Sym[Any]] = e match { //TR TODO: question -- is alloc a dependency (should be part of result) or a definition (should not)???
+    case s: DeliteOpSingleTask[_] => /*if (shallow) Nil else*/ syms(s.block)
+    case map: DeliteOpMap[_,_,_] => /*if (shallow) syms(map.in) else */ syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
+    case zip: DeliteOpZipWith[_,_,_,_] => /*if (shallow) syms(zip.inA) ++ syms(zip.inB) else*/ syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
+    case red: DeliteOpReduce[_] => /*if (shallow) syms(red.in) else*/ syms(red.in) ++ syms(red.func)
+    case mapR: DeliteOpMapReduce[_,_,_] => /*if (shallow) syms(mapR.in) else*/ syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
+    case foreach: DeliteOpForeach[_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func)
     case _ => super.syms(e)
   }
 
+  override def boundSyms(e: Any): List[Sym[Any]] = e match { //TR TODO
+    case s: DeliteOpSingleTask[_] => 
+      println("BOUNDSYMS single "+s)
+      s.block match {
+        case Def(Reify(y, es)) => es.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y)
+        case _ => Nil
+      }
+    
+    case zip: DeliteOpZipWith[_,_,_,_] => 
+      List(zip.v._1.asInstanceOf[Sym[Any]], zip.v._2.asInstanceOf[Sym[Any]]) ::: (zip.alloc match {
+        case Def(Reify(y, es)) => es.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y)
+        case _ => Nil
+      })// alloc not a bound sym by itself (but effects!) ... might need to pattern match on func as well ...
+      
+    //case map: DeliteOpMap[_,_,_] => 
+    //case red: DeliteOpReduce[_] => /*if (shallow) syms(red.in) else*/ syms(red.in) ++ syms(red.func)
+    //case mapR: DeliteOpMapReduce[_,_,_] => /*if (shallow) syms(mapR.in) else*/ syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
+    //case foreach: DeliteOpForeach[_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func)
+    case _ => 
+      println("BOUNDSYMS super "+e)
+      super.boundSyms(e)
+  }
+    
+    
   override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
     case s: DeliteOpSingleTask[_] => getFreeVarBlock(s.block,Nil)
     case map: DeliteOpMap[_,_,_] => getFreeVarBlock(List(map.func,map.alloc),List(map.v.asInstanceOf[Sym[_]]))
@@ -152,6 +176,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => {
+      println("EMIT single "+s)
       val save = deliteKernel
       deliteKernel = false
       val b = s.block

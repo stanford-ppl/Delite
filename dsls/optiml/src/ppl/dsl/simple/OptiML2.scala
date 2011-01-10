@@ -20,8 +20,12 @@ trait OptiML2 extends ScalaOpsPkgExp with VectorOpsExp2 with MatrixOpsExp2 {
   }
 }
 
-trait OptiML2CodeGenScala extends ScalaCodeGenPkg with ScalaGenVectorOps2 with ScalaGenMatrixOps2
-  { val IR: DeliteApplication with OptiML2 }
+trait OptiML2CodeGenScala extends ScalaCodeGenPkg with ScalaGenVectorOps2 with ScalaGenMatrixOps2 {
+  val IR: DeliteApplication with OptiML2
+  override def initialDefs = IR.deliteGenerator.availableDefs
+}
 
-trait OptiML2CodeGenC extends CCodeGenPkg with CGenVectorOps2 with CGenMatrixOps2
-  { val IR: DeliteApplication with OptiML2 }
+trait OptiML2CodeGenC extends CCodeGenPkg with CGenVectorOps2 with CGenMatrixOps2 { 
+  val IR: DeliteApplication with OptiML2 
+  override def initialDefs = IR.deliteGenerator.availableDefs
+}

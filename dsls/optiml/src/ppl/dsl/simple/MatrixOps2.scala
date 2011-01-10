@@ -3,7 +3,7 @@ package ppl.dsl.simple
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{Base, EffectExp}
-import scala.virtualization.lms.internal.{CGenBase, ScalaGenBase}
+import scala.virtualization.lms.common.{CGenBase, ScalaGenBase}
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 
 

@@ -3,7 +3,6 @@ package ppl.dsl.optiml
 import datastruct.scala.{NilVector,Vector,Matrix}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
 import java.io.PrintWriter
 
 /*

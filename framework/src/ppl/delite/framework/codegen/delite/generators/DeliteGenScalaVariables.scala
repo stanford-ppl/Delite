@@ -1,8 +1,7 @@
 package ppl.delite.framework.codegen.delite.generators
 
-import scala.virtualization.lms.common.VariablesExp
+import scala.virtualization.lms.common.{ VariablesExp, ScalaGenEffect }
 import java.io.PrintWriter
-import scala.virtualization.lms.internal.ScalaGenEffect
 
 trait DeliteGenScalaVariables extends ScalaGenEffect {
   val IR: VariablesExp

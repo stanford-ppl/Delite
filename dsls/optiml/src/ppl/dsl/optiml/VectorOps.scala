@@ -6,7 +6,7 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
-import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase}
 import scala.virtualization.lms.common._
 
 trait VectorOps extends DSLType with Variables {

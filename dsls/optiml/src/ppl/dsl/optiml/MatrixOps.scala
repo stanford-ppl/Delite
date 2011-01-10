@@ -6,7 +6,7 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
-import scala.virtualization.lms.internal.{CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 
 trait MatrixOps extends DSLType with Variables {

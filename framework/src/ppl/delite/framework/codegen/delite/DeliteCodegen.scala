@@ -26,18 +26,30 @@ trait DeliteCodegen extends GenericNestedCodegen {
   val kernelMutatingDeps : HashMap[Sym[_],List[Sym[_]]] = new HashMap() // from kernel to its mutating deps    
   val kernelInputDeps : HashMap[Sym[_],List[Sym[_]]] = new HashMap() // from kernel to its input deps
 
+
   def ifGenAgree[A](f: Generator => A, shallow: Boolean): A = {
     val save = generators map { _.shallow }
     generators foreach { _.shallow = shallow }
     val result = generators map f
     if (result.distinct.length != 1){
-      throw new RuntimeException("DeliteCodegen: generators disagree")
+      system.error("DeliteCodegen: generators disagree")
     }
     for (i <- 0 until generators.length) {
       generators(i).shallow = save(i)
     }
     result(0)
   }
+
+
+  // these are overridden for specific node type in the target generators but *not* here
+  
+  override def syms(e: Any): List[Sym[Any]] = ifGenAgree(_.syms(e), shallow)
+  override def boundSyms(e: Any): List[Sym[Any]] = ifGenAgree(_.boundSyms(e), shallow)
+  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = ifGenAgree(_.getFreeVarNode(rhs), shallow)
+
+  //override def buildScheduleForResult(start: Exp[_]): List[TP[_]] = ifGenAgree(_.buil) <--- maybe override for performance reasons ...
+
+
 
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
 
@@ -46,6 +58,10 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
     val sA = mA.toString
     val sB = mB.toString
+
+    println("-- emitSource")
+    availableDefs.foreach(println)
+
 
     stream.println("{\"DEG\":{\n"+
                    "\"version\" : 0.1,\n"+
@@ -61,6 +77,41 @@ trait DeliteCodegen extends GenericNestedCodegen {
     stream.flush
   }
 
+/*
+  override def focusBlock[A](result: Exp[_])(body: => A): A = {
+  }
+
+  override def focusExactScope[A](result: Exp[_])(body: List[TP[_]] => A): A = {
+    super.focusExactScope(result) { levelScope =>
+      
+    }
+  }
+*/
+
+  override def emitBlockFocused(result: Exp[_])(implicit stream: PrintWriter): Unit = {
+    println("-- block")
+    availableDefs.foreach(println)
+    focusExactScope(result) { levelScope =>
+      println("-- exact")
+      availableDefs.foreach(println)
+      
+      val effects = result match {
+        case Def(Reify(x, effects0)) =>
+          levelScope.filter(effects0 contains _.sym)
+        case _ => Nil
+      }
+      
+      for (TP(sym, rhs) <- levelScope) {
+        // we only care about effects that are scheduled to be generated before us, i.e.
+        // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
+        // n3 we want controlDeps to contain e1 and e2
+        controlDeps = levelScope.takeWhile(_.sym != sym) filter { effects contains _ } map { _.sym }
+        emitNode(sym, rhs)
+      }
+    }
+  }
+
+
   /**
    * DeliteCodegen expects there to be a single schedule across all generators, so a single task graph
    * can be generated. This implies that every generator object must compute internal dependencies (syms)
@@ -69,6 +120,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
    * This is all because we allow individual generators to refine their dependencies, which directly impacts
    * the generated schedule. We may want to consider another organization.
    */
+/*
   override def emitBlock(start: Exp[_])(implicit stream: PrintWriter): Unit = {
     if (generators.length < 1) return
 
@@ -104,6 +156,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
       emitNode(sym, rhs)
     }
 
+
     start match {
       case Def(Reify(x, effects0)) =>
         val effects = effects0.map { case s: Sym[a] => findDefinition(s).get }
@@ -124,6 +177,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
     generators.foreach(_.scope = save)
     scope = save
   }
+*/
 
   /*
   def getEffectsKernel(start: Sym[_], rhs: Def[_]): List[Sym[_]] = {

@@ -27,16 +27,17 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
     getCodeGenPkg(scalaTarget).asInstanceOf[ScalaCodegen { val IR: DeliteApplication.this.type }]
 
+  // generators created by getCodeGenPkg will use the 'current' scope of the deliteGenerator as global scope
+  val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
+                                               val generators = DeliteApplication.this.generators }
+
   var args: Rep[Array[String]] = _
   
   final def main(args: Array[String]) {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
-    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}                                   
+    val main_m = {x: Rep[Array[String]] => this.args = x; val y = liftedMain(); this.args = null; y }
 
     println("******Generating the program*********")
-
-    val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
-                                                 val generators = DeliteApplication.this.generators }
 
     //clean up the code gen directory
     Util.deleteDirectory(new File(Config.build_dir))
@@ -60,7 +61,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
   final def execute(args: Array[String]) {
     println("Delite Application Being Executed:[" + this.getClass.getSimpleName + "]")
-    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}
+    val main_m = {x: Rep[Array[String]] => this.args = x; val y = liftedMain(); this.args = null; y }
 
     println("******Executing the program*********")
     globalDefs = List()

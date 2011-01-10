@@ -2,8 +2,8 @@ package ppl.dsl.simple
 
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{Base, EffectExp, BaseExp}
-import scala.virtualization.lms.internal.{CGenBase, ScalaGenBase, Effects}
+import scala.virtualization.lms.common.{Base, EffectExp, BaseExp, CGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.Effects
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 
 

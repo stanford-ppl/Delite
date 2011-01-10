@@ -4,7 +4,7 @@ import datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import reflect.Manifest
-import scala.virtualization.lms.internal.{GenericNestedCodegen, CudaGenBase, ScalaGenEffect}
+import scala.virtualization.lms.internal.GenericNestedCodegen
 import scala.virtualization.lms.common._
 
 /* Machinery provided by OptiML itself (language features and control structures).
