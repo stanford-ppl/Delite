@@ -748,6 +748,19 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"}")
       //emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
 
+	  /*
+    case MatrixMultiply(x,y) =>
+      val callStream = "cublasSetKernelStream(stream);"
+      var callKernel = ""
+      if(remap(x.Type.typeArguments(0)) == "double")
+        callKernel = "cublasDgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
+      else if(remap(x.Type.typeArguments(0)) == "float")
+        callKernel = "cublasSgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
+      else
+        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatrixMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0))))
+      emitLibCall(sym,List(callStream,callKernel))
+      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(y)))
+*/
     // these are the ops that call through to the underlying real data structure
     case MatrixObjectNew(numRows,numCols) =>
       throw new RuntimeException("CudaGen: Not GPUable")

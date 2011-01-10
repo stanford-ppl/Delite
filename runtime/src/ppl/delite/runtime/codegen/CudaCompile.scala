@@ -55,6 +55,7 @@ object CudaCompile {
       "-arch", "compute_20",
       "-code", "sm_20",
       "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
+      "-lcublas", //cublas library
       "-o", "cudaHost.so", //output name
       "cudaHost.cu" //input name
       ), null, new File(path+"cuda/"))
