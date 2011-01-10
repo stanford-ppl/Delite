@@ -422,8 +422,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
   case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]])
-    extends DeliteOpReduce[Vector[A]] {
+    extends DeliteOpMap[Vector[A],A,Vector] {
 
+    val alloc = reifyEffects(Vector[A](x.numRows, false))
     val in = reifyEffects {
       var tcoll = Vector[Vector[A]](x.numRows, false)
        for (i <- 0 until x.numRows){
@@ -432,13 +433,14 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       tcoll
     }
 
-    val v = (fresh[Vector[A]],fresh[Vector[A]])
-    val func = v._1 + v._2
+    val v = fresh[Vector[A]]
+    val func = v.sum
   }
 
   case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]])
-    extends DeliteOpReduce[Vector[A]] {
+    extends DeliteOpMap[Vector[A],A,Vector] {
 
+    val alloc = reifyEffects(Vector[A](x.numCols, true))
     val in = reifyEffects {
       var tcoll = Vector[Vector[A]](x.numCols, true)
        for (i <- 0 until x.numCols){
@@ -447,8 +449,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       tcoll
     }
 
-    val v = (fresh[Vector[A]],fresh[Vector[A]])
-    val func = v._1 + v._2
+    val v = fresh[Vector[A]]
+    val func = v.sum
   }
 
 //  case class MatrixUnaryMinus[A:Manifest:Arith](in: Exp[Matrix[A]])
