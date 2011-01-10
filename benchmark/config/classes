@@ -1,7 +1,7 @@
-gda|ppl.dsl.optiml.apps.gda.GDA
-nb|ppl.dsl.optiml.apps.gda.GDA
-linreg|ppl.dsl.optiml.apps.gda.GDA
-kmeans|ppl.dsl.optiml.apps.gda.GDA
-svm|ppl.dsl.optiml.apps.gda.GDA
-lbp|ppl.dsl.optiml.apps.gda.GDA
-rbm|ppl.dsl.optiml.apps.gda.GDA
+gda|ppl.apps.ml.gda.GDA
+nb|ppl.apps.ml.gda.GDA
+linreg|ppl.apps.ml.gda.GDA
+kmeans|ppl.apps.ml.gda.GDA
+svm|ppl.apps.ml.gda.GDA
+lbp|ppl.apps.ml.gda.GDA
+rbm|ppl.apps.ml.gda.GDA
