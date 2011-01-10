@@ -174,44 +174,6 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 //    }
   }
 
-  /*
-  protected def matrix_rreduce(m: Rep[Matrix[Double]]): Rep[Matrix[Double]] = {
-    val currentMat = m
-    var lead = unit(0)
-
-    for (r <- 0 until m.numRows) {
-      // TODO: returnL out of an if does not work because of the wrapper then/else methods we make
-      if (m.numRows <= lead)
-        returnL(currentMat)
-
-      var i = r
-      while (currentMat(i, lead) == 0.0){
-        i += 1
-        if (m.numCols == i){
-          i = r
-          lead += 1
-          if (m.numRows == lead)
-            returnL(currentMat)
-        }
-      }
-
-      val tmpRow = currentMat(i)
-      currentMat(i) = currentMat(r)
-      currentMat(r) = tmpRow
-
-      currentMat(r) = repVecToVecOps(currentMat(r)) / currentMat(r,lead)
-
-      for (i <- 0 until m.numRows){
-        if (i != r)
-          currentMat(i) = currentMat(i) - currentMat(r)*currentMat(i,lead)
-      }
-      lead += 1
-    }
-
-    currentMat
-  }
-  */
-
    protected def matrix_rreduce(m: Rep[Matrix[Double]]): Rep[Matrix[Double]] = {
     val currentMat = m
     var lead = unit(0)
@@ -239,7 +201,6 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
           val tmpRow = currentMat(i)
           currentMat(i) = currentMat(r)
           currentMat(r) = tmpRow
-
           currentMat(r) = repVecToVecOps(currentMat(r)) / currentMat(r,lead)
 
           for (i <- 0 until m.numRows){
@@ -339,6 +300,5 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     }
     out
   }
-
 
 }
