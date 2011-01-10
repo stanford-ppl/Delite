@@ -320,6 +320,16 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
     val mV = manifest[VectorImpl[A]]
   }
+  case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
+    extends DeliteOpSingleTask(reifyEffects(matrix_sigmoid_impl(in))) {
+
+    val mM = manifest[MatrixImpl[Double]]
+  }
+  case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
+    extends DeliteOpSingleTask(reifyEffects(matrix_sigmoidf_impl(in))) {
+
+    val mM = manifest[MatrixImpl[Float]]
+  }
 
 
   ////////////////////////////////
@@ -476,13 +486,14 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val v = fresh[A]
     val func = v.exp
   }
-
+/*
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpMap[A,Double,Matrix] {
 
     val alloc = reifyEffects(Matrix[Double](in.numRows, in.numCols))
     val v = fresh[A]
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1))))
+    val mM = manifest[MatrixImpl[A]]
   }
 
   case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
@@ -491,8 +502,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val alloc = reifyEffects(Matrix[Float](in.numRows, in.numCols))
     val v = fresh[A]
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
+    val mM = manifest[MatrixImpl[A]]
   }
-
+*/
   case class MatrixMin[A:Manifest:Ordering](in: Exp[Matrix[A]])
     extends DeliteOpReduce[A] {
 
@@ -749,6 +761,12 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case m@MatrixTimesVector(x,y) if (Config.useBlas) =>
       emitValDef(sym, "new " + remap(m.mV) + "(" + quote(x) + ".numRows, false)")
       stream.println("scalaBLAS.matVMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,0,1)".format(quote(x),quote(y),quote(sym),quote(x),quote(x)))
+    case m@MatrixSigmoid(x) if (Config.useBlas) =>
+      emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(x) + ".numCols)")
+      stream.println("scalaBLAS.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
+    case m@MatrixSigmoidF(x) if (Config.useBlas) =>
+      emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(x) + ".numCols)")
+      stream.println("scalaBLAS.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
 
     case _ => super.emitNode(sym, rhs)
   }
