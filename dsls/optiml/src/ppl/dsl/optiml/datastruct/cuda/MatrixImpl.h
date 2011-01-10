@@ -11,37 +11,47 @@ public:
 	int numCols;
 	
 	// Constructors
-	Matrix() {
+	__host__ __device__ Matrix() {
 		numRows = 0;
 		numCols = 0;
 		data = NULL;
 	}
 
-	Matrix(int _numRows, int _numCols, T *_data) {
+	__host__ __device__ Matrix(int _numRows, int _numCols, T *_data) {
 		numRows = _numRows;
 		numCols = _numCols;
 		data = _data;
 	}
 
 	// Accessor Functions
-	__device__ T apply(int idxR, int idxC) {
+	__host__ __device__ T apply(int idxR, int idxC) {
 		return data[idxR*numCols+idxC];
 	}
-	__device__ void update(int idxR, int idxC, T newVal) {
+	__host__ __device__ void update(int idxR, int idxC, T newVal) {
 		data[idxR*numCols+idxC] = newVal;
 	}
 
     // DeliteCollection
-    __device__ int size() {
+    __host__ __device__ int size() {
         return numRows*numCols;
     }
-    __device__ T dcApply(int idx) {
+    __host__ __device__ T dcApply(int idx) {
         return data[idx];
     }
-    __device__ void dcUpdate(int idx, T value) {
+    __host__ __device__ void dcUpdate(int idx, T value) {
         data[idx] = value;
     }
-	
+
+/*
+    __host__ __device__ Vector<T> vview(int _start, int _stride, int _length, bool _isRow) {
+      VectorView<T> res;
+      res.data = data;
+      res.length = _length;
+      res.isRow = _isRow;
+      res.start = _start;
+      res.stride = _stride;
+    }
+*/	
 };
 
 #endif

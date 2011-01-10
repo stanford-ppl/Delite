@@ -39,7 +39,7 @@ trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with Cu
     with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenFunctions
     with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
     with CudaGenPrimitiveOps with CudaGenMiscOps
-    with CudaGenListOps with CudaGenSeqOps
+    with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps
     { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
@@ -124,7 +124,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala", "TrainingSetImpl.scala")
 
   override def genSpec(f: File, dsOut: String) {
-    for (s <- List("Double","Int")) {
+    for (s <- List("Double","Int","Float","Long","Boolean")) {
       val outFile = dsOut + "/" + s + f.getName()
       val out = new BufferedWriter(new FileWriter(outFile))
       for (line <- scala.io.Source.fromFile(f).getLines) {
@@ -153,12 +153,24 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
     res = res.replaceAll("ppl.delite.framework", "generated.scala")
     res = res.replaceAll("VectorImpl\\[Double\\]", "DoubleVectorImpl")
     res = res.replaceAll("VectorImpl\\[Int\\]", "IntVectorImpl")
+    res = res.replaceAll("VectorImpl\\[Float\\]", "FloatVectorImpl")
+    res = res.replaceAll("VectorImpl\\[Long\\]", "LongVectorImpl")
+    res = res.replaceAll("VectorImpl\\[Boolean\\]", "BooleanVectorImpl")
     res = res.replaceAll("VectorViewImpl\\[Double\\]", "DoubleVectorViewImpl")
     res = res.replaceAll("VectorViewImpl\\[Int\\]", "IntVectorViewImpl")
+    res = res.replaceAll("VectorViewImpl\\[Float\\]", "FloatVectorViewImpl")
+    res = res.replaceAll("VectorViewImpl\\[Long\\]", "LongVectorViewImpl")
+    res = res.replaceAll("VectorViewImpl\\[Boolean\\]", "BooleanVectorViewImpl")
     res = res.replaceAll("MatrixImpl\\[Double\\]", "DoubleMatrixImpl")
     res = res.replaceAll("MatrixImpl\\[Int\\]", "IntMatrixImpl")
+    res = res.replaceAll("MatrixImpl\\[Float\\]", "FloatMatrixImpl")
+    res = res.replaceAll("MatrixImpl\\[Long\\]", "LongMatrixImpl")
+    res = res.replaceAll("MatrixImpl\\[Boolean\\]", "BooleanMatrixImpl")
     res = res.replaceAll("TrainingSetImpl\\[Double,", "DoubleTrainingSetImpl\\[")
     res = res.replaceAll("TrainingSetImpl\\[Int,", "IntTrainingSetImpl\\[")
+    res = res.replaceAll("TrainingSetImpl\\[Float,", "FloatTrainingSetImpl\\[")
+    res = res.replaceAll("TrainingSetImpl\\[Long,", "LongTrainingSetImpl\\[")
+    res = res.replaceAll("TrainingSetImpl\\[Boolean,", "BooleanTrainingSetImpl\\[")
     res
   }
 }
@@ -182,6 +194,8 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => "Vector<float>"
     case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
     case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
+    case "ppl.dsl.optiml.datastruct.scala.RangeVector" => "RangeVector"
+    case "ppl.dsl.optiml.datastruct.scala.IndexVector" => "RangeVector"
     case _ => super.remap(m)
   }
 
@@ -196,6 +210,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => true
     case "Vector<double>" => true
     case "Vector<bool>" => true
+    case "RangeVector" => true
     case _ => super.isObjectType(m)
   }
 
@@ -210,6 +225,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => vectorCopyHtoD(sym)
     case "Vector<double>" => vectorCopyHtoD(sym)
     case "Vector<bool>" => vectorCopyHtoD(sym)
+    case "RangeVector" => rangevectorCopyHtoD(sym)
     case _ => super.copyDataStructureHtoD(sym)
   }
 
@@ -224,6 +240,8 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => vectorCopyDtoH(sym)
     case "Vector<double>" => vectorCopyDtoH(sym)
     case "Vector<bool>" => vectorCopyDtoH(sym)
+    //case "RangeVector" => rangevectorCopyDtoH(sym)
+    case "RangeVector" => vectorCopyDtoH(sym)
     case _ => super.copyDataStructureDtoH(sym)
   }
 
@@ -238,6 +256,8 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => emitVectorAllocSym(newSym,sym)
     case "Vector<double>" => emitVectorAllocSym(newSym,sym)
     case "Vector<bool>" => emitVectorAllocSym(newSym,sym)
+    //case "RangeVector" => emitRangeVectorAllocSym(newSym,sym)
+    case "RangeVector" => emitVectorAllocSym(newSym,sym)
     case _ => super.allocOutput(newSym,sym)    
   }
 
@@ -252,6 +272,8 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => emitVectorAllocRef(newSym,sym)
     case "Vector<double>" => emitVectorAllocRef(newSym,sym)
     case "Vector<bool>" => emitVectorAllocRef(newSym,sym)
+    //case "RangeVector" => emitRangeVectorAllocRef(newSym,sym)
+    case "RangeVector" => emitVectorAllocRef(newSym,sym)
     case _ => super.allocReference(newSym,sym)
   }
 
@@ -259,7 +281,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     val out = new StringBuilder
     out.append("#include \"VectorImpl.h\"\n")
     out.append("#include \"MatrixImpl.h\"\n")
-    //out.append("#include \"RangeVectorImpl.h\"\n")
+    out.append("#include \"RangeVectorImpl.h\"\n")
     out.toString
   }
 
