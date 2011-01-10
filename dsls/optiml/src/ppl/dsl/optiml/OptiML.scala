@@ -5,13 +5,13 @@ import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import scala.virtualization.lms.common._
-import ppl.delite.framework.codegen.delite.DeliteCodeGenOverridesScala
 import scala.virtualization.lms.internal.{ScalaGenBase, GenericNestedCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
 import java.io._
 import scala.virtualization.lms.internal._
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.ops.{CGenDeliteOps, CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
+import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 
 /**
  * These are the portions of Scala imported into OptiML's scope.
@@ -67,7 +67,7 @@ trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp wit
   with LabelsOpsExp with TrainingSetOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard
-  with DeliteOpsExp {
+  with DeliteOpsExp with DeliteAllOverridesExp {
   this: DeliteApplication =>
 
   def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericNestedCodegen{val IR: OptiMLExp.this.type} = {
@@ -117,11 +117,11 @@ trait OptiMLCodeGenBase extends GenericCodegen {
 trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
   with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps
   with ScalaGenLabelsOps with ScalaGenTrainingSetOps
-  with DeliteCodeGenOverridesScala { //with ScalaGenMLInputReaderOps {
+  with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
 
   val IR: DeliteApplication with OptiMLExp
 
-  override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala")
+  override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala", "TrainingSetImpl.scala")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int")) {
@@ -139,6 +139,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
     var res = line.replaceAll("object ", "object " + t)
     res = res.replaceAll("import ", "import " + t)
     res = res.replaceAll("@specialized T: ClassManifest", t)
+    res = res.replaceAll("T:Manifest", t)
     res = res.replaceAll("\\bT\\b", t)
     dsmap(res)
   }
@@ -156,12 +157,14 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
     res = res.replaceAll("VectorViewImpl\\[Int\\]", "IntVectorViewImpl")
     res = res.replaceAll("MatrixImpl\\[Double\\]", "DoubleMatrixImpl")
     res = res.replaceAll("MatrixImpl\\[Int\\]", "IntMatrixImpl")
+    res = res.replaceAll("TrainingSetImpl\\[Double,", "DoubleTrainingSetImpl\\[")
+    res = res.replaceAll("TrainingSetImpl\\[Int,", "IntTrainingSetImpl\\[")
     res
   }
 }
 
 trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct // with CudaGenVectorViewOps
- // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps   //TODO:DeliteCodeGenOverrideScala needed?
+  with DeliteCudaGenAllOverrides // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
 
   val IR: DeliteApplication with OptiMLExp with Expressions
@@ -263,6 +266,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
 }
 
 trait OptiMLCodeGenC extends OptiMLCodeGenBase with OptiMLCCodeGenPkg with CGenArithOps with CGenDeliteOps with CGenVectorOps with CGenMatrixOps 
+  with DeliteCGenAllOverrides
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._

@@ -74,10 +74,9 @@ object Delite {
     //execute
     val numTimes = Config.numRuns
     for (i <- 1 to numTimes) {
-      println("Beginning Execution Run " + numTimes)
-      executor.run(executable) //TODO: need to reset the executables
+      println("Beginning Execution Run " + i)
+      executor.run(executable)
       EOP.await //await the end of the application program
-      EOP.reset
       Stopwatch.print()
     }
 
