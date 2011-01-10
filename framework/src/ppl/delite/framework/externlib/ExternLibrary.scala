@@ -142,8 +142,8 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_matVMult_00024mDc_00024sp
       "-I" + javaHome + "/../include", "-I" + javaHome + "/../include/linux",
       "-I" + Config.blasDir + "/mkl/include",
       "-L" + Config.blasDir + "/mkl/lib/em64t",
-      "-L" + Config.blasDir + "/mkl/lib/em64t",
-      "-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-lmkl_mc3", "-lmkl_def", "-lgfortran",
+      "-L" + Config.blasDir + "/lib/intel64",
+      "-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-liomp5", "-lmkl_mc3", "-lmkl_def", "-lgfortran",
       "-shared", "-fPIC", //dynamic shared library
       "-o", "scalaBLAS.so", //output name
       "scalaBLAS.c" //input name
