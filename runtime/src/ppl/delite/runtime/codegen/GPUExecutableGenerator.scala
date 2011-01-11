@@ -113,7 +113,7 @@ object GPUExecutableGenerator {
     }
     //add a reference to the singleton of scala.runtime.BoxedUnit for use everywhere required
     out.append("jclass clsBU = env->FindClass(\"scala/runtime/BoxedUnit\");\n")
-    out.append("jobject boxedUnit = env->GetStaticObjectField(clsBU, env->GetStaticFieldId(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\");\n")
+    out.append("jobject boxedUnit = env->GetStaticObjectField(clsBU, env->GetStaticFieldID(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\"));\n")
   }
 
   //TODO: need a system that handles mutations properly: other data structures besides the op output could require a transfer (h2d or d2h)
@@ -441,10 +441,12 @@ object GPUExecutableGenerator {
     out.append("@native def hostGPU : Unit\n")
 
     //link the native code upon object creation
+    val sep = java.io.File.separator
     out.append("System.load(\"")
-    val file = new File(kernelPath+"cuda/") //create a file to turn relative path into absolute path
-    out.append(file.getAbsolutePath)
-    out.append(System.getProperty("file.separator"))
+    out.append(kernelPath)
+    out.append(sep)
+    out.append("cuda")
+    out.append(sep)
     out.append("cudaHost.so\")\n")
 
     //the sync methods/objects
