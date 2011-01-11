@@ -167,7 +167,7 @@ object DeliteTaskGraph {
     val endOp = new OP_EndCondition(id)
 
     //list of all dependencies of the if block, minus any dependencies within the block
-    val ifDeps = (getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")) filterNot { (thenIds ++ elseIds) contains }
+    val ifDeps = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
 
     //beginning depends on all exterior dependencies
     for (depId <- ifDeps) {
@@ -254,7 +254,7 @@ object DeliteTaskGraph {
     val endOp = new OP_EndWhile(id, contOps.head)
 
     //list of all dependencies of the while block, minus any dependencies within the block
-    val whileDeps = (getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")) filterNot { bodyIds contains }
+    val whileDeps = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
 
     //beginning depends on all exterior dependencies
     for (depId <- whileDeps) {
