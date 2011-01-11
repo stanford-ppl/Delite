@@ -174,7 +174,7 @@ object GPUExecutableGenerator {
       if (addSetter) {
         syncList.add(op) //add op to list that needs sync generation
         //sync output copy with kernel completion
-        out.append("addEvent(kernelStream, d2hStream);\n")
+        if (!op.isInstanceOf[OP_Control]) out.append("addEvent(kernelStream, d2hStream);\n")
         //write a setter
         writeSetter(op, location, out)
       }
@@ -348,16 +348,18 @@ object GPUExecutableGenerator {
   }
 
   private def writeSetter(op: DeliteOP, location: Int, out: StringBuilder) {
-    //copy data from GPU to CPU
-    out.append(getJNIType(op.outputType)) //jobject
-    out.append(' ')
-    out.append(getSymCPU(op))
-    out.append(" = ")
-    out.append(op.cudaMetadata.outputSet.func)
-    out.append('(')
-    out.append("env,") //JNI environment pointer
-    out.append(getSymGPU(op)) //C++ object
-    out.append(");\n")
+    if (!op.isInstanceOf[OP_Control]) {
+      //copy data from GPU to CPU
+      out.append(getJNIType(op.outputType)) //jobject
+      out.append(' ')
+      out.append(getSymCPU(op))
+      out.append(" = ")
+      out.append(op.cudaMetadata.outputSet.func)
+      out.append('(')
+      out.append("env,") //JNI environment pointer
+      out.append(getSymGPU(op)) //C++ object
+      out.append(");\n")
+    }
 
     //set data as available to CPU
     out.append("env->CallStaticVoidMethod(cls")
@@ -377,7 +379,7 @@ object GPUExecutableGenerator {
     op match {
       case beginCond: OP_BeginCondition => {
         out.append("if (")
-        out.append(getSymGPU(beginCond.predicate))
+        out.append(getSymCPU(beginCond.predicate))
         out.append(") {\n")
       }
       case beginElse: OP_BeginElse => {
@@ -388,11 +390,11 @@ object GPUExecutableGenerator {
         out.append('\n')
       }
       case beginWhile: OP_BeginWhile => {
-        val sym = getSymGPU(op).dropRight(1) //the base sym for this while construct
+        val sym = getSymCPU(op).dropRight(1) //the base sym for this while construct
         out.append("bool ")
         out.append(sym)
         out.append("p = ")
-        out.append(getSymGPU(beginWhile.predicate))
+        out.append(getSymCPU(beginWhile.predicate))
         out.append('\n')
 
         out.append("while (")
@@ -400,9 +402,9 @@ object GPUExecutableGenerator {
         out.append("p) {\n")
       }
       case endWhile: OP_EndWhile => {
-        out.append(getSymGPU(op))
+        out.append(getSymCPU(op))
         out.append("p = ")
-        out.append(getSymGPU(endWhile.predicate))
+        out.append(getSymCPU(endWhile.predicate))
         out.append("\n}\n")
       }
     }

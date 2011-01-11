@@ -30,8 +30,8 @@ object CudaCompile {
 
   //TODO: handle more than one source
   def compile(source: String, path: String) {
-    val pathSep = java.io.File.separator
-    val write = new FileWriter(path+pathSep+"cuda"+pathSep+"cudaHost.cu")
+    val sep = java.io.File.separator
+    val write = new FileWriter(path + sep + "cuda" + sep + "cudaHost.cu")
     write.write(source)
     write.close
 
@@ -49,8 +49,8 @@ object CudaCompile {
     val process = Runtime.getRuntime.exec(Array[String](
       "nvcc",
       "-w", //suppress warnings
-      "-I" + javaHome + pathSep + ".." + pathSep + "include", "-I" + javaHome + pathSep + ".." + pathSep + "include" + pathSep + suffix, //jni
-      "-I" + deliteHome + pathSep + "runtime" + pathSep + "cuda",
+      "-I" + javaHome + sep + ".." + sep + "include", "-I" + javaHome + sep + ".." + sep + "include" + sep + suffix, //jni
+      "-I" + deliteHome + sep + "runtime" + sep + "cuda",
       "-O2", //optimized
       "-arch", "compute_20",
       "-code", "sm_20",
@@ -58,7 +58,7 @@ object CudaCompile {
       "-lcublas", //cublas library
       "-o", "cudaHost.so", //output name
       "cudaHost.cu" //input name
-      ), null, new File(path + pathSep + "cuda"))
+      ), null, new File(path + sep + "cuda"))
 
     process.waitFor //wait for compilation to complete
     val first = process.getErrorStream.read
