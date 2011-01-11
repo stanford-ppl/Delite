@@ -111,6 +111,9 @@ object GPUExecutableGenerator {
       out.append(i)
       out.append("\");\n")
     }
+    //add a reference to the singleton of scala.runtime.BoxedUnit for use everywhere required
+    out.append("jclass clsBU = env->FindClass(\"scala/runtime/BoxedUnit\");\n")
+    out.append("jobject boxedUnit = env->GetStaticObjectField(clsBU, env->GetStaticFieldId(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\");\n")
   }
 
   //TODO: need a system that handles mutations properly: other data structures besides the op output could require a transfer (h2d or d2h)
@@ -287,9 +290,8 @@ object GPUExecutableGenerator {
 
   private def writeGetter(op: DeliteOP, out: StringBuilder) {
     //get data from CPU
-    val jtype = getJNIType(op.outputType)
-    if (jtype != "void") { //skip the variable declaration if return type is "void"
-      out.append(jtype)
+    if (op.outputType != "Unit") { //skip the variable declaration if return type is "Unit"
+      out.append(getJNIType(op.outputType))
       out.append(' ')
       out.append(getSymCPU(op))
       out.append(" = ")
@@ -303,7 +305,7 @@ object GPUExecutableGenerator {
     out.append(",\"get")
     out.append(op.id) //scala get method
     out.append("\",\"()")
-    out.append(getJNIArgType(op.outputType))
+    out.append(getJNIOutputType(op.outputType))
     out.append("\"));\n")
   }
 
@@ -371,7 +373,7 @@ object GPUExecutableGenerator {
     out.append("\",\"(")        
     out.append(getJNIArgType(op.outputType))
     out.append(")V\"),")
-    if (op.isInstanceOf[OP_Control]) out.append("void") else out.append(getSymCPU(op))
+    if (op.isInstanceOf[OP_Control] || op.outputType == "Unit") out.append("boxedUnit") else out.append(getSymCPU(op))
     out.append(");\n")
   }
 
@@ -497,6 +499,25 @@ object GPUExecutableGenerator {
   }
 
   private def getJNIArgType(scalaType: String): String = {
+    scalaType match {
+      case "Unit" => "Lscala/runtime/BoxedUnit;"
+      case "Int" => "I"
+      case "Long" => "J"
+      case "Float" => "F"
+      case "Double" => "D"
+      case "Boolean" => "Z"
+      case "Short" => "S"
+      case "Char" => "C"
+      case "Byte" => "B"
+      case _ => { //all other types are objects
+        var objectType = scalaType.replace('.','/')
+        if (objectType.indexOf('[') != -1) objectType = objectType.substring(0, objectType.indexOf('[')) //erasure
+        "L"+objectType+";" //'L' + fully qualified type + ';'
+      }
+    } //TODO: this does not handle array types properly
+  }
+
+  private def getJNIOutputType(scalaType: String): String = {
     scalaType match {
       case "Unit" => "V"
       case "Int" => "I"
