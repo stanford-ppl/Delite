@@ -33,14 +33,14 @@ object SVM extends DeliteApplication with OptiMLExp {
     val inMatrixTest = MLInputReader.readTokenMatrix(testfile)
 
     // adjust the classification labels to -1 and +1 for SMO
-    val YTrain = inMatrixTrain.labels map { e => if (e == 0) -1; else 1 }
-    val YTest = inMatrixTest.labels map { e => if (e == 0) -1; else 1 }
+    inMatrixTrain.labels mmap { e => if (e == 0) -1; else 1 }
+    inMatrixTest.labels mmap { e => if (e == 0) -1; else 1 }
 
     // run the SMO training algorithm
     val svm = new SVMModel { val IR = SVM.this }
     //val svm = new SVMModel(SVM.this)
     tic
-    val (weights, b) = svm.train(inMatrixTrain, YTrain, 1, .001, 10)
+    val (weights, b) = svm.train(inMatrixTrain, 1, .001, 10)
     toc
     //svm.computeWeights(inMatrixTrain, YTrain)
     //svm.saveModel(weights, b, modelFile)
@@ -48,6 +48,7 @@ object SVM extends DeliteApplication with OptiMLExp {
     //println("SVM training finished. Model saved to " + modelFile)
 
     // TEST RESULTS
+    val YTest = inMatrixTest.labels
     val numTestDocs = inMatrixTest.numRows
     //svm.load(modelFile)
     val outputLabels = (0::numTestDocs){ i => svm.classify(weights, b, inMatrixTest(i)) }

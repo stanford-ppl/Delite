@@ -101,6 +101,17 @@ trait DeliteCodegen extends GenericNestedCodegen {
     scope = e4 ::: scope
     generators foreach { _.scope = scope }
 
+    ignoreEffects = true
+    val e5 = buildScheduleForResult(start)
+    ignoreEffects = false
+
+    val e6 = e4.filter(z => z match {
+      case TP(sym, Reflect(x, es)) => (e5 contains z) || !(effectScope contains z)
+      case _ => e5 contains z
+    })
+    effectScope :::= e6 filter { case TP(sym, Reflect(x, es)) => true; case _ => false }
+    generators foreach { _.effectScope = effectScope }
+
 
     emittedNodes = Nil
     for (t@TP(sym, rhs) <- e4) {

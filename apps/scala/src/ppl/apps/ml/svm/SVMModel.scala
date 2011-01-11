@@ -36,15 +36,17 @@ trait SVMModel {
   /////////////
   // training
 
-  def train(X: Rep[TrainingSet[Double,Double]], Y: Rep[Vector[Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
+  def train(X: Rep[TrainingSet[Double,Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
     println("Training SVM using the SMO algorithm")
+
+    val Y = X.labels
 
     // internal model storage
     var weights = Vector.zeros(X.numCols)
     var b = unit(0.0)
 
     // intermediate training info
-    val alphas = Vector.zeros(X.numRows).t // col vector
+    val alphas = Vector.zeros(X.numRows).mt // col vector
 
     val numSamples = X.numRows
     var passes = unit(0)
@@ -53,11 +55,13 @@ trait SVMModel {
       print(".")
       var num_changed_alphas = unit(0)
       for (i <- 0 until numSamples){
+        // TODO: x761 -- code is recalculating alphas from original definition here
         val f_i = (alphas*Y*(X*X(i).t)).sum + b
         val E_i = f_i - Y(i)
 
         if (((Y(i)*E_i < -1.*tol) && (alphas(i) < C)) || ((Y(i)*E_i > tol) && (alphas(i) > 0))){
           // select a candidate j from the remaining numSamples-i samples at random
+          // TODO: somehow this section is getting re-calculated in the loop below -> trying to map alphas(i) below to alphas(j) here?
           var j = Math.floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
           while (j == i){
             j = Math.floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
@@ -98,6 +102,14 @@ trait SVMModel {
                 old_ai = alphas(i)
                 alphas(i) = alphas(i) + Y(i)*Y(j)*(old_aj-alphas(j))
 
+                // TODO: the reads of alphas(i) after this program pt. are not reading the new value, because
+                // they are getting CSEd
+                // temporary fix: make vector apply reflectEffect. obviously, matrices, arrays, and any other
+                // mutable data structure can still run into this problem. basically, ANY read property of any
+                // mutable data structure must be effectful at this time to be safe, until the scheduler can handle
+                // this situation.
+                // permanent fix: reflectRead. see expressions.
+
                 // compute the new b such that KKT conditions are satisfied
                 val old_b = b
                 val b1 = b - E_i - (X(i)*:*X(i))*Y(i)*(alphas(i)-old_ai) - (X(i)*:*(X(j)))*Y(j)*(alphas(j)-old_aj)
@@ -130,7 +142,19 @@ trait SVMModel {
     // SMO finished
     // compute the weights (assuming a linear kernel)
     for (i <- 0 until X.numRows){
+      // TODO: alphas(i) is getting recomputed here
+
+      // this line depends on all of the effects already emitted in the while block, but those are not in its
+      // scope, so it tries to re-emit them.
+
+      // the proper semantics for a block should be only emit a dependency if you truly depend on it (as an input),
+      // or if it is an effect that has not been emitted yet by anybody
+
+      // Read makes this problem worse by making alphas(i) depend on some additional effects inside the body of
+      // the above for loop, and when it tries to re-emit those effects, it encounters bound symbols in the above
+      // for loop that are out of scope here.
       weights = weights + X(i)*alphas(i)*Y(i)
+      //weights = weights + X(i)*Y(i)
     }
     print("\\n")
 

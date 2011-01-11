@@ -527,81 +527,81 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_obj_randf(len: Exp[Int]) = reflectEffect(VectorObjectRandF(len))
   def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorObjectRange(start, end, stride, isRow))
   def vector_obj_uniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean]) = reflectEffect(VectorObjectUniform(start, step_size, end, isRow))
-  def vector_obj_flatten[A:Manifest](pieces: Exp[Vector[Vector[A]]]) = VectorObjectFlatten(pieces)
+  def vector_obj_flatten[A:Manifest](pieces: Exp[Vector[Vector[A]]]) = VectorObjectFlatten(reflectRead(pieces))
 
 
   /////////////////////
   // class interface
 
-  def vector_length[A:Manifest](x: Exp[Vector[A]]) = VectorLength(x)
-  def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = VectorIsRow(x)
-  def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(x, n)
-  def vector_slice[A:Manifest](x: Exp[Vector[A]], start: Exp[Int], end: Exp[Int]) = VectorSlice(x, start, end)
-  def vector_contains[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) = VectorContains(x, y)
-  def vector_distinct[A:Manifest](x: Exp[Vector[A]]) = VectorDistinct(x)
+  def vector_length[A:Manifest](x: Exp[Vector[A]]) = VectorLength(reflectRead(x))
+  def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = VectorIsRow(reflectRead(x))
+  def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(reflectRead(x), n)
+  def vector_slice[A:Manifest](x: Exp[Vector[A]], start: Exp[Int], end: Exp[Int]) = VectorSlice(reflectRead(x), start, end)
+  def vector_contains[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) = VectorContains(reflectRead(x), y)
+  def vector_distinct[A:Manifest](x: Exp[Vector[A]]) = VectorDistinct(reflectRead(x))
 
-  def vector_trans[A:Manifest](x: Exp[Vector[A]]) = VectorTrans(x)
-  def vector_mutable_trans[A:Manifest](x: Exp[Vector[A]]) = VectorMutableTrans(x)
-  def vector_clone[A:Manifest](x: Exp[Vector[A]]) = VectorClone(x)
-  def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
-  def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = VectorRepmat(x,i,j)
+  def vector_trans[A:Manifest](x: Exp[Vector[A]]) = VectorTrans(reflectRead(x))
+  def vector_mutable_trans[A:Manifest](x: Exp[Vector[A]]) = reflectMutation(VectorMutableTrans(reflectReadWrite(x)))
+  def vector_clone[A:Manifest](x: Exp[Vector[A]]) = VectorClone(reflectRead(x))
+  def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(reflectRead(x)))
+  def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = VectorRepmat(reflectRead(x),i,j)
 
-  def vector_concatenate[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorConcatenate(x,y)
-  def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(x, n, y))
-  def vector_copyfrom[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorCopyFrom(x, pos, y))
-  def vector_insert[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[A]) = reflectMutation(VectorInsert(x, pos, y))
-  def vector_insertall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorInsertAll(x, pos, y))
-  def vector_removeall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], len: Exp[Int]) = reflectMutation(VectorRemoveAll(x, pos, len))
-  def vector_trim[A:Manifest](x: Exp[Vector[A]]) = reflectMutation(VectorTrim(x))
+  def vector_concatenate[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorConcatenate(reflectRead(x),reflectRead(y))
+  def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(reflectWrite(x), n, reflectRead(y)))
+  def vector_copyfrom[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorCopyFrom(reflectRead(x), pos, reflectRead(y)))
+  def vector_insert[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[A]) = reflectMutation(VectorInsert(reflectRead(x), pos, reflectRead(y)))
+  def vector_insertall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorInsertAll(reflectRead(x), pos, reflectRead(y)))
+  def vector_removeall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], len: Exp[Int]) = reflectMutation(VectorRemoveAll(reflectRead(x), pos, len))
+  def vector_trim[A:Manifest](x: Exp[Vector[A]]) = reflectMutation(VectorTrim(reflectRead(x)))
 
-  def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(x, y)
-  def vector_plus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorPlusScalar(x, y)
-  def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorPlusEquals(x, y))
-  def vector_minus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(x,y)
-  def vector_minus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorMinusScalar(x, y)
-  def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(x, y)
-  def vector_times_withconvert[A:Manifest:Arith,B:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], conv: Exp[B] => Exp[A]) = VectorTimesWithConvert(x,y,conv)
-  def vector_times_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorTimesScalar(x, y)
-  def vector_times_matrix[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Matrix[A]]) = VectorTimesMatrix(x, y)
-  def vector_outer[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorOuter(x, y)
-  def vector_dot_product[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorDotProduct(x, y)
-  def vector_divide[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorDivide(x, y)
-  def vector_divide_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorDivideScalar(x, y)
-  def vector_sum[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorSum(x)
-  def vector_abs[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorAbs(x)
-  def vector_exp[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorExp(x)
+  def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(reflectRead(x), reflectRead(y))
+  def vector_plus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorPlusScalar(reflectRead(x), reflectRead(y))
+  def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorPlusEquals(reflectRead(x), reflectRead(y)))
+  def vector_minus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(reflectRead(x),reflectRead(y))
+  def vector_minus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorMinusScalar(reflectRead(x), reflectRead(y))
+  def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(reflectRead(x), reflectRead(y))
+  def vector_times_withconvert[A:Manifest:Arith,B:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], conv: Exp[B] => Exp[A]) = VectorTimesWithConvert(reflectRead(x),reflectRead(y),conv)
+  def vector_times_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorTimesScalar(reflectRead(x), reflectRead(y))
+  def vector_times_matrix[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Matrix[A]]) = VectorTimesMatrix(reflectRead(x), reflectRead(y))
+  def vector_outer[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorOuter(reflectRead(x), reflectRead(y))
+  def vector_dot_product[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorDotProduct(reflectRead(x), reflectRead(y))
+  def vector_divide[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorDivide(reflectRead(x), reflectRead(y))
+  def vector_divide_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorDivideScalar(reflectRead(x), reflectRead(y))
+  def vector_sum[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorSum(reflectRead(x))
+  def vector_abs[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorAbs(reflectRead(x))
+  def vector_exp[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorExp(reflectRead(x))
 
-  def vector_sort[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorSort(x)
-  def vector_min[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMin(x)
-  //def vector_minIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMinIndex(x)
-  def vector_max[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMax(x)
-  //def vector_maxIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMaxIndex(x)
-  def vector_median[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMedian(x)
+  def vector_sort[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorSort(reflectRead(x))
+  def vector_min[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMin(reflectRead(x))
+  //def vector_minIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMinIndex(reflectRead(x))
+  def vector_max[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMax(reflectRead(x))
+  //def vector_maxIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMaxIndex(reflectRead(x))
+  def vector_median[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMedian(reflectRead(x))
 
   def vector_map[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[B]) = {
     val v = fresh[A]
     val func = reifyEffects(f(v))
-    VectorMap(x, v, func)
+    VectorMap(reflectRead(x), v, func)
   }
   def vector_mmap[A:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[A]) = {
     val v = fresh[A]
     val func = reifyEffects(f(v))
-    VectorMutableMap(x, v, func)
+    reflectMutation(VectorMutableMap(reflectReadWrite(x), v, func))
   }
   def vector_foreach[A:Manifest](x: Exp[Vector[A]], block: Exp[A] => Exp[Unit]) = {
     val v = fresh[A]
     val func = reifyEffects(block(v))
-    reflectEffect(VectorForeach(x, v, func))
+    reflectEffect(VectorForeach(reflectRead(x), v, func))
   }
   def vector_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], f: (Exp[A],Exp[B]) => Exp[R]) = {
     val v = (fresh[A], fresh[B])
     val func = reifyEffects(f(v._1,v._2))
-    VectorZipWith(x, y, v, func)
+    VectorZipWith(reflectRead(x), reflectRead(y), v, func)
   }
   def vector_reduce[A:Manifest](x: Exp[Vector[A]], f: (Exp[A],Exp[A]) => Exp[A]) = {
     val v = (fresh[A],fresh[A])
     val func = reifyEffects(f(v._1, v._2))
-    VectorReduce(x, v, func)
+    VectorReduce(reflectRead(x), v, func)
   }
 
 // TODO: this is like an aggregating reduction, or flatMap reduction; the reduction function should be concatentation
@@ -618,15 +618,15 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 //    val reduce = rV._1 ++= rV._2
 //
 //  }
-  def vector_filter[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = VectorFilter(x, pred)
+  def vector_filter[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = VectorFilter(reflectRead(x), pred)
 
   def vector_flatmap[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[Vector[B]]) = {
     val v = fresh[A]
     val func = reifyEffects(f(v))
-    VectorFlatMap(x, v, func)
+    VectorFlatMap(reflectRead(x), v, func)
   }
 
-  def vector_partition[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = t2(VectorPartition(x, pred))
+  def vector_partition[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = t2(VectorPartition(reflectRead(x), pred))
 
   def vector_nil[A:Manifest] = VectorNil[A]()
 
