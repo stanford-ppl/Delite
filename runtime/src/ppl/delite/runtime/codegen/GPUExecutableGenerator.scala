@@ -371,7 +371,7 @@ object GPUExecutableGenerator {
     out.append("\",\"(")        
     out.append(getJNIArgType(op.outputType))
     out.append(")V\"),")
-    out.append(getSymCPU(op))
+    if (op.isInstanceOf[OP_Control]) out.append("void") else out.append(getSymCPU(op))
     out.append(");\n")
   }
 
