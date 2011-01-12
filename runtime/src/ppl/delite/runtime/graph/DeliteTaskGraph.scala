@@ -166,12 +166,21 @@ object DeliteTaskGraph {
     val beginElseOp = new OP_BeginElse(id+"e")
     val endOp = new OP_EndCondition(id)
 
+    var thenOps: List[DeliteOP] = Nil
+    for (thenId <- thenIds) thenOps ::= getOp(graph._ops, thenId)
+    val thenOpsBegin = thenOps.filterNot(_.isInstanceOf[OP_Control]) ++ thenOps.filter(_.isInstanceOf[OP_Control]).map(o => getOp(graph._ops, o.id+"b"))
+    var elseOps: List[DeliteOP] = Nil
+    for (elseId <- elseIds) elseOps ::= getOp(graph._ops, elseId)
+    val elseOpsBegin = elseOps.filterNot(_.isInstanceOf[OP_Control]) ++ elseOps.filter(_.isInstanceOf[OP_Control]).map(o => getOp(graph._ops, o.id+"b"))
+
+    val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
+    var ifDeps: List[DeliteOP] = Nil
+    for (depId <- depIds) ifDeps ::= getOp(graph._ops, depId)
     //list of all dependencies of the if block, minus any dependencies within the block
-    val ifDeps = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
+    ifDeps = (ifDeps ++ thenOpsBegin.flatMap(_.getDependencies) ++ elseOpsBegin.flatMap(_.getDependencies)) filterNot { (thenOpsBegin ++ elseOpsBegin) contains }
 
     //beginning depends on all exterior dependencies
-    for (depId <- ifDeps) {
-      val dep = getOp(graph._ops, depId)
+    for (dep <- ifDeps) {
       beginOp.addDependency(dep)
       dep.addConsumer(beginOp)
     }
@@ -181,19 +190,21 @@ object DeliteTaskGraph {
     predOp.addConsumer(beginOp)
 
     //all thenOps depend on beginning, and begin-else depends on them
-    for (thenId <- thenIds) {
-      val thenOp = getOp(graph._ops, thenId)
+    for (thenOp <- thenOpsBegin) {
       thenOp.addDependency(beginOp)
       beginOp.addConsumer(thenOp)
+    }
+    for (thenOp <- thenOps) {
       thenOp.addConsumer(beginElseOp)
       beginElseOp.addDependency(thenOp)
     }
 
     //all elseOps depend on begin-else, ending depends on them
-    for (elseId <- elseIds) {
-      val elseOp = getOp(graph._ops, elseId)
+    for (elseOp <- elseOpsBegin) {
       elseOp.addDependency(beginElseOp)
       beginElseOp.addConsumer(elseOp)
+    }
+    for (elseOp <- elseOps) {
       elseOp.addConsumer(endOp)
       endOp.addDependency(elseOp)
     }
@@ -233,6 +244,7 @@ object DeliteTaskGraph {
       contOps ::= contOp
     }
     for (bodyId <- bodyIds) bodyOps ::= getOp(graph._ops, bodyId)
+    val bodyOpsBegin = bodyOps.filterNot(_.isInstanceOf[OP_Control]) ++ bodyOps.filter(_.isInstanceOf[OP_Control]).map(o => getOp(graph._ops, o.id+"b"))
 
     //fix up the internal dependencies of the copied predicate ops
     for (contOp <- contOps) {
@@ -253,12 +265,14 @@ object DeliteTaskGraph {
     val beginOp = new OP_BeginWhile(id+"b", predOps.head)
     val endOp = new OP_EndWhile(id, contOps.head)
 
+    val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
+    var whileDeps: List[DeliteOP] = Nil
+    for (depId <- depIds) whileDeps ::= getOp(graph._ops, depId)
     //list of all dependencies of the while block, minus any dependencies within the block
-    val whileDeps = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
+    whileDeps = (whileDeps ++ bodyOpsBegin.flatMap(_.getDependencies)) filterNot { bodyOpsBegin contains }
 
     //beginning depends on all exterior dependencies
-    for (depId <- whileDeps) {
-      val dep = getOp(graph._ops, depId)
+    for (dep <- whileDeps) {
       beginOp.addDependency(dep)
       dep.addConsumer(beginOp)
     }
@@ -268,9 +282,11 @@ object DeliteTaskGraph {
     predOps.head.addConsumer(beginOp)
 
     //all bodyOps depend on beginning, predOps depend on them
-    for (bodyOp <- bodyOps) {
+    for (bodyOp <- bodyOpsBegin) {
       bodyOp.addDependency(beginOp)
       beginOp.addConsumer(bodyOp)
+    }
+    for (bodyOp <- bodyOps) {
       for (contOp <- contOps) {
         contOp.addDependency(bodyOp)
         bodyOp.addConsumer(contOp)
