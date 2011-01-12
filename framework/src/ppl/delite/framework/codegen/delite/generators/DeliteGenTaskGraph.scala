@@ -12,7 +12,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   import IR._
 
   private def vals(sym: Sym[_]) : List[Sym[_]] = sym match {
-    case Def(Reify(s, effects)) => Nil
+    case Def(Reify(s, effects)) => List(s.asInstanceOf[Sym[_]])
     case Def(Reflect(NewVar(v), effects)) => Nil
     case _ => List(sym)
   }
@@ -84,7 +84,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     for (gen <- generators) {
       // reset nested flag
       gen.nestedEmission = false
-      val buildPath = Config.build_dir + gen + "/"
+      val buildPath = Config.buildDir + java.io.File.separator + gen + java.io.File.separator
       val outDir = new File(buildPath); outDir.mkdirs()
       val outFile = new File(buildPath + quote(sym) + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(outFile)

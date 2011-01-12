@@ -1,7 +1,10 @@
 package ppl.delite.framework
 
 object Config {
-  val build_dir = System.getProperty("delite-build-dir", "generated/")
-  val deg_filename = System.getProperty("delite-deg-filename", "")
-  val deliteHome: String = System.getProperty("delite-home", System.getProperty("user.dir"))
+  val degFilename = System.getProperty("delite.deg.filename", "")
+  val homeDir = System.getProperty("delite.home.dir", System.getProperty("user.dir"))
+  val buildDir = System.getProperty("delite.build.dir", homeDir + java.io.File.separator + "generated")
+  val blasHome = System.getProperty("blas.home")
+  val useBlas = if (blasHome == null) false else true
 }
+

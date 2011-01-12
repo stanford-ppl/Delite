@@ -92,8 +92,8 @@ trait OptiMLCodeGenBase extends GenericCodegen {
   def genSpec(f: File, outPath: String) = {}
 
   override def emitDataStructures() {
-    val dsRoot = Config.deliteHome  + "/dsls/optiml/src/ppl/dsl/optiml/datastruct/" + this.toString
-    val dsOut = Config.build_dir + "/" + this.toString + "/"
+    val dsRoot = Config.homeDir + "dsls/optiml/src/ppl/dsl/optiml/datastruct/" + this.toString
+    val dsOut = Config.buildDir + "/" + this.toString + "/"
 
     val dsDir = new File(dsRoot)
     if (!dsDir.exists) return
@@ -114,14 +114,14 @@ trait OptiMLCodeGenBase extends GenericCodegen {
   }
 }
 
-trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenLanguageOps with ScalaGenArithOps
-  with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps
+trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
+  with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps
   with ScalaGenLabelsOps with ScalaGenTrainingSetOps
-  with ScalaGenDeliteOps with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
+  with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
 
   val IR: DeliteApplication with OptiMLExp
 
-  override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala")
+  override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala", "TrainingSetImpl.scala")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int")) {
@@ -139,6 +139,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
     var res = line.replaceAll("object ", "object " + t)
     res = res.replaceAll("import ", "import " + t)
     res = res.replaceAll("@specialized T: ClassManifest", t)
+    res = res.replaceAll("T:Manifest", t)
     res = res.replaceAll("\\bT\\b", t)
     dsmap(res)
   }
@@ -156,6 +157,8 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
     res = res.replaceAll("VectorViewImpl\\[Int\\]", "IntVectorViewImpl")
     res = res.replaceAll("MatrixImpl\\[Double\\]", "DoubleMatrixImpl")
     res = res.replaceAll("MatrixImpl\\[Int\\]", "IntMatrixImpl")
+    res = res.replaceAll("TrainingSetImpl\\[Double,", "DoubleTrainingSetImpl\\[")
+    res = res.replaceAll("TrainingSetImpl\\[Int,", "IntTrainingSetImpl\\[")
     res
   }
 }
