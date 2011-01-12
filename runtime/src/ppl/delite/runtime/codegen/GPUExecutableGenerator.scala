@@ -113,7 +113,6 @@ object GPUExecutableGenerator {
     }
   }
 
-  //TODO: need a system that handles mutations properly: other data structures besides the op output could require a transfer (h2d or d2h)
   private def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayList[DeliteOP], out: StringBuilder) {
     val available = new ArrayList[DeliteOP] //ops with local data (have a "g" symbol)
     val awaited = new ArrayList[DeliteOP] //ops that have been synchronized with (have a "c" symbol)
@@ -123,18 +122,22 @@ object GPUExecutableGenerator {
       //add to available & awaited lists
       available.add(op)
       awaited.add(op)
+      //get all dependencies
+      for (dep <- op.getDependencies) { //foreach dependency
+        if(!awaited.contains(dep)) { //this dependency does not yet exist for this resource
+          awaited.add(dep)
+          writeGetter(dep, out) //get to synchronize
+        }
+      }
       //get kernel inputs (dependencies that could require a memory transfer)
       var addInputCopy = false
+      val mutatedInputs = op.getDependencies.flatMap(_.getMutableInputs).intersect(op.getInputs)
       val inputCopies = op.cudaMetadata.inputs.iterator //list of inputs that have a copy function
       for (input <- op.getInputs) { //foreach input
-        val inData = if (getJNIType(input.outputType) == "jobject") inputCopies.next else op.cudaMetadata.outputAlloc //outputAlloc should never be used
+        val inData = if (getJNIType(input.outputType) == "jobject") inputCopies.next else null
         if(!available.contains(input)) { //this input does not yet exist on the device
           //add to available list
           available.add(input)
-          if (!awaited.contains(input)) { //if input doesn't yet exist for this resource
-            awaited.add(input)
-            writeGetter(input, out)
-          }
           //write a copy function for objects
           if (getJNIType(input.outputType) == "jobject") { //only perform a copy for object types
             addInputCopy = true
@@ -142,12 +145,10 @@ object GPUExecutableGenerator {
           }
           else writeInputCast(input, out) //if primitive type, simply cast to transform from "c" type into "g" type
         }
-      }
-      //get rest of dependencies
-      for (dep <- op.getDependencies) { //foreach dependency
-        if(!awaited.contains(dep)) {//this dependency does not yet exist for this resource
-          awaited.add(dep)
-          writeGetter(dep, out) //get simply to synchronize
+        else if (mutatedInputs.contains(input)) { //input exists on device but data is old
+          //write a new copy function (input must be an object)
+          addInputCopy = true
+          writeInputCopy(input, inData.func, inData.resultType, out)
         }
       }
       if (addInputCopy) { //if a h2d data transfer occurred
@@ -187,9 +188,9 @@ object GPUExecutableGenerator {
     out.append(' ')
     out.append(getSymGPU(op))
     out.append(" = ")
-    out.append(op.cudaMetadata.outputAlloc.func)
+    out.append(op.cudaMetadata.output.func)
     out.append('(')
-    writeInputList(op, "outputAlloc", out)
+    writeInputList(op, "output", out)
     out.append(");\n")
   }
 
@@ -339,12 +340,25 @@ object GPUExecutableGenerator {
   }
 
   private def writeSetter(op: DeliteOP, location: Int, out: StringBuilder) {
-    //copy data from GPU to CPU
+    val iter = op.cudaMetadata.inputs.iterator
+    for (in <- op.getInputs; if (getJNIType(in.outputType) == "jobject")) {
+      val inData = iter.next
+      if (op.getMutableInputs.contains(in)) {
+        //copy any mutated inputs from GPU to CPU
+        out.append(inData.funcReturn)
+        out.append("(env,") //JNI environment pointer
+        out.append(getSymCPU(in)) //jobject
+        out.append(getSymGPU(in)) //C++ object
+        out.append(");\n")
+      }
+    }
+
+    //copy output from GPU to CPU
     out.append(getJNIType(op.outputType)) //jobject
     out.append(' ')
     out.append(getSymCPU(op))
     out.append(" = ")
-    out.append(op.cudaMetadata.outputSet.func)
+    out.append(op.cudaMetadata.output.funcReturn)
     out.append('(')
     out.append("env,") //JNI environment pointer
     out.append(getSymGPU(op)) //C++ object

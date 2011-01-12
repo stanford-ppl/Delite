@@ -128,6 +128,13 @@ object DeliteTaskGraph {
       input.addConsumer(newop)
     }
 
+    //handle mutable inputs
+    val mutableInputs = getFieldList(op, "mutableInputs")
+    for (m <- mutableInputs) {
+      val mutable = getOp(graph._ops, m)
+      newop.addMutableInput(mutable)
+    }
+
     //handle anti dependencies
     val antiDeps = getFieldList(op, "antiDeps")
     for(a <- antiDeps) {
@@ -324,6 +331,7 @@ object DeliteTaskGraph {
       val data = cudaMetadata.newInput
       data.resultType = value.head
       data.func = value.tail.head
+      data.funcReturn = value.tail.tail.head
     }
 
     val tempSyms = new HashMap[String,DeliteOP]
@@ -348,13 +356,13 @@ object DeliteTaskGraph {
 
     //output allocation
     val outList = getFieldMap(metadataMap, "gpuOutput").values.head.asInstanceOf[List[Any]]
-    cudaMetadata.outputAlloc.resultType = outList.head
-    cudaMetadata.outputAlloc.func = outList.tail.head
+    cudaMetadata.output.resultType = outList.head
+    cudaMetadata.output.func = outList.tail.head
     for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
-      cudaMetadata.outputAlloc.inputs ::= getOpLike(sym)
+      cudaMetadata.output.inputs ::= getOpLike(sym)
     }
     //output copy
-    cudaMetadata.outputSet.func = outList.tail.tail.tail.head
+    cudaMetadata.output.funcReturn = outList.tail.tail.tail.head
 
     def fill(field: String) {
       val list = getFieldList(metadataMap, field)
