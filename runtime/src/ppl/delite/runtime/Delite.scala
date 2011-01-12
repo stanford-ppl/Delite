@@ -71,14 +71,22 @@ object Delite {
     //compile
     val executable = Compilers.compileSchedule(schedule, graph)
 
-    //execute
+  //execute
     val numTimes = Config.numRuns
     for (i <- 1 to numTimes) {
       println("Beginning Execution Run " + i)
-      executor.run(executable)
+      PerformanceTimer.start("all", false)
+      executor.run(executable) //TODO: need to reset the executables
       EOP.await //await the end of the application program
-      Stopwatch.print()
+      PerformanceTimer.stop("all", false)
+      PerformanceTimer.print("all")
+      // check if we are timing another component
+      if(Config.dumpStatsComponent != "all")
+        PerformanceTimer.print(Config.dumpStatsComponent)
     }
+
+    if(Config.dumpStats)
+      PerformanceTimer.dumpStats
 
     executor.shutdown()
 
@@ -96,3 +104,11 @@ object Delite {
   }
 
 }
+
+
+
+
+
+
+
+
