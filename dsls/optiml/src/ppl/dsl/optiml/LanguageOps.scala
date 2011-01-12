@@ -332,8 +332,8 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
       case RandReseed() => emitValDef(sym, "{ Global.randRef.setSeed(Global.INITIAL_SEED);" +
                                            "   Global.intRandRef.setSeed(Global.INITIAL_SEED); }")
 
-      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.Stopwatch.start()")
-      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.Stopwatch.stop()")
+      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
+      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
       case _ => super.emitNode(sym, rhs)
     }
   }

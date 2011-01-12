@@ -5,7 +5,8 @@ import math
 from socket import gethostname
 from string import *
 
-delite_apps = ['gda', 'nb', 'linreg', 'kmeans', 'svm', 'lbp', 'rbm']
+delite_apps = ['gda', 'nb', 'linreg', 'kmeans', 'rbm']#, 'lbp','svm']
+numRuns = 10
 delite_threads = [ 1, 2 , 4, 8, 16]
 delite_gpus = [ 1, 2 ]
 matlab_apps = []
@@ -13,6 +14,9 @@ c_apps = []
 
 DATA_DIR = os.getenv("DATA_DIR")
 DELITE_HOME = os.getenv("DELITE_HOME")
+JAVA_HOME = os.getenv("JAVA_HOME")
+
+
 
 params = {}
 classes = {}
@@ -37,13 +41,16 @@ def main():
     # run the delite applications
     for app in delite_apps:
         print "Running app: " + app + "\n===========================\nGenerating DEG file" 
-        os.putenv("GEN_OPTS", "-Ddelite-home=" + DELITE_HOME + " -Ddelite-build-dir=" + DELITE_HOME +  "/generated/ -Ddelite-deg-filename=" + app + ".deg")
+        os.putenv("GEN_OPTS", "-Dblas.home=/usr/local/intel -Ddelite.home.dir=" + DELITE_HOME + " -Ddelite.build.dir=" + DELITE_HOME +  "/generated/ -Ddelite.deg.filename=" + app + ".deg")
+        #MKL ENV
+        os.putenv("LD_PRELOAD", JAVA_HOME + "/jre/lib/amd64/libjsig.so")
         os.system(DELITE_HOME + "/bin/gen " + classes[app])
         #do it for each config of delite
         #do it for each thread configuration
         for numThreads in delite_threads:
-            opts = "-DnumThreads=" + str(numThreads) + " -DnumRuns=10 -Ddump-stats -Ddump-stats-overwrite -DstatsOutputDirectory=" + DELITE_HOME  + "/benchmark/times -DstatsOutputFilename=" + app + "-smp-" +str(numThreads) + ".times"         
+            opts = "-Ddelite.threads=" + str(numThreads) + " -Ddelite.runs=" + str(numRuns) + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + DELITE_HOME  + "/benchmark/times -Dstats.output.filename=" + app + "-smp-" +str(numThreads) + ".times"         
             os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
+            os.putenv("MKL_NUM_THREADS", str(numThreads))
             print "running: " + app + " " + params[app],
             print "with config: " + opts + "\n"
             os.system(DELITE_HOME + "/bin/exec " + app + ".deg " + params[app])

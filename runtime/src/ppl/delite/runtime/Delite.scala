@@ -80,7 +80,9 @@ object Delite {
       EOP.await //await the end of the application program
       PerformanceTimer.stop("all", false)
       PerformanceTimer.print("all")
-      Stopwatch.print()
+      // check if we are timing another component
+      if(Config.dumpStatsComponent != "all")
+        PerformanceTimer.print(Config.dumpStatsComponent)
     }
 
     if(Config.dumpStats)
