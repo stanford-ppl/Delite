@@ -5,6 +5,7 @@ import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.scala.TargetScala
 import codegen.Target
+import externlib.ExternLibrary
 import ops.DeliteOpsExp
 import scala.virtualization.lms.common.{BaseExp, Base}
 import java.io.{FileWriter, File, PrintWriter}
@@ -39,20 +40,23 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
                                                  val generators = DeliteApplication.this.generators }
 
     //clean up the code gen directory
-    Util.deleteDirectory(new File(Config.build_dir))
+    Util.deleteDirectory(new File(Config.buildDir))
 
     val stream =
-      if (Config.deg_filename == ""){
+      if (Config.degFilename == ""){
         new PrintWriter(System.out)
       }
       else {
-        new PrintWriter(new FileWriter(Config.deg_filename))
+        new PrintWriter(new FileWriter(Config.degFilename))
       }
 
     for (g <- generators) {
       g.emitDataStructures()
-      g.generatorInit(Config.build_dir + "/" + g.toString + "/")
+      g.generatorInit(Config.buildDir + java.io.File.separator + g.toString + java.io.File.separator)
     }
+
+    //Emit and Compile external library (MKL BLAS)
+    ExternLibrary.init
     
     //codegen.emitSource(main_m, "Application", stream) // whole scala application (for testing)
     deliteGenerator.emitSource(main_m, "Application", stream)

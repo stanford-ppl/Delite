@@ -77,19 +77,19 @@ object LinReg extends DeliteApplication with OptiMLExp {
 //    logElapsed("Input Section Complete")
 
     val theta = unweightedReg(x, y)
-    val guess = weightedReg(x, y)
-
-    //logElapsed("Calculation Complete")
-
     println("Unweighted linear regression")
     println("theta: ")
     theta.pprint
-    print("\n")
+    print("\\n")
+
+    tic
+    val guess = weightedReg(x, y)
+    toc
 
     println("Locally weighted linear regression")
     println("guess: ")
     guess.pprint
-    print("\n")
+    print("\\n")
 
     //PerformanceTimer.save("LinReg")
   }

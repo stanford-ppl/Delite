@@ -167,11 +167,6 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
   var deliteKernel: Boolean = _
   var deliteResult: Option[Sym[Any]] = _
   var deliteInputs: List[Sym[Any]] = _
-
-  def getReifiedOutput(out: Exp[_]) = out match {
-    case Def(Reify(x, effects)) => x
-    case x => x
-  }
 }
 
 trait BaseGenDeliteOps extends GenericNestedCodegen {
@@ -252,15 +247,16 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       val save = deliteKernel
       deliteKernel = false
       val b = s.block
-      stream.println("val " + quote(sym) + " = { ")
+      stream.println("def " + quote(sym) + "_block = { ")
       emitBlock(b)
       stream.println(quote(getBlockResult(b)))
       stream.println("}")
+      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       deliteKernel = save
     }
     case map:DeliteOpMap[_,_,_] => {
       if (deliteKernel == false){
-        stream.println("val " + quote(sym) + " = {")
+        stream.println("def " + quote(sym) + "_block = {")
         emitBlock(map.alloc)
         stream.println("var mapIdx = 0")
         stream.println("while (mapIdx < " + quote(getBlockResult(map.in)) + ".size) {")
@@ -273,6 +269,8 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(getBlockResult(map.alloc)))
         stream.println("}")
+	
+	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -291,7 +289,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
     }
     case zip: DeliteOpZipWith[_,_,_,_] => {
       if (deliteKernel == false){
-        stream.println("val " + quote(sym) + " = {")
+        stream.println("def " + quote(sym) + "_block = {")
         emitBlock(zip.alloc)
         stream.println("var zipIdx = 0")
         stream.println("while (zipIdx < " + quote(getBlockResult(zip.inA)) + ".size) {")
@@ -305,6 +303,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(getBlockResult(zip.alloc)))
         stream.println("}")
+	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -324,7 +323,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
     }
     case red: DeliteOpReduce[_] => {
       if (deliteKernel == false){
-        stream.println("val " + quote(sym) + " = {")
+        stream.println("def " + quote(sym) + "_block = {")
         stream.println("var " + quote(red.v._1) + " = " + quote(getBlockResult(red.in)) + ".dcApply(0)")
         stream.println("var reduceIdx = 1")
         stream.println("while (reduceIdx < " + quote(getBlockResult(red.in)) + ".size) {")
@@ -337,6 +336,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(red.v._1))
         stream.println("}")
+	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -351,7 +351,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
     }
     case mapR:DeliteOpMapReduce[_,_,_] => {
       if (deliteKernel == false){
-        stream.println("val " + quote(sym) + " = {")
+        stream.println("def " + quote(sym) + "_block = {")
         stream.println("val " + quote(mapR.mV) + " = " + quote(getBlockResult(mapR.in)) + ".dcApply(0)")
         stream.println("var " + quote(mapR.rV._1) + " = {")
         emitBlock(mapR.map)
@@ -372,6 +372,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(mapR.rV._1))
         stream.println("}")
+	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -391,7 +392,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
     }
     case zipR:DeliteOpZipWithReduce[_,_,_,_] => {
       if (deliteKernel == false){
-        stream.println("val " + quote(sym) + " = {")
+        stream.println("def " + quote(sym) + "_block = {")
         stream.println("val " + quote(zipR.zV._1) + " = " + quote(getBlockResult(zipR.inA)) + ".dcApply(0)")
         stream.println("val " + quote(zipR.zV._2) + " = " + quote(getBlockResult(zipR.inB)) + ".dcApply(0)")
         stream.println("var " + quote(zipR.rV._1) + " = {")
@@ -414,6 +415,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(zipR.rV._1))
         stream.println("}")
+	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -434,7 +436,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
     }
     case foreach:DeliteOpForeach[_,_] => {
       if (deliteKernel == false){
-        stream.println("val " + quote(sym) + " = {")
+        stream.println("def " + quote(sym) + "_block = {")
         stream.println("var forIdx = 0")
         stream.println("while (forIdx < " + quote(getBlockResult(foreach.in)) + ".size) {")
         stream.println("val " + quote(foreach.v) + " = " + quote(getBlockResult(foreach.in)) + ".dcApply(forIdx)")
@@ -443,6 +445,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("forIdx += 1")
         stream.println("} // end while")
         stream.println("}")
+	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false

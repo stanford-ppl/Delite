@@ -43,8 +43,9 @@ object RBM extends DeliteApplication with OptiMLExp {
     var hidbiasinc = Vector.zerosf(numHiddenUnits)
     var visbiasinc = Vector.zerosf(numdims)
 
+    tic
     for (epoch <- 0 until maxEpoch) {
-      //var errsum = DeliteFloat(0)
+      var errsum = unit(0f)
       for (batch <- 0 until numbatches) {
         //println("Epoch: " + epoch + ", Batch: " + batch)
 
@@ -55,7 +56,7 @@ object RBM extends DeliteApplication with OptiMLExp {
         val posprods = data.t * poshidprobs
         val poshidact = poshidprobs.sumCol
         val posvisact = data.sumCol
-        val poshidstates = (poshidprobs :< Matrix.randf(numcases, numHiddenUnits))
+        val poshidstates = (poshidprobs :> Matrix.randf(numcases, numHiddenUnits))
         //val poshidstates = (poshidprobs zip Matrix.randf(numcases, numHiddenUnits)){ (a,b) => if (a < b) 0f else 1f }
         //PerformanceTimer.stop("RBM-posphase", false)
 
@@ -67,7 +68,7 @@ object RBM extends DeliteApplication with OptiMLExp {
         val neghidact = neghidprobs.sumCol
         val negvisact = negdata.sumCol
         val diff = data - negdata
-        //errsum += (diff dot diff).sum[DeliteFloat]
+        errsum += (diff *:* diff).sum
         //PerformanceTimer.stop("RBM-negphase", false)
 
         // Update weights and biases
@@ -82,8 +83,10 @@ object RBM extends DeliteApplication with OptiMLExp {
         hidbiases = hidbiases + hidbiasinc
         //PerformanceTimer.stop("RBM-biasupdates", false)
       }
-      //println("--> Epoch " + epoch + " error = " + errsum.value)
+      println("--> Epoch " + epoch)
+      println(" error = " + errsum)
     }
+    toc
 
     //PerformanceTimer.print("RBM-posphase")
     //PerformanceTimer.save("RBM-posphase")

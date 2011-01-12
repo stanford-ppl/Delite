@@ -361,7 +361,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
-    val func = v + y
+    val func = v - y
   }
 
   case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
@@ -385,7 +385,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
-    val func = v + y
+    val func = v * y
   }
 
   case class VectorDotProduct[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])

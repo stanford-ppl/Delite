@@ -31,6 +31,9 @@ trait MatrixImplOps { this: OptiML =>
   def matrix_maprows_impl[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
   def matrix_foreachrow_impl[A:Manifest](m: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Unit]): Rep[Unit]
   def matrix_filterrows_impl[A:Manifest](m: Rep[Matrix[A]], pred: Rep[Vector[A]] => Rep[Boolean]): Rep[Matrix[A]]
+  def matrix_multiply_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_times_vector_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+
 }
 
 trait MatrixImplOpsStandard extends MatrixImplOps {
@@ -171,36 +174,43 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 //    }
   }
 
-  protected def matrix_rreduce(m: Rep[Matrix[Double]]): Rep[Matrix[Double]] = {
-    var currentMat = m
+   protected def matrix_rreduce(m: Rep[Matrix[Double]]): Rep[Matrix[Double]] = {
+    val currentMat = m
     var lead = unit(0)
+    var finished = unit(false)
+    var r = unit(0)
 
-    for (r <- 0 until m.numRows) {
-      if (m.numRows <= lead)
-        returnL(currentMat)
+    while (!finished && r < m.numRows) {
+      if (m.numRows <= lead){
+        finished = true
+      }
+      if (!finished){
+        var i = r
+        while (!finished && currentMat(i, lead) == 0.0){
+          i += 1
+          if (m.numCols == i){
+            i = r
+            lead += 1
+            if (m.numRows == lead) {
+              finished = true
+            }
+          }
+        }
 
-      var i = r
-      while (currentMat(i, lead) == 0.0){
-        i += 1
-        if (m.numCols == i){
-          i = r
+        if (!finished){
+          val tmpRow = currentMat(i)
+          currentMat(i) = currentMat(r)
+          currentMat(r) = tmpRow
+          currentMat(r) = repVecToVecOps(currentMat(r)) / currentMat(r,lead)
+
+          for (i <- 0 until m.numRows){
+            if (i != r)
+              currentMat(i) = currentMat(i) - currentMat(r)*currentMat(i,lead)
+          }
           lead += 1
-          if (m.numRows == lead)
-            returnL(currentMat)
         }
       }
-
-      val tmpRow = currentMat(i)
-      currentMat(i) = currentMat(r)
-      currentMat(r) = tmpRow
-
-      currentMat(r) = repVecToVecOps(currentMat(r)) / currentMat(r,lead)
-
-      for (i <- 0 until m.numRows){
-        if (i != r)
-          currentMat(i) = currentMat(i) - currentMat(r)*currentMat(i,lead)
-      }
-      lead += 1
+      r += 1
     }
 
     currentMat
@@ -259,4 +269,36 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     }
     Matrix[A](v)
   }
+
+  def matrix_multiply_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]] = {
+
+    val yTrans = y.t
+    val out = Matrix[A](x.numRows, y.numCols)
+
+    for (rowIdx <- (0::x.numRows)) {
+      var i = unit(0)
+      while (i < out.numCols) {
+        var j = unit(1)
+        var acc = x(rowIdx, 0) * yTrans(i, 0)
+        while (j < yTrans.numCols) {
+          acc += x(rowIdx, j) * yTrans(i, j)
+          j += 1
+        }
+        out(rowIdx, i) = acc
+        i += 1
+      }
+    }
+    out
+  }
+
+  def matrix_times_vector_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Vector[A]] = {
+
+    val out = Vector[A](x.numRows, false)
+
+    for (rowIdx <- (0::x.numRows)) {
+      out(rowIdx) = x.getRow(rowIdx) *:* y
+    }
+    out
+  }
+
 }

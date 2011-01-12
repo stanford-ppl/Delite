@@ -1,7 +1,7 @@
-gda|ppl.dsl.optiml.apps.gda.GDA
-nb|ppl.dsl.optiml.apps.gda.GDA
-linreg|ppl.dsl.optiml.apps.gda.GDA
-kmeans|ppl.dsl.optiml.apps.gda.GDA
-svm|ppl.dsl.optiml.apps.gda.GDA
-lbp|ppl.dsl.optiml.apps.gda.GDA
-rbm|ppl.dsl.optiml.apps.gda.GDA
+gda|ppl.apps.ml.gda.GDA
+nb|ppl.apps.ml.nb.NaiveBayes
+linreg|ppl.apps.ml.linreg.LinReg
+kmeans|ppl.apps.ml.kmeans.kmeans
+svm|ppl.apps.ml.svm.SVM
+rbm|ppl.apps.ml.rbm.RBM
+lbp|ppl.apps.ml.gda.GDA
