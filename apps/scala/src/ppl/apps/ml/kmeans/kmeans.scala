@@ -44,8 +44,8 @@ object kmeans extends DeliteApplication with OptiMLExp {
 
       // update mu -- move each cluster centroid to the mean of the points assigned to it
       // TODO: switch to matrix constructor
-      //for (j <- (0::k)) {
-      for (j <- 0 until k) {
+      for (j <- (0::k)) {
+      //for (j <- 0 until k) {
         //println("j: " + j)
         // this is much slower than the version below, even with variable boxing
 //        val (weightedpoints, points) = t2( sum(0, m) { i =>
