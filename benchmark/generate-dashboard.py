@@ -1,5 +1,5 @@
-apps = ['gda', 'nb', 'linreg', 'kmeans', 'svm', 'lbp', 'rbm']
-procs = [ 1, 2, 4, 8]
+apps = ['gda', 'nb', 'linreg', 'kmeans', 'rbm']#, 'lbp','svm']
+procs = [ 1, 2, 4, 8, 16]
 dataPath = "C:/Users/hchafi/Documents/Dropbox/ppl/ppl/delite/data/"
 outputFolder = "C:/Users/hchafi/Documents/Dropbox/ppl/ppl/delite/data/"
 
