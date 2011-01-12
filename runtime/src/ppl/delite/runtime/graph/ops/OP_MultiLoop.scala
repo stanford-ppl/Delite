@@ -5,14 +5,14 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 
 /**
  * Author: Kevin J. Brown
- * Date: Oct 11, 2010
- * Time: 1:26:52 AM
- *
+ * Date: Nov 14, 2010
+ * Time: 10:04:13 PM
+ * 
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
 
-class OP_Foreach(val id: String, func: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
+class OP_MultiLoop(val id: String, func: String, resultType: Map[Targets.Value,String], val needsReduce: Boolean) extends DeliteOP {
 
   final def isDataParallel = true
 
@@ -28,19 +28,19 @@ class OP_Foreach(val id: String, func: String, resultType: Map[Targets.Value,Str
 
   def supportsTarget(target: Targets.Value) = resultType.contains(target)
 
-  assert(resultType == Targets.unitTypes(resultType)) //foreach must always mutate the elements of a collection and return Unit
   def outputType(target: Targets.Value) = resultType(target)
+  override def outputType: String = resultType(Targets.Scala)
 
   /**
-   * Since the semantics of the foreach are to mutate the elements in a collection all consumer (true) dependency edges already exist in graph
+   * Since the semantics of the zip are to mutate the elements in a collection all consumer (true) dependency edges already exist in graph
    * Chunking needs to add additional anti-dependency edges for each chunk to ensure all chunks are complete
    * Chunks require same dependency & input lists
    */
-  def chunk(i: Int): OP_Foreach = {
-    val r = new OP_Foreach(id+"_"+i, function, Targets.unitTypes(resultType)) //chunks all return Unit
-    r.outputList = outputList.map(id=>id+"_"+i)
-    r.inputList = inputList
+  def chunk(i: Int): OP_MultiLoop = {
+    val r = new OP_MultiLoop(id+"_"+i, function, Targets.unitTypes(resultType), needsReduce) //chunks all return Unit
     r.dependencyList = dependencyList //lists are immutable so can be shared
+    r.outputList = List(id+"_"+i)
+    r.inputList = inputList
     r.consumerList = consumerList
     for (dep <- getDependencies) dep.addConsumer(r)
     for (c <- getConsumers) c.addDependency(r)
@@ -51,7 +51,7 @@ class OP_Foreach(val id: String, func: String, resultType: Map[Targets.Value,Str
     val h = new OP_Single(id+"_h", kernel, Map(Targets.Scala->kernel))
     //header assumes all inputs of map
     h.dependencyList = dependencyList
-    h.outputList = outputList.map(id=>id+"_h")
+    h.outputList = List(id+"_h")
     h.inputList = inputList
     h.addConsumer(this)
     for (dep <- getDependencies) dep.replaceConsumer(this, h)
@@ -59,13 +59,12 @@ class OP_Foreach(val id: String, func: String, resultType: Map[Targets.Value,Str
     dependencyList = List(h)
     inputList = List((h,id+"_h"))
 
-    graph.registerOp(h)
-    //graph._ops += (id+"_h") -> h
+    graph._ops += (id+"_h") -> h
     h
   }
 
   def nested = null
   def cost = 0
   def size = 0
-
+  
 }

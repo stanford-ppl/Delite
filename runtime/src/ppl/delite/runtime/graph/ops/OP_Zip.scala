@@ -39,6 +39,7 @@ class OP_Zip(val id: String, func: String, resultType: Map[Targets.Value,String]
   def chunk(i: Int): OP_Zip = {
     val r = new OP_Zip(id+"_"+i, function, Targets.unitTypes(resultType)) //chunks all return Unit
     r.dependencyList = dependencyList //lists are immutable so can be shared
+    r.outputList = outputList.map(id=>id+"_"+i)
     r.inputList = inputList
     r.consumerList = consumerList
     for (dep <- getDependencies) dep.addConsumer(r)
@@ -50,12 +51,13 @@ class OP_Zip(val id: String, func: String, resultType: Map[Targets.Value,String]
     val h = new OP_Single(id+"_h", kernel, Map(Targets.Scala->kernel))
     //header assumes all inputs of map
     h.dependencyList = dependencyList
+    h.outputList = outputList.map(id=>id+"_h")
     h.inputList = inputList
     h.addConsumer(this)
     for (dep <- getDependencies) dep.replaceConsumer(this, h)
     //map consumes header, map's consumers remain unchanged
     dependencyList = List(h)
-    inputList = List(h)
+    inputList = List((h,id+"_h"))
 
     graph._ops += (id+"_h") -> h
     h

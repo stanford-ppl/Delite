@@ -42,6 +42,7 @@ object DeliteTaskGraph {
       val opType = getFieldString(op, "type")
       opType match {
         case "SingleTask" => processCommon(op, "OP_Single")
+        case "MultiLoop" => processCommon(op, "OP_MultiLoop")
         case "MapReduce" => processCommon(op, "OP_MapReduce")
         case "Map" => processCommon(op, "OP_Map")
         case "Reduce" => processCommon(op, "OP_Reduce")
@@ -64,6 +65,13 @@ object DeliteTaskGraph {
   def getFieldDouble(map: Map[Any, Any], field: String): Double = {
     map.get(field) match {
       case Some(field) => java.lang.Double.parseDouble(field)
+      case None => fieldNotFound(field, map)
+    }
+  }
+
+  def getFieldBoolean(map: Map[Any, Any], field: String): Boolean = {
+    map.get(field) match {
+      case Some(field) => java.lang.Boolean.parseBoolean(field)
       case None => fieldNotFound(field, map)
     }
   }
@@ -98,6 +106,8 @@ object DeliteTaskGraph {
   def processCommon(op: Map[Any, Any], opType: String)(implicit graph: DeliteTaskGraph) {
     val id = getFieldString(op, "kernelId")
 
+    val lookupTarget = Targets.values.map(x=>(x.toString->x)).toMap
+
     val targets = getFieldList(op, "supportedTargets")
     val types = getFieldMap(op, "return-types")
     var resultMap = Map[Targets.Value,String]()
@@ -109,6 +119,7 @@ object DeliteTaskGraph {
 
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
+      case "OP_MultiLoop" => new OP_MultiLoop(id, "kernel_"+id, resultMap, getFieldBoolean(op, "needsReduce"))
       case "OP_MapReduce" => new OP_MapReduce(id, "kernel_"+id, resultMap)
       case "OP_Map" => new OP_Map(id, "kernel_"+id, resultMap)
       case "OP_Reduce" => new OP_Reduce(id, "kernel_"+id, resultMap)
@@ -117,11 +128,23 @@ object DeliteTaskGraph {
       case other => system.error("OP Type not recognized: " + other)
     }
 
+    //TR decoupling input->op from input->string identifier
+
+    //handle outputs
+    val outputTypes = op.getOrElse("outputTypes", Map.empty).asInstanceOf[Map[Any,Any]]
+    
+    val outputs = getFieldList(op, "outputs")
+    for(i <- outputs.reverse) {
+      val tp = if (outputTypes.isEmpty) resultMap else getFieldMap(outputTypes,i).map(p=>(lookupTarget(p._1), p._2.toString))
+      //TODO: make it more robust
+      newop.addOutput(i, tp)
+    }
+
     //handle inputs
     val inputs = getFieldList(op, "inputs")
     for(i <- inputs.reverse) {
-      val input = getOp(graph._ops, i)
-      newop.addInput(input)
+      val input = graph.getOp(i)
+      newop.addInput(input, i)
       newop.addDependency(input)
       input.addConsumer(newop)
     }
@@ -129,7 +152,7 @@ object DeliteTaskGraph {
     //handle anti dependencies
     val antiDeps = getFieldList(op, "antiDeps")
     for(a <- antiDeps) {
-      val antiDep = getOp(graph._ops, a)
+      val antiDep = graph.getOp(a)
       newop.addDependency(antiDep)
       antiDep.addConsumer(newop)
     }
@@ -137,13 +160,14 @@ object DeliteTaskGraph {
     //handle control dependencies
     val controlDeps = getFieldList(op, "controlDeps")
     for(c <- controlDeps) {
-      val controlDep = getOp(graph._ops, c)
+      val controlDep = graph.getOp(c)
       newop.addDependency(controlDep)
       controlDep.addConsumer(newop)
     }
     
     //add new op to graph list of ops
-    graph._ops += id -> newop
+    graph.registerOp(newop)
+    //graph._ops += id -> newop
 
     //process target metadata
     if (resultMap.contains(Targets.Cuda)) processCudaMetadata(op, newop)
@@ -161,7 +185,9 @@ object DeliteTaskGraph {
   def processArgumentsTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val kernelId = getFieldString(op, "kernelId")
     Arguments.id = kernelId
-    graph._ops += kernelId -> Arguments
+    Arguments.addOutput(kernelId, Map.empty)
+    graph.registerOp(Arguments)
+    //graph._ops += kernelId -> Arguments
     graph._result = Arguments
   }
 
@@ -246,6 +272,12 @@ object DeliteTaskGraph {
 
 class DeliteTaskGraph {
 
+  def getOp(id: String) = _ops(id)
+  def registerOp(op: DeliteOP) {
+    for (o <- op.getOutputs)
+      _ops += o -> op
+  }
+
   val _ops = new HashMap[String, DeliteOP]
   var _result: DeliteOP = _
 
@@ -256,6 +288,6 @@ class DeliteTaskGraph {
   def version: Double = _version
   def kernelPath: String = _kernelPath
   def ids: Iterable[String] = _ops.keys
-  def ops: Iterable[DeliteOP] = _ops.values
+  def ops: Iterable[DeliteOP] = _ops.values.toSet
 
 }

@@ -85,7 +85,7 @@ object ScalaCompile {
     run.compileSources(sourceFiles)
     reporter.printSummary()
 
-    if (reporter.hasErrors) error("Compilation Failed")
+    if (reporter.hasErrors) system.error("Compilation Failed")
 
     reporter.reset
     //output.reset

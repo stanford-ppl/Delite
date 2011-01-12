@@ -19,12 +19,23 @@ abstract class DeliteOP {
    */
   def task : String
 
+  def outputSlotType(target: Targets.Value, name: String): String =
+    if (name == id && outputList == List(name)) outputType(target)
+    else {
+      val m = outputTypeMap(name)
+      println("types for " + name + ": " + m)
+      println("trying scala: " + m(Targets.Scala))
+      m(target)
+    }
+
+  def outputSlotType(name: String): String = outputSlotType(Targets.Scala, name)
+
   def outputType(target: Targets.Value) : String
   def outputType : String = outputType(Targets.Scala)
 
   def supportsTarget(target: Targets.Value) : Boolean
 
-  private[graph] var dependencyList: List[DeliteOP] = Nil
+  private[graph] var dependencyList: List[DeliteOP] = Nil //TR: should this be a set??
 
   final def getDependencies : Seq[DeliteOP] = dependencyList
 
@@ -44,13 +55,30 @@ abstract class DeliteOP {
     consumerList = c :: (consumerList filterNot { _ == old })
   }
 
+
+  private[graph] var outputList: List[String] = Nil
+  private[graph] var outputTypeMap: Map[String,Map[Targets.Value, String]] = Map.empty
+
+  final def getOutputs : Seq[String] = outputList
+
+  final def addOutput(output: String, tp: Map[Targets.Value, String]) {
+    outputList = output :: outputList
+    outputTypeMap += (output -> tp)
+    println("added type: " + outputTypeMap)
+  }
+
+
+
   //this is a subset of getDependencies and contains the inputs in the order required to call the task
-  private[graph] var inputList: List[DeliteOP] = Nil
+  private[graph] var inputList: List[(DeliteOP, String)] = Nil
 
-  final def getInputs : Seq[DeliteOP] = inputList
+  final def getInputs : Seq[(DeliteOP, String)] = inputList
 
-  final def addInput(input: DeliteOP) {
-    inputList = input :: inputList
+  final def addInput(op: DeliteOP): Unit = addInput(op, op.outputList(0))
+  
+  final def addInput(op: DeliteOP, name: String) {
+    assert(op.outputList.contains(name), "Op " + op + " does not have output " + name)
+    inputList = (op, name) :: inputList
   }
 
   def id: String

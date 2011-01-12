@@ -29,7 +29,10 @@ object ExecutableGenerator {
 
   def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
     for (i <- 0 until schedule.resources.length) {
-      ScalaCompile.addSource(makeExecutable(schedule.resources(i), i, kernelPath))
+      val src = makeExecutable(schedule.resources(i), i, kernelPath)
+      ScalaCompile.addSource(src)
+      println("-- executable")
+      println(src)
     }
   }
 
@@ -93,7 +96,8 @@ object ExecutableGenerator {
           //add to available list
           available.add(dep)
           //write a getter
-          writeGetter(dep, out)
+          for (name <- dep.getOutputs)
+            writeGetter(dep, name, out)
         }
       }
       //write the function call:
@@ -119,24 +123,33 @@ object ExecutableGenerator {
     out.append(op.task)
     out.append('(')
     var first = true
-    for (input <- op.getInputs) {
+    for ((input, name) <- op.getInputs) {
       if (!first) out.append(',') //no comma before first argument
       first = false
-      out.append(getSym(input))
+      out.append(getSym(input,name))
     }
-    out.append(')')
-    out.append('\n')
+    out.append(")\n")
+    for (name <- op.getOutputs if name != op.id) {
+      out.append("val ")
+      out.append(getSym(op, name))
+      out.append(" = ")
+      out.append(getSym(op))
+      out.append(".")
+      out.append(name)
+      out.append("\n")
+    }
+    
   }
 
-  private def writeGetter(dep: DeliteOP, out: StringBuilder) {
+  private def writeGetter(dep: DeliteOP, name: String, out: StringBuilder) {
     out.append("val ")
-    out.append(getSym(dep))
+    out.append(getSym(dep, name))
     out.append(" : ")
-    out.append(dep.outputType)
+    out.append(dep.outputSlotType(name))
     out.append(" = Executable")
     out.append(dep.scheduledResource)
     out.append(".get")
-    out.append(dep.id)
+    out.append(name/*dep.id*/)
     out.append('\n')
   }
 
@@ -153,20 +166,29 @@ object ExecutableGenerator {
     while (iter.hasNext) { //foreach op
       val op = iter.next
       //add a public get method
-      writePublicGet(op, out)
+      for (name <- op.getOutputs)
+        writePublicGet(op, name, out)
       //add a private sync object
       writeSyncObject(op, out)
     }
   }
 
-  private def writePublicGet(op: DeliteOP, out: StringBuilder) {
+  private def writePublicGet(op: DeliteOP, name: String, out: StringBuilder) {
     out.append("def get")
-    out.append(op.id)
+    out.append(name/*op.id*/)
     out.append(" : ")
-    out.append(op.outputType)
+    println("try outputSlotType of " + op + "." + name)
+    out.append(op.outputSlotType(name))
     out.append(" = ")
     out.append(getSync(op))
-    out.append(".get\n")
+    out.append(".get")
+    if (name == op.id && op.getOutputs == List(name)) { // out is itself...
+      out.append("\n")
+    } else {
+      out.append(".")
+      out.append(name)
+      out.append("\n")
+    }
   }
 
   private def writeSyncObject(op: DeliteOP, out: StringBuilder) {
@@ -201,6 +223,10 @@ object ExecutableGenerator {
 
   private def getSym(op: DeliteOP): String = {
     "x"+op.id
+  }
+
+  private def getSym(op: DeliteOP, name: String): String = {
+    "x"+name
   }
 
   private[codegen] def getSync(op: DeliteOP): String = {

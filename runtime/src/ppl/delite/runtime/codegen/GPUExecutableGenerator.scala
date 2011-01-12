@@ -126,7 +126,7 @@ object GPUExecutableGenerator {
       //get kernel inputs (dependencies that could require a memory transfer)
       var addInputCopy = false
       val inputCopies = op.cudaMetadata.inputs.iterator //list of inputs that have a copy function
-      for (input <- op.getInputs) { //foreach input
+      for ((input,name) <- op.getInputs) { //foreach input
         val inData = if (getJNIType(input.outputType) == "jobject") inputCopies.next else op.cudaMetadata.outputAlloc //outputAlloc should never be used
         if(!available.contains(input)) { //this input does not yet exist on the device
           //add to available list
@@ -320,7 +320,7 @@ object GPUExecutableGenerator {
   }
 
   private def writeInputs(op: DeliteOP, out: StringBuilder) {
-    for (input <- op.getInputs) {
+    for ((input,name) <- op.getInputs) {
       out.append(',')
       out.append(getSymGPU(input))
     }
