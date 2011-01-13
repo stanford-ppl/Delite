@@ -23,6 +23,8 @@ object SVM extends DeliteApplication with OptiMLExp {
     //val f2 = File(testfile)
     //if (!f1.exists || !f2.exists) print_usage
 
+    reseed
+
     // parse the input matrix into the following elements:
     //  inMatrix:   a (numDocs x numTokens) matrix, where each row represents a unique document
     //                 the jth column of row i represents the number of times the jth token appeared in doc i
