@@ -479,7 +479,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       }
       else {
         parallelCudagen = false
-        gpuBlockSizeX = quote(map)+".size()"
+        gpuBlockSizeX = quote(map.in)+".size()"
         val freeVars = getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)
         stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(map.in)+".size()"))
         tabWidth += 1
@@ -502,7 +502,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       }
       else {
         parallelCudagen = false
-        gpuBlockSizeX = quote(zip)+".size()"
+        gpuBlockSizeX = quote(zip.inA)+".size()"
         val freeVars = getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))
         stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(zip.inA)+".size()"))
         tabWidth += 1
@@ -558,7 +558,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       if (parallelCudagen == false) {
         stream.println(addTab()+"for(int i_%s=0; i_%s < %s.size(); i_%s++) {".format(quote(sym),quote(sym),quote(foreach.in),quote(sym)))
         tabWidth += 1
-        stream.println(addTab()+"%s %s = %s.apply(i_%s)".format(remap(foreach.v.Type),quote(foreach.v),quote(foreach.in),quote(sym)))
+        stream.println(addTab()+"%s %s = %s.apply(i_%s);".format(remap(foreach.v.Type),quote(foreach.v),quote(foreach.in),quote(sym)))
         emitBlock(foreach.func)
         tabWidth -= 1
         stream.println(addTab() + "}")

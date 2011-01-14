@@ -6,26 +6,30 @@
 #include "LabelsImpl.h"
 
 template <class T, class L>
+class TrainingSet;
+
+template <class T, class L>
 class TrainingSet {
 public:
 	T *data;
 	int numRows;
 	int numCols;
-    	int numSamples(void) { return numRows; }
-    	int numFeatures(void) { return numCols; }
+   	int numSamples(void) { return numRows; }
+   	int numFeatures(void) { return numCols; }
   	Labels<L> labels;
-  	TrainingSet<T,L> transposed;
+  	Matrix<T> transposed;
+  	//TrainingSet<T,L> *transposed;
 
 	// Constructors
 	__host__ __device__ TrainingSet() {
 		data = NULL;
 		numRows = 0;
 		numCols = 0;
-		labels = NULL;
-		transposed = NULL;
+		//labels = NULL;
+		//transposed = NULL;
 	}
 
-	__host__ __device__ TrainingSet(Matrix<T> mat, TrainingSet<T,L> set_t, Labels<L> lab) {
+	__host__ __device__ TrainingSet(Matrix<T> mat, Matrix<T> set_t, Labels<L> lab) {
 		data = mat.data;
 		numRows = mat.numRows;
 		numCols = mat.numCols;

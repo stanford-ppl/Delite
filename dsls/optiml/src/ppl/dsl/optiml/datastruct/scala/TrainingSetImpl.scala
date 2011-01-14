@@ -12,7 +12,8 @@ class TrainingSetImpl[T:Manifest,L:Manifest](xs: Matrix[T], var _labels: Labels[
         out(j,i) = this(i,j)
       }
     }
-    new TrainingSetImpl[T,L](out, _labels)
+	out
+    //new TrainingSetImpl[T,L](out, _labels)
   }
 
   // not a deep copy, use with care
