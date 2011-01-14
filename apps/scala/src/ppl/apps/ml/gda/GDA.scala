@@ -81,12 +81,12 @@ object GDA extends DeliteApplication with OptiMLExp {
     // unless the above sum is a reflectEffect
     toc
 
-    print("GDA parameter calculation finished: ")
-    println("  phi = " + phi)
-    println("  mu0 = " ); mu0.pprint
-    println("  mu1 = " ); mu1.pprint
+    //print("GDA parameter calculation finished: ")
+    //println("  phi = " + phi)
+    //println("  mu0 = " ); mu0.pprint
+    //println("  mu1 = " ); mu1.pprint
     println("  sigma = "); sigma.pprint
-    //sigma
+    println(sigma)
 
   }
 }

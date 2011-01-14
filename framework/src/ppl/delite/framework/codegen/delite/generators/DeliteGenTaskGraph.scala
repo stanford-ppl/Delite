@@ -38,6 +38,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     var nestedNode: TP[_] = null
     implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
 
+    val saveInputDeps = kernelInputDeps
+    val saveMutatingDeps = kernelMutatingDeps
+
     // we will try to generate any node that is not purely an effect node
     rhs match {
       case Reflect(s, effects) => super.emitNode(sym, rhs); return
@@ -52,6 +55,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
         skipEmission = true
       }
       case DeliteOpIndexedLoop(s,e,i,b) => {
+        val saveMutatingDeps = kernelMutatingDeps
+        val saveInputDeps = kernelInputDeps
         emitBlock(b)
         emittedNodeList += emittedNodes
         skipEmission = true
@@ -67,6 +72,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       case NewVar(x) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
       case _ => // continue and attempt to generate kernel
     }
+
+    kernelInputDeps = saveInputDeps
+    kernelMutatingDeps = saveMutatingDeps
 
     // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
     val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)
@@ -250,14 +258,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
     stream.print("{\"type\":\"Conditional\",")
     stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
-    val controlDepsStr = if(emittedNodesList(0).isEmpty) "" else getEmittedNodeIds(0)
-    val thenS = getEmittedNodeIds(1)
-    val elseS = getEmittedNodeIds(2)
+    val bodyIds = emittedNodesList(1) ++ emittedNodesList(2)
+    val controlDepsStr = makeString(controlDeps filterNot { bodyIds contains })
+    val antiDepsStr = makeString(antiDeps filterNot { bodyIds contains })
+    val thenS = makeString(emittedNodesList(1))
+    val elseS = makeString(emittedNodesList(2))
     stream.println("  \"conditionKernelId\" : \"" + quote(cond) + "\", ")
     stream.println("  \"thenKernelIds\" : [" + thenS + "],")
     stream.println("  \"elseKernelIds\" : [" + elseS + "],")
     stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
-    val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
     stream.println("  \"antiDeps\":[" + antiDepsStr + "]")
     stream.println("},")
   }
@@ -266,6 +275,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
     stream.println("{\"type\":\"IndexedLoop\",")
     stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
+    val controlDepsStr = makeString(controlDeps filterNot { emittedNodesList(0) contains })
+    val antiDepsStr = makeString(antiDeps filterNot { emittedNodesList(0) contains })
     def getType(e: Exp[Int]) = e match {
       case c:Const[Int] => "const"
       case s:Sym[Int]   => "symbol"
@@ -275,9 +286,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("  \"endType\" : \"" + getType(end) + "\",")
     stream.println(" \"endValue\" : \"" + quote(end) + "\",")
     stream.println("  \"indexId\" : \"" + quote(i) + "\",")
-    val bodyS = getEmittedNodeIds(0)
+    val bodyS = makeString(emittedNodesList(0))
     stream.println("  \"bodyIds\" : [" + bodyS + "],")
-    emitDepsCommon(controlDeps, antiDeps, true)
+    stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
+    stream.println("  \"antiDeps\":[" + antiDepsStr + "]")
     stream.println("},")
   }
 
@@ -285,13 +297,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
     stream.println("{\"type\":\"WhileLoop\",")
     stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
-    val controlDepsStr = if(emittedNodesList(0).isEmpty) "" else getEmittedNodeIds(0)
-    val conds = getEmittedNodeIds(1)
-    val bodys = getEmittedNodeIds(2)
+    val controlDepsStr = makeString(controlDeps filterNot { emittedNodesList(2) contains })
+    val antiDepsStr = makeString(antiDeps filterNot { emittedNodesList(2) contains })
+    val conds = makeString(emittedNodesList(1))
+    val bodys = makeString(emittedNodesList(2))
     stream.println("  \"condIds\" : [" + conds + "],")
     stream.println("  \"bodyIds\" : [" + bodys + "],")
     stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
-    val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
     stream.println("  \"antiDeps\":[" + antiDepsStr + "]")
     stream.println("},")
   }
@@ -317,14 +329,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   }
 
   def emitDepsCommon(controlDeps: List[Exp[_]], antiDeps: List[Exp[_]], last:Boolean = false)(implicit stream: PrintWriter) {
-    val controlDepsStr = if(controlDeps.isEmpty) "" else controlDeps.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
-    val antiDepsStr = if(antiDeps.isEmpty) "" else antiDeps.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"antiDeps\":[" + antiDepsStr + "]" + (if(last) "\n" else ",\n"))
+    stream.print("  \"controlDeps\":[" + makeString(controlDeps) + "],\n")
+    stream.print("  \"antiDeps\":[" + makeString(antiDeps) + "]" + (if(last) "\n" else ",\n"))
   }
 
-  private def getEmittedNodeIds(idx: Int)(implicit emittedNodesList: ListBuffer[List[Sym[_]]]) = {
-    if (emittedNodesList(idx).isEmpty) "" else emittedNodesList(idx).map(quote(_)).mkString("\"","\",\"","\"")
+  private def makeString(list: List[Exp[_]]) = {
+    if(list.isEmpty) "" else list.map(quote(_)).mkString("\"","\",\"","\"")
   }
 
   // more quirks

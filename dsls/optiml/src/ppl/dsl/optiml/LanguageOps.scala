@@ -264,15 +264,52 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
    * untilconverged
    */
   
-  case class UntilConverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
-                                                  func: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_untilconverged_impl(x,thresh,max_iter,clone_prev_val,func,diff)))
-  
-  
-  def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
-                                                  block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) =
-    reflectEffect(UntilConverged(x, thresh, max_iter, clone_prev_val, block, diff))
+//  case class UntilConverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
+//                                                  func: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double])
+//    extends DeliteOpSingleTask[A](reifyEffects(optiml_untilconverged_impl(x,thresh,max_iter,clone_prev_val,func,diff)))
+//
 
+//  def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
+//                                                  block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) =
+//    reflectEffect(UntilConverged(x, thresh, max_iter, clone_prev_val, block, diff))
+//
+
+  // for now, just unroll the implementation
+  // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
+  def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
+                                                  block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) = {
+
+    var delta = unit(scala.Math.MAX_DOUBLE)
+    var prev = unit(null).asInstanceOfL[A]
+    var next = x
+    var iter = unit(0)
+
+    while ((Math.abs(delta) > thresh) && (iter < max_iter)){
+      if (clone_prev_val)
+        prev = next.cloneL()
+      else
+        prev = next
+
+//      try{
+        next = block(next)
+//      }
+//      catch{
+//        case e: Exception => throw new ConvergenceException("Converging block threw exception: " + e)
+//      }
+      iter += 1
+      delta = diff(next, prev)
+      //println("(" + delta + ")")
+    }
+
+      if (iter == max_iter){
+        //throw new ConvergenceException("Maximum iterations exceeded")
+        println("Maximum iterations exceeded")
+        returnL()
+      }
+
+    next
+
+  }
 
   /**
    * dist
@@ -332,8 +369,8 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
       case RandReseed() => emitValDef(sym, "{ Global.randRef.setSeed(Global.INITIAL_SEED);" +
                                            "   Global.intRandRef.setSeed(Global.INITIAL_SEED); }")
 
-      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.Stopwatch.start()")
-      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.Stopwatch.stop()")
+      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
+      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
       case _ => super.emitNode(sym, rhs)
     }
   }

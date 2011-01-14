@@ -25,8 +25,8 @@ trait DeliteCodegen extends GenericNestedCodegen {
   var emittedNodes : List[Sym[_]] = _
 
   // global, used by DeliteGenTaskGraph
-  val kernelMutatingDeps : HashMap[Sym[_],List[Sym[_]]] = new HashMap() // from kernel to its mutating deps    
-  val kernelInputDeps : HashMap[Sym[_],List[Sym[_]]] = new HashMap() // from kernel to its input deps
+  var kernelMutatingDeps = Map[Sym[_],List[Sym[_]]]() // from kernel to its mutating deps
+  var kernelInputDeps = Map[Sym[_],List[Sym[_]]]() // from kernel to its input deps
 
   def ifGenAgree[A](f: Generator => A, shallow: Boolean): A = {
     val save = generators map { _.shallow }
@@ -101,14 +101,24 @@ trait DeliteCodegen extends GenericNestedCodegen {
     scope = e4 ::: scope
     generators foreach { _.scope = scope }
 
+    ignoreEffects = true
+    val e5 = buildScheduleForResult(start)
+    ignoreEffects = false
 
-    emittedNodes = Nil
+    val e6 = e4.filter(z => z match {
+      case TP(sym, Reflect(x, es)) => (e5 contains z) || !(effectScope contains z)
+      case _ => e5 contains z
+    })
+    effectScope :::= e6 filter { case TP(sym, Reflect(x, es)) => true; case _ => false }
+    generators foreach { _.effectScope = effectScope }
+
+    var localEmittedNodes: List[Sym[_]] = Nil
     for (t@TP(sym, rhs) <- e4) {
       // we only care about effects that are scheduled to be generated before us, i.e.
       // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
       // n3 we want controlDeps to contain e1 and e2
       controlDeps = e4.take(e4.indexOf(t)) filter { effects contains _ } map { _.sym }
-      if(!rhs.isInstanceOf[Reify[_]]) emittedNodes = emittedNodes :+ t.sym
+      if(!rhs.isInstanceOf[Reify[_]]) localEmittedNodes = localEmittedNodes :+ t.sym
       emitNode(sym, rhs)
     }
 
@@ -131,6 +141,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
 
     generators.foreach(_.scope = save)
     scope = save
+    emittedNodes = localEmittedNodes
   }
 
   /*

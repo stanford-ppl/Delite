@@ -36,15 +36,17 @@ trait SVMModel {
   /////////////
   // training
 
-  def train(X: Rep[TrainingSet[Double,Double]], Y: Rep[Vector[Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
+  def train(X: Rep[TrainingSet[Double,Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
     println("Training SVM using the SMO algorithm")
+
+    val Y = X.labels
 
     // internal model storage
     var weights = Vector.zeros(X.numCols)
     var b = unit(0.0)
 
     // intermediate training info
-    val alphas = Vector.zeros(X.numRows).t // col vector
+    val alphas = Vector.zeros(X.numRows).mt // col vector
 
     val numSamples = X.numRows
     var passes = unit(0)
@@ -52,7 +54,9 @@ trait SVMModel {
     while (passes < max_passes){
       print(".")
       var num_changed_alphas = unit(0)
-      for (i <- 0 until numSamples){
+      var i = unit(0)
+      while(i < numSamples){
+        // TODO: x761 -- code is recalculating alphas from original definition here
         val f_i = (alphas*Y*(X*X(i).t)).sum + b
         val E_i = f_i - Y(i)
 
@@ -93,7 +97,7 @@ trait SVMModel {
               else if (alphas(j) < L) alphas(j) = L
 
               // check alphas(j) convergence
-              if (Math.abs(alphas(j) - old_aj) >  .00001){
+              if (Math.abs(alphas(j) - old_aj) >  tol){
                 // find a_i to maximize objective function
                 old_ai = alphas(i)
                 alphas(i) = alphas(i) + Y(i)*Y(j)*(old_aj-alphas(j))
@@ -118,6 +122,7 @@ trait SVMModel {
             } // negative eta?
           } // L != H?
         } // main if (select alphas)
+        i += 1
       } // for i = 1 to numSamples
 
       if (num_changed_alphas == 0){

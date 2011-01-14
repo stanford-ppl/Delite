@@ -21,7 +21,7 @@ trait DeliteScalaGenVariables extends ScalaGenEffect {
     if (!(deliteInputs intersect syms(rhs)).isEmpty) {
       rhs match {
         case ReadVar(Variable(a)) => emitValDef(sym, quote(a) + ".get"); gen = true
-        case Assign(Variable(a), b) => stream.println(quote(a) + ".set(" + quote(b) + ")"); gen = true
+        case Assign(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(b) + ")"); gen = true
         case VarPlusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get +" + quote(b) + ")"); gen = true
         case _ => // pass
       }

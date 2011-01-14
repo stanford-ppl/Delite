@@ -109,7 +109,59 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
   def indexVectorCopyHtoD(sym: Sym[_]): String = {
-    vectorCopyHtoD(sym)
+    //vectorCopyHtoD(sym)
+    val out = new StringBuilder
+    val typeArg = manifest[Int]
+    val typeStr = remap(typeArg)
+    val numBytesStr = "%s.length * sizeof(%s)".format(quote(sym),remap(typeArg))
+
+    // Get class, method ID
+    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
+    out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"length\",\"()I\");\n")
+    out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"isRow\",\"()Z\");\n")
+
+	out.append("\tjclass rangeCls = env->FindClass(\"generated/scala/IndexVectorRangeImpl\");\n");
+	out.append("\tjboolean isRangeCls = env->IsInstanceOf(obj,rangeCls);\n");
+
+    out.append("\t\t%s %s;\n".format(remap(sym.Type),quote(sym)))
+    out.append("\t\t%s.length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
+    out.append("\t\t%s.isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
+	
+	// If this is not RangeVector
+	out.append("\tif(isRangCls == false) {\n")
+    out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
+    out.append("\t\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
+    out.append("\t\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
+    // Allocate pinned-memory and device memory
+    out.append("\t\t%s *hostPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+    out.append("\t\t%s *devPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
+    // Copy twice (hostMem->pinnedHostMem, pinnedHostMem->devMem)
+    out.append("\t\tmemcpy(%s, %s, %s);\n".format("hostPtr","dataPtr",numBytesStr))
+    out.append("\t\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
+    // Store the device pointer to the C data structure
+    out.append("\t\t%s.data = %s;\n".format(quote(sym),"devPtr"))
+    // Release
+    out.append("\t\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
+	out.append("\t}\n")
+
+	out.append("\telse {\n")
+    out.append("\t\tjmethodID mid_apply = env->GetMethodID(cls,\"apply\",\"()I\");\n")
+    out.append("\t\t%s *hostPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+	out.append("\t\tfor(int i=0; i<%s.length; i++) {\n".format(quote(sym)))
+    out.append("\t\t\thostPtr[i] = %s;\n".format("env->CallIntMethod(obj,mid_apply,i)"))
+	out.append("\t\t}\n")
+    out.append("\t\t%s *devPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
+    out.append("\t\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
+    out.append("\t\t%s.data = %s;\n".format(quote(sym),"devPtr"))
+	out.append("\t}\n")
+
+
+    out.append("\t\treturn %s;\n".format(quote(sym)))
+    out.toString
   }
 
   def labelsCopyHtoD(sym: Sym[_]): String = {

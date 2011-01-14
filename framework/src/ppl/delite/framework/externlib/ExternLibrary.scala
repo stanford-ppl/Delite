@@ -35,6 +35,8 @@ object scalaBLAS {
   def matMult[@specialized(Double,Float) T](mat1:Array[T], mat2:Array[T], mat3:Array[T], mat1_r:Int, mat1_c:Int, mat2_c:Int)
   @native
   def matVMult[@specialized(Double,Float) T](mat1:Array[T], vec2:Array[T], vec3:Array[T], mat_row:Int, mat_col:Int, vec_offset:Int, vec_stride:Int)
+  @native
+  def sigmoid[@specialized(Double,Float) T](vec1:Array[T], vec2:Array[T], start:Int, end:Int)
 }
 """.format(packageName, buildPath))
     scalastream.flush
@@ -112,7 +114,41 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_matVMult_00024mDc_00024sp
 	(*env)->ReleasePrimitiveArrayCritical(env, vec2, vec2_ptr, 0);
 	(*env)->ReleasePrimitiveArrayCritical(env, vec3, vec3_ptr, 0);
 }
-""".format(jniPackageName,jniPackageName,jniPackageName,jniPackageName))
+
+JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mFc_00024sp
+(JNIEnv *env, jobject obj, jfloatArray vec1, jfloatArray vec2, jint start, jint end)
+{
+	int i = 0;
+	jboolean copy;
+	
+	jfloat *vec1_ptr = (jfloat*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec1, &copy));
+	jfloat *vec2_ptr = (jfloat*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec2, &copy));
+	
+	for(i=start; i<end; i++) {
+		vec2_ptr[i] = 1.0 / (1.0+expf(-1.0*vec1_ptr[i]));
+	}
+
+	(*env)->ReleasePrimitiveArrayCritical(env, vec1, vec1_ptr, 0);
+	(*env)->ReleasePrimitiveArrayCritical(env, vec2, vec2_ptr, 0);
+}
+
+JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
+(JNIEnv *env, jobject obj, jdoubleArray vec1, jdoubleArray vec2, jint start, jint end)
+{
+	int i = 0;
+	jboolean copy;
+	
+	jdouble *vec1_ptr = (jdouble*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec1, &copy));
+	jdouble *vec2_ptr = (jdouble*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec2, &copy));
+
+	for(i=start; i<end; i++) {
+		vec2_ptr[i] = 1.0 / (1.0+exp(-1.0*vec1_ptr[i]));
+	}
+
+	(*env)->ReleasePrimitiveArrayCritical(env, vec1, vec1_ptr, 0);
+	(*env)->ReleasePrimitiveArrayCritical(env, vec2, vec2_ptr, 0);
+}
+""".format(jniPackageName,jniPackageName,jniPackageName,jniPackageName,jniPackageName,jniPackageName))
   cstream.flush
 
   }

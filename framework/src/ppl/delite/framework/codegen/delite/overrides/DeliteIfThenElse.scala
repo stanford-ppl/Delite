@@ -11,15 +11,17 @@ trait DeliteIfThenElseExp extends IfThenElseExp {
 
   case class DeliteIfThenElse[T:Manifest](c: Exp[Boolean], t: Exp[T], e: Exp[T]) extends DeliteOpCondition[T](c, t, e)
 
-  override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]) = {
-    val a = reifyEffects(thenp)
-    val b = reifyEffects(elsep)
-    (a,b) match {
-      case (Def(Reify(_,_)), _) | (_, Def(Reify(_,_))) => reflectEffect(DeliteIfThenElse(cond,a,b))
-      case _ => DeliteIfThenElse(cond, thenp, elsep)
-    }
+  override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]) = cond match {
+    case Const(true) => thenp
+    case Const(false) => elsep
+    case _ =>
+      val a = reifyEffects(thenp)
+      val b = reifyEffects(elsep)
+      (a,b) match {
+        case (Def(Reify(_,_)), _) | (_, Def(Reify(_,_))) => reflectEffect(DeliteIfThenElse(cond,a,b))
+        case _ => DeliteIfThenElse(cond, thenp, elsep)
+      }
   }
-
 }
 
 trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
