@@ -553,6 +553,32 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
       }
     }
+
+    case foreach:DeliteOpForeach[_,_] =>
+      if (parallelCudagen == false) {
+        stream.println(addTab()+"for(int i_%s=0; i_%s < %s.size(); i_%s++) {".format(quote(sym),quote(sym),quote(foreach.in),quote(sym)))
+        tabWidth += 1
+        stream.println(addTab()+"%s %s = %s.apply(i_%s)".format(remap(foreach.v.Type),quote(foreach.v),quote(foreach.in),quote(sym)))
+        emitBlock(foreach.func)
+        tabWidth -= 1
+        stream.println(addTab() + "}")
+      }
+      else {
+        parallelCudagen = false
+        gpuBlockSizeX = quote(foreach.in)+".size()"
+        val freeVars = getFreeVarBlock(foreach.func,Nil).filterNot(ele => ele==foreach.v)
+        stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(foreach.in)+".size()"))
+        tabWidth += 1
+        val foreachFunc = emitDevFunc(foreach.func, null, List(foreach.v)++freeVars)
+        if(freeVars.length==0)
+          stream.println(addTab()+"%s(%s.dcApply(%s));".format(foreachFunc,quote(foreach.in),"idxX"))
+        else
+          stream.println(addTab()+"%s(%s.dcApply(%s,%s));".format(foreachFunc,quote(foreach.in),"idxX",freeVars.map(quote).mkString(",")))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        parallelCudagen = true
+      }
+
     case _ => super.emitNode(sym,rhs)
   }
 }

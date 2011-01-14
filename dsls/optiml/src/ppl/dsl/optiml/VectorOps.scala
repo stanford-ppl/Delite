@@ -732,12 +732,12 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       emitValDef(sym, quote(x) + ".length")
     case VectorIsRow(x)     =>
       emitValDef(sym, quote(x) + ".isRow")
-    case VectorObjectRange(start, end, stride, isRow) =>
-      stream.println(addTab()+"RangeVector %s;".format(quote(sym)))
-      stream.println(addTab()+"%s.start = %s;".format(quote(sym),quote(start)))
-      stream.println(addTab()+"%s.end = %s;".format(quote(sym),quote(end)))
-      stream.println(addTab()+"%s.stride = %s;".format(quote(sym),quote(stride)))
-      stream.println(addTab()+"%s.isRow = %s;".format(quote(sym),quote(isRow)))
+    //case VectorObjectRange(start, end, stride, isRow) =>
+    //  stream.println(addTab()+"RangeVector %s;".format(quote(sym)))
+    //  stream.println(addTab()+"%s.start = %s;".format(quote(sym),quote(start)))
+    //  stream.println(addTab()+"%s.end = %s;".format(quote(sym),quote(end)))
+    //  stream.println(addTab()+"%s.stride = %s;".format(quote(sym),quote(stride)))
+    //  stream.println(addTab()+"%s.isRow = %s;".format(quote(sym),quote(isRow)))
 
         /* Specialized CUDA code generations */
     case VectorRepmat(x,i,j) =>

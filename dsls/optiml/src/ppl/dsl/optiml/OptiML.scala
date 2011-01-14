@@ -175,7 +175,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   }
 }
 
-trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct // with CudaGenVectorViewOps
+trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenTrainingSetOps// with CudaGenVectorViewOps
   with DeliteCudaGenAllOverrides // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
 
@@ -195,7 +195,13 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
     case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
     case "ppl.dsl.optiml.datastruct.scala.RangeVector" => "RangeVector"
-    case "ppl.dsl.optiml.datastruct.scala.IndexVector" => "RangeVector"
+    case "ppl.dsl.optiml.datastruct.scala.IndexVector" => "IndexVector"
+    case "ppl.dsl.optiml.datastruct.scala.Labels[Int]" => "Labels<int>"
+    case "ppl.dsl.optiml.datastruct.scala.Labels[Long]" => "Labels<long>"
+    case "ppl.dsl.optiml.datastruct.scala.Labels[Float]" => "Labels<float>"
+    case "ppl.dsl.optiml.datastruct.scala.Labels[Double]" => "Labels<double>"
+    case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => "Labels<bool>"
+    case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => "TrainingSet<double,double>"
     case _ => super.remap(m)
   }
 
@@ -211,6 +217,13 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<double>" => true
     case "Vector<bool>" => true
     case "RangeVector" => true
+    case "IndexVector" => true
+    case "Labels<int>" => true
+    case "Labels<long>" => true
+    case "Labels<float>" => true
+    case "Labels<double>" => true
+    case "Labels<bool>" => true
+    case "TrainingSet<double,double>" => true
     case _ => super.isObjectType(m)
   }
 
@@ -225,7 +238,14 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => vectorCopyHtoD(sym)
     case "Vector<double>" => vectorCopyHtoD(sym)
     case "Vector<bool>" => vectorCopyHtoD(sym)
-    case "RangeVector" => rangevectorCopyHtoD(sym)
+    case "RangeVector" => rangeVectorCopyHtoD(sym)
+    case "IndexVector" => indexVectorCopyHtoD(sym)
+    case "Labels<int>" => labelsCopyHtoD(sym)
+    case "Labels<long>" => labelsCopyHtoD(sym)
+    case "Labels<float>" => labelsCopyHtoD(sym)
+    case "Labels<double>" => labelsCopyHtoD(sym)
+    case "Labels<bool>" => labelsCopyHtoD(sym)
+    case "TrainingSet<double,double>" => trainingSetCopyHtoD(sym)
     case _ => super.copyDataStructureHtoD(sym)
   }
 
@@ -240,12 +260,32 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => vectorCopyDtoH(sym)
     case "Vector<double>" => vectorCopyDtoH(sym)
     case "Vector<bool>" => vectorCopyDtoH(sym)
-    //case "RangeVector" => rangevectorCopyDtoH(sym)
-    case "RangeVector" => vectorCopyDtoH(sym)
     case _ => super.copyDataStructureDtoH(sym)
   }
 
-  override def allocOutput(newSym: Sym[_], sym: Sym[_]) : Unit = remap(sym.Type) match {
+  override def copyDataStructureDtoHBack(sym: Sym[_]) : String = remap(sym.Type) match {
+    case "Matrix<int>" => matrixCopyDtoHBack(sym)
+    case "Matrix<long>" => matrixCopyDtoHBack(sym)
+    case "Matrix<float>" => matrixCopyDtoHBack(sym)
+    case "Matrix<double>" => matrixCopyDtoHBack(sym)
+    case "Matrix<bool>" => matrixCopyDtoHBack(sym)
+    case "Vector<int>" => vectorCopyDtoHBack(sym)
+    case "Vector<long>" => vectorCopyDtoHBack(sym)
+    case "Vector<float>" => vectorCopyDtoHBack(sym)
+    case "Vector<double>" => vectorCopyDtoHBack(sym)
+    case "Vector<bool>" => vectorCopyDtoHBack(sym)
+    case "RangeVector" => rangeVectorCopyDtoHBack(sym)
+    case "IndexVector" => indexVectorCopyDtoHBack(sym)
+    case "Labels<int>" => labelsCopyDtoHBack(sym)
+    case "Labels<long>" => labelsCopyDtoHBack(sym)
+    case "Labels<float>" => labelsCopyDtoHBack(sym)
+    case "Labels<double>" => labelsCopyDtoHBack(sym)
+    case "Labels<bool>" => labelsCopyDtoHBack(sym)
+    case "TrainingSet<double,double>" => trainingSetCopyDtoHBack(sym)
+    case _ => super.copyDataStructureDtoHBack(sym)
+  }
+
+  override def allocOutput(newSym: Sym[_], sym: Sym[_]) : Unit = remap(newSym.Type) match {
     case "Matrix<int>" => emitMatrixAllocSym(newSym,sym)
     case "Matrix<long>" => emitMatrixAllocSym(newSym,sym)
     case "Matrix<float>" => emitMatrixAllocSym(newSym,sym)
@@ -256,12 +296,10 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => emitVectorAllocSym(newSym,sym)
     case "Vector<double>" => emitVectorAllocSym(newSym,sym)
     case "Vector<bool>" => emitVectorAllocSym(newSym,sym)
-    //case "RangeVector" => emitRangeVectorAllocSym(newSym,sym)
-    case "RangeVector" => emitVectorAllocSym(newSym,sym)
     case _ => super.allocOutput(newSym,sym)    
   }
 
-  override def allocReference(newSym: Sym[_], sym: Sym[_]) : Unit = remap(sym.Type) match {
+  override def allocReference(newSym: Sym[_], sym: Sym[_]) : Unit = remap(newSym.Type) match {
     case "Matrix<int>" => emitMatrixAllocRef(newSym,sym)
     case "Matrix<long>" => emitMatrixAllocRef(newSym,sym)
     case "Matrix<float>" => emitMatrixAllocRef(newSym,sym)
@@ -272,8 +310,6 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case "Vector<float>" => emitVectorAllocRef(newSym,sym)
     case "Vector<double>" => emitVectorAllocRef(newSym,sym)
     case "Vector<bool>" => emitVectorAllocRef(newSym,sym)
-    //case "RangeVector" => emitRangeVectorAllocRef(newSym,sym)
-    case "RangeVector" => emitVectorAllocRef(newSym,sym)
     case _ => super.allocReference(newSym,sym)
   }
 
@@ -282,6 +318,9 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     out.append("#include \"VectorImpl.h\"\n")
     out.append("#include \"MatrixImpl.h\"\n")
     out.append("#include \"RangeVectorImpl.h\"\n")
+    out.append("#include \"IndexVectorImpl.h\"\n")
+    out.append("#include \"LabelsImpl.h\"\n")
+    out.append("#include \"TrainingSetImpl.h\"\n")
     out.toString
   }
 
