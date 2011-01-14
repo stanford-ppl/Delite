@@ -10,13 +10,13 @@ public:
     bool isRow;
 
     // Constructors
-    __host__ __device__ Vector() {
+    __host__ __device__ IndexVector() {
         length = 0;
         isRow = true;
         data = NULL;
     }
 
-    __host__ __device__ Vector(int _length, bool _isRow, int *_data) {
+    __host__ __device__ IndexVector(int _length, bool _isRow, int *_data) {
         length = _length;
         isRow = _isRow;
         data = _data;

@@ -2,6 +2,8 @@
 #define _TRAININGSETIMPL_H_
 
 #include <stdio.h>
+#include "MatrixImpl.h"
+#include "LabelsImpl.h"
 
 template <class T, class L>
 class TrainingSet {

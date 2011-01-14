@@ -12,13 +12,13 @@ public:
     int numLabels(void) { return length; }
 
     // Constructors
-    __host__ __device__ Vector() {
+    __host__ __device__ Labels() {
         data = NULL;
         length = 0;
         isRow = true;
     }
 
-    __host__ __device__ Vector(L *_data, int _length, bool _isRow) {
+    __host__ __device__ Labels(L *_data, int _length, bool _isRow) {
         data = _data;
         length = _length;
         isRow = _isRow;
