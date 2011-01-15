@@ -169,6 +169,7 @@ object DeliteTaskGraph {
     val newGraph = new DeliteTaskGraph
     newGraph._version = outerGraph._version
     newGraph._kernelPath = outerGraph._kernelPath
+    newGraph._ops ++= outerGraph._ops
 
     newGraph.parse = _ => {
       parseOps(getFieldList(graph, "ops"))(newGraph)
