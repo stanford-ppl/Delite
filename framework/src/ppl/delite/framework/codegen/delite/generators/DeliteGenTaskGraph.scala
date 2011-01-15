@@ -1,18 +1,18 @@
 package ppl.delite.framework.codegen.delite.generators
 
 import ppl.delite.framework.codegen.delite.DeliteCodegen
-import ppl.delite.framework.ops.DeliteOpsExp
 import collection.mutable.{ArrayBuffer, ListBuffer}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
 import ppl.delite.framework.{Util, Config}
 import scala.virtualization.lms.internal.{GenerationFailedException, ScalaGenEffect, GenericCodegen}
+import ppl.delite.framework.ops.{VariantsOpsExp, DeliteOpsExp}
 
 trait DeliteGenTaskGraph extends DeliteCodegen {
   val IR: DeliteOpsExp
   import IR._
 
   private def vals(sym: Sym[_]) : List[Sym[_]] = sym match {
-    case Def(Reify(s, effects)) => List(s.asInstanceOf[Sym[_]])
+    case Def(Reify(s, effects)) => if (s.isInstanceOf[Sym[_]]) List(s.asInstanceOf[Sym[_]]) else Nil
     case Def(Reflect(NewVar(v), effects)) => Nil
     case _ => List(sym)
   }
@@ -45,27 +45,27 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     rhs match {
       case Reflect(s, effects) => super.emitNode(sym, rhs); return
       case Reify(s, effects) => super.emitNode(sym, rhs); return
-      case DeliteOpCondition(c,t,e) => {
-        emitBlock(c)
+      case c:DeliteOpCondition[_] => {
+        emitBlock(c.cond)
         emittedNodeList += controlDeps
-        emitBlock(t)
+        emitBlock(c.thenp)
         emittedNodeList += emittedNodes
-        emitBlock(e)
+        emitBlock(c.elsep)
         emittedNodeList += emittedNodes
         skipEmission = true
       }
-      case DeliteOpIndexedLoop(s,e,i,b) => {
+      case l:DeliteOpIndexedLoop => {
         val saveMutatingDeps = kernelMutatingDeps
         val saveInputDeps = kernelInputDeps
-        emitBlock(b)
+        emitBlock(l.body)
         emittedNodeList += emittedNodes
         skipEmission = true
       }
-      case DeliteOpWhileLoop(c,b) => {
-        emitBlock(c)
+      case w:DeliteOpWhileLoop => {
+        emitBlock(w.cond)
         emittedNodeList += controlDeps
         emittedNodeList += emittedNodes
-        emitBlock(b)
+        emitBlock(w.body)
         emittedNodeList += emittedNodes
         skipEmission = true
       }
@@ -89,74 +89,74 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     deliteInputs = (inVals ++ inVars)
     deliteResult = Some(sym) //findDefinition(rhs) map { _.sym }
 
-    for (gen <- generators) {
-      // reset nested flag
-      gen.nestedEmission = false
-      val buildPath = Config.buildDir + java.io.File.separator + gen + java.io.File.separator
-      val outDir = new File(buildPath); outDir.mkdirs()
-      val outFile = new File(buildPath + quote(sym) + "." + gen.kernelFileExt)
-      val kstream = new PrintWriter(outFile)
-      val bodyString = new StringWriter()
-      val bodyStream = new PrintWriter(bodyString)
+    if (!skipEmission) {
+      for (gen <- generators) {
+        // reset nested flag
+        gen.nestedEmission = false
+        val buildPath = Config.buildDir + java.io.File.separator + gen + java.io.File.separator
+        val outDir = new File(buildPath); outDir.mkdirs()
+        val outFile = new File(buildPath + quote(sym) + "." + gen.kernelFileExt)
+        val kstream = new PrintWriter(outFile)
+        val bodyString = new StringWriter()
+        val bodyStream = new PrintWriter(bodyString)
 
-      try{
-        rhs match {
-          case op:DeliteOp[_] => deliteKernel = true
-          case _ => deliteKernel = false
-        }
-
-        //initialize
-        gen.kernelInit(sym, inVals, inVars, resultIsVar)
-
-        // emit kernel to bodyStream //TODO: must kernel body be emitted before kernel header?
-        gen.emitNode(sym, rhs)(bodyStream)
-        bodyStream.flush
-
-        val resultType = if (gen.toString == "scala") {
+        try{
           rhs match {
-            case map: DeliteOpMap[_,_,_] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
-            case zip: DeliteOpZipWith[_,_,_,_] => "generated.scala.DeliteOpZipWith[" + gen.remap(zip.v._1.Type) + "," + gen.remap(zip.v._2.Type) + "," + gen.remap(zip.func.Type) + "," + gen.remap(zip.alloc.Type) +"]"
-            case red: DeliteOpReduce[_] => "generated.scala.DeliteOpReduce[" + gen.remap(red.func.Type) + "]"
-            case mapR: DeliteOpMapReduce[_,_,_] => "generated.scala.DeliteOpMapReduce[" + gen.remap(mapR.mV.Type) + "," + gen.remap(mapR.reduce.Type) + "]"
-            case foreach: DeliteOpForeach[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
-            case _ => gen.remap(sym.Type)
+            case op:DeliteOp[_] => deliteKernel = true
+            case _ => deliteKernel = false
           }
-        } else gen.remap(sym.Type)
 
-        // emit kernel
-        if(skipEmission == false) {
+          //initialize
+          gen.kernelInit(sym, inVals, inVars, resultIsVar)
+
+          // emit kernel to bodyStream //TODO: must kernel body be emitted before kernel header?
+          gen.emitNode(sym, rhs)(bodyStream)
+          bodyStream.flush
+
+          val resultType = if (gen.toString == "scala") {
+            rhs match {
+              case map: DeliteOpMap[_,_,_] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
+              case zip: DeliteOpZipWith[_,_,_,_] => "generated.scala.DeliteOpZipWith[" + gen.remap(zip.v._1.Type) + "," + gen.remap(zip.v._2.Type) + "," + gen.remap(zip.func.Type) + "," + gen.remap(zip.alloc.Type) +"]"
+              case red: DeliteOpReduce[_] => "generated.scala.DeliteOpReduce[" + gen.remap(red.func.Type) + "]"
+              case mapR: DeliteOpMapReduce[_,_,_] => "generated.scala.DeliteOpMapReduce[" + gen.remap(mapR.mV.Type) + "," + gen.remap(mapR.reduce.Type) + "]"
+              case foreach: DeliteOpForeach[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
+              case _ => gen.remap(sym.Type)
+            }
+          } else gen.remap(sym.Type)
+
+          // emit kernel
           gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar)(kstream)
           kstream.println(bodyString.toString)
           gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar)(kstream)
-        }
 
-        //record that this kernel was successfully generated
-        supportedTargets += gen.toString
-        if (resultIsVar) {
-          returnTypes += new Pair[String,String](gen.toString,"generated.scala.Ref[" + gen.remap(sym.Type) + "]") {
-            override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+          //record that this kernel was successfully generated
+          supportedTargets += gen.toString
+          if (resultIsVar) {
+            returnTypes += new Pair[String,String](gen.toString,"generated.scala.Ref[" + gen.remap(sym.Type) + "]") {
+              override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+            }
           }
-        }
-        else {
-          returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.Type)) {
-            override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+          else {
+            returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.Type)) {
+              override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+            }
           }
-        }
 
-        //add MetaData
-        if(gen.hasMetaData) {
-          metadata += new Pair[String,String](gen.toString, gen.getMetaData) {
-            override def toString = "\"" + _1 + "\" : " + _2
+          //add MetaData
+          if(gen.hasMetaData) {
+            metadata += new Pair[String,String](gen.toString, gen.getMetaData) {
+              override def toString = "\"" + _1 + "\" : " + _2
+            }
           }
-        }
 
-        kstream.close()
-      }
-      catch {
-        case e:GenerationFailedException => // no generator found
-          gen.exceptionHandler(e, outFile, kstream)
-          //e.printStackTrace
-        case e:Exception => throw(e)
+          kstream.close()
+        }
+        catch {
+          case e:GenerationFailedException => // no generator found
+            gen.exceptionHandler(e, outFile, kstream)
+            //e.printStackTrace
+          case e:Exception => throw(e)
+        }
       }
     }
 
@@ -195,11 +195,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     // emit task graph node
     rhs match {
-      case DeliteOpCondition(c,t,e) => emitIfThenElse(c,sym, inputs, inControlDeps, antiDeps)
-      case DeliteOpIndexedLoop(s,e,i,b) => emitIndexedLoop(s,e,i, sym, inputs, inControlDeps, antiDeps)
-      case DeliteOpWhileLoop(c,b) => emitWhileLoop(sym, inputs, inControlDeps, antiDeps)
+      case c:DeliteOpCondition[_] => emitIfThenElse(c.cond,sym, inputs, inControlDeps, antiDeps)
+      case l:DeliteOpIndexedLoop => emitIndexedLoop(l.start,l.end,l.index, sym, inputs, inControlDeps, antiDeps)
+      case w:DeliteOpWhileLoop => emitWhileLoop(sym, inputs, inControlDeps, antiDeps)
       case s:DeliteOpSingleTask[_] => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
-      case m:DeliteOpMap[_,_,_] => emitMap(sym, inputs, inControlDeps, antiDeps)
+      case m:DeliteOpMap[_,_,_] => emitMap(sym, rhs, inputs, inControlDeps, antiDeps)
       case r:DeliteOpReduce[_] => emitReduce(sym, inputs, inControlDeps, antiDeps)
       case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(sym, inputs,inControlDeps, antiDeps)
       case z:DeliteOpZipWith[_,_,_,_] => emitZipWith(sym, inputs, inControlDeps, antiDeps)
@@ -221,36 +221,106 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\"")
     emitExecutionOpCommon(sym, inputs, controlDeps, antiDeps)
+    stream.println("},")
   }
 
-  def emitMap(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+  def emitMap(sym: Sym[_], rhs: Def[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Map\"")
     emitExecutionOpCommon(sym, inputs, controlDeps, antiDeps)
+    stream.print("  \"variant\": {")
+
+    // !!! failed attempts at code-gen only variants below !!! //
+
+    //// trying to construct a nested DEG
+    // construct a DeliteOpIndexedLoop that represents this map operation
+    // we really should not be creating IR nodes at this point if we can help it at all, which favors an approach
+    // more like the one below
+//    val variant = rhs match {
+//      case map:DeliteOpMap[_,_,_] => x: Exp[Unit] => {
+//      //case map:DeliteOpMap[_,_,_] => reifyEffects {
+//        val idx = fresh[Int]
+//        val length = 10//map.in.size
+//        val out = map.alloc
+//        // how can we unroll body to get the kernel list?
+//        val body = reifyEffects {
+//          // we can't actually do this.. need to wrap in an op that we can use to generate the right thing
+//          //map.v = in(idx)
+//          //map.func
+//          reflectEffect(findDefinition(map.func.asInstanceOf[Sym[Any]]).get.rhs)
+//          //findDefinition(map.func.asInstanceOf[Sym[Any]]).get.rhs
+//          Const()
+//        }
+//        //reifyEffects(reflectEffect(DeliteOpIndexedLoop(0, length, idx, body)))
+//        reflectEffect(DeliteOpIndexedLoop(0, length, idx, body))
+//        //toAtom(DeliteOpIndexedLoop(0, length, idx, body))
+//      }
+//    }
+//    // this doesn't work that well, we probably do want a separate abstraction for a nested DEG
+//    emitSource(variant, "", stream)
+//    // emittedNodes is set correctly here, but not inside the DeliteOpIndexedLoop
+//    // the issue seems to be that because map.func is already reified, those effects are hidden from us
+//    // we can propagate them outwards with reflectEffect, but the schedules for emittedNodes don't line up
+//    // probably the best thing to do is to scrap this approach and re-design for a sub-graph
+//    val x = emittedNodes
+//    emitBlock(variant)
+
+    //// trying to consruct a variant op
+//    val saveMutatingDeps = kernelMutatingDeps
+//    val saveInputDeps = kernelInputDeps
+//    val idx = fresh[Int]
+//    val length = 10 // TODO: get real
+//    val b = rhs match {
+//      case map:DeliteOpMap[_,_,_] => map.func//reflectEffect(findDefinition(map.func.asInstanceOf[Sym[Any]]).get.rhs)
+//    }
+//    // still need to emit a block re-wire op where we re-wire idx => v, initialize and update the output
+//    // or we need like a precursor / prolog we can run for variants -- but hooking up the dependencies would be tricky
+//    // how (or can we) do this without creating new IR nodes?
+//    //    -- push it into the IR itself, so we have 2 ways of interpreting a node (e.g. map OR indexedloop)
+//    implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
+//    //emitBlock(b)
+//    emittedNodeList += emittedNodes
+//    emitIndexedLoop(0, idx, length, sym, inputs, controlDeps, antiDeps)
+//    kernelInputDeps = saveInputDeps
+//    kernelMutatingDeps = saveMutatingDeps
+
+
+    //// constructing from variant encoded in the IR
+    val output = rhs match {
+      case map:DeliteOpMap[_,_,_] => map.alloc
+    }
+    emitVariant(sym, rhs, output, inputs, controlDeps, antiDeps)
+
+    stream.println("}") // close variant
+    stream.println("},")
   }
 
   def emitReduce(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Reduce\"")
     emitExecutionOpCommon(sym, inputs, controlDeps, antiDeps)
+    stream.println("},")
   }
 
   def emitMapReduce(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"MapReduce\"")
     emitExecutionOpCommon(sym, inputs, controlDeps, antiDeps)
+    stream.println("},")
   }
 
   def emitZipWith(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"ZipWith\"")
     emitExecutionOpCommon(sym, inputs, controlDeps, antiDeps)
+    stream.println("},")
   }
 
   def emitForeach(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Foreach\"")
     emitExecutionOpCommon(sym, inputs, controlDeps, antiDeps)
+    stream.println("},")
   }
 
   def emitIfThenElse(cond: Exp[Boolean], sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
@@ -322,12 +392,60 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("  \"metadata\":{" + metadataStr + "},\n")
     val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString(",")
     stream.print("  \"return-types\":{" + returnTypesStr + "}\n")
-    stream.println("},")
   }
 
   def emitDepsCommon(controlDeps: List[Exp[_]], antiDeps: List[Exp[_]], last:Boolean = false)(implicit stream: PrintWriter) {
     stream.print("  \"controlDeps\":[" + makeString(controlDeps) + "],\n")
     stream.print("  \"antiDeps\":[" + makeString(antiDeps) + "]" + (if(last) "\n" else ",\n"))
+  }
+
+  def emitVariant(sym: Sym[_], rhs: Def[_], output: Exp[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+                 (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
+
+    rhs match {
+      case v:Variant[_] => v.variantType match {
+          // TODO: this is not a correct way of matching. The type arg isn't actually matched against.
+//        case l:Manifest[DeliteOpIndexedLoop] =>
+//          val vl = v.asInstanceOf[DeliteOpIndexedLoopVariant]
+//          val saveMutatingDeps = kernelMutatingDeps
+//          val saveInputDeps = kernelInputDeps
+//          implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
+//          emitNode(findDefinition(vl.indexOp).get.sym, findDefinition(vl.indexOp).get.rhs)
+//          prependInputs = List(vl.indexOp)
+//          emitBlock(vl.body)
+//          emittedNodeList += emittedNodes
+//          emitIndexedLoop(vl.start, vl.end, vl.index, sym, inputs, controlDeps, antiDeps)
+//          kernelInputDeps = saveInputDeps
+//          kernelMutatingDeps = saveMutatingDeps
+//          prependInputs = Nil
+        case w:Manifest[DeliteOpWhileLoop] =>
+          val vw = v.asInstanceOf[DeliteOpWhileLoopVariant]
+          val saveMutatingDeps = kernelMutatingDeps
+          val saveInputDeps = kernelInputDeps
+          implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
+          stream.print("\"ops\":[" )
+          emitBlock(vw.cond)
+          emittedNodeList += this.controlDeps
+          emittedNodeList += emittedNodes
+          emitBlock(vw.body)
+          emittedNodeList += emittedNodes
+          emitWhileLoop(sym, inputs, controlDeps, antiDeps)
+          emitEOV()
+          emitOutput(output)
+          kernelInputDeps = saveInputDeps
+          kernelMutatingDeps = saveMutatingDeps
+        case _ =>
+      }
+      case _ =>
+    }
+  }
+
+  def emitOutput(x: Exp[_])(implicit stream: PrintWriter) = {
+    stream.print("  \"output\": \"" + quote(x) + "\"\n")
+  }
+
+  def emitEOV()(implicit stream: PrintWriter) = {
+    stream.print("{\"type\":\"EOV\"}\n],\n")
   }
 
   private def makeString(list: List[Exp[_]]) = {

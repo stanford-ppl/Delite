@@ -1,15 +1,16 @@
 package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
-import scala.virtualization.lms.common.{TupleOpsExp, VariablesExp, EffectExp}
 import ppl.delite.framework.DeliteCollection
 import scala.virtualization.lms.internal._
+import scala.virtualization.lms.common.{OrderingOpsExp, TupleOpsExp, VariablesExp, EffectExp}
 
-trait DeliteOpsExp extends EffectExp with VariablesExp {
+trait DeliteOpsExp extends EffectExp with VariablesExp with OrderingOpsExp with VariantsOpsExp with DeliteCollectionOpsExp {
+
   /**
    * The base type of the DeliteOp hierarchy.
    */
-  sealed abstract class DeliteOp[A]() extends Def[A]
+  /*sealed*/ abstract class DeliteOp[A]() extends Def[A]
 
   /**
    * A sequential task - will execute block in a single thread and respect any free variable dependencies inside it.
@@ -25,7 +26,11 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
    * @param  thenp   the Then block to execute if condition is true
    * @param  elsep   the Else block to execute if condition is false
    */
-  case class DeliteOpCondition[A](cond: Exp[Boolean], thenp: Exp[A], elsep: Exp[A]) extends DeliteOp[A]
+  trait DeliteOpCondition[A] extends DeliteOp[A] {
+    val cond: Exp[Boolean]
+    val thenp: Exp[A]
+    val elsep: Exp[A]
+  }
 
   /**
    * An indexed loop - will emit an indexed loop DEG node as well as a kernel for the body
@@ -35,15 +40,27 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
    * @param  idx    index id that will be refered to in the body, this could be passed in as input to the body or the body could be inlined
    * @param  body   the body of the loop
    */
-  case class DeliteOpIndexedLoop(_start: Exp[Int], _end: Exp[Int], _idx: Exp[Int], _body: Exp[Unit]) extends DeliteOp[Unit]
+  trait IndexedLoopLike {
+    val start: Exp[Int]
+    val end: Exp[Int]
+    val index: Exp[Int]
+    val body: Exp[Unit]
+  }
+
+  trait DeliteOpIndexedLoop extends DeliteOp[Unit] with IndexedLoopLike
 
   /**
    * An while loop - will emit an while loop DEG node as well as a kernel for the body
    *
-   * @param  _cond  condition expression, will be emitted as a kernel
+   * @param  cond  condition expression, will be emitted as a kernel
    * @param  body   the body of the loop
    */
-  case class DeliteOpWhileLoop(_cond: Exp[Boolean], _body: Exp[Unit]) extends DeliteOp[Unit]
+  trait WhileLoopLike {
+    val cond: Exp[Boolean]
+    val body: Exp[Unit]
+  }
+
+  trait DeliteOpWhileLoop extends DeliteOp[Unit] with WhileLoopLike
 
   /**
    * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
@@ -55,12 +72,49 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
    * @param  alloc function returning the output collection. if it is the same as the input collection,
    *               the operation is mutable; reified version of Unit => DeliteCollection[B].
    */
-  abstract class DeliteOpMap[A,B,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
+
+  trait DeliteOpMap[A,B,C[X] <: DeliteCollection[X]] extends DeliteOp[C[B]] with DeliteOpWhileLoopVariant {
     val in: Exp[C[A]]
     val v: Exp[A]
     val func: Exp[B]
     val alloc: Exp[C[B]]
+
+    var index = unit(0)
+    lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
+    lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
+    lazy val cond = reifyEffects(index < in.size)
+    lazy val body =
+      reifyEffects {
+        alloc(index) = func
+        index += 1
+      }
   }
+
+//  trait DeliteOpMap[A,B,C[X] <: DeliteCollection[X]] extends DeliteOp[C[B]] with DeliteOpIndexedLoopVariant {
+//    val in: Exp[C[A]]
+//    val v: Exp[A]
+//    val func: Exp[B]
+//    val alloc: Exp[C[B]]
+//
+//    // we need the manifests to make the implicit operations on DeliteCollections work
+//    lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
+//    lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
+//    lazy val start = unit(0)
+//    lazy val end = in.size // TODO: not getting picked up as a dependency or emitted -- can use a more right-side syms for variants that continues to chain up
+//    lazy val index = fresh[Int]
+//    lazy val indexOp = reifyEffects(reflectEffect(DeliteOpIndexToValue(v, reifyEffects(in(index))))).asInstanceOf[Sym[Unit]]
+//    lazy val body =
+//      reifyEffects {
+//       //func
+//       // 2 options:
+//       //   a) try to force every kernel in the body to have DeliteOpIndexToValue as an input that runs before anything else in the kernel
+//       //     then runtime just passes the index to each kernel in the body like normal
+//       //   b) runtime passes in both the index and in(index) to each kernel in the body. how do we encode this generally to not make
+//       //      it ad-hoc?
+//       // At least for the "variant hack", (b) seems easier. how are the kernels in an indexed loop body passed the index? is it a formal parameter?
+//       alloc(index) = func
+//      }
+//  }
 
   /**
    * Parallel 2 element zipWith from (DeliteCollection[A],DeliteCollection[B]) => DeliteCollection[R].
@@ -269,8 +323,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(getBlockResult(map.alloc)))
         stream.println("}")
-	
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -303,7 +356,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(getBlockResult(zip.alloc)))
         stream.println("}")
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -336,7 +389,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(red.v._1))
         stream.println("}")
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -372,7 +425,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(mapR.rV._1))
         stream.println("}")
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -415,7 +468,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(zipR.rV._1))
         stream.println("}")
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -445,7 +498,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("forIdx += 1")
         stream.println("} // end while")
         stream.println("}")
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+      	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false

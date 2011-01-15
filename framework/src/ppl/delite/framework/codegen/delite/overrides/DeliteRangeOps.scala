@@ -8,8 +8,8 @@ import scala.virtualization.lms.internal._
 trait DeliteRangeOpsExp extends RangeOpsExp {
   this: DeliteOpsExp =>
 
-  case class DeliteRangeForEach(start: Exp[Int], end: Exp[Int], i: Exp[Int], body: Exp[Unit])
-    extends DeliteOpIndexedLoop(start, end, i, body)
+  case class DeliteRangeForEach(start: Exp[Int], end: Exp[Int], index: Exp[Int], body: Exp[Unit])
+    extends DeliteOpIndexedLoop
 
   override def range_foreach(r: Exp[Range], block: Exp[Int] => Exp[Unit]) : Exp[Unit] = {
     val i = fresh[Int]
