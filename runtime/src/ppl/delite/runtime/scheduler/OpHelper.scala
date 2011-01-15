@@ -44,4 +44,17 @@ object OpHelper {
     case single: OP_Single => error("OP Single cannot be split")
     case other => error("OP type not recognized: " + other.getClass.getSimpleName)
   }
+
+  def makeVariant(op: DeliteOP) {
+    op.variant.parse()
+    //remove super op from graph
+    for (dep <- op.getDependencies) {
+      dep.removeConsumer(op)
+    }
+    //consumers need to use return op of the nested graph rather than the outer op
+    for (c <- op.getConsumers) {
+      c.replaceDependency(op, op.variant.result)
+      c.replaceInput(op, op.variant.result)
+    }
+  }
 }
