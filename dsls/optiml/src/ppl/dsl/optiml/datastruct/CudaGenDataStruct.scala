@@ -193,14 +193,14 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
 
     // Get object fields (labels / transposed)
-    out.append("\tjmethodID fid_labels = env->GetMethodID(cls,\"labels\",\"Lgenerated/scala/Labels;\");\n")
-    out.append("\tjfieldID fid_transposed = env->GetFieldID(cls,\"transposed\",\"Lgenerated/scala/TrainingSet;\");\n")
+    out.append("\tjmethodID fid_labels = env->GetMethodID(cls,\"labels\",\"()Lgenerated/scala/Labels;\");\n")
+    out.append("\tjfieldID fid_transposed = env->GetFieldID(cls,\"transposed\",\"Lgenerated/scala/%s%sTrainingSetImpl;\");\n".format(sym.Type.typeArguments(0).toString,sym.Type.typeArguments(0).toString))
     out.append("\tjobject obj_labels = env->CallObjectMethod(obj,fid_labels);\n")
     out.append("\tjobject obj_transposed = env->GetObjectField(obj,fid_transposed);\n")
 
     // Copy Labels 
     val typeStr_labels = remap(sym.Type.typeArguments(1))
-    val numBytesStr_labels = "%s.labels.length * sizeof(%s)".format(quote(sym),quote(sym),typeStr_labels)
+    val numBytesStr_labels = "labels.length * sizeof(%s)".format(typeStr_labels)
     out.append("\tLabels<%s> labels;\n".format(typeStr_labels))
     out.append("\tlabels.length = %s.numRows;\n".format(quote(sym)))
     out.append("\tlabels.isRow = false;\n")
@@ -234,8 +234,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMalloc((void**)%s,%s+sizeof(%s));\n".format("&devPtr_transposed",numBytesStr,remap(sym.Type)))
 	out.append("\ttransposed.data = devPtr_transposed;\n")
     out.append("\t%s *hostPtr_transposed;\n".format(typeStr))
-    out.append("\t%s *hostPtr_transposed_cls = hostPtr_transposed + %s.size();\n".format(typeStr,quote(sym)))
     out.append("\tDeliteCudaMallocHost((void**)%s,%s+sizeof(%s));\n".format("&hostPtr_transposed",numBytesStr,remap(sym.Type)))
+    out.append("\t%s *hostPtr_transposed_cls = hostPtr_transposed + %s.size();\n".format(typeStr,quote(sym)))
     out.append("\tmemcpy(%s, %s, %s);\n".format("hostPtr_transposed","dataPtr_transposed",numBytesStr))
     out.append("\tmemcpy(%s, %s, sizeof(%s));\n".format("hostPtr_transposed_cls","&transposed",quote(sym)))
     out.append("\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s+sizeof(%s));\n".format("devPtr_transposed","hostPtr_transposed",numBytesStr,quote(sym)))
