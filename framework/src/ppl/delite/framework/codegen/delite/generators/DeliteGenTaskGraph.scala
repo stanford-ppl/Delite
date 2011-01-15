@@ -397,7 +397,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   }
 
   def emitOutput(x: Exp[_])(implicit stream: PrintWriter) = {
-    stream.print("  \"output\": \"" + quote(x) + "\"\n")
+    stream.print("  \"output\": \"" + quote(getBlockResult(x)) + "\"\n")
   }
 
   def emitEOV()(implicit stream: PrintWriter) = {
