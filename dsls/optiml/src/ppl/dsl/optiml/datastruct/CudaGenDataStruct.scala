@@ -201,7 +201,6 @@ trait CudaGenDataStruct extends CudaCodegen {
     // Copy Labels 
     val typeStr_labels = remap(sym.Type.typeArguments(1))
     val numBytesStr_labels = "%s.labels.length * sizeof(%s)".format(quote(sym),quote(sym),typeStr_labels)
-    //out.append("\tLabels<%s> *labels = (Labels<%s>)malloc(sizeof(Labels<%s>));\n".format(typeStr_labels,quote(sym)))
     out.append("\tLabels<%s> labels;\n".format(typeStr_labels))
     out.append("\tlabels.length = %s.numRows;\n".format(quote(sym)))
     out.append("\tlabels.isRow = false;\n")
@@ -221,7 +220,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     //out.append("\tDeliteCudaMalloc((void**)%s,sizeof(Labels<%s>));\n".format("&labels",typeStr_labels))
 
     // Copy Transposed 
-    out.append("\tMatrix<%s> transposed;\n".format(typeStr,quote(sym)))
+    out.append("\t%s transposed;\n".format(remap(sym.Type)))
     out.append("\ttransposed.numRows = %s.numCols;\n".format(quote(sym)))
     out.append("\ttransposed.numCols = %s.numRows;\n".format(quote(sym)))
     //out.append("\ttransposed.labels = %s.labels;\n".format(quote(sym)))
