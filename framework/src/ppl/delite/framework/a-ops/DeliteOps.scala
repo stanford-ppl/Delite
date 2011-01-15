@@ -3,9 +3,10 @@ package ppl.delite.framework.ops
 import java.io.{FileWriter, File, PrintWriter}
 import ppl.delite.framework.DeliteCollection
 import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common.{OrderingOpsExp, TupleOpsExp, VariablesExp, EffectExp}
+import scala.virtualization.lms.common._
 
-trait DeliteOpsExp extends EffectExp with VariablesExp with OrderingOpsExp with VariantsOpsExp with DeliteCollectionOpsExp {
+trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with DeliteCollectionOpsExp
+  with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp {
 
   /**
    * The base type of the DeliteOp hierarchy.
@@ -79,12 +80,21 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with OrderingOpsExp with 
     val func: Exp[B]
     val alloc: Exp[C[B]]
 
+    // DeliteOpWhileLoopVariant
     var index = unit(0)
     lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
     lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
+    // in the variant version, we need to actually emit the bound symbol as a kernel so it can be passed in as an input
+    //lazy val vs = Variable(reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], NewVar(unit(null).asInstanceOfL[A])).rhs))
+    val vs = () => __newVar(unit(null).asInstanceOfL[A])
     lazy val cond = reifyEffects(index < in.size)
     lazy val body =
       reifyEffects {
+        //reflectEffect(DeliteOpIndexToValue(v, reifyEffects(in(index))))
+        //vs = in(index)
+        val hack = vs()
+        __assign(hack, in(index))
+        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(hack)).rhs)
         alloc(index) = func
         index += 1
       }
@@ -100,18 +110,11 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with OrderingOpsExp with 
 //    lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
 //    lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
 //    lazy val start = unit(0)
-//    lazy val end = in.size // TODO: not getting picked up as a dependency or emitted -- can use a more right-side syms for variants that continues to chain up
+//    lazy val end = in.size
 //    lazy val index = fresh[Int]
 //    lazy val indexOp = reifyEffects(reflectEffect(DeliteOpIndexToValue(v, reifyEffects(in(index))))).asInstanceOf[Sym[Unit]]
 //    lazy val body =
 //      reifyEffects {
-//       //func
-//       // 2 options:
-//       //   a) try to force every kernel in the body to have DeliteOpIndexToValue as an input that runs before anything else in the kernel
-//       //     then runtime just passes the index to each kernel in the body like normal
-//       //   b) runtime passes in both the index and in(index) to each kernel in the body. how do we encode this generally to not make
-//       //      it ad-hoc?
-//       // At least for the "variant hack", (b) seems easier. how are the kernels in an indexed loop body passed the index? is it a formal parameter?
 //       alloc(index) = func
 //      }
 //  }
@@ -160,7 +163,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with OrderingOpsExp with 
    * @param  rV      the bound symbol that the reducing function operates over
    * @param  reduce  the reduction function; reified version of ([Exp[R],Exp[R]) => Exp[R]. Must be associative.
    */
-  abstract class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] {
+  abstract class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] {//with DeliteOpWhileLoopVariant {
     val in: Exp[C[A]]
     //val acc: Exp[R]
 
@@ -172,6 +175,17 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with OrderingOpsExp with 
     // for reducing remaining partial sums
     val rV: (Exp[R],Exp[R])
     val reduce: Exp[R]
+
+//    var index = unit(0)
+//    var acc = reifyEffects(map())
+//    lazy implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
+//    lazy implicit val mR = map.Type.asInstanceOf[Manifest[B]]
+//    lazy val cond = reifyEffects(index < in.size)
+//    lazy val body =
+//      reifyEffects {
+//        alloc(index) = func
+//        index += 1
+//      }
   }
 
 

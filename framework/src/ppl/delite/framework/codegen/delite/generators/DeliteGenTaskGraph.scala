@@ -229,62 +229,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("{\"type\":\"Map\"")
     emitExecutionOpCommon(sym, inputs, controlDeps, antiDeps)
     stream.print(',')
-    stream.print("  \"variant\": {")
-
-    // !!! failed attempts at code-gen only variants below !!! //
-
-    //// trying to construct a nested DEG
-    // construct a DeliteOpIndexedLoop that represents this map operation
-    // we really should not be creating IR nodes at this point if we can help it at all, which favors an approach
-    // more like the one below
-//    val variant = rhs match {
-//      case map:DeliteOpMap[_,_,_] => x: Exp[Unit] => {
-//      //case map:DeliteOpMap[_,_,_] => reifyEffects {
-//        val idx = fresh[Int]
-//        val length = 10//map.in.size
-//        val out = map.alloc
-//        // how can we unroll body to get the kernel list?
-//        val body = reifyEffects {
-//          // we can't actually do this.. need to wrap in an op that we can use to generate the right thing
-//          //map.v = in(idx)
-//          //map.func
-//          reflectEffect(findDefinition(map.func.asInstanceOf[Sym[Any]]).get.rhs)
-//          //findDefinition(map.func.asInstanceOf[Sym[Any]]).get.rhs
-//          Const()
-//        }
-//        //reifyEffects(reflectEffect(DeliteOpIndexedLoop(0, length, idx, body)))
-//        reflectEffect(DeliteOpIndexedLoop(0, length, idx, body))
-//        //toAtom(DeliteOpIndexedLoop(0, length, idx, body))
-//      }
-//    }
-//    // this doesn't work that well, we probably do want a separate abstraction for a nested DEG
-//    emitSource(variant, "", stream)
-//    // emittedNodes is set correctly here, but not inside the DeliteOpIndexedLoop
-//    // the issue seems to be that because map.func is already reified, those effects are hidden from us
-//    // we can propagate them outwards with reflectEffect, but the schedules for emittedNodes don't line up
-//    // probably the best thing to do is to scrap this approach and re-design for a sub-graph
-//    val x = emittedNodes
-//    emitBlock(variant)
-
-    //// trying to consruct a variant op
-//    val saveMutatingDeps = kernelMutatingDeps
-//    val saveInputDeps = kernelInputDeps
-//    val idx = fresh[Int]
-//    val length = 10 // TODO: get real
-//    val b = rhs match {
-//      case map:DeliteOpMap[_,_,_] => map.func//reflectEffect(findDefinition(map.func.asInstanceOf[Sym[Any]]).get.rhs)
-//    }
-//    // still need to emit a block re-wire op where we re-wire idx => v, initialize and update the output
-//    // or we need like a precursor / prolog we can run for variants -- but hooking up the dependencies would be tricky
-//    // how (or can we) do this without creating new IR nodes?
-//    //    -- push it into the IR itself, so we have 2 ways of interpreting a node (e.g. map OR indexedloop)
-//    implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
-//    //emitBlock(b)
-//    emittedNodeList += emittedNodes
-//    emitIndexedLoop(0, idx, length, sym, inputs, controlDeps, antiDeps)
-//    kernelInputDeps = saveInputDeps
-//    kernelMutatingDeps = saveMutatingDeps
-
 
     //// constructing from variant encoded in the IR
     val output = rhs match {
@@ -292,7 +236,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     }
     emitVariant(sym, rhs, output, inputs, controlDeps, antiDeps)
 
-    stream.println("}") // close variant
     stream.println("},")
   }
 
@@ -408,6 +351,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     // pre
     val saveMutatingDeps = kernelMutatingDeps
     val saveInputDeps = kernelInputDeps
+    stream.print("  \"variant\": {")
 
     // variant
     rhs match {
@@ -419,6 +363,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     // post
     emitEOV()
     emitOutput(output)
+    stream.println("}")
     kernelInputDeps = saveInputDeps
     kernelMutatingDeps = saveMutatingDeps
     prependInputs = Nil

@@ -11,20 +11,14 @@ trait VariantsOpsExp extends EffectExp {
    * Variants are used to represent a Delite op multiple ways in the IR.
    */
   //trait Variant[T <: DeliteOp[_]] extends T
-  trait Variant[T <: DeliteOp[_]] {
-    val variantType: Manifest[T]
-  }
+  trait Variant[T <: DeliteOp[_]]
 
   // this is unsatisfying
   trait DeliteOpIndexedLoopVariant extends Variant[DeliteOpIndexedLoop] with IndexedLoopLike {
-    // TODO: generalize for multiple variants or remove (we can always match on the more specific type)
-    val variantType = manifest[DeliteOpIndexedLoop]
     val indexOp: Sym[Unit]
   }
 
-  trait DeliteOpWhileLoopVariant extends Variant[DeliteOpWhileLoop] with WhileLoopLike {
-    val variantType = manifest[DeliteOpWhileLoop]
-  }
+  trait DeliteOpWhileLoopVariant extends Variant[DeliteOpWhileLoop] with WhileLoopLike
 
   /**
    * This is a re-wiring class used for variants. Tt translates an index symbol to a value symbol.
