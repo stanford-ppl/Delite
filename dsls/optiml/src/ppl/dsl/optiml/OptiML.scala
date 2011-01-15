@@ -6,7 +6,7 @@ import ppl.delite.framework.codegen.cuda.TargetCuda
 import scala.virtualization.lms.common._
 import ppl.delite.framework.codegen.delite.DeliteCodeGenOverridesScala
 import ppl.delite.framework.ops.{CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
-import scala.virtualization.lms.internal.{GenericNestedCodegen, GenericCodegen}
+import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
 import java.io._
 
@@ -57,7 +57,7 @@ trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp wit
   with DeliteOpsExp {
   this: DeliteApplication =>
 
-  def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericNestedCodegen{val IR: OptiMLExp.this.type} = {
+  def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericFatCodegen{val IR: OptiMLExp.this.type} = {
     t match {
       case _:TargetScala => new OptiMLCodeGenScala{val IR: OptiMLExp.this.type = OptiMLExp.this}
       case _:TargetCuda => new OptiMLCodeGenCuda{val IR: OptiMLExp.this.type = OptiMLExp.this} 
@@ -71,7 +71,7 @@ trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp wit
 /**
  * OptiML code generators
  */
-trait OptiMLCodeGenBase extends GenericNestedCodegen {
+trait OptiMLCodeGenBase extends GenericFatCodegen {
 
   val IR: DeliteApplication with OptiMLExp
   override def initialDefs = IR.deliteGenerator.availableDefs

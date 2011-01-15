@@ -8,12 +8,12 @@ import codegen.Target
 import ops.DeliteOpsExp
 import scala.virtualization.lms.common.{BaseExp, Base}
 import java.io.{FileWriter, File, PrintWriter}
-import scala.virtualization.lms.internal.{GenericNestedCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
+import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
 
 trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
-  def getCodeGenPkg(t: DeliteApplicationTarget) : GenericNestedCodegen{val IR: DeliteApplication.this.type}
+  def getCodeGenPkg(t: DeliteApplicationTarget) : GenericFatCodegen{val IR: DeliteApplication.this.type}
 
   lazy val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val cudaTarget = new TargetCuda{val IR: DeliteApplication.this.type = DeliteApplication.this}
@@ -21,7 +21,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
   // TODO: this should be handled via command line options
   lazy val targets = List[DeliteApplicationTarget](scalaTarget , cudaTarget /*, cTarget*/)
-  val generators: List[GenericNestedCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
+  val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
 
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 

@@ -11,12 +11,12 @@ import collection.mutable.HashMap
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
  */
-trait DeliteCodegen extends GenericNestedCodegen {
-  val IR: Expressions with Effects
+trait DeliteCodegen extends GenericFatCodegen {
+  val IR: Expressions with FatExpressions with Effects
   import IR._
 
   // these are the target-specific kernel generators (e.g. scala, cuda, etc.)
-  type Generator = GenericNestedCodegen{val IR: DeliteCodegen.this.IR.type}
+  type Generator = GenericFatCodegen{val IR: DeliteCodegen.this.IR.type}
   val generators : List[Generator]
 
   // per kernel, used by DeliteGenTaskGraph

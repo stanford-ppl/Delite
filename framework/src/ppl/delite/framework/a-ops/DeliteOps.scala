@@ -1,11 +1,11 @@
 package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
-import scala.virtualization.lms.common.{TupleOpsExp, VariablesExp, EffectExp, CudaGenEffect, ScalaGenEffect}
-import scala.virtualization.lms.internal.{GenericCodegen, GenericNestedCodegen}
+import scala.virtualization.lms.common.{BaseFatExp, TupleOpsExp, VariablesExp, EffectExp, CudaGenEffect, ScalaGenEffect}
+import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen}
 import ppl.delite.framework.DeliteCollection
 
-trait DeliteOpsExp extends EffectExp with VariablesExp {
+trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp {
   /**
    * The base type of the DeliteOp hierarchy.
    */
@@ -121,7 +121,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
   }
 }
 
-trait BaseGenDeliteOps extends GenericNestedCodegen {
+trait BaseGenDeliteOps extends GenericFatCodegen {
   val IR: DeliteOpsExp
   import IR._
 

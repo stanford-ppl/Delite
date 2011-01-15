@@ -2,8 +2,8 @@ package ppl.dsl.simple
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{Base, EffectExp}
-import scala.virtualization.lms.common.{CGenBase, ScalaGenBase}
+import scala.virtualization.lms.common.{Base, BaseFatExp, EffectExp}
+import scala.virtualization.lms.common.{CGenBase, ScalaGenBase, CGenFat, ScalaGenFat}
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 
 
@@ -30,7 +30,7 @@ trait MatrixOps2 extends DSLType with Base {
   def matrix_object_zeros[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]]
 }
 
-trait MatrixOpsExp2 extends MatrixOps2 with EffectExp { 
+trait MatrixOpsExp2 extends MatrixOps2 with BaseFatExp with EffectExp { 
   case class MatrixPlus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends Def[Matrix[A]]
 
@@ -45,7 +45,7 @@ trait MatrixOpsExp2 extends MatrixOps2 with EffectExp {
   def matrix_object_zeros[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixObjectZeros[A](numRows,numCols))
 }
 
-trait ScalaGenMatrixOps2 extends ScalaGenBase {
+trait ScalaGenMatrixOps2 extends ScalaGenFat {
   val IR: MatrixOpsExp2
   import IR._
 
@@ -57,7 +57,7 @@ trait ScalaGenMatrixOps2 extends ScalaGenBase {
   }
 }
 
-trait CGenMatrixOps2 extends CGenBase {
+trait CGenMatrixOps2 extends CGenFat {
   val IR: MatrixOpsExp2
   import IR._
 

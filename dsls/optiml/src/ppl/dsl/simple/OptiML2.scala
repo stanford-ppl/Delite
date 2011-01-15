@@ -1,17 +1,17 @@
 package ppl.dsl.simple
 
-import scala.virtualization.lms.common.{CCodeGenPkg, ScalaCodeGenPkg, ScalaOpsPkgExp}
+import scala.virtualization.lms.common.{BaseFatExp, ScalaOpsPkgExp, ScalaGenFat, ScalaCodeGenPkg, CGenFat, CCodeGenPkg}
+import scala.virtualization.lms.internal.{GenericFatCodegen}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.{DeliteCodeGenPkg, TargetDelite}
-import scala.virtualization.lms.internal.{GenericNestedCodegen, GenericCodegen}
 
-trait OptiML2 extends ScalaOpsPkgExp with VectorOpsExp2 with MatrixOpsExp2 {
+trait OptiML2 extends BaseFatExp with ScalaOpsPkgExp with VectorOpsExp2 with MatrixOpsExp2 {
   this: DeliteApplication =>
 
-  def getCodeGenPkg(t: Target{val IR: OptiML2.this.type}) : GenericNestedCodegen{val IR: OptiML2.this.type} = {
+  def getCodeGenPkg(t: Target{val IR: OptiML2.this.type}) : GenericFatCodegen{val IR: OptiML2.this.type} = {
     t match {
       case _:TargetScala => new OptiML2CodeGenScala{val IR: OptiML2.this.type = OptiML2.this}
       case _:TargetC => new OptiML2CodeGenC{val IR: OptiML2.this.type = OptiML2.this}
@@ -20,12 +20,12 @@ trait OptiML2 extends ScalaOpsPkgExp with VectorOpsExp2 with MatrixOpsExp2 {
   }
 }
 
-trait OptiML2CodeGenScala extends ScalaCodeGenPkg with ScalaGenVectorOps2 with ScalaGenMatrixOps2 {
+trait OptiML2CodeGenScala extends ScalaGenFat with ScalaCodeGenPkg with ScalaGenVectorOps2 with ScalaGenMatrixOps2 {
   val IR: DeliteApplication with OptiML2
   override def initialDefs = IR.deliteGenerator.availableDefs
 }
 
-trait OptiML2CodeGenC extends CCodeGenPkg with CGenVectorOps2 with CGenMatrixOps2 { 
+trait OptiML2CodeGenC extends CGenFat with CCodeGenPkg with CGenVectorOps2 with CGenMatrixOps2 { 
   val IR: DeliteApplication with OptiML2 
   override def initialDefs = IR.deliteGenerator.availableDefs
 }

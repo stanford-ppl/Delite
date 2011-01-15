@@ -2,7 +2,7 @@ package ppl.dsl.simple
 
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{Base, EffectExp, BaseExp, CGenBase, ScalaGenBase}
+import scala.virtualization.lms.common.{Base, BaseExp, BaseFatExp, EffectExp, CGenBase, CGenFat, ScalaGenBase, ScalaGenFat}
 import scala.virtualization.lms.internal.Effects
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 
@@ -32,7 +32,7 @@ trait VectorOps2 extends DSLType with Base {
 
 }
 
-trait VectorOpsExp2 extends VectorOps2 with EffectExp {
+trait VectorOpsExp2 extends VectorOps2 with BaseFatExp with EffectExp {
   case class VectorObjectZeros[A:Manifest](n: Exp[Int]) extends Def[A]
   case class VectorPlus[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) extends Def[Vector[A]]
   case class VectorPPrint[A:Manifest](x: Exp[Vector[A]]) extends Def[Unit]
@@ -42,7 +42,7 @@ trait VectorOpsExp2 extends VectorOps2 with EffectExp {
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
 }
 
-trait ScalaGenVectorOps2 extends ScalaGenBase {
+trait ScalaGenVectorOps2 extends ScalaGenFat {
   val IR: VectorOpsExp2
   import IR._
 
@@ -55,7 +55,7 @@ trait ScalaGenVectorOps2 extends ScalaGenBase {
 }
 
 ////code generation
-trait CGenVectorOps2 extends CGenBase {
+trait CGenVectorOps2 extends CGenFat {
   val IR: VectorOpsExp2
   import IR._
 

@@ -4,7 +4,7 @@ import datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import reflect.Manifest
-import scala.virtualization.lms.internal.GenericNestedCodegen
+import scala.virtualization.lms.internal.GenericFatCodegen
 import scala.virtualization.lms.common._
 
 /* Machinery provided by OptiML itself (language features and control structures).
@@ -33,7 +33,7 @@ trait LanguageOps extends Base { this: ArithOps =>
   def profile_stop() : Rep[Unit]
 }
 
-trait LanguageOpsExp extends LanguageOps with EffectExp {
+trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   this: LanguageImplOps with ArithOps with VectorOpsExp with DSLOpsExp with DeliteOpsExp =>
 
   case class ProfileStart() extends Def[Unit]
@@ -60,7 +60,7 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
   }
 }
 
-trait BaseGenLanguageOps extends GenericNestedCodegen {
+trait BaseGenLanguageOps extends GenericFatCodegen {
   val IR: LanguageOpsExp
   import IR._
 
