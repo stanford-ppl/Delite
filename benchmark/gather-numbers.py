@@ -138,7 +138,7 @@ def launchApps(options):
             os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
             os.putenv("MKL_NUM_THREADS", "1")
             #need nvcc in your path
-            os.putenv('PATH', props['nvidia.cuda'] + ":" + os.getenv('PATH'))
+            os.putenv('PATH', props['nvidia.cuda'] + "/bin:" + os.getenv('PATH'))
             print "running: " + app + " " + params[app],
             print "with config: " + opts + "\n"
             os.putenv("SCALA_HOME", props['scala.vanilla.home'])
