@@ -1,34 +1,33 @@
-#ifndef _VECTORIMPL_H_
-#define _VECTORIMPL_H_
+#ifndef _INDEXVECTORIMPL_H_
+#define _INDEXVECTORIMPL_H_
 
 #include <stdio.h>
 
-template <class T>
-class Vector {
+class IndexVector {
 public:
-    T *data;
+    int *data;
     int length;
     bool isRow;
 
     // Constructors
-    __host__ __device__ Vector() {
+    __host__ __device__ IndexVector() {
         length = 0;
         isRow = true;
         data = NULL;
     }
 
-    __host__ __device__ Vector(int _length, bool _isRow, T *_data) {
+    __host__ __device__ IndexVector(int _length, bool _isRow, int *_data) {
         length = _length;
         isRow = _isRow;
         data = _data;
     }
 
     // Accessor Functions
-    __host__ __device__ T apply(int idx) {
+    __host__ __device__ int apply(int idx) {
         return data[idx];
     }
 
-    __host__ __device__ void update(int idx, T newVal) {
+    __host__ __device__ void update(int idx, int newVal) {
         data[idx] = newVal;
     }
 
@@ -37,11 +36,11 @@ public:
         return length;
     }
 
-    __host__ __device__ T dcApply(int idx) {
+    __host__ __device__ int dcApply(int idx) {
         return data[idx];
     }
 
-    __host__ __device__ void dcUpdate(int idx, T value) {
+    __host__ __device__ void dcUpdate(int idx, int value) {
         data[idx] = value;
     }
     

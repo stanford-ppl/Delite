@@ -566,7 +566,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_outer[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorOuter(reflectRead(x), reflectRead(y))
   def vector_dot_product[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorDotProduct(reflectRead(x), reflectRead(y))
   def vector_divide[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorDivide(reflectRead(x), reflectRead(y))
-  def vector_divide_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorDivideScalar(reflectRead(x), reflectRead(y))
+  def vector_divide_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = reflectEffect(VectorDivideScalar(reflectRead(x), reflectRead(y)))
   def vector_sum[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorSum(reflectRead(x))
   def vector_abs[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorAbs(reflectRead(x))
   def vector_exp[A:Manifest:Arith](x: Exp[Vector[A]]) = VectorExp(reflectRead(x))
@@ -702,6 +702,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenBase {
 
 
 trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDataStruct {
+
   val IR: VectorOpsExp
   import IR._
 
@@ -731,6 +732,26 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       emitValDef(sym, quote(x) + ".length")
     case VectorIsRow(x)     =>
       emitValDef(sym, quote(x) + ".isRow")
+    //case VectorObjectRange(start, end, stride, isRow) =>
+    //  stream.println(addTab()+"RangeVector %s;".format(quote(sym)))
+    //  stream.println(addTab()+"%s.start = %s;".format(quote(sym),quote(start)))
+    //  stream.println(addTab()+"%s.end = %s;".format(quote(sym),quote(end)))
+    //  stream.println(addTab()+"%s.stride = %s;".format(quote(sym),quote(stride)))
+    //  stream.println(addTab()+"%s.isRow = %s;".format(quote(sym),quote(isRow)))
+
+        /* Specialized CUDA code generations */
+    case VectorRepmat(x,i,j) =>
+      gpuBlockSizeX = "%s.length * %s".format(quote(x),quote(i))
+      stream.println(addTab()+"if( idxX < %s.length*%s ) {".format(quote(x),quote(j)))
+      tabWidth += 1
+      stream.println(addTab()+"for(int i=0;i<%s;i++) {".format(quote(i)))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(i,%s,%s.apply(%s));".format(quote(sym),quote(j),quote(x),"idxX%"+quote(x)+".length"))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s.length*%s".format(quote(x),quote(i)),"%s.length*%s".format(quote(x),quote(j)))
 
     case _ => super.emitNode(sym, rhs)
   }
