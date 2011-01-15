@@ -28,6 +28,7 @@ object OpHelper {
 
   def split(op: DeliteOP, chunkIdx: Int, numChunks: Int, kernelPath: String) = op match {
     case multi: OP_MultiLoop => MultiLoop_SMP_Array_Generator.makeChunk(multi, chunkIdx, numChunks, kernelPath)
+    case map: OP_Map => Map_SMP_Array_Generator.makeChunk(map, chunkIdx, numChunks, kernelPath)
     case reduce: OP_Reduce => Reduce_SMP_Array_Generator.makeChunk(reduce, chunkIdx, numChunks, kernelPath)
     case zip: OP_Zip => Zip_SMP_Array_Generator.makeChunk(zip, chunkIdx, numChunks, kernelPath)
     case mapReduce: OP_MapReduce => MapReduce_SMP_Array_Generator.makeChunk(mapReduce, chunkIdx, numChunks, kernelPath)

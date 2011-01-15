@@ -42,7 +42,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def profile_start() = reflectEffect(ProfileStart())
   def profile_stop() = reflectEffect(ProfileStop())
 
-  case class Sum[A](start: Exp[Int], end: Exp[Int], mV: Exp[Int], map: Exp[A])(implicit mA: Manifest[A], ops: Arith[A])
+  case class Sum[A](start: Exp[Int], end: Exp[Int], mV: Sym[Int], map: Exp[A])(implicit mA: Manifest[A], ops: Arith[A])
     extends DeliteOpMapReduce[Int,A,Vector] {
 
     val in = Vector.range(start, end)

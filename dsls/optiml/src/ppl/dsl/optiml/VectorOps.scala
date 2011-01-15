@@ -184,13 +184,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 + v._2
   }
 
-  case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[B])
+  case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], v: Sym[A], func: Exp[B])
     extends DeliteOpMap[A,B,Vector] {
 
     val alloc = reifyEffects(Vector[B](in.length, in.isRow))
   }
 
-  case class VectorForeach[A:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[Unit])
+  case class VectorForeach[A:Manifest](in: Exp[Vector[A]], v: Sym[A], func: Exp[Unit])
     extends DeliteOpForeach[A,Vector] {
 
     val i = fresh[Int]

@@ -30,7 +30,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp {
    */
   abstract class DeliteOpMap[A,B,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
     val in: Exp[C[A]]
-    val v: Exp[A]
+    val v: Sym[A]
     val func: Exp[B]
     val alloc: Exp[C[B]]
   }
@@ -50,7 +50,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp {
   abstract class DeliteOpZipWith[A,B,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
     val inA: Exp[C[A]]
     val inB: Exp[C[B]]
-    val v: (Exp[A],Exp[B])
+    val v: (Sym[A],Sym[B])
     val func: Exp[R]
     val alloc: Exp[C[R]]
   }
@@ -64,7 +64,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp {
    */
   abstract class DeliteOpReduce[A]() extends DeliteOp[A] {
     val in: Exp[DeliteCollection[A]]
-    val v: (Exp[A],Exp[A])
+    val v: (Sym[A],Sym[A])
     val func: Exp[A]
   }
 
@@ -82,14 +82,14 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp {
   abstract class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] {
     val in: Exp[C[A]]
     //val acc: Exp[R]
-    val mV: Exp[A]
+    val mV: Sym[A]
 
     // for accumulating each partial sum
     //val mapreduce: Exp[R] // reified of Exp[(R,A)] => Exp[R] composition of map and reduce
     val map: Exp[R]
 
     // for reducing remaining partial sums
-    val rV: (Exp[R],Exp[R])
+    val rV: (Sym[R],Sym[R])
     val reduce: Exp[R]
   }
 
@@ -107,10 +107,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp {
    */
   abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] {
     val in: Exp[C[A]]
-    val v: Exp[A]
+    val v: Sym[A]
     val func: Exp[Unit]
-    val i: Exp[Int]
-    val sync: Exp[List[_]]
+    val i: Sym[Int]
+    val sync: Exp[List[Any]]
   }
 
   var deliteKernel : Boolean = _ // used by code generators to handle nested delite ops
@@ -136,26 +136,13 @@ trait BaseGenDeliteOps extends GenericFatCodegen {
   }
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match { //TR TODO
-    case s: DeliteOpSingleTask[_] => 
-      println("BOUNDSYMS single "+s)
-      s.block match {
-        case Def(Reify(y, es)) => es.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y)
-        case _ => Nil
-      }
-    
-    case zip: DeliteOpZipWith[_,_,_,_] => 
-      List(zip.v._1.asInstanceOf[Sym[Any]], zip.v._2.asInstanceOf[Sym[Any]]) ::: (zip.alloc match {
-        case Def(Reify(y, es)) => es.asInstanceOf[List[Sym[Any]]] ::: boundSyms(y)
-        case _ => Nil
-      })// alloc not a bound sym by itself (but effects!) ... might need to pattern match on func as well ...
-      
-    //case map: DeliteOpMap[_,_,_] => 
-    //case red: DeliteOpReduce[_] => /*if (shallow) syms(red.in) else*/ syms(red.in) ++ syms(red.func)
-    //case mapR: DeliteOpMapReduce[_,_,_] => /*if (shallow) syms(mapR.in) else*/ syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
-    //case foreach: DeliteOpForeach[_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func)
-    case _ => 
-      //println("BOUNDSYMS super "+e)
-      super.boundSyms(e)
+    case s: DeliteOpSingleTask[_] => effectSyms(s.block)
+    case zip: DeliteOpZipWith[_,_,_,_] => zip.v._1::zip.v._2::effectSyms(zip.alloc):::effectSyms(zip.func)
+    case map: DeliteOpMap[_,_,_] => map.v::effectSyms(map.alloc):::effectSyms(map.func)
+    case mapR: DeliteOpMapReduce[_,_,_] => mapR.mV::mapR.rV._1::mapR.rV._2::effectSyms(mapR.map):::effectSyms(mapR.reduce)
+    case red: DeliteOpReduce[_] => red.v._1::red.v._2::effectSyms(red.func)
+    case foreach: DeliteOpForeach[_,_] => foreach.v::foreach.i::effectSyms(foreach.func):::effectSyms(foreach.sync)
+    case _ => super.boundSyms(e)
   }
     
     
