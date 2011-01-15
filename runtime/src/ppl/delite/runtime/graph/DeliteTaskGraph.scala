@@ -326,6 +326,12 @@ object DeliteTaskGraph {
     val metadataMap = getFieldMap(metadataAll, "cuda")
     val cudaMetadata = newop.cudaMetadata
 
+    //check library call
+    cudaMetadata.libCall = metadataMap.get("gpuLibCall") match {
+      case Some(x) => x
+      case None => null
+    }
+
     for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
       val value = (input.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
       val data = cudaMetadata.newInput
@@ -355,14 +361,19 @@ object DeliteTaskGraph {
     }
 
     //output allocation
-    val outList = getFieldMap(metadataMap, "gpuOutput").values.head.asInstanceOf[List[Any]]
-    cudaMetadata.output.resultType = outList.head
-    cudaMetadata.output.func = outList.tail.head
-    for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
-      cudaMetadata.output.inputs ::= getOpLike(sym)
+    op.get("gpuOutput") match {
+      case None =>
+      case Some(out) => {
+        val outList = out.values.head.asInstanceOf[List[Any]]
+        cudaMetadata.output.resultType = outList.head
+        cudaMetadata.output.func = outList.tail.head
+        for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
+          cudaMetadata.output.inputs ::= getOpLike(sym)
+        }
+        //output copy
+        cudaMetadata.output.funcReturn = outList.tail.tail.tail.head
+      }
     }
-    //output copy
-    cudaMetadata.output.funcReturn = outList.tail.tail.tail.head
 
     def fill(field: String) {
       val list = getFieldList(metadataMap, field)

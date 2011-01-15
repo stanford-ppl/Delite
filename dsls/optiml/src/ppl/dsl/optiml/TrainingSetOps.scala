@@ -3,10 +3,10 @@ package ppl.dsl.optiml
 import datastruct.scala._
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import scala.virtualization.lms.internal.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{Variables, BaseExp, Base}
+import scala.virtualization.lms.internal.{CGenBase, GenerationFailedException, CudaGenBase, ScalaGenBase}
 
 trait TrainingSetOps extends DSLType with Variables with OverloadHack {
   this: OptiML =>
@@ -43,7 +43,7 @@ trait TrainingSetOps extends DSLType with Variables with OverloadHack {
   def trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Rep[Matrix[A]], labels: Rep[Labels[B]]): Rep[TrainingSet[A,B]]
   
   // class defs
-  def trainingset_transposed[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]]): Rep[TrainingSet[A,B]]
+  def trainingset_transposed[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]]): Rep[Matrix[A]]
   def trainingset_labels[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]]): Rep[Labels[B]]
 }
 
@@ -54,7 +54,7 @@ trait TrainingSetOpsExp extends TrainingSetOps with BaseExp { this: DeliteOpsExp
   case class TrainingSetObjectFromMat[A:Manifest,B:Manifest](xs: Exp[Matrix[A]], labels: Exp[Labels[B]]) extends Def[TrainingSet[A,B]] {
      val mM = manifest[TrainingSetImpl[A,B]]
   }
-  case class TrainingSetTransposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) extends Def[TrainingSet[A,B]]
+  case class TrainingSetTransposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) extends Def[Matrix[A]]
   case class TrainingSetLabels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) extends Def[Labels[B]]
 
   def trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Exp[Matrix[A]], labels: Exp[Labels[B]]) = reflectEffect(TrainingSetObjectFromMat(xs, labels))
@@ -71,6 +71,32 @@ trait ScalaGenTrainingSetOps extends ScalaGenBase {
     case t@TrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap(t.mM) + "(" + quote(xs) + "," + quote(labels) + ")")
     case TrainingSetTransposed(x) => emitValDef(sym, quote(x) + ".transposed")
     case TrainingSetLabels(x) => emitValDef(sym, quote(x) + ".labels")
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait CudaGenTrainingSetOps extends CudaGenBase {
+  val IR: TrainingSetOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+
+    case TrainingSetObjectFromMat(xs, labels) => throw new GenerationFailedException("CudaGen: TrainingSet Cannot be generated from GPU")
+    case TrainingSetTransposed(x) => emitValDef(sym, quote(x) + ".transposed")
+    //case TrainingSetLabels(x) => emitValDef(sym, quote(x) + ".labels")
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait CGenTrainingSetOps extends CGenBase {
+  val IR: TrainingSetOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+
+    case t@TrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap(t.mM) + "(" + quote(xs) + "," + quote(labels) + ")")
+    case TrainingSetTransposed(x) => emitValDef(sym, "*("+quote(x) + ".transposed)")
+    case TrainingSetLabels(x) => emitValDef(sym, "*("+quote(x) + ".labels)")
     case _ => super.emitNode(sym, rhs)
   }
 }
