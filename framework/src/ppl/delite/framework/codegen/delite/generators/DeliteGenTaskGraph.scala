@@ -403,42 +403,52 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   def emitVariant(sym: Sym[_], rhs: Def[_], output: Exp[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                  (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
+    if (!rhs.isInstanceOf[Variant[_]]) return
+
+    // pre
+    val saveMutatingDeps = kernelMutatingDeps
+    val saveInputDeps = kernelInputDeps
+
+    // variant
     rhs match {
-      case v:Variant[_] => v.variantType match {
-          // TODO: this is not a correct way of matching. The type arg isn't actually matched against.
-//        case l:Manifest[DeliteOpIndexedLoop] =>
-//          val vl = v.asInstanceOf[DeliteOpIndexedLoopVariant]
-//          val saveMutatingDeps = kernelMutatingDeps
-//          val saveInputDeps = kernelInputDeps
-//          implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
-//          emitNode(findDefinition(vl.indexOp).get.sym, findDefinition(vl.indexOp).get.rhs)
-//          prependInputs = List(vl.indexOp)
-//          emitBlock(vl.body)
-//          emittedNodeList += emittedNodes
-//          emitIndexedLoop(vl.start, vl.end, vl.index, sym, inputs, controlDeps, antiDeps)
-//          kernelInputDeps = saveInputDeps
-//          kernelMutatingDeps = saveMutatingDeps
-//          prependInputs = Nil
-        case w:Manifest[DeliteOpWhileLoop] =>
-          val vw = v.asInstanceOf[DeliteOpWhileLoopVariant]
-          val saveMutatingDeps = kernelMutatingDeps
-          val saveInputDeps = kernelInputDeps
-          implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
-          stream.print("\"ops\":[" )
-          emitBlock(vw.cond)
-          emittedNodeList += this.controlDeps
-          emittedNodeList += emittedNodes
-          emitBlock(vw.body)
-          emittedNodeList += emittedNodes
-          emitWhileLoop(sym, inputs, controlDeps, antiDeps)
-          emitEOV()
-          emitOutput(output)
-          kernelInputDeps = saveInputDeps
-          kernelMutatingDeps = saveMutatingDeps
-        case _ =>
-      }
+      case vl:DeliteOpIndexedLoopVariant => emitIndexedLoopVariant(vl, sym, output, inputs, controlDeps, antiDeps)
+      case vw:DeliteOpWhileLoopVariant => emitWhileLoopVariant(vw, sym, output, inputs, controlDeps, antiDeps)
       case _ =>
     }
+
+    // post
+    emitEOV()
+    emitOutput(output)
+    kernelInputDeps = saveInputDeps
+    kernelMutatingDeps = saveMutatingDeps
+    prependInputs = Nil
+  }
+
+  def emitIndexedLoopVariant(vl: DeliteOpIndexedLoopVariant, sym: Sym[_], output: Exp[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
+
+    implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
+    stream.println("\"indexop\": \"" + quote(vl.indexOp) + "\"")
+    emitNode(findDefinition(vl.indexOp).get.sym, findDefinition(vl.indexOp).get.rhs)
+    prependInputs = List(vl.indexOp)
+    stream.print("\"ops\":[" )
+    emitBlock(vl.body)
+    emittedNodeList += emittedNodes
+    emitIndexedLoop(vl.start, vl.end, vl.index, sym, inputs, controlDeps, antiDeps)
+
+  }
+
+  def emitWhileLoopVariant(vw: DeliteOpWhileLoopVariant, sym: Sym[_], output: Exp[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
+
+    implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
+    stream.print("\"ops\":[" )
+    emitBlock(vw.cond)
+    emittedNodeList += this.controlDeps
+    emittedNodeList += emittedNodes
+    emitBlock(vw.body)
+    emittedNodeList += emittedNodes
+    emitWhileLoop(sym, inputs, controlDeps, antiDeps)
   }
 
   def emitOutput(x: Exp[_])(implicit stream: PrintWriter) = {

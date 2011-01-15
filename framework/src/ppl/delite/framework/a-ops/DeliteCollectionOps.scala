@@ -41,11 +41,13 @@ trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaG
   val IR: DeliteCollectionOpsExp
   import IR._
 
+  // TODO: this usage of getBlockResult is ad-hoc and error prone. we need a better way of handling syms that might
+  // have come from a reified block.
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
     rhs match {
       case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".size")
-      case DeliteCollectionApply(x,n) => emitValDef(sym, quote(x) + ".dcApply(" + quote(n) + ")")
-      case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(x) + ".dcUpdate(" + quote(n) + "," + quote(y) + ")")
+      case DeliteCollectionApply(x,n) => emitValDef(sym, quote(getBlockResult(x)) + ".dcApply(" + quote(n) + ")")
+      case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ")")
       case _ => super.emitNode(sym, rhs)
     }
 
