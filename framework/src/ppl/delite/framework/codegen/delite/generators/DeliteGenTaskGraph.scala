@@ -228,6 +228,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Map\"")
     emitExecutionOpCommon(sym, inputs, controlDeps, antiDeps)
+    stream.print(',')
     stream.print("  \"variant\": {")
 
     // !!! failed attempts at code-gen only variants below !!! //

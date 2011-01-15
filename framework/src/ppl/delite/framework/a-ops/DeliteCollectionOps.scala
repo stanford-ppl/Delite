@@ -45,7 +45,7 @@ trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaG
     rhs match {
       case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".size")
       case DeliteCollectionApply(x,n) => emitValDef(sym, quote(x) + ".dcApply(" + quote(n) + ")")
-      case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(x) + "dcUpdate(" + quote(n) + "," + quote(y) + ")")
+      case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(x) + ".dcUpdate(" + quote(n) + "," + quote(y) + ")")
       case _ => super.emitNode(sym, rhs)
     }
 

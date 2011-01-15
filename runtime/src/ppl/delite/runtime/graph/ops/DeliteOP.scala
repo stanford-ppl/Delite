@@ -32,6 +32,10 @@ abstract class DeliteOP {
     dependencyList = dep :: dependencyList
   }
 
+  final def removeDependency(dep: DeliteOP) {
+    dependencyList = dependencyList filterNot { _ == dep }
+  }
+
   final def replaceDependency(old: DeliteOP, dep: DeliteOP) {
     dependencyList = dep :: (dependencyList filterNot { _ == old })
   }
@@ -42,6 +46,10 @@ abstract class DeliteOP {
 
   final def addConsumer(c: DeliteOP) {
     consumerList = c :: consumerList
+  }
+
+  final def removeConsumer(c: DeliteOP) {
+    consumerList = consumerList filterNot { _ == c }
   }
 
   final def replaceConsumer(old: DeliteOP, c: DeliteOP) {
@@ -58,8 +66,10 @@ abstract class DeliteOP {
   }
 
   final def replaceInput(old: DeliteOP, input: DeliteOP) {
-    inputList = input :: (inputList filterNot { _ == old })
+    inputList = inputList.patch(inputList.indexOf(old), List(input), 1)
   }
+
+  var variant: DeliteTaskGraph = null
 
   def id: String
 

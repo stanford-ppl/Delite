@@ -51,6 +51,7 @@ object DeliteTaskGraph {
         case "WhileLoop" => processWhileTask(op)
         case "Arguments" => processArgumentsTask(op)
         case "EOP" => processEOPTask(op)
+        case "EOV" => //end of nested graph, do nothing
         case err@_ => unsupportedType(err)
       }
     }
@@ -150,9 +151,30 @@ object DeliteTaskGraph {
     //process target metadata
     if (resultMap.contains(Targets.Cuda)) processCudaMetadata(op, newop)
 
+    //process kernel variant
+    op.get("variant") match {
+      case None => //do nothing
+      case Some(field) => field match {
+        case map: Map[Any,Any] => newop.variant = processVariant(map)
+        case err => mapNotFound(err)
+      }
+    }
+
     //last op will be result op
     graph._result = newop
 
+  }
+
+  def processVariant(graph: Map[Any, Any])(implicit outerGraph: DeliteTaskGraph) = {
+    val newGraph = new DeliteTaskGraph
+    newGraph._version = outerGraph._version
+    newGraph._kernelPath = outerGraph._kernelPath
+
+    newGraph.parse = _ => {
+      parseOps(getFieldList(graph, "ops"))(newGraph)
+      newGraph._result = getOp(newGraph._ops, getFieldString(graph, "output"))
+    }
+    newGraph
   }
 
   def processIfThenElseTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
@@ -402,6 +424,8 @@ class DeliteTaskGraph {
 
   var _version = 0.0
   var _kernelPath = ""
+
+  var parse: Unit => Unit = _
 
   def result : DeliteOP = _result
   def version: Double = _version
