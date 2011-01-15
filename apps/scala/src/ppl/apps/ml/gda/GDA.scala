@@ -85,7 +85,7 @@ object GDA extends DeliteApplication with OptiMLExp {
     //println("  phi = " + phi)
     //println("  mu0 = " ); mu0.pprint
     //println("  mu1 = " ); mu1.pprint
-    println("  sigma = "); sigma.pprint
+    //println("  sigma = "); sigma.pprint
     println(sigma)
 
   }
