@@ -82,7 +82,7 @@ trait CudaGenTrainingSetOps extends CudaGenBase {
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
 
     case TrainingSetObjectFromMat(xs, labels) => throw new GenerationFailedException("CudaGen: TrainingSet Cannot be generated from GPU")
-    case TrainingSetTransposed(x) => emitValDef(sym, quote(x) + ".transposed")
+    case TrainingSetTransposed(x) => emitValDef(sym, "(*"+quote(x) + ".transposed)")
     //case TrainingSetLabels(x) => emitValDef(sym, quote(x) + ".labels")
     case _ => super.emitNode(sym, rhs)
   }

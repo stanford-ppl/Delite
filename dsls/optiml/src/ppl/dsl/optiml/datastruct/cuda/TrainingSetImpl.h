@@ -17,8 +17,7 @@ public:
    	int numSamples(void) { return numRows; }
    	int numFeatures(void) { return numCols; }
   	Labels<L> labels;
-  	Matrix<T> transposed;
-  	//TrainingSet<T,L> *transposed;
+  	TrainingSet<T,L> *transposed;
 
 	// Constructors
 	__host__ __device__ TrainingSet() {
@@ -29,7 +28,7 @@ public:
 		//transposed = NULL;
 	}
 
-	__host__ __device__ TrainingSet(Matrix<T> mat, Matrix<T> set_t, Labels<L> lab) {
+	__host__ __device__ TrainingSet(Matrix<T> mat, TrainingSet<T,L> *set_t, Labels<L> lab) {
 		data = mat.data;
 		numRows = mat.numRows;
 		numCols = mat.numCols;
