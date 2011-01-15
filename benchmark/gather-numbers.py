@@ -34,6 +34,8 @@ def main():
     parser.add_option("-a", "--apps", dest="apps", default="_all", help="a list of comma separated applications to run (e.g. -a gda,nb)")
     parser.add_option("-r", "--runs", dest="runs", default="10", type="string", help="the number of times the runtime will execute the applications")
     parser.add_option("-t", "--threads", dest="threads", default="_all", help="a list of comma separated thread counts (e.g. -t 1,2,4)")
+    parser.add_option("-g", "--gpu", action="store_true", dest="gpu", help="enables gpu offloading of work")
+    parser.add_option("-s", "--skip-smp", action="store_true", dest="skipSMP", help="skips smp portion of gathering numbers")
 
     (opts, args) = parser.parse_args()
     if len(args) != 0:
@@ -87,6 +89,8 @@ def loadOptions(opts):
         options['delite.threads'] = delite_threads_default
     else:
         options['delite.threads'] = opts.threads.split(',')
+    options['gpu'] = opts.gpu
+    options['skip.smp'] = opts.skipSMP
     
 
 def loadProps(options):
@@ -119,10 +123,22 @@ def launchApps(options):
         os.system(DELITE_HOME + "/bin/gen " + classes[app])
         #do it for each config of delite
         #do it for each thread configuration
-        for numThreads in options['delite.threads']:
-            opts = "-Ddelite.threads=" + str(numThreads) + " -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + DELITE_HOME  + "/benchmark/times -Dstats.output.filename=" + app + "-smp-" +str(numThreads) + ".times"         
+        if not options['skip.smp']: 
+            for numThreads in options['delite.threads']:
+                opts = "-Ddelite.home=" + DELITE_HOME + " -Ddelite.threads=" + str(numThreads) + " -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + DELITE_HOME  + "/benchmark/times -Dstats.output.filename=" + app + "-smp-" +str(numThreads) + ".times"         
+                os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
+                os.putenv("MKL_NUM_THREADS", str(numThreads))
+                print "running: " + app + " " + params[app],
+                print "with config: " + opts + "\n"
+                os.putenv("SCALA_HOME", props['scala.vanilla.home'])
+                os.system(DELITE_HOME + "/bin/exec " + app + ".deg " + params[app])
+        #check if gpu option is enabled
+        if options['gpu']:
+            opts = "-Ddelite.home=" + DELITE_HOME +" -Ddelite.threads=1 -Ddelite.gpus=1 -Ddelite.scheduler=GPUOnlyStaticScheduler -Ddelite.executor=SMP+GPUExecutor" + " -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + DELITE_HOME  + "/benchmark/times -Dstats.output.filename=" + app + "-gpu.times"         
             os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
-            os.putenv("MKL_NUM_THREADS", str(numThreads))
+            os.putenv("MKL_NUM_THREADS", "1")
+            #need nvcc in your path
+            os.putenv('PATH', props['nvidia.cuda'] + ":" + os.getenv('PATH'))
             print "running: " + app + " " + params[app],
             print "with config: " + opts + "\n"
             os.putenv("SCALA_HOME", props['scala.vanilla.home'])
