@@ -10,4 +10,6 @@ apps.data=/home/hchafi/delite
 intel.icc=/usr/local/intel/bin/intel64
 intel.mkl=/usr/local/intel
 
+nvidia.cuda=/usr/local/cuda
+
 libs.lms.home=/home/hchafi/projects/virtualization-lms-core
