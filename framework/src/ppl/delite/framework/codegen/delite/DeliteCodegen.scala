@@ -101,6 +101,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
     val save = scope
     scope = e4 ::: scope
     generators foreach { _.scope = scope }
+    nested += 1
 
     ignoreEffects = true
     val e5 = buildScheduleForResult(start)
@@ -143,6 +144,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
     generators.foreach(_.scope = save)
     scope = save
     emittedNodes = localEmittedNodes
+    nested -= 1
   }
 
   /*

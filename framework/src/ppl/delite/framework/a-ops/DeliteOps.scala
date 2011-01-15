@@ -41,14 +41,12 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
    * @param  idx    index id that will be refered to in the body, this could be passed in as input to the body or the body could be inlined
    * @param  body   the body of the loop
    */
-  trait IndexedLoopLike {
+  trait DeliteOpIndexedLoop extends DeliteOp[Unit] {
     val start: Exp[Int]
     val end: Exp[Int]
     val index: Exp[Int]
     val body: Exp[Unit]
   }
-
-  trait DeliteOpIndexedLoop extends DeliteOp[Unit] with IndexedLoopLike
 
   /**
    * An while loop - will emit an while loop DEG node as well as a kernel for the body
@@ -84,40 +82,21 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
     var index = unit(0)
     lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
     lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
-    // in the variant version, we need to actually emit the bound symbol as a kernel so it can be passed in as an input
-    //lazy val vs = Variable(reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], NewVar(unit(null).asInstanceOfL[A])).rhs))
     val vs = () => __newVar(unit(null).asInstanceOfL[A])
+    // this does not get initialized properly in body -- perhaps a scala bug?
+    //lazy val vs = __newVar(unit(null)).asInstanceOfL[A]
     lazy val cond = reifyEffects(index < in.size)
     lazy val body =
       reifyEffects {
-        //reflectEffect(DeliteOpIndexToValue(v, reifyEffects(in(index))))
         //vs = in(index)
-        val hack = vs()
-        __assign(hack, in(index))
-        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(hack)).rhs)
+        val Vs = vs()
+        Vs = in(index)
+        // in the variant version, we need to actually emit the bound symbol as a kernel so it can be passed in as an input
+        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs)
         alloc(index) = func
         index += 1
       }
   }
-
-//  trait DeliteOpMap[A,B,C[X] <: DeliteCollection[X]] extends DeliteOp[C[B]] with DeliteOpIndexedLoopVariant {
-//    val in: Exp[C[A]]
-//    val v: Exp[A]
-//    val func: Exp[B]
-//    val alloc: Exp[C[B]]
-//
-//    // we need the manifests to make the implicit operations on DeliteCollections work
-//    lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
-//    lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
-//    lazy val start = unit(0)
-//    lazy val end = in.size
-//    lazy val index = fresh[Int]
-//    lazy val indexOp = reifyEffects(reflectEffect(DeliteOpIndexToValue(v, reifyEffects(in(index))))).asInstanceOf[Sym[Unit]]
-//    lazy val body =
-//      reifyEffects {
-//       alloc(index) = func
-//      }
-//  }
 
   /**
    * Parallel 2 element zipWith from (DeliteCollection[A],DeliteCollection[B]) => DeliteCollection[R].
@@ -242,13 +221,13 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
   import IR._
 
   override def syms(e: Any): List[Sym[Any]] = e match {
-    case s: DeliteOpSingleTask[_] => if (shallow) super.syms(e) else super.syms(e) ++ syms(s.block)
-    case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) else syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
-    case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) else syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
-    case red: DeliteOpReduce[_] => if (shallow) syms(red.in) else syms(red.in) ++ syms(red.func)
-    case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
-    case zipR: DeliteOpZipWithReduce[_,_,_,_] => if (shallow) syms(zipR.inA) ++ syms(zipR.inB) else syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
-    case foreach: DeliteOpForeach[_,_] => if (shallow) syms(foreach.in) else syms(foreach.in) ++ syms(foreach.func)
+    case s: DeliteOpSingleTask[_] => if (shallow) super.syms(e) else super.syms(e) ::: syms(s.block)
+    case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) else syms(map.in) ::: syms(map.alloc) ::: syms(map.func)
+    case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ::: syms(zip.inB) else syms(zip.inA) ::: syms(zip.inB) ::: syms(zip.alloc) ::: syms(zip.func)
+    case red: DeliteOpReduce[_] => if (shallow) syms(red.in) else syms(red.in) ::: syms(red.func)
+    case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ::: syms(mapR.map) ::: syms(mapR.reduce)
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => if (shallow) syms(zipR.inA) ::: syms(zipR.inB) else syms(zipR.inA) ::: syms(zipR.inB) ::: syms(zipR.zip) ::: syms(zipR.reduce)
+    case foreach: DeliteOpForeach[_,_] => if (shallow) syms(foreach.in) else syms(foreach.in) ::: syms(foreach.func)
     // always try to hoist free dependencies out of delite ops, if possible
 //    case s: DeliteOpSingleTask[_] => if (shallow) super.syms(e) else super.syms(e) ++ syms(s.block)
 //    case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) ++ syms(map.func) else syms(map.in) ++ syms(map.func) ++ syms(map.alloc)
