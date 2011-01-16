@@ -45,7 +45,7 @@ trait DeliteCodegen extends GenericFatCodegen {
   
   override def syms(e: Any): List[Sym[Any]] = ifGenAgree(_.syms(e), shallow)
   override def boundSyms(e: Any): List[Sym[Any]] = ifGenAgree(_.boundSyms(e), shallow)
-  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = ifGenAgree(_.getFreeVarNode(rhs), shallow)
+  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = ifGenAgree(_.getFreeVarNode(rhs), shallow) // no longer used!
 
   //override def buildScheduleForResult(start: Exp[_]): List[TP[_]] = ifGenAgree(_.buil) <--- maybe override for performance reasons ...
 
@@ -88,6 +88,7 @@ trait DeliteCodegen extends GenericFatCodegen {
   }
 */
 
+/*
   override def emitBlockFocused(result: Exp[_])(implicit stream: PrintWriter): Unit = {
     println("-- block")
     availableDefs.foreach(println)
@@ -110,6 +111,32 @@ trait DeliteCodegen extends GenericFatCodegen {
       }
     }
   }
+*/
+
+  override def emitFatBlockFocused(currentScope: List[TTP])(result: Exp[_])(implicit stream: PrintWriter): Unit = {
+    println("-- block")
+    availableDefs.foreach(println)
+
+    focusExactScopeFat(currentScope)(result) { levelScope => 
+      println("-- exact")
+      availableDefs.foreach(println)
+      
+      val effects = result match {
+        case Def(Reify(x, effects0)) =>
+          levelScope.filter(fb => fb.lhs.exists(effects0 contains _)) // all e whose lhs contains an effect
+        case _ => Nil
+      }
+      
+      for (TTP(syms, rhs) <- levelScope) {
+        // we only care about effects that are scheduled to be generated before us, i.e.
+        // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
+        // n3 we want controlDeps to contain e1 and e2
+        controlDeps = levelScope.takeWhile(_.lhs != syms) filter { effects contains _ } flatMap { _.lhs }
+        emitFatNode(syms, rhs)
+      }
+    }
+  }
+
 
 
   /**

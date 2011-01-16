@@ -36,7 +36,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   }
 
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) : Unit = {
+  override def emitFatNode(sym: List[Sym[_]], rhs: FatDef)(implicit stream: PrintWriter): Unit = {
+  //override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) : Unit = {
     assert(generators.length >= 1)
 
     println("DeliteGenTaskGraph.emitNode "+sym+"="+rhs)
@@ -45,16 +46,16 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     // we will try to generate any node that is not purely an effect node
     rhs match {
-      case Reflect(s, effects) => super.emitNode(sym, rhs); return
-      case Reify(s, effects) => super.emitNode(sym, rhs); return
-      case NewVar(x) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
+      case ThinDef(Reflect(s, effects)) => super.emitFatNode(sym, rhs); return
+      case ThinDef(Reify(s, effects)) => super.emitFatNode(sym, rhs); return
+      case ThinDef(NewVar(x)) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
       case _ => // continue and attempt to generate kernel
     }
 
     //TR: syms might contains stuff that is actually not free (i.e. defined within the node)
     // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
     
-    val dataDeps = 
+    val dataDeps = //TR TODO: focus only once!
       syms(rhs).flatMap(s => focusBlock(s) { freeInScope(boundSyms(rhs), s) } ) // no longer use getFreeVarNode...
     
     // TODO: do it in one go (don't focus on each sym --> focus on several syms at once)    
@@ -77,7 +78,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
       try{
         rhs match {
-          case op:DeliteOp[_] => deliteKernel = true
+          case ThinDef(op:DeliteOp[_]) => deliteKernel = true //TR TODO: fat delite op??
           case _ => deliteKernel = false
         }
 
@@ -85,35 +86,38 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
         gen.kernelInit(sym, inVals, inVars, resultIsVar)
 
         // emit kernel to bodyStream //TODO: must kernel body be emitted before kernel header?
-        gen.emitNode(sym, rhs)(bodyStream)
+        gen.emitFatNode(sym, rhs)(bodyStream)
         bodyStream.flush
 
-        val resultType = if (gen.toString == "scala") {
-          rhs match {
+        val resultTypes: List[String] = (gen.toString, rhs) match {
+          case ("scala", ThinDef(z)) => List(z match {
             case map: DeliteOpMap[_,_,_] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
             case zip: DeliteOpZipWith[_,_,_,_] => "generated.scala.DeliteOpZipWith[" + gen.remap(zip.v._1.Type) + "," + gen.remap(zip.v._2.Type) + "," + gen.remap(zip.func.Type) + "," + gen.remap(zip.alloc.Type) +"]"
             case red: DeliteOpReduce[_] => "generated.scala.DeliteOpReduce[" + gen.remap(red.func.Type) + "]"
             case mapR: DeliteOpMapReduce[_,_,_] => "generated.scala.DeliteOpMapReduce[" + gen.remap(mapR.mV.Type) + "," + gen.remap(mapR.reduce.Type) + "]"
             case foreach: DeliteOpForeach[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
-            case _ => gen.remap(sym.Type)
-          }
-        } else gen.remap(sym.Type)
+            case _ => gen.remap(sym.head.Type)
+          })
+          case _ => sym.map(s=>gen.remap(s.Type))
+        }
 
         // emit kernel
-        gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar)(kstream)
+        gen.emitKernelHeader(sym, inVals, inVars, resultTypes, resultIsVar)(kstream)
         kstream.println(bodyString.toString)
-        gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar)(kstream)
+        gen.emitKernelFooter(sym, inVals, inVars, resultTypes, resultIsVar)(kstream)
 
         //record that this kernel was successfully generated
         supportedTargets += gen.toString
-        if (resultIsVar) {
-          returnTypes += new Pair[String,String](gen.toString,"generated.scala.Ref[" + gen.remap(sym.Type) + "]") {
-            override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+        for (s <- sym) {
+          if (resultIsVar) {
+            returnTypes += new Pair[String,String](gen.toString,"generated.scala.Ref[" + gen.remap(s.Type) + "]") {
+              override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+            }
           }
-        }
-        else {
-          returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.Type)) {
-            override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+          else {
+            returnTypes += new Pair[String,String](gen.toString,gen.remap(s.Type)) {
+              override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+            }
           }
         }
 
@@ -135,7 +139,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     if (supportedTargets.isEmpty) system.error("Node " + quote(sym) + " could not be generated by any code generator")
 
-    val outputs = List(sym) //TR: so far it's only the particular sym
+    val outputs = sym
     
     val inputs = inVals ++ inVars
     //val kernelContext = getEffectsKernel(sym, rhs)
@@ -152,8 +156,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     val antiDeps = (kernelInputDeps filter { case (s, in) => (!(inMutating intersect in).isEmpty) }).keys.toList
 
     // add this kernel to global generated state
-    kernelInputDeps += { sym -> inputs }
-    kernelMutatingDeps += { sym -> inMutating }
+    sym foreach { s => kernelInputDeps += { s -> inputs } }
+    sym foreach { s => kernelMutatingDeps += { s -> inMutating } }
 
     // debug
     /*
@@ -165,14 +169,14 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     */
 
     // emit task graph node
-    rhs match {
-      case s:DeliteOpSingleTask[_] => emitSingleTask(sym, outputs, inputs, inControlDeps, antiDeps)
-      case m:DeliteOpMap[_,_,_] => emitMap(sym, outputs, inputs, inControlDeps, antiDeps)
-      case r:DeliteOpReduce[_] => emitReduce(sym, outputs, inputs, inControlDeps, antiDeps)
-      case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(sym, outputs, inputs,inControlDeps, antiDeps)
-      case z:DeliteOpZipWith[_,_,_,_] => emitZipWith(sym, outputs, inputs, inControlDeps, antiDeps)
-      case f:DeliteOpForeach[_,_] => emitForeach(sym, outputs, inputs, inControlDeps, antiDeps)
-      case _ => emitSingleTask(sym, outputs, inputs, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
+    (rhs match { case ThinDef(z) => z }) match {
+      case s:DeliteOpSingleTask[_] => emitSingleTask(sym.head, outputs, inputs, inControlDeps, antiDeps)
+      case m:DeliteOpMap[_,_,_] => emitMap(sym.head, outputs, inputs, inControlDeps, antiDeps)
+      case r:DeliteOpReduce[_] => emitReduce(sym.head, outputs, inputs, inControlDeps, antiDeps)
+      case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(sym.head, outputs, inputs,inControlDeps, antiDeps)
+      case z:DeliteOpZipWith[_,_,_,_] => emitZipWith(sym.head, outputs, inputs, inControlDeps, antiDeps)
+      case f:DeliteOpForeach[_,_] => emitForeach(sym.head, outputs, inputs, inControlDeps, antiDeps)
+      case _ => emitSingleTask(sym.head, outputs, inputs, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
     }
 
     // whole program gen (for testing)
