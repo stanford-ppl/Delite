@@ -335,6 +335,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
+    out.append("#include <float.h>\n")
     out.append("#include \"VectorImpl.h\"\n")
     out.append("#include \"MatrixImpl.h\"\n")
     out.append("#include \"RangeVectorImpl.h\"\n")

@@ -98,7 +98,6 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjmethodID mid_end = env->GetMethodID(cls,\"end\",\"()I\");\n")
 
     out.append("\t%s %s;\n".format(remap(sym.Type),quote(sym)))
-    out.append("\t%s.length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
     out.append("\t%s.isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
     out.append("\t%s.start = env->CallIntMethod(obj,mid_start);\n".format(quote(sym)))
     out.append("\t%s.stride = env->CallIntMethod(obj,mid_stride);\n".format(quote(sym)))

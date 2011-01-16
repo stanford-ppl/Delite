@@ -12,7 +12,6 @@ public:
     int end;
     int stride;
     bool isRow;
-    int length;
 
     // Constructors
     __host__ __device__ RangeVector() {
@@ -20,7 +19,6 @@ public:
         end = 0;
         stride = 1;
         isRow = true;
-        length = 0;
     }
 
     __host__ __device__ RangeVector(int _start, int _end, int _stride, bool _isRow) {
@@ -28,7 +26,6 @@ public:
         end = _end;
         stride = _stride;
         isRow = _isRow;
-        length = _end - _start + _stride - 1;
     }
 
     // Accessor Functions
@@ -36,9 +33,13 @@ public:
         return start+stride*idx;
     }
 
+    __host__ __device__ int length() {
+        return (end - start + stride - 1);
+	}
+
     // DeliteCoolection
     __host__ __device__ int size() {
-        return length;
+        return (end - start + stride - 1);
     }
 
     __host__ __device__ int dcApply(int idx) {
