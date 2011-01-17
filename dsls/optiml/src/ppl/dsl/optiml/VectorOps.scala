@@ -101,10 +101,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     extends Def[Vector[A]] {
     val mV = manifest[VectorImpl[A]]
   }
+
   case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean])
     extends Def[Vector[Int]]
-
-
 
   //////////////////////////////////////
   // implemented via kernel embedding
@@ -121,9 +120,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorPPrint[A:Manifest](x: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffects(vector_pprint_impl[A](x)))
 
+/*
   case class VectorTrans[A:Manifest](x: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffects(vector_trans_impl[A](x)))
-
+*/
 
 
   ////////////////////////////////
@@ -137,6 +137,17 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 + v._2
   }
 */
+
+  case class VectorTrans[A:Manifest](in: Exp[Vector[A]])
+    extends ThinLoop[Vector[A]] {
+
+    val size = in.length
+    val v = fresh[Int]
+    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
+      val alloc = reifyEffects(Vector[A](in.length, !in.isRow))
+      val func = in(v)
+    }
+  }
 
   case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]]) 
     extends ThinLoop[Vector[A]] {
@@ -152,7 +163,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
 
   case class VectorPlusEquals[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends DeliteOpZipWith[A,A,A,Vector] {
+    extends DeliteOpZipWith[A,A,A,Vector] { // stick to ZipWith for the moment TODO: try multi loop
 
     val alloc = inA
     val v = (fresh[A],fresh[A])
@@ -160,42 +171,59 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   }
 
   case class VectorMinus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends DeliteOpZipWith[A,A,A,Vector] {
+    extends ThinLoop[Vector[A]] {
 
-    val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
-    val v = (fresh[A],fresh[A])
-    val func = v._1 - v._2
+    val size = inA.length
+    val v = fresh[Int]
+    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
+      val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
+      val func = inA(v) - inB(v)
+    }
   }
 
   case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends DeliteOpZipWith[A,A,A,Vector] {
+    extends ThinLoop[Vector[A]] {
 
-    val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
-    val v = (fresh[A],fresh[A])
-    val func = v._1 * v._2
+    val size = inA.length
+    val v = fresh[Int]
+    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
+      val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
+      val func = inA(v) * inB(v)
+    }
   }
 
   case class VectorDivide[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends DeliteOpZipWith[A,A,A,Vector] {
+    extends ThinLoop[Vector[A]] {
 
-    val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
-    val v = (fresh[A],fresh[A])
-    val func = v._1 / v._2
+    val size = inA.length
+    val v = fresh[Int]
+    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
+      val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
+      val func = inA(v) / inB(v)
+    }
   }
 
   case class VectorDivideScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
-    extends DeliteOpMap[A,A,Vector] {
+    extends ThinLoop[Vector[A]] {
 
-    val alloc = reifyEffects(Vector[A](in.length, in.isRow))
-    val v = fresh[A]
-    val func = v / y
+    val size = in.length
+    val v = fresh[Int]
+    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
+      val alloc = reifyEffects(Vector[A](in.length, in.isRow))
+      val func = in(v) / y
+    }
   }
 
   case class VectorSum[A:Manifest:Arith](in: Exp[Vector[A]])
-    extends DeliteOpReduce[A] {
+    extends ThinLoop[A] {
 
-    val v = (fresh[A],fresh[A])
-    val func = v._1 + v._2
+    val size = in.length
+    val v = fresh[Int]
+    val body: Def[A] = new DeliteReduceElem[A] { //TODO might need explicit zero?
+      val func = in(v)
+      val rV = (fresh[A],fresh[A])
+      val rFunc = rV._1 + rV._2
+    }
   }
 
   case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], v: Sym[A], func: Exp[B])

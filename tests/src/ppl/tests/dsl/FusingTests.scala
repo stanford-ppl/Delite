@@ -21,8 +21,14 @@ object FusingTests extends DeliteApplication with OptiMLExp {
     res.pprint
   }
 
+  def fuseSum() {
+    val a = Vector.range(1,10)
+    println(a.t.sum)
+  }
+
   def main() = {
     fuseSimple2()
     fuseMix2()
+    fuseSum()
   }
 }

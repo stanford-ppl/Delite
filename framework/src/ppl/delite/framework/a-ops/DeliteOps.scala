@@ -239,14 +239,14 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
   override def emitFatNode(symList: List[Sym[_]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: FatLoop =>
         if (!deliteKernel) {
-          // wide zip, no reduce yet
           (symList zip op.body) foreach {
             case (sym, elem: DeliteCollectElem[_,_]) =>
               stream.println("val " + quote(sym) + " = {")
               emitBlock(elem.alloc)
               stream.println(quote(getBlockResult(elem.alloc)))
               stream.println("}")
-            //case DeliteReduceElem(func, rV, rFunc) =>
+            case (sym, elem: DeliteReduceElem[_]) =>
+              stream.println("var " + quotearg(sym) + " = _") // TODO: need explicit zero?
           }
           stream.println("var " + quote(op.v) + " = 0")
           stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {")
@@ -254,7 +254,12 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
             case (sym, elem: DeliteCollectElem[_,_]) =>
               emitBlock(elem.func)
               stream.println(quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
-            //case DeliteReduceElem(func, rV, rFunc) =>
+            case (sym, elem: DeliteReduceElem[_]) =>
+              emitBlock(elem.func)
+              stream.println("val " + quote(elem.rV._1) + " = " + quote(sym))
+              stream.println("val " + quote(elem.rV._2) + " = " + quote(getBlockResult(elem.func)))
+              emitBlock(elem.rFunc)
+              stream.println(quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
           }
           stream.println(quote(op.v) + " += 1")
           stream.println("}")
@@ -279,25 +284,57 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
           val actType = "activation_"+kernelName
           deliteKernel = false
           stream.println("val " + kernelName + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {")
+
           stream.println("def size = " + quote(op.size))
+          stream.println("def alloc: " + actType + " = {")
+          stream.println("val __act = new " + actType)
           (symList zip op.body) foreach {
             case (sym, elem: DeliteCollectElem[_,_]) =>
-              stream.println("def alloc: " + actType + " = {")
-              stream.println("val __act = new " + actType)
               emitBlock(elem.alloc)
               stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.alloc)))
-              stream.println("__act")
-              stream.println("}")
-              stream.println("def split(__act: " + actType + "): " + actType + " = {")
-              stream.println("__act")
-              stream.println("}")
-              stream.println("def process(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {")
+            case (sym, elem: DeliteReduceElem[_]) =>
+              // default zero, might need to go explicit
+          }
+          stream.println("__act")
+          stream.println("}")
+          stream.println("def split(__act: " + actType + "): " + actType + " = {")
+          if (op.body.exists(_.isInstanceOf[DeliteReduceElem[_]])) {
+            stream.println("val __act2 = new " + actType)
+            (symList zip op.body) foreach {
+              case (sym, elem: DeliteCollectElem[_,_]) =>
+                stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
+              case (sym, elem: DeliteReduceElem[_]) =>
+                // default zero, might need to go explicit
+            }
+            stream.println("__act2")
+          } else {
+            stream.println("__act")
+          }
+          stream.println("}")
+          stream.println("def process(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {")
+          (symList zip op.body) foreach {
+            case (sym, elem: DeliteCollectElem[_,_]) =>
               emitBlock(elem.func)
               stream.println("__act." + quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
-              stream.println("}")
-              stream.println("def combine(__act: " + actType + ", rhs: " + actType + "): Unit = {")
-              stream.println("}")
+            case (sym, elem: DeliteReduceElem[_]) =>
+              emitBlock(elem.func)
+              stream.println("val " + quote(elem.rV._1) + " = " + "__act." + quote(sym))
+              stream.println("val " + quote(elem.rV._2) + " = " + quote(getBlockResult(elem.func)))
+              emitBlock(elem.rFunc)
+              stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
           }
+          stream.println("}")
+          stream.println("def combine(__act: " + actType + ", rhs: " + actType + "): Unit = {")
+          (symList zip op.body) foreach {
+            case (sym, elem: DeliteCollectElem[_,_]) =>
+            case (sym, elem: DeliteReduceElem[_]) =>
+              stream.println("val " + quote(elem.rV._1) + " = " + "__act." + quote(sym))
+              stream.println("val " + quote(elem.rV._2) + " = " + "rhs." + quote(sym))
+              emitBlock(elem.rFunc)
+              stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
+          }
+          stream.println("}")
+
           stream.println("}")
           deliteKernel = true
         }

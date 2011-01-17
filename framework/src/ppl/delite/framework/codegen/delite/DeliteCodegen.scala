@@ -51,7 +51,7 @@ trait DeliteCodegen extends GenericFatCodegen {
 
   //override def buildScheduleForResult(start: Exp[_]): List[TP[_]] = ifGenAgree(_.buil) <--- maybe override for performance reasons ...
 
-  // TODO: move somewhere else? --> get rid of duplicate in embedded generators!
+  // TODO: move to some other place? --> get rid of duplicate in embedded generators!
   override def fatten(e: TP[_]): TTP = ifGenAgree(_.fatten(e), shallow)
 
 
