@@ -41,7 +41,9 @@ trait DeliteCodegen extends GenericFatCodegen {
   }
 
 
-  // these are overridden for specific node type in the target generators but *not* here
+  // these are overridden for specific node types in the target generators but *not* here
+  
+  // DISCUSS: we could move them back into the Exp traits, then ifGenAgree would no longer be needed
   
   override def syms(e: Any): List[Sym[Any]] = ifGenAgree(_.syms(e), shallow)
   override def boundSyms(e: Any): List[Sym[Any]] = ifGenAgree(_.boundSyms(e), shallow)

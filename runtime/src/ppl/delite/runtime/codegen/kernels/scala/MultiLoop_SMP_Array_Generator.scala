@@ -83,15 +83,15 @@ object MultiLoop_SMP_Array_Generator {
     if (chunkIdx == 0)
       out.append("val acc = out\n")
     else
-      out.append("val acc = head.closure.alloc(out)\n") // copy of out per chunk
+      out.append("val acc = head.closure.split(out)\n") // copy of out per chunk
 //    out.append("head.closure.map(acc, idx)\n")
 //    out.append("idx += 1\n")
     out.append("while (idx < end) {\n")
-    out.append("head.closure.mapreduce(acc, idx)\n")
+    out.append("head.closure.process(acc, idx)\n")
     out.append("idx += 1\n")
     out.append("}\n")
 
-    if (!op.needsReduce) {
+    if (!op.needsCombine) {
       if (chunkIdx == 0) out.append("acc\n")
     } else {
       var half = chunkIdx
@@ -101,7 +101,7 @@ object MultiLoop_SMP_Array_Generator {
         val neighbor = chunkIdx + step //the index of the chunk to reduce with
         step *= 2
 
-        out.append("head.closure.reduce(acc, head.get")
+        out.append("head.closure.combine(acc, head.get")
         out.append(neighbor)
         out.append(")\n")
       }
@@ -134,7 +134,7 @@ object MultiLoop_SMP_Array_Header_Generator {
     //the kernel
     writeClass(out, op)
 
-    if (op.needsReduce) {
+    if (op.needsCombine) {
       //the sync state
       for (i <- 1 until numChunks) //sync for all chunks except 0
         writeSync(out, i, op.outputType)

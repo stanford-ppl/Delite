@@ -128,7 +128,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
   ////////////////////////////////
   // implemented via delite ops
-
+/*
   case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {
 
@@ -136,6 +136,20 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val v = (fresh[A],fresh[A])
     val func = v._1 + v._2
   }
+*/
+
+  case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]]) 
+    extends ThinLoop[Vector[A]] {
+
+    val size = inA.length
+    val v = fresh[Int]
+    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
+      val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
+      val func = inA(v) + inB(v)
+    }
+  }
+
+
 
   case class VectorPlusEquals[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector] {

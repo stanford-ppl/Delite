@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_MultiLoop(val id: String, func: String, resultType: Map[Targets.Value,String], val needsReduce: Boolean) extends DeliteOP {
+class OP_MultiLoop(val id: String, func: String, resultType: Map[Targets.Value,String], val needsCombine: Boolean) extends DeliteOP {
 
   final def isDataParallel = true
 
@@ -37,7 +37,7 @@ class OP_MultiLoop(val id: String, func: String, resultType: Map[Targets.Value,S
    * Chunks require same dependency & input lists
    */
   def chunk(i: Int): OP_MultiLoop = {
-    val r = new OP_MultiLoop(id+"_"+i, function, Targets.unitTypes(resultType), needsReduce) //chunks all return Unit
+    val r = new OP_MultiLoop(id+"_"+i, function, Targets.unitTypes(resultType), needsCombine) //chunks all return Unit
     r.dependencyList = dependencyList //lists are immutable so can be shared
     r.outputList = List(id+"_"+i)
     r.inputList = inputList

@@ -119,7 +119,7 @@ object DeliteTaskGraph {
 
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
-      case "OP_MultiLoop" => new OP_MultiLoop(id, "kernel_"+id, resultMap, getFieldBoolean(op, "needsReduce"))
+      case "OP_MultiLoop" => new OP_MultiLoop(id, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"))
       case "OP_MapReduce" => new OP_MapReduce(id, "kernel_"+id, resultMap)
       case "OP_Map" => new OP_Map(id, "kernel_"+id, resultMap)
       case "OP_Reduce" => new OP_Reduce(id, "kernel_"+id, resultMap)
@@ -131,9 +131,11 @@ object DeliteTaskGraph {
     //TR decoupling input->op from input->string identifier
 
     //handle outputs
+    val outputs = getFieldList(op, "outputs")
     val outputTypes = op.getOrElse("outputTypes", Map.empty).asInstanceOf[Map[Any,Any]]
     
-    val outputs = getFieldList(op, "outputs")
+    if (outputTypes.isEmpty) assert(outputs.size == 1)
+    
     for(i <- outputs.reverse) {
       val tp = if (outputTypes.isEmpty) resultMap else getFieldMap(outputTypes,i).map(p=>(lookupTarget(p._1), p._2.toString))
       //TODO: make it more robust

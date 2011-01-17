@@ -56,9 +56,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
     
     val dataDeps = //TR TODO: focus only once!
-      syms(rhs).flatMap(s => focusBlock(s) { freeInScope(boundSyms(rhs), s) } ) // no longer use getFreeVarNode...
-    
-    // TODO: do it in one go (don't focus on each sym --> focus on several syms at once)    
+      syms(rhs).flatMap(s => focusBlock(s) { freeInScope(boundSyms(rhs), s) } ).distinct // don't use getFreeVarNode...
     
     //val dataDeps = /*syms(rhs) ++ */getFreeVarNode(rhs).distinct //ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)
     val inVals = dataDeps flatMap { vals(_) }
@@ -91,6 +89,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
         val resultTypes: List[String] = (gen.toString, rhs) match {
           case ("scala", ThinDef(z)) => List(z match {
+            case op: ThinLoop[_] => "generated.scala.DeliteOpMultiLoop[" + gen.remap(sym.head.Type) + "]"
             case map: DeliteOpMap[_,_,_] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
             case zip: DeliteOpZipWith[_,_,_,_] => "generated.scala.DeliteOpZipWith[" + gen.remap(zip.v._1.Type) + "," + gen.remap(zip.v._2.Type) + "," + gen.remap(zip.func.Type) + "," + gen.remap(zip.alloc.Type) +"]"
             case red: DeliteOpReduce[_] => "generated.scala.DeliteOpReduce[" + gen.remap(red.func.Type) + "]"
@@ -171,6 +170,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     // emit task graph node
     (rhs match { case ThinDef(z) => z }) match {
       case s:DeliteOpSingleTask[_] => emitSingleTask(sym.head, outputs, inputs, inControlDeps, antiDeps)
+      case op: ThinLoop[_] => emitMultiLoop(sym.head, outputs, inputs, inControlDeps, antiDeps, op.body.isInstanceOf[DeliteReduceElem[_]])
       case m:DeliteOpMap[_,_,_] => emitMap(sym.head, outputs, inputs, inControlDeps, antiDeps)
       case r:DeliteOpReduce[_] => emitReduce(sym.head, outputs, inputs, inControlDeps, antiDeps)
       case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(sym.head, outputs, inputs,inControlDeps, antiDeps)
@@ -195,6 +195,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     emitOpCommon(sym, outputs, inputs, controlDeps, antiDeps)
   }
 
+  def emitMultiLoop(sym: Sym[_], outputs: List[Exp[_]], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]], needsCombine: Boolean)
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+    stream.print("{\"type\":\"MultiLoop\", \"needsCombine\":" + needsCombine)
+    emitOpCommon(sym, outputs, inputs, controlDeps, antiDeps)
+  }
+  
   def emitMap(sym: Sym[_], outputs: List[Exp[_]], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Map\"")

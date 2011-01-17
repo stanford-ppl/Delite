@@ -18,6 +18,46 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp {
    */
   class DeliteOpSingleTask[A](val block: Exp[A]) extends DeliteOp[A]
 
+  
+  abstract class ThinLoop[A] extends DeliteOp[A] { // as opposed to FatLoop ...TODO: make DeliteLoop extending ThinLoop
+    val size: Exp[Int]
+    val v: Sym[Int]
+    val body: Def[A]
+  }
+
+
+  abstract class DeliteCollectElem[A, C[X] <: DeliteCollection[X]] extends Def[C[A]] {
+    val func: Exp[A]
+    val alloc: Exp[C[A]]
+  }
+  
+  abstract class DeliteReduceElem[A] extends Def[A] {
+    val func: Exp[A]
+    val rV: (Sym[A], Sym[A])
+    val rFunc: Exp[A]
+  }
+  
+  
+  
+/*
+  abstract class DeliteOpMapNew[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[A]] {
+    val size: Exp[Int]
+    val v: Sym[Int]
+    val func: Exp[A]
+    val alloc: Exp[C[A]]
+  }
+
+  abstract class DeliteOpReduceNew[A]() extends DeliteOp[A] {
+    val size: Exp[Int]
+    val v: Sym[Int]
+    val func: Exp[A]
+    val rV: (Sym[A], Sym[A])
+    val rFunc: Exp[A]
+  }
+*/
+
+
+
   /**
    * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
    * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
@@ -126,7 +166,10 @@ trait BaseGenDeliteOps extends GenericFatCodegen {
   import IR._
 
   override def syms(e: Any): List[Sym[Any]] = e match { //TR TODO: question -- is alloc a dependency (should be part of result) or a definition (should not)???
-    case s: DeliteOpSingleTask[_] => /*if (shallow) Nil else*/ syms(s.block)
+    case s: DeliteOpSingleTask[_] => syms(s.block)
+    case op: ThinLoop[_] => syms(op.size) ++ syms(op.body)
+    case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.alloc)
+    case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.rFunc)
     case map: DeliteOpMap[_,_,_] => /*if (shallow) syms(map.in) else */ syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
     case zip: DeliteOpZipWith[_,_,_,_] => /*if (shallow) syms(zip.inA) ++ syms(zip.inB) else*/ syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
     case red: DeliteOpReduce[_] => /*if (shallow) syms(red.in) else*/ syms(red.in) ++ syms(red.func)
@@ -137,6 +180,9 @@ trait BaseGenDeliteOps extends GenericFatCodegen {
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match { //TR TODO
     case s: DeliteOpSingleTask[_] => effectSyms(s.block)
+    case op: ThinLoop[_] => op.v::boundSyms(op.body)
+    case op: DeliteCollectElem[_,_] => effectSyms(op.func) ++ effectSyms(op.alloc)
+    case op: DeliteReduceElem[_] => effectSyms(op.func) ++ effectSyms(op.rFunc) ++ List(op.rV._1, op.rV._2)
     case zip: DeliteOpZipWith[_,_,_,_] => zip.v._1::zip.v._2::effectSyms(zip.alloc):::effectSyms(zip.func)
     case map: DeliteOpMap[_,_,_] => map.v::effectSyms(map.alloc):::effectSyms(map.func)
     case mapR: DeliteOpMapReduce[_,_,_] => mapR.mV::mapR.rV._1::mapR.rV._2::effectSyms(mapR.map):::effectSyms(mapR.reduce)
@@ -166,6 +212,9 @@ trait BaseGenDeliteOps extends GenericFatCodegen {
 trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
   import IR._
 
+  def quotearg(x: Sym[Any]) = quote(x) + ": " + quotetp(x)
+  def quotetp(x: Sym[Any]) = remap(x.Type)
+
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => {
       println("EMIT single "+s)
@@ -178,6 +227,111 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       stream.println("}")
       deliteKernel = save
     }
+    case op:ThinLoop[_] =>
+        if (!deliteKernel) {
+          // zip
+          op.body match {
+            case elem: DeliteCollectElem[_,_] =>
+              stream.println("val " + quote(sym) + " = {")
+              emitBlock(elem.alloc)
+              stream.println(quote(getBlockResult(elem.alloc)))
+              stream.println("}")
+            //case DeliteReduceElem(func, rV, rFunc) =>
+          }
+          stream.println("var " + quote(op.v) + " = 0")
+          stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {")
+          op.body match {
+            case elem: DeliteCollectElem[_,_] =>
+              emitBlock(elem.func)
+              stream.println(quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
+            //case DeliteReduceElem(func, rV, rFunc) =>
+          }
+          stream.println(quote(op.v) + " += 1")
+          stream.println("}")
+/*        // red
+          stream.println("val " + quote(sym) + " = {")
+          stream.println("var " + quote(red.v._1) + " = " + quote(red.in) + "(0)")
+          stream.println("var reduceIdx = 1")
+          stream.println("while (reduceIdx < " + quote(red.in) + ".size) {")
+          stream.println("val " + quote(red.v._2) + " = " + quote(red.in) + ".dcApply(reduceIdx)")
+          stream.println(quote(red.v._1) + " = {")
+          emitBlock(red.func)
+          stream.println(quote(getBlockResult(red.func)))
+          stream.println("}")
+          stream.println("reduceIdx += 1")
+          stream.println("} // end while")
+          stream.println(quote(red.v._1))
+          stream.println("}")
+*/
+        } else {
+          // zip
+          deliteKernel = false
+          stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpMultiLoop[" + quotetp(sym) + "] {")
+          stream.println("def size = " + quote(op.size))
+          op.body match {
+            case elem: DeliteCollectElem[_,_] =>
+              stream.println("def alloc: " + quotetp(sym) + " = {")
+              emitBlock(elem.alloc)
+              stream.println(quote(getBlockResult(elem.alloc)))
+              stream.println("}")
+              stream.println("def split(" + quotearg(sym) + "): " + quotetp(sym) + " = {")
+              stream.println(quote(sym))
+              stream.println("}")
+              stream.println("def process(" + quotearg(sym) + ", " + quotearg(op.v) + "): Unit = {")
+              emitBlock(elem.func)
+              stream.println(quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
+              stream.println("}")
+              stream.println("def combine(" + quote(sym) + ": " + quotetp(sym) + ", rhs: " + quotetp(sym) + "): Unit = {")
+              stream.println("}")
+          }
+          stream.println("}")
+          deliteKernel = true
+        }
+/*
+// sample zip/map/reduce kernel: simultaneously compute x900 = sumOfSquares(b) and x11 = vectorPlus(a,b)
+package generated.scala
+class activation_x900x11{
+  var x900: Int = _
+  var x11: generated.scala.IntVectorImpl = _
+}
+
+object kernel_x900x11{
+def apply(x1:generated.scala.Vector[Int],x2:generated.scala.Vector[Int],x4:Int,x5:Boolean): generated.scala.DeliteOpMultiLoop[activation_x900x11] = {
+val x11 = new generated.scala.DeliteOpMultiLoop[activation_x900x11] {
+//def inA = x1
+//def inB = x2
+def size = {
+val a1 = x1.size
+a1
+}
+def alloc = {
+val __act = new activation_x900x11
+__act.x900 = 0
+__act.x11 = new generated.scala.IntVectorImpl(x4,x5)
+__act
+}
+def alloc(rhs: activation_x900x11) = {
+val __act = new activation_x900x11
+__act.x900 = 0
+__act.x11 = rhs.x11
+__act
+}
+def mapreduce(__act: activation_x900x11, idx: Int): Unit = {
+val a1 = x1.apply(idx)
+val a2 = x2.apply(idx)
+val x10 = a1 + a2
+__act.x900 += a2*a2
+__act.x11.update(idx, x10)
+}
+def reduce(__act: activation_x900x11, rhs: activation_x900x11): Unit = {
+__act.x900 += rhs.x900
+}
+}
+
+x11
+}}
+*/
+    
     case map:DeliteOpMap[_,_,_] => {
       if (deliteKernel == false){
         stream.println("val " + quote(sym) + " = {")

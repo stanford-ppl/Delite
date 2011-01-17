@@ -4,6 +4,16 @@ package ppl.dsl.optiml.datastruct.scala
  * Delite
  */
 
+trait DeliteOpMultiLoop[A] {
+  def size: Int
+  def alloc: A
+  def split(rhs: A): A
+  def process(__act: A, idx: Int): Unit
+  def combine(__act: A, rhs: A): Unit
+}
+
+
+
 /**
  * @tparam CR  A subtype of DeliteCollection[B]; passed as a separate parameter to avoid requiring a higher kinded type.
  */
