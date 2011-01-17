@@ -229,7 +229,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
     }
     case op:ThinLoop[_] =>
         if (!deliteKernel) {
-          // zip
+          // wide zip, no reduce yet
           op.body match {
             case elem: DeliteCollectElem[_,_] =>
               stream.println("val " + quote(sym) + " = {")
@@ -264,24 +264,28 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
           stream.println("}")
 */
         } else {
-          // zip
+          // wide zip, no reduce yet
+          val kernelName = List(sym).map(quote).mkString("")
+          val actType = "activation_"+kernelName
           deliteKernel = false
-          stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpMultiLoop[" + quotetp(sym) + "] {")
+          stream.println("val " + kernelName + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {")
           stream.println("def size = " + quote(op.size))
           op.body match {
             case elem: DeliteCollectElem[_,_] =>
-              stream.println("def alloc: " + quotetp(sym) + " = {")
+              stream.println("def alloc: " + actType + " = {")
+              stream.println("val __act = new " + actType)
               emitBlock(elem.alloc)
-              stream.println(quote(getBlockResult(elem.alloc)))
+              stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.alloc)))
+              stream.println("__act")
               stream.println("}")
-              stream.println("def split(" + quotearg(sym) + "): " + quotetp(sym) + " = {")
-              stream.println(quote(sym))
+              stream.println("def split(__act: " + actType + "): " + actType + " = {")
+              stream.println("__act")
               stream.println("}")
-              stream.println("def process(" + quotearg(sym) + ", " + quotearg(op.v) + "): Unit = {")
+              stream.println("def process(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {")
               emitBlock(elem.func)
-              stream.println(quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
+              stream.println("__act." + quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
               stream.println("}")
-              stream.println("def combine(" + quote(sym) + ": " + quotetp(sym) + ", rhs: " + quotetp(sym) + "): Unit = {")
+              stream.println("def combine(__act: " + actType + ", rhs: " + actType + "): Unit = {")
               stream.println("}")
           }
           stream.println("}")

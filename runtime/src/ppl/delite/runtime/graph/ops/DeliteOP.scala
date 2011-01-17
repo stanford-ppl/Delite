@@ -19,19 +19,19 @@ abstract class DeliteOP {
    */
   def task : String
 
-  def outputSlotType(target: Targets.Value, name: String): String =
-    if (name == id && outputList == List(name)) outputType(target)
-    else {
-      val m = outputTypeMap(name)
-      println("types for " + name + ": " + m)
-      println("trying scala: " + m(Targets.Scala))
-      m(target)
-    }
+  def outputSlotType(target: Targets.Value, name: String): String = {
+//  if (outputTypeMap.isEmpty) outputType(target) else {
+    val m = outputTypeMap(name)
+    m(target)
+  }
 
   def outputSlotType(name: String): String = outputSlotType(Targets.Scala, name)
 
   def outputType(target: Targets.Value) : String
   def outputType : String = outputType(Targets.Scala)
+
+  def hasCompoundOutput = getOutputs.nonEmpty && outputSlotType(getOutputs.head) != outputType // TODO improve check
+
 
   def supportsTarget(target: Targets.Value) : Boolean
 
@@ -64,7 +64,6 @@ abstract class DeliteOP {
   final def addOutput(output: String, tp: Map[Targets.Value, String]) {
     outputList = output :: outputList
     outputTypeMap += (output -> tp)
-    println("added type: " + outputTypeMap)
   }
 
 

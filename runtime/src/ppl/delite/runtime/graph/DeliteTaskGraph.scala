@@ -132,14 +132,16 @@ object DeliteTaskGraph {
 
     //handle outputs
     val outputs = getFieldList(op, "outputs")
-    val outputTypes = op.getOrElse("outputTypes", Map.empty).asInstanceOf[Map[Any,Any]]
-    
-    if (outputTypes.isEmpty) assert(outputs.size == 1)
-    
-    for(i <- outputs.reverse) {
-      val tp = if (outputTypes.isEmpty) resultMap else getFieldMap(outputTypes,i).map(p=>(lookupTarget(p._1), p._2.toString))
-      //TODO: make it more robust
-      newop.addOutput(i, tp)
+    if (op.contains("output-types")) {
+      val outputTypes = getFieldMap(op, "output-types")
+      for(i <- outputs.reverse) {
+        val tp = getFieldMap(outputTypes,i).map(p=>(lookupTarget(p._1), p._2.toString))
+        newop.addOutput(i, tp)
+      }
+      println("putput "+newop+" "+outputTypes)
+    } else {
+      assert(outputs.size == 1)
+      newop.addOutput(outputs.head, resultMap)
     }
 
     //handle inputs
@@ -187,7 +189,7 @@ object DeliteTaskGraph {
   def processArgumentsTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val kernelId = getFieldString(op, "kernelId")
     Arguments.id = kernelId
-    Arguments.addOutput(kernelId, Map.empty)
+    Arguments.addOutput(kernelId, Map(Targets.Scala -> Arguments.outputType))
     graph.registerOp(Arguments)
     //graph._ops += kernelId -> Arguments
     graph._result = Arguments

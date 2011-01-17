@@ -4,7 +4,7 @@ import ppl.delite.framework.codegen.delite.DeliteCodegen
 import ppl.delite.framework.ops.{DeliteOpsExp}
 import scala.virtualization.lms.internal.GenericCodegen
 import ppl.delite.framework.{Util, Config}
-import collection.mutable.{ArrayBuffer, ListBuffer}
+import collection.mutable.{ArrayBuffer, ListBuffer, HashMap}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
 
 trait DeliteGenTaskGraph extends DeliteCodegen {
@@ -42,6 +42,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     println("DeliteGenTaskGraph.emitNode "+sym+"="+rhs)
 
+    val kernelName = sym.map(quote).mkString("")
+
     var resultIsVar = false
 
     // we will try to generate any node that is not purely an effect node
@@ -64,12 +66,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     implicit val supportedTargets = new ListBuffer[String]
     implicit val returnTypes = new ListBuffer[Pair[String, String]]
+    implicit val outputSlotTypes = new HashMap[String, ListBuffer[(String, String)]]
     implicit val metadata = new ArrayBuffer[Pair[String, String]]
 
     for (gen <- generators) {
       val buildPath = Config.build_dir + gen + "/"
       val outDir = new File(buildPath); outDir.mkdirs()
-      val outFile = new File(buildPath + quote(sym) + "." + gen.kernelFileExt)
+      val outFile = new File(buildPath + kernelName + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(outFile)
       val bodyString = new StringWriter()
       val bodyStream = new PrintWriter(bodyString)
@@ -87,34 +90,50 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
         gen.emitFatNode(sym, rhs)(bodyStream)
         bodyStream.flush
 
-        val resultTypes: List[String] = (gen.toString, rhs) match {
-          case ("scala", ThinDef(z)) => List(z match {
-            case op: ThinLoop[_] => "generated.scala.DeliteOpMultiLoop[" + gen.remap(sym.head.Type) + "]"
+        var hasOutputSlotTypes = false
+        
+        val resultType: String = (gen.toString, rhs) match {
+          case ("scala", ThinDef(z)) => z match {
+            case op: ThinLoop[_] => 
+              hasOutputSlotTypes = true
+              "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
             case map: DeliteOpMap[_,_,_] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
             case zip: DeliteOpZipWith[_,_,_,_] => "generated.scala.DeliteOpZipWith[" + gen.remap(zip.v._1.Type) + "," + gen.remap(zip.v._2.Type) + "," + gen.remap(zip.func.Type) + "," + gen.remap(zip.alloc.Type) +"]"
             case red: DeliteOpReduce[_] => "generated.scala.DeliteOpReduce[" + gen.remap(red.func.Type) + "]"
             case mapR: DeliteOpMapReduce[_,_,_] => "generated.scala.DeliteOpMapReduce[" + gen.remap(mapR.mV.Type) + "," + gen.remap(mapR.reduce.Type) + "]"
             case foreach: DeliteOpForeach[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
             case _ => gen.remap(sym.head.Type)
-          })
-          case _ => sym.map(s=>gen.remap(s.Type))
+          }
+          case _ => 
+            assert(sym.length == 1) // if not set hasOutputSlotTypes and use activation record
+            gen.remap(sym.head.Type)
         }
 
+        assert(hasOutputSlotTypes || sym.length == 1)
+
         // emit kernel
-        gen.emitKernelHeader(sym, inVals, inVars, resultTypes, resultIsVar)(kstream)
+        gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar)(kstream)
         kstream.println(bodyString.toString)
-        gen.emitKernelFooter(sym, inVals, inVars, resultTypes, resultIsVar)(kstream)
+        gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar)(kstream)
 
         //record that this kernel was successfully generated
         supportedTargets += gen.toString
-        for (s <- sym) {
+        if (!hasOutputSlotTypes) { // return type is sym type
           if (resultIsVar) {
-            returnTypes += new Pair[String,String](gen.toString,"generated.scala.Ref[" + gen.remap(s.Type) + "]") {
+            returnTypes += new Pair[String,String](gen.toString,"generated.scala.Ref[" + gen.remap(sym.head.Type) + "]") {
+              override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+            }
+          } else {
+            returnTypes += new Pair[String,String](gen.toString,gen.remap(sym.head.Type)) {
               override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
             }
           }
-          else {
-            returnTypes += new Pair[String,String](gen.toString,gen.remap(s.Type)) {
+        } else { // return type is activation record
+          returnTypes += new Pair[String,String](gen.toString,"activation_" + kernelName) {
+            override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
+          }
+          for (s <- sym) {
+            outputSlotTypes.getOrElseUpdate(quote(s), new ListBuffer) += new Pair[String,String](gen.toString,gen.remap(s.Type)) {
               override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
             }
           }
@@ -166,6 +185,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.println("control deps: " + inControlDeps)
     stream.println("anti deps:" + antiDeps)
     */
+    println(outputSlotTypes)
 
     // emit task graph node
     (rhs match { case ThinDef(z) => z }) match {
@@ -190,49 +210,49 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
    * @param antiDeps    a list of WAR dependencies (need to be committed in program order)
    */
   def emitSingleTask(sym: Sym[_], outputs: List[Exp[_]], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\"")
     emitOpCommon(sym, outputs, inputs, controlDeps, antiDeps)
   }
 
   def emitMultiLoop(sym: Sym[_], outputs: List[Exp[_]], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]], needsCombine: Boolean)
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"MultiLoop\", \"needsCombine\":" + needsCombine)
     emitOpCommon(sym, outputs, inputs, controlDeps, antiDeps)
   }
   
   def emitMap(sym: Sym[_], outputs: List[Exp[_]], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Map\"")
     emitOpCommon(sym, outputs, inputs, controlDeps, antiDeps)
   }
 
   def emitReduce(sym: Sym[_], outputs: List[Exp[_]], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Reduce\"")
     emitOpCommon(sym, outputs, inputs, controlDeps, antiDeps)
   }
 
   def emitMapReduce(sym: Sym[_], outputs: List[Exp[_]], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"MapReduce\"")
     emitOpCommon(sym, outputs, inputs, controlDeps, antiDeps)
   }
 
   def emitZipWith(sym: Sym[_], outputs: List[Exp[_]], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"ZipWith\"")
     emitOpCommon(sym, outputs, inputs, controlDeps, antiDeps)
   }
 
   def emitForeach(sym: Sym[_], outputs: List[Exp[_]], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Foreach\"")
     emitOpCommon(sym, outputs, inputs, controlDeps, antiDeps)
   }
 
   def emitOpCommon(sym: Sym[_], outputs: List[Exp[_]], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
+        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print(" , \"kernelId\" : \"" + quote(sym) + "\" ")
     stream.print(" , \"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "],\n")
     val outputsStr = if(outputs.isEmpty) "" else outputs.map(quote(_)).mkString("\"","\",\"","\"")
@@ -247,6 +267,14 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("  \"metadata\":{" + metadataStr + "},\n")
     val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString(",")
     stream.print("  \"return-types\":{" + returnTypesStr + "}\n")
+
+    if (!outputSlotTypes.isEmpty) {
+      val rts = for (s <- outputs) yield {
+        val str = quote(s)
+        "  \""+str+"\":{" + outputSlotTypes(str).mkString(",") + "}"
+      }
+      stream.print(" , \"output-types\":{" + rts.mkString(",") + "}\n")
+    }
     stream.println("},")
   }
 

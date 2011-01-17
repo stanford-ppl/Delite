@@ -129,16 +129,23 @@ object ExecutableGenerator {
       out.append(getSym(input,name))
     }
     out.append(")\n")
-    for (name <- op.getOutputs if name != op.id) {
-      out.append("val ")
-      out.append(getSym(op, name))
-      out.append(" = ")
-      out.append(getSym(op))
-      out.append(".")
-      out.append(name)
-      out.append("\n")
-    }
     
+    println("try op " + op + "/" + op.getOutputs + "/" + op.hasCompoundOutput)
+    if (op.getOutputs.nonEmpty)
+      println("--> op " + op.outputSlotType(op.getOutputs.head) + "/" + op.outputType)
+    
+    if (op.hasCompoundOutput) {
+      println("--> op " + op.outputSlotType(op.getOutputs.head) + "/" + op.outputType)
+      for (name <- op.getOutputs/* if name != op.id*/) {
+        out.append("val ")
+        out.append(getSym(op, name))
+        out.append(" = ")
+        out.append(getSym(op))
+        out.append(".")
+        out.append(name)
+        out.append("\n")
+      }
+    }
   }
 
   private def writeGetter(dep: DeliteOP, name: String, out: StringBuilder) {
@@ -177,12 +184,11 @@ object ExecutableGenerator {
     out.append("def get")
     out.append(name/*op.id*/)
     out.append(" : ")
-    println("try outputSlotType of " + op + "." + name)
     out.append(op.outputSlotType(name))
     out.append(" = ")
     out.append(getSync(op))
     out.append(".get")
-    if (name == op.id && op.getOutputs == List(name)) { // out is itself...
+    if (op.outputSlotType(name) == op.outputType) { // out is itself...
       out.append("\n")
     } else {
       out.append(".")
@@ -222,7 +228,7 @@ object ExecutableGenerator {
   }
 
   private def getSym(op: DeliteOP): String = {
-    "x"+op.id
+    if (op.hasCompoundOutput) "k"+op.id else "x"+op.id
   }
 
   private def getSym(op: DeliteOP, name: String): String = {
