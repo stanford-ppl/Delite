@@ -156,7 +156,7 @@ object DeliteTaskGraph {
     op.get("variant") match {
       case None => //do nothing
       case Some(field) => field match {
-        case map: Map[Any,Any] => newop.variant = processVariant(map)
+        case map: Map[Any,Any] => newop.variant = processVariant(newop, map)
         case err => mapNotFound(err)
       }
     }
@@ -166,16 +166,21 @@ object DeliteTaskGraph {
 
   }
 
-  def processVariant(graph: Map[Any, Any])(implicit outerGraph: DeliteTaskGraph) = {
+  def processVariant(op: DeliteOP, graph: Map[Any, Any])(implicit outerGraph: DeliteTaskGraph) = {
     val newGraph = new DeliteTaskGraph
     newGraph._version = outerGraph._version
     newGraph._kernelPath = outerGraph._kernelPath
 
     newGraph.parse = _ => {
+      for (dep <- op.getDependencies) dep.removeConsumer(op) //remove superOp from graph
       newGraph._ops ++= outerGraph._ops //add outer ops in order to find all dependencies
       parseOps(getFieldList(graph, "ops"))(newGraph)
       newGraph._ops --= outerGraph._ops.keys //remove outer ops so contents are correct
       newGraph._result = getOp(newGraph._ops, getFieldString(graph, "output"))
+      for (c <- op.getConsumers) {
+        c.replaceDependency(op, newGraph._result)
+        if (c.getInputs.contains(op)) c.replaceInput(op, newGraph._result)
+      }
     }
     newGraph
   }
