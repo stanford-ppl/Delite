@@ -72,14 +72,15 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
    *               the operation is mutable; reified version of Unit => DeliteCollection[B].
    */
 
-  trait DeliteOpMap[A,B,C[X] <: DeliteCollection[X]] extends DeliteOp[C[B]] with DeliteOpWhileLoopVariant {
+  trait DeliteOpMap[A,B,C[X] <: DeliteCollection[X]] extends DeliteOp[C[B]] with DeliteOpMapLikeWhileLoopVariant {
     val in: Exp[C[A]]
     val v: Exp[A]
     val func: Exp[B]
     val alloc: Exp[C[B]]
 
     // DeliteOpWhileLoopVariant
-    var index = unit(0)
+    //var index = unit(0)
+    //lazy val output = alloc
     lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
     lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
     val vs = () => __newVar(unit(null).asInstanceOfL[A])
