@@ -146,6 +146,7 @@ object DeliteTaskGraph {
     }
 
     //add new op to graph list of ops
+    if (graph._ops.contains(id)) error("Op " + id + " is declared multiple times in DEG")
     graph._ops += id -> newop
 
     //process target metadata
@@ -169,10 +170,11 @@ object DeliteTaskGraph {
     val newGraph = new DeliteTaskGraph
     newGraph._version = outerGraph._version
     newGraph._kernelPath = outerGraph._kernelPath
-    newGraph._ops ++= outerGraph._ops
 
     newGraph.parse = _ => {
+      newGraph._ops ++= outerGraph._ops //add outer ops in order to find all dependencies
       parseOps(getFieldList(graph, "ops"))(newGraph)
+      newGraph._ops --= outerGraph._ops.keys //remove outer ops so contents are correct
       newGraph._result = getOp(newGraph._ops, getFieldString(graph, "output"))
     }
     newGraph
