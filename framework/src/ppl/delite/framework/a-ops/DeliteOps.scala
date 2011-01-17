@@ -573,7 +573,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         if(freeVars.length==0)
           stream.println(addTab()+"%s(%s.dcApply(%s));".format(foreachFunc,quote(foreach.in),"idxX"))
         else
-          stream.println(addTab()+"%s(%s.dcApply(%s,%s));".format(foreachFunc,quote(foreach.in),"idxX",freeVars.map(quote).mkString(",")))
+          stream.println(addTab()+"%s(%s.dcApply(%s),%s);".format(foreachFunc,quote(foreach.in),"idxX",freeVars.map(quote).mkString(",")))
         tabWidth -= 1
         stream.println(addTab()+"}")
         parallelCudagen = true

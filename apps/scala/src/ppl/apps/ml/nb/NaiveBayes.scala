@@ -55,12 +55,12 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
 
     val spamcount = ts.labels.sum
 
-    //val phi_y1 = Vector.zeros(numTokens)
-    //val phi_y0 = Vector.zeros(numTokens)
+    val phi_y1 = Vector.zeros(numTokens)
+    val phi_y0 = Vector.zeros(numTokens)
 
     // TODO: this should be a tuple vector constructor
     
-	/*
+
     for (j <- 0::numTokens) {
       var spamwordcount = unit(0.0)
       var spam_totalwords = unit(0.0)
@@ -90,7 +90,8 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
       phi_y1(j) = (spamwordcount + 1) / (spam_totalwords + numTokens)
       phi_y0(j) = (nonspamwordcount + 1) / (nonspam_totalwords + numTokens)
     }
-*/
+
+	/*
     val phi_y0 = (0::numTokens) { j=>
       var spamwordcount = unit(0.0)
       var spam_totalwords = unit(0.0)
@@ -130,7 +131,7 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
       
       (spamwordcount + 1) / (spam_totalwords + numTokens)
     }
-
+*/
 
 
 
