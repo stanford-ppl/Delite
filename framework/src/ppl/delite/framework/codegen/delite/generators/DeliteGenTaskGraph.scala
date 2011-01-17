@@ -299,6 +299,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.println("  \"conditionKernelId\" : \"" + quote(cond) + "\", ")
     emitExp("then", thenp, emittedNodesList(1))
     emitExp("else", elsep, emittedNodesList(2))
+    stream.println("  \"thenOutput\": \"" + quote(getBlockResult(thenp)) + "\"")
+    stream.println("  \"elseOutput\": \"" + quote(getBlockResult(elsep)) + "\"")
     if (remap(thenp.Type) != remap(elsep.Type))
       throw new RuntimeException("Delite conditional with different then and else return types")
     stream.println("  \"outputType\": \"" + remap(thenp.Type) + "\"")
