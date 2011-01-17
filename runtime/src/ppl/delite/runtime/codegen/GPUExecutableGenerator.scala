@@ -374,7 +374,7 @@ object GPUExecutableGenerator {
       }
     }
 
-    if (!op.outputType = "Unit") {
+    if (op.outputType != "Unit") {
       //copy output from GPU to CPU
       out.append(getJNIType(op.outputType)) //jobject
       out.append(' ')

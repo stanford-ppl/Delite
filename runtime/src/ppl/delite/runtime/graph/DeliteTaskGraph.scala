@@ -362,16 +362,19 @@ object DeliteTaskGraph {
 
     //output allocation
     op.get("gpuOutput") match {
-      case None =>
-      case Some(out) => {
-        val outList = out.values.head.asInstanceOf[List[Any]]
-        cudaMetadata.output.resultType = outList.head
-        cudaMetadata.output.func = outList.tail.head
-        for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
-          cudaMetadata.output.inputs ::= getOpLike(sym)
+      case None => //do nothing
+      case Some(field) => field match {
+        case out: Map[Any,Any] => {
+          val outList = out.values.head.asInstanceOf[List[Any]]
+          cudaMetadata.output.resultType = outList.head
+          cudaMetadata.output.func = outList.tail.head
+          for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
+            cudaMetadata.output.inputs ::= getOpLike(sym)
+          }
+          //output copy
+          cudaMetadata.output.funcReturn = outList.tail.tail.tail.head
         }
-        //output copy
-        cudaMetadata.output.funcReturn = outList.tail.tail.tail.head
+        case err => mapNotFound(err)
       }
     }
 
