@@ -20,7 +20,7 @@ abstract class DeliteOP {
   def task : String
 
   def outputSlotType(target: Targets.Value, name: String): String = {
-//  if (outputTypeMap.isEmpty) outputType(target) else {
+//  if (outputTypeMap.isEmpty) return outputType(target)
     val m = outputTypeMap(name)
     m(target)
   }
@@ -30,7 +30,8 @@ abstract class DeliteOP {
   def outputType(target: Targets.Value) : String
   def outputType : String = outputType(Targets.Scala)
 
-  def hasCompoundOutput = getOutputs.nonEmpty && outputSlotType(getOutputs.head) != outputType // TODO improve check
+  def hasCompoundOutput = getOutputs.nonEmpty && outputSlotType(getOutputs.head) != outputType
+  // TODO improve check
 
 
   def supportsTarget(target: Targets.Value) : Boolean

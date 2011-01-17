@@ -47,10 +47,12 @@ trait DeliteCodegen extends GenericFatCodegen {
   
   override def syms(e: Any): List[Sym[Any]] = ifGenAgree(_.syms(e), shallow)
   override def boundSyms(e: Any): List[Sym[Any]] = ifGenAgree(_.boundSyms(e), shallow)
-  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = ifGenAgree(_.getFreeVarNode(rhs), shallow) // no longer used!
+  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = system.error("getFreeVarNode no longer used")
 
   //override def buildScheduleForResult(start: Exp[_]): List[TP[_]] = ifGenAgree(_.buil) <--- maybe override for performance reasons ...
 
+  // TODO: move somewhere else? --> get rid of duplicate in embedded generators!
+  override def fatten(e: TP[_]): TTP = ifGenAgree(_.fatten(e), shallow)
 
 
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
