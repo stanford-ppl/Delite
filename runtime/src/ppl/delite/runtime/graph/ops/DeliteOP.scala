@@ -24,6 +24,7 @@ abstract class DeliteOP {
 
   def supportsTarget(target: Targets.Value) : Boolean
 
+  //list of all incoming graph edges for this op
   private[graph] var dependencyList: List[DeliteOP] = Nil
 
   final def getDependencies : Seq[DeliteOP] = dependencyList
@@ -36,6 +37,7 @@ abstract class DeliteOP {
     dependencyList = dep :: (dependencyList filterNot { _ == old })
   }
 
+  //list of all outgoing graph edges for this op
   private[graph] var consumerList: List[DeliteOP] = Nil
 
   final def getConsumers : Seq[DeliteOP] = consumerList
@@ -48,7 +50,7 @@ abstract class DeliteOP {
     consumerList = c :: (consumerList filterNot { _ == old })
   }
 
-  //this is a subset of getDependencies and contains the inputs in the order required to call the task
+  //this is a subset of dependencies and contains the kernel inputs in the order required to call the task
   private[graph] var inputList: List[DeliteOP] = Nil
 
   final def getInputs : Seq[DeliteOP] = inputList
@@ -58,7 +60,17 @@ abstract class DeliteOP {
   }
 
   final def replaceInput(old: DeliteOP, input: DeliteOP) {
-    inputList = input :: (inputList filterNot { _ == old })
+    inputList = inputList.patch(inputList.indexOf(old), List(input), 1)
+    if (mutableInputList contains old) mutableInputList = input :: (mutableInputList filterNot { _ == old })
+  }
+
+  //this is a subset of inputs and contains only the inputs that the op can mutate
+  private[graph] var mutableInputList: List[DeliteOP] = Nil
+
+  final def getMutableInputs : Seq[DeliteOP] = mutableInputList
+
+  final def addMutableInput(input: DeliteOP) {
+    mutableInputList = input :: mutableInputList
   }
 
   def id: String
