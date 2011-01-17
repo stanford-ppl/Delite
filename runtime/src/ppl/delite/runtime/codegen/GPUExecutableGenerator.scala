@@ -369,6 +369,7 @@ object GPUExecutableGenerator {
         out.append(inData.funcReturn)
         out.append("(env,") //JNI environment pointer
         out.append(getSymCPU(in)) //jobject
+        out.append(',')
         out.append(getSymGPU(in)) //C++ object
         out.append(");\n")
       }
