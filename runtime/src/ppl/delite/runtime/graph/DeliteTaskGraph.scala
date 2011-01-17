@@ -152,6 +152,7 @@ object DeliteTaskGraph {
     }
 
     //add new op to graph list of ops
+    if (graph._ops.contains(id)) error("Op " + id + " is declared multiple times in DEG")
     graph._ops += id -> newop
 
     //process target metadata
@@ -184,7 +185,8 @@ object DeliteTaskGraph {
     var ifDeps: List[DeliteOP] = Nil
     for (depId <- depIds) ifDeps ::= getOp(graph._ops, depId)
     //list of all dependencies of the if block, minus any dependencies within the block
-    ifDeps = (ifDeps ++ thenOpsBegin.flatMap(_.getDependencies) ++ elseOpsBegin.flatMap(_.getDependencies)) filterNot { (thenOpsBegin ++ elseOpsBegin) contains }
+    val ignore = (thenOpsBegin ++ elseOpsBegin).filter(_.isInstanceOf[OP_Control]).map(o => o.asInstanceOf[OP_Control].predicate)
+    ifDeps = (ifDeps ++ thenOpsBegin.flatMap(_.getDependencies) ++ elseOpsBegin.flatMap(_.getDependencies)) filterNot { (thenOps ++ elseOps ++ ignore) contains }
 
     //beginning depends on all exterior dependencies
     for (dep <- ifDeps) {
@@ -276,7 +278,8 @@ object DeliteTaskGraph {
     var whileDeps: List[DeliteOP] = Nil
     for (depId <- depIds) whileDeps ::= getOp(graph._ops, depId)
     //list of all dependencies of the while block, minus any dependencies within the block
-    whileDeps = (whileDeps ++ bodyOpsBegin.flatMap(_.getDependencies)) filterNot { bodyOpsBegin contains }
+    val ignore = bodyOpsBegin.filter(_.isInstanceOf[OP_Control]).map(o => o.asInstanceOf[OP_Control].predicate)
+    whileDeps = (whileDeps ++ bodyOpsBegin.flatMap(_.getDependencies)) filterNot { (bodyOps ++ ignore) contains }
 
     //beginning depends on all exterior dependencies
     for (dep <- whileDeps) {
