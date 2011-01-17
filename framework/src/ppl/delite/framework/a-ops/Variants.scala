@@ -14,7 +14,11 @@ trait VariantsOpsExp extends EffectExp {
   trait Variant[T <: DeliteOp[_]]
 
   // this is unsatisfying
-  trait DeliteOpWhileLoopVariant extends Variant[DeliteOpWhileLoop] with WhileLoopLike
+  trait DeliteOpMapLikeWhileLoopVariant extends Variant[DeliteOpWhileLoop] with WhileLoopLike {
+    // TODO: somehow index is getting moved outside of the loop -- how/why?
+    val index = var_new(0)
+    val alloc: Exp[Any]
+  }
 }
 
 trait BaseGenVariantsOps extends GenericNestedCodegen {
@@ -22,7 +26,7 @@ trait BaseGenVariantsOps extends GenericNestedCodegen {
   import IR._
 
   override def syms(e: Any): List[Sym[Any]] = e match {
-    case w:DeliteOpWhileLoopVariant if (!shallow) => syms(w.cond) ::: syms(w.body) ::: super.syms(e)
+    //case w:DeliteOpMapLikeWhileLoopVariant if (!shallow) => syms(w.cond) ::: syms(w.body) ::: super.syms(e)
     case _ => super.syms(e)
   }
 }

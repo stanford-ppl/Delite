@@ -354,7 +354,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     // variant
     rhs match {
-      case vw:DeliteOpWhileLoopVariant => emitWhileLoopVariant(vw, sym, output, inputs, controlDeps, antiDeps)
+      case vw:DeliteOpMapLikeWhileLoopVariant => emitMapLikeWhileLoopVariant(vw, sym, output, inputs, controlDeps, antiDeps)
       case _ =>
     }
 
@@ -367,17 +367,24 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     prependInputs = Nil
   }
 
-  def emitWhileLoopVariant(vw: DeliteOpWhileLoopVariant, sym: Sym[_], output: Exp[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+  def emitMapLikeWhileLoopVariant(vw: DeliteOpMapLikeWhileLoopVariant, sym: Sym[_], output: Exp[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
     implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
+    val save = scope
     stream.print("\"ops\":[" )
+    emitBlock(vw.alloc)
+    // this is all quite unfortunate
+    scope = (emittedNodes flatMap { e => if (findDefinition(e).isDefined) List(findDefinition(e).get.asInstanceOf[TP[Any]]) else Nil }) ::: scope
+    // we should probably not be reifying during code-gen, but how else can we do this?
+    emitBlock(reifyEffects(vw.index))
     emitBlock(vw.cond)
     emittedNodeList += this.controlDeps
     emittedNodeList += emittedNodes
     emitBlock(vw.body)
     emittedNodeList += emittedNodes
     emitWhileLoop(sym, inputs, controlDeps, antiDeps)
+    scope = save
   }
 
   def emitOutput(x: Exp[_])(implicit stream: PrintWriter) = {
