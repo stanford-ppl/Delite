@@ -16,7 +16,7 @@ trait VariantsOpsExp extends EffectExp {
   // this is unsatisfying
   trait DeliteOpMapLikeWhileLoopVariant extends Variant[DeliteOpWhileLoop] with WhileLoopLike {
     // TODO: somehow index is getting moved outside of the loop -- how/why?
-    val index = var_new(0)
+    val index: Var[Int]
     val alloc: Exp[Any]
   }
 }

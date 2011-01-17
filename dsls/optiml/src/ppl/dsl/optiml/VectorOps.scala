@@ -508,7 +508,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorFlatMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], mV: Exp[A], map: Exp[Vector[B]])
     extends DeliteOpMapReduce[A,Vector[B],Vector] {
 
-    val alloc = reifyEffects(Vector[Vector[B]](in.length, in.isRow))
     val rV = (fresh[Vector[B]],fresh[Vector[B]])
     val reduce = reifyEffects(rV._1 ++ rV._2)
   }

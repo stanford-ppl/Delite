@@ -81,16 +81,21 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
     // DeliteOpWhileLoopVariant
     //var index = unit(0)
     //lazy val output = alloc
+    // TODO: we need a way to make variables and reify work together -- we lose access to the var once we reify it
+    // TODO: there should be a better way of doing this
+    //val i : Var[Int] = index match { case Def(Reify(x, effects)) => x.asInstanceOf[Var[Int]] }
     lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
     lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
     val vs = () => __newVar(unit(null).asInstanceOfL[A])
+    lazy val Vs = vs()
     // this does not get initialized properly in body -- perhaps a scala bug?
     //lazy val vs = __newVar(unit(null)).asInstanceOfL[A]
+    val index = __newVar(unit(0))
     lazy val cond = reifyEffects(index < in.size)
     lazy val body =
       reifyEffects {
         //vs = in(index)
-        val Vs = vs()
+        //val Vs = vs()
         Vs = in(index)
         // in the variant version, we need to actually emit the bound symbol as a kernel so it can be passed in as an input
         reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs)
@@ -143,7 +148,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
    * @param  rV      the bound symbol that the reducing function operates over
    * @param  reduce  the reduction function; reified version of ([Exp[R],Exp[R]) => Exp[R]. Must be associative.
    */
-  abstract class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] {//with DeliteOpWhileLoopVariant {
+  abstract class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] with DeliteOpMapLikeWhileLoopVariant {
     val in: Exp[C[A]]
     //val acc: Exp[R]
 
@@ -156,16 +161,37 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
     val rV: (Exp[R],Exp[R])
     val reduce: Exp[R]
 
-//    var index = unit(0)
-//    var acc = reifyEffects(map())
-//    lazy implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
-//    lazy implicit val mR = map.Type.asInstanceOf[Manifest[B]]
-//    lazy val cond = reifyEffects(index < in.size)
-//    lazy val body =
-//      reifyEffects {
-//        alloc(index) = func
-//        index += 1
-//      }
+    // DeliteOpWhileLoopVariant
+    lazy implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
+    lazy implicit val mR = map.Type.asInstanceOf[Manifest[R]]
+    val acc = () => __newVar(unit(null).asInstanceOfL[R])
+    lazy val Acc = {
+      //acc()
+      Vs = in(0)
+      val x = acc()
+      reifyEffects(reflectEffect(createDefinition(mV.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs))
+      x = map
+      x
+    }
+    lazy val alloc = reifyEffects(readVar(Acc))
+    val vs = () => __newVar(unit(null).asInstanceOfL[A])
+    lazy val Vs = vs()
+    lazy val cond = reifyEffects(index < in.size)
+    val index = __newVar(unit(1))
+    lazy val body =
+      reifyEffects {
+        Vs = in(index)
+        // in the variant version, we need to actually emit the bound symbol as a kernel so it can be passed in as an input
+        // map
+        //reflectEffect(createDefinition(mV.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs)
+        var x = map
+
+        // reduce
+        reflectEffect(createDefinition(rV._1.asInstanceOf[Sym[R]], ReadVar(Acc)).rhs)
+        reflectEffect(createDefinition(rV._2.asInstanceOf[Sym[R]], ReadVar(x)).rhs)
+        Acc = reduce
+        index += 1
+      }
   }
 
 
