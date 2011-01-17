@@ -80,7 +80,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       try{
         // DISCUSS: use a predicate insteaf of inheriting from DeliteOp?
         rhs match {
-          case op:DeliteFatOp => deliteKernel = true
+//          case op:DeliteFatOp => deliteKernel = true
+          case op:AbstractFatLoop => deliteKernel = true
           case ThinDef(op:DeliteOp[_]) => deliteKernel = true
           case _ => deliteKernel = false
         }
@@ -95,11 +96,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
         var hasOutputSlotTypes = false
         
         val resultType: String = (gen.toString, rhs) match {
-          case ("scala", op: FatLoop) =>
+          case ("scala", op: AbstractFatLoop) =>
             hasOutputSlotTypes = true
             "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
           case ("scala", ThinDef(z)) => z match {
-            case op: ThinLoop[_] => system.error("should not encounter thin loops here but only fat ones")
+            case op: AbstractLoop[_] => system.error("should not encounter thin loops here but only fat ones")
             case map: DeliteOpMap[_,_,_] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
             case zip: DeliteOpZipWith[_,_,_,_] => "generated.scala.DeliteOpZipWith[" + gen.remap(zip.v._1.Type) + "," + gen.remap(zip.v._2.Type) + "," + gen.remap(zip.func.Type) + "," + gen.remap(zip.alloc.Type) +"]"
             case red: DeliteOpReduce[_] => "generated.scala.DeliteOpReduce[" + gen.remap(red.func.Type) + "]"
@@ -192,11 +193,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     // emit task graph node
     rhs match { 
-      case op: FatLoop => 
+      case op: AbstractFatLoop => 
         emitMultiLoop(kernelName, outputs, inputs, inControlDeps, antiDeps, op.body.exists(_.isInstanceOf[DeliteReduceElem[_]]))
       case ThinDef(z) => z match {
         case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inControlDeps, antiDeps)
-        case op:ThinLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inControlDeps, antiDeps, op.body.isInstanceOf[DeliteReduceElem[_]])
+        case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inControlDeps, antiDeps, op.body.isInstanceOf[DeliteReduceElem[_]])
         case m:DeliteOpMap[_,_,_] => emitMap(kernelName, outputs, inputs, inControlDeps, antiDeps)
         case r:DeliteOpReduce[_] => emitReduce(kernelName, outputs, inputs, inControlDeps, antiDeps)
         case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(kernelName, outputs, inputs,inControlDeps, antiDeps)

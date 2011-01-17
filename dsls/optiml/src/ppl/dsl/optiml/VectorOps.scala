@@ -139,7 +139,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 */
 
   case class VectorTrans[A:Manifest](in: Exp[Vector[A]])
-    extends ThinLoop[Vector[A]] {
+    extends DeliteOpLoop[Vector[A]] {
 
     val size = in.length
     val v = fresh[Int]
@@ -150,7 +150,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   }
 
   case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]]) 
-    extends ThinLoop[Vector[A]] {
+    extends DeliteOpLoop[Vector[A]] {
 
     val size = inA.length
     val v = fresh[Int]
@@ -171,7 +171,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   }
 
   case class VectorMinus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends ThinLoop[Vector[A]] {
+    extends DeliteOpLoop[Vector[A]] {
 
     val size = inA.length
     val v = fresh[Int]
@@ -182,7 +182,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   }
 
   case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends ThinLoop[Vector[A]] {
+    extends DeliteOpLoop[Vector[A]] {
 
     val size = inA.length
     val v = fresh[Int]
@@ -193,7 +193,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   }
 
   case class VectorDivide[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends ThinLoop[Vector[A]] {
+    extends DeliteOpLoop[Vector[A]] {
 
     val size = inA.length
     val v = fresh[Int]
@@ -204,7 +204,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   }
 
   case class VectorDivideScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
-    extends ThinLoop[Vector[A]] {
+    extends DeliteOpLoop[Vector[A]] {
 
     val size = in.length
     val v = fresh[Int]
@@ -215,7 +215,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   }
 
   case class VectorSum[A:Manifest:Arith](in: Exp[Vector[A]])
-    extends ThinLoop[A] {
+    extends DeliteOpLoop[A] {
 
     val size = in.length
     val v = fresh[Int]

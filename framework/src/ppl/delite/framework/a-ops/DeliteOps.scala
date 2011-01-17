@@ -1,16 +1,17 @@
 package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
-import scala.virtualization.lms.common.{BaseFatExp, TupleOpsExp, VariablesExp, EffectExp, CudaGenEffect, ScalaGenEffect}
+import scala.virtualization.lms.common.{BaseFatExp, TupleOpsExp, VariablesExp, EffectExp, LoopsFatExp}
+import scala.virtualization.lms.common.{CudaGenEffect, ScalaGenEffect, BaseGenLoopsFat, ScalaGenLoopsFat, CudaGenLoopsFat}
 import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen}
 import ppl.delite.framework.DeliteCollection
 
-trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp {
+trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
   /**
    * The base type of the DeliteOp hierarchy.
    */
-  sealed abstract class DeliteOp[A] extends Def[A]
-  sealed abstract class DeliteFatOp extends FatDef
+  sealed trait DeliteOp[A] extends Def[A]
+  sealed trait DeliteFatOp extends FatDef
 
   /**
    * A sequential task - will execute block in a single thread and respect any free variable dependencies inside it.
@@ -19,20 +20,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp {
    */
   class DeliteOpSingleTask[A](val block: Exp[A]) extends DeliteOp[A]
 
-  abstract class ThinLoop[A] extends DeliteOp[A] { // as opposed to FatLoop ...TODO: make DeliteLoop extending ThinLoop
-    val size: Exp[Int]
-    val v: Sym[Int]
-    val body: Def[A]
-  }
+  abstract class DeliteOpLoop[A] extends AbstractLoop[A] with DeliteOp[A]
 
-  abstract class FatLoop extends DeliteFatOp {
-    val size: Exp[Int]
-    val v: Sym[Int]
-    val body: List[Def[Any]]
-  }
-
-  // useful to have a case class
-  case class DefaultFatLoop(val size: Exp[Int], val v: Sym[Int], val body: List[Def[Any]]) extends FatLoop
+//  case class DeliteOpFatLoop(val size: Exp[Int], val v: Sym[Int], val body: List[Def[Any]]) extends AbstractFatLoop with DeliteFatOp
+  
+  
+  // for use in loops:
 
   abstract class DeliteCollectElem[A, C[X] <: DeliteCollection[X]] extends Def[C[A]] {
     val func: Exp[A]
@@ -171,23 +164,22 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp {
   }
 }
 
-trait BaseGenDeliteOps extends GenericFatCodegen {
+trait BaseGenDeliteOps extends BaseGenLoopsFat {
   val IR: DeliteOpsExp
   import IR._
 
-  // TODO: move somewhere else? --> get rid of duplicate in DeliteGenTaskGraph
+/*
+  // overridden only to attach DeliteFatOp trait to result ...
   override def fatten(e: TP[_]): TTP = e.rhs match {
-    case op: ThinLoop[_] => 
-      TTP(List(e.sym), DefaultFatLoop(op.size, op.v, List(op.body)))
+    case op: DeliteOpLoop[_] => 
+      TTP(List(e.sym), DeliteFatLoop(op.size, op.v, List(op.body)))
     case _ => super.fatten(e)
   }
-
+*/
 
 
   override def syms(e: Any): List[Sym[Any]] = e match { //TR TODO: question -- is alloc a dependency (should be part of result) or a definition (should not)???
     case s: DeliteOpSingleTask[_] => syms(s.block)
-    case op: ThinLoop[_] => syms(op.size) ++ syms(op.body)
-    case op: FatLoop => syms(op.size) ++ syms(op.body)
     case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.alloc)
     case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.rFunc)
     case map: DeliteOpMap[_,_,_] => /*if (shallow) syms(map.in) else */ syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
@@ -200,8 +192,6 @@ trait BaseGenDeliteOps extends GenericFatCodegen {
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match { //TR TODO
     case s: DeliteOpSingleTask[_] => effectSyms(s.block)
-    case op: ThinLoop[_] => op.v::boundSyms(op.body)
-    case op: FatLoop => op.v::boundSyms(op.body)
     case op: DeliteCollectElem[_,_] => effectSyms(op.func) ++ effectSyms(op.alloc)
     case op: DeliteReduceElem[_] => effectSyms(op.func) ++ effectSyms(op.rFunc) ++ List(op.rV._1, op.rV._2)
     case zip: DeliteOpZipWith[_,_,_,_] => zip.v._1::zip.v._2::effectSyms(zip.alloc):::effectSyms(zip.func)
@@ -211,33 +201,17 @@ trait BaseGenDeliteOps extends GenericFatCodegen {
     case foreach: DeliteOpForeach[_,_] => foreach.v::foreach.i::effectSyms(foreach.func):::effectSyms(foreach.sync)
     case _ => super.boundSyms(e)
   }
-    
-    
-  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
-    case s: DeliteOpSingleTask[_] => getFreeVarBlock(s.block,Nil)
-    case map: DeliteOpMap[_,_,_] => getFreeVarBlock(List(map.func,map.alloc),List(map.v.asInstanceOf[Sym[_]]))
-    case zip: DeliteOpZipWith[_,_,_,_] => 
-      println("FREEVAR "+zip + "/" + List(zip.func,zip.alloc))
-      val z1 = getFreeVarBlock(zip.func, List(zip.v._1.asInstanceOf[Sym[_]], zip.v._2.asInstanceOf[Sym[_]]))
-      val z2 = getFreeVarBlock(zip.alloc, Nil)
-      println(z1 + "/" + z2)
-      z1:::z2
-    case red: DeliteOpReduce[_] => getFreeVarBlock(red.func,List(red.v._1.asInstanceOf[Sym[_]], red.v._2.asInstanceOf[Sym[_]]))
-    case mapR: DeliteOpMapReduce[_,_,_] => getFreeVarBlock(mapR.map, List(mapR.mV.asInstanceOf[Sym[_]])) ++ getFreeVarBlock(mapR.reduce, List(mapR.rV._1.asInstanceOf[Sym[_]], mapR.rV._2.asInstanceOf[Sym[_]]))
-    case foreach: DeliteOpForeach[_,_] => getFreeVarBlock(foreach.func,List(foreach.v.asInstanceOf[Sym[_]]))
-    case _ => super.getFreeVarNode(rhs)
-  }
 
 }
 
-trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
+trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
   import IR._
 
   def quotearg(x: Sym[Any]) = quote(x) + ": " + quotetp(x)
   def quotetp(x: Sym[Any]) = remap(x.Type)
 
   override def emitFatNode(symList: List[Sym[_]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
-    case op: FatLoop =>
+    case op: AbstractFatLoop =>
         if (!deliteKernel) {
           (symList zip op.body) foreach {
             case (sym, elem: DeliteCollectElem[_,_]) =>
@@ -516,7 +490,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
   }
 }
 
-trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
+trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
   import IR._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
