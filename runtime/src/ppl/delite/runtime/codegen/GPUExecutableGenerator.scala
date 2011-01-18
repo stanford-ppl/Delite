@@ -58,6 +58,7 @@ object GPUExecutableGenerator {
 
     //the event function
     writeEventFunction(out)
+    writeHostEventFunction(out)
 
     //the JNI method
     writeFunctionHeader(location, out)
@@ -78,6 +79,7 @@ object GPUExecutableGenerator {
     out.append("#include <jni.h>\n") //jni
     out.append("#include <cuda_runtime.h>\n") //Cuda runtime api
     out.append("#include \"DeliteCuda.cu\"\n") //Delite-Cuda interface for DSL
+    out.append("#include \"FreeItem.h\"\n") //memory manager
     out.append("#include \"dsl.h\"\n") //imports all dsl kernels and helper functions
   }
 
@@ -125,6 +127,8 @@ object GPUExecutableGenerator {
       //add to available & awaited lists
       available.add(op)
       awaited.add(op)
+      //register op with memory manager
+      out.append("currentKey")
       //get all dependencies
       for (dep <- op.getDependencies) { //foreach dependency
         if(!awaited.contains(dep)) { //this dependency does not yet exist for this resource
@@ -182,7 +186,7 @@ object GPUExecutableGenerator {
         //write a setter
         writeSetter(op, location, out)
       }
-      //TODO: should free device memory when possible
+      writeDataFrees(op, out, available)
     }
   }
 
@@ -196,6 +200,7 @@ object GPUExecutableGenerator {
       out.append('(')
       writeInputList(op, "output", out)
       out.append(");\n")
+      writeMemoryAdd(op, out)
     }
   }
 
@@ -216,7 +221,14 @@ object GPUExecutableGenerator {
         out.append(getSymGPU(in))
       }
       out.append(");\n")
+      writeMemoryAdd(tempOp, out)
     }
+  }
+
+  private def writeMemoryAdd(op: DeliteOP, out: StringBuilder) {
+    out.append("cudaMemoryMap->insert(new pair<void*,void*>(&")
+    out.append(getSymGPU(op))
+    out.append(",lastValue));\n")
   }
 
   private def writeInputList(op: DeliteOP, field: String, out: StringBuilder) {
@@ -329,6 +341,7 @@ object GPUExecutableGenerator {
     out.append("env,") //JNI environment pointer
     out.append(getSymCPU(op)) //jobject
     out.append(");\n")
+    writeMemoryAdd(op, out)
   }
 
   private def writeInputCast(op: DeliteOP, out: StringBuilder) {
@@ -369,6 +382,7 @@ object GPUExecutableGenerator {
         out.append(inData.funcReturn)
         out.append("(env,") //JNI environment pointer
         out.append(getSymCPU(in)) //jobject
+        out.append(',')
         out.append(getSymGPU(in)) //C++ object
         out.append(");\n")
       }
@@ -399,6 +413,63 @@ object GPUExecutableGenerator {
     out.append(")V\"),")
     if (op.outputType == "Unit") out.append("boxedUnit") else out.append(getSymCPU(op))
     out.append(");\n")
+  }
+
+  private def writeDataFrees(op: DeliteOP, out: StringBuilder, available: ArrayList[DeliteOP]) {
+    var count = 0
+    val freeItem = "freeItem_"+getSymGPU(op)
+
+    def writeFreeInit() {
+      out.append("FreeItem* ")
+      out.append(freeItem)
+      out.append(" = new FreeItem();\n")
+      out.append(freeItem)
+      out.append("->list = new list<void*>();\n")
+    }
+
+    def writeFree(op: DeliteOP) {
+      if (count == 0) writeFreeInit()
+      out.append(freeItem)
+      out.append(".list->push_back(&")
+      out.append(getSymGPU(op))
+      out.append(");\n")
+    }
+
+    //free temps
+    for (temp <- op.cudaMetadata.tempOps) {
+      writeFree(temp)
+      count += 1
+    }
+
+    //free output (?)
+    if (op.getConsumers.map(_.scheduledResource).filter(_ == op.scheduledResource).size == 0) { //no future consumers on gpu
+      //free output
+      writeFree(op)
+      count += 1
+    }
+
+    //free inputs (?)
+    for (in <- op.getInputs) {
+      val possible = in.getConsumers.filter(_.getInputs.contains(in)).map(_.scheduledResource).filter(_ == op.scheduledResource)
+      var free = true
+      for (p <- possible) {
+        if (!available.contains(p)) free = false
+      }
+      if (free) {
+        writeFree(in)
+        count += 1
+      }
+    }
+
+    if (count > 0) {
+      //sync on kernel stream (if copied back guaranteed to have completed, so don't need sync on d2h stream)
+      out.append("cudaEvent_t event = addHostEvent(kernelStream);\n")
+      out.append(freeItem)
+      out.append(".event = event")
+      out.append("freeList->push(")
+      out.append(freeItem)
+      out.append(");\n")
+    }
   }
 
   private def writeControl(op: DeliteOP, out: StringBuilder) {
@@ -445,6 +516,16 @@ object GPUExecutableGenerator {
     out.append("cudaStreamWaitEvent(toStream, event, 0);\n")
 
     out.append("cudaEventDestroy(event);\n")
+    out.append('}')
+    out.append('\n')
+  }
+
+  private def writeHostEventFunction(out: StringBuilder) {
+    out.append("cudaEvent_t addHostEvent(cudaStream_t stream) {\n")
+    out.append("cudaEvent_t event;\n")
+    out.append("cudaEventCreateWithFlags(&event, cudaEventDisableTiming | cudaEventBlockingSync);\n")
+    out.append("cudaEventRecord(event, stream);\n");
+    out.append("return event;\n")
     out.append('}')
     out.append('\n')
   }
