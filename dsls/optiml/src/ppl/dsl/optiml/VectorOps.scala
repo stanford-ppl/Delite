@@ -742,6 +742,15 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
 	  }
 
         /* Specialized CUDA code generations */
+    case VectorTrans(x) =>
+      gpuBlockSizeX = "%s.length".format(quote(x))
+      stream.println(addTab()+"if( idxX < %s.length ) {".format(quote(x)))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(idxX,%s.apply(idxX));".format(quote(sym),quote(x)))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitVectorAlloc(sym,"%s.length".format(quote(x)),"!%s.isRow".format(quote(x)))
+
     case VectorRepmat(x,i,j) =>
       gpuBlockSizeX = "%s.length * %s".format(quote(x),quote(i))
       stream.println(addTab()+"if( idxX < %s.length*%s ) {".format(quote(x),quote(j)))

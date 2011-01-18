@@ -60,8 +60,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"length\",\"()I\");\n")
     out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"isRow\",\"()Z\");\n")
 
-	  //out.append("\tjclass rangeCls = env->FindClass(\"generated/scala/RangeVectorImpl\");\n");
-	  //out.append("\tjboolean isRangeCls = env->IsInstanceOf(obj,rangeCls);\n");
+	out.append("\tjclass viewCls = env->FindClass(\"generated/scala/%sVectorViewImpl\");\n".format(typeArg.toString));
+	out.append("\tjboolean isViewCls = env->IsInstanceOf(obj,viewCls);\n");
 
 	  // If this is not RangeVector
     out.append("\t\t%s %s;\n".format(remap(sym.Type),quote(sym)))
@@ -70,6 +70,15 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
     out.append("\t\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\t\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
+	
+	// Check if vector view
+	out.append("\tif(isViewCls) {\n")
+	out.append("\t\tint start = 0;\n")
+	out.append("\t\tjmethodID mid_start = env->GetMethodID(cls,\"start\",\"()I\");\n")
+	out.append("\t\tstart = env->CallIntMethod(obj,mid_start);\n")
+	out.append("\t\tdataPtr += start;\n")
+	out.append("\t}")
+
     // Allocate pinned-memory and device memory
     out.append("\t\t%s *hostPtr;\n".format(typeStr))
     out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
