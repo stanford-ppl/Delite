@@ -97,9 +97,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   case class VectorIsRow[A:Manifest](x: Exp[Vector[A]]) extends Def[Boolean]
   case class VectorNil[A](implicit mA: Manifest[A]) extends Def[Vector[A]]
   case class VectorIsInstanceOf[A,B](x: Exp[Vector[A]], mA: Manifest[A], mB: Manifest[B]) extends Def[Boolean]
-  case class VectorNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) extends Def[Vector[A]] {
-    val mV = manifest[VectorImpl[A]]
-  }
+  case class VectorNew[A](len: Exp[Int], isRow: Exp[Boolean])(val mV: Manifest[VectorImpl[A]]) extends Def[Vector[A]]
 
   case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean])
     extends Def[Vector[Int]]
@@ -116,8 +114,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   case class VectorOuter[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffects(vector_outer_impl[A](x,y)))
 
-  case class VectorPPrint[A:Manifest](x: Exp[Vector[A]])
-    extends DeliteOpSingleTask(reifyEffects(vector_pprint_impl[A](x)))
+  case class VectorPPrint[A](x: Exp[Vector[A]])(block: Exp[Unit]) // stupid limitation...
+    extends DeliteOpSingleTask(block)
+
+// reifyEffects(vector_pprint_impl[A](x))
 
 /*
   case class VectorTrans[A:Manifest](x: Exp[Vector[A]])
@@ -142,10 +142,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
     val size = in.length
     val v = fresh[Int]
-    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
-      val alloc = reifyEffects(Vector[A](in.length, !in.isRow))
-      val func = in(v)
-    }
+    val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
+      alloc = reifyEffects(Vector[A](in.length, !in.isRow)),
+      func = in(v)
+    )
   }
 
   case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]]) 
@@ -153,10 +153,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
     val size = inA.length
     val v = fresh[Int]
-    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
-      val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
-      val func = inA(v) + inB(v)
-    }
+    val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
+      alloc = reifyEffects(Vector[A](inA.length, inA.isRow)),
+      func = inA(v) + inB(v)
+    )
   }
 
 
@@ -174,10 +174,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
     val size = inA.length
     val v = fresh[Int]
-    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
-      val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
-      val func = inA(v) - inB(v)
-    }
+    val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
+      alloc = reifyEffects(Vector[A](inA.length, inA.isRow)),
+      func = inA(v) - inB(v)
+    )
   }
 
   case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
@@ -185,10 +185,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
     val size = inA.length
     val v = fresh[Int]
-    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
-      val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
-      val func = inA(v) * inB(v)
-    }
+    val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
+      alloc = reifyEffects(Vector[A](inA.length, inA.isRow)),
+      func = inA(v) * inB(v)
+    )
   }
 
   case class VectorDivide[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
@@ -196,10 +196,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
     val size = inA.length
     val v = fresh[Int]
-    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
-      val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
-      val func = inA(v) / inB(v)
-    }
+    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector](
+      alloc = reifyEffects(Vector[A](inA.length, inA.isRow)),
+      func = inA(v) / inB(v)
+    )
   }
 
   case class VectorDivideScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
@@ -207,10 +207,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
     val size = in.length
     val v = fresh[Int]
-    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector] {
-      val alloc = reifyEffects(Vector[A](in.length, in.isRow))
-      val func = in(v) / y
-    }
+    val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector](
+      alloc = reifyEffects(Vector[A](in.length, in.isRow)),
+      func = in(v) / y
+    )
   }
 
   case class VectorSum[A:Manifest:Arith](in: Exp[Vector[A]])
@@ -218,11 +218,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
     val size = in.length
     val v = fresh[Int]
-    val body: Def[A] = new DeliteReduceElem[A] { //TODO might need explicit zero?
-      val func = in(v)
-      val rV = (fresh[A],fresh[A])
-      val rFunc = rV._1 + rV._2
-    }
+    private[this] val rV = (fresh[A],fresh[A])
+    val body: Def[A] = DeliteReduceElem[A]( //TODO might need explicit zero?
+      func = in(v),
+      rV = rV,
+      rFunc = rV._1 + rV._2
+    )
   }
 
   case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], v: Sym[A], func: Exp[B])
@@ -245,10 +246,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     case VectorApply(x, n) => vector_apply(f(x), f(n))
     case VectorLength(x) => vector_length(f(x))
     case VectorIsRow(x) => vector_isRow(f(x))
-    case Reflect(VectorPPrint(x), es) => toAtom(Reflect(VectorPPrint(f(x)), es map (e => f(e))))
+    case Reflect(e@VectorPPrint(x), es) => toAtom(Reflect(VectorPPrint(f(x))(f(e.block)), es map (e => f(e))))
     case Reflect(VectorObjectZeros(x), es) => toAtom(Reflect(VectorObjectZeros(f(x)), es map (e => f(e))))
     case Reflect(VectorObjectRange(s,e,d,r), es) => toAtom(Reflect(VectorObjectRange(f(s),f(e),f(d),f(r)), es map (e => f(e))))
-    case Reflect(VectorNew(l,r), es) => toAtom(Reflect(VectorNew[A](f(l),f(r)), es map (e => f(e))))
+    case Reflect(e@VectorNew(l,r), es) => toAtom(Reflect(VectorNew(f(l),f(r))(e.mV), es map (e => f(e))))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
@@ -272,11 +273,11 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   def vector_divide_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorDivideScalar(x, y)
   def vector_trans[A:Manifest](x: Exp[Vector[A]]) = VectorTrans(x)
   def vector_outer[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorOuter(x, y)
-  def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
+  def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x)(reifyEffects(vector_pprint_impl[A](x))))
 
   def vector_nil[A:Manifest] = VectorNil[A]()
 
-  def vector_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorNew[A](len, isRow))
+  def vector_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorNew[A](len, isRow)(manifest[VectorImpl[A]]))
 
   def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorObjectRange(start, end, stride, isRow))
   def vector_map[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[B]) = {

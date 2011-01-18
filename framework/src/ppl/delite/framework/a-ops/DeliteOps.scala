@@ -28,18 +28,18 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   
   // for use in loops:
 
-  abstract class DeliteCollectElem[A, C[X] <: DeliteCollection[X]] extends Def[C[A]] {
-    val func: Exp[A]
-    val alloc: Exp[C[A]] 
+  case class DeliteCollectElem[A, C[X] <: DeliteCollection[X]](
+    alloc: Exp[C[A]],
+    func: Exp[A]
     // TODO: note that the alloc block right now directly references the size
     // which is not part of DeliteCollectElem instance. we might want to fix that 
-  }
+  ) extends Def[C[A]]
   
-  abstract class DeliteReduceElem[A] extends Def[A] {
-    val func: Exp[A]
-    val rV: (Sym[A], Sym[A])
-    val rFunc: Exp[A]
-  }
+  case class DeliteReduceElem[A](
+    func: Exp[A],
+    rV: (Sym[A], Sym[A]),
+    rFunc: Exp[A]
+  ) extends Def[A]
   
   
   
@@ -168,15 +168,16 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   // heavy type casting ahead!
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
-    case e: DeliteCollectElem[a,b] => toAtom((new DeliteCollectElem[a,DeliteCollection] {
-      val func = f(e.func)
-      val alloc = f(e.alloc).asInstanceOf[Exp[DeliteCollection[a]]]
-    }).asInstanceOf[Def[A]])
-    case e: DeliteReduceElem[a] => toAtom((new DeliteReduceElem[a] {
-      val func = f(e.func)
-      val rV = (e.rV._1, e.rV._2) // should transform bound vars as well ??
-      val rFunc = f(e.rFunc)
-    }).asInstanceOf[Def[A]])
+    case e: DeliteCollectElem[a,b] => 
+    toAtom(DeliteCollectElem[a,DeliteCollection]( // need to be a case class for equality!
+      alloc = f(e.alloc).asInstanceOf[Exp[DeliteCollection[a]]],
+      func = f(e.func)
+    ).asInstanceOf[Def[A]])
+    case e: DeliteReduceElem[a] => toAtom(DeliteReduceElem[a](
+      func = f(e.func),
+      rV = (f(e.rV._1).asInstanceOf[Sym[a]], f(e.rV._2).asInstanceOf[Sym[a]]), // should transform bound vars as well ??
+      rFunc = f(e.rFunc)
+    ).asInstanceOf[Def[A]])
     case _ => super.mirror(e, f)
   }
 
@@ -248,12 +249,17 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
           }
           stream.println("var " + quote(op.v) + " = 0")
           stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {")
+          val elemFuncs = op.body map { // don't emit dependencies twice!
+            case elem: DeliteCollectElem[_,_] => elem.func
+            case elem: DeliteReduceElem[_] => elem.func
+          }
+          emitFatBlock(elemFuncs)
           (symList zip op.body) foreach {
             case (sym, elem: DeliteCollectElem[_,_]) =>
-              emitBlock(elem.func)
+              //emitBlock(elem.func)
               stream.println(quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
             case (sym, elem: DeliteReduceElem[_]) =>
-              emitBlock(elem.func)
+              //emitBlock(elem.func)
               stream.println("val " + quote(elem.rV._1) + " = " + quote(sym))
               stream.println("val " + quote(elem.rV._2) + " = " + quote(getBlockResult(elem.func)))
               emitBlock(elem.rFunc)
@@ -310,12 +316,17 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
           }
           stream.println("}")
           stream.println("def process(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {")
+          val elemFuncs = op.body map { // don't emit dependencies twice!
+            case elem: DeliteCollectElem[_,_] => elem.func
+            case elem: DeliteReduceElem[_] => elem.func
+          }
+          emitFatBlock(elemFuncs)
           (symList zip op.body) foreach {
             case (sym, elem: DeliteCollectElem[_,_]) =>
-              emitBlock(elem.func)
+              //emitBlock(elem.func)
               stream.println("__act." + quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
             case (sym, elem: DeliteReduceElem[_]) =>
-              emitBlock(elem.func)
+              //emitBlock(elem.func)
               stream.println("val " + quote(elem.rV._1) + " = " + "__act." + quote(sym))
               stream.println("val " + quote(elem.rV._2) + " = " + quote(getBlockResult(elem.func)))
               emitBlock(elem.rFunc)
