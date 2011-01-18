@@ -29,6 +29,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       case _ => Nil: List[Sym[_]]
     }
 
+  // this is all quite unfortunate
+  private def appendScope() = {
+    (emittedNodes flatMap { e => if (findDefinition(e).isDefined) List(findDefinition(e).get.asInstanceOf[TP[Any]]) else Nil }) ::: scope
+  }
+
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) : Unit = {
     assert(generators.length >= 1)
 
@@ -45,28 +50,38 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       case Reflect(s, effects) => super.emitNode(sym, rhs); return
       case Reify(s, effects) => super.emitNode(sym, rhs); return
       case c:DeliteOpCondition[_] => {
+        val save = scope
         emitBlock(c.cond)
+        scope = appendScope()
         emittedNodeList += controlDeps
         emitBlock(c.thenp)
+        scope = appendScope()
         emittedNodeList += emittedNodes
         emitBlock(c.elsep)
         emittedNodeList += emittedNodes
         skipEmission = true
+        scope = save
       }
       case l:DeliteOpIndexedLoop => {
+        val save = scope
         val saveMutatingDeps = kernelMutatingDeps
         val saveInputDeps = kernelInputDeps
         emitBlock(l.body)
+        scope = appendScope()
         emittedNodeList += emittedNodes
         skipEmission = true
+        scope = save
       }
       case w:DeliteOpWhileLoop => {
+        val save = scope
         emitBlock(w.cond)
+        scope = appendScope()
         emittedNodeList += controlDeps
         emittedNodeList += emittedNodes
         emitBlock(w.body)
         emittedNodeList += emittedNodes
         skipEmission = true
+        scope = save
       }
       case NewVar(x) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
       case _ => // continue and attempt to generate kernel
@@ -195,13 +210,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     // emit task graph node
     rhs match {
-      case c:DeliteOpCondition[_] => emitIfThenElse(c.cond,sym, inputs, inControlDeps, antiDeps)
-      case l:DeliteOpIndexedLoop => emitIndexedLoop(l.start,l.end,l.index, sym, inputs, inControlDeps, antiDeps)
+      case c:DeliteOpCondition[_] => emitIfThenElse(c.cond, c.thenp, c.elsep, sym, inputs, inControlDeps, antiDeps)
+      case l:DeliteOpIndexedLoop => emitIndexedLoop(l.start, l.end, l.index, sym, inputs, inControlDeps, antiDeps)
       case w:DeliteOpWhileLoop => emitWhileLoop(sym, inputs, inControlDeps, antiDeps)
       case s:DeliteOpSingleTask[_] => emitSingleTask(sym, inputs, inControlDeps, antiDeps)
       case m:DeliteOpMap[_,_,_] => emitMap(sym, rhs, inputs, inControlDeps, antiDeps)
       case r:DeliteOpReduce[_] => emitReduce(sym, inputs, inControlDeps, antiDeps)
-      case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(sym, inputs,inControlDeps, antiDeps)
+      case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(sym, rhs, inputs,inControlDeps, antiDeps)
       case z:DeliteOpZipWith[_,_,_,_] => emitZipWith(sym, inputs, inControlDeps, antiDeps)
       case f:DeliteOpForeach[_,_] => emitForeach(sym, inputs, inControlDeps, antiDeps)
       case _ => emitSingleTask(sym, inputs, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
@@ -245,10 +260,17 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.println("},")
   }
 
-  def emitMapReduce(sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+  def emitMapReduce(sym: Sym[_], rhs: Def[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"MapReduce\"")
     emitExecutionOpCommon(sym, inputs, controlDeps, antiDeps)
+
+    //// constructing from variant encoded in the IR
+    val output = rhs match {
+      case mapR:DeliteOpMapReduce[_,_,_] => mapR.alloc
+    }
+    emitVariant(sym, rhs, output, inputs, controlDeps, antiDeps)
+
     stream.println("},")
   }
 
@@ -266,19 +288,23 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.println("},")
   }
 
-  def emitIfThenElse(cond: Exp[Boolean], sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+  def emitIfThenElse(cond: Exp[Boolean], thenp: Exp[_], elsep: Exp[_], sym: Sym[_], inputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
     stream.print("{\"type\":\"Conditional\",")
     stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
     val bodyIds = emittedNodesList(1) ++ emittedNodesList(2)
     val controlDepsStr = makeString(controlDeps filterNot { bodyIds contains })
     val antiDepsStr = makeString(antiDeps filterNot { bodyIds contains })
-    val thenS = makeString(emittedNodesList(1))
-    val elseS = makeString(emittedNodesList(2))
+
     stream.println("  \"conditionKernelId\" : \"" + quote(cond) + "\", ")
-    stream.println("  \"thenKernelIds\" : [" + thenS + "],")
-    stream.println("  \"elseKernelIds\" : [" + elseS + "],")
-    stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
+    emitExp("then", thenp, emittedNodesList(1))
+    emitExp("else", elsep, emittedNodesList(2))
+    stream.println("  \"thenOutput\": \"" + quote(getBlockResult(thenp)) + "\"")
+    stream.println("  \"elseOutput\": \"" + quote(getBlockResult(elsep)) + "\"")
+    if (remap(thenp.Type) != remap(elsep.Type))
+      throw new RuntimeException("Delite conditional with different then and else return types")
+    stream.println("  \"outputType\": \"" + remap(thenp.Type) + "\"")
+    stream.println("  \"controlDeps\":[" + controlDepsStr + "],")
     stream.println("  \"antiDeps\":[" + antiDepsStr + "]")
     stream.println("},")
   }
@@ -289,14 +315,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
     val controlDepsStr = makeString(controlDeps filterNot { emittedNodesList(0) contains })
     val antiDepsStr = makeString(antiDeps filterNot { emittedNodesList(0) contains })
-    def getType(e: Exp[Int]) = e match {
-      case c:Const[Int] => "const"
-      case s:Sym[Int]   => "symbol"
-    }
-    stream.print("  \"startType\" : \"" + getType(start) + "\",")
-    stream.println(" \"startValue\" : \"" + quote(start) + "\",")
-    stream.print("  \"endType\" : \"" + getType(end) + "\",")
-    stream.println(" \"endValue\" : \"" + quote(end) + "\",")
+    emitExp("start", start, List(start))
+    emitExp("end", end, List(end))
     stream.println("  \"indexId\" : \"" + quote(i) + "\",")
     val bodyS = makeString(emittedNodesList(0))
     stream.println("  \"bodyIds\" : [" + bodyS + "],")
@@ -374,11 +394,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     val save = scope
     stream.print("\"ops\":[" )
     emitBlock(vw.alloc)
-    // this is all quite unfortunate
-    scope = (emittedNodes flatMap { e => if (findDefinition(e).isDefined) List(findDefinition(e).get.asInstanceOf[TP[Any]]) else Nil }) ::: scope
-    // we should probably not be reifying during code-gen, but how else can we do this?
+    scope = appendScope()
+    // we should not be reifying during code-gen, see todo in DeliteOps.scala
     emitBlock(reifyEffects(vw.index))
+    //emitBlock(vw.index)
     emitBlock(vw.cond)
+    scope = appendScope()
     emittedNodeList += this.controlDeps
     emittedNodeList += emittedNodes
     emitBlock(vw.body)
@@ -393,6 +414,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
   def emitEOV()(implicit stream: PrintWriter) = {
     stream.print("{\"type\":\"EOV\"}\n],\n")
+  }
+
+  def emitExp(prefix: String, e: Exp[Any], syms: List[Exp[_]])(implicit stream: PrintWriter) = e match {
+    case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
+                         stream.println("  \"" + prefix + "Value\": \"" + quote(e) + "\",")
+    case s:Sym[Any] =>  stream.println("  \"" + prefix + "Type\": \"symbol\",")
+                        stream.println("  \"" + prefix + "Value\": [" + makeString(syms) + "],")
   }
 
   private def makeString(list: List[Exp[_]]) = {
