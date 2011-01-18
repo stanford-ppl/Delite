@@ -3,11 +3,12 @@ package ppl.delite.framework.codegen.delite.generators
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 import ppl.delite.framework.ops.{DeliteOpsExp}
 import scala.virtualization.lms.internal.GenericCodegen
+import scala.virtualization.lms.common.LoopFusionOpt
 import ppl.delite.framework.{Util, Config}
 import collection.mutable.{ArrayBuffer, ListBuffer, HashMap}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
 
-trait DeliteGenTaskGraph extends DeliteCodegen {
+trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   val IR: DeliteOpsExp
   import IR._
 
@@ -154,7 +155,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       }
       catch {
         case e: Exception => // no generator found
-          //e.printStackTrace
+          if (gen.toString == "scala") e.printStackTrace
           gen.exceptionHandler(outFile, kstream)
       }
     }

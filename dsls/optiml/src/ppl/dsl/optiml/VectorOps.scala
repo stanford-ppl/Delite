@@ -6,7 +6,7 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
-import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.common.{CudaGenFat, ScalaGenFat}
 import scala.virtualization.lms.common._
 
 trait VectorOps extends DSLType with Variables {
@@ -81,7 +81,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) : Rep[Vector[A]]
 }
 
-trait VectorOpsExp extends VectorOps with VariablesExp {
+trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
   this: VectorImplOps with OptiMLExp =>
 
@@ -97,8 +97,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorIsRow[A:Manifest](x: Exp[Vector[A]]) extends Def[Boolean]
   case class VectorNil[A](implicit mA: Manifest[A]) extends Def[Vector[A]]
   case class VectorIsInstanceOf[A,B](x: Exp[Vector[A]], mA: Manifest[A], mB: Manifest[B]) extends Def[Boolean]
-  case class VectorNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean])
-    extends Def[Vector[A]] {
+  case class VectorNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) extends Def[Vector[A]] {
     val mV = manifest[VectorImpl[A]]
   }
 
@@ -240,6 +239,20 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   }
 
   //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case VectorApply(x, n) => vector_apply(f(x), f(n))
+    case VectorLength(x) => vector_length(f(x))
+    case VectorIsRow(x) => vector_isRow(f(x))
+    case Reflect(VectorPPrint(x), es) => toAtom(Reflect(VectorPPrint(f(x)), es map (e => f(e))))
+    case Reflect(VectorObjectZeros(x), es) => toAtom(Reflect(VectorObjectZeros(f(x)), es map (e => f(e))))
+    case Reflect(VectorObjectRange(s,e,d,r), es) => toAtom(Reflect(VectorObjectRange(f(s),f(e),f(d),f(r)), es map (e => f(e))))
+    case Reflect(VectorNew(l,r), es) => toAtom(Reflect(VectorNew[A](f(l),f(r)), es map (e => f(e))))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
+
+  //////////////
   // interface
 
   def vector_isinstanceof[A,B](x: Exp[Vector[A]], mA: Manifest[A], mB: Manifest[B]) = VectorIsInstanceOf(x,mA,mB)
@@ -306,9 +319,14 @@ trait VectorOpsExpOpt extends VectorOpsExp {
   }
 }
 
-trait ScalaGenVectorOps extends ScalaGenBase {
+trait ScalaGenVectorOps extends ScalaGenFat {
   val IR: VectorOpsExp
   import IR._
+
+  override def unapplySimpleIndex(e: Def[Any]) = e match { // TODO: move elsewhere
+    case VectorApply(a, i) => Some((a,i))
+    case _ => super.unapplySimpleIndex(e)
+  }
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
     rhs match {
@@ -334,9 +352,14 @@ trait ScalaGenVectorOps extends ScalaGenBase {
 }
 
 
-trait CudaGenVectorOps extends CudaGenBase {
+trait CudaGenVectorOps extends CudaGenFat {
   val IR: VectorOpsExp
   import IR._
+
+  override def unapplySimpleIndex(e: Def[Any]) = e match { // TODO: move elsewhere
+    case VectorApply(a, i) => Some((a,i))
+    case _ => super.unapplySimpleIndex(e)
+  }
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure

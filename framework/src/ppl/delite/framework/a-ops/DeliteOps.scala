@@ -3,6 +3,7 @@ package ppl.delite.framework.ops
 import java.io.{FileWriter, File, PrintWriter}
 import scala.virtualization.lms.common.{BaseFatExp, TupleOpsExp, VariablesExp, EffectExp, LoopsFatExp}
 import scala.virtualization.lms.common.{CudaGenEffect, ScalaGenEffect, BaseGenLoopsFat, ScalaGenLoopsFat, CudaGenLoopsFat}
+import scala.virtualization.lms.common.{LoopFusionOpt}
 import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen}
 import ppl.delite.framework.DeliteCollection
 
@@ -11,7 +12,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * The base type of the DeliteOp hierarchy.
    */
   sealed trait DeliteOp[A] extends Def[A]
-  sealed trait DeliteFatOp extends FatDef
+//  sealed trait DeliteFatOp extends FatDef
 
   /**
    * A sequential task - will execute block in a single thread and respect any free variable dependencies inside it.
@@ -162,9 +163,26 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case Def(Reify(x, effects)) => x
     case x => x
   }
+
+
+
+  // heavy type casting ahead!
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+    case e: DeliteCollectElem[a,b] => toAtom((new DeliteCollectElem[a,DeliteCollection] {
+      val func = f(e.func)
+      val alloc = f(e.alloc).asInstanceOf[Exp[DeliteCollection[a]]]
+    }).asInstanceOf[Def[A]])
+    case e: DeliteReduceElem[a] => toAtom((new DeliteReduceElem[a] {
+      val func = f(e.func)
+      val rV = (e.rV._1, e.rV._2) // should transform bound vars as well ??
+      val rFunc = f(e.rFunc)
+    }).asInstanceOf[Def[A]])
+    case _ => super.mirror(e, f)
+  }
+
 }
 
-trait BaseGenDeliteOps extends BaseGenLoopsFat {
+trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
   val IR: DeliteOpsExp
   import IR._
 
@@ -176,6 +194,12 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat {
     case _ => super.fatten(e)
   }
 */
+
+  override def unapplySimpleCollect(e: Def[Any]) = e match {
+    case e: DeliteCollectElem[_,_] => Some(e.func)
+    case _ => super.unapplySimpleCollect(e)
+  }
+
 
 
   override def syms(e: Any): List[Sym[Any]] = e match { //TR TODO: question -- is alloc a dependency (should be part of result) or a definition (should not)???

@@ -169,6 +169,17 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithMinus(lhs, rhs)
   def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithTimes(lhs, rhs)
   def arith_fractional_divide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithFractionalDivide(lhs, rhs)
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
+    implicit var a: Fractional[A] = null // hack!! need to store it in Def instances??
+    e match {
+      case ArithPlus(lhs,rhs) => arith_plus(f(lhs), f(rhs))
+      case ArithMinus(lhs,rhs) => arith_minus(f(lhs), f(rhs))
+      case ArithTimes(lhs,rhs) => arith_times(f(lhs), f(rhs))
+      case ArithFractionalDivide(lhs,rhs) => arith_fractional_divide(f(lhs), f(rhs))
+      case _ => super.mirror(e,f)
+    }
+  }
 }
 
 trait ScalaGenArithOps extends ScalaGenBase {

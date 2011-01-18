@@ -54,6 +54,11 @@ trait DeliteCodegen extends GenericFatCodegen {
   // TODO: move to some other place? --> get rid of duplicate in embedded generators!
   override def fatten(e: TP[_]): TTP = ifGenAgree(_.fatten(e), shallow)
 
+  // fusion stuff...
+  override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e), shallow)
+  override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e), shallow)
+
+
 
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
 
