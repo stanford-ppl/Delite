@@ -29,6 +29,7 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
   def schedule(graph: DeliteTaskGraph): PartialSchedule = {
     assert(Config.numThreads == 1 && Config.numGPUs == 1)
     scheduleFlat(graph)
+    ensureScheduled(graph)
     createPartialSchedule
   }
 
@@ -56,7 +57,7 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
           }
         }
         else if (op.variant != null) { //kernel could be partially GPUable
-          OpHelper.makeVariant(op)
+          OpHelper.makeVariant(op, graph)
           scheduleFlat(op.variant)
         }
         else { //schedule on CPU resource
@@ -118,6 +119,13 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
     gpuResource.add(chunk1)
     chunk1.scheduledResource = 1
     chunk1.isScheduled = true
+  }
+
+  private def ensureScheduled(graph: DeliteTaskGraph) {
+    for (op <- graph.ops) {
+      if (!op.isScheduled)
+        error("Graph dependencies are unsatisfiable")
+    }
   }
 
   private def createPartialSchedule = {

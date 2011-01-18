@@ -151,7 +151,7 @@ object ExecutableGenerator {
   private def writeSetter(op: DeliteOP, out: StringBuilder) {
     out.append(getSync(op))
     out.append(".set(")
-    if (op.isInstanceOf[OP_Control]) out.append("()") else out.append(getSym(op))
+    if (op.isInstanceOf[OP_Control] && op.outputType == "Unit") out.append("()") else out.append(getSym(op))
     out.append(')')
     out.append('\n')
   }
@@ -259,6 +259,20 @@ object ExecutableGenerator {
         out.append("p = ")
         out.append(getSym(endWhile.predicate))
         out.append("\n}\n")
+      }
+      case beginVariant: OP_BeginVariantScope => {
+        out.append("val ")
+        out.append(getSym(op).dropRight(1)) //the base sym for this variant construct
+        out.append(" : ")
+        out.append(beginVariant.variantOutputType)
+        out.append(" = {\n")
+      }
+      case endVariant: OP_EndVariantScope => {
+        if (op.outputType != "Unit") {
+          out.append(getSym(endVariant.result))
+          out.append('\n')
+        }
+        out.append("}\n")
       }
     }
   }

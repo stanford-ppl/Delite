@@ -9,7 +9,7 @@ import ppl.delite.runtime.graph.ops._
  * Author: Kevin J. Brown
  * Date: Oct 11, 2010
  * Time: 1:02:57 AM
- * 
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
@@ -33,6 +33,8 @@ final class SMPStaticScheduler extends StaticScheduler {
     //TODO: implement functionality for nested graphs
     scheduleFlat(graph)
 
+    ensureScheduled(graph)
+
     //return schedule
     createPartialSchedule
   }
@@ -55,7 +57,7 @@ final class SMPStaticScheduler extends StaticScheduler {
       case c: OP_Control => addControl(c)
       case _ => {
         if (op.variant != null) {
-          OpHelper.makeVariant(op)
+          OpHelper.makeVariant(op, graph)
           scheduleFlat(op.variant)
         }
         else if (op.isDataParallel) split(op, graph)
@@ -119,6 +121,13 @@ final class SMPStaticScheduler extends StaticScheduler {
       procs(i).add(chunk)
       chunk.scheduledResource = i
       chunk.isScheduled = true
+    }
+  }
+
+  private def ensureScheduled(graph: DeliteTaskGraph) {
+    for (op <- graph.ops) {
+      if (!op.isScheduled)
+        error("Graph dependencies are unsatisfiable")
     }
   }
 

@@ -396,6 +396,13 @@ object GPUExecutableGenerator {
         out.append(getSymGPU(endWhile.predicate))
         out.append("\n}\n")
       }
+      case beginVariant: OP_BeginVariantScope => {
+        assert(beginVariant.variantOutputType == "Unit")
+        out.append("{\n")
+      }
+      case endVariant: OP_EndVariantScope => {
+        out.append("}\n")
+      }
     }
   }
 

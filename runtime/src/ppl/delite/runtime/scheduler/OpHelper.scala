@@ -3,6 +3,7 @@ package ppl.delite.runtime.scheduler
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.codegen.kernels.scala._
 import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * Author: Kevin J. Brown
@@ -45,16 +46,43 @@ object OpHelper {
     case other => error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 
-  def makeVariant(op: DeliteOP) {
+  def makeVariant(op: DeliteOP, graph: DeliteTaskGraph) {
     op.variant.parse()
+
+    val id = op.id.drop(graph._id.length)
+    var resultMap = Map[Targets.Value,String]()
+    for (t <- Targets.values) if (op.supportsTarget(t)) resultMap += t -> op.outputType(t)
+
+    //add variant scoping
+    val beginOp = new OP_BeginVariantScope(op.variant._id+id+"vb", resultMap)
+    val endOp = new OP_EndVariantScope(op.variant._id+id+"v", resultMap, op.variant.result)
+
     //remove super op from graph
+    graph._ops += id -> endOp
     for (dep <- op.getDependencies) {
       dep.removeConsumer(op)
     }
-    //consumers need to use return op of the nested graph rather than the outer op
+    //consumers need to use result op for the nested graph rather than the outer op
     for (c <- op.getConsumers) {
-      c.replaceDependency(op, op.variant.result)
-      c.replaceInput(op, op.variant.result)
+      c.replaceDependency(op, endOp)
+      if (c.getInputs.contains(op)) c.replaceInput(op, endOp)
     }
+
+    //beginning depends on all superOp inputs
+    for (dep <- op.getDependencies) {
+      beginOp.addDependency(dep)
+    }
+
+    val innerOps = op.variant.ops.toList.filter(_.isInstanceOf[OP_Control]).flatMap(o => o.asInstanceOf[OP_Control].bodyOps)
+    val outerOps = op.variant.ops.toList.filterNot(innerOps contains)
+    for (op <- outerOps) {
+      op.addDependency(beginOp)
+      beginOp.addConsumer(op)
+      op.addConsumer(endOp)
+      endOp.addDependency(op)
+    }
+
+    op.variant._ops += id+"vb" -> beginOp
+    op.variant._ops += id+"v" -> endOp
   }
 }

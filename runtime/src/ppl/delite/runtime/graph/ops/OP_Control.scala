@@ -11,6 +11,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
+//TODO: need a better notion of scopes across DEG, scheduling, and codegen
 abstract class OP_Control extends DeliteOP {
 
   def makeChunk(idx: Int): OP_Control
@@ -23,6 +24,8 @@ abstract class OP_Control extends DeliteOP {
     case Targets.Scala => "Unit"
     case Targets.Cuda => "void"
   }
+
+  var bodyOps: List[DeliteOP] = Nil
 
   final def task = null
   final def isDataParallel = false
