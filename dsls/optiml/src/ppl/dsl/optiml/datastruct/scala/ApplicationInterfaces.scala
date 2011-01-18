@@ -1,0 +1,30 @@
+package ppl.dsl.optiml.datastruct.scala
+
+/* This file should be auto-generated from a preprocessing compilation stage of application code.
+ * It represents the interface of any user-defined data structure, for which the user must provide
+ * concrete implementations.
+ *
+ * author:  Arvind Sujeeth (asujeeth@stanford.edu)
+ * created: 1/17/11
+ *
+ * Pervasive Parallelism Laboratory (PPL)
+ * Stanford University
+ *
+ */
+
+trait ApplicationInterfaces {
+
+  trait BPVertexData extends MessageData {
+    def potential: Vector[Double]
+    def belief: Vector[Double]
+    def id: Int
+  }
+
+  trait BPEdgeData extends MessageData {
+    def message: Vector[Double]
+    def oldMessage: Vector[Double]
+  }
+
+
+
+}

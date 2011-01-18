@@ -1,8 +1,8 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.vector
 
-import datastruct.scala.VectorView
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
+import ppl.dsl.optiml.OptiML
 
 trait VectorViewImplOps { this: Base =>
 

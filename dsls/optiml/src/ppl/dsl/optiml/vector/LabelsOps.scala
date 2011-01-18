@@ -1,6 +1,6 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.vector
 
-import datastruct.scala._
+import ppl.dsl.optiml.datastruct.scala._
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.internal.ScalaGenBase

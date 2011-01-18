@@ -1,8 +1,9 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.vector
 
-import datastruct.scala.{Vector,Matrix}
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
+import ppl.dsl.optiml.OptiML
 
 trait VectorImplOps { this: OptiML =>
 
@@ -32,9 +33,6 @@ trait VectorImplOps { this: OptiML =>
 
 trait VectorImplOpsStandard extends VectorImplOps {
   this: OptiML =>
-
-  private val base = "ppl.dsl.optiml"
-
 
   //////////////////////////
   // kernel implementations
@@ -237,9 +235,4 @@ trait VectorImplOpsStandard extends VectorImplOps {
     result
   }
 
-}
-
-trait VectorImplOpsBLAS extends VectorImplOpsStandard { this: OptiML =>
-  
-  //override def vector_obj_plus_impl = External(..)
 }

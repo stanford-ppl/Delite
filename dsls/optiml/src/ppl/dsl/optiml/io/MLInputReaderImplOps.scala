@@ -1,8 +1,9 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.io
 
-import datastruct.scala.{Vector,Matrix,TrainingSet}
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
 import scala.virtualization.lms.common.Base
 import scala.virtualization.lms.common.ScalaOpsPkg
+import ppl.dsl.optiml.OptiML
 
 trait MLInputReaderImplOps { this: Base =>
   def mlinput_read_impl(filename: Rep[String]) : Rep[Matrix[Double]]

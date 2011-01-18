@@ -1,17 +1,20 @@
 package ppl.dsl.optiml
 
-import datastruct.CudaGenDataStruct
+import java.io._
+import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal._
+import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
-import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{ScalaGenBase, GenericNestedCodegen, GenericCodegen}
-import ppl.delite.framework.{Config, DeliteApplication}
-import java.io._
-import scala.virtualization.lms.internal._
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.ops.{CGenDeliteOps, CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
+import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+import ppl.dsl.optiml.io._
+import ppl.dsl.optiml.vector._
+import ppl.dsl.optiml.matrix._
+//import ppl.dsl.optiml.graph._
 
 /**
  * These are the portions of Scala imported into OptiML's scope.

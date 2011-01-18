@@ -1,7 +1,7 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.matrix
 
-import datastruct.CudaGenDataStruct
-import datastruct.scala.{MatrixImpl, VectorImpl, Vector, Matrix}
+import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+import ppl.dsl.optiml.datastruct.scala.{MatrixImpl, VectorImpl, Vector, Matrix}
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
@@ -10,6 +10,7 @@ import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{GenerationFailedException, CGenBase, CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.Config
+import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 trait MatrixOps extends DSLType with Variables {
   this: OptiML =>

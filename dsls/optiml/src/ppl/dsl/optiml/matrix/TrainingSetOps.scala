@@ -1,12 +1,13 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.matrix
 
-import datastruct.scala._
+import ppl.dsl.optiml.datastruct.scala._
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.util.OverloadHack
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{Variables, BaseExp, Base}
 import scala.virtualization.lms.internal.{CGenBase, GenerationFailedException, CudaGenBase, ScalaGenBase}
+import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 trait TrainingSetOps extends DSLType with Variables with OverloadHack {
   this: OptiML =>

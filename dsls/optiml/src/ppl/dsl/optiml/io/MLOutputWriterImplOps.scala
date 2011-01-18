@@ -1,8 +1,9 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.io
 
-import datastruct.scala.{Vector,Matrix,TrainingSet}
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
 import scala.virtualization.lms.common.Base
 import scala.virtualization.lms.common.ScalaOpsPkg
+import ppl.dsl.optiml.OptiML
 
 trait MLOutputWriterImplOps { this: Base =>
   def mloutput_write_impl[A:Manifest](m: Rep[Matrix[A]], filename: Rep[String], conv: Rep[A] => Rep[Double]): Rep[Unit]

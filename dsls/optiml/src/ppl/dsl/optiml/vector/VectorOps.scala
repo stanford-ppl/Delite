@@ -1,7 +1,7 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.vector
 
-import datastruct.CudaGenDataStruct
-import datastruct.scala._
+import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+import ppl.dsl.optiml.datastruct.scala._
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
@@ -9,6 +9,7 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen, CGenBase, CudaGenBase, ScalaGenBase}
+import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 trait VectorOps extends DSLType with Variables {
   this: OptiML =>
@@ -225,7 +226,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
   case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean])
     extends Def[RangeVector]
-  case class VectorNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean])
+  case class VectorObjectNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean])
     extends Def[Vector[A]] {
     val mV = manifest[VectorImpl[A]]
   }
@@ -517,7 +518,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   /////////////////////
   // object interface
 
-  def vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorNew[A](len, isRow))
+  def vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorObjectNew[A](len, isRow))
   def vector_obj_fromseq[A:Manifest](xs: Exp[Seq[A]]) = reflectEffect(VectorObjectFromSeq(xs))
   def vector_obj_ones(len: Exp[Int]) = reflectEffect(VectorObjectOnes(len))
   def vector_obj_onesf(len: Exp[Int]) = reflectEffect(VectorObjectOnesF(len))
@@ -556,7 +557,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
   def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(reflectRead(x), reflectRead(y))
   def vector_plus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorPlusScalar(reflectRead(x), reflectRead(y))
-  def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorPlusEquals(reflectRead(x), reflectRead(y)))
+  def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorPlusEquals(reflectReadWrite(x), reflectRead(y)))
   def vector_minus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(reflectRead(x),reflectRead(y))
   def vector_minus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorMinusScalar(reflectRead(x), reflectRead(y))
   def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(reflectRead(x), reflectRead(y))
@@ -686,7 +687,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenBase {
       case VectorRemoveAll(x,pos,len) => emitValDef(sym, quote(x) + ".removeAll(" + quote(pos) + ", " + quote(len) + ")")
       case VectorTrim(x) => emitValDef(sym, quote(x) + ".trim")
       case VectorClone(x) => emitValDef(sym, quote(x) + ".cloneL")
-      case v@VectorNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
+      case v@VectorObjectNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
       case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
       // TODO: why!!!
       case v@VectorNil() => v.mA.toString match {
@@ -722,7 +723,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
 
     case VectorObjectZeros(len) =>
       throw new GenerationFailedException("CudaGen: Not GPUable (Dynamic memory allocation is not allowed)")
-    case VectorNew(len,isRow) =>
+    case VectorObjectNew(len,isRow) =>
       throw new GenerationFailedException("CudaGen: Not GPUable (Dynamic memory allocation is not allowed)")
     case VectorApply(x, n) =>
       emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
@@ -771,7 +772,7 @@ trait CGenVectorOps extends BaseGenVectorOps with CGenBase {
       stream.println("%s.length = %s;".format(quote(sym),quote(len)))
       stream.println("%s.isRow = true;".format(quote(sym)))
       stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
-    case VectorNew(len,isRow) =>
+    case VectorObjectNew(len,isRow) =>
       stream.println("%s *%s_data = malloc(sizeof(%s)*%s);".format(remap(sym.Type.typeArguments(0)),quote(sym),remap(sym.Type.typeArguments(0)),quote(len)))
       stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
       stream.println("%s.length = %s;".format(quote(sym),quote(len)))

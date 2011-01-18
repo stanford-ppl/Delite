@@ -1,8 +1,9 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.matrix
 
-import datastruct.scala.{Vector,Matrix}
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
+import ppl.dsl.optiml.OptiML
 
 trait MatrixImplOps { this: OptiML =>
   def matrix_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[Rep[Vector[A]]]]): Rep[Matrix[A]]

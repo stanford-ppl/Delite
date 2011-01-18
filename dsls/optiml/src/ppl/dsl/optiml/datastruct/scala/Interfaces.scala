@@ -158,7 +158,7 @@ trait Labels[@specialized L] extends Vector[L] {
   def numLabels = length
 }
 
-trait TrainingSet[@specialized T,L] extends Matrix[T] {
+trait TrainingSet[@specialized T,@specialized L] extends Matrix[T] {
   def numSamples = numRows
   def numFeatures = numCols
   def labels: Labels[L]
@@ -173,6 +173,67 @@ trait TrainingSet[@specialized T,L] extends Matrix[T] {
   override def removeRows(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
   override def removeCols(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
 }
+
+/**
+ * Graph
+ */
+trait Graph[V <: Vertex,E <: Edge] {
+  def vertices: Vertices[V]
+  def edges: Edges[E]
+  def adjacent(a: V, b: V): Boolean
+  def neighborsOf(a: V): Vertices[V]
+  def edgesOf(a: V): Edges[E]
+  def containsEdge(e: E): Boolean
+  def containsVertex(v: V): Boolean
+  def sorted: Boolean
+
+  def addVertex(v: V)
+  def addEdge(e: E, a: V, b: V)
+  def removeEdge(a: V, b: V)
+  def sort(): Unit
+}
+
+trait Vertex {
+  type E <: Edge
+
+  def graph: Graph[Vertex,E]
+  def edges: Edges[E]
+  def neighbors: Vertices[Vertex]
+}
+
+trait Edge {
+  type V <: Vertex
+
+  def graph: Graph[V,Edge]
+}
+
+trait Vertices[V <: Vertex] extends Vector[V]
+trait Edges[E <: Edge] extends Vector[E]
+
+
+/**
+ * Message passing graph
+ */
+
+trait MessageGraph extends Graph[MessageVertex,MessageEdge]
+
+trait MessageVertex extends Vertex {
+  type E <: MessageEdge
+
+  def data: MessageData
+  def target(e: MessageEdge): MessageVertex
+}
+
+trait MessageEdge extends Edge {
+  type V <: MessageVertex
+
+  def in(v: V): MessageData
+  def out(v: V): MessageData
+  def target(source: V): V
+}
+
+trait MessageData
+
 
 /**
  * Ref
