@@ -490,7 +490,7 @@ object GPUExecutableGenerator {
         out.append(sym)
         out.append("p = ")
         out.append(getSymCPU(beginWhile.predicate))
-        out.append('\n')
+        out.append(";\n")
 
         out.append("while (")
         out.append(sym)
@@ -500,7 +500,7 @@ object GPUExecutableGenerator {
         out.append(getSymCPU(op))
         out.append("p = ")
         out.append(getSymCPU(endWhile.predicate))
-        out.append("\n}\n")
+        out.append(";\n}\n")
       }
     }
   }

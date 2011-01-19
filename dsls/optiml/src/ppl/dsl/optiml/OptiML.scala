@@ -89,10 +89,12 @@ trait OptiMLCodeGenBase extends GenericCodegen {
   def dsmap(line: String) = line
 
   val specialize = Set[String]()
+  val specialize2 = Set[String]()
   def genSpec(f: File, outPath: String) = {}
+  def genSpec2(f: File, outPath: String) = {}
 
   override def emitDataStructures() {
-    val dsRoot = "dsls/optiml/src/ppl/dsl/optiml/datastruct/" + this.toString
+    val dsRoot = Config.homeDir + "/dsls/optiml/src/ppl/dsl/optiml/datastruct/" + this.toString
     val dsOut = Config.buildDir + "/" + this.toString + "/"
 
     val dsDir = new File(dsRoot)
@@ -104,6 +106,9 @@ trait OptiMLCodeGenBase extends GenericCodegen {
       if (specialize contains (f.getName())) {
         genSpec(f, dsOut)
       }
+	  if (specialize2 contains (f.getName())) {
+		 genSpec2(f, dsOut)
+	  }
       val outFile = dsOut + "/" + f.getName()
       val out = new BufferedWriter(new FileWriter(outFile))
       for (line <- scala.io.Source.fromFile(f).getLines) {
@@ -121,7 +126,8 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
 
   val IR: DeliteApplication with OptiMLExp
 
-  override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala", "TrainingSetImpl.scala")
+  override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala", "LabelsImpl.scala")
+  override val specialize2 = Set("TrainingSetImpl.scala")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
@@ -132,7 +138,19 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
       }
       out.close()
     }
+  }
 
+  override def genSpec2(f: File, dsOut: String) {
+    for (s1 <- List("Double","Int","Float","Long","Boolean")) {
+   	  for (s2 <- List("Double","Int","Float","Long","Boolean")) {
+        val outFile = dsOut + "/" + s1 + s2 + f.getName()
+        val out = new BufferedWriter(new FileWriter(outFile))
+        for (line <- scala.io.Source.fromFile(f).getLines) {
+          out.write(specmap2(line, s1, s2) + "\n")
+        }
+        out.close()
+	  }
+    }
   }
 
   def specmap(line: String, t: String) : String = {
@@ -143,6 +161,18 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
     res = res.replaceAll("\\bT\\b", t)
     dsmap(res)
   }
+  def specmap2(line: String, t1: String, t2: String) : String = {
+    var res = line.replaceAll("object ", "object " + t1 + t2)
+    res = res.replaceAll("import ", "import " + t1 + t2)
+    res = res.replaceAll("@specialized T: ClassManifest", t1)
+    res = res.replaceAll("@specialized L: ClassManifest", t2)
+    res = res.replaceAll("T:Manifest", t1)
+    res = res.replaceAll("L:Manifest", t2)
+    res = res.replaceAll("\\bT\\b", t1)
+    res = res.replaceAll("\\bL\\b", t2)
+    dsmap(res)
+  }
+
 
   override def remap[A](m: Manifest[A]) : String = {
     dsmap(super.remap(m))
@@ -151,26 +181,16 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   override def dsmap(line: String) : String = {
     var res = line.replaceAll("ppl.dsl.optiml.datastruct", "generated")
     res = res.replaceAll("ppl.delite.framework", "generated.scala")
-    res = res.replaceAll("VectorImpl\\[Double\\]", "DoubleVectorImpl")
-    res = res.replaceAll("VectorImpl\\[Int\\]", "IntVectorImpl")
-    res = res.replaceAll("VectorImpl\\[Float\\]", "FloatVectorImpl")
-    res = res.replaceAll("VectorImpl\\[Long\\]", "LongVectorImpl")
-    res = res.replaceAll("VectorImpl\\[Boolean\\]", "BooleanVectorImpl")
-    res = res.replaceAll("VectorViewImpl\\[Double\\]", "DoubleVectorViewImpl")
-    res = res.replaceAll("VectorViewImpl\\[Int\\]", "IntVectorViewImpl")
-    res = res.replaceAll("VectorViewImpl\\[Float\\]", "FloatVectorViewImpl")
-    res = res.replaceAll("VectorViewImpl\\[Long\\]", "LongVectorViewImpl")
-    res = res.replaceAll("VectorViewImpl\\[Boolean\\]", "BooleanVectorViewImpl")
-    res = res.replaceAll("MatrixImpl\\[Double\\]", "DoubleMatrixImpl")
-    res = res.replaceAll("MatrixImpl\\[Int\\]", "IntMatrixImpl")
-    res = res.replaceAll("MatrixImpl\\[Float\\]", "FloatMatrixImpl")
-    res = res.replaceAll("MatrixImpl\\[Long\\]", "LongMatrixImpl")
-    res = res.replaceAll("MatrixImpl\\[Boolean\\]", "BooleanMatrixImpl")
-    res = res.replaceAll("TrainingSetImpl\\[Double,", "DoubleTrainingSetImpl\\[")
-    res = res.replaceAll("TrainingSetImpl\\[Int,", "IntTrainingSetImpl\\[")
-    res = res.replaceAll("TrainingSetImpl\\[Float,", "FloatTrainingSetImpl\\[")
-    res = res.replaceAll("TrainingSetImpl\\[Long,", "LongTrainingSetImpl\\[")
-    res = res.replaceAll("TrainingSetImpl\\[Boolean,", "BooleanTrainingSetImpl\\[")
+	for(tpe1 <- List("Int","Long","Double","Float","Boolean")) {
+    	res = res.replaceAll("VectorImpl\\["+tpe1+"\\]", tpe1+"VectorImpl")
+    	res = res.replaceAll("VectorViewImpl\\["+tpe1+"\\]", tpe1+"VectorViewImpl")
+    	res = res.replaceAll("MatrixImpl\\["+tpe1+"\\]", tpe1+"MatrixImpl")
+    	res = res.replaceAll("LabelsImpl\\["+tpe1+"\\]", tpe1+"LabelsImpl")
+		for(tpe2 <- List("Int","Long","Double","Float","Boolean")) {
+    		res = res.replaceAll("TrainingSetImpl\\["+tpe1+","+tpe2+"\\]", tpe1+tpe2+"TrainingSetImpl")
+    		res = res.replaceAll("TrainingSetImpl\\["+tpe1+", "+tpe2+"\\]", tpe1+tpe2+"TrainingSetImpl")
+		}
+	}
     res
   }
 }
@@ -315,6 +335,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
+    out.append("#include <float.h>\n")
     out.append("#include \"VectorImpl.h\"\n")
     out.append("#include \"MatrixImpl.h\"\n")
     out.append("#include \"RangeVectorImpl.h\"\n")

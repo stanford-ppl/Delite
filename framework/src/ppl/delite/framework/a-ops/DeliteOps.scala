@@ -525,7 +525,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
         emitBlock(mapR.map)
         emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map))) 
-        stream.println(addTab()+"for(int cnt=1; cnt<%s.length; cnt++) {".format(quote(mapR.in)))
+        stream.println(addTab()+"for(int cnt=1; cnt<%s.size(); cnt++) {".format(quote(mapR.in)))
         tabWidth += 1
         stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
         emitBlock(mapR.map)
@@ -534,7 +534,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1.asInstanceOf[Sym[_]]),quote(getBlockResult(mapR.reduce))))
         tabWidth -= 1
         stream.println(addTab()+"}")
-        stream.println(addTab()+"%s = %s;".format(quote(sym),quote(mapR.rV._1.asInstanceOf[Sym[_]])))
+        emitValDef(sym,quote(mapR.rV._1))
       }
       else {
         emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
@@ -543,7 +543,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         addVarLink(getBlockResult(mapR.map),sym)
         emitBlock(mapR.map)
         removeVarLink(getBlockResult(mapR.map),sym)
-        stream.println(addTab()+"for(int cnt=1; cnt<%s.length; cnt++) {".format(quote(mapR.in)))
+        stream.println(addTab()+"for(int cnt=1; cnt<%s.size(); cnt++) {".format(quote(mapR.in)))
         tabWidth += 1
         stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
         emitBlock(mapR.map)
@@ -573,7 +573,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         if(freeVars.length==0)
           stream.println(addTab()+"%s(%s.dcApply(%s));".format(foreachFunc,quote(foreach.in),"idxX"))
         else
-          stream.println(addTab()+"%s(%s.dcApply(%s,%s));".format(foreachFunc,quote(foreach.in),"idxX",freeVars.map(quote).mkString(",")))
+          stream.println(addTab()+"%s(%s.dcApply(%s),%s);".format(foreachFunc,quote(foreach.in),"idxX",freeVars.map(quote).mkString(",")))
         tabWidth -= 1
         stream.println(addTab()+"}")
         parallelCudagen = true

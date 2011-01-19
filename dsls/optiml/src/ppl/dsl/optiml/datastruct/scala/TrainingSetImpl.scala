@@ -1,7 +1,13 @@
 package ppl.dsl.optiml.datastruct.scala
 
-class TrainingSetImpl[T:Manifest,L:Manifest](xs: Matrix[T], var _labels: Labels[L]) extends MatrixImpl[T](0,0) with TrainingSet[T,L] {
-  lazy val transposed = transpose
+class TrainingSetImpl[T:Manifest,L:Manifest](xs: Matrix[T], var _labels: Labels[L], trans: TrainingSetImpl[T,L] = null) extends MatrixImpl[T](0,0) with TrainingSet[T,L] {
+
+  // not a deep copy, use with care
+  _data = xs.data
+  _numRows = xs.numRows
+  _numCols = xs.numCols
+
+  val transposed = if (trans != null) trans else transpose
 
   def labels = _labels
 
@@ -12,13 +18,7 @@ class TrainingSetImpl[T:Manifest,L:Manifest](xs: Matrix[T], var _labels: Labels[
         out(j,i) = this(i,j)
       }
     }
-	out
-    //new TrainingSetImpl[T,L](out, _labels)
+    new TrainingSetImpl[T,L](out, _labels, this)
   }
-
-  // not a deep copy, use with care
-  _data = xs.data
-  _numRows = xs.numRows
-  _numCols = xs.numCols
 
 }

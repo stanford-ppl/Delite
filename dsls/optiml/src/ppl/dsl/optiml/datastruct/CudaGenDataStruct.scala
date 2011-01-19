@@ -60,8 +60,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"length\",\"()I\");\n")
     out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"isRow\",\"()Z\");\n")
 
-	  //out.append("\tjclass rangeCls = env->FindClass(\"generated/scala/RangeVectorImpl\");\n");
-	  //out.append("\tjboolean isRangeCls = env->IsInstanceOf(obj,rangeCls);\n");
+	out.append("\tjclass viewCls = env->FindClass(\"generated/scala/%sVectorViewImpl\");\n".format(typeArg.toString));
+	out.append("\tjboolean isViewCls = env->IsInstanceOf(obj,viewCls);\n");
 
 	  // If this is not RangeVector
     out.append("\t\t%s %s;\n".format(remap(sym.Type),quote(sym)))
@@ -70,6 +70,15 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
     out.append("\t\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\t\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
+	
+	// Check if vector view
+	out.append("\tif(isViewCls) {\n")
+	out.append("\t\tint start = 0;\n")
+	out.append("\t\tjmethodID mid_start = env->GetMethodID(cls,\"start\",\"()I\");\n")
+	out.append("\t\tstart = env->CallIntMethod(obj,mid_start);\n")
+	out.append("\t\tdataPtr += start;\n")
+	out.append("\t}")
+
     // Allocate pinned-memory and device memory
     out.append("\t\t%s *hostPtr;\n".format(typeStr))
     out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
@@ -98,7 +107,6 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjmethodID mid_end = env->GetMethodID(cls,\"end\",\"()I\");\n")
 
     out.append("\t%s %s;\n".format(remap(sym.Type),quote(sym)))
-    out.append("\t%s.length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
     out.append("\t%s.isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
     out.append("\t%s.start = env->CallIntMethod(obj,mid_start);\n".format(quote(sym)))
     out.append("\t%s.stride = env->CallIntMethod(obj,mid_stride);\n".format(quote(sym)))
@@ -109,7 +117,59 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
   def indexVectorCopyHtoD(sym: Sym[_]): String = {
-    vectorCopyHtoD(sym)
+    //vectorCopyHtoD(sym)
+    val out = new StringBuilder
+    val typeArg = manifest[Int]
+    val typeStr = remap(typeArg)
+    val numBytesStr = "%s.length * sizeof(%s)".format(quote(sym),remap(typeArg))
+
+    // Get class, method ID
+    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
+    out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"length\",\"()I\");\n")
+    out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"isRow\",\"()Z\");\n")
+
+	out.append("\tjclass rangeCls = env->FindClass(\"generated/scala/IndexVectorRangeImpl\");\n");
+	out.append("\tjboolean isRangeCls = env->IsInstanceOf(obj,rangeCls);\n");
+
+    out.append("\t\t%s %s;\n".format(remap(sym.Type),quote(sym)))
+    out.append("\t\t%s.length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
+    out.append("\t\t%s.isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
+	
+	// If this is not RangeVector
+	out.append("\tif(isRangeCls == false) {\n")
+    out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
+    out.append("\t\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
+    out.append("\t\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
+    // Allocate pinned-memory and device memory
+    out.append("\t\t%s *hostPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+    out.append("\t\t%s *devPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
+    // Copy twice (hostMem->pinnedHostMem, pinnedHostMem->devMem)
+    out.append("\t\tmemcpy(%s, %s, %s);\n".format("hostPtr","dataPtr",numBytesStr))
+    out.append("\t\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
+    // Store the device pointer to the C data structure
+    out.append("\t\t%s.data = %s;\n".format(quote(sym),"devPtr"))
+    // Release
+    out.append("\t\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
+	out.append("\t}\n")
+
+	out.append("\telse {\n")
+    out.append("\t\tjmethodID mid_apply = env->GetMethodID(cls,\"apply\",\"(I)I\");\n")
+    out.append("\t\t%s *hostPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+	out.append("\t\tfor(int i=0; i<%s.length; i++) {\n".format(quote(sym)))
+    out.append("\t\t\thostPtr[i] = %s;\n".format("env->CallIntMethod(obj,mid_apply,i)"))
+	out.append("\t\t}\n")
+    out.append("\t\t%s *devPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
+    out.append("\t\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
+    out.append("\t\t%s.data = %s;\n".format(quote(sym),"devPtr"))
+	out.append("\t}\n")
+
+
+    out.append("\t\treturn %s;\n".format(quote(sym)))
+    out.toString
   }
 
   def labelsCopyHtoD(sym: Sym[_]): String = {
@@ -141,15 +201,14 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
 
     // Get object fields (labels / transposed)
-    out.append("\tjfieldID fid_labels = env->GetFieldID(cls,\"labels\",\"Lgenerated/scala/LabelsImpl;\");\n")
-    out.append("\tjfieldID fid_transposed = env->GetFieldID(cls,\"transposed\",\"Lgenerated/scala/TrainingSetImpl;\");\n")
-    out.append("\tjobject obj_labels = env->GetObjectField(obj,fid_labels);\n")
+    out.append("\tjmethodID fid_labels = env->GetMethodID(cls,\"labels\",\"()Lgenerated/scala/Labels;\");\n")
+    out.append("\tjfieldID fid_transposed = env->GetFieldID(cls,\"transposed\",\"Lgenerated/scala/%s%sTrainingSetImpl;\");\n".format(sym.Type.typeArguments(0).toString,sym.Type.typeArguments(0).toString))
+    out.append("\tjobject obj_labels = env->CallObjectMethod(obj,fid_labels);\n")
     out.append("\tjobject obj_transposed = env->GetObjectField(obj,fid_transposed);\n")
 
     // Copy Labels 
     val typeStr_labels = remap(sym.Type.typeArguments(1))
-    val numBytesStr_labels = "%s.labels.length * sizeof(%s)".format(quote(sym),quote(sym),typeStr_labels)
-    //out.append("\tLabels<%s> *labels = (Labels<%s>)malloc(sizeof(Labels<%s>));\n".format(typeStr_labels,quote(sym)))
+    val numBytesStr_labels = "labels.length * sizeof(%s)".format(typeStr_labels)
     out.append("\tLabels<%s> labels;\n".format(typeStr_labels))
     out.append("\tlabels.length = %s.numRows;\n".format(quote(sym)))
     out.append("\tlabels.isRow = false;\n")
@@ -169,25 +228,27 @@ trait CudaGenDataStruct extends CudaCodegen {
     //out.append("\tDeliteCudaMalloc((void**)%s,sizeof(Labels<%s>));\n".format("&labels",typeStr_labels))
 
     // Copy Transposed 
-    out.append("\tMatrix<%s> transposed;\n".format(typeStr,quote(sym)))
+    out.append("\t%s transposed;\n".format(remap(sym.Type)))
     out.append("\ttransposed.numRows = %s.numCols;\n".format(quote(sym)))
     out.append("\ttransposed.numCols = %s.numRows;\n".format(quote(sym)))
-    //out.append("\ttransposed.labels = %s.labels;\n".format(quote(sym)))
-    out.append("\tjclass cls_transposed = env->GetObjectClass(obj_transposed);\n")
+    out.append("\ttransposed.labels = labels;\n")
+    
+	out.append("\tjclass cls_transposed = env->GetObjectClass(obj_transposed);\n")
     out.append("\tjmethodID mid_data_transposed = env->GetMethodID(cls_transposed,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0))))
     out.append("\tj%sArray data_transposed = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj_transposed,mid_data_transposed)"))
     out.append("\tj%s *dataPtr_transposed = (j%s *)env->GetPrimitiveArrayCritical(data_transposed,0);\n".format(typeStr,typeStr))
-    out.append("\t%s *hostPtr_transposed;\n".format(typeStr))
-    out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr_transposed",numBytesStr))
+    
     out.append("\t%s *devPtr_transposed;\n".format(typeStr))
-    out.append("\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr_transposed",numBytesStr))
+    out.append("\tDeliteCudaMalloc((void**)%s,%s+sizeof(%s));\n".format("&devPtr_transposed",numBytesStr,remap(sym.Type)))
+	out.append("\ttransposed.data = devPtr_transposed;\n")
+    out.append("\t%s *hostPtr_transposed;\n".format(typeStr))
+    out.append("\tDeliteCudaMallocHost((void**)%s,%s+sizeof(%s));\n".format("&hostPtr_transposed",numBytesStr,remap(sym.Type)))
+    out.append("\t%s *hostPtr_transposed_cls = hostPtr_transposed + %s.size();\n".format(typeStr,quote(sym)))
     out.append("\tmemcpy(%s, %s, %s);\n".format("hostPtr_transposed","dataPtr_transposed",numBytesStr))
-    out.append("\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr_transposed","hostPtr_transposed",numBytesStr))
-    out.append("\ttransposed.data = devPtr_transposed;\n")
+    out.append("\tmemcpy(%s, %s, sizeof(%s));\n".format("hostPtr_transposed_cls","&transposed",quote(sym)))
+    out.append("\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s+sizeof(%s));\n".format("devPtr_transposed","hostPtr_transposed",numBytesStr,quote(sym)))
     out.append("\tenv->ReleasePrimitiveArrayCritical(data_transposed, dataPtr_transposed, 0);\n")
-    //out.append("\ttransposed->transposed = %s;\n".format(quote(sym)))
-    out.append("\t%s.transposed = transposed;\n".format(quote(sym)))
-    out.append("\tDeliteCudaMalloc((void**)%s,sizeof(TrainingSet<%s,%s>));\n".format("&transposed",typeStr,typeStr_labels))
+    out.append("\t%s.transposed = (%s *)(devPtr_transposed + %s.size());\n".format(quote(sym),remap(sym.Type),quote(sym)))
 
     out.append("\treturn %s;\n".format(quote(sym)))
     out.toString

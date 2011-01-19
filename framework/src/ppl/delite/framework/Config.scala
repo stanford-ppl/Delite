@@ -7,3 +7,4 @@ object Config {
   val blasHome = System.getProperty("blas.home")
   val useBlas = if (blasHome == null) false else true
 }
+
