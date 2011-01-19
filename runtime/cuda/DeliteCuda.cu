@@ -21,7 +21,7 @@ queue<FreeItem>* freeList = new queue<FreeItem>();
 map<void*,void*>* cudaMemoryMap = new map<void*,void*>();
 
 
-void DeliteCudaMalloc(void** ptr, int size) {
+void DeliteCudaMalloc(void** ptr, size_t size) {
 	size_t free;
 	size_t total;
 	cudaMemGetInfo(&free, &total);
@@ -66,11 +66,26 @@ void DeliteCudaMalloc(void** ptr, int size) {
 	lastValue = *ptr;
 } */
 
-void DeliteCudaMallocHost(void **ptr, int size) {
-	cudaHostAlloc(ptr, size, cudaHostAllocDefault);
+char* bufferStart = 0;
+size_t bufferSize = 10737418240;
+char* bufferEnd;
+char* bufferCurrent;
+
+void hostInit() {
+	cudaHostAlloc(&bufferStart, bufferSize, cudaHostAllocDefault);
+	bufferEnd = bufferStart + bufferSize;
+	bufferCurrent = bufferStart;
 }
 
-void DeliteCudaMemcpyHtoDAsync(void* dptr, void* sptr, int size) {
+void DeliteCudaMallocHost(void** ptr, size_t size) {
+	if (bufferStart == 0) hostInit();
+	if ((bufferCurrent + size) > bufferEnd)
+		bufferCurrent = bufferStart;
+	*ptr = bufferCurrent;
+	bufferCurrent += size;
+}
+
+void DeliteCudaMemcpyHtoDAsync(void* dptr, void* sptr, size_t size) {
 	cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyHostToDevice, h2dStream);
 }
 

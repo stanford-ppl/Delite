@@ -416,6 +416,7 @@ object GPUExecutableGenerator {
   private def writeDataFrees(op: DeliteOP, out: StringBuilder, available: ArrayList[DeliteOP]) {
     var count = 0
     val freeItem = "freeItem_"+getSymGPU(op)
+    val event = "event_" + getSymGPU(op)
 
     def writeFreeInit() {
       out.append("FreeItem* ")
@@ -460,10 +461,9 @@ object GPUExecutableGenerator {
     }
 
     if (count > 0) {
-      //sync on kernel stream (if copied back guaranteed to have completed, so don't need sync on d2h stream)
-      out.append("cudaEvent_t event = addHostEvent(kernelStream);\n")
+      //sync on kernel stream (if copied back guaranteed to have completed, so don't need sync on d2h stream) 
       out.append(freeItem)
-      out.append("->event = event;\n")
+      out.append("->event = addHostEvent(kernelStream);\n")
       out.append("freeList->push(*")
       out.append(freeItem)
       out.append(");\n")
