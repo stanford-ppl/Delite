@@ -79,7 +79,6 @@ object GPUExecutableGenerator {
     out.append("#include <jni.h>\n") //jni
     out.append("#include <cuda_runtime.h>\n") //Cuda runtime api
     out.append("#include \"DeliteCuda.cu\"\n") //Delite-Cuda interface for DSL
-    out.append("#include \"FreeItem.h\"\n") //memory manager
     out.append("#include \"dsl.h\"\n") //imports all dsl kernels and helper functions
   }
 
@@ -128,7 +127,6 @@ object GPUExecutableGenerator {
       available.add(op)
       awaited.add(op)
       //register op with memory manager
-      out.append("currentKey")
       //get all dependencies
       for (dep <- op.getDependencies) { //foreach dependency
         if(!awaited.contains(dep)) { //this dependency does not yet exist for this resource
@@ -186,7 +184,7 @@ object GPUExecutableGenerator {
         //write a setter
         writeSetter(op, location, out)
       }
-      writeDataFrees(op, out, available)
+      if (!op.isInstanceOf[OP_Control]) writeDataFrees(op, out, available)
     }
   }
 
@@ -226,7 +224,7 @@ object GPUExecutableGenerator {
   }
 
   private def writeMemoryAdd(op: DeliteOP, out: StringBuilder) {
-    out.append("cudaMemoryMap->insert(new pair<void*,void*>(&")
+    out.append("cudaMemoryMap->insert(pair<void*,void*>(&")
     out.append(getSymGPU(op))
     out.append(",lastValue));\n")
   }
@@ -424,13 +422,13 @@ object GPUExecutableGenerator {
       out.append(freeItem)
       out.append(" = new FreeItem();\n")
       out.append(freeItem)
-      out.append("->list = new list<void*>();\n")
+      out.append("->keys = new list<void*>();\n")
     }
 
     def writeFree(op: DeliteOP) {
       if (count == 0) writeFreeInit()
       out.append(freeItem)
-      out.append(".list->push_back(&")
+      out.append("->keys->push_back(&")
       out.append(getSymGPU(op))
       out.append(");\n")
     }
@@ -442,7 +440,7 @@ object GPUExecutableGenerator {
     }
 
     //free output (?)
-    if (op.getConsumers.map(_.scheduledResource).filter(_ == op.scheduledResource).size == 0) { //no future consumers on gpu
+    if (op.getConsumers.filter(_.getInputs.contains(op)).filter(_.scheduledResource == op.scheduledResource).size == 0) { //no future consumers on gpu
       //free output
       writeFree(op)
       count += 1
@@ -450,7 +448,7 @@ object GPUExecutableGenerator {
 
     //free inputs (?)
     for (in <- op.getInputs) {
-      val possible = in.getConsumers.filter(_.getInputs.contains(in)).map(_.scheduledResource).filter(_ == op.scheduledResource)
+      val possible = in.getConsumers.filter(_.getInputs.contains(in)).filter(_.scheduledResource == op.scheduledResource)
       var free = true
       for (p <- possible) {
         if (!available.contains(p)) free = false
@@ -465,8 +463,8 @@ object GPUExecutableGenerator {
       //sync on kernel stream (if copied back guaranteed to have completed, so don't need sync on d2h stream)
       out.append("cudaEvent_t event = addHostEvent(kernelStream);\n")
       out.append(freeItem)
-      out.append(".event = event")
-      out.append("freeList->push(")
+      out.append("->event = event;\n")
+      out.append("freeList->push(*")
       out.append(freeItem)
       out.append(");\n")
     }

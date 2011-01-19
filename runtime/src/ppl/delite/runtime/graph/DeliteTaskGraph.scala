@@ -361,7 +361,7 @@ object DeliteTaskGraph {
     }
 
     //output allocation
-    op.get("gpuOutput") match {
+    metadataMap.get("gpuOutput") match {
       case None => //do nothing
       case Some(field) => field match {
         case out: Map[Any,Any] => {
