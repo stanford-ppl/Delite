@@ -323,11 +323,15 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffects(matrix_sigmoid_impl(in))) {
 
+    val v = fresh[A]
+    val func = (1.0/(1.0+Math.exp(conv(v)*(-1))))
     val mM = manifest[MatrixImpl[Double]]
   }
   case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffects(matrix_sigmoidf_impl(in))) {
 
+    val v = fresh[A]
+    val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
     val mM = manifest[MatrixImpl[Float]]
   }
 
@@ -878,6 +882,18 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true")
+
+    case m@MatrixSigmoidF(x) =>
+      gpuBlockSizeX = "%s.numCols*%s.numRows".format(quote(x),quote(x))
+      stream.println(addTab()+"if( idxX < %s.numCols*%s.numRows ) {".format(quote(x),quote(x)))
+      tabWidth += 1
+	  val sigmoidFunc = emitDevFunc(m.func,x.Type.typeArguments(0),List(m.v))
+	  stream.println(addTab()+"int i = idxX / %s.numCols;".format(quote(x)))
+	  stream.println(addTab()+"int j = idxX % " + "%s.numCols;".format(quote(x)))
+      stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
 
     case _ => super.emitNode(sym, rhs)
   }

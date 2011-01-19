@@ -752,14 +752,16 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       emitVectorAlloc(sym,"%s.length".format(quote(x)),"!%s.isRow".format(quote(x)))
 
     case VectorRepmat(x,i,j) =>
-      gpuBlockSizeX = "%s.length * %s".format(quote(x),quote(i))
-      stream.println(addTab()+"if( idxX < %s.length*%s ) {".format(quote(x),quote(j)))
+      gpuBlockSizeX = "%s.length * %s * %s".format(quote(x),quote(i),quote(j))
+      stream.println(addTab()+"if( idxX < %s.length*%s*%s ) {".format(quote(x),quote(i),quote(j)))
+      //tabWidth += 1
+      //stream.println(addTab()+"for(int i=0;i<%s;i++) {".format(quote(i)))
       tabWidth += 1
-      stream.println(addTab()+"for(int i=0;i<%s;i++) {".format(quote(i)))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(i,%s,%s.apply(%s));".format(quote(sym),quote(j),quote(x),"idxX%"+quote(x)+".length"))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
+	  stream.println(addTab()+"int i = idxX / (%s.length * %s);".format(quote(x),quote(j)))
+	  stream.println(addTab()+"int j = idxX % " + "(%s.length * %s);".format(quote(x),quote(j)))
+      stream.println(addTab()+"%s.update(i,j,%s.apply(%s));".format(quote(sym),quote(x),"j%"+quote(x)+".length"))
+      //tabWidth -= 1
+      //stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s.length*%s".format(quote(x),quote(i)),"%s.length*%s".format(quote(x),quote(j)))
