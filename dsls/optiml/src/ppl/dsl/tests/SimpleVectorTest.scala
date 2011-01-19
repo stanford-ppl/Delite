@@ -1,24 +1,59 @@
 package ppl.dsl.tests
 
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.simple.OptiML2
+import ppl.dsl.simple.{OptiML2Exp, OptiML2}
+import ppl.dsl.optiml.OptiMLExp
 
-
-object SimpleVectorTest extends DeliteApplication with OptiML2 {
+object SimpleVectorTest extends DeliteApplication with OptiMLExp {
 
   def main() {
-    println("SimpleVectorTest")
-    val vec1 = Vector.zeros(10)
+    //println("SimpleVectorTest")
+    val vec1 = Vector.ones(10)
     val vec2 = Vector.zeros(10)
-    val mat1 = Matrix.zeros(10,10)
-    val mat2 = Matrix.zeros(10,10)   
 
-    val vec3 = vec1 + vec2
-    val mat3 = mat1 + mat2
+//    val vec3 = {
+//      vec2(0) = vec1(0)
+//      vec2(1) = vec1(1)
+//      vec2(2) = vec1(2)
+//      vec1 + vec2
+//    }
 
-    println(vec3.pprint)
-    println(mat3.pprint)
+    val vec3 = if(vec1.length == 10) {
+      vec2(0) = vec1(0)
+      vec2(1) = vec1(1)
+      vec2(2) = vec1(2)
+//      if(vec2.length > 10) {
+//        vec1 + vec2
+//      } else {
+//        vec2 - vec1
+//      }
+      vec1 + vec2
+    }
+    else vec1
+//    } else {
+//      vec1 - vec2
+//    }
 
+
+    //for(i <- 0 until vec3(0)) {
+    //  vec3(i) = vec1(i)
+    //}
+
+
+    /*
+    var idx = unit(0)
+
+    while(idx < 10) {
+      vec2(idx) = vec1(idx)
+      vec2(idx) = vec1(idx)
+      vec2(idx) = vec1(idx)
+      vec2(idx) = vec1(idx)
+      //idx = unit(10)
+    }
+
+    */
+
+    vec3.pprint
 
   }
 }

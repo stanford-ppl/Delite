@@ -1,10 +1,9 @@
 package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.Config
-import ppl.delite.runtime.codegen.{ExecutableGenerator, DeliteExecutable}
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import java.util.ArrayDeque
-import ppl.delite.runtime.graph.ops.DeliteOP
+import ppl.delite.runtime.graph.ops._
 
 /**
  * Author: Kevin J. Brown
@@ -36,6 +35,12 @@ final class SMPStaticScheduler extends StaticScheduler {
     //TODO: implement functionality for nested graphs
     scheduleFlat(graph)
 
+    //ensure graph was schedulable
+    for (op <- graph.ops) {
+      if (!op.isScheduled)
+        error("Graph dependencies were unsatisfiable")
+    }
+
     //return schedule
     createPartialSchedule
   }
@@ -53,31 +58,33 @@ final class SMPStaticScheduler extends StaticScheduler {
   var nextThread = 0
 
   private def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph) {
-    if (op.isDataParallel) {
-      split(op, graph) //split and schedule op across all threads
+    op match {
+      case c: OP_Control => addControl(c)
+      case _ => if (op.isDataParallel) split(op, graph) else cluster(op)
     }
-    else {
-      //look for best place to put this op (simple nearest-neighbor clustering)
-      var i = 0
-      var notDone = true
-      val deps = op.getDependencies
-      while (i < numThreads && notDone) {
-        if (deps.contains(procs(i).peekLast)) {
-          procs(i).add(op)
-          op.scheduledResource = i
-          notDone = false
-          if (nextThread == i) nextThread = (nextThread + 1) % numThreads
-        }
-        i += 1
+  }
+
+  private def cluster(op: DeliteOP) {
+    //look for best place to put this op (simple nearest-neighbor clustering)
+    var i = 0
+    var notDone = true
+    val deps = op.getDependencies
+    while (i < numThreads && notDone) {
+      if (deps.contains(procs(i).peekLast)) {
+        procs(i).add(op)
+        op.scheduledResource = i
+        notDone = false
+        if (nextThread == i) nextThread = (nextThread + 1) % numThreads
       }
-      //else submit op to next thread in the rotation (round-robin)
-      if (notDone) {
-        procs(nextThread).add(op)
-        op.scheduledResource = nextThread
-        nextThread = (nextThread + 1) % numThreads
-      }
-      op.isScheduled = true
+      i += 1
     }
+    //else submit op to next thread in the rotation (round-robin)
+    if (notDone) {
+      procs(nextThread).add(op)
+      op.scheduledResource = nextThread
+      nextThread = (nextThread + 1) % numThreads
+    }
+    op.isScheduled = true
   }
 
   private def enqueueRoots(graph: DeliteTaskGraph) {
@@ -100,6 +107,15 @@ final class SMPStaticScheduler extends StaticScheduler {
     scheduleOne(OpHelper.expand(op, numThreads, graph), graph)
     for (i <- 0 until numThreads) {
       val chunk = OpHelper.split(op, i, numThreads, graph.kernelPath)
+      procs(i).add(chunk)
+      chunk.scheduledResource = i
+      chunk.isScheduled = true
+    }
+  }
+
+  private def addControl(op: OP_Control) {
+    for (i <- 0 until numThreads) {
+      val chunk = op.makeChunk(i)
       procs(i).add(chunk)
       chunk.scheduledResource = i
       chunk.isScheduled = true

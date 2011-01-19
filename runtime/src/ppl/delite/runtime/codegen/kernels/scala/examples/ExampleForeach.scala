@@ -14,8 +14,8 @@ import java.util.concurrent.locks.ReentrantLock
 
 /**
  * The Delite framework only provides the foreach function as a kernel to the runtime
- * The full map kernel must be provided, as illustrated below
- * This is an example of what a generated Map kernel for an Array should look like; it should not be invoked
+ * The full foreach kernel must be provided, as illustrated below
+ * This is an example of what a generated Foreach kernel for an Array should look like; it should not be invoked
  */
 
 object ExampleForeachHeader {

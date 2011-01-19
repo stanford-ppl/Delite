@@ -59,7 +59,7 @@ class OP_Reduce(val id: String, func: String, resultType: Map[Targets.Value,Stri
     for (dep <- getDependencies) dep.replaceConsumer(this, h)
     //map consumes header, map's consumers remain unchanged
     dependencyList = List(h)
-    inputList = List((h,id+"_h"))
+    inputList = List((h,h.id))
 
     graph.registerOp(h)
     //graph._ops += (id+"_h") -> h

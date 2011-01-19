@@ -57,18 +57,20 @@ trait ScalaGenMatrixOps2 extends ScalaGenFat {
   }
 }
 
+/*
 trait CGenMatrixOps2 extends CGenFat {
   val IR: MatrixOpsExp2
   import IR._
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     //todo replace the manifest with embedded types
-    case MatrixObjectZeros(n1,n2) => emitConstDef("matrix", sym, "Matrix.zeros(" + quote(n1) + "," + quote(n2) +  ")")
+    case MatrixObjectZeros(n1,n2) => emitConstDef("matrix", sym, "Matrix.doubleZeros(" + quote(n1) + "," + quote(n2) +  ")")
     case MatrixPlus(m1,m2) => emitConstDef("matrix", sym, quote(m1) + " + " + quote (m2))
     case MatrixPPrint(m) => emitConstDef("matrix", sym, quote(m) + ".pprint()")
     case _ => super.emitNode(sym, rhs)
   }
 }
+*/
 
 trait DeliteGenMatrixOps2 extends DeliteCodegen {
   val IR: MatrixOpsExp2

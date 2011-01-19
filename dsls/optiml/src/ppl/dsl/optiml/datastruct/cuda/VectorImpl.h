@@ -11,26 +11,40 @@ public:
     bool isRow;
 
     // Constructors
-    Vector() {
+    __host__ __device__ Vector() {
         length = 0;
         isRow = true;
         data = NULL;
     }
 
-    Vector(int _length, bool _isRow, T *_data) {
+    __host__ __device__ Vector(int _length, bool _isRow, T *_data) {
         length = _length;
         isRow = _isRow;
         data = _data;
     }
 
     // Accessor Functions
-    __device__ T apply(int idx) {
+    __host__ __device__ T apply(int idx) {
         return data[idx];
     }
 
-    __device__ void update(int idx, T newVal) {
+    __host__ __device__ void update(int idx, T newVal) {
         data[idx] = newVal;
     }
+
+    // DeliteCoolection
+    __host__ __device__ int size() {
+        return length;
+    }
+
+    __host__ __device__ T dcApply(int idx) {
+        return data[idx];
+    }
+
+    __host__ __device__ void dcUpdate(int idx, T value) {
+        data[idx] = value;
+    }
+    
 };
 
 #endif

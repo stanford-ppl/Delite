@@ -1,10 +1,11 @@
 package ppl.delite.framework.codegen.delite
 
-import generators.{DeliteGenScalaVariables, DeliteGenTaskGraph}
+import generators.{DeliteGenTaskGraph}
 import java.io.PrintWriter
+import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 import scala.virtualization.lms.internal._
-import scala.virtualization.lms.common._
 import ppl.delite.framework.{Config, DeliteApplication}
+import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
 
 
@@ -21,10 +22,11 @@ trait DeliteCodegen extends GenericFatCodegen {
 
   // per kernel, used by DeliteGenTaskGraph
   var controlDeps : List[Sym[_]] = _
+  var emittedNodes : List[Sym[_]] = _
 
   // global, used by DeliteGenTaskGraph
-  val kernelMutatingDeps : HashMap[Sym[_],List[Sym[_]]] = new HashMap() // from kernel to its mutating deps    
-  val kernelInputDeps : HashMap[Sym[_],List[Sym[_]]] = new HashMap() // from kernel to its input deps
+  var kernelMutatingDeps = Map[Sym[_],List[Sym[_]]]() // from kernel to its mutating deps
+  var kernelInputDeps = Map[Sym[_],List[Sym[_]]]() // from kernel to its input deps
 
 
   def ifGenAgree[A](f: Generator => A, shallow: Boolean): A = {
@@ -58,6 +60,7 @@ trait DeliteCodegen extends GenericFatCodegen {
   override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e), shallow)
   override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e), shallow)
 
+  override def shouldApplyFusion(currentScope: List[TTP])(result: Exp[Any]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result), shallow)
 
 
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
@@ -74,7 +77,7 @@ trait DeliteCodegen extends GenericFatCodegen {
 
     stream.println("{\"DEG\":{\n"+
                    "\"version\" : 0.1,\n"+
-                   "\"kernelpath\" : \"" + Config.build_dir  + "\",\n"+
+                   "\"kernelpath\" : \"" + Config.buildDir  + "\",\n"+
                    "\"ops\": [")
 
     stream.println("{\"type\" : \"Arguments\" , \"kernelId\" : \"x0\"},")
@@ -144,6 +147,8 @@ trait DeliteCodegen extends GenericFatCodegen {
       
       println("*** effectsN: " + effectsN)
       
+      // TODO: we shouldn't need to override this methods, effectsN can be taken from
+      // the reflect nodes during emitFatNode in DeliteGenTaskGraph!
       
       for (TTP(syms, rhs) <- levelScope) {
         // we only care about effects that are scheduled to be generated before us, i.e.
@@ -178,7 +183,10 @@ trait DeliteCodegen extends GenericFatCodegen {
     //println("==== shallow")
     //e2.foreach(println)
 
-    val e3 = e1.filter(e2 contains _) // shallow, but with the ordering of deep!!
+    // val e3 = e1.filter(e2 contains _) // shallow, but with the ordering of deep!!
+    val bound = e1 flatMap { tp => ifGenAgree[List[Sym[Any]]](_.boundSyms(tp.rhs),true) }
+    val g1 = ifGenAgree(_.getDependentStuff(bound),true)
+    val e3 = e1.filter(z => (e2 contains z) && !(g1 contains z)) // shallow (but with the ordering of deep!!) and minus bound
 
     val e4 = e3.filterNot(scope contains _) // remove stuff already emitted
 
@@ -193,11 +201,24 @@ trait DeliteCodegen extends GenericFatCodegen {
     scope = e4 ::: scope
     generators foreach { _.scope = scope }
 
+    ignoreEffects = true
+    val e5 = buildScheduleForResult(start)
+    ignoreEffects = false
+
+    val e6 = e4.filter(z => z match {
+      case TP(sym, Reflect(x, es)) => (e5 contains z) || !(effectScope contains z)
+      case _ => e5 contains z
+    })
+    effectScope :::= e6 filter { case TP(sym, Reflect(x, es)) => true; case _ => false }
+    generators foreach { _.effectScope = effectScope }
+
+    var localEmittedNodes: List[Sym[_]] = Nil
     for (t@TP(sym, rhs) <- e4) {
       // we only care about effects that are scheduled to be generated before us, i.e.
       // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
       // n3 we want controlDeps to contain e1 and e2
       controlDeps = e4.take(e4.indexOf(t)) filter { effects contains _ } map { _.sym }
+      if(!rhs.isInstanceOf[Reify[_]]) localEmittedNodes = localEmittedNodes :+ t.sym
       emitNode(sym, rhs)
     }
 
@@ -221,6 +242,7 @@ trait DeliteCodegen extends GenericFatCodegen {
 
     generators.foreach(_.scope = save)
     scope = save
+    emittedNodes = localEmittedNodes
   }
 */
 
@@ -268,5 +290,3 @@ trait DeliteCodegen extends GenericFatCodegen {
 }
 
 trait DeliteCodeGenPkg extends DeliteGenTaskGraph
-
-trait DeliteCodeGenOverridesScala extends DeliteGenScalaVariables

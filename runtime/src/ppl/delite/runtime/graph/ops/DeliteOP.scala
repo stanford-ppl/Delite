@@ -7,7 +7,7 @@ import ppl.delite.runtime.graph.targets._
  * Author: Kevin J. Brown
  * Date: Oct 11, 2010
  * Time: 1:33:29 AM
- * 
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
@@ -36,6 +36,7 @@ abstract class DeliteOP {
 
   def supportsTarget(target: Targets.Value) : Boolean
 
+  //list of all incoming graph edges for this op
   private[graph] var dependencyList: List[DeliteOP] = Nil //TR: should this be a set??
 
   final def getDependencies : Seq[DeliteOP] = dependencyList
@@ -44,6 +45,11 @@ abstract class DeliteOP {
     dependencyList = dep :: dependencyList
   }
 
+  final def replaceDependency(old: DeliteOP, dep: DeliteOP) {
+    dependencyList = dep :: (dependencyList filterNot { _ == old })
+  }
+
+  //list of all outgoing graph edges for this op
   private[graph] var consumerList: List[DeliteOP] = Nil
 
   final def getConsumers : Seq[DeliteOP] = consumerList
@@ -56,7 +62,6 @@ abstract class DeliteOP {
     consumerList = c :: (consumerList filterNot { _ == old })
   }
 
-
   private[graph] var outputList: List[String] = Nil
   private[graph] var outputTypeMap: Map[String,Map[Targets.Value, String]] = Map.empty
 
@@ -67,9 +72,7 @@ abstract class DeliteOP {
     outputTypeMap += (output -> tp)
   }
 
-
-
-  //this is a subset of getDependencies and contains the inputs in the order required to call the task
+  //this is a subset of dependencies and contains the kernel inputs in the order required to call the task
   private[graph] var inputList: List[(DeliteOP, String)] = Nil
 
   final def getInputs : Seq[(DeliteOP, String)] = inputList
@@ -79,6 +82,20 @@ abstract class DeliteOP {
   final def addInput(op: DeliteOP, name: String) {
     assert(op.outputList.contains(name), "Op " + op + " does not have output " + name)
     inputList = (op, name) :: inputList
+  }
+
+  final def replaceInput(old: DeliteOP, input: DeliteOP, name: String) {
+    inputList = inputList.patch(inputList.indexWhere(_._1 == old), List((input,name)), 1)
+    if (mutableInputList contains old) mutableInputList = input :: (mutableInputList filterNot { _ == old })
+  }
+
+  //this is a subset of inputs and contains only the inputs that the op can mutate
+  private[graph] var mutableInputList: List[DeliteOP] = Nil
+
+  final def getMutableInputs : Seq[DeliteOP] = mutableInputList
+
+  final def addMutableInput(input: DeliteOP) {
+    mutableInputList = input :: mutableInputList
   }
 
   def id: String
@@ -94,7 +111,7 @@ abstract class DeliteOP {
   def isDataParallel : Boolean
 
   //TODO: do all OP subtypes support CUDA? (maybe shouldn't be here)
-  val cudaMetadata = new CudaMetadata
+  var cudaMetadata = new CudaMetadata
 
   /**
    * these methods/state are used for scheduling
@@ -106,7 +123,7 @@ abstract class DeliteOP {
   def processSchedulable {
     var free = true
     for (dep <- getDependencies) {
-      free &&= dep.isScheduled    
+      free &&= dep.isScheduled
     }
     if (free) isSchedulable = true
   }

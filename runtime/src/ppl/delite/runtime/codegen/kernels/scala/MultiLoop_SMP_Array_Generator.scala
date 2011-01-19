@@ -179,9 +179,11 @@ object MultiLoop_SMP_Array_Header_Generator {
     }
     out.append(") = new ")
     out.append(kernelName(op))
-    out.append("(in0")
-    for (i <- 1 until inIdx) {
-      out.append(", in" + i)
+    out.append("(")
+    for (i <- 0 until inIdx) {
+      if (i > 0) out.append(", ")
+      out.append("in")
+      out.append(i)
     }
     out.append(")\n")
   }
@@ -207,9 +209,11 @@ object MultiLoop_SMP_Array_Header_Generator {
 
     out.append("val closure = ")
     out.append(op.function)
-    out.append("(in0")
-    for (i <- 1 until inIdx) {
-      out.append(", in" + i)
+    out.append("(")
+    for (i <- 0 until inIdx) {
+      if (i > 0) out.append(", ")
+      out.append("in")
+      out.append(i)
     }
     out.append(")\n")
 

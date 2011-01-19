@@ -3,6 +3,7 @@ package ppl.delite.runtime.profiler
 import collection.mutable.HashMap
 import java.io.{BufferedWriter, File, PrintWriter, FileWriter}
 import scala.collection.mutable.ArrayBuffer
+import ppl.delite.runtime.Config
 
 /**
  * User: Anand Atreya
@@ -18,16 +19,16 @@ object PerformanceTimer
       times += component -> new ArrayBuffer[Double]()
     }
     if (printMessage) println("[METRICS]: Timing " + component + " #" + times(component).size + " started")
-    currentTimer += component -> System.nanoTime
+    currentTimer += component -> System.currentTimeMillis
   }
 
   def stop(component: String, printMessage: Boolean = true) {
-    val x = (System.nanoTime - currentTimer(component)) / 1000000000.0
+    val x = (System.currentTimeMillis - currentTimer(component)) / 1000D
     times(component) += x    
     if (printMessage) println("[METRICS]: Timing " + component + " #" + (times(component).size - 1) + " stopped")
   }
 
-  def summarize(component: String) {
+  def totalTime(component: String) {
     val total = times(component).toList.reduceLeft[Double](_+_)
     println("[METRICS]: total time for component " + component + ": " + total)
   }
@@ -53,28 +54,31 @@ object PerformanceTimer
     }
   }
 
-  //todo need to refactor this for 2.0
-  /* 
-  def save(component: String) {
-    try {
-      val procstring = {
-        if (Config.bypassExecutor && Config.debugEnabled) {
-        // set procs to -1 for bypassExecutor case
-          "-1"
-        } else {
-          Config.CPUThreadNum.toString
-        }
-      }
-      var file: String = new File("./").getCanonicalPath + "/" + component + ".p" + procstring + ".times"
-      val writer = new PrintWriter(new BufferedWriter(new FileWriter(file, false)))
-      for (i <- 0 until times(component).size) {
-        writer.println(times(component)(i) formatted ("%.10f"))
-      }
-      writer.close()
-    }
-    catch {
-      case e: Exception => println("[METRICS]: Unable to save data for component " + component)
-    }
+  /**
+   * dump stats to values provided by config parameters
+   */
+  def dumpStats() {
+    assert(Config.dumpStats)
+    dumpStats(Config.dumpStatsComponent)
   }
-  */
+
+  def dumpStats(component: String) {
+    // check that directory is there or make it
+    val directory = new File( Config.statsOutputDirectory)
+    if(directory.exists == false)
+      directory.mkdirs
+    else if(directory.isDirectory == false)
+      throw new RuntimeException("statsOutputDirectory doesn't refer to a directory")
+    val timesFile = new File(directory.getCanonicalPath + File.separator  + Config.statsOutputFilename)
+    if(Config.dumpStatsOverwrite == false && timesFile.exists)
+      throw new RuntimeException("stats file " + timesFile + " already exists")
+    val fileStream = new PrintWriter(new FileWriter(timesFile))
+    dumpStats(component, fileStream)
+    fileStream.close
+  }
+
+  def dumpStats(component: String, stream: PrintWriter)  {
+    stream.print(times(component).map(_.formatted("%.2f")).mkString("\n"))
+  }
+
 }

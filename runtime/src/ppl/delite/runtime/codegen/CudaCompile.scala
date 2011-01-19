@@ -30,7 +30,8 @@ object CudaCompile {
 
   //TODO: handle more than one source
   def compile(source: String, path: String) {
-    val write = new FileWriter(path+"cuda/cudaHost.cu")
+    val sep = java.io.File.separator
+    val write = new FileWriter(path + sep + "cuda" + sep + "cudaHost.cu")
     write.write(source)
     write.close
 
@@ -43,21 +44,21 @@ object CudaCompile {
       //else if (os.contains("Mac")) "??"
       else system.error("OS " + os + " not currently supported with CUDA")
 
-    val pathSep = System.getProperty("file.separator")
     val deliteHome = Config.deliteHome
 
     val process = Runtime.getRuntime.exec(Array[String](
       "nvcc",
       "-w", //suppress warnings
-      "-I" + javaHome + pathSep + ".." + pathSep + "include", "-I" + javaHome + pathSep + ".." + pathSep + "include" + pathSep + suffix, //jni
-      "-I" + deliteHome + pathSep + "runtime" + pathSep + "cuda",
+      "-I" + javaHome + sep + ".." + sep + "include", "-I" + javaHome + sep + ".." + sep + "include" + sep + suffix, //jni
+      "-I" + deliteHome + sep + "runtime" + sep + "cuda",
       "-O2", //optimized
       "-arch", "compute_20",
       "-code", "sm_20",
       "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
+      "-lcublas", //cublas library
       "-o", "cudaHost.so", //output name
       "cudaHost.cu" //input name
-      ), null, new File(path+"cuda/"))
+      ), null, new File(path + sep + "cuda"))
 
     process.waitFor //wait for compilation to complete
     val first = process.getErrorStream.read

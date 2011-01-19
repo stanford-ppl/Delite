@@ -71,15 +71,22 @@ object Delite {
     //compile
     val executable = Compilers.compileSchedule(schedule, graph)
 
-    //execute
+  //execute
     val numTimes = Config.numRuns
     for (i <- 1 to numTimes) {
-      println("Beginning Execution Run " + numTimes)
+      println("Beginning Execution Run " + i)
+      PerformanceTimer.start("all", false)
       executor.run(executable) //TODO: need to reset the executables
       EOP.await //await the end of the application program
-      EOP.reset
-      Stopwatch.print()
+      PerformanceTimer.stop("all", false)
+      PerformanceTimer.print("all")
+      // check if we are timing another component
+      if(Config.dumpStatsComponent != "all")
+        PerformanceTimer.print(Config.dumpStatsComponent)
     }
+
+    if(Config.dumpStats)
+      PerformanceTimer.dumpStats
 
     executor.shutdown()
 
@@ -92,8 +99,16 @@ object Delite {
   }
 
   def loadScalaSources(graph: DeliteTaskGraph) {
-    val sourceFiles = new Directory(new File(graph.kernelPath+"scala/")).deepFiles //obtain all files in path
+    val sourceFiles = new Directory(new File(graph.kernelPath + java.io.File.separator + "scala" + java.io.File.separator)).deepFiles.filter(_.extension == "scala") //obtain all files in path
     for (file <- sourceFiles) ScalaCompile.addSourcePath(file.path)
   }
 
 }
+
+
+
+
+
+
+
+

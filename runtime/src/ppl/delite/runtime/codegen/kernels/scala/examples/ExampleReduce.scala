@@ -37,10 +37,12 @@ final class ExampleReduceHeader(in0: Array[Double], in1: Double) {
 
   val closure = kernel_apply(in0, in1)
 
-  def get6: Double = Result6.get
-  def set6(result: Double) = Result6.set(result)
+  def get6: Double = res6.get
+  def set6(result: Double) = res6.set(result)
 
-  private object Result6 {
+  private val res6 = new Result6 //we don't just use "object" so that the singleton instance is created eagerly rather than lazily
+
+  private final class Result6 {
 
     @volatile
     private var notReady: Boolean = true

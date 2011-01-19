@@ -3,8 +3,8 @@ package ppl.delite.runtime.codegen.kernels.scala.examples
 /**
  * Author: Kevin J. Brown
  * Date: Dec 2, 2010
-  * Time: 7:43:16 PM
-*
+ * Time: 7:43:16 PM
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
