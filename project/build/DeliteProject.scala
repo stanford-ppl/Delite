@@ -67,4 +67,9 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   }
 
   lazy val dsls = project("dsls", "DSLs", new DSLs(_), framework)
+
+  lazy val apps = project("apps", "Applications", new APPs(_), framework, dsls)
+  class APPs(info: ProjectInfo) extends DefaultProject(info) {
+	  lazy val scala = project("scala", "Scala Apps", new FlatProject(_), framework, dsls)
+  }
 }
