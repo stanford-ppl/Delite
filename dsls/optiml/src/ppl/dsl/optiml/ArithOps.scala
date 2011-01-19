@@ -182,6 +182,25 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   }
 }
 
+trait ArithOpsExpOpt extends ArithOpsExp {
+  this: OptiML =>
+
+  override def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
+    case (Const(x), Const(y)) => implicitly[Numeric[T]].plus(x,y)
+    case _ => super.arith_plus(lhs, rhs)
+  }
+  override def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
+    case (Const(x), Const(y)) => implicitly[Numeric[T]].minus(x,y)
+    case _ => super.arith_minus(lhs, rhs)
+  }
+  override def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
+    case (Const(x), Const(y)) => implicitly[Numeric[T]].times(x,y)
+    case _ => super.arith_times(lhs, rhs)
+  }
+}
+
+
+
 trait ScalaGenArithOps extends ScalaGenBase {
   val IR: ArithOpsExp
   import IR._

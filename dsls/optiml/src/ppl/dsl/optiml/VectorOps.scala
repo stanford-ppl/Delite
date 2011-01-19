@@ -258,10 +258,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
   def vector_isinstanceof[A,B](x: Exp[Vector[A]], mA: Manifest[A], mB: Manifest[B]) = VectorIsInstanceOf(x,mA,mB)
   def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(x, n)
-  def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(x,n,y))
   def vector_length[A:Manifest](x: Exp[Vector[A]]) = VectorLength(x)
-  def vector_insert[A:Manifest](x: Exp[Vector[A]], pos: Rep[Int], y: Exp[A]) = reflectMutation(VectorInsert(x, pos, y))
   def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = VectorIsRow(x)
+  def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(x,n,y))
+  def vector_insert[A:Manifest](x: Exp[Vector[A]], pos: Rep[Int], y: Exp[A]) = reflectMutation(VectorInsert(x, pos, y))
 
   def vector_obj_zeros(len: Exp[Int]) = reflectEffect(VectorObjectZeros(len))
   def vector_toboolean[A](x: Exp[Vector[A]])(implicit conv: Exp[A] => Exp[Boolean], mA: Manifest[A]) = VectorToBoolean(x)
@@ -318,6 +318,43 @@ trait VectorOpsExpOpt extends VectorOpsExp {
   override def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
     case _ => super.vector_times(x, y)
   }
+
+
+  // these are essential for fusing:
+
+  override def vector_length[A:Manifest](x: Exp[Vector[A]]) = x match {
+    case Def(e: DeliteOpLoop[Vector[A]]) => 
+      e.body match {
+        case DeliteCollectElem(alloc, _) => vector_length(alloc)
+        case _ => super.vector_length(x) // vector constructed by reduction
+      }
+    case Def(Reify(e, _)) => vector_length(e) // FIXME: not sure this is always safe! <--- any reflect escaping its reify?
+    case Def(Reflect(VectorObjectZeros(l), _)) => l
+    case Def(Reflect(VectorObjectRange(s,e,d,r), _)) => (e - s + d - 1)
+    case Def(Reflect(VectorNew(l,r), _)) => l
+    case _ => super.vector_length(x)
+  }
+
+  override def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = x match {
+    case Def(e: DeliteOpLoop[Vector[A]]) => 
+      e.body match {
+        case DeliteCollectElem(alloc, _) => vector_isRow(alloc)
+        case _ => super.vector_isRow(x) // vector constructed by reduction
+      }
+    case Def(Reify(e, _)) => vector_isRow(e) // FIXME: not sure this is always safe! <--- any reflect escaping its reify?
+    //case Def(Reflect(VectorObjectZeros(l,r), _)) => r
+    case Def(Reflect(VectorObjectRange(s,e,d,r), es)) => r
+    case Def(Reflect(VectorNew(l,r), _)) => r
+    case _ => super.vector_isRow(x)
+  }
+  
+  // and this one also helps in the example:
+  
+  override def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = x match {
+    case Def(Reflect(VectorObjectRange(s,e,d,r), _)) => (s + n*d).asInstanceOf[Exp[A]]
+    case _ => super.vector_apply(x,n)
+  }
+  
 }
 
 trait ScalaGenVectorOps extends ScalaGenFat {

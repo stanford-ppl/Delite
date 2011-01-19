@@ -132,9 +132,18 @@ trait DeliteCodegen extends GenericFatCodegen {
       
       val effects = result match {
         case Def(Reify(x, effects0)) =>
+          println("*** effects0: " + effects0)
+          
           levelScope.filter(fb => fb.lhs.exists(effects0 contains _)) // all e whose lhs contains an effect
         case _ => Nil
       }
+
+      println("*** effects1: " + effects.flatMap(_.lhs))
+      
+      val effectsN = levelScope.collect { case TTP(List(s), ThinDef(Reflect(_, es))) => s }
+      
+      println("*** effectsN: " + effectsN)
+      
       
       for (TTP(syms, rhs) <- levelScope) {
         // we only care about effects that are scheduled to be generated before us, i.e.

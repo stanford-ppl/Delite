@@ -204,7 +204,7 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
 
 
   override def syms(e: Any): List[Sym[Any]] = e match { //TR TODO: question -- is alloc a dependency (should be part of result) or a definition (should not)???
-    case s: DeliteOpSingleTask[_] => syms(s.block)
+    case s: DeliteOpSingleTask[_] => syms(s.block) ++ super.syms(e) // super call: add case class syms!
     case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.alloc)
     case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.rFunc)
     case map: DeliteOpMap[_,_,_] => /*if (shallow) syms(map.in) else */ syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
@@ -267,23 +267,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
           }
           stream.println(quote(op.v) + " += 1")
           stream.println("}")
-/*        // red
-          stream.println("val " + quote(sym) + " = {")
-          stream.println("var " + quote(red.v._1) + " = " + quote(red.in) + "(0)")
-          stream.println("var reduceIdx = 1")
-          stream.println("while (reduceIdx < " + quote(red.in) + ".size) {")
-          stream.println("val " + quote(red.v._2) + " = " + quote(red.in) + ".dcApply(reduceIdx)")
-          stream.println(quote(red.v._1) + " = {")
-          emitBlock(red.func)
-          stream.println(quote(getBlockResult(red.func)))
-          stream.println("}")
-          stream.println("reduceIdx += 1")
-          stream.println("} // end while")
-          stream.println(quote(red.v._1))
-          stream.println("}")
-*/
         } else {
-          // wide zip, no reduce yet
+          // kernel mode
           val kernelName = symList.map(quote).mkString("")
           val actType = "activation_"+kernelName
           deliteKernel = false
