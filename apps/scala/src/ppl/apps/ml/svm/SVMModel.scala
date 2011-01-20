@@ -54,8 +54,9 @@ trait SVMModel {
     while (passes < max_passes){
       print(".")
       var num_changed_alphas = unit(0)
-      var i = unit(0)
-      while(i < numSamples){
+      //var i = unit(0)
+      //while(i < numSamples){ //TR
+      for (i <- 0 until numSamples) {
         // TODO: x761 -- code is recalculating alphas from original definition here
         val f_i = (alphas*Y*(X*X(i).t)).sum + b
         val E_i = f_i - Y(i)
@@ -122,7 +123,7 @@ trait SVMModel {
             } // negative eta?
           } // L != H?
         } // main if (select alphas)
-        i += 1
+        //i += 1 //TR
       } // for i = 1 to numSamples
 
       if (num_changed_alphas == 0){

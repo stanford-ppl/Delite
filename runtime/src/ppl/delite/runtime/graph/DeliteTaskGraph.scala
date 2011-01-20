@@ -460,7 +460,8 @@ class DeliteTaskGraph {
   def getOp(id: String) = _ops(id)
   def registerOp(op: DeliteOP, overwrite: Boolean = false) {
     for (o <- op.getOutputs) {
-      if (!overwrite && _ops.contains(o)) system.error("Output " + o + " (of Op " + op + ") is declared multiple times in DEG")
+      if (!overwrite && _ops.contains(o)) println("WARNING: Output " + o + "/Op " + op + " is declared multiple times in DEG")
+      //else 
       _ops(o) = op
     }
   }

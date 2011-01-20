@@ -31,9 +31,15 @@ trait DeliteBaseGenWhile extends GenericNestedCodegen {
   import IR._
 
   override def syms(e: Any): List[Sym[Any]] = e match {
-    case DeliteWhile(c, b) if shallow => Nil
+    case DeliteWhile(c, b) => syms(c):::syms(b) // wouldn't need to override...
     case _ => super.syms(e)
   }
+
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteWhile(c, b) => effectSyms(c):::effectSyms(b)
+    case _ => super.boundSyms(e)
+  }
+
 
   // TODO: What about condition node?
   override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {

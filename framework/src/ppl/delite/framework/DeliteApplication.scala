@@ -59,7 +59,11 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     //Emit and Compile external library (MKL BLAS)
     ExternLibrary.init
     
-    //codegen.emitSource(main_m, "Application", stream) // whole scala application (for testing)
+    if (Config.degFilename.endsWith(".deg")) {
+      val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
+      codegen.emitSource(main_m, "Application", streamScala) // whole scala application (for testing)
+      reset
+    }
     deliteGenerator.emitSource(main_m, "Application", stream)
   }
 

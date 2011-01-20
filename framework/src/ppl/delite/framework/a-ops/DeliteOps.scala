@@ -208,9 +208,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 
   // used by delite code generators to handle nested delite ops
-  var deliteKernel: Boolean = _
-  var deliteResult: Option[Sym[Any]] = _
-  var deliteInputs: List[Sym[Any]] = _
+  var deliteKernel: Boolean = false //_
+  var deliteResult: Option[Sym[Any]] = None//_
+  var deliteInputs: List[Sym[Any]] = Nil//_
 
   def getReifiedOutput(out: Exp[Any]) = out match { // TODO: is this still used??
     case Def(Reify(x, effects)) => x
