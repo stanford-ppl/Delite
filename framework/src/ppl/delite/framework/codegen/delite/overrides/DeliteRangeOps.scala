@@ -8,8 +8,8 @@ import scala.virtualization.lms.internal._
 trait DeliteRangeOpsExp extends RangeOpsExp {
   this: DeliteOpsExp =>
 
-  case class DeliteRangeForEach(start: Exp[Int], end: Exp[Int], i: Exp[Int], body: Exp[Unit])
-    extends DeliteOpIndexedLoop(start, end, i, body)
+  case class DeliteRangeForEach(start: Exp[Int], end: Exp[Int], index: Exp[Int], body: Exp[Unit])
+    extends DeliteOpIndexedLoop
 
   override def range_foreach(r: Exp[Range], block: Exp[Int] => Exp[Unit]) : Exp[Unit] = {
     val i = fresh[Int]
@@ -44,7 +44,6 @@ trait DeliteScalaGenRange extends ScalaGenEffect with DeliteBaseGenRangeOps {
     case DeliteRangeForEach(start, end, i, body) => {
       stream.println("var " + quote(i) + " : Int = " + quote(start))
       stream.println("val " + quote(sym) + " = " + "while (" + quote(i) + " < " + quote(end) + ") {")
-      nestedEmission = true
       emitBlock(body)
       stream.println(quote(getBlockResult(body)))
       stream.println(quote(i) + " = " + quote(i) + " + 1")

@@ -26,20 +26,20 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
   private val gpuResource = new ArrayDeque[DeliteOP] //one GPU stream
   private val cpuResource = new ArrayDeque[DeliteOP] //one CPU thread
 
-  private val opQueue = new ArrayDeque[DeliteOP]
-
   def schedule(graph: DeliteTaskGraph): PartialSchedule = {
     assert(Config.numThreads == 1 && Config.numGPUs == 1)
     scheduleFlat(graph)
+    ensureScheduled(graph)
     createPartialSchedule
   }
 
   private def scheduleFlat(graph: DeliteTaskGraph) {
-    enqueueRoots(graph)
+    val opQueue = new ArrayDeque[DeliteOP]
+    enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
       scheduleOne(op, graph)
-      processConsumers(op)
+      processConsumers(op, opQueue)
     }
   }
 
@@ -56,6 +56,10 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
             op.scheduledResource = 1
           }
         }
+        else if (op.variant != null) { //kernel could be partially GPUable
+          OpHelper.makeVariant(op, graph)
+          scheduleFlat(op.variant)
+        }
         else { //schedule on CPU resource
           if (op.isDataParallel) {
             split(op, graph)
@@ -70,14 +74,14 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
     }
   }
 
-  private def enqueueRoots(graph: DeliteTaskGraph) {
+  private def enqueueRoots(graph: DeliteTaskGraph, opQueue: ArrayDeque[DeliteOP]) {
     for (op <- graph.ops) {
       op.processSchedulable
       if (op.isSchedulable) opQueue.add(op)
     }
   }
 
-  private def processConsumers(op: DeliteOP) {
+  private def processConsumers(op: DeliteOP, opQueue: ArrayDeque[DeliteOP]) {
     for (c <- op.getConsumers) {
       if (!c.isSchedulable) {//if not already in opQueue (protects against same consumer appearing in list multiple times)
         c.processSchedulable
@@ -115,6 +119,13 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
     gpuResource.add(chunk1)
     chunk1.scheduledResource = 1
     chunk1.isScheduled = true
+  }
+
+  private def ensureScheduled(graph: DeliteTaskGraph) {
+    for (op <- graph.ops) {
+      if (!op.isScheduled)
+        error("Graph dependencies are unsatisfiable")
+    }
   }
 
   private def createPartialSchedule = {

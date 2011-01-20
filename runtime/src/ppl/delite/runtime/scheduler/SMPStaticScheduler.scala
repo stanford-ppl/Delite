@@ -9,7 +9,7 @@ import ppl.delite.runtime.graph.ops._
  * Author: Kevin J. Brown
  * Date: Oct 11, 2010
  * Time: 1:02:57 AM
- * 
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
@@ -28,29 +28,24 @@ final class SMPStaticScheduler extends StaticScheduler {
   private val procs = new Array[ArrayDeque[DeliteOP]](numThreads)
   for (i <- 0 until numThreads) procs(i) = new ArrayDeque[DeliteOP]
 
-  private val opQueue = new ArrayDeque[DeliteOP]
-
   def schedule(graph: DeliteTaskGraph) : PartialSchedule = {
     //traverse nesting & schedule sub-graphs
     //TODO: implement functionality for nested graphs
     scheduleFlat(graph)
 
-    //ensure graph was schedulable
-    for (op <- graph.ops) {
-      if (!op.isScheduled)
-        error("Graph dependencies were unsatisfiable")
-    }
+    ensureScheduled(graph)
 
     //return schedule
     createPartialSchedule
   }
 
   private def scheduleFlat(graph: DeliteTaskGraph) {
-    enqueueRoots(graph)
+    val opQueue = new ArrayDeque[DeliteOP]
+    enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
       scheduleOne(op, graph)
-      processConsumers(op)
+      processConsumers(op, opQueue)
     }
   }
 
@@ -60,7 +55,14 @@ final class SMPStaticScheduler extends StaticScheduler {
   private def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph) {
     op match {
       case c: OP_Control => addControl(c)
-      case _ => if (op.isDataParallel) split(op, graph) else cluster(op)
+      case _ => {
+        if (op.variant != null) {
+          OpHelper.makeVariant(op, graph)
+          scheduleFlat(op.variant)
+        }
+        else if (op.isDataParallel) split(op, graph)
+        else cluster(op)
+      }
     }
   }
 
@@ -87,14 +89,14 @@ final class SMPStaticScheduler extends StaticScheduler {
     op.isScheduled = true
   }
 
-  private def enqueueRoots(graph: DeliteTaskGraph) {
+  private def enqueueRoots(graph: DeliteTaskGraph, opQueue: ArrayDeque[DeliteOP]) {
     for (op <- graph.ops) {
       op.processSchedulable
       if (op.isSchedulable) opQueue.add(op)
     }
   }
 
-  private def processConsumers(op: DeliteOP) {
+  private def processConsumers(op: DeliteOP, opQueue: ArrayDeque[DeliteOP]) {
     for (c <- op.getConsumers) {
       if (!c.isSchedulable) {//if not already in opQueue (protects against same consumer appearing in list multiple times)
         c.processSchedulable
@@ -119,6 +121,13 @@ final class SMPStaticScheduler extends StaticScheduler {
       procs(i).add(chunk)
       chunk.scheduledResource = i
       chunk.isScheduled = true
+    }
+  }
+
+  private def ensureScheduled(graph: DeliteTaskGraph) {
+    for (op <- graph.ops) {
+      if (!op.isScheduled)
+        error("Graph dependencies are unsatisfiable")
     }
   }
 

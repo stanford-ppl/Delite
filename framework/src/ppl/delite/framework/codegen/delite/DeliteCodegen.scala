@@ -27,6 +27,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
   // global, used by DeliteGenTaskGraph
   var kernelMutatingDeps = Map[Sym[_],List[Sym[_]]]() // from kernel to its mutating deps
   var kernelInputDeps = Map[Sym[_],List[Sym[_]]]() // from kernel to its input deps
+  var prependInputs: List[Sym[_]] = Nil
 
   def ifGenAgree[A](f: Generator => A, shallow: Boolean): A = {
     val save = generators map { _.shallow }
@@ -100,6 +101,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
     val save = scope
     scope = e4 ::: scope
     generators foreach { _.scope = scope }
+    nested += 1
 
     ignoreEffects = true
     val e5 = buildScheduleForResult(start)
@@ -113,11 +115,11 @@ trait DeliteCodegen extends GenericNestedCodegen {
     generators foreach { _.effectScope = effectScope }
 
     var localEmittedNodes: List[Sym[_]] = Nil
-    for (t@TP(sym, rhs) <- e4) {
+    for (t@TP(sym, rhs) <- e6) {
       // we only care about effects that are scheduled to be generated before us, i.e.
       // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
       // n3 we want controlDeps to contain e1 and e2
-      controlDeps = e4.take(e4.indexOf(t)) filter { effects contains _ } map { _.sym }
+      controlDeps = e6.take(e4.indexOf(t)) filter { effects contains _ } map { _.sym }
       if(!rhs.isInstanceOf[Reify[_]]) localEmittedNodes = localEmittedNodes :+ t.sym
       emitNode(sym, rhs)
     }
@@ -142,6 +144,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
     generators.foreach(_.scope = save)
     scope = save
     emittedNodes = localEmittedNodes
+    nested -= 1
   }
 
   /*

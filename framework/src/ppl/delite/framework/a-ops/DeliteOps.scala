@@ -1,15 +1,17 @@
 package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
-import scala.virtualization.lms.common.{TupleOpsExp, VariablesExp, EffectExp}
 import ppl.delite.framework.DeliteCollection
 import scala.virtualization.lms.internal._
+import scala.virtualization.lms.common._
 
-trait DeliteOpsExp extends EffectExp with VariablesExp {
+trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with DeliteCollectionOpsExp
+  with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp {
+
   /**
    * The base type of the DeliteOp hierarchy.
    */
-  sealed abstract class DeliteOp[A]() extends Def[A]
+  /*sealed*/ abstract class DeliteOp[A]() extends Def[A]
 
   /**
    * A sequential task - will execute block in a single thread and respect any free variable dependencies inside it.
@@ -25,7 +27,11 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
    * @param  thenp   the Then block to execute if condition is true
    * @param  elsep   the Else block to execute if condition is false
    */
-  case class DeliteOpCondition[A](cond: Exp[Boolean], thenp: Exp[A], elsep: Exp[A]) extends DeliteOp[A]
+  trait DeliteOpCondition[A] extends DeliteOp[A] {
+    val cond: Exp[Boolean]
+    val thenp: Exp[A]
+    val elsep: Exp[A]
+  }
 
   /**
    * An indexed loop - will emit an indexed loop DEG node as well as a kernel for the body
@@ -35,15 +41,25 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
    * @param  idx    index id that will be refered to in the body, this could be passed in as input to the body or the body could be inlined
    * @param  body   the body of the loop
    */
-  case class DeliteOpIndexedLoop(_start: Exp[Int], _end: Exp[Int], _idx: Exp[Int], _body: Exp[Unit]) extends DeliteOp[Unit]
+  trait DeliteOpIndexedLoop extends DeliteOp[Unit] {
+    val start: Exp[Int]
+    val end: Exp[Int]
+    val index: Exp[Int]
+    val body: Exp[Unit]
+  }
 
   /**
    * An while loop - will emit an while loop DEG node as well as a kernel for the body
    *
-   * @param  _cond  condition expression, will be emitted as a kernel
+   * @param  cond  condition expression, will be emitted as a kernel
    * @param  body   the body of the loop
    */
-  case class DeliteOpWhileLoop(_cond: Exp[Boolean], _body: Exp[Unit]) extends DeliteOp[Unit]
+  trait WhileLoopLike {
+    val cond: Exp[Boolean]
+    val body: Exp[Unit]
+  }
+
+  trait DeliteOpWhileLoop extends DeliteOp[Unit] with WhileLoopLike
 
   /**
    * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
@@ -55,11 +71,37 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
    * @param  alloc function returning the output collection. if it is the same as the input collection,
    *               the operation is mutable; reified version of Unit => DeliteCollection[B].
    */
-  abstract class DeliteOpMap[A,B,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[B]] {
+
+  trait DeliteOpMap[A,B,C[X] <: DeliteCollection[X]] extends DeliteOp[C[B]] with DeliteOpMapLikeWhileLoopVariant {
     val in: Exp[C[A]]
     val v: Exp[A]
     val func: Exp[B]
     val alloc: Exp[C[B]]
+
+    // DeliteOpWhileLoopVariant
+    //var index = unit(0)
+    //lazy val output = alloc
+    // TODO: we need a way to make variables and reify work together -- we lose access to the var once we reify it
+    // TODO: there should be a better way of doing this
+    //val i : Var[Int] = index match { case Def(Reify(x, effects)) => x.asInstanceOf[Var[Int]] }
+    lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
+    lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
+    val vs = () => __newVar(unit(null).asInstanceOfL[A])
+    lazy val Vs = vs()
+    // this does not get initialized properly in body -- perhaps a scala bug?
+    //lazy val vs = __newVar(unit(null)).asInstanceOfL[A]
+    val index = __newVar(unit(0))
+    lazy val cond = reifyEffects(index < in.size)
+    lazy val body =
+      reifyEffects {
+        //vs = in(index)
+        //val Vs = vs()
+        Vs = in(index)
+        // in the variant version, we need to actually emit the bound symbol as a kernel so it can be passed in as an input
+        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs)
+        alloc(index) = func
+        index += 1
+      }
   }
 
   /**
@@ -106,7 +148,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
    * @param  rV      the bound symbol that the reducing function operates over
    * @param  reduce  the reduction function; reified version of ([Exp[R],Exp[R]) => Exp[R]. Must be associative.
    */
-  abstract class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] {
+  abstract class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] with DeliteOpMapLikeWhileLoopVariant {
     val in: Exp[C[A]]
     //val acc: Exp[R]
 
@@ -118,6 +160,38 @@ trait DeliteOpsExp extends EffectExp with VariablesExp {
     // for reducing remaining partial sums
     val rV: (Exp[R],Exp[R])
     val reduce: Exp[R]
+
+    // DeliteOpWhileLoopVariant
+    lazy implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
+    lazy implicit val mR = map.Type.asInstanceOf[Manifest[R]]
+    val acc = () => __newVar(unit(null).asInstanceOfL[R])
+    lazy val Acc = {
+      //acc()
+      Vs = in(0)
+      val x = acc()
+      reifyEffects(reflectEffect(createDefinition(mV.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs))
+      x = map
+      x
+    }
+    lazy val alloc = reifyEffects(readVar(Acc))
+    val vs = () => __newVar(unit(null).asInstanceOfL[A])
+    lazy val Vs = vs()
+    lazy val cond = reifyEffects(index < in.size)
+    val index = __newVar(unit(1))
+    lazy val body =
+      reifyEffects {
+        Vs = in(index)
+        // in the variant version, we need to actually emit the bound symbol as a kernel so it can be passed in as an input
+        // map
+        //reflectEffect(createDefinition(mV.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs)
+        var x = map
+
+        // reduce
+        reflectEffect(createDefinition(rV._1.asInstanceOf[Sym[R]], ReadVar(Acc)).rhs)
+        reflectEffect(createDefinition(rV._2.asInstanceOf[Sym[R]], ReadVar(x)).rhs)
+        Acc = reduce
+        index += 1
+      }
   }
 
 
@@ -174,13 +248,13 @@ trait BaseGenDeliteOps extends GenericNestedCodegen {
   import IR._
 
   override def syms(e: Any): List[Sym[Any]] = e match {
-    case s: DeliteOpSingleTask[_] => if (shallow) super.syms(e) else super.syms(e) ++ syms(s.block)
-    case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) else syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
-    case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ++ syms(zip.inB) else syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
-    case red: DeliteOpReduce[_] => if (shallow) syms(red.in) else syms(red.in) ++ syms(red.func)
-    case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
-    case zipR: DeliteOpZipWithReduce[_,_,_,_] => if (shallow) syms(zipR.inA) ++ syms(zipR.inB) else syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
-    case foreach: DeliteOpForeach[_,_] => if (shallow) syms(foreach.in) else syms(foreach.in) ++ syms(foreach.func)
+    case s: DeliteOpSingleTask[_] => if (shallow) super.syms(e) else super.syms(e) ::: syms(s.block)
+    case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) else syms(map.in) ::: syms(map.alloc) ::: syms(map.func)
+    case zip: DeliteOpZipWith[_,_,_,_] => if (shallow) syms(zip.inA) ::: syms(zip.inB) else syms(zip.inA) ::: syms(zip.inB) ::: syms(zip.alloc) ::: syms(zip.func)
+    case red: DeliteOpReduce[_] => if (shallow) syms(red.in) else syms(red.in) ::: syms(red.func)
+    case mapR: DeliteOpMapReduce[_,_,_] => if (shallow) syms(mapR.in) else syms(mapR.in) ::: syms(mapR.map) ::: syms(mapR.reduce)
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => if (shallow) syms(zipR.inA) ::: syms(zipR.inB) else syms(zipR.inA) ::: syms(zipR.inB) ::: syms(zipR.zip) ::: syms(zipR.reduce)
+    case foreach: DeliteOpForeach[_,_] => if (shallow) syms(foreach.in) else syms(foreach.in) ::: syms(foreach.func)
     // always try to hoist free dependencies out of delite ops, if possible
 //    case s: DeliteOpSingleTask[_] => if (shallow) super.syms(e) else super.syms(e) ++ syms(s.block)
 //    case map: DeliteOpMap[_,_,_] => if (shallow) syms(map.in) ++ syms(map.func) else syms(map.in) ++ syms(map.func) ++ syms(map.alloc)
@@ -269,8 +343,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(getBlockResult(map.alloc)))
         stream.println("}")
-	
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -303,7 +376,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(getBlockResult(zip.alloc)))
         stream.println("}")
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -336,7 +409,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(red.v._1))
         stream.println("}")
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -372,7 +445,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(mapR.rV._1))
         stream.println("}")
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -415,7 +488,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("} // end while")
         stream.println(quote(zipR.rV._1))
         stream.println("}")
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -445,7 +518,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
         stream.println("forIdx += 1")
         stream.println("} // end while")
         stream.println("}")
-	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+      	stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
