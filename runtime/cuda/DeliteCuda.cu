@@ -1,3 +1,4 @@
+
 #include <cuda_runtime.h>
 #include <list>
 #include <map>
@@ -94,3 +95,4 @@ void DeliteCudaMemcpyDtoHAsync(void* dptr, void* sptr, int size) {
 	cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyDeviceToHost, d2hStream);
 	cudaStreamSynchronize(d2hStream);
 }
+
