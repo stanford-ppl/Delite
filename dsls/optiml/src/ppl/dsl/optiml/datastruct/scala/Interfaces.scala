@@ -3,11 +3,20 @@ package ppl.dsl.optiml.datastruct.scala
 // TODO: putting everything in one file was convenient at first, but now that this is growing larger
 // it should be refactored into a more logical organization.
 
+//TR: Note that scalac's specialize phase took 15s (!) on this file (on my MacBook).
+// No wonder since DeliteOpZipWith and DeliteOpZipWithReduce each had 1000 specialized variants.
+// Adding @specialized(Boolean, Int, Long, Float, Double) reduced the time to 5s.
+// Note also that DeliteOpMultiLoop does not have that problem because it always
+// uses a custom activation record class for each use.
+
+// I changed some of the traits to abstract classes, that might yield a slight speed gain
+// at runtime (invokevirtual vs invokeinterface)
+
 /**
  * Delite
  */
 
-trait DeliteOpMultiLoop[A] {
+abstract class DeliteOpMultiLoop[A] {
   def size: Int
   def alloc: A
   def split(rhs: A): A
@@ -20,7 +29,8 @@ trait DeliteOpMultiLoop[A] {
 /**
  * @tparam CR  A subtype of DeliteCollection[B]; passed as a separate parameter to avoid requiring a higher kinded type.
  */
-trait DeliteOpMap[@specialized A, @specialized B, CR] {
+abstract class DeliteOpMap[@specialized(Boolean, Int, Long, Float, Double) A, 
+                  @specialized(Boolean, Int, Long, Float, Double) B, CR] {
   def in: DeliteCollection[A]
   def alloc: CR
   def map(a: A): B
@@ -29,19 +39,22 @@ trait DeliteOpMap[@specialized A, @specialized B, CR] {
 /**
  * @tparam CR  A subtype of DeliteCollection[R]; passed as a separate parameter to avoid requiring a higher kinded type.
  */
-trait DeliteOpZipWith[@specialized A, @specialized B, @specialized R, CR] {
+abstract class DeliteOpZipWith[@specialized(Boolean, Int, Long, Float, Double) A,
+                      @specialized(Boolean, Int, Long, Float, Double) B, 
+                      @specialized(Boolean, Int, Long, Float, Double) R, CR] {
   def inA: DeliteCollection[A]
   def inB: DeliteCollection[B]
   def alloc: CR
   def zip(a: A, b: B): R
 }
 
-trait DeliteOpReduce[@specialized R] {
+abstract class DeliteOpReduce[@specialized(Boolean, Int, Long, Float, Double) R] {
   def in: DeliteCollection[R]
   def reduce(r1: R, r2: R): R
 }
 
-trait DeliteOpMapReduce[@specialized A, @specialized R] {
+abstract class DeliteOpMapReduce[@specialized(Boolean, Int, Long, Float, Double) A, 
+                        @specialized(Boolean, Int, Long, Float, Double) R] {
   def in: DeliteCollection[A]
   def map(elem: A): R
   def reduce(r1: R, r2: R): R
@@ -53,7 +66,9 @@ trait DeliteOpMapReduce[@specialized A, @specialized R] {
   def mapreduce(acc: R, elem: A): R = reduce(acc, map(elem))
 }
 
-trait DeliteOpZipWithReduce[@specialized A, @specialized B, @specialized R] {
+abstract class DeliteOpZipWithReduce[@specialized(Boolean, Int, Long, Float, Double) A, 
+                            @specialized(Boolean, Int, Long, Float, Double) B, 
+                            @specialized(Boolean, Int, Long, Float, Double) R] {
   def inA: DeliteCollection[A]
   def inB: DeliteCollection[B]
   def zip(a: A, b: B): R
@@ -66,13 +81,13 @@ trait DeliteOpZipWithReduce[@specialized A, @specialized B, @specialized R] {
   def zipreduce(acc: R, a: A, b: B): R = reduce(acc, zip(a,b))
 }
 
-trait DeliteOpForeach[@specialized A] {
+abstract class DeliteOpForeach[@specialized(Boolean, Int, Long, Float, Double) A] {
   def in: DeliteCollection[A]
   def foreach(elem: A): Unit
   def sync(idx: Int): List[_]
 }
 
-trait DeliteCollection[@specialized T] {
+abstract class DeliteCollection[@specialized(Boolean, Int, Long, Float, Double) T] {
   def size: Int
   def dcApply(idx: Int): T
   def dcUpdate(idx: Int, x: T)
@@ -82,7 +97,7 @@ trait DeliteCollection[@specialized T] {
  * Vector
  */
 
-trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
+abstract class Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.DeliteCollection[T] {
   // methods required on real underlying data structure impl
   // we need these for:
   //   1) accessors to data fields
@@ -109,7 +124,7 @@ trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def size = length
 }
 
-trait NilVector[@specialized T] extends Vector[T] {
+abstract class NilVector[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T] {
   def length : Int = 0
   def apply(i: Int) = throw new UnsupportedOperationException()
   def isRow : Boolean = throw new UnsupportedOperationException()
@@ -126,16 +141,16 @@ trait NilVector[@specialized T] extends Vector[T] {
   def cloneL = throw new UnsupportedOperationException()
 }
 
-trait VectorView[@specialized T] extends Vector[T]
+abstract class VectorView[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T]
 
-trait RangeVector extends Vector[Int]
+abstract class RangeVector extends Vector[Int]
 
 trait IndexVector extends Vector[Int]
 
 /**
  * Matrix
  */
-trait Matrix[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
+abstract class Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.DeliteCollection[T] {
   // fields required on real underlying data structure impl
   def numRows: Int
   def numCols: Int
@@ -164,11 +179,11 @@ trait Matrix[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
  * TrainingSet
  */
 
-trait Labels[@specialized L] extends Vector[L] {
+trait Labels[@specialized(Boolean, Int, Long, Float, Double) L] extends Vector[L] {
   def numLabels = length
 }
 
-trait TrainingSet[@specialized T,L] extends Matrix[T] {
+trait TrainingSet[@specialized(Boolean, Int, Long, Float, Double) T,L] extends Matrix[T] {
   def numSamples = numRows
   def numFeatures = numCols
   def labels: Labels[L]
@@ -188,8 +203,8 @@ trait TrainingSet[@specialized T,L] extends Matrix[T] {
  * Ref
  */
 
-case class Ref[@specialized T](v: T) {
-  private var _v = v
+case class Ref[@specialized(Boolean, Int, Long, Float, Double) T](v: T) {
+  private[this] var _v = v
 
   def get = _v
   def set(v: T) = _v = v
