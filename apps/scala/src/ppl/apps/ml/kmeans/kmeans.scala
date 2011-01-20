@@ -37,7 +37,6 @@ object kmeans extends DeliteApplication with OptiMLExp {
 
     untilconverged(mu, tol){ mu =>
       iter += 1
-      //println("iter: " + iter)
 
       // update c -- calculate distances to current centroids
       val c = (0::m){e => findNearestCluster(x(e), mu)}

@@ -35,6 +35,12 @@ final class SMPStaticScheduler extends StaticScheduler {
     //TODO: implement functionality for nested graphs
     scheduleFlat(graph)
 
+    //ensure graph was schedulable
+    for (op <- graph.ops) {
+      if (!op.isScheduled)
+        error("Graph dependencies were unsatisfiable")
+    }
+
     //return schedule
     createPartialSchedule
   }

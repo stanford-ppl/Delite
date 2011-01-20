@@ -128,6 +128,13 @@ object DeliteTaskGraph {
       input.addConsumer(newop)
     }
 
+    //handle mutable inputs
+    val mutableInputs = getFieldList(op, "mutableInputs")
+    for (m <- mutableInputs) {
+      val mutable = getOp(graph._ops, m)
+      newop.addMutableInput(mutable)
+    }
+
     //handle anti dependencies
     val antiDeps = getFieldList(op, "antiDeps")
     for(a <- antiDeps) {
@@ -145,6 +152,7 @@ object DeliteTaskGraph {
     }
 
     //add new op to graph list of ops
+    if (graph._ops.contains(id)) error("Op " + id + " is declared multiple times in DEG")
     graph._ops += id -> newop
 
     //process target metadata
@@ -177,7 +185,8 @@ object DeliteTaskGraph {
     var ifDeps: List[DeliteOP] = Nil
     for (depId <- depIds) ifDeps ::= getOp(graph._ops, depId)
     //list of all dependencies of the if block, minus any dependencies within the block
-    ifDeps = (ifDeps ++ thenOpsBegin.flatMap(_.getDependencies) ++ elseOpsBegin.flatMap(_.getDependencies)) filterNot { (thenOpsBegin ++ elseOpsBegin) contains }
+    val ignore = (thenOpsBegin ++ elseOpsBegin).filter(_.isInstanceOf[OP_Control]).map(o => o.asInstanceOf[OP_Control].predicate)
+    ifDeps = (ifDeps ++ thenOpsBegin.flatMap(_.getDependencies) ++ elseOpsBegin.flatMap(_.getDependencies)) filterNot { (thenOps ++ elseOps ++ ignore) contains }
 
     //beginning depends on all exterior dependencies
     for (dep <- ifDeps) {
@@ -269,7 +278,8 @@ object DeliteTaskGraph {
     var whileDeps: List[DeliteOP] = Nil
     for (depId <- depIds) whileDeps ::= getOp(graph._ops, depId)
     //list of all dependencies of the while block, minus any dependencies within the block
-    whileDeps = (whileDeps ++ bodyOpsBegin.flatMap(_.getDependencies)) filterNot { bodyOpsBegin contains }
+    val ignore = bodyOpsBegin.filter(_.isInstanceOf[OP_Control]).map(o => o.asInstanceOf[OP_Control].predicate)
+    whileDeps = (whileDeps ++ bodyOpsBegin.flatMap(_.getDependencies)) filterNot { (bodyOps ++ ignore) contains }
 
     //beginning depends on all exterior dependencies
     for (dep <- whileDeps) {
@@ -335,11 +345,18 @@ object DeliteTaskGraph {
     val metadataMap = getFieldMap(metadataAll, "cuda")
     val cudaMetadata = newop.cudaMetadata
 
+    //check library call
+    cudaMetadata.libCall = metadataMap.get("gpuLibCall") match {
+      case Some(x) => x
+      case None => null
+    }
+
     for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
       val value = (input.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
       val data = cudaMetadata.newInput
       data.resultType = value.head
       data.func = value.tail.head
+      data.funcReturn = value.tail.tail.head
     }
 
     val tempSyms = new HashMap[String,DeliteOP]
@@ -363,14 +380,22 @@ object DeliteTaskGraph {
     }
 
     //output allocation
-    val outList = getFieldMap(metadataMap, "gpuOutput").values.head.asInstanceOf[List[Any]]
-    cudaMetadata.outputAlloc.resultType = outList.head
-    cudaMetadata.outputAlloc.func = outList.tail.head
-    for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
-      cudaMetadata.outputAlloc.inputs ::= getOpLike(sym)
+    metadataMap.get("gpuOutput") match {
+      case None => //do nothing
+      case Some(field) => field match {
+        case out: Map[Any,Any] => {
+          val outList = out.values.head.asInstanceOf[List[Any]]
+          cudaMetadata.output.resultType = outList.head
+          cudaMetadata.output.func = outList.tail.head
+          for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
+            cudaMetadata.output.inputs ::= getOpLike(sym)
+          }
+          //output copy
+          cudaMetadata.output.funcReturn = outList.tail.tail.tail.head
+        }
+        case err => mapNotFound(err)
+      }
     }
-    //output copy
-    cudaMetadata.outputSet.func = outList.tail.tail.tail.head
 
     def fill(field: String) {
       val list = getFieldList(metadataMap, field)

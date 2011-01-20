@@ -13,6 +13,7 @@ import ppl.delite.runtime.graph.ops.DeliteOP
 
 final class CudaMetadata {
 
+  var libCall: String = null
   val blockSizeX = new OPData
   val blockSizeY = new OPData
   val blockSizeZ = new OPData
@@ -21,8 +22,7 @@ final class CudaMetadata {
   var inputs: List[OPData] = Nil
   var temps: List[OPData] = Nil
   var tempOps: List[DeliteOP] = Nil
-  val outputAlloc = new OPData
-  val outputSet = new OPData
+  val output = new OPData
 
   def apply(field: String) = field match {
     case "gpuBlockSizeX" => blockSizeX
@@ -30,7 +30,7 @@ final class CudaMetadata {
     case "gpuBlockSizeZ" => blockSizeZ
     case "gpuDimSizeX" => dimSizeX
     case "gpuDimSizeY" => dimSizeY
-    case "outputAlloc" => outputAlloc
+    case "output" => output
     case other => error("unknown field: " + other)
   }
 
@@ -49,6 +49,7 @@ final class CudaMetadata {
   class OPData {
 
     var func: String = _
+    var funcReturn: String = _
     var inputs: List[DeliteOP] = Nil
     var resultType: String = _
 

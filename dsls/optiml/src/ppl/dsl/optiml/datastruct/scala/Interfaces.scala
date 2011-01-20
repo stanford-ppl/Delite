@@ -163,7 +163,8 @@ trait TrainingSet[@specialized T,L] extends Matrix[T] {
   def numFeatures = numCols
   def labels: Labels[L]
 
-  def transposed: TrainingSet[T,L]
+  //def transposed: TrainingSet[T,L]
+  def transposed: Matrix[T]
   override def update(row: Int, col: Int, x: T) = throw new UnsupportedOperationException("Training sets are immutable")
   override def insertRow(pos: Int, x: Vector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
   override def insertAllRows(pos: Int, xs: Matrix[T]) = throw new UnsupportedOperationException("Training sets are immutable")

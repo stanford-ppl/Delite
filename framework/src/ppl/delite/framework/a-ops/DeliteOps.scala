@@ -468,61 +468,117 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
 
 trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
   import IR._
-
+  
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable.")
       // TODO: Generate single thread version of this work
       //if(idxX == 0) {}
     case map:DeliteOpMap[_,_,_] => {
-      if (deliteKernel == false) throw new GenerationFailedException("CudaGen: Nested DeliteOpMap is not GPUable.")
-      gpuBlockSizeX = quote(map)+".size"
-      val freeVars = getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(map.in)+".size"))
-      tabWidth += 1
-      emitDevFunc(map.func, map.alloc.Type.typeArguments(0), List(map.v)++freeVars)
-      if(freeVars.length==0)
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s)));".format(quote(sym),"idxX",quote(map.func),"idxX",quote(map.in)))
-      else
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s));".format(quote(sym),"idxX",quote(map.func),"idxX",quote(map.in),freeVars.map(quote).mkString(",")))
-      if(getVarLink(sym) != null)
-          stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      allocOutput(sym,getBlockResult(map.alloc).asInstanceOf[Sym[_]])
+      if (parallelCudagen == false) {
+        throw new GenerationFailedException("CudaGen: Nested DeliteOpMap is not GPUable.")
+      }
+      else {
+        parallelCudagen = false
+        gpuBlockSizeX = quote(map.in)+".size()"
+        val freeVars = getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)
+        stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(map.in)+".size()"))
+        tabWidth += 1
+        val mapFunc = emitDevFunc(map.func, map.alloc.Type.typeArguments(0), List(map.v)++freeVars)
+        if(freeVars.length==0)
+          stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s)));".format(quote(sym),"idxX",mapFunc,quote(map.in),"idxX"))
+        else
+          stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),"idxX",mapFunc,quote(map.in),"idxX",freeVars.map(quote).mkString(",")))
+        if(getVarLink(sym) != null)
+            stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        allocOutput(sym,map.in.asInstanceOf[Sym[_]])
+        parallelCudagen = true
+      }
     }
     case zip: DeliteOpZipWith[_,_,_,_] => {
-      if (deliteKernel == false) throw new GenerationFailedException("CudaGen: Nested DeliteOpZipWith is not GPUable.")
-      gpuBlockSizeX = quote(zip)+".size"
-      val freeVars = getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(zip.inA)+".size"))
-      tabWidth += 1
-      emitDevFunc(zip.func, zip.alloc.Type.typeArguments(0), List(zip.v._1, zip.v._2))
-      if(freeVars.length==0)
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s)));".format(quote(sym),"idxX", quote(zip.func), quote(zip.inA),"idxX",quote(zip.inB),"idxX"))
-      else
-        stream.println(addTab()+"%s.dcUpdate(%s, dev_%s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),"idxX", quote(zip.func), quote(zip.inA),"idxX",quote(zip.inB),"idxX",freeVars.map(quote).mkString(",")))
-      if(getVarLink(sym) != null)
-          stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      allocOutput(sym,getBlockResult(zip.alloc).asInstanceOf[Sym[_]])
+      if (parallelCudagen == false) {
+        throw new GenerationFailedException("CudaGen: Nested DeliteOpZipWith is not GPUable.")
+      }
+      else {
+        parallelCudagen = false
+        gpuBlockSizeX = quote(zip.inA)+".size()"
+        val freeVars = getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))
+        stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(zip.inA)+".size()"))
+        tabWidth += 1
+        val zipFunc = emitDevFunc(zip.func, zip.alloc.Type.typeArguments(0), List(zip.v._1, zip.v._2))
+        if(freeVars.length==0)
+          stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s)));".format(quote(sym),"idxX", zipFunc, quote(zip.inA),"idxX",quote(zip.inB),"idxX"))
+        else
+          stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),"idxX", zipFunc, quote(zip.inA),"idxX",quote(zip.inB),"idxX",freeVars.map(quote).mkString(",")))
+        if(getVarLink(sym) != null)
+            stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        allocOutput(sym,zip.inA.asInstanceOf[Sym[_]])
+        parallelCudagen = true
+      }
     }
     case mapR:DeliteOpMapReduce[_,_,_] => {
-      emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
-      emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
-      stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
-      addVarLink(getBlockResult(mapR.map).asInstanceOf[Sym[_]],sym)
-      emitBlock(mapR.map)
-      removeVarLink(getBlockResult(mapR.map).asInstanceOf[Sym[_]],sym)
-      stream.println(addTab()+"for(int cnt=1; cnt<%s.length; cnt++) {".format(quote(mapR.in)))
-      tabWidth += 1
-      stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
-      emitBlock(mapR.map)
-      emitBlock(mapR.reduce)
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+      if (parallelCudagen == false) {
+        // When nested, only pritimive type result can be generated
+        stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
+        emitBlock(mapR.map)
+        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map))) 
+        stream.println(addTab()+"for(int cnt=1; cnt<%s.size(); cnt++) {".format(quote(mapR.in)))
+        tabWidth += 1
+        stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
+        emitBlock(mapR.map)
+        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+        emitBlock(mapR.reduce)
+        stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1.asInstanceOf[Sym[_]]),quote(getBlockResult(mapR.reduce))))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        emitValDef(sym,quote(mapR.rV._1))
+      }
+      else {
+        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
+        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+        stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
+        addVarLink(getBlockResult(mapR.map),sym)
+        emitBlock(mapR.map)
+        removeVarLink(getBlockResult(mapR.map),sym)
+        stream.println(addTab()+"for(int cnt=1; cnt<%s.size(); cnt++) {".format(quote(mapR.in)))
+        tabWidth += 1
+        stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
+        emitBlock(mapR.map)
+        emitBlock(mapR.reduce)
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+      }
     }
+
+    case foreach:DeliteOpForeach[_,_] =>
+      if (parallelCudagen == false) {
+        stream.println(addTab()+"for(int i_%s=0; i_%s < %s.size(); i_%s++) {".format(quote(sym),quote(sym),quote(foreach.in),quote(sym)))
+        tabWidth += 1
+        stream.println(addTab()+"%s %s = %s.apply(i_%s);".format(remap(foreach.v.Type),quote(foreach.v),quote(foreach.in),quote(sym)))
+        emitBlock(foreach.func)
+        tabWidth -= 1
+        stream.println(addTab() + "}")
+      }
+      else {
+        parallelCudagen = false
+        gpuBlockSizeX = quote(foreach.in)+".size()"
+        val freeVars = getFreeVarBlock(foreach.func,Nil).filterNot(ele => ele==foreach.v)
+        stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(foreach.in)+".size()"))
+        tabWidth += 1
+        val foreachFunc = emitDevFunc(foreach.func, null, List(foreach.v)++freeVars)
+        if(freeVars.length==0)
+          stream.println(addTab()+"%s(%s.dcApply(%s));".format(foreachFunc,quote(foreach.in),"idxX"))
+        else
+          stream.println(addTab()+"%s(%s.dcApply(%s),%s);".format(foreachFunc,quote(foreach.in),"idxX",freeVars.map(quote).mkString(",")))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        parallelCudagen = true
+      }
+
     case _ => super.emitNode(sym,rhs)
   }
 }

@@ -13,6 +13,8 @@ import ppl.delite.runtime.graph.targets.Targets
 
 abstract class OP_Control extends DeliteOP {
 
+  val predicate: DeliteOP
+
   def makeChunk(idx: Int): OP_Control
 
   //control structures currently support all targets
