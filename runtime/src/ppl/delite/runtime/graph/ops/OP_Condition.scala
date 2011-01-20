@@ -33,6 +33,7 @@ class OP_EndCondition(val id: String) extends OP_Condition {
   def makeChunk(idx: Int): OP_Control = {
     if (idx == 0) return this
     val chunk = new OP_EndCondition(id+"_"+idx)
+    chunk.outputList = List(chunk.id)
     chunk.dependencyList = dependencyList
     chunk.consumerList = consumerList
     for (dep <- getDependencies) dep.addConsumer(chunk)

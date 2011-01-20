@@ -26,6 +26,11 @@ abstract class OP_Control extends DeliteOP {
     case Targets.Cuda => "void"
   }
 
+  // TODO: replace these by correct tracking of outputs
+  override def getOutputs = List(id)
+  override def outputSlotType(target: Targets.Value, name: String) = outputType(target)
+  override def addOutput(output: String, tp: Map[Targets.Value, String]) = system.error("not supported")
+
   final def task = null
   final def isDataParallel = false
   final def size = 0

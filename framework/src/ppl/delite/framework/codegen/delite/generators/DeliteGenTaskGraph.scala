@@ -320,6 +320,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
     stream.print("{\"type\":\"Conditional\",")
     stream.println("  \"outputId\" : \"" + id + "\",")
+    stream.print("  \"outputs\":[" + outputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
     val bodyIds = emittedNodesList(1) ++ emittedNodesList(2)
     val controlDepsStr = makeString(controlDeps filterNot { bodyIds contains })
     val antiDepsStr = makeString(antiDeps filterNot { bodyIds contains })
@@ -378,17 +379,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
     stream.print(" , \"kernelId\" : \"" + id + "\" ")
     stream.print(" , \"supportedTargets\": [" + supportedTgt.mkString("\"","\",\"","\"") + "],\n")
-    val outputsStr = if(outputs.isEmpty) "" else outputs.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"outputs\":[" + outputsStr + "],\n")
-    val inputsStr = if(inputs.isEmpty) "" else inputs.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"inputs\":[" + inputsStr + "],\n")
-    val mutableInputsStr = if(mutableInputs.isEmpty) "" else mutableInputs.map(quote(_)).mkString("\"","\",\"","\"")
-    stream.print("  \"mutableInputs\":[" + mutableInputsStr + "],\n")
+    stream.print("  \"outputs\":[" + outputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
+    stream.print("  \"inputs\":[" + inputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
+    stream.print("  \"mutableInputs\":[" + mutableInputs.map("\""+quote(_)+"\"").mkString(",") + "],\n")
     emitDepsCommon(controlDeps, antiDeps)
-    val metadataStr = if (metadata.isEmpty) "" else metadata.mkString(",")
-    stream.print("  \"metadata\":{" + metadataStr + "},\n")
-    val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString(",")
-    stream.print("  \"return-types\":{" + returnTypesStr + "}")
+    stream.print("  \"metadata\":{" + metadata.mkString(",") + "},\n")
+    stream.print("  \"return-types\":{" + returnTypes.mkString(",") + "}")
 
     if (!outputSlotTypes.isEmpty) {
       stream.print(",\n")

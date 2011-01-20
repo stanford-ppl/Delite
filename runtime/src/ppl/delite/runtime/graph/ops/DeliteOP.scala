@@ -65,9 +65,9 @@ abstract class DeliteOP {
   private[graph] var outputList: List[String] = Nil
   private[graph] var outputTypeMap: Map[String,Map[Targets.Value, String]] = Map.empty
 
-  final def getOutputs : Seq[String] = outputList
+  /*final*/ def getOutputs : Seq[String] = outputList // TODO: make final again (currently overridden by OP_Control)
 
-  final def addOutput(output: String, tp: Map[Targets.Value, String]) {
+  /*final*/ def addOutput(output: String, tp: Map[Targets.Value, String]) { // TODO: make final again (currently overridden by OP_Control)
     outputList = output :: outputList
     outputTypeMap += (output -> tp)
   }

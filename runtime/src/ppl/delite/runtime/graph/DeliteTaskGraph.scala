@@ -158,7 +158,7 @@ object DeliteTaskGraph {
     //handle mutable inputs
     val mutableInputs = getFieldList(op, "mutableInputs")
     for (m <- mutableInputs) {
-      val mutable = getOp(graph._ops, m)
+      val mutable = graph.getOp(m)//getOp(graph._ops, m)
       newop.addMutableInput(mutable)
     }
 
@@ -251,12 +251,13 @@ object DeliteTaskGraph {
     beginElseOp.addConsumer(endOp)
 
     //add to graph
-    graph.registerOp(beginOp)
-    graph.registerOp(beginElseOp)
-    graph.registerOp(endOp) //endOp will be found by future ops when searching by graph id
-    //graph._ops += id+"b" -> beginOp
-    //graph._ops += id+"e" -> beginElseOp
-    //graph._ops += id -> endOp
+    //graph.registerOp(beginOp)
+    //graph.registerOp(beginElseOp)
+    //graph.registerOp(endOp)
+    graph._ops += id+"b" -> beginOp
+    graph._ops += id+"e" -> beginElseOp
+    graph._ops += id -> endOp //endOp will be found by future ops when searching by graph id
+    // TODO: fix up outputs/outputSlotTypes and use graph.registerOp
 
     graph._result = endOp
   }
@@ -341,6 +342,7 @@ object DeliteTaskGraph {
     //add to graph
     graph._ops += id+"b" -> beginOp
     graph._ops += id -> endOp //endOp will be found by future ops when searching by graph id
+    // TODO: fix up outputs/outputSlotTypes and use graph.registerOp
 
     graph._result = endOp
   }
@@ -459,7 +461,7 @@ class DeliteTaskGraph {
   def registerOp(op: DeliteOP, overwrite: Boolean = false) {
     for (o <- op.getOutputs) {
       if (!overwrite && _ops.contains(o)) system.error("Output " + o + " (of Op " + op + ") is declared multiple times in DEG")
-      _ops += o -> op
+      _ops(o) = op
     }
   }
 
