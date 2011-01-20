@@ -147,16 +147,24 @@ trait DeliteCodegen extends GenericFatCodegen {
       
       println("*** effectsN: " + effectsN)
       
-      // TODO: we shouldn't need to override this methods, effectsN can be taken from
-      // the reflect nodes during emitFatNode in DeliteGenTaskGraph!
+      // TODO: do we need to override this method? effectsN can be taken from
+      // the reflect nodes during emitFatNode in DeliteGenTaskGraph
       
+      val localEmittedNodes = new ListBuffer[Sym[_]]
+
       for (TTP(syms, rhs) <- levelScope) {
         // we only care about effects that are scheduled to be generated before us, i.e.
         // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
         // n3 we want controlDeps to contain e1 and e2
         controlDeps = levelScope.takeWhile(_.lhs != syms) filter { effects contains _ } flatMap { _.lhs }
+        rhs match {
+          case ThinDef(Reify(_,_)) =>
+          case _ => localEmittedNodes ++= syms
+        }
         emitFatNode(syms, rhs)
       }
+      
+      emittedNodes = localEmittedNodes.result      
     }
   }
 
@@ -282,10 +290,12 @@ trait DeliteCodegen extends GenericFatCodegen {
     stream.println(lhs + " = " + rhs)
   }
 
-  override def quote(x: Exp[_]) = x match { // TODO: quirk!
+/*
+  override def quote(x: Exp[_]) = x match { // TODO: remove, shouldn't be needed
     case Sym(-1) => "_"
     case _ => super.quote(x)
   }
+*/
 
 }
 

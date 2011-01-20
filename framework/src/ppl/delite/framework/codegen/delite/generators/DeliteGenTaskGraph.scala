@@ -12,22 +12,22 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   val IR: DeliteOpsExp
   import IR._
 
-  private def vals(sym: Sym[_]) : List[Sym[_]] = sym match {
-    case Def(Reify(s, effects)) => List(s.asInstanceOf[Sym[_]])
+  private def vals(sym: Sym[Any]) : List[Sym[Any]] = sym match {
+    case Def(Reify(s, effects)) => List(s.asInstanceOf[Sym[Any]])
     case Def(Reflect(NewVar(v), effects)) => Nil
     case _ => List(sym)
   }
 
-  private def vars(sym: Sym[_]) : List[Sym[_]] = sym match {
+  private def vars(sym: Sym[Any]) : List[Sym[Any]] = sym match {
     case Def(Reflect(NewVar(v), effects)) => List(sym)
     case _ => Nil
   }
 
-  private def mutating(kernelContext: State, sym: Sym[_]) : List[Sym[_]] =
+  private def mutating(kernelContext: State, sym: Sym[Any]) : List[Sym[Any]] =
     kernelContext flatMap {
       //case Def(Reflect(x,effects)) => if (syms(x) contains sym) List(sym) else Nil
-      case Def(Mutation(x,effects)) => if (syms(x) contains sym) List(sym):List[Sym[_]] else Nil
-      case _ => Nil: List[Sym[_]]
+      case Def(Mutation(x,effects)) => if (syms(x) contains sym) List(sym) else Nil
+      case _ => Nil
     }
 
 
@@ -47,8 +47,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     var resultIsVar = false
     var skipEmission = false
     //nestedEmission = false TODO ?
-    var nestedNode: TP[_] = null
-    implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
+    var nestedNode: TP[Any] = null
+    implicit var emittedNodeList = new ListBuffer[List[Sym[Any]]]
 
     val saveInputDeps = kernelInputDeps
     val saveMutatingDeps = kernelMutatingDeps
@@ -412,12 +412,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     if(list.isEmpty) "" else list.map(quote(_)).mkString("\"","\",\"","\"")
   }
 
+/*
   // more quirks
   override def quote(x: Exp[_]) = x match {
-    case r:Reify[_] => quote(r.x)
+    case r:Reify[_] => quote(r.x) //DISCUSS <- what's the purpose of this? it will never match because Reify is a Def, not Exp
     case _ => super.quote(x)
   }
-
+*/
 
 
 

@@ -248,6 +248,7 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
   }
 */
 
+
   override def unapplySimpleCollect(e: Def[Any]) = e match {
     case e: DeliteCollectElem[_,_] => Some(e.func)
     case _ => super.unapplySimpleCollect(e)
