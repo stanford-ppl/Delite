@@ -38,7 +38,7 @@ trait ScalaGenLabelsOps extends ScalaGenBase {
   val IR: LabelsOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case l@LabelsObjectNew(length, isRow) => emitValDef(sym, "new " + remap(l.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
     case l@LabelsObjectFromVec(xs) => emitValDef(sym, "new " + remap(l.mV) + "(" + quote(xs) + ")")

@@ -343,7 +343,7 @@ trait BaseGenLanguageOps extends GenericFatCodegen {
     case _ => super.syms(e)
   }
 
-  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
+  override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {
     case _ => super.getFreeVarNode(rhs)
   }
   */
@@ -353,7 +353,7 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
   val IR: LanguageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case InternalRandDouble() => emitValDef(sym, "Global.intRandRef.nextDouble()")
       case InternalRandFloat() => emitValDef(sym, "Global.intRandRef.nextFloat()")
@@ -381,7 +381,7 @@ trait CudaGenLanguageOps extends CudaGenBase with BaseGenLanguageOps {
   val IR: LanguageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case _ => super.emitNode(sym, rhs)
      }

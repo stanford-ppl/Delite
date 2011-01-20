@@ -37,7 +37,7 @@ trait MLInputReaderOpsExp extends MLInputReaderOps { this: MLInputReaderImplOps 
 //  val IR: MLInputReaderOpsExp
 //  import IR._
 //
-//  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+//  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 //    case MLInputRead(filename) => emitValDef(sym, base + ".read(" + quote(filename) + ")")
 //    case MLInputReadVector(filename) => emitValDef(sym, base + ".readVector(" + quote(filename) + ")")
 //    case _ => super.emitNode(sym, rhs)

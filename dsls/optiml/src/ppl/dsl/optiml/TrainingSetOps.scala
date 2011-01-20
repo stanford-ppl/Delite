@@ -66,7 +66,7 @@ trait ScalaGenTrainingSetOps extends ScalaGenBase {
   val IR: TrainingSetOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case t@TrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap(t.mM) + "(" + quote(xs) + "," + quote(labels) + ")")
     case TrainingSetTransposed(x) => emitValDef(sym, quote(x) + ".transposed")
@@ -79,7 +79,7 @@ trait CudaGenTrainingSetOps extends CudaGenBase {
   val IR: TrainingSetOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
     case TrainingSetObjectFromMat(xs, labels) => throw new GenerationFailedException("CudaGen: TrainingSet Cannot be generated from GPU")
     case TrainingSetTransposed(x) => emitValDef(sym, "(*"+quote(x) + ".transposed)")
@@ -92,7 +92,7 @@ trait CGenTrainingSetOps extends CGenBase {
   val IR: TrainingSetOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
     case t@TrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap(t.mM) + "(" + quote(xs) + "," + quote(labels) + ")")
     case TrainingSetTransposed(x) => emitValDef(sym, quote(x) + ".transposed")

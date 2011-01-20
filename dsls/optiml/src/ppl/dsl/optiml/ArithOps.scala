@@ -276,7 +276,7 @@ trait ScalaGenArithOps extends ScalaGenBase {
   val IR: ArithOpsExp
   import IR._
   
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case ArithPlus(a,b) => emitValDef(sym, quote(a) + " + " + quote(b))
     case ArithMinus(a,b) => emitValDef(sym, quote(a) + " - " + quote(b))
     case ArithTimes(a,b) => emitValDef(sym, quote(a) + " * " + quote(b))
@@ -291,7 +291,7 @@ trait CLikeGenArithOps extends CLikeCodegen {
   val IR: ArithOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case ArithPlus(a,b) =>
           emitValDef(sym, quote(a) + " + " + quote(b))

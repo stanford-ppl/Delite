@@ -36,7 +36,7 @@ trait DeliteBaseGenWhile extends GenericNestedCodegen {
   }
 
   // TODO: What about condition node?
-  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
+  override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {
     case DeliteWhile(c,b) => getFreeVarBlock(c,Nil) ::: getFreeVarBlock(b,Nil)
     case _ => super.getFreeVarNode(rhs)
   }
@@ -46,7 +46,7 @@ trait DeliteBaseGenWhile extends GenericNestedCodegen {
 trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case DeliteWhile(c,b) =>
       stream.print("val " + quote(sym) + " = while ({")
       emitBlock(c)
@@ -63,7 +63,7 @@ trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
 trait DeliteCudaGenWhile extends CudaGenEffect with DeliteBaseGenWhile {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case DeliteWhile(c,b) =>
             // Get free variables list
@@ -90,7 +90,7 @@ trait DeliteCudaGenWhile extends CudaGenEffect with DeliteBaseGenWhile {
 trait DeliteCGenWhile extends CGenEffect with DeliteBaseGenWhile {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case DeliteWhile(c,b) =>
         // calculate condition

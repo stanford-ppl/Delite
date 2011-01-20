@@ -231,7 +231,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.remap(m)
   }
 
-  override def isObjectType(m: Manifest[_]) : Boolean = remap(m) match {
+  override def isObjectType[T](m: Manifest[T]) : Boolean = remap(m) match {
     case "Matrix<int>" => true
     case "Matrix<long>" => true
     case "Matrix<float>" => true
@@ -253,7 +253,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.isObjectType(m)
   }
 
-  override def copyDataStructureHtoD(sym: Sym[_]) : String = remap(sym.Type) match {
+  override def copyDataStructureHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
     case "Matrix<int>" => matrixCopyHtoD(sym)
     case "Matrix<long>" => matrixCopyHtoD(sym)
     case "Matrix<float>" => matrixCopyHtoD(sym)
@@ -275,7 +275,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.copyDataStructureHtoD(sym)
   }
 
-  override def copyDataStructureDtoH(sym: Sym[_]) : String = remap(sym.Type) match {
+  override def copyDataStructureDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
     case "Matrix<int>" => matrixCopyDtoH(sym)
     case "Matrix<long>" => matrixCopyDtoH(sym)
     case "Matrix<float>" => matrixCopyDtoH(sym)
@@ -289,7 +289,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.copyDataStructureDtoH(sym)
   }
 
-  override def copyDataStructureDtoHBack(sym: Sym[_]) : String = remap(sym.Type) match {
+  override def copyDataStructureDtoHBack(sym: Sym[Any]) : String = remap(sym.Type) match {
     case "Matrix<int>" => matrixCopyDtoHBack(sym)
     case "Matrix<long>" => matrixCopyDtoHBack(sym)
     case "Matrix<float>" => matrixCopyDtoHBack(sym)
@@ -311,7 +311,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.copyDataStructureDtoHBack(sym)
   }
 
-  override def allocOutput(newSym: Sym[_], sym: Sym[_]) : Unit = remap(newSym.Type) match {
+  override def allocOutput(newSym: Sym[Any], sym: Sym[Any]) : Unit = remap(newSym.Type) match {
     case "Matrix<int>" => emitMatrixAllocSym(newSym,sym)
     case "Matrix<long>" => emitMatrixAllocSym(newSym,sym)
     case "Matrix<float>" => emitMatrixAllocSym(newSym,sym)
@@ -325,7 +325,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.allocOutput(newSym,sym)    
   }
 
-  override def allocReference(newSym: Sym[_], sym: Sym[_]) : Unit = remap(newSym.Type) match {
+  override def allocReference(newSym: Sym[Any], sym: Sym[Any]) : Unit = remap(newSym.Type) match {
     case "Matrix<int>" => emitMatrixAllocRef(newSym,sym)
     case "Matrix<long>" => emitMatrixAllocRef(newSym,sym)
     case "Matrix<float>" => emitMatrixAllocRef(newSym,sym)

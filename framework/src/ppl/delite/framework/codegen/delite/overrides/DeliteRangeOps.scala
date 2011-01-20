@@ -37,8 +37,8 @@ trait DeliteBaseGenRangeOps extends GenericNestedCodegen {
     case _ => super.syms(e)
   }
 
-  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
-    case DeliteRangeForEach(start, end, i, body) => getFreeVarBlock(body,List(i.asInstanceOf[Sym[_]]))
+  override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {
+    case DeliteRangeForEach(start, end, i, body) => getFreeVarBlock(body,List(i.asInstanceOf[Sym[Any]]))
     case _ => super.getFreeVarNode(rhs)
   }
 }
@@ -46,7 +46,7 @@ trait DeliteBaseGenRangeOps extends GenericNestedCodegen {
 trait DeliteScalaGenRange extends ScalaGenEffect with DeliteBaseGenRangeOps {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case DeliteRangeForEach(start, end, i, body) => {
       stream.println("var " + quote(i) + " : Int = " + quote(start))
       stream.println("val " + quote(sym) + " = " + "while (" + quote(i) + " < " + quote(end) + ") {")
@@ -64,17 +64,17 @@ trait DeliteScalaGenRange extends ScalaGenEffect with DeliteBaseGenRangeOps {
 trait DeliteCudaGenRange extends CudaGenEffect with DeliteBaseGenRangeOps {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // TODO: What if the range is not continuous integer set?
     case DeliteRangeForEach(start, end, i, body) => {
         //var freeVars = buildScheduleForResult(body).filter(scope.contains(_)).map(_.sym)
-        val freeVars = getFreeVarBlock(body,List(i.asInstanceOf[Sym[_]]))
+        val freeVars = getFreeVarBlock(body,List(i.asInstanceOf[Sym[Any]]))
 
         // Add the variables of range to the free variable list if necessary
         var paramList = freeVars
         //val Until(startIdx,endIdx) = findDefinition(r.asInstanceOf[Sym[Range]]).map(_.rhs).get.asInstanceOf[Until]
-        if(start.isInstanceOf[Sym[_]]) paramList = start.asInstanceOf[Sym[_]] :: paramList
-        if(end.isInstanceOf[Sym[_]]) paramList = end.asInstanceOf[Sym[_]] :: paramList
+        if(start.isInstanceOf[Sym[Any]]) paramList = start.asInstanceOf[Sym[Any]] :: paramList
+        if(end.isInstanceOf[Sym[Any]]) paramList = end.asInstanceOf[Sym[Any]] :: paramList
         paramList = paramList.distinct
         val paramListStr = paramList.map(ele=>remap(ele.Type) + " " + quote(ele)).mkString(", ")
 
@@ -111,7 +111,7 @@ trait DeliteCudaGenRange extends CudaGenEffect with DeliteBaseGenRangeOps {
 trait DeliteCGenRange extends CGenEffect with DeliteBaseGenRangeOps {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case DeliteRangeForEach(start, end, i, body) =>
       stream.println("for(int %s=%s; %s < %s; %s++) {".format(quote(i),quote(start),quote(i),quote(end),quote(i)))
       emitBlock(body)

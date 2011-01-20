@@ -21,12 +21,12 @@ trait DeliteCodegen extends GenericFatCodegen {
   val generators : List[Generator]
 
   // per kernel, used by DeliteGenTaskGraph
-  var controlDeps : List[Sym[_]] = _
-  var emittedNodes : List[Sym[_]] = _
+  var controlDeps : List[Sym[Any]] = _
+  var emittedNodes : List[Sym[Any]] = _
 
   // global, used by DeliteGenTaskGraph
-  var kernelMutatingDeps = Map[Sym[_],List[Sym[_]]]() // from kernel to its mutating deps
-  var kernelInputDeps = Map[Sym[_],List[Sym[_]]]() // from kernel to its input deps
+  var kernelMutatingDeps = Map[Sym[Any],List[Sym[Any]]]() // from kernel to its mutating deps
+  var kernelInputDeps = Map[Sym[Any],List[Sym[Any]]]() // from kernel to its input deps
 
 
   def ifGenAgree[A](f: Generator => A, shallow: Boolean): A = {
@@ -49,12 +49,12 @@ trait DeliteCodegen extends GenericFatCodegen {
   
   override def syms(e: Any): List[Sym[Any]] = ifGenAgree(_.syms(e), shallow)
   override def boundSyms(e: Any): List[Sym[Any]] = ifGenAgree(_.boundSyms(e), shallow)
-  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = system.error("getFreeVarNode no longer used")
+  override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = system.error("getFreeVarNode no longer used")
 
-  //override def buildScheduleForResult(start: Exp[_]): List[TP[_]] = ifGenAgree(_.buil) <--- maybe override for performance reasons ...
+  //override def buildScheduleForResult(start: Exp[Any]): List[TP[Any]] = ifGenAgree(_.buil) <--- maybe override for performance reasons ...
 
   // TODO: move to some other place? --> get rid of duplicate in embedded generators!
-  override def fatten(e: TP[_]): TTP = ifGenAgree(_.fatten(e), shallow)
+  override def fatten(e: TP[Any]): TTP = ifGenAgree(_.fatten(e), shallow)
 
   // fusion stuff...
   override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e), shallow)
@@ -90,10 +90,10 @@ trait DeliteCodegen extends GenericFatCodegen {
   }
 
 /*
-  override def focusBlock[A](result: Exp[_])(body: => A): A = {
+  override def focusBlock[A](result: Exp[Any])(body: => A): A = {
   }
 
-  override def focusExactScope[A](result: Exp[_])(body: List[TP[_]] => A): A = {
+  override def focusExactScope[A](result: Exp[Any])(body: List[TP[Any]] => A): A = {
     super.focusExactScope(result) { levelScope =>
       
     }
@@ -101,7 +101,7 @@ trait DeliteCodegen extends GenericFatCodegen {
 */
 
 /*
-  override def emitBlockFocused(result: Exp[_])(implicit stream: PrintWriter): Unit = {
+  override def emitBlockFocused(result: Exp[Any])(implicit stream: PrintWriter): Unit = {
     println("-- block")
     availableDefs.foreach(println)
     focusExactScope(result) { levelScope =>
@@ -125,7 +125,7 @@ trait DeliteCodegen extends GenericFatCodegen {
   }
 */
 
-  override def emitFatBlockFocused(currentScope: List[TTP])(result: Exp[_])(implicit stream: PrintWriter): Unit = {
+  override def emitFatBlockFocused(currentScope: List[TTP])(result: Exp[Any])(implicit stream: PrintWriter): Unit = {
     println("-- block")
     availableDefs.foreach(println)
 
@@ -150,7 +150,7 @@ trait DeliteCodegen extends GenericFatCodegen {
       // TODO: do we need to override this method? effectsN can be taken from
       // the reflect nodes during emitFatNode in DeliteGenTaskGraph
       
-      val localEmittedNodes = new ListBuffer[Sym[_]]
+      val localEmittedNodes = new ListBuffer[Sym[Any]]
 
       for (TTP(syms, rhs) <- levelScope) {
         // we only care about effects that are scheduled to be generated before us, i.e.
@@ -179,7 +179,7 @@ trait DeliteCodegen extends GenericFatCodegen {
    * the generated schedule. We may want to consider another organization.
    */
 /*
-  override def emitBlock(start: Exp[_])(implicit stream: PrintWriter): Unit = {
+  override def emitBlock(start: Exp[Any])(implicit stream: PrintWriter): Unit = {
     if (generators.length < 1) return
 
     // verify our single schedule assumption
@@ -220,7 +220,7 @@ trait DeliteCodegen extends GenericFatCodegen {
     effectScope :::= e6 filter { case TP(sym, Reflect(x, es)) => true; case _ => false }
     generators foreach { _.effectScope = effectScope }
 
-    var localEmittedNodes: List[Sym[_]] = Nil
+    var localEmittedNodes: List[Sym[Any]] = Nil
     for (t@TP(sym, rhs) <- e4) {
       // we only care about effects that are scheduled to be generated before us, i.e.
       // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
@@ -255,7 +255,7 @@ trait DeliteCodegen extends GenericFatCodegen {
 */
 
   /*
-  def getEffectsKernel(start: Sym[_], rhs: Def[_]): List[Sym[_]] = {
+  def getEffectsKernel(start: Sym[Any], rhs: Def[Any]): List[Sym[Any]] = {
     val e1 = ifGenAgree(_.buildScheduleForResult(start), false) // deep
     val params = ifGenAgree(_.syms(rhs), true)
     val e2 = params map { s => ifGenAgree(_.buildScheduleForResult(s), false) }
@@ -272,7 +272,7 @@ trait DeliteCodegen extends GenericFatCodegen {
 
     e5 flatMap { e =>
       e.sym match {
-        case Def(Reflect(x, effects)) => List(e.sym): List[Sym[_]]
+        case Def(Reflect(x, effects)) => List(e.sym): List[Sym[Any]]
         case _ => Nil
       }
     }
@@ -280,10 +280,10 @@ trait DeliteCodegen extends GenericFatCodegen {
   */
 
 
-  def emitValDef(sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
+  def emitValDef(sym: Sym[Any], rhs: String)(implicit stream: PrintWriter): Unit = {
     stream.println("val " + quote(sym) + " = " + rhs)
   }
-  def emitVarDef(sym: Sym[_], rhs: String)(implicit stream: PrintWriter): Unit = {
+  def emitVarDef(sym: Sym[Any], rhs: String)(implicit stream: PrintWriter): Unit = {
     stream.println("var " + quote(sym) + " = " + rhs)
   }
   def emitAssignment(lhs: String, rhs: String)(implicit stream: PrintWriter): Unit = {
@@ -291,7 +291,7 @@ trait DeliteCodegen extends GenericFatCodegen {
   }
 
 /*
-  override def quote(x: Exp[_]) = x match { // TODO: remove, shouldn't be needed
+  override def quote(x: Exp[Any]) = x match { // TODO: remove, shouldn't be needed
     case Sym(-1) => "_"
     case _ => super.quote(x)
   }

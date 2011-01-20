@@ -10,7 +10,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   val IR: Expressions
   import IR._
 
-  def matrixCopyHtoD(sym: Sym[_]): String = {
+  def matrixCopyHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
     val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
@@ -49,7 +49,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   }
 
-  def vectorCopyHtoD(sym: Sym[_]): String = {
+  def vectorCopyHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
     val typeStr = remap(typeArg)
@@ -95,7 +95,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def rangeVectorCopyHtoD(sym: Sym[_]): String = {
+  def rangeVectorCopyHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
 
     // Get class, method ID
@@ -116,7 +116,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def indexVectorCopyHtoD(sym: Sym[_]): String = {
+  def indexVectorCopyHtoD(sym: Sym[Any]): String = {
     //vectorCopyHtoD(sym)
     val out = new StringBuilder
     val typeArg = manifest[Int]
@@ -172,11 +172,11 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def labelsCopyHtoD(sym: Sym[_]): String = {
+  def labelsCopyHtoD(sym: Sym[Any]): String = {
     vectorCopyHtoD(sym)
   }
 
-  def trainingSetCopyHtoD(sym: Sym[_]): String = {
+  def trainingSetCopyHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
     val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
@@ -254,7 +254,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
   
-  def matrixCopyDtoH(sym: Sym[_]): String = {
+  def matrixCopyDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
     val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
@@ -289,7 +289,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def matrixCopyDtoHBack(sym: Sym[_]): String = {
+  def matrixCopyDtoHBack(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
     val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
@@ -308,7 +308,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def vectorCopyDtoH(sym: Sym[_]): String = {
+  def vectorCopyDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
     val numBytesStr = "%s.length * sizeof(%s)".format(quote(sym),remap(sym.Type.typeArguments(0)))
@@ -343,7 +343,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def vectorCopyDtoHBack(sym: Sym[_]): String = {
+  def vectorCopyDtoHBack(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
     val typeStr = remap(typeArg)
@@ -363,28 +363,28 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def rangeVectorCopyDtoHBack(sym: Sym[_]): String = {
+  def rangeVectorCopyDtoHBack(sym: Sym[Any]): String = {
     val out = new StringBuilder
     out.append("\tstd::cout << \"CopyDtoHBack rangeVector is not supported yet\" << std::endl;\n")
     out.toString
   }
 
-  def indexVectorCopyDtoHBack(sym: Sym[_]): String = {
+  def indexVectorCopyDtoHBack(sym: Sym[Any]): String = {
     vectorCopyDtoHBack(sym)
   }
 
-  def labelsCopyDtoHBack(sym: Sym[_]): String = {
+  def labelsCopyDtoHBack(sym: Sym[Any]): String = {
     vectorCopyDtoHBack(sym)
   }
 
-  def trainingSetCopyDtoHBack(sym: Sym[_]): String = {
+  def trainingSetCopyDtoHBack(sym: Sym[Any]): String = {
     val out = new StringBuilder
     out.append("\tstd::cout << \"CopyDtoHBack TrainingSet is not supported yet\" << std::endl;\n")
     out.toString
   }
 
   // Generate & register temporary data structures (which could be the output) for GPU kernel
-  def emitVectorAlloc(newSym:Sym[_], length:String, isRow:String, data:String=null):Unit = {
+  def emitVectorAlloc(newSym:Sym[Any], length:String, isRow:String, data:String=null):Unit = {
     //TODO: Check if both symbols are Vectors
 
     //Do not add the same temporary if it already exists
@@ -432,11 +432,11 @@ trait CudaGenDataStruct extends CudaCodegen {
     }
     helperFuncString.append(out.toString)
   }
-  def emitVectorAllocSym(newSym:Sym[_], sym:Sym[_]): Unit = {
+  def emitVectorAllocSym(newSym:Sym[Any], sym:Sym[Any]): Unit = {
     emitVectorAlloc(newSym, quote(sym)+".length", quote(sym)+".isRow")
   }
 
-  def emitVectorAllocRef(newSym:Sym[_], sym:Sym[_]): Unit = {
+  def emitVectorAllocRef(newSym:Sym[Any], sym:Sym[Any]): Unit = {
 
     // Do not add the same temporary if it already exists
     if(gpuTemps.contains(newSym)) return
@@ -461,7 +461,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     helperFuncString.append(out.toString)
   }
 
-  def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, data:String=null): Unit = {
+  def emitMatrixAlloc(newSym:Sym[Any], numRows:String, numCols:String, data:String=null): Unit = {
     //TODO: Check if both symbols are Matrices
 
     //Do not add the same temporary if it already exists
@@ -509,11 +509,11 @@ trait CudaGenDataStruct extends CudaCodegen {
     }
     helperFuncString.append(out.toString)
   }
-  def emitMatrixAllocSym(newSym:Sym[_], sym:Sym[_]): Unit = {
+  def emitMatrixAllocSym(newSym:Sym[Any], sym:Sym[Any]): Unit = {
     emitMatrixAlloc(newSym, quote(sym)+".numRows", quote(sym)+".numCols")
   }
 
-  def emitMatrixAllocRef(newSym:Sym[_], sym:Sym[_]): Unit = {
+  def emitMatrixAllocRef(newSym:Sym[Any], sym:Sym[Any]): Unit = {
     // Do not add the same temporary if it already exists
     if(gpuTemps.contains(newSym)) return
 

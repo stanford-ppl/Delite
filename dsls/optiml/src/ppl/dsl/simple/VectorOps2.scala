@@ -67,7 +67,7 @@ trait ScalaGenVectorOps2 extends ScalaGenFat {
   val IR: VectorOpsExp2
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case VectorObjectDoubleZeros(s) => emitValDef(sym, "Vector.doubleZeros(" + quote(s) + ")")
     case VectorObjectIntZeros(s) => emitValDef(sym, "Vector.intZeros(" + quote(s) + ")")
     case VectorPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
@@ -87,7 +87,7 @@ trait CGenVectorOps2 extends CGenFat {
   import IR._
 
   //code generation bit
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     //todo replace the manifest with embedded types
     case VectorObjectDoubleZeros(n) => emitConstDef("vector", sym, "Vector.doubleZeros(" + quote(n) + ")")
     case VectorPlus(v1,v2) => emitConstDef("vector", sym, quote(v1) + " + " + quote (v2))

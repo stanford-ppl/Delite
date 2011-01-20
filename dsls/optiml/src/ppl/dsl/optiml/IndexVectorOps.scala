@@ -57,7 +57,7 @@ trait ScalaGenIndexVectorOps extends ScalaGenBase {
   val IR: IndexVectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case v@IndexVectorRange(start, end) =>
       emitValDef(sym, "new " + remap(manifest[IndexVectorRangeImpl]) + "(" + quote(start) +  "," + quote(end) + ")")
     case v@IndexVectorSeq(xs) =>

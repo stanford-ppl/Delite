@@ -84,7 +84,7 @@ abstract class DeliteOpZipWithReduce[@specialized(Boolean, Int, Long, Float, Dou
 abstract class DeliteOpForeach[@specialized(Boolean, Int, Long, Float, Double) A] {
   def in: DeliteCollection[A]
   def foreach(elem: A): Unit
-  def sync(idx: Int): List[_]
+  def sync(idx: Int): List[Any]
 }
 
 abstract class DeliteCollection[@specialized(Boolean, Int, Long, Float, Double) T] {

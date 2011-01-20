@@ -212,7 +212,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   var deliteResult: Option[Sym[Any]] = _
   var deliteInputs: List[Sym[Any]] = _
 
-  def getReifiedOutput(out: Exp[_]) = out match { // TODO: is this still used??
+  def getReifiedOutput(out: Exp[Any]) = out match { // TODO: is this still used??
     case Def(Reify(x, effects)) => x
     case x => x
   }
@@ -241,7 +241,7 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
 
 /*
   // overridden only to attach DeliteFatOp trait to result ...
-  override def fatten(e: TP[_]): TTP = e.rhs match {
+  override def fatten(e: TP[Any]): TTP = e.rhs match {
     case op: DeliteOpLoop[_] => 
       TTP(List(e.sym), DeliteFatLoop(op.size, op.v, List(op.body)))
     case _ => super.fatten(e)
@@ -291,7 +291,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
   def quotearg(x: Sym[Any]) = quote(x) + ": " + quotetp(x)
   def quotetp(x: Sym[Any]) = remap(x.Type)
 
-  override def emitFatNode(symList: List[Sym[_]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
+  override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
         if (!deliteKernel) {
           (symList zip op.body) foreach {
@@ -392,7 +392,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
   }
 
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => {
       println("EMIT single "+s)
       val save = deliteKernel
@@ -620,14 +620,14 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
 trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
   import IR._
   
-  override def emitFatNode(symList: List[Sym[_]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
+  override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
       println("TODO: implement emitFatNode in CudaGenDeliteOps")
       throw new GenerationFailedException("TODO: implement emitFatNode in CudaGenDeliteOps")
     case _ => super.emitFatNode(symList, rhs)
   }
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable.")
       // TODO: Generate single thread version of this work
       //if(idxX == 0) {}
@@ -650,7 +650,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
             stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
         tabWidth -= 1
         stream.println(addTab()+"}")
-        allocOutput(sym,map.in.asInstanceOf[Sym[_]])
+        allocOutput(sym,map.in.asInstanceOf[Sym[Any]])
         parallelCudagen = true
       }
     }
@@ -673,7 +673,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
             stream.println(addTab()+"%s.dcUpdate(%s, %s.dcApply(%s));".format(getVarLink(sym),"idxX",quote(sym),"idxX"))
         tabWidth -= 1
         stream.println(addTab()+"}")
-        allocOutput(sym,zip.inA.asInstanceOf[Sym[_]])
+        allocOutput(sym,zip.inA.asInstanceOf[Sym[Any]])
         parallelCudagen = true
       }
     }
@@ -682,21 +682,21 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         // When nested, only pritimive type result can be generated
         stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
         emitBlock(mapR.map)
-        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map))) 
+        emitValDef(mapR.rV._1.asInstanceOf[Sym[Any]],quote(getBlockResult(mapR.map))) 
         stream.println(addTab()+"for(int cnt=1; cnt<%s.size(); cnt++) {".format(quote(mapR.in)))
         tabWidth += 1
         stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
         emitBlock(mapR.map)
-        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+        emitValDef(mapR.rV._2.asInstanceOf[Sym[Any]],quote(getBlockResult(mapR.map)))
         emitBlock(mapR.reduce)
-        stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1.asInstanceOf[Sym[_]]),quote(getBlockResult(mapR.reduce))))
+        stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1.asInstanceOf[Sym[Any]]),quote(getBlockResult(mapR.reduce))))
         tabWidth -= 1
         stream.println(addTab()+"}")
         emitValDef(sym,quote(mapR.rV._1))
       }
       else {
-        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
-        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+        emitValDef(mapR.rV._1.asInstanceOf[Sym[Any]],quote(sym))
+        emitValDef(mapR.rV._2.asInstanceOf[Sym[Any]],quote(getBlockResult(mapR.map)))
         stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
         addVarLink(getBlockResult(mapR.map),sym)
         emitBlock(mapR.map)
@@ -708,7 +708,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         emitBlock(mapR.reduce)
         tabWidth -= 1
         stream.println(addTab()+"}")
-        allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+        allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[Any]])
       }
     }
 
@@ -744,14 +744,14 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
 trait CGenDeliteOps extends CGenEffect with BaseGenDeliteOps {
   import IR._
 
-  override def emitFatNode(symList: List[Sym[_]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
+  override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
       println("TODO: implement emitFatNode in CGenDeliteOps")
       throw new GenerationFailedException("TODO: implement emitFatNode in CGenDeliteOps")
     case _ => super.emitFatNode(symList, rhs)
   }
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] =>
       emitBlock(s.block)
       emitValDef(sym,quote(getBlockResult(s.block)))

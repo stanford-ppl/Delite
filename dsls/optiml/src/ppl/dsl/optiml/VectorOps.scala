@@ -789,7 +789,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
   val IR: VectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       // these are the ops that call through to the underlying real data structure
       case VectorApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
@@ -823,7 +823,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
   val IR: VectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
     case VectorOuter(x,y) =>
       gpuBlockSizeX = quote(x)+".length"
@@ -891,7 +891,7 @@ trait CGenVectorOps extends BaseGenVectorOps with CGenFat {
   val IR: VectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case VectorObjectZeros(len) =>
       stream.println("%s *%s_data = malloc(sizeof(%s)*%s);".format(remap(sym.Type.typeArguments(0)),quote(sym),remap(sym.Type.typeArguments(0)),quote(len)))
       stream.println("memset(%s_data,0,sizeof(%s)*%s);".format(quote(sym),remap(sym.Type.typeArguments(0)),quote(len)))

@@ -39,7 +39,7 @@ trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
   }
 
 
- override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
+ override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {
     case DeliteIfThenElse(c, t, e) => getFreeVarBlock(c,Nil) ::: getFreeVarBlock(t,Nil) ::: getFreeVarBlock(e,Nil)
     case _ => super.getFreeVarNode(rhs)
   }
@@ -48,7 +48,7 @@ trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
 trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     /**
      * IfThenElse generates methods for each branch due to empirically discovered performance issues in the JVM
      * when generating long blocks of straight-line code in each branch.
@@ -80,7 +80,7 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
 trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case DeliteIfThenElse(c,a,b) =>
           // TODO: Not GPUable if the result is not primitive types.
@@ -120,7 +120,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
               tabWidth -= 1
               stream.println(addTab()+"}")
               isObjectType(sym.Type) match {
-                case true => allocReference(sym,getBlockResult(a).asInstanceOf[Sym[_]])
+                case true => allocReference(sym,getBlockResult(a).asInstanceOf[Sym[Any]])
                 case _ =>
               }
           }
@@ -133,7 +133,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
 trait DeliteCGenIfThenElse extends CGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case DeliteIfThenElse(c,a,b) =>
           //TODO: using if-else does not work
