@@ -30,8 +30,8 @@ trait GraphOps extends DSLType with Variables {
     def containsVertex(a: V) = graph_contains_vertex(g,a)
     def sorted = graph_sorted(g)
 
-    def addVertex(a: V) = graph_add_vertex(g,a)
-    def addEdge(e: E, a: V, b: V) = graph_add_edge(g,e,a,b)
+    //def addVertex(a: V) = graph_add_vertex(g,a)
+    //def addEdge(e: E, a: V, b: V) = graph_add_edge(g,e,a,b)
     def removeEdge(a: V, b: V) = graph_remove_edge(g,a,b)
     def sort() = graph_sort(g)
   }

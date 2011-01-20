@@ -177,7 +177,9 @@ trait TrainingSet[@specialized T,@specialized L] extends Matrix[T] {
 /**
  * Graph
  */
-trait Graph[V <: Vertex,E <: Edge] {
+
+// no covariance here, since Graph is mutable.
+trait Graph[V <: Vertex, E <: Edge] {
   def vertices: Vertices[V]
   def edges: Edges[E]
   def adjacent(a: V, b: V): Boolean
@@ -193,18 +195,23 @@ trait Graph[V <: Vertex,E <: Edge] {
   def sort(): Unit
 }
 
+// this is really not pretty. this class hierarchy needs to be thought about more than i've had a chance to.
 trait Vertex {
+  type V <: Vertex
   type E <: Edge
+  type G = Graph[V,E]
 
-  def graph: Graph[Vertex,E]
+  def graph: G
   def edges: Edges[E]
-  def neighbors: Vertices[Vertex]
+  def neighbors: Vertices[V]
 }
 
 trait Edge {
   type V <: Vertex
+  type E <: Edge
+  type G = Graph[V,E]
 
-  def graph: Graph[V,Edge]
+  def graph: G
 }
 
 trait Vertices[V <: Vertex] extends Vector[V]
@@ -215,21 +222,21 @@ trait Edges[E <: Edge] extends Vector[E]
  * Message passing graph
  */
 
-trait MessageGraph extends Graph[MessageVertex,MessageEdge]
-
 trait MessageVertex extends Vertex {
-  type E <: MessageEdge
+  type V = MessageVertex
+  type E = MessageEdge
 
   def data: MessageData
   def target(e: MessageEdge): MessageVertex
 }
 
 trait MessageEdge extends Edge {
-  type V <: MessageVertex
+  type V = MessageVertex
+  type E = MessageEdge
 
-  def in(v: V): MessageData
-  def out(v: V): MessageData
-  def target(source: V): V
+  def in(v: MessageVertex): MessageData
+  def out(v: MessageVertex): MessageData
+  def target(source: MessageVertex): MessageVertex
 }
 
 trait MessageData
