@@ -20,7 +20,7 @@ queue<FreeItem>* freeList = new queue<FreeItem>();
 
 map<void*,void*>* cudaMemoryMap = new map<void*,void*>();
 
-
+/*
 void DeliteCudaMalloc(void** ptr, size_t size) {
 	size_t free;
 	size_t total;
@@ -43,8 +43,8 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 	cudaMalloc(ptr, size);
 	lastValue = *ptr;
 }
-
-/* void DeliteCudaMalloc(void** ptr, int size) {
+*/
+void DeliteCudaMalloc(void** ptr, int size) {
         while (freeList->size() > 0) {
 		FreeItem item = freeList->front();
  	        freeList->pop();
@@ -52,9 +52,10 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 			cudaEventSynchronize(item.event);
 		list<void*>::iterator iter;
 		for (iter = item.keys->begin(); iter != item.keys->end(); iter++) {
+			cout << "object ref: " << (long) *iter << endl;
 			void* freePtr = cudaMemoryMap->find(*iter)->second;
 			if (cudaSuccess != cudaFree(freePtr))
-				cout << "bad free pointer" << endl;
+				cout << "bad free pointer: " << (long) freePtr << endl;
 			else
 				cout << "freed successfully: " << (long) freePtr << endl;
 		}
@@ -64,7 +65,7 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 	else
 		cout << "allocated successfully: " << (long) *ptr << endl;
 	lastValue = *ptr;
-} */
+}
 
 char* bufferStart = 0;
 size_t bufferSize = 10737418240;

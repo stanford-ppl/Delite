@@ -184,7 +184,7 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
       print(first.asInstanceOf[Char])
       for (i <- 0 until num) print(errorBuffer(i).asInstanceOf[Char])
       println()
-      error("MKL BLAS compilation failed")
+      system.error("MKL BLAS compilation failed")
     }
   }
 }
