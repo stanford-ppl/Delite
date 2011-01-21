@@ -25,7 +25,18 @@ object Targets extends Enumeration {
   }
 
   /**
-   * Returns the Unit-type for the specified target as a String
+   * Creates a Unit-type Map for all targets
+   */
+  def unitTypes: Map[Value,String] = {
+    var unitMap = Map[Value,String]()
+    for (target <- values) {
+      unitMap += target -> unitType(target)
+    }
+    unitMap
+  }
+
+  /**
+   *  Returns the Unit-type for the specified target as a String
    */
   def unitType(target: Value): String = {
     target match {

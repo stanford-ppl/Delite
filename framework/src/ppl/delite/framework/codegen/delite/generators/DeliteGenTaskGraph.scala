@@ -30,9 +30,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     }
 
   // this is all quite unfortunate
+  /*
   private def appendScope() = {
     (emittedNodes flatMap { e => if (findDefinition(e).isDefined) List(findDefinition(e).get.asInstanceOf[TP[Any]]) else Nil }) ::: scope
   }
+  */
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) : Unit = {
     assert(generators.length >= 1)
@@ -40,7 +42,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     var resultIsVar = false
     var skipEmission = false
     var nestedNode: TP[_] = null
-    implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
 
     val saveInputDeps = kernelInputDeps
     val saveMutatingDeps = kernelMutatingDeps
@@ -49,40 +50,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     rhs match {
       case Reflect(s, effects) => super.emitNode(sym, rhs); return
       case Reify(s, effects) => super.emitNode(sym, rhs); return
-      case c:DeliteOpCondition[_] => {
-        val save = scope
-        emitBlock(c.cond)
-        scope = appendScope()
-        emittedNodeList += controlDeps
-        emitBlock(c.thenp)
-        scope = appendScope()
-        emittedNodeList += emittedNodes
-        emitBlock(c.elsep)
-        emittedNodeList += emittedNodes
-        skipEmission = true
-        scope = save
-      }
-      case l:DeliteOpIndexedLoop => {
-        val save = scope
-        val saveMutatingDeps = kernelMutatingDeps
-        val saveInputDeps = kernelInputDeps
-        emitBlock(l.body)
-        scope = appendScope()
-        emittedNodeList += emittedNodes
-        skipEmission = true
-        scope = save
-      }
-      case w:DeliteOpWhileLoop => {
-        val save = scope
-        emitBlock(w.cond)
-        scope = appendScope()
-        emittedNodeList += controlDeps
-        emittedNodeList += emittedNodes
-        emitBlock(w.body)
-        emittedNodeList += emittedNodes
-        skipEmission = true
-        scope = save
-      }
       case NewVar(x) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
       case _ => // continue and attempt to generate kernel
     }
@@ -211,8 +178,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     // emit task graph node
     rhs match {
       case c:DeliteOpCondition[_] => emitIfThenElse(c.cond, c.thenp, c.elsep, sym, inputs, inMutating, inControlDeps, antiDeps)
-      case l:DeliteOpIndexedLoop => emitIndexedLoop(l.start, l.end, l.index, sym, inputs, inMutating, inControlDeps, antiDeps)
-      case w:DeliteOpWhileLoop => emitWhileLoop(sym, inputs, inMutating, inControlDeps, antiDeps)
+      case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, sym, inputs, inMutating, inControlDeps, antiDeps)
       case s:DeliteOpSingleTask[_] => emitSingleTask(sym, inputs, inMutating, inControlDeps, antiDeps)
       case m:DeliteOpMap[_,_,_] => emitMap(sym, rhs, inputs, inMutating, inControlDeps, antiDeps)
       case r:DeliteOpReduce[_] => emitReduce(sym, inputs, inMutating, inControlDeps, antiDeps)
@@ -289,54 +255,34 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   }
 
   def emitIfThenElse(cond: Exp[Boolean], thenp: Exp[_], elsep: Exp[_], sym: Sym[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Conditional\",")
     stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
-    val bodyIds = emittedNodesList(1) ++ emittedNodesList(2)
-    val controlDepsStr = makeString(controlDeps filterNot { bodyIds contains })
-    val antiDepsStr = makeString(antiDeps filterNot { bodyIds contains })
-
-    stream.println("  \"conditionKernelId\" : \"" + quote(cond) + "\", ")
-    emitExp("then", thenp, emittedNodesList(1))
-    emitExp("else", elsep, emittedNodesList(2))
-    stream.println("  \"thenOutput\": \"" + quote(getBlockResult(thenp)) + "\"")
-    stream.println("  \"elseOutput\": \"" + quote(getBlockResult(elsep)) + "\"")
+    emitExp("cond", cond)
+    emitExp("then", thenp)
+    emitExp("else", elsep)
+    stream.println("  \"condOutput\": \"" + quote(getBlockResult(cond)) + "\",")
+    stream.println("  \"thenOutput\": \"" + quote(getBlockResult(thenp)) + "\",")
+    stream.println("  \"elseOutput\": \"" + quote(getBlockResult(elsep)) + "\",")
+    stream.println("  \"controlDeps\":[" + makeString(controlDeps) + "],")
+    stream.println("  \"antiDeps\":[" + makeString(antiDeps) + "],")
     if (remap(thenp.Type) != remap(elsep.Type))
       throw new RuntimeException("Delite conditional with different then and else return types")
-    stream.println("  \"outputType\": \"" + remap(thenp.Type) + "\"")
-    stream.println("  \"controlDeps\":[" + controlDepsStr + "],")
-    stream.println("  \"antiDeps\":[" + antiDepsStr + "]")
+    val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString(",")
+    stream.println("  \"return-types\":{" + returnTypesStr + "}")
     stream.println("},")
   }
 
-  def emitIndexedLoop(start: Exp[Int], end: Exp[Int], i: Exp[Int], sym: Sym[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
-    stream.println("{\"type\":\"IndexedLoop\",")
-    stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
-    val controlDepsStr = makeString(controlDeps filterNot { emittedNodesList(0) contains })
-    val antiDepsStr = makeString(antiDeps filterNot { emittedNodesList(0) contains })
-    emitExp("start", start, List(start))
-    emitExp("end", end, List(end))
-    stream.println("  \"indexId\" : \"" + quote(i) + "\",")
-    val bodyS = makeString(emittedNodesList(0))
-    stream.println("  \"bodyIds\" : [" + bodyS + "],")
-    stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
-    stream.println("  \"antiDeps\":[" + antiDepsStr + "]")
-    stream.println("},")
-  }
-
-  def emitWhileLoop(sym: Sym[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
-                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]], emittedNodesList: ListBuffer[List[Sym[_]]]) = {
+  def emitWhileLoop(cond: Exp[Boolean], body: Exp[Unit], sym: Sym[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+                    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.println("{\"type\":\"WhileLoop\",")
     stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
-    val controlDepsStr = makeString(controlDeps filterNot { emittedNodesList(2) contains })
-    val antiDepsStr = makeString(antiDeps filterNot { emittedNodesList(2) contains })
-    val conds = makeString(emittedNodesList(1))
-    val bodys = makeString(emittedNodesList(2))
-    stream.println("  \"condIds\" : [" + conds + "],")
-    stream.println("  \"bodyIds\" : [" + bodys + "],")
-    stream.print("  \"controlDeps\":[" + controlDepsStr + "],\n")
-    stream.println("  \"antiDeps\":[" + antiDepsStr + "]")
+    emitExp("cond", cond)
+    emitExp("body", body)
+    stream.println("  \"condOutput\": \"" + quote(getBlockResult(cond)) + "\",")
+    //stream.println("  \"bodyOutput\": \"" + quote(getBlockResult(body)) + "\",")
+    stream.println("  \"controlDeps\":[" + makeString(controlDeps) + "],")
+    stream.println("  \"antiDeps\":[" + makeString(antiDeps) + "]")
     stream.println("},")
   }
 
@@ -392,21 +338,14 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   def emitMapLikeWhileLoopVariant(vw: DeliteOpMapLikeWhileLoopVariant, sym: Sym[_], output: Exp[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
-    implicit var emittedNodeList = new ListBuffer[List[Sym[_]]]
     val save = scope
     stream.print("\"ops\":[" )
     emitBlock(vw.alloc)
-    scope = appendScope()
+    //scope = appendScope()
     // we should not be reifying during code-gen, see todo in DeliteOps.scala
     emitBlock(reifyEffects(vw.index))
     //emitBlock(vw.index)
-    emitBlock(vw.cond)
-    scope = appendScope()
-    emittedNodeList += this.controlDeps
-    emittedNodeList += emittedNodes
-    emitBlock(vw.body)
-    emittedNodeList += emittedNodes
-    emitWhileLoop(sym, inputs, mutableInputs, controlDeps, antiDeps)
+    emitWhileLoop(vw.cond, vw.body, sym, inputs, mutableInputs, controlDeps, antiDeps)
     scope = save
   }
 
@@ -418,11 +357,17 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("{\"type\":\"EOV\"}\n],\n")
   }
 
-  def emitExp(prefix: String, e: Exp[Any], syms: List[Exp[_]])(implicit stream: PrintWriter) = e match {
+  def emitExp(prefix: String, e: Exp[Any])(implicit stream: PrintWriter) = e match {
     case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
                          stream.println("  \"" + prefix + "Value\": \"" + quote(e) + "\",")
     case s:Sym[Any] =>  stream.println("  \"" + prefix + "Type\": \"symbol\",")
-                        stream.println("  \"" + prefix + "Value\": [" + makeString(syms) + "],")
+                        stream.println("  \"" + prefix + "Ops\": [")
+                        val saveMutatingDeps = kernelMutatingDeps
+                        val saveInputDeps = kernelInputDeps
+                        emitBlock(e)
+                        emitEOV()
+                        kernelInputDeps = saveInputDeps
+                        kernelMutatingDeps = saveMutatingDeps
   }
 
   private def makeString(list: List[Exp[_]]) = {

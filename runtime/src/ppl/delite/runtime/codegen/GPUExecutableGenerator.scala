@@ -1,16 +1,16 @@
 package ppl.delite.runtime.codegen
 
 import ppl.delite.runtime.scheduler.PartialSchedule
-import java.util.{ArrayDeque, ArrayList}
-import java.io.File
+import java.util.ArrayDeque
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph.ops._
+import collection.mutable.ArrayBuffer
 
 /**
  * Author: Kevin J. Brown
  * Date: Dec 1, 2010
  * Time: 8:18:07 PM
- * 
+ *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
@@ -35,19 +35,19 @@ import ppl.delite.runtime.graph.ops._
 object GPUExecutableGenerator {
 
   def makeExecutable(schedule: PartialSchedule, kernelPath: String) {
-    assert(schedule.resources.length == 1) //this implementation does not attempt to create an Executable than can efficiently handle hosting multiple kernel streams
+    assert(schedule.numResources == 1) //this implementation does not attempt to create an Executable than can efficiently handle hosting multiple kernel streams
 
-    val location = schedule.resources(0).peek.scheduledResource //look up location id for this GPU device resource
-    val syncList = new ArrayList[DeliteOP] //list of ops needing sync added
+    val location = schedule(0).peek.scheduledResource //look up location id for this GPU device resource
+    val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
 
-    val cppSource = emitCpp(schedule.resources(0), location, syncList)
+    val cppSource = emitCpp(schedule(0), location, syncList)
     CudaCompile.addSource(cppSource)
 
-    val scalaSource = emitScala(location, syncList, kernelPath)
+    val scalaSource = GPUScalaGenerator.emitScala(location, syncList, kernelPath)
     ScalaCompile.addSource(scalaSource)
   }
 
-  private def emitCpp(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayList[DeliteOP]): String = {
+  private def emitCpp(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayBuffer[DeliteOP]): String = {
     val out = new StringBuilder //the output string
 
     //the header
@@ -116,19 +116,19 @@ object GPUExecutableGenerator {
     out.append("jobject boxedUnit = env->GetStaticObjectField(clsBU, env->GetStaticFieldID(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\"));\n")
   }
 
-  private def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayList[DeliteOP], out: StringBuilder) {
-    val available = new ArrayList[DeliteOP] //ops with local data (have a "g" symbol)
-    val awaited = new ArrayList[DeliteOP] //ops that have been synchronized with (have a "c" symbol)
+  private def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayBuffer[DeliteOP], out: StringBuilder) {
+    val available = new ArrayBuffer[DeliteOP] //ops with local data (have a "g" symbol)
+    val awaited = new ArrayBuffer[DeliteOP] //ops that have been synchronized with (have a "c" symbol)
     val iter = schedule.iterator
     while (iter.hasNext) {
       val op = iter.next
       //add to available & awaited lists
-      available.add(op)
-      awaited.add(op)
+      available += op
+      awaited += op
       //get all dependencies
       for (dep <- op.getDependencies) { //foreach dependency
         if(!awaited.contains(dep)) { //this dependency does not yet exist for this resource
-          awaited.add(dep)
+          awaited += dep
           writeGetter(dep, out) //get to synchronize
         }
       }
@@ -140,7 +140,7 @@ object GPUExecutableGenerator {
         val inData = if (getJNIType(input.outputType) == "jobject") inputCopies.next else null
         if(!available.contains(input)) { //this input does not yet exist on the device
           //add to available list
-          available.add(input)
+          available += input
           //write a copy function for objects
           if (getJNIType(input.outputType) == "jobject") { //only perform a copy for object types
             addInputCopy = true
@@ -159,16 +159,12 @@ object GPUExecutableGenerator {
         out.append("addEvent(h2dStream, kernelStream);\n")
       }
 
-      if (op.isInstanceOf[OP_Control])
-        writeControl(op, out)
-      else {
-        //write the temporary allocations
-        writeTempAllocs(op, out)
-        //write the output allocation
-        writeOutputAlloc(op, out)
-        //write the function call or library call
-        if (op.cudaMetadata.libCall == null) writeFunctionCall(op, out) else writeLibraryCall(op, out)
-      }
+      //write the temporary allocations
+      writeTempAllocs(op, out)
+      //write the output allocation
+      writeOutputAlloc(op, out)
+      //write the function call or library call
+      if (op.cudaMetadata.libCall == null) writeFunctionCall(op, out) else writeLibraryCall(op, out)
 
       //write the setter
       var addSetter = false
@@ -176,9 +172,9 @@ object GPUExecutableGenerator {
         if (cons.scheduledResource != location) addSetter = true
       }
       if (addSetter) {
-        syncList.add(op) //add op to list that needs sync generation
+        syncList += op //add op to list that needs sync generation
         //sync output copy with kernel completion
-        if (!op.isInstanceOf[OP_Control]) out.append("addEvent(kernelStream, d2hStream);\n")
+        out.append("addEvent(kernelStream, d2hStream);\n")
         //write a setter
         writeSetter(op, location, out)
       }
@@ -395,53 +391,11 @@ object GPUExecutableGenerator {
     out.append(location)
     out.append(",\"set")
     out.append(op.id)
-    out.append("\",\"(")        
+    out.append("\",\"(")
     out.append(getJNIArgType(op.outputType))
     out.append(")V\"),")
     if (op.outputType == "Unit") out.append("boxedUnit") else out.append(getSymCPU(op))
     out.append(");\n")
-  }
-
-  private def writeControl(op: DeliteOP, out: StringBuilder) {
-    op match {
-      case beginCond: OP_BeginCondition => {
-        out.append("if (")
-        out.append(getSymCPU(beginCond.predicate))
-        out.append(") {\n")
-      }
-      case beginElse: OP_BeginElse => {
-        out.append("} else {\n")
-      }
-      case endCond: OP_EndCondition => {
-        out.append('}')
-        out.append('\n')
-      }
-      case beginWhile: OP_BeginWhile => {
-        val sym = getSymCPU(op).dropRight(1) //the base sym for this while construct
-        out.append("bool ")
-        out.append(sym)
-        out.append("p = ")
-        out.append(getSymCPU(beginWhile.predicate))
-        out.append(";\n")
-
-        out.append("while (")
-        out.append(sym)
-        out.append("p) {\n")
-      }
-      case endWhile: OP_EndWhile => {
-        out.append(getSymCPU(op))
-        out.append("p = ")
-        out.append(getSymCPU(endWhile.predicate))
-        out.append(";\n}\n")
-      }
-      case beginVariant: OP_BeginVariantScope => {
-        assert(beginVariant.variantOutputType == "Unit")
-        out.append("{\n")
-      }
-      case endVariant: OP_EndVariantScope => {
-        out.append("}\n")
-      }
-    }
   }
 
   private def writeEventFunction(out: StringBuilder) {
@@ -455,58 +409,6 @@ object GPUExecutableGenerator {
     out.append("cudaEventDestroy(event);\n")
     out.append('}')
     out.append('\n')
-  }
-
-  private def emitScala(location: Int, syncList: ArrayList[DeliteOP], kernelPath: String): String = {
-    val out = new StringBuilder
-
-    //the header
-    ExecutableGenerator.writeHeader(out, location, "")
-
-    //the run method
-    out.append("def run() {\n")
-    out.append("hostGPU\n")
-    out.append('}')
-    out.append('\n')
-
-    //the native method
-    out.append("@native def hostGPU : Unit\n")
-
-    //link the native code upon object creation
-    val sep = java.io.File.separator
-    out.append("System.load(\"")
-    out.append(kernelPath)
-    out.append(sep)
-    out.append("cuda")
-    out.append(sep)
-    out.append("cudaHost.so\")\n")
-
-    //the sync methods/objects
-    ExecutableGenerator.addSync(syncList, out)
-    writeOuterSet(syncList, out) //helper set methods for JNI calls to access
-
-    //an accessor method for the object
-    ExecutableGenerator.addAccessor(out)
-
-    //the footer
-    out.append('}')
-    out.append('\n')
-
-    out.toString
-  }
-
-  private def writeOuterSet(list: ArrayList[DeliteOP], out: StringBuilder) {
-    val iter = list.iterator
-    while (iter.hasNext) {
-      val op = iter.next
-      out.append("def set")
-      out.append(op.id)
-      out.append("(result : ")
-      out.append(op.outputType)
-      out.append(") = ")
-      out.append(ExecutableGenerator.getSync(op))
-      out.append(".set(result)\n")
-    }
   }
 
   private def getSymCPU(op: DeliteOP): String = {
@@ -596,4 +498,59 @@ object GPUExecutableGenerator {
     case other => error(other + " is not a primitive type")
   }
 
+}
+
+private object GPUScalaGenerator extends ExecutableGenerator {
+
+  def emitScala(location: Int, syncList: ArrayBuffer[DeliteOP], kernelPath: String): String = {
+    val out = new StringBuilder
+
+    //the header
+    writeHeader(out, location, "")
+
+    //the run method
+    out.append("def run() {\n")
+    out.append("hostGPU\n")
+    out.append('}')
+    out.append('\n')
+
+    //the native method
+    out.append("@native def hostGPU : Unit\n")
+
+    //link the native code upon object creation
+    val sep = java.io.File.separator
+    out.append("System.load(\"")
+    out.append(kernelPath)
+    out.append(sep)
+    out.append("cuda")
+    out.append(sep)
+    out.append("cudaHost.so\")\n")
+
+    //the sync methods/objects
+    addSync(syncList, out)
+    writeOuterSet(syncList, out) //helper set methods for JNI calls to access
+
+    //an accessor method for the object
+    addAccessor(out)
+
+    //the footer
+    out.append('}')
+    out.append('\n')
+
+    out.toString
+  }
+
+  protected def executableName = "Executable"
+
+  private def writeOuterSet(list: ArrayBuffer[DeliteOP], out: StringBuilder) {
+    for (op <- list) {
+      out.append("def set")
+      out.append(op.id)
+      out.append("(result : ")
+      out.append(op.outputType)
+      out.append(") = ")
+      out.append(getSync(op))
+      out.append(".set(result)\n")
+    }
+  }
 }

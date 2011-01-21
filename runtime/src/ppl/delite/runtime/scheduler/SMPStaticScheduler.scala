@@ -25,55 +25,45 @@ final class SMPStaticScheduler extends StaticScheduler {
 
   private val numThreads = Config.numThreads
 
-  private val procs = new Array[ArrayDeque[DeliteOP]](numThreads)
-  for (i <- 0 until numThreads) procs(i) = new ArrayDeque[DeliteOP]
-
-  def schedule(graph: DeliteTaskGraph) : PartialSchedule = {
-    //traverse nesting & schedule sub-graphs
-    //TODO: implement functionality for nested graphs
+  def schedule(graph: DeliteTaskGraph) {
+    //traverse nesting & schedule sub-graphs, starting with outermost graph
     scheduleFlat(graph)
-
-    ensureScheduled(graph)
-
-    //return schedule
-    createPartialSchedule
   }
 
-  private def scheduleFlat(graph: DeliteTaskGraph) {
+  protected def scheduleFlat(graph: DeliteTaskGraph) {
     val opQueue = new ArrayDeque[DeliteOP]
+    val schedule = PartialSchedule(numThreads)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
-      scheduleOne(op, graph)
-      processConsumers(op, opQueue)
+      scheduleOne(op, graph, schedule)
+      enqueueRoots(graph, opQueue)
     }
+    ensureScheduled(graph)
+    graph.schedule = schedule
   }
 
   //NOTE: this is currently the simple scheduler from Delite 1.0
-  var nextThread = 0
+  var nextThread = 0 //TODO: this isn't reset across nested graphs, but does it really matter?
 
-  private def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph) {
+  protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op match {
-      case c: OP_Control => addControl(c)
+      case c: OP_Control => addControl(c, schedule, Range(0, numThreads))
       case _ => {
-        if (op.variant != null) {
-          OpHelper.makeVariant(op, graph)
-          scheduleFlat(op.variant)
-        }
-        else if (op.isDataParallel) split(op, graph)
-        else cluster(op)
+        if (op.isDataParallel) split(op, graph, schedule, Range(0, numThreads))
+        else cluster(op, schedule)
       }
     }
   }
 
-  private def cluster(op: DeliteOP) {
+  private def cluster(op: DeliteOP, schedule: PartialSchedule) {
     //look for best place to put this op (simple nearest-neighbor clustering)
     var i = 0
     var notDone = true
     val deps = op.getDependencies
     while (i < numThreads && notDone) {
-      if (deps.contains(procs(i).peekLast)) {
-        procs(i).add(op)
+      if (deps.contains(schedule(i).peekLast)) {
+        schedule(i).add(op)
         op.scheduledResource = i
         notDone = false
         if (nextThread == i) nextThread = (nextThread + 1) % numThreads
@@ -82,57 +72,11 @@ final class SMPStaticScheduler extends StaticScheduler {
     }
     //else submit op to next thread in the rotation (round-robin)
     if (notDone) {
-      procs(nextThread).add(op)
+      schedule(nextThread).add(op)
       op.scheduledResource = nextThread
       nextThread = (nextThread + 1) % numThreads
     }
     op.isScheduled = true
-  }
-
-  private def enqueueRoots(graph: DeliteTaskGraph, opQueue: ArrayDeque[DeliteOP]) {
-    for (op <- graph.ops) {
-      op.processSchedulable
-      if (op.isSchedulable) opQueue.add(op)
-    }
-  }
-
-  private def processConsumers(op: DeliteOP, opQueue: ArrayDeque[DeliteOP]) {
-    for (c <- op.getConsumers) {
-      if (!c.isSchedulable) {//if not already in opQueue (protects against same consumer appearing in list multiple times)
-        c.processSchedulable
-        if (c.isSchedulable) opQueue.add(c)
-      }
-    }
-  }
-
-  private def split(op: DeliteOP, graph: DeliteTaskGraph) {
-    scheduleOne(OpHelper.expand(op, numThreads, graph), graph)
-    for (i <- 0 until numThreads) {
-      val chunk = OpHelper.split(op, i, numThreads, graph.kernelPath)
-      procs(i).add(chunk)
-      chunk.scheduledResource = i
-      chunk.isScheduled = true
-    }
-  }
-
-  private def addControl(op: OP_Control) {
-    for (i <- 0 until numThreads) {
-      val chunk = op.makeChunk(i)
-      procs(i).add(chunk)
-      chunk.scheduledResource = i
-      chunk.isScheduled = true
-    }
-  }
-
-  private def ensureScheduled(graph: DeliteTaskGraph) {
-    for (op <- graph.ops) {
-      if (!op.isScheduled)
-        error("Graph dependencies are unsatisfiable")
-    }
-  }
-
-  private def createPartialSchedule = {
-    new PartialSchedule(procs)
   }
 
 }

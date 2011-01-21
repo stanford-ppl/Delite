@@ -43,7 +43,6 @@ object Delite {
 
     val scheduler = Config.scheduler match {
       case "SMPStaticScheduler" => new SMPStaticScheduler
-      case "StressTest" => new DieRollStaticScheduler
       case "GPUOnlyStaticScheduler" => new GPUOnlyStaticScheduler
       case "default" => new SMPStaticScheduler
       case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
@@ -66,17 +65,17 @@ object Delite {
     loadScalaSources(graph)
 
     //schedule
-    val schedule = scheduler.schedule(graph)
+    scheduler.schedule(graph)
 
     //compile
-    val executable = Compilers.compileSchedule(schedule, graph)
+    val executable = Compilers.compileSchedule(graph)
 
-  //execute
+    //execute
     val numTimes = Config.numRuns
     for (i <- 1 to numTimes) {
       println("Beginning Execution Run " + i)
       PerformanceTimer.start("all", false)
-      executor.run(executable) //TODO: need to reset the executables
+      executor.run(executable)
       EOP.await //await the end of the application program
       PerformanceTimer.stop("all", false)
       PerformanceTimer.print("all")
@@ -104,11 +103,3 @@ object Delite {
   }
 
 }
-
-
-
-
-
-
-
-

@@ -1,17 +1,18 @@
 package ppl.delite.runtime.graph.ops
 
-import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.graph.DeliteTaskGraph
 
 /**
- *
+ * Author: Kevin J. Brown
+ * Date: 1/20/11
+ * Time: 1:24 AM
+ * 
+ * Pervasive Parallelism Laboratory (PPL)
+ * Stanford University
  */
 
-class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
-                   val predicateGraph: DeliteTaskGraph, val predicateValue: String,
-                   val thenGraph: DeliteTaskGraph, val thenValue: String,
-                   val elseGraph: DeliteTaskGraph, val elseValue: String)
-  extends OP_Control {
+class OP_Variant(val id: String, resultType: Map[Targets.Value,String], val variantGraph: DeliteTaskGraph) extends OP_Nested {
 
   def supportsTarget(target: Targets.Value) = resultType.contains(target)
 
@@ -19,23 +20,18 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
   override def outputType: String = resultType(Targets.Scala)
 
   def isReturner(idx: Int) = {
-    if (thenGraph.result != null)
-      (thenGraph.result.scheduledResource == idx)
-    else if (elseGraph.result != null)
-      (elseGraph.result.scheduledResource == idx)
-    else true //should only be 1 in this case
+    (variantGraph.result.scheduledResource == idx)
   }
 
   /**
-   * creates a Condition chunk for each requested resource and destroys the original
+   * creates a Variant chunk for each requested resource and destroys the original op
    */
   def makeChunks(indices: Seq[Int]) = {
-    var returner: OP_Condition = null
+    var returner: OP_Variant = null
     val chunks =
       for (idx <- indices) yield {
         val resultMap = if (isReturner(idx)) resultType else Targets.unitTypes
-        val r = new OP_Condition(id+"_"+idx, resultMap, predicateGraph, predicateValue,
-        thenGraph, thenValue, elseGraph, elseValue)
+        val r = new OP_Variant(id+"_"+idx, resultMap, variantGraph)
         r.dependencyList = dependencyList
         r.inputList = inputList
         r.consumerList = consumerList
@@ -44,10 +40,8 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
         if (isReturner(idx)) returner = r
 
         //add special consumer ops
-        predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx))
         if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
-          thenGraph.schedule(idx).add(new GetterOp(id+"t_"+idx))
-          elseGraph.schedule(idx).add(new GetterOp(id+"e_"+idx))
+          variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx))
         }
 
         r

@@ -1,28 +1,42 @@
 package ppl.delite.runtime.graph.ops
 
-abstract class OP_While extends OP_Control
+import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.graph.targets.Targets
 
-class OP_BeginWhile(val id: String, val predicate: DeliteOP) extends OP_While {
-  //TODO: this dependency management is overly conservative
-  def makeChunk(idx: Int): OP_Control = {
-    if (idx == 0) return this
-    val chunk = new OP_BeginWhile(id.dropRight(1)+"_"+idx+"b", predicate)
-    chunk.dependencyList = dependencyList
-    chunk.consumerList = consumerList
-    for (dep <- getDependencies) dep.addConsumer(chunk)
-    for (c <- getConsumers) c.addDependency(chunk)
-    chunk
-  }
-}
+/**
+ *
+ */
 
-class OP_EndWhile(val id: String, val predicate: DeliteOP) extends OP_While {
-  def makeChunk(idx: Int): OP_Control = {
-    if (idx == 0) return this
-    val chunk = new OP_EndWhile(id+"_"+idx, predicate)
-    chunk.dependencyList = dependencyList
-    chunk.consumerList = consumerList
-    for (dep <- getDependencies) dep.addConsumer(chunk)
-    for (c <- getConsumers) c.addDependency(chunk)
-    chunk
+class OP_While(val id: String,
+               val predicateGraph: DeliteTaskGraph, val predicateValue: String,
+               val bodyGraph: DeliteTaskGraph, val bodyValue: String)
+  extends OP_Control {
+
+  //currently support all targets
+  def supportsTarget(target: Targets.Value) = true
+
+  //does not produce output
+  def outputType(target: Targets.Value) = target match {
+    case Targets.Scala => "Unit"
+    case Targets.Cuda => "void"
   }
+
+  /**
+   * creates a While chunk for each requested resource and destroys the original
+   */
+  def makeChunks(indices: Seq[Int]) = {
+    val chunks =
+      for (idx <- indices) yield {
+        val r = new OP_While(id+"_"+idx, predicateGraph, predicateValue, bodyGraph, bodyValue)
+        r.dependencyList = dependencyList //lists are immutable so can be shared
+        r.inputList = inputList
+        r.consumerList = consumerList
+        for (dep <- getDependencies) dep.addConsumer(r)
+        for (c <- getConsumers) c.addDependency(r)
+        r
+      }
+    this.replaceAll(chunks(0))
+    chunks
+  }
+
 }

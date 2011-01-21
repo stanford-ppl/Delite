@@ -11,28 +11,4 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-//TODO: need a better notion of scopes across DEG, scheduling, and codegen
-abstract class OP_Control extends DeliteOP {
-
-  val predicate: DeliteOP
-
-  def makeChunk(idx: Int): OP_Control
-
-  //control structures currently support all targets
-  def supportsTarget(target: Targets.Value) = true
-
-  //control structures do not produce output
-  def outputType(target: Targets.Value) = target match {
-    case Targets.Scala => "Unit"
-    case Targets.Cuda => "void"
-  }
-
-  var bodyOps: List[DeliteOP] = Nil
-
-  final def task = null
-  final def isDataParallel = false
-  final def size = 0
-  final def cost = 0
-  def nested = null
-
-}
+abstract class OP_Control extends OP_Nested
