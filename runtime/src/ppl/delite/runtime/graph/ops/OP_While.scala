@@ -28,11 +28,15 @@ class OP_While(val id: String,
     val chunks =
       for (idx <- indices) yield {
         val r = new OP_While(id+"_"+idx, predicateGraph, predicateValue, bodyGraph, bodyValue)
-        r.dependencyList = dependencyList //lists are immutable so can be shared
+        r.dependencyList = dependencyList
         r.inputList = inputList
         r.consumerList = consumerList
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)
+
+        //add special consumer ops
+        predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, predicateGraph.result))
+
         r
       }
     this.replaceAll(chunks(0))

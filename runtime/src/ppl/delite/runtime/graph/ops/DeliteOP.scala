@@ -95,7 +95,7 @@ abstract class DeliteOP {
     isScheduled = true
   }
 
-  var variant: DeliteTaskGraph = null
+  var variant: OP_Variant = null
 
   def id: String
 

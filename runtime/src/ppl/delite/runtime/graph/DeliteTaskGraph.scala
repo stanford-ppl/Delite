@@ -97,7 +97,7 @@ object DeliteTaskGraph {
       case Some(o) => o
       case None => {
         val in = findOp(op)
-        graph._inputs.getOrElseUpdate(in.id, new OP_Input(in.id))
+        graph._inputs.getOrElseUpdate(in.id, new OP_Input(in))
       }
     }
   }
@@ -179,7 +179,7 @@ object DeliteTaskGraph {
     op.get("variant") match {
       case None => //do nothing
       case Some(field) => field match {
-        case map: Map[Any,Any] => newop.variant = processVariant(newop, map)
+        case map: Map[Any,Any] => newop.variant = processVariant(newop, resultMap, map)
         case err => mapNotFound(err)
       }
     }
@@ -197,11 +197,20 @@ object DeliteTaskGraph {
     newGraph
   }
 
-  def processVariant(op: DeliteOP, graph: Map[Any, Any])(implicit outerGraph: DeliteTaskGraph) = {
+  def processVariant(op: DeliteOP, resultType: Map[Targets.Value,String], graph: Map[Any, Any])(implicit outerGraph: DeliteTaskGraph) = {
     val varGraph = newGraph
     parseOps(getFieldList(graph, "ops"))(varGraph)
     varGraph._result = getOp(getFieldString(graph, "output"))(varGraph)
-    varGraph
+    val v = new OP_Variant(op.id, resultType, op, varGraph)
+
+    //TODO: due to how the framework works, the variant has one extra input (the loop index)
+    //TODO: hack it in for now
+    val interiorOps = varGraph.ops.toList
+    val idx = resolveInputs(interiorOps.flatMap(_.getInputs).filterNot(interiorOps contains)).filterNot(op.getInputs contains).distinct
+    assert(idx.length == 1)
+    v.addInput(idx(0))
+
+    v
   }
 
   def parseSubGraph(op: Map[Any,Any], prefix: String)(implicit graph: DeliteTaskGraph) = {
@@ -241,8 +250,8 @@ object DeliteTaskGraph {
     //list of all dependencies of the if block, minus any dependencies within the block (predicate could be an input or internal)
     val internalOps = (predGraph.ops ++ thenGraph.ops ++ elseGraph.ops).toList
     ifDeps = resolveInputs((predGraph.result :: ifDeps ++ internalOps.flatMap(_.getDependencies)) filterNot { internalOps contains })
-    val ifInputs = resolveInputs((predGraph.result :: internalOps.flatMap(_.getInputs)) filterNot { internalOps contains })
-    val ifMutableInputs = resolveInputs((internalOps.flatMap(_.getInputs)) filterNot { internalOps contains })
+    val ifInputs = resolveInputs((predGraph.result :: internalOps.flatMap(_.getInputs)) filterNot { internalOps contains }).distinct
+    val ifMutableInputs = resolveInputs((internalOps.flatMap(_.getMutableInputs)) filterNot { internalOps contains })
 
     val conditionOp = new OP_Condition(id, resultMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue)
     conditionOp.dependencyList = ifDeps
@@ -276,7 +285,7 @@ object DeliteTaskGraph {
     //list of all dependencies of the while block, minus any dependencies within the block (predicate could be an input or internal)
     val internalOps = (predGraph.ops ++ bodyGraph.ops).toList
     whileDeps = resolveInputs((predGraph.result :: whileDeps ++ internalOps.flatMap(_.getDependencies)) filterNot { internalOps contains })
-    val whileInputs = resolveInputs((predGraph.result :: internalOps.flatMap(_.getInputs)) filterNot { internalOps contains })
+    val whileInputs = resolveInputs((predGraph.result :: internalOps.flatMap(_.getInputs)) filterNot { internalOps contains }).distinct
     val whileMutableInputs = resolveInputs((internalOps.flatMap(_.getMutableInputs)) filterNot { internalOps contains })
 
     val whileOp = new OP_While(id, predGraph, predValue, bodyGraph, bodyValue)

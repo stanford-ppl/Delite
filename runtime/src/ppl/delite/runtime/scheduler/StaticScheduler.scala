@@ -62,14 +62,15 @@ abstract class StaticScheduler {
         scheduleFlat(w.bodyGraph)
         splitNotEmpty(w, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), resourceList)
       }
-      case v => if (v.variant != null) {
-        scheduleFlat(v.variant)
-      } else
-        error("Control OP type not recognized: " + v.getClass.getSimpleName)
+      case v: OP_Variant => {
+        scheduleFlat(v.variantGraph)
+        splitNotEmpty(v, schedule, List(v.variantGraph.schedule), resourceList)
+      }
+      case err => error("Control OP type not recognized: " + err.getClass.getSimpleName)
     }
   }
 
-  protected def splitNotEmpty(op: OP_Control, outerSchedule: PartialSchedule, innerSchedules: List[PartialSchedule], resourceList: Seq[Int]) {
+  protected def splitNotEmpty(op: OP_Nested, outerSchedule: PartialSchedule, innerSchedules: List[PartialSchedule], resourceList: Seq[Int]) {
     val filteredList = resourceList.filter(i => innerSchedules.map(_(i).isEmpty) contains false)
     val chunkList = if (filteredList.isEmpty) Seq(resourceList(0)) else filteredList
     val chunks = op.makeChunks(chunkList)

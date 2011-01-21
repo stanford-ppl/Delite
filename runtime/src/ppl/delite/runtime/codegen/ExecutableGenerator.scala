@@ -104,6 +104,7 @@ abstract class ExecutableGenerator {
   }
 
   protected def writeFunctionCall(op: DeliteOP, out: StringBuilder) {
+    if (op.task == null) return //dummy op
     out.append("val ")
     out.append(getSym(op))
     out.append(" : ")
@@ -147,8 +148,8 @@ abstract class ExecutableGenerator {
   protected def makeNestedFunction(op: DeliteOP, location: Int) {
     op match {
       case c: OP_Condition => new ConditionGenerator(c, location).makeExecutable()
-      case w: OP_While => WhileGenerator.makeExecutable(w)
-      //case v: OP_Variant => VariantGenerator.makeExecutables(v)
+      case w: OP_While => new WhileGenerator(w, location).makeExecutable()
+      case v: OP_Variant => new VariantGenerator(v, location).makeExecutable()
       case err => error("Unrecognized nested OP type: " + err.getClass.getSimpleName)
     }
   }

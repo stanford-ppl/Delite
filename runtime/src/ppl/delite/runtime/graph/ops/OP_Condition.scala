@@ -44,10 +44,10 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
         if (isReturner(idx)) returner = r
 
         //add special consumer ops
-        predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx))
+        predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, predicateGraph.result))
         if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
-          thenGraph.schedule(idx).add(new GetterOp(id+"t_"+idx))
-          elseGraph.schedule(idx).add(new GetterOp(id+"e_"+idx))
+          thenGraph.schedule(idx).add(new GetterOp(id+"t_"+idx, idx, thenGraph.result))
+          elseGraph.schedule(idx).add(new GetterOp(id+"e_"+idx, idx, elseGraph.result))
         }
 
         r
@@ -55,20 +55,6 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
 
     this.replaceAll(returner)
     chunks
-  }
-
-  private class GetterOp(val id: String) extends DeliteOP {
-
-    def supportsTarget(target: Targets.Value) = true
-    def outputType(target: Targets.Value) = target match {
-      case Targets.Scala => "Unit"
-      case Targets.Cuda => "void"
-    }
-
-    def task = ""
-    def isDataParallel = false
-    def cost = 0
-    def size = 0
   }
 
 }

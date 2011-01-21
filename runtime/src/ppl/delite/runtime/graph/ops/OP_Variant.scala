@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Variant(val id: String, resultType: Map[Targets.Value,String], val variantGraph: DeliteTaskGraph) extends OP_Nested {
+class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp: DeliteOP, val variantGraph: DeliteTaskGraph) extends OP_Nested {
 
   def supportsTarget(target: Targets.Value) = resultType.contains(target)
 
@@ -31,38 +31,24 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], val vari
     val chunks =
       for (idx <- indices) yield {
         val resultMap = if (isReturner(idx)) resultType else Targets.unitTypes
-        val r = new OP_Variant(id+"_"+idx, resultMap, variantGraph)
-        r.dependencyList = dependencyList
-        r.inputList = inputList
-        r.consumerList = consumerList
+        val r = new OP_Variant(id+"_"+idx, resultMap, superOp, variantGraph)
+        r.dependencyList = superOp.dependencyList
+        r.inputList = this.inputList ::: superOp.inputList
+        r.consumerList = superOp.consumerList
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)
         if (isReturner(idx)) returner = r
 
         //add special consumer ops
         if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
-          variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx))
+          variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx, idx, variantGraph.result))
         }
 
         r
       }
 
-    this.replaceAll(returner)
+    superOp.replaceAll(returner)
     chunks
-  }
-
-  private class GetterOp(val id: String) extends DeliteOP {
-
-    def supportsTarget(target: Targets.Value) = true
-    def outputType(target: Targets.Value) = target match {
-      case Targets.Scala => "Unit"
-      case Targets.Cuda => "void"
-    }
-
-    def task = ""
-    def isDataParallel = false
-    def cost = 0
-    def size = 0
   }
 
 }
