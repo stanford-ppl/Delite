@@ -305,7 +305,13 @@ object DeliteTaskGraph {
       }
       for ((input,name) <- contOp.getInputs) {
         val idx = predOps findIndexOf { _ == input }
-        if (idx != -1) contOp.replaceInput(input, contOps(idx), name) // TODO: check
+        if (idx != -1) {
+          val newOp = contOps(idx)
+          assert(name == input.id)
+          assert(newOp.outputList.length == 1)
+          assert(newOp.outputList.head == newOp.id)
+          contOp.replaceInput(input, newOp, newOp.id)
+        }
       }
     }
 
