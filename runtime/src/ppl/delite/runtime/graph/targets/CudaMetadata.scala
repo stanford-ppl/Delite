@@ -19,10 +19,10 @@ final class CudaMetadata {
   val blockSizeZ = new OPData
   val dimSizeX = new OPData
   val dimSizeY = new OPData
-  var inputs: List[OPData] = Nil
+  var inputs = Map[DeliteOP, OPData]()
   var temps: List[OPData] = Nil
   var tempOps: List[DeliteOP] = Nil
-  val output = new OPData
+  var output = new OPData
 
   def apply(field: String) = field match {
     case "gpuBlockSizeX" => blockSizeX
@@ -34,9 +34,9 @@ final class CudaMetadata {
     case other => error("unknown field: " + other)
   }
 
-  def newInput = {
+  def newInput(op: DeliteOP) = {
     val in = new OPData
-    inputs ::= in
+    inputs += op -> in
     in
   }
 
@@ -46,13 +46,13 @@ final class CudaMetadata {
     temp
   }
 
-  class OPData {
+}
 
-    var func: String = _
-    var funcReturn: String = _
-    var inputs: List[DeliteOP] = Nil
-    var resultType: String = _
+final class OPData {
 
-  }
+  var func: String = _
+  var funcReturn: String = _
+  var inputs: List[DeliteOP] = Nil
+  var resultType: String = _
 
 }

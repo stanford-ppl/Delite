@@ -210,6 +210,7 @@ object DeliteTaskGraph {
     v.addInput(idx(0))
 
     v.inputSyms = getOp(idx(0).id)(varGraph) :: op.getInputs.map(d => getOp(d.id)(varGraph)).toList
+    extractCudaMetadata(v, varGraph, outerGraph)
     v
   }
 
@@ -260,7 +261,9 @@ object DeliteTaskGraph {
     conditionOp.mutableInputList = ifMutableInputs
     conditionOp.inputSyms = ifInputSyms
 
-    //TODO: cudaMetadata
+    if (predValue == "") extractCudaMetadata(conditionOp, predGraph, graph)
+    if (thenValue == "") extractCudaMetadata(conditionOp, thenGraph, graph)
+    if (elseValue == "") extractCudaMetadata(conditionOp, elseGraph, graph)
 
     //add consumer edges
     for(dep <- ifDeps)
@@ -298,7 +301,8 @@ object DeliteTaskGraph {
     whileOp.mutableInputList = whileMutableInputs
     whileOp.inputSyms = whileInputSyms
 
-    //TODO: cudaMetadata
+    if (predValue == "") extractCudaMetadata(whileOp, predGraph, graph)
+    if (bodyValue == "") extractCudaMetadata(whileOp, bodyGraph, graph)
 
     //add consumer edges
     for (dep <- whileDeps)
@@ -307,6 +311,19 @@ object DeliteTaskGraph {
     //add to graph
     graph._ops += id -> whileOp
     graph._result = whileOp
+  }
+
+  def extractCudaMetadata(superOp: OP_Nested, innerGraph: DeliteTaskGraph, outerGraph: DeliteTaskGraph) {
+    superOp.cudaMetadata.output = innerGraph.result.cudaMetadata.output
+    for (op <- innerGraph._ops.values; key <- op.cudaMetadata.inputs.keys) {
+      try {
+        val inOp = getOp(key.id)(outerGraph)
+        superOp.cudaMetadata.inputs += inOp -> op.cudaMetadata.inputs(key)
+      }
+      catch {
+        case e => //symbol only exists in inner graph, therefore ignore
+      }
+    }
   }
 
   /**
@@ -341,11 +358,20 @@ object DeliteTaskGraph {
     val metadataMap = getFieldMap(metadataAll, "cuda")
     val cudaMetadata = newop.cudaMetadata
 
+    //check library call
+    cudaMetadata.libCall = metadataMap.get("gpuLibCall") match {
+      case Some(x) => x
+      case None => null
+    }
+
     for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
-      val value = (input.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
-      val data = cudaMetadata.newInput
+      val inputMap = input.asInstanceOf[Map[String,Any]]
+      val id = inputMap.keys.head
+      val value = inputMap.values.head.asInstanceOf[List[Any]]
+      val data = cudaMetadata.newInput(getOp(id))
       data.resultType = value.head
       data.func = value.tail.head
+      data.funcReturn = value.tail.tail.head
     }
 
     val tempSyms = new HashMap[String,DeliteOP]

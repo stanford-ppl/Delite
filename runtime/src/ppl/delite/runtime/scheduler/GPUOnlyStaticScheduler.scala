@@ -61,7 +61,7 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
         }
         else { //schedule on CPU resource
           if (op.isDataParallel) {
-            split(op, graph, schedule, Seq(cpu,gpu))
+            split(op, graph, schedule, Seq(cpu))
           }
           else {
             schedule(cpu).add(op)

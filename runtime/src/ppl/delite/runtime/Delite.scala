@@ -44,14 +44,21 @@ object Delite {
     val scheduler = Config.scheduler match {
       case "SMPStaticScheduler" => new SMPStaticScheduler
       case "GPUOnlyStaticScheduler" => new GPUOnlyStaticScheduler
-      case "default" => new SMPStaticScheduler
+      case "default" => {
+        if (Config.numGPUs == 0) new SMPStaticScheduler
+        else if (Config.numThreads == 1 && Config.numGPUs == 1) new GPUOnlyStaticScheduler
+        else error("No scheduler currently exists that can handle requested resources")
+      }
       case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
     }
 
     val executor = Config.executor match {
       case "SMPExecutor" => new SMPExecutor
       case "SMP+GPUExecutor" => new SMP_GPU_Executor
-      case "default" => new SMPExecutor
+      case "default" => {
+        if (Config.numGPUs == 0) new SMPExecutor
+        else new SMP_GPU_Executor
+      }
       case _ => throw new IllegalArgumentException("Requested executor type is not recognized")
     }
 
