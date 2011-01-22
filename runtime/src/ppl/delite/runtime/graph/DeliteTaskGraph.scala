@@ -278,6 +278,12 @@ object DeliteTaskGraph {
       val predOp = getOp(graph._ops, predId)
       assert(predOp.isInstanceOf[OP_Single]) //TODO: should this be relaxed?
       val contOp = predOp.asInstanceOf[OP_Single].duplicate(predOp.id+"p")
+      //FIXME: need to be explicit about outputs
+      assert(predOp.outputList.length == 1)
+      assert(predOp.outputList.head == predOp.id)
+      contOp.outputList = List(contOp.id)
+      contOp.outputTypeMap = Map(contOp.id -> predOp.outputTypeMap(predOp.id))
+      
       contOp.consumerList = Nil
       graph._ops += contOp.id -> contOp
 

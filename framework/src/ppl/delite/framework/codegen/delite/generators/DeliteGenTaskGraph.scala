@@ -94,8 +94,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
     //val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)
     
-    val dataDeps = // don't use getFreeVarNode...//TR TODO: focus only once!
-      syms(rhs).flatMap(s => focusBlock(s) { freeInScope(boundSyms(rhs), s) } ).distinct
+    val dataDeps = // don't use getFreeVarNode...
+      focusFatBlock(syms(rhs)) { freeInScope(boundSyms(rhs), syms(rhs)) } distinct
+      //syms(rhs).flatMap(s => focusBlock(s) { freeInScope(boundSyms(rhs), s) } ).distinct
     
 
     val inVals = dataDeps flatMap { vals(_) }
@@ -159,13 +160,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         assert(hasOutputSlotTypes || sym.length == 1)
 
         // emit kernel
-        if(skipEmission == false) {
+        if (!skipEmission) {
           gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar)(kstream)
           kstream.println(bodyString.toString)
           gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar)(kstream)
+        } else {
+          kstream.println("// skipped emission")
         }
 
-        //record that this kernel was successfully generated
+        // record that this kernel was successfully generated
         supportedTargets += gen.toString
         if (!hasOutputSlotTypes) { // return type is sym type
           if (resultIsVar) {
@@ -189,7 +192,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         }
 
         //add MetaData
-        if(gen.hasMetaData) {
+        if (gen.hasMetaData) {
           metadata += new Pair[String,String](gen.toString, gen.getMetaData) {
             override def toString = "\"" + _1 + "\" : " + _2
           }

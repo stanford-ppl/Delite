@@ -741,7 +741,7 @@ trait VectorOpsExpOpt extends VectorOpsExp {
         case DeliteCollectElem(alloc, _) => vector_length(alloc)
         case _ => super.vector_length(x) // vector constructed by reduction
       }
-    case Def(Reify(e, _)) => vector_length(e) // FIXME: not sure this is always safe! <--- any reflect escaping its reify?
+    case Def(Reify(e, _)) => vector_length(e) // TODO: not sure this is always safe! <--- any reflect escaping its reify?
     case Def(Reflect(VectorObjectZeros(l), _)) => l
     case Def(Reflect(VectorObjectRange(s,e,d,r), _)) => (e - s + d - 1)
     case Def(Reflect(VectorNew(l,r), _)) => l
@@ -754,7 +754,7 @@ trait VectorOpsExpOpt extends VectorOpsExp {
         case DeliteCollectElem(alloc, _) => vector_isRow(alloc)
         case _ => super.vector_isRow(x) // vector constructed by reduction
       }
-    case Def(Reify(e, _)) => vector_isRow(e) // FIXME: not sure this is always safe! <--- any reflect escaping its reify?
+    case Def(Reify(e, _)) => vector_isRow(e) // TODO: not sure this is always safe! <--- any reflect escaping its reify?
     //case Def(Reflect(VectorObjectZeros(l,r), _)) => r
     case Def(Reflect(VectorObjectRange(s,e,d,r), es)) => r
     case Def(Reflect(VectorNew(l,r), _)) => r

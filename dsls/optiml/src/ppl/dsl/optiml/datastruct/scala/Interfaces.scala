@@ -87,7 +87,7 @@ abstract class DeliteOpForeach[@specialized(Boolean, Int, Long, Float, Double) A
   def sync(idx: Int): List[Any]
 }
 
-abstract class DeliteCollection[@specialized(Boolean, Int, Long, Float, Double) T] {
+trait DeliteCollection[@specialized(Boolean, Int, Long, Float, Double) T] {
   def size: Int
   def dcApply(idx: Int): T
   def dcUpdate(idx: Int, x: T)
@@ -97,7 +97,7 @@ abstract class DeliteCollection[@specialized(Boolean, Int, Long, Float, Double) 
  * Vector
  */
 
-abstract class Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.DeliteCollection[T] {
+trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.DeliteCollection[T] {
   // methods required on real underlying data structure impl
   // we need these for:
   //   1) accessors to data fields
@@ -124,7 +124,7 @@ abstract class Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends
   def size = length
 }
 
-abstract class NilVector[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T] {
+trait NilVector[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T] {
   def length : Int = 0
   def apply(i: Int) = throw new UnsupportedOperationException()
   def isRow : Boolean = throw new UnsupportedOperationException()
@@ -141,16 +141,16 @@ abstract class NilVector[@specialized(Boolean, Int, Long, Float, Double) T] exte
   def cloneL = throw new UnsupportedOperationException()
 }
 
-abstract class VectorView[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T]
+trait VectorView[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T]
 
-abstract class RangeVector extends Vector[Int]
+trait RangeVector extends Vector[Int]
 
 trait IndexVector extends Vector[Int]
 
 /**
  * Matrix
  */
-abstract class Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.DeliteCollection[T] {
+trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.DeliteCollection[T] {
   // fields required on real underlying data structure impl
   def numRows: Int
   def numCols: Int

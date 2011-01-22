@@ -126,11 +126,32 @@ trait DeliteCodegen extends GenericFatCodegen {
 */
 
   override def emitFatBlockFocused(currentScope: List[TTP])(result: Exp[Any])(implicit stream: PrintWriter): Unit = {
-    println("-- block")
-    availableDefs.foreach(println)
+    println("-- block for "+result)
+    currentScope.foreach(println)
+
+    println("-- shallow schedule for "+result)
+    shallow = true
+    val e2 = getFatSchedule(currentScope)(result) // shallow list of deps (exclude stuff only needed by nested blocks)
+    shallow = false
+    e2.foreach(println)
+
+    // shallow is 'must outside + should outside' <--- currently shallow == deep for lambdas, meaning everything 'should outside'
+    // bound is 'must inside'
+
+    // find transitive dependencies on bound syms, including their defs (in case of effects)
+    println("-- bound for "+result)
+    val e1 = currentScope
+    val bound = e1.flatMap(z => boundSyms(z.rhs))
+    bound.foreach(println)
+    
+    println("-- dependent for "+result)
+    val g1 = getFatDependentStuff(currentScope)(bound)
+    g1.foreach(println)
 
     focusExactScopeFat(currentScope)(result) { levelScope => 
-      println("-- exact")
+      println("-- level for "+result)
+      levelScope.foreach(println)
+      println("-- exact for "+result)
       availableDefs.foreach(println)
       
       val effects = result match {
@@ -143,7 +164,7 @@ trait DeliteCodegen extends GenericFatCodegen {
 
       println("*** effects1: " + effects.flatMap(_.lhs))
       
-      val effectsN = levelScope.collect { case TTP(List(s), ThinDef(Reflect(_, es))) => s }
+      val effectsN = levelScope.collect { case TTP(List(s), ThinDef(Reflect(_, es))) => s } // TODO: Mutation!!
       
       println("*** effectsN: " + effectsN)
       

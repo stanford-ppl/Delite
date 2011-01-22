@@ -79,7 +79,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  idx    index id that will be refered to in the body, this could be passed in as input to the body or the body could be inlined
    * @param  body   the body of the loop
    */
-  case class DeliteOpIndexedLoop(_start: Exp[Int], _end: Exp[Int], _idx: Exp[Int], _body: Exp[Unit]) extends DeliteOp[Unit]
+  case class DeliteOpIndexedLoop(_start: Exp[Int], _end: Exp[Int], _idx: Sym[Int], _body: Exp[Unit]) extends DeliteOp[Unit]
 
   /**
    * An while loop - will emit an while loop DEG node as well as a kernel for the body
@@ -209,7 +209,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   // used by delite code generators to handle nested delite ops
   var deliteKernel: Boolean = false //_
-  var deliteResult: Option[Sym[Any]] = None//_
+  var deliteResult: Option[List[Exp[Any]]] = None//_
   var deliteInputs: List[Sym[Any]] = Nil//_
 
   def getReifiedOutput(out: Exp[Any]) = out match { // TODO: is this still used??
@@ -273,7 +273,7 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
   override def boundSyms(e: Any): List[Sym[Any]] = e match { //TR TODO
     case s: DeliteOpSingleTask[_] => effectSyms(s.block)
     case op: DeliteCollectElem[_,_] => effectSyms(op.func) ++ effectSyms(op.alloc)
-    case op: DeliteReduceElem[_] => effectSyms(op.func) ++ effectSyms(op.rFunc) ++ List(op.rV._1, op.rV._2)
+    case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.func) ++ effectSyms(op.rFunc)
     case zip: DeliteOpZipWith[_,_,_,_] => zip.v._1::zip.v._2::effectSyms(zip.alloc):::effectSyms(zip.func)
     case map: DeliteOpMap[_,_,_] => map.v::effectSyms(map.alloc):::effectSyms(map.func)
     case mapR: DeliteOpMapReduce[_,_,_] => mapR.mV::mapR.rV._1::mapR.rV._2::effectSyms(mapR.map):::effectSyms(mapR.reduce)
@@ -301,7 +301,12 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
               stream.println(quote(getBlockResult(elem.alloc)))
               stream.println("}")
             case (sym, elem: DeliteReduceElem[_]) =>
-              stream.println("var " + quotearg(sym) + " = _") // TODO: need explicit zero?
+              def zero = sym.Type.toString match { 
+                case "Int" | "Long" | "Float" | "Double" => "0" 
+                case "Boolean" => "false"
+                case _ => "null" 
+              }
+              stream.println("var " + quotearg(sym) + " = " + zero) // TODO: need explicit zero?
           }
           stream.println("var " + quote(op.v) + " = 0")
           stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {")
@@ -322,7 +327,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
               stream.println(quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
           }
           stream.println(quote(op.v) + " += 1")
-          stream.println("}")
+          stream.println("} // end fat loop")
         } else {
           // kernel mode
           val kernelName = symList.map(quote).mkString("")

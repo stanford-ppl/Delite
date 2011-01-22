@@ -11,7 +11,7 @@ trait DeliteScalaGenVariables extends ScalaGenEffect {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
-    val symIsResult = (!deliteResult.isEmpty && deliteResult.get == sym)
+    val symIsResult = !deliteResult.isEmpty && (deliteResult.get contains sym)
     var gen = false
     if (symIsResult) {
       rhs match {

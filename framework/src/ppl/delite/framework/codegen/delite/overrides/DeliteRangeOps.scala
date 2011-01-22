@@ -34,7 +34,7 @@ trait DeliteBaseGenRangeOps extends GenericNestedCodegen {
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case DeliteRangeForEach(start, end, i, body) => i::effectSyms(body)
-    case _ => super.syms(e)
+    case _ => super.boundSyms(e)
   }
 
   override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {
