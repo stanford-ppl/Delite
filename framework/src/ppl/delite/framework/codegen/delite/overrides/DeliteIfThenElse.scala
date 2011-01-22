@@ -5,7 +5,7 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{ScalaGenEffect, CudaGenEffect, CGenEffect, GenericNestedCodegen}
 
-trait DeliteIfThenElseExp extends IfThenElseExp {
+trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
 
   this: DeliteOpsExp =>
 
@@ -48,6 +48,8 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
      * when generating long blocks of straight-line code in each branch.
      */
     case DeliteIfThenElse(c,a,b) =>
+      val save = deliteKernel
+      deliteKernel = false
       stream.println("val " + quote(sym) + " = {")
       stream.println("def " + quote(sym) + "thenb(): " + remap(getBlockResult(a).Type) + " = {")
       emitBlock(a)
@@ -65,6 +67,7 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
       stream.println(quote(sym) + "elseb()")
       stream.println("}")
       stream.println("}")
+      deliteKernel = save
 
     case _ => super.emitNode(sym, rhs)
   }

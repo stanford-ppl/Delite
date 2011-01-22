@@ -270,7 +270,7 @@ object DeliteTaskGraph {
       dep.addConsumer(conditionOp)
 
     //add to graph
-    graph._ops += id -> conditionOp //endOp will be found by future ops when searching by graph id
+    graph._ops += id -> conditionOp
     graph._result = conditionOp
   }
 

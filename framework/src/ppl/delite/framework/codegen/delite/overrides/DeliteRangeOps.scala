@@ -5,7 +5,7 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 
-trait DeliteRangeOpsExp extends RangeOpsExp {
+trait DeliteRangeOpsExp extends RangeOpsExp with DeliteOpsExp {
   this: DeliteOpsExp =>
 
   case class DeliteRangeForEach(start: Exp[Int], end: Exp[Int], index: Exp[Int], body: Exp[Unit])
@@ -42,12 +42,15 @@ trait DeliteScalaGenRange extends ScalaGenEffect with DeliteBaseGenRangeOps {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case DeliteRangeForEach(start, end, i, body) => {
+      val save = deliteKernel
+      deliteKernel = false
       stream.println("var " + quote(i) + " : Int = " + quote(start))
       stream.println("val " + quote(sym) + " = " + "while (" + quote(i) + " < " + quote(end) + ") {")
       emitBlock(body)
       stream.println(quote(getBlockResult(body)))
       stream.println(quote(i) + " = " + quote(i) + " + 1")
       stream.println("}")
+      deliteKernel = save
     }
 
     case _ => super.emitNode(sym, rhs)

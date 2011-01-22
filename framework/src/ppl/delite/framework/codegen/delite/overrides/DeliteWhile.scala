@@ -5,7 +5,7 @@ import scala.virtualization.lms.common.{WhileExp}
 import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 
-trait DeliteWhileExp extends WhileExp {
+trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
 
   this: DeliteOpsExp =>
 
@@ -48,6 +48,8 @@ trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
     case DeliteWhile(c,b) =>
+      val save = deliteKernel
+      deliteKernel = false
       stream.print("val " + quote(sym) + " = while ({")
       emitBlock(c)
       stream.print(quote(getBlockResult(c)))
@@ -55,6 +57,7 @@ trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
       emitBlock(b)
       stream.println(quote(getBlockResult(b)))
       stream.println("}")
+      deliteKernel = save
 
     case _ => super.emitNode(sym, rhs)
   }
