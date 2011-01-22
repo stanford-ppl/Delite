@@ -192,7 +192,7 @@ trait Graph[V <: Vertex, E <: Edge] {
   def addVertex(v: V)
   def addEdge(e: E, a: V, b: V)
   def removeEdge(a: V, b: V)
-  def sort(): Unit
+  def freeze(): Unit
 }
 
 // this is really not pretty. this class hierarchy needs to be thought about more than i've had a chance to.
@@ -219,14 +219,19 @@ trait Edges[E <: Edge] extends Vector[E]
 
 
 /**
- * Message passing graph
+ * Bidirectional graph
  */
+
+trait InOutEdges[E <: Edge] extends Vector[(E,E)]
 
 trait MessageVertex extends Vertex {
   type V = MessageVertex
   type E = MessageEdge
 
   def data: MessageData
+  def in_edges: Edges[E]
+  def out_edges: Edges[E]
+  def inout_edges: InOutEdges[E] 
   def target(e: MessageEdge): MessageVertex
 }
 
