@@ -41,9 +41,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     var skipEmission = false
     var nestedNode: TP[_] = null
 
-    val saveInputDeps = kernelInputDeps
-    val saveMutatingDeps = kernelMutatingDeps
-
     // we will try to generate any node that is not purely an effect node
     rhs match {
       case Reflect(s, effects) => super.emitNode(sym, rhs); return
@@ -51,9 +48,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       case NewVar(x) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
       case _ => // continue and attempt to generate kernel
     }
-
-    kernelInputDeps = saveInputDeps
-    kernelMutatingDeps = saveMutatingDeps
 
     // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
     val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)
@@ -303,6 +297,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("  \"return-types\":{" + returnTypesStr + "}\n")
   }
 
+
   def emitDepsCommon(controlDeps: List[Exp[_]], antiDeps: List[Exp[_]], last:Boolean = false)(implicit stream: PrintWriter) {
     stream.print("  \"controlDeps\":[" + makeString(controlDeps) + "],\n")
     stream.print("  \"antiDeps\":[" + makeString(antiDeps) + "]" + (if(last) "\n" else ",\n"))
@@ -316,6 +311,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     // pre
     val saveMutatingDeps = kernelMutatingDeps
     val saveInputDeps = kernelInputDeps
+    kernelMutatingDeps = Map()
+    kernelInputDeps = Map()
     stream.print(",\"variant\": {")
 
     // variant
@@ -362,6 +359,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                         stream.println("  \"" + prefix + "Ops\": [")
                         val saveMutatingDeps = kernelMutatingDeps
                         val saveInputDeps = kernelInputDeps
+                        kernelMutatingDeps = Map()
+                        kernelInputDeps = Map()
                         emitBlock(e)
                         emitEOV()
                         kernelInputDeps = saveInputDeps
