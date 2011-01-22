@@ -203,13 +203,13 @@ object DeliteTaskGraph {
     varGraph._result = getOp(getFieldString(graph, "output"))(varGraph)
     val v = new OP_Variant(op.id, resultType, op, varGraph)
 
-    //TODO: due to how the framework works, the variant has one extra input (the loop index)
-    //TODO: hack it in for now
+    //TODO: due to how the framework works, the variant has one extra input (the loop index): hack it in for now
     val interiorOps = varGraph.ops.toList
     val idx = resolveInputs(interiorOps.flatMap(_.getInputs).filterNot(interiorOps contains)).filterNot(op.getInputs contains).distinct
     assert(idx.length == 1)
     v.addInput(idx(0))
 
+    v.inputSyms = getOp(idx(0).id)(varGraph) :: op.getInputs.map(d => getOp(d.id)(varGraph)).toList
     v
   }
 
@@ -251,12 +251,14 @@ object DeliteTaskGraph {
     val internalOps = (predGraph.ops ++ thenGraph.ops ++ elseGraph.ops).toList
     ifDeps = resolveInputs((predGraph.result :: ifDeps ++ internalOps.flatMap(_.getDependencies)) filterNot { internalOps contains })
     val ifInputs = resolveInputs((predGraph.result :: internalOps.flatMap(_.getInputs)) filterNot { internalOps contains }).distinct
+    val ifInputSyms = resolveInputs(ifInputs)(predGraph)
     val ifMutableInputs = resolveInputs((internalOps.flatMap(_.getMutableInputs)) filterNot { internalOps contains })
 
     val conditionOp = new OP_Condition(id, resultMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue)
     conditionOp.dependencyList = ifDeps
     conditionOp.inputList = ifInputs
     conditionOp.mutableInputList = ifMutableInputs
+    conditionOp.inputSyms = ifInputSyms
 
     //TODO: cudaMetadata
 
@@ -269,7 +271,8 @@ object DeliteTaskGraph {
     graph._result = conditionOp
   }
 
-  def resolveInputs(deps: List[DeliteOP])(implicit graph: DeliteTaskGraph) = deps map { dep => if (dep.isInstanceOf[OP_Input]) getOp(dep.id) else dep }
+  //translate ops (ids) from one scope to another
+  def resolveInputs(deps: List[DeliteOP])(implicit graph: DeliteTaskGraph) = deps map { d => getOp(d.id) }
 
   def processWhileTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     // get id
@@ -286,12 +289,14 @@ object DeliteTaskGraph {
     val internalOps = (predGraph.ops ++ bodyGraph.ops).toList
     whileDeps = resolveInputs((predGraph.result :: whileDeps ++ internalOps.flatMap(_.getDependencies)) filterNot { internalOps contains })
     val whileInputs = resolveInputs((predGraph.result :: internalOps.flatMap(_.getInputs)) filterNot { internalOps contains }).distinct
+    val whileInputSyms = resolveInputs(whileInputs)(predGraph)
     val whileMutableInputs = resolveInputs((internalOps.flatMap(_.getMutableInputs)) filterNot { internalOps contains })
 
     val whileOp = new OP_While(id, predGraph, predValue, bodyGraph, bodyValue)
     whileOp.dependencyList = whileDeps
     whileOp.inputList = whileInputs
     whileOp.mutableInputList = whileMutableInputs
+    whileOp.inputSyms = whileInputSyms
 
     //TODO: cudaMetadata
 

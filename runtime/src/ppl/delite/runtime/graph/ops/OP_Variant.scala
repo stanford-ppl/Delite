@@ -35,13 +35,14 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
         r.dependencyList = superOp.dependencyList
         r.inputList = this.inputList ::: superOp.inputList
         r.consumerList = superOp.consumerList
-        for (dep <- getDependencies) dep.addConsumer(r)
-        for (c <- getConsumers) c.addDependency(r)
+        r.inputSyms = this.inputSyms
+        for (dep <- r.getDependencies) dep.addConsumer(r)
+        for (c <- r.getConsumers) c.addDependency(r)
         if (isReturner(idx)) returner = r
 
         //add special consumer ops
         if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
-          variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx, idx, variantGraph.result))
+          variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx, idx, variantGraph.result)) //get result on returner chunk
         }
 
         r

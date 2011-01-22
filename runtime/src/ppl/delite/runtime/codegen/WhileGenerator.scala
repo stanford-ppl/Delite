@@ -102,7 +102,7 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends ExecutableGener
 
   private def writeInputs(out: StringBuilder) {
     var first = true
-    for (in <- whileLoop.getInputs) {
+    for (in <- whileLoop.getNestedInputs) {
       if (!first) out.append(", ")
       first = false
       out.append(getSym(in))

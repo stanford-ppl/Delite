@@ -75,7 +75,7 @@ class VariantGenerator(variant: OP_Variant, location: Int) extends ExecutableGen
 
   private def writeInputs(out: StringBuilder) {
     var first = true
-    for (in <- variant.getInputs) {
+    for (in <- variant.getNestedInputs) {
       if (!first) out.append(", ")
       first = false
       out.append(getSym(in))

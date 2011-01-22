@@ -30,11 +30,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     }
 
   // this is all quite unfortunate
-  /*
   private def appendScope() = {
     (emittedNodes flatMap { e => if (findDefinition(e).isDefined) List(findDefinition(e).get.asInstanceOf[TP[Any]]) else Nil }) ::: scope
   }
-  */
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) : Unit = {
     assert(generators.length >= 1)
@@ -341,7 +339,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     val save = scope
     stream.print("\"ops\":[" )
     emitBlock(vw.alloc)
-    //scope = appendScope()
+    scope = appendScope()
     // we should not be reifying during code-gen, see todo in DeliteOps.scala
     emitBlock(reifyEffects(vw.index))
     //emitBlock(vw.index)

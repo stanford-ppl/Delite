@@ -39,15 +39,16 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
         r.dependencyList = dependencyList
         r.inputList = inputList
         r.consumerList = consumerList
+        r.inputSyms = inputSyms
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)
         if (isReturner(idx)) returner = r
 
         //add special consumer ops
-        predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, predicateGraph.result))
+        predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, predicateGraph.result)) //get predicate result on all chunks
         if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
-          thenGraph.schedule(idx).add(new GetterOp(id+"t_"+idx, idx, thenGraph.result))
-          elseGraph.schedule(idx).add(new GetterOp(id+"e_"+idx, idx, elseGraph.result))
+          thenGraph.schedule(idx).add(new GetterOp(id+"t_"+idx, idx, thenGraph.result)) //get then result on returner chunk
+          elseGraph.schedule(idx).add(new GetterOp(id+"e_"+idx, idx, elseGraph.result)) //get else result on returner chunk
         }
 
         r

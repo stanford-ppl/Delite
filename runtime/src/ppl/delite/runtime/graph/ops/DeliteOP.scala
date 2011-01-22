@@ -130,4 +130,5 @@ abstract class DeliteOP {
    */
   var scheduledResource = -1
 
+  override def toString = id
 }

@@ -31,11 +31,13 @@ class OP_While(val id: String,
         r.dependencyList = dependencyList
         r.inputList = inputList
         r.consumerList = consumerList
+        r.inputSyms = inputSyms
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)
 
         //add special consumer ops
-        predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, predicateGraph.result))
+        predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, predicateGraph.result)) //get predicate result on all chunks
+        bodyGraph.schedule(idx).add(new GetterOp(id+"b_"+idx, idx, bodyGraph.ops.toSeq:_*)) //barrier end of body so predicate can be reevaluated
 
         r
       }

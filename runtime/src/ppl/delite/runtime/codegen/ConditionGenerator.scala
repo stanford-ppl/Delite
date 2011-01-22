@@ -103,7 +103,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends Executa
 
   private def writeInputs(out: StringBuilder) {
     var first = true
-    for (in <- condition.getInputs) {
+    for (in <- condition.getNestedInputs) {
       if (!first) out.append(", ")
       first = false
       out.append(getSym(in))
