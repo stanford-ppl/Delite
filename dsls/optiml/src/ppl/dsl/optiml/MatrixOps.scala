@@ -805,7 +805,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       else
         throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatrixMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0))))
       emitLibCall(sym,List(callStream,callKernel))
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(y)))
+      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(y)))
     
     case MatrixTimesVector(x,y) =>
       val callStream = "cublasSetKernelStream(stream);"
@@ -817,7 +817,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       else
         throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Matrix*Vector CUBLAS library)".format(remap(x.Type.typeArguments(0))))
       emitLibCall(sym,List(callStream,callKernel))
-      emitVectorAlloc(sym,"%s.numRows".format(quote(x)),"false")
+      emitVectorAlloc(sym,"%s->numRows".format(quote(x)),"false")
 	  // these are the ops that call through to the underlying real data structure
     case MatrixObjectNew(numRows,numCols) =>
       throw new GenerationFailedException("CudaGen: Not GPUable")
@@ -828,7 +828,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
         stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
         stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
         stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
-		emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true","%s.data".format(quote(x),quote(x)))
+		emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true","%s->data".format(quote(x),quote(x)))
       }
 
     case MatrixApply(x,i,j) =>
@@ -858,7 +858,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       emitMatrixAlloc(sym,"%s".format(quote(w)),"%s".format(quote(w)))
 
     case MatrixTranspose(x) =>
-      gpuBlockSizeX = "%s.size()".format(quote(x))
+      gpuBlockSizeX = "%s->size()".format(quote(x))
       stream.println(addTab()+"if( idxX < %s.size() ) {".format(quote(x)))
       tabWidth += 1
       stream.println(addTab()+"int i = idxX / %s.numCols;".format(quote(x)))
@@ -866,10 +866,10 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->numCols".format(quote(x)),"%s->numRows".format(quote(x)))
 
     case MatrixSumCol(x) =>
-      gpuBlockSizeX = "%s.numCols".format(quote(x))
+      gpuBlockSizeX = "%s->numCols".format(quote(x))
       stream.println(addTab()+"if( idxX < %s.numCols ) {".format(quote(x)))
       tabWidth += 1
       stream.println(addTab()+"%s reducVal = 0;".format(remap(x.Type.typeArguments(0))))
@@ -881,10 +881,10 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"%s.update(idxX,reducVal);".format(quote(sym)))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true")
+      emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true")
 
     case m@MatrixSigmoidF(x) =>
-      gpuBlockSizeX = "%s.numCols*%s.numRows".format(quote(x),quote(x))
+      gpuBlockSizeX = "%s->numCols*%s->numRows".format(quote(x),quote(x))
       stream.println(addTab()+"if( idxX < %s.numCols*%s.numRows ) {".format(quote(x),quote(x)))
       tabWidth += 1
 	  val sigmoidFunc = emitDevFunc(m.func,x.Type.typeArguments(0),List(m.v))
@@ -893,7 +893,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(x)))
 
     case _ => super.emitNode(sym, rhs)
   }

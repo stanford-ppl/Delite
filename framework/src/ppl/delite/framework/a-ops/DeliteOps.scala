@@ -552,7 +552,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       }
       else {
         parallelCudagen = false
-        gpuBlockSizeX = quote(map.in)+".size()"
+        gpuBlockSizeX = quote(map.in)+"->size()"
         val freeVars = getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)
         stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(map.in)+".size()"))
         tabWidth += 1
@@ -575,7 +575,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       }
       else {
         parallelCudagen = false
-        gpuBlockSizeX = quote(zip.inA)+".size()"
+        gpuBlockSizeX = quote(zip.inA)+"->size()"
         val freeVars = getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))
         stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(zip.inA)+".size()"))
         tabWidth += 1
@@ -638,7 +638,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       }
       else {
         parallelCudagen = false
-        gpuBlockSizeX = quote(foreach.in)+".size()"
+        gpuBlockSizeX = quote(foreach.in)+"->size()"
         val freeVars = getFreeVarBlock(foreach.func,Nil).filterNot(ele => ele==foreach.v)
         stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(foreach.in)+".size()"))
         tabWidth += 1

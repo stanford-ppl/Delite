@@ -1,6 +1,5 @@
 package ppl.delite.runtime.codegen
 
-import ppl.delite.runtime.scheduler.PartialSchedule
 import java.util.ArrayDeque
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph.ops._
@@ -45,6 +44,7 @@ abstract class GPUExecutableGenerator {
 
     //the event function
     writeEventFunction(out)
+    writeHostEventFunction(out)
 
     out.toString
   }
@@ -181,7 +181,7 @@ abstract class GPUExecutableGenerator {
         //write a setter
         writeSetter(op, location, out)
       }
-      //TODO: should free device memory when possible
+      writeDataFrees(op, out, available)
     }
   }
 
@@ -198,13 +198,14 @@ abstract class GPUExecutableGenerator {
   protected def writeOutputAlloc(op: DeliteOP, out: StringBuilder) {
     if (op.outputType != "Unit" && !op.isInstanceOf[OP_Nested]) {
       out.append(op.outputType(Targets.Cuda))
-      out.append(' ')
+      out.append("* ")
       out.append(getSymGPU(op))
       out.append(" = ")
       out.append(op.cudaMetadata.output.func)
       out.append('(')
       writeInputList(op, "output", out)
       out.append(");\n")
+      writeMemoryAdd(op, out)
     }
   }
 
@@ -213,7 +214,7 @@ abstract class GPUExecutableGenerator {
     for (temp <- op.cudaMetadata.temps) {
       val tempOp = iter.next
       out.append(temp.resultType)
-      out.append(' ')
+      out.append("* ")
       out.append(getSymGPU(tempOp))
       out.append(" = ")
       out.append(temp.func)
@@ -225,7 +226,15 @@ abstract class GPUExecutableGenerator {
         out.append(getSymGPU(in))
       }
       out.append(");\n")
+      writeMemoryAdd(tempOp, out)
     }
+  }
+
+  protected def writeMemoryAdd(op: DeliteOP, out: StringBuilder) {
+    out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
+    out.append(getSymGPU(op))
+    out.append(",lastAlloc));\n")
+    out.append("lastAlloc = new list<void*>();\n")
   }
 
   protected def writeInputList(op: DeliteOP, field: String, out: StringBuilder) {
@@ -287,6 +296,7 @@ abstract class GPUExecutableGenerator {
 
     out.append('(')
     if (op.outputType != "Unit") {
+      out.append('*')
       out.append(getSymGPU(op)) //first kernel input is OP output
       out.append(',')
     }
@@ -299,6 +309,7 @@ abstract class GPUExecutableGenerator {
     out.append(op.cudaMetadata.libCall)
     out.append('(')
     if (op.outputType != "Unit") {
+      out.append('*')
       out.append(getSymGPU(op)) //first kernel input is OP output
       out.append(',')
     }
@@ -352,7 +363,7 @@ abstract class GPUExecutableGenerator {
   protected def writeInputCopy(op: DeliteOP, function: String, opType: String, out: StringBuilder) {
     //copy data from CPU to GPU
     out.append(opType)
-    out.append(' ')
+    out.append("* ")
     out.append(getSymGPU(op))
     out.append(" = ")
     out.append(function)
@@ -360,6 +371,7 @@ abstract class GPUExecutableGenerator {
     out.append("env,") //JNI environment pointer
     out.append(getSymCPU(op)) //jobject
     out.append(");\n")
+    writeMemoryAdd(op, out)
   }
 
   protected def writeInputCast(op: DeliteOP, out: StringBuilder) {
@@ -380,6 +392,7 @@ abstract class GPUExecutableGenerator {
     for (input <- op.getInputs) {
       if (!first) out.append(',')
       first = false
+      if (getJNIType(input.outputType) == "jobject") out.append('*') //TODO: this is awkward
       out.append(getSymGPU(input))
     }
   }
@@ -387,6 +400,7 @@ abstract class GPUExecutableGenerator {
   protected def writeTemps(op: DeliteOP, out: StringBuilder) {
     for (temp <- op.cudaMetadata.tempOps) {
       out.append(',')
+      out.append('*')
       out.append(getSymGPU(temp))
     }
   }
@@ -432,6 +446,63 @@ abstract class GPUExecutableGenerator {
     out.append(");\n")
   }
 
+  protected def writeDataFrees(op: DeliteOP, out: StringBuilder, available: ArrayBuffer[DeliteOP]) {
+    var count = 0
+    val freeItem = "freeItem_"+getSymGPU(op)
+    val event = "event_" + getSymGPU(op)
+
+    def writeFreeInit() {
+      out.append("FreeItem ")
+      out.append(freeItem)
+      out.append(";\n")
+      out.append(freeItem)
+      out.append(".keys = new list<void*>();\n")
+    }
+
+    def writeFree(op: DeliteOP) {
+      if (count == 0) writeFreeInit()
+      out.append(freeItem)
+      out.append(".keys->push_back(")
+      out.append(getSymGPU(op))
+      out.append(");\n")
+    }
+
+    //free temps
+    for (temp <- op.cudaMetadata.tempOps) {
+      writeFree(temp)
+      count += 1
+    }
+
+    //free output (?)
+    if (op.getConsumers.filter(c => c.getInputs.contains(op) && c.scheduledResource == op.scheduledResource).size == 0) { //no future consumers on gpu
+      //free output
+      writeFree(op)
+      count += 1
+    }
+
+    //free inputs (?)
+    for (in <- op.getInputs if (getJNIType(in.outputType) == "jobject")) {
+      val possible = in.getConsumers.filter(c => c.getInputs.contains(in) && c.scheduledResource == op.scheduledResource)
+      var free = true
+      for (p <- possible) {
+        if (!available.contains(p)) free = false
+      }
+      if (free) {
+        writeFree(in)
+        count += 1
+      }
+    }
+
+    if (count > 0) {
+      //sync on kernel stream (if copied back guaranteed to have completed, so don't need sync on d2h stream)
+      out.append(freeItem)
+      out.append(".event = addHostEvent(kernelStream);\n")
+      out.append("freeList->push(")
+      out.append(freeItem)
+      out.append(");\n")
+    }
+  }
+
   protected def makeNestedFunction(op: DeliteOP, location: Int) {
     op match {
       case c: OP_Condition => new GPUConditionGenerator(c, location).makeExecutable()
@@ -450,6 +521,16 @@ abstract class GPUExecutableGenerator {
     out.append("cudaStreamWaitEvent(toStream, event, 0);\n")
 
     out.append("cudaEventDestroy(event);\n")
+    out.append('}')
+    out.append('\n')
+  }
+
+  protected def writeHostEventFunction(out: StringBuilder) {
+    out.append("cudaEvent_t addHostEvent(cudaStream_t stream) {\n")
+    out.append("cudaEvent_t event;\n")
+    out.append("cudaEventCreateWithFlags(&event, cudaEventDisableTiming | cudaEventBlockingSync);\n")
+    out.append("cudaEventRecord(event, stream);\n");
+    out.append("return event;\n")
     out.append('}')
     out.append('\n')
   }

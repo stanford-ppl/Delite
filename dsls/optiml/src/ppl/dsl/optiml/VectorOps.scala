@@ -708,7 +708,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
 
     case VectorOuter(x,y) =>
-      gpuBlockSizeX = quote(x)+".length"
+      gpuBlockSizeX = quote(x)+"->length"
       stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
       tabWidth += 1
       stream.println(addTab()+"for(int i=0; i<%s.length; i++) {".format(quote(x))); tabWidth += 1
@@ -717,7 +717,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       tabWidth -= 1; stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.length".format(quote(x)),"%s.length".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->length".format(quote(x)),"%s->length".format(quote(x)))
 
     case VectorObjectZeros(len) =>
       throw new GenerationFailedException("CudaGen: Not GPUable (Dynamic memory allocation is not allowed)")
@@ -742,16 +742,16 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
 
         /* Specialized CUDA code generations */
     case VectorTrans(x) =>
-      gpuBlockSizeX = "%s.length".format(quote(x))
+      gpuBlockSizeX = "%s->length".format(quote(x))
       stream.println(addTab()+"if( idxX < %s.length ) {".format(quote(x)))
       tabWidth += 1
       stream.println(addTab()+"%s.update(idxX,%s.apply(idxX));".format(quote(sym),quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.length".format(quote(x)),"!%s.isRow".format(quote(x)))
+      emitVectorAlloc(sym,"%s->length".format(quote(x)),"!%s->isRow".format(quote(x)))
 
     case VectorRepmat(x,i,j) =>
-      gpuBlockSizeX = "%s.length * %s * %s".format(quote(x),quote(i),quote(j))
+      gpuBlockSizeX = "%s->length * %s * %s".format(quote(x),quote(i),quote(j))
       stream.println(addTab()+"if( idxX < %s.length*%s*%s ) {".format(quote(x),quote(i),quote(j)))
       //tabWidth += 1
       //stream.println(addTab()+"for(int i=0;i<%s;i++) {".format(quote(i)))
@@ -763,7 +763,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       //stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.length*%s".format(quote(x),quote(i)),"%s.length*%s".format(quote(x),quote(j)))
+      emitMatrixAlloc(sym,"%s->length*%s".format(quote(x),quote(i)),"%s->length*%s".format(quote(x),quote(j)))
 
     case _ => super.emitNode(sym, rhs)
   }
