@@ -1,4 +1,3 @@
-
 #include <cuda_runtime.h>
 #include <list>
 #include <map>
@@ -10,7 +9,7 @@ using namespace std;
 extern cudaStream_t h2dStream;
 extern cudaStream_t d2hStream;
 
-void* lastValue;
+list<void*>* lastAlloc = new list<void*>();
 
 struct FreeItem {
 	cudaEvent_t event;
@@ -19,7 +18,7 @@ struct FreeItem {
 
 queue<FreeItem>* freeList = new queue<FreeItem>();
 
-map<void*,void*>* cudaMemoryMap = new map<void*,void*>();
+map<void*,list<void*>*>* cudaMemoryMap = new map<void*,list<void*>*>();
 
 /*
 void DeliteCudaMalloc(void** ptr, size_t size) {
@@ -28,44 +27,72 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 	cudaMemGetInfo(&free, &total);
 	while (free < size) {
 		if (freeList->size() == 0) {
-			cout << "Insufficient device memory" << endl;
+			cout << "FATAL: Insufficient device memory" << endl;
 			exit(-1);
 		}
 		FreeItem item = freeList->front();
         	freeList->pop();
+
 		while (cudaEventQuery(item.event) != cudaSuccess)
 			cudaEventSynchronize(item.event);
+		cudaEventDestroy(item.event);
+		
 		list<void*>::iterator iter;
 		for (iter = item.keys->begin(); iter != item.keys->end(); iter++) {
-			cudaFree(cudaMemoryMap->find(*iter)->second);
+			list<void*>* freePtrList = cudaMemoryMap->find(*iter)->second;
+			list<void*>::iterator iter2;
+			for (iter2 = freePtrList->begin(); iter2 != freePtrList->end(); iter2++) {
+				cudaFree(*iter2);	
+			}
+			cudaMemoryMap->erase(*iter);
+			delete freePtrList;
+			delete *iter;
 		}
+		delete item.keys;
 		cudaMemGetInfo(&free, &total);
 	}
+	
 	cudaMalloc(ptr, size);
-	lastValue = *ptr;
+	lastAlloc->push_back(*ptr);
 }
 */
-void DeliteCudaMalloc(void** ptr, int size) {
+
+void DeliteCudaMalloc(void** ptr, size_t size) {
         while (freeList->size() > 0) {
 		FreeItem item = freeList->front();
  	        freeList->pop();
+		
 		while (cudaEventQuery(item.event) != cudaSuccess)
 			cudaEventSynchronize(item.event);
+		cudaEventDestroy(item.event);
+		
 		list<void*>::iterator iter;
 		for (iter = item.keys->begin(); iter != item.keys->end(); iter++) {
 			cout << "object ref: " << (long) *iter << endl;
-			void* freePtr = cudaMemoryMap->find(*iter)->second;
-			if (cudaSuccess != cudaFree(freePtr))
-				cout << "bad free pointer: " << (long) freePtr << endl;
-			else
-				cout << "freed successfully: " << (long) freePtr << endl;
+			list<void*>* freePtrList = cudaMemoryMap->find(*iter)->second;	
+			list<void*>::iterator iter2;
+			for (iter2 = freePtrList->begin(); iter2 != freePtrList->end(); iter2++) {
+				void* freePtr = *iter2;
+				if (cudaSuccess != cudaFree(freePtr))
+					cout << "bad free pointer: " << (long) freePtr << endl;
+				else
+					cout << "freed successfully: " << (long) freePtr << endl;
+			}
+			cudaMemoryMap->erase(*iter);
+			delete freePtrList;
+			delete *iter;
 		}
+		delete item.keys;
 	}
-	if (cudaSuccess != cudaMalloc(ptr, size))
-		cout << "malloc failed" << endl;
+
+	if (cudaSuccess != cudaMalloc(ptr, size)) {
+		cout << "FATAL: cuda malloc failed unexpectedly" << endl;
+		exit(-1);
+	}
 	else
 		cout << "allocated successfully: " << (long) *ptr << endl;
-	lastValue = *ptr;
+	
+	lastAlloc->push_back(*ptr);
 }
 
 char* bufferStart = 0;

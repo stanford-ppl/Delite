@@ -192,6 +192,10 @@ object DeliteTaskGraph {
     for (dep <- ifDeps) {
       beginOp.addDependency(dep)
       dep.addConsumer(beginOp)
+      beginElseOp.addDependency(dep)
+      dep.addConsumer(beginElseOp)
+      endOp.addDependency(dep)
+      dep.addConsumer(endOp)
     }
 
     //beginning depends on predicate resolution
@@ -285,6 +289,8 @@ object DeliteTaskGraph {
     for (dep <- whileDeps) {
       beginOp.addDependency(dep)
       dep.addConsumer(beginOp)
+      endOp.addDependency(dep)
+      dep.addConsumer(endOp)
     }
 
     //beginning depends on initial predicate resolution

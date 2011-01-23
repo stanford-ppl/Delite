@@ -184,14 +184,14 @@ object GPUExecutableGenerator {
         //write a setter
         writeSetter(op, location, out)
       }
-      if (!op.isInstanceOf[OP_Control]) writeDataFrees(op, out, available)
+      writeDataFrees(op, out, available)
     }
   }
 
   private def writeOutputAlloc(op: DeliteOP, out: StringBuilder) {
     if (op.outputType != "Unit") {
       out.append(op.outputType(Targets.Cuda))
-      out.append(' ')
+      out.append("* ")
       out.append(getSymGPU(op))
       out.append(" = ")
       out.append(op.cudaMetadata.output.func)
@@ -207,7 +207,7 @@ object GPUExecutableGenerator {
     for (temp <- op.cudaMetadata.temps) {
       val tempOp = iter.next
       out.append(temp.resultType)
-      out.append(' ')
+      out.append("* ")
       out.append(getSymGPU(tempOp))
       out.append(" = ")
       out.append(temp.func)
@@ -224,9 +224,10 @@ object GPUExecutableGenerator {
   }
 
   private def writeMemoryAdd(op: DeliteOP, out: StringBuilder) {
-    out.append("cudaMemoryMap->insert(pair<void*,void*>(&")
+    out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
     out.append(getSymGPU(op))
-    out.append(",lastValue));\n")
+    out.append(",lastAlloc));\n")
+    out.append("lastAlloc = new list<void*>();\n")
   }
 
   private def writeInputList(op: DeliteOP, field: String, out: StringBuilder) {
@@ -287,6 +288,7 @@ object GPUExecutableGenerator {
 
     out.append('(')
     if (op.outputType != "Unit") {
+      out.append('*')
       out.append(getSymGPU(op)) //first kernel input is OP output
       out.append(',')
     }
@@ -299,6 +301,7 @@ object GPUExecutableGenerator {
     out.append(op.cudaMetadata.libCall)
     out.append('(')
     if (op.outputType != "Unit") {
+      out.append('*')
       out.append(getSymGPU(op)) //first kernel input is OP output
       out.append(',')
     }
@@ -331,7 +334,7 @@ object GPUExecutableGenerator {
   private def writeInputCopy(op: DeliteOP, function: String, opType: String, out: StringBuilder) {
     //copy data from CPU to GPU
     out.append(opType)
-    out.append(' ')
+    out.append("* ")
     out.append(getSymGPU(op))
     out.append(" = ")
     out.append(function)
@@ -360,6 +363,7 @@ object GPUExecutableGenerator {
     for (input <- op.getInputs) {
       if (!first) out.append(',')
       first = false
+      if (getJNIType(input.outputType) == "jobject") out.append('*') //TODO: this is awkward
       out.append(getSymGPU(input))
     }
   }
@@ -367,6 +371,7 @@ object GPUExecutableGenerator {
   private def writeTemps(op: DeliteOP, out: StringBuilder) {
     for (temp <- op.cudaMetadata.tempOps) {
       out.append(',')
+      out.append('*')
       out.append(getSymGPU(temp))
     }
   }
@@ -419,52 +424,68 @@ object GPUExecutableGenerator {
     val event = "event_" + getSymGPU(op)
 
     def writeFreeInit() {
-      out.append("FreeItem* ")
+      out.append("FreeItem ")
       out.append(freeItem)
-      out.append(" = new FreeItem();\n")
+      out.append(";\n")
       out.append(freeItem)
-      out.append("->keys = new list<void*>();\n")
+      out.append(".keys = new list<void*>();\n")
     }
 
     def writeFree(op: DeliteOP) {
       if (count == 0) writeFreeInit()
       out.append(freeItem)
-      out.append("->keys->push_back(&")
+      out.append(".keys->push_back(")
       out.append(getSymGPU(op))
       out.append(");\n")
     }
 
-    //free temps
-    for (temp <- op.cudaMetadata.tempOps) {
-      writeFree(temp)
-      count += 1
-    }
+    if (!op.isInstanceOf[OP_Control]) {
 
-    //free output (?)
-    if (op.getConsumers.filter(_.getInputs.contains(op)).filter(_.scheduledResource == op.scheduledResource).size == 0) { //no future consumers on gpu
-      //free output
-      writeFree(op)
-      count += 1
-    }
-
-    //free inputs (?)
-    for (in <- op.getInputs) {
-      val possible = in.getConsumers.filter(_.getInputs.contains(in)).filter(_.scheduledResource == op.scheduledResource)
-      var free = true
-      for (p <- possible) {
-        if (!available.contains(p)) free = false
-      }
-      if (free) {
-        writeFree(in)
+      //free temps
+      for (temp <- op.cudaMetadata.tempOps) {
+        writeFree(temp)
         count += 1
+      }
+
+      //free output (?)
+      if (op.getConsumers.filter(c => c.getInputs.contains(op) || c.isInstanceOf[OP_Control]).filter(_.scheduledResource == op.scheduledResource).size == 0) { //no future consumers on gpu
+        //free output
+        writeFree(op)
+        count += 1
+      }
+
+      //free inputs (?)
+      for (in <- op.getInputs if (getJNIType(in.outputType) == "jobject")) {
+        val possible = in.getConsumers.filter(c => c.getInputs.contains(in) || c.isInstanceOf[OP_Control]).filter(_.scheduledResource == op.scheduledResource)
+        var free = true
+        for (p <- possible) {
+          if (!available.contains(p)) free = false
+        }
+        if (free) {
+          writeFree(in)
+          count += 1
+        }
+      }
+    }
+    else {
+      for (dep <- op.getDependencies.distinct if (getJNIType(dep.outputType) == "jobject" && available.contains(dep))) {
+        val possible = dep.getConsumers.filter(c => c.getInputs.contains(dep) || c.isInstanceOf[OP_Control]).filter(_.scheduledResource == op.scheduledResource)
+        var free = true
+        for (p <- possible) {
+          if (!available.contains(p)) free = false
+        }
+        if (free) {
+          writeFree(dep)
+          count += 1
+        } 
       }
     }
 
     if (count > 0) {
       //sync on kernel stream (if copied back guaranteed to have completed, so don't need sync on d2h stream) 
       out.append(freeItem)
-      out.append("->event = addHostEvent(kernelStream);\n")
-      out.append("freeList->push(*")
+      out.append(".event = addHostEvent(kernelStream);\n")
+      out.append("freeList->push(")
       out.append(freeItem)
       out.append(");\n")
     }
@@ -663,7 +684,7 @@ object GPUExecutableGenerator {
     case "Boolean" => "bool"
     case "Short" => "short"
     case "Char" => "char"
-    case "Byte" => "byte"
+    case "Byte" => "char"
     case other => error(other + " is not a primitive type")
   }
 
