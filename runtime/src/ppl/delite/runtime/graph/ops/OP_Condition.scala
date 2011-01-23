@@ -18,6 +18,8 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
   def outputType(target: Targets.Value) = resultType(target)
   override def outputType: String = resultType(Targets.Scala)
 
+  def nestedGraphs = Seq(predicateGraph, thenGraph, elseGraph)
+
   def isReturner(idx: Int) = {
     if (thenGraph.result != null)
       (thenGraph.result.scheduledResource == idx)
@@ -40,6 +42,7 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
         r.inputList = inputList
         r.consumerList = consumerList
         r.inputSyms = inputSyms
+        r.cudaMetadata = cudaMetadata
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)
         if (isReturner(idx)) returner = r

@@ -13,9 +13,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-class ConditionGenerator(condition: OP_Condition, location: Int) extends ExecutableGenerator {
-
-  val baseId = condition.id.slice(0, condition.id.indexOf('_'))
+class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedGenerator(condition, location) {
 
   def makeExecutable() {
     val out = new StringBuilder //the output string
@@ -76,48 +74,11 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends Executa
     ScalaCompile.addSource(out.toString)
   }
 
-  private def updateOP() {
-    condition.setExecutableName(kernelName)
-  }
-
   protected def executableName = "Condition_" + baseId + "_"
-
-  private def kernelName = executableName + location
-
-  override def getSync(op: DeliteOP) = "Result_" + baseId + "_" + op.id
-
-  private def writeHeader(location: Int, out: StringBuilder) {
-    out.append("import java.util.concurrent.locks._\n") //locking primitives
-    ExecutableGenerator.writePath(condition.predicateGraph.kernelPath, out) //package of scala kernels
-    out.append("object ")
-    out.append(kernelName)
-    out.append(" {\n")
-  }
-
-  private def writeMethodHeader(out: StringBuilder) {
-    out.append("def apply(")
-    writeInputs(out)
-    out.append("): ")
-    out.append(condition.outputType)
-    out.append(" = {\n")
-  }
-
-  private def writeInputs(out: StringBuilder) {
-    var first = true
-    for (in <- condition.getNestedInputs) {
-      if (!first) out.append(", ")
-      first = false
-      out.append(getSym(in))
-      out.append(": ")
-      out.append(in.outputType)
-    }
-  }
 
 }
 
-class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUExecutableGenerator {
-
-  val baseId = condition.id.slice(0, condition.id.indexOf('_'))
+class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUNestedGenerator(condition, location) {
 
   def makeExecutable() {
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
@@ -196,73 +157,11 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUE
     out.toString
   }
 
-  private def updateOP() {
-    condition.setExecutableName(kernelName)
-  }
-
   protected def executableName = "Condition_" + baseId + "_"
-
-  private def kernelName = executableName + location
-
-  private def writeFunctionHeader(out: StringBuilder) {
-    out.append(condition.outputType(Targets.Cuda))
-    out.append(' ')
-    out.append(kernelName)
-    out.append('(')
-    writeInputs(out)
-    out.append(") {\n")
-  }
-
-  private def writeInputs(out: StringBuilder) {
-    var first = true
-    for (in <- condition.getNestedInputs) {
-      if (!first) out.append(", ")
-      first = false
-      if (condition.cudaMetadata.inputs.contains(in)) {
-        out.append(condition.cudaMetadata.inputs(in).resultType)
-        out.append(' ')
-        out.append(getSymGPU(in))
-      }
-      else if (getJNIType(in.outputType) != "jobject") {
-        out.append(getCPrimitiveType(in.outputType))
-        out.append(' ')
-        out.append(getSymGPU(in))
-      }
-      else {
-        out.append(getJNIType(in.outputType))
-        out.append(' ')
-        out.append(getSymCPU(in))
-      }
-    }
-  }
 
 }
 
-class GPUScalaConditionGenerator(condition: OP_Condition, location: Int) extends GPUScalaExecutableGenerator {
-
-  val baseId = condition.id.slice(0, condition.id.indexOf('_'))
-
-  def emitScala(syncList: ArrayBuffer[DeliteOP]) = {
-    val out = new StringBuilder
-    writeHeader(location, out)
-    addSync(syncList, out) //the sync methods/objects
-    writeOuterSet(syncList, out) //helper set methods for JNI calls to access
-    out.append("}\n")
-    out.toString
-  }
-
+class GPUScalaConditionGenerator(condition: OP_Condition, location: Int) extends GPUScalaNestedGenerator(condition, location) {
   protected def executableName = "Condition_" + baseId + "_"
-
-  private def kernelName = executableName + location
-
-  override protected def getSync(op: DeliteOP) = "Result_" + baseId + "_" + op.id
-
-  private def writeHeader(location: Int, out: StringBuilder) {
-    out.append("import java.util.concurrent.locks._\n") //locking primitives
-    ExecutableGenerator.writePath(condition.predicateGraph.kernelPath, out) //package of scala kernels
-    out.append("object ")
-    out.append(kernelName)
-    out.append(" {\n")
-  }
 }
         

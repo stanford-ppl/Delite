@@ -40,8 +40,8 @@ abstract class GPUExecutableGenerator {
     //the header
     writeHeader(out)
 
-    //write stream globals (used for linking)
-    writeGlobalStreams(out)
+    //write globals
+    writeGlobals(out)
 
     //the event function
     writeEventFunction(out)
@@ -56,8 +56,8 @@ abstract class GPUExecutableGenerator {
     writeFunctionHeader(location, out)
 
     //initialize
+    writeGlobalsInitializer(out)
     writeJNIInitializer(location, out)
-    writeStreamInitializer(out)
 
     //execute
     addKernelCalls(schedule, location, new ArrayBuffer[DeliteOP], new ArrayBuffer[DeliteOP], syncList, out)
@@ -75,7 +75,7 @@ abstract class GPUExecutableGenerator {
   }
 
   protected def writeFunctionHeader(location: Int, out: StringBuilder) {
-    val function = "JNIEXPORT void JNICALL Java_Executable" + location + "_00024_hostGPU(JNIEnv* env, jobject object)"
+    val function = "JNIEXPORT void JNICALL Java_Executable" + location + "_00024_hostGPU(JNIEnv* jnienv, jobject object)"
     out.append("extern \"C\" ") //necessary because of JNI
     out.append(function)
     out.append(";\n")
@@ -83,13 +83,15 @@ abstract class GPUExecutableGenerator {
     out.append(" {\n")
   }
 
-  protected def writeGlobalStreams(out: StringBuilder) {
+  protected def writeGlobals(out: StringBuilder) {
+    out.append("JNIEnv* env;\n")
     out.append("cudaStream_t kernelStream;\n")
     out.append("cudaStream_t h2dStream;\n")
     out.append("cudaStream_t d2hStream;\n")
   }
 
-  protected def writeStreamInitializer(out: StringBuilder) {
+  protected def writeGlobalsInitializer(out: StringBuilder) {
+    out.append("env = jnienv;\n")
     out.append("cudaStreamCreate(&kernelStream);\n")
     out.append("cudaStreamCreate(&h2dStream);\n")
     out.append("cudaStreamCreate(&d2hStream);\n")

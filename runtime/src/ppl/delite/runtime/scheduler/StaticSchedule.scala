@@ -45,10 +45,11 @@ class PartialSchedule(resources: Array[ArrayDeque[DeliteOP]]) {
 
   def slice(start: Int, end: Int) = new PartialSchedule(resources.slice(start,end))
 
-  def foreach(f: ArrayDeque[DeliteOP] => Unit) = {
-    for (i <- 0 until numResources)
-      f(resources(i))
-  }
+  def foreach[U](f: ArrayDeque[DeliteOP] => U) = resources.foreach(f)
+
+  def map[B](f: ArrayDeque[DeliteOP] => B) = resources.map(f)
+
+  def withFilter(p: ArrayDeque[DeliteOP] => Boolean) = resources.withFilter(p)
 
   /**
    * Currently this class only holds a single scheduling object

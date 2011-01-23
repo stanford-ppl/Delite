@@ -14,9 +14,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-class WhileGenerator(whileLoop: OP_While, location: Int) extends ExecutableGenerator {
-
-  val baseId = whileLoop.id.slice(0, whileLoop.id.indexOf('_'))
+class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator(whileLoop, location) {
 
   def makeExecutable() {
     val out = new StringBuilder //the output string
@@ -77,46 +75,11 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends ExecutableGener
     ScalaCompile.addSource(out.toString)
   }
 
-  private def updateOP() {
-    whileLoop.setExecutableName(kernelName)
-  }
-
   protected def executableName = "While_" + baseId + "_"
-
-  private def kernelName = executableName + location
-
-  override protected def getSync(op: DeliteOP) = "Result_" + baseId + "_" + op.id
-
-  private def writeHeader(location: Int, out: StringBuilder) {
-    out.append("import java.util.concurrent.locks._\n") //locking primitives
-    ExecutableGenerator.writePath(whileLoop.predicateGraph.kernelPath, out) //package of scala kernels
-    out.append("object ")
-    out.append(kernelName)
-    out.append(" {\n")
-  }
-
-  private def writeMethodHeader(out: StringBuilder) {
-    out.append("def apply(")
-    writeInputs(out)
-    out.append(") {\n")
-  }
-
-  private def writeInputs(out: StringBuilder) {
-    var first = true
-    for (in <- whileLoop.getNestedInputs) {
-      if (!first) out.append(", ")
-      first = false
-      out.append(getSym(in))
-      out.append(": ")
-      out.append(in.outputType)
-    }
-  }
 
 }
 
-class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUExecutableGenerator {
-
-  val baseId = whileLoop.id.slice(0, whileLoop.id.indexOf('_'))
+class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGenerator(whileLoop, location) {
 
   def makeExecutable() {
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
@@ -180,71 +143,10 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUExecutabl
     out.toString
   }
 
-  private def updateOP() {
-    whileLoop.setExecutableName(kernelName)
-  }
-
   protected def executableName = "While_" + baseId + "_"
-
-  private def kernelName = executableName + location
-
-  private def writeFunctionHeader(out: StringBuilder) {
-    out.append("void ")
-    out.append(kernelName)
-    out.append('(')
-    writeInputs(out)
-    out.append(") {\n")
-  }
-
-  private def writeInputs(out: StringBuilder) {
-    var first = true
-    for (in <- whileLoop.getNestedInputs) {
-      if (!first) out.append(", ")
-      first = false
-      if (whileLoop.cudaMetadata.inputs.contains(in)) {
-        out.append(whileLoop.cudaMetadata.inputs(in).resultType)
-        out.append(' ')
-        out.append(getSymGPU(in))
-      }
-      else if (getJNIType(in.outputType) != "jobject") {
-        out.append(getCPrimitiveType(in.outputType))
-        out.append(' ')
-        out.append(getSymGPU(in))
-      }
-      else {
-        out.append(getJNIType(in.outputType))
-        out.append(' ')
-        out.append(getSymCPU(in))
-      }
-    }
-  }
 
 }
 
-class GPUScalaWhileGenerator(whileLoop: OP_While, location: Int) extends GPUScalaExecutableGenerator {
-
-  val baseId = whileLoop.id.slice(0, whileLoop.id.indexOf('_'))
-
-  def emitScala(syncList: ArrayBuffer[DeliteOP]) = {
-    val out = new StringBuilder
-    writeHeader(location, out)
-    addSync(syncList, out) //the sync methods/objects
-    writeOuterSet(syncList, out) //helper set methods for JNI calls to access
-    out.append("}\n")
-    out.toString
-  }
-
+class GPUScalaWhileGenerator(whileLoop: OP_While, location: Int) extends GPUScalaNestedGenerator(whileLoop, location) {
   protected def executableName = "While_" + baseId + "_"
-
-  private def kernelName = executableName + location
-
-  override protected def getSync(op: DeliteOP) = "Result_" + baseId + "_" + op.id
-
-  private def writeHeader(location: Int, out: StringBuilder) {
-    out.append("import java.util.concurrent.locks._\n") //locking primitives
-    ExecutableGenerator.writePath(whileLoop.predicateGraph.kernelPath, out) //package of scala kernels
-    out.append("object ")
-    out.append(kernelName)
-    out.append(" {\n")
-  }
 }

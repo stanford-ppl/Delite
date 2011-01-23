@@ -23,6 +23,8 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
     (variantGraph.result.scheduledResource == idx)
   }
 
+  def nestedGraphs = Seq(variantGraph)
+
   /**
    * creates a Variant chunk for each requested resource and destroys the original op
    */
@@ -36,6 +38,7 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
         r.inputList = this.inputList ::: superOp.inputList
         r.consumerList = superOp.consumerList
         r.inputSyms = this.inputSyms
+        r.cudaMetadata = this.cudaMetadata
         for (dep <- r.getDependencies) dep.addConsumer(r)
         for (c <- r.getConsumers) c.addDependency(r)
         if (isReturner(idx)) returner = r

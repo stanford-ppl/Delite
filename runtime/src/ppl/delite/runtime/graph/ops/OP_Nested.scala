@@ -16,6 +16,8 @@ abstract class OP_Nested extends DeliteOP {
 
   def makeChunks(indices: Seq[Int], graph: DeliteTaskGraph): Seq[OP_Nested]
 
+  def nestedGraphs: Seq[DeliteTaskGraph]
+
   final def task = functionName
 
   private var functionName = ""
