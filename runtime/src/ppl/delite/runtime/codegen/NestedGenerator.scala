@@ -79,7 +79,7 @@ abstract class GPUNestedGenerator(nested: OP_Nested, location: Int) extends GPUE
       first = false
       if (nested.cudaMetadata.inputs.contains(in)) {
         out.append(nested.cudaMetadata.inputs(in).resultType)
-        out.append(' ')
+        out.append("* ")
         out.append(getSymGPU(sym))
       }
       else if (getJNIType(in.outputType) != "jobject") {

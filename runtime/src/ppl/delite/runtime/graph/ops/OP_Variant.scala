@@ -12,7 +12,8 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp: DeliteOP, val variantGraph: DeliteTaskGraph) extends OP_Nested {
+class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp: DeliteOP, val variantGraph: DeliteTaskGraph)
+  extends OP_Nested {
 
   def supportsTarget(target: Targets.Value) = resultType.contains(target)
 

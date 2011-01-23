@@ -115,6 +115,8 @@ abstract class GPUExecutableGenerator {
   protected def executableName: String
 
   protected def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, available: ArrayBuffer[DeliteOP], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder) {
+    //available: list of ops with data currently on gpu, have a "g" symbol
+    //awaited: list of ops synchronized with but data only resides on cpu, have a "c" symbol
     val iter = schedule.iterator
     while (iter.hasNext) {
       val op = iter.next
@@ -143,8 +145,12 @@ abstract class GPUExecutableGenerator {
             addInputCopy = true
             writeInputCopy(input, inData.func, inData.resultType, out)
           }
-          else if (getJNIType(input.outputType) != "jobject") writeInputCast(input, out) //if primitive type, simply cast to transform from "c" type into "g" type
-          else assert(op.isInstanceOf[OP_Nested]) //object without copy must be for a nested function call
+          else if (getJNIType(input.outputType) != "jobject")
+            writeInputCast(input, out) //if primitive type, simply cast to transform from "c" type into "g" type
+          else {
+            assert(op.isInstanceOf[OP_Nested]) //object without copy must be for a nested function call
+            available -= input //this input doesn't actually reside on GPU
+          }
         }
         else if (needsUpdate(op, input)) { //input exists on device but data is old
           //write a new copy function (input must be an object)
@@ -467,6 +473,10 @@ abstract class GPUExecutableGenerator {
       out.append(");\n")
     }
 
+    def freeable(op: DeliteOP) = {
+      getJNIType(op.outputType) == "jobject" && op.isInstanceOf[OP_Executable] && available.contains(op)
+    }
+
     //free temps
     for (temp <- op.cudaMetadata.tempOps) {
       writeFree(temp)
@@ -474,14 +484,14 @@ abstract class GPUExecutableGenerator {
     }
 
     //free output (?)
-    if (op.getConsumers.filter(c => c.getInputs.contains(op) && c.scheduledResource == op.scheduledResource).size == 0) { //no future consumers on gpu
+    if (freeable(op) && op.getConsumers.filter(c => c.getInputs.contains(op) && c.scheduledResource == op.scheduledResource).size == 0) { //no future consumers on gpu
       //free output
       writeFree(op)
       count += 1
     }
 
     //free inputs (?)
-    for (in <- op.getInputs if (getJNIType(in.outputType) == "jobject")) {
+    for (in <- op.getInputs if(freeable(in))) {
       val possible = in.getConsumers.filter(c => c.getInputs.contains(in) && c.scheduledResource == op.scheduledResource)
       var free = true
       for (p <- possible) {
