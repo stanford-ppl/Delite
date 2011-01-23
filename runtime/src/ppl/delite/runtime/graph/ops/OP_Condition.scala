@@ -29,7 +29,7 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
   /**
    * creates a Condition chunk for each requested resource and destroys the original
    */
-  def makeChunks(indices: Seq[Int]) = {
+  def makeChunks(indices: Seq[Int], graph: DeliteTaskGraph) = {
     var returner: OP_Condition = null
     val chunks =
       for (idx <- indices) yield {
@@ -54,7 +54,7 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
         r
       }
 
-    this.replaceAll(returner)
+    graph.replaceOp(this, returner)
     chunks
   }
 

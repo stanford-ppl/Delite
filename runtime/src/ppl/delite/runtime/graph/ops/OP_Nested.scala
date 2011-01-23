@@ -1,6 +1,7 @@
 package ppl.delite.runtime.graph.ops
 
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.graph.DeliteTaskGraph
 
 /**
  * Author: Kevin J. Brown
@@ -13,7 +14,7 @@ import ppl.delite.runtime.graph.targets.Targets
 
 abstract class OP_Nested extends DeliteOP {
 
-  def makeChunks(indices: Seq[Int]): Seq[OP_Nested]
+  def makeChunks(indices: Seq[Int], graph: DeliteTaskGraph): Seq[OP_Nested]
 
   final def task = functionName
 

@@ -81,20 +81,6 @@ abstract class DeliteOP {
     mutableInputList = input :: mutableInputList
   }
 
-  final def replaceAll(op: DeliteOP) {
-    for (dep <- getDependencies) dep.replaceConsumer(this, op)
-    for (c <- getConsumers) {
-      c.replaceDependency(this, op)
-      if (c.getInputs contains this) c.replaceInput(this, op)
-    }
-    dependencyList = Nil
-    consumerList = Nil
-    inputList = Nil
-    mutableInputList = Nil
-    isSchedulable = true
-    isScheduled = true
-  }
-
   var variant: OP_Variant = null
 
   def id: String

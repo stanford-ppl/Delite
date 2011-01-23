@@ -35,7 +35,8 @@ object ScalaCompile {
   }
 
   def addSource(source: String) {
-    sourceBuffer += source
+    if (!sourceBuffer.contains(source)) //avoid duplicate kernels //TODO: there must be a better way
+      sourceBuffer += source
   }
 
   def addSourcePath(path: String) {

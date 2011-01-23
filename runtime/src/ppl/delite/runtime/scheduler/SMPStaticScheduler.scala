@@ -48,7 +48,7 @@ final class SMPStaticScheduler extends StaticScheduler {
 
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op match {
-      case c: OP_Control => addNested(c, schedule, Range(0, numThreads))
+      case c: OP_Control => addNested(c, graph, schedule, Range(0, numThreads))
       case _ => {
         //if (op.variant != null) addNested(op.variant, schedule, Range(0, numThreads)) else
         if (op.isDataParallel) split(op, graph, schedule, Range(0, numThreads))

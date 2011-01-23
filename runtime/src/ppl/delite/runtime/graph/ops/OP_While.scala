@@ -24,7 +24,7 @@ class OP_While(val id: String,
   /**
    * creates a While chunk for each requested resource and destroys the original
    */
-  def makeChunks(indices: Seq[Int]) = {
+  def makeChunks(indices: Seq[Int], graph: DeliteTaskGraph) = {
     val chunks =
       for (idx <- indices) yield {
         val r = new OP_While(id+"_"+idx, predicateGraph, predicateValue, bodyGraph, bodyValue)
@@ -41,7 +41,8 @@ class OP_While(val id: String,
 
         r
       }
-    this.replaceAll(chunks(0))
+
+    graph.replaceOp(this, chunks(0))
     chunks
   }
 

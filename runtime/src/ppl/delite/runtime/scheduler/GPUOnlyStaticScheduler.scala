@@ -45,7 +45,7 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
 
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op match {
-      case c: OP_Control => addNested(c, schedule, Seq(cpu,gpu))
+      case c: OP_Control => addNested(c, graph, schedule, Seq(cpu,gpu))
       case _ => {
         if (op.supportsTarget(Targets.Cuda)) { //schedule on GPU resource
           if (op.isDataParallel) {
@@ -57,7 +57,7 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
           }
         }
         else if (op.variant != null) { //kernel could be partially GPUable
-          addNested(op.variant, schedule, Seq(cpu,gpu))
+          addNested(op.variant, graph, schedule, Seq(cpu,gpu))
         }
         else { //schedule on CPU resource
           if (op.isDataParallel) {

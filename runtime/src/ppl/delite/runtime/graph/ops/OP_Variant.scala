@@ -26,7 +26,7 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
   /**
    * creates a Variant chunk for each requested resource and destroys the original op
    */
-  def makeChunks(indices: Seq[Int]) = {
+  def makeChunks(indices: Seq[Int], graph: DeliteTaskGraph) = {
     var returner: OP_Variant = null
     val chunks =
       for (idx <- indices) yield {
@@ -48,7 +48,7 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
         r
       }
 
-    superOp.replaceAll(returner)
+    graph.replaceOp(superOp, returner)
     chunks
   }
 

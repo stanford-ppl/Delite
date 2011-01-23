@@ -222,7 +222,10 @@ object DeliteTaskGraph {
     else {
       parseOps(getFieldList(op, prefix+"Ops"))(subGraph)
       op.get(prefix+"Output") match {
-        case Some(field) => subGraph._result = getOp(field)(subGraph)
+        case Some(field) => field match {
+          case "()" => //if Unit literal, ignore
+          case _ => subGraph._result = getOp(field)(subGraph)
+        }
         case None =>
       }
     }
@@ -457,4 +460,24 @@ class DeliteTaskGraph {
   def ids: Iterable[String] = _ops.keys
   def ops: Iterable[DeliteOP] = _ops.values
   def inputs: Iterable[OP_Input] = _inputs.values
+
+  def replaceOp(old: DeliteOP, op: DeliteOP) {
+    //update ops
+    for (dep <- old.getDependencies) dep.replaceConsumer(old, op)
+    for (c <- old.getConsumers) {
+      c.replaceDependency(old, op)
+      if (c.getInputs contains old) c.replaceInput(old, op)
+    }
+
+    //update graph
+    if (_result == old) _result = op
+    _ops -= old.id
+    _ops += op.id -> op
+
+    //clear op
+    old.dependencyList = Nil
+    old.consumerList = Nil
+    old.inputList = Nil
+    old.mutableInputList = Nil
+  }
 }

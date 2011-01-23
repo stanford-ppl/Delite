@@ -49,31 +49,31 @@ abstract class StaticScheduler {
     }
   }
 
-  protected def addNested(op: OP_Nested, schedule: PartialSchedule, resourceList: Seq[Int]) {
+  protected def addNested(op: OP_Nested, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
     op match {
       case c: OP_Condition => {
         scheduleFlat(c.predicateGraph)
         scheduleFlat(c.thenGraph)
         scheduleFlat(c.elseGraph)
-        splitNotEmpty(c, schedule, List(c.predicateGraph.schedule, c.thenGraph.schedule, c.elseGraph.schedule), resourceList)
+        splitNotEmpty(c, graph, schedule, List(c.predicateGraph.schedule, c.thenGraph.schedule, c.elseGraph.schedule), resourceList)
       }
       case w: OP_While => {
         scheduleFlat(w.predicateGraph)
         scheduleFlat(w.bodyGraph)
-        splitNotEmpty(w, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), resourceList)
+        splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), resourceList)
       }
       case v: OP_Variant => {
         scheduleFlat(v.variantGraph)
-        splitNotEmpty(v, schedule, List(v.variantGraph.schedule), resourceList)
+        splitNotEmpty(v, graph, schedule, List(v.variantGraph.schedule), resourceList)
       }
       case err => error("Control OP type not recognized: " + err.getClass.getSimpleName)
     }
   }
 
-  protected def splitNotEmpty(op: OP_Nested, outerSchedule: PartialSchedule, innerSchedules: List[PartialSchedule], resourceList: Seq[Int]) {
+  protected def splitNotEmpty(op: OP_Nested, graph: DeliteTaskGraph, outerSchedule: PartialSchedule, innerSchedules: List[PartialSchedule], resourceList: Seq[Int]) {
     val filteredList = resourceList.filter(i => innerSchedules.map(_(i).isEmpty) contains false)
     val chunkList = if (filteredList.isEmpty) Seq(resourceList(0)) else filteredList
-    val chunks = op.makeChunks(chunkList)
+    val chunks = op.makeChunks(chunkList, graph)
 
     val chunksIter = chunks.iterator
     for (i <- chunkList) {
