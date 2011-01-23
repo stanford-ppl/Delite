@@ -127,6 +127,8 @@ trait DeliteCodegen extends GenericFatCodegen {
 
   override def emitFatBlockFocused(currentScope: List[TTP])(result: Exp[Any])(implicit stream: PrintWriter): Unit = {
     println("-- block for "+result)
+/*
+    println("-- block for "+result)
     currentScope.foreach(println)
 
     println("-- shallow schedule for "+result)
@@ -147,13 +149,13 @@ trait DeliteCodegen extends GenericFatCodegen {
     println("-- dependent for "+result)
     val g1 = getFatDependentStuff(currentScope)(bound)
     g1.foreach(println)
-
+*/
     focusExactScopeFat(currentScope)(result) { levelScope => 
+/*
       println("-- level for "+result)
       levelScope.foreach(println)
       println("-- exact for "+result)
       availableDefs.foreach(println)
-      
       val effects = result match {
         case Def(Reify(x, effects0)) =>
           println("*** effects0: " + effects0)
@@ -162,14 +164,13 @@ trait DeliteCodegen extends GenericFatCodegen {
         case _ => Nil
       }
 
-      println("*** effects1: " + effects.flatMap(_.lhs))
-      
-      val effectsN = levelScope.collect { case TTP(List(s), ThinDef(Reflect(_, es))) => s } // TODO: Mutation!!
-      
-      println("*** effectsN: " + effectsN)
+      //println("*** effects1: " + effects.flatMap(_.lhs))
+      //val effectsN = levelScope.collect { case TTP(List(s), ThinDef(Reflect(_, es))) => s } // TODO: Mutation!!
+      //println("*** effectsN: " + effectsN)
       
       // TODO: do we need to override this method? effectsN can be taken from
       // the reflect nodes during emitFatNode in DeliteGenTaskGraph
+*/      
       
       val localEmittedNodes = new ListBuffer[Sym[Any]]
 
@@ -177,7 +178,8 @@ trait DeliteCodegen extends GenericFatCodegen {
         // we only care about effects that are scheduled to be generated before us, i.e.
         // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
         // n3 we want controlDeps to contain e1 and e2
-        controlDeps = levelScope.takeWhile(_.lhs != syms) filter { effects contains _ } flatMap { _.lhs }
+        //controlDeps = levelScope.takeWhile(_.lhs != syms) filter { effects contains _ } flatMap { _.lhs }
+        controlDeps = Nil // within emitFatNode below iff it is a reflect/reify node
         rhs match {
           case ThinDef(Reify(_,_)) =>
           case _ => localEmittedNodes ++= syms
@@ -185,7 +187,7 @@ trait DeliteCodegen extends GenericFatCodegen {
         emitFatNode(syms, rhs)
       }
       
-      emittedNodes = localEmittedNodes.result      
+      emittedNodes = localEmittedNodes.result // = levelScope.flatMap(_.syms) ??
     }
   }
 

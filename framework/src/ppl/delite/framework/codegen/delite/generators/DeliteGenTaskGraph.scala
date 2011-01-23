@@ -60,6 +60,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         controlDeps = effects; // <---  now handling control deps here...!!
         super.emitFatNode(sym, rhs); return
       case ThinDef(Reify(s, effects)) =>
+        controlDeps = effects
         super.emitFatNode(sym, rhs); return
       case ThinDef(DeliteOpCondition(c,t,e)) => {
         emitBlock(c)
@@ -95,10 +96,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
     //val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)
     
-    val dataDeps = // don't use getFreeVarNode...
-      focusFatBlock(syms(rhs)) { freeInScope(boundSyms(rhs), syms(rhs)) } distinct
+    val dataDeps = { // don't use getFreeVarNode...
+      val bound = boundSyms(rhs)
+      val used = syms(rhs)
+      focusFatBlock(used) { freeInScope(bound, used) } // distinct
       //syms(rhs).flatMap(s => focusBlock(s) { freeInScope(boundSyms(rhs), s) } ).distinct
-    
+    }
 
     val inVals = dataDeps flatMap { vals(_) }
     val inVars = dataDeps flatMap { vars(_) }
@@ -123,7 +126,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
       val bodyStream = new PrintWriter(bodyString)
 
       try{
-        // DISCUSS: use a predicate insteaf of inheriting from DeliteOp?
+        // DISCUSS: use a predicate instead of inheriting from DeliteOp?
         rhs match {
 //          case op:DeliteFatOp => deliteKernel = true
           case op:AbstractFatLoop => deliteKernel = true
