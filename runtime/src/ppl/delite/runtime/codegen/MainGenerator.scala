@@ -25,8 +25,9 @@ object GPUMainGenerator extends GPUExecutableGenerator {
     val location = schedule(0).peek.scheduledResource //look up location id for this GPU device resource
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
 
-    val cppSource = emitCpp(schedule(0), location, syncList)
-    CudaCompile.addSource(buildCppSource(cppSource))
+    addFunction(emitCppHeader)
+    addFunction(emitCppBody(schedule(0), location, syncList))
+    CudaCompile.addSource(buildCppSource())
 
     val scalaSource = GPUScalaMainGenerator.emitScala(location, syncList, kernelPath)
     ScalaCompile.addSource(scalaSource)
@@ -38,9 +39,8 @@ object GPUMainGenerator extends GPUExecutableGenerator {
 
   private[codegen] def addFunction(function: String) = functions += function
 
-  private def buildCppSource(main: String) = {
+  private def buildCppSource() = {
     val source = new StringBuilder
-    source.append(main)
     for (f <- functions) source.append(f)
     source.toString
   }

@@ -34,8 +34,8 @@ import collection.mutable.ArrayBuffer
 
 abstract class GPUExecutableGenerator {
 
-  protected def emitCpp(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayBuffer[DeliteOP]): String = {
-    val out = new StringBuilder //the output string
+  protected def emitCppHeader = {
+    val out = new StringBuilder
 
     //the header
     writeHeader(out)
@@ -45,6 +45,12 @@ abstract class GPUExecutableGenerator {
 
     //the event function
     writeEventFunction(out)
+
+    out.toString
+  }
+
+  protected def emitCppBody(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayBuffer[DeliteOP]): String = {
+    val out = new StringBuilder //the output string
 
     //the JNI method
     writeFunctionHeader(location, out)
