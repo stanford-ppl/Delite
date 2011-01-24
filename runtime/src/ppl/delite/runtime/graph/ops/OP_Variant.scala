@@ -20,8 +20,8 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
   def outputType(target: Targets.Value) = resultType(target)
   override def outputType: String = resultType(Targets.Scala)
 
-  def isReturner(idx: Int) = {
-    (variantGraph.result.scheduledResource == idx)
+  def returner(indices: Seq[Int]) = {
+    variantGraph.result.scheduledResource
   }
 
   def nestedGraphs = Seq(variantGraph)
@@ -30,10 +30,11 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
    * creates a Variant chunk for each requested resource and destroys the original op
    */
   def makeChunks(indices: Seq[Int], graph: DeliteTaskGraph) = {
-    var returner: OP_Variant = null
+    var returnOp: OP_Variant = null
+    val returnerIdx = returner(indices)
     val chunks =
       for (idx <- indices) yield {
-        val resultMap = if (isReturner(idx)) resultType else Targets.unitTypes
+        val resultMap = if (idx == returnerIdx) resultType else Targets.unitTypes
         val r = new OP_Variant(id+"_"+idx, resultMap, superOp, variantGraph)
         r.dependencyList = superOp.dependencyList
         r.inputList = this.inputList ::: superOp.inputList
@@ -42,7 +43,7 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
         r.cudaMetadata = this.cudaMetadata
         for (dep <- r.getDependencies) dep.addConsumer(r)
         for (c <- r.getConsumers) c.addDependency(r)
-        if (isReturner(idx)) returner = r
+        if (idx == returnerIdx) returnOp = r
 
         //add special consumer ops
         if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
@@ -52,7 +53,7 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
         r
       }
 
-    graph.replaceOp(superOp, returner)
+    graph.replaceOp(superOp, returnOp)
     chunks
   }
 

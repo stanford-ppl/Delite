@@ -21,21 +21,30 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
   def nestedGraphs = Seq(predicateGraph, thenGraph, elseGraph)
 
   def isReturner(idx: Int) = {
-    if (thenGraph.result != null)
+    if (thenGraph.result != null && !thenGraph.result.isInstanceOf[OP_Input])
       (thenGraph.result.scheduledResource == idx)
-    else if (elseGraph.result != null)
+    else if (elseGraph.result != null && !elseGraph.result.isInstanceOf[OP_Input])
       (elseGraph.result.scheduledResource == idx)
     else true //should only be 1 in this case
+  }
+
+  def returner(indices: Seq[Int]) = {
+    if (thenGraph.result != null && !thenGraph.result.isInstanceOf[OP_Input])
+      thenGraph.result.scheduledResource
+    else if (elseGraph.result != null && !elseGraph.result.isInstanceOf[OP_Input])
+      elseGraph.result.scheduledResource
+    else indices(0)
   }
 
   /**
    * creates a Condition chunk for each requested resource and destroys the original
    */
   def makeChunks(indices: Seq[Int], graph: DeliteTaskGraph) = {
-    var returner: OP_Condition = null
+    var returnOp: OP_Condition = null
+    val returnerIdx = returner(indices)
     val chunks =
       for (idx <- indices) yield {
-        val resultMap = if (isReturner(idx)) resultType else Targets.unitTypes
+        val resultMap = if (idx == returnerIdx) resultType else Targets.unitTypes
         val r = new OP_Condition(id+"_"+idx, resultMap, predicateGraph, predicateValue,
         thenGraph, thenValue, elseGraph, elseValue)
         r.dependencyList = dependencyList
@@ -45,7 +54,7 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
         r.cudaMetadata = cudaMetadata
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)
-        if (isReturner(idx)) returner = r
+        if (idx == returnerIdx) returnOp = r
 
         //add special consumer ops
         if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, predicateGraph.result)) //get predicate result on all chunks
@@ -57,7 +66,7 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
         r
       }
 
-    graph.replaceOp(this, returner)
+    graph.replaceOp(this, returnOp)
     chunks
   }
 
