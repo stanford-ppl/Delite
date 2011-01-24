@@ -479,10 +479,10 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength(quote(map.in)+".size()")
-      val freeVars = (getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)++gpuTemps).distinct
+      //val freeVars = (getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)++gpuTemps).distinct
       stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(map.in)+".size()"))
       tabWidth += 1
-      val mapFunc = emitDevFunc(map.func, List(map.v)++freeVars)
+      val (mapFunc,freeVars) = emitDevFunc(map.func, List(map.v))
       if(freeVars.length==0)
         stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s)));".format(quote(sym),currDimStr,mapFunc,quote(map.in),currDimStr))
       else
@@ -500,10 +500,10 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength(quote(zip.inA)+".size()")
-      val freeVars = (getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))++gpuTemps).distinct
+      //val freeVars = (getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))++gpuTemps).distinct
       stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(zip.inA)+".size()"))
       tabWidth += 1
-      val zipFunc = emitDevFunc(zip.func, List(zip.v._1, zip.v._2)++freeVars)
+      val (zipFunc,freeVars) = emitDevFunc(zip.func, List(zip.v._1, zip.v._2))
       if(freeVars.length==0)
         stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s)));".format(quote(sym),currDimStr, zipFunc, quote(zip.inA),"idxX",quote(zip.inB),"idxX"))
       else
@@ -519,10 +519,10 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       currDim += 1
       setCurrDimLength(quote(foreach.in)+".size()")
       val currDimStr = getCurrDimStr()
-      val freeVars = (getFreeVarBlock(foreach.func,Nil).filterNot(ele => ele==foreach.v)++gpuTemps).distinct
+      //val freeVars = (getFreeVarBlock(foreach.func,Nil).filterNot(ele => ele==foreach.v)++gpuTemps).distinct
       stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(foreach.in)+".size()"))
       tabWidth += 1
-      val foreachFunc = emitDevFunc(foreach.func, List(foreach.v)++freeVars)
+      val (foreachFunc,freeVars) = emitDevFunc(foreach.func, List(foreach.v))
       if(freeVars.length==0)
         stream.println(addTab()+"%s(%s.dcApply(%s));".format(foreachFunc,quote(foreach.in),currDimStr))
       else
@@ -535,8 +535,8 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
     case red: DeliteOpReduce[_] => {
       if(!isPrimitiveType(red.func.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for reduce.")
       if(currDim < 1) new GenerationFailedException("CudaGen: Reduction on the 1'st dimension is not supported yet.")
-      val freeVars = (getFreeVarBlock(red.func,Nil).filterNot(ele => (ele==red.v._1)||(ele==red.v._2))++gpuTemps).distinct
-      val reducFunc = emitDevFunc(red.func, List(red.v._1, red.v._2)++freeVars)
+      //val freeVars = (getFreeVarBlock(red.func,Nil).filterNot(ele => (ele==red.v._1)||(ele==red.v._2))++gpuTemps).distinct
+      val (reducFunc,freeVars) = emitDevFunc(red.func, List(red.v._1, red.v._2))
       stream.println(addTab()+"%s reducVal = %s.apply(0);".format(remap(sym.Type),quote(red.in)))
       stream.println(addTab()+"for(int i=1; i<%s.size(); i++) {".format(quote(red.in)))
       tabWidth += 1
