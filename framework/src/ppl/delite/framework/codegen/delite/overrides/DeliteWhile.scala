@@ -70,7 +70,7 @@ trait DeliteCudaGenWhile extends CudaGenEffect with DeliteBaseGenWhile {
             val argListStr = freeVars.map(quote(_)).mkString(", ")
 
             // emit function for the condition evaluation
-            val condFunc = emitDevFunc(c, getBlockResult(c).Type, freeVars)
+            val condFunc = emitDevFunc(c, freeVars)
 
             // Emit while loop (only the result variable of condition)
             stream.print(addTab() + "while (")
