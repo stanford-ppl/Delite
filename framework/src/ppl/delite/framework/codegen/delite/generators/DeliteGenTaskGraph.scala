@@ -352,7 +352,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   def emitOutput(x: Exp[_])(implicit stream: PrintWriter) = {
     x match {
       case c:Const[Any] => stream.println("  \"outputType\": \"const\",")
-                           stream.println("  \"outputValue\": \"" + quote(x) + "\",")
+                           stream.println("  \"outputValue\": \"" + quote(x) + "\"")
       case s:Sym[Any] =>   stream.println("  \"outputType\": \"symbol\",")
                            stream.println("  \"outputValue\": \"" + quote(getBlockResult(x)) + "\"")
     }

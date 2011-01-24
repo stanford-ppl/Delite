@@ -1,5 +1,5 @@
 gda|$data/ml/gda/4096-1200x.dat|$data/ml/gda/q1y.dat
-nb|$data/ml/nb/MATRIX.TRAIN.RANDOM.250K|$data/ml/nb/MATRIX.TEST
+nb|$data/ml/nb/MATRIX.TRAIN.50k|$data/ml/nb/MATRIX.TEST
 linreg|$data/ml/linreg/x-2048.dat|$data/ml/linreg/y-2048.dat
 kmeans|$data/ml/kmeans/mandrill-large.dat|$data/ml/kmeans/initmu.dat
 rbm|$data/ml/rbm/mnist2000x10.dat|2000|2000
