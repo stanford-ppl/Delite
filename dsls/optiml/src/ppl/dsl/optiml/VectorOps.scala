@@ -316,9 +316,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   ////////////////////////////////
   // implemented via delite ops
 
-  case class VectorTrans[A:Manifest](in: Exp[Vector[A]])
+  case class VectorTrans[A](in: Exp[Vector[A]])(implicit val mA: Manifest[A])
     extends DeliteOpMap[A,A,Vector] {
-    
+
+    // TODO: why doesn't this work when using a context bound? this is making everything much uglier because
+    // we can't do this.
+    //val mA = manifest[A]
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, !in.isRow))
     val v = fresh[A]
     val func = v 
@@ -332,9 +336,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 + v._2
   }
 
-  case class VectorPlusScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
+  case class VectorPlusScalar[A](in: Exp[Vector[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v + y
@@ -356,9 +361,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 - v._2
   }
 
-  case class VectorMinusScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
+  case class VectorMinusScalar[A](in: Exp[Vector[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v - y
@@ -380,9 +386,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 * conv(v._2)
   }
 
-  case class VectorTimesScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
+  case class VectorTimesScalar[A](in: Exp[Vector[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v * y
@@ -405,9 +412,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 / v._2
   }
 
-  case class VectorDivideScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
+  case class VectorDivideScalar[A](in: Exp[Vector[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v / y
@@ -420,17 +428,19 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 + v._2
   }
 
-  case class VectorAbs[A:Manifest:Arith](in: Exp[Vector[A]])
+  case class VectorAbs[A](in: Exp[Vector[A]])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v.abs
   }
 
-  case class VectorExp[A:Manifest:Arith](in: Exp[Vector[A]])
+  case class VectorExp[A](in: Exp[Vector[A]])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v.exp
@@ -465,15 +475,16 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   //  val func = if (v._1 > v._2) v._1.index else v._2.index
   //}
 
-  case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[B])
+  case class VectorMap[A,B](in: Exp[Vector[A]], v: Exp[A], func: Exp[B])(implicit val mA: Manifest[A], val mB: Manifest[B])
     extends DeliteOpMap[A,B,Vector] {
 
     val alloc = reifyEffects(Vector[B](in.length, in.isRow))
   }
 
-  case class VectorMutableMap[A:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[A])
+  case class VectorMutableMap[A](in: Exp[Vector[A]], v: Exp[A], func: Exp[A])(implicit val mA: Manifest[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = in
   }
 

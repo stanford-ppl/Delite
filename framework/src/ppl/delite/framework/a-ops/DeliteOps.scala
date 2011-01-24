@@ -84,8 +84,15 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
     // TODO: we need a way to make variables and reify work together -- we lose access to the var once we reify it
     // TODO: there should be a better way of doing this
     //val i : Var[Int] = index match { case Def(Reify(x, effects)) => x.asInstanceOf[Var[Int]] }
-    lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
-    lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
+
+    // we can't instantiate these like below, because they then become dependent on the order a subclass declares
+    // the abstract value (can result in an NPE). Unfortunately, this now forces all subclasses to be verbose.
+    // The best solution would be to pass the manifests in to DeliteOpMap directly, but it would need to not be a trait,
+    // and we would need a different way of encoding variants.
+    implicit val mA: Manifest[A]
+    implicit val mB: Manifest[B]
+    //lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
+    //lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
     val vs = () => __newVar(unit(null).asInstanceOfL[A])
     lazy val Vs = vs()
     // this does not get initialized properly in body -- perhaps a scala bug?
