@@ -155,8 +155,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       catch {
         case e:GenerationFailedException => // no generator found
           gen.exceptionHandler(e, outFile, kstream)
-          println(quote(sym))
-          e.printStackTrace
+          //println(quote(sym))
+          //e.printStackTrace
         case e:Exception => throw(e)
       }
     }
