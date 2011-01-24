@@ -12,19 +12,14 @@ package ppl.dsl.optiml.datastruct.scala
  *
  */
 
-trait ApplicationInterfaces {
+trait DenoiseVertexData extends MessageData {
+  def potential: Vector[Double]
+  def belief: Vector[Double]
+  def id: Int
+}
 
-  trait BPVertexData extends MessageData {
-    def potential: Vector[Double]
-    def belief: Vector[Double]
-    def id: Int
-  }
-
-  trait BPEdgeData extends MessageData {
-    def message: Vector[Double]
-    def oldMessage: Vector[Double]
-  }
-
-
-
+trait DenoiseEdgeData extends MessageData {
+  def message: Vector[Double]
+  def oldMessage: Vector[Double]
+  def cloneL : DenoiseEdgeData
 }

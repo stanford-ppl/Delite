@@ -204,6 +204,8 @@ trait Vertex {
   def graph: G
   def edges: Edges[E]
   def neighbors: Vertices[V]
+  def addTask(v: V): Unit
+  def tasks: Vertices[V]
 }
 
 trait Edge {
@@ -229,9 +231,7 @@ trait MessageVertex extends Vertex {
   type E = MessageEdge
 
   def data: MessageData
-  def in_edges: Edges[E]
-  def out_edges: Edges[E]
-  def inout_edges: InOutEdges[E] 
+  def edges: Edges[E] 
   def target(e: MessageEdge): MessageVertex
 }
 

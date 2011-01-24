@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.datastruct.scala
 
-import collection.mutable.{HashMap, ArrayBuffer, Map}
+import collection.mutable.{HashMap, Map}
 
 class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V], mE: ClassManifest[E]) extends Graph[V,E] {
   // TODO: we are storing a lot of data here. investigate reducing the footprint vs. performance.
@@ -14,11 +14,11 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V]
   // Map from vertex to id
   protected val vertexIds = HashMap[V, Int]()
 
-  protected var _vertices = Vector[V]()
-  protected var _edges = Vector[E]()
+  protected var _vertices : Array[V] = null
+  protected var _edges : Array[E] = null
   
-  protected var vertexEdges = Vector[Edges[E]]()
-  protected var neighbors = Vector[Vertices[V]]()  
+  protected var vertexEdges : Array[Edges[E]] = null
+  protected var neighbors : Array[Vertices[V]] = null
 
   var _frozen = false
 
@@ -33,7 +33,7 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V]
 
   def edges = {
     if(_frozen) {
-      new EdgesImpl(_edges.toArray)
+      new EdgesImpl(_edges)
     }
     else {
       new EdgesImpl(edgeToVertices.keySet.toArray)
@@ -46,7 +46,7 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V]
 
   def containsVertex(v: V) = {
     if (!_frozen) adjacencies.contains(v)
-    else vertexInfo.contains(v)
+    else adjacencies.contains(v)
   }
 
   // only available before finalization
@@ -84,14 +84,16 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V]
 
   // finalizes the graph structure; we may want to rename this to clarify the semantics.
   def freeze() : Unit = {
-    for(v <- adjacencies.keySet) {
-      vertexIds(v) = _vertices.length
-      _vertices += v
+    _edges = edgeToVertices.keySet.toArray
+    _vertices = adjacencies.keySet.toArray
+
+    for(id <- 0 until _vertices.length) {
+      vertexIds(_vertices(id)) = id
     }
 
     val sorted = _vertices map {adjacencies(_).sortBy{case(e, v) => vertexIds(v)}}
-    vertexEdges = sorted map {new EdgesImpl((_ map {_._1}).toArray)}
-    neighbors = sorted map {new VerticesImpl((_ map {_._2}).toArray)}
+    vertexEdges = sorted map {(l: List[(E,V)]) => new EdgesImpl((l map {_._1}).toArray)}
+    neighbors = sorted map {(l: List[(E,V)]) => new VerticesImpl((l map {_._2}).toArray)}
 
     adjacencies = null
     _frozen = true
