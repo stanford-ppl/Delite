@@ -29,11 +29,14 @@ abstract class OP_Nested extends DeliteOP {
   private[graph] var inputSyms: List[DeliteOP] = Nil
   def getNestedInputs: Seq[DeliteOP] = inputSyms
 
-  protected final class GetterOp(val id: String, resource: Int, dependencies: DeliteOP*) extends DeliteOP {
+  protected final class GetterOp(val id: String, resource: Int, dependencies: Seq[DeliteOP], inputs: Seq[DeliteOP]) extends DeliteOP {
 
     for (dep <- dependencies) {
       this.addDependency(dep)
       dep.addConsumer(this)
+    }
+    for (in <- inputs.reverse) {
+      this.addInput(in)
     }
     scheduledResource = resource
 

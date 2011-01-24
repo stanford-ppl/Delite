@@ -335,12 +335,11 @@ abstract class GPUExecutableGenerator {
     out.append('(')
     var first = true
     for (input <- op.getInputs) {
-      if (!first) out.append(',')
-      first = false
-      if (op.cudaMetadata.inputs.contains(input) || getJNIType(input.outputType) != "jobject")
+      if (op.cudaMetadata.inputs.contains(input) || getJNIType(input.outputType) != "jobject") {
+        if (!first) out.append(',')
+        first = false
         out.append(getSymGPU(input))
-      else
-        out.append(getSymCPU(input))
+      }
     }
     out.append(");\n")
   }

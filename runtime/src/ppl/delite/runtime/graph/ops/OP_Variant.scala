@@ -49,7 +49,7 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
 
         //add special consumer ops
         if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
-          variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx, idx, variantGraph.result)) //get result on returner chunk
+          variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx, idx, Seq(variantGraph.result), Seq(variantGraph.result))) //get result on returner chunk
         }
 
         r
