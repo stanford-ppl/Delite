@@ -46,6 +46,22 @@ final class CudaMetadata {
     temp
   }
 
+  def replaceInput(old: DeliteOP, op: DeliteOP) {
+    if (inputs contains old) {
+      val value = inputs(old)
+      inputs -= old
+      inputs += op -> value
+
+      blockSizeX.replaceInput(old, op)
+      blockSizeY.replaceInput(old, op)
+      blockSizeZ.replaceInput(old, op)
+      dimSizeX.replaceInput(old, op)
+      dimSizeY.replaceInput(old, op)
+      for (temp <- temps) temp.replaceInput(old, op)
+      output.replaceInput(old, op)
+    }
+  }
+
 }
 
 final class OPData {
@@ -54,5 +70,10 @@ final class OPData {
   var funcReturn: String = _
   var inputs: List[DeliteOP] = Nil
   var resultType: String = _
+
+  private[targets] def replaceInput(old: DeliteOP, op: DeliteOP) {
+    if (inputs contains old)
+      inputs = inputs.patch(inputs.indexOf(old), List(op), 1)
+  }
 
 }
