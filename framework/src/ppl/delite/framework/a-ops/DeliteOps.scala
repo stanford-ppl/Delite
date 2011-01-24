@@ -84,8 +84,15 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
     // TODO: we need a way to make variables and reify work together -- we lose access to the var once we reify it
     // TODO: there should be a better way of doing this
     //val i : Var[Int] = index match { case Def(Reify(x, effects)) => x.asInstanceOf[Var[Int]] }
-    lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
-    lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
+
+    // we can't instantiate these like below, because they then become dependent on the order a subclass declares
+    // the abstract value (can result in an NPE). Unfortunately, this now forces all subclasses to be verbose.
+    // The best solution would be to pass the manifests in to DeliteOpMap directly, but it would need to not be a trait,
+    // and we would need a different way of encoding variants.
+    implicit val mA: Manifest[A]
+    implicit val mB: Manifest[B]
+    //lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
+    //lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
     val vs = () => __newVar(unit(null).asInstanceOfL[A])
     lazy val Vs = vs()
     // this does not get initialized properly in body -- perhaps a scala bug?
@@ -229,12 +236,28 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
    * @param  sync   a function from an index to a list of objects that should be locked, in a total ordering,
    *                prior to chunk execution, and unlocked after; reified version of Exp[Int] => Exp[List[_]]
    */
-  abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] {
+  abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] with DeliteOpMapLikeWhileLoopVariant {
     val in: Exp[C[A]]
     val v: Exp[A]
     val func: Exp[Unit]
     val i: Exp[Int]
     val sync: Exp[List[_]]
+
+    // DeliteOpMapLikeWhileLoopVariant
+    //implicit val mA: Manifest[A]
+    lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
+    val vs = () => __newVar(unit(null).asInstanceOfL[A])
+    lazy val Vs = vs()
+    lazy val alloc = Const()
+    val index = __newVar(unit(0))
+    lazy val cond = reifyEffects(index < in.size)
+    lazy val body =
+      reifyEffects {
+        Vs = in(index)
+        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs)
+        func
+        index += 1
+      }
   }
 
   // used by delite code generators to handle nested delite ops
