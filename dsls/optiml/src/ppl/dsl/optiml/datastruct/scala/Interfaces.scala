@@ -182,17 +182,17 @@ trait TrainingSet[@specialized T,@specialized L] extends Matrix[T] {
 trait Graph[V <: Vertex, E <: Edge] {
   def vertices: Vertices[V]
   def edges: Edges[E]
-  def adjacent(a: V, b: V): Boolean
+  //def adjacent(a: V, b: V): Boolean
   def neighborsOf(a: V): Vertices[V]
   def edgesOf(a: V): Edges[E]
   def containsEdge(e: E): Boolean
   def containsVertex(v: V): Boolean
-  def sorted: Boolean
 
   def addVertex(v: V)
   def addEdge(e: E, a: V, b: V)
-  def removeEdge(a: V, b: V)
+  //def removeEdge(a: V, b: V)
   def freeze(): Unit
+  def frozen: Boolean
 }
 
 // this is really not pretty. this class hierarchy needs to be thought about more than i've had a chance to.

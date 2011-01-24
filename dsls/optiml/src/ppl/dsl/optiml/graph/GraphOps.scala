@@ -23,17 +23,17 @@ trait GraphOps extends DSLType with Variables {
   class graphOpsCls[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) {
     def vertices = graph_vertices(g)
     def edges = graph_edges(g)
-    def adjacent(a: V, b: V) = graph_adjacent(g,a,b)
+    //def adjacent(a: V, b: V) = graph_adjacent(g,a,b)
     def neighborsOf(a: V) = graph_neighbors_of(g,a)
     def edgesOf(a: V) = graph_edges_of(g,a)
     def containsEdge(a: E) = graph_contains_edge(g,a)
     def containsVertex(a: V) = graph_contains_vertex(g,a)
-    def sorted = graph_sorted(g)
 
-    //def addVertex(a: V) = graph_add_vertex(g,a)
-    //def addEdge(e: E, a: V, b: V) = graph_add_edge(g,e,a,b)
-    def removeEdge(a: V, b: V) = graph_remove_edge(g,a,b)
-    def sort() = graph_sort(g)
+    def addVertex(a: V) = graph_add_vertex(g,a)
+    def addEdge(e: E, a: V, b: V) = graph_add_edge(g,e,a,b)
+    //def removeEdge(a: V, b: V) = graph_remove_edge(g,a,b)
+    def freeze() = graph_freeze(g)
+    def frozen = graph_frozen(g)
   }
 
 
@@ -43,17 +43,17 @@ trait GraphOps extends DSLType with Variables {
   // class defs
   def graph_vertices[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Vertices[V]]
   def graph_edges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Edges[E]]
-  def graph_adjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
+  //def graph_adjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
   def graph_neighbors_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Vertices[V]]
   def graph_edges_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Edges[E]]
   def graph_contains_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Edge])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
   def graph_contains_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
-  def graph_sorted[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
 
   def graph_add_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
   def graph_add_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], e: Rep[Edge], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
-  def graph_remove_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
-  def graph_sort[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
+  //def graph_remove_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
+  def graph_freeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
+  def graph_frozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
 }
 
 trait GraphOpsExp extends GraphOps with EffectExp {
@@ -65,21 +65,21 @@ trait GraphOpsExp extends GraphOps with EffectExp {
 
   case class GraphObjectNew[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E])
     extends Def[Graph[V,E]] {
-    val mG = manifest[UndirectedGraphImpl[V,E]]
+    val mG = manifest[BidirectionalGraphImpl[V,E]]
   }
   case class GraphVertices[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Vertices[V]]
   case class GraphEdges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Edges[E]]
-  case class GraphAdjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
+  //case class GraphAdjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
   case class GraphNeighborsOf[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Vertices[V]]
   case class GraphEdgesOf[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Edges[E]]
   case class GraphContainsEdge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Edge])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
   case class GraphContainsVertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
-  case class GraphSorted[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
 
   case class GraphAddVertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
   case class GraphAddEdge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], e: Rep[Edge], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
-  case class GraphRemoveEdge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
-  case class GraphSort[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
+  //case class GraphRemoveEdge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
+  case class GraphFreeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
+  case class GraphFrozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
 
   /////////////////////////////////////////////////
   // implemented via kernel embedding (sequential)
@@ -105,8 +105,8 @@ trait GraphOpsExp extends GraphOps with EffectExp {
     = GraphVertices(reflectRead(g))
   def graph_edges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
     = GraphEdges(reflectRead(g))
-  def graph_adjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphAdjacent(reflectRead(g),reflectRead(a),reflectRead(b))
+  //def graph_adjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
+  //  = GraphAdjacent(reflectRead(g),reflectRead(a),reflectRead(b))
   def graph_neighbors_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
     = GraphNeighborsOf(reflectRead(g),reflectRead(a))
   def graph_edges_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
@@ -115,18 +115,17 @@ trait GraphOpsExp extends GraphOps with EffectExp {
     = GraphContainsEdge(reflectRead(g),reflectRead(a))
   def graph_contains_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
     = GraphContainsVertex(reflectRead(g),reflectRead(a))
-  def graph_sorted[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphSorted(reflectRead(g))
 
   def graph_add_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
     = reflectMutation(GraphAddVertex(reflectReadWrite(g),a))
   def graph_add_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], e: Rep[Edge], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
     = reflectMutation(GraphAddEdge(reflectReadWrite(g),e,a,b))
-  def graph_remove_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectMutation(GraphRemoveEdge(reflectReadWrite(g),a,b))
-  def graph_sort[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectMutation(GraphSort(reflectReadWrite(g)))
-
+  //def graph_remove_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
+  //  = reflectMutation(GraphRemoveEdge(reflectReadWrite(g),a,b))
+  def graph_freeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
+    = reflectMutation(GraphFreeze(reflectReadWrite(g)))
+  def graph_frozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
+    = GraphSorted(reflectRead(g))
 }
 
 
@@ -148,17 +147,17 @@ trait ScalaGenGraphOps extends BaseGenGraphOps with ScalaGenBase {
       case g@GraphObjectNew() => emitValDef(sym, "new " + remap(g.mG) + "()")
       case GraphVertices(g) => emitValDef(sym, quote(g) + ".vertices")
       case GraphEdges(g) => emitValDef(sym, quote(g) + ".edges")
-      case GraphAdjacent(g,a,b) => emitValDef(sym, quote(g) + ".adjacent(" + quote(a) + "," + quote(b) + ")")
+      //case GraphAdjacent(g,a,b) => emitValDef(sym, quote(g) + ".adjacent(" + quote(a) + "," + quote(b) + ")")
       case GraphNeighborsOf(g,a) => emitValDef(sym, quote(g) + ".neighborsOf(" + quote(a) + ")")
       case GraphEdgesOf(g,a) => emitValDef(sym, quote(g) + ".edgesOf(" + quote(a) + ")")
       case GraphContainsEdge(g,a) => emitValDef(sym, quote(g) + ".containsEdge(" + quote(a) + ")")
       case GraphContainsVertex(g,a) => emitValDef(sym, quote(g) + ".containsVertex(" + quote(a) + ")")
-      case GraphSorted(g) => emitValDef(sym, quote(g) + ".sorted")
 
       case GraphAddVertex(g,a) => emitValDef(sym, quote(g) + ".addVertex(" + quote(a) + ")")
       case GraphAddEdge(g,e,a,b) => emitValDef(sym, quote(g) + ".addEdge(" + quote(e) + "," + quote(a) + "," + quote(b) + ")")
-      case GraphRemoveEdge(g,a,b) => emitValDef(sym, quote(g) + ".removeEdge(" + quote(a) + "," + quote(b) + ")")
-      case GraphSort(g) => emitValDef(sym, quote(g) + ".sort()")
+      //case GraphRemoveEdge(g,a,b) => emitValDef(sym, quote(g) + ".removeEdge(" + quote(a) + "," + quote(b) + ")")
+      case GraphFreeze(g) => emitValDef(sym, quote(g) + ".freeze()")
+      case GraphFrozen(g) => emitValDef(sym, quote(g) + ".frozen")
       case _ => super.emitNode(sym, rhs)
     }
   }

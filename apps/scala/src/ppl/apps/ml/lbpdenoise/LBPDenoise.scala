@@ -1,10 +1,10 @@
 package ppl.apps.ml.lbpdenoise
 
-import ppl.dsl.optiml.datastruct.scala.{MessageData, Vector}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.runtime.profiler.PerformanceTimer
 import ppl.delite.runtime.Delite
 import ppl.apps.ml.lbp.LBPImage
+import ppl.dsl.optiml.datastruct.scala.{BidirectionalGraphImpl, MessageData, Vector}
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -96,53 +96,46 @@ object LBPDenoise extends DeliteApplication {
     val g = constructGraph(img, colors, sigma)
 
     if (smoothing == "laplace") {
-      edgePotential.setLaplace(lambda)
+      BinaryFactor.setLaplace(edgePotential, lambda)
     }
     else if (smoothing == "square") {
-      edgePotential.setAgreement(lambda)
+      BinaryFactor.setAgreement(edgePotential, lambda)
+    }
+    
+    //var count = 1
+
+    def toFreeze(v: DenoiseVertex) {
+      v.neighbors()
     }
 
-    println(edgePotential)
-    implicit val pFact = new MessageGraph.ProxyFactory[VertexData, EdgeData]
-
-   //var count = 1
-
-    g.untilConvergedData2(Consistency.Edge) {
+    g.untilConverged(Consistency.Edge) {
       v =>
-      // Flip messages on in edges
-        for (e <- v.edges) {
-          e.in(v).old_message = e.in(v).message
-        }
-
         v.data.belief = v.data.potential.clone()
 
         // Multiply belief by messages
-        for (e <- v.edges) {
+        for (e <- v.in_edges) {
           v.data.belief = UnaryFactor.times(v.data.belief, e.in(v).old_message)
         }
 
         // Normalize the belief
-        v.data.belief = v.data.belief.normalize()
+        v.data.belief =  UnaryFactor.normalize(v.data.belief)
 
         // Send outbound messages
-        for (e <- v.edges) {
+        for ((in, out) <- v.edges) {
           // Compute the cavity
-          var cavity = v.data.belief.clone()
-          cavity = UnaryFactor.divide(cavity, e.in(v).old_message)
-          cavity = UnaryFactor.normalize(cavity)
+          val cavity = UnaryFactor.normalize(UnaryFactor.divide(v.data.belief.clone(), in.message))
 
           // Convolve the cavity with the edge factor
-          val outEdge = e.out(v)
-          var outMsg = UnaryFactor.convolve(outMsg, edgePotential, cavity)
-          var outMsg = UnaryFactor.normalize(outMsg)
+          var msg = UnaryFactor.normalize(UnaryFactor.convolve(edgePotential, cavity))
 
           // Damp the message
-          outMsg = UnaryFactor.damp(outMsg, outEdge.message, damping)
-
-          outEdge.data.message = outMsg
+          msg = UnaryFactor.damp(msg, outEdge.message, damping)
 
           // Compute message residual
-          val residual = UnaryFactor.residual(outMsg, outEdge.old_message)
+          val residual = UnaryFactor.residual(msg, out.data.message)
+
+          // Set the message
+          out.data.message = msg
 
         /*  if(count % 10000 == 0) {
             println(count + " " + residual)
@@ -157,38 +150,36 @@ object LBPDenoise extends DeliteApplication {
       //count += 1
     }
 
-    // Predict the image! Well as of now we don't even get to this point, so fuck
+    // Predict the image!
     if (pred_type == "map") {
       for (v <- g.vertexSet) {
-        img.data(v.belief.v) = UnaryFactor.max_asg(v.belief);
+        img.data(v.id) = UnaryFactor.max_asg(v.belief);
       }
     }
     else if (pred_type == "exp") {
       for (v <- g.vertexSet) {
-        img.data(v.belief.v) = UnaryFactor.max_asg(v.belief);
+        img.data(v.id) = UnaryFactor.max_asg(v.belief);
       }
     }
 
     img
   }
 
-  def constructGraph(img: LBPImage, numRings: Int, sigma: Double): MessageGraph[VertexData, EdgeData] = {
-    val g = new MessageGraph[VertexData, EdgeData]
+  def constructGraph(img: LBPImage, numRings: Int, sigma: Double): BidirectionalGraph[DenoiseVertex, DenoiseEdge] = {
+    val g = new BidirectionalGraphImpl[DenoiseVertex, DenoiseEdge]()
 
     // Same belief for everyone
-    val belief = new UnaryFactor(0, numRings)
-    belief.uniform()
-    belief.normalize()
+    val belief = UnaryFactor.uniform(numRings)
 
     val sigmaSq = sigma * sigma
 
-    val vertices = Array.ofDim[VertexData](img.rows, img.cols)
+    val vertices = Array.ofDim[DenoiseVertex](img.rows, img.cols)
 
     // Set vertex potential based on image
     for (i <- 0 until img.rows) {
       for (j <- 0 until img.cols) {
         val pixelId = img.vertid(i, j)
-        val potential = new UnaryFactor(pixelId, numRings)
+        val potential = Vector.zeros(numRings)
 
         val obs = img.data(pixelId)
 
@@ -198,44 +189,20 @@ object LBPDenoise extends DeliteApplication {
 
         potential.normalize()
 
-        val vertex = new VertexData(potential, belief.copy(pixelId))
+        val vertex = new DenoiseVertex(pixelId, potential, belief.copy())
 
         vertices(i)(j) = vertex
         g.addVertex(vertex)
       }
     }
 
-    val message = new UnaryFactor(0, numRings)
-    message.uniform()
-    message.normalize()
-
-    val oldMessage = message.copy()
-
-    val message2 = message.copy()
-    val oldMessage2 = message.copy()
-
-    val templateEdge = new EdgeData(message, oldMessage)
-    val baseEdge = new EdgeData(message2, oldMessage2)
+    val edge = new DenoiseEdge(UnaryFactor.uniform(numRings))
 
     // Add bidirectional edges between neighboring pixels
     for (i <- 0 until img.rows - 1) {
       for (j <- 0 until img.cols - 1) {
-        message.v = img.vertid(i, j + 1)
-        oldMessage.v = img.vertid(i, j + 1)
-
-        message2.v = img.vertid(i, j)
-        oldMessage2.v = img.vertid(i, j)
-
-        val edgeRight = templateEdge.copy()
-
-        g.addEdge(edgeRight, baseEdge.copy(), vertices(i)(j), vertices(i)(j + 1))
-
-        message.v = img.vertid(i + 1, j)
-        oldMessage.v = img.vertid(i + 1, j)
-
-        val edgeDown = templateEdge.copy()
-
-        g.addEdge(edgeDown, baseEdge.copy(), vertices(i)(j), vertices(i + 1)(j))
+        g.addEdge(DenoiseEdge.copy(edge), DenoiseEdge.copy(edge), vertices(i)(j), vertices(i)(j + 1))
+        g.addEdge(DenoiseEdge.copy(edge), DenoiseEdge.copy(edge), vertices(i)(j), vertices(i + 1)(j))
       }
     }
 
@@ -245,12 +212,12 @@ object LBPDenoise extends DeliteApplication {
   
 }
 
-class DenoiseVertex extends MessageData {
-  var belief : Vector[Double]
-  var potential : Vector[Double]
-  val id: Int
+class DenoiseVertex(val id : Int, var belief : Vector[Double], var potential : Vector[Double]) extends MessageData
+
+object DenoiseEdge {
+  def copy(edge: DenoiseEdge) = {
+    new DenoiseEdge(edge.message)
+  }
 }
 
-class DenoiseEdge extends MessageData {
-  var message : Vector[Double]
-}
+class DenoiseEdge(var message : Vector[Double]) extends MessageData

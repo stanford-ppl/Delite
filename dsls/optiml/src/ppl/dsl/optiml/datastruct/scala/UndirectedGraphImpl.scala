@@ -5,32 +5,42 @@ import collection.mutable.{HashMap, ArrayBuffer, Map}
 class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V], mE: ClassManifest[E]) extends Graph[V,E] {
   // TODO: we are storing a lot of data here. investigate reducing the footprint vs. performance.
   protected var edgeToVertices = Map[E, (V, V)]()
-  protected var verticesToEdges = Map[(V, V), E]()
+  //protected var verticesToEdges = Map[(V, V), E]()
 
+  // this is used only during construction (before frozen), for fast sorting
+  protected var adjacencies = HashMap[V, List[(E, V)]]()
+
+  // this is used only after construction (after frozen), for fast access
   // Map from vertex to id
   protected val vertexIds = HashMap[V, Int]()
 
   protected var _vertices = Vector[V]()
   protected var _edges = Vector[E]()
-
-  // this is used only during construction (before frozen), for fast sorting
-  protected var adjacencies = Vector[List[(Int, Int)]]()
-
-  // this is used only after construction (after frozen), for fast access
+  
   protected var vertexEdges = Vector[Edges[E]]()
   protected var neighbors = Vector[Vertices[V]]()  
 
   var _frozen = false
 
   def vertices = {
-    new VerticesImpl(_vertices.toArray)
+    if(_frozen) {
+      new VerticesImpl(_vertices.toArray)
+    }
+    else {
+      new VerticesImpl(adjacencies.keySet.toArray)
+    }
   }
 
   def edges = {
-    new EdgesImpl(_edges.toArray)
+    if(_frozen) {
+      new EdgesImpl(_edges.toArray)
+    }
+    else {
+      new EdgesImpl(edgeToVertices.keySet.toArray)
+    }
   }
 
-  def adjacent(a: V, b: V) = verticesToEdges.contains((a, b))
+  //def adjacent(a: V, b: V) = verticesToEdges.contains((a, b))
 
   def containsEdge(e: E) = edgeToVertices.contains(e)
 
@@ -43,49 +53,52 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V]
   def addVertex(v: V) = {
     if (_frozen) throw new RuntimeException("Graph is frozen")
 
-    if (!vertexIds.contains(v)) {
-      val id = _vertices.length
-      vertexIds(v) = id
-      _vertices += v
-      adjacencies += List[(Int,Int)]()
+    if (!adjacencies.contains(v)) {
+      adjacencies(v) = List()
     }
   }
   
   def addEdge(e: E, a: V, b: V) = {
     if (_frozen) throw new RuntimeException("Graph is frozen")
 
-    assert(vertexIds.contains(a))
-    assert(vertexIds.contains(b))
-
-    val eId = _edges.length
-    _edges += e
-
-    val aId = vertexIds(a)
-    val bId = vertexIds(b)
-
-    adjacencies(aId) ::= ((eId, bId))
-    adjacencies(bId) ::= ((eId, aId))
+    if (!edgeToVertices.contains(e)) {
+      //verticesToEdges((a, b)) = e
+      adjacencies(a) ::= ((e, b))
+      adjacencies(b) ::= ((e, a))
+      edgeToVertices(e) = ((a,b))
+    }
   }
 
-  def removeEdge(a: V, b: V): Unit = {
+  /*def removeEdge(a: V, b: V): Unit = {
     if (_frozen) throw new RuntimeException("Graph is frozen")
 
-    assert(vertexIds.contains(a))
-    assert(vertexIds.contains(b))
+    if (adjacencies.contains((a, b))) {
+      val e = verticesToEdges((a, b))
 
-    val aId = vertexIds(a)
-    val bId = vertexIds(b)
-  }
+      verticesToEdges.remove(edgeToVertices(e))
+      adjacencies(a) -= ((e, b))
+      adjacencies(b) -= ((e, a))
+      edgeToVertices.remove(e)
+    }
+  } */
 
   // finalizes the graph structure; we may want to rename this to clarify the semantics.
   def freeze() : Unit = {
-    val sorted = adjacencies map {_.sortBy{case(e, v) => v}}
+    for(v <- adjacencies.keySet) {
+      vertexIds(v) = _vertices.length
+      _vertices += v
+    }
+
+    val sorted = _vertices map {adjacencies(_).sortBy{case(e, v) => vertexIds(v)}}
     vertexEdges = sorted map {new EdgesImpl((_ map {_._1}).toArray)}
     neighbors = sorted map {new VerticesImpl((_ map {_._2}).toArray)}
 
     adjacencies = null
-
     _frozen = true
+  }
+
+  def frozen = {
+    _frozen
   }
 
   // only available after finalization
@@ -112,5 +125,4 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V]
       vertexEdges(id)
     }
   }
-
 }
