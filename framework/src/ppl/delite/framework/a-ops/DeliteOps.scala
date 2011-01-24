@@ -236,12 +236,28 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
    * @param  sync   a function from an index to a list of objects that should be locked, in a total ordering,
    *                prior to chunk execution, and unlocked after; reified version of Exp[Int] => Exp[List[_]]
    */
-  abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] {
+  abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] with DeliteOpMapLikeWhileLoopVariant {
     val in: Exp[C[A]]
     val v: Exp[A]
     val func: Exp[Unit]
     val i: Exp[Int]
     val sync: Exp[List[_]]
+
+    // DeliteOpMapLikeWhileLoopVariant
+    //implicit val mA: Manifest[A]
+    lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
+    val vs = () => __newVar(unit(null).asInstanceOfL[A])
+    lazy val Vs = vs()
+    lazy val alloc = Const()
+    val index = __newVar(unit(0))
+    lazy val cond = reifyEffects(index < in.size)
+    lazy val body =
+      reifyEffects {
+        Vs = in(index)
+        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs)
+        func
+        index += 1
+      }
   }
 
   // used by delite code generators to handle nested delite ops

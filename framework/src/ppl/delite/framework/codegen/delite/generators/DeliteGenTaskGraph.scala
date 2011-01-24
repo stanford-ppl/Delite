@@ -176,7 +176,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       case r:DeliteOpReduce[_] => emitReduce(sym, inputs, inMutating, inControlDeps, antiDeps)
       case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(sym, rhs, inputs, inMutating, inControlDeps, antiDeps)
       case z:DeliteOpZipWith[_,_,_,_] => emitZipWith(sym, inputs, inMutating, inControlDeps, antiDeps)
-      case f:DeliteOpForeach[_,_] => emitForeach(sym, inputs, inMutating, inControlDeps, antiDeps)
+      case f:DeliteOpForeach[_,_] => emitForeach(sym, rhs, inputs, inMutating, inControlDeps, antiDeps)
       case _ => emitSingleTask(sym, inputs, inMutating, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
     }
 
@@ -239,10 +239,17 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.println("},")
   }
 
-  def emitForeach(sym: Sym[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+  def emitForeach(sym: Sym[_], rhs: Def[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Foreach\"")
     emitExecutionOpCommon(sym, inputs, mutableInputs, controlDeps, antiDeps)
+
+    //// constructing from variant encoded in the IR
+    val output = rhs match {
+      case vw:DeliteOpMapLikeWhileLoopVariant => vw.alloc
+    }
+    emitVariant(sym, rhs, output, inputs, mutableInputs, controlDeps, antiDeps)
+
     stream.println("},")
   }
 
@@ -345,7 +352,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   }
 
   def emitOutput(x: Exp[_])(implicit stream: PrintWriter) = {
-    stream.print("  \"output\": \"" + quote(getBlockResult(x)) + "\"\n")
+    emitExp("output", getBlockResult(x))
+    //stream.print("  \"output\": \"")
+    //stream.print(emitExp(getBlockResult(x)))
+    //stream.print("\"\n")
   }
 
   def emitEOV()(implicit stream: PrintWriter) = {
