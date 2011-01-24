@@ -257,9 +257,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Conditional\",")
     stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
-    emitExp("cond", cond)
-    emitExp("then", thenp)
-    emitExp("else", elsep)
+    emitSubGraph("cond", cond)
+    emitSubGraph("then", thenp)
+    emitSubGraph("else", elsep)
     stream.println("  \"condOutput\": \"" + quote(getBlockResult(cond)) + "\",")
     stream.println("  \"thenOutput\": \"" + quote(getBlockResult(thenp)) + "\",")
     stream.println("  \"elseOutput\": \"" + quote(getBlockResult(elsep)) + "\",")
@@ -276,8 +276,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.println("{\"type\":\"WhileLoop\",")
     stream.println("  \"outputId\" : \"" + quote(sym) + "\",")
-    emitExp("cond", cond)
-    emitExp("body", body)
+    emitSubGraph("cond", cond)
+    emitSubGraph("body", body)
     stream.println("  \"condOutput\": \"" + quote(getBlockResult(cond)) + "\",")
     //stream.println("  \"bodyOutput\": \"" + quote(getBlockResult(body)) + "\",")
     stream.println("  \"controlDeps\":[" + makeString(controlDeps) + "],")
@@ -321,7 +321,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     kernelMutatingDeps = Map()
     kernelInputDeps = Map()
     stream.print(",\"variant\": {")
-
+    stream.print("\"ops\":[" )
     // variant
     rhs match {
       case vw:DeliteOpMapLikeWhileLoopVariant => emitMapLikeWhileLoopVariant(vw, sym, output, inputs, mutableInputs, controlDeps, antiDeps)
@@ -329,19 +329,17 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     }
 
     // post
-    emitEOV()
+    emitEOG()
     emitOutput(output)
     stream.println("}")
     kernelInputDeps = saveInputDeps
     kernelMutatingDeps = saveMutatingDeps
-    prependInputs = Nil
   }
 
   def emitMapLikeWhileLoopVariant(vw: DeliteOpMapLikeWhileLoopVariant, sym: Sym[_], output: Exp[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
     val save = scope
-    stream.print("\"ops\":[" )
     emitBlock(vw.alloc)
     scope = appendScope()
     // we should not be reifying during code-gen, see todo in DeliteOps.scala
@@ -352,17 +350,19 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   }
 
   def emitOutput(x: Exp[_])(implicit stream: PrintWriter) = {
-    emitExp("output", getBlockResult(x))
-    //stream.print("  \"output\": \"")
-    //stream.print(emitExp(getBlockResult(x)))
-    //stream.print("\"\n")
+    x match {
+      case c:Const[Any] => stream.println("  \"outputType\": \"const\",")
+                           stream.println("  \"outputValue\": \"" + quote(x) + "\",")
+      case s:Sym[Any] =>   stream.println("  \"outputType\": \"symbol\",")
+                           stream.println("  \"outputValue\": \"" + quote(getBlockResult(x)) + "\"")
+    }
   }
 
-  def emitEOV()(implicit stream: PrintWriter) = {
-    stream.print("{\"type\":\"EOV\"}\n],\n")
+  def emitEOG()(implicit stream: PrintWriter) = {
+    stream.print("{\"type\":\"EOG\"}\n],\n")
   }
 
-  def emitExp(prefix: String, e: Exp[Any])(implicit stream: PrintWriter) = e match {
+  def emitSubGraph(prefix: String, e: Exp[Any])(implicit stream: PrintWriter) = e match {
     case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
                          stream.println("  \"" + prefix + "Value\": \"" + quote(e) + "\",")
     case s:Sym[Any] =>  stream.println("  \"" + prefix + "Type\": \"symbol\",")
@@ -372,7 +372,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                         kernelMutatingDeps = Map()
                         kernelInputDeps = Map()
                         emitBlock(e)
-                        emitEOV()
+                        emitEOG()
                         kernelInputDeps = saveInputDeps
                         kernelMutatingDeps = saveMutatingDeps
   }

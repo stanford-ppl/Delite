@@ -27,7 +27,6 @@ trait DeliteCodegen extends GenericNestedCodegen {
   // global, used by DeliteGenTaskGraph
   var kernelMutatingDeps = Map[Sym[_],List[Sym[_]]]() // from kernel to its mutating deps
   var kernelInputDeps = Map[Sym[_],List[Sym[_]]]() // from kernel to its input deps
-  var prependInputs: List[Sym[_]] = Nil
 
   def ifGenAgree[A](f: Generator => A, shallow: Boolean): A = {
     val save = generators map { _.shallow }

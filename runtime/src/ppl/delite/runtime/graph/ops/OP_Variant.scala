@@ -21,7 +21,9 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
   override def outputType: String = resultType(Targets.Scala)
 
   def returner(indices: Seq[Int]) = {
-    variantGraph.result.scheduledResource
+    if (variantGraph.result != null && !variantGraph.result.isInstanceOf[OP_Input])
+      variantGraph.result.scheduledResource
+    else indices(0)
   }
 
   def nestedGraphs = Seq(variantGraph)

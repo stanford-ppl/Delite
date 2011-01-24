@@ -52,7 +52,7 @@ object DeliteTaskGraph {
         case "WhileLoop" => processWhileTask(op)
         case "Arguments" => processArgumentsTask(op)
         case "EOP" => processEOPTask(op) //end of program
-        case "EOV" => //end of nested graph, do nothing
+        case "EOG" => //end of nested graph, do nothing
         case err@_ => unsupportedType(err)
       }
     }
@@ -200,7 +200,11 @@ object DeliteTaskGraph {
   def processVariant(op: DeliteOP, resultType: Map[Targets.Value,String], graph: Map[Any, Any])(implicit outerGraph: DeliteTaskGraph) = {
     val varGraph = newGraph
     parseOps(getFieldList(graph, "ops"))(varGraph)
-    varGraph._result = getOp(getFieldString(graph, "output"))(varGraph)
+    if (getFieldString(graph, "outputType") == "symbol")
+      varGraph._result = getOp(getFieldString(graph, "outputValue"))(varGraph)
+    else
+      assert(getFieldString(graph, "outputValue") == "()") //only const a variant should return is a Unit literal
+
     val v = new OP_Variant(op.id, resultType, op, varGraph)
 
     //TODO: due to how the framework works, the variant has one extra input (the loop index): hack it in for now
