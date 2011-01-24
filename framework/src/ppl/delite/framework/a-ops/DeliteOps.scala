@@ -535,11 +535,15 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
     case red: DeliteOpReduce[_] => {
       if(!isPrimitiveType(red.func.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for reduce.")
       if(currDim < 1) new GenerationFailedException("CudaGen: Reduction on the 1'st dimension is not supported yet.")
-      val reducFunc = emitDevFunc(red.func, List(red.v._1, red.v._2))
+      val freeVars = (getFreeVarBlock(red.func,Nil).filterNot(ele => (ele==red.v._1)||(ele==red.v._2))++gpuTemps).distinct
+      val reducFunc = emitDevFunc(red.func, List(red.v._1, red.v._2)++freeVars)
       stream.println(addTab()+"%s reducVal = %s.apply(0);".format(remap(sym.Type),quote(red.in)))
-      stream.println(addTab()+"for(int i=1; i<%s.size(); i++) {".format(quote(sym)))
+      stream.println(addTab()+"for(int i=1; i<%s.size(); i++) {".format(quote(red.in)))
       tabWidth += 1
-      stream.println(addTab()+"reducVal = %s(reducVal,%s.apply(i));".format(reducFunc,quote(red.in)))
+	  if(freeVars.length==0)
+      	stream.println(addTab()+"reducVal = %s(reducVal,%s.apply(i));".format(reducFunc,quote(red.in)))
+	  else
+      	stream.println(addTab()+"reducVal = %s(reducVal,%s.apply(i),%s);".format(reducFunc,quote(red.in),freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitValDef(sym,"reducVal")

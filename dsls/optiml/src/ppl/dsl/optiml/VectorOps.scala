@@ -732,9 +732,10 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       else {
         currDim += 1
         val currDimStr = getCurrDimStr()
-        val prevDimStr = getPrevDimStr()
+		val prevDimStr = if(currDim == 2) getPrevDimStr() else "0"
+		val prevDimSize = if(currDim == 2) xDimList(0) else "1"
         setCurrDimLength(quote(len))
-        emitVectorAlloc(sym,"%s*%s".format(quote(len),xDimList(0)),"true") //needs to allocate with new symbol
+        emitVectorAlloc(sym,"%s*%s".format(quote(len),prevDimSize),"true") //needs to allocate with new symbol
         stream.println(addTab()+"%s.length = %s;".format(quote(sym),quote(len)))
         stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
         stream.println(addTab()+"%s.data += %s*%s;".format(quote(sym),quote(len),prevDimStr))
@@ -752,7 +753,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       setCurrDimLength("%s.length".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
       tabWidth += 1
-      stream.println(addTab()+"%s.update(%s,%s.apply(%s));".format(currDimStr,quote(sym),quote(x),currDimStr))
+      stream.println(addTab()+"%s.update(%s,%s.apply(%s));".format(quote(sym),currDimStr,quote(x),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitVectorAlloc(sym,"%s.length".format(quote(x)),"!%s.isRow".format(quote(x)))

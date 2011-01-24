@@ -844,9 +844,9 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       setCurrDimLength("%s * %s".format(quote(w),quote(w)))
       stream.println(addTab()+"if( %s < %s*%s ) {".format(currDimStr,quote(w),quote(w)))
       tabWidth += 1
-      stream.println(addTab()+"%s.data[%s] = 0;".format(quote(sym),currDimStr))
-      stream.println(addTab()+"int i = %s / %s;".format(quote(sym),currDimStr))
-      stream.println(addTab()+"int j = " + quote(sym) + " % " + currDimStr + ";")
+      stream.println(addTab()+"int i = %s / %s;".format(currDimStr,quote(w)))
+      stream.println(addTab()+"int j = " + currDimStr + " % "  + quote(w) + ";")
+      stream.println(addTab()+"%s.update(i,j,0);".format(quote(sym)))
       stream.println(addTab()+"if(i == j) {")
       tabWidth += 1
       stream.println(addTab()+"%s.update(i, j, %s.apply(i));".format(quote(sym),quote(vals)))
@@ -863,8 +863,8 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       setCurrDimLength("%s.size()".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
       tabWidth += 1
-      stream.println(addTab()+"int i = %s / %s;".format(quote(sym),currDimStr))
-      stream.println(addTab()+"int j = " + quote(sym) + " % " + currDimStr + ";")
+      stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
+      stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
       stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
@@ -896,8 +896,8 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
       tabWidth += 1
 	    val sigmoidFunc = emitDevFunc(m.func,List(m.v))
-      stream.println(addTab()+"int i = %s / %s;".format(quote(sym),currDimStr))
-      stream.println(addTab()+"int j = " + quote(sym) + " % " + currDimStr + ";")
+      stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
+      stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
       stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
