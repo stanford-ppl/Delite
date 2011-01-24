@@ -158,7 +158,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t\tjmethodID mid_apply = env->GetMethodID(cls,\"apply\",\"(I)I\");\n")
     out.append("\t\t%s *hostPtr;\n".format(typeStr))
     out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
-	out.append("\t\tfor(int i=0; i<%s.length; i++) {\n".format(quote(sym)))
+	out.append("\t\tfor(int i=0; i<%s->length; i++) {\n".format(quote(sym)))
     out.append("\t\t\thostPtr[i] = %s;\n".format("env->CallIntMethod(obj,mid_apply,i)"))
 	out.append("\t\t}\n")
     out.append("\t\t%s *devPtr;\n".format(typeStr))
@@ -179,7 +179,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   def trainingSetCopyHtoD(sym: Sym[_]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
-    val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
+    val numBytesStr = "%s->numRows * %s->numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
 
     // Copy TrainingSet numRows, numCols, data
     out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
@@ -210,7 +210,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     val typeStr_labels = remap(sym.Type.typeArguments(1))
     val numBytesStr_labels = "labels.length * sizeof(%s)".format(typeStr_labels)
     out.append("\tLabels<%s> labels;\n".format(typeStr_labels))
-    out.append("\tlabels.length = %s.numRows;\n".format(quote(sym)))
+    out.append("\tlabels.length = %s->numRows;\n".format(quote(sym)))
     out.append("\tlabels.isRow = false;\n")
     out.append("\tjclass cls_labels = env->GetObjectClass(obj_labels);\n")
     out.append("\tjmethodID mid_data_labels = env->GetMethodID(cls_labels,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(1))))
@@ -229,8 +229,8 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     // Copy Transposed 
     out.append("\t%s transposed;\n".format(remap(sym.Type)))
-    out.append("\ttransposed.numRows = %s.numCols;\n".format(quote(sym)))
-    out.append("\ttransposed.numCols = %s.numRows;\n".format(quote(sym)))
+    out.append("\ttransposed.numRows = %s->numCols;\n".format(quote(sym)))
+    out.append("\ttransposed.numCols = %s->numRows;\n".format(quote(sym)))
     out.append("\ttransposed.labels = labels;\n")
     
 	out.append("\tjclass cls_transposed = env->GetObjectClass(obj_transposed);\n")
@@ -243,12 +243,12 @@ trait CudaGenDataStruct extends CudaCodegen {
 	out.append("\ttransposed.data = devPtr_transposed;\n")
     out.append("\t%s *hostPtr_transposed;\n".format(typeStr))
     out.append("\tDeliteCudaMallocHost((void**)%s,%s+sizeof(%s));\n".format("&hostPtr_transposed",numBytesStr,remap(sym.Type)))
-    out.append("\t%s *hostPtr_transposed_cls = hostPtr_transposed + %s.size();\n".format(typeStr,quote(sym)))
+    out.append("\t%s *hostPtr_transposed_cls = hostPtr_transposed + %s->size();\n".format(typeStr,quote(sym)))
     out.append("\tmemcpy(%s, %s, %s);\n".format("hostPtr_transposed","dataPtr_transposed",numBytesStr))
     out.append("\tmemcpy(%s, %s, sizeof(%s));\n".format("hostPtr_transposed_cls","&transposed",quote(sym)))
     out.append("\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s+sizeof(%s));\n".format("devPtr_transposed","hostPtr_transposed",numBytesStr,quote(sym)))
     out.append("\tenv->ReleasePrimitiveArrayCritical(data_transposed, dataPtr_transposed, 0);\n")
-    out.append("\t%s->transposed = (%s *)(devPtr_transposed + %s.size());\n".format(quote(sym),remap(sym.Type),quote(sym)))
+    out.append("\t%s->transposed = (%s *)(devPtr_transposed + %s->size());\n".format(quote(sym),remap(sym.Type),quote(sym)))
 
     out.append("\treturn %s;\n".format(quote(sym)))
     out.toString

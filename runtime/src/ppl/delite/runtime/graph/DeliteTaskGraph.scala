@@ -467,6 +467,7 @@ class DeliteTaskGraph {
     for (c <- old.getConsumers) {
       c.replaceDependency(old, op)
       if (c.getInputs contains old) c.replaceInput(old, op)
+      c.cudaMetadata.replaceInput(old, op)
     }
 
     //update graph
