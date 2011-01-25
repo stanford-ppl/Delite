@@ -6,7 +6,7 @@ trait LanguageImplOps { this: OptiML =>
   def optiml_untilconverged_impl[A:Manifest:Cloneable](
      x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
      block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double]): Rep[A]
-  def optiml_untilconverged_impl[V:Manifest, E:Manifest](
+  def optiml_untilconverged_impl[V <:Vertex :Manifest, E <: Edge :Manifest](
      g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]): Rep[Unit]
 
   def optiml_vectordistance_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int]): Rep[A]
@@ -16,7 +16,7 @@ trait LanguageImplOps { this: OptiML =>
 trait LanguageImplOpsStandard extends LanguageImplOps {
   this: OptiML =>
   
-  def optiml_untilconverged_impl[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]): Rep[Unit] = {
+  def optiml_untilconverged_impl[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices
 
     var tasks = vertices

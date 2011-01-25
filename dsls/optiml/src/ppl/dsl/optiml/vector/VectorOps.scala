@@ -88,6 +88,7 @@ trait VectorOps extends DSLType with Variables {
     def cloneL() = vector_clone(x)
     def pprint() = vector_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int]) = vector_repmat(x,i,j)
+    def toList = vector_tolist(x)
 
     // data operations
     def ++(y: Rep[Vector[A]]) = vector_concatenate(x,y)
@@ -171,6 +172,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_clone[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
   def vector_repmat[A:Manifest](x: Rep[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
+  def vector_tolist[A:Manifest](x: Rep[Vector[A]]): Rep[List[A]]
 
   def vector_concatenate[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_update[A:Manifest](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
@@ -297,6 +299,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
   case class VectorRepmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int])
     extends DeliteOpSingleTask(reifyEffects(vector_repmat_impl[A](x,i,j)))
+
+  case class VectorToList[A:Manifest](x: Exp[Vector[A]]) extends Def[List[A]]
 
   case class VectorMedian[A:Manifest:Ordering](x: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffects(vector_median_impl[A](x)))
@@ -546,6 +550,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_clone[A:Manifest](x: Exp[Vector[A]]) = VectorClone(reflectRead(x))
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(reflectRead(x)))
   def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = VectorRepmat(reflectRead(x),i,j)
+  def vector_tolist[A:Manifest](x: Exp[Vector[A]]) = VectorToList(reflectRead(x))
 
   def vector_concatenate[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorConcatenate(reflectRead(x),reflectRead(y))
   def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(reflectWrite(x), n, reflectRead(y)))
@@ -681,6 +686,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenBase {
       case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
       case VectorMutableTrans(x) => emitValDef(sym, quote(x) + ".mtrans")
       case VectorSort(x) => emitValDef(sym, quote(x) + ".sort")
+      case VectorToList(x) => emitValDef(sym, quote(x) + ".toList")
       case VectorCopyFrom(x,pos,y) => emitValDef(sym, quote(x) + ".copyFrom(" + quote(pos) + ", " + quote(y) + ")")
       case VectorInsert(x,pos,y) => emitValDef(sym, quote(x) + ".insert(" + quote(pos) + ", " + quote(y) + ")")
       case VectorInsertAll(x,pos,y) => emitValDef(sym, quote(x) + ".insertAll(" + quote(pos) + ", " + quote(y) + ")")

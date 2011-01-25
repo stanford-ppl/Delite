@@ -152,7 +152,7 @@ trait LanguageOps extends Base { this: OptiML =>
                         (implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
     = optiml_untilconverged(g, block)
 
-  def optiml_untilconverged[V <: Vertex :Manifest, E <: Edge :Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit])
+  def optiml_untilconverged[V <: Vertex :Manifest, E <: Edge :Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) : Rep[Unit]
 
 
   /**
@@ -279,6 +279,30 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
 
   // for now, just unroll the implementation
   // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
+  def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
+    val vertices = g.vertices
+
+    var tasks = vertices
+    val seen = Set[Vertex]()
+
+    while(tasks.length > 0) {
+      vertices.foreach(block)
+      val nextTasks = Vector[Vertex](0, true)
+
+      for(i <- 0 until vertices.length) {
+        val vtasks = vertices(i).tasks
+        for(j <- 0 until vtasks.length) {
+          if(!seen.contains(vtasks(j))) {
+            nextTasks.insert(vtasks.length, vtasks(j))
+            seen.add(vtasks(j))
+          }
+        }
+
+        vertices(i).clearTasks()
+      }
+    }
+  }
+
   def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
                                                   block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) = {
 

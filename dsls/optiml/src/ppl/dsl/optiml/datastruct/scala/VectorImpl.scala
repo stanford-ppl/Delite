@@ -82,6 +82,10 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
     this
   }
 
+  def toList = {
+    _data.toList 
+  }
+
   protected def insertSpace(pos: Int, len: Int) {
     ensureExtra(len)
     Array.copy(_data, pos, _data, pos + len, _length - pos)
