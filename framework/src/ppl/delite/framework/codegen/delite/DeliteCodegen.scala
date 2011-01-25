@@ -103,7 +103,7 @@ trait DeliteCodegen extends GenericNestedCodegen {
     nested += 1
 
     ignoreEffects = true
-    val e5 = buildScheduleForResult(start)
+    val e5 = ifGenAgree(_.buildScheduleForResult(start), false)
     ignoreEffects = false
 
     val e6 = e4.filter(z => z match {
