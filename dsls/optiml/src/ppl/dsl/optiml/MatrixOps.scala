@@ -53,7 +53,8 @@ trait MatrixOps extends DSLType with Variables {
     def vview(start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]) = matrix_vview(x,start,stride,length,isRow)
     def getRow(row: Rep[Int]) = matrix_getrow(x,row)
     def getCol(col: Rep[Int]) = matrix_getcol(x,col)
-    def sliceRows(begin: Rep[Int], end: Rep[Int]) = matrix_slicerows(x,begin,end)
+    def slice(startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]) = matrix_slice(x,startRow,endRow,startCol,endCol)
+    def sliceRows(start: Rep[Int], end: Rep[Int]) = matrix_slicerows(x,start,end)
     def numRows = matrix_numrows(x)
     def numCols = matrix_numcols(x)
 
@@ -150,7 +151,8 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_vview[A:Manifest](x: Rep[Matrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[Vector[A]]
   def matrix_getrow[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int]): Rep[Vector[A]]
   def matrix_getcol[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int]): Rep[Vector[A]]
-  def matrix_slicerows[A:Manifest](x: Rep[Matrix[A]], begin: Rep[Int], end: Rep[Int]): Rep[Matrix[A]]
+  def matrix_slice[A:Manifest](x: Rep[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]): Rep[Matrix[A]]
+  def matrix_slicerows[A:Manifest](x: Rep[Matrix[A]], start: Rep[Int], end: Rep[Int]): Rep[Matrix[A]]
   def matrix_numrows[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
   def matrix_numcols[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
 
@@ -276,8 +278,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixGetCol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int])
     extends DeliteOpSingleTask(reifyEffects(matrix_getcol_impl(x,i)))
 
-  case class MatrixSliceRows[A:Manifest](x: Exp[Matrix[A]], begin: Exp[Int], end: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_slicerows_impl(x,begin,end)))
+  case class MatrixSlice[A:Manifest](x: Exp[Matrix[A]], startRow: Exp[Int], endRow: Exp[Int], startCol: Exp[Int], endCol: Exp[Int])
+    extends DeliteOpSingleTask(reifyEffects(matrix_slice_impl(x,startRow,endRow,startCol,endCol)))
+
+  case class MatrixSliceRows[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], end: Exp[Int])
+    extends DeliteOpSingleTask(reifyEffects(matrix_slicerows_impl(x,start,end)))
 
   case class MatrixUpdateRow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffects(matrix_updaterow_impl(x,row,y)))
@@ -607,7 +612,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_vview[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) = MatrixVView(reflectRead(x), start, stride, length, isRow)
   def matrix_getrow[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = MatrixGetRow[A](reflectRead(x),i)
   def matrix_getcol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = MatrixGetCol[A](reflectRead(x),i)
-  def matrix_slicerows[A:Manifest](x: Exp[Matrix[A]], begin: Exp[Int], end: Exp[Int]) = MatrixSliceRows(reflectRead(x),begin,end)
+  def matrix_slice[A:Manifest](x: Exp[Matrix[A]], startRow: Exp[Int], endRow: Exp[Int], startCol: Exp[Int], endCol: Exp[Int]) = MatrixSlice(reflectRead(x),startRow,endRow,startCol,endCol)
+  def matrix_slicerows[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], end: Exp[Int]) = MatrixSliceRows(reflectRead(x),start,end)
   def matrix_numrows[A:Manifest](x: Exp[Matrix[A]]) = MatrixNumRows(reflectRead(x))
   def matrix_numcols[A:Manifest](x: Exp[Matrix[A]]) = MatrixNumCols(reflectRead(x))
     

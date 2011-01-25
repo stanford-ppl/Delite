@@ -175,6 +175,14 @@ trait TrainingSet[@specialized T,L] extends Matrix[T] {
 }
 
 /**
+ * Image
+ */
+
+trait Image[@specialized T] extends Matrix[T]
+
+trait GrayscaleImage extends Image[Int]
+
+/**
  * Ref
  */
 
