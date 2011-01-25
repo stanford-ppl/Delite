@@ -40,8 +40,8 @@ class OP_While(val id: String,
         for (c <- getConsumers) c.addDependency(r)
 
         //add special consumer ops
-        if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, predicateGraph.result)) //get predicate result on all chunks
-        if (bodyValue == "") bodyGraph.schedule(idx).add(new GetterOp(id+"b_"+idx, idx, lastOps:_*)) //barrier end of body so predicate can be reevaluated
+        if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, Seq(predicateGraph.result), Seq(predicateGraph.result))) //get predicate result on all chunks
+        if (bodyValue == "") bodyGraph.schedule(idx).add(new GetterOp(id+"b_"+idx, idx, lastOps, Seq())) //barrier end of body so predicate can be reevaluated
 
         r
       }

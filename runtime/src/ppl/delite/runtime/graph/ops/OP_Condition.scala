@@ -57,10 +57,10 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
         if (idx == returnerIdx) returnOp = r
 
         //add special consumer ops
-        if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, predicateGraph.result)) //get predicate result on all chunks
+        if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, Seq(predicateGraph.result), Seq(predicateGraph.result))) //get predicate result on all chunks
         if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
-          if (thenValue == "") thenGraph.schedule(idx).add(new GetterOp(id+"t_"+idx, idx, thenGraph.result)) //get then result on returner chunk
-          if (elseValue == "") elseGraph.schedule(idx).add(new GetterOp(id+"e_"+idx, idx, elseGraph.result)) //get else result on returner chunk
+          if (thenValue == "") thenGraph.schedule(idx).add(new GetterOp(id+"t_"+idx, idx, Seq(thenGraph.result), Seq(thenGraph.result))) //get then result on returner chunk
+          if (elseValue == "") elseGraph.schedule(idx).add(new GetterOp(id+"e_"+idx, idx, Seq(elseGraph.result), Seq(elseGraph.result))) //get else result on returner chunk
         }
 
         r

@@ -21,10 +21,10 @@ queue<FreeItem>* freeList = new queue<FreeItem>();
 map<void*,list<void*>*>* cudaMemoryMap = new map<void*,list<void*>*>();
 
 void DeliteCudaMalloc(void** ptr, size_t size) {
-	size_t free;
-	size_t total;
-	cudaMemGetInfo(&free, &total);
-	while (free < size) {
+	size_t freeAmt;
+	size_t totalAmt;
+	cudaMemGetInfo(&freeAmt, &totalAmt);
+	while (freeAmt < size) {
 		if (freeList->size() == 0) {
 			cout << "FATAL: Insufficient device memory" << endl;
 			exit(-1);
@@ -45,17 +45,18 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 			}
 			cudaMemoryMap->erase(*iter);
 			delete freePtrList;
-			delete *iter;
+			free(*iter);
 		}
 		delete item.keys;
-		cudaMemGetInfo(&free, &total);
+		cudaMemGetInfo(&freeAmt, &totalAmt);
 	}
 	
 	cudaMalloc(ptr, size);
 	lastAlloc->push_back(*ptr);
 }
 
-/* void DeliteCudaMalloc(void** ptr, size_t size) {
+/* //this version frees memory eagerly; useful for debugging
+void DeliteCudaMalloc(void** ptr, size_t size) {
     while (freeList->size() > 0) {
 	    FreeItem item = freeList->front();
  	        freeList->pop();
@@ -73,12 +74,12 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 				void* freePtr = *iter2;
 				if (cudaFree(freePtr) != cudaSuccess)
 					cout << "bad free pointer: " << (long) freePtr << endl;
-				else
-					cout << "freed successfully: " << (long) freePtr << endl;
+				//else
+					//cout << "freed successfully: " << (long) freePtr << endl;
 			}
 			cudaMemoryMap->erase(*iter);
 			delete freePtrList;
-			delete *iter;
+			free(*iter);
 		}
 		delete item.keys;
 	}
@@ -87,11 +88,12 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 		cout << "FATAL: cuda malloc failed unexpectedly" << endl;
 		exit(-1);
 	}
-	else
-		cout << "allocated successfully: " << (long) *ptr << endl;
+	//else
+		//cout << "allocated successfully: " << (long) *ptr << endl;
 	
 	lastAlloc->push_back(*ptr);
-} */
+}
+*/
 
 char* bufferStart = 0;
 size_t bufferSize = 10737418240;
@@ -120,3 +122,4 @@ void DeliteCudaMemcpyDtoHAsync(void* dptr, void* sptr, size_t size) {
 	cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyDeviceToHost, d2hStream);
 	cudaStreamSynchronize(d2hStream);
 }
+

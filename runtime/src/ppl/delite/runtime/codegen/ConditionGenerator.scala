@@ -108,7 +108,7 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
 
     //write if
     out.append("if (")
-    if (condition.predicateValue == "") out.append(getSymCPU(condition.predicateGraph.result))
+    if (condition.predicateValue == "") out.append(getSymGPU(condition.predicateGraph.result))
     else out.append(condition.predicateValue)
     out.append(") {\n")
 
