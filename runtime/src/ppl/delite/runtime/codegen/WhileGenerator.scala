@@ -57,10 +57,11 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
     if (whileLoop.predicateValue == "") {
       available.clear
       available ++= inputs
+      out.append(";{\n")
       addKernelCalls(whileLoop.predicateGraph.schedule(location), location, out, available, new ArrayBuffer[DeliteOP]) //dummy syncList b/c already added
       out.append("pred = ") //update var
       out.append(getSym(whileLoop.predicateGraph.result))
-      out.append('\n')
+      out.append("\n}\n")
     }
 
     //print end of while and method
@@ -132,10 +133,11 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGen
       available ++= inputs
       awaited.clear
       awaited ++= inputs
+      out.append("{\n")
       addKernelCalls(whileLoop.predicateGraph.schedule(location), location, available, awaited, new ArrayBuffer[DeliteOP], out) //dummy syncList b/c already added
       out.append("pred = ") //update var
       out.append(getSymGPU(whileLoop.predicateGraph.result))
-      out.append(";\n")
+      out.append(";\n}\n")
     }
 
     //print end of while and function
