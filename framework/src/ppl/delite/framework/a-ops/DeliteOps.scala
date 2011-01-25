@@ -77,23 +77,24 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
     val func: Exp[B]
     val alloc: Exp[C[B]]
 
-    lazy val variant = reifyEffects {
+    lazy val variant = {
       implicit val mA: Manifest[A] = v.Type.asInstanceOf[Manifest[A]]
       implicit val mB: Manifest[B] = func.Type.asInstanceOf[Manifest[B]]
       implicit val mCA: Manifest[C[A]] = in.Type.asInstanceOf[Manifest[C[A]]]
       implicit val mCB: Manifest[C[B]] = alloc.Type.asInstanceOf[Manifest[C[B]]]
-
-      var i = unit(0)
-      var vs = unit(null).asInstanceOfL[A]
-      while (i < in.size) {
-        vs = in(i)
-        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(vs)).rhs)
-        // why is the alloc dependency not lifted out of the loop when the variant block is emitted?
-        alloc(i) = func
-        i += 1
+      reifyEffects {
+        var i = unit(0)
+        var vs = unit(null).asInstanceOfL[A]
+        while (i < in.size) {
+          vs = in(i)
+          rebind(v.asInstanceOf[Sym[A]], ReadVar(vs))
+          // why is the alloc dependency not lifted out of the loop when the variant block is emitted?
+          alloc(i) = func
+          i += 1
+        }
+        alloc
       }
-      //alloc
-    }.asInstanceOf[Exp[Any]]
+    }
   }
 
   /**
@@ -153,49 +154,35 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
     val rV: (Exp[R],Exp[R])
     val reduce: Exp[R]
 
-    // TODO: this awful mess is producing an incorrect answer. needs a little TR love.
+    lazy val acc = {
+      implicit val mR = map.Type.asInstanceOf[Manifest[R]]
+      __newVar(unit(null).asInstanceOfL[R])
+    }
+    lazy val init = {
+      implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
+      implicit val mR = map.Type.asInstanceOf[Manifest[R]]
+      reifyEffects {
+        var vs = in(0)
+        rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
+        acc = map
+      }
+    }
     lazy val variant = {
       implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
       implicit val mR = map.Type.asInstanceOf[Manifest[R]]
-      // HACK HACK HACK
-//      val mapt = map match {
-//        case Def(Reify(x, effects)) => x
-//        case _ => map
-//      }
       reifyEffects {
-        // the while depends on acc, so the map, and mV, become inputs to the while, which is bad, since we want to redefine it
-        // so we cannot pre-initialize acc
-        var i = unit(0)
-        var acc = unit(null).asInstanceOfL[R]
+        var i = unit(1)
         while (i < in.size) {
-          // HACK: can't import IfThenElse right now due to scoping issues with lifting stuff unintentionally
           var vs = in(i)
-          while (i < 1){
-            //var vs = in(i)
-            // initialize acc
-            //var mVtmp = reifyEffects(reflectEffect(ReadVar(vs)))
-            //rebind(mV.asInstanceOf[Sym[A]], ReadVar(mVtmp))
-            rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
-            acc = map
-            //acc = reflectEffect(findDefinition(mapt.asInstanceOf[Sym[R]]).get.rhs)
-            i += 1
-            vs = in(i)
-          }
-          var mVtmp = reflectEffect(ReadVar(vs))
-          rebind(mV.asInstanceOf[Sym[A]], ReadVar(mVtmp))
-          //reflectEffect(findDefinition(mV.asInstanceOf[Sym[A]]).get.rhs)
-          //rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
+          rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
+          var x = map
           rebind(rV._1.asInstanceOf[Sym[R]], ReadVar(acc))
-          rebind(rV._2.asInstanceOf[Sym[R]], findDefinition(map.asInstanceOf[Sym[R]]).get.rhs)
-          //var rVtmp = reflectEffect(findDefinition(mapt.asInstanceOf[Sym[R]]).get.rhs)
-          //var rVtmp = map
-          //rebind(rV._2.asInstanceOf[Sym[R]], ReadVar(rVtmp))
-          //rebind(rV._2.asInstanceOf[Sym[R]], findDefinition(reflectEffect(findDefinition(map.asInstanceOf[Sym[R]]).get.rhs).asInstanceOf[Sym[_]]).get.rhs)
+          rebind(rV._2.asInstanceOf[Sym[R]], ReadVar(x))
           acc = reduce
           i += 1
         }
         acc
-      }.asInstanceOf[Exp[Any]]
+      }
     }
   }
 
@@ -233,26 +220,29 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
    * @param  sync   a function from an index to a list of objects that should be locked, in a total ordering,
    *                prior to chunk execution, and unlocked after; reified version of Exp[Int] => Exp[List[_]]
    */
-  abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] with DeliteOpReduceLikeWhileLoopVariant {
+  abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] with DeliteOpMapLikeWhileLoopVariant {
     val in: Exp[C[A]]
     val v: Exp[A]
     val func: Exp[Unit]
     val i: Exp[Int]
     val sync: Exp[List[_]]
 
-    lazy val variant = reifyEffects {
+    lazy val alloc = Const()
+    lazy val variant = {
       implicit val mA: Manifest[A] = v.Type.asInstanceOf[Manifest[A]]
-
-      var i = unit(0)
-      var vs = unit(null).asInstanceOfL[A]
-      while (i < in.size) {
-        vs = in(i)
-        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(vs)).rhs)
-        func
-        i += 1
+      reifyEffects {
+        var index = unit(0)
+        var vs = unit(null).asInstanceOfL[A]
+        while (index < in.size) {
+          vs = in(index)
+          rebind(v.asInstanceOf[Sym[A]], ReadVar(vs))
+          //reflectEffect(findDefinition(func.asInstanceOf[Sym[Unit]]).get.rhs)
+          var x = func
+          index += 1
+        }
+        alloc
       }
-      Const()
-    }.asInstanceOf[Exp[Any]]
+    }
   }
 
   // used by delite code generators to handle nested delite ops
@@ -262,7 +252,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
 
   // TODO: move to lms?
   //def rebind(sym: Sym[Any], rhs: Def[Any]) = reifyEffects(reflectEffect(createDefinition(sym, rhs).rhs))
-  def rebind(sym: Sym[Any], rhs: Def[Any]) = createDefinition(sym, rhs).rhs
+  def rebind(sym: Sym[Any], rhs: Def[Any]) = reflectEffect(createDefinition(sym, rhs).rhs)
 
 }
 

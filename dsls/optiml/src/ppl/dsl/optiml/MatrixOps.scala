@@ -347,10 +347,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v._1 + v._2
   }
 
-  case class MatrixPlusScalar[A](in: Exp[Matrix[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
+  case class MatrixPlusScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
     extends DeliteOpMap[A,A,Matrix] {
 
-    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v + y
@@ -372,10 +371,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v._1 - v._2
   }
 
-  case class MatrixMinusScalar[A](in: Exp[Matrix[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
+  case class MatrixMinusScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
     extends DeliteOpMap[A,A,Matrix] {
 
-    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v - y
@@ -389,10 +387,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v._1 * v._2
   }
 
-  case class MatrixTimesScalar[A](in: Exp[Matrix[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
+  case class MatrixTimesScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
     extends DeliteOpMap[A,A,Matrix] {
 
-    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v * y
@@ -423,10 +420,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v._1 / v._2
   }
 
-  case class MatrixDivideScalar[A](in: Exp[Matrix[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
+  case class MatrixDivideScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
     extends DeliteOpMap[A,A,Matrix] {
 
-    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v / y
@@ -439,11 +435,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v._1 + v._2
   }
 
-  case class MatrixSumRow[A](x: Exp[Matrix[A]])(implicit val mAA: Manifest[A], arith: Arith[A])
+  case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]])
     extends DeliteOpMap[Vector[A],A,Vector] {
 
-    val mA = manifest[Vector[A]]
-    val mB = mAA
     val alloc = reifyEffects(Vector[A](x.numRows, false))
     val in = reifyEffects {
       var tcoll = Vector[Vector[A]](x.numRows, false)
@@ -457,11 +451,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v.sum
   }
 
-  case class MatrixSumCol[A](x: Exp[Matrix[A]])(implicit val mAA: Manifest[A], arith: Arith[A])
+  case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]])
     extends DeliteOpMap[Vector[A],A,Vector] {
 
-    val mA = manifest[Vector[A]]
-    val mB = mAA
     val alloc = reifyEffects(Vector[A](x.numCols, true))
     val in = reifyEffects {
       var tcoll = Vector[Vector[A]](x.numCols, true)
@@ -483,19 +475,17 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 //    val func = v.unary_-
 //  }
 
-  case class MatrixAbs[A](in: Exp[Matrix[A]])(implicit val mA: Manifest[A], arith: Arith[A])
+  case class MatrixAbs[A:Manifest:Arith](in: Exp[Matrix[A]])
     extends DeliteOpMap[A,A,Matrix] {
 
-    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v.abs
   }
 
-  case class MatrixExp[A](in: Exp[Matrix[A]])(implicit val mA: Manifest[A], arith: Arith[A])
+  case class MatrixExp[A:Manifest:Arith](in: Exp[Matrix[A]])
     extends DeliteOpMap[A,A,Matrix] {
 
-    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v.exp
@@ -533,16 +523,15 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = if (v._1 > v._2) v._1 else v._2
   }
 
-  case class MatrixMap[A,B](in: Exp[Matrix[A]], v: Exp[A], func: Exp[B])(implicit val mA: Manifest[A], val mB: Manifest[B])
+  case class MatrixMap[A:Manifest,B:Manifest](in: Exp[Matrix[A]], v: Exp[A], func: Exp[B])
     extends DeliteOpMap[A,B,Matrix] {
 
     val alloc = reifyEffects(Matrix[B](in.numRows, in.numCols))
   }
 
-  case class MatrixMutableMap[A](in: Exp[Matrix[A]], v: Exp[A], func: Exp[A])(implicit val mA: Manifest[A])
+  case class MatrixMutableMap[A:Manifest](in: Exp[Matrix[A]], v: Exp[A], func: Exp[A])
     extends DeliteOpMap[A,A,Matrix] {
 
-    val mB = mA
     val alloc = in
   }
 
@@ -552,10 +541,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 //    val alloc = in
 //  }
 
-  case class MatrixMapRowsToVec[A,B](x: Exp[Matrix[A]], v: Exp[Vector[A]], func: Exp[B], isRow: Exp[Boolean])(implicit val mAA: Manifest[A], val mB: Manifest[B])
+  case class MatrixMapRowsToVec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], v: Exp[Vector[A]], func: Exp[B], isRow: Exp[Boolean])
     extends DeliteOpMap[Vector[A],B,Vector] {
 
-    val mA = manifest[Vector[A]]
     val in = reifyEffects {
       var tcoll = Vector[Vector[A]](x.numRows, isRow)
        for (i <- 0 until x.numRows){

@@ -241,17 +241,16 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
   /**
    * Sum
    */
-  case class Sum[A](start: Exp[Int], end: Exp[Int], mV: Exp[Int], map: Exp[A])(implicit mA: Manifest[A], ops: Arith[A])
+  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], mV: Exp[Int], map: Exp[A])
     extends DeliteOpMapReduce[Int,A,Vector] {
 
     val in = Vector.range(start, end)
     val rV = (fresh[A],fresh[A])
-    val reduce = reifyEffects(ops.+=(rV._1,rV._2))
+    val reduce = reifyEffects(rV._1 += rV._2)
     //val mapreduce = reifyEffects(ops.+=(acc, reifyEffects(block(mV))))
   }
 
-  def optiml_sum[A](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A])
-                   (implicit mA: Manifest[A], ops: Arith[A]) = {
+  def optiml_sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
 
     val mV = fresh[Int]
     val map = reifyEffects(block(mV))

@@ -201,13 +201,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Map\"")
     emitExecutionOpCommon(sym, inputs, mutableInputs, controlDeps, antiDeps)
-
-    //// constructing from variant encoded in the IR
-    val output = rhs match {
-      case map:DeliteOpMap[_,_,_] => map.alloc
-    }
-    emitVariant(sym, rhs, output, inputs, mutableInputs, controlDeps, antiDeps)
-
+    emitVariant(sym, rhs, inputs, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
 
@@ -222,14 +216,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"MapReduce\"")
     emitExecutionOpCommon(sym, inputs, mutableInputs, controlDeps, antiDeps)
-
-    //// constructing from variant encoded in the IR
-    val output = rhs match {
-      //case mapR:DeliteOpMapReduce[_,_,_] => mapR.out
-      case rvar:DeliteOpReduceLikeWhileLoopVariant => getBlockResult(rvar.variant)
-    }
-    emitVariant(sym, rhs, output, inputs, mutableInputs, controlDeps, antiDeps)
-
+    emitVariant(sym, rhs, inputs, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
 
@@ -244,13 +231,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
                     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Foreach\"")
     emitExecutionOpCommon(sym, inputs, mutableInputs, controlDeps, antiDeps)
-
-    //// constructing from variant encoded in the IR
-    val output = rhs match {
-      case vw:DeliteOpMapLikeWhileLoopVariant => getBlockResult(vw.variant)
-    }
-    emitVariant(sym, rhs, output, inputs, mutableInputs, controlDeps, antiDeps)
-
+    emitVariant(sym, rhs, inputs, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
 
@@ -311,10 +292,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     stream.print("  \"antiDeps\":[" + makeString(antiDeps) + "]" + (if(last) "\n" else ",\n"))
   }
 
-  def emitVariant(sym: Sym[_], rhs: Def[_], output: Exp[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+  def emitVariant(sym: Sym[_], rhs: Def[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
                  (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
-    if (!rhs.isInstanceOf[Variant[_]] || nested > Config.nestedVariantsLevel) return
+    if (!rhs.isInstanceOf[Variant] || nested > Config.nestedVariantsLevel) return
 
     // pre
     val saveMutatingDeps = kernelMutatingDeps
@@ -326,20 +307,20 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     // variant
     rhs match {
-      case mvar:DeliteOpMapLikeWhileLoopVariant => emitMapLikeWhileLoopVariant(mvar, sym, output, inputs, mutableInputs, controlDeps, antiDeps)
-      case rvar:DeliteOpReduceLikeWhileLoopVariant => emitReduceLikeWhileLoopVariant(rvar, sym, output, inputs, mutableInputs, controlDeps, antiDeps)
+      case mvar:DeliteOpMapLikeWhileLoopVariant => emitMapLikeWhileLoopVariant(mvar, sym, inputs, mutableInputs, controlDeps, antiDeps)
+      case rvar:DeliteOpReduceLikeWhileLoopVariant => emitReduceLikeWhileLoopVariant(rvar, sym, inputs, mutableInputs, controlDeps, antiDeps)
       case _ =>
     }
 
     // post
     emitEOG()
-    emitOutput(output)
+    emitOutput(getBlockResult(rhs.asInstanceOf[Variant].variant))
     stream.println("}")
     kernelInputDeps = saveInputDeps
     kernelMutatingDeps = saveMutatingDeps
   }
 
-  def emitMapLikeWhileLoopVariant(vw: DeliteOpMapLikeWhileLoopVariant, sym: Sym[_], output: Exp[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+  def emitMapLikeWhileLoopVariant(vw: DeliteOpMapLikeWhileLoopVariant, sym: Sym[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
     // manually lift alloc out of the variant loop. TODO: this should not be required, see comment in DeliteOps.scala
@@ -349,35 +330,20 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     scope = appendScope()
     emitBlock(vw.variant)
     scope = save
-    /*
-    val save = scope
-    emitBlock(vw.alloc)
-    scope = appendScope()
-    // we should not be reifying during code-gen, see todo in DeliteOps.scala
-    emitBlock(reifyEffects(vw.index))
-    //emitBlock(vw.index)
-    emitWhileLoop(vw.cond, vw.body, sym, inputs, mutableInputs, controlDeps, antiDeps)
-    scope = save
-    */
   }
 
-  def emitReduceLikeWhileLoopVariant(vw: DeliteOpReduceLikeWhileLoopVariant, sym: Sym[_], output: Exp[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+  def emitReduceLikeWhileLoopVariant(vw: DeliteOpReduceLikeWhileLoopVariant, sym: Sym[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
-    emitBlock(vw.variant)
-    /*
+    // TODO: we want to run init and body in their own scopes, sequentially, in the runtime.
+    // how do we get the stuff they both depend on to be outside of both scopes?
     val save = scope
-    // we should not be reifying during code-gen, see todo in DeliteOps.scala
-    emitBlock(reifyEffects(vw.index))
-    //emitBlock(vw.index)
-    emitBlock(vw.init)
-    // TODO: HACK! testing passing alloc as a control dependency explicitly; currently this seems to be getting lost
-    emitWhileLoop(vw.cond, vw.body, sym, inputs, mutableInputs, getBlockResult(vw.init) :: controlDeps, antiDeps)
+    // TODO: we should not be reifying in generators. Need to deal with reification and vars.
+    emitBlock(getBlockResult(reifyEffects(vw.acc)))
     scope = appendScope()
-    emitBlock(getBlockResult(vw.out))
-    //emitNode(getBlockResult(vw.out))
+    emitSubGraph("init", vw.init)
+    emitSubGraph("block", vw.variant)
     scope = save
-    */
   }
 
   def emitOutput(x: Exp[_])(implicit stream: PrintWriter) = {

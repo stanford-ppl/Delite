@@ -50,7 +50,7 @@ final class SMPStaticScheduler extends StaticScheduler {
     op match {
       case c: OP_Control => addNested(c, graph, schedule, Range(0, numThreads))
       case _ => {
-        //if (op.variant != null) addNested(op.variant, graph, schedule, Range(0, numThreads)) else
+        if (op.variant != null) addNested(op.variant, graph, schedule, Range(0, numThreads)) else
         if (op.isDataParallel) split(op, graph, schedule, Range(0, numThreads))
         else cluster(op, schedule)
       }

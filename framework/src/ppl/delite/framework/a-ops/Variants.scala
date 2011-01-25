@@ -11,25 +11,18 @@ trait VariantsOpsExp extends EffectExp {
    * Variants are used to represent a Delite op multiple ways in the IR.
    */
   //trait Variant[T <: DeliteOp[_]] extends T
-  trait Variant[T <: DeliteOp[_]]
-
-  // this is unsatisfying
-  trait DeliteOpMapLikeWhileLoopVariant extends Variant[DeliteOpWhileLoop] {
-    // TODO: somehow index is getting moved outside of the loop -- how/why?
-    //val index: Var[Int]
-    val alloc: Exp[Any]
+  trait Variant {
     val variant: Exp[Any]
-    //val output: Exp[Any
   }
 
-  trait DeliteOpReduceLikeWhileLoopVariant extends Variant[DeliteOpWhileLoop] {
-    // TODO: somehow index is getting moved outside of the loop -- how/why?
-    //val index: Var[Int]
-    //val init: Exp[Any]
-    //val out: Exp[Any]
-    //val acc: Exp[Any]
-    // testing
-    val variant: Exp[Any]
+  // this is unsatisfying
+  trait DeliteOpMapLikeWhileLoopVariant extends Variant {
+    val alloc: Exp[Any] // same scope as variant
+  }
+
+  trait DeliteOpReduceLikeWhileLoopVariant extends Variant {
+    val init: Exp[Any] // inner scope, separate from variant
+    val acc: Var[Any] // outer scope
   }
 }
 
