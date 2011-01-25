@@ -207,13 +207,7 @@ object DeliteTaskGraph {
 
     val v = new OP_Variant(op.id, resultType, op, varGraph)
 
-    //TODO: due to how the framework works, the variant has one extra input (the loop index): hack it in for now
-    val interiorOps = varGraph.ops.toList
-    val idx = resolveInputs(interiorOps.flatMap(_.getInputs).filterNot(interiorOps contains)).filterNot(op.getInputs contains).distinct
-    assert(idx.length == 1)
-    v.addInput(idx(0))
-
-    v.inputSyms = getOp(idx(0).id)(varGraph) :: op.getInputs.map(d => getOp(d.id)(varGraph)).toList
+    v.inputSyms = op.getInputs.map(d => getOp(d.id)(varGraph)).toList
     extractCudaMetadata(v, varGraph, outerGraph)
     v
   }

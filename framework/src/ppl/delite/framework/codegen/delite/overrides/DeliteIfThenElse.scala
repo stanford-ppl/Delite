@@ -12,6 +12,7 @@ trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
   case class DeliteIfThenElse[T:Manifest](cond: Exp[Boolean], thenp: Exp[T], elsep: Exp[T]) extends DeliteOpCondition[T]
 
   override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]) = cond match {
+      // TODO: need to handle vars differently, this could be unsound
     case Const(true) => thenp
     case Const(false) => elsep
     case _ =>

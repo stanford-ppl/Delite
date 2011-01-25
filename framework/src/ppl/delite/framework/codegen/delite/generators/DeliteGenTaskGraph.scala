@@ -225,7 +225,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     //// constructing from variant encoded in the IR
     val output = rhs match {
-      case mapR:DeliteOpMapReduce[_,_,_] => mapR.alloc
+      //case mapR:DeliteOpMapReduce[_,_,_] => mapR.out
+      case rvar:DeliteOpReduceLikeWhileLoopVariant => getBlockResult(rvar.variant)
     }
     emitVariant(sym, rhs, output, inputs, mutableInputs, controlDeps, antiDeps)
 
@@ -246,7 +247,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
 
     //// constructing from variant encoded in the IR
     val output = rhs match {
-      case vw:DeliteOpMapLikeWhileLoopVariant => vw.alloc
+      case vw:DeliteOpMapLikeWhileLoopVariant => getBlockResult(vw.variant)
     }
     emitVariant(sym, rhs, output, inputs, mutableInputs, controlDeps, antiDeps)
 
@@ -322,9 +323,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     kernelInputDeps = Map()
     stream.print(",\"variant\": {")
     stream.print("\"ops\":[" )
+
     // variant
     rhs match {
-      case vw:DeliteOpMapLikeWhileLoopVariant => emitMapLikeWhileLoopVariant(vw, sym, output, inputs, mutableInputs, controlDeps, antiDeps)
+      case mvar:DeliteOpMapLikeWhileLoopVariant => emitMapLikeWhileLoopVariant(mvar, sym, output, inputs, mutableInputs, controlDeps, antiDeps)
+      case rvar:DeliteOpReduceLikeWhileLoopVariant => emitReduceLikeWhileLoopVariant(rvar, sym, output, inputs, mutableInputs, controlDeps, antiDeps)
       case _ =>
     }
 
@@ -339,6 +342,14 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   def emitMapLikeWhileLoopVariant(vw: DeliteOpMapLikeWhileLoopVariant, sym: Sym[_], output: Exp[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
+    // manually lift alloc out of the variant loop. TODO: this should not be required, see comment in DeliteOps.scala
+    // we should be able to remove this when we merge with opfusing
+    val save = scope
+    emitBlock(vw.alloc)
+    scope = appendScope()
+    emitBlock(vw.variant)
+    scope = save
+    /*
     val save = scope
     emitBlock(vw.alloc)
     scope = appendScope()
@@ -347,6 +358,26 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     //emitBlock(vw.index)
     emitWhileLoop(vw.cond, vw.body, sym, inputs, mutableInputs, controlDeps, antiDeps)
     scope = save
+    */
+  }
+
+  def emitReduceLikeWhileLoopVariant(vw: DeliteOpReduceLikeWhileLoopVariant, sym: Sym[_], output: Exp[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
+    (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
+
+    emitBlock(vw.variant)
+    /*
+    val save = scope
+    // we should not be reifying during code-gen, see todo in DeliteOps.scala
+    emitBlock(reifyEffects(vw.index))
+    //emitBlock(vw.index)
+    emitBlock(vw.init)
+    // TODO: HACK! testing passing alloc as a control dependency explicitly; currently this seems to be getting lost
+    emitWhileLoop(vw.cond, vw.body, sym, inputs, mutableInputs, getBlockResult(vw.init) :: controlDeps, antiDeps)
+    scope = appendScope()
+    emitBlock(getBlockResult(vw.out))
+    //emitNode(getBlockResult(vw.out))
+    scope = save
+    */
   }
 
   def emitOutput(x: Exp[_])(implicit stream: PrintWriter) = {

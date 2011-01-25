@@ -5,8 +5,9 @@ import ppl.delite.framework.DeliteCollection
 import scala.virtualization.lms.internal._
 import scala.virtualization.lms.common._
 
+// importing all of this may be dangerous - we might end up lifting something unintentionally.
 trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with DeliteCollectionOpsExp
-  with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp {
+  with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp  {
 
   /**
    * The base type of the DeliteOp hierarchy.
@@ -54,12 +55,10 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
    * @param  cond  condition expression, will be emitted as a kernel
    * @param  body   the body of the loop
    */
-  trait WhileLoopLike {
+  trait DeliteOpWhileLoop extends DeliteOp[Unit] {
     val cond: Exp[Boolean]
     val body: Exp[Unit]
   }
-
-  trait DeliteOpWhileLoop extends DeliteOp[Unit] with WhileLoopLike
 
   /**
    * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
@@ -78,37 +77,23 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
     val func: Exp[B]
     val alloc: Exp[C[B]]
 
-    // DeliteOpWhileLoopVariant
-    //var index = unit(0)
-    //lazy val output = alloc
-    // TODO: we need a way to make variables and reify work together -- we lose access to the var once we reify it
-    // TODO: there should be a better way of doing this
-    //val i : Var[Int] = index match { case Def(Reify(x, effects)) => x.asInstanceOf[Var[Int]] }
+    lazy val variant = reifyEffects {
+      implicit val mA: Manifest[A] = v.Type.asInstanceOf[Manifest[A]]
+      implicit val mB: Manifest[B] = func.Type.asInstanceOf[Manifest[B]]
+      implicit val mCA: Manifest[C[A]] = in.Type.asInstanceOf[Manifest[C[A]]]
+      implicit val mCB: Manifest[C[B]] = alloc.Type.asInstanceOf[Manifest[C[B]]]
 
-    // we can't instantiate these like below, because they then become dependent on the order a subclass declares
-    // the abstract value (can result in an NPE). Unfortunately, this now forces all subclasses to be verbose.
-    // The best solution would be to pass the manifests in to DeliteOpMap directly, but it would need to not be a trait,
-    // and we would need a different way of encoding variants.
-    implicit val mA: Manifest[A]
-    implicit val mB: Manifest[B]
-    //lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
-    //lazy implicit val mB = func.Type.asInstanceOf[Manifest[B]]
-    val vs = () => __newVar(unit(null).asInstanceOfL[A])
-    lazy val Vs = vs()
-    // this does not get initialized properly in body -- perhaps a scala bug?
-    //lazy val vs = __newVar(unit(null)).asInstanceOfL[A]
-    val index = __newVar(unit(0))
-    lazy val cond = reifyEffects(index < in.size)
-    lazy val body =
-      reifyEffects {
-        //vs = in(index)
-        //val Vs = vs()
-        Vs = in(index)
-        // in the variant version, we need to actually emit the bound symbol as a kernel so it can be passed in as an input
-        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs)
-        alloc(index) = func
-        index += 1
+      var i = unit(0)
+      var vs = unit(null).asInstanceOfL[A]
+      while (i < in.size) {
+        vs = in(i)
+        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(vs)).rhs)
+        // why is the alloc dependency not lifted out of the loop when the variant block is emitted?
+        alloc(i) = func
+        i += 1
       }
+      //alloc
+    }.asInstanceOf[Exp[Any]]
   }
 
   /**
@@ -155,7 +140,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
    * @param  rV      the bound symbol that the reducing function operates over
    * @param  reduce  the reduction function; reified version of ([Exp[R],Exp[R]) => Exp[R]. Must be associative.
    */
-  abstract class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] with DeliteOpMapLikeWhileLoopVariant {
+  abstract class DeliteOpMapReduce[A,R,C[X] <: DeliteCollection[X]]() extends DeliteOp[R] with DeliteOpReduceLikeWhileLoopVariant {
     val in: Exp[C[A]]
     //val acc: Exp[R]
 
@@ -168,39 +153,51 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
     val rV: (Exp[R],Exp[R])
     val reduce: Exp[R]
 
-    // DeliteOpWhileLoopVariant
-    lazy implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
-    lazy implicit val mR = map.Type.asInstanceOf[Manifest[R]]
-    val acc = () => __newVar(unit(null).asInstanceOfL[R])
-    lazy val Acc = {
-      //acc()
-      Vs = in(0)
-      val x = acc()
-      reifyEffects(reflectEffect(createDefinition(mV.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs))
-      x = map
-      x
-    }
-    lazy val alloc = reifyEffects(readVar(Acc))
-    val vs = () => __newVar(unit(null).asInstanceOfL[A])
-    lazy val Vs = vs()
-    lazy val cond = reifyEffects(index < in.size)
-    val index = __newVar(unit(1))
-    lazy val body =
+    // TODO: this awful mess is producing an incorrect answer. needs a little TR love.
+    lazy val variant = {
+      implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
+      implicit val mR = map.Type.asInstanceOf[Manifest[R]]
+      // HACK HACK HACK
+//      val mapt = map match {
+//        case Def(Reify(x, effects)) => x
+//        case _ => map
+//      }
       reifyEffects {
-        Vs = in(index)
-        // in the variant version, we need to actually emit the bound symbol as a kernel so it can be passed in as an input
-        // map
-        //reflectEffect(createDefinition(mV.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs)
-        var x = map
-
-        // reduce
-        reflectEffect(createDefinition(rV._1.asInstanceOf[Sym[R]], ReadVar(Acc)).rhs)
-        reflectEffect(createDefinition(rV._2.asInstanceOf[Sym[R]], ReadVar(x)).rhs)
-        Acc = reduce
-        index += 1
-      }
+        // the while depends on acc, so the map, and mV, become inputs to the while, which is bad, since we want to redefine it
+        // so we cannot pre-initialize acc
+        var i = unit(0)
+        var acc = unit(null).asInstanceOfL[R]
+        while (i < in.size) {
+          // HACK: can't import IfThenElse right now due to scoping issues with lifting stuff unintentionally
+          var vs = in(i)
+          while (i < 1){
+            //var vs = in(i)
+            // initialize acc
+            //var mVtmp = reifyEffects(reflectEffect(ReadVar(vs)))
+            //rebind(mV.asInstanceOf[Sym[A]], ReadVar(mVtmp))
+            rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
+            acc = map
+            //acc = reflectEffect(findDefinition(mapt.asInstanceOf[Sym[R]]).get.rhs)
+            i += 1
+            vs = in(i)
+          }
+          var mVtmp = reflectEffect(ReadVar(vs))
+          rebind(mV.asInstanceOf[Sym[A]], ReadVar(mVtmp))
+          //reflectEffect(findDefinition(mV.asInstanceOf[Sym[A]]).get.rhs)
+          //rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
+          rebind(rV._1.asInstanceOf[Sym[R]], ReadVar(acc))
+          rebind(rV._2.asInstanceOf[Sym[R]], findDefinition(map.asInstanceOf[Sym[R]]).get.rhs)
+          //var rVtmp = reflectEffect(findDefinition(mapt.asInstanceOf[Sym[R]]).get.rhs)
+          //var rVtmp = map
+          //rebind(rV._2.asInstanceOf[Sym[R]], ReadVar(rVtmp))
+          //rebind(rV._2.asInstanceOf[Sym[R]], findDefinition(reflectEffect(findDefinition(map.asInstanceOf[Sym[R]]).get.rhs).asInstanceOf[Sym[_]]).get.rhs)
+          acc = reduce
+          i += 1
+        }
+        acc
+      }.asInstanceOf[Exp[Any]]
+    }
   }
-
 
   /**
    * Parallel zipWith-reduction from a (DeliteCollection[A],DeliteCollection[A]) => R. The map-reduce is composed,
@@ -236,34 +233,37 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
    * @param  sync   a function from an index to a list of objects that should be locked, in a total ordering,
    *                prior to chunk execution, and unlocked after; reified version of Exp[Int] => Exp[List[_]]
    */
-  abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] with DeliteOpMapLikeWhileLoopVariant {
+  abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] with DeliteOpReduceLikeWhileLoopVariant {
     val in: Exp[C[A]]
     val v: Exp[A]
     val func: Exp[Unit]
     val i: Exp[Int]
     val sync: Exp[List[_]]
 
-    // DeliteOpMapLikeWhileLoopVariant
-    //implicit val mA: Manifest[A]
-    lazy implicit val mA = v.Type.asInstanceOf[Manifest[A]]
-    val vs = () => __newVar(unit(null).asInstanceOfL[A])
-    lazy val Vs = vs()
-    lazy val alloc = Const()
-    val index = __newVar(unit(0))
-    lazy val cond = reifyEffects(index < in.size)
-    lazy val body =
-      reifyEffects {
-        Vs = in(index)
-        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(Vs)).rhs)
+    lazy val variant = reifyEffects {
+      implicit val mA: Manifest[A] = v.Type.asInstanceOf[Manifest[A]]
+
+      var i = unit(0)
+      var vs = unit(null).asInstanceOfL[A]
+      while (i < in.size) {
+        vs = in(i)
+        reflectEffect(createDefinition(v.asInstanceOf[Sym[A]], ReadVar(vs)).rhs)
         func
-        index += 1
+        i += 1
       }
+      Const()
+    }.asInstanceOf[Exp[Any]]
   }
 
   // used by delite code generators to handle nested delite ops
   var deliteKernel: Boolean = _
   var deliteResult: Option[Sym[Any]] = _
   var deliteInputs: List[Sym[Any]] = _
+
+  // TODO: move to lms?
+  //def rebind(sym: Sym[Any], rhs: Def[Any]) = reifyEffects(reflectEffect(createDefinition(sym, rhs).rhs))
+  def rebind(sym: Sym[Any], rhs: Def[Any]) = createDefinition(sym, rhs).rhs
+
 }
 
 trait BaseGenDeliteOps extends GenericNestedCodegen {
