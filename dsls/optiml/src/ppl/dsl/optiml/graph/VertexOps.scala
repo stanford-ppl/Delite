@@ -21,11 +21,18 @@ trait VertexOps extends DSLType with Variables {
   class vertexOpsCls(v: Rep[Vertex]) {
     def edges = vertex_edges(v)
     def neighbors = vertex_neighbors(v)
+    def addTasks(t: Rep[Vertex]) = vertex_add_tasks(v, t)
+    def clearTasks() = vertex_clear_tasks(v)
+    def tasks = vertex_tasks(v)
   }
 
   // class defs
   def vertex_edges(v: Rep[Vertex]): Rep[Edges[Edge]]
   def vertex_neighbors(v: Rep[Vertex]): Rep[Vertices[Vertex]]
+
+  def vertex_tasks(v: Rep[Vertex]) : Rep[Vertices[Vertex]]
+  def vertex_clear_tasks(v: Rep[Vertex]) : Rep[Unit]
+  def vertex_add_tasks(v: Rep[Vertex], t: Rep[Vertex]) : Rep[Unit]
 }
 
 trait VertexOpsExp extends VertexOps with EffectExp {
@@ -35,15 +42,22 @@ trait VertexOpsExp extends VertexOps with EffectExp {
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
 
-  case class VertexEdges(v: Rep[Vertex]) extends Def[Edges[Edge]]
-  case class VertexNeighbors(v: Rep[Vertex]) extends Def[Vertices[Vertex]]
+  case class VertexEdges(v: Exp[Vertex]) extends Def[Edges[Edge]]
+  case class VertexNeighbors(v: Exp[Vertex]) extends Def[Vertices[Vertex]]
 
+  case class VertexTasks(v: Exp[Vertex]) extends Def[Vertices[Vertex]]
+  case class VertexAddTask(v: Exp[Vertex], t: Exp[Vertex]) extends Def[Unit]
+  case class VertexClearTasks(v: Exp[Vertex]) extends Def[Unit]
 
   /////////////////////
   // class interface
 
   def vertex_edges(v: Exp[Vertex]) = VertexEdges(v)
   def vertex_neighbors(v: Exp[Vertex]) = VertexNeighbors(v)
+
+  def vertex_tasks(v: Exp[Vertex]) = VertexTasks(v)
+  def vertex_clear_tasks(v: Exp[Vertex]) = VertexClearTasks(v)
+  def vertex_add_tasks(v: Exp[Vertex], t: Exp[Vertex]) = VertexAddTask(v, t)
 }
 
 
@@ -64,6 +78,9 @@ trait ScalaGenVertexOps extends BaseGenVertexOps with ScalaGenBase {
     rhs match {
       case VertexEdges(v) => emitValDef(sym, quote(v) + ".edges")
       case VertexNeighbors(v) => emitValDef(sym, quote(v) + ".neighbors")
+      case VertexTasks(v) => emitValDef(sym, quote(v) + ".tasks")
+      case VertexAddTask(v,t) => emitValDef(sym, quote(v) + ".addTask(" + quote(t) + ")")
+      case VertexClearTasks(v) => emitValDef(sym, quote(v) + ".clearTasks()")
       case _ => super.emitNode(sym, rhs)
     }
   }

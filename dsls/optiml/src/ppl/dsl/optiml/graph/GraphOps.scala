@@ -4,8 +4,7 @@ import ppl.dsl.optiml.datastruct.CudaGenDataStruct
 import ppl.dsl.optiml.datastruct.scala._
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
-import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.DSLType
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen, CGenBase, CudaGenBase, ScalaGenBase}
@@ -57,15 +56,14 @@ trait GraphOps extends DSLType with Variables {
 }
 
 trait GraphOpsExp extends GraphOps with EffectExp {
-
-  this: GraphImplOps with OptiMLExp =>
+  this: OptiMLExp =>
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
 
   case class GraphObjectNew[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E])
     extends Def[Graph[V,E]] {
-    val mG = manifest[BidirectionalGraphImpl[V,E]]
+    val mG = manifest[UndirectedGraphImpl[V,E]]
   }
   case class GraphVertices[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Vertices[V]]
   case class GraphEdges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Edges[E]]
@@ -125,7 +123,7 @@ trait GraphOpsExp extends GraphOps with EffectExp {
   def graph_freeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
     = reflectMutation(GraphFreeze(reflectReadWrite(g)))
   def graph_frozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphSorted(reflectRead(g))
+    = GraphFrozen(reflectRead(g))
 }
 
 

@@ -1,6 +1,6 @@
 package ppl.dsl.optiml
 
-import datastruct.scala.{Vector,Matrix}
+import datastruct.scala.{Vertex, Edge, Graph, Vector, Matrix}
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import reflect.Manifest
@@ -132,8 +132,6 @@ trait LanguageOps extends Base { this: OptiML =>
    * TODO: implement this
    */
 
-
-
   /**
    * untilconverged
    */
@@ -143,13 +141,18 @@ trait LanguageOps extends Base { this: OptiML =>
                         clone_prev_val: Rep[Boolean] = true)
                         (block: Rep[A] => Rep[A])
                         (implicit diff: (Rep[A],Rep[A]) => Rep[Double], mA: Manifest[A], c: Cloneable[A]): Rep[A]
-
     = optiml_untilconverged(x, thresh, max_iter, clone_prev_val, block, diff)
 
 
   def optiml_untilconverged[A:Manifest:Cloneable](x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
                                                   block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double]): Rep[A]
-  
+
+  def untilconverged[V <: Vertex, E <: Edge](g: Rep[Graph[V, E]])
+                        (block: Rep[V] => Rep[Unit])
+                        (implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
+    = optiml_untilconverged(g, block)
+
+  def optiml_untilconverged[V <: Vertex :Manifest, E <: Edge :Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit])
 
 
   /**

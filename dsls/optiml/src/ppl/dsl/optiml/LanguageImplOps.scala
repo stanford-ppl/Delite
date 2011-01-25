@@ -1,12 +1,13 @@
 package ppl.dsl.optiml
 
-import scala.virtualization.lms.common.{ScalaOpsPkg, Base}
-import datastruct.scala.{Vector,Matrix}
+import datastruct.scala.{Vertex, Edge, Graph, Vector, Matrix}
 
 trait LanguageImplOps { this: OptiML =>
   def optiml_untilconverged_impl[A:Manifest:Cloneable](
      x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
      block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double]): Rep[A]
+  def optiml_untilconverged_impl[V:Manifest, E:Manifest](
+     g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]): Rep[Unit]
 
   def optiml_vectordistance_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int]): Rep[A]
   def optiml_matrixdistance_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int]): Rep[A]
@@ -14,6 +15,30 @@ trait LanguageImplOps { this: OptiML =>
 
 trait LanguageImplOpsStandard extends LanguageImplOps {
   this: OptiML =>
+  
+  def optiml_untilconverged_impl[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]): Rep[Unit] = {
+    val vertices = g.vertices
+
+    var tasks = vertices
+    val seen = Set[Vertex]()
+
+    while(tasks.length > 0) {
+      vertices.foreach(block)
+      val nextTasks = Vector[Vertex](0, true)
+
+      for(i <- 0 until vertices.length) {
+        val vtasks = vertices(i).tasks
+        for(j <- 0 until vtasks.length) {
+          if(!seen.contains(vtasks(j))) {
+            nextTasks.insert(vtasks.length, vtasks(j))
+            seen.add(vtasks(j))
+          }
+        }
+
+        vertices(i).clearTasks()
+      }
+    }
+  }
 
   def optiml_untilconverged_impl[A:Manifest:Cloneable](
      x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],

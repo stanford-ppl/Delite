@@ -1,5 +1,6 @@
 package ppl.dsl.optiml
 
+import graph._
 import java.io._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal._
@@ -55,6 +56,9 @@ trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
  */
 trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps with CloneableOps
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps with IndexVectorOps
+  with GraphOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps
+  with SetOps
+  with DenoiseVertexDataOps with DenoiseEdgeDataOps
   with LabelsOps with TrainingSetOps {
 
   this: DeliteApplication =>
@@ -70,6 +74,9 @@ trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp wit
   with LabelsOpsExp with TrainingSetOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard
+  with GraphOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp
+  with SetOpsExp
+  with DenoiseVertexDataOpsExp with DenoiseEdgeDataOpsExp
   with DeliteOpsExp with DeliteAllOverridesExp {
   this: DeliteApplication =>
 
@@ -125,6 +132,9 @@ trait OptiMLCodeGenBase extends GenericCodegen {
 trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
   with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps
   with ScalaGenLabelsOps with ScalaGenTrainingSetOps
+  with ScalaGenGraphOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenMessageEdgeOps with ScalaGenMessageVertexOps
+  with ScalaGenSetOps
+  with ScalaGenDenoiseVertexDataOps with ScalaGenDenoiseEdgeDataOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
 
   val IR: DeliteApplication with OptiMLExp

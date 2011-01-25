@@ -1,10 +1,9 @@
 package ppl.apps.ml.lbpdenoise
 
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.runtime.profiler.PerformanceTimer
-import ppl.delite.runtime.Delite
-import ppl.apps.ml.lbp.LBPImage
-import ppl.dsl.optiml.datastruct.scala.{BidirectionalGraphImpl, MessageData, Vector}
+import ppl.dsl.optiml.OptiMLExp
+import ppl.dsl.optiml.datastruct.scala._
+import scala.util.Random
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -14,8 +13,7 @@ import ppl.dsl.optiml.datastruct.scala.{BidirectionalGraphImpl, MessageData, Vec
  * Stanford University
  */
 
-object LBPDenoise extends DeliteApplication {
-  object GraphLBP extends DeliteApplication {
+object LBPDenoise extends DeliteApplication with OptiMLExp {
   var colors = 5
   var damping = 0.1
   var bound = 1E-15
@@ -28,7 +26,7 @@ object LBPDenoise extends DeliteApplication {
 
   var count = 1
 
-  val edgePotential = Matrix(colors, colors)
+  val edgePotential = Matrix[Double](colors, colors)
 
   /* Residual printing
   var out_file = new java.io.FileOutputStream("residuals_scala.txt")
@@ -51,14 +49,12 @@ object LBPDenoise extends DeliteApplication {
       case _: Exception => print_usage
     }
 
-    Delite.init = true
-
     // Generate image
-    val img = new LBPImage(rows, cols)
-    img.paintSunset(colors)
-    img.save("src.pgm")
-    img.corrupt(sigma)
-    img.save("noise.pgm")
+    val img = Matrix[Double](rows, cols)
+    imgPaintSunset(img, colors)
+    MLOutputWriter.writeImgPgm(img, "src.pgm")
+    imgCorrupt(img, sigma)
+    MLOutputWriter.writeImgPgm(img, "noise.pgm")
 
     // Load in a raw image that we generated from GraphLab
     //val img = LBPImage.load(raw)
@@ -66,16 +62,14 @@ object LBPDenoise extends DeliteApplication {
     // Make sure we read in the raw file correctly
     // img.save("check_img.pgm")
 
-    Delite.init = false
-
     val num = 5
     for (i <- 0 until num) {
       // Clean up the image and save it
-      PerformanceTimer.start("LBP")
+      //PerformanceTimer.start("LBP")
       val cleanImg = denoise(img)
-      PerformanceTimer.stop("LBP")
-      PerformanceTimer.print("LBP")
-      cleanImg.save("pred.pgm")
+      //PerformanceTimer.stop("LBP")
+      //PerformanceTimer.print("LBP")
+      MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
     }
 
     /* PerformanceTimer2.summarize("BM")
@@ -88,58 +82,58 @@ object LBPDenoise extends DeliteApplication {
     out_stream.close*/
   }
 
-  def denoise(imgIn: LBPImage): LBPImage = {
+  def denoise(imgIn: Rep[Matrix[Double]]): Rep[Matrix[Double]] = {
     // Make a copy of the image
-    val img = imgIn.copy()
+    val img = imgIn.cloneL()
 
     // Construct graph from image
     val g = constructGraph(img, colors, sigma)
 
     if (smoothing == "laplace") {
-      BinaryFactor.setLaplace(edgePotential, lambda)
+      binaryFactorSetLaplace(edgePotential, lambda)
     }
     else if (smoothing == "square") {
-      BinaryFactor.setAgreement(edgePotential, lambda)
+      binaryFactorSetAgreement(edgePotential, lambda)
     }
-    
+
     //var count = 1
 
-    def toFreeze(v: DenoiseVertex) {
+    def toFreeze(v: MessageVertex) {
       v.neighbors()
     }
 
-    g.untilConverged(Consistency.Edge) {
+    untilconverged(g) {
       v =>
         v.data.belief = v.data.potential.clone()
 
         // Multiply belief by messages
         for (e <- v.in_edges) {
-          v.data.belief = UnaryFactor.times(v.data.belief, e.in(v).old_message)
+          v.data.belief = unaryFactorTimes(v.data.belief, e.in(v).old_message)
         }
 
         // Normalize the belief
-        v.data.belief =  UnaryFactor.normalize(v.data.belief)
+        v.data.belief = unaryFactorNormalize(v.data.belief)
 
         // Send outbound messages
         for ((in, out) <- v.edges) {
           // Compute the cavity
-          val cavity = UnaryFactor.normalize(UnaryFactor.divide(v.data.belief.clone(), in.message))
+          val cavity = unaryFactorNormalize(unaryFactordivide(v.data.belief.clone(), in.message))
 
           // Convolve the cavity with the edge factor
-          var msg = UnaryFactor.normalize(UnaryFactor.convolve(edgePotential, cavity))
+          var msg = unaryFactorNormalize(unaryFactorconvolve(edgePotential, cavity))
 
           // Damp the message
-          msg = UnaryFactor.damp(msg, outEdge.message, damping)
+          msg = unaryFactorSamp(msg, outEdge.message, damping)
 
           // Compute message residual
-          val residual = UnaryFactor.residual(msg, out.data.message)
+          val residual = unaryFactorResidual(msg, out.data.message)
 
           // Set the message
           out.data.message = msg
 
-        /*  if(count % 10000 == 0) {
-            println(count + " " + residual)
-          } */
+          /*  if(count % 10000 == 0) {
+           println(count + " " + residual)
+         } */
 
           // Enqueue update function on target vertex if residual is greater than bound
           if (residual > bound) {
@@ -151,73 +145,189 @@ object LBPDenoise extends DeliteApplication {
     }
 
     // Predict the image!
-    if (pred_type == "map") {
-      for (v <- g.vertexSet) {
-        img.data(v.id) = UnaryFactor.max_asg(v.belief);
-      }
-    }
-    else if (pred_type == "exp") {
-      for (v <- g.vertexSet) {
-        img.data(v.id) = UnaryFactor.max_asg(v.belief);
-      }
+    g.vertices foreach { v =>
+      img.data(v.id) = unaryFactorMaxAsg(v.belief);
     }
 
     img
   }
 
-  def constructGraph(img: LBPImage, numRings: Int, sigma: Double): BidirectionalGraph[DenoiseVertex, DenoiseEdge] = {
-    val g = new BidirectionalGraphImpl[DenoiseVertex, DenoiseEdge]()
+  def constructGraph(img: Rep[Matrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Graph[MessageVertex, MessageEdge] = {
+    val g = new UndirectedGraphImpl[MessageVertex, MessageEdge]()
 
     // Same belief for everyone
-    val belief = UnaryFactor.uniform(numRings)
+    val belief = unaryFactorUniform(numRings)
 
     val sigmaSq = sigma * sigma
 
-    val vertices = Array.ofDim[DenoiseVertex](img.rows, img.cols)
+    val vertices = Array.ofDim[MessageVertex](img.numRows, img.numCols)
 
     // Set vertex potential based on image
-    for (i <- 0 until img.rows) {
-      for (j <- 0 until img.cols) {
-        val pixelId = img.vertid(i, j)
+    for (i <- 0 until img.numRows) {
+      for (j <- 0 until img.numCols) {
+        val pixelId = LBPImage.pixelId(img, i, j)
         val potential = Vector.zeros(numRings)
 
         val obs = img.data(pixelId)
 
         for (pred <- 0 until numRings) {
-          potential.data(pred) = -(obs - pred) * (obs - pred) / (2.0 * sigmaSq)
+          potential(pred) = -(obs - pred) * (obs - pred) / (2.0 * sigmaSq)
         }
 
         potential.normalize()
 
-        val vertex = new DenoiseVertex(pixelId, potential, belief.copy())
+        val data = new DenoiseVertexDataImpl(pixelId, potential, belief.copy())
+        val vertex = MessageVertex(g, data)
 
         vertices(i)(j) = vertex
         g.addVertex(vertex)
       }
     }
 
-    val edge = new DenoiseEdge(UnaryFactor.uniform(numRings))
+    val edgeData = new DenoiseEdgeDataImpl(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
 
     // Add bidirectional edges between neighboring pixels
-    for (i <- 0 until img.rows - 1) {
-      for (j <- 0 until img.cols - 1) {
-        g.addEdge(DenoiseEdge.copy(edge), DenoiseEdge.copy(edge), vertices(i)(j), vertices(i)(j + 1))
-        g.addEdge(DenoiseEdge.copy(edge), DenoiseEdge.copy(edge), vertices(i)(j), vertices(i + 1)(j))
+    for (i <- 0 until img.numRows - 1) {
+      for (j <- 0 until img.numCols - 1) {
+        val edgeDown = MessageEdge(g, edgeData.cloneL(), edgeData.cloneL(), vertices(i)(j), vertices(i)(j + 1))
+        g.addEdge(edgeDown, vertices(i)(j), vertices(i)(j + 1))
+
+        val edgeRight = MessageEdge(g, edgeData.cloneL(), edgeData.cloneL(), vertices(i)(j), vertices(i)(j + 1))
+        g.addEdge(edgeRight, vertices(i)(j), vertices(i + 1)(j))
       }
     }
 
     g
   }
-}
-  
-}
 
-class DenoiseVertex(val id : Int, var belief : Vector[Double], var potential : Vector[Double]) extends MessageData
+  def imgPixels(img: Rep[Matrix[Double]]) = {
+    img.numRows * img.numCols
+  }
 
-object DenoiseEdge {
-  def copy(edge: DenoiseEdge) = {
-    new DenoiseEdge(edge.message)
+  def imgPixelId(img: Rep[Matrix[Double]], i: Rep[Int], j: Rep[Int]) = {
+    i * img.numCols + j
+  }
+
+  def imgPaintSunset(img: Rep[Matrix[Double]], numRings: Int) = {
+    val centerR = img.numRows.asInstanceOfL[Double] / 2.0
+    val centerC = img.numCols.asInstanceOfL[Double] / 2.0
+    val maxRadius = Math.min(img.numRows, img.getCows) / 2.0
+
+    for (r <- 0 until img.numRows) {
+      for (c <- 0 until img.numCols) {
+        val distance = Math.sqrt((r - centerR) * (r - centerR) + (c - centerC) * (c - centerC))
+
+        // If on top of image
+        if (r < img.numRows / 2) {
+          // Compute ring of sunset
+          val ring = Math.floor(Math.min(1.0, distance / maxRadius) * (numRings - 1))
+
+          img(r, c) = ring
+        }
+        else {
+          img(r, c) = 0
+        }
+      }
+    }
+  }
+
+  // Corrupt the image with Gaussian noise
+  def imgCorrupt(img: Rep[Matrix[Double]], sigma: Rep[Double]) = {
+    for (r <- 0 until img.numRows) {
+      for (c <- 0 until img.numCols) {
+        img(r, c) = img(r, c) + Random.nextGaussian * sigma
+      }
+    }
+  }
+
+  def imgSave(img: Rep[Matrix[Double]], filename: Rep[String]) = {
+
+  }
+
+  def binaryFactorSetAgreement(bf: Rep[Matrix[Double]], lambda: Rep[Double]) = {
+    for (i <- 0 until bf.numRows) {
+      for (j <- 0 until bf.numCols) {
+        if (i != j)
+          bf(i, j) = 0.0 - lambda
+        else
+          bf(i, j) = 0
+      }
+    }
+  }
+
+  def binaryFactorSetLaplace(bf: Rep[Matrix[Double]], lambda: Rep[Double]) = {
+    for (i <- 0 until bf.numRows) {
+      for (j <- 0 until bf.numCols) {
+        bf(i, j) = 0.0 - Math.abs(i - j) * lambda;
+      }
+    }
+  }
+
+  def unaryFactorUniform(arity: Rep[Int]) = {
+    unaryFactorNormalize(Vector.zeros(arity))
+  }
+
+  def unaryFactorNormalize(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+    val logZ = Math.log(uf.exp.sum)
+    uf map {_ - logZ}
+  }
+
+  // Multiply elementwise by other factor
+  def unaryFactorTimes(a: Rep[Vector[Double]], b: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+    a + b
+  }
+
+  // Add other factor elementwise
+  def unaryFactorPlus(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
+    (a.exp + b.exp) map {Math.log(_)}
+  }
+
+  // Divide elementwise by other factor
+  def unaryFactorDivide(a: Rep[Vector[Double]], b: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+    a - b
+  }
+
+  def unaryFactorConvolve(bf: Matrix[Double], other: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+    val indices = Vector.range(0, bf.getCols)
+    val colSums = indices map {(bf.getCol(_) + other).sum} map {if (_ == 0) Double.MinValue else _}
+    colSums map {Math.log(_)}
+  }
+
+  /**This = other * damping + this * (1-damping) */
+  def unaryFactorDamp(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) = {
+    if (damping != 0) {
+      (damping * b.exp + (1.0 - damping) * a.exp) map {Math.log(_)}
+    }
+    else {
+      a
+    }
+  }
+
+  /**Compute the residual between two unary factors */
+  def unaryFactorResidual(a: Rep[Vector[Double]], b: Rep[Vector[Double]]): Double = {
+    (a.exp - b.exp).abs.sum
+  }
+
+  // Max assignment
+  def unaryFactorMaxAsg(uf: Rep[Vector[Double]]): Int = {
+    var max_asg = 0;
+    var max_value = uf(0);
+
+    var asg = 0
+    while (asg < uf.length) {
+      if (uf(asg) > max_value) {
+        max_value = a(asg)
+        max_asg = asg
+      }
+      asg += 1
+    }
+
+    max_asg
+  }
+
+  def unaryFactorExpectation(uf: Rep[Vector[Double]]): Double = {
+    val indices = Vector.range(0, uf.length)
+
+    (indices * uf.exp).sum / uf.exp.sum
   }
 }
-
-class DenoiseEdge(var message : Vector[Double]) extends MessageData
