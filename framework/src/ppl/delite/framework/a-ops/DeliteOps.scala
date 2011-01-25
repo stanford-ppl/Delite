@@ -480,16 +480,18 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       val currDimStr = getCurrDimStr()
       setCurrDimLength(quote(map.in)+".size()")
       //val freeVars = (getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)++gpuTemps).distinct
+	  val output = if(map.in==map.alloc) map.in else sym
       stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(map.in)+".size()"))
       tabWidth += 1
       val (mapFunc,freeVars) = emitDevFunc(map.func, List(map.v))
       if(freeVars.length==0)
-        stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s)));".format(quote(sym),currDimStr,mapFunc,quote(map.in),currDimStr))
+        stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s)));".format(quote(output),currDimStr,mapFunc,quote(map.in),currDimStr))
       else
-        stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),currDimStr,mapFunc,quote(map.in),currDimStr,freeVars.map(quote).mkString(",")))
+        stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(output),currDimStr,mapFunc,quote(map.in),currDimStr,freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      allocOutput(sym,map.in.asInstanceOf[Sym[_]])
+	  if(map.in!=map.alloc)
+      	allocOutput(sym,map.in.asInstanceOf[Sym[_]])
       currDim -= 1
     }
 
@@ -501,16 +503,18 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       val currDimStr = getCurrDimStr()
       setCurrDimLength(quote(zip.inA)+".size()")
       //val freeVars = (getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))++gpuTemps).distinct
+	  val output = if(zip.inA==zip.alloc) zip.inA else if(zip.inB==zip.alloc) zip.inB else sym
       stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(zip.inA)+".size()"))
       tabWidth += 1
       val (zipFunc,freeVars) = emitDevFunc(zip.func, List(zip.v._1, zip.v._2))
       if(freeVars.length==0)
-        stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s)));".format(quote(sym),currDimStr, zipFunc, quote(zip.inA),"idxX",quote(zip.inB),"idxX"))
+        stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s)));".format(quote(output),currDimStr, zipFunc, quote(zip.inA),currDimStr,quote(zip.inB),currDimStr))
       else
-        stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),currDimStr, zipFunc, quote(zip.inA),"idxX",quote(zip.inB),"idxX",freeVars.map(quote).mkString(",")))
+        stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(output),currDimStr, zipFunc, quote(zip.inA),currDimStr,quote(zip.inB),currDimStr,freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      allocOutput(sym,zip.inA.asInstanceOf[Sym[_]])
+	  if((zip.inA!=zip.alloc) && (zip.inB!=zip.alloc))
+      	allocOutput(sym,zip.inA.asInstanceOf[Sym[_]])
       currDim -= 1
     }
 

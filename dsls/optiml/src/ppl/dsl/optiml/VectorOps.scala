@@ -727,6 +727,24 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       stream.println(addTab()+"%s.isRow = %s;".format(quote(sym),quote(isRow)))
 
     case VectorObjectZeros(len) =>
+        currDim += 1
+        val currDimStr = getCurrDimStr()
+        setCurrDimLength(quote(len))
+        emitVectorAlloc(sym,"%s".format(quote(len)),"true") //needs to allocate with new symbol
+		//if(currDim == 2) {
+		//	stream.println(addTab()+"%s %s_save = %s.data;".format(remap(sym.Type.typeArguments(0)),quote(sym),quote(sym)))
+        //	stream.println(addTab()+"%s.data += %s*%s;".format(quote(sym),quote(len),getPrevDimStr()))
+		//}
+        stream.println(addTab()+"if(%s < %s) {".format(currDimStr,quote(len)))
+        tabWidth += 1
+        stream.println(addTab()+"%s.update(%s,0);".format(quote(sym),currDimStr))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+		//if(currDim == 2) {
+		//	stream.println(addTab()+"%s.data = %s_save;".format(quote(sym),quote(sym)))
+		//}
+        currDim -= 1
+	/*
       if(currDim > 1)
         throw new GenerationFailedException("CudaGen: No more than 2 dimensions are allowed for GPU kernels.")
       else {
@@ -746,6 +764,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
         stream.println(addTab()+"}")
         currDim -= 1
       }
+	*/
 
     case VectorTrans(x) =>
       currDim += 1

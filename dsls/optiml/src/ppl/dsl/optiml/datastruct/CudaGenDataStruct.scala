@@ -405,6 +405,9 @@ trait CudaGenDataStruct extends CudaCodegen {
       out.append("%s gpuMemAlloc_%s_%s(%s) {\n".format(remap(newSym.Type),quote(kernelSymbol),quote(newSym),paramStrTemp))
     out.append("\t%s %s;\n".format(remap(newSym.Type),quote(newSym)))
 
+	val mult = if(currDim==2) xDimList(0) else "1"
+	if(currDim==2) multDimInputs += newSym
+
     // Check if new allocation is needed
     if(data==null) {
       out.append("\t%s *devPtr;\n".format(remap(newSym.Type.typeArguments(0))))
@@ -459,6 +462,14 @@ trait CudaGenDataStruct extends CudaCodegen {
       gpuTemps = gpuTemps :+ newSym
     }
     helperFuncString.append(out.toString)
+  }
+
+  def vectorPositionMultDimInputs(sym: Sym[_]) : String = {
+	val out = new StringBuilder
+	currDim = 1
+	val currDimStr = getCurrDimStr()
+    out.append("\t%s.data += %s * %s.length;\n".format(quote(sym),currDimStr,quote(sym)))
+	out.toString
   }
 
   def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, data:String=null): Unit = {

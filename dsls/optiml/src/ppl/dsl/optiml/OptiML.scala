@@ -333,6 +333,16 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.allocReference(newSym,sym)
   }
 
+  override def positionMultDimInputs(sym: Sym[_]) : String = remap(sym.Type) match {
+	//TODO: Add matrix reposition, and also do safety check for datastructures that do not have data field
+    case "Vector<int>" => vectorPositionMultDimInputs(sym)
+    case "Vector<long>" => vectorPositionMultDimInputs(sym)
+    case "Vector<float>" => vectorPositionMultDimInputs(sym)
+    case "Vector<double>" => vectorPositionMultDimInputs(sym)
+    case "Vector<bool>" => vectorPositionMultDimInputs(sym)
+    case _ => super.positionMultDimInputs(sym)
+  }
+
   override def getDSLHeaders: String = {
     val out = new StringBuilder
     out.append("#include <float.h>\n")

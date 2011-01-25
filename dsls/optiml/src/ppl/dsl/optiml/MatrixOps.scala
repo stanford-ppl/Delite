@@ -835,7 +835,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
         stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
         stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
         stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
-		    emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true","%s.data".format(quote(x),quote(x)))
+		//    emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true","%s.data".format(quote(x),quote(x)))
       }
 
     case MatrixObjectDiag(w, vals) =>
