@@ -98,10 +98,6 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
     //var count = 1
 
-    def toFreeze(v: MessageVertex) {
-      v.neighbors()
-    }
-
     untilconverged(g) {
       v =>
         v.data.belief = v.data.potential.clone()
