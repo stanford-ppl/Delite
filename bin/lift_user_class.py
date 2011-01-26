@@ -27,6 +27,29 @@ def main():
         if fname.endswith(".scala") and os.path.isdir(impls_dir + "/" + fname) == False:
             print "processing file:[" + fname + "]"
             liftClass(impls_dir, fname, ops_dir)
+    #now emit the application ops directory
+    emitApplicationOps(ops_dir)
+
+def emitApplicationOps(ops_dir):
+    out = []
+    #package
+    l =     "package ppl.dsl.optiml\n\n"
+    l = l + "trait ApplicationOps extends " + mixify(classes, "", "Ops") + "\n"
+    l = l + "trait ApplicationOpsExp extends " + mixify(classes, "", "OpsExp") + "\n"
+    l = l + "trait ScalaGenApplicationOps extends " + mixify(classes, "ScalaGen", "Ops") + " \n" 
+    
+    out.append(l)
+    fileOut = open (ops_dir + "/ApplicationOps.scala", 'w')
+    fileOut.writelines(out)
+    fileOut.close()
+
+def mixify(classes, pre, post):
+    l = ""
+    for c in classes:
+        l = l + pre + c + post
+        if(classes.index(c) != len(classes) - 1):
+            l = l + " with " 
+    return l
 
 def liftClass(impls_dir, fname, ops_dir):
     
