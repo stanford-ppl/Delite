@@ -456,10 +456,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
     val alloc = reifyEffects(Vector[A](x.numCols, true))
     val in = reifyEffects {
-      var tcoll = Vector[Vector[A]](x.numCols, true)
-       for (i <- 0 until x.numCols){
-         tcoll(i) = x.getCol(i)
-       }
+      val tcoll = Vector[Vector[A]](x.numCols, true)
+      for (i <- 0 until x.numCols){
+        tcoll(i) = x.getCol(i)
+      }
       tcoll
     }
 
