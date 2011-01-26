@@ -5,13 +5,14 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 
-trait DeliteIfThenElseExp extends IfThenElseExp {
+trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
 
   this: DeliteOpsExp =>
 
-  case class DeliteIfThenElse[T:Manifest](c: Exp[Boolean], t: Exp[T], e: Exp[T]) extends DeliteOpCondition[T](c, t, e)
+  case class DeliteIfThenElse[T:Manifest](cond: Exp[Boolean], thenp: Exp[T], elsep: Exp[T]) extends DeliteOpCondition[T]
 
   override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]) = cond match {
+      // TODO: need to handle vars differently, this could be unsound
     case Const(true) => thenp
     case Const(false) => elsep
     case _ =>
@@ -48,6 +49,8 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
      * when generating long blocks of straight-line code in each branch.
      */
     case DeliteIfThenElse(c,a,b) =>
+      val save = deliteKernel
+      deliteKernel = false
       stream.println("val " + quote(sym) + " = {")
       stream.println("def " + quote(sym) + "thenb(): " + remap(getBlockResult(a).Type) + " = {")
       emitBlock(a)
@@ -65,6 +68,7 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
       stream.println(quote(sym) + "elseb()")
       stream.println("}")
       stream.println("}")
+      deliteKernel = save
 
     case _ => super.emitNode(sym, rhs)
   }

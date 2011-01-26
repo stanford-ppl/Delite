@@ -347,9 +347,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v._1 + v._2
   }
 
-  case class MatrixPlusScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
+  case class MatrixPlusScalar[A](in: Exp[Matrix[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Matrix] {
 
+    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v + y
@@ -371,9 +372,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v._1 - v._2
   }
 
-  case class MatrixMinusScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
+  case class MatrixMinusScalar[A](in: Exp[Matrix[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Matrix] {
 
+    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v - y
@@ -387,9 +389,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v._1 * v._2
   }
 
-  case class MatrixTimesScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
+  case class MatrixTimesScalar[A](in: Exp[Matrix[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Matrix] {
 
+    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v * y
@@ -420,9 +423,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v._1 / v._2
   }
 
-  case class MatrixDivideScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
+  case class MatrixDivideScalar[A](in: Exp[Matrix[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Matrix] {
 
+    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v / y
@@ -435,9 +439,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v._1 + v._2
   }
 
-  case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]])
+  case class MatrixSumRow[A](x: Exp[Matrix[A]])(implicit val mAA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[Vector[A],A,Vector] {
 
+    val mA = manifest[Vector[A]]
+    val mB = mAA
     val alloc = reifyEffects(Vector[A](x.numRows, false))
     val in = reifyEffects {
       var tcoll = Vector[Vector[A]](x.numRows, false)
@@ -451,9 +457,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v.sum
   }
 
-  case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]])
+  case class MatrixSumCol[A](x: Exp[Matrix[A]])(implicit val mAA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[Vector[A],A,Vector] {
 
+    val mA = manifest[Vector[A]]
+    val mB = mAA
     val alloc = reifyEffects(Vector[A](x.numCols, true))
     val in = reifyEffects {
       var tcoll = Vector[Vector[A]](x.numCols, true)
@@ -475,17 +483,19 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 //    val func = v.unary_-
 //  }
 
-  case class MatrixAbs[A:Manifest:Arith](in: Exp[Matrix[A]])
+  case class MatrixAbs[A](in: Exp[Matrix[A]])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Matrix] {
 
+    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v.abs
   }
 
-  case class MatrixExp[A:Manifest:Arith](in: Exp[Matrix[A]])
+  case class MatrixExp[A](in: Exp[Matrix[A]])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Matrix] {
 
+    val mB = mA
     val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
     val v = fresh[A]
     val func = v.exp
@@ -523,15 +533,16 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = if (v._1 > v._2) v._1 else v._2
   }
 
-  case class MatrixMap[A:Manifest,B:Manifest](in: Exp[Matrix[A]], v: Exp[A], func: Exp[B])
+  case class MatrixMap[A,B](in: Exp[Matrix[A]], v: Exp[A], func: Exp[B])(implicit val mA: Manifest[A], val mB: Manifest[B])
     extends DeliteOpMap[A,B,Matrix] {
 
     val alloc = reifyEffects(Matrix[B](in.numRows, in.numCols))
   }
 
-  case class MatrixMutableMap[A:Manifest](in: Exp[Matrix[A]], v: Exp[A], func: Exp[A])
+  case class MatrixMutableMap[A](in: Exp[Matrix[A]], v: Exp[A], func: Exp[A])(implicit val mA: Manifest[A])
     extends DeliteOpMap[A,A,Matrix] {
 
+    val mB = mA
     val alloc = in
   }
 
@@ -541,9 +552,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 //    val alloc = in
 //  }
 
-  case class MatrixMapRowsToVec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], v: Exp[Vector[A]], func: Exp[B], isRow: Exp[Boolean])
+  case class MatrixMapRowsToVec[A,B](x: Exp[Matrix[A]], v: Exp[Vector[A]], func: Exp[B], isRow: Exp[Boolean])(implicit val mAA: Manifest[A], val mB: Manifest[B])
     extends DeliteOpMap[Vector[A],B,Vector] {
 
+    val mA = manifest[Vector[A]]
     val in = reifyEffects {
       var tcoll = Vector[Vector[A]](x.numRows, isRow)
        for (i <- 0 until x.numRows){
@@ -792,8 +804,8 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
         callKernel = "cublasSgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
       else
         throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatrixMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0))))
+      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(y)))
       emitLibCall(sym,List(callStream,callKernel))
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(y)))
     
     case MatrixTimesVector(x,y) =>
       val callStream = "cublasSetKernelStream(stream);"
@@ -804,8 +816,8 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
         callKernel = "cublasSgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
       else
         throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Matrix*Vector CUBLAS library)".format(remap(x.Type.typeArguments(0))))
+      emitVectorAlloc(sym,"%s->numRows".format(quote(x)),"false")
       emitLibCall(sym,List(callStream,callKernel))
-      emitVectorAlloc(sym,"%s.numRows".format(quote(x)),"false")
 
 	  // The ops that call through to the underlying real data structure
     case MatrixApply(x,i,j) =>
@@ -821,7 +833,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
     case MatrixUpdateRow(x, row, y) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s.length".format(quote(y)))
+      setCurrDimLength("%s->length".format(quote(y)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(y)))
       tabWidth += 1
       stream.println(addTab()+"%s.update(%s,%s,%s.apply(%s));".format(quote(x),quote(row),currDimStr,quote(y),currDimStr))
@@ -860,7 +872,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
     case MatrixTranspose(x) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s.size()".format(quote(x)))
+      setCurrDimLength("%s->size()".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
       tabWidth += 1
       stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
@@ -868,13 +880,13 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->numCols".format(quote(x)),"%s->numRows".format(quote(x)))
       currDim -= 1
 
     case MatrixSumCol(x) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s.numCols".format(quote(x)))
+      setCurrDimLength("%s->numCols".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
       tabWidth += 1
       stream.println(addTab()+"%s reducVal = 0;".format(remap(x.Type.typeArguments(0))))
@@ -886,13 +898,13 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"%s.update(%s,reducVal);".format(quote(sym),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true")
+      emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true")
       currDim -= 1
 
     case m@MatrixSigmoidF(x) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s.size()".format(quote(x)))
+      setCurrDimLength("%s->size()".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
       tabWidth += 1
 	    val sigmoidFunc = emitDevFunc(m.func,List(m.v))
@@ -901,9 +913,8 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(x)))
       currDim -= 1
-
 
     case _ => super.emitNode(sym, rhs)
   }

@@ -5,6 +5,7 @@ import _root_.scala.util.parsing.json.JSON
 import ops._
 import collection.mutable.HashMap
 import targets._
+import ppl.delite.runtime.scheduler.PartialSchedule
 
 object DeliteTaskGraph {
 
@@ -50,7 +51,8 @@ object DeliteTaskGraph {
         case "Conditional" => processIfThenElseTask(op)
         case "WhileLoop" => processWhileTask(op)
         case "Arguments" => processArgumentsTask(op)
-        case "EOP" => processEOPTask(op)
+        case "EOP" => processEOPTask(op) //end of program
+        case "EOG" => //end of nested graph, do nothing
         case err@_ => unsupportedType(err)
       }
     }
@@ -90,11 +92,26 @@ object DeliteTaskGraph {
     }
   }
 
-  def getOp(ops: scala.collection.mutable.Map[String, DeliteOP], op: String) = {
-    ops.get(op) match {
-      case Some(op) => op
-      case None => opNotFound(op)
+  def getOp(op: String)(implicit graph: DeliteTaskGraph) = {
+    graph._ops.get(op) match {
+      case Some(o) => o
+      case None => {
+        val in = findOp(op)
+        graph._inputs.getOrElseUpdate(in.id, new OP_Input(in))
+      }
     }
+  }
+
+  def findOp(op: String)(implicit firstGraph: DeliteTaskGraph): DeliteOP = {
+    var graph = firstGraph.superGraph
+    while (graph != null) {
+      graph._ops.get(op) match {
+        case Some(op) => return op
+        case None => //continue
+      }
+      graph = graph._superGraph
+    }
+    opNotFound(op)
   }
 
   def processCommon(op: Map[Any, Any], opType: String)(implicit graph: DeliteTaskGraph) {
@@ -122,7 +139,7 @@ object DeliteTaskGraph {
     //handle inputs
     val inputs = getFieldList(op, "inputs")
     for(i <- inputs.reverse) {
-      val input = getOp(graph._ops, i)
+      val input = getOp(i)
       newop.addInput(input)
       newop.addDependency(input)
       input.addConsumer(newop)
@@ -131,14 +148,14 @@ object DeliteTaskGraph {
     //handle mutable inputs
     val mutableInputs = getFieldList(op, "mutableInputs")
     for (m <- mutableInputs) {
-      val mutable = getOp(graph._ops, m)
+      val mutable = getOp(m)
       newop.addMutableInput(mutable)
     }
 
     //handle anti dependencies
     val antiDeps = getFieldList(op, "antiDeps")
     for(a <- antiDeps) {
-      val antiDep = getOp(graph._ops, a)
+      val antiDep = getOp(a)
       newop.addDependency(antiDep)
       antiDep.addConsumer(newop)
     }
@@ -146,7 +163,7 @@ object DeliteTaskGraph {
     //handle control dependencies
     val controlDeps = getFieldList(op, "controlDeps")
     for(c <- controlDeps) {
-      val controlDep = getOp(graph._ops, c)
+      val controlDep = getOp(c)
       newop.addDependency(controlDep)
       controlDep.addConsumer(newop)
     }
@@ -158,160 +175,156 @@ object DeliteTaskGraph {
     //process target metadata
     if (resultMap.contains(Targets.Cuda)) processCudaMetadata(op, newop)
 
+    //process kernel variant
+    op.get("variant") match {
+      case None => //do nothing
+      case Some(field) => field match {
+        case map: Map[Any,Any] => newop.variant = processVariant(newop, resultMap, map)
+        case err => mapNotFound(err)
+      }
+    }
+
     //last op will be result op
     graph._result = newop
 
   }
 
+  def newGraph(implicit graph: DeliteTaskGraph) = {
+    val newGraph = new DeliteTaskGraph
+    newGraph._version = graph._version
+    newGraph._kernelPath = graph._kernelPath
+    newGraph._superGraph = graph
+    newGraph
+  }
+
+  def processVariant(op: DeliteOP, resultType: Map[Targets.Value,String], graph: Map[Any, Any])(implicit outerGraph: DeliteTaskGraph) = {
+    val varGraph = newGraph
+    parseOps(getFieldList(graph, "ops"))(varGraph)
+    if (getFieldString(graph, "outputType") == "symbol")
+      varGraph._result = getOp(getFieldString(graph, "outputValue"))(varGraph)
+    else
+      assert(getFieldString(graph, "outputValue") == "()") //only const a variant should return is a Unit literal
+
+    val v = new OP_Variant(op.id, resultType, op, varGraph)
+
+    v.inputSyms = op.getInputs.map(d => getOp(d.id)(varGraph)).toList
+    extractCudaMetadata(v, varGraph, outerGraph)
+    v
+  }
+
+  def parseSubGraph(op: Map[Any,Any], prefix: String)(implicit graph: DeliteTaskGraph) = {
+    val subGraph = newGraph
+    var value = ""
+    if (getFieldString(op, prefix+"Type") == "const")
+      value = getFieldString(op, prefix+"Value")
+    else {
+      parseOps(getFieldList(op, prefix+"Ops"))(subGraph)
+      op.get(prefix+"Output") match {
+        case Some(field) => field match {
+          case "()" => //if Unit literal, ignore
+          case _ => subGraph._result = getOp(field)(subGraph)
+        }
+        case None =>
+      }
+    }
+    (subGraph, value)
+  }
+
   def processIfThenElseTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     // get id
     val id = getFieldString(op,"outputId")
-    //get predicate, then, and else kernels
-    val predOp = getOp(graph._ops, getFieldString(op, "conditionKernelId"))
-    val thenIds = getFieldList(op, "thenKernelIds")
-    val elseIds = getFieldList(op, "elseKernelIds")
-    val beginOp = new OP_BeginCondition(id+"b", predOp)
-    val beginElseOp = new OP_BeginElse(id+"e")
-    val endOp = new OP_EndCondition(id)
 
-    var thenOps: List[DeliteOP] = Nil
-    for (thenId <- thenIds) thenOps ::= getOp(graph._ops, thenId)
-    val thenOpsBegin = thenOps.filterNot(_.isInstanceOf[OP_Control]) ++ thenOps.filter(_.isInstanceOf[OP_Control]).map(o => getOp(graph._ops, o.id+"b"))
-    var elseOps: List[DeliteOP] = Nil
-    for (elseId <- elseIds) elseOps ::= getOp(graph._ops, elseId)
-    val elseOpsBegin = elseOps.filterNot(_.isInstanceOf[OP_Control]) ++ elseOps.filter(_.isInstanceOf[OP_Control]).map(o => getOp(graph._ops, o.id+"b"))
+    val (predGraph, predValue) = parseSubGraph(op, "cond")
+    val (thenGraph, thenValue) = parseSubGraph(op, "then")
+    val (elseGraph, elseValue) = parseSubGraph(op, "else")
+
+    val outputTypes = getFieldMap(op, "return-types")
+    var resultMap = Map[Targets.Value, String]()
+    for (target <- Targets.values) {
+      if (outputTypes.contains(target.toString))
+        resultMap += target -> outputTypes(target.toString)
+    }
 
     val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
     var ifDeps: List[DeliteOP] = Nil
-    for (depId <- depIds) ifDeps ::= getOp(graph._ops, depId)
-    //list of all dependencies of the if block, minus any dependencies within the block
-    val ignore = (thenOpsBegin ++ elseOpsBegin).filter(_.isInstanceOf[OP_Control]).map(o => o.asInstanceOf[OP_Control].predicate)
-    ifDeps = (ifDeps ++ thenOpsBegin.flatMap(_.getDependencies) ++ elseOpsBegin.flatMap(_.getDependencies)) filterNot { (thenOps ++ elseOps ++ ignore) contains }
+    for (depId <- depIds) ifDeps ::= getOp(depId)
 
-    //beginning depends on all exterior dependencies
-    for (dep <- ifDeps) {
-      beginOp.addDependency(dep)
-      dep.addConsumer(beginOp)
-    }
+    //list of all dependencies of the if block, minus any dependencies within the block (predicate could be an input or internal)
+    val internalOps = (predGraph.ops ++ thenGraph.ops ++ elseGraph.ops).toList
+    ifDeps = resolveInputs((predGraph.result :: ifDeps ++ internalOps.flatMap(_.getDependencies)) filterNot { internalOps contains })
+    val ifInputs = resolveInputs((predGraph.result :: internalOps.flatMap(_.getInputs)) filterNot { internalOps contains }).distinct
+    val ifInputSyms = resolveInputs(ifInputs)(predGraph)
+    val ifMutableInputs = resolveInputs((internalOps.flatMap(_.getMutableInputs)) filterNot { internalOps contains })
 
-    //beginning depends on predicate resolution
-    beginOp.addDependency(predOp)
-    predOp.addConsumer(beginOp)
+    val conditionOp = new OP_Condition(id, resultMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue)
+    conditionOp.dependencyList = ifDeps
+    conditionOp.inputList = ifInputs
+    conditionOp.mutableInputList = ifMutableInputs
+    conditionOp.inputSyms = ifInputSyms
 
-    //all thenOps depend on beginning, and begin-else depends on them
-    for (thenOp <- thenOpsBegin) {
-      thenOp.addDependency(beginOp)
-      beginOp.addConsumer(thenOp)
-    }
-    for (thenOp <- thenOps) {
-      thenOp.addConsumer(beginElseOp)
-      beginElseOp.addDependency(thenOp)
-    }
+    if (predValue == "") extractCudaMetadata(conditionOp, predGraph, graph)
+    if (thenValue == "") extractCudaMetadata(conditionOp, thenGraph, graph)
+    if (elseValue == "") extractCudaMetadata(conditionOp, elseGraph, graph)
 
-    //all elseOps depend on begin-else, ending depends on them
-    for (elseOp <- elseOpsBegin) {
-      elseOp.addDependency(beginElseOp)
-      beginElseOp.addConsumer(elseOp)
-    }
-    for (elseOp <- elseOps) {
-      elseOp.addConsumer(endOp)
-      endOp.addDependency(elseOp)
-    }
-
-    //add a direct link between begin/end else because else block can be empty
-    endOp.addDependency(beginElseOp)
-    beginElseOp.addConsumer(endOp)
+    //add consumer edges
+    for(dep <- ifDeps)
+      dep.addConsumer(conditionOp)
 
     //add to graph
-    graph._ops += id+"b" -> beginOp
-    graph._ops += id+"e" -> beginElseOp
-    graph._ops += id -> endOp //endOp will be found by future ops when searching by graph id
-
-    graph._result = endOp
+    graph._ops += id -> conditionOp
+    graph._result = conditionOp
   }
+
+  //translate ops (ids) from one scope to another
+  def resolveInputs(deps: List[DeliteOP])(implicit graph: DeliteTaskGraph) = deps map { d => getOp(d.id) }
 
   def processWhileTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     // get id
     val id = getFieldString(op,"outputId")
-    //get predicate and body kernels
-    val predIds = getFieldList(op, "condIds")
-    val bodyIds = getFieldList(op, "bodyIds")
 
-    var predOps: List[DeliteOP] = Nil
-    var bodyOps: List[DeliteOP] = Nil
-    var contOps: List[DeliteOP] = Nil
-
-    //copy the predicate in order to run it after the body as well
-    for (predId <- predIds) {
-      val predOp = getOp(graph._ops, predId)
-      assert(predOp.isInstanceOf[OP_Single]) //TODO: should this be relaxed?
-      val contOp = predOp.asInstanceOf[OP_Single].duplicate(predOp.id+"p")
-      contOp.consumerList = Nil
-      graph._ops += contOp.id -> contOp
-
-      predOps ::= predOp
-      contOps ::= contOp
-    }
-    for (bodyId <- bodyIds) bodyOps ::= getOp(graph._ops, bodyId)
-    val bodyOpsBegin = bodyOps.filterNot(_.isInstanceOf[OP_Control]) ++ bodyOps.filter(_.isInstanceOf[OP_Control]).map(o => getOp(graph._ops, o.id+"b"))
-
-    //fix up the internal dependencies of the copied predicate ops
-    for (contOp <- contOps) {
-      for (dep <- contOp.getDependencies) {
-        val idx = predOps findIndexOf { _ == dep }
-        if (idx != -1) {
-          val newOp = contOps(idx)
-          contOp.replaceDependency(dep, newOp)
-          newOp.addConsumer(contOp)
-        }
-      }
-      for (input <- contOp.getInputs) {
-        val idx = predOps findIndexOf { _ == input }
-        if (idx != -1) contOp.replaceInput(input, contOps(idx))
-      }
-    }
-
-    val beginOp = new OP_BeginWhile(id+"b", predOps.head)
-    val endOp = new OP_EndWhile(id, contOps.head)
+    val (predGraph, predValue) = parseSubGraph(op, "cond")
+    val (bodyGraph, bodyValue) = parseSubGraph(op, "body")
 
     val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
     var whileDeps: List[DeliteOP] = Nil
-    for (depId <- depIds) whileDeps ::= getOp(graph._ops, depId)
-    //list of all dependencies of the while block, minus any dependencies within the block
-    val ignore = bodyOpsBegin.filter(_.isInstanceOf[OP_Control]).map(o => o.asInstanceOf[OP_Control].predicate)
-    whileDeps = (whileDeps ++ bodyOpsBegin.flatMap(_.getDependencies)) filterNot { (bodyOps ++ ignore) contains }
+    for (depId <- depIds) whileDeps ::= getOp(depId)
 
-    //beginning depends on all exterior dependencies
-    for (dep <- whileDeps) {
-      beginOp.addDependency(dep)
-      dep.addConsumer(beginOp)
-    }
+    //list of all dependencies of the while block, minus any dependencies within the block (predicate could be an input or internal)
+    val internalOps = (predGraph.ops ++ bodyGraph.ops).toList
+    whileDeps = resolveInputs((predGraph.result :: whileDeps ++ internalOps.flatMap(_.getDependencies)) filterNot { internalOps contains })
+    val whileInputs = resolveInputs((predGraph.result :: internalOps.flatMap(_.getInputs)) filterNot { internalOps contains }).distinct
+    val whileInputSyms = resolveInputs(whileInputs)(predGraph)
+    val whileMutableInputs = resolveInputs((internalOps.flatMap(_.getMutableInputs)) filterNot { internalOps contains })
 
-    //beginning depends on initial predicate resolution
-    beginOp.addDependency(predOps.head)
-    predOps.head.addConsumer(beginOp)
+    val whileOp = new OP_While(id, predGraph, predValue, bodyGraph, bodyValue)
+    whileOp.dependencyList = whileDeps
+    whileOp.inputList = whileInputs
+    whileOp.mutableInputList = whileMutableInputs
+    whileOp.inputSyms = whileInputSyms
 
-    //all bodyOps depend on beginning, predOps depend on them
-    for (bodyOp <- bodyOpsBegin) {
-      bodyOp.addDependency(beginOp)
-      beginOp.addConsumer(bodyOp)
-    }
-    for (bodyOp <- bodyOps) {
-      for (contOp <- contOps) {
-        contOp.addDependency(bodyOp)
-        bodyOp.addConsumer(contOp)
-      }
-    }
+    if (predValue == "") extractCudaMetadata(whileOp, predGraph, graph)
+    if (bodyValue == "") extractCudaMetadata(whileOp, bodyGraph, graph)
 
-    //ending depends on final contOp
-    contOps.head.addConsumer(endOp)
-    endOp.addDependency(contOps.head)
+    //add consumer edges
+    for (dep <- whileDeps)
+      dep.addConsumer(whileOp)
 
     //add to graph
-    graph._ops += id+"b" -> beginOp
-    graph._ops += id -> endOp //endOp will be found by future ops when searching by graph id
+    graph._ops += id -> whileOp
+    graph._result = whileOp
+  }
 
-    graph._result = endOp
+  def extractCudaMetadata(superOp: OP_Nested, innerGraph: DeliteTaskGraph, outerGraph: DeliteTaskGraph) {
+    superOp.cudaMetadata.output = innerGraph.result.cudaMetadata.output
+    for (op <- innerGraph._ops.values; key <- op.cudaMetadata.inputs.keys) {
+      try {
+        val inOp = getOp(key.id)(outerGraph)
+        superOp.cudaMetadata.inputs += inOp -> op.cudaMetadata.inputs(key)
+      }
+      catch {
+        case e => //symbol only exists in inner graph, therefore ignore
+      }
+    }
   }
 
   /**
@@ -320,9 +333,9 @@ object DeliteTaskGraph {
    * By definition it has no dependencies
    */
   def processArgumentsTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
-    val kernelId = getFieldString(op, "kernelId")
-    Arguments.id = kernelId
-    graph._ops += kernelId -> Arguments
+    val id = getFieldString(op, "kernelId")
+    Arguments.id = id
+    graph._ops += id -> Arguments
     graph._result = Arguments
   }
 
@@ -334,6 +347,7 @@ object DeliteTaskGraph {
     val result = graph._result
     EOP.addDependency(result) //EOP depends on "result" of application
     result.addConsumer(EOP)
+    graph._ops += "EOP" -> EOP
     graph._result = EOP //set EOP as "result" for scheduler
   }
 
@@ -352,8 +366,10 @@ object DeliteTaskGraph {
     }
 
     for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
-      val value = (input.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
-      val data = cudaMetadata.newInput
+      val inputMap = input.asInstanceOf[Map[String,Any]]
+      val id = inputMap.keys.head
+      val value = inputMap.values.head.asInstanceOf[List[Any]]
+      val data = cudaMetadata.newInput(getOp(id))
       data.resultType = value.head
       data.func = value.tail.head
       data.funcReturn = value.tail.tail.head
@@ -367,7 +383,10 @@ object DeliteTaskGraph {
       cudaMetadata.tempOps ::= tempOp
     }
 
-    def getOpLike(sym: String) = graph._ops.getOrElse(sym, tempSyms(sym))
+    def getOpLike(sym: String) = {
+      try getOp(sym)
+      catch { case _ => tempSyms(sym) }
+    }
 
     for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) { //temporaries list
       val value = (temp.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
@@ -422,16 +441,42 @@ object DeliteTaskGraph {
 
 class DeliteTaskGraph {
 
-  val _ops = new HashMap[String, DeliteOP]
-  var _result: DeliteOP = _
-
   var _version = 0.0
   var _kernelPath = ""
+
+  val _ops = new HashMap[String, DeliteOP]
+  val _inputs = new HashMap[String, OP_Input]
+  var _result: DeliteOP = _
+  var _superGraph: DeliteTaskGraph = null
+
+  var schedule: PartialSchedule = _
 
   def result : DeliteOP = _result
   def version: Double = _version
   def kernelPath: String = _kernelPath
+  def superGraph: DeliteTaskGraph = _superGraph
   def ids: Iterable[String] = _ops.keys
   def ops: Iterable[DeliteOP] = _ops.values
+  def inputs: Iterable[OP_Input] = _inputs.values
 
+  def replaceOp(old: DeliteOP, op: DeliteOP) {
+    //update ops
+    for (dep <- old.getDependencies) dep.replaceConsumer(old, op)
+    for (c <- old.getConsumers) {
+      c.replaceDependency(old, op)
+      if (c.getInputs contains old) c.replaceInput(old, op)
+      c.cudaMetadata.replaceInput(old, op)
+    }
+
+    //update graph
+    if (_result == old) _result = op
+    _ops -= old.id
+    _ops += op.id -> op
+
+    //clear op
+    old.dependencyList = Nil
+    old.consumerList = Nil
+    old.inputList = Nil
+    old.mutableInputList = Nil
+  }
 }

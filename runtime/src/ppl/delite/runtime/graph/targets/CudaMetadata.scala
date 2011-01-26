@@ -19,10 +19,10 @@ final class CudaMetadata {
   val blockSizeZ = new OPData
   val dimSizeX = new OPData
   val dimSizeY = new OPData
-  var inputs: List[OPData] = Nil
+  var inputs = Map[DeliteOP, OPData]()
   var temps: List[OPData] = Nil
   var tempOps: List[DeliteOP] = Nil
-  val output = new OPData
+  var output = new OPData
 
   def apply(field: String) = field match {
     case "gpuBlockSizeX" => blockSizeX
@@ -34,9 +34,9 @@ final class CudaMetadata {
     case other => error("unknown field: " + other)
   }
 
-  def newInput = {
+  def newInput(op: DeliteOP) = {
     val in = new OPData
-    inputs ::= in
+    inputs += op -> in
     in
   }
 
@@ -46,13 +46,34 @@ final class CudaMetadata {
     temp
   }
 
-  class OPData {
+  def replaceInput(old: DeliteOP, op: DeliteOP) {
+    if (inputs contains old) {
+      val value = inputs(old)
+      inputs -= old
+      inputs += op -> value
 
-    var func: String = _
-    var funcReturn: String = _
-    var inputs: List[DeliteOP] = Nil
-    var resultType: String = _
+      blockSizeX.replaceInput(old, op)
+      blockSizeY.replaceInput(old, op)
+      blockSizeZ.replaceInput(old, op)
+      dimSizeX.replaceInput(old, op)
+      dimSizeY.replaceInput(old, op)
+      for (temp <- temps) temp.replaceInput(old, op)
+      output.replaceInput(old, op)
+    }
+  }
 
+}
+
+final class OPData {
+
+  var func: String = _
+  var funcReturn: String = _
+  var inputs: List[DeliteOP] = Nil
+  var resultType: String = _
+
+  private[targets] def replaceInput(old: DeliteOP, op: DeliteOP) {
+    if (inputs contains old)
+      inputs = inputs.patch(inputs.indexOf(old), List(op), 1)
   }
 
 }

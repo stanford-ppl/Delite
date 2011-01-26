@@ -96,6 +96,17 @@ object DeliteOpTests extends DeliteApplication with OptiMLExp {
     println(res(0))
   }
 
+  def testIfThenElse() = {
+    val y = Vector.rand(10)
+    if (y(0) == false){
+      val x0 = (unit(1.),unit(0.),y(1),NilV[Double])
+      println(x0)
+    }
+    else {
+      val x1 = (unit(0.),unit(1.),NilV[Double],y(1))
+      println(x1)
+    }
+  }
 
   def main() = {
     testMapK()
@@ -109,6 +120,7 @@ object DeliteOpTests extends DeliteApplication with OptiMLExp {
     testReduceS()
     testMapReduceS()
     testForeachS()
+    testIfThenElse()
   }
 
 }

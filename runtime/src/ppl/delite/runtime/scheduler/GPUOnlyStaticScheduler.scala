@@ -4,7 +4,6 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 import java.util.ArrayDeque
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
-import ppl.delite.runtime.codegen.kernels.scala._
 import ppl.delite.runtime.graph.ops._
 
 /**
@@ -23,46 +22,50 @@ import ppl.delite.runtime.graph.ops._
  */
 final class GPUOnlyStaticScheduler extends StaticScheduler {
 
-  private val gpuResource = new ArrayDeque[DeliteOP] //one GPU stream
-  private val cpuResource = new ArrayDeque[DeliteOP] //one CPU thread
+  private val cpu = 0
+  private val gpu = 1
 
-  private val opQueue = new ArrayDeque[DeliteOP]
-
-  def schedule(graph: DeliteTaskGraph): PartialSchedule = {
+  def schedule(graph: DeliteTaskGraph) {
     assert(Config.numThreads == 1 && Config.numGPUs == 1)
     scheduleFlat(graph)
-    createPartialSchedule
   }
 
-  private def scheduleFlat(graph: DeliteTaskGraph) {
-    enqueueRoots(graph)
+  protected def scheduleFlat(graph: DeliteTaskGraph) {
+    val opQueue = new ArrayDeque[DeliteOP]
+    val schedule = PartialSchedule(2)
+    enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
-      scheduleOne(op, graph)
-      processConsumers(op)
+      scheduleOne(op, graph, schedule)
+      enqueueRoots(graph, opQueue)
     }
+    ensureScheduled(graph)
+    graph.schedule = schedule
   }
 
-  private def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph) {
+  protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op match {
-      case c: OP_Control => addControl(c)
+      case c: OP_Control => addNested(c, graph, schedule, Seq(cpu,gpu))
       case _ => {
         if (op.supportsTarget(Targets.Cuda)) { //schedule on GPU resource
           if (op.isDataParallel) {
-            splitGPU(op)
+            splitGPU(op, schedule)
           }
           else {
-            gpuResource.add(op)
-            op.scheduledResource = 1
+            schedule(gpu).add(op)
+            op.scheduledResource = gpu
           }
+        }
+        else if (op.variant != null) { //kernel could be partially GPUable
+          addNested(op.variant, graph, schedule, Seq(cpu,gpu))
         }
         else { //schedule on CPU resource
           if (op.isDataParallel) {
-            split(op, graph)
+            split(op, graph, schedule, Seq(cpu))
           }
           else {
-            cpuResource.add(op)
-            op.scheduledResource = 0
+            schedule(cpu).add(op)
+            op.scheduledResource = cpu
           }
         }
         op.isScheduled = true
@@ -70,55 +73,11 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
     }
   }
 
-  private def enqueueRoots(graph: DeliteTaskGraph) {
-    for (op <- graph.ops) {
-      op.processSchedulable
-      if (op.isSchedulable) opQueue.add(op)
-    }
-  }
-
-  private def processConsumers(op: DeliteOP) {
-    for (c <- op.getConsumers) {
-      if (!c.isSchedulable) {//if not already in opQueue (protects against same consumer appearing in list multiple times)
-        c.processSchedulable
-        if (c.isSchedulable) opQueue.add(c)
-      }
-    }
-  }
-
-  private def split(op: DeliteOP, graph: DeliteTaskGraph) {
-    val header = OpHelper.expand(op, 1, graph)
-    cpuResource.add(header)
-    header.scheduledResource = 0
-    header.isScheduled = true
-
-    val chunk = OpHelper.split(op, 0, 1, graph.kernelPath)
-    cpuResource.add(chunk)
-    chunk.scheduledResource = 0
-    chunk.isScheduled = true
-  }
-
-  private def splitGPU(op: DeliteOP) {
+  private def splitGPU(op: DeliteOP, schedule: PartialSchedule) {
     val chunk = OpHelper.splitGPU(op)
-    gpuResource.add(chunk)
-    chunk.scheduledResource = 1
+    schedule(gpu).add(chunk)
+    chunk.scheduledResource = gpu
     chunk.isScheduled = true
-  }
-
-  private def addControl(op: OP_Control) {
-    val chunk0 = op.makeChunk(0)
-    cpuResource.add(chunk0)
-    chunk0.scheduledResource = 0
-    chunk0.isScheduled = true
-
-    val chunk1 = op.makeChunk(1)
-    gpuResource.add(chunk1)
-    chunk1.scheduledResource = 1
-    chunk1.isScheduled = true
-  }
-
-  private def createPartialSchedule = {
-    new PartialSchedule(Array[ArrayDeque[DeliteOP]](cpuResource, gpuResource))
   }
 
 }

@@ -316,9 +316,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   ////////////////////////////////
   // implemented via delite ops
 
-  case class VectorTrans[A:Manifest](in: Exp[Vector[A]])
+  case class VectorTrans[A](in: Exp[Vector[A]])(implicit val mA: Manifest[A])
     extends DeliteOpMap[A,A,Vector] {
-    
+
+    // TODO: why doesn't this work when using a context bound? this is making everything much uglier because
+    // we can't do this.
+    //val mA = manifest[A]
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, !in.isRow))
     val v = fresh[A]
     val func = v 
@@ -332,9 +336,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 + v._2
   }
 
-  case class VectorPlusScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
+  case class VectorPlusScalar[A](in: Exp[Vector[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v + y
@@ -356,9 +361,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 - v._2
   }
 
-  case class VectorMinusScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
+  case class VectorMinusScalar[A](in: Exp[Vector[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v - y
@@ -380,9 +386,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 * conv(v._2)
   }
 
-  case class VectorTimesScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
+  case class VectorTimesScalar[A](in: Exp[Vector[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v * y
@@ -405,9 +412,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 / v._2
   }
 
-  case class VectorDivideScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
+  case class VectorDivideScalar[A](in: Exp[Vector[A]], y: Exp[A])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v / y
@@ -420,17 +428,19 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 + v._2
   }
 
-  case class VectorAbs[A:Manifest:Arith](in: Exp[Vector[A]])
+  case class VectorAbs[A](in: Exp[Vector[A]])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v.abs
   }
 
-  case class VectorExp[A:Manifest:Arith](in: Exp[Vector[A]])
+  case class VectorExp[A](in: Exp[Vector[A]])(implicit val mA: Manifest[A], arith: Arith[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v.exp
@@ -465,15 +475,16 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   //  val func = if (v._1 > v._2) v._1.index else v._2.index
   //}
 
-  case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[B])
+  case class VectorMap[A,B](in: Exp[Vector[A]], v: Exp[A], func: Exp[B])(implicit val mA: Manifest[A], val mB: Manifest[B])
     extends DeliteOpMap[A,B,Vector] {
 
     val alloc = reifyEffects(Vector[B](in.length, in.isRow))
   }
 
-  case class VectorMutableMap[A:Manifest](in: Exp[Vector[A]], v: Exp[A], func: Exp[A])
+  case class VectorMutableMap[A](in: Exp[Vector[A]], v: Exp[A], func: Exp[A])(implicit val mA: Manifest[A])
     extends DeliteOpMap[A,A,Vector] {
 
+    val mB = mA
     val alloc = in
   }
 
@@ -508,7 +519,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorFlatMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], mV: Exp[A], map: Exp[Vector[B]])
     extends DeliteOpMapReduce[A,Vector[B],Vector] {
 
-    val alloc = reifyEffects(Vector[Vector[B]](in.length, in.isRow))
     val rV = (fresh[Vector[B]],fresh[Vector[B]])
     val reduce = reifyEffects(rV._1 ++ rV._2)
   }
@@ -708,7 +718,6 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
 
-    // The ops that call through to the underlying real data structure
     case VectorApply(x, n) =>
       emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case VectorUpdate(x,n,y) =>
@@ -769,19 +778,19 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
     case VectorTrans(x) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s.length".format(quote(x)))
+      setCurrDimLength("%s->length".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
       tabWidth += 1
       stream.println(addTab()+"%s.update(%s,%s.apply(%s));".format(quote(sym),currDimStr,quote(x),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.length".format(quote(x)),"!%s.isRow".format(quote(x)))
+      emitVectorAlloc(sym,"%s->length".format(quote(x)),"!%s->isRow".format(quote(x)))
       currDim -= 1
 
     case VectorRepmat(x,i,j) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s.length * %s * %s".format(quote(x),quote(i),quote(j)))
+      setCurrDimLength("%s->length * %s * %s".format(quote(x),quote(i),quote(j)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(sym)))
       tabWidth += 1
 	    stream.println(addTab()+"int i = %s / (%s.length * %s);".format(currDimStr,quote(x),quote(j)))
@@ -789,13 +798,13 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       stream.println(addTab()+"%s.update(i,j,%s.apply(%s));".format(quote(sym),quote(x),"j%"+quote(x)+".length"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.length*%s".format(quote(x),quote(i)),"%s.length*%s".format(quote(x),quote(j)))
+      emitMatrixAlloc(sym,"%s->length*%s".format(quote(x),quote(i)),"%s->length*%s".format(quote(x),quote(j)))
       currDim -= 1
 
     case VectorOuter(x,y) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
-      setCurrDimLength(quote(x)+".length")
+      setCurrDimLength(quote(x)+"->length")
       stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(x)+".size()"))
       tabWidth += 1
       stream.println(addTab()+"for(int i=0; i<%s.length; i++) {".format(quote(x))); tabWidth += 1
@@ -803,7 +812,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       tabWidth -= 1; stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.length".format(quote(x)),"%s.length".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->length".format(quote(x)),"%s->length".format(quote(x)))
       currDim -= 1
 
     case _ => super.emitNode(sym, rhs)
