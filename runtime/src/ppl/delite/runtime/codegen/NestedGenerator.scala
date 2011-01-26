@@ -82,7 +82,7 @@ abstract class GPUNestedGenerator(nested: OP_Nested, location: Int) extends GPUE
         out.append("* ")
         out.append(getSymGPU(sym))
       }
-      else if (getJNIType(in.outputType) != "jobject") {
+      else if (isPrimitiveType(in.outputType)) {
         if (!first) out.append(',')
         first = false
         out.append(getCPrimitiveType(in.outputType))
