@@ -16,8 +16,6 @@ package ppl.dsl.optiml.datastruct.scala
  *
  */
 
-class IndexVectorSeqImpl(xs: Int*) extends VectorImpl[Int](xs.length, true) with IndexVector {
-  _data = xs.toArray
-}
+class IndexVectorSeqImpl(xs: Vector[Int]) extends VectorImpl[Int](xs.data, true) with IndexVector
 
 class IndexVectorRangeImpl(_start: Int, _end: Int) extends RangeVectorImpl(_start, _end, 1, true) with IndexVector

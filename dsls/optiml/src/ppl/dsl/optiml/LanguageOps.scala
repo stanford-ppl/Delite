@@ -164,6 +164,7 @@ trait LanguageOps extends Base { this: OptiML =>
    */
   def loadMatrix(filename: Rep[String]) = MLInputReader.read(filename)
   def loadVector(filename: Rep[String]) = MLInputReader.readVector(filename)
+  def loadImage(filename: Rep[String]) = MLInputReader.readGrayscaleImage(filename)
 
   // distance metrics
   val ABS = 0
