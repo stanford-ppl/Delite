@@ -787,7 +787,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       stream.println(addTab()+"%s.update(i,j,%s.apply(%s));".format(quote(sym),quote(x),"j%"+quote(x)+".length"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s->length*%s".format(quote(x),quote(i)),"%s->length*%s".format(quote(x),quote(j)))
+      emitMatrixAlloc(sym,"%s".format(quote(i)),"%s->length*%s".format(quote(x),quote(j)))
       currDim -= 1
 
     case VectorOuter(x,y) =>

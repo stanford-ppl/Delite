@@ -895,10 +895,13 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       setCurrDimLength("%s->size()".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
       tabWidth += 1
-	    val sigmoidFunc = emitDevFunc(m.func,List(m.v))
+	    val (sigmoidFunc,freeVars) = emitDevFunc(m.func,List(m.v))
       stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
       stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
-      stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
+	  if(freeVars.length == 0)
+      	stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
+	  else
+      	stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)),%s);".format(quote(sym),sigmoidFunc,quote(x),freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(x)))
