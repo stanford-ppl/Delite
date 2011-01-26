@@ -38,11 +38,11 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     exit(-1)
   }
 
-  def run(args: Array[String]) = {
+  def main() = {
     // rows and cols arguments
     try {
-      if (args.length > 0) rows = java.lang.Integer.parseInt(args(0))
-      if (args.length > 1) cols = java.lang.Integer.parseInt(args(1))
+      if (args.length > 0) rows = Integer.parseInt(args(0))
+      if (args.length > 1) cols = Integer.parseInt(args(1))
     }
     catch {
       case _: Exception => print_usage
@@ -99,32 +99,37 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
     untilconverged(g) {
       v =>
-        v.data.asInstanceOfL[DenoiseVertexData].belief = v.data.asInstanceOfL[DenoiseVertexData].potential.cloneL
+        val vdata = v.data.asInstanceOfL[DenoiseVertexData]
+        vdata.belief = vdata.potential.cloneL
 
         // Multiply belief by messages
         for (e <- v.edges) {
-          v.data.asInstanceOfL[DenoiseVertexData].belief = unaryFactorTimes(v.data.asInstanceOfL[DenoiseVertexData].belief, e.in(v).data.asInstanceOfL[DenoiseEdgeData].old_message)
+          val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
+          vdata.belief = unaryFactorTimes(v.data.asInstanceOfL[DenoiseVertexData].belief, in.message)
         }
 
         // Normalize the belief
-        v.data.asInstanceOfL[DenoiseVertexData].belief = unaryFactorNormalize(v.data.asInstanceOfL[DenoiseVertexData].belief)
+        vdata.belief = unaryFactorNormalize(vdata.belief)
 
         // Send outbound messages
         for (e <- v.edges) {
+          val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
+          val out = e.asInstanceOfL[MessageEdge].out(v).asInstanceOfL[DenoiseEdgeData]
+
           // Compute the cavity
-          val cavity = unaryFactorNormalize(unaryFactorDivide(v.data.asInstanceOfL[DenoiseVertexData].belief.cloneL, e.in(v).data.asInstanceOfL[DenoiseEdgeData].message))
+          val cavity = unaryFactorNormalize(unaryFactorDivide(v.data.asInstanceOfL[DenoiseVertexData].belief.cloneL, in.message))
 
           // Convolve the cavity with the edge factor
           var msg = unaryFactorNormalize(unaryFactorConvolve(edgePotential, cavity))
 
           // Damp the message
-          msg = unaryFactorSamp(msg, outEdge.message, damping)
+          msg = unaryFactorDamp(msg, out.message, damping)
 
           // Compute message residual
-          val residual = unaryFactorResidual(msg, e.out(v).data.asInstanceOfL[DenoiseEdgeData].message)
+          val residual = unaryFactorResidual(msg, out.message)
 
           // Set the message
-          e.out(v).data.message = msg
+          out.message = msg
 
           /*  if(count % 10000 == 0) {
            println(count + " " + residual)
@@ -132,7 +137,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
           // Enqueue update function on target vertex if residual is greater than bound
           if (residual > bound) {
-            v.addTask(e.target(v))
+            v.addTask(e.asInstanceOfL[MessageEdge].target(v))
           }
         }
 
@@ -141,14 +146,14 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
     // Predict the image!
     g.vertices foreach { v =>
-      img.data(v.id) = unaryFactorMaxAsg(v.belief);
+      imgUpdate(img, v.data.asInstanceOfL[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.asInstanceOfL[DenoiseVertexData].belief))
     }
 
     img
   }
 
-  def constructGraph(img: Rep[Matrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Graph[MessageVertex, MessageEdge] = {
-    val g = new UndirectedGraphImpl[MessageVertex, MessageEdge]()
+  def constructGraph(img: Rep[Matrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Rep[Graph[MessageVertex, MessageEdge]] = {
+    val g = Graph[MessageVertex, MessageEdge]()
 
     // Same belief for everyone
     val belief = unaryFactorUniform(numRings)
@@ -203,6 +208,13 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     i * img.numCols + j
   }
 
+  def imgUpdate(img: Rep[Matrix[Double]], id: Rep[Int], pixel: Rep[Double]) = {
+    val row = id / img.numCols
+    val col = id % img.numCols
+
+    img(row, col) = pixel
+  }
+
   def imgPaintSunset(img: Rep[Matrix[Double]], numRings: Int) = {
     val centerR = img.numRows.asInstanceOfL[Double] / 2.0
     val centerC = img.numCols.asInstanceOfL[Double] / 2.0
@@ -230,13 +242,13 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   def imgCorrupt(img: Rep[Matrix[Double]], sigma: Rep[Double]) = {
     for (r <- 0 until img.numRows) {
       for (c <- 0 until img.numCols) {
-        img(r, c) = img(r, c) + Random.nextGaussian * sigma
+        img(r, c) = img(r, c) + randomGaussian * sigma
       }
     }
   }
 
   def imgSave(img: Rep[Matrix[Double]], filename: Rep[String]) = {
-
+      MLOutputWriter.writeImgPgm(img, filename)
   }
 
   def binaryFactorSetAgreement(bf: Rep[Matrix[Double]], lambda: Rep[Double]) = {
@@ -305,10 +317,10 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
   // Max assignment
   def unaryFactorMaxAsg(uf: Rep[Vector[Double]]): Rep[Int] = {
-    var max_asg = 0
+    var max_asg = unit(0)
     var max_value = uf(0)
 
-    var asg : Rep[Int] = 0
+    var asg = unit(0)
     while (asg < uf.length) {
       if (uf(asg) > max_value) {
         max_value = uf(asg)

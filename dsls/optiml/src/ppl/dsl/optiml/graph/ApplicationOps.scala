@@ -2,8 +2,7 @@ package ppl.dsl.optiml.graph
 
 import ppl.delite.framework.DSLType
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
-import ppl.dsl.optiml.datastruct.scala.{DenoiseEdgeData, DenoiseVertexData}
-import ppl.dsl.optiml.datastruct.scala.{DenoiseEdgeDataImpl, DenoiseVertexDataImpl}
+import ppl.dsl.optiml.datastruct.scala._
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{EffectExp, Variables}
 import scala.virtualization.lms.internal.{ScalaGenBase, GenericNestedCodegen}
@@ -103,6 +102,7 @@ trait DenoiseEdgeDataOps extends DSLType with Variables {
     def message_=(m: Rep[Vector[Double]]) = denoise_edge_data_message_update(e,m)
     def oldMessage = denoise_edge_data_old_message(e)
     def oldMessage_=(m: Rep[Vector[Double]]) = denoise_edge_data_old_message_update(e,m)
+    def cloneL = denoise_edge_data_cloneL(e)
   }
 
   // object defs
@@ -113,6 +113,7 @@ trait DenoiseEdgeDataOps extends DSLType with Variables {
   def denoise_edge_data_message_update(e: Rep[DenoiseEdgeData], m: Rep[Vector[Double]])
   def denoise_edge_data_old_message(e: Rep[DenoiseEdgeData]): Rep[Vector[Double]]
   def denoise_edge_data_old_message_update(e: Rep[DenoiseEdgeData], m: Rep[Vector[Double]])
+  def denoise_edge_data_cloneL(e: Rep[DenoiseEdgeData]): Rep[DenoiseEdgeData]
 }
 
 trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
@@ -129,6 +130,7 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
   case class DenoiseEdgeDataMessageUpdate(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) extends Def[Unit]
   case class DenoiseEdgeDataOldMessage(e: Exp[DenoiseEdgeData]) extends Def[Vector[Double]]
   case class DenoiseEdgeDataOldMessageUpdate(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) extends Def[Unit]
+  case class DenoiseEdgeDataCloneL(e: Exp[DenoiseEdgeData]) extends Def[DenoiseEdgeData]
 
   /////////////////////
   // object interface
@@ -142,6 +144,7 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
   def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = DenoiseEdgeDataMessageUpdate(e, m)
   def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataOldMessage(e)
   def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = DenoiseEdgeDataOldMessageUpdate(e, m)
+  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataCloneL(e) 
 }
 
 trait BaseGenDenoiseEdgeDataOps extends GenericNestedCodegen {
@@ -159,6 +162,7 @@ trait ScalaGenDenoiseEdgeDataOps extends BaseGenDenoiseEdgeDataOps with ScalaGen
       case DenoiseEdgeDataMessageUpdate(e,m) => emitValDef(sym, quote(e) + ".message = (" + quote(m) + ")")
       case DenoiseEdgeDataOldMessage(e) => emitValDef(sym, quote(e) + ".oldMessage")
       case DenoiseEdgeDataOldMessageUpdate(e,m) => emitValDef(sym, quote(e) + ".oldMessage = (" + quote(m) + ")")
+      case DenoiseEdgeDataCloneL(e) => emitValDef(sym, quote(e) + ".cloneL")
       case _ => super.emitNode(sym, rhs)
     }
   }

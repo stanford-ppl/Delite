@@ -21,9 +21,9 @@ trait MessageEdgeOps extends DSLType with Variables {
   implicit def repMessageEdgeToMessageEdgeOps(e: Rep[MessageEdge]) = new messageEdgeOpsCls(e)
 
   class messageEdgeOpsCls(e: Rep[MessageEdge]) {
-    def in(v: MessageVertex) = message_edge_in(e,v)
-    def out(v: MessageVertex) = message_edge_out(e,v)
-    def target(source: MessageVertex) = message_edge_target(e,source)
+    def in(v: Rep[MessageVertex]) = message_edge_in(e,v)
+    def out(v: Rep[MessageVertex]) = message_edge_out(e,v)
+    def target(source: Rep[MessageVertex]) = message_edge_target(e,source)
   }
 
   // object defs

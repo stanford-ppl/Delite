@@ -21,7 +21,7 @@ trait VertexOps extends DSLType with Variables {
   class vertexOpsCls(v: Rep[Vertex]) {
     def edges = vertex_edges(v)
     def neighbors = vertex_neighbors(v)
-    def addTasks(t: Rep[Vertex]) = vertex_add_tasks(v, t)
+    def addTask(t: Rep[Vertex]) = vertex_add_task(v, t)
     def clearTasks() = vertex_clear_tasks(v)
     def tasks = vertex_tasks(v)
   }
@@ -32,7 +32,7 @@ trait VertexOps extends DSLType with Variables {
 
   def vertex_tasks(v: Rep[Vertex]) : Rep[Vertices[Vertex]]
   def vertex_clear_tasks(v: Rep[Vertex]) : Rep[Unit]
-  def vertex_add_tasks(v: Rep[Vertex], t: Rep[Vertex]) : Rep[Unit]
+  def vertex_add_task(v: Rep[Vertex], t: Rep[Vertex]) : Rep[Unit]
 }
 
 trait VertexOpsExp extends VertexOps with EffectExp {
@@ -57,7 +57,7 @@ trait VertexOpsExp extends VertexOps with EffectExp {
 
   def vertex_tasks(v: Exp[Vertex]) = VertexTasks(v)
   def vertex_clear_tasks(v: Exp[Vertex]) = VertexClearTasks(v)
-  def vertex_add_tasks(v: Exp[Vertex], t: Exp[Vertex]) = VertexAddTask(v, t)
+  def vertex_add_task(v: Exp[Vertex], t: Exp[Vertex]) = VertexAddTask(v, t)
 }
 
 
