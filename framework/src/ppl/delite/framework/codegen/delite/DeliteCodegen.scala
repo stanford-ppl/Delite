@@ -127,8 +127,6 @@ trait DeliteCodegen extends GenericFatCodegen {
 
   override def emitFatBlockFocused(currentScope: List[TTP])(result: Exp[Any])(implicit stream: PrintWriter): Unit = {
     println("-- block for "+result)
-/*
-    println("-- block for "+result)
     currentScope.foreach(println)
 
     println("-- shallow schedule for "+result)
@@ -137,25 +135,25 @@ trait DeliteCodegen extends GenericFatCodegen {
     shallow = false
     e2.foreach(println)
 
-    // shallow is 'must outside + should outside' <--- currently shallow == deep for lambdas, meaning everything 'should outside'
-    // bound is 'must inside'
-
-    // find transitive dependencies on bound syms, including their defs (in case of effects)
     println("-- bound for "+result)
     val e1 = currentScope
     val bound = e1.flatMap(z => boundSyms(z.rhs))
     bound.foreach(println)
     
     println("-- dependent for "+result)
-    val g1 = getFatDependentStuff(currentScope)(bound)
-    g1.foreach(println)
-*/
+    bound.foreach { st =>
+      val res = getFatDependentStuff0(currentScope)(st)
+      println("--- dep on " + st)
+      res.foreach(println)
+    }
+
     focusExactScopeFat(currentScope)(result) { levelScope => 
-/*
       println("-- level for "+result)
       levelScope.foreach(println)
       println("-- exact for "+result)
       availableDefs.foreach(println)
+
+/*
       val effects = result match {
         case Def(Reify(x, effects0)) =>
           println("*** effects0: " + effects0)

@@ -46,7 +46,8 @@ trait SVMModel {
     var b = unit(0.0)
 
     // intermediate training info
-    val alphas = Vector.zeros(X.numRows).mt // col vector
+    val alphas = Vector.zeros(X.numRows)
+    alphas.mt // col vector
 
     val numSamples = X.numRows
     var passes = unit(0)
@@ -71,8 +72,8 @@ trait SVMModel {
           val f_j = (alphas*Y*(X*X(j).t)).sum + b
           val E_j = f_j - Y(j)
                         
-          var old_aj = alphas(j)
-          var old_ai = alphas(i)
+          val old_aj = alphas(j) //TR: making it a val should not move it down!
+          //var old_ai = alphas(i)
 
           // calculate bounds L and H that must hold in order for a_i, alphas(j) to
           // satisfy constraints and check
@@ -86,13 +87,14 @@ trait SVMModel {
             H = Math.min(C, alphas(i) + alphas(j))
           }
 
-          if (L != H){
+          if (L != H){ //TR: problem: if/then/else will not force old_aj
             // calculate eta
             val eta = (X(i)*:*X(j)*2) - (X(i)*:*X(i)) - (X(j)*:*X(j))
             // check eta
             if (eta < 0){
               // compute new alphas(j)
-              alphas(j) = alphas(j) - Y(j)*(E_i-E_j)/eta
+              //alphas = alphas.cloneL //TR
+              alphas(j) = alphas(j) - Y(j)*(E_i-E_j)/eta //TR functionalize?
               // clip alphas(j) if necessary
               if (alphas(j) > H) alphas(j) = H
               else if (alphas(j) < L) alphas(j) = L
@@ -100,8 +102,9 @@ trait SVMModel {
               // check alphas(j) convergence
               if (Math.abs(alphas(j) - old_aj) >  tol){
                 // find a_i to maximize objective function
-                old_ai = alphas(i)
-                alphas(i) = alphas(i) + Y(i)*Y(j)*(old_aj-alphas(j))
+                val old_ai = alphas(i)
+                //alphas = alphas.cloneL //TR
+                alphas(i) = alphas(i) + Y(i)*Y(j)*(old_aj-alphas(j)) //TR functionalize?
 
                 // compute the new b such that KKT conditions are satisfied
                 val old_b = b

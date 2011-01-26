@@ -58,7 +58,7 @@ trait VectorOpsExp2 extends VectorOps2 with DeliteOpsExp {
   def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(x, y)
   def vector_minus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(x, y)
   def vector_apply[A:Manifest](x: Exp[Vector[A]], i: Rep[Int]) = VectorApply(x,i)
-  def vector_update[A:Manifest](x: Rep[Vector[A]], i: Rep[Int], v: Rep[A]) = reflectMutation(VectorUpdate(x, i, v))
+  def vector_update[A:Manifest](x: Rep[Vector[A]], i: Rep[Int], v: Rep[A]) = reflectWrite(x)(x)(VectorUpdate(x, i, v))
   def vector_length[A:Manifest](x: Rep[Vector[A]]) = VectorLength(x)
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
 }

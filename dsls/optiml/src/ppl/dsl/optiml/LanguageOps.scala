@@ -355,22 +355,23 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case InternalRandDouble() => emitValDef(sym, "Global.intRandRef.nextDouble()")
-      case InternalRandFloat() => emitValDef(sym, "Global.intRandRef.nextFloat()")
-      case InternalRandInt() => emitValDef(sym, "Global.intRandRef.nextInt()")
-      case InternalRandLong() => emitValDef(sym, "Global.intRandRef.nextLong()")
-      case InternalRandBoolean() => emitValDef(sym, "Global.intRandRef.nextBoolean()")
-      case RandDouble() => emitValDef(sym, "Global.randRef.nextDouble()")
-      case RandFloat() => emitValDef(sym, "Global.randRef.nextFloat()")
-      case RandInt() => emitValDef(sym, "Global.randRef.nextInt()")
-      case RandLong() => emitValDef(sym, "Global.randRef.nextLong()")
-      case RandBoolean() => emitValDef(sym, "Global.randRef.nextBoolean()")
-      case RandGaussian() => emitValDef(sym, "Global.randRef.nextGaussian()")
-      case RandReseed() => emitValDef(sym, "{ Global.randRef.setSeed(Global.INITIAL_SEED);" +
-                                           "   Global.intRandRef.setSeed(Global.INITIAL_SEED); }")
-
-      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
-      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
+      case InternalRandDouble() => emitValDef(sym, "generated.scala.Global.intRandRef.nextDouble()")
+      case InternalRandFloat() => emitValDef(sym, "generated.scala.Global.intRandRef.nextFloat()")
+      case InternalRandInt() => emitValDef(sym, "generated.scala.Global.intRandRef.nextInt()")
+      case InternalRandLong() => emitValDef(sym, "generated.scala.Global.intRandRef.nextLong()")
+      case InternalRandBoolean() => emitValDef(sym, "generated.scala.Global.intRandRef.nextBoolean()")
+      case RandDouble() => emitValDef(sym, "generated.scala.Global.randRef.nextDouble()")
+      case RandFloat() => emitValDef(sym, "generated.scala.Global.randRef.nextFloat()")
+      case RandInt() => emitValDef(sym, "generated.scala.Global.randRef.nextInt()")
+      case RandLong() => emitValDef(sym, "generated.scala.Global.randRef.nextLong()")
+      case RandBoolean() => emitValDef(sym, "generated.scala.Global.randRef.nextBoolean()")
+      case RandGaussian() => emitValDef(sym, "generated.scala.Global.randRef.nextGaussian()")
+      case RandReseed() => emitValDef(sym, "{ generated.scala.Global.randRef.setSeed(Global.INITIAL_SEED);" +
+                                           "   generated.scala.Global.intRandRef.setSeed(Global.INITIAL_SEED); }")
+//      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)") //TR TEMP
+//      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
+      case ProfileStart() => emitValDef(sym, "println(\"tic:\" + (System.nanoTime / 1000000L))")
+      case ProfileStop() => emitValDef(sym, "println(\"toc:\" + (System.nanoTime / 1000000L))")
       case _ => super.emitNode(sym, rhs)
     }
   }

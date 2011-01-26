@@ -309,7 +309,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
               stream.println("var " + quotearg(sym) + " = " + zero) // TODO: need explicit zero?
           }
           stream.println("var " + quote(op.v) + " = 0")
-          stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {")
+          stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
           val elemFuncs = op.body map { // don't emit dependencies twice!
             case elem: DeliteCollectElem[_,_] => elem.func
             case elem: DeliteReduceElem[_] => elem.func
@@ -327,7 +327,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
               stream.println(quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
           }
           stream.println(quote(op.v) + " += 1")
-          stream.println("} // end fat loop")
+          stream.println("} // end fat loop " + symList.map(quote).mkString(","))
         } else {
           // kernel mode
           val kernelName = symList.map(quote).mkString("")
