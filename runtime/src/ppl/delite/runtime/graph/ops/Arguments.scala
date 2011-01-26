@@ -11,7 +11,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-object Arguments extends OP_Executable(Map(Targets.Scala->"Array[String]")) {
+object Arguments extends OP_Executable(Map(Targets.Scala->"Array[java.lang.String]")) {
 
   /**
    * OP features

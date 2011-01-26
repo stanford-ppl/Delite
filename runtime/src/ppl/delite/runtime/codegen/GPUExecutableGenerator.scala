@@ -145,7 +145,7 @@ abstract class GPUExecutableGenerator {
             addInputCopy = true
             writeInputCopy(input, inData.func, inData.resultType, out)
           }
-          else if (getJNIType(input.outputType) != "jobject")
+          else if (isPrimitiveType(input.outputType))
             writeInputCast(input, out) //if primitive type, simply cast to transform from "c" type into "g" type
           else {
             assert(op.isInstanceOf[OP_Nested]) //object without copy must be for a nested function call
@@ -335,7 +335,7 @@ abstract class GPUExecutableGenerator {
     out.append('(')
     var first = true
     for (input <- op.getInputs) {
-      if (op.cudaMetadata.inputs.contains(input) || getJNIType(input.outputType) != "jobject") {
+      if (op.cudaMetadata.inputs.contains(input) || isPrimitiveType(input.outputType)) {
         if (!first) out.append(',')
         first = false
         out.append(getSymGPU(input))
@@ -397,7 +397,7 @@ abstract class GPUExecutableGenerator {
     for (input <- op.getInputs) {
       if (!first) out.append(',')
       first = false
-      if (getJNIType(input.outputType) == "jobject") out.append('*') //TODO: this is awkward
+      if (!isPrimitiveType(input.outputType)) out.append('*') //TODO: this is awkward
       out.append(getSymGPU(input))
     }
   }
@@ -473,7 +473,7 @@ abstract class GPUExecutableGenerator {
     }
 
     def freeable(op: DeliteOP) = {
-      getJNIType(op.outputType) == "jobject" && op.isInstanceOf[OP_Executable] && available.contains(op)
+      !isPrimitiveType(op.outputType) && op.isInstanceOf[OP_Executable] && available.contains(op)
     }
 
     //free temps
@@ -578,12 +578,13 @@ abstract class GPUExecutableGenerator {
       case "Short" => "S"
       case "Char" => "C"
       case "Byte" => "B"
+      case array if array.startsWith("Array[") => "[" + getJNIArgType(array.slice(6,array.length-1))
       case _ => { //all other types are objects
         var objectType = scalaType.replace('.','/')
         if (objectType.indexOf('[') != -1) objectType = objectType.substring(0, objectType.indexOf('[')) //erasure
         "L"+objectType+";" //'L' + fully qualified type + ';'
       }
-    } //TODO: this does not handle array types properly
+    }
   }
 
   protected def getJNIOutputType(scalaType: String): String = {
@@ -597,12 +598,13 @@ abstract class GPUExecutableGenerator {
       case "Short" => "S"
       case "Char" => "C"
       case "Byte" => "B"
+      case array if array.startsWith("Array[") => "[" + getJNIOutputType(array.slice(6,array.length-1))
       case _ => { //all other types are objects
         var objectType = scalaType.replace('.','/')
         if (objectType.indexOf('[') != -1) objectType = objectType.substring(0, objectType.indexOf('[')) //erasure
         "L"+objectType+";" //'L' + fully qualified type + ';'
       }
-    } //TODO: this does not handle array types properly
+    }
   }
 
   protected def getJNIFuncType(scalaType: String): String = scalaType match {
@@ -629,6 +631,19 @@ abstract class GPUExecutableGenerator {
     case "Char" => "char"
     case "Byte" => "char"
     case other => error(other + " is not a primitive type")
+  }
+
+  protected def isPrimitiveType(scalaType: String): Boolean = scalaType match {
+    case "Unit" => true
+    case "Int" => true
+    case "Long" => true
+    case "Float" => true
+    case "Double" => true
+    case "Boolean" => true
+    case "Short" => true
+    case "Char" => true
+    case "Byte" => true
+    case _ => false
   }
 
 }
