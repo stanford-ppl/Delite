@@ -46,7 +46,7 @@ trait SVMModel {
     var b = unit(0.0)
 
     // intermediate training info
-    val alphas = Vector.zeros(X.numRows)
+    val alphas = Vector.mzeros(X.numRows)
     alphas.mt // col vector
 
     val numSamples = X.numRows

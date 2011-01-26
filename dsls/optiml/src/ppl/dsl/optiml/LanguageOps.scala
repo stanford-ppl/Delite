@@ -366,8 +366,8 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
       case RandLong() => emitValDef(sym, "generated.scala.Global.randRef.nextLong()")
       case RandBoolean() => emitValDef(sym, "generated.scala.Global.randRef.nextBoolean()")
       case RandGaussian() => emitValDef(sym, "generated.scala.Global.randRef.nextGaussian()")
-      case RandReseed() => emitValDef(sym, "{ generated.scala.Global.randRef.setSeed(Global.INITIAL_SEED);" +
-                                           "   generated.scala.Global.intRandRef.setSeed(Global.INITIAL_SEED); }")
+      case RandReseed() => emitValDef(sym, "{ generated.scala.Global.randRef.setSeed(generated.scala.Global.INITIAL_SEED);" +
+                                           "   generated.scala.Global.intRandRef.setSeed(generated.scala.Global.INITIAL_SEED); }")
 //      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)") //TR TEMP
 //      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
       case ProfileStart() => emitValDef(sym, "println(\"tic:\" + (System.nanoTime / 1000000L))")

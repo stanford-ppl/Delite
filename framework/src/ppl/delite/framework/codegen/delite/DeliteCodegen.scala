@@ -179,7 +179,7 @@ trait DeliteCodegen extends GenericFatCodegen {
         //controlDeps = levelScope.takeWhile(_.lhs != syms) filter { effects contains _ } flatMap { _.lhs }
         controlDeps = Nil // within emitFatNode below iff it is a reflect/reify node
         rhs match {
-          case ThinDef(Reify(_,_)) =>
+          case ThinDef(Reify(_,_,_)) =>
           case _ => localEmittedNodes ++= syms
         }
         emitFatNode(syms, rhs)

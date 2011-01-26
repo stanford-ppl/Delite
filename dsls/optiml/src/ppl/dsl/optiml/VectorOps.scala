@@ -38,6 +38,7 @@ trait VectorOps extends DSLType with Variables {
     def ones(len: Rep[Int]) = vector_obj_ones(len)
     def onesf(len: Rep[Int]) = vector_obj_onesf(len)
     def zeros(len: Rep[Int]) = vector_obj_zeros(len)
+    def mzeros(len: Rep[Int]) = vector_obj_mzeros(len)
     def zerosf(len: Rep[Int]) = vector_obj_zerosf(len)
     def rand(len: Rep[Int]) = vector_obj_rand(len)
     def randf(len: Rep[Int]) = vector_obj_randf(len)
@@ -159,6 +160,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_obj_ones(len: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_onesf(len: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_zeros(len: Rep[Int]): Rep[Vector[Double]]
+  def vector_obj_mzeros(len: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_zerosf(len: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_rand(len: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_randf(len: Rep[Int]): Rep[Vector[Float]]
@@ -369,7 +371,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
       alloc = reifyEffects(Vector[A](in.length, !in.isRow)),
-      func = in(v)
+      func = reifyEffects(in(v))
     )
   }
 
@@ -380,7 +382,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
       alloc = reifyEffects(Vector[A](inA.length, inA.isRow)),
-      func = inA(v) + inB(v)
+      func = reifyEffects(inA(v) + inB(v))
     )
   }
 
@@ -390,7 +392,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
-    val func = v + y
+    val func = reifyEffects(v + y)
   }
 
   case class VectorPlusEquals[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
@@ -398,7 +400,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
     val alloc = inA
     val v = (fresh[A],fresh[A])
-    val func = v._1 + v._2
+    val func = reifyEffects(v._1 + v._2)
   }
 
   case class VectorMinus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
@@ -408,7 +410,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
       alloc = reifyEffects(Vector[A](inA.length, inA.isRow)),
-      func = inA(v) - inB(v)
+      func = reifyEffects(inA(v) - inB(v))
     )
   }
 
@@ -418,7 +420,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
-    val func = v - y
+    val func = reifyEffects(v - y)
   }
 
   case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
@@ -428,7 +430,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
       alloc = reifyEffects(Vector[A](inA.length, inA.isRow)),
-      func = inA(v) * inB(v)
+      func = reifyEffects(inA(v) * inB(v))
     )
   }
 
@@ -438,7 +440,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
     val alloc = reifyEffects(Vector[A](inA.length, inA.isRow))
     val v = (fresh[A],fresh[B])
-    val func = v._1 * conv(v._2)
+    val func = reifyEffects(v._1 * conv(v._2))
   }
 
   //TR TODO
@@ -447,7 +449,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
-    val func = v * y
+    val func = reifyEffects(v * y)
   }
 
   //TR TODO
@@ -455,7 +457,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     extends DeliteOpZipWithReduce[A,A,A,Vector] {
 
     val zV = (fresh[A],fresh[A])
-    val zip = (zV._1 * zV._2)
+    val zip = reifyEffects(zV._1 * zV._2)
     val rV = (fresh[A],fresh[A])
     val reduce = reifyEffects(rV._1 += rV._2)
   }
@@ -489,9 +491,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     private[this] val rV = (fresh[A],fresh[A])
     val body: Def[A] = DeliteReduceElem[A]( //TODO might need explicit zero?
-      func = in(v),
+      func = reifyEffects(in(v)),
       rV = rV,
-      rFunc = rV._1 + rV._2
+      rFunc = reifyEffects(rV._1 + rV._2)
     )
   }
 
@@ -500,7 +502,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
-    val func = v.abs
+    val func = reifyEffects(v.abs)
   }
 
   case class VectorExp[A:Manifest:Arith](in: Exp[Vector[A]])
@@ -508,7 +510,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
-    val func = v.exp
+    val func = reifyEffects(v.exp)
   }
 
   //TR TODO
@@ -516,7 +518,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     extends DeliteOpReduce[A] {
 
     val v = (fresh[A],fresh[A])
-    val func = if (v._1 < v._2) v._1 else v._2
+    val func = reifyEffects(if (v._1 < v._2) v._1 else v._2)
   }
 
   // TODO: can't yet express this with DeliteOpReduce
@@ -532,7 +534,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     extends DeliteOpReduce[A] {
 
     val v = (fresh[A],fresh[A])
-    val func = if (v._1 > v._2) v._1 else v._2
+    val func = reifyEffects(if (v._1 > v._2) v._1 else v._2)
   }
 
   //case class VectorMaxIndex[A:Manifest:Ordering](in: Exp[Vector[A]])
@@ -599,10 +601,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     case VectorApply(x, n) => vector_apply(f(x), f(n))
     case VectorLength(x) => vector_length(f(x))
     case VectorIsRow(x) => vector_isRow(f(x))
-    case Reflect(e@VectorPPrint(x), es) => toAtom(Reflect(VectorPPrint(f(x))(f(e.block)), es map (e => f(e))))
-    case Reflect(VectorObjectZeros(x), es) => toAtom(Reflect(VectorObjectZeros(f(x)), es map (e => f(e))))
-    case Reflect(VectorObjectRange(s,e,d,r), es) => toAtom(Reflect(VectorObjectRange(f(s),f(e),f(d),f(r)), es map (e => f(e))))
-    case Reflect(e@VectorNew(l,r), es) => toAtom(Reflect(VectorNew(f(l),f(r))(e.mV), es map (e => f(e))))
+    case Reflect(e@VectorPPrint(x), u, es) => toAtom(Reflect(VectorPPrint(f(x))(f(e.block)), u, es map (e => f(e))))
+    case Reflect(VectorObjectZeros(x), u, es) => toAtom(Reflect(VectorObjectZeros(f(x)), u, es map (e => f(e))))
+    case Reflect(VectorObjectRange(s,e,d,r), u, es) => toAtom(Reflect(VectorObjectRange(f(s),f(e),f(d),f(r)), u, es map (e => f(e))))
+    case Reflect(e@VectorNew(l,r), u, es) => toAtom(Reflect(VectorNew(f(l),f(r))(e.mV), u, es map (e => f(e))))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
@@ -610,11 +612,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   /////////////////////
   // object interface
 
-  def vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorNew[A](len, isRow)(manifest[VectorImpl[A]])) //XXX
-  def vector_obj_fromseq[A:Manifest](xs: Exp[Seq[A]]) = reflectEffect(VectorObjectFromSeq(xs)) //XXX
+  def vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(VectorNew[A](len, isRow)(manifest[VectorImpl[A]])) //XXX
+  def vector_obj_fromseq[A:Manifest](xs: Exp[Seq[A]]) = reflectMutable(VectorObjectFromSeq(xs)) //XXX
   def vector_obj_ones(len: Exp[Int]) = reflectNew()(VectorObjectOnes(len))
   def vector_obj_onesf(len: Exp[Int]) = reflectNew()(VectorObjectOnesF(len))
   def vector_obj_zeros(len: Exp[Int]) = reflectNew()(VectorObjectZeros(len))
+  def vector_obj_mzeros(len: Exp[Int]) = reflectMutable(VectorObjectZeros(len))
   def vector_obj_zerosf(len: Exp[Int]) = reflectNew()(VectorObjectZerosF(len))
   def vector_obj_rand(len: Exp[Int]) = reflectNew()(VectorObjectRand(len))
   def vector_obj_randf(len: Exp[Int]) = reflectNew()(VectorObjectRandF(len))

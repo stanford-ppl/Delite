@@ -13,13 +13,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   import IR._
 
   private def vals(sym: Sym[Any]) : List[Sym[Any]] = sym match {
-    case Def(Reify(s, effects)) => List(s.asInstanceOf[Sym[Any]])
-    case Def(Reflect(NewVar(v), effects)) => Nil
+    case Def(Reify(s, u, effects)) => List(s.asInstanceOf[Sym[Any]])
+    case Def(Reflect(NewVar(v), u, effects)) => Nil
     case _ => List(sym)
   }
 
   private def vars(sym: Sym[Any]) : List[Sym[Any]] = sym match {
-    case Def(Reflect(NewVar(v), effects)) => List(sym)
+    case Def(Reflect(NewVar(v), u, effects)) => List(sym)
     case _ => Nil
   }
 
@@ -33,7 +33,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
 
   override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match { // getFreeVarBlock(syms(rhs), boundSyms(rhs))
-    case Reflect(s, effects) => getFreeVarNode(s)
+    case Reflect(s, u, effects) => getFreeVarNode(s)
     case _ => super.getFreeVarNode(rhs)
   }
 
@@ -56,10 +56,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
     // we will try to generate any node that is not purely an effect node
     rhs match {
-      case ThinDef(Reflect(s, effects)) =>
+      case ThinDef(Reflect(s, u, effects)) =>
         controlDeps = effects; // <---  now handling control deps here...!!
         super.emitFatNode(sym, rhs); return
-      case ThinDef(Reify(s, effects)) =>
+      case ThinDef(Reify(s, u, effects)) =>
         controlDeps = effects
         super.emitFatNode(sym, rhs); return
       case ThinDef(DeliteOpCondition(c,t,e)) => {

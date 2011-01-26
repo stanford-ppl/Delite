@@ -213,7 +213,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   var deliteInputs: List[Sym[Any]] = Nil//_
 
   def getReifiedOutput(out: Exp[Any]) = out match { // TODO: is this still used??
-    case Def(Reify(x, effects)) => x
+    case Def(Reify(x, u, effects)) => x
     case x => x
   }
 
@@ -290,6 +290,11 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
 
   def quotearg(x: Sym[Any]) = quote(x) + ": " + quotetp(x)
   def quotetp(x: Sym[Any]) = remap(x.Type)
+  def quoteZero(x: Sym[Any]) = x.Type.toString match { 
+    case "Int" | "Long" | "Float" | "Double" => "0" 
+    case "Boolean" => "false"
+    case _ => "null" 
+  }
 
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
@@ -301,12 +306,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
               stream.println(quote(getBlockResult(elem.alloc)))
               stream.println("}")
             case (sym, elem: DeliteReduceElem[_]) =>
-              def zero = sym.Type.toString match { 
-                case "Int" | "Long" | "Float" | "Double" => "0" 
-                case "Boolean" => "false"
-                case _ => "null" 
-              }
-              stream.println("var " + quotearg(sym) + " = " + zero) // TODO: need explicit zero?
+              stream.println("var " + quotearg(sym) + " = " + quoteZero(sym)) // TODO: need explicit zero?
           }
           stream.println("var " + quote(op.v) + " = 0")
           stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
@@ -410,6 +410,35 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       deliteKernel = save
     }
+    case op: AbstractLoop[_] => // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
+      if (!deliteKernel) {
+        op.body match {
+          case elem: DeliteCollectElem[_,_] =>
+            stream.println("val " + quote(sym) + " = {")
+            emitBlock(elem.alloc)
+            stream.println(quote(getBlockResult(elem.alloc)))
+            stream.println("}")
+          case elem: DeliteReduceElem[_] =>
+            stream.println("var " + quotearg(sym) + " = " + quoteZero(sym)) // TODO: need explicit zero?
+        }
+        stream.println("var " + quote(op.v) + " = 0")
+        stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin thin loop " + quote(sym))
+        op.body match {
+          case elem: DeliteCollectElem[_,_] =>
+            emitBlock(elem.func)
+            stream.println(quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
+          case elem: DeliteReduceElem[_] =>
+            emitBlock(elem.func)
+            stream.println("val " + quote(elem.rV._1) + " = " + quote(sym))
+            stream.println("val " + quote(elem.rV._2) + " = " + quote(getBlockResult(elem.func)))
+            emitBlock(elem.rFunc)
+            stream.println(quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
+        }
+        stream.println(quote(op.v) + " += 1")
+        stream.println("} // end thin loop " + quote(sym))
+      } else {
+        stream.println("TODO: thin loop codegen")
+      }
     case map:DeliteOpMap[_,_,_] => {
       if (deliteKernel == false){
         stream.println("def " + quote(sym) + "_block = {")

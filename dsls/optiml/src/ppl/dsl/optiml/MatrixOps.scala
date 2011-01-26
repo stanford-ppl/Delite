@@ -586,8 +586,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   ////////////////////
   // object interface
 
-  def matrix_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixObjectNew[A](numRows, numCols)) //XXX
-  def matrix_obj_fromseq[A:Manifest](xs: Exp[Seq[Exp[Vector[A]]]]) = reflectEffect(MatrixObjectFromSeq(xs)) //XXX
+  def matrix_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectMutable(MatrixObjectNew[A](numRows, numCols)) //XXX
+  def matrix_obj_fromseq[A:Manifest](xs: Exp[Seq[Exp[Vector[A]]]]) = reflectMutable(MatrixObjectFromSeq(xs)) //XXX
   def matrix_obj_fromvec[A:Manifest](xs: Exp[Vector[Vector[A]]]) = reflectNew(xs)(MatrixObjectFromVec(xs))
   def matrix_obj_diag[A:Manifest](w: Exp[Int], vals: Exp[Vector[A]]) = reflectNew(vals)(MatrixObjectDiag(w, vals))
   def matrix_obj_identity(w: Exp[Int]) = reflectNew()(MatrixObjectIdentity(w))

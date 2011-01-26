@@ -62,6 +62,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     if (Config.degFilename.endsWith(".deg")) {
       val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
       codegen.emitSource(main_m, "Application", streamScala) // whole scala application (for testing)
+      // TODO: dot output
       reset
     }
     deliteGenerator.emitSource(main_m, "Application", stream)

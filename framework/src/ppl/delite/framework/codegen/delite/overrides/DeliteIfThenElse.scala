@@ -18,7 +18,7 @@ trait DeliteIfThenElseExp extends IfThenElseExp {
       val a = reifyEffects(thenp)
       val b = reifyEffects(elsep)
       (a,b) match {
-        case (Def(Reify(_,_)), _) | (_, Def(Reify(_,_))) => reflectEffect(DeliteIfThenElse(cond,a,b))
+        case (Def(Reify(_,_,_)), _) | (_, Def(Reify(_,_,_))) => reflectEffect(DeliteIfThenElse(cond,a,b))
         case _ => DeliteIfThenElse(cond, thenp, elsep)
       }
   }
