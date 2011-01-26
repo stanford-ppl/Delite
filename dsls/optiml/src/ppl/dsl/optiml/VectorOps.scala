@@ -19,8 +19,14 @@ trait VectorOps extends DSLType with Variables {
     // time it is used, rather than stored as a value, because consts are not treated like dependencies in 'syms'.
     def apply[A:Manifest](xs: A*) = {
       // Seq gets lifted into a WrappedArray Const, which can't be instantiated from generated code
-      val xs2 = unit(xs.toList)
-      vector_obj_fromseq(xs2)
+      //val xs2 = unit(xs.toList)
+      //vector_obj_fromseq(xs2)
+      //reifyEffects {
+        val out = vector_obj_new[A](0,true)
+        // interpreted (not lifted)
+        xs.foreach { out += _ }
+        out
+      //}
     }
     // this doesn't work because if we don't lift the Seq, we can't generate code for it
     // if we do lift the Seq, we have a Rep[Seq[Rep[A]], which has the problems discussed below

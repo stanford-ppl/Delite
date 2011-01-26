@@ -1,6 +1,6 @@
 package ppl.dsl.optiml
 
-import datastruct.scala.{Vector,Matrix}
+import datastruct.scala.{Vector,Matrix,IndexVector}
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import reflect.Manifest
@@ -129,9 +129,16 @@ trait LanguageOps extends Base { this: OptiML =>
 
   /**
    * IndexVector2 construction (Matrix construction)
-   * TODO: implement this
+   * ex.  (0::n, *) { { rowIdx => ... }
+   * ex2. (*, 0::n) { { colIdx => ... }
+   * ex3. (0::n,0::m) { (i,j) => .. }
    */
+  class IndexWildcard
+  val * = new IndexWildcard
 
+  implicit def tuple2ToIndexVector1(tup: (Rep[IndexVector], IndexWildcard))(implicit overloaded1 : Overloaded1) = indexvector2_new(tup._1, indexvector2_wildcard())
+  implicit def tuple2ToIndexVector2(tup: (IndexWildcard, Rep[IndexVector]))(implicit overloaded2 : Overloaded2) = indexvector2_new(indexvector2_wildcard(), tup._2)
+  implicit def tuple2ToIndexVector3(tup: (Rep[IndexVector], Rep[IndexVector]))(implicit overloaded3 : Overloaded3) = indexvector2_new(tup._1, tup._2)
 
 
   /**

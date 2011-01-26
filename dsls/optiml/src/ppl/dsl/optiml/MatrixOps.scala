@@ -17,12 +17,18 @@ trait MatrixOps extends DSLType with Variables {
   object Matrix {
     def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_new(numRows, numCols)
     def apply[A:Manifest](xs: Rep[Vector[Vector[A]]]): Rep[Matrix[A]] = matrix_obj_fromvec(xs)
-//    def apply[A:Manifest](xs: Rep[Vector[A]]*): Rep[Matrix[A]] = {
-//      // TODO: how do we get the manifest?
-//      implicit val mA = manifest[Rep[Vector[A]]]
-//      val xs2 = unit(xs.toList)
-//      matrix_obj_fromseq(xs2)
-//    }
+    def apply[A:Manifest](xs: Rep[Vector[A]]*): Rep[Matrix[A]] = {
+      //      // TODO: how do we get the manifest?
+      //      implicit val mA = manifest[Rep[Vector[A]]]
+      //      val xs2 = unit(xs.toList)
+      //      matrix_obj_fromseq(xs2)
+      //reifyEffects {
+        val out = matrix_obj_new[A](0,0)
+      // interpreted (not lifted)
+        xs.foreach { out += _ }
+        out
+      //}
+    }
     def diag[A:Manifest](w: Rep[Int], vals: Rep[Vector[A]]) = matrix_obj_diag(w, vals)
     def identity(w: Rep[Int]) = matrix_obj_identity(w)
     def zeros(numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_zeros(numRows, numCols)
