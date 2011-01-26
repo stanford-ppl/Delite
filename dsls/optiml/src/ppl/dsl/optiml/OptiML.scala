@@ -50,7 +50,7 @@ trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
 /**
  * This the trait that every OptiML application must extend.
  */
-trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps with CloneableOps
+trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with ArithOps with CloneableOps
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps
   with IndexVectorOps with IndexVector2Ops
   with LabelsOps with TrainingSetOps with ImageOps with GrayscaleImageOps {
@@ -63,7 +63,7 @@ trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps with Clone
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ArithOpsExp
+trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ApplicationOpsExp with ArithOpsExp
   with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp
   with IndexVectorOpsExp with IndexVector2OpsExp
   with LabelsOpsExp with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
@@ -121,7 +121,8 @@ trait OptiMLCodeGenBase extends GenericCodegen {
   }
 }
 
-trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
+trait OptiMLCodeGenScala extends OptiMLCodeGenBase
+  with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps with ScalaGenApplicationOps
   with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with ScalaGenIndexVectorOps with ScalaGenIndexVector2Ops
   with ScalaGenLabelsOps with ScalaGenTrainingSetOps with ScalaGenImageOps with ScalaGenGrayscaleImageOps
