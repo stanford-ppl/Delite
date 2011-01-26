@@ -28,7 +28,7 @@ trait DenoiseVertexDataOps extends DSLType with Variables {
   class denoiseVertexDataOpsCls(v: Rep[DenoiseVertexData]) {
     def id = denoise_vertex_data_id(v)
     def belief = denoise_vertex_data_belief(v)
-    def belief_=(b: Rep[Vector[Double]]) = denoise_vertex_data_belief_=(v, b)
+    def belief_=(b: Rep[Vector[Double]]) = denoise_vertex_data_belief_update(v, b)
     def potential = denoise_vertex_data_potential(v)
   }
 
@@ -38,7 +38,7 @@ trait DenoiseVertexDataOps extends DSLType with Variables {
   // class defs
   def denoise_vertex_data_id(v: Rep[DenoiseVertexData]): Rep[Int]
   def denoise_vertex_data_belief(v: Rep[DenoiseVertexData]): Rep[Vector[Double]]
-  def denoise_vertex_data_belief_=(v: Rep[DenoiseVertexData], b: Rep[Vector[Double]])
+  def denoise_vertex_data_belief_update(v: Rep[DenoiseVertexData], b: Rep[Vector[Double]])
   def denoise_vertex_data_potential(v: Rep[DenoiseVertexData]): Rep[Vector[Double]]
 }
 
@@ -54,7 +54,7 @@ trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with EffectExp {
   }
   case class DenoiseVertexDataId(v: Exp[DenoiseVertexData]) extends Def[Int]
   case class DenoiseVertexDataBelief(v: Exp[DenoiseVertexData]) extends Def[Vector[Double]]
-  case class DenoiseVertexDataBelief_=(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) extends Def[Unit]
+  case class DenoiseVertexDataBeliefUpdate(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) extends Def[Unit]
   case class DenoiseVertexDataPotential(v: Exp[DenoiseVertexData]) extends Def[Vector[Double]]
 
   /////////////////////
@@ -66,7 +66,7 @@ trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with EffectExp {
 
   def denoise_vertex_data_id(v: Exp[DenoiseVertexData]) = DenoiseVertexDataId(v)
   def denoise_vertex_data_belief(v: Exp[DenoiseVertexData]) = DenoiseVertexDataBelief(v)
-  def denoise_vertex_data_belief_=(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) = DenoiseVertexDataBelief_=(v, b)
+  def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) = DenoiseVertexDataBeliefUpdate(v, b)
   def denoise_vertex_data_potential(v: Exp[DenoiseVertexData]) = DenoiseVertexDataPotential(v)
 }
 
@@ -83,7 +83,7 @@ trait ScalaGenDenoiseVertexDataOps extends BaseGenDenoiseVertexDataOps with Scal
     rhs match {
       case v@DenoiseVertexDataObjectNew(id,b,p) => emitValDef(sym, "new " + remap(v.vD) + "(" + quote(id) + "," + quote(b) + "," + quote(p) + ")")
       case DenoiseVertexDataBelief(v) => emitValDef(sym, quote(v) + ".belief")
-      case DenoiseVertexDataBelief_=(v,b) => emitValDef(sym, quote(v) + ".belief_=(" + quote(b) + ")")
+      case DenoiseVertexDataBeliefUpdate(v,b) => emitValDef(sym, quote(v) + ".belief = (" + quote(b) + ")")
       case DenoiseVertexDataPotential(v) => emitValDef(sym, quote(v) + ".potential")
       case _ => super.emitNode(sym, rhs)
     }
@@ -101,9 +101,9 @@ trait DenoiseEdgeDataOps extends DSLType with Variables {
 
   class denoiseEdgeDataOpsCls(e: Rep[DenoiseEdgeData]) {
     def message = denoise_edge_data_message(e)
-    def message_=(m: Rep[Vector[Double]]) = denoise_edge_data_message_=(e,m)
+    def message_=(m: Rep[Vector[Double]]) = denoise_edge_data_message_update(e,m)
     def oldMessage = denoise_edge_data_old_message(e)
-    def oldMessage_=(m: Rep[Vector[Double]]) = denoise_edge_data_old_message_=(e,m)
+    def oldMessage_=(m: Rep[Vector[Double]]) = denoise_edge_data_old_message_update(e,m)
   }
 
   // object defs
@@ -111,9 +111,9 @@ trait DenoiseEdgeDataOps extends DSLType with Variables {
 
   // class defs
   def denoise_edge_data_message(e: Rep[DenoiseEdgeData]): Rep[Vector[Double]]
-  def denoise_edge_data_message_=(e: Rep[DenoiseEdgeData], m: Rep[Vector[Double]])
+  def denoise_edge_data_message_update(e: Rep[DenoiseEdgeData], m: Rep[Vector[Double]])
   def denoise_edge_data_old_message(e: Rep[DenoiseEdgeData]): Rep[Vector[Double]]
-  def denoise_edge_data_old_message_=(e: Rep[DenoiseEdgeData], m: Rep[Vector[Double]])
+  def denoise_edge_data_old_message_update(e: Rep[DenoiseEdgeData], m: Rep[Vector[Double]])
 }
 
 trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
@@ -127,9 +127,9 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
     val eD = manifest[DenoiseEdgeDataImpl]
   }
   case class DenoiseEdgeDataMessage(e: Exp[DenoiseEdgeData]) extends Def[Vector[Double]]
-  case class DenoiseEdgeDataMessage_=(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) extends Def[Unit]
+  case class DenoiseEdgeDataMessageUpdate(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) extends Def[Unit]
   case class DenoiseEdgeDataOldMessage(e: Exp[DenoiseEdgeData]) extends Def[Vector[Double]]
-  case class DenoiseEdgeDataOldMessage_=(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) extends Def[Unit]
+  case class DenoiseEdgeDataOldMessageUpdate(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) extends Def[Unit]
 
   /////////////////////
   // object interface
@@ -140,9 +140,9 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
   // class interface
 
   def denoise_edge_data_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataMessage(e)
-  def denoise_edge_data_message_=(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = DenoiseEdgeDataMessage_=(e, m)
+  def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = DenoiseEdgeDataMessageUpdate(e, m)
   def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataOldMessage(e)
-  def denoise_edge_data_old_message_=(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = DenoiseEdgeDataOldMessage_=(e, m)
+  def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = DenoiseEdgeDataOldMessageUpdate(e, m)
 }
 
 trait BaseGenDenoiseEdgeDataOps extends GenericNestedCodegen {
@@ -157,9 +157,9 @@ trait ScalaGenDenoiseEdgeDataOps extends BaseGenDenoiseEdgeDataOps with ScalaGen
     rhs match {
       case e@DenoiseEdgeDataObjectNew(m,oM) => emitValDef(sym, "new " + remap(e.eD) + "(" + quote(m) + "," + quote(oM) + ")")
       case DenoiseEdgeDataMessage(e) => emitValDef(sym, quote(e) + ".message")
-      case DenoiseEdgeDataMessage_=(e,m) => emitValDef(sym, quote(e) + ".message_=(" + quote(m) + ")")
+      case DenoiseEdgeDataMessageUpdate(e,m) => emitValDef(sym, quote(e) + ".message = (" + quote(m) + ")")
       case DenoiseEdgeDataOldMessage(e) => emitValDef(sym, quote(e) + ".oldMessage")
-      case DenoiseEdgeDataOldMessage_=(e,m) => emitValDef(sym, quote(e) + ".oldMessage_=(" + quote(m) + ")")
+      case DenoiseEdgeDataOldMessageUpdate(e,m) => emitValDef(sym, quote(e) + ".oldMessage = (" + quote(m) + ")")
       case _ => super.emitNode(sym, rhs)
     }
   }

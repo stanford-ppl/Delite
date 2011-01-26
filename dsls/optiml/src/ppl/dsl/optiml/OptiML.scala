@@ -56,7 +56,7 @@ trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
  */
 trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps with CloneableOps
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps with IndexVectorOps
-  with GraphOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps
+  with GraphOps with VerticesOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps
   with SetOps
   with DenoiseVertexDataOps with DenoiseEdgeDataOps
   with LabelsOps with TrainingSetOps {
@@ -74,7 +74,7 @@ trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp wit
   with LabelsOpsExp with TrainingSetOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard
-  with GraphOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp
+  with GraphOpsExp with VerticesOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp
   with SetOpsExp
   with DenoiseVertexDataOpsExp with DenoiseEdgeDataOpsExp
   with DeliteOpsExp with DeliteAllOverridesExp {

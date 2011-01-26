@@ -206,6 +206,7 @@ trait Vertex {
   def neighbors: Vertices[V]
   def addTask(v: V): Unit
   def tasks: Vertices[V]
+  def clearTasks(): Unit
 }
 
 trait Edge {

@@ -15,9 +15,9 @@ import ppl.dsl.optiml.datastruct.scala.{Vertex, Vertices}
 
 trait VerticesOps extends DSLType with Variables {
   this: OptiML =>
-  class verOpsCls[V <: Vertex: Manifest](x: Rep[Vertices[V]]) {
+  //class verOpsCls[V <: Vertex: Manifest](x: Rep[Vertices[V]]) {
     //def foreach(block: Rep[V] => Rep[Unit]) = vertices_foreach(x, block)
-  }
+  //}
 
   //def vertices_foreach[V<: Vertex: Manifest](x: Rep[Vertices[V]], block: Rep[V] => Rep[Unit]): Rep[Unit]
 }
