@@ -18,7 +18,6 @@ import scala.virtualization.lms.internal.{ScalaGenBase, GenericNestedCodegen}
 
 trait DenoiseVertexDataOps extends DSLType with Variables {
   this: OptiML =>
-
   object DenoiseVertexData {
     def apply(id: Rep[Int], b: Rep[Vector[Double]], p: Rep[Vector[Double]]) = denoise_vertex_data_obj_new(id, b, p)
   }

@@ -110,7 +110,7 @@ trait VectorOps extends DSLType with Variables {
     def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_minus_scalar(x,y)
     def *(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_times(x,y)
     def *[B](y: Rep[Vector[B]])(implicit mB: Manifest[B], a: Arith[A], conv: Rep[B] => Rep[A]) = vector_times_withconvert(x,y,conv)
-    //def *[B](y: Rep[Vector[B]])(implicit mB: Manifest[B], a: Arith[A], conv: Rep[A] => Rep[B], o: Overloaded1) = vector_times_withconvertright(x,y,conv)
+    //def *[B](y: Rep[Vector[B]])(implicit mB: Manifest[B], aB: Arith[B], conv: Rep[A] => Rep[B], o: Overloaded1) = vector_times_withconvertright(x,y,conv)
     def *(y: Rep[A])(implicit a: Arith[A],o: Overloaded1) = vector_times_scalar(x,y)
     def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2) = vector_times_matrix(x,y)
     def **(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_outer(x,y)
@@ -128,6 +128,7 @@ trait VectorOps extends DSLType with Variables {
     def min(implicit o: Ordering[A]) = vector_min(x)
     //def minIndex(implicit o: Ordering[A]) = vector_minindex(x)
     def max(implicit o: Ordering[A]) = vector_max(x)
+    def max[B](key: Rep[A] => Rep[B])(implicit o: Ordering[B], mB: Manifest[B]) = vector_max_key(x, key)
     //def maxIndex(implicit o: Ordering[A]) = vector_maxIndex(x)
     def median(implicit o: Ordering[A]) = vector_median(x)
     def :>(y: Rep[Vector[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a > b }
@@ -189,6 +190,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_minus_scalar[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
   def vector_times[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_times_withconvert[A:Manifest:Arith,B:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]],  conv: Rep[B] => Rep[A]): Rep[Vector[A]]
+  def vector_times_withconvertright[A:Manifest,B:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[B]], conv: Rep[A] => Rep[B]): Rep[Vector[B]]
   def vector_times_scalar[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
   def vector_times_matrix[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Matrix[A]]): Rep[Vector[A]]
   def vector_outer[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Matrix[A]]
@@ -203,6 +205,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_min[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[A]
   //def vector_minIndex[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[Int]
   def vector_max[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[A]
+  def vector_max_key[A:Manifest,B:Manifest:Ordering](x: Rep[Vector[A]], key: Rep[A] => Rep[B]): Rep[A]
   //def vector_maxIndex[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[Int]
   def vector_median[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[A]
 
@@ -385,6 +388,14 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val func = v._1 * conv(v._2)
   }
 
+  case class VectorTimesWithConvertRight[A:Manifest,B:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[B]], conv: Exp[A] => Exp[B])
+    extends DeliteOpZipWith[A,B,B,Vector] {
+
+    val alloc = reifyEffects(Vector[B](inB.length, inB.isRow))
+    val v = (fresh[A],fresh[B])
+    val func = conv(v._1) * v._2
+  }
+
   case class VectorTimesScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
     extends DeliteOpMap[A,A,Vector] {
 
@@ -461,6 +472,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
     val v = (fresh[A],fresh[A])
     val func = if (v._1 > v._2) v._1 else v._2
+  }
+
+  case class VectorMaxKey[A:Manifest,B:Manifest:Ordering](in: Exp[Vector[A]], key: Exp[A] => Exp[B])
+    extends DeliteOpReduce[A] {
+
+    val v = (fresh[A],fresh[A])
+    val func = if (key(v._1) > key(v._2)) v._1 else v._2
   }
 
   //case class VectorMaxIndex[A:Manifest:Ordering](in: Exp[Vector[A]])
@@ -567,6 +585,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_minus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorMinusScalar(reflectRead(x), reflectRead(y))
   def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(reflectRead(x), reflectRead(y))
   def vector_times_withconvert[A:Manifest:Arith,B:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], conv: Exp[B] => Exp[A]) = VectorTimesWithConvert(reflectRead(x),reflectRead(y),conv)
+  def vector_times_withconvertright[A:Manifest,B:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[B]], conv: Exp[A] => Exp[B]) = VectorTimesWithConvertRight(reflectRead(x),reflectRead(y),conv)
   def vector_times_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorTimesScalar(reflectRead(x), reflectRead(y))
   def vector_times_matrix[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Matrix[A]]) = VectorTimesMatrix(reflectRead(x), reflectRead(y))
   def vector_outer[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorOuter(reflectRead(x), reflectRead(y))
@@ -581,6 +600,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_min[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMin(reflectRead(x))
   //def vector_minIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMinIndex(reflectRead(x))
   def vector_max[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMax(reflectRead(x))
+  def vector_max_key[A:Manifest,B:Manifest:Ordering](x: Exp[Vector[A]], key: Exp[A] => Exp[B]) = VectorMaxKey(reflectRead(x), key)
   //def vector_maxIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMaxIndex(reflectRead(x))
   def vector_median[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMedian(reflectRead(x))
 
