@@ -19,6 +19,7 @@ object kmeans extends DeliteApplication with OptiMLExp {
 
     val x = loadMatrix(args(0))
     val mu = loadMatrix(args(1))
+
     //val mu = Matrix((0::32) { e => x(randomInt(x.numRows)) })
     val oldmu = Matrix.zeros(mu.numRows, x.numCols)
 
@@ -27,6 +28,7 @@ object kmeans extends DeliteApplication with OptiMLExp {
     toc
     println("finished in " + iter + " iterations")
     mu2.pprint
+
   }
 
   def k_means(x: Rep[Matrix[Double]], mu: Rep[Matrix[Double]], old_mu: Rep[Matrix[Double]]): (Rep[Int], Rep[Matrix[Double]]) = {
@@ -58,14 +60,19 @@ object kmeans extends DeliteApplication with OptiMLExp {
 //        })
         val weightedpoints = Vector.zeros(n)
         var points = unit(0)
-        for (i <- 0 until m){
+        var i = unit(0)
+        while (i < m){
           if (c(i) == j){
             weightedpoints += x(i)
             points += 1
           }
+          i += 1
         }
-        if (points == 0) mu(j) = Vector.zeros(n)
-        else mu(j) = weightedpoints / points
+        if (points == 0)
+          points += 1
+        mu(j) = weightedpoints / points
+        //if (points == 0) mu(j) = Vector.zeros(n)
+        //else mu(j) = weightedpoints / points
       }
 
       mu

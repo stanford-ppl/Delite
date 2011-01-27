@@ -3,15 +3,16 @@ package ppl.delite.framework.codegen.delite.overrides
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
-import scala.virtualization.lms.internal.{ScalaGenEffect, CudaGenEffect, CGenEffect, GenericNestedCodegen}
+import scala.virtualization.lms.internal._
 
-trait DeliteIfThenElseExp extends IfThenElseExp {
+trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
 
   this: DeliteOpsExp =>
 
-  case class DeliteIfThenElse[T:Manifest](c: Exp[Boolean], t: Exp[T], e: Exp[T]) extends DeliteOpCondition[T](c, t, e)
+  case class DeliteIfThenElse[T:Manifest](cond: Exp[Boolean], thenp: Exp[T], elsep: Exp[T]) extends DeliteOpCondition[T]
 
   override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]) = cond match {
+      // TODO: need to handle vars differently, this could be unsound
     case Const(true) => thenp
     case Const(false) => elsep
     case _ =>
@@ -48,6 +49,8 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
      * when generating long blocks of straight-line code in each branch.
      */
     case DeliteIfThenElse(c,a,b) =>
+      val save = deliteKernel
+      deliteKernel = false
       stream.println("val " + quote(sym) + " = {")
       stream.println("def " + quote(sym) + "thenb(): " + remap(getBlockResult(a).Type) + " = {")
       emitBlock(a)
@@ -65,6 +68,7 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
       stream.println(quote(sym) + "elseb()")
       stream.println("}")
       stream.println("}")
+      deliteKernel = save
 
     case _ => super.emitNode(sym, rhs)
   }
@@ -84,9 +88,23 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
           // This is going to be changed when above TODOs are done.
           //if( (sym==kernelSymbol) && (isObjectType(sym.Type)) ) throw new RuntimeException("CudaGen: Changing the reference of output is not allowed within GPU kernel.")
 
-          val hasPrimitiveRet = (remap(sym.Type)!="void") && (!isObjectType(sym.Type))
-          hasPrimitiveRet match {
+          val objRetType = (!isVoidType(sym.Type)) && (!isPrimitiveType(sym.Type))
+          objRetType match {
+            case true => throw new GenerationFailedException("CudaGen: If-Else cannot return object type.")
+            case _ =>
+          }
+          isVoidType(sym.Type) match {
             case true =>
+              stream.println(addTab() + "if (" + quote(c) + ") {")
+              tabWidth += 1
+              emitBlock(a)
+              tabWidth -= 1
+              stream.println(addTab() + "} else {")
+              tabWidth += 1
+              emitBlock(b)
+              tabWidth -= 1
+              stream.println(addTab()+"}")
+            case false =>
               stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
               stream.println(addTab() + "if (" + quote(c) + ") {")
               tabWidth += 1
@@ -99,26 +117,8 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
               stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
               tabWidth -= 1
               stream.println(addTab()+"}")
-            case false =>
-              stream.println(addTab() + "if (" + quote(c) + ") {")
-              tabWidth += 1
-              addVarLink(getBlockResult(a),sym)
-              emitBlock(a)
-              removeVarLink(getBlockResult(a),sym)
-              tabWidth -= 1
-              stream.println(addTab() + "} else {")
-              tabWidth += 1
-              addVarLink(getBlockResult(b),sym)
-              emitBlock(b)
-              removeVarLink(getBlockResult(b),sym)
-              tabWidth -= 1
-              stream.println(addTab()+"}")
-              isObjectType(sym.Type) match {
-                case true => allocReference(sym,getBlockResult(a).asInstanceOf[Sym[_]])
-                case _ =>
-              }
           }
-        
+
         case _ => super.emitNode(sym, rhs)
       }
     }

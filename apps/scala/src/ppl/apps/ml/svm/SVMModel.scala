@@ -46,6 +46,7 @@ trait SVMModel {
     var b = unit(0.0)
 
     // intermediate training info
+    //var alphas = Vector.zeros(X.numRows).mt // col vector
     val alphas = Vector.zeros(X.numRows).mt // col vector
 
     val numSamples = X.numRows
@@ -92,6 +93,7 @@ trait SVMModel {
             if (eta < 0){
               // compute new alphas(j)
               alphas(j) = alphas(j) - Y(j)*(E_i-E_j)/eta
+			  //alphas = alphas.cloneL
               // clip alphas(j) if necessary
               if (alphas(j) > H) alphas(j) = H
               else if (alphas(j) < L) alphas(j) = L
@@ -101,6 +103,7 @@ trait SVMModel {
                 // find a_i to maximize objective function
                 old_ai = alphas(i)
                 alphas(i) = alphas(i) + Y(i)*Y(j)*(old_aj-alphas(j))
+			    //alphas = alphas.cloneL
 
                 // compute the new b such that KKT conditions are satisfied
                 val old_b = b

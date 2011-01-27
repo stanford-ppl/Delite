@@ -11,7 +11,7 @@ import ConfigParser
 DELITE_HOME = os.getenv("DELITE_HOME")
 
 apps_default = ['gda', 'nb', 'linreg', 'kmeans', 'rbm', 'svm']#, 'lbp']
-delite_threads_default = [ 1, 2 , 4, 8, 16]
+delite_threads_default = [ 1, 2 , 4, 8]
 
 
 #delite_gpus = [ 1, 2 ]

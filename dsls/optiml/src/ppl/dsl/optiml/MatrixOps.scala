@@ -334,6 +334,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
     val mM = manifest[MatrixImpl[Float]]
   }
+  case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]]) 
+    extends DeliteOpSingleTask(reifyEffects(matrix_sumcol_impl(x)))
+
 
 
   ////////////////////////////////
@@ -451,21 +454,23 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v.sum
   }
 
+/*
   case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]])
     extends DeliteOpMap[Vector[A],A,Vector] {
 
     val alloc = reifyEffects(Vector[A](x.numCols, true))
     val in = reifyEffects {
-      var tcoll = Vector[Vector[A]](x.numCols, true)
-       for (i <- 0 until x.numCols){
-         tcoll(i) = x.getCol(i)
-       }
+      val tcoll = Vector[Vector[A]](x.numCols, true)
+      for (i <- 0 until x.numCols){
+        tcoll(i) = x.getCol(i)
+      }
       tcoll
     }
 
     val v = fresh[Vector[A]]
     val func = v.sum
   }
+*/
 
 //  case class MatrixUnaryMinus[A:Manifest:Arith](in: Exp[Matrix[A]])
 //    extends DeliteOpMap[A,A,Matrix] {
@@ -782,19 +787,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
 
-    case MatrixPlusEquals(x,y) =>
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".numCols"))
-      tabWidth += 1
-      stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x))); tabWidth += 1
-      stream.println(addTab()+"%s.update(%s, %s, (%s.apply(%s,%s)) + (%s.apply(%s,%s)));".format(quote(x),"i","idxX",quote(x),"i","idxX",quote(y),"i","idxX"))
-      if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s, %s));".format(quote(getVarLink(sym)),"i","idxX",quote(x),"i","idxX"))
-      tabWidth -= 1; stream.println(addTab()+"}")
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      //emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
-
-
-	/* CUBLAS calls */
+	  /* CUBLAS calls */
     case MatrixMultiply(x,y) =>
       val callStream = "cublasSetKernelStream(stream);"
       var callKernel = ""
@@ -804,33 +797,22 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
         callKernel = "cublasSgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
       else
         throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatrixMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0))))
+      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(y)))
       emitLibCall(sym,List(callStream,callKernel))
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(y)))
     
     case MatrixTimesVector(x,y) =>
       val callStream = "cublasSetKernelStream(stream);"
       var callKernel = ""
       if(remap(x.Type.typeArguments(0)) == "double")
         callKernel = "cublasDgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
-      //else if(remap(x.Type.typeArguments(0)) == "float")
-        //callKernel = "cublasSgemv('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
+      else if(remap(x.Type.typeArguments(0)) == "float")
+        callKernel = "cublasSgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
       else
         throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Matrix*Vector CUBLAS library)".format(remap(x.Type.typeArguments(0))))
+      emitVectorAlloc(sym,"%s->numRows".format(quote(x)),"false")
       emitLibCall(sym,List(callStream,callKernel))
-      emitVectorAlloc(sym,"%s.numRows".format(quote(x)),"false")
-	  // these are the ops that call through to the underlying real data structure
-    case MatrixObjectNew(numRows,numCols) =>
-      throw new GenerationFailedException("CudaGen: Not GPUable")
 
-    case MatrixGetRow(x,i) =>
-      if(kernelSymbol != sym) {
-        stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
-        stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
-        stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
-        stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
-		emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true","%s.data".format(quote(x),quote(x)))
-      }
-
+	  // The ops that call through to the underlying real data structure
     case MatrixApply(x,i,j) =>
       emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
     case MatrixUpdate(x,i,j,y)  =>
@@ -839,61 +821,96 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       emitValDef(sym, quote(x) + ".numRows")
     case MatrixNumCols(x)  =>
       emitValDef(sym, quote(x) + ".numCols")
-    case MatrixInsertRow(x, pos, y)  =>
-      throw new GenerationFailedException("CudaGen: Not GPUable")
 
     /* Specialized CUDA code generations */
+    case MatrixUpdateRow(x, row, y) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->length".format(quote(y)))
+      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(y)))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(%s,%s,%s.apply(%s));".format(quote(x),quote(row),currDimStr,quote(y),currDimStr))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      currDim -= 1
+
+    case MatrixGetRow(x,i) =>
+      if(kernelSymbol != sym) {
+        stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
+        stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
+        stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
+        stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
+		//    emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true","%s.data".format(quote(x),quote(x)))
+      }
+
     case MatrixObjectDiag(w, vals) =>
-      gpuBlockSizeX = "%s * %s".format(quote(w),quote(w))
-      stream.println(addTab()+"if( %s < %s*%s ) {".format("idxX",quote(w),quote(w)))
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s * %s".format(quote(w),quote(w)))
+      stream.println(addTab()+"if( %s < %s*%s ) {".format(currDimStr,quote(w),quote(w)))
       tabWidth += 1
-      stream.println(addTab()+"%s.data[%s] = 0;".format(quote(sym),"idxX"))
-      stream.println(addTab()+"if(%s == %s) {".format("idxX/"+quote(w),"idxX%"+quote(w)))
+      stream.println(addTab()+"int i = %s / %s;".format(currDimStr,quote(w)))
+      stream.println(addTab()+"int j = " + currDimStr + " % "  + quote(w) + ";")
+      stream.println(addTab()+"%s.update(i,j,0);".format(quote(sym)))
+      stream.println(addTab()+"if(i == j) {")
       tabWidth += 1
-      stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s));".format(quote(sym),"idxX/"+quote(w),"idxX/"+quote(w),quote(vals),"idxX/"+quote(w)))
+      stream.println(addTab()+"%s.update(i, j, %s.apply(i));".format(quote(sym),quote(vals)))
       tabWidth -= 1
       stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s".format(quote(w)),"%s".format(quote(w)))
+      currDim -= 1
 
     case MatrixTranspose(x) =>
-      gpuBlockSizeX = "%s.size()".format(quote(x))
-      stream.println(addTab()+"if( idxX < %s.size() ) {".format(quote(x)))
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->size()".format(quote(x)))
+      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
       tabWidth += 1
-      stream.println(addTab()+"int i = idxX / %s.numCols;".format(quote(x)))
-      stream.println(addTab()+"int j = idxX %" + " %s.numCols;".format(quote(x)))
+      stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
+      stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
       stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->numCols".format(quote(x)),"%s->numRows".format(quote(x)))
+      currDim -= 1
 
     case MatrixSumCol(x) =>
-      gpuBlockSizeX = "%s.numCols".format(quote(x))
-      stream.println(addTab()+"if( idxX < %s.numCols ) {".format(quote(x)))
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->numCols".format(quote(x)))
+      stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
       tabWidth += 1
       stream.println(addTab()+"%s reducVal = 0;".format(remap(x.Type.typeArguments(0))))
       stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
       tabWidth += 1
-      stream.println(addTab()+"reducVal += %s.apply(i,idxX);".format(quote(x)))
+      stream.println(addTab()+"reducVal += %s.apply(i,%s);".format(quote(x),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      stream.println(addTab()+"%s.update(idxX,reducVal);".format(quote(sym)))
+      stream.println(addTab()+"%s.update(%s,reducVal);".format(quote(sym),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true")
+      emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true")
+      currDim -= 1
 
     case m@MatrixSigmoidF(x) =>
-      gpuBlockSizeX = "%s.numCols*%s.numRows".format(quote(x),quote(x))
-      stream.println(addTab()+"if( idxX < %s.numCols*%s.numRows ) {".format(quote(x),quote(x)))
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->size()".format(quote(x)))
+      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
       tabWidth += 1
-	  val sigmoidFunc = emitDevFunc(m.func,x.Type.typeArguments(0),List(m.v))
-	  stream.println(addTab()+"int i = idxX / %s.numCols;".format(quote(x)))
-	  stream.println(addTab()+"int j = idxX % " + "%s.numCols;".format(quote(x)))
-      stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
+	    val (sigmoidFunc,freeVars) = emitDevFunc(m.func,List(m.v))
+      stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
+      stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
+	  if(freeVars.length == 0)
+      	stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
+	  else
+      	stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)),%s);".format(quote(sym),sigmoidFunc,quote(x),freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(x)))
+      currDim -= 1
 
     case _ => super.emitNode(sym, rhs)
   }
