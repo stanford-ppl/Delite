@@ -148,8 +148,9 @@ import scala.virtualization.lms.common.{EffectExp, Variables}\n\n"
     l = l + "  // these are the ops that call through to the underlying real data structure\n"
     l = l + "  case " + clazz + "ObjectNew(" + listify(fields) + ") => emitValDef(sym, \"new \" + remap(manifest[" + clazz + "]) + \"(" + quotify(fields) + ")\")\n"
     for f in fields:
-        l = l + "  case " + clazz + f.capitalize() + "(x) =>  emitValDef(sym, quote(x) + \"." + f +"\")\n" 
-    l = l + "   case _ => super.emitNode(sym, rhs)\n"
+        l = l + "    case " + clazz + f.capitalize() + "(x) =>  emitValDef(sym, quote(x) + \"." + f +"\")\n" 
+    l = l + "    case _ => super.emitNode(sym, rhs)\n"
+    l = l + "  }\n"
     l = l + "}\n"
 
 
