@@ -13,40 +13,6 @@ import ppl.dsl.optiml.datastruct.scala._
  */
 
 object LBPDenoise extends DeliteApplication with OptiMLExp {
-  var colors : Rep[Int] = _
-  var damping : Rep[Double] = _
-  var bound : Rep[Double]  = _
-  var rows : Rep[Int] = _
-  var cols : Rep[Int] = _
-  var sigma : Rep[Int] = _
-  var lambda : Rep[Int] = _
-  var smoothing : Rep[String] = _
-  var pred_type : Rep[String] = _
-
-  var count : Rep[Int] = _
-
-  var edgePotential : Rep[Matrix[Double]] = _
-
-  /* Residual printing
-  var out_file = new java.io.FileOutputStream("residuals_scala.txt")
-  var out_stream = new java.io.PrintStream(out_file)
-*/
-  def init = {
-    colors = unit(5)
-    damping = unit(0.1)
-    bound = unit(1E-15)
-    rows = unit(100)
-    cols = unit(100)
-    sigma = unit(2)
-    lambda = unit(10)
-    smoothing = unit("laplace")
-    pred_type = unit("map")
-
-    count = unit(1)
-
-    edgePotential = Matrix[Double](colors, colors)
-  }
-
   def print_usage = {
     println("Usage: GraphLBP <rows> <cols>")
     println("Example: GraphLBP 100 100")
@@ -54,119 +20,117 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
 
   def main() = {
-    init
+    val colors = unit(5)
+    val damping = unit(0.1)
+    val bound = unit(1E-15)
+    var rows = unit(100)
+    var cols = unit(100)
+    val sigma = unit(2)
+    val lambda = unit(10)
+    var smoothing = unit("laplace")
+    val pred_type = unit("map")
+
+    val edgePotential = Matrix[Double](colors, colors)
   
     // rows and cols arguments
-    try {
-      if (args.length > 0) rows = Integer.parseInt(args(0))
-      if (args.length > 1) cols = Integer.parseInt(args(1))
-    }
-    catch {
-      case _: Exception => print_usage
-    }
+    rows = Integer.parseInt(args(0))
+    cols = Integer.parseInt(args(1))
 
     // Generate image
     val img = Matrix[Double](rows, cols)
     imgPaintSunset(img, colors)
-    MLOutputWriter.writeImgPgm(img, "src.pgm")
+    //MLOutputWriter.writeImgPgm(img, "src.pgm")
     imgCorrupt(img, sigma)
-    MLOutputWriter.writeImgPgm(img, "noise.pgm")
+    //MLOutputWriter.writeImgPgm(img, "noise.pgm")
 
     // Load in a raw image that we generated from GraphLab
-    //val img = LBPImage.load(raw)
 
     // Make sure we read in the raw file correctly
-    // img.save("check_img.pgm")
+    // MLOutputWriter.writeImgPgm(img, "checkImg.pgm")
 
-    val num = 5
+    val num = unit(5)
     for (i <- 0 until num) {
       // Clean up the image and save it
       //PerformanceTimer.start("LBP")
-      val cleanImg = denoise(img)
+      
+      // Make a copy of the image
+      val cleanImg = img.cloneL
+
+      // Construct graph from image
+      val g = constructGraph(cleanImg, colors, sigma)
+
+      if (smoothing == "laplace") {
+        binaryFactorSetLaplace(edgePotential, lambda)
+      }
+      else if (smoothing == "square") {
+        binaryFactorSetAgreement(edgePotential, lambda)
+      }
+
+      var count = unit(1)
+      
+      g.freeze()
+
+      untilconverged(g) {
+        v =>
+          val vdata = v.data.asInstanceOfL[DenoiseVertexData]
+          vdata.setBelief(vdata.potential.cloneL)
+
+          // Multiply belief by messages
+          for (e <- v.edges) {
+            val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
+            vdata.setBelief(unaryFactorTimes(vdata.belief, in.message))
+          }
+
+          // Normalize the belief
+          vdata.setBelief(unaryFactorNormalize(vdata.belief))
+
+          // Send outbound messages
+          for (e <- v.edges) {
+            val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
+            val out = e.asInstanceOfL[MessageEdge].out(v).asInstanceOfL[DenoiseEdgeData]
+            
+            // Compute the cavity
+            val cavity = unaryFactorNormalize(unaryFactorDivide(v.data.asInstanceOfL[DenoiseVertexData].belief.cloneL, in.message))
+
+            // Convolve the cavity with the edge factor
+            val msg = unaryFactorNormalize(unaryFactorConvolve(edgePotential, cavity))
+
+            // Damp the message
+            val dampMsg = unaryFactorDamp(msg, out.message, damping)
+
+            // Compute message residual
+            val residual = unaryFactorResidual(dampMsg, out.message)
+
+            // Set the message
+           out.setMessage(msg)
+            
+           if(count % 10000 == 0) {
+             println(count)
+             println(residual)
+           }
+           
+            // Enqueue update function on target vertex if residual is greater than bound
+            if (residual > bound) {
+              v.addTask(e.asInstanceOfL[MessageEdge].target(v))
+            }
+          }
+        count += 1
+      }
+
+      // Predict the image!
+      g.vertices foreach { v =>
+        imgUpdate(cleanImg, v.data.asInstanceOfL[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.asInstanceOfL[DenoiseVertexData].belief))
+      }
+
       //PerformanceTimer.stop("LBP")
       //PerformanceTimer.print("LBP")
-      MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
+      //MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
     }
-
     /* PerformanceTimer2.summarize("BM")
    PerformanceTimer2.summarize("CD")
    PerformanceTimer2.summarize("OC")
    PerformanceTimer2.summarize("D")
    PerformanceTimer2.summarize("R") */
-
-    /*out_stream.println(count)
-    out_stream.close*/
-  }
-
-  def denoise(imgIn: Rep[Matrix[Double]]): Rep[Matrix[Double]] = {
-    // Make a copy of the image
-    val img = imgIn.cloneL
-
-    // Construct graph from image
-    val g = constructGraph(img, colors, sigma)
-
-    if (smoothing == "laplace") {
-      binaryFactorSetLaplace(edgePotential, lambda)
-    }
-    else if (smoothing == "square") {
-      binaryFactorSetAgreement(edgePotential, lambda)
-    }
-
-    //var count = 1
-
-    untilconverged(g) {
-      v =>
-        val vdata = v.data.asInstanceOfL[DenoiseVertexData]
-        vdata.setBelief(vdata.potential.cloneL)
-
-        // Multiply belief by messages
-        for (e <- v.edges) {
-          val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
-          vdata.setBelief(unaryFactorTimes(vdata.belief, in.message))
-        }
-
-        // Normalize the belief
-        vdata.setBelief(unaryFactorNormalize(vdata.belief))
-
-        // Send outbound messages
-        for (e <- v.edges) {
-          val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
-          val out = e.asInstanceOfL[MessageEdge].out(v).asInstanceOfL[DenoiseEdgeData]
-
-          // Compute the cavity
-          val cavity = unaryFactorNormalize(unaryFactorDivide(v.data.asInstanceOfL[DenoiseVertexData].belief.cloneL, in.message))
-
-          // Convolve the cavity with the edge factor
-          var msg = unaryFactorNormalize(unaryFactorConvolve(edgePotential, cavity))
-
-          // Damp the message
-          msg = unaryFactorDamp(msg, out.message, damping)
-
-          // Compute message residual
-          val residual = unaryFactorResidual(msg, out.message)
-
-          // Set the message
-          out.setMessage(msg)
-
-          /*  if(count % 10000 == 0) {
-           println(count + " " + residual)
-         } */
-
-          // Enqueue update function on target vertex if residual is greater than bound
-          if (residual > bound) {
-            v.addTask(e.asInstanceOfL[MessageEdge].target(v))
-          }
-        }
-
-      //count += 1
-    }
-
-    // Predict the image!
-    g.vertices foreach { v =>
-      imgUpdate(img, v.data.asInstanceOfL[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.asInstanceOfL[DenoiseVertexData].belief))
-    }
-
-    img
   }
 
   def constructGraph(img: Rep[Matrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Rep[Graph[MessageVertex, MessageEdge]] = {
@@ -318,7 +282,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
 
   /**This = other * damping + this * (1-damping) */
-  def unaryFactorDamp(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) = {
+  def unaryFactorDamp(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]): Rep[Vector[Double]] = {
     if (damping != 0) {
       (b.exp * damping + a.exp * (1.0 - damping)) map {Math.log(_)}
     }

@@ -80,6 +80,7 @@ trait ScalaGenDenoiseVertexDataOps extends BaseGenDenoiseVertexDataOps with Scal
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
     rhs match {
       case v@DenoiseVertexDataObjectNew(id,b,p) => emitValDef(sym, "new " + remap(v.vD) + "(" + quote(id) + "," + quote(b) + "," + quote(p) + ")")
+      case DenoiseVertexDataId(v) => emitValDef(sym, quote(v) + ".id")
       case DenoiseVertexDataBelief(v) => emitValDef(sym, quote(v) + ".belief")
       case DenoiseVertexDataBeliefUpdate(v,b) => emitValDef(sym, quote(v) + ".belief = (" + quote(b) + ")")
       case DenoiseVertexDataPotential(v) => emitValDef(sym, quote(v) + ".potential")

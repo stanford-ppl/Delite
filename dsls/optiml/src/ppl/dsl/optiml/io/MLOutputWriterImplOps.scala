@@ -43,7 +43,7 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
 
     xfs.write("P2\n")
     xfs.write(String.valueOf(img.numCols) + " " + String.valueOf(img.numRows) + "\n")
-    xfs.write(255 + "\n")
+    xfs.write("255\n")
 
     val min = img.min
     val max = img.max
