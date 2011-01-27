@@ -158,11 +158,22 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
       implicit val mR = map.Type.asInstanceOf[Manifest[R]]
       __newVar(unit(null).asInstanceOfL[R])
     }
+    lazy val index = {
+      __newVar(unit(0))
+    }
+    // this is a workaround for reification and vars not really working well together
+    // we need to output the block as an Exp, but the nested scopes need to use it as a var
+    lazy val Acc = {
+      implicit val mR = map.Type.asInstanceOf[Manifest[R]]
+      reifyEffects(acc)
+    }
+    lazy val Index = reifyEffects(index)
+    // end workaround
     lazy val init = {
       implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
       implicit val mR = map.Type.asInstanceOf[Manifest[R]]
       reifyEffects {
-        var vs = in(0)
+        var vs = in(index)
         rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
         acc = map
       }
@@ -171,15 +182,15 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
       implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
       implicit val mR = map.Type.asInstanceOf[Manifest[R]]
       reifyEffects {
-        var i = unit(1)
-        while (i < in.size) {
-          var vs = in(i)
-          rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
+        index += 1
+        while (index < in.size) {
+          var vs = in(index)
+          //rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
           var x = map
           rebind(rV._1.asInstanceOf[Sym[R]], ReadVar(acc))
           rebind(rV._2.asInstanceOf[Sym[R]], ReadVar(x))
           acc = reduce
-          i += 1
+          index += 1
         }
         acc
       }
@@ -252,6 +263,10 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
 
   // TODO: move to lms?
   def rebind(sym: Sym[Any], rhs: Def[Any]) = createDefinition(sym, rhs).rhs
+  def getVar[A](e: Exp[A]) = e match {
+    case Def(Reify(x, effects)) if x.isInstanceOf[Var[A]] => x.asInstanceOf[Var[A]]
+    case _ => throw new Exception("getVar called on non-var type")
+  }
 
 }
 
