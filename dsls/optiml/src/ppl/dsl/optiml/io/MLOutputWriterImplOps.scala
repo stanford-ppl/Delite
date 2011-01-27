@@ -49,14 +49,14 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
     val max = img.max
 
     for (i <- 0 until img.numRows) {
-      var first = true
+      var first = unit(true)
       for (j <- 0 until img.numCols) {
         if(!first) {
           xfs.write("\t")
         }
 
         if (min != max) {
-          val pixel = (255.0 * (img(i, j) - min) / (max - min)).asInstanceOf[Int] + "\n"
+          val pixel = (255.0 * (img(i, j) - min) / (max - min)).asInstanceOfL[Int] + "\n"
           xfs.write(pixel)
         }
         else

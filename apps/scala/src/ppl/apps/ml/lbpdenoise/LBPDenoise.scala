@@ -13,24 +13,39 @@ import ppl.dsl.optiml.datastruct.scala._
  */
 
 object LBPDenoise extends DeliteApplication with OptiMLExp {
-  var colors = 5
-  var damping = 0.1
-  var bound = 1E-15
-  var rows = 100
-  var cols = 100
-  var sigma = 2
-  var lambda = 10
-  var smoothing = "laplace"
-  var pred_type = "map";
+  var colors : Rep[Int] = _
+  var damping : Rep[Double] = _
+  var bound : Rep[Double]  = _
+  var rows : Rep[Int] = _
+  var cols : Rep[Int] = _
+  var sigma : Rep[Int] = _
+  var lambda : Rep[Int] = _
+  var smoothing : Rep[String] = _
+  var pred_type : Rep[String] = _
 
-  var count = 1
+  var count : Rep[Int] = _
 
-  val edgePotential = Matrix[Double](colors, colors)
+  var edgePotential : Rep[Matrix[Double]] = _
 
   /* Residual printing
   var out_file = new java.io.FileOutputStream("residuals_scala.txt")
   var out_stream = new java.io.PrintStream(out_file)
 */
+  def init = {
+    colors = unit(5)
+    damping = unit(0.1)
+    bound = unit(1E-15)
+    rows = unit(100)
+    cols = unit(100)
+    sigma = unit(2)
+    lambda = unit(10)
+    smoothing = unit("laplace")
+    pred_type = unit("map")
+
+    count = unit(1)
+
+    edgePotential = Matrix[Double](colors, colors)
+  }
 
   def print_usage = {
     println("Usage: GraphLBP <rows> <cols>")
@@ -39,6 +54,8 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
 
   def main() = {
+    init
+  
     // rows and cols arguments
     try {
       if (args.length > 0) rows = Integer.parseInt(args(0))
@@ -215,7 +232,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     img(row, col) = pixel
   }
 
-  def imgPaintSunset(img: Rep[Matrix[Double]], numRings: Int) = {
+  def imgPaintSunset(img: Rep[Matrix[Double]], numRings: Rep[Int]) = {
     val centerR = img.numRows.asInstanceOfL[Double] / 2.0
     val centerC = img.numCols.asInstanceOfL[Double] / 2.0
     val maxRadius = Math.min(img.numRows, img.numCols).asInstanceOfL[Double] / 2.0
