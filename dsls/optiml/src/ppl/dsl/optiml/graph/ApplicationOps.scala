@@ -26,7 +26,7 @@ trait DenoiseVertexDataOps extends DSLType with Variables {
   class denoiseVertexDataOpsCls(v: Rep[DenoiseVertexData]) {
     def id = denoise_vertex_data_id(v)
     def belief = denoise_vertex_data_belief(v)
-    def belief_=(b: Rep[Vector[Double]]) = denoise_vertex_data_belief_update(v, b)
+    def setBelief(b: Rep[Vector[Double]]) = denoise_vertex_data_belief_update(v, b)
     def potential = denoise_vertex_data_potential(v)
   }
 
@@ -99,9 +99,9 @@ trait DenoiseEdgeDataOps extends DSLType with Variables {
 
   class denoiseEdgeDataOpsCls(e: Rep[DenoiseEdgeData]) {
     def message = denoise_edge_data_message(e)
-    def message_=(m: Rep[Vector[Double]]) = denoise_edge_data_message_update(e,m)
+    def setMessage(m: Rep[Vector[Double]]) = denoise_edge_data_message_update(e,m)
     def oldMessage = denoise_edge_data_old_message(e)
-    def oldMessage_=(m: Rep[Vector[Double]]) = denoise_edge_data_old_message_update(e,m)
+    def setOldMessage(m: Rep[Vector[Double]]) = denoise_edge_data_old_message_update(e,m)
     def cloneL = denoise_edge_data_cloneL(e)
   }
 
