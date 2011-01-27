@@ -22,7 +22,10 @@ trait VariantsOpsExp extends EffectExp {
 
   trait DeliteOpReduceLikeWhileLoopVariant extends Variant {
     val init: Exp[Any] // inner scope, separate from variant
-    val acc: Var[Any] // outer scope
+    //val acc: Var[Any] // outer scope
+    //val index: Var[Any] // outer scope
+    val Acc: Exp[Any]
+    val Index: Exp[Any]
   }
 }
 

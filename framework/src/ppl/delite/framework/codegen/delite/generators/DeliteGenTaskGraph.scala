@@ -34,6 +34,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     (emittedNodes flatMap { e => if (findDefinition(e).isDefined) List(findDefinition(e).get.asInstanceOf[TP[Any]]) else Nil }) ::: scope
   }
 
+  def unwrapVar(v: Var[Any]) = v match {
+    case Variable(x) => x
+  }
+
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) : Unit = {
     assert(generators.length >= 1)
 
@@ -335,11 +339,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
   def emitReduceLikeWhileLoopVariant(vw: DeliteOpReduceLikeWhileLoopVariant, sym: Sym[_], inputs: List[Exp[_]], mutableInputs: List[Exp[_]], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]])
     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
-    // TODO: we want to run init and body in their own scopes, sequentially, in the runtime.
-    // how do we get the stuff they both depend on to be outside of both scopes?
     val save = scope
-    // TODO: we should not be reifying in generators. Need to deal with reification and vars.
-    emitBlock(getBlockResult(reifyEffects(vw.acc)))
+    emitBlock(vw.Index)
+    emitBlock(vw.Acc)
     scope = appendScope()
 
     def emitSubGraphOp(block: Exp[Any], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]]) {
