@@ -32,6 +32,7 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 }
 */
 
+/*
 char* devBufferStart = 0;
 size_t devBufferSize = 1024*1024*1024;
 char* devBufferEnd;
@@ -50,7 +51,8 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 	*ptr = devBufferCurrent;
 	devBufferCurrent += size;
 }
-/*
+*/
+
 void DeliteCudaMalloc(void** ptr, size_t size) {
 	size_t freeAmt;
 	size_t totalAmt;
@@ -85,7 +87,7 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 	cudaMalloc(ptr, size);
 	lastAlloc->push_back(*ptr);
 }
-*/
+
 /* //this version frees memory eagerly; useful for debugging
 void DeliteCudaMalloc(void** ptr, size_t size) {
     while (freeList->size() > 0) {

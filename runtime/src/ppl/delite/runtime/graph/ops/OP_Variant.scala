@@ -33,13 +33,14 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
    */
   def makeChunks(indices: Seq[Int], graph: DeliteTaskGraph) = {
     var returnOp: OP_Variant = null
+    val superOp = if (this.superOp == null) this else this.superOp
     val returnerIdx = returner(indices)
     val chunks =
       for (idx <- indices) yield {
         val resultMap = if (idx == returnerIdx) resultType else Targets.unitTypes
         val r = new OP_Variant(id+"_"+idx, resultMap, superOp, variantGraph)
         r.dependencyList = superOp.dependencyList
-        r.inputList = this.inputList ::: superOp.inputList
+        r.inputList = superOp.inputList
         r.consumerList = superOp.consumerList
         r.inputSyms = this.inputSyms
         r.cudaMetadata = this.cudaMetadata

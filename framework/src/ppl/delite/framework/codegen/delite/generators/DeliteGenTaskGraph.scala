@@ -342,8 +342,19 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     // TODO: we should not be reifying in generators. Need to deal with reification and vars.
     emitBlock(getBlockResult(reifyEffects(vw.acc)))
     scope = appendScope()
-    emitSubGraph("init", vw.init)
-    emitSubGraph("block", vw.variant)
+
+    def emitSubGraphOp(block: Exp[Any], controlDeps: List[Exp[_]], antiDeps: List[Exp[_]]) {
+      stream.print("{\"type\":\"SubGraph\", ")
+      val resultId = if (quote(getBlockResult(block)) == "()") quote(block) else quote(getBlockResult(block)) //TODO: :(
+      stream.print("\"outputId\":\"" + resultId + "\",\n")
+      emitDepsCommon(controlDeps, antiDeps)
+      emitSubGraph("", block)
+      emitOutput(block)
+      stream.println("},")
+    }
+
+    emitSubGraphOp(vw.init, Nil, Nil)
+    emitSubGraphOp(vw.variant, List(vw.init), Nil)
     scope = save
   }
 

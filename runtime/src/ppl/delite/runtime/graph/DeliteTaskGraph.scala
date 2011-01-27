@@ -50,6 +50,7 @@ object DeliteTaskGraph {
         case "Foreach" => processCommon(op, "OP_Foreach")
         case "Conditional" => processIfThenElseTask(op)
         case "WhileLoop" => processWhileTask(op)
+        case "SubGraph" => processSubGraph(op)
         case "Arguments" => processArgumentsTask(op)
         case "EOP" => processEOPTask(op) //end of program
         case "EOG" => //end of nested graph, do nothing
@@ -312,6 +313,48 @@ object DeliteTaskGraph {
     //add to graph
     graph._ops += id -> whileOp
     graph._result = whileOp
+  }
+
+  //TODO: this, while, and if can probably be factored
+  def processSubGraph(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
+    // get id
+    val id = getFieldString(op,"outputId")
+
+    val (bodyGraph, bodyValue) = parseSubGraph(op, "")
+    assert(bodyValue == "")
+
+    var resultMap = Map[Targets.Value, String]()
+    for (target <- Targets.values) {
+      if (bodyGraph.result.supportsTarget(target))
+        resultMap += target -> bodyGraph.result.outputType(target)
+    }
+
+    val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
+    var graphDeps: List[DeliteOP] = Nil
+    for (depId <- depIds) graphDeps ::= getOp(depId)
+
+    //list of all dependencies of the block, minus any dependencies within the block
+    val internalOps = bodyGraph.ops.toList
+    graphDeps = resolveInputs((graphDeps ++ internalOps.flatMap(_.getDependencies)) filterNot { internalOps contains })
+    val graphInputs = resolveInputs((internalOps.flatMap(_.getInputs)) filterNot { internalOps contains }).distinct
+    val graphInputSyms = resolveInputs(graphInputs)(bodyGraph)
+    val graphMutableInputs = resolveInputs((internalOps.flatMap(_.getMutableInputs)) filterNot { internalOps contains })
+
+    val graphOp = new OP_Variant(id, resultMap, null, bodyGraph)
+    graphOp.dependencyList = graphDeps
+    graphOp.inputList = graphInputs
+    graphOp.mutableInputList = graphMutableInputs
+    graphOp.inputSyms = graphInputSyms
+
+    extractCudaMetadata(graphOp, bodyGraph, graph)
+
+    //add consumer edges
+    for (dep <- graphDeps)
+      dep.addConsumer(graphOp)
+
+    //add to graph
+    graph._ops += id -> graphOp
+    graph._result = graphOp
   }
 
   def extractCudaMetadata(superOp: OP_Nested, innerGraph: DeliteTaskGraph, outerGraph: DeliteTaskGraph) {
