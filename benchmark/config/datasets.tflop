@@ -1,4 +1,4 @@
-gda|$data/ml/gda/4096-1200x.dat|$data/ml/gda/q1y.dat
+gda|$data/ml/gda/1024-1200x.dat|$data/ml/gda/q1y.dat
 nb|$data/ml/nb/MATRIX.TRAIN.50k|$data/ml/nb/MATRIX.TEST
 linreg|$data/ml/linreg/x-2048.dat|$data/ml/linreg/y-2048.dat
 kmeans|$data/ml/kmeans/mandrill-xlarge.dat|$data/ml/kmeans/initmu.dat
