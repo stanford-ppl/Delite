@@ -129,7 +129,7 @@ import scala.virtualization.lms.common.{EffectExp, Variables}\n\n"
     l = l + "}\n\n"
 
     #OpsExp
-    l = l + "" + clazz + "OpsExp extends " + clazz + " with BaseExp { this: DeliteOpsExp =>\n"
+    l = l + "trait " + clazz + "OpsExp extends " + clazz + " with BaseExp { this: DeliteOpsExp =>\n"
     l = l + "  case class " + clazz + "ObjectNew(" + expify(fields, types) + ") extends Def[" + clazz + "]\n"
     for f in fields:
         l = l + "  case class " + clazz + f.capitalize() + "(__x__: Exp[" + clazz + "]) extends Def[" + types[f] + "]\n"
