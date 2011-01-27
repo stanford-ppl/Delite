@@ -100,16 +100,16 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     untilconverged(g) {
       v =>
         val vdata = v.data.asInstanceOfL[DenoiseVertexData]
-        vdata.belief = vdata.potential.cloneL
+        vdata.setBelief(vdata.potential.cloneL)
 
         // Multiply belief by messages
         for (e <- v.edges) {
           val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
-          vdata.belief = unaryFactorTimes(v.data.asInstanceOfL[DenoiseVertexData].belief, in.message)
+          vdata.setBelief(unaryFactorTimes(vdata.belief, in.message))
         }
 
         // Normalize the belief
-        vdata.belief = unaryFactorNormalize(vdata.belief)
+        vdata.setBelief(unaryFactorNormalize(vdata.belief))
 
         // Send outbound messages
         for (e <- v.edges) {
@@ -129,7 +129,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           val residual = unaryFactorResidual(msg, out.message)
 
           // Set the message
-          out.message = msg
+          out.setMessage(msg)
 
           /*  if(count % 10000 == 0) {
            println(count + " " + residual)

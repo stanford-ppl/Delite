@@ -15,11 +15,14 @@ package ppl.dsl.optiml.datastruct.scala
 trait DenoiseVertexData extends MessageData {
   def potential: Vector[Double]
   def belief: Vector[Double]
+  def setBelief(b: Vector[Double])
   def id: Int
 }
 
 trait DenoiseEdgeData extends MessageData {
   def message: Vector[Double]
+  def setMessage(m: Vector[Double])
   def oldMessage: Vector[Double]
+  def setOldMessage(oM: Vector[Double])
   def cloneL : DenoiseEdgeData
 }

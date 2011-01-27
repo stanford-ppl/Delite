@@ -13,24 +13,21 @@ class DenoiseVertexDataImpl(val _id : Int, var _belief : Vector[Double], var _po
   def id = _id
 
   def belief = _belief
-  def belief_=(b: Vector[Double]) = {
+  def setBelief(b: Vector[Double]) = {
     _belief = b
   }
 
   def potential = _potential
-  def potential_=(p: Vector[Double]) = {
-    _potential = p
-  }
 }
 
 class DenoiseEdgeDataImpl(var _msg : Vector[Double], var _oldMsg : Vector[Double]) extends DenoiseEdgeData {
   def message = _msg
-  def message_=(msg: Vector[Double]) = {
+  def setMessage(msg: Vector[Double]) = {
     _msg = msg
   }
 
   def oldMessage = _oldMsg
-  def oldMessage_=(msg: Vector[Double]) = {
+  def setOldMessage(msg: Vector[Double]) = {
     _oldMsg = msg
   }
 
