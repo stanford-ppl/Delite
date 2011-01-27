@@ -20,6 +20,37 @@ queue<FreeItem>* freeList = new queue<FreeItem>();
 
 map<void*,list<void*>*>* cudaMemoryMap = new map<void*,list<void*>*>();
 
+/*
+int mallocInit = 0;
+void *retPtr;
+void DeliteCudaMalloc(void** ptr, size_t size) {
+	if(mallocInit == 0) {
+		cudaMalloc(&retPtr,2000*2000*8);
+		mallocInit = 1;
+	}
+	*ptr = retPtr;
+}
+*/
+
+char* devBufferStart = 0;
+size_t devBufferSize = 1024*1024*1024;
+char* devBufferEnd;
+char* devBufferCurrent;
+
+void devInit() {
+	cudaMalloc(&devBufferStart, devBufferSize);
+	devBufferEnd = devBufferStart + devBufferSize;
+	devBufferCurrent = devBufferStart;
+}
+
+void DeliteCudaMalloc(void** ptr, size_t size) {
+	if (devBufferStart == 0) devInit();
+	if ((devBufferCurrent + size) > devBufferEnd)
+		devBufferCurrent = devBufferStart;
+	*ptr = devBufferCurrent;
+	devBufferCurrent += size;
+}
+/*
 void DeliteCudaMalloc(void** ptr, size_t size) {
 	size_t freeAmt;
 	size_t totalAmt;
@@ -54,7 +85,7 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 	cudaMalloc(ptr, size);
 	lastAlloc->push_back(*ptr);
 }
-
+*/
 /* //this version frees memory eagerly; useful for debugging
 void DeliteCudaMalloc(void** ptr, size_t size) {
     while (freeList->size() > 0) {
@@ -106,6 +137,12 @@ void hostInit() {
 	bufferCurrent = bufferStart;
 }
 
+/*
+void DeliteCudaMallocHost(void** ptr, size_t size) {
+	if (bufferStart == 0) hostInit();
+	*ptr = bufferCurrent;
+}
+*/
 void DeliteCudaMallocHost(void** ptr, size_t size) {
 	if (bufferStart == 0) hostInit();
 	if ((bufferCurrent + size) > bufferEnd)

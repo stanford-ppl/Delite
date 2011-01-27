@@ -334,6 +334,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
     val mM = manifest[MatrixImpl[Float]]
   }
+  case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]]) 
+    extends DeliteOpSingleTask(reifyEffects(matrix_sumcol_impl(x)))
+
 
 
   ////////////////////////////////
@@ -451,6 +454,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = v.sum
   }
 
+/*
   case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]])
     extends DeliteOpMap[Vector[A],A,Vector] {
 
@@ -466,6 +470,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val v = fresh[Vector[A]]
     val func = v.sum
   }
+*/
 
 //  case class MatrixUnaryMinus[A:Manifest:Arith](in: Exp[Matrix[A]])
 //    extends DeliteOpMap[A,A,Matrix] {
