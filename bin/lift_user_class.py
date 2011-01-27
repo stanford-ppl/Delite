@@ -115,9 +115,9 @@ import scala.virtualization.lms.common.{EffectExp, Variables}\n\n"
     l = l + "  implicit def rep" + clazz + "To" + clazz + "Ops(x: Rep[" + clazz +"]) = new " + lclazz + "OpsCls(x)\n"
     l = l + "  implicit def " + lclazz + "To" + clazz + "Ops(x: Var[" + clazz + "]) = new " + lclazz + "OpsCls(readVar(x))\n\n"
 
-    l = l + "  class " + lclazz + "OpsCls(_x_: Rep[" + clazz + "]) {\n"
+    l = l + "  class " + lclazz + "OpsCls(__x: Rep[" + clazz + "]) {\n"
     for f in fields:
-        l = l + "    def " + f + " = " + lclazz + "_" + f + "(__x__)\n"
+        l = l + "    def " + f + " = " + lclazz + "_" + f + "(__x)\n"
     l = l + "  }\n\n"
     
     l = l + "  //object defs\n"
@@ -125,28 +125,28 @@ import scala.virtualization.lms.common.{EffectExp, Variables}\n\n"
     
     l = l + "  //class defs\n"
     for f in fields:
-        l = l + "  def " + lclazz + "_" + f + "(__x__: Rep[" + clazz + "]): Rep[" + types[f] + "]\n"
+        l = l + "  def " + lclazz + "_" + f + "(__x: Rep[" + clazz + "]): Rep[" + types[f] + "]\n"
     l = l + "}\n\n"
 
     #OpsExp
-    l = l + "trait " + clazz + "OpsExp extends " + clazz + " with BaseExp { this: DeliteOpsExp =>\n"
+    l = l + "trait " + clazz + "OpsExp extends " + clazz + "Ops with EffectExp {\n"
     l = l + "  case class " + clazz + "ObjectNew(" + expify(fields, types) + ") extends Def[" + clazz + "]\n"
     for f in fields:
-        l = l + "  case class " + clazz + f.capitalize() + "(__x__: Exp[" + clazz + "]) extends Def[" + types[f] + "]\n"
+        l = l + "  case class " + clazz + f.capitalize() + "(__x: Exp[" + clazz + "]) extends Def[" + types[f] + "]\n"
     l = l + "\n"
-    l = l + "  " + lclazz + "_obj_new(" + expify(fields, types) + ") = reflectEffect(" + clazz + "ObjectNew(" + listify(fields) + "))\n"
+    l = l + "  def " + lclazz + "_obj_new(" + expify(fields, types) + ") = reflectEffect(" + clazz + "ObjectNew(" + listify(fields) + "))\n"
     for f in fields:
-        l = l + "  def " + lclazz + "_" + f + "(__x__: Rep[" + clazz + "]) = " + clazz + f.capitalize() +"(__x__)\n"
+        l = l + "  def " + lclazz + "_" + f + "(__x: Rep[" + clazz + "]) = " + clazz + f.capitalize() +"(__x)\n"
     l = l + "}\n\n"
 
 
     l = l + "trait ScalaGen" + clazz + "Ops extends ScalaGenBase {\n"
-    l = l + "  val IR: " + clazz + "OpsExp\n"
+    l = l + "  val IR: ApplicationOpsExp\n"
     l = l + "  import IR._\n\n"
     
     l = l + "  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {\n"
     l = l + "  // these are the ops that call through to the underlying real data structure\n"
-    l = l + "  case " + clazz + "ObjectNew(" + listify(fields) + ") => emitValDef(sym, \"new \" + remap(manifest[" + clazz + "]) + \"(" + quotify(fields) + ")\")\n"
+    l = l + "    case " + clazz + "ObjectNew(" + listify(fields) + ") => emitValDef(sym, \"new \" + remap(manifest[" + clazz + "]) + \"(" + quotify(fields) + ")\")\n"
     for f in fields:
         l = l + "    case " + clazz + f.capitalize() + "(x) =>  emitValDef(sym, quote(x) + \"." + f +"\")\n" 
     l = l + "    case _ => super.emitNode(sym, rhs)\n"
