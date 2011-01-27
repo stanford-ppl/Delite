@@ -1,17 +1,17 @@
 package ppl.apps.robotics.gradient
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala.{Vector,GrayscaleImage}
+import ppl.dsl.optiml.datastruct.scala._
 import ppl.delite.framework.DeliteApplication
 
-trait BinarizedGradientPyramid {
+trait BinarizedGradientPyramidFuncs {
   // TODO: how do we clean this up in app code?
   val IR: DeliteApplication with OptiMLExp
   import IR._
 
   def makePyramid(gradientImage: Rep[GrayscaleImage]) = {
     var crt = gradientImage
-    var currentLevel = 0
+    var currentLevel = unit(0)
     val pyramid = BinarizedGradientPyramid(Vector[GrayscaleImage](), 3, 1, 3)
 
     while (currentLevel < pyramid.start_level + pyramid.levels) {
@@ -19,7 +19,7 @@ trait BinarizedGradientPyramid {
         pyramid.pyramid += crt
       }
       if (currentLevel != (pyramid.start_level + pyramid.levels - 1)) {
-        crt = crt.bitwiseOrDownsample()
+        crt = varToGrayscaleImageOps(crt).bitwiseOrDownsample()
       }
       currentLevel += 1
     }

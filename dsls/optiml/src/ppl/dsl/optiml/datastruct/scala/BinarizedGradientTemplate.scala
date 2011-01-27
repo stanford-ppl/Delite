@@ -1,13 +1,6 @@
 package ppl.dsl.optiml.datastruct.scala
 
 
-class Rect(
-  val x: Int,
-  val y: Int,
-  val width: Int,
-  val height: Int
-)
-
 class BinarizedGradientTemplate (
   // In the reduced image. The side of the template square is then 2*r+1.
   val radius: Int,
@@ -33,24 +26,8 @@ class BinarizedGradientTemplate (
   val hist: Vector[Float]
 )
 
-class BiGGDetection(
-  val name: String,
-  val score: Float,
-  val roi: Rect,
-  val mask: GrayscaleImage,
-  val index: Int,
-  val x: Int,
-  val y: Int,
-  val tpl: BinarizedGradientTemplate,
-  val crt_tpl: BinarizedGradientTemplate
-)
 
-class BinarizedGradientPyramid(
-  val gradientImage: GrayscaleImage,
-  val pyramid: Vector[GrayscaleImage],
-  val start_level: Int,
-  val levels: Int,
-  val fixedLevelIndex: Int
-)
+
+
 
 

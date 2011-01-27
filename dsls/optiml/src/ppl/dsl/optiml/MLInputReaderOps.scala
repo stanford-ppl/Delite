@@ -18,7 +18,7 @@ trait MLInputReaderOps extends DSLType with Base {
 
     // app specific! to be removed
     def readTokenMatrix(filename: Rep[String]) = obj_mlinput_read_tokenmatrix(filename)
-    def readTemplateModels(filename: Rep[String]) = obj_mlinput_read_template_models(filename)
+    def readTemplateModels(directory: Rep[String]) = obj_mlinput_read_template_models(directory)
   }
 
   def obj_mlinput_read(filename: Rep[String]) : Rep[Matrix[Double]]
@@ -26,7 +26,7 @@ trait MLInputReaderOps extends DSLType with Base {
   def obj_mlinput_read_grayscale_image(filename: Rep[String]) : Rep[GrayscaleImage]
 
   def obj_mlinput_read_tokenmatrix(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
-  def obj_mlinput_read_template_models(filename: Rep[String]): (Rep[String], Rep[Vector[BinarizedGradientTemplate]])
+  def obj_mlinput_read_template_models(directory: Rep[String]): Rep[Vector[(String, Vector[BinarizedGradientTemplate])]]
 }
 
 trait MLInputReaderOpsExp extends MLInputReaderOps { this: MLInputReaderImplOps with DeliteOpsExp with TupleOpsExp =>
@@ -42,8 +42,8 @@ trait MLInputReaderOpsExp extends MLInputReaderOps { this: MLInputReaderImplOps 
   case class MLInputReadTokenMatrix(filename: Exp[String])
     extends DeliteOpSingleTask(reifyEffects(mlinput_read_tokenmatrix_impl(filename)))
 
-  case class MLInputReadTemplateModels(filename: Exp[String])
-    extends DeliteOpSingleTask(reifyEffects(mlinput_read_template_models_impl(filename)))
+  case class MLInputReadTemplateModels(directory: Exp[String])
+    extends DeliteOpSingleTask(reifyEffects(mlinput_read_template_models_impl(directory)))
 
 
   def obj_mlinput_read(filename: Exp[String]) = reflectEffect(MLInputRead(filename))
@@ -51,7 +51,7 @@ trait MLInputReaderOpsExp extends MLInputReaderOps { this: MLInputReaderImplOps 
   def obj_mlinput_read_grayscale_image(filename: Exp[String]) = reflectEffect(MLInputReadGrayscaleImage(filename))
 
   def obj_mlinput_read_tokenmatrix(filename: Exp[String]) = reflectEffect(MLInputReadTokenMatrix(filename))
-  def obj_mlinput_read_template_models(filename: Exp[String]) = t2(reflectEffect(MLInputReadTemplateModels(filename)))
+  def obj_mlinput_read_template_models(directory: Exp[String]) = reflectEffect(MLInputReadTemplateModels(directory))
 }
 
 

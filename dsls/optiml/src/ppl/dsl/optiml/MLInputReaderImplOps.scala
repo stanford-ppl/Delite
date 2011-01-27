@@ -10,7 +10,7 @@ trait MLInputReaderImplOps { this: Base =>
   def mlinput_read_vector_impl(filename : Rep[String]) : Rep[Vector[Double]]
   def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage]
   def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
-  def mlinput_read_template_models_impl(filename: Rep[String]): (Rep[String], Rep[Vector[BinarizedGradientTemplate]])
+  def mlinput_read_template_models_impl(directory: Rep[String]): Rep[Vector[(String, Vector[BinarizedGradientTemplate])]]
 }
 
 trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
@@ -154,24 +154,32 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     TrainingSet[Double,Double](trainMatrix, Labels(trainCategory))
   }
 
-  def mlinput_read_template_models_impl(filename: Rep[String]): (Rep[String], Rep[Vector[BinarizedGradientTemplate]]) = {
-    val templates = Vector[BinarizedGradientTemplate]()
-
-    val file = BufferedReader(FileReader(filename))
-
-    if (file.readLine() != "bigg_object:") error("Illegal data format")
-    file.readLine() //"============"
-    val params = file.readLine().trim.split(" ")
-    if (params(0) != "obj_name/obj_num/num_objs:") error("Illegal data format")
-    val objName = params(1)
-    val objId = params(2)
-    val numObjs = Integer.parseInt(params(3))
-    var i = unit(0)
-    while (i < numObjs) {
-      templates += loadModel(file)
-      i += 1
+  def mlinput_read_template_models_impl(directory: Rep[String]): Rep[Vector[(String, Vector[BinarizedGradientTemplate])]] = {
+    val templateFiles = Vector[String]()
+    new java.io.File(directory).getCanonicalFile.listFiles.map{
+      file => templateFiles += file.getPath()
     }
-    (objName, templates)
+
+    templateFiles.map { filename =>
+      println("Loading model: " + filename)
+      val templates = Vector[BinarizedGradientTemplate]()
+
+      val file = BufferedReader(FileReader(filename))
+
+      if (file.readLine() != "bigg_object:") error("Illegal data format")
+      file.readLine() //"============"
+      val params = file.readLine().trim.split(" ")
+      if (params(0) != "obj_name/obj_num/num_objs:") error("Illegal data format")
+      val objName = params(1)
+      val objId = params(2)
+      val numObjs = Integer.parseInt(params(3))
+      var i = unit(0)
+      while (i < numObjs) {
+        templates += loadModel(file)
+        i += 1
+      }
+      (objName, templates)
+    }
   }
 
   private def loadModel(file: Rep[BufferedReader]): Rep[BinarizedGradientTemplate] = {
