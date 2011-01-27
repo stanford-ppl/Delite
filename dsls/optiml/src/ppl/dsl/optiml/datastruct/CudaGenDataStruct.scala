@@ -245,8 +245,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMallocHost((void**)%s,%s+sizeof(%s));\n".format("&hostPtr_transposed",numBytesStr,remap(sym.Type)))
     out.append("\t%s *hostPtr_transposed_cls = hostPtr_transposed + %s->size();\n".format(typeStr,quote(sym)))
     out.append("\tmemcpy(%s, %s, %s);\n".format("hostPtr_transposed","dataPtr_transposed",numBytesStr))
-    out.append("\tmemcpy(%s, %s, sizeof(%s));\n".format("hostPtr_transposed_cls","&transposed",quote(sym)))
-    out.append("\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s+sizeof(%s));\n".format("devPtr_transposed","hostPtr_transposed",numBytesStr,quote(sym)))
+    out.append("\tmemcpy(%s, %s, sizeof(%s));\n".format("hostPtr_transposed_cls","&transposed",remap(sym.Type)))
+    out.append("\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s+sizeof(%s));\n".format("devPtr_transposed","hostPtr_transposed",numBytesStr,remap(sym.Type)))
     out.append("\tenv->ReleasePrimitiveArrayCritical(data_transposed, dataPtr_transposed, 0);\n")
     out.append("\t%s->transposed = (%s *)(devPtr_transposed + %s->size());\n".format(quote(sym),remap(sym.Type),quote(sym)))
 
