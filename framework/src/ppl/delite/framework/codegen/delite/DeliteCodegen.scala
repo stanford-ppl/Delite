@@ -129,12 +129,12 @@ trait DeliteCodegen extends GenericFatCodegen {
     println("-- block for "+result)
     currentScope.foreach(println)
 
+/*
     println("-- shallow schedule for "+result)
     shallow = true
     val e2 = getFatSchedule(currentScope)(result) // shallow list of deps (exclude stuff only needed by nested blocks)
     shallow = false
     e2.foreach(println)
-
     println("-- bound for "+result)
     val e1 = currentScope
     val bound = e1.flatMap(z => boundSyms(z.rhs))
@@ -146,7 +146,7 @@ trait DeliteCodegen extends GenericFatCodegen {
       println("--- dep on " + st)
       res.foreach(println)
     }
-
+*/
     focusExactScopeFat(currentScope)(result) { levelScope => 
       println("-- level for "+result)
       levelScope.foreach(println)
@@ -171,18 +171,24 @@ trait DeliteCodegen extends GenericFatCodegen {
 */      
       
       val localEmittedNodes = new ListBuffer[Sym[Any]]
+      val controlNodes = new ListBuffer[Sym[Any]]
+
+      controlDeps = Nil
 
       for (TTP(syms, rhs) <- levelScope) {
         // we only care about effects that are scheduled to be generated before us, i.e.
         // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
         // n3 we want controlDeps to contain e1 and e2
         //controlDeps = levelScope.takeWhile(_.lhs != syms) filter { effects contains _ } flatMap { _.lhs }
-        controlDeps = Nil // within emitFatNode below iff it is a reflect/reify node
+        //controlDeps = Nil // within emitFatNode below iff it is a reflect/reify node <-- wrong code in runtime
         rhs match {
+          // TODO: fat loops with embedded reflects??
+          case ThinDef(Reflect(_,_,_)) => controlNodes ++= syms
           case ThinDef(Reify(_,_,_)) =>
           case _ => localEmittedNodes ++= syms
         }
         emitFatNode(syms, rhs)
+        controlDeps = controlNodes.toList // need to do it that way... TODO: set only if changed
       }
       
       emittedNodes = localEmittedNodes.result // = levelScope.flatMap(_.syms) ??

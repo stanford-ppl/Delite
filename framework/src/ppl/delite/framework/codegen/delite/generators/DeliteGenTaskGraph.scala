@@ -23,11 +23,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     case _ => Nil
   }
 
-  // FIXME !!! this is probably not accurate
   private def mutating(kernelContext: State, sym: Sym[Any]) : List[Sym[Any]] =
     kernelContext flatMap {
+      // FIXME !!! this is probably not accurate
       //case Def(Reflect(x,effects)) => if (syms(x) contains sym) List(sym) else Nil
       //case Def(Mutation(x,effects)) => if (syms(x) contains sym) List(sym) else Nil // TR FIXME
+      case Def(Reflect(x,Write(as),effects)) => if (as contains sym) List(sym) else Nil
       case _ => Nil
     }
 
@@ -57,10 +58,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     // we will try to generate any node that is not purely an effect node
     rhs match {
       case ThinDef(Reflect(s, u, effects)) =>
-        controlDeps = effects; // <---  now handling control deps here...!!
+        //controlDeps = effects; // <---  now handling control deps here...!! <--- would like to, but need to hand *precise* schedule to runtime
         super.emitFatNode(sym, rhs); return
       case ThinDef(Reify(s, u, effects)) =>
-        controlDeps = effects
+        //controlDeps = effects
         super.emitFatNode(sym, rhs); return
       case ThinDef(DeliteOpCondition(c,t,e)) => {
         emitBlock(c)

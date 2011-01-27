@@ -276,43 +276,43 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   // implemented via kernel embedding (sequential)
 
   case class VectorObjectFromSeq[A:Manifest](xs: Exp[Seq[A]])
-    extends DeliteOpSingleTask(reifyEffects(vector_obj_fromseq_impl(xs)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_obj_fromseq_impl(xs)))
 
   case class VectorObjectOnes(len: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(vector_obj_ones_impl(len)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_obj_ones_impl(len)))
 
   case class VectorObjectOnesF(len: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(vector_obj_onesf_impl(len)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_obj_onesf_impl(len)))
 
   case class VectorObjectZeros(len: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(vector_obj_zeros_impl(len)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_obj_zeros_impl(len)))
 
   case class VectorObjectZerosF(len: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(vector_obj_zerosf_impl(len)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_obj_zerosf_impl(len)))
 
   case class VectorObjectRand(len: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(vector_obj_rand_impl(len)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_obj_rand_impl(len)))
 
   case class VectorObjectRandF(len: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(vector_obj_randf_impl(len)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_obj_randf_impl(len)))
 
   case class VectorObjectUniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean])
-    extends DeliteOpSingleTask(reifyEffects(vector_obj_uniform_impl(start, step_size, end, isRow)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_obj_uniform_impl(start, step_size, end, isRow)))
 
 //  case class VectorObjectFlatten[A:Manifest](pieces: Exp[Vector[Vector[A]]])
-//    extends DeliteOpSingleTask(reifyEffects(vector_obj_flatten_impl(pieces)))
+//    extends DeliteOpSingleTask(reifyEffectsHere(vector_obj_flatten_impl(pieces)))
 
   case class VectorConcatenate[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DeliteOpSingleTask(reifyEffects(vector_concatenate_impl(x,y)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_concatenate_impl(x,y)))
   
   case class VectorSlice[A:Manifest](x: Exp[Vector[A]], start: Exp[Int], end: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(vector_slice_impl(x,start,end)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_slice_impl(x,start,end)))
 
   case class VectorTimesMatrix[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Matrix[A]])
-    extends DeliteOpSingleTask(reifyEffects(vector_times_matrix_impl[A](x,y)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_times_matrix_impl[A](x,y)))
 
   case class VectorOuter[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]])
-    extends DeliteOpSingleTask(reifyEffects(vector_outer_impl[A](x,y)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_outer_impl[A](x,y)))
 
   case class VectorPPrint[A](x: Exp[Vector[A]])(block: Exp[Unit]) // stupid limitation...
     extends DeliteOpSingleTask(block)
@@ -320,26 +320,26 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
 /*
   case class VectorTrans[A:Manifest](x: Exp[Vector[A]])
-    extends DeliteOpSingleTask(reifyEffects(vector_trans_impl[A](x)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_trans_impl[A](x)))
 */
 
   case class VectorRepmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(vector_repmat_impl[A](x,i,j)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_repmat_impl[A](x,i,j)))
 
   case class VectorMedian[A:Manifest:Ordering](x: Exp[Vector[A]])
-    extends DeliteOpSingleTask(reifyEffects(vector_median_impl[A](x)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_median_impl[A](x)))
 
   case class VectorFilter[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean])
-    extends DeliteOpSingleTask(reifyEffects(vector_filter_impl(x, pred)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_filter_impl(x, pred)))
 
   case class VectorPartition[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean])
-    extends DeliteOpSingleTask(reifyEffects(vector_partition_impl(x, pred)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_partition_impl(x, pred)))
 
   case class VectorContains[A:Manifest](x: Exp[Vector[A]], y: Exp[A])
-    extends DeliteOpSingleTask(reifyEffects(vector_contains_impl[A](x, y)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_contains_impl[A](x, y)))
 
   case class VectorDistinct[A:Manifest](x: Exp[Vector[A]])
-    extends DeliteOpSingleTask(reifyEffects(vector_distinct_impl[A](x)))
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_distinct_impl[A](x)))
 
 
 
@@ -368,9 +368,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     extends DeliteOpLoop[Vector[A]] {
 
     val size = in.length
+    val isRow = !in.isRow
     val v = fresh[Int]
     val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
-      alloc = reifyEffects(Vector[A](in.length, !in.isRow)),
+      alloc = reifyEffects(Vector[A](size, isRow)),
       func = reifyEffects(in(v))
     )
   }
@@ -379,9 +380,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     extends DeliteOpLoop[Vector[A]] {
 
     val size = inA.length
+    val isRow = inA.isRow
     val v = fresh[Int]
     val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
-      alloc = reifyEffects(Vector[A](inA.length, inA.isRow)),
+      alloc = reifyEffects(Vector[A](size, isRow)),
       func = reifyEffects(inA(v) + inB(v))
     )
   }
@@ -407,9 +409,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     extends DeliteOpLoop[Vector[A]] {
 
     val size = inA.length
+    val isRow = inA.isRow
     val v = fresh[Int]
     val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
-      alloc = reifyEffects(Vector[A](inA.length, inA.isRow)),
+      alloc = reifyEffects(Vector[A](size, isRow)),
       func = reifyEffects(inA(v) - inB(v))
     )
   }
@@ -427,9 +430,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     extends DeliteOpLoop[Vector[A]] {
 
     val size = inA.length
+    val isRow = inA.isRow
     val v = fresh[Int]
     val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
-      alloc = reifyEffects(Vector[A](inA.length, inA.isRow)),
+      alloc = reifyEffects(Vector[A](size, isRow)),
       func = reifyEffects(inA(v) * inB(v))
     )
   }
@@ -466,9 +470,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     extends DeliteOpLoop[Vector[A]] {
 
     val size = inA.length
+    val isRow = inA.isRow
     val v = fresh[Int]
     val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector](
-      alloc = reifyEffects(Vector[A](inA.length, inA.isRow)),
+      alloc = reifyEffects(Vector[A](size, isRow)),
       func = inA(v) / inB(v)
     )
   }
@@ -477,9 +482,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     extends DeliteOpLoop[Vector[A]] {
 
     val size = in.length
+    val isRow = in.isRow
     val v = fresh[Int]
     val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector](
-      alloc = reifyEffects(Vector[A](in.length, in.isRow)),
+      alloc = reifyEffects(Vector[A](size, isRow)),
       func = in(v) / y
     )
   }
@@ -641,7 +647,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_clone[A:Manifest](x: Exp[Vector[A]]) = reflectNew(x)(VectorClone(x))
   def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = reflectNew(x)(VectorRepmat(x,i,j))
 
-  def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(/*reflectRead*/(x))(reifyEffects(vector_pprint_impl[A](x))))
+  def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(/*reflectRead*/(x))(reifyEffectsHere(vector_pprint_impl[A](x))))
 
   def vector_concatenate[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectNew(x,y)(VectorConcatenate(x,y))
   def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(x,y)(VectorUpdate(x, n, y))

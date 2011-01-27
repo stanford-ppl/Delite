@@ -236,100 +236,100 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   // implemented via kernel embedding
 
   case class MatrixObjectFromSeq[A:Manifest](xs: Exp[Seq[Rep[Vector[A]]]])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_fromseq_impl(xs)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_fromseq_impl(xs)))
 
   case class MatrixObjectFromVec[A:Manifest](xs: Exp[Vector[Vector[A]]])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_fromvec_impl(xs)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_fromvec_impl(xs)))
 
   case class MatrixObjectDiag[A:Manifest](w: Exp[Int], vals: Exp[Vector[A]])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_diag_impl(w, vals)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_diag_impl(w, vals)))
 
   case class MatrixObjectIdentity(w: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_identity_impl(w)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_identity_impl(w)))
 
   case class MatrixObjectZeros(numRows: Exp[Int], numCols: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_zeros_impl(numRows, numCols)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_zeros_impl(numRows, numCols)))
 
   case class MatrixObjectZerosF(numRows: Exp[Int], numCols: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_zerosf_impl(numRows, numCols)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_zerosf_impl(numRows, numCols)))
 
   case class MatrixObjectOnes(numRows: Exp[Int], numCols: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_ones_impl(numRows, numCols)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_ones_impl(numRows, numCols)))
 
   case class MatrixObjectOnesF(numRows: Exp[Int], numCols: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_onesf_impl(numRows, numCols)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_onesf_impl(numRows, numCols)))
 
   case class MatrixObjectRand(numRows: Exp[Int], numCols: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_rand_impl(numRows, numCols)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_rand_impl(numRows, numCols)))
 
   case class MatrixObjectRandF(numRows: Exp[Int], numCols: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_randf_impl(numRows, numCols)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_randf_impl(numRows, numCols)))
 
   case class MatrixObjectRandn(numRows: Exp[Int], numCols: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_randn_impl(numRows, numCols)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_randn_impl(numRows, numCols)))
 
   case class MatrixObjectRandnF(numRows: Exp[Int], numCols: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_obj_randnf_impl(numRows, numCols)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_randnf_impl(numRows, numCols)))
 
   case class MatrixGetRow[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_getrow_impl(x,i)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_getrow_impl(x,i)))
 
   case class MatrixGetCol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_getcol_impl(x,i)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_getcol_impl(x,i)))
 
   case class MatrixSliceRows[A:Manifest](x: Exp[Matrix[A]], begin: Exp[Int], end: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_slicerows_impl(x,begin,end)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_slicerows_impl(x,begin,end)))
 
   case class MatrixUpdateRow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Exp[Vector[A]])
-    extends DeliteOpSingleTask(reifyEffects(matrix_updaterow_impl(x,row,y)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_updaterow_impl(x,row,y)))
 
   case class MatrixPPrint[A:Manifest](x: Exp[Matrix[A]])
-    extends DeliteOpSingleTask(reifyEffects(matrix_pprint_impl[A](x)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_pprint_impl[A](x)))
 
   case class MatrixRepmat[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffects(matrix_repmat_impl[A](x,i,j)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_repmat_impl[A](x,i,j)))
 
   case class MatrixInverse[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends DeliteOpSingleTask(reifyEffects(matrix_inverse_impl[A](x)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_inverse_impl[A](x)))
 
   case class MatrixTranspose[A:Manifest](x: Exp[Matrix[A]])
-    extends DeliteOpSingleTask(reifyEffects(matrix_transpose_impl(x)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_transpose_impl(x)))
 
   case class MatrixMinRow[A:Manifest:Arith:Ordering](x: Exp[Matrix[A]])
-    extends DeliteOpSingleTask(reifyEffects(matrix_minrow_impl(x)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_minrow_impl(x)))
 
   case class MatrixMaxRow[A:Manifest:Arith:Ordering](x: Exp[Matrix[A]])
-    extends DeliteOpSingleTask(reifyEffects(matrix_maxrow_impl(x)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_maxrow_impl(x)))
 
   case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[Vector[A]] => Exp[Vector[B]])
-    extends DeliteOpSingleTask(reifyEffects(matrix_maprows_impl(x,f)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_maprows_impl(x,f)))
 
   case class MatrixForeachRow[A:Manifest](x: Exp[Matrix[A]], f: Exp[Vector[A]] => Exp[Unit])
-    extends DeliteOpSingleTask(reifyEffects(matrix_foreachrow_impl(x,f)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_foreachrow_impl(x,f)))
 
   case class MatrixFilterRows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[Vector[A]] => Exp[Boolean])
-    extends DeliteOpSingleTask(reifyEffects(matrix_filterrows_impl(x,pred)))
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_filterrows_impl(x,pred)))
 
   case class MatrixMultiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
-    extends DeliteOpSingleTask(reifyEffects(matrix_multiply_impl(x,y))) {
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_multiply_impl(x,y))) {
 
     val mM = manifest[MatrixImpl[A]]
   }
 
   case class MatrixTimesVector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]])
-    extends DeliteOpSingleTask(reifyEffects(matrix_times_vector_impl(x,y))) {
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_times_vector_impl(x,y))) {
 
     val mV = manifest[VectorImpl[A]]
   }
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends DeliteOpSingleTask(reifyEffects(matrix_sigmoid_impl(in))) {
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) {
 
     val v = fresh[A]
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1))))
     val mM = manifest[MatrixImpl[Double]]
   }
   case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends DeliteOpSingleTask(reifyEffects(matrix_sigmoidf_impl(in))) {
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoidf_impl(in))) {
 
     val v = fresh[A]
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
