@@ -12,23 +12,11 @@ import ppl.delite.runtime.graph.targets.Targets
  */
 
 class TestOP(kernel: String)(deps: DeliteOP*)
-        extends DeliteOP {
+        extends OP_Executable(Map(Targets.Scala->"Unit")) {
 
   def task = kernel
 
   def id = System.identityHashCode(this).toString
-
-  def supportsTarget(target: Targets.Value): Boolean = {
-    if (target == Targets.Scala) true
-    else false
-  }
-
-  def outputType(target: Targets.Value): String = {
-    if (target == Targets.Scala) outputType
-    else system.error("EOP does not support targets other than Scala")
-  }
-
-  override def outputType = "Unit"
 
   //initialize
   for (dep <- deps) {
@@ -36,7 +24,6 @@ class TestOP(kernel: String)(deps: DeliteOP*)
     dep.addConsumer(this)
   }
 
-  def nested = null
   def cost = 0
   def size = 0
   def isDataParallel = false

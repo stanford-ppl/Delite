@@ -46,6 +46,7 @@ trait SVMModel {
     var b = unit(0.0)
 
     // intermediate training info
+    //var alphas = Vector.zeros(X.numRows).mt // col vector
     val alphas = Vector.mzeros(X.numRows)
     alphas.mt // col vector
 
@@ -93,8 +94,10 @@ trait SVMModel {
             // check eta
             if (eta < 0){
               // compute new alphas(j)
+
               //alphas = alphas.cloneL //TR
               alphas(j) = alphas(j) - Y(j)*(E_i-E_j)/eta //TR functionalize?
+
               // clip alphas(j) if necessary
               if (alphas(j) > H) alphas(j) = H
               else if (alphas(j) < L) alphas(j) = L
@@ -102,6 +105,7 @@ trait SVMModel {
               // check alphas(j) convergence
               if (Math.abs(alphas(j) - old_aj) >  tol){
                 // find a_i to maximize objective function
+
                 val old_ai = alphas(i)
                 //alphas = alphas.cloneL //TR
                 alphas(i) = alphas(i) + Y(i)*Y(j)*(old_aj-alphas(j)) //TR functionalize?

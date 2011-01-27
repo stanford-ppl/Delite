@@ -28,7 +28,7 @@ abstract class DeliteOP {
   def outputSlotType(name: String): String = outputSlotType(Targets.Scala, name)
 
   def outputType(target: Targets.Value) : String
-  def outputType : String = outputType(Targets.Scala)
+  def outputType: String = outputType(Targets.Scala)
 
   def hasCompoundOutput = getOutputs.nonEmpty && outputSlotType(getOutputs.head) != outputType
   // TODO improve check
@@ -45,6 +45,10 @@ abstract class DeliteOP {
     dependencyList = dep :: dependencyList
   }
 
+  final def removeDependency(dep: DeliteOP) {
+    dependencyList = dependencyList filterNot { _ == dep }
+  }
+
   final def replaceDependency(old: DeliteOP, dep: DeliteOP) {
     dependencyList = dep :: (dependencyList filterNot { _ == old })
   }
@@ -58,6 +62,10 @@ abstract class DeliteOP {
     consumerList = c :: consumerList
   }
 
+  final def removeConsumer(c: DeliteOP) {
+    consumerList = consumerList filterNot { _ == c }
+  }
+
   final def replaceConsumer(old: DeliteOP, c: DeliteOP) {
     consumerList = c :: (consumerList filterNot { _ == old })
   }
@@ -65,9 +73,9 @@ abstract class DeliteOP {
   private[graph] var outputList: List[String] = Nil
   private[graph] var outputTypeMap: Map[String,Map[Targets.Value, String]] = Map.empty
 
-  /*final*/ def getOutputs : Seq[String] = outputList // TODO: make final again (currently overridden by OP_Control)
+  /*final*/ def getOutputs : Seq[String] = outputList // TODO: make final again? (currently overridden by OP_Control)
 
-  /*final*/ def addOutput(output: String, tp: Map[Targets.Value, String]) { // TODO: make final again (currently overridden by OP_Control)
+  /*final*/ def addOutput(output: String, tp: Map[Targets.Value, String]) { // TODO: make final again? (currently overridden by OP_Control)
     outputList = output :: outputList
     outputTypeMap += (output -> tp)
   }
@@ -77,14 +85,14 @@ abstract class DeliteOP {
 
   final def getInputs : Seq[(DeliteOP, String)] = inputList
 
-  final def addInput(op: DeliteOP): Unit = addInput(op, op.outputList(0))
+  final def addInput(op: DeliteOP): Unit = addInput(op, if (op.getOutputs.isEmpty) "???" else op.getOutputs(0)) //TR TODO: assert length == 1
   
   final def addInput(op: DeliteOP, name: String) {
-    assert(op.outputList.contains(name), "Op " + op + " does not have output " + name)
+    assert(op.getOutputs.contains(name), "Op " + op + " does not have output " + name + " (class: " + op.getClass.getName + ", outputs: "+op.getOutputs+")")
     inputList = (op, name) :: inputList
   }
 
-  final def replaceInput(old: DeliteOP, input: DeliteOP, name: String) {
+  final def replaceInput(old: DeliteOP, input: DeliteOP, name: String) { //need old name as well?
     inputList = inputList.patch(inputList.indexWhere(_._1 == old), List((input,name)), 1)
     if (mutableInputList contains old) mutableInputList = input :: (mutableInputList filterNot { _ == old })
   }
@@ -98,9 +106,9 @@ abstract class DeliteOP {
     mutableInputList = input :: mutableInputList
   }
 
-  def id: String
+  var variant: OP_Variant = null
 
-  def nested : DeliteTaskGraph
+  def id: String
 
   def cost: Int
 
@@ -133,4 +141,5 @@ abstract class DeliteOP {
    */
   var scheduledResource = -1
 
+  override def toString = id
 }

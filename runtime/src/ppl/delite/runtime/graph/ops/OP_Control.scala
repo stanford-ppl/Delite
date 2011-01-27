@@ -11,6 +11,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
+/*
 abstract class OP_Control extends DeliteOP {
 
   val predicate: DeliteOP
@@ -38,3 +39,6 @@ abstract class OP_Control extends DeliteOP {
   def nested = null
 
 }
+*/
+
+abstract class OP_Control extends OP_Nested

@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Foreach(val id: String, func: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
+class OP_Foreach(val id: String, func: String, resultType: Map[Targets.Value,String]) extends OP_Executable(resultType) {
 
   final def isDataParallel = true
 
@@ -26,10 +26,7 @@ class OP_Foreach(val id: String, func: String, resultType: Map[Targets.Value,Str
 
   def function = func
 
-  def supportsTarget(target: Targets.Value) = resultType.contains(target)
-
   assert(resultType == Targets.unitTypes(resultType)) //foreach must always mutate the elements of a collection and return Unit
-  def outputType(target: Targets.Value) = resultType(target)
 
   /**
    * Since the semantics of the foreach are to mutate the elements in a collection all consumer (true) dependency edges already exist in graph
@@ -68,7 +65,6 @@ class OP_Foreach(val id: String, func: String, resultType: Map[Targets.Value,Str
     h
   }
 
-  def nested = null
   def cost = 0
   def size = 0
 

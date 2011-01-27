@@ -6,15 +6,15 @@ import scala.virtualization.lms.common.{ScalaGenEffect, CudaGenEffect, CGenEffec
 import scala.virtualization.lms.internal.{GenericNestedCodegen}
 import java.io.PrintWriter
 
-trait DeliteWhileExp extends WhileExp {
+trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
 
   this: DeliteOpsExp =>
 
-  case class DeliteWhile(cond: Exp[Boolean], body: Exp[Unit]) extends DeliteOpWhileLoop(cond, body)
+  case class DeliteWhile(cond: Exp[Boolean], body: Exp[Unit]) extends DeliteOpWhileLoop
 
   override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit]) {
 /*
-    //TR don't evaluate cond twice!
+    //TR don't evaluate cond twice!!!!!
 
     cond match {
       case Const(true) => // print warning?
@@ -22,10 +22,11 @@ trait DeliteWhileExp extends WhileExp {
       case _ => // pass
     }
     
-    // need to pattern match on result of reifyEffects!!    
+    // can pattern match on result of reifyEffects if required
 */
     val c = reifyEffects(cond)
     val a = reifyEffects(body)
+    // TODO: reflectEffect(new While(c, a) with DeliteOpWhile))
     reflectEffect(DeliteWhile(c, a))
   }
 
@@ -59,6 +60,8 @@ trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case DeliteWhile(c,b) =>
+      val save = deliteKernel
+      deliteKernel = false
       stream.print("val " + quote(sym) + " = while ({")
       emitBlock(c)
       stream.print(quote(getBlockResult(c)))
@@ -66,6 +69,7 @@ trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
       emitBlock(b)
       stream.println(quote(getBlockResult(b)))
       stream.println("}")
+      deliteKernel = save
 
     case _ => super.emitNode(sym, rhs)
   }
@@ -78,11 +82,11 @@ trait DeliteCudaGenWhile extends CudaGenEffect with DeliteBaseGenWhile {
       rhs match {
         case DeliteWhile(c,b) =>
             // Get free variables list
-            val freeVars = getFreeVarBlock(c,Nil)
-            val argListStr = freeVars.map(quote(_)).mkString(", ")
+            //val freeVars = getFreeVarBlock(c,Nil)
 
             // emit function for the condition evaluation
-            val condFunc = emitDevFunc(c, getBlockResult(c).Type, freeVars)
+            val (condFunc,freeVars) = emitDevFunc(c, Nil)
+            val argListStr = freeVars.map(quote(_)).mkString(", ")
 
             // Emit while loop (only the result variable of condition)
             stream.print(addTab() + "while (")

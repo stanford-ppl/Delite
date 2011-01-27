@@ -38,7 +38,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
     val main_m = {x: Rep[Array[String]] => this.args = x; val y = liftedMain(); this.args = null; y }
 
-    println("******Generating the program*********")
+    println("******Generating the program******")
 
     //clean up the code gen directory
     Util.deleteDirectory(new File(Config.buildDir))

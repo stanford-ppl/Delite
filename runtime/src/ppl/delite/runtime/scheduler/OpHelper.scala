@@ -3,6 +3,7 @@ package ppl.delite.runtime.scheduler
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.codegen.kernels.scala._
 import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * Author: Kevin J. Brown

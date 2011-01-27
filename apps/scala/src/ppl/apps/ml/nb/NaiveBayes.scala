@@ -66,7 +66,9 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
       var spam_totalwords = unit(0.0)
       var nonspamwordcount = unit(0.0)
       var nonspam_totalwords = unit(0.0)
-      for (i <- 0::numTrainDocs) {
+      var i = unit(0)
+
+      while (i < numTrainDocs) {
         if (ts.labels(i) == 1){
           spamwordcount += ts.t(j,i)
           spam_totalwords += words_per_email(i)
@@ -75,7 +77,9 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
           nonspamwordcount += ts.t(j,i)
           nonspam_totalwords += words_per_email(i)
         }
+        i += 1
       }
+
 //      val (spamwordcount, spam_totalwords, nonspamwordcount, nonspam_totalwords) = t4( sum(0,numTrainDocs) { i =>
 //         if (ts.labels(i) == 1){
 //          (ts.t(j,i), words_per_email(i), unit(0.0), unit(0.0))

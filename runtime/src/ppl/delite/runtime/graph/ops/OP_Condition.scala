@@ -1,43 +1,79 @@
 package ppl.delite.runtime.graph.ops
 
-abstract class OP_Condition extends OP_Control
+import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.graph.targets.Targets
 
-class OP_BeginCondition(val id: String, val predicate: DeliteOP) extends OP_Condition {
-  //TODO: this dependency management is overly conservative
-  def makeChunk(idx: Int): OP_Control = {
-    if (idx == 0) return this
-    val chunk = new OP_BeginCondition(id+"_"+idx, predicate)
-    chunk.dependencyList = dependencyList
-    chunk.consumerList = consumerList
-    for (dep <- getDependencies) dep.addConsumer(chunk)
-    for (c <- getConsumers) c.addDependency(chunk)
-    chunk
-  }
-}
+/**
+ *
+ */
 
-class OP_BeginElse(val id: String) extends OP_Condition {
-  val predicate = null
-  def makeChunk(idx: Int): OP_Control = {
-    if (idx == 0) return this
-    val chunk = new OP_BeginElse(id+"_"+idx)
-    chunk.dependencyList = dependencyList
-    chunk.consumerList = consumerList
-    for (dep <- getDependencies) dep.addConsumer(chunk)
-    for (c <- getConsumers) c.addDependency(chunk)
-    chunk
-  }
-}
+class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
+                   val predicateGraph: DeliteTaskGraph, val predicateValue: String,
+                   val thenGraph: DeliteTaskGraph, val thenValue: String,
+                   val elseGraph: DeliteTaskGraph, val elseValue: String)
+  extends OP_Control {
 
-class OP_EndCondition(val id: String) extends OP_Condition {
-  val predicate = null
-  def makeChunk(idx: Int): OP_Control = {
-    if (idx == 0) return this
-    val chunk = new OP_EndCondition(id+"_"+idx)
-    chunk.outputList = List(chunk.id)
-    chunk.dependencyList = dependencyList
-    chunk.consumerList = consumerList
-    for (dep <- getDependencies) dep.addConsumer(chunk)
-    for (c <- getConsumers) c.addDependency(chunk)
-    chunk
+  def supportsTarget(target: Targets.Value) = resultType.contains(target)
+
+  def outputType(target: Targets.Value) = resultType(target)
+  override def outputType: String = resultType(Targets.Scala)
+  override def outputSlotType(target: Targets.Value, name: String) = { //TR FIXME
+    assert(name == id, name + "!="+ id)
+    outputType(Targets.Scala)
   }
+
+  def nestedGraphs = Seq(predicateGraph, thenGraph, elseGraph)
+
+  def isReturner(idx: Int) = {
+    if (thenGraph.result != null && !thenGraph.result.isInstanceOf[OP_Input])
+      (thenGraph.result.scheduledResource == idx)
+    else if (elseGraph.result != null && !elseGraph.result.isInstanceOf[OP_Input])
+      (elseGraph.result.scheduledResource == idx)
+    else true //should only be 1 in this case
+  }
+
+  def returner(indices: Seq[Int]) = {
+    if (thenGraph.result != null && !thenGraph.result.isInstanceOf[OP_Input])
+      thenGraph.result.scheduledResource
+    else if (elseGraph.result != null && !elseGraph.result.isInstanceOf[OP_Input])
+      elseGraph.result.scheduledResource
+    else indices(0)
+  }
+
+  /**
+   * creates a Condition chunk for each requested resource and destroys the original
+   */
+  def makeChunks(indices: Seq[Int], graph: DeliteTaskGraph) = {
+    var returnOp: OP_Condition = null
+    val returnerIdx = returner(indices)
+    val chunks =
+      for (idx <- indices) yield {
+        val resultMap = if (idx == returnerIdx) resultType else Targets.unitTypes
+        val r = new OP_Condition(id+"_"+idx, resultMap, predicateGraph, predicateValue,
+        thenGraph, thenValue, elseGraph, elseValue)
+        r.dependencyList = dependencyList
+        r.inputList = inputList
+        assert(getOutputs == List(id), "outputs for " + this + " were expected to be " + List(id) + " but are " + getOutputs)
+        r.outputList = List(r.id)
+        r.consumerList = consumerList
+        r.inputSyms = inputSyms
+        r.cudaMetadata = cudaMetadata
+        for (dep <- getDependencies) dep.addConsumer(r)
+        for (c <- getConsumers) c.addDependency(r)
+        if (idx == returnerIdx) returnOp = r
+
+        //add special consumer ops
+        if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, Seq(predicateGraph.result), Seq(predicateGraph.result))) //get predicate result on all chunks
+        if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
+          if (thenValue == "") thenGraph.schedule(idx).add(new GetterOp(id+"t_"+idx, idx, Seq(thenGraph.result), Seq(thenGraph.result))) //get then result on returner chunk
+          if (elseValue == "") elseGraph.schedule(idx).add(new GetterOp(id+"e_"+idx, idx, Seq(elseGraph.result), Seq(elseGraph.result))) //get else result on returner chunk
+        }
+
+        r
+      }
+
+    graph.replaceOp(this, returnOp)
+    chunks
+  }
+
 }

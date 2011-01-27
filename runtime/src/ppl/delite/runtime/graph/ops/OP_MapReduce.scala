@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_MapReduce(val id: String, func: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
+class OP_MapReduce(val id: String, func: String, resultType: Map[Targets.Value,String]) extends OP_Executable(resultType) {
 
   final def isDataParallel = true
 
@@ -25,11 +25,6 @@ class OP_MapReduce(val id: String, func: String, resultType: Map[Targets.Value,S
   }
 
   def function = func
-
-  def supportsTarget(target: Targets.Value) = resultType.contains(target)
-
-  def outputType(target: Targets.Value) = resultType(target)
-  override def outputType: String = resultType(Targets.Scala)
 
   /**
    * Since the semantics of MapReduce are to return a T, all chunks are necessarily complete before the final T can be returned
@@ -66,7 +61,6 @@ class OP_MapReduce(val id: String, func: String, resultType: Map[Targets.Value,S
     h
   }
 
-  def nested = null
   def cost = 0
   def size = 0
 

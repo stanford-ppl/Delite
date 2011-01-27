@@ -11,7 +11,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-object Arguments extends DeliteOP {
+object Arguments extends OP_Executable(Map(Targets.Scala->"Array[java.lang.String]")) {
 
   /**
    * OP features
@@ -20,23 +20,10 @@ object Arguments extends DeliteOP {
 
   def task = "ppl.delite.runtime.graph.ops.ArgsKernel"
 
-  def supportsTarget(target: Targets.Value): Boolean = {
-    if (target == Targets.Scala) true
-    else false
-  }
-
-  def outputType(target: Targets.Value): String = {
-    if (target == Targets.Scala) outputType
-    else system.error("Arguments OP does not support targets other than Scala")
-  }
-
-  var _id: String = _
+  private var _id: String = _
   def id = _id
   private[graph] def id_=(ID: String) { _id = ID }
 
-  override def outputType = "Array[String]"
-
-  def nested = null
   def cost = 0
   def size = 0
 

@@ -9,4 +9,5 @@ object Config {
   val buildDir = System.getProperty("delite.build.dir", "generated")
   val blasHome = System.getProperty("blas.home")
   val useBlas = if (blasHome == null) false else true
+  val nestedVariantsLevel = System.getProperty("nested.variants.level", "1").toInt
 }

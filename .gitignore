@@ -6,6 +6,7 @@
 *.DS_Store
 *.~
 /local.properties
+delite.properties
 *target
 *lib_managed
 project/boot
