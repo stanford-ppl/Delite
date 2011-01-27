@@ -251,8 +251,7 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
   var deliteInputs: List[Sym[Any]] = _
 
   // TODO: move to lms?
-  //def rebind(sym: Sym[Any], rhs: Def[Any]) = reifyEffects(reflectEffect(createDefinition(sym, rhs).rhs))
-  def rebind(sym: Sym[Any], rhs: Def[Any]) = reflectEffect(createDefinition(sym, rhs).rhs)
+  def rebind(sym: Sym[Any], rhs: Def[Any]) = createDefinition(sym, rhs).rhs
 
 }
 
