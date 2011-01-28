@@ -364,8 +364,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
 */
 
+  abstract class DeliteOpVectorLoop[A] extends DeliteOpLoop[Vector[A]] {
+    val size: Exp[Int] //inherited
+    val isRow: Exp[Boolean] //inherited
+  }
+  
   case class VectorTrans[A:Manifest](in: Exp[Vector[A]])
-    extends DeliteOpLoop[Vector[A]] {
+    extends DeliteOpVectorLoop[A] {
 
     val size = in.length
     val isRow = !in.isRow
@@ -377,7 +382,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
 
   case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]]) 
-    extends DeliteOpLoop[Vector[A]] {
+    extends DeliteOpVectorLoop[A] {
 
     val size = inA.length
     val isRow = inA.isRow
@@ -406,7 +411,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
 
   case class VectorMinus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends DeliteOpLoop[Vector[A]] {
+    extends DeliteOpVectorLoop[A] {
 
     val size = inA.length
     val isRow = inA.isRow
@@ -427,7 +432,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
 
   case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends DeliteOpLoop[Vector[A]] {
+    extends DeliteOpVectorLoop[A] {
 
     val size = inA.length
     val isRow = inA.isRow
@@ -467,7 +472,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
 
   case class VectorDivide[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends DeliteOpLoop[Vector[A]] {
+    extends DeliteOpVectorLoop[A] {
 
     val size = inA.length
     val isRow = inA.isRow
@@ -479,7 +484,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
 
   case class VectorDivideScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
-    extends DeliteOpLoop[Vector[A]] {
+    extends DeliteOpVectorLoop[A] {
 
     val size = in.length
     val isRow = in.isRow
@@ -606,10 +611,14 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     case VectorApply(x, n) => vector_apply(f(x), f(n))
     case VectorLength(x) => vector_length(f(x))
     case VectorIsRow(x) => vector_isRow(f(x))
-    case Reflect(e@VectorPPrint(x), u, es) => toAtom(Reflect(VectorPPrint(f(x))(f(e.block)), u, es map (e => f(e))))
-    case Reflect(VectorObjectZeros(x), u, es) => toAtom(Reflect(VectorObjectZeros(f(x)), u, es map (e => f(e))))
-    case Reflect(VectorObjectRange(s,e,d,r), u, es) => toAtom(Reflect(VectorObjectRange(f(s),f(e),f(d),f(r)), u, es map (e => f(e))))
-    case Reflect(e@VectorNew(l,r), u, es) => toAtom(Reflect(VectorNew(f(l),f(r))(e.mV), u, es map (e => f(e))))
+    case Reflect(e@VectorPPrint(x), u, es) => reflectMirrored(Reflect(VectorPPrint(f(x))(f(e.block)), u, f(es)))
+    case Reflect(VectorObjectZeros(x), u, es) => reflectMirrored(Reflect(VectorObjectZeros(f(x)), u, f(es)))
+    case Reflect(VectorObjectRange(s,e,d,r), u, es) => reflectMirrored(Reflect(VectorObjectRange(f(s),f(e),f(d),f(r)), u, f(es)))
+    case Reflect(e@VectorNew(l,r), u, es) => reflectMirrored(Reflect(VectorNew(f(l),f(r))(e.mV), u, f(es)))
+    // below are read/write effects TODO: find a general approach to treating them!!!!
+    case Reflect(VectorApply(l,r), u, es) => reflectMirrored(Reflect(VectorApply(f(l),f(r)), u, f(es)))
+    case Reflect(VectorUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VectorUpdate(f(l),f(i),f(r)), u, f(es)))
+    case Reflect(VectorForeach(a,b,c), u, es) => reflectMirrored(Reflect(VectorForeach(f(a),f(b).asInstanceOf[Sym[Int]],f(c)), u, f(es)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
@@ -761,43 +770,31 @@ trait VectorOpsExpOpt extends VectorOpsExp {
 
 
   // these are essential for fusing:
-/* temp disabled
 
   override def vector_length[A:Manifest](x: Exp[Vector[A]]) = x match {
-    case Def(e: DeliteOpLoop[Vector[A]]) => 
-      e.body match {
-        case DeliteCollectElem(Def(Reify(alloc, _)), _) => vector_length(alloc)
-        case _ => super.vector_length(x) // vector constructed by reduction
-      }
-//    case Def(Reify(e, _)) => vector_length(e) // TODO: not sure this is always safe! <--- any reflect escaping its reify?
-    case Def(Reflect(Read(x), _)) => vector_length(x) // unsafe?
-    case Def(Reflect(VectorObjectZeros(l), _)) => l
-    case Def(Reflect(VectorObjectRange(s,e,d,r), _)) => (e - s + d - 1)
-    case Def(Reflect(VectorNew(l,r), _)) => l
+    case Def(e: DeliteOpVectorLoop[A]) => e.size
+    case Def(VectorObjectZeros(l)) => l
+    case Def(VectorObjectRange(s,e,d,r)) => (e - s + d - 1)
+    //case Def(Reflect(VectorNew(l,r), _)) => l
     case _ => super.vector_length(x)
   }
 
   override def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = x match {
-    case Def(e: DeliteOpLoop[Vector[A]]) => 
-      e.body match {
-        case DeliteCollectElem(Def(Reify(alloc)), _) => vector_isRow(alloc)
-        case _ => super.vector_isRow(x) // vector constructed by reduction
-      }
-    case Def(Reify(e, _)) => vector_isRow(e) // TODO: not sure this is always safe! <--- any reflect escaping its reify?
-    case Def(Reflect(Read(x), _)) => vector_isRow(x) // unsafe?
+    case Def(e: DeliteOpVectorLoop[A]) => e.isRow
     //case Def(Reflect(VectorObjectZeros(l,r), _)) => r
-    case Def(Reflect(VectorObjectRange(s,e,d,r), es)) => r
-    case Def(Reflect(VectorNew(l,r), _)) => r
+    case Def(VectorObjectRange(s,e,d,r)) => r
+    //case Def(Reflect(VectorNew(l,r), _)) => r
     case _ => super.vector_isRow(x)
   }
   
   // and this one also helps in the example:
   
   override def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = x match {
-    case Def(Reflect(VectorObjectRange(s,e,d,r), _)) => (s + n*d).asInstanceOf[Exp[A]]
+    case Def(VectorObjectZeros(l)) => unit(0).asInstanceOf[Exp[A]]
+    case Def(VectorObjectOnes(l)) => unit(1).asInstanceOf[Exp[A]]
+    case Def(VectorObjectRange(s,e,d,r)) => (s + n*d).asInstanceOf[Exp[A]]
     case _ => super.vector_apply(x,n)
   }
-*/
   
 }
 

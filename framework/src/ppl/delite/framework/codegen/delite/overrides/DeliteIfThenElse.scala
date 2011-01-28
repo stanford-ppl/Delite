@@ -23,6 +23,12 @@ trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
         case _ => DeliteIfThenElse(cond, a, b)
       }
   }
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case Reflect(DeliteIfThenElse(c,a,b), u, es) => reflectMirrored(Reflect(DeliteIfThenElse(f(c),f(a),f(b)), u, f(es)))
+    case DeliteIfThenElse(c,a,b) => DeliteIfThenElse(f(c),f(a),f(b))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {

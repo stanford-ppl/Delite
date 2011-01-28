@@ -320,6 +320,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_times_vector_impl(x,y))) {
 
     val mV = manifest[VectorImpl[A]]
+    def mev = manifest[A]
+    def aev = implicitly[Arith[A]]
   }
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) {
@@ -585,6 +587,19 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
        }
       tcoll
     }
+  }
+
+
+  //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
+    (e match {
+      case MatrixGetRow(x,i) => matrix_getrow(f(x),f(i))
+      case e@MatrixTimesVector(x,y) => matrix_times_vector(f(x),f(y))(e.mev,e.aev)
+      case MatrixVView(x, start, stride, length, isRow) => matrix_vview(f(x),f(start),f(stride),f(length),f(isRow))
+      case _ => super.mirror(e, f)
+    }).asInstanceOf[Exp[A]] // why??
   }
 
 
