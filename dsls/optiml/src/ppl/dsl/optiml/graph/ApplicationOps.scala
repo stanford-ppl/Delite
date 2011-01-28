@@ -82,7 +82,7 @@ trait ScalaGenDenoiseVertexDataOps extends BaseGenDenoiseVertexDataOps with Scal
       case v@DenoiseVertexDataObjectNew(id,b,p) => emitValDef(sym, "new " + remap(v.vD) + "(" + quote(id) + "," + quote(b) + "," + quote(p) + ")")
       case DenoiseVertexDataId(v) => emitValDef(sym, quote(v) + ".id")
       case DenoiseVertexDataBelief(v) => emitValDef(sym, quote(v) + ".belief")
-      case DenoiseVertexDataBeliefUpdate(v,b) => emitAssignment(quote(v) + ".belief", quote(b))
+      case DenoiseVertexDataBeliefUpdate(v,b) => emitValDef(sym, quote(v) + ".setBelief(" + quote(b) + ")")
       case DenoiseVertexDataPotential(v) => emitValDef(sym, quote(v) + ".potential")
       case _ => super.emitNode(sym, rhs)
     }
@@ -160,9 +160,9 @@ trait ScalaGenDenoiseEdgeDataOps extends BaseGenDenoiseEdgeDataOps with ScalaGen
     rhs match {
       case e@DenoiseEdgeDataObjectNew(m,oM) => emitValDef(sym, "new " + remap(e.eD) + "(" + quote(m) + "," + quote(oM) + ")")
       case DenoiseEdgeDataMessage(e) => emitValDef(sym, quote(e) + ".message")
-      case DenoiseEdgeDataMessageUpdate(e,m) => emitAssignment(quote(e) + ".message", quote(m))
+      case DenoiseEdgeDataMessageUpdate(e,m) => emitValDef(sym, quote(e) + ".setMessage(" + quote(m) + ")")
       case DenoiseEdgeDataOldMessage(e) => emitValDef(sym, quote(e) + ".oldMessage")
-      case DenoiseEdgeDataOldMessageUpdate(e,m) => emitAssignment(quote(e) + ".oldMessage", quote(m))
+      case DenoiseEdgeDataOldMessageUpdate(e,m) => emitValDef(sym, quote(e) + ".setOldMessage(" + quote(m) + ")")
       case DenoiseEdgeDataCloneL(e) => emitValDef(sym, quote(e) + ".cloneL")
       case _ => super.emitNode(sym, rhs)
     }
