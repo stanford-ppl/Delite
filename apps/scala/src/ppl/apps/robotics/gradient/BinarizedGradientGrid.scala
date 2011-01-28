@@ -30,7 +30,7 @@ trait BinarizedGradientGridFuncs {
   def detectAllObjects(all_templates: Rep[Vector[(String, Vector[BinarizedGradientTemplate])]], image: Rep[GrayscaleImage]) = {
     val img_gray = image // assuming image is single-channel. Needs to be made such if not.
 
-    val (mag, phase) = t2(repGrayscaleImageToGrayscaleImageOps(img_gray).gradients(true))
+    val (mag: Rep[Matrix[Float]], phase: Rep[Matrix[Float]]) = t2(repGrayscaleImageToGrayscaleImageOps(img_gray).gradients(true))
     val binGrad = binarizeGradients(mag, phase)
     val cleanGrad = gradMorphology(binGrad)
 

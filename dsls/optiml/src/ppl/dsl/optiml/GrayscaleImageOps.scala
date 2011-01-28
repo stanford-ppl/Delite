@@ -17,7 +17,7 @@ trait GrayscaleImageOps extends DSLType with Variables {
   object GrayscaleImage {
     def apply(numRows: Rep[Int], numCols: Rep[Int]) = grayscaleimage_obj_new(numRows, numCols)
     def apply(x: Rep[Matrix[Int]]) = grayscaleimage_obj_frommat(x)
-    def cartToPolar(x: Rep[GrayscaleImage], y: Rep[GrayscaleImage]) = grayscaleimage_obj_carttopolar(x,y)
+    def cartToPolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]) = grayscaleimage_obj_carttopolar(x,y)
 
     val scharrYkernel = Matrix(Vector[Int](-3, -10, -3), Vector[Int](0, 0, 0), Vector[Int](3, 10, 3))
     val scharrXkernel = scharrYkernel.t
@@ -33,7 +33,7 @@ trait GrayscaleImageOps extends DSLType with Variables {
     def gradients(polar: Rep[Boolean] = false) = { // unroll at call site for parallelism (temporary until we have composite op)
       val a = x.convolve(scharrXkernel)
       val b = x.convolve(scharrYkernel)
-      if (polar) cartToPolar(GrayscaleImage(a),GrayscaleImage(b)) else (GrayscaleImage(a),GrayscaleImage(b))
+      if (polar) cartToPolar(a.toFloat,b.toFloat) else (a.toFloat,b.toFloat)
     }
     // TODO: need to refactor using CanBuildFrom and 2.8 techniques to avoid this duplication.
     //def convolve(kernel: Rep[Matrix[Int]]) = GrayscaleImage(x.windowedFilter(kernel.numRows, kernel.numCols) { slice => (slice *:* kernel).sum })
@@ -42,7 +42,7 @@ trait GrayscaleImageOps extends DSLType with Variables {
   // object defs
   def grayscaleimage_obj_new(numRows: Rep[Int], numCols: Rep[Int]): Rep[GrayscaleImage]
   def grayscaleimage_obj_frommat(x: Rep[Matrix[Int]]): Rep[GrayscaleImage]
-  def grayscaleimage_obj_carttopolar(x: Rep[GrayscaleImage], y: Rep[GrayscaleImage]): (Rep[Matrix[Float]],Rep[Matrix[Float]])
+  def grayscaleimage_obj_carttopolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]): (Rep[Matrix[Float]],Rep[Matrix[Float]])
 
   // class defs
 
@@ -62,7 +62,7 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   ////////////////////////////////
   // implemented via delite ops
 
-  case class GrayscaleImageObjectCartToPolarMagnitude(inA: Exp[GrayscaleImage], inB: Exp[GrayscaleImage])
+  case class GrayscaleImageObjectCartToPolarMagnitude(inA: Exp[Matrix[Float]], inB: Exp[Matrix[Float]])
     extends DeliteOpZipWith[Int,Int,Float,Matrix] {
 
     val alloc = reifyEffects(Matrix[Float](inA.numRows, inA.numCols))
@@ -70,7 +70,7 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
     val func = Math.sqrt(v._1*v._1 + v._2*v._2).asInstanceOfL[Float]
   }
 
-  case class GrayscaleImageObjectCartToPolarPhase(inA: Exp[GrayscaleImage], inB: Exp[GrayscaleImage])
+  case class GrayscaleImageObjectCartToPolarPhase(inA: Exp[Matrix[Float]], inB: Exp[Matrix[Float]])
     extends DeliteOpZipWith[Int,Int,Float,Matrix] {
 
     val alloc = reifyEffects(Matrix[Float](inA.numRows, inA.numCols))
@@ -83,7 +83,7 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
 
   def grayscaleimage_obj_new(numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(GrayscaleImageObjectNew(numRows, numCols))
   def grayscaleimage_obj_frommat(x: Exp[Matrix[Int]]) = reflectEffect(GrayscaleImageObjectFromMat(x))
-  def grayscaleimage_obj_carttopolar(x: Exp[GrayscaleImage], y: Exp[GrayscaleImage]) = {
+  def grayscaleimage_obj_carttopolar(x: Exp[Matrix[Float]], y: Exp[Matrix[Float]]) = {
     val mag = GrayscaleImageObjectCartToPolarMagnitude(x,y)
     val phase = toAtom(GrayscaleImageObjectCartToPolarPhase(x,y)) mmap { a => if (a < 0f) a + 360f else a }
     (mag,phase)
