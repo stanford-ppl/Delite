@@ -13,6 +13,9 @@ class DenoiseVertexDataImpl(val _id : Int, var _belief : Vector[Double], var _po
   def id = _id
 
   def belief = _belief
+  def setBelief(b: Vector[Double]) = {
+    _belief = b
+  }
   def belief_=(b: Vector[Double]) = {
     _belief = b
   }
@@ -22,11 +25,17 @@ class DenoiseVertexDataImpl(val _id : Int, var _belief : Vector[Double], var _po
 
 class DenoiseEdgeDataImpl(var _msg : Vector[Double], var _oldMsg : Vector[Double]) extends DenoiseEdgeData {
   def message = _msg
+  def setMessage(msg: Vector[Double]) = {
+    _msg = msg
+  }
   def message_=(msg: Vector[Double]) = {
     _msg = msg
   }
 
   def oldMessage = _oldMsg
+  def setOldMessage(msg: Vector[Double]) = {
+    _oldMsg = msg
+  }
   def oldMessage_=(msg: Vector[Double]) = {
     _oldMsg = msg
   }
