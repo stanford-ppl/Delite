@@ -55,14 +55,14 @@ trait MessageEdgeOpsExp extends MessageEdgeOps with EffectExp {
   /////////////////////
   // object interface
 
-  def message_edge_obj_new(g: Exp[Graph[MessageVertex,MessageEdge]], in: Exp[MessageData], out: Exp[MessageData], a: Exp[MessageVertex], b: Exp[MessageVertex]) = MessageEdgeObjectNew(g,in,out,a,b)
+  def message_edge_obj_new(g: Exp[Graph[MessageVertex,MessageEdge]], in: Exp[MessageData], out: Exp[MessageData], a: Exp[MessageVertex], b: Exp[MessageVertex]) = reflectEffect(MessageEdgeObjectNew(g,in,out,a,b))
 
   /////////////////////
   // class interface
 
-  def message_edge_in(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeIn(e,v)
-  def message_edge_out(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeOut(e,v)
-  def message_edge_target(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeTarget(e,v)
+  def message_edge_in(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeIn(reflectRead(e),reflectRead(v))
+  def message_edge_out(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeOut(reflectRead(e),reflectRead(v))
+  def message_edge_target(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeTarget(reflectRead(e),reflectRead(v))
 }
 
 

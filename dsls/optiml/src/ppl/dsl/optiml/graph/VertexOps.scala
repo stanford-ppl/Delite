@@ -52,12 +52,12 @@ trait VertexOpsExp extends VertexOps with EffectExp {
   /////////////////////
   // class interface
 
-  def vertex_edges(v: Exp[Vertex]) = VertexEdges(v)
-  def vertex_neighbors(v: Exp[Vertex]) = VertexNeighbors(v)
+  def vertex_edges(v: Exp[Vertex]) = VertexEdges(reflectRead(v))
+  def vertex_neighbors(v: Exp[Vertex]) = VertexNeighbors(reflectRead(v))
 
-  def vertex_tasks(v: Exp[Vertex]) = VertexTasks(v)
-  def vertex_clear_tasks(v: Exp[Vertex]) = VertexClearTasks(v)
-  def vertex_add_task(v: Exp[Vertex], t: Exp[Vertex]) = VertexAddTask(v, t)
+  def vertex_tasks(v: Exp[Vertex]) = VertexTasks(reflectRead(v))
+  def vertex_clear_tasks(v: Exp[Vertex]) = reflectMutation(VertexClearTasks(reflectWrite(v)))
+  def vertex_add_task(v: Exp[Vertex], t: Exp[Vertex]) = reflectMutation(VertexAddTask(reflectRead(v), reflectRead(t)))
 }
 
 

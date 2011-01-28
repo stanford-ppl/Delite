@@ -51,13 +51,13 @@ trait MessageVertexOpsExp extends MessageVertexOps with EffectExp {
   /////////////////////
   // object interface
 
-  def message_vertex_obj_new(g: Exp[Graph[MessageVertex,MessageEdge]], d: Exp[MessageData]) = MessageVertexObjectNew(g,d)
+  def message_vertex_obj_new(g: Exp[Graph[MessageVertex,MessageEdge]], d: Exp[MessageData]) = reflectEffect(MessageVertexObjectNew(g,d))
 
   /////////////////////
   // class interface
 
-  def message_vertex_data(v: Exp[MessageVertex]) = MessageVertexData(v)
-  def message_vertex_target(v: Exp[MessageVertex], e: Exp[MessageEdge]) = MessageVertexTarget(v,e)
+  def message_vertex_data(v: Exp[MessageVertex]) = MessageVertexData(reflectRead(v))
+  def message_vertex_target(v: Exp[MessageVertex], e: Exp[MessageEdge]) = MessageVertexTarget(reflectRead(v),reflectRead(e))
 }
 
 

@@ -57,15 +57,15 @@ trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with EffectExp {
 
   /////////////////////
   // object interface
-  def denoise_vertex_data_obj_new(id: Exp[Int], b: Exp[Vector[Double]], p: Exp[Vector[Double]]) = DenoiseVertexDataObjectNew(id, b, p)
+  def denoise_vertex_data_obj_new(id: Exp[Int], b: Exp[Vector[Double]], p: Exp[Vector[Double]]) = reflectEffect(DenoiseVertexDataObjectNew(id, reflectRead(b), reflectRead(p)))
 
   /////////////////////
   // class interface
 
-  def denoise_vertex_data_id(v: Exp[DenoiseVertexData]) = DenoiseVertexDataId(v)
-  def denoise_vertex_data_belief(v: Exp[DenoiseVertexData]) = DenoiseVertexDataBelief(v)
-  def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) = DenoiseVertexDataBeliefUpdate(v, b)
-  def denoise_vertex_data_potential(v: Exp[DenoiseVertexData]) = DenoiseVertexDataPotential(v)
+  def denoise_vertex_data_id(v: Exp[DenoiseVertexData]) = DenoiseVertexDataId(reflectRead(v))
+  def denoise_vertex_data_belief(v: Exp[DenoiseVertexData]) = DenoiseVertexDataBelief(reflectRead(v))
+  def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) = reflectMutation(DenoiseVertexDataBeliefUpdate(reflectWrite(v), b))
+  def denoise_vertex_data_potential(v: Exp[DenoiseVertexData]) = DenoiseVertexDataPotential(reflectRead(v))
 }
 
 trait BaseGenDenoiseVertexDataOps extends GenericNestedCodegen {
@@ -136,16 +136,16 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
   /////////////////////
   // object interface
 
-  def denoise_edge_data_obj_new(m: Exp[Vector[Double]], oM: Exp[Vector[Double]]) = DenoiseEdgeDataObjectNew(m, oM)
+  def denoise_edge_data_obj_new(m: Exp[Vector[Double]], oM: Exp[Vector[Double]]) = reflectEffect(DenoiseEdgeDataObjectNew(m, oM))
 
   /////////////////////
   // class interface
 
-  def denoise_edge_data_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataMessage(e)
-  def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = DenoiseEdgeDataMessageUpdate(e, m)
-  def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataOldMessage(e)
-  def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = DenoiseEdgeDataOldMessageUpdate(e, m)
-  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataCloneL(e) 
+  def denoise_edge_data_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataMessage(reflectRead(e))
+  def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectMutation(DenoiseEdgeDataMessageUpdate(reflectWrite(e), m))
+  def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataOldMessage(reflectRead(e))
+  def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectMutation(DenoiseEdgeDataOldMessageUpdate(reflectWrite(e), m))
+  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataCloneL(reflectRead(e)) 
 }
 
 trait BaseGenDenoiseEdgeDataOps extends GenericNestedCodegen {
