@@ -5,12 +5,7 @@ import ppl.dsl.optiml.datastruct.scala._
 import ppl.delite.framework.DeliteApplication
 
 trait BinarizedGradientGridFuncs {
-  // TODO: how do we clean this up in app code?
-  val IR: DeliteApplication with OptiMLExp
-  import IR._
-
-  val binarizedGradientPyramidFuncs = new BinarizedGradientPyramidFuncs { val IR: DeliteApplication with OptiMLExp = this.IR }
-  val binarizedGradientTemplateFuncs = new BinarizedGradientTemplateFuncs { val IR: DeliteApplication with OptiMLExp = this.IR }
+  this: OptiMLExp with BinarizedGradientPyramidFuncs with BinarizedGradientTemplateFuncs =>
 
   // The radius of the template
   val template_radius_ = unit(15)
@@ -34,13 +29,13 @@ trait BinarizedGradientGridFuncs {
     val binGrad = binarizeGradients(mag, phase)
     val cleanGrad = gradMorphology(binGrad)
 
-    val pyr = binarizedGradientPyramidFuncs.makePyramid(cleanGrad)
+    val pyr = makePyramid(cleanGrad)
 
     val all_detections = all_templates.flatMap { t =>
       val (name, templates) = t2(t)
       println("Name: " + name)
       println("Templates: " + templates.length)
-      val detections = detectSingleObject(name, pyr.getIndex(pyr.fixedLevelIndex), templates, template_radius_, pyr.fixedLevelIndex, accept_threshold_)
+      val detections = detectSingleObject(name, getIndex(pyr, pyr.fixedLevelIndex), templates, template_radius_, pyr.fixedLevelIndex, accept_threshold_)
       println("Detections: " + detections.length)
       detections
     }
@@ -61,7 +56,7 @@ trait BinarizedGradientGridFuncs {
     val reduction_factor = Math.pow(2, level).asInstanceOfL[Int]//(1 << level)
     val crt_template = fillTemplateFromGradientImage(gradSummary, x, y, template_radius, level)
     (unit(0) :: templates.length).flatMap { j =>
-      val res = binarizedGradientTemplateFuncs.score(templates(j), crt_template, accept_threshold)
+      val res = score(templates(j), crt_template, accept_threshold)
       if (res > accept_threshold) {
         val bbox = templates(j).rect
         val roi = Rect((reduction_factor * x - bbox.width / 2).asInstanceOfL[Int], (reduction_factor * y - bbox.height / 2).asInstanceOfL[Int], bbox.width, bbox.height)
@@ -107,7 +102,7 @@ trait BinarizedGradientGridFuncs {
 
   //Turn mag and phase into a binary representation of 8 gradient directions.
   def binarizeGradients(mag: Rep[Matrix[Float]], phase: Rep[Matrix[Float]]): Rep[GrayscaleImage] = {
-    GrayscaleImage(mag.zip(phase, (a: Rep[Float], b: Rep[Float]) => {
+    GrayscaleImage((mag zip phase) {(a,b) => {
       if (a >= magnitude_threshold_) {
           var angle = b
           if (angle >= unit(180)) {
@@ -116,7 +111,7 @@ trait BinarizedGradientGridFuncs {
           (Math.pow(unit(2), (angle.asInstanceOfL[Float] / unit(180.0 / 8))).asInstanceOfL[Int])
         }
       else 0
-    }))
+    }})
   }
 
   // Filter out noisy gradients via non-max suppression in a 3x3 area.
@@ -141,7 +136,7 @@ trait BinarizedGradientGridFuncs {
 
     // non-max suppression over a 3x3 stencil throughout the entire binaryGradient image
     // (Each pixel location contains just one orientation at this point)
-    binaryGradient.windowedFilter (3, 3) { slice /*3x3 Matrix[T]*/ =>
+    repGrayscaleImageToGrayscaleImageOps(binaryGradient).windowedFilter (3, 3) { slice /*3x3 Matrix[T]*/ =>
       // for each element, pick the most frequently occurring gradient direction if it's at least 2; otherwise pick 0(no direction)
       val histogram = Vector[Int](255)
       // TODO: Make this a scan-like op once supported

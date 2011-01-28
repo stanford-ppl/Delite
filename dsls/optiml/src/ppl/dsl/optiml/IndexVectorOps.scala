@@ -15,6 +15,7 @@ trait IndexVectorOps extends DSLType with Base { this: OptiML =>
   implicit def repIndexVectorToIndexVectorOps(x: Rep[IndexVector]) = new IndexVectorOpsCls(x)
 
   class IndexVectorOpsCls(x: Rep[IndexVector]){
+    def apply(index: Rep[Int]) = vector_apply(x,index)
     def apply[A:Manifest](block: Rep[Int] => Rep[A]) = indexvector_construct(x, block)
   }
 

@@ -5,9 +5,7 @@ import ppl.dsl.optiml.datastruct.scala._
 import ppl.delite.framework.DeliteApplication
 
 trait BinarizedGradientTemplateFuncs {
-  // TODO: how do we clean this up in app code?
-  val IR: DeliteApplication with OptiMLExp
-  import IR._
+  this: OptiMLExp =>
 
   /**
    * Score this template against another template
@@ -32,16 +30,15 @@ trait BinarizedGradientTemplateFuncs {
     // TODO: Change this to some sort of "filterUntil" construct to allow the code to short-circuit if we cross limit
     var i = unit(0)
     while (i < test1.match_list.length) {
-      val x = repBinarizedGradientTemplateToBinarizedGradientTemplateOps(test1).match_list(i)
-      x = 5
+      val x = test1.match_list(i)
       if (test1.binary_gradients(test1.match_list(i)) == 0 && test2.binary_gradients(test1.match_list(i)) == 0) {
-        matches += 1
+        matches += 1f
       }
       else if (((test1.binary_gradients(test1.match_list(i))) & (test2.binary_gradients(test1.match_list(i)))) > 0) {
-        matches += 1
+        matches += 1f
       }
       else {
-        limit -= 1
+        limit += -1
         if (limit <= 0) {
           return (match_thresh - 0.000001f) //sunk below the limit of misses, early terminate
         }

@@ -37,15 +37,14 @@ trait GrayscaleImageOps extends DSLType with Variables {
     }
     // TODO: need to refactor using CanBuildFrom and 2.8 techniques to avoid this duplication.
     //def convolve(kernel: Rep[Matrix[Int]]) = GrayscaleImage(x.windowedFilter(kernel.numRows, kernel.numCols) { slice => (slice *:* kernel).sum })
+    def windowedFilter(rowDim: Rep[Int], colDim: Rep[Int])(block: Rep[Matrix[Int]] => Rep[Int]) =
+      GrayscaleImage(image_windowed_filter(x,rowDim, colDim, block))
   }
 
   // object defs
   def grayscaleimage_obj_new(numRows: Rep[Int], numCols: Rep[Int]): Rep[GrayscaleImage]
   def grayscaleimage_obj_frommat(x: Rep[Matrix[Int]]): Rep[GrayscaleImage]
   def grayscaleimage_obj_carttopolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]): (Rep[Matrix[Float]],Rep[Matrix[Float]])
-
-  // class defs
-
 }
 
 
@@ -63,18 +62,18 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   // implemented via delite ops
 
   case class GrayscaleImageObjectCartToPolarMagnitude(inA: Exp[Matrix[Float]], inB: Exp[Matrix[Float]])
-    extends DeliteOpZipWith[Int,Int,Float,Matrix] {
+    extends DeliteOpZipWith[Float,Float,Float,Matrix] {
 
     val alloc = reifyEffects(Matrix[Float](inA.numRows, inA.numCols))
-    val v = (fresh[Int],fresh[Int])
+    val v = (fresh[Float],fresh[Float])
     val func = Math.sqrt(v._1*v._1 + v._2*v._2).asInstanceOfL[Float]
   }
 
   case class GrayscaleImageObjectCartToPolarPhase(inA: Exp[Matrix[Float]], inB: Exp[Matrix[Float]])
-    extends DeliteOpZipWith[Int,Int,Float,Matrix] {
+    extends DeliteOpZipWith[Float,Float,Float,Matrix] {
 
     val alloc = reifyEffects(Matrix[Float](inA.numRows, inA.numCols))
-    val v = (fresh[Int],fresh[Int])
+    val v = (fresh[Float],fresh[Float])
     val func = (Math.atan2(v._2, v._1)*180/Math.Pi).asInstanceOfL[Float]
   }
 
@@ -88,9 +87,6 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
     val phase = toAtom(GrayscaleImageObjectCartToPolarPhase(x,y)) mmap { a => if (a < 0f) a + 360f else a }
     (mag,phase)
   }
-
-  ///////////////////
-  // class interface
 }
 
 
