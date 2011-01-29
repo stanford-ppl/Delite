@@ -431,9 +431,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val func = reifyEffects(v - y)
   }
 
-  case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends DeliteOpVectorLoop[A] {
-
+  abstract case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]]) extends DeliteOpVectorLoop[A] {
+    def mev = manifest[A]
+    def aev = implicitly[Arith[A]]
+  }
+  
+  class VectorTimesFresh[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]]) extends VectorTimes(inA, inB) {
     val size = inA.length
     val isRow = inA.isRow
     val v = fresh[Int]
@@ -495,8 +498,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     )
   }
 
-  case class VectorSum[A:Manifest:Arith](in: Exp[Vector[A]])
-    extends DeliteOpLoop[A] {
+  abstract case class VectorSum[A:Manifest:Arith](in: Exp[Vector[A]]) extends DeliteOpLoop[A] {
+    def mev = manifest[A]
+    def aev = implicitly[Arith[A]]
+  }
+
+
+  class VectorSumFresh[A:Manifest:Arith](in: Exp[Vector[A]]) extends VectorSum[A](in) {
 
     val size = in.length
     val v = fresh[Int]
@@ -607,18 +615,44 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   //////////////
   // mirroring
 
+  override def mirrorFatDef[A:Manifest](d: Def[A], f: Transformer): Def[A] = mirrorLoopBody(d,f) // TODO: cleanup
+
+  def mirrorLoopBody[A](d: Def[A], f: Transformer): Def[A] = {
+    d match {
+      case e: DeliteCollectElem[a,Vector] => 
+      DeliteCollectElem[a,Vector]( // need to be a case class for equality!
+        alloc = f(e.alloc),
+        func = f(e.func)
+      ).asInstanceOf[Def[A]]
+      case e: DeliteReduceElem[a] => 
+      DeliteReduceElem[a](
+        func = f(e.func),
+        rV = (f(e.rV._1).asInstanceOf[Sym[a]], f(e.rV._2).asInstanceOf[Sym[a]]), // need to transform bound vars ??
+        rFunc = f(e.rFunc)
+      ).asInstanceOf[Def[A]]
+    }
+  }
+  
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case VectorApply(x, n) => vector_apply(f(x), f(n))
     case VectorLength(x) => vector_length(f(x))
     case VectorIsRow(x) => vector_isRow(f(x))
-    case Reflect(e@VectorPPrint(x), u, es) => reflectMirrored(Reflect(VectorPPrint(f(x))(f(e.block)), u, f(es)))
-    case Reflect(VectorObjectZeros(x), u, es) => reflectMirrored(Reflect(VectorObjectZeros(f(x)), u, f(es)))
-    case Reflect(VectorObjectRange(s,e,d,r), u, es) => reflectMirrored(Reflect(VectorObjectRange(f(s),f(e),f(d),f(r)), u, f(es)))
-    case Reflect(e@VectorNew(l,r), u, es) => reflectMirrored(Reflect(VectorNew(f(l),f(r))(e.mV), u, f(es)))
+    // FIXME: VectorSum might not actually be triggered because
+    case e@VectorSum(x) => toAtom(new VectorSum(f(x))(e.mev,e.aev) { val size = f(e.size); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody[A](e.body.asInstanceOf[Def[A]], f) })
+    case e@VectorTimes(x,y) => toAtom(new VectorTimes(f(x),f(y))(e.mev,e.aev) { val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
+    case Reflect(e@VectorPPrint(x), Global(), es) => reflectMirrored(Reflect(VectorPPrint(f(x))(f(e.block)), Global(), f(es)))
     // below are read/write effects TODO: find a general approach to treating them!!!!
-    case Reflect(VectorApply(l,r), u, es) => reflectMirrored(Reflect(VectorApply(f(l),f(r)), u, f(es)))
-    case Reflect(VectorUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VectorUpdate(f(l),f(i),f(r)), u, f(es)))
-    case Reflect(VectorForeach(a,b,c), u, es) => reflectMirrored(Reflect(VectorForeach(f(a),f(b).asInstanceOf[Sym[Int]],f(c)), u, f(es)))
+    case Reflect(VectorApply(l,r), Read(rs), es) => reflectMirrored(Reflect(VectorApply(f(l),f(r)), Read(f onlySyms rs), f(es)))
+    case Reflect(VectorLength(x), Read(rs), es) => reflectMirrored(Reflect(VectorLength(f(x)), Read(f onlySyms rs), f(es)))
+    case Reflect(VectorIsRow(x), Read(rs), es) => reflectMirrored(Reflect(VectorIsRow(f(x)), Read(f onlySyms rs), f(es)))
+    case Reflect(VectorForeach(a,b,c), Read(rs), es) => reflectMirrored(Reflect(VectorForeach(f(a),f(b).asInstanceOf[Sym[Int]],f(c)), Read(f onlySyms rs), f(es)))
+    // FIXME: problem with VectorTimes: it's actually a loop and if it is reflected it means a.length will also reflect and we have no context here!!!
+    case Reflect(e2@VectorTimes(a,b), Read(rs), es) => error("we'd rather not mirror " + e); //reflectMirrored(Reflect(VectorTimes(f(a),f(b))(e.mev,e.aev), Read(f onlySyms rs), f(es)))
+    case Reflect(VectorUpdate(l,i,r), Write(ws), es) => reflectMirrored(Reflect(VectorUpdate(f(l),f(i),f(r)), Write(f onlySyms ws), f(es)))
+    // allocations TODO: generalize
+    case Reflect(VectorObjectZeros(x), Alloc(), es) => reflectMirrored(Reflect(VectorObjectZeros(f(x)), Alloc(), f(es)))
+    case Reflect(VectorObjectRange(s,e,d,r), Alloc(), es) => reflectMirrored(Reflect(VectorObjectRange(f(s),f(e),f(d),f(r)), Alloc(), f(es)))
+    case Reflect(e@VectorNew(l,r), Alloc(), es) => reflectMirrored(Reflect(VectorNew(f(l),f(r))(e.mV), Alloc(), f(es)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
@@ -670,7 +704,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectWrite(x)(x,y)(VectorPlusEquals(x,y))
   def vector_minus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectRead(x,y)(VectorMinus(x,y))
   def vector_minus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = reflectRead(x/*,y*/)(VectorMinusScalar(x,y))
-  def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectRead(x,y)(VectorTimes(x,y))
+  def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectRead(x,y)(new VectorTimesFresh(x,y))
   def vector_times_withconvert[A:Manifest:Arith,B:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], conv: Exp[B] => Exp[A]) = reflectRead(x,y)(VectorTimesWithConvert(x,y,conv)) // TODO: de-hoas
   def vector_times_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = reflectRead(x/*,y*/)(VectorTimesScalar(x,y))
   def vector_times_matrix[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Matrix[A]]) = reflectRead(x,y)(VectorTimesMatrix(x,y))
@@ -678,7 +712,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_dot_product[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectRead(x,y)(VectorDotProduct(x,y))
   def vector_divide[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectRead(x,y)(VectorDivide(x,y))
   def vector_divide_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = reflectRead(x/*,y*/)(VectorDivideScalar(x,y))
-  def vector_sum[A:Manifest:Arith](x: Exp[Vector[A]]) = reflectRead(x)(VectorSum(x))
+  def vector_sum[A:Manifest:Arith](x: Exp[Vector[A]]) = reflectRead(x)(new VectorSumFresh(x))
   def vector_abs[A:Manifest:Arith](x: Exp[Vector[A]]) = reflectRead(x)(VectorAbs(x))
   def vector_exp[A:Manifest:Arith](x: Exp[Vector[A]]) = reflectRead(x)(VectorExp(x))
 
@@ -752,7 +786,7 @@ trait VectorOpsExpOpt extends VectorOpsExp {
 
   override def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
     // (TB + TD) == T(B + D)
-    case (Def(VectorTimes(a, b)), Def(VectorTimes(c, d))) if (a == c) => VectorTimes[A](a.asInstanceOf[Exp[Vector[A]]], VectorPlus[A](b.asInstanceOf[Exp[Vector[A]]],d.asInstanceOf[Exp[Vector[A]]]))
+    case (Def(VectorTimes(a, b)), Def(VectorTimes(c, d))) if (a == c) => vector_times[A](a.asInstanceOf[Exp[Vector[A]]], vector_plus[A](b.asInstanceOf[Exp[Vector[A]]],d.asInstanceOf[Exp[Vector[A]]]))
     // ...
     case _ => super.vector_plus(x, y)
   }

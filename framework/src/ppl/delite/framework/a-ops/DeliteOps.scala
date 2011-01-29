@@ -311,22 +311,25 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case Def(Reify(x, u, effects)) if x.isInstanceOf[Var[A]] => x.asInstanceOf[Var[A]]
     case _ => throw new Exception("getVar called on non-var type")
   }
-  
+
+/*  
   // heavy type casting ahead!
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case e: DeliteCollectElem[a,b] => 
+//    toFatPieceAtom(DeliteCollectElem[a,DeliteCollection]( // need to be a case class for equality!
     toAtom(DeliteCollectElem[a,DeliteCollection]( // need to be a case class for equality!
       alloc = f(e.alloc).asInstanceOf[Exp[DeliteCollection[a]]],
       func = f(e.func)
     ).asInstanceOf[Def[A]])
-    case e: DeliteReduceElem[a] => toAtom(DeliteReduceElem[a](
+    case e: DeliteReduceElem[a] => 
+    toAtom(DeliteReduceElem[a](
       func = f(e.func),
       rV = (f(e.rV._1).asInstanceOf[Sym[a]], f(e.rV._2).asInstanceOf[Sym[a]]), // should transform bound vars as well ??
       rFunc = f(e.rFunc)
     ).asInstanceOf[Def[A]])
     case _ => super.mirror(e, f)
   }
-
+*/
 }
 
 trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
