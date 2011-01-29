@@ -54,6 +54,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
     }
 
     // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
+    //val a = ifGenAgree(g => g.syms(rhs), true)
+    //val b = ifGenAgree(g => g.getFreeVarNode(rhs), true)
     val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)
     val inVals = dataDeps flatMap { vals(_) }
     val inVars = dataDeps flatMap { vars(_) }
@@ -145,7 +147,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       system.error(msg)
     }
 
-    val inputs = inVals ++ inVars
+    val inputs = deliteInputs
     //val kernelContext = getEffectsKernel(sym, rhs)
     val kernelContext = ifGenAgree( _.getEffectsBlock(sym), true )
     val inMutating = (inputs flatMap { mutating(kernelContext, _) }).distinct
