@@ -287,7 +287,7 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
 
     while(tasks.length > 0) {
       vertices.foreach(block)
-      val nextTasks = Vector[Vertex](0, true)
+      val nextTasks = Vertices[Vertex](0)
 
       for(i <- 0 until vertices.length) {
         val vtasks = vertices(i).tasks
@@ -301,7 +301,7 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
         vertices(i).clearTasks()
       }
 
-      tasks.copyFrom(0, nextTasks)
+      tasks = nextTasks
     }
   }
 
