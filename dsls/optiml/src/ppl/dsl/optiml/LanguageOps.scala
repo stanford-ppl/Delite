@@ -300,6 +300,8 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
 
         vertices(i).clearTasks()
       }
+
+      tasks.copyFrom(0, nextTasks)
     }
   }
 

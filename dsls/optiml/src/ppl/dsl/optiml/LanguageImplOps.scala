@@ -36,6 +36,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
         }
 
         vertices(i).clearTasks()
+	tasks = nextTasks
       }
       
       tasks = nextTasks
