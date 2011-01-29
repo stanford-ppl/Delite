@@ -132,7 +132,7 @@ trait OptiMLCodeGenBase extends GenericCodegen {
 trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
   with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps
   with ScalaGenLabelsOps with ScalaGenTrainingSetOps
-  with ScalaGenGraphOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenMessageEdgeOps with ScalaGenMessageVertexOps
+  with ScalaGenGraphOps with ScalaGenVerticesOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenMessageEdgeOps with ScalaGenMessageVertexOps
   with ScalaGenSetOps
   with ScalaGenDenoiseVertexDataOps with ScalaGenDenoiseEdgeDataOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
