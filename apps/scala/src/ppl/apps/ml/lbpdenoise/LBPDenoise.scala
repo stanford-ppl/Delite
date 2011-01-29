@@ -66,14 +66,14 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
         binaryFactorSetAgreement(edgePotential, lambda)
       }
 
-      var count = unit(1)
+//      var count = unit(1)
       
       g.freeze()
 
       untilconverged(g) {
         v =>
           val vdata = v.data.asInstanceOfL[DenoiseVertexData]
-          vdata.belief.copyFrom(0, vdata.potential.cloneL)
+          vdata.belief.copyFrom(0, vdata.potential)
 
           // Multiply belief by messages
           for (e <- v.edges) {
@@ -83,6 +83,9 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
           // Normalize the belief
           vdata.belief.copyFrom(0, unaryFactorNormalize(vdata.belief))
+
+	//println("mult")
+	//factorPrint(vdata.belief)
 
           // Send outbound messages
           for (e <- v.edges) {
@@ -104,17 +107,17 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
             // Set the message
            out.message.copyFrom(0, dampMsg)
             
-           if(count % 10000 == 0) {
+           /*if(count % 10000 == 0) {
              println(count)
              println(residual)
-           }
+           }*/
            
             // Enqueue update function on target vertex if residual is greater than bound
             if (residual > bound) {
               v.addTask(e.asInstanceOfL[MessageEdge].target(v))
             }
           }
-        count += 1
+//        count += 1
       }
 
       // Predict the image!
@@ -132,6 +135,12 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
    PerformanceTimer2.summarize("D")
    PerformanceTimer2.summarize("R") */
   }
+
+def factorPrint(f: Rep[Vector[Double]]) {
+	for(i <- 0 until f.length) {
+	println(f(i))
+}
+}
 
   def constructGraph(img: Rep[Matrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Rep[Graph[MessageVertex, MessageEdge]] = {
     val g = Graph[MessageVertex, MessageEdge]()
@@ -157,7 +166,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
         potential = unaryFactorNormalize(potential)
 
-        val data = DenoiseVertexData(pixelId, potential, belief.cloneL)
+        val data = DenoiseVertexData(pixelId, belief.cloneL, potential)
         val vertex = MessageVertex(g, data)
 
         vertices(i)(j) = vertex
@@ -277,7 +286,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
   def unaryFactorConvolve(bf: Rep[Matrix[Double]], other: Rep[Vector[Double]]): Rep[Vector[Double]] = {
     val indices = Vector.range(0, bf.numCols)
-    val colSums = indices map {(i: Rep[Int]) => (bf.getCol(i) + other).sum} map {(sum: Rep[Double]) =>if (sum == 0) Double.MinValue else sum}
+    val colSums = indices map {(i: Rep[Int]) => (bf.getCol(i) + other).exp.sum} map {(sum: Rep[Double]) =>if (sum == 0) Double.MinValue else sum}
     colSums map {Math.log(_)}
   }
 
