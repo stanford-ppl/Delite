@@ -90,7 +90,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
             val out = e.asInstanceOfL[MessageEdge].out(v).asInstanceOfL[DenoiseEdgeData]
             
             // Compute the cavity
-            val cavity = unaryFactorNormalize(unaryFactorDivide(v.data.asInstanceOfL[DenoiseVertexData].belief.cloneL, in.message))
+            val cavity = unaryFactorNormalize(unaryFactorDivide(vdata.belief, in.message))
 
             // Convolve the cavity with the edge factor
             val msg = unaryFactorNormalize(unaryFactorConvolve(edgePotential, cavity))
@@ -102,7 +102,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
             val residual = unaryFactorResidual(dampMsg, out.message)
 
             // Set the message
-           out.message.copyFrom(0, msg)
+           out.message.copyFrom(0, dampMsg)
             
            if(count % 10000 == 0) {
              println(count)
