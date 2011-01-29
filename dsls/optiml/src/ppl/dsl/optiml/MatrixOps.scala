@@ -836,11 +836,11 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
 
     case MatrixGetRow(x,i) =>
       if(kernelSymbol != sym) {
-        stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
+        //stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
         stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
         stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
         stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
-		//    emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true","%s.data".format(quote(x),quote(x)))
+		emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true",false,"%s->data".format(quote(x)))
       }
 
     case MatrixObjectDiag(w, vals) =>
@@ -920,12 +920,11 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       tabWidth += 1
       stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
       tabWidth += 1
-      stream.println(addTab()+"%s.update(i,%s,%s.apply(i,%s)+%s.apply(i,%s));".format(quote(sym),currDimStr,quote(x),currDimStr,quote(y),currDimStr))
+      stream.println(addTab()+"%s.update(i,%s,%s.apply(i,%s)+%s.apply(i,%s));".format(quote(x),currDimStr,quote(x),currDimStr,quote(y),currDimStr))
 	    tabWidth -= 1
       stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAllocRef(sym,x.asInstanceOf[Sym[_]])
       currDim -= 1
 
     case _ => super.emitNode(sym, rhs)

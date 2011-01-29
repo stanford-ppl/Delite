@@ -128,7 +128,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
                 case true => throw new GenerationFailedException("CudaGen: If-Else cannot return object type as kernel output.")
                 case _ =>
               }
-              stream.println(addTab() + "%s %s;".format(remap(sym.Type),quote(sym)))
+              //stream.println(addTab() + "%s %s;".format(remap(sym.Type),quote(sym)))
               stream.println(addTab() + "if (" + quote(c) + ") {")
               tabWidth += 1
               emitBlock(a)
@@ -140,6 +140,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
               stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
               tabWidth -= 1
               stream.println(addTab()+"}")
+			  allocReference(sym,getBlockResult(a).asInstanceOf[Sym[_]])
             case _ =>
               isVoidType(sym.Type) match {
                 case true =>

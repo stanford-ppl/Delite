@@ -43,7 +43,6 @@ void devInit() {
 	devBufferEnd = devBufferStart + devBufferSize;
 	devBufferCurrent = devBufferStart;
 }
-
 void DeliteCudaMalloc(void** ptr, size_t size) {
 	if (devBufferStart == 0) devInit();
 	if ((devBufferCurrent + size) > devBufferEnd)
@@ -162,3 +161,6 @@ void DeliteCudaMemcpyDtoHAsync(void* dptr, void* sptr, size_t size) {
 	cudaStreamSynchronize(d2hStream);
 }
 
+void DeliteCudaMemset(void *ptr, int value, size_t count) {
+	cudaMemset(ptr,value,count);
+}

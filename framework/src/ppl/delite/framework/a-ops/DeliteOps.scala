@@ -658,7 +658,7 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       //if(!isPrimitiveType(mapR.reduce.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
       val constrained = isPrimitiveType(mapR.mV.Type) && isPrimitiveType(mapR.reduce.Type)
       if(constrained) {
-        stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
+        stream.println(addTab()+"%s %s = %s.apply(0);".format(remap(mapR.mV.Type),quote(mapR.mV),quote(mapR.in)))
         emitBlock(mapR.map)
         emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
         stream.println(addTab()+"for(int cnt=1; cnt<%s.size(); cnt++) {".format(quote(mapR.in)))
@@ -673,19 +673,22 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         emitValDef(sym,quote(mapR.rV._1))
       }
       else {
-        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
-        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+        //emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
         //stream.println(addTab()+"%s %s = %s.dcApply(0);".format(remap(mapR.mV.Type),quote(mapR.mV),quote(mapR.in)))
         //addVarLink(getBlockResult(mapR.map),sym)
         //emitBlock(mapR.map)
         //removeVarLink(getBlockResult(mapR.map),sym)
+		stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1),quote(sym)))
         stream.println(addTab()+"for(int cnt=0; cnt<%s.size(); cnt++) {".format(quote(mapR.in)))
         tabWidth += 1
-        stream.println(addTab()+"%s = %s.dcApply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
+        stream.println(addTab()+"%s %s = %s.dcApply(cnt);".format(remap(mapR.mV.Type),quote(mapR.mV),quote(mapR.in)))
         emitBlock(mapR.map)
+		stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._2),quote(getBlockResult(mapR.map))))
         emitBlock(mapR.reduce)
         tabWidth -= 1
         stream.println(addTab()+"}")
+		allocReference(mapR.rV._1.asInstanceOf[Sym[_]],getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+		allocReference(mapR.rV._2.asInstanceOf[Sym[_]],getBlockResult(mapR.map).asInstanceOf[Sym[_]])
         allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]],true)
       }
     }

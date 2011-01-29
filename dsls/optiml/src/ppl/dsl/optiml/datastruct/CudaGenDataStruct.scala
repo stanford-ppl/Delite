@@ -560,7 +560,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 				   else remap(sym.Type) + " " + quote(sym)
     val argStr = "\""+quote(sym)+"\""
 
-    out.append("%s gpuMemAlloc_%s_%s_%s(%s) {\n".format(remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,paramStr))
+    out.append("%s *gpuMemAlloc_%s_%s_%s(%s) {\n".format(remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,paramStr))
     out.append("\t%s *%s = %s;\n".format(remap(newSym.Type),quote(newSym),quote(sym)))
     out.append("\treturn %s;\n".format(quote(newSym)))
     out.append("}\n")
