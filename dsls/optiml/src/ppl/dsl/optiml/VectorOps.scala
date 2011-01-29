@@ -514,7 +514,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorFlatMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], mV: Exp[A], map: Exp[Vector[B]])
     extends DeliteOpMapReduce[A,Vector[B],Vector] {
 
-    val alloc = reifyEffects(Vector[Vector[B]](in.length, in.isRow))
     val rV = (fresh[Vector[B]],fresh[Vector[B]])
     val reduce = reifyEffects(rV._1 ++ rV._2)
   }
@@ -714,22 +713,6 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
 
   override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
 
-    case VectorOuter(x,y) =>
-      gpuBlockSizeX = quote(x)+".length"
-      stream.println(addTab()+"if( %s < %s ) {".format("idxX",quote(x)+".length"))
-      tabWidth += 1
-      stream.println(addTab()+"for(int i=0; i<%s.length; i++) {".format(quote(x))); tabWidth += 1
-      stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s)*%s.apply(%s));".format(quote(sym),"i","idxX",quote(x),"i",quote(y),"idxX"))
-      if(getVarLink(sym) != null) stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s,%s));".format(quote(getVarLink(sym)),"i","idxX",quote(sym),"i","idxX"))
-      tabWidth -= 1; stream.println(addTab()+"}")
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.length".format(quote(x)),"%s.length".format(quote(x)))
-
-    case VectorObjectZeros(len) =>
-      throw new GenerationFailedException("CudaGen: Not GPUable (Dynamic memory allocation is not allowed)")
-    case VectorNew(len,isRow) =>
-      throw new GenerationFailedException("CudaGen: Not GPUable (Dynamic memory allocation is not allowed)")
     case VectorApply(x, n) =>
       emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case VectorUpdate(x,n,y) =>
@@ -738,39 +721,94 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       emitValDef(sym, quote(x) + ".length")
     case VectorIsRow(x)     =>
       emitValDef(sym, quote(x) + ".isRow")
-    case VectorObjectRange(start, end, stride, isRow) =>
-	  if(gpuBlockSizeX != null) {
-        stream.println(addTab()+"RangeVector %s;".format(quote(sym)))
-        stream.println(addTab()+"%s.start = %s;".format(quote(sym),quote(start)))
-        stream.println(addTab()+"%s.end = %s;".format(quote(sym),quote(end)))
-        stream.println(addTab()+"%s.stride = %s;".format(quote(sym),quote(stride)))
-        stream.println(addTab()+"%s.isRow = %s;".format(quote(sym),quote(isRow)))
-	  }
 
-        /* Specialized CUDA code generations */
+    /* Specialized CUDA code generations */
+    case VectorObjectRange(start, end, stride, isRow) =>
+      stream.println(addTab()+"RangeVector %s;".format(quote(sym)))
+      stream.println(addTab()+"%s.start = %s;".format(quote(sym),quote(start)))
+      stream.println(addTab()+"%s.end = %s;".format(quote(sym),quote(end)))
+      stream.println(addTab()+"%s.stride = %s;".format(quote(sym),quote(stride)))
+      stream.println(addTab()+"%s.isRow = %s;".format(quote(sym),quote(isRow)))
+
+    case VectorObjectZeros(len) =>
+        currDim += 1
+        val currDimStr = getCurrDimStr()
+        setCurrDimLength(quote(len))
+        emitVectorAlloc(sym,"%s".format(quote(len)),"true") //needs to allocate with new symbol
+		//if(currDim == 2) {
+		//	stream.println(addTab()+"%s %s_save = %s.data;".format(remap(sym.Type.typeArguments(0)),quote(sym),quote(sym)))
+        //	stream.println(addTab()+"%s.data += %s*%s;".format(quote(sym),quote(len),getPrevDimStr()))
+		//}
+        stream.println(addTab()+"if(%s < %s) {".format(currDimStr,quote(len)))
+        tabWidth += 1
+        stream.println(addTab()+"%s.update(%s,0);".format(quote(sym),currDimStr))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+		//if(currDim == 2) {
+		//	stream.println(addTab()+"%s.data = %s_save;".format(quote(sym),quote(sym)))
+		//}
+        currDim -= 1
+	/*
+      if(currDim > 1)
+        throw new GenerationFailedException("CudaGen: No more than 2 dimensions are allowed for GPU kernels.")
+      else {
+        currDim += 1
+        val currDimStr = getCurrDimStr()
+		val prevDimStr = if(currDim == 2) getPrevDimStr() else "0"
+		val prevDimSize = if(currDim == 2) xDimList(0) else "1"
+        setCurrDimLength(quote(len))
+        emitVectorAlloc(sym,"%s*%s".format(quote(len),prevDimSize),"true") //needs to allocate with new symbol
+        stream.println(addTab()+"%s.length = %s;".format(quote(sym),quote(len)))
+        stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
+        stream.println(addTab()+"%s.data += %s*%s;".format(quote(sym),quote(len),prevDimStr))
+        stream.println(addTab()+"if(%s < %s) {".format(currDimStr,quote(len)))
+        tabWidth += 1
+        stream.println(addTab()+"%s.update(%s,0);".format(quote(sym),currDimStr))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        currDim -= 1
+      }
+	*/
+
     case VectorTrans(x) =>
-      gpuBlockSizeX = "%s.length".format(quote(x))
-      stream.println(addTab()+"if( idxX < %s.length ) {".format(quote(x)))
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->length".format(quote(x)))
+      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
       tabWidth += 1
-      stream.println(addTab()+"%s.update(idxX,%s.apply(idxX));".format(quote(sym),quote(x)))
+      stream.println(addTab()+"%s.update(%s,%s.apply(%s));".format(quote(sym),currDimStr,quote(x),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.length".format(quote(x)),"!%s.isRow".format(quote(x)))
+      emitVectorAlloc(sym,"%s->length".format(quote(x)),"!%s->isRow".format(quote(x)))
+      currDim -= 1
 
     case VectorRepmat(x,i,j) =>
-      gpuBlockSizeX = "%s.length * %s * %s".format(quote(x),quote(i),quote(j))
-      stream.println(addTab()+"if( idxX < %s.length*%s*%s ) {".format(quote(x),quote(i),quote(j)))
-      //tabWidth += 1
-      //stream.println(addTab()+"for(int i=0;i<%s;i++) {".format(quote(i)))
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->length * %s * %s".format(quote(x),quote(i),quote(j)))
+      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(sym)))
       tabWidth += 1
-	  stream.println(addTab()+"int i = idxX / (%s.length * %s);".format(quote(x),quote(j)))
-	  stream.println(addTab()+"int j = idxX % " + "(%s.length * %s);".format(quote(x),quote(j)))
+	    stream.println(addTab()+"int i = %s / (%s.length * %s);".format(currDimStr,quote(x),quote(j)))
+	    stream.println(addTab()+"int j = " + currDimStr + " % " + "(%s.length * %s);".format(quote(x),quote(j)))
       stream.println(addTab()+"%s.update(i,j,%s.apply(%s));".format(quote(sym),quote(x),"j%"+quote(x)+".length"))
-      //tabWidth -= 1
-      //stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.length*%s".format(quote(x),quote(i)),"%s.length*%s".format(quote(x),quote(j)))
+      emitMatrixAlloc(sym,"%s".format(quote(i)),"%s->length*%s".format(quote(x),quote(j)))
+      currDim -= 1
+
+    case VectorOuter(x,y) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength(quote(x)+"->length")
+      stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(x)+".size()"))
+      tabWidth += 1
+      stream.println(addTab()+"for(int i=0; i<%s.length; i++) {".format(quote(x))); tabWidth += 1
+      stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s)*%s.apply(%s));".format(quote(sym),"i",currDimStr,quote(x),"i",quote(y),currDimStr))
+      tabWidth -= 1; stream.println(addTab()+"}")
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s->length".format(quote(x)),"%s->length".format(quote(x)))
+      currDim -= 1
 
     case _ => super.emitNode(sym, rhs)
   }

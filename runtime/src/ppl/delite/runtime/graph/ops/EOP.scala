@@ -17,7 +17,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * This OP should always be inserted by the scheduler such that it is the last to run (depends on the "result" node of the task graph
  * Execution of the kernel will shut down the Delite Runtime
  */
-object EOP extends DeliteOP {
+object EOP extends OP_Executable(Map(Targets.Scala->"Unit")) {
 
   /**
    * OP features
@@ -26,21 +26,8 @@ object EOP extends DeliteOP {
 
   def task = "ppl.delite.runtime.graph.ops.EOP_Kernel"
 
-  def supportsTarget(target: Targets.Value): Boolean = {
-    if (target == Targets.Scala) true
-    else false
-  }
-
-  def outputType(target: Targets.Value): String = {
-    if (target == Targets.Scala) outputType
-    else error("EOP does not support targets other than Scala")
-  }
-
-  override def outputType = "Unit"
-
   def id = "eop"
 
-  def nested = null
   def cost = 0
   def size = 0
 

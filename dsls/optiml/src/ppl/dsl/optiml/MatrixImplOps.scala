@@ -36,7 +36,7 @@ trait MatrixImplOps { this: OptiML =>
   def matrix_times_vector_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def matrix_sigmoid_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
   def matrix_sigmoidf_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]]
-
+  def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]]
 }
 
 trait MatrixImplOpsStandard extends MatrixImplOps {
@@ -333,4 +333,11 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out
   }
 
+  def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]] = {
+	val out = Vector[A](x.numCols,true)
+	for(colIdx <- (0::x.numCols)) {
+		out(colIdx) = x.getCol(colIdx).sum
+	}
+	out
+  }
 }

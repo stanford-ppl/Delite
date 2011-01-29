@@ -11,7 +11,7 @@ import ConfigParser
 DELITE_HOME = os.getenv("DELITE_HOME")
 
 apps_default = ['gda', 'nb', 'linreg', 'kmeans', 'rbm', 'svm']#, 'lbp']
-delite_threads_default = [ 1, 2 , 4, 8, 16]
+delite_threads_default = [ 1, 2 , 4, 8]
 
 
 #delite_gpus = [ 1, 2 ]
@@ -35,6 +35,7 @@ def main():
     parser.add_option("-r", "--runs", dest="runs", default="10", type="string", help="the number of times the runtime will execute the applications")
     parser.add_option("-t", "--threads", dest="threads", default="_all", help="a list of comma separated thread counts (e.g. -t 1,2,4)")
     parser.add_option("-s", "--skip", dest="skip", default="_none", help="skips smp and/or gpu portion of gathering numbers (e.g. -s gpu)")
+    parser.add_option("-k", "--keep-going", dest="keep_going", action="store_true", help="keep going even if there is a abnormal exit code")
     parser.add_option("--nv", dest="no_variants", action="store_true" , help="disables variant support in the framework")
     parser.add_option("--home", dest="delite_home", default="_env", help="allows you to specificy a different Delite Home than the one that should be specificed in the environment");
 
@@ -78,6 +79,8 @@ def loadOptions(opts):
         props["delite.home"] = opts.delite_home
     else:
         props["delite.home"] = DELITE_HOME
+        
+    options['keep-going'] = opts.keep_going
 
 def loadProps(options):
     #load and check all the required environment variables
@@ -114,7 +117,7 @@ def launchApps(options):
         os.putenv('PATH', props['intel.icc'] + ":" + os.getenv('PATH'))
         print "==  Generating DEG file with options: " + opts
         ecode = os.system(props['delite.home'] + "/bin/gen " + classes[app])
-        if ecode != 0:
+        if ecode != 0 and options['keep-going'] == False:
             print "Detected abnormal exit code, exiting"
             exit(-1)
         #do it for each config of delite
@@ -128,7 +131,7 @@ def launchApps(options):
                 print "== with options: " + opts + "\n"
                 os.putenv("SCALA_HOME", props['scala.vanilla.home'])
                 ecode = os.system(props['delite.home'] + "/bin/exec " + app + ".deg " + params[app])
-                if ecode != 0:
+                if ecode != 0 and options['keep-going'] == False:
                     print "Detected abnormal exit code, exiting"
                     exit(-1)
 
@@ -143,7 +146,7 @@ def launchApps(options):
             print "== with options: " + opts + "\n"
             os.putenv("SCALA_HOME", props['scala.vanilla.home'])
             ecode = os.system(props['delite.home'] + "/bin/exec " + app + ".deg " + params[app])
-            if ecode != 0:
+            if ecode != 0 and options['keep-going'] == False:
                 print "Detected abnormal exit code, exiting"
                 exit(-1)
  		
