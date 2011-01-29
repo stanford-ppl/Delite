@@ -579,9 +579,6 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength(quote(map.in)+"->size()")
-      //val freeVars = (getFreeVarBlock(map.func,Nil).filterNot(ele => ele==map.v)++gpuTemps).distinct
-	  //println("map.in is " + quote(map.in) + ", map.alloc is "+quote(map.alloc))
-	  //val output = if(map.in==map.alloc) map.in else sym
       stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(map.in)+".size()"))
       tabWidth += 1
       val (mapFunc,freeVars) = emitDevFunc(map.func, List(map.v))
@@ -591,9 +588,9 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),currDimStr,mapFunc,quote(map.in),currDimStr,freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
-	  if(map.in!=map.alloc)
+	    if(map.in!=map.alloc)
       	allocOutput(sym,map.in.asInstanceOf[Sym[_]])
-	  else
+	    else
       	allocReference(sym,map.in.asInstanceOf[Sym[_]])
       currDim -= 1
     }
@@ -605,8 +602,6 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength(quote(zip.inA)+"->size()")
-      //val freeVars = (getFreeVarBlock(zip.func,Nil).filterNot(ele => (ele==zip.v._1)||(ele==zip.v._2))++gpuTemps).distinct
-	  //val output = if(zip.inA==zip.alloc) zip.inA else if(zip.inB==zip.alloc) zip.inB else sym
       stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(zip.inA)+".size()"))
       tabWidth += 1
       val (zipFunc,freeVars) = emitDevFunc(zip.func, List(zip.v._1, zip.v._2))
@@ -616,11 +611,11 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),currDimStr, zipFunc, quote(zip.inA),currDimStr,quote(zip.inB),currDimStr,freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
-	  if(zip.inA==zip.alloc) 
+	    if(zip.inA==zip.alloc)
       	allocReference(sym,zip.inA.asInstanceOf[Sym[_]])
-	  else if(zip.inB==zip.alloc)
+	    else if(zip.inB==zip.alloc)
       	allocReference(sym,zip.inB.asInstanceOf[Sym[_]])
-	  else
+	    else
       	allocOutput(sym,zip.inA.asInstanceOf[Sym[_]])
       currDim -= 1
     }
@@ -630,7 +625,6 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
       currDim += 1
       setCurrDimLength(quote(foreach.in)+"->size()")
       val currDimStr = getCurrDimStr()
-      //val freeVars = (getFreeVarBlock(foreach.func,Nil).filterNot(ele => ele==foreach.v)++gpuTemps).distinct
       stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(foreach.in)+".size()"))
       tabWidth += 1
       val (foreachFunc,freeVars) = emitDevFunc(foreach.func, List(foreach.v))
@@ -646,14 +640,13 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
     case red: DeliteOpReduce[_] => {
       if(!isPrimitiveType(red.func.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for reduce.")
       if(currDim < 1) new GenerationFailedException("CudaGen: Reduction on the 1'st dimension is not supported yet.")
-      //val freeVars = (getFreeVarBlock(red.func,Nil).filterNot(ele => (ele==red.v._1)||(ele==red.v._2))++gpuTemps).distinct
       val (reducFunc,freeVars) = emitDevFunc(red.func, List(red.v._1, red.v._2))
       stream.println(addTab()+"%s reducVal = %s.apply(0);".format(remap(sym.Type),quote(red.in)))
       stream.println(addTab()+"for(int i=1; i<%s.size(); i++) {".format(quote(red.in)))
       tabWidth += 1
-	  if(freeVars.length==0)
+	    if(freeVars.length==0)
       	stream.println(addTab()+"reducVal = %s(reducVal,%s.apply(i));".format(reducFunc,quote(red.in)))
-	  else
+	    else
       	stream.println(addTab()+"reducVal = %s(reducVal,%s.apply(i),%s);".format(reducFunc,quote(red.in),freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
@@ -661,41 +654,41 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
     }
 
     case mapR:DeliteOpMapReduce[_,_,_] => {
-      if(!isPrimitiveType(mapR.mV.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
-      if(!isPrimitiveType(mapR.reduce.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
-      stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
-      emitBlock(mapR.map)
-      emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
-      stream.println(addTab()+"for(int cnt=1; cnt<%s.size(); cnt++) {".format(quote(mapR.in)))
-      tabWidth += 1
-      stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
-      emitBlock(mapR.map)
-      emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
-      emitBlock(mapR.reduce)
-      stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1.asInstanceOf[Sym[_]]),quote(getBlockResult(mapR.reduce))))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitValDef(sym,quote(mapR.rV._1))
-    }
-
-      /*
-      else {
-        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
-        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+      //if(!isPrimitiveType(mapR.mV.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
+      //if(!isPrimitiveType(mapR.reduce.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
+      val constrained = isPrimitiveType(mapR.mV.Type) && isPrimitiveType(mapR.reduce.Type)
+      if(constrained) {
         stream.println(addTab()+"int %s = %s.apply(0);".format(quote(mapR.mV),quote(mapR.in)))
-        addVarLink(getBlockResult(mapR.map),sym)
         emitBlock(mapR.map)
-        removeVarLink(getBlockResult(mapR.map),sym)
+        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
         stream.println(addTab()+"for(int cnt=1; cnt<%s.size(); cnt++) {".format(quote(mapR.in)))
         tabWidth += 1
         stream.println(addTab()+"%s = %s.apply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
         emitBlock(mapR.map)
+        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+        emitBlock(mapR.reduce)
+        stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1.asInstanceOf[Sym[_]]),quote(getBlockResult(mapR.reduce))))
+        tabWidth -= 1
+        stream.println(addTab()+"}")
+        emitValDef(sym,quote(mapR.rV._1))
+      }
+      else {
+        emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
+        emitValDef(mapR.rV._2.asInstanceOf[Sym[_]],quote(getBlockResult(mapR.map)))
+        //stream.println(addTab()+"%s %s = %s.dcApply(0);".format(remap(mapR.mV.Type),quote(mapR.mV),quote(mapR.in)))
+        //addVarLink(getBlockResult(mapR.map),sym)
+        //emitBlock(mapR.map)
+        //removeVarLink(getBlockResult(mapR.map),sym)
+        stream.println(addTab()+"for(int cnt=0; cnt<%s.size(); cnt++) {".format(quote(mapR.in)))
+        tabWidth += 1
+        stream.println(addTab()+"%s = %s.dcApply(cnt);".format(quote(mapR.mV),quote(mapR.in)))
+        emitBlock(mapR.map)
         emitBlock(mapR.reduce)
         tabWidth -= 1
         stream.println(addTab()+"}")
-        allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+        allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]],true)
       }
-      */
+    }
 
     case _ => super.emitNode(sym,rhs)
   }

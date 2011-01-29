@@ -88,6 +88,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
           // This is going to be changed when above TODOs are done.
           //if( (sym==kernelSymbol) && (isObjectType(sym.Type)) ) throw new RuntimeException("CudaGen: Changing the reference of output is not allowed within GPU kernel.")
 
+          /*
           val objRetType = (!isVoidType(sym.Type)) && (!isPrimitiveType(sym.Type))
           objRetType match {
             case true => throw new GenerationFailedException("CudaGen: If-Else cannot return object type.")
@@ -117,6 +118,54 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
               stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
               tabWidth -= 1
               stream.println(addTab()+"}")
+          }
+          */
+          val objRetType = (!isVoidType(sym.Type)) && (!isPrimitiveType(sym.Type))
+          objRetType match {
+            case true =>   //TODO: Remove this case
+              //Least check
+              (kernelSymbol==sym) match {
+                case true => throw new GenerationFailedException("CudaGen: If-Else cannot return object type as kernel output.")
+                case _ =>
+              }
+              stream.println(addTab() + "%s %s;".format(remap(sym.Type),quote(sym)))
+              stream.println(addTab() + "if (" + quote(c) + ") {")
+              tabWidth += 1
+              emitBlock(a)
+              stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(a))))
+              tabWidth -= 1
+              stream.println(addTab() + "} else {")
+              tabWidth += 1
+              emitBlock(b)
+              stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
+              tabWidth -= 1
+              stream.println(addTab()+"}")
+            case _ =>
+              isVoidType(sym.Type) match {
+                case true =>
+                  stream.println(addTab() + "if (" + quote(c) + ") {")
+                  tabWidth += 1
+                  emitBlock(a)
+                  tabWidth -= 1
+                  stream.println(addTab() + "} else {")
+                  tabWidth += 1
+                  emitBlock(b)
+                  tabWidth -= 1
+                  stream.println(addTab()+"}")
+                case false =>
+                  stream.println(addTab() + "%s %s;".format(remap(sym.Type),quote(sym)))
+                  stream.println(addTab() + "if (" + quote(c) + ") {")
+                  tabWidth += 1
+                  emitBlock(a)
+                  stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(a))))
+                  tabWidth -= 1
+                  stream.println(addTab() + "} else {")
+                  tabWidth += 1
+                  emitBlock(b)
+                  stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
+                  tabWidth -= 1
+                  stream.println(addTab()+"}")
+              }
           }
 
         case _ => super.emitNode(sym, rhs)

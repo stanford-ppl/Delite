@@ -384,7 +384,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
   // Generate & register temporary data structures (which could be the output) for GPU kernel
-  def emitVectorAlloc(newSym:Sym[_], length:String, isRow:String, data:String=null):Unit = {
+  def emitVectorAlloc(newSym:Sym[_], length:String, isRow:String, reset:Boolean, data:String=null):Unit = {
     //TODO: Check if both symbols are Vectors
 
     //Do not add the same temporary if it already exists
@@ -420,6 +420,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     if(data==null) {
       out.append("\t%s *devPtr;\n".format(remap(newSym.Type.typeArguments(0))))
       out.append("\tDeliteCudaMalloc((void**)%s,%s*sizeof(%s));\n".format("&devPtr",length,remap(newSym.Type.typeArguments(0))))
+      if(reset) out.append("\tDeliteCudaMemset(devPtr,0,%s*sizeof(%s));\n".format(length,remap(newSym.Type.typeArguments(0))))
       out.append("\t%s->length = %s;\n".format(quote(newSym),length))
       out.append("\t%s->isRow = %s;\n".format(quote(newSym),isRow))
       out.append("\t%s->data = devPtr;\n".format(quote(newSym)))
@@ -444,8 +445,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     }
     helperFuncString.append(out.toString)
   }
-  def emitVectorAllocSym(newSym:Sym[_], sym:Sym[_]): Unit = {
-    emitVectorAlloc(newSym, quote(sym)+"->length", quote(sym)+"->isRow")
+  def emitVectorAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false): Unit = {
+    emitVectorAlloc(newSym, quote(sym)+"->length", quote(sym)+"->isRow", reset)
   }
 
   def emitVectorAllocRef(newSym:Sym[_], sym:Sym[_]): Unit = {
@@ -486,13 +487,13 @@ trait CudaGenDataStruct extends CudaCodegen {
 	out.toString
   }
 
-  def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, data:String=null): Unit = {
+  def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null): Unit = {
     //TODO: Check if both symbols are Matrices
 
     //Do not add the same temporary if it already exists
     if(gpuTemps.contains(newSym)) return
 
-	helperFuncIdx += 1
+	  helperFuncIdx += 1
 
     val out = new StringBuilder
 
@@ -519,6 +520,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     if(data==null) {
       out.append("\t%s *devPtr;\n".format(remap(newSym.Type.typeArguments(0))))
       out.append("\tDeliteCudaMalloc((void**)%s,%s*%s*sizeof(%s));\n".format("&devPtr",numRows,numCols,remap(newSym.Type.typeArguments(0))))
+      if(reset) out.append("\tDeliteCudaMemset(devPtr,0,%s*%s*sizeof(%s));\n".format(numRows,numCols,remap(newSym.Type.typeArguments(0))))
       out.append("\t%s->numRows = %s;\n".format(quote(newSym),numRows))
       out.append("\t%s->numCols = %s;\n".format(quote(newSym),numCols))
       out.append("\t%s->data = devPtr;\n".format(quote(newSym)))
@@ -543,8 +545,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     }
     helperFuncString.append(out.toString)
   }
-  def emitMatrixAllocSym(newSym:Sym[_], sym:Sym[_]): Unit = {
-    emitMatrixAlloc(newSym, quote(sym)+"->numRows", quote(sym)+"->numCols")
+  def emitMatrixAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false): Unit = {
+    emitMatrixAlloc(newSym, quote(sym)+"->numRows", quote(sym)+"->numCols",reset)
   }
 
   def emitMatrixAllocRef(newSym:Sym[_], sym:Sym[_]): Unit = {

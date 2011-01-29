@@ -304,18 +304,18 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.copyDataStructureDtoHBack(sym)
   }
 
-  override def allocOutput(newSym: Sym[_], sym: Sym[_]) : Unit = remap(newSym.Type) match {
-    case "Matrix<int>" => emitMatrixAllocSym(newSym,sym)
-    case "Matrix<long>" => emitMatrixAllocSym(newSym,sym)
-    case "Matrix<float>" => emitMatrixAllocSym(newSym,sym)
-    case "Matrix<double>" => emitMatrixAllocSym(newSym,sym)
-    case "Matrix<bool>" => emitMatrixAllocSym(newSym,sym)
-    case "Vector<int>" => emitVectorAllocSym(newSym,sym)
-    case "Vector<long>" => emitVectorAllocSym(newSym,sym)
-    case "Vector<float>" => emitVectorAllocSym(newSym,sym)
-    case "Vector<double>" => emitVectorAllocSym(newSym,sym)
-    case "Vector<bool>" => emitVectorAllocSym(newSym,sym)
-    case _ => super.allocOutput(newSym,sym)    
+  override def allocOutput(newSym: Sym[_], sym: Sym[_], reset: Boolean = false) : Unit = remap(newSym.Type) match {
+    case "Matrix<int>" => emitMatrixAllocSym(newSym,sym,reset)
+    case "Matrix<long>" => emitMatrixAllocSym(newSym,sym,reset)
+    case "Matrix<float>" => emitMatrixAllocSym(newSym,sym,reset)
+    case "Matrix<double>" => emitMatrixAllocSym(newSym,sym,reset)
+    case "Matrix<bool>" => emitMatrixAllocSym(newSym,sym,reset)
+    case "Vector<int>" => emitVectorAllocSym(newSym,sym,reset)
+    case "Vector<long>" => emitVectorAllocSym(newSym,sym,reset)
+    case "Vector<float>" => emitVectorAllocSym(newSym,sym,reset)
+    case "Vector<double>" => emitVectorAllocSym(newSym,sym,reset)
+    case "Vector<bool>" => emitVectorAllocSym(newSym,sym,reset)
+    case _ => super.allocOutput(newSym,sym,reset)
   }
 
   override def allocReference(newSym: Sym[_], sym: Sym[_]) : Unit = remap(newSym.Type) match {

@@ -728,7 +728,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
         currDim += 1
         val currDimStr = getCurrDimStr()
         setCurrDimLength(quote(len))
-        emitVectorAlloc(sym,"%s".format(quote(len)),"true") //needs to allocate with new symbol
+        emitVectorAlloc(sym,"%s".format(quote(len)),"true",false) //needs to allocate with new symbol
 		//if(currDim == 2) {
 		//	stream.println(addTab()+"%s %s_save = %s.data;".format(remap(sym.Type.typeArguments(0)),quote(sym),quote(sym)))
         //	stream.println(addTab()+"%s.data += %s*%s;".format(quote(sym),quote(len),getPrevDimStr()))
@@ -773,7 +773,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       stream.println(addTab()+"%s.update(%s,%s.apply(%s));".format(quote(sym),currDimStr,quote(x),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s->length".format(quote(x)),"!%s->isRow".format(quote(x)))
+      emitVectorAlloc(sym,"%s->length".format(quote(x)),"!%s->isRow".format(quote(x)),false)
       currDim -= 1
 
     case VectorRepmat(x,i,j) =>
@@ -787,7 +787,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       stream.println(addTab()+"%s.update(i,j,%s.apply(%s));".format(quote(sym),quote(x),"j%"+quote(x)+".length"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s".format(quote(i)),"%s->length*%s".format(quote(x),quote(j)))
+      emitMatrixAlloc(sym,"%s".format(quote(i)),"%s->length*%s".format(quote(x),quote(j)),false)
       currDim -= 1
 
     case VectorOuter(x,y) =>
@@ -801,7 +801,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       tabWidth -= 1; stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s->length".format(quote(x)),"%s->length".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->length".format(quote(x)),"%s->length".format(quote(x)),false)
       currDim -= 1
 
     case _ => super.emitNode(sym, rhs)

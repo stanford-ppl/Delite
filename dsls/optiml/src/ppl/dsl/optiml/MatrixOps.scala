@@ -797,7 +797,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
         callKernel = "cublasSgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
       else
         throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatrixMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0))))
-      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(y)))
+      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(y)),false)
       emitLibCall(sym,List(callStream,callKernel))
     
     case MatrixTimesVector(x,y) =>
@@ -809,7 +809,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
         callKernel = "cublasSgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
       else
         throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Matrix*Vector CUBLAS library)".format(remap(x.Type.typeArguments(0))))
-      emitVectorAlloc(sym,"%s->numRows".format(quote(x)),"false")
+      emitVectorAlloc(sym,"%s->numRows".format(quote(x)),"false",false)
       emitLibCall(sym,List(callStream,callKernel))
 
 	  // The ops that call through to the underlying real data structure
@@ -859,7 +859,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s".format(quote(w)),"%s".format(quote(w)))
+      emitMatrixAlloc(sym,"%s".format(quote(w)),"%s".format(quote(w)),false)
       currDim -= 1
 
     case MatrixTranspose(x) =>
@@ -873,7 +873,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s->numCols".format(quote(x)),"%s->numRows".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->numCols".format(quote(x)),"%s->numRows".format(quote(x)),false)
       currDim -= 1
 
     case MatrixSumCol(x) =>
@@ -891,7 +891,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"%s.update(%s,reducVal);".format(quote(sym),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true")
+      emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true",false)
       currDim -= 1
 
     case m@MatrixSigmoidF(x) =>
@@ -903,13 +903,29 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
 	    val (sigmoidFunc,freeVars) = emitDevFunc(m.func,List(m.v))
       stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
       stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
-	  if(freeVars.length == 0)
+	    if(freeVars.length == 0)
       	stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
-	  else
+	    else
       	stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)),%s);".format(quote(sym),sigmoidFunc,quote(x),freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(x)),false)
+      currDim -= 1
+
+    case MatrixPlusEquals(x,y) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->numCols".format(quote(x)))
+      stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
+      tabWidth += 1
+      stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(i,%s,%s.apply(i,%s)+%s.apply(i,%s));".format(quote(sym),currDimStr,quote(x),currDimStr,quote(y),currDimStr))
+	    tabWidth -= 1
+      stream.println(addTab()+"}")
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitVectorAllocRef(sym,x.asInstanceOf[Sym[_]])
       currDim -= 1
 
     case _ => super.emitNode(sym, rhs)
