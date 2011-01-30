@@ -97,8 +97,8 @@ trait ScalaGenIndexVector2Ops extends ScalaGenBase {
     case IndexVector2New(rowInd, colInd) =>
       emitValDef(sym, "new " + remap(manifest[IndexVector2Impl]) + "(" + quote(rowInd) +  "," + quote(colInd) + ")")
     case IndexVector2Wildcard() => emitValDef(sym, "IndexVectorWCImpl")
-    case IndexVector2RowInd(x) => emitValDef(sym, quote(x) + ".rowInd()")
-    case IndexVector2ColInd(x) => emitValDef(sym, quote(x) + ".colInd()")
+    case IndexVector2RowInd(x) => emitValDef(sym, quote(x) + ".rowInd")
+    case IndexVector2ColInd(x) => emitValDef(sym, quote(x) + ".colInd")
     case _ => super.emitNode(sym, rhs)
   }
 }

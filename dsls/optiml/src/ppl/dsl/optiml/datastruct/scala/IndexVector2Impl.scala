@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.datastruct.scala
 
-class IndexVector2Impl(rows: IndexVector, cols: IndexVector) {
+class IndexVector2Impl(rows: IndexVector, cols: IndexVector) extends IndexVector2 {
   private var _rowInd: IndexVector = null
   private var _colInd: IndexVector = null
 
