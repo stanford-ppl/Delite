@@ -42,26 +42,15 @@ object GDAVectorized extends DeliteApplication with OptiMLExp {
     val mu0 = mu0_num / y_zeros
     val mu1 = mu1_num / y_ones
 
-    val x0 = Matrix((0::x.numRows) map { i => if (y(i) == true) NilV[Double] else x(i) })
-    val x0t = x0 filterRows { row => row.isInstanceOfL[NilVector[Double]] }
-    val x1 = Matrix((0::x.numRows) map { i => if (y(i) == false) NilV[Double] else x(i) })
-    val x1t = x1 filterRows { row => row.isInstanceOfL[NilVector[Double]] }
+    val x0 = Matrix((0::x.numRows) map { i => if (y(i) == true) Vector.zeros(x.numCols) else x(i) })
+    val x0t = x0 filterRows { row => !(row.sum == 0.0) }
+    val x1 = Matrix((0::x.numRows) map { i => if (y(i) == false) Vector.zeros(x.numCols) else x(i) })
+    val x1t = x1 filterRows { row => !(row.sum == 0.0) }
 
     val x0tt = x0t - mu0.replicate(y_zeros.asInstanceOfL[Int], 1)
     val x1tt = x1t - mu1.replicate(y_ones.asInstanceOfL[Int], 1)
 
     val sigma = x0tt.t*x0tt + x1tt.t*x1tt
-
-    /* calculate covariance matrix sigma */
-    /* x(i) is a row vector for us, while it is defined a column vector in the formula */
-//    val sigma = sum(0, m) { i =>
-//      if (y(i) == false){
-//       (((x(i)-mu0).t)**(x(i)-mu0))
-//      }
-//      else{
-//       (((x(i)-mu1).t)**(x(i)-mu1))
-//      }
-//    }
 
     // TODO: nothing is really preventing toc from getting hoisted upwards in the schedule, resulting in the wrong time
     // unless the above sum is a reflectEffect
