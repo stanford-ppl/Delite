@@ -38,7 +38,7 @@ trait BinarizedGradientTemplateFuncs {
         matches += 1f
       }
       else {
-        limit += -1
+        limit = limit - 1
         if (limit <= 0) {
           return (match_thresh - 0.000001f) //sunk below the limit of misses, early terminate
         }
