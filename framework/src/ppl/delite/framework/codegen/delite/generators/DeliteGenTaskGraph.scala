@@ -195,7 +195,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     val outputs = sym
     
     
-    val inputs = inVals ++ inVars
+    val inputs = deliteInputs
     //val kernelContext = getEffectsKernel(sym, rhs)
     val kernelContext = getEffectsBlock(sym) //ifGenAgree( _.getEffectsBlock(sym), true )
     val inMutating = (inputs flatMap { mutating(kernelContext, _) }).distinct

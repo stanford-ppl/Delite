@@ -36,6 +36,7 @@ def main():
     parser.add_option("-t", "--threads", dest="threads", default="_all", help="a list of comma separated thread counts (e.g. -t 1,2,4)")
     parser.add_option("-s", "--skip", dest="skip", default="_none", help="skips smp and/or gpu portion of gathering numbers (e.g. -s gpu)")
     parser.add_option("-k", "--keep-going", dest="keep_going", action="store_true", help="keep going even if there is a abnormal exit code")
+    parser.add_option("--input-size", dest="input_size", default="icml", help="specify which dataset to use when collecting numbers")
     parser.add_option("--nv", dest="no_variants", action="store_true" , help="disables variant support in the framework")
     parser.add_option("--home", dest="delite_home", default="_env", help="allows you to specificy a different Delite Home than the one that should be specificed in the environment");
 
@@ -81,6 +82,14 @@ def loadOptions(opts):
         props["delite.home"] = DELITE_HOME
         
     options['keep-going'] = opts.keep_going
+    options['input-size'] = opts.input_size
+    
+    print """
+==============================
+==   options
+=============================="""
+    for k in options.keys():
+        print "options[" + k + "] = " + str(options[k])
 
 def loadProps(options):
     #load and check all the required environment variables
@@ -94,6 +103,11 @@ def loadProps(options):
         props[k] = v
     if(options['verbose']):
         print "loaded the following properties from delite.properties"
+
+    print """
+=============================
+==  Props
+============================="""
     for k in props.keys():
         print k + ":" + props[k]
 
@@ -117,7 +131,7 @@ def launchApps(options):
         os.putenv('PATH', props['intel.icc'] + ":" + os.getenv('PATH'))
         print "==  Generating DEG file with options: " + opts
         ecode = os.system(props['delite.home'] + "/bin/gen " + classes[app])
-        if ecode != 0 and options['keep-going'] == False:
+        if ecode != 0 and options['keep-going'] == None:
             print "Detected abnormal exit code, exiting"
             exit(-1)
         #do it for each config of delite
@@ -131,7 +145,7 @@ def launchApps(options):
                 print "== with options: " + opts + "\n"
                 os.putenv("SCALA_HOME", props['scala.vanilla.home'])
                 ecode = os.system(props['delite.home'] + "/bin/exec " + app + ".deg " + params[app])
-                if ecode != 0 and options['keep-going'] == False:
+                if ecode != 0 and options['keep-going'] == None:
                     print "Detected abnormal exit code, exiting"
                     exit(-1)
 
@@ -146,7 +160,7 @@ def launchApps(options):
             print "== with options: " + opts + "\n"
             os.putenv("SCALA_HOME", props['scala.vanilla.home'])
             ecode = os.system(props['delite.home'] + "/bin/exec " + app + ".deg " + params[app])
-            if ecode != 0 and options['keep-going'] == False:
+            if ecode != 0 and options['keep-going'] == None:
                 print "Detected abnormal exit code, exiting"
                 exit(-1)
  		
@@ -175,7 +189,7 @@ def loadParams(options):
     else:
         hostname = 'default'
 		
-    f = open(props['delite.home'] + '/benchmark/config/datasets.' + hostname, 'r')
+    f = open(props['delite.home'] + '/benchmark/config/datasets.' + hostname + "." + options['input-size'], 'r')
     for line in f:
         settings = line.split('|')
         app = settings.pop(0)
