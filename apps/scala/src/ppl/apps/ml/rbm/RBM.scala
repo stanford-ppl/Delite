@@ -12,6 +12,7 @@ object RBM extends DeliteApplication with OptiMLExp {
   }
 
   def main() = {
+    reseed
 
     if (args.length < 3) print_usage
 
