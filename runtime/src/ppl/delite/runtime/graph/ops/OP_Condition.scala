@@ -53,7 +53,7 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
         thenGraph, thenValue, elseGraph, elseValue)
         r.dependencyList = dependencyList
         r.inputList = inputList
-        assert(getOutputs == List(id), "outputs for " + this + " were expected to be " + List(id) + " but are " + getOutputs)
+        assert(getOutputs == List(id), "outputs for " + this + " were expected to be " + List(id) + " but are " + getOutputs) //TR FIXME
         r.outputList = List(r.id)
         r.consumerList = consumerList
         r.inputSyms = inputSyms
