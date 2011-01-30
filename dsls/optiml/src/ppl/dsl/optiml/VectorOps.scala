@@ -455,13 +455,18 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val func = reifyEffects(v._1 * conv(v._2))
   }
 
-  //TR TODO
-  case class VectorTimesScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
-    extends DeliteOpMap[A,A,Vector] {
-
-    val alloc = reifyEffects(Vector[A](in.length, in.isRow))
-    val v = fresh[A]
-    val func = reifyEffects(v * y)
+  abstract case class VectorTimesScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A]) extends DeliteOpVectorLoop[A] {
+    def mev = manifest[A]
+    def aev = implicitly[Arith[A]]
+  }
+  class VectorTimesScalarFresh[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A]) extends VectorTimesScalar[A](in,y) {
+    val size = in.length
+    val isRow = in.isRow
+    val v = fresh[Int]
+    val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
+      alloc = reifyEffects(Vector[A](size, isRow)),
+      func = reifyEffects(in(v) * y)
+    )
   }
 
   //TR TODO
@@ -516,6 +521,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     )
   }
 
+  //TR TODO
   case class VectorAbs[A:Manifest:Arith](in: Exp[Vector[A]])
     extends DeliteOpMap[A,A,Vector] {
 
@@ -524,6 +530,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val func = reifyEffects(v.abs)
   }
 
+  //TR TODO
   case class VectorExp[A:Manifest:Arith](in: Exp[Vector[A]])
     extends DeliteOpMap[A,A,Vector] {
 
@@ -640,6 +647,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     // FIXME: VectorSum might not actually be triggered because
     case e@VectorSum(x) => toAtom(new VectorSum(f(x))(e.mev,e.aev) { val size = f(e.size); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody[A](e.body.asInstanceOf[Def[A]], f) })
     case e@VectorTimes(x,y) => toAtom(new VectorTimes(f(x),f(y))(e.mev,e.aev) { val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
+    case e@VectorTimesScalar(x,y) => toAtom(new VectorTimesScalar(f(x),f(y))(e.mev,e.aev) { val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
     case Reflect(e@VectorPPrint(x), Global(), es) => reflectMirrored(Reflect(VectorPPrint(f(x))(f(e.block)), Global(), f(es)))
     // below are read/write effects TODO: find a general approach to treating them!!!!
     case Reflect(VectorApply(l,r), Read(rs), es) => reflectMirrored(Reflect(VectorApply(f(l),f(r)), Read(f onlySyms rs), f(es)))
@@ -706,7 +714,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_minus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = reflectRead(x/*,y*/)(VectorMinusScalar(x,y))
   def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectRead(x,y)(new VectorTimesFresh(x,y))
   def vector_times_withconvert[A:Manifest:Arith,B:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], conv: Exp[B] => Exp[A]) = reflectRead(x,y)(VectorTimesWithConvert(x,y,conv)) // TODO: de-hoas
-  def vector_times_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = reflectRead(x/*,y*/)(VectorTimesScalar(x,y))
+  def vector_times_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = reflectRead(x/*,y*/)(new VectorTimesScalarFresh(x,y))
   def vector_times_matrix[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Matrix[A]]) = reflectRead(x,y)(VectorTimesMatrix(x,y))
   def vector_outer[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectRead(x,y)(VectorOuter(x,y))
   def vector_dot_product[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectRead(x,y)(VectorDotProduct(x,y))
@@ -806,18 +814,25 @@ trait VectorOpsExpOpt extends VectorOpsExp {
   // these are essential for fusing:
 
   override def vector_length[A:Manifest](x: Exp[Vector[A]]) = x match {
+    case Def(Reflect(e @ VectorTimes(_,_), _,_)) => e.asInstanceOf[DeliteOpVectorLoop[A]].size // FIXME: in general this is unsafe, but hey...
+    case Def(Reflect(e @ VectorObjectZeros(l), _,_)) => l // FIXME: in general this is unsafe, but hey...
+    case Def(Reflect(e @ VectorClone(a), _,_)) => vector_length(a) // FIXME: in general this is unsafe, but hey...
     case Def(e: DeliteOpVectorLoop[A]) => e.size
     case Def(VectorObjectZeros(l)) => l
+    case Def(VectorClone(a)) => vector_length(a)
     case Def(VectorObjectRange(s,e,d,r)) => (e - s + d - 1)
-    //case Def(Reflect(VectorNew(l,r), _)) => l
+    case Def(MatrixVView(x, start, stride, l, r)) => l
+    case Def(MatrixGetRow(x,i)) => x.numCols
     case _ => super.vector_length(x)
   }
 
   override def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = x match {
     case Def(e: DeliteOpVectorLoop[A]) => e.isRow
     //case Def(Reflect(VectorObjectZeros(l,r), _)) => r
+    case Def(VectorClone(a)) => vector_isRow(a)
     case Def(VectorObjectRange(s,e,d,r)) => r
-    //case Def(Reflect(VectorNew(l,r), _)) => r
+    case Def(MatrixVView(x, start, stride, l, r)) => r
+    case Def(MatrixGetRow(x,i)) => Const(true)
     case _ => super.vector_isRow(x)
   }
   

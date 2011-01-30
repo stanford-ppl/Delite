@@ -316,6 +316,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val mM = manifest[MatrixImpl[A]]
   }
 
+/*
   case class MatrixTimesVector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_times_vector_impl(x,y))) {
 
@@ -323,6 +324,26 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def mev = manifest[A]
     def aev = implicitly[Arith[A]]
   }
+*/
+
+  abstract case class MatrixTimesVector[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Vector[A]]) extends DeliteOpVectorLoop[A] {
+    def mV = manifest[VectorImpl[A]]
+    def mev = manifest[A]
+    def aev = implicitly[Arith[A]]
+  }
+
+  class MatrixTimesVectorFresh[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Vector[A]]) extends MatrixTimesVector(inA, inB) {
+    val size = inA.numRows
+    val isRow = unit(false)
+    val v = fresh[Int]
+    val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
+      alloc = reifyEffects(Vector[A](size, isRow)),
+      func = reifyEffects(inA.getRow(v) *:* inB)
+    )
+  }
+  
+  
+  
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) {
 
@@ -652,7 +673,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_minus_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectRead(x,y)(MatrixMinusScalar(x,y))
   def matrix_times[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectRead(x,y)(MatrixTimes(x,y))
   def matrix_multiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectRead(x,y)(MatrixMultiply(x,y))
-  def matrix_times_vector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = reflectRead(x,y)(MatrixTimesVector(x,y))
+  def matrix_times_vector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = reflectRead(x,y)(new MatrixTimesVectorFresh(x,y))
   def matrix_times_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectRead(x,y)(MatrixTimesScalar(x,y))
   def matrix_divide[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectRead(x,y)(MatrixDivide(x,y))
   def matrix_divide_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectRead(x,y)(MatrixDivideScalar(x,y))
