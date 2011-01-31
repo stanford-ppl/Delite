@@ -39,10 +39,10 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     // Generate image
     val img = Matrix[Double](rows, cols)
     imgPaintSunset(img, colors)
-    //MLOutputWriter.write(img, "src.pgr")
+    MLOutputWriter.writeImgPgm(img, "src.pgr")
     imgCorrupt(img, sigma)
-//    MLOutputWriter.writeImgPgm(img, "noise.pgm")
-
+    MLOutputWriter.writeImgPgm(img, "noise.pgm")
+    
     // Load in a raw image that we generated from GraphLab
 
     // Make sure we read in the raw file correctly
@@ -65,6 +65,8 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
       else if (smoothing == "square") {
         binaryFactorSetAgreement(edgePotential, lambda)
       }
+      
+      edgePotential.pprint
 
       var count = unit(1)
       
@@ -85,7 +87,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           vdata.belief.copyFrom(0, unaryFactorNormalize(vdata.belief))
 
 	//println("mult")
-	//factorPrint(vdata.belief)
+	//vdata.belief.pprint
 
           // Send outbound messages
           for (e <- v.edges) {
@@ -104,10 +106,17 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
             // Compute message residual
             val residual = unaryFactorResidual(dampMsg, out.message)
 
+            /*if(count % 100000 == 0) {
+            print("damping")
+            msg.pprint
+             out.message.pprint
+             dampMsg.pprint
+             }*/
+            
             // Set the message
            out.message.copyFrom(0, dampMsg)
             
-             if(count % 10000 == 0) {
+             if(count % 100000 == 0) {
              println(count)
              println(residual)
              }
@@ -127,7 +136,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
       //PerformanceTimer.stop("LBP")
       //PerformanceTimer.print("LBP")
-  //    MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
+      MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
   //  }
     /* PerformanceTimer2.summarize("BM")
    PerformanceTimer2.summarize("CD")
@@ -135,12 +144,6 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
    PerformanceTimer2.summarize("D")
    PerformanceTimer2.summarize("R") */
   }
-
-def factorPrint(f: Rep[Vector[Double]]) {
-	for(i <- 0 until f.length) {
-	println(f(i))
-}
-}
 
   def constructGraph(img: Rep[Matrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Rep[Graph[MessageVertex, MessageEdge]] = {
     val g = Graph[MessageVertex, MessageEdge]()

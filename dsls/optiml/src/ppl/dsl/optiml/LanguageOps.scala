@@ -282,21 +282,19 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
   def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices
 
-    var tasks = Vertices[Vertex](vertices.length)
+    val tasks = Vertices[Vertex](vertices.length)
     tasks.copyFrom(0, vertices.asInstanceOfL[Vector[Vertex]])
     val seen = Set[Vertex]()
 
     while(tasks.length > 0) {
       vertices.foreach(block)
-      val nextTasks = Vertices[Vertex](0)
+      tasks.clear()
 
       for(i <- 0 until vertices.length) {
         val vtasks = vertices(i).tasks
-	println(vtasks.length)
         for(j <- 0 until vtasks.length) {
           if(!seen.contains(vtasks(j))) {
-            println("adding")
-            nextTasks.insert(nextTasks.length, vtasks(j))
+            tasks.insert(tasks.length, vtasks(j))
             seen.add(vtasks(j))
           }
         }
@@ -304,10 +302,7 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
         vertices(i).clearTasks()
       }
 
-	seen.clear()
-    println("next")
-     println(nextTasks.length)
-      tasks = nextTasks
+      seen.clear()
     }
   }
 

@@ -1,5 +1,7 @@
-apps = ['gda', 'nb', 'linreg', 'kmeans', 'rbm']#, 'lbp','svm']
-procs = [ 1, 2, 4, 8, 16]
+apps = ['gda', 'nb', 'linreg', 'kmeans', 'rbm', 'svm']#, 'lbp']
+delite2_procs = [ 1, 2, 4, 8, 16]
+delite1_procs = [ 1, 2, 4, 8]
+matlab1_procs = [ 1, 2, 4, 8]
 dataPath = "C:/Users/hchafi/Documents/Dropbox/ppl/ppl/delite/data/"
 outputFolder = "C:/Users/hchafi/Documents/Dropbox/ppl/ppl/delite/data/"
 
@@ -52,6 +54,9 @@ separatorStyle = easyxf(
     'pattern: pattern fine_dots, fore_colour light_orange;'
 )
 
+missingNumberStyle = easyxf (
+    'pattern: pattern solid, fore_colour red;'
+)
 
 # this is some configuration for where to 
 # start printing headers and so forth
@@ -61,6 +66,7 @@ app_data_pts = 2
 
 sequentialTimes = {}
 delite1Times = {}
+matlab1Times = {}
 
 ##
 # prints the Dashboard Excel Header
@@ -137,22 +143,46 @@ def main():
     # process times for each apps in this folder
     
     #TFLOP section
-    dataSheet.write_merge(rowIdx, rowIdx + len(procs)*2, hdr_y_width - 3, hdr_y_width - 3, "TFLOP", headerSystemOddStyle)
+    dataSheet.write_merge(rowIdx, rowIdx + len(delite1_procs) + len(delite2_procs) + len(matlab1_procs) + 5, hdr_y_width - 3, hdr_y_width - 3, "TFLOP", headerSystemOddStyle)
     
     #Delite 2.0 section
-    dataSheet.write_merge(rowIdx, rowIdx + len(procs) - 1, hdr_y_width - 2, hdr_y_width - 2, "Delite 2.0", headerRuntimeOddStyle)
+    dataSheet.write_merge(rowIdx, rowIdx + len(delite2_procs), hdr_y_width - 2, hdr_y_width - 2, "Delite 2.0", headerRuntimeOddStyle)
     appIdx = 0
     for app in apps:
         # load application 
         if options.verbose:
             print "Loading times for application: " + app
         procIdx = 0
-        for proc in procs:
+        for proc in delite2_procs:
             app_row = rowIdx + procIdx
             # put num threads in column
             if appIdx == 0:
                 dataSheet.row(app_row).write(hdr_y_width - 1, str(proc) + " CPU")
-            appFile = open(dataPath + timesFolderDate + "/" + app + "-smp-" + str(proc) + ".times", 'r')
+            filename = dataPath + timesFolderDate + "/" + app + "-smp-" + str(proc) + ".times"
+            if os.path.isfile(filename):
+                appFile = open(filename, 'r')
+                numbers = appFile.readlines()
+                appFile.close()
+                # convert to times
+                times = [float(t) for t in numbers]
+                times = times[5:len(numbers)]
+                mean = numpy.mean(times)
+                min = numpy.amin(times)
+                max = numpy.amax(times)
+                if proc == 1:
+                    sequentialTimes[app] = mean
+                app_col = hdr_y_width + appIdx * app_data_pts
+                dataSheet.row(app_row).write(app_col, mean)
+                dataSheet.row(app_row).write(app_col + 1, sequentialTimes[app]/mean)
+            else:
+                dataSheet.row(app_row).write(app_col, "", missingNumberStyle)
+                dataSheet.row(app_row).write(app_col + 1, "", missingNumberStyle)
+            procIdx += 1
+        if appIdx == 0:
+            dataSheet.row(rowIdx + len(delite2_procs)).write(hdr_y_width - 1, "GPU")
+        filename = dataPath + timesFolderDate + "/" + app + "-gpu" + ".times"
+        if os.path.isfile(filename):
+            appFile = open(filename, 'r')
             numbers = appFile.readlines()
             appFile.close()
             # convert to times
@@ -161,22 +191,20 @@ def main():
             mean = numpy.mean(times)
             min = numpy.amin(times)
             max = numpy.amax(times)
-            if proc == 1:
-                sequentialTimes[app] = mean
-            app_col = hdr_y_width + appIdx * app_data_pts
-            
-            dataSheet.row(app_row).write(app_col, mean)
-            dataSheet.row(app_row).write(app_col + 1, sequentialTimes[app]/mean)
-            procIdx += 1
+            dataSheet.row(app_row+1).write(app_col, mean)
+            dataSheet.row(app_row+1).write(app_col + 1, sequentialTimes[app]/mean)        
+        else:
+            dataSheet.row(app_row+1).write(app_col, "", missingNumberStyle)
+            dataSheet.row(app_row+1).write(app_col + 1, "", missingNumberStyle)                
         appIdx += 1
-    rowIdx += len(procs)
+    rowIdx += len(delite2_procs) + 1
     
     #Separator
     dataSheet.write_merge(rowIdx, rowIdx, hdr_y_width - 2, hdr_y_width + len(apps)*2 - 1, "", separatorStyle)
     rowIdx += 1
     
     #Delite 1.0 section
-    dataSheet.write_merge(rowIdx, rowIdx + len(procs) - 1, hdr_y_width - 2, hdr_y_width - 2, "Delite 1.0", headerRuntimeEvenStyle)
+    dataSheet.write_merge(rowIdx, rowIdx + len(delite1_procs), hdr_y_width - 2, hdr_y_width - 2, "Delite 1.0", headerRuntimeEvenStyle)
     
     if options.verbose:
         print "**************************************\nGenerating Delite 1.0 Numbers\n******************************"
@@ -185,10 +213,14 @@ def main():
     for line in f:
         tokens = line.split(' ')
         app = tokens.pop(0)
-        delite1Times[app] = {}  
-        for p in procs:
-            time = tokens.pop(0)
-            delite1Times[app][p] = float(time)            
+        delite1Times[app] = {}
+        #gpu cases
+        if len(tokens) == 1:
+            delite1Times[app][1] = float(tokens.pop(0))
+        else:
+            for p in delite1_procs:
+                time = tokens.pop(0)
+                delite1Times[app][p] = float(time)            
     f.close()
     appIdx = 0
     for app in apps:
@@ -196,7 +228,7 @@ def main():
         if options.verbose:
             print "Loading times for application: " + app
         procIdx = 0
-        for proc in procs:
+        for proc in delite1_procs:
             app_row = rowIdx + procIdx
             # put num threads in column
             if appIdx == 0:
@@ -205,8 +237,62 @@ def main():
             dataSheet.row(app_row).write(app_col, delite1Times[app][proc])
             dataSheet.row(app_row).write(app_col + 1, delite1Times[app][1]/delite1Times[app][proc])
             procIdx += 1
+        if appIdx == 0:
+            dataSheet.row(app_row + 1).write(hdr_y_width - 1, "GPU") 
+        dataSheet.row(app_row + 1).write(app_col, delite1Times[app + '-gpu'][1])
+        dataSheet.row(app_row + 1).write(app_col + 1, delite1Times[app][1]/delite1Times[app + '-gpu'][1])
         appIdx += 1
-    rowIdx += len(procs)
+    rowIdx += len(delite1_procs) + 1
+    
+    #Separator
+    dataSheet.write_merge(rowIdx, rowIdx, hdr_y_width - 2, hdr_y_width + len(apps)*2 - 1, "", separatorStyle)
+    rowIdx += 1
+    
+    # Matlab Section
+    dataSheet.write_merge(rowIdx, rowIdx + len(delite1_procs) +1, hdr_y_width - 2, hdr_y_width - 2, "Matlab", headerRuntimeOddStyle)
+           
+    if options.verbose:
+        print "**************************************\nGenerating Matlab Numbers\n******************************"
+    #load the times
+    f = open(dataPath +  "matlab1.times", 'r')
+    for line in f:
+        tokens = line.split(' ')
+        app = tokens.pop(0)
+        matlab1Times[app] = {}
+        #gpu cases
+        if len(tokens) == 1:
+            matlab1Times[app][1] = float(tokens.pop(0))
+        else:
+            for p in matlab1_procs:
+                time = tokens.pop(0)
+                matlab1Times[app][p] = float(time)            
+    f.close()
+    appIdx = 0
+    for app in apps:
+        # load application 
+        if options.verbose:
+            print "Loading times for application: " + app
+        procIdx = 0
+        for proc in matlab1_procs:
+            app_row = rowIdx + procIdx
+            # put num threads in column
+            if appIdx == 0:
+                dataSheet.row(app_row).write(hdr_y_width - 1, str(proc) + " CPU")        
+            app_col = hdr_y_width + appIdx * app_data_pts            
+            dataSheet.row(app_row).write(app_col, matlab1Times[app][proc])
+            dataSheet.row(app_row).write(app_col + 1, matlab1Times[app][1]/matlab1Times[app][proc])
+            procIdx += 1
+        if appIdx == 0:
+            dataSheet.row(app_row + 1).write(hdr_y_width - 1, "GPU") 
+            dataSheet.row(app_row + 2).write(hdr_y_width - 1, "Jacket") 
+        dataSheet.row(app_row + 1).write(app_col, matlab1Times[app + '-gpu'][1])
+        dataSheet.row(app_row + 1).write(app_col + 1, matlab1Times[app][1]/matlab1Times[app + '-gpu'][1])
+        dataSheet.row(app_row + 2).write(app_col, matlab1Times[app + '-jacket'][1])
+        dataSheet.row(app_row + 2).write(app_col + 1, matlab1Times[app][1]/matlab1Times[app + '-jacket'][1])
+        appIdx += 1
+    rowIdx += len(matlab1_procs) + 2
+    
+    
         
     if options.verbose:
         print "**************************************\nGenerating dashboard excel spreadsheet to %s..." % xlFile    

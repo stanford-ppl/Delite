@@ -101,6 +101,7 @@ trait VectorOps extends DSLType with Variables {
     def remove(pos: Rep[Int]) = removeAll(pos,1)
     def removeAll(pos: Rep[Int], len: Rep[Int]) = vector_removeall(x,pos,len)
     def trim() = vector_trim(x)
+    def clear() = vector_clear(x)
 
     // arithmetic operations
     def +(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_plus(x,y)
@@ -182,6 +183,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_insertall[A:Manifest](x: Rep[Vector[A]], pos: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
   def vector_removeall[A:Manifest](x: Rep[Vector[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit]
   def vector_trim[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
+  def vector_clear[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
 
   def vector_plus[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_plus_scalar[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
@@ -245,6 +247,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   case class VectorInsertAll[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) extends Def[Unit]
   case class VectorRemoveAll[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], len: Exp[Int]) extends Def[Unit]
   case class VectorTrim[A:Manifest](x: Exp[Vector[A]]) extends Def[Unit]
+  case class VectorClear[A:Manifest](x: Exp[Vector[A]]) extends Def[Unit]
   case class VectorMutableTrans[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
   case class VectorClone[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
   // TODO: right now we just use the underlying data structure sort, but we should implement our own fast parallel sort
@@ -577,7 +580,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_insertall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorInsertAll(reflectWrite(x), pos, reflectRead(y)))
   def vector_removeall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], len: Exp[Int]) = reflectMutation(VectorRemoveAll(reflectWrite(x), pos, len))
   def vector_trim[A:Manifest](x: Exp[Vector[A]]) = reflectMutation(VectorTrim(reflectWrite(x)))
-
+  def vector_clear[A:Manifest](x: Exp[Vector[A]]) = reflectMutation(VectorClear(reflectWrite(x)))
+  
   def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(reflectWrite(x), reflectRead(y))
   def vector_plus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorPlusScalar(reflectWrite(x), reflectRead(y))
   def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorPlusEquals(reflectReadWrite(x), reflectRead(y)))
@@ -712,6 +716,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenBase {
       case VectorInsertAll(x,pos,y) => emitValDef(sym, quote(x) + ".insertAll(" + quote(pos) + ", " + quote(y) + ")")
       case VectorRemoveAll(x,pos,len) => emitValDef(sym, quote(x) + ".removeAll(" + quote(pos) + ", " + quote(len) + ")")
       case VectorTrim(x) => emitValDef(sym, quote(x) + ".trim")
+      case VectorClear(x) => emitValDef(sym, quote(x) + ".clear()")
       case VectorClone(x) => emitValDef(sym, quote(x) + ".cloneL")
       case v@VectorObjectNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
       case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
@@ -769,15 +774,26 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
 	  }
 
         /* Specialized CUDA code generations */
-    case VectorRepmat(x,i,j) =>
-      gpuBlockSizeX = "%s.length * %s".format(quote(x),quote(i))
-      stream.println(addTab()+"if( idxX < %s.length*%s ) {".format(quote(x),quote(j)))
+    case VectorTrans(x) =>
+      gpuBlockSizeX = "%s.length".format(quote(x))
+      stream.println(addTab()+"if( idxX < %s.length ) {".format(quote(x)))
       tabWidth += 1
-      stream.println(addTab()+"for(int i=0;i<%s;i++) {".format(quote(i)))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(i,%s,%s.apply(%s));".format(quote(sym),quote(j),quote(x),"idxX%"+quote(x)+".length"))
+      stream.println(addTab()+"%s.update(idxX,%s.apply(idxX));".format(quote(sym),quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
+      emitVectorAlloc(sym,"%s.length".format(quote(x)),"!%s.isRow".format(quote(x)))
+
+    case VectorRepmat(x,i,j) =>
+      gpuBlockSizeX = "%s.length * %s * %s".format(quote(x),quote(i),quote(j))
+      stream.println(addTab()+"if( idxX < %s.length*%s*%s ) {".format(quote(x),quote(i),quote(j)))
+      //tabWidth += 1
+      //stream.println(addTab()+"for(int i=0;i<%s;i++) {".format(quote(i)))
+      tabWidth += 1
+	  stream.println(addTab()+"int i = idxX / (%s.length * %s);".format(quote(x),quote(j)))
+	  stream.println(addTab()+"int j = idxX % " + "(%s.length * %s);".format(quote(x),quote(j)))
+      stream.println(addTab()+"%s.update(i,j,%s.apply(%s));".format(quote(sym),quote(x),"j%"+quote(x)+".length"))
+      //tabWidth -= 1
+      //stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s.length*%s".format(quote(x),quote(i)),"%s.length*%s".format(quote(x),quote(j)))

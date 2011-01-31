@@ -324,11 +324,15 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffects(matrix_sigmoid_impl(in))) {
 
+    val v = fresh[A]
+    val func = (1.0/(1.0+Math.exp(conv(v)*(-1))))
     val mM = manifest[MatrixImpl[Double]]
   }
   case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffects(matrix_sigmoidf_impl(in))) {
 
+    val v = fresh[A]
+    val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
     val mM = manifest[MatrixImpl[Float]]
   }
 
@@ -804,20 +808,18 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       emitLibCall(sym,List(callStream,callKernel))
       emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(y)))
     
-	  /*
-    case MatrixTimesVector(x,y) if (Config.useBlas) =>
+    case MatrixTimesVector(x,y) =>
       val callStream = "cublasSetKernelStream(stream);"
       var callKernel = ""
       if(remap(x.Type.typeArguments(0)) == "double")
-        callKernel = "cublasDgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
+        callKernel = "cublasDgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
       //else if(remap(x.Type.typeArguments(0)) == "float")
         //callKernel = "cublasSgemv('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
       else
         throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Matrix*Vector CUBLAS library)".format(remap(x.Type.typeArguments(0))))
       emitLibCall(sym,List(callStream,callKernel))
       emitVectorAlloc(sym,"%s.numRows".format(quote(x)),"false")
-*/
-	// these are the ops that call through to the underlying real data structure
+	  // these are the ops that call through to the underlying real data structure
     case MatrixObjectNew(numRows,numCols) =>
       throw new GenerationFailedException("CudaGen: Not GPUable")
 
@@ -862,7 +864,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       tabWidth += 1
       stream.println(addTab()+"int i = idxX / %s.numCols;".format(quote(x)))
       stream.println(addTab()+"int j = idxX %" + " %s.numCols;".format(quote(x)))
-      stream.println(addTab()+"%s.update(i, j, %s.apply(j,i));".format(quote(sym),quote(x)))
+      stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)))
@@ -881,6 +883,18 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true")
+
+    case m@MatrixSigmoidF(x) =>
+      gpuBlockSizeX = "%s.numCols*%s.numRows".format(quote(x),quote(x))
+      stream.println(addTab()+"if( idxX < %s.numCols*%s.numRows ) {".format(quote(x),quote(x)))
+      tabWidth += 1
+	  val sigmoidFunc = emitDevFunc(m.func,x.Type.typeArguments(0),List(m.v))
+	  stream.println(addTab()+"int i = idxX / %s.numCols;".format(quote(x)))
+	  stream.println(addTab()+"int j = idxX % " + "%s.numCols;".format(quote(x)))
+      stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)))
 
     case _ => super.emitNode(sym, rhs)
   }

@@ -90,6 +90,7 @@ trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def insert(pos: Int, x: T)
   def insertAll(pos: Int, xs: Vector[T])
   def removeAll(pos: Int, len: Int)
+  def clear()
   def trim
   def cloneL: Vector[T]
 
@@ -113,6 +114,7 @@ trait NilVector[@specialized T] extends Vector[T] {
   def copyFrom(pos: Int, xs: Vector[T]) = throw new UnsupportedOperationException()
   def removeAll(pos: Int, len: Int) = throw new UnsupportedOperationException()
   def trim = throw new UnsupportedOperationException()
+  def clear() = throw new UnsupportedOperationException()
   def cloneL = throw new UnsupportedOperationException()
 }
 

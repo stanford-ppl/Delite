@@ -39,6 +39,7 @@ class VectorViewImpl[@specialized T: ClassManifest](x: Array[T], offset: Int, st
   def copyFrom(pos: Int, xs: Vector[T]) = cloneL.copyFrom(pos, xs)
   def removeAll(pos: Int, len: Int) = cloneL.removeAll(pos, len)
   def trim = cloneL.trim
+  def clear() = cloneL.clear()
 
   protected def chkIndex(index: Int) = {
     if (index < 0 || index >= _data.length)
