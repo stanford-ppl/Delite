@@ -144,7 +144,8 @@ trait BinarizedGradientGridFuncs {
       while (row < slice.numRows) {
         var col = unit(0)
         while (col < slice.numCols) {
-          histogram(slice(row, col)) += 1
+          //histogram(slice(row, col)) += 1
+          histogram(slice(row,col)) = histogram(slice(row,col))+1
           col += 1
         }
         row += 1
