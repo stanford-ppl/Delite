@@ -44,7 +44,7 @@ trait TrainingSetOps extends DSLType with Variables with OverloadHack {
   def trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Rep[Matrix[A]], labels: Rep[Labels[B]]): Rep[TrainingSet[A,B]]
   
   // class defs
-  def trainingset_transposed[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]]): Rep[Matrix[A]]
+  def trainingset_transposed[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]]): Rep[TrainingSet[A,B]]
   def trainingset_labels[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]]): Rep[Labels[B]]
 }
 

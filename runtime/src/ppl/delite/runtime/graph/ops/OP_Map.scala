@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Map(val id: String, func: String, resultType: Map[Targets.Value,String]) extends DeliteOP {
+class OP_Map(val id: String, func: String, resultType: Map[Targets.Value,String]) extends OP_Executable(resultType) {
 
   final def isDataParallel = true
 
@@ -25,11 +25,6 @@ class OP_Map(val id: String, func: String, resultType: Map[Targets.Value,String]
   }
 
   def function = func
-
-  def supportsTarget(target: Targets.Value) = resultType.contains(target)
-
-  def outputType(target: Targets.Value) = resultType(target)
-  override def outputType: String = resultType(Targets.Scala)
 
   /**
    * Since the semantics of the map are to mutate the elements in a collection all consumer (true) dependency edges already exist in graph
@@ -61,7 +56,6 @@ class OP_Map(val id: String, func: String, resultType: Map[Targets.Value,String]
     h
   }
 
-  def nested = null
   def cost = 0
   def size = 0
 
