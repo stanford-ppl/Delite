@@ -29,7 +29,7 @@ trait GrayscaleImageOps extends DSLType with Variables {
   class grayscaleImageRepCls(x: Rep[GrayscaleImage]) {
     import GrayscaleImage._
 
-    def bitwiseOrDownsample() = x.downsample(2,2) { slice => slice(0,0) | slice(1,0) | slice(0,1) | slice(1,1) }
+    def bitwiseOrDownsample() = GrayscaleImage(x.downsample(2,2) { slice => slice(0,0) | slice(1,0) | slice(0,1) | slice(1,1) })
     def gradients(polar: Rep[Boolean] = false) = { // unroll at call site for parallelism (temporary until we have composite op)
       val a = x.convolve(scharrXkernel)
       val b = x.convolve(scharrYkernel)

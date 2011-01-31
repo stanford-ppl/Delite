@@ -219,15 +219,15 @@ trait BinarizedGradientGridFuncs {
             val temp = detections(len - 1)
             detections(len - 1) = detections(j)
             detections(j) = temp
-            len += -1
-            j += -1
+            len = len - 1
+            j = j - 1
           }
           else {
             val temp = detections(len - 1)
             detections(len - 1) = detections(i)
             detections(i) = temp
-            len += -1
-            i += -1
+            len = len - 1
+            i = i - 1
             iMoved = true
           }
         }
