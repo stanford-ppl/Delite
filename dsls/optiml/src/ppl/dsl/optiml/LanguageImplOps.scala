@@ -22,8 +22,9 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     var tasks = Vertices[Vertex](vertices.length)
     tasks.copyFrom(0, vertices.asInstanceOfL[Vector[Vertex]])
     val seen = Set[Vertex]()
-
-    while(tasks.length > 0) {
+    var x = tasks.length
+    
+    while(x > 0) {
       vertices.foreach(block)
       tasks.removeAll(0, tasks.length)
 
@@ -31,7 +32,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
         val vtasks = vertices(i).tasks
         for(j <- 0 until vtasks.length) {
           if(!seen.contains(vtasks(j))) {
-            tasks.insert(tasks.length, vtasks(j))
+            tasks += vtasks(j)
             seen.add(vtasks(j))
           }
         }
@@ -40,6 +41,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
       }
 
       seen.clear()
+      x = tasks.length
     }
   }
 
