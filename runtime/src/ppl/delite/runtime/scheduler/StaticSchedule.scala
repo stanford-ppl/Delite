@@ -25,7 +25,32 @@ class StaticSchedule(val resources: Array[ArrayDeque[DeliteExecutable]]) {
    */
 }
 
-class PartialSchedule(val resources: Array[ArrayDeque[DeliteOP]]) {
+object PartialSchedule {
+  def apply(numResources: Int) = {
+    val r = new Array[ArrayDeque[DeliteOP]](numResources)
+    for (i <- 0 until numResources) r(i) = new ArrayDeque[DeliteOP]
+    new PartialSchedule(r)
+  }
+
+  def apply(resources: Array[ArrayDeque[DeliteOP]]) {
+    new PartialSchedule(resources)
+  }
+}
+
+class PartialSchedule(resources: Array[ArrayDeque[DeliteOP]]) {
+
+  val numResources = resources.length
+
+  def apply(idx: Int) = resources(idx)
+
+  def slice(start: Int, end: Int) = new PartialSchedule(resources.slice(start,end))
+
+  def foreach[U](f: ArrayDeque[DeliteOP] => U) = resources.foreach(f)
+
+  def map[B](f: ArrayDeque[DeliteOP] => B) = resources.map(f)
+
+  def withFilter(p: ArrayDeque[DeliteOP] => Boolean) = resources.withFilter(p)
+
   /**
    * Currently this class only holds a single scheduling object
    * The outer array represents the resources scheduled across

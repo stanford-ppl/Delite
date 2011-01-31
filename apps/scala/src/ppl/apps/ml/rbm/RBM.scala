@@ -12,6 +12,7 @@ object RBM extends DeliteApplication with OptiMLExp {
   }
 
   def main() = {
+    reseed
 
     if (args.length < 3) print_usage
 
@@ -44,9 +45,11 @@ object RBM extends DeliteApplication with OptiMLExp {
     var visbiasinc = Vector.zerosf(numdims)
 
     tic
-    for (epoch <- 0 until maxEpoch) {
+    var epoch = unit(0)
+    while (epoch < maxEpoch) {
       var errsum = unit(0f)
-      for (batch <- 0 until numbatches) {
+      var batch = unit(0)
+      while (batch < numbatches) {
         //println("Epoch: " + epoch + ", Batch: " + batch)
 
         // Positive phase
@@ -82,9 +85,11 @@ object RBM extends DeliteApplication with OptiMLExp {
         visbiases = visbiases + visbiasinc
         hidbiases = hidbiases + hidbiasinc
         //PerformanceTimer.stop("RBM-biasupdates", false)
+        batch += 1
       }
       println("--> Epoch " + epoch)
       println(" error = " + errsum)
+      epoch += 1
     }
     toc
 

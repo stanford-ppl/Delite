@@ -34,7 +34,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   ////////////////////////////////
   // implemented via delite ops
 
-  case class IndexVectorConstruct[B:Manifest](in: Exp[IndexVector], v: Exp[Int], func: Exp[B])
+  case class IndexVectorConstruct[B](in: Exp[IndexVector], v: Exp[Int], func: Exp[B])(implicit val mA: Manifest[Int], val mB: Manifest[B])
     extends DeliteOpMap[Int,B,Vector] {
 
     val alloc = reifyEffects(Vector[B](in.length, in.isRow))

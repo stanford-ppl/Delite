@@ -42,7 +42,7 @@ object SVM extends DeliteApplication with OptiMLExp {
     val svm = new SVMModel { val IR = SVM.this }
     //val svm = new SVMModel(SVM.this)
     tic
-    val (weights, b) = svm.train(inMatrixTrain, 1, .001, 10)
+    val (weights, b) = svm.train(inMatrixTrain, 1, .0001, 10)
     toc
     //svm.computeWeights(inMatrixTrain, YTrain)
     //svm.saveModel(weights, b, modelFile)
