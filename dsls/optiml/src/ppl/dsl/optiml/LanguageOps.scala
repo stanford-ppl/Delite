@@ -1,6 +1,6 @@
 package ppl.dsl.optiml
 
-import datastruct.scala.{Vertex, Edge, Graph, Vector, Matrix}
+import datastruct.scala.{Vertex, Edge, Graph, Vector, Matrix, Vertices}
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import reflect.Manifest
@@ -282,7 +282,8 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
   def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices
 
-    var tasks = vertices
+    var tasks = Vertices[Vertex](vertices.length)
+    tasks.copyFrom(0, vertices.asInstanceOfL[Vector[Vertex]])
     val seen = Set[Vertex]()
 
     while(tasks.length > 0) {
@@ -291,8 +292,10 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
 
       for(i <- 0 until vertices.length) {
         val vtasks = vertices(i).tasks
+	println(vtasks.length)
         for(j <- 0 until vtasks.length) {
           if(!seen.contains(vtasks(j))) {
+            println("adding")
             nextTasks.insert(nextTasks.length, vtasks(j))
             seen.add(vtasks(j))
           }
@@ -301,6 +304,9 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
         vertices(i).clearTasks()
       }
 
+	seen.clear()
+    println("next")
+     println(nextTasks.length)
       tasks = nextTasks
     }
   }

@@ -50,21 +50,20 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
     val min = img.min
     val max = img.max
 
-    for (i <- 0 until img.numRows) {
-      var first = unit(true)
-      for (j <- 0 until img.numCols) {
-        if(!first) {
-          xfs.write("\\t")
-        }
-
+    img.foreachRow( vec => {
+      vec.foreach( p => {
         if (min != max) {
-          val pixel = (255.0 * (img(i, j) - min) / (max - min)).asInstanceOfL[Int] + "\\n"
-          xfs.write(pixel)
+          val pixel = (255.0 * (p - min) / (max - min)).asInstanceOfL[Int]
+          xfs.write(pixel + "")
         }
         else
-          xfs.write("0\\n")
-      }
-    }
+          xfs.write("0")
+
+        xfs.write("\\t")
+      })
+    xfs.write("\\n")
+    })
+
     xfs.close()
   }
 }

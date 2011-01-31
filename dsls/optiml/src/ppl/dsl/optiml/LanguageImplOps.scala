@@ -1,6 +1,6 @@
 package ppl.dsl.optiml
 
-import datastruct.scala.{Vertex, Edge, Graph, Vector, Matrix}
+import datastruct.scala.{Vertex, Edge, Graph, Vector, Matrix, Vertices}
 
 trait LanguageImplOps { this: OptiML =>
   def optiml_untilconverged_impl[A:Manifest:Cloneable](
@@ -19,7 +19,8 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   def optiml_untilconverged_impl[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices
 
-    var tasks = vertices
+    var tasks = Vertices[Vertex](vertices.length)
+    tasks.copyFrom(0, vertices.asInstanceOfL[Vector[Vertex]])
     val seen = Set[Vertex]()
 
     while(tasks.length > 0) {
@@ -28,8 +29,10 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 
       for(i <- 0 until vertices.length) {
         val vtasks = vertices(i).tasks
+	println(vtasks.length)
         for(j <- 0 until vtasks.length) {
           if(!seen.contains(vtasks(j))) {
+	println("adding")
             nextTasks.insert(nextTasks.length, vtasks(j))
             seen.add(vtasks(j))
           }
@@ -37,7 +40,10 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 
         vertices(i).clearTasks()
       }
-      
+      seen.clear()
+ 
+     println("next")
+     println(nextTasks.length)
       tasks = nextTasks
     }
   }
