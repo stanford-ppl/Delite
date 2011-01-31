@@ -119,6 +119,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
             case red: DeliteOpReduce[_] => "generated.scala.DeliteOpReduce[" + gen.remap(red.func.Type) + "]"
             case mapR: DeliteOpMapReduce[_,_,_] => "generated.scala.DeliteOpMapReduce[" + gen.remap(mapR.mV.Type) + "," + gen.remap(mapR.reduce.Type) + "]"
             case foreach: DeliteOpForeach[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
+            case foreach: DeliteOpForeachBounded[_,_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
             case _ => gen.remap(sym.Type)
           }
         } else gen.remap(sym.Type)
@@ -205,6 +206,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen {
       case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(sym, inputs, inMutating, inControlDeps, antiDeps)
       case z:DeliteOpZipWith[_,_,_,_] => emitZipWith(sym, inputs, inMutating, inControlDeps, antiDeps)
       case f:DeliteOpForeach[_,_] => emitForeach(sym, inputs, inMutating, inControlDeps, antiDeps)
+      case f:DeliteOpForeachBounded[_,_,_] => emitForeach(sym, inputs, inMutating, inControlDeps, antiDeps)
       case _ => emitSingleTask(sym, inputs, inMutating, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
     }
 
