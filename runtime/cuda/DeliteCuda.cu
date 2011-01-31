@@ -111,7 +111,7 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 } */
 
 char* bufferStart = 0;
-size_t bufferSize = 10737418240;
+size_t bufferSize = 5368709120;
 char* bufferEnd;
 char* bufferCurrent;
 
