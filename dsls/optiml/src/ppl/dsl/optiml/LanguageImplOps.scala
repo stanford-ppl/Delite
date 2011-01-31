@@ -29,8 +29,10 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 
       for(i <- 0 until vertices.length) {
         val vtasks = vertices(i).tasks
+	println(vtasks.length)
         for(j <- 0 until vtasks.length) {
           if(!seen.contains(vtasks(j))) {
+	println("adding")
             nextTasks.insert(nextTasks.length, vtasks(j))
             seen.add(vtasks(j))
           }
@@ -38,7 +40,10 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 
         vertices(i).clearTasks()
       }
-      
+      seen.clear()
+ 
+     println("next")
+     println(nextTasks.length)
       tasks = nextTasks
     }
   }

@@ -39,17 +39,17 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     // Generate image
     val img = Matrix[Double](rows, cols)
     imgPaintSunset(img, colors)
-    //MLOutputWriter.writeImgPgm(img, "src.pgm")
+    //MLOutputWriter.write(img, "src.pgr")
     imgCorrupt(img, sigma)
-    //MLOutputWriter.writeImgPgm(img, "noise.pgm")
+//    MLOutputWriter.writeImgPgm(img, "noise.pgm")
 
     // Load in a raw image that we generated from GraphLab
 
     // Make sure we read in the raw file correctly
     // MLOutputWriter.writeImgPgm(img, "checkImg.pgm")
 
-    val num = unit(5)
-    for (i <- 0 until num) {
+    //val num = unit(1)
+    //for (i <- 0 until num) {
       // Clean up the image and save it
       //PerformanceTimer.start("LBP")
       
@@ -66,7 +66,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
         binaryFactorSetAgreement(edgePotential, lambda)
       }
 
-//      var count = unit(1)
+      var count = unit(1)
       
       g.freeze()
 
@@ -107,17 +107,17 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
             // Set the message
            out.message.copyFrom(0, dampMsg)
             
-           /*if(count % 10000 == 0) {
+             if(count % 10000 == 0) {
              println(count)
              println(residual)
-           }*/
+             }
            
             // Enqueue update function on target vertex if residual is greater than bound
             if (residual > bound) {
               v.addTask(e.asInstanceOfL[MessageEdge].target(v))
             }
           }
-//        count += 1
+        count += 1
       }
 
       // Predict the image!
@@ -127,8 +127,8 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
       //PerformanceTimer.stop("LBP")
       //PerformanceTimer.print("LBP")
-      //MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
-    }
+  //    MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
+  //  }
     /* PerformanceTimer2.summarize("BM")
    PerformanceTimer2.summarize("CD")
    PerformanceTimer2.summarize("OC")

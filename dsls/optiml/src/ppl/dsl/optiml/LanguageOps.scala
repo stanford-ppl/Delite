@@ -292,8 +292,10 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
 
       for(i <- 0 until vertices.length) {
         val vtasks = vertices(i).tasks
+	println(vtasks.length)
         for(j <- 0 until vtasks.length) {
           if(!seen.contains(vtasks(j))) {
+            println("adding")
             nextTasks.insert(nextTasks.length, vtasks(j))
             seen.add(vtasks(j))
           }
@@ -302,6 +304,9 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
         vertices(i).clearTasks()
       }
 
+	seen.clear()
+    println("next")
+     println(nextTasks.length)
       tasks = nextTasks
     }
   }

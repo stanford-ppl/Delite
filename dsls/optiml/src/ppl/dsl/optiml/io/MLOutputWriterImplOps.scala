@@ -24,7 +24,7 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
         xfs.write(String.valueOf(conv(e)))
         xfs.write("  ")
       })
-    xfs.write("\n")
+    xfs.write("\\\n")
     })
     xfs.close()
   }
@@ -41,28 +41,28 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
   def mloutput_write_img_pgm_impl(img: Rep[Matrix[Double]], filename: Rep[String]): Rep[Unit] = {
     val xfs = BufferedWriter(FileWriter(filename))
 
-    xfs.write("P2\n")
-    xfs.write(String.valueOf(img.numCols) + " " + String.valueOf(img.numRows) + "\n")
-    xfs.write("255\n")
+    /*xfs.write("P2\\\n")
+    xfs.write(img.numCols + " ")
+    xfs.write(img.numRows + "\\\n")
+    xfs.write("255\\\n")
 
     val min = img.min
     val max = img.max
 
-    for (i <- 0 until img.numRows) {
-      var first = unit(true)
-      for (j <- 0 until img.numCols) {
-        if(!first) {
-          xfs.write("\t")
-        }
-
+    img.foreachRow( vec => {
+      vec.foreach( p => {
         if (min != max) {
-          val pixel = (255.0 * (img(i, j) - min) / (max - min)).asInstanceOfL[Int] + "\n"
-          xfs.write(pixel)
+          val pixel = (255.0 * (p - min) / (max - min)).asInstanceOfL[Int]
+          xfs.write(pixel + "")
         }
         else
-          xfs.write("0\n")
-      }
-    }
+          xfs.write("0")
+
+        xfs.write("\\\t")
+      })
+    xfs.write("\\\n")
+    }) */
+
     xfs.close()
   }
 }
