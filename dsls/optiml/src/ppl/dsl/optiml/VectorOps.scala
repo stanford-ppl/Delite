@@ -554,9 +554,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_concatenate[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorConcatenate(reflectRead(x),reflectRead(y))
   def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(reflectWrite(x), n, reflectRead(y)))
   def vector_copyfrom[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorCopyFrom(reflectRead(x), pos, reflectRead(y)))
-  def vector_insert[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[A]) = reflectMutation(VectorInsert(reflectRead(x), pos, reflectRead(y)))
-  def vector_insertall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorInsertAll(reflectRead(x), pos, reflectRead(y)))
-  def vector_removeall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], len: Exp[Int]) = reflectMutation(VectorRemoveAll(reflectRead(x), pos, len))
+  def vector_insert[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[A]) = reflectMutation(VectorInsert(reflectReadWrite(x), pos, reflectRead(y)))
+  def vector_insertall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorInsertAll(reflectReadWrite(x), pos, reflectRead(y)))
+  def vector_removeall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], len: Exp[Int]) = reflectMutation(VectorRemoveAll(reflectReadWrite(x), pos, len))
   def vector_trim[A:Manifest](x: Exp[Vector[A]]) = reflectMutation(VectorTrim(reflectRead(x)))
 
   def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(reflectRead(x), reflectRead(y))
