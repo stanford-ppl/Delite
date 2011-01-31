@@ -83,6 +83,7 @@ trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   def apply(n: Int) : T
   def update(index: Int, x: T)
   def data: Array[T]
+  def toList: List[T]
 
   def mtrans: Vector[T]
   def sort(implicit o: Ordering[T]): Vector[T] // because we use the underlying data field to sort
@@ -106,6 +107,7 @@ trait NilVector[@specialized T] extends Vector[T] {
   def isRow : Boolean = throw new UnsupportedOperationException()
   def update(index: Int, x: T) = throw new UnsupportedOperationException()
   def data = throw new UnsupportedOperationException()
+  def toList = throw new UnsupportedOperationException()
 
   def mtrans = throw new UnsupportedOperationException()
   def sort(implicit o: Ordering[T]) = throw new UnsupportedOperationException()

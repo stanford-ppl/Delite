@@ -77,7 +77,7 @@ object Foreach_SMP_Array_Generator {
     out.append('\n')
     out.append("while (idx < end) {\n")
 
-    out.append("val sync = foreach.closure.sync(idx).sortBy(System.identityHashCode(_))\n")
+    out.append("val sync = foreach.closure.sync(idx)\n")//_.sortBy(System.identityHashCode(_))\n")
     out.append("for (e <- sync) {\n")
     out.append("foreach.lockMap.putIfAbsent(e, new ReentrantLock)\n")
     out.append("foreach.lockMap.get(e).lock\n")

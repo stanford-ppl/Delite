@@ -577,8 +577,8 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       if (deliteKernel == false){
         stream.println("def " + quote(sym) + "_block = {")
         stream.println("var forIdx = 0")
-        stream.println("while (forIdx < " + quote(getBlockResult(foreach.in.asInstanceOf[Any])) + ".size) {")
-        stream.println("val " + quote(foreach.v) + " = " + quote(getBlockResult(foreach.in.asInstanceOf[Any])) + ".dcApply(forIdx)")
+        stream.println("while (forIdx < " + quote(getBlockResult(foreach.in.asInstanceOf[Exp[Any]])) + ".size) {")
+        stream.println("val " + quote(foreach.v) + " = " + quote(getBlockResult(foreach.in.asInstanceOf[Exp[Any]])) + ".dcApply(forIdx)")
         emitBlock(foreach.func)
         stream.println(quote(getBlockResult(foreach.func)))
         stream.println("forIdx += 1")
@@ -589,7 +589,7 @@ trait ScalaGenDeliteOps extends ScalaGenEffect with BaseGenDeliteOps {
       else {
         deliteKernel = false
         stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpForeach[" + remap(foreach.v.Type) + "] {")
-        stream.println("def in = " + quote(getBlockResult(foreach.in.asInstanceOf[Any])))
+        stream.println("def in = " + quote(getBlockResult(foreach.in.asInstanceOf[Exp[Any]])))
         stream.println("def sync(" + quote(foreach.i) + ": " + remap(foreach.i.Type) + ") = {")
         emitBlock(foreach.sync)
         stream.println(quote(getBlockResult(foreach.sync)))

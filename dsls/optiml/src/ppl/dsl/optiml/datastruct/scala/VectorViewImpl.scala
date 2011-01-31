@@ -29,6 +29,10 @@ class VectorViewImpl[@specialized T: ClassManifest](x: Array[T], offset: Int, st
     this
   }
 
+  def toList = {
+    _data.toList
+  }
+
   def cloneL = { val v = new VectorImpl[T](0, isRow); v.insertAll(0, this); v }
 
   // TODO: these semantics are ambiguous/ill-defined. e.g., copy on insert but write-through on update.
