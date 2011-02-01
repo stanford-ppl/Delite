@@ -145,7 +145,7 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
   def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectMutation(DenoiseEdgeDataMessageUpdate(reflectWrite(e), m))
   def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataOldMessage(reflectRead(e))
   def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectMutation(DenoiseEdgeDataOldMessageUpdate(reflectWrite(e), m))
-  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataCloneL(reflectRead(e)) 
+  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = reflectEffect(DenoiseEdgeDataCloneL(reflectRead(e)))
 }
 
 trait BaseGenDenoiseEdgeDataOps extends GenericNestedCodegen {

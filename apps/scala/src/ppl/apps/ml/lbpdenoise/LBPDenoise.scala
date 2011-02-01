@@ -39,7 +39,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     // Generate image
     val img = Matrix[Double](rows, cols)
     imgPaintSunset(img, colors)
-    MLOutputWriter.writeImgPgm(img, "src.pgr")
+    MLOutputWriter.writeImgPgm(img, "src.pgm")
     imgCorrupt(img, sigma)
     MLOutputWriter.writeImgPgm(img, "noise.pgm")
     
@@ -48,96 +48,130 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     // Make sure we read in the raw file correctly
     // MLOutputWriter.writeImgPgm(img, "checkImg.pgm")
 
-    //val num = unit(1)
-    //for (i <- 0 until num) {
-      // Clean up the image and save it
-      //PerformanceTimer.start("LBP")
-      
-      // Make a copy of the image
-      val cleanImg = img.cloneL
+    // Clean up the image and save it
+    
+    // Make a copy of the image
+    val cleanImg = img.cloneL
 
-      // Construct graph from image
-      val g = constructGraph(cleanImg, colors, sigma)
+    // Construct graph from image
+    val g = constructGraph(cleanImg, colors, sigma)
 
-      if (smoothing == "laplace") {
-        binaryFactorSetLaplace(edgePotential, lambda)
-      }
-      else if (smoothing == "square") {
-        binaryFactorSetAgreement(edgePotential, lambda)
-      }
-      
-      edgePotential.pprint
+    if (smoothing == "laplace") {
+      binaryFactorSetLaplace(edgePotential, lambda)
+    }
+    else if (smoothing == "square") {
+      binaryFactorSetAgreement(edgePotential, lambda)
+    }
+    
+    edgePotential.pprint
 
-      var count = unit(1)
-      
-      g.freeze()
+    var count = unit(1)
+    
+    g.freeze()
 
-      untilconverged(g) {
-        v =>
-          val vdata = v.data.asInstanceOfL[DenoiseVertexData]
-          vdata.belief.copyFrom(0, vdata.potential)
+    untilconverged(g) {
+      v =>
+        val vdata = v.data.asInstanceOfL[DenoiseVertexData]
+        vdata.belief.copyFrom(0, vdata.potential)
 
-          // Multiply belief by messages
-          for (e <- v.edges) {
-            val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
-            vdata.belief.copyFrom(0, unaryFactorTimes(vdata.belief, in.message))
-          }
+        /*if(count % 100000 == 0) {
+         println("mult")
+         vdata.belief.pprint
+        }*/
+        
+        // Multiply belief by messages
+        for (e <- v.edges) {
+          val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
+          
+          /*if(count % 100000 == 0) {
+           //vdata.belief.pprint
+           in.message.pprint
+          }*/
+          
+          unaryFactorTimes(vdata.belief, in.message)
+        }
+        
+        if(count % 100000 == 0) {
+          println("belief")
+         vdata.belief.pprint
+        }
 
-          // Normalize the belief
-          vdata.belief.copyFrom(0, unaryFactorNormalize(vdata.belief))
+        // Normalize the belief
+        unaryFactorNormalize(vdata.belief)
+        
+        if(count % 100000 == 0) {
+          println("belief")
+         vdata.belief.pprint
+        }
 
-	//println("mult")
-	//vdata.belief.pprint
+        // Send outbound messages
+        for (e <- v.edges) {
+          val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
+          val out = e.asInstanceOfL[MessageEdge].out(v).asInstanceOfL[DenoiseEdgeData]
+          
+          /*if(count % 100000 == 0) {
+            println("in")
+            vdata.belief.pprint
+            in.message.pprint
+          }*/
+          
+          // Compute the cavity
+          val cavity = vdata.belief.cloneL
+          unaryFactorDivide(cavity, in.message)
+          unaryFactorNormalize(cavity)
+          
+          /*if(count % 100000 == 0) {
+            println("cavity")
+            cavity.pprint
+          }*/
 
-          // Send outbound messages
-          for (e <- v.edges) {
-            val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
-            val out = e.asInstanceOfL[MessageEdge].out(v).asInstanceOfL[DenoiseEdgeData]
-            
-            // Compute the cavity
-            val cavity = unaryFactorNormalize(unaryFactorDivide(vdata.belief, in.message))
+          // Convolve the cavity with the edge factor
+          val msg = unaryFactorConvolve(edgePotential, cavity)
+          unaryFactorNormalize(msg)
 
-            // Convolve the cavity with the edge factor
-            val msg = unaryFactorNormalize(unaryFactorConvolve(edgePotential, cavity))
-
-            // Damp the message
-            val dampMsg = unaryFactorDamp(msg, out.message, damping)
-
-            // Compute message residual
-            val residual = unaryFactorResidual(dampMsg, out.message)
-
-            /*if(count % 100000 == 0) {
-            print("damping")
+          /*if(count % 100000 == 0) {
+          print("damping")
+          msg.pprint
+           out.message.pprint
+           }*/
+          
+          // Damp the message
+          unaryFactorDamp(msg, out.message, damping)
+          
+          /*if(count % 100000 == 0) {
             msg.pprint
-             out.message.pprint
-             dampMsg.pprint
-             }*/
-            
-            // Set the message
-           out.message.copyFrom(0, dampMsg)
-            
-             if(count % 100000 == 0) {
-             println(count)
-             println(residual)
-             }
-           
-            // Enqueue update function on target vertex if residual is greater than bound
-            if (residual > bound) {
-              v.addTask(e.asInstanceOfL[MessageEdge].target(v))
-            }
+          }*/
+
+          // Compute message residual
+          val residual = unaryFactorResidual(msg, out.message)
+          
+          // Set the message
+         out.message.copyFrom(0, msg)
+          
+         if(count % 100000 == 0) {
+           println(count)
+           println(residual)
+         }
+         
+          // Enqueue update function on target vertex if residual is greater than bound
+          if (residual > bound) {
+            v.addTask(e.asInstanceOfL[MessageEdge].target(v))
           }
-        count += 1
-      }
+        }
+      count += 1
+    }
+    
+    println("Update functions run: " + count)
 
-      // Predict the image!
-      g.vertices foreach { v =>
-        imgUpdate(cleanImg, v.data.asInstanceOfL[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.asInstanceOfL[DenoiseVertexData].belief))
-      }
+    // Predict the image!
+    g.vertices foreach { v =>
+      imgUpdate(cleanImg, v.data.asInstanceOfL[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.asInstanceOfL[DenoiseVertexData].belief))
+    }
 
-      //PerformanceTimer.stop("LBP")
-      //PerformanceTimer.print("LBP")
-      MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
-  //  }
+    //PerformanceTimer.stop("LBP")
+    //PerformanceTimer.print("LBP")
+    MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
+      
     /* PerformanceTimer2.summarize("BM")
    PerformanceTimer2.summarize("CD")
    PerformanceTimer2.summarize("OC")
@@ -167,7 +201,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           potential(pred) = 0.0 - ((obs - pred) * (obs - pred) / (2.0 * sigmaSq))
         }
 
-        potential = unaryFactorNormalize(potential)
+        unaryFactorNormalize(potential)
 
         val data = DenoiseVertexData(pixelId, belief.cloneL, potential)
         val vertex = MessageVertex(g, data)
@@ -176,17 +210,24 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
         g.addVertex(vertex)
       }
     }
-
-    val edgeData = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
-
+    
     // Add bidirectional edges between neighboring pixels
-    for (i <- 0 until img.numRows - 1) {
-      for (j <- 0 until img.numCols - 1) {
-        val edgeDown = MessageEdge(g, edgeData.cloneL, edgeData.cloneL, vertices(i)(j), vertices(i)(j + 1))
-        g.addEdge(edgeDown, vertices(i)(j), vertices(i)(j + 1))
+    for (i <- 0 until img.numRows) {
+      for (j <- 0 until img.numCols) {
+        if(j < img.numCols - 1) {
+          val edgeData = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
+          val edgeData2 = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
+        
+          val edgeRight = MessageEdge(g, edgeData, edgeData2, vertices(i)(j), vertices(i)(j+1))
+          g.addEdge(edgeRight, vertices(i)(j), vertices(i)(j+1))
+        }
 
-        val edgeRight = MessageEdge(g, edgeData.cloneL, edgeData.cloneL, vertices(i)(j), vertices(i)(j + 1))
-        g.addEdge(edgeRight, vertices(i)(j), vertices(i + 1)(j))
+        if(i < img.numRows - 1) {
+          val edgeData = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
+          val edgeData2 = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
+          val edgeDown = MessageEdge(g, edgeData, edgeData2, vertices(i)(j), vertices(i+1)(j))
+          g.addEdge(edgeDown, vertices(i)(j), vertices(i+1)(j))
+        }
       }
     }
 
@@ -264,39 +305,59 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
 
   def unaryFactorUniform(arity: Rep[Int]) = {
-    unaryFactorNormalize(Vector.zeros(arity))
+    val factor = Vector.zeros(arity)
+    unaryFactorNormalize(factor)
+    factor
   }
 
-  def unaryFactorNormalize(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+  def unaryFactorNormalize(uf: Rep[Vector[Double]]) {
     val logZ = Math.log(uf.exp.sum)
-    uf map {_ - logZ}
+    var i = unit(0)
+    while(i < uf.length) {
+      uf(i) = uf(i)-logZ
+      i += 1
+    }
+    //uf mmap {_ - logZ}
   }
 
   // Multiply elementwise by other factor
-  def unaryFactorTimes(a: Rep[Vector[Double]], b: Rep[Vector[Double]]): Rep[Vector[Double]] = {
-    a + b
+  def unaryFactorTimes(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) {
+    a += b
+    /*var i = unit(0)
+    while(i < a.length) {
+      a(i) += b(i)
+      i += 1
+    }*/
   }
 
   // Add other factor elementwise
-  def unaryFactorPlus(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
-    (a.exp + b.exp) map {Math.log(_)}
+  def unaryFactorPlus(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) {
+    var i = unit(0)
+    while(i < a.length) {
+      a(i) = Math.log(Math.exp(a(i)) + Math.exp(b(i)))
+      i += 1
+    }
   }
 
   // Divide elementwise by other factor
-  def unaryFactorDivide(a: Rep[Vector[Double]], b: Rep[Vector[Double]]): Rep[Vector[Double]] = {
-    a - b
+  def unaryFactorDivide(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) {
+    a -= b
   }
 
-  def unaryFactorConvolve(bf: Rep[Matrix[Double]], other: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+  def unaryFactorConvolve(bf: Rep[Matrix[Double]], other: Rep[Vector[Double]]) : Rep[Vector[Double]] = {
     val indices = Vector.range(0, bf.numCols)
     val colSums = indices map {(i: Rep[Int]) => (bf.getCol(i) + other).exp.sum} map {(sum: Rep[Double]) =>if (sum == 0) Double.MinValue else sum}
     colSums map {Math.log(_)}
   }
 
   /**This = other * damping + this * (1-damping) */
-  def unaryFactorDamp(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]): Rep[Vector[Double]] = {
+  def unaryFactorDamp(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) {
     if (damping != 0) {
-      (b.exp * damping + a.exp * (1.0 - damping)) map {Math.log(_)}
+      var i = unit(0)
+      while(i < a.length) {
+        a(i) = Math.log(Math.exp(b(i))*damping + Math.exp(a(i))*(1.0-damping))
+        i += 1
+      }
     }
     else {
       a
@@ -305,7 +366,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
   /**Compute the residual between two unary factors */
   def unaryFactorResidual(a: Rep[Vector[Double]], b: Rep[Vector[Double]]): Rep[Double] = {
-    (a.exp - b.exp).abs.sum
+    (a.exp - b.exp).abs.sum / a.length
   }
 
   // Max assignment

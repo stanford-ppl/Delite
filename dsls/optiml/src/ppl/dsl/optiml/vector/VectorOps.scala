@@ -109,6 +109,7 @@ trait VectorOps extends DSLType with Variables {
     def +=(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_plusequals(x,y)
     def -(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_minus(x,y)
     def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_minus_scalar(x,y)
+    def -=(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_minusequals(x,y)
     def *(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_times(x,y)
     def *[B](y: Rep[Vector[B]])(implicit mB: Manifest[B], a: Arith[A], conv: Rep[B] => Rep[A]) = vector_times_withconvert(x,y,conv)
     //def *[B](y: Rep[Vector[B]])(implicit mB: Manifest[B], aB: Arith[B], conv: Rep[A] => Rep[B], o: Overloaded1) = vector_times_withconvertright(x,y,conv)
@@ -190,6 +191,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_plusequals[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_minus[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_minus_scalar[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
+  def vector_minusequals[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_times[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_times_withconvert[A:Manifest:Arith,B:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]],  conv: Rep[B] => Rep[A]): Rep[Vector[A]]
   def vector_times_withconvertright[A:Manifest,B:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[B]], conv: Rep[A] => Rep[B]): Rep[Vector[B]]
@@ -373,6 +375,14 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val alloc = reifyEffects(Vector[A](in.length, in.isRow))
     val v = fresh[A]
     val func = v - y
+  }
+  
+  case class VectorMinusEquals[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
+    extends DeliteOpZipWith[A,A,A,Vector] {
+
+    val alloc = inA
+    val v = (fresh[A],fresh[A])
+    val func = v._1 - v._2
   }
 
   case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
@@ -567,7 +577,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
   def vector_trans[A:Manifest](x: Exp[Vector[A]]) = VectorTrans(reflectRead(x))
   def vector_mutable_trans[A:Manifest](x: Exp[Vector[A]]) = reflectMutation(VectorMutableTrans(reflectReadWrite(x)))
-  def vector_clone[A:Manifest](x: Exp[Vector[A]]) = VectorClone(reflectRead(x))
+  def vector_clone[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorClone(reflectRead(x)))
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(reflectRead(x)))
   def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = VectorRepmat(reflectRead(x),i,j)
   def vector_tolist[A:Manifest](x: Exp[Vector[A]]) = VectorToList(reflectRead(x))
@@ -586,6 +596,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
   def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorPlusEquals(reflectReadWrite(x), reflectRead(y)))
   def vector_minus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(reflectRead(x),reflectRead(y))
   def vector_minus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorMinusScalar(reflectRead(x), reflectRead(y))
+  def vector_minusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorMinusEquals(reflectReadWrite(x), reflectRead(y)))
   def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(reflectRead(x), reflectRead(y))
   def vector_times_withconvert[A:Manifest:Arith,B:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], conv: Exp[B] => Exp[A]) = VectorTimesWithConvert(reflectRead(x),reflectRead(y),conv)
   def vector_times_withconvertright[A:Manifest,B:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[B]], conv: Exp[A] => Exp[B]) = VectorTimesWithConvertRight(reflectRead(x),reflectRead(y),conv)

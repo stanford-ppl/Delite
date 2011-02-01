@@ -19,21 +19,22 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   def optiml_untilconverged_impl[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices
 
-    var tasks = Vertices[Vertex](vertices.length)
-    tasks.copyFrom(0, vertices.asInstanceOfL[Vector[Vertex]])
-    val seen = Set[Vertex]()
-    var x = tasks.length
+    val tasks = vertices.cloneL
+    val seen = Set[V]()
     
-    while(x > 0) {
-      vertices.foreach(block)
-      tasks.removeAll(0, tasks.length)
-
+    while(tasks.length > 0) {
+      tasks.foreach(block)
+      tasks.clear()
+      var totalTasks = unit(0)
+      
       for(i <- 0 until vertices.length) {
         val vtasks = vertices(i).tasks
+        totalTasks += vtasks.length
         for(j <- 0 until vtasks.length) {
-          if(!seen.contains(vtasks(j))) {
-            tasks += vtasks(j)
-            seen.add(vtasks(j))
+          val task = vtasks(j).asInstanceOfL[V]
+          if(!seen.contains(task)) {
+            tasks += task
+            seen.add(task)
           }
         }
 
@@ -41,7 +42,6 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
       }
 
       seen.clear()
-      x = tasks.length
     }
   }
 
