@@ -19,8 +19,8 @@ trait GrayscaleImageOps extends DSLType with Variables {
     def apply(x: Rep[Matrix[Int]]) = grayscaleimage_obj_frommat(x)
     def cartToPolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]) = grayscaleimage_obj_carttopolar(x,y)
 
-    val scharrYkernel = Matrix(Vector[Int](-3, -10, -3), Vector[Int](0, 0, 0), Vector[Int](3, 10, 3))
-    val scharrXkernel = scharrYkernel.t
+//    val scharrYkernel = Matrix(Vector[Int](-3, -10, -3), Vector[Int](0, 0, 0), Vector[Int](3, 10, 3))
+//    val scharrXkernel = scharrYkernel.t
   }
 
   implicit def repGrayscaleImageToGrayscaleImageOps[A:Manifest](x: Rep[GrayscaleImage]) = new grayscaleImageRepCls(x)
@@ -31,6 +31,10 @@ trait GrayscaleImageOps extends DSLType with Variables {
 
     def bitwiseOrDownsample() = GrayscaleImage(x.downsample(2,2) { slice => slice(0,0) | slice(1,0) | slice(0,1) | slice(1,1) })
     def gradients(polar: Rep[Boolean] = false) = { // unroll at call site for parallelism (temporary until we have composite op)
+      val scharrYkernel = Matrix[Int](3, 3)
+      scharrYkernel(0,0) = -3; scharrYkernel(0,1) = -10; scharrYkernel(0,2) = -3
+      scharrYkernel(2,0) =  3; scharrYkernel(2,1) =  10; scharrYkernel(2,2) =  3
+      val scharrXkernel = scharrYkernel.t
       val a = x.convolve(scharrXkernel)
       val b = x.convolve(scharrYkernel)
       if (polar) cartToPolar(a.toFloat,b.toFloat) else (a.toFloat,b.toFloat)

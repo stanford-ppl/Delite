@@ -155,14 +155,14 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   }
 
   def mlinput_read_template_models_impl(directory: Rep[String]): Rep[Vector[(String, Vector[BinarizedGradientTemplate])]] = {
-    val templateFiles = Vector[String]()
+    val templateFiles = Vector[String](0, true)
     for (f <- File(directory).getCanonicalFile.listFiles) {
       templateFiles += f.getPath()
     }
 
     templateFiles.map { filename =>
       println("Loading model: " + filename)
-      val templates = Vector[BinarizedGradientTemplate]()
+      val templates = Vector[BinarizedGradientTemplate](0, true)
 
       val file = BufferedReader(FileReader(filename))
 

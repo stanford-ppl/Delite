@@ -26,7 +26,8 @@ trait ImageOps extends DSLType with Variables {
     def downsample(rowFactor: Rep[Int], colFactor: Rep[Int])(block: Rep[Matrix[A]] => Rep[A]) = image_downsample(x,rowFactor, colFactor, block)
     def windowedFilter[B:Manifest:Arith](rowDim: Rep[Int], colDim: Rep[Int])(block: Rep[Matrix[A]] => Rep[B]) = image_windowed_filter(x,rowDim, colDim, block)
     def convolve(kernel: Rep[Matrix[A]])(implicit a: Arith[A]) = { //unroll at call-site for parallelism (temporary until we have composite op) image_convolve(x)
-      x.windowedFilter(kernel.numRows, kernel.numCols) { slice => (slice *:* kernel).sum }
+      x.windowedFilter(kernel.numRows, kernel.numCols) { slice =>
+        (slice *:* kernel).sum }
     }
   }
 

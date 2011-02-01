@@ -10,7 +10,7 @@ trait BinarizedGradientPyramidFuncs {
   def makePyramid(gradientImage: Rep[GrayscaleImage]) = {
     var crt = gradientImage
     var currentLevel = unit(0)
-    val pyramid = BinarizedGradientPyramid(Vector[GrayscaleImage](), 3, 1, 3)
+    val pyramid = BinarizedGradientPyramid(Vector[GrayscaleImage](0, true), 3, 1, 3)
 
     while (currentLevel < pyramid.start_level + pyramid.levels) {
       if (currentLevel >= pyramid.start_level) {

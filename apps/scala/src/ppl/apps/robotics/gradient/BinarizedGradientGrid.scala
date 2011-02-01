@@ -23,41 +23,66 @@ trait BinarizedGradientGridFuncs {
 
   // Runs the object detection of the current image.
   def detectAllObjects(all_templates: Rep[Vector[(String, Vector[BinarizedGradientTemplate])]], image: Rep[GrayscaleImage]) = {
+//    println("detectAllObjects.1")
     val img_gray = image // assuming image is single-channel. Needs to be made such if not.
 
+//    println("detectAllObjects.2")
+
     val (mag: Rep[Matrix[Float]], phase: Rep[Matrix[Float]]) = t2(repGrayscaleImageToGrayscaleImageOps(img_gray).gradients(true))
+//    println("detectAllObjects.3")
     val binGrad = binarizeGradients(mag, phase)
+//    println("detectAllObjects.4")
     val cleanGrad = gradMorphology(binGrad)
+//    println("detectAllObjects.5")
 
     val pyr = makePyramid(cleanGrad)
+//    println("detectAllObjects.6")
 
     val all_detections = all_templates.flatMap { t =>
+    //println("detectAllObjects.7")
       val (name, templates) = t2(t)
+    //println("detectAllObjects.8")
       println("Name: " + name)
       println("Templates: " + templates.length)
       val detections = detectSingleObject(name, getIndex(pyr, pyr.fixedLevelIndex), templates, template_radius_, pyr.fixedLevelIndex, accept_threshold_)
       println("Detections: " + detections.length)
       detections
     }
+//println("DETECTIONS BEFORE FILTER: " + all_detections.length)
+//    println("detectAllObjects.9")
     val filteredDetections = nonMaxSuppress(all_detections, fraction_overlap_)
     println("Total detections: " + filteredDetections.length)
   }
 
   //Run detection for this object class.
   def detectSingleObject(name: Rep[String], gradSummary: Rep[GrayscaleImage], templates: Rep[Vector[BinarizedGradientTemplate]], template_radius: Rep[Int], level: Rep[Int], accept_threshold: Rep[Float]): Rep[Vector[BiGGDetection]] = {
+//println("detectSingleObject.1")
     (borderPixels :: gradSummary.numRows - borderPixels).flatMap { y =>
+//println("detectSingleObject.2")
       (borderPixels :: gradSummary.numCols - borderPixels).flatMap { x =>
+//println("detectSingleObject.3")
         searchTemplates(name, gradSummary, x, y, template_radius, level, accept_threshold, templates)
       }
     }
   }
 
   def searchTemplates(name: Rep[String], gradSummary: Rep[GrayscaleImage], x: Rep[Int], y: Rep[Int], template_radius: Rep[Int], level: Rep[Int], accept_threshold: Rep[Float], templates: Rep[Vector[BinarizedGradientTemplate]]): Rep[Vector[BiGGDetection]] = {
+//println("x: " + x)
+//println("y: " + y)
+//println("searchTemplates.1")
     val reduction_factor = Math.pow(2, level).asInstanceOfL[Int]//(1 << level)
+//println("searchTemplates.2")
+//println("reduction_factor: " + reduction_factor)
     val crt_template = fillTemplateFromGradientImage(gradSummary, x, y, template_radius, level)
+//println(crt_template.match_list.length)
+if (crt_template.match_list.length < 0) println("dummy")
+//println("searchTemplates.3")
     (unit(0) :: templates.length).flatMap { j =>
       val res = score(templates(j), crt_template, accept_threshold)
       if (res > accept_threshold) {
+//println("res: " + res)
+//println("x: " + x)
+//println("y: " + y)
         val bbox = templates(j).rect
         val roi = Rect((reduction_factor * x - bbox.width / 2).asInstanceOfL[Int], (reduction_factor * y - bbox.height / 2).asInstanceOfL[Int], bbox.width, bbox.height)
         val out = Vector[BiGGDetection](1, true)
@@ -65,7 +90,7 @@ trait BinarizedGradientGridFuncs {
         out
       }
       else {
-        Vector[BiGGDetection]()
+        Vector[BiGGDetection](0, true)
       }
     }
   }
@@ -83,6 +108,7 @@ trait BinarizedGradientGridFuncs {
 
     //Fill the binary gradients
     var y = ystart
+//println("fillTemplate.1")
     while (y < yend) {
       val imageRow = gradSummary.getRow(y)
       var x = xstart
@@ -97,6 +123,7 @@ trait BinarizedGradientGridFuncs {
       }
       y += 1
     }
+//println(tpl.match_list.length)
     tpl
   }
 
@@ -106,9 +133,9 @@ trait BinarizedGradientGridFuncs {
       if (a >= magnitude_threshold_) {
           var angle = b
           if (angle >= unit(180)) {
-            angle += unit(-180) //Ignore polarity of the angle
+            angle = angle - unit(180) //Ignore polarity of the angle
           }
-          (Math.pow(unit(2), (angle.asInstanceOfL[Float] / unit(180.0 / 8))).asInstanceOfL[Int])
+          Math.pow(unit(2), (angle.asInstanceOfL[Double] / unit(180.0 / 8)).asInstanceOfL[Int]).asInstanceOfL[Int]
         }
       else 0
     }})
@@ -129,29 +156,30 @@ trait BinarizedGradientGridFuncs {
 //      binaryGradient.data(y, 0) = 0
 //      binaryGradient.data(y, cols - 1) = 0
 //    }
-    binaryGradient.getRow(0).mmap { e => 0}
-    binaryGradient.getRow(binaryGradient.numRows - 1).mmap {e => 0}
-    binaryGradient.getCol(0).mmap { e => 0}
-    binaryGradient.getCol(binaryGradient.numCols - 1).mmap {e => 0}
+    binaryGradient.getRow(0).mmap { e => unit(0)}
+    binaryGradient.getRow(binaryGradient.numRows - 1).mmap {e => unit(0)}
+    binaryGradient.getCol(0).mmap { e => unit(0)}
+    binaryGradient.getCol(binaryGradient.numCols - 1).mmap {e => unit(0)}
 
     // non-max suppression over a 3x3 stencil throughout the entire binaryGradient image
     // (Each pixel location contains just one orientation at this point)
     repGrayscaleImageToGrayscaleImageOps(binaryGradient).windowedFilter (3, 3) { slice /*3x3 Matrix[T]*/ =>
       // for each element, pick the most frequently occurring gradient direction if it's at least 2; otherwise pick 0(no direction)
-      val histogram = Vector[Int](255)
+      val histogram = Vector[Int](256, true)
       // TODO: Make this a scan-like op once supported
       var row = unit(0)
       while (row < slice.numRows) {
         var col = unit(0)
         while (col < slice.numCols) {
-          histogram(slice(row, col)) += 1
+          //histogram(slice(row, col)) += 1
+          histogram(slice(row,col)) = histogram(slice(row,col))+1
           col += 1
         }
         row += 1
       }
-      var i = unit(1)
-      var max = histogram(0)
-      var maxIndex = unit(0)
+      var i = unit(2)
+      var max = histogram(1)
+      var maxIndex = unit(1)
       while (i < histogram.length) {
         if (histogram(i) > max) {
           max = histogram(i)
@@ -159,7 +187,7 @@ trait BinarizedGradientGridFuncs {
         }
         i += 1
       }
-      if (max >= 2) maxIndex else unit(0)
+      if (max > 1) maxIndex else unit(0)
     }
   }
 
@@ -172,7 +200,7 @@ trait BinarizedGradientGridFuncs {
   def rectFractOverlap(a: Rep[Rect], b: Rep[Rect]): Rep[Float] = {
     if (intersect(a, b)) {
       val total_area: Rep[Float] = b.height * b.width + a.width * a.height
-      val left = if (a.x > b.x) a.x else b.x
+      val left = if (a.x > b.x) a.x else b.x // These conditionals do not generate properly
       val top = if (a.y > b.y) a.y else b.y
       val right = if (a.x + a.width < b.x + b.width) a.x + a.width else b.x + b.width
       val width = right - left
@@ -189,6 +217,7 @@ trait BinarizedGradientGridFuncs {
   // overlapThreshold: what fraction of overlap between 2 rectangles constitutes overlap
   def nonMaxSuppress(detections: Rep[Vector[BiGGDetection]], overlapThreshold: Rep[Float]): Rep[Vector[BiGGDetection]] = {
     var len = detections.length
+//println("LEN: " + len)
 
 //    detections filter { d1 =>
 //      var isMax = true
@@ -207,14 +236,23 @@ trait BinarizedGradientGridFuncs {
 //      }
 //      isMax
 //    }
+
+
     var i = unit(0)
     while (i < len - 1) {
       var j = i + 1
-      var iMoved = false
+      var iMoved = unit(false)
       while (j < len && iMoved == false) {
+//println("I: " + i)
+//println("J: " + j)
         val measured_frac_overlap = rectFractOverlap(detections(i).roi, detections(j).roi)
+//println("overlap: " + measured_frac_overlap)
         if (measured_frac_overlap > overlapThreshold) {
+//println("nms.1")
+//println("score i: " + detections(i).score)
+//println("score j: " + detections(j).score)
           if (detections(i).score >= detections(j).score) {
+//println("nms.2")
             val temp = detections(len - 1)
             detections(len - 1) = detections(j)
             detections(j) = temp
@@ -222,6 +260,7 @@ trait BinarizedGradientGridFuncs {
             j = j - 1
           }
           else {
+//println("nms.3")
             val temp = detections(len - 1)
             detections(len - 1) = detections(i)
             detections(i) = temp
