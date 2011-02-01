@@ -187,6 +187,7 @@ trait Graph[V <: Vertex, E <: Edge] {
   def edges: Edges[E]
   //def adjacent(a: V, b: V): Boolean
   def neighborsOf(a: V): Vertices[V]
+  def neighborsSelfOf(a: V): Vertices[V]
   def edgesOf(a: V): Edges[E]
   def containsEdge(e: E): Boolean
   def containsVertex(v: V): Boolean
@@ -207,6 +208,7 @@ trait Vertex {
   def graph: G
   def edges: Edges[E]
   def neighbors: Vertices[V]
+  def neighborsSelf: Vertices[V]
   def addTask(v: V): Unit
   def tasks: Vertices[V]
   def clearTasks(): Unit

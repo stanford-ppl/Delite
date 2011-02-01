@@ -19,6 +19,7 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V]
   
   protected var vertexEdges : Array[Edges[E]] = null
   protected var neighbors : Array[Vertices[V]] = null
+  protected var neighborsSelf : Array[Vertices[V]] = null
 
   var _frozen = false
 
@@ -95,6 +96,9 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V]
     vertexEdges = sorted map {(l: List[(E,V)]) => new EdgesImpl((l map {_._1}).toArray)}
     neighbors = sorted map {(l: List[(E,V)]) => new VerticesImpl((l map {_._2}).toArray)}
 
+    neighborsSelf = _vertices map {(v: V) => val ns = v :: (adjacencies(v) map {_._2})
+    new VerticesImpl(ns.sortBy{(v: V) => vertexIds(v)}.toArray)}
+    
     adjacencies = null
     _frozen = true
   }
@@ -113,6 +117,19 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V]
     else {
       val id = vertexIds(v)
       neighbors(id)
+    }
+  }
+  
+  // only available after finalization
+  def neighborsSelfOf(v: V) = {
+    if (!_frozen) throw new RuntimeException("Graph has not been finalized")
+
+    if (!vertexIds.contains(v)) {
+      new VerticesImpl[V](0)
+    }
+    else {
+      val id = vertexIds(v)
+      neighborsSelf(id)
     }
   }
 

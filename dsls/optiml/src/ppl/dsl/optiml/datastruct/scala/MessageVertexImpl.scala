@@ -6,6 +6,7 @@ class MessageVertexImpl(val graph: Graph[MessageVertex,MessageEdge], val data: M
   val _tasks = new ArrayBuffer[MessageVertex]()
   def edges = graph.edgesOf(this)
   def neighbors = graph.neighborsOf(this)
+  def neighborsSelf = graph.neighborsSelfOf(this)
 
   def addTask(v: MessageVertex) = {
     _tasks += v

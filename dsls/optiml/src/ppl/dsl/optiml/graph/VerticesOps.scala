@@ -48,7 +48,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
     extends DeliteOpForeachBounded[Vertex,V,Vertices] {
 
     val i = fresh[Int]
-    val sync = reifyEffects(in(i).neighbors.toList)
+    val sync = reifyEffects(in(i).neighborsSelf.toList)
   }
 
   def vertices_foreach[V <: Vertex:Manifest](x: Exp[Vertices[V]], block: Exp[V] => Exp[Unit]) = {

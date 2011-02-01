@@ -24,6 +24,7 @@ trait GraphOps extends DSLType with Variables {
     def edges = graph_edges(g)
     //def adjacent(a: V, b: V) = graph_adjacent(g,a,b)
     def neighborsOf(a: Rep[V]) = graph_neighbors_of(g,a)
+    def neighborsSelfOf(a: Rep[V]) = graph_neighbors_self_of(g,a)
     def edgesOf(a: Rep[V]) = graph_edges_of(g,a)
     def containsEdge(a: Rep[E]) = graph_contains_edge(g,a)
     def containsVertex(a: Rep[V]) = graph_contains_vertex(g,a)
@@ -44,6 +45,7 @@ trait GraphOps extends DSLType with Variables {
   def graph_edges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Edges[E]]
   //def graph_adjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
   def graph_neighbors_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Vertices[V]]
+  def graph_neighbors_self_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Vertices[V]]
   def graph_edges_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Edges[E]]
   def graph_contains_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Edge])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
   def graph_contains_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
@@ -69,6 +71,7 @@ trait GraphOpsExp extends GraphOps with EffectExp {
   case class GraphEdges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Edges[E]]
   //case class GraphAdjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
   case class GraphNeighborsOf[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Vertices[V]]
+  case class GraphNeighborsSelfOf[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Vertices[V]]
   case class GraphEdgesOf[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Edges[E]]
   case class GraphContainsEdge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Edge])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
   case class GraphContainsVertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
@@ -107,6 +110,8 @@ trait GraphOpsExp extends GraphOps with EffectExp {
   //  = GraphAdjacent(reflectRead(g),reflectRead(a),reflectRead(b))
   def graph_neighbors_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
     = GraphNeighborsOf(reflectRead(g),reflectRead(a))
+  def graph_neighbors_self_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
+    = GraphNeighborsSelfOf(reflectRead(g),reflectRead(a))
   def graph_edges_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
     = GraphEdgesOf(reflectRead(g),reflectRead(a))
   def graph_contains_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Edge])(implicit mV: Manifest[V], mE: Manifest[E])
@@ -147,6 +152,7 @@ trait ScalaGenGraphOps extends BaseGenGraphOps with ScalaGenBase {
       case GraphEdges(g) => emitValDef(sym, quote(g) + ".edges")
       //case GraphAdjacent(g,a,b) => emitValDef(sym, quote(g) + ".adjacent(" + quote(a) + "," + quote(b) + ")")
       case GraphNeighborsOf(g,a) => emitValDef(sym, quote(g) + ".neighborsOf(" + quote(a) + ")")
+      case GraphNeighborsSelfOf(g,a) => emitValDef(sym, quote(g) + ".neighborsSelfOf(" + quote(a) + ")")
       case GraphEdgesOf(g,a) => emitValDef(sym, quote(g) + ".edgesOf(" + quote(a) + ")")
       case GraphContainsEdge(g,a) => emitValDef(sym, quote(g) + ".containsEdge(" + quote(a) + ")")
       case GraphContainsVertex(g,a) => emitValDef(sym, quote(g) + ".containsVertex(" + quote(a) + ")")

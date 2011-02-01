@@ -303,7 +303,7 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
         vertices(i).clearTasks()
       }
 
-      println("tasks: " + tasks.length)
+      //println("tasks: " + tasks.length)
       seen.clear()
     }
   }

@@ -141,6 +141,7 @@ trait VectorOps extends DSLType with Variables {
     def mmap(f: Rep[A] => Rep[A]) = vector_mmap(x,f)
     def foreach(block: Rep[A] => Rep[Unit]) = vector_foreach(x, block)
     def zip[B:Manifest,R:Manifest](y: Rep[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = vector_zipwith(x,y,f)
+    def mzip[B:Manifest](y: Rep[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]) = vector_mzipwith(x,y,f)
     def reduce(f: (Rep[A],Rep[A]) => Rep[A]) = vector_reduce(x,f)
     def filter(pred: Rep[A] => Rep[Boolean]) = vector_filter(x,pred)
     def flatMap[B:Manifest](f: Rep[A] => Rep[Vector[B]]) = vector_flatmap(x,f)
@@ -217,6 +218,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_mmap[A:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[A]): Rep[Vector[A]]
   def vector_foreach[A:Manifest](x: Rep[Vector[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
   def vector_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[Vector[R]]
+  def vector_mzipwith[A:Manifest,B:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[A]): Rep[Vector[A]]
   def vector_reduce[A:Manifest](x: Rep[Vector[A]], f: (Rep[A],Rep[A]) => Rep[A]): Rep[A]
   def vector_filter[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Vector[A]]
   def vector_flatmap[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[Vector[B]]): Rep[Vector[B]]
@@ -527,6 +529,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
     val alloc = reifyEffects(Vector[R](inA.length, inA.isRow))
   }
+  
+  case class VectorMutableZipWith[A:Manifest,B:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]],
+                                                             v: (Exp[A],Exp[B]), func: Exp[A])
+    extends DeliteOpZipWith[A,B,A,Vector] {
+
+    val alloc = inA
+  }
 
   case class VectorReduce[A:Manifest](in: Exp[Vector[A]], v: (Exp[A],Exp[A]), func: Exp[A])
     extends DeliteOpReduce[A]
@@ -637,6 +646,11 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
     val v = (fresh[A], fresh[B])
     val func = reifyEffects(f(v._1,v._2))
     VectorZipWith(reflectRead(x), reflectRead(y), v, func)
+  }
+  def vector_mzipwith[A:Manifest,B:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], f: (Exp[A],Exp[B]) => Exp[A]) = {
+    val v = (fresh[A], fresh[B])
+    val func = reifyEffects(f(v._1,v._2))
+    reflectMutation(VectorMutableZipWith(reflectReadWrite(x), reflectRead(y), v, func))
   }
   def vector_reduce[A:Manifest](x: Exp[Vector[A]], f: (Exp[A],Exp[A]) => Exp[A]) = {
     val v = (fresh[A],fresh[A])

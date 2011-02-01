@@ -85,10 +85,13 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
         }
 
         // Normalize the belief
-        vdata.setBelief(unaryFactorNormalize(vdata.belief))
-        // THIS FAILS HORRIBLY
-        // unaryFactorNormalizeM(vdata.belief)
-
+        val belief = unaryFactorNormalizeM(vdata.belief)
+        
+       /* if(count % 100000 == 0) {
+          print("norm")
+          vdata.belief.pprint
+        } */
+        
         //println("mult")
         //vdata.belief.pprint
 
@@ -98,12 +101,10 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           val out = e.asInstanceOfL[MessageEdge].out(v).asInstanceOfL[DenoiseEdgeData]
           
           // Compute the cavity
-          val cavity = vdata.belief.cloneL
-          unaryFactorDivideM(cavity, in.message)
-          val ncavity = unaryFactorNormalize(cavity)
+          val cavity = unaryFactorNormalizeM(unaryFactorDivideM(vdata.belief.cloneL, in.message))
 
           // Convolve the cavity with the edge factor
-          val msg = unaryFactorNormalize(unaryFactorConvolve(edgePotential, ncavity))
+          val msg = unaryFactorNormalizeM(unaryFactorConvolve(edgePotential, cavity))
 
           // Damp the message (MUTATE IN PLACE)
           /* unaryFactorDampM(msg, out.message, damping)
@@ -113,24 +114,28 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           // Set the message
          out.message.copyFrom(0, msg) */
          
-          val dampMsg = unaryFactorDamp(msg, out.message, damping)
+        /* if(count % 100000 == 0) {
+            print("damping")
+            msg.pprint
+          } */
+         
+          val dampMsg = unaryFactorDampM(msg, out.message, damping)
+          
+         /*  if(count % 100000 == 0) {
+            out.message.pprint
+            dampMsg.pprint
+           } */
+          
           // Compute message residual
           val residual = unaryFactorResidual(dampMsg, out.message)
           
           // Set the message
-          out.setMessage(msg)
-
-          /*if(count % 100000 == 0) {
-          print("damping")
-          msg.pprint
-           out.message.pprint
-           dampMsg.pprint
-           }*/
+          out.setMessage(dampMsg)
           
-           if(count % 100000 == 0) {
+          /* if(count % 100000 == 0) {
            println(count)
            println(residual)
-           }
+           }*/
          
           // Enqueue update function on target vertex if residual is greater than bound
           if (residual > bound) {
@@ -139,14 +144,15 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
         }
       count += 1
     }
+        
+    toc
 
     // Predict the image!
     g.vertices foreach { v =>
       imgUpdate(cleanImg, v.data.asInstanceOfL[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.asInstanceOfL[DenoiseVertexData].belief))
     }
     
-    toc
-    
+    MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
     println("Update functions ran: " + count)
   }
 
@@ -286,7 +292,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     uf map {_ - logZ}
   }
   
-  def unaryFactorNormalizeM(uf: Rep[Vector[Double]]) {
+  def unaryFactorNormalizeM(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
     val logZ = Math.log(uf.exp.sum)
     uf mmap {_ - logZ}
   }
@@ -311,14 +317,20 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
   
   // Divide elementwise by other factor
-  def unaryFactorDivideM(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) {
+  def unaryFactorDivideM(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
     a -= b
   }
 
   def unaryFactorConvolve(bf: Rep[Matrix[Double]], other: Rep[Vector[Double]]): Rep[Vector[Double]] = {
-    val indices = Vector.range(0, bf.numCols)
-    val colSums = indices map {(i: Rep[Int]) => (bf.getCol(i) + other).exp.sum} map {(sum: Rep[Double]) =>if (sum == 0) Double.MinValue else sum}
-    colSums map {Math.log(_)}
+    bf.mapRows{ (row) =>
+      val csum = (row + other).exp.sum
+      if(csum == 0) {
+        Math.log(Double.MinValue)
+      }
+      else {
+        Math.log(csum)
+      }
+    }
   }
 
   /**This = other * damping + this * (1-damping) */
@@ -332,14 +344,23 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
   
   /**This = other * damping + this * (1-damping) */
-  def unaryFactorDampM(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) {
+ /* def unaryFactorDampM(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) = {
     if (damping != 0) {
-      var i = unit(0)
-      while(i < a.length) {
+      for(i <- 0 until a.length) {
         a(i) = Math.log(Math.exp(b(i)) * damping + Math.exp(a(i)).exp * (1.0 - damping))
-        i += 1
       }
     }
+    
+    a
+  } */
+  
+  /* This = other * damping + this * (1-damping) */
+  def unaryFactorDampM(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) = {
+    if (damping != 0) {
+      a.mzip(b){(x:Rep[Double],y:Rep[Double]) => Math.log(Math.exp(x)*(1.0-damping)+Math.exp(y)*damping)}
+    }
+    
+    a
   }
 
   /**Compute the residual between two unary factors */
