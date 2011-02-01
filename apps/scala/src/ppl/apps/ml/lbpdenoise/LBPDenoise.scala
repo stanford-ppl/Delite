@@ -132,10 +132,10 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           // Set the message
           out.setMessage(dampMsg)
           
-          /* if(count % 100000 == 0) {
+           if(count % 100000 == 0) {
            println(count)
            println(residual)
-           }*/
+           }
          
           // Enqueue update function on target vertex if residual is greater than bound
           if (residual > bound) {
@@ -389,5 +389,94 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     val indices = Vector.range(0, uf.length)
 
     (uf.exp * indices).sum / uf.exp.sum
+  }
+  
+  def unaryFactorUniformI(arity: Rep[Int]) = {
+    unaryFactorNormalize(Vector.zeros(arity))
+  }
+  
+  def unaryFactorNormalizeI(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+    var sum = unit(0.0)
+    var i = unit(0)
+    while(i < uf.length) {
+      sum += Math.exp(uf(i))
+      i += 1
+    }
+    
+    val logZ = Math.log(sum)
+    
+    i = unit(0)
+    while(i < uf.length) {
+      uf(i) = uf(i) - logZ
+      i += 1
+    }
+    
+    uf
+  }
+
+  def unaryFactorTimesI(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
+    var i = unit(0)
+    while(i < a.length) {
+      a(i) = a(i) + b(i)
+      i += 1
+    }
+    
+    a
+  }
+
+  // Add other factor elementwise
+  def unaryFactorPlusI(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
+    var i = unit(0)
+    while(i < a.length) {
+      a(i) = Math.log(Math.exp(a(i)) + Math.exp(b(i)))
+      i += 1
+    }
+    
+    a
+  }
+  
+  // Divide elementwise by other factor
+  def unaryFactorDivideI(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
+    var i = unit(0)
+    while(i < a.length) {
+      a(i) = a(i) - b(i)
+      i += 1
+    }
+    
+    a
+  }
+
+  def unaryFactorConvolveI(bf: Rep[Matrix[Double]], other: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+    val res = Vector.zeros(other.length)
+    
+    var i = unit(0)
+    while(i < other.length) {
+      var sum = unit(0.0)
+      var j = unit(0)
+      while (j < other.length) {
+        sum += Math.exp(bf(i, j) + other(j))
+        j += 1
+      }
+
+      // Guard against zeros
+      if (sum == 0.0)
+        sum = Double.MinValue
+
+      res(i) = Math.log(sum)
+      i += 1
+    }
+    
+    res
+  }
+  
+  /* This = other * damping + this * (1-damping) */
+  def unaryFactorDampI(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) = {
+    var i = unit(0)
+    while(i < a.length) {
+      a(i) = Math.log(Math.exp(a(i))*(1.0-damping)+Math.exp(b(i))*damping)
+      i += 1
+    }
+    
+    a
   }
 }
