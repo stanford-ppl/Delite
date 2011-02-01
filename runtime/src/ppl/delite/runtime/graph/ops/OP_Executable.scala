@@ -16,5 +16,10 @@ abstract class OP_Executable(resultType: Map[Targets.Value,String]) extends Deli
   def supportsTarget(target: Targets.Value) = resultType.contains(target)
   def outputType(target: Targets.Value) = resultType(target)
   override def outputType: String = outputType(Targets.Scala)
+  override def outputSlotType(target: Targets.Value, name: String) = {
+    assert(name == id, name+"!="+id)
+    outputType(target)
+  }
+  override def getOutputs = List(id)
 
 }

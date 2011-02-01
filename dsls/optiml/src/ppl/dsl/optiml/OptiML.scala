@@ -3,11 +3,12 @@ package ppl.dsl.optiml
 import graph._
 import java.io._
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
+import ppl.delite.framework.ops.{CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
@@ -69,8 +70,9 @@ trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ArithOps with Clone
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ArithOpsExp
-  with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp with IndexVectorOpsExp
+trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ArithOpsExpOpt
+  with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp 
+  with MLOutputWriterOpsExp with VectorViewOpsExp with IndexVectorOpsExp
   with LabelsOpsExp with TrainingSetOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard
@@ -80,7 +82,7 @@ trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp wit
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp {
   this: DeliteApplication =>
 
-  def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericNestedCodegen{val IR: OptiMLExp.this.type} = {
+  def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericFatCodegen{val IR: OptiMLExp.this.type} = {
     t match {
       case _:TargetScala => new OptiMLCodeGenScala{val IR: OptiMLExp.this.type = OptiMLExp.this}
       case _:TargetCuda => new OptiMLCodeGenCuda{val IR: OptiMLExp.this.type = OptiMLExp.this}
@@ -95,7 +97,12 @@ trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp wit
 /**
  * OptiML code generators
  */
-trait OptiMLCodeGenBase extends GenericCodegen {
+trait OptiMLCodeGenBase extends GenericFatCodegen {
+
+  val IR: DeliteApplication with OptiMLExp
+  override def initialDefs = IR.deliteGenerator.availableDefs
+
+
   def dsmap(line: String) = line
 
   val specialize = Set[String]()
@@ -210,8 +217,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
 trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenTrainingSetOps // with CudaGenVectorViewOps
   with CudaGenVariantsOps with DeliteCudaGenAllOverrides // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
-
-  val IR: DeliteApplication with OptiMLExp with Expressions
+  val IR: DeliteApplication with OptiMLExp
   import IR._
 
   // Maps the scala type to cuda type
@@ -237,7 +243,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.remap(m)
   }
 
-  override def isObjectType(m: Manifest[_]) : Boolean = remap(m) match {
+  override def isObjectType[T](m: Manifest[T]) : Boolean = remap(m) match {
     case "Matrix<int>" => true
     case "Matrix<long>" => true
     case "Matrix<float>" => true
@@ -259,7 +265,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.isObjectType(m)
   }
 
-  override def copyDataStructureHtoD(sym: Sym[_]) : String = remap(sym.Type) match {
+  override def copyDataStructureHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
     case "Matrix<int>" => matrixCopyHtoD(sym)
     case "Matrix<long>" => matrixCopyHtoD(sym)
     case "Matrix<float>" => matrixCopyHtoD(sym)
@@ -281,7 +287,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.copyDataStructureHtoD(sym)
   }
 
-  override def copyDataStructureDtoH(sym: Sym[_]) : String = remap(sym.Type) match {
+  override def copyDataStructureDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
     case "Matrix<int>" => matrixCopyDtoH(sym)
     case "Matrix<long>" => matrixCopyDtoH(sym)
     case "Matrix<float>" => matrixCopyDtoH(sym)
@@ -295,7 +301,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.copyDataStructureDtoH(sym)
   }
 
-  override def copyDataStructureDtoHBack(sym: Sym[_]) : String = remap(sym.Type) match {
+  override def copyDataStructureDtoHBack(sym: Sym[Any]) : String = remap(sym.Type) match {
     case "Matrix<int>" => matrixCopyDtoHBack(sym)
     case "Matrix<long>" => matrixCopyDtoHBack(sym)
     case "Matrix<float>" => matrixCopyDtoHBack(sym)
@@ -317,7 +323,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.copyDataStructureDtoHBack(sym)
   }
 
-  override def allocOutput(newSym: Sym[_], sym: Sym[_]) : Unit = remap(newSym.Type) match {
+  override def allocOutput(newSym: Sym[Any], sym: Sym[Any]) : Unit = remap(newSym.Type) match {
     case "Matrix<int>" => emitMatrixAllocSym(newSym,sym)
     case "Matrix<long>" => emitMatrixAllocSym(newSym,sym)
     case "Matrix<float>" => emitMatrixAllocSym(newSym,sym)
@@ -331,7 +337,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.allocOutput(newSym,sym)    
   }
 
-  override def allocReference(newSym: Sym[_], sym: Sym[_]) : Unit = remap(newSym.Type) match {
+  override def allocReference(newSym: Sym[Any], sym: Sym[Any]) : Unit = remap(newSym.Type) match {
     case "Matrix<int>" => emitMatrixAllocRef(newSym,sym)
     case "Matrix<long>" => emitMatrixAllocRef(newSym,sym)
     case "Matrix<float>" => emitMatrixAllocRef(newSym,sym)
@@ -350,7 +356,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     case _ => super.allocReference(newSym,sym)
   }
 
-  override def positionMultDimInputs(sym: Sym[_]) : String = remap(sym.Type) match {
+  override def positionMultDimInputs(sym: Sym[Any]) : String = remap(sym.Type) match {
 	//TODO: Add matrix reposition, and also do safety check for datastructures that do not have data field
     case "Vector<int>" => vectorPositionMultDimInputs(sym)
     case "Vector<long>" => vectorPositionMultDimInputs(sym)

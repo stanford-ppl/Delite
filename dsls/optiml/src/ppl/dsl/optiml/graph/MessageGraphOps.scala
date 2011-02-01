@@ -8,7 +8,7 @@
 //import ppl.delite.framework.ops.DeliteOpsExp
 //import reflect.Manifest
 //import scala.virtualization.lms.common._
-//import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen, CGenBase, CudaGenBase, ScalaGenBase}
+//import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 //import ppl.dsl.optiml.{OptiMLExp, OptiML}
 //
 //trait MessageGraphOps extends DSLType with Variables {
@@ -96,7 +96,7 @@
 //  val IR: MessageGraphOpsExp
 //  import IR._
 //
-//  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+//  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
 //    rhs match {
 //      case g@MessageGraphObjectNew() => emitValDef(sym, "new " + remap(g.mG) + "()")
 //      case _ => super.emitNode(sym, rhs)
@@ -109,7 +109,7 @@
 //  val IR: MessageGraphOpsExp
 //  import IR._
 //
-//  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+//  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 //    case _ => super.emitNode(sym, rhs)
 //  }
 //}
@@ -118,7 +118,7 @@
 //  val IR: MessageGraphOpsExp
 //  import IR._
 //
-//  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+//  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 //    case _ => super.emitNode(sym, rhs)
 //  }
 //}

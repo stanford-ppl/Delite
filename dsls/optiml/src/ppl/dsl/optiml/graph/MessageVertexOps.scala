@@ -8,7 +8,7 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 trait MessageVertexOps extends DSLType with Variables {
@@ -56,8 +56,8 @@ trait MessageVertexOpsExp extends MessageVertexOps with EffectExp {
   /////////////////////
   // class interface
 
-  def message_vertex_data(v: Exp[MessageVertex]) = MessageVertexData(reflectRead(v))
-  def message_vertex_target(v: Exp[MessageVertex], e: Exp[MessageEdge]) = MessageVertexTarget(reflectRead(v),reflectRead(e))
+  def message_vertex_data(v: Exp[MessageVertex]) = MessageVertexData(/*reflectRead*/(v))
+  def message_vertex_target(v: Exp[MessageVertex], e: Exp[MessageEdge]) = MessageVertexTarget(/*reflectRead*/(v),/*reflectRead*/(e))
 }
 
 
@@ -74,7 +74,7 @@ trait ScalaGenMessageVertexOps extends BaseGenMessageVertexOps with ScalaGenBase
   val IR: MessageVertexOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case v@MessageVertexObjectNew(g,d) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(g) + "," + quote(d) + ")")
       case MessageVertexData(v) => emitValDef(sym, quote(v) + ".data")
@@ -89,7 +89,7 @@ trait CudaGenMessageVertexOps extends BaseGenMessageVertexOps with CudaGenBase w
   val IR: MessageVertexOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -98,7 +98,7 @@ trait CGenMessageVertexOps extends BaseGenMessageVertexOps with CGenBase {
   val IR: MessageVertexOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

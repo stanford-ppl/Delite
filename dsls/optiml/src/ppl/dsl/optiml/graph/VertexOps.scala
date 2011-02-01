@@ -8,7 +8,7 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 trait VertexOps extends DSLType with Variables {
@@ -52,12 +52,12 @@ trait VertexOpsExp extends VertexOps with EffectExp {
   /////////////////////
   // class interface
 
-  def vertex_edges(v: Exp[Vertex]) = VertexEdges(reflectRead(v))
-  def vertex_neighbors(v: Exp[Vertex]) = VertexNeighbors(reflectRead(v))
+  def vertex_edges(v: Exp[Vertex]) = VertexEdges(/*reflectRead*/(v))
+  def vertex_neighbors(v: Exp[Vertex]) = VertexNeighbors(/*reflectRead*/(v))
 
-  def vertex_tasks(v: Exp[Vertex]) = VertexTasks(reflectRead(v))
-  def vertex_clear_tasks(v: Exp[Vertex]) = reflectMutation(VertexClearTasks(reflectWrite(v)))
-  def vertex_add_task(v: Exp[Vertex], t: Exp[Vertex]) = reflectMutation(VertexAddTask(reflectRead(v), reflectRead(t)))
+  def vertex_tasks(v: Exp[Vertex]) = VertexTasks(/*reflectRead*/(v))
+  def vertex_clear_tasks(v: Exp[Vertex]) = reflectWrite(v)()(VertexClearTasks(/*reflectWrite*/(v)))
+  def vertex_add_task(v: Exp[Vertex], t: Exp[Vertex]) = reflectWrite(v)()(VertexAddTask(/*reflectRead*/(v), /*reflectRead*/(t)))
 }
 
 
@@ -74,7 +74,7 @@ trait ScalaGenVertexOps extends BaseGenVertexOps with ScalaGenBase {
   val IR: VertexOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case VertexEdges(v) => emitValDef(sym, quote(v) + ".edges")
       case VertexNeighbors(v) => emitValDef(sym, quote(v) + ".neighbors")
@@ -91,7 +91,7 @@ trait CudaGenVertexOps extends BaseGenVertexOps with CudaGenBase with CudaGenDat
   val IR: VertexOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -100,7 +100,7 @@ trait CGenVertexOps extends BaseGenVertexOps with CGenBase {
   val IR: VertexOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

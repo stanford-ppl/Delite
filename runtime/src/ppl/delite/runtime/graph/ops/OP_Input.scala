@@ -23,6 +23,8 @@ class OP_Input(op: DeliteOP) extends DeliteOP {
   def supportsTarget(target: Targets.Value) = op.supportsTarget(target)
   def outputType(target: Targets.Value) = op.outputType(target)
   override def outputType = outputType(Targets.Scala)
+  override def getOutputs = op.getOutputs
+  override def outputSlotType(target: Targets.Value, name: String): String = op.outputSlotType(target, name)
 
   isSchedulable = true
   isScheduled = true

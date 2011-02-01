@@ -11,7 +11,8 @@ package ppl.delite.runtime
 
 object Config {
 
-  val numThreads: Int = System.getProperty("delite.threads", "1").toInt
+  //val numThreads: Int = System.getProperty("delite.threads", "1").toInt
+  val numThreads: Int = System.getProperty("delite.threads", "2").toInt
 
   val numGPUs: Int = System.getProperty("delite.gpus", "0").toInt
 

@@ -3,9 +3,9 @@ package ppl.dsl.optiml.vector
 import ppl.dsl.optiml.datastruct.scala._
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import scala.virtualization.lms.internal.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base}
+import scala.virtualization.lms.common.ScalaGenBase
 import ppl.delite.framework.ops.DeliteOpsExp
 
 trait LabelsOps extends DSLType with Base with OverloadHack {
@@ -36,7 +36,7 @@ trait LabelsOpsExp extends LabelsOps with BaseExp { this: DeliteOpsExp =>
   case class LabelsObjectFromVec[A:Manifest](xs: Exp[Vector[A]]) extends Def[Labels[A]] {
     val mV = manifest[LabelsImpl[A]]
   }
-  case class LabelsMutableMap[A:Manifest](in: Exp[Labels[A]], v: Exp[A], func: Exp[A])
+  case class LabelsMutableMap[A:Manifest](in: Exp[Labels[A]], v: Sym[A], func: Exp[A])
     extends DeliteOpMap[A,A,Labels] {
     val alloc = in
   }
@@ -47,7 +47,7 @@ trait LabelsOpsExp extends LabelsOps with BaseExp { this: DeliteOpsExp =>
   def labels_mmap[A:Manifest](x: Exp[Labels[A]], f: Exp[A] => Exp[A]) = {
     val v = fresh[A]
     val func = reifyEffects(f(v))
-    reflectMutation(LabelsMutableMap(reflectReadWrite(x), v, func))
+    reflectWrite(x)()(LabelsMutableMap(x, v, func)) //reflectReadWrite(x)
   }
 }
 
@@ -55,7 +55,7 @@ trait ScalaGenLabelsOps extends ScalaGenBase {
   val IR: LabelsOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case l@LabelsObjectNew(length, isRow) => emitValDef(sym, "new " + remap(l.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
     case l@LabelsObjectFromVec(xs) => emitValDef(sym, "new " + remap(l.mV) + "(" + quote(xs) + ")")

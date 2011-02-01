@@ -32,8 +32,11 @@ class OP_Map(val id: String, func: String, resultType: Map[Targets.Value,String]
    * Chunks require same dependency & input lists
    */
   def chunk(i: Int): OP_Map = {
-    val r = new OP_Map(id+"_"+i, function, Targets.unitTypes(resultType)) //chunks all return Unit
+    val restp = Targets.unitTypes(resultType)
+    val r = new OP_Map(id+"_"+i, function, restp) //chunks all return Unit
     r.dependencyList = dependencyList //lists are immutable so can be shared
+    r.outputList = List(r.id)
+    r.outputTypeMap = Map(r.id -> restp)
     r.inputList = inputList
     r.consumerList = consumerList
     for (dep <- getDependencies) dep.addConsumer(r)
@@ -42,17 +45,21 @@ class OP_Map(val id: String, func: String, resultType: Map[Targets.Value,String]
   }
 
   def header(kernel: String, graph: DeliteTaskGraph): OP_Single = {
-    val h = new OP_Single(id+"_h", kernel, Map(Targets.Scala->kernel))
+    val restp = Map(Targets.Scala->kernel)
+    val h = new OP_Single(id+"_h", kernel, restp)
     //header assumes all inputs of map
     h.dependencyList = dependencyList
+    h.outputList = List(h.id)
+    h.outputTypeMap = Map(h.id -> restp)
     h.inputList = inputList
     h.addConsumer(this)
     for (dep <- getDependencies) dep.replaceConsumer(this, h)
     //map consumes header, map's consumers remain unchanged
     dependencyList = List(h)
-    inputList = List(h)
+    inputList = List((h,h.id))
 
-    graph._ops += (id+"_h") -> h
+    graph.registerOp(h)
+    //graph._ops += (id+"_h") -> h
     h
   }
 

@@ -1,35 +1,36 @@
 package ppl.delite.runtime.codegen.kernels.scala
 
-import ppl.delite.runtime.graph.ops.OP_MapReduce
+import ppl.delite.runtime.graph.ops.OP_MultiLoop
 import ppl.delite.runtime.codegen.{ExecutableGenerator, ScalaCompile}
 import ppl.delite.runtime.graph.DeliteTaskGraph
 
 /**
  * Author: Kevin J. Brown
- * Date: Dec 2, 2010
- * Time: 8:06:07 PM
+ * Date: Nov 17, 2010
+ * Time: 9:00:34 PM
  *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
 
 /**
- * Creates a chunk for OP_MapReduce and generates an executable kernel for that chunk
+ * Creates a chunk for OP_MultiLoop and generates an executable kernel for that chunk
  * The generated kernels are designed to run in parallel on multiple threads in an SMP system
- * This implementation of MapReduce is optimized for a DSL collection that is backed by an Array
- * WARNING: this implementation of MapReduce assumes that the number of chunks <= the size of the collection:
- *  creating more chunks than there are elements in the collection being reduced will produce an INCORRECT result
+ * This implementation of MultiLoop is optimized for a DSL collection that is backed by an Array
  */
 
-object MapReduce_SMP_Array_Generator {
+object MultiLoop_SMP_Array_Generator {
 
-  def makeChunk(op: OP_MapReduce, chunkIdx: Int, numChunks: Int, kernelPath: String): OP_MapReduce = {
+  def makeChunk(op: OP_MultiLoop, chunkIdx: Int, numChunks: Int, kernelPath: String): OP_MultiLoop = {
     val chunk = if (chunkIdx == 0) op else op.chunk(chunkIdx)
-    ScalaCompile.addSource(makeKernel(chunk, op, chunkIdx, numChunks, kernelPath))
+    val src = makeKernel(chunk, op, chunkIdx, numChunks, kernelPath)
+    ScalaCompile.addSource(src)
+    println("--- makeChunk")
+    println(src)
     chunk
   }
 
-  private def makeKernel(op: OP_MapReduce, master: OP_MapReduce, chunkIdx: Int, numChunks: Int, kernelPath: String) = {
+  private def makeKernel(op: OP_MultiLoop, master: OP_MultiLoop, chunkIdx: Int, numChunks: Int, kernelPath: String) = {
     val out = new StringBuilder
 
     //update the op with this kernel
@@ -41,29 +42,25 @@ object MapReduce_SMP_Array_Generator {
     //the kernel
     writeKernel(out, op, master, chunkIdx, numChunks)
 
-    //the first (primary) reduction
-    //writeMapReduce(out, op, master.outputType, chunkIdx, numChunks)
-
     //the footer
-    out.append('}')
-    out.append('\n')
+    out.append("}\n")
 
     out.toString
   }
 
-  private def updateOP(op: OP_MapReduce, master: OP_MapReduce, idx: Int) {
+  private def updateOP(op: OP_MultiLoop, master: OP_MultiLoop, idx: Int) {
     op.setKernelName(kernelName(master, idx))
   }
 
-  private def writeHeader(out: StringBuilder, master: OP_MapReduce, idx: Int, kernelPath: String) {
+  private def writeHeader(out: StringBuilder, master: OP_MultiLoop, idx: Int, kernelPath: String) {
     ExecutableGenerator.writePath(kernelPath, out)
     out.append("object ")
     out.append(kernelName(master, idx))
     out.append(" {\n")
   }
 
-  private def writeKernel(out: StringBuilder, op: OP_MapReduce, master: OP_MapReduce, chunkIdx: Int, numChunks: Int) {
-    out.append("def apply(mapReduce: ")
+  private def writeKernel(out: StringBuilder, op: OP_MultiLoop, master: OP_MultiLoop, chunkIdx: Int, numChunks: Int) {
+    out.append("def apply(head: ")
     out.append(op.getInputs.head._1.outputType)
     out.append("): ")
     out.append(op.outputType)
@@ -71,8 +68,8 @@ object MapReduce_SMP_Array_Generator {
 
     //tree reduction
     //first every chunk performs its primary (map-)reduction
-    out.append("val in = mapReduce.closure.in\n")
-    out.append("val size = in.size\n")
+    out.append("val size = head.closure.size\n")
+    out.append("val out = head.out\n")
     out.append("var idx = size*")
     out.append(chunkIdx)
     out.append('/')
@@ -83,47 +80,52 @@ object MapReduce_SMP_Array_Generator {
     out.append('/')
     out.append(numChunks)
     out.append('\n')
-    out.append("var acc = mapReduce.closure.map(in.dcApply(idx))\n")
-    out.append("idx += 1\n")
+    if (chunkIdx == 0)
+      out.append("val acc = out\n")
+    else
+      out.append("val acc = head.closure.split(out)\n") // copy of out per chunk
+//    out.append("head.closure.map(acc, idx)\n")
+//    out.append("idx += 1\n")
     out.append("while (idx < end) {\n")
-    //out.append("acc = mapReduce.closure.reduce(acc, mapReduce.closure.map(in.dcApply(idx)))\n")
-    out.append("acc = mapReduce.closure.mapreduce(acc, in.dcApply(idx))\n")
+    out.append("head.closure.process(acc, idx)\n")
     out.append("idx += 1\n")
-    out.append("}\n") //return acc
+    out.append("}\n")
 
-    var half = chunkIdx
-    var step = 1
-    while ((half % 2 == 0) && (chunkIdx + step < numChunks)) { //half the chunks quit each iteration
-      half = half / 2
-      val neighbor = chunkIdx + step //the index of the chunk to reduce with
-      step *= 2
+    if (!op.needsCombine) {
+      if (chunkIdx == 0) out.append("acc\n")
+    } else {
+      var half = chunkIdx
+      var step = 1
+      while ((half % 2 == 0) && (chunkIdx + step < numChunks)) { //half the chunks quit each iteration
+        half = half / 2
+        val neighbor = chunkIdx + step //the index of the chunk to reduce with
+        step *= 2
 
-      out.append("acc = mapReduce.closure.reduce(acc, mapReduce.get")
-      out.append(neighbor)
-      out.append(')')
-      out.append('\n')
+        out.append("head.closure.combine(acc, head.get")
+        out.append(neighbor)
+        out.append(")\n")
+      }
+      if (chunkIdx == 0) { //chunk 0 returns result
+        out.append("acc\n")
+      }
+      else { //other chunks store result
+        out.append("head.set")
+        out.append(chunkIdx)
+        out.append("(acc)\n")
+      }
     }
-    if (chunkIdx == 0) { //chunk 0 returns result
-      out.append("acc\n")
-    }
-    else { //other chunks store result
-      out.append("mapReduce.set")
-      out.append(chunkIdx)
-      out.append("(acc)\n")
-    }
-    out.append('}')
-    out.append('\n')
+    out.append("}\n")
   }
 
-  private def kernelName(master: OP_MapReduce, idx: Int) = {
-    "MapReduce_SMP_Array_" + master.id + "_Chunk_" + idx
+  private def kernelName(master: OP_MultiLoop, idx: Int) = {
+    "MultiLoop_SMP_Array_" + master.id + "_Chunk_" + idx
   }
 
 }
 
-object MapReduce_SMP_Array_Header_Generator {
+object MultiLoop_SMP_Array_Header_Generator {
 
-  def makeHeader(op: OP_MapReduce, numChunks: Int, graph: DeliteTaskGraph) = {
+  def makeHeader(op: OP_MultiLoop, numChunks: Int, graph: DeliteTaskGraph) = {
     val out = new StringBuilder
 
     //the header
@@ -132,22 +134,26 @@ object MapReduce_SMP_Array_Header_Generator {
     //the kernel
     writeClass(out, op)
 
-    //the sync state
-    for (i <- 1 until numChunks) //sync for all chunks except 0
-      writeSync(out, i, op.outputType)
-
+    if (op.needsCombine) {
+      //the sync state
+      for (i <- 1 until numChunks) //sync for all chunks except 0
+        writeSync(out, i, op.outputType)
+    }
+    
     //the footer
-    out.append('}')
-    out.append('\n')
+    out.append("}\n")
 
     //add header for compilation
-    ScalaCompile.addSource(out.toString)
+    val src = out.toString
+    ScalaCompile.addSource(src)
+    println("--- makeHeader")
+    println(src)
 
     //return header OP
     op.header(kernelName(op), graph)
   }
 
-  private def writeObject(out: StringBuilder, op: OP_MapReduce, kernelPath: String) {
+  private def writeObject(out: StringBuilder, op: OP_MultiLoop, kernelPath: String) {
     ExecutableGenerator.writePath(kernelPath, out)
     out.append("object ")
     out.append(kernelName(op))
@@ -156,7 +162,7 @@ object MapReduce_SMP_Array_Header_Generator {
     out.append("}\n")
   }
 
-  private def writeObjectApply(out: StringBuilder, op: OP_MapReduce) {
+  private def writeObjectApply(out: StringBuilder, op: OP_MultiLoop) {
     out.append("def apply(")
     val inputs = op.getInputs.iterator
     var inIdx = 0
@@ -173,17 +179,19 @@ object MapReduce_SMP_Array_Header_Generator {
     }
     out.append(") = new ")
     out.append(kernelName(op))
-    out.append("(in0")
-    for (i <- 1 until inIdx) {
-      out.append(", in" + i)
+    out.append("(")
+    for (i <- 0 until inIdx) {
+      if (i > 0) out.append(", ")
+      out.append("in")
+      out.append(i)
     }
     out.append(")\n")
   }
 
-  private def writeClass(out: StringBuilder, op: OP_MapReduce) {
+  private def writeClass(out: StringBuilder, op: OP_MultiLoop) {
     out.append("final class ")
     out.append(kernelName(op))
-    out.append('(')
+    out.append("(")
     val inputs = op.getInputs.iterator
     var inIdx = 0
     var first = true
@@ -201,11 +209,17 @@ object MapReduce_SMP_Array_Header_Generator {
 
     out.append("val closure = ")
     out.append(op.function)
-    out.append("(in0")
-    for (i <- 1 until inIdx) {
-      out.append(", in" + i)
+    out.append("(")
+    for (i <- 0 until inIdx) {
+      if (i > 0) out.append(", ")
+      out.append("in")
+      out.append(i)
     }
     out.append(")\n")
+
+    out.append("val out: ") // zip specific
+    out.append(op.outputType)
+    out.append(" = closure.alloc\n")
   }
 
   private def writeSync(out: StringBuilder, chunkIdx: Int, outputType: String) {
@@ -239,8 +253,8 @@ object MapReduce_SMP_Array_Header_Generator {
     out.append(chunkIdx)
     out.append(" = false }\n")
   }
-
-  private def kernelName(op: OP_MapReduce) = {
-    "MapReduce_SMP_Array_Header" + op.id
+  
+  private def kernelName(op: OP_MultiLoop) = {
+    "MultiLoop_SMP_Array_Header" + op.id
   }
 }

@@ -55,7 +55,7 @@ object ZipReduce_SMP_Array_Generator {
 
   private def writeKernel(out: StringBuilder, op: OP_ZipReduce, master: OP_ZipReduce, chunkIdx: Int, numChunks: Int) {
     out.append("def apply(zipReduce: ")
-    out.append(op.getInputs.head.outputType)
+    out.append(op.getInputs.head._1.outputType)
     out.append("): ")
     out.append(op.outputType)
     out.append(" = {\n")
@@ -160,7 +160,8 @@ object ZipReduce_SMP_Array_Header_Generator {
       out.append(inIdx)
       inIdx += 1
       out.append(": ")
-      out.append(inputs.next.outputType)
+      val (dep,name) = inputs.next
+      out.append(dep.outputSlotType(name))
     }
     out.append(") = new ")
     out.append(kernelName(op))
@@ -185,7 +186,8 @@ object ZipReduce_SMP_Array_Header_Generator {
       out.append(inIdx)
       inIdx += 1
       out.append(": ")
-      out.append(inputs.next.outputType)
+      val (dep,name) = inputs.next
+      out.append(dep.outputSlotType(name))
     }
     out.append(") {\n")
 

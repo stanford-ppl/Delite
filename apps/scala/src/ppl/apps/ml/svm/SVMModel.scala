@@ -46,8 +46,9 @@ trait SVMModel {
     var b = unit(0.0)
 
     // intermediate training info
-    var alphas = Vector.zeros(X.numRows).mt // col vector
-    //val alphas = Vector.zeros(X.numRows).mt // col vector
+    //var alphas = Vector.zeros(X.numRows).mt // col vector
+    val alphas = Vector.mzeros(X.numRows)
+    alphas.mt // col vector
 
     val numSamples = X.numRows
     var passes = unit(0)
@@ -56,55 +57,60 @@ trait SVMModel {
       print(".")
       var num_changed_alphas = unit(0)
       //var i = unit(0)
-      //while(i < numSamples){
-      for(i <- 0 until numSamples){
+      //while(i < numSamples){ //TR
+      for (i <- 0 until numSamples) {
         // TODO: x761 -- code is recalculating alphas from original definition here
-        val f_i = (alphas*Y*(X*X(i).t)).sum + b
+        val alphasOld = alphas.cloneL
+        
+        val f_i = (alphasOld*Y*(X*X(i).t)).sum + b //TR M*V alph0
         val E_i = f_i - Y(i)
 
-        if (((Y(i)*E_i < -1.*tol) && (alphas(i) < C)) || ((Y(i)*E_i > tol) && (alphas(i) > 0))){
+        if (((Y(i)*E_i < -1.*tol) && (alphasOld(i) < C)) || ((Y(i)*E_i > tol) && (alphasOld(i) > 0))){
           // select a candidate j from the remaining numSamples-i samples at random
           var j = Math.floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
           while (j == i){
             j = Math.floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
           }
 
-          val f_j = (alphas*Y*(X*X(j).t)).sum + b
+          val f_j = (alphasOld*Y*(X*X(j).t)).sum + b //TR M*V alph0 -- inside if, cannot be fused with the one in f_i (calc actually happens further down)
           val E_j = f_j - Y(j)
                         
-          var old_aj = alphas(j)
-          var old_ai = alphas(i)
+          val old_aj = alphasOld(j) //TR: making it a val should not move it down!
+          //var old_ai = alphas(i)
 
           // calculate bounds L and H that must hold in order for a_i, alphas(j) to
           // satisfy constraints and check
           var L = unit(0.0)
           var H = unit(0.0)
           if (Y(i) != Y(j)){
-            L = Math.max(0., alphas(j) - alphas(i))
-            H = Math.min(C, C + alphas(j) - alphas(i))
+            L = Math.max(0., alphasOld(j) - alphasOld(i))
+            H = Math.min(C, C + alphasOld(j) - alphasOld(i))
           }else{
-            L = Math.max(0., alphas(i) + alphas(j) - C)
-            H = Math.min(C, alphas(i) + alphas(j))
+            L = Math.max(0., alphasOld(i) + alphasOld(j) - C)
+            H = Math.min(C, alphasOld(i) + alphasOld(j))
           }
 
-          if (L != H){
+          if (L != H){ //TR: problem: if/then/else will not force old_aj
             // calculate eta
             val eta = (X(i)*:*X(j)*2) - (X(i)*:*X(i)) - (X(j)*:*X(j))
             // check eta
             if (eta < 0){
               // compute new alphas(j)
-              alphas(j) = alphas(j) - Y(j)*(E_i-E_j)/eta
+
+              //alphas = alphas.cloneL //TR
+              alphas(j) = alphasOld(j) - Y(j)*(E_i-E_j)/eta //TR functionalize?
+
               // clip alphas(j) if necessary
               if (alphas(j) > H) alphas(j) = H
               else if (alphas(j) < L) alphas(j) = L
-	      alphas = alphas.cloneL
 
               // check alphas(j) convergence
               if (Math.abs(alphas(j) - old_aj) >  tol){
                 // find a_i to maximize objective function
-                old_ai = alphas(i)
-                alphas(i) = alphas(i) + Y(i)*Y(j)*(old_aj-alphas(j))
-		alphas = alphas.cloneL
+
+                val old_ai = alphasOld(i)
+                //alphas = alphas.cloneL //TR
+                alphas(i) = alphasOld(i) + Y(i)*Y(j)*(old_aj-alphas(j)) //TR functionalize?
 
                 // compute the new b such that KKT conditions are satisfied
                 val old_b = b
@@ -126,7 +132,7 @@ trait SVMModel {
             } // negative eta?
           } // L != H?
         } // main if (select alphas)
-        //i += 1
+        //i += 1 //TR
       } // for i = 1 to numSamples
 
       if (num_changed_alphas == 0){
