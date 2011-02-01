@@ -73,36 +73,41 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
       v =>
         val vdata = v.data.asInstanceOfL[DenoiseVertexData]
         vdata.belief.copyFrom(0, vdata.potential)
-
-        /*if(count % 100000 == 0) {
-         println("mult")
-         vdata.belief.pprint
-        }*/
+       
+        if(count % 100000 == 0) {
+          println("belief")
+          vdata.belief.pprint
+        }
         
         // Multiply belief by messages
         for (e <- v.edges) {
           val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
           
-          /*if(count % 100000 == 0) {
+          if(count % 100000 == 0) {
            //vdata.belief.pprint
            in.message.pprint
-          }*/
+          }
           
-          unaryFactorTimes(vdata.belief, in.message)
-        }
-        
-        if(count % 100000 == 0) {
-          println("belief")
-         vdata.belief.pprint
+          //vdata.belief = nunaryFactorTimes(vdata.belief, in.message)
+          var i = unit(0)
+          while(i < vdata.belief.length) {
+            vdata.belief(i) = vdata.belief(i) + in.message(i)
+            i += 1
+          }
         }
 
         // Normalize the belief
-        unaryFactorNormalize(vdata.belief)
-        
-        if(count % 100000 == 0) {
-          println("belief")
-         vdata.belief.pprint
+        val logZ = Math.log(vdata.belief.exp.sum)
+        var k = unit(0)
+        while(k < vdata.belief.length) {
+          vdata.belief(k) = vdata.belief(k)-logZ
+          k += 1
         }
+        
+        /*if(count % 100000 == 0) {
+          //println("belief")
+         vdata.belief.pprint
+        }*/
 
         // Send outbound messages
         for (e <- v.edges) {
@@ -116,9 +121,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           }*/
           
           // Compute the cavity
-          val cavity = vdata.belief.cloneL
-          unaryFactorDivide(cavity, in.message)
-          unaryFactorNormalize(cavity)
+          val cavity = nunaryFactorNormalize(nunaryFactorDivide(vdata.belief, in.message))
           
           /*if(count % 100000 == 0) {
             println("cavity")
@@ -126,8 +129,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           }*/
 
           // Convolve the cavity with the edge factor
-          val msg = unaryFactorConvolve(edgePotential, cavity)
-          unaryFactorNormalize(msg)
+          val msg = nunaryFactorNormalize(unaryFactorConvolve(edgePotential, cavity))
 
           /*if(count % 100000 == 0) {
           print("damping")
@@ -136,14 +138,14 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
            }*/
           
           // Damp the message
-          unaryFactorDamp(msg, out.message, damping)
+          val dampMsg = nunaryFactorDamp(msg, out.message, damping)
           
           /*if(count % 100000 == 0) {
             msg.pprint
           }*/
 
           // Compute message residual
-          val residual = unaryFactorResidual(msg, out.message)
+          val residual = unaryFactorResidual(dampMsg, out.message)
           
           // Set the message
          out.message.copyFrom(0, msg)
@@ -201,7 +203,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           potential(pred) = 0.0 - ((obs - pred) * (obs - pred) / (2.0 * sigmaSq))
         }
 
-        unaryFactorNormalize(potential)
+        potential = nunaryFactorNormalize(potential)
 
         val data = DenoiseVertexData(pixelId, belief.cloneL, potential)
         val vertex = MessageVertex(g, data)
@@ -215,16 +217,16 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     for (i <- 0 until img.numRows) {
       for (j <- 0 until img.numCols) {
         if(j < img.numCols - 1) {
-          val edgeData = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
-          val edgeData2 = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
+          val edgeData = DenoiseEdgeData(nunaryFactorUniform(numRings), nunaryFactorUniform(numRings))
+          val edgeData2 = DenoiseEdgeData(nunaryFactorUniform(numRings), nunaryFactorUniform(numRings))
         
           val edgeRight = MessageEdge(g, edgeData, edgeData2, vertices(i)(j), vertices(i)(j+1))
           g.addEdge(edgeRight, vertices(i)(j), vertices(i)(j+1))
         }
 
         if(i < img.numRows - 1) {
-          val edgeData = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
-          val edgeData2 = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
+          val edgeData = DenoiseEdgeData(nunaryFactorUniform(numRings), nunaryFactorUniform(numRings))
+          val edgeData2 = DenoiseEdgeData(nunaryFactorUniform(numRings), nunaryFactorUniform(numRings))
           val edgeDown = MessageEdge(g, edgeData, edgeData2, vertices(i)(j), vertices(i+1)(j))
           g.addEdge(edgeDown, vertices(i)(j), vertices(i+1)(j))
         }
@@ -303,24 +305,41 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
       }
     }
   }
-
-  def unaryFactorUniform(arity: Rep[Int]) = {
-    val factor = Vector.zeros(arity)
-    unaryFactorNormalize(factor)
-    factor
+  
+  def nunaryFactorUniform(arity: Rep[Int]) : Rep[Vector[Double]] = {
+    nunaryFactorNormalize(Vector.zeros(arity))
   }
 
-  def unaryFactorNormalize(uf: Rep[Vector[Double]]) {
+  def nunaryFactorNormalize(uf: Rep[Vector[Double]]) : Rep[Vector[Double]] = {
     val logZ = Math.log(uf.exp.sum)
-    var i = unit(0)
+    uf map {_ - logZ}
+  }
+
+  /*def unaryFactorUniform(arity: Rep[Int]) = {
+    val factor = Vector.zeros(arity)
+    val logZ = Math.log(factor.exp.sum)
+    factor mmap {_ - logZ}
+    factor
+  }*/
+
+  /*def unaryFactorNormalize(uf: Rep[Vector[Double]]) {
+    val logZ = Math.log(uf.exp.sum)
+    /*var i = unit(0)
     while(i < uf.length) {
       uf(i) = uf(i)-logZ
+      println(uf(i))
       i += 1
-    }
-    //uf mmap {_ - logZ}
+    }*/
+    uf mmap {_ - logZ}
+
+  }*/
+  
+  // Multiply elementwise by other factor
+  def nunaryFactorTimes(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) : Rep[Vector[Double]] = {
+    a + b
   }
 
-  // Multiply elementwise by other factor
+  /*// Multiply elementwise by other factor
   def unaryFactorTimes(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) {
     a += b
     /*var i = unit(0)
@@ -337,20 +356,35 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
       a(i) = Math.log(Math.exp(a(i)) + Math.exp(b(i)))
       i += 1
     }
-  }
+  }*/
 
   // Divide elementwise by other factor
+  def nunaryFactorDivide(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) : Rep[Vector[Double]] = {
+    a - b
+  }
+  
+  /*// Divide elementwise by other factor
   def unaryFactorDivide(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) {
     a -= b
-  }
+  }*/
 
   def unaryFactorConvolve(bf: Rep[Matrix[Double]], other: Rep[Vector[Double]]) : Rep[Vector[Double]] = {
     val indices = Vector.range(0, bf.numCols)
     val colSums = indices map {(i: Rep[Int]) => (bf.getCol(i) + other).exp.sum} map {(sum: Rep[Double]) =>if (sum == 0) Double.MinValue else sum}
     colSums map {Math.log(_)}
   }
+  
+  /* This = other * damping + this * (1-damping) */
+  def nunaryFactorDamp(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) : Rep[Vector[Double]] = {
+    if (damping != 0) {
+      (b.exp * damping + a.exp * (1.0 - damping)) map {Math.log(_)}
+    }
+    else {
+      a
+    }
+  }
 
-  /**This = other * damping + this * (1-damping) */
+  /* This = other * damping + this * (1-damping) */
   def unaryFactorDamp(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) {
     if (damping != 0) {
       var i = unit(0)
@@ -358,9 +392,6 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
         a(i) = Math.log(Math.exp(b(i))*damping + Math.exp(a(i))*(1.0-damping))
         i += 1
       }
-    }
-    else {
-      a
     }
   }
 
@@ -386,9 +417,9 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     max_asg
   }
 
-  def unaryFactorExpectation(uf: Rep[Vector[Double]]): Rep[Double] = {
+  /*def unaryFactorExpectation(uf: Rep[Vector[Double]]): Rep[Double] = {
     val indices = Vector.range(0, uf.length)
 
     (uf.exp * indices).sum / uf.exp.sum
-  }
+  }*/
 }
