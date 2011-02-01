@@ -75,7 +75,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
       untilconverged(g) {
         v =>
           val vdata = v.data.asInstanceOfL[DenoiseVertexData]
-          vdata.setBelief(0, vdata.potential)
+          vdata.belief.copyFrom(0, vdata.potential)
 
           // Multiply belief by messages
           for (e <- v.edges) {
@@ -84,7 +84,9 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           }
 
           // Normalize the belief
-          vdata.setBelief(unaryFactorNormalize(vdata.belief))
+          vdata.setBelief(unaryFactorNormalizeM(vdata.belief))
+          // THIS FAILS HORRIBLY
+          // unaryFactorNormalizeM(vdata.belief)
 
 	//println("mult")
 	//vdata.belief.pprint
@@ -289,6 +291,11 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   def unaryFactorNormalize(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
     val logZ = Math.log(uf.exp.sum)
     uf map {_ - logZ}
+  }
+  
+  def unaryFactorNormalizeM(uf: Rep[Vector[Double]]) {
+    val logZ = Math.log(uf.exp.sum)
+    uf mmap {_ - logZ}
   }
 
   // Multiply elementwise by other factor
