@@ -48,8 +48,7 @@ trait BinarizedGradientGridFuncs {
       println("Detections: " + detections.length)
       detections
     }
-//println("DETECTIONS BEFORE FILTER: " + all_detections.length)
-//    println("detectAllObjects.9")
+//    println("Detections before NMS: " + all_detections.length)
     val filteredDetections = nonMaxSuppress(all_detections, fraction_overlap_)
     println("Total detections: " + filteredDetections.length)
   }
@@ -217,7 +216,7 @@ if (crt_template.match_list.length < 0) println("dummy")
   // overlapThreshold: what fraction of overlap between 2 rectangles constitutes overlap
   def nonMaxSuppress(detections: Rep[Vector[BiGGDetection]], overlapThreshold: Rep[Float]): Rep[Vector[BiGGDetection]] = {
     var len = detections.length
-//println("LEN: " + len)
+println("Detections before NMS: " + len)
 
 //    detections filter { d1 =>
 //      var isMax = true
@@ -238,21 +237,26 @@ if (crt_template.match_list.length < 0) println("dummy")
 //    }
 
 
+for (i <- 0 until 1) {
     var i = unit(0)
+//println("nms.1")
     while (i < len - 1) {
       var j = i + 1
       var iMoved = unit(false)
+//println("nms.2")
       while (j < len && iMoved == false) {
+//println("nms.3")
 //println("I: " + i)
 //println("J: " + j)
         val measured_frac_overlap = rectFractOverlap(detections(i).roi, detections(j).roi)
+//println("nms.4")
 //println("overlap: " + measured_frac_overlap)
         if (measured_frac_overlap > overlapThreshold) {
-//println("nms.1")
+//println("nms.5")
 //println("score i: " + detections(i).score)
 //println("score j: " + detections(j).score)
           if (detections(i).score >= detections(j).score) {
-//println("nms.2")
+//println("nms.6")
             val temp = detections(len - 1)
             detections(len - 1) = detections(j)
             detections(j) = temp
@@ -260,7 +264,46 @@ if (crt_template.match_list.length < 0) println("dummy")
             j = j - 1
           }
           else {
-//println("nms.3")
+//println("nms.7")
+            val temp = detections(len - 1)
+            detections(len - 1) = detections(i)
+            detections(i) = temp
+            len = len - 1
+            i = i - 1
+            iMoved = true
+          }
+        }
+        j += 1
+      }
+      i += 1
+    }
+//println("nms.8")
+}
+    detections.take(len)
+  }
+
+/*
+  // Suppress overlapping rectangles to be the rectangle with the highest score
+  // detections: vector of detections to work with
+  // overlapThreshold: what fraction of overlap between 2 rectangles constitutes overlap
+  def nonMaxSuppressAlternativeImpl(detections: Rep[Vector[BiGGDetection]], overlapThreshold: Rep[Float]): Rep[Vector[BiGGDetection]] = {
+    var len = detections.length
+
+    var i = unit(0)
+    while (i < len - 1) {
+      var j = i + 1
+      var iMoved = unit(false)
+      while (j < len && iMoved == false) {
+        val measured_frac_overlap = rectFractOverlap(detections(i).roi, detections(j).roi)
+        if (measured_frac_overlap > overlapThreshold) {
+          if (detections(i).score >= detections(j).score) {
+            val temp = detections(len - 1)
+            detections(len - 1) = detections(j)
+            detections(j) = temp
+            len = len - 1
+            j = j - 1
+          }
+          else {
             val temp = detections(len - 1)
             detections(len - 1) = detections(i)
             detections(i) = temp
@@ -274,5 +317,42 @@ if (crt_template.match_list.length < 0) println("dummy")
       i += 1
     }
     detections.take(len)
+
+
+//    detections filter { d1 =>
+//      var isMax = true
+//      var d2Index = 0
+//      while (d2Index < detections.length) {
+//        val d2 = detections(d2Index)
+//        if (d1 != d2) {
+//          val measuredOverlap = rectFractOverlap(d1.roi, d2.roi)
+//          if (measuredOverlap > overlapThreshold) {
+//            if (d1.score < d2.score) {
+//              isMax = false
+//            }
+//          }
+//        }
+//        d2Index += 1
+//      }
+//      isMax
+//    }
+
+
+    val output = Vector[BiGGDetection](0, true)
+
+    var i = unit(0)
+    while (i < len - 1) {
+      var j = i + 1
+      var iMoved = unit(false)
+      while (j < len) {
+        if (rectFractOverlap(detections(i).roi, detections(j).roi) > overlapThreshold) {
+          output += if (detections(i).score >= detections(j).score) detections(i) else detections(j)
+        }
+        j += 1
+      }
+      i += 1
+    }
+    output
   }
+*/
 }
