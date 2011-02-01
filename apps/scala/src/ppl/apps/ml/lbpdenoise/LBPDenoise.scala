@@ -20,6 +20,8 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
 
   def main() = {
+    if (args.length < 1) print_usage
+  
     val colors = unit(5)
     val damping = unit(0.1)
     val bound = unit(1E-15)
@@ -33,7 +35,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     val edgePotential = Matrix[Double](colors, colors)
   
     // rows and cols arguments
-    rows = Integer.parseInt(args(0))
+    /*rows = Integer.parseInt(args(0))
     cols = Integer.parseInt(args(1))
 
     // Generate image
@@ -41,12 +43,13 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     imgPaintSunset(img, colors)
     MLOutputWriter.writeImgPgm(img, "src.pgm")
     imgCorrupt(img, sigma)
-    MLOutputWriter.writeImgPgm(img, "noise.pgm")
+    MLOutputWriter.writeImgPgm(img, "noise.pgm") */
     
     // Load in a raw image that we generated from GraphLab
 
     // Make sure we read in the raw file correctly
-    // MLOutputWriter.writeImgPgm(img, "checkImg.pgm")
+    val img = MLInputReader.read(args(0))
+    MLOutputWriter.writeImgPgm(img, "checkImg.pgm")
 
     //val num = unit(1)
     //for (i <- 0 until num) {
@@ -84,7 +87,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           }
 
           // Normalize the belief
-          vdata.setBelief(unaryFactorNormalizeM(vdata.belief))
+          vdata.setBelief(unaryFactorNormalize(vdata.belief))
           // THIS FAILS HORRIBLY
           // unaryFactorNormalizeM(vdata.belief)
 
