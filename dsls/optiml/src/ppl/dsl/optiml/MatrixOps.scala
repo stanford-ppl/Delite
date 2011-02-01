@@ -927,7 +927,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"}")
       currDim -= 1
     */
-    case MatrixPlusEquals(x,y) =>
+    case MatrixPlusEquals(x,y) if(useLocalVar) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength(quote(x)+"->size()")
