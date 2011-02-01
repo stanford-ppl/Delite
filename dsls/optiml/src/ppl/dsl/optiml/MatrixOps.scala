@@ -911,7 +911,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(x)),false)
       currDim -= 1
-
+    /*
     case MatrixPlusEquals(x,y) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -925,6 +925,17 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
+      currDim -= 1
+    */
+    case MatrixPlusEquals(x,y) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength(quote(x)+"->size()")
+      val varX = if(hasLocalVar(x,currDimStr)) getLocalVar(x,currDimStr)
+                 else "NOT FOUND X"
+      val varY = if(hasLocalVar(y,currDimStr)) getLocalVar(y,currDimStr)
+                 else "NOT FOUND Y"
+      stream.println(addTab()+"%s = %s + %s;".format(varX,varX,varY))
       currDim -= 1
 
     case _ => super.emitNode(sym, rhs)

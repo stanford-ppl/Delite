@@ -673,23 +673,27 @@ trait CudaGenDeliteOps extends CudaGenEffect with BaseGenDeliteOps {
         emitValDef(sym,quote(mapR.rV._1))
       }
       else {
-        //emitValDef(mapR.rV._1.asInstanceOf[Sym[_]],quote(sym))
-        //stream.println(addTab()+"%s %s = %s.dcApply(0);".format(remap(mapR.mV.Type),quote(mapR.mV),quote(mapR.in)))
-        //addVarLink(getBlockResult(mapR.map),sym)
-        //emitBlock(mapR.map)
-        //removeVarLink(getBlockResult(mapR.map),sym)
-		stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1),quote(sym)))
+		    stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1),quote(sym)))
+        val reduceLocalVar = getNewLocalVar()
+        val outLocalVar = getNewLocalVar()
+        val nextDimStr = getNextDimStr()
+        saveLocalVar(sym,nextDimStr,outLocalVar)
+        stream.println(addTab()+"%s %s = 0;".format(remap(sym.Type.typeArguments(0)),outLocalVar))
         stream.println(addTab()+"for(int cnt=0; cnt<%s.size(); cnt++) {".format(quote(mapR.in)))
         tabWidth += 1
         stream.println(addTab()+"%s %s = %s.dcApply(cnt);".format(remap(mapR.mV.Type),quote(mapR.mV),quote(mapR.in)))
         emitBlock(mapR.map)
-		stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._2),quote(getBlockResult(mapR.map))))
+		    stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._2),quote(getBlockResult(mapR.map))))
+        stream.println(addTab()+"%s %s = %s;".format(remap(sym.Type.typeArguments(0)),reduceLocalVar,getLocalVar(getBlockResult(mapR.map),nextDimStr)))
+        saveLocalVar(mapR.rV._1,nextDimStr,outLocalVar)
+        saveLocalVar(mapR.rV._2,nextDimStr,reduceLocalVar)
         emitBlock(mapR.reduce)
         tabWidth -= 1
         stream.println(addTab()+"}")
-		allocReference(mapR.rV._1.asInstanceOf[Sym[_]],getBlockResult(mapR.map).asInstanceOf[Sym[_]])
-		allocReference(mapR.rV._2.asInstanceOf[Sym[_]],getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+		    allocReference(mapR.rV._1.asInstanceOf[Sym[_]],getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+		    allocReference(mapR.rV._2.asInstanceOf[Sym[_]],getBlockResult(mapR.map).asInstanceOf[Sym[_]])
         allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]],true)
+        stream.println(addTab()+"%s.dcUpdate(%s,%s);".format(quote(sym),nextDimStr,outLocalVar))
       }
     }
 

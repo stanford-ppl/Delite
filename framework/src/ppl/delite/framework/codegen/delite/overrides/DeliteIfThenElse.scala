@@ -129,18 +129,28 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
                 case _ =>
               }
               //stream.println(addTab() + "%s %s;".format(remap(sym.Type),quote(sym)))
+              (sym.Type.typeArguments.length>0) && (isPrimitiveType(sym.Type.typeArguments(0))) match {
+                case false => throw new GenerationFailedException("CudaGen: If-Else at least needs to have primitive types for the resulting object elements.")
+                case true =>
+              }
+              val outLocalVar = getNewLocalVar()
+              val nextDimStr = getNextDimStr()
+              stream.println(addTab() + "%s %s;".format(remap(sym.Type.typeArguments(0)),outLocalVar))
               stream.println(addTab() + "if (" + quote(c) + ") {")
               tabWidth += 1
               emitBlock(a)
               stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(a))))
+              stream.println(addTab() + "%s = %s;".format(outLocalVar,getLocalVar(getBlockResult(a),nextDimStr)))
               tabWidth -= 1
               stream.println(addTab() + "} else {")
               tabWidth += 1
               emitBlock(b)
               stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
+              stream.println(addTab() + "%s = %s;".format(outLocalVar,getLocalVar(getBlockResult(b),nextDimStr)))
               tabWidth -= 1
               stream.println(addTab()+"}")
-			  allocReference(sym,getBlockResult(a).asInstanceOf[Sym[_]])
+              saveLocalVar(sym,nextDimStr,outLocalVar)
+			        allocReference(sym,getBlockResult(a).asInstanceOf[Sym[_]])
             case _ =>
               isVoidType(sym.Type) match {
                 case true =>
