@@ -49,115 +49,105 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
     // Make sure we read in the raw file correctly
     val img = MLInputReader.read(args(0))
-    MLOutputWriter.writeImgPgm(img, "checkImg.pgm")
+    MLOutputWriter.writeImgPgm(img, "check.pgm")
 
-    //val num = unit(1)
-    //for (i <- 0 until num) {
-      // Clean up the image and save it
-      //PerformanceTimer.start("LBP")
-      
-      // Make a copy of the image
-      val cleanImg = img.cloneL
+    // Clean up the image and save it
+    
+    // Make a copy of the image
+    val cleanImg = img.cloneL
 
-      // Construct graph from image
-      val g = constructGraph(cleanImg, colors, sigma)
+    // Construct graph from image
+    val g = constructGraph(cleanImg, colors, sigma)
 
-      if (smoothing == "laplace") {
-        binaryFactorSetLaplace(edgePotential, lambda)
-      }
-      else if (smoothing == "square") {
-        binaryFactorSetAgreement(edgePotential, lambda)
-      }
-      
-      edgePotential.pprint
+    if (smoothing == "laplace") {
+      binaryFactorSetLaplace(edgePotential, lambda)
+    }
+    else if (smoothing == "square") {
+      binaryFactorSetAgreement(edgePotential, lambda)
+    }
+    
+    edgePotential.pprint
 
-      var count = unit(1)
-      
-      g.freeze()
+    var count = unit(1)
+    
+    g.freeze()
 
-      untilconverged(g) {
-        v =>
-          val vdata = v.data.asInstanceOfL[DenoiseVertexData]
-          vdata.belief.copyFrom(0, vdata.potential)
+    tic
+    untilconverged(g) {
+      v =>
+        val vdata = v.data.asInstanceOfL[DenoiseVertexData]
+        vdata.belief.copyFrom(0, vdata.potential)
 
-          // Multiply belief by messages
-          for (e <- v.edges) {
-            val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
-            unaryFactorTimesM(vdata.belief, in.message)
+        // Multiply belief by messages
+        for (e <- v.edges) {
+          val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
+          unaryFactorTimesM(vdata.belief, in.message)
+        }
+
+        // Normalize the belief
+        vdata.setBelief(unaryFactorNormalize(vdata.belief))
+        // THIS FAILS HORRIBLY
+        // unaryFactorNormalizeM(vdata.belief)
+
+        //println("mult")
+        //vdata.belief.pprint
+
+        // Send outbound messages
+        for (e <- v.edges) {
+          val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
+          val out = e.asInstanceOfL[MessageEdge].out(v).asInstanceOfL[DenoiseEdgeData]
+          
+          // Compute the cavity
+          val cavity = vdata.belief.cloneL
+          unaryFactorDivideM(cavity, in.message)
+          val ncavity = unaryFactorNormalize(cavity)
+
+          // Convolve the cavity with the edge factor
+          val msg = unaryFactorNormalize(unaryFactorConvolve(edgePotential, ncavity))
+
+          // Damp the message (MUTATE IN PLACE)
+          /* unaryFactorDampM(msg, out.message, damping)
+          // Compute message residual
+          val residual = unaryFactorResidual(msg, out.message)
+          
+          // Set the message
+         out.message.copyFrom(0, msg) */
+         
+          val dampMsg = unaryFactorDamp(msg, out.message, damping)
+          // Compute message residual
+          val residual = unaryFactorResidual(dampMsg, out.message)
+          
+          // Set the message
+          out.setMessage(msg)
+
+          /*if(count % 100000 == 0) {
+          print("damping")
+          msg.pprint
+           out.message.pprint
+           dampMsg.pprint
+           }*/
+          
+           if(count % 100000 == 0) {
+           println(count)
+           println(residual)
+           }
+         
+          // Enqueue update function on target vertex if residual is greater than bound
+          if (residual > bound) {
+            v.addTask(e.asInstanceOfL[MessageEdge].target(v))
           }
+        }
+      count += 1
+    }
 
-          // Normalize the belief
-          vdata.setBelief(unaryFactorNormalize(vdata.belief))
-          // THIS FAILS HORRIBLY
-          // unaryFactorNormalizeM(vdata.belief)
-
-	//println("mult")
-	//vdata.belief.pprint
-
-          // Send outbound messages
-          for (e <- v.edges) {
-            val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
-            val out = e.asInstanceOfL[MessageEdge].out(v).asInstanceOfL[DenoiseEdgeData]
-            
-            // Compute the cavity
-            val cavity = vdata.belief.cloneL
-            unaryFactorDivideM(cavity, in.message)
-            val ncavity = unaryFactorNormalize(cavity)
-
-            // Convolve the cavity with the edge factor
-            val msg = unaryFactorNormalize(unaryFactorConvolve(edgePotential, ncavity))
-
-            // Damp the message (MUTATE IN PLACE)
-            /* unaryFactorDampM(msg, out.message, damping)
-            // Compute message residual
-            val residual = unaryFactorResidual(msg, out.message)
-            
-            // Set the message
-           out.message.copyFrom(0, msg) */
-           
-            val dampMsg = unaryFactorDamp(msg, out.message, damping)
-            // Compute message residual
-            val residual = unaryFactorResidual(dampMsg, out.message)
-            
-            // Set the message
-            out.setMessage(msg)
-
-            /*if(count % 100000 == 0) {
-            print("damping")
-            msg.pprint
-             out.message.pprint
-             dampMsg.pprint
-             }*/
-            
-             if(count % 100000 == 0) {
-             println(count)
-             println(residual)
-             }
-           
-            // Enqueue update function on target vertex if residual is greater than bound
-            if (residual > bound) {
-              v.addTask(e.asInstanceOfL[MessageEdge].target(v))
-            }
-          }
-        count += 1
-      }
-      
-      println("Update functions ran: " + count)
-
-      // Predict the image!
-      g.vertices foreach { v =>
-        imgUpdate(cleanImg, v.data.asInstanceOfL[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.asInstanceOfL[DenoiseVertexData].belief))
-      }
-
-      //PerformanceTimer.stop("LBP")
-      //PerformanceTimer.print("LBP")
-      MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
-  //  }
-    /* PerformanceTimer2.summarize("BM")
-   PerformanceTimer2.summarize("CD")
-   PerformanceTimer2.summarize("OC")
-   PerformanceTimer2.summarize("D")
-   PerformanceTimer2.summarize("R") */
+    // Predict the image!
+    g.vertices foreach { v =>
+      imgUpdate(cleanImg, v.data.asInstanceOfL[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.asInstanceOfL[DenoiseVertexData].belief))
+    }
+    
+    toc
+    
+    println("Update functions ran: " + count)
   }
 
   def constructGraph(img: Rep[Matrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Rep[Graph[MessageVertex, MessageEdge]] = {
