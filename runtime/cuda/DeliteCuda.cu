@@ -24,18 +24,21 @@ void freeCudaMemory(FreeItem item) {
     list<void*>::iterator iter;
     for (iter = item.keys->begin(); iter != item.keys->end(); iter++) {
         //cout << "object ref: " << (long) *iter << endl;
-        list<void*>* freePtrList = cudaMemoryMap->find(*iter)->second;
-        list<void*>::iterator iter2;
-        for (iter2 = freePtrList->begin(); iter2 != freePtrList->end(); iter2++) {
-            void* freePtr = *iter2;
-            if (cudaFree(freePtr) != cudaSuccess)
-                cout << "bad free pointer: " << (long) freePtr << endl;
-            //else
-                //cout << "freed successfully: " << (long) freePtr << endl;
-        }
-        cudaMemoryMap->erase(*iter);
-        delete freePtrList;
-        free(*iter);
+        if(cudaMemoryMap->find(*iter) != cudaMemoryMap->end()) {
+        	list<void*>* freePtrList = cudaMemoryMap->find(*iter)->second;
+       		list<void*>::iterator iter2;
+        	for (iter2 = freePtrList->begin(); iter2 != freePtrList->end(); iter2++) {
+            	void* freePtr = *iter2;
+            	cudaFree(freePtr);
+            	//if (cudaFree(freePtr) != cudaSuccess)
+            	//    cout << "bad free pointer: " << (long) freePtr << endl;
+            	//else
+                	//cout << "freed successfully: " << (long) freePtr << endl;
+       		}
+        	cudaMemoryMap->erase(*iter);
+        	delete freePtrList;
+        	free(*iter);
+		}
     }
     delete item.keys;
 }
@@ -138,3 +141,6 @@ void DeliteCudaMemcpyDtoHAsync(void* dptr, void* sptr, size_t size) {
 	cudaStreamSynchronize(d2hStream);
 }
 
+void DeliteCudaMemset(void *ptr, int value, size_t count) {
+	cudaMemset(ptr,value,count);
+}

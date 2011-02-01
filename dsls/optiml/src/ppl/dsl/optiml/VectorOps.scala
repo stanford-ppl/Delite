@@ -728,7 +728,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
         currDim += 1
         val currDimStr = getCurrDimStr()
         setCurrDimLength(quote(len))
-        emitVectorAlloc(sym,"%s".format(quote(len)),"true") //needs to allocate with new symbol
+        emitVectorAlloc(sym,"%s".format(quote(len)),"true",false) //needs to allocate with new symbol
 		//if(currDim == 2) {
 		//	stream.println(addTab()+"%s %s_save = %s.data;".format(remap(sym.Type.typeArguments(0)),quote(sym),quote(sym)))
         //	stream.println(addTab()+"%s.data += %s*%s;".format(quote(sym),quote(len),getPrevDimStr()))
@@ -764,6 +764,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       }
 	*/
 
+      /*
     case VectorTrans(x) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -773,9 +774,9 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       stream.println(addTab()+"%s.update(%s,%s.apply(%s));".format(quote(sym),currDimStr,quote(x),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s->length".format(quote(x)),"!%s->isRow".format(quote(x)))
+      emitVectorAlloc(sym,"%s->length".format(quote(x)),"!%s->isRow".format(quote(x)),false)
       currDim -= 1
-
+     */
     case VectorRepmat(x,i,j) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -787,9 +788,9 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       stream.println(addTab()+"%s.update(i,j,%s.apply(%s));".format(quote(sym),quote(x),"j%"+quote(x)+".length"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s".format(quote(i)),"%s->length*%s".format(quote(x),quote(j)))
+      emitMatrixAlloc(sym,"%s".format(quote(i)),"%s->length*%s".format(quote(x),quote(j)),false)
       currDim -= 1
-
+    /*
     case VectorOuter(x,y) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -801,8 +802,78 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenBase with CudaGenDat
       tabWidth -= 1; stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s->length".format(quote(x)),"%s->length".format(quote(x)))
+      emitMatrixAlloc(sym,"%s->length".format(quote(x)),"%s->length".format(quote(x)),false)
       currDim -= 1
+    */
+
+    /* Test for using local variables */
+    case VectorMinus(x,y) if(useLocalVar) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength(quote(x)+"->length")
+      val outLocalVar = getNewLocalVar()
+      val outIndex = if(indexMap.contains(sym)) indexMap.get(sym).get else currDimStr+"%"+quote(sym)+".size()"
+      val inIndex = outIndex.replace(quote(sym),quote(x))
+      //TODO: Check whether inputs are all from kernel inputs (otherwise, the recalculations need to percolate up
+      stream.println(addTab()+"%s %s = %s.apply(%s) - %s.apply(%s);".format(remap(sym.Type.typeArguments(0)),outLocalVar,quote(x),inIndex,quote(y),inIndex))
+      saveLocalVar(sym,outIndex,outLocalVar)
+      currDim -= 1
+      emitVectorAlloc(sym,"%s->length".format(quote(x)),"true",false)
+
+    case VectorTrans(x) if(useLocalVar) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength(quote(x)+"->length")
+      val outLocalVar = getNewLocalVar()
+      val outIndex = if(indexMap.contains(sym)) indexMap.get(sym).get else currDimStr+"%"+quote(sym)+".size()"
+      val inIndex = outIndex.replace(quote(sym),quote(x))
+      if(hasLocalVar(x,inIndex)) {
+        val inLocalVar = getLocalVar(x,inIndex)
+        stream.println(addTab()+"%s %s = %s;".format(remap(sym.Type.typeArguments(0)),outLocalVar,inLocalVar))
+      }
+      else {
+        val tp=findDefinition(x.asInstanceOf[Sym[_]]).get
+        currDim -= 1
+        indexMap.put(x,inIndex)
+        emitNode(tp.sym,tp.rhs)
+        indexMap.remove(x)
+        currDim += 1
+        val inLocalVar = getLocalVar(x,inIndex)
+        stream.println(addTab()+"%s %s = %s;".format(remap(sym.Type.typeArguments(0)),outLocalVar,inLocalVar))
+      }
+      saveLocalVar(sym,outIndex,outLocalVar)
+      currDim -= 1
+      emitVectorAlloc(sym,"%s->length".format(quote(x)),"true",false)
+
+    case VectorOuter(x,y) if(useLocalVar) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength(quote(x)+"->length*"+quote(x)+"->length")
+      val outLocalVar = getNewLocalVar()
+      val varX = if(hasLocalVar(x,currDimStr+"/"+quote(x)+".size()")) getLocalVar(x,currDimStr+"/"+quote(x)+".size()")
+                 else {
+                   val tp=findDefinition(x.asInstanceOf[Sym[_]]).get
+                   indexMap.put(x,currDimStr+"/"+quote(x)+".size()")
+                   currDim -= 1
+                   emitNode(tp.sym,tp.rhs)
+                   currDim += 1
+                   indexMap.remove(x)
+                   getLocalVar(x,currDimStr+"/"+quote(x)+".size()")
+                 }
+      val varY = if(hasLocalVar(y,currDimStr+"%"+quote(y)+".size()")) getLocalVar(y,currDimStr+"%"+quote(y)+".size()")
+                 else {
+                   val tp=findDefinition(y.asInstanceOf[Sym[_]]).get
+                   indexMap.put(y,currDimStr+"%"+quote(y)+".size()")
+                   currDim -= 1
+                   emitNode(tp.sym,tp.rhs)
+                   currDim += 1
+                   indexMap.remove(y)
+                   getLocalVar(y,currDimStr+"%"+quote(y)+".size()")
+                 }
+      stream.println(addTab()+"%s %s = %s * %s;".format(remap(sym.Type.typeArguments(0)),outLocalVar,varX,varY))
+      saveLocalVar(sym,currDimStr,outLocalVar)
+      currDim -= 1
+      emitMatrixAlloc(sym,"%s->length".format(quote(x)),"%s->length".format(quote(x)),false)
 
     case _ => super.emitNode(sym, rhs)
   }
