@@ -60,7 +60,7 @@ object Foreach_SMP_Array_Generator {
 
   private def writeKernel(out: StringBuilder, op: OP_Foreach, master: OP_Foreach, chunkIdx: Int, numChunks: Int) {
     out.append("def apply(foreach: ")
-    out.append(op.getInputs.head.outputType)
+    out.append(op.getInputs.head._1.outputType)
     out.append(") {\n")
 
     out.append("val in = foreach.closure.in\n")
@@ -143,7 +143,8 @@ object Foreach_SMP_Array_Header_Generator {
       out.append(inIdx)
       inIdx += 1
       out.append(": ")
-      out.append(inputs.next.outputType)
+      val (dep,name) = inputs.next
+      out.append(dep.outputSlotType(name))
     }
     out.append(") = new ")
     out.append(kernelName(op))
@@ -168,7 +169,8 @@ object Foreach_SMP_Array_Header_Generator {
       out.append(inIdx)
       inIdx += 1
       out.append(": ")
-      out.append(inputs.next.outputType)
+      val (dep,name) = inputs.next
+      out.append(dep.outputSlotType(name))
     }
     out.append(") {\n")
 

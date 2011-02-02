@@ -41,6 +41,7 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
         val r = new OP_Variant(id+"_"+idx, resultMap, superOp, variantGraph)
         r.dependencyList = superOp.dependencyList
         r.inputList = superOp.inputList
+        // TR FIXME: outputList
         r.consumerList = superOp.consumerList
         r.inputSyms = this.inputSyms
         r.cudaMetadata = this.cudaMetadata

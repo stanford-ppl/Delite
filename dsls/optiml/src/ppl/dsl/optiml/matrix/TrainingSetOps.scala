@@ -5,9 +5,9 @@ import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.util.OverloadHack
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.common.{Variables, BaseExp, Base}
-import scala.virtualization.lms.internal.{CGenBase, GenerationFailedException, CudaGenBase, ScalaGenBase}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import scala.virtualization.lms.common.{Variables, Base, BaseExp, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.{GenerationFailedException}
 
 trait TrainingSetOps extends DSLType with Variables with OverloadHack {
   this: OptiML =>
@@ -67,7 +67,7 @@ trait ScalaGenTrainingSetOps extends ScalaGenBase {
   val IR: TrainingSetOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case t@TrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap(t.mM) + "(" + quote(xs) + "," + quote(labels) + ")")
     case TrainingSetTransposed(x) => emitValDef(sym, quote(x) + ".transposed")
@@ -80,7 +80,7 @@ trait CudaGenTrainingSetOps extends CudaGenBase {
   val IR: TrainingSetOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
     case TrainingSetObjectFromMat(xs, labels) => throw new GenerationFailedException("CudaGen: TrainingSet Cannot be generated from GPU")
     case TrainingSetTransposed(x) => emitValDef(sym, "(*"+quote(x) + ".transposed)")
@@ -93,7 +93,7 @@ trait CGenTrainingSetOps extends CGenBase {
   val IR: TrainingSetOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
     case t@TrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap(t.mM) + "(" + quote(xs) + "," + quote(labels) + ")")
     case TrainingSetTransposed(x) => emitValDef(sym, quote(x) + ".transposed")

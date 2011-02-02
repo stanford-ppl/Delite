@@ -4,8 +4,8 @@ import ppl.delite.framework.DSLType
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.dsl.optiml.datastruct.scala._
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{EffectExp, Variables}
-import scala.virtualization.lms.internal.{ScalaGenBase, GenericNestedCodegen}
+import scala.virtualization.lms.common.{EffectExp, Variables, ScalaGenBase}
+import scala.virtualization.lms.internal.{GenericNestedCodegen}
 
 /**
  * Created by IntelliJ IDEA.
@@ -57,15 +57,15 @@ trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with EffectExp {
 
   /////////////////////
   // object interface
-  def denoise_vertex_data_obj_new(id: Exp[Int], b: Exp[Vector[Double]], p: Exp[Vector[Double]]) = reflectEffect(DenoiseVertexDataObjectNew(id, reflectRead(b), reflectRead(p)))
+  def denoise_vertex_data_obj_new(id: Exp[Int], b: Exp[Vector[Double]], p: Exp[Vector[Double]]) = reflectEffect(DenoiseVertexDataObjectNew(id, /*reflectRead*/(b), /*reflectRead*/(p)))
 
   /////////////////////
   // class interface
 
-  def denoise_vertex_data_id(v: Exp[DenoiseVertexData]) = DenoiseVertexDataId(reflectRead(v))
-  def denoise_vertex_data_belief(v: Exp[DenoiseVertexData]) = DenoiseVertexDataBelief(reflectRead(v))
-  def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) = reflectMutation(DenoiseVertexDataBeliefUpdate(reflectWrite(v), b))
-  def denoise_vertex_data_potential(v: Exp[DenoiseVertexData]) = DenoiseVertexDataPotential(reflectRead(v))
+  def denoise_vertex_data_id(v: Exp[DenoiseVertexData]) = DenoiseVertexDataId(/*reflectRead*/(v))
+  def denoise_vertex_data_belief(v: Exp[DenoiseVertexData]) = DenoiseVertexDataBelief(/*reflectRead*/(v))
+  def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) = reflectWrite(v)()(DenoiseVertexDataBeliefUpdate(/*reflectWrite*/(v), b))
+  def denoise_vertex_data_potential(v: Exp[DenoiseVertexData]) = DenoiseVertexDataPotential(/*reflectRead*/(v))
 }
 
 trait BaseGenDenoiseVertexDataOps extends GenericNestedCodegen {
@@ -77,7 +77,7 @@ trait ScalaGenDenoiseVertexDataOps extends BaseGenDenoiseVertexDataOps with Scal
   val IR: DenoiseVertexDataOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case v@DenoiseVertexDataObjectNew(id,b,p) => emitValDef(sym, "new " + remap(v.vD) + "(" + quote(id) + "," + quote(b) + "," + quote(p) + ")")
       case DenoiseVertexDataId(v) => emitValDef(sym, quote(v) + ".id")
@@ -141,11 +141,11 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
   /////////////////////
   // class interface
 
-  def denoise_edge_data_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataMessage(reflectRead(e))
-  def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectMutation(DenoiseEdgeDataMessageUpdate(reflectWrite(e), m))
-  def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataOldMessage(reflectRead(e))
-  def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectMutation(DenoiseEdgeDataOldMessageUpdate(reflectWrite(e), m))
-  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = reflectEffect(DenoiseEdgeDataCloneL(reflectRead(e)))
+  def denoise_edge_data_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataMessage(/*reflectRead*/(e))
+  def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)()(DenoiseEdgeDataMessageUpdate(/*reflectWrite*/(e), m))
+  def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataOldMessage(/*reflectRead*/(e))
+  def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)()(DenoiseEdgeDataOldMessageUpdate(/*reflectWrite*/(e), m))
+  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = reflectEffect(DenoiseEdgeDataCloneL(/*reflectRead*/(e)))
 }
 
 trait BaseGenDenoiseEdgeDataOps extends GenericNestedCodegen {
@@ -156,7 +156,7 @@ trait ScalaGenDenoiseEdgeDataOps extends BaseGenDenoiseEdgeDataOps with ScalaGen
   val IR: DenoiseEdgeDataOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case e@DenoiseEdgeDataObjectNew(m,oM) => emitValDef(sym, "new " + remap(e.eD) + "(" + quote(m) + "," + quote(oM) + ")")
       case DenoiseEdgeDataMessage(e) => emitValDef(sym, quote(e) + ".message")

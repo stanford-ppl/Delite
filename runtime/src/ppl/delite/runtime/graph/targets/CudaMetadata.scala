@@ -31,7 +31,7 @@ final class CudaMetadata {
     case "gpuDimSizeX" => dimSizeX
     case "gpuDimSizeY" => dimSizeY
     case "output" => output
-    case other => error("unknown field: " + other)
+    case other => system.error("unknown field: " + other)
   }
 
   def newInput(op: DeliteOP) = {

@@ -42,7 +42,7 @@ object CudaCompile {
       if (os.contains("Linux")) "linux"
       else if (os.contains("Windows")) "win32"
       //else if (os.contains("Mac")) "??"
-      else error("OS " + os + " not currently supported with CUDA")
+      else system.error("OS " + os + " not currently supported with CUDA")
 
     val deliteHome = Config.deliteHome
 
@@ -68,7 +68,7 @@ object CudaCompile {
       print(first.asInstanceOf[Char])
       for (i <- 0 until num) print(errorBuffer(i).asInstanceOf[Char])
       println()
-      error("nvcc compilation failed")
+      system.error("nvcc compilation failed")
     }
   }
 

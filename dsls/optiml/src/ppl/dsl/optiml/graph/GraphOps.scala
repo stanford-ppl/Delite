@@ -7,7 +7,7 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.DSLType
 import reflect.Manifest
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 trait GraphOps extends DSLType with Variables {
@@ -96,39 +96,39 @@ trait GraphOpsExp extends GraphOps with EffectExp {
   /////////////////////
   // object interface
 
-  def graph_obj_new[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E]) = reflectEffect(GraphObjectNew())
+  def graph_obj_new[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E]) = reflectMutable(GraphObjectNew()) //XX
 
 
   /////////////////////
   // class interface
 
   def graph_vertices[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphVertices(reflectRead(g))
+    = GraphVertices(/*reflectRead*/(g))
   def graph_edges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphEdges(reflectRead(g))
+    = GraphEdges(/*reflectRead*/(g))
   //def graph_adjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-  //  = GraphAdjacent(reflectRead(g),reflectRead(a),reflectRead(b))
+  //  = GraphAdjacent(/*reflectRead*/(g),/*reflectRead*/(a),/*reflectRead*/(b))
   def graph_neighbors_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphNeighborsOf(reflectRead(g),reflectRead(a))
+    = GraphNeighborsOf(g,a)
   def graph_neighbors_self_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphNeighborsSelfOf(reflectRead(g),reflectRead(a))
+    = GraphNeighborsSelfOf(g,a)
   def graph_edges_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphEdgesOf(reflectRead(g),reflectRead(a))
+    = GraphEdgesOf(/*reflectRead*/(g),/*reflectRead*/(a))
   def graph_contains_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Edge])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphContainsEdge(reflectRead(g),reflectRead(a))
+    = GraphContainsEdge(/*reflectRead*/(g),/*reflectRead*/(a))
   def graph_contains_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphContainsVertex(reflectRead(g),reflectRead(a))
+    = GraphContainsVertex(/*reflectRead*/(g),/*reflectRead*/(a))
 
   def graph_add_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectMutation(GraphAddVertex(reflectReadWrite(g),a))
+    = reflectWrite(g)()(GraphAddVertex(/*reflectReadWrite*/(g),a))
   def graph_add_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], e: Rep[Edge], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectMutation(GraphAddEdge(reflectReadWrite(g),e,a,b))
+    = reflectWrite(g)()(GraphAddEdge(/*reflectReadWrite*/(g),e,a,b))
   //def graph_remove_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
   //  = reflectMutation(GraphRemoveEdge(reflectReadWrite(g),a,b))
   def graph_freeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectMutation(GraphFreeze(reflectReadWrite(g)))
+    = reflectWrite(g)()(GraphFreeze(/*reflectReadWrite*/(g)))
   def graph_frozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphFrozen(reflectRead(g))
+    = GraphFrozen(/*reflectRead*/(g))
 }
 
 
@@ -145,7 +145,7 @@ trait ScalaGenGraphOps extends BaseGenGraphOps with ScalaGenBase {
   val IR: GraphOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case g@GraphObjectNew() => emitValDef(sym, "new " + remap(g.mG) + "()")
       case GraphVertices(g) => emitValDef(sym, quote(g) + ".vertices")
@@ -172,7 +172,7 @@ trait CudaGenGraphOps extends BaseGenGraphOps with CudaGenBase with CudaGenDataS
   val IR: GraphOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -181,7 +181,7 @@ trait CGenGraphOps extends BaseGenGraphOps with CGenBase {
   val IR: GraphOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

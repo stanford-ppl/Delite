@@ -36,7 +36,7 @@ final class ExampleForeachHeader(in0: Array[Int], in1: Array[Double], in2: Doubl
   abstract class Foreach {
     def in: Array[Int]
     def foreach(elem: Int)
-    def sync(idx: Int): List[_]
+    def sync(idx: Int): List[Any]
   }
 
   val closure = kernel_apply(in0, in1, in2)

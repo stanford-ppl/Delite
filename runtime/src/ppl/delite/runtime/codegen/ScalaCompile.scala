@@ -20,8 +20,16 @@ object ScalaCompile {
 
     val settings = new Settings()
 
-    settings.classpath.value = System.getProperty("java.class.path")
-    settings.bootclasspath.value = System.getProperty("sun.boot.class.path")
+    //settings.classpath.value = System.getProperty("java.class.path")
+    //settings.bootclasspath.value = System.getProperty("sun.boot.class.path")
+    settings.classpath.value = this.getClass.getClassLoader match {
+      case ctx: java.net.URLClassLoader => ctx.getURLs.map(_.getPath).mkString(":")
+      case _ => System.getProperty("java.class.path")
+    }
+    settings.bootclasspath.value = Predef.getClass.getClassLoader match {
+      case ctx: java.net.URLClassLoader => ctx.getURLs.map(_.getPath).mkString(":")
+      case _ => System.getProperty("sun.boot.class.path")
+    }
     
     settings.encoding.value = "UTF-8"
     settings.outdir.value = "."
@@ -64,7 +72,9 @@ object ScalaCompile {
 
     var sourceFiles: List[SourceFile] = Nil
     for (i <- 0 until sources.length) {
-      val file = new BatchSourceFile("source"+i, sources(i))
+      val file = new BatchSourceFile(new VirtualFile("source"+i) { 
+        override def container = AbstractFile.getDirectory(".")   // bug in scalac...
+      }, sources(i).toArray)
       sourceFiles = file :: sourceFiles
     }
 
@@ -76,7 +86,7 @@ object ScalaCompile {
     run.compileSources(sourceFiles)
     reporter.printSummary()
 
-    if (reporter.hasErrors) error("Compilation Failed")
+    if (reporter.hasErrors) system.error("Compilation Failed")
 
     reporter.reset
     //output.reset

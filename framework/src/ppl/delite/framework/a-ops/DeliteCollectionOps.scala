@@ -2,8 +2,8 @@ package ppl.delite.framework.ops
 
 import ppl.delite.framework.DeliteCollection
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{EffectExp, BaseExp, Base}
-import scala.virtualization.lms.internal._
+import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenEffect}
+import scala.virtualization.lms.internal.{GenericNestedCodegen}
 
 trait DeliteCollectionOps extends Base {
   implicit def dcToDcOps[A:Manifest](x: Rep[DeliteCollection[A]]) = new deliteCollectionOpsCls(x)
@@ -25,8 +25,8 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with EffectExp {
   case class DeliteCollectionUpdate[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
 
   def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = DeliteCollectionSize(x)
-  def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = DeliteCollectionApply(reflectRead(x),n)
-  def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(DeliteCollectionUpdate(reflectWrite(x),n,y))
+  def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = DeliteCollectionApply(x,n) // reflectRead(x)
+  def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)()(DeliteCollectionUpdate(x,n,y)) // reflectWrite(x)
 }
 
 trait BaseGenDeliteCollectionOps extends GenericNestedCodegen {
@@ -43,7 +43,7 @@ trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaG
 
   // TODO: this usage of getBlockResult is ad-hoc and error prone. we need a better way of handling syms that might
   // have come from a reified block.
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".size")
       case DeliteCollectionApply(x,n) => emitValDef(sym, quote(getBlockResult(x)) + ".dcApply(" + quote(n) + ")")

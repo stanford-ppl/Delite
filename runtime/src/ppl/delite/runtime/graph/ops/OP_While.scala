@@ -20,6 +20,10 @@ class OP_While(val id: String,
     case Targets.Scala => "Unit"
     case Targets.Cuda => "void"
   }
+  override def outputSlotType(target: Targets.Value, name: String) = { //TR FIXME
+    assert(name == id, name + "!="+ id)
+    outputType(Targets.Scala)
+  }
 
   def nestedGraphs = Seq(predicateGraph, bodyGraph)
 
@@ -33,6 +37,8 @@ class OP_While(val id: String,
         val r = new OP_While(id+"_"+idx, predicateGraph, predicateValue, bodyGraph, bodyValue)
         r.dependencyList = dependencyList
         r.inputList = inputList
+        assert(getOutputs == List(id), "outputs for " + this + " were expected to be " + List(id) + " but are " + getOutputs) //TR FIXME
+        r.outputList = List(r.id)
         r.consumerList = consumerList
         r.inputSyms = inputSyms
         r.cudaMetadata = cudaMetadata

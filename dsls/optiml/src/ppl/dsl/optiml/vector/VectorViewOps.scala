@@ -2,9 +2,8 @@ package ppl.dsl.optiml.vector
 
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import scala.virtualization.lms.internal.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.common.{BaseExp, Base}
+import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml.datastruct.scala.{VectorView, VectorViewImpl}
 
@@ -42,7 +41,7 @@ trait ScalaGenVectorViewOps extends ScalaGenBase {
   val IR: VectorViewOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case v@VectorViewNew(x, offset, stride, len, isRow) =>
       emitValDef(sym, "new " + remap(v.mV) + "(" + quote(x) + "," + quote(offset) + "," + quote(stride) + "," + quote(len) + "," + quote(isRow) + ")")

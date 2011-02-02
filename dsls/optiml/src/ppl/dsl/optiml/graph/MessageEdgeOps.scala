@@ -8,7 +8,7 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 trait MessageEdgeOps extends DSLType with Variables {
@@ -60,9 +60,9 @@ trait MessageEdgeOpsExp extends MessageEdgeOps with EffectExp {
   /////////////////////
   // class interface
 
-  def message_edge_in(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeIn(reflectRead(e),reflectRead(v))
-  def message_edge_out(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeOut(reflectRead(e),reflectRead(v))
-  def message_edge_target(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeTarget(reflectRead(e),reflectRead(v))
+  def message_edge_in(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeIn(/*reflectRead*/(e),/*reflectRead*/(v))
+  def message_edge_out(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeOut(/*reflectRead*/(e),/*reflectRead*/(v))
+  def message_edge_target(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeTarget(/*reflectRead*/(e),/*reflectRead*/(v))
 }
 
 
@@ -79,7 +79,7 @@ trait ScalaGenMessageEdgeOps extends BaseGenMessageEdgeOps with ScalaGenBase {
   val IR: MessageEdgeOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case e@MessageEdgeObjectNew(g,in,out,a,b) => emitValDef(sym, "new " + remap(e.mE) + "(" + quote(g) + "," + quote(in) + "," + quote(out) + "," + quote(a) + "," + quote(b) + ")")
       case MessageEdgeIn(e,v) => emitValDef(sym, quote(e) + ".in(" + quote(v) + ")")
@@ -95,7 +95,7 @@ trait CudaGenMessageEdgeOps extends BaseGenMessageEdgeOps with CudaGenBase with 
   val IR: MessageEdgeOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -104,7 +104,7 @@ trait CGenMessageEdgeOps extends BaseGenMessageEdgeOps with CGenBase {
   val IR: MessageEdgeOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

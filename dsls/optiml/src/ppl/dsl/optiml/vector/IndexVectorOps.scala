@@ -3,8 +3,7 @@ package ppl.dsl.optiml.vector
 import ppl.dsl.optiml.datastruct.scala.{IndexVectorSeqImpl, IndexVectorRangeImpl, Vector, IndexVector}
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import scala.virtualization.lms.internal.ScalaGenBase
-import scala.virtualization.lms.common.{EffectExp, BaseExp, Base}
+import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 trait IndexVectorOps extends DSLType with Base { this: OptiML =>
@@ -34,10 +33,10 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   ////////////////////////////////
   // implemented via delite ops
 
-  case class IndexVectorConstruct[B](in: Exp[IndexVector], v: Exp[Int], func: Exp[B])(implicit val mA: Manifest[Int], val mB: Manifest[B])
+  case class IndexVectorConstruct[B](in: Exp[IndexVector], v: Sym[Int], func: Exp[B])(implicit val mA: Manifest[Int], val mB: Manifest[B])
     extends DeliteOpMap[Int,B,Vector] {
 
-    val alloc = reifyEffects(Vector[B](in.length, in.isRow))
+    val alloc = reifyEffectsHere(Vector[B](in.length, in.isRow))
   }
 
   // impl defs
@@ -59,7 +58,7 @@ trait ScalaGenIndexVectorOps extends ScalaGenBase {
   val IR: IndexVectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case v@IndexVectorRange(start, end) =>
       emitValDef(sym, "new " + remap(manifest[IndexVectorRangeImpl]) + "(" + quote(start) +  "," + quote(end) + ")")
     case v@IndexVectorSeq(xs) =>

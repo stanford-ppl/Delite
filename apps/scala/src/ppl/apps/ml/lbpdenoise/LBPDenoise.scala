@@ -170,7 +170,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     for (i <- 0 until img.numRows) {
       for (j <- 0 until img.numCols) {
         val pixelId = imgPixelId(img, i, j)
-        var potential = Vector.zeros(numRings)
+        val potential = Vector.mzeros(numRings)
 
         val obs = img(i, j)
 
@@ -284,15 +284,12 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
 
   def unaryFactorUniform(arity: Rep[Int]) = {
-    unaryFactorNormalize(Vector.zeros(arity))
+    val factor = Vector.mzeros(arity)
+    unaryFactorNormalize(factor)
+    factor
   }
 
   def unaryFactorNormalize(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
-    val logZ = Math.log(uf.exp.sum)
-    uf map {_ - logZ}
-  }
-  
-  def unaryFactorNormalizeM(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
     val logZ = Math.log(uf.exp.sum)
     uf mmap {_ - logZ}
   }

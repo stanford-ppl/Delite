@@ -30,7 +30,10 @@ abstract class ExecutableGenerator {
 
   def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
     for (i <- 0 until schedule.numResources) {
-      ScalaCompile.addSource(makeExecutable(schedule(i), i, kernelPath))
+      val src = makeExecutable(schedule(i), i, kernelPath)
+      ScalaCompile.addSource(src)
+      println("-- executable")
+      println(src)
     }
   }
 
@@ -84,7 +87,8 @@ abstract class ExecutableGenerator {
           //add to available list
           available += dep
           //write a getter
-          writeGetter(dep, out)
+          for (name <- dep.getOutputs)
+            writeGetter(dep, name, out)
         }
       }
 
@@ -113,25 +117,41 @@ abstract class ExecutableGenerator {
     out.append(op.task)
     out.append('(')
     var first = true
-    for (input <- op.getInputs) {
+    for ((input, name) <- op.getInputs) {
       if (!first) out.append(',') //no comma before first argument
       first = false
-      out.append(getSym(input))
+      out.append(getSym(input,name))
     }
-    out.append(')')
-    out.append('\n')
+    out.append(")\n")
+    
+    println("try op " + op + "/" + op.getOutputs + "/" + op.hasCompoundOutput)
+    if (op.getOutputs.nonEmpty)
+      println("--> op " + op.outputSlotType(op.getOutputs.head) + "/" + op.outputType)
+    
+    if (op.hasCompoundOutput) {
+      println("--> op " + op.outputSlotType(op.getOutputs.head) + "/" + op.outputType)
+      for (name <- op.getOutputs/* if name != op.id*/) {
+        out.append("val ")
+        out.append(getSym(op, name))
+        out.append(" = ")
+        out.append(getSym(op))
+        out.append(".")
+        out.append(name)
+        out.append("\n")
+      }
+    }
   }
 
-  protected def writeGetter(dep: DeliteOP, out: StringBuilder) {
+  protected def writeGetter(dep: DeliteOP, name: String, out: StringBuilder) {
     out.append("val ")
-    out.append(getSym(dep))
+    out.append(getSym(dep, name))
     out.append(" : ")
-    out.append(dep.outputType)
+    out.append(dep.outputSlotType(name))
     out.append(" = ")
     out.append(executableName)
     out.append(dep.scheduledResource)
     out.append(".get")
-    out.append(dep.id)
+    out.append(name/*dep.id*/)
     out.append('\n')
   }
 
@@ -157,20 +177,28 @@ abstract class ExecutableGenerator {
   protected def addSync(list: ArrayBuffer[DeliteOP], out: StringBuilder) {
     for (op <- list) {
       //add a public get method
-      writePublicGet(op, out)
+      for (name <- op.getOutputs)
+        writePublicGet(op, name, out)
       //add a private sync object
       writeSyncObject(op, out)
     }
   }
 
-  protected def writePublicGet(op: DeliteOP, out: StringBuilder) {
+  protected def writePublicGet(op: DeliteOP, name: String, out: StringBuilder) {
     out.append("def get")
-    out.append(op.id)
+    out.append(name/*op.id*/)
     out.append(" : ")
-    out.append(op.outputType)
+    out.append(op.outputSlotType(name))
     out.append(" = ")
     out.append(getSync(op))
-    out.append(".get\n")
+    out.append(".get")
+    if (op.outputSlotType(name) == op.outputType) { // out is itself...
+      out.append("\n")
+    } else {
+      out.append(".")
+      out.append(name)
+      out.append("\n")
+    }
   }
 
   protected def writeSyncObject(op: DeliteOP, out: StringBuilder) {
@@ -228,7 +256,11 @@ abstract class ExecutableGenerator {
   }
 
   protected def getSym(op: DeliteOP): String = {
-    "x"+op.id
+    if (op.hasCompoundOutput) "k"+op.id else "x"+op.id
+  }
+
+  protected def getSym(op: DeliteOP, name: String): String = {
+    "x"+name
   }
 
   protected def getSync(op: DeliteOP): String = {

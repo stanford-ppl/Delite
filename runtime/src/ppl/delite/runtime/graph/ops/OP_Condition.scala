@@ -17,6 +17,10 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
 
   def outputType(target: Targets.Value) = resultType(target)
   override def outputType: String = resultType(Targets.Scala)
+  override def outputSlotType(target: Targets.Value, name: String) = { //TR FIXME
+    assert(name == id, name + "!="+ id)
+    outputType(Targets.Scala)
+  }
 
   def nestedGraphs = Seq(predicateGraph, thenGraph, elseGraph)
 
@@ -49,6 +53,8 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
         thenGraph, thenValue, elseGraph, elseValue)
         r.dependencyList = dependencyList
         r.inputList = inputList
+        assert(getOutputs == List(id), "outputs for " + this + " were expected to be " + List(id) + " but are " + getOutputs) //TR FIXME
+        r.outputList = List(r.id)
         r.consumerList = consumerList
         r.inputSyms = inputSyms
         r.cudaMetadata = cudaMetadata

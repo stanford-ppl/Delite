@@ -5,7 +5,7 @@ import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.dsl.optiml.datastruct.scala._
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import java.io.PrintWriter
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
 
@@ -44,7 +44,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
 
   def vertices_obj_new[V <: Vertex:Manifest](len: Exp[Int]) = reflectEffect(VerticesObjNew[V](len))
 
-  case class VerticesForeach[V <:Vertex:Manifest](in: Exp[Vertices[V]], v: Exp[V], func: Exp[Unit])
+  case class VerticesForeach[V <:Vertex:Manifest](in: Exp[Vertices[V]], v: Sym[V], func: Exp[Unit])
     extends DeliteOpForeachBounded[Vertex,V,Vertices] {
 
     val i = fresh[Int]
@@ -54,7 +54,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
   def vertices_foreach[V <: Vertex:Manifest](x: Exp[Vertices[V]], block: Exp[V] => Exp[Unit]) = {
     val v = fresh[V]
     val func = reifyEffects(block(v))
-    reflectEffect(VerticesForeach(reflectRead(x), v, func))
+    reflectEffect(VerticesForeach(/*reflectRead*/(x), v, func))
   }
 }
 
@@ -71,7 +71,7 @@ trait ScalaGenVerticesOps extends BaseGenVerticesOps with ScalaGenBase {
   val IR: VerticesOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case v@VerticesObjNew(len) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(len) + ")")
       case _ => super.emitNode(sym, rhs)
@@ -84,7 +84,7 @@ trait CudaGenVerticesOps extends BaseGenVerticesOps with CudaGenBase with CudaGe
   val IR: VerticesOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -93,7 +93,7 @@ trait CGenVerticesOps extends BaseGenVerticesOps with CGenBase {
   val IR: VerticesOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
