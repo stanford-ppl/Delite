@@ -617,7 +617,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
     (e match {
       case MatrixGetRow(x,i) => matrix_getrow(f(x),f(i))
-      case e@MatrixTimesVector(x,y) => matrix_times_vector(f(x),f(y))(e.mev,e.aev)
+      case MatrixApply(x,i,j) => matrix_apply(f(x),f(i),f(j))
+      case e@MatrixTimesVector(x,y) => toAtom(new MatrixTimesVector(f(x),f(y))(e.mev,e.aev) { val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
+//                                       toAtom(      new VectorTimes(f(x),f(y))(e.mev,e.aev) { val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
       case MatrixVView(x, start, stride, length, isRow) => matrix_vview(f(x),f(start),f(stride),f(length),f(isRow))
       case _ => super.mirror(e, f)
     }).asInstanceOf[Exp[A]] // why??
