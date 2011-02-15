@@ -72,6 +72,8 @@ trait DeliteCollection[@specialized T] {
  * Vector
  */
 
+// TODO: vector and matrix should not expose "data" fields. This needs to be refactored.
+
 trait Vector[@specialized T] extends ppl.delite.framework.DeliteCollection[T] {
   // methods required on real underlying data structure impl
   // we need these for:
@@ -121,6 +123,28 @@ trait VectorView[@specialized T] extends Vector[T]
 trait RangeVector extends Vector[Int]
 
 trait IndexVector extends Vector[Int]
+
+trait IndexVector2 {
+  def rowInd: IndexVector
+  def colInd: IndexVector
+}
+
+trait IndexVectorWC extends IndexVector {
+  override def length : Int = 0
+  def apply(i: Int) = throw new UnsupportedOperationException()
+  def isRow : Boolean = throw new UnsupportedOperationException()
+  def update(index: Int, x: Int) = throw new UnsupportedOperationException()
+  def data = throw new UnsupportedOperationException()
+
+  def mtrans = throw new UnsupportedOperationException()
+  def sort(implicit o: Ordering[Int]) = throw new UnsupportedOperationException()
+  def insert(pos: Int, x: Int) = throw new UnsupportedOperationException()
+  def insertAll(pos: Int, xs: Vector[Int]) = throw new UnsupportedOperationException()
+  def copyFrom(pos: Int, xs: Vector[Int]) = throw new UnsupportedOperationException()
+  def removeAll(pos: Int, len: Int) = throw new UnsupportedOperationException()
+  def trim = throw new UnsupportedOperationException()
+  def cloneL = throw new UnsupportedOperationException()
+}
 
 /**
  * Matrix
@@ -172,6 +196,14 @@ trait TrainingSet[@specialized T,L] extends Matrix[T] {
   override def removeRows(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
   override def removeCols(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
 }
+
+/**
+ * Image
+ */
+
+trait Image[@specialized T] extends Matrix[T]
+
+trait GrayscaleImage extends Image[Int]
 
 /**
  * Ref

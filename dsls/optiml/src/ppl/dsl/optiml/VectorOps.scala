@@ -19,8 +19,14 @@ trait VectorOps extends DSLType with Variables {
     // time it is used, rather than stored as a value, because consts are not treated like dependencies in 'syms'.
     def apply[A:Manifest](xs: A*) = {
       // Seq gets lifted into a WrappedArray Const, which can't be instantiated from generated code
-      val xs2 = unit(xs.toList)
-      vector_obj_fromseq(xs2)
+      //val xs2 = unit(xs.toList)
+      //vector_obj_fromseq(xs2)
+      //reifyEffects {
+        val out = vector_obj_new[A](0,true)
+        // interpreted (not lifted)
+        xs.foreach { out += _ }
+        out
+      //}
     }
     // this doesn't work because if we don't lift the Seq, we can't generate code for it
     // if we do lift the Seq, we have a Rep[Seq[Rep[A]], which has the problems discussed below
@@ -534,7 +540,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
   def vector_length[A:Manifest](x: Exp[Vector[A]]) = VectorLength(reflectRead(x))
   def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = VectorIsRow(reflectRead(x))
-  def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = VectorApply(reflectRead(x), n)
+  def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = reflectEffect(VectorApply(reflectRead(x), n))
   def vector_slice[A:Manifest](x: Exp[Vector[A]], start: Exp[Int], end: Exp[Int]) = VectorSlice(reflectRead(x), start, end)
   def vector_contains[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) = VectorContains(reflectRead(x), y)
   def vector_distinct[A:Manifest](x: Exp[Vector[A]]) = VectorDistinct(reflectRead(x))
@@ -547,15 +553,15 @@ trait VectorOpsExp extends VectorOps with VariablesExp {
 
   def vector_concatenate[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorConcatenate(reflectRead(x),reflectRead(y))
   def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectMutation(VectorUpdate(reflectWrite(x), n, reflectRead(y)))
-  def vector_copyfrom[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorCopyFrom(reflectRead(x), pos, reflectRead(y)))
-  def vector_insert[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[A]) = reflectMutation(VectorInsert(reflectRead(x), pos, reflectRead(y)))
-  def vector_insertall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorInsertAll(reflectRead(x), pos, reflectRead(y)))
-  def vector_removeall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], len: Exp[Int]) = reflectMutation(VectorRemoveAll(reflectRead(x), pos, len))
-  def vector_trim[A:Manifest](x: Exp[Vector[A]]) = reflectMutation(VectorTrim(reflectRead(x)))
+  def vector_copyfrom[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorCopyFrom(reflectWrite(x), pos, reflectRead(y)))
+  def vector_insert[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[A]) = reflectMutation(VectorInsert(reflectWrite(x), pos, reflectRead(y)))
+  def vector_insertall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectMutation(VectorInsertAll(reflectWrite(x), pos, reflectRead(y)))
+  def vector_removeall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], len: Exp[Int]) = reflectMutation(VectorRemoveAll(reflectWrite(x), pos, len))
+  def vector_trim[A:Manifest](x: Exp[Vector[A]]) = reflectMutation(VectorTrim(reflectWrite(x)))
 
   def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(reflectRead(x), reflectRead(y))
   def vector_plus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorPlusScalar(reflectRead(x), reflectRead(y))
-  def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorPlusEquals(reflectRead(x), reflectRead(y)))
+  def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectMutation(VectorPlusEquals(reflectReadWrite(x), reflectRead(y)))
   def vector_minus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(reflectRead(x),reflectRead(y))
   def vector_minus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = VectorMinusScalar(reflectRead(x), reflectRead(y))
   def vector_times[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorTimes(reflectRead(x), reflectRead(y))

@@ -20,7 +20,8 @@ trait MatrixImplOps { this: OptiML =>
 
   def matrix_getrow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int]): Rep[Vector[A]]
   def matrix_getcol_impl[A:Manifest](m: Rep[Matrix[A]], col: Rep[Int]): Rep[Vector[A]]
-  def matrix_slicerows_impl[A:Manifest](m: Rep[Matrix[A]], begin: Rep[Int], end: Rep[Int]): Rep[Matrix[A]]
+  def matrix_slice_impl[A:Manifest](m: Rep[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]): Rep[Matrix[A]]
+  def matrix_slicerows_impl[A:Manifest](m: Rep[Matrix[A]], start: Rep[Int], end: Rep[Int]): Rep[Matrix[A]]
   def matrix_updaterow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
   def matrix_pprint_impl[A:Manifest](m: Rep[Matrix[A]]): Rep[Unit]
   def matrix_repmat_impl[A:Manifest](m: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
@@ -89,14 +90,31 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   def matrix_getrow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int]) = m.vview(row*m.numCols, 1, m.numCols, true)
   def matrix_getcol_impl[A:Manifest](m: Rep[Matrix[A]], col: Rep[Int]) = m.vview(col, m.numCols, m.numRows, false)
 
-  def matrix_slicerows_impl[A:Manifest](m: Rep[Matrix[A]], begin: Rep[Int], end: Rep[Int]) = {
-    //m.chkRange(begin, end)
-    val out = Matrix[A](end-begin, m.numCols)
-    var i = begin
+  def matrix_slice_impl[A:Manifest](m: Rep[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]) = {
+    //m.chkRange(beginrow, endrow)
+    // Add check for col out of bounds
+    // TODO: convert to view
+    val out = Matrix[A](endRow-startRow, endCol-startCol)
+    var i = startRow
+    while (i < endRow) {
+      var j = startCol
+      while (j < endCol) {
+        out(i-startRow, j-startCol) = m(i,j)
+        j += 1
+      }
+      i += 1
+    }
+    out
+  }
+
+  def matrix_slicerows_impl[A:Manifest](m: Rep[Matrix[A]], start: Rep[Int], end: Rep[Int]) = {
+    //m.chkRange(start, end)
+    val out = Matrix[A](end-start, m.numCols)
+    var i = start
     while (i < end) {
       var j = unit(0)
       while (j < m.numCols) {
-        out(i-begin, j) = m(i,j)
+        out(i-start, j) = m(i,j)
         j += 1
       }
       i += 1

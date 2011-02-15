@@ -38,7 +38,12 @@ object VectorUITests extends DeliteApplication with OptiMLExp {
   }
 
   def main() = {
+    // test args
+    for (a <- args)
+      println(a)
+
     //testInit()
-    testLoop()
+    //testLoop()
+
   }
 }

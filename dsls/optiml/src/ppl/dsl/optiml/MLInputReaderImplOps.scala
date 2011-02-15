@@ -1,13 +1,16 @@
 package ppl.dsl.optiml
 
-import datastruct.scala.{Vector,Matrix,TrainingSet}
+import datastruct.scala.{Vector,Matrix,TrainingSet,GrayscaleImage,BinarizedGradientTemplate}
 import scala.virtualization.lms.common.Base
 import scala.virtualization.lms.common.ScalaOpsPkg
+import java.io._
 
 trait MLInputReaderImplOps { this: Base =>
   def mlinput_read_impl(filename: Rep[String]) : Rep[Matrix[Double]]
   def mlinput_read_vector_impl(filename : Rep[String]) : Rep[Vector[Double]]
+  def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage]
   def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
+  def mlinput_read_template_models_impl(directory: Rep[String]): Rep[Vector[(String, Vector[BinarizedGradientTemplate])]]
 }
 
 trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
@@ -59,6 +62,34 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     x
   }
 
+  def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage] = {
+    val xfs = BufferedReader(FileReader(filename))
+    var line = xfs.readLine()
+    line = line.trim()
+    var ints = line.split("\\\\s+")
+    val x = Matrix[Int](0, ints.length)
+
+    while (line != null) {
+      val v = Vector[Int](ints.length, true)
+      var i = unit(0)
+      while (i < ints.length) {
+        v(i) = Integer.parseInt(ints(i))
+        i += 1
+      }
+      x += v
+
+      line = xfs.readLine()
+      if (line != null) {
+        line = line.trim()
+        ints = line.split("\\\\s+")
+      }
+    }
+    xfs.close()
+
+    GrayscaleImage(x)
+  }
+
+
  /* the input file is expected to follow the format:
   *  <header>
   *  <num documents> <num tokens>
@@ -79,9 +110,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val numDocs = Integer.parseInt(counts(0))
     val numTokens = Integer.parseInt(counts(1))
     if ((numDocs < 0) || (numTokens < 0)) {
-      //throw new RuntimeException("Illegal input to readTokenMatrix")
-      println("Illegal input to readTokenMatrix")
-      exit(0)
+      error("Illegal input to readTokenMatrix")
     }
 
     // tokens
@@ -122,7 +151,84 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     xs.close()
 
     //return (trainMatrix,tokenlist,trainCategory)
-    return TrainingSet[Double,Double](trainMatrix, Labels(trainCategory))
+    TrainingSet[Double,Double](trainMatrix, Labels(trainCategory))
+  }
+
+  def mlinput_read_template_models_impl(directory: Rep[String]): Rep[Vector[(String, Vector[BinarizedGradientTemplate])]] = {
+    val templateFiles = Vector[String](0, true)
+    for (f <- File(directory).getCanonicalFile.listFiles) {
+      templateFiles += f.getPath()
+    }
+
+    templateFiles.map { filename =>
+      println("Loading model: " + filename)
+      val templates = Vector[BinarizedGradientTemplate](0, true)
+
+      val file = BufferedReader(FileReader(filename))
+
+      if (file.readLine() != "bigg_object:") error("Illegal data format")
+      file.readLine() //"============"
+      val params = file.readLine().trim.split(" ")
+      if (params(0) != "obj_name/obj_num/num_objs:") error("Illegal data format")
+      val objName = params(1)
+      val objId = params(2)
+      val numObjs = Integer.parseInt(params(3))
+      var i = unit(0)
+      while (i < numObjs) {
+        templates += loadModel(file)
+        i += 1
+      }
+      (objName, templates)
+    }
+  }
+
+  private def loadModel(file: Rep[BufferedReader]): Rep[BinarizedGradientTemplate] = {
+    if (file.readLine().trim != "====OneBiGG====:") error("Illegal data format")
+    var temp = file.readLine().trim.split(" ")
+    if (temp(0) != "view/radius/reduction:") error("Illegal data format")
+    val view = Integer.parseInt(temp(1))
+    val radius = Integer.parseInt(temp(2))
+    val reductionFactor = Integer.parseInt(temp(3))
+
+    temp = file.readLine().trim.split(" ")
+    if (temp(0) != "Gradients:") error("Illegal data format")
+    val gradientsSize = Integer.parseInt(temp(1))
+    val gradients = Vector[Int](gradientsSize,true)
+    val gradientsString = file.readLine().trim.split(" ")
+    var i = unit(0)
+    while (i < gradientsSize) {
+      gradients(i) = Integer.parseInt(gradientsString(i))
+      i += 1
+    }
+
+    temp = file.readLine().trim.split(" ")
+    if (temp(0) != "Match_list:") error("Illegal data format")
+    val matchListSize = Integer.parseInt(temp(1))
+    val matchList = IndexVector(0)
+    val matchListString = file.readLine().trim.split(" ")
+    i = 0
+    while (i < matchListSize) {
+      matchList += Integer.parseInt(matchListString(i))
+      i += 1
+    }
+
+    temp = file.readLine().trim.split(" ")
+    if (temp(0) != "Occlusions:") error("Illegal data format")
+    val occlusionsSize = Integer.parseInt(temp(1))
+    val occlusions = Vector[Vector[Int]]()
+    val occlusionsString = file.readLine().trim.split(" ")
+    if (occlusionsSize != 0) error("Occlusions not supported.")
+
+    if (file.readLine().trim != "BoundingBox:") error("Illegal data format")
+    val bbString = file.readLine().trim.split(" ")
+    val x = Integer.parseInt(bbString(0))
+    val y = Integer.parseInt(bbString(1))
+    val width = Integer.parseInt(bbString(2))
+    val height = Integer.parseInt(bbString(3))
+    val bb = Rect(x, y, width, height)
+
+    // TODO: Anand, should not be initializing these null unless we add setters to BinarizedGradientTemplate
+    BinarizedGradientTemplate(radius, bb, null, 0, gradients, matchList, occlusions, null, null)
   }
 
 }

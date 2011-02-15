@@ -251,9 +251,11 @@ object DeliteTaskGraph {
     for (depId <- depIds) ifDeps ::= getOp(depId)
 
     //list of all dependencies of the if block, minus any dependencies within the block (predicate could be an input or internal)
+    val results = List(predGraph.result, thenGraph.result, elseGraph.result).filter(_ != null)
+
     val internalOps = (predGraph.ops ++ thenGraph.ops ++ elseGraph.ops).toList
-    ifDeps = resolveInputs((predGraph.result :: ifDeps ++ internalOps.flatMap(_.getDependencies)) filterNot { internalOps contains })
-    val ifInputs = resolveInputs((predGraph.result :: internalOps.flatMap(_.getInputs)) filterNot { internalOps contains }).distinct
+    ifDeps = resolveInputs((results ++ ifDeps ++ internalOps.flatMap(_.getDependencies)) filterNot { internalOps contains })
+    val ifInputs = resolveInputs((results ++ internalOps.flatMap(_.getInputs)) filterNot { internalOps contains }).distinct
     val ifInputSyms = resolveInputs(ifInputs)(predGraph)
     val ifMutableInputs = resolveInputs((internalOps.flatMap(_.getMutableInputs)) filterNot { internalOps contains })
 

@@ -1,0 +1,5 @@
+package ppl.dsl.optiml
+
+trait ApplicationOps extends BinarizedGradientPyramidOps with RectOps with BiGGDetectionOps with BinarizedGradientTemplateOps
+trait ApplicationOpsExp extends BinarizedGradientPyramidOpsExp with RectOpsExp with BiGGDetectionOpsExp with BinarizedGradientTemplateOpsExp
+trait ScalaGenApplicationOps extends ScalaGenBinarizedGradientPyramidOps with ScalaGenRectOps with ScalaGenBiGGDetectionOps with ScalaGenBinarizedGradientTemplateOps 
