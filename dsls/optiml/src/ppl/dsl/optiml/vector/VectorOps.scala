@@ -907,6 +907,7 @@ trait VectorOpsExpOpt extends VectorOpsExp {
     case Def(VectorObjectOnes(l)) => unit(1).asInstanceOf[Exp[A]]
     case Def(VectorObjectRange(s,e,d,r)) => (s + n*d).asInstanceOf[Exp[A]]
     case Def(VectorTrans(x)) => vector_apply(x,n)
+    case Def(MatrixGetRow(x, i)) => matrix_apply(x,i,n)
     case _ => super.vector_apply(x,n)
   }
   
