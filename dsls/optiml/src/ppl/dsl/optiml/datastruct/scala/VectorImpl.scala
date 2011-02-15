@@ -76,10 +76,19 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
       _data = d
     }
   }
+  
+  def clear() {
+    _length = 0
+    _data = new Array[T](0)
+  }
 
   def mtrans = {
     _isRow = !_isRow
     this
+  }
+
+  def toList = {
+    _data.toList 
   }
 
   protected def insertSpace(pos: Int, len: Int) {

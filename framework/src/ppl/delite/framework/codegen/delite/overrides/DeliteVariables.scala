@@ -1,16 +1,17 @@
 package ppl.delite.framework.codegen.delite.overrides
 
 import scala.virtualization.lms.common.VariablesExp
+import scala.virtualization.lms.common.{ScalaGenEffect,CudaGenEffect,CGenEffect}
 import java.io.PrintWriter
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.internal.{CGenEffect, CudaGenEffect, CLikeCodegen, ScalaGenEffect}
+import scala.virtualization.lms.internal.{CLikeCodegen}
 
 trait DeliteScalaGenVariables extends ScalaGenEffect {
   val IR: VariablesExp with DeliteOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
-    val symIsResult = (!deliteResult.isEmpty && deliteResult.get == sym)
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+    val symIsResult = !deliteResult.isEmpty && (deliteResult.get contains sym)
     var gen = false
     if (symIsResult) {
       rhs match {
@@ -37,7 +38,7 @@ trait DeliteCLikeGenVariables extends CLikeCodegen {
   val IR: VariablesExp with DeliteOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = super.emitNode(sym, rhs)
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = super.emitNode(sym, rhs)
 
 }
 

@@ -135,8 +135,8 @@ abstract class GPUExecutableGenerator {
       }
       //get kernel inputs (dependencies that could require a memory transfer)
       var addInputCopy = false
-      for (input <- op.getInputs) { //foreach input
-        val inData = op.cudaMetadata.inputs.getOrElse(input, null)
+      for ((input, name) <- op.getInputs) { //foreach input
+        val inData = op.cudaMetadata.inputs.getOrElse(input, null) // TODO: check use of input vs name
         if(!available.contains(input)) { //this input does not yet exist on the device
           //add to available list
           available += input
@@ -334,8 +334,8 @@ abstract class GPUExecutableGenerator {
     out.append(op.task)
     out.append('(')
     var first = true
-    for (input <- op.getInputs) {
-      if (op.cudaMetadata.inputs.contains(input) || isPrimitiveType(input.outputType)) {
+    for ((input,name) <- op.getInputs) {
+      if (op.cudaMetadata.inputs.contains(input) || isPrimitiveType(input.outputSlotType(name))) {
         if (!first) out.append(',')
         first = false
         out.append(getSymGPU(input))
@@ -394,7 +394,7 @@ abstract class GPUExecutableGenerator {
 
   protected def writeInputs(op: DeliteOP, out: StringBuilder) {
     var first = true
-    for (input <- op.getInputs) {
+    for ((input,name) <- op.getInputs) {
       if (!first) out.append(',')
       first = false
       if (!isPrimitiveType(input.outputType)) out.append('*') //TODO: this is awkward
@@ -490,14 +490,14 @@ abstract class GPUExecutableGenerator {
     }
 
     //free inputs (?)
-    for (in <- op.getInputs if(freeable(in))) {
-      val possible = in.getConsumers.filter(c => c.getInputs.contains(in) && c.scheduledResource == op.scheduledResource)
+    for ((in,name) <- op.getInputs if(freeable(in))) {
+      val possible = in.getConsumers.filter(c => c.getInputs.exists(_._1 == in) && c.scheduledResource == op.scheduledResource)
       var free = true
       for (p <- possible) {
         if (!available.contains(p)) free = false
       }
       if (free) {
-        writeFree(in)
+        writeFree(in) //TR in or name?
         count += 1
       }
     }

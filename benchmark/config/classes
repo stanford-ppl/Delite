@@ -6,3 +6,4 @@ svm|ppl.apps.ml.svm.SVM
 rbm|ppl.apps.ml.rbm.RBM
 lbp|ppl.apps.ml.gda.GDA
 gradient|ppl.apps.robotics.gradient.gradient
+lbpdenoise|ppl.apps.ml.lbpdenoise.LBPDenoise

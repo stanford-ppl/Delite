@@ -19,13 +19,25 @@ abstract class DeliteOP {
    */
   def task : String
 
+  def outputSlotType(target: Targets.Value, name: String): String = {
+//  if (outputTypeMap.isEmpty) return outputType(target)
+    val m = outputTypeMap(name)
+    m(target)
+  }
+
+  def outputSlotType(name: String): String = outputSlotType(Targets.Scala, name)
+
   def outputType(target: Targets.Value) : String
-  def outputType : String = outputType(Targets.Scala)
+  def outputType: String = outputType(Targets.Scala)
+
+  def hasCompoundOutput = getOutputs.nonEmpty && outputSlotType(getOutputs.head) != outputType
+  // TODO improve check
+
 
   def supportsTarget(target: Targets.Value) : Boolean
 
   //list of all incoming graph edges for this op
-  private[graph] var dependencyList: List[DeliteOP] = Nil
+  private[graph] var dependencyList: List[DeliteOP] = Nil //TR: should this be a set??
 
   final def getDependencies : Seq[DeliteOP] = dependencyList
 
@@ -58,17 +70,30 @@ abstract class DeliteOP {
     consumerList = c :: (consumerList filterNot { _ == old })
   }
 
-  //this is a subset of dependencies and contains the kernel inputs in the order required to call the task
-  private[graph] var inputList: List[DeliteOP] = Nil
+  private[graph] var outputList: List[String] = Nil
+  private[graph] var outputTypeMap: Map[String,Map[Targets.Value, String]] = Map.empty
 
-  final def getInputs : Seq[DeliteOP] = inputList
+  /*final*/ def getOutputs : Seq[String] = outputList // TODO: make final again? (currently overridden by OP_Control)
 
-  final def addInput(input: DeliteOP) {
-    inputList = input :: inputList
+  /*final*/ def addOutput(output: String, tp: Map[Targets.Value, String]) { // TODO: make final again? (currently overridden by OP_Control)
+    outputList = output :: outputList
+    outputTypeMap += (output -> tp)
   }
 
-  final def replaceInput(old: DeliteOP, input: DeliteOP) {
-    inputList = inputList.patch(inputList.indexOf(old), List(input), 1)
+  //this is a subset of dependencies and contains the kernel inputs in the order required to call the task
+  private[graph] var inputList: List[(DeliteOP, String)] = Nil
+
+  final def getInputs : Seq[(DeliteOP, String)] = inputList
+
+  final def addInput(op: DeliteOP): Unit = addInput(op, if (op.getOutputs.isEmpty) "???" else op.getOutputs(0)) //TR TODO: assert length == 1
+  
+  final def addInput(op: DeliteOP, name: String) {
+    assert(op.getOutputs.contains(name), "Op " + op + " does not have output " + name + " (class: " + op.getClass.getName + ", outputs: "+op.getOutputs+")")
+    inputList = (op, name) :: inputList
+  }
+
+  final def replaceInput(old: DeliteOP, input: DeliteOP, name: String) { //need old name as well?
+    inputList = inputList.patch(inputList.indexWhere(_._1 == old), List((input,name)), 1)
     if (mutableInputList contains old) mutableInputList = input :: (mutableInputList filterNot { _ == old })
   }
 

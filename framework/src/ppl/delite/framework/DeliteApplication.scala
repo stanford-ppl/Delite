@@ -9,12 +9,12 @@ import externlib.ExternLibrary
 import ops.DeliteOpsExp
 import scala.virtualization.lms.common.{BaseExp, Base}
 import java.io.{FileWriter, File, PrintWriter}
-import scala.virtualization.lms.internal.{GenericNestedCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
+import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
 
 trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
-  def getCodeGenPkg(t: DeliteApplicationTarget) : GenericNestedCodegen{val IR: DeliteApplication.this.type}
+  def getCodeGenPkg(t: DeliteApplicationTarget) : GenericFatCodegen{val IR: DeliteApplication.this.type}
 
   lazy val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val cudaTarget = new TargetCuda{val IR: DeliteApplication.this.type = DeliteApplication.this}
@@ -22,22 +22,23 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
   // TODO: this should be handled via command line options
   lazy val targets = List[DeliteApplicationTarget](scalaTarget , cudaTarget, cTarget)
-  val generators: List[GenericNestedCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
+  val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
 
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
     getCodeGenPkg(scalaTarget).asInstanceOf[ScalaCodegen { val IR: DeliteApplication.this.type }]
 
+  // generators created by getCodeGenPkg will use the 'current' scope of the deliteGenerator as global scope
+  val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
+                                               val generators = DeliteApplication.this.generators }
+
   var args: Rep[Array[String]] = _
   
   final def main(args: Array[String]) {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
-    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}                                   
+    val main_m = {x: Rep[Array[String]] => this.args = x; val y = liftedMain(); this.args = null; y }
 
     println("******Generating the program******")
-
-    val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
-                                                 val generators = DeliteApplication.this.generators }
 
     //clean up the code gen directory
     Util.deleteDirectory(new File(Config.buildDir))
@@ -58,13 +59,18 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     //Emit and Compile external library (MKL BLAS)
     ExternLibrary.init
     
-    //codegen.emitSource(main_m, "Application", stream) // whole scala application (for testing)
+    if (Config.degFilename.endsWith(".deg")) {
+      val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
+      codegen.emitSource(main_m, "Application", streamScala) // whole scala application (for testing)
+      // TODO: dot output
+      reset
+    }
     deliteGenerator.emitSource(main_m, "Application", stream)
   }
 
   final def execute(args: Array[String]) {
     println("Delite Application Being Executed:[" + this.getClass.getSimpleName + "]")
-    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}
+    val main_m = {x: Rep[Array[String]] => this.args = x; val y = liftedMain(); this.args = null; y }
 
     println("******Executing the program*********")
     globalDefs = List()

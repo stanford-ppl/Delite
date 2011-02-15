@@ -29,6 +29,10 @@ class VectorViewImpl[@specialized T: ClassManifest](x: Array[T], offset: Int, st
     this
   }
 
+  def toList = {
+    _data.toList
+  }
+
   def cloneL = { val v = new VectorImpl[T](0, isRow); v.insertAll(0, this); v }
 
   // TODO: these semantics are ambiguous/ill-defined. e.g., copy on insert but write-through on update.
@@ -39,6 +43,7 @@ class VectorViewImpl[@specialized T: ClassManifest](x: Array[T], offset: Int, st
   def copyFrom(pos: Int, xs: Vector[T]) = cloneL.copyFrom(pos, xs)
   def removeAll(pos: Int, len: Int) = cloneL.removeAll(pos, len)
   def trim = cloneL.trim
+  def clear() = cloneL.clear()
 
   protected def chkIndex(index: Int) = {
     if (index < 0 || index >= _data.length)

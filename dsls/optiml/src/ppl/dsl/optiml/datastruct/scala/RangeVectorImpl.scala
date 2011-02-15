@@ -67,4 +67,11 @@ class RangeVectorImpl(__start: Int, __end: Int, __stride: Int, __isRow: Boolean)
     throw new IllegalArgumentException("RangeVector cannot be updated")
   }
 
+  def clear() {
+    throw new IllegalArgumentException("RangeVector cannot be updated")
+  }
+
+  def toList = {
+    throw new UnsupportedOperationException("toList is not implemented on RangeVectorImpl yet")
+  }
 }

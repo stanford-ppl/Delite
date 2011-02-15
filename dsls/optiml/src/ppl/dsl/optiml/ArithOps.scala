@@ -4,7 +4,7 @@ import datastruct.scala.{NilVector,Vector,Matrix}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
-import scala.virtualization.lms.internal.{CGenBase, CLikeCodegen, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.{CLikeCodegen}
 /*
  * Arith definitions for OptiML supported types.
  *
@@ -240,13 +240,43 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   def arith_fractional_divide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithFractionalDivide(lhs, rhs)
   def arith_abs[T:Manifest:Numeric](lhs: Exp[T]) = ArithAbs(lhs)
   def arith_exp[T:Manifest:Numeric](lhs: Exp[T]) = ArithExp(lhs)
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
+    implicit var a: Fractional[A] = null // hack!! need to store it in Def instances??
+    e match {
+      case ArithPlus(lhs,rhs) => arith_plus(f(lhs), f(rhs))
+      case ArithMinus(lhs,rhs) => arith_minus(f(lhs), f(rhs))
+      case ArithTimes(lhs,rhs) => arith_times(f(lhs), f(rhs))
+      case ArithFractionalDivide(lhs,rhs) => arith_fractional_divide(f(lhs), f(rhs))
+      case _ => super.mirror(e,f)
+    }
+  }
 }
+
+trait ArithOpsExpOpt extends ArithOpsExp {
+  this: OptiML =>
+
+  override def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
+    case (Const(x), Const(y)) => implicitly[Numeric[T]].plus(x,y)
+    case _ => super.arith_plus(lhs, rhs)
+  }
+  override def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
+    case (Const(x), Const(y)) => implicitly[Numeric[T]].minus(x,y)
+    case _ => super.arith_minus(lhs, rhs)
+  }
+  override def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
+    case (Const(x), Const(y)) => implicitly[Numeric[T]].times(x,y)
+    case _ => super.arith_times(lhs, rhs)
+  }
+}
+
+
 
 trait ScalaGenArithOps extends ScalaGenBase {
   val IR: ArithOpsExp
   import IR._
   
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case ArithPlus(a,b) => emitValDef(sym, quote(a) + " + " + quote(b))
     case ArithMinus(a,b) => emitValDef(sym, quote(a) + " - " + quote(b))
     case ArithTimes(a,b) => emitValDef(sym, quote(a) + " * " + quote(b))
@@ -261,7 +291,7 @@ trait CLikeGenArithOps extends CLikeCodegen {
   val IR: ArithOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case ArithPlus(a,b) =>
           emitValDef(sym, quote(a) + " + " + quote(b))

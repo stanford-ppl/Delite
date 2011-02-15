@@ -1,10 +1,10 @@
 package ppl.dsl.optiml
 
-import datastruct.scala.{Vector,Matrix,IndexVector}
+import datastruct.scala._
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import reflect.Manifest
-import scala.virtualization.lms.internal.{GenericNestedCodegen, CudaGenBase, ScalaGenEffect}
+import scala.virtualization.lms.internal.GenericFatCodegen
 import scala.virtualization.lms.common._
 
 /* Machinery provided by OptiML itself (language features and control structures).
@@ -140,7 +140,6 @@ trait LanguageOps extends Base { this: OptiML =>
   implicit def tuple2ToIndexVector2(tup: (IndexWildcard, Rep[IndexVector]))(implicit overloaded2 : Overloaded2) = indexvector2_new(indexvector2_wildcard(), tup._2)
   implicit def tuple2ToIndexVector3(tup: (Rep[IndexVector], Rep[IndexVector]))(implicit overloaded3 : Overloaded3) = indexvector2_new(tup._1, tup._2)
 
-
   /**
    * untilconverged
    */
@@ -150,13 +149,18 @@ trait LanguageOps extends Base { this: OptiML =>
                         clone_prev_val: Rep[Boolean] = true)
                         (block: Rep[A] => Rep[A])
                         (implicit diff: (Rep[A],Rep[A]) => Rep[Double], mA: Manifest[A], c: Cloneable[A]): Rep[A]
-
     = optiml_untilconverged(x, thresh, max_iter, clone_prev_val, block, diff)
 
 
   def optiml_untilconverged[A:Manifest:Cloneable](x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
                                                   block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double]): Rep[A]
-  
+
+  def untilconverged[V <: Vertex, E <: Edge](g: Rep[Graph[V, E]])
+                        (block: Rep[V] => Rep[Unit])
+                        (implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
+    = optiml_untilconverged(g, block)
+
+  def optiml_untilconverged[V <: Vertex :Manifest, E <: Edge :Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) : Rep[Unit]
 
 
   /**
@@ -207,7 +211,7 @@ trait LanguageOps extends Base { this: OptiML =>
   def profile_stop() : Rep[Unit]
 }
 
-trait LanguageOpsExp extends LanguageOps with EffectExp {
+trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   this: OptiMLExp with LanguageImplOps =>
 
   case class InternalRandDouble() extends Def[Double]
@@ -249,7 +253,8 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
   /**
    * Sum
    */
-  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], mV: Exp[Int], map: Exp[A])
+
+  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], mV: Sym[Int], map: Exp[A])
     extends DeliteOpMapReduce[Int,A,Vector] {
 
     val in = Vector.range(start, end)
@@ -283,6 +288,36 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
 
   // for now, just unroll the implementation
   // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
+  def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
+    val vertices = g.vertices
+
+    val tasks = vertices.cloneL
+    val seen = Set[V]()
+    
+    while(tasks.length > 0) {
+      tasks.foreach(block)
+      tasks.clear()
+      var totalTasks = unit(0)
+      
+      for(i <- 0 until vertices.length) {
+        val vtasks = vertices(i).tasks
+        totalTasks += vtasks.length
+        for(j <- 0 until vtasks.length) {
+          val task = vtasks(j).asInstanceOfL[V]
+          if(!seen.contains(task)) {
+            tasks += task
+            seen.add(task)
+          }
+        }
+
+        vertices(i).clearTasks()
+      }
+
+      //println("tasks: " + tasks.length)
+      seen.clear()
+    }
+  }
+
   def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
                                                   block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) = {
 
@@ -341,7 +376,7 @@ trait LanguageOpsExp extends LanguageOps with EffectExp {
   def profile_stop() = reflectEffect(ProfileStop())
 }
 
-trait BaseGenLanguageOps extends GenericNestedCodegen {
+trait BaseGenLanguageOps extends GenericFatCodegen {
   val IR: LanguageOpsExp
   import IR._
 
@@ -350,7 +385,7 @@ trait BaseGenLanguageOps extends GenericNestedCodegen {
     case _ => super.syms(e)
   }
 
-  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
+  override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {
     case _ => super.getFreeVarNode(rhs)
   }
   */
@@ -360,24 +395,25 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
   val IR: LanguageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case InternalRandDouble() => emitValDef(sym, "Global.intRandRef.nextDouble()")
-      case InternalRandFloat() => emitValDef(sym, "Global.intRandRef.nextFloat()")
-      case InternalRandInt() => emitValDef(sym, "Global.intRandRef.nextInt()")
-      case InternalRandLong() => emitValDef(sym, "Global.intRandRef.nextLong()")
-      case InternalRandBoolean() => emitValDef(sym, "Global.intRandRef.nextBoolean()")
-      case RandDouble() => emitValDef(sym, "Global.randRef.nextDouble()")
-      case RandFloat() => emitValDef(sym, "Global.randRef.nextFloat()")
-      case RandInt() => emitValDef(sym, "Global.randRef.nextInt()")
-      case RandLong() => emitValDef(sym, "Global.randRef.nextLong()")
-      case RandBoolean() => emitValDef(sym, "Global.randRef.nextBoolean()")
-      case RandGaussian() => emitValDef(sym, "Global.randRef.nextGaussian()")
-      case RandReseed() => emitValDef(sym, "{ Global.randRef.setSeed(Global.INITIAL_SEED);" +
-                                           "   Global.intRandRef.setSeed(Global.INITIAL_SEED); }")
-
-      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
-      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
+      case InternalRandDouble() => emitValDef(sym, "generated.scala.Global.intRandRef.nextDouble()")
+      case InternalRandFloat() => emitValDef(sym, "generated.scala.Global.intRandRef.nextFloat()")
+      case InternalRandInt() => emitValDef(sym, "generated.scala.Global.intRandRef.nextInt()")
+      case InternalRandLong() => emitValDef(sym, "generated.scala.Global.intRandRef.nextLong()")
+      case InternalRandBoolean() => emitValDef(sym, "generated.scala.Global.intRandRef.nextBoolean()")
+      case RandDouble() => emitValDef(sym, "generated.scala.Global.randRef.nextDouble()")
+      case RandFloat() => emitValDef(sym, "generated.scala.Global.randRef.nextFloat()")
+      case RandInt() => emitValDef(sym, "generated.scala.Global.randRef.nextInt()")
+      case RandLong() => emitValDef(sym, "generated.scala.Global.randRef.nextLong()")
+      case RandBoolean() => emitValDef(sym, "generated.scala.Global.randRef.nextBoolean()")
+      case RandGaussian() => emitValDef(sym, "generated.scala.Global.randRef.nextGaussian()")
+      case RandReseed() => emitValDef(sym, "{ generated.scala.Global.randRef.setSeed(generated.scala.Global.INITIAL_SEED);" +
+                                           "   generated.scala.Global.intRandRef.setSeed(generated.scala.Global.INITIAL_SEED); }")
+//      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)") //TR TEMP
+//      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
+      case ProfileStart() => emitValDef(sym, "println(\"tic:\" + (System.nanoTime / 1000000L))")
+      case ProfileStop() => emitValDef(sym, "println(\"toc:\" + (System.nanoTime / 1000000L))")
       case _ => super.emitNode(sym, rhs)
     }
   }
@@ -388,7 +424,7 @@ trait CudaGenLanguageOps extends CudaGenBase with BaseGenLanguageOps {
   val IR: LanguageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case _ => super.emitNode(sym, rhs)
      }

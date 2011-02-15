@@ -3,7 +3,7 @@ package ppl.delite.framework.codegen.delite.overrides
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
-import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.{GenericNestedCodegen,GenerationFailedException}
 
 trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
 
@@ -16,13 +16,19 @@ trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
     case Const(true) => thenp
     case Const(false) => elsep
     case _ =>
-      val a = reifyEffects(thenp)
-      val b = reifyEffects(elsep)
+      val a = reifyEffectsHere(thenp)
+      val b = reifyEffectsHere(elsep)
       (a,b) match {
-        case (Def(Reify(_,_)), _) | (_, Def(Reify(_,_))) => reflectEffect(DeliteIfThenElse(cond,a,b))
-        case _ => DeliteIfThenElse(cond, thenp, elsep)
+        case (Def(Reify(_,_,_)), _) | (_, Def(Reify(_,_,_))) => reflectEffect(DeliteIfThenElse(cond,a,b))
+        case _ => DeliteIfThenElse(cond, a, b)
       }
   }
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case Reflect(DeliteIfThenElse(c,a,b), Global(), es) => reflectMirrored(Reflect(DeliteIfThenElse(f(c),f(a),f(b)), Global(), f(es)))
+    case DeliteIfThenElse(c,a,b) => DeliteIfThenElse(f(c),f(a),f(b))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
@@ -34,7 +40,13 @@ trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
     case _ => super.syms(e)
   }
 
- override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c, t, e) => effectSyms(t):::effectSyms(e)
+    case _ => super.boundSyms(e)
+  }
+
+
+ override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {
     case DeliteIfThenElse(c, t, e) => getFreeVarBlock(c,Nil) ::: getFreeVarBlock(t,Nil) ::: getFreeVarBlock(e,Nil)
     case _ => super.getFreeVarNode(rhs)
   }
@@ -43,7 +55,7 @@ trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
 trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     /**
      * IfThenElse generates methods for each branch due to empirically discovered performance issues in the JVM
      * when generating long blocks of straight-line code in each branch.
@@ -78,7 +90,7 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
 trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case DeliteIfThenElse(c,a,b) =>
           // TODO: Not GPUable if the result is not primitive types.
@@ -187,7 +199,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
 trait DeliteCGenIfThenElse extends CGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case DeliteIfThenElse(c,a,b) =>
           //TODO: using if-else does not work

@@ -23,7 +23,7 @@ object Delite {
   private def printArgs(args: Array[String]) {
     if(args.size == 0) {
       println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
-      exit(-1)
+      system.exit(-1)
     }
     println("Delite Runtime executing with the following arguments:")
     println(args.mkString(","))
