@@ -21,6 +21,7 @@ class GPUExecutor(val deviceNum: Int) extends Executor {
   val numStreams = 1
 
   private val host = new GPUExecutionThread(deviceNum)
+  private var hostThread: Thread = _
 
   /**
    * The CUDA model requires exactly one host thread per GPU device
@@ -31,11 +32,16 @@ class GPUExecutor(val deviceNum: Int) extends Executor {
 
   def init() {
     val thread = new Thread(host, "GPUHostThread-"+deviceNum)
+    hostThread = thread
     thread.start
   }
 
   def shutdown() {
     host.queue.put(new Shutdown(host))
+  }
+
+  def abnormalShutdown() {
+    hostThread.stop()
   }
 
   /**

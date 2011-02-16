@@ -1,13 +1,13 @@
 package ppl.delite.runtime
 
-import codegen._
+import codegen.{ScalaCompile, Compilers}
 import executor._
 import graph.ops.{EOP, Arguments}
 import graph.{TestGraph, DeliteTaskGraph}
-import java.io.File
-import profiler._
+import profiler.PerformanceTimer
 import scheduler._
 import tools.nsc.io.Directory
+import java.io.File
 
 /**
  * Author: Kevin J. Brown
@@ -19,6 +19,8 @@ import tools.nsc.io.Directory
  */
 
 object Delite {
+
+  private val mainThread = Thread.currentThread
 
   private def printArgs(args: Array[String]) {
     if(args.size == 0) {
@@ -62,40 +64,45 @@ object Delite {
       case _ => throw new IllegalArgumentException("Requested executor type is not recognized")
     }
 
-    executor.init() //call this first because could take a while and can be done in parallel
+    try {
 
-    //load task graph
-    val graph = loadDeliteDEG(args(0))
-    //val graph = new TestGraph
+      executor.init() //call this first because could take a while and can be done in parallel
 
-    //load kernels & data structures
-    loadScalaSources(graph)
+      //load task graph
+      val graph = loadDeliteDEG(args(0))
+      //val graph = new TestGraph
 
-    //schedule
-    scheduler.schedule(graph)
+      //load kernels & data structures
+      loadScalaSources(graph)
 
-    //compile
-    val executable = Compilers.compileSchedule(graph)
+      //schedule
+      scheduler.schedule(graph)
 
-    //execute
-    val numTimes = Config.numRuns
-    for (i <- 1 to numTimes) {
-      println("Beginning Execution Run " + i)
-      PerformanceTimer.start("all", false)
-      executor.run(executable)
-      EOP.await //await the end of the application program
-      PerformanceTimer.stop("all", false)
-      PerformanceTimer.print("all")
-      // check if we are timing another component
-      if(Config.dumpStatsComponent != "all")
-        PerformanceTimer.print(Config.dumpStatsComponent)
+      //compile
+      val executable = Compilers.compileSchedule(graph)
+
+      //execute
+      val numTimes = Config.numRuns
+      for (i <- 1 to numTimes) {
+        println("Beginning Execution Run " + i)
+        PerformanceTimer.start("all", false)
+        executor.run(executable)
+        EOP.await //await the end of the application program
+        PerformanceTimer.stop("all", false)
+        PerformanceTimer.print("all")
+        // check if we are timing another component
+        if(Config.dumpStatsComponent != "all")
+          PerformanceTimer.print(Config.dumpStatsComponent)
+      }
+
+      if(Config.dumpStats)
+        PerformanceTimer.dumpStats
+
     }
-
-    if(Config.dumpStats)
-      PerformanceTimer.dumpStats
-
-    executor.shutdown()
-
+    catch { case e => {
+      executor.abnormalShutdown()
+      throw e
+    } }
   }
 
   def loadDeliteDEG(filename: String) = {
@@ -107,6 +114,11 @@ object Delite {
   def loadScalaSources(graph: DeliteTaskGraph) {
     val sourceFiles = new Directory(new File(graph.kernelPath + java.io.File.separator + "scala" + java.io.File.separator)).deepFiles.filter(_.extension == "scala") //obtain all files in path
     for (file <- sourceFiles) ScalaCompile.addSourcePath(file.path)
+  }
+
+  //abnormal shutdown
+  def shutdown() {
+    mainThread.interrupt()
   }
 
 }
