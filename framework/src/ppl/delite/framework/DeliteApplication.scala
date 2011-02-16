@@ -36,7 +36,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   
   final def main(args: Array[String]) {
     println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
-    val main_m = {x: Rep[Array[String]] => this.args = x; val y = liftedMain(); this.args = null; y }
 
     println("******Generating the program******")
 
@@ -61,20 +60,24 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     
     if (Config.degFilename.endsWith(".deg")) {
       val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
-      codegen.emitSource(main_m, "Application", streamScala) // whole scala application (for testing)
+      codegen.emitSource(liftedMain, "Application", streamScala) // whole scala application (for testing)
       // TODO: dot output
       reset
     }
-    deliteGenerator.emitSource(main_m, "Application", stream)
+    deliteGenerator.emitSource(liftedMain, "Application", stream)
   }
+
+  final def generateScalaSource(stream: PrintWriter) = {
+    codegen.emitSource(liftedMain, "Application", stream)
+  }
+
 
   final def execute(args: Array[String]) {
     println("Delite Application Being Executed:[" + this.getClass.getSimpleName + "]")
-    val main_m = {x: Rep[Array[String]] => this.args = x; val y = liftedMain(); this.args = null; y }
 
     println("******Executing the program*********")
     globalDefs = List()
-    val g = compile(main_m)
+    val g = compile(liftedMain)
     g(args)
   }
 
@@ -87,7 +90,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
    */
   def main(): Unit
 
-  def liftedMain(): Rep[Unit] = main
+  def liftedMain(x: Rep[Array[String]]) = { this.args = x; val y = main(); this.args = null; y }
+  
 
   private def nop = throw new RuntimeException("not implemented yet")
 }

@@ -20,7 +20,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
 
   // Options
   // Parallelism!
-  override def parallelExecution = true
+  //override def parallelExecution = true // <-- problem with test cases
   
   override def mainScalaSourcePath = "src"
   override def mainResourcesPath = "resources"
