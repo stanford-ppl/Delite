@@ -5,10 +5,9 @@ import datastruct.scala.{MatrixImpl, VectorImpl, ImageImpl, Vector, Matrix, Imag
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import scala.virtualization.lms.common.DSLOpsExp
-import scala.virtualization.lms.common.{VariablesExp, Variables}
+import scala.virtualization.lms.common.{VariablesExp, Variables, DSLOpsExp, CGenBase, CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.internal.{GenerationFailedException, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.Config
 
 trait ImageOps extends DSLType with Variables {
@@ -106,7 +105,7 @@ trait ScalaGenImageOps extends ScalaGenBase {
   val IR: ImageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case m@ImageObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap(m.mI) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     case m@ImageObjectFromMat(x) => emitValDef(sym, "new " + remap(m.mI) + "(" + quote(x) + ")")
     case _ => super.emitNode(sym, rhs)
@@ -117,7 +116,7 @@ trait CudaGenImageOps extends CudaGenBase with CudaGenDataStruct {
   val IR: ImageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -126,7 +125,7 @@ trait CGenImageOps extends CGenBase {
   val IR: ImageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

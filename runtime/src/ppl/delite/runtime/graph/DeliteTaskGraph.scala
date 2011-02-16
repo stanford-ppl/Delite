@@ -145,7 +145,7 @@ object DeliteTaskGraph {
       case "OP_Reduce" => new OP_Reduce(id, "kernel_"+id, resultMap)
       case "OP_Zip" => new OP_Zip(id, "kernel_"+id, resultMap)
       case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap)
-      case other => system.error("OP Type not recognized: " + other)
+      case other => error("OP Type not recognized: " + other)
     }
 
     //TR decoupling input->op from input->string identifier

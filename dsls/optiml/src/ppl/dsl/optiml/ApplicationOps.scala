@@ -1,5 +1,12 @@
 package ppl.dsl.optiml
 
+import java.io.{PrintWriter}
+import scala.virtualization.lms.util.OverloadHack
+import scala.virtualization.lms.common._
+import ppl.delite.framework.DSLType
+import ppl.dsl.optiml.datastruct.scala._
+
+
 /**
  * This file should be auto-generated!
  */
@@ -12,7 +19,6 @@ trait ScalaGenApplicationOps extends ScalaGenBinarizedGradientPyramidOps with Sc
   with ScalaGenDenoiseVertexDataOps with ScalaGenDenoiseEdgeDataOps
 
 trait DenoiseVertexDataOps extends DSLType with Variables {
-  this: OptiML =>
   object DenoiseVertexData {
     def apply(id: Rep[Int], b: Rep[Vector[Double]], p: Rep[Vector[Double]]) = denoise_vertex_data_obj_new(id, b, p)
   }
@@ -37,8 +43,6 @@ trait DenoiseVertexDataOps extends DSLType with Variables {
 }
 
 trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with EffectExp {
-  this: OptiMLExp =>
-
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
 
@@ -64,13 +68,8 @@ trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with EffectExp {
   def denoise_vertex_data_potential(v: Exp[DenoiseVertexData]) = DenoiseVertexDataPotential(/*reflectRead*/(v))
 }
 
-trait BaseGenDenoiseVertexDataOps extends GenericNestedCodegen {
-  val IR: DenoiseVertexDataOpsExp
-  import IR._
-}
-
-trait ScalaGenDenoiseVertexDataOps extends BaseGenDenoiseVertexDataOps with ScalaGenBase {
-  val IR: DenoiseVertexDataOpsExp
+trait ScalaGenDenoiseVertexDataOps extends ScalaGenBase {
+  val IR: ApplicationOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
@@ -86,8 +85,6 @@ trait ScalaGenDenoiseVertexDataOps extends BaseGenDenoiseVertexDataOps with Scal
 }
 
 trait DenoiseEdgeDataOps extends DSLType with Variables {
-  this: OptiML =>
-
   object DenoiseEdgeData {
     def apply(m: Rep[Vector[Double]], oM: Rep[Vector[Double]]) = denoise_edge_data_obj_new(m, oM)
   }
@@ -114,8 +111,6 @@ trait DenoiseEdgeDataOps extends DSLType with Variables {
 }
 
 trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
-  this: OptiMLExp =>
-
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
 
@@ -144,12 +139,8 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
   def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = reflectEffect(DenoiseEdgeDataCloneL(/*reflectRead*/(e)))
 }
 
-trait BaseGenDenoiseEdgeDataOps extends GenericNestedCodegen {
-  val IR: DenoiseEdgeDataOpsExp
-}
-
-trait ScalaGenDenoiseEdgeDataOps extends BaseGenDenoiseEdgeDataOps with ScalaGenBase {
-  val IR: DenoiseEdgeDataOpsExp
+trait ScalaGenDenoiseEdgeDataOps extends ScalaGenBase {
+  val IR: ApplicationOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
@@ -235,7 +226,7 @@ trait ScalaGenBiGGDetectionOps extends ScalaGenBase {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case BiGGDetectionObjectNew(name, score, roi, mask, index, x, y, tpl, crt_tpl) => emitValDef(sym, "new " + remap(manifest[BiGGDetection]) + "(" + quote(name)  + "," + quote(score)  + "," + quote(roi)  + "," + quote(mask)  + "," + quote(index)  + "," + quote(x)  + "," + quote(y)  + "," + quote(tpl)  + "," + quote(crt_tpl)  + ")")
     case BiGGDetectionName(x) =>  emitValDef(sym, quote(x) + ".name")
@@ -295,7 +286,7 @@ trait ScalaGenBinarizedGradientPyramidOps extends ScalaGenBase {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case BinarizedGradientPyramidObjectNew(pyramid, start_level, levels, fixedLevelIndex) => emitValDef(sym, "new " + remap(manifest[BinarizedGradientPyramid]) + "(" + quote(pyramid)  + "," + quote(start_level)  + "," + quote(levels)  + "," + quote(fixedLevelIndex)  + ")")
     case BinarizedGradientPyramidPyramid(x) =>  emitValDef(sym, quote(x) + ".pyramid")
@@ -371,7 +362,7 @@ trait ScalaGenBinarizedGradientTemplateOps extends ScalaGenBase {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case BinarizedGradientTemplateObjectNew(radius, rect, mask_list, level, binary_gradients, match_list, occlusions, templates, hist) => emitValDef(sym, "new " + remap(manifest[BinarizedGradientTemplate]) + "(" + quote(radius)  + "," + quote(rect)  + "," + quote(mask_list)  + "," + quote(level)  + "," + quote(binary_gradients)  + "," + quote(match_list)  + "," + quote(occlusions)  + "," + quote(templates)  + "," + quote(hist)  + ")")
     case BinarizedGradientTemplateRadius(x) =>  emitValDef(sym, quote(x) + ".radius")
@@ -432,7 +423,7 @@ trait ScalaGenRectOps extends ScalaGenBase {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case RectObjectNew(x, y, width, height) => emitValDef(sym, "new " + remap(manifest[Rect]) + "(" + quote(x)  + "," + quote(y)  + "," + quote(width)  + "," + quote(height)  + ")")
     case RectX(x) =>  emitValDef(sym, quote(x) + ".x")

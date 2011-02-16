@@ -164,6 +164,7 @@ trait IndexVectorWC extends IndexVector {
   def isRow : Boolean = throw new UnsupportedOperationException()
   def update(index: Int, x: Int) = throw new UnsupportedOperationException()
   def data = throw new UnsupportedOperationException()
+  def toList = throw new UnsupportedOperationException()
 
   def mtrans = throw new UnsupportedOperationException()
   def sort(implicit o: Ordering[Int]) = throw new UnsupportedOperationException()
@@ -172,6 +173,7 @@ trait IndexVectorWC extends IndexVector {
   def copyFrom(pos: Int, xs: Vector[Int]) = throw new UnsupportedOperationException()
   def removeAll(pos: Int, len: Int) = throw new UnsupportedOperationException()
   def trim = throw new UnsupportedOperationException()
+  def clear() = throw new UnsupportedOperationException()
   def cloneL = throw new UnsupportedOperationException()
 }
 

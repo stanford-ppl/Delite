@@ -25,7 +25,7 @@ trait OptiMLScalaOpsPkg extends Base
     with Equal with IfThenElse with Variables with While with Functions
     with ImplicitOps with OrderingOps with StringOps with RangeOps with IOOps
     with ArrayOps with BooleanOps with PrimitiveOps with MiscOps with TupleOps
-    with ListOps with SeqOps with MathOps with CastingOps with SetOp
+    with ListOps with SeqOps with MathOps with CastingOps with SetOps
 
 trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg with DSLOpsExp
     with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp

@@ -1,15 +1,14 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.matrix
 
-import datastruct.CudaGenDataStruct
-import datastruct.scala.{MatrixImpl, VectorImpl, Vector, Matrix, GrayscaleImage, GrayscaleImageImpl}
 import java.io.{PrintWriter}
-
+import scala.virtualization.lms.common.{VariablesExp, Variables, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import scala.virtualization.lms.common.DSLOpsExp
-import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.internal.{GenerationFailedException, CGenBase, CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.Config
+import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+import ppl.dsl.optiml.datastruct.scala.{MatrixImpl, VectorImpl, Vector, Matrix, GrayscaleImage, GrayscaleImageImpl}
+import ppl.dsl.optiml.{OptiML, OptiMLExp}
 
 trait GrayscaleImageOps extends DSLType with Variables {
   this: OptiML =>
@@ -98,7 +97,7 @@ trait ScalaGenGrayscaleImageOps extends ScalaGenBase {
   val IR: GrayscaleImageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case GrayscaleImageObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap(manifest[GrayscaleImageImpl]) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     case GrayscaleImageObjectFromMat(m) => emitValDef(sym, "new " + remap(manifest[GrayscaleImageImpl]) + "(" + quote(m) + ")")
     case _ => super.emitNode(sym, rhs)
@@ -109,7 +108,7 @@ trait CudaGenGrayscaleImageOps extends CudaGenBase with CudaGenDataStruct {
   val IR: GrayscaleImageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -118,7 +117,7 @@ trait CGenGrayscaleImageOps extends CGenBase {
   val IR: GrayscaleImageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

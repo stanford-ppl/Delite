@@ -664,7 +664,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_vview[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) = reflectRead(x)(MatrixVView(x, start, stride, length, isRow))
   def matrix_getrow[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = reflectRead(x)(MatrixGetRow[A](x,i))
   def matrix_getcol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = reflectRead(x)(MatrixGetCol[A](x,i))
-  def matrix_slice[A:Manifest](x: Exp[Matrix[A]], startRow: Exp[Int], endRow: Exp[Int], startCol: Exp[Int], endCol: Exp[Int]) = reflectRead(x)(MatrixSlice(x,startRow,endRow,startCol,endCol)
+  def matrix_slice[A:Manifest](x: Exp[Matrix[A]], startRow: Exp[Int], endRow: Exp[Int], startCol: Exp[Int], endCol: Exp[Int]) = reflectRead(x)(MatrixSlice(x,startRow,endRow,startCol,endCol))
   def matrix_slicerows[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], end: Exp[Int]) = reflectRead(x)(MatrixSliceRows(x,start,end))
   def matrix_numrows[A:Manifest](x: Exp[Matrix[A]]) = reflectRead(x)(MatrixNumRows(x))
   def matrix_numcols[A:Manifest](x: Exp[Matrix[A]]) = reflectRead(x)(MatrixNumCols(x))

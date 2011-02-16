@@ -3,8 +3,7 @@ package ppl.dsl.optiml
 import ppl.dsl.optiml.datastruct.scala._
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import scala.virtualization.lms.internal.ScalaGenBase
-import scala.virtualization.lms.common.{EffectExp, BaseExp, Base}
+import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 
 trait IndexVector2Ops extends DSLType with Base { this: OptiML =>
 
@@ -93,7 +92,7 @@ trait ScalaGenIndexVector2Ops extends ScalaGenBase {
   val IR: IndexVector2OpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case IndexVector2New(rowInd, colInd) =>
       emitValDef(sym, "new " + remap(manifest[IndexVector2Impl]) + "(" + quote(rowInd) +  "," + quote(colInd) + ")")
     case IndexVector2Wildcard() => emitValDef(sym, "IndexVectorWCImpl")

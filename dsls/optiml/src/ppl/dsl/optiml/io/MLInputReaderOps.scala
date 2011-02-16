@@ -1,10 +1,10 @@
 package ppl.dsl.optiml.io
 
-import datastruct.scala._
 import java.io.{PrintWriter}
+import scala.virtualization.lms.common.{TupleOpsExp, Base}
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.common.{TupleOpsExp, Base}
+import ppl.dsl.optiml.datastruct.scala._
 
 // TODO: we need to support an escape hatch, or move application-specific i/o to application ops. Either
 // way, they shouldn't be here.

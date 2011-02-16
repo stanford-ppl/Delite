@@ -7,7 +7,6 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
-import scala.virtualization.lms.common.{CudaGenFat, ScalaGenFat, CGenBase, CudaGenBase, ScalaGenBase}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
@@ -645,7 +644,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
   
   case class VectorMutableZipWith[A:Manifest,B:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]],
-                                                             v: (Exp[A],Exp[B]), func: Exp[A])
+                                                             v: (Sym[A],Sym[B]), func: Exp[A])
     extends DeliteOpZipWith[A,B,A,Vector] {
 
     val alloc = inA

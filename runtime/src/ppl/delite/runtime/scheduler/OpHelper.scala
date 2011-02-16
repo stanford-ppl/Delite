@@ -23,8 +23,8 @@ object OpHelper {
     case mapReduce: OP_MapReduce => MapReduce_SMP_Array_Header_Generator.makeHeader(mapReduce, numChunks, graph)
     case zip: OP_Zip => Zip_SMP_Array_Header_Generator.makeHeader(zip, graph)
     case foreach: OP_Foreach => Foreach_SMP_Array_Header_Generator.makeHeader(foreach, graph)
-    case single: OP_Single => system.error("OP Single cannot be expanded")
-    case other => system.error("OP type not recognized: " + other.getClass.getSimpleName)
+    case single: OP_Single => error("OP Single cannot be expanded")
+    case other => error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 
   def split(op: DeliteOP, chunkIdx: Int, numChunks: Int, kernelPath: String) = op match {
@@ -34,8 +34,8 @@ object OpHelper {
     case zip: OP_Zip => Zip_SMP_Array_Generator.makeChunk(zip, chunkIdx, numChunks, kernelPath)
     case mapReduce: OP_MapReduce => MapReduce_SMP_Array_Generator.makeChunk(mapReduce, chunkIdx, numChunks, kernelPath)
     case foreach: OP_Foreach => Foreach_SMP_Array_Generator.makeChunk(foreach, chunkIdx, numChunks, kernelPath)
-    case single: OP_Single => system.error("OP Single cannot be split")
-    case other => system.error("OP type not recognized: " + other.getClass.getSimpleName)
+    case single: OP_Single => error("OP Single cannot be split")
+    case other => error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 
   def splitGPU(op: DeliteOP) = op match {
@@ -45,7 +45,7 @@ object OpHelper {
     case zip: OP_Zip => zip.setKernelName(zip.function); zip
     case mapReduce: OP_MapReduce => mapReduce.setKernelName(mapReduce.function); mapReduce
     case foreach: OP_Foreach => foreach.setKernelName(foreach.function); foreach
-    case single: OP_Single => system.error("OP Single cannot be split")
-    case other => system.error("OP type not recognized: " + other.getClass.getSimpleName)
+    case single: OP_Single => error("OP Single cannot be split")
+    case other => error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 }

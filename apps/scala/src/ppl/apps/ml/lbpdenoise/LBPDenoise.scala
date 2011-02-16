@@ -178,7 +178,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           potential(pred) = 0.0 - ((obs - pred) * (obs - pred) / (2.0 * sigmaSq))
         }
 
-        potential = unaryFactorNormalize(potential)
+        unaryFactorNormalizeM(potential)
 
         val data = DenoiseVertexData(pixelId, belief.cloneL, potential)
         val vertex = MessageVertex(g, data)
@@ -285,11 +285,11 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
   def unaryFactorUniform(arity: Rep[Int]) = {
     val factor = Vector.mzeros(arity)
-    unaryFactorNormalize(factor)
+    unaryFactorNormalizeM(factor)
     factor
   }
 
-  def unaryFactorNormalize(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+  def unaryFactorNormalizeM(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
     val logZ = Math.log(uf.exp.sum)
     uf mmap {_ - logZ}
   }
@@ -389,7 +389,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
   
   def unaryFactorUniformI(arity: Rep[Int]) = {
-    unaryFactorNormalize(Vector.zeros(arity))
+    unaryFactorNormalizeI(Vector.zeros(arity))
   }
   
   def unaryFactorNormalizeI(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {

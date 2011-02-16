@@ -15,3 +15,4 @@ generated
 data/
 *.deg
 *.debug
+*.pgm

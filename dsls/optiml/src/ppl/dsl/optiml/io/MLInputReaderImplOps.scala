@@ -1,7 +1,8 @@
 package ppl.dsl.optiml.io
 
-import datastruct.scala._
 import java.io._
+import scala.virtualization.lms.common.Base
+import ppl.dsl.optiml.datastruct.scala._
 import ppl.dsl.optiml.OptiML
 
 trait MLInputReaderImplOps { this: Base =>
