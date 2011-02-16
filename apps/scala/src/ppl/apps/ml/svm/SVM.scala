@@ -4,7 +4,7 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
-object SVM extends DeliteApplication with OptiMLExp {
+object SVM extends DeliteApplication with OptiMLExp with SVMModels {
 
   def print_usage = {
     println("Usage: SVM <train data file> <test data file> <model filename> <num tests>")
@@ -39,7 +39,7 @@ object SVM extends DeliteApplication with OptiMLExp {
     inMatrixTest.labels mmap { e => if (e == 0) -1; else 1 }
 
     // run the SMO training algorithm
-    val svm = new SVMModel { val IR = SVM.this }
+    val svm = new SVMModel
     //val svm = new SVMModel(SVM.this)
     tic
     val (weights, b) = svm.train(inMatrixTrain, 1, .0001, 10)

@@ -12,21 +12,21 @@ package ppl.apps.ml.svm
  */
 
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
-import ppl.dsl.optiml.OptiMLExp
+import ppl.dsl.optiml.OptiML
 import ppl.delite.framework.DeliteApplication
 
-trait SVMModel {
-  // TODO: how do we clean this up in app code?
-  val IR: DeliteApplication with OptiMLExp
-  import IR._
+trait SVMModels { this: OptiML =>
 
-  // model data
-  // TODO: NPE here from IR being null until the constructor is finished and...
-  //private var weights: Var[Vector[Double]] = null
-  //private var b: Var[Double] = null
+  class SVMModel { // do we need a class?
+
+    // model data
+    // TODO: NPE here from IR being null until the constructor is finished and...
+    //private var weights: Var[Vector[Double]] = null
+    //private var b: Var[Double] = null
+
 
   // construct directly from model
-  def load(modelFilename: Rep[String]) {
+  def load(modelFilename: Rep[String]) = {
     val in = MLInputReader.readVector(modelFilename)
     val b = in(in.length-1)
     val weights = in.take(in.length-1)
@@ -170,5 +170,6 @@ trait SVMModel {
     val out = weights.cloneL
     out += b
     MLOutputWriter.writeVector(out, filename)
+  }
   }
 }

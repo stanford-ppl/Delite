@@ -19,7 +19,7 @@ trait DeliteRangeOpsExp extends RangeOpsExp with DeliteOpsExp {
       case Def(Until(start,end)) => (start,end)
       case _ => throw new Exception("unexpected symbol in RangeForeach")
     }
-    reflectEffect(DeliteRangeForEach(start, end, i, reifyEffects(block(i))))
+    reflectEffect(DeliteRangeForEach(start, end, i, reifyEffects(block(i)))) //TODO: effects
   }
 }
 
@@ -35,11 +35,6 @@ trait DeliteBaseGenRangeOps extends GenericNestedCodegen {
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case DeliteRangeForEach(start, end, i, body) => i::effectSyms(body)
     case _ => super.boundSyms(e)
-  }
-
-  override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {
-    case DeliteRangeForEach(start, end, i, body) => getFreeVarBlock(body,List(i.asInstanceOf[Sym[Any]]))
-    case _ => super.getFreeVarNode(rhs)
   }
 }
 

@@ -45,14 +45,6 @@ trait DeliteBaseGenWhile extends GenericNestedCodegen {
     case DeliteWhile(c, b) => effectSyms(c):::effectSyms(b)
     case _ => super.boundSyms(e)
   }
-
-
-  // TODO: What about condition node?
-  override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {
-    case DeliteWhile(c,b) => getFreeVarBlock(c,Nil) ::: getFreeVarBlock(b,Nil)
-    case _ => super.getFreeVarNode(rhs)
-  }
-
 }
 
 trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {

@@ -45,6 +45,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   ) extends Def[A]
   
   
+  class DeliteOpLoopMirrored[A](f: Transformer, o: DeliteOpLoop[A]) extends DeliteOpLoop[A] {   // TODO!
+    val size = f(o.size)
+    val v = f(o.v).asInstanceOf[Sym[Int]]
+    val body = mirrorLoopBody(o.body, f)
+  }
+  
   
 /*
   abstract class DeliteOpMapNew[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[A]] {
@@ -320,6 +326,29 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case Def(Reify(x, u, effects)) if x.isInstanceOf[Var[A]] => x.asInstanceOf[Var[A]]
     case _ => throw new Exception("getVar called on non-var type")
   }
+
+
+  //////////////
+  // mirroring
+
+  override def mirrorFatDef[A:Manifest](d: Def[A], f: Transformer): Def[A] = mirrorLoopBody(d,f) // TODO: cleanup
+
+  def mirrorLoopBody[A](d: Def[A], f: Transformer): Def[A] = {
+    d match {
+      case e: DeliteCollectElem[a,DeliteCollection] => 
+        DeliteCollectElem[a,DeliteCollection]( // need to be a case class for equality (do we rely on equality?)
+          alloc = f(e.alloc),
+          func = f(e.func)
+        ).asInstanceOf[Def[A]]
+      case e: DeliteReduceElem[a] => 
+        DeliteReduceElem[a](
+          func = f(e.func),
+          rV = (f(e.rV._1).asInstanceOf[Sym[a]], f(e.rV._2).asInstanceOf[Sym[a]]), // need to transform bound vars ??
+          rFunc = f(e.rFunc)
+        ).asInstanceOf[Def[A]]
+    }
+  }
+  
 
 /*  
   // heavy type casting ahead!
@@ -901,7 +930,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
       }
       else {
         useLocalVar = true
-		stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1),quote(sym)))
+        stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._1),quote(sym)))
         val reduceLocalVar = getNewLocalVar()
         val outLocalVar = getNewLocalVar()
         val nextDimStr = getNextDimStr()
@@ -911,15 +940,15 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         tabWidth += 1
         stream.println(addTab()+"%s %s = %s.dcApply(cnt);".format(remap(mapR.mV.Type),quote(mapR.mV),quote(mapR.in)))
         emitBlock(mapR.map)
-		stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._2),quote(getBlockResult(mapR.map))))
+        stream.println(addTab()+"%s = %s;".format(quote(mapR.rV._2),quote(getBlockResult(mapR.map))))
         stream.println(addTab()+"%s %s = %s;".format(remap(sym.Type.typeArguments(0)),reduceLocalVar,getLocalVar(getBlockResult(mapR.map),nextDimStr)))
         saveLocalVar(mapR.rV._1,nextDimStr,outLocalVar)
         saveLocalVar(mapR.rV._2,nextDimStr,reduceLocalVar)
         emitBlock(mapR.reduce)
         tabWidth -= 1
         stream.println(addTab()+"}")
-		allocReference(mapR.rV._1.asInstanceOf[Sym[_]],getBlockResult(mapR.map).asInstanceOf[Sym[_]])
-		allocReference(mapR.rV._2.asInstanceOf[Sym[_]],getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+        allocReference(mapR.rV._1.asInstanceOf[Sym[_]],getBlockResult(mapR.map).asInstanceOf[Sym[_]])
+        allocReference(mapR.rV._2.asInstanceOf[Sym[_]],getBlockResult(mapR.map).asInstanceOf[Sym[_]])
         allocOutput(sym,getBlockResult(mapR.map).asInstanceOf[Sym[_]],true)
         stream.println(addTab()+"%s.dcUpdate(%s,%s);".format(quote(sym),nextDimStr,outLocalVar))
         useLocalVar = false

@@ -60,8 +60,8 @@ trait VertexOpsExp extends VertexOps with EffectExp {
   def vertex_neighbors_self(v: Exp[Vertex]) = VertexNeighborsSelf(v)
 
   def vertex_tasks(v: Exp[Vertex]) = VertexTasks(/*reflectRead*/(v))
-  def vertex_clear_tasks(v: Exp[Vertex]) = reflectWrite(v)()(VertexClearTasks(/*reflectWrite*/(v)))
-  def vertex_add_task(v: Exp[Vertex], t: Exp[Vertex]) = reflectWrite(v)()(VertexAddTask(/*reflectRead*/(v), /*reflectRead*/(t)))
+  def vertex_clear_tasks(v: Exp[Vertex]) = reflectWrite(v)(VertexClearTasks(/*reflectWrite*/(v)))
+  def vertex_add_task(v: Exp[Vertex], t: Exp[Vertex]) = reflectWrite(v)(VertexAddTask(/*reflectRead*/(v), /*reflectRead*/(t)))
 }
 
 

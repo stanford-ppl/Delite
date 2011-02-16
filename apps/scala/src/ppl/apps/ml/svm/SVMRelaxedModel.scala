@@ -12,13 +12,12 @@ package ppl.apps.ml.svm
  */
 
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
-import ppl.dsl.optiml.OptiMLExp
+import ppl.dsl.optiml.OptiML
 import ppl.delite.framework.DeliteApplication
 
-trait SVMRelaxedModel {
-  // TODO: how do we clean this up in app code?
-  val IR: DeliteApplication with OptiMLExp
-  import IR._
+trait SVMRelaxedModels { this: OptiML =>
+  
+  class SVMRelaxedModel {
   
   // model data
   private var weights : Rep[Vector[Double]] = null
@@ -172,5 +171,7 @@ trait SVMRelaxedModel {
     val out = weights.cloneL
     out += b
     MLOutputWriter.writeVector(out, filename)
+  }
+
   }
 }

@@ -64,7 +64,7 @@ trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with EffectExp {
 
   def denoise_vertex_data_id(v: Exp[DenoiseVertexData]) = DenoiseVertexDataId(/*reflectRead*/(v))
   def denoise_vertex_data_belief(v: Exp[DenoiseVertexData]) = DenoiseVertexDataBelief(/*reflectRead*/(v))
-  def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) = reflectWrite(v)()(DenoiseVertexDataBeliefUpdate(/*reflectWrite*/(v), b))
+  def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) = reflectWrite(v)(DenoiseVertexDataBeliefUpdate(/*reflectWrite*/(v), b))
   def denoise_vertex_data_potential(v: Exp[DenoiseVertexData]) = DenoiseVertexDataPotential(/*reflectRead*/(v))
 }
 
@@ -133,9 +133,9 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
   // class interface
 
   def denoise_edge_data_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataMessage(/*reflectRead*/(e))
-  def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)()(DenoiseEdgeDataMessageUpdate(/*reflectWrite*/(e), m))
+  def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)(DenoiseEdgeDataMessageUpdate(/*reflectWrite*/(e), m))
   def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataOldMessage(/*reflectRead*/(e))
-  def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)()(DenoiseEdgeDataOldMessageUpdate(/*reflectWrite*/(e), m))
+  def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)(DenoiseEdgeDataOldMessageUpdate(/*reflectWrite*/(e), m))
   def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = reflectEffect(DenoiseEdgeDataCloneL(/*reflectRead*/(e)))
 }
 

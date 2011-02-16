@@ -120,13 +120,13 @@ trait GraphOpsExp extends GraphOps with EffectExp {
     = GraphContainsVertex(/*reflectRead*/(g),/*reflectRead*/(a))
 
   def graph_add_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectWrite(g)()(GraphAddVertex(/*reflectReadWrite*/(g),a))
+    = reflectWrite(g)(GraphAddVertex(/*reflectReadWrite*/(g),a))
   def graph_add_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], e: Rep[Edge], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectWrite(g)()(GraphAddEdge(/*reflectReadWrite*/(g),e,a,b))
+    = reflectWrite(g)(GraphAddEdge(/*reflectReadWrite*/(g),e,a,b))
   //def graph_remove_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
   //  = reflectMutation(GraphRemoveEdge(reflectReadWrite(g),a,b))
   def graph_freeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectWrite(g)()(GraphFreeze(/*reflectReadWrite*/(g)))
+    = reflectWrite(g)(GraphFreeze(/*reflectReadWrite*/(g)))
   def graph_frozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
     = GraphFrozen(/*reflectRead*/(g))
 }

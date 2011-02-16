@@ -34,7 +34,7 @@ trait DeliteCodegen extends GenericFatCodegen {
     generators foreach { _.shallow = shallow }
     val result = generators map f
     if (result.distinct.length != 1){
-      system.error("DeliteCodegen: generators disagree")
+      sys.error("DeliteCodegen: generators disagree")
     }
     for (i <- 0 until generators.length) {
       generators(i).shallow = save(i)
@@ -49,7 +49,6 @@ trait DeliteCodegen extends GenericFatCodegen {
   
   override def syms(e: Any): List[Sym[Any]] = ifGenAgree(_.syms(e), shallow)
   override def boundSyms(e: Any): List[Sym[Any]] = ifGenAgree(_.boundSyms(e), shallow)
-  override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = system.error("getFreeVarNode no longer used")
 
   //override def buildScheduleForResult(start: Exp[Any]): List[TP[Any]] = ifGenAgree(_.buil) <--- maybe override for performance reasons ...
 

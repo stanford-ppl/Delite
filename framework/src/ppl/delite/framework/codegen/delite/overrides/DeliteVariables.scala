@@ -1,14 +1,14 @@
 package ppl.delite.framework.codegen.delite.overrides
 
-import scala.virtualization.lms.common.VariablesExp
+import scala.virtualization.lms.common.VariablesBridge
 import scala.virtualization.lms.common.{ScalaGenEffect,CudaGenEffect,CGenEffect}
 import java.io.PrintWriter
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{CLikeCodegen}
 
 trait DeliteScalaGenVariables extends ScalaGenEffect {
-  val IR: VariablesExp with DeliteOpsExp
-  import IR._
+  val IR: VariablesBridge with DeliteOpsExp // FIXME: imports VariablesExp via DeliteOpsExp
+  import IR.{__newVar => _, __assign => _, _}
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     val symIsResult = !deliteResult.isEmpty && (deliteResult.get contains sym)
@@ -35,7 +35,7 @@ trait DeliteScalaGenVariables extends ScalaGenEffect {
 }
 
 trait DeliteCLikeGenVariables extends CLikeCodegen {
-  val IR: VariablesExp with DeliteOpsExp
+  val IR: VariablesBridge
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = super.emitNode(sym, rhs)

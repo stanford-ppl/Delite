@@ -26,7 +26,7 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with EffectExp {
 
   def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = DeliteCollectionSize(x)
   def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = DeliteCollectionApply(x,n) // reflectRead(x)
-  def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)()(DeliteCollectionUpdate(x,n,y)) // reflectWrite(x)
+  def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(DeliteCollectionUpdate(x,n,y)) // reflectWrite(x)
 }
 
 trait BaseGenDeliteCollectionOps extends GenericNestedCodegen {

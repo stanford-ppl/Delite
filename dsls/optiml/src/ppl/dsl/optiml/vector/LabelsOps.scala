@@ -47,7 +47,7 @@ trait LabelsOpsExp extends LabelsOps with BaseExp { this: DeliteOpsExp =>
   def labels_mmap[A:Manifest](x: Exp[Labels[A]], f: Exp[A] => Exp[A]) = {
     val v = fresh[A]
     val func = reifyEffects(f(v))
-    reflectWrite(x)()(LabelsMutableMap(x, v, func)) //reflectReadWrite(x)
+    reflectWrite(x)(LabelsMutableMap(x, v, func)) //reflectReadWrite(x)
   }
 }
 

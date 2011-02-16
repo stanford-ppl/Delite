@@ -13,7 +13,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   
   // use the local scala-virtualized compiler and library
   override def localScala =
-    defineScala("2.8.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
+    defineScala("2.9.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
       log.error("scala.virtualized.home needs to be defined in local.properties and "+
       "must point to a valid scala-virtualized home directory"); "<undefined>"
     }))::Nil
@@ -28,10 +28,11 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   override def testScalaSourcePath = "tests" / "src"
   override def testResourcesPath = "tests" / "resources"
   
-  val virtualization_lms_core = "scala" % "virtualization-lms-core_2.8.x-virtualized-SNAPSHOT" % "0.1"
+  val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
   
   val scalaToolsSnapshots = ScalaToolsSnapshots
-  //val scalatest = "org.scalatest" % "scalatest" % "1.2.1-SNAPSHOT"
+
+  val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT" % "test"
   
   // Define project class with default source tree layout
   class FlatProject(info: ProjectInfo) extends DefaultProject(info) {
@@ -42,13 +43,13 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     override def testScalaSourcePath = "tests" / "src"
     override def testResourcesPath = "tests" / "resources"
     
-    val virtualization_lms_core = "scala" % "virtualization-lms-core_2.8.x-virtualized-SNAPSHOT" % "0.1"
+    val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
     
     val scalaToolsSnapshots = ScalaToolsSnapshots
     //val scalatest = "org.scalatest" % "scalatest" % "1.2.1-SNAPSHOT"
     
     override def localScala =
-    defineScala("2.8.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
+    defineScala("2.9.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
       log.error("scala.virtualized.home needs to be defined in local.properties and "+
       "must point to a valid scala-virtualized home directory"); "<undefined>"
     }))::Nil 
