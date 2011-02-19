@@ -38,7 +38,7 @@ trait BinarizedGradientGridFuncs {
     val pyr = makePyramid(cleanGrad)
 //    println("detectAllObjects.6")
 
-    val all_detections = all_templates.flatMap { t =>
+    val all_detections = all_templates.flatMap { t => //TODO TR written to in nonMaxSuppress
     //println("detectAllObjects.7")
       val (name, templates) = t2(t)
     //println("detectAllObjects.8")
@@ -113,10 +113,10 @@ if (crt_template.match_list.length < 0) println("dummy")
       var x = xstart
       while (x < xend) {
         var index = (yoffset + y - ystart) * span + (xoffset + x - xstart) //If this were an image patch, this is the offset to it
-        tpl.binary_gradients(index) = imageRow(x)
+        tpl.binary_gradients(index) = imageRow(x) //TODO TR non-mutable write
         if (imageRow(x) > 0) {
           //Record where gradients are
-          tpl.match_list += index
+          tpl.match_list += index //TODO TR non-mutable write
         }
         x += 1
       }
@@ -155,10 +155,10 @@ if (crt_template.match_list.length < 0) println("dummy")
 //      binaryGradient.data(y, 0) = 0
 //      binaryGradient.data(y, cols - 1) = 0
 //    }
-    binaryGradient.getRow(0).mmap { e => unit(0)}
-    binaryGradient.getRow(binaryGradient.numRows - 1).mmap {e => unit(0)}
-    binaryGradient.getCol(0).mmap { e => unit(0)}
-    binaryGradient.getCol(binaryGradient.numCols - 1).mmap {e => unit(0)}
+    binaryGradient.getRow(0).mmap { e => unit(0)} //TODO TR non-mutable write
+    binaryGradient.getRow(binaryGradient.numRows - 1).mmap {e => unit(0)}  //TODO TR non-mutable write
+    binaryGradient.getCol(0).mmap { e => unit(0)}  //TODO TR non-mutable write
+    binaryGradient.getCol(binaryGradient.numCols - 1).mmap {e => unit(0)}  //TODO TR non-mutable write
 
     // non-max suppression over a 3x3 stencil throughout the entire binaryGradient image
     // (Each pixel location contains just one orientation at this point)
@@ -237,7 +237,7 @@ println("Detections before NMS: " + len)
 //    }
 
 
-for (i <- 0 until 1) {
+for (i <- 0 until 1) { //TR ?
     var i = unit(0)
 //println("nms.1")
     while (i < len - 1) {
@@ -258,16 +258,16 @@ for (i <- 0 until 1) {
           if (detections(i).score >= detections(j).score) {
 //println("nms.6")
             val temp = detections(len - 1)
-            detections(len - 1) = detections(j)
-            detections(j) = temp
+            detections(len - 1) = detections(j) //TODO TR non-mutable write
+            detections(j) = temp //TODO TR non-mutable write
             len = len - 1
             j = j - 1
           }
           else {
 //println("nms.7")
             val temp = detections(len - 1)
-            detections(len - 1) = detections(i)
-            detections(i) = temp
+            detections(len - 1) = detections(i) //TODO TR non-mutable write
+            detections(i) = temp //TODO TR non-mutable write
             len = len - 1
             i = i - 1
             iMoved = true

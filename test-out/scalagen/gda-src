@@ -1,7 +1,7 @@
 /*****************************************
   Emitting Generated Code                  
 *******************************************/
-class Application extends ((Array[java.lang.String])=>(Unit)) {
+class GDA extends ((Array[java.lang.String])=>(Unit)) {
 def apply(x0:Array[java.lang.String]): Unit = {
 val x1 = x0.length
 val x2 = x1 < 2
@@ -151,7 +151,7 @@ def x92_block = {
 x91
 }
 val x92 = x92_block
-val x93 = NilVectorDoubleImpl
+val x93 = generated.scala.NilVectorDoubleImpl
 val x94 = (1.0,0.0,x92,x93)
 x94
 }
@@ -163,7 +163,7 @@ def x92_block = {
 x91
 }
 val x92 = x92_block
-val x93 = NilVectorDoubleImpl
+val x93 = generated.scala.NilVectorDoubleImpl
 val x95 = (0.0,1.0,x93,x92)
 x95
 }
@@ -190,7 +190,7 @@ def x92_block = {
 x91
 }
 val x92 = x92_block
-val x93 = NilVectorDoubleImpl
+val x93 = generated.scala.NilVectorDoubleImpl
 val x94 = (1.0,0.0,x92,x93)
 x94
 }
@@ -202,7 +202,7 @@ def x92_block = {
 x91
 }
 val x92 = x92_block
-val x93 = NilVectorDoubleImpl
+val x93 = generated.scala.NilVectorDoubleImpl
 val x95 = (0.0,1.0,x93,x92)
 x95
 }

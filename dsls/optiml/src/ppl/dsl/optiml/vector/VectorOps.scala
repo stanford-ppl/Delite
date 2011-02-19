@@ -946,8 +946,8 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
       case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
       // TODO: why!!!
       case v@VectorNil() => v.mA.toString match {
-                              case "Int" => emitValDef(sym, "NilVectorIntImpl")
-                              case "Double" => emitValDef(sym, "NilVectorDoubleImpl")
+                              case "Int" => emitValDef(sym, "generated.scala.NilVectorIntImpl")
+                              case "Double" => emitValDef(sym, "generated.scala.NilVectorDoubleImpl")
                               case _ => throw new UnsupportedOperationException("NilVector")
                             }
 

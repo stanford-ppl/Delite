@@ -259,7 +259,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
     val in = Vector.range(start, end)
     val rV = (fresh[A],fresh[A])
-    val reduce = reifyEffects(rV._1 += rV._2)
+    val reduce = reifyEffects(rV._1 += rV._2) //TODO TR write to non-mutable
     //val mapreduce = reifyEffects(ops.+=(acc, reifyEffects(block(mV))))
   }
 
@@ -305,12 +305,12 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
         for(j <- 0 until vtasks.length) {
           val task = vtasks(j).asInstanceOfL[V]
           if(!seen.contains(task)) {
-            tasks += task
-            seen.add(task)
+            tasks += task   //TODO TR: non-mutable write (use mclone)
+            seen.add(task)   //TODO TR: non-mutable write
           }
         }
 
-        vertices(i).clearTasks()
+        vertices(i).clearTasks() //TODO TR: non-mutable write
       }
 
       //println("tasks: " + tasks.length)
