@@ -67,8 +67,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     deliteGenerator.emitSource(liftedMain, "Application", stream)
   }
 
-  final def generateScalaSource(stream: PrintWriter) = {
-    codegen.emitSource(liftedMain, "Application", stream)
+  final def generateScalaSource(name: String, stream: PrintWriter) = {
+    codegen.emitSource(liftedMain, name, stream)
   }
 
 

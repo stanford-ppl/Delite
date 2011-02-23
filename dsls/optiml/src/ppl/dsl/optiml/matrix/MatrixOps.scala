@@ -356,21 +356,25 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
   
   
-  
+/*  
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) {
-
+//    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) { //merge error -- decide which to use
+    extends DeliteOpMap[A,A,Matrix] {
+    
     val v = fresh[A]
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1))))
     val mM = manifest[MatrixImpl[Double]]
   }
   case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoidf_impl(in))) {
+//    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoidf_impl(in))) { //merge error -- decide which to use
+    extends DeliteOpMap[A,A,Matrix] {
 
     val v = fresh[A]
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
     val mM = manifest[MatrixImpl[Float]]
   }
+*/
+  
   case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]]) 
     extends DeliteOpSingleTask(reifyEffects(matrix_sumcol_impl(x)))
 
@@ -532,7 +536,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val v = fresh[A]
     val func = v.exp
   }
-/*
+
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpMap[A,Double,Matrix] {
 
@@ -550,7 +554,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
     val mM = manifest[MatrixImpl[A]]
   }
-*/
+
   case class MatrixMin[A:Manifest:Ordering](in: Exp[Matrix[A]])
     extends DeliteOpReduce[A] {
 

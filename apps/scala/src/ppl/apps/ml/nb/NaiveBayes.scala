@@ -57,8 +57,8 @@ trait NaiveBayes extends OptiMLApplication {
 
     val spamcount = ts.labels.sum
 
-    val phi_y1 = Vector.zeros(numTokens)
-    val phi_y0 = Vector.zeros(numTokens)
+    val phi_y1 = Vector.mzeros(numTokens)
+    val phi_y0 = Vector.mzeros(numTokens)
 
     // TODO: this should be a tuple vector constructor
     

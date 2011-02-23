@@ -1,7 +1,7 @@
 /*****************************************
   Emitting Generated Code                  
 *******************************************/
-class Application extends ((Array[java.lang.String])=>(Unit)) {
+class SVM extends ((Array[java.lang.String])=>(Unit)) {
 def apply(x0:Array[java.lang.String]): Unit = {
 val x1 = x0.length
 val x2 = x1 < 1

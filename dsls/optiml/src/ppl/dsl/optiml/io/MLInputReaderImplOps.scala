@@ -208,7 +208,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val matchListString = file.readLine().trim.split(" ")
     i = 0
     while (i < matchListSize) {
-      matchList += Integer.parseInt(matchListString(i))
+      matchList += Integer.parseInt(matchListString(i)) //TODO TR matchList not mutable
       i += 1
     }
 

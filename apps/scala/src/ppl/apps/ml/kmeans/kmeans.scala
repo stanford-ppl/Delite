@@ -65,14 +65,14 @@ trait kmeans extends OptiMLApplication {
         var i = unit(0)
         while (i < m){
           if (c(i) == j){
-            weightedpoints += x(i)
+            weightedpoints += x(i) //TODO TR check mutable?
             points += 1
           }
           i += 1
         }
         if (points == 0)
           points += 1
-        mu(j) = weightedpoints / points
+        mu(j) = weightedpoints / points //TODO TR non-mutable write
         //if (points == 0) mu(j) = Vector.zeros(n)
         //else mu(j) = weightedpoints / points
       }
