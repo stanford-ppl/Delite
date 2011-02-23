@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
-object SVM extends DeliteApplication with OptiMLExp with SVMModels {
+object SVMRunner extends OptiMLApplicationRunner with SVM
+
+trait SVM extends OptiMLApplication with SVMModels {
 
   def print_usage = {
     println("Usage: SVM <train data file> <test data file> <model filename> <num tests>")
@@ -55,9 +57,9 @@ object SVM extends DeliteApplication with OptiMLExp with SVMModels {
     //svm.load(modelFile)
     val outputLabels = (0::numTestDocs){ i => svm.classify(weights, b, inMatrixTest(i)) }
     println("SVM testing finished. Calculating error..")
-    var errors = unit(0)
-    for (i <- 0 until numTestDocs){
-      if (YTest(i) != outputLabels(i)) errors +=1
+    val errors = sum[Int](0, numTestDocs) { i =>
+      if (YTest(i) != outputLabels(i)) 1
+      else 0
       //println("predicted class: " + outputLabels(i) + ", actual: " + Y(i))
     }
     println("Classification error: " + (errors.doubleValue()/numTestDocs.doubleValue()))

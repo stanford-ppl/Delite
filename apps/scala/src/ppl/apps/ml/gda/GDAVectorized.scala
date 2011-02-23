@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import datastruct.scala.NilVector
 import ppl.delite.framework.DeliteApplication
 
-object GDAVectorized extends DeliteApplication with OptiMLExp {
+object GDAVectorizedRunner extends OptiMLApplicationRunner with GDAVectorized
+
+trait GDAVectorized extends OptiMLApplication {
 
   def print_usage = {
     println("Usage: GDA <input data file> <output label data file>")

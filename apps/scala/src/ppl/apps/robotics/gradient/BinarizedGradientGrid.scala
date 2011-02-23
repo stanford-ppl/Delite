@@ -5,7 +5,7 @@ import ppl.dsl.optiml.datastruct.scala._
 import ppl.delite.framework.DeliteApplication
 
 trait BinarizedGradientGridFuncs {
-  this: OptiMLExp with BinarizedGradientPyramidFuncs with BinarizedGradientTemplateFuncs =>
+  this: OptiMLApplication with BinarizedGradientPyramidFuncs with BinarizedGradientTemplateFuncs =>
 
   // The radius of the template
   val template_radius_ = unit(15)

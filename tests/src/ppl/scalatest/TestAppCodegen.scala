@@ -33,22 +33,22 @@ class TestAppCodegen extends FileDiffSuite {
 
 
   
-  def testGDA = testApp("gda", ppl.apps.ml.gda.GDA)
+  def testGDA = testApp("gda", ppl.apps.ml.gda.GDARunner)
 
-  def testKMeans = testApp("kmeans", ppl.apps.ml.kmeans.kmeans)
+  def testKMeans = testApp("kmeans", ppl.apps.ml.kmeans.kmeansRunner)
 
-  def testLBPDenoise = testApp("lbpdenoise", ppl.apps.ml.lbpdenoise.LBPDenoise)
+  def testLBPDenoise = testApp("lbpdenoise", ppl.apps.ml.lbpdenoise.LBPDenoiseRunner)
 
-  def testLinReg = testApp("linreg", ppl.apps.ml.linreg.LinReg)
+  def testLinReg = testApp("linreg", ppl.apps.ml.linreg.LinRegRunner)
 
-  def testNaiveBayes = testApp("nb", ppl.apps.ml.nb.NaiveBayes)
+  def testNaiveBayes = testApp("nb", ppl.apps.ml.nb.NaiveBayesRunner)
 
-  def testRBM = testApp("rbm", ppl.apps.ml.rbm.RBM)
+  def testRBM = testApp("rbm", ppl.apps.ml.rbm.RBMRunner)
 
-  def testSVM = testApp("svm", ppl.apps.ml.svm.SVM)
+  def testSVM = testApp("svm", ppl.apps.ml.svm.SVMRunner)
 
-  def testSVMFusing = testAppFusing("svm", ppl.apps.ml.svm.SVM)
+  def testSVMFusing = testAppFusing("svm", ppl.apps.ml.svm.SVMRunner)
   
-  def testGradient = testApp("gradient", ppl.apps.robotics.gradient.gradient)
+  def testGradient = testApp("gradient", ppl.apps.robotics.gradient.gradientRunner)
 
 }

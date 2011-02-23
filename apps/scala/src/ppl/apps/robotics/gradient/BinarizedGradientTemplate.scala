@@ -5,7 +5,7 @@ import ppl.dsl.optiml.datastruct.scala._
 import ppl.delite.framework.DeliteApplication
 
 trait BinarizedGradientTemplateFuncs {
-  this: OptiMLExp =>
+  this: OptiMLApplication =>
 
   /**
    * Score this template against another template

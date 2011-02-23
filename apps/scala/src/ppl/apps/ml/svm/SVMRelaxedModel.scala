@@ -12,10 +12,10 @@ package ppl.apps.ml.svm
  */
 
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
-import ppl.dsl.optiml.OptiML
 import ppl.delite.framework.DeliteApplication
+import ppl.dsl.optiml.{OptiMLApplication, OptiML}
 
-trait SVMRelaxedModels { this: OptiML =>
+trait SVMRelaxedModels { this: OptiMLApplication =>
   
   class SVMRelaxedModel {
   
@@ -61,7 +61,10 @@ trait SVMRelaxedModels { this: OptiML =>
     //while (passes < max_passes){
       print(".")
       var num_changed_alphas = unit(0)
-      for (i <- 0 until numSamples){
+
+      var i = 0
+      while (i < numSamples){
+      //for (i <- 0 until numSamples){
         val f_i = (alphas*Y*(X*X(i).t)).sum + b
         val E_i = f_i - Y(i)
 
@@ -128,6 +131,7 @@ trait SVMRelaxedModels { this: OptiML =>
             } // negative eta?
           } // L != H?
         } // main if (select alphas)
+        i += 1
       } // for i = 1 to numSamples
 
       //print("num_changed_alphas: " + num_changed_alphas + " ")

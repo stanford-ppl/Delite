@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala._
 import ppl.delite.framework.DeliteApplication
 
-object gradient extends DeliteApplication with OptiMLExp
+object gradientRunner extends OptiMLApplicationRunner with gradient
+
+trait gradient extends OptiMLApplication
   with BinarizedGradientGridFuncs with BinarizedGradientPyramidFuncs with BinarizedGradientTemplateFuncs {
 
   def main() = {

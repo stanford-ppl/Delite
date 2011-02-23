@@ -1,9 +1,9 @@
 package ppl.tests.dsl.optiml
 
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.{ApplicationOps, OptiMLExp}
+import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication, ApplicationOps}
 
-/* Description
+/* Testing application-defined data structures
 *
 * author:  Arvind Sujeeth (asujeeth@stanford.edu)
 * created: 12/24/10
@@ -13,7 +13,9 @@ import ppl.dsl.optiml.{ApplicationOps, OptiMLExp}
 *
 */
 
-object ApplicationOpsTests extends DeliteApplication with OptiMLExp {
+object ApplicationOpsTestsRunner extends OptiMLApplicationRunner with ApplicationOpsTests
+
+trait ApplicationOpsTests extends OptiMLApplication {
 
   def main() = {
     val x = Rect(1,2,3,4)

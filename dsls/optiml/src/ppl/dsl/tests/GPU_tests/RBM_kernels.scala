@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
 
 
-object RBM_kernels extends DeliteApplication with OptiMLExp {
+object RBM_kernelsRunner extends OptiMLApplicationRunner with RBM_kernels
+
+trait RBM_kernels extends OptiMLApplication {
 
   def main() {
 

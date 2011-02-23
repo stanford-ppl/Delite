@@ -121,6 +121,7 @@ trait MatrixOps extends DSLType with Variables {
 
     // bulk operations
     def map[B:Manifest](f: Rep[A] => Rep[B]) = matrix_map(x,f)
+    /// TODO: rename to transform?
     def mmap(f: Rep[A] => Rep[A]) = matrix_mmap(x,f)
     def mapRows[B:Manifest](f: Rep[Vector[A]] => Rep[Vector[B]]) = matrix_maprows(x,f)
     def mapRows[B:Manifest](f: Rep[Vector[A]] => Rep[B], isRow: Rep[Boolean] = true) = matrix_maprowstovec(x,f,isRow)

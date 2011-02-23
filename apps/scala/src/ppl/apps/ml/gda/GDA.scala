@@ -3,8 +3,9 @@ package ppl.apps.ml.gda
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
 
-object GDA extends DeliteApplication with OptiMLExp {
+object GDARunner extends OptiMLApplicationRunner with GDA
 
+trait GDA extends OptiMLApplication {
   def print_usage = {
     println("Usage: GDA <input data file> <output label data file>")
     exit(-1)

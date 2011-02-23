@@ -5,7 +5,7 @@ import ppl.dsl.optiml.datastruct.scala._
 import ppl.delite.framework.DeliteApplication
 
 trait BinarizedGradientPyramidFuncs {
-  this: OptiMLExp =>
+  this: OptiMLApplication =>
 
   def makePyramid(gradientImage: Rep[GrayscaleImage]) = {
     var crt = gradientImage

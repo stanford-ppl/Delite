@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
-object RBMLoop extends DeliteApplication with OptiMLExp {
+object RBMLoopRunner extends OptiMLApplicationRunner with RBMLoop
+
+trait RBMLoop extends OptiMLApplication {
 
   def print_usage = {
     println("Usage: RBM <MNIST data file> <numHiddenUnits> <numcases>")

@@ -133,8 +133,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       implicit val mCA: Manifest[C[A]] = in.Type.asInstanceOf[Manifest[C[A]]]
       implicit val mCB: Manifest[C[B]] = alloc.Type.asInstanceOf[Manifest[C[B]]]
       reifyEffects {
-        var i = unit(0)
-        var vs = unit(null).asInstanceOfL[A]
+        var i = var_new(0)
+        var vs = var_new(unit(null).asInstanceOfL[A])
         while (i < in.size) {
           vs = in(i)
           rebind(v.asInstanceOf[Sym[A]], ReadVar(vs))
@@ -206,10 +206,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
     lazy val acc = {
       implicit val mR = map.Type.asInstanceOf[Manifest[R]]
-      __newVar(unit(null).asInstanceOfL[R])
+      var_new(unit(null).asInstanceOfL[R])
     }
     lazy val index = {
-      __newVar(unit(0))
+      var_new(0)
     }
     // this is a workaround for reification and vars not really working well together
     // we need to output the block as an Exp, but the nested scopes need to use it as a var
@@ -223,7 +223,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
       implicit val mR = map.Type.asInstanceOf[Manifest[R]]
       reifyEffects {
-        var vs = in(index)
+        var vs = var_new(in(index))
         rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
         acc = map
       }
@@ -234,9 +234,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       reifyEffects {
         index += 1
         while (index < in.size) {
-          var vs = in(index)
+          var vs = var_new(in(index))
           //rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
-          var x = map
+          var x = var_new(map)
           rebind(rV._1.asInstanceOf[Sym[R]], ReadVar(acc))
           rebind(rV._2.asInstanceOf[Sym[R]], ReadVar(x))
           acc = reduce
@@ -292,13 +292,13 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     lazy val variant = {
       implicit val mA: Manifest[A] = v.Type.asInstanceOf[Manifest[A]]
       reifyEffects {
-        var index = unit(0)
-        var vs = unit(null).asInstanceOfL[A]
+        var index = var_new(0)
+        var vs = var_new(unit(null).asInstanceOfL[A])
         while (index < in.size) {
           vs = in(index)
           rebind(v.asInstanceOf[Sym[A]], ReadVar(vs))
           //reflectEffect(findDefinition(func.asInstanceOf[Sym[Unit]]).get.rhs)
-          var x = func
+          var x = var_new(func)
           index += 1
         }
         alloc

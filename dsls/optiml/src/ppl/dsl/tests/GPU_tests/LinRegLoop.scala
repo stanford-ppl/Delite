@@ -13,7 +13,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
-object LinRegLoop extends DeliteApplication with OptiMLExp {
+object LinRegLoopRunner extends OptiMLApplicationRunner with LinRegLoop
+
+trait LinRegLoop extends OptiMLApplication {
 
   // unweighted linear regression using the normal equations
   // input: input training vector x

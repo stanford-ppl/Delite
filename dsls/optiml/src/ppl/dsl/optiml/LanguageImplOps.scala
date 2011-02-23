@@ -14,7 +14,7 @@ trait LanguageImplOps { this: OptiML =>
 }
 
 trait LanguageImplOpsStandard extends LanguageImplOps {
-  this: OptiML =>
+  this: OptiMLCompiler with OptiMLLift =>
   
   def optiml_untilconverged_impl[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices

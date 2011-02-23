@@ -15,17 +15,39 @@ import ppl.dsl.optiml.datastruct.CudaGenDataStruct
 import ppl.dsl.optiml.io._
 import ppl.dsl.optiml.vector._
 import ppl.dsl.optiml.matrix._
+
 //import ppl.dsl.optiml.graph._
 import ppl.delite.framework.ops._
+
+
+/**
+ * These separate OptiML applications from the Exp world.
+ */
+
+// ex. object GDARunner extends OptiMLApplicationRunner with GDA
+trait OptiMLApplicationRunner extends OptiMLApplication with DeliteApplication with OptiMLExp
+
+// ex. trait GDA extends OptiMLApplication
+trait OptiMLApplication extends OptiML with OptiMLLift {
+  var args: Rep[Array[String]]
+  def main(): Unit
+}
+
 
 /**
  * These are the portions of Scala imported into OptiML's scope.
  */
+trait OptiMLLift extends LiftVariables with LiftEquals {
+  this: OptiML =>
+}
+
 trait OptiMLScalaOpsPkg extends Base
     with Equal with IfThenElse with Variables with While with Functions
-    with ImplicitOps with OrderingOps with StringOps with RangeOps with IOOps
-    with ArrayOps with BooleanOps with PrimitiveOps with MiscOps with TupleOps
-    with ListOps with SeqOps with MathOps with CastingOps with SetOps
+    with ImplicitOps with OrderingOps with StringOps
+    with BooleanOps with PrimitiveOps with MiscOps with TupleOps
+    with MathOps with CastingOps
+    // only included because of args. TODO: investigate passing args as a vector
+    with ArrayOps
 
 trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg with DSLOpsExp
     with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
@@ -61,15 +83,19 @@ trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with
   with GraphOps with VerticesOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps
   with LabelsOps with TrainingSetOps with ImageOps with GrayscaleImageOps {
 
-  this: DeliteApplication =>
+  this: OptiMLApplication =>
+}
 
+// these ops are only available to the compiler (they are restricted from application use)
+trait OptiMLCompiler extends OptiML with RangeOps with IOOps with SeqOps with SetOps with ListOps {
+  this: OptiMLApplication with OptiMLExp =>
 }
 
 
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp with ApplicationOpsExp with ArithOpsExpOpt
+trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with LanguageOpsExp with ApplicationOpsExp with ArithOpsExpOpt
   with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp 
   with MLOutputWriterOpsExp with VectorViewOpsExp with IndexVectorOpsExp with IndexVector2OpsExp
   with LabelsOpsExp with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
@@ -77,7 +103,9 @@ trait OptiMLExp extends OptiML with OptiMLScalaOpsPkgExp with LanguageOpsExp wit
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard
   with GraphOpsExp with VerticesOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp {
-  this: DeliteApplication =>
+
+  // this: OptiMLApplicationRunner => why doesn't this work?
+  this: DeliteApplication with OptiMLApplication with OptiMLExp => // can't be OptiMLApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
 
   def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericFatCodegen{val IR: OptiMLExp.this.type} = {
     t match {
@@ -120,9 +148,9 @@ trait OptiMLCodeGenBase extends GenericFatCodegen {
       if (specialize contains (f.getName())) {
         genSpec(f, dsOut)
       }
-	  if (specialize2 contains (f.getName())) {
-		 genSpec2(f, dsOut)
-	  }
+      if (specialize2 contains (f.getName())) {
+        genSpec2(f, dsOut)
+      }
       val outFile = dsOut + "/" + f.getName()
       val out = new BufferedWriter(new FileWriter(outFile))
       for (line <- scala.io.Source.fromFile(f).getLines) {

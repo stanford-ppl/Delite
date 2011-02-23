@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
-object MatMultVTest extends DeliteApplication with OptiMLExp {
+object MatMultVTestRunner extends OptiMLApplicationRunner with MatMultVTestRunner
+
+trait MatMultVTestRunner extends OptiMLApplication {
 
   def main() = {
     val mat_numRows = 12

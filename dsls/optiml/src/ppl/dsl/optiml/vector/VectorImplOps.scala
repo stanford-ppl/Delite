@@ -3,7 +3,7 @@ package ppl.dsl.optiml.vector
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
-import ppl.dsl.optiml.OptiML
+import ppl.dsl.optiml.{OptiMLLift, OptiMLCompiler, OptiML}
 
 trait VectorImplOps { this: OptiML =>
 
@@ -32,7 +32,7 @@ trait VectorImplOps { this: OptiML =>
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
-  this: OptiML =>
+  this: OptiMLCompiler with OptiMLLift =>
 
   //////////////////////////
   // kernel implementations

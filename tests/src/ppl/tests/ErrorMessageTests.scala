@@ -3,7 +3,9 @@ package ppl.tests
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
 
-object ErrorMessageTests extends DeliteApplication with OptiMLExp {
+object ErrorMessageTestsRunner extends OptiMLApplicationRunner with ErrorMessageTests
+
+trait ErrorMessageTests extends OptiMLApplication {
   class Point // just an example, should be a real type the user thinks they can use (either because they defined it or
               // they found it in another library)
  

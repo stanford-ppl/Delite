@@ -7,7 +7,7 @@ object TestGenSVM {
     val a = Array("data/ml/svm/MATRIX.TRAIN.50", "data/ml/svm/MATRIX.TEST")
 
     //this just generates
-    import ppl.apps.ml.svm.SVM
-    SVM.main(a)
+    import ppl.apps.ml.svm.SVMRunner
+    SVMRunner.main(a)
   }
 }

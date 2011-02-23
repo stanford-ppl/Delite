@@ -1,9 +1,11 @@
 package ppl.tests.dsl
 
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.{OptiMLExp}
+import ppl.dsl.optiml.{OptiMLApplication, OptiMLApplicationRunner, OptiMLExp}
 
-object FusingTests extends DeliteApplication with OptiMLExp {
+object FusingTestsRunner extends OptiMLApplicationRunner with FusingTests
+
+trait FusingTests extends OptiMLApplication {
 
   def fuseSimple2() {
     val a = Vector.range(1,10)

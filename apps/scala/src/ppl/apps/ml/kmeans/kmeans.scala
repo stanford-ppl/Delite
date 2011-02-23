@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
-object kmeans extends DeliteApplication with OptiMLExp {
+object kmeansRunner extends OptiMLApplicationRunner with kmeans
+
+trait kmeans extends OptiMLApplication {
 
   def print_usage = {
     println("Usage: kmeans <input data file> <initmu data file>")

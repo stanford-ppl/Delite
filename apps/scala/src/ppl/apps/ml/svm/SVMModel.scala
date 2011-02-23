@@ -12,10 +12,10 @@ package ppl.apps.ml.svm
  */
 
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
-import ppl.dsl.optiml.OptiML
 import ppl.delite.framework.DeliteApplication
+import ppl.dsl.optiml.{OptiMLApplication, OptiML}
 
-trait SVMModels { this: OptiML =>
+trait SVMModels { this: OptiMLApplication =>
 
   class SVMModel { // do we need a class?
 
@@ -56,9 +56,9 @@ trait SVMModels { this: OptiML =>
     while (passes < max_passes){
       print(".")
       var num_changed_alphas = unit(0)
-      //var i = unit(0)
-      //while(i < numSamples){ //TR
-      for (i <- 0 until numSamples) {
+      var i = unit(0)
+      while(i < numSamples){ //TR
+      //for (i <- 0 until numSamples) {
         // TODO: x761 -- code is recalculating alphas from original definition here
         val alphasOld = alphas.cloneL
         
@@ -132,7 +132,7 @@ trait SVMModels { this: OptiML =>
             } // negative eta?
           } // L != H?
         } // main if (select alphas)
-        //i += 1 //TR
+        i += 1 //TR
       } // for i = 1 to numSamples
 
       if (num_changed_alphas == 0){
@@ -144,8 +144,11 @@ trait SVMModels { this: OptiML =>
 
     // SMO finished
     // compute the weights (assuming a linear kernel)
-    for (i <- 0 until X.numRows){
+    var i = 0
+    while(i < X.numRows){
+    //for (i <- 0 until X.numRows){
       weights = weights + X(i)*alphas(i)*Y(i)
+      i += 1
     }
     print("\\n")
 

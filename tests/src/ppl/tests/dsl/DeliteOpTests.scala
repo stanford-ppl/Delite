@@ -1,7 +1,7 @@
 package ppl.tests.dsl
 
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.{OptiMLExp}
+import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication}
 
 /* Tests the generated code functionality for Delite ops, using OptiML data structures.
 *
@@ -13,7 +13,9 @@ import ppl.dsl.optiml.{OptiMLExp}
 *
 */
 
-object DeliteOpTests extends DeliteApplication with OptiMLExp {
+object DeliteOpTestsRunner extends OptiMLApplicationRunner with DeliteOpTests
+
+trait DeliteOpTests extends OptiMLApplication {
 
   // kernels
   def testMapK() = {

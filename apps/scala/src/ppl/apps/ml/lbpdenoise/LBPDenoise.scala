@@ -1,8 +1,8 @@
 package ppl.apps.ml.lbpdenoise
 
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.OptiMLExp
 import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication, OptiMLExp}
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -12,7 +12,9 @@ import ppl.dsl.optiml.datastruct.scala._
  * Stanford University
  */
 
-object LBPDenoise extends DeliteApplication with OptiMLExp {
+object LBPDenoiseRunner extends OptiMLApplicationRunner with LBPDenoise
+
+trait LBPDenoise extends OptiMLApplication {
   def print_usage = {
     println("Usage: GraphLBP <rows> <cols>")
     println("Example: GraphLBP 100 100")
@@ -167,15 +169,20 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     val vertices = Matrix[MessageVertex](img.numRows, img.numCols)
 
     // Set vertex potential based on image
-    for (i <- 0 until img.numRows) {
-      for (j <- 0 until img.numCols) {
+    var i = 0
+    var j = 0
+    while (i < img.numRows) {
+      j = 0
+      while (j < img.numCols) {
         val pixelId = imgPixelId(img, i, j)
         val potential = Vector.mzeros(numRings)
 
         val obs = img(i, j)
 
-        for (pred <- 0 until numRings) {
+        var pred = 0
+        while (pred < numRings) {
           potential(pred) = 0.0 - ((obs - pred) * (obs - pred) / (2.0 * sigmaSq))
+          pred += 1
         }
 
         unaryFactorNormalizeM(potential)
@@ -185,14 +192,18 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
         vertices(i)(j) = vertex
         g.addVertex(vertex)
+        j += 1
       }
+      i += 1
     }
 
     val edgeData = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
 
     // Add bidirectional edges between neighboring pixels
-    for (i <- 0 until img.numRows) {
-      for (j <- 0 until img.numCols) {
+    i = 0
+    while (i < img.numRows) {
+      j = 0
+      while (j < img.numCols) {
         if(j < img.numCols - 1) {
           val edgeData = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
           val edgeData2 = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
@@ -207,7 +218,9 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           val edgeDown = MessageEdge(g, edgeData, edgeData2, vertices(i)(j), vertices(i+1)(j))
           g.addEdge(edgeDown, vertices(i)(j), vertices(i+1)(j))
         }
+        j += 1
       }
+      i += 1
     }
 
     g
@@ -233,8 +246,11 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     val centerC = img.numCols.asInstanceOfL[Double] / 2.0
     val maxRadius = Math.min(img.numRows, img.numCols).asInstanceOfL[Double] / 2.0
 
-    for (r <- 0 until img.numRows) {
-      for (c <- 0 until img.numCols) {
+    var r = 0
+    var c = 0
+    while (r < img.numRows) {
+      c = 0
+      while (c < img.numCols) {
         val distance = Math.sqrt((r.asInstanceOfL[Double] - centerR) * (r.asInstanceOfL[Double] - centerR) + (c.asInstanceOfL[Double] - centerC) * (c.asInstanceOfL[Double] - centerC))
 
         // If on top of image
@@ -247,17 +263,15 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
         else {
           img(r, c) = 0
         }
+        c += 1
       }
+      r += 1
     }
   }
 
   // Corrupt the image with Gaussian noise
   def imgCorrupt(img: Rep[Matrix[Double]], sigma: Rep[Double]) = {
-    for (r <- 0 until img.numRows) {
-      for (c <- 0 until img.numCols) {
-        img(r, c) = img(r, c) + randomGaussian * sigma
-      }
-    }
+    img mmap { _ + randomGaussian*sigma }
   }
 
   def imgSave(img: Rep[Matrix[Double]], filename: Rep[String]) = {
@@ -265,22 +279,39 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
 
   def binaryFactorSetAgreement(bf: Rep[Matrix[Double]], lambda: Rep[Double]) = {
-    for (i <- 0 until bf.numRows) {
-      for (j <- 0 until bf.numCols) {
+    var i = 0
+    var j = 0
+    while (i < bf.numRows) {
+      j = 0
+      while (j < bf.numCols) {
         if (i != j)
           bf(i, j) = 0.0 - lambda
         else
           bf(i, j) = 0
+        j += 1
       }
+      i += 1
     }
   }
 
   def binaryFactorSetLaplace(bf: Rep[Matrix[Double]], lambda: Rep[Double]) = {
-    for (i <- 0 until bf.numRows) {
-      for (j <- 0 until bf.numCols) {
+    var i = 0
+    var j = 0
+    while (i < bf.numRows) {
+      j = 0
+      while (j < bf.numCols) {
         bf(i, j) = 0.0 - lambda * Math.abs(i - j);
+        j += 1
       }
+      i += 1
     }
+    // TODO: how can this mutable matrix constructor operation be expressed using parallel optiml constructs?
+    /*
+    // def update(IndexVector2, f: (i,j) => val): Unit
+    bf(0::bf.numRows, 0::bf.numCols) = { i, j =>
+      0.0 - lambda * Math.abs(i - j)
+    }
+    */
   }
 
   def unaryFactorUniform(arity: Rep[Int]) = {

@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet,Labels}
 import ppl.delite.framework.DeliteApplication
 
-object NaiveBayes extends DeliteApplication with OptiMLExp {
+object NaiveBayesRunner extends OptiMLApplicationRunner with NaiveBayes
+
+trait NaiveBayes extends OptiMLApplication {
 
 
   def print_usage = {
@@ -171,11 +173,11 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
     }}
 
     // Compute error on test set
-    var incorrect_classifications = unit(0)
-    for (i <- 0 until numTestDocs){
-      if (ts.labels(i) != output(i))
-        incorrect_classifications += 1
+    // why does sum without Int infer a double when we return 1/0?
+    val incorrectClassifications = sum[Int](0, numTestDocs) { i =>
+     if (ts.labels(i) != output(i)) 1
+     else 0
     }
-    incorrect_classifications
+    incorrectClassifications
   }
 }

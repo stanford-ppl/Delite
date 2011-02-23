@@ -1,19 +1,21 @@
 package ppl.tests.dsl.optiml
 
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.OptiMLExp
+import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication}
 
-/* Description
- *
- * author:  Arvind Sujeeth (asujeeth@stanford.edu)
- * created: 12/24/10
- *
- * Pervasive Parallelism Laboratory (PPL)
- * Stanford University
- *
- */
+/* Testing OptiML i/o functionality
+*
+* author:  Arvind Sujeeth (asujeeth@stanford.edu)
+* created: 12/24/10
+*
+* Pervasive Parallelism Laboratory (PPL)
+* Stanford University
+*
+*/
 
-object IOTests extends DeliteApplication with OptiMLExp {
+object IOTestsRunner extends OptiMLApplicationRunner with IOTests
+
+trait IOTests extends OptiMLApplication {
 
   def testWrite() = {
     val x = Matrix.ones(10,10)

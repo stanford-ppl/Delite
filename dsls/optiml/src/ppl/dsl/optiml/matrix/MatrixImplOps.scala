@@ -3,7 +3,7 @@ package ppl.dsl.optiml.matrix
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
-import ppl.dsl.optiml.OptiML
+import ppl.dsl.optiml.{OptiMLCompiler, OptiMLLift, OptiML}
 
 trait MatrixImplOps { this: OptiML =>
   def matrix_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[Rep[Vector[A]]]]): Rep[Matrix[A]]
@@ -41,7 +41,7 @@ trait MatrixImplOps { this: OptiML =>
 }
 
 trait MatrixImplOpsStandard extends MatrixImplOps {
-  this: OptiML =>
+  this: OptiMLCompiler with OptiMLLift =>
   
 
   ///////////////

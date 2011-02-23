@@ -3,7 +3,7 @@ package ppl.dsl.optiml.io
 import java.io._
 import scala.virtualization.lms.common.Base
 import ppl.dsl.optiml.datastruct.scala._
-import ppl.dsl.optiml.OptiML
+import ppl.dsl.optiml.{OptiMLCompiler, OptiMLLift, OptiML}
 
 trait MLInputReaderImplOps { this: Base =>
   def mlinput_read_impl(filename: Rep[String]) : Rep[Matrix[Double]]
@@ -14,7 +14,7 @@ trait MLInputReaderImplOps { this: Base =>
 }
 
 trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
-  this: OptiML =>
+  this: OptiMLCompiler with OptiMLLift =>
   
   ///////////////
   // kernels

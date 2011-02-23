@@ -1,7 +1,7 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.matrix
 
-import datastruct.CudaGenDataStruct
-import datastruct.scala.{MatrixImpl, VectorImpl, ImageImpl, Vector, Matrix, Image}
+import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+import ppl.dsl.optiml.datastruct.scala.{MatrixImpl, VectorImpl, ImageImpl, Vector, Matrix, Image}
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
@@ -9,6 +9,7 @@ import scala.virtualization.lms.common.{VariablesExp, Variables, DSLOpsExp, CGen
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.Config
+import ppl.dsl.optiml.{OptiML, OptiMLExp}
 
 trait ImageOps extends DSLType with Variables {
   this: OptiML =>
