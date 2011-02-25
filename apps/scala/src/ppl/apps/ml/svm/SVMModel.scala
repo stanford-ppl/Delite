@@ -43,7 +43,7 @@ trait SVMModels { this: OptiMLApplication =>
 
     // internal model storage
     var weights = Vector.zeros(X.numCols)
-    var b = unit(0.0)
+    var b = 0.0
 
     // intermediate training info
     //var alphas = Vector.zeros(X.numRows).mt // col vector
@@ -51,12 +51,12 @@ trait SVMModels { this: OptiMLApplication =>
     alphas.mt // col vector
 
     val numSamples = X.numRows
-    var passes = unit(0)
+    var passes = 0
     
     while (passes < max_passes){
       print(".")
-      var num_changed_alphas = unit(0)
-      var i = unit(0)
+      var num_changed_alphas = 0
+      var i = 0
       while(i < numSamples){ //TR
       //for (i <- 0 until numSamples) {
         // TODO: x761 -- code is recalculating alphas from original definition here
@@ -80,8 +80,8 @@ trait SVMModels { this: OptiMLApplication =>
 
           // calculate bounds L and H that must hold in order for a_i, alphas(j) to
           // satisfy constraints and check
-          var L = unit(0.0)
-          var H = unit(0.0)
+          var L = 0.0
+          var H = 0.0
           if (Y(i) != Y(j)){
             L = Math.max(0., alphasOld(j) - alphasOld(i))
             H = Math.min(C, C + alphasOld(j) - alphasOld(i))

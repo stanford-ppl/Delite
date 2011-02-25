@@ -50,9 +50,9 @@ trait LinRegLoop extends OptiMLApplication {
     val Xt = X.t
 
     // calculate predictions
-	var e = unit(0)
+	  var e = 0
     val guess = Vector[Double](xref.numRows,true)
-	while(e < xref.numRows ) {
+	  while(e < xref.numRows ) {
     //val guess = (0::xref.numRows)( e => {
       val x_cur = xref(e,1)
       val weights = x.map(ele => Math.exp(-.1*(x_cur-ele)*(x_cur-ele)/(2.0*tau*tau))/2.0)

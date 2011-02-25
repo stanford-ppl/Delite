@@ -22,10 +22,10 @@ trait GrayscaleImageOps extends DSLType with Variables {
 //    val scharrXkernel = scharrYkernel.t
   }
 
-  implicit def repGrayscaleImageToGrayscaleImageOps[A:Manifest](x: Rep[GrayscaleImage]) = new grayscaleImageRepCls(x)
-  implicit def varToGrayscaleImageOps[A:Manifest](x: Var[GrayscaleImage]) = new grayscaleImageRepCls(readVar(x))
+  implicit def repGrayscaleImageToGrayscaleImageOps[A:Manifest](x: Rep[GrayscaleImage]) = new grayscaleImageOpsCls(x)
+  implicit def varToGrayscaleImageOps[A:Manifest](x: Var[GrayscaleImage]) = new grayscaleImageOpsCls(readVar(x))
 
-  class grayscaleImageRepCls(x: Rep[GrayscaleImage]) {
+  class grayscaleImageOpsCls(x: Rep[GrayscaleImage]) {
     import GrayscaleImage._
 
     def bitwiseOrDownsample() = GrayscaleImage(x.downsample(2,2) { slice => slice(0,0) | slice(1,0) | slice(0,1) | slice(1,1) })

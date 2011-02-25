@@ -139,7 +139,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
       val row = Vector[Double](numTokens,true)
       var cumsum = unit(0); var j = unit(1)
       // this could be vectorized
-      while (j < nums.length - 1){
+      while (j < repArithToArithOps(nums.length) - 1){
         cumsum += Integer.parseInt(nums(j))
         row(cumsum) = Double.parseDouble(nums(j+1))
         j += 2

@@ -8,18 +8,18 @@ trait BinarizedGradientGridFuncs {
   this: OptiMLApplication with BinarizedGradientPyramidFuncs with BinarizedGradientTemplateFuncs =>
 
   // The radius of the template
-  val template_radius_ = unit(15)
+  val template_radius_ = 15
 
   // Threshold for accepting a template match (1 is perfect)
-  val accept_threshold_ = unit(0.82f)
+  val accept_threshold_ = 0.82f
 
   // Ignore gradients with lower magnitude
-  val magnitude_threshold_ = unit(200)
+  val magnitude_threshold_ = 200
 
   // Fraction overlap between two detections above which one of them is suppressed
-  val fraction_overlap_ = unit(0.6f)
+  val fraction_overlap_ = 0.6f
 
-  val borderPixels = unit(5)
+  val borderPixels = 5
 
   // Runs the object detection of the current image.
   def detectAllObjects(all_templates: Rep[Vector[(String, Vector[BinarizedGradientTemplate])]], image: Rep[GrayscaleImage]) = {
@@ -76,7 +76,7 @@ trait BinarizedGradientGridFuncs {
 //println(crt_template.match_list.length)
 if (crt_template.match_list.length < 0) println("dummy")
 //println("searchTemplates.3")
-    (unit(0) :: templates.length).flatMap { j =>
+    (0 :: templates.length).flatMap { j =>
       val res = score(templates(j), crt_template, accept_threshold)
       if (res > accept_threshold) {
 //println("res: " + res)
@@ -131,12 +131,12 @@ if (crt_template.match_list.length < 0) println("dummy")
     GrayscaleImage((mag zip phase) {(a,b) => {
       if (a >= magnitude_threshold_) {
           var angle = b
-          if (angle >= unit(180)) {
-            angle = angle - unit(180) //Ignore polarity of the angle
+          if (angle >= 180) {
+            angle = angle - 180 //Ignore polarity of the angle
           }
-          Math.pow(unit(2), (angle.asInstanceOfL[Double] / unit(180.0 / 8)).asInstanceOfL[Int]).asInstanceOfL[Int]
+          Math.pow(2, (angle.asInstanceOfL[Double] / (180.0 / 8)).asInstanceOfL[Int]).asInstanceOfL[Int]
         }
-      else 0
+      else unit(0)
     }})
   }
 
@@ -155,10 +155,10 @@ if (crt_template.match_list.length < 0) println("dummy")
 //      binaryGradient.data(y, 0) = 0
 //      binaryGradient.data(y, cols - 1) = 0
 //    }
-    binaryGradient.getRow(0).mmap { e => unit(0)} //TODO TR non-mutable write
-    binaryGradient.getRow(binaryGradient.numRows - 1).mmap {e => unit(0)}  //TODO TR non-mutable write
-    binaryGradient.getCol(0).mmap { e => unit(0)}  //TODO TR non-mutable write
-    binaryGradient.getCol(binaryGradient.numCols - 1).mmap {e => unit(0)}  //TODO TR non-mutable write
+    binaryGradient.getRow(0).mmap {e => 0} //TODO TR non-mutable write
+    binaryGradient.getRow(binaryGradient.numRows - 1).mmap {e => 0}  //TODO TR non-mutable write
+    binaryGradient.getCol(0).mmap {e => 0}  //TODO TR non-mutable write
+    binaryGradient.getCol(binaryGradient.numCols - 1).mmap {e => 0}  //TODO TR non-mutable write
 
     // non-max suppression over a 3x3 stencil throughout the entire binaryGradient image
     // (Each pixel location contains just one orientation at this point)
@@ -166,9 +166,9 @@ if (crt_template.match_list.length < 0) println("dummy")
       // for each element, pick the most frequently occurring gradient direction if it's at least 2; otherwise pick 0(no direction)
       val histogram = Vector[Int](256, true)
       // TODO: Make this a scan-like op once supported
-      var row = unit(0)
+      var row = 0
       while (row < slice.numRows) {
-        var col = unit(0)
+        var col = 0
         while (col < slice.numCols) {
           //histogram(slice(row, col)) += 1
           histogram(slice(row,col)) = histogram(slice(row,col))+1
@@ -176,9 +176,9 @@ if (crt_template.match_list.length < 0) println("dummy")
         }
         row += 1
       }
-      var i = unit(2)
+      var i = 2
       var max = histogram(1)
-      var maxIndex = unit(1)
+      var maxIndex = 1
       while (i < histogram.length) {
         if (histogram(i) > max) {
           max = histogram(i)
@@ -205,9 +205,12 @@ if (crt_template.match_list.length < 0) println("dummy")
       val width = right - left
       val bottom = if (a.y + a.height < b.y + b.height) a.y + a.height else b.y + b.height
       val height = bottom - top
-      unit(2.0f) * height * width / (total_area + 0.000001f) //Return the fraction of intersection
+      // TODO: why won't this work implicitly?
+      arithToArithOps(2.0f) * height * width / (total_area + 0.000001f) //Return the fraction of intersection
+      // TODO: can't get this one to kick in either :(
+      //chainRepArithToArithOps[Int,Float](height * width) * 2.0f / (total_area + 0.000001f) //Return the fraction of intersection
     } else {
-      unit(0.0f)
+      0.0f
     }
   }
 
@@ -238,11 +241,11 @@ println("Detections before NMS: " + len)
 
 
 for (i <- 0 until 1) { //TR ?
-    var i = unit(0)
+    var i = 0
 //println("nms.1")
     while (i < len - 1) {
       var j = i + 1
-      var iMoved = unit(false)
+      var iMoved = false
 //println("nms.2")
       while (j < len && iMoved == false) {
 //println("nms.3")
@@ -289,10 +292,10 @@ for (i <- 0 until 1) { //TR ?
   def nonMaxSuppressAlternativeImpl(detections: Rep[Vector[BiGGDetection]], overlapThreshold: Rep[Float]): Rep[Vector[BiGGDetection]] = {
     var len = detections.length
 
-    var i = unit(0)
+    var i = 0
     while (i < len - 1) {
       var j = i + 1
-      var iMoved = unit(false)
+      var iMoved = false
       while (j < len && iMoved == false) {
         val measured_frac_overlap = rectFractOverlap(detections(i).roi, detections(j).roi)
         if (measured_frac_overlap > overlapThreshold) {
@@ -340,10 +343,10 @@ for (i <- 0 until 1) { //TR ?
 
     val output = Vector[BiGGDetection](0, true)
 
-    var i = unit(0)
+    var i = 0
     while (i < len - 1) {
       var j = i + 1
-      var iMoved = unit(false)
+      var iMoved = false
       while (j < len) {
         if (rectFractOverlap(detections(i).roi, detections(j).roi) > overlapThreshold) {
           output += if (detections(i).score >= detections(j).score) detections(i) else detections(j)

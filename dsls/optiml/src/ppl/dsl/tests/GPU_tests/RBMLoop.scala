@@ -47,10 +47,10 @@ trait RBMLoop extends OptiMLApplication {
 
     tic
     //for (epoch <- 0 until maxEpoch) {
-      val epoch = unit(0) 
-      var errsum = unit(0f)
+      val epoch = 0
+      var errsum = 0f
       //for (batch <- 0 until numbatches) {
-	  var batch = unit(0)
+	    var batch = 0
         //println("Epoch: " + epoch + ", Batch: " + batch)
 
         // Positive phase
@@ -91,8 +91,8 @@ trait RBMLoop extends OptiMLApplication {
         //PerformanceTimer.start("RBM-biasupdates", false)
         val momentum = if (epoch > 5) finalmomentum else initialmomentum
         vishidinc = vishidinc * momentum + ((posprods - negprods) / numcases  - (vishid * weightcost))*epsilonw
-        visbiasinc = visbiasinc * momentum + (posvisact - negvisact) * (epsilonvb / numcases)
-        hidbiasinc = hidbiasinc * momentum + (poshidact - neghidact) * (epsilonhb / numcases)
+        visbiasinc = visbiasinc * momentum + (posvisact - negvisact) * (unit(epsilonvb) / numcases) // TODO aks: why is unit needed here?
+        hidbiasinc = hidbiasinc * momentum + (poshidact - neghidact) * (unit(epsilonhb) / numcases)
 
         vishid = vishid + vishidinc
         visbiases = visbiases + visbiasinc

@@ -30,26 +30,40 @@ trait ArithOps extends Variables with OverloadHack {
   implicit def repArithToArithOps[T:Arith:Manifest](n: Rep[T]) = new ArithOpsCls(n)
   implicit def varArithToArithOps[T:Arith:Manifest](n: Var[T]) = new ArithOpsCls(readVar(n))
 
+  // to do Rep[Int] * Float, it should get converted to Rep[Float] * Float
+  // TODO: this only works when invoked explicitly (won't kick in itself)
+  implicit def chainRepArithToArithOps[A,B](a: Rep[A])
+    (implicit mA: Manifest[A], aA: Arith[A], mB: Manifest[B], aB: Arith[B], c: Rep[A] => Rep[B]) = new ArithOpsCls(c(a))
+
   class ArithOpsCls[T](lhs: Rep[T])(implicit mT: Manifest[T], arith: Arith[T]){
-    def +=(rhs: Rep[T]) = arith.+=(lhs,rhs)
-    def +(rhs: Rep[T]) = arith.+(lhs,rhs)
-    def -(rhs: Rep[T]) = arith.-(lhs,rhs)
-    def *(rhs: Rep[T]) = arith.*(lhs,rhs)
-    def /(rhs: Rep[T]) = arith./(lhs,rhs)
+    // TODO: if B == Rep[T] below, the ops implicit does not work unless it is called explicitly. why?
+    def +=(rhs: Rep[T]): Rep[T] = arith.+=(lhs,rhs)
+    def +(rhs: Rep[T]): Rep[T] = arith.+(lhs,rhs)
+    def -(rhs: Rep[T]): Rep[T] = arith.-(lhs,rhs)
+    def *(rhs: Rep[T]): Rep[T] = arith.*(lhs,rhs)
+    def /(rhs: Rep[T]): Rep[T] = arith./(lhs,rhs)
 
-    // conversions can be either lhs to rhs (right-convert), or rhs to lhs (left-convert)
-    def +=[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.+=(lhs,implicit_convert[A,T](rhs))
-    def +[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.+(lhs,implicit_convert[A,T](rhs))
-    def -[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.-(lhs,implicit_convert[A,T](rhs))
-    def *[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.*(lhs,implicit_convert[A,T](rhs))
-    // TODO: this doesn't resolve as we would like.. there are issues doing things like Int*Double
-    //def *[A](rhs: Rep[A])(implicit mA: Manifest[A], a: Arith[A], c: T => A, o: Overloaded1) = a.*(implicit_convert[T,A](lhs),rhs)
-    def /[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith./(lhs,implicit_convert[A,T](rhs))
+    def +=[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.+=(lhs,c(rhs))
+    def +[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.+(lhs,c(rhs))
+    def -[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.-(lhs,c(rhs))
+    def *[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.*(lhs,c(rhs))
+    def /[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith./(lhs,c(rhs))
 
-    def abs = arith.abs(lhs)
-    def exp = arith.exp(lhs)
+    def abs: Rep[T] = arith.abs(lhs)
+    def exp: Rep[T] = arith.exp(lhs)
   }
 
+  // TODO: why is this needed, given the definition of / above?
+  def infix_/[T,B](lhs: Rep[T], rhs: B)(implicit f: Fractional[T], c: B => Rep[T], mT: Manifest[T]) = arith_fractional_divide(lhs,c(rhs))
+
+  // why are these recursive? (perhaps because the abstract arith method has the same signature as the infix?)
+//  def infix_+=[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.+=(lhs,c(rhs))
+//  def infix_+[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.+(lhs,c(rhs))
+//  def infix_-[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.-(lhs,c(rhs))
+//  def infix_*[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.*(lhs,c(rhs))
+//  def infix_/[T,B](lhs: Rep[T], rhs: B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a./(lhs,c(rhs))
+//  def infix_abs[T](lhs: Rep[T])(implicit a: Arith[T], mT: Manifest[T]) = a.abs(lhs)
+//  def infix_exp[T](lhs: Rep[T])(implicit a: Arith[T], mT: Manifest[T]) = a.exp(lhs)
 
   /**
    * Vector
@@ -177,7 +191,6 @@ trait ArithOps extends Variables with OverloadHack {
    * unfortunately, to use ArithOps, we have to redefine all of the operations we want to
    * to support from NumericOps and FractionalOps, since their implicits are ambiguous with ours.
    */
-  def infix_/[A,T](lhs: Rep[T], rhs: Rep[A])(implicit c: A => T, f: Fractional[T], mA: Manifest[A], mT: Manifest[T]) = arith_fractional_divide(lhs,implicit_convert[A,T](rhs))
 
   implicit val doubleArith : Arith[Double] = new Arith[Double] {
     def +=(a: Rep[Double], b: Rep[Double]) = arith_plus(a,b)

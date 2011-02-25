@@ -22,7 +22,7 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
   // model data
   private var weights : Rep[Vector[Double]] = null
   private var alphas : Rep[Vector[Double]] = null
-  private var b = unit(0.0)
+  private var b = 0.0
   
   // construct directly from model
   def load(modelFilename: Rep[String]) {
@@ -42,7 +42,7 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
     b = 0.0
 
     val numSamples = X.numRows
-    var passes = unit(0)
+    var passes = 0
 
     // in the SMO algorithm, each time an alpha(j) has not converged, we increment num_changed_alphas
     // if after the entire block (loop through all training samples) all alpha(j)'s have converged, we increment num_passes
@@ -60,7 +60,7 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
     untilconverged(alphas, 0, clone_prev_val = false){ alphas => {
     //while (passes < max_passes){
       print(".")
-      var num_changed_alphas = unit(0)
+      var num_changed_alphas = 0
 
       var i = 0
       while (i < numSamples){
@@ -84,13 +84,13 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
 
           // calculate bounds L and H that must hold in order for a_i, alphas(j) to
           // satisfy constraints and check
-          var L = unit(0.0)
-          var H = unit(0.0)
+          var L = 0.0
+          var H = 0.0
           if (Y(i) != Y(j)){
-            L = Math.max(0, alphas(j) - alphas(i))
+            L = Math.max(0., alphas(j) - alphas(i))
             H = Math.min(C, C + alphas(j) - alphas(i))
           }else{
-            L = Math.max(0, alphas(i) + alphas(j) - C)
+            L = Math.max(0., alphas(i) + alphas(j) - C)
             H = Math.min(C, alphas(i) + alphas(j))
           }
 
@@ -144,7 +144,7 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
       alphas
 
     // in scala, closures bind variables by reference, so diff() sees the updates to max_passes and passes
-    }}((v1, v2) => if (passes > max_passes) 0 else max_passes - passes, manifest[Vector[Double]], vectorCloneable[Double]) // untilconverged
+    }}((v1, v2) => if (passes > max_passes) unit(0) else max_passes - passes, manifest[Vector[Double]], vectorCloneable[Double]) // untilconverged
 
     // SMO finished
     print("\n")
@@ -163,9 +163,9 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
   def classify(test_pt : Rep[Vector[Double]]) : Rep[Int] = {
     // SVM prediction is W'*X + b
     if ((weights*:*test_pt + b) < 0){
-      -1
+      unit(-1)
     }
-    else 1
+    else unit(1)
   }
 
   ////////////

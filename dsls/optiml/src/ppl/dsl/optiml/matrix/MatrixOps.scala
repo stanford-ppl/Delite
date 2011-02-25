@@ -43,11 +43,11 @@ trait MatrixOps extends DSLType with Variables {
     def randnf(numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_randnf(numRows, numCols)
   }
 
-  implicit def repMatToMatOps[A:Manifest](x: Rep[Matrix[A]]) = new matRepCls(x)
-  implicit def varToMatOps[A:Manifest](x: Var[Matrix[A]]): matRepCls[A]
+  implicit def repMatToMatOps[A:Manifest](x: Rep[Matrix[A]]) = new matOpsCls(x)
+  implicit def varToMatOps[A:Manifest](x: Var[Matrix[A]]) = new matOpsCls(readVar(x))
 
   // could convert to infix, but apply doesn't work with it anyways yet
-  class matRepCls[A:Manifest](x: Rep[Matrix[A]]) {
+  class matOpsCls[A:Manifest](x: Rep[Matrix[A]]) {
     // conversions
     def toBoolean(implicit conv: Rep[A] => Rep[Boolean]) =  map(e => conv(e))
     def toDouble(implicit conv: Rep[A] => Rep[Double]) = map(e => conv(e))
@@ -133,12 +133,12 @@ trait MatrixOps extends DSLType with Variables {
   }
 
   // special case overrides
-  def infix_:>(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]) = x.zip(y) { (a,b) => if (a > b) 1f else 0f }
-  def infix_:>(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded1) = x.zip(y) { (a,b) => if (a > b) 1. else 0. }
-  def infix_:>(x: Rep[Matrix[Int]], y: Rep[Matrix[Int]])(implicit o: Overloaded2) = x.zip(y) { (a,b) => if (a > b) 1 else 0 }
-  def infix_:<(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]) = x.zip(y) { (a,b) => if (a > b) 1f else 0f }
-  def infix_:<(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded1) = x.zip(y) { (a,b) => if (a > b) 1. else 0. }
-  def infix_:<(x: Rep[Matrix[Int]], y: Rep[Matrix[Int]])(implicit o: Overloaded2) = x.zip(y) { (a,b) => if (a > b) 1. else 0. }
+  def infix_:>(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]): Rep[Matrix[Float]] = x.zip(y) { (a,b) => if (a > b) 1f else 0f }
+  def infix_:>(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded1): Rep[Matrix[Double]] = x.zip(y) { (a,b) => if (a > b) 1. else 0. }
+  def infix_:>(x: Rep[Matrix[Int]], y: Rep[Matrix[Int]])(implicit o: Overloaded2): Rep[Matrix[Int]] = x.zip(y) { (a,b) => if (a > b) unit(1) else unit(0) } // TODO aks: why is unit needed here?
+  def infix_:<(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]): Rep[Matrix[Float]] = x.zip(y) { (a,b) => if (a > b) 1f else 0f }
+  def infix_:<(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded1): Rep[Matrix[Double]] = x.zip(y) { (a,b) => if (a > b) 1. else 0. }
+  def infix_:<(x: Rep[Matrix[Int]], y: Rep[Matrix[Int]])(implicit o: Overloaded2): Rep[Matrix[Int]] = x.zip(y) { (a,b) => if (a > b) unit(1) else unit(0) }
 
   // object defs
   def matrix_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[A]]
@@ -219,9 +219,6 @@ trait MatrixOps extends DSLType with Variables {
 
 trait MatrixOpsExp extends MatrixOps with VariablesExp {
   this: MatrixImplOps with OptiMLExp  =>
-
-  implicit def varToMatOps[A:Manifest](x: Var[Matrix[A]]) = new matRepCls(readVar(x))
-
 
   //////////////////////////////////////////////////
   // implemented via method on real data structure

@@ -37,7 +37,7 @@ trait kmeans extends OptiMLApplication {
     val m = x.numRows
     val n = x.numCols
     val k = mu.numRows
-    var iter = unit(0)
+    var iter = 0
 
     untilconverged(mu, tol){ mu =>
       iter += 1
@@ -61,8 +61,8 @@ trait kmeans extends OptiMLApplication {
 //          }
 //        })
         val weightedpoints = Vector.zeros(n)
-        var points = unit(0)
-        var i = unit(0)
+        var points = 0
+        var i = 0
         while (i < m){
           if (c(i) == j){
             weightedpoints += x(i) //TODO TR check mutable?
@@ -86,8 +86,8 @@ trait kmeans extends OptiMLApplication {
     // TODO: need minIndex for this
     //(mu mapRows { row => dist(x_i, row, SQUARE) }).minIndex
     var min_d = Double.PositiveInfinity
-    var min_j = unit(-1)
-    var j = unit(0)
+    var min_j = -1
+    var j = 0
     while( j < mu.numRows ){
       //println("-- j: " + j)
       val dist = sum(0, x_i.length){ e => (x_i(e)-mu(j,e))*(x_i(e)-mu(j,e)) }

@@ -64,11 +64,11 @@ trait NaiveBayes extends OptiMLApplication {
     
 
     for (j <- 0::numTokens) {
-      var spamwordcount = unit(0.0)
-      var spam_totalwords = unit(0.0)
-      var nonspamwordcount = unit(0.0)
-      var nonspam_totalwords = unit(0.0)
-      var i = unit(0)
+      var spamwordcount = 0.0
+      var spam_totalwords = 0.0
+      var nonspamwordcount = 0.0
+      var nonspam_totalwords = 0.0
+      var i = 0
 
       while (i < numTrainDocs) {
         if (ts.labels(i) == 1){
@@ -99,10 +99,10 @@ trait NaiveBayes extends OptiMLApplication {
 
 	/*
     val phi_y0 = (0::numTokens) { j=>
-      var spamwordcount = unit(0.0)
-      var spam_totalwords = unit(0.0)
-      var nonspamwordcount = unit(0.0)
-      var nonspam_totalwords = unit(0.0)
+      var spamwordcount = 0.0
+      var spam_totalwords = 0.0
+      var nonspamwordcount = 0.0
+      var nonspam_totalwords = 0.0
 
       for (i <- 0::numTrainDocs) {
         if (ts.labels(i) == 1){
@@ -119,10 +119,10 @@ trait NaiveBayes extends OptiMLApplication {
     }
 
     val phi_y1 = (0::numTokens) { j=>
-      var spamwordcount = unit(0.0)
-      var spam_totalwords = unit(0.0)
-      var nonspamwordcount = unit(0.0)
-      var nonspam_totalwords = unit(0.0)
+      var spamwordcount = 0.0
+      var spam_totalwords = 0.0
+      var nonspamwordcount = 0.0
+      var nonspam_totalwords = 0.0
 
       for (i <- 0::numTrainDocs) {
         if (ts.labels(i) == 1){

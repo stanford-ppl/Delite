@@ -19,7 +19,7 @@ trait gradient extends OptiMLApplication
 
     tic
 //println("gradientapp.4")
-    var imgs = unit(0)
+    var imgs = 0
 //println("gradientapp.5")
     while (imgs < 3) {
 //println("gradientapp.6")

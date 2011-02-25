@@ -22,17 +22,18 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   def main() = {
+
     if (args.length < 1) print_usage
   
-    val colors = unit(5)
+    val colors = 5
     val damping = unit(0.1)
-    val bound = unit(1E-15)
-    var rows = unit(100)
-    var cols = unit(100)
-    val sigma = unit(2)
+    val bound = 1E-15
+    var rows = 100
+    var cols = 100
+    val sigma = 2
     val lambda = unit(10)
-    var smoothing = unit("laplace")
-    val pred_type = unit("map")
+    var smoothing = "laplace"
+    val pred_type = "map"
 
     val edgePotential = Matrix[Double](colors, colors)
   
@@ -63,6 +64,7 @@ trait LBPDenoise extends OptiMLApplication {
 
     if (smoothing == "laplace") {
       binaryFactorSetLaplace(edgePotential, lambda)
+      //binaryFactorSetLaplace(edgePotential)
     }
     else if (smoothing == "square") {
       binaryFactorSetAgreement(edgePotential, lambda)
@@ -70,7 +72,7 @@ trait LBPDenoise extends OptiMLApplication {
     
     edgePotential.pprint
 
-    var count = unit(1)
+    var count = 1
     
     g.freeze()
 
@@ -294,7 +296,9 @@ trait LBPDenoise extends OptiMLApplication {
     }
   }
 
-  def binaryFactorSetLaplace(bf: Rep[Matrix[Double]], lambda: Rep[Double]) = {
+  // TODO: passing lambda somehow causing a scalac internal error, even if lambda is not used anywhere
+  //def binaryFactorSetLaplace(bf: Rep[Matrix[Double]]) {
+  def binaryFactorSetLaplace(bf: Rep[Matrix[Double]], lambda: Rep[Double]) {
     var i = 0
     var j = 0
     while (i < bf.numRows) {
@@ -398,10 +402,10 @@ trait LBPDenoise extends OptiMLApplication {
 
   // Max assignment
   def unaryFactorMaxAsg(uf: Rep[Vector[Double]]): Rep[Int] = {
-    var max_asg = unit(0)
+    var max_asg = 0
     var max_value = uf(0)
 
-    var asg = unit(0)
+    var asg = 0
     while (asg < uf.length) {
       if (uf(asg) > max_value) {
         max_value = uf(asg)
@@ -424,8 +428,8 @@ trait LBPDenoise extends OptiMLApplication {
   }
   
   def unaryFactorNormalizeI(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
-    var sum = unit(0.0)
-    var i = unit(0)
+    var sum = 0.0
+    var i = 0
     while(i < uf.length) {
       sum += Math.exp(uf(i))
       i += 1
@@ -433,7 +437,7 @@ trait LBPDenoise extends OptiMLApplication {
     
     val logZ = Math.log(sum)
     
-    i = unit(0)
+    i = 0
     while(i < uf.length) {
       uf(i) = uf(i) - logZ
       i += 1
@@ -443,7 +447,7 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   def unaryFactorTimesI(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
-    var i = unit(0)
+    var i = 0
     while(i < a.length) {
       a(i) = a(i) + b(i)
       i += 1
@@ -454,7 +458,7 @@ trait LBPDenoise extends OptiMLApplication {
 
   // Add other factor elementwise
   def unaryFactorPlusI(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
-    var i = unit(0)
+    var i = 0
     while(i < a.length) {
       a(i) = Math.log(Math.exp(a(i)) + Math.exp(b(i)))
       i += 1
@@ -465,7 +469,7 @@ trait LBPDenoise extends OptiMLApplication {
   
   // Divide elementwise by other factor
   def unaryFactorDivideI(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
-    var i = unit(0)
+    var i = 0
     while(i < a.length) {
       a(i) = a(i) - b(i)
       i += 1
@@ -477,10 +481,10 @@ trait LBPDenoise extends OptiMLApplication {
   def unaryFactorConvolveI(bf: Rep[Matrix[Double]], other: Rep[Vector[Double]]): Rep[Vector[Double]] = {
     val res = Vector.zeros(other.length)
     
-    var i = unit(0)
+    var i = 0
     while(i < other.length) {
-      var sum = unit(0.0)
-      var j = unit(0)
+      var sum = 0.0
+      var j = 0
       while (j < other.length) {
         sum += Math.exp(bf(i, j) + other(j))
         j += 1
@@ -499,7 +503,7 @@ trait LBPDenoise extends OptiMLApplication {
   
   /* This = other * damping + this * (1-damping) */
   def unaryFactorDampI(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) = {
-    var i = unit(0)
+    var i = 0
     while(i < a.length) {
       a(i) = Math.log(Math.exp(a(i))*(1.0-damping)+Math.exp(b(i))*damping)
       i += 1

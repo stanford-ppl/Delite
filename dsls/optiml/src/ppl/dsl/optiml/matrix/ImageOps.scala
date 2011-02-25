@@ -19,10 +19,10 @@ trait ImageOps extends DSLType with Variables {
     def apply[A:Manifest](x: Rep[Matrix[A]]) = image_obj_frommat(x)
   }
 
-  implicit def repImageToImageOps[A:Manifest](x: Rep[Image[A]]) = new imageRepCls(x)
-  implicit def varToImageOps[A:Manifest](x: Var[Image[A]]) = new imageRepCls(readVar(x))
+  implicit def repImageToImageOps[A:Manifest](x: Rep[Image[A]]) = new imageOpsCls(x)
+  implicit def varToImageOps[A:Manifest](x: Var[Image[A]]) = new imageOpsCls(readVar(x))
 
-  class imageRepCls[A:Manifest](x: Rep[Image[A]]) {
+  class imageOpsCls[A:Manifest](x: Rep[Image[A]]) {
     def downsample(rowFactor: Rep[Int], colFactor: Rep[Int])(block: Rep[Matrix[A]] => Rep[A]) = image_downsample(x,rowFactor, colFactor, block)
     def windowedFilter[B:Manifest:Arith](rowDim: Rep[Int], colDim: Rep[Int])(block: Rep[Matrix[A]] => Rep[B]) = image_windowed_filter(x,rowDim, colDim, block)
     def convolve(kernel: Rep[Matrix[A]])(implicit a: Arith[A]) = { //unroll at call-site for parallelism (temporary until we have composite op) image_convolve(x)

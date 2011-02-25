@@ -28,7 +28,7 @@ trait MatSigmoidTest extends OptiMLApplication {
     /* Naive implementation */
     for(i <- 0 until mat_numRows) {
       for(j <- 0 until mat_numCols) {
-        out_correct(i,j) = 1.0 / ( 1.0 + Math.exp(mat(i,j)*(-1)))
+        out_correct(i,j) = 1.0 / ( 1.0 + Math.exp(mat(i,j)*(-1.0)))
       }
     }
 

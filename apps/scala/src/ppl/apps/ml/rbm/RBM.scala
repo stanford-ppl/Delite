@@ -47,10 +47,10 @@ trait RBM extends OptiMLApplication {
     var visbiasinc = Vector.zerosf(numdims)
 
     tic
-    var epoch = unit(0)
+    var epoch = 0
     while (epoch < maxEpoch) {
-      var errsum = unit(0f)
-      var batch = unit(0)
+      var errsum = 0f
+      var batch = 0
       while (batch < numbatches) {
         //println("Epoch: " + epoch + ", Batch: " + batch)
 
