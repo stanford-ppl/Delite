@@ -11,7 +11,7 @@ import ppl.delite.runtime.graph.targets._
  * Stanford University
  */
 
-class OP_Single(val id: String, kernel: String, resultType: Map[Targets.Value, String]) extends OP_Executable(resultType) {
+class OP_Single(val id: String, kernel: String, protected val outputTypesMap: Map[Targets.Value, Map[String,String]]) extends OP_Executable {
 
   final def isDataParallel = false
 

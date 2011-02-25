@@ -43,12 +43,12 @@ abstract class NestedGenerator(nested: OP_Nested, location: Int) extends Executa
 
   protected def writeInputs(out: StringBuilder) {
     var first = true
-    for (sym <- nested.getNestedInputs) {
+    for ((op,sym) <- nested.getInputs) {
       if (!first) out.append(", ")
       first = false
       out.append(getSym(sym))
       out.append(": ")
-      out.append(sym.outputType)
+      out.append(op.outputType)
     }
   }
 }
@@ -74,18 +74,18 @@ abstract class GPUNestedGenerator(nested: OP_Nested, location: Int) extends GPUE
 
   protected def writeInputs(out: StringBuilder) {
     var first = true
-    for ((sym, (in,name)) <- (nested.getNestedInputs zip nested.getInputs)) {
-      if (nested.cudaMetadata.inputs.contains(in)) {
+    for ((in, sym) <- nested.getInputs) {
+      if (nested.cudaMetadata.inputs.contains((in,sym))) {
         if (!first) out.append(',')
         first = false
-        out.append(nested.cudaMetadata.inputs(in).resultType)
+        out.append(nested.cudaMetadata.inputs((in,sym)).resultType)
         out.append("* ")
         out.append(getSymGPU(sym))
       }
-      else if (isPrimitiveType(in.outputSlotType(name))) {
+      else if (isPrimitiveType(in.outputType(sym))) {
         if (!first) out.append(',')
         first = false
-        out.append(getCPrimitiveType(in.outputSlotType(name)))
+        out.append(getCPrimitiveType(in.outputType(sym)))
         out.append(' ')
         out.append(getSymGPU(sym))
       }

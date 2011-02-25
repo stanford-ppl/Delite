@@ -1,8 +1,8 @@
 package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
-import ppl.delite.runtime.graph.ops.{DeliteOP, OP_Variant}
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.graph.ops.{OP_Input, DeliteOP, OP_Variant}
 
 /**
  * Author: Kevin J. Brown
@@ -19,7 +19,6 @@ class VariantGenerator(variant: OP_Variant, location: Int) extends NestedGenerat
     val out = new StringBuilder //the output string
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     val hasOutput = variant.outputType != "Unit"
-    val inputs = variant.variantGraph.inputs
 
     updateOP()
     //header
@@ -27,12 +26,12 @@ class VariantGenerator(variant: OP_Variant, location: Int) extends NestedGenerat
     writeMethodHeader(out)
 
     val available = new ArrayBuffer[DeliteOP]
-    available ++= inputs
+    available += OP_Input
 
     //output body
     addKernelCalls(variant.variantGraph.schedule(location), location, out, available, syncList)
     if (hasOutput) {
-      out.append(getSym(variant.variantGraph.result))
+      out.append(getSym(variant.variantGraph.result._2))
       out.append('\n')
     }
     out.append("}\n") //end of method
@@ -61,7 +60,6 @@ class GPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUNestedG
 
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
     val out = new StringBuilder //the output string
-    val inputs = variant.variantGraph.inputs
     val hasOutput = variant.outputType != "Unit"
 
     writeFunctionHeader(out)
@@ -69,14 +67,14 @@ class GPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUNestedG
 
     val available = new ArrayBuffer[DeliteOP]
     val awaited = new ArrayBuffer[DeliteOP]
-    available ++= inputs
-    awaited ++= inputs
+    available += OP_Input
+    awaited += OP_Input
 
     //output body
     addKernelCalls(variant.variantGraph.schedule(location), location, available, awaited, syncList, out)
     if (hasOutput) {
       out.append("return ")
-      out.append(getSymGPU(variant.variantGraph.result))
+      out.append(getSymGPU(variant.variantGraph.result._2))
       out.append(";\n")
     }
     out.append("}\n") //end of function

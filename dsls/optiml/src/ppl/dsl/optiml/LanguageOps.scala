@@ -410,10 +410,8 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
       case RandGaussian() => emitValDef(sym, "generated.scala.Global.randRef.nextGaussian()")
       case RandReseed() => emitValDef(sym, "{ generated.scala.Global.randRef.setSeed(generated.scala.Global.INITIAL_SEED);" +
                                            "   generated.scala.Global.intRandRef.setSeed(generated.scala.Global.INITIAL_SEED); }")
-//      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)") //TR TEMP
-//      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
-      case ProfileStart() => emitValDef(sym, "println(\"tic:\" + (System.nanoTime / 1000000L))")
-      case ProfileStop() => emitValDef(sym, "println(\"toc:\" + (System.nanoTime / 1000000L))")
+      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
+      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
       case _ => super.emitNode(sym, rhs)
     }
   }

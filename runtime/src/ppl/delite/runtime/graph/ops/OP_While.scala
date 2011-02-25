@@ -12,20 +12,9 @@ class OP_While(val id: String,
                val bodyGraph: DeliteTaskGraph, val bodyValue: String)
   extends OP_Control {
 
-  //currently support all targets
-  def supportsTarget(target: Targets.Value) = true
-
-  //does not produce output
-  def outputType(target: Targets.Value) = target match {
-    case Targets.Scala => "Unit"
-    case Targets.Cuda => "void"
-  }
-  override def outputSlotType(target: Targets.Value, name: String) = { //TR FIXME
-    assert(name == id, name + "!="+ id)
-    outputType(Targets.Scala)
-  }
-
   def nestedGraphs = Seq(predicateGraph, bodyGraph)
+
+  protected val outputTypesMap = Targets.unitTypes(id)
 
   /**
    * creates a While chunk for each requested resource and destroys the original
@@ -35,20 +24,16 @@ class OP_While(val id: String,
     val chunks =
       for (idx <- indices) yield {
         val r = new OP_While(id+"_"+idx, predicateGraph, predicateValue, bodyGraph, bodyValue)
-        r.dependencyList = dependencyList
+        r.dependencies = dependencies
         r.inputList = inputList
-        assert(getOutputs == List(id), "outputs for " + this + " were expected to be " + List(id) + " but are " + getOutputs) //TR FIXME
-        r.outputList = List(r.id)
-        r.consumerList = consumerList
-        r.inputSyms = inputSyms
+        r.consumers = consumers
         r.cudaMetadata = cudaMetadata
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)
 
         //add special consumer ops
-        if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, Seq(predicateGraph.result), Seq(predicateGraph.result))) //get predicate result on all chunks
+        if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, Seq(predicateGraph.result._1), Seq(predicateGraph.result._1))) //get predicate result on all chunks
         if (bodyValue == "") bodyGraph.schedule(idx).add(new GetterOp(id+"b_"+idx, idx, lastOps, Seq())) //barrier end of body so predicate can be reevaluated
-
         r
       }
 

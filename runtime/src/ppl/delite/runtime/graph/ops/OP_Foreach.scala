@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Foreach(val id: String, func: String, resultType: Map[Targets.Value,String]) extends OP_Executable(resultType) {
+class OP_Foreach(val id: String, func: String, protected val outputTypesMap: Map[Targets.Value,Map[String,String]]) extends OP_Executable {
 
   final def isDataParallel = true
 
@@ -26,42 +26,32 @@ class OP_Foreach(val id: String, func: String, resultType: Map[Targets.Value,Str
 
   def function = func
 
-  assert(resultType == Targets.unitTypes(resultType)) //foreach must always mutate the elements of a collection and return Unit
-
   /**
    * Since the semantics of the foreach are to mutate the elements in a collection all consumer (true) dependency edges already exist in graph
    * Chunking needs to add additional anti-dependency edges for each chunk to ensure all chunks are complete
    * Chunks require same dependency & input lists
    */
   def chunk(i: Int): OP_Foreach = {
-    val restp = Targets.unitTypes(resultType)
-    val r = new OP_Foreach(id+"_"+i, function, restp) //chunks all return Unit
-    r.outputList = List(r.id)
-    r.outputTypeMap = Map(r.id -> restp)
+    val r = new OP_Foreach(id+"_"+i, function, Targets.unitTypes(id+"_"+i, outputTypesMap)) //chunks all return Unit
     r.inputList = inputList
-    r.dependencyList = dependencyList //lists are immutable so can be shared
-    r.consumerList = consumerList
+    r.dependencies = dependencies //lists are immutable so can be shared
+    r.consumers = consumers
     for (dep <- getDependencies) dep.addConsumer(r)
     for (c <- getConsumers) c.addDependency(r)
     r
   }
 
   def header(kernel: String, graph: DeliteTaskGraph): OP_Single = {
-    val restp = Map(Targets.Scala->kernel)
-    val h = new OP_Single(id+"_h", kernel, restp)
+    val h = new OP_Single(id+"_h", kernel, Map(Targets.Scala->Map(id+"_h"->kernel,"functionReturn"->kernel)))
     //header assumes all inputs of map
-    h.dependencyList = dependencyList
-    h.outputList = List(h.id)
-    h.outputTypeMap = Map(h.id -> restp)
+    h.dependencies = dependencies
     h.inputList = inputList
     h.addConsumer(this)
     for (dep <- getDependencies) dep.replaceConsumer(this, h)
     //map consumes header, map's consumers remain unchanged
-    dependencyList = List(h)
+    dependencies = Set(h)
     inputList = List((h,h.id))
-
     graph.registerOp(h)
-    //graph._ops += (id+"_h") -> h
     h
   }
 

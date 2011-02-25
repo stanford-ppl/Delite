@@ -32,8 +32,6 @@ abstract class ExecutableGenerator {
     for (i <- 0 until schedule.numResources) {
       val src = makeExecutable(schedule(i), i, kernelPath)
       ScalaCompile.addSource(src)
-      println("-- executable")
-      println(src)
     }
   }
 
@@ -102,7 +100,7 @@ abstract class ExecutableGenerator {
       }
       if (addSetter) {
         syncList += op //add op to list that needs sync generation
-        writeSetter(op, out)
+        writeSetter(op, out) //TODO: do we want to set the return objects or the deg objects?
       }
     }
   }
@@ -120,38 +118,36 @@ abstract class ExecutableGenerator {
     for ((input, name) <- op.getInputs) {
       if (!first) out.append(',') //no comma before first argument
       first = false
-      out.append(getSym(input,name))
+      out.append(getSym(name))
     }
     out.append(")\n")
-    
-    println("try op " + op + "/" + op.getOutputs + "/" + op.hasCompoundOutput)
-    if (op.getOutputs.nonEmpty)
-      println("--> op " + op.outputSlotType(op.getOutputs.head) + "/" + op.outputType)
-    
-    if (op.hasCompoundOutput) {
-      println("--> op " + op.outputSlotType(op.getOutputs.head) + "/" + op.outputType)
-      for (name <- op.getOutputs/* if name != op.id*/) {
-        out.append("val ")
-        out.append(getSym(op, name))
-        out.append(" = ")
-        out.append(getSym(op))
+
+    val outputs = op.getOutputs
+    for (name <- outputs) {
+      out.append("val ")
+      out.append(getSym(name))
+      out.append(" : ")
+      out.append(op.outputType(name))
+      out.append(" = ")
+      out.append(getSym(op))
+      if (outputs.size > 1) {
         out.append(".")
         out.append(name)
-        out.append("\n")
       }
+      out.append("\n")
     }
   }
 
   protected def writeGetter(dep: DeliteOP, name: String, out: StringBuilder) {
     out.append("val ")
-    out.append(getSym(dep, name))
+    out.append(getSym(name))
     out.append(" : ")
-    out.append(dep.outputSlotType(name))
+    out.append(dep.outputType(name))
     out.append(" = ")
     out.append(executableName)
     out.append(dep.scheduledResource)
     out.append(".get")
-    out.append(name/*dep.id*/)
+    out.append(name)
     out.append('\n')
   }
 
@@ -186,19 +182,17 @@ abstract class ExecutableGenerator {
 
   protected def writePublicGet(op: DeliteOP, name: String, out: StringBuilder) {
     out.append("def get")
-    out.append(name/*op.id*/)
+    out.append(name)
     out.append(" : ")
-    out.append(op.outputSlotType(name))
+    out.append(op.outputType(name))
     out.append(" = ")
     out.append(getSync(op))
     out.append(".get")
-    if (op.outputSlotType(name) == op.outputType) { // out is itself...
-      out.append("\n")
-    } else {
+    if (op.getOutputs.size > 1) {
       out.append(".")
       out.append(name)
-      out.append("\n")
     }
+    out.append("\n")
   }
 
   protected def writeSyncObject(op: DeliteOP, out: StringBuilder) {
@@ -256,10 +250,10 @@ abstract class ExecutableGenerator {
   }
 
   protected def getSym(op: DeliteOP): String = {
-    if (op.hasCompoundOutput) "k"+op.id else "x"+op.id
+    "o"+op.id
   }
 
-  protected def getSym(op: DeliteOP, name: String): String = {
+  protected def getSym(name: String): String = {
     "x"+name
   }
 

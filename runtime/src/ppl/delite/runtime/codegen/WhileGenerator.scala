@@ -1,9 +1,8 @@
 package ppl.delite.runtime.codegen
 
-import ppl.delite.runtime.graph.ops.DeliteOP
-import ppl.delite.runtime.graph.ops.OP_While
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.graph.ops.{OP_Input, DeliteOP, OP_While}
 
 /**
  * Author: Kevin J. Brown
@@ -19,7 +18,6 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
   def makeExecutable() {
     val out = new StringBuilder //the output string
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
-    val inputs = (whileLoop.predicateGraph.inputs ++ whileLoop.bodyGraph.inputs)
 
     updateOP()
     //header
@@ -29,14 +27,14 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
     val available = new ArrayBuffer[DeliteOP]
     //output predicate
     if (whileLoop.predicateValue == "") {
-      available ++= inputs
+      available += OP_Input
       addKernelCalls(whileLoop.predicateGraph.schedule(location), location, out, available, syncList)
     }
 
     //write while
     if (whileLoop.predicateValue == "") {
       out.append("var pred: Boolean = ")
-      out.append(getSym(whileLoop.predicateGraph.result))
+      out.append(getSym(whileLoop.predicateGraph.result._2))
       out.append('\n')
       out.append("while (pred")
     }
@@ -49,18 +47,18 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
     //output while body
     if (whileLoop.bodyValue == "") {
       available.clear
-      available ++= inputs
+      available += OP_Input
       addKernelCalls(whileLoop.bodyGraph.schedule(location), location, out, available, syncList)
     }
 
     //reevaluate predicate
     if (whileLoop.predicateValue == "") {
       available.clear
-      available ++= inputs
+      available += OP_Input
       out.append(";{\n")
       addKernelCalls(whileLoop.predicateGraph.schedule(location), location, out, available, new ArrayBuffer[DeliteOP]) //dummy syncList b/c already added
       out.append("pred = ") //update var
-      out.append(getSym(whileLoop.predicateGraph.result))
+      out.append(getSym(whileLoop.predicateGraph.result._2))
       out.append("\n}\n")
     }
 
@@ -91,7 +89,6 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGen
 
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
     val out = new StringBuilder //the output string
-    val inputs = (whileLoop.predicateGraph.inputs ++ whileLoop.bodyGraph.inputs)
 
     writeFunctionHeader(out)
     writeJNIInitializer(location, out)
@@ -100,15 +97,15 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGen
     val awaited = new ArrayBuffer[DeliteOP]
     //output predicate
     if (whileLoop.predicateValue == "") {
-      available ++= inputs
-      awaited ++= inputs
+      available += OP_Input
+      awaited += OP_Input
       addKernelCalls(whileLoop.predicateGraph.schedule(location), location, available, awaited, syncList, out)
     }
 
     //write while
     if (whileLoop.predicateValue == "") {
       out.append("bool pred = ")
-      out.append(getSymGPU(whileLoop.predicateGraph.result))
+      out.append(getSymGPU(whileLoop.predicateGraph.result._2))
       out.append(";\n")
       out.append("while (pred")
     }
@@ -121,22 +118,22 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGen
     //output while body
     if (whileLoop.bodyValue == "") {
       available.clear
-      available ++= inputs
+      available += OP_Input
       awaited.clear
-      awaited ++= inputs
+      awaited += OP_Input
       addKernelCalls(whileLoop.bodyGraph.schedule(location), location, available, awaited, syncList, out)
     }
 
     //reevaluate predicate
     if (whileLoop.predicateValue == "") {
       available.clear
-      available ++= inputs
+      available += OP_Input
       awaited.clear
-      awaited ++= inputs
+      awaited += OP_Input
       out.append("{\n")
       addKernelCalls(whileLoop.predicateGraph.schedule(location), location, available, awaited, new ArrayBuffer[DeliteOP], out) //dummy syncList b/c already added
       out.append("pred = ") //update var
-      out.append(getSymGPU(whileLoop.predicateGraph.result))
+      out.append(getSymGPU(whileLoop.predicateGraph.result._2))
       out.append(";\n}\n")
     }
 
