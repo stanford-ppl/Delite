@@ -45,13 +45,18 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     val virtualization_lms_core = "scala" % "virtualization-lms-core_2.8.x-virtualized-SNAPSHOT" % "0.1"
     
     val scalaToolsSnapshots = ScalaToolsSnapshots
-    val scalatest = "org.scalatest" % "scalatest" % "1.2.1-SNAPSHOT"
+    val scalatest = "org.scalatest" % "scalatest" % "1.2.1-SNAPSHOT" 
     
     override def localScala =
     defineScala("2.8.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
       log.error("scala.virtualized.home needs to be defined in local.properties and "+
       "must point to a valid scala-virtualized home directory"); "<undefined>"
     }))::Nil 
+  }
+  
+  // Using OptiQL plugin
+  class OptiQLProject(info: ProjectInfo) extends FlatProject(info) {
+    //override def compileOptions = CompileOption("-Xplugin:dsls/optiql/plugin/querysyntax.jar") :: super.compileOptions.toList
   }
   
   // Define projects
@@ -62,7 +67,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     lazy val optiml = project("optiml", "OptiML", new FlatProject(_){
       override def mainClass = Some("ppl.dsl.tests.SimpleVectorTest")
     }, framework)
-    lazy val optiql = project("optiql", "OptiQL", new FlatProject(_), framework)
+    lazy val optiql = project("optiql", "OptiQL", new OptiQLProject(_), framework)
   }
   
   lazy val apps = project("apps", "Applications", new APPs(_), framework, dsls)

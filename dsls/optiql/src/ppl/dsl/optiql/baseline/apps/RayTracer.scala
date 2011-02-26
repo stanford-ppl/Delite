@@ -1,18 +1,11 @@
 package ppl.dsl.optiql.baseline.apps
 
+
+/*
 import java.awt.image.{BufferedImage}
 import java.awt.{Dimension, Image, Graphics, Canvas}
 import javax.swing.{JFrame}
 import QueryUtils._
-/**
- * Created by IntelliJ IDEA.
- * User: Lere Williams
- * Date: Jul 6, 2009
- *
- * Adapted from C# version available below:
- * http://blogs.msdn.com/lukeh/archive/2007/04/03/a-ray-tracer-in-c-3-0.aspx
- * (accessed July 6, 2009)
- */
 
 object RayTracer {
 
@@ -239,3 +232,5 @@ object RayTracer {
     frame.setVisible(true)
   }
 }
+
+*/

@@ -1,5 +1,6 @@
 import scala.tools.nsc.Global
-import scala.tools.nsc.plugins.Plugin
+import tools.nsc.plugins.{PluginComponent, Plugin}
+import tools.nsc.transform.Transform
 
 /** A class describing the compiler plugin
  *
@@ -7,42 +8,36 @@ import scala.tools.nsc.plugins.Plugin
  *  implemented
  */
 class QuerySyntaxPlugin(val global: Global) extends Plugin {
-  /** The name of this plugin. Extracted from the properties file. */
-  val name = "querysyntax"
+  val name = "query-syntax-transform"
+  val description = "Translates query expressions to pure scala OptiQL embedded method calls"
+  val components = List[PluginComponent](QuerySyntaxComponent)
 
-  /** A short description of the plugin, read from the properties file */
-  val description = "Translates query expressions to SQO method calls"
+  private object QuerySyntaxComponent extends PluginComponent with Transform {
 
-  /** @todo A description of the plugin's options */
-  override val optionsHelp = Some(
-    "  -P:"+ name +":option     sets some option for this plugin")
+    val runsAfter = List[String]("parser")
+    override val runsBefore = List[String]("namer")
+    val phaseName = QuerySyntaxPlugin.this.name
 
-  /** @todo Implement parsing of plugin options */
-  override def processOptions(options: List[String], error: String => Unit) {
-    super.processOptions(options, error)
+    override val optionsHelp = Some(
+      "  -P:"+ name +":option     sets some option for this plugin\n"+
+      "Valid Options:\n------------------\n"+
+      "debug          outputs debug information, including tree browsers as transforms take place\n"+
+      "enable         enable this plugin, by default, it is disabled")
+
+    override def processOptions(options: List[String], error: String => Unit) {
+      super.processOptions(options, error)
+      //TODO need to process options
+    }
+
+    val global: QuerySyntaxPlugin.this.global.type = QuerySyntaxPlugin.this.global
+
+    def newTransformer(unit: global.CompilationUnit) = QuerySyntaxTransformer
+
+    object QuerySyntaxTransformer extends global.Transformer {
+      override def transform(tree: global.Tree) = {
+        QuerySyntaxComponent.this.global.treeBrowsers.create().browse(tree)
+        tree
+      }
+    }
   }
-
-  /** The compiler components that will be applied when running
-   *  this plugin
-   *
-   *  @todo Adapt to the plugin being implemented
-   */
-  val components = QuerySyntaxPlugin.components(global)
-
-  /*val checker = new TemplateAnnotationChecker {
-    val global: compilerplugin.QuerySyntaxPlugin.this.global.type = compilerplugin.QuerySyntaxPlugin.this.global
-  }
-  global.addAnnotationChecker(checker.checker)*/
-}
-
-object QuerySyntaxPlugin {
-  /** Yields the list of Components to be executed in this plugin
-   *
-   *  @todo: Adapt to specific implementation.
-   */
-  def components(global: Global) =
-    List(//new TemplateComponent(global),
-         //new TemplateTraverseComponent(global),
-         new QueryTransformComponent(global)/*,
-         new TemplateInfoTransformComponent(global)*/)
 }

@@ -1,15 +1,11 @@
 package ppl.dsl.optiql.baseline
 
+/*
 import collection.mutable.ArrayBuffer
 import util.Sorting
 import QueryUtils._
 
-/**
- * Author: Lere Williams
- * Date: July 2009
- *
- * Description:
- */
+
 
 class QVector[A](n: Int)(implicit exposeAlloc: QueryUtils.ExposureFlag) extends Queryable[A] {
 
@@ -124,3 +120,5 @@ class QVector[A](n: Int)(implicit exposeAlloc: QueryUtils.ExposureFlag) extends 
     elems = bigger
   }
 }
+
+*/

@@ -1,20 +1,19 @@
 package ppl.dsl.optiql.baseline
 
+
+/*
 import collection.mutable
 import collection.mutable.{ArrayBuffer, HashMap}
 import QueryUtils._
-/**
- * Author: Lere Williams
- * Date: July 2009
- *
- * Description:
- */
+
 
 //TODO: Revise type safety of sum and average
 //TODO: Better solution for elementAt (is there some way to check for an apply method?)
 //TODO: Return value of groupBy is a pain to work with
 //TODO: Fix sequenceEqual
 //TODO: Review design decision of implicit parameter in QVector ctor
+
+
 
 trait Queryable[A] {
 
@@ -416,3 +415,5 @@ trait Queryable[A] {
   }
 
 }
+
+*/

@@ -1,15 +1,9 @@
 package ppl.dsl.optiql.baseline.tests
 
+/*
 import collection.mutable.ArrayBuffer
 
 import QueryUtils._
-
-/**
- * Author: Lere Williams
- * Date: July 2009
- *
- * Description:
- */
 
 object Tester {
 
@@ -157,3 +151,4 @@ object Tester {
   }
 
 }
+*/

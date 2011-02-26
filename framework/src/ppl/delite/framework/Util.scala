@@ -11,7 +11,7 @@ object Util {
         else f.delete
       }      
     }
-    return( path.delete );
+    path.delete
   }
 
 }

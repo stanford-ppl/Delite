@@ -1,14 +1,7 @@
 package ppl.dsl.optiql.baseline
 
-import scala.tools.nsc.ast._
 
-/**
- * Created by IntelliJ IDEA.
- * User: Lere Williams
- * Date: Jul 14, 2009
- * Time: 1:13:06 PM
- * To change this template use File | Settings | File Templates.
- */
+/*
 
 object QueryUtils {
 
@@ -30,3 +23,4 @@ object QueryUtils {
   implicit val defaultExposure = ExposureFlag(false)
 
 }
+*/
