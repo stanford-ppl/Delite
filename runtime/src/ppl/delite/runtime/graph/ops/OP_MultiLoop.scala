@@ -9,7 +9,7 @@ package ppl.delite.runtime.graph.ops
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph.DeliteTaskGraph
 
-class OP_MultiLoop(val id: String, func: String, protected val outputTypesMap: Map[Targets.Value,Map[String,String]], val needsCombine: Boolean) extends OP_Executable {
+class OP_MultiLoop(val id: String, func: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]], val needsCombine: Boolean) extends OP_Executable {
 
   final def isDataParallel = true
 

@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Zip(val id: String, func: String, protected val outputTypesMap: Map[Targets.Value,Map[String,String]]) extends OP_Executable {
+class OP_Zip(val id: String, func: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]]) extends OP_Executable {
 
   final def isDataParallel = true
 

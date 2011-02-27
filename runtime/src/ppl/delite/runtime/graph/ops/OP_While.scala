@@ -9,12 +9,13 @@ import ppl.delite.runtime.graph.targets.Targets
 
 class OP_While(val id: String,
                val predicateGraph: DeliteTaskGraph, val predicateValue: String,
-               val bodyGraph: DeliteTaskGraph, val bodyValue: String)
+               val bodyGraph: DeliteTaskGraph, val bodyValue: String,
+               outputSymbol: String = null)
   extends OP_Control {
 
   def nestedGraphs = Seq(predicateGraph, bodyGraph)
 
-  protected val outputTypesMap = Targets.unitTypes(id)
+  private[graph] val outputTypesMap = if (outputSymbol == null) Targets.unitTypes(id) else Targets.unitTypes(outputSymbol)
 
   /**
    * creates a While chunk for each requested resource and destroys the original
@@ -23,7 +24,8 @@ class OP_While(val id: String,
     val lastOps = if (bodyValue == "") for (r <- bodyGraph.schedule if(!r.isEmpty)) yield r.peekLast else null
     val chunks =
       for (idx <- indices) yield {
-        val r = new OP_While(id+"_"+idx, predicateGraph, predicateValue, bodyGraph, bodyValue)
+        val outputSym = if (idx == indices(0)) this.id else null
+        val r = new OP_While(id+"_"+idx, predicateGraph, predicateValue, bodyGraph, bodyValue, outputSym)
         r.dependencies = dependencies
         r.inputList = inputList
         r.consumers = consumers

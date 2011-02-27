@@ -7,7 +7,7 @@ import ppl.delite.runtime.graph.targets.Targets
  *
  */
 
-class OP_Condition(val id: String, protected val outputTypesMap: Map[Targets.Value, Map[String,String]],
+class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Targets.Value, Map[String,String]],
                    val predicateGraph: DeliteTaskGraph, val predicateValue: String,
                    val thenGraph: DeliteTaskGraph, val thenValue: String,
                    val elseGraph: DeliteTaskGraph, val elseValue: String)
@@ -16,9 +16,9 @@ class OP_Condition(val id: String, protected val outputTypesMap: Map[Targets.Val
   def nestedGraphs = Seq(predicateGraph, thenGraph, elseGraph)
 
   def returner(indices: Seq[Int]) = {
-    if (thenGraph.result != null && thenGraph.result != OP_Input)
+    if (thenGraph.result != null && !thenGraph.result._1.isInstanceOf[OP_Input])
       thenGraph.result._1.scheduledResource
-    else if (elseGraph.result != null && elseGraph.result != OP_Input)
+    else if (elseGraph.result != null && !elseGraph.result._1.isInstanceOf[OP_Input])
       elseGraph.result._1.scheduledResource
     else indices(0)
   }

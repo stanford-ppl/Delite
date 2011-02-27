@@ -19,7 +19,7 @@ abstract class DeliteOP {
    */
   def task : String
 
-  protected val outputTypesMap: Map[Targets.Value, Map[String,String]]
+  private[graph] val outputTypesMap: Map[Targets.Value, Map[String,String]]
 
   def outputType(target: Targets.Value, symbol: String): String = outputTypesMap(target)(symbol)
   def outputType(target: Targets.Value): String = outputTypesMap(target)("functionReturn")

@@ -15,15 +15,15 @@ import ppl.delite.runtime.graph.targets.Targets
  * An input to a DeliteTaskGraph
  * Used to register OPs' dependencies on the input to the (sub)graph
  */
+class OP_Input(op: DeliteOP) extends DeliteOP {
 
-object OP_Input extends DeliteOP {
+  def id = "input_" + op.id
 
-  def id = "input"
+  private[graph] val outputTypesMap = op.outputTypesMap
 
   isSchedulable = true
   isScheduled = true
 
-  protected val outputTypesMap = null
   def task = null
   def isDataParallel = false
   def cost = 0

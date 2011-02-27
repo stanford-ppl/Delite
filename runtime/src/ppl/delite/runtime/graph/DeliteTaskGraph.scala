@@ -100,27 +100,26 @@ object DeliteTaskGraph {
     }
   }
 
-  def getOp(op: String)(implicit graph: DeliteTaskGraph) = {
-    graph._ops.get(op) match {
-      case Some(o) => o
+  def getOp(sym: String)(implicit graph: DeliteTaskGraph) = {
+    graph._ops.get(sym) match {
+      case Some(op) => op
       case None => {
-        val in = findOp(op)
-        graph._inputs += in
-        OP_Input
+        val in = findOp(sym)
+        graph._inputs.getOrElseUpdate(sym, new OP_Input(in))
       }
     }
   }
 
-  def findOp(op: String)(implicit firstGraph: DeliteTaskGraph): DeliteOP = {
+  def findOp(sym: String)(implicit firstGraph: DeliteTaskGraph): DeliteOP = {
     var graph = firstGraph.superGraph
     while (graph != null) {
-      graph._ops.get(op) match {
+      graph._ops.get(sym) match {
         case Some(op) => return op
         case None => //continue
       }
       graph = graph._superGraph
     }
-    opNotFound(op)
+    opNotFound(sym)
   }
 
   def processCommon(op: Map[Any, Any], opType: String)(implicit graph: DeliteTaskGraph) {
@@ -199,7 +198,7 @@ object DeliteTaskGraph {
         for (output <- outputs) {
           outputMap += output.toString -> getFieldString(getFieldMap(outputTypes, output), target.toString)
         }
-        if (outputMap.size > 1) { //multiple outputs must return via a container type
+        if (op contains "return-types") { //multiple outputs must return via a container type
           outputMap += "functionReturn" -> getFieldString(getFieldMap(op, "return-types"), target.toString)
         }
         else {
@@ -271,13 +270,13 @@ object DeliteTaskGraph {
     val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
     var ifDeps = Set.empty[DeliteOP]
     for (depId <- depIds) ifDeps += getOp(depId)
-    ifDeps ++= (predGraph._inputs ++ thenGraph._inputs ++ elseGraph._inputs)
+    ifDeps ++= (predGraph._inputs.keySet ++ thenGraph._inputs.keySet ++ elseGraph._inputs.keySet) map { getOp(_) }
 
     //find inputs at nesting level of the IfThenElse
     val internalOps = (predGraph.ops ++ thenGraph.ops ++ elseGraph.ops).toSet
-    var ifInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op == OP_Input)) yield (getOp(sym), sym)
-    ifInputs ++= (for ((op,sym) <- Seq(predGraph.result, thenGraph.result, elseGraph.result); if (op == OP_Input)) yield (getOp(sym), sym))
-    val ifMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op == OP_Input)) yield (getOp(sym), sym)
+    var ifInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
+    ifInputs ++= (for ((op,sym) <- Seq(predGraph.result, thenGraph.result, elseGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
+    val ifMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
 
     val conditionOp = new OP_Condition(id, resultMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue)
     conditionOp.dependencies = ifDeps
@@ -307,13 +306,13 @@ object DeliteTaskGraph {
     val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
     var whileDeps = Set.empty[DeliteOP]
     for (depId <- depIds) whileDeps += getOp(depId)
-    whileDeps ++= (predGraph._inputs ++ bodyGraph._inputs)
+    whileDeps ++= (predGraph._inputs.keySet ++ bodyGraph._inputs.keySet) map { getOp(_) }
 
     //find inputs at nesting level of the While
     val internalOps = (predGraph.ops ++ bodyGraph.ops).toSet
-    var whileInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op == OP_Input)) yield (getOp(sym), sym)
-    whileInputs ++= (for ((op,sym) <- Seq(predGraph.result, bodyGraph.result); if (op == OP_Input)) yield (getOp(sym), sym))
-    val whileMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op == OP_Input)) yield (getOp(sym), sym)
+    var whileInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
+    whileInputs ++= (for ((op,sym) <- Seq(predGraph.result, bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
+    val whileMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
 
     val whileOp = new OP_While(id, predGraph, predValue, bodyGraph, bodyValue)
     whileOp.dependencies = whileDeps
@@ -344,13 +343,13 @@ object DeliteTaskGraph {
     val depIds = getFieldList(op, "controlDeps") ++ getFieldList(op, "antiDeps")
     var graphDeps = Set.empty[DeliteOP]
     for (depId <- depIds) graphDeps += getOp(depId)
-    graphDeps ++= bodyGraph._inputs
+    graphDeps ++= bodyGraph._inputs.keySet map { getOp(_) }
 
     //find inputs at nesting level of the SubGraph
     val internalOps = bodyGraph.ops.toSet
-    var graphInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op == OP_Input)) yield (getOp(sym), sym)
-    graphInputs ++= (for ((op,sym) <- Seq(bodyGraph.result); if (op == OP_Input)) yield (getOp(sym), sym))
-    val graphMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op == OP_Input)) yield (getOp(sym), sym)
+    var graphInputs = for (in <- internalOps; (op,sym) <- in.getInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
+    graphInputs ++= (for ((op,sym) <- Seq(bodyGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
+    val graphMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
 
     val graphOp = new OP_Variant(id, resultMap, null, bodyGraph)
     graphOp.dependencies = graphDeps
@@ -506,7 +505,7 @@ class DeliteTaskGraph {
   var _kernelPath = ""
 
   val _ops = new HashMap[String, DeliteOP]
-  val _inputs = new HashSet[DeliteOP]
+  val _inputs = new HashMap[String, OP_Input]
   var _result: (DeliteOP, String) = (null, null)
   var _superGraph: DeliteTaskGraph = null
 

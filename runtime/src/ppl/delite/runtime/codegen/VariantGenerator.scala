@@ -19,6 +19,7 @@ class VariantGenerator(variant: OP_Variant, location: Int) extends NestedGenerat
     val out = new StringBuilder //the output string
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     val hasOutput = variant.outputType != "Unit"
+    val inputs = variant.variantGraph._inputs.values
 
     updateOP()
     //header
@@ -26,7 +27,7 @@ class VariantGenerator(variant: OP_Variant, location: Int) extends NestedGenerat
     writeMethodHeader(out)
 
     val available = new ArrayBuffer[DeliteOP]
-    available += OP_Input
+    available ++= inputs
 
     //output body
     addKernelCalls(variant.variantGraph.schedule(location), location, out, available, syncList)
@@ -61,14 +62,16 @@ class GPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUNestedG
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
     val out = new StringBuilder //the output string
     val hasOutput = variant.outputType != "Unit"
+    val inputs = variant.variantGraph._inputs.values
+
 
     writeFunctionHeader(out)
     writeJNIInitializer(location, out)
 
     val available = new ArrayBuffer[DeliteOP]
     val awaited = new ArrayBuffer[DeliteOP]
-    available += OP_Input
-    awaited += OP_Input
+    available ++= inputs
+    awaited ++= inputs
 
     //output body
     addKernelCalls(variant.variantGraph.schedule(location), location, available, awaited, syncList, out)

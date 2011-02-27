@@ -12,11 +12,11 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Variant(val id: String, protected val outputTypesMap: Map[Targets.Value,Map[String,String]], superOp: DeliteOP, val variantGraph: DeliteTaskGraph)
+class OP_Variant(val id: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]], superOp: DeliteOP, val variantGraph: DeliteTaskGraph)
   extends OP_Nested {
 
   def returner(indices: Seq[Int]) = {
-    if (variantGraph.result != null && variantGraph.result != OP_Input)
+    if (variantGraph.result != null && !variantGraph.result._1.isInstanceOf[OP_Input])
       variantGraph.result._1.scheduledResource
     else indices(0)
   }

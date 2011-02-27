@@ -158,18 +158,16 @@ object MultiLoop_SMP_Array_Header_Generator {
 
   private def writeObjectApply(out: StringBuilder, op: OP_MultiLoop) {
     out.append("def apply(")
-    val inputs = op.getInputs.iterator //TODO: really?
     var inIdx = 0
     var first = true
-    while (inputs.hasNext) {
+    for ((input, name) <- op.getInputs) {
       if (!first) out.append(", ")
       first = false
       out.append("in")
       out.append(inIdx)
       inIdx += 1
       out.append(": ")
-      val (dep,name) = inputs.next
-      out.append(dep.outputType(name))
+      out.append(input.outputType(name))
     }
     out.append(") = new ")
     out.append(kernelName(op))
@@ -186,18 +184,16 @@ object MultiLoop_SMP_Array_Header_Generator {
     out.append("final class ")
     out.append(kernelName(op))
     out.append("(")
-    val inputs = op.getInputs.iterator
     var inIdx = 0
     var first = true
-    while (inputs.hasNext) {
+    for ((input, name) <- op.getInputs) {
       if (!first) out.append(", ")
       first = false
       out.append("in")
       out.append(inIdx)
       inIdx += 1
       out.append(": ")
-      val (dep,name) = inputs.next
-      out.append(dep.outputType(name))
+      out.append(input.outputType(name))
     }
     out.append(") {\n")
 
@@ -211,7 +207,7 @@ object MultiLoop_SMP_Array_Header_Generator {
     }
     out.append(")\n")
 
-    out.append("val out: ") // zip specific
+    out.append("val out: ")
     out.append(op.outputType)
     out.append(" = closure.alloc\n")
   }

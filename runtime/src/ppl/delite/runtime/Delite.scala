@@ -21,7 +21,7 @@ import tools.nsc.io.Directory
 object Delite {
 
   private def printArgs(args: Array[String]) {
-    if(args.size == 0) {
+    if(args.length == 0) {
       println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
       exit(-1)
     }

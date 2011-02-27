@@ -85,8 +85,7 @@ abstract class ExecutableGenerator {
           //add to available list
           available += dep
           //write a getter
-          for (name <- dep.getOutputs)
-            writeGetter(dep, name, out)
+          writeGetter(dep, out)
         }
       }
 
@@ -122,33 +121,46 @@ abstract class ExecutableGenerator {
     }
     out.append(")\n")
 
-    val outputs = op.getOutputs
-    for (name <- outputs) {
+    for (name <- op.getOutputs) {
       out.append("val ")
       out.append(getSym(name))
       out.append(" : ")
       out.append(op.outputType(name))
       out.append(" = ")
       out.append(getSym(op))
-      if (outputs.size > 1) {
-        out.append(".")
+      if (op.outputType(name) != op.outputType) {
+        out.append('.')
         out.append(name)
       }
-      out.append("\n")
+      out.append('\n')
     }
   }
 
-  protected def writeGetter(dep: DeliteOP, name: String, out: StringBuilder) {
+  protected def writeGetter(dep: DeliteOP, out: StringBuilder) {
     out.append("val ")
-    out.append(getSym(name))
+    out.append(getSym(dep))
     out.append(" : ")
-    out.append(dep.outputType(name))
+    out.append(dep.outputType)
     out.append(" = ")
     out.append(executableName)
     out.append(dep.scheduledResource)
     out.append(".get")
-    out.append(name)
+    out.append(getSym(dep))
     out.append('\n')
+
+    for (sym <- dep.getOutputs) {
+      out.append("val ")
+      out.append(getSym(sym))
+      out.append(" : ")
+      out.append(dep.outputType(sym))
+      out.append(" = ")
+      out.append(getSym(dep))
+      if (dep.outputType(sym) != dep.outputType) {
+        out.append(".")
+        out.append(sym)
+      }
+      out.append('\n')
+    }
   }
 
   protected def executableName: String
@@ -173,26 +185,20 @@ abstract class ExecutableGenerator {
   protected def addSync(list: ArrayBuffer[DeliteOP], out: StringBuilder) {
     for (op <- list) {
       //add a public get method
-      for (name <- op.getOutputs)
-        writePublicGet(op, name, out)
+      writePublicGet(op, out)
       //add a private sync object
       writeSyncObject(op, out)
     }
   }
 
-  protected def writePublicGet(op: DeliteOP, name: String, out: StringBuilder) {
+  protected def writePublicGet(op: DeliteOP, out: StringBuilder) {
     out.append("def get")
-    out.append(name)
+    out.append(getSym(op))
     out.append(" : ")
-    out.append(op.outputType(name))
+    out.append(op.outputType)
     out.append(" = ")
     out.append(getSync(op))
-    out.append(".get")
-    if (op.getOutputs.size > 1) {
-      out.append(".")
-      out.append(name)
-    }
-    out.append("\n")
+    out.append(".get\n")
   }
 
   protected def writeSyncObject(op: DeliteOP, out: StringBuilder) {

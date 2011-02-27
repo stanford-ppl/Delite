@@ -48,7 +48,7 @@ abstract class NestedGenerator(nested: OP_Nested, location: Int) extends Executa
       first = false
       out.append(getSym(sym))
       out.append(": ")
-      out.append(op.outputType)
+      out.append(op.outputType(sym))
     }
   }
 }
