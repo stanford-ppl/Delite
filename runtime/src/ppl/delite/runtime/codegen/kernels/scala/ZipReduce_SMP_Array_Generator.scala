@@ -161,7 +161,7 @@ object ZipReduce_SMP_Array_Header_Generator {
       inIdx += 1
       out.append(": ")
       val (dep,name) = inputs.next
-      out.append(dep.outputSlotType(name))
+      out.append(dep.outputType(name))
     }
     out.append(") = new ")
     out.append(kernelName(op))
@@ -187,7 +187,7 @@ object ZipReduce_SMP_Array_Header_Generator {
       inIdx += 1
       out.append(": ")
       val (dep,name) = inputs.next
-      out.append(dep.outputSlotType(name))
+      out.append(dep.outputType(name))
     }
     out.append(") {\n")
 

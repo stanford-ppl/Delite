@@ -16,10 +16,10 @@ object Targets extends Enumeration {
   /**
    * Create a Unit-type Map for the set of targets included in the input Map
    */
-  def unitTypes(targets: Map[Value,String]): Map[Value,String] = {
-    var unitMap = Map[Value,String]()
+  def unitTypes(id: String, targets: Map[Value,Map[String,String]]): Map[Value,Map[String,String]] = {
+    var unitMap = Map[Value,Map[String,String]]()
     for (target <- targets.keys) {
-      unitMap += target -> unitType(target)
+      unitMap += target -> Map(id -> unitType(target), "functionReturn" -> unitType(target))
     }
     unitMap
   }
@@ -27,10 +27,10 @@ object Targets extends Enumeration {
   /**
    * Creates a Unit-type Map for all targets
    */
-  def unitTypes: Map[Value,String] = {
-    var unitMap = Map[Value,String]()
+  def unitTypes(id: String): Map[Value,Map[String,String]] = {
+    var unitMap = Map[Value,Map[String,String]]()
     for (target <- values) {
-      unitMap += target -> unitType(target)
+      unitMap += target -> Map(id -> unitType(target), "functionReturn" -> unitType(target))
     }
     unitMap
   }

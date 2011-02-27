@@ -12,7 +12,7 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Zip(val id: String, func: String, resultType: Map[Targets.Value,String]) extends OP_Executable(resultType) {
+class OP_Zip(val id: String, func: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]]) extends OP_Executable {
 
   final def isDataParallel = true
 
@@ -32,37 +32,30 @@ class OP_Zip(val id: String, func: String, resultType: Map[Targets.Value,String]
    * Chunks require same dependency & input lists
    */
   def chunk(i: Int): OP_Zip = {
-    val restp = Targets.unitTypes(resultType)
-    val r = new OP_Zip(id+"_"+i, function, restp) //chunks all return Unit
-    r.dependencyList = dependencyList //lists are immutable so can be shared
-    r.outputList = List(r.id)
-    r.outputTypeMap = Map(r.id -> restp)
+    val r = new OP_Zip(id+"_"+i, function, Targets.unitTypes(id+"_"+i, outputTypesMap)) //chunks all return Unit
+    r.dependencies = dependencies //lists are immutable so can be shared
     r.inputList = inputList
-    r.consumerList = consumerList
+    r.consumers = consumers
     for (dep <- getDependencies) dep.addConsumer(r)
     for (c <- getConsumers) c.addDependency(r)
     r
   }
 
   def header(kernel: String, graph: DeliteTaskGraph): OP_Single = {
-    val restp = Map(Targets.Scala->kernel)
-    val h = new OP_Single(id+"_h", kernel, restp)
+    val h = new OP_Single(id+"_h", kernel, Map(Targets.Scala->Map(id+"_h"->kernel,"functionReturn"->kernel)))
     //header assumes all inputs of map
-    h.dependencyList = dependencyList
-    h.outputList = List(h.id)
-    h.outputTypeMap = Map(h.id -> restp)
+    h.dependencies = dependencies
     h.inputList = inputList
     h.addConsumer(this)
     for (dep <- getDependencies) dep.replaceConsumer(this, h)
     //map consumes header, map's consumers remain unchanged
-    dependencyList = List(h)
+    dependencies = Set(h)
     inputList = List((h,h.id))
-
     graph.registerOp(h)
-    //graph._ops += (id+"_h") -> h
     h
   }
 
   def cost = 0
   def size = 0
+
 }

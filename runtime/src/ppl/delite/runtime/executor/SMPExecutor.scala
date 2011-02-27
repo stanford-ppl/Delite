@@ -31,4 +31,8 @@ class SMPExecutor extends Executor {
     threadPool.shutdown
   }
 
+  def abnormalShutdown() {
+    threadPool.abnormalShutdown
+  }
+
 }

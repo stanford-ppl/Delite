@@ -340,16 +340,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     val metadataStr = if (metadata.isEmpty) "" else metadata.mkString(",")
     stream.print("  \"metadata\":{" + metadataStr + "},\n")
     val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString(",")
-    stream.print("  \"return-types\":{" + returnTypesStr + "}")
     if (!outputSlotTypes.isEmpty) {
-      stream.print(",\n")
+      stream.println("  \"return-types\":{" + returnTypesStr + "},")
       val rts = for (s <- outputs) yield {
         val str = quote(s)
-        "  \""+str+"\":{" + outputSlotTypes(str).mkString(",") + "}"
+        "\""+str+"\":{" + outputSlotTypes(str).mkString(",") + "}"
       }
-      stream.print("\"output-types\":{" + rts.mkString(",") + "}\n")
+      stream.println("  \"output-types\":{" + rts.mkString(",") + "}")
     } else
-      stream.print("\n")
+      stream.println("  \"output-types\":{\"" + quote(outputs(0)) + "\":{" + returnTypesStr + "}}")
   }
 
 
@@ -363,8 +362,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   def emitVariant(rhs: Def[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
                  (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
-    if (!rhs.isInstanceOf[Variant] || nested > Config.nestedVariantsLevel) return
-    
+    if (!rhs.isInstanceOf[Variant] || nested >= Config.nestedVariantsLevel) return
+
     nested += 1
 
     // pre

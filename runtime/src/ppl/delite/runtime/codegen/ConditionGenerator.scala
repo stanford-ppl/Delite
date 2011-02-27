@@ -1,8 +1,8 @@
 package ppl.delite.runtime.codegen
 
-import ppl.delite.runtime.graph.ops.{DeliteOP, OP_Condition}
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.graph.ops.{OP_Input, DeliteOP, OP_Condition}
 
 /**
  * Author: Kevin J. Brown
@@ -19,7 +19,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
     val out = new StringBuilder //the output string
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     val hasOutput = condition.outputType != "Unit"
-    val inputs = (condition.predicateGraph.inputs ++ condition.thenGraph.inputs ++ condition.elseGraph.inputs)
+    val inputs = (condition.predicateGraph._inputs.values ++ condition.thenGraph._inputs.values ++ condition.elseGraph._inputs.values)
 
     updateOP()
     //header
@@ -35,7 +35,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
 
     //write if
     out.append("if (")
-    if (condition.predicateValue == "") out.append(getSym(condition.predicateGraph.result))
+    if (condition.predicateValue == "") out.append(getSym(condition.predicateGraph.result._2))
     else out.append(condition.predicateValue)
     out.append(") {\n")
 
@@ -44,7 +44,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
       available.clear
       available ++= inputs
       addKernelCalls(condition.thenGraph.schedule(location), location, out, available, syncList)
-      if (hasOutput) out.append(getSym(condition.thenGraph.result))
+      if (hasOutput) out.append(getSym(condition.thenGraph.result._2))
     }
     else if (hasOutput) out.append(condition.thenValue)
     if (hasOutput) out.append('\n')
@@ -57,7 +57,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
       available.clear
       available ++= inputs
       addKernelCalls(condition.elseGraph.schedule(location), location, out, available, syncList)
-      if (hasOutput) out.append(getSym(condition.elseGraph.result))
+      if (hasOutput) out.append(getSym(condition.elseGraph.result._2))
     }
     else if (hasOutput) out.append(condition.elseValue)
     if (hasOutput) out.append('\n')
@@ -91,7 +91,7 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
     val out = new StringBuilder //the output string
     val hasOutput = condition.outputType != "Unit"
     assert(hasOutput == false) //TODO: we can relax this by conditionally selecting the proper metadata functions as well
-    val inputs = (condition.predicateGraph.inputs ++ condition.thenGraph.inputs ++ condition.elseGraph.inputs)
+    val inputs = (condition.predicateGraph._inputs.values ++ condition.thenGraph._inputs.values ++ condition.elseGraph._inputs.values)
 
     writeFunctionHeader(out)
     writeJNIInitializer(location, out)
@@ -108,7 +108,7 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
 
     //write if
     out.append("if (")
-    if (condition.predicateValue == "") out.append(getSymGPU(condition.predicateGraph.result))
+    if (condition.predicateValue == "") out.append(getSymGPU(condition.predicateGraph.result._2))
     else out.append(condition.predicateValue)
     out.append(") {\n")
 
@@ -121,7 +121,7 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
       addKernelCalls(condition.thenGraph.schedule(location), location, available, awaited, syncList, out)
       if (hasOutput) {
         out.append("return ")
-        out.append(getSymGPU(condition.thenGraph.result))
+        out.append(getSymGPU(condition.thenGraph.result._2))
       }
     }
     else if (hasOutput) {
@@ -142,7 +142,7 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
       addKernelCalls(condition.elseGraph.schedule(location), location, available, awaited, syncList, out)
       if (hasOutput) {
         out.append("return ")
-        out.append(getSymGPU(condition.elseGraph.result))
+        out.append(getSymGPU(condition.elseGraph.result._2))
       }
     }
     else if (hasOutput) {
