@@ -58,6 +58,9 @@ object EOP extends OP_Executable {
       while (notDone) end.await
       notDone = true //reset for re-use
     }
+    catch {
+      case e: InterruptedException => throw new RuntimeException("Worker Exception")
+    }
     finally {
       lock.unlock
     }
