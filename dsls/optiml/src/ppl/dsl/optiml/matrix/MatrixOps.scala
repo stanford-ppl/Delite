@@ -124,7 +124,7 @@ trait MatrixOps extends DSLType with Variables {
     /// TODO: rename to transform?
     def mmap(f: Rep[A] => Rep[A]) = matrix_mmap(x,f)
     def mapRows[B:Manifest](f: Rep[Vector[A]] => Rep[Vector[B]]) = matrix_maprows(x,f)
-    def mapRows[B:Manifest](f: Rep[Vector[A]] => Rep[B], isRow: Rep[Boolean] = true) = matrix_maprowstovec(x,f,isRow)
+    def mapRows[B:Manifest](f: Rep[Vector[A]] => Rep[B], isRow: Rep[Boolean] = unit(true)) = matrix_maprowstovec(x,f,isRow)
     def foreach(block: Rep[A] => Rep[Unit]) = matrix_foreach(x, block)
     def foreachRow(block: Rep[Vector[A]] => Rep[Unit]) = matrix_foreachrow(x, block)
     def zip[B:Manifest,R:Manifest](y: Rep[Matrix[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = matrix_zipwith(x,y,f)
@@ -133,11 +133,11 @@ trait MatrixOps extends DSLType with Variables {
   }
 
   // special case overrides
-  def infix_:>(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]): Rep[Matrix[Float]] = x.zip(y) { (a,b) => if (a > b) 1f else 0f }
-  def infix_:>(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded1): Rep[Matrix[Double]] = x.zip(y) { (a,b) => if (a > b) 1. else 0. }
-  def infix_:>(x: Rep[Matrix[Int]], y: Rep[Matrix[Int]])(implicit o: Overloaded2): Rep[Matrix[Int]] = x.zip(y) { (a,b) => if (a > b) unit(1) else unit(0) } // TODO aks: why is unit needed here?
-  def infix_:<(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]): Rep[Matrix[Float]] = x.zip(y) { (a,b) => if (a > b) 1f else 0f }
-  def infix_:<(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded1): Rep[Matrix[Double]] = x.zip(y) { (a,b) => if (a > b) 1. else 0. }
+  def infix_:>(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]): Rep[Matrix[Float]] = x.zip(y) { (a,b) => if (a > b) unit(1f) else unit(0f) }
+  def infix_:>(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded1): Rep[Matrix[Double]] = x.zip(y) { (a,b) => if (a > b) unit(1.) else unit(0.) }
+  def infix_:>(x: Rep[Matrix[Int]], y: Rep[Matrix[Int]])(implicit o: Overloaded2): Rep[Matrix[Int]] = x.zip(y) { (a,b) => if (a > b) unit(1) else unit(0) }
+  def infix_:<(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]): Rep[Matrix[Float]] = x.zip(y) { (a,b) => if (a > b) unit(1f) else unit(0f) }
+  def infix_:<(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded1): Rep[Matrix[Double]] = x.zip(y) { (a,b) => if (a > b) unit(1.) else unit(0.) }
   def infix_:<(x: Rep[Matrix[Int]], y: Rep[Matrix[Int]])(implicit o: Overloaded2): Rep[Matrix[Int]] = x.zip(y) { (a,b) => if (a > b) unit(1) else unit(0) }
 
   // object defs
@@ -479,9 +479,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]])
     extends DeliteOpMap[Vector[A],A,Vector] {
 
-    val alloc = reifyEffects(Vector[A](x.numRows, false))
+    val alloc = reifyEffects(Vector[A](x.numRows, unit(false)))
     val in = reifyEffects {
-      var tcoll = Vector[Vector[A]](x.numRows, false)
+      var tcoll = Vector[Vector[A]](x.numRows, unit(false))
        for (i <- 0 until x.numRows){
          tcoll(i) = x.getRow(i)
        }
@@ -616,7 +616,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpReduce[Vector[A]] {
 
     val in = reifyEffects {
-      var tcoll = Vector[Vector[A]](x.numRows, true)
+      var tcoll = Vector[Vector[A]](x.numRows, unit(true))
        for (i <- 0 until x.numRows){
          tcoll(i) = x.getRow(i)
        }
@@ -730,7 +730,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
     reflectPure(MatrixMapRows(x,f))
   }
-  def matrix_maprowstovec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[Vector[A]] => Exp[B], isRow: Exp[Boolean] = true) = {
+  def matrix_maprowstovec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[Vector[A]] => Exp[B], isRow: Exp[Boolean] = unit(true)) = {
     val v = fresh[Vector[A]]
     val func = reifyEffects(f(v))
     reflectPure(MatrixMapRowsToVec(x,v,func,isRow))

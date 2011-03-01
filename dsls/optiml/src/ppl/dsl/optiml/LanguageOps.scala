@@ -145,8 +145,8 @@ trait LanguageOps extends Base { this: OptiML =>
    */
   def untilconverged[A](x: Rep[A],
                         thresh: Rep[Double],
-                        max_iter: Rep[Int] = 1000,
-                        clone_prev_val: Rep[Boolean] = true)
+                        max_iter: Rep[Int] = unit(1000),
+                        clone_prev_val: Rep[Boolean] = unit(true))
                         (block: Rep[A] => Rep[A])
                         (implicit diff: (Rep[A],Rep[A]) => Rep[Double], mA: Manifest[A], c: Cloneable[A]): Rep[A]
     = optiml_untilconverged(x, thresh, max_iter, clone_prev_val, block, diff)
@@ -345,7 +345,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
       if (iter == max_iter){
         //throw new ConvergenceException("Maximum iterations exceeded")
-        println("Maximum iterations exceeded")
+        println(unit("Maximum iterations exceeded"))
         returnL()
       }
 

@@ -1,6 +1,5 @@
 package ppl.dsl.optiml
 
-import graph._
 import java.io._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
@@ -8,16 +7,15 @@ import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
-import ppl.delite.framework.ops.{CudaGenDeliteOps, DeliteOpsExp, ScalaGenDeliteOps}
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
+import ppl.delite.framework.ops._
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
 import ppl.dsl.optiml.io._
 import ppl.dsl.optiml.vector._
 import ppl.dsl.optiml.matrix._
+import ppl.dsl.optiml.graph._
 
-//import ppl.dsl.optiml.graph._
-import ppl.delite.framework.ops._
 
 
 /**
@@ -37,7 +35,7 @@ trait OptiMLApplication extends OptiML with OptiMLLift {
 /**
  * These are the portions of Scala imported into OptiML's scope.
  */
-trait OptiMLLift extends LiftVariables with LiftEquals {
+trait OptiMLLift extends LiftVariables with LiftEquals with LiftString with LiftBoolean with LiftNumeric {
   this: OptiML =>
 }
 

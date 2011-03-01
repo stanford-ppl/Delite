@@ -133,7 +133,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       implicit val mCA: Manifest[C[A]] = in.Type.asInstanceOf[Manifest[C[A]]]
       implicit val mCB: Manifest[C[B]] = alloc.Type.asInstanceOf[Manifest[C[B]]]
       reifyEffects {
-        var i = var_new(0)
+        var i = var_new(unit(0))
         var vs = var_new(unit(null).asInstanceOfL[A])
         while (i < in.size) {
           vs = in(i)
@@ -209,7 +209,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       var_new(unit(null).asInstanceOfL[R])
     }
     lazy val index = {
-      var_new(0)
+      var_new(unit(0))
     }
     // this is a workaround for reification and vars not really working well together
     // we need to output the block as an Exp, but the nested scopes need to use it as a var
@@ -292,7 +292,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     lazy val variant = {
       implicit val mA: Manifest[A] = v.Type.asInstanceOf[Manifest[A]]
       reifyEffects {
-        var index = var_new(0)
+        var index = var_new(unit(0))
         var vs = var_new(unit(null).asInstanceOfL[A])
         while (index < in.size) {
           vs = in(index)

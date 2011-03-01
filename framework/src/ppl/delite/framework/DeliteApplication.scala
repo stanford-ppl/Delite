@@ -90,7 +90,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
    */
   def main(): Unit
 
-  def liftedMain(x: Rep[Array[String]]) = { this.args = x; val y = main(); this.args = null; y }
+  def liftedMain(x: Rep[Array[String]]) = { this.args = x; val y = main(); this.args = null; unit(y) }
   
 
   private def nop = throw new RuntimeException("not implemented yet")

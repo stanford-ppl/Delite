@@ -9,7 +9,7 @@ import ppl.dsl.optiml.{OptiMLExp, OptiML}
 trait IndexVectorOps extends DSLType with Base { this: OptiML =>
 
   object IndexVector {
-    def apply(len: Rep[Int]) = indexvector_seq(Vector[Int](len, true))
+    def apply(len: Rep[Int]) = indexvector_seq(Vector[Int](len, unit(true)))
   }
 
   implicit def repIndexVectorToIndexVectorOps(x: Rep[IndexVector]) = new IndexVectorOpsCls(x)

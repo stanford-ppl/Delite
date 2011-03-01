@@ -23,9 +23,9 @@ trait VectorOps extends DSLType with Variables {
       //val xs2 = unit(xs.toList)
       //vector_obj_fromseq(xs2)
       //reifyEffects {
-        val out = vector_obj_new[A](0,true)
+        val out = vector_obj_new[A](unit(0),unit(true))
         // interpreted (not lifted)
-        xs.foreach { out += _ }
+        xs.foreach { out += unit(_) }
         out
       //}
     }
@@ -48,9 +48,9 @@ trait VectorOps extends DSLType with Variables {
     def zerosf(len: Rep[Int]) = vector_obj_zerosf(len)
     def rand(len: Rep[Int]) = vector_obj_rand(len)
     def randf(len: Rep[Int]) = vector_obj_randf(len)
-    def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = 1, isRow: Rep[Boolean] = true) =
+    def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = 1, isRow: Rep[Boolean] = unit(true)) =
       vector_obj_range(start, end, stride, isRow)
-    def uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean] = true) =
+    def uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean] = unit(true)) =
       vector_obj_uniform(start, step_size, end, isRow)
   }
 
@@ -700,7 +700,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     case Reflect(VectorIsRow(x), u, es) => reflectMirrored(Reflect(VectorIsRow(f(x)), mapOver(f,u), f(es)))
     case Reflect(VectorForeach(a,b,c), u, es) => reflectMirrored(Reflect(VectorForeach(f(a),f(b).asInstanceOf[Sym[Int]],f(c)), mapOver(f,u), f(es)))
     // FIXME: problem with VectorTimes: it's actually a loop and if it is reflected it means a.length will also reflect and we have no context here!!!
-    case Reflect(e2@VectorTimes(a,b), u, es) => error("we'd rather not mirror " + e); //reflectMirrored(Reflect(VectorTimes(f(a),f(b))(e.mev,e.aev), Read(f onlySyms rs), f(es)))
+    case Reflect(e2@VectorTimes(a,b), u, es) => error("we'd rather not mirror " + unit(e)); //reflectMirrored(Reflect(VectorTimes(f(a),f(b))(e.mev,e.aev), Read(f onlySyms rs), f(es)))
     case Reflect(VectorUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VectorUpdate(f(l),f(i),f(r)), mapOver(f,u), f(es)))
     // allocations TODO: generalize
     case Reflect(VectorObjectZeros(x), u, es) => reflectMirrored(Reflect(VectorObjectZeros(f(x)), mapOver(f,u), f(es)))

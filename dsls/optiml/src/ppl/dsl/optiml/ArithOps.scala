@@ -26,7 +26,7 @@ trait ArithOps extends Variables with OverloadHack {
    * causes the NumericOps and FractionalOps implicit conversions to be ambiguous, so OptiML
    * programs cannot include them.
    */
-  implicit def arithToArithOps[T:Arith:Manifest](n: T) = new ArithOpsCls(n)
+  implicit def arithToArithOps[T:Arith:Manifest](n: T) = new ArithOpsCls(unit(n))
   implicit def repArithToArithOps[T:Arith:Manifest](n: Rep[T]) = new ArithOpsCls(n)
   implicit def varArithToArithOps[T:Arith:Manifest](n: Var[T]) = new ArithOpsCls(readVar(n))
 
@@ -270,15 +270,15 @@ trait ArithOpsExpOpt extends ArithOpsExp {
   this: OptiML =>
 
   override def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => implicitly[Numeric[T]].plus(x,y)
+    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].plus(x,y))
     case _ => super.arith_plus(lhs, rhs)
   }
   override def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => implicitly[Numeric[T]].minus(x,y)
+    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].minus(x,y))
     case _ => super.arith_minus(lhs, rhs)
   }
   override def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => implicitly[Numeric[T]].times(x,y)
+    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].times(x,y))
     case _ => super.arith_times(lhs, rhs)
   }
 }
