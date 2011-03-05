@@ -393,6 +393,8 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
 
 
   override def syms(e: Any): List[Sym[Any]] = e match { //TR TODO: question -- is alloc a dependency (should be part of result) or a definition (should not)???
+                                                        // aks: answer -- we changed it to be internal to the op to make things easier for CUDA. not sure if that still needs
+                                                        // to be the case. similar question arises for sync
     case s: DeliteOpSingleTask[_] => syms(s.block) ++ super.syms(e) // super call: add case class syms!
     case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.alloc)
     case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.rFunc)
@@ -401,8 +403,8 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
     case red: DeliteOpReduce[_] => /*if (shallow) syms(red.in) else*/ syms(red.in) ++ syms(red.func)
     case mapR: DeliteOpMapReduce[_,_,_] => /*if (shallow) syms(mapR.in) else*/ syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
     case zipR: DeliteOpZipWithReduce[_,_,_,_] => /*if (shallow) syms(zipR.inA) ++ syms(zipR.inB) else*/ syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
-    case foreach: DeliteOpForeach[_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func)
-    case foreach: DeliteOpForeachBounded[_,_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func)
+    case foreach: DeliteOpForeach[_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func) ++ syms(foreach.sync)
+    case foreach: DeliteOpForeachBounded[_,_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func) ++ syms(foreach.sync)
     case _ => super.syms(e)
   }
 
