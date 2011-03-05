@@ -38,6 +38,7 @@ def main():
     parser.add_option("-k", "--keep-going", dest="keep_going", action="store_true", help="keep going even if there is a abnormal exit code")
     parser.add_option("--input-size", dest="input_size", default="icml", help="specify which dataset to use when collecting numbers")
     parser.add_option("--nv", dest="no_variants", action="store_true" , help="disables variant support in the framework")
+    parser.add_option("--nb", dest="no_blas", action="store_true", help="disables blas calls in generated code")
     parser.add_option("--home", dest="delite_home", default="_env", help="allows you to specificy a different Delite Home than the one that should be specificed in the environment");
 
     (opts, args) = parser.parse_args()
@@ -74,6 +75,7 @@ def loadOptions(opts):
         for s in opts.skip.split(','):
             options['run'][s] = False
     options['variants'] = not opts.no_variants
+    options['blas'] = not opts.no_blas
 
     #set delite home
     if(opts.delite_home != "_env"):
@@ -117,7 +119,9 @@ def launchApps(options):
         print "==================================================="
         print "==         " + app 
         print "===================================================" 
-        opts = "-Dblas.home=" + props['intel.mkl'] + " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + props["delite.home"] +  "/generated/ -Ddelite.deg.filename=" + app + ".deg"
+        opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + props["delite.home"] +  "/generated/ -Ddelite.deg.filename=" + app + ".deg"
+        if options['blas'] == True:
+            opts = opts + " -Dblas.home=" + props['intel.mkl']
         if options['variants'] == False:
             opts = opts + " -Dnested.variants.level=0"
         os.putenv("GEN_OPTS", opts)

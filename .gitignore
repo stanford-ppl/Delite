@@ -16,3 +16,4 @@ data/
 *.deg
 *.debug
 *.pgm
+benchmark/times
