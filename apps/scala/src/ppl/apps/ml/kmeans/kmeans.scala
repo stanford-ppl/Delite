@@ -39,47 +39,41 @@ trait kmeans extends OptiMLApplication {
     val k = mu.numRows
     var iter = 0
 
-    untilconverged(mu, tol){ mu =>
+    val newMu = untilconverged(mu, tol){ mu =>
       iter += 1
 
       // update c -- calculate distances to current centroids
       val c = (0::m){e => findNearestCluster(x(e), mu)}
 
       // update mu -- move each cluster centroid to the mean of the points assigned to it
-      // TODO: switch to matrix constructor
-      for (j <- (0::k)) {
-      //for (j <- 0 until k) {
+      (0::k, *) { j =>
         //println("j: " + j)
         // this is much slower than the version below, even with variable boxing
-//        val (weightedpoints, points) = t2( sum(0, m) { i =>
-//          // TODO: the generated code is recalculating c every time!!  x321 line 166
-//          if (c(i) == j){
-//            (x(i), unit(1.))
-//          }
-//          else {
-//            (NilV[Double], unit(0.))
-//          }
-//        })
-        val weightedpoints = Vector.zeros(n)
-        var points = 0
-        var i = 0
-        while (i < m){
+        val (weightedpoints, points) = t2( sum(0, m) { i =>
           if (c(i) == j){
-            weightedpoints += x(i) //TODO TR check mutable?
-            points += 1
+            (x(i), unit(1.))
           }
-          i += 1
-        }
+          else {
+            (NilV[Double], unit(0.))
+          }
+        })
+        // TODO: this does not appear to work anymore (need to check effect ordering in generated code)
+//        val weightedpoints = Vector.mzeros(n)
+//        var points = 0
+//        var i = 0
+//        while (i < m){
+//          if (c(i) == j){
+//            weightedpoints += x(i) //TODO TR check mutable?
+//            points += 1
+//          }
+//          i += 1
+//        }
         if (points == 0)
           points += 1
-        mu(j) = weightedpoints / points //TODO TR non-mutable write
-        //if (points == 0) mu(j) = Vector.zeros(n)
-        //else mu(j) = weightedpoints / points
+        weightedpoints / points
       }
-
-      mu
     }
-    (iter,mu)
+    (iter,newMu)
   }
 
   def findNearestCluster( x_i: Rep[Vector[Double]], mu: Rep[Matrix[Double]] ) : Rep[Int] = {

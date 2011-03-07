@@ -110,6 +110,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
           case ("scala", ThinDef(z)) => z match {
             case op: AbstractLoop[_] => sys.error("should not encounter thin loops here but only fat ones")
+            // aks TODO: the following two lines somehow cause a scalac internal error (IN IDEA ONLY??) at Infer.scala line 1029; appears to have something to do with alloc
+            // workaround: comment, make, uncomment, make, sigh
             case map: DeliteOpMap[_,_,_] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
             case zip: DeliteOpZipWith[_,_,_,_] => "generated.scala.DeliteOpZipWith[" + gen.remap(zip.v._1.Type) + "," + gen.remap(zip.v._2.Type) + "," + gen.remap(zip.func.Type) + "," + gen.remap(zip.alloc.Type) +"]"
             case red: DeliteOpReduce[_] => "generated.scala.DeliteOpReduce[" + gen.remap(red.func.Type) + "]"

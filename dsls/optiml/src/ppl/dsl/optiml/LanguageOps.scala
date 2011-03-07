@@ -146,7 +146,7 @@ trait LanguageOps extends Base { this: OptiML =>
   def untilconverged[A](x: Rep[A],
                         thresh: Rep[Double],
                         max_iter: Rep[Int] = unit(1000),
-                        clone_prev_val: Rep[Boolean] = unit(true))
+                        clone_prev_val: Rep[Boolean] = unit(false))
                         (block: Rep[A] => Rep[A])
                         (implicit diff: (Rep[A],Rep[A]) => Rep[Double], mA: Manifest[A], c: Cloneable[A]): Rep[A]
     = optiml_untilconverged(x, thresh, max_iter, clone_prev_val, block, diff)
@@ -297,7 +297,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     while(tasks.length > 0) {
       tasks.foreach(block)
       tasks.clear()
-      var totalTasks = unit(0)
+      var totalTasks = var_new(unit(0))
       
       for(i <- 0 until vertices.length) {
         val vtasks = vertices(i).tasks
@@ -321,10 +321,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
                                                   block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) = {
 
-    var delta = unit(scala.Math.MAX_DOUBLE)
-    var prev = unit(null).asInstanceOfL[A]
-    var next = x
-    var iter = unit(0)
+    var delta = var_new(unit(scala.Math.MAX_DOUBLE))
+    var prev = var_new(unit(null).asInstanceOfL[A])
+    var next = var_new(x)
+    var iter = var_new(unit(0))
 
     while ((Math.abs(delta) > thresh) && (iter < max_iter)){
       if (clone_prev_val)
@@ -339,15 +339,17 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 //        case e: Exception => throw new ConvergenceException("Converging block threw exception: " + e)
 //      }
       iter += 1
-      delta = diff(next, prev)
+      //prev.asInstanceOfL[Matrix[Any]].pprint
+      //next.asInstanceOfL[Matrix[Any]].pprint
+      delta = diff(next,prev)
       //println("(" + delta + ")")
     }
 
-      if (iter == max_iter){
-        //throw new ConvergenceException("Maximum iterations exceeded")
-        println(unit("Maximum iterations exceeded"))
-        returnL()
-      }
+    if (iter == max_iter){
+      //throw new ConvergenceException("Maximum iterations exceeded")
+      println(unit("Maximum iterations exceeded"))
+      returnL()
+    }
 
     next
 
