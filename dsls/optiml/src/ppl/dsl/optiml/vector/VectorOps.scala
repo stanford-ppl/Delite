@@ -46,6 +46,7 @@ trait VectorOps extends DSLType with Variables {
     def zeros(len: Rep[Int]) = vector_obj_zeros(len)
     def mzeros(len: Rep[Int]) = vector_obj_mzeros(len)
     def zerosf(len: Rep[Int]) = vector_obj_zerosf(len)
+    def mzerosf(len: Rep[Int]) = vector_obj_mzerosf(len)
     def rand(len: Rep[Int]) = vector_obj_rand(len)
     def randf(len: Rep[Int]) = vector_obj_randf(len)
     def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = 1, isRow: Rep[Boolean] = unit(true)) =
@@ -173,6 +174,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_obj_zeros(len: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_mzeros(len: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_zerosf(len: Rep[Int]): Rep[Vector[Float]]
+  def vector_obj_mzerosf(len: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_rand(len: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_randf(len: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], isRow: Rep[Boolean]): Rep[RangeVector]
@@ -721,6 +723,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_obj_zeros(len: Exp[Int]) = reflectPure(VectorObjectZeros(len))
   def vector_obj_mzeros(len: Exp[Int]) = reflectMutable(VectorObjectZeros(len))
   def vector_obj_zerosf(len: Exp[Int]) = reflectPure(VectorObjectZerosF(len))
+  def vector_obj_mzerosf(len: Exp[Int]) = reflectMutable(VectorObjectZerosF(len))
   def vector_obj_rand(len: Exp[Int]) = reflectPure(VectorObjectRand(len))
   def vector_obj_randf(len: Exp[Int]) = reflectPure(VectorObjectRandF(len))
   def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean]) = reflectPure(VectorObjectRange(start, end, stride, isRow))
@@ -858,7 +861,7 @@ trait VectorOpsExpOpt extends VectorOpsExp {
   override def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
     // remove runtime check on zero vector being same length as argument
     case (a, Def(VectorObjectZeros(len))) => a
-    case (Def(VectorObjectZeros(len)), b) => b
+    //case (Def(VectorObjectZeros(len)), b) => b  // this is unsafe because we lose the effectful operation (e.g. accumulation)
     case _ => super.vector_plusequals(x,y)
   }
 

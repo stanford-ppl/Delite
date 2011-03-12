@@ -49,7 +49,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
      x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
      block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double]): Rep[A] = {
 
-    var delta = unit(scala.Math.MAX_DOUBLE)
+    var delta = unit(scala.Double.MaxValue)
     var prev = unit(null).asInstanceOfL[A]
     var next = x
     var iter = unit(0)

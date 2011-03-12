@@ -38,13 +38,14 @@ trait RBM extends OptiMLApplication {
     val numbatches = trainingdata.numRows / numcases
 
     // Initialize symmetric weights and biases
-    var vishid = Matrix.randnf(numdims, numHiddenUnits) * 0.1f
-    var hidbiases = Vector.zerosf(numHiddenUnits)
-    var visbiases = Vector.zerosf(numdims)
+    val vishid = Matrix.mrandnf(numdims, numHiddenUnits) //* 0.1f
+    vishid mmap { _ * 0.1f }
+    val hidbiases = Vector.mzerosf(numHiddenUnits)
+    val visbiases = Vector.mzerosf(numdims)
 
-    var vishidinc = Matrix.zerosf(numdims, numHiddenUnits)
-    var hidbiasinc = Vector.zerosf(numHiddenUnits)
-    var visbiasinc = Vector.zerosf(numdims)
+    val vishidinc = Matrix.mzerosf(numdims, numHiddenUnits)
+    val hidbiasinc = Vector.mzerosf(numHiddenUnits)
+    val visbiasinc = Vector.mzerosf(numdims)
 
     tic
     var epoch = 0
@@ -79,13 +80,19 @@ trait RBM extends OptiMLApplication {
         // Update weights and biases
         //PerformanceTimer.start("RBM-biasupdates", false)
         val momentum = if (epoch > 5) finalmomentum else initialmomentum
-        vishidinc = vishidinc * momentum + ((posprods - negprods) / numcases  - (vishid * weightcost))*epsilonw
-        visbiasinc = visbiasinc * momentum + (posvisact - negvisact) * (epsilonvb / numcases)
-        hidbiasinc = hidbiasinc * momentum + (poshidact - neghidact) * (epsilonhb / numcases)
+        vishidinc mmap { _ * momentum }
+        vishidinc += ((posprods - negprods) / numcases  - (vishid * weightcost))*epsilonw
+        visbiasinc mmap { _ * momentum }
+        visbiasinc += (posvisact - negvisact) * (epsilonvb / numcases)
+        hidbiasinc mmap { _ * momentum }
+        hidbiasinc += (poshidact - neghidact) * (epsilonhb / numcases)
+        //vishidinc = vishidinc * momentum + ((posprods - negprods) / numcases  - (vishid * weightcost))*epsilonw
+        //visbiasinc = visbiasinc * momentum + (posvisact - negvisact) * (epsilonvb / numcases)
+        //hidbiasinc = hidbiasinc * momentum + (poshidact - neghidact) * (epsilonhb / numcases)
 
-        vishid = vishid + vishidinc
-        visbiases = visbiases + visbiasinc
-        hidbiases = hidbiases + hidbiasinc
+        vishid += vishidinc
+        visbiases += visbiasinc
+        hidbiases += hidbiasinc
         //PerformanceTimer.stop("RBM-biasupdates", false)
         batch += 1
       }

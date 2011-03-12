@@ -321,7 +321,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
                                                   block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) = {
 
-    var delta = var_new(unit(scala.Math.MAX_DOUBLE))
+    var delta = var_new(unit(scala.Double.MaxValue))
     var prev = var_new(unit(null).asInstanceOfL[A])
     var next = var_new(x)
     var iter = var_new(unit(0))

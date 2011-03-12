@@ -6,16 +6,16 @@ import ppl.delite.framework.DeliteApplication
 object GDARunner extends OptiMLApplicationRunner with GDA
 
 trait GDA extends OptiMLApplication {
-  def print_usage = {
+  def printUsage = {
     println("Usage: GDA <input data file> <output label data file>")
     exit(-1)
   }
 
   def main() = {
-    if (args.length < 2) print_usage
+    if (args.length < 2) printUsage
 
-    val x = MLInputReader.read(args(0))
-    val y = MLInputReader.readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
+    val x = loadMatrix(args(0))
+    val y = loadVector(args(1)).toBoolean(a => if (a <= 0) false else true)
 
     tic
 
@@ -36,8 +36,6 @@ trait GDA extends OptiMLApplication {
     * phi is a scalar, mu0 and mu1 are n dimensional vectors,
     * where n is the width of x, and sigma is an n x n matrix.
     */
-
-    // TODO: get unit out of client code
 
     /* This loop calculates all of the needed statistics with a single pass
        through the data.  */

@@ -40,37 +40,37 @@ trait OptiMLLift extends LiftVariables with LiftEquals with LiftString with Lift
 }
 
 trait OptiMLScalaOpsPkg extends Base
-    with Equal with IfThenElse with Variables with While with Functions
-    with ImplicitOps with OrderingOps with StringOps
-    with BooleanOps with PrimitiveOps with MiscOps with TupleOps
-    with MathOps with CastingOps
-    // only included because of args. TODO: investigate passing args as a vector
-    with ArrayOps
+  with Equal with IfThenElse with Variables with While with Functions
+  with ImplicitOps with OrderingOps with StringOps
+  with BooleanOps with PrimitiveOps with MiscOps with TupleOps
+  with MathOps with CastingOps
+  // only included because of args. TODO: investigate passing args as a vector
+  with ArrayOps
 
 trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg with DSLOpsExp
-    with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
-    with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
-    with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
-    with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp
+  with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
+  with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
+  with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
+  with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp
 
 trait OptiMLScalaCodeGenPkg extends ScalaGenDSLOps
-    with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenFunctions
-    with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
-    with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenTupleOps
-    with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps
-    { val IR: OptiMLScalaOpsPkgExp  }
+  with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenFunctions
+  with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
+  with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenTupleOps
+  with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps
+  { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
-    with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenFunctions
-    with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
-    with CudaGenPrimitiveOps with CudaGenMiscOps
-    with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps with CudaGenSetOps
-    { val IR: OptiMLScalaOpsPkgExp  }
+  with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenFunctions
+  with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
+  with CudaGenPrimitiveOps with CudaGenMiscOps
+  with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps with CudaGenSetOps
+  { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
-    with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
-    with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
-    with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps { val IR: OptiMLScalaOpsPkgExp  }
+  with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
+  with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
+  with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps { val IR: OptiMLScalaOpsPkgExp  }
 
 /**
  * This the trait that every OptiML application must extend.

@@ -49,25 +49,26 @@ trait kmeans extends OptiMLApplication {
       (0::k, *) { j =>
         //println("j: " + j)
         // this is much slower than the version below, even with variable boxing
-        val (weightedpoints, points) = t2( sum(0, m) { i =>
-          if (c(i) == j){
-            (x(i), unit(1.))
-          }
-          else {
-            (NilV[Double], unit(0.))
-          }
-        })
-        // TODO: this does not appear to work anymore (need to check effect ordering in generated code)
-//        val weightedpoints = Vector.mzeros(n)
-//        var points = 0
-//        var i = 0
-//        while (i < m){
+//        val (weightedpoints, points) = t2( sum(0, m) { i =>
 //          if (c(i) == j){
-//            weightedpoints += x(i) //TODO TR check mutable?
-//            points += 1
+//            (x(i), unit(1.))
 //          }
-//          i += 1
-//        }
+//          else {
+//            (NilV[Double], unit(0.))
+//          }
+//        })
+        // TODO: this does not appear to work anymore (need to check effect ordering in generated code)
+        val weightedpoints = Vector.mzeros(n)
+        //val weightedpoints = Vector.zeros(n)
+        var points = 0
+        var i = 0
+        while (i < m){
+          if (c(i) == j){
+            weightedpoints += x(i) //TODO TR check mutable?
+            points += 1
+          }
+          i += 1
+        }
         if (points == 0)
           points += 1
         weightedpoints / points

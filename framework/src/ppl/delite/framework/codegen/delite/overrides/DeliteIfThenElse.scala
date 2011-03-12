@@ -16,12 +16,17 @@ trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
     case Const(true) => thenp
     case Const(false) => elsep
     case _ =>
+//      val a = reifyEffectsHere(thenp)
+//      val b = reifyEffectsHere(elsep)
+//      (a,b) match {
+//        case (Def(Reify(_,_,_)), _) | (_, Def(Reify(_,_,_))) => reflectEffect(DeliteIfThenElse(cond,a,b))
+//        case _ => DeliteIfThenElse(cond, a, b)
+//      }
       val a = reifyEffectsHere(thenp)
       val b = reifyEffectsHere(elsep)
-      (a,b) match {
-        case (Def(Reify(_,_,_)), _) | (_, Def(Reify(_,_,_))) => reflectEffect(DeliteIfThenElse(cond,a,b))
-        case _ => DeliteIfThenElse(cond, a, b)
-      }
+      val ae = summarizeEffects(a)
+      val be = summarizeEffects(b)
+      reflectEffect(DeliteIfThenElse(cond,a,b), ae orElse be)
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
