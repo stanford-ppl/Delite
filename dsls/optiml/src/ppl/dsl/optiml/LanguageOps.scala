@@ -272,8 +272,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
     val mV = fresh[Int]
     val map = reifyEffects(block(mV))
-    // reflectEffect should not be necessary -- see IndexVectorConstruct for explanation
-    reflectEffect(Sum(start, end, mV, map))
+    Sum(start, end, mV, map)
   }
 
 

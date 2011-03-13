@@ -52,9 +52,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   def indexvector_construct[A:Manifest](x: Exp[IndexVector], block: Exp[Int] => Exp[A]): Exp[Vector[A]] = {
     val v = fresh[Int]
     val func = reifyEffects(block(v))
-    // TODO: right now only effectful dependencies are getting hoisted out of loops, when any free dep should
-    //IndexVectorConstruct(x, v, func)
-    reflectEffect(IndexVectorConstruct(x, v, func))
+    IndexVectorConstruct(x, v, func)
   }
 
 }
