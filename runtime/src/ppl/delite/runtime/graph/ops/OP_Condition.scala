@@ -16,9 +16,9 @@ class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Target
   def nestedGraphs = Seq(predicateGraph, thenGraph, elseGraph)
 
   def returner(indices: Seq[Int]) = {
-    if (thenGraph.result != null && !thenGraph.result._1.isInstanceOf[OP_Input])
+    if (thenGraph.result._1 != null && !thenGraph.result._1.isInstanceOf[OP_Input])
       thenGraph.result._1.scheduledResource
-    else if (elseGraph.result != null && !elseGraph.result._1.isInstanceOf[OP_Input])
+    else if (elseGraph.result._1 != null && !elseGraph.result._1.isInstanceOf[OP_Input])
       elseGraph.result._1.scheduledResource
     else indices(0)
   }
