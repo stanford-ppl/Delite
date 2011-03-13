@@ -16,6 +16,9 @@ import ppl.dsl.optiml.vector._
 import ppl.dsl.optiml.matrix._
 import ppl.dsl.optiml.graph._
 
+import ppl.dsl.optiml.library.cluster._
+
+
 
 
 /**
@@ -26,11 +29,14 @@ import ppl.dsl.optiml.graph._
 trait OptiMLApplicationRunner extends OptiMLApplication with DeliteApplication with OptiMLExp
 
 // ex. trait GDA extends OptiMLApplication
-trait OptiMLApplication extends OptiML with OptiMLLift {
+trait OptiMLApplication extends OptiML with OptiMLLift with OptiMLLibrary {
   var args: Rep[Array[String]]
   def main(): Unit
 }
 
+trait OptiMLLibrary extends OptiMLKmeans {
+  this: OptiMLApplication =>
+}
 
 /**
  * These are the portions of Scala imported into OptiML's scope.

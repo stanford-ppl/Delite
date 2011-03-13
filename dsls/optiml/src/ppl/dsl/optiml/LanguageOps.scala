@@ -45,6 +45,8 @@ trait LanguageOps extends Base { this: OptiML =>
       case _ => throw new UnsupportedOperationException()
   }
 
+  def random(max: Rep[Int]): Rep[Int] = optiml_rand_int_max(max)
+
   def randomGaussian = optiml_rand_gaussian
 
   def reseed {
@@ -61,6 +63,7 @@ trait LanguageOps extends Base { this: OptiML =>
   def optiml_rand_double(): Rep[Double]
   def optiml_rand_float(): Rep[Float]
   def optiml_rand_int(): Rep[Int]
+  def optiml_rand_int_max(max: Rep[Int]): Rep[Int]
   def optiml_rand_long(): Rep[Long]
   def optiml_rand_boolean(): Rep[Boolean]
   def optiml_rand_gaussian(): Rep[Double]
@@ -223,6 +226,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class RandDouble() extends Def[Double]
   case class RandFloat() extends Def[Float]
   case class RandInt() extends Def[Int]
+  case class RandIntMax(max: Exp[Int]) extends Def[Int]
   case class RandLong() extends Def[Long]
   case class RandBoolean() extends Def[Boolean]
 
@@ -243,6 +247,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def optiml_rand_double() = reflectEffect(RandDouble())
   def optiml_rand_float() = reflectEffect(RandFloat())
   def optiml_rand_int() = reflectEffect(RandInt())
+  def optiml_rand_int_max(max: Exp[Int]) = reflectEffect(RandIntMax(max))
   def optiml_rand_long() = reflectEffect(RandLong())
   def optiml_rand_boolean() = reflectEffect(RandBoolean())
   def optiml_rand_gaussian() = reflectEffect(RandGaussian())
@@ -407,6 +412,7 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
       case RandDouble() => emitValDef(sym, "generated.scala.Global.randRef.nextDouble()")
       case RandFloat() => emitValDef(sym, "generated.scala.Global.randRef.nextFloat()")
       case RandInt() => emitValDef(sym, "generated.scala.Global.randRef.nextInt()")
+      case RandIntMax(max) => emitValDef(sym, "generated.scala.Global.randRef.nextInt(" + quote(max) + ")")
       case RandLong() => emitValDef(sym, "generated.scala.Global.randRef.nextLong()")
       case RandBoolean() => emitValDef(sym, "generated.scala.Global.randRef.nextBoolean()")
       case RandGaussian() => emitValDef(sym, "generated.scala.Global.randRef.nextGaussian()")
