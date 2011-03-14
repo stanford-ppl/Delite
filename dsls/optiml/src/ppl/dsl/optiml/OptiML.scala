@@ -83,7 +83,7 @@ trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
  */
 trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with ArithOps with CloneableOps
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps
-  with IndexVectorOps with IndexVector2Ops
+  with IndexVectorOps with IndexVector2Ops with StreamOps
   with GraphOps with VerticesOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps
   with LabelsOps with TrainingSetOps with ImageOps with GrayscaleImageOps {
 
@@ -100,8 +100,8 @@ trait OptiMLCompiler extends OptiML with RangeOps with IOOps with SeqOps with Se
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with LanguageOpsExp with ApplicationOpsExp with ArithOpsExpOpt
-  with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp 
-  with MLOutputWriterOpsExp with VectorViewOpsExp with IndexVectorOpsExp with IndexVector2OpsExp
+  with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp
+  with IndexVectorOpsExp with IndexVector2OpsExp with StreamOpsExp
   with LabelsOpsExp with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard
@@ -149,10 +149,10 @@ trait OptiMLCodeGenBase extends GenericFatCodegen {
     outDir.mkdirs()
 
     for (f <- dsDir.listFiles) {
-      if (specialize contains (f.getName())) {
+      if (specialize contains (f.getName().substring(0, f.getName().indexOf(".")))) {
         genSpec(f, dsOut)
       }
-      if (specialize2 contains (f.getName())) {
+      if (specialize2 contains (f.getName().substring(0, f.getName().indexOf(".")))) {
         genSpec2(f, dsOut)
       }
       val outFile = dsOut + "/" + f.getName()
@@ -168,7 +168,7 @@ trait OptiMLCodeGenBase extends GenericFatCodegen {
 trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
   with ScalaGenApplicationOps
   with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
-  with ScalaGenIndexVectorOps with ScalaGenIndexVector2Ops
+  with ScalaGenIndexVectorOps with ScalaGenIndexVector2Ops with ScalaGenStreamOps
   with ScalaGenGraphOps with ScalaGenVerticesOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenMessageEdgeOps with ScalaGenMessageVertexOps
   with ScalaGenLabelsOps with ScalaGenTrainingSetOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with ScalaGenImageOps with ScalaGenGrayscaleImageOps
@@ -176,9 +176,9 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   
   val IR: DeliteApplication with OptiMLExp
 
-  override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala", "LabelsImpl.scala",
-                                "ImageImpl.scala", "StreamImpl.scala")
-  override val specialize2 = Set("TrainingSetImpl.scala")
+  override val specialize = Set("VectorImpl", "MatrixImpl", "VectorViewImpl", "LabelsImpl",
+                                "ImageImpl", "StreamImpl")
+  override val specialize2 = Set("TrainingSetImpl")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
@@ -231,16 +231,19 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   override def dsmap(line: String) : String = {
     var res = line.replaceAll("ppl.dsl.optiml.datastruct", "generated")
     res = res.replaceAll("ppl.delite.framework", "generated.scala")
-	for(tpe1 <- List("Int","Long","Double","Float","Boolean")) {
-    	res = res.replaceAll("VectorImpl\\["+tpe1+"\\]", tpe1+"VectorImpl")
-    	res = res.replaceAll("VectorViewImpl\\["+tpe1+"\\]", tpe1+"VectorViewImpl")
-    	res = res.replaceAll("MatrixImpl\\["+tpe1+"\\]", tpe1+"MatrixImpl")
-    	res = res.replaceAll("LabelsImpl\\["+tpe1+"\\]", tpe1+"LabelsImpl")
-		for(tpe2 <- List("Int","Long","Double","Float","Boolean")) {
-    		res = res.replaceAll("TrainingSetImpl\\["+tpe1+","+tpe2+"\\]", tpe1+tpe2+"TrainingSetImpl")
-    		res = res.replaceAll("TrainingSetImpl\\["+tpe1+", "+tpe2+"\\]", tpe1+tpe2+"TrainingSetImpl")
-		}
-	}
+
+    for(tpe1 <- List("Int","Long","Double","Float","Boolean")) {
+      for (s <- specialize) {
+        res = res.replaceAll(s+"\\["+tpe1+"\\]", tpe1+s)
+      }
+      for(tpe2 <- List("Int","Long","Double","Float","Boolean")) {
+        for (s <- specialize2) {
+          // should probably parse and trim whitespace, this is fragile
+          res = res.replaceAll(s+"\\["+tpe1+","+tpe2+"\\]", tpe1+tpe2+s)
+          res = res.replaceAll(s+"\\["+tpe1+", "+tpe2+"\\]", tpe1+tpe2+s)
+        }
+		  }
+	  }
     res
   }
 }

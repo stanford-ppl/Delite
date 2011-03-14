@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.datastruct.scala
 
-class StreamImpl[T:ClassManifest](nRows: Int, nCols: Int, func: (Int,Int) => T) extends Stream[T] {
+class StreamImpl[T:Manifest](nRows: Int, nCols: Int, chunkSize: Int, func: (Int,Int) => T) extends Stream[T] {
   var currentChunk = 0
 
   protected var _numRows = nRows
@@ -9,11 +9,15 @@ class StreamImpl[T:ClassManifest](nRows: Int, nCols: Int, func: (Int,Int) => T) 
 
   def numRows = _numRows
   def numCols = _numCols
-  def size = _numRows*_numCols
+  def effRows = math.min(_numRows, chunkSize)
+  def size = _numCols*effRows
   def data = _data
 
-  def init(offset: Int, chunkSize: Int) {
-    for (i <- 0 until chunkSize) {
+  if (size < 0) throw new RuntimeException("Stream overflowed during initialization")
+
+  // TODO: initialize should be parallelized (move to DeliteOps) if it is safe; e.g. func is pure
+  def init(offset: Int) {
+    for (i <- 0 until effRows) {
       for (j <- 0 until nCols) {
         _data(i*numCols+j) = func(offset+i,j)
       }

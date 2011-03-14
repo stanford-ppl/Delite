@@ -317,7 +317,11 @@ trait MessageData
  */
 
 trait Stream[@specialized(Boolean, Int, Long, Float, Double) T] {
-
+  def numRows: Int
+  def numCols: Int
+  def init(offset: Int)
+  def chunkRow(idx: Int): VectorView[T]
+  def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
 }
 
 

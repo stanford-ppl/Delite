@@ -1,4 +1,4 @@
-package ppl.dsl.optiml.matrix
+package ppl.dsl.optiml
 
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
 import ppl.dsl.optiml.datastruct.scala.{Vector, Stream, StreamImpl}
@@ -8,7 +8,6 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.{VariablesExp, Variables, DSLOpsExp, CGenBase, CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
-import ppl.dsl.optiml.{OptiML, OptiMLExp}
 
 /**
  * Streams are Matrix-like, but are not Matrices. A Stream (slice) can be converted to a Vector or Matrix.
@@ -18,7 +17,7 @@ trait StreamOps extends DSLType with Variables {
   this: OptiML =>
 
   object Stream {
-    def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(func: (Rep[Int],Rep[Int]) => Rep[Double]) = stream_obj_new(numRows, numCols, func)
+    def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(func: (Rep[Int],Rep[Int]) => Rep[A]) = stream_obj_new(numRows, numCols, func)
   }
 
   implicit def repStreamToStreamOps[A:Manifest](x: Rep[Stream[A]]) = new streamOpsCls(x)
@@ -32,7 +31,7 @@ trait StreamOps extends DSLType with Variables {
   }
 
   // object defs
-  def stream_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int], func: (Rep[Int],Rep[Int]) => Rep[Double]): Rep[Stream[A]]
+  def stream_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int], func: (Rep[Int],Rep[Int]) => Rep[A]): Rep[Stream[A]]
 
   // class defs
   def stream_numrows[A:Manifest](x: Rep[Stream[A]]): Rep[Int]
@@ -45,19 +44,19 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   this: OptiMLExp  =>
 
   // used for all operations
-  val chunkSize = 100000
+  val chunkSize = 10000
 
   //////////////////////////////////////////////////
   // implemented via method on real data structure
 
-  case class StreamObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], func: Rep[(Int,Int) => Double]) extends Def[Stream[A]] {
+  case class StreamObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], chunkSize: Exp[Int], func: Rep[(Int,Int) => A]) extends Def[Stream[A]] {
     val mI = manifest[StreamImpl[A]]
   }
   case class StreamNumRows[A:Manifest](x: Exp[Stream[A]]) extends Def[Int]
   case class StreamNumCols[A:Manifest](x: Exp[Stream[A]]) extends Def[Int]
   case class StreamChunkRow[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int]) extends Def[Vector[A]]
 
-  case class StreamInit[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], chunkSize: Exp[Int]) extends Def[Unit]
+  case class StreamInit[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int]) extends Def[Unit]
 
   ////////////////////////////////
   // implemented via delite ops
@@ -68,7 +67,9 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     val i = fresh[Int]
     val sync = reifyEffects(List())
     val in = reifyEffects {
-      val size = Math.max(chunkSize, x.numRows - offset*chunkSize).asInstanceOfL[Int]
+      val remainingRows = x.numRows - offset*chunkSize
+      val leftover = if (remainingRows < 0) x.numRows else remainingRows
+      val size = Math.min(chunkSize, leftover).asInstanceOfL[Int]
       var tcoll = Vector[Vector[A]](size, unit(false))
        for (i <- 0 until size){
          tcoll(i) = stream_chunkrow(x, i)
@@ -80,8 +81,8 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   ////////////////////
   // object interface
 
-  def stream_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], func: (Rep[Int],Rep[Int]) => Rep[Double])
-    = reflectEffect(StreamObjectNew[A](numRows, numCols, doLambda2(func)))
+  def stream_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], func: (Rep[Int],Rep[Int]) => Rep[A])
+    = reflectEffect(StreamObjectNew[A](numRows, numCols, chunkSize, doLambda2(func)))
 
   ////////////////////
   // class interface
@@ -95,10 +96,10 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
 
     // we do not know at compile time how many streaming chunks are needed (therefore how many ops to submit)
     // so we submit a While loop, where each iteration of the while depends on the next, and let the runtime unroll it
-    val numChunks = x.numRows / chunkSize
+    val numChunks = Math.ceil(x.numRows / unit(chunkSize).doubleValue()).asInstanceOfL[Int]
     val i = var_new(0)
     while (i < numChunks) {
-      val init = reflectWrite(x)(StreamInit(x, i, chunkSize))
+      val init = reflectWrite(x)(StreamInit(x, i))
       reflectEffect(StreamForeachRow(x, i, v, func, init)) // read??
       i += 1
     }
@@ -107,7 +108,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   ///////////////////
   // internal
 
-  def stream_chunkrow[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int]) = StreamChunkRow(x, idx)
+  def stream_chunkrow[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int]) = reflectPure(StreamChunkRow(x, idx))
 }
 
 
@@ -116,12 +117,12 @@ trait ScalaGenStreamOps extends ScalaGenBase {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case m@StreamObjectNew(numRows, numCols, func) => emitValDef(sym, "new " + remap(m.mI) + "(" + quote(numRows) + ","
-                                                                       + quote(numCols) + "," + quote(func) + ")")
+    case m@StreamObjectNew(numRows, numCols, chunkSize, func) => emitValDef(sym, "new " + remap(m.mI) + "(" + quote(numRows) + ","
+                                                                       + quote(numCols) + "," + quote(chunkSize) + "," + quote(func) + ")")
     case StreamNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case StreamNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
     case StreamChunkRow(x, idx) => emitValDef(sym, quote(x) + ".chunkRow(" + quote(idx) + ")")
-    case StreamInit(x, idx, chunkSize) => emitValDef(sym, quote(x) + ".init(" + quote(idx) + "," + quote(chunkSize) + ")")
+    case StreamInit(x, idx) => emitValDef(sym, quote(x) + ".init(" + quote(idx) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

@@ -32,7 +32,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   
   val scalaToolsSnapshots = ScalaToolsSnapshots
 
-  val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT" % "test"
+  val scalatest = "org.scalatest" % "scalatest" % "1.3"
   
   // Define project class with default source tree layout
   class FlatProject(info: ProjectInfo) extends DefaultProject(info) {
@@ -46,7 +46,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
     
     val scalaToolsSnapshots = ScalaToolsSnapshots
-    //val scalatest = "org.scalatest" % "scalatest" % "1.2.1-SNAPSHOT"
+    val scalatest = "org.scalatest" % "scalatest" % "1.3"
     
     override def localScala =
     defineScala("2.9.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
@@ -73,4 +73,6 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   class APPs(info: ProjectInfo) extends DefaultProject(info) {
 	  lazy val scala = project("scala", "Scala Apps", new FlatProject(_), framework, dsls)
   }
+  
+  lazy val tests = project("tests", "Delite Tests", new FlatProject(_), framework, dsls, apps)  
 }
