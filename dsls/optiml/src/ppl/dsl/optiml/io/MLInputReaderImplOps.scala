@@ -116,7 +116,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     // tokens
     val tokenlist = xs.readLine()
 
-    val trainCatSeq = Vector[Double]()
+    val trainCatSeq = Vector[Double](0,true)
     for (m <- 0 until numDocs){
       line = xs.readLine()
       line = line.trim()
@@ -215,7 +215,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     temp = file.readLine().trim.split(" ")
     if (temp(0) != "Occlusions:") error("Illegal data format")
     val occlusionsSize = Integer.parseInt(temp(1))
-    val occlusions = Vector[Vector[Int]]()
+    val occlusions = Vector[Vector[Int]](0,true)
     val occlusionsString = file.readLine().trim.split(" ")
     if (occlusionsSize != 0) error("Occlusions not supported.")
 

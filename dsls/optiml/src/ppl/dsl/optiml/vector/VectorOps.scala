@@ -15,32 +15,22 @@ trait VectorOps extends DSLType with Variables {
   this: OptiML =>
 
   object Vector {
-    def apply[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) = vector_obj_new(len, isRow)
-    // this works, but generates painfully inefficient code because the Const(List(..)) symbol gets inlined each
-    // time it is used, rather than stored as a value, because consts are not treated like dependencies in 'syms'.
-    def apply[A:Manifest](xs: A*) = {
-      // Seq gets lifted into a WrappedArray Const, which can't be instantiated from generated code
-      //val xs2 = unit(xs.toList)
-      //vector_obj_fromseq(xs2)
-      //reifyEffects {
-        val out = vector_obj_new[A](unit(0),unit(true))
-        // interpreted (not lifted)
-        xs.foreach { out += unit(_) }
-        out
-      //}
+    def apply[A:Manifest](len: Int, isRow: Boolean) = vector_obj_new(unit(len), unit(isRow)) // needed to resolve ambiguities
+    def apply[A](len: Rep[Int], isRow: Rep[Boolean])(implicit mA: Manifest[A], o: Overloaded1) = vector_obj_new(len, isRow)
+//    def apply[A:Manifest](xs: A*) = {
+//      val out = vector_obj_new[A](unit(0),unit(true))
+//      // interpreted (not lifted)
+//      xs.foreach { out += unit(_) }
+//      out
+//    }
+    def apply[A](xs: Rep[A]*)(implicit mA: Manifest[A], o: Overloaded2) = {
+      val out = vector_obj_new[A](unit(0),unit(true))
+      // interpreted (not lifted)
+      xs.foreach { out += _ }
+      out
     }
-    // this doesn't work because if we don't lift the Seq, we can't generate code for it
-    // if we do lift the Seq, we have a Rep[Seq[Rep[A]], which has the problems discussed below
-    //def apply[A:Manifest](xs: Rep[A]*) = {}
 
-    // this is problematic.. should this be Rep[Vector[Rep[Vector[A]]] or Rep[Vector[Vector[A]]]?
-    // we have this issue for all containers; with the current implementation only the latter makes sense, but how
-    // is it ever instantiated? Vector(Vector(1,2,3)) will return a Rep[Vector[Rep[Vector[Int]]]
-    // a Rep[Vector[Rep[Vector[Int]]]'s apply method would return a Rep[Rep[Vector[Int]]], which is obviously not what we want
-    // one option is to make containers always contain Reps explicitly; but this is a bit uglier and
-    // then we need a way of instantiating a manifest for Rep[A]
     def flatten[A:Manifest](pieces: Rep[Vector[Vector[A]]]) = vector_obj_flatten(pieces)
-
     def ones(len: Rep[Int]) = vector_obj_ones(len)
     def onesf(len: Rep[Int]) = vector_obj_onesf(len)
     def zeros(len: Rep[Int]) = vector_obj_zeros(len)
@@ -56,7 +46,6 @@ trait VectorOps extends DSLType with Variables {
   }
 
   implicit def repVecToVecOps[A:Manifest](x: Rep[Vector[A]]) = new vecOpsCls(x)
-  //implicit def vecToVecOps[A:Manifest](x: Vector[A]) = new vecOpsCls(x)
   implicit def varToVecOps[A:Manifest](x: Var[Vector[A]]) = new vecOpsCls(readVar(x))
 
   /**
@@ -136,10 +125,10 @@ trait VectorOps extends DSLType with Variables {
     // ordering operations
     def sort(implicit o: Ordering[A]) = vector_sort(x)
     def min(implicit o: Ordering[A]) = vector_min(x)
-    //def minIndex(implicit o: Ordering[A]) = vector_minindex(x)
+    def minIndex(implicit o: Ordering[A]) = vector_minindex(x)
     def max(implicit o: Ordering[A]) = vector_max(x)
     def max[B](key: Rep[A] => Rep[B])(implicit o: Ordering[B], mB: Manifest[B]) = vector_max_key(x, key)
-    //def maxIndex(implicit o: Ordering[A]) = vector_maxIndex(x)
+    def maxIndex(implicit o: Ordering[A]) = vector_maxindex(x)
     def median(implicit o: Ordering[A]) = vector_median(x)
     def :>(y: Rep[Vector[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a > b }
     def :<(y: Rep[Vector[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a < b }
@@ -226,10 +215,10 @@ trait VectorOps extends DSLType with Variables {
 
   def vector_sort[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_min[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[A]
-  //def vector_minIndex[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[Int]
+  def vector_minindex[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[Int]
   def vector_max[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[A]
   def vector_max_key[A:Manifest,B:Manifest:Ordering](x: Rep[Vector[A]], key: Rep[A] => Rep[B]): Rep[A]
-  //def vector_maxIndex[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[Int]
+  def vector_maxindex[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[Int]
   def vector_median[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[A]
 
   def vector_map[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[B]): Rep[Vector[B]]
@@ -367,6 +356,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
   case class VectorDistinct[A:Manifest](x: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(vector_distinct_impl[A](x)))
+
+  case class VectorMinIndex[A:Manifest:Ordering](x: Exp[Vector[A]])
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_min_index_impl[A](x)))
+
+  case class VectorMaxIndex[A:Manifest:Ordering](x: Exp[Vector[A]])
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_max_index_impl[A](x)))
 
 
 
@@ -702,7 +697,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     case Reflect(VectorIsRow(x), u, es) => reflectMirrored(Reflect(VectorIsRow(f(x)), mapOver(f,u), f(es)))
     case Reflect(VectorForeach(a,b,c), u, es) => reflectMirrored(Reflect(VectorForeach(f(a),f(b).asInstanceOf[Sym[Int]],f(c)), mapOver(f,u), f(es)))
     // FIXME: problem with VectorTimes: it's actually a loop and if it is reflected it means a.length will also reflect and we have no context here!!!
-    case Reflect(e2@VectorTimes(a,b), u, es) => error("we'd rather not mirror " + unit(e)); //reflectMirrored(Reflect(VectorTimes(f(a),f(b))(e.mev,e.aev), Read(f onlySyms rs), f(es)))
+    case Reflect(e2@VectorTimes(a,b), u, es) => error(unit("we'd rather not mirror ") + unit(e)); //reflectMirrored(Reflect(VectorTimes(f(a),f(b))(e.mev,e.aev), Read(f onlySyms rs), f(es)))
     case Reflect(VectorUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VectorUpdate(f(l),f(i),f(r)), mapOver(f,u), f(es)))
     // allocations TODO: generalize
     case Reflect(VectorObjectZeros(x), u, es) => reflectMirrored(Reflect(VectorObjectZeros(f(x)), mapOver(f,u), f(es)))
@@ -779,9 +774,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
   def vector_sort[A:Manifest:Ordering](x: Exp[Vector[A]]) = reflectPure(VectorSort(x))
   def vector_min[A:Manifest:Ordering](x: Exp[Vector[A]]) = reflectPure(VectorMin(x))
-  //def vector_minIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMinIndex(x)
+  def vector_minindex[A:Manifest:Ordering](x: Exp[Vector[A]]) = reflectPure(VectorMinIndex(x))
   def vector_max[A:Manifest:Ordering](x: Exp[Vector[A]]) = reflectPure(VectorMax(x))
-  //def vector_maxIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) = VectorMaxIndex(x)
+  def vector_maxindex[A:Manifest:Ordering](x: Exp[Vector[A]]) = reflectPure(VectorMaxIndex(x))
   def vector_median[A:Manifest:Ordering](x: Exp[Vector[A]]) = reflectPure(VectorMedian(x))
   def vector_max_key[A:Manifest,B:Manifest:Ordering](x: Exp[Vector[A]], key: Exp[A] => Exp[B]) = reflectPure(VectorMaxKey(x, key))
 

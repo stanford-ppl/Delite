@@ -11,6 +11,9 @@ trait LanguageImplOps { this: OptiML =>
 
   def optiml_vectordistance_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int]): Rep[A]
   def optiml_matrixdistance_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int]): Rep[A]
+
+  def optiml_randsample_matrix_impl[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean]): Rep[Matrix[A]]
+  def optiml_randsample_vector_impl[A:Manifest](v: Rep[Vector[A]], numSamples: Rep[Int]): Rep[Vector[A]]
 }
 
 trait LanguageImplOpsStandard extends LanguageImplOps {
@@ -129,4 +132,67 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
       exit(0)
     }
   }
+
+  // TODO: refactor to call sampleCollection
+  def optiml_randsample_matrix_impl[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean]): Rep[Matrix[A]] = {
+    val length = if (sampleRows) m.numRows else m.numCols
+    val newRows = if (sampleRows) numSamples else m.numRows
+    val newCols = if (sampleRows) m.numCols else numSamples
+
+    val sampled = if(sampleRows) Matrix[A](0, newCols)
+                  else Matrix[A](0,newRows) // transposed for efficiency
+
+    val candidates = (0::length).cloneL // .mutable
+
+    // transpose to make constructing sampling more efficient
+    val mt = if (sampleRows) m else m.t
+
+    for (i <- 0 until numSamples){
+      val r = i + random(length-i)
+      val idx = candidates(r)
+      sampled += mt(idx).cloneL
+
+      // remove index r from consideration
+      val t = candidates(r)
+      candidates(r) = candidates(i)
+      candidates(i) = t
+    }
+
+    if (sampleRows) sampled else sampled.t
+  }
+
+  def optiml_randsample_vector_impl[A:Manifest](v: Rep[Vector[A]], numSamples: Rep[Int]): Rep[Vector[A]] = {
+    val candidates = (0::numSamples).cloneL // .mutable
+
+    val sampled = Vector[A](0, v.isRow)
+    for (i <- 0 until numSamples){
+      val r = i + random(numSamples - i)
+      val idx = candidates(r)
+      sampled += v(idx)
+
+      // remove index r from consideration
+      val t = candidates(r)
+      candidates(r) = candidates(i)
+      candidates(i) = t
+    }
+
+    sampled
+  }
+
+  /*
+  private def sampleCollection[A:Manifest](in: Rep[DeliteCollection[A]], out: Rep[DeliteCollection[A]], numSamples: Rep[Int]): Rep[DeliteCollection[A]] = {
+    val candidates = (0::numSamples).cloneL // .mutable
+
+    for (i <- 0 until numSamples){
+      val r = i + random(numSamples - i)
+      val idx = candidates(r)
+      sampled.dcUpdate(i, in.dcApply(idx))
+
+      // remove index r from consideration
+      val t = candidates(r)
+      candidates(r) = candidates(i)
+      candidates(i) = t
+    }
+  }
+  */
 }

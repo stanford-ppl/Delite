@@ -16,7 +16,7 @@ trait RBM_kernels extends OptiMLApplication {
     val mat1_out = mat1.sigmoidf
     println(mat1_out)
 
-    val vec2 = Vector[Float](10)
+    val vec2 = Vector[Float](10,true)
     val vec2_out = vec2.replicate(10,1)
     println(vec2_out)
     

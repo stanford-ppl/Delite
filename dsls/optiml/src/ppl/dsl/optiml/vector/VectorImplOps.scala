@@ -29,6 +29,8 @@ trait VectorImplOps { this: OptiML =>
   def vector_partition_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[Vector[A]],Rep[Vector[A]])
   def vector_contains_impl[A:Manifest](v: Rep[Vector[A]], elem: Rep[A]): Rep[Boolean]
   def vector_distinct_impl[A:Manifest](v: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_min_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
+  def vector_max_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
@@ -233,6 +235,36 @@ trait VectorImplOpsStandard extends VectorImplOps {
      i += 1
     }
     result
+  }
+
+  def vector_min_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
+    var minIndex = 0
+    var min = v(0)
+    var j = 1
+    while( j < v.length ){
+      if (v(j) < min) {
+        min = v(j)
+        minIndex = j
+      }
+      j += 1
+    }
+
+    minIndex
+  }
+
+  def vector_max_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
+    var maxIndex = 0
+    var max = v(0)
+    var j = 1
+    while( j < v.length ){
+      if (v(j) > max) {
+        max = v(j)
+        maxIndex = j
+      }
+      j += 1
+    }
+
+    maxIndex
   }
 
 }
