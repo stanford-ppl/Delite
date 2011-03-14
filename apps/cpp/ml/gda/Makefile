@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-c -O3 -Wall -I../../ -I../../../../../../boost/boost_1_46_0
+CFLAGS=-c -O3 -Wall -I../../ -I/home/hchafi/projects/boost/boost_1_46_0
 LDFLAGS= -O3
 HEADERS= ../OptiML.hpp
 SOURCES=GDA.cpp 
