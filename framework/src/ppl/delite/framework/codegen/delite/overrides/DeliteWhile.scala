@@ -13,22 +13,17 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
   case class DeliteWhile(cond: Exp[Boolean], body: Exp[Unit]) extends DeliteOpWhileLoop
 
   override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit]) {
-/*
-    //TR don't evaluate cond twice!!!!!
-
-    cond match {
-      case Const(true) => // print warning?
-      case Const(false) => return
-      case _ => // pass
-    }
-    
-    // can pattern match on result of reifyEffects if required
-*/
     //val c = reifyEffects(cond)
     //val a = reifyEffects(body)
     // TODO: reflectEffect(new While(c, a) with DeliteOpWhile))
     //reflectEffect(DeliteWhile(c, a))
     val c = reifyEffects(cond)
+    c match {
+      case Const(true)  => // print warning?
+      case Const(false)  => return
+      case _ => // pass
+    }
+
     val a = reifyEffects(body)
     val ce = summarizeEffects(c)
     val ae = summarizeEffects(a)

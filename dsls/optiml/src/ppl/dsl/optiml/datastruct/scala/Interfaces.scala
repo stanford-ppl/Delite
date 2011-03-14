@@ -311,6 +311,16 @@ trait MessageEdge extends Edge {
 
 trait MessageData
 
+
+/**
+ * Stream
+ */
+
+trait Stream[@specialized(Boolean, Int, Long, Float, Double) T] {
+
+}
+
+
 /**
  * Ref
  */

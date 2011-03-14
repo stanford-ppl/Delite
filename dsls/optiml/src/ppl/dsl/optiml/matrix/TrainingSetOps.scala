@@ -9,6 +9,8 @@ import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import scala.virtualization.lms.common.{Variables, Base, BaseExp, CGenBase, CudaGenBase, ScalaGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
 
+// TODO: should TrainingSet be a Stream instead of a Matrix?
+
 trait TrainingSetOps extends DSLType with Variables with OverloadHack {
   this: OptiML =>
 

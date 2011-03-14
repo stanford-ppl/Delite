@@ -63,6 +63,7 @@ trait Downsampling {
         densities.updatev(neighbors,c)               // approximately update
       }
     }
+    densities
     */
 
     /*
