@@ -1,10 +1,10 @@
 CC=g++
-CFLAGS=-c -O3 -Wall -I../../ -I/home/hchafi/projects/boost/boost_1_46_0
-LDFLAGS= -O3
+CFLAGS=-c -O3 -Wall -I../../
+LDFLAGS= -O3 -larmadillo
 HEADERS= ../OptiML.hpp
-SOURCES=GDA.cpp 
+SOURCES=GDA_arma.cpp
 OBJECTS=$(SOURCES:.cpp=.o)
-EXECUTABLE=GDA
+EXECUTABLE=GDA_arma 
 
 all: $(SOURCES) $(EXECUTABLE)
 

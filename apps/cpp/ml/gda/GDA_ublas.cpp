@@ -22,8 +22,10 @@ int main(int argc,char *argv[]) {
 
   matrix<double> x = OptiML::ublas::MLInputReader::readDoubleMatrix(argv[1]);
   vector<bool>   y = OptiML::ublas::MLInputReader::readBooleanVector(argv[2]);
-
-  cout << "Computing GDA\n";
+  
+  cout << "Computing GDA using ublas\n";
+  
+  OptiML::tic();
   
   uint m = y.size();
   uint n = x.size2();
@@ -56,8 +58,9 @@ int main(int argc,char *argv[]) {
     }
   }
   
+  OptiML::toc();
   //  cout << "phi: " << phi << endl << "sigma: ";
   //OptiML::ublas::Matrix::pprint(sigma);
-  return 0;
 
+  return 0;
 }
