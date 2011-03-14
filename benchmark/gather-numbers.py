@@ -138,7 +138,7 @@ def launchApps(options):
         #do it for each thread configuration
         if options['run']['smp']: 
             for numThreads in options['delite.threads']:
-                opts = "-Ddelite.home=" + props['delite.home'] + " -Ddelite.threads=" + str(numThreads) + " -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + props['delite.home']  + "/benchmark/times -Dstats.output.filename=" + app + "-smp-" +str(numThreads) + ".times"         
+                opts = "-Ddelite.debug.print.sources -Ddelite.home=" + props['delite.home'] + " -Ddelite.threads=" + str(numThreads) + " -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + props['delite.home']  + "/benchmark/times -Dstats.output.filename=" + app + "-smp-" +str(numThreads) + ".times"         
                 os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
                 os.putenv("MKL_NUM_THREADS", str(numThreads))
                 print "== executing application: " + app + " " + params[app],
