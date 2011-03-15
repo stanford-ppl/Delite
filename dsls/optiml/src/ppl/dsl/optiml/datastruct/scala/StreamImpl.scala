@@ -1,28 +1,32 @@
 package ppl.dsl.optiml.datastruct.scala
 
-class StreamImpl[T:Manifest](nRows: Int, nCols: Int, chunkSize: Int, func: (Int,Int) => T) extends Stream[T] {
-  var currentChunk = 0
-
-  protected var _numRows = nRows
-  protected var _numCols = nCols
+class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: Int, val func: (Int,Int) => T, val isPure: Boolean) extends Stream[T] {
+//  var currentChunk = 0
   protected var _data: Array[T] = new Array[T](size)
 
-  def numRows = _numRows
-  def numCols = _numCols
-  def effRows = math.min(_numRows, chunkSize)
-  def size = _numCols*effRows
+  def bufRows = math.min(numRows, chunkSize)
+  def size = numCols*bufRows
   def data = _data
 
   if (size < 0) throw new RuntimeException("Stream overflowed during initialization")
 
-  // TODO: initialize should be parallelized (move to DeliteOps) if it is safe; e.g. func is pure
-  def init(offset: Int) {
-    for (i <- 0 until effRows) {
-      for (j <- 0 until nCols) {
-        _data(i*numCols+j) = func(offset+i,j)
-      }
+  def rowsIn(offset: Int) = {
+    val remainingRows = numRows - offset*chunkSize
+    val leftover = if (remainingRows < 0) numRows else remainingRows // in case numRows < chunkSize
+    math.min(chunkSize, leftover).asInstanceOf[Int]
+  }
+
+  def initChunk(offset: Int) {
+    for (i <- 0 until rowsIn(offset)) {
+      initRow(i, offset)
     }
-    currentChunk = offset
+//    currentChunk = offset
+  }
+
+  def initRow(row: Int, offset: Int) {
+    for (j <- 0 until numCols) {
+      _data(row*numCols+j) = func(offset*chunkSize+row,j)
+    }
   }
 
   // chunk management must be done inside the op (foreachRows), not in the impl

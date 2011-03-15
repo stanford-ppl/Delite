@@ -22,7 +22,11 @@ trait StreamTests extends OptiMLApplication {
     Stream[Int](1000, 1000){ (i,j) => random[Int] }
   }
 
-  def testInitLarge() = {
+  def testInitPureLarge() = {
+    Stream[Int](1000000, 10000){ (i,j) => i+j }
+  }
+
+  def testInitEffectLarge() = {
     Stream[Int](1000000, 10000){ (i,j) => random[Int] }
   }
 
@@ -30,11 +34,38 @@ trait StreamTests extends OptiMLApplication {
     s.foreachRow { v => println("row sum: " + v.sum) }
   }
 
+  def testStreamCorrectSmall() = {
+    val s = Stream[Double](10,10){ (i,j) => i*10+j }
+    s.foreachRow { v => v.pprint }
+  }
+
+  def testStreamCorrectLarge() = {
+    val s = Stream[Double](11000,10){ (i,j) => i*10+j }
+    s.foreachRow { v => v.pprint }
+  }
+
   def main() = {
-    tic
-    val s1 = testInitSmall()
-    val s2 = testInitLarge()
-    toc
-    testForeach(s2)
+    //tic
+    //val s1 = testInitSmall()
+    //val s2 = testInitPureLarge()
+
+    //println("Stream isPure (should be true): " + s2.isPure)
+    //val s3 = testInitEffectLarge()
+    //println("Stream isPure (should be false): " + s3.isPure)
+    //toc
+    //println("Stream pure foreach   ============================================")
+    //testForeach(s2)
+    //println("Stream effect foreach ============================================")
+    //testForeach(s3)
+
+    println("Stream correctness small ============================================")
+    println("with 1 proc, should print row vectors starting at 0, 10, ... 90")
+    testStreamCorrectSmall()
+    println("Stream correctness large ============================================")
+    println("with 1 proc, should print row vectors starting at 0, 10, ... 109990")
+    testStreamCorrectLarge()
+
+    //testFileStream
+    //toc
   }
 }
