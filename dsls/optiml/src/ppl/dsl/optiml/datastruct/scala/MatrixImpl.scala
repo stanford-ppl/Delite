@@ -3,7 +3,7 @@ package ppl.dsl.optiml.datastruct.scala
 object MatrixImpl {
 }
 
-class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends Matrix[T] {
+class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
   import MatrixImpl._
   
   protected var _numRows = nRows
@@ -15,9 +15,9 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
   def size = _numRows*_numCols
   def data = _data
   
-  def apply(i: Int) : VectorView[T] = {
-    vview(i*numCols, 1, numCols, true)
-  }
+//  def apply(i: Int) : VectorView[T] = {
+//    vview(i*numCols, 1, numCols, true)
+//  }
 
   def apply(i: Int, j: Int) : T = {
     _data(i*numCols+j)
@@ -29,6 +29,14 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
 
   def dcApply(idx: Int) : T = _data(idx)
   def dcUpdate(idx: Int, x: T) { _data(idx) = x }
+
+  def getRow(row: Int): MatrixRow[T] = {
+    new MatrixRowImpl[T](row, this, _data)
+  }
+
+  def getCol(col: Int): MatrixCol[T] = {
+    new MatrixColImpl[T](col, this, _data)
+  }
 
   def vview(start: Int, stride: Int, length: Int, isRow: Boolean) : VectorView[T] = {
     new VectorViewImpl[T](_data, start, stride, length, isRow)

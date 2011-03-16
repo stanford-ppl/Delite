@@ -44,7 +44,7 @@ trait OptiMLKmeans {
             (x(i), unit(1.))
           }
           else {
-            (NilV[Double], unit(0.))
+            (ZeroV[Double](n), unit(0.))
           }
         })
 //        val weightedpoints = Vector.mzeros(n)
@@ -59,28 +59,33 @@ trait OptiMLKmeans {
 //          i += 1
 //        }
 
-        if (points == 0) weightedpoints
+        if (points == 0) {
+          weightedpoints
+        }
         else weightedpoints / points
       }
+
     }
     (iter,newMu)
   }
 
   private def findNearestCluster( x_i: Rep[Vector[Double]], mu: Rep[Matrix[Double]] ): Rep[Int] = {
-//    (mu mapRows { row => dist(x_i, row, SQUARE) }).minIndex
-    var min_d = Double.PositiveInfinity
-    var min_j = -1
-    var j = 0
-    while( j < mu.numRows ){
-      //println("-- j: " + j)
-      val dist = sum(0, x_i.length){ e => (x_i(e)-mu(j,e))*(x_i(e)-mu(j,e)) }
-      if (dist < min_d){
-        min_d = dist
-        min_j = j
-      }
-      j += 1
-    }
-
-    min_j
+    // why is the parameter type needed?
+    (mu mapRows { row: Rep[Vector[Double]] => dist(x_i, row, SQUARE) }).minIndex
+    // TODO: sum needs to reflectEffect for this to generate correctly apparently
+//    var min_d = Double.PositiveInfinity
+//    var min_j = -1
+//    var j = 0
+//    while( j < mu.numRows ){
+//      //println("-- j: " + j)
+//      val dist = sum(0, x_i.length){ e => (x_i(e)-mu(j,e))*(x_i(e)-mu(j,e)) }
+//      if (dist < min_d){
+//        min_d = dist
+//        min_j = j
+//      }
+//      j += 1
+//    }
+//
+//    min_j
   }
 }

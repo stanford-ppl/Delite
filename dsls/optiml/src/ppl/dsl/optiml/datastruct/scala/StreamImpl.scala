@@ -32,8 +32,9 @@ class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: 
   // chunk management must be done inside the op (foreachRows), not in the impl
   // here, we just have to assume that init has been called appropriately and idx points to the right chunk
 
-  def chunkRow(idx: Int): VectorView[T] = {
-    vview(idx*numCols, 1, numCols, true)
+  def chunkRow(idx: Int, offset: Int): VectorView[T] = {
+    //vview(idx*numCols, 1, numCols, true)
+    new StreamRowImpl[T](idx, offset, this, _data)
   }
 
   def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T] = {

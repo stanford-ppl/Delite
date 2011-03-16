@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,NilVector}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 import ppl.dsl.optiml.{OptiMLLift, OptiMLCompiler, OptiML}
@@ -109,18 +109,23 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
 
   def vector_concatenate_impl[A:Manifest](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
-    if (v1.isRow != v2.isRow) {
-      println("error: trying to concatenate row and column vectors")
+    // this check doesn't work with nil vectors
+    //if (v1.isRow != v2.isRow) {
+    //  println("error: trying to concatenate row and column vectors")
       // TODo: need an exception throwing mechanism in generated code -- could be External, but needs to accessible from Base
+    //}
+    if (v1.isInstanceOfL[NilVector[A]]) v2
+    else if (v2.isInstanceOfL[NilVector[A]]) v1
+    else {
+      val out = Vector[A](v1.length+v2.length, v1.isRow)
+      for (i <- 0 until v1.length){
+        out(i) = v1(i)
+      }
+      for (i <- 0 until v2.length){
+        out(i+v1.length) = v2(i)
+      }
+      out
     }
-    val out = Vector[A](v1.length+v2.length, v1.isRow)
-    for (i <- 0 until v1.length){
-      out(i) = v1(i)
-    }
-    for (i <- 0 until v2.length){
-      out(i+v1.length) = v2(i)
-    }
-    out
   }
 
   def vector_times_matrix_impl[A:Manifest:Arith](v: Rep[Vector[A]], m: Rep[Matrix[A]]) = {

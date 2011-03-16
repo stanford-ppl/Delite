@@ -102,7 +102,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
       v1(0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
     }
     else if (metric == SQUARE) {
-      ((v1 - v2) mmap { e => e*e}).sum //TODO TR non-mutable write
+      ((v1 - v2) mmap { e => e*e }).sum //TODO TR non-mutable write
     }
     else {
       println("error: unknown dist metric selected")
@@ -125,7 +125,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
       m1(0,0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
     }
     else if (metric == SQUARE) {
-      ((m1 - m2) mmap { e => e*e}).sum //TODO TR non-mutable write
+      ((m1 - m2) mmap { e => e*e }).sum //TODO TR non-mutable write
     }
     else {
       println("error: unknown dist metric selected")

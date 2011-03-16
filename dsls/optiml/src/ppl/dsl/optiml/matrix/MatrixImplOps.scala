@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.matrix
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,MatrixRow}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 import ppl.dsl.optiml.{OptiMLCompiler, OptiMLLift, OptiML}
@@ -19,8 +19,8 @@ trait MatrixImplOps { this: OptiML =>
   def matrix_obj_randn_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Double]]
   def matrix_obj_randnf_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Float]]
 
-  def matrix_getrow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int]): Rep[Vector[A]]
-  def matrix_getcol_impl[A:Manifest](m: Rep[Matrix[A]], col: Rep[Int]): Rep[Vector[A]]
+  //def matrix_getrow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int]): Rep[Vector[A]]
+  //def matrix_getcol_impl[A:Manifest](m: Rep[Matrix[A]], col: Rep[Int]): Rep[Vector[A]]
   def matrix_slice_impl[A:Manifest](m: Rep[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]): Rep[Matrix[A]]
   def matrix_slicerows_impl[A:Manifest](m: Rep[Matrix[A]], start: Rep[Int], end: Rep[Int]): Rep[Matrix[A]]
   def matrix_updaterow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
@@ -30,9 +30,9 @@ trait MatrixImplOps { this: OptiML =>
   def matrix_transpose_impl[A:Manifest](m: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_minrow_impl[A:Manifest:Arith:Ordering](m: Rep[Matrix[A]]): Rep[Vector[A]]
   def matrix_maxrow_impl[A:Manifest:Arith:Ordering](m: Rep[Matrix[A]]): Rep[Vector[A]]
-  def matrix_maprows_impl[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
-  def matrix_foreachrow_impl[A:Manifest](m: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Unit]): Rep[Unit]
-  def matrix_filterrows_impl[A:Manifest](m: Rep[Matrix[A]], pred: Rep[Vector[A]] => Rep[Boolean]): Rep[Matrix[A]]
+  //def matrix_maprows_impl[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
+  //def matrix_foreachrow_impl[A:Manifest](m: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Unit]): Rep[Unit]
+  def matrix_filterrows_impl[A:Manifest](m: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[Boolean]): Rep[Matrix[A]]
   def matrix_multiply_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_times_vector_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def matrix_sigmoid_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
@@ -88,8 +88,8 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out
   }
 
-  def matrix_getrow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int]) = m.vview(row*m.numCols, 1, m.numCols, true)
-  def matrix_getcol_impl[A:Manifest](m: Rep[Matrix[A]], col: Rep[Int]) = m.vview(col, m.numCols, m.numRows, false)
+  //def matrix_getrow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int]) = m.vview(row*m.numCols, 1, m.numCols, true)
+  //def matrix_getcol_impl[A:Manifest](m: Rep[Matrix[A]], col: Rep[Int]) = m.vview(col, m.numCols, m.numRows, false)
 
   def matrix_slice_impl[A:Manifest](m: Rep[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]) = {
     //m.chkRange(beginrow, endrow)
@@ -262,26 +262,26 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 //    m(idx).clone
   }
 
-  def matrix_maprows_impl[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Vector[B]]) = {
-    val first = f(m.getRow(0))
-    val out = Matrix[B](m.numRows, first.length)
-    out.updateRow(0, first)
+//  def matrix_maprows_impl[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Vector[B]]) = {
+//    val first = f(m.getRow(0))
+//    val out = Matrix[B](m.numRows, first.length)
+//    out.updateRow(0, first)
+//
+//    // this should be task parallel with deg control flow - except the reflectEffect orderings of updateRow will cause
+//    // false serialization
+//    for (i <- 1 until m.numRows){
+//      out.updateRow(i, f(m.getRow(i)))
+//    }
+//    out
+//  }
 
-    // this should be task parallel with deg control flow - except the reflectEffect orderings of updateRow will cause
-    // false serialization
-    for (i <- 1 until m.numRows){
-      out.updateRow(i, f(m.getRow(i)))
-    }
-    out
-  }
+//  def matrix_foreachrow_impl[A:Manifest](m: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Unit]) = {
+//    for (i <- 0 until m.numRows){
+//      f(m.getRow(i))
+//    }
+//  }
 
-  def matrix_foreachrow_impl[A:Manifest](m: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Unit]) = {
-    for (i <- 0 until m.numRows){
-      f(m.getRow(i))
-    }
-  }
-
-  def matrix_filterrows_impl[A:Manifest](m: Rep[Matrix[A]], pred: Rep[Vector[A]] => Rep[Boolean]) = {
+  def matrix_filterrows_impl[A:Manifest](m: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[Boolean]) = {
     val v = Vector[Vector[A]](0,true)
     for (i <- 0 until m.numRows){
       val vv = m.getRow(i)

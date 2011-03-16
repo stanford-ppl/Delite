@@ -157,7 +157,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
         val x106 = x105 + 1.0
         x92 = x106
         val x108 = x96
-        val x109 = x55(x102)
+        val x109 = x55.getRow(x102)
         val x123 = {
           val x110 = x108.length
           val x111 = x108.isRow
@@ -184,7 +184,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
         val x127 = x126 + 1.0
         x91 = x127
         val x129 = x100
-        val x109 = x55(x102)
+        val x109 = x55.getRow(x102)
         val x143 = {
           val x130 = x129.length
           val x131 = x129.isRow
@@ -264,7 +264,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
       val x190 = x189 == false
       val x341 = if (x190) {
         val x191 = x187
-        val x192 = x55(x188)
+        val x192 = x55.getRow(x188)
         val x206 = {
           val x193 = x192.length
           val x194 = x192.isRow
@@ -358,7 +358,7 @@ class GDA_N extends ((Array[java.lang.String])=>(Unit)) {
         ()
       } else {
         val x268 = x187
-        val x192 = x55(x188)
+        val x192 = x55.getRow(x188)
         val x279 = {
           val x193 = x192.length
           val x194 = x192.isRow

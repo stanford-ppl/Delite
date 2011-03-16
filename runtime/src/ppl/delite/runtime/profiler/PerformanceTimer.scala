@@ -40,7 +40,7 @@ object PerformanceTimer
   }
 
   def print(component: String) {
-    val timeStr = times.get(component) map { _.last formatted ("%.6f") + "s" }
+    val timeStr = times.get(component) map { "[METRICS]: Latest time for component " + component + ": " +  _.last.formatted("%.6f") + "s" }
     println(timeStr getOrElse "[METRICS]: No data for component " + component)
   }
 
@@ -68,8 +68,7 @@ object PerformanceTimer
   }
 
   def dumpStats(component: String, stream: PrintWriter)  {
-    val timeStr = times.get(component) map { _.formatted("%.2f").mkString("\n") }
-    timeStr foreach { stream.print }
+    times.get(component) map { _.map(_.formatted("%.2f")).mkString("\n") } foreach { stream.print }
   }
 
 }

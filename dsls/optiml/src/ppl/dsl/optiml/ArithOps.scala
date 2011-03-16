@@ -1,6 +1,6 @@
 package ppl.dsl.optiml
 
-import datastruct.scala.{NilVector,Vector,Matrix}
+import datastruct.scala.{ZeroVector,Vector,Matrix}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
@@ -70,10 +70,10 @@ trait ArithOps extends Variables with OverloadHack {
    */
 
   implicit def vectorArith[T:Arith:Manifest] : Arith[Vector[T]] = new Arith[Vector[T]] {
-    // these are used in sum; NilVectors should really not be used anywhere else. We need a better solution.
-    def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (!b.isInstanceOfL[NilVector[T]]) a += b else a
-    def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (a.isInstanceOfL[NilVector[T]]) b
-                                                  else if (b.isInstanceOfL[NilVector[T]]) a
+    // these are used in sum; dynamic checks are required due to conditionals
+    def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (!b.isInstanceOfL[ZeroVector[T]]) a += b else a
+    def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (a.isInstanceOfL[ZeroVector[T]]) b
+                                                  else if (b.isInstanceOfL[ZeroVector[T]]) a
                                                   else a+b
     def -(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a-b
     def *(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a*b

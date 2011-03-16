@@ -50,6 +50,8 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
   }
 
   def insertAll(pos: Int, xs: Vector[T]) {
+    if (xs.isInstanceOf[NilVector[Any]]) return
+
     insertSpace(pos, xs.length)
     copyFrom(pos, xs)
   }

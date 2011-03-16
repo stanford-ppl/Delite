@@ -1,7 +1,7 @@
 package ppl.dsl.optiml
 
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala.{Vector, Stream, StreamImpl}
+import ppl.dsl.optiml.datastruct.scala.{Vector, Stream, StreamImpl, StreamRow}
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
@@ -28,7 +28,7 @@ trait StreamOps extends DSLType with Variables {
     def numCols = stream_numcols(x)
     def isPure = stream_ispure(x)
 
-    def foreachRow(block: Rep[Vector[A]] => Rep[Unit]) = stream_foreachrow(x, block)
+    def foreachRow(block: Rep[StreamRow[A]] => Rep[Unit]) = stream_foreachrow(x, block)
   }
 
   // object defs
@@ -39,7 +39,7 @@ trait StreamOps extends DSLType with Variables {
   def stream_numrows[A:Manifest](x: Rep[Stream[A]]): Rep[Int]
   def stream_numcols[A:Manifest](x: Rep[Stream[A]]): Rep[Int]
 
-  def stream_foreachrow[A:Manifest](x: Rep[Stream[A]], block: Rep[Vector[A]] => Rep[Unit]): Rep[Unit]
+  def stream_foreachrow[A:Manifest](x: Rep[Stream[A]], block: Rep[StreamRow[A]] => Rep[Unit]): Rep[Unit]
 }
 
 trait StreamOpsExp extends StreamOps with VariablesExp {
@@ -58,7 +58,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   case class StreamIsPure[A:Manifest](x: Exp[Stream[A]]) extends Def[Boolean]
   case class StreamNumRows[A:Manifest](x: Exp[Stream[A]]) extends Def[Int]
   case class StreamNumCols[A:Manifest](x: Exp[Stream[A]]) extends Def[Int]
-  case class StreamChunkRow[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int]) extends Def[Vector[A]]
+  case class StreamChunkRow[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) extends Def[StreamRow[A]]
   case class StreamRowsIn[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) extends Def[Int]
   case class StreamInitChunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) extends Def[Unit]
   case class StreamInitRow[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends Def[Unit]
@@ -67,7 +67,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   // implemented via delite ops
 
   case class StreamInitAndForeachRow[A:Manifest](in: Exp[Vector[Int]], v: Sym[Int], x: Exp[Stream[A]], offset: Exp[Int],
-                                                 block: Exp[Vector[A]] => Exp[Unit])
+                                                 block: Exp[StreamRow[A]] => Exp[Unit])
     extends DeliteOpForeach[Int,Vector] {
 
     val i = fresh[Int]
@@ -76,19 +76,19 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     val func = reifyEffects {
       // always initialize for now (must be pure)
       stream_init_row(x, v, offset)
-      block(stream_chunkrow(x, v))
+      block(stream_chunkrow(x, v, offset))
     }
   }
 
   case class StreamForeachRow[A:Manifest](in: Exp[Vector[Int]], v: Sym[Int], x: Exp[Stream[A]], offset: Exp[Int],
-                                          block: Exp[Vector[A]] => Exp[Unit], init: Exp[Unit])
+                                          block: Exp[StreamRow[A]] => Exp[Unit], init: Exp[Unit])
     extends DeliteOpForeach[Int,Vector] {
 
     val i = fresh[Int]
     val sync = reifyEffects(List())
 
     val func = reifyEffects {
-      block(stream_chunkrow(x, v))
+      block(stream_chunkrow(x, v, offset))
     }
   }
 
@@ -111,7 +111,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   def stream_numrows[A:Manifest](x: Exp[Stream[A]]) = reflectPure(StreamNumRows(x))
   def stream_numcols[A:Manifest](x: Exp[Stream[A]]) = reflectPure(StreamNumCols(x))
 
-  def stream_foreachrow[A:Manifest](x: Exp[Stream[A]], block: Exp[Vector[A]] => Exp[Unit]) = {
+  def stream_foreachrow[A:Manifest](x: Exp[Stream[A]], block: Exp[StreamRow[A]] => Exp[Unit]) = {
     // we do not know at compile time how many streaming chunks are needed (therefore how many ops to submit)
     // so we submit a While loop, where each iteration of the while depends on the next, and let the runtime unroll it
     val numChunks = Math.ceil(x.numRows / unit(chunkSize).doubleValue()).asInstanceOfL[Int]
@@ -140,7 +140,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   ///////////////////
   // internal
 
-  def stream_chunkrow[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectPure(StreamChunkRow(x, offset))
+  def stream_chunkrow[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) = reflectPure(StreamChunkRow(x, idx, offset))
   def stream_init_chunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectWrite(x)(StreamInitChunk(x, offset))
   def stream_init_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = reflectWrite(x)(StreamInitRow(x, row, offset))
   def stream_rowsin[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectPure(StreamRowsIn(x, offset))
@@ -158,7 +158,7 @@ trait ScalaGenStreamOps extends ScalaGenBase {
     case StreamIsPure(x) => emitValDef(sym, quote(x) + ".isPure")
     case StreamNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case StreamNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
-    case StreamChunkRow(x, idx) => emitValDef(sym, quote(x) + ".chunkRow(" + quote(idx) + ")")
+    case StreamChunkRow(x, idx, offset) => emitValDef(sym, quote(x) + ".chunkRow(" + quote(idx) + "," + quote(offset) + ")")
     case StreamRowsIn(x, idx) => emitValDef(sym, quote(x) + ".rowsIn(" + quote(idx) + ")")
     case StreamInitChunk(x, idx) => emitValDef(sym, quote(x) + ".initChunk(" + quote(idx) + ")")
     case StreamInitRow(x, row, idx) => emitValDef(sym, quote(x) + ".initRow(" + quote(row) + "," + quote(idx) + ")")

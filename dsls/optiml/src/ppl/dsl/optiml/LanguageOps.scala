@@ -89,12 +89,6 @@ trait LanguageOps extends Base { this: OptiML =>
                                      block: (Rep[Int], Rep[Int]) => Rep[Vector[A]]): Rep[Vector[A]]
 
 
-  /**
-   * Zero
-   */
-  // TODO: type class should probable be Zeroable[A] or something
-  //def <>[A:Manifest:Arith] = optiml_zero
-
   // TODO: for some reason, the implicit ops conversions aren't kicking in for sum/min/max
   /**
    * sum

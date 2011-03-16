@@ -101,11 +101,11 @@ trait DeliteOpTests extends OptiMLApplication {
   def testIfThenElse() = {
     val y = Vector.rand(10)
     if (y(0) == false){
-      val x0 = (unit(1.),unit(0.),y(1),NilV[Double])
+      val x0 = (unit(1.),unit(0.),y(1),ZeroV[Double](10))
       println(x0)
     }
     else {
-      val x1 = (unit(0.),unit(1.),NilV[Double],y(1))
+      val x1 = (unit(0.),unit(1.),ZeroV[Double](10),y(1))
       println(x1)
     }
   }

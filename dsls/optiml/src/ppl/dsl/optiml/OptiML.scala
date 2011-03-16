@@ -83,7 +83,8 @@ trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
  */
 trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with ArithOps with CloneableOps
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps
-  with IndexVectorOps with IndexVector2Ops with StreamOps
+  with IndexVectorOps with IndexVector2Ops with MatrixRowOps with MatrixColOps
+  with StreamOps with StreamRowOps
   with GraphOps with VerticesOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps
   with LabelsOps with TrainingSetOps with ImageOps with GrayscaleImageOps {
 
@@ -101,7 +102,8 @@ trait OptiMLCompiler extends OptiML with RangeOps with IOOps with SeqOps with Se
  */
 trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with LanguageOpsExp with ApplicationOpsExp with ArithOpsExpOpt
   with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp
-  with IndexVectorOpsExp with IndexVector2OpsExp with StreamOpsExp
+  with IndexVectorOpsExp with IndexVector2OpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
+  with StreamOpsExp with StreamRowOpsExpOpt
   with LabelsOpsExp with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard
@@ -168,7 +170,8 @@ trait OptiMLCodeGenBase extends GenericFatCodegen {
 trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
   with ScalaGenApplicationOps
   with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
-  with ScalaGenIndexVectorOps with ScalaGenIndexVector2Ops with ScalaGenStreamOps
+  with ScalaGenIndexVectorOps with ScalaGenIndexVector2Ops with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
+  with ScalaGenStreamOps with ScalaGenStreamRowOps
   with ScalaGenGraphOps with ScalaGenVerticesOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenMessageEdgeOps with ScalaGenMessageVertexOps
   with ScalaGenLabelsOps with ScalaGenTrainingSetOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with ScalaGenImageOps with ScalaGenGrayscaleImageOps
@@ -177,7 +180,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   val IR: DeliteApplication with OptiMLExp
 
   override val specialize = Set("VectorImpl", "MatrixImpl", "VectorViewImpl", "LabelsImpl",
-                                "ImageImpl", "StreamImpl")
+                                "ImageImpl", "StreamImpl", "MatrixRowImpl", "MatrixColImpl", "StreamRowImpl")
   override val specialize2 = Set("TrainingSetImpl")
 
   override def genSpec(f: File, dsOut: String) {
@@ -210,8 +213,9 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
     res = res.replaceAll("@specialized T: ClassManifest", t)
     res = res.replaceAll("T:Manifest", t)
     res = res.replaceAll("\\bT\\b", t)
-    dsmap(res)
+    parmap(res)
   }
+
   def specmap2(line: String, t1: String, t2: String) : String = {
     var res = line.replaceAll("object ", "object " + t1 + t2)
     res = res.replaceAll("import ", "import " + t1 + t2)
@@ -221,17 +225,15 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
     res = res.replaceAll("L:Manifest", t2)
     res = res.replaceAll("\\bT\\b", t1)
     res = res.replaceAll("\\bL\\b", t2)
-    dsmap(res)
+    parmap(res)
   }
 
-  override def remap[A](m: Manifest[A]) : String = {
-    dsmap(super.remap(m))
+  override def remap[A](m: Manifest[A]): String = {
+    parmap(super.remap(m))
   }
 
-  override def dsmap(line: String) : String = {
-    var res = line.replaceAll("ppl.dsl.optiml.datastruct", "generated")
-    res = res.replaceAll("ppl.delite.framework", "generated.scala")
-
+  def parmap(line: String): String = {
+    var res = line
     for(tpe1 <- List("Int","Long","Double","Float","Boolean")) {
       for (s <- specialize) {
         res = res.replaceAll(s+"\\["+tpe1+"\\]", tpe1+s)
@@ -244,6 +246,12 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
         }
 		  }
 	  }
+    dsmap(res)
+  }
+
+  override def dsmap(line: String) : String = {
+    var res = line.replaceAll("ppl.dsl.optiml.datastruct", "generated")
+    res = res.replaceAll("ppl.delite.framework", "generated.scala")
     res
   }
 }

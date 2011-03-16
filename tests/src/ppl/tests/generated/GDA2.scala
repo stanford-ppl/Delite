@@ -158,7 +158,7 @@ val x29 = x20
 val x30 = x29 + 1.0
 x20 = x30
 val x32 = x22
-val x33 = x8(x26)
+val x33 = x8.getRow(x26)
 val x35 = {
 val x203 = x32.length
 val x204 = x32.isRow
@@ -185,7 +185,7 @@ val x38 = x19
 val x39 = x38 + 1.0
 x19 = x39
 val x41 = x24
-val x33 = x8(x26)
+val x33 = x8.getRow(x26)
 val x43 = {
 val x217 = x41.length
 val x218 = x41.isRow
@@ -263,7 +263,7 @@ val x66 = x16(x65)
 val x67 = x66 == false
 val x89 = if (x67) {
 val x68 = x64
-val x69 = x8(x65)
+val x69 = x8.getRow(x65)
 val x71 = {
 val x280 = x69.length
 val x281 = x69.isRow
@@ -357,7 +357,7 @@ x64 = x76
 ()
 } else {
 val x79 = x64
-val x69 = x8(x65)
+val x69 = x8.getRow(x65)
 val x81 = {
 val x280 = x69.length
 val x281 = x69.isRow

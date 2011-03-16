@@ -1,7 +1,6 @@
 package ppl.dsl.optiml.matrix
 
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala.{MatrixImpl, VectorImpl, Vector, Matrix}
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
@@ -12,6 +11,7 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.Config
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import ppl.dsl.optiml.datastruct.scala._
 
 trait MatrixOps extends DSLType with Variables {
   this: OptiML =>
@@ -19,17 +19,13 @@ trait MatrixOps extends DSLType with Variables {
   object Matrix {
     def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_new(numRows, numCols)
     def apply[A:Manifest](xs: Rep[Vector[Vector[A]]]): Rep[Matrix[A]] = matrix_obj_fromvec(xs)
+    // Vector is not covariant, so Rep[Vector[MatrixRow[A]]] is unfortunately not a subtype of Rep[Vector[Vector[A]]]
+    def apply[A](xs: Rep[Vector[MatrixRow[A]]])(implicit mA: Manifest[A], o: Overloaded1): Rep[Matrix[A]] = matrix_obj_fromvec(xs.asInstanceOf[Rep[Vector[Vector[A]]]])
     def apply[A:Manifest](xs: Rep[Vector[A]]*): Rep[Matrix[A]] = {
-      //      // TODO: how do we get the manifest?
-      //      implicit val mA = manifest[Rep[Vector[A]]]
-      //      val xs2 = unit(xs.toList)
-      //      matrix_obj_fromseq(xs2)
-      //reifyEffects {
-        val out = matrix_obj_new[A](0,0)
+      val out = matrix_obj_new[A](0,0)
       // interpreted (not lifted)
-        xs.foreach { out += _ }
-        out
-      //}
+      xs.foreach { out += _ }
+      out
     }
     def diag[A:Manifest](w: Rep[Int], vals: Rep[Vector[A]]) = matrix_obj_diag(w, vals)
     def identity(w: Rep[Int]) = matrix_obj_identity(w)
@@ -125,13 +121,13 @@ trait MatrixOps extends DSLType with Variables {
     def map[B:Manifest](f: Rep[A] => Rep[B]) = matrix_map(x,f)
     /// TODO: rename to transform?
     def mmap(f: Rep[A] => Rep[A]) = matrix_mmap(x,f)
-    def mapRows[B:Manifest](f: Rep[Vector[A]] => Rep[Vector[B]]) = matrix_maprows(x,f)
-    def mapRows[B:Manifest](f: Rep[Vector[A]] => Rep[B], isRow: Rep[Boolean] = unit(true)) = matrix_maprowstovec(x,f,isRow)
+    def mapRows[B:Manifest](f: Rep[MatrixRow[A]] => Rep[Vector[B]]) = matrix_maprows(x,f)
+    def mapRows[B:Manifest](f: Rep[MatrixRow[A]] => Rep[B], isRow: Rep[Boolean] = unit(true)) = matrix_maprowstovec(x,f,isRow)
     def foreach(block: Rep[A] => Rep[Unit]) = matrix_foreach(x, block)
-    def foreachRow(block: Rep[Vector[A]] => Rep[Unit]) = matrix_foreachrow(x, block)
+    def foreachRow(block: Rep[MatrixRow[A]] => Rep[Unit]) = matrix_foreachrow(x, block)
     def zip[B:Manifest,R:Manifest](y: Rep[Matrix[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = matrix_zipwith(x,y,f)
     def reduceRows(f: (Rep[Vector[A]],Rep[Vector[A]]) => Rep[Vector[A]]) = matrix_reducerows(x,f)
-    def filterRows(pred: Rep[Vector[A]] => Rep[Boolean]) = matrix_filterrows(x,pred)
+    def filterRows(pred: Rep[MatrixRow[A]] => Rep[Boolean]) = matrix_filterrows(x,pred)
   }
 
   // special case overrides
@@ -162,8 +158,8 @@ trait MatrixOps extends DSLType with Variables {
   // class defs
   def matrix_apply[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
   def matrix_vview[A:Manifest](x: Rep[Matrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[Vector[A]]
-  def matrix_getrow[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int]): Rep[Vector[A]]
-  def matrix_getcol[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int]): Rep[Vector[A]]
+  def matrix_getrow[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int]): Rep[MatrixRow[A]]
+  def matrix_getcol[A:Manifest](x: Rep[Matrix[A]], j: Rep[Int]): Rep[MatrixCol[A]]
   def matrix_slice[A:Manifest](x: Rep[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]): Rep[Matrix[A]]
   def matrix_slicerows[A:Manifest](x: Rep[Matrix[A]], start: Rep[Int], end: Rep[Int]): Rep[Matrix[A]]
   def matrix_numrows[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
@@ -211,13 +207,13 @@ trait MatrixOps extends DSLType with Variables {
 
   def matrix_map[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[A] => Rep[B]): Rep[Matrix[B]]
   def matrix_mmap[A:Manifest](x: Rep[Matrix[A]], f: Rep[A] => Rep[A]): Rep[Matrix[A]]
-  def matrix_maprows[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
-  def matrix_maprowstovec[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[B], isRow: Rep[Boolean]): Rep[Vector[B]]
+  def matrix_maprows[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
+  def matrix_maprowstovec[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[B], isRow: Rep[Boolean]): Rep[Vector[B]]
   def matrix_foreach[A:Manifest](x: Rep[Matrix[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
-  def matrix_foreachrow[A:Manifest](x: Rep[Matrix[A]], block: Rep[Vector[A]] => Rep[Unit]): Rep[Unit]
+  def matrix_foreachrow[A:Manifest](x: Rep[Matrix[A]], block: Rep[MatrixRow[A]] => Rep[Unit]): Rep[Unit]
   def matrix_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[Matrix[R]]
   def matrix_reducerows[A:Manifest](x: Rep[Matrix[A]], f: (Rep[Vector[A]],Rep[Vector[A]]) => Rep[Vector[A]]): Rep[Vector[A]]
-  def matrix_filterrows[A:Manifest](x: Rep[Matrix[A]], pred: Rep[Vector[A]] => Rep[Boolean]): Rep[Matrix[A]]
+  def matrix_filterrows[A:Manifest](x: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[Boolean]): Rep[Matrix[A]]
 }
 
 
@@ -232,6 +228,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
   case class MatrixApply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) extends Def[A]
   case class MatrixVView[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends Def[Vector[A]]
+  case class MatrixGetRow[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixRow[A]]
+  case class MatrixGetCol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixCol[A]]
+
   case class MatrixNumRows[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixNumCols[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixClone[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
@@ -282,12 +281,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixObjectRandnF(numRows: Exp[Int], numCols: Exp[Int])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_randnf_impl(numRows, numCols)))
 
-  case class MatrixGetRow[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_getrow_impl(x,i)))
-
-  case class MatrixGetCol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_getcol_impl(x,i)))
-
   case class MatrixSlice[A:Manifest](x: Exp[Matrix[A]], startRow: Exp[Int], endRow: Exp[Int], startCol: Exp[Int], endCol: Exp[Int])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_slice_impl(x,startRow,endRow,startCol,endCol)))
 
@@ -315,13 +308,13 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixMaxRow[A:Manifest:Arith:Ordering](x: Exp[Matrix[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_maxrow_impl(x)))
 
-  case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[Vector[A]] => Exp[Vector[B]])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_maprows_impl(x,f)))
+//  case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[Vector[B]])
+//    extends DeliteOpSingleTask(reifyEffectsHere(matrix_maprows_impl(x,f)))
 
-  case class MatrixForeachRow[A:Manifest](x: Exp[Matrix[A]], f: Exp[Vector[A]] => Exp[Unit])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_foreachrow_impl(x,f)))
+//  case class MatrixForeachRow[A:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[Unit])
+//    extends DeliteOpSingleTask(reifyEffectsHere(matrix_foreachrow_impl(x,f)))
 
-  case class MatrixFilterRows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[Vector[A]] => Exp[Boolean])
+  case class MatrixFilterRows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[MatrixRow[A]] => Exp[Boolean])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_filterrows_impl(x,pred)))
 
   case class MatrixMultiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
@@ -582,17 +575,31 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val alloc = in
   }
 
-//  case class MatrixMapRows[A:Manifest,B:Manifest](in: Exp[Vector[Vector[A]]], v: Exp[Vector[A]], func: Exp[Vector[B]])
-//    extends DeliteOpMap[Vector[A],Vector[B],Vector] {
-//
-//    val alloc = in
-//  }
+  case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Vector[B]])
+    extends DeliteOpMap[Int,Vector[B],Vector] {
 
-  case class MatrixMapRowsToVec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], v: Sym[Vector[A]], func: Exp[B], isRow: Exp[Boolean])
-    extends DeliteOpMap[Vector[A],B,Vector] {
+    val alloc = reifyEffects(Vector[Vector[B]](x.numRows, unit(true)))
+    val in = (0::x.numRows)
+    val v = fresh[Int]
+    val func = reifyEffects { block(x(v)) }
+  }
+
+  case class MatrixForeachRow[A:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Unit])
+    extends DeliteOpForeach[Int,Vector] {
+
+    val i = fresh[Int]
+    val sync = reifyEffects(List())
+
+    val v = fresh[Int]
+    val in = (0::x.numRows)
+    val func = reifyEffects { block(x(v)) }
+  }
+
+  case class MatrixMapRowsToVec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], v: Sym[MatrixRow[A]], func: Exp[B], isRow: Exp[Boolean])
+    extends DeliteOpMap[MatrixRow[A],B,Vector] {
 
     val in = reifyEffects {
-      var tcoll = Vector[Vector[A]](x.numRows, isRow)
+      var tcoll = Vector[MatrixRow[A]](x.numRows, isRow)
        for (i <- 0 until x.numRows){
          tcoll(i) = x.getRow(i)
        }
@@ -728,16 +735,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = reifyEffects(f(v))
     reflectWrite(x)(MatrixMutableMap(x, v, func)) // effect??
   }
-  def matrix_maprows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[Vector[A]] => Exp[Vector[B]]) = {
-    // TODO: how to represent this with a single parallel delite op?
-    //val v = fresh[Vector[A]]
-    //val func = reifyEffects(v mmap {f(v)})
-    //MatrixMapRows(in, v, func)
-
-    reflectPure(MatrixMapRows(x,f))
+  def matrix_maprows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[Vector[B]]) = {
+    Matrix(reflectPure(MatrixMapRows(x,f)))
   }
-  def matrix_maprowstovec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[Vector[A]] => Exp[B], isRow: Exp[Boolean] = unit(true)) = {
-    val v = fresh[Vector[A]]
+  def matrix_maprowstovec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[B], isRow: Exp[Boolean] = unit(true)) = {
+    val v = fresh[MatrixRow[A]]
     val func = reifyEffects(f(v))
     reflectPure(MatrixMapRowsToVec(x,v,func,isRow))
   }
@@ -746,7 +748,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = reifyEffects(block(v))
     reflectEffect(MatrixForeach(x, v, func)) // read ??
   }
-  def matrix_foreachrow[A:Manifest](x: Exp[Matrix[A]], block: Exp[Vector[A]] => Exp[Unit]) = {
+  def matrix_foreachrow[A:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Unit]) = {
     reflectEffect(MatrixForeachRow(x, block)) // read??
   }
   def matrix_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[B]], f: (Exp[A],Exp[B]) => Exp[R]) = {
@@ -759,7 +761,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val func = reifyEffects(f(v._1, v._2))
     reflectPure(MatrixReduceRows(x, v, func))
   }
-  def matrix_filterrows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[Vector[A]] => Exp[Boolean]) = reflectPure(MatrixFilterRows(x, pred))
+  def matrix_filterrows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[MatrixRow[A]] => Exp[Boolean]) = reflectPure(MatrixFilterRows(x, pred))
 }
 
 /**
@@ -814,6 +816,8 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case m@MatrixObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     case MatrixVView(x,start,stride,length,isRow) => emitValDef(sym, quote(x) + ".vview(" + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
     case MatrixApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
+    case MatrixGetRow(x,i) => emitValDef(sym, quote(x) + ".getRow(" + quote(i) + ")")
+    case MatrixGetCol(x,j) => emitValDef(sym, quote(x) + ".getCol(" + quote(j) + ")")
     case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case MatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
     case MatrixClone(x) => emitValDef(sym, quote(x) + ".cloneL")

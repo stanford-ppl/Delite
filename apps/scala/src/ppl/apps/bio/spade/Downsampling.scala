@@ -49,22 +49,23 @@ trait Downsampling {
     println("   finding local density for each cell ...")
     Vector[Int](data.numRows, true)
 
-    /*
-    val distances = Matrix[Double](data.numRows, data.numRows, (i,j) => data.dist(i,j))
+    val distances = Stream[Double](data.numRows, data.numRows){ (i,j) => dist(data(i),data(j)) }
 
     //streaming version (fastest streaming version)
     val densities = Vector[Int](data.numRows, true)
-    distances.foreachRow { (row, idx) =>
-      if(idx%1000 == 0) println("  (streaming) # processed node = " + idx)
-      if(densities(idx) == 0) {
+
+    // NOTE: by allowing row.index to be expressed, we have essentially enabled writing the data race with densities.
+    // This is a trade-off of restricted expression for performance, but is it the trade-off we want?
+    distances.foreachRow { row =>
+      if(row.index%1000 == 0) println("  (streaming) # processed node = " + row.index)
+      if(densities(row.index) == 0) {
         val distancesInRange = row map (e => if (e < kernelWidth) 1 else 0)  // find neighbors in range
         val c = distancesInRange.sum               // count # of neighbors
         val neighbors = row find (_ < apprxWidth)    // find approx neighbors
-        densities.updatev(neighbors,c)               // approximately update
+        //densities.updatev(neighbors,c)               // approximately update
       }
     }
     densities
-    */
 
     /*
      * Fused should look like this:
