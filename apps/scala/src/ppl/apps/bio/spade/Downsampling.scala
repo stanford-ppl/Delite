@@ -62,7 +62,7 @@ trait Downsampling {
         val distancesInRange = row map (e => if (e < kernelWidth) 1 else 0)  // find neighbors in range
         val c = distancesInRange.sum               // count # of neighbors
         val neighbors = row find (_ < apprxWidth)    // find approx neighbors
-        //densities.updatev(neighbors,c)               // approximately update
+        densities(neighbors) = c
       }
     }
     densities

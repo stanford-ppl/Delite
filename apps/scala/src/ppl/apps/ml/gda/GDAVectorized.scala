@@ -19,7 +19,7 @@ trait GDAVectorized extends OptiMLApplication {
     val x = MLInputReader.read(args(0))
     val y = MLInputReader.readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
 
-    tic
+    tic()
 
     /* number of training samples */
     val m = y.length
@@ -54,9 +54,7 @@ trait GDAVectorized extends OptiMLApplication {
 
     val sigma = x0tt.t*x0tt + x1tt.t*x1tt
 
-    // TODO: nothing is really preventing toc from getting hoisted upwards in the schedule, resulting in the wrong time
-    // unless the above sum is a reflectEffect
-    toc
+    toc(sigma)
 
     //print("GDA parameter calculation finished: ")
     //println("  phi = " + phi)

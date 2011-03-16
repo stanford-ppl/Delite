@@ -45,7 +45,7 @@ trait RBMLoop extends OptiMLApplication {
     var hidbiasinc = Vector.zerosf(numHiddenUnits)
     var visbiasinc = Vector.zerosf(numdims)
 
-    tic
+    tic()
     //for (epoch <- 0 until maxEpoch) {
       val epoch = 0
       var errsum = 0f
@@ -102,7 +102,7 @@ trait RBMLoop extends OptiMLApplication {
       println("--> Epoch " + epoch)
       println(" error = " + errsum)
     //}
-    toc
+    toc()
 
     //PerformanceTimer.print("RBM-posphase")
     //PerformanceTimer.save("RBM-posphase")

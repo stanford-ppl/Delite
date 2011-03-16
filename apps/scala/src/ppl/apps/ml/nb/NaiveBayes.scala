@@ -25,9 +25,9 @@ trait NaiveBayes extends OptiMLApplication {
     // Train Model
     val trainingSet = MLInputReader.readTokenMatrix(trainingFile)
     //val start_train = System.currentTimeMillis()
-    tic
+    tic()
     val (phi_y1, phi_y0, phi_y) = train(trainingSet)
-    toc
+    toc()
 
     // test
     val testSet = MLInputReader.readTokenMatrix(testFile)

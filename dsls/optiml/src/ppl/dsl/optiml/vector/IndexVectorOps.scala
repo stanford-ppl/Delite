@@ -1,15 +1,17 @@
 package ppl.dsl.optiml.vector
 
 import ppl.dsl.optiml.datastruct.scala.{IndexVectorSeqImpl, IndexVectorRangeImpl, Vector, IndexVector}
-import java.io.PrintWriter
+import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import scala.virtualization.lms.util.OverloadHack
+import java.io.PrintWriter
 
-trait IndexVectorOps extends DSLType with Base { this: OptiML =>
+trait IndexVectorOps extends DSLType with Base with OverloadHack { this: OptiML =>
 
   object IndexVector {
     def apply(len: Rep[Int]) = indexvector_seq(Vector[Int](len, unit(true)))
+    def apply(xs: Rep[Vector[Int]])(implicit o: Overloaded1) = indexvector_seq(xs)
   }
 
   implicit def repIndexVectorToIndexVectorOps(x: Rep[IndexVector]) = new IndexVectorOpsCls(x)

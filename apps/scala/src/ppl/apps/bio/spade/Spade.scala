@@ -17,9 +17,9 @@ trait Spade extends OptiMLApplication with Downsampling {
     /********* downsampling *********/
 
     val data = TrainingSet(MLInputReader.read(args(0)), Labels[Int](0))
-    tic
+    tic()
     val densities = downsample(data, 5., 5., Vector[Int](0), false, 1.)
-    toc
+    toc(densities)
     var i = 0
     while (i < 9){
       print(densities(i) + " ")

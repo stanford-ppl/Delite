@@ -17,7 +17,7 @@ trait gradient extends OptiMLApplication
     val all_templates = MLInputReader.readTemplateModels(args(1))
 //    println("gradientapp.3: " + all_templates.length)
 
-    tic
+    tic()
 //println("gradientapp.4")
     var imgs = 0
 //println("gradientapp.5")
@@ -29,6 +29,6 @@ trait gradient extends OptiMLApplication
 //println("gradientapp.8")
     }
 //println("gradientapp.9")
-    toc
+    toc()
   }
 }

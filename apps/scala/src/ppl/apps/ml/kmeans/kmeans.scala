@@ -23,9 +23,9 @@ trait kmeansApp extends OptiMLApplication {
     val x = TrainingSet(loadMatrix(args(0)), Labels[Int](0))
     val mu = loadMatrix(args(1))
 
-    tic
+    tic()
     val (iter, mu2) = kmeans.cluster(x, k, tol, Some(mu))
-    toc
+    toc(mu2)
     println("finished in " + iter + " iterations")
     mu2.pprint
 

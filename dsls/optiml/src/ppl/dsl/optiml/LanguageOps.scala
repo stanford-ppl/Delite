@@ -319,11 +319,11 @@ trait LanguageOps extends Base { this: OptiML =>
    *   Profiling
    */
   // lightweight profiling, matlab style
-  def tic() = profile_start()
-  def toc() = profile_stop()
+  def tic(deps: Rep[Any]*) = profile_start(deps)
+  def toc(deps: Rep[Any]*) = profile_stop(deps)
 
-  def profile_start(): Rep[Unit]
-  def profile_stop(): Rep[Unit]
+  def profile_start(deps: Seq[Rep[Any]]): Rep[Unit]
+  def profile_stop(deps: Seq[Rep[Any]]): Rep[Unit]
 }
 
 trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
@@ -588,11 +588,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    *   Profiling
    */
-  case class ProfileStart() extends Def[Unit]
-  case class ProfileStop() extends Def[Unit]
+  case class ProfileStart(deps: Exp[Seq[Any]]) extends Def[Unit]
+  case class ProfileStop(deps: Exp[Seq[Any]]) extends Def[Unit]
 
-  def profile_start() = reflectEffect(ProfileStart())
-  def profile_stop() = reflectEffect(ProfileStop())
+  def profile_start(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStart(Seq(deps: _*)))
+  def profile_stop(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStop(Seq(deps: _*)))
 }
 
 trait BaseGenLanguageOps extends GenericFatCodegen {
@@ -630,8 +630,8 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
       case RandGaussian() => emitValDef(sym, "generated.scala.Global.randRef.nextGaussian()")
       case RandReseed() => emitValDef(sym, "{ generated.scala.Global.randRef.setSeed(generated.scala.Global.INITIAL_SEED);" +
                                            "   generated.scala.Global.intRandRef.setSeed(generated.scala.Global.INITIAL_SEED); }")
-      case ProfileStart() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
-      case ProfileStop() => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
+      case ProfileStart(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
+      case ProfileStop(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
       case _ => super.emitNode(sym, rhs)
     }
   }

@@ -76,7 +76,7 @@ trait LBPDenoise extends OptiMLApplication {
     
     g.freeze()
 
-    tic
+    tic()
     untilconverged(g) {
       v =>
         val vdata = v.data.asInstanceOfL[DenoiseVertexData]
@@ -149,7 +149,7 @@ trait LBPDenoise extends OptiMLApplication {
       count += 1
     }
         
-    toc
+    toc()
 
     // Predict the image!
     g.vertices foreach { v =>

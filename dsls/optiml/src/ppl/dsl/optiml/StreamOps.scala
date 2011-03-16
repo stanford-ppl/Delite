@@ -59,6 +59,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   case class StreamNumRows[A:Manifest](x: Exp[Stream[A]]) extends Def[Int]
   case class StreamNumCols[A:Manifest](x: Exp[Stream[A]]) extends Def[Int]
   case class StreamChunkRow[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) extends Def[StreamRow[A]]
+  case class StreamChunkElem[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], j: Exp[Int]) extends Def[A]
   case class StreamRowsIn[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) extends Def[Int]
   case class StreamInitChunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) extends Def[Unit]
   case class StreamInitRow[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends Def[Unit]
@@ -76,7 +77,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     val func = reifyEffects {
       // always initialize for now (must be pure)
       stream_init_row(x, v, offset)
-      block(stream_chunkrow(x, v, offset))
+      block(stream_chunk_row(x, v, offset))
     }
   }
 
@@ -88,7 +89,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     val sync = reifyEffects(List())
 
     val func = reifyEffects {
-      block(stream_chunkrow(x, v, offset))
+      block(stream_chunk_row(x, v, offset))
     }
   }
 
@@ -140,10 +141,11 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   ///////////////////
   // internal
 
-  def stream_chunkrow[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) = reflectPure(StreamChunkRow(x, idx, offset))
+  def stream_chunk_row[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) = reflectPure(StreamChunkRow(x, idx, offset))
   def stream_init_chunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectWrite(x)(StreamInitChunk(x, offset))
   def stream_init_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = reflectWrite(x)(StreamInitRow(x, row, offset))
   def stream_rowsin[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectPure(StreamRowsIn(x, offset))
+  def stream_chunk_elem[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], j: Exp[Int]) = reflectPure(StreamChunkElem(x, idx, j))
 }
 
 
@@ -159,6 +161,7 @@ trait ScalaGenStreamOps extends ScalaGenBase {
     case StreamNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case StreamNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
     case StreamChunkRow(x, idx, offset) => emitValDef(sym, quote(x) + ".chunkRow(" + quote(idx) + "," + quote(offset) + ")")
+    case StreamChunkElem(x, idx, j) => emitValDef(sym, quote(x) + ".chunkElem(" + quote(idx) + "," + quote(j) + ")")
     case StreamRowsIn(x, idx) => emitValDef(sym, quote(x) + ".rowsIn(" + quote(idx) + ")")
     case StreamInitChunk(x, idx) => emitValDef(sym, quote(x) + ".initChunk(" + quote(idx) + ")")
     case StreamInitRow(x, row, idx) => emitValDef(sym, quote(x) + ".initRow(" + quote(row) + "," + quote(idx) + ")")

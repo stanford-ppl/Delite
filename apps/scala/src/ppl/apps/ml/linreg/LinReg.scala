@@ -84,9 +84,9 @@ trait LinReg extends OptiMLApplication {
     theta.pprint
     print("\\n")
 
-    tic
+    tic()
     val guess = weightedReg(x, y)
-    toc
+    toc(guess)
 
     println("Locally weighted linear regression")
     println("guess: ")

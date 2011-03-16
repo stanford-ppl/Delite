@@ -90,6 +90,7 @@ trait VectorOps extends DSLType with Variables {
     // data operations
     def ++(y: Rep[Vector[A]]) = vector_concatenate(x,y)
     def update(n: Rep[Int], y: Rep[A]) = vector_update(x,n,y)
+    def update(i: Rep[IndexVector], y: Rep[A])(implicit o: Overloaded1) = vector_update_indices(x,i,y)
     def +=(y: Rep[A]) = vector_insert(x,x.length,y)
     def ++=(y: Rep[Vector[A]]) = insertAll(length,y)
     def copyFrom(pos: Rep[Int], y: Rep[Vector[A]]) = vector_copyfrom(x,pos,y)
@@ -193,6 +194,7 @@ trait VectorOps extends DSLType with Variables {
 
   def vector_concatenate[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_update[A:Manifest](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
+  def vector_update_indices[A:Manifest](x: Rep[Vector[A]], i: Rep[IndexVector], y: Rep[A]): Rep[Unit]
   def vector_copyfrom[A:Manifest](x: Rep[Vector[A]], pos: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
   def vector_insert[A:Manifest](x: Rep[Vector[A]], pos: Rep[Int], y: Rep[A]): Rep[Unit]
   def vector_insertall[A:Manifest](x: Rep[Vector[A]], pos: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
@@ -234,7 +236,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_mzipwith[A:Manifest,B:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[A]): Rep[Vector[A]]
   def vector_reduce[A:Manifest](x: Rep[Vector[A]], f: (Rep[A],Rep[A]) => Rep[A]): Rep[A]
   def vector_filter[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Vector[A]]
-  def vector_find[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Vector[Int]]
+  def vector_find[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
   def vector_flatmap[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[Vector[B]]): Rep[Vector[B]]
   def vector_partition[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[Vector[A]], Rep[Vector[A]])
 
@@ -411,7 +413,17 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val isRow = f(o.size)
   }
 */  
-  
+
+  case class VectorUpdateIndices[A:Manifest](x: Exp[Vector[A]], in: Exp[IndexVector], y: Exp[A])
+    extends DeliteOpForeach[Int,Vector] {
+
+    val i = fresh[Int]
+    val sync = reifyEffects(List())
+
+    val v = fresh[Int]
+    val func = reifyEffects { x(v) = y }
+  }
+
   case class VectorTrans[A:Manifest](in: Exp[Vector[A]])
     extends DeliteOpVectorLoop[A] {
 
@@ -657,7 +669,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     //val sync = reifyEffects(if ((i > 0) && (i < in.length)) List(in(i-1),in(i),in(i+1)) else List(in(i)))
   }
 
-
   case class VectorZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]],
                                                              v: (Sym[A],Sym[B]), func: Exp[R])
     extends DeliteOpZipWith[A,B,R,Vector] {
@@ -783,6 +794,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
   def vector_concatenate[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(VectorConcatenate(x,y))
   def vector_update[A:Manifest](x: Exp[Vector[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(VectorUpdate(x, n, y))
+  def vector_update_indices[A:Manifest](x: Exp[Vector[A]], i: Exp[IndexVector], y: Exp[A]) = reflectWrite(x)(VectorUpdateIndices(x,i,y))
   def vector_copyfrom[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectWrite(x)(VectorCopyFrom(x, pos, y))
   def vector_insert[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[A]) = reflectWrite(x)(VectorInsert(x, pos, y))
   def vector_insertall[A:Manifest](x: Exp[Vector[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectWrite(x)(VectorInsertAll(x, pos, y))
@@ -850,7 +862,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
   def vector_filter[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorFilter(x, pred))
 
-  def vector_find[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorFind(x, pred))
+  def vector_find[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = IndexVector(reflectPure(VectorFind(x, pred)))
 
   def vector_flatmap[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[Vector[B]]) = {
     val v = fresh[A]
@@ -926,6 +938,7 @@ trait VectorOpsExpOpt extends VectorOpsExp {
     case Def(VectorObjectRange(s,e,d,r)) => (s + n*d).asInstanceOf[Exp[A]]
     case Def(VectorTrans(x)) => vector_apply(x,n)
     case Def(MatrixGetRow(x, i)) => matrix_apply(x,i,n)
+    case Def(StreamChunkRow(x, i, offset)) => stream_chunk_elem(x,i,n)
     case _ => super.vector_apply(x,n)
   }
   

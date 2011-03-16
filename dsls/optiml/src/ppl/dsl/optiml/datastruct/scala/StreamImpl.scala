@@ -37,6 +37,10 @@ class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: 
     new StreamRowImpl[T](idx, offset, this, _data)
   }
 
+  def chunkElem(idx: Int, j: Int): T = {
+    _data(idx*numCols+j)
+  }
+
   def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T] = {
     new VectorViewImpl[T](_data, start, stride, length, isRow)
   }
