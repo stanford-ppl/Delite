@@ -404,7 +404,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
     val mV = fresh[Int]
     val map = reifyEffects(block(mV))
-    Sum(start, end, mV, map)
+    //Sum(start, end, mV, map)
+    // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
+    reflectEffect(Sum(start, end, mV, map))
   }
 
 
