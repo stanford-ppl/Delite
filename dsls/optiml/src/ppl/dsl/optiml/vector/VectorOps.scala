@@ -143,6 +143,7 @@ trait VectorOps extends DSLType with Variables {
     def reduce(f: (Rep[A],Rep[A]) => Rep[A]) = vector_reduce(x,f)
     def filter(pred: Rep[A] => Rep[Boolean]) = vector_filter(x,pred)
     def find(pred: Rep[A] => Rep[Boolean]) = vector_find(x,pred)
+    def count(pred: Rep[A] => Rep[Boolean]) = vector_count(x, pred)
     def flatMap[B:Manifest](f: Rep[A] => Rep[Vector[B]]) = vector_flatmap(x,f)
     def partition(pred: Rep[A] => Rep[Boolean]) = vector_partition(x,pred)
   }
@@ -153,7 +154,12 @@ trait VectorOps extends DSLType with Variables {
   }
 */  
 
-  def NilV[A:Manifest] = vector_nil
+  def NilV[A](implicit mA: Manifest[A]): Rep[Vector[A]] = mA match {
+    case Manifest.Double => vector_nil_double.asInstanceOfL[Vector[A]]
+    case Manifest.Float => vector_nil_float.asInstanceOfL[Vector[A]]
+    case Manifest.Int => vector_nil_int.asInstanceOfL[Vector[A]]
+    case _ => throw new IllegalArgumentException("No NilVector exists of type " + mA)
+  }
 
   def ZeroV[A](length: Rep[Int], isRow: Rep[Boolean] = unit(true))(implicit mA: Manifest[A]): Rep[Vector[A]] = mA match {
     case Manifest.Double => vector_zero_double(length, isRow).asInstanceOfL[Vector[A]]
@@ -237,11 +243,14 @@ trait VectorOps extends DSLType with Variables {
   def vector_reduce[A:Manifest](x: Rep[Vector[A]], f: (Rep[A],Rep[A]) => Rep[A]): Rep[A]
   def vector_filter[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Vector[A]]
   def vector_find[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
+  def vector_count[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Int]
   def vector_flatmap[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[Vector[B]]): Rep[Vector[B]]
   def vector_partition[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[Vector[A]], Rep[Vector[A]])
 
   // other defs
-  def vector_nil[A:Manifest]: Rep[Vector[A]]
+  def vector_nil_double: Rep[Vector[Double]]
+  def vector_nil_float: Rep[Vector[Float]]
+  def vector_nil_int: Rep[Vector[Int]]
   def vector_zero_double(length: Rep[Int], isRow: Rep[Boolean]): Rep[Vector[Double]]
   def vector_zero_float(length: Rep[Int], isRow: Rep[Boolean]): Rep[Vector[Float]]
   def vector_zero_int(length: Rep[Int], isRow: Rep[Boolean]): Rep[Vector[Int]]
@@ -280,7 +289,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val mV = manifest[VectorImpl[A]]
   }
 */
-  case class VectorNil[A](implicit mA: Manifest[A]) extends Def[Vector[A]]
+  case class VectorNilDouble() extends Def[Vector[Double]]
+  case class VectorNilFloat() extends Def[Vector[Float]]
+  case class VectorNilInt() extends Def[Vector[Int]]
   case class VectorZeroDouble(length: Exp[Int], isRow: Exp[Boolean]) extends Def[Vector[Double]]
   case class VectorZeroFloat(length: Exp[Int], isRow: Exp[Boolean]) extends Def[Vector[Float]]
   case class VectorZeroInt(length: Exp[Int], isRow: Exp[Boolean]) extends Def[Vector[Int]]
@@ -726,6 +737,15 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val reduce = reifyEffects(rV._1 ++ rV._2)
   }
 
+  case class VectorCount[A:Manifest](in: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean])
+    extends DeliteOpMapReduce[A,Int,Vector] {
+
+    val mV = fresh[A]
+    val map = reifyEffects { if (pred(mV)) 1 else 0 }
+    val rV = (fresh[Int],fresh[Int])
+    val reduce = reifyEffects(rV._1 + rV._2)
+  }
+
 
   //////////////
   // mirroring
@@ -861,8 +881,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
 
   def vector_filter[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorFilter(x, pred))
-
   def vector_find[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = IndexVector(reflectPure(VectorFind(x, pred)))
+  def vector_count[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorCount(x, pred))
 
   def vector_flatmap[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[Vector[B]]) = {
     val v = fresh[A]
@@ -872,11 +892,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
   def vector_partition[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = t2(reflectPure(VectorPartition(x, pred)))
 
-  def vector_nil[A:Manifest] = VectorNil[A]()
+  def vector_nil_double = VectorNilDouble()
+  def vector_nil_float = VectorNilFloat()
+  def vector_nil_int = VectorNilInt()
   def vector_zero_double(length: Exp[Int], isRow: Exp[Boolean]) = VectorZeroDouble(length, isRow)
   def vector_zero_float(length: Exp[Int], isRow: Exp[Boolean]) = VectorZeroFloat(length, isRow)
   def vector_zero_int(length: Exp[Int], isRow: Exp[Boolean]) = VectorZeroInt(length, isRow)
-
 }
 
 /**
@@ -917,6 +938,7 @@ trait VectorOpsExpOpt extends VectorOpsExp {
     case Def(VectorObjectRange(s,e,d,r)) => (e - s + d - 1)
     case Def(MatrixVView(x, start, stride, l, r)) => l
     case Def(MatrixGetRow(x,i)) => x.numCols
+    case Def(StreamChunkRow(s, i, offset)) => s.numCols
     case _ => super.vector_length(x)
   }
 
@@ -963,38 +985,32 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
   val IR: VectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
-    rhs match {
-      // these are the ops that call through to the underlying real data structure
-      case VectorApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
-      case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
-      case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
-      case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
-      case VectorMutableTrans(x) => emitValDef(sym, quote(x) + ".mtrans")
-      case VectorSort(x) => emitValDef(sym, quote(x) + ".sort")
-      case VectorToList(x) => emitValDef(sym, quote(x) + ".toList")
-      case VectorCopyFrom(x,pos,y) => emitValDef(sym, quote(x) + ".copyFrom(" + quote(pos) + ", " + quote(y) + ")")
-      case VectorInsert(x,pos,y) => emitValDef(sym, quote(x) + ".insert(" + quote(pos) + ", " + quote(y) + ")")
-      case VectorInsertAll(x,pos,y) => emitValDef(sym, quote(x) + ".insertAll(" + quote(pos) + ", " + quote(y) + ")")
-      case VectorRemoveAll(x,pos,len) => emitValDef(sym, quote(x) + ".removeAll(" + quote(pos) + ", " + quote(len) + ")")
-      case VectorTrim(x) => emitValDef(sym, quote(x) + ".trim")
-      case VectorClear(x) => emitValDef(sym, quote(x) + ".clear()")
-      case VectorClone(x) => emitValDef(sym, quote(x) + ".cloneL")
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    // these are the ops that call through to the underlying real data structure
+    case VectorApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
+    case VectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+    case VectorLength(x)    => emitValDef(sym, quote(x) + ".length")
+    case VectorIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
+    case VectorMutableTrans(x) => emitValDef(sym, quote(x) + ".mtrans")
+    case VectorSort(x) => emitValDef(sym, quote(x) + ".sort")
+    case VectorToList(x) => emitValDef(sym, quote(x) + ".toList")
+    case VectorCopyFrom(x,pos,y) => emitValDef(sym, quote(x) + ".copyFrom(" + quote(pos) + ", " + quote(y) + ")")
+    case VectorInsert(x,pos,y) => emitValDef(sym, quote(x) + ".insert(" + quote(pos) + ", " + quote(y) + ")")
+    case VectorInsertAll(x,pos,y) => emitValDef(sym, quote(x) + ".insertAll(" + quote(pos) + ", " + quote(y) + ")")
+    case VectorRemoveAll(x,pos,len) => emitValDef(sym, quote(x) + ".removeAll(" + quote(pos) + ", " + quote(len) + ")")
+    case VectorTrim(x) => emitValDef(sym, quote(x) + ".trim")
+    case VectorClear(x) => emitValDef(sym, quote(x) + ".clear()")
+    case VectorClone(x) => emitValDef(sym, quote(x) + ".cloneL")
 //      case v@VectorObjectNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
-      case v@VectorNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
-      case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
-      case VectorZeroDouble(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorDoubleImpl(" + quote(length) + ", " + quote(isRow) + ")")
-      case VectorZeroFloat(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorFloatImpl(" + quote(length) + ", " + quote(isRow) + ")")
-      case VectorZeroInt(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorIntImpl(" + quote(length) + ", " + quote(isRow) + ")")
-      // TODO: why!!!
-      case v@VectorNil() => v.mA.toString match {
-                              case "Int" => emitValDef(sym, "generated.scala.NilVectorIntImpl")
-                              case "Double" => emitValDef(sym, "generated.scala.NilVectorDoubleImpl")
-                              case _ => throw new UnsupportedOperationException("NilVector")
-                            }
-
-      case _ => super.emitNode(sym, rhs)
-    }
+    case v@VectorNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
+    case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
+    case VectorZeroDouble(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorDoubleImpl(" + quote(length) + ", " + quote(isRow) + ")")
+    case VectorZeroFloat(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorFloatImpl(" + quote(length) + ", " + quote(isRow) + ")")
+    case VectorZeroInt(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorIntImpl(" + quote(length) + ", " + quote(isRow) + ")")
+    case VectorNilDouble() => emitValDef(sym, "generated.scala.NilVectorDoubleImpl")
+    case VectorNilFloat() => emitValDef(sym, "generated.scala.NilVectorFloatImpl")
+    case VectorNilInt() => emitValDef(sym, "generated.scala.NilVectorIntImpl")
+    case _ => super.emitNode(sym, rhs)
   }
 }
 

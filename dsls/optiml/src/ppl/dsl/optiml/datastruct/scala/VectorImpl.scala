@@ -27,7 +27,7 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
     _length = _data.length
   }
 
-  def apply(n: Int) : T = {
+  def apply(n: Int): T = {
     _data(n)
   }
 

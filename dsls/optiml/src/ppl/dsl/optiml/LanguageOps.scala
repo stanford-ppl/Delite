@@ -232,9 +232,9 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    *  input parsing
    */
-  def loadMatrix(filename: Rep[String]) = MLInputReader.read(filename)
-  def loadVector(filename: Rep[String]) = MLInputReader.readVector(filename)
-  def loadImage(filename: Rep[String]) = MLInputReader.readGrayscaleImage(filename)
+  def readMatrix(filename: Rep[String]) = MLInputReader.read(filename)
+  def readVector(filename: Rep[String]) = MLInputReader.readVector(filename)
+  def readImage(filename: Rep[String]) = MLInputReader.readGrayscaleImage(filename)
 
 
   /**

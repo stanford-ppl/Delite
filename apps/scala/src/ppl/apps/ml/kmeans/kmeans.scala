@@ -20,8 +20,8 @@ trait kmeansApp extends OptiMLApplication {
     
     if (args.length < 1) print_usage
 
-    val x = TrainingSet(loadMatrix(args(0)), Labels[Int](0))
-    val mu = loadMatrix(args(1))
+    val x = TrainingSet(readMatrix(args(0)), Labels[Int](0))
+    val mu = readMatrix(args(1))
 
     tic()
     val (iter, mu2) = kmeans.cluster(x, k, tol, Some(mu))

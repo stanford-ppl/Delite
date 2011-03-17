@@ -14,8 +14,8 @@ trait GDA extends OptiMLApplication {
   def main() = {
     if (args.length < 2) printUsage
 
-    val x = loadMatrix(args(0))
-    val y = loadVector(args(1)).toBoolean(a => if (a <= 0) false else true)
+    val x = readMatrix(args(0))
+    val y = readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
 
     tic()
 

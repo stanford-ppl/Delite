@@ -26,7 +26,7 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
   
   // construct directly from model
   def load(modelFilename: Rep[String]) {
-    val in = loadVector(modelFilename)
+    val in = readVector(modelFilename)
     b = in(in.length-1)
     weights = in.take(in.length-1)
   }

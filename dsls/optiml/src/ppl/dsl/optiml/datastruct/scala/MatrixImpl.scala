@@ -19,7 +19,7 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
 //    vview(i*numCols, 1, numCols, true)
 //  }
 
-  def apply(i: Int, j: Int) : T = {
+  def apply(i: Int, j: Int): T = {
     _data(i*numCols+j)
   }
 
@@ -27,18 +27,18 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
     _data(row*numCols+col) = x
   }
 
-  def dcApply(idx: Int) : T = _data(idx)
+  def dcApply(idx: Int): T = _data(idx)
   def dcUpdate(idx: Int, x: T) { _data(idx) = x }
 
-  def getRow(row: Int): MatrixRow[T] = {
+  def getRow(row: Int) = {
     new MatrixRowImpl[T](row, this, _data)
   }
 
-  def getCol(col: Int): MatrixCol[T] = {
+  def getCol(col: Int) = {
     new MatrixColImpl[T](col, this, _data)
   }
 
-  def vview(start: Int, stride: Int, length: Int, isRow: Boolean) : VectorView[T] = {
+  def vview(start: Int, stride: Int, length: Int, isRow: Boolean) = {
     new VectorViewImpl[T](_data, start, stride, length, isRow)
   }
 

@@ -16,7 +16,7 @@ trait Spade extends OptiMLApplication with Downsampling {
 
     /********* downsampling *********/
 
-    val data = TrainingSet(MLInputReader.read(args(0)), Labels[Int](0))
+    val data = TrainingSet(readMatrix(args(0)), Labels[Int](0))
     tic()
     val densities = downsample(data, 5., 5., Vector[Int](0), false, 1.)
     toc(densities)
@@ -36,11 +36,9 @@ trait Spade extends OptiMLApplication with Downsampling {
     /********* clustering *********/
  /*
     val data = TrainingSet(MLInputReader.read(args(0) + "/data.txt"))
-    PerformanceTimer.start("clustering")
+    tic()
     val assgn = Clustering.cluster(data, 200)
-    PerformanceTimer.stop("clustering")
-    PerformanceTimer.print("clustering")
-
+    toc(assgn)
     for(i <- 0 to 9)
       print(assgn(i)+" ")
     print("\n")
@@ -51,12 +49,10 @@ trait Spade extends OptiMLApplication with Downsampling {
     val tbl = MLInputReader.read(args(0) + "/tbl.txt")
     val cluster_data = MLInputReader.read(args(0) + "/cluster_data.txt")
     val cluster_assign = MLInputReader.read(args(0) + "/cluster_assign.txt").mapRowsToVec(_(0).toInt)
-    cluster_assign.force
 
-    PerformanceTimer.start("assign_cluster")
+    tic
     val assign = Upsampling.assign_cluster(tbl, cluster_data, cluster_assign)
-    PerformanceTimer.stop("assign_cluster")
-    PerformanceTimer.print("assign_cluster")
+    toc(assign)
 
     for(i <- 0 to 9)
       print(assign(i)+" ")

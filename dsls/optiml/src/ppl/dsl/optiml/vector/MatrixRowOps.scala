@@ -3,7 +3,8 @@ package ppl.dsl.optiml.vector
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase}
+import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase, CudaGenBase, CGenBase}
+import scala.virtualization.lms.internal.GenericCodegen
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml.datastruct.scala.{MatrixRow, MatrixRowImpl}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
@@ -38,7 +39,18 @@ trait MatrixRowOpsExpOpt extends MatrixRowOpsExp { this: OptiMLExp =>
   }
 }
 
-trait ScalaGenMatrixRowOps extends ScalaGenBase {
+
+trait BaseGenMatrixRowOps extends GenericCodegen {
+  val IR: MatrixRowOpsExp
+  import IR._
+
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    //case MatrixGetRow(x, i) => Nil  // this is unsafe unless we can remove all actual allocations of views
+    case _ => super.syms(e)
+  }
+}
+
+trait ScalaGenMatrixRowOps extends BaseGenMatrixRowOps with ScalaGenBase {
   val IR: MatrixRowOpsExp
   import IR._
 
@@ -48,3 +60,6 @@ trait ScalaGenMatrixRowOps extends ScalaGenBase {
     case _ => super.emitNode(sym, rhs)
   }
 }
+
+trait CudaGenMatrixRowOps extends CudaGenBase with BaseGenMatrixRowOps
+trait CGenMatrixRowOps extends CGenBase with BaseGenMatrixRowOps

@@ -73,8 +73,8 @@ trait LinReg extends OptiMLApplication {
   def main() = {
     if (args.length < 2) print_usage
 
-    val x = loadVector(args(0))
-    val y = loadVector(args(1))
+    val x = readVector(args(0))
+    val y = readVector(args(1))
 
 //    logElapsed("Input Section Complete")
 

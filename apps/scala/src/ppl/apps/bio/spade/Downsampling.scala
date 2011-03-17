@@ -1,6 +1,6 @@
 package ppl.apps.bio.spade
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet,StreamRow}
 import ppl.dsl.optiml.OptiMLApplication
 
 trait Downsampling {
@@ -38,8 +38,7 @@ trait Downsampling {
     val minDist = (0::numSamples) { i =>
       val sampleIdx = sampleIndices(i)
       val neighborIdx = nearestNeighborIndex(sampleIdx, data, false)
-      val d = dist(data(sampleIdx), data(neighborIdx))
-      d
+      dist(data(sampleIdx), data(neighborIdx))
     }
     minDist.median
   }
@@ -47,22 +46,18 @@ trait Downsampling {
   private def countNeighbors(data: Rep[TrainingSet[Double,Int]], kernelWidth: Rep[Double], apprxWidth: Rep[Double]): Rep[Vector[Int]] = {
 
     println("   finding local density for each cell ...")
-    Vector[Int](data.numRows, true)
-
-    val distances = Stream[Double](data.numRows, data.numRows){ (i,j) => dist(data(i),data(j)) }
 
     //streaming version (fastest streaming version)
+    val distances = Stream[Double](data.numRows, data.numRows){ (i,j) => dist(data(i),data(j)) }
     val densities = Vector[Int](data.numRows, true)
 
     // NOTE: by allowing row.index to be expressed, we have essentially enabled writing the data race with densities.
     // This is a trade-off of restricted expression for performance, but is it the trade-off we want?
-    distances.foreachRow { row =>
+    for (row <- distances.rows) {
       if(row.index%1000 == 0) println("  (streaming) # processed node = " + row.index)
       if(densities(row.index) == 0) {
-        val distancesInRange = row map (e => if (e < kernelWidth) 1 else 0)  // find neighbors in range
-        val c = distancesInRange.sum               // count # of neighbors
-        val neighbors = row find (_ < apprxWidth)    // find approx neighbors
-        densities(neighbors) = c
+        val neighbors = row find { _ < apprxWidth }
+        densities(neighbors) = row count { _ < kernelWidth }
       }
     }
     densities

@@ -338,7 +338,7 @@ trait Stream[@specialized(Boolean, Int, Long, Float, Double) T] {
   def initRow(row: Int, offset: Int)
   def rowsIn(offset: Int): Int
   def isPure: Boolean
-  def chunkRow(idx: Int, offset: Int): VectorView[T]
+  def chunkRow(idx: Int, offset: Int): StreamRow[T]
   def chunkElem(idx: Int, j: Int): T
   def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
 }

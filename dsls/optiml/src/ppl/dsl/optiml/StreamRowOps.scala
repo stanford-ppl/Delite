@@ -26,6 +26,7 @@ trait StreamRowOpsExp extends StreamRowOps with BaseExp { this: OptiMLExp =>
 trait StreamRowOpsExpOpt extends StreamRowOpsExp { this: OptiMLExp =>
 
   override def streamrow_index[A:Manifest](x: Exp[StreamRow[A]]) = x match {
+    //case Def(StreamChunkRow(Def(Reflect(StreamObjectNew(numRows,numCols,chunkSize,func,isPure),_,_)), i, offset)) => offset*chunkSize + i
     case Def(StreamChunkRow(Def(StreamObjectNew(numRows,numCols,chunkSize,func,isPure)), i, offset)) => offset*chunkSize + i
     case _ => super.streamrow_index(x)
   }

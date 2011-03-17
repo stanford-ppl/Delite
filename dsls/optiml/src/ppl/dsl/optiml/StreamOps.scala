@@ -28,7 +28,13 @@ trait StreamOps extends DSLType with Variables {
     def numCols = stream_numcols(x)
     def isPure = stream_ispure(x)
 
+    def rows = new streamRowOpsCls(x)
     def foreachRow(block: Rep[StreamRow[A]] => Rep[Unit]) = stream_foreachrow(x, block)
+  }
+
+  // syntactic sugar
+  class streamRowOpsCls[A:Manifest](x: Rep[Stream[A]]) {
+    def foreach(block: Rep[StreamRow[A]] => Rep[Unit]) = x.foreachRow(block)
   }
 
   // object defs
@@ -102,7 +108,9 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
       case Def(Lambda2(a,b,c,Def(Reify(d,u,es)))) => false
       case _ => true
     }
-    reflectEffect(StreamObjectNew[A](numRows, numCols, chunkSize, y, unit(isPure)))
+    // should this be effectful? do we need multiple instances of streams, which are immutable?
+    // (depends on what internal state we have)
+    StreamObjectNew[A](numRows, numCols, chunkSize, y, unit(isPure))
   }
 
   ////////////////////
