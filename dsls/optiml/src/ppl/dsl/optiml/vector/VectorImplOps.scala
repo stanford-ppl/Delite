@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,NilVector}
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,NilVector,IndexVector}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 import ppl.dsl.optiml.{OptiMLLift, OptiMLCompiler, OptiML}
@@ -31,6 +31,7 @@ trait VectorImplOps { this: OptiML =>
   def vector_distinct_impl[A:Manifest](v: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_min_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
   def vector_max_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
+  def vector_find_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
@@ -270,6 +271,14 @@ trait VectorImplOpsStandard extends VectorImplOps {
     }
 
     maxIndex
+  }
+
+  def vector_find_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
+    val indices = IndexVector(0)
+    for (i <- 0 until v.length) {
+      if (pred(v(i))) indices += i
+    }
+    indices
   }
 
 }

@@ -52,7 +52,8 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   this: OptiMLExp => //with StreamImplOps =>
 
   // used for all operations
-  val chunkSize = 10000
+  //val chunkSize = 10000
+  def chunkSize(numCols: Rep[Int]): Rep[Int] = 100000/numCols + 1000 // heuristic, total buffer size is chunkSize x numCols
 
   //////////////////////////////////////////////////
   // implemented via method on real data structure
@@ -110,7 +111,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     }
     // should this be effectful? do we need multiple instances of streams, which are immutable?
     // (depends on what internal state we have)
-    StreamObjectNew[A](numRows, numCols, chunkSize, y, unit(isPure))
+    StreamObjectNew[A](numRows, numCols, chunkSize(numCols), y, unit(isPure))
   }
 
   ////////////////////
@@ -123,7 +124,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   def stream_foreachrow[A:Manifest](x: Exp[Stream[A]], block: Exp[StreamRow[A]] => Exp[Unit]) = {
     // we do not know at compile time how many streaming chunks are needed (therefore how many ops to submit)
     // so we submit a While loop, where each iteration of the while depends on the next, and let the runtime unroll it
-    val numChunks = Math.ceil(x.numRows / unit(chunkSize).doubleValue()).asInstanceOfL[Int]
+    val numChunks = Math.ceil(x.numRows / chunkSize(x.numCols).doubleValue()).asInstanceOfL[Int]
     val i = var_new(0)
     while (i < numChunks) {
       val rowsToProcess = stream_rowsin(x, i)

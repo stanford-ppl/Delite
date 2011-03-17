@@ -9,3 +9,4 @@ lbpdenoise|noisy200x200.raw
 spade2|$data/bio/spade/10kx10random.dat|spade_out.dat
 spade|$data/bio/spade/CyToF54_31_SurfLive_Singlets2.txt|spade_out.dat 
 streamtest|
+vectortest|

@@ -39,13 +39,38 @@ trait VectorUITests extends OptiMLApplication {
     // TODO: test int*double, double*int, vec[int]*vec[double], vec[double]*vec[int]
   }
 
+
+  def testCount() = {
+    val v = Vector(1,2,3,5,5,5,7,8,9,10)
+    val c = v.count { _ == 5 }
+    println("should be 3: " + c)
+  }
+
+  def testBulkUpdate() = {
+    val v = Vector.mzeros(10)
+    val i = (0::5)
+    v(i) = 1
+    println("should be [1 1 1 1 1 0 0 0 0 0]")
+    v.pprint
+  }
+
+  def testFind() = {
+    val v = Vector(1,2,3,5,5,5,7,8,9,10)
+    val i = v.find { _ == 5 }
+    println("should be [3 4 5]")
+    i.pprint
+  }
+
   def main() = {
     // test args
-    for (a <- args)
-      println(a)
+//    for (a <- args)
+//      println(a)
 
     //testInit()
     //testLoop()
 
+    testCount()
+    testBulkUpdate()
+    testFind()
   }
 }

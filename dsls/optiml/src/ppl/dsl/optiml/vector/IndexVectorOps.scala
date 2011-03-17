@@ -48,7 +48,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
 
   // impl defs
   def indexvector_range(start: Exp[Int], end: Exp[Int]) = IndexVectorRange(start, end)
-  def indexvector_seq(xs: Exp[Vector[Int]]) = reflectEffect(IndexVectorSeq(xs))
+  def indexvector_seq(xs: Exp[Vector[Int]]) = reflectMutable(IndexVectorSeq(xs))
 
   // class defs
   def indexvector_construct[A:Manifest](x: Exp[IndexVector], block: Exp[Int] => Exp[A]): Exp[Vector[A]] = {

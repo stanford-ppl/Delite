@@ -307,8 +307,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   case class VectorClear[A:Manifest](x: Exp[Vector[A]]) extends Def[Unit]
   case class VectorMutableTrans[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
   case class VectorClone[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
-  // TODO: right now we just use the underlying data structure sort, but we should implement our own fast parallel sort
-  // with delite ops
+  // TODO: right now we just use the underlying data structure sort, but we should implement our own
+  // fast parallel sort with delite ops
   case class VectorSort[A:Manifest:Ordering](x: Exp[Vector[A]]) extends Def[Vector[A]]
 
 
@@ -389,6 +389,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 //  case class VectorMaxIndex[A:Manifest:Ordering](x: Exp[Vector[A]])
 //    extends DeliteOpSingleTask(reifyEffectsHere(vector_max_index_impl[A](x)))
 
+  case class VectorFind[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean])
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_find_impl[A](x, pred)))
 
 
   ////////////////////////////////
@@ -727,6 +729,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val reduce = reifyEffects(rV._1 ++ rV._2)
   }
 
+  /*  functional, but slow
   case class VectorFind[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean])
     extends DeliteOpMapReduce[Int,Vector[Int],Vector] {
 
@@ -736,6 +739,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val rV = (fresh[Vector[Int]],fresh[Vector[Int]])
     val reduce = reifyEffects(rV._1 ++ rV._2)
   }
+  */
 
   case class VectorCount[A:Manifest](in: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean])
     extends DeliteOpMapReduce[A,Int,Vector] {
@@ -881,7 +885,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
 
   def vector_filter[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorFilter(x, pred))
-  def vector_find[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = IndexVector(reflectPure(VectorFind(x, pred)))
+  def vector_find[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorFind(x, pred))//IndexVector(reflectPure(VectorFind(x, pred)))
   def vector_count[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorCount(x, pred))
 
   def vector_flatmap[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[Vector[B]]) = {
@@ -975,10 +979,13 @@ trait BaseGenVectorOps extends GenericFatCodegen {
     case _ => super.unapplySimpleIndex(e)
   }
 
-  //override def syms(e: Any): List[Sym[Any]] = e match {
-    //case VectorObjectFromSeq(xs) => List(xs)
-    //case _ => super.syms(e)
-  //}
+//  override def syms(e: Any): List[Sym[Any]] = e match {
+//    //case VectorObjectFromSeq(xs) => List(xs)
+//    // this should remove MatrixRow as a dependency if it is not used inside the loop body anywhere (has been optimized away)
+//    // but doesn't seem to work
+//    case l:DeliteOpVectorLoop[_] => syms(l.size) ++ syms(l.isRow) ++ syms(l.body)
+//    case _ => super.syms(e)
+//  }
 }
 
 trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
