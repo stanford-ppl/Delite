@@ -1,7 +1,7 @@
 /*****************************************
   Emitting Generated Code                  
 *******************************************/
-class SVM extends ((Array[java.lang.String])=>(Unit)) {
+class SVMRunner extends ((Array[java.lang.String])=>(Unit)) {
 def apply(x0:Array[java.lang.String]): Unit = {
 val x1 = x0.length
 val x2 = x1 < 1
@@ -25,13 +25,13 @@ val x7 = x0(0)
 def x134_block = { 
 val x13 = new java.io.FileReader(x7)
 val x14 = new java.io.BufferedReader(x13)
-var x15 = x14
+var x15: java.io.BufferedReader = x14
 val x16 = x15
 val x17 = x16.readLine()
-var x18 = x17
+var x18: java.lang.String = x17
 val x19 = x15
 val x20 = x19.readLine()
-var x21 = x20
+var x21: java.lang.String = x20
 val x22 = x21
 val x23 = x22.trim()
 val x24 = x23.split("\\s+")
@@ -111,8 +111,8 @@ val x80 = x79.trim()
 x21 = x80
 val x82 = x21
 val x84 = new generated.scala.DoubleVectorImpl(x28,true)
-var x85 = 0
-var x86 = 1
+var x85: Int = 0
+var x86: Int = 1
 val x83 = x82.split("\\s+")
 val x88 = x83.length
 val x89 = x88 - 1
@@ -183,13 +183,13 @@ val x8 = x0(1)
 def x256_block = { 
 val x135 = new java.io.FileReader(x8)
 val x136 = new java.io.BufferedReader(x135)
-var x137 = x136
+var x137: java.io.BufferedReader = x136
 val x138 = x137
 val x139 = x138.readLine()
-var x140 = x139
+var x140: java.lang.String = x139
 val x141 = x137
 val x142 = x141.readLine()
-var x143 = x142
+var x143: java.lang.String = x142
 val x144 = x143
 val x145 = x144.trim()
 val x146 = x145.split("\\s+")
@@ -269,8 +269,8 @@ val x202 = x201.trim()
 x143 = x202
 val x204 = x143
 val x206 = new generated.scala.DoubleVectorImpl(x150,true)
-var x207 = 0
-var x208 = 1
+var x207: Int = 0
+var x208: Int = 1
 val x205 = x204.split("\\s+")
 val x210 = x205.length
 val x211 = x210 - 1
@@ -391,68 +391,76 @@ mapIdx += 1
 x262
 }
 val x266 = x266_block
-val x267 = println("tic:" + (System.nanoTime / 1000000L))
-val x268 = println("Training SVM using the SMO algorithm")
-val x269 = x134.numCols
-def x272_block = { 
-val x270 = new generated.scala.DoubleVectorImpl(x269,true)
-x270
+val x267 = Seq()
+val x268 = ppl.delite.runtime.profiler.PerformanceTimer.start("app", false)
+val x269 = println("Training SVM using the SMO algorithm")
+val x270 = x134.numCols
+def x273_block = { 
+val x271 = new generated.scala.DoubleVectorImpl(x270,true)
+x271
 }
-val x272 = x272_block
-var x273 = x272
-var x274 = 0.0
-val x275 = x134.numRows
-def x278_block = { 
-val x276 = new generated.scala.DoubleVectorImpl(x275,true)
-x276
+val x273 = x273_block
+var x274: generated.scala.Vector[Double] = x273
+var x275: Double = 0.0
+val x276 = x134.numRows
+def x279_block = { 
+val x277 = new generated.scala.DoubleVectorImpl(x276,true)
+x277
 }
-val x278 = x278_block
-val x279 = x278.mtrans
-var x280 = 0
-val x631 = while ({val x281 = x280
-val x282 = x281 < 10
-x282}) {
-val x284 = print(".")
-var x285 = 0
-var x287 : Int = 0
-val x622 = while (x287 < x275) {
-val x288 = x278.cloneL
-val x339 = x274
-val x341 = x257(x287)
-val x289 = x288.isRow
-val x296 = {
-val x291 = new generated.scala.DoubleVectorImpl(x275,x289)
-x291
+val x279 = x279_block
+val x280 = x279.mtrans
+var x281: Int = 0
+val x622 = while ({val x282 = x281
+val x283 = x282 < 10
+x283}) {
+val x285 = print(".")
+var x286: Int = 0
+var x287: Int = 0
+val x613 = while ({val x288 = x287
+val x289 = x288 < x276
+x289}) {
+val x291 = x279.cloneL
+val x300 = x287
+val x339 = x275
+val x341 = x287
+val x344 = x287
+val x348 = x287
+val x352 = x287
+val x356 = x287
+val x292 = x291.isRow
+val x299 = {
+val x294 = new generated.scala.DoubleVectorImpl(x276,x292)
+x294
 }
-var x290 = 0
-while (x290 < x275) {  // begin fat loop x296
-val x293 = x288(x290)
-val x294 = x257(x290)
-val x295 = x293 * x294
-x296.dcUpdate(x290, x295)
-x290 += 1
-} // end fat loop x296
+var x293 = 0
+while (x293 < x276) {  // begin fat loop x299
+val x296 = x291(x293)
+val x297 = x257(x293)
+val x298 = x296 * x297
+x299.dcUpdate(x293, x298)
+x293 += 1
+} // end fat loop x299
 val x325 = {
-val x307 = new generated.scala.DoubleVectorImpl(x275,false)
-x307
+val x309 = new generated.scala.DoubleVectorImpl(x276,false)
+x309
 }
-var x306 = 0
-while (x306 < x275) {  // begin fat loop x325
+var x308 = 0
+while (x308 < x276) {  // begin fat loop x325
 val x318 = {
-val x313 = new generated.scala.DoubleVectorImpl(x269,true)
+val x313 = new generated.scala.DoubleVectorImpl(x270,true)
 x313
 }
 var x312 = 0
-while (x312 < x269) {  // begin fat loop x318
-val x315 = x134(x306, x312)
-val x316 = x134(x287, x312)
+while (x312 < x270) {  // begin fat loop x318
+val x315 = x134(x308, x312)
+val x316 = x134(x300, x312)
 val x317 = x315 * x316
 x318.dcUpdate(x312, x317)
 x312 += 1
 } // end fat loop x318
 var x324: Double = 0
 var x319 = 0
-while (x319 < x269) {  // begin fat loop x324
+while (x319 < x270) {  // begin fat loop x324
 val x322 = x318(x319)
 val x320 = x324
 val x321 = x322
@@ -460,16 +468,16 @@ val x323 = x320 + x321
 x324 = x323
 x319 += 1
 } // end fat loop x324
-x325.dcUpdate(x306, x324)
-x306 += 1
+x325.dcUpdate(x308, x324)
+x308 += 1
 } // end fat loop x325
 val x332 = {
-val x327 = new generated.scala.DoubleVectorImpl(x275,x289)
+val x327 = new generated.scala.DoubleVectorImpl(x276,x292)
 x327
 }
 var x326 = 0
-while (x326 < x275) {  // begin fat loop x332
-val x329 = x296(x326)
+while (x326 < x276) {  // begin fat loop x332
+val x329 = x299(x326)
 val x330 = x325(x326)
 val x331 = x329 * x330
 x332.dcUpdate(x326, x331)
@@ -477,7 +485,7 @@ x326 += 1
 } // end fat loop x332
 var x338: Double = 0
 var x333 = 0
-while (x333 < x275) {  // begin fat loop x338
+while (x333 < x276) {  // begin fat loop x338
 val x336 = x332(x333)
 val x334 = x338
 val x335 = x336
@@ -486,659 +494,586 @@ x338 = x337
 x333 += 1
 } // end fat loop x338
 val x340 = x338 + x339
-val x342 = x340 - x341
-val x343 = x341 * x342
-val x344 = x343 < -1.0E-4
-val x345 = x288(x287)
-val x346 = x345 < 1.0
-val x347 = x344 && x346
-val x348 = x343 > 1.0E-4
-val x349 = x345 > 0.0
-val x350 = x348 && x349
-val x351 = x347 || x350
-val x620 = {
-def x620thenb(): Unit = {
-val x352 = generated.scala.Global.randRef.nextDouble()
-val x353 = x352.asInstanceOf[Double]
-val x354 = x275 - 1
-val x355 = x354
-val x356 = x353 * x355
-val x357 = Math.floor(x356)
-val x358 = x357.asInstanceOf[Int]
-val x359 = x358 + 1
-var x360 = x359
-val x372 = while ({val x361 = x360
-val x362 = x361==x287
-x362}) {
-val x364 = generated.scala.Global.randRef.nextDouble()
-val x365 = x364.asInstanceOf[Double]
-val x366 = x365 * x355
-val x367 = Math.floor(x366)
-val x368 = x367.asInstanceOf[Int]
-val x369 = x368 + 1
-x360 = x369
+val x342 = x257(x341)
+val x343 = x340 - x342
+val x345 = x257(x344)
+val x346 = x345 * x343
+val x347 = x346 < -1.0E-4
+val x349 = x291(x348)
+val x350 = x349 < 1.0
+val x351 = x347 && x350
+val x353 = x257(x352)
+val x354 = x353 * x343
+val x355 = x354 > 1.0E-4
+val x357 = x291(x356)
+val x358 = x357 > 0.0
+val x359 = x355 && x358
+val x360 = x351 || x359
+val x610 = {
+def x610thenb(): Unit = {
+val x361 = generated.scala.Global.randRef.nextDouble()
+val x362 = x361.asInstanceOf[Double]
+val x363 = x276 - 1
+val x364 = x363
+val x365 = x362 * x364
+val x366 = Math.floor(x365)
+val x367 = x366.asInstanceOf[Int]
+val x368 = x367 + 1
+var x369: Int = x368
+val x382 = while ({val x370 = x369
+val x371 = x287
+val x372 = x370==x371
+x372}) {
+val x374 = generated.scala.Global.randRef.nextDouble()
+val x375 = x374.asInstanceOf[Double]
+val x376 = x375 * x364
+val x377 = Math.floor(x376)
+val x378 = x377.asInstanceOf[Int]
+val x379 = x378 + 1
+x369 = x379
 ()
 }
-val x379 = x360
-val x421 = x274
-var x426 = 0.0
-var x427 = 0.0
-val x423 = x257(x379)
-val x428 = x341 != x423
-val x444 = {
-def x444thenb(): Unit = {
-val x425 = x288(x379)
-val x429 = x425 - x345
-val x430 = Math.max(0.0, x429)
-x426 = x430
-val x432 = 1.0 + x425
-val x433 = x432 - x345
-val x434 = Math.min(1.0, x433)
-x427 = x434
-()
-}
-def x444elseb(): Unit = {
-val x425 = x288(x379)
-val x437 = x345 + x425
-val x438 = x437 - 1.0
+val x389 = x369
+val x427 = x275
+var x432: Double = 0.0
+var x433: Double = 0.0
+val x434 = x287
+val x429 = x257(x389)
+val x435 = x257(x434)
+val x436 = x435 != x429
+val x453 = {
+def x453thenb(): Unit = {
+val x431 = x291(x389)
+val x437 = x291(x434)
+val x438 = x431 - x437
 val x439 = Math.max(0.0, x438)
-x426 = x439
-val x441 = Math.min(1.0, x437)
-x427 = x441
+x432 = x439
+val x441 = 1.0 + x431
+val x442 = x441 - x437
+val x443 = Math.min(1.0, x442)
+x433 = x443
 ()
 }
-if (x428) {
-x444thenb()
+def x453elseb(): Unit = {
+val x431 = x291(x389)
+val x437 = x291(x434)
+val x446 = x437 + x431
+val x447 = x446 - 1.0
+val x448 = Math.max(0.0, x447)
+x432 = x448
+val x450 = Math.min(1.0, x446)
+x433 = x450
+()
+}
+if (x436) {
+x453thenb()
 } else {
-x444elseb()
+x453elseb()
 }
 }
-val x445 = x426
-val x446 = x427
-val x447 = x445 != x446
-val x618 = {
-def x618thenb(): Unit = {
-val x448 = x360
-val x458 = {
-val x453 = new generated.scala.DoubleVectorImpl(x269,true)
-x453
+val x454 = x432
+val x455 = x433
+val x456 = x454 != x455
+val x608 = {
+def x608thenb(): Unit = {
+val x464 = {
+val x459 = new generated.scala.DoubleVectorImpl(x270,true)
+x459
 }
-var x452 = 0
-while (x452 < x269) {  // begin fat loop x458
-val x455 = x134(x287, x452)
-val x456 = x134(x448, x452)
-val x457 = x455 * x456
-x458.dcUpdate(x452, x457)
-x452 += 1
-} // end fat loop x458
-var x464: Double = 0
-var x459 = 0
-while (x459 < x269) {  // begin fat loop x464
-val x462 = x458(x459)
-val x460 = x464
-val x461 = x462
-val x463 = x460 + x461
-x464 = x463
-x459 += 1
+var x458 = 0
+while (x458 < x270) {  // begin fat loop x464
+val x461 = x134(x434, x458)
+val x462 = x134(x389, x458)
+val x463 = x461 * x462
+x464.dcUpdate(x458, x463)
+x458 += 1
 } // end fat loop x464
-val x465 = x464 * 2.0
-val x471 = {
-val x467 = new generated.scala.DoubleVectorImpl(x269,true)
-x467
+var x470: Double = 0
+var x465 = 0
+while (x465 < x270) {  // begin fat loop x470
+val x468 = x464(x465)
+val x466 = x470
+val x467 = x468
+val x469 = x466 + x467
+x470 = x469
+x465 += 1
+} // end fat loop x470
+val x471 = x470 * 2.0
+val x477 = {
+val x473 = new generated.scala.DoubleVectorImpl(x270,true)
+x473
 }
-var x466 = 0
-while (x466 < x269) {  // begin fat loop x471
-val x469 = x134(x287, x466)
-val x470 = x469 * x469
-x471.dcUpdate(x466, x470)
-x466 += 1
-} // end fat loop x471
-var x477: Double = 0
 var x472 = 0
-while (x472 < x269) {  // begin fat loop x477
-val x475 = x471(x472)
-val x473 = x477
-val x474 = x475
-val x476 = x473 + x474
-x477 = x476
+while (x472 < x270) {  // begin fat loop x477
+val x475 = x134(x434, x472)
+val x476 = x475 * x475
+x477.dcUpdate(x472, x476)
 x472 += 1
 } // end fat loop x477
-val x478 = x465 - x477
-val x484 = {
-val x480 = new generated.scala.DoubleVectorImpl(x269,true)
-x480
+var x483: Double = 0
+var x478 = 0
+while (x478 < x270) {  // begin fat loop x483
+val x481 = x477(x478)
+val x479 = x483
+val x480 = x481
+val x482 = x479 + x480
+x483 = x482
+x478 += 1
+} // end fat loop x483
+val x484 = x471 - x483
+val x490 = {
+val x486 = new generated.scala.DoubleVectorImpl(x270,true)
+x486
 }
-var x479 = 0
-while (x479 < x269) {  // begin fat loop x484
-val x482 = x134(x448, x479)
-val x483 = x482 * x482
-x484.dcUpdate(x479, x483)
-x479 += 1
-} // end fat loop x484
-var x490: Double = 0
 var x485 = 0
-while (x485 < x269) {  // begin fat loop x490
-val x488 = x484(x485)
-val x486 = x490
-val x487 = x488
-val x489 = x486 + x487
-x490 = x489
+while (x485 < x270) {  // begin fat loop x490
+val x488 = x134(x389, x485)
+val x489 = x488 * x488
+x490.dcUpdate(x485, x489)
 x485 += 1
 } // end fat loop x490
-val x491 = x478 - x490
-val x492 = x491 < 0.0
-val x616 = {
-def x616thenb(): Unit = {
-val x493 = x288(x448)
-val x494 = x257(x448)
-val x407 = {
-val x389 = new generated.scala.DoubleVectorImpl(x275,false)
-x389
+var x496: Double = 0
+var x491 = 0
+while (x491 < x270) {  // begin fat loop x496
+val x494 = x490(x491)
+val x492 = x496
+val x493 = x494
+val x495 = x492 + x493
+x496 = x495
+x491 += 1
+} // end fat loop x496
+val x497 = x484 - x496
+val x498 = x497 < 0.0
+val x606 = {
+def x606thenb(): Unit = {
+val x431 = x291(x389)
+val x413 = {
+val x397 = new generated.scala.DoubleVectorImpl(x276,false)
+x397
 }
-var x388 = 0
-while (x388 < x275) {  // begin fat loop x407
-val x400 = {
-val x395 = new generated.scala.DoubleVectorImpl(x269,true)
-x395
+var x396 = 0
+while (x396 < x276) {  // begin fat loop x413
+val x406 = {
+val x401 = new generated.scala.DoubleVectorImpl(x270,true)
+x401
 }
-var x394 = 0
-while (x394 < x269) {  // begin fat loop x400
-val x397 = x134(x388, x394)
-val x398 = x134(x379, x394)
-val x399 = x397 * x398
-x400.dcUpdate(x394, x399)
-x394 += 1
-} // end fat loop x400
-var x406: Double = 0
-var x401 = 0
-while (x401 < x269) {  // begin fat loop x406
-val x404 = x400(x401)
-val x402 = x406
-val x403 = x404
-val x405 = x402 + x403
-x406 = x405
-x401 += 1
+var x400 = 0
+while (x400 < x270) {  // begin fat loop x406
+val x403 = x134(x396, x400)
+val x404 = x134(x389, x400)
+val x405 = x403 * x404
+x406.dcUpdate(x400, x405)
+x400 += 1
 } // end fat loop x406
-x407.dcUpdate(x388, x406)
-x388 += 1
-} // end fat loop x407
-val x414 = {
-val x409 = new generated.scala.DoubleVectorImpl(x275,x289)
-x409
+var x412: Double = 0
+var x407 = 0
+while (x407 < x270) {  // begin fat loop x412
+val x410 = x406(x407)
+val x408 = x412
+val x409 = x410
+val x411 = x408 + x409
+x412 = x411
+x407 += 1
+} // end fat loop x412
+x413.dcUpdate(x396, x412)
+x396 += 1
+} // end fat loop x413
+val x420 = {
+val x415 = new generated.scala.DoubleVectorImpl(x276,x292)
+x415
 }
-var x408 = 0
-while (x408 < x275) {  // begin fat loop x414
-val x411 = x296(x408)
-val x412 = x407(x408)
-val x413 = x411 * x412
-x414.dcUpdate(x408, x413)
-x408 += 1
-} // end fat loop x414
-var x420: Double = 0
-var x415 = 0
-while (x415 < x275) {  // begin fat loop x420
-val x418 = x414(x415)
-val x416 = x420
-val x417 = x418
-val x419 = x416 + x417
-x420 = x419
-x415 += 1
+var x414 = 0
+while (x414 < x276) {  // begin fat loop x420
+val x417 = x299(x414)
+val x418 = x413(x414)
+val x419 = x417 * x418
+x420.dcUpdate(x414, x419)
+x414 += 1
 } // end fat loop x420
-val x422 = x420 + x421
-val x424 = x422 - x423
-val x495 = x342 - x424
-val x496 = x494 * x495
-val x497 = x496 / x491
-val x498 = x493 - x497
-val x499 = x278(x448) = x498
-val x500 = x278(x448)
-val x501 = x500 > x446
-val x509 = {
-def x509thenb(): Unit = {
-val x502 = x278(x448) = x446
-x502
+var x426: Double = 0
+var x421 = 0
+while (x421 < x276) {  // begin fat loop x426
+val x424 = x420(x421)
+val x422 = x426
+val x423 = x424
+val x425 = x422 + x423
+x426 = x425
+x421 += 1
+} // end fat loop x426
+val x428 = x426 + x427
+val x430 = x428 - x429
+val x499 = x343 - x430
+val x500 = x429 * x499
+val x501 = x500 / x497
+val x502 = x431 - x501
+val x503 = x279(x389) = x502
+val x504 = x279(x389)
+val x505 = x504 > x455
+val x513 = {
+def x513thenb(): Unit = {
+val x506 = x279(x389) = x455
+x506
 }
-def x509elseb(): Unit = {
-val x504 = x500 < x445
-val x507 = {
-def x507thenb(): Unit = {
-val x505 = x278(x448) = x445
-x505
+def x513elseb(): Unit = {
+val x508 = x504 < x454
+val x511 = {
+def x511thenb(): Unit = {
+val x509 = x279(x389) = x454
+x509
 }
-def x507elseb(): Unit = {
+def x511elseb(): Unit = {
 ()
 }
-if (x504) {
-x507thenb()
+if (x508) {
+x511thenb()
 } else {
-x507elseb()
+x511elseb()
 }
 }
-x507
+x511
 }
-if (x501) {
-x509thenb()
+if (x505) {
+x513thenb()
 } else {
-x509elseb()
+x513elseb()
 }
 }
-val x510 = x360
-val x511 = x278(x510)
-val x425 = x288(x379)
-val x512 = x511 - x425
-val x513 = Math.abs(x512)
-val x514 = x513 > 1.0E-4
-val x614 = {
-def x614thenb(): Unit = {
-val x515 = x360
-val x518 = x278(x515)
-val x516 = x257(x515)
-val x517 = x341 * x516
-val x519 = x425 - x518
-val x520 = x517 * x519
-val x521 = x345 + x520
-val x522 = x278(x287) = x521
-val x523 = x274
-val x536 = x278(x287)
-val x557 = x278(x515)
-val x591 = x536 > 0.0
-val x592 = x536 < 1.0
-val x593 = x591 && x592
-val x596 = {
-def x596thenb(): Unit = {
-val x524 = x523 - x342
-val x535 = x477 * x341
-val x537 = x536 - x345
-val x538 = x535 * x537
-val x539 = x524 - x538
-val x549 = {
-val x544 = new generated.scala.DoubleVectorImpl(x269,true)
-x544
-}
-var x543 = 0
-while (x543 < x269) {  // begin fat loop x549
-val x546 = x134(x287, x543)
-val x547 = x134(x515, x543)
-val x548 = x546 * x547
-x549.dcUpdate(x543, x548)
-x543 += 1
-} // end fat loop x549
-var x555: Double = 0
-var x550 = 0
-while (x550 < x269) {  // begin fat loop x555
-val x553 = x549(x550)
-val x551 = x555
-val x552 = x553
-val x554 = x551 + x552
-x555 = x554
-x550 += 1
-} // end fat loop x555
-val x556 = x555 * x516
-val x558 = x557 - x425
-val x559 = x556 * x558
-val x560 = x539 - x559
-x274 = x560
-()
-}
-def x596elseb(): Unit = {
-()
-}
-if (x593) {
-x596thenb()
-} else {
-x596elseb()
-}
-}
-val x597 = x360
-val x598 = x278(x597)
-val x599 = x598 > 0.0
-val x600 = x598 < 1.0
-val x601 = x599 && x600
+val x514 = x279(x389)
+val x515 = x514 - x431
+val x516 = Math.abs(x515)
+val x517 = x516 > 1.0E-4
 val x604 = {
 def x604thenb(): Unit = {
-val x561 = x523 - x424
-val x537 = x536 - x345
-val x549 = {
-val x544 = new generated.scala.DoubleVectorImpl(x269,true)
-x544
+val x437 = x291(x434)
+val x518 = x435 * x429
+val x519 = x431 - x514
+val x520 = x518 * x519
+val x521 = x437 + x520
+val x522 = x279(x434) = x521
+val x535 = x279(x434)
+val x551 = x279(x389)
+val x583 = x535 > 0.0
+val x584 = x535 < 1.0
+val x585 = x583 && x584
+val x588 = {
+def x588thenb(): Unit = {
+val x523 = x427 - x343
+val x534 = x483 * x435
+val x536 = x535 - x437
+val x537 = x534 * x536
+val x538 = x523 - x537
+val x550 = x470 * x429
+val x552 = x551 - x431
+val x553 = x550 * x552
+val x554 = x538 - x553
+x275 = x554
+()
 }
-var x543 = 0
-while (x543 < x269) {  // begin fat loop x549
-val x546 = x134(x287, x543)
-val x547 = x134(x515, x543)
-val x548 = x546 * x547
-x549.dcUpdate(x543, x548)
-x543 += 1
-} // end fat loop x549
-var x555: Double = 0
-var x550 = 0
-while (x550 < x269) {  // begin fat loop x555
-val x553 = x549(x550)
-val x551 = x555
-val x552 = x553
-val x554 = x551 + x552
-x555 = x554
-x550 += 1
-} // end fat loop x555
-val x573 = x555 * x341
-val x574 = x573 * x537
-val x575 = x561 - x574
-val x558 = x557 - x425
-val x581 = {
-val x577 = new generated.scala.DoubleVectorImpl(x269,true)
-x577
+def x588elseb(): Unit = {
+()
 }
-var x576 = 0
-while (x576 < x269) {  // begin fat loop x581
-val x579 = x134(x515, x576)
-val x580 = x579 * x579
-x581.dcUpdate(x576, x580)
-x576 += 1
-} // end fat loop x581
-var x587: Double = 0
-var x582 = 0
-while (x582 < x269) {  // begin fat loop x587
-val x585 = x581(x582)
-val x583 = x587
-val x584 = x585
-val x586 = x583 + x584
-x587 = x586
-x582 += 1
-} // end fat loop x587
-val x588 = x587 * x516
-val x589 = x588 * x558
-val x590 = x575 - x589
-x274 = x590
+if (x585) {
+x588thenb()
+} else {
+x588elseb()
+}
+}
+val x589 = x551 > 0.0
+val x590 = x551 < 1.0
+val x591 = x589 && x590
+val x594 = {
+def x594thenb(): Unit = {
+val x555 = x427 - x430
+val x536 = x535 - x437
+val x567 = x470 * x435
+val x568 = x567 * x536
+val x569 = x555 - x568
+val x552 = x551 - x431
+val x580 = x496 * x429
+val x581 = x580 * x552
+val x582 = x569 - x581
+x275 = x582
+()
+}
+def x594elseb(): Unit = {
+()
+}
+if (x591) {
+x594thenb()
+} else {
+x594elseb()
+}
+}
+val x595 = x275
+val x596 = x595==x595
+val x601 = {
+def x601thenb(): Unit = {
+val x523 = x427 - x343
+val x534 = x483 * x435
+val x536 = x535 - x437
+val x537 = x534 * x536
+val x538 = x523 - x537
+val x550 = x470 * x429
+val x552 = x551 - x431
+val x553 = x550 * x552
+val x554 = x538 - x553
+val x555 = x427 - x430
+val x567 = x470 * x435
+val x568 = x567 * x536
+val x569 = x555 - x568
+val x580 = x496 * x429
+val x581 = x580 * x552
+val x582 = x569 - x581
+val x597 = x554 + x582
+val x598 = x597 / 2.0
+x275 = x598
+()
+}
+def x601elseb(): Unit = {
+()
+}
+if (x596) {
+x601thenb()
+} else {
+x601elseb()
+}
+}
+val x602 = x286 += 1
 ()
 }
 def x604elseb(): Unit = {
 ()
 }
-if (x601) {
+if (x517) {
 x604thenb()
 } else {
 x604elseb()
 }
 }
-val x605 = x274
-val x606 = x605==x605
-val x611 = {
-def x611thenb(): Unit = {
-val x524 = x523 - x342
-val x535 = x477 * x341
-val x537 = x536 - x345
-val x538 = x535 * x537
-val x539 = x524 - x538
-val x549 = {
-val x544 = new generated.scala.DoubleVectorImpl(x269,true)
-x544
+x604
 }
-var x543 = 0
-while (x543 < x269) {  // begin fat loop x549
-val x546 = x134(x287, x543)
-val x547 = x134(x515, x543)
-val x548 = x546 * x547
-x549.dcUpdate(x543, x548)
-x543 += 1
-} // end fat loop x549
-var x555: Double = 0
-var x550 = 0
-while (x550 < x269) {  // begin fat loop x555
-val x553 = x549(x550)
-val x551 = x555
-val x552 = x553
-val x554 = x551 + x552
-x555 = x554
-x550 += 1
-} // end fat loop x555
-val x556 = x555 * x516
-val x558 = x557 - x425
-val x559 = x556 * x558
-val x560 = x539 - x559
-val x561 = x523 - x424
-val x573 = x555 * x341
-val x574 = x573 * x537
-val x575 = x561 - x574
-val x581 = {
-val x577 = new generated.scala.DoubleVectorImpl(x269,true)
-x577
-}
-var x576 = 0
-while (x576 < x269) {  // begin fat loop x581
-val x579 = x134(x515, x576)
-val x580 = x579 * x579
-x581.dcUpdate(x576, x580)
-x576 += 1
-} // end fat loop x581
-var x587: Double = 0
-var x582 = 0
-while (x582 < x269) {  // begin fat loop x587
-val x585 = x581(x582)
-val x583 = x587
-val x584 = x585
-val x586 = x583 + x584
-x587 = x586
-x582 += 1
-} // end fat loop x587
-val x588 = x587 * x516
-val x589 = x588 * x558
-val x590 = x575 - x589
-val x607 = x560 + x590
-val x608 = x607 / 2.0
-x274 = x608
+def x606elseb(): Unit = {
 ()
 }
-def x611elseb(): Unit = {
-()
-}
-if (x606) {
-x611thenb()
+if (x498) {
+x606thenb()
 } else {
-x611elseb()
+x606elseb()
 }
 }
-val x612 = x285 += 1
+x606
+}
+def x608elseb(): Unit = {
 ()
 }
-def x614elseb(): Unit = {
-()
-}
-if (x514) {
-x614thenb()
+if (x456) {
+x608thenb()
 } else {
-x614elseb()
+x608elseb()
 }
 }
-x614
+x608
 }
-def x616elseb(): Unit = {
+def x610elseb(): Unit = {
 ()
 }
-if (x492) {
-x616thenb()
+if (x360) {
+x610thenb()
 } else {
-x616elseb()
+x610elseb()
 }
 }
-x616
-}
-def x618elseb(): Unit = {
+val x611 = x287 += 1
 ()
 }
-if (x447) {
-x618thenb()
-} else {
-x618elseb()
-}
-}
-x618
+val x614 = x286
+val x615 = x614==0
+val x620 = {
+def x620thenb(): Unit = {
+val x616 = x281 += 1
+()
 }
 def x620elseb(): Unit = {
+x281 = 0
 ()
 }
-if (x351) {
+if (x615) {
 x620thenb()
 } else {
 x620elseb()
 }
 }
 x620
-x287 = x287 + 1
 }
-val x623 = x285
-val x624 = x623==0
-val x629 = {
-def x629thenb(): Unit = {
-val x625 = x280 += 1
+var x623: Int = 0
+val x658 = while ({val x624 = x623
+val x625 = x624 < x276
+x625}) {
+val x627 = x274
+val x628 = x623
+val x630 = x623
+val x631 = x279(x630)
+val x638 = x623
+val x646 = x627.length
+val x647 = x627.isRow
+val x639 = x257(x638)
+val x637 = {
+val x633 = new generated.scala.DoubleVectorImpl(x270,true)
+x633
+}
+var x632 = 0
+while (x632 < x270) {  // begin fat loop x637
+val x635 = x134(x628, x632)
+val x636 = x635 * x631
+x637.dcUpdate(x632, x636)
+x632 += 1
+} // end fat loop x637
+val x645 = {
+val x641 = new generated.scala.DoubleVectorImpl(x270,true)
+x641
+}
+var x640 = 0
+while (x640 < x270) {  // begin fat loop x645
+val x643 = x637(x640)
+val x644 = x643 * x639
+x645.dcUpdate(x640, x644)
+x640 += 1
+} // end fat loop x645
+val x654 = {
+val x649 = new generated.scala.DoubleVectorImpl(x646,x647)
+x649
+}
+var x648 = 0
+while (x648 < x646) {  // begin fat loop x654
+val x651 = x627(x648)
+val x652 = x645(x648)
+val x653 = x651 + x652
+x654.dcUpdate(x648, x653)
+x648 += 1
+} // end fat loop x654
+x274 = x654
+val x656 = x623 += 1
 ()
 }
-def x629elseb(): Unit = {
-x280 = 0
-()
-}
-if (x624) {
-x629thenb()
-} else {
-x629elseb()
-}
-}
-x629
-}
-var x632 : Int = 0
-val x662 = while (x632 < x275) {
-val x633 = x273
-val x637 = x278(x632)
-val x651 = x633.length
-val x652 = x633.isRow
-val x644 = x257(x632)
-val x643 = {
-val x639 = new generated.scala.DoubleVectorImpl(x269,true)
-x639
-}
-var x638 = 0
-while (x638 < x269) {  // begin fat loop x643
-val x641 = x134(x632, x638)
-val x642 = x641 * x637
-x643.dcUpdate(x638, x642)
-x638 += 1
-} // end fat loop x643
-val x650 = {
-val x646 = new generated.scala.DoubleVectorImpl(x269,true)
-x646
-}
-var x645 = 0
-while (x645 < x269) {  // begin fat loop x650
-val x648 = x643(x645)
-val x649 = x648 * x644
-x650.dcUpdate(x645, x649)
-x645 += 1
-} // end fat loop x650
-val x659 = {
-val x654 = new generated.scala.DoubleVectorImpl(x651,x652)
-x654
-}
-var x653 = 0
-while (x653 < x651) {  // begin fat loop x659
-val x656 = x633(x653)
-val x657 = x650(x653)
-val x658 = x656 + x657
-x659.dcUpdate(x653, x658)
-x653 += 1
-} // end fat loop x659
-x273 = x659
-()
-x632 = x632 + 1
-}
-val x663 = print("\n")
-val x664 = println("toc:" + (System.nanoTime / 1000000L))
-val x665 = x256.numRows
-val x666 = new generated.scala.IndexVectorRangeImpl(0,x665)
-val x693 = x666.length
-val x694 = x666.isRow
-def x697_block = {
-val x695 = new generated.scala.IntVectorImpl(x693,x694)
+val x659 = print("\n")
+val x660 = ppl.delite.runtime.profiler.PerformanceTimer.stop("app", false)
+val x661 = x256.numRows
+val x662 = new generated.scala.IndexVectorRangeImpl(0,x661)
+val x686 = x662.length
+val x687 = x662.isRow
+def x690_block = {
+val x688 = new generated.scala.IntVectorImpl(x686,x687)
 var mapIdx = 0
-while (mapIdx < x666.size) {
-val x667 = x666.dcApply(mapIdx)
-x695.dcUpdate(mapIdx,  {
-val x668 = x273
-val x669 = x274
-val x674 = x668.length
-val x675 = x668.isRow
-val x682 = {
-val x677 = new generated.scala.DoubleVectorImpl(x674,x675)
-x677
+while (mapIdx < x662.size) {
+val x663 = x662.dcApply(mapIdx)
+x688.dcUpdate(mapIdx,  {
+val x664 = x274
+val x665 = x275
+val x667 = x664.length
+val x668 = x664.isRow
+val x675 = {
+val x670 = new generated.scala.DoubleVectorImpl(x667,x668)
+x670
 }
+var x669 = 0
+while (x669 < x667) {  // begin fat loop x675
+val x672 = x664(x669)
+val x673 = x256(x663, x669)
+val x674 = x672 * x673
+x675.dcUpdate(x669, x674)
+x669 += 1
+} // end fat loop x675
+var x681: Double = 0
 var x676 = 0
-while (x676 < x674) {  // begin fat loop x682
-val x679 = x668(x676)
-val x680 = x256(x667, x676)
-val x681 = x679 * x680
-x682.dcUpdate(x676, x681)
+while (x676 < x667) {  // begin fat loop x681
+val x679 = x675(x676)
+val x677 = x681
+val x678 = x679
+val x680 = x677 + x678
+x681 = x680
 x676 += 1
-} // end fat loop x682
-var x688: Double = 0
-var x683 = 0
-while (x683 < x674) {  // begin fat loop x688
-val x686 = x682(x683)
-val x684 = x688
-val x685 = x686
-val x687 = x684 + x685
-x688 = x687
-x683 += 1
-} // end fat loop x688
-val x689 = x688 + x669
-val x690 = x689 < 0.0
-val x691 = {
-def x691thenb(): Int = {
+} // end fat loop x681
+val x682 = x681 + x665
+val x683 = x682 < 0.0
+val x684 = {
+def x684thenb(): Int = {
 -1
 }
-def x691elseb(): Int = {
+def x684elseb(): Int = {
 1
 }
-if (x690) {
-x691thenb()
+if (x683) {
+x684thenb()
 } else {
-x691elseb()
+x684elseb()
 }
 }
-x691
+x684
 })
 mapIdx += 1
 } // end while
-x695
+x688
 }
-val x697 = x697_block
-val x698 = println("SVM testing finished. Calculating error..")
-var x699 = 0
-var x701 : Int = 0
-val x709 = while (x701 < x665) {
-val x702 = x262(x701)
-val x703 = x697(x701)
-val x704 = x702 != x703
-val x707 = {
-def x707thenb(): Unit = {
-val x705 = x699 += 1
-()
+val x690 = x690_block
+val x691 = println("SVM testing finished. Calculating error..")
+val x697 = new generated.scala.RangeVectorImpl(0,x661,1,true)
+def x701_block = {
+val x692 = x697.dcApply(0)
+var x698 = {
+val x693 = x262(x692)
+val x694 = x690(x692)
+val x695 = x693 != x694
+val x696 = {
+def x696thenb(): Int = {
+1
 }
-def x707elseb(): Unit = {
-()
+def x696elseb(): Int = {
+0
 }
-if (x704) {
-x707thenb()
+if (x695) {
+x696thenb()
 } else {
-x707elseb()
+x696elseb()
 }
 }
-x707
-x701 = x701 + 1
+x696
 }
-val x710 = x699
-val x711 = x710.doubleValue()
-val x712 = x665.doubleValue()
-val x713 = x711 / x712
-val x714 = "Classification error: "+x713
-val x715 = println(x714)
+var mapReduceIdx = 1
+while (mapReduceIdx < x697.size) {
+val x692 = x697.dcApply(mapReduceIdx)
+val x699 = {
+val x693 = x262(x692)
+val x694 = x690(x692)
+val x695 = x693 != x694
+val x696 = {
+def x696thenb(): Int = {
+1
+}
+def x696elseb(): Int = {
+0
+}
+if (x695) {
+x696thenb()
+} else {
+x696elseb()
+}
+}
+x696
+}
+x698 = {
+val x700 = x698 + x699
+x700
+}
+mapReduceIdx += 1
+} // end while
+x698
+}
+val x701 = x701_block
+val x702 = x701.doubleValue()
+val x703 = x661.doubleValue()
+val x704 = x702 / x703
+val x705 = "Classification error: "+x704
+val x706 = println(x705)
 ()
 }
 }

@@ -68,8 +68,16 @@ class TestAppCodegen extends FileDiffSuite {
     assertFileEqualsCheck(prefix+name+"-fusing-src")
   }
 
-  val datadir = "/Users/tarq/Desktop/tmpstuff/ppl-svn/trunk/projects/delite/data"
+  val datadir = "~/Desktop/tmpstuff/ppl-svn/trunk/projects/delite/data" // TODO: config
 
+  // --- bio
+  
+  def testSpade = testApp("spade", ppl.apps.bio.spade.SpadeRunner)
+
+  def testSpadeFusing = testAppFusing("spade", ppl.apps.bio.spade.SpadeRunner)
+  
+  // --- ml
+  
   def testGDA = testApp("gda", ppl.apps.ml.gda.GDARunner, Array(datadir+"/ml/gda/q1x.dat",datadir+"/ml/gda/q1y.dat"))
 
   def testKMeans = testApp("kmeans", ppl.apps.ml.kmeans.kmeansRunner, Array(datadir+"/ml/kmeans/mandrill-large.dat",datadir+"/ml/kmeans/initmu.dat"))
@@ -86,6 +94,8 @@ class TestAppCodegen extends FileDiffSuite {
 
   def testSVMFusing = testAppFusing("svm", ppl.apps.ml.svm.SVMRunner) //, Array(datadir+"/ml/svm/MATRIX.TRAIN.800",datadir+"/ml/svm/MATRIX.TEST","output","10"))
 
+  // --- robotics
+  
   def testGradient = testApp("gradient", ppl.apps.robotics.gradient.gradientRunner)
 
 }
