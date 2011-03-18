@@ -31,8 +31,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
   
   val scalaToolsSnapshots = ScalaToolsSnapshots
-
-  val scalatest = "org.scalatest" % "scalatest" % "1.3"
+  val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT" % "test"
   
   // Define project class with default source tree layout
   class FlatProject(info: ProjectInfo) extends DefaultProject(info) {
@@ -46,7 +45,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
     
     val scalaToolsSnapshots = ScalaToolsSnapshots
-    val scalatest = "org.scalatest" % "scalatest" % "1.3"
+    val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT" % "test"
     
     override def localScala =
     defineScala("2.9.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
@@ -74,5 +73,6 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
 	  lazy val scala = project("scala", "Scala Apps", new FlatProject(_), framework, dsls)
   }
   
-  lazy val tests = project("tests", "Delite Tests", new FlatProject(_), framework, dsls, apps)  
+  //TR is anybody using this? conflict with defining 'tests' as test source path above...
+  //lazy val tests = project("tests", "Delite Tests", new FlatProject(_), framework, dsls, apps)
 }

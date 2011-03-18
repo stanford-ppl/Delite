@@ -581,7 +581,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val same = dist(m(row), m(row))
     val dists = (0::m.numRows){ i =>
       val d = dist(m(row),m(i))
-      if (d == same && !allowSame) Int.MaxValue.asInstanceOfL[A] else d
+      if (d == same && !allowSame) unit(Int.MaxValue).asInstanceOfL[A] else d
     }
     dists.minIndex
     /*
