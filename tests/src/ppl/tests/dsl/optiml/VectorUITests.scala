@@ -72,23 +72,13 @@ trait VectorUITests extends OptiMLApplication {
   }
 
   def testMedian() = {
-    val v = Vector(1,2,3,4,5,6,7,8,9)
+    val v = Vector(1,5,3,4,2,6,7,8,9)
     println("==== test median")
     println("should be 5: " + v.median)
   }
 
   def testNearestNeighbor() = {
-    val v1 = Vector(1,1,1,1)
-    val v2 = Vector(9,9,9,9)
-    val v3 = Vector(-2,-2,-2,-2)
-    val v4 = Vector(0,0,0,0)
-    val v5 = Vector(1,1,1,1)
-
-    v3.pprint
-    val m = Matrix(Vector(v1,v2,v3,v4,v5))
-    // TODO: this doesn't work -- m ends up with 5 empty rows. the dependence on the vector mutations appears to be getting lost.
-    //val m = Matrix(Vector(1,1,1,1), Vector(9,9,9,9), Vector(-2,-2,-2,-2), Vector(0,0,0,0), Vector(1,1,1,1))
-    m.pprint
+    val m = Matrix(Vector(1,1,1,1), Vector(9,9,9,9), Vector(-2,-2,-2,-2), Vector(0,0,0,0), Vector(1,1,1,1))
     val nearestUnique = nearestNeighborIndex(0, m, false)
     println("==== test nearestNeighbor")
     println("should be 3: " + nearestUnique)

@@ -199,8 +199,8 @@ trait VectorImplOpsStandard extends VectorImplOps {
 
   def vector_median_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
     // TODO: this isn't the proper definition of median
-    v.sort
-    v(v.length / 2)
+    val x = v.sort
+    x(x.length / 2)
   }
 
   def vector_filter_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {

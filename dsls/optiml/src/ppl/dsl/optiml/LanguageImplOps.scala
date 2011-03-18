@@ -191,7 +191,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     val candidates = (0::numSamples).cloneL // .mutable
 
     for (i <- 0 until numSamples){
-      val r = i + random(numSamples - i)
+      val r = i + random(in.size - i)
       val idx = candidates(r)
       sampled.dcUpdate(i, in.dcApply(idx))
 

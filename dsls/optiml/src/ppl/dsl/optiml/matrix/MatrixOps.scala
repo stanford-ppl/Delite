@@ -21,12 +21,8 @@ trait MatrixOps extends DSLType with Variables {
     def apply[A:Manifest](xs: Rep[Vector[Vector[A]]]): Rep[Matrix[A]] = matrix_obj_fromvec(xs)
     // Vector is not covariant, so Rep[Vector[MatrixRow[A]]] is unfortunately not a subtype of Rep[Vector[Vector[A]]]
     def apply[A](xs: Rep[Vector[MatrixRow[A]]])(implicit mA: Manifest[A], o: Overloaded1): Rep[Matrix[A]] = matrix_obj_fromvec(xs.asInstanceOf[Rep[Vector[Vector[A]]]])
-    def apply[A:Manifest](xs: Rep[Vector[A]]*): Rep[Matrix[A]] = {
-      val out = matrix_obj_new[A](0,0)
-      // interpreted (not lifted)
-      xs.foreach { out += _ }
-      out
-    }
+    def apply[A:Manifest](xs: Rep[Vector[A]]*): Rep[Matrix[A]] = Matrix(Vector(xs: _*))
+
     def diag[A:Manifest](w: Rep[Int], vals: Rep[Vector[A]]) = matrix_obj_diag(w, vals)
     def identity(w: Rep[Int]) = matrix_obj_identity(w)
     def zeros(numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_zeros(numRows, numCols)
