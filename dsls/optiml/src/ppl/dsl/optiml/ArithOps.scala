@@ -244,13 +244,15 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   case class ArithMinus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
   case class ArithTimes[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
   case class ArithFractionalDivide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
-  case class ArithAbs[T:Manifest:Numeric](lhs: Exp[T]) extends Def[T]
+  case class ArithAbs[T:Manifest:Numeric](lhs: Exp[T]) extends Def[T] {
+    val m = manifest[T]
+  }
   case class ArithExp[T:Manifest:Numeric](lhs: Exp[T]) extends Def[Double]
 
-  def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithPlus(lhs, rhs)
-  def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithMinus(lhs, rhs)
-  def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithTimes(lhs, rhs)
-  def arith_fractional_divide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithFractionalDivide(lhs, rhs)
+  def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithPlus(lhs, rhs)
+  def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithMinus(lhs, rhs)
+  def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithTimes(lhs, rhs)
+  def arith_fractional_divide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithFractionalDivide(lhs, rhs)
   def arith_abs[T:Manifest:Numeric](lhs: Exp[T]) = ArithAbs(lhs)
   def arith_exp[T:Manifest:Numeric](lhs: Exp[T]) = ArithExp(lhs)
 
@@ -294,7 +296,11 @@ trait ScalaGenArithOps extends ScalaGenBase {
     case ArithMinus(a,b) => emitValDef(sym, quote(a) + " - " + quote(b))
     case ArithTimes(a,b) => emitValDef(sym, quote(a) + " * " + quote(b))
     case ArithFractionalDivide(a,b) => emitValDef(sym, quote(a) + " / " + quote(b))
-    case ArithAbs(a) => emitValDef(sym, "Math.abs(" + quote(a) + ")")
+    //case ArithAbs(x) => emitValDef(sym, "Math.abs(" + quote(x) + ")")
+    case a@ArithAbs(x) => a.m.asInstanceOf[Manifest[_]] match {
+      case Manifest.Double => emitValDef(sym, "java.lang.Double.longBitsToDouble((java.lang.Double.doubleToRawLongBits(" + quote(x) + ")<<1)>>>1)")
+      case _ => emitValDef(sym, "Math.abs(" + quote(x) + ")")
+    }
     case ArithExp(a) => emitValDef(sym, "Math.exp(" + quote(a) + ")")
     case _ => super.emitNode(sym, rhs)
   }

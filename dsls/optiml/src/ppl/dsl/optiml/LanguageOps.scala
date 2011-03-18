@@ -310,10 +310,10 @@ trait LanguageOps extends Base { this: OptiML =>
    * Nearest neighbor
    */
   // returns the index of the nearest neighbor of row inside data
-  def nearestNeighborIndex[A:Manifest:Arith:Ordering](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean] = unit(true)): Rep[Int]
+  def nearestNeighborIndex[A:Manifest:Arith:Ordering:Numeric](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean] = unit(true)): Rep[Int]
     = optiml_nearest_neighbor_index(row, data, allowSame)
 
-  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int]
+  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:Numeric](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int]
 
   /**
    *   Profiling
@@ -576,14 +576,23 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Nearest neighbor
    */
-  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int] = {
+  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:Numeric](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int] = {
     // unroll
-    val dists = (0::m.numRows){ i => dist(m(row),m(i)) }
+    val same = dist(m(row), m(row))
+    val dists = (0::m.numRows){ i =>
+      val d = dist(m(row),m(i))
+      if (d == same && !allowSame) Int.MaxValue.asInstanceOfL[A] else d
+    }
+    dists.minIndex
+    /*
     if (allowSame) dists.minIndex
     else {
-      val same = dist(m(row), m(row))
-      dists filter { _ == same } minIndex
+      val f = dists filter {  _ != same }
+      val x = f.min
+      val z = dists find (x)
+      z(0)
     }
+    */
   }
 
 

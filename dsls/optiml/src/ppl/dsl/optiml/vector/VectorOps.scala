@@ -83,6 +83,7 @@ trait VectorOps extends DSLType with Variables {
     def t = vector_trans(x)
     def mt() = vector_mutable_trans(x)
     def cloneL() = vector_clone(x)
+    def mutable = vector_mutable_clone(x)
     def pprint() = vector_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int]) = vector_repmat(x,i,j)
     def toList = vector_tolist(x)
@@ -194,6 +195,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_trans[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_mutable_trans[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_clone[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_mutable_clone[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
   def vector_repmat[A:Manifest](x: Rep[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
   def vector_tolist[A:Manifest](x: Rep[Vector[A]]): Rep[List[A]]
@@ -811,6 +813,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_trans[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorTrans(x))
   def vector_mutable_trans[A:Manifest](x: Exp[Vector[A]]) = reflectWrite(x)(VectorMutableTrans(x))
   def vector_clone[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorClone(x))
+  def vector_mutable_clone[A:Manifest](x: Exp[Vector[A]]) = reflectMutable(VectorClone(x))
   def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = reflectPure(VectorRepmat(x,i,j))
   def vector_tolist[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorToList(x))
 
@@ -979,13 +982,15 @@ trait BaseGenVectorOps extends GenericFatCodegen {
     case _ => super.unapplySimpleIndex(e)
   }
 
-//  override def syms(e: Any): List[Sym[Any]] = e match {
-//    //case VectorObjectFromSeq(xs) => List(xs)
-//    // this should remove MatrixRow as a dependency if it is not used inside the loop body anywhere (has been optimized away)
-//    // but doesn't seem to work
-//    case l:DeliteOpVectorLoop[_] => syms(l.size) ++ syms(l.isRow) ++ syms(l.body)
-//    case _ => super.syms(e)
-//  }
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    //case VectorObjectFromSeq(xs) => List(xs)
+    // this should remove MatrixRow as a dependency if it is not used inside the loop body anywhere (has been optimized away)
+    // but doesn't seem to work
+    case l:DeliteOpVectorLoop[_] =>
+      val x = syms(l.size) ++ syms(l.isRow) ++ syms(l.body)
+      x
+    case _ => super.syms(e)
+  }
 }
 
 trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {

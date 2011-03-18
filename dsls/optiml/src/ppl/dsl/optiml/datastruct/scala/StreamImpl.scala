@@ -18,15 +18,19 @@ class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: 
     }
 
     def initChunk(offset: Int) {
-      for (i <- 0 until rowsIn(offset)) {
+      var i = 0
+      while (i < rowsIn(offset)) {
         initRow(i, offset)
+        i += 1
       }
       //    currentChunk = offset
     }
 
     def initRow(row: Int, offset: Int) {
-      for (j <- 0 until numCols) {
+      var j = 0
+      while (j < numCols) {
         _data(row*numCols+j) = func(offset*chunkSize+row,j)
+        j += 1
       }
     }
 

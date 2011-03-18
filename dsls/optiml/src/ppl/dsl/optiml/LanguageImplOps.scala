@@ -94,7 +94,14 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 //     case _ => throw new UnsupportedOperationException("unknown dist metric selected")
 //    }
     if (metric == ABS) {
-      (v1-v2).abs.sum
+      //(v1-v2).abs.sum  // TODO: fuse this automatically
+      var result = (v1(0) - v2(0)).abs
+      var i = 1
+      while (i < v1.length) {
+        result += (v1(i) - v2(i)).abs
+        i += 1
+      }
+      result
     }
     else if (metric == EUC) {
       //Math.sqrt(((v1-v2) mmap {e => e*e}).sum)
@@ -142,7 +149,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     val sampled = if(sampleRows) Matrix[A](0, newCols)
                   else Matrix[A](0,newRows) // transposed for efficiency
 
-    val candidates = (0::length).cloneL // .mutable
+    val candidates = (0::length).mutable
 
     // transpose to make constructing sampling more efficient
     val mt = if (sampleRows) m else m.t
@@ -162,11 +169,11 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   }
 
   def optiml_randsample_vector_impl[A:Manifest](v: Rep[Vector[A]], numSamples: Rep[Int]): Rep[Vector[A]] = {
-    val candidates = (0::numSamples).cloneL // .mutable
+    val candidates = (0::v.length).mutable
 
     val sampled = Vector[A](0, v.isRow)
     for (i <- 0 until numSamples){
-      val r = i + random(numSamples - i)
+      val r = i + random(v.length-i)
       val idx = candidates(r)
       sampled += v(idx)
 
