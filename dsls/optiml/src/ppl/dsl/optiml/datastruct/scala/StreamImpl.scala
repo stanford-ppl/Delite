@@ -18,8 +18,9 @@ class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: 
     }
 
     def initChunk(offset: Int) {
+      val numRows = rowsIn(offset)
       var i = 0
-      while (i < rowsIn(offset)) {
+      while (i < numRows) {
         initRow(i, offset)
         i += 1
       }

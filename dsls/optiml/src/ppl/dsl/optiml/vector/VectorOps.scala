@@ -982,15 +982,10 @@ trait BaseGenVectorOps extends GenericFatCodegen {
     case _ => super.unapplySimpleIndex(e)
   }
 
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    //case VectorObjectFromSeq(xs) => List(xs)
-    // this should remove MatrixRow as a dependency if it is not used inside the loop body anywhere (has been optimized away)
-    // but doesn't seem to work
-    case l:DeliteOpVectorLoop[_] =>
-      val x = syms(l.size) ++ syms(l.isRow) ++ syms(l.body)
-      x
-    case _ => super.syms(e)
-  }
+//  override def syms(e: Any): List[Sym[Any]] = e match {
+//    //case VectorObjectFromSeq(xs) => List(xs)
+//    case _ => super.syms(e)
+//  }
 }
 
 trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {

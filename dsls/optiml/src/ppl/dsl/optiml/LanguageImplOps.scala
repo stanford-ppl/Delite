@@ -9,8 +9,12 @@ trait LanguageImplOps { this: OptiML =>
   def optiml_untilconverged_impl[V <:Vertex :Manifest, E <: Edge :Manifest](
      g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]): Rep[Unit]
 
-  def optiml_vectordistance_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int]): Rep[A]
-  def optiml_matrixdistance_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int]): Rep[A]
+  def optiml_vectordistance_abs_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[A]
+  def optiml_vectordistance_euc_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[A]
+  def optiml_vectordistance_square_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[A]
+  def optiml_matrixdistance_abs_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
+  def optiml_matrixdistance_euc_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
+  def optiml_matrixdistance_square_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
 
   def optiml_randsample_matrix_impl[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean]): Rep[Matrix[A]]
   def optiml_randsample_vector_impl[A:Manifest](v: Rep[Vector[A]], numSamples: Rep[Int]): Rep[Vector[A]]
@@ -84,60 +88,38 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   }
 
 
-  // TODO: we should consolidate these into one implementation
-
-  def optiml_vectordistance_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int]) = {
-    // match, exceptions are not lifted yet
-//    metric match {
-//     case ABS_DISTANCE => absdist(v1, v2)
-//     case EUC_DISTANCE => eucdist(v1, v2)
-//     case _ => throw new UnsupportedOperationException("unknown dist metric selected")
-//    }
-    if (metric == ABS) {
-      //(v1-v2).abs.sum  // TODO: fuse this automatically
-      var result = (v1(0) - v2(0)).abs
-      var i = 1
-      while (i < v1.length) {
-        result += (v1(i) - v2(i)).abs
-        i += 1
-      }
-      result
+  def optiml_vectordistance_abs_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
+    //(v1-v2).abs.sum  // TODO: fuse this automatically
+    var result = (v1(0) - v2(0)).abs
+    var i = 1
+    while (i < v1.length) {
+      result += (v1(i) - v2(i)).abs
+      i += 1
     }
-    else if (metric == EUC) {
-      //Math.sqrt(((v1-v2) mmap {e => e*e}).sum)
-      println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")
-      v1(0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
-    }
-    else if (metric == SQUARE) {
-      ((v1 - v2) mmap { e => e*e }).sum //TODO TR non-mutable write
-    }
-    else {
-      println("error: unknown dist metric selected")
-      exit(0)
-    }
+    result
   }
 
-  def optiml_matrixdistance_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int]) = {
-    // match, exceptions are not lifted yet
-//    metric match {
-//     case ABS_DISTANCE => absdist(v1, v2)
-//     case EUC_DISTANCE => eucdist(v1, v2)
-//     case _ => throw new UnsupportedOperationException("unknown dist metric selected")
-//    }
-    if (metric == ABS) {
-      (m1-m2).abs.sum
-    }
-    else if (metric == EUC) {
-      println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")
-      m1(0,0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
-    }
-    else if (metric == SQUARE) {
-      ((m1 - m2) mmap { e => e*e }).sum //TODO TR non-mutable write
-    }
-    else {
-      println("error: unknown dist metric selected")
-      exit(0)
-    }
+  def optiml_vectordistance_euc_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
+    //Math.sqrt(((v1-v2) mmap {e => e*e}).sum)
+    println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")
+    v1(0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
+  }
+
+  def optiml_vectordistance_square_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
+    ((v1 - v2) mmap { e => e*e }).sum //TODO TR non-mutable write
+  }
+
+  def optiml_matrixdistance_abs_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {
+    (m1-m2).abs.sum
+  }
+
+  def optiml_matrixdistance_euc_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {
+    println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")
+    m1(0,0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
+  }
+
+  def optiml_matrixdistance_square_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {
+    ((m1 - m2) mmap { e => e*e }).sum //TODO TR non-mutable write
   }
 
   // TODO: refactor to call sampleCollection

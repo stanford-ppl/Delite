@@ -240,44 +240,50 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    * distance
    */
-  val ABS = 0
-  val EUC = 1
-  val SQUARE = 2
+  class DistanceMetric
+  object ABS extends DistanceMetric
+  object EUC extends DistanceMetric
+  object SQUARE extends DistanceMetric
 
   implicit val vecDiff: (Rep[Vector[Double]], Rep[Vector[Double]]) => Rep[Double] = (v1,v2) => dist(v1,v2)
   implicit val matDiff: (Rep[Matrix[Double]], Rep[Matrix[Double]]) => Rep[Double] = (m1,m2) => dist(m1,m2)
 
   // in 2.9, multiple overloaded values cannot all define default arguments
-  def dist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
-    optiml_vector_dist(v1,v2,ABS)
+  def dist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = optiml_vector_dist_abs(v1,v2)
+  def dist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: DistanceMetric) = metric match {
+    case ABS => optiml_vector_dist_abs(v1,v2)
+    case EUC => optiml_vector_dist_euc(v1,v2)
+    case SQUARE => optiml_vector_dist_square(v1,v2)
+    case _ => throw new IllegalArgumentException("Unknown distance metric selected")
   }
 
-  def dist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int]) = {
-    optiml_vector_dist(v1,v2,metric)
+  def dist[A](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = optiml_matrix_dist_abs(m1,m2)
+  def dist[A](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: DistanceMetric)
+             (implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = metric match {
+
+    case ABS => optiml_matrix_dist_abs(m1,m2)
+    case EUC => optiml_matrix_dist_euc(m1,m2)
+    case SQUARE => optiml_matrix_dist_square(m1,m2)
+    case _ => throw new IllegalArgumentException("Unknown distance metric selected")
   }
 
-  def dist[A](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
-             (implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = {
-    optiml_matrix_dist(m1,m2,ABS)
-  }
- 
-  def dist[A](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int])
-             (implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = {
-    optiml_matrix_dist(m1,m2,metric)
-  }
-
-  def optiml_vector_dist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int]): Rep[A]
-  def optiml_matrix_dist[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int]): Rep[A]
+  def optiml_vector_dist_abs[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[A]
+  def optiml_vector_dist_euc[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[A]
+  def optiml_vector_dist_square[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[A]
+  def optiml_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
+  def optiml_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
+  def optiml_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
 
 
   /**
    * Sampling
    */
 
-  val RANDOM = 0
+  abstract class SampleMethod
+  object RANDOM extends SampleMethod
 
   // sampling of input to reduce data size
-  def sample[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean] = unit(true), method: Rep[Int] = RANDOM): Rep[Matrix[A]] = {
+  def sample[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean] = unit(true), method: SampleMethod = RANDOM): Rep[Matrix[A]] = {
     method match {
       case RANDOM => optiml_randsample_matrix(m, numSamples, sampleRows)
       case _ => throw new UnsupportedOperationException("unknown sampling type selected")
@@ -288,7 +294,7 @@ trait LanguageOps extends Base { this: OptiML =>
     optiml_randsample_vector(v, numSamples)
   }
 
-  def sample[A:Manifest](v: Rep[Vector[A]], numSamples: Rep[Int], method: Rep[Int]): Rep[Vector[A]] = {
+  def sample[A:Manifest](v: Rep[Vector[A]], numSamples: Rep[Int], method: SampleMethod): Rep[Vector[A]] = {
     method match {
       case RANDOM => optiml_randsample_vector(v, numSamples)
       case _ => throw new UnsupportedOperationException("unknown sampling type selected")
@@ -544,14 +550,35 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    *  dist
    */
-  case class VectorDistance[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_impl(v1,v2,metric)))
+  trait VectorDistance
 
-  case class MatrixDistance[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_impl(m1,m2,metric)))
+  case class VectorDistanceAbs[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]])
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_abs_impl(v1,v2))) with VectorDistance
 
-  def optiml_vector_dist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int]) = VectorDistance(v1,v2,metric)
-  def optiml_matrix_dist[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int]) = MatrixDistance(m1,m2,metric)
+  case class VectorDistanceEuc[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]])
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_euc_impl(v1,v2))) with VectorDistance
+
+  case class VectorDistanceSquare[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]])
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_square_impl(v1,v2))) with VectorDistance
+
+
+  trait MatrixDistance
+
+  case class MatrixDistanceAbs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_abs_impl(m1,m2))) with MatrixDistance
+
+  case class MatrixDistanceEuc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_euc_impl(m1,m2))) with MatrixDistance
+
+  case class MatrixDistanceSquare[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_square_impl(m1,m2))) with MatrixDistance
+
+  def optiml_vector_dist_abs[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceAbs(v1,v2)
+  def optiml_vector_dist_euc[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceEuc(v1,v2)
+  def optiml_vector_dist_square[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceSquare(v1,v2)
+  def optiml_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceAbs(m1,m2)
+  def optiml_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceEuc(m1,m2)
+  def optiml_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceSquare(m1,m2)
 
 
   /**
@@ -581,7 +608,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val same = dist(m(row), m(row))
     val dists = (0::m.numRows){ i =>
       val d = dist(m(row),m(i))
-      if (d == same && !allowSame) unit(Int.MaxValue).asInstanceOfL[A] else d
+      if (d == same && !allowSame) unit(scala.Int.MaxValue).asInstanceOfL[A] else d
     }
     dists.minIndex
     /*

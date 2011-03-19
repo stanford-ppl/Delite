@@ -22,7 +22,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    *
    * @param  block   the task to execute; must be reified if it contains effectful operations!
    */
-  class DeliteOpSingleTask[A](val block: Exp[A]) extends DeliteOp[A]
+  class DeliteOpSingleTask[A](val block: Exp[A], val requireInputs: Boolean = false) extends DeliteOp[A]
 
   abstract class DeliteOpLoop[A] extends AbstractLoop[A] with DeliteOp[A]
 
@@ -395,6 +395,7 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
   override def syms(e: Any): List[Sym[Any]] = e match { //TR TODO: question -- is alloc a dependency (should be part of result) or a definition (should not)???
                                                         // aks: answer -- we changed it to be internal to the op to make things easier for CUDA. not sure if that still needs
                                                         // to be the case. similar question arises for sync
+    case s: DeliteOpSingleTask[_] if !s.requireInputs => syms(s.block)
     case s: DeliteOpSingleTask[_] => syms(s.block) ++ super.syms(e) // super call: add case class syms!
     case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.alloc)
     case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.rFunc)
