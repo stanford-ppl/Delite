@@ -1,7 +1,7 @@
-gda|$data/ml/gda/4096-1200x.dat|$data/ml/gda/q1y.dat
+gda|$data/ml/gda/2048-1200x.dat|$data/ml/gda/q1y.dat
 nb|$data/ml/nb/MATRIX.TRAIN.50k|$data/ml/nb/MATRIX.TEST
 linreg|$data/ml/linreg/x-2048.dat|$data/ml/linreg/y-2048.dat
 kmeans|$data/ml/kmeans/mandrill-xlarge.dat|$data/ml/kmeans/initmu.dat
 rbm|$data/ml/rbm/mnist2000x10.dat|2000|2000
-svm|$data/ml/svm/MATRIX.TRAIN.800|$data/ml/svm/MATRIX.TEST|output|10
+svm|$data/ml/svm/MATRIX.TRAIN.400|$data/ml/svm/MATRIX.TEST|output|10
 lbp|$data/ml/lbp/onlyedges1|$data/ml/lbp/graphprint1
