@@ -543,11 +543,21 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       val save = deliteKernel
       deliteKernel = false
       val b = s.block
-      stream.println("def " + quote(sym) + "_block = { ")
-      emitBlock(b)
-      stream.println(quote(getBlockResult(b)))
-      stream.println("}")
-      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+      if (!save) {
+        // straight-line
+        stream.println("val " + quote(sym) + " = { " )
+        emitBlock(b)
+        stream.println(quote(getBlockResult(b)))
+        stream.println("}")
+      }
+      else {
+        // method wrapper
+        stream.println("def " + quote(sym) + "_block = { ")
+        emitBlock(b)
+        stream.println(quote(getBlockResult(b)))
+        stream.println("}")
+        stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+      }
       deliteKernel = save
     }
     case op: AbstractLoop[_] => // TODO: we'd like to always have fat loops but currently they are not allowed to have effects

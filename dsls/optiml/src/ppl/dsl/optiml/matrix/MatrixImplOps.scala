@@ -77,15 +77,34 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   }
 
   def matrix_obj_fromvec_impl[A:Manifest](xs: Rep[Vector[Vector[A]]]) = {
-    val numRows = xs.length
-    val numCols = if (xs.length > 0) xs(0).length else unit(0)
-    val out = Matrix[A](numRows, numCols)
-    for (i <- 0 until numRows){
-      for (j <- 0 until numCols){
-        out(i,j) = xs(i)(j)
+    if (xs.length == 0) {
+      Matrix[A](0,0)
+    }
+    else {
+      if (xs(0).isRow) {
+        val numRows = xs.length
+        val numCols = xs(0).length
+        val out = Matrix[A](numRows, numCols)
+        for (i <- 0 until numRows){
+          for (j <- 0 until numCols){
+            out(i,j) = xs(i)(j)
+          }
+        }
+        out
+      }
+      else {
+        val numRows = xs(0).length
+        val numCols = xs.length
+        val out = Matrix[A](numRows, numCols)
+        for (i <- 0 until numCols){
+          for (j <- 0 until numRows){
+            out(j,i) = xs(i)(j)
+          }
+        }
+        out
       }
     }
-    out
+
   }
 
   //def matrix_getrow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int]) = m.vview(row*m.numCols, 1, m.numCols, true)
