@@ -113,7 +113,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             hasOutputSlotTypes = true
             "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
           case ("scala", ThinDef(z)) => z match {
-            case op: AbstractLoop[_] => sys.error("should not encounter thin loops here but only fat ones")
+            case op: AbstractLoop[_] => 
+            hasOutputSlotTypes = true
+            "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
             // aks TODO: the following two lines somehow cause a scalac internal error (IN IDEA ONLY??) at Infer.scala line 1029; appears to have something to do with alloc
             // workaround: comment, make, uncomment, make, sigh
             case map: DeliteOpMap[_,_,_] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
@@ -221,8 +223,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     // emit task graph node
     rhs match {
       case op: AbstractFatLoop => 
-        emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.body.exists(_.isInstanceOf[DeliteReduceElem[Any]]))
+        emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.body.exists (loopBodyNeedsCombine _))
       case ThinDef(z) => z match {
+        case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, loopBodyNeedsCombine(op.body))
         case c:DeliteOpCondition[_] => emitIfThenElse(c.cond, c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)

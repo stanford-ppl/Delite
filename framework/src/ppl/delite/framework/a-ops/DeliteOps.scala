@@ -54,6 +54,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val body = mirrorLoopBody(o.body, f)
   }
   
+  def loopBodyNeedsCombine[A](e: Def[A]) = e match {
+    case e:DeliteReduceElem[_] => true
+    case e:DeliteCollectElem[_,_] => e.cond.nonEmpty
+    case _ => false
+  }
+  
   
 /*
   abstract class DeliteOpMapNew[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[A]] {
@@ -530,7 +536,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
           stream.println("__act")
           stream.println(/*{*/"}")
           stream.println("def split(__act: " + actType + "): " + actType + " = {"/*}*/)
-          if (op.body exists { case e: DeliteReduceElem[_] => true case e: DeliteCollectElem[_,_] => e.cond.nonEmpty }) {
+          if (op.body exists (loopBodyNeedsCombine _)) {
             stream.println("val __act2 = new " + actType)
             (symList zip op.body) foreach {
               case (sym, elem: DeliteCollectElem[_,_]) =>
