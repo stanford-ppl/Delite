@@ -263,6 +263,7 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
       case ArithMinus(lhs,rhs) => arith_minus(f(lhs), f(rhs))
       case ArithTimes(lhs,rhs) => arith_times(f(lhs), f(rhs))
       case ArithFractionalDivide(lhs,rhs) => arith_fractional_divide(f(lhs), f(rhs))
+      case ArithAbs(lhs) => arith_abs(f(lhs))
       case _ => super.mirror(e,f)
     }
   }
