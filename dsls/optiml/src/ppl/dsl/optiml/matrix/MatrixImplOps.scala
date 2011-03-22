@@ -3,9 +3,9 @@ package ppl.dsl.optiml.matrix
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,MatrixRow}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
-import ppl.dsl.optiml.{OptiMLCompiler, OptiMLLift, OptiML}
+import ppl.dsl.optiml.{OptiMLExp, OptiMLCompiler, OptiMLLift, OptiML}
 
-trait MatrixImplOps { this: OptiML =>
+trait MatrixImplOps { this: OptiMLExp =>
   def matrix_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[Rep[Vector[A]]]]): Rep[Matrix[A]]
   def matrix_obj_fromvec_impl[A:Manifest](xs: Rep[Vector[Vector[A]]]): Rep[Matrix[A]]
   def matrix_obj_diag_impl[A:Manifest](w: Rep[Int], vals: Rep[Vector[A]]): Rep[Matrix[A]]
@@ -19,6 +19,7 @@ trait MatrixImplOps { this: OptiML =>
   def matrix_obj_randn_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Double]]
   def matrix_obj_randnf_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Float]]
 
+  def matrix_apply_impl[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
   //def matrix_getrow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int]): Rep[Vector[A]]
   //def matrix_getcol_impl[A:Manifest](m: Rep[Matrix[A]], col: Rep[Int]): Rep[Vector[A]]
   def matrix_slice_impl[A:Manifest](m: Rep[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]): Rep[Matrix[A]]
@@ -41,7 +42,7 @@ trait MatrixImplOps { this: OptiML =>
 }
 
 trait MatrixImplOpsStandard extends MatrixImplOps {
-  this: OptiMLCompiler with OptiMLLift =>
+  this: OptiMLExp with OptiMLLift =>
   
 
   ///////////////
@@ -105,6 +106,11 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
       }
     }
 
+  }
+
+  def matrix_apply_impl[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]) = {
+    val offset = i*x.numCols+j
+    matrix_dcapply(x, offset)
   }
 
   //def matrix_getrow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int]) = m.vview(row*m.numCols, 1, m.numCols, true)
