@@ -21,7 +21,7 @@ x6elseb()
 }
 }
 val x7 = x0(0)
-def x52_block = { 
+val x52 = { 
 val x8 = new java.io.FileReader(x7)
 val x9 = new java.io.BufferedReader(x8)
 val x10 = x9.readLine()
@@ -79,9 +79,8 @@ x47
 val x50 = x9.close()
 x20
 }
-val x52 = x52_block
 val x53 = x0(1)
-def x75_block = { 
+val x75 = { 
 val x54 = new generated.scala.DoubleVectorImpl(0,true)
 val x55 = new java.io.FileReader(x53)
 val x56 = new java.io.BufferedReader(x55)
@@ -104,7 +103,6 @@ x58 = x69
 val x73 = x56.close()
 x54
 }
-val x75 = x75_block
 val x84 = Seq()
 val x85 = ppl.delite.runtime.profiler.PerformanceTimer.start("app", false)
 val x79 = x75.length
@@ -112,7 +110,7 @@ val x80 = x75.isRow
 def x83_block = {
 val x81 = new generated.scala.BooleanVectorImpl(x79,x80)
 var mapIdx = 0
-while (mapIdx < x75.size) {
+while (mapIdx < x75.size) { // begin map loop x83
 val x76 = x75.dcApply(mapIdx)
 x81.dcUpdate(mapIdx,  {
 val x77 = x76 <= 0.0
@@ -132,7 +130,7 @@ x78elseb()
 x78
 })
 mapIdx += 1
-} // end while
+} // end map loop x83
 x81
 }
 val x83 = x83_block
@@ -169,7 +167,7 @@ x96elseb()
 x96
 }
 var mapReduceIdx = 1
-while (mapReduceIdx < x97.size) {
+while (mapReduceIdx < x97.size) { // begin mapReduce loop x137
 val x88 = x97.dcApply(mapReduceIdx)
 val x99 = {
 val x89 = x83(x88)
@@ -300,7 +298,7 @@ val x136 = (x108,x109,x122,x135)
 x136
 }
 mapReduceIdx += 1
-} // end while
+} // end mapReduce loop x137
 x98
 }
 val x137 = x137_block
@@ -339,18 +337,7 @@ val x170 = x168 - x169
 x171.dcUpdate(x165, x170)
 x165 += 1
 } // end fat loop x171
-val x172 = !true
-val x177 = {
-val x174 = new generated.scala.DoubleVectorImpl(x87,x172)
-x174
-}
-var x173 = 0
-while (x173 < x87) {  // begin fat loop x177
-val x176 = x171(x173)
-x177.dcUpdate(x173, x176)
-x173 += 1
-} // end fat loop x177
-def x197_block = { 
+val x197 = { 
 val x184 = new generated.scala.DoubleMatrixImpl(x87,x87)
 var x186 : Int = 0
 val x195 = while (x186 < x87) {
@@ -368,7 +355,6 @@ x186 = x186 + 1
 }
 x184
 }
-val x197 = x197_block
 x197
 }
 def x229elseb(): generated.scala.Matrix[Double] = {
@@ -400,18 +386,7 @@ val x203 = x201 - x202
 x204.dcUpdate(x198, x203)
 x198 += 1
 } // end fat loop x204
-val x172 = !true
-val x209 = {
-val x206 = new generated.scala.DoubleVectorImpl(x87,x172)
-x206
-}
-var x205 = 0
-while (x205 < x87) {  // begin fat loop x209
-val x208 = x204(x205)
-x209.dcUpdate(x205, x208)
-x205 += 1
-} // end fat loop x209
-def x228_block = { 
+val x228 = { 
 val x216 = new generated.scala.DoubleMatrixImpl(x87,x87)
 var x217 : Int = 0
 val x226 = while (x217 < x87) {
@@ -429,7 +404,6 @@ x217 = x217 + 1
 }
 x216
 }
-val x228 = x228_block
 x228
 }
 if (x163) {
@@ -441,7 +415,7 @@ x229elseb()
 x229
 }
 var mapReduceIdx = 1
-while (mapReduceIdx < x97.size) {
+while (mapReduceIdx < x97.size) { // begin mapReduce loop x237
 val x161 = x97.dcApply(mapReduceIdx)
 val x231 = {
 val x162 = x83(x161)
@@ -476,18 +450,7 @@ val x170 = x168 - x169
 x171.dcUpdate(x165, x170)
 x165 += 1
 } // end fat loop x171
-val x172 = !true
-val x177 = {
-val x174 = new generated.scala.DoubleVectorImpl(x87,x172)
-x174
-}
-var x173 = 0
-while (x173 < x87) {  // begin fat loop x177
-val x176 = x171(x173)
-x177.dcUpdate(x173, x176)
-x173 += 1
-} // end fat loop x177
-def x197_block = { 
+val x197 = { 
 val x184 = new generated.scala.DoubleMatrixImpl(x87,x87)
 var x186 : Int = 0
 val x195 = while (x186 < x87) {
@@ -505,7 +468,6 @@ x186 = x186 + 1
 }
 x184
 }
-val x197 = x197_block
 x197
 }
 def x229elseb(): generated.scala.Matrix[Double] = {
@@ -537,18 +499,7 @@ val x203 = x201 - x202
 x204.dcUpdate(x198, x203)
 x198 += 1
 } // end fat loop x204
-val x172 = !true
-val x209 = {
-val x206 = new generated.scala.DoubleVectorImpl(x87,x172)
-x206
-}
-var x205 = 0
-while (x205 < x87) {  // begin fat loop x209
-val x208 = x204(x205)
-x209.dcUpdate(x205, x208)
-x205 += 1
-} // end fat loop x209
-def x228_block = { 
+val x228 = { 
 val x216 = new generated.scala.DoubleMatrixImpl(x87,x87)
 var x217 : Int = 0
 val x226 = while (x217 < x87) {
@@ -566,7 +517,6 @@ x217 = x217 + 1
 }
 x216
 }
-val x228 = x228_block
 x228
 }
 if (x163) {
@@ -580,7 +530,7 @@ x229
 x230 = {
 def x235_block = {
 var zipIdx = 0
-while (zipIdx < x230.size) {
+while (zipIdx < x230.size) { // begin zip loop x235
 val x232 = x230.dcApply(zipIdx)
 val x233 = x231.dcApply(zipIdx)
 x230.dcUpdate(zipIdx,  {
@@ -588,14 +538,14 @@ val x234 = x232 + x233
 x234
 })
 zipIdx += 1
-} // end while
+} // end zip loop x235
 x230
 }
 val x235 = x235_block
 x235
 }
 mapReduceIdx += 1
-} // end while
+} // end mapReduce loop x237
 x230
 }
 val x237 = x237_block

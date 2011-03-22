@@ -28,7 +28,7 @@ val x11 = x10+" hidden units."
 val x12 = println(x11)
 val x13 = println("Reading MNIST dataset")
 val x16 = x0(0)
-def x61_block = { 
+val x61 = { 
 val x17 = new java.io.FileReader(x16)
 val x18 = new java.io.BufferedReader(x17)
 val x19 = x18.readLine()
@@ -86,29 +86,28 @@ x56
 val x59 = x18.close()
 x29
 }
-val x61 = x61_block
 val x64 = x61.numRows
 val x65 = x61.numCols
 def x68_block = {
 val x66 = new generated.scala.FloatMatrixImpl(x64,x65)
 var mapIdx = 0
-while (mapIdx < x61.size) {
+while (mapIdx < x61.size) { // begin map loop x68
 val x62 = x61.dcApply(mapIdx)
 x66.dcUpdate(mapIdx,  {
 val x63 = x62.floatValue()
 x63
 })
 mapIdx += 1
-} // end while
+} // end map loop x68
 x66
 }
 val x68 = x68_block
 val x69 = x68.numCols
-def x79_block = { 
+val x79 = { 
 val x72 = new generated.scala.FloatMatrixImpl(x69,x9)
 def x77_block = {
 var mapIdx = 0
-while (mapIdx < x72.size) {
+while (mapIdx < x72.size) { // begin map loop x77
 val x73 = x72.dcApply(mapIdx)
 x72.dcUpdate(mapIdx,  {
 val x74 = generated.scala.Global.randRef.nextGaussian()
@@ -116,51 +115,45 @@ val x75 = x74.floatValue()
 x75
 })
 mapIdx += 1
-} // end while
+} // end map loop x77
 x72
 }
 val x77 = x77_block
 x77
 }
-val x79 = x79_block
 def x82_block = {
 var mapIdx = 0
-while (mapIdx < x79.size) {
+while (mapIdx < x79.size) { // begin map loop x82
 val x80 = x79.dcApply(mapIdx)
 x79.dcUpdate(mapIdx,  {
 val x81 = x80 * 0.1f
 x81
 })
 mapIdx += 1
-} // end while
+} // end map loop x82
 x79
 }
 val x82 = x82_block
-def x85_block = { 
+val x85 = { 
 val x83 = new generated.scala.FloatVectorImpl(x9,true)
 x83
 }
-val x85 = x85_block
-def x88_block = { 
+val x88 = { 
 val x86 = new generated.scala.FloatVectorImpl(x69,true)
 x86
 }
-val x88 = x88_block
-def x91_block = { 
+val x91 = { 
 val x89 = new generated.scala.FloatMatrixImpl(x69,x9)
 x89
 }
-val x91 = x91_block
-def x94_block = { 
+val x94 = { 
 val x92 = new generated.scala.FloatVectorImpl(x9,true)
 x92
 }
-val x94 = x94_block
-def x97_block = { 
+val x97 = { 
 val x95 = new generated.scala.FloatVectorImpl(x69,true)
 x95
 }
-val x97 = x97_block
 val x98 = Seq()
 val x99 = ppl.delite.runtime.profiler.PerformanceTimer.start("app", false)
 var x100: Int = 0
@@ -169,11 +162,11 @@ val x15 = java.lang.Integer.parseInt(x14)
 val x70 = x68.numRows
 val x71 = x70 / x15
 val x194 = List()
-def x380_block = { 
+val x380 = { 
 val x373 = new generated.scala.FloatMatrixImpl(x15,x9)
 def x378_block = {
 var mapIdx = 0
-while (mapIdx < x373.size) {
+while (mapIdx < x373.size) { // begin map loop x378
 val x374 = x373.dcApply(mapIdx)
 x373.dcUpdate(mapIdx,  {
 val x375 = generated.scala.Global.randRef.nextFloat()
@@ -181,13 +174,12 @@ val x376 = x375.asInstanceOf[Float]
 x376
 })
 mapIdx += 1
-} // end while
+} // end map loop x378
 x373
 }
 val x378 = x378_block
 x378
 }
-val x380 = x380_block
 val x797 = x15
 val x843 = 0.1f / x797
 val x899 = while ({val x101 = x100
@@ -204,7 +196,7 @@ val x110 = x109 * x15
 val x112 = x111 + 1
 val x113 = x112 * x15
 val x114 = x113 - x110
-def x138_block = { 
+val x138 = { 
 val x115 = new generated.scala.FloatMatrixImpl(x114,x69)
 var x116: Int = x110
 val x136 = while ({val x117 = x116
@@ -229,11 +221,10 @@ val x134 = x116 += 1
 }
 x115
 }
-val x138 = x138_block
 val x156 = x138.numRows
 val x159 = new generated.scala.IndexVectorRangeImpl(0,x156)
-def x197_block = { 
-def x155_block = { 
+val x197 = { 
+val x155 = { 
 val x139 = x79.numCols
 val x140 = x79.numRows
 val x141 = new generated.scala.FloatMatrixImpl(x139,x140)
@@ -253,13 +244,12 @@ x144 = x144 + 1
 }
 x141
 }
-val x155 = x155_block
 val x157 = x79.numCols
 val x158 = new generated.scala.FloatMatrixImpl(x156,x157)
 val x173 = x155.numCols
 def x195_block = {
 var forIdx = 0
-while (forIdx < x159.size) {
+while (forIdx < x159.size) { // begin foreach loop x195
 val x160 = x159.dcApply(forIdx)
 var x161: Int = 0
 val x167 = x138(x160, 0)
@@ -293,13 +283,12 @@ val x189 = x161 += 1
 }
 ()
 forIdx += 1
-} // end while
+} // end foreach loop x195
 }
 val x195 = x195_block
 x158
 }
-val x197 = x197_block
-def x245_block = { 
+val x245 = { 
 val x198 = x85.isRow
 val x243 = {
 def x243thenb(): generated.scala.Matrix[Float] = {
@@ -309,7 +298,7 @@ val x201 = new generated.scala.FloatMatrixImpl(x15,x200)
 val x202 = new generated.scala.IndexVectorRangeImpl(0,x200)
 def x218_block = {
 var forIdx = 0
-while (forIdx < x202.size) {
+while (forIdx < x202.size) { // begin foreach loop x218
 val x203 = x202.dcApply(forIdx)
 val x204 = x85.length
 var x206: Int = 0
@@ -325,7 +314,7 @@ val x213 = x206 += 1
 }
 ()
 forIdx += 1
-} // end while
+} // end foreach loop x218
 }
 val x218 = x218_block
 x201
@@ -339,7 +328,7 @@ val x224 = x15 * x223
 val x225 = new generated.scala.IndexVectorRangeImpl(0,x224)
 def x241_block = {
 var forIdx = 0
-while (forIdx < x225.size) {
+while (forIdx < x225.size) { // begin foreach loop x241
 val x226 = x225.dcApply(forIdx)
 val x227 = x85.length
 var x229: Int = 0
@@ -355,7 +344,7 @@ val x236 = x229 += 1
 }
 ()
 forIdx += 1
-} // end while
+} // end foreach loop x241
 }
 val x241 = x241_block
 x222
@@ -368,8 +357,7 @@ x243elseb()
 }
 x243
 }
-val x245 = x245_block
-def x404_block = { 
+val x404 = { 
 val x388 = x79.numCols
 val x389 = x79.numRows
 val x390 = new generated.scala.FloatMatrixImpl(x388,x389)
@@ -389,8 +377,7 @@ x393 = x393 + 1
 }
 x390
 }
-val x404 = x404_block
-def x509_block = { 
+val x509 = { 
 val x462 = x88.isRow
 val x507 = {
 def x507thenb(): generated.scala.Matrix[Float] = {
@@ -400,7 +387,7 @@ val x465 = new generated.scala.FloatMatrixImpl(x15,x464)
 val x466 = new generated.scala.IndexVectorRangeImpl(0,x464)
 def x482_block = {
 var forIdx = 0
-while (forIdx < x466.size) {
+while (forIdx < x466.size) { // begin foreach loop x482
 val x467 = x466.dcApply(forIdx)
 val x468 = x88.length
 var x470: Int = 0
@@ -416,7 +403,7 @@ val x477 = x470 += 1
 }
 ()
 forIdx += 1
-} // end while
+} // end foreach loop x482
 }
 val x482 = x482_block
 x465
@@ -430,7 +417,7 @@ val x488 = x15 * x487
 val x489 = new generated.scala.IndexVectorRangeImpl(0,x488)
 def x505_block = {
 var forIdx = 0
-while (forIdx < x489.size) {
+while (forIdx < x489.size) { // begin foreach loop x505
 val x490 = x489.dcApply(forIdx)
 val x491 = x88.length
 var x493: Int = 0
@@ -446,7 +433,7 @@ val x500 = x493 += 1
 }
 ()
 forIdx += 1
-} // end while
+} // end foreach loop x505
 }
 val x505 = x505_block
 x486
@@ -459,13 +446,13 @@ x507elseb()
 }
 x507
 }
-val x509 = x509_block
+val x405 = x404.numCols
 val x246 = x197.numRows
 val x247 = x197.numCols
 def x253_block = {
 val x248 = new generated.scala.FloatMatrixImpl(x246,x247)
 var zipIdx = 0
-while (zipIdx < x197.size) {
+while (zipIdx < x197.size) { // begin zip loop x253
 val x250 = x197.dcApply(zipIdx)
 val x251 = x245.dcApply(zipIdx)
 x248.dcUpdate(zipIdx,  {
@@ -473,7 +460,7 @@ val x252 = x250 + x251
 x252
 })
 zipIdx += 1
-} // end while
+} // end zip loop x253
 x248
 }
 val x253 = x253_block
@@ -482,7 +469,7 @@ val x255 = x253.numCols
 def x265_block = {
 val x256 = new generated.scala.FloatMatrixImpl(x254,x255)
 var mapIdx = 0
-while (mapIdx < x253.size) {
+while (mapIdx < x253.size) { // begin map loop x265
 val x258 = x253.dcApply(mapIdx)
 x256.dcUpdate(mapIdx,  {
 val x259 = x258
@@ -494,7 +481,7 @@ val x264 = x263.asInstanceOf[Float]
 x264
 })
 mapIdx += 1
-} // end while
+} // end map loop x265
 x256
 }
 val x265 = x265_block
@@ -503,7 +490,7 @@ val x283 = x265.numRows
 def x387_block = {
 val x385 = new generated.scala.FloatMatrixImpl(x283,x282)
 var zipIdx = 0
-while (zipIdx < x265.size) {
+while (zipIdx < x265.size) { // begin zip loop x387
 val x381 = x265.dcApply(zipIdx)
 val x382 = x380.dcApply(zipIdx)
 x385.dcUpdate(zipIdx,  {
@@ -524,15 +511,14 @@ x384elseb()
 x384
 })
 zipIdx += 1
-} // end while
+} // end zip loop x387
 x385
 }
 val x387 = x387_block
-val x405 = x404.numCols
 val x422 = x387.numRows
 val x424 = new generated.scala.IndexVectorRangeImpl(0,x422)
 val x406 = x404.numRows
-def x421_block = { 
+val x421 = { 
 val x407 = new generated.scala.FloatMatrixImpl(x405,x406)
 val x408 = x407.numRows
 var x410 : Int = 0
@@ -550,13 +536,12 @@ x410 = x410 + 1
 }
 x407
 }
-val x421 = x421_block
 val x438 = x421.numCols
-def x461_block = { 
+val x461 = { 
 val x423 = new generated.scala.FloatMatrixImpl(x422,x405)
 def x459_block = {
 var forIdx = 0
-while (forIdx < x424.size) {
+while (forIdx < x424.size) { // begin foreach loop x459
 val x425 = x424.dcApply(forIdx)
 var x426: Int = 0
 val x432 = x387(x425, 0)
@@ -590,18 +575,17 @@ val x454 = x426 += 1
 }
 ()
 forIdx += 1
-} // end while
+} // end foreach loop x459
 }
 val x459 = x459_block
 x423
 }
-val x461 = x461_block
 val x510 = x461.numRows
 val x511 = x461.numCols
 def x517_block = {
 val x512 = new generated.scala.FloatMatrixImpl(x510,x511)
 var zipIdx = 0
-while (zipIdx < x461.size) {
+while (zipIdx < x461.size) { // begin zip loop x517
 val x514 = x461.dcApply(zipIdx)
 val x515 = x509.dcApply(zipIdx)
 x512.dcUpdate(zipIdx,  {
@@ -609,7 +593,7 @@ val x516 = x514 + x515
 x516
 })
 zipIdx += 1
-} // end while
+} // end zip loop x517
 x512
 }
 val x517 = x517_block
@@ -618,7 +602,7 @@ val x519 = x517.numCols
 def x529_block = {
 val x520 = new generated.scala.FloatMatrixImpl(x518,x519)
 var mapIdx = 0
-while (mapIdx < x517.size) {
+while (mapIdx < x517.size) { // begin map loop x529
 val x522 = x517.dcApply(mapIdx)
 x520.dcUpdate(mapIdx,  {
 val x523 = x522
@@ -630,14 +614,14 @@ val x528 = x527.asInstanceOf[Float]
 x528
 })
 mapIdx += 1
-} // end while
+} // end map loop x529
 x520
 }
 val x529 = x529_block
 val x547 = x529.numRows
 val x550 = new generated.scala.IndexVectorRangeImpl(0,x547)
-def x587_block = { 
-def x546_block = { 
+val x587 = { 
+val x546 = { 
 val x530 = x79.numCols
 val x531 = x79.numRows
 val x532 = new generated.scala.FloatMatrixImpl(x530,x531)
@@ -657,13 +641,12 @@ x535 = x535 + 1
 }
 x532
 }
-val x546 = x546_block
 val x548 = x79.numCols
 val x549 = new generated.scala.FloatMatrixImpl(x547,x548)
 val x564 = x546.numCols
 def x585_block = {
 var forIdx = 0
-while (forIdx < x550.size) {
+while (forIdx < x550.size) { // begin foreach loop x585
 val x551 = x550.dcApply(forIdx)
 var x552: Int = 0
 val x558 = x529(x551, 0)
@@ -697,17 +680,16 @@ val x580 = x552 += 1
 }
 ()
 forIdx += 1
-} // end while
+} // end foreach loop x585
 }
 val x585 = x585_block
 x549
 }
-val x587 = x587_block
 val x266 = x138.numCols
 def x769_block = {
 val x764 = new generated.scala.FloatMatrixImpl(x156,x266)
 var zipIdx = 0
-while (zipIdx < x138.size) {
+while (zipIdx < x138.size) { // begin zip loop x769
 val x766 = x138.dcApply(zipIdx)
 val x767 = x529.dcApply(zipIdx)
 x764.dcUpdate(zipIdx,  {
@@ -715,7 +697,7 @@ val x768 = x766 - x767
 x768
 })
 zipIdx += 1
-} // end while
+} // end zip loop x769
 x764
 }
 val x769 = x769_block
@@ -724,7 +706,7 @@ val x771 = x769.numCols
 def x777_block = {
 val x772 = new generated.scala.FloatMatrixImpl(x770,x771)
 var zipIdx = 0
-while (zipIdx < x769.size) {
+while (zipIdx < x769.size) { // begin zip loop x777
 val x774 = x769.dcApply(zipIdx)
 val x775 = x769.dcApply(zipIdx)
 x772.dcUpdate(zipIdx,  {
@@ -732,21 +714,21 @@ val x776 = x774 * x775
 x776
 })
 zipIdx += 1
-} // end while
+} // end zip loop x777
 x772
 }
 val x777 = x777_block
 def x781_block = {
 var x778 = x777.dcApply(0)
 var reduceIdx = 1
-while (reduceIdx < x777.size) {
+while (reduceIdx < x777.size) { // begin reduce loop x781
 val x779 = x777.dcApply(reduceIdx)
 x778 = {
 val x780 = x778 + x779
 x780
 }
 reduceIdx += 1
-} // end while
+} // end reduce loop x781
 x778
 }
 val x781 = x781_block
@@ -768,14 +750,14 @@ x785elseb()
 }
 def x788_block = {
 var mapIdx = 0
-while (mapIdx < x91.size) {
+while (mapIdx < x91.size) { // begin map loop x788
 val x786 = x91.dcApply(mapIdx)
 x91.dcUpdate(mapIdx,  {
 val x787 = x786 * x785
 x787
 })
 mapIdx += 1
-} // end while
+} // end map loop x788
 x91
 }
 val x788 = x788_block
@@ -784,18 +766,18 @@ val x805 = x79.numRows
 val x806 = x79.numCols
 val x807 = new generated.scala.FloatMatrixImpl(x805,x806)
 var mapIdx = 0
-while (mapIdx < x79.size) {
+while (mapIdx < x79.size) { // begin map loop x811
 val x809 = x79.dcApply(mapIdx)
 x807.dcUpdate(mapIdx,  {
 val x810 = x809 * 2.0E-4f
 x810
 })
 mapIdx += 1
-} // end while
+} // end map loop x811
 x807
 }
 val x811 = x811_block
-def x281_block = { 
+val x281 = { 
 val x267 = new generated.scala.FloatMatrixImpl(x266,x156)
 val x268 = x267.numRows
 var x270 : Int = 0
@@ -813,10 +795,9 @@ x270 = x270 + 1
 }
 x267
 }
-val x281 = x281_block
 val x299 = x281.numRows
 val x301 = new generated.scala.IndexVectorRangeImpl(0,x299)
-def x298_block = { 
+val x298 = { 
 val x284 = new generated.scala.FloatMatrixImpl(x282,x283)
 val x285 = x284.numRows
 var x287 : Int = 0
@@ -834,13 +815,12 @@ x287 = x287 + 1
 }
 x284
 }
-val x298 = x298_block
 val x315 = x298.numCols
-def x338_block = { 
+val x338 = { 
 val x300 = new generated.scala.FloatMatrixImpl(x299,x282)
 def x336_block = {
 var forIdx = 0
-while (forIdx < x301.size) {
+while (forIdx < x301.size) { // begin foreach loop x336
 val x302 = x301.dcApply(forIdx)
 var x303: Int = 0
 val x309 = x281(x302, 0)
@@ -874,18 +854,17 @@ val x331 = x303 += 1
 }
 ()
 forIdx += 1
-} // end while
+} // end foreach loop x336
 }
 val x336 = x336_block
 x300
 }
-val x338 = x338_block
 val x637 = x587.numRows
 val x638 = x587.numCols
 def x644_block = {
 val x639 = new generated.scala.FloatMatrixImpl(x637,x638)
 var zipIdx = 0
-while (zipIdx < x587.size) {
+while (zipIdx < x587.size) { // begin zip loop x644
 val x641 = x587.dcApply(zipIdx)
 val x642 = x245.dcApply(zipIdx)
 x639.dcUpdate(zipIdx,  {
@@ -893,7 +872,7 @@ val x643 = x641 + x642
 x643
 })
 zipIdx += 1
-} // end while
+} // end zip loop x644
 x639
 }
 val x644 = x644_block
@@ -902,7 +881,7 @@ val x646 = x644.numCols
 def x656_block = {
 val x647 = new generated.scala.FloatMatrixImpl(x645,x646)
 var mapIdx = 0
-while (mapIdx < x644.size) {
+while (mapIdx < x644.size) { // begin map loop x656
 val x649 = x644.dcApply(mapIdx)
 x647.dcUpdate(mapIdx,  {
 val x650 = x649
@@ -914,12 +893,13 @@ val x655 = x654.asInstanceOf[Float]
 x655
 })
 mapIdx += 1
-} // end while
+} // end map loop x656
 x647
 }
 val x656 = x656_block
+val x673 = x656.numCols
 val x657 = x529.numCols
-def x672_block = { 
+val x672 = { 
 val x658 = new generated.scala.FloatMatrixImpl(x657,x547)
 val x659 = x658.numRows
 var x661 : Int = 0
@@ -937,12 +917,10 @@ x661 = x661 + 1
 }
 x658
 }
-val x672 = x672_block
-val x673 = x656.numCols
 val x690 = x672.numRows
 val x692 = new generated.scala.IndexVectorRangeImpl(0,x690)
 val x674 = x656.numRows
-def x689_block = { 
+val x689 = { 
 val x675 = new generated.scala.FloatMatrixImpl(x673,x674)
 val x676 = x675.numRows
 var x678 : Int = 0
@@ -960,13 +938,12 @@ x678 = x678 + 1
 }
 x675
 }
-val x689 = x689_block
 val x706 = x689.numCols
-def x729_block = { 
+val x729 = { 
 val x691 = new generated.scala.FloatMatrixImpl(x690,x673)
 def x727_block = {
 var forIdx = 0
-while (forIdx < x692.size) {
+while (forIdx < x692.size) { // begin foreach loop x727
 val x693 = x692.dcApply(forIdx)
 var x694: Int = 0
 val x700 = x672(x693, 0)
@@ -1000,18 +977,17 @@ val x722 = x694 += 1
 }
 ()
 forIdx += 1
-} // end while
+} // end foreach loop x727
 }
 val x727 = x727_block
 x691
 }
-val x729 = x729_block
 val x789 = x338.numRows
 val x790 = x338.numCols
 def x796_block = {
 val x791 = new generated.scala.FloatMatrixImpl(x789,x790)
 var zipIdx = 0
-while (zipIdx < x338.size) {
+while (zipIdx < x338.size) { // begin zip loop x796
 val x793 = x338.dcApply(zipIdx)
 val x794 = x729.dcApply(zipIdx)
 x791.dcUpdate(zipIdx,  {
@@ -1019,7 +995,7 @@ val x795 = x793 - x794
 x795
 })
 zipIdx += 1
-} // end while
+} // end zip loop x796
 x791
 }
 val x796 = x796_block
@@ -1028,14 +1004,14 @@ val x799 = x796.numCols
 def x804_block = {
 val x800 = new generated.scala.FloatMatrixImpl(x798,x799)
 var mapIdx = 0
-while (mapIdx < x796.size) {
+while (mapIdx < x796.size) { // begin map loop x804
 val x802 = x796.dcApply(mapIdx)
 x800.dcUpdate(mapIdx,  {
 val x803 = x802 / x797
 x803
 })
 mapIdx += 1
-} // end while
+} // end map loop x804
 x800
 }
 val x804 = x804_block
@@ -1044,7 +1020,7 @@ val x813 = x804.numCols
 def x819_block = {
 val x814 = new generated.scala.FloatMatrixImpl(x812,x813)
 var zipIdx = 0
-while (zipIdx < x804.size) {
+while (zipIdx < x804.size) { // begin zip loop x819
 val x816 = x804.dcApply(zipIdx)
 val x817 = x811.dcApply(zipIdx)
 x814.dcUpdate(zipIdx,  {
@@ -1052,7 +1028,7 @@ val x818 = x816 - x817
 x818
 })
 zipIdx += 1
-} // end while
+} // end zip loop x819
 x814
 }
 val x819 = x819_block
@@ -1061,20 +1037,20 @@ val x821 = x819.numCols
 def x826_block = {
 val x822 = new generated.scala.FloatMatrixImpl(x820,x821)
 var mapIdx = 0
-while (mapIdx < x819.size) {
+while (mapIdx < x819.size) { // begin map loop x826
 val x824 = x819.dcApply(mapIdx)
 x822.dcUpdate(mapIdx,  {
 val x825 = x824 * 0.1f
 x825
 })
 mapIdx += 1
-} // end while
+} // end map loop x826
 x822
 }
 val x826 = x826_block
 def x830_block = {
 var zipIdx = 0
-while (zipIdx < x91.size) {
+while (zipIdx < x91.size) { // begin zip loop x830
 val x827 = x91.dcApply(zipIdx)
 val x828 = x826.dcApply(zipIdx)
 x91.dcUpdate(zipIdx,  {
@@ -1082,29 +1058,29 @@ val x829 = x827 + x828
 x829
 })
 zipIdx += 1
-} // end while
+} // end zip loop x830
 x91
 }
 val x830 = x830_block
 def x833_block = {
 var mapIdx = 0
-while (mapIdx < x97.size) {
+while (mapIdx < x97.size) { // begin map loop x833
 val x831 = x97.dcApply(mapIdx)
 x97.dcUpdate(mapIdx,  {
 val x832 = x831 * x785
 x832
 })
 mapIdx += 1
-} // end while
+} // end map loop x833
 x97
 }
 val x833 = x833_block
 val x357 = new generated.scala.IndexVectorRangeImpl(0,x266)
-def x372_block = { 
+val x372 = { 
 val x356 = new generated.scala.FloatVectorImpl(x266,true)
 def x370_block = {
 var forIdx = 0
-while (forIdx < x357.size) {
+while (forIdx < x357.size) { // begin foreach loop x370
 val x358 = x357.dcApply(forIdx)
 val x359 = x138.getCol(x358)
 val x360 = x359.length
@@ -1121,20 +1097,19 @@ x361 += 1
 val x367 = x356(x358) = x366
 x367
 forIdx += 1
-} // end while
+} // end foreach loop x370
 }
 val x370 = x370_block
 x356
 }
-val x372 = x372_block
 val x834 = x372.length
 val x835 = x372.isRow
 val x748 = new generated.scala.IndexVectorRangeImpl(0,x657)
-def x763_block = { 
+val x763 = { 
 val x747 = new generated.scala.FloatVectorImpl(x657,true)
 def x761_block = {
 var forIdx = 0
-while (forIdx < x748.size) {
+while (forIdx < x748.size) { // begin foreach loop x761
 val x749 = x748.dcApply(forIdx)
 val x750 = x529.getCol(x749)
 val x751 = x750.length
@@ -1151,12 +1126,11 @@ x752 += 1
 val x758 = x747(x749) = x757
 x758
 forIdx += 1
-} // end while
+} // end foreach loop x761
 }
 val x761 = x761_block
 x747
 }
-val x763 = x763_block
 val x842 = {
 val x837 = new generated.scala.FloatVectorImpl(x834,x835)
 x837
@@ -1182,7 +1156,7 @@ x844 += 1
 } // end fat loop x849
 def x853_block = {
 var zipIdx = 0
-while (zipIdx < x97.size) {
+while (zipIdx < x97.size) { // begin zip loop x853
 val x850 = x97.dcApply(zipIdx)
 val x851 = x849.dcApply(zipIdx)
 x97.dcUpdate(zipIdx,  {
@@ -1190,29 +1164,29 @@ val x852 = x850 + x851
 x852
 })
 zipIdx += 1
-} // end while
+} // end zip loop x853
 x97
 }
 val x853 = x853_block
 def x856_block = {
 var mapIdx = 0
-while (mapIdx < x94.size) {
+while (mapIdx < x94.size) { // begin map loop x856
 val x854 = x94.dcApply(mapIdx)
 x94.dcUpdate(mapIdx,  {
 val x855 = x854 * x785
 x855
 })
 mapIdx += 1
-} // end while
+} // end map loop x856
 x94
 }
 val x856 = x856_block
 val x340 = new generated.scala.IndexVectorRangeImpl(0,x282)
-def x355_block = { 
+val x355 = { 
 val x339 = new generated.scala.FloatVectorImpl(x282,true)
 def x353_block = {
 var forIdx = 0
-while (forIdx < x340.size) {
+while (forIdx < x340.size) { // begin foreach loop x353
 val x341 = x340.dcApply(forIdx)
 val x342 = x265.getCol(x341)
 val x343 = x342.length
@@ -1229,20 +1203,19 @@ x344 += 1
 val x350 = x339(x341) = x349
 x350
 forIdx += 1
-} // end while
+} // end foreach loop x353
 }
 val x353 = x353_block
 x339
 }
-val x355 = x355_block
 val x857 = x355.length
 val x858 = x355.isRow
 val x731 = new generated.scala.IndexVectorRangeImpl(0,x673)
-def x746_block = { 
+val x746 = { 
 val x730 = new generated.scala.FloatVectorImpl(x673,true)
 def x744_block = {
 var forIdx = 0
-while (forIdx < x731.size) {
+while (forIdx < x731.size) { // begin foreach loop x744
 val x732 = x731.dcApply(forIdx)
 val x733 = x656.getCol(x732)
 val x734 = x733.length
@@ -1259,12 +1232,11 @@ x735 += 1
 val x741 = x730(x732) = x740
 x741
 forIdx += 1
-} // end while
+} // end foreach loop x744
 }
 val x744 = x744_block
 x730
 }
-val x746 = x746_block
 val x865 = {
 val x860 = new generated.scala.FloatVectorImpl(x857,x858)
 x860
@@ -1290,7 +1262,7 @@ x866 += 1
 } // end fat loop x871
 def x875_block = {
 var zipIdx = 0
-while (zipIdx < x94.size) {
+while (zipIdx < x94.size) { // begin zip loop x875
 val x872 = x94.dcApply(zipIdx)
 val x873 = x871.dcApply(zipIdx)
 x94.dcUpdate(zipIdx,  {
@@ -1298,13 +1270,13 @@ val x874 = x872 + x873
 x874
 })
 zipIdx += 1
-} // end while
+} // end zip loop x875
 x94
 }
 val x875 = x875_block
 def x879_block = {
 var zipIdx = 0
-while (zipIdx < x79.size) {
+while (zipIdx < x79.size) { // begin zip loop x879
 val x876 = x79.dcApply(zipIdx)
 val x877 = x91.dcApply(zipIdx)
 x79.dcUpdate(zipIdx,  {
@@ -1312,13 +1284,13 @@ val x878 = x876 + x877
 x878
 })
 zipIdx += 1
-} // end while
+} // end zip loop x879
 x79
 }
 val x879 = x879_block
 def x883_block = {
 var zipIdx = 0
-while (zipIdx < x88.size) {
+while (zipIdx < x88.size) { // begin zip loop x883
 val x880 = x88.dcApply(zipIdx)
 val x881 = x97.dcApply(zipIdx)
 x88.dcUpdate(zipIdx,  {
@@ -1326,13 +1298,13 @@ val x882 = x880 + x881
 x882
 })
 zipIdx += 1
-} // end while
+} // end zip loop x883
 x88
 }
 val x883 = x883_block
 def x887_block = {
 var zipIdx = 0
-while (zipIdx < x85.size) {
+while (zipIdx < x85.size) { // begin zip loop x887
 val x884 = x85.dcApply(zipIdx)
 val x885 = x94.dcApply(zipIdx)
 x85.dcUpdate(zipIdx,  {
@@ -1340,7 +1312,7 @@ val x886 = x884 + x885
 x886
 })
 zipIdx += 1
-} // end while
+} // end zip loop x887
 x85
 }
 val x887 = x887_block

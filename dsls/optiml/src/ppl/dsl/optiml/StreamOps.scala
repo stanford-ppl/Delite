@@ -160,6 +160,15 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   def stream_rowsin[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectPure(StreamRowsIn(x, offset))
   def stream_chunk_elem[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], j: Exp[Int]) = reflectPure(StreamChunkElem(x, idx, j))
   def stream_raw_elem[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int]) = reflectPure(StreamRawElem(x, idx))
+
+  //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case StreamChunkElem(x, idx, j) => stream_chunk_elem(f(x),f(idx),f(j))
+    case StreamRawElem(x, idx) => stream_raw_elem(f(x),f(idx))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 

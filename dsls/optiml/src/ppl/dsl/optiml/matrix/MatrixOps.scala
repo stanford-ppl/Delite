@@ -343,7 +343,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val size = inA.numRows
     val isRow = unit(false)
     val v = fresh[Int]
-    val body: Def[Vector[A]] = DeliteCollectElem[A,Vector](
+    val body: Def[Vector[A]] = DeliteCollectElem[A,Vector[A]](
       alloc = reifyEffects(Vector[A](size, isRow)),
       func = reifyEffects(inA.getRow(v) *:* inB)
     )

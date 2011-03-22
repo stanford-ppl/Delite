@@ -3,6 +3,8 @@ package ppl.dsl.optiml.datastruct.scala
 object VectorImpl {
 }
 
+// TODO: replace Array.copy with System.arraycopy and 4.max() with a conditional
+
 /**
  * This is the actual class that gets instantiated in the generated code. Ops corresponding to public operations
  * here must have CodeGen methods defined by the DSL on them.

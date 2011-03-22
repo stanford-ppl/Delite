@@ -89,7 +89,8 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 
 
   def optiml_vectordistance_abs_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
-    //(v1-v2).abs.sum  // TODO: fuse this automatically
+    (v1-v2).abs.sum
+/*
     var result = (v1(0) - v2(0)).abs
     var i = 1
     while (i < v1.length) {
@@ -97,6 +98,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
       i += 1
     }
     result
+*/
   }
 
   def optiml_vectordistance_euc_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
@@ -106,7 +108,8 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   }
 
   def optiml_vectordistance_square_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
-    ((v1 - v2) mmap { e => e*e }).sum //TODO TR non-mutable write
+    val d = v1-v2
+    (d*d).sum
   }
 
   def optiml_matrixdistance_abs_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {
@@ -119,7 +122,8 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   }
 
   def optiml_matrixdistance_square_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {
-    ((m1 - m2) mmap { e => e*e }).sum //TODO TR non-mutable write
+    val d = m1-m2
+    matrix_times(d,d).sum
   }
 
   // TODO: refactor to call sampleCollection
