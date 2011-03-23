@@ -66,10 +66,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   case class StreamNumRows[A:Manifest](x: Exp[Stream[A]]) extends Def[Int]
   case class StreamNumCols[A:Manifest](x: Exp[Stream[A]]) extends Def[Int]
   case class StreamChunkRow[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) extends Def[StreamRow[A]]
-  //case class StreamChunkElem[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], j: Exp[Int]) extends Def[A]
   case class StreamRawElem[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int]) extends Def[A]
-  case class StreamRowsIn[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) extends Def[Int]
-  case class StreamInitChunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) extends Def[Unit]
   case class StreamInitRow[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends Def[Unit]
 
   ////////////////////////////////
@@ -77,6 +74,12 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
 
   case class StreamChunkElem[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], j: Exp[Int])
     extends DeliteOpSingleTask(reifyEffectsHere(stream_chunk_elem_impl(x,idx,j)))
+
+  case class StreamRowsIn[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int])
+    extends DeliteOpSingleTask(reifyEffectsHere(stream_rowsin_impl(x,offset)))
+
+  case class StreamInitChunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int])
+    extends DeliteOpSingleTask(reifyEffectsHere(stream_init_chunk_impl(x,offset)))
 
   case class StreamInitAndForeachRow[A:Manifest](in: Exp[Vector[Int]], v: Sym[Int], x: Exp[Stream[A]], offset: Exp[Int],
                                                  block: Exp[StreamRow[A]] => Exp[Unit])
@@ -143,7 +146,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
       }
       else {
         val init = stream_init_chunk(x, i)  // sequential
-        reflectEffect(StreamForeachRow(in, v, x, i, block, init))
+        reflectEffect(StreamForeachRow(in, v, x, i, block, init)) // parallel
       }
 
       i += 1
@@ -250,10 +253,7 @@ trait ScalaGenStreamOps extends ScalaGenBase {
     case StreamNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case StreamNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
     case StreamChunkRow(x, idx, offset) => emitValDef(sym, quote(x) + ".chunkRow(" + quote(idx) + "," + quote(offset) + ")")
-    //case StreamChunkElem(x, idx, j) => emitValDef(sym, quote(x) + ".chunkElem(" + quote(idx) + "," + quote(j) + ")")
     case StreamRawElem(x, idx) => emitValDef(sym, quote(x) + ".rawElem(" + quote(idx) + ")")
-    case StreamRowsIn(x, idx) => emitValDef(sym, quote(x) + ".rowsIn(" + quote(idx) + ")")
-    case StreamInitChunk(x, idx) => emitValDef(sym, quote(x) + ".initChunk(" + quote(idx) + ")")
     case StreamInitRow(x, row, idx) => emitValDef(sym, quote(x) + ".initRow(" + quote(row) + "," + quote(idx) + ")")
     case _ => super.emitNode(sym, rhs)
   }

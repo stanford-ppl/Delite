@@ -1,7 +1,6 @@
 package ppl.dsl.optiml.datastruct.scala
 
 class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: Int, val func: (Int,Int) => T, val isPure: Boolean) extends Stream[T] {
-//  var currentChunk = 0
     protected var _data: Array[T] =  try { new Array[T](size) }
                                      catch {
                                        case _ => throw new RuntimeException("Stream overflowed during initialization")
@@ -11,26 +10,12 @@ class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: 
     def size = numCols*bufRows
     def data = _data
 
-    def rowsIn(offset: Int) = {
-      val remainingRows = numRows - offset*chunkSize
-      val leftover = if (remainingRows < 0) numRows else remainingRows // in case numRows < chunkSize
-      math.min(chunkSize, leftover).asInstanceOf[Int]
-    }
-
-    def initChunk(offset: Int) {
-      val numRows = rowsIn(offset)
-      var i = 0
-      while (i < numRows) {
-        initRow(i, offset)
-        i += 1
-      }
-      //    currentChunk = offset
-    }
-
     def initRow(row: Int, offset: Int) {
       var j = 0
+      val lhsOff = row*numCols
+      val rhsOff = offset*chunkSize+row
       while (j < numCols) {
-        _data(row*numCols+j) = func(offset*chunkSize+row,j)
+        _data(lhsOff+j) = func(rhsOff,j)
         j += 1
       }
     }
@@ -41,10 +26,6 @@ class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: 
     def chunkRow(idx: Int, offset: Int) = {
       //vview(idx*numCols, 1, numCols, true)
       new StreamRowImpl[T](idx, offset, this, _data)
-    }
-
-    def chunkElem(idx: Int, j: Int): T = {
-      _data(idx*numCols+j)
     }
 
     def rawElem(idx: Int): T = {

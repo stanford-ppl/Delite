@@ -105,7 +105,7 @@ trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with LanguageOp
   with IndexVectorOpsExp with IndexVector2OpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with StreamOpsExpOpt with StreamRowOpsExpOpt
   with LabelsOpsExp with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
-  with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
+  with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard with IndexVectorImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
   with GraphOpsExp with VerticesOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp {
