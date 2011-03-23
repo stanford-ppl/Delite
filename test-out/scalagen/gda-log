@@ -25,13 +25,17 @@ depends on  Sym(58)
 promoting to effect: Sym(67)=Reflect(VectorLength(Sym(54)),Summary(false,false,false,false,false,List(Sym(54)),List(Sym(54)),List(),List()),List())
 depends on  Sym(54)
 error: write to non-mutable None
-at Sym(235)=Reflect(MatrixPlusEquals(Sym(230),Sym(231)),Summary(false,false,false,false,false,List(),List(),List(Sym(230)),List(Sym(230))),List())
+at Sym(244)=Reflect(MatrixPlusEquals(Sym(239),Sym(240)),Summary(false,false,false,false,false,List(),List(),List(Sym(239)),List(Sym(239))),List())
 EMIT single MLInputRead(Sym(7))
 EMIT single MLInputReadVector(Sym(53))
-EMIT single VectorOuter(Sym(177),Sym(171))
-EMIT single VectorOuter(Sym(209),Sym(204))
-EMIT single VectorOuter(Sym(177),Sym(171))
-EMIT single VectorOuter(Sym(209),Sym(204))
+EMIT single MatrixApply(Sym(52),Sym(161),Sym(165))
+EMIT single VectorOuter(Sym(180),Sym(174))
+EMIT single MatrixApply(Sym(52),Sym(161),Sym(203))
+EMIT single VectorOuter(Sym(216),Sym(211))
+EMIT single MatrixApply(Sym(52),Sym(161),Sym(165))
+EMIT single VectorOuter(Sym(180),Sym(174))
+EMIT single MatrixApply(Sym(52),Sym(161),Sym(203))
+EMIT single VectorOuter(Sym(216),Sym(211))
 ##### all definitions
 TP(Sym(1),ArrayLength(Sym(0)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArrayOps.scala:33,ArrayOps.scala:17
@@ -72,7 +76,7 @@ GDA.scala:6,Effects.scala:145,Effects.scala:144,Option.scala:109,Effects.scala:1
 TP(Sym(19),ArrayLength(Sym(18)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArrayOps.scala:33,ArrayOps.scala:17,MLInputReaderImplOps.scala:28,MLInputReaderOps.scala:34,Effects.scala:206,MLInputReaderOps.scala:49,MLInputReaderOps.scala:15,LanguageOps.scala:235
 TP(Sym(20),Reflect(MatrixObjectNew(Const(0),Sym(19)),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(8), Sym(9), Sym(10))))
-GDA.scala:6,Effects.scala:152,Effects.scala:115,MatrixOps.scala:653,MatrixOps.scala:20,MLInputReaderImplOps.scala:28,MLInputReaderOps.scala:34,Effects.scala:206,MLInputReaderOps.scala:49,MLInputReaderOps.scala:15,LanguageOps.scala:235
+GDA.scala:6,Effects.scala:152,Effects.scala:115,MatrixOps.scala:657,MatrixOps.scala:20,MLInputReaderImplOps.scala:28,MLInputReaderOps.scala:34,Effects.scala:206,MLInputReaderOps.scala:49,MLInputReaderOps.scala:15,LanguageOps.scala:235
 TP(Sym(21),Reflect(ReadVar(Variable(Sym(11))),Summary(false,false,false,false,false,List(Sym(11)),List(Sym(11)),List(),List()),List()))
 GDA.scala:6,Effects.scala:145,Effects.scala:144,Option.scala:109,Effects.scala:124,Variables.scala:27,Equal.scala:33,MLInputReaderImplOps.scala:30,Effects.scala:206,DeliteWhile.scala:20,MLInputReaderOps.scala:34,MLInputReaderOps.scala:49,MLInputReaderOps.scala:15,LanguageOps.scala:235
 TP(Sym(22),NotEqual(Sym(21),Const(null)))
@@ -100,9 +104,9 @@ GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressio
 TP(Sym(34),Reflect(RangeForeach(Const(0),Sym(25),Sym(28),Sym(33)),Summary(false,false,false,false,false,List(Sym(17), Sym(26)),List(),List(Sym(26)),List()),List(Sym(26))))
 GDA.scala:6,Effects.scala:152,RangeOps.scala:48,RangeOps.scala:12,MLInputReaderImplOps.scala:32,Effects.scala:206,DeliteWhile.scala:27,MLInputReaderImplOps.scala:30,MLInputReaderOps.scala:34,MLInputReaderOps.scala:49,MLInputReaderOps.scala:15,LanguageOps.scala:235
 TP(Sym(35),Reflect(MatrixNumRows(Sym(20)),Summary(false,false,false,false,false,List(Sym(20)),List(Sym(20)),List(),List()),List()))
-GDA.scala:6,Effects.scala:145,Effects.scala:144,Option.scala:109,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:680,MatrixOps.scala:60,MatrixOps.scala:75,MLInputReaderImplOps.scala:35,Effects.scala:206,DeliteWhile.scala:27,MLInputReaderImplOps.scala:30,MLInputReaderOps.scala:34,MLInputReaderOps.scala:49,MLInputReaderOps.scala:15,LanguageOps.scala:235
+GDA.scala:6,Effects.scala:145,Effects.scala:144,Option.scala:109,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:684,MatrixOps.scala:60,MatrixOps.scala:75,MLInputReaderImplOps.scala:35,Effects.scala:206,DeliteWhile.scala:27,MLInputReaderImplOps.scala:30,MLInputReaderOps.scala:34,MLInputReaderOps.scala:49,MLInputReaderOps.scala:15,LanguageOps.scala:235
 TP(Sym(36),Reflect(MatrixInsertRow(Sym(20),Sym(35),Sym(26)),Summary(false,false,false,false,false,List(Sym(20), Sym(26)),List(Sym(20), Sym(26)),List(Sym(20)),List(Sym(20))),List(Sym(26), Sym(34), Sym(35))))
-GDA.scala:6,Effects.scala:152,Effects.scala:134,MatrixOps.scala:685,MatrixOps.scala:77,MatrixOps.scala:75,MLInputReaderImplOps.scala:35,Effects.scala:206,DeliteWhile.scala:27,MLInputReaderImplOps.scala:30,MLInputReaderOps.scala:34,MLInputReaderOps.scala:49,MLInputReaderOps.scala:15,LanguageOps.scala:235
+GDA.scala:6,Effects.scala:152,Effects.scala:134,MatrixOps.scala:689,MatrixOps.scala:77,MatrixOps.scala:75,MLInputReaderImplOps.scala:35,Effects.scala:206,DeliteWhile.scala:27,MLInputReaderImplOps.scala:30,MLInputReaderOps.scala:34,MLInputReaderOps.scala:49,MLInputReaderOps.scala:15,LanguageOps.scala:235
 TP(Sym(37),Reflect(BrReadline(Sym(9)),Summary(false,false,true,true,false,List(),List(),List(),List()),List(Sym(24), Sym(26), Sym(34), Sym(35), Sym(36))))
 GDA.scala:6,Effects.scala:152,Effects.scala:137,IOOps.scala:99,IOOps.scala:33,MLInputReaderImplOps.scala:37,Effects.scala:206,DeliteWhile.scala:27,MLInputReaderImplOps.scala:30,MLInputReaderOps.scala:34,MLInputReaderOps.scala:49,MLInputReaderOps.scala:15,LanguageOps.scala:235
 TP(Sym(38),Reflect(Assign(Variable(Sym(11)),Sym(37)),Summary(false,false,false,false,false,List(Sym(11)),List(Sym(11)),List(Sym(11)),List(Sym(11))),List(Sym(37))))
@@ -202,13 +206,13 @@ GDA.scala:6,Effects.scala:152,Effects.scala:137,LanguageOps.scala:632,LanguageOp
 TP(Sym(86),VectorLength(Sym(83)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:941,VectorOps.scala:1085,VectorOps.scala:69
 TP(Sym(87),MatrixNumCols(Sym(52)))
-GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:681,MatrixOps.scala:61
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:685,MatrixOps.scala:61
 TP(Sym(89),VectorApply(Sym(83),Sym(88)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:943,VectorOps.scala:1108,VectorOps.scala:71,GDA.scala:43,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
 TP(Sym(90),Equal(Sym(89),Const(false)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Equal.scala:45,Equal.scala:22,GDA.scala:43,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
 TP(Sym(91),MatrixGetRow(Sym(52),Sym(88)))
-GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:676,MatrixOps.scala:56,MatrixOps.scala:53,GDA.scala:44,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:43,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:680,MatrixOps.scala:56,MatrixOps.scala:53,GDA.scala:44,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:43,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
 TP(Sym(92),VectorZeroDouble(Sym(87),Const(true)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:1040,VectorOps.scala:166,GDA.scala:44,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:43,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
 TP(Sym(93),RepAsInstanceOf(Sym(92),ppl.dsl.optiml.datastruct.scala.Vector[Double],ppl.dsl.optiml.datastruct.scala.Vector[Double]))
@@ -340,130 +344,148 @@ GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressio
 TP(Sym(163),Equal(Sym(162),Const(false)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Equal.scala:45,Equal.scala:22,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
 TP(Sym(164),MatrixGetRow(Sym(52),Sym(161)))
-GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:676,MatrixOps.scala:56,MatrixOps.scala:53,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:680,MatrixOps.scala:56,MatrixOps.scala:53,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
 TP(Sym(166),Reflect(VectorNew(Sym(87),Const(true)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
 GDA.scala:6,Effects.scala:152,Effects.scala:115,VectorOps.scala:923,VectorOps.scala:19,VectorOps.scala:505,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
 TP(Sym(167),Reify(Sym(166),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(166))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,VectorOps.scala:505,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(168),MatrixApply(Sym(52),Sym(161),Sym(165)))
-GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:674,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(169),VectorApply(Sym(152),Sym(165)))
+TP(Sym(168),ArithTimes(Sym(161),Sym(87)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:254,ArithOps.scala:285,ArithOps.scala:223,ArithOps.scala:43,MatrixImplOps.scala:112,MatrixOps.scala:282,Effects.scala:218,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(169),ArithPlus(Sym(168),Sym(165)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:252,ArithOps.scala:277,ArithOps.scala:221,ArithOps.scala:41,MatrixImplOps.scala:112,MatrixOps.scala:282,Effects.scala:218,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(170),MatrixDCApply(Sym(52),Sym(169)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:770,MatrixImplOps.scala:113,MatrixOps.scala:282,Effects.scala:218,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(171),MatrixApply(Sym(52),Sym(161),Sym(165)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(172),VectorApply(Sym(152),Sym(165)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:943,VectorOps.scala:1108,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(170),ArithMinus(Sym(168),Sym(169)))
+TP(Sym(173),ArithMinus(Sym(171),Sym(172)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:253,ArithOps.scala:281,ArithOps.scala:198,ArithOps.scala:42,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(171),VectorMinus(Sym(164),Sym(152)))
+TP(Sym(174),VectorMinus(Sym(164),Sym(152)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(172),BooleanNegate(Const(true)))
+TP(Sym(175),BooleanNegate(Const(true)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,BooleanOps.scala:27,BooleanOps.scala:13,VectorOps.scala:458,VectorOps.scala:948,VectorOps.scala:83,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(174),Reflect(VectorNew(Sym(87),Sym(172)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
+TP(Sym(177),Reflect(VectorNew(Sym(87),Sym(175)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
 GDA.scala:6,Effects.scala:152,Effects.scala:115,VectorOps.scala:923,VectorOps.scala:19,VectorOps.scala:461,Effects.scala:206,VectorOps.scala:948,VectorOps.scala:83,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(175),Reify(Sym(174),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(174))))
+TP(Sym(178),Reify(Sym(177),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(177))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,VectorOps.scala:461,VectorOps.scala:948,VectorOps.scala:83,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(176),VectorApply(Sym(171),Sym(173)))
+TP(Sym(179),VectorApply(Sym(174),Sym(176)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:943,VectorOps.scala:1108,VectorOps.scala:71,VectorOps.scala:462,Effects.scala:206,VectorOps.scala:948,VectorOps.scala:83,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(177),VectorTrans(Sym(171)))
+TP(Sym(180),VectorTrans(Sym(174)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:948,VectorOps.scala:83,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(179),Reflect(VectorNew(Sym(87),Const(true)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
+TP(Sym(182),Reflect(VectorNew(Sym(87),Const(true)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
 GDA.scala:6,Effects.scala:152,Effects.scala:115,VectorOps.scala:923,VectorOps.scala:19,VectorOps.scala:505,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(180),Reify(Sym(179),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(179))))
+TP(Sym(183),Reify(Sym(182),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(182))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,VectorOps.scala:505,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(181),MatrixApply(Sym(52),Sym(161),Sym(178)))
-GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:674,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(182),VectorApply(Sym(152),Sym(178)))
+TP(Sym(184),ArithPlus(Sym(168),Sym(181)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:252,ArithOps.scala:277,ArithOps.scala:221,ArithOps.scala:41,MatrixImplOps.scala:112,MatrixOps.scala:282,Effects.scala:218,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(185),MatrixDCApply(Sym(52),Sym(184)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:770,MatrixImplOps.scala:113,MatrixOps.scala:282,Effects.scala:218,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(186),MatrixApply(Sym(52),Sym(161),Sym(181)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(187),VectorApply(Sym(152),Sym(181)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:943,VectorOps.scala:1108,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(183),ArithMinus(Sym(181),Sym(182)))
+TP(Sym(188),ArithMinus(Sym(186),Sym(187)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:253,ArithOps.scala:281,ArithOps.scala:198,ArithOps.scala:42,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(184),Reflect(MatrixObjectNew(Sym(87),Sym(87)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
-GDA.scala:6,Effects.scala:152,Effects.scala:115,MatrixOps.scala:653,MatrixOps.scala:20,VectorImplOps.scala:139,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(185),Until(Const(0),Sym(87)))
+TP(Sym(189),Reflect(MatrixObjectNew(Sym(87),Sym(87)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
+GDA.scala:6,Effects.scala:152,Effects.scala:115,MatrixOps.scala:657,MatrixOps.scala:20,VectorImplOps.scala:139,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
+TP(Sym(190),Until(Const(0),Sym(87)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,RangeOps.scala:36,RangeOps.scala:15,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(188),VectorApply(Sym(171),Sym(186)))
+TP(Sym(193),VectorApply(Sym(174),Sym(191)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:943,VectorOps.scala:1108,VectorOps.scala:1104,VectorOps.scala:71,VectorImplOps.scala:142,RangeOps.scala:47,Effects.scala:206,RangeOps.scala:12,VectorImplOps.scala:141,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(189),VectorApply(Sym(171),Sym(187)))
+TP(Sym(194),VectorApply(Sym(174),Sym(192)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:943,VectorOps.scala:1108,VectorOps.scala:71,VectorImplOps.scala:142,RangeOps.scala:47,Effects.scala:206,RangeOps.scala:12,VectorImplOps.scala:141,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(190),ArithTimes(Sym(188),Sym(189)))
+TP(Sym(195),ArithTimes(Sym(193),Sym(194)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:254,ArithOps.scala:285,ArithOps.scala:199,ArithOps.scala:43,VectorImplOps.scala:142,RangeOps.scala:47,Effects.scala:206,RangeOps.scala:12,VectorImplOps.scala:141,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(191),Reflect(MatrixUpdate(Sym(184),Sym(186),Sym(187),Sym(190)),Summary(false,false,false,false,false,List(Sym(184)),List(Sym(184)),List(Sym(184)),List(Sym(184))),List()))
-GDA.scala:6,Effects.scala:152,Effects.scala:134,MatrixOps.scala:683,MatrixOps.scala:72,VectorImplOps.scala:142,RangeOps.scala:47,Effects.scala:206,RangeOps.scala:12,VectorImplOps.scala:141,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(192),Reify(Sym(191),Summary(false,false,false,false,false,List(Sym(184)),List(Sym(184)),List(Sym(184)),List(Sym(184))),List(Sym(191))))
+TP(Sym(196),Reflect(MatrixUpdate(Sym(189),Sym(191),Sym(192),Sym(195)),Summary(false,false,false,false,false,List(Sym(189)),List(Sym(189)),List(Sym(189)),List(Sym(189))),List()))
+GDA.scala:6,Effects.scala:152,Effects.scala:134,MatrixOps.scala:687,MatrixOps.scala:72,VectorImplOps.scala:142,RangeOps.scala:47,Effects.scala:206,RangeOps.scala:12,VectorImplOps.scala:141,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(197),Reify(Sym(196),Summary(false,false,false,false,false,List(Sym(189)),List(Sym(189)),List(Sym(189)),List(Sym(189))),List(Sym(196))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,RangeOps.scala:47,RangeOps.scala:12,VectorImplOps.scala:141,Effects.scala:206,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(193),Reflect(RangeForeach(Const(0),Sym(87),Sym(187),Sym(192)),Summary(false,false,false,false,false,List(Sym(184)),List(),List(Sym(184)),List()),List()))
+TP(Sym(198),Reflect(RangeForeach(Const(0),Sym(87),Sym(192),Sym(197)),Summary(false,false,false,false,false,List(Sym(189)),List(),List(Sym(189)),List()),List()))
 GDA.scala:6,Effects.scala:152,RangeOps.scala:48,RangeOps.scala:12,VectorImplOps.scala:141,RangeOps.scala:47,Effects.scala:206,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(194),Reify(Sym(193),Summary(false,false,false,false,false,List(Sym(184)),List(),List(Sym(184)),List()),List(Sym(193))))
+TP(Sym(199),Reify(Sym(198),Summary(false,false,false,false,false,List(Sym(189)),List(),List(Sym(189)),List()),List(Sym(198))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,RangeOps.scala:47,RangeOps.scala:12,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(195),Reflect(RangeForeach(Const(0),Sym(87),Sym(186),Sym(194)),Summary(false,false,false,false,false,List(Sym(184)),List(),List(Sym(184)),List()),List(Sym(184))))
+TP(Sym(200),Reflect(RangeForeach(Const(0),Sym(87),Sym(191),Sym(199)),Summary(false,false,false,false,false,List(Sym(189)),List(),List(Sym(189)),List()),List(Sym(189))))
 GDA.scala:6,Effects.scala:152,RangeOps.scala:48,RangeOps.scala:12,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(196),Reify(Sym(184),Summary(false,false,false,false,false,List(Sym(184)),List(),List(Sym(184)),List()),List(Sym(184), Sym(195))))
+TP(Sym(201),Reify(Sym(189),Summary(false,false,false,false,false,List(Sym(189)),List(),List(Sym(189)),List()),List(Sym(189), Sym(200))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:226,VectorOps.scala:357,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(197),VectorOuter(Sym(177),Sym(171)))
+TP(Sym(202),VectorOuter(Sym(180),Sym(174)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:62,Effects.scala:218,DeliteIfThenElse.scala:25,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(199),Reflect(VectorNew(Sym(87),Const(true)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
+TP(Sym(204),Reflect(VectorNew(Sym(87),Const(true)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
 GDA.scala:6,Effects.scala:152,Effects.scala:115,VectorOps.scala:923,VectorOps.scala:19,VectorOps.scala:505,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(200),Reify(Sym(199),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(199))))
+TP(Sym(205),Reify(Sym(204),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(204))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,VectorOps.scala:505,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(201),MatrixApply(Sym(52),Sym(161),Sym(198)))
-GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:674,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(202),VectorApply(Sym(160),Sym(198)))
+TP(Sym(206),ArithPlus(Sym(168),Sym(203)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:252,ArithOps.scala:277,ArithOps.scala:221,ArithOps.scala:41,MatrixImplOps.scala:112,MatrixOps.scala:282,Effects.scala:218,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(207),MatrixDCApply(Sym(52),Sym(206)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:770,MatrixImplOps.scala:113,MatrixOps.scala:282,Effects.scala:218,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(208),MatrixApply(Sym(52),Sym(161),Sym(203)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(209),VectorApply(Sym(160),Sym(203)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:943,VectorOps.scala:1108,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(203),ArithMinus(Sym(201),Sym(202)))
+TP(Sym(210),ArithMinus(Sym(208),Sym(209)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:253,ArithOps.scala:281,ArithOps.scala:198,ArithOps.scala:42,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(204),VectorMinus(Sym(164),Sym(160)))
+TP(Sym(211),VectorMinus(Sym(164),Sym(160)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(206),Reflect(VectorNew(Sym(87),Sym(172)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
+TP(Sym(213),Reflect(VectorNew(Sym(87),Sym(175)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
 GDA.scala:6,Effects.scala:152,Effects.scala:115,VectorOps.scala:923,VectorOps.scala:19,VectorOps.scala:461,Effects.scala:206,VectorOps.scala:948,VectorOps.scala:83,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(207),Reify(Sym(206),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(206))))
+TP(Sym(214),Reify(Sym(213),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(213))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,VectorOps.scala:461,VectorOps.scala:948,VectorOps.scala:83,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(208),VectorApply(Sym(204),Sym(205)))
+TP(Sym(215),VectorApply(Sym(211),Sym(212)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:943,VectorOps.scala:1108,VectorOps.scala:71,VectorOps.scala:462,Effects.scala:206,VectorOps.scala:948,VectorOps.scala:83,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(209),VectorTrans(Sym(204)))
+TP(Sym(216),VectorTrans(Sym(211)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:948,VectorOps.scala:83,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(211),Reflect(VectorNew(Sym(87),Const(true)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
+TP(Sym(218),Reflect(VectorNew(Sym(87),Const(true)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
 GDA.scala:6,Effects.scala:152,Effects.scala:115,VectorOps.scala:923,VectorOps.scala:19,VectorOps.scala:505,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(212),Reify(Sym(211),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(211))))
+TP(Sym(219),Reify(Sym(218),Summary(false,false,false,false,true,List(),List(),List(),List()),List(Sym(218))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,VectorOps.scala:505,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(213),MatrixApply(Sym(52),Sym(161),Sym(210)))
-GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:674,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(214),VectorApply(Sym(160),Sym(210)))
+TP(Sym(220),ArithPlus(Sym(168),Sym(217)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:252,ArithOps.scala:277,ArithOps.scala:221,ArithOps.scala:41,MatrixImplOps.scala:112,MatrixOps.scala:282,Effects.scala:218,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(221),MatrixDCApply(Sym(52),Sym(220)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:770,MatrixImplOps.scala:113,MatrixOps.scala:282,Effects.scala:218,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(222),MatrixApply(Sym(52),Sym(161),Sym(217)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,MatrixOps.scala:678,VectorOps.scala:1105,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(223),VectorApply(Sym(160),Sym(217)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:943,VectorOps.scala:1108,VectorOps.scala:71,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(215),ArithMinus(Sym(213),Sym(214)))
+TP(Sym(224),ArithMinus(Sym(222),Sym(223)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:253,ArithOps.scala:281,ArithOps.scala:198,ArithOps.scala:42,VectorOps.scala:506,Effects.scala:206,VectorOps.scala:970,VectorOps.scala:109,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(216),Reflect(MatrixObjectNew(Sym(87),Sym(87)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
-GDA.scala:6,Effects.scala:152,Effects.scala:115,MatrixOps.scala:653,MatrixOps.scala:20,VectorImplOps.scala:139,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(219),VectorApply(Sym(204),Sym(217)))
+TP(Sym(225),Reflect(MatrixObjectNew(Sym(87),Sym(87)),Summary(false,false,false,false,true,List(),List(),List(),List()),List()))
+GDA.scala:6,Effects.scala:152,Effects.scala:115,MatrixOps.scala:657,MatrixOps.scala:20,VectorImplOps.scala:139,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
+TP(Sym(228),VectorApply(Sym(211),Sym(226)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:943,VectorOps.scala:1108,VectorOps.scala:1104,VectorOps.scala:71,VectorImplOps.scala:142,RangeOps.scala:47,Effects.scala:206,RangeOps.scala:12,VectorImplOps.scala:141,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(220),VectorApply(Sym(204),Sym(218)))
+TP(Sym(229),VectorApply(Sym(211),Sym(227)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:943,VectorOps.scala:1108,VectorOps.scala:71,VectorImplOps.scala:142,RangeOps.scala:47,Effects.scala:206,RangeOps.scala:12,VectorImplOps.scala:141,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(221),ArithTimes(Sym(219),Sym(220)))
+TP(Sym(230),ArithTimes(Sym(228),Sym(229)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:254,ArithOps.scala:285,ArithOps.scala:199,ArithOps.scala:43,VectorImplOps.scala:142,RangeOps.scala:47,Effects.scala:206,RangeOps.scala:12,VectorImplOps.scala:141,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(222),Reflect(MatrixUpdate(Sym(216),Sym(217),Sym(218),Sym(221)),Summary(false,false,false,false,false,List(Sym(216)),List(Sym(216)),List(Sym(216)),List(Sym(216))),List()))
-GDA.scala:6,Effects.scala:152,Effects.scala:134,MatrixOps.scala:683,MatrixOps.scala:72,VectorImplOps.scala:142,RangeOps.scala:47,Effects.scala:206,RangeOps.scala:12,VectorImplOps.scala:141,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(223),Reify(Sym(222),Summary(false,false,false,false,false,List(Sym(216)),List(Sym(216)),List(Sym(216)),List(Sym(216))),List(Sym(222))))
+TP(Sym(231),Reflect(MatrixUpdate(Sym(225),Sym(226),Sym(227),Sym(230)),Summary(false,false,false,false,false,List(Sym(225)),List(Sym(225)),List(Sym(225)),List(Sym(225))),List()))
+GDA.scala:6,Effects.scala:152,Effects.scala:134,MatrixOps.scala:687,MatrixOps.scala:72,VectorImplOps.scala:142,RangeOps.scala:47,Effects.scala:206,RangeOps.scala:12,VectorImplOps.scala:141,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
+TP(Sym(232),Reify(Sym(231),Summary(false,false,false,false,false,List(Sym(225)),List(Sym(225)),List(Sym(225)),List(Sym(225))),List(Sym(231))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,RangeOps.scala:47,RangeOps.scala:12,VectorImplOps.scala:141,Effects.scala:206,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(224),Reflect(RangeForeach(Const(0),Sym(87),Sym(218),Sym(223)),Summary(false,false,false,false,false,List(Sym(216)),List(),List(Sym(216)),List()),List()))
+TP(Sym(233),Reflect(RangeForeach(Const(0),Sym(87),Sym(227),Sym(232)),Summary(false,false,false,false,false,List(Sym(225)),List(),List(Sym(225)),List()),List()))
 GDA.scala:6,Effects.scala:152,RangeOps.scala:48,RangeOps.scala:12,VectorImplOps.scala:141,RangeOps.scala:47,Effects.scala:206,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,LanguageOps.scala:96
-TP(Sym(225),Reify(Sym(224),Summary(false,false,false,false,false,List(Sym(216)),List(),List(Sym(216)),List()),List(Sym(224))))
+TP(Sym(234),Reify(Sym(233),Summary(false,false,false,false,false,List(Sym(225)),List(),List(Sym(225)),List()),List(Sym(233))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,RangeOps.scala:47,RangeOps.scala:12,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(226),Reflect(RangeForeach(Const(0),Sym(87),Sym(217),Sym(225)),Summary(false,false,false,false,false,List(Sym(216)),List(),List(Sym(216)),List()),List(Sym(216))))
+TP(Sym(235),Reflect(RangeForeach(Const(0),Sym(87),Sym(226),Sym(234)),Summary(false,false,false,false,false,List(Sym(225)),List(),List(Sym(225)),List()),List(Sym(225))))
 GDA.scala:6,Effects.scala:152,RangeOps.scala:48,RangeOps.scala:12,VectorImplOps.scala:140,VectorOps.scala:357,Effects.scala:218,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(227),Reify(Sym(216),Summary(false,false,false,false,false,List(Sym(216)),List(),List(Sym(216)),List()),List(Sym(216), Sym(226))))
+TP(Sym(236),Reify(Sym(225),Summary(false,false,false,false,false,List(Sym(225)),List(),List(Sym(225)),List()),List(Sym(225), Sym(235))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:226,VectorOps.scala:357,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(228),VectorOuter(Sym(209),Sym(204)))
+TP(Sym(237),VectorOuter(Sym(216),Sym(211)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,VectorOps.scala:276,VectorOps.scala:978,VectorOps.scala:117,GDA.scala:65,Effects.scala:218,DeliteIfThenElse.scala:26,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(229),DeliteIfThenElse(Sym(163),Sym(197),Sym(228)))
+TP(Sym(238),DeliteIfThenElse(Sym(163),Sym(202),Sym(237)))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,DeliteIfThenElse.scala:29,GDA.scala:61,LanguageOps.scala:412,Effects.scala:206,LanguageOps.scala:96
-TP(Sym(234),ArithPlus(Sym(232),Sym(233)))
-GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:252,ArithOps.scala:277,ArithOps.scala:197,ArithOps.scala:41,MatrixOps.scala:397,MatrixOps.scala:717,MatrixOps.scala:89,ArithOps.scala:92,ArithOps.scala:40,LanguageOps.scala:405,Effects.scala:206,LanguageOps.scala:415,LanguageOps.scala:96
-TP(Sym(235),Reflect(MatrixPlusEquals(Sym(230),Sym(231)),Summary(false,false,false,false,false,List(),List(),List(Sym(230)),List(Sym(230))),List()))
-GDA.scala:6,Effects.scala:152,Effects.scala:134,MatrixOps.scala:717,MatrixOps.scala:89,ArithOps.scala:92,ArithOps.scala:40,LanguageOps.scala:405,Effects.scala:206,LanguageOps.scala:415,LanguageOps.scala:96
-TP(Sym(236),Reify(Sym(235),Summary(false,false,false,false,false,List(),List(),List(Sym(230)),List(Sym(230))),List(Sym(235))))
+TP(Sym(243),ArithPlus(Sym(241),Sym(242)))
+GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,ArithOps.scala:252,ArithOps.scala:277,ArithOps.scala:197,ArithOps.scala:41,MatrixOps.scala:401,MatrixOps.scala:721,MatrixOps.scala:89,ArithOps.scala:92,ArithOps.scala:40,LanguageOps.scala:405,Effects.scala:206,LanguageOps.scala:415,LanguageOps.scala:96
+TP(Sym(244),Reflect(MatrixPlusEquals(Sym(239),Sym(240)),Summary(false,false,false,false,false,List(),List(),List(Sym(239)),List(Sym(239))),List()))
+GDA.scala:6,Effects.scala:152,Effects.scala:134,MatrixOps.scala:721,MatrixOps.scala:89,ArithOps.scala:92,ArithOps.scala:40,LanguageOps.scala:405,Effects.scala:206,LanguageOps.scala:415,LanguageOps.scala:96
+TP(Sym(245),Reify(Sym(244),Summary(false,false,false,false,false,List(),List(),List(Sym(239)),List(Sym(239))),List(Sym(244))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,LanguageOps.scala:405,LanguageOps.scala:415,LanguageOps.scala:96
-TP(Sym(237),Reflect(Sum(Const(0),Sym(86),Sym(161),Sym(229)),Summary(false,false,true,true,false,List(),List(),List(),List()),List(Sym(6), Sym(52), Sym(75), Sym(85), Sym(137))))
+TP(Sym(246),Reflect(Sum(Const(0),Sym(86),Sym(161),Sym(238)),Summary(false,false,true,true,false,List(),List(),List(),List()),List(Sym(6), Sym(52), Sym(75), Sym(85), Sym(137))))
 GDA.scala:6,Effects.scala:152,Effects.scala:137,LanguageOps.scala:415,LanguageOps.scala:96
-TP(Sym(238),SeqNew(WrappedArray(Sym(237))))
+TP(Sym(247),SeqNew(WrappedArray(Sym(246))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,SeqOps.scala:32,SeqOps.scala:10,LanguageOps.scala:633,LanguageOps.scala:329
-TP(Sym(239),Reflect(ProfileStop(Sym(238)),Summary(false,false,true,true,false,List(),List(),List(),List()),List(Sym(6), Sym(52), Sym(75), Sym(85), Sym(137), Sym(237))))
+TP(Sym(248),Reflect(ProfileStop(Sym(247)),Summary(false,false,true,true,false,List(),List(),List(),List()),List(Sym(6), Sym(52), Sym(75), Sym(85), Sym(137), Sym(246))))
 GDA.scala:6,Effects.scala:152,Effects.scala:137,LanguageOps.scala:633,LanguageOps.scala:329
-TP(Sym(240),Reflect(PrintLn(Sym(237)),Summary(false,false,true,true,false,List(),List(),List(),List()),List(Sym(6), Sym(52), Sym(75), Sym(85), Sym(137), Sym(237), Sym(239))))
+TP(Sym(249),Reflect(PrintLn(Sym(246)),Summary(false,false,true,true,false,List(),List(),List(),List()),List(Sym(6), Sym(52), Sym(75), Sym(85), Sym(137), Sym(246), Sym(248))))
 GDA.scala:6,Effects.scala:152,Effects.scala:137,MiscOps.scala:34
-TP(Sym(241),Reify(Const(()),Summary(false,false,true,true,false,List(),List(),List(),List()),List(Sym(6), Sym(52), Sym(75), Sym(85), Sym(137), Sym(237), Sym(239), Sym(240))))
+TP(Sym(250),Reify(Const(()),Summary(false,false,true,true,false,List(),List(),List(),List()),List(Sym(6), Sym(52), Sym(75), Sym(85), Sym(137), Sym(246), Sym(248), Sym(249))))
 GDA.scala:6,Expressions.scala:46,Option.scala:109,Expressions.scala:45,Expressions.scala:56,Effects.scala:140,Effects.scala:124,Effects.scala:208,ScalaCodegen.scala:99,ScalaCodegen.scala:24,OptiML.scala:118,DeliteApplication.scala:71,TestAppCodegen.scala:19,TestAppCodegen.scala:18,DynamicVariable.scala:57,Console.scala:150,FileDiffSuite.scala:25,Console.scala:108,TestAppCodegen.scala:13,FileDiffSuite.scala:12,TestAppCodegen.scala:81,NativeMethodAccessorImpl.java:-2,NativeMethodAccessorImpl.java:39,DelegatingMethodAccessorImpl.java:25,Method.java:597,Suite.scala:1552,Suite.scala:1473,Suite.scala:1549,Suite.scala:1683,Suite.scala:1679,LinearSeqOptimized.scala:61,List.scala:45,Suite.scala:1768,ScalaTestFramework.scala:104,TestFramework.scala:52,TestFramework.scala:66,TestFramework.scala:75,TestFramework.scala:192,TestFramework.scala:203,TestFramework.scala:91,ScalaProject.scala:187,TaskManager.scala:62,RunTask.scala:77,RunTask.scala:85,RunTask.scala:60,RunTask.scala:48,ParallelRunner.scala:131,Control.scala:19

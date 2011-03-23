@@ -235,79 +235,79 @@ val x132 = x108.numCols
 val x133 = new generated.scala.MatrixImpl[generated.scala.MessageVertex](x131,x132)
 var x134: Int = 0
 var x135: Int = 0
-val x255 = x132 - 1
-val x360 = x131 - 1
-val x557 = Seq()
-val x658 = x11.numRows
-val x659 = new generated.scala.VectorImpl[generated.scala.MatrixRow[Double]](x658,true)
-val x660 = x11.numRows
-var x662 : Int = 0
-val x666 = while (x662 < x660) {
-val x663 = x11.getRow(x662)
-val x664 = x659(x662) = x663
-x664
-x662 = x662 + 1
+val x258 = x132 - 1
+val x363 = x131 - 1
+val x565 = Seq()
+val x666 = x11.numRows
+val x667 = new generated.scala.VectorImpl[generated.scala.MatrixRow[Double]](x666,true)
+val x668 = x11.numRows
+var x670 : Int = 0
+val x674 = while (x670 < x668) {
+val x671 = x11.getRow(x670)
+val x672 = x667(x670) = x671
+x672
+x670 = x670 + 1
 }
-val x691 = 0.1 != 0
-val x829 = java.lang.String.valueOf(x132)
-val x832 = java.lang.String.valueOf(x131)
-val x833 = x832+"\n"
-val x848 = new generated.scala.IndexVectorRangeImpl(0,x131)
-def x840_block = {
-var x836 = x108.dcApply(0)
+val x699 = 0.1 != 0
+val x837 = java.lang.String.valueOf(x132)
+val x840 = java.lang.String.valueOf(x131)
+val x841 = x840+"\n"
+val x856 = new generated.scala.IndexVectorRangeImpl(0,x131)
+def x848_block = {
+var x844 = x108.dcApply(0)
 var reduceIdx = 1
-while (reduceIdx < x108.size) { // begin reduce loop x840
-val x837 = x108.dcApply(reduceIdx)
-x836 = {
-val x838 = x836 < x837
-val x839 = {
-def x839thenb(): Double = {
-x836
-}
-def x839elseb(): Double = {
-x837
-}
-if (x838) {
-x839thenb()
-} else {
-x839elseb()
-}
-}
-x839
-}
-reduceIdx += 1
-} // end reduce loop x840
-x836
-}
-val x840 = x840_block
-def x845_block = {
-var x841 = x108.dcApply(0)
-var reduceIdx = 1
-while (reduceIdx < x108.size) { // begin reduce loop x845
-val x842 = x108.dcApply(reduceIdx)
-x841 = {
-val x843 = x841 > x842
-val x844 = {
-def x844thenb(): Double = {
-x841
-}
-def x844elseb(): Double = {
-x842
-}
-if (x843) {
-x844thenb()
-} else {
-x844elseb()
-}
-}
+while (reduceIdx < x108.size) { // begin reduce loop x848
+val x845 = x108.dcApply(reduceIdx)
+x844 = {
+val x846 = x844 < x845
+val x847 = {
+def x847thenb(): Double = {
 x844
 }
-reduceIdx += 1
-} // end reduce loop x845
-x841
+def x847elseb(): Double = {
+x845
 }
-val x845 = x845_block
-val x851 = x840 != x845
+if (x846) {
+x847thenb()
+} else {
+x847elseb()
+}
+}
+x847
+}
+reduceIdx += 1
+} // end reduce loop x848
+x844
+}
+val x848 = x848_block
+def x853_block = {
+var x849 = x108.dcApply(0)
+var reduceIdx = 1
+while (reduceIdx < x108.size) { // begin reduce loop x853
+val x850 = x108.dcApply(reduceIdx)
+x849 = {
+val x851 = x849 > x850
+val x852 = {
+def x852thenb(): Double = {
+x849
+}
+def x852elseb(): Double = {
+x850
+}
+if (x851) {
+x852thenb()
+} else {
+x852elseb()
+}
+}
+x852
+}
+reduceIdx += 1
+} // end reduce loop x853
+x849
+}
+val x853 = x853_block
+val x859 = x848 != x853
 ()
 }
 }

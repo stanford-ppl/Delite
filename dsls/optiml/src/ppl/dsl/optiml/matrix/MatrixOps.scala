@@ -222,7 +222,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends Def[Matrix[A]] {
      val mM = manifest[MatrixImpl[A]]
   }
-  case class MatrixApply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) extends Def[A]
+  //case class MatrixApply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) extends Def[A]
+  case class MatrixDCApply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[A]
   case class MatrixVView[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends Def[Vector[A]]
   case class MatrixGetRow[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixRow[A]]
   case class MatrixGetCol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixCol[A]]
@@ -276,6 +277,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   case class MatrixObjectRandnF(numRows: Exp[Int], numCols: Exp[Int])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_randnf_impl(numRows, numCols)))
+
+  case class MatrixApply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int])
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_apply_impl(x, i, j)))
 
   case class MatrixSlice[A:Manifest](x: Exp[Matrix[A]], startRow: Exp[Int], endRow: Exp[Int], startCol: Exp[Int], endCol: Exp[Int])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_slice_impl(x,startRow,endRow,startCol,endCol)))
@@ -639,8 +643,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     (e match {
       case MatrixGetRow(x,i) => matrix_getrow(f(x),f(i))
       case MatrixApply(x,i,j) => matrix_apply(f(x),f(i),f(j))
+      case MatrixDCApply(x,i) => matrix_dcapply(f(x),f(i))
       case e@MatrixTimesVector(x,y) => toAtom(new MatrixTimesVector(f(x),f(y))(e.mev,e.aev) { val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
-//                                       toAtom(      new VectorTimes(f(x),f(y))(e.mev,e.aev) { val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
       case MatrixVView(x, start, stride, length, isRow) => matrix_vview(f(x),f(start),f(stride),f(length),f(isRow))
       case _ => super.mirror(e, f)
     }).asInstanceOf[Exp[A]] // why??
@@ -758,6 +762,12 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     reflectPure(MatrixReduceRows(x, v, func))
   }
   def matrix_filterrows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[MatrixRow[A]] => Exp[Boolean]) = reflectPure(MatrixFilterRows(x, pred))
+
+
+  //////////////////
+  // internal
+
+  def matrix_dcapply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = reflectPure(MatrixDCApply(x,i))
 }
 
 /**
@@ -811,7 +821,8 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     // these are the ops that call through to the underlying real data structure
     case m@MatrixObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     case MatrixVView(x,start,stride,length,isRow) => emitValDef(sym, quote(x) + ".vview(" + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
-    case MatrixApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
+    //case MatrixApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
+    case MatrixDCApply(x,i) => emitValDef(sym, quote(x) + ".dcApply(" + quote(i) + ")")
     case MatrixGetRow(x,i) => emitValDef(sym, quote(x) + ".getRow(" + quote(i) + ")")
     case MatrixGetCol(x,j) => emitValDef(sym, quote(x) + ".getCol(" + quote(j) + ")")
     case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
@@ -873,8 +884,10 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       emitLibCall(sym,List(callStream,callKernel))
 
 	  // The ops that call through to the underlying real data structure
-    case MatrixApply(x,i,j) =>
-      emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
+    case MatrixDCApply(x,i) =>
+      emitValDef(sym, "%s.apply(%s)".format(quote(x),quote(i)))
+    //case MatrixApply(x,i,j) =>
+    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
     case MatrixUpdate(x,i,j,y)  =>
       stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
     case MatrixNumRows(x)  =>
@@ -1019,8 +1032,10 @@ trait CGenMatrixOps extends CGenBase {
       stream.println("%s.len = %s.numCols;".format(quote(sym),quote(x)))
       stream.println("%s.isRow = true;".format(quote(sym)))
       stream.println("%s.data = %s.data+%s.numCols*%s;".format(quote(sym),quote(x),quote(x),quote(i)))
-    case MatrixApply(x,i,j) =>
-      emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
+    case MatrixDCApply(x,i) =>
+      emitValDef(sym, "%s.apply(%s)".format(quote(x),quote(i)))
+    //case MatrixApply(x,i,j) =>
+    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
     case MatrixUpdate(x,i,j,y)  =>
       stream.println("%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
     case MatrixNumRows(x)  =>
