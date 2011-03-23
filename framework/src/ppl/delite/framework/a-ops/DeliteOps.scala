@@ -627,7 +627,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     }
     case op: AbstractLoop[_] => 
       // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
-      println("// a *thin* loop follows: " + quote(sym))
+      stream.println("// a *thin* loop follows: " + quote(sym))
       emitFatNode(List(sym), SimpleFatLoop(op.size, op.v, List(op.body)))
 /*    
       if (!deliteKernel) { // FIXME cond!

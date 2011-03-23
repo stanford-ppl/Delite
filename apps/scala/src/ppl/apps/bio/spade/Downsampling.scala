@@ -62,6 +62,21 @@ trait Downsampling {
     }
     densities
 
+    /* alternative :
+    
+    for (i <- (0 until data.numRows)) {
+      val row = (0::data.numRows) { j => dist(data(i), data(j)) }
+      if(i%1000 == 0) println("  (streaming) # processed node = " + i)
+      if(densities(row.index) == 0) {
+        val neighbors = row find { _ < apprxWidth }
+        densities(neighbors) = row count { _ < kernelWidth }
+      }
+    }
+    
+    */
+
+
+
     /*
      * Fused should look like this:
      *

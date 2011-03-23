@@ -762,7 +762,7 @@ var mapIdx = 0
 while (mapIdx < x368.size) { // begin map loop x375
 val x373 = x368.dcApply(mapIdx)
 x371.dcUpdate(mapIdx,  {
-val x374 = java.lang.Double.longBitsToDouble((java.lang.Double.doubleToRawLongBits(x373)<<1)>>>1)
+val x374 = java.lang.Math.abs(x373)
 x374
 })
 mapIdx += 1

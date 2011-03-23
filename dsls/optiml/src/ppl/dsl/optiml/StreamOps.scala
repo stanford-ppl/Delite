@@ -87,8 +87,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
 
     val func = reifyEffects {
       // always initialize for now (must be pure)
-      stream_init_row(x, v, offset)
-      block(stream_chunk_row(x, v, offset))
+      block(stream_init_and_chunk_row(x, v, offset))
     }
   }
 
@@ -157,6 +156,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   def stream_chunk_row[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) = reflectPure(StreamChunkRow(x, idx, offset))
   def stream_init_chunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectWrite(x)(StreamInitChunk(x, offset))
   def stream_init_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = reflectWrite(x)(StreamInitRow(x, row, offset))
+  def stream_init_and_chunk_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = { stream_init_row(x,row,offset); stream_chunk_row(x,row,offset) }
   def stream_rowsin[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectPure(StreamRowsIn(x, offset))
   def stream_chunk_elem[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], j: Exp[Int]) = reflectPure(StreamChunkElem(x, idx, j))
   def stream_raw_elem[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int]) = reflectPure(StreamRawElem(x, idx))
@@ -170,6 +170,72 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }
+
+trait StreamOpsExpOpt extends StreamOpsExp {
+  this: OptiMLExp with StreamImplOps =>
+  
+  override def stream_ispure[A:Manifest](x: Rep[Stream[A]]) = x match {
+    case Def(StreamObjectNew(numRows, numCols, chunkSize, func, isPure)) => isPure
+    case _ => super.stream_ispure(x)
+  }
+  
+  override def stream_numrows[A:Manifest](x: Exp[Stream[A]]) = x match {
+    case Def(StreamObjectNew(numRows, numCols, chunkSize, func, isPure)) => numRows
+    case _ => super.stream_numrows(x)
+  }
+  
+  override def stream_numcols[A:Manifest](x: Exp[Stream[A]]) = x match {
+    case Def(StreamObjectNew(numRows, numCols, chunkSize, func, isPure)) => numCols
+    case _ => super.stream_numcols(x)
+  }
+  
+/*
+  case class StreamRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]] {
+    val size = in.length
+    val v = fresh[Int]
+    val body: Def[Stream[A]] = new DeliteCollectElem[A,Stream[A]](
+      alloc = reifyEffects(stream_chunk_row(st,row,offset)),
+      func = reifyEffects(v),
+    )
+  }
+*/
+
+
+  abstract case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]]
+  
+
+  override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = st match {
+
+    case Def(StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))) => 
+/*
+      // initRow
+        var j = 0
+        while (j < numCols) {
+          _data(row*numCols+j) = stfunc(offset*chunkSize+row,j)
+          j += 1
+        }
+      }
+      // chunkRow
+      //vview(idx*numCols, 1, numCols, true)
+      new StreamRowImpl[T](idx, offset, this, _data)
+*/
+      val r: Def[StreamRow[A]] = new StreamChunkRowFusable(st, row, offset) {
+        val size = numCols
+        val v = fresh[Int]
+        val body: Def[StreamRow[A]] = new DeliteCollectElem[A,StreamRow[A]](
+          alloc = reifyEffects(stream_chunk_row(st,row,offset)),
+          func = reifyEffects(stfunc(offset*chunkSize+row,v))
+        )
+      }
+      r
+      
+    case _ => super.stream_init_and_chunk_row(st,row,offset)
+  }
+  
+  
+  
+}
+
 
 
 trait ScalaGenStreamOps extends ScalaGenBase {

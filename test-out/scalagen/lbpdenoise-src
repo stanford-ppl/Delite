@@ -205,6 +205,7 @@ val x110 = new generated.scala.DoubleVectorImpl(5,true)
 x110
 }
 val x113 = x112.isRow
+// a *thin* loop follows: x119
 val x119 = {
 val x115 = new generated.scala.DoubleVectorImpl(5,x113)
 x115
@@ -212,7 +213,7 @@ x115
 var x114 = 0
 while (x114 < 5) {  // begin fat loop x119
 val x117 = x112(x114)
-val x118 = Math.exp(x117)
+val x118 = java.lang.Math.exp(x117)
 x119.dcUpdate(x114, x118)
 x114 += 1
 } // end fat loop x119

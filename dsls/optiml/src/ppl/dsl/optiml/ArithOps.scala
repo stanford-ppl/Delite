@@ -297,12 +297,12 @@ trait ScalaGenArithOps extends ScalaGenBase {
     case ArithMinus(a,b) => emitValDef(sym, quote(a) + " - " + quote(b))
     case ArithTimes(a,b) => emitValDef(sym, quote(a) + " * " + quote(b))
     case ArithFractionalDivide(a,b) => emitValDef(sym, quote(a) + " / " + quote(b))
-    //case ArithAbs(x) => emitValDef(sym, "Math.abs(" + quote(x) + ")")
-    case a@ArithAbs(x) => a.m.asInstanceOf[Manifest[_]] match {
-      case Manifest.Double => emitValDef(sym, "java.lang.Double.longBitsToDouble((java.lang.Double.doubleToRawLongBits(" + quote(x) + ")<<1)>>>1)")
-      case _ => emitValDef(sym, "Math.abs(" + quote(x) + ")")
-    }
-    case ArithExp(a) => emitValDef(sym, "Math.exp(" + quote(a) + ")")
+    case ArithAbs(x) => emitValDef(sym, "java.lang.Math.abs(" + quote(x) + ")")
+    //case a@ArithAbs(x) => a.m.asInstanceOf[Manifest[_]] match {
+    //  case Manifest.Double => emitValDef(sym, "java.lang.Double.longBitsToDouble((java.lang.Double.doubleToRawLongBits(" + quote(x) + ")<<1)>>>1)")
+    //  case _ => emitValDef(sym, "Math.abs(" + quote(x) + ")")
+    //}
+    case ArithExp(a) => emitValDef(sym, "java.lang.Math.exp(" + quote(a) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

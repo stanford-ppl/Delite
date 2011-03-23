@@ -822,7 +822,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
   */
 
-  case class VectorFilter[A:Manifest](in: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) extends DeliteOpLoop[Vector[A]] {
+  abstract case class VectorFilter[A:Manifest](in: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) extends DeliteOpLoop[Vector[A]] {
+    // does not extend DeliteOpVectorLoop because result size is not known
+    def mev = manifest[A]
+    val isRow: Exp[Boolean]
+  }
+  
+  class VectorFilterFresh[A:Manifest](in: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) extends VectorFilter[A](in, pred) {
     val size = in.length
     val isRow = in.isRow
     val v = fresh[Int]
@@ -833,7 +839,11 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     )
   }
 
-  case class VectorFind[A:Manifest](in: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) extends DeliteOpLoop[IndexVector] {
+  abstract case class VectorFind[A:Manifest](in: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) extends DeliteOpLoop[IndexVector] {
+    def mev = manifest[A]
+  }
+
+  class VectorFindFresh[A:Manifest](in: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) extends VectorFind[A](in, pred) {
     val size = in.length
     val v = fresh[Int]
     val body: Def[IndexVector] = new DeliteCollectElem[Int,IndexVector](
@@ -883,6 +893,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
       val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
     case e@VectorExp(x) => toAtom(new VectorExp(f(x))(e.mev,e.aev) { 
       val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
+    case e@VectorFilter(x,p) => toAtom(new VectorFilter(f(x),p)(e.mev) { 
+      val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
+    case e@VectorFind(x,p) => toAtom(new VectorFind(f(x),p)(e.mev) { 
+      val size = f(e.size); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
     case e@VectorCount(x,p) => toAtom(new VectorCount(f(x),p)(e.mev) { 
       val size = f(e.size); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
     case Reflect(e@VectorPPrint(x), u, es) => reflectMirrored(Reflect(VectorPPrint(f(x))(f(e.block)), mapOver(f,u), f(es)))
@@ -1008,8 +1022,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     reflectPure(VectorReduce(x, v, func))
   }
 
-  def vector_filter[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorFilter(x, pred))
-  def vector_find[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorFind(x, pred))//IndexVector(reflectPure(VectorFind(x, pred)))
+  def vector_filter[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(new VectorFilterFresh(x, pred))
+  def vector_find[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(new VectorFindFresh(x, pred))//IndexVector(reflectPure(VectorFind(x, pred)))
   def vector_count[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(new VectorCountFresh(x, pred))
 
   def vector_flatmap[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[Vector[B]]) = {
@@ -1066,7 +1080,8 @@ trait VectorOpsExpOpt extends VectorOpsExp {
     case Def(VectorObjectRange(s,e,d,r)) => (e - s + d - 1)
     case Def(MatrixVView(x, start, stride, l, r)) => l
     case Def(MatrixGetRow(x,i)) => x.numCols
-    case Def(StreamChunkRow(s, i, offset)) => s.numCols
+    case Def(StreamChunkRow(x, i, offset)) => x.numCols
+    case Def(StreamChunkRowFusable(x, i, offset)) => x.numCols // necessary, it's not a DeliteVectorLoop
     case _ => super.vector_length(x)
   }
 
@@ -1089,6 +1104,7 @@ trait VectorOpsExpOpt extends VectorOpsExp {
     case Def(VectorTrans(x)) => vector_apply(x,n)
     case Def(MatrixGetRow(x, i)) => matrix_apply(x,i,n)
     case Def(StreamChunkRow(x, i, offset)) => stream_chunk_elem(x,i,n)
+    //case Def(StreamChunkRowFusable(x, i, offset)) => stream_chunk_elem(x,i,n) <-- enabling this will remove the computation altogether
     case _ => super.vector_apply(x,n)
   }
   

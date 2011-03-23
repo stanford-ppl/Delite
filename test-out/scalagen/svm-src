@@ -79,6 +79,7 @@ x39 = x39 + 1
 val x54 = x37.length
 val x55 = x37.isRow
 val x56 = !x55
+// a *thin* loop follows: x62
 val x62 = {
 val x58 = new generated.scala.DoubleVectorImpl(x54,x56)
 x58
@@ -265,6 +266,7 @@ x177 = x177 + 1
 val x192 = x175.length
 val x193 = x175.isRow
 val x194 = !x193
+// a *thin* loop follows: x200
 val x200 = {
 val x196 = new generated.scala.DoubleVectorImpl(x192,x194)
 x196
