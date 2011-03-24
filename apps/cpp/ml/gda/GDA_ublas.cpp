@@ -52,9 +52,11 @@ int main(int argc,char *argv[]) {
   matrix<double> sigma(n,n);
   for(uint i=0; i<m; i++) {
     if(y(i) == false) {
-      noalias(sigma) += outer_prod(trans(row(x,i) - mu0), row(x,i)- mu0);
+      matrix<double> out = outer_prod(trans(row(x,i) - mu0), row(x,i)- mu0);
+      noalias(sigma) += out;
     } else {
-      noalias(sigma) += outer_prod(trans(row(x,i) - mu1), row(x,i)- mu1);
+      matrix<double> out = outer_prod(trans(row(x,i) - mu1), row(x,i)- mu1);
+      noalias(sigma) += out;
     }
   }
   
