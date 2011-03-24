@@ -117,7 +117,8 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     }
     // should this be effectful? do we need multiple instances of streams, which are immutable?
     // (depends on what internal state we have)
-    StreamObjectNew[A](numRows, numCols, chunkSize(numCols), y, unit(isPure))
+    // HACK -- force loop hoisting in the non-fusing case
+    reflectEffect(StreamObjectNew[A](numRows, numCols, chunkSize(numCols), y, unit(isPure)))
   }
 
   ////////////////////
@@ -178,17 +179,17 @@ trait StreamOpsExpOpt extends StreamOpsExp {
   this: OptiMLExp with StreamImplOps =>
   
   override def stream_ispure[A:Manifest](x: Rep[Stream[A]]) = x match {
-    case Def(StreamObjectNew(numRows, numCols, chunkSize, func, isPure)) => isPure
+    case Def(Reflect(StreamObjectNew(numRows, numCols, chunkSize, func, isPure),_,_)) => isPure
     case _ => super.stream_ispure(x)
   }
   
   override def stream_numrows[A:Manifest](x: Exp[Stream[A]]) = x match {
-    case Def(StreamObjectNew(numRows, numCols, chunkSize, func, isPure)) => numRows
+    case Def(Reflect(StreamObjectNew(numRows, numCols, chunkSize, func, isPure),_,_)) => numRows
     case _ => super.stream_numrows(x)
   }
   
   override def stream_numcols[A:Manifest](x: Exp[Stream[A]]) = x match {
-    case Def(StreamObjectNew(numRows, numCols, chunkSize, func, isPure)) => numCols
+    case Def(Reflect(StreamObjectNew(numRows, numCols, chunkSize, func, isPure),_,_)) => numCols
     case _ => super.stream_numcols(x)
   }
   
@@ -209,7 +210,7 @@ trait StreamOpsExpOpt extends StreamOpsExp {
 
   override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = st match {
 
-    case Def(StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))) => 
+    case Def(Reflect(StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true)),_,_)) =>
 /*
       // initRow
         var j = 0

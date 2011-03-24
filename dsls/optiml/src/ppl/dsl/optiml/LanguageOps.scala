@@ -605,15 +605,15 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    */
   def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:Numeric](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int] = {
     // unroll
-    val same = dist(m(row), m(row))
     val dists = (0::m.numRows){ i =>
       val d = dist(m(row),m(i))
-      if (d == same && !allowSame) unit(scala.Int.MaxValue).asInstanceOfL[A] else d
+      if (d == unit(0).asInstanceOfL[A] && !allowSame) unit(scala.Int.MaxValue).asInstanceOfL[A] else d
     }
     dists.minIndex
     /*
     if (allowSame) dists.minIndex
     else {
+      val same = dist(m(row), m(row))
       val f = dists filter {  _ != same }
       val x = f.min
       val z = dists find (x)

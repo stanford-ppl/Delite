@@ -33,14 +33,17 @@ trait Downsampling {
     println("   finding empirical dist of the min distance between cells ...")
 
     // sampled_data is numSamples x data.numCols
-    val sampleIndices = sample(0::data.numRows, numSamples)
+//    val sampleIndices = sample(0::data.numRows, numSamples)
+//
+//    val minDist = (0::numSamples) { i =>
+//      val sampleIdx = sampleIndices(i)
+//      val neighborIdx = nearestNeighborIndex(sampleIdx, data, false)
+//      dist(data(sampleIdx), data(neighborIdx))
+//    }
+//    minDist.median
 
-    val minDist = (0::numSamples) { i =>
-      val sampleIdx = sampleIndices(i)
-      val neighborIdx = nearestNeighborIndex(sampleIdx, data, false)
-      dist(data(sampleIdx), data(neighborIdx))
-    }
-    minDist.median
+    // TEMPORARY fixing this value to preserve deterministic results for comparison
+    4.4593519740000005
   }
 
   private def countNeighbors(data: Rep[TrainingSet[Double,Int]], kernelWidth: Rep[Double], apprxWidth: Rep[Double]): Rep[Vector[Int]] = {

@@ -62,43 +62,68 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
     case DeliteIfThenElse(c,a,b) =>
       val save = deliteKernel
       deliteKernel = false
-      //if (!save) {  // TODO: why is this getting lifted?
-      save match {
-        case true =>
-        // straight-line, no methods
-        stream.println("val " + quote(sym) + " = if (" + quote(c) + ") {")
-        emitBlock(a)
-        stream.println(quote(getBlockResult(a)))
-        stream.println("} else {")
-        emitBlock(b)
-        stream.println(quote(getBlockResult(b)))
-        stream.println("}")
-      //}
-      //else {
-        case false =>
-        // add method wrappers
-        stream.println("val " + quote(sym) + " = {")
-        stream.println("def " + quote(sym) + "thenb(): " + remap(getBlockResult(a).Type) + " = {")
-        emitBlock(a)
-        stream.println(quote(getBlockResult(a)))
-        stream.println("}")
-
-        stream.println("def " + quote(sym) + "elseb(): " + remap(getBlockResult(b).Type) + " = {")
-        emitBlock(b)
-        stream.println(quote(getBlockResult(b)))
-        stream.println("}")
-
-        stream.println("if (" + quote(c) + ") {")
-        stream.println(quote(sym) + "thenb()")
-        stream.println("} else {")
-        stream.println(quote(sym) + "elseb()")
-        stream.println("}")
-        stream.println("}")
+      stream.println("val " + quote(sym) + " = {")
+      (a,b) match {
+        case (Const(()), Const(())) => stream.println("()")
+        case (_, Const(())) => generateThenOnly(sym, c, a, !save)
+        case (Const(()), _) => generateElseOnly(sym, c, b, !save)
+        case _ => generateThenElse(sym, c, a, b, !save)
       }
+      stream.println("}")
       deliteKernel = save
 
     case _ => super.emitNode(sym, rhs)
   }
+
+  def generateThenOnly(sym: Sym[Any], c: Exp[Any], thenb: Exp[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
+    case true =>  wrapMethod(sym, thenb, "thenb")
+                  stream.println("if (" + quote(c) + ") {")
+                  stream.println(quote(sym) + "thenb()")
+                  stream.println("}")
+
+    case false => stream.println("if (" + quote(c) + ") {")
+                  emitBlock(thenb)
+                  stream.println("}")
+  }
+
+  def generateElseOnly(sym: Sym[Any], c: Exp[Any], elseb: Exp[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
+    case true =>  wrapMethod(sym, elseb, "elseb")
+                  stream.println("if (" + quote(c) + ") {}")
+                  stream.println("else {")
+                  stream.println(quote(sym) + "elseb()")
+                  stream.println("}")
+
+    case false => stream.println("if (" + quote(c) + ") {}")
+                  stream.println("else {")
+                  emitBlock(elseb)
+                  stream.println("}")
+  }
+
+  def generateThenElse(sym: Sym[Any], c: Exp[Any], thenb: Exp[Any], elseb: Exp[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
+    case true =>  wrapMethod(sym, thenb, "thenb")
+                  wrapMethod(sym, elseb, "elseb")
+                  stream.println("if (" + quote(c) + ") {")
+                  stream.println(quote(sym) + "thenb()")
+                  stream.println("} else { ")
+                  stream.println(quote(sym) + "elseb()")
+                  stream.println("}")
+
+    case false => stream.println("if (" + quote(c) + ") {")
+                  emitBlock(thenb)
+                  stream.println(quote(getBlockResult(thenb)))
+                  stream.println("} else {")
+                  emitBlock(elseb)
+                  stream.println(quote(getBlockResult(elseb)))
+                  stream.println("}")
+  }
+
+  def wrapMethod(sym: Sym[Any], block: Exp[Any], postfix: String)(implicit stream: PrintWriter) = {
+    stream.println("def " + quote(sym) + postfix + "(): " + remap(getBlockResult(block).Type) + " = {")
+    emitBlock(block)
+    stream.println(quote(getBlockResult(block)))
+    stream.println("}")
+  }
+
 }
 
 
