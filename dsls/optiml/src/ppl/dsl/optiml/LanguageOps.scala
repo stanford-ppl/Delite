@@ -23,7 +23,7 @@ trait LanguageOps extends Base { this: OptiML =>
    * random
    */
 
-  // this version is for deliszt's use exclusively, so it does not interfere with application behavior
+  // this version is for optiml's use exclusively, so it does not interfere with application behavior
   private def _random[A](implicit mA: Manifest[A]): Rep[A] =
     mA match {
       case Manifest.Double => optiml_internal_rand_double.asInstanceOfL[A]

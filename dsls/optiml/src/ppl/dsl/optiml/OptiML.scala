@@ -15,7 +15,7 @@ import ppl.dsl.optiml.datastruct.CudaGenDataStruct
 import ppl.dsl.optiml.io._
 import ppl.dsl.optiml.vector._
 import ppl.dsl.optiml.matrix._
-//import ppl.dsl.deliszt.graph._
+//import ppl.dsl.optiml.graph._
 import ppl.delite.framework.ops._
 
 /**

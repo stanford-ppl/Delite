@@ -281,44 +281,8 @@ trait Edge {
   def graph: G
 }
 
-// this is really not pretty. this class hierarchy needs to be thought about more than i've had a chance to.
-trait GMVertex {
-  type V <: GMVertex
-  type E <: GMEdge
-  type G = GMGraph[V,E]
-
-  def graph: G
-  def edges: GMEdges[E]
-  def neighbors: GMVertices[V]
-  def id: Int
-  def setId(v: Int)
-}
-
-trait GMEdge {
-  type V <: Vertex
-  type E <: Edge
-  type G = Graph[V,E]
-
-  def graph: G
-}
-
-trait GMVertices[V <: GMVertex] extends Vector[V]
-trait GMEdges[E <: GMEdge] extends Vector[E]
-
-// no covariance here, since Graph is mutable.
-trait GMGraph[V <: GMVertex, E <: GMEdge] {
-  def vertices: GMVertices[V]
-  def edges: GMEdges[E]
-
-  def neighborsOf(a: V): GMVertices[V]
-  def edgesOf(a: V): GMEdges[E]
-
-  def addVertex(v: V)
-  def addEdge(e: E, a: V, b: V)
-
-  def freeze(): Unit
-  def frozen: Boolean
-}
+trait Vertices[V <: Vertex] extends Vector[V]
+trait Edges[E <: Edge] extends Vector[E]
 
 
 /**
