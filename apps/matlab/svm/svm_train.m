@@ -39,3 +39,5 @@ w = zeros(dim, 1);
 for i=1:size(trainMatrix,1)
   w = w + alphas(i)*Y(i)*trainMatrix(i,:)';
 end
+
+svm_test

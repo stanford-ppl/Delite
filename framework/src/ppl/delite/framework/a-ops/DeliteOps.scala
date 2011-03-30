@@ -841,7 +841,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     case foreach:DeliteOpForeach[_,_] => {
       if (deliteKernel == false){
         //stream.println("def " + quote(sym) + "_block = {")
-        stream.println("val " + quote(sym) + "= {")
+        stream.println("val " + quote(sym) + " = {")
         stream.println("var forIdx = 0")
         stream.println("while (forIdx < " + quote(getBlockResult(foreach.in)) + ".size) { // begin foreach loop " + quote(sym))
         stream.println("val " + quote(foreach.v) + " = " + quote(getBlockResult(foreach.in)) + ".dcApply(forIdx)")

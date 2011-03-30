@@ -25,6 +25,7 @@ trait NaiveBayes extends OptiMLApplication {
     // Train Model
     val trainingSet = MLInputReader.readTokenMatrix(trainingFile)
     //val start_train = System.currentTimeMillis()
+    println("Training model on " + trainingSet.numSamples + " documents.")
     tic()
     val (phi_y1, phi_y0, phi_y) = train(trainingSet)
     toc()
@@ -53,16 +54,12 @@ trait NaiveBayes extends OptiMLApplication {
 
     val words_per_email = (0::ts.numSamples){ i => ts(i).sum }
 
-    println("Training model on " + numTrainDocs + " documents.")
-
     val spamcount = ts.labels.sum
 
     val phi_y1 = Vector.mzeros(numTokens)
     val phi_y0 = Vector.mzeros(numTokens)
 
     // TODO: this should be a tuple vector constructor
-    
-
     for (j <- 0::numTokens) {
       var spamwordcount = 0.0
       var spam_totalwords = 0.0
@@ -138,8 +135,6 @@ trait NaiveBayes extends OptiMLApplication {
       (spamwordcount + 1) / (spam_totalwords + numTokens)
     }
 */
-
-
 
     val phi_y = spamcount / numTrainDocs
 

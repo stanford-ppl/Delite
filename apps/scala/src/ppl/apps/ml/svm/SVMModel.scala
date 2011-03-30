@@ -52,9 +52,11 @@ trait SVMModels { this: OptiMLApplication =>
 
     val numSamples = X.numRows
     var passes = 0
-    
+    var iter = 0
+
     while (passes < max_passes){
       print(".")
+      iter += 1
       var num_changed_alphas = 0
       var i = 0
       while(i < numSamples){ //TR
@@ -105,7 +107,7 @@ trait SVMModels { this: OptiMLApplication =>
               else if (alphas(j) < L) alphas(j) = L
 
               // check alphas(j) convergence
-              if (Math.abs(alphas(j) - old_aj) >  tol){
+              if (Math.abs(alphas(j) - old_aj) >  .00001){
                 // find a_i to maximize objective function
 
                 val old_ai = alphasOld(i)
@@ -143,6 +145,8 @@ trait SVMModels { this: OptiMLApplication =>
     } // while
 
     // SMO finished
+    println("num iterations: " + iter)
+
     // compute the weights (assuming a linear kernel)
     var i = 0
     while(i < X.numRows){

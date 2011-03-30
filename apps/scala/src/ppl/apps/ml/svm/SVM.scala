@@ -44,7 +44,7 @@ trait SVM extends OptiMLApplication with SVMModels {
     val svm = new SVMModel
     //val svm = new SVMModel(SVM.this)
     tic()
-    val (weights, b) = svm.train(inMatrixTrain, 1, .0001, 10)
+    val (weights, b) = svm.train(inMatrixTrain, 1, .001, 10)
     toc()
     //svm.computeWeights(inMatrixTrain, YTrain)
     //svm.saveModel(weights, b, modelFile)

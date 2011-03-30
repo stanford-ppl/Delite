@@ -117,20 +117,8 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val tokenlist = xs.readLine()
 
     val trainCatSeq = Vector[Double](0,true)
-    for (m <- 0 until numDocs){
-      line = xs.readLine()
-      line = line.trim()
-      val nums = line.split("\\\\s+")
-
-      trainCatSeq += Double.parseDouble(nums(0))
-    }
-    val trainCategory = trainCatSeq.t
-
-    xs.close()
-    xs = BufferedReader(FileReader(filename))
-    xs.readLine(); xs.readLine(); xs.readLine()
-
     val trainMatSeq = Vector[Vector[Double]](0, true)
+
     for (m <- 0 until numDocs) {
       line = xs.readLine()
       line = line.trim()
@@ -144,8 +132,10 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
         row(cumsum) = Double.parseDouble(nums(j+1))
         j += 2
       }
+      trainCatSeq += Double.parseDouble(nums(0))
       trainMatSeq += row
     }
+    val trainCategory = trainCatSeq.t
     val trainMatrix = Matrix(trainMatSeq)
 
     xs.close()
