@@ -87,6 +87,7 @@ trait VectorOps extends DSLType with Variables {
     def pprint() = vector_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int]) = vector_repmat(x,i,j)
     def toList = vector_tolist(x)
+    def mkString(sep: Rep[String] = unit("")) = vector_mkstring(x, sep)
 
     // data operations
     def ++(y: Rep[Vector[A]]) = vector_concatenate(x,y)
@@ -199,6 +200,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
   def vector_repmat[A:Manifest](x: Rep[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
   def vector_tolist[A:Manifest](x: Rep[Vector[A]]): Rep[List[A]]
+  def vector_mkstring[A:Manifest](x: Rep[Vector[A]], sep: Rep[String]): Rep[String]
 
   def vector_concatenate[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_update[A:Manifest](x: Rep[Vector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
@@ -312,6 +314,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   // TODO: right now we just use the underlying data structure sort, but we should implement our own
   // fast parallel sort with delite ops
   case class VectorSort[A:Manifest:Ordering](x: Exp[Vector[A]]) extends Def[Vector[A]]
+  case class VectorToList[A:Manifest](x: Exp[Vector[A]]) extends Def[List[A]]
 
 
   /////////////////////////////////////////////////
@@ -368,7 +371,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   case class VectorRepmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int])
     extends DeliteOpSingleTask(reifyEffectsHere(vector_repmat_impl[A](x,i,j)))
 
-  case class VectorToList[A:Manifest](x: Exp[Vector[A]]) extends Def[List[A]]
+  case class VectorMkString[A:Manifest](x: Exp[Vector[A]], sep: Exp[String])
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_mkstring_impl[A](x, sep)))
 
   case class VectorMedian[A:Manifest:Ordering](x: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(vector_median_impl[A](x)))
@@ -951,6 +955,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_mutable_clone[A:Manifest](x: Exp[Vector[A]]) = reflectMutable(VectorClone(x))
   def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = reflectPure(VectorRepmat(x,i,j))
   def vector_tolist[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorToList(x))
+  def vector_mkstring[A:Manifest](x: Exp[Vector[A]], sep: Exp[String]) = reflectPure(VectorMkString(x, sep))
 
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x)(reifyEffectsHere(vector_pprint_impl[A](x))))
 

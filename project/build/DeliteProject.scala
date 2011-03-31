@@ -25,27 +25,28 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   override def mainScalaSourcePath = "src"
   override def mainResourcesPath = "resources"
   
-  override def testScalaSourcePath = "tests" / "src"
+  //override def testScalaSourcePath = "tests" / "src"
+  override def testScalaSourcePath = "tests" / "src" / "ppl" / "scalatest"
   override def testResourcesPath = "tests" / "resources"
-  
+
   val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
   
   val scalaToolsSnapshots = ScalaToolsSnapshots
-  val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT" % "test"
-  
+  val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT"
+
   // Define project class with default source tree layout
   class FlatProject(info: ProjectInfo) extends DefaultProject(info) {
     // Source tree layout
     override def mainScalaSourcePath = "src"
     override def mainResourcesPath = "resources"
     
-    override def testScalaSourcePath = "tests" / "src"
+    override def testScalaSourcePath = "tests" / "src" / "ppl" / "scalatest"
     override def testResourcesPath = "tests" / "resources"
     
     val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
     
     val scalaToolsSnapshots = ScalaToolsSnapshots
-    val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT" % "test"
+    val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT"
     
     override def localScala =
     defineScala("2.9.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
@@ -74,5 +75,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   }
   
   //TR is anybody using this? conflict with defining 'tests' as test source path above...
-  //lazy val tests = project("tests", "Delite Tests", new FlatProject(_), framework, dsls, apps)
+  //aks: i am, but i'm in the process of trying to convert all the remaining tests to be scalatests.
+  //in the meantime, i tried to set this up so it wouldn't conflict with the existing scalatests
+  lazy val tests = project("tests", "Delite Tests", new FlatProject(_), framework, dsls, apps)
 }

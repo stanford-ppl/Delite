@@ -124,7 +124,7 @@ trait MatrixOps extends DSLType with Variables {
     def zip[B:Manifest,R:Manifest](y: Rep[Matrix[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = matrix_zipwith(x,y,f)
     def reduceRows(f: (Rep[Vector[A]],Rep[Vector[A]]) => Rep[Vector[A]]) = matrix_reducerows(x,f)
     def filterRows(pred: Rep[MatrixRow[A]] => Rep[Boolean]) = matrix_filterrows(x,pred)
-    // def count
+    def count(pred: Rep[A] => Rep[Boolean]) = matrix_count(x, pred)
     // def countRows
   }
 
@@ -212,6 +212,7 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[Matrix[R]]
   def matrix_reducerows[A:Manifest](x: Rep[Matrix[A]], f: (Rep[Vector[A]],Rep[Vector[A]]) => Rep[Vector[A]]): Rep[Vector[A]]
   def matrix_filterrows[A:Manifest](x: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[Boolean]): Rep[Matrix[A]]
+  def matrix_count[A:Manifest](x: Rep[Matrix[A]], pred: Rep[A] => Rep[Boolean]): Rep[Int]
 }
 
 
@@ -637,6 +638,14 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     }
   }
 
+  case class MatrixCount[A:Manifest](in: Exp[Matrix[A]], pred: Exp[A] => Exp[Boolean])
+    extends DeliteOpMapReduce[A,Int,Matrix] {
+
+    val mV = fresh[A]
+    val map = reifyEffects { if (pred(mV)) 1 else 0 }
+    val rV = (fresh[Int],fresh[Int])
+    val reduce = reifyEffects(rV._1 + rV._2)
+  }
 
   //////////////
   // mirroring
@@ -764,7 +773,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     reflectPure(MatrixReduceRows(x, v, func))
   }
   def matrix_filterrows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[MatrixRow[A]] => Exp[Boolean]) = reflectPure(MatrixFilterRows(x, pred))
-
+  def matrix_count[A:Manifest](x: Exp[Matrix[A]], pred: Exp[A] => Exp[Boolean]) = MatrixCount(x, pred)
 
   //////////////////
   // internal

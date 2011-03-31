@@ -32,6 +32,7 @@ trait VectorImplOps { this: OptiML =>
   def vector_min_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
   def vector_max_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
   def vector_find_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
+  def vector_mkstring_impl[A:Manifest](v: Rep[Vector[A]], sep: Rep[String]): Rep[String]
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
@@ -281,4 +282,12 @@ trait VectorImplOpsStandard extends VectorImplOps {
     indices
   }
 
+  def vector_mkstring_impl[A:Manifest](v: Rep[Vector[A]], sep: Rep[String]) = {
+    var s = ""
+    for (i <- 0 until v.length) {
+      s = s + v(i)
+      s = s + sep
+    }
+    s
+  }
 }
