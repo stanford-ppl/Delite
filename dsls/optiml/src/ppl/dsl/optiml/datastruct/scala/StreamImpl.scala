@@ -6,8 +6,8 @@ class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: 
                                        case _ => throw new RuntimeException("Stream overflowed during initialization")
                                      }
 
-    def bufRows = math.min(numRows, chunkSize)
-    def size = numCols*bufRows
+    val bufRows = math.min(numRows, chunkSize)
+    val size = numCols*bufRows
     def data = _data
 
     def initRow(row: Int, offset: Int) {

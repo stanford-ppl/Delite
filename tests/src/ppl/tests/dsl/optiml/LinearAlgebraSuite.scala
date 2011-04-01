@@ -7,7 +7,7 @@ import scala.virtualization.lms.util.OverloadHack
 object SimpleVectorArithmeticRunner extends OptiMLApplicationRunner with SimpleVectorArithmetic
 trait SimpleVectorArithmetic extends OptiMLTestModule with LinearAlgebraTestsCommon {
   def main() = {
-    implicit val v = Vector[Boolean]()
+    implicit val collector = Vector[Boolean]()
     // TODO: these can't be factored out right now because they throw an NPE when the test is being initialized
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
@@ -33,7 +33,7 @@ trait SimpleVectorArithmetic extends OptiMLTestModule with LinearAlgebraTestsCom
 object SimpleMatrixArithmeticRunner extends OptiMLApplicationRunner with SimpleMatrixArithmetic
 trait SimpleMatrixArithmetic extends OptiMLTestModule with LinearAlgebraTestsCommon {
   def main() = {
-    implicit val v = Vector[Boolean]()
+    implicit val collector = Vector[Boolean]()
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
     val colC = Vector(7., 3.2, 13.3).mt
@@ -74,7 +74,7 @@ trait SimpleMatrixArithmetic extends OptiMLTestModule with LinearAlgebraTestsCom
 object CombinedVecMatArithmeticRunner extends OptiMLApplicationRunner with CombinedVecMatArithmetic
 trait CombinedVecMatArithmetic extends OptiMLTestModule with LinearAlgebraTestsCommon {
   def main() = {
-    implicit val v = Vector[Boolean]()
+    implicit val collector = Vector[Boolean]()
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
     val rowD = Vector(-1.1, -6.2)

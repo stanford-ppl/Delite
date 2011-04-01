@@ -83,7 +83,7 @@ trait VectorOps extends DSLType with Variables {
     def t = vector_trans(x)
     def mt() = vector_mutable_trans(x)
     def cloneL() = vector_clone(x)
-    def mutable = vector_mutable_clone(x)
+    def mutable() = vector_mutable_clone(x)
     def pprint() = vector_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int]) = vector_repmat(x,i,j)
     def toList = vector_tolist(x)
@@ -1082,7 +1082,7 @@ trait VectorOpsExpOpt extends VectorOpsExp {
     case Def(e: DeliteOpVectorLoop[A]) => e.size
     case Def(VectorObjectZeros(l)) => l
     case Def(VectorClone(a)) => vector_length(a)
-    case Def(VectorObjectRange(s,e,d,r)) => (e - s + d - 1)
+    case Def(VectorObjectRange(s,e,d,r)) => (e - s + d - 1) / d
     case Def(MatrixVView(x, start, stride, l, r)) => l
     case Def(MatrixGetRow(x,i)) => x.numCols
     case Def(StreamChunkRow(x, i, offset)) => x.numCols

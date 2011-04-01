@@ -65,6 +65,7 @@ trait MatrixOps extends DSLType with Variables {
     // TODO: implicit won't trigger
     //override def clone = matrix_clone(x)
     def cloneL() = matrix_clone(x)
+    def mutable() = matrix_mutable_clone(x)
     def pprint() = matrix_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int]) = matrix_repmat(x,i,j)
 
@@ -165,6 +166,7 @@ trait MatrixOps extends DSLType with Variables {
 
   def matrix_transpose[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_clone[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_mutable_clone[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_pprint[A:Manifest](x: Rep[Matrix[A]]): Rep[Unit]
   def matrix_repmat[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
 
@@ -706,6 +708,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   def matrix_transpose[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixTranspose(x))
   def matrix_clone[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixClone(x))
+  def matrix_mutable_clone[A:Manifest](x: Exp[Matrix[A]]) = reflectMutable(MatrixClone(x))
   def matrix_pprint[A:Manifest](x: Exp[Matrix[A]]) = reflectEffect(MatrixPPrint(x)) // TODO: simple
   def matrix_repmat[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) = reflectPure(MatrixRepmat(x,i,j))
 

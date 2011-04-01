@@ -53,6 +53,7 @@ trait ArithOps extends Variables with OverloadHack {
     def exp: Rep[T] = arith.exp(lhs)
   }
 
+
   // TODO: why is this needed, given the definition of / above?
   def infix_/[T,B](lhs: Rep[T], rhs: B)(implicit f: Fractional[T], c: B => Rep[T], mT: Manifest[T]) = arith_fractional_divide(lhs,c(rhs))
 

@@ -22,7 +22,8 @@ trait DeliteScalaGenVariables extends ScalaGenEffect {
       rhs match {
         case ReadVar(Variable(a)) => emitValDef(sym, quote(a) + ".get"); gen = true
         case Assign(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(getBlockResult(b)) + ")"); gen = true
-        case VarPlusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get +" + quote(getBlockResult(b)) + ")"); gen = true
+        case VarPlusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get + " + quote(getBlockResult(b)) + ")"); gen = true
+        case VarMinusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get - " + quote(getBlockResult(b)) + ")"); gen = true
         case _ => // pass
       }
     }

@@ -1,20 +1,14 @@
 package ppl.dsl.optiml.datastruct.scala
 
-class VectorViewImpl[T:Manifest](x: Array[T], offset: Int, str: Int, len: Int, row_vec: Boolean) extends VectorView[T]{
+class VectorViewImpl[T:Manifest](x: Array[T], val start: Int, val stride: Int, val length: Int, __isRow: Boolean) extends VectorView[T]{
 
   protected var _data: Array[T] = x
-  protected var _length = len
-  protected var _isRow = row_vec
-  protected var _start = offset
-  protected var _stride = str
+  protected var _isRow = __isRow
 
-  def start = _start
-  def stride = _stride
-  def length = _length
   def isRow = _isRow
   def data = _data
 
-  def idx(n: Int) = _start + n*_stride
+  def idx(n: Int) = start + n*stride
 
   def apply(n: Int) : T = {
     _data(idx(n))

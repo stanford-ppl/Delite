@@ -9,15 +9,13 @@ package ppl.dsl.optiml.datastruct.scala
  *
  */
 
-abstract class ZeroVectorImpl[T:Manifest](__length: Int, __isRow: Boolean) extends ZeroVector[T] {
+abstract class ZeroVectorImpl[T:Manifest](val length: Int, __isRow: Boolean) extends ZeroVector[T] {
 
-  protected var _length = __length
   protected var _isRow = __isRow
 
   def isRow = _isRow
-  def length = _length
 
-  lazy val data = new Array[T](_length)
+  lazy val data = new Array[T](length)
 
   def update(index: Int, x: T) {
     throw new UnsupportedOperationException("Zero vectors cannot be updated; try cloning first")
