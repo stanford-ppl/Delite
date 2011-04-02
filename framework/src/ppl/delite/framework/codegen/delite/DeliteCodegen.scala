@@ -4,6 +4,7 @@ import generators.{DeliteGenTaskGraph}
 import java.io.PrintWriter
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.Config._
 import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
@@ -70,8 +71,8 @@ trait DeliteCodegen extends GenericFatCodegen {
     val sA = mA.toString
     val sB = mB.toString
 
-    println("-- emitSource")
-    availableDefs.foreach(println)
+    printlog("-- emitSource")
+    availableDefs.foreach(printlog(_))
 
 
     stream.println("{\"DEG\":{\n"+
@@ -125,8 +126,8 @@ trait DeliteCodegen extends GenericFatCodegen {
 */
 
   override def emitFatBlockFocused(currentScope: List[TTP])(result: Exp[Any])(implicit stream: PrintWriter): Unit = {
-    println("-- block for "+result)
-    currentScope.foreach(println)
+    printlog("-- block for "+result)
+    currentScope.foreach(printlog(_))
 
 /*
     println("-- shallow schedule for "+result)
@@ -147,10 +148,10 @@ trait DeliteCodegen extends GenericFatCodegen {
     }
 */
     focusExactScopeFat(currentScope)(result) { levelScope => 
-      println("-- level for "+result)
-      levelScope.foreach(println)
-      println("-- exact for "+result)
-      availableDefs.foreach(println)
+      printlog("-- level for "+result)
+      levelScope.foreach(printlog(_))
+      printlog("-- exact for "+result)
+      availableDefs.foreach(printlog(_))
 
 /*
       val effects = result match {

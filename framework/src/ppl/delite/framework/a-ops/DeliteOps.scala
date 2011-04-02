@@ -604,7 +604,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => {
-      println("EMIT single "+s)
+      printlog("EMIT single "+s)
       val save = deliteKernel
       deliteKernel = false
       val b = s.block

@@ -36,7 +36,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   override def emitFatNode(sym: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter): Unit = {
     assert(generators.length >= 1)
 
-    println("DeliteGenTaskGraph.emitNode "+sym+"="+rhs)
+    printlog("DeliteGenTaskGraph.emitNode "+sym+"="+rhs)
 
     val kernelName = sym.map(quote).mkString("")
 
@@ -218,7 +218,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     stream.println("control deps: " + inControlDeps)
     stream.println("anti deps:" + antiDeps)
     */
-    println(outputSlotTypes)
+    printlog(outputSlotTypes)
 
     // emit task graph node
     rhs match {

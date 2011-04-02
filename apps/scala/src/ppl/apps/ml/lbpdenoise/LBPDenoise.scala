@@ -177,7 +177,7 @@ trait LBPDenoise extends OptiMLApplication {
       j = 0
       while (j < img.numCols) {
         val pixelId = imgPixelId(img, i, j)
-        val potential = Vector.mzeros(numRings)
+        val potential = Vector.zeros(numRings).mutable
 
         val obs = img(i, j)
 
@@ -319,7 +319,7 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   def unaryFactorUniform(arity: Rep[Int]) = {
-    val factor = Vector.mzeros(arity)
+    val factor = Vector.zeros(arity).mutable
     unaryFactorNormalizeM(factor)
     factor
   }

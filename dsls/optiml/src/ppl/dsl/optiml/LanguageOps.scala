@@ -519,7 +519,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
                         maxIter: Rep[Int], hyp: Rep[Vector[Double]] => Rep[Double]): Rep[Vector[Double]] = {
 
     val y = x.labels
-    val theta = Vector.mzeros(x.numFeatures)
+    val theta = Vector.zeros(x.numFeatures).mutable
     untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
       for (i <- 0 until x.numSamples) {
         for (j <- 0 until x.numFeatures ) {
@@ -534,7 +534,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
                    maxIter: Rep[Int], hyp: Rep[Vector[Double]] => Rep[Double]): Rep[Vector[Double]] = {
 
     val y = x.labels
-    val theta = Vector.mzeros(x.numFeatures)
+    val theta = Vector.zeros(x.numFeatures).mutable
     untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
       for (j <- 0 until x.numFeatures) {
         val acc = sum(0, x.numSamples) { i =>

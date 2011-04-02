@@ -42,12 +42,12 @@ trait SVMModels { this: OptiMLApplication =>
     val Y = X.labels
 
     // internal model storage
-    var weights = Vector.zeros(X.numCols)
+    val weights = Vector.zeros(X.numCols).mutable
     var b = 0.0
 
     // intermediate training info
     //var alphas = Vector.zeros(X.numRows).mt // col vector
-    val alphas = Vector.mzeros(X.numRows)
+    val alphas = Vector.zeros(X.numRows).mutable
     alphas.mt // col vector
 
     val numSamples = X.numRows
@@ -151,7 +151,7 @@ trait SVMModels { this: OptiMLApplication =>
     var i = 0
     while(i < X.numRows){
     //for (i <- 0 until X.numRows){
-      weights = weights + X(i)*alphas(i)*Y(i)
+      weights += X(i)*alphas(i)*Y(i)
       i += 1
     }
     print("\\n")

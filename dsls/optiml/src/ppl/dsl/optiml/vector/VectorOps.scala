@@ -34,9 +34,7 @@ trait VectorOps extends DSLType with Variables {
     def ones(len: Rep[Int]) = vector_obj_ones(len)
     def onesf(len: Rep[Int]) = vector_obj_onesf(len)
     def zeros(len: Rep[Int]) = vector_obj_zeros(len)
-    def mzeros(len: Rep[Int]) = vector_obj_mzeros(len)
     def zerosf(len: Rep[Int]) = vector_obj_zerosf(len)
-    def mzerosf(len: Rep[Int]) = vector_obj_mzerosf(len)
     def rand(len: Rep[Int]) = vector_obj_rand(len)
     def randf(len: Rep[Int]) = vector_obj_randf(len)
     def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = 1, isRow: Rep[Boolean] = unit(true)) =
@@ -176,9 +174,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_obj_ones(len: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_onesf(len: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_zeros(len: Rep[Int]): Rep[Vector[Double]]
-  def vector_obj_mzeros(len: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_zerosf(len: Rep[Int]): Rep[Vector[Float]]
-  def vector_obj_mzerosf(len: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_rand(len: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_randf(len: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], isRow: Rep[Boolean]): Rep[RangeVector]
@@ -929,9 +925,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_obj_ones(len: Exp[Int]) = reflectPure(VectorObjectOnes(len))
   def vector_obj_onesf(len: Exp[Int]) = reflectPure(VectorObjectOnesF(len))
   def vector_obj_zeros(len: Exp[Int]) = reflectPure(VectorObjectZeros(len))
-  def vector_obj_mzeros(len: Exp[Int]) = reflectMutable(VectorObjectZeros(len))
   def vector_obj_zerosf(len: Exp[Int]) = reflectPure(VectorObjectZerosF(len))
-  def vector_obj_mzerosf(len: Exp[Int]) = reflectMutable(VectorObjectZerosF(len))
   def vector_obj_rand(len: Exp[Int]) = reflectPure(VectorObjectRand(len))
   def vector_obj_randf(len: Exp[Int]) = reflectPure(VectorObjectRandF(len))
   def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean]) = reflectPure(VectorObjectRange(start, end, stride, isRow))
@@ -1072,6 +1066,15 @@ trait VectorOpsExpOpt extends VectorOpsExp {
     case _ => super.vector_times(x, y)
   }
 
+  override def vector_mutable_clone[A:Manifest](x: Exp[Vector[A]]) = x match {
+    case Def(d@VectorObjectZeros(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
+    case Def(d@VectorObjectZerosF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
+    case Def(d@VectorObjectOnes(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
+    case Def(d@VectorObjectOnesF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
+    case Def(d@VectorObjectRand(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
+    case Def(d@VectorObjectRandF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
+    case _ => super.vector_mutable_clone(x)
+  }
 
   // these are essential for fusing:
 

@@ -38,14 +38,14 @@ trait RBM extends OptiMLApplication {
     val numbatches = trainingdata.numRows / numcases
 
     // Initialize symmetric weights and biases
-    val vishid = Matrix.mrandnf(numdims, numHiddenUnits) //* 0.1f
+    val vishid = Matrix.randnf(numdims, numHiddenUnits).mutable //* 0.1f
     vishid mmap { _ * 0.1f }
-    val hidbiases = Vector.mzerosf(numHiddenUnits)
-    val visbiases = Vector.mzerosf(numdims)
+    val hidbiases = Vector.zerosf(numHiddenUnits).mutable
+    val visbiases = Vector.zerosf(numdims).mutable
 
-    val vishidinc = Matrix.mzerosf(numdims, numHiddenUnits)
-    val hidbiasinc = Vector.mzerosf(numHiddenUnits)
-    val visbiasinc = Vector.mzerosf(numdims)
+    val vishidinc = Matrix.zerosf(numdims, numHiddenUnits).mutable
+    val hidbiasinc = Vector.zerosf(numHiddenUnits).mutable
+    val visbiasinc = Vector.zerosf(numdims).mutable
 
     tic()
     var epoch = 0

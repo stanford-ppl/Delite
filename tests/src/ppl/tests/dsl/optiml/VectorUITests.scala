@@ -48,7 +48,7 @@ trait VectorUITests extends OptiMLApplication {
   }
 
   def testBulkUpdate() = {
-    val v = Vector.mzeros(10)
+    val v = Vector.zeros(10).mutable
     val i = (0::5)
     v(i) = 1
     println("==== test bulk update")
