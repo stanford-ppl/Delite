@@ -42,9 +42,9 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
     val xfs = BufferedWriter(FileWriter(filename))
 
     xfs.write("P2\\n")
-    xfs.write(String.valueOfL(img.numCols))
+    xfs.write(String.valueOf(img.numCols))
     xfs.write(" ")
-    xfs.write(String.valueOfL(img.numRows) + "\\n")
+    xfs.write(String.valueOf(img.numRows) + "\\n")
     xfs.write("255\\n")
 
     val min = img.min
