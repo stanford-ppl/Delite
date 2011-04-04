@@ -25,6 +25,8 @@ abstract class NestedGenerator(nested: OP_Nested, location: Int) extends Executa
 
   override protected def getSync(op: DeliteOP) = "Result_" + baseId + "_" + op.id
 
+  override protected def getSym(op: DeliteOP): String = "o" + baseId + "_" + op.id
+
   protected def writeHeader(location: Int, out: StringBuilder) {
     out.append("import java.util.concurrent.locks._\n") //locking primitives
     ExecutableGenerator.writePath(nested.nestedGraphs(0).kernelPath, out) //package of scala kernels

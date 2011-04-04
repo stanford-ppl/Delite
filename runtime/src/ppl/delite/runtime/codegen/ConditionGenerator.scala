@@ -1,8 +1,7 @@
 package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
-import ppl.delite.runtime.graph.targets.Targets
-import ppl.delite.runtime.graph.ops.{OP_Input, DeliteOP, OP_Condition}
+import ppl.delite.runtime.graph.ops.{DeliteOP, OP_Condition}
 
 /**
  * Author: Kevin J. Brown
@@ -19,7 +18,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
     val out = new StringBuilder //the output string
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     val hasOutput = condition.outputType != "Unit"
-    val inputs = (condition.predicateGraph._inputs.values ++ condition.thenGraph._inputs.values ++ condition.elseGraph._inputs.values)
+    val inputs = (condition.predicateGraph.inputOps ++ condition.thenGraph.inputOps ++ condition.elseGraph.inputOps)
 
     updateOP()
     //header
@@ -41,7 +40,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
 
     //output if body
     if (condition.thenValue == "") {
-      available.clear
+      available.clear()
       available ++= inputs
       addKernelCalls(condition.thenGraph.schedule(location), location, out, available, syncList)
       if (hasOutput) out.append(getSym(condition.thenGraph.result._2))
@@ -54,7 +53,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
 
     //output else body
     if (condition.elseValue == "") {
-      available.clear
+      available.clear()
       available ++= inputs
       addKernelCalls(condition.elseGraph.schedule(location), location, out, available, syncList)
       if (hasOutput) out.append(getSym(condition.elseGraph.result._2))
@@ -74,6 +73,24 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
     ScalaCompile.addSource(out.toString)
   }
 
+  override protected def getSync(op: DeliteOP) = {
+    if (condition.predicateGraph.ops.contains(op))
+      "Result_" + baseId + "P_" + op.id
+    else if (condition.thenGraph.ops.contains(op))
+      "Result_" + baseId + "T_" + op.id
+    else
+      "Result_" + baseId + "E_" + op.id
+  }
+
+  override protected def getSym(op: DeliteOP) = {
+    if (condition.predicateGraph.ops.contains(op))
+      "o" + baseId + "P_" + op.id
+    else if (condition.thenGraph.ops.contains(op))
+      "o" + baseId + "T_" + op.id
+    else
+      "o" + baseId + "E_" + op.id
+  }
+
   protected def executableName = "Condition_" + baseId + "_"
 
 }
@@ -91,7 +108,7 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
     val out = new StringBuilder //the output string
     val hasOutput = condition.outputType != "Unit"
     assert(hasOutput == false) //TODO: we can relax this by conditionally selecting the proper metadata functions as well
-    val inputs = (condition.predicateGraph._inputs.values ++ condition.thenGraph._inputs.values ++ condition.elseGraph._inputs.values)
+    val inputs = (condition.predicateGraph.inputOps ++ condition.thenGraph.inputOps ++ condition.elseGraph.inputOps)
 
     writeFunctionHeader(out)
     writeJNIInitializer(location, out)
@@ -114,9 +131,9 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
 
     //output if body
     if (condition.thenValue == "") {
-      available.clear
+      available.clear()
       available ++= inputs
-      awaited.clear
+      awaited.clear()
       awaited ++= inputs
       addKernelCalls(condition.thenGraph.schedule(location), location, available, awaited, syncList, out)
       if (hasOutput) {
@@ -135,9 +152,9 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
 
     //output else body
     if (condition.elseValue == "") {
-      available.clear
+      available.clear()
       available ++= inputs
-      awaited.clear
+      awaited.clear()
       awaited ++= inputs
       addKernelCalls(condition.elseGraph.schedule(location), location, available, awaited, syncList, out)
       if (hasOutput) {

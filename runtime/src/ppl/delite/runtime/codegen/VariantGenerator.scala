@@ -1,8 +1,7 @@
 package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
-import ppl.delite.runtime.graph.targets.Targets
-import ppl.delite.runtime.graph.ops.{OP_Input, DeliteOP, OP_Variant}
+import ppl.delite.runtime.graph.ops.{DeliteOP, OP_Variant}
 
 /**
  * Author: Kevin J. Brown
@@ -19,7 +18,7 @@ class VariantGenerator(variant: OP_Variant, location: Int) extends NestedGenerat
     val out = new StringBuilder //the output string
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     val hasOutput = variant.outputType != "Unit"
-    val inputs = variant.variantGraph._inputs.values
+    val inputs = variant.variantGraph.inputOps
 
     updateOP()
     //header
@@ -62,7 +61,7 @@ class GPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUNestedG
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
     val out = new StringBuilder //the output string
     val hasOutput = variant.outputType != "Unit"
-    val inputs = variant.variantGraph._inputs.values
+    val inputs = variant.variantGraph.inputOps
 
 
     writeFunctionHeader(out)

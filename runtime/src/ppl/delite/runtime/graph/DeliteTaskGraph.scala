@@ -501,22 +501,23 @@ class DeliteTaskGraph {
     }
   }
 
-  var _version = 0.0
-  var _kernelPath = ""
+  protected var _version = 0.0
+  protected var _kernelPath = ""
 
-  val _ops = new HashMap[String, DeliteOP]
-  val _inputs = new HashMap[String, OP_Input]
-  var _result: (DeliteOP, String) = (null, null)
-  var _superGraph: DeliteTaskGraph = null
+  protected val _ops = new HashMap[String, DeliteOP]
+  protected val _inputs = new HashMap[String, OP_Input]
+  protected var _result: (DeliteOP, String) = (null, null)
+  protected var _superGraph: DeliteTaskGraph = null
 
   var schedule: PartialSchedule = _
 
-  def result : (DeliteOP, String) = _result
+  def result: (DeliteOP, String) = _result
   def version: Double = _version
   def kernelPath: String = _kernelPath
   def superGraph: DeliteTaskGraph = _superGraph
-  def ids: Iterable[String] = _ops.keys
-  def ops: Iterable[DeliteOP] = _ops.values.toSet
+  def symbols: Set[String] = _ops.keys.toSet
+  def ops: Set[DeliteOP] = _ops.values.toSet
+  def inputOps: Set[DeliteOP] = _inputs.values.toSet
 
   def replaceOp(old: DeliteOP, op: DeliteOP) {
     //update ops

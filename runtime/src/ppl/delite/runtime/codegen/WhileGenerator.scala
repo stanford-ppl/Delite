@@ -1,8 +1,7 @@
 package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
-import ppl.delite.runtime.graph.targets.Targets
-import ppl.delite.runtime.graph.ops.{OP_Input, DeliteOP, OP_While}
+import ppl.delite.runtime.graph.ops.{DeliteOP, OP_While}
 
 /**
  * Author: Kevin J. Brown
@@ -18,7 +17,7 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
   def makeExecutable() {
     val out = new StringBuilder //the output string
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
-    val inputs = (whileLoop.predicateGraph._inputs.values ++ whileLoop.bodyGraph._inputs.values)
+    val inputs = (whileLoop.predicateGraph.inputOps ++ whileLoop.bodyGraph.inputOps)
 
     updateOP()
     //header
@@ -47,14 +46,14 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
 
     //output while body
     if (whileLoop.bodyValue == "") {
-      available.clear
+      available.clear()
       available ++= inputs
       addKernelCalls(whileLoop.bodyGraph.schedule(location), location, out, available, syncList)
     }
 
     //reevaluate predicate
     if (whileLoop.predicateValue == "") {
-      available.clear
+      available.clear()
       available ++= inputs
       out.append(";{\n")
       addKernelCalls(whileLoop.predicateGraph.schedule(location), location, out, available, new ArrayBuffer[DeliteOP]) //dummy syncList b/c already added
@@ -75,6 +74,20 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
     ScalaCompile.addSource(out.toString)
   }
 
+  override protected def getSync(op: DeliteOP) = {
+    if (whileLoop.predicateGraph.ops.contains(op))
+      "Result_" + baseId + "P_" + op.id
+    else
+      "Result_" + baseId + "B_" + op.id
+  }
+
+  override protected def getSym(op: DeliteOP) = {
+    if (whileLoop.predicateGraph.ops.contains(op))
+      "o" + baseId + "P_" + op.id
+    else
+      "o" + baseId + "B_" + op.id
+  }
+
   protected def executableName = "While_" + baseId + "_"
 
 }
@@ -90,7 +103,7 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGen
 
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
     val out = new StringBuilder //the output string
-    val inputs = (whileLoop.predicateGraph._inputs.values ++ whileLoop.bodyGraph._inputs.values)
+    val inputs = (whileLoop.predicateGraph.inputOps ++ whileLoop.bodyGraph.inputOps)
 
     writeFunctionHeader(out)
     writeJNIInitializer(location, out)
@@ -119,18 +132,18 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGen
 
     //output while body
     if (whileLoop.bodyValue == "") {
-      available.clear
+      available.clear()
       available ++= inputs
-      awaited.clear
+      awaited.clear()
       awaited ++= inputs
       addKernelCalls(whileLoop.bodyGraph.schedule(location), location, available, awaited, syncList, out)
     }
 
     //reevaluate predicate
     if (whileLoop.predicateValue == "") {
-      available.clear
+      available.clear()
       available ++= inputs
-      awaited.clear
+      awaited.clear()
       awaited ++= inputs
       out.append("{\n")
       addKernelCalls(whileLoop.predicateGraph.schedule(location), location, available, awaited, new ArrayBuffer[DeliteOP], out) //dummy syncList b/c already added
