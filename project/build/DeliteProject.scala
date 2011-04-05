@@ -20,7 +20,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
 
   // Options
   // Parallelism!
-  override def parallelExecution = true
+  //override def parallelExecution = true
   
   override def mainScalaSourcePath = "src"
   override def mainResourcesPath = "resources"
@@ -31,7 +31,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   val virtualization_lms_core = "scala" % "virtualization-lms-core_2.8.x-virtualized-SNAPSHOT" % "0.1"
   
   val scalaToolsSnapshots = ScalaToolsSnapshots
-  val scalatest = "org.scalatest" % "scalatest" % "1.2.1-SNAPSHOT"
+  val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT" % "test"
   
   // Define project class with default source tree layout
   class FlatProject(info: ProjectInfo) extends DefaultProject(info) {
@@ -45,7 +45,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     val virtualization_lms_core = "scala" % "virtualization-lms-core_2.8.x-virtualized-SNAPSHOT" % "0.1"
     
     val scalaToolsSnapshots = ScalaToolsSnapshots
-    val scalatest = "org.scalatest" % "scalatest" % "1.2.1-SNAPSHOT"
+    val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT" % "test"
     
     override def localScala =
     defineScala("2.8.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
@@ -56,13 +56,15 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   
   // Define projects
   lazy val framework = project("framework", "Delite Framework", new FlatProject(_))
-  
-  lazy val dsls = project("dsls", "DSLs", new DSLs(_), framework)
-     class DSLs(info: ProjectInfo) extends DefaultProject(info) {
+  lazy val runtime = project("runtime", "Delite Runtime", new FlatProject(_) {
+    override def mainClass = Some("ppl.delite.runtime.Delite")
+  })
+  class DSLs(info: ProjectInfo) extends DefaultProject(info) {
     lazy val optiml = project("optiml", "OptiML", new FlatProject(_){
       override def mainClass = Some("ppl.dsl.tests.SimpleVectorTest")
     }, framework)
   }
+  lazy val dsls = project("dsls", "DSLs", new DSLs(_), framework)
   
   lazy val apps = project("apps", "Applications", new APPs(_), framework, dsls)
   class APPs(info: ProjectInfo) extends DefaultProject(info) {

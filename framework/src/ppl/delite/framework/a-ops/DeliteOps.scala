@@ -257,9 +257,9 @@ trait DeliteOpsExp extends EffectExp with VariablesExp with VariantsOpsExp with 
   }
 
   // used by delite code generators to handle nested delite ops
-  var deliteKernel: Boolean = _
-  var deliteResult: Option[Sym[Any]] = _
-  var deliteInputs: List[Sym[Any]] = _
+  var deliteKernel: Boolean = false
+  var deliteResult: Option[Sym[Any]] = None
+  var deliteInputs: List[Sym[Any]] = Nil
 
   // TODO: move to lms?
   def rebind(sym: Sym[Any], rhs: Def[Any]) = createDefinition(sym, rhs).rhs

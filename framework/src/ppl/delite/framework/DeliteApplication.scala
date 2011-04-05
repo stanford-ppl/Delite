@@ -62,6 +62,11 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     deliteGenerator.emitSource(main_m, "Application", stream)
   }
 
+  final def generateScalaSource(name: String, stream: PrintWriter) = {
+    val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}
+    codegen.emitSource(main_m, name, stream)
+  }
+  
   final def execute(args: Array[String]) {
     println("Delite Application Being Executed:[" + this.getClass.getSimpleName + "]")
     val main_m = {x: Rep[Array[String]] => this.args = x; liftedMain()}
