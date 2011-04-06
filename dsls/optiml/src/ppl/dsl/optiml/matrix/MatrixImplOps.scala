@@ -199,12 +199,10 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   def matrix_inverse_impl[A](m: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]] = {
     //m.chkEquals(m.numCols, m.numRows)
 
-    var tmpMat = m.cloneL
-
     // augment the Matrix with the identity Matrix of the same size
     val id = Matrix.identity(m.numCols)
-    val augMat = tmpMat.toDouble
-    augMat.insertAllCols(tmpMat.numCols, id)
+    val augMat = m.toDouble.mutable
+    augMat.insertAllCols(augMat.numCols, id)
 //    try{
       // perform row reductions
       val redMat = matrix_rreduce(augMat)

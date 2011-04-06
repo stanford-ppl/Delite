@@ -15,15 +15,12 @@ import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml.{OptiMLApplication, OptiML}
 
-trait SVMModels { this: OptiMLApplication =>
+trait SVMModel { this: OptiMLApplication =>
 
-  class SVMModel { // do we need a class?
-
-    // model data
-    // TODO: NPE here from IR being null until the constructor is finished and...
-    //private var weights: Var[Vector[Double]] = null
-    //private var b: Var[Double] = null
-
+  // model data
+  // TODO: NPE here from IR being null until the constructor is finished and...
+  //private var weights: Var[Vector[Double]] = null
+  //private var b: Var[Double] = null
 
   // construct directly from model
   def load(modelFilename: Rep[String]) = {
@@ -39,7 +36,8 @@ trait SVMModels { this: OptiMLApplication =>
   def train(X: Rep[TrainingSet[Double,Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
     println("Training SVM using the SMO algorithm")
 
-    val Y = X.labels
+    // adjust the classification labels to -1 and +1 for SMO
+    val Y = X.labels map { e => if (e == 0) -1. else 1. }
 
     // internal model storage
     val weights = Vector.zeros(X.numCols).mutable
@@ -177,6 +175,5 @@ trait SVMModels { this: OptiMLApplication =>
     val out = weights.cloneL
     out += b
     MLOutputWriter.writeVector(out, filename)
-  }
   }
 }

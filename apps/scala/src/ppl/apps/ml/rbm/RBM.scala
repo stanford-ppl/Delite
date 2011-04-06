@@ -38,14 +38,13 @@ trait RBM extends OptiMLApplication {
     val numbatches = trainingdata.numRows / numcases
 
     // Initialize symmetric weights and biases
-    val vishid = Matrix.randnf(numdims, numHiddenUnits).mutable //* 0.1f
-    vishid mmap { _ * 0.1f }
+    val vishid = (Matrix.randnf(numdims, numHiddenUnits) * 0.1f).mutable
     val hidbiases = Vector.zerosf(numHiddenUnits).mutable
     val visbiases = Vector.zerosf(numdims).mutable
 
-    val vishidinc = Matrix.zerosf(numdims, numHiddenUnits).mutable
-    val hidbiasinc = Vector.zerosf(numHiddenUnits).mutable
-    val visbiasinc = Vector.zerosf(numdims).mutable
+    var vishidinc = Matrix.zerosf(numdims, numHiddenUnits)
+    var hidbiasinc = Vector.zerosf(numHiddenUnits)
+    var visbiasinc = Vector.zerosf(numdims)
 
     tic()
     var epoch = 0
@@ -56,18 +55,14 @@ trait RBM extends OptiMLApplication {
         //println("Epoch: " + epoch + ", Batch: " + batch)
 
         // Positive phase
-        //PerformanceTimer.start("RBM-posphase", false)
         val data = trainingdata.sliceRows(batch * numcases, (batch + 1) * numcases) // data: numcases x numdims
         val poshidprobs = (data * vishid + hidbiases.replicate(numcases, 1)).sigmoidf
         val posprods = data.t * poshidprobs
         val poshidact = poshidprobs.sumCol
         val posvisact = data.sumCol
         val poshidstates = (poshidprobs :> Matrix.randf(numcases, numHiddenUnits))
-        //val poshidstates = (poshidprobs zip Matrix.randf(numcases, numHiddenUnits)){ (a,b) => if (a < b) 0f else 1f }
-        //PerformanceTimer.stop("RBM-posphase", false)
 
         // Negative phase
-        //PerformanceTimer.start("RBM-negphase", false)
         val negdata = (poshidstates * vishid.t + visbiases.replicate(numcases, 1)).sigmoidf
         val neghidprobs = (negdata * vishid + hidbiases.replicate(numcases, 1)).sigmoidf
         val negprods = negdata.t * neghidprobs
@@ -75,25 +70,16 @@ trait RBM extends OptiMLApplication {
         val negvisact = negdata.sumCol
         val diff = data - negdata
         errsum += (diff *:* diff).sum
-        //PerformanceTimer.stop("RBM-negphase", false)
 
         // Update weights and biases
-        //PerformanceTimer.start("RBM-biasupdates", false)
         val momentum = if (epoch > 5) finalmomentum else initialmomentum
-        vishidinc mmap { _ * momentum }
-        vishidinc += ((posprods - negprods) / numcases  - (vishid * weightcost))*epsilonw
-        visbiasinc mmap { _ * momentum }
-        visbiasinc += (posvisact - negvisact) * (epsilonvb / numcases)
-        hidbiasinc mmap { _ * momentum }
-        hidbiasinc += (poshidact - neghidact) * (epsilonhb / numcases)
-        //vishidinc = vishidinc * momentum + ((posprods - negprods) / numcases  - (vishid * weightcost))*epsilonw
-        //visbiasinc = visbiasinc * momentum + (posvisact - negvisact) * (epsilonvb / numcases)
-        //hidbiasinc = hidbiasinc * momentum + (poshidact - neghidact) * (epsilonhb / numcases)
+        vishidinc = vishidinc * momentum + ((posprods - negprods) / numcases  - (vishid * weightcost))*epsilonw
+        visbiasinc = visbiasinc * momentum + (posvisact - negvisact) * (epsilonvb / numcases)
+        hidbiasinc = hidbiasinc * momentum + (poshidact - neghidact) * (epsilonhb / numcases)
 
         vishid += vishidinc
         visbiases += visbiasinc
         hidbiases += hidbiasinc
-        //PerformanceTimer.stop("RBM-biasupdates", false)
         batch += 1
       }
       println("--> Epoch " + epoch)
@@ -102,11 +88,5 @@ trait RBM extends OptiMLApplication {
     }
     toc()
 
-    //PerformanceTimer.print("RBM-posphase")
-    //PerformanceTimer.save("RBM-posphase")
-    //PerformanceTimer.print("RBM-negphase")
-    //PerformanceTimer.save("RBM-negphase")
-    //PerformanceTimer.print("RBM-biasupdates")
-    //PerformanceTimer.save("RBM-biasupdates")
   }
 }

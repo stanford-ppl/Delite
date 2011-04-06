@@ -143,7 +143,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
       // if (x.isComputationBased) { ..
       if (x.isPure) {
         // fuse parallel initialization and foreach function
-        reflectWrite(x)(StreamInitAndForeachRow(in, v, x, i, block))   // parallel
+        reflectEffect(StreamInitAndForeachRow(in, v, x, i, block))   // parallel
       }
       else {
         val init = stream_init_chunk(x, i)  // sequential

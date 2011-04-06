@@ -39,8 +39,7 @@ trait OptiMLSuite extends Suite with OptiMLTestConfig {
     for (i <- 0 until results.length) {
       val passed = results(i).toLowerCase() == "true"
       print("  condition " + i + ": ")
-      if (passed) print("PASSED") else print("FAILED")
-      println()
+      if (passed) print("PASSED") else print("FAILED"); println()
       assert(passed)
     }
   }
@@ -48,8 +47,8 @@ trait OptiMLSuite extends Suite with OptiMLTestConfig {
   private def stageTest(app: OptiMLApplicationRunner, degName: String) = {
     print("STAGING...")
     System.setProperty("delite.deg.filename", degName)
-    val void = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
-    Console.withOut(void) {
+    val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
+    Console.withOut(screenOrVoid) {
       app.main(Array())
     }
     print("DONE"); println()
