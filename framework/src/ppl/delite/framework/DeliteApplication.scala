@@ -7,6 +7,7 @@ import codegen.scala.TargetScala
 import codegen.Target
 import externlib.ExternLibrary
 import ops.DeliteOpsExp
+import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
 import java.io.{FileWriter, File, PrintWriter}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
@@ -40,7 +41,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     println("******Generating the program******")
 
     //clean up the code gen directory
-    Util.deleteDirectory(new File(Config.buildDir))
+    Directory(Path(Config.buildDir)).deleteRecursively()
 
     val stream =
       if (Config.degFilename == ""){
@@ -50,13 +51,23 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
         new PrintWriter(new FileWriter(Config.degFilename))
       }
 
+    def writeModules(baseDir: String) {
+      Directory(Path(baseDir)).createDirectory()
+      val writer = new FileWriter(baseDir + "modules.dm")
+      writer.write("datastructures:\n")
+      writer.write("kernels:datastructures\n")
+      writer.close()
+    }
+
     for (g <- generators) {
-      g.emitDataStructures()
-      g.generatorInit(Config.buildDir + java.io.File.separator + g.toString + java.io.File.separator)
+      val baseDir = Config.buildDir + File.separator + g.toString + File.separator
+      writeModules(baseDir)
+      g.emitDataStructures(baseDir + "datastructures" + File.separator)
+      g.generatorInit(baseDir + "kernels" + File.separator)
     }
 
     //Emit and Compile external library (MKL BLAS)
-    ExternLibrary.init
+    ExternLibrary.init()
     
     if (Config.degFilename.endsWith(".deg")) {
       val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))

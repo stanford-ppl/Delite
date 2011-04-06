@@ -27,7 +27,7 @@ object Config {
 
   val deliteHome: String = System.getProperty("delite.home", System.getProperty("user.dir"))
 
-  val codeCacheHome: String = System.getProperty("delite.code.cache.home", deliteHome + java.io.File.separator + "generated" + java.io.File.separator + "cache")
+  val codeCacheHome: String = System.getProperty("delite.code.cache.home", deliteHome + java.io.File.separator + "generatedCache")
 
   /***********
     * Statistics and Metrics Section

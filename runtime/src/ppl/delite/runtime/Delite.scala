@@ -1,13 +1,12 @@
 package ppl.delite.runtime
 
-import codegen.{ScalaCompile, Compilers}
+import codegen._
 import executor._
 import graph.ops.{EOP, Arguments}
 import graph.{TestGraph, DeliteTaskGraph}
 import profiler.PerformanceTimer
 import scheduler._
-import tools.nsc.io.Directory
-import java.io.File
+import tools.nsc.io._
 
 /**
  * Author: Kevin J. Brown
@@ -31,14 +30,14 @@ object Delite {
     println(args.mkString(","))
   }
 
-  private def printConfig {
+  private def printConfig() {
     println("Delite Runtime executing with " + Config.numThreads + " CPU thread(s) and " + Config.numGPUs + " GPU(s)")
   }
 
   def main(args: Array[String]) {
     printArgs(args)
 
-    printConfig
+    printConfig()
 
     //extract application arguments
     Arguments.args = args.drop(1)
@@ -73,7 +72,7 @@ object Delite {
       //val graph = new TestGraph
 
       //load kernels & data structures
-      loadScalaSources(graph)
+      loadSources(graph)
 
       //schedule
       scheduler.schedule(graph)
@@ -96,7 +95,7 @@ object Delite {
       }
 
       if(Config.dumpStats)
-        PerformanceTimer.dumpStats
+        PerformanceTimer.dumpStats()
 
       executor.shutdown()
     }
@@ -107,14 +106,15 @@ object Delite {
   }
 
   def loadDeliteDEG(filename: String) = {
-    val file = new File(filename)
-    if(file.isFile == false) throw new RuntimeException(filename + " doesn't appear to be a valid file")
-    DeliteTaskGraph(file)
+    val deg = Path(filename)
+    if (!deg.isFile)
+      error(filename + " does not exist")
+    DeliteTaskGraph(deg.jfile)
   }
 
-  def loadScalaSources(graph: DeliteTaskGraph) {
-    val sourceFiles = new Directory(new File(graph.kernelPath + java.io.File.separator + "scala" + java.io.File.separator)).deepFiles.filter(_.extension == "scala") //obtain all files in path
-    for (file <- sourceFiles) ScalaCompile.addSourcePath(file.path)
+  def loadSources(graph: DeliteTaskGraph) {
+    ScalaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + ScalaCompile.target + File.separator).toAbsolute))
+    CudaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + CudaCompile.target + File.separator).toAbsolute))
   }
 
   //abnormal shutdown

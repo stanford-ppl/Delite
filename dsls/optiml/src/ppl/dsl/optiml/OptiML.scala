@@ -19,8 +19,6 @@ import ppl.dsl.optiml.graph._
 import ppl.dsl.optiml.library.cluster._
 
 
-
-
 /**
  * These separate OptiML applications from the Exp world.
  */
@@ -141,23 +139,23 @@ trait OptiMLCodeGenBase extends GenericFatCodegen {
   def genSpec(f: File, outPath: String) = {}
   def genSpec2(f: File, outPath: String) = {}
 
-  override def emitDataStructures() {
-    val dsRoot = Config.homeDir + "/dsls/optiml/src/ppl/dsl/optiml/datastruct/" + this.toString
-    val dsOut = Config.buildDir + "/" + this.toString + "/"
+  override def emitDataStructures(path: String) {
+    val s = File.separator
+    val dsRoot = Config.homeDir + s+"dsls"+s+"optiml"+s+"src"+s+"ppl"+s+"dsl"+s+"optiml"+s+"datastruct"+s + this.toString
 
     val dsDir = new File(dsRoot)
     if (!dsDir.exists) return
-    val outDir = new File(dsOut)
+    val outDir = new File(path)
     outDir.mkdirs()
 
     for (f <- dsDir.listFiles) {
-      if (specialize contains (f.getName().substring(0, f.getName().indexOf(".")))) {
-        genSpec(f, dsOut)
+      if (specialize contains (f.getName.substring(0, f.getName.indexOf(".")))) {
+        genSpec(f, path)
       }
-      if (specialize2 contains (f.getName().substring(0, f.getName().indexOf(".")))) {
-        genSpec2(f, dsOut)
+      if (specialize2 contains (f.getName.substring(0, f.getName.indexOf(".")))) {
+        genSpec2(f, path)
       }
-      val outFile = dsOut + "/" + f.getName()
+      val outFile = path + f.getName
       val out = new BufferedWriter(new FileWriter(outFile))
       for (line <- scala.io.Source.fromFile(f).getLines) {
         out.write(dsmap(line) + "\n")
@@ -185,7 +183,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
-      val outFile = dsOut + "/" + s + f.getName()
+      val outFile = dsOut + s + f.getName
       val out = new BufferedWriter(new FileWriter(outFile))
       for (line <- scala.io.Source.fromFile(f).getLines) {
         out.write(specmap(line, s) + "\n")
@@ -197,7 +195,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   override def genSpec2(f: File, dsOut: String) {
     for (s1 <- List("Double","Int","Float","Long","Boolean")) {
    	  for (s2 <- List("Double","Int","Float","Long","Boolean")) {
-        val outFile = dsOut + "/" + s1 + s2 + f.getName()
+        val outFile = dsOut + s1 + s2 + f.getName
         val out = new BufferedWriter(new FileWriter(outFile))
         for (line <- scala.io.Source.fromFile(f).getLines) {
           out.write(specmap2(line, s1, s2) + "\n")

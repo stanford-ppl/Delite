@@ -2,7 +2,7 @@ package ppl.delite.framework.codegen.delite.generators
 
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 import ppl.delite.framework.ops.{VariantsOpsExp, DeliteOpsExp}
-import ppl.delite.framework.{Util, Config}
+import ppl.delite.framework.Config
 import collection.mutable.{ArrayBuffer, ListBuffer, HashMap}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
 import scala.virtualization.lms.common.LoopFusionOpt
@@ -79,7 +79,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     deliteResult = Some(sym) //findDefinition(rhs) map { _.sym }
 
     if (!skipEmission) for (gen <- generators) {
-      val buildPath = Config.buildDir + java.io.File.separator + gen + java.io.File.separator
+      val sep = java.io.File.separator
+      val buildPath = Config.buildDir + sep + gen + sep + "kernels" + sep
       val outDir = new File(buildPath); outDir.mkdirs()
       val outFile = new File(buildPath + kernelName + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(outFile)

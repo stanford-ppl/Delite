@@ -1,8 +1,9 @@
 package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
-import java.io.{FileWriter, FileOutputStream, File}
+import java.io.File
 import ppl.delite.runtime.Config
+import tools.nsc.io.{Directory, Path}
 
 /**
  * Author: Kevin J. Brown
@@ -13,28 +14,32 @@ import ppl.delite.runtime.Config
  * Stanford University
  */
 
-object CudaCompile {
+object CudaCompile extends CodeCache {
 
   private val sourceBuffer = new ArrayBuffer[String]
+
+  def target = "cuda"
+
+  override def ext = "cu"
 
   def addSource(source: String) {
     sourceBuffer += source
   }
 
-  def compile(path: String) {
+  def compile() {
     if (sourceBuffer.length == 0) return
-    val source = sourceBuffer(0)
-    sourceBuffer.clear
-    compile(source, path)
+    cacheRuntimeSources(sourceBuffer.toArray)
+    sourceBuffer.clear()
+
+    val paths = modules.map(m => Path(sourceCacheHome + m.name).path).toArray
+    compile(cacheHome + "bin" + File.separator + "runtime", sourceCacheHome + "runtime" + File.separator + "source0.cu", paths)
   }
 
-  //TODO: handle more than one source
-  def compile(source: String, path: String) {
-    val sep = java.io.File.separator
-    val write = new FileWriter(path + sep + "cuda" + sep + "cudaHost.cu")
-    write.write(source)
-    write.close
+  //TODO: handle more than one runtime object
+  def compile(destination: String, source: String, paths: Array[String]) {
+    Directory(Path(destination)).createDirectory()
 
+    val sep = File.separator
     //figure out where the jni header files are for this machine
     val javaHome = System.getProperty("java.home")
     val os = System.getProperty("os.name")
@@ -49,7 +54,8 @@ object CudaCompile {
     val process = Runtime.getRuntime.exec(Array[String](
       "nvcc",
       "-w", //suppress warnings
-      "-I" + javaHome + sep + ".." + sep + "include", "-I" + javaHome + sep + ".." + sep + "include" + sep + suffix, //jni
+      "-I" + javaHome + sep + ".." + sep + "include" + "," + javaHome + sep + ".." + sep + "include" + sep + suffix, //jni
+      "-I" + paths.mkString(","),
       "-I" + deliteHome + sep + "runtime" + sep + "cuda",
       "-O2", //optimized
       "-arch", "compute_20",
@@ -57,22 +63,27 @@ object CudaCompile {
       "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
       "-lcublas", //cublas library
       "-o", "cudaHost.so", //output name
-      "cudaHost.cu" //input name
-      ), null, new File(path + sep + "cuda"))
+      source //input name
+      ), null, new File(destination))
 
     process.waitFor //wait for compilation to complete
-    val first = process.getErrorStream.read
-    if (first != -1) { //compilation failed
-      val errorBuffer = new Array[Byte](1000)
-      val num = process.getErrorStream.read(errorBuffer)
-      print(first.asInstanceOf[Char])
-      for (i <- 0 until num) print(errorBuffer(i).asInstanceOf[Char])
+    checkError(process)
+  }
+
+  private def checkError(process: Process) {
+    val errorStream = process.getErrorStream
+    var err = errorStream.read()
+    if (err != -1) {
+      while (err != -1) {
+        print(err.asInstanceOf[Char])
+        err = errorStream.read()
+      }
       println()
       error("nvcc compilation failed")
     }
   }
 
-  def printSources {
+  def printSources() {
     for (i <- 0 until sourceBuffer.length) {
       print(sourceBuffer(i))
       print("\n /*********/ \n \n")
