@@ -463,8 +463,11 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     )
   }
 
-  case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]]) 
-    extends DeliteOpVectorLoop[A] {
+  abstract case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
+    extends DeliteOpVectorLoopMA[A]
+
+  class VectorPlusFresh[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
+    extends VectorPlus(inA, inB) {
 
     val size = inA.length
     val isRow = inA.isRow
@@ -655,7 +658,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
 
   def getMinValue[A:Manifest]: Exp[A] = manifest[A] match { // TODO: move somewhere else (Arith? Ordering?)
-    case Manifest.Double => unit(scala.Double.MinValue).asInstanceOf[Exp[A]]
+    case Manifest.Double => unit(scala.Double.MinNegativeValue).asInstanceOf[Exp[A]]
     case Manifest.Int => unit(scala.Int.MinValue).asInstanceOf[Exp[A]]
   }
 
@@ -881,6 +884,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     case VectorLength(x) => vector_length(f(x))
     case VectorIsRow(x) => vector_isRow(f(x))
     // FIXME: VectorSum might not actually be triggered <-- still true??
+    case e@VectorPlus(x,y) => toAtom(new VectorPlus(f(x),f(y))(e.mev,e.aev) {
+      val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
     case e@VectorMinus(x,y) => toAtom(new VectorMinus(f(x),f(y))(e.mev,e.aev) { 
       val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
     case e@VectorTimes(x,y) => toAtom(new VectorTimes(f(x),f(y))(e.mev,e.aev) { 
@@ -963,7 +968,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_trim[A:Manifest](x: Exp[Vector[A]]) = reflectWrite(x)(VectorTrim(x))
   def vector_clear[A:Manifest](x: Exp[Vector[A]]) = reflectWrite(x)(VectorClear(x))
 
-  def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(VectorPlus(x,y))
+  def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(new VectorPlusFresh(x,y))
   def vector_plus_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = reflectPure(VectorPlusScalar(x,y))
   def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectWrite(x)(VectorPlusEquals(x,y))
   def vector_minus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(new VectorMinusFresh(x,y))

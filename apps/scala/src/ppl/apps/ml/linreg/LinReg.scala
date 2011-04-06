@@ -1,7 +1,6 @@
 /* locally weighted linear regression
  *
  * author:  Arvind Sujeeth (asujeeth@stanford.edu)
- * created: 1/2/12
  *
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
@@ -21,41 +20,41 @@ trait LinReg extends OptiMLApplication {
   // input: input training vector x
   //        output training vector y
   // output: predictions along uniformly sampled points
-  def unweightedReg(x: Rep[Vector[Double]], y: Rep[Vector[Double]]) : Rep[Vector[Double]] =
+  def unweightedReg(x: Rep[Vector[Double]], y: Rep[Vector[Double]]): Rep[Vector[Double]] =
   {
     // by convention, x_0 = 1
-    val X = Matrix(Vector.ones(x.length).mt, x)
+    val X = Matrix(Vector.ones(x.length).t, x)
 
     // theta = inv(X.'X)*(X.'*y) (if y is a col vector)
     val theta = ((X.t*X).inv)*(X.t*y)
 
     // the resulting fitted line is given by the equation
     //   h(x) = theta_0 + theta_1*x_1 + ...
-    return theta
+    theta
   }
 
-  def weightedReg(x: Rep[Vector[Double]], y: Rep[Vector[Double]]) : Rep[Vector[Double]] = {
+  def weightedReg(x: Rep[Vector[Double]], y: Rep[Vector[Double]]): Rep[Vector[Double]] = {
     val tau = 10
-    val X = Matrix(Vector.ones(x.length), x)
+    val X = Matrix(Vector.ones(x.length).t, x)
 
     // initialize prediction points
     val xstep = 25.0/X.numRows
     val xref_pts = Vector.uniform(-10, xstep, 14.99).t
-    val xref = Matrix(Vector.ones(xref_pts.length).mt, xref_pts)
+    val xref = Matrix(Vector.ones(xref_pts.length).t, xref_pts)
     //val O = Matrix.identity(X.numRows)
     val Xt = X.t
 
     // calculate predictions
-    val guess = (0::xref.numRows)( e => {
+    val guess = (0::xref.numRows){ e =>
       val x_cur = xref(e,1)
       val weights = x.map(ele => Math.exp(-.1*(x_cur-ele)*(x_cur-ele)/(2.0*tau*tau))/2.0)
       val W = Matrix.diag(weights.length, weights)
       val t1 = Xt*W
       val theta = ((t1*X).inv)*(t1*y)
       (theta.t) *:* (xref(e).t)
-    })
+    }
 
-    return guess
+    guess
   }
 
   // file format is m lines with n floats per line, each float seperated by 2 spaces
@@ -68,8 +67,8 @@ trait LinReg extends OptiMLApplication {
   def main() = {
     if (args.length < 2) print_usage
 
-    val x = readVector(args(0)).mt
-    val y = readVector(args(1)).mt
+    val x = readVector(args(0)).t
+    val y = readVector(args(1)).t
 
 //    logElapsed("Input Section Complete")
 

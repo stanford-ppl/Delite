@@ -36,7 +36,7 @@ trait ArithOps extends Variables with OverloadHack {
     (implicit mA: Manifest[A], aA: Arith[A], mB: Manifest[B], aB: Arith[B], c: Rep[A] => Rep[B]) = new ArithOpsCls(c(a))
 
   class ArithOpsCls[T](lhs: Rep[T])(implicit mT: Manifest[T], arith: Arith[T]){
-    // TODO: if B == Rep[T] below, the ops implicit does not work unless it is called explicitly. why?
+    // TODO: if B == Rep[T] below, the ops implicit does not work unless it is called explicitly (no unambiguous resolution?)
     def +=(rhs: Rep[T]): Rep[T] = arith.+=(lhs,rhs)
     def +(rhs: Rep[T]): Rep[T] = arith.+(lhs,rhs)
     def -(rhs: Rep[T]): Rep[T] = arith.-(lhs,rhs)
