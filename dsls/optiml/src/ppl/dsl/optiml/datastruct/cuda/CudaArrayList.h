@@ -1,7 +1,7 @@
-#ifdef _CUDAARRAYLIST_H_
+#ifndef _CUDAARRAYLIST_H_
 #define _CUDAARRAYLIST_H_
 
-template<class T>
+template <class T>
 class CudaArrayList {
 public:
     T *data;
@@ -21,7 +21,7 @@ public:
     __host__ __device__ T apply(int idx) {
         return data[idx];
     }
-    __host__ __device_ void update(int idx, T newVal) {
+    __host__ __device__ void update(int idx, T newVal) {
         data[idx] = newVal;
     }
 };

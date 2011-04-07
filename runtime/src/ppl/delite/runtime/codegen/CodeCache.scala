@@ -19,6 +19,7 @@ trait CodeCache {
 
   protected val cacheHome = Config.codeCacheHome + File.separator + target + File.separator
   protected val sourceCacheHome = cacheHome + "src" + File.separator
+  val binCacheHome = cacheHome + "bin" + File.separator + "runtime"
   protected var modules = List.empty[Module]
 
   def cacheDegSources(directory: Directory) {
