@@ -4,7 +4,6 @@ import generators.{DeliteGenTaskGraph}
 import java.io.PrintWriter
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 import scala.virtualization.lms.internal._
-import scala.virtualization.lms.internal.Config._
 import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
