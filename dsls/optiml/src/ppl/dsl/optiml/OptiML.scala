@@ -260,149 +260,100 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
   val IR: DeliteApplication with OptiMLExp
   import IR._
 
+
   // Maps the scala type to cuda type
-  override def remap[A](m: Manifest[A]) : String = m.toString match {
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Int]" => "Matrix<int>"
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Long]" => "Matrix<long>"
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Float]" => "Matrix<float>"
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => "Matrix<double>"
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Boolean]" => "Matrix<bool>"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => "Vector<int>"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Long]" => "Vector<long>"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => "Vector<float>"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
-    case "ppl.dsl.optiml.datastruct.scala.RangeVector" => "RangeVector"
-    case "ppl.dsl.optiml.datastruct.scala.IndexVector" => "IndexVector"
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Int]" => "Labels<int>"
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Long]" => "Labels<long>"
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Float]" => "Labels<float>"
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Double]" => "Labels<double>"
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => "Labels<bool>"
-    case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => "TrainingSet<double,double>"
-    case _ => super.remap(m)
+  override def remap[A](m: Manifest[A]) : String = {
+    m.toString match {
+      case "ppl.dsl.optiml.datastruct.scala.Matrix[Int]" => "Matrix<int>"
+      case "ppl.dsl.optiml.datastruct.scala.Matrix[Long]" => "Matrix<long>"
+      case "ppl.dsl.optiml.datastruct.scala.Matrix[Float]" => "Matrix<float>"
+      case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => "Matrix<double>"
+      case "ppl.dsl.optiml.datastruct.scala.Matrix[Boolean]" => "Matrix<bool>"
+      case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => "Vector<int>"
+      case "ppl.dsl.optiml.datastruct.scala.Vector[Long]" => "Vector<long>"
+      case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => "Vector<float>"
+      case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
+      case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
+      case "ppl.dsl.optiml.datastruct.scala.RangeVector" => "RangeVector"
+      case "ppl.dsl.optiml.datastruct.scala.IndexVector" => "IndexVector"
+      case "ppl.dsl.optiml.datastruct.scala.Labels[Int]" => "Labels<int>"
+      case "ppl.dsl.optiml.datastruct.scala.Labels[Long]" => "Labels<long>"
+      case "ppl.dsl.optiml.datastruct.scala.Labels[Float]" => "Labels<float>"
+      case "ppl.dsl.optiml.datastruct.scala.Labels[Double]" => "Labels<double>"
+      case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => "Labels<bool>"
+      case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => "TrainingSet<double,double>"
+      case _ => super.remap(m)
+    }
   }
 
-  override def isObjectType[T](m: Manifest[T]) : Boolean = remap(m) match {
-    case "Matrix<int>" => true
-    case "Matrix<long>" => true
-    case "Matrix<float>" => true
-    case "Matrix<double>" => true
-    case "Matrix<bool>" => true
-    case "Vector<int>" => true
-    case "Vector<long>" => true
-    case "Vector<float>" => true
-    case "Vector<double>" => true
-    case "Vector<bool>" => true
-    case "RangeVector" => true
-    case "IndexVector" => true
-    case "Labels<int>" => true
-    case "Labels<long>" => true
-    case "Labels<float>" => true
-    case "Labels<double>" => true
-    case "Labels<bool>" => true
-    case "TrainingSet<double,double>" => true
+  override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Int]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Long]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Float]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Matrix[Boolean]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Long]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => true
+    case "ppl.dsl.optiml.datastruct.scala.RangeVector" => true
+    case "ppl.dsl.optiml.datastruct.scala.IndexVector" => true
+    case "ppl.dsl.optiml.datastruct.scala.Labels[Int]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Labels[Long]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Labels[Float]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Labels[Double]" => true
+    case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => true
+    case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => true
     case _ => super.isObjectType(m)
   }
 
-  override def copyDataStructureHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Matrix<int>" => matrixCopyHtoD(sym)
-    case "Matrix<long>" => matrixCopyHtoD(sym)
-    case "Matrix<float>" => matrixCopyHtoD(sym)
-    case "Matrix<double>" => matrixCopyHtoD(sym)
-    case "Matrix<bool>" => matrixCopyHtoD(sym)
-    case "Vector<int>" => vectorCopyHtoD(sym)
-    case "Vector<long>" => vectorCopyHtoD(sym)
-    case "Vector<float>" => vectorCopyHtoD(sym)
-    case "Vector<double>" => vectorCopyHtoD(sym)
-    case "Vector<bool>" => vectorCopyHtoD(sym)
-    case "RangeVector" => rangeVectorCopyHtoD(sym)
-    case "IndexVector" => indexVectorCopyHtoD(sym)
-    case "Labels<int>" => labelsCopyHtoD(sym)
-    case "Labels<long>" => labelsCopyHtoD(sym)
-    case "Labels<float>" => labelsCopyHtoD(sym)
-    case "Labels<double>" => labelsCopyHtoD(sym)
-    case "Labels<bool>" => labelsCopyHtoD(sym)
-    case "TrainingSet<double,double>" => trainingSetCopyHtoD(sym)
-    case _ => super.copyDataStructureHtoD(sym)
+  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
+    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => matrixCopyInputHtoD(sym)
+    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorCopyInputHtoD(sym)
+    case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => labelsCopyInputHtoD(sym)
+    case "RangeVector" => rangeVectorCopyInputHtoD(sym)
+    case "IndexVector" => indexVectorCopyInputHtoD(sym)
+    case "TrainingSet<double,double>" => trainingSetCopyInputHtoD(sym)
+    case _ => super.copyInputHtoD(sym)
   }
 
-  override def copyDataStructureDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Matrix<int>" => matrixCopyDtoH(sym)
-    case "Matrix<long>" => matrixCopyDtoH(sym)
-    case "Matrix<float>" => matrixCopyDtoH(sym)
-    case "Matrix<double>" => matrixCopyDtoH(sym)
-    case "Matrix<bool>" => matrixCopyDtoH(sym)
-    case "Vector<int>" => vectorCopyDtoH(sym)
-    case "Vector<long>" => vectorCopyDtoH(sym)
-    case "Vector<float>" => vectorCopyDtoH(sym)
-    case "Vector<double>" => vectorCopyDtoH(sym)
-    case "Vector<bool>" => vectorCopyDtoH(sym)
-    case _ => super.copyDataStructureDtoH(sym)
+  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => matrixCopyOutputDtoH(sym)
+    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorCopyOutputDtoH(sym)
+    case _ => super.copyOutputDtoH(sym)
   }
 
-  override def copyDataStructureDtoHBack(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Matrix<int>" => matrixCopyDtoHBack(sym)
-    case "Matrix<long>" => matrixCopyDtoHBack(sym)
-    case "Matrix<float>" => matrixCopyDtoHBack(sym)
-    case "Matrix<double>" => matrixCopyDtoHBack(sym)
-    case "Matrix<bool>" => matrixCopyDtoHBack(sym)
-    case "Vector<int>" => vectorCopyDtoHBack(sym)
-    case "Vector<long>" => vectorCopyDtoHBack(sym)
-    case "Vector<float>" => vectorCopyDtoHBack(sym)
-    case "Vector<double>" => vectorCopyDtoHBack(sym)
-    case "Vector<bool>" => vectorCopyDtoHBack(sym)
-    case "RangeVector" => rangeVectorCopyDtoHBack(sym)
-    case "IndexVector" => indexVectorCopyDtoHBack(sym)
-    case "Labels<int>" => labelsCopyDtoHBack(sym)
-    case "Labels<long>" => labelsCopyDtoHBack(sym)
-    case "Labels<float>" => labelsCopyDtoHBack(sym)
-    case "Labels<double>" => labelsCopyDtoHBack(sym)
-    case "Labels<bool>" => labelsCopyDtoHBack(sym)
-    case "TrainingSet<double,double>" => trainingSetCopyDtoHBack(sym)
-    case _ => super.copyDataStructureDtoHBack(sym)
+  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => matrixCopyMutableInputDtoH(sym)
+    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorCopyMutableInputDtoH(sym)
+    case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => labelsCopyMutableInputDtoH(sym)
+    case "RangeVector" => rangeVectorCopyMutableInputDtoH(sym)
+    case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
+    case "TrainingSet<double,double>" => trainingSetCopyMutableInputDtoH(sym)
+    case _ => super.copyMutableInputDtoH(sym)
   }
 
+  /*
   override def allocOutput(newSym: Sym[_], sym: Sym[_], reset: Boolean = false) : Unit = remap(newSym.Type) match {
-    case "Matrix<int>" => emitMatrixAllocSym(newSym,sym,reset)
-    case "Matrix<long>" => emitMatrixAllocSym(newSym,sym,reset)
-    case "Matrix<float>" => emitMatrixAllocSym(newSym,sym,reset)
-    case "Matrix<double>" => emitMatrixAllocSym(newSym,sym,reset)
-    case "Matrix<bool>" => emitMatrixAllocSym(newSym,sym,reset)
-    case "Vector<int>" => emitVectorAllocSym(newSym,sym,reset)
-    case "Vector<long>" => emitVectorAllocSym(newSym,sym,reset)
-    case "Vector<float>" => emitVectorAllocSym(newSym,sym,reset)
-    case "Vector<double>" => emitVectorAllocSym(newSym,sym,reset)
-    case "Vector<bool>" => emitVectorAllocSym(newSym,sym,reset)
+    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => emitMatrixAllocSym(newSym,sym,reset)
+    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => emitVectorAllocSym(newSym,sym,reset)
     case _ => super.allocOutput(newSym,sym,reset)
   }
+  */
 
+  /*
   override def allocReference(newSym: Sym[Any], sym: Sym[Any]) : Unit = remap(newSym.Type) match {
-    case "Matrix<int>" => emitMatrixAllocRef(newSym,sym)
-    case "Matrix<long>" => emitMatrixAllocRef(newSym,sym)
-    case "Matrix<float>" => emitMatrixAllocRef(newSym,sym)
-    case "Matrix<double>" => emitMatrixAllocRef(newSym,sym)
-    case "Matrix<bool>" => emitMatrixAllocRef(newSym,sym)
-    case "Vector<int>" => emitVectorAllocRef(newSym,sym)
-    case "Vector<long>" => emitVectorAllocRef(newSym,sym)
-    case "Vector<float>" => emitVectorAllocRef(newSym,sym)
-    case "Vector<double>" => emitVectorAllocRef(newSym,sym)
-    case "Vector<bool>" => emitVectorAllocRef(newSym,sym)
-    case "Labels<int>" => emitVectorAllocRef(newSym,sym)
-    case "Labels<long>" => emitVectorAllocRef(newSym,sym)
-    case "Labels<float>" => emitVectorAllocRef(newSym,sym)
-    case "Labels<double>" => emitVectorAllocRef(newSym,sym)
-    case "Labels<bool>" => emitVectorAllocRef(newSym,sym)
+    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => emitMatrixAllocRef(newSym,sym)
+    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => emitVectorAllocRef(newSym,sym)
+    case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => emitVectorAllocRef(newSym,sym)
     case _ => super.allocReference(newSym,sym)
   }
+   */
 
   override def positionMultDimInputs(sym: Sym[Any]) : String = remap(sym.Type) match {
-	//TODO: Add matrix reposition, and also do safety check for datastructures that do not have data field
-    case "Vector<int>" => vectorPositionMultDimInputs(sym)
-    case "Vector<long>" => vectorPositionMultDimInputs(sym)
-    case "Vector<float>" => vectorPositionMultDimInputs(sym)
-    case "Vector<double>" => vectorPositionMultDimInputs(sym)
-    case "Vector<bool>" => vectorPositionMultDimInputs(sym)
+    //TODO: Add matrix reposition, and also do safety check for datastructures that do not have data field
+    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorPositionMultDimInputs(sym)
     case _ => super.positionMultDimInputs(sym)
   }
 

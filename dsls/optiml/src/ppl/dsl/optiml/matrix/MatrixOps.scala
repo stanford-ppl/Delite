@@ -883,7 +883,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
-	  /* CUBLAS calls */
+    /* CUBLAS calls */
     case MatrixMultiply(x,y) =>
       val callStream = "cublasSetKernelStream(stream);"
       val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
@@ -906,11 +906,11 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       emitVectorAlloc(sym,"%s->numRows".format(quote(x)),"false",false)
       emitLibCall(sym,List(callStream,callKernel))
 
-	  // The ops that call through to the underlying real data structure
+    /* The ops that call through to the underlying data structure */
     case MatrixDCApply(x,i) =>
       emitValDef(sym, "%s.apply(%s)".format(quote(x),quote(i)))
-    //case MatrixApply(x,i,j) =>
-    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
+    case MatrixApply(x,i,j) =>
+      emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
     case MatrixUpdate(x,i,j,y)  =>
       stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
     case MatrixNumRows(x)  =>
@@ -918,7 +918,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
     case MatrixNumCols(x)  =>
       emitValDef(sym, quote(x) + ".numCols")
 
-    /* Specialized CUDA code generations */
+    /* Specialized CUDA code generations for DeliteOpSingleTasks */
     case MatrixUpdateRow(x, row, y) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -929,15 +929,6 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       tabWidth -= 1
       stream.println(addTab()+"}")
       currDim -= 1
-
-    case MatrixGetRow(x,i) =>
-      if(kernelSymbol != sym) {
-        //stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
-        stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
-        stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
-        stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
-		emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true",false,"%s->data".format(quote(x)))
-      }
 
     case MatrixObjectDiag(w, vals) =>
       currDim += 1
@@ -996,18 +987,19 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       setCurrDimLength("%s->size()".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
       tabWidth += 1
-	    val (sigmoidFunc,freeVars) = emitDevFunc(m.func,List(m.v))
+      val (sigmoidFunc,freeVars) = emitDevFunc(m.func,List(m.v))
       stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
       stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
-	    if(freeVars.length == 0)
+      if(freeVars.length == 0)
       	stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
-	    else
+      else
       	stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)),%s);".format(quote(sym),sigmoidFunc,quote(x),freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(x)),false)
       currDim -= 1
-    /*
+
+  /*
     case MatrixPlusEquals(x,y) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -1017,12 +1009,12 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
       tabWidth += 1
       stream.println(addTab()+"%s.update(i,%s,%s.apply(i,%s)+%s.apply(i,%s));".format(quote(x),currDimStr,quote(x),currDimStr,quote(y),currDimStr))
-	    tabWidth -= 1
+      tabWidth -= 1
       stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
       currDim -= 1
-    */
+
     case MatrixPlusEquals(x,y) if(useLocalVar) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -1033,6 +1025,16 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
                  else "NOT FOUND Y"
       stream.println(addTab()+"%s = %s + %s;".format(varX,varX,varY))
       currDim -= 1
+
+    case MatrixGetRow(x,i) =>
+      if(kernelSymbol != sym) {
+        //stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
+        stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
+        stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
+        stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
+		    emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true",false,"%s->data".format(quote(x)))
+      }
+      */
 
     case _ => super.emitNode(sym, rhs)
   }

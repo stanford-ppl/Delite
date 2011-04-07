@@ -901,21 +901,41 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
 
 trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
   import IR._
-  
+
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
-      println("TODO: implement emitFatNode in CudaGenDeliteOps")
-      throw new GenerationFailedException("TODO: implement emitFatNode in CudaGenDeliteOps")
+      if(symList.length != 1) throw new GenerationFailedException("CudaGen: Only 1 output is supported for FatLoop (No fusing yet).")
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength(quote(op.v)+"->size()")
+      stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(op.v)+".size()"))
+      tabWidth += 1
+      (symList zip op.body) foreach {
+        case (sym, elem:DeliteCollectElem[_,_]) =>
+          emitAllocFunc(sym,elem.alloc)
+          val (loopFunc,freeVars) = emitDevFunc(elem.func, List(op.v))
+          if(freeVars.length==0)
+            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s)));".format(quote(sym),currDimStr,loopFunc,quote(op.v),currDimStr))
+          else
+            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),currDimStr,loopFunc,quote(op.v),currDimStr,freeVars.map(quote).mkString(",")))
+        case _ =>
+          throw new GenerationFailedException("CudaGen: DeliteReduceElem is not supported yet.")
+      }
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      currDim -= 1
+      deliteKernel = true
+
     case _ => super.emitFatNode(symList, rhs)
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case s:DeliteOpSingleTask[_] => throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable.")
+    case s:DeliteOpSingleTask[_] => throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable." + quote(sym))
       // TODO: Generate single thread version of this work
 
     case map:DeliteOpMap[_,_,_] => {
-      if(!isPrimitiveType(map.func.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for map.")
-      if(!isPrimitiveType(map.v.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for map.")
+      if(!isPrimitiveType(map.func.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for map.")
+      if(!isPrimitiveType(map.v.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for map.")
       currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength(quote(map.in)+"->size()")
@@ -928,17 +948,15 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),currDimStr,mapFunc,quote(map.in),currDimStr,freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
-	    if(map.in!=map.alloc)
-      	allocOutput(sym,map.in.asInstanceOf[Sym[_]])
-	    else
-      	allocReference(sym,map.in.asInstanceOf[Sym[_]])
+      emitAllocFunc(sym,map.alloc)
+	    if(map.in==map.alloc) throw new GenerationFailedException("CudaGen: Mutable input is not supported yet.")
       currDim -= 1
     }
 
     case zip: DeliteOpZipWith[_,_,_,_] => {
-      if(!isPrimitiveType(zip.func.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
-      if(!isPrimitiveType(zip.v._1.Type )) new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
-      if(!isPrimitiveType(zip.v._2.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
+      if(!isPrimitiveType(zip.func.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
+      if(!isPrimitiveType(zip.v._1.Type )) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
+      if(!isPrimitiveType(zip.v._2.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
       currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength(quote(zip.inA)+"->size()")
@@ -951,17 +969,13 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),currDimStr, zipFunc, quote(zip.inA),currDimStr,quote(zip.inB),currDimStr,freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
-	    if(zip.inA==zip.alloc)
-      	allocReference(sym,zip.inA.asInstanceOf[Sym[_]])
-	    else if(zip.inB==zip.alloc)
-      	allocReference(sym,zip.inB.asInstanceOf[Sym[_]])
-	    else
-      	allocOutput(sym,zip.inA.asInstanceOf[Sym[_]])
+      emitAllocFunc(sym,zip.alloc)
+	    if((zip.inA==zip.alloc) || (zip.inB==zip.alloc)) throw new GenerationFailedException("CudaGen: Mutable input is not supported yet.")
       currDim -= 1
     }
 
     case foreach:DeliteOpForeach[_,_] => {
-      if(!isPrimitiveType(foreach.v.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for input of foreach.")
+      if(!isPrimitiveType(foreach.v.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for input of foreach.")
       currDim += 1
       setCurrDimLength(quote(foreach.in)+"->size()")
       val currDimStr = getCurrDimStr()
@@ -978,7 +992,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
     }
 
     case red: DeliteOpReduce[_] => {
-      if(!isPrimitiveType(red.func.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for reduce.")
+      if(!isPrimitiveType(red.func.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for reduce.")
       if(currDim < 1) new GenerationFailedException("CudaGen: Reduction on the 1'st dimension is not supported yet.")
       val (reducFunc,freeVars) = emitDevFunc(red.func, List(red.v._1, red.v._2))
       stream.println(addTab()+"%s reducVal = %s.apply(0);".format(remap(sym.Type),quote(red.in)))
@@ -994,8 +1008,8 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
     }
 
     case mapR:DeliteOpMapReduce[_,_,_] => {
-      //if(!isPrimitiveType(mapR.mV.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
-      //if(!isPrimitiveType(mapR.reduce.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
+      //if(!isPrimitiveType(mapR.mV.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
+      //if(!isPrimitiveType(mapR.reduce.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
       val constrained = isPrimitiveType(mapR.mV.Type) && isPrimitiveType(mapR.reduce.Type)
       if(constrained) {
         stream.println(addTab()+"%s %s = %s.apply(0);".format(remap(mapR.mV.Type),quote(mapR.mV),quote(mapR.in)))

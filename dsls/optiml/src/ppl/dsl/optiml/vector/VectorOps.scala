@@ -1178,6 +1178,13 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
+    // Only allow allocating primitive type Vectors
+    case VectorNew(length, isRow) => {
+      stream.println(addTab()+"%s *devPtr;".format(remap(sym.Type.typeArguments(0))))
+      stream.println(addTab()+"DeliteCudaMalloc((void**)&devPtr,%s*sizeof(%s));".format(quote(length),remap(sym.Type.typeArguments(0))))
+      stream.println(addTab()+"%s *%s = new %s(%s,%s,devPtr);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(length),quote(isRow)))
+    }
+
     case VectorApply(x, n) =>
       emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case VectorUpdate(x,n,y) =>
@@ -1187,7 +1194,8 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
     case VectorIsRow(x)     =>
       emitValDef(sym, quote(x) + ".isRow")
 
-    /* Specialized CUDA code generations */
+    /* Specialized CUDA code generations for DeliteOpSingleTasks */
+    /*
     case VectorObjectRange(start, end, stride, isRow) =>
       stream.println(addTab()+"RangeVector %s;".format(quote(sym)))
       stream.println(addTab()+"%s.start = %s;".format(quote(sym),quote(start)))
@@ -1195,59 +1203,20 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
       stream.println(addTab()+"%s.stride = %s;".format(quote(sym),quote(stride)))
       stream.println(addTab()+"%s.isRow = %s;".format(quote(sym),quote(isRow)))
 
+
     case VectorObjectZeros(len) =>
         currDim += 1
         val currDimStr = getCurrDimStr()
         setCurrDimLength(quote(len))
         emitVectorAlloc(sym,"%s".format(quote(len)),"true",false) //needs to allocate with new symbol
-		//if(currDim == 2) {
-		//	stream.println(addTab()+"%s %s_save = %s.data;".format(remap(sym.Type.typeArguments(0)),quote(sym),quote(sym)))
-        //	stream.println(addTab()+"%s.data += %s*%s;".format(quote(sym),quote(len),getPrevDimStr()))
-		//}
-        stream.println(addTab()+"if(%s < %s) {".format(currDimStr,quote(len)))
-        tabWidth += 1
-        stream.println(addTab()+"%s.update(%s,0);".format(quote(sym),currDimStr))
-        tabWidth -= 1
-        stream.println(addTab()+"}")
-		//if(currDim == 2) {
-		//	stream.println(addTab()+"%s.data = %s_save;".format(quote(sym),quote(sym)))
-		//}
-        currDim -= 1
-	/*
-      if(currDim > 1)
-        throw new GenerationFailedException("CudaGen: No more than 2 dimensions are allowed for GPU kernels.")
-      else {
-        currDim += 1
-        val currDimStr = getCurrDimStr()
-		val prevDimStr = if(currDim == 2) getPrevDimStr() else "0"
-		val prevDimSize = if(currDim == 2) xDimList(0) else "1"
-        setCurrDimLength(quote(len))
-        emitVectorAlloc(sym,"%s*%s".format(quote(len),prevDimSize),"true") //needs to allocate with new symbol
-        stream.println(addTab()+"%s.length = %s;".format(quote(sym),quote(len)))
-        stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
-        stream.println(addTab()+"%s.data += %s*%s;".format(quote(sym),quote(len),prevDimStr))
         stream.println(addTab()+"if(%s < %s) {".format(currDimStr,quote(len)))
         tabWidth += 1
         stream.println(addTab()+"%s.update(%s,0);".format(quote(sym),currDimStr))
         tabWidth -= 1
         stream.println(addTab()+"}")
         currDim -= 1
-      }
-	*/
+    */
 
-      /*
-    case VectorTrans(x) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->length".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(%s,%s.apply(%s));".format(quote(sym),currDimStr,quote(x),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s->length".format(quote(x)),"!%s->isRow".format(quote(x)),false)
-      currDim -= 1
-     */
     case VectorRepmat(x,i,j) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
