@@ -1,4 +1,4 @@
-package ppl.tests.dsl.optiml
+package ppl.tests.misc
 
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication, ApplicationOps}

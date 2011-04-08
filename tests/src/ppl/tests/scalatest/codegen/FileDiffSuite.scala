@@ -1,4 +1,4 @@
-package ppl.scalatest
+package ppl.tests.scalatest.codegen
 
 import java.io.{PrintStream,File,FileInputStream,FileOutputStream,ByteArrayOutputStream}
 import org.scalatest._

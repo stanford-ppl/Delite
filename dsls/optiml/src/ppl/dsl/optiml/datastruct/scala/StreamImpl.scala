@@ -1,13 +1,12 @@
 package ppl.dsl.optiml.datastruct.scala
 
 class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: Int, val func: (Int,Int) => T, val isPure: Boolean) extends Stream[T] {
+    val bufRows = math.min(numRows, chunkSize)
+    val size = numCols*bufRows
     protected var _data: Array[T] =  try { new Array[T](size) }
                                      catch {
                                        case _ => throw new RuntimeException("Stream overflowed during initialization")
                                      }
-
-    val bufRows = math.min(numRows, chunkSize)
-    val size = numCols*bufRows
     def data = _data
 
     def initRow(row: Int, offset: Int) {

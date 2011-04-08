@@ -230,12 +230,16 @@ trait LanguageOps extends Base { this: OptiML =>
   //}
 
   /**
-   *  input parsing
+   *  i/o
    */
   def readMatrix(filename: Rep[String]) = MLInputReader.read(filename)
   def readVector(filename: Rep[String]) = MLInputReader.readVector(filename)
   def readImage(filename: Rep[String]) = MLInputReader.readGrayscaleImage(filename)
 
+  def writeMatrix[A](x: Rep[Matrix[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double])
+    = MLOutputWriter.write(x, filename)
+  def writeVector[A](x: Rep[Vector[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double])
+    = MLOutputWriter.writeVector(x, filename)
 
   /**
    * distance

@@ -1,4 +1,4 @@
-package ppl.tests
+package ppl.tests.misc
 
 import collection.mutable.ListBuffer
 import scala.virtualization.lms.common.ScalaOpsPkg

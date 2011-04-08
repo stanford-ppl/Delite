@@ -129,6 +129,11 @@ trait MatrixOps extends DSLType with Variables {
     // def countRows
   }
 
+  def __equal[A](a: Rep[Matrix[A]], b: Rep[Matrix[A]])(implicit o: Overloaded5, mA: Manifest[A]): Rep[Boolean] = matrix_equals(a,b)
+  def __equal[A](a: Rep[Matrix[A]], b: Var[Matrix[A]])(implicit o: Overloaded6, mA: Manifest[A]): Rep[Boolean] = matrix_equals(a,b)
+  def __equal[A](a: Var[Matrix[A]], b: Rep[Matrix[A]])(implicit o: Overloaded7, mA: Manifest[A]): Rep[Boolean] = matrix_equals(a,b)
+  def __equal[A](a: Var[Matrix[A]], b: Var[Matrix[A]])(implicit o: Overloaded8, mA: Manifest[A]): Rep[Boolean] = matrix_equals(a,b)
+
   // special case overrides
   def infix_:>(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]): Rep[Matrix[Float]] = x.zip(y) { (a,b) => if (a > b) unit(1f) else unit(0f) }
   def infix_:>(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded1): Rep[Matrix[Double]] = x.zip(y) { (a,b) => if (a > b) unit(1.) else unit(0.) }
@@ -164,6 +169,7 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_numrows[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
   def matrix_numcols[A:Manifest](x: Rep[Matrix[A]]): Rep[Int]
 
+  def matrix_equals[A:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Boolean]
   def matrix_transpose[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_clone[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_mutable_clone[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
@@ -295,6 +301,13 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixUpdateRow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_updaterow_impl(x,row,y)))
 
+  // this is a single task right now because of the likely early exit. should we have a delite op for this?
+  case class MatrixEquals[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_equals_impl[A](x,y)))
+
+  case class MatrixTranspose[A:Manifest](x: Exp[Matrix[A]])
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_transpose_impl(x)))
+
   case class MatrixPPrint[A:Manifest](x: Exp[Matrix[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_pprint_impl[A](x)))
 
@@ -303,9 +316,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   case class MatrixInverse[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_inverse_impl[A](x)))
-
-  case class MatrixTranspose[A:Manifest](x: Exp[Matrix[A]])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_transpose_impl(x)))
 
   case class MatrixMinRow[A:Manifest:Arith:Ordering](x: Exp[Matrix[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_minrow_impl(x)))
@@ -713,6 +723,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_removerows[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], len: Exp[Int]) = reflectWrite(x)(MatrixRemoveRows(x,pos,len))
   def matrix_removecols[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], len: Exp[Int]) = reflectWrite(x)(MatrixRemoveCols(x,pos,len))
 
+  def matrix_equals[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectPure(MatrixEquals(x,y))
   def matrix_transpose[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixTranspose(x))
   def matrix_clone[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixClone(x))
   def matrix_mutable_clone[A:Manifest](x: Exp[Matrix[A]]) = reflectMutable(MatrixClone(x))
@@ -804,6 +815,11 @@ trait MatrixOpsExpOpt extends MatrixOpsExp {
     case (Def(MatrixTimes(a, b)), Def(MatrixTimes(c, d))) if (a == c) => MatrixTimes[A](a.asInstanceOf[Exp[Matrix[A]]], MatrixPlus[A](b.asInstanceOf[Exp[Matrix[A]]],d.asInstanceOf[Exp[Matrix[A]]]))
     // ...
     case _ => super.matrix_plus(x, y)
+  }
+
+  override def matrix_equals[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {
+    case (a,b) if (a == b) => unit(true) // same symbol
+    case _ => super.matrix_equals(x,y)
   }
 
   override def matrix_times[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = (x, y) match {

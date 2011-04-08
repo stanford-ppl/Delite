@@ -147,7 +147,12 @@ trait VectorOps extends DSLType with Variables {
     def flatMap[B:Manifest](f: Rep[A] => Rep[Vector[B]]) = vector_flatmap(x,f)
     def partition(pred: Rep[A] => Rep[Boolean]) = vector_partition(x,pred)
   }
-  
+
+  def __equal[A](a: Rep[Vector[A]], b: Rep[Vector[A]])(implicit o: Overloaded1, mA: Manifest[A]): Rep[Boolean] = vector_equals(a,b)
+  def __equal[A](a: Rep[Vector[A]], b: Var[Vector[A]])(implicit o: Overloaded2, mA: Manifest[A]): Rep[Boolean] = vector_equals(a,b)
+  def __equal[A](a: Var[Vector[A]], b: Rep[Vector[A]])(implicit o: Overloaded3, mA: Manifest[A]): Rep[Boolean] = vector_equals(a,b)
+  def __equal[A](a: Var[Vector[A]], b: Var[Vector[A]])(implicit o: Overloaded4, mA: Manifest[A]): Rep[Boolean] = vector_equals(a,b)
+
 /*
   class vecOpsClsMutable[A:Manifest](vx: Var[Vector[A]]) extends vecOpsCls[A](readVar(vx)) {
     // ...
@@ -189,6 +194,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_contains[A:Manifest](x: Rep[Vector[A]], y: Rep[A]): Rep[Boolean]
   def vector_distinct[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
 
+  def vector_equals[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Boolean]
   def vector_trans[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_mutable_trans[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_clone[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
@@ -354,6 +360,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
   case class VectorOuter[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(vector_outer_impl[A](x,y)))
+
+  // this is a single task right now because of the likely early exit. should we have a delite op for this?
+  case class VectorEquals[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]])
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_equals_impl[A](x,y)))
 
   case class VectorPPrint[A](x: Exp[Vector[A]])(block: Exp[Unit]) // stupid limitation...
     extends DeliteOpSingleTask(block)
@@ -948,6 +958,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_contains[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) = reflectPure(VectorContains(x, y))
   def vector_distinct[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorDistinct(x))
 
+  def vector_equals[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(VectorEquals(x,y))
   def vector_trans[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorTrans(x))
   def vector_mutable_trans[A:Manifest](x: Exp[Vector[A]]) = reflectWrite(x)(VectorMutableTrans(x))
   def vector_clone[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorClone(x))
@@ -955,7 +966,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = reflectPure(VectorRepmat(x,i,j))
   def vector_tolist[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorToList(x))
   def vector_mkstring[A:Manifest](x: Exp[Vector[A]], sep: Exp[String]) = reflectPure(VectorMkString(x, sep))
-
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x)(reifyEffectsHere(vector_pprint_impl[A](x))))
 
   def vector_concatenate[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(VectorConcatenate(x,y))
@@ -1052,6 +1062,11 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
 trait VectorOpsExpOpt extends VectorOpsExp {
   this: VectorImplOps with OptiMLExp =>
+
+  override def vector_equals[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
+    case (a,b) if (a == b) => unit(true) // same symbol
+    case _ => super.vector_equals(x,y)
+  }
 
   override def vector_plus[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
     // (TB + TD) == T(B + D)

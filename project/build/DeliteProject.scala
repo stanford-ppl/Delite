@@ -26,7 +26,8 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   override def mainResourcesPath = "resources"
   
   //override def testScalaSourcePath = "tests" / "src"
-  override def testScalaSourcePath = "tests" / "src" / "ppl" / "scalatest"
+  // aks: appending "codegen" postfix because other scalatests are not working with sbt yet
+  override def testScalaSourcePath = "tests" / "src" / "ppl" / "tests" / "scalatest" / "codegen"
   override def testResourcesPath = "tests" / "resources"
 
   val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
@@ -40,7 +41,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     override def mainScalaSourcePath = "src"
     override def mainResourcesPath = "resources"
     
-    override def testScalaSourcePath = "tests" / "src" / "ppl" / "scalatest"
+    override def testScalaSourcePath = "tests" / "src" / "ppl" / "scalatest" / "codegen" 
     override def testResourcesPath = "tests" / "resources"
     
     val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"

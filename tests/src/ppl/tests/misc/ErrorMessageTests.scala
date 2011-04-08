@@ -1,4 +1,4 @@
-package ppl.tests
+package ppl.tests.misc
 
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication

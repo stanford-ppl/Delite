@@ -21,6 +21,7 @@ trait VectorImplOps { this: OptiML =>
   def vector_concatenate_impl[A:Manifest](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_times_matrix_impl[A:Manifest:Arith](v: Rep[Vector[A]], m: Rep[Matrix[A]]): Rep[Vector[A]]
   def vector_outer_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[Matrix[A]]
+  def vector_equals_impl[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Boolean]
   def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]): Rep[Unit]
   def vector_repmat_impl[A:Manifest](m: Rep[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
   def vector_trans_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], vA: Manifest[Vector[A]]): Rep[Vector[A]]
@@ -144,6 +145,22 @@ trait VectorImplOpsStandard extends VectorImplOps {
       }
     }
     out
+  }
+
+  def vector_equals_impl[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]) = {
+    if (x.length != y.length || x.isRow != y.isRow) {
+      false
+    }
+    else {
+      var foundDiff = false
+      var i = 0
+      while (i < x.length && !foundDiff) {
+        if (x(i) != y(i))
+          foundDiff = true
+        i += 1
+      }
+      !foundDiff
+    }
   }
 
   def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]) = {

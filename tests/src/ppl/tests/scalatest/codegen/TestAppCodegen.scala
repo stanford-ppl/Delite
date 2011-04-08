@@ -1,4 +1,4 @@
-package ppl.scalatest
+package ppl.tests.scalatest.codegen
 
 import scala.virtualization.lms.common._
 import scala.tools.nsc._

@@ -56,12 +56,14 @@ trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg with DSLOpsExp
   with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
   with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
   with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp with ObjectOpsExp
+  with ArrayBufferOpsExp
 
 trait OptiMLScalaCodeGenPkg extends ScalaGenDSLOps
   with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenFunctions
   with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
   with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenTupleOps
   with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps with ScalaGenObjectOps
+  with ScalaGenArrayBufferOps
   { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
@@ -69,12 +71,15 @@ trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with Cu
   with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
   with CudaGenPrimitiveOps with CudaGenMiscOps
   with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps with CudaGenSetOps
+  with CudaGenArrayBufferOps
   { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
   with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
   with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
-  with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps { val IR: OptiMLScalaOpsPkgExp  }
+  with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps
+  with CGenArrayBufferOps
+  { val IR: OptiMLScalaOpsPkgExp  }
 
 /**
  * This the trait that every OptiML application must extend.

@@ -25,10 +25,11 @@ trait MatrixImplOps { this: OptiMLExp =>
   def matrix_slice_impl[A:Manifest](m: Rep[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]): Rep[Matrix[A]]
   def matrix_slicerows_impl[A:Manifest](m: Rep[Matrix[A]], start: Rep[Int], end: Rep[Int]): Rep[Matrix[A]]
   def matrix_updaterow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
+  def matrix_equals_impl[A:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Boolean]
+  def matrix_transpose_impl[A:Manifest](m: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_pprint_impl[A:Manifest](m: Rep[Matrix[A]]): Rep[Unit]
   def matrix_repmat_impl[A:Manifest](m: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
   def matrix_inverse_impl[A](m: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
-  def matrix_transpose_impl[A:Manifest](m: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_minrow_impl[A:Manifest:Arith:Ordering](m: Rep[Matrix[A]]): Rep[Vector[A]]
   def matrix_maxrow_impl[A:Manifest:Arith:Ordering](m: Rep[Matrix[A]]): Rep[Vector[A]]
   //def matrix_maprows_impl[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
@@ -158,6 +159,38 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     }
   }
 
+  def matrix_equals_impl[A:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[A]]) = {
+    if (x.numRows != y.numRows || x.numCols != y.numCols) {
+      false
+    }
+    else {
+      var foundDiff = false
+      var i = 0
+      var j = 0
+      while (i < x.numRows && !foundDiff) {
+        while (j < x.numCols && !foundDiff) {
+          if (x(i,j) != y(i,j))
+            foundDiff = true
+          j += 1
+        }
+        j = 0
+        i += 1
+      }
+      !foundDiff
+    }
+  }
+
+  def matrix_transpose_impl[A:Manifest](m: Rep[Matrix[A]]) = {
+    // naive, should block
+    val out = Matrix[A](m.numCols, m.numRows)
+    for (i <- 0 until out.numRows){
+      for (j <- 0 until out.numCols){
+        out(i,j) = m(j,i)
+      }
+    }
+    out
+  }
+
   def matrix_pprint_impl[A:Manifest](m: Rep[Matrix[A]]) = {
     for (i <- 0 until m.numRows){
       print("[ ")
@@ -258,17 +291,6 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     }
 
     currentMat
-  }
-
-  def matrix_transpose_impl[A:Manifest](m: Rep[Matrix[A]]) = {
-    // naive, should block
-    val out = Matrix[A](m.numCols, m.numRows)
-    for (i <- 0 until out.numRows){
-      for (j <- 0 until out.numCols){
-        out(i,j) = m(j,i)
-      }
-    }
-    out
   }
 
   def matrix_minrow_impl[A:Manifest:Arith:Ordering](m: Rep[Matrix[A]]): Rep[Vector[A]] = {

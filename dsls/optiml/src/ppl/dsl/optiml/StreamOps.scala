@@ -115,10 +115,8 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
       case Def(Lambda2(a,b,c,Def(Reify(d,u,es)))) => false
       case _ => true
     }
-    // should this be effectful? do we need multiple instances of streams, which are immutable?
-    // (depends on what internal state we have)
-    // HACK -- force loop hoisting in the non-fusing case
-    reflectEffect(StreamObjectNew[A](numRows, numCols, chunkSize(numCols), y, unit(isPure)))
+    // Streams are only mutable from an implementation standpoint (they hold underlying state)
+    reflectMutable(StreamObjectNew[A](numRows, numCols, chunkSize(numCols), y, unit(isPure)))
   }
 
   ////////////////////

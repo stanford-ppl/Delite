@@ -1,13 +1,14 @@
-package ppl.tests.dsl.optiml
+package ppl.tests.scalatest.dsl.optiml
 
 import ppl.dsl.optiml.datastruct.scala.{Matrix, Vector}
 import ppl.dsl.optiml.{OptiMLApplication, OptiMLApplicationRunner}
 import scala.virtualization.lms.util.OverloadHack
+import ppl.tests.scalatest._
 
-object SimpleVectorArithmeticRunner extends OptiMLApplicationRunner with SimpleVectorArithmetic
-trait SimpleVectorArithmetic extends OptiMLTestModule with LinearAlgebraTestsCommon {
+object SimpleVectorArithmeticRunner extends DeliteTestRunner with OptiMLApplicationRunner with SimpleVectorArithmetic
+trait SimpleVectorArithmetic extends DeliteTestModule with LinearAlgebraTestsCommon {
   def main() = {
-    implicit val collector = Vector[Boolean]()
+    implicit val collector = ArrayBuffer[Boolean]()
     // TODO: these can't be factored out right now because they throw an NPE when the test is being initialized
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
@@ -30,10 +31,10 @@ trait SimpleVectorArithmetic extends OptiMLTestModule with LinearAlgebraTestsCom
   }
 }
 
-object SimpleMatrixArithmeticRunner extends OptiMLApplicationRunner with SimpleMatrixArithmetic
-trait SimpleMatrixArithmetic extends OptiMLTestModule with LinearAlgebraTestsCommon {
+object SimpleMatrixArithmeticRunner extends DeliteTestRunner with OptiMLApplicationRunner with SimpleMatrixArithmetic
+trait SimpleMatrixArithmetic extends DeliteTestModule with LinearAlgebraTestsCommon {
   def main() = {
-    implicit val collector = Vector[Boolean]()
+    implicit val collector = ArrayBuffer[Boolean]()
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
     val colC = Vector(7., 3.2, 13.3).mt
@@ -71,10 +72,10 @@ trait SimpleMatrixArithmetic extends OptiMLTestModule with LinearAlgebraTestsCom
   }
 }
 
-object CombinedVecMatArithmeticRunner extends OptiMLApplicationRunner with CombinedVecMatArithmetic
-trait CombinedVecMatArithmetic extends OptiMLTestModule with LinearAlgebraTestsCommon {
+object CombinedVecMatArithmeticRunner extends DeliteTestRunner with OptiMLApplicationRunner with CombinedVecMatArithmetic
+trait CombinedVecMatArithmetic extends DeliteTestModule with LinearAlgebraTestsCommon {
   def main() = {
-    implicit val collector = Vector[Boolean]()
+    implicit val collector = ArrayBuffer[Boolean]()
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
     val rowD = Vector(-1.1, -6.2)
@@ -102,8 +103,8 @@ trait CombinedVecMatArithmetic extends OptiMLTestModule with LinearAlgebraTestsC
   }
 }
 
-trait LinearAlgebraTestsCommon extends OverloadHack {
-  this: OptiMLTestModule =>
+trait LinearAlgebraTestsCommon extends OptiMLApplication with OverloadHack {
+  this: DeliteTestModule =>
 
   ////////////////
   // helpers
@@ -144,7 +145,7 @@ trait LinearAlgebraTestsCommon extends OverloadHack {
 }
 
 
-class LinearAlgebraSuite extends OptiMLSuite {
+class LinearAlgebraSuite extends DeliteSuite {
   def testSimpleVector() { compileAndTest(SimpleVectorArithmeticRunner) }
   def testSimpleMatrix() { compileAndTest(SimpleMatrixArithmeticRunner) }
   def testCombinedVecMat() { compileAndTest(CombinedVecMatArithmeticRunner) }
