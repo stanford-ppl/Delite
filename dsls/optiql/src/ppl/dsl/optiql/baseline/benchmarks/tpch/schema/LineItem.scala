@@ -2,30 +2,30 @@ package ppl.dsl.optiql.baseline.benchmarks.tpch.schema
 
 import ppl.dsl.optiql.baseline.util.Date
 import collection.mutable.ArrayBuffer
+import ppl.dsl.optiql.baseline.containers.DataTable
 
 
 class LineItem (
-  orderKey: Int,
-  partKey: Int,
-  supplierKey: Int,
-  lineNumber: Int,
-  quantity: Float,
-  extendedPrice: Float,
-  discount: Float,
-  tax: Float,
-  returnFlag: Char,
-  lineStatus: Char,
-  shipDate: Date,
-  commitDate: Date,
-  receiptDate: Date,
-  shipInstruct: String,
-  shipMode: String,
-  comment: String
+  val orderKey: Int,
+  val partKey: Int,
+  val supplierKey: Int,
+  val lineNumber: Int,
+  val quantity: Float,
+  val extendedPrice: Float,
+  val discount: Float,
+  val tax: Float,
+  val returnFlag: Char,
+  val lineStatus: Char,
+  val shipDate: Date,
+  val commitDate: Date,
+  val receiptDate: Date,
+  val shipInstruct: String,
+  val shipMode: String,
+  val comment: String
 )
 
 class LineItemTable extends DataTable[LineItem] {
 
-  var data = new ArrayBuffer[LineItem]
 
 
   def addRecord(fs: Array[String]) {
@@ -36,6 +36,5 @@ class LineItemTable extends DataTable[LineItem] {
 
   def instantiateTable() = new LineItemTable
 
-  def numCols = 16
 
 }

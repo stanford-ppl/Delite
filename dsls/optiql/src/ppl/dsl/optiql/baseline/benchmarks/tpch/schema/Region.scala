@@ -1,17 +1,17 @@
 package ppl.dsl.optiql.baseline.benchmarks.tpch.schema
 
 import collection.mutable.ArrayBuffer
+import ppl.dsl.optiql.baseline.containers.DataTable
 
 
 class Region (
-  key: Int,
-  name: String,
-  comment: String
+  val key: Int,
+  val name: String,
+  val comment: String
 )
 
 class RegionTable extends DataTable[Region] {
 
-  var data: ArrayBuffer[Region] = new ArrayBuffer[Region]
 
 
   def addRecord(fs: Array[String]) {
@@ -22,6 +22,5 @@ class RegionTable extends DataTable[Region] {
 
   def instantiateTable() = new RegionTable
 
-  def numCols = 3;
 
 }

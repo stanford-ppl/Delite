@@ -31,7 +31,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   val virtualization_lms_core = "scala" % "virtualization-lms-core_2.8.x-virtualized-SNAPSHOT" % "0.1"
   
   val scalaToolsSnapshots = ScalaToolsSnapshots
-  val scalatest = "org.scalatest" % "scalatest" % "1.2.1-SNAPSHOT"
+  val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT"
   
   // Define project class with default source tree layout
   class FlatProject(info: ProjectInfo) extends DefaultProject(info) {
@@ -56,7 +56,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   
   // Using OptiQL plugin
   class OptiQLProject(info: ProjectInfo) extends FlatProject(info) {
-    //override def compileOptions = CompileOption("-Xplugin:dsls/optiql/plugin/querysyntax.jar") :: super.compileOptions.toList
+    //override def compileOptions = CompileOption("-Xplugin:dsls/optiql/plugin/querysyntax.jar") :: super.compileOptions.toList    
   }
   
   // Define projects

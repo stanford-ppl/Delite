@@ -1,22 +1,22 @@
 package ppl.dsl.optiql.baseline.benchmarks.tpch.schema
 
 import collection.mutable.ArrayBuffer
+import ppl.dsl.optiql.baseline.containers.DataTable
 
 class Part(
-  key:Int,
-  name: String,
-  mfgr: String,
-  brand: String,
-  pType: String,
-  size: Int,
-  container: String,
-  retailPrice: Float,
-  comment:String
+  val key:Int,
+  val name: String,
+  val mfgr: String,
+  val brand: String,
+  val pType: String,
+  val size: Int,
+  val container: String,
+  val retailPrice: Float,
+  val comment:String
 )
 
 class PartTable extends DataTable[Part]  {
 
-  var data : ArrayBuffer[Part] = new ArrayBuffer[Part]
 
   def addRecord(fs: Array[String]) {
     assert(fs.size == 9, "Expecting 9 fields, got: " + fs)
@@ -26,5 +26,4 @@ class PartTable extends DataTable[Part]  {
 
   def instantiateTable() = new PartTable
 
-  def numCols = 9
 }

@@ -1,15 +1,126 @@
-package ppl.dsl.optiql;
+package ppl.dsl.optiql
+
+import baseline.containers.{Grouping, DataTable}
+import baseline.ordering.{ProjectionComparer, OrderedQueryable}
+import collection.mutable.ArrayBuffer
+import collection.mutable.HashMap
+import collection.mutable.Buffer
 
 object OptiQL {
 
   implicit def convertIterableToQueryable[T](i: Iterable[T]) = new Queryable[T](i)
+  implicit def convertIterableToDataTable[T](i: Iterable[T]) : DataTable[T] = {
+    if(i.isInstanceOf[DataTable[T]]) {
+      i.asInstanceOf[DataTable[T]]
+    }
+    else if(i.isInstanceOf[ArrayBuffer[T]]) {
+
+      return new DataTable[T] {
+
+        override val data = i.asInstanceOf[ArrayBuffer[T]]
+
+        def addRecord(arr: Array[String]) {
+          throw new RuntimeException("Cannot add Record into a projected DataTable")
+        }
+      }
+
+    }
+    else {
+      val arrbuf = new ArrayBuffer[T]();
+      for (e <- i) {
+        arrbuf.append(e)
+      }
+      return new DataTable[T] {
+
+        override val data = arrbuf
+
+        def addRecord(arr: Array[String]) {
+          throw new RuntimeException("Cannot add Record into a projected DataTable")
+        }
+      }
+      //throw new RuntimeException("Could not convert iterable to DataTable")
+    }
+  }
+
 
 }
 
-class Queryable[T](q: Iterable[T]) {
+class Queryable[TSource](source: Iterable[TSource]) {
+  import OptiQL._
 
-  def Where(p: T => Boolean) =  {
-    q.filter(p)
+  def Where(predicate: TSource => Boolean) =  {
+    if(predicate == null) throw new IllegalArgumentException("Predicate is Null")
+    source.filter(predicate)
   }
+
+  def Where(predicate: (TSource, Int) => Boolean) = {
+    if(predicate == null) throw new IllegalArgumentException("Predicate is Null")
+    val res = new ArrayBuffer[TSource]
+    res.sizeHint(source.size/2)
+    var i = 0
+    for(element <- source) {
+      if(predicate(element,i))
+        res.append(element)
+      i += 1
+    }
+    res
+  }
+
+  def Select[TResult](selector: TSource => TResult) = {
+    source.map(selector)
+  }
+
+  def OrderBy[TKey](keySelector: TSource => TKey)(implicit comparer: Ordering[TKey]) = {
+    new OrderedQueryable(source, new ProjectionComparer(keySelector))
+  }
+
+
+
+  def GroupBy[TKey](keySelector: TSource => TKey): Iterable[Grouping[TKey, TSource]] = {
+    val hTable = buildHash(source,keySelector)
+    val result = new DataTable[Grouping[TKey,TSource]] {
+      def addRecord(fields: Array[String]) = throw new RuntimeException("Cannot add records to a grouping table")
+      override val grouped = true
+    }
+    for(key <- hTable.keys) {
+      result.data += new Grouping(key,hTable.getOrElse(key, new ArrayBuffer[TSource]))
+    }
+    result
+  }
+
+  def Count = source.size
+
+  def Sum[@specialized T:Numeric](selector: TSource => T): T = {
+    val n = implicitly[Numeric[T]]
+    import n._
+    var sum = n.zero
+    for(e <- source) {
+      sum += selector(e)
+    }
+    sum
+  }
+
+
+  def Average[@specialized T:Numeric](selector: TSource => T): Float = {
+    val n = implicitly[Numeric[T]]
+    import n._
+    Sum(selector).toFloat/Count
+  }
+
+
+  /*****
+   * Internal Implementation functions
+   */
+  private def buildHash[TKey](source:Iterable[TSource], keySelector: TSource => TKey) = {
+    val hash = HashMap[TKey, Buffer[TSource]]()
+    for (elem <- source; key = keySelector(elem)) {
+      hash.getOrElseUpdate(key,{
+        new ArrayBuffer[TSource]() //if there is no key
+      }) += elem
+    }
+    hash
+  }
+
+  private def ni = throw new RuntimeException("Not Implemented")
 
 }

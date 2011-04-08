@@ -1,18 +1,18 @@
 package ppl.dsl.optiql.baseline.benchmarks.tpch.schema
 import collection.mutable.ArrayBuffer
+import ppl.dsl.optiql.baseline.containers.DataTable
 
 
 class PartSupplier (
-  key: Int,
-  supplierKey: Int,
-  availableQty: Int,
-  supplyCost: Float,
-  comment: String
+  val key: Int,
+  val supplierKey: Int,
+  val availableQty: Int,
+  val supplyCost: Float,
+  val comment: String
 )
 
 class PartSupplierTable extends DataTable[PartSupplier] {
 
-  var data: ArrayBuffer[PartSupplier] = new ArrayBuffer[PartSupplier]
 
 
   def addRecord(fs: Array[String]) {
@@ -22,7 +22,5 @@ class PartSupplierTable extends DataTable[PartSupplier] {
   }
 
   def instantiateTable() = new PartSupplierTable
-
-  def numCols = 5
 
 }

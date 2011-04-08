@@ -1,20 +1,20 @@
 package ppl.dsl.optiql.baseline.benchmarks.tpch.schema
 
 import collection.mutable.ArrayBuffer
+import ppl.dsl.optiql.baseline.containers.DataTable
 
 class Supplier(
-  key: Int,
-  name: String,
-  address: String,
-  nationKey: Int,
-  phone: String,
-  acctountBalance: Float,
-  comment: String
+  val key: Int,
+  val name: String,
+  val address: String,
+  val nationKey: Int,
+  val phone: String,
+  val accountBalance: Float,
+  val comment: String
 )
 
 class SupplierTable extends DataTable[Supplier] {
 
-  var data: ArrayBuffer[Supplier] = new ArrayBuffer[Supplier]
 
   def addRecord(fs: Array[String]) {
     assert(fs.size == 7, "Expecting 7 fields, got: " + fs)
@@ -24,6 +24,5 @@ class SupplierTable extends DataTable[Supplier] {
 
   def instantiateTable() = new SupplierTable
 
-  def numCols = 7
 
 }

@@ -30,8 +30,6 @@ trait Queryable[A] {
   def tail(): A
   def size(): Int
 
-  def where(pred: (A) => Boolean): Queryable[A] = filter(pred)
-
   def select[B](proj: (A) => B): Queryable[B] = map(proj)
 
   def selectMany[B](proj: (A) => Queryable[B]): Queryable[B] = flatMap(proj)

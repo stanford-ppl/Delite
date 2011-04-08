@@ -1,18 +1,18 @@
 package ppl.dsl.optiql.baseline.benchmarks.tpch.schema
 
 import collection.mutable.ArrayBuffer
+import ppl.dsl.optiql.baseline.containers.DataTable
 
 
 class Nation (
-  key: Int,
-  name: String,
-  regionKey: Int,
-  comment: String
+  val key: Int,
+  val name: String,
+  val regionKey: Int,
+  val comment: String
 )
 
 class NationTable extends DataTable[Nation] {
 
-  var data = new ArrayBuffer[Nation]
 
   def addRecord(fs: Array[String]) {
     assert(fs.size == 4, "Expecting 4 fields, got: " + fs)
@@ -22,5 +22,4 @@ class NationTable extends DataTable[Nation] {
 
   def instantiateTable() = new NationTable
 
-  def numCols = 4
 }

@@ -2,6 +2,7 @@ package ppl.dsl.optiql.baseline.benchmarks.tpch.schema
 
 import ppl.dsl.optiql.baseline.util.Date
 import collection.mutable.ArrayBuffer
+import ppl.dsl.optiql.baseline.containers.DataTable
 
 case class Order (
   val key: Int,
@@ -17,7 +18,6 @@ case class Order (
 
 class OrderTable extends DataTable[Order] {
 
-  var data = new ArrayBuffer[Order]
 
 
   def addRecord(fs: Array[String]) {
@@ -27,7 +27,4 @@ class OrderTable extends DataTable[Order] {
   }
 
   def instantiateTable() = new OrderTable
-
-  def numCols = 9
-
 }
