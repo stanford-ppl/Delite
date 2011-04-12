@@ -88,6 +88,16 @@ class Queryable[TSource](source: Iterable[TSource]) {
     result
   }
 
+  //TODO: Slow implementation
+  def Join[TInner, TKey, TResult](inner: Iterable[TInner])(sourceKeySelector: TSource => TKey,
+                                  innerKeySelector: TInner => TKey,
+                                  resultSelector: (TSource,TInner) => TResult) = {
+    for(sourceElement <- source; innerElement <- inner;
+        if sourceKeySelector(sourceElement) == innerKeySelector(innerElement))
+      yield resultSelector(sourceElement,innerElement)
+
+  }
+
   def Count = source.size
 
   def Sum[@specialized T:Numeric](selector: TSource => T): T = {

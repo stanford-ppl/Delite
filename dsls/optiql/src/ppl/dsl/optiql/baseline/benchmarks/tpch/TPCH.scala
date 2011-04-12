@@ -36,30 +36,8 @@ object TPCH {
   def main(args: Array[String]) {
 
    import OptiQL._
-    //Execute TPC-H queries against my tables
-    //Q1
-//    val q1 = orders Where(o => o.status == 'O' && o.key < 20) Select(o => new {
-//      val key = o.key
-//      val keyTwice = o.key * 2
-//      val SuperStatus = "" + o.status + o.status
-//    })
-//
-//
-//    //println("Result of Q1:")
-//    q1.printAsTable()
-//
-//    val q2 = orders GroupBy(_.status)
-//
-//    //println("Result of Q2:")
-//    //q2.printAsTable()
-//
-//    val q3 = q2 Select(g => new {
-//      val Status = g.key
-//      val SummedPrices = g.Sum(_.totalPrice)
-//      val AveragedPrices = g.Average(_.totalPrice)
-//    })
-//    q3.printAsTable
 
+    //Execute TPC-H queries against my tables
     val q1 = lineItems Where(_.shipDate <= Date("1998-12-01") + Interval(90).days) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(g => new {
       val returnFlag = g.key._1
       val lineStatus = g.key._2
@@ -71,9 +49,29 @@ object TPCH {
       val avgPrice = g.Average(_.extendedPrice)
       val avgDiscount = g.Average(_.discount)
       val countOrder = g.Count
-
-    })
+    }) OrderBy(_.lineStatus) ThenBy(_.returnFlag)
+    println("TPCH Q1:")
     q1.printAsTable
+
+    val q3 = customers.Where(_.marketSegment == "BUILDING").Join(orders)(_.key, _.customerKey, (customer, order)=> new {
+      val orderKey = order.key
+      val orderDate = order.date
+      val orderShipPriority = order.shipPriority
+    }).Join(lineItems)(_.orderKey, _.orderKey, (co, li)=> new {
+      val orderKey = co.orderKey
+      val orderDate = co.orderDate
+      val orderShipPriority = co.orderShipPriority
+      val orderShipDate = li.shipDate
+      val extendedPrice = li.extendedPrice
+      val discount = li.discount
+    }) Where(col => col.orderDate < Date("1995-03-15") && col.orderShipDate < Date("1995-03-15") ) GroupBy(col => (col.orderKey,col.orderDate,col.orderShipPriority)) Select(g => new {
+      val orderKey = g.key._1
+      val revenue = g.Sum(e => e.extendedPrice * (1 - e.discount))
+      val orderDate = g.key._2
+      val shipPriority = g.key._2
+    })
+    println("TPCH Q3:")
+    q3.printAsTable
   }
 
   def loadTPCHTable(path: String, table: DataTable[_]) = {
@@ -84,9 +82,13 @@ object TPCH {
     if(file.isFile == false) throw new RuntimeException(filename + " doesn't appear to be a valid file")
     //load each line
     val records = scala.io.Source.fromFile(file).getLines()
-    for(record <- records) {
+    var i = 0
+    while(records.hasNext) {
+      val record = records.next
       val fields = record.split('|')
       table.addRecord(fields)
+      i += 1
+      if(i%10000 == 0) println("processed " + i + " records")
     }
     table
   }

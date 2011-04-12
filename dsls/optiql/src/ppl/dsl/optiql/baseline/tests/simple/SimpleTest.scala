@@ -6,7 +6,15 @@ object SimpleTest {
   def main(args: Array[String]) {
     import OptiQL._
 
-    val res = CallLog.SampleData  Where(_.Duration < 30) OrderBy(_.Incoming) ThenBy(_.Duration)
+    val calls = CallLog.SampleData()
+    val contacts = Contact.SampleData()
+
+
+    val res = calls.Join(contacts)(_.Number, _.Phone, (call, contact) => new {
+      val Name = contact.FirstName + " " + contact.LastName
+      val Number = call.Number
+      val Duration = call.Duration
+    })
 
 //    val res2 = res GroupBy(_.Number) Select(g => new {
 //        val Number = g.key

@@ -26,6 +26,9 @@ abstract class Date(val year:Int, val month:Int, val day:Int) {
     else day <= that.day
   }
 
+  def <(that:Date) = (year < that.year ) || (year == that.year && (month < that.month || (month == that.month && day < that.day)))
+
+
 
 
 
