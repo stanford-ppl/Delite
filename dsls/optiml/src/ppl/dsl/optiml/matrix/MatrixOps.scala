@@ -680,6 +680,50 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     }).asInstanceOf[Exp[A]] // why??
   }
 
+  /////////////////////
+  // aliases and sharing
+
+  // TODO: precise sharing info for other IR types (default is conservative)
+
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => syms(a)
+    case MatrixClone(a) => syms(a)
+    case _ => super.copySyms(e)
+  }
 
   ////////////////////
   // object interface

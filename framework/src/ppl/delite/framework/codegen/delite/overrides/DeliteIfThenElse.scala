@@ -9,6 +9,8 @@ trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
 
   this: DeliteOpsExp =>
 
+  // there is a lot of code duplication between DeliteIfThenElse and IfThenElse in lms -- do we really need a separate DeliteIfThenElse?
+
   case class DeliteIfThenElse[T:Manifest](cond: Exp[Boolean], thenp: Exp[T], elsep: Exp[T]) extends DeliteOpCondition[T]
 
   override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]) = cond match {
@@ -34,6 +36,27 @@ trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
     case DeliteIfThenElse(c,a,b) => DeliteIfThenElse(f(c),f(a),f(b))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
+
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c,a,b) => syms(a):::syms(b)
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c,a,b) => Nil
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c,a,b) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c,a,b) => Nil // could return a,b but implied by aliasSyms
+    case _ => super.copySyms(e)
+  }
+
 }
 
 trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {

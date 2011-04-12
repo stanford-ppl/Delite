@@ -27,7 +27,7 @@ trait VectorOps extends DSLType with Variables {
       val out = vector_obj_new[A](unit(0),unit(true))
       // interpreted (not lifted)
       xs.foreach { out += _ }
-      out
+      out.cloneL // return immutable object
     }
 
     def flatten[A:Manifest](pieces: Rep[Vector[Vector[A]]]) = vector_obj_flatten(pieces)
@@ -534,7 +534,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
     val alloc = inA
     val v = (fresh[A],fresh[A])
-    val func = v._1 - v._2
+    val func = reifyEffects(v._1 - v._2)
   }
 
   abstract case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]]) 
@@ -564,7 +564,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
     val alloc = reifyEffects(Vector[B](inB.length, inB.isRow))
     val v = (fresh[A],fresh[B])
-    val func = conv(v._1) * v._2
+    val func = reifyEffects(conv(v._1) * v._2)
   }
 
   abstract case class VectorTimesScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A]) 
@@ -598,7 +598,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector[A]](
       alloc = reifyEffects(Vector[A](size, isRow)),
-      func = inA(v) / inB(v)
+      func = reifyEffects(inA(v) / inB(v))
     )
   }
 
@@ -610,7 +610,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector[A]](
       alloc = reifyEffects(Vector[A](size, isRow)),
-      func = in(v) / y
+      func = reifyEffects(in(v) / y)
     )
   }
 
@@ -642,7 +642,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector[A]](
       alloc = reifyEffects(Vector[A](size, isRow)),
-      func = in(v).abs
+      func = reifyEffects(in(v).abs)
     )
   }
 
@@ -657,7 +657,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector[A]](
       alloc = reifyEffects(Vector[A](size, isRow)),
-      func = in(v).exp
+      func = reifyEffects(in(v).exp)
     )
   }
 
@@ -668,7 +668,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
 
   def getMinValue[A:Manifest]: Exp[A] = manifest[A] match { // TODO: move somewhere else (Arith? Ordering?)
-    case Manifest.Double => unit(scala.Double.MinNegativeValue).asInstanceOf[Exp[A]]
+    case Manifest.Double => unit(scala.Double.MinValue).asInstanceOf[Exp[A]] // MinNegativeValue no longer exists (?)
     case Manifest.Int => unit(scala.Int.MinValue).asInstanceOf[Exp[A]]
   }
 
@@ -929,6 +929,54 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     case Reflect(e@VectorNew(l,r), u, es) => reflectMirrored(Reflect(VectorNew(f(l),f(r))(e.mV), mapOver(f,u), f(es)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
+
+
+
+  /////////////////////
+  // aliases and sharing
+
+  // TODO: precise sharing info for other IR types (default is conservative)
+  
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case VectorApply(a,i) => Nil
+    case VectorUpdate(a,i,x) => Nil           // syms(a) <-- any use to return a?
+    case VectorUpdateIndices(a,is,x) => Nil   // syms(a) <-- any use to return a?
+    case VectorInsert(a,i,x) => Nil           // syms(a) <-- any use to return a?
+    case VectorRepmat(a,i,j) => Nil
+    case VectorClone(a) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case VectorApply(a,i) => Nil
+    case VectorUpdate(a,i,x) => syms(x)
+    case VectorUpdateIndices(a,is,x) => syms(x)
+    case VectorInsert(a,i,x) => syms(x)
+    case VectorRepmat(a,i,j) => Nil
+    case VectorClone(a) => Nil
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case VectorApply(a,i) => syms(a)
+    case VectorUpdate(a,i,x) => Nil
+    case VectorUpdateIndices(a,is,x) => Nil
+    case VectorInsert(a,i,x) => Nil
+    case VectorRepmat(a,i,j) => Nil
+    case VectorClone(a) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case VectorApply(a,i) => Nil
+    case VectorUpdate(a,i,x) => syms(a)
+    case VectorUpdateIndices(a,is,x) => syms(a)
+    case VectorInsert(a,i,x) => syms(a)
+    case VectorRepmat(a,i,j) => syms(a)
+    case VectorClone(a) => syms(a)
+    case _ => super.copySyms(e)
+  }
+
 
 
   /////////////////////

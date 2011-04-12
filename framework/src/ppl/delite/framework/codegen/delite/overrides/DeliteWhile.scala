@@ -10,6 +10,8 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
 
   this: DeliteOpsExp =>
 
+  // there is a lot of code duplication between DeliteWhile and While in lms -- do we really need a separate DeliteWhile?
+  
   case class DeliteWhile(cond: Exp[Boolean], body: Exp[Unit]) extends DeliteOpWhileLoop
 
   override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit]) {

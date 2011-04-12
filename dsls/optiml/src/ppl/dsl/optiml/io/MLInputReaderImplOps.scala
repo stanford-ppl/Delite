@@ -32,7 +32,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
       for (i <- 0 until dbls.length){
         v(i) = Double.parseDouble(dbls(i))
       }
-      x += v
+      x += v.cloneL //TR can only add immutable rows to a mutable matrix
 
       line = xfs.readLine()
       if (line != null) {
@@ -76,7 +76,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
         v(i) = Integer.parseInt(ints(i))
         i += 1
       }
-      x += v
+      x += v.cloneL //TR can only add immutable rows to a mutable matrix
 
       line = xfs.readLine()
       if (line != null) {
@@ -133,7 +133,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
         j += 2
       }
       trainCatSeq += Double.parseDouble(nums(0))
-      trainMatSeq += row
+      trainMatSeq += row.cloneL // immutable object
     }
     val trainCategory = trainCatSeq.t
     val trainMatrix = Matrix(trainMatSeq)
