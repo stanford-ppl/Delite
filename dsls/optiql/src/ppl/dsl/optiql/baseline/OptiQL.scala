@@ -1,7 +1,7 @@
-package ppl.dsl.optiql
+package ppl.dsl.optiql.baseline
 
-import baseline.containers.{Grouping, DataTable}
-import baseline.ordering.{ProjectionComparer, OrderedQueryable}
+import containers.{Grouping, DataTable}
+import ordering.{ProjectionComparer, OrderedQueryable}
 import collection.mutable.ArrayBuffer
 import collection.mutable.HashMap
 import collection.mutable.Buffer

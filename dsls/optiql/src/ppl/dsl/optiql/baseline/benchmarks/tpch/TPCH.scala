@@ -2,9 +2,9 @@ package ppl.dsl.optiql.baseline.benchmarks.tpch
 
 import java.io.File
 import schema._
-import ppl.dsl.optiql.OptiQL
 import ppl.dsl.optiql.baseline.containers.DataTable
 import ppl.dsl.optiql.baseline.util.{Date, Interval}
+import ppl.dsl.optiql.baseline.OptiQL
 
 object TPCH {
 

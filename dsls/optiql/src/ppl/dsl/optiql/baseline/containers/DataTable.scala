@@ -1,11 +1,10 @@
 package ppl.dsl.optiql.baseline.containers
 
 import collection.mutable.{ArrayBuffer, BufferLike}
-import collection.immutable.HashMap
 import collection.generic.CanBuildFrom
 import collection.Iterable
 import ppl.dsl.optiql.baseline.util.{ReflectionHelper, Date}
-import ppl.dsl.optiql.OptiQL
+import ppl.dsl.optiql.baseline.OptiQL
 
 //this includes functionality for loading TPCH style data
 abstract class DataTable[TSource] extends Iterable[TSource] {

@@ -1,6 +1,6 @@
 package ppl.dsl.optiql.baseline.tests.simple
 
-import ppl.dsl.optiql.OptiQL
+import ppl.dsl.optiql.baseline.OptiQL
 
 object SimpleTest {
   def main(args: Array[String]) {
