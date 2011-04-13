@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
-object RBM extends DeliteApplication with OptiMLExp {
+object RBMRunner extends OptiMLApplicationRunner with RBM
+
+trait RBM extends OptiMLApplication {
 
   def print_usage = {
     println("Usage: RBM <MNIST data file> <numHiddenUnits> <numcases>")
@@ -36,35 +38,31 @@ object RBM extends DeliteApplication with OptiMLExp {
     val numbatches = trainingdata.numRows / numcases
 
     // Initialize symmetric weights and biases
-    var vishid = Matrix.randnf(numdims, numHiddenUnits) * 0.1f
-    var hidbiases = Vector.zerosf(numHiddenUnits)
-    var visbiases = Vector.zerosf(numdims)
+    val vishid = (Matrix.randnf(numdims, numHiddenUnits) * 0.1f).mutable
+    val hidbiases = Vector.zerosf(numHiddenUnits).mutable
+    val visbiases = Vector.zerosf(numdims).mutable
 
     var vishidinc = Matrix.zerosf(numdims, numHiddenUnits)
     var hidbiasinc = Vector.zerosf(numHiddenUnits)
     var visbiasinc = Vector.zerosf(numdims)
 
-    tic
-    var epoch = unit(0)
+    tic()
+    var epoch = 0
     while (epoch < maxEpoch) {
-      var errsum = unit(0f)
-      var batch = unit(0)
+      var errsum = 0f
+      var batch = 0
       while (batch < numbatches) {
         //println("Epoch: " + epoch + ", Batch: " + batch)
 
         // Positive phase
-        //PerformanceTimer.start("RBM-posphase", false)
         val data = trainingdata.sliceRows(batch * numcases, (batch + 1) * numcases) // data: numcases x numdims
         val poshidprobs = (data * vishid + hidbiases.replicate(numcases, 1)).sigmoidf
         val posprods = data.t * poshidprobs
         val poshidact = poshidprobs.sumCol
         val posvisact = data.sumCol
         val poshidstates = (poshidprobs :> Matrix.randf(numcases, numHiddenUnits))
-        //val poshidstates = (poshidprobs zip Matrix.randf(numcases, numHiddenUnits)){ (a,b) => if (a < b) 0f else 1f }
-        //PerformanceTimer.stop("RBM-posphase", false)
 
         // Negative phase
-        //PerformanceTimer.start("RBM-negphase", false)
         val negdata = (poshidstates * vishid.t + visbiases.replicate(numcases, 1)).sigmoidf
         val neghidprobs = (negdata * vishid + hidbiases.replicate(numcases, 1)).sigmoidf
         val negprods = negdata.t * neghidprobs
@@ -72,32 +70,23 @@ object RBM extends DeliteApplication with OptiMLExp {
         val negvisact = negdata.sumCol
         val diff = data - negdata
         errsum += (diff *:* diff).sum
-        //PerformanceTimer.stop("RBM-negphase", false)
 
         // Update weights and biases
-        //PerformanceTimer.start("RBM-biasupdates", false)
         val momentum = if (epoch > 5) finalmomentum else initialmomentum
         vishidinc = vishidinc * momentum + ((posprods - negprods) / numcases  - (vishid * weightcost))*epsilonw
         visbiasinc = visbiasinc * momentum + (posvisact - negvisact) * (epsilonvb / numcases)
         hidbiasinc = hidbiasinc * momentum + (poshidact - neghidact) * (epsilonhb / numcases)
 
-        vishid = vishid + vishidinc
-        visbiases = visbiases + visbiasinc
-        hidbiases = hidbiases + hidbiasinc
-        //PerformanceTimer.stop("RBM-biasupdates", false)
+        vishid += vishidinc
+        visbiases += visbiasinc
+        hidbiases += hidbiasinc
         batch += 1
       }
       println("--> Epoch " + epoch)
       println(" error = " + errsum)
       epoch += 1
     }
-    toc
+    toc()
 
-    //PerformanceTimer.print("RBM-posphase")
-    //PerformanceTimer.save("RBM-posphase")
-    //PerformanceTimer.print("RBM-negphase")
-    //PerformanceTimer.save("RBM-negphase")
-    //PerformanceTimer.print("RBM-biasupdates")
-    //PerformanceTimer.save("RBM-biasupdates")
   }
 }

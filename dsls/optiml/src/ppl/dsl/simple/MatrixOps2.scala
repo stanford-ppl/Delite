@@ -2,8 +2,8 @@ package ppl.dsl.simple
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{Base, EffectExp}
-import scala.virtualization.lms.internal.{CGenBase, ScalaGenBase}
+import scala.virtualization.lms.common.{Base, BaseFatExp, EffectExp}
+import scala.virtualization.lms.common.{CGenBase, ScalaGenBase, CGenFat, ScalaGenFat}
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 
 
@@ -30,7 +30,7 @@ trait MatrixOps2 extends DSLType with Base {
   def matrix_object_zeros[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) : Rep[Matrix[A]]
 }
 
-trait MatrixOpsExp2 extends MatrixOps2 with EffectExp { 
+trait MatrixOpsExp2 extends MatrixOps2 with BaseFatExp with EffectExp { 
   case class MatrixPlus[A:Manifest:Numeric](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends Def[Matrix[A]]
 
@@ -45,11 +45,11 @@ trait MatrixOpsExp2 extends MatrixOps2 with EffectExp {
   def matrix_object_zeros[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(MatrixObjectZeros[A](numRows,numCols))
 }
 
-trait ScalaGenMatrixOps2 extends ScalaGenBase {
+trait ScalaGenMatrixOps2 extends ScalaGenFat {
   val IR: MatrixOpsExp2
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case MatrixObjectZeros(numRows,numCols) => emitValDef(sym, "Matrix.Zeros(" + quote(numRows) + "," + quote(numCols) + ")")
     case MatrixPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
     case MatrixPPrint(a) => emitValDef(sym, "" + quote(a) + ".pprint")
@@ -58,11 +58,11 @@ trait ScalaGenMatrixOps2 extends ScalaGenBase {
 }
 
 /*
-trait CGenMatrixOps2 extends CGenBase {
+trait CGenMatrixOps2 extends CGenFat {
   val IR: MatrixOpsExp2
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     //todo replace the manifest with embedded types
     case MatrixObjectZeros(n1,n2) => emitConstDef("matrix", sym, "Matrix.doubleZeros(" + quote(n1) + "," + quote(n2) +  ")")
     case MatrixPlus(m1,m2) => emitConstDef("matrix", sym, quote(m1) + " + " + quote (m2))
@@ -76,7 +76,7 @@ trait DeliteGenMatrixOps2 extends DeliteCodegen {
   val IR: MatrixOpsExp2
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case MatrixObjectZeros(numRows,numCols) => emitValDef(sym, "Matrix.Zeros(" + quote(numRows) + "," + quote(numCols) + ")")
     case MatrixPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
     case MatrixPPrint(a) => emitValDef(sym, "" + quote(a) + ".pprint")

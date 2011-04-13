@@ -135,8 +135,8 @@ abstract class GPUExecutableGenerator {
       }
       //get kernel inputs (dependencies that could require a memory transfer)
       var addInputCopy = false
-      for (input <- op.getInputs) { //foreach input
-        val inData = op.cudaMetadata.inputs.getOrElse(input, null)
+      for ((input, sym) <- op.getInputs) { //foreach input
+        val inData = op.cudaMetadata.inputs.getOrElse((input, sym), null)
         if(!available.contains(input)) { //this input does not yet exist on the device
           //add to available list
           available += input
@@ -152,7 +152,7 @@ abstract class GPUExecutableGenerator {
             available -= input //this input doesn't actually reside on GPU
           }
         }
-        else if (needsUpdate(op, input)) { //input exists on device but data is old
+        else if (needsUpdate(op, input, sym)) { //input exists on device but data is old
           //write a new copy function (input must be an object)
           addInputCopy = true
           writeInputCopy(input, inData.func, inData.resultType, out)
@@ -192,9 +192,10 @@ abstract class GPUExecutableGenerator {
   }
 
   //TODO: should track if data has already been updated - implement current version for each resource - useful for gpu/cluster
-  protected def needsUpdate(op: DeliteOP, input: DeliteOP): Boolean = {
+  //TODO: updates don't work across loop iterations (write seen as happening after rather than before)
+  protected def needsUpdate(op: DeliteOP, input: DeliteOP, sym: String): Boolean = {
     for (dep <- op.getDependencies) {
-      if (dep.getMutableInputs.contains(input) && dep.scheduledResource != op.scheduledResource) {
+      if (dep.getMutableInputs.contains(input, sym) && dep.scheduledResource != op.scheduledResource) {
         return true
       }
     }
@@ -226,10 +227,10 @@ abstract class GPUExecutableGenerator {
       out.append(temp.func)
       out.append('(')
       var first = true
-      for (in <- temp.inputs) {
+      for ((in,sym) <- temp.inputs) {
         if (!first) out.append(',')
         first = false
-        out.append(getSymGPU(in))
+        out.append(getSymGPU(sym))
       }
       out.append(");\n")
       writeMemoryAdd(tempOp, out)
@@ -246,10 +247,10 @@ abstract class GPUExecutableGenerator {
   protected def writeInputList(op: DeliteOP, field: String, out: StringBuilder) {
     val data = op.cudaMetadata(field)
     var first = true
-    for (in <- data.inputs) {
+    for ((in,sym) <- data.inputs) {
       if (!first) out.append(',')
       first = false
-      out.append(getSymGPU(in))
+      out.append(getSymGPU(sym))
     }
   }
 
@@ -334,11 +335,11 @@ abstract class GPUExecutableGenerator {
     out.append(op.task)
     out.append('(')
     var first = true
-    for (input <- op.getInputs) {
-      if (op.cudaMetadata.inputs.contains(input) || isPrimitiveType(input.outputType)) {
+    for ((input,sym) <- op.getInputs) {
+      if (op.cudaMetadata.inputs.contains(input,sym) || isPrimitiveType(input.outputType(sym))) {
         if (!first) out.append(',')
         first = false
-        out.append(getSymGPU(input))
+        out.append(getSymGPU(sym))
       }
     }
     out.append(");\n")
@@ -394,7 +395,7 @@ abstract class GPUExecutableGenerator {
 
   protected def writeInputs(op: DeliteOP, out: StringBuilder) {
     var first = true
-    for (input <- op.getInputs) {
+    for ((input,name) <- op.getInputs) {
       if (!first) out.append(',')
       first = false
       if (!isPrimitiveType(input.outputType)) out.append('*') //TODO: this is awkward
@@ -411,15 +412,15 @@ abstract class GPUExecutableGenerator {
   }
 
   protected def writeSetter(op: DeliteOP, location: Int, out: StringBuilder) {
-    for (in <- op.cudaMetadata.inputs.keys) {
-      if (op.getMutableInputs.contains(in)) {
+    for ((in,sym) <- op.cudaMetadata.inputs.keys) {
+      if (op.getMutableInputs.contains(in,sym)) {
         //copy any mutated inputs from GPU to CPU
-        val inData = op.cudaMetadata.inputs(in)
+        val inData = op.cudaMetadata.inputs(in,sym)
         out.append(inData.funcReturn)
         out.append("(env,") //JNI environment pointer
-        out.append(getSymCPU(in)) //jobject
+        out.append(getSymCPU(sym)) //jobject
         out.append(',')
-        out.append(getSymGPU(in)) //C++ object
+        out.append(getSymGPU(sym)) //C++ object
         out.append(");\n")
       }
     }
@@ -483,21 +484,21 @@ abstract class GPUExecutableGenerator {
     }
 
     //free output (?)
-    if (freeable(op) && op.getConsumers.filter(c => c.getInputs.contains(op) && c.scheduledResource == op.scheduledResource).size == 0) { //no future consumers on gpu
+    if (freeable(op) && op.getConsumers.filter(c => c.getInputs.exists(_._1 == op) && c.scheduledResource == op.scheduledResource).size == 0) { //no future consumers on gpu
       //free output
       writeFree(op)
       count += 1
     }
 
     //free inputs (?)
-    for (in <- op.getInputs if(freeable(in))) {
-      val possible = in.getConsumers.filter(c => c.getInputs.contains(in) && c.scheduledResource == op.scheduledResource)
+    for ((in,name) <- op.getInputs if(freeable(in))) {
+      val possible = in.getConsumers.filter(c => c.getInputs.exists(_._1 == in) && c.scheduledResource == op.scheduledResource)
       var free = true
       for (p <- possible) {
         if (!available.contains(p)) free = false
       }
       if (free) {
-        writeFree(in)
+        writeFree(in) //TR in or name?
         count += 1
       }
     }
@@ -544,12 +545,21 @@ abstract class GPUExecutableGenerator {
     out.append('\n')
   }
 
+  //TODO: GPU generation should support multiple outputs and naming conventions modified accordingly
   protected def getSymCPU(op: DeliteOP): String = {
     "xC"+op.id
   }
 
+  protected def getSymCPU(name: String): String = {
+    "xC"+name
+  }
+
   protected def getSymGPU(op: DeliteOP): String = {
     "xG"+op.id
+  }
+
+  protected def getSymGPU(name: String): String = {
+    "xG"+name
   }
 
   protected def getJNIType(scalaType: String): String = {
@@ -668,10 +678,7 @@ abstract class GPUScalaExecutableGenerator extends ExecutableGenerator {
     //link the native code upon object creation
     val sep = java.io.File.separator
     out.append("System.load(\"")
-    out.append(kernelPath)
-    out.append(sep)
-    out.append("cuda")
-    out.append(sep)
+    out.append(CudaCompile.binCacheHome+sep)
     out.append("cudaHost.so\")\n")
 
     //the sync methods/objects

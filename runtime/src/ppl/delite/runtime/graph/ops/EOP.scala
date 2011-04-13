@@ -17,11 +17,14 @@ import ppl.delite.runtime.graph.targets.Targets
  * This OP should always be inserted by the scheduler such that it is the last to run (depends on the "result" node of the task graph
  * Execution of the kernel will shut down the Delite Runtime
  */
-object EOP extends OP_Executable(Map(Targets.Scala->"Unit")) {
+object EOP extends OP_Executable {
 
   /**
    * OP features
    */
+
+  val outputTypesMap = Map(Targets.Scala->Map(id -> "Unit", "functionReturn"->"Unit"))
+
   def isDataParallel = false
 
   def task = "ppl.delite.runtime.graph.ops.EOP_Kernel"
@@ -54,6 +57,9 @@ object EOP extends OP_Executable(Map(Targets.Scala->"Unit")) {
     try {
       while (notDone) end.await
       notDone = true //reset for re-use
+    }
+    catch {
+      case e: InterruptedException => throw new RuntimeException("Worker Exception")
     }
     finally {
       lock.unlock

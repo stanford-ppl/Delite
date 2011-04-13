@@ -13,7 +13,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
-object LinRegLoop extends DeliteApplication with OptiMLExp {
+object LinRegLoopRunner extends OptiMLApplicationRunner with LinRegLoop
+
+trait LinRegLoop extends OptiMLApplication {
 
   // unweighted linear regression using the normal equations
   // input: input training vector x
@@ -48,9 +50,9 @@ object LinRegLoop extends DeliteApplication with OptiMLExp {
     val Xt = X.t
 
     // calculate predictions
-	var e = unit(0)
+	  var e = 0
     val guess = Vector[Double](xref.numRows,true)
-	while(e < xref.numRows ) {
+	  while(e < xref.numRows ) {
     //val guess = (0::xref.numRows)( e => {
       val x_cur = xref(e,1)
       val weights = x.map(ele => Math.exp(-.1*(x_cur-ele)*(x_cur-ele)/(2.0*tau*tau))/2.0)
@@ -76,8 +78,8 @@ object LinRegLoop extends DeliteApplication with OptiMLExp {
   def main() = {
     if (args.length < 2) print_usage
 
-    val x = loadVector(args(0))
-    val y = loadVector(args(1))
+    val x = readVector(args(0))
+    val y = readVector(args(1))
 
 //    logElapsed("Input Section Complete")
 
@@ -87,9 +89,9 @@ object LinRegLoop extends DeliteApplication with OptiMLExp {
     theta.pprint
     print("\\n")
 
-    tic
+    tic()
     val guess = weightedReg(x, y)
-    toc
+    toc()
 
     println("Locally weighted linear regression")
     println("guess: ")

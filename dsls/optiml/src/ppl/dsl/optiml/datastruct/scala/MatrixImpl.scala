@@ -3,7 +3,7 @@ package ppl.dsl.optiml.datastruct.scala
 object MatrixImpl {
 }
 
-class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends Matrix[T] {
+class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
   import MatrixImpl._
   
   protected var _numRows = nRows
@@ -15,9 +15,9 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
   def size = _numRows*_numCols
   def data = _data
   
-  def apply(i: Int) : VectorView[T] = {
-    vview(i*numCols, 1, numCols, true)
-  }
+//  def apply(i: Int) : VectorView[T] = {
+//    vview(i*numCols, 1, numCols, true)
+//  }
 
   def apply(i: Int, j: Int) : T = {
     _data(i*numCols+j)
@@ -30,7 +30,15 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
   def dcApply(idx: Int) : T = _data(idx)
   def dcUpdate(idx: Int, x: T) { _data(idx) = x }
 
-  def vview(start: Int, stride: Int, length: Int, isRow: Boolean) : VectorView[T] = {
+  def getRow(row: Int) = {
+    new MatrixRowImpl[T](row, this, _data)
+  }
+
+  def getCol(col: Int) = {
+    new MatrixColImpl[T](col, this, _data)
+  }
+
+  def vview(start: Int, stride: Int, length: Int, isRow: Boolean) = {
     new VectorViewImpl[T](_data, start, stride, length, isRow)
   }
 
@@ -106,7 +114,7 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
   def removeRows(pos: Int, num: Int) {
     val idx = pos*_numCols
     val len = num*_numCols
-    Array.copy(_data, idx + len, _data, idx, size - (idx + len))
+    System.arraycopy(_data, idx + len, _data, idx, size - (idx + len))
     _numRows -= num
   }
 
@@ -133,17 +141,17 @@ class MatrixImpl[@specialized T: ClassManifest](nRows: Int, nCols: Int) extends 
   }
 
   protected def realloc(minLen: Int) {
-    var n = 4 max (_data.length * 2)
+    var n = java.lang.Math.max(4, _data.length * 2)
     while (n < minLen) n *= 2
     val d = new Array[T](n)
-    Array.copy(_data, 0, d, 0, size)
+    System.arraycopy(_data, 0, d, 0, size)
     _data = d
   }
 
   protected def insertSpace(pos: Int, len: Int) {
     if (pos < 0 || pos > size) throw new IndexOutOfBoundsException
     ensureExtra(len)
-    Array.copy(_data, pos, _data, pos + len, size - pos)
+    System.arraycopy(_data, pos, _data, pos + len, size - pos)
   }
 
   protected def chkPos(index: Int) = {

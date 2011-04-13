@@ -3,7 +3,7 @@ package ppl.delite.framework.codegen.delite.overrides
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
-import scala.virtualization.lms.internal._
+import scala.virtualization.lms.internal.{GenericNestedCodegen,GenerationFailedException}
 
 trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
 
@@ -16,13 +16,24 @@ trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
     case Const(true) => thenp
     case Const(false) => elsep
     case _ =>
-      val a = reifyEffects(thenp)
-      val b = reifyEffects(elsep)
-      (a,b) match {
-        case (Def(Reify(_,_)), _) | (_, Def(Reify(_,_))) => reflectEffect(DeliteIfThenElse(cond,a,b))
-        case _ => DeliteIfThenElse(cond, thenp, elsep)
-      }
+//      val a = reifyEffectsHere(thenp)
+//      val b = reifyEffectsHere(elsep)
+//      (a,b) match {
+//        case (Def(Reify(_,_,_)), _) | (_, Def(Reify(_,_,_))) => reflectEffect(DeliteIfThenElse(cond,a,b))
+//        case _ => DeliteIfThenElse(cond, a, b)
+//      }
+    val a = reifyEffectsHere(thenp)
+    val b = reifyEffectsHere(elsep)
+    val ae = summarizeEffects(a)
+    val be = summarizeEffects(b)
+    reflectEffect(DeliteIfThenElse(cond,a,b), ae orElse be)
   }
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case Reflect(DeliteIfThenElse(c,a,b), u, es) => reflectMirrored(Reflect(DeliteIfThenElse(f(c),f(a),f(b)), mapOver(f,u), f(es)))
+    case DeliteIfThenElse(c,a,b) => DeliteIfThenElse(f(c),f(a),f(b))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
@@ -34,16 +45,16 @@ trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
     case _ => super.syms(e)
   }
 
- override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
-    case DeliteIfThenElse(c, t, e) => getFreeVarBlock(c,Nil) ::: getFreeVarBlock(t,Nil) ::: getFreeVarBlock(e,Nil)
-    case _ => super.getFreeVarNode(rhs)
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c, t, e) => effectSyms(t):::effectSyms(e)
+    case _ => super.boundSyms(e)
   }
 }
 
 trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     /**
      * IfThenElse generates methods for each branch due to empirically discovered performance issues in the JVM
      * when generating long blocks of straight-line code in each branch.
@@ -52,33 +63,74 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
       val save = deliteKernel
       deliteKernel = false
       stream.println("val " + quote(sym) + " = {")
-      stream.println("def " + quote(sym) + "thenb(): " + remap(getBlockResult(a).Type) + " = {")
-      emitBlock(a)
-      stream.println(quote(getBlockResult(a)))
-      stream.println("}")
-
-      stream.println("def " + quote(sym) + "elseb(): " + remap(getBlockResult(b).Type) + " = {")
-      emitBlock(b)
-      stream.println(quote(getBlockResult(b)))
-      stream.println("}")
-
-      stream.println("if (" + quote(c) + ") {")
-      stream.println(quote(sym) + "thenb()")
-      stream.println("} else {")
-      stream.println(quote(sym) + "elseb()")
-      stream.println("}")
+      (a,b) match {
+        case (Const(()), Const(())) => stream.println("()")
+        case (_, Const(())) => generateThenOnly(sym, c, a, !save)
+        case (Const(()), _) => generateElseOnly(sym, c, b, !save)
+        case _ => generateThenElse(sym, c, a, b, !save)
+      }
       stream.println("}")
       deliteKernel = save
 
     case _ => super.emitNode(sym, rhs)
   }
+
+  def generateThenOnly(sym: Sym[Any], c: Exp[Any], thenb: Exp[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
+    case true =>  wrapMethod(sym, thenb, "thenb")
+                  stream.println("if (" + quote(c) + ") {")
+                  stream.println(quote(sym) + "thenb()")
+                  stream.println("}")
+
+    case false => stream.println("if (" + quote(c) + ") {")
+                  emitBlock(thenb)
+                  stream.println("}")
+  }
+
+  def generateElseOnly(sym: Sym[Any], c: Exp[Any], elseb: Exp[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
+    case true =>  wrapMethod(sym, elseb, "elseb")
+                  stream.println("if (" + quote(c) + ") {}")
+                  stream.println("else {")
+                  stream.println(quote(sym) + "elseb()")
+                  stream.println("}")
+
+    case false => stream.println("if (" + quote(c) + ") {}")
+                  stream.println("else {")
+                  emitBlock(elseb)
+                  stream.println("}")
+  }
+
+  def generateThenElse(sym: Sym[Any], c: Exp[Any], thenb: Exp[Any], elseb: Exp[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
+    case true =>  wrapMethod(sym, thenb, "thenb")
+                  wrapMethod(sym, elseb, "elseb")
+                  stream.println("if (" + quote(c) + ") {")
+                  stream.println(quote(sym) + "thenb()")
+                  stream.println("} else { ")
+                  stream.println(quote(sym) + "elseb()")
+                  stream.println("}")
+
+    case false => stream.println("if (" + quote(c) + ") {")
+                  emitBlock(thenb)
+                  stream.println(quote(getBlockResult(thenb)))
+                  stream.println("} else {")
+                  emitBlock(elseb)
+                  stream.println(quote(getBlockResult(elseb)))
+                  stream.println("}")
+  }
+
+  def wrapMethod(sym: Sym[Any], block: Exp[Any], postfix: String)(implicit stream: PrintWriter) = {
+    stream.println("def " + quote(sym) + postfix + "(): " + remap(getBlockResult(block).Type) + " = {")
+    emitBlock(block)
+    stream.println(quote(getBlockResult(block)))
+    stream.println("}")
+  }
+
 }
 
 
 trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case DeliteIfThenElse(c,a,b) =>
           // TODO: Not GPUable if the result is not primitive types.
@@ -187,7 +239,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
 trait DeliteCGenIfThenElse extends CGenEffect with DeliteBaseGenIfThenElse {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case DeliteIfThenElse(c,a,b) =>
           //TODO: using if-else does not work

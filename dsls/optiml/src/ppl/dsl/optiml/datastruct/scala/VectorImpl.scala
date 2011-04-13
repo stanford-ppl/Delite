@@ -3,6 +3,8 @@ package ppl.dsl.optiml.datastruct.scala
 object VectorImpl {
 }
 
+// TODO: replace Array.copy with System.arraycopy and 4.max() with a conditional
+
 /**
  * This is the actual class that gets instantiated in the generated code. Ops corresponding to public operations
  * here must have CodeGen methods defined by the DSL on them.
@@ -27,7 +29,7 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
     _length = _data.length
   }
 
-  def apply(n: Int) : T = {
+  def apply(n: Int): T = {
     _data(n)
   }
 
@@ -39,7 +41,7 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
 
   def sort(implicit o: Ordering[T]) = {
     val d = new Array[T](_length)
-    Array.copy(_data, 0, d, 0, _length)
+    System.arraycopy(_data, 0, d, 0, _length)
     scala.util.Sorting.quickSort(d)
     new VectorImpl[T](d, isRow)
   }
@@ -50,6 +52,8 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
   }
 
   def insertAll(pos: Int, xs: Vector[T]) {
+    if (xs.isInstanceOf[NilVector[Any]]) return
+
     insertSpace(pos, xs.length)
     copyFrom(pos, xs)
   }
@@ -65,16 +69,21 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
 
   def removeAll(pos: Int, len: Int) {
     //chkRange(pos, pos + len)
-    Array.copy(_data, pos + len, _data, pos, _length - (pos + len))
+    System.arraycopy(_data, pos + len, _data, pos, _length - (pos + len))
     _length -= len
   }
 
   def trim {
     if (_length < _data.length) {
       val d = new Array[T](_length)
-      Array.copy(_data, 0, d, 0, _length)
+      System.arraycopy(_data, 0, d, 0, _length)
       _data = d
     }
+  }
+  
+  def clear() {
+    _length = 0
+    _data = new Array[T](0)
   }
 
   def mtrans = {
@@ -82,9 +91,13 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
     this
   }
 
+  def toList = {
+    _data.toList 
+  }
+
   protected def insertSpace(pos: Int, len: Int) {
     ensureExtra(len)
-    Array.copy(_data, pos, _data, pos + len, _length - pos)
+    System.arraycopy(_data, pos, _data, pos + len, _length - pos)
     _length += len
   }
 
@@ -95,10 +108,10 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
   }
 
   protected def realloc(minLen: Int) {
-    var n = 4 max (_data.length * 2)
+    var n = java.lang.Math.max(4, _data.length * 2)
     while (n < minLen) n *= 2
     val d = new Array[T](n)
-    Array.copy(_data, 0, d, 0, _length)
+    System.arraycopy(_data, 0, d, 0, _length)
     _data = d
   }
 

@@ -2,7 +2,8 @@ package ppl.delite.framework.ops
 
 import scala.virtualization.lms.common.EffectExp
 import java.io.PrintWriter
-import scala.virtualization.lms.internal.{CudaGenEffect, CGenEffect, ScalaGenEffect, GenericNestedCodegen}
+import scala.virtualization.lms.common.{CudaGenEffect, CGenEffect, ScalaGenEffect}
+import scala.virtualization.lms.internal.{GenericNestedCodegen}
 
 trait VariantsOpsExp extends EffectExp {
   this: DeliteOpsExp =>
@@ -45,7 +46,7 @@ trait ScalaGenVariantsOps extends BaseGenVariantsOps with ScalaGenEffect {
   import IR._
 
   /*
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case _ => super.emitNode(sym, rhs)
 
   }

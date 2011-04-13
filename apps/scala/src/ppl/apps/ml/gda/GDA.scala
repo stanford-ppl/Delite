@@ -3,20 +3,21 @@ package ppl.apps.ml.gda
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
 
-object GDA extends DeliteApplication with OptiMLExp {
+object GDARunner extends OptiMLApplicationRunner with GDA
 
-  def print_usage = {
+trait GDA extends OptiMLApplication {
+  def printUsage = {
     println("Usage: GDA <input data file> <output label data file>")
     exit(-1)
   }
 
   def main() = {
-    if (args.length < 2) print_usage
+    if (args.length < 2) printUsage
 
-    val x = MLInputReader.read(args(0))
-    val y = MLInputReader.readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
+    val x = readMatrix(args(0))
+    val y = readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
 
-    tic
+    tic()
 
     /* number of training samples */
     val m = y.length
@@ -28,34 +29,22 @@ object GDA extends DeliteApplication with OptiMLExp {
     /* Number of training points must equal number of labeled output points */
     //if (x.h != m) throw new RuntimeException("Bad inputs to GDA")
 
-   /* phi, mu0, mu1, and sigma parameterize the GDA model, where we assume the
-    * input features are continuous-valued random variables with a multivariate
-    * normal distribution.
-    *
-    * phi is a scalar, mu0 and mu1 are n dimensional vectors,
-    * where n is the width of x, and sigma is an n x n matrix.
-    */
-
-    // TODO: get unit out of client code
+    /* phi, mu0, mu1, and sigma parameterize the GDA model, where we assume the
+     * input features are continuous-valued random variables with a multivariate
+     * normal distribution.
+     *
+     * phi is a scalar, mu0 and mu1 are n dimensional vectors,
+     * where n is the width of x, and sigma is an n x n matrix.
+     */
 
     /* This loop calculates all of the needed statistics with a single pass
        through the data.  */
-
-    // the major problem here is the sum function is expanded statically, including instantiation and looping over vectors,
-    // but the conditional means that whether or not we are adding with a zerovector is only known dynamically
-    // -- the issue MUST be resolved in the generated code, via dynamic checks.. but how?
-    // + will generate a ZipWith kernel with 2 vectors, one of which may be a Zero
-    // perhaps the preamble to ZipWith is a test for Zero and shortcircuit - screws up cost predictions though
-    // Zero generates a references to a static object ZeroVector which is dynamically matched against in the generated code
-    // on the other hand, is a dynamic check for a zero vector on every += worth it?
-    // (current solution): an alternative is to implement ZeroVector apply
-    // to always return 0 -- this is space efficient, but a += will still be time inefficient (n additions of zero).. jit magic to the rescue?
     val (y_zeros, y_ones, mu0_num, mu1_num) = t4( sum(0,m) { i =>
       if (y(i) == false){
-        (unit(1.),unit(0.),x(i),NilV[Double])
+        (unit(1.),unit(0.),x(i),ZeroV[Double](n))
       }
       else {
-        (unit(0.),unit(1.),NilV[Double],x(i))
+        (unit(0.),unit(1.),ZeroV[Double](n),x(i))
       }
     })
 
@@ -77,15 +66,15 @@ object GDA extends DeliteApplication with OptiMLExp {
       }
     }
 
-    // TODO: nothing is really preventing toc from getting hoisted upwards in the schedule, resulting in the wrong time
-    // unless the above sum is a reflectEffect
-    toc
+    toc(sigma)
 
     //print("GDA parameter calculation finished: ")
     //println("  phi = " + phi)
     //println("  mu0 = " ); mu0.pprint
     //println("  mu1 = " ); mu1.pprint
     //println("  sigma = "); sigma.pprint
+
+    // need to do something or the whole program will be DCE'd
     println(sigma)
 
   }
