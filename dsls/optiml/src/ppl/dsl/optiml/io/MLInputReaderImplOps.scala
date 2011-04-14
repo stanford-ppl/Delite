@@ -100,7 +100,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   */
   def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]] = {
 
-    var xs = BufferedReader(FileReader(filename))
+    val xs = BufferedReader(FileReader(filename))
 
     // header and metadata
     var header = xs.readLine()
