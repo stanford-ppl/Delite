@@ -127,7 +127,7 @@
   <ol> 
     <li>Build <code>scala-virtualized</code> by running <code>ant</code> 
     </li> 
-    <li>Create a new project with the <code>Project Files</code> location set to the <code>Delite</code> directory</li> 
+    <li>Create a new project (selecting from existing sources) with the <code>Project Files</code> location set to the <code>Delite</code> directory. Do not create a <code>src</code> directory</li> 
     <li>Add a Project Library <code>scala-virtualized</code> with Classes <code>scala-compiler.jar</code> and <code>scala-library.jar</code>. These are found under <code>scala-virtualized/build/pack/lib</code> 
     </li> 
     <li>Add modules from scratch, with directories set to <code>Delite/dsls/optiml</code>, <code>Delite/framework</code>, <code>Delite/runtime</code>, <code>Delite/tests</code>, <code>virtualization-lms-core</code> 
@@ -187,7 +187,7 @@
     <li><p>Do not select a desired technology. Click <code>Finish</code>.</p></li> 
     <li><p>Select your new module and either right click -&gt; <code>New</code> -&gt; <code>Scala</code>, or click <code>+</code> (add) -&gt; <code>New</code> -&gt; <code>Scala</code></p></li> 
     <li>Select the <code>Scala</code> facet that appears.</li> 
-    <li>Add a new Compiler plugin (do this only one time for the project). This should be under <code>scala-virtualized/build/pack/lib/scala-compiler.jar</code> 
+    <li>Add a new Compiler plugin for each module. This should be under <code>scala-virtualized/build/pack/lib/scala-compiler.jar</code> 
     </li> 
     <li><p>Select <code>scala-virtualized</code> under <code>Compiler library</code>. If nothing is under <code>Compiler library</code>, click <code>OK</code> on the <code>Project Structure</code> dialog and open up the project structure dialog again.</p></li> 
     <li><p>Create new modules for <code>Delite/framework</code>, <code>Delite/runtime</code>, <code>Delite/tests</code>, and <code>virtualization-lms-core</code></p></li> 
