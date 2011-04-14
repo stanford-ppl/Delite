@@ -59,6 +59,9 @@
 <p>Delite is released under the new <span class="caps">BSD</span> <a href="license.html">license</a>.</p>
 <p></p>
 <h1 id="manual">Building from source</h2>
+
+<p>IDEA may occasionally fail to compile your Delite projects depending on bugs in the scala-virtualized compiler. Use sbt as a backup compile tool. Setup instructions are below.</p>
+
 <p>
 <h2>Dependencies</h2> 
    
@@ -72,15 +75,24 @@
    
   <ul> 
     <li><a href="http://code.google.com/p/msysgit/">Git for Windows</a></li> 
+    <li>We have found Git works best on Windows with <code>autocrlf</code> and <code>filemode</code> disabled. Place these options either in your global git config or the per repository git config.
+    <pre><code>[core]
+filemode = false
+autocrlf = false</code></pre> 
+    </li>
   </ul><h3>Ant</h3> 
    
   <ul> 
     <li><a href="http://ant.apache.org/">Ant</a></li> 
-  </ul><h3>Svn client</h3> 
+  </ul>
+  
+  <h3>GUI Git Client for Windows</h3> 
    
   <ul> 
-    <li><a href="http://www.sliksvn.com/en/download">SlikSVN for Windows</a></li> 
-  </ul><h3>Virtualized Scala</h3> 
+    <li><a href="http://code.google.com/p/tortoisegit/">TortoiseGit</a></li> 
+  </ul>
+  
+  <h3>Virtualized Scala</h3> 
    
   <ul> 
     <li> 
@@ -108,12 +120,11 @@
     <li> 
     <p>Create a <code>local.properties</code> file inside the <code>Delite</code> and the <code>virtualization-lms-core</code> folder with the following lines. Select the appropriate line based on your system and replace with appropriate paths. Absolute paths must be used if the <code>scala-virtualized</code> directory is outside of either project.</p> 
      
-    <pre><code> #Project local properties
-     # Windows:
-      scala.virtualized.home=C:/PPL/scala-virtualized/build/pack
-       # Unix:
-        scala.virtualized.home=/PPL/scala-virtualized/build/pack
-        </code></pre> 
+    <pre><code>#Project local properties
+# Windows:
+scala.virtualized.home=C:/PPL/scala-virtualized/build/pack
+# Unix:
+scala.virtualized.home=/PPL/scala-virtualized/build/pack</code></pre> 
     </li> 
     <li><p>Generate the <code>scala-virtualized</code> compiler by running <code>ant</code> in the <code>scala-virtualized</code> directory</p></li> 
     <li><p>You should be able to run <code>sbt</code> from the Delite directory.</p></li> 
