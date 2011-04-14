@@ -1,77 +1,87 @@
-<!DOCTYPE html>
 <html>
-<head>
-  <meta charset='utf-8'>
-
-  <title>stanford-ppl/Delite @ GitHub</title>
-
-  <style type="text/css">
-    body {
-      margin-top: 1.0em;
-      background-color: #7658e4;
-      font-family: Helvetica, Arial, FreeSans, san-serif;
-      color: #000000;
-    }
-    #container {
-      margin: 0 auto;
-      width: 700px;
-    }
-    h1 { font-size: 3.8em; color: #89a71b; margin-bottom: 3px; }
-    h1 .small { font-size: 0.4em; }
-    h1 a { text-decoration: none }
-    h2 { font-size: 1.5em; color: #89a71b; }
-    h3 { text-align: center; color: #89a71b; }
-    a { color: #89a71b; }
-    .description { font-size: 1.2em; margin-bottom: 30px; margin-top: 30px; font-style: italic;}
-    .download { float: right; }
-    pre { background: #000; color: #fff; padding: 15px;}
-    hr { border: 0; width: 80%; border-bottom: 1px solid #aaa}
-    .footer { text-align:center; padding-top:30px; font-style: italic; }
-  </style>
-</head>
-
-<body>
-  <a href="http://github.com/stanford-ppl/Delite"><img style="position: absolute; top: 0; right: 0; border: 0;" src="http://s3.amazonaws.com/github/ribbons/forkme_right_darkblue_121621.png" alt="Fork me on GitHub" /></a>
-
-  <div id="container">
-
-    <div class="download">
-      <a href="http://github.com/stanford-ppl/Delite/zipball/master">
-        <img border="0" width="90" src="http://github.com/images/modules/download/zip.png"></a>
-      <a href="http://github.com/stanford-ppl/Delite/tarball/master">
-        <img border="0" width="90" src="http://github.com/images/modules/download/tar.png"></a>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>Delite &mdash; Welcome</title>
+    <style type='text/css'>
+      @import 'css/default.css';
+      @import 'css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import 'css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/delite/' title="Delite">Delite</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href='getting_started.html'>Getting Started</a></li>
+              <li><a href="dsl_example.html">My First DSL</a></li>
+              <li><a href="troubleshooting.html">Troubleshooting</a></li>
+              <li><a href="publications.html">Publications</a></li>
+            </ol>
+          </li>
+          <li>Getting it
+            <ol>
+            <!--
+              <li><a href='releases.html'>Releases</a></li>
+              <li><a href='snapshots.html'>Snapshots</a></li>
+            -->
+              <li><a href='source.html'>Source</a></li>
+              <li><a href='license.html'>License</a></li>
+            </ol>
+          </li>
+          <!--
+          <li>Reference
+            <ol>
+              <li><a href='api/0.3/index.html'>ScalaDoc API</a></li>
+              <li>&nbsp;</li>
+              <li><a href='sponsors.html'>Sponsors</a></li>
+              <li class="logo"><a href="http://ppl.stanford.edu"><img width="110" alt="Stanford Pervasive Parallelism Lab" src='images/ppl_logo_small.png'></a></li>
+            </ol>
+          </li>
+          -->
+        </ol>
+      </div>
+      <div id='content'>
+        <h1 id='title_welcome'>Welcome</h1>
+        <p> Delite is a research project from Stanford University's Pervasive Parallelism Laboratory (PPL). Delite is a compiler framework and runtime
+        for parallel embedded domain-specific languages (DSLs). Our goal is enable the rapid construction of high performance, highly productive DSLs. </p>
+        <p>Delite provides several
+        facilities: </p>
+          <ul>
+            <li> Built-in parallel execution patterns</li>
+            <li> Optimizers for parallel code</li>
+            <li> Code generators for Scala, C++ and CUDA</li>
+            <li> A heterogeneous runtime for executing DSLs</li>
+          </ul>
+        <p>
+        Delite is being developed in collaboration with the Programming Methods Laboratory (LAMP) at Ecole Polytechnique Federale de Lausanne (EPFL). Our related projects
+        include <a href="http://github.com/TiarkRompf/virtualization-lms-core">Lightweight Modular Staging</a> and <a href="https://github.com/TiarkRompf/scala-virtualized">Scala virtualized</a>.
+        </p>
+        <p>
+        Delite is still in alpha, and there is no official release. This page is primarily intended to serve the students of <a href="http://cs442.stanford.edu/">CS 442</a> at Stanford University.
+        However, we do anticipate a public release within the next few months. Please <a href="mailto:asujeeth@stanford.edu">contact us</a> if you have any questions.
+        </p>
+<h2 id="news">News</h2>
+<ul>
+  <!--
+	<li class="major"><em>2011 Apr 26</em> &#8212; ScalaSTM version 0.3 <a href="releases.html">released</a>, including
+	<ul>
+		<li>Support for Scala 2.9.0.RC1</li>
+  </ul></li>
+  -->
+	<li><em>2011 Apr 13</em> Github page created. We are still in alpha with no official releases. </li>
+</ul>
+      </div>
+      <div id='footer'>Copyright &copy; 2011. Web template by Nathan Bronson <a href="http://nbronson.github.com/scala-stm/index.html">(ScalaSTM)</a></div>
     </div>
-
-    <h1><a href="http://github.com/stanford-ppl/Delite">Delite</a>
-      <span class="small">by <a href="http://github.com/stanford-ppl">stanford-ppl</a></span></h1>
-
-    <div class="description">
-      The Delite Git Repo
-    </div>
-
-    <h2>Authors</h2>
-<p>asujeeth (asujeeth@stanford.edu)<br/>hchafi (hchafi@stanford.edu)<br/>hyouklee (hyouklee@stanford.edu)<br/>Kevin Brown (kjbrown@stanford.edu)<br/>Tiark Rompf (tiark.rompf@epfl.ch)<br/>      </p>
-<h2>Contact</h2>
-<p>The Stanford Pervasive Parallelism Lab<br/>      </p>
-
-
-    <h2>Download</h2>
-    <p>
-      You can download this project in either
-      <a href="http://github.com/stanford-ppl/Delite/zipball/master">zip</a> or
-      <a href="http://github.com/stanford-ppl/Delite/tarball/master">tar</a> formats.
-    </p>
-    <p>You can also clone the project with <a href="http://git-scm.com">Git</a>
-      by running:
-      <pre>$ git clone git://github.com/stanford-ppl/Delite</pre>
-    </p>
-
-    <div class="footer">
-      get the source code on GitHub : <a href="http://github.com/stanford-ppl/Delite">stanford-ppl/Delite</a>
-    </div>
-
-  </div>
-
-  
-</body>
+  </body>
 </html>

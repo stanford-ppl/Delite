@@ -1,0 +1,18 @@
+.title { page-break-before: always }
+h2 { page-break-after: avoid }
+pre, p { page-break-inside: avoid }
+
+body { font-size: 10pt }
+code {
+  font-family: "Courier New", "monospace";
+}
+pre code { font-size: 9pt }
+
+#header, #menu, #footer { display: none }
+#outer, #content {
+  float: none;
+  background: transparent;
+  width: auto;
+  margin: 0;
+  padding: 0;
+}
