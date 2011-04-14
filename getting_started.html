@@ -1,0 +1,131 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>Delite &mdash; Getting started</title>
+    <style type='text/css'>
+      @import 'css/default.css';
+      @import 'css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import 'css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/delite/' title="Delite">Delite</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href='getting_started.html'>Getting Started</a></li>
+              <li><a href="dsl_example.html">My First DSL</a></li>
+              <li><a href="troubleshooting.html">Troubleshooting</a></li>
+              <li><a href="publications.html">Publications</a></li>
+            </ol>
+          </li>
+          <li>Getting it
+            <ol>
+            <!--
+              <li><a href='releases.html'>Releases</a></li>
+              <li><a href='snapshots.html'>Snapshots</a></li>
+            -->
+              <li><a href='source.html'>Source</a></li>
+              <li><a href='license.html'>License</a></li>
+            </ol>
+          </li>
+          <!--
+          <li>Reference
+            <ol>
+              <li><a href='api/0.3/index.html'>ScalaDoc API</a></li>
+              <li>&nbsp;</li>
+              <li><a href='sponsors.html'>Sponsors</a></li>
+              <li class="logo"><a href="http://ppl.stanford.edu"><img width="110" alt="Stanford Pervasive Parallelism Lab" src='images/ppl_logo_small.png'></a></li>
+            </ol>
+          </li>
+          -->
+        </ol>
+      </div>
+      <div id='content'> 
+        <h1 id='title_getting started'>Getting started</h1>
+        <p> Follow the instructions <a href="source.html">here</a> to download and build the source and its dependencies. </p>
+        <p> The Delite repository currently includes several modules: </p>
+        <ol>
+          <li> <b>Applications:</b> these are example Delite applications written in a Delite DSL
+          <li> <b>DSLs:</b> prototype Delite DSLs (the main one right now is OptiML)
+          <li> <b>Framework:</b> The Delite Compiler Framework
+          <li> <b>Runtime:</b> The Delite Runtime
+          <li> <b>Tests:</b> tests for all Delite modules
+        </ol>
+
+        <p> For now, we'll get you up and running simple applications in the Delite environment so you can see what's going on.
+        To get started, let's write "hello world" in OptiML. Open up a file called 'HelloWorld.scala' and copy this text in:
+        
+        <div class="highlight"><pre><code class="scala"><span class="k">import</span> <span class="nn">ppl.dsl.optiml._</span>
+
+<span class="k">object</span> <span class="nc">HelloWorldRunner</span> <span class="k">extends</span> <span class="nc">OptiMLApplicationRunner</span> <span class="k">with</span> <span class="nc">HelloWorld</span> 
+<span class="k">trait</span> <span class="nc">HelloWorld</span> <span class="k">extends</span> <span class="nc">OptiMLApplication</span> <span class="o">{</span> 
+  <span class="k">def</span> <span class="n">main() = println("</span><span class="s">hello world</span><span class="n">")</span>
+<span class="o">}</span>
+</div>
+        <p> If you are using IDEA, make sure that you have the <code>framework</code>, <code>dsls</code>, and
+        <code>virtualization-lms-core</code> modules in your classpath. Also make sure that you are using
+        the <code>scala-virtualized</code> compiler. The rest of this guide will assume a UNIX environment and
+        use SBT and our shell scripts, but as long as IDEA is configured correctly, you should be able to follow along.
+        </p>
+        <p>If you haven't already, compile Delite using</p>
+        <div class="highlight"><pre><code class="bash">sbt compile</code></pre></div> 
+        <p>Don't forget to download and compile <code>virtualization-lms-core</code> as well. We'll assume that the root directory of LMS is <code>$LMS</code>.</p>
+        <p>
+        All Delite applications have three phases: compiliing (Scala), staging (DSL compilation), and executing (runtime). The first step, running the scala compiler,
+        checks your application for synctactic and type correctness. Staging is where the main compilation happens: the DSL builds an IR of the program, optimizes it,
+        and generates an execution graph along with code for multiple targets (e.g. Scala and CUDA). Finally, the Delite runtime reads in the execution graph and
+        generated kernels and executes the application.      
+        </p>
+        <p>
+        So without further ado, let's get to it. First, we need to configure our classpath:
+        <div class="highlight" style="overflow: scroll"><pre><code class="bash">export CLASSPATH=$CLASSPATH:dsls/optiml/target/scala_2.9.x-virtualized-SNAPSHOT/classes/:framework/target/scala_2.9.x-virtualized-SNAPSHOT/classes:$LMS/target/scala_2.9.x-virtualized-SNAPSHOT/classes:.</code></pre></div> 
+        </p>
+        <p>
+        Assuming that the <code>scalac</code> in your path is from scala-virtualized, run
+        <div class="highlight"><pre><code class="bash">scalac HelloWorld.scala</code></pre></div>
+        </p>
+        <p>
+        Now we need to stage our program. We do this by running the main method of <code>OptiMLApplicationRunner</code> object we just created:
+        <div class="highlight"><pre><code class="bash">scala HelloWorldRunner</code</pre></div>
+        <p>
+        The generated execution graph will be in 'out.deg'. Also look around in the folder 'generated/' - it contains code OptiML generated!
+        Note that you can specify a different file for the DEG by supplying the JVM parameter <code>delite.deg.filename</code>:
+        <div class="hightligh"><pre><code class="bash">scala -Ddelite.deg.filename="hello.deg" HelloWorldRunner</code></pre></div>
+        </p>
+        <p>
+        The last thing we need to do is execute our generated program. To do this, we are going to switch back to the normal Scala
+        compiler (this is not strictly necessary, but tends to be more reliable). Download a current final version of <a href="http://www.scala-lang.org/downloads">Scala</a>. 
+        We'll assume that $SCALA_VANILLA points to the root directory of the Scala distribution you just downloaded.
+        <div class="highlight" style="overflow: scroll"><pre><code class="bash">java -cp runtime/target/scala_2.8.1/classes:$SCALA_VANILLA/lib/scala-library.jar:$SCALA_VANILLA/lib/scala-compiler.jar ppl.delite.runtime.Delite out.deg</code></pre></div>
+        </p>
+        <p>
+        You should see output like the following:
+        <div class="highlight"><pre>
+Delite Runtime executing with the following arguments:
+out.deg
+Delite Runtime executing with 1 CPU thread(s) and 0 GPU(s)
+Beginning Execution Run 1
+hello world
+[METRICS]: Latest time for component all: 0.032000s
+</pre></div>
+      </p>
+      <p>
+      Congratulations! You just ran your first Delite application. Take some time to look at the generated DEG file, and the generated
+      kernels inside generated/ to see what went on behind the scenes. When you think you're ready to really dive in, move on
+      to <a href="dsl_example.html">building your own DSL</a>.
+      </p>
+      </div>
+      <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>
