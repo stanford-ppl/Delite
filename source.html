@@ -59,6 +59,9 @@
 <p>Delite is released under the new <span class="caps">BSD</span> <a href="license.html">license</a>.</p>
 <p></p>
 <h1 id="manual">Building from source</h2>
+
+<p>IDEA may occasionally fail to compile your Delite projects depending on bugs in the scala-virtualized compiler. Use sbt as a backup compile tool. Setup instructions are below.</p>
+
 <p>
 <h2>Dependencies</h2> 
    
@@ -75,17 +78,18 @@
     <li>We have found Git works best on Windows with <code>autocrlf</code> and <code>filemode</code> disabled. Place these options either in your global git config or the per repository git config.
     <pre><code>[core]
 filemode = false
-autocrlf = false
-    </code></pre> 
+autocrlf = false</code></pre> 
     </li>
   </ul><h3>Ant</h3> 
    
   <ul> 
     <li><a href="http://ant.apache.org/">Ant</a></li> 
-  </ul><h3>Svn client</h3> 
+  </ul>
+  
+  <h3>GUI Git Client for Windows</h3> 
    
   <ul> 
-    <li><a href="http://code.google.com/p/tortoisegit/">GUI Git Client for Windows</a></li> 
+    <li><a href="http://code.google.com/p/tortoisegit/">TortoiseGit</a></li> 
   </ul>
   
   <h3>Virtualized Scala</h3> 
