@@ -23,15 +23,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     case _ => Nil
   }
 
-  private def mutating(kernelContext: State, sym: Sym[Any]) : List[Sym[Any]] =
-    kernelContext flatMap {
-      //case Def(Mutation(x,effects)) => if (syms(x) contains sym) List(sym) else Nil
-      case Def(Reflect(x,u,effects)) => if (mayWrite(u,List(sym))) List(sym) else Nil
-      case _ => Nil
-    }
-
-  def getEffectsBlock(sym: List[Sym[Any]]): List[Sym[Any]] = Nil //TR CHECK/FIXME
-
+  private def mutating(kernelContext: State, sym: Sym[Any]) : List[Sym[Any]] = kernelContext flatMap {
+    //case Def(Mutation(x,effects)) => if (syms(x) contains sym) List(sym) else Nil
+    case Def(Reflect(x,u,effects)) => if (mayWrite(u,List(sym))) List(sym) else Nil
+    case _ => Nil
+  }
 
   override def emitFatNode(sym: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter): Unit = {
     assert(generators.length >= 1)
@@ -58,10 +54,17 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
     // validate that generators agree on inputs (similar to schedule validation in DeliteCodegen)
     //val dataDeps = ifGenAgree(g => (g.syms(rhs) ++ g.getFreeVarNode(rhs)).distinct, true)
-    
+
     val dataDeps = { // don't use getFreeVarNode...
       val bound = boundSyms(rhs)
       val used = syms(rhs)
+//      println( "=== used for " + sym)
+//      used foreach { s => s match {
+//        case Def(x) => println(s + " = " + x)
+//        case _ => println(s)
+//      }}
+      //println(used)
+      //focusFatBlock(used) { freeInScope(bound, used) } filter { case Def(r@Reflect(x,u,es)) => used contains r; case _ => true } // distinct
       focusFatBlock(used) { freeInScope(bound, used) } // distinct
       //syms(rhs).flatMap(s => focusBlock(s) { freeInScope(boundSyms(rhs), s) } ).distinct
     }
@@ -194,8 +197,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     
     
     val inputs = deliteInputs
-    //val kernelContext = getEffectsKernel(sym, rhs)
-    val kernelContext = getEffectsBlock(sym) //ifGenAgree( _.getEffectsBlock(sym), true )
+
+    // effectful operations inside kernel
+    val defs = rhs match {
+      case op:AbstractFatLoop => op.body
+      case ThinDef(d) => List(d)
+    }
+    val kernelContext = getEffectsBlock(defs)
+
+    // kernel inputs mutated by any effectful operation inside kernel
     val inMutating = (inputs flatMap { mutating(kernelContext, _) }).distinct
 
     // additional data deps: for each of my inputs, look at the kernels already generated and see if any of them
