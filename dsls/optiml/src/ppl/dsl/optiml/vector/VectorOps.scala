@@ -668,7 +668,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }
 
   def getMinValue[A:Manifest]: Exp[A] = manifest[A] match { // TODO: move somewhere else (Arith? Ordering?)
-    case Manifest.Double => unit(scala.Double.MinNegativeValue).asInstanceOf[Exp[A]]
+    case Manifest.Double => unit(scala.Double.MinValue).asInstanceOf[Exp[A]]
     case Manifest.Int => unit(scala.Int.MinValue).asInstanceOf[Exp[A]]
   }
 

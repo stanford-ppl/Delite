@@ -1,0 +1,1487 @@
+/*****************************************
+  Emitting Generated Code                  
+*******************************************/
+class RBMRunner extends ((Array[java.lang.String])=>(Unit)) {
+def apply(x0:Array[java.lang.String]): Unit = {
+val x1 = { generated.scala.Global.randRef.setSeed(generated.scala.Global.INITIAL_SEED);   generated.scala.Global.intRandRef.setSeed(generated.scala.Global.INITIAL_SEED); }
+val x2 = x0.length
+val x3 = x2 < 3
+val x7 = {
+def x7thenb(): Nothing = {
+val x4 = println("Usage: RBM <MNIST data file> <numHiddenUnits> <numcases>")
+val x5 = exit(-1)
+x5
+}
+if (x3) {
+x7thenb()
+}
+}
+val x8 = x0(1)
+val x9 = java.lang.Integer.parseInt(x8)
+val x10 = "Using "+x9
+val x11 = x10+" hidden units."
+val x12 = println(x11)
+val x13 = println("Reading MNIST dataset")
+val x16 = x0(0)
+val x61 = { 
+val x17 = new java.io.FileReader(x16)
+val x18 = new java.io.BufferedReader(x17)
+val x19 = x18.readLine()
+var x20: java.lang.String = x19
+val x21 = x20
+val x22 = x21.trim()
+x20 = x22
+val x24 = x20
+val x25 = x24.split("\\s+")
+var x26: Array[java.lang.String] = x25
+val x27 = x26
+val x28 = x27.length
+val x29 = new generated.scala.DoubleMatrixImpl(0,x28)
+val x58 = while ({val x30 = x20
+val x31 = x30 != null
+x31}) {
+val x33 = x26
+val x34 = x33.length
+val x35 = new generated.scala.DoubleVectorImpl(x34,true)
+var x37 : Int = 0
+val x43 = while (x37 < x34) {
+val x38 = x26
+val x39 = x38(x37)
+val x40 = java.lang.Double.parseDouble(x39)
+val x41 = x35(x37) = x40
+x41
+x37 = x37 + 1
+}
+val x44 = x29.numRows
+val x45 = x29.insertRow(x44,x35)
+val x46 = x18.readLine()
+x20 = x46
+val x48 = x20
+val x49 = x48 != null
+val x56 = {
+def x56thenb(): Unit = {
+val x50 = x48.trim()
+x20 = x50
+val x52 = x20
+val x53 = x52.split("\\s+")
+x26 = x53
+()
+}
+if (x49) {
+x56thenb()
+}
+}
+x56
+}
+val x59 = x18.close()
+x29
+}
+val x64 = x61.numRows
+val x65 = x61.numCols
+def x68_block = {
+val x66 = new generated.scala.FloatMatrixImpl(x64,x65)
+var mapIdx = 0
+while (mapIdx < x61.size) { // begin map loop x68
+val x62 = x61.dcApply(mapIdx)
+x66.dcUpdate(mapIdx,  {
+val x63 = x62.floatValue()
+x63
+})
+mapIdx += 1
+} // end map loop x68
+x66
+}
+val x68 = x68_block
+val x69 = x68.numCols
+val x79 = { 
+val x72 = new generated.scala.FloatMatrixImpl(x69,x9)
+def x77_block = {
+var mapIdx = 0
+while (mapIdx < x72.size) { // begin map loop x77
+val x73 = x72.dcApply(mapIdx)
+x72.dcUpdate(mapIdx,  {
+val x74 = generated.scala.Global.randRef.nextGaussian()
+val x75 = x74.floatValue()
+x75
+})
+mapIdx += 1
+} // end map loop x77
+x72
+}
+val x77 = x77_block
+x77
+}
+val x80 = x79.numRows
+val x81 = x79.numCols
+def x86_block = {
+val x82 = new generated.scala.FloatMatrixImpl(x80,x81)
+var mapIdx = 0
+while (mapIdx < x79.size) { // begin map loop x86
+val x84 = x79.dcApply(mapIdx)
+x82.dcUpdate(mapIdx,  {
+val x85 = x84 * 0.1f
+x85
+})
+mapIdx += 1
+} // end map loop x86
+x82
+}
+val x86 = x86_block
+val x87 = x86.cloneL
+val x91 = { 
+val x88 = new generated.scala.FloatVectorImpl(x9,true)
+x88
+}
+val x95 = { 
+val x92 = new generated.scala.FloatVectorImpl(x69,true)
+x92
+}
+val x98 = { 
+val x96 = new generated.scala.FloatMatrixImpl(x69,x9)
+x96
+}
+var x99: generated.scala.Matrix[Float] = x98
+val x90 = { 
+val x88 = new generated.scala.FloatVectorImpl(x9,true)
+x88
+}
+var x102: generated.scala.Vector[Float] = x90
+val x94 = { 
+val x92 = new generated.scala.FloatVectorImpl(x69,true)
+x92
+}
+var x105: generated.scala.Vector[Float] = x94
+val x106 = Seq()
+val x107 = ppl.delite.runtime.profiler.PerformanceTimer.start("app", false)
+var x108: Int = 0
+val x14 = x0(2)
+val x15 = java.lang.Integer.parseInt(x14)
+val x70 = x68.numRows
+val x71 = x70 / x15
+val x222 = List()
+val x433 = { 
+val x426 = new generated.scala.FloatMatrixImpl(x15,x9)
+def x431_block = {
+var mapIdx = 0
+while (mapIdx < x426.size) { // begin map loop x431
+val x427 = x426.dcApply(mapIdx)
+x426.dcUpdate(mapIdx,  {
+val x428 = generated.scala.Global.randRef.nextFloat()
+val x429 = x428.asInstanceOf[Float]
+x429
+})
+mapIdx += 1
+} // end map loop x431
+x426
+}
+val x431 = x431_block
+x431
+}
+val x925 = x15
+val x982 = 0.1f / x925
+val x1055 = while ({val x109 = x108
+val x110 = x109 < 10
+x110}) {
+var x112: Float = 0.0f
+var x113: Int = 0
+val x1046 = while ({val x114 = x113
+val x115 = x114 < x71
+x115}) {
+val x117 = x113
+val x119 = x113
+val x118 = x117 * x15
+val x120 = x119 + 1
+val x121 = x120 * x15
+val x122 = x121 - x118
+val x149 = { 
+val x123 = new generated.scala.FloatMatrixImpl(x122,x69)
+var x124: Int = x118
+val x147 = while ({val x125 = x124
+val x126 = x125 < x121
+x126}) {
+var x128: Int = 0
+val x144 = while ({val x129 = x128
+val x130 = x129 < x69
+x130}) {
+val x132 = x124
+val x134 = x128
+val x135 = x124
+val x136 = x128
+val x133 = x132 - x118
+val x137 = x135 * x69
+val x138 = x137 + x136
+val x139 = x68.dcApply(x138)
+val x140 = { 
+x139
+}
+val x141 = x123(x133, x134) = x140
+val x142 = x128 += 1
+()
+}
+val x145 = x124 += 1
+()
+}
+x123
+}
+val x172 = x149.numRows
+val x175 = new generated.scala.IndexVectorRangeImpl(0,x172)
+val x183 = x149.numCols
+val x225 = { 
+val x171 = { 
+val x150 = x87.numCols
+val x151 = x87.numRows
+val x152 = new generated.scala.FloatMatrixImpl(x150,x151)
+val x153 = x152.numRows
+var x155 : Int = 0
+val x169 = while (x155 < x153) {
+val x156 = x152.numCols
+var x158 : Int = 0
+val x167 = while (x158 < x156) {
+val x164 = { 
+val x159 = x87.numCols
+val x160 = x158 * x159
+val x161 = x160 + x155
+val x162 = x87.dcApply(x161)
+x162
+}
+val x165 = x152(x155, x158) = x164
+x165
+x158 = x158 + 1
+}
+x167
+x155 = x155 + 1
+}
+x152
+}
+val x173 = x87.numCols
+val x174 = new generated.scala.FloatMatrixImpl(x172,x173)
+val x189 = x171.numCols
+val x223 = {
+var forIdx = 0
+while (forIdx < x175.size) { // begin foreach loop x223
+val x176 = x175.dcApply(forIdx)
+var x177: Int = 0
+val x184 = x176 * x183
+val x185 = x184 + 0
+val x186 = x149.dcApply(x185)
+val x187 = { 
+x186
+}
+val x219 = while ({val x178 = x177
+val x179 = x174.numCols
+val x180 = x178 < x179
+x180}) {
+var x182: Int = 1
+val x188 = x177
+val x190 = x188 * x189
+val x191 = x190 + 0
+val x192 = x171.dcApply(x191)
+val x193 = { 
+x192
+}
+val x194 = x187 * x193
+var x195: Float = x194
+val x213 = while ({val x196 = x182
+val x197 = x196 < x189
+x197}) {
+val x199 = x182
+val x203 = x177
+val x204 = x182
+val x200 = x184 + x199
+val x201 = x149.dcApply(x200)
+val x202 = { 
+x201
+}
+val x205 = x203 * x189
+val x206 = x205 + x204
+val x207 = x171.dcApply(x206)
+val x208 = { 
+x207
+}
+val x209 = x202 * x208
+val x210 = x195 += x209
+val x211 = x182 += 1
+()
+}
+val x214 = x177
+val x215 = x195
+val x216 = x174(x176, x214) = x215
+val x217 = x177 += 1
+()
+}
+()
+forIdx += 1
+} // end foreach loop x223
+}
+x174
+}
+val x273 = { 
+val x226 = x91.isRow
+val x271 = {
+def x271thenb(): generated.scala.Matrix[Float] = {
+val x227 = x91.length
+val x228 = 1 * x227
+val x229 = new generated.scala.FloatMatrixImpl(x15,x228)
+val x230 = new generated.scala.IndexVectorRangeImpl(0,x228)
+val x246 = {
+var forIdx = 0
+while (forIdx < x230.size) { // begin foreach loop x246
+val x231 = x230.dcApply(forIdx)
+val x232 = x91.length
+var x234: Int = 0
+val x233 = x231 % x232
+val x243 = while ({val x235 = x234
+val x236 = x235 < x15
+x236}) {
+val x238 = x234
+val x239 = x91(x233)
+val x240 = x229(x238, x231) = x239
+val x241 = x234 += 1
+()
+}
+()
+forIdx += 1
+} // end foreach loop x246
+}
+x229
+}
+def x271elseb(): generated.scala.Matrix[Float] = {
+val x248 = x91.length
+val x249 = x15 * x248
+val x250 = new generated.scala.FloatMatrixImpl(x249,1)
+val x251 = x91.length
+val x252 = x15 * x251
+val x253 = new generated.scala.IndexVectorRangeImpl(0,x252)
+val x269 = {
+var forIdx = 0
+while (forIdx < x253.size) { // begin foreach loop x269
+val x254 = x253.dcApply(forIdx)
+val x255 = x91.length
+var x257: Int = 0
+val x256 = x254 % x255
+val x266 = while ({val x258 = x257
+val x259 = x258 < 1
+x259}) {
+val x261 = x257
+val x262 = x91(x256)
+val x263 = x250(x254, x261) = x262
+val x264 = x257 += 1
+()
+}
+()
+forIdx += 1
+} // end foreach loop x269
+}
+x250
+}
+if (x226) {
+x271thenb()
+} else { 
+x271elseb()
+}
+}
+x271
+}
+val x462 = { 
+val x441 = x87.numCols
+val x442 = x87.numRows
+val x443 = new generated.scala.FloatMatrixImpl(x441,x442)
+val x444 = x443.numRows
+var x446 : Int = 0
+val x460 = while (x446 < x444) {
+val x447 = x443.numCols
+var x449 : Int = 0
+val x458 = while (x449 < x447) {
+val x455 = { 
+val x450 = x87.numCols
+val x451 = x449 * x450
+val x452 = x451 + x446
+val x453 = x87.dcApply(x452)
+x453
+}
+val x456 = x443(x446, x449) = x455
+x456
+x449 = x449 + 1
+}
+x458
+x446 = x446 + 1
+}
+x443
+}
+val x582 = { 
+val x535 = x95.isRow
+val x580 = {
+def x580thenb(): generated.scala.Matrix[Float] = {
+val x536 = x95.length
+val x537 = 1 * x536
+val x538 = new generated.scala.FloatMatrixImpl(x15,x537)
+val x539 = new generated.scala.IndexVectorRangeImpl(0,x537)
+val x555 = {
+var forIdx = 0
+while (forIdx < x539.size) { // begin foreach loop x555
+val x540 = x539.dcApply(forIdx)
+val x541 = x95.length
+var x543: Int = 0
+val x542 = x540 % x541
+val x552 = while ({val x544 = x543
+val x545 = x544 < x15
+x545}) {
+val x547 = x543
+val x548 = x95(x542)
+val x549 = x538(x547, x540) = x548
+val x550 = x543 += 1
+()
+}
+()
+forIdx += 1
+} // end foreach loop x555
+}
+x538
+}
+def x580elseb(): generated.scala.Matrix[Float] = {
+val x557 = x95.length
+val x558 = x15 * x557
+val x559 = new generated.scala.FloatMatrixImpl(x558,1)
+val x560 = x95.length
+val x561 = x15 * x560
+val x562 = new generated.scala.IndexVectorRangeImpl(0,x561)
+val x578 = {
+var forIdx = 0
+while (forIdx < x562.size) { // begin foreach loop x578
+val x563 = x562.dcApply(forIdx)
+val x564 = x95.length
+var x566: Int = 0
+val x565 = x563 % x564
+val x575 = while ({val x567 = x566
+val x568 = x567 < 1
+x568}) {
+val x570 = x566
+val x571 = x95(x565)
+val x572 = x559(x563, x570) = x571
+val x573 = x566 += 1
+()
+}
+()
+forIdx += 1
+} // end foreach loop x578
+}
+x559
+}
+if (x535) {
+x580thenb()
+} else { 
+x580elseb()
+}
+}
+x580
+}
+val x274 = x225.numRows
+val x275 = x225.numCols
+def x281_block = {
+val x276 = new generated.scala.FloatMatrixImpl(x274,x275)
+var zipIdx = 0
+while (zipIdx < x225.size) { // begin zip loop x281
+val x278 = x225.dcApply(zipIdx)
+val x279 = x273.dcApply(zipIdx)
+x276.dcUpdate(zipIdx,  {
+val x280 = x278 + x279
+x280
+})
+zipIdx += 1
+} // end zip loop x281
+x276
+}
+val x281 = x281_block
+val x289 = x281.numRows
+val x290 = x281.numCols
+def x293_block = {
+val x291 = new generated.scala.FloatMatrixImpl(x289,x290)
+var mapIdx = 0
+while (mapIdx < x281.size) { // begin map loop x293
+val x282 = x281.dcApply(mapIdx)
+x291.dcUpdate(mapIdx,  {
+val x283 = x282
+val x284 = x283 * -1.0
+val x285 = Math.exp(x284)
+val x286 = 1.0 + x285
+val x287 = 1.0 / x286
+val x288 = x287.asInstanceOf[Float]
+x288
+})
+mapIdx += 1
+} // end map loop x293
+x291
+}
+val x293 = x293_block
+val x301 = { 
+x293
+}
+val x320 = x301.numCols
+val x321 = x301.numRows
+def x440_block = {
+val x438 = new generated.scala.FloatMatrixImpl(x321,x320)
+var zipIdx = 0
+while (zipIdx < x301.size) { // begin zip loop x440
+val x434 = x301.dcApply(zipIdx)
+val x435 = x433.dcApply(zipIdx)
+x438.dcUpdate(zipIdx,  {
+val x436 = x434 > x435
+val x437 = {
+def x437thenb(): Float = {
+1.0f
+}
+def x437elseb(): Float = {
+0.0f
+}
+if (x436) {
+x437thenb()
+} else { 
+x437elseb()
+}
+}
+x437
+})
+zipIdx += 1
+} // end zip loop x440
+x438
+}
+val x440 = x440_block
+val x463 = x462.numCols
+val x483 = x440.numRows
+val x485 = new generated.scala.IndexVectorRangeImpl(0,x483)
+val x493 = x440.numCols
+val x464 = x462.numRows
+val x482 = { 
+val x465 = new generated.scala.FloatMatrixImpl(x463,x464)
+val x466 = x465.numRows
+var x468 : Int = 0
+val x480 = while (x468 < x466) {
+val x469 = x465.numCols
+var x471 : Int = 0
+val x478 = while (x471 < x469) {
+val x472 = x471 * x463
+val x473 = x472 + x468
+val x474 = x462.dcApply(x473)
+val x475 = { 
+x474
+}
+val x476 = x465(x468, x471) = x475
+x476
+x471 = x471 + 1
+}
+x478
+x468 = x468 + 1
+}
+x465
+}
+val x499 = x482.numCols
+val x534 = { 
+val x484 = new generated.scala.FloatMatrixImpl(x483,x463)
+val x532 = {
+var forIdx = 0
+while (forIdx < x485.size) { // begin foreach loop x532
+val x486 = x485.dcApply(forIdx)
+var x487: Int = 0
+val x494 = x486 * x493
+val x495 = x494 + 0
+val x496 = x440.dcApply(x495)
+val x497 = { 
+x496
+}
+val x529 = while ({val x488 = x487
+val x489 = x484.numCols
+val x490 = x488 < x489
+x490}) {
+var x492: Int = 1
+val x498 = x487
+val x500 = x498 * x499
+val x501 = x500 + 0
+val x502 = x482.dcApply(x501)
+val x503 = { 
+x502
+}
+val x504 = x497 * x503
+var x505: Float = x504
+val x523 = while ({val x506 = x492
+val x507 = x506 < x499
+x507}) {
+val x509 = x492
+val x513 = x487
+val x514 = x492
+val x510 = x494 + x509
+val x511 = x440.dcApply(x510)
+val x512 = { 
+x511
+}
+val x515 = x513 * x499
+val x516 = x515 + x514
+val x517 = x482.dcApply(x516)
+val x518 = { 
+x517
+}
+val x519 = x512 * x518
+val x520 = x505 += x519
+val x521 = x492 += 1
+()
+}
+val x524 = x487
+val x525 = x505
+val x526 = x484(x486, x524) = x525
+val x527 = x487 += 1
+()
+}
+()
+forIdx += 1
+} // end foreach loop x532
+}
+x484
+}
+val x583 = x534.numRows
+val x584 = x534.numCols
+def x590_block = {
+val x585 = new generated.scala.FloatMatrixImpl(x583,x584)
+var zipIdx = 0
+while (zipIdx < x534.size) { // begin zip loop x590
+val x587 = x534.dcApply(zipIdx)
+val x588 = x582.dcApply(zipIdx)
+x585.dcUpdate(zipIdx,  {
+val x589 = x587 + x588
+x589
+})
+zipIdx += 1
+} // end zip loop x590
+x585
+}
+val x590 = x590_block
+val x598 = x590.numRows
+val x599 = x590.numCols
+def x602_block = {
+val x600 = new generated.scala.FloatMatrixImpl(x598,x599)
+var mapIdx = 0
+while (mapIdx < x590.size) { // begin map loop x602
+val x591 = x590.dcApply(mapIdx)
+x600.dcUpdate(mapIdx,  {
+val x592 = x591
+val x593 = x592 * -1.0
+val x594 = Math.exp(x593)
+val x595 = 1.0 + x594
+val x596 = 1.0 / x595
+val x597 = x596.asInstanceOf[Float]
+x597
+})
+mapIdx += 1
+} // end map loop x602
+x600
+}
+val x602 = x602_block
+val x610 = { 
+x602
+}
+val x633 = x610.numRows
+val x636 = new generated.scala.IndexVectorRangeImpl(0,x633)
+val x644 = x610.numCols
+val x685 = { 
+val x632 = { 
+val x611 = x87.numCols
+val x612 = x87.numRows
+val x613 = new generated.scala.FloatMatrixImpl(x611,x612)
+val x614 = x613.numRows
+var x616 : Int = 0
+val x630 = while (x616 < x614) {
+val x617 = x613.numCols
+var x619 : Int = 0
+val x628 = while (x619 < x617) {
+val x625 = { 
+val x620 = x87.numCols
+val x621 = x619 * x620
+val x622 = x621 + x616
+val x623 = x87.dcApply(x622)
+x623
+}
+val x626 = x613(x616, x619) = x625
+x626
+x619 = x619 + 1
+}
+x628
+x616 = x616 + 1
+}
+x613
+}
+val x634 = x87.numCols
+val x635 = new generated.scala.FloatMatrixImpl(x633,x634)
+val x650 = x632.numCols
+val x683 = {
+var forIdx = 0
+while (forIdx < x636.size) { // begin foreach loop x683
+val x637 = x636.dcApply(forIdx)
+var x638: Int = 0
+val x645 = x637 * x644
+val x646 = x645 + 0
+val x647 = x610.dcApply(x646)
+val x648 = { 
+x647
+}
+val x680 = while ({val x639 = x638
+val x640 = x635.numCols
+val x641 = x639 < x640
+x641}) {
+var x643: Int = 1
+val x649 = x638
+val x651 = x649 * x650
+val x652 = x651 + 0
+val x653 = x632.dcApply(x652)
+val x654 = { 
+x653
+}
+val x655 = x648 * x654
+var x656: Float = x655
+val x674 = while ({val x657 = x643
+val x658 = x657 < x650
+x658}) {
+val x660 = x643
+val x664 = x638
+val x665 = x643
+val x661 = x645 + x660
+val x662 = x610.dcApply(x661)
+val x663 = { 
+x662
+}
+val x666 = x664 * x650
+val x667 = x666 + x665
+val x668 = x632.dcApply(x667)
+val x669 = { 
+x668
+}
+val x670 = x663 * x669
+val x671 = x656 += x670
+val x672 = x643 += 1
+()
+}
+val x675 = x638
+val x676 = x656
+val x677 = x635(x637, x675) = x676
+val x678 = x638 += 1
+()
+}
+()
+forIdx += 1
+} // end foreach loop x683
+}
+x635
+}
+def x892_block = {
+val x887 = new generated.scala.FloatMatrixImpl(x172,x183)
+var zipIdx = 0
+while (zipIdx < x149.size) { // begin zip loop x892
+val x889 = x149.dcApply(zipIdx)
+val x890 = x610.dcApply(zipIdx)
+x887.dcUpdate(zipIdx,  {
+val x891 = x889 - x890
+x891
+})
+zipIdx += 1
+} // end zip loop x892
+x887
+}
+val x892 = x892_block
+val x893 = x892.numRows
+val x894 = x892.numCols
+def x900_block = {
+val x895 = new generated.scala.FloatMatrixImpl(x893,x894)
+var zipIdx = 0
+while (zipIdx < x892.size) { // begin zip loop x900
+val x897 = x892.dcApply(zipIdx)
+val x898 = x892.dcApply(zipIdx)
+x895.dcUpdate(zipIdx,  {
+val x899 = x897 * x898
+x899
+})
+zipIdx += 1
+} // end zip loop x900
+x895
+}
+val x900 = x900_block
+def x904_block = {
+var x901 = x900.dcApply(0)
+var reduceIdx = 1
+while (reduceIdx < x900.size) { // begin reduce loop x904
+val x902 = x900.dcApply(reduceIdx)
+x901 = {
+val x903 = x901 + x902
+x903
+}
+reduceIdx += 1
+} // end reduce loop x904
+x901
+}
+val x904 = x904_block
+val x905 = x112 += x904
+val x906 = x108
+val x909 = x99
+def x939_block = {
+val x933 = x87.numRows
+val x934 = x87.numCols
+val x935 = new generated.scala.FloatMatrixImpl(x933,x934)
+var mapIdx = 0
+while (mapIdx < x87.size) { // begin map loop x939
+val x937 = x87.dcApply(mapIdx)
+x935.dcUpdate(mapIdx,  {
+val x938 = x937 * 2.0E-4f
+x938
+})
+mapIdx += 1
+} // end map loop x939
+x935
+}
+val x939 = x939_block
+val x910 = x909.numRows
+val x911 = x909.numCols
+val x907 = x906 > 5
+val x908 = {
+def x908thenb(): Float = {
+0.9f
+}
+def x908elseb(): Float = {
+0.5f
+}
+if (x907) {
+x908thenb()
+} else { 
+x908elseb()
+}
+}
+def x916_block = {
+val x912 = new generated.scala.FloatMatrixImpl(x910,x911)
+var mapIdx = 0
+while (mapIdx < x909.size) { // begin map loop x916
+val x914 = x909.dcApply(mapIdx)
+x912.dcUpdate(mapIdx,  {
+val x915 = x914 * x908
+x915
+})
+mapIdx += 1
+} // end map loop x916
+x912
+}
+val x916 = x916_block
+val x319 = { 
+val x302 = new generated.scala.FloatMatrixImpl(x183,x172)
+val x303 = x302.numRows
+var x305 : Int = 0
+val x317 = while (x305 < x303) {
+val x306 = x302.numCols
+var x308 : Int = 0
+val x315 = while (x308 < x306) {
+val x309 = x308 * x183
+val x310 = x309 + x305
+val x311 = x149.dcApply(x310)
+val x312 = { 
+x311
+}
+val x313 = x302(x305, x308) = x312
+x313
+x308 = x308 + 1
+}
+x315
+x305 = x305 + 1
+}
+x302
+}
+val x340 = x319.numRows
+val x342 = new generated.scala.IndexVectorRangeImpl(0,x340)
+val x350 = x319.numCols
+val x339 = { 
+val x322 = new generated.scala.FloatMatrixImpl(x320,x321)
+val x323 = x322.numRows
+var x325 : Int = 0
+val x337 = while (x325 < x323) {
+val x326 = x322.numCols
+var x328 : Int = 0
+val x335 = while (x328 < x326) {
+val x329 = x328 * x320
+val x330 = x329 + x325
+val x331 = x301.dcApply(x330)
+val x332 = { 
+x331
+}
+val x333 = x322(x325, x328) = x332
+x333
+x328 = x328 + 1
+}
+x335
+x325 = x325 + 1
+}
+x322
+}
+val x356 = x339.numCols
+val x391 = { 
+val x341 = new generated.scala.FloatMatrixImpl(x340,x320)
+val x389 = {
+var forIdx = 0
+while (forIdx < x342.size) { // begin foreach loop x389
+val x343 = x342.dcApply(forIdx)
+var x344: Int = 0
+val x351 = x343 * x350
+val x352 = x351 + 0
+val x353 = x319.dcApply(x352)
+val x354 = { 
+x353
+}
+val x386 = while ({val x345 = x344
+val x346 = x341.numCols
+val x347 = x345 < x346
+x347}) {
+var x349: Int = 1
+val x355 = x344
+val x357 = x355 * x356
+val x358 = x357 + 0
+val x359 = x339.dcApply(x358)
+val x360 = { 
+x359
+}
+val x361 = x354 * x360
+var x362: Float = x361
+val x380 = while ({val x363 = x349
+val x364 = x363 < x356
+x364}) {
+val x366 = x349
+val x370 = x344
+val x371 = x349
+val x367 = x351 + x366
+val x368 = x319.dcApply(x367)
+val x369 = { 
+x368
+}
+val x372 = x370 * x356
+val x373 = x372 + x371
+val x374 = x339.dcApply(x373)
+val x375 = { 
+x374
+}
+val x376 = x369 * x375
+val x377 = x362 += x376
+val x378 = x349 += 1
+()
+}
+val x381 = x344
+val x382 = x362
+val x383 = x341(x343, x381) = x382
+val x384 = x344 += 1
+()
+}
+()
+forIdx += 1
+} // end foreach loop x389
+}
+x341
+}
+val x735 = x685.numRows
+val x736 = x685.numCols
+def x742_block = {
+val x737 = new generated.scala.FloatMatrixImpl(x735,x736)
+var zipIdx = 0
+while (zipIdx < x685.size) { // begin zip loop x742
+val x739 = x685.dcApply(zipIdx)
+val x740 = x273.dcApply(zipIdx)
+x737.dcUpdate(zipIdx,  {
+val x741 = x739 + x740
+x741
+})
+zipIdx += 1
+} // end zip loop x742
+x737
+}
+val x742 = x742_block
+val x750 = x742.numRows
+val x751 = x742.numCols
+def x754_block = {
+val x752 = new generated.scala.FloatMatrixImpl(x750,x751)
+var mapIdx = 0
+while (mapIdx < x742.size) { // begin map loop x754
+val x743 = x742.dcApply(mapIdx)
+x752.dcUpdate(mapIdx,  {
+val x744 = x743
+val x745 = x744 * -1.0
+val x746 = Math.exp(x745)
+val x747 = 1.0 + x746
+val x748 = 1.0 / x747
+val x749 = x748.asInstanceOf[Float]
+x749
+})
+mapIdx += 1
+} // end map loop x754
+x752
+}
+val x754 = x754_block
+val x762 = { 
+x754
+}
+val x780 = { 
+val x763 = new generated.scala.FloatMatrixImpl(x644,x633)
+val x764 = x763.numRows
+var x766 : Int = 0
+val x778 = while (x766 < x764) {
+val x767 = x763.numCols
+var x769 : Int = 0
+val x776 = while (x769 < x767) {
+val x770 = x769 * x644
+val x771 = x770 + x766
+val x772 = x610.dcApply(x771)
+val x773 = { 
+x772
+}
+val x774 = x763(x766, x769) = x773
+x774
+x769 = x769 + 1
+}
+x776
+x766 = x766 + 1
+}
+x763
+}
+val x781 = x762.numCols
+val x801 = x780.numRows
+val x803 = new generated.scala.IndexVectorRangeImpl(0,x801)
+val x811 = x780.numCols
+val x782 = x762.numRows
+val x800 = { 
+val x783 = new generated.scala.FloatMatrixImpl(x781,x782)
+val x784 = x783.numRows
+var x786 : Int = 0
+val x798 = while (x786 < x784) {
+val x787 = x783.numCols
+var x789 : Int = 0
+val x796 = while (x789 < x787) {
+val x790 = x789 * x781
+val x791 = x790 + x786
+val x792 = x762.dcApply(x791)
+val x793 = { 
+x792
+}
+val x794 = x783(x786, x789) = x793
+x794
+x789 = x789 + 1
+}
+x796
+x786 = x786 + 1
+}
+x783
+}
+val x817 = x800.numCols
+val x852 = { 
+val x802 = new generated.scala.FloatMatrixImpl(x801,x781)
+val x850 = {
+var forIdx = 0
+while (forIdx < x803.size) { // begin foreach loop x850
+val x804 = x803.dcApply(forIdx)
+var x805: Int = 0
+val x812 = x804 * x811
+val x813 = x812 + 0
+val x814 = x780.dcApply(x813)
+val x815 = { 
+x814
+}
+val x847 = while ({val x806 = x805
+val x807 = x802.numCols
+val x808 = x806 < x807
+x808}) {
+var x810: Int = 1
+val x816 = x805
+val x818 = x816 * x817
+val x819 = x818 + 0
+val x820 = x800.dcApply(x819)
+val x821 = { 
+x820
+}
+val x822 = x815 * x821
+var x823: Float = x822
+val x841 = while ({val x824 = x810
+val x825 = x824 < x817
+x825}) {
+val x827 = x810
+val x831 = x805
+val x832 = x810
+val x828 = x812 + x827
+val x829 = x780.dcApply(x828)
+val x830 = { 
+x829
+}
+val x833 = x831 * x817
+val x834 = x833 + x832
+val x835 = x800.dcApply(x834)
+val x836 = { 
+x835
+}
+val x837 = x830 * x836
+val x838 = x823 += x837
+val x839 = x810 += 1
+()
+}
+val x842 = x805
+val x843 = x823
+val x844 = x802(x804, x842) = x843
+val x845 = x805 += 1
+()
+}
+()
+forIdx += 1
+} // end foreach loop x850
+}
+x802
+}
+val x917 = x391.numRows
+val x918 = x391.numCols
+def x924_block = {
+val x919 = new generated.scala.FloatMatrixImpl(x917,x918)
+var zipIdx = 0
+while (zipIdx < x391.size) { // begin zip loop x924
+val x921 = x391.dcApply(zipIdx)
+val x922 = x852.dcApply(zipIdx)
+x919.dcUpdate(zipIdx,  {
+val x923 = x921 - x922
+x923
+})
+zipIdx += 1
+} // end zip loop x924
+x919
+}
+val x924 = x924_block
+val x926 = x924.numRows
+val x927 = x924.numCols
+def x932_block = {
+val x928 = new generated.scala.FloatMatrixImpl(x926,x927)
+var mapIdx = 0
+while (mapIdx < x924.size) { // begin map loop x932
+val x930 = x924.dcApply(mapIdx)
+x928.dcUpdate(mapIdx,  {
+val x931 = x930 / x925
+x931
+})
+mapIdx += 1
+} // end map loop x932
+x928
+}
+val x932 = x932_block
+val x940 = x932.numRows
+val x941 = x932.numCols
+def x947_block = {
+val x942 = new generated.scala.FloatMatrixImpl(x940,x941)
+var zipIdx = 0
+while (zipIdx < x932.size) { // begin zip loop x947
+val x944 = x932.dcApply(zipIdx)
+val x945 = x939.dcApply(zipIdx)
+x942.dcUpdate(zipIdx,  {
+val x946 = x944 - x945
+x946
+})
+zipIdx += 1
+} // end zip loop x947
+x942
+}
+val x947 = x947_block
+val x948 = x947.numRows
+val x949 = x947.numCols
+def x954_block = {
+val x950 = new generated.scala.FloatMatrixImpl(x948,x949)
+var mapIdx = 0
+while (mapIdx < x947.size) { // begin map loop x954
+val x952 = x947.dcApply(mapIdx)
+x950.dcUpdate(mapIdx,  {
+val x953 = x952 * 0.1f
+x953
+})
+mapIdx += 1
+} // end map loop x954
+x950
+}
+val x954 = x954_block
+val x955 = x916.numRows
+val x956 = x916.numCols
+def x962_block = {
+val x957 = new generated.scala.FloatMatrixImpl(x955,x956)
+var zipIdx = 0
+while (zipIdx < x916.size) { // begin zip loop x962
+val x959 = x916.dcApply(zipIdx)
+val x960 = x954.dcApply(zipIdx)
+x957.dcUpdate(zipIdx,  {
+val x961 = x959 + x960
+x961
+})
+zipIdx += 1
+} // end zip loop x962
+x957
+}
+val x962 = x962_block
+x99 = x962
+val x964 = x105
+val x965 = x964.length
+val x966 = x964.isRow
+val x972 = {
+val x968 = new generated.scala.FloatVectorImpl(x965,x966)
+x968
+}
+var x967 = 0
+while (x967 < x965) {  // begin fat loop x972
+val x970 = x964(x967)
+val x971 = x970 * x908
+x972.dcUpdate(x967, x971)
+x967 += 1
+} // end fat loop x972
+val x410 = new generated.scala.IndexVectorRangeImpl(0,x183)
+val x425 = { 
+val x409 = new generated.scala.FloatVectorImpl(x183,true)
+val x423 = {
+var forIdx = 0
+while (forIdx < x410.size) { // begin foreach loop x423
+val x411 = x410.dcApply(forIdx)
+val x412 = x149.getCol(x411)
+val x413 = x412.length
+var x419: Float = 0
+var x414 = 0
+while (x414 < x413) {  // begin fat loop x419
+val x417 = x412(x414)
+val x415 = x419
+val x416 = x417
+val x418 = x415 + x416
+x419 = x418
+x414 += 1
+} // end fat loop x419
+val x420 = x409(x411) = x419
+x420
+forIdx += 1
+} // end foreach loop x423
+}
+x409
+}
+val x973 = x425.length
+val x974 = x425.isRow
+val x871 = new generated.scala.IndexVectorRangeImpl(0,x644)
+val x886 = { 
+val x870 = new generated.scala.FloatVectorImpl(x644,true)
+val x884 = {
+var forIdx = 0
+while (forIdx < x871.size) { // begin foreach loop x884
+val x872 = x871.dcApply(forIdx)
+val x873 = x610.getCol(x872)
+val x874 = x873.length
+var x880: Float = 0
+var x875 = 0
+while (x875 < x874) {  // begin fat loop x880
+val x878 = x873(x875)
+val x876 = x880
+val x877 = x878
+val x879 = x876 + x877
+x880 = x879
+x875 += 1
+} // end fat loop x880
+val x881 = x870(x872) = x880
+x881
+forIdx += 1
+} // end foreach loop x884
+}
+x870
+}
+val x981 = {
+val x976 = new generated.scala.FloatVectorImpl(x973,x974)
+x976
+}
+var x975 = 0
+while (x975 < x973) {  // begin fat loop x981
+val x978 = x425(x975)
+val x979 = x886(x975)
+val x980 = x978 - x979
+x981.dcUpdate(x975, x980)
+x975 += 1
+} // end fat loop x981
+val x988 = {
+val x984 = new generated.scala.FloatVectorImpl(x973,x974)
+x984
+}
+var x983 = 0
+while (x983 < x973) {  // begin fat loop x988
+val x986 = x981(x983)
+val x987 = x986 * x982
+x988.dcUpdate(x983, x987)
+x983 += 1
+} // end fat loop x988
+val x995 = {
+val x990 = new generated.scala.FloatVectorImpl(x965,x966)
+x990
+}
+var x989 = 0
+while (x989 < x965) {  // begin fat loop x995
+val x992 = x972(x989)
+val x993 = x988(x989)
+val x994 = x992 + x993
+x995.dcUpdate(x989, x994)
+x989 += 1
+} // end fat loop x995
+x105 = x995
+val x997 = x102
+val x998 = x997.length
+val x999 = x997.isRow
+val x1005 = {
+val x1001 = new generated.scala.FloatVectorImpl(x998,x999)
+x1001
+}
+var x1000 = 0
+while (x1000 < x998) {  // begin fat loop x1005
+val x1003 = x997(x1000)
+val x1004 = x1003 * x908
+x1005.dcUpdate(x1000, x1004)
+x1000 += 1
+} // end fat loop x1005
+val x393 = new generated.scala.IndexVectorRangeImpl(0,x320)
+val x408 = { 
+val x392 = new generated.scala.FloatVectorImpl(x320,true)
+val x406 = {
+var forIdx = 0
+while (forIdx < x393.size) { // begin foreach loop x406
+val x394 = x393.dcApply(forIdx)
+val x395 = x301.getCol(x394)
+val x396 = x395.length
+var x402: Float = 0
+var x397 = 0
+while (x397 < x396) {  // begin fat loop x402
+val x400 = x395(x397)
+val x398 = x402
+val x399 = x400
+val x401 = x398 + x399
+x402 = x401
+x397 += 1
+} // end fat loop x402
+val x403 = x392(x394) = x402
+x403
+forIdx += 1
+} // end foreach loop x406
+}
+x392
+}
+val x1006 = x408.length
+val x1007 = x408.isRow
+val x854 = new generated.scala.IndexVectorRangeImpl(0,x781)
+val x869 = { 
+val x853 = new generated.scala.FloatVectorImpl(x781,true)
+val x867 = {
+var forIdx = 0
+while (forIdx < x854.size) { // begin foreach loop x867
+val x855 = x854.dcApply(forIdx)
+val x856 = x762.getCol(x855)
+val x857 = x856.length
+var x863: Float = 0
+var x858 = 0
+while (x858 < x857) {  // begin fat loop x863
+val x861 = x856(x858)
+val x859 = x863
+val x860 = x861
+val x862 = x859 + x860
+x863 = x862
+x858 += 1
+} // end fat loop x863
+val x864 = x853(x855) = x863
+x864
+forIdx += 1
+} // end foreach loop x867
+}
+x853
+}
+val x1014 = {
+val x1009 = new generated.scala.FloatVectorImpl(x1006,x1007)
+x1009
+}
+var x1008 = 0
+while (x1008 < x1006) {  // begin fat loop x1014
+val x1011 = x408(x1008)
+val x1012 = x869(x1008)
+val x1013 = x1011 - x1012
+x1014.dcUpdate(x1008, x1013)
+x1008 += 1
+} // end fat loop x1014
+val x1020 = {
+val x1016 = new generated.scala.FloatVectorImpl(x1006,x1007)
+x1016
+}
+var x1015 = 0
+while (x1015 < x1006) {  // begin fat loop x1020
+val x1018 = x1014(x1015)
+val x1019 = x1018 * x982
+x1020.dcUpdate(x1015, x1019)
+x1015 += 1
+} // end fat loop x1020
+val x1027 = {
+val x1022 = new generated.scala.FloatVectorImpl(x998,x999)
+x1022
+}
+var x1021 = 0
+while (x1021 < x998) {  // begin fat loop x1027
+val x1024 = x1005(x1021)
+val x1025 = x1020(x1021)
+val x1026 = x1024 + x1025
+x1027.dcUpdate(x1021, x1026)
+x1021 += 1
+} // end fat loop x1027
+x102 = x1027
+val x1029 = x99
+def x1033_block = {
+var zipIdx = 0
+while (zipIdx < x87.size) { // begin zip loop x1033
+val x1030 = x87.dcApply(zipIdx)
+val x1031 = x1029.dcApply(zipIdx)
+x87.dcUpdate(zipIdx,  {
+val x1032 = x1030 + x1031
+x1032
+})
+zipIdx += 1
+} // end zip loop x1033
+x87
+}
+val x1033 = x1033_block
+val x1034 = x105
+def x1038_block = {
+var zipIdx = 0
+while (zipIdx < x95.size) { // begin zip loop x1038
+val x1035 = x95.dcApply(zipIdx)
+val x1036 = x1034.dcApply(zipIdx)
+x95.dcUpdate(zipIdx,  {
+val x1037 = x1035 + x1036
+x1037
+})
+zipIdx += 1
+} // end zip loop x1038
+x95
+}
+val x1038 = x1038_block
+val x1039 = x102
+def x1043_block = {
+var zipIdx = 0
+while (zipIdx < x91.size) { // begin zip loop x1043
+val x1040 = x91.dcApply(zipIdx)
+val x1041 = x1039.dcApply(zipIdx)
+x91.dcUpdate(zipIdx,  {
+val x1042 = x1040 + x1041
+x1042
+})
+zipIdx += 1
+} // end zip loop x1043
+x91
+}
+val x1043 = x1043_block
+val x1044 = x113 += 1
+()
+}
+val x1047 = x108
+val x1048 = "--> Epoch "+x1047
+val x1049 = println(x1048)
+val x1050 = x112
+val x1051 = " error = "+x1050
+val x1052 = println(x1051)
+val x1053 = x108 += 1
+()
+}
+val x1056 = ppl.delite.runtime.profiler.PerformanceTimer.stop("app", false)
+()
+}
+}
+/*****************************************
+  End of Generated Code                  
+*******************************************/

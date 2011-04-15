@@ -25,9 +25,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   override def mainScalaSourcePath = "src"
   override def mainResourcesPath = "resources"
   
-  //override def testScalaSourcePath = "tests" / "src"
-  // aks: appending "codegen" postfix because other scalatests are not working with sbt yet
-  override def testScalaSourcePath = "tests" / "src" / "ppl" / "tests" / "scalatest" / "codegen"
+  override def testScalaSourcePath = "tests" / "src" / "ppl" / "tests" / "scalatest" 
   override def testResourcesPath = "tests" / "resources"
 
   val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
@@ -41,13 +39,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     override def mainScalaSourcePath = "src"
     override def mainResourcesPath = "resources"
     
-    override def testScalaSourcePath = "tests" / "src" / "ppl" / "scalatest" / "codegen" 
-    override def testResourcesPath = "tests" / "resources"
-    
     val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
-    
-    val scalaToolsSnapshots = ScalaToolsSnapshots
-    val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT"
     
     override def localScala =
     defineScala("2.9.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
@@ -58,9 +50,9 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   
   // Define projects
   lazy val framework = project("framework", "Delite Framework", new FlatProject(_))  
-  lazy val runtime = project("runtime", "Delite Runtime", new FlatProject(_) {
-    override def mainClass = Some("ppl.delite.runtime.Delite")
-  })
+  //lazy val runtime = project("runtime", "Delite Runtime", new FlatProject(_) {
+  //  override def mainClass = Some("ppl.delite.runtime.Delite")
+  //})
 
   class DSLs(info: ProjectInfo) extends DefaultProject(info) {
     lazy val optiml = project("optiml", "OptiML", new FlatProject(_){
