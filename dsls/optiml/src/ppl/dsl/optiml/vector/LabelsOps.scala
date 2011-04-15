@@ -13,7 +13,7 @@ trait LabelsOps extends DSLType with Base with OverloadHack {
   this: OptiML =>
 
   object Labels {
-    def apply[A:Manifest](length: Rep[Int]) = labels_obj_fromVec(Vector[A](length, unit(false)))
+    def apply[A:Manifest](length: Rep[Int]) = labels_obj_fromVec(Vector[A](length, unit(false)).unsafeImmutable)
     def apply[A](xs: Rep[Vector[A]])(implicit mA: Manifest[A], o: Overloaded1) = labels_obj_fromVec(xs)
   }
 

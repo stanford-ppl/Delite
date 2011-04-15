@@ -37,6 +37,17 @@ trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
+
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c, t, e) => effectSyms(t):::effectSyms(e)
+    case _ => super.boundSyms(e)
+  }
+
+  override def coldSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c, t, e) => syms(t):::syms(e)
+    case _ => super.coldSyms(e)
+  }
+
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case DeliteIfThenElse(c,a,b) => syms(a):::syms(b)
     case _ => super.aliasSyms(e)
@@ -63,15 +74,6 @@ trait DeliteBaseGenIfThenElse extends GenericNestedCodegen {
   val IR: DeliteIfThenElseExp
   import IR._
 
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    case DeliteIfThenElse(c, t, e) if shallow => syms(c) // in shallow mode, don't count deps from nested blocks
-    case _ => super.syms(e)
-  }
-
-  override def boundSyms(e: Any): List[Sym[Any]] = e match {
-    case DeliteIfThenElse(c, t, e) => effectSyms(t):::effectSyms(e)
-    case _ => super.boundSyms(e)
-  }
 }
 
 trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenElse {

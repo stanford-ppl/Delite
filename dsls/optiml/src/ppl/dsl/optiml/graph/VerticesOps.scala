@@ -62,9 +62,6 @@ trait BaseGenVerticesOps extends GenericNestedCodegen {
   val IR: VerticesOpsExp
   import IR._
 
-  //override def syms(e: Any): List[Sym[Any]] = e match {
-    //case _ => super.syms(e)
-  //}
 }
 
 trait ScalaGenVerticesOps extends BaseGenVerticesOps with ScalaGenBase {

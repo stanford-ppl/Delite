@@ -9,6 +9,8 @@ import scala.virtualization.lms.internal.{GenericNestedCodegen}
 trait DeliteRangeOpsExp extends RangeOpsExp with DeliteOpsExp {
   this: DeliteOpsExp =>
 
+  // there is a lot of code duplication between DeliteWhile and While in lms -- do we really need a separate class?
+  
   case class DeliteRangeForEach(start: Exp[Int], end: Exp[Int], index: Sym[Int], body: Exp[Unit])
     extends DeliteOpIndexedLoop
 
@@ -19,13 +21,8 @@ trait DeliteRangeOpsExp extends RangeOpsExp with DeliteOpsExp {
       case Def(Until(start,end)) => (start,end)
       case _ => throw new Exception("unexpected symbol in RangeForeach")
     }
-    reflectEffect(DeliteRangeForEach(start, end, i, reifyEffects(block(i)))) //TODO: effects
+    reflectEffect(DeliteRangeForEach(start, end, i, reifyEffects(block(i)))) //TODO: finer grained effects
   }
-}
-
-trait DeliteBaseGenRangeOps extends GenericNestedCodegen {
-  val IR: DeliteRangeOpsExp
-  import IR._
 
   override def syms(e: Any): List[Sym[Any]] = e match {
     case DeliteRangeForEach(start, end, i, body) => syms(start):::syms(end):::syms(body)
@@ -36,6 +33,12 @@ trait DeliteBaseGenRangeOps extends GenericNestedCodegen {
     case DeliteRangeForEach(start, end, i, body) => i::effectSyms(body)
     case _ => super.boundSyms(e)
   }
+}
+
+trait DeliteBaseGenRangeOps extends GenericNestedCodegen {
+  val IR: DeliteRangeOpsExp
+  import IR._
+
 }
 
 trait DeliteScalaGenRange extends ScalaGenEffect with DeliteBaseGenRangeOps {

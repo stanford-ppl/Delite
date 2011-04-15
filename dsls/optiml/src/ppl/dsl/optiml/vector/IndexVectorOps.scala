@@ -52,7 +52,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   // impl defs
   def indexvector_range(start: Exp[Int], end: Exp[Int]) = IndexVectorRange(start, end)
   def indexvector_obj_new(len: Exp[Int]) = reflectMutable(IndexVectorObjectNew(len))
-  def indexvector_obj_fromvec(xs: Exp[Vector[Int]]) = reflectMutable(IndexVectorObjectFromVec(xs))
+  def indexvector_obj_fromvec(xs: Exp[Vector[Int]]) = reflectPure(IndexVectorObjectFromVec(xs))
 
   // class defs
   def indexvector_construct[A:Manifest](x: Exp[IndexVector], block: Exp[Int] => Exp[A]): Exp[Vector[A]] = {
@@ -60,6 +60,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
     val func = reifyEffects(block(v))
     //IndexVectorConstruct(x, v, func)
     // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
+    // TR TODO: use effect summary of func
     reflectEffect(IndexVectorConstruct(x, v, func))
   }
 

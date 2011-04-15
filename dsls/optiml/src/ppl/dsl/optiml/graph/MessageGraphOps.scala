@@ -87,9 +87,6 @@
 //  val IR: MessageGraphOpsExp
 //  import IR._
 //
-//  //override def syms(e: Any): List[Sym[Any]] = e match {
-//    //case _ => super.syms(e)
-//  //}
 //}
 //
 //trait ScalaGenMessageGraphOps extends BaseGenMessageGraphOps with ScalaGenBase {

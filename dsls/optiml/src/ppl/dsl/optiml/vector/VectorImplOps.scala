@@ -49,7 +49,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     for (i <- 0 until xs.length) {
       v(i) = xs(i)
     }
-    v
+    v.unsafeImmutable
   }
 
   def vector_obj_ones_impl(length: Rep[Int]) = Vector[Double](length, true) mmap { e => 1. }
@@ -71,12 +71,12 @@ trait VectorImplOpsStandard extends VectorImplOps {
       // TODO: i*step_size (int*double returning double) doesn't work yet (needs to chain 2 implicits: intToDouble, repArithToArithOps)
       out(i) = step_size*i + start
     }
-    out
+    out.unsafeImmutable
   }
 
   def vector_obj_flatten_impl[A:Manifest](pieces: Rep[Vector[Vector[A]]]) = {
     if (pieces.length == 0){
-      Vector[A](0, pieces.isRow)
+      Vector[A](0, pieces.isRow).unsafeImmutable
     }
     else {
       val sizes = pieces map { e => e.length }
@@ -85,21 +85,24 @@ trait VectorImplOpsStandard extends VectorImplOps {
       for (i <- 0 until pieces.length) {
         result.copyFrom(begins(i), pieces(i))
       }
-      result
+      result.unsafeImmutable
     }
   }
 
   private def vector_precumulate[A:Manifest](v: Rep[Vector[A]], identity: Rep[A])(func: (Rep[A],Rep[A]) => Rep[A]): (Rep[A], Rep[Vector[A]]) = {
-    if (v.length == 0) returnL((identity,Vector[A](0,v.isRow)))
-    val result = Vector[A](0, v.isRow)
-    var accum = identity
-    var i = unit(0)
-    while (i < v.length) {
-      result += accum
-      accum = func(accum, v(i))
-      i += 1
+    if (v.length == 0) {
+      ((identity,Vector[A](0,v.isRow).unsafeImmutable))
+    } else {
+      val result = Vector[A](0, v.isRow)
+      var accum = identity
+      var i = unit(0)
+      while (i < v.length) {
+        result += accum
+        accum = func(accum, v(i))
+        i += 1
+      }
+      (accum,result.unsafeImmutable)
     }
-    (accum,result)
   }
 
   def vector_slice_impl[A:Manifest](v: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]) = {
@@ -108,7 +111,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     for (i <- start until end){
       out(i-start) = v(i)
     }
-    out
+    out.unsafeImmutable
   }
 
   def vector_concatenate_impl[A:Manifest](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
@@ -127,7 +130,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
       for (i <- 0 until v2.length){
         out(i+v1.length) = v2(i)
       }
-      out
+      out.unsafeImmutable
     }
   }
 
@@ -144,7 +147,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
         out(i,j) = collA(i)*collB(j)
       }
     }
-    out
+    out.unsafeImmutable
   }
 
   def vector_equals_impl[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]) = {
@@ -191,7 +194,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
           rI += 1
         }
       }
-      out
+      out.unsafeImmutable
     }
     else {
       val out = Matrix[A](iRep*v.length, jRep)
@@ -203,7 +206,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
           cI += 1
         }
       }
-      out
+      out.unsafeImmutable
     }
   }
 
@@ -212,7 +215,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     for (i <- 0 until v.length){
       out(i) = v(i)
     }
-    out  
+    out.unsafeImmutable
   }
 
   def vector_median_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
@@ -228,7 +231,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
       if (pred(x)) result += x
     }
 
-    result
+    result.unsafeImmutable
   }
 
   def vector_partition_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
@@ -239,7 +242,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
       (if (pred(x)) resultT else resultF) += x
     }
 
-    (resultT, resultF)
+    (resultT.unsafeImmutable, resultF.unsafeImmutable)
   }
 
   def vector_contains_impl[A:Manifest](v: Rep[Vector[A]], elem: Rep[A]): Rep[Boolean] = {
@@ -258,7 +261,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
      if (!result.contains(v(i))) result += v(i)
      i += 1
     }
-    result
+    result.unsafeImmutable
   }
 
   def vector_min_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
@@ -296,7 +299,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     for (i <- 0 until v.length) {
       if (pred(v(i))) indices += i
     }
-    indices
+    indices.unsafeImmutable.asInstanceOf[Rep[IndexVector]]
   }
 
   def vector_mkstring_impl[A:Manifest](v: Rep[Vector[A]], sep: Rep[String]) = {

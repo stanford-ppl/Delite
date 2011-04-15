@@ -2,210 +2,156 @@
   Emitting Generated Code                  
 *******************************************/
 class SpadeRunnerFusing extends ((Array[java.lang.String])=>(Unit)) {
-def apply(x228:Array[java.lang.String]): Unit = {
-val x229 = x228.length
-val x230 = x229 < 2
-val x234 = {
-def x234thenb(): Nothing = {
-val x231 = println("Usage: Spade <input data file> <output data file>")
-val x232 = exit(-1)
-x232
+def apply(x234:Array[java.lang.String]): Unit = {
+val x235 = x234.length
+val x236 = x235 < 2
+val x240 = {
+def x240thenb(): Nothing = {
+val x237 = println("Usage: Spade <input data file> <output data file>")
+val x238 = exit(-1)
+x238
 }
-if (x230) {
-x234thenb()
+if (x236) {
+x240thenb()
 }
 }
-val x235 = x228(0)
-val x281 = { 
-val x236 = new java.io.FileReader(x235)
-val x237 = new java.io.BufferedReader(x236)
-val x238 = x237.readLine()
-var x239: java.lang.String = x238
-val x240 = x239
-val x241 = x240.trim()
-x239 = x241
-val x243 = x239
-val x244 = x243.split("\\s+")
-var x245: Array[java.lang.String] = x244
+val x241 = x234(0)
+val x288 = { 
+val x242 = new java.io.FileReader(x241)
+val x243 = new java.io.BufferedReader(x242)
+val x244 = x243.readLine()
+var x245: java.lang.String = x244
 val x246 = x245
-val x247 = x246.length
-val x248 = new generated.scala.DoubleMatrixImpl(0,x247)
-val x278 = while ({val x249 = x239
-val x250 = x249 != null
-x250}) {
-val x252 = x245
+val x247 = x246.trim()
+x245 = x247
+val x249 = x245
+val x250 = x249.split("\\s+")
+var x251: Array[java.lang.String] = x250
+val x252 = x251
 val x253 = x252.length
-val x254 = new generated.scala.DoubleVectorImpl(x253,true)
-var x256 : Int = 0
-val x262 = while (x256 < x253) {
-val x257 = x245
-val x258 = x257(x256)
-val x259 = java.lang.Double.parseDouble(x258)
-val x260 = x254(x256) = x259
-x260
-x256 = x256 + 1
+val x254 = new generated.scala.DoubleMatrixImpl(0,x253)
+val x284 = while ({val x255 = x245
+val x256 = x255 != null
+x256}) {
+val x258 = x251
+val x259 = x258.length
+val x260 = new generated.scala.DoubleVectorImpl(x259,true)
+var x262 : Int = 0
+val x268 = while (x262 < x259) {
+val x263 = x251
+val x264 = x263(x262)
+val x265 = java.lang.Double.parseDouble(x264)
+val x266 = x260(x262) = x265
+x266
+x262 = x262 + 1
 }
-val x263 = x254.cloneL
-val x264 = x248.numRows
-val x265 = x248.insertRow(x264,x263)
-val x266 = x237.readLine()
-x239 = x266
-val x268 = x239
-val x269 = x268 != null
-val x276 = {
-def x276thenb(): Unit = {
-val x270 = x268.trim()
-x239 = x270
-val x272 = x239
-val x273 = x272.split("\\s+")
-x245 = x273
+val x269 = x260// unsafe immutable
+val x270 = x254.numRows
+val x271 = x254.insertRow(x270,x269)
+val x272 = x243.readLine()
+x245 = x272
+val x274 = x245
+val x275 = x274 != null
+val x276 = x274.trim()
+val x282 = {
+def x282thenb(): Unit = {
+x245 = x276
+val x278 = x245
+val x279 = x278.split("\\s+")
+x251 = x279
 ()
 }
-if (x269) {
-x276thenb()
+if (x275) {
+x282thenb()
 }
 }
-x276
+x282
 }
-val x279 = x237.close()
-x248
+val x285 = x243.close()
+val x286 = x254// unsafe immutable
+x286
 }
-val x282 = new generated.scala.IntVectorImpl(0,false)
-val x283 = new generated.scala.IntLabelsImpl(x282)
-val x284 = new generated.scala.DoubleIntTrainingSetImpl(x281,x283)
-val x57 = Seq()
-val x285 = ppl.delite.runtime.profiler.PerformanceTimer.start("app", false)
-val x286 = new generated.scala.IntVectorImpl(0,true)
-val x287 = x286.length
-val x288 = x286.insert(x287, 0)
-val x289 = x286.cloneL
-val x290 = x284.numRows
-val x293 = x284.numCols
-val x291 = "   Input matrix size: "+x290
-val x292 = x291+"*"
-val x294 = x292+x293
-val x295 = println(x294)
-val x296 = x284.numRows
-val x302 = new generated.scala.IntVectorImpl(0,true)
-val x303 = x302.length
-val x304 = x302.insert(x303, x296)
-val x305 = x302.length
-val x306 = x302.insert(x305, 2000)
-val x307 = x302.length
-val x297 = x296
-val x298 = 2.5E9f / x297
-val x299 = x298
-val x300 = Math.floor(x299)
-val x301 = x300.asInstanceOf[Int]
-val x308 = x302.insert(x307, x301)
-val x309 = x302.cloneL
-val x310 = x302.length
-var x317: Int = 2147483647
-var x311 = 0
-while (x311 < x310) {  // begin fat loop x317
-val x314 = x309(x311)
-val x312 = x317
-val x313 = x314
-val x315 = x312 < x313
-val x316 = {
-def x316thenb(): Int = {
-x312
+val x289 = new generated.scala.IntVectorImpl(0,false)
+val x290 = x289// unsafe immutable
+val x291 = new generated.scala.IntLabelsImpl(x290)
+val x292 = new generated.scala.DoubleIntTrainingSetImpl(x288,x291)
+val x59 = Seq()
+val x293 = ppl.delite.runtime.profiler.PerformanceTimer.start("app", false)
+val x294 = new generated.scala.IntVectorImpl(0,true)
+val x295 = x294.length
+val x296 = x294.insert(x295, 0)
+val x297 = x294.cloneL
+val x298 = x292.numRows
+val x299 = "   Input matrix size: "+x298
+val x300 = x299+"*"
+val x301 = x292.numCols
+val x302 = x300+x301
+val x303 = println(x302)
+val x309 = new generated.scala.IntVectorImpl(0,true)
+val x310 = x309.length
+val x311 = x309.insert(x310, x298)
+val x312 = x309.length
+val x313 = x309.insert(x312, 2000)
+val x314 = x309.length
+val x304 = x298
+val x305 = 2.5E9f / x304
+val x306 = x305
+val x307 = Math.floor(x306)
+val x308 = x307.asInstanceOf[Int]
+val x315 = x309.insert(x314, x308)
+val x316 = x309.cloneL
+val x317 = x309.length
+var x324: Int = 2147483647
+var x318 = 0
+while (x318 < x317) {  // begin fat loop x324
+val x321 = x316(x318)
+val x319 = x324
+val x320 = x321
+val x322 = x319 < x320
+val x323 = {
+def x323thenb(): Int = {
+x319
 }
-def x316elseb(): Int = {
-x313
+def x323elseb(): Int = {
+x320
 }
-if (x315) {
-x316thenb()
+if (x322) {
+x323thenb()
 } else { 
-x316elseb()
+x323elseb()
 }
 }
-x317 = x316
-x311 += 1
-} // end fat loop x317
-val x318 = "   numSamples = "+x317
-val x319 = println(x318)
-val x320 = println("   finding empirical dist of the min distance between cells ...")
-val x321 = println("   med_min_dist = 4.4593519740000005")
-val x322 = x284.numRows
-val x323 = "   For this "+x322
-val x324 = x323+" channel data, KERNEL WIDTH is "
-val x325 = x324+22.296759870000002
-val x326 = x325+", APPRX WIDTH is "
-val x327 = x326+6.689027961000001
-val x328 = println(x327)
-val x329 = println("   finding local density for each cell ...")
-val x330 = x284.numRows
-val x365 = { (x331: Int, x332: Int) => 
-val x333 = x284.getRow(x331)
-val x334 = x284.getRow(x332)
-val x363 = { 
-val x335 = x333.length
-val x336 = x333.isRow
-// a *thin* loop follows: x344
-val x344 = {
-val x338 = new generated.scala.DoubleVectorImpl(x335,x336)
-x338
-}
-var x337 = 0
-while (x337 < x335) {  // begin fat loop x344
-val x340 = x333(x337)
-val x341 = x334(x337)
-val x342 = x340 - x341
-x344.dcUpdate(x337, x342)
-x337 += 1
-} // end fat loop x344
-val x345 = x344.length
-val x346 = x344.isRow
-// a *thin* loop follows: x353
-val x353 = {
-val x348 = new generated.scala.DoubleVectorImpl(x345,x346)
-x348
-}
-var x347 = 0
-while (x347 < x345) {  // begin fat loop x353
-val x350 = x344(x347)
-val x351 = java.lang.Math.abs(x350)
-x353.dcUpdate(x347, x351)
-x347 += 1
-} // end fat loop x353
-val x354 = x353.length
-// a *thin* loop follows: x361
-var x361: Double = 0
-var x355 = 0
-while (x355 < x354) {  // begin fat loop x361
-val x358 = x353(x355)
-val x356 = x361
-val x357 = x358
-val x360 = x356 + x357
-x361 = x360
-x355 += 1
-} // end fat loop x361
-x361
-}
-x363: Double
-}
-val x366 = 100000 / x330
-val x367 = x366 + 1000
-val x368 = new generated.scala.DoubleStreamImpl(x330,x330,x367,x365,false)
-val x369 = new generated.scala.IntVectorImpl(x330,true)
+x324 = x323
+x318 += 1
+} // end fat loop x324
+val x325 = "   numSamples = "+x324
+val x326 = println(x325)
+val x327 = println("   finding empirical dist of the min distance between cells ...")
+val x328 = println("   med_min_dist = 4.4593519740000005")
+val x329 = "   For this "+x298
+val x330 = x329+" channel data, KERNEL WIDTH is "
+val x331 = x330+22.296759870000002
+val x332 = x331+", APPRX WIDTH is "
+val x333 = x332+6.689027961000001
+val x334 = println(x333)
+val x335 = println("   finding local density for each cell ...")
+val x370 = new generated.scala.IntVectorImpl(x298,true)
 var x375: Int = 0
-val x370 = x330
-val x371 = x367.doubleValue()
-val x372 = x370 / x371
+val x367 = 100000 / x298
+val x368 = x367 + 1000
+val x371 = x368.doubleValue()
+val x372 = x304 / x371
 val x373 = Math.ceil(x372)
 val x374 = x373.asInstanceOf[Int]
 val x376 = x375
 val x377 = x376 < x374
-val x378 = x376 * x367
-val x379 = x330 - x378
+val x155 = List()
+val x378 = x376 * x368
+val x379 = x298 - x378
 val x380 = x379 < 0
-val x175 = List()
-val x440 = while ({x377}) {
-val x385 = { 
 val x381 = {
 def x381thenb(): Int = {
-x330
+x298
 }
 def x381elseb(): Int = {
 x379
@@ -216,108 +162,144 @@ x381thenb()
 x381elseb()
 }
 }
-val x382 = Math.min(x367, x381)
+val x382 = Math.min(x368, x381)
 val x383 = x382.asInstanceOf[Int]
+val x384 = { 
 x383
 }
-val x400 = { 
-var x392: Int = 0
-val x393 = x392
-val x394 = x393 < x385
-val x398 = while ({x394}) {
-val x395 = x368.initRow(x393,x376)
-val x396 = x392 += 1
-()
+val x385 = new generated.scala.IndexVectorRangeImpl(0,x384)
+val x366 = { (x336: Int, x337: Int) => 
+val x343 = x336 * x301
+val x347 = x337 * x301
+var x364: Double = 0
+var x359 = 0
+while (x359 < x301) {  // begin fat loop x364
+val x467 = x343 + x359
+val x468 = x292.dcApply(x467)
+val x469 = { 
+x468
 }
-()
+val x470 = x347 + x359
+val x471 = x292.dcApply(x470)
+val x472 = { 
+x471
 }
-val x386 = new generated.scala.IndexVectorRangeImpl(0,x385)
-val x437 = {
+val x473 = x469 - x472
+val x474 = java.lang.Math.abs(x473)
+val x360 = x364
+val x361 = x474
+val x363 = x360 + x361
+x364 = x363
+x359 += 1
+} // end fat loop x364
+val x365 = { 
+x364
+}
+x365: Double
+}
+val x369 = new generated.scala.DoubleStreamImpl(x298,x298,x368,x366,true)
+val x452 = while ({x377}) {
+val x449 = {
 var forIdx = 0
-while (forIdx < x386.size) { // begin foreach loop x437
-val x387 = x386.dcApply(forIdx)
-val x402 = x368.chunkRow(x387,x376)
-val x403 = x402.index
-val x404 = x403 % 1000
-val x405 = x404==0
-val x409 = {
-def x409thenb(): Unit = {
-val x406 = "  (streaming) # processed node = "+x403
-val x407 = println(x406)
-x407
+while (forIdx < x385.size) { // begin foreach loop x449
+val x386 = x385.dcApply(forIdx)
+val x390 = x378 + x386
+val x420 = x390 % 1000
+val x421 = x420==0
+val x422 = "  (streaming) # processed node = "+x390
+val x425 = {
+def x425thenb(): Unit = {
+val x423 = println(x422)
+x423
 }
-if (x405) {
-x409thenb()
+if (x421) {
+x425thenb()
 }
 }
-val x410 = x402.index
-val x411 = x369(x410)
-val x412 = x411==0
-val x435 = {
-def x435thenb(): Unit = {
-val x413 = x402.length
-// a *thin* loop follows: x420
-val x420 = {
-val x415 = new generated.scala.IndexVectorSeqImpl(0)
-//TODO: buffer size might be wrong (loop has conditions)
-x415
-}
-var x414 = 0
-while (x414 < x413) {  // begin fat loop x420
-val x417 = x402(x414)
-val x418 = x417 < 6.689027961000001
-if (x418) x420.insert(x420.length, x414)
-x414 += 1
-} // end fat loop x420
-// a *thin* loop follows: x428
-var x428: Int = 0
-var x421 = 0
-while (x421 < x413) {  // begin fat loop x428
-val x424 = x402(x421)
-val x425 = x424 < 22.296759870000002
-if (x425) {
-val x422 = x428
-val x423 = 1
-val x427 = x422 + x423
-x428 = x427
-}
-x421 += 1
-} // end fat loop x428
+val x426 = x370(x390)
+val x427 = x426==0
+val x396 = x390 * x301
 val x433 = {
+val x429 = new generated.scala.IndexVectorSeqImpl(0)
+//TODO: buffer size might be wrong (loop has conditions)
+x429
+}
+var x440: Int = 0
+var x388 = 0
+while (x388 < x298) {  // begin fat loop x433,x440
+val x400 = x388 * x301
+var x417: Double = 0
+var x412 = 0
+while (x412 < x301) {  // begin fat loop x417
+val x478 = x396 + x412
+val x479 = x292.dcApply(x478)
+val x480 = { 
+x479
+}
+val x481 = x400 + x412
+val x482 = x292.dcApply(x481)
+val x483 = { 
+x482
+}
+val x484 = x480 - x483
+val x485 = java.lang.Math.abs(x484)
+val x413 = x417
+val x414 = x485
+val x416 = x413 + x414
+x417 = x416
+x412 += 1
+} // end fat loop x417
+val x418 = { 
+x417
+}
+val x475 = x418 < 6.689027961000001
+val x476 = x418 < 22.296759870000002
+if (x475) x433.insert(x433.length, x388)
+if (x476) {
+val x435 = x440
+val x436 = 1
+val x439 = x435 + x436
+x440 = x439
+}
+x388 += 1
+} // end fat loop x433,x440
+val x447 = {
+def x447thenb(): Unit = {
+val x445 = {
 var forIdx = 0
-while (forIdx < x420.size) { // begin foreach loop x433
-val x430 = x420.dcApply(forIdx)
-val x431 = x369(x430) = x428
-x431
+while (forIdx < x433.size) { // begin foreach loop x445
+val x442 = x433.dcApply(forIdx)
+val x443 = x370(x442) = x440
+x443
 forIdx += 1
-} // end foreach loop x433
+} // end foreach loop x445
 }
-x433
+x445
 }
-if (x412) {
-x435thenb()
+if (x427) {
+x447thenb()
 }
 }
-x435
+x447
 forIdx += 1
-} // end foreach loop x437
+} // end foreach loop x449
 }
-val x438 = x375 += 1
+val x450 = x375 += 1
 ()
 }
-val x441 = Seq(x369)
-val x442 = ppl.delite.runtime.profiler.PerformanceTimer.stop("app", false)
-var x443: Int = 0
-val x444 = x443
-val x445 = x444 < 9
-val x451 = while ({x445}) {
-val x446 = x369(x444)
-val x447 = x446+" "
-val x448 = print(x447)
-val x449 = x443 += 1
+val x453 = Seq(x370)
+val x454 = ppl.delite.runtime.profiler.PerformanceTimer.stop("app", false)
+var x455: Int = 0
+val x456 = x455
+val x457 = x456 < 9
+val x463 = while ({x457}) {
+val x458 = x370(x456)
+val x459 = x458+" "
+val x460 = print(x459)
+val x461 = x455 += 1
 ()
 }
-val x452 = println(())
+val x464 = println(())
 ()
 }
 }
