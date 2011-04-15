@@ -77,6 +77,7 @@ trait DeliteCodegen extends GenericFatCodegen {
     stream.println("{\"DEG\":{\n"+
                    "\"version\" : 0.1,\n"+
                    "\"kernelpath\" : \"" + Config.buildDir  + "\",\n"+
+                   "\"targets\": [" + generators.map("\""+_+"\"").mkString(",")  + "],\n"+
                    "\"ops\": [")
 
     stream.println("{\"type\" : \"Arguments\" , \"kernelId\" : \"x0\"},")
