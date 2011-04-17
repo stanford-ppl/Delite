@@ -41,10 +41,15 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
     case DeliteWhile(c, b) => effectSyms(c):::effectSyms(b)
     case _ => super.boundSyms(e)
   }
-
+/*
   override def hotSyms(e: Any): List[Sym[Any]] = e match {
     case DeliteWhile(c, b) => syms(c):::syms(b)
     case _ => super.hotSyms(e)
+  }
+*/
+  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
+    case DeliteWhile(c, b) => freqHot(c) ++ freqHot(b)
+    case _ => super.symsFreq(e)
   }
 
 }

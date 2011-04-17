@@ -164,7 +164,7 @@ trait DeliteCodegen extends GenericFatCodegen {
   * Return a list of all effectful operations rooted at start.
   */
   def getEffectsBlock(start: Def[Any]): List[Sym[Any]] = {
-    val g = generators(0) // skip ifGenAgree for now...
+    //val g = generators(0) // skip ifGenAgree for now...
 
     // val deps = g.blocks(start) // can optimize by adding a syms-like function that only returns blocks (but more invasive)
 //    val deps = g.syms(start)
@@ -179,7 +179,7 @@ trait DeliteCodegen extends GenericFatCodegen {
 //        }}
 //      }
 //    }
-    val nodes = g.boundSyms(start) filter { case Def(Reflect(x, u, effects)) => true; case _ => false }
+    val nodes = boundSyms(start) filter { case Def(Reflect(x, u, effects)) => true; case _ => false }
     nodes.distinct
   }
 

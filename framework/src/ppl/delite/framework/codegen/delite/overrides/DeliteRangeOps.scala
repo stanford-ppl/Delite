@@ -33,6 +33,11 @@ trait DeliteRangeOpsExp extends RangeOpsExp with DeliteOpsExp {
     case DeliteRangeForEach(start, end, i, body) => i::effectSyms(body)
     case _ => super.boundSyms(e)
   }
+  
+  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
+    case DeliteRangeForEach(start, end, i, body) => freqNormal(start) ++ freqNormal(end) ++ freqHot(body)
+    case _ => super.symsFreq(e)
+  }
 }
 
 trait DeliteBaseGenRangeOps extends GenericNestedCodegen {

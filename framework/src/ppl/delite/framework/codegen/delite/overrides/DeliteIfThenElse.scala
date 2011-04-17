@@ -43,9 +43,9 @@ trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
     case _ => super.boundSyms(e)
   }
 
-  override def coldSyms(e: Any): List[Sym[Any]] = e match {
-    case DeliteIfThenElse(c, t, e) => syms(t):::syms(e)
-    case _ => super.coldSyms(e)
+  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
+    case DeliteIfThenElse(c, t, e) => freqNormal(c):::freqCold(t):::freqCold(e)
+    case _ => super.symsFreq(e)
   }
 
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {

@@ -396,17 +396,20 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case _ => super.boundSyms(e)
   }
 
-  override def hotSyms(e: Any): List[Sym[Any]] = e match {
-    case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.cond) ++ syms(op.alloc)
-    case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.cond) ++ syms(op.rFunc)
-    case zip: DeliteOpZipWith[_,_,_,_] => syms(zip.alloc):::syms(zip.func)
-    case map: DeliteOpMap[_,_,_] => syms(map.alloc):::syms(map.func)
-    case mapR: DeliteOpMapReduce[_,_,_] => syms(mapR.map):::syms(mapR.reduce)
-    case zipR: DeliteOpZipWithReduce[_,_,_,_] => syms(zipR.zip) ++ syms(zipR.reduce)
-    case red: DeliteOpReduce[_] => syms(red.func)
-    case foreach: DeliteOpForeach[_,_] => syms(foreach.func):::syms(foreach.sync)
-    case foreach: DeliteOpForeachBounded[_,_,_] => syms(foreach.func):::syms(foreach.sync)
-    case _ => super.hotSyms(e)
+  
+  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
+    case s: DeliteOpSingleTask[_] if s.requireInputs => freqNormal(s.block) ++ super.symsFreq(e) // super call: add case class syms (iff flag is set)
+    case s: DeliteOpSingleTask[_] => freqNormal(s.block)
+    case op: DeliteCollectElem[_,_] => freqNormal(op.alloc) ++ freqHot(op.cond) ++ freqHot(op.func)
+    case op: DeliteReduceElem[_] => freqHot(op.cond) ++ freqHot(op.func) ++ freqNormal(op.zero) ++ freqHot(op.rFunc)
+    case map: DeliteOpMap[_,_,_] => freqNormal(map.in) ++ freqNormal(map.alloc) ++ freqHot(map.func)
+    case zip: DeliteOpZipWith[_,_,_,_] => freqNormal(zip.inA) ++ freqNormal(zip.inB) ++ freqNormal(zip.alloc) ++ freqHot(zip.func)
+    case red: DeliteOpReduce[_] => freqNormal(red.in) ++ freqHot(red.func)
+    case mapR: DeliteOpMapReduce[_,_,_] => freqNormal(mapR.in) ++ freqHot(mapR.map) ++ freqHot(mapR.reduce)
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => freqNormal(zipR.inA) ++ freqNormal(zipR.inB) ++ freqHot(zipR.zip) ++ freqHot(zipR.reduce)
+    case foreach: DeliteOpForeach[_,_] => freqNormal(foreach.in) ++ freqHot(foreach.func) ++ freqHot(foreach.sync)
+    case foreach: DeliteOpForeachBounded[_,_,_] => freqNormal(foreach.in) ++ freqHot(foreach.func) ++ freqHot(foreach.sync)
+    case _ => super.symsFreq(e)
   }
 
 }
