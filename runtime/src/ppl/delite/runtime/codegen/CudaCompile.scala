@@ -16,6 +16,8 @@ import tools.nsc.io.{Directory, Path}
 
 object CudaCompile extends CodeCache {
 
+  val binCacheHome = cacheHome + "bin" + File.separator + "runtime" + File.separator
+
   private val sourceBuffer = new ArrayBuffer[String]
 
   def target = "cuda"
@@ -32,7 +34,7 @@ object CudaCompile extends CodeCache {
     sourceBuffer.clear()
 
     val paths = modules.map(m => Path(sourceCacheHome + m.name).path).toArray
-    compile(cacheHome + "bin" + File.separator + "runtime", sourceCacheHome + "runtime" + File.separator + "source0.cu", paths)
+    compile(binCacheHome, sourceCacheHome + "runtime" + File.separator + "source0.cu", paths)
   }
 
   //TODO: handle more than one runtime object
