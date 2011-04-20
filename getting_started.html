@@ -54,7 +54,11 @@
       </div>
       <div id='content'> 
         <h1 id='title_getting started'>Getting started</h1>
-        <p> Follow the instructions <a href="source.html">here</a> to download the source and its dependencies. </p>
+        <p> To get started, grab the source for <code>Delite</code> and <code>virtualization-lms-core</code>, the lightweight modular staging library
+        that Delite uses. <p>
+        <div class="highlight"><pre><code class="bash">git clone https://github.com/stanford-ppl/Delite.git
+git clone https://github.com/TiarkRompf/virtualization-lms-core.git</code></pre></div>
+        
         <p> The Delite repository currently includes several modules: </p>
         <ol>
           <li> <b>Applications:</b> these are example Delite applications written in a Delite DSL
@@ -65,20 +69,21 @@
         </ol>
 
         <p> For now, we'll get you up and running simple applications in the Delite environment so you can see what's going on.
-        First, let's make sure that we are using the right branch. From the roots of the Delite repository and LMS repository (note you have to check
-        out the right branch in both repos), type
+        First, let's make sure that we are using the right branch. From the roots of the Delite repository and LMS repository <b>(note you have to check
+          out the right branch in both repos)</b>, type
         <div class="highlight"><pre><code class="bash">git checkout stanford-cs442</code></pre></div>
         </p>       
         <p> If you are using IDEA, make sure that you have the <code>framework</code>, <code>dsls</code>, and
         <code>virtualization-lms-core</code> modules in your classpath. Also make sure that you are using
-        the <code>scala-virtualized</code> compiler. The rest of this guide will assume a UNIX environment and
+        the <code>scala-virtualized</code> compiler. You can download a pre-compiled distribution of <code>scala-virtualized</code>
+        from <a href="http://cs442.stanford.edu/handouts/scala-virtualized-r24724.tgz">here</a>. The rest of this guide will assume a UNIX environment and
         use SBT and our shell scripts, but as long as IDEA is configured correctly, you should be able to follow along.
         See <a href="source.html">here</a> for detailed IDEA build instructions.
         </p>
         <p>If you haven't already, we need to compile Delite. We'll assume that the root directory
-        of the Delite and LMS distributions you downloaded are <code>$DELITE</code> and <code>$LMS</code> respectively. Make sure that you have compiled the
+        of the Delite and LMS distributions you downloaded are <code>$DELITE</code> and <code>$LMS</code> respectively. Make sure that you have downloaded the
         <code>scala-virtualized</code> compiler, and then edit $DELITE/local.properties and $LMS/local.properties to point to the distribution. Here is an example:
-        <div class="highlight"><pre><code class="bash">scala.virtualized.home=/ppl/scala-virtualized/build/pack</code></pre></div>
+        <div class="highlight"><pre><code class="bash">scala.virtualized.home=/ppl/scala-virtualized-r24714/</code></pre></div>
         <p>First, we need to compile the <code>virtualization-lms-core</code> library that Delite uses.
         <div class="highlight"><pre><code class="bash">cd $LMS
 sbt update
@@ -134,6 +139,9 @@ cd ..
         The last thing we need to do is execute our generated program. To do this, we are going to switch back to the normal Scala
         compiler (this is not strictly necessary, but tends to be more reliable). Download a current final version of <a href="http://www.scala-lang.org/downloads">Scala</a>. 
         We'll assume that $SCALA_VANILLA points to the root directory of the Scala distribution you just downloaded.
+        Make sure fsc is running: 
+        <div class="highlight"><pre><code class="bash">$SCALA_VANILLA/bin/fsc -reset</code></pre></div>
+        Then invoke the Delite runtime using:
         <div class="highlight" style="overflow: scroll"><pre><code class="bash">java -cp runtime/target/scala_2.8.1/classes:$SCALA_VANILLA/lib/scala-library.jar:$SCALA_VANILLA/lib/scala-compiler.jar ppl.delite.runtime.Delite out.deg</code></pre></div>
         </p>
         <p>
