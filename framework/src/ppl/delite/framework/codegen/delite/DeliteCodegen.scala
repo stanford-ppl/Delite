@@ -1,13 +1,12 @@
 package ppl.delite.framework.codegen.delite
 
 import generators.{DeliteGenTaskGraph}
-import java.io.PrintWriter
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 import scala.virtualization.lms.internal._
 import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
-
+import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
@@ -42,6 +41,27 @@ trait DeliteCodegen extends GenericFatCodegen {
     result(0)
   }
 
+  override def emitDataStructures(path: String): Unit = {
+    val s = File.separator
+    for (g <- generators) {
+      val dsRoot = Config.homeDir + s+"framework"+s+"src"+s+"ppl"+s+"delite"+s+"framework"+s+"datastruct"+s+g
+      val dsDir = new File(dsRoot)
+      if (dsDir.exists) {
+        val dest = path+s+g+s+"datastructures"
+        val outDir = new File(dest)
+        outDir.mkdirs()
+        for (f <- dsDir.listFiles) {
+          val outFile = dest + s + f.getName
+          val out = new BufferedWriter(new FileWriter(outFile))
+          for (line <- scala.io.Source.fromFile(f).getLines) {
+            val remappedLine = line.replaceAll("ppl.delite.framework.datastruct", "generated")
+            out.write(remappedLine + "\n")
+          }
+          out.close()
+        }
+      }
+    }
+  }
 
   // these are overridden for specific node types in the target generators but *not* here
   

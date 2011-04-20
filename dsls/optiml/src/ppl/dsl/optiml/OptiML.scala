@@ -254,7 +254,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
 
   override def dsmap(line: String) : String = {
     var res = line.replaceAll("ppl.dsl.optiml.datastruct", "generated")
-    res = res.replaceAll("ppl.delite.framework", "generated.scala")
+    res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
     res
   }
 }
