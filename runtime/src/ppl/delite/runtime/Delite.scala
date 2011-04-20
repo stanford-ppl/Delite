@@ -102,6 +102,7 @@ object Delite {
     }
     catch { case e => {
       executor.abnormalShutdown()
+      Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
       throw e
     } }
   }
