@@ -2,7 +2,7 @@ package ppl.dsl.assignment2
 
 import scala.virtualization.lms.common._
 import ppl.delite.framework.{Config, DeliteApplication}
-import scala.tools.nsc.io._
+import java.io._
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
@@ -98,13 +98,19 @@ trait SimpleVectorCodegenBase extends GenericFatCodegen {
     val s = File.separator
     val dsRoot = Config.homeDir + s+"dsls"+s+"assignment2"+s+"src"+s+"ppl"+s+"dsl"+s+"assignment2"+s+"datastructures"+s + this.toString
 
-    val dsDir = Directory(Path(dsRoot))
-    if (!dsDir.isDirectory) return
-    val outDir = Directory(Path(path))
-    outDir.createDirectory()
+    val dsDir = new File(dsRoot)
+    if (!dsDir.exists) return
+    val outDir = new File(path)
+    outDir.mkdirs()
 
-    for (f <- dsDir.files) {
-      f.copyTo(Path(outDir.path + s + f.name))
+    for (f <- dsDir.listFiles) {
+      val outFile = path + s + f.getName
+      val out = new BufferedWriter(new FileWriter(outFile))
+      for (line <- scala.io.Source.fromFile(f).getLines) {
+        val remappedLine = line.replaceAll("ppl.delite.framework.datastruct", "generated")
+        out.write(remappedLine + "\n")
+      }
+      out.close()
     }
   }
 }

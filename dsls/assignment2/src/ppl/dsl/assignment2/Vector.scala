@@ -1,7 +1,7 @@
 package ppl.dsl.assignment2
 
 import virtualization.lms.common.{BaseFatExp, ScalaGenFat, Variables, VariablesExp}
-import ppl.delite.framework.DeliteCollection
+import ppl.delite.framework.datastruct.scala.DeliteCollection
 import java.io.PrintWriter
 
 /**
