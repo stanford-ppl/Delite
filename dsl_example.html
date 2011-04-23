@@ -73,7 +73,7 @@
         In this example, we are going to design a very simple profiling DSL. The goal of this DSL is to make it easy to measure the
         time elapsed in different parts of an application. Here's an example of what we want to be able to do when we're finished:
         </p>
-        <div class="highlight"><pre><code class="scala">val time =
+        <div class="highlight"><pre><code class="scala"><span class="k">val</span> time =
   profile (10) times {
     ... blah blah ...
   } report average
@@ -96,17 +96,17 @@
         Write ProfileArray.scala inside the directory as follows:
         </p>
         <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling.datastruct.scala</span>
-import ppl.delite.framework.datastruct.scala.DeliteCollection
+<span class="k">import</span> <span class="nn">ppl.delite.framework.datastruct.scala.DeliteCollection</span>
 
-class ProfileArray(val numMeasurements: Int) extends DeliteCollection[Double] {  
-   val _data = new Array[Double](numMeasurements)
+<span class="k">class</span> <span class="nc">ProfileArray</span>(<span class="k">val</span> numMeasurements: <span class="kt">Int</span>) <span class="k">extends</span> <span class="nc">DeliteCollection[Double]</span> {  
+   <span class="k">val</span> _data = <span class="k">new</span> <span class="nc">Array[Double]</span>(numMeasurements)
 
-   // these are required for all DeliteCollections
-   def size = _data.length
-   def dcApply(i: Int) = _data(i)
-   def dcUpdate(i: Int, x: Double) { _data(i) = x }   
+   <span class="c">// these are required for all DeliteCollections</span>
+   <span class="k">def</span> size = _data.length
+   <span class="k">def</span> dcApply(i: <span class="kt">Int</span>) = _data(i)
+   <span class="k">def</span> dcUpdate(i: <span class="kt">Int</span>, x: <span class="kt">Double</span>) { _data(i) = x }   
 }
-</code></pre></div>
+</code></pre></div>                                            
         <p>
         A 'DeliteCollection' is simply a flat collection that Delite parallel operations use. We've just defined the only data structure
         that we'll need for this example. Now we need to implement our DSL methods - but instead of implementing them directly, we want
@@ -114,21 +114,21 @@ class ProfileArray(val numMeasurements: Int) extends DeliteCollection[Double] {
         inside <code>dsls/profiling/src/example/profiling</code>:      
         </p>
         <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling</span>
-import example.profiling.datastruct.scala.ProfileArray
-import scala.virtualization.lms.common.{ScalaGenBase, Base, EffectExp}
-import java.io.PrintWriter
+<span class="k">import</span> <span class="nn">example.profiling.datastruct.scala.ProfileArray</span>
+<span class="k">import</span> <span class="nn">scala.virtualization.lms.common.{ScalaGenBase, Base, EffectExp}</span>
+<span class="k">import</span> <span class="nn">java.io.PrintWriter</span>
 
-// this is the abstract interface of our profiling methods
-trait ProfileOps extends Base {
-  def profile(n: Rep[Int]) = new ProfileOpsCls(n)
+<span class="c">// this is the abstract interface of our profiling methods</span>
+<span class="k">trait</span> <span class="nc">ProfileOps</span> <span class="k">extends</span> <span class="nc">Base</span> {
+  <span class="k">def</span> profile(n: <span class="kt">Rep[Int]</span>) = <span class="k">new</span> <span class="nc">ProfileOpsCls</span>(n)
 
-  // syntax
-  class ProfileOpsCls(n: Rep[Int]) {
-    def times(func: => Rep[Any]) = profile_body(n, func)
+  <span class="c">// syntax</span>
+  <span class="k">class</span> <span class="nc">ProfileOpsCls</span>(n: <span class="kt">Rep[Int]</span>) {
+    <span class="k">def</span> times(func: <span class="kt">=> Rep[Any]</span>) = profile_body(n, func)
   }
  
-  // implementation
-  def profile_body(n: Rep[Int], func: => Rep[Any]): Rep[ProfileArray]
+  <span class="c">// implementation</span>
+  <span class="k">def</span> profile_body(n: <span class="kt">Rep[Int]</span>, func: <span class="kt">=> Rep[Any]</span>): <span class="kt">Rep[ProfileArray]</span>
 }
 </code></pre></div>
        <p> <code>Rep[T]</code> is an <i>abstract type constructor</i>. Using this technique, applications are oblivious to the particular
@@ -137,11 +137,11 @@ trait ProfileOps extends Base {
        does something, and returns a <code>Rep[ProfileArray]</code>. The 'something' we are interested in is creating an IR node. We'll do that next,
        by expanding ProfileOps.scala to include an implementation of profile_body:
        </p>
-       <div class="highlight"><pre><code class="scala">trait ProfileOpsExp extends ProfileOps with EffectExp {
-  case class Profile(n: Exp[Int], body: Exp[Any]) extends Def[ProfileArray]
+       <div class="highlight"><pre><code class="scala"><span class="k">trait</span> <span class="nc">ProfileOpsExp</span> <span class="k">extends</span> <span class="nc">ProfileOps</span> <span class="k">with</span> <span class="nc">EffectExp</span> {
+  <span class="k">case class</span> Profile(n: <span class="kt">Exp[Int]</span>, body: <span class="kt">Exp[Any]</span>) <span class="k">extends</span> <span class="nc">Def[ProfileArray]</span>
 
-  def profile_body(n: Exp[Int], func: => Exp[Any]) = {
-    reflectEffect(Profile(n, reifyEffects(func)))  // create an IR node
+  <span class="k">def</span> profile_body(n: <span class="kt">Exp[Int]</span>, func: <span class="kt">=> Exp[Any]</span>) = {
+    reflectEffect(<span class="nc">Profile</span>(n, reifyEffects(func)))  <span class="c">// create an IR node</span>
   }
 }
 </code></pre></div>
@@ -153,49 +153,49 @@ trait ProfileOps extends Base {
      Just like before, open up a file called ProfileArrayOps.scala inside <code>dsls/profiling/src/example/profiling</code>:
      </p>
      <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling</span>
-import example.profiling.datastruct.scala.ProfileArray
-import scala.virtualization.lms.common.{NumericOpsExp, FractionalOpsExp, Base}
-import scala.virtualization.lms.common.ScalaGenBase
-import ppl.delite.framework.ops.DeliteOpsExp
-import java.io.PrintWriter
+<span class="k">import</span> <span class="nn">example.profiling.datastruct.scala.ProfileArray</span>
+<span class="k">import</span> <span class="nn">scala.virtualization.lms.common.{NumericOpsExp, FractionalOpsExp, Base}</span>
+<span class="k">import</span> <span class="nn">scala.virtualization.lms.common.ScalaGenBase</span>
+<span class="k">import</span> <span class="nn">ppl.delite.framework.ops.DeliteOpsExp</span>
+<span class="k">import</span> <span class="nn">java.io.PrintWriter</span>
 
-trait ProfileArrayOps extends Base {
-  // a simple way of enumerating choices in our syntax
-  class Reporter
-  object average extends Reporter
-  object median extends Reporter
+<span class="k">trait</span> <span class="nc">ProfileArrayOps</span> <span class="k">extends</span> <span class="nc">Base</span> {
+  <span class="c">// a simple way of enumerating choices in our syntax</span>
+  <span class="k">class</span> <span class="nc">Reporter</span>
+  <span class="k">object</span> <span class="nc">average</span> <span class="k">extends</span> <span class="nc">Reporter</span>
+  <span class="k">object</span> <span class="nc">median</span> <span class="k">extends</span> <span class="nc">Reporter</span>
 
-  // add report and length methods to Rep[ProfileArray]
-  def infix_report(x: Rep[ProfileArray], y: Reporter) = profile_report(x, y)
-  def infix_length(x: Rep[ProfileArray]) = profile_length(x)
+  <span class="c">// add report and length methods to Rep[ProfileArray]</span>
+  <span class="k">def</span> infix_report(x: <span class="kt">Rep[ProfileArray]</span>, y: <span class="kt">Reporter</span>) = profile_report(x, y)
+  <span class="k">def</span> infix_length(x: <span class="kt">Rep[ProfileArray]</span>) = profile_length(x)
 
-  // implementation
-  def profile_report(x: Rep[ProfileArray], y: Reporter): Rep[Double]
-  def profile_length(x: Rep[ProfileArray]): Rep[Int]
+  <span class="c">// implementation</span>
+  <span class="k">def</span> profile_report(x: <span class="kt">Rep[ProfileArray]</span>, y: <span class="kt">Reporter</span>): <span class="kt">Rep[Double]</span>
+  <span class="k">def</span> profile_length(x: <span class="kt">Rep[ProfileArray])</span>: <span class="kt">Rep[Int]</span>
 }
 
-trait ProfileArrayOpsExp extends ProfileArrayOps with NumericOpsExp
-  with FractionalOpsExp with DeliteOpsExp {
+<span class="k">trait</span> <span class="nc">ProfileArrayOpsExp</span> <span class="k">extends</span> <span class="nc">ProfileArrayOps</span> <span class="k">with</span> <span class="nc">NumericOpsExp</span>
+  <span class="k">with</span> <span class="nc">FractionalOpsExp</span> <span class="k">with</span> <span class="nc">DeliteOpsExp</span> {
 
-  // a Delite parallel operation! was it really that easy?
-  case class ReportSum(in: Exp[ProfileArray]) 
-    extends DeliteOpReduce[Double] {
-      val v = (fresh[Double], fresh[Double])
-      val func = v._1 + v._2
+  <span class="c">// a Delite parallel operation! was it really that easy?</span>
+  <span class="k">case class</span> <span class="nc">ReportSum</span>(in: <span class="kt">Exp[ProfileArray]</span>) 
+    <span class="k">extends</span> <span class="nc">DeliteOpReduce[Double]</span> {
+      <span class="k">val</span> v = (fresh[Double], fresh[Double])
+      <span class="k">val</span> func = v._1 + v._2
   }
 
-  // median is a little trickier, let's just be sequential
-  case class ReportMedian(in: Exp[ProfileArray]) extends Def[Double]
+  <span class="c">// median is a little trickier, let's just be sequential</span>
+  <span class="k">case class</span> <span class="nc">ReportMedian</span>(in: <span class="kt">Exp[ProfileArray]</span>) <span class="k">extends</span> <span class="nc">Def[Double]</span>
 
-  // length needs to reference the underlying data structure
-  case class ProfileLength(in: Exp[ProfileArray]) extends Def[Int]
+  <span class="c">// length needs to reference the underlying data structure</span>
+  <span class="k">case class</span> <span class="nc">ProfileLength</span>(in: <span class="kt">Exp[ProfileArray]</span>) <span class="k">extends</span> <span class="nc">Def[Int]</span>
 
-  def profile_report(x: Exp[ProfileArray], y: Reporter) = y match {
-    case this.average => ReportSum(x) / x.length   // inline
-    case this.median => ReportMedian(x)
-    case _ => throw new IllegalArgumentException("unknown report type")
+  <span class="k">def</span> profile_report(x: <span class="kt">Exp[ProfileArray]</span>, y: <span class="kt">Reporter</span>) = y <span class="k">match</span> {
+    <span class="k">case</span> <span class="no">this.average</span> => <span class="nc">ReportSum</span>(x) / x.length   <span class="c">// inline</span>
+    <span class="k">case</span> <span class="no">this.median</span> => <span class="nc">ReportMedian</span>(x)
+    <span class="k">case</span> _ => <span class="k">throw new</span> <span class="nc">IllegalArgumentException</span>(<span class="s">"unknown report type"</span>)
   }
-  def profile_length(x: Exp[ProfileArray]) = ProfileLength(x)
+  <span class="k">def</span> profile_length(x: <span class="kt">Exp[ProfileArray]</span>) = <span class="nc">ProfileLength</span>(x)
 }
 </code></pre></div>
      <p>
@@ -204,57 +204,57 @@ trait ProfileArrayOpsExp extends ProfileArrayOps with NumericOpsExp
      ReportAverage is a DeliteOp, Delite takes care of that one for us! Let's start with the generator
      for Profile. Open ProfileOps.scala again, and add this snippet to the bottom:
      </p>
-     <div class="highlight"><pre><code class="scala">trait ScalaGenProfileOps extends ScalaGenBase {
-  val IR: ProfileOpsExp
-  import IR._
+     <div class="highlight"><pre><code class="scala"><span class="k">trait</span> <span class="nc">ScalaGenProfileOps</span> <span class="k">extends</span> <span class="nc">ScalaGenBase</span> {
+  <span class="k">val</span> IR: <span class="kt">ProfileOpsExp</span>
+  <span class="k">import</span> IR._
 
-  override def boundSyms(e: Any): List[Sym[Any]] = e match {
-    case Profile(n, body) => effectSyms(body)
-    case _ => super.boundSyms(e)
+  <span class="k">override def</span> boundSyms(e: <span class="kt">Any</span>): <span class="kt">List[Sym[Any]]</span> = e <span class="k">match</span> {
+    <span class="k">case</span> <span class="nc">Profile</span>(n, body) => effectSyms(body)
+    <span class="k">case</span> _ => <span class="nc">super</span>.boundSyms(e)
   }
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = 
-    rhs match {
-      // insert instrumentation code around function body
-      case Profile(n, body) => 
-        stream.println("val " + quote(sym) + " = {")
-        stream.println("val out = new ProfileArray(" + quote(n) + ")")
-        stream.println("var i = 0")
-        stream.println("while (i < " + quote(n) + ") {")
-        stream.println("  val start = System.currentTimeMillis()")
+  <span class="k">override def</span> emitNode(sym: <span class="kt">Sym[Any]</span>, rhs: <span class="kt">Def[Any]</span>)(<span class="k">implicit</span> stream: <span class="kt">PrintWriter</span>) = 
+    rhs <span class="k">match</span> {
+      <span class="c">// insert instrumentation code around function body</span>
+      <span class="k">case</span> <span class="nc">Profile</span>(n, body) => 
+        stream.println(<span class="s">"val " + quote(sym) + " = {"</span>)
+        stream.println(<span class="s">"val out = new ProfileArray("</span> + quote(n) + <span class="s">")"</span>)
+        stream.println(<span class="s">"var i = 0"</span>)
+        stream.println(<span class="s">"while (i < "</span> + quote(n) + <span class="s">") {"</span>)
+        stream.println(<span class="s">"  val start = System.currentTimeMillis()"</span>)
         emitBlock(body)
-        stream.println("  val end = System.currentTimeMillis()")
-        stream.println("  val duration = (end - start)/1000f ")
-        stream.println("  out.dcUpdate(i, duration)")
-        stream.println("  i += 1")
-        stream.println("}")
-        stream.println("out")
-        stream.println("}")
+        stream.println(<span class="s">"  val end = System.currentTimeMillis()"</span>)
+        stream.println(<span class="s">"  val duration = (end - start)/1000f "</span>)
+        stream.println(<span class="s">"  out.dcUpdate(i, duration)"</span>)
+        stream.println(<span class="s">"  i += 1"</span>)
+        stream.println(<span class="s">"}"</span>)
+        stream.println(<span class="s">"out"</span>)
+        stream.println(<span class="s">"}"</span>)
 
-      case _ => super.emitNode(sym, rhs)
+      <span class="k">case</span> _ => <span class="nc">super</span>.emitNode(sym, rhs)
     }
 }
 </code></pre></div>
     <p>
     That takes care of <code>Profile</code>. Now, similarly for ProfileArray:
     </p>
-     <div class="highlight"><pre><code class="scala">trait ScalaGenProfileArrayOps extends ScalaGenBase {
-  val IR: ProfileArrayOpsExp
-  import IR._
+     <div class="highlight"><pre><code class="scala"><span class="k">trait</span> <span class="nc">ScalaGenProfileArrayOps</span> <span class="k">extends</span> <span class="nc">ScalaGenBase</span> {
+  <span class="k">val</span> IR: <span class="kt">ProfileArrayOpsExp</span>
+  <span class="k">import</span> IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) =
-    rhs match {
-      case ReportMedian(x) =>
-        val a = quote(x)
-        val size = a + ".size"
-        stream.println("val " + quote(sym) + " = {")
-        stream.println("val d = new Array[Double]("+size+")")
-        stream.println("System.arraycopy("+a+"._data, 0, d, 0, "+size+")")
-        stream.println("scala.util.Sorting.quickSort(d)")
-        stream.println("d(Math.ceil("+size+"/2).asInstanceOf[Int])")
-        stream.println("}")
-      case ProfileLength(x) => emitValDef(sym, quote(x) + ".size")
-      case _ => super.emitNode(sym, rhs)
+  <span class="k">override def</span> emitNode(sym: <span class="kt">Sym[Any]</span>, rhs: <span class="kt">Def[Any]</span>)(<span class="k">implicit</span> stream: <span class="kt">PrintWriter</span>) =
+    rhs <span class="k">match</span> {
+      <span class="k">case</span> <span class="nc">ReportMedian</span>(x) =>
+        <span class="k">val</span> a = quote(x)
+        <span class="k">val</span> size = a + <span class="s">".size"</span>
+        stream.println(<span class="s">"val "</span> + quote(sym) + <span class="s">" = {"</span>)
+        stream.println(<span class="s">"val d = new Array[Double]("</span>+size+<span class="s">")"</span>)
+        stream.println(<span class="s">"System.arraycopy("</span>+a+<span class="s">"._data, 0, d, 0, "</span>+size+<span class="s">")"</span>)
+        stream.println(<span class="s">"scala.util.Sorting.quickSort(d)"</span>)
+        stream.println(<span class="s">"d(Math.ceil("</span>+size+<span class="s">"/2).asInstanceOf[Int])"</span>)
+        stream.println(<span class="s">"}"</span>)
+      <span class="k">case</span> <span class="nc">ProfileLength</span>(x) => emitValDef(sym, quote(x) + <span class="s">".size"</span>)
+      <span class="k">case</span> _ => <span class="nc">super</span>.emitNode(sym, rhs)
     }
 }
 </code></pre></div>
@@ -263,72 +263,72 @@ trait ProfileArrayOpsExp extends ProfileArrayOps with NumericOpsExp
     package definitions and Delite hooks so that DSL applications can easily import our DSL into scope.
     </p>
     <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling</span>
-import example.profiling.datastruct.scala.ProfileArray
-import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal._
-import ppl.delite.framework._
-import ppl.delite.framework.codegen._
-import ppl.delite.framework.ops._
-import codegen.delite.overrides._
-import codegen.scala.TargetScala
-import java.io.File
+<span class="k">import</span> <span class="nn">example.profiling.datastruct.scala.ProfileArray</span>
+<span class="k">import</span> <span class="nn">scala.virtualization.lms.common._</span>
+<span class="k">import</span> <span class="nn">scala.virtualization.lms.internal._</span>
+<span class="k">import</span> <span class="nn">ppl.delite.framework._</span>
+<span class="k">import</span> <span class="nn">ppl.delite.framework.codegen._</span>
+<span class="k">import</span> <span class="nn">ppl.delite.framework.ops._</span>
+<span class="k">import</span> <span class="nn">codegen.delite.overrides._</span>
+<span class="k">import</span> <span class="nn">codegen.scala.TargetScala</span>
+<span class="k">import</span> <span class="nn">java.io.File</span>
                    
-/* Application packages */
-trait ProfileApplicationRunner extends ProfileApplication with DeliteApplication
-  with ProfileExp
-trait ProfileApplication extends Profile with ProfileLift {
-  var args: Rep[Array[String]]
-  def main(): Unit
+<span class="c">/* Application packages */</span>
+<span class="k">trait</span> <span class="nc">ProfileApplicationRunner</span> <span class="k">extends</span> <span class="nc">ProfileApplication</span> 
+  <span class="k">with</span> <span class="nc">DeliteApplication</span> <span class="k">with</span> <span class="nc">ProfileExp</span>
+<span class="k">trait</span> <span class="nc">ProfileApplication</span> <span class="k">extends</span> <span class="nc">Profile</span> <span class="k">with</span> <span class="nc">ProfileLift</span> {
+  <span class="k">var</span> args: <span class="kt">Rep[Array[String]]</span>
+  <span class="k">def</span> main(): <span class="kt">Unit</span>
 }
 
-trait ProfileLift extends LiftScala { // allow apps to use all of Scala
-  this: Profile =>
+<span class="k">trait</span> <span class="nc">ProfileLift</span> <span class="k">extends</span> <span class="nc">LiftScala</span> { <span class="c">// allow apps to use all of Scala</span>
+  this: <span class="nc">Profile</span> =>
 }
 
-/* IR packages */
-trait Profile extends ScalaOpsPkg with ProfileOps with ProfileArrayOps
-trait ProfileExp extends Profile with ScalaOpsPkgExp with ProfileOpsExp
-  with ProfileArrayOpsExp with DeliteOpsExp with VariantsOpsExp 
-  with DeliteAllOverridesExp {
+<span class="c">/* IR packages */</span>
+<span class="k">trait</span> <span class="nc">Profile</span> <span class="k">extends</span> <span class="nc">ScalaOpsPkg</span> <span class="k">with</span> <span class="nc">ProfileOps</span> <span class="k">with</span> <span class="nc">ProfileArrayOps</span>
+<span class="k">trait</span> <span class="nc">ProfileExp</span> <span class="k">extends</span> <span class="nc">Profile</span> <span class="k">with</span> <span class="nc">ScalaOpsPkgExp</span> <span class="k">with</span> <span class="nc">ProfileOpsExp</span>
+  <span class="k">with</span> <span class="nc">ProfileArrayOpsExp</span> <span class="k">with</span> <span class="nc">DeliteOpsExp</span> <span class="k">with</span> <span class="nc">VariantsOpsExp</span> 
+  <span class="k">with</span> <span class="nc">DeliteAllOverridesExp</span> {
 
-  this: DeliteApplication with ProfileApplication with ProfileExp =>
+  this: <span class="nc">DeliteApplication</span> <span class="k">with</span> <span class="nc">ProfileApplication</span> <span class="k">with</span> <span class="nc">ProfileExp</span> =>
 
-  def getCodeGenPkg(t: Target{val IR: ProfileExp.this.type}):
-    GenericFatCodegen{val IR: ProfileExp.this.type} = {
+  <span class="k">def</span> getCodeGenPkg(t: <span class="kt">Target</span>{<span class="k">val</span> IR: <span class="kt">ProfileExp.this.type</span>}):
+    <span class="kt">GenericFatCodegen</span>{<span class="k">val</span> IR: <span class="kt">ProfileExp.this.type</span>} = {
     
-    t match {
-      case _:TargetScala => new ProfileCodeGenScala {
-        val IR: ProfileExp.this.type = ProfileExp.this
+    t <span class="k">match</span> {
+      <span class="k">case</span> _:<span class="kt">TargetScala</span> => <span class="k">new</span> <span class="nc">ProfileCodeGenScala</span> {
+        <span class="k">val</span> IR: <span class="kt">ProfileExp.this.type</span> = <span class="nc">ProfileExp.this</span>
       }
-      case _ => throw new IllegalArgumentException("unsupported target")
+      <span class="k">case</span> _ => <span class="k">throw new</span> <span class="nc">IllegalArgumentException</span>(<span class="s">"unsupported target"</span>)
     }
   }
 }
 
-/* Code generator packages */
-trait ProfileCodeGenBase extends GenericFatCodegen with codegen.Utils {
-  val IR: DeliteApplication with ProfileExp
-  override def initialDefs = IR.deliteGenerator.availableDefs
+<span class="c">/* Code generator packages */</span>
+<span class="k">trait</span> <span class="nc">ProfileCodeGenBase</span> <span class="k">extends</span> <span class="nc">GenericFatCodegen</span> <span class="k">with</span> <span class="nc">codegen.Utils</span> {
+  <span class="k">val</span> IR: <span class="kt">DeliteApplication</span> <span class="k">with</span> <span class="kt">ProfileExp</span>
+  <span class="k">override def</span> initialDefs = IR.deliteGenerator.availableDefs
+                                        
+  <span class="k">def</span> dsmap(s: <span class="kt">String</span>) = s.replaceAll(<span class="s">"example.profiling.datastruct"</span>, <span class="s">"generated"</span>)
   
-  def dsmap(s: String) = s.replaceAll("example.profiling.datastruct", "generated")
+  <span class="k">override def</span> remap[A](m: <span class="kt">Manifest[A]</span>): <span class="kt">String</span> = dsmap(m.toString)
   
-  override def remap[A](m: Manifest[A]): String = dsmap(m.toString)
-  
-  override def emitDataStructures(path: String) {
-    val s = File.separator
-    val dsRoot = Config.homeDir + s+"dsls"+s+"profiling"+s+"src"+s+
-                 "example"+s+"profiling"+s+"datastruct"+s + this.toString
+  <span class="k">override def</span> emitDataStructures(path: <span class="s">String</span>) {
+    <span class="k">val</span> s = File.separator
+    <span class="k">val</span> dsRoot = Config.homeDir + s+<span class="s">"dsls"</span>+s+<span class="s">"profiling"</span>+s+<span class="s">"src"</span>+s+
+                 <span class="s">"example"</span>+s+<span class="s">"profiling"</span>+s+<span class="s">"datastruct"</span>+s + <span class="nc">this</span>.toString
 
     copyDataStructures(dsRoot, path, dsmap)
   }
 }
 
-trait ProfileCodeGenScala extends ProfileCodeGenBase with ScalaCodeGenPkg 
-  with ScalaGenDeliteOps with ScalaGenProfileOps with ScalaGenProfileArrayOps
-  with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps 
-  with DeliteScalaGenAllOverrides {
+<span class="k">trait</span> <span class="nc">ProfileCodeGenScala</span> <span class="k">extends</span> <span class="nc">ProfileCodeGenBase</span> <span class="k">with</span> <span class="nc">ScalaCodeGenPkg</span> 
+  <span class="k">with</span> <span class="nc">ScalaGenDeliteOps</span> <span class="k">with</span> <span class="nc">ScalaGenProfileOps</span> <span class="k">with</span> <span class="nc">ScalaGenProfileArrayOps</span>
+  <span class="k">with</span> <span class="nc">ScalaGenVariantsOps</span> <span class="k">with</span> <span class="nc">ScalaGenDeliteCollectionOps</span> 
+  <span class="k">with</span> <span class="nc">DeliteScalaGenAllOverrides</span> {
       
-  val IR: DeliteApplication with ProfileExp
+  <span class="k">val</span> IR: <span class="kt">DeliteApplication</span> <span class="k">with</span> <span class="kt">ProfileExp</span>
 }
 </code></pre></div>
     <p>
@@ -349,14 +349,14 @@ trait ProfileCodeGenScala extends ProfileCodeGenBase with ScalaCodeGenPkg
 <span class="k">trait</span> <span class="nc">HelloProfile</span> <span class="k">extends</span> <span class="nc">ProfileApplication</span> <span class="o">{</span> 
  
   <span class="k">def</span> <span class="n">main() = {
-    var acc = 0.
-    val time = 
+    <span class="k">var</span> acc = 0.
+    <span class="k">val</span> time = 
       profile (100) times {
         for (i <- 0 until 100000) {
           acc += Math.exp(i)*Math.pow(i,10)*42
         }
       } report average
-    println("average loop time: " + time)
+    println(<span class="s">"average loop time: "</span> + time)
   }
 }
 </span></code></pre></div>
@@ -365,7 +365,7 @@ trait ProfileCodeGenScala extends ProfileCodeGenBase with ScalaCodeGenPkg
     You can use 'sbt' with it by adding the following line to project/build/DeliteProject.scala, inside
     the DSLs class:
     </p>
-    <div class="highlight"><pre><code class="scala"><span class="k">lazy val</span> profiling = project("profiling", "Profiling", new FlatProject(_), framework)</code></pre></div>
+    <div class="highlight"><pre><code class="scala"><span class="k">lazy val</span> profiling = project(<span class="s">"profiling"</span>, <span class="s">"Profiling"</span>, <span class="k">new</span> <span class="nc">FlatProject</span>(_), framework)</code></pre></div>
     <p>
     Congratulations! You just built your first Delite DSL. Go try it out with some test apps!
     We've only scratched the surface though - Delite and LMS both offer many more features, including
