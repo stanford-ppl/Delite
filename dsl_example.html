@@ -54,7 +54,327 @@
       </div>
       <div id='content'> 
         <h1 id='title_myfirstdsl'>My First DSL</h1>
-        <p>Coming soon</p>
+        <p>A Delite DSL consists of a set of data types and operations. Delite DSLs are embedded in Scala, a host language designed
+        to accomodate DSLs. Scala provides syntactic flexibility, an advanced type system with type inference, higher order functions,
+        function currying, pattern matching, and lazy evaluation, among other features that allow library builders to develop powerful
+        and easy to use abstractions. 
+        </p>
+        <p>
+        Traditional embedded
+        DSLs follow the 'just a library' approach: DSLs use these advanced features to provide syntactic sugar, but in the end are
+        simply Scala applications compiled by the Scala compiler. Our approach, a collaboration with the Scala team at EPFL, takes DSL
+        development another step forward. We want to take the best parts of the library approach - the free adoption
+        of a parser, lexer and a type checker - and add to it the ability to build, optimize, and code generate from an intermediate
+        representation (IR). In this way, we will transform sequential DSL code to heterogeneous, parallel code, capable
+        of transparently running on different hardware devices. For more information about our techniques,
+        please see <a href="publications.html">our publications</a>.
+        </p>
+        <p>
+        In this example, we are going to design a very simple profiling DSL. The goal of this DSL is to make it easy to measure the
+        time elapsed in different parts of an application. Here's an example of what we want to be able to do when we're finished:
+        </p>
+        <div class="highlight"><pre><code class="scala">val time =
+  profile (10) times {
+    ... blah blah ...
+  } report average
+</code></pre></div>       
+        <p>
+        To make this DSL, we need to define at least three things: data structures,
+        the nodes of our intermediate representation (IR), and the code generators for those nodes. Let's start with data structures.
+        </p>
+        <p>
+        Our simple profiling DSL doesn't need much in the way of data. Let's just define a collection, an array, that contains the time
+        elapsed for the last n runs. First, start from the base directory of the Delite distribution, and create a
+        source directory for our project:
+        </p>
+        <div class="highlight"><pre><code class="bash">mkdir -p dsls/profiling/src</code</pre></div>
+        <p>
+        Now, let's define our array, which we'll call ProfileArray, in a package called "example.profiling.datastruct".
+        </p>
+        <div class="highlight"><pre><code class="bash">mkdir -p dsls/profiling/src/example/profiling/datastruct/scala/</code></pre></div>
+        <p>
+        Write ProfileArray.scala inside the directory as follows:
+        </p>
+        <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling.datastruct.scala</span>
+import ppl.delite.framework.datastruct.scala.DeliteCollection
+
+class ProfileArray(val numMeasurements: Int) extends DeliteCollection[Double] {  
+   val _data = new Array[Double](numMeasurements)
+
+   // these are required for all DeliteCollections
+   def size = _data.length
+   def dcApply(i: Int) = _data(i)
+   def dcUpdate(i: Int, x: Double) { _data(i) = x }   
+}
+</code></pre></div>
+        <p>
+        A 'DeliteCollection' is simply a flat collection that Delite parallel operations use. We've just defined the only data structure
+        that we'll need for this example. Now we need to implement our DSL methods - but instead of implementing them directly, we want
+        to build an intermediate representation. We are going to use the LMS library and Delite to do it. Open up a file called ProfileOps.scala
+        inside <code>dsls/profiling/src/example/profiling</code>:      
+        </p>
+        <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling</span>
+import example.profiling.datastruct.scala.ProfileArray
+import scala.virtualization.lms.common.{ScalaGenBase, Base, EffectExp}
+import java.io.PrintWriter
+
+// this is the abstract interface of our profiling methods
+trait ProfileOps extends Base {
+  def profile(n: Rep[Int]) = new ProfileOpsCls(n)
+
+  // syntax
+  class ProfileOpsCls(n: Rep[Int]) {
+    def times(func: => Rep[Any]) = profile_body(n, func)
+  }
+ 
+  // implementation
+  def profile_body(n: Rep[Int], func: => Rep[Any]): Rep[ProfileArray]
+}
+</code></pre></div>
+       <p> <code>Rep[T]</code> is an <i>abstract type constructor</i>. Using this technique, applications are oblivious to the particular
+       representation (which is actually bound only at compile time when all of the DSL traits are mixed together). Any operation on a <code>Rep[T]</code>
+       we can override to do whatever want - or, as in this case, we can simply provide a method, <code>profile</code>, that takes a <code>Rep[Int]</code>,
+       does something, and returns a <code>Rep[ProfileArray]</code>. The 'something' we are interested in is creating an IR node. We'll do that next,
+       by expanding ProfileOps.scala to include an implementation of profile_body:
+       </p>
+       <div class="highlight"><pre><code class="scala">trait ProfileOpsExp extends ProfileOps with EffectExp {
+  case class Profile(n: Exp[Int], body: Exp[Any]) extends Def[ProfileArray]
+
+  def profile_body(n: Exp[Int], func: => Exp[Any]) = {
+    reflectEffect(Profile(n, reifyEffects(func)))  // create an IR node
+  }
+}
+</code></pre></div>
+     <p>
+     So far, so good. When an application uses our 'profile' method, we'll actually build an IR node and hand them back a representation
+     of the type they were expecting. With type inference, they don't even have to be aware that they got a <code>Rep[ProfileArray]</code>
+     instead of a real <code>ProfileArray</code>! We haven't shown how to generate code for <code>Profile</code> yet - we'll get to that
+     soon. But first, let's finish our DSL op implementation: we need to define the report function for <code>ProfileArray</code>.
+     Just like before, open up a file called ProfileArrayOps.scala inside <code>dsls/profiling/src/example/profiling</code>:
+     </p>
+     <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling</span>
+import example.profiling.datastruct.scala.ProfileArray
+import scala.virtualization.lms.common.{NumericOpsExp, FractionalOpsExp, Base}
+import scala.virtualization.lms.common.ScalaGenBase
+import ppl.delite.framework.ops.DeliteOpsExp
+import java.io.PrintWriter
+
+trait ProfileArrayOps extends Base {
+  // a simple way of enumerating choices in our syntax
+  class Reporter
+  object average extends Reporter
+  object median extends Reporter
+
+  // add report and length methods to Rep[ProfileArray]
+  def infix_report(x: Rep[ProfileArray], y: Reporter) = profile_report(x, y)
+  def infix_length(x: Rep[ProfileArray]) = profile_length(x)
+
+  // implementation
+  def profile_report(x: Rep[ProfileArray], y: Reporter): Rep[Double]
+  def profile_length(x: Rep[ProfileArray]): Rep[Int]
+}
+
+trait ProfileArrayOpsExp extends ProfileArrayOps with NumericOpsExp
+  with FractionalOpsExp with DeliteOpsExp {
+
+  // a Delite parallel operation! was it really that easy?
+  case class ReportSum(in: Exp[ProfileArray]) 
+    extends DeliteOpReduce[Double] {
+      val v = (fresh[Double], fresh[Double])
+      val func = v._1 + v._2
+  }
+
+  // median is a little trickier, let's just be sequential
+  case class ReportMedian(in: Exp[ProfileArray]) extends Def[Double]
+
+  // length needs to reference the underlying data structure
+  case class ProfileLength(in: Exp[ProfileArray]) extends Def[Int]
+
+  def profile_report(x: Exp[ProfileArray], y: Reporter) = y match {
+    case this.average => ReportSum(x) / x.length   // inline
+    case this.median => ReportMedian(x)
+    case _ => throw new IllegalArgumentException("unknown report type")
+  }
+  def profile_length(x: Exp[ProfileArray]) = ProfileLength(x)
+}
+</code></pre></div>
+     <p>
+     That's all the IR definition we need! We have just one more piece of the language left to implement:
+     code generators. Luckily, the generators for Profile and ReportMedian are simple, and because
+     ReportAverage is a DeliteOp, Delite takes care of that one for us! Let's start with the generator
+     for Profile. Open ProfileOps.scala again, and add this snippet to the bottom:
+     </p>
+     <div class="highlight"><pre><code class="scala">trait ScalaGenProfileOps extends ScalaGenBase {
+  val IR: ProfileOpsExp
+  import IR._
+
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case Profile(n, body) => effectSyms(body)
+    case _ => super.boundSyms(e)
+  }
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = 
+    rhs match {
+      // insert instrumentation code around function body
+      case Profile(n, body) => 
+        stream.println("val " + quote(sym) + " = {")
+        stream.println("val out = new ProfileArray(" + quote(n) + ")")
+        stream.println("var i = 0")
+        stream.println("while (i < " + quote(n) + ") {")
+        stream.println("  val start = System.currentTimeMillis()")
+        emitBlock(body)
+        stream.println("  val end = System.currentTimeMillis()")
+        stream.println("  val duration = (end - start)/1000f ")
+        stream.println("  out.dcUpdate(i, duration)")
+        stream.println("  i += 1")
+        stream.println("}")
+        stream.println("out")
+        stream.println("}")
+
+      case _ => super.emitNode(sym, rhs)
+    }
+}
+</code></pre></div>
+    <p>
+    That takes care of <code>Profile</code>. Now, similarly for ProfileArray:
+    </p>
+     <div class="highlight"><pre><code class="scala">trait ScalaGenProfileArrayOps extends ScalaGenBase {
+  val IR: ProfileArrayOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) =
+    rhs match {
+      case ReportMedian(x) =>
+        val a = quote(x)
+        val size = a + ".size"
+        stream.println("val " + quote(sym) + " = {")
+        stream.println("val d = new Array[Double]("+size+")")
+        stream.println("System.arraycopy("+a+"._data, 0, d, 0, "+size+")")
+        stream.println("scala.util.Sorting.quickSort(d)")
+        stream.println("d(Math.ceil("+size+"/2).asInstanceOf[Int])")
+        stream.println("}")
+      case ProfileLength(x) => emitValDef(sym, quote(x) + ".size")
+      case _ => super.emitNode(sym, rhs)
+    }
+}
+</code></pre></div>
+    <p> So close! We've finishing defining our entire DSL. Now we just need to put some machinery together
+    so that applications can use it. Open up a file called Profile.scala. Here, we're going to add
+    package definitions and Delite hooks so that DSL applications can easily import our DSL into scope.
+    </p>
+    <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling</span>
+import example.profiling.datastruct.scala.ProfileArray
+import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal._
+import ppl.delite.framework._
+import ppl.delite.framework.codegen._
+import ppl.delite.framework.ops._
+import codegen.delite.overrides._
+import codegen.scala.TargetScala
+import java.io.File
+                   
+/* Application packages */
+trait ProfileApplicationRunner extends ProfileApplication with DeliteApplication
+  with ProfileExp
+trait ProfileApplication extends Profile with ProfileLift {
+  var args: Rep[Array[String]]
+  def main(): Unit
+}
+
+trait ProfileLift extends LiftScala { // allow apps to use all of Scala
+  this: Profile =>
+}
+
+/* IR packages */
+trait Profile extends ScalaOpsPkg with ProfileOps with ProfileArrayOps
+trait ProfileExp extends Profile with ScalaOpsPkgExp with ProfileOpsExp
+  with ProfileArrayOpsExp with DeliteOpsExp with VariantsOpsExp 
+  with DeliteAllOverridesExp {
+
+  this: DeliteApplication with ProfileApplication with ProfileExp =>
+
+  def getCodeGenPkg(t: Target{val IR: ProfileExp.this.type}):
+    GenericFatCodegen{val IR: ProfileExp.this.type} = {
+    
+    t match {
+      case _:TargetScala => new ProfileCodeGenScala {
+        val IR: ProfileExp.this.type = ProfileExp.this
+      }
+      case _ => throw new IllegalArgumentException("unsupported target")
+    }
+  }
+}
+
+/* Code generator packages */
+trait ProfileCodeGenBase extends GenericFatCodegen with codegen.Utils {
+  val IR: DeliteApplication with ProfileExp
+  override def initialDefs = IR.deliteGenerator.availableDefs
+  
+  def dsmap(s: String) = s.replaceAll("example.profiling.datastruct", "generated")
+  
+  override def remap[A](m: Manifest[A]): String = dsmap(m.toString)
+  
+  override def emitDataStructures(path: String) {
+    val s = File.separator
+    val dsRoot = Config.homeDir + s+"dsls"+s+"profiling"+s+"src"+s+
+                 "example"+s+"profiling"+s+"datastruct"+s + this.toString
+
+    copyDataStructures(dsRoot, path, dsmap)
+  }
+}
+
+trait ProfileCodeGenScala extends ProfileCodeGenBase with ScalaCodeGenPkg 
+  with ScalaGenDeliteOps with ScalaGenProfileOps with ScalaGenProfileArrayOps
+  with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps 
+  with DeliteScalaGenAllOverrides {
+      
+  val IR: DeliteApplication with ProfileExp
+}
+</code></pre></div>
+    <p>
+    This probably looks like a lot of voodoo - and indeed, there is a little. Check out the slides from
+    <a href="http://cs442.stanford.edu">our DSL course</a> to learn more about the details. In general,
+    we are
+    <ol>
+    <li> Defining separate packages for abstract operations, IR nodes and code generators </li>
+    <li> Declaring which parts of Scala we want to allow DSL applications to use (in this case, everything) </li>
+    <li> Telling Delite how to access our code generators </li>
+    <li> Providing a utility method to map the data structure we defined earlier to one that will be used from generated code </li>
+    </ol>
+    </p>
+    <p>
+    Finally, our DSL is in place. Now we can write an application and test it! Let's call it HelloProfile.scala:
+   <div class="highlight"><pre><code class="scala"><span class="k">import</span> <span class="nn">example.profiling._</span>
+<span class="k">object</span> <span class="nc">HelloProfileRunner</span> <span class="k">extends</span> <span class="nc">ProfileApplicationRunner</span> <span class="k">with</span> <span class="nc">HelloProfile</span> 
+<span class="k">trait</span> <span class="nc">HelloProfile</span> <span class="k">extends</span> <span class="nc">ProfileApplication</span> <span class="o">{</span> 
+ 
+  <span class="k">def</span> <span class="n">main() = {
+    var acc = 0.
+    val time = 
+      profile (100) times {
+        for (i <- 0 until 100000) {
+          acc += Math.exp(i)*Math.pow(i,10)*42
+        }
+      } report average
+    println("average loop time: " + time)
+  }
+}
+</span></code></pre></div>
+    <p>
+    Run it the same way we did in the <a href="getting_started.html">getting started guide</a>.
+    You can use 'sbt' with it by adding the following line to project/build/DeliteProject.scala, inside
+    the DSLs class:
+    </p>
+    <div class="highlight"><pre><code class="scala"><span class="k">lazy val</span> profiling = project("profiling", "Profiling", new FlatProject(_), framework)</code></pre></div>
+    <p>
+    Congratulations! You just built your first Delite DSL. Go try it out with some test apps!
+    We've only scratched the surface though - Delite and LMS both offer many more features, including
+    more DeliteOp types, a CUDA generator, cool optimizations, a system for managing side effects, and more.
+    The best place to get started is to look at existing DSL code (such as OptiML code). You should start to see
+    patterns emerge that you can use right away while you are becoming more familiar with the system.
+    If you run into any problems, don't hesitate to check out the <a href="troubleshooting.html">troubleshooting page</a>, 
+    or <a href="mailto:cs442-spr1011-staff@lists.stanford.edu">contact us</a>.
+    </p>
      </div>
       <div id='footer'>Copyright &copy; 2011</div>
     </div>
