@@ -89,7 +89,7 @@ li.major {
 
 #outer {
   margin: 1em auto 1em auto;
-  width: 60em;
+  width: 65em;
 }
 
 #header {
@@ -106,7 +106,7 @@ li.major {
 
 #content {
   float: right;
-  width: 45em;
+  width: 50em;
   padding-bottom: 3em;
   text-align: left;
 }
