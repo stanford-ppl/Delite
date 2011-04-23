@@ -11,7 +11,7 @@ import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
  */
-trait DeliteCodegen extends GenericFatCodegen {
+trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.Utils {
   val IR: Expressions with FatExpressions with Effects
   import IR._
 
@@ -45,21 +45,7 @@ trait DeliteCodegen extends GenericFatCodegen {
     val s = File.separator
     for (g <- generators) {
       val dsRoot = Config.homeDir + s+"framework"+s+"src"+s+"ppl"+s+"delite"+s+"framework"+s+"datastruct"+s+g
-      val dsDir = new File(dsRoot)
-      if (dsDir.exists) {
-        val dest = path+s+g+s+"datastructures"
-        val outDir = new File(dest)
-        outDir.mkdirs()
-        for (f <- dsDir.listFiles) {
-          val outFile = dest + s + f.getName
-          val out = new BufferedWriter(new FileWriter(outFile))
-          for (line <- scala.io.Source.fromFile(f).getLines) {
-            val remappedLine = line.replaceAll("ppl.delite.framework.datastruct", "generated")
-            out.write(remappedLine + "\n")
-          }
-          out.close()
-        }
-      }
+      copyDataStructures(dsRoot, path+s+g+s+"datastructures")
     }
   }
 

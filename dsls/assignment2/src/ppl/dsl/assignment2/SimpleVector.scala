@@ -3,13 +3,13 @@ package ppl.dsl.assignment2
 import scala.virtualization.lms.common._
 import ppl.delite.framework.{Config, DeliteApplication}
 import java.io._
-import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite.overrides._
 import scala.virtualization.lms.internal.GenericFatCodegen
+import ppl.delite.framework.codegen.{Utils, Target}
 
 /**
  * Packages
@@ -90,29 +90,17 @@ trait SimpleVectorApplication extends SimpleVector with SimpleVectorLift {
 trait SimpleVectorApplicationRunner extends SimpleVectorApplication with DeliteApplication with SimpleVectorExp
 
 
-trait SimpleVectorCodegenBase extends GenericFatCodegen {
+trait SimpleVectorCodegenBase extends GenericFatCodegen with Utils {
   val IR: DeliteApplication with SimpleVectorExp
   override def initialDefs = IR.deliteGenerator.availableDefs
 
   override def emitDataStructures(path: String) {
     val s = File.separator
     val dsRoot = Config.homeDir + s+"dsls"+s+"assignment2"+s+"src"+s+"ppl"+s+"dsl"+s+"assignment2"+s+"datastructures"+s + this.toString
-
-    val dsDir = new File(dsRoot)
-    if (!dsDir.exists) return
-    val outDir = new File(path)
-    outDir.mkdirs()
-
-    for (f <- dsDir.listFiles) {
-      val outFile = path + s + f.getName
-      val out = new BufferedWriter(new FileWriter(outFile))
-      for (line <- scala.io.Source.fromFile(f).getLines) {
-        val remappedLine = line.replaceAll("ppl.delite.framework.datastruct", "generated")
-        out.write(remappedLine + "\n")
-      }
-      out.close()
-    }
+    copyDataStructures(dsRoot, path, dsmap)
   }
+
+  def dsmap(s: String) = s.replaceAll("ppl.dsl.assignment2", "generated.scala")
 }
 
 trait SimpleVectorCodegenScala extends SimpleVectorCodegenBase with SimpleVectorScalaCodeGenPkg with ScalaGenVectorOps
@@ -122,7 +110,7 @@ trait SimpleVectorCodegenScala extends SimpleVectorCodegenBase with SimpleVector
 
   //this method translates types in the compiler to types in the generated code
   override def remap[A](m: Manifest[A]): String = {
-    super.remap(m).replaceAll("ppl.dsl.assignment2", "generated.scala")
+    dsmap(super.remap(m))
   }
 }
 
