@@ -77,12 +77,12 @@ class Queryable[TSource](source: Iterable[TSource]) {
 
 
   def GroupBy[TKey](keySelector: TSource => TKey): Iterable[Grouping[TKey, TSource]] = {
-    val hTable = buildHash(source,keySelector)
+    val (hTable, keys) = buildHash(source,keySelector)
     val result = new DataTable[Grouping[TKey,TSource]] {
       def addRecord(fields: Array[String]) = throw new RuntimeException("Cannot add records to a grouping table")
       override val grouped = true
     }
-    for(key <- hTable.keys) {
+    for(key <- keys) {
       result.data += new Grouping(key,hTable.getOrElse(key, new ArrayBuffer[TSource]))
     }
     result
@@ -123,12 +123,14 @@ class Queryable[TSource](source: Iterable[TSource]) {
    */
   private def buildHash[TKey](source:Iterable[TSource], keySelector: TSource => TKey) = {
     val hash = HashMap[TKey, Buffer[TSource]]()
+    val keys = new ArrayBuffer[TKey]
     for (elem <- source; key = keySelector(elem)) {
       hash.getOrElseUpdate(key,{
+        keys.append(key)
         new ArrayBuffer[TSource]() //if there is no key
       }) += elem
     }
-    hash
+    (hash,keys)
   }
 
   private def ni = throw new RuntimeException("Not Implemented")

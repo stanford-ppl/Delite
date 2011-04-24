@@ -38,6 +38,8 @@ object TPCH {
    import OptiQL._
 
     //Execute TPC-H queries against my tables
+
+
     val q1 = lineItems Where(_.shipDate <= Date("1998-12-01") + Interval(90).days) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(g => new {
       val returnFlag = g.key._1
       val lineStatus = g.key._2
@@ -50,10 +52,13 @@ object TPCH {
       val avgDiscount = g.Average(_.discount)
       val countOrder = g.Count
     }) OrderBy(_.lineStatus) ThenBy(_.returnFlag)
+
+
     println("TPCH Q1:")
     q1.printAsTable
 
-    val q3 = customers.Where(_.marketSegment == "BUILDING").Join(orders)(_.key, _.customerKey, (customer, order)=> new {
+    val q3 = customers.Where(_.marketSegment == "BUILDING").
+      Join(orders)(_.key, _.customerKey, (customer, order)=> new {
       val orderKey = order.key
       val orderDate = order.date
       val orderShipPriority = order.shipPriority
@@ -64,12 +69,15 @@ object TPCH {
       val orderShipDate = li.shipDate
       val extendedPrice = li.extendedPrice
       val discount = li.discount
-    }) Where(col => col.orderDate < Date("1995-03-15") && col.orderShipDate < Date("1995-03-15") ) GroupBy(col => (col.orderKey,col.orderDate,col.orderShipPriority)) Select(g => new {
+    }).Where(col => col.orderDate < Date("1995-03-15") && col.orderShipDate < Date("1995-03-15")
+    ).GroupBy(col => (col.orderKey,col.orderDate,col.orderShipPriority)) Select(g => new {
       val orderKey = g.key._1
       val revenue = g.Sum(e => e.extendedPrice * (1 - e.discount))
       val orderDate = g.key._2
       val shipPriority = g.key._2
     })
+
+
     println("TPCH Q3:")
     q3.printAsTable
   }

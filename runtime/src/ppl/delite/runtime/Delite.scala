@@ -101,6 +101,8 @@ object Delite {
     }
     catch { case e => {
       executor.abnormalShutdown()
+      //clear code cache in this case
+      Directory(Path(Config.codeCacheHome)).deleteRecursively
       throw e
     } }
   }
@@ -114,7 +116,9 @@ object Delite {
 
   def loadSources(graph: DeliteTaskGraph) {
     ScalaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + ScalaCompile.target + File.separator).toAbsolute))
-    CudaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + CudaCompile.target + File.separator).toAbsolute))
+    //required files may not be present if no gpu enabled
+    if(Config.numGPUs > 0)
+      CudaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + CudaCompile.target + File.separator).toAbsolute))
   }
 
   //abnormal shutdown

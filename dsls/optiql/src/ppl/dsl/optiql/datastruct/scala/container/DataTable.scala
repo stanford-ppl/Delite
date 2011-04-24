@@ -1,38 +1,20 @@
-package ppl.dsl.optiql.baseline.containers
+package ppl.dsl.optiql.datastruct.scala.container
 
-import collection.mutable.{ArrayBuffer, BufferLike}
-import collection.generic.CanBuildFrom
-import collection.Iterable
-import ppl.dsl.optiql.baseline.util.{ReflectionHelper, Date}
-import ppl.dsl.optiql.baseline.OptiQL
+import collection.mutable.ArrayBuffer
+import ppl.dsl.optiql.datastruct.scala.util.{ReflectionHelper, Date}
 
-//this includes functionality for loading TPCH style data
+object DataTable {
+
+  implicit def convertIterableToDataTable[T](i: Iterable[T]) : DataTable[T] = throw new RuntimeException("This is not implemented yet")
+
+}
+
 abstract class DataTable[TSource] extends Iterable[TSource] {
+  import DataTable._
 
   val data = new ArrayBuffer[TSource]
-
   val grouped = false
-
   def iterator = data.iterator
-
-  override def filter(p: TSource => Boolean ) = {
-
-    val ndata = data.filter(p)
-    new DataTable[TSource] {
-
-      override val data = ndata
-
-      def addRecord(arr: Array[String]) {
-        throw new RuntimeException("Cannot  add Record into a projected DataTable")
-      }
-    }
-
-  }
-
-
-  override def map[B, That](f: (TSource) => B)(implicit bf: CanBuildFrom[Iterable[TSource], B, That]) = {
-    data.map(f)
-  }
 
   def addRecord(fields: Array[String])
 
@@ -45,7 +27,7 @@ abstract class DataTable[TSource] extends Iterable[TSource] {
   implicit def cStrToDate(s: String) = Date(s)
 
 
-  def repeat(s: String, n:Int)(implicit sb: StringBuilder) {
+    def repeat(s: String, n:Int)(implicit sb: StringBuilder) {
     //assert(n < 0 || n > 300, "Incorrect value supplied for n in repeat")
     //todo for now, just ignore bad value of n
     if(n < 0 || n > 300)
@@ -83,7 +65,7 @@ abstract class DataTable[TSource] extends Iterable[TSource] {
     for(key <- data) {
       val group = key.asInstanceOf[Grouping[_,_]]
       println("Key = " + group.key)
-      val table = OptiQL.convertIterableToDataTable(group.elems)
+      val table = convertIterableToDataTable(group.elems)
       table.printAsTable
     }
 
@@ -180,4 +162,5 @@ abstract class DataTable[TSource] extends Iterable[TSource] {
 
   def forbid = throw new RuntimeException("Should not be using this method, got here by mistake")
   def notImplemented = throw new RuntimeException("Not Implemented Yet")
+
 }
