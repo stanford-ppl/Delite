@@ -89,7 +89,7 @@
         </p>
         <div class="highlight"><pre><code class="bash">mkdir -p dsls/profiling/src</code</pre></div>
         <p>
-        Now, let's define our array, which we'll call ProfileArray, in a package called "example.profiling.datastruct".
+        Now, let's define our array, which we'll call ProfileArray, in a package called "example.profiling.datastruct.scala".
         </p>
         <div class="highlight"><pre><code class="bash">mkdir -p dsls/profiling/src/example/profiling/datastruct/scala/</code></pre></div>
         <p>
@@ -131,7 +131,7 @@
   <span class="k">def</span> profile_body(n: <span class="kt">Rep[Int]</span>, func: <span class="kt">=> Rep[Any]</span>): <span class="kt">Rep[ProfileArray]</span>
 }
 </code></pre></div>
-       <p> <code>Rep[T]</code> is an <i>abstract type constructor</i>. Using this technique, applications are oblivious to the particular
+       <p> <code>Rep</code> is an <i>abstract type constructor</i>. Using this technique, applications are oblivious to the particular
        representation (which is actually bound only at compile time when all of the DSL traits are mixed together). Any operation on a <code>Rep[T]</code>
        we can override to do whatever want - or, as in this case, we can simply provide a method, <code>profile</code>, that takes a <code>Rep[Int]</code>,
        does something, and returns a <code>Rep[ProfileArray]</code>. The 'something' we are interested in is creating an IR node. We'll do that next,
