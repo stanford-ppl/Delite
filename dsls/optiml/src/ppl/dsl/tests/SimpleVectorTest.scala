@@ -2,14 +2,13 @@ package ppl.dsl.tests
 
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.simple.{OptiML2Exp, OptiML2}
-import ppl.dsl.optiml.OptiMLExp
 
-object SimpleVectorTest extends DeliteApplication with OptiMLExp {
+object SimpleVectorTest extends DeliteApplication with OptiML2Exp {
 
   def main() {
     //println("SimpleVectorTest")
-    val vec1 = Vector.ones(10)
-    val vec2 = Vector.zeros(10)
+    val vec1 = Vector.intZeros(10)
+    val vec2 = Vector.intZeros(10)
 
 //    val vec3 = {
 //      vec2(0) = vec1(0)

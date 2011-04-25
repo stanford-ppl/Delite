@@ -5,7 +5,7 @@ import ppl.dsl.optiml.datastruct.scala._
 import ppl.delite.framework.DeliteApplication
 
 trait BinarizedGradientTemplateFuncs {
-  this: OptiMLExp =>
+  this: OptiMLApplication =>
 
   /**
    * Score this template against another template
@@ -22,14 +22,14 @@ trait BinarizedGradientTemplateFuncs {
       -1.0f
     } else {
     val num_test: Rep[Float] = test2.match_list.length.asInstanceOfL[Float]
-    if (repOrderingToRepOrderingCls(num_test / total) < match_thresh) {
+    if ((num_test / total) < match_thresh) {
       num_test / total //Not enough entries in the other list to be above match_thresh
     } else {
-    var matches = unit(0f)
-    var limit = (total * (unit(1.0f) - match_thresh) + unit(0.5f)).asInstanceOfL[Int] //Miss more than this number and we can't be above match_thresh
+    var matches = 0f
+    var limit = (total * (1.0f - match_thresh) + 0.5f).asInstanceOfL[Int] //Miss more than this number and we can't be above match_thresh
     // TODO: Change this to some sort of "filterUntil" construct to allow the code to short-circuit if we cross limit
-    var i = unit(0)
-    var keepRunning = unit(true)
+    var i = 0
+    var keepRunning = true
     while (i < test1.match_list.length && keepRunning) {
       val x = test1.match_list(i)
       if (test1.binary_gradients(test1.match_list(i)) == 0 && test2.binary_gradients(test1.match_list(i)) == 0) {

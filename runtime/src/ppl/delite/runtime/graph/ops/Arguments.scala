@@ -11,26 +11,20 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-object Arguments extends OP_Executable(Map(Targets.Scala->"Array[java.lang.String]")) {
+object Arguments {
+  var args: Array[String] = _
+}
 
-  /**
-   * OP features
-   */
+final class Arguments(val id: String) extends OP_Executable {
+
+  val outputTypesMap = Map(Targets.Scala->Map(id -> "Array[java.lang.String]", "functionReturn"->"Array[java.lang.String]"))
+
   def isDataParallel = false
 
   def task = "ppl.delite.runtime.graph.ops.ArgsKernel"
 
-  private var _id: String = _
-  def id = _id
-  private[graph] def id_=(ID: String) { _id = ID }
-
   def cost = 0
   def size = 0
-
-  /**
-   * Parameters Implementation
-   */
-  var args: Array[String] = _                                                                                                            
 
 }
 

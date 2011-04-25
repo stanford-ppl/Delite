@@ -70,13 +70,14 @@ trait DeliteCodegen extends GenericFatCodegen {
     val sA = mA.toString
     val sB = mB.toString
 
-    println("-- emitSource")
-    availableDefs.foreach(println)
+    printlog("-- emitSource")
+    availableDefs.foreach(printlog(_))
 
 
     stream.println("{\"DEG\":{\n"+
                    "\"version\" : 0.1,\n"+
                    "\"kernelpath\" : \"" + Config.buildDir  + "\",\n"+
+                   "\"targets\": [" + generators.map("\""+_+"\"").mkString(",")  + "],\n"+
                    "\"ops\": [")
 
     stream.println("{\"type\" : \"Arguments\" , \"kernelId\" : \"x0\"},")
@@ -88,45 +89,17 @@ trait DeliteCodegen extends GenericFatCodegen {
     stream.flush
   }
 
-/*
-  override def focusBlock[A](result: Exp[Any])(body: => A): A = {
-  }
-
-  override def focusExactScope[A](result: Exp[Any])(body: List[TP[Any]] => A): A = {
-    super.focusExactScope(result) { levelScope =>
-      
-    }
-  }
-*/
-
-/*
-  override def emitBlockFocused(result: Exp[Any])(implicit stream: PrintWriter): Unit = {
-    println("-- block")
-    availableDefs.foreach(println)
-    focusExactScope(result) { levelScope =>
-      println("-- exact")
-      availableDefs.foreach(println)
-      
-      val effects = result match {
-        case Def(Reify(x, effects0)) =>
-          levelScope.filter(effects0 contains _.sym)
-        case _ => Nil
-      }
-      
-      for (TP(sym, rhs) <- levelScope) {
-        // we only care about effects that are scheduled to be generated before us, i.e.
-        // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
-        // n3 we want controlDeps to contain e1 and e2
-        controlDeps = levelScope.takeWhile(_.sym != sym) filter { effects contains _ } map { _.sym }
-        emitNode(sym, rhs)
-      }
-    }
-  }
-*/
-
+  /**
+   * DeliteCodegen expects there to be a single schedule across all generators, so a single task graph
+   * can be generated. This implies that every generator object must compute internal dependencies (syms)
+   * the same way.
+   *
+   * This is all because we allow individual generators to refine their dependencies, which directly impacts
+   * the generated schedule. We may want to consider another organization.
+   */
   override def emitFatBlockFocused(currentScope: List[TTP])(result: Exp[Any])(implicit stream: PrintWriter): Unit = {
-    println("-- block for "+result)
-    currentScope.foreach(println)
+    printlog("-- block for "+result)
+    currentScope.foreach(printlog(_))
 
 /*
     println("-- shallow schedule for "+result)
@@ -147,10 +120,10 @@ trait DeliteCodegen extends GenericFatCodegen {
     }
 */
     focusExactScopeFat(currentScope)(result) { levelScope => 
-      println("-- level for "+result)
-      levelScope.foreach(println)
-      println("-- exact for "+result)
-      availableDefs.foreach(println)
+      printlog("-- level for "+result)
+      levelScope.foreach(printlog(_))
+      printlog("-- exact for "+result)
+      availableDefs.foreach(printlog(_))
 
 /*
       val effects = result match {
@@ -196,118 +169,33 @@ trait DeliteCodegen extends GenericFatCodegen {
 
 
 
-  /**
-   * DeliteCodegen expects there to be a single schedule across all generators, so a single task graph
-   * can be generated. This implies that every generator object must compute internal dependencies (syms)
-   * the same way.
-   *
-   * This is all because we allow individual generators to refine their dependencies, which directly impacts
-   * the generated schedule. We may want to consider another organization.
-   */
-/*
-  override def emitBlock(start: Exp[Any])(implicit stream: PrintWriter): Unit = {
-    if (generators.length < 1) return
-
-    // verify our single schedule assumption
-    val e1 = ifGenAgree(_.buildScheduleForResult(start), false) // deep
-    val e2 = ifGenAgree(_.buildScheduleForResult(start), true) // shallow
-
-    //println("==== deep")
-    //e1.foreach(println)
-    //println("==== shallow")
-    //e2.foreach(println)
-
-    // val e3 = e1.filter(e2 contains _) // shallow, but with the ordering of deep!!
-    val bound = e1 flatMap { tp => ifGenAgree[List[Sym[Any]]](_.boundSyms(tp.rhs),true) }
-    val g1 = ifGenAgree(_.getDependentStuff(bound),true)
-    val e3 = e1.filter(z => (e2 contains z) && !(g1 contains z)) // shallow (but with the ordering of deep!!) and minus bound
-
-    val e4 = e3.filterNot(scope contains _) // remove stuff already emitted
-
-    val effects = start match {
-      case Def(Reify(x, effects0)) =>
-        val effects = effects0.map { case s: Sym[a] => findDefinition(s).get }
-        e4.filter(effects contains _)
-      case _ => Nil
-    }
-
-    val save = scope
-    scope = e4 ::: scope
-    generators foreach { _.scope = scope }
-    nested += 1
-
-    ignoreEffects = true
-    val e5 = ifGenAgree(_.buildScheduleForResult(start), false)
-    ignoreEffects = false
-
-    val e6 = e4.filter(z => z match {
-      case TP(sym, Reflect(x, es)) => (e5 contains z) || !(effectScope contains z)
-      case _ => e5 contains z
-    })
-    effectScope :::= e6 filter { case TP(sym, Reflect(x, es)) => true; case _ => false }
-    // we should not reset generators effectScope, which is cumulative, but we might want to take the union of all
-    // of their effectScopes...
-    //generators foreach { _.effectScope = effectScope }
-
-    var localEmittedNodes: List[Sym[Any]] = Nil
-    for (t@TP(sym, rhs) <- e6) {
-      // we only care about effects that are scheduled to be generated before us, i.e.
-      // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
-      // n3 we want controlDeps to contain e1 and e2
-      controlDeps = e6.take(e4.indexOf(t)) filter { effects contains _ } map { _.sym }
-      if(!rhs.isInstanceOf[Reify[Any]]) localEmittedNodes = localEmittedNodes :+ t.sym
-      emitNode(sym, rhs)
-    }
-
-
-    start match {
-      case Def(Reify(x, effects0)) =>
-        val effects = effects0.map { case s: Sym[a] => findDefinition(s).get }
-        val actual = e4.filter(effects contains _)
-
-        // actual must be a prefix of effects!
-        assert(effects.take(actual.length) == actual,
-            "violated ordering of effects: expected \n    "+effects+"\nbut got\n    " + actual)
-
-        val e5 = effects.drop(actual.length)
-
-        for (TP(_, rhs) <- e5) {
-          emitNode(Sym(-1), rhs)
-        }
-      case _ =>
-    }
-
-    generators.foreach(_.scope = save)
-    scope = save
-    emittedNodes = localEmittedNodes
-    nested -= 1
-  }
-*/
-
-  /*
-  def getEffectsKernel(start: Sym[Any], rhs: Def[Any]): List[Sym[Any]] = {
-    val e1 = ifGenAgree(_.buildScheduleForResult(start), false) // deep
-    val params = ifGenAgree(_.syms(rhs), true)
-    val e2 = params map { s => ifGenAgree(_.buildScheduleForResult(s), false) }
-    val e3 = if (!e2.isEmpty) e2 reduceLeft { (a,b) => a union b } else Nil
-
-    // e3 is missing some effect dependencies outside of the block
-    // shallow might contain those? (nope)
-
-    // we almost want a "deep on everything except this symbol" search
-
-    val e4 = ifGenAgree(_.buildScheduleForResult(start), true) // shallow
-    //val e3 = scope.drop(scope.indexOf(findDefinition(start).get)) filter { e2 contains _ }
-    val e5 = e1 filterNot { d => (e3 contains d) || (e4 contains d) }
-
-    e5 flatMap { e =>
-      e.sym match {
-        case Def(Reflect(x, effects)) => List(e.sym): List[Sym[Any]]
-        case _ => Nil
-      }
-    }
-  }
+ /**
+  * Return a list of all effectful operations rooted at start.
   */
+  def getEffectsBlock(start: Def[Any]): List[Sym[Any]] = {
+    val g = generators(0) // skip ifGenAgree for now...
+
+    // val deps = g.blocks(start) // can optimize by adding a syms-like function that only returns blocks (but more invasive)
+//    val deps = g.syms(start)
+//    val nodes = deps flatMap { b =>
+//      g.focusBlock(b) {
+//        g.focusExactScope(b) { _.flatMap { e =>
+//          val eff = e.sym match {
+//            case Def(Reflect(x, u, effects)) => List(e.sym): List[Sym[Any]]
+//            case _ => Nil
+//          }
+//          eff ::: getEffectsBlock(e.rhs)
+//        }}
+//      }
+//    }
+    val nodes = g.boundSyms(start) filter { case Def(Reflect(x, u, effects)) => true; case _ => false }
+    nodes.distinct
+  }
+
+
+  def getEffectsBlock(defs: List[Def[Any]]): List[Sym[Any]] = {
+    defs flatMap { getEffectsBlock(_) } distinct
+  }
 
 
   def emitValDef(sym: Sym[Any], rhs: String)(implicit stream: PrintWriter): Unit = {
@@ -319,13 +207,6 @@ trait DeliteCodegen extends GenericFatCodegen {
   def emitAssignment(lhs: String, rhs: String)(implicit stream: PrintWriter): Unit = {
     stream.println(lhs + " = " + rhs)
   }
-
-/*
-  override def quote(x: Exp[Any]) = x match { // TODO: remove, shouldn't be needed
-    case Sym(-1) => "_"
-    case _ => super.quote(x)
-  }
-*/
 
 }
 

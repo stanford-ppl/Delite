@@ -5,7 +5,9 @@ import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
 
-object KM_map1 extends DeliteApplication with OptiMLExp {
+object KM_map1Runner extends OptiMLApplicationRunner with KM_map1
+
+trait KM_map1 extends OptiMLApplication {
 
   def main() {
     println("Kmeans map1 generation")

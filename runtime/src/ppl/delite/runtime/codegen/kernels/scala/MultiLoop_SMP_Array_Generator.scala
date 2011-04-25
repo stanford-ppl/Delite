@@ -25,8 +25,6 @@ object MultiLoop_SMP_Array_Generator {
     val chunk = if (chunkIdx == 0) op else op.chunk(chunkIdx)
     val src = makeKernel(chunk, op, chunkIdx, numChunks, kernelPath)
     ScalaCompile.addSource(src)
-    println("--- makeChunk")
-    println(src)
     chunk
   }
 
@@ -84,8 +82,6 @@ object MultiLoop_SMP_Array_Generator {
       out.append("val acc = out\n")
     else
       out.append("val acc = head.closure.split(out)\n") // copy of out per chunk
-//    out.append("head.closure.map(acc, idx)\n")
-//    out.append("idx += 1\n")
     out.append("while (idx < end) {\n")
     out.append("head.closure.process(acc, idx)\n")
     out.append("idx += 1\n")
@@ -146,8 +142,6 @@ object MultiLoop_SMP_Array_Header_Generator {
     //add header for compilation
     val src = out.toString
     ScalaCompile.addSource(src)
-    println("--- makeHeader")
-    println(src)
 
     //return header OP
     op.header(kernelName(op), graph)
@@ -164,18 +158,16 @@ object MultiLoop_SMP_Array_Header_Generator {
 
   private def writeObjectApply(out: StringBuilder, op: OP_MultiLoop) {
     out.append("def apply(")
-    val inputs = op.getInputs.iterator
     var inIdx = 0
     var first = true
-    while (inputs.hasNext) {
+    for ((input, name) <- op.getInputs) {
       if (!first) out.append(", ")
       first = false
       out.append("in")
       out.append(inIdx)
       inIdx += 1
       out.append(": ")
-      val (dep,name) = inputs.next
-      out.append(dep.outputSlotType(name))
+      out.append(input.outputType(name))
     }
     out.append(") = new ")
     out.append(kernelName(op))
@@ -192,18 +184,16 @@ object MultiLoop_SMP_Array_Header_Generator {
     out.append("final class ")
     out.append(kernelName(op))
     out.append("(")
-    val inputs = op.getInputs.iterator
     var inIdx = 0
     var first = true
-    while (inputs.hasNext) {
+    for ((input, name) <- op.getInputs) {
       if (!first) out.append(", ")
       first = false
       out.append("in")
       out.append(inIdx)
       inIdx += 1
       out.append(": ")
-      val (dep,name) = inputs.next
-      out.append(dep.outputSlotType(name))
+      out.append(input.outputType(name))
     }
     out.append(") {\n")
 
@@ -217,7 +207,7 @@ object MultiLoop_SMP_Array_Header_Generator {
     }
     out.append(")\n")
 
-    out.append("val out: ") // zip specific
+    out.append("val out: ")
     out.append(op.outputType)
     out.append(" = closure.alloc\n")
   }

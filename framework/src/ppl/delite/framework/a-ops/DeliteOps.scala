@@ -22,7 +22,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    *
    * @param  block   the task to execute; must be reified if it contains effectful operations!
    */
-  class DeliteOpSingleTask[A](val block: Exp[A]) extends DeliteOp[A]
+  class DeliteOpSingleTask[A](val block: Exp[A], val requireInputs: Boolean = false) extends DeliteOp[A]
 
   abstract class DeliteOpLoop[A] extends AbstractLoop[A] with DeliteOp[A]
 
@@ -31,15 +31,18 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   
   // for use in loops:
 
-  case class DeliteCollectElem[A, C[X] <: DeliteCollection[X]](
-    alloc: Exp[C[A]],
-    func: Exp[A]
+  case class DeliteCollectElem[A, CA <: DeliteCollection[A]]( // TODO: cannot have IndexVector as result. use CA instead of C[X] ?
+    alloc: Exp[CA],
+    func: Exp[A],
+    cond: List[Exp[Boolean]] = Nil
     // TODO: note that the alloc block right now directly references the size
     // which is not part of DeliteCollectElem instance. we might want to fix that 
-  ) extends Def[C[A]]
+  ) extends Def[CA]
   
   case class DeliteReduceElem[A](
     func: Exp[A],
+    cond: List[Exp[Boolean]] = Nil,
+    zero: Exp[A],
     rV: (Sym[A], Sym[A]),
     rFunc: Exp[A]
   ) extends Def[A]
@@ -49,6 +52,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val size = f(o.size)
     val v = f(o.v).asInstanceOf[Sym[Int]]
     val body = mirrorLoopBody(o.body, f)
+  }
+  
+  def loopBodyNeedsCombine[A](e: Def[A]) = e match {
+    case e:DeliteReduceElem[_] => true
+    case e:DeliteCollectElem[_,_] => e.cond.nonEmpty
+    case _ => false
   }
   
   
@@ -133,8 +142,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       implicit val mCA: Manifest[C[A]] = in.Type.asInstanceOf[Manifest[C[A]]]
       implicit val mCB: Manifest[C[B]] = alloc.Type.asInstanceOf[Manifest[C[B]]]
       reifyEffects {
-        var i = unit(0)
-        var vs = unit(null).asInstanceOfL[A]
+        var i = var_new(unit(0))
+        var vs = var_new(unit(null).asInstanceOfL[A])
         while (i < in.size) {
           vs = in(i)
           rebind(v.asInstanceOf[Sym[A]], ReadVar(vs))
@@ -206,10 +215,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
     lazy val acc = {
       implicit val mR = map.Type.asInstanceOf[Manifest[R]]
-      __newVar(unit(null).asInstanceOfL[R])
+      var_new(unit(null).asInstanceOfL[R])
     }
     lazy val index = {
-      __newVar(unit(0))
+      var_new(unit(0))
     }
     // this is a workaround for reification and vars not really working well together
     // we need to output the block as an Exp, but the nested scopes need to use it as a var
@@ -223,7 +232,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       implicit val mA = mV.Type.asInstanceOf[Manifest[A]]
       implicit val mR = map.Type.asInstanceOf[Manifest[R]]
       reifyEffects {
-        var vs = in(index)
+        var vs = var_new(in(index))
         rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
         acc = map
       }
@@ -234,9 +243,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       reifyEffects {
         index += 1
         while (index < in.size) {
-          var vs = in(index)
+          var vs = var_new(in(index))
           //rebind(mV.asInstanceOf[Sym[A]], ReadVar(vs))
-          var x = map
+          var x = var_new(map)
           rebind(rV._1.asInstanceOf[Sym[R]], ReadVar(acc))
           rebind(rV._2.asInstanceOf[Sym[R]], ReadVar(x))
           acc = reduce
@@ -292,13 +301,13 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     lazy val variant = {
       implicit val mA: Manifest[A] = v.Type.asInstanceOf[Manifest[A]]
       reifyEffects {
-        var index = unit(0)
-        var vs = unit(null).asInstanceOfL[A]
+        var index = var_new(unit(0))
+        var vs = var_new(unit(null).asInstanceOfL[A])
         while (index < in.size) {
           vs = in(index)
           rebind(v.asInstanceOf[Sym[A]], ReadVar(vs))
           //reflectEffect(findDefinition(func.asInstanceOf[Sym[Unit]]).get.rhs)
-          var x = func
+          var x = var_new(func)
           index += 1
         }
         alloc
@@ -335,14 +344,17 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   def mirrorLoopBody[A](d: Def[A], f: Transformer): Def[A] = {
     d match {
-      case e: DeliteCollectElem[a,DeliteCollection] => 
-        DeliteCollectElem[a,DeliteCollection]( // need to be a case class for equality (do we rely on equality?)
+      case e: DeliteCollectElem[a,ca] => 
+        DeliteCollectElem[a,ca]( // need to be a case class for equality (do we rely on equality?)
           alloc = f(e.alloc),
-          func = f(e.func)
+          func = f(e.func),
+          cond = f(e.cond)
         ).asInstanceOf[Def[A]]
       case e: DeliteReduceElem[a] => 
         DeliteReduceElem[a](
           func = f(e.func),
+          cond = f(e.cond),
+          zero = f(e.zero),
           rV = (f(e.rV._1).asInstanceOf[Sym[a]], f(e.rV._2).asInstanceOf[Sym[a]]), // need to transform bound vars ??
           rFunc = f(e.rFunc)
         ).asInstanceOf[Def[A]]
@@ -383,33 +395,53 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
   }
 */
 
-
+/*
+  // TODO: can implement generically? or need override for VectorSize and all others?
+  override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
+    case ArrayLength(a) => Some(a)
+    case _ => super.unapplySimpleDomain(e)
+  }
+*/
   override def unapplySimpleCollect(e: Def[Any]) = e match {
-    case e: DeliteCollectElem[_,_] => Some(e.func)
+    case e: DeliteCollectElem[_,_] if e.cond.isEmpty => Some(e.func)
     case _ => super.unapplySimpleCollect(e)
+  }
+
+  override def unapplySimpleCollectIf(e: Def[Any]) = e match {
+    case e: DeliteCollectElem[_,_] => Some((e.func, e.cond))
+    case _ => super.unapplySimpleCollectIf(e)
+  }
+
+  override def applyAddCondition(e: Def[Any], c: List[Exp[Boolean]]) = e match {
+    case e: DeliteCollectElem[_,_] => e.copy(cond = e.cond ++ c)
+    case e: DeliteReduceElem[_] => e.copy(cond = e.cond ++ c)
+    case _ => super.applyAddCondition(e,c)
   }
 
   override def shouldApplyFusion(currentScope: List[TTP])(result: Exp[Any]) = Config.opfusionEnabled
 
 
   override def syms(e: Any): List[Sym[Any]] = e match { //TR TODO: question -- is alloc a dependency (should be part of result) or a definition (should not)???
-    case s: DeliteOpSingleTask[_] => syms(s.block) ++ super.syms(e) // super call: add case class syms!
-    case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.alloc)
-    case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.rFunc)
+                                                        // aks: answer -- we changed it to be internal to the op to make things easier for CUDA. not sure if that still needs
+                                                        // to be the case. similar question arises for sync
+    case s: DeliteOpSingleTask[_] if s.requireInputs => syms(s.block) ++ super.syms(e) // super call: add case class syms (iff flag is set)
+    case s: DeliteOpSingleTask[_] => syms(s.block)
+    case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.cond) ++ syms(op.alloc)
+    case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.cond) ++ syms(op.zero) ++ syms(op.rFunc)
     case map: DeliteOpMap[_,_,_] => /*if (shallow) syms(map.in) else */ syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
     case zip: DeliteOpZipWith[_,_,_,_] => /*if (shallow) syms(zip.inA) ++ syms(zip.inB) else*/ syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
     case red: DeliteOpReduce[_] => /*if (shallow) syms(red.in) else*/ syms(red.in) ++ syms(red.func)
     case mapR: DeliteOpMapReduce[_,_,_] => /*if (shallow) syms(mapR.in) else*/ syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
     case zipR: DeliteOpZipWithReduce[_,_,_,_] => /*if (shallow) syms(zipR.inA) ++ syms(zipR.inB) else*/ syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
-    case foreach: DeliteOpForeach[_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func)
-    case foreach: DeliteOpForeachBounded[_,_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func)
+    case foreach: DeliteOpForeach[_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func) ++ syms(foreach.sync)
+    case foreach: DeliteOpForeachBounded[_,_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func) ++ syms(foreach.sync)
     case _ => super.syms(e)
   }
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match { //TR TODO
     case s: DeliteOpSingleTask[_] => effectSyms(s.block)
-    case op: DeliteCollectElem[_,_] => effectSyms(op.func) ++ effectSyms(op.alloc)
-    case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.func) ++ effectSyms(op.rFunc)
+    case op: DeliteCollectElem[_,_] => effectSyms(op.func) ++ op.cond.flatMap(effectSyms) ++ effectSyms(op.alloc)
+    case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.func) ++ op.cond.flatMap(effectSyms) ++ effectSyms(op.rFunc)
     case zip: DeliteOpZipWith[_,_,_,_] => zip.v._1::zip.v._2::effectSyms(zip.alloc):::effectSyms(zip.func)
     case map: DeliteOpMap[_,_,_] => map.v::effectSyms(map.alloc):::effectSyms(map.func)
     case mapR: DeliteOpMapReduce[_,_,_] => mapR.mV::mapR.rV._1::mapR.rV._2::effectSyms(mapR.map):::effectSyms(mapR.reduce)
@@ -427,107 +459,143 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
 
   def quotearg(x: Sym[Any]) = quote(x) + ": " + quotetp(x)
   def quotetp(x: Sym[Any]) = remap(x.Type)
+/*
   def quoteZero(x: Sym[Any]) = x.Type.toString match { 
     case "Int" | "Long" | "Float" | "Double" => "0" 
     case "Boolean" => "false"
     case _ => "null" 
   }
-
+*/
+  // TODO: conditions!
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
         if (!deliteKernel) {
           (symList zip op.body) foreach {
             case (sym, elem: DeliteCollectElem[_,_]) =>
-              stream.println("val " + quote(sym) + " = {")
-              emitBlock(elem.alloc)
+              stream.println("val " + quote(sym) + " = {"/*}*/)
+              emitBlock(elem.alloc) // FIXME: how do we know it is the right size? conditions could have been added retrospectively!!
+              if (elem.cond.nonEmpty)
+                stream.println("//TODO: buffer size might be wrong (loop has conditions)")
               stream.println(quote(getBlockResult(elem.alloc)))
-              stream.println("}")
+              stream.println(/*{*/"}")
             case (sym, elem: DeliteReduceElem[_]) =>
-              stream.println("var " + quotearg(sym) + " = " + quoteZero(sym)) // TODO: need explicit zero?
+              stream.println("var " + quotearg(sym) + " = " + quote(elem.zero))
           }
           stream.println("var " + quote(op.v) + " = 0")
-          stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
-          val elemFuncs = op.body map { // don't emit dependencies twice!
-            case elem: DeliteCollectElem[_,_] => elem.func
-            case elem: DeliteReduceElem[_] => elem.func
+          stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(",")/*}*/)
+          val elemFuncs = op.body flatMap { // don't emit dependencies twice!
+            case elem: DeliteCollectElem[_,_] => elem.func :: elem.cond
+            case elem: DeliteReduceElem[_] => elem.func :: elem.cond
           }
           emitFatBlock(elemFuncs)
           (symList zip op.body) foreach {
             case (sym, elem: DeliteCollectElem[_,_]) =>
               //emitBlock(elem.func)
-              stream.println(quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
+              if (elem.cond.nonEmpty) {
+                stream.print("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") ")
+                stream.println(quote(sym) + ".insert(" + quote(sym) + ".length, " + quote(getBlockResult(elem.func)) + ")")
+              } else
+                stream.println(quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
             case (sym, elem: DeliteReduceElem[_]) =>
               //emitBlock(elem.func)
+              if (elem.cond.nonEmpty)
+                stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {"/*}*/)
               stream.println("val " + quote(elem.rV._1) + " = " + quote(sym))
               stream.println("val " + quote(elem.rV._2) + " = " + quote(getBlockResult(elem.func)))
               emitBlock(elem.rFunc)
               stream.println(quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
+              if (elem.cond.nonEmpty)
+                stream.println(/*{*/"}")
           }
           stream.println(quote(op.v) + " += 1")
-          stream.println("} // end fat loop " + symList.map(quote).mkString(","))
+          stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
         } else {
           // kernel mode
           val kernelName = symList.map(quote).mkString("")
           val actType = "activation_"+kernelName
           deliteKernel = false
-          stream.println("val " + kernelName + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {")
-
+          stream.println("val " + kernelName + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {"/*}*/)
+          // TODO: if there are conditions, the output size is not known (but for now it is known to be smaller than the input size)
+          // two options:
+          // - combine (reduce step) using concat <-- simpler to implement but slow
+          // - use a pre-combine scan step to find out where each processor should write the data
+          //   and do the copying in another parallel map <-- faster but more work
+          
           stream.println("def size = " + quote(op.size))
-          stream.println("def alloc: " + actType + " = {")
+          stream.println("def alloc: " + actType + " = {"/*}*/)
           stream.println("val __act = new " + actType)
           (symList zip op.body) foreach {
             case (sym, elem: DeliteCollectElem[_,_]) =>
-              emitBlock(elem.alloc)
+              emitBlock(elem.alloc) // FIXME: how do we know it is the right size? conditions could have been added retrospectively!!
+              if (elem.cond.nonEmpty)
+                stream.println("//TODO: buffer size might be wrong (loop has conditions)")
               stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.alloc)))
             case (sym, elem: DeliteReduceElem[_]) =>
-              // default zero, might need to go explicit
+              stream.println("__act." + quote(sym) + " = " + quote(elem.zero))
           }
           stream.println("__act")
-          stream.println("}")
-          stream.println("def split(__act: " + actType + "): " + actType + " = {")
-          if (op.body.exists(_.isInstanceOf[DeliteReduceElem[_]])) {
+          stream.println(/*{*/"}")
+          stream.println("def split(__act: " + actType + "): " + actType + " = {"/*}*/)
+          if (op.body exists (loopBodyNeedsCombine _)) {
             stream.println("val __act2 = new " + actType)
             (symList zip op.body) foreach {
               case (sym, elem: DeliteCollectElem[_,_]) =>
-                stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
+                if (elem.cond.nonEmpty) {
+                  stream.println("//TODO: buffer size might be wrong (loop has conditions)") // separate buffer for each process
+                  stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym) + ".cloneL")
+                } else
+                  stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
               case (sym, elem: DeliteReduceElem[_]) =>
-                // default zero, might need to go explicit
+                stream.println("__act2." + quote(sym) + " = " + quote(elem.zero))
             }
             stream.println("__act2")
           } else {
             stream.println("__act")
           }
-          stream.println("}")
+          stream.println(/*{*/"}")
           stream.println("def process(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {")
-          val elemFuncs = op.body map { // don't emit dependencies twice!
-            case elem: DeliteCollectElem[_,_] => elem.func
-            case elem: DeliteReduceElem[_] => elem.func
+          val elemFuncs = op.body flatMap { // don't emit dependencies twice!
+            case elem: DeliteCollectElem[_,_] => elem.func :: elem.cond
+            case elem: DeliteReduceElem[_] => elem.func :: elem.cond
           }
           emitFatBlock(elemFuncs)
           (symList zip op.body) foreach {
             case (sym, elem: DeliteCollectElem[_,_]) =>
               //emitBlock(elem.func)
-              stream.println("__act." + quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
+              if (elem.cond.nonEmpty) {
+                stream.print("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ")")
+                stream.println("__act." + quote(sym) + ".insert(__act." +quote(sym) + ".length, " + quote(getBlockResult(elem.func)) + ")")
+              } else {
+                stream.println("__act." + quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
+              }
             case (sym, elem: DeliteReduceElem[_]) =>
               //emitBlock(elem.func)
+              if (elem.cond.nonEmpty)
+                stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {"/*}*/)
               stream.println("val " + quote(elem.rV._1) + " = " + "__act." + quote(sym))
               stream.println("val " + quote(elem.rV._2) + " = " + quote(getBlockResult(elem.func)))
               emitBlock(elem.rFunc)
               stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
+              if (elem.cond.nonEmpty)
+                stream.println(/*{*/"}")
           }
-          stream.println("}")
-          stream.println("def combine(__act: " + actType + ", rhs: " + actType + "): Unit = {")
+          stream.println(/*{*/"}")
+          stream.println("def combine(__act: " + actType + ", rhs: " + actType + "): Unit = {"/*}*/)
           (symList zip op.body) foreach {
             case (sym, elem: DeliteCollectElem[_,_]) =>
+              if (elem.cond.nonEmpty) {
+                stream.println("//TODO: this is inefficient. should use a scan pass.")
+                stream.println("__act." + quote(sym) + ".insertAll(__act." +quote(sym) + ".length, rhs." + quote(sym) + ")")
+              }
             case (sym, elem: DeliteReduceElem[_]) =>
               stream.println("val " + quote(elem.rV._1) + " = " + "__act." + quote(sym))
               stream.println("val " + quote(elem.rV._2) + " = " + "rhs." + quote(sym))
               emitBlock(elem.rFunc)
               stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
           }
-          stream.println("}")
+          stream.println(/*{*/"}")
 
-          stream.println("}")
+          stream.println(/*{*/"}")
           deliteKernel = true
         }
       case _ => super.emitFatNode(symList, rhs)
@@ -536,19 +604,33 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => {
-      println("EMIT single "+s)
+      printlog("EMIT single "+s)
       val save = deliteKernel
       deliteKernel = false
       val b = s.block
-      stream.println("def " + quote(sym) + "_block = { ")
-      emitBlock(b)
-      stream.println(quote(getBlockResult(b)))
-      stream.println("}")
-      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+      if (!save) {
+        // straight-line
+        stream.println("val " + quote(sym) + " = { " )
+        emitBlock(b)
+        stream.println(quote(getBlockResult(b)))
+        stream.println("}")
+      }
+      else {
+        // method wrapper
+        stream.println("def " + quote(sym) + "_block = { ")
+        emitBlock(b)
+        stream.println(quote(getBlockResult(b)))
+        stream.println("}")
+        stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+      }
       deliteKernel = save
     }
-    case op: AbstractLoop[_] => // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
-      if (!deliteKernel) {
+    case op: AbstractLoop[_] => 
+      // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
+      stream.println("// a *thin* loop follows: " + quote(sym))
+      emitFatNode(List(sym), SimpleFatLoop(op.size, op.v, List(op.body)))
+/*    
+      if (!deliteKernel) { // FIXME cond!
         op.body match {
           case elem: DeliteCollectElem[_,_] =>
             stream.println("val " + quote(sym) + " = {")
@@ -556,7 +638,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
             stream.println(quote(getBlockResult(elem.alloc)))
             stream.println("}")
           case elem: DeliteReduceElem[_] =>
-            stream.println("var " + quotearg(sym) + " = " + quoteZero(sym)) // TODO: need explicit zero?
+            stream.println("var " + quotearg(sym) + " = " + quote(elem.zero))
         }
         stream.println("var " + quote(op.v) + " = 0")
         stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin thin loop " + quote(sym))
@@ -576,19 +658,20 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       } else {
         stream.println("TODO: thin loop codegen")
       }
+*/      
     case map:DeliteOpMap[_,_,_] => {
       if (deliteKernel == false){
         stream.println("def " + quote(sym) + "_block = {")
         emitBlock(map.alloc)
         stream.println("var mapIdx = 0")
-        stream.println("while (mapIdx < " + quote(getBlockResult(map.in)) + ".size) {")
+        stream.println("while (mapIdx < " + quote(getBlockResult(map.in)) + ".size) { // begin map loop " + quote(sym))
         stream.println("val " + quote(map.v) + " = " + quote(getBlockResult(map.in)) + ".dcApply(mapIdx)")
         stream.println(quote(getBlockResult(map.alloc)) + ".dcUpdate(mapIdx, " + " {")
         emitBlock(map.func)
         stream.println(quote(getBlockResult(map.func)))
         stream.println("})")
         stream.println("mapIdx += 1")
-        stream.println("} // end while")
+        stream.println("} // end map loop " + quote(sym))
         stream.println(quote(getBlockResult(map.alloc)))
         stream.println("}")
 	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
@@ -613,7 +696,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println("def " + quote(sym) + "_block = {")
         emitBlock(zip.alloc)
         stream.println("var zipIdx = 0")
-        stream.println("while (zipIdx < " + quote(getBlockResult(zip.inA)) + ".size) {")
+        stream.println("while (zipIdx < " + quote(getBlockResult(zip.inA)) + ".size) { // begin zip loop " + quote(sym))
         stream.println("val " + quote(zip.v._1) + " = " + quote(getBlockResult(zip.inA)) + ".dcApply(zipIdx)")
         stream.println("val " + quote(zip.v._2) + " = " + quote(getBlockResult(zip.inB)) + ".dcApply(zipIdx)")
         stream.println(quote(getBlockResult(zip.alloc)) + ".dcUpdate(zipIdx, " + " {")
@@ -621,7 +704,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println(quote(getBlockResult(zip.func)))
         stream.println("})")
         stream.println("zipIdx += 1")
-        stream.println("} // end while")
+        stream.println("} // end zip loop " + quote(sym))
         stream.println(quote(getBlockResult(zip.alloc)))
         stream.println("}")
 	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
@@ -647,14 +730,14 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println("def " + quote(sym) + "_block = {")
         stream.println("var " + quote(red.v._1) + " = " + quote(getBlockResult(red.in)) + ".dcApply(0)")
         stream.println("var reduceIdx = 1")
-        stream.println("while (reduceIdx < " + quote(getBlockResult(red.in)) + ".size) {")
+        stream.println("while (reduceIdx < " + quote(getBlockResult(red.in)) + ".size) { // begin reduce loop " + quote(sym))
         stream.println("val " + quote(red.v._2) + " = " + quote(getBlockResult(red.in)) + ".dcApply(reduceIdx)")
         stream.println(quote(red.v._1) + " = {")
         emitBlock(red.func)
         stream.println(quote(getBlockResult(red.func)))
         stream.println("}")
         stream.println("reduceIdx += 1")
-        stream.println("} // end while")
+        stream.println("} // end reduce loop " + quote(sym))
         stream.println(quote(red.v._1))
         stream.println("}")
 	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
@@ -679,7 +762,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println(quote(getBlockResult(mapR.map)))
         stream.println("}")
         stream.println("var mapReduceIdx = 1")
-        stream.println("while (mapReduceIdx < " + quote(getBlockResult(mapR.in)) + ".size) {")
+        stream.println("while (mapReduceIdx < " + quote(getBlockResult(mapR.in)) + ".size) { // begin mapReduce loop " + quote(sym))
         stream.println("val " + quote(mapR.mV) + " = " + quote(getBlockResult(mapR.in)) + ".dcApply(mapReduceIdx)")
         stream.println("val " + quote(mapR.rV._2) + " = {")
         emitBlock(mapR.map)
@@ -690,7 +773,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println(quote(getBlockResult(mapR.reduce)))
         stream.println("}")
         stream.println("mapReduceIdx += 1")
-        stream.println("} // end while")
+        stream.println("} // end mapReduce loop " + quote(sym))
         stream.println(quote(mapR.rV._1))
         stream.println("}")
 	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
@@ -721,7 +804,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println(quote(getBlockResult(zipR.zip)))
         stream.println("}")
         stream.println("var zipReduceIdx = 1")
-        stream.println("while (zipReduceIdx < " + quote(getBlockResult(zipR.inA)) + ".size) {")
+        stream.println("while (zipReduceIdx < " + quote(getBlockResult(zipR.inA)) + ".size) { // begin zipReduce loop " + quote(sym))
         stream.println("val " + quote(zipR.zV._1) + " = " + quote(getBlockResult(zipR.inA)) + ".dcApply(zipIdx)")
         stream.println("val " + quote(zipR.zV._2) + " = " + quote(getBlockResult(zipR.inB)) + ".dcApply(zipIdx)")
         stream.println("val " + quote(zipR.rV._2) + " = {")
@@ -733,7 +816,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println(quote(getBlockResult(zipR.reduce)))
         stream.println("}")
         stream.println("zipReduceIdx += 1")
-        stream.println("} // end while")
+        stream.println("} // end zipReduce loop " + quote(sym))
         stream.println(quote(zipR.rV._1))
         stream.println("}")
 	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
@@ -757,16 +840,17 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     }
     case foreach:DeliteOpForeach[_,_] => {
       if (deliteKernel == false){
-        stream.println("def " + quote(sym) + "_block = {")
+        //stream.println("def " + quote(sym) + "_block = {")
+        stream.println("val " + quote(sym) + " = {")
         stream.println("var forIdx = 0")
-        stream.println("while (forIdx < " + quote(getBlockResult(foreach.in)) + ".size) {")
+        stream.println("while (forIdx < " + quote(getBlockResult(foreach.in)) + ".size) { // begin foreach loop " + quote(sym))
         stream.println("val " + quote(foreach.v) + " = " + quote(getBlockResult(foreach.in)) + ".dcApply(forIdx)")
         emitBlock(foreach.func)
         stream.println(quote(getBlockResult(foreach.func)))
         stream.println("forIdx += 1")
-        stream.println("} // end while")
+        stream.println("} // end foreach loop " + quote(sym))
         stream.println("}")
-	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
+	      //stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
         deliteKernel = false
@@ -787,12 +871,12 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       if (deliteKernel == false){
         stream.println("def " + quote(sym) + "_block = {")
         stream.println("var forIdx = 0")
-        stream.println("while (forIdx < " + quote(getBlockResult(foreach.in.asInstanceOf[Exp[Any]])) + ".size) {")
+        stream.println("while (forIdx < " + quote(getBlockResult(foreach.in.asInstanceOf[Exp[Any]])) + ".size) { // begin foreachBounded loop " + quote(sym))
         stream.println("val " + quote(foreach.v) + " = " + quote(getBlockResult(foreach.in.asInstanceOf[Exp[Any]])) + ".dcApply(forIdx)")
         emitBlock(foreach.func)
         stream.println(quote(getBlockResult(foreach.func)))
         stream.println("forIdx += 1")
-        stream.println("} // end while")
+        stream.println("} // end foreachBounded loop " + quote(sym))
         stream.println("}")
 	      stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
@@ -817,21 +901,41 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
 
 trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
   import IR._
-  
+
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
-      println("TODO: implement emitFatNode in CudaGenDeliteOps")
-      throw new GenerationFailedException("TODO: implement emitFatNode in CudaGenDeliteOps")
+      if(symList.length != 1) throw new GenerationFailedException("CudaGen: Only 1 output is supported for FatLoop (No fusing yet).")
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength(quote(op.v)+"->size()")
+      stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(op.v)+".size()"))
+      tabWidth += 1
+      (symList zip op.body) foreach {
+        case (sym, elem:DeliteCollectElem[_,_]) =>
+          emitAllocFunc(sym,elem.alloc)
+          val (loopFunc,freeVars) = emitDevFunc(elem.func, List(op.v))
+          if(freeVars.length==0)
+            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s)));".format(quote(sym),currDimStr,loopFunc,quote(op.v),currDimStr))
+          else
+            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),currDimStr,loopFunc,quote(op.v),currDimStr,freeVars.map(quote).mkString(",")))
+        case _ =>
+          throw new GenerationFailedException("CudaGen: DeliteReduceElem is not supported yet.")
+      }
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      currDim -= 1
+      deliteKernel = true
+
     case _ => super.emitFatNode(symList, rhs)
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case s:DeliteOpSingleTask[_] => throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable.")
+    case s:DeliteOpSingleTask[_] => throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable." + quote(sym))
       // TODO: Generate single thread version of this work
 
     case map:DeliteOpMap[_,_,_] => {
-      if(!isPrimitiveType(map.func.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for map.")
-      if(!isPrimitiveType(map.v.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for map.")
+      if(!isPrimitiveType(map.func.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for map.")
+      if(!isPrimitiveType(map.v.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for map.")
       currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength(quote(map.in)+"->size()")
@@ -844,17 +948,15 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),currDimStr,mapFunc,quote(map.in),currDimStr,freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
-	    if(map.in!=map.alloc)
-      	allocOutput(sym,map.in.asInstanceOf[Sym[_]])
-	    else
-      	allocReference(sym,map.in.asInstanceOf[Sym[_]])
+      emitAllocFunc(sym,map.alloc)
+	    if(map.in==map.alloc) throw new GenerationFailedException("CudaGen: Mutable input is not supported yet.")
       currDim -= 1
     }
 
     case zip: DeliteOpZipWith[_,_,_,_] => {
-      if(!isPrimitiveType(zip.func.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
-      if(!isPrimitiveType(zip.v._1.Type )) new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
-      if(!isPrimitiveType(zip.v._2.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
+      if(!isPrimitiveType(zip.func.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
+      if(!isPrimitiveType(zip.v._1.Type )) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
+      if(!isPrimitiveType(zip.v._2.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for zipwith.")
       currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength(quote(zip.inA)+"->size()")
@@ -867,17 +969,13 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s.dcApply(%s),%s));".format(quote(sym),currDimStr, zipFunc, quote(zip.inA),currDimStr,quote(zip.inB),currDimStr,freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
-	    if(zip.inA==zip.alloc)
-      	allocReference(sym,zip.inA.asInstanceOf[Sym[_]])
-	    else if(zip.inB==zip.alloc)
-      	allocReference(sym,zip.inB.asInstanceOf[Sym[_]])
-	    else
-      	allocOutput(sym,zip.inA.asInstanceOf[Sym[_]])
+      emitAllocFunc(sym,zip.alloc)
+	    if((zip.inA==zip.alloc) || (zip.inB==zip.alloc)) throw new GenerationFailedException("CudaGen: Mutable input is not supported yet.")
       currDim -= 1
     }
 
     case foreach:DeliteOpForeach[_,_] => {
-      if(!isPrimitiveType(foreach.v.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for input of foreach.")
+      if(!isPrimitiveType(foreach.v.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for input of foreach.")
       currDim += 1
       setCurrDimLength(quote(foreach.in)+"->size()")
       val currDimStr = getCurrDimStr()
@@ -894,7 +992,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
     }
 
     case red: DeliteOpReduce[_] => {
-      if(!isPrimitiveType(red.func.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for reduce.")
+      if(!isPrimitiveType(red.func.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for reduce.")
       if(currDim < 1) new GenerationFailedException("CudaGen: Reduction on the 1'st dimension is not supported yet.")
       val (reducFunc,freeVars) = emitDevFunc(red.func, List(red.v._1, red.v._2))
       stream.println(addTab()+"%s reducVal = %s.apply(0);".format(remap(sym.Type),quote(red.in)))
@@ -910,8 +1008,8 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
     }
 
     case mapR:DeliteOpMapReduce[_,_,_] => {
-      //if(!isPrimitiveType(mapR.mV.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
-      //if(!isPrimitiveType(mapR.reduce.Type)) new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
+      //if(!isPrimitiveType(mapR.mV.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
+      //if(!isPrimitiveType(mapR.reduce.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for MapReduce.")
       val constrained = isPrimitiveType(mapR.mV.Type) && isPrimitiveType(mapR.reduce.Type)
       if(constrained) {
         stream.println(addTab()+"%s %s = %s.apply(0);".format(remap(mapR.mV.Type),quote(mapR.mV),quote(mapR.in)))

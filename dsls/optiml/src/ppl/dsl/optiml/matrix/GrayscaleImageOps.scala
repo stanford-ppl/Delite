@@ -22,14 +22,14 @@ trait GrayscaleImageOps extends DSLType with Variables {
 //    val scharrXkernel = scharrYkernel.t
   }
 
-  implicit def repGrayscaleImageToGrayscaleImageOps[A:Manifest](x: Rep[GrayscaleImage]) = new grayscaleImageRepCls(x)
-  implicit def varToGrayscaleImageOps[A:Manifest](x: Var[GrayscaleImage]) = new grayscaleImageRepCls(readVar(x))
+  implicit def repGrayscaleImageToGrayscaleImageOps[A:Manifest](x: Rep[GrayscaleImage]) = new grayscaleImageOpsCls(x)
+  implicit def varToGrayscaleImageOps[A:Manifest](x: Var[GrayscaleImage]) = new grayscaleImageOpsCls(readVar(x))
 
-  class grayscaleImageRepCls(x: Rep[GrayscaleImage]) {
+  class grayscaleImageOpsCls(x: Rep[GrayscaleImage]) {
     import GrayscaleImage._
 
     def bitwiseOrDownsample() = GrayscaleImage(x.downsample(2,2) { slice => slice(0,0) | slice(1,0) | slice(0,1) | slice(1,1) })
-    def gradients(polar: Rep[Boolean] = false) = { // unroll at call site for parallelism (temporary until we have composite op)
+    def gradients(polar: Rep[Boolean] = unit(false)) = { // unroll at call site for parallelism (temporary until we have composite op)
       val scharrYkernel = Matrix[Int](3, 3)
       scharrYkernel(0,0) = -3; scharrYkernel(0,1) = -10; scharrYkernel(0,2) = -3
       scharrYkernel(2,0) =  3; scharrYkernel(2,1) =  10; scharrYkernel(2,2) =  3
@@ -87,7 +87,7 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   def grayscaleimage_obj_frommat(x: Exp[Matrix[Int]]) = reflectEffect(GrayscaleImageObjectFromMat(x))
   def grayscaleimage_obj_carttopolar(x: Exp[Matrix[Float]], y: Exp[Matrix[Float]]) = {
     val mag = GrayscaleImageObjectCartToPolarMagnitude(x,y)
-    val phase = toAtom(GrayscaleImageObjectCartToPolarPhase(x,y)) mmap { a => if (a < 0f) a + 360f else a }
+    val phase = toAtom(GrayscaleImageObjectCartToPolarPhase(x,y)) mmap { a => if (a < 0f) a + 360f else a } //TODO TR write non-mutable
     (mag,phase)
   }
 }

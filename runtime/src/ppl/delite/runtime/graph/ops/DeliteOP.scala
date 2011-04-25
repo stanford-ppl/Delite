@@ -19,65 +19,53 @@ abstract class DeliteOP {
    */
   def task : String
 
-  def outputSlotType(target: Targets.Value, name: String): String = {
-//  if (outputTypeMap.isEmpty) return outputType(target)
-    val m = outputTypeMap(name)
-    m(target)
-  }
+  private[graph] val outputTypesMap: Map[Targets.Value, Map[String,String]]
 
-  def outputSlotType(name: String): String = outputSlotType(Targets.Scala, name)
+  def outputType(target: Targets.Value, symbol: String): String = outputTypesMap(target)(symbol)
+  def outputType(target: Targets.Value): String = outputTypesMap(target)("functionReturn")
+  def outputType(symbol: String) = outputTypesMap(Targets.Scala)(symbol)
+  def outputType = outputTypesMap(Targets.Scala)("functionReturn")
 
-  def outputType(target: Targets.Value) : String
-  def outputType: String = outputType(Targets.Scala)
+  def supportsTarget(target: Targets.Value) : Boolean = outputTypesMap contains target
 
-  def hasCompoundOutput = getOutputs.nonEmpty && outputSlotType(getOutputs.head) != outputType
-  // TODO improve check
+  def getOutputs = outputTypesMap.head._2.keySet - "functionReturn"
 
+  //set of all incoming graph edges for this op
+  private[graph] var dependencies = Set.empty[DeliteOP]
 
-  def supportsTarget(target: Targets.Value) : Boolean
-
-  //list of all incoming graph edges for this op
-  private[graph] var dependencyList: List[DeliteOP] = Nil //TR: should this be a set??
-
-  final def getDependencies : Seq[DeliteOP] = dependencyList
+  final def getDependencies : Set[DeliteOP] = dependencies
 
   final def addDependency(dep: DeliteOP) {
-    dependencyList = dep :: dependencyList
+    dependencies += dep
   }
 
   final def removeDependency(dep: DeliteOP) {
-    dependencyList = dependencyList filterNot { _ == dep }
+    dependencies -= dep
   }
 
   final def replaceDependency(old: DeliteOP, dep: DeliteOP) {
-    dependencyList = dep :: (dependencyList filterNot { _ == old })
+    assert(dependencies contains old, old.toString + " is not a dependency of " + this.toString + "; cannot be replaced")
+    dependencies -= old
+    dependencies += dep
   }
 
-  //list of all outgoing graph edges for this op
-  private[graph] var consumerList: List[DeliteOP] = Nil
+  //set of all outgoing graph edges for this op
+  private[graph] var consumers = Set.empty[DeliteOP]
 
-  final def getConsumers : Seq[DeliteOP] = consumerList
+  final def getConsumers : Set[DeliteOP] = consumers
 
   final def addConsumer(c: DeliteOP) {
-    consumerList = c :: consumerList
+    consumers += c
   }
 
   final def removeConsumer(c: DeliteOP) {
-    consumerList = consumerList filterNot { _ == c }
+    consumers -= c
   }
 
   final def replaceConsumer(old: DeliteOP, c: DeliteOP) {
-    consumerList = c :: (consumerList filterNot { _ == old })
-  }
-
-  private[graph] var outputList: List[String] = Nil
-  private[graph] var outputTypeMap: Map[String,Map[Targets.Value, String]] = Map.empty
-
-  /*final*/ def getOutputs : Seq[String] = outputList // TODO: make final again? (currently overridden by OP_Control)
-
-  /*final*/ def addOutput(output: String, tp: Map[Targets.Value, String]) { // TODO: make final again? (currently overridden by OP_Control)
-    outputList = output :: outputList
-    outputTypeMap += (output -> tp)
+    assert(consumers contains old, old.toString + " is not a consumer of " + this.toString + ", cannot be replaced")
+    consumers -= old
+    consumers += c
   }
 
   //this is a subset of dependencies and contains the kernel inputs in the order required to call the task
@@ -85,25 +73,34 @@ abstract class DeliteOP {
 
   final def getInputs : Seq[(DeliteOP, String)] = inputList
 
-  final def addInput(op: DeliteOP): Unit = addInput(op, if (op.getOutputs.isEmpty) "???" else op.getOutputs(0)) //TR TODO: assert length == 1
-  
   final def addInput(op: DeliteOP, name: String) {
-    assert(op.getOutputs.contains(name), "Op " + op + " does not have output " + name + " (class: " + op.getClass.getName + ", outputs: "+op.getOutputs+")")
     inputList = (op, name) :: inputList
   }
 
-  final def replaceInput(old: DeliteOP, input: DeliteOP, name: String) { //need old name as well?
-    inputList = inputList.patch(inputList.indexWhere(_._1 == old), List((input,name)), 1)
-    if (mutableInputList contains old) mutableInputList = input :: (mutableInputList filterNot { _ == old })
+  final def replaceInput(old: DeliteOP, input: DeliteOP, name: String) {
+    inputList.find(_ == (old, name)) match {
+      case Some((old, name)) => {
+        assert(input.outputTypesMap.head._2.contains(name), "Cannot replace " + old + " with " + input + " as it does not contain output " + name)
+        inputList.patch(inputList.indexOf((old,name)), List((input, name)), 1)
+      }
+      case None => error(old + " is not an input of " + this + "; cannot be replaced")
+    }
+    mutableInputs.find(_ == (old, name)) match {
+      case Some((old, name)) => {
+        mutableInputs -= Pair(old, name)
+        mutableInputs += Pair(input, name)
+      }
+      case None => //do nothing
+    }
   }
 
-  //this is a subset of inputs and contains only the inputs that the op can mutate
-  private[graph] var mutableInputList: List[DeliteOP] = Nil
+  //subset of inputs containing only the inputs that the op can mutate
+  private[graph] var mutableInputs = Set.empty[(DeliteOP, String)]
 
-  final def getMutableInputs : Seq[DeliteOP] = mutableInputList
+  final def getMutableInputs : Set[(DeliteOP, String)] = mutableInputs
 
-  final def addMutableInput(input: DeliteOP) {
-    mutableInputList = input :: mutableInputList
+  final def addMutableInput(op: DeliteOP, name: String) {
+    mutableInputs += Pair(op, name)
   }
 
   var variant: OP_Variant = null
@@ -142,4 +139,5 @@ abstract class DeliteOP {
   var scheduledResource = -1
 
   override def toString = id
+
 }

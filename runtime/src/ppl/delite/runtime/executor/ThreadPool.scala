@@ -21,7 +21,8 @@ import ppl.delite.runtime.scheduler.StaticSchedule
 
 class ThreadPool(numThreads: Int) {
 
-  val pool = new Array[ExecutionThread](numThreads)
+  private val pool = new Array[ExecutionThread](numThreads)
+  private val threads = new Array[Thread](numThreads)
 
   def init {
     var i = 0
@@ -29,6 +30,7 @@ class ThreadPool(numThreads: Int) {
       val worker = new ExecutionThread
       pool(i) = worker
       val thread = new Thread(worker, "ExecutionThread-"+i) //spawn new machine thread
+      threads(i) = thread
       thread.start
       i += 1
     }
@@ -37,6 +39,12 @@ class ThreadPool(numThreads: Int) {
   def shutdown {
     for (i <- 0 until pool.length) {
       pool(i).queue.put(new Shutdown(pool(i)))
+    }
+  }
+
+  def abnormalShutdown {
+    for (i <- 0 until threads.length) {
+      threads(i).stop()
     }
   }
 

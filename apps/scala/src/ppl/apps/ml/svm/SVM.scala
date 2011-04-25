@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
-object SVM extends DeliteApplication with OptiMLExp with SVMModels {
+object SVMRunner extends OptiMLApplicationRunner with SVM
+
+trait SVM extends OptiMLApplication with SVMModel {
 
   def print_usage = {
     println("Usage: SVM <train data file> <test data file> <model filename> <num tests>")
@@ -34,30 +36,25 @@ object SVM extends DeliteApplication with OptiMLExp with SVMModels {
     val inMatrixTrain = MLInputReader.readTokenMatrix(trainfile)
     val inMatrixTest = MLInputReader.readTokenMatrix(testfile)
 
-    // adjust the classification labels to -1 and +1 for SMO
-    inMatrixTrain.labels mmap { e => if (e == 0) -1; else 1 }
-    inMatrixTest.labels mmap { e => if (e == 0) -1; else 1 }
-
     // run the SMO training algorithm
-    val svm = new SVMModel
-    //val svm = new SVMModel(SVM.this)
-    tic
-    val (weights, b) = svm.train(inMatrixTrain, 1, .0001, 10)
-    toc
+    tic()
+    val (weights, b) = train(inMatrixTrain, 1, .001, 10)
+    toc()
     //svm.computeWeights(inMatrixTrain, YTrain)
     //svm.saveModel(weights, b, modelFile)
 
     //println("SVM training finished. Model saved to " + modelFile)
 
     // TEST RESULTS
-    val YTest = inMatrixTest.labels
+    // adjust the classification labels to -1 and +1 for SMO
+    val YTest = inMatrixTest.labels map { e => if (e == 0) -1. else 1. }
     val numTestDocs = inMatrixTest.numRows
     //svm.load(modelFile)
-    val outputLabels = (0::numTestDocs){ i => svm.classify(weights, b, inMatrixTest(i)) }
+    val outputLabels = (0::numTestDocs){ i => classify(weights, b, inMatrixTest(i)) }
     println("SVM testing finished. Calculating error..")
-    var errors = unit(0)
-    for (i <- 0 until numTestDocs){
-      if (YTest(i) != outputLabels(i)) errors +=1
+    val errors = sum[Int](0, numTestDocs) { i =>
+      if (YTest(i) != outputLabels(i)) 1
+      else 0
       //println("predicted class: " + outputLabels(i) + ", actual: " + Y(i))
     }
     println("Classification error: " + (errors.doubleValue()/numTestDocs.doubleValue()))

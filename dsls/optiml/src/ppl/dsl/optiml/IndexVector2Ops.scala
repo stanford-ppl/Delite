@@ -51,7 +51,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   case class IndexVector2ConstructVectors[A:Manifest](in: Exp[IndexVector], block: Rep[Int] => Rep[Vector[A]])
     extends DeliteOpMap[Int,Vector[A],Vector] {
 
-    val alloc = reifyEffects(Vector[Vector[A]](in.length, true))
+    val alloc = reifyEffects(Vector[Vector[A]](in.length, unit(true)))
     val v = fresh[Int]
     val func = reifyEffects(block(v))
   }
@@ -60,7 +60,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
     extends DeliteOpMap[Int,Vector[A],Vector] {
 
     val in = x.rowInd
-    val alloc = reifyEffects(Vector[Vector[A]](in.length, true))
+    val alloc = reifyEffects(Vector[Vector[A]](in.length, unit(true)))
     val v = fresh[Int]
     val func = reifyEffects(x.colInd map { j => block(v, j) })
   }
@@ -76,7 +76,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
     else if ((x.colInd.isInstanceOfL[IndexVector]) && (x.rowInd.isInstanceOfL[IndexVectorWC]))
       Matrix(IndexVector2ConstructVectors(x.colInd, block))
     else {
-      println("illegal matrix constructor")
+      println(unit("illegal matrix constructor"))
       exit(-1)
     }
   }
@@ -95,7 +95,7 @@ trait ScalaGenIndexVector2Ops extends ScalaGenBase {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case IndexVector2New(rowInd, colInd) =>
       emitValDef(sym, "new " + remap(manifest[IndexVector2Impl]) + "(" + quote(rowInd) +  "," + quote(colInd) + ")")
-    case IndexVector2Wildcard() => emitValDef(sym, "IndexVectorWCImpl")
+    case IndexVector2Wildcard() => emitValDef(sym, "generated.scala.IndexVectorWCImpl")
     case IndexVector2RowInd(x) => emitValDef(sym, quote(x) + ".rowInd")
     case IndexVector2ColInd(x) => emitValDef(sym, quote(x) + ".colInd")
     case _ => super.emitNode(sym, rhs)

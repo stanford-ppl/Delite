@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet,Labels}
 import ppl.delite.framework.DeliteApplication
 
-object NaiveBayes extends DeliteApplication with OptiMLExp {
+object NaiveBayesRunner extends OptiMLApplicationRunner with NaiveBayes
+
+trait NaiveBayes extends OptiMLApplication {
 
 
   def print_usage = {
@@ -23,9 +25,10 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
     // Train Model
     val trainingSet = MLInputReader.readTokenMatrix(trainingFile)
     //val start_train = System.currentTimeMillis()
-    tic
+    println("Training model on " + trainingSet.numSamples + " documents.")
+    tic()
     val (phi_y1, phi_y0, phi_y) = train(trainingSet)
-    toc
+    toc()
 
     // test
     val testSet = MLInputReader.readTokenMatrix(testFile)
@@ -51,22 +54,18 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
 
     val words_per_email = (0::ts.numSamples){ i => ts(i).sum }
 
-    println("Training model on " + numTrainDocs + " documents.")
-
     val spamcount = ts.labels.sum
 
-    val phi_y1 = Vector.zeros(numTokens)
-    val phi_y0 = Vector.zeros(numTokens)
+    val phi_y1 = Vector.zeros(numTokens).mutable
+    val phi_y0 = Vector.zeros(numTokens).mutable
 
     // TODO: this should be a tuple vector constructor
-    
-
     for (j <- 0::numTokens) {
-      var spamwordcount = unit(0.0)
-      var spam_totalwords = unit(0.0)
-      var nonspamwordcount = unit(0.0)
-      var nonspam_totalwords = unit(0.0)
-      var i = unit(0)
+      var spamwordcount = 0.0
+      var spam_totalwords = 0.0
+      var nonspamwordcount = 0.0
+      var nonspam_totalwords = 0.0
+      var i = 0
 
       while (i < numTrainDocs) {
         if (ts.labels(i) == 1){
@@ -97,10 +96,10 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
 
 	/*
     val phi_y0 = (0::numTokens) { j=>
-      var spamwordcount = unit(0.0)
-      var spam_totalwords = unit(0.0)
-      var nonspamwordcount = unit(0.0)
-      var nonspam_totalwords = unit(0.0)
+      var spamwordcount = 0.0
+      var spam_totalwords = 0.0
+      var nonspamwordcount = 0.0
+      var nonspam_totalwords = 0.0
 
       for (i <- 0::numTrainDocs) {
         if (ts.labels(i) == 1){
@@ -117,10 +116,10 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
     }
 
     val phi_y1 = (0::numTokens) { j=>
-      var spamwordcount = unit(0.0)
-      var spam_totalwords = unit(0.0)
-      var nonspamwordcount = unit(0.0)
-      var nonspam_totalwords = unit(0.0)
+      var spamwordcount = 0.0
+      var spam_totalwords = 0.0
+      var nonspamwordcount = 0.0
+      var nonspam_totalwords = 0.0
 
       for (i <- 0::numTrainDocs) {
         if (ts.labels(i) == 1){
@@ -136,8 +135,6 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
       (spamwordcount + 1) / (spam_totalwords + numTokens)
     }
 */
-
-
 
     val phi_y = spamcount / numTrainDocs
 
@@ -171,11 +168,11 @@ object NaiveBayes extends DeliteApplication with OptiMLExp {
     }}
 
     // Compute error on test set
-    var incorrect_classifications = unit(0)
-    for (i <- 0 until numTestDocs){
-      if (ts.labels(i) != output(i))
-        incorrect_classifications += 1
+    // why does sum without Int infer a double when we return 1/0?
+    val incorrectClassifications = sum[Int](0, numTestDocs) { i =>
+     if (ts.labels(i) != output(i)) 1
+     else 0
     }
-    incorrect_classifications
+    incorrectClassifications
   }
 }

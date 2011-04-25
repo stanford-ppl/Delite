@@ -6,18 +6,16 @@ import java.io._
 object ExternLibrary {
 
   /* Emit and Compile external library */
-  def init {
+  def init() {
     if (Config.useBlas) {
-      emitLib
-      compileLib
+      emitLib()
+      compileLib()
     }
   }
 
   /* Emit source files for MKL BLAS library */
-  def emitLib {
-    
-    val sep = java.io.File.separator
-    val buildPath = Config.buildDir + sep + "scala" + sep
+  def emitLib() {
+    val buildPath = Config.buildDir + File.separator + "scala" + File.separator + "kernels" + File.separator
     val outDir = new File(buildPath); outDir.mkdirs()
     val outCFile = new File(buildPath + "scalaBLAS.c")
     val outScalaFile = new File(buildPath + "scalaBLAS.scala")
@@ -39,7 +37,7 @@ object scalaBLAS {
   def sigmoid[@specialized(Double,Float) T](vec1:Array[T], vec2:Array[T], start:Int, end:Int)
 }
 """.format(packageName, buildPath))
-    scalastream.flush
+    scalastream.flush()
 
     cstream.println("""
 #include <stdlib.h>
@@ -149,14 +147,14 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
 	(*env)->ReleasePrimitiveArrayCritical(env, vec2, vec2_ptr, 0);
 }
 """.format(jniPackageName,jniPackageName,jniPackageName,jniPackageName,jniPackageName,jniPackageName))
-  cstream.flush
+  cstream.flush()
 
   }
 
   /* Compiles generated library files */
-  def compileLib {
+  def compileLib() {
     val javaHome = System.getProperty("java.home")
-    val buildPath = Config.buildDir + java.io.File.separator + "scala" + java.io.File.separator
+    val buildPath = Config.buildDir + File.separator + "scala" + File.separator + "kernels" + File.separator
 
     /* Compile JNI Implementation */
     val process = Runtime.getRuntime.exec(Array[String](
@@ -176,15 +174,17 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
 	  checkError(process)
   }
 
-  def checkError(process:Process) {
-    val first = process.getErrorStream.read
-    if (first != -1) { //compilation failed
-      val errorBuffer = new Array[Byte](1000)
-      val num = process.getErrorStream.read(errorBuffer)
-      print(first.asInstanceOf[Char])
-      for (i <- 0 until num) print(errorBuffer(i).asInstanceOf[Char])
+  private def checkError(process: Process) {
+    val errorStream = process.getErrorStream
+    var err = errorStream.read()
+    if (err != -1) {
+      while (err != -1) {
+        print(err.asInstanceOf[Char])
+        err = errorStream.read()
+      }
       println()
-      sys.error("MKL BLAS compilation failed")
+      sys.error("nvcc compilation failed")
     }
   }
+
 }

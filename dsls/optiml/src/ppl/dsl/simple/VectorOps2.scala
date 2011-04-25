@@ -18,7 +18,7 @@ trait VectorOps2 extends DSLType with Base {
   }
 
   implicit def repVecToRepVecOps[A:Manifest](x: Rep[Vector[A]]) = new vecRepCls(x)
-  implicit def vecToRepVecOps[A:Manifest](x: Vector[A]) = new vecRepCls(x)
+  implicit def vecToRepVecOps[A:Manifest](x: Vector[A]) = new vecRepCls(unit(x))
 
   class vecRepCls[A:Manifest](x: Rep[Vector[A]]) {
     def +(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_plus(x,y)

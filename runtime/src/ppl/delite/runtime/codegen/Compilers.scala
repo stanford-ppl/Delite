@@ -27,11 +27,11 @@ object Compilers {
     for (i <- 0 until numGPUs) GPUMainGenerator.makeExecutable(schedule.slice(numThreads+i, numThreads+i+1), graph.kernelPath)
 
     if (Config.printSources) { //DEBUG option
-      ScalaCompile.printSources
-      CudaCompile.printSources
+      ScalaCompile.printSources()
+      CudaCompile.printSources()
     }
 
-    CudaCompile.compile(graph.kernelPath)
+    CudaCompile.compile()
 
     val classLoader = ScalaCompile.compile
     val queues = new Array[ArrayDeque[DeliteExecutable]](schedule.numResources)

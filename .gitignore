@@ -12,7 +12,9 @@ delite.properties
 project/boot
 runtime/project/boot
 generated
+generatedCache
 data/
 *.deg
 *.debug
 *.pgm
+benchmark/times

@@ -2,6 +2,7 @@ package ppl.delite.runtime.executor
 
 import java.util.concurrent.LinkedBlockingQueue
 import ppl.delite.runtime.Config
+import ppl.delite.runtime.Delite
 import ppl.delite.runtime.codegen.DeliteExecutable
 
 /**
@@ -32,7 +33,11 @@ class ExecutionThread extends Runnable {
   def run {
     while(continue) {
       val work = queue.take //blocking
-      executeWork(work)
+      try executeWork(work)
+      catch { case e => {
+        Delite.shutdown()
+        throw e
+      } }
     }
   }
 

@@ -11,12 +11,13 @@ import ppl.delite.runtime.graph.targets.Targets
  * Stanford University
  */
 
-class TestOP(kernel: String)(deps: DeliteOP*)
-        extends OP_Executable(Map(Targets.Scala->"Unit")) {
+class TestOP(kernel: String)(deps: DeliteOP*) extends OP_Executable {
 
   def task = kernel
 
   def id = System.identityHashCode(this).toString
+
+  private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> "Unit", "functionReturn" -> "Unit"))
 
   //initialize
   for (dep <- deps) {
@@ -31,9 +32,10 @@ class TestOP(kernel: String)(deps: DeliteOP*)
 }
 
 class TestMap[T: Manifest](func: String)(deps: DeliteOP*)(output: DeliteOP, input: DeliteOP, free: DeliteOP*)
-        extends OP_Map("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+        extends OP_Map("", func, null) {
 
   override val id = System.identityHashCode(this).toString
+  override private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> manifest[T].toString, "functionReturn" -> manifest[T].toString))
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -41,17 +43,18 @@ class TestMap[T: Manifest](func: String)(deps: DeliteOP*)(output: DeliteOP, inpu
   }
 
   for (f <- free.reverse) { //need a reverse to preserve order (addInput prepends)
-    this.addInput(f)
+    this.addInput(f, f.id)
   }
-  this.addInput(input)
-  this.addInput(output)
+  this.addInput(input, input.id)
+  this.addInput(output, output.id)
 
 }
 
 class TestImmutableMap[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
-        extends OP_Map("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+        extends OP_Map("", func, null) {
 
   override val id = System.identityHashCode(this).toString
+  override private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> manifest[T].toString, "functionReturn" -> manifest[T].toString))
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -59,16 +62,17 @@ class TestImmutableMap[T: Manifest](func: String)(deps: DeliteOP*)(input: Delite
   }
 
   for (f <- free.reverse) { //need a reverse to preserve order (addInput prepends)
-    this.addInput(f)
+    this.addInput(f, f.id)
   }
-  this.addInput(input)
+  this.addInput(input, input.id)
 
 }
 
 class TestReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
-        extends OP_Reduce("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+        extends OP_Reduce("", func, null) {
 
   override val id = System.identityHashCode(this).toString
+  override private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> manifest[T].toString, "functionReturn" -> manifest[T].toString))
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -76,16 +80,17 @@ class TestReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, fr
   }
 
   for (f <- free.reverse) {
-    this.addInput(f)
+    this.addInput(f, f.id)
   }
-  this.addInput(input)
+  this.addInput(input, input.id)
 
 }
 
 class TestMapReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
-        extends OP_MapReduce("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+        extends OP_MapReduce("", func, null) {
 
   override val id = System.identityHashCode(this).toString
+  override private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> manifest[T].toString, "functionReturn" -> manifest[T].toString))
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -93,16 +98,17 @@ class TestMapReduce[T: Manifest](func: String)(deps: DeliteOP*)(input: DeliteOP,
   }
 
   for (f <- free.reverse) {
-    this.addInput(f)
+    this.addInput(f, f.id)
   }
-  this.addInput(input)
+  this.addInput(input, input.id)
 
 }
 
 class TestZip[T: Manifest](func: String)(deps: DeliteOP*)(output: DeliteOP, input1: DeliteOP, input2: DeliteOP, free: DeliteOP*)
-        extends OP_Zip("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+        extends OP_Zip("", func, null) {
 
   override val id = System.identityHashCode(this).toString
+  override private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> manifest[T].toString, "functionReturn" -> manifest[T].toString))
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -110,18 +116,19 @@ class TestZip[T: Manifest](func: String)(deps: DeliteOP*)(output: DeliteOP, inpu
   }
 
   for (f <- free.reverse) {
-    this.addInput(f)
+    this.addInput(f, f.id)
   }
-  this.addInput(input2)
-  this.addInput(input1)
-  this.addInput(output)
+  this.addInput(input2, input2.id)
+  this.addInput(input1, input1.id)
+  this.addInput(output, output.id)
 
 }
 
 class TestImmutableZip[T: Manifest](func: String)(deps: DeliteOP*)(input1: DeliteOP, input2: DeliteOP, free: DeliteOP*)
-        extends OP_Zip("", func, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+        extends OP_Zip("", func, null) {
 
   override val id = System.identityHashCode(this).toString
+  override private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> manifest[T].toString, "functionReturn" -> manifest[T].toString))
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -129,17 +136,18 @@ class TestImmutableZip[T: Manifest](func: String)(deps: DeliteOP*)(input1: Delit
   }
 
   for (f <- free.reverse) {
-    this.addInput(f)
+    this.addInput(f, f.id)
   }
-  this.addInput(input2)
-  this.addInput(input1)
+  this.addInput(input2, input2.id)
+  this.addInput(input1, input1.id)
 
 }
 
 class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*)
-        extends OP_Single("", kernel, Map[Targets.Value,String](Targets.Scala -> manifest[T].toString)) {
+        extends OP_Single("", kernel, null) {
 
   override val id = System.identityHashCode(this).toString
+  override private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> manifest[T].toString, "functionReturn" -> manifest[T].toString))
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -147,15 +155,16 @@ class TestSingle[T: Manifest](kernel: String)(deps: DeliteOP*)(inputs: DeliteOP*
   }
 
   for (input <- inputs.reverse) { //need a reverse to preserve order (addInput prepends)
-    this.addInput(input)
+    this.addInput(input, input.id)
   }
 
 }
 
 class TestForeach(func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP*)
-        extends OP_Foreach("", func, Map[Targets.Value,String](Targets.Scala -> "Unit")) {
+        extends OP_Foreach("", func, null) {
 
   override val id = System.identityHashCode(this).toString
+  override private[graph] val outputTypesMap = Map(Targets.Scala -> Map(id -> "Unit", "functionReturn" -> "Unit"))
 
   for (dep <- deps) {
     this.addDependency(dep)
@@ -163,8 +172,8 @@ class TestForeach(func: String)(deps: DeliteOP*)(input: DeliteOP, free: DeliteOP
   }
 
   for (f <- free.reverse) { //need a reverse to preserve order (addInput prepends)
-    this.addInput(f)
+    this.addInput(f, f.id)
   }
-  this.addInput(input)
+  this.addInput(input, input.id)
 
 }

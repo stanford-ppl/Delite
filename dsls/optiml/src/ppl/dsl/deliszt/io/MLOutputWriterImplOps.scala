@@ -3,7 +3,7 @@ package ppl.dsl.optiml.io
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
 import scala.virtualization.lms.common.Base
 import scala.virtualization.lms.common.ScalaOpsPkg
-import ppl.dsl.optiml.OptiML
+import ppl.dsl.optiml.{OptiMLCompiler, OptiMLLift, OptiML}
 
 trait MLOutputWriterImplOps { this: Base =>
   def mloutput_write_impl[A:Manifest](m: Rep[Matrix[A]], filename: Rep[String], conv: Rep[A] => Rep[Double]): Rep[Unit]
@@ -12,7 +12,7 @@ trait MLOutputWriterImplOps { this: Base =>
 }
 
 trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
-  this: OptiML =>
+  this: OptiMLCompiler with OptiMLLift =>
   
   ///////////////
   // kernels
@@ -42,9 +42,9 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
     val xfs = BufferedWriter(FileWriter(filename))
 
     xfs.write("P2\\n")
-    xfs.write(String.valueOfL(img.numCols))
+    xfs.write(String.valueOf(img.numCols))
     xfs.write(" ")
-    xfs.write(String.valueOfL(img.numRows) + "\\n")
+    xfs.write(String.valueOf(img.numRows) + "\\n")
     xfs.write("255\\n")
 
     val min = img.min

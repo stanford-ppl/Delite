@@ -1,6 +1,6 @@
 package ppl.dsl.optiml
 
-import datastruct.scala.{NilVector,Vector,Matrix}
+import datastruct.scala.{ZeroVector,Vector,Matrix}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
@@ -26,40 +26,55 @@ trait ArithOps extends Variables with OverloadHack {
    * causes the NumericOps and FractionalOps implicit conversions to be ambiguous, so OptiML
    * programs cannot include them.
    */
-  implicit def arithToArithOps[T:Arith:Manifest](n: T) = new ArithOpsCls(n)
+  implicit def arithToArithOps[T:Arith:Manifest](n: T) = new ArithOpsCls(unit(n))
   implicit def repArithToArithOps[T:Arith:Manifest](n: Rep[T]) = new ArithOpsCls(n)
   implicit def varArithToArithOps[T:Arith:Manifest](n: Var[T]) = new ArithOpsCls(readVar(n))
 
+  // to do Rep[Int] * Float, it should get converted to Rep[Float] * Float
+  // TODO: this only works when invoked explicitly (won't kick in itself)
+  implicit def chainRepArithToArithOps[A,B](a: Rep[A])
+    (implicit mA: Manifest[A], aA: Arith[A], mB: Manifest[B], aB: Arith[B], c: Rep[A] => Rep[B]) = new ArithOpsCls(c(a))
+
   class ArithOpsCls[T](lhs: Rep[T])(implicit mT: Manifest[T], arith: Arith[T]){
-    def +=(rhs: Rep[T]) = arith.+=(lhs,rhs)
-    def +(rhs: Rep[T]) = arith.+(lhs,rhs)
-    def -(rhs: Rep[T]) = arith.-(lhs,rhs)
-    def *(rhs: Rep[T]) = arith.*(lhs,rhs)
-    def /(rhs: Rep[T]) = arith./(lhs,rhs)
+    // TODO: if B == Rep[T] below, the ops implicit does not work unless it is called explicitly (no unambiguous resolution?)
+    def +=(rhs: Rep[T]): Rep[T] = arith.+=(lhs,rhs)
+    def +(rhs: Rep[T]): Rep[T] = arith.+(lhs,rhs)
+    def -(rhs: Rep[T]): Rep[T] = arith.-(lhs,rhs)
+    def *(rhs: Rep[T]): Rep[T] = arith.*(lhs,rhs)
+    def /(rhs: Rep[T]): Rep[T] = arith./(lhs,rhs)
 
-    // conversions can be either lhs to rhs (right-convert), or rhs to lhs (left-convert)
-    def +=[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.+=(lhs,implicit_convert[A,T](rhs))
-    def +[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.+(lhs,implicit_convert[A,T](rhs))
-    def -[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.-(lhs,implicit_convert[A,T](rhs))
-    def *[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith.*(lhs,implicit_convert[A,T](rhs))
-    // TODO: this doesn't resolve as we would like.. there are issues doing things like Int*Double
-    //def *[A](rhs: Rep[A])(implicit mA: Manifest[A], a: Arith[A], c: T => A, o: Overloaded1) = a.*(implicit_convert[T,A](lhs),rhs)
-    def /[A](rhs: Rep[A])(implicit mA: Manifest[A], c: A => T) = arith./(lhs,implicit_convert[A,T](rhs))
+    def +=[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.+=(lhs,c(rhs))
+    def +[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.+(lhs,c(rhs))
+    def -[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.-(lhs,c(rhs))
+    def *[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.*(lhs,c(rhs))
+    def /[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith./(lhs,c(rhs))
 
-    def abs = arith.abs(lhs)
-    def exp = arith.exp(lhs)
+    def abs: Rep[T] = arith.abs(lhs)
+    def exp: Rep[T] = arith.exp(lhs)
   }
 
+
+  // TODO: why is this needed, given the definition of / above?
+  def infix_/[T,B](lhs: Rep[T], rhs: B)(implicit f: Fractional[T], c: B => Rep[T], mT: Manifest[T]) = arith_fractional_divide(lhs,c(rhs))
+
+  // why are these recursive? (perhaps because the abstract arith method has the same signature as the infix?)
+//  def infix_+=[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.+=(lhs,c(rhs))
+//  def infix_+[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.+(lhs,c(rhs))
+//  def infix_-[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.-(lhs,c(rhs))
+//  def infix_*[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.*(lhs,c(rhs))
+//  def infix_/[T,B](lhs: Rep[T], rhs: B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a./(lhs,c(rhs))
+//  def infix_abs[T](lhs: Rep[T])(implicit a: Arith[T], mT: Manifest[T]) = a.abs(lhs)
+//  def infix_exp[T](lhs: Rep[T])(implicit a: Arith[T], mT: Manifest[T]) = a.exp(lhs)
 
   /**
    * Vector
    */
 
   implicit def vectorArith[T:Arith:Manifest] : Arith[Vector[T]] = new Arith[Vector[T]] {
-    // these are used in sum; NilVectors should really not be used anywhere else. We need a better solution.
-    def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (!b.isInstanceOfL[NilVector[T]]) a += b else a
-    def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (a.isInstanceOfL[NilVector[T]]) b
-                                                  else if (b.isInstanceOfL[NilVector[T]]) a
+    // these are used in sum; dynamic checks are required due to conditionals
+    def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (!b.isInstanceOfL[ZeroVector[T]]) a += b else a
+    def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (a.isInstanceOfL[ZeroVector[T]]) b
+                                                  else if (b.isInstanceOfL[ZeroVector[T]]) a
                                                   else a+b
     def -(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a-b
     def *(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a*b
@@ -177,7 +192,6 @@ trait ArithOps extends Variables with OverloadHack {
    * unfortunately, to use ArithOps, we have to redefine all of the operations we want to
    * to support from NumericOps and FractionalOps, since their implicits are ambiguous with ours.
    */
-  def infix_/[A,T](lhs: Rep[T], rhs: Rep[A])(implicit c: A => T, f: Fractional[T], mA: Manifest[A], mT: Manifest[T]) = arith_fractional_divide(lhs,implicit_convert[A,T](rhs))
 
   implicit val doubleArith : Arith[Double] = new Arith[Double] {
     def +=(a: Rep[Double], b: Rep[Double]) = arith_plus(a,b)
@@ -231,13 +245,15 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   case class ArithMinus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
   case class ArithTimes[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
   case class ArithFractionalDivide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
-  case class ArithAbs[T:Manifest:Numeric](lhs: Exp[T]) extends Def[T]
+  case class ArithAbs[T:Manifest:Numeric](lhs: Exp[T]) extends Def[T] {
+    val m = manifest[T]
+  }
   case class ArithExp[T:Manifest:Numeric](lhs: Exp[T]) extends Def[Double]
 
-  def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithPlus(lhs, rhs)
-  def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithMinus(lhs, rhs)
-  def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithTimes(lhs, rhs)
-  def arith_fractional_divide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = ArithFractionalDivide(lhs, rhs)
+  def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithPlus(lhs, rhs)
+  def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithMinus(lhs, rhs)
+  def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithTimes(lhs, rhs)
+  def arith_fractional_divide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithFractionalDivide(lhs, rhs)
   def arith_abs[T:Manifest:Numeric](lhs: Exp[T]) = ArithAbs(lhs)
   def arith_exp[T:Manifest:Numeric](lhs: Exp[T]) = ArithExp(lhs)
 
@@ -248,6 +264,7 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
       case ArithMinus(lhs,rhs) => arith_minus(f(lhs), f(rhs))
       case ArithTimes(lhs,rhs) => arith_times(f(lhs), f(rhs))
       case ArithFractionalDivide(lhs,rhs) => arith_fractional_divide(f(lhs), f(rhs))
+      case ArithAbs(lhs) => arith_abs(f(lhs))
       case _ => super.mirror(e,f)
     }
   }
@@ -257,15 +274,15 @@ trait ArithOpsExpOpt extends ArithOpsExp {
   this: OptiML =>
 
   override def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => implicitly[Numeric[T]].plus(x,y)
+    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].plus(x,y))
     case _ => super.arith_plus(lhs, rhs)
   }
   override def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => implicitly[Numeric[T]].minus(x,y)
+    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].minus(x,y))
     case _ => super.arith_minus(lhs, rhs)
   }
   override def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
-    case (Const(x), Const(y)) => implicitly[Numeric[T]].times(x,y)
+    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].times(x,y))
     case _ => super.arith_times(lhs, rhs)
   }
 }
@@ -281,8 +298,12 @@ trait ScalaGenArithOps extends ScalaGenBase {
     case ArithMinus(a,b) => emitValDef(sym, quote(a) + " - " + quote(b))
     case ArithTimes(a,b) => emitValDef(sym, quote(a) + " * " + quote(b))
     case ArithFractionalDivide(a,b) => emitValDef(sym, quote(a) + " / " + quote(b))
-    case ArithAbs(a) => emitValDef(sym, "Math.abs(" + quote(a) + ")")
-    case ArithExp(a) => emitValDef(sym, "Math.exp(" + quote(a) + ")")
+    case ArithAbs(x) => emitValDef(sym, "java.lang.Math.abs(" + quote(x) + ")")
+    //case a@ArithAbs(x) => a.m.asInstanceOf[Manifest[_]] match {
+    //  case Manifest.Double => emitValDef(sym, "java.lang.Double.longBitsToDouble((java.lang.Double.doubleToRawLongBits(" + quote(x) + ")<<1)>>>1)")
+    //  case _ => emitValDef(sym, "Math.abs(" + quote(x) + ")")
+    //}
+    case ArithExp(a) => emitValDef(sym, "java.lang.Math.exp(" + quote(a) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

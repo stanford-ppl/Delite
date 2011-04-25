@@ -3,11 +3,11 @@ package ppl.delite.runtime
 import codegen._
 import executor._
 import graph.ops.{EOP, Arguments}
+import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
-import java.io.File
-import profiler._
+import profiler.PerformanceTimer
 import scheduler._
-import tools.nsc.io.Directory
+import tools.nsc.io._
 
 /**
  * Author: Kevin J. Brown
@@ -20,8 +20,10 @@ import tools.nsc.io.Directory
 
 object Delite {
 
+  private val mainThread = Thread.currentThread
+
   private def printArgs(args: Array[String]) {
-    if(args.size == 0) {
+    if(args.length == 0) {
       println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
       exit(-1)
     }
@@ -29,14 +31,14 @@ object Delite {
     println(args.mkString(","))
   }
 
-  private def printConfig {
+  private def printConfig() {
     println("Delite Runtime executing with " + Config.numThreads + " CPU thread(s) and " + Config.numGPUs + " GPU(s)")
   }
 
   def main(args: Array[String]) {
     printArgs(args)
 
-    printConfig
+    printConfig()
 
     //extract application arguments
     Arguments.args = args.drop(1)
@@ -62,51 +64,66 @@ object Delite {
       case _ => throw new IllegalArgumentException("Requested executor type is not recognized")
     }
 
-    executor.init() //call this first because could take a while and can be done in parallel
+    try {
 
-    //load task graph
-    val graph = loadDeliteDEG(args(0))
-    //val graph = new TestGraph
+      executor.init() //call this first because could take a while and can be done in parallel
 
-    //load kernels & data structures
-    loadScalaSources(graph)
+      //load task graph
+      val graph = loadDeliteDEG(args(0))
+      //val graph = new TestGraph
 
-    //schedule
-    scheduler.schedule(graph)
+      //load kernels & data structures
+      loadSources(graph)
 
-    //compile
-    val executable = Compilers.compileSchedule(graph)
+      //schedule
+      scheduler.schedule(graph)
 
-    //execute
-    val numTimes = Config.numRuns
-    for (i <- 1 to numTimes) {
-      println("Beginning Execution Run " + i)
-      PerformanceTimer.start("all", false)
-      executor.run(executable)
-      EOP.await //await the end of the application program
-      PerformanceTimer.stop("all", false)
-      PerformanceTimer.print("all")
-      // check if we are timing another component
-      if(Config.dumpStatsComponent != "all")
-        PerformanceTimer.print(Config.dumpStatsComponent)
+      //compile
+      val executable = Compilers.compileSchedule(graph)
+
+      //execute
+      val numTimes = Config.numRuns
+      for (i <- 1 to numTimes) {
+        println("Beginning Execution Run " + i)
+        PerformanceTimer.start("all", false)
+        executor.run(executable)
+        EOP.await //await the end of the application program
+        PerformanceTimer.stop("all", false)
+        PerformanceTimer.print("all")
+        // check if we are timing another component
+        if(Config.dumpStatsComponent != "all")
+          PerformanceTimer.print(Config.dumpStatsComponent)
+      }
+
+      if(Config.dumpStats)
+        PerformanceTimer.dumpStats()
+
+      executor.shutdown()
     }
-
-    if(Config.dumpStats)
-      PerformanceTimer.dumpStats
-
-    executor.shutdown()
-
+    catch { case e => {
+      executor.abnormalShutdown()
+      Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
+      throw e
+    } }
   }
 
   def loadDeliteDEG(filename: String) = {
-    val file = new File(filename)
-    if(file.isFile == false) throw new RuntimeException(filename + " doesn't appear to be a valid file")
-    DeliteTaskGraph(file)
+    val deg = Path(filename)
+    if (!deg.isFile)
+      error(filename + " does not exist")
+    DeliteTaskGraph(deg.jfile)
   }
 
-  def loadScalaSources(graph: DeliteTaskGraph) {
-    val sourceFiles = new Directory(new File(graph.kernelPath + java.io.File.separator + "scala" + java.io.File.separator)).deepFiles.filter(_.extension == "scala") //obtain all files in path
-    for (file <- sourceFiles) ScalaCompile.addSourcePath(file.path)
+  def loadSources(graph: DeliteTaskGraph) {
+    if (graph.targets contains Targets.Scala)
+      ScalaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + ScalaCompile.target + File.separator).toAbsolute))
+    if (graph.targets contains Targets.Cuda)
+      CudaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + CudaCompile.target + File.separator).toAbsolute))
+  }
+
+  //abnormal shutdown
+  def shutdown() {
+    mainThread.interrupt()
   }
 
 }

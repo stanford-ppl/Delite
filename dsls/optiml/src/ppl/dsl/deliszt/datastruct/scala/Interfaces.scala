@@ -128,10 +128,12 @@ trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   def size = length
 }
 
-trait NilVector[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T] {
+trait ZeroVector[T] extends Vector[T]
+
+trait NilVector[T] extends Vector[T] {
   def length : Int = 0
-  def apply(i: Int) = throw new UnsupportedOperationException()
-  def isRow : Boolean = throw new UnsupportedOperationException()
+  def apply(i: Int): T = throw new UnsupportedOperationException()
+  def isRow: Boolean = throw new UnsupportedOperationException()
   def update(index: Int, x: T) = throw new UnsupportedOperationException()
   def data = throw new UnsupportedOperationException()
   def toList = throw new UnsupportedOperationException()
@@ -148,6 +150,17 @@ trait NilVector[@specialized(Boolean, Int, Long, Float, Double) T] extends Vecto
 }
 
 trait VectorView[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T]
+
+trait MatrixRow[@specialized(Boolean, Int, Long, Float, Double) T] extends VectorView[T] {
+  def index: Int
+}
+trait MatrixCol[@specialized(Boolean, Int, Long, Float, Double) T] extends VectorView[T] {
+  def index: Int
+}
+
+trait StreamRow[@specialized(Boolean, Int, Long, Float, Double) T] extends VectorView[T] {
+  def index: Int
+}
 
 trait RangeVector extends Vector[Int]
 
@@ -187,10 +200,11 @@ trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   def size: Int
   def data: Array[T]
 
-  def apply(i: Int) : VectorView[T]
   def apply(i: Int, j: Int): T
   def update(row: Int, col: Int, x: T)
   def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
+  def getRow(i: Int): MatrixRow[T]
+  def getCol(j: Int): MatrixCol[T]
   def insertRow(pos: Int, x: Vector[T])
   def insertAllRows(pos: Int, xs: Matrix[T])
   def insertCol(pos: Int, x: Vector[T])
@@ -346,6 +360,23 @@ trait MessageEdge extends Edge {
 }
 
 trait MessageData
+
+
+/**
+ * Stream
+ */
+
+trait Stream[@specialized(Boolean, Int, Long, Float, Double) T] {
+  def numRows: Int
+  def numCols: Int
+  def chunkSize: Int
+  def initRow(row: Int, offset: Int)
+  def isPure: Boolean
+  def chunkRow(idx: Int, offset: Int): StreamRow[T]
+  def rawElem(idx: Int): T
+  def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
+}
+
 
 /**
  * Ref
