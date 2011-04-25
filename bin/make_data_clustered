@@ -1,0 +1,96 @@
+#!/usr/bin/python
+
+import sys
+import random, math, numpy
+from optparse import OptionParser
+
+def main():
+  usage = "usage: %prog width height num_clusters"
+  parser = OptionParser(usage=usage)
+  parser.add_option("--min", dest="minimum", help="set minimum centroid value", metavar="MIN")
+  parser.add_option("--max", dest="maximum", help="set maximum centroid value", metavar="MAX")
+  parser.add_option("--var", dest="variance", help="set variance of sample_pts from clusters in normal distribution", metavar="VAR")
+  (options, args) = parser.parse_args()
+  
+  if len(args) < 3:
+    parser.error('not enough arguments')
+
+  width = int(args[0])
+  height = int(args[1])
+  num_clusters = int(args[2])
+
+  if num_clusters < 1:
+    parser.error('invalid number of clusters')
+	
+  (min,max,var) = check_options(options)
+
+  random.seed()
+  centroids = choose_clusters(num_clusters, width, min, max)
+
+  line_num = 0
+  while (line_num < height):
+    sample_pt = choose_pt(centroids, width, var)
+    sys.stdout.write('    '.join([str(p) for p in sample_pt]))
+    sys.stdout.write('\n')
+    line_num += 1
+
+# returns a k x n matrix containing k n-dimensional cluster centroid locations
+def choose_clusters(k, n, min, max):
+  clusters = [0]*k
+  for i in range(k):
+    x = [0]*n
+    for j in range(n):
+      x[j] = random.uniform(min,max)
+    clusters[i] = x
+
+  return clusters
+
+# choose an n-dimensional pt. that is normally distributed away 
+# from one of the cluster centroids with the given mean and variance
+def choose_pt(clusters, n, var):
+  k = len(clusters)
+  sel = int(random.uniform(0, k))
+
+  # total euclidean distance from centroid
+  dist = random.gauss(0, var)
+  dist_sq = math.pow(dist, 2)
+  
+  # distribute total distance across the dimensions of the sample_pt
+  # we treat all dimensions equally; another (possibly more realistic)
+  # way is to weight the first few dimensions more
+  sample_pt = []
+  for x in clusters[sel]:
+    delta = random.gauss(dist_sq/n, .01*dist_sq/n)
+
+    # need to find y such that (x-y)^2 = delta
+    if random.uniform(0,1) > .5:
+      y = x - math.sqrt(math.fabs(delta))
+    else:
+      y = x + math.sqrt(math.fabs(delta))
+    
+    sample_pt.append(x+y)
+  
+  return sample_pt
+    
+
+def check_options(options):
+  if options.minimum is not None:
+		min = float(options.minimum)
+  else:
+    min = -100
+
+  if options.maximum is not None:
+    max = float(options.maximum)
+  else:
+    max = 100
+
+  if options.variance is not None:
+    var = float(options.variance)
+  else:
+    var = .1*(max-min)
+
+  return (min,max,var)
+
+ 
+if __name__ == "__main__":
+  main()

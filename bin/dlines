@@ -1,0 +1,60 @@
+#!/bin/bash
+
+HOME=$(cd `dirname $0` && pwd)
+OUT=$PWD/dlines.out
+
+rm $OUT
+
+# optiml
+OPTIML_APPS=$DELITE_HOME/apps/scala/src/ppl/apps/ml/
+apps[0]="$OPTIML_APPS/gda/GDA.scala"
+apps[1]="$OPTIML_APPS/kmeans/kmeans.scala"
+apps[2]="$OPTIML_APPS/linreg/LinReg.scala"
+apps[3]="$OPTIML_APPS/nb/NaiveBayes.scala"
+apps[4]="$OPTIML_APPS/rbm/RBM.scala"
+apps[5]="$OPTIML_APPS/svm/SVMModel.scala $OPTIML_APPS/svm/SVM.scala"
+
+echo "OPTIML SUMMARY :: " >> $OUT
+concat=$(printf " %s " "${apps[@]}")
+concat=${concat:1}
+
+perl $HOME/cloc.pl $concat >> $OUT
+
+echo -e "\n" >> $OUT
+echo "OPTIML INDIVIDUAL REPORTS :: " >> $OUT
+for (( i=0; i<${#apps[@]}; i++ ));
+do
+    app=${apps[$i]}
+    line=`perl $HOME/cloc.pl --quiet --csv $app`
+    loc=`echo $line | awk -F, '{print $11}'`
+    echo "$app,$loc" >> $OUT
+done
+
+
+#matlab
+MATLAB_APPS=$DELITE_HOME/apps/matlab/
+unset apps
+apps[0]="$MATLAB_APPS/gda/gda.m"
+apps[1]="$MATLAB_APPS/kmeans/kmeans.m"
+apps[2]="$MATLAB_APPS/linreg/linreg.m"
+apps[3]="$MATLAB_APPS/nb/nb_test.m $MATLAB_APPS/nb/nb_train.m"
+apps[4]="$MATLAB_APPS/rbm/rbm.m"
+apps[5]="$MATLAB_APPS/svm/smo_train.m $MATLAB_APPS/svm/svm.m $MATLAB_APPS/svm/svm_test.m"
+
+echo -e "\n" >> $OUT
+echo "MATLAB SUMMARY :: " >> $OUT
+concat=$(printf " %s " "${apps[@]}")
+concat=${concat:1}
+
+perl $HOME/cloc.pl $concat >> $OUT
+
+echo -e "\n" >> $OUT
+echo "MATLAB INDIVIDUAL REPORTS :: " >> $OUT
+for (( i=0; i<${#apps[@]}; i++ ));
+do
+    app=${apps[$i]}
+    line=`perl $HOME/cloc.pl --quiet --csv $app`
+    loc=`echo $line | awk -F, '{print $11}'`
+    echo "$app,$loc" >> $OUT
+done 
+

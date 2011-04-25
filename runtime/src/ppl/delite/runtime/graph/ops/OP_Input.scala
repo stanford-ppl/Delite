@@ -14,17 +14,12 @@ import ppl.delite.runtime.graph.targets.Targets
 /**
  * An input to a DeliteTaskGraph
  * Used to register OPs' dependencies on the input to the (sub)graph
- * Mirrors the id and output information of a real OP in some outer scope
  */
-
 class OP_Input(op: DeliteOP) extends DeliteOP {
 
-  def id = op.id
-  def supportsTarget(target: Targets.Value) = op.supportsTarget(target)
-  def outputType(target: Targets.Value) = op.outputType(target)
-  override def outputType = outputType(Targets.Scala)
-  override def getOutputs = op.getOutputs
-  override def outputSlotType(target: Targets.Value, name: String): String = op.outputSlotType(target, name)
+  def id = "input_" + op.id
+
+  private[graph] val outputTypesMap = op.outputTypesMap
 
   isSchedulable = true
   isScheduled = true

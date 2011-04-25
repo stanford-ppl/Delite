@@ -1,0 +1,729 @@
+/*****************************************
+  Emitting Generated Code                  
+*******************************************/
+class NaiveBayesRunner extends ((Array[java.lang.String])=>(Unit)) {
+def apply(x0:Array[java.lang.String]): Unit = {
+val x1 = println("Naive Bayes Example Application")
+val x2 = x0.length
+val x3 = x2 < 2
+val x7 = {
+def x7thenb(): Nothing = {
+val x4 = println("NaiveBayes <training file> <test file>")
+val x5 = exit(-1)
+x5
+}
+if (x3) {
+x7thenb()
+}
+}
+val x8 = x0(0)
+val x119 = { 
+val x10 = new java.io.FileReader(x8)
+val x11 = new java.io.BufferedReader(x10)
+val x12 = x11.readLine()
+var x13: java.lang.String = x12
+val x14 = x11.readLine()
+var x15: java.lang.String = x14
+val x16 = x15
+val x17 = x16.trim()
+val x18 = x17.split("\\s+")
+val x19 = x18(0)
+val x20 = java.lang.Integer.parseInt(x19)
+val x23 = x20 < 0
+val x21 = x18(1)
+val x22 = java.lang.Integer.parseInt(x21)
+val x24 = x22 < 0
+val x25 = x23 || x24
+val x28 = {
+def x28thenb(): Nothing = {
+val x26 = error("Illegal input to readTokenMatrix")
+x26
+}
+if (x25) {
+x28thenb()
+}
+}
+val x29 = x11.readLine()
+val x30 = new generated.scala.DoubleVectorImpl(0,true)
+val x31 = new generated.scala.VectorImpl[generated.scala.Vector[Double]](0,true)
+var x33 : Int = 0
+val x69 = while (x33 < x20) {
+val x34 = x11.readLine()
+x15 = x34
+val x36 = x15
+val x37 = x36.trim()
+x15 = x37
+val x39 = x15
+val x41 = new generated.scala.DoubleVectorImpl(x22,true)
+var x42: Int = 0
+var x43: Int = 1
+val x40 = x39.split("\\s+")
+val x45 = x40.length
+val x46 = x45 - 1
+val x61 = while ({val x44 = x43
+val x47 = x44 < x46
+x47}) {
+val x49 = x43
+val x50 = x40(x49)
+val x51 = java.lang.Integer.parseInt(x50)
+val x52 = x42 += x51
+val x53 = x42
+val x54 = x43
+val x55 = x54 + 1
+val x56 = x40(x55)
+val x57 = java.lang.Double.parseDouble(x56)
+val x58 = x41(x53) = x57
+val x59 = x43 += 2
+()
+}
+val x64 = x30.length
+val x62 = x40(0)
+val x63 = java.lang.Double.parseDouble(x62)
+val x65 = x30.insert(x64, x63)
+val x66 = x31.length
+val x67 = x31.insert(x66, x41)
+x67
+x33 = x33 + 1
+}
+val x70 = x30.length
+val x71 = x30.isRow
+val x72 = !x71
+// a *thin* loop follows: x78
+val x78 = {
+val x74 = new generated.scala.DoubleVectorImpl(x70,x72)
+x74
+}
+var x73 = 0
+while (x73 < x70) {  // begin fat loop x78
+val x76 = x30(x73)
+x78.dcUpdate(x73, x76)
+x73 += 1
+} // end fat loop x78
+val x114 = { 
+val x79 = x31.length
+val x80 = x79==0
+val x112 = {
+def x112thenb(): generated.scala.Matrix[Double] = {
+val x81 = new generated.scala.DoubleMatrixImpl(0,0)
+x81
+}
+def x112elseb(): generated.scala.Matrix[Double] = {
+val x83 = x31(0)
+val x84 = x83.isRow
+val x110 = {
+def x110thenb(): generated.scala.Matrix[Double] = {
+val x85 = x83.length
+val x86 = new generated.scala.DoubleMatrixImpl(x79,x85)
+var x88 : Int = 0
+val x97 = while (x88 < x79) {
+var x90 : Int = 0
+val x95 = while (x90 < x85) {
+val x91 = x31(x88)
+val x92 = x91(x90)
+val x93 = x86(x88, x90) = x92
+x93
+x90 = x90 + 1
+}
+x95
+x88 = x88 + 1
+}
+x86
+}
+def x110elseb(): generated.scala.Matrix[Double] = {
+val x85 = x83.length
+val x99 = new generated.scala.DoubleMatrixImpl(x85,x79)
+var x100 : Int = 0
+val x108 = while (x100 < x79) {
+var x101 : Int = 0
+val x106 = while (x101 < x85) {
+val x102 = x31(x100)
+val x103 = x102(x101)
+val x104 = x99(x101, x100) = x103
+x104
+x101 = x101 + 1
+}
+x106
+x100 = x100 + 1
+}
+x99
+}
+if (x84) {
+x110thenb()
+} else { 
+x110elseb()
+}
+}
+x110
+}
+if (x80) {
+x112thenb()
+} else { 
+x112elseb()
+}
+}
+x112
+}
+val x115 = x11.close()
+val x116 = new generated.scala.DoubleLabelsImpl(x78)
+val x117 = new generated.scala.DoubleDoubleTrainingSetImpl(x114,x116)
+x117
+}
+val x120 = x119.numRows
+val x121 = "Training model on "+x120
+val x122 = x121+" documents."
+val x123 = println(x122)
+val x124 = Seq()
+val x125 = ppl.delite.runtime.profiler.PerformanceTimer.start("app", false)
+val x127 = new generated.scala.IndexVectorRangeImpl(0,x120)
+val x126 = x119.numCols
+val x139 = x127.length
+val x140 = x127.isRow
+def x143_block = {
+val x141 = new generated.scala.DoubleVectorImpl(x139,x140)
+var mapIdx = 0
+while (mapIdx < x127.size) { // begin map loop x143
+val x128 = x127.dcApply(mapIdx)
+x141.dcUpdate(mapIdx,  {
+val x133 = x128 * x126
+var x138: Double = 0
+var x130 = 0
+while (x130 < x126) {  // begin fat loop x138
+val x134 = x133 + x130
+val x135 = x119.dcApply(x134)
+val x136 = { 
+x135
+}
+val x131 = x138
+val x132 = x136
+val x137 = x131 + x132
+x138 = x137
+x130 += 1
+} // end fat loop x138
+x138
+})
+mapIdx += 1
+} // end map loop x143
+x141
+}
+val x143 = x143_block
+val x155 = { 
+val x152 = new generated.scala.DoubleVectorImpl(x126,true)
+x152
+}
+val x158 = { 
+val x152 = new generated.scala.DoubleVectorImpl(x126,true)
+x152
+}
+val x159 = new generated.scala.IndexVectorRangeImpl(0,x126)
+val x144 = x119.labels
+val x200 = x126
+val x212 = List()
+val x213 = {
+var forIdx = 0
+while (forIdx < x159.size) { // begin foreach loop x213
+val x160 = x159.dcApply(forIdx)
+var x161: Double = 0.0
+var x162: Double = 0.0
+var x163: Double = 0.0
+var x164: Double = 0.0
+var x165: Int = 0
+val x196 = while ({val x166 = x165
+val x167 = x166 < x120
+x167}) {
+val x169 = x165
+val x170 = x144(x169)
+val x171 = x170==1
+val x193 = {
+def x193thenb(): Unit = {
+val x173 = x165
+val x172 = x119.transposed
+val x174 = x172.numCols
+val x175 = x160 * x174
+val x176 = x175 + x173
+val x177 = x172.dcApply(x176)
+val x178 = { 
+x177
+}
+val x179 = x161 += x178
+val x180 = x165
+val x181 = x143(x180)
+val x182 = x162 += x181
+()
+}
+def x193elseb(): Unit = {
+val x184 = x165
+val x172 = x119.transposed
+val x174 = x172.numCols
+val x175 = x160 * x174
+val x185 = x175 + x184
+val x186 = x172.dcApply(x185)
+val x187 = { 
+x186
+}
+val x188 = x163 += x187
+val x189 = x165
+val x190 = x143(x189)
+val x191 = x164 += x190
+()
+}
+if (x171) {
+x193thenb()
+} else { 
+x193elseb()
+}
+}
+val x194 = x165 += 1
+()
+}
+val x197 = x161
+val x199 = x162
+val x198 = x197 + 1.0
+val x201 = x199 + x200
+val x202 = x198 / x201
+val x203 = x155(x160) = x202
+val x204 = x163
+val x206 = x164
+val x205 = x204 + 1.0
+val x207 = x206 + x200
+val x208 = x205 / x207
+val x209 = x158(x160) = x208
+x209
+forIdx += 1
+} // end foreach loop x213
+}
+val x216 = ppl.delite.runtime.profiler.PerformanceTimer.stop("app", false)
+val x9 = x0(1)
+val x326 = { 
+val x217 = new java.io.FileReader(x9)
+val x218 = new java.io.BufferedReader(x217)
+val x219 = x218.readLine()
+var x220: java.lang.String = x219
+val x221 = x218.readLine()
+var x222: java.lang.String = x221
+val x223 = x222
+val x224 = x223.trim()
+val x225 = x224.split("\\s+")
+val x226 = x225(0)
+val x227 = java.lang.Integer.parseInt(x226)
+val x230 = x227 < 0
+val x228 = x225(1)
+val x229 = java.lang.Integer.parseInt(x228)
+val x231 = x229 < 0
+val x232 = x230 || x231
+val x235 = {
+def x235thenb(): Nothing = {
+val x233 = error("Illegal input to readTokenMatrix")
+x233
+}
+if (x232) {
+x235thenb()
+}
+}
+val x236 = x218.readLine()
+val x237 = new generated.scala.DoubleVectorImpl(0,true)
+val x238 = new generated.scala.VectorImpl[generated.scala.Vector[Double]](0,true)
+var x240 : Int = 0
+val x276 = while (x240 < x227) {
+val x241 = x218.readLine()
+x222 = x241
+val x243 = x222
+val x244 = x243.trim()
+x222 = x244
+val x246 = x222
+val x248 = new generated.scala.DoubleVectorImpl(x229,true)
+var x249: Int = 0
+var x250: Int = 1
+val x247 = x246.split("\\s+")
+val x252 = x247.length
+val x253 = x252 - 1
+val x268 = while ({val x251 = x250
+val x254 = x251 < x253
+x254}) {
+val x256 = x250
+val x257 = x247(x256)
+val x258 = java.lang.Integer.parseInt(x257)
+val x259 = x249 += x258
+val x260 = x249
+val x261 = x250
+val x262 = x261 + 1
+val x263 = x247(x262)
+val x264 = java.lang.Double.parseDouble(x263)
+val x265 = x248(x260) = x264
+val x266 = x250 += 2
+()
+}
+val x271 = x237.length
+val x269 = x247(0)
+val x270 = java.lang.Double.parseDouble(x269)
+val x272 = x237.insert(x271, x270)
+val x273 = x238.length
+val x274 = x238.insert(x273, x248)
+x274
+x240 = x240 + 1
+}
+val x277 = x237.length
+val x278 = x237.isRow
+val x279 = !x278
+// a *thin* loop follows: x285
+val x285 = {
+val x281 = new generated.scala.DoubleVectorImpl(x277,x279)
+x281
+}
+var x280 = 0
+while (x280 < x277) {  // begin fat loop x285
+val x283 = x237(x280)
+x285.dcUpdate(x280, x283)
+x280 += 1
+} // end fat loop x285
+val x321 = { 
+val x286 = x238.length
+val x287 = x286==0
+val x319 = {
+def x319thenb(): generated.scala.Matrix[Double] = {
+val x288 = new generated.scala.DoubleMatrixImpl(0,0)
+x288
+}
+def x319elseb(): generated.scala.Matrix[Double] = {
+val x290 = x238(0)
+val x291 = x290.isRow
+val x317 = {
+def x317thenb(): generated.scala.Matrix[Double] = {
+val x292 = x290.length
+val x293 = new generated.scala.DoubleMatrixImpl(x286,x292)
+var x295 : Int = 0
+val x304 = while (x295 < x286) {
+var x297 : Int = 0
+val x302 = while (x297 < x292) {
+val x298 = x238(x295)
+val x299 = x298(x297)
+val x300 = x293(x295, x297) = x299
+x300
+x297 = x297 + 1
+}
+x302
+x295 = x295 + 1
+}
+x293
+}
+def x317elseb(): generated.scala.Matrix[Double] = {
+val x292 = x290.length
+val x306 = new generated.scala.DoubleMatrixImpl(x292,x286)
+var x307 : Int = 0
+val x315 = while (x307 < x286) {
+var x308 : Int = 0
+val x313 = while (x308 < x292) {
+val x309 = x238(x307)
+val x310 = x309(x308)
+val x311 = x306(x308, x307) = x310
+x311
+x308 = x308 + 1
+}
+x313
+x307 = x307 + 1
+}
+x306
+}
+if (x291) {
+x317thenb()
+} else { 
+x317elseb()
+}
+}
+x317
+}
+if (x287) {
+x319thenb()
+} else { 
+x319elseb()
+}
+}
+x319
+}
+val x322 = x218.close()
+val x323 = new generated.scala.DoubleLabelsImpl(x285)
+val x324 = new generated.scala.DoubleDoubleTrainingSetImpl(x321,x323)
+x324
+}
+val x327 = println("phi_y1: ")
+val x349 = { 
+val x328 = x155.isRow
+val x347 = {
+def x347thenb(): Unit = {
+val x329 = print("[ ")
+var x331 : Int = 0
+val x336 = while (x331 < x126) {
+val x332 = x155(x331)
+val x333 = print(x332)
+val x334 = print(" ")
+x334
+x331 = x331 + 1
+}
+val x337 = print("]\n")
+x337
+}
+def x347elseb(): Unit = {
+var x339 : Int = 0
+val x345 = while (x339 < x126) {
+val x340 = print("[")
+val x341 = x155(x339)
+val x342 = print(x341)
+val x343 = print(" ]\n")
+x343
+x339 = x339 + 1
+}
+x345
+}
+if (x328) {
+x347thenb()
+} else { 
+x347elseb()
+}
+}
+x347
+}
+val x350 = println("phi_y0: ")
+val x371 = { 
+val x351 = x158.isRow
+val x369 = {
+def x369thenb(): Unit = {
+val x352 = print("[ ")
+var x353 : Int = 0
+val x358 = while (x353 < x126) {
+val x354 = x158(x353)
+val x355 = print(x354)
+val x356 = print(" ")
+x356
+x353 = x353 + 1
+}
+val x359 = print("]\n")
+x359
+}
+def x369elseb(): Unit = {
+var x361 : Int = 0
+val x367 = while (x361 < x126) {
+val x362 = print("[")
+val x363 = x158(x361)
+val x364 = print(x363)
+val x365 = print(" ]\n")
+x365
+x361 = x361 + 1
+}
+x367
+}
+if (x351) {
+x369thenb()
+} else { 
+x369elseb()
+}
+}
+x369
+}
+val x145 = x144.length
+var x151: Double = 0
+var x146 = 0
+while (x146 < x145) {  // begin fat loop x151
+val x149 = x144(x146)
+val x147 = x151
+val x148 = x149
+val x150 = x147 + x148
+x151 = x150
+x146 += 1
+} // end fat loop x151
+val x214 = x120
+val x215 = x151 / x214
+val x372 = "phi_y: "+x215
+val x373 = println(x372)
+val x374 = x326.numRows
+val x376 = "Testing model on "+x374
+val x377 = x376+" documents."
+val x378 = println(x377)
+val x379 = new generated.scala.IndexVectorRangeImpl(0,x374)
+val x375 = x326.numCols
+val x403 = new generated.scala.RangeVectorImpl(0,x375,1,true)
+val x419 = x379.length
+val x420 = x379.isRow
+def x423_block = {
+val x421 = new generated.scala.DoubleVectorImpl(x419,x420)
+var mapIdx = 0
+while (mapIdx < x379.size) { // begin map loop x423
+val x380 = x379.dcApply(mapIdx)
+x421.dcUpdate(mapIdx,  {
+val x382 = x380 * x375
+def x413_block = {
+val x381 = x403.dcApply(0)
+var x404 = {
+val x383 = x382 + x381
+val x384 = x326.dcApply(x383)
+val x385 = { 
+x384
+}
+val x386 = x385 > 0.0
+val x401 = {
+def x401thenb(): scala.Tuple2[Double, Double] = {
+val x387 = x158(x381)
+val x393 = x155(x381)
+val x388 = Math.log(x387)
+val x389 = 1.0 - x215
+val x390 = Math.log(x389)
+val x391 = x388 + x390
+val x392 = x391 * x385
+val x394 = Math.log(x393)
+val x395 = Math.log(x215)
+val x396 = x394 + x395
+val x397 = x396 * x385
+val x398 = (x392,x397)
+x398
+}
+def x401elseb(): scala.Tuple2[Double, Double] = {
+val x400 = (0.0,0.0)
+x400
+}
+if (x386) {
+x401thenb()
+} else { 
+x401elseb()
+}
+}
+x401
+}
+var mapReduceIdx = 1
+while (mapReduceIdx < x403.size) { // begin mapReduce loop x413
+val x381 = x403.dcApply(mapReduceIdx)
+val x405 = {
+val x383 = x382 + x381
+val x384 = x326.dcApply(x383)
+val x385 = { 
+x384
+}
+val x386 = x385 > 0.0
+val x401 = {
+def x401thenb(): scala.Tuple2[Double, Double] = {
+val x387 = x158(x381)
+val x393 = x155(x381)
+val x388 = Math.log(x387)
+val x389 = 1.0 - x215
+val x390 = Math.log(x389)
+val x391 = x388 + x390
+val x392 = x391 * x385
+val x394 = Math.log(x393)
+val x395 = Math.log(x215)
+val x396 = x394 + x395
+val x397 = x396 * x385
+val x398 = (x392,x397)
+x398
+}
+def x401elseb(): scala.Tuple2[Double, Double] = {
+val x400 = (0.0,0.0)
+x400
+}
+if (x386) {
+x401thenb()
+} else { 
+x401elseb()
+}
+}
+x401
+}
+x404 = {
+val x406 = x404._1
+val x408 = x405._1
+val x410 = x406 + x408
+val x407 = x404._2
+val x409 = x405._2
+val x411 = x407 + x409
+val x412 = (x410,x411)
+x412
+}
+mapReduceIdx += 1
+} // end mapReduce loop x413
+x404
+}
+val x413 = x413_block
+val x414 = x413._1
+val x415 = x413._2
+val x416 = x415 > x414
+val x417 = {
+def x417thenb(): Double = {
+1.0
+}
+def x417elseb(): Double = {
+0.0
+}
+if (x416) {
+x417thenb()
+} else { 
+x417elseb()
+}
+}
+x417
+})
+mapIdx += 1
+} // end map loop x423
+x421
+}
+val x423 = x423_block
+val x425 = x326.labels
+val x430 = new generated.scala.RangeVectorImpl(0,x374,1,true)
+def x434_block = {
+val x424 = x430.dcApply(0)
+var x431 = {
+val x426 = x425(x424)
+val x427 = x423(x424)
+val x428 = x426 != x427
+val x429 = {
+def x429thenb(): Int = {
+1
+}
+def x429elseb(): Int = {
+0
+}
+if (x428) {
+x429thenb()
+} else { 
+x429elseb()
+}
+}
+x429
+}
+var mapReduceIdx = 1
+while (mapReduceIdx < x430.size) { // begin mapReduce loop x434
+val x424 = x430.dcApply(mapReduceIdx)
+val x432 = {
+val x426 = x425(x424)
+val x427 = x423(x424)
+val x428 = x426 != x427
+val x429 = {
+def x429thenb(): Int = {
+1
+}
+def x429elseb(): Int = {
+0
+}
+if (x428) {
+x429thenb()
+} else { 
+x429elseb()
+}
+}
+x429
+}
+x431 = {
+val x433 = x431 + x432
+x433
+}
+mapReduceIdx += 1
+} // end mapReduce loop x434
+x431
+}
+val x434 = x434_block
+val x435 = x434.doubleValue()
+val x436 = x374.doubleValue()
+val x437 = x435 / x436
+val x438 = "Test error: "+x437
+val x439 = println(x438)
+()
+}
+}
+/*****************************************
+  End of Generated Code                  
+*******************************************/

@@ -11,25 +11,19 @@ package ppl.dsl.optiml.datastruct.scala
  *
  */
 
-class RangeVectorImpl(__start: Int, __end: Int, __stride: Int, __isRow: Boolean) extends RangeVector {
+class RangeVectorImpl(val start: Int, val end: Int, val stride: Int, __isRow: Boolean) extends RangeVector {
 
-  protected var _start = __start
-  protected var _end = __end
-  protected var _stride = __stride
   protected var _isRow = __isRow
 
-  def start = _start
-  def end = _end
+  val length = (end-start + stride - 1) / stride
   def isRow = _isRow
-  def stride = _stride
-  def length = (_end-_start + _stride - 1)
 
   // TODO (tiark): this crashes scalac for some reason
   //lazy val data = Array.range(start, end, stride)
   def data = throw new UnsupportedOperationException("there is a known bug with accessing data in RangeVectorImpl")
 
   def apply(n: Int) : Int = {
-    _start + n*_stride
+    start + n*stride
   }
 
   def mtrans = {

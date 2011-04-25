@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala._
 import ppl.delite.framework.DeliteApplication
 
-object gradient extends DeliteApplication with OptiMLExp
+object gradientRunner extends OptiMLApplicationRunner with gradient
+
+trait gradient extends OptiMLApplication
   with BinarizedGradientGridFuncs with BinarizedGradientPyramidFuncs with BinarizedGradientTemplateFuncs {
 
   def main() = {
@@ -15,9 +17,9 @@ object gradient extends DeliteApplication with OptiMLExp
     val all_templates = MLInputReader.readTemplateModels(args(1))
 //    println("gradientapp.3: " + all_templates.length)
 
-    tic
+    tic()
 //println("gradientapp.4")
-    var imgs = unit(0)
+    var imgs = 0
 //println("gradientapp.5")
     while (imgs < 3) {
 //println("gradientapp.6")
@@ -27,6 +29,6 @@ object gradient extends DeliteApplication with OptiMLExp
 //println("gradientapp.8")
     }
 //println("gradientapp.9")
-    toc
+    toc()
   }
 }

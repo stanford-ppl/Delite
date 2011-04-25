@@ -12,18 +12,15 @@ package ppl.apps.ml.svm
  */
 
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
-import ppl.dsl.optiml.OptiML
 import ppl.delite.framework.DeliteApplication
+import ppl.dsl.optiml.{OptiMLApplication, OptiML}
 
-trait SVMModels { this: OptiML =>
+trait SVMModel { this: OptiMLApplication =>
 
-  class SVMModel { // do we need a class?
-
-    // model data
-    // TODO: NPE here from IR being null until the constructor is finished and...
-    //private var weights: Var[Vector[Double]] = null
-    //private var b: Var[Double] = null
-
+  // model data
+  // TODO: NPE here from IR being null until the constructor is finished and...
+  //private var weights: Var[Vector[Double]] = null
+  //private var b: Var[Double] = null
 
   // construct directly from model
   def load(modelFilename: Rep[String]) = {
@@ -39,26 +36,29 @@ trait SVMModels { this: OptiML =>
   def train(X: Rep[TrainingSet[Double,Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
     println("Training SVM using the SMO algorithm")
 
-    val Y = X.labels
+    // adjust the classification labels to -1 and +1 for SMO
+    val Y = X.labels map { e => if (e == 0) -1. else 1. }
 
     // internal model storage
-    var weights = Vector.zeros(X.numCols)
-    var b = unit(0.0)
+    val weights = Vector.zeros(X.numCols).mutable
+    var b = 0.0
 
     // intermediate training info
     //var alphas = Vector.zeros(X.numRows).mt // col vector
-    val alphas = Vector.mzeros(X.numRows)
+    val alphas = Vector.zeros(X.numRows).mutable
     alphas.mt // col vector
 
     val numSamples = X.numRows
-    var passes = unit(0)
-    
+    var passes = 0
+    var iter = 0
+
     while (passes < max_passes){
       print(".")
-      var num_changed_alphas = unit(0)
-      //var i = unit(0)
-      //while(i < numSamples){ //TR
-      for (i <- 0 until numSamples) {
+      iter += 1
+      var num_changed_alphas = 0
+      var i = 0
+      while(i < numSamples){ //TR
+      //for (i <- 0 until numSamples) {
         // TODO: x761 -- code is recalculating alphas from original definition here
         val alphasOld = alphas.cloneL
         
@@ -80,8 +80,8 @@ trait SVMModels { this: OptiML =>
 
           // calculate bounds L and H that must hold in order for a_i, alphas(j) to
           // satisfy constraints and check
-          var L = unit(0.0)
-          var H = unit(0.0)
+          var L = 0.0
+          var H = 0.0
           if (Y(i) != Y(j)){
             L = Math.max(0., alphasOld(j) - alphasOld(i))
             H = Math.min(C, C + alphasOld(j) - alphasOld(i))
@@ -105,7 +105,7 @@ trait SVMModels { this: OptiML =>
               else if (alphas(j) < L) alphas(j) = L
 
               // check alphas(j) convergence
-              if (Math.abs(alphas(j) - old_aj) >  tol){
+              if (Math.abs(alphas(j) - old_aj) >  .00001){
                 // find a_i to maximize objective function
 
                 val old_ai = alphasOld(i)
@@ -132,7 +132,7 @@ trait SVMModels { this: OptiML =>
             } // negative eta?
           } // L != H?
         } // main if (select alphas)
-        //i += 1 //TR
+        i += 1 //TR
       } // for i = 1 to numSamples
 
       if (num_changed_alphas == 0){
@@ -143,9 +143,14 @@ trait SVMModels { this: OptiML =>
     } // while
 
     // SMO finished
+    println("num iterations: " + iter)
+
     // compute the weights (assuming a linear kernel)
-    for (i <- 0 until X.numRows){
-      weights = weights + X(i)*alphas(i)*Y(i)
+    var i = 0
+    while(i < X.numRows){
+    //for (i <- 0 until X.numRows){
+      weights += X(i)*alphas(i)*Y(i)
+      i += 1
     }
     print("\\n")
 
@@ -170,6 +175,5 @@ trait SVMModels { this: OptiML =>
     val out = weights.cloneL
     out += b
     MLOutputWriter.writeVector(out, filename)
-  }
   }
 }

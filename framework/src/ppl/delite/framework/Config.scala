@@ -9,5 +9,5 @@ object Config {
   var buildDir = System.getProperty("delite.build.dir", "generated")
   var blasHome = System.getProperty("blas.home")
   var useBlas = if (blasHome == null) false else true
-  var nestedVariantsLevel = System.getProperty("nested.variants.level", "1").toInt
+  var nestedVariantsLevel = System.getProperty("nested.variants.level", "0").toInt
 }

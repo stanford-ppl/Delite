@@ -12,21 +12,21 @@ package ppl.apps.ml.svm
  */
 
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
-import ppl.dsl.optiml.OptiML
 import ppl.delite.framework.DeliteApplication
+import ppl.dsl.optiml.{OptiMLApplication, OptiML}
 
-trait SVMRelaxedModels { this: OptiML =>
+trait SVMRelaxedModels { this: OptiMLApplication =>
   
   class SVMRelaxedModel {
   
   // model data
   private var weights : Rep[Vector[Double]] = null
   private var alphas : Rep[Vector[Double]] = null
-  private var b = unit(0.0)
+  private var b = 0.0
   
   // construct directly from model
   def load(modelFilename: Rep[String]) {
-    val in = loadVector(modelFilename)
+    val in = readVector(modelFilename)
     b = in(in.length-1)
     weights = in.take(in.length-1)
   }
@@ -42,7 +42,7 @@ trait SVMRelaxedModels { this: OptiML =>
     b = 0.0
 
     val numSamples = X.numRows
-    var passes = unit(0)
+    var passes = 0
 
     // in the SMO algorithm, each time an alpha(j) has not converged, we increment num_changed_alphas
     // if after the entire block (loop through all training samples) all alpha(j)'s have converged, we increment num_passes
@@ -60,8 +60,11 @@ trait SVMRelaxedModels { this: OptiML =>
     untilconverged(alphas, 0, clone_prev_val = false){ alphas => {
     //while (passes < max_passes){
       print(".")
-      var num_changed_alphas = unit(0)
-      for (i <- 0 until numSamples){
+      var num_changed_alphas = 0
+
+      var i = 0
+      while (i < numSamples){
+      //for (i <- 0 until numSamples){
         val f_i = (alphas*Y*(X*X(i).t)).sum + b
         val E_i = f_i - Y(i)
 
@@ -81,13 +84,13 @@ trait SVMRelaxedModels { this: OptiML =>
 
           // calculate bounds L and H that must hold in order for a_i, alphas(j) to
           // satisfy constraints and check
-          var L = unit(0.0)
-          var H = unit(0.0)
+          var L = 0.0
+          var H = 0.0
           if (Y(i) != Y(j)){
-            L = Math.max(0, alphas(j) - alphas(i))
+            L = Math.max(0., alphas(j) - alphas(i))
             H = Math.min(C, C + alphas(j) - alphas(i))
           }else{
-            L = Math.max(0, alphas(i) + alphas(j) - C)
+            L = Math.max(0., alphas(i) + alphas(j) - C)
             H = Math.min(C, alphas(i) + alphas(j))
           }
 
@@ -128,6 +131,7 @@ trait SVMRelaxedModels { this: OptiML =>
             } // negative eta?
           } // L != H?
         } // main if (select alphas)
+        i += 1
       } // for i = 1 to numSamples
 
       //print("num_changed_alphas: " + num_changed_alphas + " ")
@@ -140,7 +144,7 @@ trait SVMRelaxedModels { this: OptiML =>
       alphas
 
     // in scala, closures bind variables by reference, so diff() sees the updates to max_passes and passes
-    }}((v1, v2) => if (passes > max_passes) 0 else max_passes - passes, manifest[Vector[Double]], vectorCloneable[Double]) // untilconverged
+    }}((v1, v2) => if (passes > max_passes) unit(0) else max_passes - passes, manifest[Vector[Double]], vectorCloneable[Double]) // untilconverged
 
     // SMO finished
     print("\n")
@@ -159,9 +163,9 @@ trait SVMRelaxedModels { this: OptiML =>
   def classify(test_pt : Rep[Vector[Double]]) : Rep[Int] = {
     // SVM prediction is W'*X + b
     if ((weights*:*test_pt + b) < 0){
-      -1
+      unit(-1)
     }
-    else 1
+    else unit(1)
   }
 
   ////////////

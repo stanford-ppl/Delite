@@ -7,36 +7,19 @@ import ppl.delite.runtime.graph.targets.Targets
  *
  */
 
-class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
+class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Targets.Value, Map[String,String]],
                    val predicateGraph: DeliteTaskGraph, val predicateValue: String,
                    val thenGraph: DeliteTaskGraph, val thenValue: String,
                    val elseGraph: DeliteTaskGraph, val elseValue: String)
   extends OP_Control {
 
-  def supportsTarget(target: Targets.Value) = resultType.contains(target)
-
-  def outputType(target: Targets.Value) = resultType(target)
-  override def outputType: String = resultType(Targets.Scala)
-  override def outputSlotType(target: Targets.Value, name: String) = { //TR FIXME
-    assert(name == id, name + "!="+ id)
-    outputType(Targets.Scala)
-  }
-
   def nestedGraphs = Seq(predicateGraph, thenGraph, elseGraph)
 
-  def isReturner(idx: Int) = {
-    if (thenGraph.result != null && !thenGraph.result.isInstanceOf[OP_Input])
-      (thenGraph.result.scheduledResource == idx)
-    else if (elseGraph.result != null && !elseGraph.result.isInstanceOf[OP_Input])
-      (elseGraph.result.scheduledResource == idx)
-    else true //should only be 1 in this case
-  }
-
   def returner(indices: Seq[Int]) = {
-    if (thenGraph.result != null && !thenGraph.result.isInstanceOf[OP_Input])
-      thenGraph.result.scheduledResource
-    else if (elseGraph.result != null && !elseGraph.result.isInstanceOf[OP_Input])
-      elseGraph.result.scheduledResource
+    if (thenGraph.result._1 != null && !thenGraph.result._1.isInstanceOf[OP_Input])
+      thenGraph.result._1.scheduledResource
+    else if (elseGraph.result._1 != null && !elseGraph.result._1.isInstanceOf[OP_Input])
+      elseGraph.result._1.scheduledResource
     else indices(0)
   }
 
@@ -48,27 +31,23 @@ class OP_Condition(val id: String, resultType: Map[Targets.Value, String],
     val returnerIdx = returner(indices)
     val chunks =
       for (idx <- indices) yield {
-        val resultMap = if (idx == returnerIdx) resultType else Targets.unitTypes
+        val resultMap = if (idx == returnerIdx) outputTypesMap else Targets.unitTypes(id+"_"+idx)
         val r = new OP_Condition(id+"_"+idx, resultMap, predicateGraph, predicateValue,
         thenGraph, thenValue, elseGraph, elseValue)
-        r.dependencyList = dependencyList
+        r.dependencies = dependencies
         r.inputList = inputList
-        assert(getOutputs == List(id), "outputs for " + this + " were expected to be " + List(id) + " but are " + getOutputs) //TR FIXME
-        r.outputList = List(r.id)
-        r.consumerList = consumerList
-        r.inputSyms = inputSyms
+        r.consumers = consumers
         r.cudaMetadata = cudaMetadata
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)
         if (idx == returnerIdx) returnOp = r
 
         //add special consumer ops
-        if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, Seq(predicateGraph.result), Seq(predicateGraph.result))) //get predicate result on all chunks
+        if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, Seq(predicateGraph.result._1), Seq(predicateGraph.result._1))) //get predicate result on all chunks
         if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
-          if (thenValue == "") thenGraph.schedule(idx).add(new GetterOp(id+"t_"+idx, idx, Seq(thenGraph.result), Seq(thenGraph.result))) //get then result on returner chunk
-          if (elseValue == "") elseGraph.schedule(idx).add(new GetterOp(id+"e_"+idx, idx, Seq(elseGraph.result), Seq(elseGraph.result))) //get else result on returner chunk
+          if (thenValue == "") thenGraph.schedule(idx).add(new GetterOp(id+"t_"+idx, idx, Seq(thenGraph.result._1), Seq(thenGraph.result._1))) //get then result on returner chunk
+          if (elseValue == "") elseGraph.schedule(idx).add(new GetterOp(id+"e_"+idx, idx, Seq(elseGraph.result._1), Seq(elseGraph.result._1))) //get else result on returner chunk
         }
-
         r
       }
 

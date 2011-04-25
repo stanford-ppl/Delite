@@ -1,8 +1,8 @@
 package ppl.apps.ml.lbpdenoise
 
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.OptiMLExp
 import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication, OptiMLExp}
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -12,7 +12,9 @@ import ppl.dsl.optiml.datastruct.scala._
  * Stanford University
  */
 
-object LBPDenoise extends DeliteApplication with OptiMLExp {
+object LBPDenoiseRunner extends OptiMLApplicationRunner with LBPDenoise
+
+trait LBPDenoise extends OptiMLApplication {
   def print_usage = {
     println("Usage: GraphLBP <rows> <cols>")
     println("Example: GraphLBP 100 100")
@@ -20,17 +22,18 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
 
   def main() = {
+
     if (args.length < 1) print_usage
   
-    val colors = unit(5)
+    val colors = 5
     val damping = unit(0.1)
-    val bound = unit(1E-15)
-    var rows = unit(100)
-    var cols = unit(100)
-    val sigma = unit(2)
+    val bound = 1E-15
+    var rows = 100
+    var cols = 100
+    val sigma = 2
     val lambda = unit(10)
-    var smoothing = unit("laplace")
-    val pred_type = unit("map")
+    var smoothing = "laplace"
+    val pred_type = "map"
 
     val edgePotential = Matrix[Double](colors, colors)
   
@@ -61,6 +64,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
     if (smoothing == "laplace") {
       binaryFactorSetLaplace(edgePotential, lambda)
+      //binaryFactorSetLaplace(edgePotential)
     }
     else if (smoothing == "square") {
       binaryFactorSetAgreement(edgePotential, lambda)
@@ -68,24 +72,24 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     
     edgePotential.pprint
 
-    var count = unit(1)
+    var count = 1
     
     g.freeze()
 
-    tic
+    tic()
     untilconverged(g) {
       v =>
         val vdata = v.data.asInstanceOfL[DenoiseVertexData]
-        vdata.belief.copyFrom(0, vdata.potential)
+        vdata.belief.copyFrom(0, vdata.potential)  //TODO TR: non-mutable write
 
         // Multiply belief by messages
-        for (e <- v.edges) {
+        for (e <- v.edges) {  //TODO TR: non-mutable write
           val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
-          unaryFactorTimesM(vdata.belief, in.message)
+          unaryFactorTimesM(vdata.belief, in.message)  //TODO TR: non-mutable write
         }
 
         // Normalize the belief
-        val belief = unaryFactorNormalizeM(vdata.belief)
+        val belief = unaryFactorNormalizeM(vdata.belief) //TODO TR: non-mutable write
         
        /* if(count % 100000 == 0) {
           print("norm")
@@ -96,15 +100,15 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
         //vdata.belief.pprint
 
         // Send outbound messages
-        for (e <- v.edges) {
+        for (e <- v.edges) { //TODO TR: non-mutable write (within)
           val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
           val out = e.asInstanceOfL[MessageEdge].out(v).asInstanceOfL[DenoiseEdgeData]
           
           // Compute the cavity
-          val cavity = unaryFactorNormalizeM(unaryFactorDivideM(vdata.belief.cloneL, in.message))
+          val cavity = unaryFactorNormalizeM(unaryFactorDivideM(vdata.belief.cloneL, in.message)) //TODO TR: non-mutable write (use mclone)
 
           // Convolve the cavity with the edge factor
-          val msg = unaryFactorNormalizeM(unaryFactorConvolve(edgePotential, cavity))
+          val msg = unaryFactorNormalizeM(unaryFactorConvolve(edgePotential, cavity))  //TODO TR: non-mutable write
 
           // Damp the message (MUTATE IN PLACE)
           /* unaryFactorDampM(msg, out.message, damping)
@@ -119,7 +123,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
             msg.pprint
           } */
          
-          val dampMsg = unaryFactorDampM(msg, out.message, damping)
+          val dampMsg = unaryFactorDampM(msg, out.message, damping) //TODO TR: non-mutable write
           
          /*  if(count % 100000 == 0) {
             out.message.pprint
@@ -130,7 +134,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           val residual = unaryFactorResidual(dampMsg, out.message)
           
           // Set the message
-          out.setMessage(dampMsg)
+          out.setMessage(dampMsg) //TODO TR: non-mutable write
           
            if(count % 100000 == 0) {
            println(count)
@@ -139,17 +143,17 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
          
           // Enqueue update function on target vertex if residual is greater than bound
           if (residual > bound) {
-            v.addTask(e.asInstanceOfL[MessageEdge].target(v))
+            v.addTask(e.asInstanceOfL[MessageEdge].target(v)) //TODO TR: non-mutable write
           }
         }
       count += 1
     }
         
-    toc
+    toc()
 
     // Predict the image!
     g.vertices foreach { v =>
-      imgUpdate(cleanImg, v.data.asInstanceOfL[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.asInstanceOfL[DenoiseVertexData].belief))
+      imgUpdate(cleanImg, v.data.asInstanceOfL[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.asInstanceOfL[DenoiseVertexData].belief))   //TODO TR: non-mutable write (use mclone)
     }
     
     MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
@@ -167,15 +171,20 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     val vertices = Matrix[MessageVertex](img.numRows, img.numCols)
 
     // Set vertex potential based on image
-    for (i <- 0 until img.numRows) {
-      for (j <- 0 until img.numCols) {
+    var i = 0
+    var j = 0
+    while (i < img.numRows) {
+      j = 0
+      while (j < img.numCols) {
         val pixelId = imgPixelId(img, i, j)
-        val potential = Vector.mzeros(numRings)
+        val potential = Vector.zeros(numRings).mutable
 
         val obs = img(i, j)
 
-        for (pred <- 0 until numRings) {
+        var pred = 0
+        while (pred < numRings) {
           potential(pred) = 0.0 - ((obs - pred) * (obs - pred) / (2.0 * sigmaSq))
+          pred += 1
         }
 
         unaryFactorNormalizeM(potential)
@@ -183,16 +192,20 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
         val data = DenoiseVertexData(pixelId, belief.cloneL, potential)
         val vertex = MessageVertex(g, data)
 
-        vertices(i)(j) = vertex
+        vertices(i)(j) = vertex //TODO TR: non-mutable write (use matrix update?)
         g.addVertex(vertex)
+        j += 1
       }
+      i += 1
     }
 
     val edgeData = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
 
     // Add bidirectional edges between neighboring pixels
-    for (i <- 0 until img.numRows) {
-      for (j <- 0 until img.numCols) {
+    i = 0
+    while (i < img.numRows) {
+      j = 0
+      while (j < img.numCols) {
         if(j < img.numCols - 1) {
           val edgeData = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
           val edgeData2 = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
@@ -207,7 +220,9 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
           val edgeDown = MessageEdge(g, edgeData, edgeData2, vertices(i)(j), vertices(i+1)(j))
           g.addEdge(edgeDown, vertices(i)(j), vertices(i+1)(j))
         }
+        j += 1
       }
+      i += 1
     }
 
     g
@@ -233,8 +248,11 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     val centerC = img.numCols.asInstanceOfL[Double] / 2.0
     val maxRadius = Math.min(img.numRows, img.numCols).asInstanceOfL[Double] / 2.0
 
-    for (r <- 0 until img.numRows) {
-      for (c <- 0 until img.numCols) {
+    var r = 0
+    var c = 0
+    while (r < img.numRows) {
+      c = 0
+      while (c < img.numCols) {
         val distance = Math.sqrt((r.asInstanceOfL[Double] - centerR) * (r.asInstanceOfL[Double] - centerR) + (c.asInstanceOfL[Double] - centerC) * (c.asInstanceOfL[Double] - centerC))
 
         // If on top of image
@@ -247,17 +265,15 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
         else {
           img(r, c) = 0
         }
+        c += 1
       }
+      r += 1
     }
   }
 
   // Corrupt the image with Gaussian noise
   def imgCorrupt(img: Rep[Matrix[Double]], sigma: Rep[Double]) = {
-    for (r <- 0 until img.numRows) {
-      for (c <- 0 until img.numCols) {
-        img(r, c) = img(r, c) + randomGaussian * sigma
-      }
-    }
+    img mmap { _ + randomGaussian*sigma }
   }
 
   def imgSave(img: Rep[Matrix[Double]], filename: Rep[String]) = {
@@ -265,26 +281,45 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
 
   def binaryFactorSetAgreement(bf: Rep[Matrix[Double]], lambda: Rep[Double]) = {
-    for (i <- 0 until bf.numRows) {
-      for (j <- 0 until bf.numCols) {
+    var i = 0
+    var j = 0
+    while (i < bf.numRows) {
+      j = 0
+      while (j < bf.numCols) {
         if (i != j)
           bf(i, j) = 0.0 - lambda
         else
           bf(i, j) = 0
+        j += 1
       }
+      i += 1
     }
   }
 
-  def binaryFactorSetLaplace(bf: Rep[Matrix[Double]], lambda: Rep[Double]) = {
-    for (i <- 0 until bf.numRows) {
-      for (j <- 0 until bf.numCols) {
+  // TODO: passing lambda somehow causing a scalac internal error, even if lambda is not used anywhere
+  //def binaryFactorSetLaplace(bf: Rep[Matrix[Double]]) {
+  def binaryFactorSetLaplace(bf: Rep[Matrix[Double]], lambda: Rep[Double]) {
+    var i = 0
+    var j = 0
+    while (i < bf.numRows) {
+      j = 0
+      while (j < bf.numCols) {
         bf(i, j) = 0.0 - lambda * Math.abs(i - j);
+        j += 1
       }
+      i += 1
     }
+    // TODO: how can this mutable matrix constructor operation be expressed using parallel optiml constructs?
+    /*
+    // def update(IndexVector2, f: (i,j) => val): Unit
+    bf(0::bf.numRows, 0::bf.numCols) = { i, j =>
+      0.0 - lambda * Math.abs(i - j)
+    }
+    */
   }
 
   def unaryFactorUniform(arity: Rep[Int]) = {
-    val factor = Vector.mzeros(arity)
+    val factor = Vector.zeros(arity).mutable
     unaryFactorNormalizeM(factor)
     factor
   }
@@ -367,10 +402,10 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
   // Max assignment
   def unaryFactorMaxAsg(uf: Rep[Vector[Double]]): Rep[Int] = {
-    var max_asg = unit(0)
+    var max_asg = 0
     var max_value = uf(0)
 
-    var asg = unit(0)
+    var asg = 0
     while (asg < uf.length) {
       if (uf(asg) > max_value) {
         max_value = uf(asg)
@@ -393,8 +428,8 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
   
   def unaryFactorNormalizeI(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
-    var sum = unit(0.0)
-    var i = unit(0)
+    var sum = 0.0
+    var i = 0
     while(i < uf.length) {
       sum += Math.exp(uf(i))
       i += 1
@@ -402,7 +437,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
     
     val logZ = Math.log(sum)
     
-    i = unit(0)
+    i = 0
     while(i < uf.length) {
       uf(i) = uf(i) - logZ
       i += 1
@@ -412,7 +447,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   }
 
   def unaryFactorTimesI(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
-    var i = unit(0)
+    var i = 0
     while(i < a.length) {
       a(i) = a(i) + b(i)
       i += 1
@@ -423,7 +458,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
 
   // Add other factor elementwise
   def unaryFactorPlusI(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
-    var i = unit(0)
+    var i = 0
     while(i < a.length) {
       a(i) = Math.log(Math.exp(a(i)) + Math.exp(b(i)))
       i += 1
@@ -434,7 +469,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   
   // Divide elementwise by other factor
   def unaryFactorDivideI(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
-    var i = unit(0)
+    var i = 0
     while(i < a.length) {
       a(i) = a(i) - b(i)
       i += 1
@@ -446,10 +481,10 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   def unaryFactorConvolveI(bf: Rep[Matrix[Double]], other: Rep[Vector[Double]]): Rep[Vector[Double]] = {
     val res = Vector.zeros(other.length)
     
-    var i = unit(0)
+    var i = 0
     while(i < other.length) {
-      var sum = unit(0.0)
-      var j = unit(0)
+      var sum = 0.0
+      var j = 0
       while (j < other.length) {
         sum += Math.exp(bf(i, j) + other(j))
         j += 1
@@ -468,7 +503,7 @@ object LBPDenoise extends DeliteApplication with OptiMLExp {
   
   /* This = other * damping + this * (1-damping) */
   def unaryFactorDampI(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) = {
-    var i = unit(0)
+    var i = 0
     while(i < a.length) {
       a(i) = Math.log(Math.exp(a(i))*(1.0-damping)+Math.exp(b(i))*damping)
       i += 1

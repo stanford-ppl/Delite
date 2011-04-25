@@ -11,8 +11,7 @@ package ppl.delite.runtime
 
 object Config {
 
-  //val numThreads: Int = System.getProperty("delite.threads", "1").toInt
-  val numThreads: Int = System.getProperty("delite.threads", "2").toInt
+  val numThreads: Int = System.getProperty("delite.threads", "1").toInt
 
   val numGPUs: Int = System.getProperty("delite.gpus", "0").toInt
 
@@ -27,6 +26,8 @@ object Config {
   val numRuns: Int = System.getProperty("delite.runs", "1").toInt
 
   val deliteHome: String = System.getProperty("delite.home", System.getProperty("user.dir"))
+
+  val codeCacheHome: String = System.getProperty("delite.code.cache.home", deliteHome + java.io.File.separator + "generatedCache")
 
   /***********
     * Statistics and Metrics Section

@@ -5,16 +5,17 @@ import ppl.dsl.optiml.datastruct.scala._
 import ppl.delite.framework.DeliteApplication
 
 trait BinarizedGradientPyramidFuncs {
-  this: OptiMLExp =>
+  this: OptiMLApplication =>
+
 
   def makePyramid(gradientImage: Rep[GrayscaleImage]) = {
     var crt = gradientImage
-    var currentLevel = unit(0)
+    var currentLevel = 0
     val pyramid = BinarizedGradientPyramid(Vector[GrayscaleImage](0, true), 3, 1, 3)
 
     while (currentLevel < pyramid.start_level + pyramid.levels) {
       if (currentLevel >= pyramid.start_level) {
-        pyramid.pyramid += crt
+        pyramid.pyramid += crt //TODO TR non-mutable write
       }
       if (currentLevel != (pyramid.start_level + pyramid.levels - 1)) {
         crt = varToGrayscaleImageOps(crt).bitwiseOrDownsample()

@@ -1,9 +1,9 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,NilVector,IndexVector}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
-import ppl.dsl.optiml.OptiML
+import ppl.dsl.optiml.{OptiMLLift, OptiMLCompiler, OptiML}
 
 trait VectorImplOps { this: OptiML =>
 
@@ -21,6 +21,7 @@ trait VectorImplOps { this: OptiML =>
   def vector_concatenate_impl[A:Manifest](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_times_matrix_impl[A:Manifest:Arith](v: Rep[Vector[A]], m: Rep[Matrix[A]]): Rep[Vector[A]]
   def vector_outer_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[Matrix[A]]
+  def vector_equals_impl[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Boolean]
   def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]): Rep[Unit]
   def vector_repmat_impl[A:Manifest](m: Rep[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
   def vector_trans_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], vA: Manifest[Vector[A]]): Rep[Vector[A]]
@@ -29,10 +30,14 @@ trait VectorImplOps { this: OptiML =>
   def vector_partition_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[Vector[A]],Rep[Vector[A]])
   def vector_contains_impl[A:Manifest](v: Rep[Vector[A]], elem: Rep[A]): Rep[Boolean]
   def vector_distinct_impl[A:Manifest](v: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_min_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
+  def vector_max_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
+  def vector_find_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
+  def vector_mkstring_impl[A:Manifest](v: Rep[Vector[A]], sep: Rep[String]): Rep[String]
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
-  this: OptiML =>
+  this: OptiMLCompiler with OptiMLLift =>
 
   //////////////////////////
   // kernel implementations
@@ -107,18 +112,23 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
 
   def vector_concatenate_impl[A:Manifest](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
-    if (v1.isRow != v2.isRow) {
-      println("error: trying to concatenate row and column vectors")
+    // this check doesn't work with nil vectors
+    //if (v1.isRow != v2.isRow) {
+    //  println("error: trying to concatenate row and column vectors")
       // TODo: need an exception throwing mechanism in generated code -- could be External, but needs to accessible from Base
+    //}
+    if (v1.isInstanceOfL[NilVector[A]]) v2
+    else if (v2.isInstanceOfL[NilVector[A]]) v1
+    else {
+      val out = Vector[A](v1.length+v2.length, v1.isRow)
+      for (i <- 0 until v1.length){
+        out(i) = v1(i)
+      }
+      for (i <- 0 until v2.length){
+        out(i+v1.length) = v2(i)
+      }
+      out
     }
-    val out = Vector[A](v1.length+v2.length, v1.isRow)
-    for (i <- 0 until v1.length){
-      out(i) = v1(i)
-    }
-    for (i <- 0 until v2.length){
-      out(i+v1.length) = v2(i)
-    }
-    out
   }
 
   def vector_times_matrix_impl[A:Manifest:Arith](v: Rep[Vector[A]], m: Rep[Matrix[A]]) = {
@@ -135,6 +145,22 @@ trait VectorImplOpsStandard extends VectorImplOps {
       }
     }
     out
+  }
+
+  def vector_equals_impl[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]) = {
+    if (x.length != y.length || x.isRow != y.isRow) {
+      false
+    }
+    else {
+      var foundDiff = false
+      var i = 0
+      while (i < x.length && !foundDiff) {
+        if (x(i) != y(i))
+          foundDiff = true
+        i += 1
+      }
+      !foundDiff
+    }
   }
 
   def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]) = {
@@ -191,8 +217,8 @@ trait VectorImplOpsStandard extends VectorImplOps {
 
   def vector_median_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
     // TODO: this isn't the proper definition of median
-    v.sort
-    v(v.length / 2)
+    val x = v.sort
+    x(x.length / 2)
   }
 
   def vector_filter_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
@@ -235,4 +261,50 @@ trait VectorImplOpsStandard extends VectorImplOps {
     result
   }
 
+  def vector_min_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
+    var minIndex = 0
+    var min = v(0)
+    var j = 1
+    while( j < v.length ){
+      if (v(j) < min) {
+        min = v(j)
+        minIndex = j
+      }
+      j += 1
+    }
+
+    minIndex
+  }
+
+  def vector_max_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
+    var maxIndex = 0
+    var max = v(0)
+    var j = 1
+    while( j < v.length ){
+      if (v(j) > max) {
+        max = v(j)
+        maxIndex = j
+      }
+      j += 1
+    }
+
+    maxIndex
+  }
+
+  def vector_find_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
+    val indices = IndexVector(0)
+    for (i <- 0 until v.length) {
+      if (pred(v(i))) indices += i
+    }
+    indices
+  }
+
+  def vector_mkstring_impl[A:Manifest](v: Rep[Vector[A]], sep: Rep[String]) = {
+    var s = ""
+    for (i <- 0 until v.length) {
+      s = s + v(i)
+      s = s + sep
+    }
+    s
+  }
 }

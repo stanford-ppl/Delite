@@ -22,7 +22,7 @@ trait MessageVertexOps extends DSLType with Variables {
 
   class MessageVertexOpsCls(v: Rep[MessageVertex]) {
     def data = message_vertex_data(v)
-    def target(e: MessageEdge) = message_vertex_target(v,e)
+    def target(e: Rep[MessageEdge]) = message_vertex_target(v,e)
   }
 
   // object defs

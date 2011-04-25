@@ -26,9 +26,6 @@ abstract class OP_Nested extends DeliteOP {
     functionName = name
   }
 
-  private[graph] var inputSyms: List[DeliteOP] = Nil
-  def getNestedInputs: Seq[DeliteOP] = inputSyms
-
   protected final class GetterOp(val id: String, resource: Int, dependencies: Seq[DeliteOP], inputs: Seq[DeliteOP]) extends DeliteOP {
 
     for (dep <- dependencies) {
@@ -36,16 +33,11 @@ abstract class OP_Nested extends DeliteOP {
       dep.addConsumer(this)
     }
     for (in <- inputs.reverse) {
-      this.addInput(in)
+      this.addInput(in, in.id)
     }
     scheduledResource = resource
 
-    def supportsTarget(target: Targets.Value) = true
-    def outputType(target: Targets.Value) = target match {
-      case Targets.Scala => "Unit"
-      case Targets.Cuda => "void"
-    }
-
+    private[graph] val outputTypesMap = null
     def task = null
     def isDataParallel = false
     def cost = 0

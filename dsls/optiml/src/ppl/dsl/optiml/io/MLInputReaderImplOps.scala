@@ -3,7 +3,7 @@ package ppl.dsl.optiml.io
 import java.io._
 import scala.virtualization.lms.common.Base
 import ppl.dsl.optiml.datastruct.scala._
-import ppl.dsl.optiml.OptiML
+import ppl.dsl.optiml.{OptiMLCompiler, OptiMLLift, OptiML}
 
 trait MLInputReaderImplOps { this: Base =>
   def mlinput_read_impl(filename: Rep[String]) : Rep[Matrix[Double]]
@@ -14,7 +14,7 @@ trait MLInputReaderImplOps { this: Base =>
 }
 
 trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
-  this: OptiML =>
+  this: OptiMLCompiler with OptiMLLift =>
   
   ///////////////
   // kernels
@@ -100,7 +100,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   */
   def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]] = {
 
-    var xs = BufferedReader(FileReader(filename))
+    val xs = BufferedReader(FileReader(filename))
 
     // header and metadata
     var header = xs.readLine()
@@ -116,21 +116,9 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     // tokens
     val tokenlist = xs.readLine()
 
-    val trainCatSeq = Vector[Double]()
-    for (m <- 0 until numDocs){
-      line = xs.readLine()
-      line = line.trim()
-      val nums = line.split("\\\\s+")
-
-      trainCatSeq += Double.parseDouble(nums(0))
-    }
-    val trainCategory = trainCatSeq.t
-
-    xs.close()
-    xs = BufferedReader(FileReader(filename))
-    xs.readLine(); xs.readLine(); xs.readLine()
-
+    val trainCatSeq = Vector[Double](0,true)
     val trainMatSeq = Vector[Vector[Double]](0, true)
+
     for (m <- 0 until numDocs) {
       line = xs.readLine()
       line = line.trim()
@@ -139,13 +127,15 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
       val row = Vector[Double](numTokens,true)
       var cumsum = unit(0); var j = unit(1)
       // this could be vectorized
-      while (j < nums.length - 1){
+      while (j < repArithToArithOps(nums.length) - 1){
         cumsum += Integer.parseInt(nums(j))
         row(cumsum) = Double.parseDouble(nums(j+1))
         j += 2
       }
+      trainCatSeq += Double.parseDouble(nums(0))
       trainMatSeq += row
     }
+    val trainCategory = trainCatSeq.t
     val trainMatrix = Matrix(trainMatSeq)
 
     xs.close()
@@ -208,14 +198,14 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val matchListString = file.readLine().trim.split(" ")
     i = 0
     while (i < matchListSize) {
-      matchList += Integer.parseInt(matchListString(i))
+      matchList += Integer.parseInt(matchListString(i)) //TODO TR matchList not mutable
       i += 1
     }
 
     temp = file.readLine().trim.split(" ")
     if (temp(0) != "Occlusions:") error("Illegal data format")
     val occlusionsSize = Integer.parseInt(temp(1))
-    val occlusions = Vector[Vector[Int]]()
+    val occlusions = Vector[Vector[Int]](0,true)
     val occlusionsString = file.readLine().trim.split(" ")
     if (occlusionsSize != 0) error("Occlusions not supported.")
 
