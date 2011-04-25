@@ -1,6 +1,18 @@
 package ppl.dsl.deliszt
 
-trait LanguageImplOps { this: DeLiszt =>
+trait LanguageImplOps {
+  this: DeLiszt =>
+  def DeLisztInit() : Unit = {
+    // Load cfg files
+    //
+    MeshLoader.init()
+
+    val cfg = BufferedReader(FileReader("liszt.cfg"))
+    val json = JsonParser.parse(cfg)
+
+    val meshFilename = json \ "mesh-file"
+    Mesh.mesh = MeshLoader.loadMesh(meshFilename)
+  }
 }
 
 trait LanguageImplOpsStandard extends LanguageImplOps {

@@ -6,6 +6,7 @@ import java.io.PrintWriter
 import reflect.Manifest
 import scala.virtualization.lms.internal.GenericFatCodegen
 import scala.virtualization.lms.common._
+import virtualization.lms.common.BaseExp._
 
 /* Machinery provided by DeLiszt itself (language features and control structures).
  *
@@ -17,6 +18,8 @@ import scala.virtualization.lms.common._
  */
 
 trait LanguageOps extends Base { this: DeLiszt =>
+  def _init() : Unit
+
   def Print(as : Rep[Any]*) : Unit
 	def FieldWithConst[MO <: MeshObj, VT](url : Rep[VT])(implicit mo : Manifest[MO], vt : Manifest[VT]) : Rep[Field[MO,VT]]
 	def FieldWithURL[MO <: MeshObj, VT](url : String)(implicit mo : Manifest[MO], vt : Manifest[VT]) : Rep[Field[MO,VT]]
@@ -71,83 +74,143 @@ trait LanguageOps extends Base { this: DeLiszt =>
 	def towards(e : Rep[Face],c : Rep[Cell])(implicit x : Overloaded2) : Rep[Face]
 	def size[MO <: MeshObj](s : Rep[Set[MO]])(implicit m : Manifest[MO]) : Rep[Int]
 
-	def foreach[MO <: MeshObj](x : Rep[Set[MO]], fn : Rep[MO] => Any) : Unit
+	def foreach[MO <: MeshObj](x : Rep[Set[MO]], fn : Rep[Unit]) : Rep[Unit]
 	def ID[MO <: MeshObj](x : Rep[MO]) : Rep[Int]
 }
 
 trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
-  this: OptiMLExp with LanguageImplOps =>
+  this: DeLisztExp with LanguageImplOps =>
 
-  case class InternalRandDouble() extends Def[Double]
-  case class InternalRandFloat() extends Def[Float]
-  case class InternalRandInt() extends Def[Int]
-  case class InternalRandLong() extends Def[Long]
-  case class InternalRandBoolean() extends Def[Boolean]
+  /******* Ops *********/
+  case class DeLisztInit() extends Def[Unit]
+  case class DeLisztPrint(as: Exp[Any]*) extends Def[Unit]
 
-  case class RandDouble() extends Def[Double]
-  case class RandFloat() extends Def[Float]
-  case class RandInt() extends Def[Int]
-  case class RandLong() extends Def[Long]
-  case class RandBoolean() extends Def[Boolean]
+  case class DeLisztFieldWithConst[MO <: MeshObj : Manifest, VT : Manifest](url : Exp[VT]) extends Def[Field[MO,VT]]
+  case class DeLisztFieldWithURL[MO <: MeshObj : Manifest, VT : Manifest](url : Exp[String]) extends Def[Field[MO,VT]]
+  case class DeLisztBoundarySet[MO <: MeshObj : Manifest](name : Exp[String]) extends Def[Set[MO]]
 
-  case class RandGaussian() extends Def[Double]
+  case class DeLisztMesh() extends Def[Mesh]
 
-  case class RandReseed() extends Def[Unit]
+  case class DeLisztVerticesMesh(e : Exp[Mesh]) extends Def[Set[Vertex]]
+  case class DeLisztVerticesVertex(e : Exp[Vertex]) extends Def[Set[Vertex]]
+  case class DeLisztVerticesEdge(e : Exp[Edge]) extends Def[Set[Vertex]]
+  case class DeLisztVerticesFace(e : Exp[Face]) extends Def[Set[Vertex]]
+  case class DeLisztVerticesCell(e : Exp[Cell]) extends Def[Set[Vertex]]
 
+  case class DeLisztVerticesFaceCCW(e : Exp[Face]) extends Def[Set[Vertex]]
+  case class DeLisztVerticesFaceCW(e : Exp[Face]) extends Def[Set[Vertex]]
 
-  /**
-   * Random
-   */
-  def optiml_internal_rand_double() = reflectEffect(InternalRandDouble())
-  def optiml_internal_rand_float() = reflectEffect(InternalRandFloat())
-  def optiml_internal_rand_int() = reflectEffect(InternalRandInt())
-  def optiml_internal_rand_long() = reflectEffect(InternalRandLong())
-  def optiml_internal_rand_boolean() = reflectEffect(InternalRandBoolean())
+  case class DeLisztCellsMesh(e : Exp[Mesh]) extends Def[Set[Cell]]
+  case class DeLisztCellsVertex(e : Exp[Vertex]) extends Def[Set[Cell]]
+  case class DeLisztCellsEdge(e : Exp[Edge]) extends Def[Set[Cell]]
+  case class DeLisztCellsFace(e : Exp[Face]) extends Def[Set[Cell]]
+  case class DeLisztCellsCell(e : Exp[Cell]) extends Def[Set[Cell]]
 
-  def optiml_rand_double() = reflectEffect(RandDouble())
-  def optiml_rand_float() = reflectEffect(RandFloat())
-  def optiml_rand_int() = reflectEffect(RandInt())
-  def optiml_rand_long() = reflectEffect(RandLong())
-  def optiml_rand_boolean() = reflectEffect(RandBoolean())
-  def optiml_rand_gaussian() = reflectEffect(RandGaussian())
+  case class DeLisztCellsEdgeCCW(e : Exp[Edge]) extends Def[Set[Cell]]
+  case class DeLisztCellsEdgeCW(e : Exp[Edge]) extends Def[Set[Cell]]
 
-  def optiml_reseed() = reflectEffect(RandReseed())
+  case class DeLisztEdgesMesh(e : Exp[Mesh]) extends Def[Set[Edge]]
+  case class DeLisztEdgesVertex(e : Exp[Vertex]) extends Def[Set[Edge]]
+  case class DeLisztEdgesFace(e : Exp[Face]) extends Def[Set[Edge]]
+  case class DeLisztEdgesCell(e : Exp[Cell]) extends Def[Set[Edge]]
 
+  case class DeLisztFacesMesh(e : Exp[Mesh]) extends Def[Set[Face]]
+  case class DeLisztFacesVertex(e : Exp[Vertex]) extends Def[Set[Face]]
+  case class DeLisztFacesEdge(e : Exp[Edge]) extends Def[Set[Face]]
+  case class DeLisztFacesCell(e : Exp[Cell]) extends Def[Set[Face]]
 
-  /**
-   * Sum
-   */
+  case class DeLisztFacesEdgeCCW(e : Exp[Edge]) extends Def[Set[Face]]
+  case class DeLisztFacesEdgeCW(e : Exp[Edge]) extends Def[Set[Face]]
 
-  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], mV: Sym[Int], map: Exp[A])
-    extends DeliteOpMapReduce[Int,A,Vector] {
+  case class DeLisztEdgeHead(e : Exp[Edge]) extends Def[Vertex]
+  case class DeLisztEdgeTail(e : Exp[Edge]) extends Def[Vertex]
 
-    val in = Vector.range(start, end)
-    val rV = (fresh[A],fresh[A])
-    val reduce = reifyEffects(rV._1 += rV._2)
-    //val mapreduce = reifyEffects(ops.+=(acc, reifyEffects(block(mV))))
+  case class DeLisztEdgeFaceInside(e : Exp[Face]) extends Def[Cell]
+  case class DeLisztEdgeFaceOutside(e : Exp[Face]) extends Def[Cell]
+
+  case class DeLisztFlipEdge(e : Exp[Edge]) extends Def[Edge]
+  case class DeLisztFlipFace(e : Exp[Face]) extends Def[Face]
+
+  case class DeLisztTowardsEdgeVertex(e : Exp[Edge], v: Exp[Vertex]) extends Def[Edge]
+  case class DeLisztTowardsFaceCell(e : Exp[Face], c: Exp[Cell]) extends Def[Face]
+
+  case class DeLisztSize[MO <: MeshObj : Manifest](s: Exp[Set[MO]]) extends Def[Int]
+
+  case class DeLisztForeach[MO <: MeshObj : Manifest](x: Exp[Set[MO]], v: Sym[MO], func: Exp[Unit])
+    extends DeliteOpForeach[MO,Set]
+  
+  case class DeLisztID[MO <: MeshObj : Manifest](x: Exp[MO]) extends Def[Int]
+
+  /******* Language fucntions *********/
+  def _init() = reflectEffect(DeLizstInit())
+  def Print(as: Exp[Any]*) = reflectEffect(DeLisztPrint(as))
+
+  def FieldWithConst[MO <: MeshObj, VT](url : Exp[VT])(implicit mo : Manifest[MO], vt : Manifest[VT])
+    = reflectMutable(DeLisztFieldWithConst(url))
+	def FieldWithURL[MO <: MeshObj, VT](url : String)(implicit mo : Manifest[MO], vt : Manifest[VT])
+    = reflectMutable(DeLisztFieldWithURL(url))
+	def BoundarySet[MO <: MeshObj](name : String)(implicit mo : Manifest[MO])
+    = reflectPure(DeLisztBoundarySet(name))
+
+	def mesh = reflectPure(DeLisztMesh())
+
+	def vertices(e : Exp[Mesh])(implicit x : Overloaded1) = reflectPure(DeLisztVerticesMesh(e))
+	def vertices(e : Exp[Vertex])(implicit x : Overloaded2) = reflectPure(DeLisztVerticesVertex(e))
+	def vertices(e : Exp[Edge])(implicit x : Overloaded3) = reflectPure(DeLisztVerticesEdge(e))
+	def vertices(e : Exp[Face])(implicit x : Overloaded4) = reflectPure(DeLisztVerticesFace(e))
+	def vertices(e : Exp[Cell])(implicit x : Overloaded5) = reflectPure(DeLisztVerticesCell(e))
+
+	def verticesCCW(e : Exp[Face]) = reflectPure(DeLisztVerticesFaceCCW(e))
+	def verticesCW(e : Exp[Face]) = reflectPure(DeLisztVerticesFaceCW(e))
+
+	def cells(e : Exp[Mesh])(implicit x : Overloaded1) = reflectPure(DeLisztCellsMesh(e))
+	def cells(e : Exp[Vertex])(implicit x : Overloaded2) = reflectPure(DeLisztCellsVertex(e))
+	def cells(e : Exp[Edge])(implicit x : Overloaded3) = reflectPure(DeLisztCellsEdge(e))
+	def cells(e : Exp[Face])(implicit x : Overloaded4) = reflectPure(DeLisztCellsFace(e))
+	def cells(e : Exp[Cell])(implicit x : Overloaded5) = reflectPure(DeLisztCellsCell(e))
+
+	def cellsCCW(e : Exp[Edge]) = reflectPure(DeLisztCellsEdgeCCW(e))
+	def cellsCW(e : Exp[Edge]) = reflectPure(DeLisztCellsEdgeCW(e))
+
+	def edges(e : Exp[Mesh])(implicit x : Overloaded1) = reflectPure(DeLisztEdgesMesh(e))
+	def edges(e : Exp[Vertex])(implicit x : Overloaded2) = reflectPure(DeLisztEdgesVertex(e))
+	def edges(e : Exp[Face])(implicit x : Overloaded3) = reflectPure(DeLisztEdgesFace(e))
+	def edges(e : Exp[Cell])(implicit x : Overloaded4) = reflectPure(DeLisztEdgesCell(e))
+
+	def edgesCCW(e : Exp[Face]) = reflectPure(DeLisztEdgesFaceCCW(e))
+	def edgesCW(e : Exp[Face]) = reflectPure(DeLisztEdgesFaceCW(e))
+
+	def faces(e : Exp[Mesh])(implicit x : Overloaded1) = reflectPure(DeLisztFacesMesh(e))
+	def faces(e : Exp[Vertex])(implicit x : Overloaded2) = reflectPure(DeLisztFacesVertex(e))
+	def faces(e : Exp[Edge])(implicit x : Overloaded3) = reflectPure(DeLisztFacesEdge(e))
+	def faces(e : Exp[Cell])(implicit x : Overloaded4) = reflectPure(DeLisztFacesCell(e))
+
+	def facesCCW(e : Exp[Edge]) = reflectPure(DeLisztFacesEdgeCCW(e))
+	def facesCW(e : Exp[Edge]) = reflectPure(DeLisztFacesEdgeCW(e))
+
+	def head(e : Exp[Edge]) = reflectPure(DeLisztEdgeHead(e))
+	def tail(e : Exp[Edge]) = reflectPure(DeLisztEdgeTail(e))
+
+	def inside(e : Exp[Face]) = reflectPure(DeLisztFaceInside(e))
+	def outside(e : Exp[Face]) = reflectPure(DeLisztFaceOutside(e))
+
+	def flip(e : Exp[Edge])(implicit x : Overloaded1) = reflectPure(DeLisztFlipEdge(e))
+	def flip(e : Exp[Face])(implicit x : Overloaded2) = reflectPure(DeLisztFlipFace(e))
+
+	def towards(e : Exp[Edge], v: Exp[Vertex])(implicit x : Overloaded1) = reflectPure(DeLisztTowardsEdgeVertex(e,v))
+	def towards(e : Exp[Face], c: Exp[Cell])(implicit x : Overloaded2) = reflectPure(DeLisztTowardsFaceCell(e,c))
+	def size[MO <: MeshObj](s : Exp[Set[MO]])(implicit m : Manifest[MO]) = reflectPure(DeLisztSize(s))
+
+	def foreach[MO <: MeshObj](x : Exp[Set[MO]], block : Exp[Unit]) = {
+    val v = fresh[MO]
+    val func = reifyEffects(block(v))
+    reflectEffect(DeLisztForeach(x, v, func))
   }
-
-  def optiml_sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
-
-    val mV = fresh[Int]
-    val map = reifyEffects(block(mV))
-    // reflectEffect should not be necessary -- see IndexVectorConstruct for explanation
-    reflectEffect(Sum(start, end, mV, map))
-  }
-
-
-  case class VectorDistance[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_impl(v1,v2,metric)))
-
-  case class MatrixDistance[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: Rep[Int])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_impl(m1,m2,metric)))
-
-  def optiml_vector_dist[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]], metric: Rep[Int]) = VectorDistance(v1,v2,metric)
+	def ID[MO <: MeshObj](x : Exp[MO]) = reflectPure(DeLisztID(x))
 }
 
 trait BaseGenLanguageOps extends GenericFatCodegen {
   val IR: LanguageOpsExp
-  import IR._
 }
 
 trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
@@ -156,7 +219,10 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case InternalRandDouble() => emitValDef(sym, "generated.scala.Global.intRandRef.nextDouble()")
+      case DeLisztInit() => emitValDef(sym, "generated.scala.Liszt.init()")
+      case DeLisztPrint(as) => emitValDef(sym, "generated.scala.Misc.Print(" + quote(as) + ")")
+      case DeLisztFieldWithConst(url) => emitValDef(sym, "FieldWithConst(url)")
+      case DeLisztFieldWithURL(url) => emitValDef(sym, "FieldWithURL(url)")
       case _ => super.emitNode(sym, rhs)
     }
   }

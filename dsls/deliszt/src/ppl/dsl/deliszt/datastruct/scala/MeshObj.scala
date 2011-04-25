@@ -8,12 +8,12 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-trait MeshObj
+trait MeshObj {
+  def id : Int
+  def internalId : Int
+}
 
 trait Vertex extends MeshObj
-
 trait Edge extends MeshObj
-
 trait Face extends MeshObj
-
 trait Cell extends MeshObj

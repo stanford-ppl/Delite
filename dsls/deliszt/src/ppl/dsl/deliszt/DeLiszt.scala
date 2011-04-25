@@ -21,41 +21,41 @@ import ppl.delite.framework.ops._
 /**
  * These are the portions of Scala imported into DeLiszt's scope.
  */
-trait OptiMLScalaOpsPkg extends Base
+trait DeLisztScalaOpsPkg extends Base
     with Equal with IfThenElse with Variables with While with Functions
     with ImplicitOps with OrderingOps with StringOps with RangeOps with IOOps
     with ArrayOps with BooleanOps with PrimitiveOps with MiscOps with TupleOps
     with ListOps with SeqOps with MathOps with CastingOps with SetOps
 
-trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg with DSLOpsExp
+trait DeLisztScalaOpsPkgExp extends DeLisztScalaOpsPkg with DSLOpsExp
     with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
     with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
     with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
     with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp
 
-trait OptiMLScalaCodeGenPkg extends ScalaGenDSLOps
+trait DeLisztScalaCodeGenPkg extends ScalaGenDSLOps
     with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenFunctions
     with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
     with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenTupleOps
     with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps
-    { val IR: OptiMLScalaOpsPkgExp  }
+    { val IR: DeLisztScalaOpsPkgExp  }
 
-trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
+trait DeLisztCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
     with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenFunctions
     with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
     with CudaGenPrimitiveOps with CudaGenMiscOps
     with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps with CudaGenSetOps
-    { val IR: OptiMLScalaOpsPkgExp  }
+    { val IR: DeLisztScalaOpsPkgExp  }
 
 trait DeLisztCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
     with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
     with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
-    with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps { val IR: OptiMLScalaOpsPkgExp  }
+    with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps { val IR: DeLisztScalaOpsPkgExp  }
 
 /**
  * This the trait that every DeLiszt application must extend.
  */
-trait DeLiszt extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with ArithOps with CloneableOps
+trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps with ApplicationOps with ArithOps with CloneableOps
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps
   with LabelsOps {
 
@@ -67,20 +67,16 @@ trait DeLiszt extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps wit
 /**
  * These are the corresponding IR nodes for DeLiszt.
  */
-trait OptiMLExp extends DeLiszt with OptiMLScalaOpsPkgExp with LanguageOpsExp with ApplicationOpsExp with ArithOpsExpOpt
-  with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp 
-  with MLOutputWriterOpsExp with VectorViewOpsExp
-  with LabelsOpsExp
-  with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard
-  with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard
+trait DeLisztExp extends DeLiszt with DeLisztScalaOpsPkgExp with LanguageOpsExp with ApplicationOpsExp
+  with LanguageImplOpsStandard
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp {
-  this: DeliteApplication =>
+  this: LizstApplication =>
 
-  def getCodeGenPkg(t: Target{val IR: OptiMLExp.this.type}) : GenericFatCodegen{val IR: OptiMLExp.this.type} = {
+  def getCodeGenPkg(t: Target{val IR: DeLisztExp.this.type}) : GenericFatCodegen{val IR: DeLisztExp.this.type} = {
     t match {
-      case _:TargetScala => new OptiMLCodeGenScala{val IR: OptiMLExp.this.type = OptiMLExp.this}
-      case _:TargetCuda => new OptiMLCodeGenCuda{val IR: OptiMLExp.this.type = OptiMLExp.this}
-      case _:TargetC => new OptiMLCodeGenC{val IR: OptiMLExp.this.type = OptiMLExp.this} 
+      case _:TargetScala => new DeLisztCodeGenScala{val IR: DeLisztExp.this.type = DeLisztExp.this}
+      case _:TargetCuda => new DeLisztCodeGenCuda{val IR: DeLisztExp.this.type = DeLisztExp.this}
+      case _:TargetC => new DeLisztCodeGenC{val IR: DeLisztExp.this.type = DeLisztExp.this} 
       case _ => throw new RuntimeException("deliszt does not support this target")
     }
   }
@@ -93,7 +89,7 @@ trait OptiMLExp extends DeLiszt with OptiMLScalaOpsPkgExp with LanguageOpsExp wi
  */
 trait DeLiszt extends GenericFatCodegen {
 
-  val IR: DeliteApplication with OptiMLExp
+  val IR: DeliteApplication with DeLisztExp
   override def initialDefs = IR.deliteGenerator.availableDefs
 
 
@@ -130,13 +126,13 @@ trait DeLiszt extends GenericFatCodegen {
   }
 }
 
-trait OptiMLCodeGenScala extends DeLiszt with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
+trait DeLisztCodeGenScala extends DeLiszt with DeLisztScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
   with ScalaGenApplicationOps
   with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with ScalaGenLabelsOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
-  val IR: DeliteApplication with OptiMLExp
+  val IR: DeliteApplication with DeLisztExp
 
   override val specialize = Set("VectorImpl.scala", "MatrixImpl.scala", "VectorViewImpl.scala", "LabelsImpl.scala")
   override val specialize2 = Set("TrainingSetImpl.scala")
@@ -202,10 +198,10 @@ trait OptiMLCodeGenScala extends DeLiszt with OptiMLScalaCodeGenPkg with ScalaGe
   }
 }
 
-trait OptiMLCodeGenCuda extends DeLiszt with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenTrainingSetOps // with CudaGenVectorViewOps
+trait DeLisztCodeGenCuda extends DeLiszt with DeLisztCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenTrainingSetOps // with CudaGenVectorViewOps
   with CudaGenVariantsOps with DeliteCudaGenAllOverrides // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
-  val IR: DeliteApplication with OptiMLExp
+  val IR: DeliteApplication with DeLisztExp
   import IR._
 
   // Maps the scala type to cuda type
@@ -368,10 +364,10 @@ trait OptiMLCodeGenCuda extends DeLiszt with OptiMLCudaCodeGenPkg /*with CudaGen
 
 }
 
-trait OptiMLCodeGenC extends DeLiszt with DeLisztCCodeGenPkg with CGenArithOps with CGenDeliteOps with CGenVectorOps with CGenMatrixOps
+trait DeLisztCodeGenC extends DeLiszt with DeLisztCCodeGenPkg with CGenArithOps with CGenDeliteOps with CGenVectorOps with CGenMatrixOps
   with CGenVariantsOps with DeliteCGenAllOverrides
 {
-  val IR: DeliteApplication with OptiMLExp
+  val IR: DeliteApplication with DeLisztExp
   import IR._
 
   override def remap[A](m: Manifest[A]) : String = m.toString match {
