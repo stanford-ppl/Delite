@@ -96,39 +96,39 @@ trait GraphOpsExp extends GraphOps with EffectExp {
   /////////////////////
   // object interface
 
-  def graph_obj_new[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E]) = reflectMutable(GraphObjectNew()) //XX
+  def graph_obj_new[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E]) = reflectMutable(GraphObjectNew())
 
 
   /////////////////////
   // class interface
 
   def graph_vertices[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphVertices(/*reflectRead*/(g))
+    = reflectPure(GraphVertices(g))
   def graph_edges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphEdges(/*reflectRead*/(g))
+    = reflectPure(GraphEdges(g))
   //def graph_adjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
   //  = GraphAdjacent(/*reflectRead*/(g),/*reflectRead*/(a),/*reflectRead*/(b))
   def graph_neighbors_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphNeighborsOf(g,a)
+    = reflectPure(GraphNeighborsOf(g,a))
   def graph_neighbors_self_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphNeighborsSelfOf(g,a)
+    = reflectPure(GraphNeighborsSelfOf(g,a))
   def graph_edges_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphEdgesOf(/*reflectRead*/(g),/*reflectRead*/(a))
+    = reflectPure(GraphEdgesOf(g,a))
   def graph_contains_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Edge])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphContainsEdge(/*reflectRead*/(g),/*reflectRead*/(a))
+    = reflectPure(GraphContainsEdge(g,a))
   def graph_contains_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphContainsVertex(/*reflectRead*/(g),/*reflectRead*/(a))
+    = reflectPure(GraphContainsVertex(g,a))
 
   def graph_add_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectWrite(g)(GraphAddVertex(/*reflectReadWrite*/(g),a))
+    = reflectWrite(g)(GraphAddVertex(g,a))
   def graph_add_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], e: Rep[Edge], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectWrite(g)(GraphAddEdge(/*reflectReadWrite*/(g),e,a,b))
+    = reflectWrite(g)(GraphAddEdge(g,e,a,b))
   //def graph_remove_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-  //  = reflectMutation(GraphRemoveEdge(reflectReadWrite(g),a,b))
+  //  = reflectWrite(g)(reflectMutation(GraphRemoveEdge(g,a,b))
   def graph_freeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectWrite(g)(GraphFreeze(/*reflectReadWrite*/(g)))
+    = reflectWrite(g)(GraphFreeze(g))
   def graph_frozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = GraphFrozen(/*reflectRead*/(g))
+    = reflectPure(GraphFrozen(g))
 }
 
 

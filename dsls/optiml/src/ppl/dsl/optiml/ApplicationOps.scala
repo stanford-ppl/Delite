@@ -42,10 +42,10 @@ trait DenoiseVertexDataOps extends DSLType with Variables {
   def denoise_vertex_data_potential(v: Rep[DenoiseVertexData]): Rep[Vector[Double]]
 }
 
-trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with EffectExp {
+trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with VariablesExp with BaseFatExp {
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
-
+  
   case class DenoiseVertexDataObjectNew(id: Exp[Int], belief: Exp[Vector[Double]], potential: Exp[Vector[Double]])
     extends Def[DenoiseVertexData] {
     val vD = manifest[DenoiseVertexDataImpl]
@@ -57,15 +57,15 @@ trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with EffectExp {
 
   /////////////////////
   // object interface
-  def denoise_vertex_data_obj_new(id: Exp[Int], b: Exp[Vector[Double]], p: Exp[Vector[Double]]) = reflectEffect(DenoiseVertexDataObjectNew(id, /*reflectRead*/(b), /*reflectRead*/(p)))
+  def denoise_vertex_data_obj_new(id: Exp[Int], b: Exp[Vector[Double]], p: Exp[Vector[Double]]) = reflectMutable(DenoiseVertexDataObjectNew(id, b, p))
 
   /////////////////////
   // class interface
 
-  def denoise_vertex_data_id(v: Exp[DenoiseVertexData]) = DenoiseVertexDataId(/*reflectRead*/(v))
-  def denoise_vertex_data_belief(v: Exp[DenoiseVertexData]) = DenoiseVertexDataBelief(/*reflectRead*/(v))
-  def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) = reflectWrite(v)(DenoiseVertexDataBeliefUpdate(/*reflectWrite*/(v), b))
-  def denoise_vertex_data_potential(v: Exp[DenoiseVertexData]) = DenoiseVertexDataPotential(/*reflectRead*/(v))
+  def denoise_vertex_data_id(v: Exp[DenoiseVertexData]) = toAtom(DenoiseVertexDataId(v))
+  def denoise_vertex_data_belief(v: Exp[DenoiseVertexData]) = toAtom(DenoiseVertexDataBelief(v))
+  def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) = reflectWrite(v)(DenoiseVertexDataBeliefUpdate(v, b))
+  def denoise_vertex_data_potential(v: Exp[DenoiseVertexData]) = toAtom(DenoiseVertexDataPotential(v))
 }
 
 trait ScalaGenDenoiseVertexDataOps extends ScalaGenBase {
@@ -110,10 +110,10 @@ trait DenoiseEdgeDataOps extends DSLType with Variables {
   def denoise_edge_data_cloneL(e: Rep[DenoiseEdgeData]): Rep[DenoiseEdgeData]
 }
 
-trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
+trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with VariablesExp with BaseFatExp {
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
-
+  
   case class DenoiseEdgeDataObjectNew(m: Exp[Vector[Double]], oM: Exp[Vector[Double]])
     extends Def[DenoiseEdgeData] {
     val eD = manifest[DenoiseEdgeDataImpl]
@@ -127,16 +127,16 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with EffectExp {
   /////////////////////
   // object interface
 
-  def denoise_edge_data_obj_new(m: Exp[Vector[Double]], oM: Exp[Vector[Double]]) = reflectEffect(DenoiseEdgeDataObjectNew(m, oM))
+  def denoise_edge_data_obj_new(m: Exp[Vector[Double]], oM: Exp[Vector[Double]]) = reflectMutable(DenoiseEdgeDataObjectNew(m, oM))
 
   /////////////////////
   // class interface
 
-  def denoise_edge_data_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataMessage(/*reflectRead*/(e))
-  def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)(DenoiseEdgeDataMessageUpdate(/*reflectWrite*/(e), m))
-  def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = DenoiseEdgeDataOldMessage(/*reflectRead*/(e))
-  def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)(DenoiseEdgeDataOldMessageUpdate(/*reflectWrite*/(e), m))
-  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = reflectEffect(DenoiseEdgeDataCloneL(/*reflectRead*/(e)))
+  def denoise_edge_data_message(e: Exp[DenoiseEdgeData]) = toAtom(DenoiseEdgeDataMessage(e))
+  def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)(DenoiseEdgeDataMessageUpdate(e, m))
+  def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = toAtom(DenoiseEdgeDataOldMessage(e))
+  def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)(DenoiseEdgeDataOldMessageUpdate(e, m))
+  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = toAtom(DenoiseEdgeDataCloneL(e))
 }
 
 trait ScalaGenDenoiseEdgeDataOps extends ScalaGenBase {
@@ -163,7 +163,6 @@ trait ScalaGenDenoiseEdgeDataOps extends ScalaGenBase {
 
 
 trait BiGGDetectionOps extends DSLType with Variables with OverloadHack {
-
   object BiGGDetection {
     def apply(name: Rep[String], score: Rep[Float], roi: Rep[Rect], mask: Rep[GrayscaleImage], index: Rep[Int], x: Rep[Int], y: Rep[Int], tpl: Rep[BinarizedGradientTemplate], crt_tpl: Rep[BinarizedGradientTemplate]) = biggdetection_obj_new(name, score, roi, mask, index, x, y, tpl, crt_tpl)
   }
@@ -198,7 +197,7 @@ trait BiGGDetectionOps extends DSLType with Variables with OverloadHack {
   def biggdetection_crt_tpl(__x: Rep[BiGGDetection]): Rep[BinarizedGradientTemplate]
 }
 
-trait BiGGDetectionOpsExp extends BiGGDetectionOps with EffectExp {
+trait BiGGDetectionOpsExp extends BiGGDetectionOps with VariablesExp with BaseFatExp {
   case class BiGGDetectionObjectNew(name: Exp[String], score: Exp[Float], roi: Exp[Rect], mask: Exp[GrayscaleImage], index: Exp[Int], x: Exp[Int], y: Exp[Int], tpl: Exp[BinarizedGradientTemplate], crt_tpl: Exp[BinarizedGradientTemplate]) extends Def[BiGGDetection]
   case class BiGGDetectionName(__x: Exp[BiGGDetection]) extends Def[String]
   case class BiGGDetectionScore(__x: Exp[BiGGDetection]) extends Def[Float]
@@ -210,16 +209,16 @@ trait BiGGDetectionOpsExp extends BiGGDetectionOps with EffectExp {
   case class BiGGDetectionTpl(__x: Exp[BiGGDetection]) extends Def[BinarizedGradientTemplate]
   case class BiGGDetectionCrt_tpl(__x: Exp[BiGGDetection]) extends Def[BinarizedGradientTemplate]
 
-  def biggdetection_obj_new(name: Exp[String], score: Exp[Float], roi: Exp[Rect], mask: Exp[GrayscaleImage], index: Exp[Int], x: Exp[Int], y: Exp[Int], tpl: Exp[BinarizedGradientTemplate], crt_tpl: Exp[BinarizedGradientTemplate]) = reflectEffect(BiGGDetectionObjectNew(name, score, roi, mask, index, x, y, tpl, crt_tpl))
-  def biggdetection_name(__x: Rep[BiGGDetection]) = BiGGDetectionName(__x)
-  def biggdetection_score(__x: Rep[BiGGDetection]) = BiGGDetectionScore(__x)
-  def biggdetection_roi(__x: Rep[BiGGDetection]) = BiGGDetectionRoi(__x)
-  def biggdetection_mask(__x: Rep[BiGGDetection]) = BiGGDetectionMask(__x)
-  def biggdetection_index(__x: Rep[BiGGDetection]) = BiGGDetectionIndex(__x)
-  def biggdetection_x(__x: Rep[BiGGDetection]) = BiGGDetectionX(__x)
-  def biggdetection_y(__x: Rep[BiGGDetection]) = BiGGDetectionY(__x)
-  def biggdetection_tpl(__x: Rep[BiGGDetection]) = BiGGDetectionTpl(__x)
-  def biggdetection_crt_tpl(__x: Rep[BiGGDetection]) = BiGGDetectionCrt_tpl(__x)
+  def biggdetection_obj_new(name: Exp[String], score: Exp[Float], roi: Exp[Rect], mask: Exp[GrayscaleImage], index: Exp[Int], x: Exp[Int], y: Exp[Int], tpl: Exp[BinarizedGradientTemplate], crt_tpl: Exp[BinarizedGradientTemplate]) = toAtom(BiGGDetectionObjectNew(name, score, roi, mask, index, x, y, tpl, crt_tpl))
+  def biggdetection_name(__x: Rep[BiGGDetection]) = toAtom(BiGGDetectionName(__x))
+  def biggdetection_score(__x: Rep[BiGGDetection]) = toAtom(BiGGDetectionScore(__x))
+  def biggdetection_roi(__x: Rep[BiGGDetection]) = toAtom(BiGGDetectionRoi(__x))
+  def biggdetection_mask(__x: Rep[BiGGDetection]) = toAtom(BiGGDetectionMask(__x))
+  def biggdetection_index(__x: Rep[BiGGDetection]) = toAtom(BiGGDetectionIndex(__x))
+  def biggdetection_x(__x: Rep[BiGGDetection]) = toAtom(BiGGDetectionX(__x))
+  def biggdetection_y(__x: Rep[BiGGDetection]) = toAtom(BiGGDetectionY(__x))
+  def biggdetection_tpl(__x: Rep[BiGGDetection]) = toAtom(BiGGDetectionTpl(__x))
+  def biggdetection_crt_tpl(__x: Rep[BiGGDetection]) = toAtom(BiGGDetectionCrt_tpl(__x))
 }
 
 trait ScalaGenBiGGDetectionOps extends ScalaGenBase {

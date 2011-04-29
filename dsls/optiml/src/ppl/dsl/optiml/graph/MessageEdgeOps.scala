@@ -60,9 +60,9 @@ trait MessageEdgeOpsExp extends MessageEdgeOps with EffectExp {
   /////////////////////
   // class interface
 
-  def message_edge_in(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeIn(/*reflectRead*/(e),/*reflectRead*/(v))
-  def message_edge_out(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeOut(/*reflectRead*/(e),/*reflectRead*/(v))
-  def message_edge_target(e: Exp[MessageEdge], v: Exp[MessageVertex]) = MessageEdgeTarget(/*reflectRead*/(e),/*reflectRead*/(v))
+  def message_edge_in(e: Exp[MessageEdge], v: Exp[MessageVertex]) = reflectPure(MessageEdgeIn(e,v))
+  def message_edge_out(e: Exp[MessageEdge], v: Exp[MessageVertex]) = reflectPure(MessageEdgeOut(e,v))
+  def message_edge_target(e: Exp[MessageEdge], v: Exp[MessageVertex]) = reflectPure(MessageEdgeTarget(e,v))
 }
 
 

@@ -42,7 +42,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
     val mV = manifest[VerticesImpl[V]]
   }
 
-  def vertices_obj_new[V <: Vertex:Manifest](len: Exp[Int]) = reflectEffect(VerticesObjNew[V](len))
+  def vertices_obj_new[V <: Vertex:Manifest](len: Exp[Int]) = reflectMutable(VerticesObjNew[V](len))
 
   case class VerticesForeach[V <:Vertex:Manifest](in: Exp[Vertices[V]], v: Sym[V], func: Exp[Unit])
     extends DeliteOpForeachBounded[Vertex,V,Vertices] {
@@ -54,7 +54,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
   def vertices_foreach[V <: Vertex:Manifest](x: Exp[Vertices[V]], block: Exp[V] => Exp[Unit]) = {
     val v = fresh[V]
     val func = reifyEffects(block(v))
-    reflectEffect(VerticesForeach(/*reflectRead*/(x), v, func))
+    reflectEffect(VerticesForeach(x, v, func))
   }
 }
 

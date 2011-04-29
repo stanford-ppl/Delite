@@ -38,7 +38,7 @@ trait LBPDenoise extends OptiMLApplication {
     val edgePotential = Matrix[Double](colors, colors)
   
     // rows and cols arguments
-    /*rows = Integer.parseInt(args(0))
+    rows = Integer.parseInt(args(0))
     cols = Integer.parseInt(args(1))
 
     // Generate image
@@ -46,13 +46,13 @@ trait LBPDenoise extends OptiMLApplication {
     imgPaintSunset(img, colors)
     MLOutputWriter.writeImgPgm(img, "src.pgm")
     imgCorrupt(img, sigma)
-    MLOutputWriter.writeImgPgm(img, "noise.pgm") */
+    MLOutputWriter.writeImgPgm(img, "noise.pgm")
     
     // Load in a raw image that we generated from GraphLab
 
     // Make sure we read in the raw file correctly
-    val img = MLInputReader.read(args(0))
-    MLOutputWriter.writeImgPgm(img, "check.pgm")
+    // val img = MLInputReader.read(args(0))
+    // MLOutputWriter.writeImgPgm(img, "check.pgm")
 
     // Clean up the image and save it
     

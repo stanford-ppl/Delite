@@ -26,7 +26,7 @@ trait MLOutputWriterOpsExp extends MLOutputWriterOps { this: MLOutputWriterImplO
   case class MLOutputWriteVector[A:Manifest](v: Exp[Vector[A]], filename: Exp[String], conv: Exp[A] => Exp[Double]) extends DeliteOpSingleTask(reifyEffects(mloutput_write_vector_impl(v,filename,conv)))
   case class MLOutputWriteImgPgm(img: Exp[Matrix[Double]], filename: Exp[String]) extends DeliteOpSingleTask(reifyEffects(mloutput_write_img_pgm_impl(img,filename)))
   
-  def obj_mloutput_write[A:Manifest](m: Exp[Matrix[A]], filename: Exp[String], conv: Exp[A] => Exp[Double]) = reflectEffect(MLOutputWrite(/*reflectRead*/(m),filename,conv))
-  def obj_mloutput_write_vector[A:Manifest](v: Exp[Vector[A]], filename: Exp[String], conv: Exp[A] => Exp[Double]) = reflectEffect(MLOutputWriteVector(/*reflectRead*/(v),filename,conv))
-  def obj_mloutput_write_img_pgm(img: Exp[Matrix[Double]], filename: Exp[String]) = reflectEffect(MLOutputWriteImgPgm(/*reflectRead*/(img),filename))
+  def obj_mloutput_write[A:Manifest](m: Exp[Matrix[A]], filename: Exp[String], conv: Exp[A] => Exp[Double]) = reflectEffect(MLOutputWrite(m,filename,conv))
+  def obj_mloutput_write_vector[A:Manifest](v: Exp[Vector[A]], filename: Exp[String], conv: Exp[A] => Exp[Double]) = reflectEffect(MLOutputWriteVector(v,filename,conv))
+  def obj_mloutput_write_img_pgm(img: Exp[Matrix[Double]], filename: Exp[String]) = reflectEffect(MLOutputWriteImgPgm(img,filename))
 }
