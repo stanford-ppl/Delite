@@ -22,7 +22,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   lazy val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
   // TODO: this should be handled via command line options
-  lazy val targets = List[DeliteApplicationTarget](scalaTarget, /*cudaTarget,*/ cTarget)
+  lazy val targets = List[DeliteApplicationTarget](scalaTarget/*, cudaTarget, cTarget*/)
   val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
 
   // TODO: refactor, this is from ScalaCompile trait
@@ -58,6 +58,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       writer.write("kernels:datastructures\n")
       writer.close()
     }
+
+    deliteGenerator.emitDataStructures(Config.buildDir + File.separator)
 
     for (g <- generators) {
       val baseDir = Config.buildDir + File.separator + g.toString + File.separator

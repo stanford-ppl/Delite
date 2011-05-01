@@ -29,6 +29,8 @@ object Config {
 
   val codeCacheHome: String = System.getProperty("delite.code.cache.home", deliteHome + java.io.File.separator + "generatedCache")
 
+  val useFsc: Boolean = if (System.getProperty("delite.usefsc") == null) false else true
+
   /***********
     * Statistics and Metrics Section
     */
