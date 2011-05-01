@@ -8,18 +8,14 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-trait Vec[N <: IntM, VT] {
-  type Self = Vec[N,VT]
-  def x(implicit f : EnsureSize[_0,N]) : VT
-  def y(implicit f : EnsureSize[_1,N]) : VT
-  def z(implicit f : EnsureSize[_2,N]) : VT
-  def w(implicit f : EnsureSize[_3,N]) : VT
+trait Vec[N <: IntM, VT] extends DeliteCollection[VT] {
   def apply[TT <: IntM](n : TT)(implicit f : EnsureSize[TT,N]) : VT
-  def +(vt : Self)(implicit f : Numeric[VT]) : Vec[N,VT]
-  def -(vt : Self)(implicit f : Numeric[VT]) : Vec[N,VT]
-  def *(vt : Self)(implicit f : Numeric[VT]) : Vec[N,VT]
-  def /(vt : Self)(implicit f : Numeric[VT]) : Vec[N,VT]
-  def *(vt : VT)(implicit f : Numeric[VT]) : Vec[N,VT]
-  def /(vt : VT)(implicit f : Numeric[VT]) : Vec[N,VT]
-  def unary_- : Vec[N,VT]
+  def update[TT <: IntM](n : TT, v : VT)(implicit f : EnsureSize[TT,N]) : Unit
+
+  def apply(n : Int) : VT
+  def update(n : Int, v : VT) : Unit
+
+  def size = null
+  def dcApply(idx: Int) = apply(idx)
+  def dcUpdate(idx: Int, x: VT) = update(idx, x)
 }

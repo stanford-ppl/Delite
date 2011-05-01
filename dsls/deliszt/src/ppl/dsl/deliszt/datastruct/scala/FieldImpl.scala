@@ -9,23 +9,19 @@ package ppl.dsl.deliszt.datastruct.scala
  */
 
 object FieldImpl {
-  def apply[A <: MeshObj : Manifest, VT : Manifest](mesh: Mesh)(implicit mA : Manifest[A]) = {
-    var size = 0
-
-    if(mA <:< Manifest[Cell]) {
-      size = mesh.ncells
+  def apply[A <: MeshObj : Manifest, VT : Manifest](mesh: Mesh) = {
+    if(manifest[A] <:< manifest[Cell]) {
+       new FieldImpl(new Array[VT](mesh.ncells))
     }
-    else if(mA <:< Manifest[Face]) {
-      size = mesh.nfaces
+    else if(manifest[A] <:< manifest[Face]) {
+      new FieldImpl(new Array[VT](mesh.nfaces))
     }
-    else if(mA <:< Manifest[Edge]) {
-      size = mesh.nedges
+    else if(manifest[A] <:< manifest[Edge]) {
+      new FieldImpl(new Array[VT](mesh.nedges))
     }
-    else if(mA <:< Manifest[Vertex]) {
-      size = mesh.nvertices
+    else if(manifest[A] <:< manifest[Vertex]) {
+      new FieldImpl(new Array[VT](mesh.nvertices))
     }
-
-    new FieldImpl(new Array[VT](size))
   }
 }
 
