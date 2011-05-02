@@ -12,17 +12,21 @@ numSamples = dims(1);
 alphas = zeros(numSamples,1);
 b = 0; % initial b
 passes = 0;
+iter = 0;
+
+rgen = java.util.Random(100);
 
 while(passes<max_passes)
+	iter = iter + 1;
 	num_changed_alphas = 0;
 	for i = 1:numSamples
 		f_i = sum(gather(alphas.*gpuArray(Y).*(X*X(i,:)')))+b;
 		E_i = f_i - Y(i);
 		if (((Y(i)*E_i < -1*tol) && (alphas(i) < C)) || ((Y(i)*E_i > tol) && (alphas(i) > 0))) 
 			% select a candidate j from the remaining numSamples-i samples at random
-			j = floor(rand*(numSamples-1))+1;
+			j = floor(rgen.nextDouble()*(numSamples-1))+1;
 			while (j == i)
-				j = floor(rand*(numSamples-1))+1;
+				j = floor(rgen.nextDouble()*(numSamples-1))+1;
 			end
 		 
 			f_j = sum(gather(alphas.*gpuArray(Y).*(X*X(j,:)')))+b;
@@ -54,7 +58,7 @@ while(passes<max_passes)
 			elseif (alphas(j) < L) alphas(j) = L;
 			end;
 			% check alphas(j) convergence
-			if (abs(alphas(j) - old_aj) < tol) continue; end;
+			if (abs(alphas(j) - old_aj) < .00001) continue; end;
 
 			% find a_i to maximize objective function
 			old_ai = alphas(i);
@@ -83,3 +87,4 @@ while(passes<max_passes)
 		passes=0;
 	end;
 end;
+iter

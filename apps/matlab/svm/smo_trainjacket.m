@@ -13,8 +13,12 @@ numSamples = dims(1);
 alphas = zeros(numSamples,1);
 b = 0; % initial b
 passes = 0;
+iter = 0;
+
+rgen = java.util.Random(100);
 
 while(passes<max_passes)
+	iter = iter + 1;
 	num_changed_alphas = 0;
 	for i = 1:numSamples
 		f_i = sum(alphas.*gdouble(Y).*(X*X(i,:)'))+b;
@@ -55,7 +59,7 @@ while(passes<max_passes)
 			elseif (alphas(j) < L) alphas(j) = L;
 			end;
 			% check alphas(j) convergence
-			if (abs(alphas(j) - old_aj) < tol) continue; end;
+			if (abs(alphas(j) - old_aj) < .00001) continue; end;
 
 			% find a_i to maximize objective function
 			old_ai = alphas(i);
@@ -84,3 +88,4 @@ while(passes<max_passes)
 		passes=0;
 	end;
 end;
+iter
