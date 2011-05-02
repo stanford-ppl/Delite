@@ -34,6 +34,7 @@ trait GraphOps extends DSLType with Variables {
     //def removeEdge(a: V, b: V) = graph_remove_edge(g,a,b)
     def freeze() = graph_freeze(g)
     def frozen = graph_frozen(g)
+    def clearTasks(i: Rep[Int]) = graph_cleartasks(g,i)
   }
 
 
@@ -55,6 +56,8 @@ trait GraphOps extends DSLType with Variables {
   //def graph_remove_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
   def graph_freeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
   def graph_frozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
+  
+  def graph_cleartasks[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], i: Rep[Int]): Rep[Unit]
 }
 
 trait GraphOpsExp extends GraphOps with EffectExp {
@@ -81,6 +84,8 @@ trait GraphOpsExp extends GraphOps with EffectExp {
   //case class GraphRemoveEdge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
   case class GraphFreeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
   case class GraphFrozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
+    
+  case class GraphClearTasks[V <: Vertex, E <: Edge](g: Rep[Graph[V,E]], i: Exp[Int]) extends Def[Unit]
 
   /////////////////////////////////////////////////
   // implemented via kernel embedding (sequential)
@@ -129,6 +134,8 @@ trait GraphOpsExp extends GraphOps with EffectExp {
     = reflectWrite(g)(GraphFreeze(g))
   def graph_frozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
     = reflectPure(GraphFrozen(g))
+
+  def graph_cleartasks[V <: Vertex, E <: Edge](g: Rep[Graph[V,E]], i: Exp[Int]) = reflectWrite(g)(GraphClearTasks(g,i))
 }
 
 
@@ -162,6 +169,7 @@ trait ScalaGenGraphOps extends BaseGenGraphOps with ScalaGenBase {
       //case GraphRemoveEdge(g,a,b) => emitValDef(sym, quote(g) + ".removeEdge(" + quote(a) + "," + quote(b) + ")")
       case GraphFreeze(g) => emitValDef(sym, quote(g) + ".freeze()")
       case GraphFrozen(g) => emitValDef(sym, quote(g) + ".frozen")
+      case GraphClearTasks(g,i) => emitValDef(sym, quote(g) + ".vertices(" + quote(i) + ").clearTasks()")
       case _ => super.emitNode(sym, rhs)
     }
   }

@@ -63,7 +63,7 @@ trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with VariablesExp wit
   // class interface
 
   def denoise_vertex_data_id(v: Exp[DenoiseVertexData]) = toAtom(DenoiseVertexDataId(v))
-  def denoise_vertex_data_belief(v: Exp[DenoiseVertexData]) = toAtom(DenoiseVertexDataBelief(v))
+  def denoise_vertex_data_belief(v: Exp[DenoiseVertexData]) = reflectMutable(DenoiseVertexDataBelief(v))
   def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[Vector[Double]]) = reflectWrite(v)(DenoiseVertexDataBeliefUpdate(v, b))
   def denoise_vertex_data_potential(v: Exp[DenoiseVertexData]) = toAtom(DenoiseVertexDataPotential(v))
 }
@@ -132,11 +132,11 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with VariablesExp with Ba
   /////////////////////
   // class interface
 
-  def denoise_edge_data_message(e: Exp[DenoiseEdgeData]) = toAtom(DenoiseEdgeDataMessage(e))
+  def denoise_edge_data_message(e: Exp[DenoiseEdgeData]) = reflectMutable(DenoiseEdgeDataMessage(e))
   def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)(DenoiseEdgeDataMessageUpdate(e, m))
-  def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = toAtom(DenoiseEdgeDataOldMessage(e))
+  def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = reflectMutable(DenoiseEdgeDataOldMessage(e))
   def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) = reflectWrite(e)(DenoiseEdgeDataOldMessageUpdate(e, m))
-  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = toAtom(DenoiseEdgeDataCloneL(e))
+  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = reflectMutable(DenoiseEdgeDataCloneL(e))
 }
 
 trait ScalaGenDenoiseEdgeDataOps extends ScalaGenBase {

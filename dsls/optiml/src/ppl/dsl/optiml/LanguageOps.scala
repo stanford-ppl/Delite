@@ -439,17 +439,17 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices
 
-    val tasks = vertices.cloneL
+    val tasks = vertices.mutable
     val seen = Set[V]()
     
     while(tasks.length > 0) {
-      tasks.foreach(block)
+      tasks.mforeach(block)
       tasks.clear()
-      var totalTasks = var_new(unit(0))
+      //var totalTasks = unit(0)
       
       for(i <- 0 until vertices.length) {
         val vtasks = vertices(i).tasks
-        totalTasks += vtasks.length
+        //totalTasks += vtasks.length
         for(j <- 0 until vtasks.length) {
           val task = vtasks(j).asInstanceOfL[V]
           if(!seen.contains(task)) {
@@ -458,7 +458,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
           }
         }
 
-        vertices(i).clearTasks() //TODO TR: non-mutable write
+        vertices(i).clearTasks()
       }
 
       //println("tasks: " + tasks.length)

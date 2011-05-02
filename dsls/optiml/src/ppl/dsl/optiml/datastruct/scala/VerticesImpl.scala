@@ -8,4 +8,6 @@ class VerticesImpl[V <: Vertex](len: Int)(implicit mV: ClassManifest[V]) extends
     _data = __data
     _length = _data.length
   }
+  
+  def cloneV : Vertices[V] = { val v = new VerticesImpl[V](0); v.insertAll(0, this); v }
 }

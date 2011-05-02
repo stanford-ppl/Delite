@@ -213,7 +213,9 @@ trait Edge {
   def graph: G
 }
 
-trait Vertices[V <: Vertex] extends Vector[V]
+trait Vertices[V <: Vertex] extends Vector[V] {
+  def cloneV: Vertices[V]
+}
 trait Edges[E <: Edge] extends Vector[E]
 
 

@@ -27,11 +27,17 @@ trait VerticesOps extends DSLType with Variables {
   implicit def repVerToVerOps[V <: Vertex:Manifest](x: Rep[Vertices[V]]) = new verOpsCls(x)
 
   class verOpsCls[V <: Vertex:Manifest](x: Rep[Vertices[V]]) {
+    def apply(n: Rep[Int]) = vertices_apply(x, n)
     def foreach(block: Rep[V] => Rep[Unit]) = vertices_foreach(x, block)
+    def mforeach(block: Rep[V] => Rep[Unit]) = vertices_foreach(x, block)
+    def mutable() = vertices_mutable_clone(x)
   }
 
   def vertices_obj_new[V <: Vertex:Manifest](len: Rep[Int]): Rep[Vertices[V]]
+  def vertices_apply[V <: Vertex:Manifest](x: Rep[Vertices[V]], n: Rep[Int]): Rep[V]
   def vertices_foreach[V <: Vertex:Manifest](x: Rep[Vertices[V]], block: Rep[V] => Rep[Unit]): Rep[Unit]
+  def vertices_mforeach[V <: Vertex:Manifest](x: Rep[Vertices[V]], block: Rep[V] => Rep[Unit]): Rep[Unit]
+  def vertices_mutable_clone[V <: Vertex:Manifest](x: Rep[Vertices[V]]): Rep[Vertices[V]]
 }
 
 trait VerticesOpsExp extends VerticesOps with VariablesExp {
@@ -41,21 +47,35 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
     extends Def[Vertices[V]] {
     val mV = manifest[VerticesImpl[V]]
   }
-
-  def vertices_obj_new[V <: Vertex:Manifest](len: Exp[Int]) = reflectMutable(VerticesObjNew[V](len))
-
+  
+  case class VerticesClone[V <: Vertex:Manifest](x: Exp[Vertices[V]]) extends Def[Vertices[V]]
+  
   case class VerticesForeach[V <:Vertex:Manifest](in: Exp[Vertices[V]], v: Sym[V], func: Exp[Unit])
     extends DeliteOpForeachBounded[Vertex,V,Vertices] {
 
     val i = fresh[Int]
     val sync = reifyEffects(in(i).neighborsSelf.toList)
   }
+  
+  case class VerticesApply[V<:Vertex:Manifest](x: Exp[Vertices[V]], n: Exp[Int]) extends Def[V]
+
+  def vertices_obj_new[V <: Vertex:Manifest](len: Exp[Int]) = reflectMutable(VerticesObjNew[V](len))
+  
+  def vertices_apply[V<:Vertex:Manifest](x: Rep[Vertices[V]], n: Rep[Int]) = reflectMutable(VerticesApply(x,n))
 
   def vertices_foreach[V <: Vertex:Manifest](x: Exp[Vertices[V]], block: Exp[V] => Exp[Unit]) = {
     val v = fresh[V]
     val func = reifyEffects(block(v))
     reflectEffect(VerticesForeach(x, v, func))
   }
+  
+  def vertices_mforeach[V <: Vertex:Manifest](x: Exp[Vertices[V]], block: Exp[V] => Exp[Unit]) = {
+    val v = fresh[V]
+    val func = reifyEffects(block(v))
+    reflectWrite(x)(VerticesForeach(x, v, func))
+  }
+  
+  def vertices_mutable_clone[V <: Vertex:Manifest](x: Exp[Vertices[V]]) = reflectMutable(VerticesClone(x))
 }
 
 trait BaseGenVerticesOps extends GenericNestedCodegen {
@@ -74,6 +94,8 @@ trait ScalaGenVerticesOps extends BaseGenVerticesOps with ScalaGenBase {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case v@VerticesObjNew(len) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(len) + ")")
+      case VerticesApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
+      case VerticesClone(x) => emitValDef(sym, quote(x) + ".cloneV")
       case _ => super.emitNode(sym, rhs)
     }
   }
