@@ -31,6 +31,7 @@ trait VerticesOps extends DSLType with Variables {
     def foreach(block: Rep[V] => Rep[Unit]) = vertices_foreach(x, block)
     def mforeach(block: Rep[V] => Rep[Unit]) = vertices_foreach(x, block)
     def mutable() = vertices_mutable_clone(x)
+    def printBeliefs() = vertices_pbeliefs(x)
   }
 
   def vertices_obj_new[V <: Vertex:Manifest](len: Rep[Int]): Rep[Vertices[V]]
@@ -38,6 +39,7 @@ trait VerticesOps extends DSLType with Variables {
   def vertices_foreach[V <: Vertex:Manifest](x: Rep[Vertices[V]], block: Rep[V] => Rep[Unit]): Rep[Unit]
   def vertices_mforeach[V <: Vertex:Manifest](x: Rep[Vertices[V]], block: Rep[V] => Rep[Unit]): Rep[Unit]
   def vertices_mutable_clone[V <: Vertex:Manifest](x: Rep[Vertices[V]]): Rep[Vertices[V]]
+  def vertices_pbeliefs[V <: Vertex:Manifest](x: Rep[Vertices[V]]): Rep[Unit]
 }
 
 trait VerticesOpsExp extends VerticesOps with VariablesExp {
@@ -49,6 +51,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
   }
   
   case class VerticesClone[V <: Vertex:Manifest](x: Exp[Vertices[V]]) extends Def[Vertices[V]]
+  case class VerticesPBeliefs[V <: Vertex:Manifest](x: Exp[Vertices[V]]) extends Def[Unit]
   
   case class VerticesForeach[V <:Vertex:Manifest](in: Exp[Vertices[V]], v: Sym[V], func: Exp[Unit])
     extends DeliteOpForeachBounded[Vertex,V,Vertices] {
@@ -76,6 +79,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
   }
   
   def vertices_mutable_clone[V <: Vertex:Manifest](x: Exp[Vertices[V]]) = reflectMutable(VerticesClone(x))
+  def vertices_pbeliefs[V <: Vertex:Manifest](x: Exp[Vertices[V]]) = reflectEffect(VerticesPBeliefs(x))
 }
 
 trait BaseGenVerticesOps extends GenericNestedCodegen {
@@ -96,6 +100,7 @@ trait ScalaGenVerticesOps extends BaseGenVerticesOps with ScalaGenBase {
       case v@VerticesObjNew(len) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(len) + ")")
       case VerticesApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
       case VerticesClone(x) => emitValDef(sym, quote(x) + ".cloneV")
+      case VerticesPBeliefs(x) => emitValDef(sym, quote(x) + ".printBeliefs")
       case _ => super.emitNode(sym, rhs)
     }
   }

@@ -215,6 +215,7 @@ trait Edge {
 
 trait Vertices[V <: Vertex] extends Vector[V] {
   def cloneV: Vertices[V]
+  def printBeliefs(): Unit
 }
 trait Edges[E <: Edge] extends Vector[E]
 

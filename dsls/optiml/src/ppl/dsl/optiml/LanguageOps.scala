@@ -439,7 +439,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices
 
-    val tasks = vertices.mutable
+    val tasks : Rep[Vertices[V]] = vertices.mutable
     val seen = Set[V]()
     
     while(tasks.length > 0) {
