@@ -88,7 +88,7 @@ trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps
   with IndexVectorOps with IndexVector2Ops with MatrixRowOps with MatrixColOps
   with StreamOps with StreamRowOps
-  with GraphOps with VerticesOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps
+  with GraphOps with VerticesOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps with VSetOps
   with LabelsOps with TrainingSetOps with ImageOps with GrayscaleImageOps {
 
   this: OptiMLApplication =>
@@ -110,7 +110,7 @@ trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with LanguageOp
   with LabelsOpsExp with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard with IndexVectorImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
-  with GraphOpsExp with VerticesOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp
+  with GraphOpsExp with VerticesOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp with VSetOpsExp
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?
@@ -175,7 +175,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with ScalaGenIndexVectorOps with ScalaGenIndexVector2Ops with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
   with ScalaGenStreamOps with ScalaGenStreamRowOps
-  with ScalaGenGraphOps with ScalaGenVerticesOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenMessageEdgeOps with ScalaGenMessageVertexOps
+  with ScalaGenGraphOps with ScalaGenVerticesOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenMessageEdgeOps with ScalaGenMessageVertexOps with ScalaGenVSetOps
   with ScalaGenLabelsOps with ScalaGenTrainingSetOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with ScalaGenImageOps with ScalaGenGrayscaleImageOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
