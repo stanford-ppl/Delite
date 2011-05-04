@@ -11,3 +11,4 @@ spade|ppl.apps.bio.spade.SpadeRunner
 streamtest|ppl.tests.dsl.optiml.StreamTestsRunner
 vectortest|ppl.tests.dsl.optiml.VectorUITestsRunner
 fscale|ppl.apps.tests.ForeachScalingRunner
+clonefail|ppl.apps.tests.CloneFailRunner

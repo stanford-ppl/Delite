@@ -52,6 +52,8 @@ trait LanguageOps extends Base { this: OptiML =>
     // reseeds for all threads
     optiml_reseed()
   }
+  
+  def identityHashCode(x:Rep[Any]): Rep[Int]
 
   def optiml_internal_rand_double(): Rep[Double]
   def optiml_internal_rand_float(): Rep[Float]
@@ -355,6 +357,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class RandGaussian() extends Def[Double]
 
   case class RandReseed() extends Def[Unit]
+  
+  case class IdentityHashCode(x: Exp[Any]) extends Def[Int]
 
 
   /**
@@ -375,6 +379,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def optiml_rand_gaussian() = reflectEffect(RandGaussian())
 
   def optiml_reseed() = reflectEffect(RandReseed())
+  
+  def identityHashCode(x:Exp[Any]) = IdentityHashCode(x)
 
 
   /**
@@ -672,6 +678,7 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
       case RandGaussian() => emitValDef(sym, "generated.scala.Global.randRef.nextGaussian()")
       case RandReseed() => emitValDef(sym, "{ generated.scala.Global.randRef.setSeed(generated.scala.Global.INITIAL_SEED);" +
                                            "   generated.scala.Global.intRandRef.setSeed(generated.scala.Global.INITIAL_SEED); }")
+      case IdentityHashCode(x) => emitValDef(sym, "System.identityHashCode(" + quote(x) + ")")
       case ProfileStart(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
       case ProfileStop(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
       case _ => super.emitNode(sym, rhs)
