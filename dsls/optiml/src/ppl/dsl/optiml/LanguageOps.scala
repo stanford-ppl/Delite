@@ -445,7 +445,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     }
 
     while(tasks.size > 0) {
-      tasks.vertices.foreach(block)
+      vset_vertices(tasks).foreach(block)
       tasks.clear()
       
       for(i <- 0 until vertices.length) {

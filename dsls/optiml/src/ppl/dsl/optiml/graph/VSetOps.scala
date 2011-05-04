@@ -20,12 +20,6 @@ import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 
 trait VSetOps extends DSLType with Variables {
-  implicit def repVSetToVSetOps[V<:Vertex:Manifest](v: Rep[Set[V]]) = new vsetOpsCls(v)
-
-  class vsetOpsCls[V<:Vertex:Manifest](s: Rep[Set[V]]) {
-    def vertices() = vset_vertices(s)
-  }
-
   def vset_vertices[V<:Vertex:Manifest](s: Rep[Set[V]]) : Rep[Vertices[V]]
 }
 
