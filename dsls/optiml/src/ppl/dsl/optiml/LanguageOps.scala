@@ -438,7 +438,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
   def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices
-    val tasks = VSet[V]()
+    val tasks = Set[V]()
 
     for(i <- 0 until vertices.length) {
       tasks.add(vertices(i))
