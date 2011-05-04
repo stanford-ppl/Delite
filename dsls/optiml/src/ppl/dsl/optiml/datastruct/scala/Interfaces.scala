@@ -217,6 +217,16 @@ trait Vertices[V <: Vertex] extends Vector[V] {
   def cloneV: Vertices[V]
   def printBeliefs(): Unit
 }
+
+trait VSet[V <: Vertex] {
+  def contains(i: V) : Boolean
+  def add(i: V) : Unit
+  def remove(i: V) : Unit
+  def clear() : Unit
+  def size() : Int
+  def vertices() : Vertices[V]
+}
+
 trait Edges[E <: Edge] extends Vector[E]
 
 
