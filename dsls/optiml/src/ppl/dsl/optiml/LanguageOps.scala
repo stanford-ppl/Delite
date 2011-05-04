@@ -438,26 +438,30 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
   def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices
-    val tasks = Set[V]()
-
-    for(i <- 0 until vertices.length) {
-      tasks.add(vertices(i))
-    }
-
-    while(tasks.size > 0) {
-      vset_vertices(tasks).foreach(block)
+    val tasks : Rep[Vertices[V]] = vertices.mutable
+    val seen = Set[V]()
+    
+    while(tasks.length > 0) {
+      tasks.mforeach(block)
       tasks.clear()
+      //var totalTasks = unit(0)
       
       for(i <- 0 until vertices.length) {
         val vtasks = vertices(i).tasks
-
+        //totalTasks += vtasks.length
         for(j <- 0 until vtasks.length) {
           val task = vtasks(j).asInstanceOfL[V]
-          tasks.add(task)
+          if(!seen.contains(task)) {
+            tasks += task   //TODO TR: non-mutable write (use mclone)
+            seen.add(task)   //TODO TR: non-mutable write
+          }
         }
 
         vertices(i).clearTasks()
       }
+
+      //println("tasks: " + tasks.length)
+      seen.clear()
     }
   }
 

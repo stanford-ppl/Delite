@@ -9,6 +9,7 @@ package ppl.dsl.optiml.graph
  */
 
 import ppl.dsl.optiml.datastruct.scala._
+import collection.mutable.{Set => MSet}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import reflect.Manifest
@@ -20,15 +21,15 @@ import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 
 trait VSetOps extends DSLType with Variables {
-  def vset_vertices[V<:Vertex:Manifest](s: Rep[Set[V]]) : Rep[Vertices[V]]
+  def vset_vertices[V<:Vertex:Manifest](s: Rep[MSet[V]]) : Rep[Vertices[V]]
 }
 
 trait VSetOpsExp extends VSetOps with EffectExp {
-  case class VSetVertices[V<:Vertex:Manifest](s: Exp[Set[V]]) extends Def[Vertices[V]] {
-    val mV = manifest[Vertices[V]]
+  case class VSetVertices[V<:Vertex:Manifest](s: Exp[MSet[V]]) extends Def[Vertices[V]] {
+    val mV = manifest[VerticesImpl[V]]
   }
 
-  def vset_vertices[V<:Vertex:Manifest](s: Exp[Set[V]]) = reflectMutable(VSetVertices(s))
+  def vset_vertices[V<:Vertex:Manifest](s: Exp[MSet[V]]) = reflectMutable(VSetVertices(s))
 }
 
 trait BaseGenVSetOps extends GenericNestedCodegen {
