@@ -38,20 +38,19 @@ object TPCH {
    import OptiQL._
 
     //Execute TPC-H queries against my tables
-
-
-    val q1 = lineItems Where(_.shipDate <= Date("1998-12-01") + Interval(90).days) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(g => new {
-      val returnFlag = g.key._1
-      val lineStatus = g.key._2
-      val sumQty = g.Sum(_.quantity)
-      val sumBasePrice = g.Sum(_.extendedPrice)
-      val sumDiscountedPrice = g.Sum(l => l.extendedPrice * (1-l.discount))
-      val sumCharge = g.Sum(l=> l.extendedPrice * (1-l.discount) * (1+l.tax))
-      val avgQty = g.Average(_.quantity)
-      val avgPrice = g.Average(_.extendedPrice)
-      val avgDiscount = g.Average(_.discount)
-      val countOrder = g.Count
-    }) OrderBy(_.lineStatus) ThenBy(_.returnFlag)
+    val q1 = lineItems Where(_.lineNumber < 5)
+//    val q1 = lineItems Where(_.shipDate <= Date("1998-12-01") + Interval(90).days) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(g => new {
+//      val returnFlag = g.key._1
+//      val lineStatus = g.key._2
+//      val sumQty = g.Sum(_.quantity)
+//      val sumBasePrice = g.Sum(_.extendedPrice)
+//      val sumDiscountedPrice = g.Sum(l => l.extendedPrice * (1-l.discount))
+//      val sumCharge = g.Sum(l=> l.extendedPrice * (1-l.discount) * (1+l.tax))
+//      val avgQty = g.Average(_.quantity)
+//      val avgPrice = g.Average(_.extendedPrice)
+//      val avgDiscount = g.Average(_.discount)
+//      val countOrder = g.Count
+//    }) OrderBy(_.lineStatus) ThenBy(_.returnFlag)
 
 
     println("TPCH Q1:")

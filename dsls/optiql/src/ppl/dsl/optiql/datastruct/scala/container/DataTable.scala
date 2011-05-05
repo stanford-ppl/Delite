@@ -2,6 +2,7 @@ package ppl.dsl.optiql.datastruct.scala.container
 
 import collection.mutable.ArrayBuffer
 import ppl.dsl.optiql.datastruct.scala.util.{ReflectionHelper, Date}
+import ppl.delite.framework.DeliteCollection
 
 object DataTable {
 
@@ -9,12 +10,20 @@ object DataTable {
 
 }
 
-abstract class DataTable[TSource] extends Iterable[TSource] {
+abstract class DataTable[TSource] extends Iterable[TSource] with DeliteCollection[TSource] {
   import DataTable._
 
   val data = new ArrayBuffer[TSource]
   val grouped = false
   def iterator = data.iterator
+
+
+  def dcApply(idx: Int) = data(idx)
+  def dcUpdate(idx: Int, x: TSource) {
+    data(idx) = x
+  }
+
+
 
   def addRecord(fields: Array[String])
 
