@@ -51,9 +51,11 @@ trait SVMModel {
 
     val numSamples = X.numRows
     var passes = unit(0)
-    
+  	var iter = unit(0)
+
     while (passes < max_passes){
-      print(".")
+      iter += 1
+		print(".")
       var num_changed_alphas = unit(0)
       //var i = unit(0)
       //while(i < numSamples){
@@ -100,7 +102,7 @@ trait SVMModel {
 	      alphas = alphas.cloneL
 
               // check alphas(j) convergence
-              if (Math.abs(alphas(j) - old_aj) >  tol){
+              if (Math.abs(alphas(j) - old_aj) >  0.00001){
                 // find a_i to maximize objective function
                 old_ai = alphas(i)
                 alphas(i) = alphas(i) + Y(i)*Y(j)*(old_aj-alphas(j))
@@ -135,6 +137,8 @@ trait SVMModel {
         passes = 0;
       }
     } // while
+
+	println("ITER " + iter)
 
     // SMO finished
     // compute the weights (assuming a linear kernel)
