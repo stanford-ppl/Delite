@@ -70,6 +70,7 @@ trait OptiQLScalaCodeGenPkg extends ScalaGenMiscOps with ScalaGenIOOps with Scal
 
 trait OptiQLCodeGenBase extends GenericFatCodegen {
   val IR: DeliteApplication with OptiQLExp
+  override def initialDefs = IR.deliteGenerator.availableDefs
 
   def dsmap(line: String) = line
 
