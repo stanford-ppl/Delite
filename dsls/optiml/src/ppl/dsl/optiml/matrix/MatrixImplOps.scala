@@ -66,7 +66,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
       out(i,i) = vals(i)
       i += 1
     }
-    out
+    out.unsafeImmutable
   }
 
   def matrix_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[Rep[Vector[A]]]]): Rep[Matrix[A]] = {
@@ -80,7 +80,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 
   def matrix_obj_fromvec_impl[A:Manifest](xs: Rep[Vector[Vector[A]]]) = {
     if (xs.length == 0) {
-      Matrix[A](0,0)
+      Matrix[A](0,0).unsafeImmutable
     }
     else {
       if (xs(0).isRow) {
@@ -92,7 +92,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
             out(i,j) = xs(i)(j)
           }
         }
-        out
+        out.unsafeImmutable
       }
       else {
         val numRows = xs(0).length
@@ -103,7 +103,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
             out(j,i) = xs(i)(j)
           }
         }
-        out
+        out.unsafeImmutable
       }
     }
 
@@ -131,7 +131,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
       }
       i += 1
     }
-    out
+    out.unsafeImmutable
   }
 
   def matrix_slicerows_impl[A:Manifest](m: Rep[Matrix[A]], start: Rep[Int], end: Rep[Int]) = {
@@ -146,7 +146,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
       }
       i += 1
     }
-    out
+    out.unsafeImmutable
   }
 
   def matrix_updaterow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int], y: Rep[Vector[A]]) = {
@@ -188,7 +188,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
         out(i,j) = m(j,i)
       }
     }
-    out
+    out.unsafeImmutable
   }
 
   def matrix_pprint_impl[A:Manifest](m: Rep[Matrix[A]]) = {
@@ -225,7 +225,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
       }
       ii += 1
     }
-    out
+    out.unsafeImmutable
   }
 
   // TODO: try/catch, case, in embedded implementation? we need to lift these still.
@@ -241,7 +241,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
       val redMat = matrix_rreduce(augMat)
       // strip off the augmented Matrix
       redMat.removeCols(0, m.numCols)
-      redMat
+      redMat.unsafeImmutable
 //    }
 //    catch{
 //      case e: Exception => {
@@ -252,6 +252,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   }
 
    protected def matrix_rreduce(m: Rep[Matrix[Double]]): Rep[Matrix[Double]] = {
+    // assumes m is mutable
     val currentMat = m
     var lead = unit(0)
     var finished = unit(false)
@@ -354,7 +355,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
         i += 1
       }
     }
-    out
+    out.unsafeImmutable
   }
 
   def matrix_times_vector_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Vector[A]] = {
@@ -364,7 +365,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     for (rowIdx <- (0::x.numRows)) {
       out(rowIdx) = x.getRow(rowIdx) *:* y
     }
-    out
+    out.unsafeImmutable
   }
 
   def matrix_sigmoid_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]] = {
@@ -380,10 +381,10 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   }
 
   def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]] = {
-	val out = Vector[A](x.numCols,true)
-	for(colIdx <- (0::x.numCols)) {
-		out(colIdx) = x.getCol(colIdx).sum
-	}
-	out
+  	val out = Vector[A](x.numCols,true)
+  	for(colIdx <- (0::x.numCols)) {
+  		out(colIdx) = x.getCol(colIdx).sum
+  	}
+  	out.unsafeImmutable
   }
 }

@@ -34,11 +34,6 @@ trait BaseGenVariantsOps extends GenericNestedCodegen {
   val IR: VariantsOpsExp
   import IR._
 
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    //case w:DeliteOpMapLikeWhileLoopVariant if (!shallow) => syms(w.alloc) ::: super.syms(e)
-    //case w:DeliteOpMapLikeWhileLoopVariant if (!shallow) => syms(w.alloc) ::: syms(w.cond) ::: syms(w.body) ::: super.syms(e)
-    case _ => super.syms(e)
-  }
 }
 
 trait ScalaGenVariantsOps extends BaseGenVariantsOps with ScalaGenEffect {

@@ -42,9 +42,6 @@ trait BaseGenEdgeOps extends GenericNestedCodegen {
   val IR: EdgeOpsExp
   import IR._
 
-  //override def syms(e: Any): List[Sym[Any]] = e match {
-    //case _ => super.syms(e)
-  //}
 }
 
 trait ScalaGenEdgeOps extends BaseGenEdgeOps with ScalaGenBase {

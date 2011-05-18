@@ -66,6 +66,7 @@ trait MatrixOps extends DSLType with Variables {
     //override def clone = matrix_clone(x)
     def cloneL() = matrix_clone(x)
     def mutable() = matrix_mutable_clone(x)
+    def unsafeImmutable() = matrix_unsafe_immutable(x)
     def pprint() = matrix_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int]) = matrix_repmat(x,i,j)
 
@@ -173,6 +174,7 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_transpose[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_clone[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_mutable_clone[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_unsafe_immutable[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_pprint[A:Manifest](x: Rep[Matrix[A]]): Rep[Unit]
   def matrix_repmat[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
 
@@ -242,6 +244,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixNumRows[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixNumCols[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixClone[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
+  case class MatrixUnsafeImmutable[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
   case class MatrixUpdate[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) extends Def[Unit]
   case class MatrixInsertRow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) extends Def[Unit]
   case class MatrixInsertAllRows[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Matrix[A]]) extends Def[Unit]
@@ -680,6 +683,54 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     }).asInstanceOf[Exp[A]] // why??
   }
 
+  /////////////////////
+  // aliases and sharing
+
+  // TODO: precise sharing info for other IR types (default is conservative)
+
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case MatrixUnsafeImmutable(a) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case MatrixUnsafeImmutable(a) => Nil
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case MatrixUnsafeImmutable(a) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => syms(a)
+    case MatrixClone(a) => syms(a)
+    case MatrixUnsafeImmutable(a) => syms(a)
+    case _ => super.copySyms(e)
+  }
 
   ////////////////////
   // object interface
@@ -727,6 +778,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_transpose[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixTranspose(x))
   def matrix_clone[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixClone(x))
   def matrix_mutable_clone[A:Manifest](x: Exp[Matrix[A]]) = reflectMutable(MatrixClone(x))
+  def matrix_unsafe_immutable[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixUnsafeImmutable(x))
   def matrix_pprint[A:Manifest](x: Exp[Matrix[A]]) = reflectEffect(MatrixPPrint(x)) // TODO: simple
   def matrix_repmat[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) = reflectPure(MatrixRepmat(x,i,j))
 
@@ -866,6 +918,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case MatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
     case MatrixClone(x) => emitValDef(sym, quote(x) + ".cloneL")
+    case MatrixUnsafeImmutable(x) => emitValDef(sym, quote(x) + "// unsafe immutable")
     case MatrixUpdate(x,i,j,y)  => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
     case MatrixInsertRow(x,pos,y)  => emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
     case MatrixInsertAllRows(x,pos,y) => emitValDef(sym, quote(x) + ".insertAllRows(" + quote(pos) + "," + quote(y) + ")")

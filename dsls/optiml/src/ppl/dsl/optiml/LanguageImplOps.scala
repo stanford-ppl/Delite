@@ -169,7 +169,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
       candidates(i) = t
     }
 
-    sampled
+    sampled.cloneL
   }
 
   /*

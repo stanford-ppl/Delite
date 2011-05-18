@@ -27,7 +27,7 @@ trait VectorOps extends DSLType with Variables {
       val out = vector_obj_new[A](unit(0),unit(true))
       // interpreted (not lifted)
       xs.foreach { out += _ }
-      out
+      out.cloneL // return immutable object
     }
 
     def flatten[A:Manifest](pieces: Rep[Vector[Vector[A]]]) = vector_obj_flatten(pieces)
@@ -82,6 +82,7 @@ trait VectorOps extends DSLType with Variables {
     def mt() = vector_mutable_trans(x)
     def cloneL() = vector_clone(x)
     def mutable() = vector_mutable_clone(x)
+    def unsafeImmutable() = vector_unsafe_immutable(x)
     def pprint() = vector_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int]) = vector_repmat(x,i,j)
     def toList = vector_tolist(x)
@@ -199,6 +200,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_mutable_trans[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_clone[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_mutable_clone[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_unsafe_immutable[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
   def vector_repmat[A:Manifest](x: Rep[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
   def vector_tolist[A:Manifest](x: Rep[Vector[A]]): Rep[List[A]]
@@ -313,6 +315,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   case class VectorClear[A:Manifest](x: Exp[Vector[A]]) extends Def[Unit]
   case class VectorMutableTrans[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
   case class VectorClone[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
+  case class VectorUnsafeImmutable[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
   // TODO: right now we just use the underlying data structure sort, but we should implement our own
   // fast parallel sort with delite ops
   case class VectorSort[A:Manifest:Ordering](x: Exp[Vector[A]]) extends Def[Vector[A]]
@@ -534,7 +537,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
     val alloc = inA
     val v = (fresh[A],fresh[A])
-    val func = v._1 - v._2
+    val func = reifyEffects(v._1 - v._2)
   }
 
   abstract case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]]) 
@@ -564,7 +567,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
     val alloc = reifyEffects(Vector[B](inB.length, inB.isRow))
     val v = (fresh[A],fresh[B])
-    val func = conv(v._1) * v._2
+    val func = reifyEffects(conv(v._1) * v._2)
   }
 
   abstract case class VectorTimesScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A]) 
@@ -598,7 +601,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector[A]](
       alloc = reifyEffects(Vector[A](size, isRow)),
-      func = inA(v) / inB(v)
+      func = reifyEffects(inA(v) / inB(v))
     )
   }
 
@@ -610,7 +613,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector[A]](
       alloc = reifyEffects(Vector[A](size, isRow)),
-      func = in(v) / y
+      func = reifyEffects(in(v) / y)
     )
   }
 
@@ -642,7 +645,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector[A]](
       alloc = reifyEffects(Vector[A](size, isRow)),
-      func = in(v).abs
+      func = reifyEffects(in(v).abs)
     )
   }
 
@@ -657,7 +660,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     val v = fresh[Int]
     val body: Def[Vector[A]] = new DeliteCollectElem[A,Vector[A]](
       alloc = reifyEffects(Vector[A](size, isRow)),
-      func = in(v).exp
+      func = reifyEffects(in(v).exp)
     )
   }
 
@@ -893,6 +896,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     case VectorApply(x, n) => vector_apply(f(x), f(n))
     case VectorLength(x) => vector_length(f(x))
     case VectorIsRow(x) => vector_isRow(f(x))
+    case VectorTrans(x) => vector_trans(f(x))
     // FIXME: VectorSum might not actually be triggered <-- still true??
     case e@VectorPlus(x,y) => toAtom(new VectorPlus(f(x),f(y))(e.mev,e.aev) {
       val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
@@ -931,6 +935,58 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   }).asInstanceOf[Exp[A]] // why??
 
 
+
+  /////////////////////
+  // aliases and sharing
+
+  // TODO: precise sharing info for other IR types (default is conservative)
+  
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case VectorApply(a,i) => Nil
+    case VectorUpdate(a,i,x) => Nil           // syms(a) <-- any use to return a?
+    case VectorUpdateIndices(a,is,x) => Nil   // syms(a) <-- any use to return a?
+    case VectorInsert(a,i,x) => Nil           // syms(a) <-- any use to return a?
+    case VectorRepmat(a,i,j) => Nil
+    case VectorClone(a) => Nil
+    case VectorUnsafeImmutable(a) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case VectorApply(a,i) => Nil
+    case VectorUpdate(a,i,x) => syms(x)
+    case VectorUpdateIndices(a,is,x) => syms(x)
+    case VectorInsert(a,i,x) => syms(x)
+    case VectorRepmat(a,i,j) => Nil
+    case VectorClone(a) => Nil
+    case VectorUnsafeImmutable(a) => Nil
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case VectorApply(a,i) => syms(a)
+    case VectorUpdate(a,i,x) => Nil
+    case VectorUpdateIndices(a,is,x) => Nil
+    case VectorInsert(a,i,x) => Nil
+    case VectorRepmat(a,i,j) => Nil
+    case VectorClone(a) => Nil
+    case VectorUnsafeImmutable(a) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case VectorApply(a,i) => Nil
+    case VectorUpdate(a,i,x) => syms(a)
+    case VectorUpdateIndices(a,is,x) => syms(a)
+    case VectorInsert(a,i,x) => syms(a)
+    case VectorRepmat(a,i,j) => syms(a)
+    case VectorClone(a) => syms(a)
+    case VectorUnsafeImmutable(a) => syms(a)
+    case _ => super.copySyms(e)
+  }
+
+
+
   /////////////////////
   // object interface
 
@@ -963,6 +1019,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_mutable_trans[A:Manifest](x: Exp[Vector[A]]) = reflectWrite(x)(VectorMutableTrans(x))
   def vector_clone[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorClone(x))
   def vector_mutable_clone[A:Manifest](x: Exp[Vector[A]]) = reflectMutable(VectorClone(x))
+  def vector_unsafe_immutable[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorUnsafeImmutable(x))
   def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = reflectPure(VectorRepmat(x,i,j))
   def vector_tolist[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorToList(x))
   def vector_mkstring[A:Manifest](x: Exp[Vector[A]], sep: Exp[String]) = reflectPure(VectorMkString(x, sep))
@@ -1147,10 +1204,6 @@ trait BaseGenVectorOps extends GenericFatCodegen {
     case _ => super.unapplySimpleIndex(e)
   }
 
-//  override def syms(e: Any): List[Sym[Any]] = e match {
-//    //case VectorObjectFromSeq(xs) => List(xs)
-//    case _ => super.syms(e)
-//  }
 }
 
 trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
@@ -1173,6 +1226,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
     case VectorTrim(x) => emitValDef(sym, quote(x) + ".trim")
     case VectorClear(x) => emitValDef(sym, quote(x) + ".clear()")
     case VectorClone(x) => emitValDef(sym, quote(x) + ".cloneL")
+    case VectorUnsafeImmutable(x) => emitValDef(sym, quote(x) + "// unsafe immutable")
 //      case v@VectorObjectNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
     case v@VectorNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
     case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
