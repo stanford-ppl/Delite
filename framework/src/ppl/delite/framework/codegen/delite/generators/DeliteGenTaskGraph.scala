@@ -7,6 +7,7 @@ import collection.mutable.{ArrayBuffer, ListBuffer, HashMap}
 import java.io.{StringWriter, FileWriter, File, PrintWriter}
 import scala.virtualization.lms.common.LoopFusionOpt
 import scala.virtualization.lms.internal.{GenerationFailedException}
+import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   val IR: DeliteOpsExp
@@ -122,11 +123,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             case op: AbstractLoop[_] => 
             hasOutputSlotTypes = true
             "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
-            // aks TODO: the following two lines somehow cause a scalac internal error (IN IDEA ONLY??) at Infer.scala line 1029; appears to have something to do with alloc
-            // workaround: comment, make, uncomment, make, sigh
-            // TR: haven't experienced this using sbt. looks like it's related to the hk type param = result type of alloc.
-            case map: DeliteOpMap[_,_,_] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
-            case zip: DeliteOpZipWith[_,_,_,_] => "generated.scala.DeliteOpZipWith[" + gen.remap(zip.v._1.Type) + "," + gen.remap(zip.v._2.Type) + "," + gen.remap(zip.func.Type) + "," + gen.remap(zip.alloc.Type) +"]"
+
+            // scalac bug (internal error) if DeliteCollection not explicitly specified
+            case map: DeliteOpMap[_,_,DeliteCollection] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
+            case zip: DeliteOpZipWith[_,_,_,DeliteCollection] => "generated.scala.DeliteOpZipWith[" + gen.remap(zip.v._1.Type) + "," + gen.remap(zip.v._2.Type) + "," + gen.remap(zip.func.Type) + "," + gen.remap(zip.alloc.Type) +"]"
             case red: DeliteOpReduce[_] => "generated.scala.DeliteOpReduce[" + gen.remap(red.func.Type) + "]"
             case mapR: DeliteOpMapReduce[_,_,_] => "generated.scala.DeliteOpMapReduce[" + gen.remap(mapR.mV.Type) + "," + gen.remap(mapR.reduce.Type) + "]"
             case foreach: DeliteOpForeach[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
@@ -243,10 +243,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         case c:DeliteOpCondition[_] => emitIfThenElse(c.cond, c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-        case m:DeliteOpMap[_,_,_] => emitMap(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+        case m:DeliteOpMap[_,_,DeliteCollection] => emitMap(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case r:DeliteOpReduce[_] => emitReduce(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-        case z:DeliteOpZipWith[_,_,_,_] => emitZipWith(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+        case z:DeliteOpZipWith[_,_,_,DeliteCollection] => emitZipWith(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case f:DeliteOpForeach[_,_] => emitForeach(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case f:DeliteOpForeachBounded[_,_,_] => emitForeach(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case _ => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes

@@ -35,6 +35,7 @@ class ExecutionThread extends Runnable {
       val work = queue.take //blocking
       try executeWork(work)
       catch { case e => {
+        e.printStackTrace
         Delite.shutdown()
         throw e
       } }
