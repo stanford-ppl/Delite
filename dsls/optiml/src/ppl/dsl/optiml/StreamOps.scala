@@ -156,8 +156,8 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   // internal
 
   def stream_chunk_row[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) = reflectPure(StreamChunkRow(x, idx, offset))
-  def stream_init_chunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectPure/*Write(x)*/(StreamInitChunk(x, offset))
-  def stream_init_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = reflectPure/*Write(x)*/(StreamInitRow(x, row, offset))
+  def stream_init_chunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectEffect/*Write(x)*/(StreamInitChunk(x, offset))
+  def stream_init_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = reflectEffect/*Write(x)*/(StreamInitRow(x, row, offset))
   def stream_init_and_chunk_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = { stream_init_row(x,row,offset); stream_chunk_row(x,row,offset) }
   def stream_rowsin[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectPure(StreamRowsIn(x, offset))
   def stream_chunk_elem[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], j: Exp[Int]) = reflectPure(StreamChunkElem(x, idx, j))
