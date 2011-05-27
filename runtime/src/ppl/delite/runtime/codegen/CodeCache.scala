@@ -114,16 +114,14 @@ trait CodeCache {
     //full check: compare all the files
     var allMatch = true
     for ((sourceFile, cacheFile) <- source.deepFiles zip cache.deepFiles; if (allMatch)) {
-      val sourceChars = sourceFile.chars()
-      val cacheChars = cacheFile.chars()
+      val sourceChars = sourceFile.bytes()
+      val cacheChars = cacheFile.bytes()
       while (sourceChars.hasNext && cacheChars.hasNext && allMatch) {
         if (sourceChars.next != cacheChars.next)
           allMatch = false
       }
       if (sourceChars.hasNext || cacheChars.hasNext)
         allMatch = false
-      sourceChars.close()
-      cacheChars.close()
     }
     allMatch
   }
