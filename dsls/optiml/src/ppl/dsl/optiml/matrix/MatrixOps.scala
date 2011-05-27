@@ -66,7 +66,6 @@ trait MatrixOps extends DSLType with Variables {
     //override def clone = matrix_clone(x)
     def cloneL() = matrix_clone(x)
     def mutable() = matrix_mutable_clone(x)
-    def unsafeImmutable() = matrix_unsafe_immutable(x)
     def pprint() = matrix_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int]) = matrix_repmat(x,i,j)
 
@@ -174,7 +173,6 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_transpose[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_clone[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_mutable_clone[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
-  def matrix_unsafe_immutable[A:Manifest](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_pprint[A:Manifest](x: Rep[Matrix[A]]): Rep[Unit]
   def matrix_repmat[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
 
@@ -244,7 +242,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixNumRows[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixNumCols[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixClone[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
-  case class MatrixUnsafeImmutable[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
   case class MatrixUpdate[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) extends Def[Unit]
   case class MatrixInsertRow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) extends Def[Unit]
   case class MatrixInsertAllRows[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Matrix[A]]) extends Def[Unit]
@@ -695,7 +692,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     case MatrixTimesScalar(a,x) => Nil
     case MatrixRepmat(a,i,j) => Nil
     case MatrixClone(a) => Nil
-    case MatrixUnsafeImmutable(a) => Nil
     case _ => super.aliasSyms(e)
   }
 
@@ -706,7 +702,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     case MatrixTimesScalar(a,x) => Nil
     case MatrixRepmat(a,i,j) => Nil
     case MatrixClone(a) => Nil
-    case MatrixUnsafeImmutable(a) => Nil
     case _ => super.containSyms(e)
   }
 
@@ -717,7 +712,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     case MatrixTimesScalar(a,x) => Nil
     case MatrixRepmat(a,i,j) => Nil
     case MatrixClone(a) => Nil
-    case MatrixUnsafeImmutable(a) => Nil
     case _ => super.extractSyms(e)
   }
 
@@ -728,7 +722,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     case MatrixTimesScalar(a,x) => Nil
     case MatrixRepmat(a,i,j) => syms(a)
     case MatrixClone(a) => syms(a)
-    case MatrixUnsafeImmutable(a) => syms(a)
     case _ => super.copySyms(e)
   }
 
@@ -736,20 +729,20 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   // object interface
 
   def matrix_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectMutable(MatrixObjectNew[A](numRows, numCols)) //XXX
-  def matrix_obj_fromseq[A:Manifest](xs: Exp[Seq[Exp[Vector[A]]]]) = reflectMutable(MatrixObjectFromSeq(xs)) //XXX
+  def matrix_obj_fromseq[A:Manifest](xs: Exp[Seq[Exp[Vector[A]]]]) = reflectPure(MatrixObjectFromSeq(xs)) //XXX
   def matrix_obj_fromvec[A:Manifest](xs: Exp[Vector[Vector[A]]]) = reflectPure(MatrixObjectFromVec(xs))
   def matrix_obj_diag[A:Manifest](w: Exp[Int], vals: Exp[Vector[A]]) = reflectPure(MatrixObjectDiag(w, vals))
   def matrix_obj_identity(w: Exp[Int]) = reflectPure(MatrixObjectIdentity(w))
   def matrix_obj_zeros(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectZeros(numRows, numCols))
   def matrix_obj_zerosf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectZerosF(numRows, numCols))
-  def matrix_obj_mzerosf(numRows: Exp[Int], numCols: Exp[Int]) = reflectMutable(MatrixObjectZerosF(numRows, numCols))
+  def matrix_obj_mzerosf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectZerosF(numRows, numCols))
   def matrix_obj_ones(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectOnes(numRows, numCols))
   def matrix_obj_onesf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectOnesF(numRows, numCols))
   def matrix_obj_rand(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectRand(numRows, numCols))
   def matrix_obj_randf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectRandF(numRows, numCols))
   def matrix_obj_randn(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectRandn(numRows, numCols))
   def matrix_obj_randnf(numRows: Rep[Int], numCols: Rep[Int]) = reflectPure(MatrixObjectRandnF(numRows, numCols))
-  def matrix_obj_mrandnf(numRows: Rep[Int], numCols: Rep[Int]) = reflectMutable(MatrixObjectRandnF(numRows, numCols))
+  def matrix_obj_mrandnf(numRows: Rep[Int], numCols: Rep[Int]) = reflectPure(MatrixObjectRandnF(numRows, numCols))
 
 
   ///////////////////
@@ -778,7 +771,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_transpose[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixTranspose(x))
   def matrix_clone[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixClone(x))
   def matrix_mutable_clone[A:Manifest](x: Exp[Matrix[A]]) = reflectMutable(MatrixClone(x))
-  def matrix_unsafe_immutable[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixUnsafeImmutable(x))
   def matrix_pprint[A:Manifest](x: Exp[Matrix[A]]) = reflectEffect(MatrixPPrint(x)) // TODO: simple
   def matrix_repmat[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) = reflectPure(MatrixRepmat(x,i,j))
 
@@ -918,7 +910,6 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case MatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
     case MatrixClone(x) => emitValDef(sym, quote(x) + ".cloneL")
-    case MatrixUnsafeImmutable(x) => emitValDef(sym, quote(x) + "// unsafe immutable")
     case MatrixUpdate(x,i,j,y)  => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
     case MatrixInsertRow(x,pos,y)  => emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
     case MatrixInsertAllRows(x,pos,y) => emitValDef(sym, quote(x) + ".insertAllRows(" + quote(pos) + "," + quote(y) + ")")

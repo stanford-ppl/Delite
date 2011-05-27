@@ -82,7 +82,6 @@ trait VectorOps extends DSLType with Variables {
     def mt() = vector_mutable_trans(x)
     def cloneL() = vector_clone(x)
     def mutable() = vector_mutable_clone(x)
-    def unsafeImmutable() = vector_unsafe_immutable(x)
     def pprint() = vector_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int]) = vector_repmat(x,i,j)
     def toList = vector_tolist(x)
@@ -200,7 +199,6 @@ trait VectorOps extends DSLType with Variables {
   def vector_mutable_trans[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_clone[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_mutable_clone[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
-  def vector_unsafe_immutable[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_pprint[A:Manifest](x: Rep[Vector[A]]): Rep[Unit]
   def vector_repmat[A:Manifest](x: Rep[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
   def vector_tolist[A:Manifest](x: Rep[Vector[A]]): Rep[List[A]]
@@ -315,7 +313,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   case class VectorClear[A:Manifest](x: Exp[Vector[A]]) extends Def[Unit]
   case class VectorMutableTrans[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
   case class VectorClone[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
-  case class VectorUnsafeImmutable[A:Manifest](x: Exp[Vector[A]]) extends Def[Vector[A]]
   // TODO: right now we just use the underlying data structure sort, but we should implement our own
   // fast parallel sort with delite ops
   case class VectorSort[A:Manifest:Ordering](x: Exp[Vector[A]]) extends Def[Vector[A]]
@@ -948,7 +945,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     case VectorInsert(a,i,x) => Nil           // syms(a) <-- any use to return a?
     case VectorRepmat(a,i,j) => Nil
     case VectorClone(a) => Nil
-    case VectorUnsafeImmutable(a) => Nil
     case _ => super.aliasSyms(e)
   }
 
@@ -959,7 +955,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     case VectorInsert(a,i,x) => syms(x)
     case VectorRepmat(a,i,j) => Nil
     case VectorClone(a) => Nil
-    case VectorUnsafeImmutable(a) => Nil
     case _ => super.containSyms(e)
   }
 
@@ -970,7 +965,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     case VectorInsert(a,i,x) => Nil
     case VectorRepmat(a,i,j) => Nil
     case VectorClone(a) => Nil
-    case VectorUnsafeImmutable(a) => Nil
     case _ => super.extractSyms(e)
   }
 
@@ -981,7 +975,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
     case VectorInsert(a,i,x) => syms(a)
     case VectorRepmat(a,i,j) => syms(a)
     case VectorClone(a) => syms(a)
-    case VectorUnsafeImmutable(a) => syms(a)
     case _ => super.copySyms(e)
   }
 
@@ -992,7 +985,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
 
 //  def vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectEffect(VectorObjectNew[A](len, isRow))
   def vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(VectorNew[A](len, isRow)(manifest[VectorImpl[A]])) //XXX
-  def vector_obj_fromseq[A:Manifest](xs: Exp[Seq[A]]) = reflectMutable(VectorObjectFromSeq(xs)) //XXX
+  def vector_obj_fromseq[A:Manifest](xs: Exp[Seq[A]]) = reflectPure(VectorObjectFromSeq(xs)) //XXX
   def vector_obj_ones(len: Exp[Int]) = reflectPure(VectorObjectOnes(len))
   def vector_obj_onesf(len: Exp[Int]) = reflectPure(VectorObjectOnesF(len))
   def vector_obj_zeros(len: Exp[Int]) = reflectPure(VectorObjectZeros(len))
@@ -1019,7 +1012,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Clea
   def vector_mutable_trans[A:Manifest](x: Exp[Vector[A]]) = reflectWrite(x)(VectorMutableTrans(x))
   def vector_clone[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorClone(x))
   def vector_mutable_clone[A:Manifest](x: Exp[Vector[A]]) = reflectMutable(VectorClone(x))
-  def vector_unsafe_immutable[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorUnsafeImmutable(x))
   def vector_repmat[A:Manifest](x: Exp[Vector[A]], i: Exp[Int], j: Exp[Int]) = reflectPure(VectorRepmat(x,i,j))
   def vector_tolist[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorToList(x))
   def vector_mkstring[A:Manifest](x: Exp[Vector[A]], sep: Exp[String]) = reflectPure(VectorMkString(x, sep))
@@ -1144,6 +1136,8 @@ trait VectorOpsExpOpt extends VectorOpsExp {
   }
 
   override def vector_mutable_clone[A:Manifest](x: Exp[Vector[A]]) = x match {
+		case Def(d@VectorNew(len, isRow)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
+    case Def(d@VectorObjectFromSeq(xs)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])		
     case Def(d@VectorObjectZeros(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     case Def(d@VectorObjectZerosF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     case Def(d@VectorObjectOnes(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
@@ -1226,7 +1220,6 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
     case VectorTrim(x) => emitValDef(sym, quote(x) + ".trim")
     case VectorClear(x) => emitValDef(sym, quote(x) + ".clear()")
     case VectorClone(x) => emitValDef(sym, quote(x) + ".cloneL")
-    case VectorUnsafeImmutable(x) => emitValDef(sym, quote(x) + "// unsafe immutable")
 //      case v@VectorObjectNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
     case v@VectorNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
     case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")

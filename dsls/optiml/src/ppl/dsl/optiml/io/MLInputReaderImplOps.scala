@@ -28,11 +28,10 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val x = Matrix[Double](0, dbls.length)
 
     while (line != null){
-      val v = Vector[Double](dbls.length, true)
-      for (i <- 0 until dbls.length){
-        v(i) = Double.parseDouble(dbls(i))
+      val v = (0::dbls.length) { i =>
+	      Double.parseDouble(dbls(i))
       }
-      x += v.unsafeImmutable
+      x += v
 
       line = xfs.readLine()
       if (line != null) {
@@ -70,11 +69,8 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val x = Matrix[Int](0, ints.length)
 
     while (line != null) {
-      val v = Vector[Int](ints.length, true)
-      var i = unit(0)
-      while (i < ints.length) {
-        v(i) = Integer.parseInt(ints(i))
-        i += 1
+      val v = (0::ints.length) { i =>
+        Integer.parseInt(ints(i))
       }
       x += v.unsafeImmutable
 
