@@ -382,6 +382,17 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case foreach: DeliteOpForeachBounded[_,_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func) ++ syms(foreach.sync)
     case _ => super.syms(e)
   }
+	  
+  override def readSyms(e: Any): List[Sym[Any]] = e match { 
+    case map: DeliteOpMap[_,_,_] => readSyms(map.in) 
+    case zip: DeliteOpZipWith[_,_,_,_] => readSyms(zip.inA) ++ readSyms(zip.inB) 
+    case red: DeliteOpReduce[_] => readSyms(red.in)
+    case mapR: DeliteOpMapReduce[_,_,_] => readSyms(mapR.in) 
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => readSyms(zipR.inA) ++ readSyms(zipR.inB) 
+    case foreach: DeliteOpForeach[_,_] => readSyms(foreach.in) 
+    case foreach: DeliteOpForeachBounded[_,_,_] => readSyms(foreach.in) 
+    case _ => super.readSyms(e)
+  }  
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match { //TR TODO
     case s: DeliteOpSingleTask[_] => effectSyms(s.block)
