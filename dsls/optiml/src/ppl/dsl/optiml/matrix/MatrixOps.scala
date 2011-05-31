@@ -393,28 +393,37 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
 
-
   ////////////////////////////////
   // implemented via delite ops
-
+	
+	abstract class MatrixArithmeticMap[A:Manifest:Arith] extends DeliteOpMap2[A,Matrix[A],A,Matrix[A]] {
+		def m = manifest[A]
+		def a = implicitly[Arith[A]]
+	}
+	
+	abstract class MatrixArithmeticZipWith[A:Manifest:Arith] extends DeliteOpZipWith2[A,Matrix[A],A,Matrix[A],A,Matrix[A]] {
+		def m = manifest[A]
+		def a = implicitly[Arith[A]]
+	}
+		
   case class MatrixPlus[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
-    extends DeliteOpZipWith[A,A,A,Matrix] {
+    extends MatrixArithmeticZipWith {
 
-    val alloc = reifyEffects(Matrix[A](inA.numRows, inA.numCols))
-    val v = (fresh[A],fresh[A])
-    val func = v._1 + v._2
+    def alloc = Matrix[A](inA.numRows, inA.numCols)
+		val size = inA.numRows*inA.numCols
+    def func = (a,b) => a + b
   }
 
   case class MatrixPlusScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
-    extends DeliteOpMap[A,A,Matrix] {
+    extends MatrixArithmeticMap {
 
-    val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
-    val v = fresh[A]
-    val func = v + y
+    def alloc = Matrix[A](in.numRows, in.numCols)
+		val size = in.numRows*in.numCols
+    def func = e => e + y
   }
 
   case class MatrixPlusEquals[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
-    extends DeliteOpZipWith[A,A,A,Matrix] {
+    extends DeliteOpZipWith[A,A,A,Matrix] { // try multiloop
 
     val alloc = inA
     val v = (fresh[A],fresh[A])
@@ -422,36 +431,37 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
   case class MatrixMinus[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
-    extends DeliteOpZipWith[A,A,A,Matrix] {
+    extends MatrixArithmeticZipWith {
 
-    val alloc = reifyEffects(Matrix[A](inA.numRows, inA.numCols))
-    val v = (fresh[A],fresh[A])
-    val func = v._1 - v._2
-  }
+	  def alloc = Matrix[A](inA.numRows, inA.numCols)
+		val size = inA.numRows*inA.numCols
+	  def func = (a,b) => a - b
+	}
 
   case class MatrixMinusScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
-    extends DeliteOpMap[A,A,Matrix] {
+    extends MatrixArithmeticMap {
 
-    val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
-    val v = fresh[A]
-    val func = v - y
+    def alloc = Matrix[A](in.numRows, in.numCols)
+		val size = in.numRows*in.numCols
+    def func = e => e - y
   }
 
   case class MatrixTimes[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
-    extends DeliteOpZipWith[A,A,A,Matrix] {
+    extends MatrixArithmeticZipWith {
 
-    val alloc = reifyEffects(Matrix[A](inA.numRows, inA.numCols))
-    val v = (fresh[A],fresh[A])
-    val func = v._1 * v._2
+		def alloc = Matrix[A](inA.numRows, inA.numCols)
+		val size = inA.numRows*inA.numCols
+    def func = (a,b) => a * b
   }
 
   case class MatrixTimesScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
-    extends DeliteOpMap[A,A,Matrix] {
+    extends MatrixArithmeticMap {
 
-    val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
-    val v = fresh[A]
-    val func = v * y
+    def alloc = Matrix[A](in.numRows, in.numCols)
+		val size = in.numRows*in.numCols
+    def func = e => e * y
   }
+
 /*
   case class MatrixTimesVector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]])
     extends DeliteOpMap[Vector[A],A,Vector] {
@@ -471,19 +481,19 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 */
   case class MatrixDivide[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
-    extends DeliteOpZipWith[A,A,A,Matrix] {
+    extends MatrixArithmeticZipWith {
 
-    val alloc = reifyEffects(Matrix[A](inA.numRows, inA.numCols))
-    val v = (fresh[A],fresh[A])
-    val func = v._1 / v._2
+		def alloc = Matrix[A](inA.numRows, inA.numCols)
+		val size = inA.numRows*inA.numCols
+    def func = (a,b) => a / b
   }
 
   case class MatrixDivideScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
-    extends DeliteOpMap[A,A,Matrix] {
+    extends MatrixArithmeticMap {
 
-    val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
-    val v = fresh[A]
-    val func = v / y
+    def alloc = Matrix[A](in.numRows, in.numCols)
+		val size = in.numRows*in.numCols
+    def func = e => e / y
   }
   
   case class MatrixSum[A:Manifest:Arith](in: Exp[Matrix[A]])
@@ -528,7 +538,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 */
 
 //  case class MatrixUnaryMinus[A:Manifest:Arith](in: Exp[Matrix[A]])
-//    extends DeliteOpMap[A,A,Matrix] {
+//    extends MatrixArithmeticMap {
 //
 //    val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
 //    val v = fresh[A]
@@ -536,19 +546,19 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 //  }
 
   case class MatrixAbs[A:Manifest:Arith](in: Exp[Matrix[A]])
-    extends DeliteOpMap[A,A,Matrix] {
+    extends MatrixArithmeticMap {
 
-    val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
-    val v = fresh[A]
-    val func = v.abs
+    def alloc = Matrix[A](in.numRows, in.numCols)
+		val size = in.numRows*in.numCols
+    def func = e => e.abs
   }
 
   case class MatrixExp[A:Manifest:Arith](in: Exp[Matrix[A]])
-    extends DeliteOpMap[A,A,Matrix] {
+    extends MatrixArithmeticMap {
 
-    val alloc = reifyEffects(Matrix[A](in.numRows, in.numCols))
-    val v = fresh[A]
-    val func = v.exp
+    def alloc = Matrix[A](in.numRows, in.numCols)
+		val size = in.numRows*in.numCols
+    def func = e => e.exp
   }
 
   /*
@@ -572,29 +582,33 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   */
 
   case class MatrixMin[A:Manifest:Ordering](in: Exp[Matrix[A]])
-    extends DeliteOpReduce[A] {
+    extends DeliteOpReduce2[A] {
 
-    val v = (fresh[A],fresh[A])
-    val func = if (v._1 < v._2) v._1 else v._2
+		val size = in.numRows*in.numCols
+    val zero = getMaxValue[A]
+    def func = (a,b) => if (a < b) a else b
   }
 
   case class MatrixMax[A:Manifest:Ordering](in: Exp[Matrix[A]])
-    extends DeliteOpReduce[A] {
+    extends DeliteOpReduce2[A] {
 
-    val v = (fresh[A],fresh[A])
-    val func = if (v._1 > v._2) v._1 else v._2
+		val size = in.numRows*in.numCols
+    val zero = getMinValue[A]
+    def func = (a,b) => if (a > b) a else b
   }
 
-  case class MatrixMap[A:Manifest,B:Manifest](in: Exp[Matrix[A]], v: Sym[A], func: Exp[B])
-    extends DeliteOpMap[A,B,Matrix] {
+  case class MatrixMap[A:Manifest,B:Manifest](in: Exp[Matrix[A]], func: Exp[A] => Exp[B])
+    extends DeliteOpMap2[A,Matrix[A],B,Matrix[B]] {
 
-    val alloc = reifyEffects(Matrix[B](in.numRows, in.numCols))
+    def alloc = Matrix[B](in.numRows, in.numCols)
+		val size = in.numRows*in.numCols		
   }
 
-  case class MatrixMutableMap[A:Manifest](in: Exp[Matrix[A]], v: Sym[A], func: Exp[A])
-    extends DeliteOpMap[A,A,Matrix] {
+  case class MatrixMutableMap[A:Manifest](in: Exp[Matrix[A]], func: Exp[A] => Exp[A])
+    extends DeliteOpMap2[A,Matrix[A],A,Matrix[A]] {
 
-    val alloc = in
+    def alloc = in
+		val size = in.numRows*in.numCols
   }
 
   case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Vector[B]])
@@ -639,10 +653,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
   case class MatrixZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[Matrix[A]], inB: Exp[Matrix[B]],
-                                                             v: (Sym[A],Sym[B]), func: Exp[R])
-    extends DeliteOpZipWith[A,B,R,Matrix] {
+                                                             func: (Exp[A], Exp[B]) => Exp[R])
+    extends DeliteOpZipWith2[A,Matrix[A],B,Matrix[B],R,Matrix[R]] {
 
-    val alloc = reifyEffects(Matrix[R](inA.numRows, inA.numCols))
+    def alloc = Matrix[R](inA.numRows, inA.numCols)
+		val size = inA.numRows*inA.numCols
   }
 
   case class MatrixReduceRows[A:Manifest](x: Exp[Matrix[A]], v: (Sym[Vector[A]],Sym[Vector[A]]), func: Exp[Vector[A]])
@@ -666,64 +681,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val reduce = reifyEffects(rV._1 + rV._2)
   }
 
-  //////////////
-  // mirroring
-
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
-    (e match {
-      case MatrixGetRow(x,i) => matrix_getrow(f(x),f(i))
-      case MatrixApply(x,i,j) => matrix_apply(f(x),f(i),f(j))
-      case MatrixDCApply(x,i) => matrix_dcapply(f(x),f(i))
-      //case e@MatrixTimesVector(x,y) => toAtom(new MatrixTimesVector(f(x),f(y))(e.mev,e.aev) { val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
-      case MatrixVView(x, start, stride, length, isRow) => matrix_vview(f(x),f(start),f(stride),f(length),f(isRow))
-      case _ => super.mirror(e, f)
-    }).asInstanceOf[Exp[A]] // why??
-  }
-
-  /////////////////////
-  // aliases and sharing
-
-  // TODO: precise sharing info for other IR types (default is conservative)
-
-  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
-    case MatrixMultiply(a,b) => Nil
-    case MatrixTimes(a,b) => Nil
-    case MatrixTimesVector(a,v) => Nil
-    case MatrixTimesScalar(a,x) => Nil
-    case MatrixRepmat(a,i,j) => Nil
-    case MatrixClone(a) => Nil
-    case _ => super.aliasSyms(e)
-  }
-
-  override def containSyms(e: Any): List[Sym[Any]] = e match {
-    case MatrixMultiply(a,b) => Nil
-    case MatrixTimes(a,b) => Nil
-    case MatrixTimesVector(a,v) => Nil
-    case MatrixTimesScalar(a,x) => Nil
-    case MatrixRepmat(a,i,j) => Nil
-    case MatrixClone(a) => Nil
-    case _ => super.containSyms(e)
-  }
-
-  override def extractSyms(e: Any): List[Sym[Any]] = e match {
-    case MatrixMultiply(a,b) => Nil
-    case MatrixTimes(a,b) => Nil
-    case MatrixTimesVector(a,v) => Nil
-    case MatrixTimesScalar(a,x) => Nil
-    case MatrixRepmat(a,i,j) => Nil
-    case MatrixClone(a) => Nil
-    case _ => super.extractSyms(e)
-  }
-
-  override def copySyms(e: Any): List[Sym[Any]] = e match {
-    case MatrixMultiply(a,b) => Nil
-    case MatrixTimes(a,b) => Nil
-    case MatrixTimesVector(a,v) => Nil
-    case MatrixTimesScalar(a,x) => Nil
-    case MatrixRepmat(a,i,j) => syms(a)
-    case MatrixClone(a) => syms(a)
-    case _ => super.copySyms(e)
-  }
 
   ////////////////////
   // object interface
@@ -802,16 +759,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_max[A:Manifest:Ordering](x: Exp[Matrix[A]]) = reflectPure(MatrixMax(x))
   def matrix_maxrow[A:Manifest:Arith:Ordering](x: Exp[Matrix[A]]) = reflectPure(MatrixMaxRow(x))
 
-  def matrix_map[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[A] => Exp[B]) = {
-    val v = fresh[A]
-    val func = reifyEffects(f(v))
-    reflectPure(MatrixMap(x, v, func))
-  }
-  def matrix_mmap[A:Manifest](x: Exp[Matrix[A]], f: Exp[A] => Exp[A]) = {
-    val v = fresh[A]
-    val func = reifyEffects(f(v))
-    reflectWrite(x)(MatrixMutableMap(x, v, func)) // effect??
-  }
+  def matrix_map[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[A] => Exp[B]) = reflectPure(MatrixMap(x, f))
+  def matrix_mmap[A:Manifest](x: Exp[Matrix[A]], f: Exp[A] => Exp[A]) = reflectWrite(x)(MatrixMutableMap(x, f)) // effect??
   def matrix_maprows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[Vector[B]]) = {
     Matrix(reflectPure(MatrixMapRows(x,f)))
   }
@@ -829,9 +778,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     reflectEffect(MatrixForeachRow(x, block)) // read??
   }
   def matrix_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[B]], f: (Exp[A],Exp[B]) => Exp[R]) = {
-    val v = (fresh[A], fresh[B])
-    val func = reifyEffects(f(v._1,v._2))
-    reflectPure(MatrixZipWith(x, y, v, func))
+ 		reflectPure(MatrixZipWith(x, y, f))
   }
   def matrix_reducerows[A:Manifest](x: Exp[Matrix[A]], f: (Exp[Vector[A]],Exp[Vector[A]]) => Exp[Vector[A]]) = {
     val v = (fresh[Vector[A]],fresh[Vector[A]])
@@ -845,6 +792,65 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   // internal
 
   def matrix_dcapply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = reflectPure(MatrixDCApply(x,i))
+
+	//////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
+    (e match {
+      case MatrixGetRow(x,i) => matrix_getrow(f(x),f(i))
+      case MatrixApply(x,i,j) => matrix_apply(f(x),f(i),f(j))
+      case MatrixDCApply(x,i) => matrix_dcapply(f(x),f(i))
+      //case e@MatrixTimesVector(x,y) => toAtom(new MatrixTimesVector(f(x),f(y))(e.mev,e.aev) { val size = f(e.size); val isRow = f(e.isRow); val v = f(e.v).asInstanceOf[Sym[Int]]; val body = mirrorLoopBody(e.body, f) })
+      case MatrixVView(x, start, stride, length, isRow) => matrix_vview(f(x),f(start),f(stride),f(length),f(isRow))
+      case _ => super.mirror(e, f)
+    }).asInstanceOf[Exp[A]] // why??
+  }
+
+  /////////////////////
+  // aliases and sharing
+
+  // TODO: precise sharing info for other IR types (default is conservative)
+
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => syms(a)
+    case MatrixClone(a) => syms(a)
+    case _ => super.copySyms(e)
+  }	
 }
 
 /**

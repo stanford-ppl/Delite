@@ -49,7 +49,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     for (i <- 0 until xs.length) {
       v(i) = xs(i)
     }
-    v.unsafeImmutable
+    v //.unsafeImmutable
   }
 
   def vector_obj_ones_impl(length: Rep[Int]) = Vector[Double](length, true) mmap { e => 1. }
