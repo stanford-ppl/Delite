@@ -991,6 +991,8 @@ trait VectorOpsExpOpt extends VectorOpsExp {
 		// and size (for data parallel tasks) together. Vector can override dc_size, but has to deal with erasure.		
 		case Def(e: DeliteOpMap2[_,_,_,_]) => e.size
 		case Def(e: DeliteOpZipWith2[_,_,_,_,_,_]) => e.size
+		case Def(Reflect(e: DeliteOpMap2[_,_,_,_], _,_)) => e.size // reasonable?
+		case Def(Reflect(e: DeliteOpZipWith2[_,_,_,_,_,_], _,_)) => e.size // reasonable?
 		//		case Def(e: DeliteOpVectorLoop[A]) => e.size
 		
 		case Def(VectorSlice(a, start, end)) => end - start
@@ -1000,7 +1002,10 @@ trait VectorOpsExpOpt extends VectorOpsExp {
 		case Def(VectorMinusEquals(a,b)) => a.length
 		case Def(VectorSort(a)) => a.length
 			
-    case _ => super.vector_length(x)
+    case _ => 
+			//printerr("could not short-circuit call to " + x.toString + ".length")
+			//printerr(findDefinition(x.asInstanceOf[Sym[Vector[A]]]))
+			super.vector_length(x)
   }
 
   override def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = x match {
