@@ -5,7 +5,8 @@ import ppl.dsl.optiml.datastruct.scala._
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
+import ppl.delite.framework.datastruct.scala.DeliteCollection
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
@@ -929,7 +930,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
  * Optimizations for composite VectorOps operations.
  */
 
-trait VectorOpsExpOpt extends VectorOpsExp {
+// have to extend DeliteCollectionOps to override dc_apply...
+trait VectorOpsExpOpt extends VectorOpsExp with DeliteCollectionOpsExp {
   this: VectorImplOps with OptiMLExp =>
 
   override def vector_equals[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
@@ -1022,18 +1024,24 @@ trait VectorOpsExpOpt extends VectorOpsExp {
   }
   
   // and this one also helps in the example:
-  
-  override def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = x match {
-    case Def(VectorObjectZeros(l)) => unit(0).asInstanceOf[Exp[A]]
-    case Def(VectorObjectOnes(l)) => unit(1).asInstanceOf[Exp[A]]
-    case Def(VectorObjectRange(s,e,d,r)) => (s + n*d).asInstanceOf[Exp[A]]
-    case Def(VectorTrans(x)) => vector_apply(x,n)
-    case Def(MatrixGetRow(x, i)) => matrix_apply(x,i,n)
-    case Def(StreamChunkRow(x, i, offset)) => stream_chunk_elem(x,i,n)
-    //case Def(StreamChunkRowFusable(x, i, offset)) => stream_chunk_elem(x,i,n) <-- enabling this will remove the computation altogether
-    case _ => super.vector_apply(x,n)
+  def vector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]): Option[Exp[A]] = x match {
+		case Def(VectorObjectZeros(l)) => Some(unit(0).asInstanceOf[Exp[A]])
+    case Def(VectorObjectOnes(l)) => Some(unit(1).asInstanceOf[Exp[A]])
+    case Def(VectorObjectRange(s,e,d,r)) => Some((s + n*d).asInstanceOf[Exp[A]])
+    case Def(VectorTrans(x)) => Some(vector_apply(x,n))
+    case Def(MatrixGetRow(x, i)) => Some(matrix_apply(x,i,n))
+    case Def(StreamChunkRow(x, i, offset)) => Some(stream_chunk_elem(x,i,n))
+    //case Def(StreamChunkRowFusable(x, i, offset)) => Some(stream_chunk_elem(x,i,n)) <-- enabling this will remove the computation altogether
+		case _ => None
+	}
+	
+  override def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = {
+		vector_optimize_apply(x.asInstanceOf[Exp[DeliteCollection[A]]],n) getOrElse super.vector_apply(x,n)
   }
   
+	override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = {
+		vector_optimize_apply(x,n) getOrElse super.dc_apply(x,n)
+	}
 }
 
 trait BaseGenVectorOps extends GenericFatCodegen {

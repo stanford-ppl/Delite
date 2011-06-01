@@ -103,7 +103,8 @@ trait OptiMLCompiler extends OptiML with RangeOps with IOOps with SeqOps with Se
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with LanguageOpsExp with ApplicationOpsExp with ArithOpsExpOpt
+trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
+	with LanguageOpsExp with ApplicationOpsExp with ArithOpsExpOpt
   with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp
   with IndexVectorOpsExp with IndexVector2OpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with StreamOpsExpOpt with StreamRowOpsExpOpt
@@ -111,7 +112,7 @@ trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with LanguageOp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard with IndexVectorImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
   with GraphOpsExp with VerticesOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp
-  with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp {
+  with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?
   this: DeliteApplication with OptiMLApplication with OptiMLExp => // can't be OptiMLApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
