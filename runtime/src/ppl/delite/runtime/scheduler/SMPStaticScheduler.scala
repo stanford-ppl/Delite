@@ -43,6 +43,19 @@ final class SMPStaticScheduler extends StaticScheduler {
     graph.schedule = schedule
   }
 
+	protected def scheduleSequential(graph: DeliteTaskGraph) {
+		val opQueue = new ArrayDeque[DeliteOP]
+		val schedule = PartialSchedule(numThreads)
+		enqueueRoots(graph, opQueue)
+	  while (!opQueue.isEmpty) {
+	    val op = opQueue.remove
+			addSequential(op, graph, schedule, 0)
+      enqueueRoots(graph, opQueue)
+    }
+    ensureScheduled(graph)
+		graph.schedule = schedule		
+	}
+
   //NOTE: this is currently the simple scheduler from Delite 1.0
   var nextThread = 0 //TODO: this isn't reset across nested graphs, but does it really matter?
 

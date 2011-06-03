@@ -43,6 +43,19 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
     graph.schedule = schedule
   }
 
+	protected def scheduleSequential(graph: DeliteTaskGraph) {
+		val opQueue = new ArrayDeque[DeliteOP]
+		val schedule = PartialSchedule(2)
+		enqueueRoots(graph, opQueue)
+	  while (!opQueue.isEmpty) {
+	    val op = opQueue.remove
+			addSequential(op, graph, schedule, 0)
+      enqueueRoots(graph, opQueue)
+    }
+    ensureScheduled(graph)
+		graph.schedule = schedule
+	}
+
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Seq(cpu,gpu))

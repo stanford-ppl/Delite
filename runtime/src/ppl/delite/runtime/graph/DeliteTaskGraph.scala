@@ -130,7 +130,10 @@ object DeliteTaskGraph {
 
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
-      case "OP_MultiLoop" => new OP_MultiLoop(id, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"))
+      case "OP_MultiLoop" => 
+			  val size = getFieldString(op, "sizeValue")
+				val sizeIsConst = getFieldString(op, "sizeType") == "const"				
+				new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"))
       case "OP_MapReduce" => new OP_MapReduce(id, "kernel_"+id, resultMap)
       case "OP_Map" => new OP_Map(id, "kernel_"+id, resultMap)
       case "OP_Reduce" => new OP_Reduce(id, "kernel_"+id, resultMap)
@@ -319,10 +322,10 @@ object DeliteTaskGraph {
     whileOp.dependencies = whileDeps
     whileOp.inputList = whileInputs.toList
     whileOp.mutableInputs = whileMutableInputs
-
+		
     if (predValue == "") extractCudaMetadata(whileOp, predGraph, graph)
     if (bodyValue == "") extractCudaMetadata(whileOp, bodyGraph, graph)
-
+		
     //add consumer edges
     for (dep <- whileDeps)
       dep.addConsumer(whileOp)

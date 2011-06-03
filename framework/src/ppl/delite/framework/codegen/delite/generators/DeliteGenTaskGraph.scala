@@ -266,7 +266,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
   def emitMultiLoop(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean)
        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
-   stream.print("{\"type\":\"MultiLoop\", \"size\" : \"" + quote(size) + "\", \"needsCombine\":" + needsCombine)
+   stream.println("{\"type\":\"MultiLoop\",")
+ 	 emitConstOrSym(size, "size")
+	 stream.print(",\"needsCombine\":" + needsCombine)
    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
    stream.println("},")
   }
@@ -449,14 +451,14 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     //scope = save
   }
 
-  def emitOutput(x: Exp[Any])(implicit stream: PrintWriter) = {
-    x match {
-      case c:Const[Any] => stream.println("  \"outputType\": \"const\",")
-                           stream.println("  \"outputValue\": \"" + quote(x) + "\"")
-      case s:Sym[Any] =>   stream.println("  \"outputType\": \"symbol\",")
-                           stream.println("  \"outputValue\": \"" + quote(getBlockResult(x)) + "\"")
-    }
-  }
+	def emitConstOrSym(x: Exp[Any], prefix: String)(implicit stream: PrintWriter) = x match {
+		case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
+                         stream.println("  \"" + prefix + "Value\": \"" + quote(x) + "\"")
+    case s:Sym[Any] =>   stream.println("  \"" + prefix + "Type\": \"symbol\",")
+                         stream.println("  \"" + prefix + "Value\": \"" + quote(getBlockResult(x)) + "\"")    
+	}
+	
+  def emitOutput(x: Exp[Any])(implicit stream: PrintWriter) = emitConstOrSym(x, "output")
 
   def emitEOG()(implicit stream: PrintWriter) = {
     stream.print("{\"type\":\"EOG\"}\n],\n")

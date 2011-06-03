@@ -40,12 +40,8 @@ abstract class OP_Nested extends DeliteOP {
     private[graph] val outputTypesMap = null
     def task = null
     def isDataParallel = false
-    def cost = 0
-    def size = 0
   }
 
   final def isDataParallel = false
-  final def size = 0
-  final def cost = 0
 
 }

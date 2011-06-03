@@ -3,6 +3,7 @@ package ppl.delite.runtime.scheduler
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.ops._
 import java.util.ArrayDeque
+import ppl.delite.runtime.cost._
 
 /**
  * Author: Kevin J. Brown
@@ -18,13 +19,14 @@ import java.util.ArrayDeque
  * Defines the public interface for the rest of the Delite Runtime
  */
 
-abstract class StaticScheduler {
-
+trait StaticScheduler extends ParallelUtilizationCostModel {
   def schedule(graph: DeliteTaskGraph)
 
   protected def scheduleFlat(graph: DeliteTaskGraph)
 
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule)
+
+	protected def scheduleSequential(graph: DeliteTaskGraph) 	
 
   protected def enqueueRoots(graph: DeliteTaskGraph, opQueue: ArrayDeque[DeliteOP]) {
     for (op <- graph.ops) {
@@ -49,6 +51,24 @@ abstract class StaticScheduler {
     }
   }
 
+	protected def addSequential(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resource: Int) {
+		op match {
+			case c: OP_Condition => {
+				scheduleSequential(c.predicateGraph)
+				scheduleSequential(c.thenGraph)
+				scheduleSequential(c.elseGraph)				
+				splitNotEmpty(c, graph, schedule, List(c.predicateGraph.schedule, c.thenGraph.schedule, c.elseGraph.schedule), Seq(0))			
+			}
+			case w: OP_While => {
+				scheduleSequential(w.predicateGraph)
+				scheduleSequential(w.bodyGraph)
+				splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), Seq(0))			
+			}
+			case op if op.isDataParallel => split(op, graph, schedule, Seq(0))
+			case op => scheduleOn(op, graph, schedule, resource)			
+		}		
+	}
+	
   protected def addNested(op: OP_Nested, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
     op match {
       case c: OP_Condition => {
@@ -58,9 +78,17 @@ abstract class StaticScheduler {
         splitNotEmpty(c, graph, schedule, List(c.predicateGraph.schedule, c.thenGraph.schedule, c.elseGraph.schedule), resourceList)
       }
       case w: OP_While => {
-        scheduleFlat(w.predicateGraph)
-        scheduleFlat(w.bodyGraph)
-        splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), resourceList)
+				if (shouldParallelize(w, Map[String,Int]())){
+					println("scheduling while loop in parallel")
+					scheduleFlat(w.predicateGraph)	        
+        	scheduleFlat(w.bodyGraph)
+				}
+				else {					
+					println("scheduling while loop sequentially")
+					scheduleSequential(w.predicateGraph)
+					scheduleSequential(w.bodyGraph)
+			  }        
+				splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), resourceList)			
       }
       case v: OP_Variant => {
         scheduleFlat(v.variantGraph)
@@ -69,6 +97,12 @@ abstract class StaticScheduler {
       case err => error("Control OP type not recognized: " + err.getClass.getSimpleName)
     }
   }
+
+	protected def scheduleOn(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resource: Int) {	
+		schedule(resource).add(op)
+	  op.scheduledResource = resource
+	  op.isScheduled = true
+	}
 
   protected def splitNotEmpty(op: OP_Nested, graph: DeliteTaskGraph, outerSchedule: PartialSchedule, innerSchedules: List[PartialSchedule], resourceList: Seq[Int]) {
     val filteredList = resourceList.filter(i => innerSchedules.map(_(i).isEmpty) contains false)
