@@ -5,6 +5,7 @@ import java.util.ArrayDeque
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph.ops._
+import ppl.delite.runtime.cost._
 
 /**
  * Author: Kevin J. Brown
@@ -20,7 +21,7 @@ import ppl.delite.runtime.graph.ops._
  * All OPs that can be executed on the GPU do so
  * The remaining ops execute in a single CPU thread
  */
-final class GPUOnlyStaticScheduler extends StaticScheduler {
+final class GPUOnlyStaticScheduler extends StaticScheduler with ParallelUtilizationCostModel {
 
   private val cpu = 0
   private val gpu = 1

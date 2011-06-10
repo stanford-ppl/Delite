@@ -16,9 +16,9 @@ trait ParallelUtilizationCostModel extends AbstractCostModel {
 	val unknownLoopSize = 0 // could be large, could be median of known sizes, ...
 	
 	def getParallelUtilization(ops: Set[DeliteOP], sizeDict: Map[String, Int]): (Int, Int, Int) = {
-		var totalOps: Int = 0 
-		var parallelOps: Int = 0
-		var parallelSize: Int = 0 
+		var totalOps = 0 
+		var parallelOps = 0
+		var parallelSize = 0 
 		
 		for (n <- ops) {
 			n match {

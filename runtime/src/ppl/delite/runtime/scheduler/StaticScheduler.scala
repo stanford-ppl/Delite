@@ -19,7 +19,9 @@ import ppl.delite.runtime.cost._
  * Defines the public interface for the rest of the Delite Runtime
  */
 
-trait StaticScheduler extends ParallelUtilizationCostModel {
+trait StaticScheduler {
+	this: AbstractCostModel =>
+	
   def schedule(graph: DeliteTaskGraph)
 
   protected def scheduleFlat(graph: DeliteTaskGraph)
@@ -79,12 +81,10 @@ trait StaticScheduler extends ParallelUtilizationCostModel {
       }
       case w: OP_While => {
 				if (shouldParallelize(w, Map[String,Int]())){
-					println("scheduling while loop in parallel")
 					scheduleFlat(w.predicateGraph)	        
         	scheduleFlat(w.bodyGraph)
 				}
 				else {					
-					println("scheduling while loop sequentially")
 					scheduleSequential(w.predicateGraph)
 					scheduleSequential(w.bodyGraph)
 			  }        
