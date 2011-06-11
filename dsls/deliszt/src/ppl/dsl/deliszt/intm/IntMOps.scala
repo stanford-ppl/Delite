@@ -7,48 +7,47 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase}
-import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.dsl.delizst.{DeLisztExp, DeLiszt}
-import ppl.dsl.delizst.datastruct.scala._
-import ppl.dsl.delizst.datastruct.scala.MetaInteger._
+import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
+import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 
-trait IntMOps extends DSLType with Variables {
+trait IntMOps extends DSLType with Variables with MetaInteger {
   this: DeLiszt =>
 
-  val _0 : IntM
-  val _1 : IntM
-  val _2 : IntM
-  val _3 : IntM
-  val _4 : IntM
-  val _5 : IntM
-  val _6 : IntM
-  val _7 : IntM
-  val _8 : IntM
-  val _9 : IntM
-  val _10 : IntM
-  val _11 : IntM
-  val _12 : IntM
-  val _13 : IntM
-  val _14 : IntM
-  val _15 : IntM
-  val _16 : IntM
-  val _17 : IntM
-  val _18 : IntM
-  val _19 : IntM
-  val _20 : IntM
-  val _21 : IntM
-  val _22 : IntM
+  val _0 = intm_obj[_0]
+  val _1 = intm_obj[_1]
+  val _2 = intm_obj[_2]
+  val _3 = intm_obj[_3]
+  val _4 = intm_obj[_4]
+  val _5 = intm_obj[_5]
+  val _6 = intm_obj[_6]
+  val _7 = intm_obj[_7]
+  val _8 = intm_obj[_8]
+  val _9 = intm_obj[_9]
+  val _10 = intm_obj[_10]
+  val _11 = intm_obj[_11]
+  val _12 = intm_obj[_12]
+  val _13 = intm_obj[_13]
+  val _14 = intm_obj[_14]
+  val _15 = intm_obj[_15]
+  val _16 = intm_obj[_16]
+  val _17 = intm_obj[_17]
+  val _18 = intm_obj[_18]
+  val _19 = intm_obj[_19]
+  val _20 = intm_obj[_20]
+  val _21 = intm_obj[_21]
+  val _22 = intm_obj[_22]
 
-  def intm_obj[IntM]
+  def intm_obj[N <: IntM] = Rep[IntM]
 }
-
 
 trait IntMOpsExp extends IntMOps with VariablesExp {
   this: DeLisztExp  =>
 
   //////////////////////////////////////////////////
   // implemented via method on real data structure
-  case class IntMObject(value : Int) extends Def[IntM] {
+  case class IntMObject[N <: IntM] extends Def[IntM] {
+    val depth = MIntDepth[N]
   }
 
   /////////////////////////////////////
@@ -56,6 +55,7 @@ trait IntMOpsExp extends IntMOps with VariablesExp {
 
   ////////////////////
   // object interface
+  def intm_obj[N <: IntM] = IntMObject[N]
 
   ///////////////////
   // class interface
@@ -67,7 +67,7 @@ trait ScalaGenIntMOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case m@IntMObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@IntMObject => emitValDef(sym, "generated.scala.MetaInteger._" + m.depth)
     case _ => super.emitNode(sym, rhs)
   }
 }

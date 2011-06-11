@@ -10,7 +10,8 @@ package ppl.dsl.deliszt.datastruct.scala
 
 trait MeshObj {
   def id : Int
-  def internalId : Int
+  def internalId : Int = id & ~BitReverse.MASK
+  def reversed = BitReverse.reversed(id)
 }
 
 trait Vertex extends MeshObj

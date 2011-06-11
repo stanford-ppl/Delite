@@ -14,47 +14,55 @@ trait FieldPrivateOps extends DSLType with Variables {
   this: DeLiszt =>
 
   object Field {
-    def apply[MO<:MeshObj:Manifest,VT:Manifest](mesh: Rep[Mesh]) = field_obj_new(mesh)
+    def apply[MO<:MeshObj:Manifest,VT:Manifest]() = field_obj_new[MO,VT]()
   }
 
-  implicit def repFieldToFieldOps[MO <: MeshObj, VT : Manifest](x: Rep[Field[MO, VT]]) = new fieldOpsCls(x)
-  implicit def varToFieldOps[MO <: MeshObj, VT : Manifest](x: Var[Field[MO, VT]]) = new fieldOpsCls(readVar(x))
+  implicit def repFieldToFieldPrivateOps[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]]) = new fieldPrivateOpsCls(x)
+  implicit def varToFieldPrivateOps[MO<:MeshObj:Manifest,VT:Manifest](x: Var[Field[MO,VT]]) = new fieldPrivateOpsCls(readVar(x))
 
   /**
    * This class defines the private interface for the Field[T] class.
    */
-  class fieldOpsCls[MO <: MeshObj, VT](x: Rep[Field[MO, VT]]) {
-    def apply(idx : Rep[Int]) = field_apply(x, idx)
-    def update(idx : Rep[Int], v : Rep[VT]) = field_update(x, idx,v)
+  class fieldPrivateOpsCls[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]]) {
+    def apply(n : Rep[Int]) = field_apply(x, n)
+    def update(n : Rep[Int], v : Rep[VT]) = field_update(x, n,v)
     def size = field_size(x)
   }
 
-  def field_obj_new[MO<:MeshObj:Manifest,VT:Manifest](mesh: Rep[Mesh]): Rep[Field[MO,VT]]
+  def label[MO<:MeshObj:Manifest,VT:Manifest](url: Rep[String]): Rep[Field[MO,VT]]
+  def field_obj_new[MO<:MeshObj:Manifest,VT:Manifest](): Rep[Field[MO,VT]]
 
-  def field_apply[MO <: MeshObj, VT](x: Rep[Field[MO, VT]], idx: Rep[Int]) : Rep[VT]
-  def field_update[MO <: MeshObj, VT](x: Rep[Field[MO, VT]], mo: Rep[MO], v : Rep[VT]) : Rep[Unit]
-  def field_size[MO <: MeshObj, VT](x: Rep[Field[MO, VT]]) : Rep[Int]
+  def field_apply[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]], n: Rep[Int]): Rep[VT]
+  def field_update[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]], n: Rep[Int], v: Rep[VT]): Rep[Unit]
+  def field_size[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]]): Rep[Int]
 }
 
-trait FieldPrivateOpsExp extends FieldPrivateOps with VariablesExp with BaseFatExp with CleanRoom {
+trait FieldPrivateOpsExp extends FieldPrivateOps with VariablesExp with BaseFatExp {
   this: DeLisztExp =>
 
   def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x)
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
-  case class FieldObjectNew[MO<:MeshObj:Manifest,VT:Manifest](len: Exp[Int], isRow: Exp[Boolean]) extends Def[Field[MO,VT]] {
-     val fM = manifest[FieldImpl[A]]
+  case class FieldObjectNew[MO<:MeshObj:Manifest,VT:Manifest]() extends Def[Field[MO,VT]] {
+    val fM = manifest[FieldImpl[MO,VT]]
   }
 
-  case class FieldApply[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], idx: Exp[Int]) extends Def[VT]
-  case class FieldUpdate[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], idx: Exp[Int], v: Exp[VT]) extends Def[Unit]
+  case class LabelField[MO<:MeshObj:Manifest,VT:Manifest](url: Exp[String]) extends Def[Field[MO,VT]] {
+    val mM = manifest[MO]
+  }
 
-  //////////////
-  // mirroring
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case _ => super.mirror(e, f)
-  }).asInstanceOf[Exp[A]]
+  case class FieldApply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) extends Def[VT]
+  case class FieldUpdate[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT]) extends Def[Unit]
+  case class FieldSize[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]]) extends Def[Int]
+
+  def label[MO<:MeshObj:Manifest,VT:Manifest](url: Exp[String]) = LabelField[MO,VT](url)
+
+  def field_obj_new[MO<:MeshObj:Manifest,VT:Manifest]() = reflectMutable(FieldObjectNew[MO,VT]())
+
+  def field_apply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) = FieldApply(x,n)
+  def field_update[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT]) = reflectWrite(x)(FieldUpdate(x,n,v))
+  def field_size[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]]) = FieldSize(x)
 }
 
 trait BaseGenFieldPrivateOps extends GenericFatCodegen {
@@ -73,14 +81,15 @@ trait ScalaGenFieldPrivateOps extends BaseGenFieldPrivateOps with ScalaGenFat {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       // these are the ops that call through to the underlying real data structure
-      case f@FieldObjectNew(mesh) => emitValDef(sym, remap(f.fM) + "(" + quote(mesh) + ")")
+      case f@FieldObjectNew() => emitValDef(sym, remap(f.fM) + "()")
+      case lf@LabelField(url) => emitValDef(sym, "generated.scala.Mesh.mesh.label[" + remap(f.mM) + "](" + quote(url) + ")")
       case FieldApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
       case FieldUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+      case FieldSize(x) => emitValDef(sym, quote(x) + ".size")
       case _ => super.emitNode(sym, rhs)
     }
   }
 }
-
 
 trait CudaGenFieldPrivateOps extends BaseGenFieldPrivateOps with CudaGenFat with CudaGenDataStruct {
   val IR: FieldPrivateOpsExp

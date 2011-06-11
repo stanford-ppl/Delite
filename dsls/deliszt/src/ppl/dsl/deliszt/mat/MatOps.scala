@@ -12,8 +12,8 @@ import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.Config
 import ppl.dsl.delizst.{DeLisztExp, DeLiszt}
 import ppl.dsl.delizst.datastruct.scala._
-import ppl.dsl.deliszt.datastruct.scala.Mat
 import ppl.dsl.deliszt.DeLisztExp
+import ppl.dsl.deliszt.datastruct.scala.{Vec, Mat}
 
 trait MatOps extends DSLType with Variables {
   this: DeLiszt =>
@@ -50,6 +50,9 @@ trait MatOps extends DSLType with Variables {
   // class defs
   def mat_apply[A:Manifest](x: Rep[Mat[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
   def mat_update[A:Manifest](x: Rep[Mat[A]], i: Rep[Int], j: Rep[Int], y: Rep[A]): Rep[Unit]
+
+  def row[R<:IntM, C<:IntM, VT](m: Rep[Mat[R,C,VT]], a: Rep[Int]): Rep[Vec[C,VT]]
+	def col[R<:IntM, C<:IntM, VT](m: Rep[Mat[R,C,VT]], a: Rep[Int]): Rep[Vec[R,VT]]
 
   def mat_plus[A:Manifest:Arith](x: Rep[Mat[A]], y: Rep[Mat[A]]): Rep[Mat[A]]
   def mat_plus_scalar[A:Manifest:Arith](x: Rep[Mat[A]], y: Rep[A]): Rep[Mat[A]]

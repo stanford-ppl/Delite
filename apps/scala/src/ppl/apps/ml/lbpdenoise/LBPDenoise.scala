@@ -81,20 +81,30 @@ trait LBPDenoise extends OptiMLApplication {
       v =>
         val vdata = v.data.asInstanceOfL[DenoiseVertexData]
         vdata.belief.copyFrom(0, vdata.potential)  //TODO TR: non-mutable write
-
+        
         // Multiply belief by messages
         for (e <- v.edges) {  //TODO TR: non-mutable write
           val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
+          if(count % 100000 == 0) {
+            print("mult ")
+            in.message.pprint
+            vdata.belief.pprint
+          }
           unaryFactorTimesM(vdata.belief, in.message)  //TODO TR: non-mutable write
         }
 
+        if(count % 100000 == 0) {
+          print("norm")
+          vdata.belief.pprint
+        }
+        
         // Normalize the belief
         val belief = unaryFactorNormalizeM(vdata.belief) //TODO TR: non-mutable write
         
-       /* if(count % 100000 == 0) {
-          print("norm")
-          vdata.belief.pprint
-        } */
+        if(count % 100000 == 0) {
+          print("after norm")
+          belief.pprint
+        }
         
         //println("mult")
         //vdata.belief.pprint
@@ -108,7 +118,7 @@ trait LBPDenoise extends OptiMLApplication {
           val cavity = unaryFactorNormalizeM(unaryFactorDivideM(vdata.belief.cloneL, in.message)) //TODO TR: non-mutable write (use mclone)
 
           // Convolve the cavity with the edge factor
-          val msg = unaryFactorNormalizeM(unaryFactorConvolve(edgePotential, cavity))  //TODO TR: non-mutable write
+         val msg = unaryFactorNormalizeM(unaryFactorConvolve(edgePotential, cavity))  //TODO TR: non-mutable write
 
           // Damp the message (MUTATE IN PLACE)
           /* unaryFactorDampM(msg, out.message, damping)

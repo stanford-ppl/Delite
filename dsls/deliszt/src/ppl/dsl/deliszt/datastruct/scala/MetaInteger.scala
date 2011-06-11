@@ -15,7 +15,7 @@ package ppl.dsl.deliszt.datastruct.scala
  * and open the template in the editor.
  */
 
-object MetaInteger {
+trait MetaInteger {
   abstract class IntM {
     type Succ <: IntM
     type Add[N <: IntM] <: IntM
@@ -95,7 +95,9 @@ object MetaInteger {
   }
 
   def MIntDepth[T <: IntM](implicit n: MIntToInt[T]) = n.value
+}
 
+object MetaInteger extends MetaInteger {
   //for convience we provide objects representing each number as well
   //so you can avoid passing parameter arguments
   val _0 : _0 = new _0

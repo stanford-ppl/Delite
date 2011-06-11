@@ -24,23 +24,19 @@ trait FieldImplOpsStandard extends FieldImplOps {
   //////////////////////////
   // kernel implementations
   def field_obj_const_impl[MO<:MeshObj:Manifest,VT:Manifest](c : Rep[VT]) = {
-    val v = Field[MO,VT](mesh)
+    val v = Field[MO,VT]()
     for (i <- 0 until v.size) {
-      v(i) = c
+      v.update(i, c)
     }
     v
   }
 
-  def field_obj_label_impl[MO<:MeshObj:Manifest,VT:Manifest](url : Rep[String]) = {
-    val v = Field[MO,VT](mesh)
-    var mo
+  def field_obj_label_impl[MO<:MeshObj:Manifest,VT:Manifest](url: Rep[String]) = {
+    val v = Field[MO,VT]()
+    val lf = label[MO](url)
 
-    if(manifest[MO] <:< manifest[Cell]) {
-
-    }
-
-    for (i <- 0 until v.size) {
-      v(i) =
+    for (mo <- meshSet[MO]) {
+      v.update(i, lf(mo))
     }
     v
   }

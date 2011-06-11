@@ -8,7 +8,7 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-trait DeLisztSet[MO <: MeshObj] extends ppl.delite.framework.DeliteCollection[MO] {
+trait DeLisztSet[MO <: MeshObj] extends DeliteCollection[MO] {
   def apply(i : Int) : MO
   def size : Int
 

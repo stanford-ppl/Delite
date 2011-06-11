@@ -87,7 +87,6 @@ trait DeLisztCompiler extends DeLiszt with FieldPrivateOps {
   this: DeLisztApplication with DeLisztExp =>
 }
 
-
 /**
  * These are the corresponding IR nodes for DeLiszt.
  */

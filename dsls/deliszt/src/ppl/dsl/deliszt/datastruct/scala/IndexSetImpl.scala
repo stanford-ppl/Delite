@@ -8,17 +8,30 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-object BitReverse {
-  val MASK = 0x80000000
+
+
+object IndexSetImpl {
+  def apply(crs: CRS, e: MeshObj) = apply(crs, e.internalId)
+
+  def apply(crs: CRS, n: Int) = {
+    new IndexSetImpl(crs.values, crs.row(n), crs.row(n+1))
+  }
+}
+
+object CWIndexSetImpl {
+  def apply(crs: CRS, e: MeshObj) = apply(crs, e.internalId)
+
+  def apply(crs: CRS, n: Int) = {
+    new CWIndexSetImpl(crs.values, crs.row(n), crs.row(n+1))
+  }
 }
 
 class IndexSetImpl[MO <: MeshObj : Manifest](data : Array[Int], start: Int, end : Int) extends DeLisztSet[MO] {
-  def apply(i : Int) = new MO(data(start + i))
+  def apply(i : Int) = MeshObjImpl[MO](data(start + i))
   def size = end - start
 }
 
 // Direction bit should get reversed for CW
-class CWIndexSetImpl[MO <: MeshObj : Manifest] extends DeLisztSet[MO] {
-  def apply(i : Int) = new MO(BitReverse.MASK ^ data(start + i))
-  def size = end - start
+class CWIndexSetImpl[MO <: MeshObj : Manifest](data: Array[Int], start: Int, end: Int) extends IndexSetImpl[MO](data, start) {
+  def apply(i : Int) = MeshObjImpl[MO](BitReverse.MASK ^ data(start + i))
 }

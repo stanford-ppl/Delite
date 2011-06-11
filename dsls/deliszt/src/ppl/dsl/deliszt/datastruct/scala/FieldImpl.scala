@@ -9,31 +9,31 @@ package ppl.dsl.deliszt.datastruct.scala
  */
 
 object FieldImpl {
-  def apply[A <: MeshObj : Manifest, VT : Manifest](mesh: Mesh) = {
-    if(manifest[A] <:< manifest[Cell]) {
-       new FieldImpl(new Array[VT](mesh.ncells))
+  def apply[MO<:MeshObj:Manifest,VT:Manifest]() = {
+    if(manifest[MO] <:< manifest[Cell]) {
+       new FieldImpl(new Array[VT](Mesh.mesh.ncells))
     }
-    else if(manifest[A] <:< manifest[Face]) {
-      new FieldImpl(new Array[VT](mesh.nfaces))
+    else if(manifest[MO] <:< manifest[Face]) {
+      new FieldImpl(new Array[VT](Mesh.mesh.nfaces))
     }
-    else if(manifest[A] <:< manifest[Edge]) {
-      new FieldImpl(new Array[VT](mesh.nedges))
+    else if(manifest[MO] <:< manifest[Edge]) {
+      new FieldImpl(new Array[VT](Mesh.mesh.nedges))
     }
-    else if(manifest[A] <:< manifest[Vertex]) {
-      new FieldImpl(new Array[VT](mesh.nvertices))
+    else if(manifest[MO] <:< manifest[Vertex]) {
+      new FieldImpl(new Array[VT](Mesh.mesh.nvertices))
     }
   }
 }
 
-class FieldImpl[A <: MeshObj, VT](data : Array[VT]) extends Field[A, VT] {
-  def apply(a : A) : VT = data(a.internalId)
-  def update(a : A, v : VT) = {
-    data(a.internalId) = v
+class FieldImpl[MO<:MeshObj:Manifest, VT:Manifest](data : Array[VT]) extends Field[MO,VT] {
+  def apply(e: MO) : VT = data(e.internalId)
+  def update(e: MO, v : VT) = {
+    data(e.internalId) = v
   }
 
   def size = data.length
   def dcApply(idx: Int) = data(idx)
-  def dcUpdate(idx: Int, x: A) = {
+  def dcUpdate(idx: Int, x: MO) = {
     data(idx) = x
   }
 }
