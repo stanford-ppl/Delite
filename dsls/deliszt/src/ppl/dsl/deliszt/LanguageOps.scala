@@ -134,9 +134,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   case class DeLisztID[MO <: MeshObj : Manifest](x: Exp[MO]) extends Def[Int]
 
-  case class MathPi extends Def[Float]
-  case class MinFloat extends Def[Float]
-  case class MaxFloat extends Def[Float]
+  case class MathPi() extends Def[Float]
+  case class MinFloat() extends Def[Float]
+  case class MaxFloat() extends Def[Float]
   case class MathSqrt(a: Exp[Float]) extends Def[Float]
   case class MathFAbs(a: Exp[Float]) extends Def[Float]
   case class MPIWTime() extends Def[Float]
@@ -209,9 +209,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
 	def ID[MO <: MeshObj](x : Exp[MO]) = reflectPure(DeLisztID(x))
 
-  def MATH_PI() = MathPi
-  def MIN_FLOAT() = MinFloat
-  def MAX_FLOAT() = MaxFloat
+  def MATH_PI() = MathPi()
+  def MIN_FLOAT() = MinFloat()
+  def MAX_FLOAT() = MaxFloat()
   def sqrt(a: Exp[Float]) = MathSqrt(a)
   def fabs(value: Exp[Float]) = MathFAbs(a)
   def MPI_Wtime() = MPIWTime()
@@ -254,9 +254,9 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
 
       case DeLisztFlip(e) => emitValDef(sym, "generated.scala.Mesh.flip(" + quote(e) + ")")
 
-      case MathPi => emitValDef(sym, "Math.Pi")
-      case MinFloat => emitValDef(sym, "scala.Float.MinValue")
-      case MaxFloat => emitValDef(sym, "scala.Float.MaxValue")
+      case MathPi() => emitValDef(sym, "Math.Pi")
+      case MinFloat() => emitValDef(sym, "scala.Float.MinValue")
+      case MaxFloat() => emitValDef(sym, "scala.Float.MaxValue")
       case MathSqrt(a) => emitValDef(sym, "Math.sqrt(" + quote(a) + ")")
       case MathFAbs(a) => emitValDef(sym, "Math.abs(" + quote(a) + ")")
       case MPIWTime() => emitValDef(sym, "SOMETHING")

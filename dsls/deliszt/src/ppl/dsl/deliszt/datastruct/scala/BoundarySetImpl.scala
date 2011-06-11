@@ -61,18 +61,3 @@ class BoundarySetImpl[MO<:MeshObj:Manifest] extends MeshObjSet[MO] {
 
   def add(start: Int, end: Int) = {}
 }
-
-{
-  for(iv <- range(..)) {
-    ...
-  }
-}
-
-def range(lb, ub, step, width) : Rep[Vector[Int]] = {
-  // calculate the size of the vector
-  val v = new Vector(size)
-
-  // Set vector elements
-
-  return v
-}

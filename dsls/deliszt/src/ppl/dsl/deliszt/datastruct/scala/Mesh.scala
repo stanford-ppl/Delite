@@ -125,15 +125,15 @@ class Mesh {
 
   vertexData.fns("position") = positionToVec
 
-  def label[MO<:MeshObj:Manifest,VT:Manifest](url: String)(implicit ld : LabelData[MO]) : LabelField[MO,VT] = {
-    ld.data.get(url) match {
+  def label[MO<:MeshObj:Manifest,VT:Manifest](url: String) : LabelField[MO,VT] = {
+    implicitly[LabelData[MO]].data.get(url) match {
       case Some(data) => new LabelFieldImpl[MO,VT](data, ld.fns.get(url))
     }
   }
 
   def meshSet[MO<:MeshObj:Manifest] = implicitly[MeshObjSet[MO]]
-  def boundarySet[MO<:MeshObj:Manifest](url: String)(implicit bm : Map[String,MeshObjSet[MO]]) : MeshObjSet[MO] = {
-    bm.get(url) match {
+  def boundarySet[MO<:MeshObj:Manifest](url: String) : MeshObjSet[MO] = {
+    implicitly[Map[String,MeshObjSet[MO]]].bm.get(url) match {
       case Some(bs) => bs
       case None => null
     }

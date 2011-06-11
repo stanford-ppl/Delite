@@ -21,7 +21,7 @@ object MeshObjImpl {
     def apply(id : Int) = new VertexImpl(id)
   }
 
-  def apply[MO <: MeshObj : Manifest](id : Int)(implicit con : MeshObjConstruct[MO]) : MO = con(id)
+  def apply[MO <: MeshObj : Manifest](id : Int) : MO = (implicitly[MeshObjConstruct[MO]])(id)
 }
 
 class CellImpl(val id : Int) extends Cell

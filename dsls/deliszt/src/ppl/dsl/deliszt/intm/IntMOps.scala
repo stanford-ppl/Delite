@@ -46,7 +46,7 @@ trait IntMOpsExp extends IntMOps with VariablesExp {
 
   //////////////////////////////////////////////////
   // implemented via method on real data structure
-  case class IntMObject[N <: IntM] extends Def[IntM] {
+  case class IntMObject[N <: IntM]() extends Def[IntM] {
     val depth = MIntDepth[N]
   }
 
