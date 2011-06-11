@@ -71,5 +71,5 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   //TR is anybody using this? conflict with defining 'tests' as test source path above...
   //aks: i am, but i'm in the process of trying to convert all the remaining tests to be scalatests.
   //in the meantime, i tried to set this up so it wouldn't conflict with the existing scalatests
-  lazy val tests = project("tests", "Delite Tests", new FlatProject(_), framework, dsls, apps)
+  //lazy val tests = project("tests", "Delite Tests", new FlatProject(_), framework, dsls, apps)
 }

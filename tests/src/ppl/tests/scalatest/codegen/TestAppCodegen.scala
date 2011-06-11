@@ -58,8 +58,7 @@ class TestAppCodegen extends FileDiffSuite {
         println("##### all definitions")
         app.globalDefs.foreach { d =>
           println(d)
-          val info = d.sym.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
-          println(info.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
+          println(d.sym.sourceInfo.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
         }
       } finally {
         ppl.delite.framework.Config.opfusionEnabled = save
