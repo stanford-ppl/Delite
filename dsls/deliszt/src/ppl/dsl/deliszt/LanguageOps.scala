@@ -1,12 +1,12 @@
 package ppl.dsl.deliszt
 
 import datastruct.scala._
+import datastruct.scala.MetaInteger._
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import reflect.Manifest
 import scala.virtualization.lms.internal.GenericFatCodegen
 import scala.virtualization.lms.common._
-import virtualization.lms.common.BaseExp._
 
 /* Machinery provided by DeLiszt itself (language features and control structures).
  *
@@ -21,9 +21,9 @@ trait LanguageOps extends Base { this: DeLiszt =>
   def _init() : Unit
 
   def Print(as : Rep[Any]*) : Unit
-	def FieldWithConst[MO <: MeshObj, VT](url : Rep[VT])(implicit mo : Manifest[MO], vt : Manifest[VT]) : Rep[Field[MO,VT]]
-	def FieldWithURL[MO <: MeshObj, VT](url : String)(implicit mo : Manifest[MO], vt : Manifest[VT]) : Rep[Field[MO,VT]]
-	def BoundarySet[MO <: MeshObj](name : String)(implicit mo : Manifest[MO]) : Rep[Set[MO]]
+	def FieldWithConst[MO<:MeshObj, VT](url : Rep[VT])(implicit mo : Manifest[MO], vt : Manifest[VT]) : Rep[Field[MO,VT]]
+	def FieldWithURL[MO<:MeshObj, VT](url : String)(implicit mo : Manifest[MO], vt : Manifest[VT]) : Rep[Field[MO,VT]]
+	def BoundarySet[MO<:MeshObj](name : String)(implicit mo : Manifest[MO]) : Rep[Set[MO]]
 
 	def mesh : Rep[Mesh]
 
@@ -72,11 +72,11 @@ trait LanguageOps extends Base { this: DeLiszt =>
 
 	def towards(e : Rep[Edge],v : Rep[Vertex])(implicit x : Overloaded1) : Rep[Edge]
 	def towards(e : Rep[Face],c : Rep[Cell])(implicit x : Overloaded2) : Rep[Face]
-	def size[MO <: MeshObj](s : Rep[Set[MO]])(implicit m : Manifest[MO]) : Rep[Int]
+	def size[MO<:MeshObj](s : Rep[Set[MO]])(implicit m : Manifest[MO]) : Rep[Int]
 
-	def ID[MO <: MeshObj](x : Rep[MO]) : Rep[Int]
+	def ID[MO<:MeshObj](x : Rep[MO]) : Rep[Int]
 
-	def foreach[MO <: MeshObj](x : Rep[Set[MO]], fn : Rep[Unit]) : Rep[Unit]
+	def foreach[MO<:MeshObj](x : Rep[Set[MO]], fn : Rep[Unit]) : Rep[Unit]
 
   def MATH_PI() = Rep[Float]
   def MIN_FLOAT() = Rep[Float]
@@ -93,9 +93,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class DeLisztInit() extends Def[Unit]
   case class DeLisztPrint(as: Exp[Any]*) extends Def[Unit]
 
-  case class DeLisztFieldWithConst[MO <: MeshObj : Manifest, VT : Manifest](url : Exp[VT]) extends Def[Field[MO,VT]]
-  case class DeLisztFieldWithURL[MO <: MeshObj : Manifest, VT : Manifest](url : Exp[String]) extends Def[Field[MO,VT]]
-  case class DeLisztBoundarySet[MO <: MeshObj : Manifest](name : Exp[String]) extends Def[Set[MO]]
+  case class DeLisztFieldWithConst[MO<:MeshObj : Manifest, VT : Manifest](url : Exp[VT]) extends Def[Field[MO,VT]]
+  case class DeLisztFieldWithURL[MO<:MeshObj : Manifest, VT : Manifest](url : Exp[String]) extends Def[Field[MO,VT]]
+  case class DeLisztBoundarySet[MO<:MeshObj : Manifest](name : Exp[String]) extends Def[Set[MO]]
 
   case class DeLisztMesh() extends Def[Mesh]
 
@@ -127,12 +127,12 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class DeLisztTowardsEdgeVertex(e : Exp[Edge], v: Exp[Vertex]) extends Def[Edge]
   case class DeLisztTowardsFaceCell(e : Exp[Face], c: Exp[Cell]) extends Def[Face]
 
-  case class DeLisztSize[MO <: MeshObj : Manifest](s: Exp[Set[MO]]) extends Def[Int]
+  case class DeLisztSize[MO<:MeshObj : Manifest](s: Exp[Set[MO]]) extends Def[Int]
 
-  case class DeLisztForeach[MO <: MeshObj : Manifest](x: Exp[Set[MO]], v: Sym[MO], func: Exp[Unit])
+  case class DeLisztForeach[MO<:MeshObj : Manifest](x: Exp[Set[MO]], v: Sym[MO], func: Exp[Unit])
     extends DeliteOpForeach[MO,Set]
   
-  case class DeLisztID[MO <: MeshObj : Manifest](x: Exp[MO]) extends Def[Int]
+  case class DeLisztID[MO<:MeshObj : Manifest](x: Exp[MO]) extends Def[Int]
 
   case class MathPi() extends Def[Float]
   case class MinFloat() extends Def[Float]
@@ -145,11 +145,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def _init() = reflectEffect(DeLizstInit())
   def Print(as: Exp[Any]*) = reflectEffect(DeLisztPrint(as))
 
-  def FieldWithConst[MO <: MeshObj, VT](url : Exp[VT])(implicit mo : Manifest[MO], vt : Manifest[VT])
+  def FieldWithConst[MO<:MeshObj, VT](url : Exp[VT])(implicit mo : Manifest[MO], vt : Manifest[VT])
     = reflectMutable(DeLisztFieldWithConst(url))
-	def FieldWithURL[MO <: MeshObj, VT](url : String)(implicit mo : Manifest[MO], vt : Manifest[VT])
+	def FieldWithURL[MO<:MeshObj, VT](url : String)(implicit mo : Manifest[MO], vt : Manifest[VT])
     = reflectMutable(DeLisztFieldWithURL(url))
-	def BoundarySet[MO <: MeshObj](name : String)(implicit mo : Manifest[MO])
+	def BoundarySet[MO<:MeshObj](name : String)(implicit mo : Manifest[MO])
     = reflectPure(DeLisztBoundarySet(name))
 
 	def mesh = reflectPure(DeLisztMesh())
@@ -199,15 +199,15 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
 	def towards(e : Exp[Edge], v: Exp[Vertex])(implicit x : Overloaded1) = reflectPure(DeLisztTowardsEdgeVertex(e,v))
 	def towards(e : Exp[Face], c: Exp[Cell])(implicit x : Overloaded2) = reflectPure(DeLisztTowardsFaceCell(e,c))
-	def size[MO <: MeshObj](s : Exp[Set[MO]])(implicit m : Manifest[MO]) = reflectPure(DeLisztSize(s))
+	def size[MO<:MeshObj](s : Exp[Set[MO]])(implicit m : Manifest[MO]) = reflectPure(DeLisztSize(s))
 
-	def foreach[MO <: MeshObj](x : Exp[Set[MO]], block : Exp[Unit]) = {
+	def foreach[MO<:MeshObj](x : Exp[Set[MO]], block : Exp[Unit]) = {
     val v = fresh[MO]
     val func = reifyEffects(block(v))
     reflectEffect(DeLisztForeach(x, v, func))
   }
 
-	def ID[MO <: MeshObj](x : Exp[MO]) = reflectPure(DeLisztID(x))
+	def ID[MO<:MeshObj](x : Exp[MO]) = reflectPure(DeLisztID(x))
 
   def MATH_PI() = MathPi()
   def MIN_FLOAT() = MinFloat()
@@ -268,12 +268,12 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
   case class DeLisztTowardsEdgeVertex(e : Exp[Edge], v: Exp[Vertex]) extends Def[Edge]
   case class DeLisztTowardsFaceCell(e : Exp[Face], c: Exp[Cell]) extends Def[Face]
 
-  case class DeLisztSize[MO <: MeshObj : Manifest](s: Exp[Set[MO]]) extends Def[Int]
+  case class DeLisztSize[MO<:MeshObj : Manifest](s: Exp[Set[MO]]) extends Def[Int]
 
-  case class DeLisztForeach[MO <: MeshObj : Manifest](x: Exp[Set[MO]], v: Sym[MO], func: Exp[Unit])
+  case class DeLisztForeach[MO<:MeshObj : Manifest](x: Exp[Set[MO]], v: Sym[MO], func: Exp[Unit])
     extends DeliteOpForeach[MO,Set]
 
-  case class DeLisztID[MO <: MeshObj : Manifest](x: Exp[MO]) extends Def[Int]
+  case class DeLisztID[MO<:MeshObj : Manifest](x: Exp[MO]) extends Def[Int]
    */
 }
 

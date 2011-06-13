@@ -27,11 +27,11 @@ object CWIndexSetImpl {
 }
 
 class IndexSetImpl[MO <: MeshObj : Manifest](data : Array[Int], start: Int, end : Int) extends DeLisztSet[MO] {
-  def apply(i : Int) = MeshObjImpl[MO](data(start + i))
+  def apply(i : Int) : MO = MeshObjImpl[MO](data(start + i))
   def size = end - start
 }
 
 // Direction bit should get reversed for CW
 class CWIndexSetImpl[MO <: MeshObj : Manifest](data: Array[Int], start: Int, end: Int) extends IndexSetImpl[MO](data, start) {
-  def apply(i : Int) = MeshObjImpl[MO](BitReverse.MASK ^ data(start + i))
+  def apply(i : Int) : MO = MeshObjImpl[MO](BitReverse.MASK ^ data(start + i))
 }

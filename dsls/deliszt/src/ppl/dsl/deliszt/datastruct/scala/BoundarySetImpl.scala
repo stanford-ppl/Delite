@@ -20,13 +20,13 @@ class BoundarySetImpl[MO<:MeshObj:Manifest] extends MeshObjSet[MO] {
     if(data == null) {
       throw new RuntimeException("Boundary Set not finalized")
     }
-    data(i)
+    MeshObjImpl[MO](data(i))
   }
   def size = {
     if(data == null) {
       throw new RuntimeException("Boundary Set not finalized")
     }
-    return data.length
+    data.length
   }
 
   def add(i: Int) = {ids += i}
@@ -51,7 +51,7 @@ class BoundarySetImpl[MO<:MeshObj:Manifest] extends MeshObjSet[MO] {
 
         cur++
       }
-      rangeBuilder += (start,cur)
+      rangeBuilder += ((start,cur))
       sizeBuilder += cur - start
     }
 

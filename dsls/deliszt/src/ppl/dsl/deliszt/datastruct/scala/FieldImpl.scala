@@ -33,7 +33,7 @@ class FieldImpl[MO<:MeshObj:Manifest, VT:Manifest](data : Array[VT]) extends Fie
 
   def size = data.length
   def dcApply(idx: Int) = data(idx)
-  def dcUpdate(idx: Int, x: MO) = {
+  def dcUpdate(idx: Int, x: VT) = {
     data(idx) = x
   }
 }

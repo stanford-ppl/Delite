@@ -8,7 +8,7 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-trait LabelField[MO <: MeshObj, VT] extends Field[MO] {
+trait LabelField[MO <: MeshObj, VT] extends Field[MO,VT] {
   def apply(e: MO) : VT
   def update(e: MO, v: VT) = throw new RuntimeException()
 

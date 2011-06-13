@@ -11,7 +11,7 @@ package ppl.dsl.deliszt.datastruct.scala
 object BitReverse {
   val MASK = 0x80000000
 
-  def reversed(id : Int) = {id & MASK != 0}
+  def reversed(id : Int) = {(id & MASK) != 0}
   def reverse(id : Int) = {id ^ MASK}
   def internal(id : Int) = {id & ~MASK}
 }

@@ -10,7 +10,7 @@ package ppl.dsl.deliszt.datastruct.scala
 
 class CRSConst(val values : Array[Int], mult : Int) {
   def row(i: Int) = {i * mult}
-  def apply(row: Int, i: Int) = {_values(row*mult + i)}
-  def update(row: Int, i: Int, v: Int) = {_values(row*mult + i) = v}
+  def apply(row: Int, i: Int) = {values(row*mult + i)}
+  def update(row: Int, i: Int, v: Int) {values(row*mult + i) = v}
   def len(row : Int) = mult
 }

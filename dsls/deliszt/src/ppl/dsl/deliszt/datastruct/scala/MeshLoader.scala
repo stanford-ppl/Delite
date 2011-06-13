@@ -17,5 +17,5 @@ class MeshLoader {
   }
 
   @native
-  def loadMesh(file : String) : Mesh = {}
+  def loadMesh(file : String) : Mesh = None
 }

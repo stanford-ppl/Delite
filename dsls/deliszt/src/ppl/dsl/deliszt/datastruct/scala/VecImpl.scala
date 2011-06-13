@@ -11,7 +11,7 @@ import MetaInteger._
  */
 
 object VecImpl {
-  def apply[N <: IntM, VT : Manifest] = {
+  def apply[N <: IntM, VT : Manifest]() = {
     new VecImpl[N,VT](MIntDepth[N])
   }
 }

@@ -38,21 +38,21 @@ trait VecOps extends DSLType with Variables with MetaInteger {
 		def apply[VT](a : Rep[VT], b : Rep[VT], c : Rep[VT], d : Rep[VT], e : Rep[VT], f: Rep[VT], g: Rep[VT], h: Rep[VT], i: Rep[VT], j: Rep[VT], k: Rep[VT], l: Rep[VT], m: Rep[VT], n: Rep[VT], o: Rep[VT], p: Rep[VT], q: Rep[VT], r: Rep[VT], s: Rep[VT], t: Rep[VT], u: Rep[VT], w: Rep[VT]) = vec_obj_new[_22](a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)
   }
 
-  implicit def repVecToVecOps[N <: IntM, VT : Manifest](x: Rep[Vec[N, VT]]) = new vecOpsCls(x)
-  implicit def varToVecOps[N <: IntM, VT : Manifest](x: Var[Vec[N, VT]]) = new vecOpsCls(readVar(x))
+  implicit def repVecToVecOps[N<:IntM, VT : Manifest](x: Rep[Vec[N, VT]]) = new vecOpsCls(x)
+  implicit def varToVecOps[N<:IntM, VT : Manifest](x: Var[Vec[N, VT]]) = new vecOpsCls(readVar(x))
 
   /**
    * This class defines the public interface for the Vec[T] class.
    */
-  class vecOpsCls[N <: IntM, VT : Manifest](x: Rep[Vec[N, VT]]) {
+  class vecOpsCls[N<:IntM, VT : Manifest](x: Rep[Vec[N, VT]]) {
     type Self = Vec[N,VT]
 
 		def x(implicit f : EnsureSize[_0,N]) = vec_apply(x, 0)
 		def y(implicit f : EnsureSize[_1,N]) = vec_apply(x, 1)
 		def z(implicit f : EnsureSize[_2,N]) = vec_apply(x, 2)
 		def w(implicit f : EnsureSize[_3,N]) = vec_apply(x, 3)
-		def apply[TT <: IntM](n : TT)(implicit f : EnsureSize[TT,N]) : VT = vec_apply(x, n)
-		def update[TT <: IntM](n : TT, v : VT)(implicit f : EnsureSize[TT,N]) = vec_update(x,n,c)
+		def apply[TT<:IntM](n : TT)(implicit f : EnsureSize[TT,N]) : VT = vec_apply(x, n)
+		def update[TT<:IntM](n : TT, v : VT)(implicit f : EnsureSize[TT,N]) = vec_update(x,n,c)
 
 		def apply(n: Rep[Int]) = vec_apply(x, n)
     def update(n: Rep[Int], c: Rep[VT]) = vec_update(x,n,c)
@@ -71,33 +71,35 @@ trait VecOps extends DSLType with Variables with MetaInteger {
     def min(implicit o: Ordering[VT]) = vec_min(x)
     def max(implicit o: Ordering[VT]) = vec_max(x)
 
-		def &[TT <: IntM](rhs : Vec[TT,VT]) : Vec[N#Add[TT],VT] = vec_concat(x, rhs)
+		def &[TT<:IntM](rhs : Vec[TT,VT]) : Vec[N#Add[TT],VT] = vec_concat(x, rhs)
   }
 
   def cross[VT:Numeric](a: Rep[Vec[_3,VT]], b: Rep[Vec[_3,VT]]) : Rep[Vec[_3,VT]]
-  def dot[N <: IntM, VT:Numeric](a: Rep[Vec[N,VT]],b: Rep[Vec[N,VT]]) : Rep[VT]
-  def normalize[N <: IntM, VT:Numeric](a: Rep[Vec[N,VT]]) : Rep[Vec[N,VT]]
-  def length[N <: IntM, VT](a: Rep[Vec[N,VT]]) : Rep[VT]
-  def outer[R <: IntM, C <: IntM, VT:Numeric](a: Rep[Vec[R,VT]], b: Rep[Vec[C,VT]]) : Rep[Mat[R,C,VT]]
+  def dot[N<:IntM, VT:Numeric](a: Rep[Vec[N,VT]],b: Rep[Vec[N,VT]]) : Rep[VT]
+  def normalize[N<:IntM, VT:Numeric](a: Rep[Vec[N,VT]]) : Rep[Vec[N,VT]]
+  def length[N<:IntM, VT](a: Rep[Vec[N,VT]]) : Rep[VT]
+  def outer[R<:IntM, C<:IntM, VT:Numeric](a: Rep[Vec[R,VT]], b: Rep[Vec[C,VT]]) : Rep[Mat[R,C,VT]]
   
 /*
-  class vecOpsClsMutable[VT:Manifest](vx: Var[Vec[VT]]) extends vecOpsCls[VT](readVar(vx)) {
+  class vecOpsClsMutable[VT:Manifest](vx: Var[Vec[N,VT]]) extends vecOpsCls[VT](readVar(vx)) {
     // ...
   }
 */
-  def vec_obj_new[N <: IntM, VT](xs: Rep[VT]*): Rep[Vec[N,VT]]
+  def vec_obj_new[N<:IntM, VT](xs: Rep[VT]*): Rep[Vec[N,VT]]
 
-  def vec_plus[N <: IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
-  def vec_plus_scalar[N <: IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
-  def vec_minus[N <: IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
-  def vec_minus_scalar[N <: IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
-  def vec_times[N <: IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
-  def vec_times_scalar[N <: IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
-  def vec_divide[N <: IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
-  def vec_divide_scalar[N <: IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
+  def vec_apply[N<:IntM, VT:Manifest](x: Rep[Vec[N, VT]], i: Rep[Int]): Rep[VT]
+  def vec_update[N<:IntM, VT:Manifest](x: Rep[Vec[N, VT]], i: Rep[Int], v: Rep[VT]): Rep[Unit]
+  def vec_plus[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
+  def vec_plus_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
+  def vec_minus[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
+  def vec_minus_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
+  def vec_times[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
+  def vec_times_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
+  def vec_divide[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
+  def vec_divide_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
 
-  def vec_min[VT:Manifest:Ordering](x: Rep[Vec[VT]]): Rep[VT]
-  def vec_max[VT:Manifest:Ordering](x: Rep[Vec[VT]]): Rep[VT]
+  def vec_min[VT:Manifest:Ordering](x: Rep[Vec[N,VT]]): Rep[VT]
+  def vec_max[VT:Manifest:Ordering](x: Rep[Vec[N,VT]]): Rep[VT]
 }
 
 trait CleanRoom {
@@ -115,112 +117,112 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp with CleanRoom 
   case class VecLength[N<:IntM,VT:Manifest](x: Exp[Vec[N,VT]]) extends Def[Int]
   case class VecUpdate[N<:IntM,VT:Manifest](x: Exp[Vec[N,VT]], n: Exp[Int], y: Exp[VT]) extends Def[Unit]
 
-  case class VecConcatenate[VT:Manifest](x: Exp[Vec[N,VT]], y: Exp[Vec[N,VT]])
+  case class VecConcatenate[N<:IntM, VT:Manifest](x: Exp[Vec[N,VT]], y: Exp[Vec[N,VT]])
     extends DeliteOpSingleTask(reifyEffectsHere(vec_concatenate_impl(x,y)))
 
   ////////////////////////////////
   // implemented via delite ops
 
-  abstract class DeliteOpVecLoop[VT] extends DeliteOpLoop[Vec[VT]] {
+  abstract class DeliteOpVecLoop[N<:IntM, VT] extends DeliteOpLoop[Vec[N,VT]] {
     val size: Exp[Int] //inherited
   }
 
-  case class VecPlus[VT:Manifest:Arith](inA: Exp[Vec[VT]], inB: Exp[Vec[VT]]) 
+  case class VecPlus[N<:IntM, VT:Manifest:Arith](inA: Exp[Vec[N,VT]], inB: Exp[Vec[N,VT]]) 
     extends DeliteOpVecLoop[VT] {
 
     val size = inA.length
     val v = fresh[Int]
-    val body: Def[Vec[VT]] = DeliteCollectElem[VT,Vec](
-      alloc = reifyEffects(Vec[VT](size, isRow)),
+    val body: Def[Vec[N,VT]] = DeliteCollectElem[VT,Vec](
+      alloc = reifyEffects(Vec[N,VT](size, isRow)),
       func = reifyEffects(inA(v) + inB(v))
     )
   }
 
-  case class VecPlusScalar[VT:Manifest:Arith](in: Exp[Vec[VT]], y: Exp[VT])
+  case class VecPlusScalar[N<:IntM, VT:Manifest:Arith](in: Exp[Vec[N,VT]], y: Exp[VT])
     extends DeliteOpMap[VT,VT,Vec] {
 
-    val alloc = reifyEffects(Vec[VT](in.length, in.isRow))
+    val alloc = reifyEffects(Vec[N,VT](in.length, in.isRow))
     val v = fresh[VT]
     val func = reifyEffects(v + y)
   }
 
-  case class VecMinus[VT:Manifest:Arith](inA: Exp[Vec[VT]], inB: Exp[Vec[VT]])
+  case class VecMinus[N<:IntM, VT:Manifest:Arith](inA: Exp[Vec[N,VT]], inB: Exp[Vec[N,VT]])
     extends DeliteOpVecLoop[VT] {
 
     val size = inA.length
     val v = fresh[Int]
-    val body: Def[Vec[VT]] = DeliteCollectElem[VT,Vec](
-      alloc = reifyEffects(Vec[VT](size)),
+    val body: Def[Vec[N,VT]] = DeliteCollectElem[VT,Vec](
+      alloc = reifyEffects(Vec[N,VT](size)),
       func = reifyEffects(inA(v) - inB(v))
     )
   }
 
-  case class VecMinusScalar[VT:Manifest:Arith](in: Exp[Vec[VT]], y: Exp[VT])
+  case class VecMinusScalar[N<:IntM, VT:Manifest:Arith](in: Exp[Vec[N,VT]], y: Exp[VT])
     extends DeliteOpMap[VT,VT,Vec] {
 
-    val alloc = reifyEffects(Vec[VT](in.length, in.isRow))
+    val alloc = reifyEffects(Vec[N,VT](in.length, in.isRow))
     val v = fresh[VT]
     val func = reifyEffects(v - y)
   }
 
-  abstract case class VecTimes[VT:Manifest:Arith](inA: Exp[Vec[VT]], inB: Exp[Vec[VT]]) extends DeliteOpVecLoop[VT] {
+  abstract case class VecTimes[N<:IntM, VT:Manifest:Arith](inA: Exp[Vec[N,VT]], inB: Exp[Vec[N,VT]]) extends DeliteOpVecLoop[VT] {
     def mev = manifest[VT]
     def aev = implicitly[Arith[VT]]
   }
   
-  class VecTimesFresh[VT:Manifest:Arith](inA: Exp[Vec[VT]], inB: Exp[Vec[VT]]) extends VecTimes(inA, inB) {
+  class VecTimesFresh[N<:IntM, VT:Manifest:Arith](inA: Exp[Vec[N,VT]], inB: Exp[Vec[N,VT]]) extends VecTimes(inA, inB) {
     val size = inA.length
     val v = fresh[Int]
-    val body: Def[Vec[VT]] = DeliteCollectElem[VT,Vec](
-      alloc = reifyEffects(Vec[VT](size, isRow)),
+    val body: Def[Vec[N,VT]] = DeliteCollectElem[VT,Vec](
+      alloc = reifyEffects(Vec[N,VT](size, isRow)),
       func = reifyEffects(inA(v) * inB(v))
     )
   }
 
-  abstract case class VecTimesScalar[VT:Manifest:Arith](in: Exp[Vec[VT]], y: Exp[VT]) extends DeliteOpVecLoop[VT] {
+  abstract case class VecTimesScalar[N<:IntM, VT:Manifest:Arith](in: Exp[Vec[N,VT]], y: Exp[VT]) extends DeliteOpVecLoop[VT] {
     def mev = manifest[VT]
     def aev = implicitly[Arith[VT]]
   }
 
-  class VecTimesScalarFresh[VT:Manifest:Arith](in: Exp[Vec[VT]], y: Exp[VT]) extends VecTimesScalar[VT](in,y) {
+  class VecTimesScalarFresh[N<:IntM, VT:Manifest:Arith](in: Exp[Vec[N,VT]], y: Exp[VT]) extends VecTimesScalar[VT](in,y) {
     val size = in.length
     val v = fresh[Int]
-    val body: Def[Vec[VT]] = DeliteCollectElem[VT,Vec](
-      alloc = reifyEffects(Vec[VT](size, isRow)),
+    val body: Def[Vec[N,VT]] = DeliteCollectElem[VT,Vec](
+      alloc = reifyEffects(Vec[N,VT](size, isRow)),
       func = reifyEffects(in(v) * y)
     )
   }
 
-  case class VecDivide[VT:Manifest:Arith](inA: Exp[Vec[VT]], inB: Exp[Vec[VT]])
+  case class VecDivide[N<:IntM, VT:Manifest:Arith](inA: Exp[Vec[N,VT]], inB: Exp[Vec[N,VT]])
     extends DeliteOpVecLoop[VT] {
 
     val size = inA.length
     val v = fresh[Int]
-    val body: Def[Vec[VT]] = new DeliteCollectElem[VT,Vec](
-      alloc = reifyEffects(Vec[VT](size, isRow)),
+    val body: Def[Vec[N,VT]] = new DeliteCollectElem[VT,Vec](
+      alloc = reifyEffects(Vec[N,VT](size, isRow)),
       func = inA(v) / inB(v)
     )
   }
 
-  case class VecDivideScalar[VT:Manifest:Arith](in: Exp[Vec[VT]], y: Exp[VT])
+  case class VecDivideScalar[N<:IntM, VT:Manifest:Arith](in: Exp[Vec[N,VT]], y: Exp[VT])
     extends DeliteOpVecLoop[VT] {
 
     val size = in.length
     val v = fresh[Int]
-    val body: Def[Vec[VT]] = new DeliteCollectElem[VT,Vec](
-      alloc = reifyEffects(Vec[VT](size, isRow)),
+    val body: Def[Vec[N,VT]] = new DeliteCollectElem[VT,Vec](
+      alloc = reifyEffects(Vec[N,VT](size, isRow)),
       func = in(v) / y
     )
   }
 
-  case class VecMin[VT:Manifest:Ordering](in: Exp[Vec[VT]])
+  case class VecMin[N<:IntM, VT:Manifest:Ordering](in: Exp[Vec[N,VT]])
     extends DeliteOpReduce[VT] {
 
     val v = (fresh[VT],fresh[VT])
     val func = reifyEffects(if (v._1 < v._2) v._1 else v._2)
   }
 
-  case class VecMax[VT:Manifest:Ordering](in: Exp[Vec[VT]])
+  case class VecMax[N<:IntM, VT:Manifest:Ordering](in: Exp[Vec[N,VT]])
     extends DeliteOpReduce[VT] {
 
     val v = (fresh[VT],fresh[VT])
@@ -257,26 +259,27 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp with CleanRoom 
 
   /////////////////////
   // object interface
-  def vec_obj_new[N <: IntM, VT:Manifest](xs: Exp[VT]*) = reflectMutable(VecObjNew[N,VT](xs))
+  def vec_obj_new[N<:IntM, VT:Manifest](xs: Exp[VT]*) = reflectMutable(VecObjNew[N,VT](xs))
 
   /////////////////////
   // class interface
-  def vec_apply[VT:Manifest](x: Exp[Vec[VT]], n: Exp[Int]) = reflectPure(VecApply(x, n))
+  def vec_apply[VT:Manifest](x: Exp[Vec[N,VT]], n: Exp[Int]) = reflectPure(VecApply(x, n))
 
-  def vec_concatenate[VT:Manifest](x: Exp[Vec[VT]], y: Exp[Vec[VT]]) = reflectPure(VecConcatenate(x,y))
 
-  def vec_plus[VT:Manifest:Arith](x: Exp[Vec[VT]], y: Exp[Vec[VT]]) = reflectPure(VecPlus(x,y))
-  def vec_plus_scalar[VT:Manifest:Arith](x: Exp[Vec[VT]], y: Exp[VT]) = reflectPure(VecPlusScalar(x,y))
-  def vec_minus[VT:Manifest:Arith](x: Exp[Vec[VT]], y: Exp[Vec[VT]]) = reflectPure(VecMinus(x,y))
-  def vec_minus_scalar[VT:Manifest:Arith](x: Exp[Vec[VT]], y: Exp[VT]) = reflectPure(VecMinusScalar(x,y))
-  def vec_times[VT:Manifest:Arith](x: Exp[Vec[VT]], y: Exp[Vec[VT]]) = reflectPure(new VecTimesFresh(x,y))
-  def vec_times_scalar[VT:Manifest:Arith](x: Exp[Vec[VT]], y: Exp[VT]) = reflectPure(new VecTimesScalarFresh(x,y))
+  def vec_concatenate[VT:Manifest](x: Exp[Vec[N,VT]], y: Exp[Vec[N,VT]]) = reflectPure(VecConcatenate(x,y))
 
-  def vec_divide[VT:Manifest:Arith](x: Exp[Vec[VT]], y: Exp[Vec[VT]]) = reflectPure(VecDivide(x,y))
-  def vec_divide_scalar[VT:Manifest:Arith](x: Exp[Vec[VT]], y: Exp[VT]) = reflectPure(VecDivideScalar(x,y))
+  def vec_plus[VT:Manifest:Arith](x: Exp[Vec[N,VT]], y: Exp[Vec[N,VT]]) = reflectPure(VecPlus(x,y))
+  def vec_plus_scalar[VT:Manifest:Arith](x: Exp[Vec[N,VT]], y: Exp[VT]) = reflectPure(VecPlusScalar(x,y))
+  def vec_minus[VT:Manifest:Arith](x: Exp[Vec[N,VT]], y: Exp[Vec[N,VT]]) = reflectPure(VecMinus(x,y))
+  def vec_minus_scalar[VT:Manifest:Arith](x: Exp[Vec[N,VT]], y: Exp[VT]) = reflectPure(VecMinusScalar(x,y))
+  def vec_times[VT:Manifest:Arith](x: Exp[Vec[N,VT]], y: Exp[Vec[N,VT]]) = reflectPure(new VecTimesFresh(x,y))
+  def vec_times_scalar[VT:Manifest:Arith](x: Exp[Vec[N,VT]], y: Exp[VT]) = reflectPure(new VecTimesScalarFresh(x,y))
 
-  def vec_min[VT:Manifest:Ordering](x: Exp[Vec[VT]]) = reflectPure(VecMin(x))
-  def vec_max[VT:Manifest:Ordering](x: Exp[Vec[VT]]) = reflectPure(VecMax(x))
+  def vec_divide[VT:Manifest:Arith](x: Exp[Vec[N,VT]], y: Exp[Vec[N,VT]]) = reflectPure(VecDivide(x,y))
+  def vec_divide_scalar[VT:Manifest:Arith](x: Exp[Vec[N,VT]], y: Exp[VT]) = reflectPure(VecDivideScalar(x,y))
+
+  def vec_min[VT:Manifest:Ordering](x: Exp[Vec[N,VT]]) = reflectPure(VecMin(x))
+  def vec_max[VT:Manifest:Ordering](x: Exp[Vec[N,VT]]) = reflectPure(VecMax(x))
 }
 
 trait VecOpsExpOpt extends VecOpsExp {

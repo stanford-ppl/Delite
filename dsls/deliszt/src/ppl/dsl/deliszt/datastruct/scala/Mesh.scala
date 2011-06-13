@@ -115,7 +115,7 @@ class Mesh {
   implicit val vertexBounds : Map[String,MeshObjSet[Vertex]] = new HashMap[String,MeshObjSet[Vertex]]()
 
   def positionToVec(v: Object) : Object = {
-      val vec = Vec[_3, Double]()
+      val vec = VecImpl[_3, Double]()
       val a = v.asInstanceOf[Array[Object]]
       vec(0) = a.apply(0)
       vec(1) = a.apply(1)
@@ -125,16 +125,18 @@ class Mesh {
 
   vertexData.fns("position") = positionToVec
 
-  def label[MO<:MeshObj:Manifest,VT:Manifest](url: String) : LabelField[MO,VT] = {
-    implicitly[LabelData[MO]].data.get(url) match {
-      case Some(data) => new LabelFieldImpl[MO,VT](data, ld.fns.get(url))
+  def label[MO<:MeshObj,VT](url: String)(implicit ld: LabelData[MO], mm: Manifest[MO], mv: Manifest[VT]) : LabelField[MO,VT] = {
+    //TODO: clean this up
+    ld.data.get(url) match {
+      case Some(data) => new LabelFieldImpl[MO,VT](data, ld.fns.get(url).getOrElse(null))
+      case None => null
     }
   }
 
-  def meshSet[MO<:MeshObj:Manifest] = implicitly[MeshObjSet[MO]]
-  def boundarySet[MO<:MeshObj:Manifest](url: String) : MeshObjSet[MO] = {
-    implicitly[Map[String,MeshObjSet[MO]]].bm.get(url) match {
-      case Some(bs) => bs
+  def meshSet[MO<:MeshObj](implicit ms: MeshObjSet[MO], mm: Manifest[MO]) = ms
+  def boundarySet[MO<:MeshObj](url: String)(implicit bm: Map[String,MeshObjSet[MO]], mm: Manifest[MO]) : MeshObjSet[MO] = {
+    bm.get(url) match {
+      case Some(bs) => bs.asInstanceOf[MeshObjSet[MO]]
       case None => null
     }
   }

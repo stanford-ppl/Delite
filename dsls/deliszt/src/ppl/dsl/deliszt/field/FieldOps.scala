@@ -19,13 +19,13 @@ trait FieldOps extends DSLType with Variables {
   /**
    * This class defines the public interface for the Field[T] class.
    */
-  class fieldOpsCls[MO <: MeshObj, VT](x: Rep[Field[MO, VT]]) {
+  class fieldOpsCls[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]]) {
     def apply(mo : Rep[MO]) = field_apply(x, mo)
     def update(mo : Rep[MO], v : Rep[VT]) = field_update(x, mo,v)
   }
 
-  def field_apply[MO <: MeshObj, VT](x: Rep[Field[MO, VT]], mo: Rep[MO]) : Rep[VT]
-  def field_update[MO <: MeshObj, VT](x: Rep[Field[MO, VT]], mo: Rep[MO], v : Rep[VT]) : Rep[Unit]
+  def field_apply[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]], mo: Rep[MO]) : Rep[VT]
+  def field_update[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]], mo: Rep[MO], v : Rep[VT]) : Rep[Unit]
 }
 
 trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp with CleanRoom {
@@ -44,12 +44,12 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp with CleanR
   //////////////
   // mirroring
 
-  override def mirror[VT:Manifest](e: Def[VT], f: Transformer): Exp[VT] = (e match {
+/*  override def mirror[VT:Manifest](e: Def[VT], f: Transformer): Exp[VT] = (e match {
     case FieldApply(x, n) => vec_apply(f(x), f(n))
     case Reflect(FieldApply(l,r), u, es) => reflectMirrored(Reflect(FieldApply(f(l),f(r)), mapOver(f,u), f(es)))
     case Reflect(FieldUpdate(l,i,r), u, es) => reflectMirrored(Reflect(FieldUpdate(f(l),f(i),f(r)), mapOver(f,u), f(es)))
     case _ => super.mirror(e, f)
-  }).asInstanceOf[Exp[VT]]
+  }).asInstanceOf[Exp[VT]] */
 
 
   /////////////////////
@@ -57,8 +57,8 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp with CleanR
 
   /////////////////////
   // class interface
-  def field_apply[MO <: MeshObj, VT](x: Exp[Field[MO, VT]], mo: Exp[MO]) = reflectPure(FieldApply(x,mo))
-  def field_update[MO <: MeshObj, VT](x: Rep[Field[MO, VT]], mo: Rep[MO], v : Rep[VT]) = reflectWrite(x)(FieldUpdate(x,mo,v))
+  def field_apply[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO, VT]], mo: Exp[MO]) = reflectPure(FieldApply(x,mo))
+  def field_update[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]], mo: Rep[MO], v : Rep[VT]) = reflectWrite(x)(FieldUpdate(x,mo,v))
 }
 
 trait FieldOpsExpOpt extends FieldOpsExp {
@@ -69,10 +69,10 @@ trait BaseGenFieldOps extends GenericFatCodegen {
   val IR: FieldOpsExp
   import IR._
 
-  override def unapplySimpleIndex(e: Def[Any]) = e match { // TODO: move elsewhere
+  /*override def unapplySimpleIndex(e: Def[Any]) = e match { // TODO: move elsewhere
     case FieldApply(a, i) => Some((a,i))
     case _ => super.unapplySimpleIndex(e)
-  }
+  } */
 }
 
 trait ScalaGenFieldOps extends BaseGenFieldOps with ScalaGenFat {

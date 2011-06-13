@@ -14,14 +14,14 @@ object MeshObjImpl {
   }
 
   implicit object FaceConstruct extends MeshObjConstruct[Face] {
-    def apply(id : Int) = new EdgeImpl(id)
+    def apply(id : Int) = new FaceImpl(id)
   }
 
   implicit object VertexConstruct extends MeshObjConstruct[Vertex] {
     def apply(id : Int) = new VertexImpl(id)
   }
 
-  def apply[MO <: MeshObj : Manifest](id : Int) : MO = (implicitly[MeshObjConstruct[MO]])(id)
+  def apply[MO<:MeshObj](id : Int)(implicit moc: MeshObjConstruct[MO], mm: Manifest[MO]) : MO = moc(id)
 }
 
 class CellImpl(val id : Int) extends Cell

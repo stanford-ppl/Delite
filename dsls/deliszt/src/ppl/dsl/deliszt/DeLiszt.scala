@@ -12,6 +12,8 @@ import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides,
 import ppl.delite.framework.ops._
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import ppl.dsl.deliszt.field._
+import ppl.dsl.deliszt.mat._
+import ppl.dsl.deliszt.vec._
 
 /**
  * These separate DeLiszt applications from the Exp world.
@@ -78,12 +80,12 @@ trait DeLisztCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderi
 /**
  * This the trait that every DeLiszt application must extend.
  */
-trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps {
+trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps with FieldOps with MatOps with VecOps {
   this: DeLisztApplication =>
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait DeLisztCompiler extends DeLiszt with FieldPrivateOps {
+trait DeLisztCompiler extends DeLiszt with FieldPrivateOps with MeshPrivateOps {
   this: DeLisztApplication with DeLisztExp =>
 }
 
@@ -91,7 +93,9 @@ trait DeLisztCompiler extends DeLiszt with FieldPrivateOps {
  * These are the corresponding IR nodes for DeLiszt.
  */
 trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with LanguageOpsExp
-  with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp {
+  with LanguageImplOpsExp
+  with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp
+  with FieldOpsExp with MatOpsExp with VecOpsExp {
 
   // this: DeLisztApplicationRunner => why doesn't this work?
   this: DeliteApplication with DeLisztApplication with DeLisztExp => // can't be DeLisztApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
@@ -151,7 +155,8 @@ trait DeLisztCodeGenBase extends GenericFatCodegen {
 }
 
 trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
-  with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
+  with DeliteScalaGenAllOverrides
+  with ScalaGenFieldOps with ScalaGenMatOps with ScalaGenVecOps { //with ScalaGenMLInputReaderOps {
   
   val IR: DeliteApplication with DeLisztExp
 
@@ -276,7 +281,7 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /
 
 }
 
-trait DeLisztCodeGenC extends DeLisztCodeGenBase with DeLisztCCodeGenPkg with CGenArithOps with CGenDeliteOps with CGenVectorOps with CGenMatrixOps with CGenMatrixRowOps
+trait DeLisztCodeGenC extends DeLisztCodeGenBase with DeLisztCCodeGenPkg with CGenArithOps with CGenDeliteOps with CGenFieldOps with CGenVecOps with CGenMatOps
   with CGenVariantsOps with DeliteCGenAllOverrides
 {
   val IR: DeliteApplication with DeLisztExp
