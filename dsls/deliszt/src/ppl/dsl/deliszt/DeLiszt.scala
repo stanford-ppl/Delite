@@ -11,9 +11,11 @@ import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
+
 import ppl.dsl.deliszt.field._
 import ppl.dsl.deliszt.mat._
 import ppl.dsl.deliszt.vec._
+import ppl.dsl.deliszt.mesh._
 
 /**
  * These separate DeLiszt applications from the Exp world.
@@ -93,7 +95,7 @@ trait DeLisztCompiler extends DeLiszt with FieldPrivateOps with MeshPrivateOps {
  * These are the corresponding IR nodes for DeLiszt.
  */
 trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with LanguageOpsExp
-  with LanguageImplOpsExp
+  with LanguageImplOpsStandard
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp
   with FieldOpsExp with MatOpsExp with VecOpsExp {
 

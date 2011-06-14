@@ -1,5 +1,7 @@
 package ppl.dsl.deliszt
 
+import ppl.dsl.deliszt.datastruct.scala._
+
 trait LanguageImplOps {
   this: DeLiszt =>
   def DeLisztInit() : Unit = {

@@ -38,7 +38,7 @@ trait IntMOps extends DSLType with Variables with MetaInteger {
   val _21 = intm_obj[_21]
   val _22 = intm_obj[_22]
 
-  def intm_obj[N <: IntM] = Rep[IntM]
+  def intm_obj[N <: IntM] : Rep[IntM]
 }
 
 trait IntMOpsExp extends IntMOps with VariablesExp {

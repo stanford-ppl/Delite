@@ -70,11 +70,11 @@ trait ArithOps extends Variables with OverloadHack {
    * Vec
    */
 
-  implicit def VecArith[N<:IntM,T:Arith:Manifest] : Arith[Vec[N,T]] = new Arith[Vec[N,T]] {
+  implicit def VecArith[N<:IntM:Manifest,T:Arith:Manifest] : Arith[Vec[N,T]] = new Arith[Vec[N,T]] {
     // these are used in sum; dynamic checks are required due to conditionals
     def +(a: Rep[Vec[N,T]], b: Rep[Vec[N,T]]) = a+b
     def -(a: Rep[Vec[N,T]], b: Rep[Vec[N,T]]) = a-b
-    def *(a: Rep[Vec[T]], b: Rep[Vec[N,T]]) = a*b
+    def *(a: Rep[Vec[N,T]], b: Rep[Vec[N,T]]) = a*b
     def /(a: Rep[Vec[N,T]], b: Rep[Vec[N,T]]) = a/b
 }
 
@@ -83,7 +83,7 @@ trait ArithOps extends Variables with OverloadHack {
    * Mat
    */
 
-  implicit def MatArith[R<:IntM,C<:IntM,T:Arith:Manifest] : Arith[Mat[R,C,T]] = new Arith[Mat[R,C,T]] {
+  implicit def MatArith[R<:IntM:Manifest,C<:IntM:Manifest,T:Arith:Manifest] : Arith[Mat[R,C,T]] = new Arith[Mat[R,C,T]] {
     def +(a: Rep[Mat[R,C,T]], b: Rep[Mat[R,C,T]]) = a+b
     def -(a: Rep[Mat[R,C,T]], b: Rep[Mat[R,C,T]]) = a-b
     def *(a: Rep[Mat[R,C,T]], b: Rep[Mat[R,C,T]]) = a*b
@@ -175,7 +175,7 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
 }
 
 trait ArithOpsExpOpt extends ArithOpsExp {
-  this: OptiML =>
+  this: DeLiszt =>
 
   override def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
     case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].plus(x,y))

@@ -13,8 +13,8 @@ import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
 trait FieldOps extends DSLType with Variables {
   this: DeLiszt =>
 
-  implicit def repFieldToFieldOps[MO <: MeshObj, VT : Manifest](x: Rep[Field[MO, VT]]) = new fieldOpsCls(x)
-  implicit def varToFieldOps[MO <: MeshObj, VT : Manifest](x: Var[Field[MO, VT]]) = new fieldOpsCls(readVar(x))
+  implicit def repFieldToFieldOps[MO <: MeshObj:Manifest, VT : Manifest](x: Rep[Field[MO, VT]]) = new fieldOpsCls[MO,VT](x)
+  implicit def varToFieldOps[MO <: MeshObj:Manifest, VT : Manifest](x: Var[Field[MO, VT]]) = new fieldOpsCls[MO,VT](readVar(x))
 
   /**
    * This class defines the public interface for the Field[T] class.
@@ -28,7 +28,7 @@ trait FieldOps extends DSLType with Variables {
   def field_update[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]], mo: Rep[MO], v : Rep[VT]) : Rep[Unit]
 }
 
-trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp with CleanRoom {
+trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
   this: DeLisztExp =>
 
   def reflectPure[VT:Manifest](x: Def[VT]): Exp[VT] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
@@ -83,7 +83,7 @@ trait ScalaGenFieldOps extends BaseGenFieldOps with ScalaGenFat {
     rhs match {
       // these are the ops that call through to the underlying real data structure
       case FieldApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
-      case FieldUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+      case FieldUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(v))
       case _ => super.emitNode(sym, rhs)
     }
   }

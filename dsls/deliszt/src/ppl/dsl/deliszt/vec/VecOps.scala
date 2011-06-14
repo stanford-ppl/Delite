@@ -39,39 +39,39 @@ trait VecOps extends DSLType with Variables with MetaInteger {
   }
 
   implicit def repVecToVecOps[N<:IntM, VT : Manifest](x: Rep[Vec[N, VT]]) = new vecOpsCls(x)
-  implicit def varToVecOps[N<:IntM, VT : Manifest](x: Var[Vec[N, VT]]) = new vecOpsCls(readVar(x))
+  implicit def varToVecOps[N<:IntM:Manifest, VT:Manifest](x: Var[Vec[N, VT]]) = new vecOpsCls(readVar(x))
 
   /**
    * This class defines the public interface for the Vec[T] class.
    */
-  class vecOpsCls[N<:IntM, VT : Manifest](x: Rep[Vec[N, VT]]) {
+  class vecOpsCls[N<:IntM, VT : Manifest](u: Rep[Vec[N, VT]]) {
     type Self = Vec[N,VT]
 
-		def x(implicit f : EnsureSize[_0,N]) = vec_apply(x, 0)
-		def y(implicit f : EnsureSize[_1,N]) = vec_apply(x, 1)
-		def z(implicit f : EnsureSize[_2,N]) = vec_apply(x, 2)
-		def w(implicit f : EnsureSize[_3,N]) = vec_apply(x, 3)
-		def apply[TT<:IntM](n : TT)(implicit f : EnsureSize[TT,N]) : VT = vec_apply(x, n)
-		def update[TT<:IntM](n : TT, v : VT)(implicit f : EnsureSize[TT,N]) = vec_update(x,n,c)
+		def x(implicit f : EnsureSize[_0,N]) = vec_apply(u, 0)
+		def y(implicit f : EnsureSize[_1,N]) = vec_apply(u, 1)
+		def z(implicit f : EnsureSize[_2,N]) = vec_apply(u, 2)
+		def w(implicit f : EnsureSize[_3,N]) = vec_apply(u, 3)
+		def apply[TT<:IntM](n : TT)(implicit f : EnsureSize[TT,N]) : VT = vec_apply(u, n)
+		def update[TT<:IntM](n : TT, v : VT)(implicit f : EnsureSize[TT,N]) = vec_update(u,n,c)
 
-		def apply(n: Rep[Int]) = vec_apply(x, n)
-    def update(n: Rep[Int], c: Rep[VT]) = vec_update(x,n,c)
+		def apply(n: Rep[Int]) = vec_apply(u, n)
+    def update(n: Rep[Int], c: Rep[VT]) = vec_update(u,n,c)
 
-    def +(vt : Rep[Self])(implicit n: Numeric[VT]) = vec_plus(x,vt)
-    def -(vt : Rep[Self])(implicit n: Numeric[VT]) = vec_minus(x,vt)
-    def *(vt : Rep[Self])(implicit n: Numeric[VT]) = vec_times(x,vt)
-    def /(vt : Rep[Self])(implicit n: Numeric[VT]) = vec_divide(x,vt)
+    def +(vt : Rep[Self])(implicit n: Numeric[VT]) = vec_plus(u,vt)
+    def -(vt : Rep[Self])(implicit n: Numeric[VT]) = vec_minus(u,vt)
+    def *(vt : Rep[Self])(implicit n: Numeric[VT]) = vec_times(u,vt)
+    def /(vt : Rep[Self])(implicit n: Numeric[VT]) = vec_divide(u,vt)
 
-    def *(vt : Rep[VT])(implicit n: Numeric[VT], o: Overloaded1) = vec_times_scalar(x,vt)
-    def /(vt : Rep[VT])(implicit n: Numeric[VT], o: Overloaded1) = vec_divide_scalar(x,vt)
+    def *(vt : Rep[VT])(implicit n: Numeric[VT], o: Overloaded1) = vec_times_scalar(u,vt)
+    def /(vt : Rep[VT])(implicit n: Numeric[VT], o: Overloaded1) = vec_divide_scalar(u,vt)
 
-		def unary_-(implicit o : Numeric[VT]) : Vec[N,VT] = vec_negate(x)
+		def unary_-(implicit o : Numeric[VT]) : Vec[N,VT] = vec_negate(u)
 		def min(vt : Self)(implicit f : VT => Numeric[VT]) : Vec[N,VT] = __
 		def max(vt : Self)(implicit f : VT => Numeric[VT]) : Vec[N,VT] = __
-    def min(implicit o: Ordering[VT]) = vec_min(x)
-    def max(implicit o: Ordering[VT]) = vec_max(x)
+    def min(implicit o: Ordering[VT]) = vec_min(u)
+    def max(implicit o: Ordering[VT]) = vec_max(u)
 
-		def &[TT<:IntM](rhs : Vec[TT,VT]) : Vec[N#Add[TT],VT] = vec_concat(x, rhs)
+		def &[TT<:IntM](rhs : Vec[TT,VT]) : Vec[N#Add[TT],VT] = vec_concat(u, rhs)
   }
 
   def cross[VT:Numeric](a: Rep[Vec[_3,VT]], b: Rep[Vec[_3,VT]]) : Rep[Vec[_3,VT]]
@@ -90,13 +90,13 @@ trait VecOps extends DSLType with Variables with MetaInteger {
   def vec_apply[N<:IntM, VT:Manifest](x: Rep[Vec[N, VT]], i: Rep[Int]): Rep[VT]
   def vec_update[N<:IntM, VT:Manifest](x: Rep[Vec[N, VT]], i: Rep[Int], v: Rep[VT]): Rep[Unit]
   def vec_plus[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
-  def vec_plus_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
+  def vec_plus_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[VT]): Rep[Vec[N,VT]]
   def vec_minus[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
-  def vec_minus_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
+  def vec_minus_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[VT]): Rep[Vec[N,VT]]
   def vec_times[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
-  def vec_times_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
+  def vec_times_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[VT]): Rep[Vec[N,VT]]
   def vec_divide[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[Vec[N,VT]]): Rep[Vec[N,VT]]
-  def vec_divide_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[N,VT]): Rep[Vec[N,VT]]
+  def vec_divide_scalar[N<:IntM, VT:Manifest:Numeric](x: Rep[Vec[N,VT]], y: Rep[VT]): Rep[Vec[N,VT]]
 
   def vec_min[VT:Manifest:Ordering](x: Rep[Vec[N,VT]]): Rep[VT]
   def vec_max[VT:Manifest:Ordering](x: Rep[Vec[N,VT]]): Rep[VT]

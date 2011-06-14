@@ -52,16 +52,16 @@ trait FieldPrivateOpsExp extends FieldPrivateOps with VariablesExp with BaseFatE
     val mM = manifest[MO]
   }
 
-  case class FieldApply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) extends Def[VT]
-  case class FieldUpdate[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT]) extends Def[Unit]
+  case class FieldIntApply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) extends Def[VT]
+  case class FieldIntUpdate[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT]) extends Def[Unit]
   case class FieldSize[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]]) extends Def[Int]
 
   def label[MO<:MeshObj:Manifest,VT:Manifest](url: Exp[String]) = LabelField[MO,VT](url)
 
   def field_obj_new[MO<:MeshObj:Manifest,VT:Manifest]() = reflectMutable(FieldObjectNew[MO,VT]())
 
-  def field_apply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) = FieldApply[MO,VT](x,n)
-  def field_update[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT]) = reflectWrite(x)(FieldUpdate[MO,VT](x,n,v))
+  def field_apply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) = FieldIntApply[MO,VT](x,n)
+  def field_update[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT]) = reflectWrite(x)(FieldIntUpdate[MO,VT](x,n,v))
   def field_size[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]]) = FieldSize(x)
 }
 
@@ -82,9 +82,9 @@ trait ScalaGenFieldPrivateOps extends BaseGenFieldPrivateOps with ScalaGenFat {
     rhs match {
       // these are the ops that call through to the underlying real data structure
       case f@FieldObjectNew() => emitValDef(sym, remap(f.fM) + "()")
-      case lf@LabelField(url) => emitValDef(sym, "generated.scala.Mesh.mesh.label[" + remap(f.mM) + "](" + quote(url) + ")")
-      case FieldApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
-      case FieldUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(v))
+      case f@LabelField(url) => emitValDef(sym, "generated.scala.Mesh.mesh.label[" + remap(f.mM) + "](" + quote(url) + ")")
+      case FieldIntApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
+      case FieldIntUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(v))
       case FieldSize(x) => emitValDef(sym, quote(x) + ".size")
       case _ => super.emitNode(sym, rhs)
     }

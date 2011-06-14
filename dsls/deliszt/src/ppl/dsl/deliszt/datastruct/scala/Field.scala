@@ -8,7 +8,7 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-trait Field[A <: MeshObj, VT] extends ppl.delite.framework.DeliteCollection[A] {
+trait Field[A <: MeshObj, VT] extends ppl.delite.framework.datastruct.scala.DeliteCollection[A] {
   def apply(a : A) : VT
   def update(a : A, v : VT)
 
