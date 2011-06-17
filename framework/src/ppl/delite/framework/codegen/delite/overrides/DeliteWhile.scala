@@ -10,6 +10,8 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
 
   this: DeliteOpsExp =>
 
+  // there is a lot of duplication between DeliteWhile and While in lms -- do we really need a separate class here?
+  
   case class DeliteWhile(cond: Exp[Boolean], body: Exp[Unit]) extends DeliteOpWhileLoop
 
   override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit]) {
@@ -30,12 +32,6 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
     reflectEffect(DeliteWhile(c, a), ce andThen ((ae andThen ce).star))
   }
 
-}
-
-trait DeliteBaseGenWhile extends GenericNestedCodegen {
-  val IR: DeliteWhileExp
-  import IR._
-
   override def syms(e: Any): List[Sym[Any]] = e match {
     case DeliteWhile(c, b) => syms(c):::syms(b) // wouldn't need to override...
     case _ => super.syms(e)
@@ -45,6 +41,23 @@ trait DeliteBaseGenWhile extends GenericNestedCodegen {
     case DeliteWhile(c, b) => effectSyms(c):::effectSyms(b)
     case _ => super.boundSyms(e)
   }
+/*
+  override def hotSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteWhile(c, b) => syms(c):::syms(b)
+    case _ => super.hotSyms(e)
+  }
+*/
+  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
+    case DeliteWhile(c, b) => freqHot(c) ++ freqHot(b)
+    case _ => super.symsFreq(e)
+  }
+
+}
+
+trait DeliteBaseGenWhile extends GenericNestedCodegen {
+  val IR: DeliteWhileExp
+  import IR._
+
 }
 
 trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {

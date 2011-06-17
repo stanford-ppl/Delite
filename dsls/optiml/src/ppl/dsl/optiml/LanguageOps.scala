@@ -641,15 +641,6 @@ trait BaseGenLanguageOps extends GenericFatCodegen {
   val IR: LanguageOpsExp
   import IR._
 
-  /*
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    case _ => super.syms(e)
-  }
-
-  override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {
-    case _ => super.getFreeVarNode(rhs)
-  }
-  */
 }
 
 trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {

@@ -15,7 +15,7 @@ trait IndexVectorImplOpsStandard extends IndexVectorImplOps {
   def index_vector_obj_fromvec_impl(xs: Rep[Vector[Int]]) = {
     val out = IndexVector(0)
     out ++= xs
-    out
+    out.unsafeImmutable.asInstanceOf[Rep[IndexVector]]
   }
 
 }
