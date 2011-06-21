@@ -680,25 +680,69 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     }).asInstanceOf[Exp[A]] // why??
   }
 
+  /////////////////////
+  // aliases and sharing
+
+  // TODO: precise sharing info for other IR types (default is conservative)
+
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => Nil
+    case MatrixClone(a) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case MatrixMultiply(a,b) => Nil
+    case MatrixTimes(a,b) => Nil
+    case MatrixTimesVector(a,v) => Nil
+    case MatrixTimesScalar(a,x) => Nil
+    case MatrixRepmat(a,i,j) => syms(a)
+    case MatrixClone(a) => syms(a)
+    case _ => super.copySyms(e)
+  }
 
   ////////////////////
   // object interface
 
   def matrix_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectMutable(MatrixObjectNew[A](numRows, numCols)) //XXX
-  def matrix_obj_fromseq[A:Manifest](xs: Exp[Seq[Exp[Vector[A]]]]) = reflectMutable(MatrixObjectFromSeq(xs)) //XXX
+  def matrix_obj_fromseq[A:Manifest](xs: Exp[Seq[Exp[Vector[A]]]]) = reflectPure(MatrixObjectFromSeq(xs)) //XXX
   def matrix_obj_fromvec[A:Manifest](xs: Exp[Vector[Vector[A]]]) = reflectPure(MatrixObjectFromVec(xs))
   def matrix_obj_diag[A:Manifest](w: Exp[Int], vals: Exp[Vector[A]]) = reflectPure(MatrixObjectDiag(w, vals))
   def matrix_obj_identity(w: Exp[Int]) = reflectPure(MatrixObjectIdentity(w))
   def matrix_obj_zeros(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectZeros(numRows, numCols))
   def matrix_obj_zerosf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectZerosF(numRows, numCols))
-  def matrix_obj_mzerosf(numRows: Exp[Int], numCols: Exp[Int]) = reflectMutable(MatrixObjectZerosF(numRows, numCols))
+  def matrix_obj_mzerosf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectZerosF(numRows, numCols))
   def matrix_obj_ones(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectOnes(numRows, numCols))
   def matrix_obj_onesf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectOnesF(numRows, numCols))
   def matrix_obj_rand(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectRand(numRows, numCols))
   def matrix_obj_randf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectRandF(numRows, numCols))
   def matrix_obj_randn(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectRandn(numRows, numCols))
   def matrix_obj_randnf(numRows: Rep[Int], numCols: Rep[Int]) = reflectPure(MatrixObjectRandnF(numRows, numCols))
-  def matrix_obj_mrandnf(numRows: Rep[Int], numCols: Rep[Int]) = reflectMutable(MatrixObjectRandnF(numRows, numCols))
+  def matrix_obj_mrandnf(numRows: Rep[Int], numCols: Rep[Int]) = reflectPure(MatrixObjectRandnF(numRows, numCols))
 
 
   ///////////////////

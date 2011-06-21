@@ -116,7 +116,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
       case _ => true
     }
     // Streams are only mutable from an implementation standpoint (they hold underlying state)
-    reflectMutable(StreamObjectNew[A](numRows, numCols, chunkSize(numCols), y, unit(isPure)))
+    reflectPure/*Mutable*/(StreamObjectNew[A](numRows, numCols, chunkSize(numCols), y, unit(isPure)))
   }
 
   ////////////////////
@@ -141,11 +141,11 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
       // if (x.isComputationBased) { ..
       if (x.isPure) {
         // fuse parallel initialization and foreach function
-        reflectEffect(StreamInitAndForeachRow(in, v, x, i, block))   // parallel
+        reflectEffect(StreamInitAndForeachRow(in, v, x, i, block))   // parallel // should use effect summary based on loop body
       }
       else {
         val init = stream_init_chunk(x, i)  // sequential
-        reflectEffect(StreamForeachRow(in, v, x, i, block, init)) // parallel
+        reflectEffect(StreamForeachRow(in, v, x, i, block, init)) // parallel // should use effect summary based on loop body
       }
 
       i += 1
@@ -156,8 +156,8 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   // internal
 
   def stream_chunk_row[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) = reflectPure(StreamChunkRow(x, idx, offset))
-  def stream_init_chunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectWrite(x)(StreamInitChunk(x, offset))
-  def stream_init_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = reflectWrite(x)(StreamInitRow(x, row, offset))
+  def stream_init_chunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectEffect/*Write(x)*/(StreamInitChunk(x, offset))
+  def stream_init_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = reflectEffect/*Write(x)*/(StreamInitRow(x, row, offset))
   def stream_init_and_chunk_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = { stream_init_row(x,row,offset); stream_chunk_row(x,row,offset) }
   def stream_rowsin[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectPure(StreamRowsIn(x, offset))
   def stream_chunk_elem[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], j: Exp[Int]) = reflectPure(StreamChunkElem(x, idx, j))
@@ -177,17 +177,17 @@ trait StreamOpsExpOpt extends StreamOpsExp {
   this: OptiMLExp with StreamImplOps =>
   
   override def stream_ispure[A:Manifest](x: Rep[Stream[A]]) = x match {
-    case Def(Reflect(StreamObjectNew(numRows, numCols, chunkSize, func, isPure),_,_)) => isPure
+    case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, func, isPure)/*,_,_)*/) => isPure
     case _ => super.stream_ispure(x)
   }
   
   override def stream_numrows[A:Manifest](x: Exp[Stream[A]]) = x match {
-    case Def(Reflect(StreamObjectNew(numRows, numCols, chunkSize, func, isPure),_,_)) => numRows
+    case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, func, isPure)/*,_,_)*/) => numRows
     case _ => super.stream_numrows(x)
   }
   
   override def stream_numcols[A:Manifest](x: Exp[Stream[A]]) = x match {
-    case Def(Reflect(StreamObjectNew(numRows, numCols, chunkSize, func, isPure),_,_)) => numCols
+    case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, func, isPure)/*,_,_)*/) => numCols
     case _ => super.stream_numcols(x)
   }
   
@@ -208,7 +208,7 @@ trait StreamOpsExpOpt extends StreamOpsExp {
 
   override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = st match {
 
-    case Def(Reflect(StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true)),_,_)) =>
+    case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))/*,_,_)*/) =>
 /*
       // initRow
         var j = 0

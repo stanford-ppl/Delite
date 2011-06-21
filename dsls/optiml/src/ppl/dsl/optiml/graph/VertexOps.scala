@@ -67,10 +67,6 @@ trait VertexOpsExp extends VertexOps with EffectExp {
 trait BaseGenVertexOps extends GenericNestedCodegen {
   val IR: VertexOpsExp
   import IR._
-
-  //override def syms(e: Any): List[Sym[Any]] = e match {
-    //case _ => super.syms(e)
-  //}
 }
 
 trait ScalaGenVertexOps extends BaseGenVertexOps with ScalaGenBase {
