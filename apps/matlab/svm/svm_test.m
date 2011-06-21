@@ -1,5 +1,5 @@
 
-[spmatrix, tokenlist, category] = readMatrix('MATRIX.TEST');
+[spmatrix, tokenlist, category] = readMatrix('/kunle/ppl/delite/data/ml/svm/MATRIX.TEST');
 
 testMatrix = full(spmatrix);
 numTestDocs = size(testMatrix, 1);

@@ -28,16 +28,16 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
   var kernelInputDeps = Map[Sym[Any],List[Sym[Any]]]() // from kernel to its input deps
 
 
-  def ifGenAgree[A](f: Generator => A, shallow: Boolean): A = {
-    val save = generators map { _.shallow }
-    generators foreach { _.shallow = shallow }
+  def ifGenAgree[A](f: Generator => A): A = {
+    //val save = generators map { _.shallow }
+    //generators foreach { _.shallow = shallow }
     val result = generators map f
     if (result.distinct.length != 1){
       sys.error("DeliteCodegen: generators disagree")
     }
-    for (i <- 0 until generators.length) {
-      generators(i).shallow = save(i)
-    }
+    //for (i <- 0 until generators.length) {
+    //  generators(i).shallow = save(i)
+    //}
     result(0)
   }
 
@@ -49,23 +49,14 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
     }
   }
 
-  // these are overridden for specific node types in the target generators but *not* here
-  
-  // DISCUSS: we could move them back into the Exp traits, then ifGenAgree would no longer be needed
-  
-  override def syms(e: Any): List[Sym[Any]] = ifGenAgree(_.syms(e), shallow)
-  override def boundSyms(e: Any): List[Sym[Any]] = ifGenAgree(_.boundSyms(e), shallow)
-
-  //override def buildScheduleForResult(start: Exp[Any]): List[TP[Any]] = ifGenAgree(_.buil) <--- maybe override for performance reasons ...
-
   // TODO: move to some other place? --> get rid of duplicate in embedded generators!
-  override def fatten(e: TP[Any]): TTP = ifGenAgree(_.fatten(e), shallow)
+  override def fatten(e: TP[Any]): TTP = ifGenAgree(_.fatten(e))
 
   // fusion stuff...
-  override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e), shallow)
-  override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e), shallow)
+  override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e))
+  override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e))
 
-  override def shouldApplyFusion(currentScope: List[TTP])(result: Exp[Any]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result), shallow)
+  override def shouldApplyFusion(currentScope: List[TTP])(result: Exp[Any]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
 
 
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
@@ -179,7 +170,7 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
   * Return a list of all effectful operations rooted at start.
   */
   def getEffectsBlock(start: Def[Any]): List[Sym[Any]] = {
-    val g = generators(0) // skip ifGenAgree for now...
+    //val g = generators(0) // skip ifGenAgree for now...
 
     // val deps = g.blocks(start) // can optimize by adding a syms-like function that only returns blocks (but more invasive)
 //    val deps = g.syms(start)
@@ -194,7 +185,7 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
 //        }}
 //      }
 //    }
-    val nodes = g.boundSyms(start) filter { case Def(Reflect(x, u, effects)) => true; case _ => false }
+    val nodes = boundSyms(start) filter { case Def(Reflect(x, u, effects)) => true; case _ => false }
     nodes.distinct
   }
 

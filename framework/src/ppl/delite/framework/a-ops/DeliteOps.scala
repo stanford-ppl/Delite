@@ -363,24 +363,67 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
   
 
-/*  
-  // heavy type casting ahead!
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
-    case e: DeliteCollectElem[a,b] => 
-//    toFatPieceAtom(DeliteCollectElem[a,DeliteCollection]( // need to be a case class for equality!
-    toAtom(DeliteCollectElem[a,DeliteCollection]( // need to be a case class for equality!
-      alloc = f(e.alloc).asInstanceOf[Exp[DeliteCollection[a]]],
-      func = f(e.func)
-    ).asInstanceOf[Def[A]])
-    case e: DeliteReduceElem[a] => 
-    toAtom(DeliteReduceElem[a](
-      func = f(e.func),
-      rV = (f(e.rV._1).asInstanceOf[Sym[a]], f(e.rV._2).asInstanceOf[Sym[a]]), // should transform bound vars as well ??
-      rFunc = f(e.rFunc)
-    ).asInstanceOf[Def[A]])
-    case _ => super.mirror(e, f)
+  //////////////
+  // dependencies
+
+  override def syms(e: Any): List[Sym[Any]] = e match { //TR TODO: question -- is alloc a dependency (should be part of result) or a definition (should not)???
+                                                        // aks: answer -- we changed it to be internal to the op to make things easier for CUDA. not sure if that still needs
+                                                        // to be the case. similar question arises for sync
+    case s: DeliteOpSingleTask[_] if s.requireInputs => syms(s.block) ++ super.syms(e) // super call: add case class syms (iff flag is set)
+    case s: DeliteOpSingleTask[_] => syms(s.block)
+    case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.cond) ++ syms(op.alloc)
+    case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.cond) ++ syms(op.zero) ++ syms(op.rFunc)
+    case map: DeliteOpMap[_,_,_] => /*if (shallow) syms(map.in) else */ syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
+    case zip: DeliteOpZipWith[_,_,_,_] => /*if (shallow) syms(zip.inA) ++ syms(zip.inB) else*/ syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
+    case red: DeliteOpReduce[_] => /*if (shallow) syms(red.in) else*/ syms(red.in) ++ syms(red.func)
+    case mapR: DeliteOpMapReduce[_,_,_] => /*if (shallow) syms(mapR.in) else*/ syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => /*if (shallow) syms(zipR.inA) ++ syms(zipR.inB) else*/ syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
+    case foreach: DeliteOpForeach[_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func) ++ syms(foreach.sync)
+    case foreach: DeliteOpForeachBounded[_,_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func) ++ syms(foreach.sync)
+    case _ => super.syms(e)
   }
-*/
+	  
+  override def readSyms(e: Any): List[Sym[Any]] = e match { 
+    case map: DeliteOpMap[_,_,_] => readSyms(map.in) 
+    case zip: DeliteOpZipWith[_,_,_,_] => readSyms(zip.inA) ++ readSyms(zip.inB) 
+    case red: DeliteOpReduce[_] => readSyms(red.in)
+    case mapR: DeliteOpMapReduce[_,_,_] => readSyms(mapR.in) 
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => readSyms(zipR.inA) ++ readSyms(zipR.inB) 
+    case foreach: DeliteOpForeach[_,_] => readSyms(foreach.in) 
+    case foreach: DeliteOpForeachBounded[_,_,_] => readSyms(foreach.in) 
+    case _ => super.readSyms(e)
+  }  
+
+  override def boundSyms(e: Any): List[Sym[Any]] = e match { //TR TODO
+    case s: DeliteOpSingleTask[_] => effectSyms(s.block)
+    case op: DeliteCollectElem[_,_] => effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.alloc)
+    case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.rFunc)
+    case zip: DeliteOpZipWith[_,_,_,_] => zip.v._1::zip.v._2::effectSyms(zip.alloc):::effectSyms(zip.func)
+    case map: DeliteOpMap[_,_,_] => map.v::effectSyms(map.alloc):::effectSyms(map.func)
+    case mapR: DeliteOpMapReduce[_,_,_] => mapR.mV::mapR.rV._1::mapR.rV._2::effectSyms(mapR.map):::effectSyms(mapR.reduce)
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => zipR.zV._1::zipR.zV._2::zipR.rV._1::zipR.rV._2::effectSyms(zipR.zip) ++ effectSyms(zipR.reduce)
+    case red: DeliteOpReduce[_] => red.v._1::red.v._2::effectSyms(red.func)
+    case foreach: DeliteOpForeach[_,_] => foreach.v::foreach.i::effectSyms(foreach.func):::effectSyms(foreach.sync)
+    case foreach: DeliteOpForeachBounded[_,_,_] => foreach.v::foreach.i::effectSyms(foreach.func):::effectSyms(foreach.sync)
+    case _ => super.boundSyms(e)
+  }
+
+  
+  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
+    case s: DeliteOpSingleTask[_] if s.requireInputs => freqNormal(s.block) ++ super.symsFreq(e) // super call: add case class syms (iff flag is set)
+    case s: DeliteOpSingleTask[_] => freqNormal(s.block)
+    case op: DeliteCollectElem[_,_] => freqNormal(op.alloc) ++ freqHot(op.cond) ++ freqHot(op.func)
+    case op: DeliteReduceElem[_] => freqHot(op.cond) ++ freqHot(op.func) ++ freqNormal(op.zero) ++ freqHot(op.rFunc)
+    case map: DeliteOpMap[_,_,_] => freqNormal(map.in) ++ freqNormal(map.alloc) ++ freqHot(map.func)
+    case zip: DeliteOpZipWith[_,_,_,_] => freqNormal(zip.inA) ++ freqNormal(zip.inB) ++ freqNormal(zip.alloc) ++ freqHot(zip.func)
+    case red: DeliteOpReduce[_] => freqNormal(red.in) ++ freqHot(red.func)
+    case mapR: DeliteOpMapReduce[_,_,_] => freqNormal(mapR.in) ++ freqHot(mapR.map) ++ freqHot(mapR.reduce)
+    case zipR: DeliteOpZipWithReduce[_,_,_,_] => freqNormal(zipR.inA) ++ freqNormal(zipR.inB) ++ freqHot(zipR.zip) ++ freqHot(zipR.reduce)
+    case foreach: DeliteOpForeach[_,_] => freqNormal(foreach.in) ++ freqHot(foreach.func) ++ freqHot(foreach.sync)
+    case foreach: DeliteOpForeachBounded[_,_,_] => freqNormal(foreach.in) ++ freqHot(foreach.func) ++ freqHot(foreach.sync)
+    case _ => super.symsFreq(e)
+  }
+
 }
 
 trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
@@ -420,38 +463,6 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
   }
 
   override def shouldApplyFusion(currentScope: List[TTP])(result: Exp[Any]) = Config.opfusionEnabled
-
-
-  override def syms(e: Any): List[Sym[Any]] = e match { //TR TODO: question -- is alloc a dependency (should be part of result) or a definition (should not)???
-                                                        // aks: answer -- we changed it to be internal to the op to make things easier for CUDA. not sure if that still needs
-                                                        // to be the case. similar question arises for sync
-    case s: DeliteOpSingleTask[_] if s.requireInputs => syms(s.block) ++ super.syms(e) // super call: add case class syms (iff flag is set)
-    case s: DeliteOpSingleTask[_] => syms(s.block)
-    case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.cond) ++ syms(op.alloc)
-    case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.cond) ++ syms(op.zero) ++ syms(op.rFunc)
-    case map: DeliteOpMap[_,_,_] => /*if (shallow) syms(map.in) else */ syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
-    case zip: DeliteOpZipWith[_,_,_,_] => /*if (shallow) syms(zip.inA) ++ syms(zip.inB) else*/ syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
-    case red: DeliteOpReduce[_] => /*if (shallow) syms(red.in) else*/ syms(red.in) ++ syms(red.func)
-    case mapR: DeliteOpMapReduce[_,_,_] => /*if (shallow) syms(mapR.in) else*/ syms(mapR.in) ++ syms(mapR.map) ++ syms(mapR.reduce)
-    case zipR: DeliteOpZipWithReduce[_,_,_,_] => /*if (shallow) syms(zipR.inA) ++ syms(zipR.inB) else*/ syms(zipR.inA) ++ syms(zipR.inB) ++ syms(zipR.zip) ++ syms(zipR.reduce)
-    case foreach: DeliteOpForeach[_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func) ++ syms(foreach.sync)
-    case foreach: DeliteOpForeachBounded[_,_,_] => /*if (shallow) syms(foreach.in) else*/ syms(foreach.in) ++ syms(foreach.func) ++ syms(foreach.sync)
-    case _ => super.syms(e)
-  }
-
-  override def boundSyms(e: Any): List[Sym[Any]] = e match { //TR TODO
-    case s: DeliteOpSingleTask[_] => effectSyms(s.block)
-    case op: DeliteCollectElem[_,_] => effectSyms(op.func) ++ op.cond.flatMap(effectSyms) ++ effectSyms(op.alloc)
-    case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.func) ++ op.cond.flatMap(effectSyms) ++ effectSyms(op.rFunc)
-    case zip: DeliteOpZipWith[_,_,_,_] => zip.v._1::zip.v._2::effectSyms(zip.alloc):::effectSyms(zip.func)
-    case map: DeliteOpMap[_,_,_] => map.v::effectSyms(map.alloc):::effectSyms(map.func)
-    case mapR: DeliteOpMapReduce[_,_,_] => mapR.mV::mapR.rV._1::mapR.rV._2::effectSyms(mapR.map):::effectSyms(mapR.reduce)
-    case zipR: DeliteOpZipWithReduce[_,_,_,_] => zipR.zV._1::zipR.zV._2::zipR.rV._1::zipR.rV._2::effectSyms(zipR.zip) ++ effectSyms(zipR.reduce)
-    case red: DeliteOpReduce[_] => red.v._1::red.v._2::effectSyms(red.func)
-    case foreach: DeliteOpForeach[_,_] => foreach.v::foreach.i::effectSyms(foreach.func):::effectSyms(foreach.sync)
-    case foreach: DeliteOpForeachBounded[_,_,_] => foreach.v::foreach.i::effectSyms(foreach.func):::effectSyms(foreach.sync)
-    case _ => super.boundSyms(e)
-  }
 
 }
 
@@ -605,7 +616,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => {
-      printlog("EMIT single "+s)
+      //printlog("EMIT single "+s)
       val save = deliteKernel
       deliteKernel = false
       val b = s.block

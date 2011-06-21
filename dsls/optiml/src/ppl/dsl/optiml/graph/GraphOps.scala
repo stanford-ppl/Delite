@@ -143,9 +143,6 @@ trait BaseGenGraphOps extends GenericNestedCodegen {
   val IR: GraphOpsExp
   import IR._
 
-  //override def syms(e: Any): List[Sym[Any]] = e match {
-    //case _ => super.syms(e)
-  //}
 }
 
 trait ScalaGenGraphOps extends BaseGenGraphOps with ScalaGenBase {

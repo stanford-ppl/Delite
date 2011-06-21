@@ -33,9 +33,6 @@ trait BaseGenDeliteCollectionOps extends GenericNestedCodegen {
   val IR: DeliteCollectionOpsExp
   import IR._
 
-  //override def syms(e: Any): List[Sym[Any]] = e match {
-    //case _ => super.syms(e)
-  //}
 }
 trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaGenEffect {
   val IR: DeliteCollectionOpsExp

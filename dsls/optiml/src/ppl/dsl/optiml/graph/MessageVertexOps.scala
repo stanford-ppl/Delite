@@ -64,9 +64,6 @@ trait BaseGenMessageVertexOps extends GenericNestedCodegen {
   val IR: MessageVertexOpsExp
   import IR._
 
-  //override def syms(e: Any): List[Sym[Any]] = e match {
-    //case _ => super.syms(e)
-  //}
 }
 
 trait ScalaGenMessageVertexOps extends BaseGenMessageVertexOps with ScalaGenBase {

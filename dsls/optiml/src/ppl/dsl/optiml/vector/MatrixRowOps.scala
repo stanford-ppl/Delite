@@ -44,10 +44,6 @@ trait BaseGenMatrixRowOps extends GenericCodegen {
   val IR: MatrixRowOpsExp
   import IR._
 
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    //case MatrixGetRow(x, i) => Nil  // this is unsafe unless we can remove all actual allocations of views
-    case _ => super.syms(e)
-  }
 }
 
 trait ScalaGenMatrixRowOps extends BaseGenMatrixRowOps with ScalaGenBase {
