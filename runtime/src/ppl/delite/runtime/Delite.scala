@@ -64,6 +64,11 @@ object Delite {
       case _ => throw new IllegalArgumentException("Requested executor type is not recognized")
     }
 
+    def abnormalShutdown() {
+      executor.shutdown()
+      Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
+    }
+
     try {
 
       executor.init() //call this first because could take a while and can be done in parallel
@@ -100,11 +105,10 @@ object Delite {
 
       executor.shutdown()
     }
-    catch { case e => {
-      executor.abnormalShutdown()
-      Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
-      throw e
-    } }
+    catch {
+      case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception
+      case e: Exception => abnormalShutdown(); throw e
+    }
   }
 
   def loadDeliteDEG(filename: String) = {
