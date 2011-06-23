@@ -15,7 +15,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   /**
    * The base type of the DeliteOp hierarchy.
    */
-  /*sealed*/ trait DeliteOp[A] extends Def[A]
+  /*sealed*/ trait DeliteOp[A] extends Def[A] {
+		val transform: Transformer = IdentityTransformer // default
+	}
 //  sealed trait DeliteFatOp extends FatDef
 
   /**
@@ -32,6 +34,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   
   // for use in loops:
 
+	case class DeliteForeachElem[A](
+		func: Exp[A],
+		sync: Exp[List[Any]],
+		cond: List[Exp[Boolean]] = Nil
+	) extends Def[Unit]
+	
   case class DeliteCollectElem[A, CA <: DeliteCollection[A]]( // TODO: cannot have IndexVector as result. use CA instead of C[X] ?
     alloc: Exp[CA],
     func: Exp[A],
@@ -49,12 +57,6 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   ) extends Def[A]
   
   
-  class DeliteOpLoopMirrored[A](f: Transformer, o: DeliteOpLoop[A]) extends DeliteOpLoop[A] {   // TODO!
-    val size = f(o.size)
-    val v = f(o.v).asInstanceOf[Sym[Int]]
-    val body = mirrorLoopBody(o.body, f)
-  }
-  
   def loopBodyNeedsCombine[A](e: Def[A]) = e match {
     case e:DeliteReduceElem[_] => true
     case e:DeliteCollectElem[_,_] => e.cond.nonEmpty
@@ -62,25 +64,6 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
   
   
-/*
-  abstract class DeliteOpMapNew[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[C[A]] {
-    val size: Exp[Int]
-    val v: Sym[Int]
-    val func: Exp[A]
-    val alloc: Exp[C[A]]
-  }
-
-  abstract class DeliteOpReduceNew[A]() extends DeliteOp[A] {
-    val size: Exp[Int]
-    val v: Sym[Int]
-    val func: Exp[A]
-    val rV: (Sym[A], Sym[A])
-    val rFunc: Exp[A]
-  }
-*/
-
-
-
   /**
    * A Conditional task - will emit a Conditional DEG node as well as kernels for the then and else clauses
    *
@@ -120,7 +103,167 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val body: Exp[Unit]
   }
 
-  /**
+	/**
+	 *	New Delite parallel ops; will eventually completely replace old versions.
+	 */
+
+	abstract class DeliteOpMap2[A:Manifest,
+	 														B:Manifest, CB <: DeliteCollection[B]:Manifest]
+	 	extends DeliteOpLoop[CB] {
+
+		// supplied by subclass
+	  val in: Exp[DeliteCollection[A]]
+		val size: Exp[Int] // could be dc_size(in), but we want type-specific pattern matching to work
+		def func: Exp[A] => Exp[B]
+	  def alloc: Exp[CB]
+
+	  // loop
+	  final val v = fresh[Int]
+	  lazy val body: Def[CB] = DeliteCollectElem[B, CB](
+			alloc = transform(reifyEffects(this.alloc)),
+			func = transform(reifyEffects(this.func(dc_apply(in,v))))
+		)
+	}
+
+	/**
+	 *  Currently conditionally appends values to buffers, which are concatenated in the combine stage.
+	 *  Note that it is also implicitly a Map-Filter (it accepts a mapping function). Should this be renamed? 
+	 *	
+	 *	Should eventually be implemented as a parallel scan.
+	 */
+	abstract class DeliteOpFilter2[A:Manifest,
+	 															 B:Manifest, CB <: DeliteCollection[B]:Manifest]
+		extends DeliteOpMap2[A,B,CB] {
+
+		// supplied by subclass
+		def cond: Exp[A] => Exp[Boolean] // does this need to be more general (i.e. a List?)
+
+	  // loop
+	  override lazy val body: Def[CB] = DeliteCollectElem[B, CB](
+			alloc = transform(reifyEffects(this.alloc)),
+			func = transform(reifyEffects(this.func(dc_apply(in,v)))),
+			cond = transform(reifyEffects(this.cond(dc_apply(in,v))))::Nil			
+		)
+	}
+      	
+	abstract class DeliteOpZipWith2[A:Manifest,
+																  B:Manifest,
+																	R:Manifest, CR <: DeliteCollection[R]:Manifest]
+		extends DeliteOpLoop[CR] {
+			
+		// supplied by subclass		
+    val inA: Exp[DeliteCollection[A]]
+    val inB: Exp[DeliteCollection[B]]
+		val size: Exp[Int]
+    def func: (Exp[A], Exp[B]) => Exp[R]
+    def alloc: Exp[CR]
+		
+	  // loop
+	  final val v = fresh[Int]
+	  lazy val body: Def[CR] = DeliteCollectElem[R, CR](
+			alloc = transform(reifyEffects(this.alloc)),
+			func = transform(reifyEffects(this.func(dc_apply(inA,v), dc_apply(inB,v))))
+		)		
+  }
+ 
+  abstract class DeliteOpReduce2[A:Manifest] extends DeliteOpLoop[A] {
+			
+		// supplied by subclass		
+    val in: Exp[DeliteCollection[A]]
+		val size: Exp[Int]
+		val zero: Exp[A] // why do we need a zero? 
+    def func: (Exp[A], Exp[A]) => Exp[A]
+		
+	  // loop
+	  final val v = fresh[Int]
+		final protected val rV = (fresh[A], fresh[A])
+	  lazy val body: Def[A] = DeliteReduceElem[A](
+			func = transform(reifyEffects(dc_apply(in,v))),
+			zero = transform(this.zero),			
+			rV = (transform(rV._1).asInstanceOf[Sym[A]], transform(rV._2).asInstanceOf[Sym[A]]),
+			rFunc = transform(reifyEffects(this.func(rV._1, rV._2)))
+		)		
+  }
+  
+	abstract class DeliteOpMapReduce2[A:Manifest,R:Manifest]
+		extends DeliteOpLoop[R] {
+			
+		// supplied by subclass		
+    val in: Exp[DeliteCollection[A]]
+		val size: Exp[Int]
+		val zero: Exp[R] // why do we need a zero? 
+		def map: Exp[A] => Exp[R]
+    def reduce: (Exp[R], Exp[R]) => Exp[R]
+		
+	  // loop
+	  final val v = fresh[Int]
+		final protected val rV = (fresh[R], fresh[R])
+	  lazy val body: Def[R] = DeliteReduceElem[R](
+			func = transform(reifyEffects(map(dc_apply(in,v)))),
+			zero = transform(this.zero),			
+			rV = (transform(rV._1).asInstanceOf[Sym[R]], transform(rV._2).asInstanceOf[Sym[R]]),
+			rFunc = transform(reifyEffects(reduce(rV._1, rV._2)))
+		)			
+	}
+	
+	// should this be folded into DeliteOpMapReduce (or into DeliteOpFilter)?
+	abstract class DeliteOpFilterReduce2[A:Manifest,R:Manifest]
+		extends DeliteOpMapReduce2[A,R] {
+		
+		def cond: Exp[A] => Exp[Boolean] // does this need to be more general (i.e. a List?)
+		def func: Exp[A] => Exp[R]		
+		def map = func
+		
+		override lazy val body: Def[R] = DeliteReduceElem[R](
+			func = transform(reifyEffects(map(dc_apply(in,v)))),
+			cond = transform(reifyEffects(cond(dc_apply(in,v))))::Nil,
+			zero = transform(this.zero),			
+			rV = (transform(rV._1).asInstanceOf[Sym[R]], transform(rV._2).asInstanceOf[Sym[R]]),
+			rFunc = transform(reifyEffects(reduce(rV._1, rV._2)))
+		)	
+	}
+	
+	abstract class DeliteOpZipWithReduce2[A:Manifest,B:Manifest,R:Manifest]
+		extends DeliteOpLoop[R] {
+			
+		// supplied by subclass		
+    val inA: Exp[DeliteCollection[A]]
+    val inB: Exp[DeliteCollection[B]]
+		val size: Exp[Int]
+		val zero: Exp[R]
+    def zip: (Exp[A], Exp[B]) => Exp[R]
+		def reduce: (Exp[R], Exp[R]) => Exp[R]
+		
+		// loop
+	  final val v = fresh[Int]
+		final protected val rV = (fresh[R], fresh[R])
+	  lazy val body: Def[R] = DeliteReduceElem[R](
+			func = transform(reifyEffects(zip(dc_apply(inA,v), dc_apply(inB,v)))),
+			zero = transform(this.zero),			
+			rV = (transform(rV._1).asInstanceOf[Sym[R]], transform(rV._2).asInstanceOf[Sym[R]]),
+			rFunc = transform(reifyEffects(reduce(rV._1, rV._2)))
+		)				  
+  }
+
+	
+	abstract class DeliteOpForeach2[A:Manifest] extends DeliteOpLoop[Unit] { //DeliteOp[Unit] {		
+		val in: Exp[DeliteCollection[A]]
+		def func: Exp[A] => Exp[Unit]
+		def sync: Exp[Int] => Exp[List[Any]] // TODO: need to extend runtime to do something with sync in multiloop
+		
+		final val v = fresh[Int]
+		final val i = fresh[Int]
+		lazy val body: Def[Unit] = DeliteForeachElem(
+			func = transform(reifyEffects(this.func(dc_apply(in,v)))),
+		 	sync = transform(reifyEffects(this.sync(i)))
+		)
+	}
+	
+	/**
+	 * Deprecated Delite ops	
+	 */
+	
+	/**
    * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
    * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
    *
@@ -130,48 +273,6 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  alloc function returning the output collection. if it is the same as the input collection,
    *               the operation is mutable; reified version of Unit => DeliteCollection[B].
    */
-
-	abstract class DeliteOpMap2[A:Manifest, CA <: DeliteCollection[A]:Manifest,
-	 														B:Manifest, CB <: DeliteCollection[B]:Manifest]
-	 	extends DeliteOpLoop[CB] {
-		
-		// supplied by subclass
-	  val in: Exp[CA]
-		val size: Exp[Int] // could be dc_size(in), but we want type-specific pattern matching to work
-		def func: Exp[A] => Exp[B]
-	  def alloc: Exp[CB]
-	
-		// do we need this?
-		val transform: Transformer = IdentityTransformer // default
-	
-	  // loop
-	  final val v = fresh[Int]
-	  lazy val body: Def[CB] = DeliteCollectElem[B, CB](
-			alloc = transform(reifyEffects(this.alloc)),
-			func = transform(reifyEffects(this.func(dc_apply(in,v))))
-		)
-	}
-	
-	/**
-	 *  Currently conditionally appends values to buffers, which are concatenated in the combine stage.
-	 *  Note that it is also implicitly a Map-Filter (it accepts a mapping function). Should this be renamed? 
-	 *	
-	 *	Should eventually be implemented as a parallel scan.
-	 */
-	abstract class DeliteOpFilter2[A:Manifest, CA <: DeliteCollection[A]:Manifest,
-	 															 B:Manifest, CB <: DeliteCollection[B]:Manifest]
-		extends DeliteOpMap2[A,CA,B,CB] {
-		
-		// supplied by subclass
-		def cond: Exp[A] => Exp[Boolean] // does this need to be more general (i.e. a List?)
-	
-	  // loop
-	  override lazy val body: Def[CB] = DeliteCollectElem[B, CB](
-			alloc = transform(reifyEffects(this.alloc)),
-			func = transform(reifyEffects(this.func(dc_apply(in,v)))),
-			cond = transform(reifyEffects(this.cond(dc_apply(in,v))))::Nil			
-		)
-	}
 	
   trait DeliteOpMap[A,B,C[X] <: DeliteCollection[X]] extends DeliteOp[C[B]] with DeliteOpMapLikeWhileLoopVariant {
     val in: Exp[C[A]]
@@ -219,28 +320,6 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val alloc: Exp[C[R]]
   }
 
-  abstract class DeliteOpZipWith2[A:Manifest,CA <: DeliteCollection[A]:Manifest,
-																  B:Manifest,CB <: DeliteCollection[B]:Manifest,
-																	R:Manifest,CR <: DeliteCollection[R]:Manifest]
-		extends DeliteOpLoop[CR] {
-			
-		// supplied by subclass		
-    val inA: Exp[CA]
-    val inB: Exp[CB]
-		val size: Exp[Int]
-    def func: (Exp[A], Exp[B]) => Exp[R]
-    def alloc: Exp[CR]
-		
-		val transform: Transformer = IdentityTransformer // default
-		
-	  // loop
-	  final val v = fresh[Int]
-	  lazy val body: Def[CR] = DeliteCollectElem[R, CR](
-			alloc = transform(reifyEffects(this.alloc)),
-			func = transform(reifyEffects(this.func(dc_apply(inA,v), dc_apply(inB,v))))
-		)		
-  }
-
   /**
    * Parallel reduction of a DeliteCollection[A]. Reducing function must be associative.
    *
@@ -252,27 +331,6 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val in: Exp[DeliteCollection[A]]
     val v: (Sym[A],Sym[A])
     val func: Exp[A]
-  }
-
-	abstract class DeliteOpReduce2[A:Manifest] extends DeliteOpLoop[A] {
-			
-		// supplied by subclass		
-    val in: Exp[DeliteCollection[A]]
-		val size: Exp[Int]
-		val zero: Exp[A] // why do we need a zero? 
-    def func: (Exp[A], Exp[A]) => Exp[A]
-		
-		val transform: Transformer = IdentityTransformer // default
-		
-	  // loop
-	  final val v = fresh[Int]
-		final protected val rV = (fresh[A], fresh[A])
-	  lazy val body: Def[A] = DeliteReduceElem[A](
-			func = transform(reifyEffects(dc_apply(in,v))),
-			zero = transform(this.zero),			
-			rV = (transform(rV._1).asInstanceOf[Sym[A]], transform(rV._2).asInstanceOf[Sym[A]]),
-			rFunc = transform(reifyEffects(this.func(rV._1, rV._2)))
-		)		
   }
 
   /**
@@ -340,46 +398,6 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       }
     }
   }
-
-	abstract class DeliteOpMapReduce2[A:Manifest,CA <: DeliteCollection[A]:Manifest,R:Manifest]
-		extends DeliteOpLoop[R] {
-			
-		// supplied by subclass		
-    val in: Exp[DeliteCollection[A]]
-		val size: Exp[Int]
-		val zero: Exp[R] // why do we need a zero? 
-		def map: Exp[A] => Exp[R]
-    def reduce: (Exp[R], Exp[R]) => Exp[R]
-		
-		val transform: Transformer = IdentityTransformer // default
-
-	  // loop
-	  final val v = fresh[Int]
-		final protected val rV = (fresh[R], fresh[R])
-	  lazy val body: Def[R] = DeliteReduceElem[R](
-			func = transform(reifyEffects(map(dc_apply(in,v)))),
-			zero = transform(this.zero),			
-			rV = (transform(rV._1).asInstanceOf[Sym[R]], transform(rV._2).asInstanceOf[Sym[R]]),
-			rFunc = transform(reifyEffects(reduce(rV._1, rV._2)))
-		)			
-	}
-	
-	// should this be folded into DeliteOpMapReduce (or into DeliteOpFilter)?
-	abstract class DeliteOpFilterReduce2[A:Manifest,CA <: DeliteCollection[A]:Manifest,R:Manifest]
-		extends DeliteOpMapReduce2[A,CA,R] {
-		
-		def cond: Exp[A] => Exp[Boolean] // does this need to be more general (i.e. a List?)
-		def func: Exp[A] => Exp[R]		
-		def map = func
-		
-		override lazy val body: Def[R] = DeliteReduceElem[R](
-			func = transform(reifyEffects(map(dc_apply(in,v)))),
-			cond = transform(reifyEffects(cond(dc_apply(in,v))))::Nil,
-			zero = transform(this.zero),			
-			rV = (transform(rV._1).asInstanceOf[Sym[R]], transform(rV._2).asInstanceOf[Sym[R]]),
-			rFunc = transform(reifyEffects(reduce(rV._1, rV._2)))
-		)	
-	}
 		
   /**
    * Parallel zipWith-reduction from a (DeliteCollection[A],DeliteCollection[A]) => R. The map-reduce is composed,
@@ -470,6 +488,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           func = f(e.func),
           cond = f(e.cond)
         ).asInstanceOf[Def[A]]
+		  case e: DeliteForeachElem[a] => 
+        DeliteForeachElem[a](
+ 					func = f(e.func),
+					sync = f(e.sync),
+					cond = f(e.cond)
+				).asInstanceOf[Def[A]] // reasonable?
       case e: DeliteReduceElem[a] => 
         DeliteReduceElem[a](
           func = f(e.func),
@@ -491,6 +515,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case s: DeliteOpSingleTask[_] if s.requireInputs => syms(s.block) ++ super.syms(e) // super call: add case class syms (iff flag is set)
     case s: DeliteOpSingleTask[_] => syms(s.block)
     case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.cond) ++ syms(op.alloc)
+    case op: DeliteForeachElem[_] => syms(op.func) ++ syms(op.cond) ++ syms(op.sync)
     case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.cond) ++ syms(op.zero) ++ syms(op.rFunc)
     case map: DeliteOpMap[_,_,_] => /*if (shallow) syms(map.in) else */ syms(map.in) ++ syms(map.alloc) ++ syms(map.func)
     case zip: DeliteOpZipWith[_,_,_,_] => /*if (shallow) syms(zip.inA) ++ syms(zip.inB) else*/ syms(zip.inA) ++ syms(zip.inB) ++ syms(zip.alloc) ++ syms(zip.func)
@@ -517,6 +542,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case s: DeliteOpSingleTask[_] => effectSyms(s.block)
     case op: DeliteCollectElem[_,_] => effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.alloc)
     case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.rFunc)
+    case op: DeliteForeachElem[_] => effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.sync)
     case zip: DeliteOpZipWith[_,_,_,_] => zip.v._1::zip.v._2::effectSyms(zip.alloc):::effectSyms(zip.func)
     case map: DeliteOpMap[_,_,_] => map.v::effectSyms(map.alloc):::effectSyms(map.func)
     case mapR: DeliteOpMapReduce[_,_,_] => mapR.mV::mapR.rV._1::mapR.rV._2::effectSyms(mapR.map):::effectSyms(mapR.reduce)
@@ -532,6 +558,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case s: DeliteOpSingleTask[_] if s.requireInputs => freqNormal(s.block) ++ super.symsFreq(e) // super call: add case class syms (iff flag is set)
     case s: DeliteOpSingleTask[_] => freqNormal(s.block)
     case op: DeliteCollectElem[_,_] => freqNormal(op.alloc) ++ freqHot(op.cond) ++ freqHot(op.func)
+    case op: DeliteForeachElem[_] => freqNormal(op.sync) ++ freqHot(op.cond) ++ freqHot(op.func)
     case op: DeliteReduceElem[_] => freqHot(op.cond) ++ freqHot(op.func) ++ freqNormal(op.zero) ++ freqHot(op.rFunc)
     case map: DeliteOpMap[_,_,_] => freqNormal(map.in) ++ freqNormal(map.alloc) ++ freqHot(map.func)
     case zip: DeliteOpZipWith[_,_,_,_] => freqNormal(zip.inA) ++ freqNormal(zip.inB) ++ freqNormal(zip.alloc) ++ freqHot(zip.func)
@@ -609,6 +636,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
                 stream.println("//TODO: buffer size might be wrong (loop has conditions)")
               stream.println(quote(getBlockResult(elem.alloc)))
               stream.println(/*{*/"}")
+						case (sym, elem: DeliteForeachElem[_]) => 
+							stream.println("var " + quotearg(sym) + " = null")
             case (sym, elem: DeliteReduceElem[_]) =>
               stream.println("var " + quotearg(sym) + " = " + quote(elem.zero))
           }
@@ -616,6 +645,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
           stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(",")/*}*/)
           val elemFuncs = op.body flatMap { // don't emit dependencies twice!
             case elem: DeliteCollectElem[_,_] => elem.func :: elem.cond
+            case elem: DeliteForeachElem[_] => elem.cond // only emit func inside condition! TODO: how to avoid emitting deps twice? // elem.func :: elem.cond
             case elem: DeliteReduceElem[_] => elem.func :: elem.cond
           }
           emitFatBlock(elemFuncs)
@@ -627,6 +657,16 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
                 stream.println(quote(sym) + ".insert(" + quote(sym) + ".length, " + quote(getBlockResult(elem.func)) + ")")
               } else
                 stream.println(quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
+						case (sym, elem: DeliteForeachElem[_]) =>
+							stream.println(quote(sym) + " = {")             	
+							if (elem.cond.nonEmpty)
+	            	stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
+	            emitBlock(elem.func)
+							stream.println(quote(getBlockResult(elem.func)))
+							if (elem.cond.nonEmpty) {
+								stream.println("}")													
+							}
+							stream.println("}")
             case (sym, elem: DeliteReduceElem[_]) =>
               //emitBlock(elem.func)
               if (elem.cond.nonEmpty)
@@ -661,6 +701,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
               if (elem.cond.nonEmpty)
                 stream.println("//TODO: buffer size might be wrong (loop has conditions)")
               stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.alloc)))
+						case (sym, elem: DeliteForeachElem[_]) => // nothing needed
             case (sym, elem: DeliteReduceElem[_]) =>
               stream.println("__act." + quote(sym) + " = " + quote(elem.zero))
           }
@@ -676,6 +717,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
                   stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym) + ".cloneL")
                 } else
                   stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
+							case (sym, elem: DeliteForeachElem[_]) => // nothing needed
               case (sym, elem: DeliteReduceElem[_]) =>
                 stream.println("__act2." + quote(sym) + " = " + quote(elem.zero))
             }
@@ -687,6 +729,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
           stream.println("def process(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {")
           val elemFuncs = op.body flatMap { // don't emit dependencies twice!
             case elem: DeliteCollectElem[_,_] => elem.func :: elem.cond
+            case elem: DeliteForeachElem[_] => elem.cond // only emit func inside condition! TODO: how to avoid emitting deps twice? // elem.func :: elem.cond
             case elem: DeliteReduceElem[_] => elem.func :: elem.cond
           }
           emitFatBlock(elemFuncs)
@@ -699,6 +742,16 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
               } else {
                 stream.println("__act." + quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
               }
+						case (sym, elem: DeliteForeachElem[_]) =>
+							stream.println("val " + quote(sym) + " = {")
+							if (elem.cond.nonEmpty)
+              	stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
+	            emitBlock(elem.func)
+							stream.println(quote(getBlockResult(elem.func)))
+							if (elem.cond.nonEmpty) {
+								stream.println("}")													
+							}
+							stream.println("}")
             case (sym, elem: DeliteReduceElem[_]) =>
               //emitBlock(elem.func)
               if (elem.cond.nonEmpty)
@@ -718,6 +771,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
                 stream.println("//TODO: this is inefficient. should use a scan pass.")
                 stream.println("__act." + quote(sym) + ".insertAll(__act." +quote(sym) + ".length, rhs." + quote(sym) + ")")
               }
+						case (sym, elem: DeliteForeachElem[_]) => // nothing needed
             case (sym, elem: DeliteReduceElem[_]) =>
               stream.println("val " + quote(elem.rV._1) + " = " + "__act." + quote(sym))
               stream.println("val " + quote(elem.rV._2) + " = " + "rhs." + quote(sym))
