@@ -4,24 +4,35 @@ import org.scalatest._
 import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common._
 import scala.collection.mutable.ArrayBuffer
-import java.io.{Console => _, _}
+import java.io.{File, Console => _, _}
 
 trait DeliteTestConfig {
   // something arbitrary that we should never see in any test's output
   val MAGICDELIMETER = "!~x02$758209"
+
+  val propFile = new File("delite.properties")
+  if (!propFile.exists) throw new TestFailedException("could not find delite.properties", 3)
+  val props = new java.util.Properties()
+  props.load(new FileReader(propFile))
+
+  // test parameters
+  val verbose = props.getProperty("tests.verbose", "false").toBoolean
+  val javaHome = new File(props.getProperty("java.home", ""))
+  val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
+  val runtimeClasses = new File(props.getProperty("runtime.classes", ""))
 }
 
 trait DeliteSuite extends Suite with DeliteTestConfig {
-  // test parameters
-  val verbose = System.getProperty("tests.verbose", "false").toBoolean
-  val javaHome = System.getProperty("java.home", "") replaceAll ("/", "//")
-  val scalaHome = System.getProperty("scala.home", "") replaceAll ("/", "//")
-  val runtimeClasses = System.getProperty("runtime.classes", "") replaceAll ("/", "//")
+  val javaBin = new File(javaHome, "bin/java")
+  val scalaCompiler = new File(scalaHome, "lib/scala-compiler.jar")
+  val scalaLibrary = new File(scalaHome, "lib/scala-library.jar")
 
   def validateParameters() {
-    if (javaHome == "") throw new TestFailedException("java.home must be specified", 3)
-    else if (scalaHome == "") throw new TestFailedException("scala.home must be specified", 3)
-    else if (runtimeClasses == "") throw new TestFailedException("runtime.classes must be specified", 3)
+    if (!javaHome.exists) throw new TestFailedException("java.home must be a valid path in delite.properties", 3)
+    else if (!javaBin.exists) throw new TestFailedException("Could not find valid java installation in " + javaHome, 3)
+    else if (!scalaHome.exists) throw new TestFailedException("scala.vanilla.home must be a valid path in delite.proeprties", 3)
+    else if (!scalaCompiler.exists || !scalaLibrary.exists) throw new TestFailedException("Could not find valid scala installation in " + scalaHome, 3)
+    else if (!runtimeClasses.exists) throw new TestFailedException("runtime.classes must be a valid path in delite.properties", 3)
   }
 
   def compileAndTest(app: DeliteTestRunner) {
@@ -52,8 +63,8 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     var p: Process = null
     val output = new File("test.tmp")
     try{
-      val javaProc = javaHome + "bin/java"
-      val javaArgs = "-server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx16g -cp " + runtimeClasses + ":" + scalaHome + "lib/scala-library.jar:" + scalaHome + "lib/scala-compiler.jar"
+      val javaProc = javaBin.toString
+      val javaArgs = "-server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx16g -cp " + runtimeClasses + ":" + scalaLibrary + ":" + scalaCompiler
       val cmd = Array(javaProc) ++ javaArgs.split(" ") ++ Array("ppl.delite.runtime.Delite") ++ args
       val pb = new ProcessBuilder(java.util.Arrays.asList(cmd: _*))
       p = pb.start()
