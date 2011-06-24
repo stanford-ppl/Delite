@@ -24,6 +24,4 @@ abstract class Executor {
 
   def shutdown()
 
-  def abnormalShutdown()
-
 }

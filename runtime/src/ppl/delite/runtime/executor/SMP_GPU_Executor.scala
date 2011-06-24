@@ -42,9 +42,4 @@ class SMP_GPU_Executor extends Executor {
     for (i <- 0 until numGPUs) gpuExecutor(i).shutdown
   }
 
-  def abnormalShutdown() {
-    smpExecutor.abnormalShutdown
-    for (i <- 0 until numGPUs) gpuExecutor(i).abnormalShutdown
-  }
-
 }

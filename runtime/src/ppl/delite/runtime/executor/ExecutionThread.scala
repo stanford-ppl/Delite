@@ -29,20 +29,25 @@ class ExecutionThread extends Runnable {
 
   private[executor] var continue: Boolean = true
 
-  //this loop should be terminated by executing a special shutdown Executable
+  //this loop should be terminated by interrupting the thread
   def run {
     while(continue) {
-      val work = queue.take //blocking
-      try executeWork(work)
-      catch { case e => {
-        e.printStackTrace
-        Delite.shutdown()
-        throw e
-      } }
+      try {
+        val work = queue.take
+        executeWork(work)
+      }
+      catch {
+        case i: InterruptedException => continue = false //another thread threw an exception -> exit silently
+        case e: Exception => {
+          e.printStackTrace()
+          Delite.shutdown()
+          continue = false
+        }
+      }
     }
   }
 
   // how to execute work
-  private def executeWork(work: DeliteExecutable) = work.run
+  protected def executeWork(work: DeliteExecutable) = work.run
 
 }
