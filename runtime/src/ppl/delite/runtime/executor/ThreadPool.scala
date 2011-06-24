@@ -36,15 +36,9 @@ class ThreadPool(numThreads: Int) {
     }
   }
 
-  def shutdown {
-    for (i <- 0 until pool.length) {
-      pool(i).queue.put(new Shutdown(pool(i)))
-    }
-  }
-
-  def abnormalShutdown {
+  def shutdown() {
     for (i <- 0 until threads.length) {
-      threads(i).stop()
+      threads(i).interrupt()
     }
   }
 
