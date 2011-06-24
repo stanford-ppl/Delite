@@ -41,7 +41,7 @@ object ExampleContainer {
 
   private val numConsumers: Int = 5 //this is known and injected from schedule
   private val count = new Array[Int](capacity) //the current number of outstanding consumptions, when 0 the container entry is empty
-  private val takeIndex = new ThreadLocal[Int]{ override def initialValue = 0 } //TODO: is this the most efficient way?
+  private val takeIndices = new Array[Int](numConsumers)
 
   private var size: Int = 0 //current number of live results
   private var putIndex: Int = 0 //index for next put
@@ -51,24 +51,28 @@ object ExampleContainer {
   private val notEmpty = lock.newCondition //condition for waiting gets
   private val notFull = lock.newCondition //condition for waiting sets
 
-  def get: T = {
-    val takeIndex = this.takeIndex.get
+  def get1: T = get(0)
+  def get3: T = get(1)
+  def get7: T = get(2)
+
+  def get(thread: Int): T = {
+    val takeIndex = takeIndices(thread)
     val lock = this.lock // b/c Doug Lea does it :-) (I assume making it local to the method helps the JIT somehow(?))
     lock.lock
     try {
       while (takeIndex == putIndex)
         notEmpty.await
-      extract(takeIndex)
+      extract(thread, takeIndex)
     }
     finally {
       lock.unlock
     }
   }
 
-  private def extract(takeIndex: Int): T = {
+  private def extract(thread: Int, takeIndex: Int): T = {
     val items = this.items
     val res = items(takeIndex)
-    this.takeIndex.set((takeIndex + 1) % items.length)
+    takeIndices(thread) = (takeIndex + 1) % items.length
     val count = this.count
     count(takeIndex) -= 1
     if (count(takeIndex) == 0) {
