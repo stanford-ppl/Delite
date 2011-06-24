@@ -1,4 +1,4 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.stream
 
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
@@ -6,6 +6,7 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml.datastruct.scala.{StreamRow, StreamRowImpl}
+import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 trait StreamRowOps extends DSLType with Base with OverloadHack { this: OptiML =>
 

@@ -15,7 +15,8 @@ import ppl.dsl.optiml.io._
 import ppl.dsl.optiml.vector._
 import ppl.dsl.optiml.matrix._
 import ppl.dsl.optiml.graph._
-
+import ppl.dsl.optiml.stream._
+import ppl.dsl.optiml.capabilities._
 import ppl.dsl.optiml.library.cluster._
 
 

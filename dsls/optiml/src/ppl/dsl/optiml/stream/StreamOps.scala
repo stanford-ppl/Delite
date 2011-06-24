@@ -1,4 +1,4 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.stream
 
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
 import ppl.dsl.optiml.datastruct.scala.{Vector, Stream, StreamImpl, StreamRow}
@@ -8,6 +8,7 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.{VariablesExp, Variables, DSLOpsExp, CGenBase, CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
+import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 /**
  * Streams are Matrix-like, but are not Matrices. A Stream (slice) can be converted to a Vector or Matrix.

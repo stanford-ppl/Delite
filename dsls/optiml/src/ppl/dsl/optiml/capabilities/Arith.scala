@@ -1,10 +1,12 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.capabilities
 
-import datastruct.scala.{ZeroVector,Vector,Matrix}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{CLikeCodegen}
+import ppl.dsl.optiml.datastruct.scala.{ZeroVector,Vector,Matrix}
+import ppl.dsl.optiml.{OptiMLExp, OptiML}
+
 /*
  * Arith definitions for OptiML supported types.
  *
@@ -15,6 +17,22 @@ import scala.virtualization.lms.internal.{CLikeCodegen}
  * Stanford University
  *
  */
+
+/* Type class for basic math, but less restrictive than Numeric. */
+
+trait ArithInternal[Rep[X],T] {
+  def +=(a: Rep[T], b: Rep[T]) : Rep[T]
+  def +(a: Rep[T], b: Rep[T]) : Rep[T]
+  def -(a: Rep[T], b: Rep[T]) : Rep[T]
+  def *(a: Rep[T], b: Rep[T]) : Rep[T]
+  def /(a: Rep[T], b: Rep[T]) : Rep[T]
+  def abs(a: Rep[T]) : Rep[T]
+  def exp(a: Rep[T]) : Rep[T]
+  /*
+  def zero : Rep[T]
+  def unary_-(a: Rep[T]) : Rep[T]
+  */
+}
 
 trait ArithOps extends Variables with OverloadHack {
   this: OptiML =>

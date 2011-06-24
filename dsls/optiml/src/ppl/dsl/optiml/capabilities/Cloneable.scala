@@ -1,7 +1,8 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.capabilities
 
-import datastruct.scala.{Vector,Matrix}
 import scala.virtualization.lms.common.{Variables, Base}
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
+import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 trait CloneableInternal[Rep[X],T] {
   def cloneL(lhs: Rep[T]) : Rep[T]

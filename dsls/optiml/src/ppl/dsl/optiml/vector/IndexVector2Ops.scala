@@ -1,9 +1,10 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.vector
 
 import ppl.dsl.optiml.datastruct.scala._
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
+import ppl.dsl.optiml.{OptiMLExp, OptiML, LanguageOps}
 
 trait IndexVector2Ops extends DSLType with Base { this: OptiML =>
 
