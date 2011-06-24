@@ -1,7 +1,0 @@
-#Project local properties properties
-# Select one of the double hashed lines depending on your system and replace with paths that apply to your system.
-# Absolute paths must be used unless the scala-virtualized folder is within both projects.
-# Windows
-## scala.virtualized.home=C:/ppl/scala-virtualized/build/pack
-# Unix
-## scala.virtualized.home=/ppl/scala-virtualized/build/pack
