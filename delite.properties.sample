@@ -1,15 +1,16 @@
-#Project local properties properties
+# Delite project properties
 [delite]
-scala.virtualized.home=/home/kjbrown/scala/scala-virtualized
-scala.vanilla.home=/home/kjbrown/scala/scala-2.8.1.final
+scala.virtualized.home=/home/kjbrown/scala/scala-virtualized/dists/latest
+scala.vanilla.home=/usr/share/scala/scala-2.8.1
 
 java.home=/home/kjbrown/java/jdk1.7.0_b121_x86_64
 
 apps.data=/home/hchafi/delite
 
-intel.icc=/usr/local/intel/bin/intel64
-intel.mkl=/usr/local/intel
+intel.icc=/opt/intel/bin
+intel.mkl=/opt/intel/bin
 
 nvidia.cuda=/usr/local/cuda
 
 libs.lms.home=/home/hchafi/projects/virtualization-lms-core
+runtime.classes=runtime/target/scala_2.8.1/classes
