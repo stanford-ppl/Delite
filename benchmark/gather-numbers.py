@@ -126,6 +126,9 @@ def launchApps(options):
         print "==         " + app 
         print "===================================================" 
         opts = "-Dblas.home=" + props['intel.mkl'] + " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + props["delite.home"] +  "/generated/ -Ddelite.deg.filename=" + app + ".deg"
+        ld_library_path = []
+        ld_library_path.append(props['intel.mkl'] + "/mkl/lib/intel64")
+        ld_library_path.append(props['intel.mkl'] + "/lib/intel64")
         if options['variants'] == False:
             opts = opts + " -Dnested.variants.level=0"
         os.putenv("GEN_OPTS", opts)
@@ -146,6 +149,7 @@ def launchApps(options):
         #do it for each thread configuration
         if options['run']['smp']: 
             for numThreads in options['delite.threads']:
+                os.putenv("LD_LIBRARY_PATH", os.getenv("LD_LIBRARY_PATH", "") + ":" + ":".join(ld_library_path))
                 os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
                 os.putenv("MKL_NUM_THREADS", str(numThreads))
                 os.putenv("SCALA_HOME", props['scala.vanilla.home'])
@@ -162,6 +166,7 @@ def launchApps(options):
 
         #check if gpu option is enabled
         if options['run']['gpu']:
+            os.putenv("LD_LIBRARY_PATH", os.getenv("LD_LIBRARY_PATH", "") + ":" + ":".join(ld_library_path))
             os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
             os.putenv("MKL_NUM_THREADS", "1")
             #need nvcc in your path
