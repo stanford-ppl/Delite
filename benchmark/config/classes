@@ -7,6 +7,7 @@ rbm|ppl.apps.ml.rbm.RBMRunner
 lbp|ppl.apps.ml.gda.GDARunner
 gradient|ppl.apps.robotics.gradient.gradientRunner
 lbpdenoise|ppl.apps.ml.lbpdenoise.LBPDenoiseRunner
+lbpdenoiseraw|ppl.apps.ml.lbpdenoise.LBPDenoiseRawRunner
 spade|ppl.apps.bio.spade.SpadeRunner
 streamtest|ppl.tests.dsl.optiml.StreamTestsRunner
 vectortest|ppl.tests.dsl.optiml.VectorUITestsRunner
