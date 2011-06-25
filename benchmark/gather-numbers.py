@@ -41,9 +41,10 @@ def main():
     parser.add_option("--nv", dest="no_variants", action="store_true" , help="disables variant support in the framework")
     parser.add_option("--nb", dest="no_blas", action="store_true", help="disables blas calls in generated code")
     parser.add_option("--nf", dest="no_fusion", action="store_true", help="disables op fusion")
-    parser.add_option("--home", dest="delite_home", default="_env", help="allows you to specificy a different Delite Home than the one that should be specificed in the environment");
-    parser.add_option("--stats-dir", dest="stats_dir", default=None, help="allows you to specificy a different statistics output directory. environment variables are interpolated");
-    parser.add_option("--timestamp", dest="stats_time", action="store_true", help="store statistics under a timestamped directory");
+    parser.add_option("--home", dest="delite_home", default="_env", help="allows you to specificy a different Delite Home than the one that should be specificed in the environment")
+    parser.add_option("--stats-dir", dest="stats_dir", default=None, help="allows you to specificy a different statistics output directory. environment variables are interpolated")
+    parser.add_option("--timestamp", dest="stats_time", action="store_true", help="store statistics under a timestamped directory")
+    parser.add_option("-d", "--datasets", dest="datasets", default=None, help="allows you to specify a different datasets file to use. otherwise defaults to benchmark/config/datasets.HOSTNAME.INPUT_SIZE")
 
     (opts, args) = parser.parse_args()
     if len(args) != 0:
@@ -90,6 +91,9 @@ def loadOptions(opts):
         
     options['keep-going'] = opts.keep_going
     options['input-size'] = opts.input_size
+    
+    if opts.datasets:
+      options['datasets'] = opts.datasets
     
     stats_dir = opts.stats_dir or props['delite.home']  + "/benchmark/times"
     if opts.stats_time:
@@ -216,7 +220,10 @@ def loadParams(options):
     else:
         hostname = 'default'
 		
-    f = open(props['delite.home'] + '/benchmark/config/datasets.' + hostname + "." + options['input-size'], 'r')
+    if not 'datasets' in options:
+      f = open(props['delite.home'] + '/benchmark/config/datasets.' + hostname + "." + options['input-size'], 'r')
+    else:
+      f = open(options['datasets'], 'r')
     for line in f:
         settings = line.split('|')
         app = settings.pop(0)
