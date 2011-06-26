@@ -135,8 +135,16 @@ def launchApps(options):
         print "==================================================="
         print "==         " + app 
         print "===================================================" 
+        if app not in classes:
+            print "Could not find class definition for application %s" % app
+            if options['keep-going'] is None:
+              exit(-1)
+            else:
+              continue
+        
         opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + props["delite.home"] +  "/generated/ -Ddelite.deg.filename=" + app + ".deg"
-        ld_library_path = []
+        java_opts = os.getenv("JAVA_OPTS", "")
+        ld_library_path = filter(len, os.getenv("LD_LIBRARY_PATH", "").split(":"))
         if options['blas'] == True:
             opts = opts + " -Dblas.home=" + props['intel.mkl']
             ld_library_path.append(props['intel.mkl'] + "/mkl/lib/intel64")
@@ -163,14 +171,14 @@ def launchApps(options):
         #do it for each thread configuration
         if options['run']['smp']: 
             for numThreads in options['delite.threads']:
-                os.putenv("LD_LIBRARY_PATH", os.getenv("LD_LIBRARY_PATH", "") + ":" + ":".join(ld_library_path))
+                os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
                 os.putenv("MKL_NUM_THREADS", str(numThreads))
                 os.putenv("SCALA_HOME", props['scala.vanilla.home'])
                 
                 stats_dir = os.path.expandvars(options['stats-dir'])
                 
                 opts = "-Ddelite.home=" + props['delite.home'] + " -Ddelite.threads=" + str(numThreads) + " -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + stats_dir + " -Dstats.output.filename=" + app + "-smp-" +str(numThreads) + ".times"
-                os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
+                os.putenv("JAVA_OPTS", os.getenv(java_opts, "") + " " + opts)
                 
                 print "== executing application: " + app + " " + params[app],
                 print "== with options: " + opts + "\n"
@@ -181,7 +189,7 @@ def launchApps(options):
 
         #check if gpu option is enabled
         if options['run']['gpu']:
-            os.putenv("LD_LIBRARY_PATH", os.getenv("LD_LIBRARY_PATH", "") + ":" + ":".join(ld_library_path))
+            os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
             os.putenv("MKL_NUM_THREADS", "1")
             #need nvcc in your path
             os.putenv('PATH', props['nvidia.cuda'] + "/bin:" + os.getenv('PATH'))
@@ -190,7 +198,7 @@ def launchApps(options):
             stats_dir = os.path.expandvars(options['stats-dir'])
             
             opts = "-Ddelite.home=" + props['delite.home'] +" -Ddelite.threads=1 -Ddelite.gpus=1 -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + stats_dir + " -Dstats.output.filename=" + app + "-gpu.times"
-            os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
+            os.putenv("JAVA_OPTS", os.getenv(java_opts, "") + " " + opts)
             print "== executing application: " + app + " " + params[app],
             print "== with options: " + opts + "\n"
             ecode = os.system(props['delite.home'] + "/bin/exec " + app + ".deg " + params[app])
