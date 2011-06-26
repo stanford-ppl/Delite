@@ -16,9 +16,23 @@ object LBPDenoiseRunner extends OptiMLApplicationRunner with LBPDenoise
 
 trait LBPDenoise extends OptiMLApplication {
   def print_usage = {
-    println("Usage: GraphLBP <rows> <cols>")
-    println("Example: GraphLBP 100 100")
+    println("Usage: LBPDenoise <rows> <cols>")
+    println("Example: LBPDenoise 100 100")
     exit(-1)
+  }
+    
+  def loadImage(args: Rep[Array[String]], colors: Rep[Int], sigma: Rep[Int]) = {
+    // rows and cols arguments
+    val rows = Integer.parseInt(args(0))
+    val cols = Integer.parseInt(args(1))
+
+    // Generate image
+    val img = Matrix[Double](rows, cols)
+    imgPaintSunset(img, colors)
+    MLOutputWriter.writeImgPgm(img, "src.pgm")
+    imgCorrupt(img, sigma)
+    MLOutputWriter.writeImgPgm(img, "noise.pgm")
+    img
   }
 
   def main() = {
@@ -35,24 +49,8 @@ trait LBPDenoise extends OptiMLApplication {
     val pred_type = "map"
 
     val edgePotential = Matrix[Double](colors, colors).mutable
-  
-    /*// rows and cols arguments
-    rows = Integer.parseInt(args(0))
-    cols = Integer.parseInt(args(1))
-
-    // Generate image
-    val img = Matrix[Double](rows, cols)
-    imgPaintSunset(img, colors)
-    MLOutputWriter.writeImgPgm(img, "src.pgm")
-    imgCorrupt(img, sigma)
-    MLOutputWriter.writeImgPgm(img, "noise.pgm") */
     
-    // Load in a raw image that we generated from GraphLab
-
-    // Make sure we read in the raw file correctly
-    val img = MLInputReader.read(args(0))
-    MLOutputWriter.writeImgPgm(img, "check.pgm")
-    
+    val img = loadImage(args, colors, sigma)
     rows = img.numRows
     cols = img.numCols
 
