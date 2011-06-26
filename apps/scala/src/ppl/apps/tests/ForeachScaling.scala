@@ -16,53 +16,40 @@ object ForeachScalingRunner extends OptiMLApplicationRunner with ForeachScaling
 
 trait ForeachScaling extends OptiMLApplication {
   def print_usage = {
-    println("Usage: ForeachScaling <rows> <cols> <print interval> <limit>")
-    println("Example: ForeachScaling 100 100 2500000 1000.0")
+    println("Usage: ForeachScaling <rows> <cols> <print interval> <times>")
+    println("Example: ForeachScaling 100 100 2500000 1000")
     exit(-1)
   }
 
   def main() = {
-    if (args.length < 1) print_usage
+    if (args.length < 4) print_usage
   
     // rows and cols arguments
     val rows = Integer.parseInt(args(0))
     val cols = Integer.parseInt(args(1))
     val interval = Integer.parseInt(args(2))
-    val limit = Double.parseDouble(args(3))
-    val numRings = unit(5)
+    val times = Integer.parseInt(args(3))
   
     // Construct graph
-    val g = constructGraph(rows, cols, numRings)
-
-    var count = 1
-    
-    g.freeze()
+    val g = constructGraph(rows, cols, 5)
+    g.freeze
 
     tic()
-    
-    untilconverged(g) {
-      v =>
-        val vdata = v.data.asInstanceOfL[DenoiseVertexData]
-        
-        val belief = vdata.belief + Vector.ones(numRings)
-        
-        vdata.setBelief(belief)
+
+    var i = 0
+    var count = 0
+    while(i < times) {
+      for(v <- g.vertices) {
+        count += 1
         
         if(count % interval == 0) {
           println(count)
         }
-        
-        if(belief(0) < limit) {
-          v.addTask(v)
-        }
-        
-        count += 1
+      }
+      i += 1
     }
          
     toc()
-
-    // Predict the image!
-    println("Update functions ran: " + count)
   }
 
   def constructGraph(rows: Rep[Int], cols: Rep[Int], numRings: Rep[Int]): Rep[Graph[MessageVertex, MessageEdge]] = {
@@ -88,3 +75,4 @@ trait ForeachScaling extends OptiMLApplication {
     g
   }
 }
+
