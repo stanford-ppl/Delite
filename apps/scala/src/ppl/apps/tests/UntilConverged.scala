@@ -16,13 +16,13 @@ object UntilConvergedRunner extends OptiMLApplicationRunner with UntilConverged
 
 trait UntilConverged extends OptiMLApplication {
   def print_usage = {
-    println("Usage: ForeachScaling <rows> <cols> <print interval> <limit>")
-    println("Example: ForeachScaling 100 100 2500000 1000.0")
+    println("Usage: UntilConverged <rows> <cols> <print interval> <limit>")
+    println("Example: UntilConverged 100 100 2500000 1000.0")
     exit(-1)
   }
 
   def main() = {
-    if (args.length < 1) print_usage
+    if (args.length < 4) print_usage
   
     // rows and cols arguments
     val rows = Integer.parseInt(args(0))
