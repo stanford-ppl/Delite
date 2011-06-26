@@ -41,9 +41,10 @@ def main():
     parser.add_option("--nv", dest="no_variants", action="store_true" , help="disables variant support in the framework")
     parser.add_option("--nb", dest="no_blas", action="store_true", help="disables blas calls in generated code")
     parser.add_option("--nf", dest="no_fusion", action="store_true", help="disables op fusion")
-    parser.add_option("--home", dest="delite_home", default="_env", help="allows you to specificy a different Delite Home than the one that should be specificed in the environment");
-    parser.add_option("--stats-dir", dest="stats_dir", default=None, help="allows you to specificy a different statistics output directory. environment variables are interpolated");
-    parser.add_option("--timestamp", dest="stats_time", action="store_true", help="store statistics under a timestamped directory");
+    parser.add_option("--home", dest="delite_home", default="_env", help="allows you to specificy a different Delite Home than the one that should be specificed in the environment")
+    parser.add_option("--stats-dir", dest="stats_dir", default=None, help="allows you to specificy a different statistics output directory. environment variables are interpolated")
+    parser.add_option("--timestamp", dest="stats_time", action="store_true", help="store statistics under a timestamped directory")
+    parser.add_option("-d", "--datasets", dest="datasets", default=None, help="allows you to specify a different datasets file to use. otherwise defaults to benchmark/config/datasets.HOSTNAME.INPUT_SIZE")
 
     (opts, args) = parser.parse_args()
     if len(args) != 0:
@@ -91,6 +92,9 @@ def loadOptions(opts):
     options['keep-going'] = opts.keep_going
     options['input-size'] = opts.input_size
     
+    if opts.datasets:
+      options['datasets'] = opts.datasets
+    
     stats_dir = opts.stats_dir or props['delite.home']  + "/benchmark/times"
     if opts.stats_time:
       stats_dir = os.path.join(stats_dir, strftime("%Y-%m-%d_%H-%M-%S", localtime()))
@@ -130,8 +134,11 @@ def launchApps(options):
         print "==         " + app 
         print "===================================================" 
         opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + props["delite.home"] +  "/generated/ -Ddelite.deg.filename=" + app + ".deg"
+        ld_library_path = []
         if options['blas'] == True:
             opts = opts + " -Dblas.home=" + props['intel.mkl']
+            ld_library_path.append(props['intel.mkl'] + "/mkl/lib/intel64")
+            ld_library_path.append(props['intel.mkl'] + "/lib/intel64")
         if options['variants'] == False:
             opts = opts + " -Dnested.variants.level=0"
         if options['fusion'] == True:
@@ -154,6 +161,7 @@ def launchApps(options):
         #do it for each thread configuration
         if options['run']['smp']: 
             for numThreads in options['delite.threads']:
+                os.putenv("LD_LIBRARY_PATH", os.getenv("LD_LIBRARY_PATH", "") + ":" + ":".join(ld_library_path))
                 os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
                 os.putenv("MKL_NUM_THREADS", str(numThreads))
                 os.putenv("SCALA_HOME", props['scala.vanilla.home'])
@@ -170,6 +178,7 @@ def launchApps(options):
 
         #check if gpu option is enabled
         if options['run']['gpu']:
+            os.putenv("LD_LIBRARY_PATH", os.getenv("LD_LIBRARY_PATH", "") + ":" + ":".join(ld_library_path))
             os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
             os.putenv("MKL_NUM_THREADS", "1")
             #need nvcc in your path
@@ -211,7 +220,10 @@ def loadParams(options):
     else:
         hostname = 'default'
 		
-    f = open(props['delite.home'] + '/benchmark/config/datasets.' + hostname + "." + options['input-size'], 'r')
+    if not 'datasets' in options:
+      f = open(props['delite.home'] + '/benchmark/config/datasets.' + hostname + "." + options['input-size'], 'r')
+    else:
+      f = open(options['datasets'], 'r')
     for line in f:
         settings = line.split('|')
         app = settings.pop(0)
