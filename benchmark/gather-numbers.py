@@ -39,8 +39,8 @@ def main():
     parser.add_option("-k", "--keep-going", dest="keep_going", action="store_true", help="keep going even if there is a abnormal exit code")
     parser.add_option("--input-size", dest="input_size", default="icml", help="specify which dataset to use when collecting numbers")
     parser.add_option("--nv", dest="no_variants", action="store_true" , help="disables variant support in the framework")
-    parser.add_option("--home", dest="delite_home", default="_env", help="allows you to specificy a different Delite Home than the one that should be specificed in the environment");
-    parser.add_option("--stats-dir", dest="stats_dir", default=None, help="allows you to specificy a different statistics output directory. environment variables are interpolated");
+    parser.add_option("--home", dest="delite_home", default="_env", help="allows you to specify a different Delite Home than the one that should be specificed in the environment");
+    parser.add_option("--stats-dir", dest="stats_dir", default=None, help="allows you to specify a different statistics output directory. environment variables are interpolated");
     parser.add_option("--timestamp", dest="stats_time", action="store_true", help="store statistics under a timestamped directory");
 
     (opts, args) = parser.parse_args()
@@ -87,7 +87,9 @@ def loadOptions(opts):
     options['keep-going'] = opts.keep_going
     options['input-size'] = opts.input_size
     
-    stats_dir = opts.stats_dir or props['delite.home']  + "/benchmark/times"
+    stats_dir = opts.stats_dir
+    if props['delite.home']:
+      stats_dir = stats_dir or props['delite.home']  + "/benchmark/times"
     if opts.stats_time:
       stats_dir = os.path.join(stats_dir, strftime("%Y-%m-%d_%H-%M-%S", localtime()))
     options['stats-dir'] = stats_dir
@@ -150,13 +152,13 @@ def launchApps(options):
         if options['run']['smp']: 
             for numThreads in options['delite.threads']:
                 os.putenv("LD_LIBRARY_PATH", os.getenv("LD_LIBRARY_PATH", "") + ":" + ":".join(ld_library_path))
-                os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
                 os.putenv("MKL_NUM_THREADS", str(numThreads))
                 os.putenv("SCALA_HOME", props['scala.vanilla.home'])
                 
                 stats_dir = os.path.expandvars(options['stats-dir'])
                 
-                opts = "-Ddelite.debug.print.sources -Ddelite.home=" + props['delite.home'] + " -Ddelite.threads=" + str(numThreads) + " -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + stats_dir + " -Dstats.output.filename=" + app + "-smp-" +str(numThreads) + ".times" 
+                opts = "-Ddelite.debug.print.sources -Ddelite.home=" + props['delite.home'] + " -Ddelite.threads=" + str(numThreads) + " -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + stats_dir + " -Dstats.output.filename=" + app + "-smp-" +str(numThreads) + ".times"
+                os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
                 print "== executing application: " + app + " " + params[app],
                 print "== with options: " + opts + "\n"
                 ecode = os.system(props['delite.home'] + "/bin/exec " + app + ".deg " + params[app])
@@ -167,7 +169,6 @@ def launchApps(options):
         #check if gpu option is enabled
         if options['run']['gpu']:
             os.putenv("LD_LIBRARY_PATH", os.getenv("LD_LIBRARY_PATH", "") + ":" + ":".join(ld_library_path))
-            os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
             os.putenv("MKL_NUM_THREADS", "1")
             #need nvcc in your path
             os.putenv('PATH', props['nvidia.cuda'] + "/bin:" + os.getenv('PATH'))
@@ -175,7 +176,8 @@ def launchApps(options):
             
             stats_dir = os.path.expandvars(options['stats-dir'])
             
-            opts = "-Ddelite.home=" + props['delite.home'] +" -Ddelite.threads=1 -Ddelite.gpus=1 -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + stats_dir + " -Dstats.output.filename=" + app + "-gpu.times"         
+            opts = "-Ddelite.home=" + props['delite.home'] +" -Ddelite.threads=1 -Ddelite.gpus=1 -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + stats_dir + " -Dstats.output.filename=" + app + "-gpu.times"
+            os.putenv("JAVA_OPTS", os.getenv("JAVA_OPTS", "") + " " + opts)
             print "== executing application: " + app + " " + params[app],
             print "== with options: " + opts + "\n"
             ecode = os.system(props['delite.home'] + "/bin/exec " + app + ".deg " + params[app])
