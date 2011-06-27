@@ -118,15 +118,46 @@ autocrlf = false</code></pre>
     <li><p>Ensure <code>scala-virtualized</code> is built by running <code>ant</code> in the <code>scala-virtualized</code> directory.</p></li> 
     <li><p>Build <code>virtualization-lms-core</code> by running the <code>sbt</code> command <code>publish-local</code></p></li> 
     <li> 
-    <p>Create a <code>local.properties</code> file inside the <code>Delite</code> and the <code>virtualization-lms-core</code> folder with the following lines. Select the appropriate line based on your system and replace with appropriate paths. Absolute paths must be used if the <code>scala-virtualized</code> directory is outside of either project.</p> 
+    <p>Create a <code>local.properties</code> from the sample <code>local.properties.sample</code> file inside the <code>virtualization-lms-core</code> folder with the following lines. Select the appropriate line based on your system and replace with appropriate paths. Absolute paths must be used if the <code>scala-virtualized</code> directory is outside of the project.</p> 
      
     <pre><code>#Project local properties
 # Windows:
-scala.virtualized.home=C:/PPL/scala-virtualized/build/pack
+scala.virtualized.home=C:/ppl/scala-virtualized/dists/latest
 # Unix:
-scala.virtualized.home=/PPL/scala-virtualized/build/pack</code></pre> 
+scala.virtualized.home=/ppl/scala-virtualized/dists/latest</code></pre> 
+    </li>
+    <p>Create a <code>delite.properties</code> file from the sample <code>delite.properties.sample</code> inside the <code>Delite</code> folder with the following lines. Replace with appropriate paths. Absolute paths must be used if the <code>scala-virtualized</code> directory is outside of either project.</p> 
+     
+    <pre><code>#Project local properties properties
+[delite]
+# Location of Scala virtualized
+scala.virtualized.home=/ppl/scala-virtualized/dists/latest
+
+# Location of Scala installation
+scala.vanilla.home=/usr/share/scala/scala-2.8.1
+
+# Location of Java installation
+java.home=/usr/lib/jvm/java-7-sun/
+
+# Location of application data
+apps.data=/ppl/delite/data
+
+# Location of ICC
+intel.icc=/opt/intel/bin
+# Location of MKL libraries one level above the mkl folder, with Intel librarys under lib
+intel.mkl=/opt/intel
+
+# Location of CUDA installation
+nvidia.cuda=/usr/local/cuda
+
+# Location of virtualization lms core
+libs.lms.home=/ppl/virtualization-lms-core
+# Location of the runtime
+runtime.classes=runtime/target/scala_2.8.1/classes
+tests.verbose=true
+</pre> 
     </li> 
-    <li><p>Generate the <code>scala-virtualized</code> compiler by running <code>ant</code> in the <code>scala-virtualized</code> directory</p></li> 
+    <li><p>Generate the <code>scala-virtualized</code> compiler by running <code>ant fastdist</code> in the <code>scala-virtualized</code> directory</p></li> 
     <li><p>You should be able to run <code>sbt</code> from the Delite directory.</p></li> 
     <li><p>Update dependencies by running the <code>sbt</code> command <code>update</code></p></li> 
   </ol><h2>IDEA project setup instructions</h2> 
