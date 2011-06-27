@@ -128,7 +128,7 @@ scala.virtualized.home=/ppl/scala-virtualized/dists/latest</code></pre>
     </li>
     <p>Create a <code>delite.properties</code> file from the sample <code>delite.properties.sample</code> inside the <code>Delite</code> folder with the following lines. Replace with appropriate paths. Absolute paths must be used if the <code>scala-virtualized</code> directory is outside of either project.</p> 
      
-    <pre><code>#Project local properties properties
+    <pre><code># Delite project properties
 [delite]
 # Location of Scala virtualized
 scala.virtualized.home=/ppl/scala-virtualized/dists/latest
@@ -154,8 +154,7 @@ nvidia.cuda=/usr/local/cuda
 libs.lms.home=/ppl/virtualization-lms-core
 # Location of the runtime
 runtime.classes=runtime/target/scala_2.8.1/classes
-tests.verbose=true
-</pre> 
+tests.verbose=true</code></pre> 
     </li> 
     <li><p>Generate the <code>scala-virtualized</code> compiler by running <code>ant fastdist</code> in the <code>scala-virtualized</code> directory</p></li> 
     <li><p>You should be able to run <code>sbt</code> from the Delite directory.</p></li> 
