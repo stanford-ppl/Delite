@@ -181,11 +181,11 @@ tests.verbose=true</code></pre>
      
     <p> <code>framework</code> depends on <code>virtualization-lms-core</code></p> 
      
-    <p> <code>optiml</code> depends on <code>framework</code>, <code>runtime</code>, and <code>virtualization-lms-core</code></p> 
+    <p> <code>optiml</code> depends on <code>framework</code> and <code>virtualization-lms-core</code></p> 
      
-    <p> <code>runtime</code> depends on <code>framework</code>, <code>virtualization-lms-core</code></p> 
+    <p> <code>runtime</code> only depends on <code>scala</code> (the virtualized scala compiler can be used but is not required)</p> 
      
-    <p> <code>tests</code> depends on <code>framework</code>, <code>optiml</code>, <code>runtime</code>, <code>virtualization-lms-core</code></p> 
+    <p> <code>tests</code> depends on <code>framework</code>, <code>optiml</code>, and <code>virtualization-lms-core</code></p> 
      
     <p> <code>virtualization-lms-core</code> only depends on <code>scala-virtualized</code></p> 
     </li> 
@@ -237,15 +237,15 @@ tests.verbose=true</code></pre>
     <li>Add the module dependency <code>virtualization-lms-core</code> 
     </li> 
     <li> 
-    <p>Add module dependencies as follows:</p> 
+	<p>Add module dependencies as follows:</p> 
      
-    <p><code>optiml</code> depends on <code>framework</code>, <code>runtime</code>, and <code>virtualization-lms-core</code></p> 
+    <p> <code>framework</code> depends on <code>virtualization-lms-core</code></p> 
      
-    <p><code>runtime</code> depends on <code>framework</code>, <code>virtualization-lms-core</code></p> 
+    <p> <code>optiml</code> depends on <code>framework</code> and <code>virtualization-lms-core</code></p> 
      
-    <p><code>tests</code> depends on <code>framework</code>, <code>optiml</code>, <code>runtime</code>, <code>virtualization-lms-core</code></p> 
+    <p> <code>runtime</code> only depends on <code>scala</code> (the virtualized scala compiler can be used but is not required)</p> 
      
-    <p><code>virtualization-lms-core</code> only depends on <code>scala-virtualized</code></p> 
+    <p> <code>tests</code> depends on <code>framework</code>, <code>optiml</code>, and <code>virtualization-lms-core</code></p> 
     </li> 
     <li><p>You should be able to build successfully with <code>Build</code> -&gt; <code>Make Project</code></p></li> 
   </ol><h2>Testing</h2> 
