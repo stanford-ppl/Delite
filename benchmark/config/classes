@@ -11,5 +11,5 @@ lbpdenoiseraw|ppl.apps.ml.lbpdenoise.LBPDenoiseRawRunner
 spade|ppl.apps.bio.spade.SpadeRunner
 streamtest|ppl.tests.dsl.optiml.StreamTestsRunner
 vectortest|ppl.tests.dsl.optiml.VectorUITestsRunner
-fscale|ppl.apps.tests.ForeachScalingRunner
+vforeach|ppl.apps.tests.VerticesForeachRunner
 untilc|ppl.apps.tests.UntilConvergedRunner
