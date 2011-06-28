@@ -44,19 +44,49 @@ SBT setup instructions
 
 2. Build `virtualization-lms-core` by running the `sbt` command `publish-local`
 
-3. Create a `local.properties` file inside the `Delite` and the `virtualization-lms-core` folder with the following lines. Select the appropriate line based on your system and replace with appropriate paths. Absolute paths must be used if the `scala-virtualized` directory is outside of either project.
+3. Create a `local.properties` from the sample `local.properties.sample` file inside the `virtualization-lms-core` folder with the following lines. Select the appropriate line based on your system and replace with appropriate paths. Absolute paths must be used if the `scala-virtualized` directory is outside of the project.
 
         #Project local properties
         # Windows:
-        scala.virtualized.home=C:/PPL/scala-virtualized/build/pack
+        scala.virtualized.home=C:/ppl/scala-virtualized/dists/latest
         # Unix:
-        scala.virtualized.home=/PPL/scala-virtualized/build/pack
+        scala.virtualized.home=/ppl/scala-virtualized/dists/latest
 
-4. Generate the `scala-virtualized` compiler by running `ant` in the `scala-virtualized` directory
+4. Create a `delite.properties` file from the sample `delite.properties.sample` inside the `Delite` folder with the following lines. Replace with appropriate paths. Absolute paths must be used if the `scala-virtualized` directory is outside of either project.
+     
+        # Delite project properties
+        [delite]
+        # Location of Scala virtualized
+        scala.virtualized.home=/ppl/scala-virtualized/dists/latest
+        
+        # Location of Scala installation
+        scala.vanilla.home=/usr/share/scala/scala-2.8.1
+        
+        # Location of Java installation
+        java.home=/usr/lib/jvm/java-7-sun/
+        
+        # Location of application data
+        apps.data=/ppl/delite/data
+        
+        # Location of ICC
+        intel.icc=/opt/intel/bin
+        # Location of MKL libraries one level above the mkl folder, with Intel librarys under lib
+        intel.mkl=/opt/intel
+        
+        # Location of CUDA installation
+        nvidia.cuda=/usr/local/cuda
+        
+        # Location of virtualization lms core
+        libs.lms.home=/ppl/virtualization-lms-core
+        # Location of the runtime
+        runtime.classes=runtime/target/scala_2.8.1/classes
+        tests.verbose=true
 
-5. You should be able to run `sbt` from the Delite directory.
+5. Generate the `scala-virtualized` compiler by running `ant fastdist` in the `scala-virtualized` directory
 
-6. Update dependencies by running the `sbt` command `update`
+6. You should be able to run `sbt` from the Delite directory.
+
+7. Update dependencies by running the `sbt` command `update`
 
 IDEA project setup instructions
 --------------------------
@@ -65,11 +95,11 @@ Until we have a project file checked into the repository and a standardized dire
 
 ### Short and sweet IDEA setup instructions
 
-1. Build `scala-virtualized` by running `ant`
+1. Build `scala-virtualized` by running `ant fastdist`
 2. Create a new project with the `Project Files` location set to the `Delite` directory
-3. Add a Project Library `scala-virtualized` with Classes `scala-compiler.jar` and `scala-library.jar`. These are found under `scala-virtualized/build/pack/lib`
+3. Add a Project Library `scala-virtualized` with Classes `scala-compiler.jar` and `scala-library.jar`. These are found under `scala-virtualized/dists/latest/lib`
 4. Add modules from scratch, with directories set to `Delite/dsls/optiml`, `Delite/framework`, `Delite/runtime`, `Delite/tests`, `virtualization-lms-core`
-5. Add Scala facets to each module, with compiler library `scala-virtualized/build/pack/lib/scala-compiler.jar`
+5. Add Scala facets to each module, with compiler library `scala-virtualized/dists/latest/lib/scala-compiler.jar`
 6. Add the project library dependency `scala-virtualized` to all modules
 7. Add module dependencies as follows:
 
@@ -105,7 +135,7 @@ Until we have a project file checked into the repository and a standardized dire
 12. Name the library `scala-virtualized` or something similar
 13. Add the new library to any modules you have already defined
 14. Click `Attach Classes...`
-15. Browse to the `lib` directory under the `scala-virtualized/build/pack` directory, and add `scala-compiler.jar` and `scala-library.jar`
+15. Browse to the `lib` directory under the `scala-virtualized/dists/latest` directory, and add `scala-compiler.jar` and `scala-library.jar`
 
 16. Create the project modules
 17. Select Modules under -Project Settings-
@@ -119,7 +149,7 @@ Until we have a project file checked into the repository and a standardized dire
 
 25. Select your new module and either right click -> `New` -> `Scala`, or click `+` (add) -> `New` -> `Scala`
 26. Select the `Scala` facet that appears.
-27. Add a new Compiler plugin (do this only one time for the project). This should be under `scala-virtualized/build/pack/lib/scala-compiler.jar`
+27. Add a new Compiler plugin (do this only one time for the project). This should be under `scala-virtualized/dists/latest/lib/scala-compiler.jar`
 28. Select `scala-virtualized` under `Compiler library`. If nothing is under `Compiler library`, click `OK` on the `Project Structure` dialog and open up the project structure dialog again.
 
 29. Create new modules for `Delite/framework`, `Delite/runtime`, `Delite/tests`, and `virtualization-lms-core`
