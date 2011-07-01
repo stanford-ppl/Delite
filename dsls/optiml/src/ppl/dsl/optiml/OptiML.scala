@@ -85,7 +85,8 @@ trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
 /**
  * This the trait that every OptiML application must extend.
  */
-trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with ArithOps with CloneableOps
+trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps 
+	with ArithOps with CloneableOps with HasMinMaxOps
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps
   with IndexVectorOps with IndexVector2Ops with MatrixRowOps with MatrixColOps
   with StreamOps with StreamRowOps
@@ -105,7 +106,8 @@ trait OptiMLCompiler extends OptiML with RangeOps with IOOps with SeqOps with Se
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
-	with LanguageOpsExp with ApplicationOpsExp with ArithOpsExpOpt
+	with LanguageOpsExp with ApplicationOpsExp
+	with ArithOpsExpOpt 
   with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp
   with IndexVectorOpsExp with IndexVector2OpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with StreamOpsExpOpt with StreamRowOpsExpOpt

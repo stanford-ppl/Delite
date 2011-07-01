@@ -28,8 +28,8 @@ trait ArithInternal[Rep[X],T] {
   def /(a: Rep[T], b: Rep[T]) : Rep[T]
   def abs(a: Rep[T]) : Rep[T]
   def exp(a: Rep[T]) : Rep[T]
+  def zero: Rep[T]
   /*
-  def zero : Rep[T]
   def unary_-(a: Rep[T]) : Rep[T]
   */
 }
@@ -69,6 +69,7 @@ trait ArithOps extends Variables with OverloadHack {
 
     def abs: Rep[T] = arith.abs(lhs)
     def exp: Rep[T] = arith.exp(lhs)
+		def zero: Rep[T] = arith.zero
   }
 
 
@@ -100,6 +101,19 @@ trait ArithOps extends Variables with OverloadHack {
 
     def abs(a: Rep[Vector[T]]) = a.abs
     def exp(a: Rep[Vector[T]]) = a.exp
+		
+		/**
+		 * zero for Vector[T] is a little tricky. It is used in nested Vector/Matrix operations, e.g.
+		 * a reduction on a Vector[Vector[T]]. We define it as the empty Vector because for a variable dimension
+		 * nested Vector, there is no other right answer. For a fixed dimension nested Vector, such as [[1,2,3],[4,5,6]],
+		 * you'd ideally want the k-dimension zero vector, e.g. [0,0,0] in this example. However, this is the dimension
+		 * of v(0).dim, not v.dim, and cannot be statically enforced with our types, and furthermore would need to
+		 * correctly handled multiple levels of nesting.
+		 * 
+		 * This situation is resolved by the DeliteOpReduce contract to never use zero except in the case of the
+		 * empty collection, which makes returning an empty collection always the right thing.	
+		 */
+	  def zero = EmptyVector[T]
 }
 
 
@@ -115,8 +129,8 @@ trait ArithOps extends Variables with OverloadHack {
     def /(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a/b
     def abs(a: Rep[Matrix[T]]) = a.abs
     def exp(a: Rep[Matrix[T]]) = a.exp
+    def zero = Matrix[T](0,0) // EmptyMatrix? 
     /*
-    def zero = throw new UnsupportedOperationException() //TODO: figure out the size
     def unary_-(a: Rep[Matrix[T]]) = -a
     */
   }
@@ -149,6 +163,9 @@ trait ArithOps extends Variables with OverloadHack {
 
       def exp(a: Rep[Tuple2[A,B]]) =
         Tuple2(a._1.exp, a._2.exp)
+			
+			def zero =
+        Tuple2(implicitly[Arith[A]].zero, implicitly[Arith[B]].zero)
     }
   
   implicit def tuple3Arith[A:Manifest:Arith,B:Manifest:Arith,C:Manifest:Arith,D:Manifest:Arith] : Arith[Tuple3[A,B,C]] =
@@ -174,6 +191,9 @@ trait ArithOps extends Variables with OverloadHack {
 
       def exp(a: Rep[Tuple3[A,B,C]]) =
         Tuple3(a._1.exp, a._2.exp, a._3.exp)
+
+			def zero =
+        Tuple3(implicitly[Arith[A]].zero, implicitly[Arith[B]].zero, implicitly[Arith[C]].zero)
     }
 
   //implicit def tuple4Arith[A,B,C,D](implicit rA: A => Rep[A], rB: B => Rep[B], rC: C => Rep[C], rD: D => Rep[D], opsA: Arith[A], mA: Manifest[A], opsB: Arith[B], mB: Manifest[B],
@@ -201,6 +221,9 @@ trait ArithOps extends Variables with OverloadHack {
 
       def exp(a: Rep[Tuple4[A,B,C,D]]) =
         Tuple4(a._1.exp, a._2.exp, a._3.exp, a._4.exp)
+
+			def zero =
+        Tuple4(implicitly[Arith[A]].zero, implicitly[Arith[B]].zero, implicitly[Arith[C]].zero, implicitly[Arith[D]].zero)
     }
 
 
@@ -219,7 +242,7 @@ trait ArithOps extends Variables with OverloadHack {
     def /(a: Rep[Double], b: Rep[Double]) = arith_fractional_divide(a,b)
     def abs(a: Rep[Double]) = arith_abs(a)
     def exp(a: Rep[Double]) = arith_exp(a)
-    //def zero = 0
+    def zero = unit(0.0)
     //def unary_-(a: Rep[Double]) = -a
   }
 
@@ -231,7 +254,7 @@ trait ArithOps extends Variables with OverloadHack {
     def /(a: Rep[Float], b: Rep[Float]) = arith_fractional_divide(a,b)
     def abs(a: Rep[Float]) = arith_abs(a)
     def exp(a: Rep[Float]) = arith_exp(a).asInstanceOfL[Float]
-    //def zero = 0
+    def zero = unit(0f)
     //def unary_-(a: Rep[Float]) = -a
   }
 
@@ -243,7 +266,7 @@ trait ArithOps extends Variables with OverloadHack {
     def /(a: Rep[Int], b: Rep[Int]) = int_divide(a,b)
     def abs(a: Rep[Int]) = arith_abs(a)
     def exp(a: Rep[Int]) = arith_exp(a).asInstanceOfL[Int]
-    //def zero = 0
+    def zero = unit(0)
     //def unary_-(a: Rep[Int]) = -a
   }
   

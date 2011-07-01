@@ -107,10 +107,10 @@ trait MatrixOps extends DSLType with Variables {
     def sigmoidf(implicit conv: Rep[A] => Rep[Double]) = matrix_sigmoidf(x)
 
     // ordering operations
-    def min(implicit o: Ordering[A]) = matrix_min(x)
-    def minRow(implicit a: Arith[A], o: Ordering[A]) = matrix_minrow(x)
-    def max(implicit o: Ordering[A]) = matrix_max(x)
-    def maxRow(implicit a: Arith[A], o: Ordering[A]) = matrix_maxrow(x)
+    def min(implicit o: Ordering[A], mx: HasMinMax[A]) = matrix_min(x)
+    def minRow(implicit o: Ordering[A], mx: HasMinMax[A]) = matrix_minrow(x)
+    def max(implicit o: Ordering[A], mx: HasMinMax[A]) = matrix_max(x)
+    def maxRow(implicit o: Ordering[A], mx: HasMinMax[A]) = matrix_maxrow(x)
     def :>(y: Rep[Matrix[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a > b }
     def :<(y: Rep[Matrix[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a < b }
 
@@ -206,10 +206,10 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_sigmoid[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
   def matrix_sigmoidf[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]]
 
-  def matrix_min[A:Manifest:Ordering](x: Rep[Matrix[A]]): Rep[A]
-  def matrix_minrow[A:Manifest:Arith:Ordering](x: Rep[Matrix[A]]): Rep[Vector[A]]
-  def matrix_max[A:Manifest:Ordering](x: Rep[Matrix[A]]): Rep[A]
-  def matrix_maxrow[A:Manifest:Arith:Ordering](x: Rep[Matrix[A]]): Rep[Vector[A]]
+  def matrix_min[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[A]
+  def matrix_minrow[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[Vector[A]]
+  def matrix_max[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[A]
+  def matrix_maxrow[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[Vector[A]]
 
   def matrix_map[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[A] => Rep[B]): Rep[Matrix[B]]
   def matrix_mmap[A:Manifest](x: Rep[Matrix[A]], f: Rep[A] => Rep[A]): Rep[Matrix[A]]
@@ -317,10 +317,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixInverse[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_inverse_impl[A](x)))
 
-  case class MatrixMinRow[A:Manifest:Arith:Ordering](x: Exp[Matrix[A]])
+  case class MatrixMinRow[A:Manifest:Ordering:HasMinMax](x: Exp[Matrix[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_minrow_impl(x)))
 
-  case class MatrixMaxRow[A:Manifest:Arith:Ordering](x: Exp[Matrix[A]])
+  case class MatrixMaxRow[A:Manifest:Ordering:HasMinMax](x: Exp[Matrix[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_maxrow_impl(x)))
 
 //  case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[Vector[B]])
@@ -590,19 +590,19 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
   */
 
-  case class MatrixMin[A:Manifest:Ordering](in: Exp[Matrix[A]])
+  case class MatrixMin[A:Manifest:Ordering:HasMinMax](in: Exp[Matrix[A]])
     extends DeliteOpReduce2[A] {
 
 		val size = in.numRows*in.numCols
-    val zero = getMaxValue[A]
+    val zero = implicitly[HasMinMax[A]].maxValue
     def func = (a,b) => if (a < b) a else b
   }
 
-  case class MatrixMax[A:Manifest:Ordering](in: Exp[Matrix[A]])
+  case class MatrixMax[A:Manifest:Ordering:HasMinMax](in: Exp[Matrix[A]])
     extends DeliteOpReduce2[A] {
 
 		val size = in.numRows*in.numCols
-    val zero = getMinValue[A]
+    val zero = implicitly[HasMinMax[A]].minValue
     def func = (a,b) => if (a > b) a else b
   }
 
@@ -815,10 +815,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   def matrix_plusequals[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectWrite(x)(MatrixPlusEquals(x,y))
   
-  def matrix_min[A:Manifest:Ordering](x: Exp[Matrix[A]]) = reflectPure(MatrixMin(x))
-  def matrix_minrow[A:Manifest:Arith:Ordering](x: Exp[Matrix[A]]) = reflectPure(MatrixMinRow(x))
-  def matrix_max[A:Manifest:Ordering](x: Exp[Matrix[A]]) = reflectPure(MatrixMax(x))
-  def matrix_maxrow[A:Manifest:Arith:Ordering](x: Exp[Matrix[A]]) = reflectPure(MatrixMaxRow(x))
+  def matrix_min[A:Manifest:Ordering:HasMinMax](x: Exp[Matrix[A]]) = reflectPure(MatrixMin(x))
+  def matrix_minrow[A:Manifest:Ordering:HasMinMax](x: Exp[Matrix[A]]) = reflectPure(MatrixMinRow(x))
+  def matrix_max[A:Manifest:Ordering:HasMinMax](x: Exp[Matrix[A]]) = reflectPure(MatrixMax(x))
+  def matrix_maxrow[A:Manifest:Ordering:HasMinMax](x: Exp[Matrix[A]]) = reflectPure(MatrixMaxRow(x))
 
   def matrix_map[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[A] => Exp[B]) = reflectPure(MatrixMap(x, f))
   def matrix_mmap[A:Manifest](x: Exp[Matrix[A]], f: Exp[A] => Exp[A]) = reflectWrite(x)(MatrixMutableMap(x, f)) // effect??

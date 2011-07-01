@@ -40,7 +40,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 		cond: List[Exp[Boolean]] = Nil
 	) extends Def[Unit]
 	
-  case class DeliteCollectElem[A, CA <: DeliteCollection[A]]( // TODO: cannot have IndexVector as result. use CA instead of C[X] ?
+  case class DeliteCollectElem[A, CA <: DeliteCollection[A]]( 
     alloc: Exp[CA],
     func: Exp[A],
     cond: List[Exp[Boolean]] = Nil
@@ -166,12 +166,15 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 		)		
   }
  
+  /**
+   * @param zero  only used if the input DeliteCollection is empty	
+   */
   abstract class DeliteOpReduce2[A:Manifest] extends DeliteOpLoop[A] {
 			
 		// supplied by subclass		
     val in: Exp[DeliteCollection[A]]
 		val size: Exp[Int]
-		val zero: Exp[A] // why do we need a zero? 
+		val zero: Exp[A] 
     def func: (Exp[A], Exp[A]) => Exp[A]
 		
 	  // loop
@@ -185,13 +188,16 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 		)		
   }
   
+	/**
+   * @param zero  only used if the input DeliteCollection is empty	
+   */
 	abstract class DeliteOpMapReduce2[A:Manifest,R:Manifest]
 		extends DeliteOpLoop[R] {
 			
 		// supplied by subclass		
     val in: Exp[DeliteCollection[A]]
 		val size: Exp[Int]
-		val zero: Exp[R] // why do we need a zero? 
+		val zero: Exp[R] 
 		def map: Exp[A] => Exp[R]
     def reduce: (Exp[R], Exp[R]) => Exp[R]
 		
@@ -223,6 +229,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 		)	
 	}
 	
+	/**
+   * @param zero  only used if the input DeliteCollection is empty	
+   */
 	abstract class DeliteOpZipWithReduce2[A:Manifest,B:Manifest,R:Manifest]
 		extends DeliteOpLoop[R] {
 			
@@ -624,168 +633,231 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     case _ => "null" 
   }
 */
+	/**
+	 * MultiLoop components
+	 */
+	def emitCollectElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteCollectElem[_,_], prefixSym: String = "")(implicit stream: PrintWriter) {
+		//emitBlock(elem.func)
+    if (elem.cond.nonEmpty) {
+      stream.print("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") ")
+      stream.println(prefixSym + quote(sym) + ".insert(" + prefixSym + quote(sym) + ".length, " + quote(getBlockResult(elem.func)) + ")")
+    } else
+      stream.println(prefixSym + quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
+	}
+	
+	def emitForeachElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteForeachElem[_])(implicit stream: PrintWriter) {
+		if (elem.cond.nonEmpty)
+    	stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
+    emitBlock(elem.func)
+		stream.println(quote(getBlockResult(elem.func)))
+		if (elem.cond.nonEmpty) {
+			stream.println("}")													
+		}
+	}
+	
+	def emitFirstReduceElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_])(implicit stream: PrintWriter) {
+		// zero if empty, deferred if conditional, initialized otherwise
+		stream.println("if (" + quote(op.size) + " == 0) {" + quote(elem.zero) + "}")
+		stream.println("else {")
+		if (elem.cond.nonEmpty) {
+			// if we have conditionals, we have to delay the the initialization of the accumulator to the
+			// first element where the condition is true
+			if (sym.Type <:< manifest[AnyVal]) {
+				stream.println(quote(elem.zero))
+			}
+			else {
+				stream.println("null.asInstanceOf[" + remap(elem.zero.Type) + "]")
+			}
+		}
+		else {
+			emitBlock(elem.func)
+			stream.println(quote(getBlockResult(elem.func)))				
+		}
+		stream.println("}")			
+	}
+
+	def emitReduceElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "")(implicit stream: PrintWriter) {
+		//emitBlock(elem.func)
+    if (elem.cond.nonEmpty){
+      stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {"/*}*/)
+			emitInitializeOrReduction(op, sym, elem, prefixSym)
+			stream.println("}")
+		}
+		else {
+			emitReduction(op, sym, elem, prefixSym)
+		}
+  }
+	
+	def emitInitializeOrReduction(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "")(implicit stream: PrintWriter) {
+		stream.println("// TODO: we could optimize this check away with more convoluted runtime support if necessary")					
+		if (sym.Type <:< manifest[AnyVal]) {
+			stream.println("if (" + prefixSym + quote(sym) + " == " + quote(elem.zero) + ")" + prefixSym + quote(sym) + " = {")
+		}
+		else {
+			stream.println("if (" + prefixSym + quote(sym) + " == null) " + prefixSym + quote(sym) + " = {")
+		}
+		// initialize
+		emitBlock(elem.func)
+		stream.println(quote(getBlockResult(elem.func)))
+		stream.println("}")
+		// or reduce
+		stream.println("else {")
+		emitReduction(op, sym, elem, prefixSym)
+		stream.println("}")
+	}	
+				
+	def emitReduction(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "")(implicit stream: PrintWriter) {
+		stream.println("val " + quote(elem.rV._1) + " = " + prefixSym + quote(sym))
+    stream.println("val " + quote(elem.rV._2) + " = " + quote(getBlockResult(elem.func)))
+    emitBlock(elem.rFunc)
+    stream.println(prefixSym + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))    
+	}
+	
+	def emitMultiLoopFuncs(op: AbstractFatLoop, symList: List[Sym[Any]])(implicit stream: PrintWriter) {
+		val elemFuncs = op.body flatMap { // don't emit dependencies twice!
+      case elem: DeliteCollectElem[_,_] => elem.func :: elem.cond
+      case elem: DeliteForeachElem[_] => elem.cond // only emit func inside condition! TODO: how to avoid emitting deps twice? // elem.func :: elem.cond
+      case elem: DeliteReduceElem[_] => elem.func :: elem.cond
+    }
+  	emitFatBlock(elemFuncs)
+	}
+	
+	def emitInlineAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]])(implicit stream: PrintWriter) {
+		/* strip first iteration */	
+		stream.println("var " + quote(op.v) + " = 0")          					
+		// initialization					
+		emitMultiLoopFuncs(op, symList)
+		(symList zip op.body) foreach {
+      case (sym, elem: DeliteCollectElem[_,_]) =>
+        stream.println("val " + quote(sym) + " = {"/*}*/)
+        emitBlock(elem.alloc) // FIXME: how do we know it is the right size? conditions could have been added retrospectively!!
+        if (elem.cond.nonEmpty)
+          stream.println("//TODO: buffer size might be wrong (loop has conditions)")
+        stream.println(quote(getBlockResult(elem.alloc)))
+				stream.println(/*{*/"}")              
+				emitCollectElem(op, sym, elem)
+			case (sym, elem: DeliteForeachElem[_]) => 
+				stream.println("var " + quotearg(sym) + " = {")
+				emitForeachElem(op, sym, elem)
+				stream.println("}")
+      case (sym, elem: DeliteReduceElem[_]) =>
+        stream.println("var " + quotearg(sym) + " = {")
+				emitFirstReduceElem(op, sym, elem)
+				stream.println("}")
+    }
+		stream.println(quote(op.v) + " = 1")
+    stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(",")/*}*/)
+		// body
+    emitMultiLoopFuncs(op, symList)
+    (symList zip op.body) foreach {
+      case (sym, elem: DeliteCollectElem[_,_]) =>
+				emitCollectElem(op, sym, elem)
+			case (sym, elem: DeliteForeachElem[_]) => 
+				stream.println(quote(sym) + " = {")             								
+				emitForeachElem(op, sym, elem)
+				stream.println("}")
+      case (sym, elem: DeliteReduceElem[_]) =>
+				emitReduceElem(op, sym, elem)
+    }
+    stream.println(quote(op.v) + " += 1")
+    stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
+	}
+	
+	def emitKernelAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]])(implicit stream: PrintWriter) {
+		// kernel mode
+    val kernelName = symList.map(quote).mkString("")
+    val actType = "activation_"+kernelName
+    deliteKernel = false
+    stream.println("val " + kernelName + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {"/*}*/)
+    // TODO: if there are conditions, the output size is not known (but for now it is known to be smaller than the input size)
+    // two options:
+    // - combine (reduce step) using concat <-- simpler to implement but slow
+    // - use a pre-combine scan step to find out where each processor should write the data
+    //   and do the copying in another parallel map <-- faster but more work
+    
+    stream.println("def size = " + quote(op.size))
+    stream.println("def alloc: " + actType + " = {"/*}*/)
+    stream.println("val __act = new " + actType)
+    (symList zip op.body) foreach {
+      case (sym, elem: DeliteCollectElem[_,_]) =>
+        emitBlock(elem.alloc) // FIXME: how do we know it is the right size? conditions could have been added retrospectively!!
+        if (elem.cond.nonEmpty)
+          stream.println("//TODO: buffer size might be wrong (loop has conditions)")
+        stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.alloc)))
+			case (sym, elem: DeliteForeachElem[_]) => // initialized in init below
+      case (sym, elem: DeliteReduceElem[_]) => // initialized in init below
+    }
+    stream.println("__act")
+    stream.println(/*{*/"}")
+    stream.println("def init(__act: " + actType + ", " + quotearg(op.v) + "): " + actType + " = {"/*}*/)
+    if (op.body exists (loopBodyNeedsCombine _)) {
+			emitMultiLoopFuncs(op, symList)				  											
+      stream.println("val __act2 = new " + actType)
+      (symList zip op.body) foreach {
+        case (sym, elem: DeliteCollectElem[_,_]) =>
+          if (elem.cond.nonEmpty) {
+            stream.println("//TODO: buffer size might be wrong (loop has conditions)") // separate buffer for each process
+						stream.println("if (" + quote(op.v) + " != 0)")
+            stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym) + ".cloneL")
+						stream.println("else")
+          } 
+          stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
+					emitCollectElem(op, sym, elem, "__act2.")
+				case (sym, elem: DeliteForeachElem[_]) => 
+					stream.println("__act2." + quote(sym) + " = {")
+					emitForeachElem(op, sym, elem)
+					stream.println("}")								
+        case (sym, elem: DeliteReduceElem[_]) =>
+          stream.println("__act2." + quote(sym) + " = {")					
+					emitFirstReduceElem(op, sym, elem)
+					stream.println("}")
+      }
+      stream.println("__act2")
+    } else {
+			stream.println("process(__act, " + quote(op.v) + ")")
+			stream.println("__act")
+    }
+    stream.println(/*{*/"}")
+    stream.println("def process(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {")
+		emitMultiLoopFuncs(op, symList)
+    (symList zip op.body) foreach {
+      case (sym, elem: DeliteCollectElem[_,_]) =>
+				emitCollectElem(op, sym, elem, "__act.")
+			case (sym, elem: DeliteForeachElem[_]) =>
+				stream.println("val " + quote(sym) + " = {")
+				emitForeachElem(op, sym, elem)
+				stream.println("}")
+      case (sym, elem: DeliteReduceElem[_]) =>
+				emitReduceElem(op, sym, elem, "__act.")
+    }
+    stream.println(/*{*/"}")
+    stream.println("def combine(__act: " + actType + ", rhs: " + actType + "): Unit = {"/*}*/)
+    (symList zip op.body) foreach {
+      case (sym, elem: DeliteCollectElem[_,_]) =>
+        if (elem.cond.nonEmpty) {
+          stream.println("//TODO: this is inefficient. should use a scan pass.")
+          stream.println("__act." + quote(sym) + ".insertAll(__act." +quote(sym) + ".length, rhs." + quote(sym) + ")")
+        }
+			case (sym, elem: DeliteForeachElem[_]) => // nothing needed
+      case (sym, elem: DeliteReduceElem[_]) =>
+        stream.println("val " + quote(elem.rV._1) + " = " + "__act." + quote(sym))
+        stream.println("val " + quote(elem.rV._2) + " = " + "rhs." + quote(sym))
+        emitBlock(elem.rFunc)
+        stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
+    }
+    stream.println(/*{*/"}")
+
+    stream.println(/*{*/"}")
+    deliteKernel = true
+  }
+	
   // TODO: conditions!
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
-        if (!deliteKernel) {
-          (symList zip op.body) foreach {
-            case (sym, elem: DeliteCollectElem[_,_]) =>
-              stream.println("val " + quote(sym) + " = {"/*}*/)
-              emitBlock(elem.alloc) // FIXME: how do we know it is the right size? conditions could have been added retrospectively!!
-              if (elem.cond.nonEmpty)
-                stream.println("//TODO: buffer size might be wrong (loop has conditions)")
-              stream.println(quote(getBlockResult(elem.alloc)))
-              stream.println(/*{*/"}")
-						case (sym, elem: DeliteForeachElem[_]) => 
-							stream.println("var " + quotearg(sym) + " = null")
-            case (sym, elem: DeliteReduceElem[_]) =>
-              stream.println("var " + quotearg(sym) + " = " + quote(elem.zero))
-          }
-          stream.println("var " + quote(op.v) + " = 0")
-          stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(",")/*}*/)
-          val elemFuncs = op.body flatMap { // don't emit dependencies twice!
-            case elem: DeliteCollectElem[_,_] => elem.func :: elem.cond
-            case elem: DeliteForeachElem[_] => elem.cond // only emit func inside condition! TODO: how to avoid emitting deps twice? // elem.func :: elem.cond
-            case elem: DeliteReduceElem[_] => elem.func :: elem.cond
-          }
-          emitFatBlock(elemFuncs)
-          (symList zip op.body) foreach {
-            case (sym, elem: DeliteCollectElem[_,_]) =>
-              //emitBlock(elem.func)
-              if (elem.cond.nonEmpty) {
-                stream.print("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") ")
-                stream.println(quote(sym) + ".insert(" + quote(sym) + ".length, " + quote(getBlockResult(elem.func)) + ")")
-              } else
-                stream.println(quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
-						case (sym, elem: DeliteForeachElem[_]) =>
-							stream.println(quote(sym) + " = {")             	
-							if (elem.cond.nonEmpty)
-	            	stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
-	            emitBlock(elem.func)
-							stream.println(quote(getBlockResult(elem.func)))
-							if (elem.cond.nonEmpty) {
-								stream.println("}")													
-							}
-							stream.println("}")
-            case (sym, elem: DeliteReduceElem[_]) =>
-              //emitBlock(elem.func)
-              if (elem.cond.nonEmpty)
-                stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {"/*}*/)
-              stream.println("val " + quote(elem.rV._1) + " = " + quote(sym))
-              stream.println("val " + quote(elem.rV._2) + " = " + quote(getBlockResult(elem.func)))
-              emitBlock(elem.rFunc)
-              stream.println(quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
-              if (elem.cond.nonEmpty)
-                stream.println(/*{*/"}")
-          }
-          stream.println(quote(op.v) + " += 1")
-          stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
-        } else {
-          // kernel mode
-          val kernelName = symList.map(quote).mkString("")
-          val actType = "activation_"+kernelName
-          deliteKernel = false
-          stream.println("val " + kernelName + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {"/*}*/)
-          // TODO: if there are conditions, the output size is not known (but for now it is known to be smaller than the input size)
-          // two options:
-          // - combine (reduce step) using concat <-- simpler to implement but slow
-          // - use a pre-combine scan step to find out where each processor should write the data
-          //   and do the copying in another parallel map <-- faster but more work
-          
-          stream.println("def size = " + quote(op.size))
-          stream.println("def alloc: " + actType + " = {"/*}*/)
-          stream.println("val __act = new " + actType)
-          (symList zip op.body) foreach {
-            case (sym, elem: DeliteCollectElem[_,_]) =>
-              emitBlock(elem.alloc) // FIXME: how do we know it is the right size? conditions could have been added retrospectively!!
-              if (elem.cond.nonEmpty)
-                stream.println("//TODO: buffer size might be wrong (loop has conditions)")
-              stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.alloc)))
-						case (sym, elem: DeliteForeachElem[_]) => // nothing needed
-            case (sym, elem: DeliteReduceElem[_]) =>
-              stream.println("__act." + quote(sym) + " = " + quote(elem.zero))
-          }
-          stream.println("__act")
-          stream.println(/*{*/"}")
-          stream.println("def split(__act: " + actType + "): " + actType + " = {"/*}*/)
-          if (op.body exists (loopBodyNeedsCombine _)) {
-            stream.println("val __act2 = new " + actType)
-            (symList zip op.body) foreach {
-              case (sym, elem: DeliteCollectElem[_,_]) =>
-                if (elem.cond.nonEmpty) {
-                  stream.println("//TODO: buffer size might be wrong (loop has conditions)") // separate buffer for each process
-                  stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym) + ".cloneL")
-                } else
-                  stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
-							case (sym, elem: DeliteForeachElem[_]) => // nothing needed
-              case (sym, elem: DeliteReduceElem[_]) =>
-                stream.println("__act2." + quote(sym) + " = " + quote(elem.zero))
-            }
-            stream.println("__act2")
-          } else {
-            stream.println("__act")
-          }
-          stream.println(/*{*/"}")
-          stream.println("def process(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {")
-          val elemFuncs = op.body flatMap { // don't emit dependencies twice!
-            case elem: DeliteCollectElem[_,_] => elem.func :: elem.cond
-            case elem: DeliteForeachElem[_] => elem.cond // only emit func inside condition! TODO: how to avoid emitting deps twice? // elem.func :: elem.cond
-            case elem: DeliteReduceElem[_] => elem.func :: elem.cond
-          }
-          emitFatBlock(elemFuncs)
-          (symList zip op.body) foreach {
-            case (sym, elem: DeliteCollectElem[_,_]) =>
-              //emitBlock(elem.func)
-              if (elem.cond.nonEmpty) {
-                stream.print("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ")")
-                stream.println("__act." + quote(sym) + ".insert(__act." +quote(sym) + ".length, " + quote(getBlockResult(elem.func)) + ")")
-              } else {
-                stream.println("__act." + quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
-              }
-						case (sym, elem: DeliteForeachElem[_]) =>
-							stream.println("val " + quote(sym) + " = {")
-							if (elem.cond.nonEmpty)
-              	stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
-	            emitBlock(elem.func)
-							stream.println(quote(getBlockResult(elem.func)))
-							if (elem.cond.nonEmpty) {
-								stream.println("}")													
-							}
-							stream.println("}")
-            case (sym, elem: DeliteReduceElem[_]) =>
-              //emitBlock(elem.func)
-              if (elem.cond.nonEmpty)
-                stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {"/*}*/)
-              stream.println("val " + quote(elem.rV._1) + " = " + "__act." + quote(sym))
-              stream.println("val " + quote(elem.rV._2) + " = " + quote(getBlockResult(elem.func)))
-              emitBlock(elem.rFunc)
-              stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
-              if (elem.cond.nonEmpty)
-                stream.println(/*{*/"}")
-          }
-          stream.println(/*{*/"}")
-          stream.println("def combine(__act: " + actType + ", rhs: " + actType + "): Unit = {"/*}*/)
-          (symList zip op.body) foreach {
-            case (sym, elem: DeliteCollectElem[_,_]) =>
-              if (elem.cond.nonEmpty) {
-                stream.println("//TODO: this is inefficient. should use a scan pass.")
-                stream.println("__act." + quote(sym) + ".insertAll(__act." +quote(sym) + ".length, rhs." + quote(sym) + ")")
-              }
-						case (sym, elem: DeliteForeachElem[_]) => // nothing needed
-            case (sym, elem: DeliteReduceElem[_]) =>
-              stream.println("val " + quote(elem.rV._1) + " = " + "__act." + quote(sym))
-              stream.println("val " + quote(elem.rV._2) + " = " + "rhs." + quote(sym))
-              emitBlock(elem.rFunc)
-              stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
-          }
-          stream.println(/*{*/"}")
-
-          stream.println(/*{*/"}")
-          deliteKernel = true
-        }
-      case _ => super.emitFatNode(symList, rhs)
+    	if (!deliteKernel) emitInlineAbstractFatLoop(op, symList)
+			else emitKernelAbstractFatLoop(op, symList)
+    case _ => super.emitFatNode(symList, rhs)
   }
-
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => {

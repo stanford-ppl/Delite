@@ -21,16 +21,16 @@ trait CloneableOps extends Variables {
     def cloneL() = cloneable.cloneL(lhs)
   }
   
-  implicit def vectorCloneable[T:Manifest] : Cloneable[Vector[T]] = new Cloneable[Vector[T]] {
+  implicit def vectorCloneable[T:Manifest]: Cloneable[Vector[T]] = new Cloneable[Vector[T]] {
     def cloneL(lhs: Rep[Vector[T]]) = lhs.cloneL()
   }
   
-  implicit def matrixCloneable[T:Manifest] : Cloneable[Matrix[T]] = new Cloneable[Matrix[T]] {
+  implicit def matrixCloneable[T:Manifest]: Cloneable[Matrix[T]] = new Cloneable[Matrix[T]] {
     def cloneL(lhs: Rep[Matrix[T]]) = lhs.cloneL()
   }
 
-  implicit val doubleCloneable : Cloneable[Double] = new Cloneable[Double] {
-    def cloneL(lhs: Rep[Double]) = lhs
-  }
+  implicit def numericCloneable[T:Numeric]: Cloneable[T] = new Cloneable[T] {
+    def cloneL(lhs: Rep[T]) = lhs
+  }  
 }
 

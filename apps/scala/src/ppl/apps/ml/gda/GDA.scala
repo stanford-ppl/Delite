@@ -13,10 +13,9 @@ trait GDA extends OptiMLApplication {
 
   def main() = {
     if (args.length < 2) printUsage
-
+		
     val x = readMatrix(args(0))
     val y = readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
-
     tic()
 
     /* number of training samples */
@@ -41,10 +40,10 @@ trait GDA extends OptiMLApplication {
        through the data.  */
     val (y_zeros, y_ones, mu0_num, mu1_num) = t4( sum(0,m) { i =>
       if (y(i) == false){
-        (unit(1.),unit(0.),x(i),ZeroV[Double](n))
+        (unit(1.),unit(0.),x(i),ZeroVector[Double](n))
       }
       else {
-        (unit(0.),unit(1.),ZeroV[Double](n),x(i))
+        (unit(0.),unit(1.),ZeroVector[Double](n),x(i))
       }
     })
 

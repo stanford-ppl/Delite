@@ -44,7 +44,7 @@ trait OptiMLKmeans {
             (x(i), unit(1.))
           }
           else {
-            (ZeroV[Double](n), unit(0.))
+            (ZeroVector[Double](n), unit(0.))
           }
         })
 //        val weightedpoints = Vector.mzeros(n)
