@@ -70,8 +70,7 @@ trait OptiMLKmeans {
   }
 
   private def findNearestCluster( x_i: Rep[Vector[Double]], mu: Rep[Matrix[Double]] ): Rep[Int] = {
-    // why is the parameter type needed?
-    (mu mapRows { row: Rep[Vector[Double]] => dist(x_i, row, SQUARE) }).minIndex
+    (mu mapRowsToVector { row => dist(x_i, row, SQUARE) }).minIndex
     // TODO: sum needs to reflectEffect for this to generate correctly apparently
 //    var min_d = Double.PositiveInfinity
 //    var min_j = -1

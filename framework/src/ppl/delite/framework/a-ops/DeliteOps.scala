@@ -85,12 +85,14 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  idx    index id that will be refered to in the body, this could be passed in as input to the body or the body could be inlined
    * @param  body   the body of the loop
    */
+  /*
   trait DeliteOpIndexedLoop extends DeliteOp[Unit] {
     val start: Exp[Int]
     val end: Exp[Int]
     val index: Sym[Int]
     val body: Exp[Unit]
   }
+  */
 
   /**
    * An while loop - will emit an while loop DEG node as well as a kernel for the body
@@ -266,6 +268,16 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 			func = transform(reifyEffects(this.func(dc_apply(in,v)))),
 		 	sync = transform(reifyEffects(this.sync(i)))
 		)
+	}
+	
+	abstract class DeliteOpIndexedLoop extends DeliteOpLoop[Unit] {
+		def func: Exp[Int] => Exp[Unit]
+		
+		final val v = fresh[Int]
+		lazy val body: Def[Unit] = DeliteForeachElem(
+			func = transform(reifyEffects(this.func(v))),
+			sync = transform(unit(List())) 
+		)	
 	}
 	
 	/**

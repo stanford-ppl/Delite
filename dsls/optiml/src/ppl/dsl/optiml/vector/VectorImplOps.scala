@@ -137,7 +137,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   def vector_times_matrix_impl[A:Manifest:Arith](v: Rep[Vector[A]], m: Rep[Matrix[A]]) = {
     //v.chkVecMatAgree(v, m)
     val v_trans = v.t
-    m.t.mapRows { a_row => a_row *:* v_trans }
+    m.t.mapRowsToVector { a_row => a_row *:* v_trans }
   }
 
   def vector_outer_impl[A:Manifest:Arith](collA: Rep[Vector[A]], collB: Rep[Vector[A]]) = {
