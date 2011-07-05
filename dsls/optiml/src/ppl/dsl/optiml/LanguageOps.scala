@@ -152,7 +152,8 @@ trait LanguageOps extends Base { this: OptiML =>
   val * = new IndexWildcard
 
   implicit def tuple2ToIndexVector1(tup: (Rep[IndexVector], IndexWildcard))(implicit overloaded1 : Overloaded1) = indexvector2_new(tup._1, indexvector2_wildcard())
-  implicit def tuple2ToIndexVector2(tup: (IndexWildcard, Rep[IndexVector]))(implicit overloaded2 : Overloaded2) = indexvector2_new(indexvector2_wildcard(), tup._2)
+// currently not allowed
+//  implicit def tuple2ToIndexVector2(tup: (IndexWildcard, Rep[IndexVector]))(implicit overloaded2 : Overloaded2) = indexvector2_new(indexvector2_wildcard(), tup._2)
   implicit def tuple2ToIndexVector3(tup: (Rep[IndexVector], Rep[IndexVector]))(implicit overloaded3 : Overloaded3) = indexvector2_new(tup._1, tup._2)
 
 
@@ -401,22 +402,21 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Sum
    */
-  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], mV: Sym[Int], map: Exp[A])
-    extends DeliteOpMapReduce[Int,A,Vector] {
 
-    val in = Vector.range(start, end)
-    val rV = (fresh[A],fresh[A])
-    val reduce = reifyEffects(rV._1 += rV._2) //TODO TR write to non-mutable
-    //val mapreduce = reifyEffects(ops.+=(acc, reifyEffects(block(mV))))
-  }
+  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], map: Exp[Int] => Exp[A])
+    extends DeliteOpMapReduce2[Int,A] {
+
+    val in = (start::end)
+		val size = end - start
+		val zero = implicitly[Arith[A]].zero
+		def reduce = (a,b) => a += b
+  }	
 
   def optiml_sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
 
-    val mV = fresh[Int]
-    val map = reifyEffects(block(mV))
-    //Sum(start, end, mV, map)
+    Sum(start, end, block)
     // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
-    reflectEffect(Sum(start, end, mV, map))
+    //reflectEffect(Sum(start, end, block))
   }
 
 

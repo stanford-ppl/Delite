@@ -442,6 +442,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val reduce: Exp[R]
   }
 
+  /*
+   * We temporarily need these two versions of 'foreach' until we get 'sync' working with the new version.
+   */
 
   /**
    * Parallel foreach from DeliteCollection[A] => Unit. Input functions must specify any free variables that it
@@ -454,6 +457,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  sync   a function from an index to a list of objects that should be locked, in a total ordering,
    *                prior to chunk execution, and unlocked after; reified version of Exp[Int] => Exp[List[_]]
    */
+  @deprecated("DeliteOpForeach2 should only be used if sync is required. It will be removed as soon as sync works with DeliteOpForeach", "") // TODO: swap names with DeliteOpForeach2
   abstract class DeliteOpForeach[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] with DeliteOpMapLikeWhileLoopVariant {
     val in: Exp[C[A]]
     val v: Sym[A]
@@ -480,6 +484,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 
   // TODO: should we make all DeliteOps be boundable? This is probably not the right way to do this anyways.
+  @deprecated("DeliteOpForeachBounded should only be used if sync is required. It will be removed as soon as sync works with DeliteOpForeach", "")
   abstract class DeliteOpForeachBounded[B,A <: B,C[X <: B] <: DeliteCollection[X]] extends DeliteOp[Unit] {
     val in: Exp[C[A]]
     val v: Sym[A]
