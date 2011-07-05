@@ -44,10 +44,6 @@ object DeliteTaskGraph {
       opType match {
         case "SingleTask" => processCommon(op, "OP_Single")
         case "MultiLoop" => processCommon(op, "OP_MultiLoop")
-        case "MapReduce" => processCommon(op, "OP_MapReduce")
-        case "Map" => processCommon(op, "OP_Map")
-        case "Reduce" => processCommon(op, "OP_Reduce")
-        case "ZipWith" => processCommon(op, "OP_Zip")
         case "Foreach" => processCommon(op, "OP_Foreach")
         case "Conditional" => processIfThenElseTask(op)
         case "WhileLoop" => processWhileTask(op)
@@ -134,10 +130,6 @@ object DeliteTaskGraph {
 			  val size = getFieldString(op, "sizeValue")
 				val sizeIsConst = getFieldString(op, "sizeType") == "const"				
 				new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"))
-      case "OP_MapReduce" => new OP_MapReduce(id, "kernel_"+id, resultMap)
-      case "OP_Map" => new OP_Map(id, "kernel_"+id, resultMap)
-      case "OP_Reduce" => new OP_Reduce(id, "kernel_"+id, resultMap)
-      case "OP_Zip" => new OP_Zip(id, "kernel_"+id, resultMap)
       case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap)
       case other => error("OP Type not recognized: " + other)
     }
