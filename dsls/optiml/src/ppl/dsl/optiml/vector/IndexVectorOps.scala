@@ -46,7 +46,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
 	// Note: Construction from a discrete index vector set will curently return a contiguous (non-sparse) vector.
 	// Is this what we want?
   case class IndexVectorConstruct[B:Manifest](in: Exp[IndexVector], func: Exp[Int] => Exp[B])
-  	extends DeliteOpMap2[Int,B,Vector[B]] {
+  	extends DeliteOpMap[Int,B,Vector[B]] {
 
   	def alloc = Vector[B](in.length, in.isRow)
 		val size = in.length

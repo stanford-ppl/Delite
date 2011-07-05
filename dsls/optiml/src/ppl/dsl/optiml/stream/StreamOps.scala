@@ -110,7 +110,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   */
   case class StreamInitAndForeachRow[A:Manifest](in: Exp[Vector[Int]], x: Exp[Stream[A]], offset: Exp[Int],
                                                  block: Exp[StreamRow[A]] => Exp[Unit])
-    extends DeliteOpForeach2[Int] {
+    extends DeliteOpForeach[Int] {
 
 		val size = in.length
     def sync = i => List()
@@ -121,7 +121,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
 
   case class StreamForeachRow[A:Manifest](in: Exp[Vector[Int]], x: Exp[Stream[A]], offset: Exp[Int],
                                           block: Exp[StreamRow[A]] => Exp[Unit], init: Exp[Unit])
-    extends DeliteOpForeach2[Int] {
+    extends DeliteOpForeach[Int] {
 
 		val size = in.length
     def sync = i => List()

@@ -391,18 +391,18 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   ////////////////////////////////
   // implemented via delite ops
 	
-	abstract class VectorArithmeticMap[A:Manifest:Arith] extends DeliteOpMap2[A,A,Vector[A]] {
+	abstract class VectorArithmeticMap[A:Manifest:Arith] extends DeliteOpMap[A,A,Vector[A]] {
 		def m = manifest[A]
 		def a = implicitly[Arith[A]]
 	}
 	
-	abstract class VectorArithmeticZipWith[A:Manifest:Arith] extends DeliteOpZipWith2[A,A,A,Vector[A]] {
+	abstract class VectorArithmeticZipWith[A:Manifest:Arith] extends DeliteOpZipWith[A,A,A,Vector[A]] {
 		def m = manifest[A]
 		def a = implicitly[Arith[A]]
 	}
 	
   case class VectorTrans[A:Manifest](in: Exp[Vector[A]])
-    extends DeliteOpMap2[A,A,Vector[A]] {
+    extends DeliteOpMap[A,A,Vector[A]] {
     
     def alloc = Vector[A](in.length, !in.isRow)
     def func = e => e 
@@ -410,7 +410,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   }
 
 	case class VectorUpdateIndices[A:Manifest](x: Exp[Vector[A]], in: Exp[IndexVector], y: Exp[A])
-    extends DeliteOpForeach2[Int] {
+    extends DeliteOpForeach[Int] {
 
     def sync = n => List()
 		def func = i => x(i) = y
@@ -474,7 +474,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   }
   
   case class VectorTimesWithConvert[A:Manifest:Arith,B:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]], conv: Exp[B] => Exp[A])
-    extends DeliteOpZipWith2[A,B,A,Vector[A]] {
+    extends DeliteOpZipWith[A,B,A,Vector[A]] {
 
     def alloc = Vector[A](inA.length, inA.isRow)
     def func = (a,b) => a * conv(b)
@@ -482,7 +482,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   }
 
   case class VectorTimesWithConvertRight[A:Manifest,B:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[B]], conv: Exp[A] => Exp[B])
-    extends DeliteOpZipWith2[A,B,B,Vector[B]] {
+    extends DeliteOpZipWith[A,B,B,Vector[B]] {
 
     def alloc = Vector[B](inB.length, inB.isRow)    
     def func = (a,b) => conv(a) * b
@@ -498,7 +498,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   }
 	
 	case class VectorDotProduct[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends DeliteOpZipWithReduce2[A,A,A] {
+    extends DeliteOpZipWithReduce[A,A,A] {
 
     def zip = (a,b) => a*b
     def reduce = (a,b) => a += b
@@ -524,7 +524,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   }
 
 	case class VectorSum[A:Manifest:Arith](in: Exp[Vector[A]]) 
-    extends DeliteOpReduce2[A] {
+    extends DeliteOpReduce[A] {
 
     val size = in.length
 		val zero = a.zero 
@@ -551,7 +551,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   }
 
 	case class VectorMin[A:Manifest:Ordering:HasMinMax](in: Exp[Vector[A]]) 
-    extends DeliteOpReduce2[A] {
+    extends DeliteOpReduce[A] {
 
     val size = in.length
 		val zero = implicitly[HasMinMax[A]].maxValue
@@ -561,7 +561,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 	// we can remove the RangeVector allocation by expressing this directly as a loop,
 	// but it's a little less pretty.
 	case class VectorMinIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) 
-    extends DeliteOpReduce2[Int] {
+    extends DeliteOpReduce[Int] {
 
 		val in = (0::x.length)
     val size = in.length
@@ -570,7 +570,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 	}
 	
 	case class VectorMax[A:Manifest:Ordering:HasMinMax](in: Exp[Vector[A]]) 
-    extends DeliteOpReduce2[A] {
+    extends DeliteOpReduce[A] {
 
     val size = in.length
 		val zero = implicitly[HasMinMax[A]].minValue
@@ -578,7 +578,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 	}
 	
 	case class VectorMaxIndex[A:Manifest:Ordering](x: Exp[Vector[A]]) 
-    extends DeliteOpReduce2[Int] {
+    extends DeliteOpReduce[Int] {
 
 		val in = (0::x.length)
     val size = in.length
@@ -587,21 +587,21 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 	}	
 		
   case class VectorMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], func: Exp[A] => Exp[B])
-    extends DeliteOpMap2[A,B,Vector[B]] {
+    extends DeliteOpMap[A,B,Vector[B]] {
 
     def alloc = Vector[B](in.length, in.isRow)
 		val size = in.length
   }
 
   case class VectorMutableMap[A:Manifest](in: Exp[Vector[A]], func: Exp[A] => Exp[A])
-    extends DeliteOpMap2[A,A,Vector[A]] {
+    extends DeliteOpMap[A,A,Vector[A]] {
 
     def alloc = in
 		val size = in.length		
   }
 
 	case class VectorForeach[A:Manifest](in: Exp[Vector[A]], func: Exp[A] => Exp[Unit])
-    extends DeliteOpForeach2[A] {
+    extends DeliteOpForeach[A] {
 
     def sync = n => List()
 		val size = in.length
@@ -609,7 +609,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 		
   case class VectorZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]],
                                                              func: (Exp[A], Exp[B]) => Exp[R])
-    extends DeliteOpZipWith2[A,B,R,Vector[R]] {
+    extends DeliteOpZipWith[A,B,R,Vector[R]] {
 
     def alloc = Vector[R](inA.length, inA.isRow)
 		val size = inA.length
@@ -617,7 +617,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   
   case class VectorMutableZipWith[A:Manifest,B:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]],
                                                          func: (Exp[A], Exp[B]) => Exp[A])
-    extends DeliteOpZipWith2[A,B,A,Vector[A]] {
+    extends DeliteOpZipWith[A,B,A,Vector[A]] {
 
     def alloc = inA
 		val size = inA.length
@@ -625,7 +625,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 	
 	// note: we may want to factor 'HasEmpty' out of 'Arith' to make this more general, if the need arises.
 	case class VectorReduce[A:Manifest:Arith](in: Exp[Vector[A]], func: (Exp[A], Exp[A]) => Exp[A])
-    extends DeliteOpReduce2[A] {
+    extends DeliteOpReduce[A] {
 		
 		val size = in.length
 		val zero = implicitly[Arith[A]].zero
@@ -634,7 +634,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 	// TODO: this is an inefficient way to compute flatten (allocates a new buffer for every intermediate output)
   // should use a scan that allocates the output once (precumulate)
   case class VectorObjectFlatten[A:Manifest](in: Exp[Vector[Vector[A]]])
-    extends DeliteOpReduce2[Vector[A]] {
+    extends DeliteOpReduce[Vector[A]] {
 
     val size = in.length
 		val zero = EmptyVector[A]
@@ -642,14 +642,14 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   }	
 
 	case class VectorFlatMap[A:Manifest,B:Manifest](in: Exp[Vector[A]], map: Exp[A] => Exp[Vector[B]])
-    extends DeliteOpMapReduce2[A,Vector[B]] {
+    extends DeliteOpMapReduce[A,Vector[B]] {
 
 		val size = in.length
 		val zero = EmptyVector[B]
     def reduce = (a,b) => a ++ b
   }
 	
-	case class VectorFilter[A:Manifest](in: Exp[Vector[A]], cond: Exp[A] => Exp[Boolean])	extends DeliteOpFilter2[A,A,Vector[A]] {
+	case class VectorFilter[A:Manifest](in: Exp[Vector[A]], cond: Exp[A] => Exp[Boolean])	extends DeliteOpFilter[A,A,Vector[A]] {
 		def alloc = Vector[A](0, in.isRow)
     def func = e => e 
 		val size = in.length
@@ -657,7 +657,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 		def m = manifest[A]  
 	}
 	
-	case class VectorFind[A:Manifest](in: Exp[Vector[A]], cond: Exp[A] => Exp[Boolean])	extends DeliteOpFilter2[A,Int,IndexVector] {
+	case class VectorFind[A:Manifest](in: Exp[Vector[A]], cond: Exp[A] => Exp[Boolean])	extends DeliteOpFilter[A,Int,IndexVector] {
 		def alloc = IndexVector(0)
     def func = e => v // should we make available and use a helper function like index(e)?
 		val size = in.length
@@ -666,7 +666,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 	}
 	
 	case class VectorCount[A:Manifest](in: Exp[Vector[A]], cond: Exp[A] => Exp[Boolean]) 
-    extends DeliteOpFilterReduce2[A,Int] {
+    extends DeliteOpFilterReduce[A,Int] {
 
     val size = in.length
 		val zero = unit(0)
@@ -926,10 +926,10 @@ trait VectorOpsExpOpt extends VectorOpsExp with DeliteCollectionOpsExp {
 		/* propagate output size information */
 		// some of this could be handled in DeliteCollectionOps, but we need a way to link length (for single tasks)
 		// and size (for data parallel tasks) together. Vector can override dc_size, but has to deal with erasure.		
-		case Def(e: DeliteOpMap2[_,_,_]) => e.size
-		case Def(e: DeliteOpZipWith2[_,_,_,_]) => e.size
-		case Def(Reflect(e: DeliteOpMap2[_,_,_], _,_)) => e.size // reasonable?
-		case Def(Reflect(e: DeliteOpZipWith2[_,_,_,_], _,_)) => e.size // reasonable?
+		case Def(e: DeliteOpMap[_,_,_]) => e.size
+		case Def(e: DeliteOpZipWith[_,_,_,_]) => e.size
+		case Def(Reflect(e: DeliteOpMap[_,_,_], _,_)) => e.size // reasonable?
+		case Def(Reflect(e: DeliteOpZipWith[_,_,_,_], _,_)) => e.size // reasonable?
 		//		case Def(e: DeliteOpVectorLoop[A]) => e.size
 		
 		case Def(VectorSlice(a, start, end)) => end - start

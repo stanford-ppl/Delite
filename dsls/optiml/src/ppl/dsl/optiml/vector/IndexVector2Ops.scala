@@ -69,7 +69,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   */
   
 	case class IndexVector2ConstructRows[A:Manifest](in: Exp[Vector[Int]], block: Exp[Int] => Exp[Vector[A]], out: Exp[Matrix[A]])
-    extends DeliteOpForeach2[Int] {
+    extends DeliteOpForeach[Int] {
 
 		val size = in.length
 		def sync = i => List()
@@ -80,7 +80,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
 //		extends DeliteOpForeach[Int]
 
 	case class IndexVector2Construct[A:Manifest](x: Exp[IndexVector2], block: (Exp[Int],Exp[Int]) => Exp[A], out: Exp[Matrix[A]])
-    extends DeliteOpForeach2[Int] {
+    extends DeliteOpForeach[Int] {
 	
 		val in = x.rowInd
 		val size = in.length

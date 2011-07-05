@@ -35,7 +35,7 @@ trait LabelsOpsExp extends LabelsOps with BaseExp { this: OptiMLExp =>
     val mV = manifest[LabelsImpl[A]]
   }
   case class LabelsMutableMap[A:Manifest](in: Exp[Labels[A]], func: Exp[A] => Exp[A])
-    extends DeliteOpMap2[A,A,Labels[A]] {
+    extends DeliteOpMap[A,A,Labels[A]] {
 
     def alloc = in
 		val size = in.length		

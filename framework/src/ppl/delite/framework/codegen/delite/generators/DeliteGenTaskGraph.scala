@@ -121,15 +121,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
           case ("scala", ThinDef(z)) => z match {
             case op: AbstractLoop[_] => 
-            hasOutputSlotTypes = true
-            "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
-
-            // scalac bug (internal error) if DeliteCollection not explicitly specified
-            case map: DeliteOpMap[_,_,DeliteCollection] => "generated.scala.DeliteOpMap[" + gen.remap(map.v.Type) + "," + gen.remap(map.func.Type) + "," + gen.remap(map.alloc.Type) + "]"
-            case zip: DeliteOpZipWith[_,_,_,DeliteCollection] => "generated.scala.DeliteOpZipWith[" + gen.remap(zip.v._1.Type) + "," + gen.remap(zip.v._2.Type) + "," + gen.remap(zip.func.Type) + "," + gen.remap(zip.alloc.Type) +"]"
-            case red: DeliteOpReduce[_] => "generated.scala.DeliteOpReduce[" + gen.remap(red.func.Type) + "]"
-            case mapR: DeliteOpMapReduce[_,_,_] => "generated.scala.DeliteOpMapReduce[" + gen.remap(mapR.mV.Type) + "," + gen.remap(mapR.reduce.Type) + "]"
-            case foreach: DeliteOpForeach[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
+            	hasOutputSlotTypes = true
+            	"generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
+            case foreach: DeliteOpForeach2[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
             case foreach: DeliteOpForeachBounded[_,_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
             case _ => gen.remap(sym.head.Type)
           }
@@ -243,11 +237,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         case c:DeliteOpCondition[_] => emitIfThenElse(c.cond, c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-        case m:DeliteOpMap[_,_,DeliteCollection] => emitMap(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-        case r:DeliteOpReduce[_] => emitReduce(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-        case a:DeliteOpMapReduce[_,_,_] => emitMapReduce(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-        case z:DeliteOpZipWith[_,_,_,DeliteCollection] => emitZipWith(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-        case f:DeliteOpForeach[_,_] => emitForeach(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+        case f:DeliteOpForeach2[_,_] => emitForeach(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case f:DeliteOpForeachBounded[_,_,_] => emitForeach(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case _ => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps) // things that are not specified as DeliteOPs, emit as SingleTask nodes
       }
@@ -276,36 +266,6 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   def emitSingleTask(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\"")
-    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
-    stream.println("},")
-  }
-
-  def emitMap(rhs: Def[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
-        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
-    stream.print("{\"type\":\"Map\"")
-    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
-    emitVariant(rhs, id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
-    stream.println("},")
-  }
-
-  def emitReduce(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
-        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
-    stream.print("{\"type\":\"Reduce\"")
-    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
-    stream.println("},")
-  }
-
-  def emitMapReduce(rhs: Def[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
-        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
-    stream.print("{\"type\":\"MapReduce\"")
-    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
-    emitVariant(rhs, id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
-    stream.println("},")
-  }
-
-  def emitZipWith(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
-        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
-    stream.print("{\"type\":\"ZipWith\"")
     emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }

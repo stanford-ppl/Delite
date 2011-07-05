@@ -404,7 +404,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    */
 
   case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], map: Exp[Int] => Exp[A])
-    extends DeliteOpMapReduce2[Int,A] {
+    extends DeliteOpMapReduce[Int,A] {
 
     val in = (start::end)
 		val size = end - start

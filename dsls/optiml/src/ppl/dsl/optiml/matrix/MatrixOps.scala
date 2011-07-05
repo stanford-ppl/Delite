@@ -396,7 +396,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   ////////////////////////////////
   // implemented via delite ops
 	
-	abstract class MatrixArithmeticMap[A:Manifest:Arith](in: Exp[Matrix[A]]) extends DeliteOpMap2[A,A,Matrix[A]] {
+	abstract class MatrixArithmeticMap[A:Manifest:Arith](in: Exp[Matrix[A]]) extends DeliteOpMap[A,A,Matrix[A]] {
 		def alloc = Matrix[A](in.numRows, in.numCols)
 		val size = in.numRows*in.numCols
 		
@@ -404,7 +404,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 		def a = implicitly[Arith[A]]
 	}
 	
-	abstract class MatrixArithmeticZipWith[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]]) extends DeliteOpZipWith2[A,A,A,Matrix[A]] {
+	abstract class MatrixArithmeticZipWith[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]]) extends DeliteOpZipWith[A,A,A,Matrix[A]] {
 		def alloc = Matrix[A](inA.numRows, inA.numCols)
 		val size = inA.numRows*inA.numCols
 		
@@ -467,18 +467,18 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def func = e => e / y
   }
   
-  case class MatrixSum[A:Manifest:Arith](in: Exp[Matrix[A]])
+	case class MatrixSum[A:Manifest:Arith](in: Exp[Matrix[A]]) 
     extends DeliteOpReduce[A] {
 
-    val v = (fresh[A],fresh[A])
-    val func = v._1 + v._2
-  }
-
-  /* this would be nice, but case class inheritance is deprecated */
-	//case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]]) extends MatrixMapRowsToVec[A,A](x, row => row.sum, unit(false))
+    val size = in.numRows*in.numCols
+		val zero = implicitly[Arith[A]].zero 
+		def func = (a,b) => a + b
+	}
 	
+  /* this would be nice, but case class inheritance is deprecated */
+	//case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]]) extends MatrixMapRowsToVec[A,A](x, row => row.sum, unit(false))	
 	case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]])
-    extends DeliteOpMap2[Int,A,Vector[A]] {
+    extends DeliteOpMap[Int,A,Vector[A]] {
 
     def alloc = Vector[A](x.numRows, unit(false))
 		val in = (0::x.numRows)
@@ -547,7 +547,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   */
 
   case class MatrixMin[A:Manifest:Ordering:HasMinMax](in: Exp[Matrix[A]])
-    extends DeliteOpReduce2[A] {
+    extends DeliteOpReduce[A] {
 
 		val size = in.numRows*in.numCols
     val zero = implicitly[HasMinMax[A]].maxValue
@@ -555,7 +555,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
   case class MatrixMax[A:Manifest:Ordering:HasMinMax](in: Exp[Matrix[A]])
-    extends DeliteOpReduce2[A] {
+    extends DeliteOpReduce[A] {
 
 		val size = in.numRows*in.numCols
     val zero = implicitly[HasMinMax[A]].minValue
@@ -563,14 +563,14 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
   case class MatrixMap[A:Manifest,B:Manifest](in: Exp[Matrix[A]], func: Exp[A] => Exp[B])
-    extends DeliteOpMap2[A,B,Matrix[B]] {
+    extends DeliteOpMap[A,B,Matrix[B]] {
 
     def alloc = Matrix[B](in.numRows, in.numCols)
 		val size = in.numRows*in.numCols		
   }
 
   case class MatrixMutableMap[A:Manifest](in: Exp[Matrix[A]], func: Exp[A] => Exp[A])
-    extends DeliteOpMap2[A,A,Matrix[A]] {
+    extends DeliteOpMap[A,A,Matrix[A]] {
 
     def alloc = in
 		val size = in.numRows*in.numCols
@@ -591,7 +591,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
 	case class MatrixMapRowsToVec[A:Manifest,B: Manifest](x: Exp[Matrix[A]], rowFunc: Exp[MatrixRow[A]] => Exp[B], isRow: Exp[Boolean])
-    extends DeliteOpMap2[Int,B,Vector[B]] {
+    extends DeliteOpMap[Int,B,Vector[B]] {
 
     def alloc = Vector[B](x.numRows, isRow)
 		val in = (0::x.numRows)
@@ -600,7 +600,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
 	case class MatrixForeach[A:Manifest](in: Exp[Matrix[A]], func: Exp[A] => Exp[Unit])
-    extends DeliteOpForeach2[A] {
+    extends DeliteOpForeach[A] {
 
     val size = in.numCols*in.numRows
     def sync = n => List()
@@ -615,7 +615,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   case class MatrixZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[Matrix[A]], inB: Exp[Matrix[B]],
                                                              func: (Exp[A], Exp[B]) => Exp[R])
-    extends DeliteOpZipWith2[A,B,R,Matrix[R]] {
+    extends DeliteOpZipWith[A,B,R,Matrix[R]] {
 
     def alloc = Matrix[R](inA.numRows, inA.numCols)
 		val size = inA.numRows*inA.numCols
@@ -640,7 +640,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
   case class MatrixCount[A:Manifest](in: Exp[Matrix[A]], cond: Exp[A] => Exp[Boolean]) 
-    extends DeliteOpFilterReduce2[A,Int] {
+    extends DeliteOpFilterReduce[A,Int] {
 
     val size = in.numRows*in.numCols
 		val zero = unit(0)
