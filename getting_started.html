@@ -57,7 +57,8 @@
         <p> To get started, grab the source for <code>Delite</code> and <code>virtualization-lms-core</code>, the lightweight modular staging library
         that Delite uses. <p>
         <div class="highlight"><pre><code class="bash">git clone https://github.com/stanford-ppl/Delite.git
-git clone https://github.com/TiarkRompf/virtualization-lms-core.git</code></pre></div>
+git clone https://github.com/TiarkRompf/virtualization-lms-core.git</code></pre></div> <p>You will also need to switch to the right LMS branch. From the root of the LMS repository, switch to the <code>delite-develop</code> branch: </p> 
+        <div class="highlight"><pre><code class="bash">git checkout delite-develop</code></pre></div>
         
         <p> The Delite repository currently includes several modules: </p>
         <ol>
@@ -145,10 +146,10 @@ cd ..
         </p>
         <p>
         The last thing we need to do is execute our generated program. To do this, we are going to switch back to the normal Scala
-        compiler (this is not strictly necessary, but tends to be more reliable). Download a current final version of <a href="http://www.scala-lang.org/downloads">Scala</a>. 
-        We'll assume that $SCALA_VANILLA points to the root directory of the Scala distribution you just downloaded.
-        Invoke the Delite runtime using:
-        </p><p>
+        compiler (this is not strictly necessary, but tends to be more reliable). Download the 2.8.1 final version of <a href="http://www.scala-lang.org/downloads">Scala</a>. 
+        Set $SCALA_VANILLA points to the root directory of the Scala distribution you just downloaded: </p>
+        <div class="highlight"><pre><code class="bash">export SCALA_VANILLA=[absolute path to root of Scala 2.8.1 distribution]</code></pre></div>
+        <p>Invoke the Delite runtime using:</p><p>
         <div class="highlight" style="overflow: scroll"><pre><code class="bash">java -cp runtime/target/scala_2.8.1/classes:$SCALA_VANILLA/lib/scala-library.jar:$SCALA_VANILLA/lib/scala-compiler.jar ppl.delite.runtime.Delite out.deg</code></pre></div>
         </p>
         <p>
