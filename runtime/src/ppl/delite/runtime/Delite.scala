@@ -3,6 +3,7 @@ package ppl.delite.runtime
 import codegen._
 import executor._
 import graph.ops.{EOP, Arguments}
+import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
 import profiler.PerformanceTimer
 import scheduler._
@@ -115,9 +116,9 @@ object Delite {
   }
 
   def loadSources(graph: DeliteTaskGraph) {
-    ScalaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + ScalaCompile.target + File.separator).toAbsolute))
-    //required files may not be present if no gpu enabled
-    if(Config.numGPUs > 0)
+    if (graph.targets contains Targets.Scala)
+      ScalaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + ScalaCompile.target + File.separator).toAbsolute))
+    if (graph.targets contains Targets.Cuda)
       CudaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + CudaCompile.target + File.separator).toAbsolute))
   }
 

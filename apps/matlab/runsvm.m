@@ -1,6 +1,6 @@
 function exectime = runsvm(gpu)
 addpath svm
-trainfile = '/kunle/ppl/delite/data/ml/svm/MATRIX.TRAIN.800'
+trainfile = '/kunle/ppl/delite/data/ml/svm/MATRIX.TRAIN.400'
 tol = 0.001
 rand('state', 0);
 if (gpu == 1)

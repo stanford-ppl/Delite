@@ -8,9 +8,12 @@ import ppl.dsl.optiql.datastruct.scala.liftables._
 import java.io.PrintWriter
 import ppl.delite.framework.{DSLType}
 import ppl.delite.framework.datastructures._
-import scala.virtualization.lms.common.ScalaGenBase
+import scala.virtualization.lms.common.ScalaGenFat
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.common.{EffectExp, Variables}
+import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Variables}
+
+//OptiQL Specific Header
+import ppl.dsl.optiql.datastruct.scala.util.Date
 
 
 trait CustomerOps extends DSLType with Variables with OverloadHack {
@@ -47,7 +50,7 @@ trait CustomerOps extends DSLType with Variables with OverloadHack {
   def customer_comment(__x: Rep[Customer]): Rep[String]
 }
 
-trait CustomerOpsExp extends CustomerOps with FieldAccessOpsExp with EffectExp {
+trait CustomerOpsExp extends CustomerOps with FieldAccessOpsExp with EffectExp with BaseFatExp {
   case class CustomerObjectNew(key: Exp[Int], name: Exp[String], address: Exp[String], nationKey: Exp[Int], phone: Exp[String], accountBalance: Exp[Float], marketSegment: Exp[String], comment: Exp[String]) extends Def[Customer]
   def customer_obj_new(key: Exp[Int], name: Exp[String], address: Exp[String], nationKey: Exp[Int], phone: Exp[String], accountBalance: Exp[Float], marketSegment: Exp[String], comment: Exp[String]) = reflectEffect(CustomerObjectNew(key, name, address, nationKey, phone, accountBalance, marketSegment, comment))
   def customer_key(__x: Rep[Customer]) = FieldRead[Int](__x, "key", "Int")
@@ -58,9 +61,13 @@ trait CustomerOpsExp extends CustomerOps with FieldAccessOpsExp with EffectExp {
   def customer_accountBalance(__x: Rep[Customer]) = FieldRead[Float](__x, "accountBalance", "Float")
   def customer_marketSegment(__x: Rep[Customer]) = FieldRead[String](__x, "marketSegment", "String")
   def customer_comment(__x: Rep[Customer]) = FieldRead[String](__x, "comment", "String")
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+    case _ => super.mirror(e,f)
+  }
 }
 
-trait ScalaGenCustomerOps extends ScalaGenBase {
+trait ScalaGenCustomerOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
@@ -74,7 +81,7 @@ trait ScalaGenCustomerOps extends ScalaGenBase {
 trait LineItemOps extends DSLType with Variables with OverloadHack {
 
   object LineItem {
-    def apply(orderKey: Rep[Int], partKey: Rep[Int], supplierKey: Rep[Int], lineNumber: Rep[Int], quantity: Rep[Float], extendedPrice: Rep[Float], discount: Rep[Float], tax: Rep[Float], returnFlag: Rep[Char], lineStatus: Rep[Char], shipInstruct: Rep[String], shipMode: Rep[String], comment: Rep[String]) = lineitem_obj_new(orderKey, partKey, supplierKey, lineNumber, quantity, extendedPrice, discount, tax, returnFlag, lineStatus, shipInstruct, shipMode, comment)
+    def apply(orderKey: Rep[Int], partKey: Rep[Int], supplierKey: Rep[Int], lineNumber: Rep[Int], quantity: Rep[Float], extendedPrice: Rep[Float], discount: Rep[Float], tax: Rep[Float], returnFlag: Rep[Char], lineStatus: Rep[Char], shipDate: Rep[Date], commitDate: Rep[Date], receiptDate: Rep[Date], shipInstruct: Rep[String], shipMode: Rep[String], comment: Rep[String]) = lineitem_obj_new(orderKey, partKey, supplierKey, lineNumber, quantity, extendedPrice, discount, tax, returnFlag, lineStatus, shipDate, commitDate, receiptDate, shipInstruct, shipMode, comment)
   }
 
   implicit def repLineItemToLineItemOps(x: Rep[LineItem]) = new lineitemOpsCls(x)
@@ -91,13 +98,16 @@ trait LineItemOps extends DSLType with Variables with OverloadHack {
     def tax = lineitem_tax(__x)
     def returnFlag = lineitem_returnFlag(__x)
     def lineStatus = lineitem_lineStatus(__x)
+    def shipDate = lineitem_shipDate(__x)
+    def commitDate = lineitem_commitDate(__x)
+    def receiptDate = lineitem_receiptDate(__x)
     def shipInstruct = lineitem_shipInstruct(__x)
     def shipMode = lineitem_shipMode(__x)
     def comment = lineitem_comment(__x)
   }
 
   //object defs
-  def lineitem_obj_new(orderKey: Rep[Int], partKey: Rep[Int], supplierKey: Rep[Int], lineNumber: Rep[Int], quantity: Rep[Float], extendedPrice: Rep[Float], discount: Rep[Float], tax: Rep[Float], returnFlag: Rep[Char], lineStatus: Rep[Char], shipInstruct: Rep[String], shipMode: Rep[String], comment: Rep[String]): Rep[LineItem]
+  def lineitem_obj_new(orderKey: Rep[Int], partKey: Rep[Int], supplierKey: Rep[Int], lineNumber: Rep[Int], quantity: Rep[Float], extendedPrice: Rep[Float], discount: Rep[Float], tax: Rep[Float], returnFlag: Rep[Char], lineStatus: Rep[Char], shipDate: Rep[Date], commitDate: Rep[Date], receiptDate: Rep[Date], shipInstruct: Rep[String], shipMode: Rep[String], comment: Rep[String]): Rep[LineItem]
 
   //class defs
   def lineitem_orderKey(__x: Rep[LineItem]): Rep[Int]
@@ -110,14 +120,17 @@ trait LineItemOps extends DSLType with Variables with OverloadHack {
   def lineitem_tax(__x: Rep[LineItem]): Rep[Float]
   def lineitem_returnFlag(__x: Rep[LineItem]): Rep[Char]
   def lineitem_lineStatus(__x: Rep[LineItem]): Rep[Char]
+  def lineitem_shipDate(__x: Rep[LineItem]): Rep[Date]
+  def lineitem_commitDate(__x: Rep[LineItem]): Rep[Date]
+  def lineitem_receiptDate(__x: Rep[LineItem]): Rep[Date]
   def lineitem_shipInstruct(__x: Rep[LineItem]): Rep[String]
   def lineitem_shipMode(__x: Rep[LineItem]): Rep[String]
   def lineitem_comment(__x: Rep[LineItem]): Rep[String]
 }
 
-trait LineItemOpsExp extends LineItemOps with FieldAccessOpsExp with EffectExp {
-  case class LineItemObjectNew(orderKey: Exp[Int], partKey: Exp[Int], supplierKey: Exp[Int], lineNumber: Exp[Int], quantity: Exp[Float], extendedPrice: Exp[Float], discount: Exp[Float], tax: Exp[Float], returnFlag: Exp[Char], lineStatus: Exp[Char], shipInstruct: Exp[String], shipMode: Exp[String], comment: Exp[String]) extends Def[LineItem]
-  def lineitem_obj_new(orderKey: Exp[Int], partKey: Exp[Int], supplierKey: Exp[Int], lineNumber: Exp[Int], quantity: Exp[Float], extendedPrice: Exp[Float], discount: Exp[Float], tax: Exp[Float], returnFlag: Exp[Char], lineStatus: Exp[Char], shipInstruct: Exp[String], shipMode: Exp[String], comment: Exp[String]) = reflectEffect(LineItemObjectNew(orderKey, partKey, supplierKey, lineNumber, quantity, extendedPrice, discount, tax, returnFlag, lineStatus, shipInstruct, shipMode, comment))
+trait LineItemOpsExp extends LineItemOps with FieldAccessOpsExp with EffectExp with BaseFatExp {
+  case class LineItemObjectNew(orderKey: Exp[Int], partKey: Exp[Int], supplierKey: Exp[Int], lineNumber: Exp[Int], quantity: Exp[Float], extendedPrice: Exp[Float], discount: Exp[Float], tax: Exp[Float], returnFlag: Exp[Char], lineStatus: Exp[Char], shipDate: Exp[Date], commitDate: Exp[Date], receiptDate: Exp[Date], shipInstruct: Exp[String], shipMode: Exp[String], comment: Exp[String]) extends Def[LineItem]
+  def lineitem_obj_new(orderKey: Exp[Int], partKey: Exp[Int], supplierKey: Exp[Int], lineNumber: Exp[Int], quantity: Exp[Float], extendedPrice: Exp[Float], discount: Exp[Float], tax: Exp[Float], returnFlag: Exp[Char], lineStatus: Exp[Char], shipDate: Exp[Date], commitDate: Exp[Date], receiptDate: Exp[Date], shipInstruct: Exp[String], shipMode: Exp[String], comment: Exp[String]) = reflectEffect(LineItemObjectNew(orderKey, partKey, supplierKey, lineNumber, quantity, extendedPrice, discount, tax, returnFlag, lineStatus, shipDate, commitDate, receiptDate, shipInstruct, shipMode, comment))
   def lineitem_orderKey(__x: Rep[LineItem]) = FieldRead[Int](__x, "orderKey", "Int")
   def lineitem_partKey(__x: Rep[LineItem]) = FieldRead[Int](__x, "partKey", "Int")
   def lineitem_supplierKey(__x: Rep[LineItem]) = FieldRead[Int](__x, "supplierKey", "Int")
@@ -128,18 +141,25 @@ trait LineItemOpsExp extends LineItemOps with FieldAccessOpsExp with EffectExp {
   def lineitem_tax(__x: Rep[LineItem]) = FieldRead[Float](__x, "tax", "Float")
   def lineitem_returnFlag(__x: Rep[LineItem]) = FieldRead[Char](__x, "returnFlag", "Char")
   def lineitem_lineStatus(__x: Rep[LineItem]) = FieldRead[Char](__x, "lineStatus", "Char")
+  def lineitem_shipDate(__x: Rep[LineItem]) = FieldRead[Date](__x, "shipDate", "Date")
+  def lineitem_commitDate(__x: Rep[LineItem]) = FieldRead[Date](__x, "commitDate", "Date")
+  def lineitem_receiptDate(__x: Rep[LineItem]) = FieldRead[Date](__x, "receiptDate", "Date")
   def lineitem_shipInstruct(__x: Rep[LineItem]) = FieldRead[String](__x, "shipInstruct", "String")
   def lineitem_shipMode(__x: Rep[LineItem]) = FieldRead[String](__x, "shipMode", "String")
   def lineitem_comment(__x: Rep[LineItem]) = FieldRead[String](__x, "comment", "String")
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+    case _ => super.mirror(e,f)
+  }
 }
 
-trait ScalaGenLineItemOps extends ScalaGenBase {
+trait ScalaGenLineItemOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
   // these are the ops that call through to the underlying real data structure
-    case LineItemObjectNew(orderKey, partKey, supplierKey, lineNumber, quantity, extendedPrice, discount, tax, returnFlag, lineStatus, shipInstruct, shipMode, comment) => emitValDef(sym, "new " + remap(manifest[LineItem]) + "(" + quote(orderKey)  + "," + quote(partKey)  + "," + quote(supplierKey)  + "," + quote(lineNumber)  + "," + quote(quantity)  + "," + quote(extendedPrice)  + "," + quote(discount)  + "," + quote(tax)  + "," + quote(returnFlag)  + "," + quote(lineStatus)  + "," + quote(shipInstruct)  + "," + quote(shipMode)  + "," + quote(comment)  + ")")
+    case LineItemObjectNew(orderKey, partKey, supplierKey, lineNumber, quantity, extendedPrice, discount, tax, returnFlag, lineStatus, shipDate, commitDate, receiptDate, shipInstruct, shipMode, comment) => emitValDef(sym, "new " + remap(manifest[LineItem]) + "(" + quote(orderKey)  + "," + quote(partKey)  + "," + quote(supplierKey)  + "," + quote(lineNumber)  + "," + quote(quantity)  + "," + quote(extendedPrice)  + "," + quote(discount)  + "," + quote(tax)  + "," + quote(returnFlag)  + "," + quote(lineStatus)  + "," + quote(shipDate)  + "," + quote(commitDate)  + "," + quote(receiptDate)  + "," + quote(shipInstruct)  + "," + quote(shipMode)  + "," + quote(comment)  + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -170,16 +190,20 @@ trait NationOps extends DSLType with Variables with OverloadHack {
   def nation_comment(__x: Rep[Nation]): Rep[String]
 }
 
-trait NationOpsExp extends NationOps with FieldAccessOpsExp with EffectExp {
+trait NationOpsExp extends NationOps with FieldAccessOpsExp with EffectExp with BaseFatExp {
   case class NationObjectNew(key: Exp[Int], name: Exp[String], regionKey: Exp[Int], comment: Exp[String]) extends Def[Nation]
   def nation_obj_new(key: Exp[Int], name: Exp[String], regionKey: Exp[Int], comment: Exp[String]) = reflectEffect(NationObjectNew(key, name, regionKey, comment))
   def nation_key(__x: Rep[Nation]) = FieldRead[Int](__x, "key", "Int")
   def nation_name(__x: Rep[Nation]) = FieldRead[String](__x, "name", "String")
   def nation_regionKey(__x: Rep[Nation]) = FieldRead[Int](__x, "regionKey", "Int")
   def nation_comment(__x: Rep[Nation]) = FieldRead[String](__x, "comment", "String")
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+    case _ => super.mirror(e,f)
+  }
 }
 
-trait ScalaGenNationOps extends ScalaGenBase {
+trait ScalaGenNationOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
@@ -193,7 +217,7 @@ trait ScalaGenNationOps extends ScalaGenBase {
 trait OrderOps extends DSLType with Variables with OverloadHack {
 
   object Order {
-    def apply(key: Rep[Int], customerKey: Rep[Int], status: Rep[Char], totalPrice: Rep[Float], priority: Rep[String], clerk: Rep[String], shipPriority: Rep[Int], comment: Rep[String]) = order_obj_new(key, customerKey, status, totalPrice, priority, clerk, shipPriority, comment)
+    def apply(key: Rep[Int], customerKey: Rep[Int], status: Rep[Char], totalPrice: Rep[Float], date: Rep[Date], priority: Rep[String], clerk: Rep[String], shipPriority: Rep[Int], comment: Rep[String]) = order_obj_new(key, customerKey, status, totalPrice, date, priority, clerk, shipPriority, comment)
   }
 
   implicit def repOrderToOrderOps(x: Rep[Order]) = new orderOpsCls(x)
@@ -204,6 +228,7 @@ trait OrderOps extends DSLType with Variables with OverloadHack {
     def customerKey = order_customerKey(__x)
     def status = order_status(__x)
     def totalPrice = order_totalPrice(__x)
+    def date = order_date(__x)
     def priority = order_priority(__x)
     def clerk = order_clerk(__x)
     def shipPriority = order_shipPriority(__x)
@@ -211,39 +236,45 @@ trait OrderOps extends DSLType with Variables with OverloadHack {
   }
 
   //object defs
-  def order_obj_new(key: Rep[Int], customerKey: Rep[Int], status: Rep[Char], totalPrice: Rep[Float], priority: Rep[String], clerk: Rep[String], shipPriority: Rep[Int], comment: Rep[String]): Rep[Order]
+  def order_obj_new(key: Rep[Int], customerKey: Rep[Int], status: Rep[Char], totalPrice: Rep[Float], date: Rep[Date], priority: Rep[String], clerk: Rep[String], shipPriority: Rep[Int], comment: Rep[String]): Rep[Order]
 
   //class defs
   def order_key(__x: Rep[Order]): Rep[Int]
   def order_customerKey(__x: Rep[Order]): Rep[Int]
   def order_status(__x: Rep[Order]): Rep[Char]
   def order_totalPrice(__x: Rep[Order]): Rep[Float]
+  def order_date(__x: Rep[Order]): Rep[Date]
   def order_priority(__x: Rep[Order]): Rep[String]
   def order_clerk(__x: Rep[Order]): Rep[String]
   def order_shipPriority(__x: Rep[Order]): Rep[Int]
   def order_comment(__x: Rep[Order]): Rep[String]
 }
 
-trait OrderOpsExp extends OrderOps with FieldAccessOpsExp with EffectExp {
-  case class OrderObjectNew(key: Exp[Int], customerKey: Exp[Int], status: Exp[Char], totalPrice: Exp[Float], priority: Exp[String], clerk: Exp[String], shipPriority: Exp[Int], comment: Exp[String]) extends Def[Order]
-  def order_obj_new(key: Exp[Int], customerKey: Exp[Int], status: Exp[Char], totalPrice: Exp[Float], priority: Exp[String], clerk: Exp[String], shipPriority: Exp[Int], comment: Exp[String]) = reflectEffect(OrderObjectNew(key, customerKey, status, totalPrice, priority, clerk, shipPriority, comment))
+trait OrderOpsExp extends OrderOps with FieldAccessOpsExp with EffectExp with BaseFatExp {
+  case class OrderObjectNew(key: Exp[Int], customerKey: Exp[Int], status: Exp[Char], totalPrice: Exp[Float], date: Exp[Date], priority: Exp[String], clerk: Exp[String], shipPriority: Exp[Int], comment: Exp[String]) extends Def[Order]
+  def order_obj_new(key: Exp[Int], customerKey: Exp[Int], status: Exp[Char], totalPrice: Exp[Float], date: Exp[Date], priority: Exp[String], clerk: Exp[String], shipPriority: Exp[Int], comment: Exp[String]) = reflectEffect(OrderObjectNew(key, customerKey, status, totalPrice, date, priority, clerk, shipPriority, comment))
   def order_key(__x: Rep[Order]) = FieldRead[Int](__x, "key", "Int")
   def order_customerKey(__x: Rep[Order]) = FieldRead[Int](__x, "customerKey", "Int")
   def order_status(__x: Rep[Order]) = FieldRead[Char](__x, "status", "Char")
   def order_totalPrice(__x: Rep[Order]) = FieldRead[Float](__x, "totalPrice", "Float")
+  def order_date(__x: Rep[Order]) = FieldRead[Date](__x, "date", "Date")
   def order_priority(__x: Rep[Order]) = FieldRead[String](__x, "priority", "String")
   def order_clerk(__x: Rep[Order]) = FieldRead[String](__x, "clerk", "String")
   def order_shipPriority(__x: Rep[Order]) = FieldRead[Int](__x, "shipPriority", "Int")
   def order_comment(__x: Rep[Order]) = FieldRead[String](__x, "comment", "String")
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+    case _ => super.mirror(e,f)
+  }
 }
 
-trait ScalaGenOrderOps extends ScalaGenBase {
+trait ScalaGenOrderOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
   // these are the ops that call through to the underlying real data structure
-    case OrderObjectNew(key, customerKey, status, totalPrice, priority, clerk, shipPriority, comment) => emitValDef(sym, "new " + remap(manifest[Order]) + "(" + quote(key)  + "," + quote(customerKey)  + "," + quote(status)  + "," + quote(totalPrice)  + "," + quote(priority)  + "," + quote(clerk)  + "," + quote(shipPriority)  + "," + quote(comment)  + ")")
+    case OrderObjectNew(key, customerKey, status, totalPrice, date, priority, clerk, shipPriority, comment) => emitValDef(sym, "new " + remap(manifest[Order]) + "(" + quote(key)  + "," + quote(customerKey)  + "," + quote(status)  + "," + quote(totalPrice)  + "," + quote(date)  + "," + quote(priority)  + "," + quote(clerk)  + "," + quote(shipPriority)  + "," + quote(comment)  + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -284,7 +315,7 @@ trait PartOps extends DSLType with Variables with OverloadHack {
   def part_comment(__x: Rep[Part]): Rep[String]
 }
 
-trait PartOpsExp extends PartOps with FieldAccessOpsExp with EffectExp {
+trait PartOpsExp extends PartOps with FieldAccessOpsExp with EffectExp with BaseFatExp {
   case class PartObjectNew(key: Exp[Int], name: Exp[String], mfgr: Exp[String], brand: Exp[String], pType: Exp[String], size: Exp[Int], container: Exp[String], retailPrice: Exp[Float], comment: Exp[String]) extends Def[Part]
   def part_obj_new(key: Exp[Int], name: Exp[String], mfgr: Exp[String], brand: Exp[String], pType: Exp[String], size: Exp[Int], container: Exp[String], retailPrice: Exp[Float], comment: Exp[String]) = reflectEffect(PartObjectNew(key, name, mfgr, brand, pType, size, container, retailPrice, comment))
   def part_key(__x: Rep[Part]) = FieldRead[Int](__x, "key", "Int")
@@ -296,9 +327,13 @@ trait PartOpsExp extends PartOps with FieldAccessOpsExp with EffectExp {
   def part_container(__x: Rep[Part]) = FieldRead[String](__x, "container", "String")
   def part_retailPrice(__x: Rep[Part]) = FieldRead[Float](__x, "retailPrice", "Float")
   def part_comment(__x: Rep[Part]) = FieldRead[String](__x, "comment", "String")
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+    case _ => super.mirror(e,f)
+  }
 }
 
-trait ScalaGenPartOps extends ScalaGenBase {
+trait ScalaGenPartOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
@@ -337,7 +372,7 @@ trait PartSupplierOps extends DSLType with Variables with OverloadHack {
   def partsupplier_comment(__x: Rep[PartSupplier]): Rep[String]
 }
 
-trait PartSupplierOpsExp extends PartSupplierOps with FieldAccessOpsExp with EffectExp {
+trait PartSupplierOpsExp extends PartSupplierOps with FieldAccessOpsExp with EffectExp with BaseFatExp {
   case class PartSupplierObjectNew(key: Exp[Int], supplierKey: Exp[Int], availableQty: Exp[Int], supplyCost: Exp[Float], comment: Exp[String]) extends Def[PartSupplier]
   def partsupplier_obj_new(key: Exp[Int], supplierKey: Exp[Int], availableQty: Exp[Int], supplyCost: Exp[Float], comment: Exp[String]) = reflectEffect(PartSupplierObjectNew(key, supplierKey, availableQty, supplyCost, comment))
   def partsupplier_key(__x: Rep[PartSupplier]) = FieldRead[Int](__x, "key", "Int")
@@ -345,9 +380,13 @@ trait PartSupplierOpsExp extends PartSupplierOps with FieldAccessOpsExp with Eff
   def partsupplier_availableQty(__x: Rep[PartSupplier]) = FieldRead[Int](__x, "availableQty", "Int")
   def partsupplier_supplyCost(__x: Rep[PartSupplier]) = FieldRead[Float](__x, "supplyCost", "Float")
   def partsupplier_comment(__x: Rep[PartSupplier]) = FieldRead[String](__x, "comment", "String")
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+    case _ => super.mirror(e,f)
+  }
 }
 
-trait ScalaGenPartSupplierOps extends ScalaGenBase {
+trait ScalaGenPartSupplierOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
@@ -382,15 +421,19 @@ trait RegionOps extends DSLType with Variables with OverloadHack {
   def region_comment(__x: Rep[Region]): Rep[String]
 }
 
-trait RegionOpsExp extends RegionOps with FieldAccessOpsExp with EffectExp {
+trait RegionOpsExp extends RegionOps with FieldAccessOpsExp with EffectExp with BaseFatExp {
   case class RegionObjectNew(key: Exp[Int], name: Exp[String], comment: Exp[String]) extends Def[Region]
   def region_obj_new(key: Exp[Int], name: Exp[String], comment: Exp[String]) = reflectEffect(RegionObjectNew(key, name, comment))
   def region_key(__x: Rep[Region]) = FieldRead[Int](__x, "key", "Int")
   def region_name(__x: Rep[Region]) = FieldRead[String](__x, "name", "String")
   def region_comment(__x: Rep[Region]) = FieldRead[String](__x, "comment", "String")
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+    case _ => super.mirror(e,f)
+  }
 }
 
-trait ScalaGenRegionOps extends ScalaGenBase {
+trait ScalaGenRegionOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
@@ -433,7 +476,7 @@ trait SupplierOps extends DSLType with Variables with OverloadHack {
   def supplier_comment(__x: Rep[Supplier]): Rep[String]
 }
 
-trait SupplierOpsExp extends SupplierOps with FieldAccessOpsExp with EffectExp {
+trait SupplierOpsExp extends SupplierOps with FieldAccessOpsExp with EffectExp with BaseFatExp {
   case class SupplierObjectNew(key: Exp[Int], name: Exp[String], address: Exp[String], nationKey: Exp[Int], phone: Exp[String], accountBalance: Exp[Float], comment: Exp[String]) extends Def[Supplier]
   def supplier_obj_new(key: Exp[Int], name: Exp[String], address: Exp[String], nationKey: Exp[Int], phone: Exp[String], accountBalance: Exp[Float], comment: Exp[String]) = reflectEffect(SupplierObjectNew(key, name, address, nationKey, phone, accountBalance, comment))
   def supplier_key(__x: Rep[Supplier]) = FieldRead[Int](__x, "key", "Int")
@@ -443,9 +486,13 @@ trait SupplierOpsExp extends SupplierOps with FieldAccessOpsExp with EffectExp {
   def supplier_phone(__x: Rep[Supplier]) = FieldRead[String](__x, "phone", "String")
   def supplier_accountBalance(__x: Rep[Supplier]) = FieldRead[Float](__x, "accountBalance", "Float")
   def supplier_comment(__x: Rep[Supplier]) = FieldRead[String](__x, "comment", "String")
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+    case _ => super.mirror(e,f)
+  }
 }
 
-trait ScalaGenSupplierOps extends ScalaGenBase {
+trait ScalaGenSupplierOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 

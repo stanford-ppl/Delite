@@ -9,19 +9,27 @@ import java.io.{Console => _, _}
 trait DeliteTestConfig {
   // something arbitrary that we should never see in any test's output
   val MAGICDELIMETER = "!~x02$758209"
+
+  val propFile = new File("delite.properties")
+  if (!propFile.exists) throw new TestFailedException("could not find delite.properties", 3)
+  val props = new java.util.Properties()
+  props.load(new FileReader(propFile))
+
+  // test parameters
+  val verbose = props.getProperty("tests.verbose", "false").toBoolean
+  val s = File.separator
+  // handle paths that may or may not end in a / by always removing it if it exists and then adding a '/' back
+  val javaHome = props.getProperty("java.home", "") stripSuffix(s) + s replaceAll (s, s+s)
+  val scalaHome = props.getProperty("scala.vanilla.home", "") stripSuffix(s) + s replaceAll (s, s+s)
+  val runtimeClasses = props.getProperty("runtime.classes", "") stripSuffix(s) + s replaceAll (s, s+s)
 }
 
 trait DeliteSuite extends Suite with DeliteTestConfig {
-  // test parameters
-  val verbose = System.getProperty("tests.verbose", "false").toBoolean
-  val javaHome = System.getProperty("java.home", "") replaceAll ("/", "//")
-  val scalaHome = System.getProperty("scala.home", "") replaceAll ("/", "//")
-  val runtimeClasses = System.getProperty("runtime.classes", "") replaceAll ("/", "//")
 
   def validateParameters() {
-    if (javaHome == "") throw new TestFailedException("java.home must be specified", 3)
-    else if (scalaHome == "") throw new TestFailedException("scala.home must be specified", 3)
-    else if (runtimeClasses == "") throw new TestFailedException("runtime.classes must be specified", 3)
+    if (javaHome == "") throw new TestFailedException("java.home must be specified in delite.properties", 3)
+    else if (scalaHome == "") throw new TestFailedException("scala.vanilla.home must be specified in delite.proeprties", 3)
+    else if (runtimeClasses == "") throw new TestFailedException("runtime.classes must be specified in delite.properties", 3)
   }
 
   def compileAndTest(app: DeliteTestRunner) {
@@ -52,8 +60,8 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     var p: Process = null
     val output = new File("test.tmp")
     try{
-      val javaProc = javaHome + "bin/java"
-      val javaArgs = "-server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx16g -cp " + runtimeClasses + ":" + scalaHome + "lib/scala-library.jar:" + scalaHome + "lib/scala-compiler.jar"
+      val javaProc = javaHome + "bin"+s+"java"
+      val javaArgs = "-server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx16g -cp " + runtimeClasses + ":" + scalaHome + "lib"+s+"scala-library.jar:" + scalaHome + "lib"+s+"scala-compiler.jar"
       val cmd = Array(javaProc) ++ javaArgs.split(" ") ++ Array("ppl.delite.runtime.Delite") ++ args
       val pb = new ProcessBuilder(java.util.Arrays.asList(cmd: _*))
       p = pb.start()
@@ -94,9 +102,11 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val resultStr = outStr substring (outStr.indexOf(MAGICDELIMETER) + MAGICDELIMETER.length, outStr.lastIndexOf(MAGICDELIMETER))
     val results = resultStr split ","
     for (i <- 0 until results.length) {
-      print("  condition " + i + ": ")
       val passed = results(i).toLowerCase() == "true"
-      if (passed) println("PASSED") else println("FAILED")
+      if (verbose) {
+        print("  condition " + i + ": ")
+        if (passed) println("PASSED") else println("FAILED")
+      }
       assert(passed)
     }
   }

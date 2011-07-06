@@ -29,6 +29,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
   val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.reverse.map(getCodeGenPkg(_))
 
+
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
     getCodeGenPkg(scalaTarget).asInstanceOf[ScalaCodegen { val IR: DeliteApplication.this.type }]
@@ -62,6 +63,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       writer.write("kernels:datastructures\n")
       writer.close()
     }
+
+    deliteGenerator.emitDataStructures(Config.buildDir + File.separator)
 
     for (g <- generators) {
       val baseDir = Config.buildDir + File.separator + g.toString + File.separator

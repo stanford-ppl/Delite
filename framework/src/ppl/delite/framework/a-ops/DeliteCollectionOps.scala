@@ -1,6 +1,6 @@
 package ppl.delite.framework.ops
 
-import ppl.delite.framework.DeliteCollection
+import ppl.delite.framework.datastruct.scala.DeliteCollection
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenEffect}
 import scala.virtualization.lms.internal.{GenericNestedCodegen}

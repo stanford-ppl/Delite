@@ -59,14 +59,21 @@ def emitHeader(fileOut):
 import java.io.PrintWriter\n\
 import ppl.delite.framework.{DSLType}\n\
 import ppl.delite.framework.datastructures._\n\
-import scala.virtualization.lms.common.ScalaGenBase\n\
+import scala.virtualization.lms.common.ScalaGenFat\n\
 import scala.virtualization.lms.util.OverloadHack\n\
-import scala.virtualization.lms.common.{EffectExp, Variables}\n\n"
-    out.append(l)
+import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Variables}\n\n"
+    out.append(l)	
     fileOut.writelines(out)
+	#now emit DSL specific stuff
+    if(options['dsl'] == "optiql"):
+        emitHeaderOptiQL(fileOut)
 
-
-
+def emitHeaderOptiQL(fileOut):
+    out = []
+    l = "//OptiQL Specific Header\n"
+    l = l + "import ppl.dsl.optiql.datastruct.scala.util.Date\n\n"
+    out.append(l)	
+    fileOut.writelines(out)
 
 def mixify(classes, pre, post):
     l = ""
@@ -144,7 +151,7 @@ def liftClass(impls_dir, fname, fileOut):
     l = l + "}\n\n"
 
     #OpsExp
-    l = l + "trait " + clazz + "OpsExp extends " + clazz + "Ops with FieldAccessOpsExp with EffectExp {\n"
+    l = l + "trait " + clazz + "OpsExp extends " + clazz + "Ops with FieldAccessOpsExp with EffectExp with BaseFatExp {\n"
     l = l + "  case class " + clazz + "ObjectNew(" + expify(fields, types) + ") extends Def[" + clazz + "]\n"
     #we are going to handle this once and for all using a FieldAccessOps   
     #for f in fields:
@@ -153,10 +160,15 @@ def liftClass(impls_dir, fname, fileOut):
     l = l + "  def " + lclazz + "_obj_new(" + expify(fields, types) + ") = reflectEffect(" + clazz + "ObjectNew(" + listify(fields) + "))\n"
     for f in fields:
         l = l + "  def " + lclazz + "_" + f + "(__x: Rep[" + clazz + "]) = FieldRead["+ types[f] +"](__x, \"" + f + "\", \"" + types[f] + "\")\n"
+    l = l + "\n"
+    #emit Mirror
+    l = l + "  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {\n"
+    l = l + "    case _ => super.mirror(e,f)\n"
+    l = l + "  }\n"
     l = l + "}\n\n"
 
 
-    l = l + "trait ScalaGen" + clazz + "Ops extends ScalaGenBase {\n"
+    l = l + "trait ScalaGen" + clazz + "Ops extends ScalaGenFat {\n"
     l = l + "  val IR: ApplicationOpsExp\n"
     l = l + "  import IR._\n\n"
     

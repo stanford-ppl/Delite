@@ -7,7 +7,7 @@ class Order (
   val customerKey: Int,
   val status: Char,
   val totalPrice: Float,
-  //val date: Date,
+  val date: Date,
   val priority: String,
   val clerk: String,
   val shipPriority: Int,

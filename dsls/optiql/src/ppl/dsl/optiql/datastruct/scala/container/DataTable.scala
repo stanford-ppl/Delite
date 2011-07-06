@@ -1,19 +1,64 @@
 package ppl.dsl.optiql.datastruct.scala.container
 
 import collection.mutable.ArrayBuffer
+import collection.mutable.{ArrayBuffer, HashMap, Buffer}
 import ppl.dsl.optiql.datastruct.scala.util.{ReflectionHelper, Date}
-import ppl.delite.framework.DeliteCollection
 
 object DataTable {
 
-  implicit def convertIterableToDataTable[T](i: Iterable[T]) : DataTable[T] = throw new RuntimeException("This is not implemented yet")
+  implicit def convertIterableToDataTable[T](i: Iterable[T]) : DataTable[T] = {
+    if(i.isInstanceOf[DataTable[T]]) {
+      i.asInstanceOf[DataTable[T]]
+    }
+    else if(i.isInstanceOf[ArrayBuffer[T]]) {
 
+      return new DataTable[T] {
+
+        data = i.asInstanceOf[ArrayBuffer[T]]
+
+        override def addRecord(arr: Array[String]) {
+          throw new RuntimeException("Cannot add Record into a projected DataTable")
+        }
+      }
+
+    }
+	else if(i.isInstanceOf[Grouping[_,T]]) {
+	  println("converting grouping to DataTable")
+	  val g = i.asInstanceOf[Grouping[_,T]]
+	  assert(g.elems.isInstanceOf[ArrayBuffer[T]])
+	  return new DataTable[T] {
+
+        data = g.elems.asInstanceOf[ArrayBuffer[T]]
+
+        override def addRecord(arr: Array[String]) {
+          throw new RuntimeException("Cannot add Record into a projected DataTable")
+        }
+      }
+	  
+	}
+    else {
+      val arrbuf = new ArrayBuffer[T]();
+      for (e <- i) {
+        arrbuf.append(e)
+      }
+      return new DataTable[T] {
+
+        data = arrbuf
+
+        override def addRecord(arr: Array[String]) {
+          throw new RuntimeException("Cannot add Record into a projected DataTable")
+        }
+      }
+	}
+  }
 }
 
-abstract class DataTable[TSource] extends Iterable[TSource] with DeliteCollection[TSource] {
+class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.delite.framework.datastruct.scala.DeliteCollection[TSource] {
   import DataTable._
 
-  val data = new ArrayBuffer[TSource]
+  println("initialSize : " + initialSize)
+  var data = ArrayBuffer.fill[TSource](initialSize)(null.asInstanceOf[TSource])
+  println("size of internal data is : " + data.size)
   val grouped = false
   def iterator = data.iterator
 
@@ -22,10 +67,23 @@ abstract class DataTable[TSource] extends Iterable[TSource] with DeliteCollectio
   def dcUpdate(idx: Int, x: TSource) {
     data(idx) = x
   }
+  
+  def this() = this(0)
+	
+
+  //TODO HCXXX: NEED TO REMOVE ALL THIS STUFF OR ADD IT TO DELITE COLLECTION
+  def apply(idx: Int): TSource = data(idx)
+  def cloneL = new DataTable[TSource]
+  def insert(pos: Int, x: TSource) {
+    data.insert(pos, x)
+  }
+  def insertAll(pos: Int, x: DataTable[TSource]) {
+    data.insertAll(pos, x)
+  }
+  def length = data.size
 
 
-
-  def addRecord(fields: Array[String])
+  def addRecord(fields: Array[String]): Unit = throw new RuntimeException("You forgot to implement addRecord for " + this.getClass)
 
   implicit def cStrToInt(s: String) = Integer.parseInt(s)
   implicit def cStrToFloat(s: String) = java.lang.Float.parseFloat(s)
@@ -171,5 +229,35 @@ abstract class DataTable[TSource] extends Iterable[TSource] with DeliteCollectio
 
   def forbid = throw new RuntimeException("Should not be using this method, got here by mistake")
   def notImplemented = throw new RuntimeException("Not Implemented Yet")
+  
+  
+  //This part is hacked so I can run optiql in sequential mode
+  def GroupBy[TKey](keySelector: TSource => TKey) = {
+    //println("constructing hash-table for grouping operation")
+    val (hTable, keys) = buildHash(this,keySelector)
+    val result = new DataTable[Grouping[TKey,TSource]] {
+      override def addRecord(fields: Array[String]) = throw new RuntimeException("Cannot add records to a grouping table")
+      override val grouped = true
+    }
+    for(key <- keys) {
+      result.data += new Grouping(key,hTable.getOrElse(key, new ArrayBuffer[TSource]))
+    }
+    result
+  }
+  
+  /*****
+   * Internal Implementation functions
+   */
+  private def buildHash[TSource,TKey](source:Iterable[TSource], keySelector: TSource => TKey) = {
+    val hash = HashMap[TKey, ArrayBuffer[TSource]]()
+    val keys = new ArrayBuffer[TKey]
+    for (elem <- source; key = keySelector(elem)) {
+      hash.getOrElseUpdate(key,{
+        keys.append(key)
+        new ArrayBuffer[TSource]() //if there is no key
+      }) += elem
+    }
+    (hash,keys)
+  }
 
 }

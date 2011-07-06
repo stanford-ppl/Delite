@@ -39,7 +39,7 @@ class Queryable[TSource](source: Iterable[TSource]) {
   def GroupBy[TKey](keySelector: TSource => TKey): Iterable[Grouping[TKey, TSource]] = {
     val (hTable, keys) = buildHash(source,keySelector)
     val result = new DataTable[Grouping[TKey,TSource]] {
-      def addRecord(fields: Array[String]) = throw new RuntimeException("Cannot add records to a grouping table")
+      override def addRecord(fields: Array[String]) = throw new RuntimeException("Cannot add records to a grouping table")
       override val grouped = true
     }
     for(key <- keys) {

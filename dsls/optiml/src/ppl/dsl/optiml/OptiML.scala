@@ -160,7 +160,7 @@ trait OptiMLCodeGenBase extends GenericFatCodegen {
       if (specialize2 contains (f.getName.substring(0, f.getName.indexOf(".")))) {
         genSpec2(f, path)
       }
-      val outFile = path + f.getName
+      val outFile = path + s + f.getName
       val out = new BufferedWriter(new FileWriter(outFile))
       for (line <- scala.io.Source.fromFile(f).getLines) {
         out.write(dsmap(line) + "\n")
@@ -254,7 +254,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
 
   override def dsmap(line: String) : String = {
     var res = line.replaceAll("ppl.dsl.optiml.datastruct", "generated")
-    res = res.replaceAll("ppl.delite.framework", "generated.scala")
+    res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
     res
   }
 }

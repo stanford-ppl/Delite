@@ -32,6 +32,7 @@ object DeliteTaskGraph {
   def parseDEGMap(degm: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val deg = getFieldMap(degm, "DEG")
     graph._version = getFieldDouble(deg, "version")
+    graph._targets = getFieldList(deg, "targets").map(Targets.target(_)).toSet
     graph._kernelPath = getFieldString(deg, "kernelpath")
     parseOps(getFieldList(deg, "ops"))
   }
@@ -502,6 +503,7 @@ class DeliteTaskGraph {
   }
 
   protected var _version = 0.0
+  protected var _targets: Set[Targets.Value] = null
   protected var _kernelPath = ""
 
   protected val _ops = new HashMap[String, DeliteOP]
@@ -513,6 +515,7 @@ class DeliteTaskGraph {
 
   def result: (DeliteOP, String) = _result
   def version: Double = _version
+  def targets: Set[Targets.Value] = _targets
   def kernelPath: String = _kernelPath
   def superGraph: DeliteTaskGraph = _superGraph
   def symbols: Set[String] = _ops.keys.toSet

@@ -4,22 +4,23 @@ import ops._
 import scala.virtualization.lms.common._
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite.overrides.DeliteAllOverridesExp
-import ppl.delite.framework.codegen.Target
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.dsl.optiql.user.applications._
 import java.io.{FileWriter, BufferedWriter, File}
+import ppl.delite.framework.codegen.{Utils, Target}
+
 
 /**
  * These are the lifted scala constructs that only operate on the Rep world. These are usually safe to mix in
  */
-trait OptiQLScalaOpsPkg extends Base with MiscOps with OrderingOps with PrimitiveOps
+trait OptiQLScalaOpsPkg extends Base with MiscOps with OrderingOps with PrimitiveOps with TupleOps with NumericOps
 
 /**
  * This trait adds the Ops that are specific to OptiQL
  */
-trait OptiQL extends OptiQLScalaOpsPkg with HackOps with DataTableOps with QueryableOps with ApplicationOps {
+trait OptiQL extends OptiQLScalaOpsPkg with HackOps with DataTableOps with QueryableOps with DateOps with OptiQLMiscOps with ApplicationOps {
   this: OptiQLApplication =>
 }
 
@@ -34,20 +35,20 @@ trait OptiQLLift extends LiftString {
 /**
  * Scala IR nodes
  */
-trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsExp with OrderingOpsExp
-  with PrimitiveOpsExp
+trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsExp with SeqOpsExp with OrderingOpsExp
+  with PrimitiveOpsExp with TupleOpsExp with NumericOpsExp
 
 /**
  * Ops available only to the compiler, and not our applications
  */
-trait OptiQLCompiler extends OptiQL with IOOps {
+trait OptiQLCompiler extends OptiQL with IOOps with SeqOps {
   this: OptiQLApplication with OptiQLExp =>
 }
 
 /**
  * This trait comprises the IR nodes for OptiQL and the code required to instantiate code generators
  */
-trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with HackOpsExp with DataTableOpsExp with QueryableOpsExp
+trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with HackOpsExp with DataTableOpsExp with DateOpsExp with QueryableOpsExp with OptiQLMiscOpsExp
   with ApplicationOpsExp with DeliteOpsExp {
 
   this: DeliteApplication with OptiQLApplication with OptiQLExp =>
@@ -64,7 +65,8 @@ trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with HackOpsExp
 /**
  * Codegen traits
  */
-trait OptiQLScalaCodeGenPkg extends ScalaGenMiscOps with ScalaGenIOOps with ScalaGenOrderingOps with ScalaGenPrimitiveOps {
+trait OptiQLScalaCodeGenPkg extends ScalaGenMiscOps with ScalaGenIOOps with ScalaGenSeqOps with ScalaGenOrderingOps 
+  with ScalaGenPrimitiveOps with ScalaGenTupleOps with ScalaGenNumericOps with ScalaGenImplicitOps {
   val IR: OptiQLScalaOpsPkgExp
 }
 
@@ -105,7 +107,7 @@ trait OptiQLCodeGenBase extends GenericFatCodegen {
 }
 
 trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg with ScalaGenHackOps
-  with ScalaGenDataTableOps with ScalaGenQueryableOps with ScalaGenApplicationOps with ScalaGenDeliteOps {
+  with ScalaGenDataTableOps with ScalaGenDateOps with ScalaGenQueryableOps with ScalaGenOptiQLMiscOps with ScalaGenApplicationOps with ScalaGenDeliteOps {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = {
@@ -114,7 +116,7 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
 
   override def dsmap(line: String) : String = {
     var res = line.replaceAll("ppl.dsl.optiql.datastruct", "generated")
-    res = res.replaceAll("ppl.delite.framework", "generated.scala")
+    res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
     res
   }
 }

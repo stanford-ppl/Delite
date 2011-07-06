@@ -13,9 +13,9 @@ class LineItem (
   val tax: Float,
   val returnFlag: Char,
   val lineStatus: Char,
-  //val shipDate: Date,
-  //val commitDate: Date,
-  //val receiptDate: Date,
+  val shipDate: Date,
+  val commitDate: Date,
+  val receiptDate: Date,
   val shipInstruct: String,
   val shipMode: String,
   val comment: String

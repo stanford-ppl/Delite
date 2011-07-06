@@ -676,9 +676,8 @@ abstract class GPUScalaExecutableGenerator extends ExecutableGenerator {
     out.append("@native def hostGPU : Unit\n")
 
     //link the native code upon object creation
-    val sep = java.io.File.separator
     out.append("System.load(\"")
-    out.append(CudaCompile.binCacheHome+sep)
+    out.append(CudaCompile.binCacheHome)
     out.append("cudaHost.so\")\n")
 
     //the sync methods/objects

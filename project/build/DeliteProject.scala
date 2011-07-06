@@ -25,9 +25,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   override def mainScalaSourcePath = "src"
   override def mainResourcesPath = "resources"
   
-  //override def testScalaSourcePath = "tests" / "src"
-  // aks: appending "codegen" postfix because other scalatests are not working with sbt yet
-  override def testScalaSourcePath = "tests" / "src" / "ppl" / "tests" / "scalatest" / "codegen"
+  override def testScalaSourcePath = "tests" / "src" / "ppl" / "tests" / "scalatest" 
   override def testResourcesPath = "tests" / "resources"
 
   val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
@@ -41,13 +39,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     override def mainScalaSourcePath = "src"
     override def mainResourcesPath = "resources"
     
-    override def testScalaSourcePath = "tests" / "src" / "ppl" / "scalatest" / "codegen" 
-    override def testResourcesPath = "tests" / "resources"
-    
     val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
-    
-    val scalaToolsSnapshots = ScalaToolsSnapshots
-    val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT"
     
     override def localScala =
     defineScala("2.9.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
@@ -63,7 +55,9 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   
   // Define projects
   lazy val framework = project("framework", "Delite Framework", new FlatProject(_))  
+
   //HC: We should not include runtime here as it is compiled with release versions of Scala.
+
   //lazy val runtime = project("runtime", "Delite Runtime", new FlatProject(_) {
   //  override def mainClass = Some("ppl.delite.runtime.Delite")
   //})
@@ -73,6 +67,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
       override def mainClass = Some("ppl.dsl.tests.SimpleVectorTest")
     }, framework)
     lazy val optiql = project("optiql", "OptiQL", new OptiQLProject(_), framework)
+	lazy val assignment2 = project("assignment2", "Assignment2", new FlatProject(_), framework)
   }
 
   lazy val dsls = project("dsls", "DSLs", new DSLs(_), framework)

@@ -4,7 +4,8 @@ import java.io.{FileWriter, File, PrintWriter}
 
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen, GenerationFailedException}
-import ppl.delite.framework.{DeliteCollection,Config}
+import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.Config
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp 

@@ -13,93 +13,11 @@ package ppl.dsl.optiml.datastruct.scala
 // at runtime (invokevirtual vs invokeinterface)
 
 /**
- * Delite
- */
-
-abstract class DeliteOpMultiLoop[A] {
-  def size: Int
-  def alloc: A
-  def split(rhs: A): A
-  def process(__act: A, idx: Int): Unit
-  def combine(__act: A, rhs: A): Unit
-}
-
-
-
-/**
- * @tparam CR  A subtype of DeliteCollection[B]; passed as a separate parameter to avoid requiring a higher kinded type.
- */
-abstract class DeliteOpMap[@specialized(Boolean, Int, Long, Float, Double) A, 
-                  @specialized(Boolean, Int, Long, Float, Double) B, CR] {
-  def in: DeliteCollection[A]
-  def alloc: CR
-  def map(a: A): B
-}
-
-/**
- * @tparam CR  A subtype of DeliteCollection[R]; passed as a separate parameter to avoid requiring a higher kinded type.
- */
-abstract class DeliteOpZipWith[@specialized(Boolean, Int, Long, Float, Double) A,
-                      @specialized(Boolean, Int, Long, Float, Double) B, 
-                      @specialized(Boolean, Int, Long, Float, Double) R, CR] {
-  def inA: DeliteCollection[A]
-  def inB: DeliteCollection[B]
-  def alloc: CR
-  def zip(a: A, b: B): R
-}
-
-abstract class DeliteOpReduce[@specialized(Boolean, Int, Long, Float, Double) R] {
-  def in: DeliteCollection[R]
-  def reduce(r1: R, r2: R): R
-}
-
-abstract class DeliteOpMapReduce[@specialized(Boolean, Int, Long, Float, Double) A, 
-                        @specialized(Boolean, Int, Long, Float, Double) R] {
-  def in: DeliteCollection[A]
-  def map(elem: A): R
-  def reduce(r1: R, r2: R): R
-
-  /**
-   * default implementation of map-reduce is simply to compose the map and reduce functions
-   * A subclass can override to fuse the implementations
-   */
-  def mapreduce(acc: R, elem: A): R = reduce(acc, map(elem))
-}
-
-abstract class DeliteOpZipWithReduce[@specialized(Boolean, Int, Long, Float, Double) A, 
-                            @specialized(Boolean, Int, Long, Float, Double) B, 
-                            @specialized(Boolean, Int, Long, Float, Double) R] {
-  def inA: DeliteCollection[A]
-  def inB: DeliteCollection[B]
-  def zip(a: A, b: B): R
-  def reduce(r1: R, r2: R): R
-
-  /**
-   * default implementation of zip-reduce is simply to compose the zip and reduce functions
-   * A subclass can override to fuse the implementations
-   */
-  def zipreduce(acc: R, a: A, b: B): R = reduce(acc, zip(a,b))
-}
-
-abstract class DeliteOpForeach[@specialized(Boolean, Int, Long, Float, Double) A] {
-  def in: DeliteCollection[A]
-  def foreach(elem: A): Unit
-  def sync(idx: Int): List[Any]
-}
-
-trait DeliteCollection[@specialized(Boolean, Int, Long, Float, Double) T] {
-  def size: Int
-  def dcApply(idx: Int): T
-  def dcUpdate(idx: Int, x: T)
-}
-
-/**
  * Vector
  */
 
 // TODO: vector and matrix should not expose "data" fields. This needs to be refactored.
-
-trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.DeliteCollection[T] {
+trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
   // methods required on real underlying data structure impl
   // we need these for:
   //   1) accessors to data fields
@@ -193,7 +111,7 @@ trait IndexVectorWC extends IndexVector {
 /**
  * Matrix
  */
-trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.DeliteCollection[T] {
+trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
   // fields required on real underlying data structure impl
   def numRows: Int
   def numCols: Int
@@ -339,16 +257,4 @@ trait Stream[@specialized(Boolean, Int, Long, Float, Double) T] {
   def chunkRow(idx: Int, offset: Int): StreamRow[T]
   def rawElem(idx: Int): T
   def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
-}
-
-
-/**
- * Ref
- */
-
-case class Ref[@specialized(Boolean, Int, Long, Float, Double) T](v: T) {
-  private[this] var _v = v
-
-  def get = _v
-  def set(v: T) = _v = v
 }

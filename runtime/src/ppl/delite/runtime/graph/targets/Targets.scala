@@ -12,6 +12,17 @@ package ppl.delite.runtime.graph.targets
 object Targets extends Enumeration {
   val Scala = Value("scala")
   val Cuda = Value("cuda")
+  val C = Value("c")
+
+  /**
+   * Return the value of a target
+   */
+  def target(s: String): Value = s.toLowerCase() match {
+    case "scala" => Scala
+    case "cuda" => Cuda
+    case "c" => C
+    case _ => throw new IllegalArgumentException("unsupported target: " + s)
+  }
 
   /**
    * Create a Unit-type Map for the set of targets included in the input Map
@@ -42,6 +53,7 @@ object Targets extends Enumeration {
     target match {
       case Scala => "Unit"
       case Cuda => "void"
+      case C => "void"
     }
   }
 
