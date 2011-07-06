@@ -11,12 +11,13 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 import java.util.ArrayDeque
 import ppl.delite.runtime.graph.ops.{OP_Nested, DeliteOP}
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.cost._
 
 /**
  * @author Kevin J. Brown
  */
 
-final class SMP_GPU_StaticScheduler extends StaticScheduler {
+final class SMP_GPU_StaticScheduler extends StaticScheduler with ParallelUtilizationCostModel {
 
   private val numCPUs = Config.numThreads
   private val numGPUs = Config.numGPUs
@@ -27,6 +28,9 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler {
     //traverse nesting & schedule sub-graphs, starting with outermost graph
     scheduleFlat(graph)
   }
+
+  protected def scheduleSequential(graph: DeliteTaskGraph) 
+		= throw new UnsupportedOperationException("scheduleSequential is not yet implemented for SMP_GPU_StaticScheduler")
 
   protected def scheduleFlat(graph: DeliteTaskGraph) {
     val opQueue = new ArrayDeque[DeliteOP]

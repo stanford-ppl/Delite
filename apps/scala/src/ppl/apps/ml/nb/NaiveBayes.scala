@@ -5,9 +5,7 @@ import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet,Labels}
 import ppl.delite.framework.DeliteApplication
 
 object NaiveBayesRunner extends OptiMLApplicationRunner with NaiveBayes
-
 trait NaiveBayes extends OptiMLApplication {
-
 
   def print_usage = {
     println("NaiveBayes <training file> <test file>")
@@ -71,12 +69,10 @@ trait NaiveBayes extends OptiMLApplication {
 
         if (ts.labels(i) == 1){
           spamwordcount += ts.t(j,i)
-
           spam_totalwords += words_per_email(i)
         }
         else {
           nonspamwordcount += ts.t(j,i)
-
           nonspam_totalwords += words_per_email(i)
         }
         i += 1

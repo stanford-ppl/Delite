@@ -4,9 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet,Labels}
 import ppl.delite.framework.DeliteApplication
 
-object NaiveBayesVectorized extends DeliteApplication with OptiMLExp {
-
-
+object NaiveBayesVectorizedRunner extends OptiMLApplicationRunner with NaiveBayesVectorized
+trait NaiveBayesVectorized extends OptiMLApplication {
+	
   def print_usage = {
     println("NaiveBayes <training file> <test file>")
     exit(-1)
@@ -23,9 +23,9 @@ object NaiveBayesVectorized extends DeliteApplication with OptiMLExp {
     // Train Model
     val trainingSet = MLInputReader.readTokenMatrix(trainingFile)
     //val start_train = System.currentTimeMillis()
-    tic
+    tic(trainingSet)
     val (phi_y1, phi_y0, phi_y) = train(trainingSet)
-    toc
+    toc(phi_y1)
 
     // test
     val testSet = MLInputReader.readTokenMatrix(testFile)
@@ -101,9 +101,11 @@ object NaiveBayesVectorized extends DeliteApplication with OptiMLExp {
 
     // Compute error on test set
     var incorrect_classifications = unit(0)
-    for (i <- 0 until numTestDocs){
+		var i = 0
+		while (i < numTestDocs){
       if (ts.labels(i) != output(i))
         incorrect_classifications += 1
+			i += 1
     }
     incorrect_classifications
   }
