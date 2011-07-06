@@ -93,7 +93,7 @@ trait StaticScheduler {
         scheduleFlat(v.variantGraph)
         splitNotEmpty(v, graph, schedule, List(v.variantGraph.schedule), resourceList)
       }
-      case err => sys.error("Control OP type not recognized: " + err.getClass.getSimpleName)
+      case err => error("Control OP type not recognized: " + err.getClass.getSimpleName)
     }
   }
 
@@ -119,7 +119,7 @@ trait StaticScheduler {
   protected def ensureScheduled(graph: DeliteTaskGraph) {
     for (op <- graph.ops) {
       if (!op.isScheduled)
-        sys.error("Graph dependencies are unsatisfiable")
+        error("Graph dependencies are unsatisfiable")
     }
   }
 

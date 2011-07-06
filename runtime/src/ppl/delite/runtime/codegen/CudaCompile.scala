@@ -49,7 +49,7 @@ object CudaCompile extends CodeCache {
       if (os.contains("Linux")) "linux"
       else if (os.contains("Windows")) "win32"
       //else if (os.contains("Mac")) "??"
-      else sys.error("OS " + os + " not currently supported with CUDA")
+      else error("OS " + os + " not currently supported with CUDA")
 
     val deliteHome = Config.deliteHome
 
@@ -81,7 +81,7 @@ object CudaCompile extends CodeCache {
         err = errorStream.read()
       }
       println()
-      sys.error("nvcc compilation failed")
+      error("nvcc compilation failed")
     }
   }
 

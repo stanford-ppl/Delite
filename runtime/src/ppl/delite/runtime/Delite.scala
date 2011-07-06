@@ -25,7 +25,7 @@ object Delite {
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
       println("Not enough arguments.\nUsage: [Launch Runtime Command] filename.deg arguments*")
-      sys.exit(-1)
+      exit(-1)
     }
     println("Delite Runtime executing with the following arguments:")
     println(args.mkString(","))
@@ -49,7 +49,7 @@ object Delite {
       case "default" => {
         if (Config.numGPUs == 0) new SMPStaticScheduler
         else if (Config.numThreads == 1 && Config.numGPUs == 1) new GPUOnlyStaticScheduler
-        else sys.error("No scheduler currently exists that can handle requested resources")
+        else error("No scheduler currently exists that can handle requested resources")
       }
       case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
     }
@@ -106,7 +106,7 @@ object Delite {
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => abnormalShutdown(); sys.exit(1) //a worker thread threw the original exception
+      case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception
       case e: Exception => abnormalShutdown(); throw e
     }
   }
@@ -114,7 +114,7 @@ object Delite {
   def loadDeliteDEG(filename: String) = {
     val deg = Path(filename)
     if (!deg.isFile)
-      sys.error(filename + " does not exist")
+      error(filename + " does not exist")
     DeliteTaskGraph(deg.jfile)
   }
 

@@ -518,7 +518,7 @@ abstract class GPUExecutableGenerator {
       case c: OP_Condition => new GPUConditionGenerator(c, location).makeExecutable()
       case w: OP_While => new GPUWhileGenerator(w, location).makeExecutable()
       case v: OP_Variant => new GPUVariantGenerator(v, location).makeExecutable()
-      case err => sys.error("Unrecognized nested OP type: " + err.getClass.getSimpleName)
+      case err => error("Unrecognized nested OP type: " + err.getClass.getSimpleName)
     }
   }
 
@@ -640,7 +640,7 @@ abstract class GPUExecutableGenerator {
     case "Short" => "short"
     case "Char" => "char"
     case "Byte" => "char"
-    case other => sys.error(other + " is not a primitive type")
+    case other => error(other + " is not a primitive type")
   }
 
   protected def isPrimitiveType(scalaType: String): Boolean = scalaType match {
