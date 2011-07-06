@@ -2,19 +2,19 @@ import sbt._
 import java.io.File
 
 final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with MavenStyleScalaPaths {
-  // define a root-level environment file local.properties
+  // define a root-level environment file delite.properties
   // from which scala.virtualized.home and virtualization_lms_core.home will be read
   // to get the directory of scala virtualized and the virtualization-lms-core
   lazy val local = new BasicEnvironment {
       def log = DeliteProject.this.log
-      def envBackingPath = info.projectPath / "local.properties"
+      def envBackingPath = info.projectPath / "delite.properties"
       lazy val scalaVirtualizedHome = property[String]
   }
   
   // use the local scala-virtualized compiler and library
   override def localScala =
     defineScala("2.9.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
-      log.error("scala.virtualized.home needs to be defined in local.properties and "+
+      log.error("scala.virtualized.home needs to be defined in delite.properties and "+
       "must point to a valid scala-virtualized home directory"); "<undefined>"
     }))::Nil
 
@@ -43,7 +43,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     
     override def localScala =
     defineScala("2.9.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {
-      log.error("scala.virtualized.home needs to be defined in local.properties and "+
+      log.error("scala.virtualized.home needs to be defined in delite.properties and "+
       "must point to a valid scala-virtualized home directory"); "<undefined>"
     }))::Nil 
   }
