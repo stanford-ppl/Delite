@@ -180,7 +180,7 @@ abstract class ExecutableGenerator {
       case c: OP_Condition => new ConditionGenerator(c, location).makeExecutable()
       case w: OP_While => new WhileGenerator(w, location).makeExecutable()
       case v: OP_Variant => new VariantGenerator(v, location).makeExecutable()
-      case err => error("Unrecognized nested OP type: " + err.getClass.getSimpleName)
+      case err => sys.error("Unrecognized nested OP type: " + err.getClass.getSimpleName)
     }
   }
 

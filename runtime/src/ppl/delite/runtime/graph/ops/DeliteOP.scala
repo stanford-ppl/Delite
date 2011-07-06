@@ -83,7 +83,7 @@ abstract class DeliteOP {
         assert(input.outputTypesMap.head._2.contains(name), "Cannot replace " + old + " with " + input + " as it does not contain output " + name)
         inputList.patch(inputList.indexOf((old,name)), List((input, name)), 1)
       }
-      case None => error(old + " is not an input of " + this + "; cannot be replaced")
+      case None => sys.error(old + " is not an input of " + this + "; cannot be replaced")
     }
     mutableInputs.find(_ == (old, name)) match {
       case Some((old, name)) => {

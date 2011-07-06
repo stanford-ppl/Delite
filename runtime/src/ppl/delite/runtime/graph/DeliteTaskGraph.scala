@@ -131,7 +131,7 @@ object DeliteTaskGraph {
 				val sizeIsConst = getFieldString(op, "sizeType") == "const"				
 				new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"))
       case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap)
-      case other => error("OP Type not recognized: " + other)
+      case other => sys.error("OP Type not recognized: " + other)
     }
 
     //handle inputs
@@ -492,7 +492,7 @@ class DeliteTaskGraph {
 
   def registerOp(op: DeliteOP, overwrite: Boolean = false) {
     for (o <- op.getOutputs) {
-      if (!overwrite && _ops.contains(o)) error("Output " + o + " / Op " + op + " is declared multiple times in DEG")
+      if (!overwrite && _ops.contains(o)) sys.error("Output " + o + " / Op " + op + " is declared multiple times in DEG")
       _ops(o) = op
     }
   }

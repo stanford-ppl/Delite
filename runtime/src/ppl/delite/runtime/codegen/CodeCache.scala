@@ -36,11 +36,11 @@ trait CodeCache {
   }
 
   private def parseModules(directory: Directory) {
-    def parseError() = error("Invalid module dependency file")
+    def parseError() = sys.error("Invalid module dependency file")
 
     val file = Path(directory.path + File.separator + "modules.dm")
     if (!file.exists)
-      error("Could not find module dependency file for generated code")
+      sys.error("Could not find module dependency file for generated code")
 
     val moduleList = new ListBuffer[String]
     val moduleDepsList = new ListBuffer[List[String]]
@@ -70,7 +70,7 @@ trait CodeCache {
           }
         }
       }
-      if (!updated) error("Module dependencies are unsatisfiable")
+      if (!updated) sys.error("Module dependencies are unsatisfiable")
     }
 
     orderedList += new Module("runtime", orderedList.toList)
