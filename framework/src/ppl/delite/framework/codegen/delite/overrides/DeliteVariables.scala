@@ -1,16 +1,16 @@
 package ppl.delite.framework.codegen.delite.overrides
 
-import scala.virtualization.lms.common.VariablesExp
 import java.io.PrintWriter
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.internal.{CGenEffect, CudaGenEffect, CLikeCodegen, ScalaGenEffect}
+import scala.virtualization.lms.internal.{CLikeCodegen}
+import scala.virtualization.lms.common._
 
 trait DeliteScalaGenVariables extends ScalaGenEffect {
   val IR: VariablesExp with DeliteOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
-    val symIsResult = (!deliteResult.isEmpty && deliteResult.get == sym)
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+    val symIsResult = !deliteResult.isEmpty && (deliteResult.get contains sym)
     var gen = false
     if (symIsResult) {
       rhs match {
@@ -22,7 +22,8 @@ trait DeliteScalaGenVariables extends ScalaGenEffect {
       rhs match {
         case ReadVar(Variable(a)) => emitValDef(sym, quote(a) + ".get"); gen = true
         case Assign(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(getBlockResult(b)) + ")"); gen = true
-        case VarPlusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get +" + quote(getBlockResult(b)) + ")"); gen = true
+        case VarPlusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get + " + quote(getBlockResult(b)) + ")"); gen = true
+        case VarMinusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get - " + quote(getBlockResult(b)) + ")"); gen = true
         case _ => // pass
       }
     }
@@ -34,10 +35,10 @@ trait DeliteScalaGenVariables extends ScalaGenEffect {
 }
 
 trait DeliteCLikeGenVariables extends CLikeCodegen {
-  val IR: VariablesExp with DeliteOpsExp
+  val IR: VariablesExp
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = super.emitNode(sym, rhs)
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = super.emitNode(sym, rhs)
 
 }
 

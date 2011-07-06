@@ -3,11 +3,11 @@ package ppl.delite.runtime
 import codegen._
 import executor._
 import graph.ops.{EOP, Arguments}
+import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
-import java.io.File
 import profiler.PerformanceTimer
 import scheduler._
-import tools.nsc.io.Directory
+import tools.nsc.io._
 
 /**
  * Author: Kevin J. Brown
@@ -19,6 +19,8 @@ import tools.nsc.io.Directory
  */
 
 object Delite {
+
+  private val mainThread = Thread.currentThread
 
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
@@ -62,51 +64,70 @@ object Delite {
       case _ => throw new IllegalArgumentException("Requested executor is not recognized")
     }
 
-    executor.init() //call this first because could take a while and can be done in parallel
-
-    //load task graph
-    val graph = loadDeliteDEG(args(0))
-    //val graph = new TestGraph
-
-    //load kernels & data structures
-    loadScalaSources(graph)
-
-    //schedule
-    scheduler.schedule(graph)
-
-    //compile
-    val executable = Compilers.compileSchedule(graph)
-
-    //execute
-    val numTimes = Config.numRuns
-    for (i <- 1 to numTimes) {
-      println("Beginning Execution Run " + i)
-      PerformanceTimer.start("all", false)
-      executor.run(executable)
-      EOP.await //await the end of the application program
-      PerformanceTimer.stop("all", false)
-      PerformanceTimer.print("all")
-      // check if we are timing another component
-      if(Config.dumpStatsComponent != "all")
-        PerformanceTimer.print(Config.dumpStatsComponent)
+    def abnormalShutdown() {
+      executor.shutdown()
+      Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
     }
 
-    if(Config.dumpStats)
-      PerformanceTimer.dumpStats()
+    try {
 
-    executor.shutdown()
+      executor.init() //call this first because could take a while and can be done in parallel
 
+      //load task graph
+      val graph = loadDeliteDEG(args(0))
+      //val graph = new TestGraph
+
+      //load kernels & data structures
+      loadSources(graph)
+
+      //schedule
+      scheduler.schedule(graph)
+
+      //compile
+      val executable = Compilers.compileSchedule(graph)
+
+      //execute
+      val numTimes = Config.numRuns
+      for (i <- 1 to numTimes) {
+        println("Beginning Execution Run " + i)
+        PerformanceTimer.start("all", false)
+        executor.run(executable)
+        EOP.await //await the end of the application program
+        PerformanceTimer.stop("all", false)
+        PerformanceTimer.print("all")
+        // check if we are timing another component
+        if(Config.dumpStatsComponent != "all")
+          PerformanceTimer.print(Config.dumpStatsComponent)
+      }
+
+      if(Config.dumpStats)
+        PerformanceTimer.dumpStats()
+
+      executor.shutdown()
+    }
+    catch {
+      case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception
+      case e: Exception => abnormalShutdown(); throw e
+    }
   }
 
   def loadDeliteDEG(filename: String) = {
-    val file = new File(filename)
-    if(file.isFile == false) throw new RuntimeException(filename + " doesn't appear to be a valid file")
-    DeliteTaskGraph(file)
+    val deg = Path(filename)
+    if (!deg.isFile)
+      error(filename + " does not exist")
+    DeliteTaskGraph(deg.jfile)
   }
 
-  def loadScalaSources(graph: DeliteTaskGraph) {
-    val sourceFiles = new Directory(new File(graph.kernelPath + java.io.File.separator + "scala" + java.io.File.separator)).deepFiles.filter(_.extension == "scala") //obtain all files in path
-    for (file <- sourceFiles) ScalaCompile.addSourcePath(file.path)
+  def loadSources(graph: DeliteTaskGraph) {
+    if (graph.targets contains Targets.Scala)
+      ScalaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + ScalaCompile.target + File.separator).toAbsolute))
+    if (graph.targets contains Targets.Cuda)
+      CudaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + CudaCompile.target + File.separator).toAbsolute))
+  }
+
+  //abnormal shutdown
+  def shutdown() {
+    mainThread.interrupt()
   }
 
 }

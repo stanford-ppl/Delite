@@ -30,7 +30,8 @@ abstract class ExecutableGenerator {
 
   def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
     for (i <- 0 until schedule.numResources) {
-      ScalaCompile.addSource(makeExecutable(schedule(i), i, kernelPath))
+      val src = makeExecutable(schedule(i), i, kernelPath)
+      ScalaCompile.addSource(src)
     }
   }
 
@@ -84,7 +85,7 @@ abstract class ExecutableGenerator {
           //add to available list
           available += dep
           //write a getter
-          writeGetter(dep, out)
+          writeGetter(dep, location, out)
         }
       }
 
@@ -98,7 +99,7 @@ abstract class ExecutableGenerator {
       }
       if (addSetter) {
         syncList += op //add op to list that needs sync generation
-        writeSetter(op, out)
+        writeSetter(op, out) //TODO: do we want to set the return objects or the deg objects?
       }
     }
   }
@@ -113,16 +114,29 @@ abstract class ExecutableGenerator {
     out.append(op.task)
     out.append('(')
     var first = true
-    for (input <- op.getInputs) {
+    for ((input, name) <- op.getInputs) {
       if (!first) out.append(',') //no comma before first argument
       first = false
-      out.append(getSym(input))
+      out.append(getSym(name))
     }
-    out.append(')')
-    out.append('\n')
+    out.append(")\n")
+
+    for (name <- op.getOutputs) {
+      out.append("val ")
+      out.append(getSym(name))
+      out.append(" : ")
+      out.append(op.outputType(name))
+      out.append(" = ")
+      out.append(getSym(op))
+      if (op.outputType(name) != op.outputType) {
+        out.append('.')
+        out.append(name)
+      }
+      out.append('\n')
+    }
   }
 
-  protected def writeGetter(dep: DeliteOP, out: StringBuilder) {
+  protected def writeGetter(dep: DeliteOP, location: Int, out: StringBuilder) {
     out.append("val ")
     out.append(getSym(dep))
     out.append(" : ")
@@ -131,8 +145,24 @@ abstract class ExecutableGenerator {
     out.append(executableName)
     out.append(dep.scheduledResource)
     out.append(".get")
-    out.append(dep.id)
+    out.append(location)
+    out.append('_')
+    out.append(getSym(dep))
     out.append('\n')
+
+    for (sym <- dep.getOutputs) {
+      out.append("val ")
+      out.append(getSym(sym))
+      out.append(" : ")
+      out.append(dep.outputType(sym))
+      out.append(" = ")
+      out.append(getSym(dep))
+      if (dep.outputType(sym) != dep.outputType) {
+        out.append(".")
+        out.append(sym)
+      }
+      out.append('\n')
+    }
   }
 
   protected def executableName: String
@@ -164,13 +194,20 @@ abstract class ExecutableGenerator {
   }
 
   protected def writePublicGet(op: DeliteOP, out: StringBuilder) {
-    out.append("def get")
-    out.append(op.id)
-    out.append(" : ")
-    out.append(op.outputType)
-    out.append(" = ")
-    out.append(getSync(op))
-    out.append(".get\n")
+    val consumerSet = calculateConsumerSet(op)
+    for (location <- consumerSet) {
+      out.append("def get")
+      out.append(location)
+      out.append('_')
+      out.append(getSym(op))
+      out.append(" : ")
+      out.append(op.outputType)
+      out.append(" = ")
+      out.append(getSync(op))
+      out.append(".get")
+      out.append(location)
+      out.append('\n')
+    }
   }
 
   protected def writeSyncObject(op: DeliteOP, out: StringBuilder) {
@@ -180,12 +217,15 @@ abstract class ExecutableGenerator {
     out.append( " {\n")
 
     //the state
-    out.append("private val numConsumers : Int = ")
-    out.append(calculateConsumerCount(op))
+    val consumerSet = calculateConsumerSet(op)
+    val numConsumers = consumerSet.size
 
-    out.append('\n')
     out.append("private var count : Int = 0\n")
-    out.append("private val takeIndex = new ThreadLocal[Int]{ override def initialValue = 0 }\n")
+    for (cons <- consumerSet) {
+      out.append("private var takeIndex")
+      out.append(cons)
+      out.append(" : Int = 0\n")
+    }
     out.append("private var putIndex : Int = 0\n")
     out.append("private var _result : ")
     out.append(op.outputType)
@@ -195,16 +235,28 @@ abstract class ExecutableGenerator {
     out.append("private val notEmpty = lock.newCondition\n")
     out.append("private val notFull = lock.newCondition\n")
 
-    //the getter
-    out.append("def get : ")
-    out.append(op.outputType)
-    out.append(" = { val takeIndex = this.takeIndex.get; val lock = this.lock; lock.lock; try { while (takeIndex == putIndex) { notEmpty.await }; extract(takeIndex) } finally { lock.unlock } }\n")
+    //the getters
+    for (cons <- consumerSet) {
+      out.append("def get")
+      out.append(cons)
+      out.append(" : ")
+      out.append(op.outputType)
+      out.append(" = { val takeIndex = takeIndex")
+      out.append(cons)
+      out.append("; val lock = this.lock; lock.lock; try { while (takeIndex == putIndex) { notEmpty.await }; extract")
+      out.append(cons)
+      out.append(" } finally { lock.unlock } }\n")
 
-    out.append("private def extract(takeIndex: Int) : ")
-    out.append(op.outputType)
-    out.append(" = { val res = _result; this.takeIndex.set(takeIndex + 1); count -= 1; if (count == 0) { _result = null.asInstanceOf[")
-    out.append(op.outputType)
-    out.append("]; notFull.signal }; res }\n")
+      out.append("private def extract")
+      out.append(cons)
+      out.append(" : ")
+      out.append(op.outputType)
+      out.append(" = { val res = _result; takeIndex")
+      out.append(cons)
+      out.append("+= 1; count -= 1; if (count == 0) { _result = null.asInstanceOf[")
+      out.append(op.outputType)
+      out.append("]; notFull.signal }; res }\n")
+    }
 
     //the setter
     out.append("def set(result : ")
@@ -213,22 +265,28 @@ abstract class ExecutableGenerator {
 
     out.append("private def insert(result: ")
     out.append(op.outputType)
-    out.append(") { _result = result; count = numConsumers; putIndex += 1; notEmpty.signalAll }\n")
+    out.append(") { _result = result; count = ")
+    out.append(numConsumers)
+    out.append("; putIndex += 1; notEmpty.signalAll }\n")
 
     //the footer
     out.append('}')
     out.append('\n')
   }
 
-  protected def calculateConsumerCount(op: DeliteOP) = {
+  protected def calculateConsumerSet(op: DeliteOP) = {
     val consumerSet = HashSet.empty[Int]
     for (cons <- op.getConsumers) consumerSet += cons.scheduledResource
     consumerSet -= op.scheduledResource
-    consumerSet.size
+    consumerSet
   }
 
   protected def getSym(op: DeliteOP): String = {
-    "x"+op.id
+    "o"+op.id
+  }
+
+  protected def getSym(name: String): String = {
+    "x"+name
   }
 
   protected def getSync(op: DeliteOP): String = {

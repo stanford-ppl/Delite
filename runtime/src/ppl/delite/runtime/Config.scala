@@ -27,6 +27,17 @@ object Config {
 
   val deliteHome: String = System.getProperty("delite.home", System.getProperty("user.dir"))
 
+  val codeCacheHome: String = System.getProperty("delite.code.cache.home", deliteHome + java.io.File.separator + "generatedCache")
+
+  val useFsc: Boolean = if (System.getProperty("delite.usefsc") == null) false else true
+
+  /***********
+   *	Cost Modeling
+   */
+  
+	val whileCostThreshold: Int = System.getProperty("delite.while.threshold", "1000").toInt
+	val loopCostThreshold: Int = System.getProperty("delite.loop.threshold", "1000").toInt
+	 
   /***********
     * Statistics and Metrics Section
     */

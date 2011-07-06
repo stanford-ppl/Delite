@@ -2,26 +2,54 @@ package ppl.delite.framework.codegen.delite.overrides
 
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{WhileExp}
+import scala.virtualization.lms.common.{ScalaGenEffect, CudaGenEffect, CGenEffect}
+import scala.virtualization.lms.internal.{GenericNestedCodegen}
 import java.io.PrintWriter
-import scala.virtualization.lms.internal._
 
 trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
 
   this: DeliteOpsExp =>
 
+  // there is a lot of duplication between DeliteWhile and While in lms -- do we really need a separate class here?
+  
   case class DeliteWhile(cond: Exp[Boolean], body: Exp[Unit]) extends DeliteOpWhileLoop
 
   override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit]) {
-    cond match {
-      case Const(true) => // print warning?
-      case Const(false) => return
+    //val c = reifyEffects(cond)
+    //val a = reifyEffects(body)
+    // TODO: reflectEffect(new While(c, a) with DeliteOpWhile))
+    //reflectEffect(DeliteWhile(c, a))
+    val c = reifyEffects(cond)
+    c match {
+      case Const(true)  => // print warning?
+      case Const(false)  => return
       case _ => // pass
     }
 
-    val c = reifyEffects(cond)
     val a = reifyEffects(body)
-    // TODO: reflectEffect(new While(c, a) with DeliteOpWhile))
-    reflectEffect(DeliteWhile(c, a))
+    val ce = summarizeEffects(c)
+    val ae = summarizeEffects(a)
+    reflectEffect(DeliteWhile(c, a), ce andThen ((ae andThen ce).star))
+  }
+
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    case DeliteWhile(c, b) => syms(c):::syms(b) // wouldn't need to override...
+    case _ => super.syms(e)
+  }
+
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteWhile(c, b) => effectSyms(c):::effectSyms(b)
+    case _ => super.boundSyms(e)
+  }
+/*
+  override def hotSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteWhile(c, b) => syms(c):::syms(b)
+    case _ => super.hotSyms(e)
+  }
+*/
+  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
+    case DeliteWhile(c, b) => freqHot(c) ++ freqHot(b)
+    case _ => super.symsFreq(e)
   }
 
 }
@@ -30,23 +58,12 @@ trait DeliteBaseGenWhile extends GenericNestedCodegen {
   val IR: DeliteWhileExp
   import IR._
 
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    case DeliteWhile(c, b) if shallow => Nil
-    case _ => super.syms(e)
-  }
-
-  // TODO: What about condition node?
-  override def getFreeVarNode(rhs: Def[_]): List[Sym[_]] = rhs match {
-    case DeliteWhile(c,b) => getFreeVarBlock(c,Nil) ::: getFreeVarBlock(b,Nil)
-    case _ => super.getFreeVarNode(rhs)
-  }
-
 }
 
 trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case DeliteWhile(c,b) =>
       val save = deliteKernel
       deliteKernel = false
@@ -66,7 +83,7 @@ trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
 trait DeliteCudaGenWhile extends CudaGenEffect with DeliteBaseGenWhile {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case DeliteWhile(c,b) =>
             // Get free variables list
@@ -93,7 +110,7 @@ trait DeliteCudaGenWhile extends CudaGenEffect with DeliteBaseGenWhile {
 trait DeliteCGenWhile extends CGenEffect with DeliteBaseGenWhile {
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case DeliteWhile(c,b) =>
         // calculate condition

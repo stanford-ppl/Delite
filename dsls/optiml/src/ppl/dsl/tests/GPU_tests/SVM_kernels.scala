@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
 
 
-object SVM_kernels extends DeliteApplication with OptiMLExp {
+object SVM_kernelsRunner extends OptiMLApplicationRunner with SVM_kernels
+
+trait SVM_kernels extends OptiMLApplication {
 
   def main() {
     println("SVM kernel generation")

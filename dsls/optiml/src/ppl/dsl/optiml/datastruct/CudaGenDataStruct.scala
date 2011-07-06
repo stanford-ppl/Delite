@@ -10,7 +10,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   val IR: Expressions
   import IR._
 
-  def matrixCopyHtoD(sym: Sym[_]): String = {
+  def matrixCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
     val numBytesStr = "%s->numRows * %s->numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
@@ -49,7 +49,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   }
 
-  def vectorCopyHtoD(sym: Sym[_]): String = {
+  def vectorCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
     val typeStr = remap(typeArg)
@@ -95,7 +95,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def rangeVectorCopyHtoD(sym: Sym[_]): String = {
+  def rangeVectorCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
 
     // Get class, method ID
@@ -116,7 +116,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def indexVectorCopyHtoD(sym: Sym[_]): String = {
+  def indexVectorCopyInputHtoD(sym: Sym[Any]): String = {
     //vectorCopyHtoD(sym)
     val out = new StringBuilder
     val typeArg = manifest[Int]
@@ -173,11 +173,11 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def labelsCopyHtoD(sym: Sym[_]): String = {
-    vectorCopyHtoD(sym)
+  def labelsCopyInputHtoD(sym: Sym[Any]): String = {
+    vectorCopyInputHtoD(sym)
   }
 
-  def trainingSetCopyHtoD(sym: Sym[_]): String = {
+  def trainingSetCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
     val numBytesStr = "%s->numRows * %s->numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
@@ -255,7 +255,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
   
-  def matrixCopyDtoH(sym: Sym[_]): String = {
+  def matrixCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
     val numBytesStr = "%s->numRows * %s->numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
@@ -290,7 +290,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def matrixCopyDtoHBack(sym: Sym[_]): String = {
+  def matrixCopyMutableInputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
     val numBytesStr = "%s->numRows * %s->numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
@@ -309,7 +309,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def vectorCopyDtoH(sym: Sym[_]): String = {
+  def vectorCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
     val numBytesStr = "%s->length * sizeof(%s)".format(quote(sym),remap(sym.Type.typeArguments(0)))
@@ -344,7 +344,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def vectorCopyDtoHBack(sym: Sym[_]): String = {
+  def vectorCopyMutableInputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
     val typeStr = remap(typeArg)
@@ -364,26 +364,35 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def rangeVectorCopyDtoHBack(sym: Sym[_]): String = {
+  def rangeVectorCopyMutableInputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     out.append("\tstd::cout << \"CopyDtoHBack rangeVector is not supported yet\" << std::endl;\n")
     out.toString
   }
 
-  def indexVectorCopyDtoHBack(sym: Sym[_]): String = {
-    vectorCopyDtoHBack(sym)
+  def indexVectorCopyMutableInputDtoH(sym: Sym[Any]): String = {
+    vectorCopyMutableInputDtoH(sym)
   }
 
-  def labelsCopyDtoHBack(sym: Sym[_]): String = {
-    vectorCopyDtoHBack(sym)
+  def labelsCopyMutableInputDtoH(sym: Sym[Any]): String = {
+    vectorCopyMutableInputDtoH(sym)
   }
 
-  def trainingSetCopyDtoHBack(sym: Sym[_]): String = {
+  def trainingSetCopyMutableInputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     out.append("\tstd::cout << \"CopyDtoHBack TrainingSet is not supported yet\" << std::endl;\n")
     out.toString
   }
 
+  // Dummy methods temporarily just for the compilation
+  def emitVectorAlloc(newSym:Sym[_],length:String,isRow:String,reset:Boolean,data:String=null) {}
+  def emitVectorAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
+  def emitVectorAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
+  def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null) {}
+  def emitMatrixAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
+  def emitMatrixAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
+
+  /*
   // Generate & register temporary data structures (which could be the output) for GPU kernel
   def emitVectorAlloc(newSym:Sym[_], length:String, isRow:String, reset:Boolean, data:String=null):Unit = {
     //TODO: Check if both symbols are Vectors
@@ -437,8 +446,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     // Register MetaData
     if(newSym == kernelSymbol) {
       MetaData.gpuOutput = "{\"%s\":[\"%s\",\"gpuMemAlloc_%s_%s_%s\",[%s],\"gpuMemCopy_%s_%s_%s\",[\"%s\",\"%s\"]]}".format(quote(newSym),remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,argStrOut,quote(kernelSymbol), quote(newSym), helperFuncIdx,"env", quote(newSym))
-      out.append(emitCopyDtoH(newSym))
-	  gpuOutputs = gpuOutputs :+ newSym
+      out.append(emitCopyOutputDtoH(newSym))
+	    gpuOutputs = gpuOutputs :+ newSym
     }
     else {
       MetaData.gpuTemps.add("{\"%s\":[\"%s\",\"gpuMemAlloc_%s_%s_%s\",[%s]]}".format(quote(newSym),remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,argStrTemp))
@@ -450,7 +459,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     emitVectorAlloc(newSym, quote(sym)+"->length", quote(sym)+"->isRow", reset)
   }
 
-  def emitVectorAllocRef(newSym:Sym[_], sym:Sym[_]): Unit = {
+  def emitVectorAllocRef(newSym:Sym[Any], sym:Sym[Any]): Unit = {
 
 
     // Do not add the same temporary if it already exists
@@ -470,8 +479,8 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     if(newSym == kernelSymbol) {
       MetaData.gpuOutput = "{\"%s\":[\"%s\",\"gpuMemAlloc_%s_%s_%s\",[%s],\"gpuMemCopy_%s_%s_%s\",[\"%s\",\"%s\"]]}".format(quote(newSym),remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,argStr,quote(kernelSymbol), quote(newSym),helperFuncIdx,"env", quote(newSym))
-      out.append(emitCopyDtoH(newSym))
-	  gpuOutputs = gpuOutputs :+ newSym
+      out.append(emitCopyOutputDtoH(newSym))
+	    gpuOutputs = gpuOutputs :+ newSym
     }
     else {
       MetaData.gpuTemps.add("{\"%s\":[\"%s\",\"gpuMemAlloc_%s_%s_%s\",[%s]]}".format(quote(newSym),remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,argStr))
@@ -479,8 +488,9 @@ trait CudaGenDataStruct extends CudaCodegen {
     }
     helperFuncString.append(out.toString)
   }
+  */
 
-  def vectorPositionMultDimInputs(sym: Sym[_]) : String = {
+  def vectorPositionMultDimInputs(sym: Sym[Any]) : String = {
 	val out = new StringBuilder
 	currDim = 1
 	val currDimStr = getCurrDimStr()
@@ -488,6 +498,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 	out.toString
   }
 
+  /*
   def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null): Unit = {
     //TODO: Check if both symbols are Matrices
 
@@ -537,8 +548,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     // Register MetaData
     if(newSym == kernelSymbol) {
       MetaData.gpuOutput = "{\"%s\":[\"%s\",\"gpuMemAlloc_%s_%s_%s\",[%s],\"gpuMemCopy_%s_%s_%s\",[\"%s\",\"%s\"]]}".format(quote(newSym),remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,argStrOut,quote(kernelSymbol), quote(newSym),helperFuncIdx,"env", quote(newSym))
-      out.append(emitCopyDtoH(newSym))
-	  gpuOutputs = gpuOutputs :+ newSym
+      out.append(emitCopyOutputDtoH(newSym))
+	    gpuOutputs = gpuOutputs :+ newSym
     }
     else {
       MetaData.gpuTemps.add("{\"%s\":[\"%s\",\"gpuMemAlloc_%s_%s_%s\",[%s]]}".format(quote(newSym),remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,argStrTemp))
@@ -550,11 +561,11 @@ trait CudaGenDataStruct extends CudaCodegen {
     emitMatrixAlloc(newSym, quote(sym)+"->numRows", quote(sym)+"->numCols",reset)
   }
 
-  def emitMatrixAllocRef(newSym:Sym[_], sym:Sym[_]): Unit = {
+  def emitMatrixAllocRef(newSym:Sym[Any], sym:Sym[Any]): Unit = {
     // Do not add the same temporary if it already exists
     if(gpuTemps.contains(newSym)) return
 
-	helperFuncIdx += 1
+	  helperFuncIdx += 1
 
     val out = new StringBuilder
     val paramStr = if(isObjectType(sym.Type)) remap(sym.Type) + " *" + quote(sym)
@@ -568,8 +579,8 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     if(newSym == kernelSymbol) {
       MetaData.gpuOutput = "{\"%s\":[\"%s\",\"gpuMemAlloc_%s_%s_%s\",[%s],\"gpuMemCopy_%s_%s_%s\",[\"%s\",\"%s\"]]}".format(quote(newSym),remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,argStr,quote(kernelSymbol), quote(newSym),helperFuncIdx,"env", quote(newSym))
-      out.append(emitCopyDtoH(newSym))
-	  gpuOutputs = gpuOutputs :+ newSym
+      out.append(emitCopyOutputDtoH(newSym))
+	    gpuOutputs = gpuOutputs :+ newSym
     }
     else {
       MetaData.gpuTemps.add("{\"%s\":[\"%s\",\"gpuMemAlloc_%s_%s_%s\",[%s]]}".format(quote(newSym),remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,argStr))
@@ -577,5 +588,6 @@ trait CudaGenDataStruct extends CudaCodegen {
     }
     helperFuncString.append(out.toString)
   }
-
+ */
 }
+

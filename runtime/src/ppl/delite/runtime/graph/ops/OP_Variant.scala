@@ -12,17 +12,12 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
  * Stanford University
  */
 
-class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp: DeliteOP, val variantGraph: DeliteTaskGraph)
+class OP_Variant(val id: String, private[graph] val outputTypesMap: Map[Targets.Value,Map[String,String]], superOp: DeliteOP, val variantGraph: DeliteTaskGraph)
   extends OP_Nested {
 
-  def supportsTarget(target: Targets.Value) = resultType.contains(target)
-
-  def outputType(target: Targets.Value) = resultType(target)
-  override def outputType: String = resultType(Targets.Scala)
-
   def returner(indices: Seq[Int]) = {
-    if (variantGraph.result != null && !variantGraph.result.isInstanceOf[OP_Input])
-      variantGraph.result.scheduledResource
+    if (variantGraph.result != null && !variantGraph.result._1.isInstanceOf[OP_Input])
+      variantGraph.result._1.scheduledResource
     else indices(0)
   }
 
@@ -37,12 +32,11 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
     val returnerIdx = returner(indices)
     val chunks =
       for (idx <- indices) yield {
-        val resultMap = if (idx == returnerIdx) resultType else Targets.unitTypes
+        val resultMap = if (idx == returnerIdx) outputTypesMap else Targets.unitTypes(id+"_"+idx)
         val r = new OP_Variant(id+"_"+idx, resultMap, superOp, variantGraph)
-        r.dependencyList = superOp.dependencyList
+        r.dependencies = superOp.dependencies
         r.inputList = superOp.inputList
-        r.consumerList = superOp.consumerList
-        r.inputSyms = this.inputSyms
+        r.consumers = superOp.consumers
         r.cudaMetadata = this.cudaMetadata
         for (dep <- r.getDependencies) dep.addConsumer(r)
         for (c <- r.getConsumers) c.addDependency(r)
@@ -50,9 +44,8 @@ class OP_Variant(val id: String, resultType: Map[Targets.Value,String], superOp:
 
         //add special consumer ops
         if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
-          variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx, idx, Seq(variantGraph.result), Seq(variantGraph.result))) //get result on returner chunk
+          variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx, idx, Seq(variantGraph.result._1), Seq(variantGraph.result._1))) //get result on returner chunk
         }
-
         r
       }
 

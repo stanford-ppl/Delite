@@ -19,7 +19,7 @@ final class CudaMetadata {
   val blockSizeZ = new OPData
   val dimSizeX = new OPData
   val dimSizeY = new OPData
-  var inputs = Map[DeliteOP, OPData]()
+  var inputs = Map[(DeliteOP, String), OPData]()
   var temps: List[OPData] = Nil
   var tempOps: List[DeliteOP] = Nil
   var output = new OPData
@@ -34,9 +34,9 @@ final class CudaMetadata {
     case other => error("unknown field: " + other)
   }
 
-  def newInput(op: DeliteOP) = {
+  def newInput(op: DeliteOP, sym: String) = {
     val in = new OPData
-    inputs += op -> in
+    inputs += (op,sym) -> in
     in
   }
 
@@ -46,19 +46,19 @@ final class CudaMetadata {
     temp
   }
 
-  def replaceInput(old: DeliteOP, op: DeliteOP) {
-    if (inputs contains old) {
-      val value = inputs(old)
-      inputs -= old
-      inputs += op -> value
+  def replaceInput(old: DeliteOP, op: DeliteOP, sym: String) {
+    if (inputs contains (old, sym)) {
+      val value = inputs((old, sym))
+      inputs -= Pair(old, sym)
+      inputs += (op, sym) -> value
 
-      blockSizeX.replaceInput(old, op)
-      blockSizeY.replaceInput(old, op)
-      blockSizeZ.replaceInput(old, op)
-      dimSizeX.replaceInput(old, op)
-      dimSizeY.replaceInput(old, op)
-      for (temp <- temps) temp.replaceInput(old, op)
-      output.replaceInput(old, op)
+      blockSizeX.replaceInput(old, op, sym)
+      blockSizeY.replaceInput(old, op, sym)
+      blockSizeZ.replaceInput(old, op, sym)
+      dimSizeX.replaceInput(old, op, sym)
+      dimSizeY.replaceInput(old, op, sym)
+      for (temp <- temps) temp.replaceInput(old, op, sym)
+      output.replaceInput(old, op, sym)
     }
   }
 
@@ -68,12 +68,12 @@ final class OPData {
 
   var func: String = _
   var funcReturn: String = _
-  var inputs: List[DeliteOP] = Nil
+  var inputs: List[(DeliteOP,String)] = Nil
   var resultType: String = _
 
-  private[targets] def replaceInput(old: DeliteOP, op: DeliteOP) {
-    if (inputs contains old)
-      inputs = inputs.patch(inputs.indexOf(old), List(op), 1)
+  private[targets] def replaceInput(old: DeliteOP, op: DeliteOP, sym: String) {
+    if (inputs contains (old, sym))
+      inputs = inputs.patch(inputs.indexOf((old,sym)), List((op,sym)), 1)
   }
 
 }

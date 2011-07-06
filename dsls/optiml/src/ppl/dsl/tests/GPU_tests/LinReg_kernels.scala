@@ -5,7 +5,9 @@ import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
 
-object LinReg_kernels extends DeliteApplication with OptiMLExp {
+object LinReg_kernelsRunner extends OptiMLApplicationRunner with LinReg_kernels
+
+trait LinReg_kernels extends OptiMLApplication {
 
   def main() {
     println("LinReg kernel generation")

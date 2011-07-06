@@ -1,10 +1,12 @@
 package ppl.apps.ml.gda
 
 import ppl.dsl.optiml._
-import datastruct.scala.NilVector
+import datastruct.scala.EmptyVector
 import ppl.delite.framework.DeliteApplication
 
-object GDAVectorized extends DeliteApplication with OptiMLExp {
+object GDAVectorizedRunner extends OptiMLApplicationRunner with GDAVectorized
+
+trait GDAVectorized extends OptiMLApplication {
 
   def print_usage = {
     println("Usage: GDA <input data file> <output label data file>")
@@ -17,7 +19,7 @@ object GDAVectorized extends DeliteApplication with OptiMLExp {
     val x = MLInputReader.read(args(0))
     val y = MLInputReader.readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
 
-    tic
+    tic()
 
     /* number of training samples */
     val m = y.length
@@ -28,10 +30,10 @@ object GDAVectorized extends DeliteApplication with OptiMLExp {
 
     val (y_zeros, y_ones, mu0_num, mu1_num) = t4( sum(0,m) { i =>
       if (y(i) == false){
-        (unit(1.),unit(0.),x(i),NilV[Double])
+        (unit(1.),unit(0.),x(i),EmptyVector[Double])
       }
       else {
-        (unit(0.),unit(1.),NilV[Double],x(i))
+        (unit(0.),unit(1.),EmptyVector[Double],x(i))
       }
     })
 
@@ -52,9 +54,7 @@ object GDAVectorized extends DeliteApplication with OptiMLExp {
 
     val sigma = x0tt.t*x0tt + x1tt.t*x1tt
 
-    // TODO: nothing is really preventing toc from getting hoisted upwards in the schedule, resulting in the wrong time
-    // unless the above sum is a reflectEffect
-    toc
+    toc(sigma)
 
     //print("GDA parameter calculation finished: ")
     //println("  phi = " + phi)

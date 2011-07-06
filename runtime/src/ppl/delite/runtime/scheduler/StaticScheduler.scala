@@ -3,6 +3,7 @@ package ppl.delite.runtime.scheduler
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.ops._
 import java.util.ArrayDeque
+import ppl.delite.runtime.cost._
 
 /**
  * Author: Kevin J. Brown
@@ -18,13 +19,16 @@ import java.util.ArrayDeque
  * Defines the public interface for the rest of the Delite Runtime
  */
 
-abstract class StaticScheduler {
-
+trait StaticScheduler {
+  this: AbstractCostModel =>
+	
   def schedule(graph: DeliteTaskGraph)
 
   protected def scheduleFlat(graph: DeliteTaskGraph)
 
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule)
+
+  protected def scheduleSequential(graph: DeliteTaskGraph)
 
   protected def enqueueRoots(graph: DeliteTaskGraph, opQueue: ArrayDeque[DeliteOP]) {
     for (op <- graph.ops) {
@@ -36,19 +40,36 @@ abstract class StaticScheduler {
   }
 
   protected def split(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
-    val helper = OpHelper.expand(op, resourceList.length, graph)
-    helper.isSchedulable = true
-    scheduleOne(helper, graph, schedule)
+    val header = OpHelper.expand(op, resourceList.length, graph)
+    if (resourceList.length == 1) //if confined to one resource, ensure header is put on the same resource
+      scheduleOn(header, schedule, resourceList(0))
+    else
+      scheduleOne(header, graph, schedule)
 
     for (i <- resourceList) {
       val chunk = OpHelper.split(op, i, resourceList.length, graph.kernelPath)
-      schedule(i).add(chunk)
-      chunk.scheduledResource = i
-      chunk.isSchedulable = true
-      chunk.isScheduled = true
+      scheduleOn(chunk, schedule, i)
     }
   }
 
+	protected def addSequential(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resource: Int) {
+		op match {
+			case c: OP_Condition => {
+				scheduleSequential(c.predicateGraph)
+				scheduleSequential(c.thenGraph)
+				scheduleSequential(c.elseGraph)				
+				splitNotEmpty(c, graph, schedule, List(c.predicateGraph.schedule, c.thenGraph.schedule, c.elseGraph.schedule), Seq(0))			
+			}
+			case w: OP_While => {
+				scheduleSequential(w.predicateGraph)
+				scheduleSequential(w.bodyGraph)
+				splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), Seq(0))			
+			}
+			case op if op.isDataParallel => split(op, graph, schedule, Seq(0))
+			case op => scheduleOn(op, schedule, resource)
+		}		
+	}
+	
   protected def addNested(op: OP_Nested, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
     op match {
       case c: OP_Condition => {
@@ -58,9 +79,15 @@ abstract class StaticScheduler {
         splitNotEmpty(c, graph, schedule, List(c.predicateGraph.schedule, c.thenGraph.schedule, c.elseGraph.schedule), resourceList)
       }
       case w: OP_While => {
-        scheduleFlat(w.predicateGraph)
-        scheduleFlat(w.bodyGraph)
-        splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), resourceList)
+				if (shouldParallelize(w, Map[String,Int]())){
+					scheduleFlat(w.predicateGraph)	        
+        	scheduleFlat(w.bodyGraph)
+				}
+				else {					
+					scheduleSequential(w.predicateGraph)
+					scheduleSequential(w.bodyGraph)
+			  }        
+				splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), resourceList)			
       }
       case v: OP_Variant => {
         scheduleFlat(v.variantGraph)
@@ -68,6 +95,13 @@ abstract class StaticScheduler {
       }
       case err => error("Control OP type not recognized: " + err.getClass.getSimpleName)
     }
+  }
+
+  protected def scheduleOn(op: DeliteOP, schedule: PartialSchedule, resource: Int) {
+    schedule(resource).add(op)
+    op.scheduledResource = resource
+    op.isSchedulable = true
+    op.isScheduled = true
   }
 
   protected def splitNotEmpty(op: OP_Nested, graph: DeliteTaskGraph, outerSchedule: PartialSchedule, innerSchedules: List[PartialSchedule], resourceList: Seq[Int]) {
@@ -78,10 +112,7 @@ abstract class StaticScheduler {
     val chunksIter = chunks.iterator
     for (i <- chunkList) {
       val chunk = chunksIter.next
-      outerSchedule(i).add(chunk)
-      chunk.scheduledResource = i
-      chunk.isSchedulable = true
-      chunk.isScheduled = true
+      scheduleOn(chunk, outerSchedule, i)
     }
   }
 

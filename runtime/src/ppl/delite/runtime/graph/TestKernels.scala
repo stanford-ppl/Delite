@@ -168,7 +168,7 @@ object TestKernelMapReduce {
 abstract class DeliteOPForeach[A] {
   def in: DeliteCollection[A]
   def foreach(elem: A): Unit
-  def sync(idx: Int): List[_]
+  def sync(idx: Int): List[Any]
 }
 
 object TestKernelForeach {

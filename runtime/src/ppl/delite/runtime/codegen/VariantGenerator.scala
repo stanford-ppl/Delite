@@ -2,7 +2,6 @@ package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.ops.{DeliteOP, OP_Variant}
-import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * Author: Kevin J. Brown
@@ -19,7 +18,7 @@ class VariantGenerator(variant: OP_Variant, location: Int) extends NestedGenerat
     val out = new StringBuilder //the output string
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     val hasOutput = variant.outputType != "Unit"
-    val inputs = variant.variantGraph.inputs
+    val inputs = variant.variantGraph.inputOps
 
     updateOP()
     //header
@@ -32,7 +31,7 @@ class VariantGenerator(variant: OP_Variant, location: Int) extends NestedGenerat
     //output body
     addKernelCalls(variant.variantGraph.schedule(location), location, out, available, syncList)
     if (hasOutput) {
-      out.append(getSym(variant.variantGraph.result))
+      out.append(getSym(variant.variantGraph.result._2))
       out.append('\n')
     }
     out.append("}\n") //end of method
@@ -61,8 +60,9 @@ class GPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUNestedG
 
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
     val out = new StringBuilder //the output string
-    val inputs = variant.variantGraph.inputs
     val hasOutput = variant.outputType != "Unit"
+    val inputs = variant.variantGraph.inputOps
+
 
     writeFunctionHeader(out)
     writeJNIInitializer(location, out)
@@ -76,7 +76,7 @@ class GPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUNestedG
     addKernelCalls(variant.variantGraph.schedule(location), location, available, awaited, syncList, out)
     if (hasOutput) {
       out.append("return ")
-      out.append(getSymGPU(variant.variantGraph.result))
+      out.append(getSymGPU(variant.variantGraph.result._2))
       out.append(";\n")
     }
     out.append("}\n") //end of function

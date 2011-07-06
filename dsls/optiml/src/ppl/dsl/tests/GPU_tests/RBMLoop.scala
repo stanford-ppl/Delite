@@ -4,7 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
-object RBMLoop extends DeliteApplication with OptiMLExp {
+object RBMLoopRunner extends OptiMLApplicationRunner with RBMLoop
+
+trait RBMLoop extends OptiMLApplication {
 
   def print_usage = {
     println("Usage: RBM <MNIST data file> <numHiddenUnits> <numcases>")
@@ -43,12 +45,12 @@ object RBMLoop extends DeliteApplication with OptiMLExp {
     var hidbiasinc = Vector.zerosf(numHiddenUnits)
     var visbiasinc = Vector.zerosf(numdims)
 
-    tic
+    tic()
     //for (epoch <- 0 until maxEpoch) {
-      val epoch = unit(0) 
-      var errsum = unit(0f)
+      val epoch = 0
+      var errsum = 0f
       //for (batch <- 0 until numbatches) {
-	  var batch = unit(0)
+	    var batch = 0
         //println("Epoch: " + epoch + ", Batch: " + batch)
 
         // Positive phase
@@ -89,8 +91,8 @@ object RBMLoop extends DeliteApplication with OptiMLExp {
         //PerformanceTimer.start("RBM-biasupdates", false)
         val momentum = if (epoch > 5) finalmomentum else initialmomentum
         vishidinc = vishidinc * momentum + ((posprods - negprods) / numcases  - (vishid * weightcost))*epsilonw
-        visbiasinc = visbiasinc * momentum + (posvisact - negvisact) * (epsilonvb / numcases)
-        hidbiasinc = hidbiasinc * momentum + (poshidact - neghidact) * (epsilonhb / numcases)
+        visbiasinc = visbiasinc * momentum + (posvisact - negvisact) * (unit(epsilonvb) / numcases) // TODO aks: why is unit needed here?
+        hidbiasinc = hidbiasinc * momentum + (poshidact - neghidact) * (unit(epsilonhb) / numcases)
 
         vishid = vishid + vishidinc
         visbiases = visbiases + visbiasinc
@@ -100,7 +102,7 @@ object RBMLoop extends DeliteApplication with OptiMLExp {
       println("--> Epoch " + epoch)
       println(" error = " + errsum)
     //}
-    toc
+    toc()
 
     //PerformanceTimer.print("RBM-posphase")
     //PerformanceTimer.save("RBM-posphase")

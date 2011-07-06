@@ -12,14 +12,25 @@ package ppl.delite.runtime.graph.targets
 object Targets extends Enumeration {
   val Scala = Value("scala")
   val Cuda = Value("cuda")
+  val C = Value("c")
+
+  /**
+   * Return the value of a target
+   */
+  def target(s: String): Value = s.toLowerCase() match {
+    case "scala" => Scala
+    case "cuda" => Cuda
+    case "c" => C
+    case _ => throw new IllegalArgumentException("unsupported target: " + s)
+  }
 
   /**
    * Create a Unit-type Map for the set of targets included in the input Map
    */
-  def unitTypes(targets: Map[Value,String]): Map[Value,String] = {
-    var unitMap = Map[Value,String]()
+  def unitTypes(id: String, targets: Map[Value,Map[String,String]]): Map[Value,Map[String,String]] = {
+    var unitMap = Map[Value,Map[String,String]]()
     for (target <- targets.keys) {
-      unitMap += target -> unitType(target)
+      unitMap += target -> Map(id -> unitType(target), "functionReturn" -> unitType(target))
     }
     unitMap
   }
@@ -27,10 +38,10 @@ object Targets extends Enumeration {
   /**
    * Creates a Unit-type Map for all targets
    */
-  def unitTypes: Map[Value,String] = {
-    var unitMap = Map[Value,String]()
+  def unitTypes(id: String): Map[Value,Map[String,String]] = {
+    var unitMap = Map[Value,Map[String,String]]()
     for (target <- values) {
-      unitMap += target -> unitType(target)
+      unitMap += target -> Map(id -> unitType(target), "functionReturn" -> unitType(target))
     }
     unitMap
   }
@@ -42,6 +53,7 @@ object Targets extends Enumeration {
     target match {
       case Scala => "Unit"
       case Cuda => "void"
+      case C => "void"
     }
   }
 

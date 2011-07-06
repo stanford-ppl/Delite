@@ -18,10 +18,10 @@ import ppl.delite.runtime.scheduler.StaticSchedule
 
 abstract class Executor {
 
-  def run(schedule: StaticSchedule): Unit
+  def run(schedule: StaticSchedule)
 
-  def init(): Unit
+  def init()
 
-  def shutdown(): Unit
+  def shutdown()
 
 }

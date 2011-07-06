@@ -1,0 +1,50 @@
+#!/usr/bin/python
+
+import sys
+import random
+
+def print_usage():
+  print("usage: make_doc_data <num documents>")
+  sys.exit(0)
+
+if (len(sys.argv) != 2):
+  print_usage()
+
+num_docs = int(sys.argv.pop())
+
+if (num_docs < 0):
+  print_usage()
+
+random.seed()
+
+min_tokens = 20
+max_tokens = 1448
+max_token_offset = 200
+max_freq = 20
+
+# header
+print("DOC_WORD_MATRIX_TRAIN")
+print(str(num_docs) + ' ' + str(max_tokens))
+
+# tokens
+f = open('tokenlist', 'r')
+sys.stdout.write(f.read())
+f.close()
+
+# body, see readme for explanation
+line_num = 0
+
+while (line_num < num_docs):
+  sys.stdout.write(str(random.randint(0,1)))
+  cumsum = 0
+  while (cumsum < max_tokens):
+      offset = random.randint(1,max_token_offset)
+      if (cumsum + offset >= max_tokens):
+        cumsum = max_tokens
+        continue
+      freq = random.randint(1,max_freq)
+      sys.stdout.write(' ' + str(offset) + ' ' + str(freq))
+      cumsum += offset
+  sys.stdout.write(' -1')    
+  sys.stdout.write('\n')
+  line_num += 1

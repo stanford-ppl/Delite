@@ -1,0 +1,29 @@
+#!/usr/bin/python
+
+import sys
+import random
+from optparse import OptionParser
+
+def main():
+  usage = "usage: %prog width height"
+  parser = OptionParser(usage=usage)
+  (options, args) = parser.parse_args()
+
+  if len(args) < 2:
+    parser.error('not enough arguments')
+
+  width = int(args[0])
+  height = int(args[1])
+
+  random.seed()
+  line_num = 0
+
+  x = [0]*width
+  while (line_num < height):
+    for d in x:
+      sys.stdout.write(str(d + random.uniform(-10,10)) + '    ')
+    sys.stdout.write('\n')
+    line_num += 1
+
+if __name__ == "__main__":
+	main()

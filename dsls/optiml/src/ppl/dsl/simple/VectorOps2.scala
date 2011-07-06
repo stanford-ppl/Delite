@@ -2,8 +2,8 @@ package ppl.dsl.simple
 
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{Base, EffectExp, BaseExp}
-import scala.virtualization.lms.internal.{CGenBase, ScalaGenBase, Effects}
+import scala.virtualization.lms.common.{Base, BaseExp, BaseFatExp, EffectExp, CGenBase, CGenFat, ScalaGenBase, ScalaGenFat}
+import scala.virtualization.lms.internal.Effects
 import ppl.delite.framework.codegen.delite.DeliteCodegen
 import ppl.delite.framework.ops.DeliteOpsExp
 
@@ -18,7 +18,7 @@ trait VectorOps2 extends DSLType with Base {
   }
 
   implicit def repVecToRepVecOps[A:Manifest](x: Rep[Vector[A]]) = new vecRepCls(x)
-  implicit def vecToRepVecOps[A:Manifest](x: Vector[A]) = new vecRepCls(x)
+  implicit def vecToRepVecOps[A:Manifest](x: Vector[A]) = new vecRepCls(unit(x))
 
   class vecRepCls[A:Manifest](x: Rep[Vector[A]]) {
     def +(y: Rep[Vector[A]])(implicit n: Numeric[A]) = vector_plus(x,y)
@@ -58,16 +58,16 @@ trait VectorOpsExp2 extends VectorOps2 with DeliteOpsExp {
   def vector_plus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(x, y)
   def vector_minus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorMinus(x, y)
   def vector_apply[A:Manifest](x: Exp[Vector[A]], i: Rep[Int]) = VectorApply(x,i)
-  def vector_update[A:Manifest](x: Rep[Vector[A]], i: Rep[Int], v: Rep[A]) = reflectMutation(VectorUpdate(x, i, v))
+  def vector_update[A:Manifest](x: Rep[Vector[A]], i: Rep[Int], v: Rep[A]) = reflectWrite(x)(VectorUpdate(x, i, v))
   def vector_length[A:Manifest](x: Rep[Vector[A]]) = VectorLength(x)
   def vector_pprint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(VectorPPrint(x))
 }
 
-trait ScalaGenVectorOps2 extends ScalaGenBase {
+trait ScalaGenVectorOps2 extends ScalaGenFat {
   val IR: VectorOpsExp2
   import IR._
 
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case VectorObjectDoubleZeros(s) => emitValDef(sym, "Vector.doubleZeros(" + quote(s) + ")")
     case VectorObjectIntZeros(s) => emitValDef(sym, "Vector.intZeros(" + quote(s) + ")")
     case VectorPlus(x,y) => emitValDef(sym, quote(x) + " + " + quote(y))
@@ -82,12 +82,12 @@ trait ScalaGenVectorOps2 extends ScalaGenBase {
 
 /*
 ////code generation
-trait CGenVectorOps2 extends CGenBase {
+trait CGenVectorOps2 extends CGenFat {
   val IR: VectorOpsExp2
   import IR._
 
   //code generation bit
-  override def emitNode(sym: Sym[_], rhs: Def[_])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     //todo replace the manifest with embedded types
     case VectorObjectDoubleZeros(n) => emitConstDef("vector", sym, "Vector.doubleZeros(" + quote(n) + ")")
     case VectorPlus(v1,v2) => emitConstDef("vector", sym, quote(v1) + " + " + quote (v2))

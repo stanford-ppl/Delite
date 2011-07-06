@@ -40,18 +40,8 @@ object PerformanceTimer
   }
 
   def print(component: String) {
-    try {
-//      println("[METRICS]: Times for component " + component + ":")
-//      for (i <- 0 until times(component).size) {
-//        val timeString = times(component).get(i) formatted ("%.6f") + "s"
-//        println("[METRICS]:     " + timeString)
-//      }
-      val timeString = times(component).last formatted ("%.6f") + "s"
-      println("[METRICS]: Latest time for component " + component + ": " + timeString)
-    }
-    catch {
-      case e: Exception => println("[METRICS]: No data for component " + component)
-    }
+    val timeStr = times.get(component) map { "[METRICS]: Latest time for component " + component + ": " +  _.last.formatted("%.6f") + "s" }
+    println(timeStr getOrElse "[METRICS]: No data for component " + component)
   }
 
   /**
@@ -78,7 +68,7 @@ object PerformanceTimer
   }
 
   def dumpStats(component: String, stream: PrintWriter)  {
-    stream.print(times(component).map(_.formatted("%.2f")).mkString("\n"))
+    times.get(component) map { _.map(_.formatted("%.2f")).mkString("\n") } foreach { stream.print }
   }
 
 }

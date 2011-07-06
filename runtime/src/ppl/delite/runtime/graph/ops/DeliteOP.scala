@@ -19,75 +19,93 @@ abstract class DeliteOP {
    */
   def task : String
 
-  def outputType(target: Targets.Value) : String
-  def outputType : String = outputType(Targets.Scala)
+  private[graph] val outputTypesMap: Map[Targets.Value, Map[String,String]]
 
-  def supportsTarget(target: Targets.Value) : Boolean
+  def outputType(target: Targets.Value, symbol: String): String = outputTypesMap(target)(symbol)
+  def outputType(target: Targets.Value): String = outputTypesMap(target)("functionReturn")
+  def outputType(symbol: String) = outputTypesMap(Targets.Scala)(symbol)
+  def outputType = outputTypesMap(Targets.Scala)("functionReturn")
 
-  //list of all incoming graph edges for this op
-  private[graph] var dependencyList: List[DeliteOP] = Nil
+  def supportsTarget(target: Targets.Value) : Boolean = outputTypesMap contains target
 
-  final def getDependencies : Seq[DeliteOP] = dependencyList
+  def getOutputs = outputTypesMap.head._2.keySet - "functionReturn"
+
+  //set of all incoming graph edges for this op
+  private[graph] var dependencies = Set.empty[DeliteOP]
+
+  final def getDependencies : Set[DeliteOP] = dependencies
 
   final def addDependency(dep: DeliteOP) {
-    dependencyList = dep :: dependencyList
+    dependencies += dep
   }
 
   final def removeDependency(dep: DeliteOP) {
-    dependencyList = dependencyList filterNot { _ == dep }
+    dependencies -= dep
   }
 
   final def replaceDependency(old: DeliteOP, dep: DeliteOP) {
-    dependencyList = dep :: (dependencyList filterNot { _ == old })
+    assert(dependencies contains old, old.toString + " is not a dependency of " + this.toString + "; cannot be replaced")
+    dependencies -= old
+    dependencies += dep
   }
 
-  //list of all outgoing graph edges for this op
-  private[graph] var consumerList: List[DeliteOP] = Nil
+  //set of all outgoing graph edges for this op
+  private[graph] var consumers = Set.empty[DeliteOP]
 
-  final def getConsumers : Seq[DeliteOP] = consumerList
+  final def getConsumers : Set[DeliteOP] = consumers
 
   final def addConsumer(c: DeliteOP) {
-    consumerList = c :: consumerList
+    consumers += c
   }
 
   final def removeConsumer(c: DeliteOP) {
-    consumerList = consumerList filterNot { _ == c }
+    consumers -= c
   }
 
   final def replaceConsumer(old: DeliteOP, c: DeliteOP) {
-    consumerList = c :: (consumerList filterNot { _ == old })
+    assert(consumers contains old, old.toString + " is not a consumer of " + this.toString + ", cannot be replaced")
+    consumers -= old
+    consumers += c
   }
 
   //this is a subset of dependencies and contains the kernel inputs in the order required to call the task
-  private[graph] var inputList: List[DeliteOP] = Nil
+  private[graph] var inputList: List[(DeliteOP, String)] = Nil
 
-  final def getInputs : Seq[DeliteOP] = inputList
+  final def getInputs : Seq[(DeliteOP, String)] = inputList
 
-  final def addInput(input: DeliteOP) {
-    inputList = input :: inputList
+  final def addInput(op: DeliteOP, name: String) {
+    inputList = (op, name) :: inputList
   }
 
-  final def replaceInput(old: DeliteOP, input: DeliteOP) {
-    inputList = inputList.patch(inputList.indexOf(old), List(input), 1)
-    if (mutableInputList contains old) mutableInputList = input :: (mutableInputList filterNot { _ == old })
+  final def replaceInput(old: DeliteOP, input: DeliteOP, name: String) {
+    inputList.find(_ == (old, name)) match {
+      case Some((old, name)) => {
+        assert(input.outputTypesMap.head._2.contains(name), "Cannot replace " + old + " with " + input + " as it does not contain output " + name)
+        inputList.patch(inputList.indexOf((old,name)), List((input, name)), 1)
+      }
+      case None => error(old + " is not an input of " + this + "; cannot be replaced")
+    }
+    mutableInputs.find(_ == (old, name)) match {
+      case Some((old, name)) => {
+        mutableInputs -= Pair(old, name)
+        mutableInputs += Pair(input, name)
+      }
+      case None => //do nothing
+    }
   }
 
-  //this is a subset of inputs and contains only the inputs that the op can mutate
-  private[graph] var mutableInputList: List[DeliteOP] = Nil
+  //subset of inputs containing only the inputs that the op can mutate
+  private[graph] var mutableInputs = Set.empty[(DeliteOP, String)]
 
-  final def getMutableInputs : Seq[DeliteOP] = mutableInputList
+  final def getMutableInputs : Set[(DeliteOP, String)] = mutableInputs
 
-  final def addMutableInput(input: DeliteOP) {
-    mutableInputList = input :: mutableInputList
+  final def addMutableInput(op: DeliteOP, name: String) {
+    mutableInputs += Pair(op, name)
   }
 
   var variant: OP_Variant = null
 
   def id: String
-
-  def cost: Int
-
-  def size: Int
 
   //TODO: more versatile/useful to match on the specific type of OP rather than simply dataParallel/sequential buckets?
   //TODO: should revisit this when we have more complex dataParallel patterns
@@ -117,4 +135,5 @@ abstract class DeliteOP {
   var scheduledResource = -1
 
   override def toString = id
+
 }
