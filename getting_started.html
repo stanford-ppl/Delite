@@ -69,22 +69,30 @@ git clone https://github.com/TiarkRompf/virtualization-lms-core.git</code></pre>
         </ol>
 
         <p> For now, we'll get you up and running simple applications in the Delite environment so you can see what's going on.
-        First, let's make sure that we are using the right branch. From the roots of the Delite repository and LMS repository <b>(note you have to check
-          out the right branch in both repos)</b>, type
-        <div class="highlight"><pre><code class="bash">git checkout stanford-cs442</code></pre></div>
-        </p>       
-        <p> If you are using IDEA, make sure that you have the <code>framework</code>, <code>dsls</code>, and
+        If you are using IDEA, make sure that you have the <code>framework</code>, <code>dsls</code>, and
         <code>virtualization-lms-core</code> modules in your classpath. Also make sure that you are using
         the <code>scala-virtualized</code> compiler. You can download a pre-compiled distribution of <code>scala-virtualized</code>
         from <a href="http://www.stanford.edu/class/cs442/handouts/scala-virtualized-r24714.tgz">here</a>. The rest of this guide will assume a UNIX environment and
         use SBT and our shell scripts, but as long as IDEA is configured correctly, you should be able to follow along.
         See <a href="source.html">here</a> for detailed IDEA build instructions.
         </p>
+        <p> SBT setup:
+        We use <a href="http://code.google.com/p/simple-build-tool/wiki/Setup">sbt</a> to build our repositories. If you don't
+        have it installed already, download and install it by following the linked setup guide. Our repositories are tested
+        with version 0.7.4 of sbt. You may also need to modify the sbt startup script to increase the available JVM
+        memory. An example script (the 'sbt' file in your ~/bin directory) that we have found to work is:
+        <div class="highlight" style="overflow: scroll"><pre><code class="bash">java -Xmx1g -XX:MaxPermSize=512m -XX:ReservedCodeCacheSize=128m -jar `dirname $0`/sbt-launch.jar "$@"</pre></code></div>
+        </p>
         <p>If you haven't already, we need to compile Delite. We'll assume that the root directory
-        of the Delite and LMS distributions you downloaded are <code>$DELITE</code> and <code>$LMS</code> respectively. Make sure that you have downloaded the
-        <code>scala-virtualized</code> compiler, and then edit $DELITE/local.properties and $LMS/local.properties to point to the distribution. Here is an example:
+        of the Delite and LMS distributions you downloaded are <code>$DELITE</code> and <code>$LMS</code> respectively. 
+        To follow the rest of these instructions, it is easiest if you set these locations explicitly. In BASH,
+        this can be done as follows: </p>
+        <div class="highlight"><pre><code class="bash">export DELITE=[insert absolute path to Delite repo]
+export LMS=[insert absolute path to LMS repo]</pre></code></div>
+        <p>Make sure that you have downloaded the
+        <code>scala-virtualized</code> compiler, and then edit $DELITE/delite.properties and $LMS/local.properties to point to the distribution. Here is an example:
         <div class="highlight"><pre><code class="bash">scala.virtualized.home=/ppl/scala-virtualized-r24714/</code></pre></div>
-        <p>First, we need to compile the <code>virtualization-lms-core</code> library that Delite uses.
+        <p>First, we need to compile the <code>virtualization-lms-core</code> library that Delite uses.        
         <div class="highlight"><pre><code class="bash">cd $LMS
 sbt update
 sbt publish-local
@@ -112,7 +120,7 @@ cd ..
 <span class="k">trait</span> <span class="nc">HelloWorld</span> <span class="k">extends</span> <span class="nc">OptiMLApplication</span> <span class="o">{</span> 
   <span class="k">def</span> <span class="n">main() = println("</span><span class="s">hello world</span><span class="n">")</span>
 <span class="o">}</span>
-</div>
+</pre></code></div>
         <p>
         All Delite applications have three phases: compiliing (Scala), staging (DSL compilation), and executing (runtime). The first step, running the scala compiler,
         checks your application for syntactic and type correctness. Staging is where the main compilation happens: the DSL builds an IR of the program, optimizes it,
@@ -129,7 +137,7 @@ cd ..
         </p>
         <p>
         Now we need to stage our program. We do this by running the main method of <code>OptiMLApplicationRunner</code> object we just created:
-        <div class="highlight"><pre><code class="bash">scala HelloWorldRunner</code</pre></div>
+        <div class="highlight"><pre><code class="bash">scala HelloWorldRunner</code></pre></div>
         <p>
         The generated execution graph will be in 'out.deg'. Also look around in the folder 'generated/' - it contains code OptiML generated!
         Note that you can specify a different file for the DEG by supplying the JVM parameter <code>delite.deg.filename</code>:
@@ -139,9 +147,8 @@ cd ..
         The last thing we need to do is execute our generated program. To do this, we are going to switch back to the normal Scala
         compiler (this is not strictly necessary, but tends to be more reliable). Download a current final version of <a href="http://www.scala-lang.org/downloads">Scala</a>. 
         We'll assume that $SCALA_VANILLA points to the root directory of the Scala distribution you just downloaded.
-        Make sure fsc is running: 
-        <div class="highlight"><pre><code class="bash">$SCALA_VANILLA/bin/fsc -reset</code></pre></div>
-        Then invoke the Delite runtime using:
+        Invoke the Delite runtime using:
+        </p><p>
         <div class="highlight" style="overflow: scroll"><pre><code class="bash">java -cp runtime/target/scala_2.8.1/classes:$SCALA_VANILLA/lib/scala-library.jar:$SCALA_VANILLA/lib/scala-compiler.jar ppl.delite.runtime.Delite out.deg</code></pre></div>
         </p>
         <p>
