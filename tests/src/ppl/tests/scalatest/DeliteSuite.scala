@@ -17,7 +17,6 @@ trait DeliteTestConfig {
 
   // test parameters
   val verbose = props.getProperty("tests.verbose", "false").toBoolean
-  val s = File.separator
   val javaHome = new File(props.getProperty("java.home", ""))
   val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
   val runtimeClasses = new File(props.getProperty("runtime.classes", ""))

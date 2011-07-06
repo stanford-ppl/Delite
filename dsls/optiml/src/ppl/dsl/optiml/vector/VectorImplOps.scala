@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,NilVector,IndexVector}
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,EmptyVector,IndexVector}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 import ppl.dsl.optiml.{OptiMLLift, OptiMLCompiler, OptiML}
@@ -49,7 +49,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     for (i <- 0 until xs.length) {
       v(i) = xs(i)
     }
-    v.unsafeImmutable
+    v //.unsafeImmutable
   }
 
   def vector_obj_ones_impl(length: Rep[Int]) = Vector[Double](length, true) mmap { e => 1. }
@@ -120,8 +120,8 @@ trait VectorImplOpsStandard extends VectorImplOps {
     //  println("error: trying to concatenate row and column vectors")
       // TODo: need an exception throwing mechanism in generated code -- could be External, but needs to accessible from Base
     //}
-    if (v1.isInstanceOfL[NilVector[A]]) v2
-    else if (v2.isInstanceOfL[NilVector[A]]) v1
+    if (v1.isInstanceOfL[EmptyVector[A]]) v2
+    else if (v2.isInstanceOfL[EmptyVector[A]]) v1
     else {
       val out = Vector[A](v1.length+v2.length, v1.isRow)
       for (i <- 0 until v1.length){
@@ -137,7 +137,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   def vector_times_matrix_impl[A:Manifest:Arith](v: Rep[Vector[A]], m: Rep[Matrix[A]]) = {
     //v.chkVecMatAgree(v, m)
     val v_trans = v.t
-    m.t.mapRows { a_row => a_row *:* v_trans }
+    m.t.mapRowsToVector { a_row => a_row *:* v_trans }
   }
 
   def vector_outer_impl[A:Manifest:Arith](collA: Rep[Vector[A]], collB: Rep[Vector[A]]) = {

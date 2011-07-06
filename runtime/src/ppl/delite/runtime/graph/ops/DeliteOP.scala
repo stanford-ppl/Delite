@@ -107,10 +107,6 @@ abstract class DeliteOP {
 
   def id: String
 
-  def cost: Int
-
-  def size: Int
-
   //TODO: more versatile/useful to match on the specific type of OP rather than simply dataParallel/sequential buckets?
   //TODO: should revisit this when we have more complex dataParallel patterns
   def isDataParallel : Boolean

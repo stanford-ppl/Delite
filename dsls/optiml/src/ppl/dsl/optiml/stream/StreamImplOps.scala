@@ -1,15 +1,16 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.stream
 
-import datastruct.scala.{Vector, Matrix, Stream}
+import ppl.dsl.optiml.datastruct.scala.{Vector, Matrix, Stream}
+import ppl.dsl.optiml.{OptiMLLift, OptiMLCompiler, OptiML}
 
-trait StreamImplOps { this: OptiMLExp =>
+trait StreamImplOps { this: OptiML =>
   def stream_chunk_elem_impl[A:Manifest](x: Rep[Stream[A]], idx: Rep[Int], j: Rep[Int]): Rep[A]
   def stream_rowsin_impl[A:Manifest](x: Rep[Stream[A]], offset: Rep[Int]): Rep[Int]
   def stream_init_chunk_impl[A:Manifest](x: Rep[Stream[A]], offset: Rep[Int]): Rep[Unit]
 }
 
 trait StreamImplOpsStandard extends StreamImplOps {
-  this: OptiMLExp with OptiMLLift =>
+  this: OptiMLCompiler with OptiMLLift with StreamOpsExp =>
 
   def stream_chunk_elem_impl[A:Manifest](x: Rep[Stream[A]], idx: Rep[Int], j: Rep[Int]) = {
     val offset = idx*x.numCols+j

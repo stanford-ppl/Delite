@@ -30,8 +30,8 @@ trait MatrixImplOps { this: OptiMLExp =>
   def matrix_pprint_impl[A:Manifest](m: Rep[Matrix[A]]): Rep[Unit]
   def matrix_repmat_impl[A:Manifest](m: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
   def matrix_inverse_impl[A](m: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
-  def matrix_minrow_impl[A:Manifest:Arith:Ordering](m: Rep[Matrix[A]]): Rep[Vector[A]]
-  def matrix_maxrow_impl[A:Manifest:Arith:Ordering](m: Rep[Matrix[A]]): Rep[Vector[A]]
+  def matrix_minrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[Vector[A]]
+  def matrix_maxrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[Vector[A]]
   //def matrix_maprows_impl[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
   //def matrix_foreachrow_impl[A:Manifest](m: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Unit]): Rep[Unit]
   def matrix_filterrows_impl[A:Manifest](m: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[Boolean]): Rep[Matrix[A]]
@@ -294,14 +294,14 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     currentMat
   }
 
-  def matrix_minrow_impl[A:Manifest:Arith:Ordering](m: Rep[Matrix[A]]): Rep[Vector[A]] = {
+  def matrix_minrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[Vector[A]] = {
     throw new UnsupportedOperationException("not implemented yet")
 //    val sumRows = m.mapRowsToVec[B](row => row.sum[B])
 //    val idx = sumRows.minIndex
 //    m(idx).clone
   }
 
-  def matrix_maxrow_impl[A:Manifest:Arith:Ordering](m: Rep[Matrix[A]]): Rep[Vector[A]] = {
+  def matrix_maxrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[Vector[A]] = {
     throw new UnsupportedOperationException("not implemented yet")
 //    val sumRows = mapRowsToVec[B](row => row.sum[B])
 //    val idx = sumRows.maxIndex

@@ -105,18 +105,18 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    * min
    */
-  def min[A:Manifest:Ordering](vals: Rep[Vector[A]]) = repVecToVecOps(vals).min
-  def min[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], o: Overloaded1) = repMatToMatOps(vals).min
-  //def min[A:Manifest:Ordering](vals: A*) = repVecToVecOps(Vector(vals: _*)).min
-  def min[A:Manifest:Ordering](vals: Rep[A]*) = repVecToVecOps(Vector(vals: _*)).min
+  def min[A:Manifest:Ordering:HasMinMax](vals: Rep[Vector[A]]) = repVecToVecOps(vals).min
+  def min[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], mx: HasMinMax[A], o: Overloaded1) = repMatToMatOps(vals).min
+  //def min[A:Manifest:Ordering:HasMinMax](vals: A*) = repVecToVecOps(Vector(vals: _*)).min
+  def min[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*) = repVecToVecOps(Vector(vals: _*)).min
 
   /**
    * max
    */
-  def max[A:Manifest:Ordering](vals: Rep[Vector[A]]) = repVecToVecOps(vals).max
-  def max[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], o: Overloaded1) = repMatToMatOps(vals).max
-  //def max[A:Manifest:Ordering](vals: A*) = repVecToVecOps(Vector(vals: _*)).max
-  def max[A:Manifest:Ordering](vals: Rep[A]*) = repVecToVecOps(Vector(vals: _*)).max
+  def max[A:Manifest:Ordering:HasMinMax](vals: Rep[Vector[A]]) = repVecToVecOps(vals).max
+  def max[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], mx: HasMinMax[A], o: Overloaded1) = repMatToMatOps(vals).max
+  //def max[A:Manifest:Ordering:HasMinMax](vals: A*) = repVecToVecOps(Vector(vals: _*)).max
+  def max[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*) = repVecToVecOps(Vector(vals: _*)).max
 
 
   /**
@@ -154,7 +154,8 @@ trait LanguageOps extends Base { this: OptiML =>
   val * = new IndexWildcard
 
   implicit def tuple2ToIndexVector1(tup: (Rep[IndexVector], IndexWildcard))(implicit overloaded1 : Overloaded1) = indexvector2_new(tup._1, indexvector2_wildcard())
-  implicit def tuple2ToIndexVector2(tup: (IndexWildcard, Rep[IndexVector]))(implicit overloaded2 : Overloaded2) = indexvector2_new(indexvector2_wildcard(), tup._2)
+// currently not allowed
+//  implicit def tuple2ToIndexVector2(tup: (IndexWildcard, Rep[IndexVector]))(implicit overloaded2 : Overloaded2) = indexvector2_new(indexvector2_wildcard(), tup._2)
   implicit def tuple2ToIndexVector3(tup: (Rep[IndexVector], Rep[IndexVector]))(implicit overloaded3 : Overloaded3) = indexvector2_new(tup._1, tup._2)
 
 
@@ -322,10 +323,10 @@ trait LanguageOps extends Base { this: OptiML =>
    * Nearest neighbor
    */
   // returns the index of the nearest neighbor of row inside data
-  def nearestNeighborIndex[A:Manifest:Arith:Ordering:Numeric](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean] = unit(true)): Rep[Int]
+  def nearestNeighborIndex[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean] = unit(true)): Rep[Int]
     = optiml_nearest_neighbor_index(row, data, allowSame)
 
-  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:Numeric](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int]
+  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int]
 
   /**
    *   Profiling
@@ -407,22 +408,21 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Sum
    */
-  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], mV: Sym[Int], map: Exp[A])
-    extends DeliteOpMapReduce[Int,A,Vector] {
 
-    val in = Vector.range(start, end)
-    val rV = (fresh[A],fresh[A])
-    val reduce = reifyEffects(rV._1 += rV._2) //TODO TR write to non-mutable
-    //val mapreduce = reifyEffects(ops.+=(acc, reifyEffects(block(mV))))
-  }
+  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], map: Exp[Int] => Exp[A])
+    extends DeliteOpMapReduce[Int,A] {
+
+    val in = (start::end)
+		val size = end - start
+		val zero = implicitly[Arith[A]].zero
+		def reduce = (a,b) => a += b
+  }	
 
   def optiml_sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
 
-    val mV = fresh[Int]
-    val map = reifyEffects(block(mV))
-    //Sum(start, end, mV, map)
+    Sum(start, end, block)
     // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
-    reflectEffect(Sum(start, end, mV, map))
+    //reflectEffect(Sum(start, end, block))
   }
 
 
@@ -612,11 +612,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Nearest neighbor
    */
-  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:Numeric](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int] = {
+  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int] = {
     // unroll
     val dists = (0::m.numRows){ i =>
       val d = dist(m(row),m(i))
-      if (d == unit(0).asInstanceOfL[A] && !allowSame) unit(scala.Int.MaxValue).asInstanceOfL[A] else d
+      if (d == implicitly[Arith[A]].zero && !allowSame) implicitly[HasMinMax[A]].maxValue else d
     }
     dists.minIndex
     /*

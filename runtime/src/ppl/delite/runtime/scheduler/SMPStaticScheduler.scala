@@ -4,6 +4,7 @@ import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import java.util.ArrayDeque
 import ppl.delite.runtime.graph.ops._
+import ppl.delite.runtime.cost._
 
 /**
  * Author: Kevin J. Brown
@@ -21,7 +22,7 @@ import ppl.delite.runtime.graph.ops._
  *
  */
 
-final class SMPStaticScheduler extends StaticScheduler {
+final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationCostModel {
 
   private val numThreads = Config.numThreads
 
@@ -43,12 +44,32 @@ final class SMPStaticScheduler extends StaticScheduler {
     graph.schedule = schedule
   }
 
+	protected def scheduleSequential(graph: DeliteTaskGraph) {
+		val opQueue = new ArrayDeque[DeliteOP]
+		val schedule = PartialSchedule(numThreads)
+		enqueueRoots(graph, opQueue)
+	  while (!opQueue.isEmpty) {
+	    val op = opQueue.remove
+			addSequential(op, graph, schedule, 0)
+      enqueueRoots(graph, opQueue)
+    }
+    ensureScheduled(graph)
+		graph.schedule = schedule		
+	}
+
   //NOTE: this is currently the simple scheduler from Delite 1.0
   var nextThread = 0 //TODO: this isn't reset across nested graphs, but does it really matter?
 
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Range(0, numThreads))
+			case l: OP_MultiLoop => 
+				if (shouldParallelize(l, Map[String,Int]())){
+					split(op, graph, schedule, Range(0, numThreads))
+				}
+				else {
+					split(op, graph, schedule, Seq(0))
+				} 
       case _ => {
         //if (op.variant != null) addNested(op.variant, graph, schedule, Range(0, numThreads)) else
         if (op.isDataParallel) split(op, graph, schedule, Range(0, numThreads))

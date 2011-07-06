@@ -1,4 +1,4 @@
-package ppl.dsl.optiml
+package ppl.dsl.optiml.stream
 
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
 import ppl.dsl.optiml.datastruct.scala.{Vector, Stream, StreamImpl, StreamRow}
@@ -8,6 +8,7 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.{VariablesExp, Variables, DSLOpsExp, CGenBase, CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
+import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 /**
  * Streams are Matrix-like, but are not Matrices. A Stream (slice) can be converted to a Vector or Matrix.
@@ -81,6 +82,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   case class StreamInitChunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int])
     extends DeliteOpSingleTask(reifyEffectsHere(stream_init_chunk_impl(x,offset)))
 
+  /*
   case class StreamInitAndForeachRow[A:Manifest](in: Exp[Vector[Int]], v: Sym[Int], x: Exp[Stream[A]], offset: Exp[Int],
                                                  block: Exp[StreamRow[A]] => Exp[Unit])
     extends DeliteOpForeach[Int,Vector] {
@@ -104,6 +106,26 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     val func = reifyEffects {
       block(stream_chunk_row(x, v, offset))
     }
+  }
+  */
+  case class StreamInitAndForeachRow[A:Manifest](in: Exp[Vector[Int]], x: Exp[Stream[A]], offset: Exp[Int],
+                                                 block: Exp[StreamRow[A]] => Exp[Unit])
+    extends DeliteOpForeach[Int] {
+
+		val size = in.length
+    def sync = i => List()
+		def func = i => 
+      // always initialize for now (must be pure)
+      block(stream_init_and_chunk_row(x, i, offset))
+  }
+
+  case class StreamForeachRow[A:Manifest](in: Exp[Vector[Int]], x: Exp[Stream[A]], offset: Exp[Int],
+                                          block: Exp[StreamRow[A]] => Exp[Unit], init: Exp[Unit])
+    extends DeliteOpForeach[Int] {
+
+		val size = in.length
+    def sync = i => List()
+    def func = i => block(stream_chunk_row(x, i, offset))
   }
 
   ////////////////////
@@ -134,18 +156,20 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     while (i < numChunks) {
       val rowsToProcess = stream_rowsin(x, i)
       val in = (0::rowsToProcess)
-      val v = fresh[Int]
+      //val v = fresh[Int]
 
       // discuss: 2 kinds of streams (computation-backed and file-backed)
       // computation-backed assume pure, always initialized in parallel; file-backed are always initialized sequentially
       // if (x.isComputationBased) { ..
       if (x.isPure) {
         // fuse parallel initialization and foreach function
-        reflectEffect(StreamInitAndForeachRow(in, v, x, i, block))   // parallel // should use effect summary based on loop body
+        //reflectEffect(StreamInitAndForeachRow(in, v, x, i, block))   // parallel // should use effect summary based on loop body
+				reflectEffect(StreamInitAndForeachRow(in, x, i, block))
       }
       else {
         val init = stream_init_chunk(x, i)  // sequential
-        reflectEffect(StreamForeachRow(in, v, x, i, block, init)) // parallel // should use effect summary based on loop body
+        //reflectEffect(StreamForeachRow(in, v, x, i, block, init)) // parallel // should use effect summary based on loop body
+				reflectEffect(StreamForeachRow(in, x, i, block, init))
       }
 
       i += 1
@@ -203,9 +227,9 @@ trait StreamOpsExpOpt extends StreamOpsExp {
 */
 
 
+	// TODO: do we still need this now that we use the new foreach op above?
   abstract case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]]
   
-
   override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = st match {
 
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))/*,_,_)*/) =>

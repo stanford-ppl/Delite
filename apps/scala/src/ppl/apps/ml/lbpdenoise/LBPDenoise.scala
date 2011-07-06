@@ -400,7 +400,7 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   def unaryFactorConvolve(bf: Rep[Matrix[Double]], other: Rep[Vector[Double]]): Rep[Vector[Double]] = {
-    bf.mapRows{ (row) =>
+    bf.mapRowsToVector { (row) =>
       val csum = (row + other).exp.sum
       if(csum == 0) {
         Math.log(Double.MinValue)

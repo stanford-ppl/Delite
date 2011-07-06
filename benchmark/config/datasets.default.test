@@ -13,3 +13,5 @@ streamtest|
 vectortest|
 vforeach|200|200|10000000|4000
 untilc|200|200|2500000|1000.0
+while|
+multiloop|

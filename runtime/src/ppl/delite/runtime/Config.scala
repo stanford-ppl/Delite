@@ -32,6 +32,13 @@ object Config {
   val useFsc: Boolean = if (System.getProperty("delite.usefsc") == null) false else true
 
   /***********
+   *	Cost Modeling
+   */
+  
+	val whileCostThreshold: Int = System.getProperty("delite.while.threshold", "1000").toInt
+	val loopCostThreshold: Int = System.getProperty("delite.loop.threshold", "1000").toInt
+	 
+  /***********
     * Statistics and Metrics Section
     */
    val dumpStats: Boolean = if(System.getProperty("stats.dump") == null) false else true
