@@ -31,31 +31,25 @@ final class GPUOnlyStaticScheduler extends StaticScheduler with ParallelUtilizat
     scheduleFlat(graph)
   }
 
-  protected def scheduleFlat(graph: DeliteTaskGraph) {
+  protected def scheduleSequential(graph: DeliteTaskGraph) = scheduleFlat(graph, true)
+
+  protected def scheduleFlat(graph: DeliteTaskGraph) = scheduleFlat(graph, false)
+
+  protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
     val opQueue = new ArrayDeque[DeliteOP]
     val schedule = PartialSchedule(2)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
-      scheduleOne(op, graph, schedule)
+      if (sequential)
+        addSequential(op, graph, schedule, 0) //don't ship to GPU
+      else
+        scheduleOne(op, graph, schedule)
       enqueueRoots(graph, opQueue)
     }
     ensureScheduled(graph)
     graph.schedule = schedule
   }
-
-	protected def scheduleSequential(graph: DeliteTaskGraph) {
-		val opQueue = new ArrayDeque[DeliteOP]
-		val schedule = PartialSchedule(2)
-		enqueueRoots(graph, opQueue)
-	  while (!opQueue.isEmpty) {
-	    val op = opQueue.remove
-			addSequential(op, graph, schedule, 0)
-      enqueueRoots(graph, opQueue)
-    }
-    ensureScheduled(graph)
-		graph.schedule = schedule
-	}
 
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op match {

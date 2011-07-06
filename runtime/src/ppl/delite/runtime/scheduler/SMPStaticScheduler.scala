@@ -31,31 +31,25 @@ final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationC
     scheduleFlat(graph)
   }
 
-  protected def scheduleFlat(graph: DeliteTaskGraph) {
+  protected def scheduleSequential(graph: DeliteTaskGraph) = scheduleFlat(graph, true)
+
+  protected def scheduleFlat(graph: DeliteTaskGraph) = scheduleFlat(graph, false)
+
+  protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
     val opQueue = new ArrayDeque[DeliteOP]
     val schedule = PartialSchedule(numThreads)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
-      scheduleOne(op, graph, schedule)
+      if (sequential)
+        addSequential(op, graph, schedule, 0)
+      else
+        scheduleOne(op, graph, schedule)
       enqueueRoots(graph, opQueue)
     }
     ensureScheduled(graph)
     graph.schedule = schedule
   }
-
-	protected def scheduleSequential(graph: DeliteTaskGraph) {
-		val opQueue = new ArrayDeque[DeliteOP]
-		val schedule = PartialSchedule(numThreads)
-		enqueueRoots(graph, opQueue)
-	  while (!opQueue.isEmpty) {
-	    val op = opQueue.remove
-			addSequential(op, graph, schedule, 0)
-      enqueueRoots(graph, opQueue)
-    }
-    ensureScheduled(graph)
-		graph.schedule = schedule		
-	}
 
   //NOTE: this is currently the simple scheduler from Delite 1.0
   var nextThread = 0 //TODO: this isn't reset across nested graphs, but does it really matter?
@@ -85,8 +79,7 @@ final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationC
     val deps = op.getDependencies
     while (i < numThreads && notDone) {
       if (deps.contains(schedule(i).peekLast)) {
-        schedule(i).add(op)
-        op.scheduledResource = i
+        scheduleOn(op, schedule, i)
         notDone = false
         if (nextThread == i) nextThread = (nextThread + 1) % numThreads
       }
@@ -94,11 +87,9 @@ final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationC
     }
     //else submit op to next thread in the rotation (round-robin)
     if (notDone) {
-      schedule(nextThread).add(op)
-      op.scheduledResource = nextThread
+      scheduleOn(op, schedule, nextThread)
       nextThread = (nextThread + 1) % numThreads
     }
-    op.isScheduled = true
   }
 
 }

@@ -20,7 +20,7 @@ import ppl.delite.runtime.cost._
  */
 
 trait StaticScheduler {
-	this: AbstractCostModel =>
+  this: AbstractCostModel =>
 	
   def schedule(graph: DeliteTaskGraph)
 
@@ -28,7 +28,7 @@ trait StaticScheduler {
 
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule)
 
-	protected def scheduleSequential(graph: DeliteTaskGraph) 	
+  protected def scheduleSequential(graph: DeliteTaskGraph)
 
   protected def enqueueRoots(graph: DeliteTaskGraph, opQueue: ArrayDeque[DeliteOP]) {
     for (op <- graph.ops) {
@@ -40,16 +40,15 @@ trait StaticScheduler {
   }
 
   protected def split(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resourceList: Seq[Int]) {
-    val helper = OpHelper.expand(op, resourceList.length, graph)
-    helper.isSchedulable = true
-    scheduleOne(helper, graph, schedule)
+    val header = OpHelper.expand(op, resourceList.length, graph)
+    if (resourceList.length == 1) //if confined to one resource, ensure header is put on the same resource
+      scheduleOn(header, schedule, resourceList(0))
+    else
+      scheduleOne(header, graph, schedule)
 
     for (i <- resourceList) {
       val chunk = OpHelper.split(op, i, resourceList.length, graph.kernelPath)
-      schedule(i).add(chunk)
-      chunk.scheduledResource = i
-      chunk.isSchedulable = true
-      chunk.isScheduled = true
+      scheduleOn(chunk, schedule, i)
     }
   }
 
@@ -67,7 +66,7 @@ trait StaticScheduler {
 				splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), Seq(0))			
 			}
 			case op if op.isDataParallel => split(op, graph, schedule, Seq(0))
-			case op => scheduleOn(op, graph, schedule, resource)			
+			case op => scheduleOn(op, schedule, resource)
 		}		
 	}
 	
@@ -98,11 +97,12 @@ trait StaticScheduler {
     }
   }
 
-	protected def scheduleOn(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule, resource: Int) {	
-		schedule(resource).add(op)
-	  op.scheduledResource = resource
-	  op.isScheduled = true
-	}
+  protected def scheduleOn(op: DeliteOP, schedule: PartialSchedule, resource: Int) {
+    schedule(resource).add(op)
+    op.scheduledResource = resource
+    op.isSchedulable = true
+    op.isScheduled = true
+  }
 
   protected def splitNotEmpty(op: OP_Nested, graph: DeliteTaskGraph, outerSchedule: PartialSchedule, innerSchedules: List[PartialSchedule], resourceList: Seq[Int]) {
     val filteredList = resourceList.filter(i => innerSchedules.map(_(i).isEmpty) contains false)
@@ -112,10 +112,7 @@ trait StaticScheduler {
     val chunksIter = chunks.iterator
     for (i <- chunkList) {
       val chunk = chunksIter.next
-      outerSchedule(i).add(chunk)
-      chunk.scheduledResource = i
-      chunk.isSchedulable = true
-      chunk.isScheduled = true
+      scheduleOn(chunk, outerSchedule, i)
     }
   }
 
