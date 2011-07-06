@@ -54,11 +54,14 @@
       </div>
       <div id='content'> 
         <h1 id='title_getting started'>Getting started</h1>
-        <p> To get started, grab the source for <code>Delite</code> and <code>virtualization-lms-core</code>, the lightweight modular staging library
-        that Delite uses. <p>
+        <p> To get started, grab the source for <code>Delite</code> and <code>virtualization-lms-core</code>, the lightweight modular
+        staging library that Delite uses. Delite uses <a href="http://git-scm.com/">git</a> for version control. Instructions on how
+        to install git can be found here: <a href="http://book.git-scm.com/2_installing_git.html">http://book.git-scm.com/2_installing_git.html</a>.
+        </p><p>
         <div class="highlight"><pre><code class="bash">git clone https://github.com/stanford-ppl/Delite.git
-git clone https://github.com/TiarkRompf/virtualization-lms-core.git</code></pre></div> <p>You will also need to switch to the right LMS branch. From the root of the LMS repository, switch to the <code>delite-develop</code> branch: </p> 
-        <div class="highlight"><pre><code class="bash">git checkout delite-develop</code></pre></div>
+git clone https://github.com/TiarkRompf/virtualization-lms-core.git</code></pre></div> <p>You will also need to switch to the right LMS branch, from the root of the LMS repository: </p> 
+        <div class="highlight"><pre><code class="bash">cd virtualization-lms-core
+git checkout delite-develop</code></pre></div>
         
         <p> The Delite repository currently includes several modules: </p>
         <ol>
@@ -82,6 +85,7 @@ git clone https://github.com/TiarkRompf/virtualization-lms-core.git</code></pre>
         have it installed already, download and install it by following the linked setup guide. Our repositories are tested
         with version 0.7.4 of sbt. You may also need to modify the sbt startup script to increase the available JVM
         memory. An example script (the 'sbt' file in your ~/bin directory) that we have found to work is:
+        </p><p>
         <div class="highlight" style="overflow: scroll"><pre><code class="bash">java -Xmx1g -XX:MaxPermSize=512m -XX:ReservedCodeCacheSize=128m -jar `dirname $0`/sbt-launch.jar "$@"</pre></code></div>
         </p>
         <p>If you haven't already, we need to compile Delite. We'll assume that the root directory
@@ -91,7 +95,7 @@ git clone https://github.com/TiarkRompf/virtualization-lms-core.git</code></pre>
         <div class="highlight"><pre><code class="bash">export DELITE=[insert absolute path to Delite repo]
 export LMS=[insert absolute path to LMS repo]</pre></code></div>
         <p>Make sure that you have downloaded the
-        <code>scala-virtualized</code> compiler, and then edit $DELITE/delite.properties and $LMS/local.properties to point to the distribution. Here is an example:
+        <code>scala-virtualized</code> compiler, and then edit $DELITE/delite.properties and $LMS/local.properties to point to the distribution. Here is an example line to add in both of these files:
         <div class="highlight"><pre><code class="bash">scala.virtualized.home=/ppl/scala-virtualized-r24714/</code></pre></div>
         <p>First, we need to compile the <code>virtualization-lms-core</code> library that Delite uses.        
         <div class="highlight"><pre><code class="bash">cd $LMS
