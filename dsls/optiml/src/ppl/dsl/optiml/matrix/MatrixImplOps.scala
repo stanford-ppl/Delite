@@ -381,10 +381,10 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   }
 
   def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]] = {
-  	val out = Vector[A](x.numCols,true)
-  	for(colIdx <- (0::x.numCols)) {
-  		out(colIdx) = x.getCol(colIdx).sum
-  	}
-  	out.unsafeImmutable
+    val out = Vector[A](x.numCols,true)
+    for(colIdx <- (0::x.numCols)) {
+      out(colIdx) = x.getCol(colIdx).sum
+    }
+    out.unsafeImmutable
   }
 }

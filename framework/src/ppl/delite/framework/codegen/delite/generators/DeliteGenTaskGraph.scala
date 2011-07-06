@@ -121,8 +121,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
           case ("scala", ThinDef(z)) => z match {
             case op: AbstractLoop[_] => 
-            	hasOutputSlotTypes = true
-            	"generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
+              hasOutputSlotTypes = true
+              "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
             case foreach: DeliteOpForeach2[_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
             case foreach: DeliteOpForeachBounded[_,_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
             case _ => gen.remap(sym.head.Type)
@@ -174,7 +174,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
       } catch {
         case e:GenerationFailedException => // no generator found
           gen.exceptionHandler(e, outFile, kstream)
-		      //println(gen.toString + ":" + quote(sym))
+          //println(gen.toString + ":" + quote(sym))
           //e.printStackTrace
           
           //if(gen.nested > 1) {
@@ -257,8 +257,8 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   def emitMultiLoop(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean)
        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
    stream.println("{\"type\":\"MultiLoop\",")
- 	 emitConstOrSym(size, "size")
-	 stream.print(",\"needsCombine\":" + needsCombine)
+   emitConstOrSym(size, "size")
+   stream.print(",\"needsCombine\":" + needsCombine)
    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
    stream.println("},")
   }
@@ -411,13 +411,13 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     //scope = save
   }
 
-	def emitConstOrSym(x: Exp[Any], prefix: String)(implicit stream: PrintWriter) = x match {
-		case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
+  def emitConstOrSym(x: Exp[Any], prefix: String)(implicit stream: PrintWriter) = x match {
+    case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
                          stream.println("  \"" + prefix + "Value\": \"" + quote(x) + "\"")
     case s:Sym[Any] =>   stream.println("  \"" + prefix + "Type\": \"symbol\",")
                          stream.println("  \"" + prefix + "Value\": \"" + quote(getBlockResult(x)) + "\"")    
-	}
-	
+  }
+  
   def emitOutput(x: Exp[Any])(implicit stream: PrintWriter) = emitConstOrSym(x, "output")
 
   def emitEOG()(implicit stream: PrintWriter) = {

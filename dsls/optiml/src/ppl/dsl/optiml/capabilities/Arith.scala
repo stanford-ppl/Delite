@@ -69,7 +69,7 @@ trait ArithOps extends Variables with OverloadHack {
 
     def abs: Rep[T] = arith.abs(lhs)
     def exp: Rep[T] = arith.exp(lhs)
-		def zero: Rep[T] = arith.zero
+    def zero: Rep[T] = arith.zero
   }
 
 
@@ -101,19 +101,19 @@ trait ArithOps extends Variables with OverloadHack {
 
     def abs(a: Rep[Vector[T]]) = a.abs
     def exp(a: Rep[Vector[T]]) = a.exp
-		
-		/**
-		 * zero for Vector[T] is a little tricky. It is used in nested Vector/Matrix operations, e.g.
-		 * a reduction on a Vector[Vector[T]]. We define it as the empty Vector because for a variable dimension
-		 * nested Vector, there is no other right answer. For a fixed dimension nested Vector, such as [[1,2,3],[4,5,6]],
-		 * you'd ideally want the k-dimension zero vector, e.g. [0,0,0] in this example. However, this is the dimension
-		 * of v(0).dim, not v.dim, and cannot be statically enforced with our types, and furthermore would need to
-		 * correctly handled multiple levels of nesting.
-		 * 
-		 * This situation is resolved by the DeliteOpReduce contract to never use zero except in the case of the
-		 * empty collection, which makes returning an empty collection always the right thing.	
-		 */
-	  def zero = EmptyVector[T]
+    
+    /**
+     * zero for Vector[T] is a little tricky. It is used in nested Vector/Matrix operations, e.g.
+     * a reduction on a Vector[Vector[T]]. We define it as the empty Vector because for a variable dimension
+     * nested Vector, there is no other right answer. For a fixed dimension nested Vector, such as [[1,2,3],[4,5,6]],
+     * you'd ideally want the k-dimension zero vector, e.g. [0,0,0] in this example. However, this is the dimension
+     * of v(0).dim, not v.dim, and cannot be statically enforced with our types, and furthermore would need to
+     * correctly handled multiple levels of nesting.
+     * 
+     * This situation is resolved by the DeliteOpReduce contract to never use zero except in the case of the
+     * empty collection, which makes returning an empty collection always the right thing.  
+     */
+    def zero = EmptyVector[T]
 }
 
 
@@ -163,8 +163,8 @@ trait ArithOps extends Variables with OverloadHack {
 
       def exp(a: Rep[Tuple2[A,B]]) =
         Tuple2(a._1.exp, a._2.exp)
-			
-			def zero =
+      
+      def zero =
         Tuple2(implicitly[Arith[A]].zero, implicitly[Arith[B]].zero)
     }
   
@@ -192,7 +192,7 @@ trait ArithOps extends Variables with OverloadHack {
       def exp(a: Rep[Tuple3[A,B,C]]) =
         Tuple3(a._1.exp, a._2.exp, a._3.exp)
 
-			def zero =
+      def zero =
         Tuple3(implicitly[Arith[A]].zero, implicitly[Arith[B]].zero, implicitly[Arith[C]].zero)
     }
 
@@ -222,7 +222,7 @@ trait ArithOps extends Variables with OverloadHack {
       def exp(a: Rep[Tuple4[A,B,C,D]]) =
         Tuple4(a._1.exp, a._2.exp, a._3.exp, a._4.exp)
 
-			def zero =
+      def zero =
         Tuple4(implicitly[Arith[A]].zero, implicitly[Arith[B]].zero, implicitly[Arith[C]].zero, implicitly[Arith[D]].zero)
     }
 

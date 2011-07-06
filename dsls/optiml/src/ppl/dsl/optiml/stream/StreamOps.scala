@@ -112,9 +112,9 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
                                                  block: Exp[StreamRow[A]] => Exp[Unit])
     extends DeliteOpForeach[Int] {
 
-		val size = in.length
+    val size = in.length
     def sync = i => List()
-		def func = i => 
+    def func = i => 
       // always initialize for now (must be pure)
       block(stream_init_and_chunk_row(x, i, offset))
   }
@@ -123,7 +123,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
                                           block: Exp[StreamRow[A]] => Exp[Unit], init: Exp[Unit])
     extends DeliteOpForeach[Int] {
 
-		val size = in.length
+    val size = in.length
     def sync = i => List()
     def func = i => block(stream_chunk_row(x, i, offset))
   }
@@ -164,12 +164,12 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
       if (x.isPure) {
         // fuse parallel initialization and foreach function
         //reflectEffect(StreamInitAndForeachRow(in, v, x, i, block))   // parallel // should use effect summary based on loop body
-				reflectEffect(StreamInitAndForeachRow(in, x, i, block))
+        reflectEffect(StreamInitAndForeachRow(in, x, i, block))
       }
       else {
         val init = stream_init_chunk(x, i)  // sequential
         //reflectEffect(StreamForeachRow(in, v, x, i, block, init)) // parallel // should use effect summary based on loop body
-				reflectEffect(StreamForeachRow(in, x, i, block, init))
+        reflectEffect(StreamForeachRow(in, x, i, block, init))
       }
 
       i += 1
@@ -227,7 +227,7 @@ trait StreamOpsExpOpt extends StreamOpsExp {
 */
 
 
-	// TODO: do we still need this now that we use the new foreach op above?
+  // TODO: do we still need this now that we use the new foreach op above?
   abstract case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]]
   
   override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = st match {

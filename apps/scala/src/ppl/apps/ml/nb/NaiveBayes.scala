@@ -93,7 +93,7 @@ trait NaiveBayes extends OptiMLApplication {
       phi_y0(j) = (nonspamwordcount + 1) / (nonspam_totalwords + numTokens)
     }
 
-	/*
+  /*
     val phi_y0 = (0::numTokens) { j=>
       var spamwordcount = 0.0
       var spam_totalwords = 0.0
