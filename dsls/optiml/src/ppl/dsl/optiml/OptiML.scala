@@ -15,7 +15,8 @@ import ppl.dsl.optiml.io._
 import ppl.dsl.optiml.vector._
 import ppl.dsl.optiml.matrix._
 import ppl.dsl.optiml.graph._
-
+import ppl.dsl.optiml.stream._
+import ppl.dsl.optiml.capabilities._
 import ppl.dsl.optiml.library.cluster._
 
 
@@ -84,11 +85,12 @@ trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
 /**
  * This the trait that every OptiML application must extend.
  */
-trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with ArithOps with CloneableOps
+trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps 
+  with ArithOps with CloneableOps with HasMinMaxOps
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps
   with IndexVectorOps with IndexVector2Ops with MatrixRowOps with MatrixColOps
   with StreamOps with StreamRowOps
-  with GraphOps with VerticesOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps
+  with GraphOps with VerticesOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps with VSetOps
   with LabelsOps with TrainingSetOps with ImageOps with GrayscaleImageOps {
 
   this: OptiMLApplication =>
@@ -103,15 +105,17 @@ trait OptiMLCompiler extends OptiML with RangeOps with IOOps with SeqOps with Se
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with LanguageOpsExp with ApplicationOpsExp with ArithOpsExpOpt
+trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
+  with LanguageOpsExp with ApplicationOpsExp
+  with ArithOpsExpOpt 
   with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp
   with IndexVectorOpsExp with IndexVector2OpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with StreamOpsExpOpt with StreamRowOpsExpOpt
   with LabelsOpsExp with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard with IndexVectorImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
-  with GraphOpsExp with VerticesOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp
-  with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp {
+  with GraphOpsExp with VerticesOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp with VSetOpsExp
+  with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?
   this: DeliteApplication with OptiMLApplication with OptiMLExp => // can't be OptiMLApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
@@ -175,7 +179,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with ScalaGenIndexVectorOps with ScalaGenIndexVector2Ops with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
   with ScalaGenStreamOps with ScalaGenStreamRowOps
-  with ScalaGenGraphOps with ScalaGenVerticesOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenMessageEdgeOps with ScalaGenMessageVertexOps
+  with ScalaGenGraphOps with ScalaGenVerticesOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenMessageEdgeOps with ScalaGenMessageVertexOps with ScalaGenVSetOps
   with ScalaGenLabelsOps with ScalaGenTrainingSetOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with ScalaGenImageOps with ScalaGenGrayscaleImageOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
@@ -199,14 +203,14 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
 
   override def genSpec2(f: File, dsOut: String) {
     for (s1 <- List("Double","Int","Float","Long","Boolean")) {
-   	  for (s2 <- List("Double","Int","Float","Long","Boolean")) {
+      for (s2 <- List("Double","Int","Float","Long","Boolean")) {
         val outFile = dsOut + s1 + s2 + f.getName
         val out = new BufferedWriter(new FileWriter(outFile))
         for (line <- scala.io.Source.fromFile(f).getLines) {
           out.write(specmap2(line, s1, s2) + "\n")
         }
         out.close()
-	  }
+    }
     }
   }
 
@@ -247,8 +251,8 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
           res = res.replaceAll(s+"\\["+tpe1+","+tpe2+"\\]", tpe1+tpe2+s)
           res = res.replaceAll(s+"\\["+tpe1+", "+tpe2+"\\]", tpe1+tpe2+s)
         }
-		  }
-	  }
+      }
+    }
     dsmap(res)
   }
 

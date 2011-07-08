@@ -44,18 +44,15 @@ trait QueryableOps extends Base {
 trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   this: QueryableOps with OptiQLExp =>
 
-  case class QueryableWhere[TSource:Manifest](s: Exp[DataTable[TSource]], predicate: Exp[TSource] => Exp[Boolean]) extends DeliteOpLoop[DataTable[TSource]] {
-    val size = s.size
-    val v = fresh[Int]
-    val body : Def[DataTable[TSource]] = new DeliteCollectElem[TSource, DataTable[TSource]](
-      alloc = reifyEffects(DataTable[TSource]()),
-      func = reifyEffects(s(v)),
-      cond = reifyEffects(predicate(s(v)))::Nil
-    )
+  case class QueryableWhere[TSource:Manifest](in: Exp[DataTable[TSource]], cond: Exp[TSource] => Exp[Boolean]) extends DeliteOpFilter[TSource, TSource,DataTable[TSource]] {
+    def alloc = DataTable[TSource]()
+    def func = e => e
+    val size = in.size    
   }
-  
-  case class QueryableSelect[TSource:Manifest, TResult:Manifest](in: Exp[DataTable[TSource]], func: Exp[TResult], v: Sym[TSource]) extends DeliteOpMap[TSource, TResult, DataTable] {
-	val alloc = reifyEffects(DataTable[TResult](in.size)) 
+     
+  case class QueryableSelect[TSource:Manifest, TResult:Manifest](in: Exp[DataTable[TSource]], func: Exp[TSource] => Exp[TResult]) extends DeliteOpMap[TSource, TResult, DataTable[TResult]] {
+	def alloc = DataTable[TResult](in.size)
+    val size = in.size
   }
   
   case class QueryableGroupBy[TSource:Manifest, TKey:Manifest](s: Exp[DataTable[TSource]], v:Sym[TSource], key: Exp[TKey]) extends Def[DataTable[Grouping[TKey, TSource]]]    
@@ -72,15 +69,16 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
 	)
   }
   case class QueryableAverage[TSource:Manifest](s: Exp[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Float]) extends Def[Float]
+  
   //case class QueryableCount[TSource:Manifest](s: Exp[DataTable[TSource]]) extends Def[Int]
 
   case class QueryableGroupingToDataTable[TSource:Manifest, TKey:Manifest](g: Rep[Grouping[TKey, TSource]]) extends Def[DataTable[TSource]]
   case class QueryableGroupingKey[TSource:Manifest, TKey:Manifest](g: Rep[Grouping[TKey, TSource]]) extends Def[TKey]
 
   def queryable_select[TSource:Manifest, TResult:Manifest](s: Rep[DataTable[TSource]], resultSelector: Rep[TSource] => Rep[TResult]) = {
-	val v = fresh[TSource]
-	val func = reifyEffects(resultSelector(v))
-	QueryableSelect(s, func, v)
+//	val v = fresh[TSource]
+//	val func = reifyEffects(resultSelector(v))
+	QueryableSelect(s, resultSelector)
   }
   
   def queryable_where[TSource:Manifest](s: Exp[DataTable[TSource]], predicate: Exp[TSource] => Exp[Boolean]) = QueryableWhere(s,predicate)
@@ -103,22 +101,7 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   
 }
 
-trait BaseGenQueryableOps extends GenericFatCodegen {
-  val IR: QueryableOpsExp with OptiQLExp
-  import IR._
-  
-  override def syms(e: Any): List[Sym[Any]] = e match { 
-    case QueryableGroupBy(s,v,k) if shallow => syms(s) 
-    case _ => super.syms(e)
-  }
-  
-  override def boundSyms(e: Any): List[Sym[Any]] = e match {
-    case QueryableGroupBy(s,v,k) => v::syms(k)
-	case _ => super.boundSyms(e)
-  }
-}
-
-trait ScalaGenQueryableOps extends ScalaGenFat with BaseGenQueryableOps  {  
+trait ScalaGenQueryableOps extends ScalaGenFat  {  
   val IR: QueryableOpsExp with OptiQLExp
   import IR._
 

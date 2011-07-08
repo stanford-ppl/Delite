@@ -1,7 +1,7 @@
 package ppl.apps.ml.gda
 
 import ppl.dsl.optiml._
-import datastruct.scala.NilVector
+import datastruct.scala.EmptyVector
 import ppl.delite.framework.DeliteApplication
 
 object GDAVectorizedRunner extends OptiMLApplicationRunner with GDAVectorized
@@ -30,10 +30,10 @@ trait GDAVectorized extends OptiMLApplication {
 
     val (y_zeros, y_ones, mu0_num, mu1_num) = t4( sum(0,m) { i =>
       if (y(i) == false){
-        (unit(1.),unit(0.),x(i),NilV[Double])
+        (unit(1.),unit(0.),x(i),EmptyVector[Double])
       }
       else {
-        (unit(0.),unit(1.),NilV[Double],x(i))
+        (unit(0.),unit(1.),EmptyVector[Double],x(i))
       }
     })
 

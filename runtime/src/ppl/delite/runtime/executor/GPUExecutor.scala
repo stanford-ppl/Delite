@@ -37,11 +37,7 @@ class GPUExecutor(val deviceNum: Int) extends Executor {
   }
 
   def shutdown() {
-    host.queue.put(new Shutdown(host))
-  }
-
-  def abnormalShutdown() {
-    hostThread.stop()
+    hostThread.interrupt()
   }
 
   /**

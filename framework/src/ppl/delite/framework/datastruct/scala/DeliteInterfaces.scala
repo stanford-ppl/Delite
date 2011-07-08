@@ -8,7 +8,7 @@ package ppl.delite.framework.datastruct.scala
 abstract class DeliteOpMultiLoop[A] {
   def size: Int
   def alloc: A
-  def split(rhs: A): A
+  def init(__act: A, idx: Int): A
   def process(__act: A, idx: Int): Unit
   def combine(__act: A, rhs: A): Unit
 }

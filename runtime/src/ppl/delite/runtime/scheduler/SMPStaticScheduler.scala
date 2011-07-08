@@ -4,6 +4,7 @@ import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import java.util.ArrayDeque
 import ppl.delite.runtime.graph.ops._
+import ppl.delite.runtime.cost._
 
 /**
  * Author: Kevin J. Brown
@@ -21,7 +22,7 @@ import ppl.delite.runtime.graph.ops._
  *
  */
 
-final class SMPStaticScheduler extends StaticScheduler {
+final class SMPStaticScheduler extends StaticScheduler with ParallelUtilizationCostModel {
 
   private val numThreads = Config.numThreads
 
@@ -30,13 +31,20 @@ final class SMPStaticScheduler extends StaticScheduler {
     scheduleFlat(graph)
   }
 
-  protected def scheduleFlat(graph: DeliteTaskGraph) {
+  protected def scheduleSequential(graph: DeliteTaskGraph) = scheduleFlat(graph, true)
+
+  protected def scheduleFlat(graph: DeliteTaskGraph) = scheduleFlat(graph, false)
+
+  protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
     val opQueue = new ArrayDeque[DeliteOP]
     val schedule = PartialSchedule(numThreads)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
-      scheduleOne(op, graph, schedule)
+      if (sequential)
+        addSequential(op, graph, schedule, 0)
+      else
+        scheduleOne(op, graph, schedule)
       enqueueRoots(graph, opQueue)
     }
     ensureScheduled(graph)
@@ -49,6 +57,13 @@ final class SMPStaticScheduler extends StaticScheduler {
   protected def scheduleOne(op: DeliteOP, graph: DeliteTaskGraph, schedule: PartialSchedule) {
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Range(0, numThreads))
+			case l: OP_MultiLoop => 
+				if (shouldParallelize(l, Map[String,Int]())){
+					split(op, graph, schedule, Range(0, numThreads))
+				}
+				else {
+					split(op, graph, schedule, Seq(0))
+				} 
       case _ => {
         //if (op.variant != null) addNested(op.variant, graph, schedule, Range(0, numThreads)) else
         if (op.isDataParallel) split(op, graph, schedule, Range(0, numThreads))
@@ -64,8 +79,7 @@ final class SMPStaticScheduler extends StaticScheduler {
     val deps = op.getDependencies
     while (i < numThreads && notDone) {
       if (deps.contains(schedule(i).peekLast)) {
-        schedule(i).add(op)
-        op.scheduledResource = i
+        scheduleOn(op, schedule, i)
         notDone = false
         if (nextThread == i) nextThread = (nextThread + 1) % numThreads
       }
@@ -73,11 +87,9 @@ final class SMPStaticScheduler extends StaticScheduler {
     }
     //else submit op to next thread in the rotation (round-robin)
     if (notDone) {
-      schedule(nextThread).add(op)
-      op.scheduledResource = nextThread
+      scheduleOn(op, schedule, nextThread)
       nextThread = (nextThread + 1) % numThreads
     }
-    op.isScheduled = true
   }
 
 }

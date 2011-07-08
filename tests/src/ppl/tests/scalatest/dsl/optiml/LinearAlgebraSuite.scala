@@ -13,7 +13,7 @@ trait SimpleVectorArithmetic extends DeliteTestModule with LinearAlgebraTestsCom
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
     val rowD = Vector(-1.1, -6.2)
-    val colC = Vector(7., 3.2, 13.3).mt
+    val colC = Vector(7., 3.2, 13.3).t
 
     // A*B piecewise
     val ansVec = rowA*rowB
@@ -37,7 +37,7 @@ trait SimpleMatrixArithmetic extends DeliteTestModule with LinearAlgebraTestsCom
     implicit val collector = ArrayBuffer[Boolean]()
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
-    val colC = Vector(7., 3.2, 13.3).mt
+    val colC = Vector(7., 3.2, 13.3).t
     val m33 = Matrix(rowA, rowB, colC.t)
     val m23 = Matrix(Vector(3.5, 7.5, 9.0), Vector(-5.6, 8.2, 17.3))
     val m32 = Matrix(Vector(.07, .91), Vector(17., -10.), Vector(-99.,.023))
@@ -79,8 +79,8 @@ trait CombinedVecMatArithmetic extends DeliteTestModule with LinearAlgebraTestsC
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
     val rowD = Vector(-1.1, -6.2)
-    val colC = Vector(7., 3.2, 13.3).mt
-    val colE = Vector(.05, 9.97).mt
+    val colC = Vector(7., 3.2, 13.3).t
+    val colE = Vector(.05, 9.97).t
     val m33 = Matrix(rowA, rowB, colC.t)
     val m23 = Matrix(Vector(3.5, 7.5, 9.0), Vector(-5.6, 8.2, 17.3))
     val m32 = Matrix(Vector(.07, .91), Vector(17., -10.), Vector(-99.,.023))

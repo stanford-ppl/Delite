@@ -52,6 +52,8 @@ trait LanguageOps extends Base { this: OptiML =>
     // reseeds for all threads
     optiml_reseed()
   }
+  
+  def identityHashCode(x:Rep[Any]): Rep[Int]
 
   def optiml_internal_rand_double(): Rep[Double]
   def optiml_internal_rand_float(): Rep[Float]
@@ -103,18 +105,18 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    * min
    */
-  def min[A:Manifest:Ordering](vals: Rep[Vector[A]]) = repVecToVecOps(vals).min
-  def min[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], o: Overloaded1) = repMatToMatOps(vals).min
-  //def min[A:Manifest:Ordering](vals: A*) = repVecToVecOps(Vector(vals: _*)).min
-  def min[A:Manifest:Ordering](vals: Rep[A]*) = repVecToVecOps(Vector(vals: _*)).min
+  def min[A:Manifest:Ordering:HasMinMax](vals: Rep[Vector[A]]) = repVecToVecOps(vals).min
+  def min[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], mx: HasMinMax[A], o: Overloaded1) = repMatToMatOps(vals).min
+  //def min[A:Manifest:Ordering:HasMinMax](vals: A*) = repVecToVecOps(Vector(vals: _*)).min
+  def min[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*) = repVecToVecOps(Vector(vals: _*)).min
 
   /**
    * max
    */
-  def max[A:Manifest:Ordering](vals: Rep[Vector[A]]) = repVecToVecOps(vals).max
-  def max[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], o: Overloaded1) = repMatToMatOps(vals).max
-  //def max[A:Manifest:Ordering](vals: A*) = repVecToVecOps(Vector(vals: _*)).max
-  def max[A:Manifest:Ordering](vals: Rep[A]*) = repVecToVecOps(Vector(vals: _*)).max
+  def max[A:Manifest:Ordering:HasMinMax](vals: Rep[Vector[A]]) = repVecToVecOps(vals).max
+  def max[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], mx: HasMinMax[A], o: Overloaded1) = repMatToMatOps(vals).max
+  //def max[A:Manifest:Ordering:HasMinMax](vals: A*) = repVecToVecOps(Vector(vals: _*)).max
+  def max[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*) = repVecToVecOps(Vector(vals: _*)).max
 
 
   /**
@@ -152,7 +154,8 @@ trait LanguageOps extends Base { this: OptiML =>
   val * = new IndexWildcard
 
   implicit def tuple2ToIndexVector1(tup: (Rep[IndexVector], IndexWildcard))(implicit overloaded1 : Overloaded1) = indexvector2_new(tup._1, indexvector2_wildcard())
-  implicit def tuple2ToIndexVector2(tup: (IndexWildcard, Rep[IndexVector]))(implicit overloaded2 : Overloaded2) = indexvector2_new(indexvector2_wildcard(), tup._2)
+// currently not allowed
+//  implicit def tuple2ToIndexVector2(tup: (IndexWildcard, Rep[IndexVector]))(implicit overloaded2 : Overloaded2) = indexvector2_new(indexvector2_wildcard(), tup._2)
   implicit def tuple2ToIndexVector3(tup: (Rep[IndexVector], Rep[IndexVector]))(implicit overloaded3 : Overloaded3) = indexvector2_new(tup._1, tup._2)
 
 
@@ -320,10 +323,10 @@ trait LanguageOps extends Base { this: OptiML =>
    * Nearest neighbor
    */
   // returns the index of the nearest neighbor of row inside data
-  def nearestNeighborIndex[A:Manifest:Arith:Ordering:Numeric](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean] = unit(true)): Rep[Int]
+  def nearestNeighborIndex[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean] = unit(true)): Rep[Int]
     = optiml_nearest_neighbor_index(row, data, allowSame)
 
-  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:Numeric](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int]
+  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int]
 
   /**
    *   Profiling
@@ -355,6 +358,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class RandGaussian() extends Def[Double]
 
   case class RandReseed() extends Def[Unit]
+  
+  case class IdentityHashCode(x: Exp[Any]) extends Def[Int]
 
 
   /**
@@ -375,6 +380,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def optiml_rand_gaussian() = reflectEffect(RandGaussian())
 
   def optiml_reseed() = reflectEffect(RandReseed())
+  
+  def identityHashCode(x:Exp[Any]) = IdentityHashCode(x)
 
 
   /**
@@ -401,22 +408,21 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Sum
    */
-  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], mV: Sym[Int], map: Exp[A])
-    extends DeliteOpMapReduce[Int,A,Vector] {
 
-    val in = Vector.range(start, end)
-    val rV = (fresh[A],fresh[A])
-    val reduce = reifyEffects(rV._1 += rV._2) //TODO TR write to non-mutable
-    //val mapreduce = reifyEffects(ops.+=(acc, reifyEffects(block(mV))))
-  }
+  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], map: Exp[Int] => Exp[A])
+    extends DeliteOpMapReduce[Int,A] {
+
+    val in = (start::end)
+    val size = end - start
+    val zero = implicitly[Arith[A]].zero
+    def reduce = (a,b) => a += b
+  } 
 
   def optiml_sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
 
-    val mV = fresh[Int]
-    val map = reifyEffects(block(mV))
-    //Sum(start, end, mV, map)
+    Sum(start, end, block)
     // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
-    reflectEffect(Sum(start, end, mV, map))
+    //reflectEffect(Sum(start, end, block))
   }
 
 
@@ -438,18 +444,17 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
   def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices
-
-    val tasks = vertices.cloneL
+    val tasks : Rep[Vertices[V]] = vertices.mutable
     val seen = Set[V]()
     
     while(tasks.length > 0) {
-      tasks.foreach(block)
+      tasks.mforeach(block)
       tasks.clear()
-      var totalTasks = var_new(unit(0))
+      //var totalTasks = unit(0)
       
       for(i <- 0 until vertices.length) {
         val vtasks = vertices(i).tasks
-        totalTasks += vtasks.length
+        //totalTasks += vtasks.length
         for(j <- 0 until vtasks.length) {
           val task = vtasks(j).asInstanceOfL[V]
           if(!seen.contains(task)) {
@@ -458,7 +463,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
           }
         }
 
-        vertices(i).clearTasks() //TODO TR: non-mutable write
+        vertices(i).clearTasks()
       }
 
       //println("tasks: " + tasks.length)
@@ -607,11 +612,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Nearest neighbor
    */
-  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:Numeric](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int] = {
+  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int] = {
     // unroll
     val dists = (0::m.numRows){ i =>
       val d = dist(m(row),m(i))
-      if (d == unit(0).asInstanceOfL[A] && !allowSame) unit(scala.Int.MaxValue).asInstanceOfL[A] else d
+      if (d == implicitly[Arith[A]].zero && !allowSame) implicitly[HasMinMax[A]].maxValue else d
     }
     dists.minIndex
     /*
@@ -641,15 +646,6 @@ trait BaseGenLanguageOps extends GenericFatCodegen {
   val IR: LanguageOpsExp
   import IR._
 
-  /*
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    case _ => super.syms(e)
-  }
-
-  override def getFreeVarNode(rhs: Def[Any]): List[Sym[Any]] = rhs match {
-    case _ => super.getFreeVarNode(rhs)
-  }
-  */
 }
 
 trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
@@ -672,6 +668,7 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
       case RandGaussian() => emitValDef(sym, "generated.scala.Global.randRef.nextGaussian()")
       case RandReseed() => emitValDef(sym, "{ generated.scala.Global.randRef.setSeed(generated.scala.Global.INITIAL_SEED);" +
                                            "   generated.scala.Global.intRandRef.setSeed(generated.scala.Global.INITIAL_SEED); }")
+      case IdentityHashCode(x) => emitValDef(sym, "System.identityHashCode(" + quote(x) + ")")
       case ProfileStart(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
       case ProfileStop(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
       case _ => super.emitNode(sym, rhs)

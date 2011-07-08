@@ -43,24 +43,26 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
 
   case class IndexVectorObjectFromVec(xs: Exp[Vector[Int]]) extends DeliteOpSingleTask[IndexVector](reifyEffectsHere(index_vector_obj_fromvec_impl(xs)))
 
-  case class IndexVectorConstruct[B](in: Exp[IndexVector], v: Sym[Int], func: Exp[B])(implicit val mA: Manifest[Int], val mB: Manifest[B])
-    extends DeliteOpMap[Int,B,Vector] {
+  // Note: Construction from a discrete index vector set will curently return a contiguous (non-sparse) vector.
+  // Is this what we want?
+  case class IndexVectorConstruct[B:Manifest](in: Exp[IndexVector], func: Exp[Int] => Exp[B])
+    extends DeliteOpMap[Int,B,Vector[B]] {
 
-    val alloc = reifyEffectsHere(Vector[B](in.length, in.isRow))
+    def alloc = Vector[B](in.length, in.isRow)
+    val size = in.length
   }
-
+  
   // impl defs
   def indexvector_range(start: Exp[Int], end: Exp[Int]) = IndexVectorRange(start, end)
   def indexvector_obj_new(len: Exp[Int]) = reflectMutable(IndexVectorObjectNew(len))
-  def indexvector_obj_fromvec(xs: Exp[Vector[Int]]) = reflectMutable(IndexVectorObjectFromVec(xs))
+  def indexvector_obj_fromvec(xs: Exp[Vector[Int]]) = reflectPure(IndexVectorObjectFromVec(xs))
 
   // class defs
   def indexvector_construct[A:Manifest](x: Exp[IndexVector], block: Exp[Int] => Exp[A]): Exp[Vector[A]] = {
-    val v = fresh[Int]
-    val func = reifyEffects(block(v))
-    //IndexVectorConstruct(x, v, func)
+    IndexVectorConstruct(x, block)
     // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
-    reflectEffect(IndexVectorConstruct(x, v, func))
+    // TR TODO: use effect summary of func
+    //reflectEffect(IndexVectorConstruct(x, block))
   }
 
 }
