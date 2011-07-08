@@ -37,7 +37,7 @@ def main():
     parser.add_option("-t", "--threads", dest="threads", default="_all", help="a list of comma separated thread counts (e.g. -t 1,2,4)")
     parser.add_option("-s", "--skip", dest="skip", default="_none", help="skips smp and/or gpu portion of gathering numbers (e.g. -s gpu)")
     parser.add_option("-k", "--keep-going", dest="keep_going", action="store_true", help="keep going even if there is a abnormal exit code")
-    parser.add_option("--input-size", dest="input_size", default="icml", help="specify which dataset to use when collecting numbers")
+    parser.add_option("--input-size", dest="input_size", default="icml", help="specify which dataset input size to use when collecting numbers")
     parser.add_option("--nv", dest="no_variants", action="store_true" , help="disables variant support in the framework")
     parser.add_option("--nb", dest="no_blas", action="store_true", help="disables blas calls in generated code")
     parser.add_option("--nf", dest="no_fusion", action="store_true", help="disables op fusion")
@@ -177,8 +177,8 @@ def launchApps(options):
                 
                 stats_dir = os.path.expandvars(options['stats-dir'])
                 
-                opts = "-Ddelite.home=" + props['delite.home'] + " -Ddelite.threads=" + str(numThreads) + " -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + stats_dir + " -Dstats.output.filename=" + app + "-smp-" +str(numThreads) + ".times"
-                os.putenv("JAVA_OPTS", os.getenv(java_opts, "") + " " + opts)
+                opts = "-Ddelite.home=" + props['delite.home'] + " -Ddelite.threads=" + str(numThreads) + " -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + stats_dir + " -Dstats.output.filename=" + app + "-smp-" +str(numThreads) + ".times " + java_opts
+                os.putenv("JAVA_OPTS", opts)
                 
                 print "== executing application: " + app + " " + params[app],
                 print "== with options: " + opts + "\n"
@@ -197,8 +197,8 @@ def launchApps(options):
             
             stats_dir = os.path.expandvars(options['stats-dir'])
             
-            opts = "-Ddelite.home=" + props['delite.home'] +" -Ddelite.threads=1 -Ddelite.gpus=1 -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + stats_dir + " -Dstats.output.filename=" + app + "-gpu.times"
-            os.putenv("JAVA_OPTS", os.getenv(java_opts, "") + " " + opts)
+            opts = "-Ddelite.home=" + props['delite.home'] +" -Ddelite.threads=1 -Ddelite.gpus=1 -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + stats_dir + " -Dstats.output.filename=" + app + "-gpu.times " + java_opts
+            os.putenv("JAVA_OPTS", opts)
             print "== executing application: " + app + " " + params[app],
             print "== with options: " + opts + "\n"
             ecode = os.system(props['delite.home'] + "/bin/exec " + app + ".deg " + params[app])

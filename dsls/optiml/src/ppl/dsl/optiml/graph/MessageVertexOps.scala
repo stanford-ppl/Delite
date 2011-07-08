@@ -34,7 +34,6 @@ trait MessageVertexOps extends DSLType with Variables {
 }
 
 trait MessageVertexOpsExp extends MessageVertexOps with EffectExp {
-
   this: OptiMLExp =>
 
   ///////////////////////////////////////////////////
@@ -51,13 +50,13 @@ trait MessageVertexOpsExp extends MessageVertexOps with EffectExp {
   /////////////////////
   // object interface
 
-  def message_vertex_obj_new(g: Exp[Graph[MessageVertex,MessageEdge]], d: Exp[MessageData]) = reflectEffect(MessageVertexObjectNew(g,d))
+  def message_vertex_obj_new(g: Exp[Graph[MessageVertex,MessageEdge]], d: Exp[MessageData]) = reflectMutable(MessageVertexObjectNew(g,d))
 
   /////////////////////
   // class interface
 
-  def message_vertex_data(v: Exp[MessageVertex]) = MessageVertexData(/*reflectRead*/(v))
-  def message_vertex_target(v: Exp[MessageVertex], e: Exp[MessageEdge]) = MessageVertexTarget(/*reflectRead*/(v),/*reflectRead*/(e))
+  def message_vertex_data(v: Exp[MessageVertex]) = reflectPure(MessageVertexData(v))
+  def message_vertex_target(v: Exp[MessageVertex], e: Exp[MessageEdge]) = reflectPure(MessageVertexTarget(v,e))
 }
 
 

@@ -16,52 +16,51 @@ trait VertexOps extends DSLType with Variables {
 
   // base class vertices cannot be instantiated at the moment
 
-  implicit def repVertexToVertexOps(v: Rep[Vertex]) = new vertexOpsCls(v)
+  implicit def repVertexToVertexOps[V<:Vertex:Manifest](v: Rep[V]) = new vertexOpsCls(v)
 
-  class vertexOpsCls(v: Rep[Vertex]) {
+  class vertexOpsCls[V<:Vertex:Manifest](v: Rep[V]) {
     def edges = vertex_edges(v)
     def neighbors = vertex_neighbors(v)
     def neighborsSelf = vertex_neighbors_self(v)
-    def addTask(t: Rep[Vertex]) = vertex_add_task(v, t)
+    def addTask(t: Rep[V]) = vertex_add_task(v, t)
     def clearTasks() = vertex_clear_tasks(v)
     def tasks = vertex_tasks(v)
   }
 
   // class defs
-  def vertex_edges(v: Rep[Vertex]): Rep[Edges[Edge]]
-  def vertex_neighbors(v: Rep[Vertex]): Rep[Vertices[Vertex]]
-  def vertex_neighbors_self(v: Rep[Vertex]): Rep[Vertices[Vertex]]
+  def vertex_edges[V<:Vertex](v: Rep[V]): Rep[Edges[Edge]]
+  def vertex_neighbors[V<:Vertex:Manifest](v: Rep[V]): Rep[Vertices[V]]
+  def vertex_neighbors_self[V<:Vertex:Manifest](v: Rep[V]): Rep[Vertices[V]]
 
-  def vertex_tasks(v: Rep[Vertex]) : Rep[Vertices[Vertex]]
-  def vertex_clear_tasks(v: Rep[Vertex]) : Rep[Unit]
-  def vertex_add_task(v: Rep[Vertex], t: Rep[Vertex]) : Rep[Unit]
+  def vertex_tasks[V<:Vertex:Manifest](v: Rep[V]) : Rep[Vertices[V]]
+  def vertex_clear_tasks[V<:Vertex](v: Rep[V]) : Rep[Unit]
+  def vertex_add_task[V<:Vertex](v: Rep[V], t: Rep[V]) : Rep[Unit]
 }
 
 trait VertexOpsExp extends VertexOps with EffectExp {
-
   this: OptiMLExp =>
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
 
-  case class VertexEdges(v: Exp[Vertex]) extends Def[Edges[Edge]]
-  case class VertexNeighbors(v: Exp[Vertex]) extends Def[Vertices[Vertex]]
-  case class VertexNeighborsSelf(v: Exp[Vertex]) extends Def[Vertices[Vertex]]
+  case class VertexEdges[V<:Vertex](v: Exp[V]) extends Def[Edges[Edge]]
+  case class VertexNeighbors[V<:Vertex:Manifest](v: Exp[V]) extends Def[Vertices[V]]
+  case class VertexNeighborsSelf[V<:Vertex:Manifest](v: Exp[V]) extends Def[Vertices[V]]
 
-  case class VertexTasks(v: Exp[Vertex]) extends Def[Vertices[Vertex]]
-  case class VertexAddTask(v: Exp[Vertex], t: Exp[Vertex]) extends Def[Unit]
-  case class VertexClearTasks(v: Exp[Vertex]) extends Def[Unit]
+  case class VertexTasks[V<:Vertex:Manifest](v: Exp[V]) extends Def[Vertices[V]]
+  case class VertexAddTask[V<:Vertex](v: Exp[V], t: Exp[V]) extends Def[Unit]
+  case class VertexClearTasks[V<:Vertex](v: Exp[V]) extends Def[Unit]
 
   /////////////////////
   // class interface
 
-  def vertex_edges(v: Exp[Vertex]) = VertexEdges(v)
-  def vertex_neighbors(v: Exp[Vertex]) = VertexNeighbors(v)
-  def vertex_neighbors_self(v: Exp[Vertex]) = VertexNeighborsSelf(v)
+  def vertex_edges[V<:Vertex](v: Exp[V]) = reflectPure(VertexEdges(v))
+  def vertex_neighbors[V<:Vertex:Manifest](v: Exp[V]) = reflectPure(VertexNeighbors(v))
+  def vertex_neighbors_self[V<:Vertex:Manifest](v: Exp[V]) = reflectPure(VertexNeighborsSelf(v))
 
-  def vertex_tasks(v: Exp[Vertex]) = VertexTasks(/*reflectRead*/(v))
-  def vertex_clear_tasks(v: Exp[Vertex]) = reflectWrite(v)(VertexClearTasks(/*reflectWrite*/(v)))
-  def vertex_add_task(v: Exp[Vertex], t: Exp[Vertex]) = reflectWrite(v)(VertexAddTask(/*reflectRead*/(v), /*reflectRead*/(t)))
+  def vertex_tasks[V<:Vertex:Manifest](v: Exp[V]) = reflectPure(VertexTasks(v))
+  def vertex_clear_tasks[V<:Vertex](v: Exp[V]) = reflectWrite(v)(VertexClearTasks(v))
+  def vertex_add_task[V<:Vertex](v: Exp[V], t: Exp[V]) = reflectWrite(v)(VertexAddTask(v, t))
 }
 
 

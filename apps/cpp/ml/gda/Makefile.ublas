@@ -1,0 +1,20 @@
+CC=g++
+CFLAGS=-c -O3 -Wall -I../../
+LDFLAGS= -O3 -larmadillo
+HEADERS= ../OptiML.hpp
+SOURCES=GDA_ublas.cpp
+OBJECTS=$(SOURCES:.cpp=.o)
+EXECUTABLE=GDA_ublas 
+
+all: $(SOURCES) $(EXECUTABLE)
+
+$(EXECUTABLE): $(OBJECTS) 
+	       $(CC) $(LDFLAGS) $(OBJECTS) -o $@
+
+$(OBJECTS): $(HEADERS)
+
+.cpp.o:
+	$(CC) $(CFLAGS) $< -o $@
+
+clean:
+	rm -f *.o *~ $(EXECUTABLE)

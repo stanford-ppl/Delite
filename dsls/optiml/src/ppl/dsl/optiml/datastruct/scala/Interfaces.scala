@@ -48,7 +48,7 @@ trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
 
 trait ZeroVector[T] extends Vector[T]
 
-trait NilVector[T] extends Vector[T] {
+trait EmptyVector[T] extends Vector[T] {
   def length : Int = 0
   def apply(i: Int): T = throw new UnsupportedOperationException()
   def isRow: Boolean = throw new UnsupportedOperationException()
@@ -213,7 +213,11 @@ trait Edge {
   def graph: G
 }
 
-trait Vertices[V <: Vertex] extends Vector[V]
+trait Vertices[V <: Vertex] extends Vector[V] {
+  def cloneV: Vertices[V]
+  def printBeliefs(): Unit
+}
+
 trait Edges[E <: Edge] extends Vector[E]
 
 

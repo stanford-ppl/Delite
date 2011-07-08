@@ -34,17 +34,17 @@ trait LabelsOpsExp extends LabelsOps with BaseExp { this: OptiMLExp =>
   case class LabelsObjectFromVec[A:Manifest](xs: Exp[Vector[A]]) extends Def[Labels[A]] {
     val mV = manifest[LabelsImpl[A]]
   }
-  case class LabelsMutableMap[A:Manifest](in: Exp[Labels[A]], v: Sym[A], func: Exp[A])
-    extends DeliteOpMap[A,A,Labels] {
-    val alloc = in
-  }
+  case class LabelsMutableMap[A:Manifest](in: Exp[Labels[A]], func: Exp[A] => Exp[A])
+    extends DeliteOpMap[A,A,Labels[A]] {
+
+    def alloc = in
+    val size = in.length    
+  }  
 
   def labels_obj_fromVec[A:Manifest](xs: Exp[Vector[A]]) = reflectEffect(LabelsObjectFromVec(xs))
 
   def labels_mmap[A:Manifest](x: Exp[Labels[A]], f: Exp[A] => Exp[A]) = {
-    val v = fresh[A]
-    val func = reifyEffects(f(v))
-    reflectWrite(x)(LabelsMutableMap(x, v, func)) //reflectReadWrite(x)
+    reflectWrite(x)(LabelsMutableMap(x, f)) //reflectReadWrite(x)
   }
 }
 

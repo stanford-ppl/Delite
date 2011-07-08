@@ -5,6 +5,7 @@ import java.util.ArrayDeque
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.graph.ops._
+import ppl.delite.runtime.cost._
 
 /**
  * Author: Kevin J. Brown
@@ -20,7 +21,7 @@ import ppl.delite.runtime.graph.ops._
  * All OPs that can be executed on the GPU do so
  * The remaining ops execute in a single CPU thread
  */
-final class GPUOnlyStaticScheduler extends StaticScheduler {
+final class GPUOnlyStaticScheduler extends StaticScheduler with ParallelUtilizationCostModel {
 
   private val cpu = 0
   private val gpu = 1
@@ -30,13 +31,20 @@ final class GPUOnlyStaticScheduler extends StaticScheduler {
     scheduleFlat(graph)
   }
 
-  protected def scheduleFlat(graph: DeliteTaskGraph) {
+  protected def scheduleSequential(graph: DeliteTaskGraph) = scheduleFlat(graph, true)
+
+  protected def scheduleFlat(graph: DeliteTaskGraph) = scheduleFlat(graph, false)
+
+  protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
     val opQueue = new ArrayDeque[DeliteOP]
     val schedule = PartialSchedule(2)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
-      scheduleOne(op, graph, schedule)
+      if (sequential)
+        addSequential(op, graph, schedule, 0) //don't ship to GPU
+      else
+        scheduleOne(op, graph, schedule)
       enqueueRoots(graph, opQueue)
     }
     ensureScheduled(graph)

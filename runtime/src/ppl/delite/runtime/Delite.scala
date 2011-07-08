@@ -44,24 +44,24 @@ object Delite {
     Arguments.args = args.drop(1)
 
     val scheduler = Config.scheduler match {
-      case "SMPStaticScheduler" => new SMPStaticScheduler
-      case "GPUOnlyStaticScheduler" => new GPUOnlyStaticScheduler
+      case "SMP" => new SMPStaticScheduler
+      case "SMP+GPU" => new SMP_GPU_StaticScheduler
       case "default" => {
         if (Config.numGPUs == 0) new SMPStaticScheduler
-        else if (Config.numThreads == 1 && Config.numGPUs == 1) new GPUOnlyStaticScheduler
-        else error("No scheduler currently exists that can handle requested resources")
+        else if (Config.numGPUs == 1) new SMP_GPU_StaticScheduler
+        else error("No scheduler currently exists that can handle the requested resources")
       }
       case _ => throw new IllegalArgumentException("Requested scheduler is not recognized")
     }
 
     val executor = Config.executor match {
-      case "SMPExecutor" => new SMPExecutor
-      case "SMP+GPUExecutor" => new SMP_GPU_Executor
+      case "SMP" => new SMPExecutor
+      case "SMP+GPU" => new SMP_GPU_Executor
       case "default" => {
         if (Config.numGPUs == 0) new SMPExecutor
         else new SMP_GPU_Executor
       }
-      case _ => throw new IllegalArgumentException("Requested executor type is not recognized")
+      case _ => throw new IllegalArgumentException("Requested executor is not recognized")
     }
 
     def abnormalShutdown() {

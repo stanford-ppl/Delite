@@ -173,4 +173,5 @@ object ExampleStaticContainer {
       lock.unlock
     }
   }
+
 }

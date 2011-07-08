@@ -78,10 +78,8 @@ object MultiLoop_SMP_Array_Generator {
     out.append('/')
     out.append(numChunks)
     out.append('\n')
-    if (chunkIdx == 0)
-      out.append("val acc = out\n")
-    else
-      out.append("val acc = head.closure.split(out)\n") // copy of out per chunk
+    out.append("val acc = head.closure.init(out, idx)\n") // copy of out per chunk
+		out.append("idx += 1\n")
     out.append("while (idx < end) {\n")
     out.append("head.closure.process(acc, idx)\n")
     out.append("idx += 1\n")

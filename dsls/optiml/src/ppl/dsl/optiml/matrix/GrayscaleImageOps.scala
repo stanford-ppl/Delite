@@ -65,19 +65,15 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   // implemented via delite ops
 
   case class GrayscaleImageObjectCartToPolarMagnitude(inA: Exp[Matrix[Float]], inB: Exp[Matrix[Float]])
-    extends DeliteOpZipWith[Float,Float,Float,Matrix] {
+    extends MatrixArithmeticZipWith(inA, inB) {
 
-    val alloc = reifyEffects(Matrix[Float](inA.numRows, inA.numCols))
-    val v = (fresh[Float],fresh[Float])
-    val func = Math.sqrt(v._1*v._1 + v._2*v._2).asInstanceOfL[Float]
+    def func = (a,b) => Math.sqrt(a*a + b*b).asInstanceOfL[Float]
   }
 
   case class GrayscaleImageObjectCartToPolarPhase(inA: Exp[Matrix[Float]], inB: Exp[Matrix[Float]])
-    extends DeliteOpZipWith[Float,Float,Float,Matrix] {
+    extends MatrixArithmeticZipWith(inA, inB) {
 
-    val alloc = reifyEffects(Matrix[Float](inA.numRows, inA.numCols))
-    val v = (fresh[Float],fresh[Float])
-    val func = (Math.atan2(v._2, v._1)*180/Math.Pi).asInstanceOfL[Float]
+    def func = (a,b) => (Math.atan2(b, a)*180/Math.Pi).asInstanceOfL[Float]
   }
 
   ////////////////////

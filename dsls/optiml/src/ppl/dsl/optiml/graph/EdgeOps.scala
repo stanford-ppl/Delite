@@ -22,6 +22,16 @@ trait EdgeOps extends DSLType with Variables {
 //  }
 
   // class defs
+  
+  implicit def repEdgeToEdgeOps[V <: Edge:Manifest](x: Rep[Edges[V]]) = new edgeOpsCls(x)
+
+  class edgeOpsCls[V <: Edge:Manifest](x: Rep[Edges[V]]) {
+    def foreach(block: Rep[V] => Rep[Unit]) = edges_foreach(x, block)
+    def mforeach(block: Rep[V] => Rep[Unit]) = edges_foreach(x, block)
+  }
+
+  def edges_foreach[V <: Edge:Manifest](x: Rep[Edges[V]], block: Rep[V] => Rep[Unit]): Rep[Unit]
+  def edges_mforeach[V <: Edge:Manifest](x: Rep[Edges[V]], block: Rep[V] => Rep[Unit]): Rep[Unit]
 }
 
 trait EdgeOpsExp extends EdgeOps with EffectExp {
@@ -30,7 +40,27 @@ trait EdgeOpsExp extends EdgeOps with EffectExp {
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
+  
+  ///////////////////////////////////////////////////
+  // implemented via delite ops
+  case class EdgesForeach[E <:Edge:Manifest](in: Exp[Edges[E]], v: Sym[E], func: Exp[Unit])
+    extends DeliteOpForeachBounded[Edge,E,Edges] {
 
+    val i = fresh[Int]
+    val sync = reifyEffects(List())
+  }
+
+  def edges_foreach[E <: Edge:Manifest](x: Exp[Edges[E]], block: Exp[E] => Exp[Unit]) = {
+    val v = fresh[E]
+    val func = reifyEffects(block(v))
+    reflectEffect(EdgesForeach(x, v, func))
+  }
+  
+  def edges_mforeach[E <: Edge:Manifest](x: Exp[Edges[E]], block: Exp[E] => Exp[Unit]) = {
+    val v = fresh[E]
+    val func = reifyEffects(block(v))
+    reflectWrite(x)(EdgesForeach(x, v, func))
+  }
 
   /////////////////////
   // class interface

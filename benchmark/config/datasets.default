@@ -15,6 +15,7 @@ lbp|$data/ml/lbp/onlyedges1|$data/ml/lbp/graphprint1
 lbpgpu|$data/ml/lbp/onlyedges1|$data/ml/lbp/graphprint1
 lbpbaseline|$data/ml/lbp/onlyedges1|$data/ml/lbp/graphprint1
 lbpdenoise|200|200
+lbpdenoiseraw|$data/ml/lbpdenoise/noisy200x200.raw
 nb|$data/ml/nb/MATRIX.TRAIN.25k|$data/ml/nb/MATRIX.TEST
 nbgpu|$data/ml/nb/MATRIX.TRAIN.25k|$data/ml/nb/MATRIX.TEST
 nbbaseline|$data/ml/nb/MATRIX.TRAIN.25k|$data/ml/nb/MATRIX.TEST
