@@ -206,7 +206,7 @@ abstract class GPUExecutableGenerator {
 
   protected def writeOutputAlloc(op: DeliteOP, out: StringBuilder) {
     if (op.outputType != "Unit" && !op.isInstanceOf[OP_Nested]) {
-      out.append(op.outputType(Targets.Cuda))
+      out.append(op.outputType(Targets.Cuda,op.id))
       out.append("* ")
       out.append(getSymGPU(op))
       out.append(" = ")
@@ -366,7 +366,7 @@ abstract class GPUExecutableGenerator {
     out.append('_')
     out.append(getScalaSym(op, sym))
     out.append("\",\"()")
-    out.append(getJNIOutputType(op.outputType))
+    out.append(getJNIOutputType(op.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
   }
 
@@ -450,7 +450,7 @@ abstract class GPUExecutableGenerator {
     out.append(",\"set")
     out.append(getScalaSym(op, sym))
     out.append("\",\"(")
-    out.append(getJNIArgType(op.outputType))
+    out.append(getJNIArgType(op.outputType(sym)))
     out.append(")V\"),")
     if (op.outputType == "Unit") out.append("boxedUnit") else out.append(getSymCPU(op))
     out.append(");\n")
@@ -640,7 +640,6 @@ abstract class GPUExecutableGenerator {
   protected def getCPrimitiveType(scalaType: String): String = scalaType match {
     case "Unit" => "void"
     case "Int" => "int"
-    case "Long" => "long"
     case "Float" => "float"
     case "Double" => "double"
     case "Boolean" => "bool"
