@@ -34,7 +34,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
 
     //write if
     out.append("if (")
-    if (condition.predicateValue == "") out.append(getSym(condition.predicateGraph.result._2))
+    if (condition.predicateValue == "") out.append(getSym(condition.predicateGraph.result._1, condition.predicateGraph.result._2))
     else out.append(condition.predicateValue)
     out.append(") {\n")
 
@@ -43,7 +43,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
       available.clear()
       available ++= inputs
       addKernelCalls(condition.thenGraph.schedule(location), location, out, available, syncList)
-      if (hasOutput) out.append(getSym(condition.thenGraph.result._2))
+      if (hasOutput) out.append(getSym(condition.thenGraph.result._1, condition.thenGraph.result._2))
     }
     else if (hasOutput) out.append(condition.thenValue)
     if (hasOutput) out.append('\n')
@@ -56,7 +56,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
       available.clear()
       available ++= inputs
       addKernelCalls(condition.elseGraph.schedule(location), location, out, available, syncList)
-      if (hasOutput) out.append(getSym(condition.elseGraph.result._2))
+      if (hasOutput) out.append(getSym(condition.elseGraph.result._1, condition.elseGraph.result._2))
     }
     else if (hasOutput) out.append(condition.elseValue)
     if (hasOutput) out.append('\n')
@@ -73,22 +73,22 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
     ScalaCompile.addSource(out.toString)
   }
 
-  override protected def getSync(op: DeliteOP) = {
+  override protected def getSync(op: DeliteOP, name: String) = {
     if (condition.predicateGraph.ops.contains(op))
-      "Result_" + baseId + "P_" + op.id
+      "Result_" + baseId + "P_" + name
     else if (condition.thenGraph.ops.contains(op))
-      "Result_" + baseId + "T_" + op.id
+      "Result_" + baseId + "T_" + name
     else
-      "Result_" + baseId + "E_" + op.id
+      "Result_" + baseId + "E_" + name
   }
 
-  override protected def getSym(op: DeliteOP) = {
+  override protected def getSym(op: DeliteOP, name: String) = {
     if (condition.predicateGraph.ops.contains(op))
-      "o" + baseId + "P_" + op.id
+      "x" + baseId + "P_" + name
     else if (condition.thenGraph.ops.contains(op))
-      "o" + baseId + "T_" + op.id
+      "x" + baseId + "T_" + name
     else
-      "o" + baseId + "E_" + op.id
+      "x" + baseId + "E_" + name
   }
 
   protected def executableName = "Condition_" + baseId + "_"
@@ -172,6 +172,15 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
     out.append("}\n}\n")
 
     out.toString
+  }
+
+  override protected def getScalaSym(op: DeliteOP, name: String) = {
+    if (condition.predicateGraph.ops.contains(op))
+      "x" + baseId + "P_" + name
+    else if (condition.thenGraph.ops.contains(op))
+      "x" + baseId + "T_" + name
+    else
+      "x" + baseId + "E_" + name
   }
 
   protected def executableName = "Condition_" + baseId + "_"

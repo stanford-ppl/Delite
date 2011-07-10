@@ -80,12 +80,13 @@ abstract class ExecutableGenerator {
       if (op.isInstanceOf[OP_Nested]) makeNestedFunction(op, location)
 
       //get dependencies
-      for (dep <- op.getDependencies) { //foreach dependency
+      for (dep <- op.getDependencies) {
         if (!available.contains(dep)) { //this dependency does not yet exist on this resource
           //add to available list
           available += dep
-          //write a getter
-          writeGetter(dep, location, out)
+          //write getter(s) for dep output(s)
+          for (sym <- dep.getOutputs)
+            writeGetter(dep, sym, location, out)
         }
       }
 
@@ -99,15 +100,19 @@ abstract class ExecutableGenerator {
       }
       if (addSetter) {
         syncList += op //add op to list that needs sync generation
-        writeSetter(op, out) //TODO: do we want to set the return objects or the deg objects?
+        for (sym <- op.getOutputs)
+          writeSetter(op, sym, out)
       }
     }
   }
 
   protected def writeFunctionCall(op: DeliteOP, out: StringBuilder) {
+    def returnsResult = op.outputType(op.getOutputs.head) == op.outputType
+    def resultName = if (returnsResult) getSym(op, op.getOutputs.head) else "op_" + getSym(op, op.id)
+
     if (op.task == null) return //dummy op
     out.append("val ")
-    out.append(getSym(op))
+    out.append(resultName)
     out.append(" : ")
     out.append(op.outputType)
     out.append(" = ")
@@ -117,60 +122,46 @@ abstract class ExecutableGenerator {
     for ((input, name) <- op.getInputs) {
       if (!first) out.append(',') //no comma before first argument
       first = false
-      out.append(getSym(name))
+      out.append(getSym(input, name))
     }
     out.append(")\n")
 
-    for (name <- op.getOutputs) {
-      out.append("val ")
-      out.append(getSym(name))
-      out.append(" : ")
-      out.append(op.outputType(name))
-      out.append(" = ")
-      out.append(getSym(op))
-      if (op.outputType(name) != op.outputType) {
+    if (!returnsResult) {
+      for (name <- op.getOutputs) {
+        out.append("val ")
+        out.append(getSym(op, name))
+        out.append(" : ")
+        out.append(op.outputType(name))
+        out.append(" = ")
+        out.append(resultName)
         out.append('.')
         out.append(name)
+        out.append('\n')
       }
-      out.append('\n')
     }
   }
 
-  protected def writeGetter(dep: DeliteOP, location: Int, out: StringBuilder) {
+  protected def writeGetter(dep: DeliteOP, sym: String, location: Int, out: StringBuilder) {
     out.append("val ")
-    out.append(getSym(dep))
+    out.append(getSym(dep, sym))
     out.append(" : ")
-    out.append(dep.outputType)
+    out.append(dep.outputType(sym))
     out.append(" = ")
     out.append(executableName)
     out.append(dep.scheduledResource)
     out.append(".get")
     out.append(location)
     out.append('_')
-    out.append(getSym(dep))
+    out.append(getSym(dep, sym))
     out.append('\n')
-
-    for (sym <- dep.getOutputs) {
-      out.append("val ")
-      out.append(getSym(sym))
-      out.append(" : ")
-      out.append(dep.outputType(sym))
-      out.append(" = ")
-      out.append(getSym(dep))
-      if (dep.outputType(sym) != dep.outputType) {
-        out.append(".")
-        out.append(sym)
-      }
-      out.append('\n')
-    }
   }
 
   protected def executableName: String
 
-  protected def writeSetter(op: DeliteOP, out: StringBuilder) {
-    out.append(getSync(op))
+  protected def writeSetter(op: DeliteOP, sym: String, out: StringBuilder) {
+    out.append(getSync(op, sym))
     out.append(".set(")
-    out.append(getSym(op))
+    out.append(getSym(op, sym))
     out.append(')')
     out.append('\n')
   }
@@ -186,34 +177,36 @@ abstract class ExecutableGenerator {
 
   protected def addSync(list: ArrayBuffer[DeliteOP], out: StringBuilder) {
     for (op <- list) {
-      //add a public get method
-      writePublicGet(op, out)
-      //add a private sync object
-      writeSyncObject(op, out)
+      for (sym <- op.getOutputs) {
+        //add a public get method
+        writePublicGet(op, sym, out)
+        //add a private sync object
+        writeSyncObject(op, sym, out)
+      }
     }
   }
 
-  protected def writePublicGet(op: DeliteOP, out: StringBuilder) {
+  protected def writePublicGet(op: DeliteOP, sym: String, out: StringBuilder) {
     val consumerSet = calculateConsumerSet(op)
     for (location <- consumerSet) {
       out.append("def get")
       out.append(location)
       out.append('_')
-      out.append(getSym(op))
+      out.append(getSym(op, sym))
       out.append(" : ")
-      out.append(op.outputType)
+      out.append(op.outputType(sym))
       out.append(" = ")
-      out.append(getSync(op))
+      out.append(getSync(op, sym))
       out.append(".get")
       out.append(location)
       out.append('\n')
     }
   }
 
-  protected def writeSyncObject(op: DeliteOP, out: StringBuilder) {
+  protected def writeSyncObject(op: DeliteOP, sym: String, out: StringBuilder) {
     //the header
     out.append("private object ")
-    out.append(getSync(op))
+    out.append(getSync(op, sym))
     out.append( " {\n")
 
     //the state
@@ -228,7 +221,7 @@ abstract class ExecutableGenerator {
     }
     out.append("private var putIndex : Int = 0\n")
     out.append("private var _result : ")
-    out.append(op.outputType)
+    out.append(op.outputType(sym))
     out.append(" = _\n")
 
     out.append("private val lock = new ReentrantLock\n")
@@ -240,7 +233,7 @@ abstract class ExecutableGenerator {
       out.append("def get")
       out.append(cons)
       out.append(" : ")
-      out.append(op.outputType)
+      out.append(op.outputType(sym))
       out.append(" = { val takeIndex = takeIndex")
       out.append(cons)
       out.append("; val lock = this.lock; lock.lock; try { while (takeIndex == putIndex) { notEmpty.await }; extract")
@@ -250,21 +243,21 @@ abstract class ExecutableGenerator {
       out.append("private def extract")
       out.append(cons)
       out.append(" : ")
-      out.append(op.outputType)
+      out.append(op.outputType(sym))
       out.append(" = { val res = _result; takeIndex")
       out.append(cons)
       out.append("+= 1; count -= 1; if (count == 0) { _result = null.asInstanceOf[")
-      out.append(op.outputType)
+      out.append(op.outputType(sym))
       out.append("]; notFull.signal }; res }\n")
     }
 
     //the setter
     out.append("def set(result : ")
-    out.append(op.outputType)
+    out.append(op.outputType(sym))
     out.append(") { val lock = this.lock; lock.lock; try { while (count != 0) { notFull.await }; insert(result) } finally { lock.unlock } }\n")
 
     out.append("private def insert(result: ")
-    out.append(op.outputType)
+    out.append(op.outputType(sym))
     out.append(") { _result = result; count = ")
     out.append(numConsumers)
     out.append("; putIndex += 1; notEmpty.signalAll }\n")
@@ -281,16 +274,12 @@ abstract class ExecutableGenerator {
     consumerSet
   }
 
-  protected def getSym(op: DeliteOP): String = {
-    "o"+op.id
-  }
-
-  protected def getSym(name: String): String = {
+  protected def getSym(op: DeliteOP, name: String): String = {
     "x"+name
   }
 
-  protected def getSync(op: DeliteOP): String = {
-    "Result"+op.id
+  protected def getSync(op: DeliteOP, name: String): String = {
+    "Result"+name
   }
 
   protected def addAccessor(out: StringBuilder) {
