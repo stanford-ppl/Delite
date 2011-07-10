@@ -68,26 +68,26 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   }
   */
   
-	case class IndexVector2ConstructRows[A:Manifest](in: Exp[Vector[Int]], block: Exp[Int] => Exp[Vector[A]], out: Exp[Matrix[A]])
+  case class IndexVector2ConstructRows[A:Manifest](in: Exp[Vector[Int]], block: Exp[Int] => Exp[Vector[A]], out: Exp[Matrix[A]])
     extends DeliteOpForeach[Int] {
 
-		val size = in.length
-		def sync = i => List()
-		def func = i => { out(i) = block(i) } // updateRow should be fused with function application
+    val size = in.length
+    def sync = i => List()
+    def func = i => { out(i) = block(i) } // updateRow should be fused with function application
   }
 
-//	case class IndexVector2ConstructCols[A:Manifest](in: Exp[IndexVector], block: Exp[Int] => Exp[Vector[A]], out: Exp[Matrix[A]])
-//		extends DeliteOpForeach[Int]
+//  case class IndexVector2ConstructCols[A:Manifest](in: Exp[IndexVector], block: Exp[Int] => Exp[Vector[A]], out: Exp[Matrix[A]])
+//    extends DeliteOpForeach[Int]
 
-	case class IndexVector2Construct[A:Manifest](x: Exp[IndexVector2], block: (Exp[Int],Exp[Int]) => Exp[A], out: Exp[Matrix[A]])
+  case class IndexVector2Construct[A:Manifest](x: Exp[IndexVector2], block: (Exp[Int],Exp[Int]) => Exp[A], out: Exp[Matrix[A]])
     extends DeliteOpForeach[Int] {
-	
-		val in = x.rowInd
-		val size = in.length
-		def sync = i => List()
-		def func = i => out(i) = x.colInd map { j => block(i,j) } // updateRow should be fused with function application
-  }	
-	
+  
+    val in = x.rowInd
+    val size = in.length
+    def sync = i => List()
+    def func = i => out(i) = x.colInd map { j => block(i,j) } // updateRow should be fused with function application
+  } 
+  
   // impl defs
   def indexvector2_new(rowInd: Exp[IndexVector], colInd: Exp[IndexVector]) = IndexVector2New(rowInd, colInd)
   def indexvector2_wildcard() = IndexVector2Wildcard()
@@ -97,28 +97,28 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   def indexvector2_construct_vectors[A:Manifest](x: Exp[IndexVector2], block: Exp[Int] => Exp[Vector[A]]): Exp[Matrix[A]] = {
     if ((x.rowInd.isInstanceOfL[IndexVector]) && (x.colInd.isInstanceOfL[IndexVectorWC])) {
       //Matrix(IndexVector2ConstructVectors(x.rowInd, block))
-			val in = x.rowInd
-			if (in.length > 0){
-				val first = block(in(0)) 
-				val out = matrix_obj_new[A](in.length, first.length)
-				out(0) = first 
-				reflectWrite(out)(IndexVector2ConstructRows(in.slice(1,in.length),block,out)) // TODO: do this more efficiently than with slice
-				out.unsafeImmutable			
-			}
-			else matrix_obj_new[A](0,0)
-		}
-		// should we allow this? it is rather inefficient...
-		//     else if ((x.colInd.isInstanceOfL[IndexVector]) && (x.rowInd.isInstanceOfL[IndexVectorWC])) {
-		//       //Matrix(IndexVector2ConstructVectors(x.colInd, block))
-		// 	val in = x.colInd
-		// 	if (in.length > 0){
-		// 		val out = matrix_obj_new[B](0,0)
-		// 		out.updateCol(0) = first 
-		// 		reflectWrite(out)(IndexVector2ConstructCols(in.slice(1,in.length),block,out)) 
-		// 		out.unsafeImmutable			
-		// 	}
-		// 	else matrix_obj_new[B](0,0)
-		// }
+      val in = x.rowInd
+      if (in.length > 0){
+        val first = block(in(0)) 
+        val out = matrix_obj_new[A](in.length, first.length)
+        out(0) = first 
+        reflectWrite(out)(IndexVector2ConstructRows(in.slice(1,in.length),block,out)) // TODO: do this more efficiently than with slice
+        out.unsafeImmutable     
+      }
+      else matrix_obj_new[A](0,0)
+    }
+    // should we allow this? it is rather inefficient...
+    //     else if ((x.colInd.isInstanceOfL[IndexVector]) && (x.rowInd.isInstanceOfL[IndexVectorWC])) {
+    //       //Matrix(IndexVector2ConstructVectors(x.colInd, block))
+    //  val in = x.colInd
+    //  if (in.length > 0){
+    //    val out = matrix_obj_new[B](0,0)
+    //    out.updateCol(0) = first 
+    //    reflectWrite(out)(IndexVector2ConstructCols(in.slice(1,in.length),block,out)) 
+    //    out.unsafeImmutable     
+    //  }
+    //  else matrix_obj_new[B](0,0)
+    // }
     else {
       println(unit("optiml runtime error: illegal matrix constructor"))
       exit(-1)
@@ -126,9 +126,9 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   }
   def indexvector2_construct[A:Manifest](x: Exp[IndexVector2], block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[Matrix[A]] = {
     //Matrix(IndexVector2Construct(x, block))
-		val out = matrix_obj_new[A](x.rowInd.length, x.colInd.length)
-		reflectWrite(out)(IndexVector2Construct(x,block,out)) 
-		out.unsafeImmutable
+    val out = matrix_obj_new[A](x.rowInd.length, x.colInd.length)
+    reflectWrite(out)(IndexVector2Construct(x,block,out)) 
+    out.unsafeImmutable
   }
   def indexvector2_rowind(x: Exp[IndexVector2]) = IndexVector2RowInd(x)
   def indexvector2_colind(x: Exp[IndexVector2]) = IndexVector2ColInd(x)

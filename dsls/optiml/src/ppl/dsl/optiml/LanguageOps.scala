@@ -413,10 +413,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     extends DeliteOpMapReduce[Int,A] {
 
     val in = (start::end)
-		val size = end - start
-		val zero = implicitly[Arith[A]].zero
-		def reduce = (a,b) => a += b
-  }	
+    val size = end - start
+    val zero = implicitly[Arith[A]].zero
+    def reduce = (a,b) => a += b
+  } 
 
   def optiml_sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
 

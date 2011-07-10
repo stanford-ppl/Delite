@@ -43,15 +43,15 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
 
   case class IndexVectorObjectFromVec(xs: Exp[Vector[Int]]) extends DeliteOpSingleTask[IndexVector](reifyEffectsHere(index_vector_obj_fromvec_impl(xs)))
 
-	// Note: Construction from a discrete index vector set will curently return a contiguous (non-sparse) vector.
-	// Is this what we want?
+  // Note: Construction from a discrete index vector set will curently return a contiguous (non-sparse) vector.
+  // Is this what we want?
   case class IndexVectorConstruct[B:Manifest](in: Exp[IndexVector], func: Exp[Int] => Exp[B])
-  	extends DeliteOpMap[Int,B,Vector[B]] {
+    extends DeliteOpMap[Int,B,Vector[B]] {
 
-  	def alloc = Vector[B](in.length, in.isRow)
-		val size = in.length
- 	}
-	
+    def alloc = Vector[B](in.length, in.isRow)
+    val size = in.length
+  }
+  
   // impl defs
   def indexvector_range(start: Exp[Int], end: Exp[Int]) = IndexVectorRange(start, end)
   def indexvector_obj_new(len: Exp[Int]) = reflectMutable(IndexVectorObjectNew(len))
@@ -59,10 +59,10 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
 
   // class defs
   def indexvector_construct[A:Manifest](x: Exp[IndexVector], block: Exp[Int] => Exp[A]): Exp[Vector[A]] = {
-		IndexVectorConstruct(x, block)
+    IndexVectorConstruct(x, block)
     // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
     // TR TODO: use effect summary of func
-		//reflectEffect(IndexVectorConstruct(x, block))
+    //reflectEffect(IndexVectorConstruct(x, block))
   }
 
 }

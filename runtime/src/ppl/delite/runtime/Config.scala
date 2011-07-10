@@ -35,8 +35,8 @@ object Config {
    *	Cost Modeling
    */
   
-	val whileCostThreshold: Int = System.getProperty("delite.while.threshold", "1000").toInt
-	val loopCostThreshold: Int = System.getProperty("delite.loop.threshold", "1000").toInt
+	val whileCostThreshold: Int = System.getProperty("delite.while.threshold", "-1").toInt
+	val loopCostThreshold: Int = System.getProperty("delite.loop.threshold", "-1").toInt
 	 
   /***********
     * Statistics and Metrics Section

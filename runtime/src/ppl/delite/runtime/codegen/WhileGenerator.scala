@@ -34,7 +34,7 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
     //write while
     if (whileLoop.predicateValue == "") {
       out.append("var pred: Boolean = ")
-      out.append(getSym(whileLoop.predicateGraph.result._2))
+      out.append(getSym(whileLoop.predicateGraph.result._1, whileLoop.predicateGraph.result._2))
       out.append('\n')
       out.append("while (pred")
     }
@@ -58,7 +58,7 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
       out.append(";{\n")
       addKernelCalls(whileLoop.predicateGraph.schedule(location), location, out, available, new ArrayBuffer[DeliteOP]) //dummy syncList b/c already added
       out.append("pred = ") //update var
-      out.append(getSym(whileLoop.predicateGraph.result._2))
+      out.append(getSym(whileLoop.predicateGraph.result._1, whileLoop.predicateGraph.result._2))
       out.append("\n}\n")
     }
 
@@ -74,18 +74,18 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
     ScalaCompile.addSource(out.toString)
   }
 
-  override protected def getSync(op: DeliteOP) = {
+  override protected def getSync(op: DeliteOP, name: String) = {
     if (whileLoop.predicateGraph.ops.contains(op))
-      "Result_" + baseId + "P_" + op.id
+      "Result_" + baseId + "P_" + name
     else
-      "Result_" + baseId + "B_" + op.id
+      "Result_" + baseId + "B_" + name
   }
 
-  override protected def getSym(op: DeliteOP) = {
+  override protected def getSym(op: DeliteOP, name: String) = {
     if (whileLoop.predicateGraph.ops.contains(op))
-      "o" + baseId + "P_" + op.id
+      "x" + baseId + "P_" + name
     else
-      "o" + baseId + "B_" + op.id
+      "x" + baseId + "B_" + name
   }
 
   protected def executableName = "While_" + baseId + "_"
@@ -155,6 +155,13 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGen
     //print end of while and function
     out.append("}\n}\n")
     out.toString
+  }
+
+  override protected def getScalaSym(op: DeliteOP, name: String) = {
+    if (whileLoop.predicateGraph.ops.contains(op))
+      "x" + baseId + "P_" + name
+    else
+      "x" + baseId + "B_" + name
   }
 
   protected def executableName = "While_" + baseId + "_"

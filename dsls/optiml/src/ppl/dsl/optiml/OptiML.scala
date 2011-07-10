@@ -86,7 +86,7 @@ trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
  * This the trait that every OptiML application must extend.
  */
 trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps 
-	with ArithOps with CloneableOps with HasMinMaxOps
+  with ArithOps with CloneableOps with HasMinMaxOps
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps
   with IndexVectorOps with IndexVector2Ops with MatrixRowOps with MatrixColOps
   with StreamOps with StreamRowOps
@@ -106,8 +106,8 @@ trait OptiMLCompiler extends OptiML with RangeOps with IOOps with SeqOps with Se
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
-	with LanguageOpsExp with ApplicationOpsExp
-	with ArithOpsExpOpt 
+  with LanguageOpsExp with ApplicationOpsExp
+  with ArithOpsExpOpt 
   with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp
   with IndexVectorOpsExp with IndexVector2OpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with StreamOpsExpOpt with StreamRowOpsExpOpt
@@ -203,14 +203,14 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
 
   override def genSpec2(f: File, dsOut: String) {
     for (s1 <- List("Double","Int","Float","Long","Boolean")) {
-   	  for (s2 <- List("Double","Int","Float","Long","Boolean")) {
+      for (s2 <- List("Double","Int","Float","Long","Boolean")) {
         val outFile = dsOut + s1 + s2 + f.getName
         val out = new BufferedWriter(new FileWriter(outFile))
         for (line <- scala.io.Source.fromFile(f).getLines) {
           out.write(specmap2(line, s1, s2) + "\n")
         }
         out.close()
-	  }
+    }
     }
   }
 
@@ -251,8 +251,8 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
           res = res.replaceAll(s+"\\["+tpe1+","+tpe2+"\\]", tpe1+tpe2+s)
           res = res.replaceAll(s+"\\["+tpe1+", "+tpe2+"\\]", tpe1+tpe2+s)
         }
-		  }
-	  }
+      }
+    }
     dsmap(res)
   }
 

@@ -142,6 +142,8 @@ trait SVMModel { this: OptiMLApplication =>
       }
     } // while
 
+  println("ITER " + iter)
+
     // SMO finished
     println("num iterations: " + iter)
 

@@ -395,23 +395,23 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   ////////////////////////////////
   // implemented via delite ops
-	
-	abstract class MatrixArithmeticMap[A:Manifest:Arith](in: Exp[Matrix[A]]) extends DeliteOpMap[A,A,Matrix[A]] {
-		def alloc = Matrix[A](in.numRows, in.numCols)
-		val size = in.numRows*in.numCols
-		
-		def m = manifest[A]
-		def a = implicitly[Arith[A]]
-	}
-	
-	abstract class MatrixArithmeticZipWith[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]]) extends DeliteOpZipWith[A,A,A,Matrix[A]] {
-		def alloc = Matrix[A](inA.numRows, inA.numCols)
-		val size = inA.numRows*inA.numCols
-		
-		def m = manifest[A]
-		def a = implicitly[Arith[A]]
-	}
-		
+  
+  abstract class MatrixArithmeticMap[A:Manifest:Arith](in: Exp[Matrix[A]]) extends DeliteOpMap[A,A,Matrix[A]] {
+    def alloc = Matrix[A](in.numRows, in.numCols)
+    val size = in.numRows*in.numCols
+    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
+  }
+  
+  abstract class MatrixArithmeticZipWith[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]]) extends DeliteOpZipWith[A,A,A,Matrix[A]] {
+    def alloc = Matrix[A](inA.numRows, inA.numCols)
+    val size = inA.numRows*inA.numCols
+    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
+  }
+    
   case class MatrixPlus[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
     extends MatrixArithmeticZipWith(inA, inB) {
 
@@ -424,7 +424,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def func = e => e + y
   }
 
-	case class MatrixPlusEquals[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
+  case class MatrixPlusEquals[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
     extends MatrixArithmeticZipWith[A](inA, inB) {
 
     override def alloc = inA
@@ -434,8 +434,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixMinus[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
     extends MatrixArithmeticZipWith(inA, inB) {
 
-	  def func = (a,b) => a - b
-	}
+    def func = (a,b) => a - b
+  }
 
   case class MatrixMinusScalar[A:Manifest:Arith](in: Exp[Matrix[A]], y: Exp[A])
     extends MatrixArithmeticMap(in) {
@@ -467,24 +467,24 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def func = e => e / y
   }
   
-	case class MatrixSum[A:Manifest:Arith](in: Exp[Matrix[A]]) 
+  case class MatrixSum[A:Manifest:Arith](in: Exp[Matrix[A]]) 
     extends DeliteOpReduce[A] {
 
     val size = in.numRows*in.numCols
-		val zero = implicitly[Arith[A]].zero 
-		def func = (a,b) => a + b
-	}
-	
+    val zero = implicitly[Arith[A]].zero 
+    def func = (a,b) => a + b
+  }
+  
   /* this would be nice, but case class inheritance is deprecated */
-	//case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]]) extends MatrixMapRowsToVec[A,A](x, row => row.sum, unit(false))	
-	case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]])
+  //case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]]) extends MatrixMapRowsToVec[A,A](x, row => row.sum, unit(false))  
+  case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]])
     extends DeliteOpMap[Int,A,Vector[A]] {
 
     def alloc = Vector[A](x.numRows, unit(false))
-		val in = (0::x.numRows)
-		val size = x.numRows
-		def func = i => x(i).sum
-  }	
+    val in = (0::x.numRows)
+    val size = x.numRows
+    def func = i => x(i).sum
+  } 
 
 /*
   case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]])
@@ -549,7 +549,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixMin[A:Manifest:Ordering:HasMinMax](in: Exp[Matrix[A]])
     extends DeliteOpReduce[A] {
 
-		val size = in.numRows*in.numCols
+    val size = in.numRows*in.numCols
     val zero = implicitly[HasMinMax[A]].maxValue
     def func = (a,b) => if (a < b) a else b
   }
@@ -557,7 +557,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixMax[A:Manifest:Ordering:HasMinMax](in: Exp[Matrix[A]])
     extends DeliteOpReduce[A] {
 
-		val size = in.numRows*in.numCols
+    val size = in.numRows*in.numCols
     val zero = implicitly[HasMinMax[A]].minValue
     def func = (a,b) => if (a > b) a else b
   }
@@ -566,89 +566,89 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpMap[A,B,Matrix[B]] {
 
     def alloc = Matrix[B](in.numRows, in.numCols)
-		val size = in.numRows*in.numCols		
+    val size = in.numRows*in.numCols    
   }
 
   case class MatrixMutableMap[A:Manifest](in: Exp[Matrix[A]], func: Exp[A] => Exp[A])
     extends DeliteOpMap[A,A,Matrix[A]] {
 
     def alloc = in
-		val size = in.numRows*in.numCols
+    val size = in.numRows*in.numCols
   }
 
-	case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Vector[B]], out: Exp[Matrix[B]])
+  case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Vector[B]], out: Exp[Matrix[B]])
     extends DeliteOpIndexedLoop {
 
-		val size = x.numRows
-		def func = i => { out(i) = block(x(i)) } // updateRow should be fused with function application
+    val size = x.numRows
+    def func = i => { out(i) = block(x(i)) } // updateRow should be fused with function application
   }
 
-	case class MatrixForeachRow[A:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Unit])
+  case class MatrixForeachRow[A:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Unit])
     extends DeliteOpIndexedLoop {
 
-		val size = x.numRows
+    val size = x.numRows
     def func = i => block(x(i))
   }
 
-	case class MatrixMapRowsToVec[A:Manifest,B: Manifest](x: Exp[Matrix[A]], rowFunc: Exp[MatrixRow[A]] => Exp[B], isRow: Exp[Boolean])
+  case class MatrixMapRowsToVec[A:Manifest,B: Manifest](x: Exp[Matrix[A]], rowFunc: Exp[MatrixRow[A]] => Exp[B], isRow: Exp[Boolean])
     extends DeliteOpMap[Int,B,Vector[B]] {
 
     def alloc = Vector[B](x.numRows, isRow)
-		val in = (0::x.numRows)
-		val size = x.numRows
-		def func = i => rowFunc(x(i))		
+    val in = (0::x.numRows)
+    val size = x.numRows
+    def func = i => rowFunc(x(i))   
   }
 
-	case class MatrixForeach[A:Manifest](in: Exp[Matrix[A]], func: Exp[A] => Exp[Unit])
+  case class MatrixForeach[A:Manifest](in: Exp[Matrix[A]], func: Exp[A] => Exp[Unit])
     extends DeliteOpForeach[A] {
 
     val size = in.numCols*in.numRows
     def sync = n => List()
   }
 
-	case class MatrixUpdateRow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Exp[Vector[A]])
+  case class MatrixUpdateRow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Exp[Vector[A]])
     extends DeliteOpIndexedLoop {
-		
-		val size = x.numCols
-		def func = j => { x(row,j) = y(j) } 
-	}
+    
+    val size = x.numCols
+    def func = j => { x(row,j) = y(j) } 
+  }
 
   case class MatrixZipWith[A:Manifest,B:Manifest,R:Manifest](inA: Exp[Matrix[A]], inB: Exp[Matrix[B]],
                                                              func: (Exp[A], Exp[B]) => Exp[R])
     extends DeliteOpZipWith[A,B,R,Matrix[R]] {
 
     def alloc = Matrix[R](inA.numRows, inA.numCols)
-		val size = inA.numRows*inA.numCols
+    val size = inA.numRows*inA.numCols
   }
 
-	// More efficient (though slightly uglier) to express this as a loop directly. 
-	// TODO: nicer DeliteOpLoop templates? e.g. DeliteOpReductionLoop, ...
-	case class MatrixReduceRows[A:Manifest](x: Exp[Matrix[A]], func: (Exp[Vector[A]], Exp[Vector[A]]) => Exp[Vector[A]])
+  // More efficient (though slightly uglier) to express this as a loop directly. 
+  // TODO: nicer DeliteOpLoop templates? e.g. DeliteOpReductionLoop, ...
+  case class MatrixReduceRows[A:Manifest](x: Exp[Matrix[A]], func: (Exp[Vector[A]], Exp[Vector[A]]) => Exp[Vector[A]])
     extends DeliteOpLoop[Vector[A]] {
 
-		val size = x.numRows
-		val v = fresh[Int]
-		val zero = EmptyVector[A]
-		
-		val rV = (fresh[Vector[A]], fresh[Vector[A]])
-	  val body: Def[Vector[A]] = DeliteReduceElem[Vector[A]](
-			func = transform(reifyEffects(x(v))),
-			zero = transform(this.zero),			
-			rV = (transform(rV._1).asInstanceOf[Sym[Vector[A]]], transform(rV._2).asInstanceOf[Sym[Vector[A]]]),
-			rFunc = transform(reifyEffects(this.func(rV._1, rV._2)))
-		)				
+    val size = x.numRows
+    val v = fresh[Int]
+    val zero = EmptyVector[A]
+    
+    val rV = (fresh[Vector[A]], fresh[Vector[A]])
+    val body: Def[Vector[A]] = DeliteReduceElem[Vector[A]](
+      func = transform(reifyEffects(x(v))),
+      zero = transform(this.zero),      
+      rV = (transform(rV._1).asInstanceOf[Sym[Vector[A]]], transform(rV._2).asInstanceOf[Sym[Vector[A]]]),
+      rFunc = transform(reifyEffects(this.func(rV._1, rV._2)))
+    )       
   }
 
   case class MatrixCount[A:Manifest](in: Exp[Matrix[A]], cond: Exp[A] => Exp[Boolean]) 
     extends DeliteOpFilterReduce[A,Int] {
 
     val size = in.numRows*in.numCols
-		val zero = unit(0)
-		def func = e => unit(1)
-		def reduce = (a,b) => a + b		
-		
-		def m = manifest[A]
-	}	
+    val zero = unit(0)
+    def func = e => unit(1)
+    def reduce = (a,b) => a + b   
+    
+    def m = manifest[A]
+  } 
 
 
   ////////////////////
@@ -730,12 +730,12 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_map[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[A] => Exp[B]) = reflectPure(MatrixMap(x, f))
   def matrix_mmap[A:Manifest](x: Exp[Matrix[A]], f: Exp[A] => Exp[A]) = reflectWrite(x)(MatrixMutableMap(x, f)) // effect??
   def matrix_maprows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[Vector[B]]) = {
-		val out = matrix_obj_new[B](x.numRows, x.numCols)
-		reflectWrite(out)(MatrixMapRows(x,f,out))
-		out.unsafeImmutable // will this work?
+    val out = matrix_obj_new[B](x.numRows, x.numCols)
+    reflectWrite(out)(MatrixMapRows(x,f,out))
+    out.unsafeImmutable // will this work?
   }
   def matrix_maprowstovec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[B], isRow: Exp[Boolean] = unit(true)) = {
-		reflectPure(MatrixMapRowsToVec(x, f, isRow))
+    reflectPure(MatrixMapRowsToVec(x, f, isRow))
   }
   def matrix_foreach[A:Manifest](x: Exp[Matrix[A]], block: Exp[A] => Exp[Unit]) = {
     reflectEffect(MatrixForeach(x, block)) // read??
@@ -744,10 +744,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     reflectEffect(MatrixForeachRow(x, block)) // read??
   }
   def matrix_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[B]], f: (Exp[A],Exp[B]) => Exp[R]) = {
- 		reflectPure(MatrixZipWith(x, y, f))
+    reflectPure(MatrixZipWith(x, y, f))
   }
   def matrix_reducerows[A:Manifest](x: Exp[Matrix[A]], f: (Exp[Vector[A]],Exp[Vector[A]]) => Exp[Vector[A]]) = {
-		reflectPure(MatrixReduceRows(x, f))
+    reflectPure(MatrixReduceRows(x, f))
   }
   def matrix_filterrows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[MatrixRow[A]] => Exp[Boolean]) = reflectPure(MatrixFilterRows(x, pred))
   def matrix_count[A:Manifest](x: Exp[Matrix[A]], pred: Exp[A] => Exp[Boolean]) = MatrixCount(x, pred)
@@ -757,7 +757,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   def matrix_dcapply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = reflectPure(MatrixDCApply(x,i))
 
-	//////////////
+  //////////////
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
@@ -773,22 +773,22 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   ////////////////
   // dependencies
-	
-	override def syms(e: Any): List[Sym[Any]] = e match { 
+  
+  override def syms(e: Any): List[Sym[Any]] = e match { 
     case m@MatrixMapRows(x,b,out) => syms(out) ++ super.syms(m)
     case _ => super.syms(e)
   }
-	  
+    
   override def readSyms(e: Any): List[Sym[Any]] = e match { 
-		case m@MatrixMapRows(x,b,out) => readSyms(out) ++ super.readSyms(m)
+    case m@MatrixMapRows(x,b,out) => readSyms(out) ++ super.readSyms(m)
     case _ => super.readSyms(e)
   }  
 
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
     case m@MatrixMapRows(x,b,out) => symsFreq(out) ++ super.symsFreq(m)
     case _ => super.symsFreq(e)
-	}
-	
+  }
+  
   /////////////////////
   // aliases and sharing
 
@@ -832,7 +832,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     case MatrixRepmat(a,i,j) => syms(a)
     case MatrixClone(a) => syms(a)
     case _ => super.copySyms(e)
-  }	
+  } 
 }
 
 /**
@@ -1039,9 +1039,9 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
       stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
       if(freeVars.length == 0)
-      	stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
+        stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
       else
-      	stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)),%s);".format(quote(sym),sigmoidFunc,quote(x),freeVars.map(quote).mkString(",")))
+        stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)),%s);".format(quote(sym),sigmoidFunc,quote(x),freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(x)),false)
@@ -1080,7 +1080,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
         stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
         stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
         stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
-		    emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true",false,"%s->data".format(quote(x)))
+        emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true",false,"%s->data".format(quote(x)))
       }
       */
 

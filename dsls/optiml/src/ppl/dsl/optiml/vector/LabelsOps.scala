@@ -38,7 +38,7 @@ trait LabelsOpsExp extends LabelsOps with BaseExp { this: OptiMLExp =>
     extends DeliteOpMap[A,A,Labels[A]] {
 
     def alloc = in
-		val size = in.length		
+    val size = in.length    
   }  
 
   def labels_obj_fromVec[A:Manifest](xs: Exp[Vector[A]]) = reflectEffect(LabelsObjectFromVec(xs))
