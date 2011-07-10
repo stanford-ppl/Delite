@@ -104,15 +104,10 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     case _ => super.syms(e)
   }
   
-  override def boundSyms(e: Any): List[Sym[Any]] = e match {
-    case QueryableWhere(i,c) => syms(c)
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {    
     case QueryableGroupBy(s,v,k) => v::syms(k)
 	case _ => super.boundSyms(e)
-  }
-  
-  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match { 
-    case _ => super.symsFreq(e)
-  }
+  }  
   
 }
 

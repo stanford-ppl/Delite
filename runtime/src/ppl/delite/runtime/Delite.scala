@@ -106,15 +106,8 @@ object Delite {
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => {
-        abnormalShutdown(); exit(1) //a worker thread threw the original exception
-        //todo HC: I currently delete the code cache, since there was obviously an issue and we want to force a recompile
-        Directory(Path(Config.codeCacheHome)).deleteRecursively
-      }
-      case e: Exception => {
-        abnormalShutdown(); throw e
-        Directory(Path(Config.codeCacheHome)).deleteRecursively
-      }
+      case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception        
+      case e: Exception => abnormalShutdown(); throw e       
     }
     
 
