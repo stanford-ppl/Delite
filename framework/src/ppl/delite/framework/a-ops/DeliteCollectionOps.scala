@@ -2,8 +2,8 @@ package ppl.delite.framework.ops
 
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenEffect}
 import scala.virtualization.lms.internal.{GenericNestedCodegen}
+import scala.virtualization.lms.common._
 
 trait DeliteCollectionOps extends Base {
   implicit def dcToDcOps[A:Manifest](x: Rep[DeliteCollection[A]]) = new deliteCollectionOpsCls(x)
@@ -42,6 +42,7 @@ trait BaseGenDeliteCollectionOps extends GenericNestedCodegen {
   import IR._
 
 }
+
 trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaGenEffect {
   val IR: DeliteCollectionOpsExp
   import IR._
@@ -56,5 +57,19 @@ trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaG
       case _ => super.emitNode(sym, rhs)
     }
 
+  }
+}
+
+trait CudaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with CudaGenEffect {
+  val IR: DeliteCollectionOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+    rhs match {
+      case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".size()")
+      case DeliteCollectionApply(x,n) => emitValDef(sym, quote(getBlockResult(x)) + ".dcApply(" + quote(n) + ")")
+      case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ")")
+      case _ => super.emitNode(sym, rhs)
+    }
   }
 }

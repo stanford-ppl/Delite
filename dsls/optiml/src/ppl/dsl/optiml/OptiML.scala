@@ -264,7 +264,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
 }
 
 trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenTrainingSetOps with CudaGenMatrixRowOps // with CudaGenVectorViewOps
-  with CudaGenVariantsOps with DeliteCudaGenAllOverrides // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
+  with CudaGenVariantsOps with DeliteCudaGenAllOverrides with CudaGenDeliteCollectionOps// with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._

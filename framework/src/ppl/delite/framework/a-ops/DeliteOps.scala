@@ -334,7 +334,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * We temporarily need these two versions of 'foreach' until we get 'sync' working with the new version.
    */
 
-  @deprecated("DeliteOpForeach2 should only be used if sync is required. It will be removed as soon as sync works with DeliteOpForeach", "") // TODO: swap names with DeliteOpForeach
+  //@deprecated("DeliteOpForeach2 should only be used if sync is required. It will be removed as soon as sync works with DeliteOpForeach", "") // TODO: swap names with DeliteOpForeach
   abstract class DeliteOpForeach2[A,C[X] <: DeliteCollection[X]]() extends DeliteOp[Unit] with DeliteOpMapLikeWhileLoopVariant {
     val in: Exp[C[A]]
     val v: Sym[A]
@@ -361,7 +361,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 
   // TODO: should we make all DeliteOps be boundable? This is probably not the right way to do this anyways.
-  @deprecated("DeliteOpForeachBounded should only be used if sync is required. It will be removed as soon as sync works with DeliteOpForeach", "")
+  //@deprecated("DeliteOpForeachBounded should only be used if sync is required. It will be removed as soon as sync works with DeliteOpForeach", "")
   abstract class DeliteOpForeachBounded[B,A <: B,C[X <: B] <: DeliteCollection[X]] extends DeliteOp[Unit] {
     val in: Exp[C[A]]
     val v: Sym[A]
@@ -662,7 +662,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       case (sym, elem: DeliteReduceElem[_]) => // initialized in init below
     }
     stream.println("__act")
-    stream.println(/*{*/"}")
+    stream.println(/*{*/"}") // def alloc
     stream.println("def init(__act: " + actType + ", " + quotearg(op.v) + "): " + actType + " = {"/*}*/)
     if (op.body exists (loopBodyNeedsCombine _)) {
 			emitMultiLoopFuncs(op, symList)				  											
@@ -859,17 +859,29 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
       if(symList.length != 1) throw new GenerationFailedException("CudaGen: Only 1 output is supported for FatLoop (No fusing yet).")
       currDim += 1
       val currDimStr = getCurrDimStr()
-      setCurrDimLength(quote(op.v)+"->size()")
-      stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(op.v)+".size()"))
+      //setCurrDimLength(quote(op.v)+"->size()")
+      setCurrDimLength(quote(op.size))
+      //stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(op.v)+".size()"))
+      stream.println(addTab()+"if( %s < %s ) {".format(currDimStr, quote(op.size)))
       tabWidth += 1
       (symList zip op.body) foreach {
         case (sym, elem:DeliteCollectElem[_,_]) =>
           emitAllocFunc(sym,elem.alloc)
           val (loopFunc,freeVars) = emitDevFunc(elem.func, List(op.v))
+          if(freeVars.length==0) {
+            //stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s)));".format(quote(sym),currDimStr,loopFunc,quote(op.v),currDimStr))
+            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s));".format(quote(sym),currDimStr,loopFunc,currDimStr))
+          }
+          else {
+            //stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),currDimStr,loopFunc,quote(op.v),currDimStr,freeVars.map(quote).mkString(",")))
+            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s,%s));".format(quote(sym),currDimStr,loopFunc,currDimStr,freeVars.map(quote).mkString(",")))
+          }
+        case (sym, elem:DeliteForeachElem[_]) =>
+          val (loopFunc,freeVars) = emitDevFunc(elem.func, List(op.v))
           if(freeVars.length==0)
-            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s)));".format(quote(sym),currDimStr,loopFunc,quote(op.v),currDimStr))
+            stream.println(addTab()+"%s.dcUpdate(%s,%s(%s));".format(quote(sym),currDimStr,loopFunc,currDimStr))
           else
-            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),currDimStr,loopFunc,quote(op.v),currDimStr,freeVars.map(quote).mkString(",")))
+            stream.println(addTab()+"%s.dcUpdate(%s,%s(%s,%s));".format(quote(sym),currDimStr,loopFunc,currDimStr,freeVars.map(quote).mkString(",")))
         case _ =>
           throw new GenerationFailedException("CudaGen: DeliteReduceElem is not supported yet.")
       }
@@ -884,6 +896,12 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable." + quote(sym))
       // TODO: Generate single thread version of this work
+    
+    case op: AbstractLoop[_] => 
+      // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
+      stream.println("// a *thin* loop follows: " + quote(sym))
+      emitFatNode(List(sym), SimpleFatLoop(op.size, op.v, List(op.body)))
+    
     case foreach:DeliteOpForeach2[_,_] => {
       if(!isPrimitiveType(foreach.v.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for input of foreach.")
       currDim += 1
@@ -900,6 +918,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
       stream.println(addTab()+"}")
       currDim -= 1
     }
+
     case _ => super.emitNode(sym,rhs)
   }
 }
