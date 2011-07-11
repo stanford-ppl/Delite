@@ -87,8 +87,10 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
       "x" + baseId + "P_" + name
     else if (condition.thenGraph.ops.contains(op))
       "x" + baseId + "T_" + name
-    else
+    else if (condition.elseGraph.ops.contains(op))
       "x" + baseId + "E_" + name
+    else //input
+      "x" + baseId + "_" + name
   }
 
   protected def executableName = "Condition_" + baseId + "_"
@@ -179,8 +181,10 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
       "x" + baseId + "P_" + name
     else if (condition.thenGraph.ops.contains(op))
       "x" + baseId + "T_" + name
-    else
+    else if (condition.elseGraph.ops.contains(op))
       "x" + baseId + "E_" + name
+    else //input
+      "x" + baseId + "_" + name
   }
 
   protected def executableName = "Condition_" + baseId + "_"

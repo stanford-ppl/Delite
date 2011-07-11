@@ -84,8 +84,10 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
   override protected def getSym(op: DeliteOP, name: String) = {
     if (whileLoop.predicateGraph.ops.contains(op))
       "x" + baseId + "P_" + name
-    else
+    else if (whileLoop.bodyGraph.ops.contains(op))
       "x" + baseId + "B_" + name
+    else //input
+      "x"  + baseId + "_" + name
   }
 
   protected def executableName = "While_" + baseId + "_"
@@ -160,8 +162,10 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGen
   override protected def getScalaSym(op: DeliteOP, name: String) = {
     if (whileLoop.predicateGraph.ops.contains(op))
       "x" + baseId + "P_" + name
-    else
+    else if (whileLoop.bodyGraph.ops.contains(op))
       "x" + baseId + "B_" + name
+    else //input
+      "x"  + baseId + "_" + name
   }
 
   protected def executableName = "While_" + baseId + "_"
