@@ -167,7 +167,7 @@ abstract class GPUExecutableGenerator {
       //write the temporary allocations
       writeTempAllocs(op, out)
       //write the output allocation
-      writeOutputAlloc(op, out)
+      writeOutputAllocs(op, out)
       //write the call
       if (op.isInstanceOf[OP_Nested])
         writeFunctionCall(op, out)
@@ -204,9 +204,10 @@ abstract class GPUExecutableGenerator {
     false
   }
 
-  protected def writeOutputAlloc(op: DeliteOP, out: StringBuilder) {
-    if (op.outputType != "Unit" && !op.isInstanceOf[OP_Nested]) {
-      out.append(op.outputType(Targets.Cuda,op.id))
+  protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
+	for ( outsym <- op.getOutputs ) {
+    if (op.outputType(outsym) != "Unit" && !op.isInstanceOf[OP_Nested]) {
+      out.append(op.outputType(Targets.Cuda,outsym))
       out.append("* ")
       out.append(getSymGPU(op))
       out.append(" = ")
@@ -216,6 +217,7 @@ abstract class GPUExecutableGenerator {
       out.append(");\n")
       writeMemoryAdd(op, out)
     }
+	}
   }
 
   protected def writeTempAllocs(op: DeliteOP, out: StringBuilder) {
@@ -304,11 +306,13 @@ abstract class GPUExecutableGenerator {
     out.append(">>>")
 
     out.append('(')
-    if (op.outputType != "Unit") {
-      out.append('*')
-      out.append(getSymGPU(op)) //first kernel input is OP output
-      out.append(',')
-    }
+	for (outsym <- op.getOutputs) {
+    	if (op.outputType(outsym) != "Unit") {
+      		out.append('*')
+      		out.append(getSymGPU(op)) //first kernel input is OP output
+      		out.append(',')
+    	}
+	}
     writeInputs(op, out) //then all op inputs
     writeTemps(op, out) //then all op temporaries
     out.append(");\n")
@@ -429,7 +433,7 @@ abstract class GPUExecutableGenerator {
       }
     }
 
-    if (op.outputType != "Unit") {
+    if (op.outputType(sym) != "Unit") {
       //copy output from GPU to CPU
       out.append(getJNIType(op.outputType)) //jobject
       out.append(' ')
@@ -452,7 +456,7 @@ abstract class GPUExecutableGenerator {
     out.append("\",\"(")
     out.append(getJNIArgType(op.outputType(sym)))
     out.append(")V\"),")
-    if (op.outputType == "Unit") out.append("boxedUnit") else out.append(getSymCPU(op))
+    if (op.outputType(sym) == "Unit") out.append("boxedUnit") else out.append(getSymCPU(op))
     out.append(");\n")
   }
 
@@ -477,8 +481,8 @@ abstract class GPUExecutableGenerator {
       out.append(");\n")
     }
 
-    def freeable(op: DeliteOP) = {
-      !isPrimitiveType(op.outputType) && op.isInstanceOf[OP_Executable] && available.contains(op)
+    def freeable(op: DeliteOP, sym : String) = {
+      !isPrimitiveType(op.outputType(sym)) && op.isInstanceOf[OP_Executable] && available.contains(op)
     }
 
     //free temps
@@ -487,15 +491,17 @@ abstract class GPUExecutableGenerator {
       count += 1
     }
 
-    //free output (?)
-    if (freeable(op) && op.getConsumers.filter(c => c.getInputs.exists(_._1 == op) && c.scheduledResource == op.scheduledResource).size == 0) { //no future consumers on gpu
+    //free outputs (?)
+    for ( outsym <- op.getOutputs ) {
+	if (freeable(op,outsym) && op.getConsumers.filter(c => c.getInputs.exists(_._1 == op) && c.scheduledResource == op.scheduledResource).size == 0) { //no future consumers on gpu
       //free output
       writeFree(op)
       count += 1
     }
+	}
 
     //free inputs (?)
-    for ((in,name) <- op.getInputs if(freeable(in))) {
+    for ((in,name) <- op.getInputs if(freeable(in,name))) {
       val possible = in.getConsumers.filter(c => c.getInputs.exists(_._1 == in) && c.scheduledResource == op.scheduledResource)
       var free = true
       for (p <- possible) {
