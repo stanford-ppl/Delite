@@ -31,6 +31,8 @@ object Config {
 
   val useFsc: Boolean = if (System.getProperty("delite.usefsc") == null) false else true
 
+  val noRegenerate: Boolean = if (System.getProperty("delite.debug.noregenerate") == null) false else true
+
   /***********
    *	Cost Modeling
    */

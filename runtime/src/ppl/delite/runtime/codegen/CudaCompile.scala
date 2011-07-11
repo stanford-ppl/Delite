@@ -18,14 +18,15 @@ object CudaCompile extends CodeCache {
 
   val binCacheHome = cacheHome + "bin" + File.separator + "runtime" + File.separator
 
-  private val sourceBuffer = new ArrayBuffer[String]
+  private val sourceBuffer = new ArrayBuffer[(String, String)]
 
   def target = "cuda"
 
   override def ext = "cu"
 
-  def addSource(source: String) {
-    sourceBuffer += source
+  def addSource(source: String, name: String) {
+    if (!sourceBuffer.contains((source, name)))
+      sourceBuffer += Pair(source, name)
   }
 
   def compile() {
