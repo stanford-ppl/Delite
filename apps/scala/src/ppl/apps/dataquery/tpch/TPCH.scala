@@ -9,11 +9,20 @@ trait TPCH extends OptiQLApplication {
 
   val s = File.separator
 
-  val tpchDataPath = "C:" + s + s + "vm_host"+ s + s +"tpch" + s + s + "debug"
+  def printUsage = {
+    println("Usage: TPCH <input tpch directory>")
+    exit(-1)
+  }
+  
+  
   val debug = true
 
   def main() = {
     //println("TPCH style benchmarking")
+    if (args.length < 1) printUsage
+    
+    val tpchDataPath = args(0)
+    
 
     //load TPCH data
     val lineItems = TPCH.loadLineItems(tpchDataPath)
