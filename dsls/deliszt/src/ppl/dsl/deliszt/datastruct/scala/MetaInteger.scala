@@ -95,6 +95,7 @@ trait MetaInteger {
   }
 
   def MIntDepth[T <: IntM](implicit n: MIntToInt[T]) = n.value
+  def MIntDepth[T <: IntM](m : T)(implicit n: MIntToInt[T]) = n.value
 }
 
 object MetaInteger extends MetaInteger {

@@ -38,13 +38,13 @@ class MatImpl[R<:IntM,C<:IntM, VT:Manifest](val rows : Int, val cols : Int) exte
   }
 }
 
-class MatRowImpl[R<:IntM, C<:IntM, VT](mat: Mat[R,C,VT], idx: Int) extends MatRow[C,VT] {
+class MatRowImpl[C<:IntM, VT](mat: Mat[_,C,VT], idx: Int) extends MatRow[C,VT] {
   def apply(n: Int) = mat.apply(idx,n)
   def update(n: Int, v: VT) = mat.update(idx,n,v)
   val size = MIntDepth[C]
 }
 
-class MatColImpl[R<:IntM, C<:IntM, VT](mat: Mat[R,C,VT], idx: Int) extends MatCol[R,VT] {
+class MatColImpl[R<:IntM, VT](mat: Mat[R,_,VT], idx: Int) extends MatCol[R,VT] {
   def apply(n: Int) = mat.apply(idx,n)
   def update(n: Int, v: VT) = mat.update(idx,n,v)
   val size = MIntDepth[R]

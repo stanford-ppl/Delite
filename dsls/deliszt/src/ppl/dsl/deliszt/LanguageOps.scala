@@ -113,8 +113,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   case class DeLisztFaces[MO<:MeshObj:Manifest](e: Exp[MO]) extends Def[Set[Face]]
 
-  case class DeLisztFacesEdgeCCW(e : Exp[Edge]) extends Def[Set[Face]]
-  case class DeLisztFacesEdgeCW(e : Exp[Edge]) extends Def[Set[Face]]
+  case class DeLisztFaceEdgesCCW(e : Exp[Edge]) extends Def[Set[Face]]
+  case class DeLisztFaceEdgesCW(e : Exp[Edge]) extends Def[Set[Face]]
 
   case class DeLisztEdgeHead(e : Exp[Edge]) extends Def[Vertex]
   case class DeLisztEdgeTail(e : Exp[Edge]) extends Def[Vertex]
@@ -146,9 +146,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def Print(as: Exp[Any]*) = reflectEffect(DeLisztPrint(as))
 
   def FieldWithConst[MO<:MeshObj, VT](url : Exp[VT])(implicit mo : Manifest[MO], vt : Manifest[VT])
-    = reflectMutable(DeLisztFieldWithConst(url))
+    = reflectMutable(DeLisztFieldWithConst[MO,VT](url))
 	def FieldWithURL[MO<:MeshObj, VT](url : Exp[String])(implicit mo : Manifest[MO], vt : Manifest[VT])
-    = reflectMutable(DeLisztFieldWithURL(url))
+    = reflectMutable(DeLisztFieldWithURL[MO,VT](url))
 	def BoundarySet[MO<:MeshObj](name : Exp[String])(implicit mo : Manifest[MO])
     = reflectPure(DeLisztBoundarySet(name))
 

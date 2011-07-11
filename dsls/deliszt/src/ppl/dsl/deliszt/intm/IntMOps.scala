@@ -1,6 +1,6 @@
 package ppl.dsl.deliszt.intm
 
-import ppl.dsl.delizst.datastruct.CudaGenDataStruct
+import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}

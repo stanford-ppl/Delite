@@ -12,6 +12,7 @@ import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides,
 import ppl.delite.framework.ops._
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 
+import ppl.dsl.deliszt.capabilities._
 import ppl.dsl.deliszt.field._
 import ppl.dsl.deliszt.mat._
 import ppl.dsl.deliszt.vec._
@@ -82,7 +83,8 @@ trait DeLisztCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderi
 /**
  * This the trait that every DeLiszt application must extend.
  */
-trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps with FieldOps with MatOps with VecOps {
+trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps
+  with ArithOps with FieldOps with MatOps with VecOps {
   this: DeLisztApplication =>
 }
 
@@ -96,8 +98,9 @@ trait DeLisztCompiler extends DeLiszt with FieldPrivateOps with MeshPrivateOps {
  */
 trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with LanguageOpsExp
   with LanguageImplOpsStandard
+  with ArithOpsExpOpt
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp
-  with FieldOpsExp with MatOpsExp with VecOpsExp {
+  with FieldOpsExp with MatOpsExp with MatOpsImpl with VecOpsExp with VecImplOps {
 
   // this: DeLisztApplicationRunner => why doesn't this work?
   this: DeliteApplication with DeLisztApplication with DeLisztExp => // can't be DeLisztApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
@@ -238,7 +241,7 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
   }
 }
 
-trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenTrainingSetOps with CudaGenMatrixRowOps // with CudaGenVectorViewOps
+trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVecOps with CudaGenMatrOps with CudaGenDataStruct with CudaGenMatRowOps // with CudaGenVecViewOps
   with CudaGenVariantsOps with DeliteCudaGenAllOverrides // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
   val IR: DeliteApplication with DeLisztExp
@@ -270,7 +273,7 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /
 
   override def positionMultDimInputs(sym: Sym[Any]) : String = remap(sym.Type) match {
     //TODO: Add matrix reposition, and also do safety check for datastructures that do not have data field
-    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorPositionMultDimInputs(sym)
+    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vectorPositionMultDimInputs(sym)
     case _ => super.positionMultDimInputs(sym)
   }
 

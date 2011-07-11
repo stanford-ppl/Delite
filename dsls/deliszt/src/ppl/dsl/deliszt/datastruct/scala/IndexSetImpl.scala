@@ -11,7 +11,7 @@ package ppl.dsl.deliszt.datastruct.scala
 
 
 object IndexSetImpl {
-  def apply(crs: CRS, e: MeshObj) = apply(crs, e.internalId)
+  def apply(crs: CRS, e: MeshObj) : IndexSetImpl = apply(crs, e.internalId)
 
   def apply(crs: CRS, n: Int) = {
     new IndexSetImpl(crs.values, crs.row(n), crs.row(n+1))
@@ -19,7 +19,7 @@ object IndexSetImpl {
 }
 
 object CWIndexSetImpl {
-  def apply(crs: CRS, e: MeshObj) = apply(crs, e.internalId)
+  def apply(crs: CRS, e: MeshObj) : CWIndexSetImpl = apply(crs, e.internalId)
 
   def apply(crs: CRS, n: Int) = {
     new CWIndexSetImpl(crs.values, crs.row(n), crs.row(n+1))

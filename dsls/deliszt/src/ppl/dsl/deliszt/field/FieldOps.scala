@@ -1,6 +1,6 @@
 package ppl.dsl.deliszt.field
 
-import ppl.dsl.delizst.datastruct.CudaGenDataStruct
+import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import java.io.PrintWriter
 import ppl.dsl.deliszt.datastruct.scala._
 
@@ -21,7 +21,7 @@ trait FieldOps extends DSLType with Variables {
    */
   class fieldOpsCls[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]]) {
     def apply(mo : Rep[MO]) = field_apply(x, mo)
-    def update(mo : Rep[MO], v : Rep[VT]) = field_update(x, mo,v)
+    def update(mo:Rep[MO], v:Rep[VT]) = field_update(x,mo,v)
   }
 
   def field_apply[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]], mo: Rep[MO]) : Rep[VT]

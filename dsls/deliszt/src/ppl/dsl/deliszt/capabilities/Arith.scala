@@ -1,4 +1,4 @@
-package ppl.dsl.deliszt
+package ppl.dsl.deliszt.capabilities
 
 import scala.virtualization.lms.common.Base
 

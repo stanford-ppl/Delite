@@ -1,6 +1,6 @@
 package ppl.dsl.deliszt.field
 
-import ppl.dsl.delizst.datastruct.CudaGenDataStruct
+import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import java.io.PrintWriter
 import ppl.dsl.deliszt.datastruct.scala._
 
