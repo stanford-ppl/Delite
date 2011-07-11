@@ -117,6 +117,14 @@ abstract class GPUExecutableGenerator {
   protected def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, available: ArrayBuffer[DeliteOP], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder) {
     //available: list of ops with data currently on gpu, have a "g" symbol
     //awaited: list of ops synchronized with but data only resides on cpu, have a "c" symbol
+    val iter2 = schedule.iterator
+
+	println("Entering GPU addKernelCalls\n")
+	while (iter2.hasNext) {
+		val op = iter2.next
+		println("OP id is " + op.id)
+	}
+
     val iter = schedule.iterator
     while (iter.hasNext) {
       val op = iter.next
@@ -167,7 +175,9 @@ abstract class GPUExecutableGenerator {
       //write the temporary allocations
       writeTempAllocs(op, out)
       //write the output allocation
-      writeOutputAllocs(op, out)
+	  println("calling writeOutputAllocs(op, out) for OP id : " + op.id)
+      
+	  writeOutputAllocs(op, out)
       //write the call
       if (op.isInstanceOf[OP_Nested])
         writeFunctionCall(op, out)
@@ -205,6 +215,10 @@ abstract class GPUExecutableGenerator {
   }
 
   protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
+	if(op.getOutputs == null) {
+		println("Null is for " + op.id)
+	}
+
 	for ( outsym <- op.getOutputs ) {
     if (op.outputType(outsym) != "Unit" && !op.isInstanceOf[OP_Nested]) {
       out.append(op.outputType(Targets.Cuda,outsym))

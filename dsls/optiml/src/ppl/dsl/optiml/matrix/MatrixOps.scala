@@ -978,6 +978,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"}")
       currDim -= 1
 
+	  /*
     case MatrixObjectDiag(w, vals) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -1010,7 +1011,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s->numCols".format(quote(x)),"%s->numRows".format(quote(x)),false)
       currDim -= 1
-
+*/
     case MatrixSumCol(x) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
