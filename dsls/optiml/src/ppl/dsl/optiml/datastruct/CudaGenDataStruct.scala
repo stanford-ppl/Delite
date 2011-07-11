@@ -157,7 +157,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 	out.append("\telse {\n")
     out.append("\t\t%s *hostPtr;\n".format(typeStr))
     out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
-    out.append("\t\tjfieldID fid_start = env->GetFieldID(cls,\"_start\",\"I\");\n")
+    out.append("\t\tjfieldID fid_start = env->GetFieldID(cls,\"start\",\"I\");\n")
     out.append("\t\tjint start = env->GetIntField(obj,fid_start);\n")
 	out.append("\t\tfor(int i=0; i<%s->length; i++) {\n".format(quote(sym)))
     out.append("\t\t\thostPtr[i] = start + i;\n")
