@@ -23,9 +23,8 @@ abstract class NestedGenerator(nested: OP_Nested, location: Int) extends Executa
 
   protected def kernelName = executableName + location
 
-  override protected def getSync(op: DeliteOP, name: String) = "Result_" + baseId + "_" + name
-
-  override protected def getSym(op: DeliteOP, name: String): String = "x" + baseId + "_" + name
+  override protected def getSym(op: DeliteOP, name: String) = NestedCommon.getSym(baseId, op, name)
+  override protected def getSync(op: DeliteOP, name: String) = NestedCommon.getSync(baseId, op, name)
 
   protected def writeHeader(location: Int, out: StringBuilder) {
     out.append("import java.util.concurrent.locks._\n") //locking primitives
@@ -65,7 +64,7 @@ abstract class GPUNestedGenerator(nested: OP_Nested, location: Int) extends GPUE
 
   protected def kernelName = executableName + location
 
-  override protected def getScalaSym(op: DeliteOP, name: String): String = "x" + baseId + "_" + name
+  override protected def getScalaSym(op: DeliteOP, name: String) = NestedCommon.getSym(baseId, op, name)
 
   protected def writeFunctionHeader(out: StringBuilder) {
     out.append(nested.outputType(Targets.Cuda))
@@ -112,7 +111,8 @@ abstract class GPUScalaNestedGenerator(nested: OP_Nested, location: Int) extends
 
   protected def kernelName = executableName + location
 
-  override protected def getSync(op: DeliteOP, name: String) = "Result_" + baseId + "_" + name
+  override protected def getSym(op: DeliteOP, name: String) = NestedCommon.getSym(baseId, op, name)
+  override protected def getSync(op: DeliteOP, name: String) = NestedCommon.getSync(baseId, op, name)
 
   protected def writeHeader(location: Int, out: StringBuilder) {
     out.append("import java.util.concurrent.locks._\n") //locking primitives
@@ -121,4 +121,9 @@ abstract class GPUScalaNestedGenerator(nested: OP_Nested, location: Int) extends
     out.append(kernelName)
     out.append(" {\n")
   }
+}
+
+private [codegen] object NestedCommon { //TODO: traits?
+  def getSym(baseId: String, op: DeliteOP, name: String) = "x" + baseId + "_" + name
+  def getSync(baseId: String, op: DeliteOP, name: String) = "Result_" + baseId + "_" + name
 }

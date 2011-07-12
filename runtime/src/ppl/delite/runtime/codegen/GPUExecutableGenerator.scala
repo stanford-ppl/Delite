@@ -205,7 +205,7 @@ abstract class GPUExecutableGenerator {
 
   protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
     if (op.isInstanceOf[OP_Executable]) {
-      for ((data,name) <- op.cudaMetadata.outputs if op.outputType(name) != "Unit") {
+      for ((data,name) <- op.cudaMetadata.outputs) {
         out.append(op.outputType(Targets.Cuda,name))
         out.append("* ")
         out.append(getSymGPU(name))
@@ -303,11 +303,9 @@ abstract class GPUExecutableGenerator {
 
     out.append('(')
     for ((data,name) <- op.cudaMetadata.outputs) {
-      if (op.outputType(name) != "Unit") {
-        out.append('*')
-        out.append(getSymGPU(name)) //first kernel input is OP output
-        out.append(',')
-      }
+      out.append('*')
+      out.append(getSymGPU(name)) //first kernel inputs are OP outputs
+      out.append(',')
     }
     writeInputs(op, out) //then all op inputs
     writeTemps(op, out) //then all op temporaries
@@ -388,16 +386,18 @@ abstract class GPUExecutableGenerator {
   }
 
   protected def writeInputCast(op: DeliteOP, sym: String, out: StringBuilder) {
-    out.append(getCPrimitiveType(op.outputType(sym))) //C primitive
-    out.append(' ')
-    out.append(getSymGPU(sym))
-    out.append(" = ")
-    out.append('(') //cast
-    out.append(getCPrimitiveType(op.outputType(sym))) //C primitive
-    out.append(')')
-    out.append(getSymCPU(sym)) //J primitive
-    out.append(';')
-    out.append('\n')
+    if (op.outputType(sym) != "Unit") {
+      out.append(getCPrimitiveType(op.outputType(sym))) //C primitive
+      out.append(' ')
+      out.append(getSymGPU(sym))
+      out.append(" = ")
+      out.append('(') //cast
+      out.append(getCPrimitiveType(op.outputType(sym))) //C primitive
+      out.append(')')
+      out.append(getSymCPU(sym)) //J primitive
+      out.append(';')
+      out.append('\n')
+    }
   }
 
   protected def writeInputs(op: DeliteOP, out: StringBuilder) {
@@ -432,18 +432,21 @@ abstract class GPUExecutableGenerator {
       }
     }
 
-    for ((data,name) <- op.cudaMetadata.outputs) {
-      if (op.outputType(name) != "Unit") {
-        //copy output from GPU to CPU
-        out.append(getJNIType(op.outputType(name))) //jobject
-        out.append(' ')
-        out.append(getSymCPU(name))
-        out.append(" = ")
-        out.append(data.funcReturn)
-        out.append('(')
-        out.append("env,") //JNI environment pointer
-        out.append(getSymGPU(name)) //C++ object
-        out.append(");\n")
+    for (name <- op.getOutputs) {
+      op.cudaMetadata.outputs.find(_._2 == name) match {
+        case Some((data, n)) => {
+          //copy output from GPU to CPU
+          out.append(getJNIType(op.outputType(name))) //jobject
+          out.append(' ')
+          out.append(getSymCPU(name))
+          out.append(" = ")
+          out.append(data.funcReturn)
+          out.append('(')
+          out.append("env,") //JNI environment pointer
+          out.append(getSymGPU(name)) //C++ object
+          out.append(");\n")
+        }
+        case None => //do nothing
       }
 
       //set data as available to CPU
