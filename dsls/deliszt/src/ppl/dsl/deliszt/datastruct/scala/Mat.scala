@@ -20,8 +20,8 @@ trait Mat[R<:IntM,C<:IntM,@specialized(Boolean, Int, Long, Float, Double)VT] ext
   def row(n: Int) : MatRow[C,VT]
   def col(n: Int) : MatCol[R,VT]
 
-  def rows : Int
-  def cols : Int
+  def numRows : Int
+  def numCols : Int
 
     // DeliteCollection
   def dcApply(idx: Int): VT

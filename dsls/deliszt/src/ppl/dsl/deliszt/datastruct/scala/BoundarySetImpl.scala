@@ -10,7 +10,7 @@ import collection.mutable.ArrayBuilder
  * Stanford University
  */
 
-class BoundarySetImpl[MO<:MeshObj:Manifest] extends MeshObjSet[MO] {
+class BoundarySetImpl[MO<:MeshObj](implicit moc: MeshObjConstruct[MO]) extends MeshObjSet[MO] with MeshObjImpl {
   var ids = ArrayBuilder.make[Int]()
   var ranges : Array[(Int,Int)] = null
   var sizes : Array[Int] = null
@@ -20,7 +20,7 @@ class BoundarySetImpl[MO<:MeshObj:Manifest] extends MeshObjSet[MO] {
     if(data == null) {
       throw new RuntimeException("Boundary Set not finalized")
     }
-    MeshObjImpl[MO](data(i))
+    MeshObjImpl(data(i))(moc)
   }
   def size = {
     if(data == null) {
@@ -50,7 +50,7 @@ class BoundarySetImpl[MO<:MeshObj:Manifest] extends MeshObjSet[MO] {
           cur = start
         }
 
-        cur++
+        cur += 1
       }
       rangeBuilder += ((start,cur))
       sizeBuilder += cur - start

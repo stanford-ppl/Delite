@@ -1,10 +1,10 @@
 package ppl.dsl.deliszt.datastruct.scala
 
-object MeshObjImpl {
-  abstract class MeshObjConstruct[MO <: MeshObj] {
-    def apply(id: Int) : MO
-  }
+abstract class MeshObjConstruct[MO <: MeshObj] {
+  def apply(id: Int) : MO
+}
 
+trait MeshObjImpl {
   implicit object CellConstruct extends MeshObjConstruct[Cell] {
     def apply(id : Int) = new CellImpl(id)
   }
@@ -20,8 +20,10 @@ object MeshObjImpl {
   implicit object VertexConstruct extends MeshObjConstruct[Vertex] {
     def apply(id : Int) = new VertexImpl(id)
   }
+}
 
-  def apply[MO<:MeshObj](id : Int)(implicit moc: MeshObjConstruct[MO], mm: Manifest[MO]) : MO = moc(id)
+object MeshObjImpl extends MeshObjImpl {
+  def apply[MO<:MeshObj](id : Int)(implicit moc: MeshObjConstruct[MO]) : MO = moc(id)
 }
 
 class CellImpl(val id : Int) extends Cell

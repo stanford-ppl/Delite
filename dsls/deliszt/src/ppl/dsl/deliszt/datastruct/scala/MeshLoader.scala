@@ -1,7 +1,8 @@
 package ppl.dsl.deliszt.datastruct.scala
 
 import java.io._
-import net.liftweb.json.JsonParser
+import net.liftweb.json.{JsonParser, JsonAST}
+import net.liftweb.json.JsonDSL._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -15,11 +16,15 @@ class MeshLoader {
   def init() {
     System.loadLibrary("MeshLoader");
     
-    val cfg = BufferedReader(FileReader("liszt.cfg"))
+    val cfg = new BufferedReader(new FileReader("liszt.cfg"))
     val json = JsonParser.parse(cfg)
 
-    val meshFilename = json \ "mesh-file"
-    Mesh.mesh = MeshLoader.loadMesh(meshFilename)
+    implicit val formats = net.liftweb.json.DefaultFormats
+
+    case class MeshFilename(`mesh-file`: String)
+
+    val meshFilename = json.extract[MeshFilename].`mesh-file`
+    Mesh.mesh = loadMesh(meshFilename)
   }
 
   @native

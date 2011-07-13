@@ -11,27 +11,27 @@ package ppl.dsl.deliszt.datastruct.scala
 
 
 object IndexSetImpl {
-  def apply[MO<:MeshObj:Manifest](crs: CRS, e: MeshObj) : IndexSetImpl[MO] = apply(crs, e.internalId)
+  def apply[MO<:MeshObj:MeshObjConstruct](crs: CRS, e: MeshObj) : IndexSetImpl[MO] = apply(crs, e.internalId)
 
-  def apply[MO<:MeshObj:Manifest](crs: CRS, n: Int) = {
+  def apply[MO<:MeshObj:MeshObjConstruct](crs: CRS, n: Int) = {
     new IndexSetImpl[MO](crs.values, crs.row(n), crs.row(n+1))
   }
 }
 
 object CWIndexSetImpl {
-  def apply[MO<:MeshObj:Manifest](crs: CRS, e: MeshObj) : CWIndexSetImpl[MO] = apply(crs, e.internalId)
+  def apply[MO<:MeshObj:MeshObjConstruct](crs: CRS, e: MeshObj) : CWIndexSetImpl[MO] = apply(crs, e.internalId)
 
-  def apply[MO<:MeshObj:Manifest](crs: CRS, n: Int) = {
+  def apply[MO<:MeshObj:MeshObjConstruct](crs: CRS, n: Int) = {
     new CWIndexSetImpl[MO](crs.values, crs.row(n), crs.row(n+1))
   }
 }
 
-class IndexSetImpl[MO <: MeshObj : Manifest](data : Array[Int], start: Int, end : Int) extends DeLisztSet[MO] {
-  def apply(i : Int) : MO = MeshObjImpl[MO](data(start + i))
+class IndexSetImpl[MO <: MeshObj](data : Array[Int], start: Int, end : Int)(implicit moc: MeshObjConstruct[MO]) extends DeLisztSet[MO] {
+  def apply(i : Int) : MO = MeshObjImpl[MO](data(start + i))(moc)
   def size = end - start
 }
 
 // Direction bit should get reversed for CW
-class CWIndexSetImpl[MO <: MeshObj : Manifest](data: Array[Int], start: Int, end: Int) extends IndexSetImpl[MO](data, start, end) {
-  def apply(i : Int) : MO = MeshObjImpl[MO](BitReverse.MASK ^ data(start + i))
+class CWIndexSetImpl[MO <: MeshObj](data: Array[Int], start: Int, end: Int)(implicit moc: MeshObjConstruct[MO]) extends IndexSetImpl[MO](data, start, end) {
+  def apply(i : Int) : MO = MeshObjImpl[MO](BitReverse.MASK ^ data(start + i))(moc)
 }

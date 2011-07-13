@@ -34,6 +34,10 @@ trait MatOps extends DSLType with Variables {
     def apply[RR<:IntM:MVal, CC<:IntM:MVal](r: RR, c: CC) = mat_apply(x,MIntDepth[RR],MIntDepth[CC])
     def update[RR<:IntM:MVal, CC<:IntM:MVal, Rep[VT]](r: RR, c: CC, v: Rep[VT]) = mat_update(x,MIntDepth[RR],MIntDepth[CC],v)
 
+    // Dims
+    def numRows = mat_num_rows(x)
+    def numCols = mat_num_cols(x)
+
     // arithmetic operations
     def +(y: Rep[Self])(implicit a: Arith[VT]) = mat_plus(x,y)
     def -(y: Rep[Self])(implicit a: Arith[VT]) = mat_minus(x,y)
@@ -51,6 +55,9 @@ trait MatOps extends DSLType with Variables {
   // class defs
   def mat_apply[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest](x: Rep[Mat[R,C,VT]], i: Rep[Int], j: Rep[Int]): Rep[VT]
   def mat_update[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest](x: Rep[Mat[R,C,VT]], i: Rep[Int], j: Rep[Int], y: Rep[VT]): Rep[Unit]
+
+  def mat_num_rows(m: Rep[Mat[_,_,_]]): Rep[Int]
+  def mat_num_cols(m: Rep[Mat[_,_,_]]): Rep[Int]
 
   def row[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest](m: Rep[Mat[R,C,VT]], a: Rep[Int]): Rep[Vec[C,VT]]
 	def col[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest](m: Rep[Mat[R,C,VT]], a: Rep[Int]): Rep[Vec[R,VT]]
@@ -80,6 +87,9 @@ trait MatOpsExp extends MatOps with VariablesExp {
   case class MatDCApply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,VT:Manifest](x: Exp[Mat[R,C,VT]], i: Exp[Int]) extends Def[VT]
   case class MatUpdate[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,VT:Manifest](x: Exp[Mat[R,C,VT]], i: Exp[Int], j: Exp[Int], y: Exp[VT]) extends Def[Unit]
 
+  case class MatNumRows(x: Exp[Mat[_,_,_]]) extends Def[Int]
+  case class MatNumCols(x: Exp[Mat[_,_,_]]) extends Def[Int]
+
   ///////////////////////////////////////////////////////////////////
   // BLAS enabled routines (currently these must all be singletasks)
 
@@ -102,20 +112,20 @@ trait MatOpsExp extends MatOps with VariablesExp {
   ////////////////////////////////
   // implemented via delite ops
   
-  abstract class MatArithmeticMap[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest:Arith](in: Exp[Matrix[R,CA]]) extends DeliteOpMap[VT,VT,Matrix[R,C,VT]] {
+  abstract class MatArithmeticMap[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest:Arith](in: Exp[Mat[R,C,VT]]) extends DeliteOpMap[VT,VT,Mat[R,C,VT]] {
     def alloc = Mat[R,C,VT](in.numRows, in.numCols)
     val size = in.numRows*in.numCols
     
-    def m = manifest[A]
-    def a = implicitly[Arith[A]]
+    def m = manifest[VT]
+    def a = implicitly[Arith[VT]]
   }
   
-  abstract class MatrixArithmeticZipWith[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]]) extends DeliteOpZipWith[A,A,A,Matrix[A]] {
-    def alloc = Matrix[A](inA.numRows, inA.numCols)
+  abstract class MatArithmeticZipWith[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest:Arith](inA: Exp[Mat[R,C,VT]], inB: Exp[Mat[R,C,VT]]) extends DeliteOpZipWith[VT,VT,VT,Mat[R,C,VT]] {
+    def alloc = Mat[R,C,VT](inA.numRows, inA.numCols)
     val size = inA.numRows*inA.numCols
     
-    def m = manifest[A]
-    def a = implicitly[Arith[A]]
+    def m = manifest[VT]
+    def a = implicitly[Arith[VT]]
   }
 
   case class MatPlus[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest:Arith](inA: Exp[Mat[R,C,VT]], inB: Exp[Mat[R,C,VT]])
@@ -157,6 +167,9 @@ trait MatOpsExp extends MatOps with VariablesExp {
   ///////////////////
   // class interface
 
+  def mat_num_rows(x: Exp[Mat[_,_,_]]) = reflectPure(MatNumRows(x))
+  def mat_num_cols(x: Exp[Mat[_,_,_]]) = reflectPure(MatNumCols(x))
+
   def mat_apply[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest](x: Exp[Mat[R,C,VT]], i: Exp[Int], j: Exp[Int]) = reflectPure(MatApply[R,C,VT](x,i,j))  
   def mat_update[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest](x: Exp[Mat[R,C,VT]], i: Exp[Int], j: Exp[Int], y: Exp[VT]) = reflectWrite(x)(MatUpdate[R,C,VT](x,i,j,y))
 
@@ -195,6 +208,9 @@ trait ScalaGenMatOps extends ScalaGenBase {
     //case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatDCApply(x,i) => emitValDef(sym, quote(x) + ".dcApply(" + quote(i) + ")")
     case MatUpdate(x,i,j,y)  => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
+
+    case MatNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
+    case MatNumRows(x)  => emitValDef(sym, quote(x) + ".numCols")
 
     // BLAS calls
     // all corresponding nodes should have their DeliteOpSingleTask second argument set to "true" (require inputs)

@@ -8,21 +8,21 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-object MatImpl {
+object MatImpl extends MetaInteger {
   def apply[R<:IntM:MVal, C<:IntM:MVal, VT: Manifest] = {
     new MatImpl[R,C,VT](MIntDepth[R],MIntDepth[C])
   }
 }
 
-class MatImpl[R<:IntM,C<:IntM,VT:Manifest](val rows : Int, val cols : Int) extends Mat[R,C,VT] {
-  val data = new Array[VT](rows * cols)
+class MatImpl[R<:IntM,C<:IntM,VT:Manifest](val numRows : Int, val numCols : Int) extends Mat[R,C,VT] {
+  val data = new Array[VT](numRows * numCols)
 
-  def apply(r: Int, c: Int) = data(r*rows+c)
+  def apply(r: Int, c: Int) = data(r*numRows+c)
   def update(r: Int, c: Int, v: VT) = {
-    data(r*rows+c) = v
+    data(r*numRows+c) = v
   }
 
-  def size = rows * cols
+  def size = numRows * numCols
 
   def row(n : Int) = new MatRowImpl(this, n)
   def col(n : Int) = new MatColImpl(this, n)
@@ -36,11 +36,11 @@ class MatImpl[R<:IntM,C<:IntM,VT:Manifest](val rows : Int, val cols : Int) exten
 class MatRowImpl[C<:IntM, VT](mat: Mat[_,C,VT], idx: Int) extends MatRow[C,VT] {
   def apply(n: Int) = mat.apply(idx,n)
   def update(n: Int, v: VT) = mat.update(idx,n,v)
-  val size = mat.cols
+  val size = mat.numCols
 }
 
 class MatColImpl[R<:IntM,VT](mat: Mat[R,_,VT], idx: Int) extends MatCol[R,VT] {
   def apply(n: Int) = mat.apply(idx,n)
   def update(n: Int, v: VT) = mat.update(idx,n,v)
-  val size = mat.rows
+  val size = mat.numRows
 }

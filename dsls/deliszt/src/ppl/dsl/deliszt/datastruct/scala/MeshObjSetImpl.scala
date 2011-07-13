@@ -9,10 +9,10 @@ package ppl.dsl.deliszt.datastruct.scala
  */
 
 object MeshObjSetImpl {
-  def apply[MO<:MeshObj:Manifest](size: Int) = new MeshObjSetImpl[MO](size)
+  def apply[MO<:MeshObj:MeshObjConstruct](size: Int) = new MeshObjSetImpl[MO](size)
 }
 
-class MeshObjSetImpl[MO<:MeshObj:Manifest](val size : Int) extends MeshObjSet[MO] {
+class MeshObjSetImpl[MO<:MeshObj:MeshObjConstruct](val size : Int) extends MeshObjSet[MO] {
   def apply(i : Int) = {
     //TODO:bounds check here?
     MeshObjImpl[MO](i)

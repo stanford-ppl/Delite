@@ -15,7 +15,7 @@ trait VecOps extends DSLType with Variables with MetaInteger {
 
   object Vec {
     def apply[VT](a : Rep[VT]) = vec_obj_new[_1,VT](a)
-		def apply[VT](a : Rep[VT], b : Rep[VT]) = vec_obj_new[_2,VT](a,b)
+		/*def apply[VT](a : Rep[VT], b : Rep[VT]) = vec_obj_new[_2,VT](a,b)
 		def apply[VT](a : Rep[VT], b : Rep[VT], c : Rep[VT]) = vec_obj_new[_3,VT](a,b,c)
 		def apply[VT](a : Rep[VT], b : Rep[VT], c : Rep[VT], d : Rep[VT]) = vec_obj_new[_4,VT](a,b,c,d)
 		def apply[VT](a : Rep[VT], b : Rep[VT], c : Rep[VT], d : Rep[VT], e : Rep[VT]) = vec_obj_new[_5,VT](a,b,c,d,e)
@@ -35,7 +35,7 @@ trait VecOps extends DSLType with Variables with MetaInteger {
 		def apply[VT](a : Rep[VT], b : Rep[VT], c : Rep[VT], d : Rep[VT], e : Rep[VT], f: Rep[VT], g: Rep[VT], h: Rep[VT], i: Rep[VT], j: Rep[VT], k: Rep[VT], l: Rep[VT], m: Rep[VT], n: Rep[VT], o: Rep[VT], p: Rep[VT], q: Rep[VT], r: Rep[VT], s: Rep[VT]) = vec_obj_new[_19,VT](a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s)
 		def apply[VT](a : Rep[VT], b : Rep[VT], c : Rep[VT], d : Rep[VT], e : Rep[VT], f: Rep[VT], g: Rep[VT], h: Rep[VT], i: Rep[VT], j: Rep[VT], k: Rep[VT], l: Rep[VT], m: Rep[VT], n: Rep[VT], o: Rep[VT], p: Rep[VT], q: Rep[VT], r: Rep[VT], s: Rep[VT], t: Rep[VT]) = vec_obj_new[_20,VT](a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t)
 		def apply[VT](a : Rep[VT], b : Rep[VT], c : Rep[VT], d : Rep[VT], e : Rep[VT], f: Rep[VT], g: Rep[VT], h: Rep[VT], i: Rep[VT], j: Rep[VT], k: Rep[VT], l: Rep[VT], m: Rep[VT], n: Rep[VT], o: Rep[VT], p: Rep[VT], q: Rep[VT], r: Rep[VT], s: Rep[VT], t: Rep[VT], u: Rep[VT]) = vec_obj_new[_21,VT](a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u)
-		def apply[VT](a : Rep[VT], b : Rep[VT], c : Rep[VT], d : Rep[VT], e : Rep[VT], f: Rep[VT], g: Rep[VT], h: Rep[VT], i: Rep[VT], j: Rep[VT], k: Rep[VT], l: Rep[VT], m: Rep[VT], n: Rep[VT], o: Rep[VT], p: Rep[VT], q: Rep[VT], r: Rep[VT], s: Rep[VT], t: Rep[VT], u: Rep[VT], v: Rep[VT]) = vec_obj_new[_22,VT](a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)
+		def apply[VT](a : Rep[VT], b : Rep[VT], c : Rep[VT], d : Rep[VT], e : Rep[VT], f: Rep[VT], g: Rep[VT], h: Rep[VT], i: Rep[VT], j: Rep[VT], k: Rep[VT], l: Rep[VT], m: Rep[VT], n: Rep[VT], o: Rep[VT], p: Rep[VT], q: Rep[VT], r: Rep[VT], s: Rep[VT], t: Rep[VT], u: Rep[VT], v: Rep[VT]) = vec_obj_new[_22,VT](a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v)*/
   }
 
   implicit def repVecToVecOps[N<:IntM:Manifest:MVal, VT : Manifest](x: Rep[Vec[N, VT]]) = new vecOpsCls(x)

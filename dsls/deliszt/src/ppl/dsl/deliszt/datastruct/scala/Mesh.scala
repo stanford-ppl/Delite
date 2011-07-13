@@ -10,7 +10,7 @@ import collection.mutable.{Map, HashMap}
  * Stanford University
  */
 
-object Mesh {
+object Mesh extends MeshObjImpl {
   var mesh: Mesh = null
 
   def vertices(e: Mesh): DeLisztSet[Vertex] = MeshObjSetImpl(mesh.nvertices)
@@ -74,7 +74,7 @@ class LabelData[MO<:MeshObj] {
   val fns: Map[String,Object => Object] = new HashMap[String,Object => Object]()
 }
 
-class Mesh extends MeshObj with MetaInteger {
+class Mesh extends MeshObj with MetaInteger with MeshObjImpl {
   val id = 0
 
   var nvertices: Int = 0
@@ -118,9 +118,9 @@ class Mesh extends MeshObj with MetaInteger {
   def positionToVec(v: Object) : Object = {
       val vec = VecImpl[_3, Double]()
       val a = v.asInstanceOf[Array[Object]]
-      vec(0) = a.apply(0)
-      vec(1) = a.apply(1)
-      vec(2) = a.apply(2)
+      vec(_0) = a.apply(0).asInstanceOf[Double]
+      vec(_1) = a.apply(1).asInstanceOf[Double]
+      vec(_2) = a.apply(2).asInstanceOf[Double]
       vec
   }
 

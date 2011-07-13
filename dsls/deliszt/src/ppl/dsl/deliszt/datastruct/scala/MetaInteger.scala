@@ -15,22 +15,35 @@ package ppl.dsl.deliszt.datastruct.scala
  * and open the template in the editor.
  */
 
+abstract class IntM {
+  type Succ <: IntM
+  type Add[N <: IntM] <: IntM
+}
+
+//meta-function(?)(what is the term for this thing?)
+//if IDX is less than SIZE, then an implicit object of type EnsureSize[IDX,SIZE] will
+//exist with a idx function that returns the number IDX as an integer
+abstract class EnsureSize[TT <: IntM,T <: IntM] {
+  def get(n : Int) : Int
+  def idx = get(0)
+}
+
+abstract class MVal[T] {
+  val value: Int
+}
+
 trait MetaInteger {
-  abstract class IntM {
-    type Succ <: IntM
-    type Add[N <: IntM] <: IntM
-  }
+  type +[N1 <: IntM, N2 <: IntM] = N1#Add[N2]
 
   class Zero extends IntM {
     type Succ = MetaInteger.this.Succ[Zero]
     type Add[N <: IntM] = N
   }
+
   class Succ[N <: IntM] extends IntM {
     type Succ = MetaInteger.this.Succ[MetaInteger.this.Succ[N]]
     type Add[M <: IntM] = (N#Add[M])#Succ
   }
-
-  type +[N1 <: IntM, N2 <: IntM] = N1#Add[N2]
 
   //Scala doesn't provide meta-integers like C++'s typename<int N>
   //so we have to define some integers here
@@ -90,14 +103,6 @@ trait MetaInteger {
   val _21 : _21 = new _21
   val _22 : _22 = new _22
 
-  //meta-function(?)(what is the term for this thing?)
-  //if IDX is less than SIZE, then an implicit object of type EnsureSize[IDX,SIZE] will
-  //exist with a idx function that returns the number IDX as an integer
-  abstract class EnsureSize[TT <: IntM,T <: IntM] {
-    def get(n : Int) : Int
-    def idx = get(0)
-  }
-
   implicit def EnsureSizeZero[T <: IntM] =
   new EnsureSize[Zero,Succ[T]] {
     def get(n : Int) : Int = n
@@ -106,10 +111,6 @@ trait MetaInteger {
   implicit def EnsureSizeSucc[T <: IntM, TT <: IntM](implicit fn : EnsureSize[TT,T]) =
   new EnsureSize[Succ[TT],Succ[T]] {
     def get(n : Int) : Int = fn.get(n+1)
-  }
-
-  abstract class MVal[T] {
-    val value: Int
   }
 
   implicit val MValZero = new MVal[Zero] {
