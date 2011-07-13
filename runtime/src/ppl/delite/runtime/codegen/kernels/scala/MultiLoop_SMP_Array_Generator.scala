@@ -24,7 +24,7 @@ object MultiLoop_SMP_Array_Generator {
   def makeChunk(op: OP_MultiLoop, chunkIdx: Int, numChunks: Int, kernelPath: String): OP_MultiLoop = {
     val chunk = if (chunkIdx == 0) op else op.chunk(chunkIdx)
     val src = makeKernel(chunk, op, chunkIdx, numChunks, kernelPath)
-    ScalaCompile.addSource(src)
+    ScalaCompile.addSource(src, kernelName(op, chunkIdx))
     chunk
   }
 
@@ -139,7 +139,7 @@ object MultiLoop_SMP_Array_Header_Generator {
 
     //add header for compilation
     val src = out.toString
-    ScalaCompile.addSource(src)
+    ScalaCompile.addSource(src, kernelName(op))
 
     //return header OP
     op.header(kernelName(op), graph)
@@ -243,6 +243,6 @@ object MultiLoop_SMP_Array_Header_Generator {
   }
   
   private def kernelName(op: OP_MultiLoop) = {
-    "MultiLoop_SMP_Array_Header" + op.id
+    "MultiLoop_SMP_Array_Header_" + op.id
   }
 }

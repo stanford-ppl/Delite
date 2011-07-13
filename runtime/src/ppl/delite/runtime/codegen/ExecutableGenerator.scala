@@ -31,7 +31,7 @@ abstract class ExecutableGenerator {
   def makeExecutables(schedule: PartialSchedule, kernelPath: String) {
     for (i <- 0 until schedule.numResources) {
       val src = makeExecutable(schedule(i), i, kernelPath)
-      ScalaCompile.addSource(src)
+      ScalaCompile.addSource(src, executableName + i)
     }
   }
 

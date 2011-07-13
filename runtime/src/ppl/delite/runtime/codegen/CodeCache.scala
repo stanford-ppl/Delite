@@ -79,15 +79,20 @@ trait CodeCache {
 
   protected class Module(val name: String, val deps: List[Module]) { var needsCompile = false }
 
-  protected def cacheRuntimeSources(sources: Array[String]) {
+  protected def cacheRuntimeSources(sources: Array[(String,String)]) {
+    if (Config.noRegenerate) {
+      modules.last.needsCompile = true
+      return
+    }
+
     val dir = Directory(Path(sourceCacheHome + "runtime"))
     val tempDir = Directory(Path(sourceCacheHome + "runtimeTemp"))
     tempDir.createDirectory()
 
     for (i <- 0 until sources.length) {
-      val sourcePath = tempDir.path + File.separator + "source" + i + "." + ext
+      val sourcePath = tempDir.path + File.separator + sources(i)._2 + "." + ext
       val writer = new FileWriter(sourcePath)
-      writer.write(sources(i))
+      writer.write(sources(i)._1)
       writer.close()
     }
 

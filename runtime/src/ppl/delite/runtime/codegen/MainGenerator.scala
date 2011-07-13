@@ -27,10 +27,10 @@ object GPUMainGenerator extends GPUExecutableGenerator {
 
     addFunction(emitCppHeader)
     addFunction(emitCppBody(schedule(0), location, syncList))
-    CudaCompile.addSource(buildCppSource())
+    CudaCompile.addSource(buildCppSource(), executableName + location)
 
     val scalaSource = GPUScalaMainGenerator.emitScala(location, syncList, kernelPath)
-    ScalaCompile.addSource(scalaSource)
+    ScalaCompile.addSource(scalaSource, executableName + location)
   }
 
   protected def executableName = "Executable"
