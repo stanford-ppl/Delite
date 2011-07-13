@@ -14,6 +14,12 @@ import net.liftweb.json.JsonParser
 class MeshLoader {
   def init() {
     System.loadLibrary("MeshLoader");
+    
+    val cfg = BufferedReader(FileReader("liszt.cfg"))
+    val json = JsonParser.parse(cfg)
+
+    val meshFilename = json \ "mesh-file"
+    Mesh.mesh = MeshLoader.loadMesh(meshFilename)
   }
 
   @native

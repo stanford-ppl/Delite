@@ -2,11 +2,11 @@ package ppl.dsl.deliszt.vec
 
 import java.io.PrintWriter
 import ppl.delite.framework.DSLType
+import scala.virtualization.lms.common._
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase, CudaGenBase, CGenBase}
-import scala.virtualization.lms.internal.GenericCodegen
+import ppl.dsl.deliszt.{DeLiszt, DeLisztExp}
+import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
 
 // TODO: discuss: do we want to allow "index"? we need it for downsampling as its currently written,
 // but this provides more expressivity with which the user can shoot themselves in the foot, which
@@ -14,14 +14,14 @@ import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
 
 // perhaps we allow this only for Streams (where you can't use the index to do anything bad)
 // however, as long as we don't provide access to the underlying mat, it is still relatively constrained...
-trait MatRowOps extends DSLType with Base with OverloadHack { this: DeLiszt =>
+trait MatRowOps extends DSLType with Variables { this: DeLiszt =>
   def infix_index[C<:IntM,A:Manifest](x: Rep[MatRow[C,A]]) = matrow_index(x)
 
   // class defs
   def matrow_index[C<:IntM,A:Manifest](x: Rep[MatRow[C,A]]): Rep[Int]
 }
 
-trait MatRowOpsExp extends MatRowOps with BaseExp { this: DeLisztExp =>
+trait MatRowOpsExp extends MatRowOps with VariablesExp { this: DeLisztExp =>
   // implemented via method on real data structure
   case class MatRowIndex[C<:IntM,A:Manifest](x: Exp[MatRow[C,A]]) extends Def[Int]
 
@@ -31,18 +31,7 @@ trait MatRowOpsExp extends MatRowOps with BaseExp { this: DeLisztExp =>
 trait MatRowOpsExpOpt extends MatRowOpsExp { this: DeLisztExp =>
 }
 
-
-trait BaseGenMatRowOps extends GenericCodegen {
-  val IR: MatRowOpsExp
-  import IR._
-
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    //case MatGetRow(x, i) => Nil  // this is unsafe unless we can remove all actual allocations of views
-    case _ => super.syms(e)
-  }
-}
-
-trait ScalaGenMatRowOps extends BaseGenMatRowOps with ScalaGenBase {
+trait ScalaGenMatRowOps extends ScalaGenBase {
   val IR: MatRowOpsExp
   import IR._
 
@@ -53,6 +42,6 @@ trait ScalaGenMatRowOps extends BaseGenMatRowOps with ScalaGenBase {
   }
 }
 
-trait CudaGenMatRowOps extends CudaGenBase with BaseGenMatRowOps
+trait CudaGenMatRowOps extends CudaGenBase with CudaGenDataStruct
 
-trait CGenMatRowOps extends CGenBase with BaseGenMatRowOps
+trait CGenMatRowOps extends CGenBase

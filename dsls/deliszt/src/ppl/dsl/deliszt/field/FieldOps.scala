@@ -65,17 +65,7 @@ trait FieldOpsExpOpt extends FieldOpsExp {
   this: DeLisztExp =>
 }
 
-trait BaseGenFieldOps extends GenericFatCodegen {
-  val IR: FieldOpsExp
-  import IR._
-
-  /*override def unapplySimpleIndex(e: Def[Any]) = e match { // TODO: move elsewhere
-    case FieldApply(a, i) => Some((a,i))
-    case _ => super.unapplySimpleIndex(e)
-  } */
-}
-
-trait ScalaGenFieldOps extends BaseGenFieldOps with ScalaGenFat {
+trait ScalaGenFieldOps extends ScalaGenBase {
   val IR: FieldOpsExp
   import IR._
 
@@ -90,7 +80,7 @@ trait ScalaGenFieldOps extends BaseGenFieldOps with ScalaGenFat {
 }
 
 
-trait CudaGenFieldOps extends BaseGenFieldOps with CudaGenFat with CudaGenDataStruct {
+trait CudaGenFieldOps extends CudaGenBase with CudaGenDataStruct {
   val IR: FieldOpsExp
   import IR._
 
@@ -99,7 +89,7 @@ trait CudaGenFieldOps extends BaseGenFieldOps with CudaGenFat with CudaGenDataSt
   }
 }
 
-trait CGenFieldOps extends BaseGenFieldOps with CGenFat {
+trait CGenFieldOps extends CGenBase {
   val IR: FieldOpsExp
   import IR._
 

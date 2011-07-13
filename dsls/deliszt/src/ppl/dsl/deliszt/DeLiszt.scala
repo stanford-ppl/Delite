@@ -19,23 +19,6 @@ import ppl.dsl.deliszt.vec._
 import ppl.dsl.deliszt.mesh._
 
 /**
- * These separate DeLiszt applications from the Exp world.
- */
-
-// ex. object GDARunner extends DeLisztApplicationRunner with GDA
-trait DeLisztApplicationRunner extends DeLisztApplication with DeliteApplication with DeLisztExp
-
-// ex. trait GDA extends DeLisztApplication
-trait DeLisztApplication extends DeLiszt with DeLisztLift with DeLisztLibrary {
-  var args: Rep[Array[String]]
-  def main(): Unit
-}
-
-trait DeLisztLibrary {
-  this: DeLisztApplication =>
-}
-
-/**
  * These are the portions of Scala imported into DeLiszt's scope.
  */
 trait DeLisztLift extends LiftVariables with LiftEquals with LiftString with LiftBoolean with LiftNumeric {
@@ -100,9 +83,9 @@ trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with Languag
   with LanguageImplOpsStandard
   with ArithOpsExpOpt
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp
-  with FieldOpsExp with MatOpsExp with MatOpsImpl with VecOpsExp with VecImplOps {
+  with FieldOpsExp with MatOpsExp with MatImplOps with VecOpsExp with VecImplOps {
 
-  // this: DeLisztApplicationRunner => why doesn't this work?
+  // this: LisztApplicationRunner => why doesn't this work?
   this: DeliteApplication with DeLisztApplication with DeLisztExp => // can't be DeLisztApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
 
   def getCodeGenPkg(t: Target{val IR: DeLisztExp.this.type}) : GenericFatCodegen{val IR: DeLisztExp.this.type} = {
@@ -135,7 +118,7 @@ trait DeLisztCodeGenBase extends GenericFatCodegen {
 
   override def emitDataStructures(path: String) {
     val s = File.separator
-    val dsRoot = Config.homeDir + s+"dsls"+s+"DeLiszt"+s+"src"+s+"ppl"+s+"dsl"+s+"DeLiszt"+s+"datastruct"+s + this.toString
+    val dsRoot = Config.homeDir + s+"dsls"+s+"deliszt"+s+"src"+s+"ppl"+s+"dsl"+s+"deliszt"+s+"datastruct"+s + this.toString
 
     val dsDir = new File(dsRoot)
     if (!dsDir.exists) return
@@ -165,8 +148,7 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
   
   val IR: DeliteApplication with DeLisztExp
 
-  override val specialize = Set()
-  override val specialize2 = Set()
+  override val specialize = Set("VecImpl", "MatImpl", "MatColImpl", "MatRowImpl", "VecViewImpl")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
@@ -229,45 +211,70 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
           res = res.replaceAll(s+"\\["+tpe1+","+tpe2+"\\]", tpe1+tpe2+s)
           res = res.replaceAll(s+"\\["+tpe1+", "+tpe2+"\\]", tpe1+tpe2+s)
         }
-		  }
-	  }
+      }
+    }
     dsmap(res)
   }
 
   override def dsmap(line: String) : String = {
-    var res = line.replaceAll("ppl.dsl.DeLiszt.datastruct", "generated")
+    var res = line.replaceAll("ppl.dsl.deliszt.datastruct", "generated")
     res = res.replaceAll("ppl.delite.framework", "generated.scala")
     res
   }
 }
 
-trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVecOps with CudaGenMatrOps with CudaGenDataStruct with CudaGenMatRowOps // with CudaGenVecViewOps
+trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVecOps with CudaGenMatOps with CudaGenDataStruct with CudaGenMatRowOps // with CudaGenVecViewOps
   with CudaGenVariantsOps with DeliteCudaGenAllOverrides // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
   val IR: DeliteApplication with DeLisztExp
   import IR._
 
-
   // Maps the scala type to cuda type
   override def remap[A](m: Manifest[A]) : String = {
     m.toString match {
+      case "ppl.dsl.deliszt.datastruct.scala.Mat[Int]" => "Mat<int>"
+      case "ppl.dsl.deliszt.datastruct.scala.Mat[Long]" => "Mat<long>"
+      case "ppl.dsl.deliszt.datastruct.scala.Mat[Float]" => "Mat<float>"
+      case "ppl.dsl.deliszt.datastruct.scala.Mat[Double]" => "Mat<double>"
+      case "ppl.dsl.deliszt.datastruct.scala.Mat[Boolean]" => "Mat<bool>"
+      case "ppl.dsl.deliszt.datastruct.scala.Vec[Int]" => "Vec<int>"
+      case "ppl.dsl.deliszt.datastruct.scala.Vec[Long]" => "Vec<long>"
+      case "ppl.dsl.deliszt.datastruct.scala.Vec[Float]" => "Vec<float>"
+      case "ppl.dsl.deliszt.datastruct.scala.Vec[Double]" => "Vec<double>"
+      case "ppl.dsl.deliszt.datastruct.scala.Vec[Boolean]" => "Vec<bool>"
       case _ => super.remap(m)
     }
   }
 
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
+    case "ppl.dsl.deliszt.datastruct.scala.Mat[Int]" => true
+    case "ppl.dsl.deliszt.datastruct.scala.Mat[Long]" => true
+    case "ppl.dsl.deliszt.datastruct.scala.Mat[Float]" => true
+    case "ppl.dsl.deliszt.datastruct.scala.Mat[Double]" => true
+    case "ppl.dsl.deliszt.datastruct.scala.Mat[Boolean]" => true
+    case "ppl.dsl.deliszt.datastruct.scala.Vec[Int]" => true
+    case "ppl.dsl.deliszt.datastruct.scala.Vec[Long]" => true
+    case "ppl.dsl.deliszt.datastruct.scala.Vec[Float]" => true
+    case "ppl.dsl.deliszt.datastruct.scala.Vec[Double]" => true
+    case "ppl.dsl.deliszt.datastruct.scala.Vec[Boolean]" => true
     case _ => super.isObjectType(m)
   }
 
   override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
+    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matrixCopyInputHtoD(sym)
+    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vectorCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
   override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matrixCopyOutputDtoH(sym)
+    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vectorCopyOutputDtoH(sym)
     case _ => super.copyOutputDtoH(sym)
   }
 
   override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matrixCopyMutableInputDtoH(sym)
+    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vectorCopyMutableInputDtoH(sym)
     case _ => super.copyMutableInputDtoH(sym)
   }
 
@@ -280,10 +287,10 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /
   override def getDSLHeaders: String = {
     val out = new StringBuilder
     out.append("#include <float.h>\n")
-    // out.append("#include \"VectorImpl.h\"\n")
+    out.append("#include \"VecImpl.h\"\n")
+    out.append("#include \"MatImpl.h\"\n")
     out.toString
   }
-
 }
 
 trait DeLisztCodeGenC extends DeLisztCodeGenBase with DeLisztCCodeGenPkg with CGenArithOps with CGenDeliteOps with CGenFieldOps with CGenVecOps with CGenMatOps

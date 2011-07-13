@@ -65,16 +65,7 @@ trait FieldPrivateOpsExp extends FieldPrivateOps with VariablesExp with BaseFatE
   def field_size[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]]) = FieldSize(x)
 }
 
-trait BaseGenFieldPrivateOps extends GenericFatCodegen {
-  val IR: FieldPrivateOpsExp
-  import IR._
-
-  override def unapplySimpleIndex(e: Def[Any]) = e match { // TODO: move elsewhere
-    case _ => super.unapplySimpleIndex(e)
-  }
-}
-
-trait ScalaGenFieldPrivateOps extends BaseGenFieldPrivateOps with ScalaGenFat {
+trait ScalaGenFieldPrivateOps extends ScalaGenBase {
   val IR: FieldPrivateOpsExp
   import IR._
 
@@ -91,7 +82,7 @@ trait ScalaGenFieldPrivateOps extends BaseGenFieldPrivateOps with ScalaGenFat {
   }
 }
 
-trait CudaGenFieldPrivateOps extends BaseGenFieldPrivateOps with CudaGenFat with CudaGenDataStruct {
+trait CudaGenFieldPrivateOps extends CudaGenBase {
   val IR: FieldPrivateOpsExp
   import IR._
 
@@ -100,7 +91,7 @@ trait CudaGenFieldPrivateOps extends BaseGenFieldPrivateOps with CudaGenFat with
   }
 }
 
-trait CGenFieldPrivateOps extends BaseGenFieldPrivateOps with CGenFat {
+trait CGenFieldPrivateOps extends CGenBase {
   val IR: FieldPrivateOpsExp
   import IR._
 

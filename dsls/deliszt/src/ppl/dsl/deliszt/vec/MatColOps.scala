@@ -2,19 +2,20 @@ package ppl.dsl.deliszt.vec
 
 import java.io.PrintWriter
 import ppl.delite.framework.DSLType
+import scala.virtualization.lms.common._
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase}
-import ppl.dsl.deliszt.datastruct.scala.{MatCol, MatColImpl}
-import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
+import ppl.dsl.deliszt.{DeLiszt, DeLisztExp}
+import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
+import ppl.dsl.deliszt.datastruct.scala._
 
-trait MatColOps extends DSLType with Base with MetaInteger with OverloadHack { this: DeLiszt =>
+trait MatColOps extends DSLType with Variables with MetaInteger { this: DeLiszt =>
   def infix_index[R<:IntM,A](x: Rep[MatCol[R,A]])(implicit mA: Manifest[A], o: Overloaded1) = matcol_index(x)
 
   // class defs
   def matcol_index[R<:IntM,A:Manifest](x: Rep[MatCol[R,A]]): Rep[Int]
 }
 
-trait MatColOpsExp extends MatColOps with BaseExp { this: DeLisztExp =>
+trait MatColOpsExp extends MatColOps with VariablesExp { this: DeLisztExp =>
   // implemented via method on real data structure
   case class MatColIndex[R<:IntM,A:Manifest](x: Exp[MatCol[R,A]]) extends Def[Int]
 

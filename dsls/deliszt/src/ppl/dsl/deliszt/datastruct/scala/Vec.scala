@@ -1,6 +1,6 @@
 package ppl.dsl.deliszt.datastruct.scala
 
-import MetaInteger._
+import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -10,12 +10,12 @@ import MetaInteger._
  * Stanford University
  */
 
-trait Vec[N <: IntM, VT] extends DeliteCollection[VT] {
-  def apply[TT <: IntM](n : TT)(implicit f : EnsureSize[TT,N]) = apply(MIntDepth[TT])
-  def update[TT <: IntM](n : TT, v : VT)(implicit f : EnsureSize[TT,N]) = update(MIntDepth[TT], v)
+trait Vec[N<:IntM,VT] extends DeliteCollection[VT] with MetaInteger {
+  def apply[TT<:IntM:MVal](n:TT) : VT = apply(MIntDepth[TT])
+  def update[TT<:IntM:MVal](n:TT, v:VT) : Unit = update(MIntDepth[TT], v)
 
-  def apply(n : Int) : VT
-  def update(n : Int, v : VT) : Unit
+  def apply(n:Int) : VT
+  def update(n:Int, v : VT) : Unit
 
   def size : Int
   def dcApply(idx: Int) = apply(idx)

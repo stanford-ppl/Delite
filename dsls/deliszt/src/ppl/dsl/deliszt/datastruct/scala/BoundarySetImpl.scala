@@ -44,9 +44,10 @@ class BoundarySetImpl[MO<:MeshObj:Manifest] extends MeshObjSet[MO] {
       while(i < data.size) {
         val next = data.apply(i)
         if(next != cur) {
-          rangeBuilder += (start,cur)
+          rangeBuilder += ((start,cur))
           sizeBuilder += cur - start
-          cur = start = next
+          start = next
+          cur = start
         }
 
         cur++

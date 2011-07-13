@@ -36,6 +36,7 @@ class VecPrivateOps extends DSLType with Variables {
 		def map
   }
 }
+
 trait VecPrivateOpsExp extends VecPrivateOps with VariablesExp with BaseFatExp with CleanRoom {
   this: VecImplOps with DeLisztExp =>
 
@@ -76,17 +77,7 @@ trait VecPrivateOpsExpOpt extends VecPrivateOpsExp {
   this: VecPrivateImplOps with DeLisztExp =>
 }
 
-trait BaseGenVecPrivateOps extends GenericFatCodegen {
-  val IR: VecPrivateOpsExp
-  import IR._
-
-  override def unapplySimpleIndex(e: Def[Any]) = e match { // TODO: move elsewhere
-    case VecApply(a, i) => Some((a,i))
-    case _ => super.unapplySimpleIndex(e)
-  }
-}
-
-trait ScalaGenVecPrivateOps extends BaseGenVecPrivateOps with ScalaGenFat {
+trait ScalaGenVecPrivateOps extends ScalaGenBase {
   val IR: VecPrivateOpsExp
   import IR._
 
@@ -98,7 +89,7 @@ trait ScalaGenVecPrivateOps extends BaseGenVecPrivateOps with ScalaGenFat {
 }
 
 
-trait CudaGenVecPrivateOps extends BaseGenVecPrivateOps with CudaGenFat with CudaGenDataStruct {
+trait CudaGenVecPrivateOps extends CudaGenBase with CudaGenDataStruct {
   val IR: VecPrivateOpsExp
   import IR._
 
@@ -107,7 +98,7 @@ trait CudaGenVecPrivateOps extends BaseGenVecPrivateOps with CudaGenFat with Cud
   }
 }
 
-trait CGenVecPrivateOps extends BaseGenVecPrivateOps with CGenFat {
+trait CGenVecPrivateOps extends CGenBase {
   val IR: VecPrivateOpsExp
   import IR._
 

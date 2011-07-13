@@ -1,7 +1,6 @@
 package ppl.dsl.deliszt.datastruct.scala
 
 import collection.mutable.{Map, HashMap}
-import MetaInteger._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -33,17 +32,17 @@ object Mesh {
   def cellsCW(e: Edge): DeLisztSet[Cell] = CWIndexSetImpl(mesh.etoc, e)
 
   def edges(e: Mesh): DeLisztSet[Edge] = MeshObjSetImpl(mesh.nedges)
-  def edges(e: Vertex): DeLisztSet[Edge] = IndexSetImpl(mesh.vtoe , e)
-  def edges(e: Face): DeLisztSet[Edge] = IndexSetImpl(mesh.ftoe , e)
-  def edges(e: Cell): DeLisztSet[Edge] = IndexSetImpl(mesh.ctoe , e)
+  def edges(e: Vertex): DeLisztSet[Edge] = IndexSetImpl(mesh.vtoe, e)
+  def edges(e: Face): DeLisztSet[Edge] = IndexSetImpl(mesh.ftoe, e)
+  def edges(e: Cell): DeLisztSet[Edge] = IndexSetImpl(mesh.ctoe, e)
 
-  def edgesCCW(e: Face): DeLisztSet[Edge] = IndexSetImpl(mesh.ftoe , e)
-  def edgesCW(e: Face): DeLisztSet[Edge] = IndexSetImpl(mesh.ftoe , e)
+  def edgesCCW(e: Face): DeLisztSet[Edge] = IndexSetImpl(mesh.ftoe, e)
+  def edgesCW(e: Face): DeLisztSet[Edge] = IndexSetImpl(mesh.ftoe, e)
 
   def faces(e: Mesh): DeLisztSet[Face] = MeshObjSetImpl(mesh.nfaces)
-  def faces(e: Vertex): DeLisztSet[Face] = IndexSetImpl(mesh.vtof , e)
-  def faces(e: Edge): DeLisztSet[Face] = IndexSetImpl(mesh.etof , e)
-  def faces(e: Cell): DeLisztSet[Face] = IndexSetImpl(mesh.ctof , e)
+  def faces(e: Vertex): DeLisztSet[Face] = IndexSetImpl(mesh.vtof, e)
+  def faces(e: Edge): DeLisztSet[Face] = IndexSetImpl(mesh.etof, e)
+  def faces(e: Cell): DeLisztSet[Face] = IndexSetImpl(mesh.ctof, e)
 
   def facesCCW(e: Edge): DeLisztSet[Face] = IndexSetImpl(mesh.etof, e)
   def facesCW(e: Edge): DeLisztSet[Face] = IndexSetImpl(mesh.etof, e)
@@ -75,7 +74,9 @@ class LabelData[MO<:MeshObj] {
   val fns: Map[String,Object => Object] = new HashMap[String,Object => Object]()
 }
 
-class Mesh {
+class Mesh extends MeshObj with MetaInteger {
+  val id = 0
+
   var nvertices: Int = 0
 	var nedges: Int = 0
 	var nfaces: Int = 0

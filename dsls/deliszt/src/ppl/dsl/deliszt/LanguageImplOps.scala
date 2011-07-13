@@ -3,20 +3,23 @@ package ppl.dsl.deliszt
 import ppl.dsl.deliszt.datastruct.scala._
 
 trait LanguageImplOps {
-  this: DeLiszt =>
+  this: DeLisztExp =>
+  
   def DeLisztInit() : Unit = {
     // Load cfg files
     //
     MeshLoader.init()
-
-    val cfg = BufferedReader(FileReader("liszt.cfg"))
-    val json = JsonParser.parse(cfg)
-
-    val meshFilename = json \ "mesh-file"
-    Mesh.mesh = MeshLoader.loadMesh(meshFilename)
+  }
+  
+  def print_impl(as : Seq[Exp[Any]]) {
+    for(a <- as) {
+      print(a)
+    }
+    
+    println()
   }
 }
 
 trait LanguageImplOpsStandard extends LanguageImplOps {
-  this: DeLiszt =>
+  this: DeLisztCompiler with DeLisztExp =>
 }
