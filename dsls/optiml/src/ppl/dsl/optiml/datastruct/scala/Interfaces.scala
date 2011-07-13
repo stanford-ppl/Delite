@@ -44,14 +44,29 @@ trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   def dcApply(idx: Int) = apply(idx)
   def dcUpdate(idx: Int, x: T) = update(idx, x)
   def size = length
+  
+  // value equality is needed for DeliteCollection zero
+  override def equals(rhs: Any): Boolean = {
+    if (!rhs.isInstanceOf[Vector[T]]) return false
+        
+    val rv = rhs.asInstanceOf[Vector[T]]
+    if (size != rv.size) return false
+    var i = 0
+    while (i < rv.size) {
+      if (dcApply(i) != rv.dcApply(i)) return false
+      i += 1        
+    }
+    true    
+  }
 }
 
 trait ZeroVector[T] extends Vector[T]
 
 trait EmptyVector[T] extends Vector[T] {
   def length : Int = 0
+  def isRow: Boolean = true // shouldn't matter  
+  
   def apply(i: Int): T = throw new UnsupportedOperationException()
-  def isRow: Boolean = throw new UnsupportedOperationException()
   def update(index: Int, x: T) = throw new UnsupportedOperationException()
   def data = throw new UnsupportedOperationException()
   def toList = throw new UnsupportedOperationException()
@@ -135,6 +150,19 @@ trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   def dcApply(idx: Int): T
   def dcUpdate(idx: Int, x: T): Unit
 
+  // value equality is needed for DeliteCollection zero
+  override def equals(rhs: Any): Boolean = {
+    if (!rhs.isInstanceOf[Matrix[T]]) return false
+        
+    val rv = rhs.asInstanceOf[Matrix[T]]
+    if (size != rv.size) return false
+    var i = 0
+    while (i < rv.size) {
+      if (dcApply(i) != rv.dcApply(i)) return false
+      i += 1        
+    }
+    true    
+  }
 }
 
 /**

@@ -471,7 +471,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpReduce[A] {
 
     val size = in.numRows*in.numCols
-    val zero = implicitly[Arith[A]].zero 
+    val zero = implicitly[Arith[A]].empty
     def func = (a,b) => a + b
   }
   
@@ -627,7 +627,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpLoop[Vector[A]] {
 
     val size = x.numRows
-    val v = fresh[Int]
     val zero = EmptyVector[A]
     
     val rV = (fresh[Vector[A]], fresh[Vector[A]])

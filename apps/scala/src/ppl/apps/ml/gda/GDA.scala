@@ -1,6 +1,7 @@
 package ppl.apps.ml.gda
 
 import ppl.dsl.optiml._
+import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
 object GDARunner extends OptiMLApplicationRunner with GDA
@@ -36,17 +37,11 @@ trait GDA extends OptiMLApplication {
      * where n is the width of x, and sigma is an n x n matrix.
      */
 
-    /* This loop calculates all of the needed statistics with a single pass
-       through the data.  */
-    val (y_zeros, y_ones, mu0_num, mu1_num) = t4( sum(0,m) { i =>
-      if (y(i) == false){
-        (unit(1.),unit(0.),x(i),ZeroVector[Double](n))
-      }
-      else {
-        (unit(0.),unit(1.),ZeroVector[Double](n),x(i))
-      }
-    })
-
+    val y_zeros = y count { _ == false } 
+    val y_ones = y count { _ == true }
+    val mu0_num = sumIf[Vector[Double]](0,m) { !y(_) } { x(_) }        
+    val mu1_num = sumIf[Vector[Double]](0,m) { y(_) } { x(_) }
+    
     //println("y_zeros: " + y_zeros)
     //println("y_ones: " + y_ones)
 
@@ -58,10 +53,10 @@ trait GDA extends OptiMLApplication {
     /* x(i) is a row vector for us, while it is defined a column vector in the formula */
     val sigma = sum(0, m) { i =>
       if (y(i) == false){
-       (((x(i)-mu0).t)**(x(i)-mu0))
+        (((x(i)-mu0).t)**(x(i)-mu0))
       }
       else{
-       (((x(i)-mu1).t)**(x(i)-mu1))
+        (((x(i)-mu1).t)**(x(i)-mu1))
       }
     }
 
@@ -75,6 +70,5 @@ trait GDA extends OptiMLApplication {
 
     // need to do something or the whole program will be DCE'd
     println(sigma)
-
   }
 }

@@ -79,6 +79,19 @@ trait DeliteMapReduce extends DeliteTestModule with OptiMLApplication {
   }
 }
 
+object DeliteFilterRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteFilter
+trait DeliteFilter extends DeliteTestModule with OptiMLApplication {
+  def main() = {
+    implicit val collector = ArrayBuffer[Boolean]()
+
+    val v1 = Vector.range(0, 100)
+    val v2 = v1 filter { _ % 2 == 1 }
+    collect(v2.length == 50)
+
+    mkReport
+  }
+}
+
 object DeliteForeachRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteForeach
 trait DeliteForeach extends DeliteTestModule with OptiMLApplication {
   def main() = {
@@ -208,17 +221,19 @@ trait DeliteIfThenElse extends DeliteTestModule with OptiMLApplication {
 }
 
 class DeliteOpSuite extends DeliteSuite {
+  def testDeliteFilter() { compileAndTest(DeliteFilterRunner) }
+  
   def testDeliteMap() { compileAndTest(DeliteMapRunner) }
   def testDeliteZip() { compileAndTest(DeliteZipRunner) }
   def testDeliteReduce() { compileAndTest(DeliteReduceRunner) }
   def testDeliteMapReduce() { compileAndTest(DeliteMapReduceRunner) }
   def testDeliteForeach() { compileAndTest(DeliteForeachRunner) }
-
+  
   def testDeliteNestedMap() { compileAndTest(DeliteNestedMapRunner) }
   def testDeliteNestedZip() { compileAndTest(DeliteNestedZipRunner) }
   def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceRunner) }
   def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceRunner) }
   def testDeliteNestedForeach() { compileAndTest(DeliteNestedForeachRunner) }
-
+  
   def testDeliteIfThenElse() { compileAndTest(DeliteIfThenElseRunner) }
 }

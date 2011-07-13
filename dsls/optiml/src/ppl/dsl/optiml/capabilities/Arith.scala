@@ -28,7 +28,8 @@ trait ArithInternal[Rep[X],T] {
   def /(a: Rep[T], b: Rep[T]) : Rep[T]
   def abs(a: Rep[T]) : Rep[T]
   def exp(a: Rep[T]) : Rep[T]
-  def zero: Rep[T]
+  def empty: Rep[T]
+  def zero(a: Rep[T]): Rep[T]
   /*
   def unary_-(a: Rep[T]) : Rep[T]
   */
@@ -69,7 +70,8 @@ trait ArithOps extends Variables with OverloadHack {
 
     def abs: Rep[T] = arith.abs(lhs)
     def exp: Rep[T] = arith.exp(lhs)
-    def zero: Rep[T] = arith.zero
+    def empty: Rep[T] = arith.empty
+    def zero: Rep[T] = arith.zero(lhs)
   }
 
 
@@ -91,10 +93,12 @@ trait ArithOps extends Variables with OverloadHack {
 
   implicit def vectorArith[T:Arith:Manifest] : Arith[Vector[T]] = new Arith[Vector[T]] {
     // these are used in sum; dynamic checks are required due to conditionals
-    def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (!b.isInstanceOfL[ZeroVector[T]]) a += b else a
-    def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (a.isInstanceOfL[ZeroVector[T]]) b
-                                                  else if (b.isInstanceOfL[ZeroVector[T]]) a
-                                                  else a+b
+    // def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (!b.isInstanceOfL[ZeroVector[T]]) a += b else a
+    // def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (a.isInstanceOfL[ZeroVector[T]]) b
+    //                                               else if (b.isInstanceOfL[ZeroVector[T]]) a
+    //                                               else a+b
+    def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a += b 
+    def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a+b
     def -(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a-b
     def *(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a*b
     def /(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a/b
@@ -104,16 +108,18 @@ trait ArithOps extends Variables with OverloadHack {
     
     /**
      * zero for Vector[T] is a little tricky. It is used in nested Vector/Matrix operations, e.g.
-     * a reduction on a Vector[Vector[T]]. We define it as the empty Vector because for a variable dimension
-     * nested Vector, there is no other right answer. For a fixed dimension nested Vector, such as [[1,2,3],[4,5,6]],
-     * you'd ideally want the k-dimension zero vector, e.g. [0,0,0] in this example. However, this is the dimension
+     * a reduction on a Vector[Vector[T]]. For a variable dimension nested vector, the empty vector is the only
+     * right answer. For a fixed dimension nested Vector, such as [[1,2,3],[4,5,6]], you'd ideally want the 
+     * k-dimension zero vector, e.g. [0,0,0] in this example. However, this is the dimension
      * of v(0).dim, not v.dim, and cannot be statically enforced with our types, and furthermore would need to
-     * correctly handled multiple levels of nesting.
-     * 
-     * This situation is resolved by the DeliteOpReduce contract to never use zero except in the case of the
-     * empty collection, which makes returning an empty collection always the right thing.  
+     * correctly handled multiple levels of nesting. This situation is resolved by the DeliteOpReduce contract to
+     * never use zero except in the case of the empty collection.
+     *  
+     * For non-nested cases, i.e. conditional maps or reduces, we want the zero-valued k-dimensional value,
+     * but we don't always know k before running the function... (see sumIf in kmeans)
      */
-    def zero = EmptyVector[T]
+    def empty = EmptyVector[T]
+    def zero(a: Rep[Vector[T]]) = ZeroVector[T](a.length)
 }
 
 
@@ -129,7 +135,8 @@ trait ArithOps extends Variables with OverloadHack {
     def /(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a/b
     def abs(a: Rep[Matrix[T]]) = a.abs
     def exp(a: Rep[Matrix[T]]) = a.exp
-    def zero = Matrix[T](0,0) // EmptyMatrix? 
+    def empty = Matrix[T](0,0) // EmptyMatrix? 
+    def zero(a: Rep[Matrix[T]]) = Matrix[T](a.numRows, a.numCols)
     /*
     def unary_-(a: Rep[Matrix[T]]) = -a
     */
@@ -143,8 +150,7 @@ trait ArithOps extends Variables with OverloadHack {
   implicit def tuple2Arith[A:Manifest:Arith,B:Manifest:Arith] : Arith[Tuple2[A,B]] =
     new Arith[Tuple2[A,B]] {
       def +=(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]]) =
-        // += doesn't work for components if components are not guaranteed to be non-nil
-        Tuple2(a._1+b._1, a._2+b._2)
+        Tuple2(a._1 += b._1, a._2 += b._2)
 
       def +(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]]) =
         Tuple2(a._1+b._1, a._2+b._2)
@@ -164,15 +170,17 @@ trait ArithOps extends Variables with OverloadHack {
       def exp(a: Rep[Tuple2[A,B]]) =
         Tuple2(a._1.exp, a._2.exp)
       
-      def zero =
-        Tuple2(implicitly[Arith[A]].zero, implicitly[Arith[B]].zero)
+      def empty =
+        Tuple2(implicitly[Arith[A]].empty, implicitly[Arith[B]].empty)
+      
+      def zero(a: Rep[Tuple2[A,B]]) =
+        Tuple2(a._1.zero, a._2.zero)
     }
   
   implicit def tuple3Arith[A:Manifest:Arith,B:Manifest:Arith,C:Manifest:Arith,D:Manifest:Arith] : Arith[Tuple3[A,B,C]] =
     new Arith[Tuple3[A,B,C]] {
       def +=(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]]) =
-        // += doesn't work for components if components are not guaranteed to be non-nil
-        Tuple3(a._1+b._1, a._2+b._2, a._3+b._3)
+        Tuple3(a._1 += b._1, a._2 += b._2, a._3 += b._3)
 
       def +(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]]) =
         Tuple3(a._1+b._1, a._2+b._2, a._3+b._3)
@@ -191,18 +199,19 @@ trait ArithOps extends Variables with OverloadHack {
 
       def exp(a: Rep[Tuple3[A,B,C]]) =
         Tuple3(a._1.exp, a._2.exp, a._3.exp)
+      
+      def empty =
+        Tuple3(implicitly[Arith[A]].empty, implicitly[Arith[B]].empty, implicitly[Arith[C]].empty)
 
-      def zero =
-        Tuple3(implicitly[Arith[A]].zero, implicitly[Arith[B]].zero, implicitly[Arith[C]].zero)
+      def zero(a: Rep[Tuple3[A,B,C]]) =
+        Tuple3(a._1.zero, a._2.zero, a._3.zero)
     }
 
   //implicit def tuple4Arith[A,B,C,D](implicit rA: A => Rep[A], rB: B => Rep[B], rC: C => Rep[C], rD: D => Rep[D], opsA: Arith[A], mA: Manifest[A], opsB: Arith[B], mB: Manifest[B],
   implicit def tuple4Arith[A:Manifest:Arith,B:Manifest:Arith,C:Manifest:Arith,D:Manifest:Arith] : Arith[Tuple4[A,B,C,D]] =
     new Arith[Tuple4[A,B,C,D]] {
       def +=(a: Rep[Tuple4[A,B,C,D]], b: Rep[Tuple4[A,B,C,D]]) =
-        // += doesn't work for components if components are not guaranteed to be non-nil
-        //Tuple4(a._1 += b._1, a._2 += b._2, a._3 += b._3, a._4 += b._4)
-        Tuple4(a._1+b._1, a._2+b._2, a._3+b._3, a._4+b._4)
+        Tuple4(a._1 += b._1, a._2 += b._2, a._3 += b._3, a._4 += b._4)
 
       def +(a: Rep[Tuple4[A,B,C,D]], b: Rep[Tuple4[A,B,C,D]]) =
         Tuple4(a._1+b._1, a._2+b._2, a._3+b._3, a._4+b._4)
@@ -221,9 +230,12 @@ trait ArithOps extends Variables with OverloadHack {
 
       def exp(a: Rep[Tuple4[A,B,C,D]]) =
         Tuple4(a._1.exp, a._2.exp, a._3.exp, a._4.exp)
+      
+      def empty =
+        Tuple4(implicitly[Arith[A]].empty, implicitly[Arith[B]].empty, implicitly[Arith[C]].empty, implicitly[Arith[D]].empty)
 
-      def zero =
-        Tuple4(implicitly[Arith[A]].zero, implicitly[Arith[B]].zero, implicitly[Arith[C]].zero, implicitly[Arith[D]].zero)
+      def zero(a: Rep[Tuple4[A,B,C,D]]) =
+        Tuple4(a._1.zero, a._2.zero, a._3.zero, a._4.zero)    
     }
 
 
@@ -242,7 +254,8 @@ trait ArithOps extends Variables with OverloadHack {
     def /(a: Rep[Double], b: Rep[Double]) = arith_fractional_divide(a,b)
     def abs(a: Rep[Double]) = arith_abs(a)
     def exp(a: Rep[Double]) = arith_exp(a)
-    def zero = unit(0.0)
+    def empty = unit(0.0)
+    def zero(a: Rep[Double]) = empty
     //def unary_-(a: Rep[Double]) = -a
   }
 
@@ -254,7 +267,8 @@ trait ArithOps extends Variables with OverloadHack {
     def /(a: Rep[Float], b: Rep[Float]) = arith_fractional_divide(a,b)
     def abs(a: Rep[Float]) = arith_abs(a)
     def exp(a: Rep[Float]) = arith_exp(a).asInstanceOfL[Float]
-    def zero = unit(0f)
+    def empty = unit(0f)
+    def zero(a: Rep[Float]) = empty
     //def unary_-(a: Rep[Float]) = -a
   }
 
@@ -266,7 +280,8 @@ trait ArithOps extends Variables with OverloadHack {
     def /(a: Rep[Int], b: Rep[Int]) = int_divide(a,b)
     def abs(a: Rep[Int]) = arith_abs(a)
     def exp(a: Rep[Int]) = arith_exp(a).asInstanceOfL[Int]
-    def zero = unit(0)
+    def empty = unit(0)
+    def zero(a: Rep[Int]) = empty
     //def unary_-(a: Rep[Int]) = -a
   }
   

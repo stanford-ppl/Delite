@@ -17,6 +17,19 @@ trait Sum extends DeliteTestModule with OptiMLApplication {
   }
 }
 
+object SumIfRunner extends DeliteTestRunner with OptiMLApplicationRunner with SumIf
+trait SumIf extends DeliteTestModule with OptiMLApplication {
+  def main() = {
+    implicit val collector = ArrayBuffer[Boolean]()
+
+    val y = Vector(true, false, true, false, true, false, false, false, true, true)
+    val x = sumIf(0,10) { y(_) } { i => Vector.ones(5) }
+//    x.pprint
+		collect(x == Vector(5.0, 5.0, 5.0, 5.0, 5.0))
+    mkReport
+  }
+}
+
 object IndexVectorConstructRunner extends DeliteTestRunner with OptiMLApplicationRunner with IndexVectorConstruct
 trait IndexVectorConstruct extends DeliteTestModule with OptiMLApplication {
   def main() = {
@@ -63,7 +76,8 @@ trait IndexVectorConstruct2 extends DeliteTestModule with OptiMLApplication {
 
 class LanguageSuite extends DeliteSuite {
   def testSum() { compileAndTest(SumRunner) }
-	def testIndexVector() { compileAndTest(IndexVectorConstructRunner) }
-	def testIndexVector2() { compileAndTest(IndexVectorConstruct2Runner) }
+  def testSumIf() { compileAndTest(SumIfRunner) }
+  def testIndexVector() { compileAndTest(IndexVectorConstructRunner) }
+  def testIndexVector2() { compileAndTest(IndexVectorConstruct2Runner) }
 }
 
