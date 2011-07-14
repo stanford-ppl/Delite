@@ -70,7 +70,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
     //the footer
     out.append("}\n")
 
-    ScalaCompile.addSource(out.toString)
+    ScalaCompile.addSource(out.toString, kernelName)
   }
 
   override protected def getSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
@@ -86,7 +86,7 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     updateOP()
     GPUMainGenerator.addFunction(emitCpp(syncList))
-    ScalaCompile.addSource(new GPUScalaConditionGenerator(condition, location).emitScala(syncList))
+    ScalaCompile.addSource(new GPUScalaConditionGenerator(condition, location).emitScala(syncList), kernelName)
   }
 
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {

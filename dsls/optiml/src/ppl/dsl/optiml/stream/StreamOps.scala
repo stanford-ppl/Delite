@@ -247,7 +247,6 @@ trait StreamOpsExpOpt extends StreamOpsExp {
 */
       val r: Def[StreamRow[A]] = new StreamChunkRowFusable(st, row, offset) {
         val size = numCols
-        val v = fresh[Int]
         val body: Def[StreamRow[A]] = new DeliteCollectElem[A,StreamRow[A]](
           alloc = reifyEffects(stream_chunk_row(st,row,offset)),
           func = reifyEffects(stfunc(offset*chunkSize+row,v))

@@ -23,7 +23,7 @@ object Foreach_SMP_Array_Generator {
 
   def makeChunk(op: OP_Foreach, chunkIdx: Int, numChunks: Int, kernelPath: String): OP_Foreach = {
     val chunk = if (chunkIdx == 0) op else op.chunk(chunkIdx)
-    ScalaCompile.addSource(makeKernel(chunk, op, chunkIdx, numChunks, kernelPath))
+    ScalaCompile.addSource(makeKernel(chunk, op, chunkIdx, numChunks, kernelPath), kernelName(op, chunkIdx))
     chunk
   }
 
@@ -114,7 +114,7 @@ object Foreach_SMP_Array_Header_Generator {
     out.append('\n')
 
     //add header for compilation
-    ScalaCompile.addSource(out.toString)
+    ScalaCompile.addSource(out.toString, kernelName(op))
 
     //return header OP
     op.header(kernelName(op), graph)
@@ -186,6 +186,6 @@ object Foreach_SMP_Array_Header_Generator {
   }
 
   private def kernelName(op: OP_Foreach) = {
-    "Foreach_SMP_Array_Header" + op.id
+    "Foreach_SMP_Array_Header_" + op.id
   }
 }

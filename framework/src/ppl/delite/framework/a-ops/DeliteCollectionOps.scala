@@ -33,6 +33,7 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with EffectExp {
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case DeliteCollectionApply(x, n) => dc_apply(f(x), f(n))
+    case Reflect(DeliteCollectionApply(l,r), u, es) => reflectMirrored(Reflect(DeliteCollectionApply(f(l),f(r)), mapOver(f,u), f(es)))    
     case _ => super.mirror(e, f)
   }
 }

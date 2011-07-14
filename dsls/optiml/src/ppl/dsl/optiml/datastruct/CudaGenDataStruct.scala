@@ -62,12 +62,27 @@ trait CudaGenDataStruct extends CudaCodegen {
 
 	out.append("\tjclass viewCls = env->FindClass(\"generated/scala/%sVectorViewImpl\");\n".format(typeArg.toString));
 	out.append("\tjboolean isViewCls = env->IsInstanceOf(obj,viewCls);\n");
+	out.append("\tjclass zeroCls = env->FindClass(\"generated/scala/VectorImpl\");\n");
+	out.append("\tjboolean isZeroCls = env->IsInstanceOf(obj,zeroCls);\n");
 
 	  // If this is not RangeVector
-    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
-    out.append("\t\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
-    out.append("\t\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
-    out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
+    out.append("\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
+    
+	out.append("\tif(isZeroCls) {\n")
+   	out.append("\t\t%s *hostPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+    out.append("\t\t%s *devPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
+    out.append("\t\tmemset(%s, 0, %s);\n".format("hostPtr",numBytesStr))
+    out.append("\t\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
+    out.append("\t\t%s->data = %s;\n".format(quote(sym),"devPtr"))
+	out.append("\t}\n")
+	out.append("\telse {\n")
+
+
+	out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
     out.append("\t\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\t\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
 	
@@ -91,7 +106,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t\t%s->data = %s;\n".format(quote(sym),"devPtr"))
     // Release
     out.append("\t\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
-    out.append("\t\treturn %s;\n".format(quote(sym)))
+	out.append("\t}\n")
+    out.append("\treturn %s;\n".format(quote(sym)))
     out.toString
   }
 

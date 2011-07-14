@@ -79,18 +79,15 @@ abstract class DeliteOP {
 
   final def replaceInput(old: DeliteOP, input: DeliteOP, name: String) {
     inputList.find(_ == (old, name)) match {
-      case Some((old, name)) => {
+      case Some(oldPair) => {
         assert(input.outputTypesMap.head._2.contains(name), "Cannot replace " + old + " with " + input + " as it does not contain output " + name)
-        inputList.patch(inputList.indexOf((old,name)), List((input, name)), 1)
+        inputList = inputList.patch(inputList.indexOf(oldPair), List((input, name)), 1)
       }
       case None => error(old + " is not an input of " + this + "; cannot be replaced")
     }
-    mutableInputs.find(_ == (old, name)) match {
-      case Some((old, name)) => {
-        mutableInputs -= Pair(old, name)
-        mutableInputs += Pair(input, name)
-      }
-      case None => //do nothing
+    if (mutableInputs.contains((old, name))) {
+      mutableInputs -= Pair(old, name)
+      mutableInputs += Pair(input, name)
     }
   }
 

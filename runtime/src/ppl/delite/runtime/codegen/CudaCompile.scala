@@ -18,23 +18,27 @@ object CudaCompile extends CodeCache {
 
   val binCacheHome = cacheHome + "bin" + File.separator + "runtime" + File.separator
 
-  private val sourceBuffer = new ArrayBuffer[String]
+  private val sourceBuffer = new ArrayBuffer[(String, String)]
 
   def target = "cuda"
 
   override def ext = "cu"
 
-  def addSource(source: String) {
-    sourceBuffer += source
+  def addSource(source: String, name: String) {
+    if (!sourceBuffer.contains((source, name)))
+      sourceBuffer += Pair(source, name)
   }
 
   def compile() {
     if (sourceBuffer.length == 0) return
     cacheRuntimeSources(sourceBuffer.toArray)
-    sourceBuffer.clear()
 
     val paths = modules.map(m => Path(sourceCacheHome + m.name).path).toArray
-    compile(binCacheHome, sourceCacheHome + "runtime" + File.separator + "source0.cu", paths)
+
+	for (src <- sourceBuffer)
+		compile(binCacheHome, sourceCacheHome + "runtime" + File.separator + src._2 + ".cu", paths)
+	
+	sourceBuffer.clear()
   }
 
   //TODO: handle more than one runtime object
