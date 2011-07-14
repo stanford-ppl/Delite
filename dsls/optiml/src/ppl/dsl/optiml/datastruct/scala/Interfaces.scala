@@ -39,6 +39,7 @@ trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   def clear()
   def trim
   def cloneL: Vector[T]
+  def unsafeSetData(xs: Array[T], len: Int)
 
   // DeliteCollection
   def dcApply(idx: Int) = apply(idx)
@@ -65,6 +66,7 @@ trait EmptyVector[T] extends Vector[T] {
   def trim = throw new UnsupportedOperationException()
   def clear() = throw new UnsupportedOperationException()
   def cloneL = throw new UnsupportedOperationException()
+  def unsafeSetData(xs: Array[T], len: Int) = throw new UnsupportedOperationException()
 }
 
 trait VectorView[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T]
@@ -106,6 +108,7 @@ trait IndexVectorWC extends IndexVector {
   def trim = throw new UnsupportedOperationException()
   def clear() = throw new UnsupportedOperationException()
   def cloneL = throw new UnsupportedOperationException()
+  def unsafeSetData(xs: Array[Int], len: Int) = throw new UnsupportedOperationException()
 }
 
 /**

@@ -53,6 +53,12 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
     Console.withOut(screenOrVoid) {
       app.main(Array())
+      if (false) app.globalDefs.foreach { d => //TR print all defs
+        println(d)
+        val info = d.sym.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
+        println(info.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
+      }
+      //assert(!app.hadErrors) //TR should enable this check at some time ...
     }
   }
 
