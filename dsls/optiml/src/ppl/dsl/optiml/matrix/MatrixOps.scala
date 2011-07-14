@@ -957,8 +957,8 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
     /* The ops that call through to the underlying data structure */
     case MatrixDCApply(x,i) =>
       emitValDef(sym, "%s.dcApply(%s)".format(quote(x),quote(i)))
-    case MatrixApply(x,i,j) =>
-      emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
+    //case MatrixApply(x,i,j) =>
+    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
     case MatrixUpdate(x,i,j,y)  =>
       stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
     case MatrixNumRows(x)  =>
