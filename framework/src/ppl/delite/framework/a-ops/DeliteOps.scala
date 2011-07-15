@@ -913,19 +913,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         case (sym, elem: DeliteCollectElem[_,_]) =>
           if (elem.cond.nonEmpty) {
             stream.println("__act2." + quote(sym) + "_buf_init")
-            stream.println("if (" + quote(op.v) + " == 0)")
-            stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym)) // set out object only for chunk 0
-          } else {
-            stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
           }
-/*
-          if (elem.cond.nonEmpty) {
-            stream.println("//TODO: buffer size might be wrong (loop has conditions)") // separate buffer for each process
-            stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym) + ".cloneL")
-          } else { 
-            stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
-          }
-*/
+          stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
           emitCollectElem(op, sym, elem, "__act2.")
         case (sym, elem: DeliteForeachElem[_]) => 
           stream.println("__act2." + quote(sym) + " = {")
@@ -968,13 +957,6 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     stream.println("def combine(__act: " + actType + ", rhs: " + actType + "): Unit = {"/*}*/)
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_]) =>
-        if (elem.cond.nonEmpty) {
-          //stream.println("__act." + quote(sym) + ".insertAll(__act." +quote(sym) + ".length, rhs." + quote(sym) + ")")
-          //stream.println("__act." + quote(sym) + "_buf_appendAll(rhs." +quote(sym) + "_buf, rhs." + quote(sym) + "_size)")
-          //stream.println("__act." + quote(sym) + "_size += rhs." +quote(sym) + "_size")
-          //stream.println("if (__act." + quote(sym) + " ne null)")
-          //stream.println("__act." + quote(sym) + ".unsafeSetData(__act." +quote(sym) + "_buf, __act." + quote(sym) + "_size)")
-        }
       case (sym, elem: DeliteForeachElem[_]) => // nothing needed
       case (sym, elem: DeliteReduceElem[_]) =>
         // if either value is zero, return the other instead of combining
