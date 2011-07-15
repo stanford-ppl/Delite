@@ -989,6 +989,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println("}")
     }
     stream.println(/*{*/"}")
+    // scan/postprocess follows
     stream.println("def postCombine(__act: " + actType + ", rhs: " + actType + "): Unit = {"/*}*/)
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_]) =>
@@ -999,6 +1000,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
     }
+    stream.println(/*{*/"}")
     stream.println("def postProcInit(__act: " + actType + "): Unit = {"/*}*/) // only called for last chunk!!
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_]) =>
@@ -1013,6 +1015,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
     }
+    stream.println(/*{*/"}")
     stream.println("def postProcess(__act: " + actType + "): Unit = {"/*}*/)
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_]) =>
