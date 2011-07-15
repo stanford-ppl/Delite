@@ -17,6 +17,7 @@ trait DeliteTestConfig {
 
   // test parameters
   val verbose = props.getProperty("tests.verbose", "false").toBoolean
+  val threads = props.getProperty("tests.threads", "1")
   val javaHome = new File(props.getProperty("java.home", ""))
   val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
   val runtimeClasses = new File(props.getProperty("runtime.classes", ""))
@@ -70,7 +71,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val output = new File("test.tmp")
     try{
       val javaProc = javaBin.toString
-      val javaArgs = "-server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx16g -cp " + runtimeClasses + ":" + scalaLibrary + ":" + scalaCompiler
+      val javaArgs = "-server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx16g -Ddelite.threads=" + threads + " -cp " + runtimeClasses + ":" + scalaLibrary + ":" + scalaCompiler
       val cmd = Array(javaProc) ++ javaArgs.split(" ") ++ Array("ppl.delite.runtime.Delite") ++ args
       val pb = new ProcessBuilder(java.util.Arrays.asList(cmd: _*))
       p = pb.start()
@@ -124,11 +125,11 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
 // how do we add our code generators? right now we expect a single codegen package being supplied by the dsl.
 // the workaround for now is that the dsl under test must include ArrayBuffer in its code gen
 trait DeliteTestRunner extends DeliteTestModule with DeliteApplication
-  with MiscOpsExp with ArrayBufferOpsExp with StringOpsExp
+  with MiscOpsExp with SynchronizedArrayBufferOpsExp with StringOpsExp
 
 // it is not ideal that the test module imports these things into the application under test
 trait DeliteTestModule extends DeliteTestConfig
-  with MiscOps with ArrayBufferOps with StringOps {
+  with MiscOps with SynchronizedArrayBufferOps with StringOps {
 
   var args: Rep[Array[String]]
   def main(): Unit

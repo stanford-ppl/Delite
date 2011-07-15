@@ -98,7 +98,6 @@ trait DeliteFilter extends DeliteTestModule with OptiMLApplication {
   }
 }
 
-
 object DeliteForeachRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteForeach
 trait DeliteForeach extends DeliteTestModule with OptiMLApplication {
   def main() = {
@@ -228,6 +227,8 @@ trait DeliteIfThenElse extends DeliteTestModule with OptiMLApplication {
 }
 
 class DeliteOpSuite extends DeliteSuite {
+  def testDeliteFilter() { compileAndTest(DeliteFilterRunner) }
+  
   def testDeliteMap() { compileAndTest(DeliteMapRunner) }
   def testDeliteZip() { compileAndTest(DeliteZipRunner) }
   def testDeliteReduce() { compileAndTest(DeliteReduceRunner) }
@@ -240,6 +241,6 @@ class DeliteOpSuite extends DeliteSuite {
   def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceRunner) }
   def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceRunner) }
   def testDeliteNestedForeach() { compileAndTest(DeliteNestedForeachRunner) }
-
+  
   def testDeliteIfThenElse() { compileAndTest(DeliteIfThenElseRunner) }
 }

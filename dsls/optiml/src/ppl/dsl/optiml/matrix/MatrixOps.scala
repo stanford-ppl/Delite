@@ -362,33 +362,49 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   // TODO: generalize this so that we can generate fused, delite parallel op, or BLAS variants
 
   case class MatrixTimesVector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_times_vector_impl(x,y)), true) {
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_times_vector_impl(x,y))) {
 
-    val mV = manifest[VectorImpl[A]]
     def mev = manifest[A]
     def aev = implicitly[Arith[A]]
   }
+  case class MatrixTimesVectorBLAS[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]])
+    extends Def[Vector[A]] {
 
-  case class MatrixMultiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_multiply_impl(x,y)), true) {
-
-    val mM = manifest[MatrixImpl[A]]
-
+    val mV = manifest[VectorImpl[A]]
   }
 
+
+  case class MatrixMultiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_multiply_impl(x,y)))
+  case class MatrixMultiplyBLAS[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
+    extends Def[Matrix[A]] {
+   
+    val mM = manifest[MatrixImpl[A]]
+  }
+
+
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in)), true) {
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) {
 
     val v = fresh[A]
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1))))
+  }  
+  case class MatrixSigmoidBLAS[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
+    extends Def[Matrix[Double]] {
+
     val mM = manifest[MatrixImpl[Double]]
   }
 
+
   case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoidf_impl(in)), true) {
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoidf_impl(in))) {
 
     val v = fresh[A]
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
+  }  
+  case class MatrixSigmoidFBLAS[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
+    extends Def[Matrix[Float]] {
+    
     val mM = manifest[MatrixImpl[Float]]
   }
 
@@ -471,7 +487,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpReduce[A] {
 
     val size = in.numRows*in.numCols
-    val zero = implicitly[Arith[A]].zero 
+    val zero = implicitly[Arith[A]].empty
     def func = (a,b) => a + b
   }
   
@@ -627,7 +643,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpLoop[Vector[A]] {
 
     val size = x.numRows
-    val v = fresh[Int]
     val zero = EmptyVector[A]
     
     val rV = (fresh[Vector[A]], fresh[Vector[A]])
@@ -704,9 +719,14 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_minus[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectPure(MatrixMinus(x,y))
   def matrix_minus_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectPure(MatrixMinusScalar(x,y))
   def matrix_times[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectPure(MatrixTimes(x,y))
-  def matrix_multiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectPure(MatrixMultiply(x,y))
-  //def matrix_times_vector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = reflectPure(new MatrixTimesVectorFresh(x,y))
-  def matrix_times_vector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = reflectPure(MatrixTimesVector(x,y))
+  def matrix_multiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = {
+    if (Config.useBlas) reflectPure(MatrixMultiplyBLAS(x,y))
+    else reflectPure(MatrixMultiply(x,y))
+  }
+  def matrix_times_vector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = {
+    if (Config.useBlas) reflectPure(MatrixTimesVectorBLAS(x,y))
+    else reflectPure(MatrixTimesVector(x,y))
+  }
   def matrix_times_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectPure(MatrixTimesScalar(x,y))
   def matrix_divide[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectPure(MatrixDivide(x,y))
   def matrix_divide_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectPure(MatrixDivideScalar(x,y))
@@ -717,8 +737,14 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_sumrow[A:Manifest:Arith](x: Exp[Matrix[A]]) = reflectPure(MatrixSumRow(x))
   def matrix_sumcol[A:Manifest:Arith](x: Exp[Matrix[A]]) = reflectPure(MatrixSumCol(x))
   def matrix_inverse[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = reflectPure(MatrixInverse(x))
-  def matrix_sigmoid[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = reflectPure(MatrixSigmoid(x))
-  def matrix_sigmoidf[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = reflectPure(MatrixSigmoidF(x))
+  def matrix_sigmoid[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = {
+    if (Config.useBlas) reflectPure(MatrixSigmoidBLAS(x))
+    else reflectPure(MatrixSigmoid(x))
+  }
+  def matrix_sigmoidf[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = {
+    if (Config.useBlas) reflectPure(MatrixSigmoidFBLAS(x))
+    else reflectPure(MatrixSigmoidF(x))
+  }
 
   def matrix_plusequals[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectWrite(x)(MatrixPlusEquals(x,y))
   
@@ -919,17 +945,16 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixRemoveCols(x,pos,len) => emitValDef(sym, quote(x) + ".removeCols(" + quote(pos) + "," + quote(len) + ")")
 
     // BLAS calls
-    // all corresponding nodes should have their DeliteOpSingleTask second argument set to "true" (require inputs)
-    case m@MatrixMultiply(x,y) if (Config.useBlas) =>
+    case m@MatrixMultiplyBLAS(x,y) if (Config.useBlas) =>
       emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(y) + ".numCols)")
       stream.println("scalaBLAS.matMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y)))
-    case m@MatrixTimesVector(x,y) if (Config.useBlas) =>
+    case m@MatrixTimesVectorBLAS(x,y) if (Config.useBlas) =>
       emitValDef(sym, "new " + remap(m.mV) + "(" + quote(x) + ".numRows, false)")
       stream.println("scalaBLAS.matVMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,0,1)".format(quote(x),quote(y),quote(sym),quote(x),quote(x)))
-    case m@MatrixSigmoid(x) if (Config.useBlas) =>
+    case m@MatrixSigmoidBLAS(x) if (Config.useBlas) =>
       emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(x) + ".numCols)")
       stream.println("scalaBLAS.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
-    case m@MatrixSigmoidF(x) if (Config.useBlas) =>
+    case m@MatrixSigmoidFBLAS(x) if (Config.useBlas) =>
       emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(x) + ".numCols)")
       stream.println("scalaBLAS.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
 
@@ -944,7 +969,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
     /* CUBLAS calls */
-    case MatrixMultiply(x,y) =>
+    case MatrixMultiplyBLAS(x,y) =>
       val callStream = "cublasSetKernelStream(stream);"
       val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
         "cublasDgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
@@ -955,7 +980,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(y)),false)
       emitLibCall(sym,List(callStream,callKernel))
     
-    case MatrixTimesVector(x,y) =>
+    case MatrixTimesVectorBLAS(x,y) =>
       val callStream = "cublasSetKernelStream(stream);"
       val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
         "cublasDgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
