@@ -227,8 +227,6 @@ trait DeliteIfThenElse extends DeliteTestModule with OptiMLApplication {
 }
 
 class DeliteOpSuite extends DeliteSuite {
-  def testDeliteFilter() { compileAndTest(DeliteFilterRunner) }
-  
   def testDeliteMap() { compileAndTest(DeliteMapRunner) }
   def testDeliteZip() { compileAndTest(DeliteZipRunner) }
   def testDeliteReduce() { compileAndTest(DeliteReduceRunner) }

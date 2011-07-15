@@ -268,8 +268,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
   this: VectorImplOps with OptiMLExp =>
 
-  def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
-
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure

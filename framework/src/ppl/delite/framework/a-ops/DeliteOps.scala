@@ -13,12 +13,14 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp  {
   
   
+/*
+  may try this some time to wrap functions that are passed as case class args...
   case class FF[A,B](val x: Rep[A], val y: Rep[B])(val f: Rep[A]=>Rep[B])
   
   type ===>[A,B] = FF[A,B]
   
   def deliteFunc[A:Manifest,B](f: Rep[A]=>Rep[B]): A ===> B = { val x = fresh[A]; FF(x, f(x))(f) }
-  
+*/  
   
   
   /**
@@ -422,8 +424,30 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   var deliteResult: Option[List[Exp[Any]]] = None//_
   var deliteInputs: List[Sym[Any]] = Nil//_
 
-  // TODO: move to lms?
+  // TODO: move to lms? TR: will that actually work? it looks pretty unsafe to rebind syms
   def rebind(sym: Sym[Any], rhs: Def[Any]) = createDefinition(sym, rhs).rhs
+
+   // TODO: just to make refactoring easier in case we want to change to reflectSomething
+  // def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x)
+
+  // alternative: leave reflectPure as above and override toAtom...
+
+  // question: what if reflectMutable is called instead of reflectPure?
+
+  def reflectPure[A:Manifest](d: Def[A]): Exp[A] = d match {
+    case x: DeliteOpLoop[_] =>
+      val mutableInputs = Nil // readMutableData(d) TODO: necessary or not??
+      val re = Read(mutableInputs)
+      val be = x.body match {
+        case e: DeliteForeachElem[_] => summarizeEffects(e.func).star
+        case e: DeliteCollectElem[_,_] => summarizeEffects(e.func).star
+        case e: DeliteReduceElem[_] => (summarizeEffects(e.func) andThen summarizeEffects(e.rFunc)).star
+      }
+      reflectEffect(d, re andAlso be)
+    case _ => 
+      toAtom(d) // TODO: just to make refactoring easier in case we want to change to reflectSomething
+  }
+
 
   //////////////
   // mirroring
