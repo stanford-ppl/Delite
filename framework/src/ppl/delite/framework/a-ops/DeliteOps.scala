@@ -110,7 +110,11 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   /**
    *  Delite parallel ops - represents common parallel execution patterns, most of which
-   *  are represented by an underlying 'loop' abstraction.
+   *  are represented by an underlying 'loop' abstraction. All Delite parallel ops must
+   *  not mutate their inputs or any global state, and produce a single output, with the
+   *  exception of DeliteOpForeach. DeliteOpForeach can only mutate shared state protected 
+   *  by the 'sync' method; all other side-effects and writes must be disjoint (i.e., not
+   *  have inter-iteration dependencies). In all cases, there is no ordering guarantee.
    *  
    *  Note that size is supplied explicitly to allow domain-specific pattern rewrites.
    *  
@@ -510,11 +514,11 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 //    case op: DeliteForeachElem[_] => syms(op.func) ++ syms(op.cond) ++ syms(op.sync)
     case op: DeliteForeachElem[_] => syms(op.func) ++ syms(op.sync)
     case op: DeliteReduceElem[_] => syms(op.func) ++ syms(op.cond) ++ syms(op.zero) ++ syms(op.rFunc)
-    case foreach: DeliteOpForeach2[_,_] => readSyms(foreach.in) 
-    case foreach: DeliteOpForeachBounded[_,_,_] => readSyms(foreach.in) 
+    case foreach: DeliteOpForeach2[_,_] => syms(foreach.in) 
+    case foreach: DeliteOpForeachBounded[_,_,_] => syms(foreach.in) 
     case _ => super.readSyms(e)
   }
-
+  
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteOpSingleTask[_] => effectSyms(s.block)
     case op: DeliteCollectElem[_,_] => effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.alloc)
@@ -538,7 +542,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case foreach: DeliteOpForeachBounded[_,_,_] => freqNormal(foreach.in) ++ freqHot(foreach.func) ++ freqHot(foreach.sync)
     case _ => super.symsFreq(e)
   }
-
+  
 	/////////////////////
   // aliases and sharing
 
@@ -581,7 +585,6 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case foreach: DeliteOpForeachBounded[_,_,_] => Nil
     case _ => super.copySyms(e)
   }
-  
 }
 
 trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
@@ -621,6 +624,7 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
 
   override def unapplySimpleCollectIf(e: Def[Any]) = e match {
     case e: DeliteCollectElem[_,_] => Some((e.func, e.cond))
+//    case e: DeliteReduceElem[_] => Some((e.func, e.cond)) // TODO: aks -- testing fusing conditionals for reduce elems
     case _ => super.unapplySimpleCollectIf(e)
   }
 
@@ -732,7 +736,6 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     emitFatBlock(elemFuncs)
   }
 
-/*  
   def emitInlineAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]])(implicit stream: PrintWriter) {
     // initialization             
     (symList zip op.body) foreach {
@@ -787,57 +790,6 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     stream.println(quote(op.v) + " += 1")
     stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
   }
-*/  
-
-  // FIXME: THIS IS THE OLD VERSION FOR TESTING PURPOSES
-  def emitInlineAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]])(implicit stream: PrintWriter) {
-    (symList zip op.body) foreach {
-      case (sym, elem: DeliteCollectElem[_,_]) =>
-        stream.println("val " + quote(sym) + " = {"/*}*/)
-        emitBlock(elem.alloc) // FIXME: how do we know it is the right size? conditions could have been added retrospectively!!
-        if (elem.cond.nonEmpty)
-          stream.println("//TODO: buffer size might be wrong (loop has conditions)")
-        stream.println(quote(getBlockResult(elem.alloc)))
-        stream.println(/*{*/"}")
-      case (sym, elem: DeliteForeachElem[_]) => 
-        stream.println("var " + quotearg(sym) + " = null //TODO: default value?")
-      case (sym, elem: DeliteReduceElem[_]) =>
-        stream.println("var " + quotearg(sym) + " = " + quote(elem.zero))
-    }
-    stream.println("var " + quote(op.v) + " = 0")
-    stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(",")/*}*/)
-    val elemFuncs = op.body flatMap { // don't emit dependencies twice!
-      case elem: DeliteCollectElem[_,_] => elem.func :: elem.cond
-      case elem: DeliteForeachElem[_] => elem.func :: Nil
-      case elem: DeliteReduceElem[_] => elem.func :: elem.cond
-    }
-    emitFatBlock(elemFuncs)
-    (symList zip op.body) foreach {
-      case (sym, elem: DeliteCollectElem[_,_]) =>
-        //emitBlock(elem.func)
-        if (elem.cond.nonEmpty) {
-          stream.print("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") ")
-          stream.println(quote(sym) + ".insert(" + quote(sym) + ".length, " + quote(getBlockResult(elem.func)) + ")")
-        } else
-          stream.println(quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
-      case (sym, elem: DeliteForeachElem[_]) =>
-        stream.println(quote(getBlockResult(elem.func)))
-      case (sym, elem: DeliteReduceElem[_]) =>
-        //emitBlock(elem.func)
-        if (elem.cond.nonEmpty)
-          stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {"/*}*/)
-        stream.println("val " + quote(elem.rV._1) + " = " + quote(sym))
-        stream.println("val " + quote(elem.rV._2) + " = " + quote(getBlockResult(elem.func)))
-        emitBlock(elem.rFunc)
-        stream.println(quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
-        if (elem.cond.nonEmpty)
-          stream.println(/*{*/"}")
-    }
-    stream.println(quote(op.v) + " += 1")
-    stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
-  }
-  
-
 
   def emitAbstractFatLoopKernelExtra(op: AbstractFatLoop, symList: List[Sym[Any]])(implicit stream: PrintWriter): Unit = {
     val kernelName = symList.map(quote).mkString("")

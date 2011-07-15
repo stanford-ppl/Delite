@@ -89,7 +89,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   } 
   
   // impl defs
-  def indexvector2_new(rowInd: Exp[IndexVector], colInd: Exp[IndexVector]) = IndexVector2New(rowInd, colInd)
+  def indexvector2_new(rowInd: Exp[IndexVector], colInd: Exp[IndexVector]) = reflectPure(IndexVector2New(rowInd, colInd))
   def indexvector2_wildcard() = IndexVector2Wildcard()
 
   // class defs
@@ -130,8 +130,8 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
     reflectWrite(out)(IndexVector2Construct(x,block,out)) 
     out.unsafeImmutable
   }
-  def indexvector2_rowind(x: Exp[IndexVector2]) = IndexVector2RowInd(x)
-  def indexvector2_colind(x: Exp[IndexVector2]) = IndexVector2ColInd(x)
+  def indexvector2_rowind(x: Exp[IndexVector2]) = reflectPure(IndexVector2RowInd(x))
+  def indexvector2_colind(x: Exp[IndexVector2]) = reflectPure(IndexVector2ColInd(x))
 
 }
 
