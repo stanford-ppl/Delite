@@ -883,12 +883,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         if (elem.cond.nonEmpty)
           stream.println("//TODO: buffer size might be wrong (loop has conditions)")
         stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.alloc))) //FIXME: do in post-process
-      case (sym, elem: DeliteForeachElem[_]) => // initialized in init below
-      case (sym, elem: DeliteReduceElem[_]) => // initialized in init below
-/*
       case (sym, elem: DeliteForeachElem[_]) => stream.println("__act. " + quote(sym) + " = ()") // must be type Unit, initialized in init below
       case (sym, elem: DeliteReduceElem[_]) => stream.println("__act. " + quote(sym) + " = " + quote(elem.zero))
-*/
     }
     stream.println("__act")
     stream.println(/*{*/"}")
