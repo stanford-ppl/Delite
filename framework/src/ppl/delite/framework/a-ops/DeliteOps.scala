@@ -77,6 +77,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case e:DeliteCollectElem[_,_] => e.cond.nonEmpty
     case _ => false
   }  
+
+  def loopBodyNeedsPostProcess[A](e: Def[A]) = e match {
+    case e:DeliteCollectElem[_,_] => e.cond.nonEmpty
+    case _ => false
+  }  
+
   
   /**
    * A Conditional task - will emit a Conditional DEG node as well as kernels for the then and else clauses
@@ -842,6 +848,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         if (elem.cond.nonEmpty) {
           stream.println("var " + quote(sym) + "_buf: Array[" + remap(getBlockResult(elem.func).Type) + "] = _")
           stream.println("var " + quote(sym) + "_size = 0")
+          stream.println("var " + quote(sym) + "_offset = 0")
           stream.println("def " + quote(sym) + "_buf_init: Unit = {"/*}*/)
           stream.println(quote(sym) + "_buf = new Array(128)")
           stream.println(/*{*/"}")
@@ -962,12 +969,11 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_]) =>
         if (elem.cond.nonEmpty) {
-          stream.println("//TODO: this is inefficient. should use a scan pass.")
           //stream.println("__act." + quote(sym) + ".insertAll(__act." +quote(sym) + ".length, rhs." + quote(sym) + ")")
-          stream.println("__act." + quote(sym) + "_buf_appendAll(rhs." +quote(sym) + "_buf, rhs." + quote(sym) + "_size)")
+          //stream.println("__act." + quote(sym) + "_buf_appendAll(rhs." +quote(sym) + "_buf, rhs." + quote(sym) + "_size)")
           //stream.println("__act." + quote(sym) + "_size += rhs." +quote(sym) + "_size")
-          stream.println("if (__act." + quote(sym) + " ne null)")
-          stream.println("__act." + quote(sym) + ".unsafeSetData(__act." +quote(sym) + "_buf, __act." + quote(sym) + "_size)")
+          //stream.println("if (__act." + quote(sym) + " ne null)")
+          //stream.println("__act." + quote(sym) + ".unsafeSetData(__act." +quote(sym) + "_buf, __act." + quote(sym) + "_size)")
         }
       case (sym, elem: DeliteForeachElem[_]) => // nothing needed
       case (sym, elem: DeliteReduceElem[_]) =>
@@ -983,7 +989,42 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println("}")
     }
     stream.println(/*{*/"}")
-    stream.println("def postprocess(__act: " + actType + ", " + quotearg(op.v) + "): Unit = {"/*}*/)
+    stream.println("def postCombine(__act: " + actType + ", rhs: " + actType + "): Unit = {"/*}*/)
+    (symList zip op.body) foreach {
+      case (sym, elem: DeliteCollectElem[_,_]) =>
+        if (elem.cond.nonEmpty) {
+          //calculate start offset from rhs.offset + rhs.size. if last chunk
+          stream.println("__act." + quote(sym) + "_offset = rhs." + quote(sym) + "_offset + rhs." + quote(sym) + "_size")
+        }
+      case (sym, elem: DeliteForeachElem[_]) =>
+      case (sym, elem: DeliteReduceElem[_]) =>
+    }
+    stream.println("def postProcInit(__act: " + actType + "): Unit = {"/*}*/) // only called for last chunk!!
+    (symList zip op.body) foreach {
+      case (sym, elem: DeliteCollectElem[_,_]) =>
+        if (elem.cond.nonEmpty) {
+          stream.println("if (__act." + quote(sym) + "_offset > 0) {"/*}*/) // set data array for result object
+          stream.println("val len = __act." + quote(sym) + "_offset + __act." + quote(sym) + "_size")
+          stream.println("__act." + quote(sym) + ".unsafeSetData(new Array(len), len)")
+          stream.println(/*{*/"} else {"/*}*/)
+          stream.println("__act." + quote(sym) + ".unsafeSetData(__act." +quote(sym) + "_buf, __act." + quote(sym) + "_size)")
+          stream.println(/*{*/"}")
+        }
+      case (sym, elem: DeliteForeachElem[_]) =>
+      case (sym, elem: DeliteReduceElem[_]) =>
+    }
+    stream.println("def postProcess(__act: " + actType + "): Unit = {"/*}*/)
+    (symList zip op.body) foreach {
+      case (sym, elem: DeliteCollectElem[_,_]) =>
+        if (elem.cond.nonEmpty) {
+          //calculate start offset from rhs.offset + rhs.size
+          stream.println("if (__act." + quote(sym) + ".data ne __act." + quote(sym) + "_buf)")
+          stream.println("System.arraycopy(__act." + quote(sym) + "_buf, 0, __act." + quote(sym) + ".data, __act." + quote(sym) + "_offset, __act." + quote(sym) + "_size)")
+          stream.println("__act." + quote(sym) + "_buf = null")
+        }
+      case (sym, elem: DeliteForeachElem[_]) =>
+      case (sym, elem: DeliteReduceElem[_]) =>
+    }
     stream.println(/*{*/"}")
 
 

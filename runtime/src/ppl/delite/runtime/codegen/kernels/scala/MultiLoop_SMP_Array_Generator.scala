@@ -85,9 +85,7 @@ object MultiLoop_SMP_Array_Generator {
     out.append("idx += 1\n")
     out.append("}\n")
 
-    if (!op.needsCombine) {
-      if (chunkIdx == 0) out.append("acc\n")
-    } else {
+    if (op.needsCombine) {
       var half = chunkIdx
       var step = 1
       while ((half % 2 == 0) && (chunkIdx + step < numChunks)) { //half the chunks quit each iteration
@@ -95,19 +93,26 @@ object MultiLoop_SMP_Array_Generator {
         val neighbor = chunkIdx + step //the index of the chunk to reduce with
         step *= 2
 
-        out.append("head.closure.combine(acc, head.get")
-        out.append(neighbor)
-        out.append(")\n")
+        out.append("head.closure.combine(acc, head.getA"+neighbor+")\n")
       }
-      if (chunkIdx == 0) { //chunk 0 returns result
-        out.append("acc\n")
-      }
-      else { //other chunks store result
-        out.append("head.set")
-        out.append(chunkIdx)
-        out.append("(acc)\n")
+      if (chunkIdx != 0) { //other chunks store result
+        out.append("head.setA"+chunkIdx+"(acc)\n")
       }
     }
+    if (op.needsPostProcess) {
+      if (chunkIdx != 0) {
+        val neighbor = chunkIdx - 1
+        out.append("head.closure.postCombine(acc, head.getB"+neighbor+")\n")
+      }
+      if (chunkIdx == numChunks-1) {
+        out.append("head.closure.postProcInit(acc)\n")
+      }
+
+      if (numChunks > 1) out.append("head.setB"+chunkIdx+"(acc)\n") // kick off others
+      if (chunkIdx != numChunks-1) out.append("head.getB"+(numChunks-1)+"\n") // wait for last one
+      out.append("head.closure.postProcess(acc)\n")
+    }
+    if (chunkIdx == 0) out.append("acc\n")    
     out.append("}\n")
   }
 
@@ -131,7 +136,11 @@ object MultiLoop_SMP_Array_Header_Generator {
     if (op.needsCombine) {
       //the sync state
       for (i <- 1 until numChunks) //sync for all chunks except 0
-        writeSync(out, i, op.outputType)
+        writeSync(out, "A"+i, op.outputType)
+    }
+    if (op.needsPostProcess && numChunks > 1) { //all chunks need to sync
+      for (i <- 0 until numChunks)
+        writeSync(out, "B"+i, op.outputType)
     }
     
     //the footer
@@ -210,35 +219,35 @@ object MultiLoop_SMP_Array_Header_Generator {
     out.append(" = closure.alloc\n")
   }
 
-  private def writeSync(out: StringBuilder, chunkIdx: Int, outputType: String) {
+  private def writeSync(out: StringBuilder, key: String, outputType: String) {
     out.append("@volatile private var notReady")
-    out.append(chunkIdx)
+    out.append(key)
     out.append(": Boolean = true\n")
 
     out.append("private var _result")
-    out.append(chunkIdx)
+    out.append(key)
     out.append(" : ")
     out.append(outputType)
     out.append(" = _\n")
 
     out.append("def get")
-    out.append(chunkIdx)
+    out.append(key)
     out.append(": ")
     out.append(outputType)
     out.append(" = { while (notReady")
-    out.append(chunkIdx)
+    out.append(key)
     out.append(") { }; _result")
-    out.append(chunkIdx)
+    out.append(key)
     out.append(" }\n")
 
     out.append("def set")
-    out.append(chunkIdx)
+    out.append(key)
     out.append("(result: ")
     out.append(outputType)
     out.append(") { _result")
-    out.append(chunkIdx)
+    out.append(key)
     out.append(" = result; notReady")
-    out.append(chunkIdx)
+    out.append(key)
     out.append(" = false }\n")
   }
   
