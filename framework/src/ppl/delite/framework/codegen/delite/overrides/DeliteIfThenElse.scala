@@ -85,17 +85,17 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
      * when generating long blocks of straight-line code in each branch.
      */
     case DeliteIfThenElse(c,a,b) =>
-      val save = deliteKernel
-      deliteKernel = false
+      //val save = deliteKernel
+      //deliteKernel = false
       stream.println("val " + quote(sym) + " = {")
       (a,b) match {
         case (Const(()), Const(())) => stream.println("()")
-        case (_, Const(())) => generateThenOnly(sym, c, a, !save)
-        case (Const(()), _) => generateElseOnly(sym, c, b, !save)
-        case _ => generateThenElse(sym, c, a, b, !save)
+        case (_, Const(())) => generateThenOnly(sym, c, a, !deliteKernel)
+        case (Const(()), _) => generateElseOnly(sym, c, b, !deliteKernel)
+        case _ => generateThenElse(sym, c, a, b, !deliteKernel)
       }
       stream.println("}")
-      deliteKernel = save
+      //deliteKernel = save
 
     case _ => super.emitNode(sym, rhs)
   }

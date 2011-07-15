@@ -419,7 +419,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val sync: Exp[List[Any]]
   }
 
-  // used by delite code generators to handle nested delite ops
+  // used by delite code generators to handle nested delite ops TR: shouldn't this be part of the codegen hierarchy?
   var deliteKernel: Boolean = false //_
   var deliteResult: Option[List[Exp[Any]]] = None//_
   var deliteInputs: List[Sym[Any]] = Nil//_
@@ -581,6 +581,16 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
   val IR: DeliteOpsExp
   import IR._
+
+  // TODO: what about deliteResult and deliteInput??
+
+  override def focusBlock[A](result: Exp[Any])(body: => A): A = {
+    var save = deliteKernel
+    deliteKernel = false
+    val ret = super.focusBlock(result)(body)
+    deliteKernel = save
+    ret
+  }
 
 /*
   // overridden only to attach DeliteFatOp trait to result ...
@@ -866,7 +876,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     // kernel mode
     val kernelName = symList.map(quote).mkString("")
     val actType = "activation_"+kernelName
-    deliteKernel = false
+    //deliteKernel = false
     stream.println("val " + kernelName + " = new generated.scala.DeliteOpMultiLoop[" + actType + "] {"/*}*/)
     // TODO: if there are conditions, the output size is not known (but for now it is known to be smaller than the input size)
     // two options:
@@ -891,13 +901,16 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     stream.println("def init(__act: " + actType + ", " + quotearg(op.v) + "): " + actType + " = {"/*}*/)
     if (op.body exists (loopBodyNeedsCombine _)) {
       emitMultiLoopFuncs(op, symList)                               
-      stream.println("val __act2 = new " + actType) //TODO: maybe not necessary to copy act
+      stream.println("val __act2 = new " + actType)
       (symList zip op.body) foreach {
         case (sym, elem: DeliteCollectElem[_,_]) =>
           if (elem.cond.nonEmpty) {
             stream.println("__act2." + quote(sym) + "_buf_init")
+            stream.println("if (" + quote(op.v) + " == 0)")
+            stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym)) // set out object only for chunk 0
+          } else {
+            stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
           }
-          stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
 /*
           if (elem.cond.nonEmpty) {
             stream.println("//TODO: buffer size might be wrong (loop has conditions)") // separate buffer for each process
@@ -953,7 +966,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
           //stream.println("__act." + quote(sym) + ".insertAll(__act." +quote(sym) + ".length, rhs." + quote(sym) + ")")
           stream.println("__act." + quote(sym) + "_buf_appendAll(rhs." +quote(sym) + "_buf, rhs." + quote(sym) + "_size)")
           //stream.println("__act." + quote(sym) + "_size += rhs." +quote(sym) + "_size")
-          stream.println("//__act." + quote(sym) + ".unsafeSetData(__act." +quote(sym) + ".length, rhs." + quote(sym) + ")")
+          stream.println("if (__act." + quote(sym) + " ne null)")
+          stream.println("__act." + quote(sym) + ".unsafeSetData(__act." +quote(sym) + "_buf, _act." + quote(sym) + "_size)")
         }
       case (sym, elem: DeliteForeachElem[_]) => // nothing needed
       case (sym, elem: DeliteReduceElem[_]) =>
@@ -974,7 +988,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
 
 
     stream.println(/*{*/"}")
-    deliteKernel = true
+    //deliteKernel = true
   }
   
 
@@ -1000,7 +1014,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     case s:DeliteOpSingleTask[_] => {
       //printlog("EMIT single "+s)
       val save = deliteKernel
-      deliteKernel = false
+      //deliteKernel = false
       val b = s.block
       if (!save) {
         // straight-line
@@ -1017,7 +1031,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println("}")
         stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
-      deliteKernel = save
+      //deliteKernel = save
     }
     case op: AbstractLoop[_] => 
       // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
@@ -1068,7 +1082,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         //stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
-        deliteKernel = false
+        //deliteKernel = false
         stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpForeach[" + remap(foreach.v.Type) + "] {")
         stream.println("def in = " + quote(getBlockResult(foreach.in)))
         stream.println("def sync(" + quote(foreach.i) + ": " + remap(foreach.i.Type) + ") = {")
@@ -1079,7 +1093,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         emitBlock(foreach.func)
         stream.println(quote(getBlockResult(foreach.func)))
         stream.println("}}")
-        deliteKernel = true
+        //deliteKernel = true
       }
     }
     case foreach:DeliteOpForeachBounded[_,_,_] => {
@@ -1096,7 +1110,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println("val " + quote(sym) + " = " + quote(sym) + "_block")
       }
       else {
-        deliteKernel = false
+        //deliteKernel = false
         stream.println("val " + quote(sym) + " = new generated.scala.DeliteOpForeach[" + remap(foreach.v.Type) + "] {")
         stream.println("def in = " + quote(getBlockResult(foreach.in.asInstanceOf[Exp[Any]])))
         stream.println("def sync(" + quote(foreach.i) + ": " + remap(foreach.i.Type) + ") = {")
@@ -1107,11 +1121,12 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         emitBlock(foreach.func)
         stream.println(quote(getBlockResult(foreach.func)))
         stream.println("}}")
-        deliteKernel = true
+        //deliteKernel = true
       }
     }
     case _ => super.emitNode(sym,rhs)
   }
+  
 }
 
 trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
@@ -1139,7 +1154,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
       tabWidth -= 1
       stream.println(addTab()+"}")
       currDim -= 1
-      deliteKernel = true
+      //deliteKernel = true
 
     case _ => super.emitFatNode(symList, rhs)
   }
@@ -1165,6 +1180,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
     }
     case _ => super.emitNode(sym,rhs)
   }
+  
 }
 
 trait CGenDeliteOps extends CGenEffect with BaseGenDeliteOps {
