@@ -95,12 +95,13 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    * sum
    */
-  def sum[A:Manifest:Arith](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A]) = optiml_sum(start, end, block)
-  def sum[A:Manifest:Arith](vals: Rep[Vector[A]]) = repVecToVecOps(vals).sum
-  def sum[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = repMatToMatOps(vals).sum
-
-  def optiml_sum[A:Manifest:Arith](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A]): Rep[A]
-
+  def sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A]) = optiml_sum(start, end, block)
+  def sum[A:Manifest:Arith:Cloneable](vals: Rep[Vector[A]]) = repVecToVecOps(vals).sum
+  def sum[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], c: Cloneable[A], o: Overloaded1) = repMatToMatOps(vals).sum
+  def sumIf[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A]) = optiml_sumif(start, end, cond, block)
+  
+  def optiml_sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A]): Rep[A]
+  def optiml_sumif[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A]): Rep[A]
 
   /**
    * min
@@ -409,22 +410,59 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    * Sum
    */
 
-  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], map: Exp[Int] => Exp[A])
+  case class Sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], map: Exp[Int] => Exp[A], init: Exp[A])
     extends DeliteOpMapReduce[Int,A] {
 
+    override val mutable = true // can we do this automatically?
+    
     val in = (start::end)
     val size = end - start
-    val zero = implicitly[Arith[A]].zero
+    val zero = a.zero(init).mutable
     def reduce = (a,b) => a += b
+    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]    
+    def c = implicitly[Cloneable[A]]
   } 
 
-  def optiml_sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
+  case class SumIf[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], func: Exp[Int] => Exp[A], init: Exp[A])
+    extends DeliteOpFilterReduce[Int,A] {
 
-    Sum(start, end, block)
+    override val mutable = true // can we do this automatically?
+    
+    val in = (start::end)    
+    val size = in.length
+    val zero = a.zero(init).mutable
+    def reduce = (a,b) => a += b
+    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
+    def c = implicitly[Cloneable[A]]
+  }   
+  
+  def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
+
+    //Sum(start, end, block)
     // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
     //reflectEffect(Sum(start, end, block))
+    val firstBlock = block(start)
+    val out = reflectMutable(Sum(start+1, end, block, firstBlock))
+    // add the first value back in (exploit commutativity of +)
+    out += firstBlock      
+    out.unsafeImmutable
   }
-
+  
+  def optiml_sumif[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
+    val firstCond = cond(start)
+    val firstBlock = block(start)
+    val out = reflectMutable(SumIf(start+1, end, cond, block, firstBlock))
+    // add the first value back in (exploit commutativity of +)
+    if (firstCond) {
+      out += firstBlock
+      ()
+    }
+    out.unsafeImmutable
+  }
 
   /**
    * untilconverged
@@ -616,7 +654,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     // unroll
     val dists = (0::m.numRows){ i =>
       val d = dist(m(row),m(i))
-      if (d == implicitly[Arith[A]].zero && !allowSame) implicitly[HasMinMax[A]].maxValue else d
+      if (d == implicitly[Arith[A]].empty && !allowSame) implicitly[HasMinMax[A]].maxValue else d
     }
     dists.minIndex
     /*
@@ -640,6 +678,16 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   def profile_start(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStart(Seq(deps: _*)))
   def profile_stop(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStop(Seq(deps: _*)))
+  
+  
+  /**
+   * Mirroring
+   */
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case s@Sum(st,e,b,init) => toAtom(new Sum(f(st),f(e),b,f(init))(s.m, s.a, s.c) { override val transform = f })
+    case s@SumIf(st,e,c,b,init) => toAtom(new SumIf(f(st),f(e),c,b,f(init))(s.m, s.a, s.c) { override val transform = f })
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 trait BaseGenLanguageOps extends GenericFatCodegen {

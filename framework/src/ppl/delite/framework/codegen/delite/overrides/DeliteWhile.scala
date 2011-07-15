@@ -65,8 +65,8 @@ trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case DeliteWhile(c,b) =>
-      val save = deliteKernel
-      deliteKernel = false
+      //val save = deliteKernel
+      //deliteKernel = false
       stream.print("val " + quote(sym) + " = while ({")
       emitBlock(c)
       stream.print(quote(getBlockResult(c)))
@@ -74,7 +74,7 @@ trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
       emitBlock(b)
       stream.println(quote(getBlockResult(b)))
       stream.println("}")
-      deliteKernel = save
+      //deliteKernel = save
 
     case _ => super.emitNode(sym, rhs)
   }

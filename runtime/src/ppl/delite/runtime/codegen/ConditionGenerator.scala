@@ -70,7 +70,7 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
     //the footer
     out.append("}\n")
 
-    ScalaCompile.addSource(out.toString)
+    ScalaCompile.addSource(out.toString, kernelName)
   }
 
   override protected def getSync(op: DeliteOP, name: String) = {
@@ -87,8 +87,10 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
       "x" + baseId + "P_" + name
     else if (condition.thenGraph.ops.contains(op))
       "x" + baseId + "T_" + name
-    else
+    else if (condition.elseGraph.ops.contains(op))
       "x" + baseId + "E_" + name
+    else //input
+      "x" + baseId + "_" + name
   }
 
   protected def executableName = "Condition_" + baseId + "_"
@@ -101,7 +103,7 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     updateOP()
     GPUMainGenerator.addFunction(emitCpp(syncList))
-    ScalaCompile.addSource(new GPUScalaConditionGenerator(condition, location).emitScala(syncList))
+    ScalaCompile.addSource(new GPUScalaConditionGenerator(condition, location).emitScala(syncList), kernelName)
   }
 
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
@@ -179,8 +181,10 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
       "x" + baseId + "P_" + name
     else if (condition.thenGraph.ops.contains(op))
       "x" + baseId + "T_" + name
-    else
+    else if (condition.elseGraph.ops.contains(op))
       "x" + baseId + "E_" + name
+    else //input
+      "x" + baseId + "_" + name
   }
 
   protected def executableName = "Condition_" + baseId + "_"

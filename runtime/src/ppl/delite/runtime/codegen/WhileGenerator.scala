@@ -71,7 +71,7 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
     //the footer
     out.append("}\n")
 
-    ScalaCompile.addSource(out.toString)
+    ScalaCompile.addSource(out.toString, kernelName)
   }
 
   override protected def getSync(op: DeliteOP, name: String) = {
@@ -84,8 +84,10 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
   override protected def getSym(op: DeliteOP, name: String) = {
     if (whileLoop.predicateGraph.ops.contains(op))
       "x" + baseId + "P_" + name
-    else
+    else if (whileLoop.bodyGraph.ops.contains(op))
       "x" + baseId + "B_" + name
+    else //input
+      "x"  + baseId + "_" + name
   }
 
   protected def executableName = "While_" + baseId + "_"
@@ -98,7 +100,7 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGen
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     updateOP()
     GPUMainGenerator.addFunction(emitCpp(syncList))
-    ScalaCompile.addSource(new GPUScalaWhileGenerator(whileLoop, location).emitScala(syncList))
+    ScalaCompile.addSource(new GPUScalaWhileGenerator(whileLoop, location).emitScala(syncList), kernelName)
   }
 
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
@@ -160,8 +162,10 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGen
   override protected def getScalaSym(op: DeliteOP, name: String) = {
     if (whileLoop.predicateGraph.ops.contains(op))
       "x" + baseId + "P_" + name
-    else
+    else if (whileLoop.bodyGraph.ops.contains(op))
       "x" + baseId + "B_" + name
+    else //input
+      "x"  + baseId + "_" + name
   }
 
   protected def executableName = "While_" + baseId + "_"

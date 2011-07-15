@@ -268,8 +268,6 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
   this: VectorImplOps with OptiMLExp =>
 
-  def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
-
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
@@ -391,12 +389,18 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   ////////////////////////////////
   // implemented via delite ops
   
-  abstract class VectorArithmeticMap[A:Manifest:Arith] extends DeliteOpMap[A,A,Vector[A]] {
+  abstract class VectorArithmeticMap[A:Manifest:Arith](in: Exp[Vector[A]]) extends DeliteOpMap[A,A,Vector[A]] {
+    def alloc = Vector[A](in.length, in.isRow)
+    val size = in.length
+    
     def m = manifest[A]
     def a = implicitly[Arith[A]]
   }
   
-  abstract class VectorArithmeticZipWith[A:Manifest:Arith] extends DeliteOpZipWith[A,A,A,Vector[A]] {
+  abstract class VectorArithmeticZipWith[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]]) extends DeliteOpZipWith[A,A,A,Vector[A]] {
+    def alloc = Vector[A](inA.length, inA.isRow)
+    val size = inA.length
+    
     def m = manifest[A]
     def a = implicitly[Arith[A]]
   }
@@ -418,59 +422,47 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   } 
 
   case class VectorPlus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends VectorArithmeticZipWith[A] {
+    extends VectorArithmeticZipWith[A](inA, inB) {
 
-    def alloc = Vector[A](inA.length, inA.isRow)
     def func = (a,b) => a + b
-    val size = inA.length   
   }
   
   case class VectorPlusScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
-    extends VectorArithmeticMap[A] {
+    extends VectorArithmeticMap[A](in) {
 
-    def alloc = Vector[A](in.length, in.isRow)
     def func = e => e + y
-    val size = in.length
   }
 
   case class VectorPlusEquals[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends VectorArithmeticZipWith[A] { 
+    extends VectorArithmeticZipWith[A](inA, inB) { 
 
-    val alloc = inA
+    override def alloc = inA
     def func = (a,b) => a + b
-    val size = inA.length
   } 
 
   case class VectorMinus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends VectorArithmeticZipWith[A] {
+    extends VectorArithmeticZipWith[A](inA, inB) {
 
-    def alloc = Vector[A](inA.length, inA.isRow)
     def func = (a,b) => a - b
-    val size = inA.length
   }
 
   case class VectorMinusScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
-    extends VectorArithmeticMap[A] {
+    extends VectorArithmeticMap[A](in) {
 
-    def alloc = Vector[A](in.length, in.isRow)
     def func = e => e - y
-    val size = in.length
   }
     
   case class VectorMinusEquals[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends VectorArithmeticZipWith[A] { 
+    extends VectorArithmeticZipWith[A](inA, inB) { 
 
-    val alloc = inA
+    override def alloc = inA
     def func = (a,b) => a - b
-    val size = inA.length
   }
 
   case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends VectorArithmeticZipWith[A] {
+    extends VectorArithmeticZipWith[A](inA, inB) {
 
-    def alloc = Vector[A](inA.length, inA.isRow)
     def func = (a,b) => a * b
-    val size = inA.length
   }
   
   case class VectorTimesWithConvert[A:Manifest:Arith,B:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]], conv: Exp[B] => Exp[A])
@@ -490,44 +482,38 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   }
 
   case class VectorTimesScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
-    extends VectorArithmeticMap[A] {
+    extends VectorArithmeticMap[A](in) {
 
-    def alloc = Vector[A](in.length, in.isRow)
     def func = e => e * y
-    val size = in.length    
   }
   
   case class VectorDotProduct[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWithReduce[A,A,A] {
 
     def zip = (a,b) => a*b
-    def reduce = (a,b) => a += b
+    def reduce = (a,b) => a + b
     val size = inA.length
-    val zero = implicitly[Arith[A]].zero
+    val zero = implicitly[Arith[A]].empty
   }
   
   
   case class VectorDivide[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends VectorArithmeticZipWith[A] {
+    extends VectorArithmeticZipWith[A](inA, inB) {
 
-    def alloc = Vector[A](inA.length, inA.isRow)
     def func = (a,b) => a / b
-    val size = inA.length
   }
   
   case class VectorDivideScalar[A:Manifest:Arith](in: Exp[Vector[A]], y: Exp[A])
-    extends VectorArithmeticMap[A] {
+    extends VectorArithmeticMap[A](in) {
 
-    def alloc = Vector[A](in.length, in.isRow)
     def func = e => e / y
-    val size = in.length    
   }
 
   case class VectorSum[A:Manifest:Arith](in: Exp[Vector[A]]) 
     extends DeliteOpReduce[A] {
 
     val size = in.length
-    val zero = a.zero 
+    val zero = a.empty 
     def func = (a,b) => a + b
     
     def m = manifest[A]
@@ -535,19 +521,15 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   }
   
   case class VectorAbs[A:Manifest:Arith](in: Exp[Vector[A]])
-    extends VectorArithmeticMap[A] {
+    extends VectorArithmeticMap[A](in) {
 
-    def alloc = Vector[A](in.length, in.isRow)
     def func = e => e.abs
-    val size = in.length
   }
 
   case class VectorExp[A:Manifest:Arith](in: Exp[Vector[A]])
-    extends VectorArithmeticMap[A] {
+    extends VectorArithmeticMap[A](in) {
 
-    def alloc = Vector[A](in.length, in.isRow)
     def func = e => e.exp
-    val size = in.length
   }
 
   case class VectorMin[A:Manifest:Ordering:HasMinMax](in: Exp[Vector[A]]) 
@@ -628,7 +610,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     extends DeliteOpReduce[A] {
     
     val size = in.length
-    val zero = implicitly[Arith[A]].zero
+    val zero = implicitly[Arith[A]].empty
   }
   
   // TODO: this is an inefficient way to compute flatten (allocates a new buffer for every intermediate output)
@@ -649,7 +631,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     def reduce = (a,b) => a ++ b
   }
   
-  case class VectorFilter[A:Manifest](in: Exp[Vector[A]], cond: Exp[A] => Exp[Boolean]) extends DeliteOpFilter[A,A,Vector[A]] {
+  case class VectorFilter[A:Manifest](in: Exp[Vector[A]], cond: Exp[A] => Exp[Boolean]) 
+    extends DeliteOpFilter[A,A,Vector[A]] {
+      
     def alloc = Vector[A](0, in.isRow)
     def func = e => e 
     val size = in.length
@@ -657,7 +641,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     def m = manifest[A]  
   }
   
-  case class VectorFind[A:Manifest](in: Exp[Vector[A]], cond: Exp[A] => Exp[Boolean]) extends DeliteOpFilter[A,Int,IndexVector] {
+  case class VectorFind[A:Manifest](in: Exp[Vector[A]], cond: Exp[A] => Exp[Boolean])
+    extends DeliteOpFilter[A,Int,IndexVector] {
+      
     def alloc = IndexVector(0)
     def func = e => v // should we make available and use a helper function like index(e)?
     val size = in.length

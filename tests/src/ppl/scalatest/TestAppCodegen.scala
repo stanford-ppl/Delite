@@ -11,7 +11,7 @@ import ppl.delite.framework.{Config, DeliteApplication}
 import java.io.{ PrintWriter, FileWriter }
 
 class TestAppCodegen extends FileDiffSuite {
-  
+  /*
   val prefix = "test-out/scalagen/"
   
   private def testApp(name: String, app: DeliteApplication, args: Array[String] = Array()) = {
@@ -75,9 +75,9 @@ class TestAppCodegen extends FileDiffSuite {
 
   // --- bio
   
-  //def testSpade = testApp("spade", ppl.apps.bio.spade.Spade)
+  def testSpade = testApp("spade", ppl.apps.bio.spade.Spade)
 
-  //def testSpadeFusing = testAppFusing("spade", ppl.apps.bio.spade.Spade)
+  def testSpadeFusing = testAppFusing("spade", ppl.apps.bio.spade.Spade)
   
   // --- ml
   
@@ -85,7 +85,7 @@ class TestAppCodegen extends FileDiffSuite {
 
   def testKMeans = testApp("kmeans", ppl.apps.ml.kmeans.kmeans, Array(datadir+"/ml/kmeans/mandrill-large.dat",datadir+"/ml/kmeans/initmu.dat"))
 
-  //def testLBPDenoise = testApp("lbpdenoise", ppl.apps.ml.lbpdenoise.LBPDenoise, Array(datadir+"/ml/lbp/onlyedges1",datadir+"/ml/lbp/graphprint1"))
+  def testLBPDenoise = testApp("lbpdenoise", ppl.apps.ml.lbpdenoise.LBPDenoise, Array(datadir+"/ml/lbp/onlyedges1",datadir+"/ml/lbp/graphprint1"))
 
   def testLinReg = testApp("linreg", ppl.apps.ml.linreg.LinReg, Array(datadir+"/ml/linreg/x-1024.dat",datadir+"/ml/linreg/y-1024.dat"))
 
@@ -95,10 +95,10 @@ class TestAppCodegen extends FileDiffSuite {
 
   def testSVM = testApp("svm", ppl.apps.ml.svm.SVM, Array(datadir+"/ml/svm/MATRIX.TRAIN.800",datadir+"/ml/svm/MATRIX.TEST","output","10"))
 
-  //def testSVMFusing = testAppFusing("svm", ppl.apps.ml.svm.SVM) //, Array(datadir+"/ml/svm/MATRIX.TRAIN.800",datadir+"/ml/svm/MATRIX.TEST","output","10"))
+  def testSVMFusing = testAppFusing("svm", ppl.apps.ml.svm.SVM) //, Array(datadir+"/ml/svm/MATRIX.TRAIN.800",datadir+"/ml/svm/MATRIX.TEST","output","10"))
 
   // --- robotics
   
-  //def testGradient = testApp("gradient", ppl.apps.robotics.gradient.gradient)
-
+  def testGradient = testApp("gradient", ppl.apps.robotics.gradient.gradient)
+*/
 }

@@ -39,6 +39,12 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
 
   def cloneL = { val v = new VectorImpl[T](0, isRow); v.insertAll(0, this); v }
 
+  def unsafeSetData(xs: Array[T], len: Int) {
+    _data = xs
+    _length = len
+  }
+  
+
   def sort(implicit o: Ordering[T]) = {
     val d = new Array[T](_length)
     System.arraycopy(_data, 0, d, 0, _length)
