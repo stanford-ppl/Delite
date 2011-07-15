@@ -50,6 +50,8 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
 
     def alloc = Vector[B](in.length, in.isRow)
     val size = in.length
+
+    def m = manifest[B]
   }
   
   // impl defs
@@ -65,6 +67,14 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
     //reflectEffect(IndexVectorConstruct(x, block))
   }
 
+  //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case i@IndexVectorConstruct(in,b) => toAtom(new IndexVectorConstruct(f(in),b)(i.m) { override val transform = f })
+    case Reflect(i@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new IndexVectorConstruct(f(in),b)(i.m) { override val transform = f }, mapOver(f,u), f(es)))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]]
 }
 
 trait ScalaGenIndexVectorOps extends ScalaGenBase {
