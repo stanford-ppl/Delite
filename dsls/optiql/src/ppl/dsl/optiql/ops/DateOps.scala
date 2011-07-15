@@ -32,6 +32,11 @@ trait DateOpsExp extends DateOps with BaseExp {
   //Interface implementation
   def dateObjectApply(str: Rep[String]) = DateObjectApply(str)
   def dateLessThan(ld: Rep[Date], rd: Rep[Date]) = DateLessThan(ld, rd)
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case DateLessThan(l,r) => dateLessThan(f(l), f(r));
+    case _ => super.mirror(e,f)
+  }).asInstanceOf[Exp[A]]
 }
 
 trait ScalaGenDateOps extends ScalaGenBase {
