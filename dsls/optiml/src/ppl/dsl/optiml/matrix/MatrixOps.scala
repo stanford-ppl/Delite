@@ -761,19 +761,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     out.unsafeImmutable // will this work?
   }
   def matrix_maprowstovec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[B], isRow: Exp[Boolean] = unit(true)) = {
-    val zz = MatrixMapRowsToVec(x, f, isRow)
-    System.out.println(zz)
-    System.out.println(syms(zz))
-    System.out.println(readSyms(zz))
-    System.out.println(boundSyms(zz))
-    System.out.println("---")
-    System.out.println(aliasSyms(zz))
-    System.out.println(extractSyms(zz))
-    System.out.println(containSyms(zz))
-    System.out.println(copySyms(zz))
-    System.out.println(symsFreq(zz))
-    System.out.println("---")
-    reflectPure(zz)
+    reflectPure(MatrixMapRowsToVec(x, f, isRow))
   }
   def matrix_foreach[A:Manifest](x: Exp[Matrix[A]], block: Exp[A] => Exp[Unit]) = {
     reflectEffect(MatrixForeach(x, block)) // read??
