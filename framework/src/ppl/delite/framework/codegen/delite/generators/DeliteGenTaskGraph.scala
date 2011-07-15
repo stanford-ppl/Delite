@@ -93,11 +93,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
       try{
         // DISCUSS: use a predicate instead of inheriting from DeliteOp?
-        rhs match {
-//          case op:DeliteFatOp => deliteKernel = true
-          case op:AbstractFatLoop => deliteKernel = true
-          case ThinDef(op:DeliteOp[_]) => deliteKernel = true
-          case _ => deliteKernel = false
+        deliteKernel = rhs match {
+//          case op:DeliteFatOp => true
+          case op:AbstractFatLoop => true
+          case ThinDef(op:DeliteOp[_]) => true
+          case _ => false
         }
 
         //initialize
