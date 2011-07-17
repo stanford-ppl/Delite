@@ -105,10 +105,10 @@ trait VectorOps extends DSLType with Variables {
     // arithmetic operations
     def +(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_plus(x,y)
     def +(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_plus_scalar(x,y)
-    def +=(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_plusequals(x,y)
+    def +=(y: Rep[Vector[A]])(implicit a: Arith[A]) = { vector_plusequals(x,y); x }
     def -(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_minus(x,y)
     def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_minus_scalar(x,y)
-    def -=(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_minusequals(x,y)
+    def -=(y: Rep[Vector[A]])(implicit a: Arith[A]) = { vector_minusequals(x,y); x }
     def *(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_times(x,y)
     def *[B](y: Rep[Vector[B]])(implicit mB: Manifest[B], a: Arith[A], conv: Rep[B] => Rep[A]) = vector_times_withconvert(x,y,conv)
     //def *[B](y: Rep[Vector[B]])(implicit mB: Manifest[B], aB: Arith[B], conv: Rep[A] => Rep[B], o: Overloaded1) = vector_times_withconvertright(x,y,conv)
@@ -136,7 +136,7 @@ trait VectorOps extends DSLType with Variables {
 
     // bulk operations
     def map[B:Manifest](f: Rep[A] => Rep[B]) = vector_map(x,f)
-    def mmap(f: Rep[A] => Rep[A]) = vector_mmap(x,f)
+    def mmap(f: Rep[A] => Rep[A]) = { vector_mmap(x,f); x }
     def foreach(block: Rep[A] => Rep[Unit]) = vector_foreach(x, block)
     def zip[B:Manifest,R:Manifest](y: Rep[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = vector_zipwith(x,y,f)
     def mzip[B:Manifest](y: Rep[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]) = vector_mzipwith(x,y,f)
@@ -218,10 +218,10 @@ trait VectorOps extends DSLType with Variables {
 
   def vector_plus[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_plus_scalar[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
-  def vector_plusequals[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_plusequals[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Unit]
   def vector_minus[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_minus_scalar[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
-  def vector_minusequals[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def vector_minusequals[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Unit]
   def vector_times[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vector_times_withconvert[A:Manifest:Arith,B:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]],  conv: Rep[B] => Rep[A]): Rep[Vector[A]]
   def vector_times_withconvertright[A:Manifest,B:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[B]], conv: Rep[A] => Rep[B]): Rep[Vector[B]]
@@ -243,7 +243,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_median[A:Manifest:Ordering](x: Rep[Vector[A]]): Rep[A]
 
   def vector_map[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[B]): Rep[Vector[B]]
-  def vector_mmap[A:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[A]): Rep[Vector[A]]
+  def vector_mmap[A:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[A]): Rep[Unit]
   def vector_foreach[A:Manifest](x: Rep[Vector[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
   def vector_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[Vector[R]]
   def vector_mzipwith[A:Manifest,B:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[A]): Rep[Vector[A]]
@@ -434,10 +434,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   }
 
   case class VectorPlusEquals[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends VectorArithmeticZipWith[A](inA, inB) { 
+    extends DeliteOpIndexedLoop { 
 
-    override def alloc = inA
-    def func = (a,b) => a + b
+    val size = inA.length
+    def func = i => { inA(i) = inA(i) + inB(i) } 
   } 
 
   case class VectorMinus[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
@@ -451,14 +451,14 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
     def func = e => e - y
   }
-    
+  
   case class VectorMinusEquals[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
-    extends VectorArithmeticZipWith[A](inA, inB) { 
+    extends DeliteOpIndexedLoop { 
 
-    override def alloc = inA
-    def func = (a,b) => a - b
+    val size = inA.length
+    def func = i => { inA(i) = inA(i) - inB(i) } 
   }
-
+    
   case class VectorTimes[A:Manifest:Arith](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends VectorArithmeticZipWith[A](inA, inB) {
 
@@ -575,11 +575,11 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     val size = in.length
   }
 
-  case class VectorMutableMap[A:Manifest](in: Exp[Vector[A]], func: Exp[A] => Exp[A])
-    extends DeliteOpMap[A,A,Vector[A]] {
+  case class VectorMutableMap[A:Manifest](in: Exp[Vector[A]], block: Exp[A] => Exp[A])
+    extends DeliteOpIndexedLoop {
 
-    def alloc = in
     val size = in.length    
+    def func = i => in(i) = block(in(i))
   }
 
   case class VectorForeach[A:Manifest](in: Exp[Vector[A]], func: Exp[A] => Exp[Unit])
@@ -867,7 +867,7 @@ trait VectorOpsExpOpt extends VectorOpsExp with DeliteCollectionOpsExp {
 
   override def vector_plusequals[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
     // remove runtime check on zero vector being same length as argument
-    case (a, Def(VectorObjectZeros(len))) => a
+    case (a, Def(VectorObjectZeros(len))) => ()
     //case (Def(VectorObjectZeros(len)), b) => b  // this is unsafe because we lose the effectful operation (e.g. accumulation)
     case _ => super.vector_plusequals(x,y)
   }

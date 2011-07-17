@@ -30,8 +30,8 @@ trait VectorViewOpsExp extends VectorViewOps with BaseExp { this: VectorViewImpl
 //    val mV = manifest[VectorViewImpl[A]]
 //  }
 
-  def vectorview_start[A](x: Exp[VectorView[A]]) = VectorViewStart(x)
-  def vectorview_stride[A](x: Exp[VectorView[A]]) = VectorViewStride(x)
+  def vectorview_start[A](x: Exp[VectorView[A]]) = reflectPure(VectorViewStart(x))
+  def vectorview_stride[A](x: Exp[VectorView[A]]) = reflectPure(VectorViewStride(x))
 
 //  def vectorview_new[A:Manifest](x: Rep[Array[A]], offset: Rep[Int], stride: Rep[Int], len: Exp[Int], isRow: Exp[Boolean])
 //    = reflectEffect(VectorViewNew[A](x, offset, stride, len, isRow))

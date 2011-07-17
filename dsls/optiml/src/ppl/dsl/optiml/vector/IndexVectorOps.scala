@@ -50,21 +50,31 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
 
     def alloc = Vector[B](in.length, in.isRow)
     val size = in.length
+
+    def m = manifest[B]
   }
   
   // impl defs
-  def indexvector_range(start: Exp[Int], end: Exp[Int]) = IndexVectorRange(start, end)
+  def indexvector_range(start: Exp[Int], end: Exp[Int]) = reflectPure(IndexVectorRange(start, end))
   def indexvector_obj_new(len: Exp[Int]) = reflectMutable(IndexVectorObjectNew(len))
   def indexvector_obj_fromvec(xs: Exp[Vector[Int]]) = reflectPure(IndexVectorObjectFromVec(xs))
 
   // class defs
   def indexvector_construct[A:Manifest](x: Exp[IndexVector], block: Exp[Int] => Exp[A]): Exp[Vector[A]] = {
-    IndexVectorConstruct(x, block)
+    reflectPure(IndexVectorConstruct(x, block))
     // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
     // TR TODO: use effect summary of func
     //reflectEffect(IndexVectorConstruct(x, block))
   }
 
+  //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case i@IndexVectorConstruct(in,b) => toAtom(new IndexVectorConstruct(f(in),b)(i.m) { override val transform = f })
+    case Reflect(i@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new IndexVectorConstruct(f(in),b)(i.m) { override val transform = f }, mapOver(f,u), f(es)))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]]
 }
 
 trait ScalaGenIndexVectorOps extends ScalaGenBase {

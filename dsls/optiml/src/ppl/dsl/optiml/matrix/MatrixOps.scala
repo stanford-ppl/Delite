@@ -87,7 +87,7 @@ trait MatrixOps extends DSLType with Variables {
     // arithmetic operations
     def +(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_plus(x,y)
     def +(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = matrix_plus_scalar(x,y)
-    def +=(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_plusequals(x,y)
+    def +=(y: Rep[Matrix[A]])(implicit a: Arith[A]) = { matrix_plusequals(x,y); x }
     def -(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_minus(x,y)
     def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = matrix_minus_scalar(x,y)
     def *:*(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_times(x,y)
@@ -117,7 +117,7 @@ trait MatrixOps extends DSLType with Variables {
     // bulk operations
     def map[B:Manifest](f: Rep[A] => Rep[B]) = matrix_map(x,f)
     /// TODO: rename to transform?
-    def mmap(f: Rep[A] => Rep[A]) = matrix_mmap(x,f)
+    def mmap(f: Rep[A] => Rep[A]) = { matrix_mmap(x,f); x }
     def mapRows[B:Manifest](f: Rep[MatrixRow[A]] => Rep[Vector[B]]) = matrix_maprows(x,f)
     def mapRowsToVector[B:Manifest](f: Rep[MatrixRow[A]] => Rep[B], isRow: Rep[Boolean] = unit(false)) = matrix_maprowstovec(x,f,isRow)
     def foreach(block: Rep[A] => Rep[Unit]) = matrix_foreach(x, block)
@@ -187,7 +187,7 @@ trait MatrixOps extends DSLType with Variables {
 
   def matrix_plus[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_plus_scalar[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[A]): Rep[Matrix[A]]
-  def matrix_plusequals[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_plusequals[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Unit]
   def matrix_minus[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_minus_scalar[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[A]): Rep[Matrix[A]]
   def matrix_times[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
@@ -212,7 +212,7 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_maxrow[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[Vector[A]]
 
   def matrix_map[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[A] => Rep[B]): Rep[Matrix[B]]
-  def matrix_mmap[A:Manifest](x: Rep[Matrix[A]], f: Rep[A] => Rep[A]): Rep[Matrix[A]]
+  def matrix_mmap[A:Manifest](x: Rep[Matrix[A]], f: Rep[A] => Rep[A]): Rep[Unit]
   def matrix_maprows[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
   def matrix_maprowstovec[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[B], isRow: Rep[Boolean]): Rep[Vector[B]]
   def matrix_foreach[A:Manifest](x: Rep[Matrix[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
@@ -441,10 +441,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
   case class MatrixPlusEquals[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
-    extends MatrixArithmeticZipWith[A](inA, inB) {
+    extends DeliteOpIndexedLoop {
 
-    override def alloc = inA
-    def func = (a,b) => a + b
+    val size = inA.numRows*inA.numCols
+    def func = i => dc_update(inA, i, dc_apply(inA,i) + dc_apply(inB,i))
   }
 
   case class MatrixMinus[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
@@ -585,11 +585,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val size = in.numRows*in.numCols    
   }
 
-  case class MatrixMutableMap[A:Manifest](in: Exp[Matrix[A]], func: Exp[A] => Exp[A])
-    extends DeliteOpMap[A,A,Matrix[A]] {
+  case class MatrixMutableMap[A:Manifest](in: Exp[Matrix[A]], block: Exp[A] => Exp[A])
+    extends DeliteOpIndexedLoop {
 
-    def alloc = in
     val size = in.numRows*in.numCols
+    def func = i => dc_update(in, i, block(dc_apply(in,i)))
   }
 
   case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Vector[B]], out: Exp[Matrix[B]])
@@ -761,19 +761,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     out.unsafeImmutable // will this work?
   }
   def matrix_maprowstovec[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[B], isRow: Exp[Boolean] = unit(true)) = {
-    val zz = MatrixMapRowsToVec(x, f, isRow)
-    System.out.println(zz)
-    System.out.println(syms(zz))
-    System.out.println(readSyms(zz))
-    System.out.println(boundSyms(zz))
-    System.out.println("---")
-    System.out.println(aliasSyms(zz))
-    System.out.println(extractSyms(zz))
-    System.out.println(containSyms(zz))
-    System.out.println(copySyms(zz))
-    System.out.println(symsFreq(zz))
-    System.out.println("---")
-    reflectPure(zz)
+    reflectPure(MatrixMapRowsToVec(x, f, isRow))
   }
   def matrix_foreach[A:Manifest](x: Exp[Matrix[A]], block: Exp[A] => Exp[Unit]) = {
     reflectEffect(MatrixForeach(x, block)) // read??
@@ -788,7 +776,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     reflectPure(MatrixReduceRows(x, f))
   }
   def matrix_filterrows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[MatrixRow[A]] => Exp[Boolean]) = reflectPure(MatrixFilterRows(x, pred))
-  def matrix_count[A:Manifest](x: Exp[Matrix[A]], pred: Exp[A] => Exp[Boolean]) = MatrixCount(x, pred)
+  def matrix_count[A:Manifest](x: Exp[Matrix[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(MatrixCount(x, pred))
 
   //////////////////
   // internal
@@ -807,24 +795,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       case MatrixVView(x, start, stride, length, isRow) => matrix_vview(f(x),f(start),f(stride),f(length),f(isRow))
       case _ => super.mirror(e, f)
     }).asInstanceOf[Exp[A]] // why??
-  }
-
-  ////////////////
-  // dependencies
-  
-  override def syms(e: Any): List[Sym[Any]] = e match { 
-    case m@MatrixMapRows(x,b,out) => syms(out) ++ super.syms(m)
-    case _ => super.syms(e)
-  }
-    
-  override def readSyms(e: Any): List[Sym[Any]] = e match { 
-    case m@MatrixMapRows(x,b,out) => readSyms(out) ++ super.readSyms(m)
-    case _ => super.readSyms(e)
-  }  
-
-  override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
-    case m@MatrixMapRows(x,b,out) => symsFreq(out) ++ super.symsFreq(m)
-    case _ => super.symsFreq(e)
   }
   
   /////////////////////

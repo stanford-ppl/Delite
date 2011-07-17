@@ -61,8 +61,8 @@ trait TrainingSetOpsExp extends TrainingSetOps with BaseExp { this: DeliteOpsExp
   case class TrainingSetLabels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) extends Def[Labels[B]]
 
   def trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Exp[Matrix[A]], labels: Exp[Labels[B]]) = reflectEffect(TrainingSetObjectFromMat(xs, labels))
-  def trainingset_transposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = TrainingSetTransposed(x)
-  def trainingset_labels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = TrainingSetLabels(x)
+  def trainingset_transposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = reflectPure(TrainingSetTransposed(x))
+  def trainingset_labels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = reflectPure(TrainingSetLabels(x))
 }
 
 trait ScalaGenTrainingSetOps extends ScalaGenBase {

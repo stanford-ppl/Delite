@@ -382,7 +382,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   def optiml_reseed() = reflectEffect(RandReseed())
   
-  def identityHashCode(x:Exp[Any]) = IdentityHashCode(x)
+  def identityHashCode(x:Exp[Any]) = reflectPure(IdentityHashCode(x))
 
 
   /**
@@ -620,12 +620,12 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class MatrixDistanceSquare[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
     extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_square_impl(m1,m2))) with MatrixDistance
 
-  def optiml_vector_dist_abs[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceAbs(v1,v2)
-  def optiml_vector_dist_euc[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceEuc(v1,v2)
-  def optiml_vector_dist_square[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceSquare(v1,v2)
-  def optiml_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceAbs(m1,m2)
-  def optiml_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceEuc(m1,m2)
-  def optiml_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceSquare(m1,m2)
+  def optiml_vector_dist_abs[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = reflectPure(VectorDistanceAbs(v1,v2))
+  def optiml_vector_dist_euc[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = reflectPure(VectorDistanceEuc(v1,v2))
+  def optiml_vector_dist_square[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = reflectPure(VectorDistanceSquare(v1,v2))
+  def optiml_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceAbs(m1,m2))
+  def optiml_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceEuc(m1,m2))
+  def optiml_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceSquare(m1,m2))
 
 
   /**
@@ -639,11 +639,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     extends DeliteOpSingleTask[Vector[A]](reifyEffects(optiml_randsample_vector_impl(v, numSamples)))
   
   def optiml_randsample_matrix[A:Manifest](m: Exp[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean]): Exp[Matrix[A]] = {
-    RandSampleMatrix(m, numSamples, sampleRows)
+    reflectPure(RandSampleMatrix(m, numSamples, sampleRows))
   }
 
   def optiml_randsample_vector[A:Manifest](v: Exp[Vector[A]], numSamples: Exp[Int]): Exp[Vector[A]] = {
-    RandSampleVector(v, numSamples)
+    reflectPure(RandSampleVector(v, numSamples))
   }
 
 
@@ -685,7 +685,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    */
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case s@Sum(st,e,b,init) => toAtom(new Sum(f(st),f(e),b,f(init))(s.m, s.a, s.c) { override val transform = f })
+    case Reflect(s@Sum(st,e,b,init), u, es) => reflectMirrored(Reflect(new Sum(f(st),f(e),b,f(init))(s.m, s.a, s.c) { override val transform = f }, mapOver(f,u), f(es)))
     case s@SumIf(st,e,c,b,init) => toAtom(new SumIf(f(st),f(e),c,b,f(init))(s.m, s.a, s.c) { override val transform = f })
+    case Reflect(s@SumIf(st,e,c,b,init), u, es) => reflectMirrored(Reflect(new SumIf(f(st),f(e),c,b,f(init))(s.m,s.a,s.c) { override val transform = f }, mapOver(f,u), f(es)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

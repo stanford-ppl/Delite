@@ -82,8 +82,8 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   def grayscaleimage_obj_new(numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(GrayscaleImageObjectNew(numRows, numCols))
   def grayscaleimage_obj_frommat(x: Exp[Matrix[Int]]) = reflectEffect(GrayscaleImageObjectFromMat(x))
   def grayscaleimage_obj_carttopolar(x: Exp[Matrix[Float]], y: Exp[Matrix[Float]]) = {
-    val mag = GrayscaleImageObjectCartToPolarMagnitude(x,y)
-    val phase = toAtom(GrayscaleImageObjectCartToPolarPhase(x,y)) mmap { a => if (a < 0f) a + 360f else a } //TODO TR write non-mutable
+    val mag = reflectPure(GrayscaleImageObjectCartToPolarMagnitude(x,y))
+    val phase = reflectPure(GrayscaleImageObjectCartToPolarPhase(x,y)) map { a => if (a < 0f) a + 360f else a } 
     (mag,phase)
   }
 }
