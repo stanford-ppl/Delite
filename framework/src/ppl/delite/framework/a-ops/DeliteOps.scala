@@ -442,17 +442,37 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   // alternative: leave reflectPure as above and override toAtom...
 
-  // question: what if reflectMutable is called instead of reflectPure?
-
+  def summarizeBody[A](d: Def[A]) = d match {
+    case e: DeliteForeachElem[_] => summarizeEffects(e.func).star
+    case e: DeliteCollectElem[_,_] => summarizeEffects(e.func).star
+    case e: DeliteReduceElem[_] => (summarizeEffects(e.func) andThen summarizeEffects(e.rFunc)).star
+    // case e: DeliteReduceElem[_] => d match {
+    //    // aks: mutable reductions have internal effects.. is this safe?
+    //   case y: DeliteOpReduceLike if (y.mutable) => summarizeEffects(e.func).star 
+    //   case _ => (summarizeEffects(e.func) andThen summarizeEffects(e.rFunc)).star
+    // }
+  }
+  
+  // override def reflectMutable[A:Manifest](d: Def[A]): Exp[A] = d match {
+  //   case x: DeliteOpLoop[_] => 
+  //     val mutableInputs = readMutableData(d)    
+  //     val allocAndRead = Alloc() andAlso Read(mutableInputs)
+  //     val be = summarizeBody(x.body)
+  //     val z = reflectEffect(d, allocAndRead andAlso be)
+  //     
+  //     val mutableAliases = mutableTransitiveAliases(d)
+  //     checkIllegalSharing(z, mutableAliases)      
+  //     z
+  //   case _ => 
+  //     super.reflectMutable(d)
+  // }
+      
   def reflectPure[A:Manifest](d: Def[A]): Exp[A] = d match {
     case x: DeliteOpLoop[_] =>
-      val mutableInputs = Nil // readMutableData(d) TODO: necessary or not??
+      val mutableInputs = readMutableData(d) //TODO: necessary or not??
+      //val mutableInputs = Nil // readMutableData(d) TODO: necessary or not??
       val re = Read(mutableInputs)
-      val be = x.body match {
-        case e: DeliteForeachElem[_] => summarizeEffects(e.func).star
-        case e: DeliteCollectElem[_,_] => summarizeEffects(e.func).star
-        case e: DeliteReduceElem[_] => (summarizeEffects(e.func) andThen summarizeEffects(e.rFunc)).star
-      }
+      val be = summarizeBody(x.body)
       reflectEffect(d, re andAlso be)
     case _ => 
       toAtom(d) // TODO: just to make refactoring easier in case we want to change to reflectSomething
@@ -484,7 +504,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           cond = f(e.cond),
           zero = f(e.zero),
           rV = (f(e.rV._1).asInstanceOf[Sym[a]], f(e.rV._2).asInstanceOf[Sym[a]]), // need to transform bound vars ??
-          rFunc = f(e.rFunc)
+          rFunc = f(e.rFunc),
+          stripFirst = e.stripFirst
         ).asInstanceOf[Def[A]]
     }
   }
@@ -522,7 +543,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteOpSingleTask[_] => effectSyms(s.block)
     case op: DeliteCollectElem[_,_] => effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.alloc)
-    case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.rFunc)
+    case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.zero) ++ effectSyms(op.rFunc)
 //    case op: DeliteForeachElem[_] => effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.sync)
     case op: DeliteForeachElem[_] => effectSyms(op.func) ++ effectSyms(op.sync)
     case foreach: DeliteOpForeach2[_,_] => foreach.v::foreach.i::effectSyms(foreach.func):::effectSyms(foreach.sync)

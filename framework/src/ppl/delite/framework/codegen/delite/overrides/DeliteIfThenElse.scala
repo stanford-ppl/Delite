@@ -33,7 +33,7 @@ trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case Reflect(DeliteIfThenElse(c,a,b), u, es) => reflectMirrored(Reflect(DeliteIfThenElse(f(c),f(a),f(b)), mapOver(f,u), f(es)))
-    case DeliteIfThenElse(c,a,b) => DeliteIfThenElse(f(c),f(a),f(b))
+    case DeliteIfThenElse(c,a,b) => reflectPure(DeliteIfThenElse(f(c),f(a),f(b)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 

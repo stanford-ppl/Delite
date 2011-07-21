@@ -294,7 +294,7 @@ trait ArithOps extends Variables with OverloadHack {
 }
 
 trait ArithOpsExp extends ArithOps with VariablesExp {
-  this: OptiML =>
+  this: OptiMLExp =>
 
   case class ArithPlus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
   case class ArithPlusEquals[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[Unit]
@@ -306,12 +306,12 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   }
   case class ArithExp[T:Manifest:Numeric](lhs: Exp[T]) extends Def[Double]
 
-  def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithPlus(lhs, rhs)
-  def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithMinus(lhs, rhs)
-  def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithTimes(lhs, rhs)
-  def arith_fractional_divide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithFractionalDivide(lhs, rhs)
-  def arith_abs[T:Manifest:Numeric](lhs: Exp[T]) = ArithAbs(lhs)
-  def arith_exp[T:Manifest:Numeric](lhs: Exp[T]) = ArithExp(lhs)
+  def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = reflectPure(ArithPlus(lhs, rhs))
+  def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = reflectPure(ArithMinus(lhs, rhs))
+  def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = reflectPure(ArithTimes(lhs, rhs))
+  def arith_fractional_divide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]): Exp[T] = reflectPure(ArithFractionalDivide(lhs, rhs))
+  def arith_abs[T:Manifest:Numeric](lhs: Exp[T]) = reflectPure(ArithAbs(lhs))
+  def arith_exp[T:Manifest:Numeric](lhs: Exp[T]) = reflectPure(ArithExp(lhs))
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
     implicit var a: Fractional[A] = null // hack!! need to store it in Def instances??
@@ -327,7 +327,7 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
 }
 
 trait ArithOpsExpOpt extends ArithOpsExp {
-  this: OptiML =>
+  this: OptiMLExp =>
 
   override def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
     case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].plus(x,y))

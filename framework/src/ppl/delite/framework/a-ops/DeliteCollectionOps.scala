@@ -36,6 +36,35 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with EffectExp {
     case Reflect(DeliteCollectionApply(l,r), u, es) => reflectMirrored(Reflect(DeliteCollectionApply(f(l),f(r)), mapOver(f,u), f(es)))    
     case _ => super.mirror(e, f)
   }
+  
+  /////////////////////
+  // aliases and sharing
+
+  // TODO: precise sharing info for other IR types (default is conservative)
+  
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteCollectionApply(a,i) => Nil
+    case DeliteCollectionUpdate(a,i,x) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteCollectionApply(a,i) => Nil
+    case DeliteCollectionUpdate(a,i,x) => syms(x)
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteCollectionApply(a,i) => syms(a)
+    case DeliteCollectionUpdate(a,i,x) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteCollectionApply(a,i) => Nil
+    case DeliteCollectionUpdate(a,i,x) => syms(a)
+    case _ => super.copySyms(e)
+  }
 }
 
 trait BaseGenDeliteCollectionOps extends GenericNestedCodegen {
