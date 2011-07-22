@@ -438,7 +438,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     def m = manifest[A]
     def a = implicitly[Arith[A]]
     def c = implicitly[Cloneable[A]]
-  }   
+  }
   
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
 
@@ -689,9 +689,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    * Mirroring
    */
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case s@Sum(st,e,b,init) => reflectPure(new Sum(f(st),f(e),b,f(init))(s.m, s.a, s.c) { override val transform = f })
+    case s@Sum(st,e,b,init) => reflectPure(new Sum(f(st),f(e),f(b),f(init))(s.m, s.a, s.c) { type OpType = s.type; override val original = Some(f,s:OpType) })
 //    case Reflect(s@Sum(st,e,b,init), u, es) => reflectMirrored(Reflect(new Sum(f(st),f(e),b,f(init))(s.m, s.a, s.c) { override val transform = f }, mapOver(f,u), f(es)))
-    case s@SumIf(st,e,c,b,init) => reflectPure(new SumIf(f(st),f(e),c,b,f(init))(s.m, s.a, s.c) { override val transform = f })
+    case s@SumIf(st,e,c,b,init) => reflectPure(new SumIf(f(st),f(e),f(c),f(b),f(init))(s.m, s.a, s.c) { type OpType = s.type; override val original = Some(f,s:OpType) })
 //    case Reflect(s@SumIf(st,e,c,b,init), u, es) => reflectMirrored(Reflect(new SumIf(f(st),f(e),c,b,f(init))(s.m,s.a,s.c) { override val transform = f }, mapOver(f,u), f(es)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??

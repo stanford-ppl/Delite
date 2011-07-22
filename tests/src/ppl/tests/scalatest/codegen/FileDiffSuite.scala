@@ -42,4 +42,28 @@ trait FileDiffSuite extends Suite {
     assert(readFile(name) == readFile(name+".check"), name) // TODO: diff output
     new File(name) delete ()
   }
+
+  def summarizeFile(name: String): Unit = {
+    val str = readFile(name)
+    val lines = str.split("\n").filter(line => line.contains("{") || line.contains("}")) //.map(line => line.replace)
+    var indent = 0
+    var opened = false
+    for (l <- lines) {
+      if (opened) {
+        opened = false
+        if (l.contains("}")) {
+          print(" " + l)
+        } else {
+          indent += 1
+          println()
+          print("  "*indent + l)
+        }
+      } else {
+        if (l.contains("}")) indent -= 1
+        print("  "*indent + l)
+      }
+      if (l.contains("{")) { opened = true } else println()
+    }
+  }
+
 }

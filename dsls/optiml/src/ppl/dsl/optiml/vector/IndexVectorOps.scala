@@ -71,7 +71,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case i@IndexVectorConstruct(in,b) => reflectPure(new IndexVectorConstruct(f(in),b)(i.m) { override val transform = f })
+    case i@IndexVectorConstruct(in,b) => reflectPure(new IndexVectorConstruct(f(in),f(b))(i.m) { type OpType = i.type; override val original = Some(f,i:OpType) })
 //    case Reflect(i@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new IndexVectorConstruct(f(in),b)(i.m) { override val transform = f }, mapOver(f,u), f(es)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
