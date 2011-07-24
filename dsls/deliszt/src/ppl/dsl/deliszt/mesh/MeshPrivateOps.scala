@@ -33,17 +33,17 @@ trait MeshPrivateOpsExp extends VariablesExp with BaseFatExp {
   this: DeLisztExp =>
 
   case class MeshLoaderInit() extends Def[Unit]
-  case class MeshSet[MO<:MeshObj:Manifest]() extends Def[MeshSet[MO]] {
+  case class MeshSetNew[MO<:MeshObj:Manifest]() extends Def[MeshSet[MO]] {
     val moM = manifest[MO]
   }
-  case class LabelField[MO<:MeshObj:Manifest,VT:Manifest]() extends Def[LabelField[MO,VT]] {
+  case class LabelFieldNew[MO<:MeshObj:Manifest,VT:Manifest]() extends Def[LabelField[MO,VT]] {
     val moM = manifest[MO]
     val vtM = manifest[VT]
   }
 
   def mesh_loader_init() = MeshLoaderInit()
-  def meshSet[MO<:MeshObj:Manifest] = MeshSet[MO]
-  def label[MO<:MeshObj:Manifest,VT:Manifest] = LabelField[MO,VT]
+  def meshSet[MO<:MeshObj:Manifest] = MeshSetNew[MO]
+  def label[MO<:MeshObj:Manifest,VT:Manifest] = LabelFieldNew[MO,VT]
 }
 
 trait ScalaGenVecPrivateOps extends ScalaGenBase {
@@ -53,8 +53,8 @@ trait ScalaGenVecPrivateOps extends ScalaGenBase {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case MeshLoaderInit() => emitValDef(sym, "generated.scala.datastruct.MeshLoader.init()")
-      case ms@MeshSet() => emitValDef(sym, "generated.scala.datastruct.Mesh.mesh.meshSet[" + remap(ms.moM) + "]")
-      case lf@LabelField() => emitValDef(sym, "generated.scala.datastruct.Mesh.mesh.label[" + remap(lf.moM) + "," + remap(lf.vtM) + "]")
+      case ms@MeshSetNew() => emitValDef(sym, "generated.scala.datastruct.Mesh.mesh.meshSet[" + remap(ms.moM) + "]")
+      case lf@LabelFieldNew() => emitValDef(sym, "generated.scala.datastruct.Mesh.mesh.label[" + remap(lf.moM) + "," + remap(lf.vtM) + "]")
       case _ => super.emitNode(sym, rhs)
     }
   }

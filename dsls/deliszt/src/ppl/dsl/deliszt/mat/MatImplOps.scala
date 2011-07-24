@@ -34,7 +34,8 @@ trait MatImplOpsStandard extends MatImplOps {
     val yTrans = y.t
     val out = Mat[R,C,A]()
 
-    for (rowIdx <- (0::x.numRows)) {
+    var rowIdx = 0
+    while (rowIdx < x.numRows) {
       var i = unit(0)
       while (i < out.numCols) {
         var j = unit(1)
@@ -46,16 +47,18 @@ trait MatImplOpsStandard extends MatImplOps {
         out(rowIdx, i) = acc
         i += 1
       }
+      rowIdx += 1
     }
     out.unsafeImmutable
   }
   
   def mat_times_vector_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Vec[C,A]]): Rep[Vec[C,A]] = {
-
     val out = Vec[C,A]()
 
-    for (rowIdx <- (0::x.numRows)) {
-      out(rowIdx) = x.getRow(rowIdx) *:* y
+    var rowIdx = 0
+    while (rowIdx < x.numRows) {
+      out(rowIdx) = dot(row(x, rowIdx), y)
+      rowIdx += 1
     }
     out.unsafeImmutable
   }

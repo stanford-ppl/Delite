@@ -73,7 +73,7 @@ trait VecOps extends DSLType with Variables with MetaInteger {
     def sum(implicit a: Arith[A]) = vec_sum(u)
     def abs(implicit a: Arith[A]) = vec_abs(u)
 
-    def &[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal](rhs : Rep[Vec[M,A]]) : Vec[N#Add[M],A] = vec_concat(u, rhs)
+    def &[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal](rhs : Rep[Vec[M,A]]) = vec_concat(u, rhs)
   }
 
   /* Language ops */
