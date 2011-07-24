@@ -27,7 +27,7 @@ trait FieldImplOpsStandard extends FieldImplOps {
     val v = Field[MO,VT]()
     var i = 0
     while(i < v.size) {
-      v.update(i, c)
+      v(i) = c
       i += 1
     }
     v
@@ -38,7 +38,7 @@ trait FieldImplOpsStandard extends FieldImplOps {
     val lf = label[MO,VT](url)
 
     for (mo <- meshSet[MO]) {
-      v.update(i, lf(mo))
+      v(mo) = lf(mo)
     }
     v
   }

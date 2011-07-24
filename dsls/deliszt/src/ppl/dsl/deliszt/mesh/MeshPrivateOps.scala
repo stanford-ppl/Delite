@@ -33,8 +33,13 @@ trait MeshPrivateOpsExp extends VariablesExp with BaseFatExp {
   this: DeLisztExp =>
 
   case class MeshLoaderInit() extends Def[Unit]
-  case class MeshSet[MO<:MeshObj]()(implicit moM : Manifest[MO]) extends Def[MeshSet[MO]]
-  case class LabelField[MO<:MeshObj,VT]()(implicit moM : Manifest[MO], vtM: Manifest[VT]) extends Def[LabelField[MO,VT]]
+  case class MeshSet[MO<:MeshObj:Manifest]() extends Def[MeshSet[MO]] {
+    val moM = manifest[MO]
+  }
+  case class LabelField[MO<:MeshObj:Manifest,VT:Manifest]() extends Def[LabelField[MO,VT]] {
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
+  }
 
   def mesh_loader_init() = MeshLoaderInit()
   def meshSet[MO<:MeshObj:Manifest] = MeshSet[MO]

@@ -61,7 +61,7 @@ trait MeshSetOpsExpOpt extends MeshSetOpsExp {
   this: DeLisztExp =>
 }
 
-trait ScalaGenFieldOps extends ScalaGenBase {
+trait ScalaGenMeshSetOps extends ScalaGenBase {
   val IR: MeshSetOpsExp
   import IR._
 
@@ -74,7 +74,7 @@ trait ScalaGenFieldOps extends ScalaGenBase {
 }
 
 
-trait CudaGenFieldOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenMeshSetOps extends CudaGenBase with CudaGenDataStruct {
   val IR: MeshSetOpsExp
   import IR._
 
@@ -83,7 +83,7 @@ trait CudaGenFieldOps extends CudaGenBase with CudaGenDataStruct {
   }
 }
 
-trait CGenFieldOps extends CGenBase {
+trait CGenMeshSetOps extends CGenBase {
   val IR: MeshSetOpsExp
   import IR._
 

@@ -22,8 +22,6 @@ trait ArithInternal[Rep[X], T] {
   def abs(a: Rep[T]): Rep[T]
   def exp(a: Rep[T]): Rep[T]
   def unary_-(a: Rep[T]): Rep[T]
-
-  /*
-  def zero : Rep[T]
-  */
+  def empty: Rep[T]
+  def zero(a: Rep[T]): Rep[T]
 }

@@ -20,7 +20,7 @@ import ppl.dsl.deliszt.{DeLiszt, DeLisztExp}
 *
 */
 
-trait ArithOps extends Variables with OverloadHack {
+trait ArithOps extends Variables with OverloadHack with MetaInteger {
   this: DeLiszt =>
 
   type Arith[X] = ArithInternal[Rep, X]
@@ -57,6 +57,9 @@ trait ArithOps extends Variables with OverloadHack {
     def exp: Rep[T] = arith.exp(lhs)
 
     def unary_-(): Rep[T] = arith.unary_-(lhs)
+    
+    def empty: Rep[T] = arith.empty
+    def zero: Rep[T] = arith.zero(lhs)
   }
 
 
@@ -76,13 +79,19 @@ trait ArithOps extends Variables with OverloadHack {
    * Vec
    */
 
-  implicit def VecArith[N <: IntM : Manifest, T: Arith : Manifest]: Arith[Vec[N, T]] = new Arith[Vec[N, T]] {
+  implicit def VecArith[N <: IntM : Manifest:MVal, T: Arith : Manifest]: Arith[Vec[N, T]] = new Arith[Vec[N, T]] {
     // these are used in sum; dynamic checks are required due to conditionals
     def +(a: Rep[Vec[N, T]], b: Rep[Vec[N, T]]) = a + b
     def -(a: Rep[Vec[N, T]], b: Rep[Vec[N, T]]) = a - b
     def *(a: Rep[Vec[N, T]], b: Rep[Vec[N, T]]) = a * b
     def /(a: Rep[Vec[N, T]], b: Rep[Vec[N, T]]) = a / b
     def unary_-(a: Rep[Vec[N, T]]) = -a
+    
+    def abs(a: Rep[Vec[N,T]]) = a.abs
+    def exp(a: Rep[Vec[N,T]]) = a.exp
+    
+    def empty : Rep[Vec[_0,T]] = Vec[_0,T]()
+    def zero(a: Rep[Vec[N,T]]) = Vec[N,T]()
   }
 
 
@@ -90,12 +99,18 @@ trait ArithOps extends Variables with OverloadHack {
    * Mat
    */
 
-  implicit def MatArith[R <: IntM : Manifest, C <: IntM : Manifest, T: Arith : Manifest]: Arith[Mat[R, C, T]] = new Arith[Mat[R, C, T]] {
+  implicit def MatArith[R <: IntM : Manifest:MVal, C <: IntM : Manifest:MVal, T: Arith : Manifest]: Arith[Mat[R, C, T]] = new Arith[Mat[R, C, T]] {
     def +(a: Rep[Mat[R, C, T]], b: Rep[Mat[R, C, T]]) = a + b
     def -(a: Rep[Mat[R, C, T]], b: Rep[Mat[R, C, T]]) = a - b
     def *(a: Rep[Mat[R, C, T]], b: Rep[Mat[R, C, T]]) = a * b
     //def /(a: Rep[Mat[R,C,T]], b: Rep[Mat[R,C,T]]) = a/b
     def unary_-(a: Rep[Mat[R, C, T]]) = -a
+    
+    def abs(a: Rep[Mat[R,C,T]]) = a.abs
+    def exp(a: Rep[Mat[R,C,T]]) = a.exp
+    
+    def empty : Rep[Mat[_0,_0,T]] = Mat[_0,_0,T]()
+    def zero(a: Rep[Mat[R,C,T]]) = Mat[R,C,T]()
   }
 
   /**
@@ -114,7 +129,8 @@ trait ArithOps extends Variables with OverloadHack {
     def abs(a: Rep[Double]) = arith_abs(a)
     def exp(a: Rep[Double]) = arith_exp(a)
     def unary_-(a: Rep[Double]) = arith_negate(a)
-    //def zero = 0
+    def empty = unit(0.0)
+    def zero(a: Rep[Double]) = empty
   }
 
   implicit val floatArith: Arith[Float] = new Arith[Float] {
@@ -126,7 +142,8 @@ trait ArithOps extends Variables with OverloadHack {
     def abs(a: Rep[Float]) = arith_abs(a)
     def exp(a: Rep[Float]) = arith_exp(a).asInstanceOfL[Float]
     def unary_-(a: Rep[Float]) = arith_negate(a)
-    //def zero = 0
+    def empty = unit(0f)
+    def zero(a: Rep[Float]) = empty
   }
 
   implicit val intArith: Arith[Int] = new Arith[Int] {
@@ -138,7 +155,8 @@ trait ArithOps extends Variables with OverloadHack {
     def abs(a: Rep[Int]) = arith_abs(a)
     def exp(a: Rep[Int]) = arith_exp(a).asInstanceOfL[Int]
     def unary_-(a: Rep[Int]) = arith_negate(a)
-    //def zero = 0
+    def empty = unit(0)
+    def zero(a: Rep[Int]) = empty
   }
 
   def arith_plus[T: Manifest : Numeric](lhs: Rep[T], rhs: Rep[T]): Rep[T]
