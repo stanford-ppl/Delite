@@ -31,7 +31,7 @@ trait DeLisztScalaOpsPkg extends Base
   with ImplicitOps with OrderingOps with StringOps
   with BooleanOps with PrimitiveOps with MiscOps with TupleOps
   with MathOps with CastingOps with ObjectOps
-  // only included because of args. TODO: investigate passing args as a vector
+  // only included because of args. TODO: investigate passing args as a vec
   with ArrayOps
 
 trait DeLisztScalaOpsPkgExp extends DeLisztScalaOpsPkg with DSLOpsExp
@@ -264,26 +264,26 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /
   }
 
   override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matrixCopyInputHtoD(sym)
-    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vectorCopyInputHtoD(sym)
+    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyInputHtoD(sym)
+    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
   override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matrixCopyOutputDtoH(sym)
-    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vectorCopyOutputDtoH(sym)
+    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyOutputDtoH(sym)
+    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyOutputDtoH(sym)
     case _ => super.copyOutputDtoH(sym)
   }
 
   override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matrixCopyMutableInputDtoH(sym)
-    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vectorCopyMutableInputDtoH(sym)
+    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyMutableInputDtoH(sym)
+    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyMutableInputDtoH(sym)
     case _ => super.copyMutableInputDtoH(sym)
   }
 
   override def positionMultDimInputs(sym: Sym[Any]) : String = remap(sym.Type) match {
-    //TODO: Add matrix reposition, and also do safety check for datastructures that do not have data field
-    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vectorPositionMultDimInputs(sym)
+    //TODO: Add mat reposition, and also do safety check for datastructures that do not have data field
+    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecPositionMultDimInputs(sym)
     case _ => super.positionMultDimInputs(sym)
   }
 

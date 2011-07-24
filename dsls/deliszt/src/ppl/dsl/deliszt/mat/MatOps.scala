@@ -106,7 +106,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
 
   // TODO: generalize this so that we can generate fused, delite parallel op, or BLAS variants
 
-  case class MatTimesVector[R <: IntM :Manifest :MVal,C <: IntM :Manifest :MVal,A:Manifest :Arith](x:Exp[Mat[R,C,A]],y:Exp[Vec[C,A]])
+  case class MatTimesVec[R <: IntM :Manifest :MVal,C <: IntM :Manifest :MVal,A:Manifest :Arith](x:Exp[Mat[R,C,A]],y:Exp[Vec[C,A]])
     extends DeliteOpSingleTask(reifyEffectsHere(mat_times_vector_impl(x,y)),true) {
 
     val mV = manifest[VecImpl[C,A]]
@@ -198,7 +198,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
   def mat_unary_minus[R <: IntM :Manifest :MVal,C <: IntM :Manifest :MVal,A:Manifest :Arith](x:Exp[Mat[R,C,A]]) = MatUnaryMinus(x)
 
   def mat_multiply[R <: IntM :Manifest :MVal,C <: IntM :Manifest :MVal,A:Manifest :Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatMultiply(x,y))
-  def mat_times_vector[R <: IntM :Manifest :MVal,C <: IntM :Manifest :MVal,A:Manifest :Arith](x:Exp[Mat[R,C,A]],y:Exp[Vec[C,A]]) = reflectPure(MatTimesVector(x,y))
+  def mat_times_vector[R <: IntM :Manifest :MVal,C <: IntM :Manifest :MVal,A:Manifest :Arith](x:Exp[Mat[R,C,A]],y:Exp[Vec[C,A]]) = reflectPure(MatTimesVec(x,y))
   def mat_times_scalar[R <: IntM :Manifest :MVal,C <: IntM :Manifest :MVal,A:Manifest :Arith](x:Exp[Mat[R,C,A]],y:Exp[A]) = reflectPure(MatTimesScalar(x,y))
 
   def mat_divide[R <: IntM :Manifest :MVal,C <: IntM :Manifest :MVal,A:Manifest :Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatDivide(x,y))
@@ -238,7 +238,7 @@ trait ScalaGenMatOps extends ScalaGenBase {
     case m@MatMultiply(x,y) if (Config.useBlas) =>
       emitValDef(sym,"new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(y) + ".numCols)")
       stream.println("scalaBLAS.matMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y)))
-    case m@MatTimesVector(x,y) if (Config.useBlas) =>
+    case m@MatTimesVec(x,y) if (Config.useBlas) =>
       emitValDef(sym,"new " + remap(m.mV) + "(" + quote(x) + ".numRows, false)")
       stream.println("scalaBLAS.matVMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,0,1)".format(quote(x),quote(y),quote(sym),quote(x),quote(x)))
       stream.println("scalaBLAS.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
@@ -264,15 +264,15 @@ trait CudaGenMatOps extends CudaGenBase with CudaGenDataStruct {
       emitMatAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(y)),false)
       emitLibCall(sym,List(callStream,callKernel))
     }
-    case MatTimesVector(x,y) => {
+    case MatTimesVec(x,y) => {
       val callStream = "cublasSetKernelStream(stream);"
       val callKernel = if (remap(x.Type.typeArguments(0)) == "double")
         "cublasDgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
       else if (remap(x.Type.typeArguments(0)) == "float")
         "cublasSgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
       else
-        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Mat*Vector CUBLAS library)".format(remap(x.Type.typeArguments(0))))
-      emitVectorAlloc(sym,"%s->numRows".format(quote(x)),"false",false)
+        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Mat*Vec CUBLAS library)".format(remap(x.Type.typeArguments(0))))
+      emitVecAlloc(sym,"%s->numRows".format(quote(x)),"false",false)
       emitLibCall(sym,List(callStream,callKernel))
     }
     /* The ops that call through to the underlying data structure */

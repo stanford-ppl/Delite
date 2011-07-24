@@ -70,8 +70,8 @@ trait VecOps extends DSLType with Variables with MetaInteger {
     def unary_-(implicit o : Arith[A]) : Rep[Vec[N,A]] = vec_negate(u)
     
     def size : Rep[Int]
-    def sum(implicit a: Arith[A]) = vec_sum(x)
-    def abs(implicit a: Arith[A]) = vec_abs(x)
+    def sum(implicit a: Arith[A]) = vec_sum(u)
+    def abs(implicit a: Arith[A]) = vec_abs(u)
 
     def &[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal](rhs : Rep[Vec[M,A]]) : Vec[N#Add[M],A] = vec_concat(u, rhs)
   }
@@ -313,7 +313,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp with CleanRoom 
   // class interface
   def vec_apply[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]], n: Exp[Int]) = reflectPure(VecApply(x, n))
   
-  def vec_update[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N, A]], i: Exp[Int], v: Exp[A]) = reflectWrite(x)(VecUpdate(x, n))
+  def vec_update[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N, A]], i: Exp[Int], v: Exp[A]) = reflectWrite(x)(VecUpdate(x, i, v))
 
   def vec_plus[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecPlus(x,y))
   def vec_plus_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecPlusScalar(x,y))

@@ -54,7 +54,7 @@ trait ScalaGenVecPrivateOps extends ScalaGenBase {
     rhs match {
       case MeshLoaderInit() => emitValDef(sym, "generated.scala.datastruct.MeshLoader.init()")
       case ms@MeshSet() => emitValDef(sym, "generated.scala.datastruct.Mesh.mesh.meshSet[" + remap(ms.moM) + "]")
-      case lf@LabelField() => emitValDef(sym, "generated.scala.datastruct.Mesh.mesh.label[" + remap(ms.moM) + "," + remap(ms.vtM) + "]")
+      case lf@LabelField() => emitValDef(sym, "generated.scala.datastruct.Mesh.mesh.label[" + remap(lf.moM) + "," + remap(lf.vtM) + "]")
       case _ => super.emitNode(sym, rhs)
     }
   }
