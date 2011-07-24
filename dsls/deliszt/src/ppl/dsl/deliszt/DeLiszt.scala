@@ -17,6 +17,7 @@ import ppl.dsl.deliszt.field._
 import ppl.dsl.deliszt.mat._
 import ppl.dsl.deliszt.vec._
 import ppl.dsl.deliszt.mesh._
+import ppl.dsl.deliszt.meshset._
 
 /**
  * These are the portions of Scala imported into DeLiszt's scope.
@@ -67,12 +68,13 @@ trait DeLisztCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderi
  * This the trait that every DeLiszt application must extend.
  */
 trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps
+  with MeshPrivateOps with MeshSetOps
   with ArithOps with FieldOps with MatOps with VecOps {
   this: DeLisztApplication =>
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait DeLisztCompiler extends DeLiszt with FieldPrivateOps with MeshPrivateOps {
+trait DeLisztCompiler extends DeLiszt {  // FieldPrivateOps, MeshPrivateOps
   this: DeLisztApplication with DeLisztExp =>
 }
 
@@ -81,6 +83,7 @@ trait DeLisztCompiler extends DeLiszt with FieldPrivateOps with MeshPrivateOps {
  */
 trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with LanguageOpsExp
   with LanguageImplOpsStandard
+  with MeshSetOpsExp
   with ArithOpsExpOpt
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp
   with FieldOpsExp with FieldImplOpsStandard with MatOpsExp with MatImplOps with VecOpsExp with VecImplOps {

@@ -28,7 +28,7 @@ trait FieldImplOpsStandard extends FieldImplOps {
     var i = 0
     while(i < v.size) {
       v.update(i, c)
-      i++
+      i += 1
     }
     v
   }

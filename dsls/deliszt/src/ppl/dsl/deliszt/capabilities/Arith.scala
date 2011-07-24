@@ -13,16 +13,17 @@ import scala.virtualization.lms.common.Base
  */
 
 
-trait ArithInternal[Rep[X],T] {
-  def +=(a: Rep[T], b: Rep[T]) : Rep[T]
-  def +(a: Rep[T], b: Rep[T]) : Rep[T]
-  def -(a: Rep[T], b: Rep[T]) : Rep[T]
-  def *(a: Rep[T], b: Rep[T]) : Rep[T]
-  def /(a: Rep[T], b: Rep[T]) : Rep[T]
-  def abs(a: Rep[T]) : Rep[T]
-  def exp(a: Rep[T]) : Rep[T]
+trait ArithInternal[Rep[X], T] {
+  def +=(a: Rep[T], b: Rep[T]): Rep[T]
+  def +(a: Rep[T], b: Rep[T]): Rep[T]
+  def -(a: Rep[T], b: Rep[T]): Rep[T]
+  def *(a: Rep[T], b: Rep[T]): Rep[T]
+  def /(a: Rep[T], b: Rep[T]): Rep[T]
+  def abs(a: Rep[T]): Rep[T]
+  def exp(a: Rep[T]): Rep[T]
+  def unary_-(a: Rep[T]): Rep[T]
+
   /*
   def zero : Rep[T]
-  def unary_-(a: Rep[T]) : Rep[T]
   */
 }

@@ -25,43 +25,43 @@ trait LanguageOps extends Base { this: DeLiszt =>
   def Print(as : Rep[Any]*) : Unit
 	def FieldWithConst[MO<:MeshObj, VT](url : Rep[VT])(implicit mo : Manifest[MO], vt : Manifest[VT]) : Rep[Field[MO,VT]]
 	def FieldWithURL[MO<:MeshObj, VT](url : String)(implicit mo : Manifest[MO], vt : Manifest[VT]) : Rep[Field[MO,VT]]
-	def BoundarySet[MO<:MeshObj](name : String)(implicit mo : Manifest[MO]) : Rep[Set[MO]]
+	def BoundarySet[MO<:MeshObj](name : String)(implicit mo : Manifest[MO]) : Rep[MeshSet[MO]]
 
 	def mesh : Rep[Mesh]
 
-	def vertices(e : Rep[Mesh])(implicit x : Overloaded1) : Rep[Set[Vertex]]
-	def vertices(e : Rep[Vertex])(implicit x : Overloaded2) : Rep[Set[Vertex]]
-	def vertices(e : Rep[Edge])(implicit x : Overloaded3) : Rep[Set[Vertex]]
-	def vertices(e : Rep[Face])(implicit x : Overloaded4) : Rep[Set[Vertex]]
-	def vertices(e : Rep[Cell])(implicit x : Overloaded5) : Rep[Set[Vertex]]
+	def vertices(e : Rep[Mesh])(implicit x : Overloaded1) : Rep[MeshSet[Vertex]]
+	def vertices(e : Rep[Vertex])(implicit x : Overloaded2) : Rep[MeshSet[Vertex]]
+	def vertices(e : Rep[Edge])(implicit x : Overloaded3) : Rep[MeshSet[Vertex]]
+	def vertices(e : Rep[Face])(implicit x : Overloaded4) : Rep[MeshSet[Vertex]]
+	def vertices(e : Rep[Cell])(implicit x : Overloaded5) : Rep[MeshSet[Vertex]]
 
-	def verticesCCW(e : Rep[Face]) : Rep[Set[Vertex]]
-	def verticesCW(e : Rep[Face]) : Rep[Set[Vertex]]
+	def verticesCCW(e : Rep[Face]) : Rep[MeshSet[Vertex]]
+	def verticesCW(e : Rep[Face]) : Rep[MeshSet[Vertex]]
 
-	def cells(e : Rep[Mesh])(implicit x : Overloaded1) : Rep[Set[Cell]]
-	def cells(e : Rep[Vertex])(implicit x : Overloaded2) : Rep[Set[Cell]]
-	def cells(e : Rep[Edge])(implicit x : Overloaded3) : Rep[Set[Cell]]
-	def cells(e : Rep[Face])(implicit x : Overloaded4) : Rep[Set[Cell]]
-	def cells(e : Rep[Cell])(implicit x : Overloaded5) : Rep[Set[Cell]]
+	def cells(e : Rep[Mesh])(implicit x : Overloaded1) : Rep[MeshSet[Cell]]
+	def cells(e : Rep[Vertex])(implicit x : Overloaded2) : Rep[MeshSet[Cell]]
+	def cells(e : Rep[Edge])(implicit x : Overloaded3) : Rep[MeshSet[Cell]]
+	def cells(e : Rep[Face])(implicit x : Overloaded4) : Rep[MeshSet[Cell]]
+	def cells(e : Rep[Cell])(implicit x : Overloaded5) : Rep[MeshSet[Cell]]
 
-	def cellsCCW(e : Rep[Edge]) : Rep[Set[Cell]]
-	def cellsCW(e : Rep[Edge]) : Rep[Set[Cell]]
+	def cellsCCW(e : Rep[Edge]) : Rep[MeshSet[Cell]]
+	def cellsCW(e : Rep[Edge]) : Rep[MeshSet[Cell]]
 
-	def edges(e : Rep[Mesh])(implicit x : Overloaded1) : Rep[Set[Edge]]
-	def edges(e : Rep[Vertex])(implicit x : Overloaded2) : Rep[Set[Edge]]
-	def edges(e : Rep[Face])(implicit x : Overloaded3) : Rep[Set[Edge]]
-	def edges(e : Rep[Cell])(implicit x : Overloaded4) : Rep[Set[Edge]]
+	def edges(e : Rep[Mesh])(implicit x : Overloaded1) : Rep[MeshSet[Edge]]
+	def edges(e : Rep[Vertex])(implicit x : Overloaded2) : Rep[MeshSet[Edge]]
+	def edges(e : Rep[Face])(implicit x : Overloaded3) : Rep[MeshSet[Edge]]
+	def edges(e : Rep[Cell])(implicit x : Overloaded4) : Rep[MeshSet[Edge]]
 
-	def edgesCCW(e : Rep[Face]) : Rep[Set[Edge]]
-	def edgesCW(e : Rep[Face]) : Rep[Set[Edge]]
+	def edgesCCW(e : Rep[Face]) : Rep[MeshSet[Edge]]
+	def edgesCW(e : Rep[Face]) : Rep[MeshSet[Edge]]
 
-	def faces(e : Rep[Mesh])(implicit x : Overloaded1) : Rep[Set[Face]]
-	def faces(e : Rep[Vertex])(implicit x : Overloaded2) : Rep[Set[Face]]
-	def faces(e : Rep[Edge])(implicit x : Overloaded3) : Rep[Set[Face]]
-	def faces(e : Rep[Cell])(implicit x : Overloaded4) : Rep[Set[Face]]
+	def faces(e : Rep[Mesh])(implicit x : Overloaded1) : Rep[MeshSet[Face]]
+	def faces(e : Rep[Vertex])(implicit x : Overloaded2) : Rep[MeshSet[Face]]
+	def faces(e : Rep[Edge])(implicit x : Overloaded3) : Rep[MeshSet[Face]]
+	def faces(e : Rep[Cell])(implicit x : Overloaded4) : Rep[MeshSet[Face]]
 
-	def facesCCW(e : Rep[Edge]) : Rep[Set[Face]]
-	def facesCW(e : Rep[Edge]) : Rep[Set[Face]]
+	def facesCCW(e : Rep[Edge]) : Rep[MeshSet[Face]]
+	def facesCW(e : Rep[Edge]) : Rep[MeshSet[Face]]
 
 	def head(e : Rep[Edge]) : Rep[Vertex]
 	def tail(e : Rep[Edge]) : Rep[Vertex]
@@ -74,11 +74,11 @@ trait LanguageOps extends Base { this: DeLiszt =>
 
 	def towards(e : Rep[Edge],v : Rep[Vertex])(implicit x : Overloaded1) : Rep[Edge]
 	def towards(e : Rep[Face],c : Rep[Cell])(implicit x : Overloaded2) : Rep[Face]
-	def size[MO<:MeshObj](s : Rep[Set[MO]])(implicit m : Manifest[MO]) : Rep[Int]
+	def size[MO<:MeshObj](s : Rep[MeshSet[MO]])(implicit m : Manifest[MO]) : Rep[Int]
 
 	def ID[MO<:MeshObj](x : Rep[MO]) : Rep[Int]
 
-	def foreach[MO<:MeshObj](x : Rep[Set[MO]], fn : Rep[Unit]) : Rep[Unit]
+	def foreach[MO<:MeshObj](x : Rep[MeshSet[MO]])(fn : Rep[MO] => Rep[Unit]) : Rep[Unit]
 
   def MATH_PI() : Rep[Float]
   def MIN_FLOAT() : Rep[Float]
@@ -97,29 +97,29 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   case class DeLisztFieldWithConst[MO<:MeshObj : Manifest, VT : Manifest](url : Exp[VT]) extends Def[Field[MO,VT]]
   case class DeLisztFieldWithURL[MO<:MeshObj : Manifest, VT : Manifest](url : Exp[String]) extends Def[Field[MO,VT]]
-  case class DeLisztBoundarySet[MO<:MeshObj : Manifest](name : Exp[String]) extends Def[Set[MO]]
+  case class DeLisztBoundarySet[MO<:MeshObj : Manifest](name : Exp[String]) extends Def[MeshSet[MO]]
 
   case class DeLisztMesh() extends Def[Mesh]
 
-  case class DeLisztVertices[MO<:MeshObj:Manifest](e: Exp[MO]) extends Def[Set[Vertex]]
+  case class DeLisztVertices[MO<:MeshObj:Manifest](e: Exp[MO]) extends Def[MeshSet[Vertex]]
 
-  case class DeLisztFaceVerticesCCW(e : Exp[Face]) extends Def[Set[Vertex]]
-  case class DeLisztFaceVerticesCW(e : Exp[Face]) extends Def[Set[Vertex]]
+  case class DeLisztFaceVerticesCCW(e : Exp[Face]) extends Def[MeshSet[Vertex]]
+  case class DeLisztFaceVerticesCW(e : Exp[Face]) extends Def[MeshSet[Vertex]]
 
-  case class DeLisztCells[MO<:MeshObj:Manifest](e: Exp[MO]) extends Def[Set[Cell]]
+  case class DeLisztCells[MO<:MeshObj:Manifest](e: Exp[MO]) extends Def[MeshSet[Cell]]
 
-  case class DeLisztEdgeCellsCCW(e : Exp[Edge]) extends Def[Set[Cell]]
-  case class DeLisztEdgeCellsCW(e : Exp[Edge]) extends Def[Set[Cell]]
+  case class DeLisztEdgeCellsCCW(e : Exp[Edge]) extends Def[MeshSet[Cell]]
+  case class DeLisztEdgeCellsCW(e : Exp[Edge]) extends Def[MeshSet[Cell]]
 
-  case class DeLisztEdges[MO<:MeshObj:Manifest](e: Exp[MO]) extends Def[Set[Edge]]
+  case class DeLisztEdges[MO<:MeshObj:Manifest](e: Exp[MO]) extends Def[MeshSet[Edge]]
 
-  case class DeLisztFaces[MO<:MeshObj:Manifest](e: Exp[MO]) extends Def[Set[Face]]
+  case class DeLisztFaces[MO<:MeshObj:Manifest](e: Exp[MO]) extends Def[MeshSet[Face]]
 
-  case class DeLisztEdgeFacesCCW(e : Exp[Edge]) extends Def[Set[Face]]
-  case class DeLisztEdgeFacesCW(e : Exp[Edge]) extends Def[Set[Face]]
+  case class DeLisztEdgeFacesCCW(e : Exp[Edge]) extends Def[MeshSet[Face]]
+  case class DeLisztEdgeFacesCW(e : Exp[Edge]) extends Def[MeshSet[Face]]
   
-  case class DeLisztFaceEdgesCCW(e : Exp[Face]) extends Def[Set[Edge]]
-  case class DeLisztFaceEdgesCW(e : Exp[Face]) extends Def[Set[Edge]]
+  case class DeLisztFaceEdgesCCW(e : Exp[Face]) extends Def[MeshSet[Edge]]
+  case class DeLisztFaceEdgesCW(e : Exp[Face]) extends Def[MeshSet[Edge]]
 
   case class DeLisztEdgeHead(e : Exp[Edge]) extends Def[Vertex]
   case class DeLisztEdgeTail(e : Exp[Edge]) extends Def[Vertex]
@@ -132,9 +132,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class DeLisztTowardsEdgeVertex(e : Exp[Edge], v: Exp[Vertex]) extends Def[Edge]
   case class DeLisztTowardsFaceCell(e : Exp[Face], c: Exp[Cell]) extends Def[Face]
 
-  case class DeLisztSize[MO<:MeshObj:Manifest](s: Exp[Set[MO]]) extends Def[Int]
+  case class DeLisztSize[MO<:MeshObj:Manifest](s: Exp[MeshSet[MO]]) extends Def[Int]
 
-  case class DeLisztForeach[MO<:MeshObj:Manifest](x: Exp[Set[MO]], v: Sym[MO], func: Exp[Unit])
+  case class DeLisztForeach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]], v: Sym[MO], func: Exp[Unit])
     extends DeliteOpForeach[MO]
   
   case class DeLisztID[MO<:MeshObj:Manifest](x: Exp[MO]) extends Def[Int]
@@ -204,9 +204,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
 	def towards(e : Exp[Edge], v: Exp[Vertex])(implicit x : Overloaded1) = reflectPure(DeLisztTowardsEdgeVertex(e,v))
 	def towards(e : Exp[Face], c: Exp[Cell])(implicit x : Overloaded2) = reflectPure(DeLisztTowardsFaceCell(e,c))
-	def size[MO<:MeshObj](s : Exp[Set[MO]])(implicit m : Manifest[MO]) = reflectPure(DeLisztSize(s))
+	def size[MO<:MeshObj](s : Exp[MeshSet[MO]])(implicit m : Manifest[MO]) = reflectPure(DeLisztSize(s))
 
-	def foreach[MO<:MeshObj:Manifest](x: Exp[Set[MO]], block: Exp[MO] => Exp[Unit]) = {
+	def foreach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]])(block: Exp[MO] => Exp[Unit]) = {
     val v = fresh[MO]
     val func = reifyEffects(block(v))
     reflectEffect(DeLisztForeach(x, v, func))
@@ -268,9 +268,9 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
   case class DeLisztTowardsEdgeVertex(e : Exp[Edge], v: Exp[Vertex]) extends Def[Edge]
   case class DeLisztTowardsFaceCell(e : Exp[Face], c: Exp[Cell]) extends Def[Face]
 
-  case class DeLisztSize[MO<:MeshObj : Manifest](s: Exp[Set[MO]]) extends Def[Int]
+  case class DeLisztSize[MO<:MeshObj : Manifest](s: Exp[MeshSet[MO]]) extends Def[Int]
 
-  case class DeLisztForeach[MO<:MeshObj : Manifest](x: Exp[Set[MO]], v: Sym[MO], func: Exp[Unit])
+  case class DeLisztForeach[MO<:MeshObj : Manifest](x: Exp[MeshSet[MO]], v: Sym[MO], func: Exp[Unit])
     extends DeliteOpForeach[MO,Set]
 
   case class DeLisztID[MO<:MeshObj : Manifest](x: Exp[MO]) extends Def[Int]

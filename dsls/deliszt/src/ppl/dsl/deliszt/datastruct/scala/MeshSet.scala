@@ -8,4 +8,4 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-trait MeshObjSet[MO<:MeshObj] extends DeLisztSet[MO]
+trait MeshSet[MO<:MeshObj] extends DeLisztSet[MO]

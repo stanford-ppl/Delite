@@ -10,7 +10,7 @@ import collection.mutable.ArrayBuilder
  * Stanford University
  */
 
-class BoundarySetImpl[MO<:MeshObj](implicit moc: MeshObjConstruct[MO]) extends MeshObjSet[MO] with MeshObjImpl {
+class BoundarySetImpl[MO<:MeshObj](implicit moc: MeshObjConstruct[MO]) extends MeshSet[MO] with MeshObjImpl {
   var ids = ArrayBuilder.make[Int]()
   var ranges : Array[(Int,Int)] = null
   var sizes : Array[Int] = null

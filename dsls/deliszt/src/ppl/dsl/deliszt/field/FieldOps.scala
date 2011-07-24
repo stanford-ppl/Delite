@@ -16,16 +16,31 @@ trait FieldOps extends DSLType with Variables {
   implicit def repFieldToFieldOps[MO <: MeshObj:Manifest, VT : Manifest](x: Rep[Field[MO, VT]]) = new fieldOpsCls[MO,VT](x)
   implicit def varToFieldOps[MO <: MeshObj:Manifest, VT : Manifest](x: Var[Field[MO, VT]]) = new fieldOpsCls[MO,VT](readVar(x))
 
+  object Field {
+    def apply[MO<:MeshObj:Manifest,VT:Manifest]() = field_obj_new[MO,VT]()
+  }
+
   /**
    * This class defines the public interface for the Field[T] class.
    */
   class fieldOpsCls[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]]) {
     def apply(mo : Rep[MO]) = field_apply(x, mo)
     def update(mo:Rep[MO], v:Rep[VT]) = field_update(x,mo,v)
+
+    def apply(n : Rep[Int]) = field_apply(x, n)
+    def update(n : Rep[Int], v : Rep[VT]) = field_update(x, n,v)
+    def size = field_size(x)
   }
 
   def field_apply[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]], mo: Rep[MO]) : Rep[VT]
   def field_update[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]], mo: Rep[MO], v : Rep[VT]) : Rep[Unit]
+
+  def label[MO<:MeshObj:Manifest,VT:Manifest](url: Rep[String]): Rep[Field[MO,VT]]
+  def field_obj_new[MO<:MeshObj:Manifest,VT:Manifest](): Rep[Field[MO,VT]]
+
+  def field_apply[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]], n: Rep[Int]): Rep[VT]
+  def field_update[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]], n: Rep[Int], v: Rep[VT]): Rep[Unit]
+  def field_size[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]]): Rep[Int]
 }
 
 trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
@@ -59,6 +74,26 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
   // class interface
   def field_apply[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO, VT]], mo: Exp[MO]) = reflectPure(FieldApply(x,mo))
   def field_update[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]], mo: Rep[MO], v : Rep[VT]) = reflectWrite(x)(FieldUpdate(x,mo,v))
+
+  case class FieldObjectNew[MO<:MeshObj:Manifest,VT:Manifest]() extends Def[Field[MO,VT]] {
+    val fM = manifest[FieldImpl[MO,VT]]
+  }
+
+  case class LabelField[MO<:MeshObj:Manifest,VT:Manifest](url: Exp[String]) extends Def[Field[MO,VT]] {
+    val mM = manifest[MO]
+  }
+
+  case class FieldIntApply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) extends Def[VT]
+  case class FieldIntUpdate[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT]) extends Def[Unit]
+  case class FieldSize[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]]) extends Def[Int]
+
+  def label[MO<:MeshObj:Manifest,VT:Manifest](url: Exp[String]) = LabelField[MO,VT](url)
+
+  def field_obj_new[MO<:MeshObj:Manifest,VT:Manifest]() = reflectMutable(FieldObjectNew[MO,VT]())
+
+  def field_apply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) = FieldIntApply[MO,VT](x,n)
+  def field_update[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT]) = reflectWrite(x)(FieldIntUpdate[MO,VT](x,n,v))
+  def field_size[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]]) = FieldSize(x)
 }
 
 trait FieldOpsExpOpt extends FieldOpsExp {
@@ -74,6 +109,13 @@ trait ScalaGenFieldOps extends ScalaGenBase {
       // these are the ops that call through to the underlying real data structure
       case FieldApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
       case FieldUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(v))
+
+      case f@FieldObjectNew() => emitValDef(sym, remap(f.fM) + "()")
+      case f@LabelField(url) => emitValDef(sym, "generated.scala.Mesh.mesh.label[" + remap(f.mM) + "](" + quote(url) + ")")
+      case FieldIntApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
+      case FieldIntUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(v))
+      case FieldSize(x) => emitValDef(sym, quote(x) + ".size")
+
       case _ => super.emitNode(sym, rhs)
     }
   }

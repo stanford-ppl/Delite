@@ -17,7 +17,7 @@ trait MatOps extends DSLType with Variables {
   this: DeLiszt =>
 
   object Mat {
-    def apply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,VT:Manifest] = mat_obj_new[R,C,VT]
+    def apply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,VT:Manifest]() = mat_obj_new[R,C,VT]
   }
 
   implicit def repMatToMatOps[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT: Manifest](x: Rep[Mat[R,C,VT]]) = new matOpsCls(x)
@@ -113,7 +113,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
   // implemented via delite ops
   
   abstract class MatArithmeticMap[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest:Arith](in: Exp[Mat[R,C,VT]]) extends DeliteOpMap[VT,VT,Mat[R,C,VT]] {
-    def alloc = Mat[R,C,VT](in.numRows, in.numCols)
+    def alloc = Mat[R,C,VT]()
     val size = in.numRows*in.numCols
     
     def m = manifest[VT]
@@ -121,7 +121,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
   }
   
   abstract class MatArithmeticZipWith[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, VT:Manifest:Arith](inA: Exp[Mat[R,C,VT]], inB: Exp[Mat[R,C,VT]]) extends DeliteOpZipWith[VT,VT,VT,Mat[R,C,VT]] {
-    def alloc = Mat[R,C,VT](inA.numRows, inA.numCols)
+    def alloc = Mat[R,C,VT]()
     val size = inA.numRows*inA.numCols
     
     def m = manifest[VT]

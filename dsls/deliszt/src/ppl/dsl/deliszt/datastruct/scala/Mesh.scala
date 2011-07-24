@@ -13,7 +13,7 @@ import collection.mutable.{Map, HashMap}
 object Mesh extends MeshObjImpl {
   var mesh: Mesh = null
 
-  def vertices(e: Mesh): DeLisztSet[Vertex] = MeshObjSetImpl(mesh.nvertices)
+  def vertices(e: Mesh): DeLisztSet[Vertex] = MeshSetImpl(mesh.nvertices)
   def vertices(e: Vertex): DeLisztSet[Vertex] = IndexSetImpl(mesh.vtov, e)
   def vertices(e: Edge): DeLisztSet[Vertex] = IndexSetImpl(mesh.etov, e)
   def vertices(e: Face): DeLisztSet[Vertex] = IndexSetImpl(mesh.ftov, e)
@@ -22,7 +22,7 @@ object Mesh extends MeshObjImpl {
   def verticesCCW(e: Face): DeLisztSet[Vertex] = IndexSetImpl(mesh.ftov, e)
   def verticesCW(e: Face): DeLisztSet[Vertex] = CWIndexSetImpl(mesh.ftov, e)
 
-  def cells(e: Mesh): DeLisztSet[Cell] = MeshObjSetImpl(mesh.ncells)
+  def cells(e: Mesh): DeLisztSet[Cell] = MeshSetImpl(mesh.ncells)
   def cells(e: Vertex): DeLisztSet[Cell] = IndexSetImpl(mesh.vtoc, e)
   def cells(e: Edge): DeLisztSet[Cell] = IndexSetImpl(mesh.etoc, e)
   def cells(e: Face): DeLisztSet[Cell] = IndexSetImpl(mesh.ftoc, e)
@@ -31,7 +31,7 @@ object Mesh extends MeshObjImpl {
   def cellsCCW(e: Edge): DeLisztSet[Cell] = IndexSetImpl(mesh.etoc, e)
   def cellsCW(e: Edge): DeLisztSet[Cell] = CWIndexSetImpl(mesh.etoc, e)
 
-  def edges(e: Mesh): DeLisztSet[Edge] = MeshObjSetImpl(mesh.nedges)
+  def edges(e: Mesh): DeLisztSet[Edge] = MeshSetImpl(mesh.nedges)
   def edges(e: Vertex): DeLisztSet[Edge] = IndexSetImpl(mesh.vtoe, e)
   def edges(e: Face): DeLisztSet[Edge] = IndexSetImpl(mesh.ftoe, e)
   def edges(e: Cell): DeLisztSet[Edge] = IndexSetImpl(mesh.ctoe, e)
@@ -39,7 +39,7 @@ object Mesh extends MeshObjImpl {
   def edgesCCW(e: Face): DeLisztSet[Edge] = IndexSetImpl(mesh.ftoe, e)
   def edgesCW(e: Face): DeLisztSet[Edge] = IndexSetImpl(mesh.ftoe, e)
 
-  def faces(e: Mesh): DeLisztSet[Face] = MeshObjSetImpl(mesh.nfaces)
+  def faces(e: Mesh): DeLisztSet[Face] = MeshSetImpl(mesh.nfaces)
   def faces(e: Vertex): DeLisztSet[Face] = IndexSetImpl(mesh.vtof, e)
   def faces(e: Edge): DeLisztSet[Face] = IndexSetImpl(mesh.etof, e)
   def faces(e: Cell): DeLisztSet[Face] = IndexSetImpl(mesh.ctof, e)
@@ -105,15 +105,15 @@ class Mesh extends MeshObj with MetaInteger with MeshObjImpl {
   implicit val faceData = new LabelData[Face]
   implicit val vertexData = new LabelData[Vertex]
 
-  implicit def cellSet : MeshObjSet[Cell] = new MeshObjSetImpl[Cell](ncells)
-  implicit def edgeSet : MeshObjSet[Edge] = new MeshObjSetImpl[Edge](nedges)
-  implicit def faceSet : MeshObjSet[Face] = new MeshObjSetImpl[Face](nfaces)
-  implicit def vertexSet : MeshObjSet[Vertex] = new MeshObjSetImpl[Vertex](nvertices)
+  implicit def cellSet : MeshSet[Cell] = new MeshSetImpl[Cell](ncells)
+  implicit def edgeSet : MeshSet[Edge] = new MeshSetImpl[Edge](nedges)
+  implicit def faceSet : MeshSet[Face] = new MeshSetImpl[Face](nfaces)
+  implicit def vertexSet : MeshSet[Vertex] = new MeshSetImpl[Vertex](nvertices)
 
-  implicit val cellBounds : Map[String,MeshObjSet[Cell]] = new HashMap[String,MeshObjSet[Cell]]()
-  implicit val edgeBounds : Map[String,MeshObjSet[Edge]] = new HashMap[String,MeshObjSet[Edge]]()
-  implicit val faceBounds : Map[String,MeshObjSet[Face]] = new HashMap[String,MeshObjSet[Face]]()
-  implicit val vertexBounds : Map[String,MeshObjSet[Vertex]] = new HashMap[String,MeshObjSet[Vertex]]()
+  implicit val cellBounds : Map[String,MeshSet[Cell]] = new HashMap[String,MeshSet[Cell]]()
+  implicit val edgeBounds : Map[String,MeshSet[Edge]] = new HashMap[String,MeshSet[Edge]]()
+  implicit val faceBounds : Map[String,MeshSet[Face]] = new HashMap[String,MeshSet[Face]]()
+  implicit val vertexBounds : Map[String,MeshSet[Vertex]] = new HashMap[String,MeshSet[Vertex]]()
 
   def positionToVec(v: Object) : Object = {
       val vec = VecImpl[_3, Double]()
@@ -134,10 +134,10 @@ class Mesh extends MeshObj with MetaInteger with MeshObjImpl {
     }
   }
 
-  def meshSet[MO<:MeshObj](implicit ms: MeshObjSet[MO], mm: Manifest[MO]) = ms
-  def boundarySet[MO<:MeshObj](url: String)(implicit bm: Map[String,MeshObjSet[MO]], mm: Manifest[MO]) : MeshObjSet[MO] = {
+  def meshSet[MO<:MeshObj](implicit ms: MeshSet[MO], mm: Manifest[MO]) = ms
+  def boundarySet[MO<:MeshObj](url: String)(implicit bm: Map[String,MeshSet[MO]], mm: Manifest[MO]) : MeshSet[MO] = {
     bm.get(url) match {
-      case Some(bs) => bs.asInstanceOf[MeshObjSet[MO]]
+      case Some(bs) => bs.asInstanceOf[MeshSet[MO]]
       case None => null
     }
   }
