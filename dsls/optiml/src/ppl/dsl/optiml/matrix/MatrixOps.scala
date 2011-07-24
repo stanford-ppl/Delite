@@ -640,18 +640,17 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   // More efficient (though slightly uglier) to express this as a loop directly. 
   // TODO: nicer DeliteOpLoop templates? e.g. DeliteOpReductionLoop, ...
   case class MatrixReduceRows[A:Manifest](x: Exp[Matrix[A]], func: (Exp[Vector[A]], Exp[Vector[A]]) => Exp[Vector[A]])
-    extends DeliteOpLoop[Vector[A]] {
+    extends DeliteOpReduceLike[Vector[A]] {
 
     val size = x.numRows
     val zero = EmptyVector[A]
     
-    val rV = (fresh[Vector[A]], fresh[Vector[A]])
-    val body: Def[Vector[A]] = DeliteReduceElem[Vector[A]](
-      func = transform(reifyEffects(x(v))),
-      zero = transform(this.zero),      
-      rV = (transform(rV._1).asInstanceOf[Sym[Vector[A]]], transform(rV._2).asInstanceOf[Sym[Vector[A]]]),
-      rFunc = transform(reifyEffects(this.func(rV._1, rV._2)))
-    )       
+    lazy val body: Def[Vector[A]] = copyBodyOrElse(DeliteReduceElem[Vector[A]](
+      func = reifyEffects(x(v)),
+      zero = this.zero,
+      rV = this.rV,
+      rFunc = reifyEffects(this.func(rV._1, rV._2))
+    ))
   }
 
   case class MatrixCount[A:Manifest](in: Exp[Matrix[A]], cond: Exp[A] => Exp[Boolean]) 

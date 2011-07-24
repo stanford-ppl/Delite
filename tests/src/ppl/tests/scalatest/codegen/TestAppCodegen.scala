@@ -16,6 +16,7 @@ class TestAppCodegen extends FileDiffSuite {
   
   private def testApp(name: String, app: DeliteApplication, args: Array[String] = Array()) = {
     withOutFile(prefix+name+"-log") {
+      app.debugCodegen = true
       app.generateScalaSource(app.getClass.getSimpleName.dropRight(1), new PrintWriter(new FileWriter(prefix+name+"-src")))
       println("##### all definitions")
       app.globalDefs.foreach { d =>
@@ -24,6 +25,9 @@ class TestAppCodegen extends FileDiffSuite {
         println(info.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
         //println(info.mkString(","))
       }
+    }
+    withOutFile(prefix+name+"-skel") {
+      summarizeFile(prefix+name+"-src")
     }
 /*    withOutFile(prefix+name+"-run") {
       app.setupCompiler()
@@ -50,7 +54,7 @@ class TestAppCodegen extends FileDiffSuite {
     //assertFileEqualsCheck(prefix+name+"-run")
   }
 
-  private def testAppFusing(name: String, app: DeliteApplication) = {
+  private def testAppFusing(name: String, app: DeliteApplication, args: Array[String] = Array()) = {
     withOutFile(prefix+name+"-fusing-log") {
       val save = ppl.delite.framework.Config.opfusionEnabled
       try {
@@ -65,6 +69,9 @@ class TestAppCodegen extends FileDiffSuite {
       } finally {
         ppl.delite.framework.Config.opfusionEnabled = save
       }
+    }
+    withOutFile(prefix+name+"-fusing-skel") {
+      summarizeFile(prefix+name+"-fusing-src")
     }
     //assertFileEqualsCheck(prefix+name+"-fusing-log")
     //assertFileEqualsCheck(prefix+name+"-fusing-src")
@@ -82,22 +89,36 @@ class TestAppCodegen extends FileDiffSuite {
   
   def testGDA = testApp("gda", ppl.apps.ml.gda.GDARunner, Array(datadir+"/ml/gda/q1x.dat",datadir+"/ml/gda/q1y.dat"))
 
+  def testGDAFusing = testAppFusing("gda", ppl.apps.ml.gda.GDARunner, Array(datadir+"/ml/gda/q1x.dat",datadir+"/ml/gda/q1y.dat"))
+
   def testKMeans = testApp("kmeans", ppl.apps.ml.kmeans.kmeansRunner, Array(datadir+"/ml/kmeans/mandrill-large.dat",datadir+"/ml/kmeans/initmu.dat"))
+
+  def testKMeansFusing = testAppFusing("kmeans", ppl.apps.ml.kmeans.kmeansRunner, Array(datadir+"/ml/kmeans/mandrill-large.dat",datadir+"/ml/kmeans/initmu.dat"))
 
   def testLBPDenoise = testApp("lbpdenoise", ppl.apps.ml.lbpdenoise.LBPDenoiseRunner, Array(datadir+"/ml/lbp/onlyedges1",datadir+"/ml/lbp/graphprint1"))
 
+  def testLBPDenoiseFusing = testAppFusing("lbpdenoise", ppl.apps.ml.lbpdenoise.LBPDenoiseRunner, Array(datadir+"/ml/lbp/onlyedges1",datadir+"/ml/lbp/graphprint1"))
+
   def testLinReg = testApp("linreg", ppl.apps.ml.linreg.LinRegRunner, Array(datadir+"/ml/linreg/x-1024.dat",datadir+"/ml/linreg/y-1024.dat"))
+
+  def testLinRegFusing = testAppFusing("linreg", ppl.apps.ml.linreg.LinRegRunner, Array(datadir+"/ml/linreg/x-1024.dat",datadir+"/ml/linreg/y-1024.dat"))
 
   def testNaiveBayes = testApp("nb", ppl.apps.ml.nb.NaiveBayesRunner, Array(datadir+"/ml/nb/MATRIX.TRAIN.25k",datadir+"/ml/nb/MATRIX.TEST"))
 
+  def testNaiveBayesFusing = testAppFusing("nb", ppl.apps.ml.nb.NaiveBayesRunner, Array(datadir+"/ml/nb/MATRIX.TRAIN.25k",datadir+"/ml/nb/MATRIX.TEST"))
+
   def testRBM = testApp("rbm", ppl.apps.ml.rbm.RBMRunner, Array(datadir+"/ml/rbm/mnist2000x10.dat","2000","2000"))
+
+  def testRBMFusing = testAppFusing("rbm", ppl.apps.ml.rbm.RBMRunner, Array(datadir+"/ml/rbm/mnist2000x10.dat","2000","2000"))
 
   def testSVM = testApp("svm", ppl.apps.ml.svm.SVMRunner, Array(datadir+"/ml/svm/MATRIX.TRAIN.800",datadir+"/ml/svm/MATRIX.TEST","output","10"))
 
-  def testSVMFusing = testAppFusing("svm", ppl.apps.ml.svm.SVMRunner) //, Array(datadir+"/ml/svm/MATRIX.TRAIN.800",datadir+"/ml/svm/MATRIX.TEST","output","10"))
+  def testSVMFusing = testAppFusing("svm", ppl.apps.ml.svm.SVMRunner, Array(datadir+"/ml/svm/MATRIX.TRAIN.800",datadir+"/ml/svm/MATRIX.TEST","output","10"))
 
   // --- robotics
   
   def testGradient = testApp("gradient", ppl.apps.robotics.gradient.gradientRunner)
+
+  def testGradientFusing = testAppFusing("gradient", ppl.apps.robotics.gradient.gradientRunner)
 
 }

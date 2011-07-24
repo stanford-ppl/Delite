@@ -33,7 +33,7 @@ trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case Reflect(DeliteIfThenElse(c,a,b), u, es) => reflectMirrored(Reflect(DeliteIfThenElse(f(c),f(a),f(b)), mapOver(f,u), f(es)))
-    case DeliteIfThenElse(c,a,b) => DeliteIfThenElse(f(c),f(a),f(b))
+    case DeliteIfThenElse(c,a,b) => reflectPure(DeliteIfThenElse(f(c),f(a),f(b)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
@@ -90,9 +90,9 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
       stream.println("val " + quote(sym) + " = {")
       (a,b) match {
         case (Const(()), Const(())) => stream.println("()")
-        case (_, Const(())) => generateThenOnly(sym, c, a, !deliteKernel)
-        case (Const(()), _) => generateElseOnly(sym, c, b, !deliteKernel)
-        case _ => generateThenElse(sym, c, a, b, !deliteKernel)
+        case (_, Const(())) => generateThenOnly(sym, c, a, !deliteKernel && !debugCodegen)
+        case (Const(()), _) => generateElseOnly(sym, c, b, !deliteKernel && !debugCodegen)
+        case _ => generateThenElse(sym, c, a, b, !deliteKernel && !debugCodegen)
       }
       stream.println("}")
       //deliteKernel = save

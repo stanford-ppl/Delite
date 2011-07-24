@@ -433,12 +433,12 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val in = (start::end)    
     val size = in.length
     val zero = a.zero(init).mutable
-    def reduce = (a,b) => a += b
+    def reduce = (a,b) => a += b  
     
     def m = manifest[A]
     def a = implicitly[Arith[A]]
     def c = implicitly[Cloneable[A]]
-  }   
+  }
   
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
 
@@ -446,22 +446,27 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
     //reflectEffect(Sum(start, end, block))
     val firstBlock = block(start)
-    val out = reflectMutable(Sum(start+1, end, block, firstBlock))
+    val out = reflectPure(Sum(start+1, end, block, firstBlock))
     // add the first value back in (exploit commutativity of +)
-    out += firstBlock      
-    out.unsafeImmutable
+//    out += firstBlock      
+//    out.unsafeImmutable
+    out + firstBlock
   }
   
   def optiml_sumif[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
     val firstCond = cond(start)
     val firstBlock = block(start)
-    val out = reflectMutable(SumIf(start+1, end, cond, block, firstBlock))
+    val out = reflectPure(SumIf(start+1, end, cond, block, firstBlock))
     // add the first value back in (exploit commutativity of +)
     if (firstCond) {
-      out += firstBlock
-      ()
+//      out += firstBlock
+//      ()
+      out + firstBlock
     }
-    out.unsafeImmutable
+//    out.unsafeImmutable
+    else {
+      out
+    }
   }
 
   /**
@@ -684,10 +689,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    * Mirroring
    */
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case s@Sum(st,e,b,init) => toAtom(new Sum(f(st),f(e),b,f(init))(s.m, s.a, s.c) { override val transform = f })
-    case Reflect(s@Sum(st,e,b,init), u, es) => reflectMirrored(Reflect(new Sum(f(st),f(e),b,f(init))(s.m, s.a, s.c) { override val transform = f }, mapOver(f,u), f(es)))
-    case s@SumIf(st,e,c,b,init) => toAtom(new SumIf(f(st),f(e),c,b,f(init))(s.m, s.a, s.c) { override val transform = f })
-    case Reflect(s@SumIf(st,e,c,b,init), u, es) => reflectMirrored(Reflect(new SumIf(f(st),f(e),c,b,f(init))(s.m,s.a,s.c) { override val transform = f }, mapOver(f,u), f(es)))
+    case s@Sum(st,e,b,init) => reflectPure(new Sum(f(st),f(e),f(b),f(init))(s.m, s.a, s.c) { type OpType = s.type; override val original = Some(f,s:OpType) })
+//    case Reflect(s@Sum(st,e,b,init), u, es) => reflectMirrored(Reflect(new Sum(f(st),f(e),b,f(init))(s.m, s.a, s.c) { override val transform = f }, mapOver(f,u), f(es)))
+    case s@SumIf(st,e,c,b,init) => reflectPure(new SumIf(f(st),f(e),f(c),f(b),f(init))(s.m, s.a, s.c) { type OpType = s.type; override val original = Some(f,s:OpType) })
+//    case Reflect(s@SumIf(st,e,c,b,init), u, es) => reflectMirrored(Reflect(new SumIf(f(st),f(e),c,b,f(init))(s.m,s.a,s.c) { override val transform = f }, mapOver(f,u), f(es)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }
