@@ -80,12 +80,12 @@ trait LanguageOps extends Base { this: DeLiszt =>
 
 	def foreach[MO<:MeshObj](x : Rep[MeshSet[MO]])(fn : Rep[MO] => Rep[Unit]) : Rep[Unit]
 
-  def MATH_PI() : Rep[Float]
+  def MATH_PI() : Rep[Double]
   def MIN_FLOAT() : Rep[Float]
   def MAX_FLOAT() : Rep[Float]
-  def sqrt(a: Rep[Float]) : Rep[Float]
+  def sqrt(a: Rep[Double]) : Rep[Double]
   def fabs(value : Rep[Float]) : Rep[Float]
-  def MPI_Wtime() : Rep[Float]
+  def MPI_Wtime() : Rep[Double]
 }
 
 trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
@@ -134,17 +134,19 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   case class DeLisztSize[MO<:MeshObj:Manifest](s: Exp[MeshSet[MO]]) extends Def[Int]
 
-  case class DeLisztForeach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]], v: Sym[MO], func: Exp[Unit])
-    extends DeliteOpForeach[MO]
+  case class DeLisztForeach[MO<:MeshObj:Manifest](in: Exp[MeshSet[MO]], func: Exp[MO] => Exp[Unit])
+    extends DeliteOpForeach[MO] {
+
+    val sync = (n:Exp[Int]) => List()
+    val size = in.size
+  }
   
   case class DeLisztID[MO<:MeshObj:Manifest](x: Exp[MO]) extends Def[Int]
 
-  case class MathPi() extends Def[Float]
   case class MinFloat() extends Def[Float]
   case class MaxFloat() extends Def[Float]
-  case class MathSqrt(a: Exp[Float]) extends Def[Float]
   case class MathFAbs(a: Exp[Float]) extends Def[Float]
-  case class MPIWTime() extends Def[Float]
+  case class MPIWTime() extends Def[Double]
 
   /******* Language functions *********/
   def _init() = reflectEffect(DeLisztInit())
@@ -207,9 +209,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 	def size[MO<:MeshObj](s : Exp[MeshSet[MO]])(implicit m : Manifest[MO]) = reflectPure(DeLisztSize(s))
 
 	def foreach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]])(block: Exp[MO] => Exp[Unit]) = {
-    val v = fresh[MO]
-    val func = reifyEffects(block(v))
-    reflectEffect(DeLisztForeach(x, v, func))
+    reflectEffect(DeLisztForeach(x, block))
   }
 
 	def ID[MO<:MeshObj:Manifest](x : Exp[MO]) = reflectPure(DeLisztID(x))
@@ -217,7 +217,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def MATH_PI() = MathPi()
   def MIN_FLOAT() = MinFloat()
   def MAX_FLOAT() = MaxFloat()
-  def sqrt(a: Exp[Float]) = MathSqrt(a)
+  def sqrt(a: Exp[Double]) = MathSqrt(a)
   def fabs(a: Exp[Float]) = MathFAbs(a)
   def MPI_Wtime() = MPIWTime()
 }
@@ -254,10 +254,8 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
 
       case DeLisztFlip(e) => emitValDef(sym, "generated.scala.Mesh.flip(" + quote(e) + ")")
 
-      case MathPi() => emitValDef(sym, "Math.Pi")
       case MinFloat() => emitValDef(sym, "scala.Float.MinValue")
       case MaxFloat() => emitValDef(sym, "scala.Float.MaxValue")
-      case MathSqrt(a) => emitValDef(sym, "Math.sqrt(" + quote(a) + ")")
       case MathFAbs(a) => emitValDef(sym, "Math.abs(" + quote(a) + ")")
       case MPIWTime() => emitValDef(sym, "SOMETHING")
       case _ => super.emitNode(sym, rhs)

@@ -18,7 +18,7 @@ import ppl.delite.framework.DeliteApplication
 trait DeLisztApplicationRunner extends DeLisztApplication with DeliteApplication with DeLisztExp
  
 trait DeLisztApplication extends DeliteApplication with DeLiszt with DeLisztLift with DeLisztLibrary {
-  def liftedMain(x: Rep[Array[String]]) = {
+  override def liftedMain(x: Rep[Array[String]]) = {
     _init()
     this.args = x
     val y = main()

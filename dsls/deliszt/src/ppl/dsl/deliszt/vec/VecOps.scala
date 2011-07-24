@@ -10,8 +10,8 @@ import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
 
-trait VecOps extends DSLType with Variables with MetaInteger {
-  this: DeLiszt =>
+trait VecOps extends DSLType with Variables {
+  this: DeLiszt with MetaInteger =>
 
   object Vec {
     def apply[N<:IntM:Manifest:MVal,A]() = vec_obj_n_new[N,A]()
@@ -69,11 +69,11 @@ trait VecOps extends DSLType with Variables with MetaInteger {
 
     def unary_-(implicit o : Arith[A]) : Rep[Vec[N,A]] = vec_negate(u)
     
-    def size : Rep[Int]
+    def size : Rep[Int] = vec_size(u)
     def sum(implicit a: Arith[A]) = vec_sum(u)
     def abs(implicit a: Arith[A]) = vec_abs(u)
 
-    def &[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal](rhs : Rep[Vec[M,A]]) = vec_concat(u, rhs)
+    //def &[M<:IntM:Manifest:MVal](rhs : Rep[Vec[M,A]]) = vec_concat[N,M,N+M,A](u, rhs)
   }
 
   /* Language ops */
@@ -108,16 +108,13 @@ trait VecOps extends DSLType with Variables with MetaInteger {
   def vec_abs[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
   
   def vec_negate[N<:IntM:Manifest:MVal, A:Manifest](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
-  def vec_concat[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal, A:Manifest](x: Rep[Vec[N,A]], rhs: Rep[Vec[M,A]]): Rep[Vec[N#Add[M],A]]
+  //def vec_concat[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal, O<:IntM:Manifest,  A:Manifest](x: Rep[Vec[N,A]], rhs: Rep[Vec[M,A]]): Rep[Vec[O,A]]
 }
 
-trait CleanRoom {
-}
-
-trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp with CleanRoom {
+trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   this: VecImplOps with DeLisztExp =>
 
-  def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
+  override def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
@@ -132,18 +129,13 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp with CleanRoom 
   }
 
   case class VecApply[N<:IntM:Manifest:MVal,A:Manifest](x: Exp[Vec[N,A]], n: Exp[Int]) extends Def[A]
-  case class VecSize[N<:IntM:Manifest:MVal,A:Manifest](x: Exp[Vec[N,A]]) extends Def[Int]
   case class VecUpdate[N<:IntM:Manifest:MVal,A:Manifest](x: Exp[Vec[N,A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
 
-  case class VecConcat[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]], y: Exp[Vec[M,A]]) extends Def[Vec[N#Add[M],A]]
+  // case class VecConcat[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal, O<:IntM:Manifest, A:Manifest](x: Exp[Vec[N,A]], y: Exp[Vec[M,A]]) extends Def[Vec[O,A]]
 
   ////////////////////////////////
   // implemented via delite ops
 
-  abstract class DeliteOpVecLoop[N<:IntM:Manifest:MVal, A:Manifest] extends DeliteOpLoop[Vec[N,A]] {
-    val size: Exp[Int] //inherited
-  }
-  
   abstract class VecMap[N<:IntM:Manifest:MVal,A:Manifest,B:Manifest](in: Exp[Vec[N,A]], func: Exp[A] => Exp[B])
     extends DeliteOpMap[A,B,Vec[N,B]] {
 
@@ -158,96 +150,67 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp with CleanRoom 
     def m = manifest[A]
     def a = implicitly[Arith[A]]
   }
+  
+  abstract class VecArithmeticZipWith[N<:IntM:Manifest:MVal,A:Manifest:Arith](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]]) extends DeliteOpZipWith[A,A,A,Vec[N,A]] {
+    def alloc = Vec[N,A]()
+    val size = inA.size
+    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
+  }
 
   case class VecNegate[N<:IntM:Manifest:MVal,A:Manifest:Arith](in: Exp[Vec[N,A]])
-    extends VecMap[N,A,A](in, (v:Exp[A]) => -v)
+    extends VecArithmeticMap(in) {
+
+    def func = e => -e
+  }
 
   case class VecPlus[N<:IntM:Manifest:MVal, A:Manifest:Arith](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]]) 
-    extends DeliteOpVecLoop[N,A] {
+    extends VecArithmeticZipWith(inA, inB) {
 
-    val size = inA.size
-    val v = fresh[Int]
-    val body: Def[Vec[N,A]] = DeliteCollectElem[A,Vec[N,A]](
-      alloc = reifyEffects(Vec[N,A]()),
-      func = reifyEffects(inA(v) + inB(v))
-    )
+    def func = (a,b) => a + b
   }
 
   case class VecPlusScalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](in: Exp[Vec[N,A]], y: Exp[A])
-    extends DeliteOpMap[A,A,Vec[N,A]] {
+    extends VecArithmeticMap(in) {
 
-    val alloc = reifyEffects(Vec[N,A]())
-    val v = fresh[A]
-    val func = reifyEffects(v + y)
+    def func = e => e + y
   }
 
   case class VecMinus[N<:IntM:Manifest:MVal, A:Manifest:Arith](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]])
-    extends DeliteOpVecLoop[N,A] {
+    extends VecArithmeticZipWith(inA, inB) {
 
-    val size = inA.size
-    val v = fresh[Int]
-    val body: Def[Vec[N,A]] = DeliteCollectElem[A,Vec[N,A]](
-      alloc = reifyEffects(Vec[N,A]()),
-      func = reifyEffects(inA(v) - inB(v))
-    )
+    def func = (a,b) => a - b
   }
 
   case class VecMinusScalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](in: Exp[Vec[N,A]], y: Exp[A])
-    extends DeliteOpMap[A,A,Vec[N,A]] {
+    extends VecArithmeticMap(in) {
 
-    val alloc = reifyEffects(Vec[N,A]())
-    val v = fresh[A]
-    val func = reifyEffects(v - y)
+    def func = e => e - y
   }
 
-  abstract case class VecTimes[N<:IntM:Manifest:MVal, A:Manifest:Arith](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]]) extends DeliteOpVecLoop[N,A] {
-    def mev = manifest[A]
-    def aev = implicitly[Arith[A]]
-  }
-  
-  class VecTimesFresh[N<:IntM:Manifest:MVal, A:Manifest:Arith](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]]) extends VecTimes(inA, inB) {
-    val size = inA.size
-    val v = fresh[Int]
-    val body: Def[Vec[N,A]] = DeliteCollectElem[A,Vec[N,A]](
-      alloc = reifyEffects(Vec[N,A]()),
-      func = reifyEffects(inA(v) * inB(v))
-    )
+  case class VecTimes[N<:IntM:Manifest:MVal, A:Manifest:Arith](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]])
+    extends VecArithmeticZipWith(inA, inB) {
+
+    def func = (a,b) => a * b
   }
 
-  abstract case class VecTimesScalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](in: Exp[Vec[N,A]], y: Exp[A]) extends DeliteOpVecLoop[N,A] {
-    def mev = manifest[A]
-    def aev = implicitly[Arith[A]]
-  }
+  case class VecTimesScalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](in: Exp[Vec[N,A]], y: Exp[A])
+    extends VecArithmeticMap(in) {
 
-  class VecTimesScalarFresh[N<:IntM:Manifest:MVal, A:Manifest:Arith](in: Exp[Vec[N,A]], y: Exp[A]) extends VecTimesScalar[N,A](in,y) {
-    val size = in.size
-    val v = fresh[Int]
-    val body: Def[Vec[N,A]] = DeliteCollectElem[A,Vec[N,A]](
-      alloc = reifyEffects(Vec[N,A]()),
-      func = reifyEffects(in(v) * y)
-    )
+    def func = e => e * y
   }
 
   case class VecDivide[N<:IntM:Manifest:MVal, A:Manifest:Arith](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]])
-    extends DeliteOpVecLoop[N,A] {
+    extends VecArithmeticZipWith(inA, inB) {
 
-    val size = inA.size
-    val v = fresh[Int]
-    val body: Def[Vec[N,A]] = new DeliteCollectElem[A,Vec[N,A]](
-      alloc = reifyEffects(Vec[N,A]()),
-      func = inA(v) / inB(v)
-    )
+    def func = (a,b) => a * b
   }
 
   case class VecDivideScalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](in: Exp[Vec[N,A]], y: Exp[A])
-    extends DeliteOpVecLoop[N,A] {
+    extends VecArithmeticMap(in) {
 
-    val size = in.size
-    val v = fresh[Int]
-    val body: Def[Vec[N,A]] = new DeliteCollectElem[A,Vec[N,A]](
-      alloc = reifyEffects(Vec[N,A]()),
-      func = in(v) / y
-    )
+    def func = e => e / y
   }
   
   case class VecSum[N<:IntM:Manifest:MVal, A:Manifest:Arith](in: Exp[Vec[N,A]]) 
@@ -267,18 +230,20 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp with CleanRoom 
     def func = e => e.abs
   }
 
-  case class VecMin[N<:IntM:Manifest:MVal, A:Manifest:Ordering](in: Exp[Vec[N,A]])
+  case class VecMin[N<:IntM:Manifest:MVal, A:Manifest:Ordering:HasMinMax](in: Exp[Vec[N,A]])
     extends DeliteOpReduce[A] {
 
-    val v = (fresh[A],fresh[A])
-    val func = reifyEffects(if (v._1 < v._2) v._1 else v._2)
+    val size = in.size
+    val zero = implicitly[HasMinMax[A]].maxValue
+    def func = (a,b) => if (a < b) a else b
   }
 
-  case class VecMax[N<:IntM:Manifest:MVal, A:Manifest:Ordering](in: Exp[Vec[N,A]])
+  case class VecMax[N<:IntM:Manifest:MVal, A:Manifest:Ordering:HasMinMax](in: Exp[Vec[N,A]])
     extends DeliteOpReduce[A] {
 
-    val v = (fresh[A],fresh[A])
-    val func = reifyEffects(if (v._1 > v._2) v._1 else v._2)
+    val size = in.size
+    val zero = implicitly[HasMinMax[A]].minValue
+    def func = (a,b) => if (a > b) a else b
   }
 
   //////////////
@@ -319,8 +284,8 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp with CleanRoom 
   def vec_plus_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecPlusScalar(x,y))
   def vec_minus[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecMinus(x,y))
   def vec_minus_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecMinusScalar(x,y))
-  def vec_times[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(new VecTimesFresh(x,y))
-  def vec_times_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(new VecTimesScalarFresh(x,y))
+  def vec_times[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(new VecTimes(x,y))
+  def vec_times_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(new VecTimesScalar(x,y))
 
   def vec_divide[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecDivide(x,y))
   def vec_divide_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecDivideScalar(x,y))
@@ -330,8 +295,8 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp with CleanRoom 
   def vec_sum[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]]) = reflectPure(VecSum(x))
   def vec_abs[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]]) = reflectPure(VecAbs(x))
   
-  def vec_size[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]]) = reflectPure(VecSize(x))
-  def vec_concat[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]], y: Exp[Vec[M,A]]) = reflectPure(VecConcat(x,y))
+  def vec_size[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]]) = MIntDepth[N]
+  //def vec_concat[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal, O<:IntM, A:Manifest](x: Exp[Vec[N,A]], y: Exp[Vec[M,A]]) = reflectPure(VecConcat[N,M,O,A](x,y))
 
   /* Language ops */
   def cross[A:Arith](a: Exp[Vec[_3,A]], b: Exp[Vec[_3,A]]) : Rep[Vec[_3,A]]

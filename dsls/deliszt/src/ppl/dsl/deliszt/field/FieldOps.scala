@@ -7,10 +7,11 @@ import ppl.dsl.deliszt.datastruct.scala._
 import ppl.delite.framework.DSLType
 import reflect.Manifest
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
 
-trait FieldOps extends DSLType with Variables {
+trait FieldOps extends DSLType with Variables with OverloadHack {
   this: DeLiszt =>
 
   implicit def repFieldToFieldOps[MO <: MeshObj:Manifest, VT : Manifest](x: Rep[Field[MO, VT]]) = new fieldOpsCls[MO,VT](x)
@@ -24,8 +25,8 @@ trait FieldOps extends DSLType with Variables {
    * This class defines the public interface for the Field[T] class.
    */
   class fieldOpsCls[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]]) {
-    def apply(mo : Rep[MO]) = field_apply(x, mo)
-    def update(mo:Rep[MO], v:Rep[VT]) = field_update(x,mo,v)
+    def apply(mo : Rep[MO])(implicit o: Overloaded1) = field_apply(x, mo)
+    def update(mo:Rep[MO], v:Rep[VT])(implicit o: Overloaded1) = field_update(x,mo,v)
 
     def apply(n : Rep[Int]) = field_apply(x, n)
     def update(n : Rep[Int], v : Rep[VT]) = field_update(x, n,v)
@@ -38,8 +39,8 @@ trait FieldOps extends DSLType with Variables {
   def label[MO<:MeshObj:Manifest,VT:Manifest](url: Rep[String]): Rep[Field[MO,VT]]
   def field_obj_new[MO<:MeshObj:Manifest,VT:Manifest](): Rep[Field[MO,VT]]
 
-  def field_apply[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]], n: Rep[Int]): Rep[VT]
-  def field_update[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]], n: Rep[Int], v: Rep[VT]): Rep[Unit]
+  def field_apply[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]], n: Rep[Int])(implicit o: Overloaded1): Rep[VT]
+  def field_update[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]], n: Rep[Int], v: Rep[VT])(implicit o: Overloaded1): Rep[Unit]
   def field_size[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]]): Rep[Int]
 }
 
@@ -91,8 +92,8 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
 
   def field_obj_new[MO<:MeshObj:Manifest,VT:Manifest]() = reflectMutable(FieldObjectNew[MO,VT]())
 
-  def field_apply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) = FieldIntApply[MO,VT](x,n)
-  def field_update[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT]) = reflectWrite(x)(FieldIntUpdate[MO,VT](x,n,v))
+  def field_apply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int])(implicit o: Overloaded1) = FieldIntApply[MO,VT](x,n)
+  def field_update[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT])(implicit o: Overloaded1) = reflectWrite(x)(FieldIntUpdate[MO,VT](x,n,v))
   def field_size[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]]) = FieldSize(x)
 }
 

@@ -13,6 +13,6 @@ trait LabelField[MO <: MeshObj, VT] extends Field[MO,VT] {
   def update(e: MO, v: VT) = throw new RuntimeException()
 
   def size : Int
-  def dcApply(idx: Int)
-  def dcUpdate(idx: Int, x: MO) = throw new RuntimeException()
+  def dcApply(idx: Int) : VT
+  def dcUpdate(idx: Int, x: VT) = throw new RuntimeException()
 }

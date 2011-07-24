@@ -79,7 +79,7 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
    * Vec
    */
 
-  implicit def VecArith[N <: IntM : Manifest:MVal, T: Arith : Manifest]: Arith[Vec[N, T]] = new Arith[Vec[N, T]] {
+  /*implicit def VecArith[N <: IntM : Manifest:MVal, T: Arith : Manifest]: Arith[Vec[N, T]] = new Arith[Vec[N, T]] {
     // these are used in sum; dynamic checks are required due to conditionals
     def +(a: Rep[Vec[N, T]], b: Rep[Vec[N, T]]) = a + b
     def -(a: Rep[Vec[N, T]], b: Rep[Vec[N, T]]) = a - b
@@ -92,14 +92,14 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
     
     def empty : Rep[Vec[_0,T]] = Vec[_0,T]()
     def zero(a: Rep[Vec[N,T]]) = Vec[N,T]()
-  }
+  }*/
 
 
   /**
    * Mat
    */
 
-  implicit def MatArith[R <: IntM : Manifest:MVal, C <: IntM : Manifest:MVal, T: Arith : Manifest]: Arith[Mat[R, C, T]] = new Arith[Mat[R, C, T]] {
+  /*implicit def MatArith[R <: IntM : Manifest:MVal, C <: IntM : Manifest:MVal, T: Arith : Manifest]: Arith[Mat[R, C, T]] = new Arith[Mat[R, C, T]] {
     def +(a: Rep[Mat[R, C, T]], b: Rep[Mat[R, C, T]]) = a + b
     def -(a: Rep[Mat[R, C, T]], b: Rep[Mat[R, C, T]]) = a - b
     def *(a: Rep[Mat[R, C, T]], b: Rep[Mat[R, C, T]]) = a * b
@@ -111,7 +111,7 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
     
     def empty : Rep[Mat[_0,_0,T]] = Mat[_0,_0,T]()
     def zero(a: Rep[Mat[R,C,T]]) = Mat[R,C,T]()
-  }
+  } */
 
   /**
    * Primitives

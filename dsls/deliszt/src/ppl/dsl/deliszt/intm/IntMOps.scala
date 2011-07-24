@@ -11,10 +11,10 @@ import ppl.dsl.deliszt.datastruct.scala._
 import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 
-trait IntMOps extends DSLType with Variables with MetaInteger {
-  this: DeLiszt =>
+trait IntMOps extends DSLType with Variables {
+  this: DeLiszt with MetaInteger =>
 
-  val _0 = intm_obj[_0]
+  /* val _0 = intm_obj[_0]
   val _1 = intm_obj[_1]
   val _2 = intm_obj[_2]
   val _3 = intm_obj[_3]
@@ -38,13 +38,13 @@ trait IntMOps extends DSLType with Variables with MetaInteger {
   val _21 = intm_obj[_21]
   val _22 = intm_obj[_22]
 
-  def intm_obj[N<:IntM:MVal] : Rep[IntM]
+  def intm_obj[N<:IntM:MVal] : Rep[IntM] */
 }
 
 trait IntMOpsExp extends IntMOps with VariablesExp {
   this: DeLisztExp  =>
 
-  //////////////////////////////////////////////////
+ /* //////////////////////////////////////////////////
   // implemented via method on real data structure
   case class IntMObject[N<:IntM:MVal]() extends Def[IntM] {
     val depth = MIntDepth[N]
@@ -58,7 +58,7 @@ trait IntMOpsExp extends IntMOps with VariablesExp {
   def intm_obj[N<:IntM:MVal] = IntMObject[N]
 
   ///////////////////
-  // class interface
+  // class interface */
 }
 
 trait ScalaGenIntMOps extends ScalaGenBase {
@@ -67,7 +67,7 @@ trait ScalaGenIntMOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case m@IntMObject() => emitValDef(sym, "generated.scala.MetaInteger._" + m.depth)
+    //case m@IntMObject() => emitValDef(sym, "generated.scala.MetaInteger._" + m.depth)
     case _ => super.emitNode(sym, rhs)
   }
 }
