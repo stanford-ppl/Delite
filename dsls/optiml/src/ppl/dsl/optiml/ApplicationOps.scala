@@ -14,7 +14,7 @@ import ppl.dsl.optiml.datastruct.scala._
 trait ApplicationOps extends BinarizedGradientPyramidOps with RectOps with BiGGDetectionOps with BinarizedGradientTemplateOps
   with DenoiseVertexDataOps with DenoiseEdgeDataOps
 trait ApplicationOpsExp extends BinarizedGradientPyramidOpsExp with RectOpsExp with BiGGDetectionOpsExp with BinarizedGradientTemplateOpsExp
-  with DenoiseVertexDataOpsExp with DenoiseEdgeDataOpsExp { this: OptiMLExp => }
+  with DenoiseVertexDataOpsExp with DenoiseEdgeDataOpsExp
 trait ScalaGenApplicationOps extends ScalaGenBinarizedGradientPyramidOps with ScalaGenRectOps with ScalaGenBiGGDetectionOps with ScalaGenBinarizedGradientTemplateOps
   with ScalaGenDenoiseVertexDataOps with ScalaGenDenoiseEdgeDataOps
 
@@ -267,7 +267,7 @@ trait BinarizedGradientPyramidOps extends DSLType with Variables with OverloadHa
   def binarizedgradientpyramid_fixedLevelIndex(__x: Rep[BinarizedGradientPyramid]): Rep[Int]
 }
 
-trait BinarizedGradientPyramidOpsExp extends BinarizedGradientPyramidOps with EffectExp { this: OptiMLExp =>
+trait BinarizedGradientPyramidOpsExp extends BinarizedGradientPyramidOps with EffectExp {
   case class BinarizedGradientPyramidObjectNew(pyramid: Exp[Vector[GrayscaleImage]], start_level: Exp[Int], levels: Exp[Int], fixedLevelIndex: Exp[Int]) extends Def[BinarizedGradientPyramid]
   case class BinarizedGradientPyramidPyramid(__x: Exp[BinarizedGradientPyramid]) extends Def[Vector[GrayscaleImage]]
   case class BinarizedGradientPyramidStart_level(__x: Exp[BinarizedGradientPyramid]) extends Def[Int]

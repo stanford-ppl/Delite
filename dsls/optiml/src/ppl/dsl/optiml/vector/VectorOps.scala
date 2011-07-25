@@ -427,10 +427,12 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   
   case class VectorTrans[A:Manifest](in: Exp[Vector[A]])
     extends DeliteOpMap[A,A,Vector[A]] {
+    val size = copyTransformedOrElse(_.size)(in.length)
     
     def alloc = Vector[A](in.length, !in.isRow)
     def func = e => e 
-    val size = in.length
+
+    def m = manifest[A]
   }
 
   case class VectorUpdateIndices[A:Manifest](x: Exp[Vector[A]], in: Exp[IndexVector], y: Exp[A])
@@ -784,8 +786,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     case VectorApply(x, n) => vector_apply(f(x), f(n))
     case VectorLength(x) => vector_length(f(x))
     case VectorIsRow(x) => vector_isRow(f(x))
-    case VectorTrans(x) => vector_trans(f(x))
     // implemented as DeliteOpSingleTask and DeliteOpLoop
+    case e@VectorTrans(x) => reflectPure(new { override val original = Some(f,e) } with VectorTrans(f(x))(e.m))(mtype(manifest[A]))
     case e@VectorOuter(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorOuter(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
     case e@VectorPlus(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorPlus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
     case e@VectorMinus(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorMinus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
