@@ -75,7 +75,7 @@ trait UntilConverged extends OptiMLApplication {
     while (i < rows) {
       j = 0
       while (j < cols) {
-        val data = DenoiseVertexData(1, Vector.zeros(numRings) map {_ + 1}, Vector.zeros(numRings))
+        val data = DenoiseVertexData(1, Vector.zeros(numRings) map {_ + 1.0 }, Vector.zeros(numRings))
         val vertex = MessageVertex(g, data)
 
         g.addVertex(vertex)

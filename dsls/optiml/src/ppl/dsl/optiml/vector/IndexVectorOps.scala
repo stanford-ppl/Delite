@@ -48,8 +48,9 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   case class IndexVectorConstruct[B:Manifest](in: Exp[IndexVector], func: Exp[Int] => Exp[B])
     extends DeliteOpMap[Int,B,Vector[B]] {
 
+    val size = copyTransformedOrElse(_.size)(in.length)
+    
     def alloc = Vector[B](in.length, in.isRow)
-    val size = in.length
 
     def m = manifest[B]
   }
@@ -71,7 +72,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case i@IndexVectorConstruct(in,b) => reflectPure(new IndexVectorConstruct(f(in),f(b))(i.m) { type OpType = i.type; override val original = Some(f,i:OpType) })
+    case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m))
 //    case Reflect(i@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new IndexVectorConstruct(f(in),b)(i.m) { override val transform = f }, mapOver(f,u), f(es)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
