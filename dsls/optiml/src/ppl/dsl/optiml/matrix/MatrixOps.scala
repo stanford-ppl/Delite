@@ -237,8 +237,12 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   //case class MatrixApply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) extends Def[A]
   case class MatrixDCApply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[A]
   case class MatrixVView[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends Def[Vector[A]]
-  case class MatrixGetRow[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixRow[A]]
-  case class MatrixGetCol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixCol[A]]
+  case class MatrixGetRow[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixRow[A]] {
+    val m = manifest[A]
+  }
+  case class MatrixGetCol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixCol[A]] {
+    val m = manifest[A]
+  }
 
   case class MatrixNumRows[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixNumCols[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
@@ -799,8 +803,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     (e match {
       case MatrixNumRows(x) => matrix_numrows(f(x))
       case MatrixNumCols(x) => matrix_numcols(f(x))
-      case MatrixGetRow(x,i) => matrix_getrow(f(x),f(i))
-      case MatrixGetCol(x,i) => matrix_getcol(f(x),f(i))
+      case e@MatrixGetRow(x,i) => matrix_getrow(f(x),f(i))(e.m)
+      case e@MatrixGetCol(x,i) => matrix_getcol(f(x),f(i))(e.m)
       case MatrixApply(x,i,j) => matrix_apply(f(x),f(i),f(j))
       case MatrixDCApply(x,i) => matrix_dcapply(f(x),f(i))
       case MatrixVView(x, start, stride, length, isRow) => matrix_vview(f(x),f(start),f(stride),f(length),f(isRow)) // should set original, too?
