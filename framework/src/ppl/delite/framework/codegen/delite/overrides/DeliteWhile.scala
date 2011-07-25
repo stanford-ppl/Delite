@@ -48,8 +48,8 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case DeliteWhile(c,b) => reflectPure(DeliteWhile(f(c),f(b)))
-    case Reflect(DeliteWhile(c,b), u, es) => reflectMirrored(Reflect(DeliteWhile(f(c),f(b)), mapOver(f,u), f(es)))
+    case DeliteWhile(c,b) => reflectPure(DeliteWhile(f(c),f(b)))(mtype(manifest[A]))
+    case Reflect(DeliteWhile(c,b), u, es) => reflectMirrored(Reflect(DeliteWhile(f(c),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
