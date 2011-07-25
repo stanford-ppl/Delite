@@ -14,7 +14,7 @@ import ppl.dsl.optiml.datastruct.scala._
 trait ApplicationOps extends BinarizedGradientPyramidOps with RectOps with BiGGDetectionOps with BinarizedGradientTemplateOps
   with DenoiseVertexDataOps with DenoiseEdgeDataOps
 trait ApplicationOpsExp extends BinarizedGradientPyramidOpsExp with RectOpsExp with BiGGDetectionOpsExp with BinarizedGradientTemplateOpsExp
-  with DenoiseVertexDataOpsExp with DenoiseEdgeDataOpsExp
+  with DenoiseVertexDataOpsExp with DenoiseEdgeDataOpsExp { this: OptiMLExp => }
 trait ScalaGenApplicationOps extends ScalaGenBinarizedGradientPyramidOps with ScalaGenRectOps with ScalaGenBiGGDetectionOps with ScalaGenBinarizedGradientTemplateOps
   with ScalaGenDenoiseVertexDataOps with ScalaGenDenoiseEdgeDataOps
 
@@ -267,7 +267,7 @@ trait BinarizedGradientPyramidOps extends DSLType with Variables with OverloadHa
   def binarizedgradientpyramid_fixedLevelIndex(__x: Rep[BinarizedGradientPyramid]): Rep[Int]
 }
 
-trait BinarizedGradientPyramidOpsExp extends BinarizedGradientPyramidOps with EffectExp {
+trait BinarizedGradientPyramidOpsExp extends BinarizedGradientPyramidOps with EffectExp { this: OptiMLExp =>
   case class BinarizedGradientPyramidObjectNew(pyramid: Exp[Vector[GrayscaleImage]], start_level: Exp[Int], levels: Exp[Int], fixedLevelIndex: Exp[Int]) extends Def[BinarizedGradientPyramid]
   case class BinarizedGradientPyramidPyramid(__x: Exp[BinarizedGradientPyramid]) extends Def[Vector[GrayscaleImage]]
   case class BinarizedGradientPyramidStart_level(__x: Exp[BinarizedGradientPyramid]) extends Def[Int]
@@ -279,6 +279,11 @@ trait BinarizedGradientPyramidOpsExp extends BinarizedGradientPyramidOps with Ef
   def binarizedgradientpyramid_start_level(__x: Rep[BinarizedGradientPyramid]) = BinarizedGradientPyramidStart_level(__x)
   def binarizedgradientpyramid_levels(__x: Rep[BinarizedGradientPyramid]) = BinarizedGradientPyramidLevels(__x)
   def binarizedgradientpyramid_fixedLevelIndex(__x: Rep[BinarizedGradientPyramid]) = BinarizedGradientPyramidFixedlevelindex(__x)
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case Reflect(BinarizedGradientPyramidObjectNew(p,s,l,i), u, es) => reflectMirrored(Reflect(BinarizedGradientPyramidObjectNew(f(p),f(s),f(l),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 trait ScalaGenBinarizedGradientPyramidOps extends ScalaGenBase {

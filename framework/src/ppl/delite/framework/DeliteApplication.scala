@@ -88,6 +88,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     stream.println("ppl.delite.runtime.profiler.PerformanceTimer.print(\"app\")")
     stream.println(/*{*/"}")
     stream.println(/*{*/"}")
+    reset
     codegen.emitSource(liftedMain, name, stream)
   }
 

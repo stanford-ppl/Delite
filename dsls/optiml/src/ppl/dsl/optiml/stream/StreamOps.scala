@@ -191,8 +191,8 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case StreamChunkElem(x, idx, j) => stream_chunk_elem(f(x),f(idx),f(j))
-    case StreamRawElem(x, idx) => stream_raw_elem(f(x),f(idx))
+    case e@StreamRawElem(x, idx) => reflectPure(StreamRawElem(f(x),f(idx)))(mtype(manifest[A]))
+    case e@StreamChunkElem(x, idx, j) => reflectPure(new { override val original = Some(f,e) } with StreamChunkElem(f(x),f(idx),f(j)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

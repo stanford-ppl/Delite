@@ -27,8 +27,8 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
   def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = x match {
     case Def(e: DeliteOpMap[_,_,_]) => e.size
     case Def(e: DeliteOpZipWith[_,_,_,_]) => e.size
-    case Def(Reflect(e: DeliteOpMap[_,_,_], _,_)) => e.size // reasonable?
-    case Def(Reflect(e: DeliteOpZipWith[_,_,_,_], _,_)) => e.size // reasonable?
+    //case Def(Reflect(e: DeliteOpMap[_,_,_], _,_)) => e.size // reasonable?
+    //case Def(Reflect(e: DeliteOpZipWith[_,_,_,_], _,_)) => e.size // reasonable?
     case _ => reflectPure(DeliteCollectionSize(x))
   }
   def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = reflectPure(DeliteCollectionApply(x,n))
@@ -40,8 +40,8 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case DeliteCollectionApply(x, n) => dc_apply(f(x), f(n))
     case DeliteCollectionSize(x) => dc_size(f(x))
-    case Reflect(DeliteCollectionApply(l,r), u, es) => reflectMirrored(Reflect(DeliteCollectionApply(f(l),f(r)), mapOver(f,u), f(es)))
-    case Reflect(DeliteCollectionSize(l), u, es) => reflectMirrored(Reflect(DeliteCollectionSize(f(l)), mapOver(f,u), f(es)))
+    case Reflect(DeliteCollectionApply(l,r), u, es) => reflectMirrored(Reflect(DeliteCollectionApply(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(DeliteCollectionSize(l), u, es) => reflectMirrored(Reflect(DeliteCollectionSize(f(l)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
   

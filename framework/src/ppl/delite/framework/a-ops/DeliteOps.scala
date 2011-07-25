@@ -13,13 +13,11 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp  {
   
   
-  //may try this some time to wrap functions that are passed as case class args...
 
 /*
-  case class FF[A,B](val x: Rep[A], val y: Rep[B])(val f: Rep[A]=>Rep[B])
-  
+  //may try this some time to wrap functions that are passed as case class args...
+  case class FF[A,B](val x: Rep[A], val y: Rep[B])(val f: Rep[A]=>Rep[B])  
   type ===>[A,B] = FF[A,B]
-  
   implicit def deliteFunc[A:Manifest,B:Manifest](f: Rep[A]=>Rep[B]): A ===> B = { val x = fresh[A]; val y = reifyEffects(f(x)); FF(x, y)(f) }
 */
   
@@ -28,25 +26,49 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    */
   /*sealed*/ trait DeliteOp[A] extends Def[A] {
     type OpType <: DeliteOp[A]
-    def original: Option[(Transformer,OpType)] = None
-    def copyOrElse[B](f: OpType => B)(e: => B): B = original.map(p=>f(p._2)).getOrElse(e) // TBD: apply transform to result?
+    def original: Option[(Transformer,Def[_])] = None // we should have type OpType, really but then it needs to be specified in mirror (why?)
+    def copyOrElse[B](f: OpType => B)(e: => B): B = original.map(p=>f(p._2.asInstanceOf[OpType])).getOrElse(e)
+    def copyTransformedOrElse[B](f: OpType => Exp[B])(e: => Exp[B]): Exp[B] = original.map(p=>p._1(f(p._2.asInstanceOf[OpType]))).getOrElse(e)
+
+/*
+    consider z1 = VectorPlus(a,b), which could be something like z1 = Block(z2); z2 = loop(a.size) { i => a(i) + b(i) }
+    we might want to mirror z1 because we have changed z2.
+    but since a and b are the same, if we use case class equality: 
+    1) we end up with the same object z1
+    2) we created a third object that creates a new loop but is immediately discarded
+*/
+    // this is a hack to enable things with non-structural equality (e.g. functions)
+    // as case class parameters. otherwise cse won't work and we mirror either not enough or the world...
+    override def equals(x: Any): Boolean = (this,x) match {
+      case (a: Product,b: Product) => 
+        /*if (a.productPrefix == b.productPrefix) {
+          val r = syms(a) == syms(b)
+          println("?== "+this+","+x + " is "+r+" "+syms(a)+"/"+syms(b))
+        }*/
+        a.productPrefix == b.productPrefix && syms(a) == syms(b)
+      case _ => super.equals(x)
+    }
   }
-//  sealed trait DeliteFatOp extends FatDef
+
+  //sealed trait DeliteFatOp extends FatDef
 
   /**
    * A sequential task - will execute block in a single thread and respect any free variable dependencies inside it.
    *
    * @param  block   the task to execute; must be reified if it contains effectful operations!
    */
-  class DeliteOpSingleTask[A](val block: Exp[A], val requireInputs: Boolean = false) extends DeliteOp[A]
+  class DeliteOpSingleTask[A](block0: => Exp[A], val requireInputs: Boolean = false) extends DeliteOp[A] {
+    type OpType <: DeliteOpSingleTask[A]
+    final lazy val block: Exp[A] = copyTransformedOrElse(_.block)(block0)
+  }
 
   abstract class DeliteOpLoop[A] extends AbstractLoop[A] with DeliteOp[A] {
     type OpType <: DeliteOpLoop[A]
-    def copyBodyOrElse(e: => Def[A]): Def[A] = original.map(p=>mirrorLoopBody(p._2,p._1)).getOrElse(e)
-    final val v: Sym[Int] = copyOrElse(_.v)(fresh[Int])
+    def copyBodyOrElse(e: => Def[A]): Def[A] = original.map(p=>mirrorLoopBody(p._2.asInstanceOf[OpType].body,p._1)).getOrElse(e)
+    final lazy val v: Sym[Int] = copyOrElse(_.v)(fresh[Int])
   }
 
-//  case class DeliteOpFatLoop(val size: Exp[Int], val v: Sym[Int], val body: List[Def[Any]]) extends AbstractFatLoop with DeliteFatOp
+  //case class DeliteOpFatLoop(val size: Exp[Int], val v: Sym[Int], val body: List[Def[Any]]) extends AbstractFatLoop with DeliteFatOp
   
   
   // for use in loops:
@@ -96,6 +118,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  elsep   the Else block to execute if condition is false
    */
   trait DeliteOpCondition[A] extends DeliteOp[A] {
+    type OpType <: DeliteOpCondition[A]
     val cond: Exp[Boolean]
     val thenp: Exp[A]
     val elsep: Exp[A]
@@ -108,6 +131,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  body   the body of the loop
    */
   trait DeliteOpWhileLoop extends DeliteOp[Unit] {
+    type OpType <: DeliteOpWhileLoop
     val cond: Exp[Boolean]
     val body: Exp[Unit]
   }
@@ -152,6 +176,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   abstract class DeliteOpMap[A:Manifest,
                              B:Manifest, CB <: DeliteCollection[B]:Manifest]
     extends DeliteOpLoop[CB] {
+    type OpType <: DeliteOpMap[A,B,CB]
 
     // supplied by subclass
     val in: Exp[DeliteCollection[A]]
@@ -175,6 +200,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   abstract class DeliteOpFilter[A:Manifest,
                                 B:Manifest, CB <: DeliteCollection[B]:Manifest]
     extends DeliteOpLoop[CB] {
+    type OpType <: DeliteOpFilter[A,B,CB]
 
     // supplied by subclass
     val in: Exp[DeliteCollection[A]]
@@ -189,9 +215,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       func = reifyEffects(this.func(dc_apply(in,v))),
       cond = reifyEffects(this.cond(dc_apply(in,v)))::Nil
     ))
-  }
-  
-  
+  }  
   
   
   
@@ -211,6 +235,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
                                  B:Manifest,
                                  R:Manifest, CR <: DeliteCollection[R]:Manifest]
     extends DeliteOpLoop[CR] {
+    type OpType <: DeliteOpZipWith[A,B,R,CR]
       
     // supplied by subclass   
     val inA: Exp[DeliteCollection[A]]
@@ -227,8 +252,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   
   abstract class DeliteOpReduceLike[A:Manifest] extends DeliteOpLoop[A] {
     type OpType <: DeliteOpReduceLike[A]
-    final protected val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)((fresh[A], fresh[A]))
+    final lazy protected val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)((reflectMutableSym(fresh[A]), fresh[A]))
     val mutable: Boolean = false
+    // TODO: should reflectMutableSym only be called if we're actually mutating the accumulator?
   }
   
   /**
@@ -240,6 +266,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  func  the reduction function; ([Exp[A],Exp[A]) => Exp[A]. Must be associative.
    */
   abstract class DeliteOpReduce[A:Manifest] extends DeliteOpReduceLike[A] {
+    type OpType <: DeliteOpReduce[A]
       
     // supplied by subclass   
     val in: Exp[DeliteCollection[A]]
@@ -268,6 +295,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    */
   abstract class DeliteOpMapReduce[A:Manifest,R:Manifest]
     extends DeliteOpReduceLike[R] {
+    type OpType <: DeliteOpMapReduce[A,R]
     
     // supplied by subclass   
     val in: Exp[DeliteCollection[A]]
@@ -288,6 +316,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   // should this be folded into DeliteOpMapReduce (or into DeliteOpFilter)?
   abstract class DeliteOpFilterReduce[A:Manifest,R:Manifest]
     extends DeliteOpReduceLike[R] {
+    type OpType <: DeliteOpFilterReduce[A,R]
     
     // supplied by subclass   
     val in: Exp[DeliteCollection[A]]
@@ -320,6 +349,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    */
   abstract class DeliteOpZipWithReduce[A:Manifest,B:Manifest,R:Manifest]
     extends DeliteOpReduceLike[R] {
+    type OpType <: DeliteOpZipWithReduce[A,B,R]
       
     // supplied by subclass   
     val inA: Exp[DeliteCollection[A]]
@@ -355,7 +385,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def func: Exp[A] => Exp[Unit]
     def sync: Exp[Int] => Exp[List[Any]] // TODO: need to extend runtime to do something with sync in multiloop
     
-    final val i: Sym[Int] = copyOrElse(_.i)(fresh[Int])
+    final lazy val i: Sym[Int] = copyOrElse(_.i)(fresh[Int])
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
       func = reifyEffects(this.func(dc_apply(in,v))),
       sync = reifyEffects(this.sync(i))
@@ -363,8 +393,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
   
   abstract class DeliteOpIndexedLoop extends DeliteOpLoop[Unit] {
-    def func: Exp[Int] => Exp[Unit]
+    type OpType <: DeliteOpIndexedLoop
     val size: Exp[Int]
+    def func: Exp[Int] => Exp[Unit]
     
     lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
       func = reifyEffects(this.func(v)),
@@ -416,20 +447,21 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     val sync: Exp[List[Any]]
   }
 
-  // used by delite code generators to handle nested delite ops TR: shouldn't this be part of the codegen hierarchy?
-  var deliteKernel: Boolean = false //_
-  var deliteResult: Option[List[Exp[Any]]] = None//_
-  var deliteInputs: List[Sym[Any]] = Nil//_
 
-  var debugCodegen: Boolean = false //_
+  
+
+  ///////////////////////////
+  // effects + other helpers
+
+  // used by delite code generators to handle nested delite ops TR: shouldn't this be part of the codegen hierarchy?
+  var deliteKernel: Boolean = false
+  var deliteResult: Option[List[Exp[Any]]] = None
+  var deliteInputs: List[Sym[Any]] = Nil
+
+  var debugCodegen: Boolean = false
 
   // TODO: move to lms? TR: will that actually work? it looks pretty unsafe to rebind syms
   def rebind(sym: Sym[Any], rhs: Def[Any]) = createDefinition(sym, rhs).rhs
-
-   // TODO: just to make refactoring easier in case we want to change to reflectSomething
-  // def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x)
-
-  // alternative: leave reflectPure as above and override toAtom...
 
   def summarizeBody[A](d: Def[A]) = d match {
     case e: DeliteForeachElem[_] => summarizeEffects(e.func).star
@@ -442,6 +474,22 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     // }
   }
   
+  // TODO: just to make refactoring easier in case we want to change to reflectSomething
+  // def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x)
+
+  // alternative: leave reflectPure as above and override toAtom...
+
+  def reflectPure[A:Manifest](d: Def[A]): Exp[A] = d match {
+    case x: DeliteOpLoop[_] =>
+      val mutableInputs = readMutableData(d) //TODO: necessary or not??
+      //val mutableInputs = Nil // readMutableData(d) TODO: necessary or not??
+      val re = Read(mutableInputs)
+      val be = summarizeBody(x.body)
+      reflectEffect(d, re andAlso be)
+    case _ => 
+      toAtom(d) // TODO: just to make refactoring easier in case we want to change to reflectSomething
+  }
+
   // override def reflectMutable[A:Manifest](d: Def[A]): Exp[A] = d match {
   //   case x: DeliteOpLoop[_] => 
   //     val mutableInputs = readMutableData(d)    
@@ -456,21 +504,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   //     super.reflectMutable(d)
   // }
       
-  def reflectPure[A:Manifest](d: Def[A]): Exp[A] = d match {
-    case x: DeliteOpLoop[_] =>
-      val mutableInputs = readMutableData(d) //TODO: necessary or not??
-      //val mutableInputs = Nil // readMutableData(d) TODO: necessary or not??
-      val re = Read(mutableInputs)
-      val be = summarizeBody(x.body)
-      reflectEffect(d, re andAlso be)
-    case _ => 
-      toAtom(d) // TODO: just to make refactoring easier in case we want to change to reflectSomething
-  }
-
 
   //////////////
   // mirroring
 
+  def mtype[A,B](m:Manifest[A]): Manifest[B] = m.asInstanceOf[Manifest[B]] // hack: need to pass explicit manifest during mirroring
+  
   override def mirrorFatDef[A:Manifest](d: Def[A], f: Transformer): Def[A] = mirrorLoopBody(d,f) // TODO: cleanup
 
   def mirrorLoopBody[A](d: Def[A], f: Transformer): Def[A] = {
@@ -597,6 +636,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 }
 
+
+
 trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
   val IR: DeliteOpsExp
   import IR._
@@ -649,7 +690,7 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
     case _ => super.applyAddCondition(e,c)
   }
 
-  override def shouldApplyFusion(currentScope: List[TTP])(result: Exp[Any]) = Config.opfusionEnabled
+  override def shouldApplyFusion(currentScope: List[TTP])(result: List[Exp[Any]]) = Config.opfusionEnabled
 
 }
 
@@ -665,6 +706,9 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     case _ => "null" 
   }
 */
+
+  //TODO: modularize code generators even more
+
   /**
    * MultiLoop components
    */
@@ -1006,10 +1050,10 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => {
       //printlog("EMIT single "+s)
-      val save = deliteKernel
+      //val save = deliteKernel
       //deliteKernel = false
       val b = s.block
-      if (!save) {
+      if (!deliteKernel) {
         // straight-line
         stream.println("val " + quote(sym) + " = { " )
         emitBlock(b)

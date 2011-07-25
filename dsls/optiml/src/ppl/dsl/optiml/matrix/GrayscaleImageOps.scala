@@ -86,6 +86,15 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
     val phase = reflectPure(GrayscaleImageObjectCartToPolarPhase(x,y)) map { a => if (a < 0f) a + 360f else a } 
     (mag,phase)
   }
+
+  //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case GrayscaleImageObjectCartToPolarPhase(a,b) => reflectPure(new { override val original = Some(f,e) } with GrayscaleImageObjectCartToPolarPhase(f(a),f(b)))(mtype(manifest[A]))
+    case Reflect(GrayscaleImageObjectFromMat(x), u, es) => reflectMirrored(Reflect(GrayscaleImageObjectFromMat(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 

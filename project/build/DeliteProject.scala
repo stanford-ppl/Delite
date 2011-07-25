@@ -22,6 +22,9 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   // Options
   // Parallelism!
   //override def parallelExecution = true // <-- problem with test cases
+
+  override def compileOptions = super.compileOptions ++ compileOptions("-Yno-generic-signatures") // speed up bytecode gen a little
+  override def testCompileOptions = super.testCompileOptions ++ compileOptions("-Yno-generic-signatures")
   
   override def mainScalaSourcePath = "src"
   override def mainResourcesPath = "resources"
@@ -38,11 +41,17 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   //add the new listener to the already configured ones
   override def testListeners: Seq[TestReportListener] = super.testListeners ++ Seq(junitXmlListener)
 
+  lazy val quickTest = testQuickMethod(testCompileConditional.analysis, testOptions)(o =>
+      testTask(testFrameworks, testClasspath, testCompileConditional.analysis, o))
+
   // Define project class with default source tree layout
   class FlatProject(info: ProjectInfo) extends DefaultProject(info) {
     // Source tree layout
     override def mainScalaSourcePath = "src"
     override def mainResourcesPath = "resources"
+    
+    override def compileOptions = super.compileOptions ++ compileOptions("-Yno-generic-signatures") // speed up bytecode gen a little
+    override def testCompileOptions = super.testCompileOptions ++ compileOptions("-Yno-generic-signatures")
     
     val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
     

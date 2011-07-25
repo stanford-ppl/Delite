@@ -41,16 +41,17 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
     case DeliteWhile(c, b) => effectSyms(c):::effectSyms(b)
     case _ => super.boundSyms(e)
   }
-/*
-  override def hotSyms(e: Any): List[Sym[Any]] = e match {
-    case DeliteWhile(c, b) => syms(c):::syms(b)
-    case _ => super.hotSyms(e)
-  }
-*/
+
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
     case DeliteWhile(c, b) => freqHot(c) ++ freqHot(b)
     case _ => super.symsFreq(e)
   }
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case DeliteWhile(c,b) => reflectPure(DeliteWhile(f(c),f(b)))(mtype(manifest[A]))
+    case Reflect(DeliteWhile(c,b), u, es) => reflectMirrored(Reflect(DeliteWhile(f(c),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 
 }
 

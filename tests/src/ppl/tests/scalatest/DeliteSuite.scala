@@ -17,6 +17,7 @@ trait DeliteTestConfig {
 
   // test parameters
   val verbose = props.getProperty("tests.verbose", "false").toBoolean
+  val verboseDefs = props.getProperty("tests.verboseDefs", "false").toBoolean
   val threads = props.getProperty("tests.threads", "1")
   val javaHome = new File(props.getProperty("java.home", ""))
   val scalaHome = new File(props.getProperty("scala.vanilla.home", ""))
@@ -54,7 +55,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
     Console.withOut(screenOrVoid) {
       app.main(Array())
-      if (false) app.globalDefs.foreach { d => //TR print all defs
+      if (verboseDefs) app.globalDefs.foreach { d => //TR print all defs
         println(d)
         val info = d.sym.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
         println(info.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
