@@ -39,7 +39,11 @@ trait FileDiffSuite extends Suite {
     new String(buf)
   }
   def assertFileEqualsCheck(name: String): Unit = {
-    assert(readFile(name) == readFile(name+".check"), name) // TODO: diff output
+    assert(readFile(name) == readFile(name+".check"), "File contents do not match: "+name) // TODO: diff output
+    new File(name) delete ()
+  }
+  def assertFileEqualsCheckModulo(name: String)(s: String, r: String): Unit = {
+    assert(readFile(name).replaceAll(s,r) == readFile(name+".check").replaceAll(s,r), "File contents do not match: "+name) // TODO: diff output
     new File(name) delete ()
   }
 

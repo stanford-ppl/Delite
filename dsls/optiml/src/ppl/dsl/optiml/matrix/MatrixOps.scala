@@ -797,6 +797,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       case MatrixNumRows(x) => matrix_numrows(f(x))
       case MatrixNumCols(x) => matrix_numcols(f(x))
       case MatrixGetRow(x,i) => matrix_getrow(f(x),f(i))
+      case MatrixGetCol(x,i) => matrix_getcol(f(x),f(i))
       case MatrixApply(x,i,j) => matrix_apply(f(x),f(i),f(j))
       case MatrixDCApply(x,i) => matrix_dcapply(f(x),f(i))
       case MatrixVView(x, start, stride, length, isRow) => matrix_vview(f(x),f(start),f(stride),f(length),f(isRow)) // should set original, too?

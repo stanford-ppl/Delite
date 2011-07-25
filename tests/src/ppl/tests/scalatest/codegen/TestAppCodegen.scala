@@ -48,9 +48,10 @@ class TestAppCodegen extends FileDiffSuite {
       obj.apply(args)
     }
 */
+    assert(!app.hadErrors, "Errors during code generation")
+    assertFileEqualsCheckModulo(prefix+name+"-skel")("[0-9]+", "")
     //assertFileEqualsCheck(prefix+name+"-log")
     //assertFileEqualsCheck(prefix+name+"-src")
-    
     //assertFileEqualsCheck(prefix+name+"-run")
   }
 
@@ -59,6 +60,7 @@ class TestAppCodegen extends FileDiffSuite {
       val save = ppl.delite.framework.Config.opfusionEnabled
       try {
         ppl.delite.framework.Config.opfusionEnabled = true
+        app.debugCodegen = true
         app.generateScalaSource(app.getClass.getSimpleName.dropRight(1)+"Fusing",new PrintWriter(new FileWriter(prefix+name+"-fusing-src")))
         println("##### all definitions")
         app.globalDefs.foreach { d =>
@@ -73,6 +75,8 @@ class TestAppCodegen extends FileDiffSuite {
     withOutFile(prefix+name+"-fusing-skel") {
       summarizeFile(prefix+name+"-fusing-src")
     }
+    assert(!app.hadErrors, "Errors during code generation")
+    assertFileEqualsCheckModulo(prefix+name+"-fusing-skel")("[0-9]+", "")
     //assertFileEqualsCheck(prefix+name+"-fusing-log")
     //assertFileEqualsCheck(prefix+name+"-fusing-src")
   }

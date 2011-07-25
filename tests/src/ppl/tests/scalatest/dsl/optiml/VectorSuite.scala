@@ -186,10 +186,10 @@ trait Loop extends DeliteTestModule with OptiMLApplication {
     implicit val collector = ArrayBuffer[Boolean]()
 
     val vec1 = Vector.rand(5)
-    val vec2 = Vector.rand(5)
+    val vec2 = Vector.rand(5).mutable
 
     var idx = 0
-    while(idx < 0) {
+    while(idx < 5) {
       vec2(idx) = vec1(idx)
       idx += 1
     }
