@@ -141,7 +141,7 @@ object config {
   def validate_lms_classes(_value: String = null) = {
     val value = if (_value != null) _value else props.getProperty("lms_classes");
     if (value == null) throw new Exception("LMS configuration entry is not found.")
-    if (!value.exist) throw new Exception("LMS (configured as \"%s\") cannot be found or is inaccessible. Have you compiled LMS?".format(value))
+    if (!value.exist) throw new Exception("LMS (configured as \"%s\") cannot be found or is inaccessible. Have you compiled Delite?".format(value))
     props.setProperty("lms_classes", value)
     save()
   }

@@ -1,9 +1,9 @@
 #!/bin/sh
-script="$(dirname "$(mktemp)")/$(basename "$0").$(basename "$(mktemp)")"
+script="/tmp/$(basename "$0").$(mktemp XXXX)"
 cat "$(dirname "$0")/shared" > "$script"
 echo 'try {' >> "$script"
-echo -n '/' >> "$script"
-echo -n '*' >> "$script"
+echo '/\c' >> "$script"
+echo '*\c' >> "$script"
 cat "$0" >> "$script"
 echo '} catch {' >> "$script"
 echo 'case e: Exception => {' >> "$script"
@@ -70,7 +70,8 @@ class Project(root: String, name: String) {
   }
 
   def dep(q : String) = {
-    (deps filter {_.contains(q)})(0)
+    val results = (deps filter {_.contains(q)}).toList
+    if (results.length == 0) "not found" else results(0)
   }
 
   lazy val target = {

@@ -1,9 +1,9 @@
 #!/bin/sh
-script="$(dirname "$(mktemp)")/$(basename "$0").$(basename "$(mktemp)")"
+script="/tmp/$(basename "$0").$(mktemp XXXX)"
 cat "$(dirname "$0")/shared" > "$script"
 echo 'try {' >> "$script"
-echo -n '/' >> "$script"
-echo -n '*' >> "$script"
+echo '/\c' >> "$script"
+echo '*\c' >> "$script"
 cat "$0" >> "$script"
 echo '} catch {' >> "$script"
 echo 'case e: Exception => {' >> "$script"
