@@ -315,7 +315,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       zero = this.zero,
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
+      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
     ))
   }
   
@@ -338,7 +338,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       zero = this.zero,
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
+      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
     ))
   }
   
@@ -370,7 +370,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       zero = this.zero,
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
+      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
     ))
   }
 
