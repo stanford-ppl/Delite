@@ -94,9 +94,15 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     zero: Exp[A],
     rV: (Sym[A], Sym[A]),
     rFunc: Exp[A],
-    stripFirst: Boolean = true
+    stripFirst: Boolean
   ) extends Def[A]
   
+  
+
+  def loopBodyNeedsStripFirst[A](e: Def[A]) = e match {
+    case e:DeliteReduceElem[_] => e.stripFirst
+    case _ => false
+  }
   
   def loopBodyNeedsCombine[A](e: Def[A]) = e match {
     case e:DeliteReduceElem[_] => true
@@ -279,7 +285,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       zero = this.zero,
       rV = this.rV,
       rFunc = reifyEffects(this.func(rV._1, rV._2)),
-      stripFirst = !this.mutable
+      stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
     ))
   }
   
@@ -309,7 +315,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       zero = this.zero,
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !this.mutable
+      stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
     ))
   }
   
@@ -332,7 +338,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       zero = this.zero,
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !this.mutable
+      stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
     ))
   }
   
@@ -364,7 +370,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       zero = this.zero,
       rV = this.rV,
       rFunc = reifyEffects(reduce(rV._1, rV._2)),
-      stripFirst = !this.mutable
+      stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
     ))
   }
 
@@ -808,29 +814,32 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       case (sym, elem: DeliteReduceElem[_]) =>
         stream.println("var " + quotearg(sym) + " = " + quote(elem.zero))
     }
-    stream.println("var " + quote(op.v) + " = 0")    
-    stream.println("if (" + quote(op.size) + " > 0) {")
-    /* strip first iteration */     
-    emitMultiLoopFuncs(op, symList)
-    (symList zip op.body) foreach {
-      case (sym, elem: DeliteCollectElem[_,_]) =>
-        emitCollectElem(op, sym, elem)
-      case (sym, elem: DeliteForeachElem[_]) => 
-        stream.println(quote(sym) + " = {")
-        emitForeachElem(op, sym, elem)
-        stream.println("}")
-      case (sym, elem: DeliteReduceElem[_]) =>
-        if (elem.stripFirst) {
-          stream.println(quote(sym) + " = {")
-          emitFirstReduceElem(op, sym, elem)
-          stream.println("}")
-        }
-        else {
-          emitReduceElem(op, sym, elem)
-        }
+    stream.println("var " + quote(op.v) + " = 0")
+    //if (true) { //op.body exists (loopBodyNeedsStripFirst _)) { preserve line count as indicator for succesful fusing
+    if (op.body exists (loopBodyNeedsStripFirst _)) {
+      stream.println("if (" + quote(op.size) + " > 0) { // prerun fat loop " + symList.map(quote).mkString(",")/*}*/)
+      /* strip first iteration */     
+      emitMultiLoopFuncs(op, symList)
+      (symList zip op.body) foreach {
+        case (sym, elem: DeliteCollectElem[_,_]) =>
+          emitCollectElem(op, sym, elem)
+        case (sym, elem: DeliteForeachElem[_]) => 
+          stream.println(quote(sym) + " = {"/*}*/)
+          emitForeachElem(op, sym, elem)
+          stream.println(/*{*/"}")
+        case (sym, elem: DeliteReduceElem[_]) =>
+          if (elem.stripFirst) {
+            stream.println(quote(sym) + " = {"/*}*/)
+            emitFirstReduceElem(op, sym, elem)
+            stream.println(/*{*/"}")
+          }
+          else {
+            emitReduceElem(op, sym, elem)
+          }
+      }
+      stream.println(/*{*/"}")
+      stream.println(quote(op.v) + " = 1")
     }
-    stream.println("}")
-    stream.println(quote(op.v) + " = 1")
     stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(",")/*}*/)
     // body
     emitMultiLoopFuncs(op, symList)
@@ -838,9 +847,9 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       case (sym, elem: DeliteCollectElem[_,_]) =>
         emitCollectElem(op, sym, elem)
       case (sym, elem: DeliteForeachElem[_]) => 
-        stream.println(quote(sym) + " = {")                             
+        stream.println(quote(sym) + " = {"/*}*/)                             
         emitForeachElem(op, sym, elem)
-        stream.println("}")
+        stream.println(/*{*/"}")
       case (sym, elem: DeliteReduceElem[_]) =>
         emitReduceElem(op, sym, elem)
     }
@@ -936,7 +945,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
             stream.println("}")
           } 
           else { 
-            if (sym.Type <:< manifest[AnyVal]) {
+            if (isPrimitiveType(sym.Type)) {
               stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym)) 
             } else {
               stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym) + ".cloneL") // separate zero buffer           
