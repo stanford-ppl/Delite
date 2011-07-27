@@ -12,7 +12,7 @@ from time import localtime, strftime
 DELITE_HOME = os.getenv("DELITE_HOME")
 
 apps_default = ['gda', 'nb', 'linreg', 'kmeans', 'rbm', 'svm']#, 'lbp']
-delite_threads_default = [ 1, 2 , 4, 8]
+delite_threads_default = [1, 2, 4, 8]
 
 
 #delite_gpus = [ 1, 2 ]
@@ -144,11 +144,8 @@ def launchApps(options):
         
         opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + props["delite.home"] +  "/generated/ -Ddelite.deg.filename=" + app + ".deg"
         java_opts = os.getenv("JAVA_OPTS", "")
-        ld_library_path = filter(len, os.getenv("LD_LIBRARY_PATH", "").split(":"))
         if options['blas'] == True:
-            opts = opts + " -Dblas.home=" + props['intel.mkl']
-            ld_library_path.append(props['intel.mkl'] + "/mkl/lib/intel64")
-            ld_library_path.append(props['intel.mkl'] + "/lib/intel64")
+            opts = opts + " -Dblas.enabled"
         if options['variants'] == False:
             opts = opts + " -Dnested.variants.level=0"
         if options['fusion'] == True:
@@ -161,7 +158,6 @@ def launchApps(options):
         os.putenv("DELITE_HOME", props['delite.home'])
         os.putenv('LMS_HOME', props['libs.lms.home'])
         os.putenv('SCALA_VIRT_HOME', props['scala.virtualized.home'])
-        os.putenv('PATH', props['intel.icc'] + ":" + os.getenv('PATH'))
         print "==  Generating DEG file with options: " + opts
         ecode = os.system(props['delite.home'] + "/bin/gen " + classes[app])
         if ecode != 0 and options['keep-going'] == None:
@@ -171,7 +167,6 @@ def launchApps(options):
         #do it for each thread configuration
         if options['run']['smp']: 
             for numThreads in options['delite.threads']:
-                os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
                 os.putenv("MKL_NUM_THREADS", str(numThreads))
                 os.putenv("SCALA_HOME", props['scala.vanilla.home'])
                 
@@ -189,7 +184,6 @@ def launchApps(options):
 
         #check if gpu option is enabled
         if options['run']['gpu']:
-            os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
             os.putenv("MKL_NUM_THREADS", "1")
             #need nvcc in your path
             os.putenv('PATH', props['nvidia.cuda'] + "/bin:" + os.getenv('PATH'))

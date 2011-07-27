@@ -408,14 +408,14 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends MatrixTimesVectorBLAS[Double](x,y) {
     
     def scalaFuncName = "matVMultD"        
-    def scalaFuncSignature = scalaFuncSignatureSpec("double")
+    def scalaFuncSignature = scalaFuncSignatureSpec("Double")
     def nativeFunc = nativeFuncSpec("double", "cblas_dgemv")
   }
   case class MatrixTimesVectorBLASf(x: Exp[Matrix[Float]], y: Exp[Vector[Float]])
     extends MatrixTimesVectorBLAS[Float](x,y) {
     
     def scalaFuncName = "matVMultF"        
-    def scalaFuncSignature = scalaFuncSignatureSpec("float")
+    def scalaFuncSignature = scalaFuncSignatureSpec("Float")
     def nativeFunc = nativeFuncSpec("float", "cblas_sgemv")
   }
   
@@ -452,14 +452,14 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends MatrixMultiplyBLAS[Double](x,y) {
 
     def scalaFuncName = "matMultD"    
-    def scalaFuncSignature = scalaFuncSignatureSpec("double")
+    def scalaFuncSignature = scalaFuncSignatureSpec("Double")
     def nativeFunc = nativeFuncSpec("double", "cblas_dgemm")
   }
   case class MatrixMultiplyBLASf(x: Exp[Matrix[Float]], y: Exp[Matrix[Float]])
     extends MatrixMultiplyBLAS[Float](x,y) {
 
     def scalaFuncName = "matMultF"    
-    def scalaFuncSignature = scalaFuncSignatureSpec("float")
+    def scalaFuncSignature = scalaFuncSignatureSpec("Float")
     def nativeFunc = nativeFuncSpec("float", "cblas_sgemm")
   }
 
@@ -509,14 +509,14 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends MatrixSigmoidBLAS[Double](in) {
 
     def scalaFuncName = "sigmoidD"    
-    def scalaFuncSignature = scalaFuncSignatureSpec("double")
+    def scalaFuncSignature = scalaFuncSignatureSpec("Double")
     def nativeFunc = nativeFuncSpec("double", "exp")
   }
   case class MatrixSigmoidBLASf(in: Exp[Matrix[Float]])
     extends MatrixSigmoidBLAS[Float](in) {
 
     def scalaFuncName = "sigmoidF"    
-    def scalaFuncSignature = scalaFuncSignatureSpec("float")
+    def scalaFuncSignature = scalaFuncSignatureSpec("Float")
     def nativeFunc = nativeFuncSpec("float", "expf")
   }
 

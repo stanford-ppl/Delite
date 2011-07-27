@@ -1,16 +1,16 @@
 <DeliteExternalLib>
 <name>BLAS</name>
-<compiler>/usr/bin/gcc</compiler>
+<compiler>/opt/intel/composerxe-2011.4.191/bin/intel64/icc</compiler>
 <include>
   <prefix> -I </prefix>
-  <path> /Library/Java/Home/include </path>
-  <path> /Library/Java/Home/linux/include </path>
-  <path> /usr/local/intel/mkl/include </path>
+  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include </path>
+  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include/linux </path>
+  <path> /opt/intel/mkl/include </path>
 </include>
 <include>
   <prefix> -L </prefix>
-  <path> /usr/local/intel/mkl/lib/em64t" </path>
-  <path> /usr/local/intel/mkl/lib/intel64" </path>
+  <path> /opt/intel/mkl/lib/intel64 </path>
+  <path> /opt/intel/lib/intel64 </path>
 </include>
 </DeliteExternalLib>
 

@@ -10,7 +10,6 @@ import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.scala.TargetScala
 import codegen.Target
-import externlib.ExternLibrary
 import ops.DeliteOpsExp
 
 trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
@@ -69,9 +68,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       g.initializeGenerator(baseDir + "kernels" + File.separator)
     }
 
-    //Emit and Compile external library (MKL BLAS)
-    //ExternLibrary.init()
-    
     if (Config.degFilename.endsWith(".deg")) {
       val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
       codegen.emitSource(liftedMain, "Application", streamScala) // whole scala application (for testing)
