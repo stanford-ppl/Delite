@@ -661,9 +661,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     
     lazy val body: Def[Vector[A]] = copyBodyOrElse(DeliteReduceElem[Vector[A]](
       func = reifyEffects(x(v)),
+      Nil,
       zero = this.zero,
       rV = this.rV,
-      rFunc = reifyEffects(this.func(rV._1, rV._2))
+      rFunc = reifyEffects(this.func(rV._1, rV._2)),
+      true
     ))
   }
 
