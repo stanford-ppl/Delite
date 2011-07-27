@@ -142,14 +142,16 @@ def launchApps(options):
             else:
               continue
         
-        opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + props["delite.home"] +  "/generated/ -Ddelite.deg.filename=" + app + ".deg"
         java_opts = os.getenv("JAVA_OPTS", "")
+        opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + props["delite.home"] +  "/generated/ -Ddelite.deg.filename=" + app + ".deg"
         if options['blas'] == True:
             opts = opts + " -Dblas.enabled"
         if options['variants'] == False:
             opts = opts + " -Dnested.variants.level=0"
         if options['fusion'] == True:
             opts = opts + " -Ddelite.opfusion.enabled=true"
+        opts = opts + " " + java_opts
+        os.putenv("JAVA_OPTS", opts)
         os.putenv("GEN_OPTS", opts)
         #MKL ENV
         os.putenv("LD_PRELOAD", props['java.home'] + "/jre/lib/amd64/libjsig.so")
