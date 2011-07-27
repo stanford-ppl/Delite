@@ -432,7 +432,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     
     val in = copyTransformedOrElse(_.in)((start::end))
     val size = copyTransformedOrElse(_.size)(end - start)
-    val zero = copyTransformedOrElse(_.zero)(a.zero(init).mutable)
+    val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable))
     def reduce = (a,b) => a += b  
     
     def m = manifest[A]

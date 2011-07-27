@@ -331,14 +331,22 @@ trait ArithOpsExpOpt extends ArithOpsExp {
 
   override def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
     case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].plus(x,y))
+    case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), y) => y
+    case (y, Const(0 | 0.0 | 0.0f | -0.0 | -0.0f)) => y
     case _ => super.arith_plus(lhs, rhs)
   }
   override def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
     case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].minus(x,y))
+    case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), y) => y
+    case (y, Const(0 | 0.0 | 0.0f | -0.0 | -0.0f)) => y
     case _ => super.arith_minus(lhs, rhs)
   }
   override def arith_times[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) : Exp[T] = (lhs,rhs) match {
     case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].times(x,y))
+    case (Const(0 | 0.0 | 0.0f | -0.0 | -0.0f), _) => lhs
+    case (_, Const(0 | 0.0 | 0.0f | -0.0 | -0.0f)) => rhs
+//    case (Const(1 | 1.0 | 1.0f), y) => y //TODO: careful about type promotion!
+//    case (y, Const(1 | 1.0 | 1.0f)) => y
     case _ => super.arith_times(lhs, rhs)
   }
 }

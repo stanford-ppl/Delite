@@ -374,6 +374,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     ))
   }
 
+
+
   /**
    * Parallel foreach from DeliteCollection[A] => Unit. Input functions must specify any free variables that it
    * requires are protected (e.g. locked before chunk execution) using the sync list.
@@ -472,12 +474,14 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   def summarizeBody[A](d: Def[A]) = d match {
     case e: DeliteForeachElem[_] => summarizeEffects(e.func).star
     case e: DeliteCollectElem[_,_] => summarizeEffects(e.func).star
-    case e: DeliteReduceElem[_] => (summarizeEffects(e.func) andThen summarizeEffects(e.rFunc)).star
-    // case e: DeliteReduceElem[_] => d match {
-    //    // aks: mutable reductions have internal effects.. is this safe?
-    //   case y: DeliteOpReduceLike if (y.mutable) => summarizeEffects(e.func).star 
-    //   case _ => (summarizeEffects(e.func) andThen summarizeEffects(e.rFunc)).star
-    // }
+    //case e: DeliteReduceElem[_] => (summarizeEffects(e.func) andThen summarizeEffects(e.rFunc)).star
+    case e: DeliteReduceElem[_] => 
+      // explicitly remove writes to the accumulator -- can we generalize this somehow?
+      def clean(xs: List[Sym[Any]]) = xs.filterNot(_ == e.rV._1)
+      val er = summarizeEffects(e.rFunc)
+      val er2 = er.copy(mayRead = clean(er.mayRead), mstRead = clean(er.mstRead), 
+                        mayWrite = clean(er.mayWrite), mstWrite = clean(er.mstWrite))
+      (summarizeEffects(e.func) andThen er2).star // not 100% correct
   }
   
   // TODO: just to make refactoring easier in case we want to change to reflectSomething

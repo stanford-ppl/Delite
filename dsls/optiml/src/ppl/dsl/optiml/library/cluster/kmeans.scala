@@ -39,7 +39,7 @@ trait OptiMLKmeans {
 
       // update mu -- move each cluster centroid to the mean of the points assigned to it
       (0::numClusters, *) { j =>
-        val weightedpoints = sumIf[Vector[Double]](0, m) (c(_) == j) { x(_) } 
+        val weightedpoints = sumIf[Vector[Double]](0, m) (c(_) == j) { x(_) }
         val points = c.count(_ == j)
 
         if (points == 0) {
