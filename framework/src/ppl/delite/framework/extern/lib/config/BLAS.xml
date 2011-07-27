@@ -1,0 +1,16 @@
+<DeliteExternalLib>
+<name>BLAS</name>
+<compiler>/usr/bin/gcc</compiler>
+<include>
+  <prefix> -I </prefix>
+  <path> /Library/Java/Home/include </path>
+  <path> /Library/Java/Home/linux/include </path>
+  <path> /usr/local/intel/mkl/include </path>
+</include>
+<include>
+  <prefix> -L </prefix>
+  <path> /usr/local/intel/mkl/lib/em64t" </path>
+  <path> /usr/local/intel/mkl/lib/intel64" </path>
+</include>
+</DeliteExternalLib>
+

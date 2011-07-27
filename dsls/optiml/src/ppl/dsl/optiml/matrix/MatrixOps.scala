@@ -12,6 +12,7 @@ import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.Config
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.dsl.optiml.datastruct.scala._
+import ppl.delite.framework.extern.lib._
 
 trait MatrixOps extends DSLType with Variables {
   this: OptiML =>
@@ -243,7 +244,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixGetCol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixCol[A]] {
     val m = manifest[A]
   }
-
+  case class MatrixRawData[A:Manifest](x: Exp[Matrix[A]]) extends Def[Array[A]]
   case class MatrixNumRows[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixNumCols[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixClone[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
@@ -362,9 +363,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
 
   ///////////////////////////////////////////////////////////////////
-  // BLAS enabled routines (currently these must all be singletasks)
+  // BLAS enabled routines 
 
   // TODO: generalize this so that we can generate fused, delite parallel op, or BLAS variants
+  // having separate IR nodes breaks pattern matching optimizations... 
 
   case class MatrixTimesVector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_times_vector_impl(x,y))) {
@@ -381,15 +383,45 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def a = implicitly[Arith[A]]
   }
 
-
   case class MatrixMultiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_multiply_impl(x,y)))
+  
+  case class MatrixMultiplyBLAS(x: Exp[Matrix[Double]], y: Exp[Matrix[Double]])
+    extends DeliteOpExternal[Matrix[Double]] {
+
+    def lib = BLAS        
+    def alloc = Matrix[Double](x.numRows, y.numCols)    
+    def scalaFuncName = "matMult"    
+    def scalaFuncSignature =
+      "def " + scalaFuncName + "[@specialized(Double,Float) T](mat1:Array[T], mat2:Array[T], mat3:Array[T], mat1_r:Int, mat1_c:Int, mat2_c:Int)"
+    def args = scala.List(matrix_raw_data(x), matrix_raw_data(y), matrix_raw_data(allocVal), x.numRows, x.numCols, y.numCols)
+
+    def nativeFunc = 
+      lib.JNIPrefix + """_00024_matMult_00024mDc_00024sp
+      (JNIEnv *env, jobject obj, jdoubleArray mat1, jdoubleArray mat2, jdoubleArray mat3, jint mat1_r, jint mat1_c, jint mat2_c)
+      {
+      	jboolean copy;
+      	jdouble *mat1_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat1, &copy);
+      	jdouble *mat2_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat2, &copy);
+      	jdouble *mat3_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat3, &copy);
+
+      	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mat1_r, mat2_c, mat1_c, 1.0, mat1_ptr, mat1_c, mat2_ptr, mat2_c, 0.0, mat3_ptr, mat2_c);
+
+      	(*env)->ReleasePrimitiveArrayCritical(env, mat1, mat1_ptr, 0);
+      	(*env)->ReleasePrimitiveArrayCritical(env, mat2, mat2_ptr, 0);
+      	(*env)->ReleasePrimitiveArrayCritical(env, mat3, mat3_ptr, 0);
+      }"""      
+
+    def mM = manifest[MatrixImpl[Double]]
+  }
+  
+  /*
   case class MatrixMultiplyBLAS[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends Def[Matrix[A]] {
    
     val mM = manifest[MatrixImpl[A]]
   }
-
+  */
 
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) {
@@ -710,6 +742,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_slicerows[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], end: Exp[Int]) = reflectPure(MatrixSliceRows(x,start,end))
   def matrix_numrows[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixNumRows(x))
   def matrix_numcols[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixNumCols(x))
+  def matrix_raw_data[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixRawData(x))
 
   def matrix_update[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) = reflectWrite(x)(MatrixUpdate[A](x,i,j,y))
   def matrix_updaterow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Exp[Vector[A]]) = reflectWrite(x)(MatrixUpdateRow(x,row,y))
@@ -733,7 +766,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_minus_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectPure(MatrixMinusScalar(x,y))
   def matrix_times[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectPure(MatrixTimes(x,y))
   def matrix_multiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = {
-    if (Config.useBlas) reflectPure(MatrixMultiplyBLAS(x,y))
+    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixMultiplyBLAS(x.asInstanceOf[Exp[Matrix[Double]]],y.asInstanceOf[Exp[Matrix[Double]]])).asInstanceOf[Exp[Matrix[A]]]
     else reflectPure(MatrixMultiply(x,y))
   }
   def matrix_times_vector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = {
@@ -942,18 +975,19 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixInsertAllCols(x,pos,y) => emitValDef(sym, quote(x) + ".insertAllCols(" + quote(pos) + "," + quote(y) + ")")
     case MatrixRemoveRows(x,pos,len) => emitValDef(sym, quote(x) + ".removeRows(" + quote(pos) + "," + quote(len) + ")")
     case MatrixRemoveCols(x,pos,len) => emitValDef(sym, quote(x) + ".removeCols(" + quote(pos) + "," + quote(len) + ")")
+    case MatrixRawData(x) => emitValDef(sym, quote(x) + ".data")
 
     // BLAS calls
-    case m@MatrixMultiplyBLAS(x,y) if (Config.useBlas) =>
-      emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(y) + ".numCols)")
-      stream.println("scalaBLAS.matMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y)))
-    case m@MatrixTimesVectorBLAS(x,y) if (Config.useBlas) =>
+    // case m@MatrixMultiplyBLAS(x,y) =>
+    //       emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(y) + ".numCols)")
+    //       stream.println("scalaBLAS.matMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y)))
+    case m@MatrixTimesVectorBLAS(x,y) =>
       emitValDef(sym, "new " + remap(m.mV) + "(" + quote(x) + ".numRows, false)")
       stream.println("scalaBLAS.matVMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,0,1)".format(quote(x),quote(y),quote(sym),quote(x),quote(x)))
-    case m@MatrixSigmoidBLAS(x) if (Config.useBlas) =>
+    case m@MatrixSigmoidBLAS(x) =>
       emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(x) + ".numCols)")
       stream.println("scalaBLAS.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
-    case m@MatrixSigmoidFBLAS(x) if (Config.useBlas) =>
+    case m@MatrixSigmoidFBLAS(x) =>
       emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(x) + ".numCols)")
       stream.println("scalaBLAS.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
 

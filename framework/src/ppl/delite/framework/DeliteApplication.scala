@@ -1,16 +1,18 @@
 package ppl.delite.framework
 
+import java.io.{FileWriter, File, PrintWriter}
+import scala.tools.nsc.io._
+import scala.virtualization.lms.common.{BaseExp, Base}
+import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
+
 import codegen.c.TargetC
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.scala.TargetScala
 import codegen.Target
 import externlib.ExternLibrary
+import extern.ExternCodegen
 import ops.DeliteOpsExp
-import scala.tools.nsc.io._
-import scala.virtualization.lms.common.{BaseExp, Base}
-import java.io.{FileWriter, File, PrintWriter}
-import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
 
 trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
@@ -32,6 +34,9 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   // generators created by getCodeGenPkg will use the 'current' scope of the deliteGenerator as global scope
   val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
                                                val generators = DeliteApplication.this.generators }
+                                               
+  // for external libraries
+  val externGenerator = new ExternCodegen { val IR: DeliteApplication.this.type = DeliteApplication.this }                                             
 
   var args: Rep[Array[String]] = _
   
@@ -69,7 +74,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     }
 
     //Emit and Compile external library (MKL BLAS)
-    ExternLibrary.init()
+    //ExternLibrary.init()
     
     if (Config.degFilename.endsWith(".deg")) {
       val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
@@ -78,6 +83,10 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       reset
     }
     deliteGenerator.emitSource(liftedMain, "Application", stream)
+    
+    // compile external libraries
+    reset
+    externGenerator.emitSource(liftedMain, "Extern", stream)
   }
 
   final def generateScalaSource(name: String, stream: PrintWriter) = {

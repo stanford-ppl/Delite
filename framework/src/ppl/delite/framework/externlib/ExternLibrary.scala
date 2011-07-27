@@ -6,6 +6,7 @@ import java.io._
 object ExternLibrary {
 
   /* Emit and Compile external library */
+  @deprecated("ExternLibrary has been replaced and should no longer be used", "")
   def init() {
     if (Config.useBlas) {
       emitLib()
@@ -14,6 +15,7 @@ object ExternLibrary {
   }
 
   /* Emit source files for MKL BLAS library */
+  @deprecated("ExternLibrary has been replaced and should no longer be used", "")
   def emitLib() {
     val buildPath = Config.buildDir + File.separator + "scala" + File.separator + "kernels" + File.separator
     val outDir = new File(buildPath); outDir.mkdirs()
