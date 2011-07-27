@@ -1,5 +1,5 @@
 #!/bin/sh
-script="/tmp/$(basename "$0").$(mktemp XXXX)"
+script="/tmp/$(basename "$0").$(mktemp -u XXXX)"
 cat "$(dirname "$0")/shared" > "$script"
 echo 'try {' >> "$script"
 echo '/\c' >> "$script"
