@@ -8,8 +8,9 @@ import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.ops._
+import ppl.delite.framework.codegen.delite._
 
-trait ExternCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.Utils {
+trait DeliteGenExternal extends DeliteCodegen {
   val IR: DeliteOpsExp
   import IR._
 
@@ -25,6 +26,22 @@ trait ExternCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
   /* location for compiled .so shared libraries */
   val libDir = new File(Config.buildDir + "/libraries/")
   
+  override def initializeGenerator(buildDir: String) {
+    scalaJNIDir.mkdirs()
+    nativeDir.mkdirs()
+    libDir.mkdirs()    
+    super.initializeGenerator(buildDir)        
+  }
+  
+  override def finalizeGenerator() {
+    interfaceStreams foreach { v => val s = v._2; s.println("}"); s.close() }
+    nativeStreams foreach { v => val s = v._2; s.close() }
+    
+    // compile native code into .so
+    libraries foreach { v => val lib = v._1; lib.compile(new File(nativeDir, "/" + lib.JNIName + "." + lib.ext) toString, libDir.toString) }
+    
+    super.finalizeGenerator()    
+  }
   
   //////////////////
   // generator state
@@ -37,30 +54,8 @@ trait ExternCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
   /////////////////
   // implementation
     
-  def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
-
-    val x = fresh[A]
-    val y = reifyEffects(f(x))
-
-    // initialize
-    scalaJNIDir.mkdirs()
-    nativeDir.mkdirs()
-    libDir.mkdirs()
-    
-    // generate external libraries
-    emitBlock(y)(stream)       
-    interfaceStreams foreach { v => val s = v._2; s.println("}"); s.close() }
-    nativeStreams foreach { v => val s = v._2; s.close() }
-    
-    // compile native code into .so
-    libraries foreach { v => val lib = v._1; lib.compile(new File(nativeDir, "/" + lib.JNIName + "." + lib.ext) toString, libDir.toString) }
-  }
-  
-  def emitValDef(sym: Sym[Any], rhs: String)(implicit stream: PrintWriter) 
-    = throw new UnsupportedOperationException("emitValDef should not be called from ExternCodegen")
-  
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case e:DeliteOpExternal[_] =>
+  override def emitFatNode(sym: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter): Unit = rhs match {
+    case ThinDef(e:DeliteOpExternal[_]) =>
       if (!libraries.contains(e.lib)){
         emitJNIHeader(e.lib)
       }
@@ -72,8 +67,9 @@ trait ExternCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
       }
             
       libraries.put(e.lib, methodSet + e.scalaFuncName)
+      super.emitFatNode(sym, rhs)
       
-    case _ => // ignore everything else
+    case _ => super.emitFatNode(sym, rhs)
   }
   
   // one per library

@@ -7,6 +7,8 @@ import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
+import ppl.delite.framework.extern.DeliteGenExternal
+
 
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
@@ -58,7 +60,6 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
 
   override def shouldApplyFusion(currentScope: List[TTP])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
 
-
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
 
     val x = fresh[A]
@@ -69,8 +70,7 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
 
     printlog("-- emitSource")
     availableDefs.foreach(printlog(_))
-
-
+    
     stream.println("{\"DEG\":{\n"+
                    "\"version\" : 0.1,\n"+
                    "\"kernelpath\" : \"" + Config.buildDir  + "\",\n"+
@@ -81,7 +81,6 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
     emitBlock(y)(stream)
     //stream.println(quote(getBlockResult(y)))
     stream.println("{\"type\":\"EOP\"}\n]}}")
-
 
     stream.flush
   }
@@ -207,4 +206,4 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
 
 }
 
-trait DeliteCodeGenPkg extends DeliteGenTaskGraph
+trait DeliteCodeGenPkg extends DeliteGenTaskGraph with DeliteGenExternal

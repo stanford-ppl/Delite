@@ -11,7 +11,6 @@ import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.scala.TargetScala
 import codegen.Target
 import externlib.ExternLibrary
-import extern.ExternCodegen
 import ops.DeliteOpsExp
 
 trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
@@ -35,9 +34,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
                                                val generators = DeliteApplication.this.generators }
                                                
-  // for external libraries
-  val externGenerator = new ExternCodegen { val IR: DeliteApplication.this.type = DeliteApplication.this }                                             
-
   var args: Rep[Array[String]] = _
   
   final def main(args: Array[String]) {
@@ -70,7 +66,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       val baseDir = Config.buildDir + File.separator + g.toString + File.separator
       writeModules(baseDir)
       g.emitDataStructures(baseDir + "datastructures" + File.separator)
-      g.generatorInit(baseDir + "kernels" + File.separator)
+      g.initializeGenerator(baseDir + "kernels" + File.separator)
     }
 
     //Emit and Compile external library (MKL BLAS)
@@ -82,11 +78,11 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       // TODO: dot output
       reset
     }
-    deliteGenerator.emitSource(liftedMain, "Application", stream)
+    deliteGenerator.initializeGenerator(Config.buildDir)
+    deliteGenerator.emitSource(liftedMain, "Application", stream)    
+    deliteGenerator.finalizeGenerator()
     
-    // compile external libraries
-    reset
-    externGenerator.emitSource(liftedMain, "Extern", stream)
+    generators foreach { _.finalizeGenerator()}
   }
 
   final def generateScalaSource(name: String, stream: PrintWriter) = {
