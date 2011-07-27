@@ -37,15 +37,25 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     1) we end up with the same object z1
     2) we created a third object that creates a new loop but is immediately discarded
 */
-    // this is a hack to enable things with non-structural equality (e.g. functions)
-    // as case class parameters. otherwise cse won't work and we mirror either not enough or the world...
+    // GROSS HACK ALERT
+    // This is a hack to (among other things) enable objects with non-structural equality 
+    // (e.g. functions) as case class parameters. Otherwise cse won't work and we mirror either not 
+    // enough or the world...
+    // However, we don't want to infringe on cse in the normal IR construction case. That is, 2 calls
+    // to X.t (creating to MatrixTrans(x) instances) should result in the second MatrixTrans(x) node 
+    // being cse'd, even though it has a new impl symbol. Thus we change the meaning of equality 
+    // based on whether we're duringCodegen (presumably mirroring) or not.
     override def equals(x: Any): Boolean = (this,x) match {
-      case (a: Product,b: Product) => 
+      case (a: Product,b: Product) if duringCodegen => 
         /*if (a.productPrefix == b.productPrefix) {
-          val r = syms(a) == syms(b)
-          println("?== "+this+","+x + " is "+r+" "+syms(a)+"/"+syms(b))
+          val r1 = a.productIterator.toList == b.productIterator.toList
+          val r2 = syms(a) == syms(b)
+          if (r1 != r2)
+          printdbg("?== "+this+","+x + " is "+r1+"/"+r2+" syms "+syms(a)+"/"+syms(b))
         }*/
         a.productPrefix == b.productPrefix && syms(a) == syms(b)
+      case (a: Product,b: Product) => 
+        a.productPrefix == b.productPrefix && a.productIterator.toList == b.productIterator.toList
       case _ => super.equals(x)
     }
   }
@@ -466,7 +476,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   var deliteResult: Option[List[Exp[Any]]] = None
   var deliteInputs: List[Sym[Any]] = Nil
 
-  var debugCodegen: Boolean = false
+  var duringCodegen: Boolean = false // are we code generating now?
+  var simpleCodegen: Boolean = false // try to generate more readable code
 
   // TODO: move to lms? TR: will that actually work? it looks pretty unsafe to rebind syms
   def rebind(sym: Sym[Any], rhs: Def[Any]) = createDefinition(sym, rhs).rhs
@@ -579,9 +590,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case s: DeliteOpSingleTask[_] => effectSyms(s.block)
     case op: DeliteCollectElem[_,_] => effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.alloc)
-    case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.zero) ++ effectSyms(op.rFunc)
 //    case op: DeliteForeachElem[_] => effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.sync)
     case op: DeliteForeachElem[_] => effectSyms(op.func) ++ effectSyms(op.sync)
+    case op: DeliteReduceElem[_] => List(op.rV._1, op.rV._2) ++ effectSyms(op.func) ++ effectSyms(op.cond) ++ effectSyms(op.zero) ++ effectSyms(op.rFunc)
     case foreach: DeliteOpForeach2[_,_] => foreach.v::foreach.i::effectSyms(foreach.func):::effectSyms(foreach.sync)
     case foreach: DeliteOpForeachBounded[_,_,_] => foreach.v::foreach.i::effectSyms(foreach.func):::effectSyms(foreach.sync)
     case _ => super.boundSyms(e)
@@ -651,17 +662,20 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
   import IR._
 
   //abstract override def emitValDef(sym: Sym[Any], rhs: String)(implicit stream: PrintWriter): Unit = 
-  //  if (!debugCodegen) super.emitValDef(sym,rhs) else stream.print(quote(sym)+";")
+  //  if (!simpleCodegen) super.emitValDef(sym,rhs) else stream.print(quote(sym)+";")
   //def emitVarDef(sym: Sym[Any], rhs: String)(implicit stream: PrintWriter): Unit
   //def quote(x: Exp[Any]) : String = 
 
   // TODO: what about deliteResult and deliteInput??
 
   override def focusBlock[A](result: Exp[Any])(body: => A): A = {
-    var save = deliteKernel
+    var saveKernel = deliteKernel
+    var saveCodegen = duringCodegen
     deliteKernel = false
+    duringCodegen = true
     val ret = super.focusBlock(result)(body)
-    deliteKernel = save
+    deliteKernel = saveKernel
+    duringCodegen = saveCodegen
     ret
   }
 
@@ -742,14 +756,14 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
   
   // -- begin emit reduce
   
-  def emitFirstReduceElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_])(implicit stream: PrintWriter) {
+  def emitFirstReduceElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "")(implicit stream: PrintWriter) {
       if (elem.cond.nonEmpty) {
         // if we have conditionals, we have to delay the the initialization of the accumulator to the
         // first element where the condition is true
         stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
         stream.println(quote(getBlockResult(elem.func)))
         stream.println("} else {")
-        stream.println(quote(elem.zero))
+        stream.println(prefixSym + quote(sym) + "_zero")
         stream.println("}")
       }
       else {
@@ -773,7 +787,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
   
   def emitInitializeOrReduction(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "")(implicit stream: PrintWriter) {
     stream.println("// TODO: we could optimize this check away with more convoluted runtime support if necessary")          
-    stream.println("if (" + prefixSym + quote(sym) + " == " + quote(elem.zero) + ") " + prefixSym + quote(sym) + " = {")
+    stream.println("if (" + prefixSym + quote(sym) + " == " + prefixSym + quote(sym) + "_zero" + ") " + prefixSym + quote(sym) + " = {")
     
     // initialize
     stream.println(quote(getBlockResult(elem.func)))
@@ -816,7 +830,11 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       case (sym, elem: DeliteForeachElem[_]) => 
         stream.println("var " + quotearg(sym) + " = ()") // must be type Unit
       case (sym, elem: DeliteReduceElem[_]) =>
-        stream.println("var " + quotearg(sym) + " = " + quote(elem.zero))
+        stream.println("val " + quote(sym) + "_zero = {"/*}*/)
+        emitBlock(elem.zero)
+        stream.println(quote(getBlockResult(elem.zero)))
+        stream.println(/*{*/"}")
+        stream.println("var " + quotearg(sym) + " = " + quote(sym) + "_zero")
     }
     stream.println("var " + quote(op.v) + " = 0")
     //if (true) { //op.body exists (loopBodyNeedsStripFirst _)) { preserve line count as indicator for succesful fusing
@@ -897,6 +915,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
       case (sym, elem: DeliteReduceElem[_]) =>
         stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
+        stream.println("var " + quote(sym) + "_zero: " + remap(sym.Type) + " = _")
     }
     stream.println(/*{*/"}")
   }
@@ -922,8 +941,14 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         if (elem.cond.nonEmpty)
           stream.println("//TODO: buffer size might be wrong (loop has conditions)")
         stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.alloc))) //FIXME: do in post-process
-      case (sym, elem: DeliteForeachElem[_]) => stream.println("__act. " + quote(sym) + " = ()") // must be type Unit, initialized in init below
-      case (sym, elem: DeliteReduceElem[_]) => stream.println("__act. " + quote(sym) + " = " + quote(elem.zero))
+      case (sym, elem: DeliteForeachElem[_]) => 
+        stream.println("__act." + quote(sym) + " = ()") // must be type Unit, initialized in init below
+      case (sym, elem: DeliteReduceElem[_]) => 
+        stream.println("__act." + quote(sym) + "_zero = {"/*}*/)
+        emitBlock(elem.zero)
+        stream.println(quote(getBlockResult(elem.zero)))
+        stream.println(/*{*/"}")
+        stream.println("__act." + quote(sym) + " = " + "__act." + quote(sym) + "_zero")
     }
     stream.println("__act")
     stream.println(/*{*/"}")
@@ -939,23 +964,24 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
           stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym))
           emitCollectElem(op, sym, elem, "__act2.")
         case (sym, elem: DeliteForeachElem[_]) => 
-          stream.println("__act2." + quote(sym) + " = {")
+          stream.println("__act2." + quote(sym) + " = {"/*}*/)
           emitForeachElem(op, sym, elem)
-          stream.println("}")               
+          stream.println(/*{*/"}")               
         case (sym, elem: DeliteReduceElem[_]) =>
           if (elem.stripFirst) {
-            stream.println("__act2." + quote(sym) + " = {")         
-            emitFirstReduceElem(op, sym, elem)
-            stream.println("}")
-          } 
-          else { 
+            stream.println("__act2." + quote(sym) + "_zero = " + "__act." + quote(sym) + "_zero") // do we need zero here? yes, for comparing against...
+            stream.println("__act2." + quote(sym) + " = {"/*}*/)
+            emitFirstReduceElem(op, sym, elem, "__act2.")
+            stream.println(/*{*/"}")
+          } else { 
+            stream.println("__act2." + quote(sym) + "_zero = " + "__act." + quote(sym) + "_zero")
             if (isPrimitiveType(sym.Type)) {
-              stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym)) 
+              stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero")
             } else {
-              stream.println("__act2." + quote(sym) + " = " + "__act." + quote(sym) + ".cloneL") // separate zero buffer           
+              stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero.cloneL") // separate zero buffer
             }
             emitReduceElem(op, sym, elem, "__act2.")
-          }  
+          }
       }
       stream.println("__act2")
     } else {
@@ -984,13 +1010,13 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         // if either value is zero, return the other instead of combining
         stream.println("val " + quote(elem.rV._1) + " = " + "__act." + quote(sym))
         stream.println("val " + quote(elem.rV._2) + " = " + "rhs." + quote(sym))
-        stream.println("if (" + quote(elem.rV._1) + " == " + quote(elem.zero) + ") {")
+        stream.println("if (" + quote(elem.rV._1) + " == " + "__act." + quote(sym) + "_zero) {"/*}*/) //TODO: what if zero is an accumulator (SumIf)?
         stream.println("__act." + quote(sym) + " = " + quote(elem.rV._2))
-        stream.println("}")
-        stream.println("else if (" + quote(elem.rV._2) + " != " + quote(elem.zero) + ") {")
+        stream.println(/*{*/"}")
+        stream.println("else if (" + quote(elem.rV._2) + " != " + "__act." + quote(sym) + "_zero) {"/*}*/) //TODO: see above
         emitBlock(elem.rFunc)
         stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
-        stream.println("}")
+        stream.println(/*{*/"}")
     }
     stream.println(/*{*/"}")
     // scan/postprocess follows

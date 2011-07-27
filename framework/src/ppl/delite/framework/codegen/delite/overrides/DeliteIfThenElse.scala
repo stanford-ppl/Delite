@@ -93,9 +93,9 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
       stream.println("val " + quote(sym) + " = {")
       (a,b) match {
         case (Const(()), Const(())) => stream.println("()")
-        case (_, Const(())) => generateThenOnly(sym, c, a, !deliteKernel && !debugCodegen)
-        case (Const(()), _) => generateElseOnly(sym, c, b, !deliteKernel && !debugCodegen)
-        case _ => generateThenElse(sym, c, a, b, !deliteKernel && !debugCodegen)
+        case (_, Const(())) => generateThenOnly(sym, c, a, !deliteKernel && !simpleCodegen)
+        case (Const(()), _) => generateElseOnly(sym, c, b, !deliteKernel && !simpleCodegen)
+        case _ => generateThenElse(sym, c, a, b, !deliteKernel && !simpleCodegen)
       }
       stream.println("}")
       //deliteKernel = save

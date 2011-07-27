@@ -7,66 +7,70 @@ class SpadeRunner extends ((Array[java.lang.String])=>(Unit)) {
       if (x2) { }
     }
     val x8 = { 
-      val x62 = while ({val x31 = x21 x32}) {
-        val x46 = { }
-        while (x38 < x37) {  // begin fat loop x46 } // end fat loop x46
-        val x60 = { if (x53) {}
+      val x60 = while ({val x31 = x21 x32}) {
+        val x44 = { }
+        while (x37 < x35) {  // begin fat loop x44 } // end fat loop x44
+        val x58 = { if (x51) {}
           else { }
         }
       }
     }
-    while (x86 < x85) {  // begin fat loop x92
-      val x91 = {
-        if (x90) { } else { }
+    val x90_zero = { }
+    while (x84 < x83) {  // begin fat loop x90
+      val x89 = {
+        if (x88) { } else { }
       }
-    } // end fat loop x92
-    val x134 = { (x104: Int, x105: Int) => 
-      val x120 = { }
-      while (x108 < x69) {  // begin fat loop x120
-        val x114 = {  }
-        val x118 = {  }
-      } // end fat loop x120
-      val x126 = { }
-      while (x121 < x69) {  // begin fat loop x126 } // end fat loop x126
-      while (x127 < x69) {  // begin fat loop x132 } // end fat loop x132
-      val x133 = {  }
+    } // end fat loop x90
+    val x132 = { (x102: Int, x103: Int) => 
+      val x118 = { }
+      while (x106 < x67) {  // begin fat loop x118
+        val x112 = {  }
+        val x116 = {  }
+      } // end fat loop x118
+      val x124 = { }
+      while (x119 < x67) {  // begin fat loop x124 } // end fat loop x124
+      val x130_zero = { }
+      while (x125 < x67) {  // begin fat loop x130 } // end fat loop x130
+      val x131 = {  }
     }
-    val x160 = while ({val x144 = x143 x145}) {
-      val x151 = {
-        if (x150) { } else { }
+    val x157 = while ({val x142 = x141 x143}) {
+      val x149 = {
+        if (x148) { } else { }
       }
-      val x154 = {  }
-      while (x175 < x156) {  // begin fat loop x157
-        val x214 = {
-          if (x210) { }
+      val x152 = {  }
+      while (x172 < x152) {  // begin fat loop x154
+        val x210 = {
+          if (x206) { }
         }
-        val x208 = { }
-        while (x179 < x66) {  // begin fat loop x208
-          val x194 = { }
-          while (x182 < x69) {  // begin fat loop x194
+        val x204 = { }
+        while (x175 < x64) {  // begin fat loop x204
+          val x190 = { }
+          while (x178 < x67) {  // begin fat loop x190
+            val x184 = {  }
             val x188 = {  }
-            val x192 = {  }
-          } // end fat loop x194
-          val x200 = { }
-          while (x195 < x69) {  // begin fat loop x200 } // end fat loop x200
-          while (x201 < x69) {  // begin fat loop x206 } // end fat loop x206
-          val x207 = {  }
-        } // end fat loop x208
-        while (x223 < x66) {  // begin fat loop x229
-          if (x225) { }
-        } // end fat loop x229
-        val x239 = {
-          if (x216) {
-            val x222 = { }
-            while (x217 < x66) {  // begin fat loop x222 } // end fat loop x222
-            while (x231 < x230) {  // begin fat loop x237
-              x237 = { }
-            } // end fat loop x237
+          } // end fat loop x190
+          val x196 = { }
+          while (x191 < x67) {  // begin fat loop x196 } // end fat loop x196
+          val x202_zero = { }
+          while (x197 < x67) {  // begin fat loop x202 } // end fat loop x202
+          val x203 = {  }
+        } // end fat loop x204
+        val x225_zero = { }
+        while (x219 < x64) {  // begin fat loop x225
+          if (x221) { }
+        } // end fat loop x225
+        val x235 = {
+          if (x212) {
+            val x218 = { }
+            while (x213 < x64) {  // begin fat loop x218 } // end fat loop x218
+            while (x227 < x226) {  // begin fat loop x233
+              x233 = { }
+            } // end fat loop x233
           }
         }
-        x157 = { }
-      } // end fat loop x157
+        x154 = { }
+      } // end fat loop x154
     }
-    val x172 = while ({val x163 = x162 x164}) { }
+    val x169 = while ({val x160 = x159 x161}) { }
   }
 }

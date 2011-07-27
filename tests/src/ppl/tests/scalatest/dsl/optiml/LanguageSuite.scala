@@ -24,7 +24,7 @@ trait SumIf extends DeliteTestModule with OptiMLApplication {
 
     val y = Vector(true, false, true, false, true, false, false, false, true, true)
     val x = sumIf(0,10) { y(_) } { i => Vector.ones(5) }
-//    x.pprint
+    //x.pprint
 		collect(x == Vector(5.0, 5.0, 5.0, 5.0, 5.0))
     mkReport
   }

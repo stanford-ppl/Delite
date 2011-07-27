@@ -16,7 +16,7 @@ class TestAppCodegen extends FileDiffSuite {
   
   private def testApp(name: String, app: DeliteApplication, args: Array[String] = Array()) = {
     withOutFile(prefix+name+"-log") {
-      app.debugCodegen = true
+      app.simpleCodegen = true
       app.generateScalaSource(app.getClass.getSimpleName.dropRight(1), new PrintWriter(new FileWriter(prefix+name+"-src")))
       println("##### all definitions")
       app.globalDefs.foreach { d =>
@@ -60,7 +60,7 @@ class TestAppCodegen extends FileDiffSuite {
       val save = ppl.delite.framework.Config.opfusionEnabled
       try {
         ppl.delite.framework.Config.opfusionEnabled = true
-        app.debugCodegen = true
+        app.simpleCodegen = true
         app.generateScalaSource(app.getClass.getSimpleName.dropRight(1)+"Fusing",new PrintWriter(new FileWriter(prefix+name+"-fusing-src")))
         println("##### all definitions")
         app.globalDefs.foreach { d =>
