@@ -374,54 +374,94 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def m = manifest[A]
     def a = implicitly[Arith[A]]
   }
-  case class MatrixTimesVectorBLAS[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]])
-    extends Def[Vector[A]] {
+  
+  abstract class MatrixTimesVectorBLAS[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]]) extends DeliteOpExternal[Vector[A]] {
+    def lib = BLAS        
+    def alloc = Vector[A](x.numRows, unit(false))        
+    def args = scala.List(matrix_raw_data(x), vector_raw_data(y), vector_raw_data(allocVal), x.numRows, x.numCols, unit(0), unit(1))
+    
+    def scalaFuncSignatureSpec(tp: String) = 
+      "def " + scalaFuncName + "(mat1:Array[%1$s], vec2:Array[%1$s], vec3:Array[%1$s], mat_row:Int, mat_col:Int, vec_offset:Int, vec_stride:Int)".format(tp)  
+      
+    def nativeFuncSpec(tp: String, func: String) =
+      lib.JNIPrefix + "_00024_"+scalaFuncName+"""
+      (JNIEnv *env, jobject obj, j%1$sArray mat1, j%1$sArray vec2, j%1$sArray vec3, jint mat_row, jint mat_col, jint vec_offset, jint vec_stride)
+      {
+      	jboolean copy;
 
-    val mV = manifest[VectorImpl[A]]
+      	j%1$s *mat1_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)mat1, &copy));
+      	j%1$s *vec2_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec2, &copy));
+      	jdouble *vec3_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec3, &copy));
 
-    def m = manifest[A]
-    def a = implicitly[Arith[A]]
+      	vec2_ptr += vec_offset;
+
+      	%2$s(CblasRowMajor, CblasNoTrans, mat_row, mat_col, 1.0, mat1_ptr, mat_col, vec2_ptr, vec_stride, 0.0, vec3_ptr, 1);
+
+      	(*env)->ReleasePrimitiveArrayCritical(env, mat1, mat1_ptr, 0);
+      	(*env)->ReleasePrimitiveArrayCritical(env, vec2, vec2_ptr, 0);
+      	(*env)->ReleasePrimitiveArrayCritical(env, vec3, vec3_ptr, 0);
+      }""".format(tp, func)
+    
+    def mV = manifest[VectorImpl[A]]
+  }  
+  case class MatrixTimesVectorBLASd(x: Exp[Matrix[Double]], y: Exp[Vector[Double]])
+    extends MatrixTimesVectorBLAS[Double](x,y) {
+    
+    def scalaFuncName = "matVMultD"        
+    def scalaFuncSignature = scalaFuncSignatureSpec("double")
+    def nativeFunc = nativeFuncSpec("double", "cblas_dgemv")
   }
-
+  case class MatrixTimesVectorBLASf(x: Exp[Matrix[Float]], y: Exp[Vector[Float]])
+    extends MatrixTimesVectorBLAS[Float](x,y) {
+    
+    def scalaFuncName = "matVMultF"        
+    def scalaFuncSignature = scalaFuncSignatureSpec("float")
+    def nativeFunc = nativeFuncSpec("float", "cblas_sgemv")
+  }
+  
   case class MatrixMultiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_multiply_impl(x,y)))
   
-  case class MatrixMultiplyBLAS(x: Exp[Matrix[Double]], y: Exp[Matrix[Double]])
-    extends DeliteOpExternal[Matrix[Double]] {
-
+  abstract class MatrixMultiplyBLAS[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {
     def lib = BLAS        
-    def alloc = Matrix[Double](x.numRows, y.numCols)    
-    def scalaFuncName = "matMult"    
-    def scalaFuncSignature =
-      "def " + scalaFuncName + "[@specialized(Double,Float) T](mat1:Array[T], mat2:Array[T], mat3:Array[T], mat1_r:Int, mat1_c:Int, mat2_c:Int)"
+    def alloc = Matrix[A](x.numRows, y.numCols)    
     def args = scala.List(matrix_raw_data(x), matrix_raw_data(y), matrix_raw_data(allocVal), x.numRows, x.numCols, y.numCols)
 
-    def nativeFunc = 
-      lib.JNIPrefix + """_00024_matMult_00024mDc_00024sp
-      (JNIEnv *env, jobject obj, jdoubleArray mat1, jdoubleArray mat2, jdoubleArray mat3, jint mat1_r, jint mat1_c, jint mat2_c)
+    def scalaFuncSignatureSpec(tp: String) =
+      "def " + scalaFuncName + "(mat1:Array[%1$s], mat2:Array[%1$s], mat3:Array[%1$s], mat1_r:Int, mat1_c:Int, mat2_c:Int)".format(tp)
+
+    def nativeFuncSpec(tp: String, func: String) = 
+      lib.JNIPrefix + "_00024_"+scalaFuncName+"""
+      (JNIEnv *env, jobject obj, j%1$sArray mat1, j%1$sArray mat2, j%1$sArray mat3, jint mat1_r, jint mat1_c, jint mat2_c)
       {
       	jboolean copy;
-      	jdouble *mat1_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat1, &copy);
-      	jdouble *mat2_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat2, &copy);
-      	jdouble *mat3_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat3, &copy);
+      	j%1$s *mat1_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat1, &copy);
+      	j%1$s *mat2_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat2, &copy);
+      	j%1$s *mat3_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat3, &copy);
 
-      	cblas_dgemm(CblasRowMajor, CblasNoTrans, CblasNoTrans, mat1_r, mat2_c, mat1_c, 1.0, mat1_ptr, mat1_c, mat2_ptr, mat2_c, 0.0, mat3_ptr, mat2_c);
+      	%2$s(CblasRowMajor, CblasNoTrans, CblasNoTrans, mat1_r, mat2_c, mat1_c, 1.0, mat1_ptr, mat1_c, mat2_ptr, mat2_c, 0.0, mat3_ptr, mat2_c);
 
       	(*env)->ReleasePrimitiveArrayCritical(env, mat1, mat1_ptr, 0);
       	(*env)->ReleasePrimitiveArrayCritical(env, mat2, mat2_ptr, 0);
       	(*env)->ReleasePrimitiveArrayCritical(env, mat3, mat3_ptr, 0);
-      }"""      
+      }""".format(tp, func)      
 
     def mM = manifest[MatrixImpl[Double]]
   }
-  
-  /*
-  case class MatrixMultiplyBLAS[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
-    extends Def[Matrix[A]] {
-   
-    val mM = manifest[MatrixImpl[A]]
+  case class MatrixMultiplyBLASd(x: Exp[Matrix[Double]], y: Exp[Matrix[Double]])
+    extends MatrixMultiplyBLAS[Double](x,y) {
+
+    def scalaFuncName = "matMultD"    
+    def scalaFuncSignature = scalaFuncSignatureSpec("double")
+    def nativeFunc = nativeFuncSpec("double", "cblas_dgemm")
   }
-  */
+  case class MatrixMultiplyBLASf(x: Exp[Matrix[Float]], y: Exp[Matrix[Float]])
+    extends MatrixMultiplyBLAS[Float](x,y) {
+
+    def scalaFuncName = "matMultF"    
+    def scalaFuncSignature = scalaFuncSignatureSpec("float")
+    def nativeFunc = nativeFuncSpec("float", "cblas_sgemm")
+  }
 
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) {
@@ -429,25 +469,56 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val v = fresh[A]
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1))))
   }  
-  case class MatrixSigmoidBLAS[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends Def[Matrix[Double]] {
-
-    val mM = manifest[MatrixImpl[Double]]
-  }
-
-
+  
   case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoidf_impl(in))) {
 
     val v = fresh[A]
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
   }  
-  case class MatrixSigmoidFBLAS[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends Def[Matrix[Float]] {
     
-    val mM = manifest[MatrixImpl[Float]]
-  }
+  abstract class MatrixSigmoidBLAS[A:Manifest](in: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {
+    def lib = BLAS        
+    def alloc = Matrix[A](in.numRows, in.numCols)    
+    def args = scala.List(matrix_raw_data(in), matrix_raw_data(allocVal), unit(0), in.numRows*in.numCols)
 
+    def scalaFuncSignatureSpec(tp: String) =
+      "def " + scalaFuncName + "(vec1:Array[%1$s], vec2:Array[%1$s], start:Int, end:Int)".format(tp)
+
+    def nativeFuncSpec(tp: String, func: String) = 
+      lib.JNIPrefix + "_00024_"+scalaFuncName+"""
+      (JNIEnv *env, jobject obj, j%1$sArray vec1, j%1$sArray vec2, jint start, jint end)
+      {
+      	int i = 0;
+      	jboolean copy;
+
+      	j%1$s *vec1_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec1, &copy));
+      	j%1$s *vec2_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec2, &copy));
+
+      	for(i=start; i<end; i++) {
+      		vec2_ptr[i] = 1.0 / (1.0+%2$s(-1.0*vec1_ptr[i]));
+      	}
+
+      	(*env)->ReleasePrimitiveArrayCritical(env, vec1, vec1_ptr, 0);
+      	(*env)->ReleasePrimitiveArrayCritical(env, vec2, vec2_ptr, 0);
+      }""".format(tp, func)      
+
+    def mM = manifest[MatrixImpl[A]]
+  }
+  case class MatrixSigmoidBLASd(in: Exp[Matrix[Double]])
+    extends MatrixSigmoidBLAS[Double](in) {
+
+    def scalaFuncName = "sigmoidD"    
+    def scalaFuncSignature = scalaFuncSignatureSpec("double")
+    def nativeFunc = nativeFuncSpec("double", "exp")
+  }
+  case class MatrixSigmoidBLASf(in: Exp[Matrix[Float]])
+    extends MatrixSigmoidBLAS[Float](in) {
+
+    def scalaFuncName = "sigmoidF"    
+    def scalaFuncSignature = scalaFuncSignatureSpec("float")
+    def nativeFunc = nativeFuncSpec("float", "expf")
+  }
 
   ////////////////////////////////
   // implemented via delite ops
@@ -766,11 +837,13 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_minus_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectPure(MatrixMinusScalar(x,y))
   def matrix_times[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectPure(MatrixTimes(x,y))
   def matrix_multiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = {
-    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixMultiplyBLAS(x.asInstanceOf[Exp[Matrix[Double]]],y.asInstanceOf[Exp[Matrix[Double]]])).asInstanceOf[Exp[Matrix[A]]]
+    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixMultiplyBLASd(x.asInstanceOf[Exp[Matrix[Double]]],y.asInstanceOf[Exp[Matrix[Double]]])).asInstanceOf[Exp[Matrix[A]]]
+    else if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixMultiplyBLASf(x.asInstanceOf[Exp[Matrix[Float]]],y.asInstanceOf[Exp[Matrix[Float]]])).asInstanceOf[Exp[Matrix[A]]]
     else reflectPure(MatrixMultiply(x,y))
   }
   def matrix_times_vector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = {
-    if (Config.useBlas) reflectPure(MatrixTimesVectorBLAS(x,y))
+    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixTimesVectorBLASd(x.asInstanceOf[Exp[Matrix[Double]]],y.asInstanceOf[Exp[Vector[Double]]])).asInstanceOf[Exp[Vector[A]]]
+    else if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixTimesVectorBLASf(x.asInstanceOf[Exp[Matrix[Float]]],y.asInstanceOf[Exp[Vector[Float]]])).asInstanceOf[Exp[Vector[A]]]
     else reflectPure(MatrixTimesVector(x,y))
   }
   def matrix_times_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectPure(MatrixTimesScalar(x,y))
@@ -784,11 +857,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_sumcol[A:Manifest:Arith](x: Exp[Matrix[A]]) = reflectPure(MatrixSumCol(x))
   def matrix_inverse[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = reflectPure(MatrixInverse(x))
   def matrix_sigmoid[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = {
-    if (Config.useBlas) reflectPure(MatrixSigmoidBLAS(x))
+    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixSigmoidBLASd(x.asInstanceOf[Exp[Matrix[Double]]]))
     else reflectPure(MatrixSigmoid(x))
   }
   def matrix_sigmoidf[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = {
-    if (Config.useBlas) reflectPure(MatrixSigmoidFBLAS(x))
+    if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixSigmoidBLASf(x.asInstanceOf[Exp[Matrix[Float]]]))
     else reflectPure(MatrixSigmoidF(x))
   }
 
@@ -847,7 +920,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       case e@MatrixPlus(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixPlus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
       case e@MatrixMap(x,g) => reflectPure(new { override val original = Some(f,e) } with MatrixMap(f(x),f(g))(e.mA, e.mB))(mtype(manifest[A]))
       case e@MatrixTimesVector(x,y) => reflectPure(new {override val original = Some(f,e) } with MatrixTimesVector(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
-      case e@MatrixTimesVectorBLAS(x,y) => reflectPure(MatrixTimesVectorBLAS(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+      case e@MatrixTimesVectorBLASd(x,y) => reflectPure(MatrixTimesVectorBLASd(f(x),f(y)))(mtype(manifest[A]))
       case Reflect(MatrixNumRows(x), u, es) => reflectMirrored(Reflect(MatrixNumRows(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(MatrixNumCols(x), u, es) => reflectMirrored(Reflect(MatrixNumCols(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(MatrixClone(x), u, es) => reflectMirrored(Reflect(MatrixClone(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -975,22 +1048,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixInsertAllCols(x,pos,y) => emitValDef(sym, quote(x) + ".insertAllCols(" + quote(pos) + "," + quote(y) + ")")
     case MatrixRemoveRows(x,pos,len) => emitValDef(sym, quote(x) + ".removeRows(" + quote(pos) + "," + quote(len) + ")")
     case MatrixRemoveCols(x,pos,len) => emitValDef(sym, quote(x) + ".removeCols(" + quote(pos) + "," + quote(len) + ")")
-    case MatrixRawData(x) => emitValDef(sym, quote(x) + ".data")
-
-    // BLAS calls
-    // case m@MatrixMultiplyBLAS(x,y) =>
-    //       emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(y) + ".numCols)")
-    //       stream.println("scalaBLAS.matMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y)))
-    case m@MatrixTimesVectorBLAS(x,y) =>
-      emitValDef(sym, "new " + remap(m.mV) + "(" + quote(x) + ".numRows, false)")
-      stream.println("scalaBLAS.matVMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,0,1)".format(quote(x),quote(y),quote(sym),quote(x),quote(x)))
-    case m@MatrixSigmoidBLAS(x) =>
-      emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(x) + ".numCols)")
-      stream.println("scalaBLAS.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
-    case m@MatrixSigmoidFBLAS(x) =>
-      emitValDef(sym, "new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(x) + ".numCols)")
-      stream.println("scalaBLAS.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
-
+    case MatrixRawData(x) => emitValDef(sym, quote(getBlockResult(x)) + ".data")  // getBlockResult necessary?? should it be everywhere?
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -1002,27 +1060,27 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
     /* CUBLAS calls */
-    case MatrixMultiplyBLAS(x,y) =>
-      val callStream = "cublasSetKernelStream(stream);"
-      val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
-        "cublasDgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
-      else if(remap(x.Type.typeArguments(0)) == "float")
-        "cublasSgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
-      else
-        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatrixMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0))))
-      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(y)),false)
-      emitLibCall(sym,List(callStream,callKernel))
-    
-    case MatrixTimesVectorBLAS(x,y) =>
-      val callStream = "cublasSetKernelStream(stream);"
-      val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
-        "cublasDgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
-      else if(remap(x.Type.typeArguments(0)) == "float")
-        "cublasSgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
-      else
-        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Matrix*Vector CUBLAS library)".format(remap(x.Type.typeArguments(0))))
-      emitVectorAlloc(sym,"%s->numRows".format(quote(x)),"false",false)
-      emitLibCall(sym,List(callStream,callKernel))
+    // case MatrixMultiplyBLAS(x,y) =>
+    //   val callStream = "cublasSetKernelStream(stream);"
+    //   val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
+    //     "cublasDgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
+    //   else if(remap(x.Type.typeArguments(0)) == "float")
+    //     "cublasSgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
+    //   else
+    //     throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatrixMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0))))
+    //   emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(y)),false)
+    //   emitLibCall(sym,List(callStream,callKernel))
+    // 
+    // case MatrixTimesVectorBLAS(x,y) =>
+    //   val callStream = "cublasSetKernelStream(stream);"
+    //   val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
+    //     "cublasDgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
+    //   else if(remap(x.Type.typeArguments(0)) == "float")
+    //     "cublasSgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
+    //   else
+    //     throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Matrix*Vector CUBLAS library)".format(remap(x.Type.typeArguments(0))))
+    //   emitVectorAlloc(sym,"%s->numRows".format(quote(x)),"false",false)
+    //   emitLibCall(sym,List(callStream,callKernel))
 
     /* The ops that call through to the underlying data structure */
     case MatrixDCApply(x,i) =>

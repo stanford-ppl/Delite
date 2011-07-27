@@ -18,7 +18,7 @@ trait DeliteGenExternal extends DeliteCodegen {
   // generator config
   
   /* location for generated Scala JNI interface objects */
-  val scalaJNIDir = new File(Config.buildDir + "/scala/")
+  val scalaJNIDir = new File(Config.buildDir + "/scala/kernels/")
   
   /* location for generated native method wrappers */
   val nativeDir = new File(Config.buildDir + "/native/")

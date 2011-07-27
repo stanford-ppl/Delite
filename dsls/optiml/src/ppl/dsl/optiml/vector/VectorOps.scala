@@ -300,7 +300,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   // fast parallel sort with delite ops
   case class VectorSort[A:Manifest:Ordering](x: Exp[Vector[A]]) extends Def[Vector[A]]
   case class VectorToList[A:Manifest](x: Exp[Vector[A]]) extends Def[List[A]]
-
+  case class VectorRawData[A:Manifest](x: Exp[Vector[A]]) extends Def[Array[A]]
 
   /////////////////////////////////////////////////
   // implemented via kernel embedding (sequential)
@@ -705,6 +705,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   def vector_slice[A:Manifest](x: Exp[Vector[A]], start: Exp[Int], end: Exp[Int]) = reflectPure(VectorSlice(x, start, end))
   def vector_contains[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) = reflectPure(VectorContains(x, y))
   def vector_distinct[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorDistinct(x))
+  def vector_raw_data[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorRawData(x))
 
   def vector_equals[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(VectorEquals(x,y))
   def vector_trans[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorTrans(x))
@@ -1027,6 +1028,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
     case VectorEmptyFloat() => emitValDef(sym, "generated.scala.EmptyVectorFloatImpl")
     case VectorEmptyInt() => emitValDef(sym, "generated.scala.EmptyVectorIntImpl")
     case v@VectorEmpty() => emitValDef(sym, "new generated.scala.EmptyVectorImpl[" + remap(v.mA) + "]")
+    case VectorRawData(x) => emitValDef(sym, quote(getBlockResult(x)) + ".data")  
     case _ => super.emitNode(sym, rhs)
   }
 }
