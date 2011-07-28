@@ -71,13 +71,14 @@
    
   <ul> 
     <li> 
-    <a href="http://www.jetbrains.com/idea/download/">IDEA IntelliJ</a>. You may want to configure the memory parameters in the VM options for IDEA.</li> 
-    <li>Scala plugin</li> 
+    <a href="http://www.jetbrains.com/idea/download/">IDEA IntelliJ</a>. You may want to configure the memory parameters in the VM options for IDEA, e.g. increase max heap size if you encounter internal compiler errors (to do that, adjust the *.vmoptions file that resides next to IDEA executable in the installation folder)</li> 
+    <li>
+    <a href="http://confluence.jetbrains.net/display/SCA/Scala+Plugin+for+IntelliJ+IDEA">IDEA Scala plugin</a></li> 
   </ul><h3>Git</h3> 
    
   <ul> 
     <li><a href="http://code.google.com/p/msysgit/">Git for Windows</a></li> 
-    <li>We have found Git works best on Windows with <code>autocrlf</code> and <code>filemode</code> disabled. Place these options either in your global git config or the per repository git config.
+    <li>We have found Git works best on Windows with <code>autocrlf</code> and <code>filemode</code> disabled. Place these options either in your <a href="http://stackoverflow.com/questions/1475252/when-you-set-a-global-configuration-option-for-git-on-windows-where-does-it-get">global git config</a> or the <abbr title="the &quot;.git/config&quot; file in your repository">per repository git config</abbr>
     <pre><code>[core]
 filemode = false
 autocrlf = false</code></pre> 
@@ -85,7 +86,8 @@ autocrlf = false</code></pre>
   </ul><h3>Ant</h3> 
    
   <ul> 
-    <li><a href="http://ant.apache.org/">Ant</a></li> 
+    <li><a href="http://ant.apache.org/">Ant</a></li>
+    <li>If you have troubles compiling <code>scala-virtualized</code>, you may have to download and install <a href="http://mvnrepository.com/artifact/org.apache.ant/ant-nodeps">ant-nodeps</a></li> 
   </ul>
   
   <h3>GUI Git Client for Windows</h3> 
@@ -115,8 +117,8 @@ autocrlf = false</code></pre>
   <h2>SBT setup instructions</h2> 
    
   <ol> 
-    <li><p>Ensure <code>scala-virtualized</code> is built by running <code>ant fastdist</code> in the <code>scala-virtualized</code> directory.</p></li> 
-    <li><p>Build <code>virtualization-lms-core</code> by running the <code>sbt</code> command <code>publish-local</code></p></li> 
+    <li><p>Ensure <code>scala-virtualized</code> is built by running <code>ant fastdist</code> in the <code>scala-virtualized</code> directory. If you have troubles compiling <code>scala-virtualized</code>, you may have to download and install <a href="http://mvnrepository.com/artifact/org.apache.ant/ant-nodeps">ant-nodeps</a>.</p></li> 
+    <li><p>Build <code>virtualization-lms-core</code> by running the <code>sbt</code> command <code>publish-local</code>.</p></li> 
     <li> 
     <p>Create a <code>local.properties</code> from the sample <code>local.properties.sample</code> file inside the <code>virtualization-lms-core</code> folder with the following lines. Select the appropriate line based on your system and replace with appropriate paths. Absolute paths must be used if the <code>scala-virtualized</code> directory is outside of the project.</p> 
      
@@ -156,9 +158,9 @@ libs.lms.home=/ppl/virtualization-lms-core
 runtime.classes=runtime/target/scala_2.8.1/classes
 tests.verbose=true</code></pre> 
     </li> 
-    <li><p>Generate the <code>scala-virtualized</code> compiler by running <code>ant fastdist</code> in the <code>scala-virtualized</code> directory</p></li> 
     <li><p>You should be able to run <code>sbt</code> from the Delite directory.</p></li> 
-    <li><p>Update dependencies by running the <code>sbt</code> command <code>update</code></p></li> 
+    <li><p>To build Delite framework, first update dependencies by running the <code>sbt</code> command <code>update</code> and then compile the project using <code>sbt</code> command <code>compile</code>.</p></li> 
+    <li><p>To build Delite runtime, run <code>sbt</code> from the runtime subdirectory of the Delite directory and issue the same <code>sbt</code> commands as described above for Delite framework.</p></li> 
   </ol><h2>IDEA project setup instructions</h2> 
    
   <p>Until we have a project file checked into the repository and a standardized directory layout, you will have to create the project yourself.</p> 
@@ -166,18 +168,18 @@ tests.verbose=true</code></pre>
   <h3>Short and sweet IDEA setup instructions</h3> 
    
   <ol> 
-    <li>Build <code>scala-virtualized</code> by running <code>ant fastdist</code> 
+    <li>Build <code>scala-virtualized</code> by running <code>ant fastdist.</code> 
     </li> 
-    <li>Create a new project (selecting from existing sources) with the <code>Project Files</code> location set to the <code>Delite</code> directory. Do not create a <code>src</code> directory</li> 
-    <li>Add a Project Library <code>scala-virtualized</code> with Classes <code>scala-compiler.jar</code> and <code>scala-library.jar</code>. These are found under <code>scala-virtualized/dists/latest/lib</code> 
+    <li>Create a new project (selecting from existing sources) with the <code>Project Files</code> location set to the <code>Delite</code> directory. Do not create a <code>src</code> directory.</li> 
+    <li>Add a Project Library <code>scala-virtualized</code> with Classes <code>scala-compiler.jar</code> and <code>scala-library.jar</code>. These are found under <code>scala-virtualized/dists/latest/lib</code>.
     </li> 
-    <li>Add modules from scratch, with directories set to <code>Delite/dsls/optiml</code>, <code>Delite/framework</code>, <code>Delite/runtime</code>, <code>Delite/tests</code>, <code>virtualization-lms-core</code> 
+    <li>Add modules from scratch, with directories set to <code>Delite/dsls/optiml</code>, <code>Delite/framework</code>, <code>Delite/runtime</code>, <code>Delite/tests</code>, <code>virtualization-lms-core</code>.
     </li> 
-    <li>Add Scala facets to each module, with compiler library <code>scala-virtualized/dists/latest/lib/scala-compiler.jar</code> 
+    <li>Add Scala facets to each module, with compiler library <code>scala-virtualized/dists/latest/lib/scala-compiler.jar</code>.
     </li> 
-    <li>Add the project library dependency <code>scala-virtualized</code> to all modules</li> 
+    <li>Add the project library dependency <code>scala-virtualized</code> to all modules.</li>
     <li> 
-    <p>Add module dependencies as follows:</p> 
+    Add module dependencies as follows:
      
     <p> <code>framework</code> depends on <code>virtualization-lms-core</code></p> 
      
@@ -187,57 +189,53 @@ tests.verbose=true</code></pre>
      
     <p> <code>tests</code> depends on <code>framework</code>, <code>optiml</code>, and <code>virtualization-lms-core</code></p> 
      
-    <p> <code>virtualization-lms-core</code> only depends on <code>scala-virtualized</code></p> 
+    <p> <code>virtualization-lms-core</code> only depends on <code>scala-virtualized</code></p>
+    <p></p> 
     </li> 
-    <li><p>Test the project structure with <code>Build</code> -&gt; <code>Make Project</code></p></li> 
+    <li>Be sure to check the "Export" checkbox for all dependencies in Dependencies grid.</li> 
+    <li>Test the project structure with <code>Build</code> -&gt; <code>Make Project</code>.</li> 
   </ol><h3>Step by step</h3> 
    
   <ol> 
-    <li>Build <code>scala-virtualized</code> by running <code>ant fastdist</code> in the <code>scala-virtualized</code> directory</li> 
-    <li>Open up <code>IDEA</code> 
-    </li> 
-    <li>Go to <code>File</code> -&gt; <code>New Project</code> 
-    </li> 
-    <li><p>Select <code>Create Java project from existing sources</code></p></li> 
-    <li><p>Name the project <code>Delite</code> or something similar</p></li> 
-    <li><p>Select the project files location as the <code>Delite</code> repository you just downloaded. For example: <code>C:\Code\PPL\Delite</code></p></li> 
-    <li><p>Select <code>Do not create source directory</code></p></li> 
-    <li><p>Continue pressing next through the libraries dialog. If it asks for a JDK, add a JDK to the project.</p></li> 
-    <li><p>Go to <code>File</code> -&gt; <code>Project Structure</code></p></li> 
-    <li>Select <code>Libraries</code> under <code>-Project Settings-</code> 
-    </li> 
-    <li>Click the <code>+</code> (add) button</li> 
-    <li>Name the library <code>scala-virtualized</code> or something similar</li> 
-    <li>Add the new library to any modules you have already defined</li> 
-    <li>Click <code>Attach Classes...</code> 
-    </li> 
-    <li><p>Browse to the <code>lib</code> directory under the <code>scala-virtualized/dist/latest</code> directory, and add <code>scala-compiler.jar</code> and <code>scala-library.jar</code></p></li> 
-    <li><p>Create the project modules</p></li> 
-    <li>Select Modules under -Project Settings-</li> 
-    <li>Click the Add button, then click Module</li> 
-    <li>Select Create module from scratch</li> 
+    <li>Build <code>scala-virtualized</code> by running <code>ant fastdist</code> in the <code>scala-virtualized</code> directory. If you have troubles compiling <code>scala-virtualized</code>, you may have to download and install <a href="http://mvnrepository.com/artifact/org.apache.ant/ant-nodeps">ant-nodeps</a>.</li> 
+    <li>Open up <code>IDEA</code>.</li> 
+    <li>Go to <code>File</code> -&gt; <code>New Project</code>.</li> 
+    <li>Select <code>Create Java project from existing sources</code>.</li> 
+    <li>Name the project <code>Delite</code> or something similar.</li> 
+    <li>Select the project files location as the <code>Delite</code> repository you just downloaded. For example: <code>C:\Code\PPL\Delite</code></li> 
+    <li>Select <code>Do not create source directory</code>.</li> 
+    <li>Continue pressing next through the libraries dialog. If it asks for a JDK, add a JDK to the project.</li> 
+    <li>Go to <code>File</code> -&gt; <code>Project Structure</code>.</li> 
+    <li>Select <code>Libraries</code> under <code>-Project Settings-</code></li> 
+    <li>Click the <code>+</code> (add) button.</li> 
+    <li>Name the library <code>scala-virtualized</code> or something similar.</li> 
+    <li>Add the new library to any modules you have already defined.</li> 
+    <li>Click <code>Attach Classes...</code></li> 
+    <li>Browse to the <code>lib</code> directory under the <code>scala-virtualized/dist/latest</code> directory, and add <code>scala-compiler.jar</code> and <code>scala-library.jar</code>.</li> 
+    <li>Create the project modules.</li> 
+    <li>Select <code>Modules</code> under <code>-Project Settings-</code></li> 
+    <li>Click the <code>Add</code> button, then click <code>Module</code>.</li> 
+    <li>Select <code>Create module from scratch</code>.</li> 
     <li>It will ask you for the module path and name. Click ... (browse) on content root.</li> 
-    <li>Select the content directory. Let's start with <code>Delite/dsls/optiml</code> 
+    <li>Select the content directory. Let's start with <code>Delite/dsls/optiml</code>.</li> 
+    <li>
+    <code>IDEA</code> should automatically fill in the data for you. Click <code>Next</code>. 
     </li> 
     <li> 
-    <code>IDEA</code> should automatically fill in the data for you. Click <code>Next</code> 
+    <code>IDEA</code> should have automatically selected <code>Create source directory</code>. Click <code>Next</code>.
     </li> 
-    <li> 
-    <code>IDEA</code> should have automatically selected <code>Create source directory</code>. Click <code>Next</code> 
-    </li> 
-    <li><p>Do not select a desired technology. Click <code>Finish</code>.</p></li> 
-    <li><p>Select your new module and either right click -&gt; <code>New</code> -&gt; <code>Scala</code>, or click <code>+</code> (add) -&gt; <code>New</code> -&gt; <code>Scala</code></p></li> 
+    <li>Do not select a desired technology. Click <code>Finish</code>.</li> 
+    <li>Select your new module and either right click -&gt; <code>New</code> -&gt; <code>Scala</code>, or click <code>+</code> (add) -&gt; <code>New</code> -&gt; <code>Scala</code></li> 
     <li>Select the <code>Scala</code> facet that appears.</li> 
-    <li>Add a new Compiler plugin for each module. This should be under <code>scala-virtualized/dists/latest/lib/scala-compiler.jar</code> 
+    <li>Add a new Compiler plugin for each module. This should be under <code>scala-virtualized/dists/latest/lib/scala-compiler.jar</code>.
     </li> 
-    <li><p>Select <code>scala-virtualized</code> under <code>Compiler library</code>. If nothing is under <code>Compiler library</code>, click <code>OK</code> on the <code>Project Structure</code> dialog and open up the project structure dialog again.</p></li> 
-    <li><p>Create new modules for <code>Delite/framework</code>, <code>Delite/runtime</code>, <code>Delite/tests</code>, and <code>virtualization-lms-core</code></p></li> 
-    <li><p>Now add dependencies. Click on a module, say <code>framework</code>, and click <code>Dependencies</code>.</p></li> 
+    <li>Select <code>scala-virtualized</code> under <code>Compiler library</code>. If nothing is under <code>Compiler library</code>, click <code>OK</code> on the <code>Project Structure</code> dialog and open up the project structure dialog again.</li> 
+    <li>Create new modules for <code>Delite/framework</code>, <code>Delite/runtime</code>, <code>Delite/tests</code>, and <code>virtualization-lms-core</code>.</li> 
+    <li>Now add dependencies. Click on a module, say <code>framework</code>, and click <code>Dependencies</code>.</li> 
     <li>Add the project library <code>scala-virtualized</code>.</li> 
-    <li>Add the module dependency <code>virtualization-lms-core</code> 
-    </li> 
+    <li>Add the module dependency <code>virtualization-lms-core</code>.</li> 
     <li> 
-	<p>Add module dependencies as follows:</p> 
+	Add module dependencies as follows:
      
     <p> <code>framework</code> depends on <code>virtualization-lms-core</code></p> 
      
@@ -246,8 +244,10 @@ tests.verbose=true</code></pre>
     <p> <code>runtime</code> only depends on <code>scala</code> (the virtualized scala compiler can be used but is not required)</p> 
      
     <p> <code>tests</code> depends on <code>framework</code>, <code>optiml</code>, and <code>virtualization-lms-core</code></p> 
+    <p></p>
     </li> 
-    <li><p>You should be able to build successfully with <code>Build</code> -&gt; <code>Make Project</code></p></li> 
+    <li>Be sure to check the "Export" checkbox for all dependencies in <code>Dependencies</code> grid for all modules in <code>Project Settings</code> -&gt; <code>Modules</code> dialog.</li>
+    <li>You should be able to build successfully with <code>Build</code> -&gt; <code>Make Project</code></li> 
   </ol><h2>Testing</h2> 
    
   <p><code>sbt</code> will automatically pick up any tests in the <code>tests/src</code> directory of any project or subproject. Currently it is configured with <a href="http://www.scalatest.org/">ScalaTest</a>, which supports many types of tests, including JUnit.</p> 

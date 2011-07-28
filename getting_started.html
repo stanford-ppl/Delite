@@ -75,8 +75,7 @@ git checkout delite-develop</code></pre></div>
         <p> For now, we'll get you up and running simple applications in the Delite environment so you can see what's going on.
         If you are using IDEA, make sure that you have the <code>framework</code>, <code>dsls</code>, and
         <code>virtualization-lms-core</code> modules in your classpath. Also make sure that you are using
-        the <code>scala-virtualized</code> compiler. You can download a pre-compiled distribution of <code>scala-virtualized</code>
-        from <a href="http://www.stanford.edu/class/cs442/handouts/scala-virtualized-r24714.tgz">here</a>. The rest of this guide will assume a UNIX environment and
+        the <code>scala-virtualized</code> compiler. The rest of this guide will assume a UNIX environment and
         use SBT and our shell scripts, but as long as IDEA is configured correctly, you should be able to follow along.
         See <a href="source.html">here</a> for detailed IDEA build instructions.
         </p>
@@ -94,9 +93,14 @@ git checkout delite-develop</code></pre></div>
         this can be done as follows: </p>
         <div class="highlight"><pre><code class="bash">export DELITE=[insert absolute path to Delite repo]
 export LMS=[insert absolute path to LMS repo]</pre></code></div>
-        <p>Make sure that you have downloaded the
-        <code>scala-virtualized</code> compiler, and then edit $DELITE/delite.properties and $LMS/local.properties to point to the distribution. Here is an example line to add in both of these files:
-        <div class="highlight"><pre><code class="bash">scala.virtualized.home=/ppl/scala-virtualized-r24714/</code></pre></div>
+        <p>Get and compile <code>scala-virtualized</code> compiler that will be used to compile Delite framework and apps.
+If you have troubles compiling <code>scala-virtualized</code>, take a look at the instructions at <a href="source.html">"Building from source"</a> page:</p> 
+        <div class="highlight"><pre><code class="bash">git clone https://github.com/TiarkRompf/scala-virtualized.git
+cd scala-virtualized
+ant fastdist
+</code></pre></div>
+        <p>Once <code>scala-virtualized</code> is built, edit $DELITE/delite.properties and $LMS/local.properties to point to its distribution (i.e. to the folder that contains /bin and /lib subfolders - if you built the compiler using the instructions above, the distribution will be located at dists/latest within scala-virtualized folder). Here is an example line to add in both of these files:
+        <div class="highlight"><pre><code class="bash">scala.virtualized.home=/ppl/scala-virtualized/dists/latest</code></pre></div>
         <p>First, we need to compile the <code>virtualization-lms-core</code> library that Delite uses.        
         <div class="highlight"><pre><code class="bash">cd $LMS
 sbt update
@@ -127,34 +131,29 @@ cd ..
 <span class="o">}</span>
 </pre></code></div>
         <p>
-        All Delite applications have three phases: compiliing (Scala), staging (DSL compilation), and executing (runtime). The first step, running the scala compiler,
+        All Delite applications have three phases: compiling (Scala), staging (DSL compilation), and executing (runtime). The first step, running the scala compiler,
         checks your application for syntactic and type correctness. Staging is where the main compilation happens: the DSL builds an IR of the program, optimizes it,
         and generates an execution graph along with code for multiple targets (e.g. Scala and CUDA). Finally, the Delite runtime reads in the execution graph and
         generated kernels and executes the application.      
         </p>
         <p>
-        So without further ado, let's get to it. First, we need to configure our classpath:
-        <div class="highlight" style="overflow: scroll"><pre><code class="bash">export CLASSPATH=$CLASSPATH:dsls/optiml/target/scala_2.9.x-virtualized-SNAPSHOT/classes/:framework/target/scala_2.9.x-virtualized-SNAPSHOT/classes:$LMS/target/scala_2.9.x-virtualized-SNAPSHOT/classes:.</code></pre></div> 
+        So without further ado, let's get to it. Home directory of Delite has the <code>scripts</code> subdirectory that hosts several helpers scripts that we're going to use. Comprehensive documentation, which includes exact format of the command line and a list of configuration options, is available <a href="https://github.com/stanford-ppl/Delite/tree/develop/scripts">at Github</a>, but here we'll just illustrate a basic use case.
+        </p> 
+        <p>
+        First things first - to compile our application (phase one), run
+        <div class="highlight"><pre><code class="bash">delitec HelloWorld.scala</code></pre></div>
         </p>
         <p>
-        Assuming that the <code>scalac</code> in your path is from scala-virtualized, run
-        <div class="highlight"><pre><code class="bash">scalac HelloWorld.scala</code></pre></div>
-        </p>
-        <p>
-        Now we need to stage our program. We do this by running the main method of <code>OptiMLApplicationRunner</code> object we just created:
-        <div class="highlight"><pre><code class="bash">scala HelloWorldRunner</code></pre></div>
+        Now we need to stage our program (phase two). We do this by running the main method of <code>OptiMLApplicationRunner</code> object we just created:
+        <div class="highlight"><pre><code class="bash">delites HelloWorldRunner</code></pre></div>
         <p>
         The generated execution graph will be in 'out.deg'. Also look around in the folder 'generated/' - it contains code OptiML generated!
         Note that you can specify a different file for the DEG by supplying the JVM parameter <code>delite.deg.filename</code>:
-        <div class="highlight"><pre><code class="bash">scala -Ddelite.deg.filename="hello.deg" HelloWorldRunner</code></pre></div>
+        <div class="highlight"><pre><code class="bash">delites -Ddelite.deg.filename="hello.deg" HelloWorldRunner</code></pre></div>
         </p>
         <p>
-        The last thing we need to do is execute our generated program. To do this, we are going to switch back to the normal Scala
-        compiler (this is not strictly necessary, but tends to be more reliable). Download the 2.8.1 final version of <a href="http://www.scala-lang.org/downloads">Scala</a>. 
-        Set $SCALA_VANILLA points to the root directory of the Scala distribution you just downloaded: </p>
-        <div class="highlight"><pre><code class="bash">export SCALA_VANILLA=[absolute path to root of Scala 2.8.1 distribution]</code></pre></div>
-        <p>Invoke the Delite runtime using:</p><p>
-        <div class="highlight" style="overflow: scroll"><pre><code class="bash">java -cp runtime/target/scala_2.8.1/classes:$SCALA_VANILLA/lib/scala-library.jar:$SCALA_VANILLA/lib/scala-compiler.jar ppl.delite.runtime.Delite out.deg</code></pre></div>
+        The last thing we need to do is execute our generated program (phase three). To do this, we invoke the Delite runtime using:</p><p>
+        <div class="highlight"><pre><code class="bash">delite out.deg</code></pre></div>
         </p>
         <p>
         You should see output like the following:
