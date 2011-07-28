@@ -53,7 +53,7 @@ trait CloneableOps extends Variables {
   
   implicit def numericCloneable[T:Numeric]: Cloneable[T] = new Cloneable[T] {
     def cloneL(lhs: Rep[T]) = lhs
-    def mutable(lhs: Rep[T]) = lhs
+    def mutable(lhs: Rep[T]) = lhs // TODO: 5.mutable?
   }  
 }
 

@@ -432,14 +432,33 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     
     val in = copyTransformedOrElse(_.in)((start::end))
     val size = copyTransformedOrElse(_.size)(end - start)
-    val zero = copyTransformedOrElse(_.zero)(a.zero(init).mutable)
+    val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable))
     def reduce = (a,b) => a += b  
     
     def m = manifest[A]
     def a = implicitly[Arith[A]]
     def c = implicitly[Cloneable[A]]
   }
-  
+
+  // TODO: what is the deired behavior if the range is empty?
+  def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
+    val firstBlock = block(start)
+    val out = reflectPure(Sum(start+1, end, block, firstBlock))
+    firstBlock + out
+  }
+
+  def optiml_sumif[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
+    val firstCond = cond(start)
+    val firstBlock = block(start)
+    val out = reflectPure(SumIf(start+1, end, cond, block, firstBlock))
+    flatIf (firstCond) {
+      firstBlock + out
+    } {
+      out
+    }
+  }
+
+/*  
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
 
     //Sum(start, end, block)
@@ -468,6 +487,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
       out
     }
   }
+*/  
+  
+  
 
   /**
    * untilconverged
