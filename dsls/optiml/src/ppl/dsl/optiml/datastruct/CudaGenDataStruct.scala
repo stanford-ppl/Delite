@@ -274,14 +274,14 @@ trait CudaGenDataStruct extends CudaCodegen {
   def matrixCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
-    val numBytesStr = "%s->numRows * %s->numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
+    val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
 
     // Allocate Scala object for the destination
     out.append("\tjclass cls = env->FindClass(\"generated/scala/%sMatrixImpl\");\n".format(sym.Type.typeArguments(0)))
     out.append("\tif(cls==NULL) std::cout << \"class NOT found\" << std::endl;\n")
     out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(II)V\");\n")
     out.append("\tif(mid==NULL) std::cout << \"constructor NOT found\" << std::endl;\n")
-    out.append("\tjobject obj = env->NewObject(cls,mid,%s->numRows,%s->numCols);\n".format(quote(sym),quote(sym)))
+    out.append("\tjobject obj = env->NewObject(cls,mid,%s.numRows,%s.numCols);\n".format(quote(sym),quote(sym)))
     out.append("\tif(obj==NULL) std::cout << \"new object NOT created\" << std::endl;\n")
 
     // Allocate pinned-memory
@@ -296,7 +296,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tif(dataPtr==NULL) std::cout << \"GetPrimitiveArrayCritical call failed\" << std::endl;\n")
 
     // Copy twice (devMem->pinnedHostMem, pinnedHostMem->hostMem)
-    out.append("\tDeliteCudaMemcpyDtoHAsync(%s, %s->data, %s);\n".format("hostPtr",quote(sym),numBytesStr))
+    out.append("\tDeliteCudaMemcpyDtoHAsync(%s, %s.data, %s);\n".format("hostPtr",quote(sym),numBytesStr))
     out.append("\tmemcpy(%s, %s, %s);\n".format("dataPtr","hostPtr",numBytesStr))
 
     // Release
@@ -309,7 +309,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   def matrixCopyMutableInputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
-    val numBytesStr = "%s->numRows * %s->numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
+    val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0))))
@@ -317,8 +317,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
     out.append("\t%s *hostPtr;\n".format(typeStr))
     out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
-    out.append("\t%s *devPtr = %s->data;\n".format(typeStr,quote(sym)))
-    out.append("\tDeliteCudaMemcpyDtoHAsync(%s, %s->data, %s);\n".format("hostPtr",quote(sym),numBytesStr))
+    out.append("\t%s *devPtr = %s.data;\n".format(typeStr,quote(sym)))
+    out.append("\tDeliteCudaMemcpyDtoHAsync(%s, %s.data, %s);\n".format("hostPtr",quote(sym),numBytesStr))
     out.append("\tmemcpy(%s, %s, %s);\n".format("dataPtr","hostPtr",numBytesStr))
     out.append("\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
 
@@ -328,14 +328,14 @@ trait CudaGenDataStruct extends CudaCodegen {
   def vectorCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
-    val numBytesStr = "%s->length * sizeof(%s)".format(quote(sym),remap(sym.Type.typeArguments(0)))
+    val numBytesStr = "%s.length * sizeof(%s)".format(quote(sym),remap(sym.Type.typeArguments(0)))
 
     // Allocate Scala object for the destination
     out.append("\tjclass cls = env->FindClass(\"generated/scala/%sVectorImpl\");\n".format(sym.Type.typeArguments(0)))
     out.append("\tif(cls==NULL) std::cout << \"class NOT found\" << std::endl;\n")
     out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(IZ)V\");\n")
     out.append("\tif(mid==NULL) std::cout << \"constructor NOT found\" << std::endl;\n")
-    out.append("\tjobject obj = env->NewObject(cls,mid,%s->length,%s->isRow);\n".format(quote(sym),quote(sym)))
+    out.append("\tjobject obj = env->NewObject(cls,mid,%s.length,%s.isRow);\n".format(quote(sym),quote(sym)))
     out.append("\tif(obj==NULL) std::cout << \"new object NOT created\" << std::endl;\n")
 
     // Allocate pinned-memory
@@ -350,7 +350,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tif(dataPtr==NULL) std::cout << \"GetPrimitiveArrayCritical call FAILED\" << std::endl;\n")
 
     // Copy twice (devMem->pinnedHostMem, pinnedHostMem->hostMem)
-    out.append("\tDeliteCudaMemcpyDtoHAsync(%s, %s->data, %s);\n".format("hostPtr",quote(sym),numBytesStr))
+    out.append("\tDeliteCudaMemcpyDtoHAsync(%s, %s.data, %s);\n".format("hostPtr",quote(sym),numBytesStr))
     out.append("\tmemcpy(%s, %s, %s);\n".format("dataPtr","hostPtr",numBytesStr))
 
     // Release
@@ -364,7 +364,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     val out = new StringBuilder
     val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
     val typeStr = remap(typeArg)
-    val numBytesStr = "%s->length * sizeof(%s)".format(quote(sym),remap(typeArg))
+    val numBytesStr = "%s.length * sizeof(%s)".format(quote(sym),remap(typeArg))
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
@@ -372,8 +372,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
     out.append("\t%s *hostPtr;\n".format(typeStr))
     out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
-    out.append("\t%s *devPtr = %s->data;\n".format(typeStr,quote(sym)))
-    out.append("\tDeliteCudaMemcpyDtoHAsync(%s, %s->data, %s);\n".format("hostPtr",quote(sym),numBytesStr))
+    out.append("\t%s *devPtr = %s.data;\n".format(typeStr,quote(sym)))
+    out.append("\tDeliteCudaMemcpyDtoHAsync(%s, %s.data, %s);\n".format("hostPtr",quote(sym),numBytesStr))
     out.append("\tmemcpy(%s, %s, %s);\n".format("dataPtr","hostPtr",numBytesStr))
     out.append("\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
 

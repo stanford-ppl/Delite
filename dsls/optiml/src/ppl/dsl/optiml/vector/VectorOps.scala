@@ -1020,7 +1020,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
     case VectorNew(length, isRow) => {
       stream.println(addTab()+"%s *devPtr;".format(remap(sym.Type.typeArguments(0))))
       stream.println(addTab()+"DeliteCudaMalloc((void**)&devPtr,%s*sizeof(%s));".format(quote(length),remap(sym.Type.typeArguments(0))))
-      stream.println(addTab()+"%s *%s = new %s(%s,%s,devPtr);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(length),quote(isRow)))
+      stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,devPtr);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(length),quote(isRow)))
     }
 
     case VectorApply(x, n) =>
@@ -1055,6 +1055,9 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
         currDim -= 1
     */
 
+	//case VectorPlusEquals(x,y) =>
+	//	throw new GenerationFailedException("CudaGen: No dimension specified for this kernel.")
+
     case VectorRepmat(x,i,j) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -1066,7 +1069,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
       stream.println(addTab()+"%s.update(i,j,%s.apply(%s));".format(quote(sym),quote(x),"j%"+quote(x)+".length"))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s".format(quote(i)),"%s->length*%s".format(quote(x),quote(j)),false)
+      emitMatrixAlloc(sym,"%s".format(quote(i)),"%s.length*%s".format(quote(x),quote(j)),false)
       currDim -= 1
     /*
     case VectorOuter(x,y) =>
@@ -1080,7 +1083,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
       tabWidth -= 1; stream.println(addTab()+"}")
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s->length".format(quote(x)),"%s->length".format(quote(x)),false)
+      emitMatrixAlloc(sym,"%s.length".format(quote(x)),"%s.length".format(quote(x)),false)
       currDim -= 1
     */
 
@@ -1096,7 +1099,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
       stream.println(addTab()+"%s %s = %s.apply(%s) - %s.apply(%s);".format(remap(sym.Type.typeArguments(0)),outLocalVar,quote(x),inIndex,quote(y),inIndex))
       saveLocalVar(sym,outIndex,outLocalVar)
       currDim -= 1
-      emitVectorAlloc(sym,"%s->length".format(quote(x)),"true",false)
+      emitVectorAlloc(sym,"%s.length".format(quote(x)),"true",false)
 
     case VectorTrans(x) if(useLocalVar) =>
       currDim += 1
@@ -1121,7 +1124,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
       }
       saveLocalVar(sym,outIndex,outLocalVar)
       currDim -= 1
-      emitVectorAlloc(sym,"%s->length".format(quote(x)),"true",false)
+      emitVectorAlloc(sym,"%s.length".format(quote(x)),"true",false)
 
     case VectorOuter(x,y) if(useLocalVar) =>
       currDim += 1
@@ -1151,7 +1154,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
       stream.println(addTab()+"%s %s = %s * %s;".format(remap(sym.Type.typeArguments(0)),outLocalVar,varX,varY))
       saveLocalVar(sym,currDimStr,outLocalVar)
       currDim -= 1
-      emitMatrixAlloc(sym,"%s->length".format(quote(x)),"%s->length".format(quote(x)),false)
+      emitMatrixAlloc(sym,"%s.length".format(quote(x)),"%s.length".format(quote(x)),false)
 
     case _ => super.emitNode(sym, rhs)
   }

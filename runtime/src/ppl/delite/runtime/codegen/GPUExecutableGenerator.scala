@@ -149,7 +149,7 @@ abstract class GPUExecutableGenerator {
           else if (isPrimitiveType(input.outputType(sym)))
             writeInputCast(input, sym, out) //if primitive type, simply cast to transform from "c" type into "g" type
           else {
-            assert(op.isInstanceOf[OP_Nested]) //object without copy must be for a nested function call
+            assert(op.isInstanceOf[OP_Nested],op.id+":cuda metadata for output copy not specified") //object without copy must be for a nested function call
             available -= input //this input doesn't actually reside on GPU
           }
         }
