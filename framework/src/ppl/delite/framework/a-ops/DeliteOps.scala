@@ -53,7 +53,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
           val inMirror = Thread.currentThread.getStackTrace.exists(_.getMethodName == "mirror")
           //if (r1 != r2)
             //printdbg("?== "+this+","+x + " is "+r1+"/"+r2+" syms "+syms(a)+"/"+syms(b))
-          if (inMirror) r2 else r1
+          if (inMirror) r1 && r2 else r1
         } else false
       case _ => super.equals(x)
     }
