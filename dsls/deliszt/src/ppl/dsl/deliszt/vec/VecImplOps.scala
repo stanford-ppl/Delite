@@ -6,6 +6,7 @@ import ppl.dsl.deliszt.{DeLisztLift, DeLisztCompiler, DeLiszt}
 trait VecImplOps { this: DeLiszt with MetaInteger =>
 //  def vec_concatenate_impl[N<:IntM,VT:Manifest](v1: Rep[Vector[N,VT]], v2: Rep[Vector[N,VT]]): Rep[Vector[VT]]
   def vec_outer_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](v1: Rep[Vec[R,A]], v2: Rep[Vec[C,A]]): Rep[Mat[R,C,A]]
+  def vec_normalize_impl[N<:IntM:Manifest:MVal,A:Manifest:Arith:Fractional](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
 }
 
 trait VecImplOpsStandard extends VecImplOps {
@@ -35,5 +36,9 @@ trait VecImplOpsStandard extends VecImplOps {
       i += 1
     }
     out.unsafeImmutable
+  }
+  
+  def vec_normalize_impl[N<:IntM:Manifest:MVal](x: Rep[Vec[N,Double]]) = {
+    x / sqrt((x * x).sum)
   }
 }

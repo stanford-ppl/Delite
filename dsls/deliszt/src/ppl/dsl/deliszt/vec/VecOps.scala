@@ -71,6 +71,8 @@ trait VecOps extends DSLType with Variables {
     def length(implicit v: MVal[N] = null) : Rep[Int] = size()
     def sum(implicit a: Arith[A]) = vec_sum(u)
     def abs(implicit a: Arith[A]) = vec_abs(u)
+    
+    //def map[B:Manifest](f: Rep[A] => Rep[B]) = vec_map(x,f)
 
     //def &[M<:IntM:Manifest:MVal](rhs : Rep[Vec[M,A]]) = vec_concat[N,M,N+M,A](u, rhs)
   }
@@ -78,7 +80,7 @@ trait VecOps extends DSLType with Variables {
   // Language ops
   def cross[N<:IntM:Manifest:MVal,A:Manifest:Arith](a: Rep[Vec[_3,A]], b: Rep[Vec[_3,A]]) : Rep[Vec[_3,A]]
   def dot[N<:IntM:Manifest:MVal, A:Manifest:Arith](a: Rep[Vec[N,A]],b: Rep[Vec[N,A]]) = {val v = a * b; v.sum}
-  def normalize[N<:IntM:Manifest:MVal, A:Manifest:Arith](a: Rep[Vec[N,A]]) : Rep[Vec[N,A]]
+  def normalize[N<:IntM:Manifest:MVal](a: Rep[Vec[N,Double]]) : Rep[Vec[N,Double]]
   def length[N<:IntM:Manifest:MVal, A:Manifest](a: Rep[Vec[N,A]]) = vec_size(a)
   def outer[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, A:Manifest:Arith](a: Rep[Vec[R,A]], b: Rep[Vec[C,A]]) : Rep[Mat[R,C,A]]
   
@@ -97,6 +99,8 @@ trait VecOps extends DSLType with Variables {
   def vec_divide[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]], y: Rep[Vec[N,A]]): Rep[Vec[N,A]]
   def vec_divide_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]], y: Rep[A]): Rep[Vec[N,A]]
 
+  def vec_map[N<:IntM:Manifest:MVal,A:Manifest,B:Manifest](x: Rep[Vec[N,A]], f: Rep[A] => Rep[B]): Rep[Vec[N,B]]
+  
   def vec_size[N<:IntM:Manifest:MVal, A:Manifest](x: Rep[Vec[N,A]]): Rep[Int]
 
   def vec_sum[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]]): Rep[A]
@@ -154,15 +158,25 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
       def m = manifest[A]
       def a = implicitly[Arith[A]]
   }
+  
+  case class VecNormalize[N<:IntM:Manifest:MVal](x: Exp[Vec[N,Double]])
+    extends DeliteOpSingleTask(reifyEffectsHere(vec_normalize_impl[N,Double](x))) {
+      def n = manifest[N]
+      def vn = implicitly[MVal[N]]
+  }
 
   ////////////////////////////////
   // implemented via delite ops
 
-  abstract class VecMap[N<:IntM:Manifest:MVal,A:Manifest,B:Manifest](in: Exp[Vec[N,A]], func: Exp[A] => Exp[B])
+  case class VecMap[N<:IntM:Manifest:MVal,A:Manifest,B:Manifest](in: Exp[Vec[N,A]], func: Exp[A] => Exp[B])
     extends DeliteOpMap[A,B,Vec[N,B]] {
 
     def alloc = reifyEffects(Vec[N,B](in.size))
     val size = in.size
+    
+    def n = manifest[N]
+    def vn = implicitly[MVal[N]]
+    def m = manifest[A]
   }
   
   abstract class VecArithmeticMap[N<:IntM:Manifest:MVal,A:Manifest:Arith](in: Exp[Vec[N,A]]) extends DeliteOpMap[A,A,Vec[N,A]] {
@@ -372,9 +386,11 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   def vec_size[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]]) = reflectPure(VecSize(x))
   //def vec_concat[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal, O<:IntM, A:Manifest](x: Exp[Vec[N,A]], y: Exp[Vec[M,A]]) = reflectPure(VecConcat[N,M,O,A](x,y))
 
+  def vec_map[N<:IntM:Manifest:MVal,A:Manifest,B:Manifest](x: Exp[Vec[N,A]], f: Exp[A] => Exp[B]) = reflectPure(VecMap(x, f))
+  
   /* Language ops */
-  def cross[A:Arith](a: Exp[Vec[_3,A]], b: Exp[Vec[_3,A]]) : Rep[Vec[_3,A]]
-  def normalize[N<:IntM:Manifest:MVal, A:Arith](a: Exp[Vec[N,A]]) : Rep[Vec[N,A]]
+  def cross[A:Arith](a: Exp[Vec[_3,A]], b: Exp[Vec[_3,A]]) : Exp[Vec[_3,A]]
+  def normalize[N<:IntM:Manifest:MVal](a: Exp[Vec[N,Double]]) : Exp[Vec[N,Double]]
   def outer[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, A:Manifest:Arith](a: Exp[Vec[R,A]], b: Exp[Vec[C,A]]) = reflectPure(VecOuter(a,b))
 }
 
