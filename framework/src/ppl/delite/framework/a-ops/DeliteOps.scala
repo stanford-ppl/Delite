@@ -44,18 +44,17 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     // However, we don't want to infringe on cse in the normal IR construction case. That is, 2 calls
     // to X.t (creating to MatrixTrans(x) instances) should result in the second MatrixTrans(x) node 
     // being cse'd, even though it has a new impl symbol. Thus we change the meaning of equality 
-    // based on whether we're duringCodegen (presumably mirroring) or not.
+    // based on whether we're mirroring or not.
     override def equals(x: Any): Boolean = (this,x) match {
-      case (a: Product,b: Product) if duringCodegen => 
-        /*if (a.productPrefix == b.productPrefix) {
+      case (a: Product,b: Product) => 
+        if (a.productPrefix == b.productPrefix) {
           val r1 = a.productIterator.toList == b.productIterator.toList
           val r2 = syms(a) == syms(b)
-          if (r1 != r2)
-          printdbg("?== "+this+","+x + " is "+r1+"/"+r2+" syms "+syms(a)+"/"+syms(b))
-        }*/
-        a.productPrefix == b.productPrefix && syms(a) == syms(b)
-      case (a: Product,b: Product) => 
-        a.productPrefix == b.productPrefix && a.productIterator.toList == b.productIterator.toList
+          val inMirror = Thread.currentThread.getStackTrace.exists(_.getMethodName == "mirror")
+          //if (r1 != r2)
+            //printdbg("?== "+this+","+x + " is "+r1+"/"+r2+" syms "+syms(a)+"/"+syms(b))
+          if (inMirror) r2 else r1
+        } else false
       case _ => super.equals(x)
     }
   }
@@ -476,7 +475,6 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   var deliteResult: Option[List[Exp[Any]]] = None
   var deliteInputs: List[Sym[Any]] = Nil
 
-  var duringCodegen: Boolean = false // are we code generating now?
   var simpleCodegen: Boolean = false // try to generate more readable code
 
   // TODO: move to lms? TR: will that actually work? it looks pretty unsafe to rebind syms
@@ -668,14 +666,14 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
 
   // TODO: what about deliteResult and deliteInput??
 
+  // CAVEAT: DeliteCodegen does not inherit from this trait, so this is called
+  // only within kernels
+
   override def focusBlock[A](result: Exp[Any])(body: => A): A = {
     var saveKernel = deliteKernel
-    var saveCodegen = duringCodegen
     deliteKernel = false
-    duringCodegen = true
     val ret = super.focusBlock(result)(body)
     deliteKernel = saveKernel
-    duringCodegen = saveCodegen
     ret
   }
 
