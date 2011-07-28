@@ -6,12 +6,12 @@ import scala.virtualization.lms.common.{BaseExp, Base}
 import ppl.dsl.optiml.{OptiMLExp, OptiMLCompiler, OptiMLLift, OptiML}
 
 trait MatrixImplOps { this: OptiMLExp =>
-  def matrix_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[Rep[Vector[A]]]]): Rep[Matrix[A]]
+  def matrix_obj_fromseq_impl[A:Manifest](xs: Seq[Rep[Vector[A]]]): Rep[Matrix[A]]
   def matrix_obj_fromvec_impl[A:Manifest](xs: Rep[Vector[Vector[A]]]): Rep[Matrix[A]]
   def matrix_obj_diag_impl[A:Manifest](w: Rep[Int], vals: Rep[Vector[A]]): Rep[Matrix[A]]
   def matrix_obj_identity_impl(w: Rep[Int]): Rep[Matrix[Double]]
-  def matrix_obj_zeros_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Double]]
-  def matrix_obj_zerosf_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Float]]
+  //def matrix_obj_zeros_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Double]]
+  //def matrix_obj_zerosf_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Float]]
   def matrix_obj_ones_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Double]]
   def matrix_obj_onesf_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Float]]
   def matrix_obj_rand_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Double]]
@@ -50,14 +50,16 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   // kernels
 
   def matrix_obj_identity_impl(w: Rep[Int]) = Matrix.diag(w, Vector.ones(w))
-  def matrix_obj_zeros_impl(numRows: Rep[Int], numCols: Rep[Int]) = Matrix[Double](numRows, numCols)
-  def matrix_obj_zerosf_impl(numRows: Rep[Int], numCols: Rep[Int]) = Matrix[Float](numRows, numCols)
+  //def matrix_obj_zeros_impl(numRows: Rep[Int], numCols: Rep[Int]) = Matrix[Double](numRows, numCols)
+  //def matrix_obj_zerosf_impl(numRows: Rep[Int], numCols: Rep[Int]) = Matrix[Float](numRows, numCols)
   def matrix_obj_ones_impl(numRows: Rep[Int], numCols: Rep[Int]) = Matrix[Double](numRows, numCols) mmap { e => 1. }
   def matrix_obj_onesf_impl(numRows: Rep[Int], numCols: Rep[Int]) = Matrix[Float](numRows, numCols) mmap { e => 1f}
   def matrix_obj_rand_impl(numRows: Rep[Int], numCols: Rep[Int]) = Matrix[Double](numRows, numCols) mmap { e => random[Double] }
   def matrix_obj_randf_impl(numRows: Rep[Int], numCols: Rep[Int]) = Matrix[Float](numRows, numCols) mmap { e => random[Float] }
   def matrix_obj_randn_impl(numRows: Rep[Int], numCols: Rep[Int]) = Matrix[Double](numRows, numCols) mmap { e => randomGaussian }
   def matrix_obj_randnf_impl(numRows: Rep[Int], numCols: Rep[Int]) = Matrix[Float](numRows, numCols) mmap { e => randomGaussian.floatValue() }
+
+  // FIXME: the above functions return mutable objects but they should be immutable
 
   def matrix_obj_diag_impl[A:Manifest](w: Rep[Int], vals: Rep[Vector[A]]) = {
     val out = Matrix[A](w,w)
@@ -69,7 +71,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out.unsafeImmutable
   }
 
-  def matrix_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[Rep[Vector[A]]]]): Rep[Matrix[A]] = {
+  def matrix_obj_fromseq_impl[A:Manifest](xs: Seq[Rep[Vector[A]]]): Rep[Matrix[A]] = {
     throw new UnsupportedOperationException("this is currently broken")
 //    val m = Matrix[A](0,0)
 //    for (i <- 0 until xs.length){
@@ -359,9 +361,11 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   }
 
   def matrix_times_vector_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Vector[A]] = {
+//  (0::x.numRows).t { rowIdx =>
+//    x.getRow(rowIdx) *:* y
+//  }
 
     val out = Vector[A](x.numRows, false)
-
     for (rowIdx <- (0::x.numRows)) {
       out(rowIdx) = x.getRow(rowIdx) *:* y
     }

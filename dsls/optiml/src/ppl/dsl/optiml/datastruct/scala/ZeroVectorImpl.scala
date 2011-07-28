@@ -21,6 +21,10 @@ abstract class ZeroVectorImpl[T:Manifest](val length: Int, __isRow: Boolean) ext
     throw new UnsupportedOperationException("Zero vectors cannot be updated; try cloning first")
   }
 
+  def unsafeSetData(xs: Array[T], len: Int) {
+    throw new UnsupportedOperationException("Zero vectors cannot be updated; try cloning first")
+  }
+  
   def mtrans = {
     _isRow = !_isRow
     this

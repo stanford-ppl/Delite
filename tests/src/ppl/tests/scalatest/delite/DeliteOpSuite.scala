@@ -85,8 +85,14 @@ trait DeliteFilter extends DeliteTestModule with OptiMLApplication {
     implicit val collector = ArrayBuffer[Boolean]()
 
     val v1 = Vector.range(0, 100)
-    val v2 = v1 filter { _ % 2 == 1 }
+    val v2 = v1.filter(_ % 2 == 1)
     collect(v2.length == 50)
+
+    var i = 0
+    while (i < v2.length) {
+      collect(v2(i) == v1(1+i*2))
+      i += 1
+    }
 
     mkReport
   }
@@ -221,15 +227,14 @@ trait DeliteIfThenElse extends DeliteTestModule with OptiMLApplication {
 }
 
 class DeliteOpSuite extends DeliteSuite {
-  def testDeliteFilter() { compileAndTest(DeliteFilterRunner) }
-  
   def testDeliteMap() { compileAndTest(DeliteMapRunner) }
   def testDeliteZip() { compileAndTest(DeliteZipRunner) }
   def testDeliteReduce() { compileAndTest(DeliteReduceRunner) }
   def testDeliteMapReduce() { compileAndTest(DeliteMapReduceRunner) }
+  def testDeliteFilter() { compileAndTest(DeliteFilterRunner) }
   def testDeliteForeach() { compileAndTest(DeliteForeachRunner) }
-  
   def testDeliteNestedMap() { compileAndTest(DeliteNestedMapRunner) }
+
   def testDeliteNestedZip() { compileAndTest(DeliteNestedZipRunner) }
   def testDeliteNestedReduce() { compileAndTest(DeliteNestedReduceRunner) }
   def testDeliteNestedMapReduce() { compileAndTest(DeliteNestedMapReduceRunner) }

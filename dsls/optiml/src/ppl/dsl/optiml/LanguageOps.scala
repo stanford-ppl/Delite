@@ -382,7 +382,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   def optiml_reseed() = reflectEffect(RandReseed())
   
-  def identityHashCode(x:Exp[Any]) = IdentityHashCode(x)
+  def identityHashCode(x:Exp[Any]) = reflectPure(IdentityHashCode(x))
 
 
   /**
@@ -415,54 +415,81 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
     override val mutable = true // can we do this automatically?
     
-    val in = (start::end)
-    val size = end - start
-    val zero = a.zero(init).mutable
+    val in = copyTransformedOrElse(_.in)(start::end)
+    val size = copyTransformedOrElse(_.size)(end - start)
+    val zero = copyTransformedOrElse(_.zero)(a.zero(init).mutable)
     def reduce = (a,b) => a += b
     
     def m = manifest[A]
     def a = implicitly[Arith[A]]    
     def c = implicitly[Cloneable[A]]
-  } 
+  }
 
   case class SumIf[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], func: Exp[Int] => Exp[A], init: Exp[A])
     extends DeliteOpFilterReduce[Int,A] {
 
     override val mutable = true // can we do this automatically?
     
-    val in = (start::end)    
-    val size = in.length
-    val zero = a.zero(init).mutable
-    def reduce = (a,b) => a += b
+    val in = copyTransformedOrElse(_.in)((start::end))
+    val size = copyTransformedOrElse(_.size)(end - start)
+    val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable))
+    def reduce = (a,b) => a += b  
     
     def m = manifest[A]
     def a = implicitly[Arith[A]]
     def c = implicitly[Cloneable[A]]
-  }   
-  
+  }
+
+  // TODO: what is the deired behavior if the range is empty?
+  def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
+    val firstBlock = block(start)
+    val out = reflectPure(Sum(start+1, end, block, firstBlock))
+    firstBlock + out
+  }
+
+  def optiml_sumif[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
+    val firstCond = cond(start)
+    val firstBlock = block(start)
+    val out = reflectPure(SumIf(start+1, end, cond, block, firstBlock))
+    flatIf (firstCond) {
+      firstBlock + out
+    } {
+      out
+    }
+  }
+
+/*  
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
 
     //Sum(start, end, block)
     // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
     //reflectEffect(Sum(start, end, block))
     val firstBlock = block(start)
-    val out = reflectMutable(Sum(start+1, end, block, firstBlock))
+    val out = reflectPure(Sum(start+1, end, block, firstBlock))
     // add the first value back in (exploit commutativity of +)
-    out += firstBlock      
-    out.unsafeImmutable
+//    out += firstBlock      
+//    out.unsafeImmutable
+    out + firstBlock
   }
   
   def optiml_sumif[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
     val firstCond = cond(start)
     val firstBlock = block(start)
-    val out = reflectMutable(SumIf(start+1, end, cond, block, firstBlock))
+    val out = reflectPure(SumIf(start+1, end, cond, block, firstBlock))
     // add the first value back in (exploit commutativity of +)
     if (firstCond) {
-      out += firstBlock
-      ()
+//      out += firstBlock
+//      ()
+      out + firstBlock
     }
-    out.unsafeImmutable
+//    out.unsafeImmutable
+    else {
+      out
+    }
   }
+*/  
+  
+  
 
   /**
    * untilconverged
@@ -600,32 +627,50 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   trait VectorDistance
 
   case class VectorDistanceAbs[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_abs_impl(v1,v2))) with VectorDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_abs_impl(v1,v2))) with VectorDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]] //TODO factor into DeliteOp subclass
+    }
 
   case class VectorDistanceEuc[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_euc_impl(v1,v2))) with VectorDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_euc_impl(v1,v2))) with VectorDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
+    }
 
   case class VectorDistanceSquare[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_square_impl(v1,v2))) with VectorDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_square_impl(v1,v2))) with VectorDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
+    }
 
 
   trait MatrixDistance
 
   case class MatrixDistanceAbs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_abs_impl(m1,m2))) with MatrixDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_abs_impl(m1,m2))) with MatrixDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
+    }
 
   case class MatrixDistanceEuc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_euc_impl(m1,m2))) with MatrixDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_euc_impl(m1,m2))) with MatrixDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
+    }
 
   case class MatrixDistanceSquare[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_square_impl(m1,m2))) with MatrixDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_square_impl(m1,m2))) with MatrixDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
+    }
 
-  def optiml_vector_dist_abs[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceAbs(v1,v2)
-  def optiml_vector_dist_euc[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceEuc(v1,v2)
-  def optiml_vector_dist_square[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceSquare(v1,v2)
-  def optiml_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceAbs(m1,m2)
-  def optiml_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceEuc(m1,m2)
-  def optiml_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceSquare(m1,m2)
+  def optiml_vector_dist_abs[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = reflectPure(VectorDistanceAbs(v1,v2))
+  def optiml_vector_dist_euc[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = reflectPure(VectorDistanceEuc(v1,v2))
+  def optiml_vector_dist_square[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = reflectPure(VectorDistanceSquare(v1,v2))
+  def optiml_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceAbs(m1,m2))
+  def optiml_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceEuc(m1,m2))
+  def optiml_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceSquare(m1,m2))
 
 
   /**
@@ -639,11 +684,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     extends DeliteOpSingleTask[Vector[A]](reifyEffects(optiml_randsample_vector_impl(v, numSamples)))
   
   def optiml_randsample_matrix[A:Manifest](m: Exp[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean]): Exp[Matrix[A]] = {
-    RandSampleMatrix(m, numSamples, sampleRows)
+    reflectPure(RandSampleMatrix(m, numSamples, sampleRows))
   }
 
   def optiml_randsample_vector[A:Manifest](v: Exp[Vector[A]], numSamples: Exp[Int]): Exp[Vector[A]] = {
-    RandSampleVector(v, numSamples)
+    reflectPure(RandSampleVector(v, numSamples))
   }
 
 
@@ -673,19 +718,29 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    *   Profiling
    */
-  case class ProfileStart(deps: Exp[Seq[Any]]) extends Def[Unit]
-  case class ProfileStop(deps: Exp[Seq[Any]]) extends Def[Unit]
+  case class ProfileStart(deps: List[Exp[Any]]) extends Def[Unit]
+  case class ProfileStop(deps: List[Exp[Any]]) extends Def[Unit]
 
-  def profile_start(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStart(Seq(deps: _*)))
-  def profile_stop(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStop(Seq(deps: _*)))
+  def profile_start(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStart(deps.toList))
+  def profile_stop(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStop(deps.toList))
   
   
   /**
    * Mirroring
    */
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case s@Sum(st,e,b,init) => toAtom(new Sum(f(st),f(e),b,f(init))(s.m, s.a, s.c) { override val transform = f })
-    case s@SumIf(st,e,c,b,init) => toAtom(new SumIf(f(st),f(e),c,b,f(init))(s.m, s.a, s.c) { override val transform = f })
+    case e@VectorDistanceAbs(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceAbs(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@VectorDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceEuc(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@VectorDistanceSquare(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceSquare(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@MatrixDistanceAbs(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceAbs(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@MatrixDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceEuc(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@MatrixDistanceSquare(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceSquare(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@Sum(st,en,b,init) => reflectPure(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
+    case e@SumIf(st,en,c,b,init) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
+    case Reflect(ProfileStart(deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(ProfileStop(deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@Sum(st,en,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SumIf(st,en,c,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),c,b,f(init))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

@@ -33,6 +33,11 @@ class RangeVectorImpl(val start: Int, val end: Int, val stride: Int, __isRow: Bo
 
   def cloneL = { val v = new VectorImpl[Int](0, isRow); v.insertAll(0, this); v }
 
+  def unsafeSetData(xs: Array[Int], len: Int) {
+    throw new IllegalArgumentException("RangeVector cannot be updated")
+  }
+  
+
   def sort(implicit o: Ordering[Int]) = this
 
   // TODO: could make this a lazy initialization and allow updates,

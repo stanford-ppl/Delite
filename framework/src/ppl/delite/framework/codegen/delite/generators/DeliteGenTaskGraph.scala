@@ -93,11 +93,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
       try{
         // DISCUSS: use a predicate instead of inheriting from DeliteOp?
-        rhs match {
-//          case op:DeliteFatOp => deliteKernel = true
-          case op:AbstractFatLoop => deliteKernel = true
-          case ThinDef(op:DeliteOp[_]) => deliteKernel = true
-          case _ => deliteKernel = false
+        deliteKernel = rhs match {
+//          case op:DeliteFatOp => true
+          case op:AbstractFatLoop => true
+          case ThinDef(op:DeliteOp[_]) => true
+          case _ => false
         }
 
         //initialize
@@ -147,6 +147,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar)(kstream)
         kstream.println(bodyString.toString)
         gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar)(kstream)
+        
+        if (hasOutputSlotTypes)
+          gen.emitFatNodeKernelExtra(sym, rhs)(kstream) // activation record class declaration
 
         // record that this kernel was successfully generated
         supportedTargets += gen.toString
@@ -240,9 +243,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     // emit task graph node
     rhs match {
       case op: AbstractFatLoop => 
-        emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _))
+        emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _))
       case ThinDef(z) => z match {
-        case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body))
+        case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body))
         case c:DeliteOpCondition[_] => emitIfThenElse(c.cond, c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
@@ -263,11 +266,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
    * @param antiDeps    a list of WAR dependencies (need to be committed in program order)
    */
 
-  def emitMultiLoop(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean)
+  def emitMultiLoop(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean, needsPostProcess: Boolean)
        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
    stream.println("{\"type\":\"MultiLoop\",")
    emitConstOrSym(size, "size")
    stream.print(",\"needsCombine\":" + needsCombine)
+   stream.print(",\"needsPostProcess\":" + needsPostProcess)
    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
    stream.println("},")
   }

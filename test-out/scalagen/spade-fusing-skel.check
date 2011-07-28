@@ -1,0 +1,66 @@
+object SpadeRunnerFusingMain {
+  def main(args: Array[String]) { }
+}
+class SpadeRunnerFusing extends ((Array[java.lang.String])=>(Unit)) {
+  def apply(x0:Array[java.lang.String]): Unit = {
+    val x6 = {
+      if (x2) { }
+    }
+    val x8 = { 
+      val x60 = while ({val x31 = x21 x32}) {
+        val x44 = { }
+        while (x37 < x35) {  // begin fat loop x44 } // end fat loop x44
+        val x58 = { if (x51) {}
+          else { }
+        }
+      }
+    }
+    val x90_zero = { }
+    while (x84 < x83) {  // begin fat loop x90
+      val x89 = {
+        if (x88) { } else { }
+      }
+    } // end fat loop x90
+    val x132 = { (x102: Int, x103: Int) => 
+      val x252_zero = { }
+      while (x125 < x67) {  // begin fat loop x252
+        val x245 = {  }
+        val x248 = {  }
+      } // end fat loop x252
+      val x253 = {  }
+    }
+    val x157 = while ({val x142 = x141 x143}) {
+      val x149 = {
+        if (x148) { } else { }
+      }
+      val x152 = {  }
+      while (x172 < x152) {  // begin fat loop x154
+        val x210 = {
+          if (x206) { }
+        }
+        val x204 = { }
+        val x256_zero = { }
+        while (x175 < x64) {  // begin fat loop x204,x256
+          val x278_zero = { }
+          while (x197 < x67) {  // begin fat loop x278
+            val x271 = {  }
+            val x274 = {  }
+          } // end fat loop x278
+          val x279 = {  }
+          if (x255) { }
+        } // end fat loop x204,x256
+        val x261 = {
+          if (x212) {
+            val x218 = { }
+            while (x213 < x64) {  // begin fat loop x218 } // end fat loop x218
+            while (x227 < x226) {  // begin fat loop x259
+              x259 = { }
+            } // end fat loop x259
+          }
+        }
+        x154 = { }
+      } // end fat loop x154
+    }
+    val x169 = while ({val x160 = x159 x161}) { }
+  }
+}

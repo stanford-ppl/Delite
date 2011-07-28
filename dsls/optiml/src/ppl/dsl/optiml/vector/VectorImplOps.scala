@@ -10,8 +10,8 @@ trait VectorImplOps { this: OptiML =>
   def vector_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[A]]): Rep[Vector[A]]
   def vector_obj_ones_impl(length: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_onesf_impl(length: Rep[Int]): Rep[Vector[Float]]
-  def vector_obj_zeros_impl(length: Rep[Int]): Rep[Vector[Double]]
-  def vector_obj_zerosf_impl(length: Rep[Int]): Rep[Vector[Float]]
+  //def vector_obj_zeros_impl(length: Rep[Int]): Rep[Vector[Double]]
+  //def vector_obj_zerosf_impl(length: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_rand_impl(length: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_randf_impl(length: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[Vector[Double]]
@@ -52,29 +52,27 @@ trait VectorImplOpsStandard extends VectorImplOps {
     v //.unsafeImmutable
   }
 
-  def vector_obj_ones_impl(length: Rep[Int]) = Vector[Double](length, true) mmap { e => 1. }
+  def vector_obj_ones_impl(length: Rep[Int]) = (0::length) { i => 1. } //Vector[Double](length, true) mmap { e => 1. } 
 
-  def vector_obj_onesf_impl(length: Rep[Int]) = Vector[Float](length, true) mmap { e => 1f }
+  def vector_obj_onesf_impl(length: Rep[Int]) = (0::length) { i => 1f } //Vector[Float](length, true) mmap { e => 1f }
 
-  def vector_obj_zeros_impl(length: Rep[Int]) = Vector[Double](length, true)
+  //def vector_obj_zeros_impl(length: Rep[Int]) = Vector[Double](length, true)
 
-  def vector_obj_zerosf_impl(length: Rep[Int]) = Vector[Float](length, true)
+  //def vector_obj_zerosf_impl(length: Rep[Int]) = Vector[Float](length, true)
 
-  def vector_obj_rand_impl(length: Rep[Int]) = Vector[Double](length, true) mmap { e => random[Double] }
+  def vector_obj_rand_impl(length: Rep[Int]) = (0::length) { i => random[Double] }
 
-  def vector_obj_randf_impl(length: Rep[Int]) = Vector[Float](length, true) mmap { e => random[Float] }
+  def vector_obj_randf_impl(length: Rep[Int]) = (0::length) { i => random[Float] }
 
   def vector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]) = {
     val length = Math.ceil((end-start)/step_size).asInstanceOfL[Int]
-    val out = Vector[Double](length, true)
-    for (i <- 0 until length) {
+    (0::length) { i =>
       // TODO: i*step_size (int*double returning double) doesn't work yet (needs to chain 2 implicits: intToDouble, repArithToArithOps)
-      out(i) = step_size*i + start
+      step_size*i + start
     }
-    out.unsafeImmutable
   }
 
-  def vector_obj_flatten_impl[A:Manifest](pieces: Rep[Vector[Vector[A]]]) = {
+  def vector_obj_flatten_impl[A:Manifest](pieces: Rep[Vector[Vector[A]]]) = { // TODO: flatMap implementation
     if (pieces.length == 0){
       Vector[A](0, pieces.isRow).unsafeImmutable
     }
@@ -141,7 +139,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
 
   def vector_outer_impl[A:Manifest:Arith](collA: Rep[Vector[A]], collB: Rep[Vector[A]]) = {
-    val out = Matrix[A](collA.length, collA.length)
+    val out = Matrix[A](collA.length, collB.length)
     for (i <- 0 until collA.length ){
       for (j <- 0 until collB.length ){
         out(i,j) = collA(i)*collB(j)

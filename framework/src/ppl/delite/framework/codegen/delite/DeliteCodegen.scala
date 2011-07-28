@@ -56,7 +56,7 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
   override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e))
   override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e))
 
-  override def shouldApplyFusion(currentScope: List[TTP])(result: Exp[Any]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
+  override def shouldApplyFusion(currentScope: List[TTP])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
 
 
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
@@ -94,7 +94,7 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
    * This is all because we allow individual generators to refine their dependencies, which directly impacts
    * the generated schedule. We may want to consider another organization.
    */
-  override def emitFatBlockFocused(currentScope: List[TTP])(result: Exp[Any])(implicit stream: PrintWriter): Unit = {
+  override def emitFatBlockFocused(currentScope: List[TTP])(result: List[Exp[Any]])(implicit stream: PrintWriter): Unit = {
     printlog("-- block for "+result)
     currentScope.foreach(printlog(_))
 

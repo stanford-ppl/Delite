@@ -2,8 +2,8 @@ package ppl.delite.framework.ops
 
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenEffect, CudaGenEffect}
-import scala.virtualization.lms.internal.{GenericNestedCodegen}
+import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Base, ScalaGenFat, CudaGenEffect}
+import scala.virtualization.lms.internal.{GenericFatCodegen}
 
 trait DeliteCollectionOps extends Base {
   implicit def dcToDcOps[A:Manifest](x: Rep[DeliteCollection[A]]) = new deliteCollectionOpsCls(x)
@@ -19,31 +19,72 @@ trait DeliteCollectionOps extends Base {
   def dc_update[A:Manifest](x: Rep[DeliteCollection[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
 }
 
-trait DeliteCollectionOpsExp extends DeliteCollectionOps with EffectExp {
+trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with EffectExp { this: DeliteOpsExp =>
   case class DeliteCollectionSize[A:Manifest](x: Exp[DeliteCollection[A]]) extends Def[Int]
   case class DeliteCollectionApply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) extends Def[A]
   case class DeliteCollectionUpdate[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
 
-  def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = DeliteCollectionSize(x)
-  def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = DeliteCollectionApply(x,n) // reflectRead(x)
-  def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(DeliteCollectionUpdate(x,n,y)) // reflectWrite(x)
+  def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = x match {
+    case Def(e: DeliteOpMap[_,_,_]) => e.size
+    case Def(e: DeliteOpZipWith[_,_,_,_]) => e.size
+    //case Def(Reflect(e: DeliteOpMap[_,_,_], _,_)) => e.size // reasonable?
+    //case Def(Reflect(e: DeliteOpZipWith[_,_,_,_], _,_)) => e.size // reasonable?
+    case _ => reflectPure(DeliteCollectionSize(x))
+  }
+  def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = reflectPure(DeliteCollectionApply(x,n))
+  def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(DeliteCollectionUpdate(x,n,y))
 
   //////////////
   // mirroring
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case DeliteCollectionApply(x, n) => dc_apply(f(x), f(n))
-    case Reflect(DeliteCollectionApply(l,r), u, es) => reflectMirrored(Reflect(DeliteCollectionApply(f(l),f(r)), mapOver(f,u), f(es)))    
+    case DeliteCollectionSize(x) => dc_size(f(x))
+    case Reflect(DeliteCollectionApply(l,r), u, es) => reflectMirrored(Reflect(DeliteCollectionApply(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(DeliteCollectionSize(l), u, es) => reflectMirrored(Reflect(DeliteCollectionSize(f(l)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]]
+  
+  /////////////////////
+  // aliases and sharing
+
+  // TODO: precise sharing info for other IR types (default is conservative)
+  
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteCollectionApply(a,i) => Nil
+    case DeliteCollectionUpdate(a,i,x) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteCollectionApply(a,i) => Nil
+    case DeliteCollectionUpdate(a,i,x) => syms(x)
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteCollectionApply(a,i) => syms(a)
+    case DeliteCollectionUpdate(a,i,x) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case DeliteCollectionApply(a,i) => Nil
+    case DeliteCollectionUpdate(a,i,x) => syms(a)
+    case _ => super.copySyms(e)
   }
 }
 
-trait BaseGenDeliteCollectionOps extends GenericNestedCodegen {
+trait BaseGenDeliteCollectionOps extends GenericFatCodegen {
   val IR: DeliteCollectionOpsExp
   import IR._
 
+  override def unapplySimpleIndex(e: Def[Any]) = e match { // TODO: move elsewhere
+    case DeliteCollectionApply(a, i) => Some((a,i))
+    case _ => super.unapplySimpleIndex(e)
+  }
 }
-trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaGenEffect {
+trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaGenFat {
   val IR: DeliteCollectionOpsExp
   import IR._
 
@@ -68,7 +109,8 @@ trait CudaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with CudaGen
     rhs match {
       case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".size()")
       case DeliteCollectionApply(x,n) => emitValDef(sym, quote(getBlockResult(x)) + ".dcApply(" + quote(n) + ")")
-      case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ")")
+      //case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ")")
+      case DeliteCollectionUpdate(x,n,y) => stream.println(quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ");")
       case _ => super.emitNode(sym, rhs)
     }
   }

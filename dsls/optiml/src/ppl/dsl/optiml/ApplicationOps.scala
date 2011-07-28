@@ -279,6 +279,11 @@ trait BinarizedGradientPyramidOpsExp extends BinarizedGradientPyramidOps with Ef
   def binarizedgradientpyramid_start_level(__x: Rep[BinarizedGradientPyramid]) = BinarizedGradientPyramidStart_level(__x)
   def binarizedgradientpyramid_levels(__x: Rep[BinarizedGradientPyramid]) = BinarizedGradientPyramidLevels(__x)
   def binarizedgradientpyramid_fixedLevelIndex(__x: Rep[BinarizedGradientPyramid]) = BinarizedGradientPyramidFixedlevelindex(__x)
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case Reflect(BinarizedGradientPyramidObjectNew(p,s,l,i), u, es) => reflectMirrored(Reflect(BinarizedGradientPyramidObjectNew(f(p),f(s),f(l),f(i)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 trait ScalaGenBinarizedGradientPyramidOps extends ScalaGenBase {

@@ -81,6 +81,14 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   }
 
   final def generateScalaSource(name: String, stream: PrintWriter) = {
+    reset
+    stream.println("object "+name+"Main {"/*}*/)
+    stream.println("def main(args: Array[String]) {"/*}*/)
+    stream.println("val o = new "+name)
+    stream.println("o.apply(args)")
+    stream.println("ppl.delite.runtime.profiler.PerformanceTimer.print(\"app\")")
+    stream.println(/*{*/"}")
+    stream.println(/*{*/"}")
     codegen.emitSource(liftedMain, name, stream)
   }
 
