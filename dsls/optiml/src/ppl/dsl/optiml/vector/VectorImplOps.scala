@@ -139,7 +139,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
 
   def vector_outer_impl[A:Manifest:Arith](collA: Rep[Vector[A]], collB: Rep[Vector[A]]) = {
-    val out = Matrix[A](collA.length, collA.length)
+    val out = Matrix[A](collA.length, collB.length)
     for (i <- 0 until collA.length ){
       for (j <- 0 until collB.length ){
         out(i,j) = collA(i)*collB(j)

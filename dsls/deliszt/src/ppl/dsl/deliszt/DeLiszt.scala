@@ -11,6 +11,7 @@ import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger
 
 import ppl.dsl.deliszt.capabilities._
 import ppl.dsl.deliszt.field._
@@ -67,7 +68,7 @@ trait DeLisztCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderi
 /**
  * This the trait that every DeLiszt application must extend.
  */
-trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps
+trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps with MetaInteger
   with MeshPrivateOps with MeshSetOps
   with ArithOps with FieldOps with MatOps with VecOps with HasMinMaxOps {
   this: DeLisztApplication =>

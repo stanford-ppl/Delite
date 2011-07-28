@@ -4,23 +4,23 @@ import ppl.dsl.deliszt.datastruct.scala._
 import ppl.dsl.deliszt.{DeLisztExp, DeLisztCompiler, DeLisztLift, DeLiszt}
 
 trait MatImplOps { this: DeLisztExp =>
-  def mat_apply_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x: Rep[Mat[R,C,A]], i: Rep[Int], j: Rep[Int]): Rep[A]
-  def mat_transpose_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](m: Rep[Mat[R,C,A]]): Rep[Mat[R,C,A]]
-  def mat_multiply_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Mat[R,C,A]]): Rep[Mat[R,C,A]]
-  def mat_times_vector_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Vec[C,A]]): Rep[Vec[C,A]]
+  def mat_apply_impl[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x: Rep[Mat[R,C,A]], i: Rep[Int], j: Rep[Int]): Rep[A]
+  def mat_transpose_impl[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](m: Rep[Mat[R,C,A]]): Rep[Mat[R,C,A]]
+  def mat_multiply_impl[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Mat[R,C,A]]): Rep[Mat[R,C,A]]
+  def mat_times_vector_impl[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Vec[C,A]]): Rep[Vec[C,A]]
 }
 
 trait MatImplOpsStandard extends MatImplOps {
   this: DeLisztExp with DeLisztLift =>
   
-  def mat_apply_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x: Rep[Mat[R,C,A]], i: Rep[Int], j: Rep[Int]) = {
+  def mat_apply_impl[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x: Rep[Mat[R,C,A]], i: Rep[Int], j: Rep[Int]) = {
     val offset = i*x.numCols+j
     mat_dcapply(x, offset)
   }
   
-  def mat_transpose_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](m: Rep[Mat[R,C,A]]) = {
+  def mat_transpose_impl[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](m: Rep[Mat[R,C,A]]) = {
     // naive, should block
-    val out = Mat[R,C,A]()
+    val out = Mat[R,C,A](m.numRows,m.numCols)
     for (i <- 0 until out.numRows){
       for (j <- 0 until out.numCols){
         out(i,j) = m(j,i)
@@ -29,10 +29,9 @@ trait MatImplOpsStandard extends MatImplOps {
     out.unsafeImmutable
   }
   
-  def mat_multiply_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Mat[R,C,A]]): Rep[Mat[R,C,A]] = {
-
+  def mat_multiply_impl[R<:IntM:Manifest,C<:IntM:Manifest,RR<:IntM:Manifest,CC<:IntM:Manifest,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Mat[R,C,A]]): Rep[Mat[R,C,A]] = {
     val yTrans = y.t
-    val out = Mat[R,C,A]()
+    val out = Mat[R,CC,A](x.numRows,y.numCols)
 
     var rowIdx = 0
     while (rowIdx < x.numRows) {
@@ -52,8 +51,8 @@ trait MatImplOpsStandard extends MatImplOps {
     out.unsafeImmutable
   }
   
-  def mat_times_vector_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Vec[C,A]]): Rep[Vec[C,A]] = {
-    val out = Vec[C,A]()
+  def mat_times_vector_impl[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Vec[C,A]]): Rep[Vec[C,A]] = {
+    val out = Vec[C,A](y.size)
 
     var rowIdx = 0
     while (rowIdx < x.numRows) {

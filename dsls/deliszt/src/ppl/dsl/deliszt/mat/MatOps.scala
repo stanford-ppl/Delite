@@ -17,26 +17,27 @@ trait MatOps extends DSLType with Variables {
   this: DeLiszt with MetaInteger =>
 
   object Mat {
-    def apply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest]() = mat_obj_new[R,C,A]
+    def apply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest]() = mat_obj_n_new[R,C,A](MIntDepth[R], MIntDepth[C])
+    def apply[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](r: Rep[Int], c: Rep[Int]) = mat_obj_n_new[R,C,A](r,c)
   }
 
-  implicit def repMatToMatOps[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Rep[Mat[R,C,A]]) = new matOpsCls(x)
-  implicit def varToMatOps[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Var[Mat[R,C,A]]) = new matOpsCls(readVar(x))
+  implicit def repMatToMatOps[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Rep[Mat[R,C,A]]) = new matOpsCls(x)
+  implicit def varToMatOps[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Var[Mat[R,C,A]]) = new matOpsCls(readVar(x))
 
   // could convert to infix, but apply doesn't work with it anyways yet
-  class matOpsCls[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Rep[Mat[R,C,A]]) {
+  class matOpsCls[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Rep[Mat[R,C,A]]) {
     type Self = Mat[R,C,A]
 
     // accessors
     def apply(r:Rep[Int],c:Rep[Int]) = mat_apply(x,r,c)
     def update(r:Rep[Int],c:Rep[Int],v:Rep[A]) = mat_update(x,r,c,v)
 
-    def apply[RR <: IntM :Manifest :MVal,CC <: IntM :Manifest :MVal](r:RR,c:CC) = mat_apply(x,MIntDepth[RR],MIntDepth[CC])
-    def update[RR <: IntM :Manifest :MVal,CC <: IntM :Manifest :MVal](r:RR,c:CC,v:Rep[A]) = mat_update(x,MIntDepth[RR],MIntDepth[CC],v)
+    def apply[RR <:IntM:Manifest:MVal ,CC <:IntM:Manifest:MVal](r:RR,c:CC) = mat_apply(x,MIntDepth[RR],MIntDepth[CC])
+    def update[RR <:IntM:Manifest:MVal ,CC <:IntM:Manifest:MVal](r:RR,c:CC,v:Rep[A]) = mat_update(x,MIntDepth[RR],MIntDepth[CC],v)
 
     // Dims
-    def numRows = mat_num_rows(x)
-    def numCols = mat_num_cols(x)
+    def numRows(implicit r: MVal[R] = null) : Rep[Int] = { if(r != null) MIntDepth[R] else mat_num_rows(x) }
+    def numCols(implicit c: MVal[C] = null) : Rep[Int] = { if(c != null) MIntDepth[C] else mat_num_cols(x) }
 
     def t = mat_transpose(x)
 
@@ -45,36 +46,38 @@ trait MatOps extends DSLType with Variables {
     def -(y:Rep[Self])(implicit a:Arith[A]) = mat_minus(x,y)
     def unary_-(implicit a:Arith[A]) = mat_unary_minus(x)
 
-    def *(y:Rep[Self])(implicit a:Arith[A]) = mat_multiply(x,y)
+    def *:*(y: Rep[Self])(implicit a: Arith[A]) = mat_times(x,y)
+    def *[RR<:IntM:Manifest,CC<:IntM:Manifest](y:Rep[Mat[RR,CC]])(implicit a:Arith[A]) = mat_multiply(x,y)
     def *(y:Rep[Vec[C,A]])(implicit a:Arith[A],o:Overloaded1) = mat_times_vector(x,y)
     def *(y:Rep[A])(implicit a:Arith[A],o:Overloaded2) = mat_times_scalar(x,y)
 
     def /(y:Rep[A])(implicit a:Arith[A],o:Overloaded1) = mat_divide_scalar(x,y)
   }
 
-  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest]:Rep[Mat[R,C,A]]
+  def mat_obj_new[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest]:Rep[Mat[R,C,A]]
+  def mat_obj_n_new[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](r: Rep[Int], c: Rep[Int]): Rep[Mat[R,C,A]]
 
   // class defs
-  def mat_apply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Rep[Mat[R,C,A]],i:Rep[Int],j:Rep[Int]):Rep[A]
-  def mat_update[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Rep[Mat[R,C,A]],i:Rep[Int],j:Rep[Int],y:Rep[A]):Rep[Unit]
+  def mat_apply[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Rep[Mat[R,C,A]],i:Rep[Int],j:Rep[Int]):Rep[A]
+  def mat_update[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Rep[Mat[R,C,A]],i:Rep[Int],j:Rep[Int],y:Rep[A]):Rep[Unit]
 
   def mat_num_rows(m:Rep[Mat[_,_,_]]):Rep[Int]
   def mat_num_cols(m:Rep[Mat[_,_,_]]):Rep[Int]
 
-  def row[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](m:Rep[Mat[R,C,A]],a:Rep[Int]):Rep[Vec[C,A]]
-  def col[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](m:Rep[Mat[R,C,A]],a:Rep[Int]):Rep[Vec[R,A]]
+  def row[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](m:Rep[Mat[R,C,A]],a:Rep[Int]):Rep[Vec[C,A]]
+  def col[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](m:Rep[Mat[R,C,A]],a:Rep[Int]):Rep[Vec[R,A]]
 
-  def mat_transpose[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
+  def mat_transpose[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
 
-  def mat_plus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
-  def mat_plus_scalar[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[A]):Rep[Mat[R,C,A]]
-  def mat_minus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
-  def mat_times[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
-  def mat_multiply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
-  def mat_times_vector[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[Vec[C,A]]):Rep[Vec[C,A]]
-  def mat_times_scalar[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[A]):Rep[Mat[R,C,A]]
-  def mat_divide_scalar[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[A]):Rep[Mat[R,C,A]]
-  def mat_unary_minus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
+  def mat_plus[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
+  def mat_plus_scalar[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[A]):Rep[Mat[R,C,A]]
+  def mat_minus[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
+  def mat_times[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
+  def mat_multiply[R<:IntM:Manifest,C<:IntM:Manifest,RR<:IntM:Manifest,CC<:IntM:Manifest,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[Mat[RR,CC,A]]):Rep[Mat[R,CC,A]]
+  def mat_times_vector[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[Vec[C,A]]):Rep[Vec[C,A]]
+  def mat_times_scalar[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[A]):Rep[Mat[R,C,A]]
+  def mat_divide_scalar[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[A]):Rep[Mat[R,C,A]]
+  def mat_unary_minus[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
 }
 
 
@@ -83,18 +86,18 @@ trait MatOpsExp extends MatOps with VariablesExp {
 
   //////////////////////////////////////////////////
   // implemented via method on real data structure
-
-  case class MatObjectNew[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](numRows:Exp[Int],numCols:Exp[Int]) extends Def[Mat[R,C,A]] {
+  
+  case class MatObjectNNew[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](numRows:Exp[Int],numCols:Exp[Int]) extends Def[Mat[R,C,A]] {
     val mM = manifest[MatImpl[R,C,A]]
   }
 
-  case class MatApply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int]) extends Def[A]
+  case class MatApply[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int]) extends Def[A]
 
-  case class MatDCApply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int]) extends Def[A]
+  case class MatDCApply[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int]) extends Def[A]
 
-  case class MatUpdate[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int],y:Exp[A]) extends Def[Unit]
+  case class MatUpdate[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int],y:Exp[A]) extends Def[Unit]
 
-  case class MatTranspose[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x: Exp[Mat[R,C,A]])
+  case class MatTranspose[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x: Exp[Mat[R,C,A]])
     extends DeliteOpSingleTask(reifyEffectsHere(mat_transpose_impl(x)))
   
   case class MatNumRows(x:Exp[Mat[_,_,_]]) extends Def[Int]
@@ -106,7 +109,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
 
   // TODO: generalize this so that we can generate fused, delite parallel op, or BLAS variants
 
-  case class MatTimesVec[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Vec[C,A]])
+  case class MatTimesVec[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Vec[C,A]])
     extends DeliteOpSingleTask(reifyEffectsHere(mat_times_vector_impl(x,y)),true) {
 
     val mV = manifest[VecImpl[C,A]]
@@ -114,55 +117,61 @@ trait MatOpsExp extends MatOps with VariablesExp {
     def aev = implicitly[Arith[A]]
   }
 
-  case class MatMultiply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]])
+  case class MatMultiply[R<:IntM:Manifest,C<:IntM:Manifest,RR<:IntM:Manifest,CC<:IntM:Manifest,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[RR,CC,A]])
     extends DeliteOpSingleTask(reifyEffectsHere(mat_multiply_impl(x,y)),true) {
 
-    val mM = manifest[MatImpl[R,C,A]]
+    val mM = manifest[MatImpl[R,CC,A]]
   }
 
   ////////////////////////////////
   // implemented via delite ops 
-  abstract class MatArithmeticMap[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](in:Exp[Mat[R,C,A]]) extends DeliteOpMap[A,A,Mat[R,C,A]] {
-    def alloc = Mat[R,C,A]()
+  abstract class MatArithmeticMap[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](in:Exp[Mat[R,C,A]]) extends DeliteOpMap[A,A,Mat[R,C,A]] {
+    def alloc = Mat[R,C,A](in.numRows, in.numCols)
     val size = in.numRows * in.numCols
 
     def m = manifest[A]
     def a = implicitly[Arith[A]]
   }
 
-  abstract class MatArithmeticZipWith[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]]) extends DeliteOpZipWith[A,A,A,Mat[R,C,A]] {
-    def alloc = Mat[R,C,A]()
+  abstract class MatArithmeticZipWith[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]]) extends DeliteOpZipWith[A,A,A,Mat[R,C,A]] {
+    def alloc = Mat[R,C,A](inA.numRows, inA.numCols)
     val size = inA.numRows * inA.numCols
 
     def m = manifest[A]
     def a = implicitly[Arith[A]]
   }
 
-  case class MatPlus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]])
+  case class MatPlus[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]])
     extends MatArithmeticZipWith(inA, inB) {
 
     def func = (a,b) => a + b
   }
 
-  case class MatMinus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]])
+  case class MatMinus[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]])
     extends MatArithmeticZipWith(inA, inB) {
 
     def func = (a,b) => a - b
   }
 
-  case class MatUnaryMinus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](in:Exp[Mat[R,C,A]])
+  case class MatUnaryMinus[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](in:Exp[Mat[R,C,A]])
     extends MatArithmeticMap(in) {
 
     def func = e => -e
   }
 
-  case class MatTimesScalar[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](in:Exp[Mat[R,C,A]],y:Exp[A])
+  case class MatTimes[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]])
+    extends MatArithmeticZipWith(inA, inB) {
+
+    def func = (a,b) => a * b
+  }
+  
+  case class MatTimesScalar[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](in:Exp[Mat[R,C,A]],y:Exp[A])
     extends MatArithmeticMap(in) {
 
     def func = e => e * y
   }
 
-  case class MatDivide[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]])
+  case class MatDivide[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]])
     extends MatArithmeticZipWith(inA, inB) {
 
     def func = (a,b) => a / b
@@ -170,7 +179,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
 
   ////////////////////
   // object interface
-  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest]() = reflectMutable(MatObjectNew[R,C,A](MIntDepth[R],MIntDepth[C]))
+  def mat_obj_n_new[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](r: Exp[Int], c: Exp[Int]) = reflectMutable(MatObjectNNew[R,C,A](r,c))
 
   ///////////////////
   // class interface
@@ -178,25 +187,26 @@ trait MatOpsExp extends MatOps with VariablesExp {
   def mat_num_rows(x:Exp[Mat[_,_,_]]) = reflectPure(MatNumRows(x))
   def mat_num_cols(x:Exp[Mat[_,_,_]]) = reflectPure(MatNumCols(x))
 
-  def mat_apply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int]) = reflectPure(MatApply(x,i,j))
-  def mat_update[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int],y:Exp[A]) = reflectWrite(x)(MatUpdate(x,i,j,y))
+  def mat_apply[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int]) = reflectPure(MatApply(x,i,j))
+  def mat_update[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int],y:Exp[A]) = reflectWrite(x)(MatUpdate(x,i,j,y))
 
-  def mat_transpose[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Rep[Mat[R,C,A]]) = reflectPure(MatTranspose(x))
+  def mat_transpose[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Rep[Mat[R,C,A]]) = reflectPure(MatTranspose(x))
 
-  def mat_plus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatPlus(x,y))
-  def mat_minus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatMinus(x,y))
-  def mat_unary_minus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]]) = MatUnaryMinus(x)
+  def mat_plus[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatPlus(x,y))
+  def mat_minus[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatMinus(x,y))
+  def mat_unary_minus[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Exp[Mat[R,C,A]]) = MatUnaryMinus(x)
 
-  def mat_multiply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatMultiply(x,y))
-  def mat_times_vector[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Vec[C,A]]) = reflectPure(MatTimesVec(x,y))
-  def mat_times_scalar[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[A]) = reflectPure(MatTimesScalar(x,y))
+  def mat_times[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatMultiply(x,y))
+  def mat_multiply[R<:IntM:Manifest,C<:IntM:Manifest,RR<:IntM:Manifest,CC<:IntM:Manifest,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[RR,CC,A]]) = reflectPure(MatMultiply(x,y))
+  def mat_times_vector[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Vec[C,A]]) = reflectPure(MatTimesVec(x,y))
+  def mat_times_scalar[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[A]) = reflectPure(MatTimesScalar(x,y))
 
-  def mat_divide[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatDivide(x,y))
+  def mat_divide[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatDivide(x,y))
 
   //////////////////
   // internal
 
-  def mat_dcapply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int]) = reflectPure(MatDCApply(x,i))
+  def mat_dcapply[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int]) = reflectPure(MatDCApply(x,i))
 }
 
 /**
