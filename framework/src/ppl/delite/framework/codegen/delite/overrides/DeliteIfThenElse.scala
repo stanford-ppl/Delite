@@ -40,6 +40,11 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
   }).asInstanceOf[Exp[A]] // why??
 
 
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c, t, e, h) => syms(c):::syms(t):::syms(e)
+    case _ => super.syms(e)
+  }
+
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case DeliteIfThenElse(c, t, e, h) => effectSyms(t):::effectSyms(e)
     case _ => super.boundSyms(e)

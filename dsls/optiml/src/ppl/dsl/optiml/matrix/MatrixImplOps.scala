@@ -260,7 +260,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     var finished = unit(false)
     var r = unit(0)
 
-    while (!finished && r < m.numRows) {
+    while (!finished && r < m.numRows) { //FIXME: loop body removed in linreg??
       if (m.numRows <= lead){
         finished = true
       }

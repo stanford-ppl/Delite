@@ -1,7 +1,7 @@
 package ppl.dsl.optiml.io
 
 import java.io.{PrintWriter}
-import scala.virtualization.lms.common.{TupleOpsExp, Base}
+import scala.virtualization.lms.common.{TupleOpsExp, Base, BaseFatExp}
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml.datastruct.scala._
@@ -29,7 +29,7 @@ trait MLInputReaderOps extends DSLType with Base {
   def obj_mlinput_read_template_models(directory: Rep[String]): Rep[Vector[(String, Vector[BinarizedGradientTemplate])]]
 }
 
-trait MLInputReaderOpsExp extends MLInputReaderOps { this: MLInputReaderImplOps with DeliteOpsExp with TupleOpsExp =>
+trait MLInputReaderOpsExp extends MLInputReaderOps with BaseFatExp { this: MLInputReaderImplOps with DeliteOpsExp with TupleOpsExp =>
   case class MLInputRead(filename: Exp[String])
     extends DeliteOpSingleTask(reifyEffects(mlinput_read_impl(filename)))
 
@@ -52,6 +52,11 @@ trait MLInputReaderOpsExp extends MLInputReaderOps { this: MLInputReaderImplOps 
 
   def obj_mlinput_read_tokenmatrix(filename: Exp[String]) = reflectEffect(MLInputReadTokenMatrix(filename))
   def obj_mlinput_read_template_models(directory: Exp[String]) = reflectEffect(MLInputReadTemplateModels(directory))
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case Reflect(e@MLInputReadTokenMatrix(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MLInputReadTokenMatrix(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 
