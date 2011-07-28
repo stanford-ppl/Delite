@@ -176,6 +176,46 @@ trait MatOpsExp extends MatOps with VariablesExp {
 
     def func = (a,b) => a / b
   }
+  
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case MatMultiply(a,b) => Nil
+    case MatTimes(a,b) => Nil
+    case MatTimesVec(a,v) => Nil
+    case MatTimesScalar(a,x) => Nil
+    case MatRepmat(a,i,j) => Nil
+    case MatClone(a) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case MatMultiply(a,b) => Nil
+    case MatTimes(a,b) => Nil
+    case MatTimesVec(a,v) => Nil
+    case MatTimesScalar(a,x) => Nil
+    case MatRepmat(a,i,j) => Nil
+    case MatClone(a) => Nil
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case MatMultiply(a,b) => Nil
+    case MatTimes(a,b) => Nil
+    case MatTimesVec(a,v) => Nil
+    case MatTimesScalar(a,x) => Nil
+    case MatRepmat(a,i,j) => Nil
+    case MatClone(a) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case MatMultiply(a,b) => Nil
+    case MatTimes(a,b) => Nil
+    case MatTimesVec(a,v) => Nil
+    case MatTimesScalar(a,x) => Nil
+    case MatRepmat(a,i,j) => syms(a)
+    case MatClone(a) => syms(a)
+    case _ => super.copySyms(e)
+  } 
 
   ////////////////////
   // object interface
