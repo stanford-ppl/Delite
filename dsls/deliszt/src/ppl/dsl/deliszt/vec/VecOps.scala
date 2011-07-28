@@ -43,9 +43,7 @@ trait VecOps extends DSLType with Variables {
   implicit def repVecToVecOps[N<:IntM:Manifest, A:Manifest](x: Rep[Vec[N, A]]) = new vecOpsCls(x)
   implicit def varToVecOps[N<:IntM:Manifest, A:Manifest](x: Var[Vec[N, A]]) = new vecOpsCls(readVar(x))
 
-  /**
-   * This class defines the public interface for the Vec[T] class.
-   */
+  // This class defines the public interface for the Vec[T] class.
   class vecOpsCls[N<:IntM:Manifest, A:Manifest](u: Rep[Vec[N, A]]) {
     type Self = Vec[N,A]
     def x(implicit f : EnsureSize[_0,N]) = vec_apply(u, 0)
@@ -77,18 +75,13 @@ trait VecOps extends DSLType with Variables {
     //def &[M<:IntM:Manifest:MVal](rhs : Rep[Vec[M,A]]) = vec_concat[N,M,N+M,A](u, rhs)
   }
 
-  /* Language ops */
+  // Language ops
   def cross[N<:IntM:Manifest,A:Manifest:Arith](a: Rep[Vec[_3,A]], b: Rep[Vec[_3,A]]) : Rep[Vec[_3,A]]
   def dot[N<:IntM:Manifest, A:Manifest:Arith](a: Rep[Vec[N,A]],b: Rep[Vec[N,A]]) = {val v = a * b; v.sum}
   def normalize[N<:IntM:Manifest, A:Manifest:Arith](a: Rep[Vec[N,A]]) : Rep[Vec[N,A]]
   def length[N<:IntM:Manifest, A:Manifest](a: Rep[Vec[N,A]]) = vec_size(a)
   def outer[R<:IntM:Manifest, C<:IntM:Manifest:MVal, A:Manifest:Arith](a: Rep[Vec[R,A]], b: Rep[Vec[C,A]]) : Rep[Mat[R,C,A]]
   
-/*
-  class vecOpsClsMutable[A:Manifest](vx: Var[Vec[N,A]]) extends vecOpsCls[A](readVar(vx)) {
-    // ...
-  }
-*/
   def vec_obj_new[N<:IntM:Manifest:MVal, A](xs: Rep[A]*): Rep[Vec[N,A]]
   def vec_obj_n_new[N<:IntM:Manifest, A](i : Rep[Int]): Rep[Vec[N,A]]
 
@@ -380,12 +373,12 @@ trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case v@VecObjNew(xs @ _*) => emitValDef(sym, remap(v.mV) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
+     /* case v@VecObjNew(xs @ _*) => emitValDef(sym, remap(v.mV) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
       case v@VecObjNNew(i) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(i) + ")")
       // these are the ops that call through to the underlying real data structure
       case VecApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
       case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
-      case VecSize(x) => emitValDef(sym, quote(x) + "size")
+      case VecSize(x) => emitValDef(sym, quote(x) + "size") */
       case _ => super.emitNode(sym, rhs)
     }
   }

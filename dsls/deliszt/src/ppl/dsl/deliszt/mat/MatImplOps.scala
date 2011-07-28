@@ -6,7 +6,7 @@ import ppl.dsl.deliszt.{DeLisztExp, DeLisztCompiler, DeLisztLift, DeLiszt}
 trait MatImplOps { this: DeLisztExp =>
   def mat_apply_impl[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](x: Rep[Mat[R,C,A]], i: Rep[Int], j: Rep[Int]): Rep[A]
   def mat_transpose_impl[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest](m: Rep[Mat[R,C,A]]): Rep[Mat[R,C,A]]
-  def mat_multiply_impl[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Mat[R,C,A]]): Rep[Mat[R,C,A]]
+  def mat_multiply_impl[R<:IntM:Manifest,C<:IntM:Manifest,RR<:IntM:Manifest,CC<:IntM:Manifest,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Mat[RR,CC,A]]): Rep[Mat[R,CC,A]]
   def mat_times_vector_impl[R<:IntM:Manifest,C<:IntM:Manifest,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Vec[C,A]]): Rep[Vec[C,A]]
 }
 
@@ -29,7 +29,7 @@ trait MatImplOpsStandard extends MatImplOps {
     out.unsafeImmutable
   }
   
-  def mat_multiply_impl[R<:IntM:Manifest,C<:IntM:Manifest,RR<:IntM:Manifest,CC<:IntM:Manifest,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Mat[R,C,A]]): Rep[Mat[R,C,A]] = {
+  def mat_multiply_impl[R<:IntM:Manifest,C<:IntM:Manifest,RR<:IntM:Manifest,CC<:IntM:Manifest,A:Manifest:Arith](x: Rep[Mat[R,C,A]], y: Rep[Mat[RR,CC,A]]): Rep[Mat[R,CC,A]] = {
     val yTrans = y.t
     val out = Mat[R,CC,A](x.numRows,y.numCols)
 
@@ -47,7 +47,7 @@ trait MatImplOpsStandard extends MatImplOps {
         i += 1
       }
       rowIdx += 1
-    }
+    } 
     out.unsafeImmutable
   }
   
@@ -60,5 +60,5 @@ trait MatImplOpsStandard extends MatImplOps {
       rowIdx += 1
     }
     out.unsafeImmutable
-  }
+  } 
 }

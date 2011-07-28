@@ -68,7 +68,7 @@ trait DeLisztCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderi
 /**
  * This the trait that every DeLiszt application must extend.
  */
-trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps with MetaInteger
+trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps //with MetaInteger
   with MeshPrivateOps with MeshSetOps
   with ArithOps with FieldOps with MatOps with VecOps with HasMinMaxOps {
   this: DeLisztApplication =>

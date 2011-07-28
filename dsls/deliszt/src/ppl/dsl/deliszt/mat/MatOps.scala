@@ -47,7 +47,7 @@ trait MatOps extends DSLType with Variables {
     def unary_-(implicit a:Arith[A]) = mat_unary_minus(x)
 
     def *:*(y: Rep[Self])(implicit a: Arith[A]) = mat_times(x,y)
-    def *[RR<:IntM:Manifest,CC<:IntM:Manifest](y:Rep[Mat[RR,CC]])(implicit a:Arith[A]) = mat_multiply(x,y)
+    def *[RR<:IntM:Manifest,CC<:IntM:Manifest](y:Rep[Mat[RR,CC,A]])(implicit a:Arith[A]) = mat_multiply(x,y)
     def *(y:Rep[Vec[C,A]])(implicit a:Arith[A],o:Overloaded1) = mat_times_vector(x,y)
     def *(y:Rep[A])(implicit a:Arith[A],o:Overloaded2) = mat_times_scalar(x,y)
 
@@ -182,8 +182,6 @@ trait MatOpsExp extends MatOps with VariablesExp {
     case MatTimes(a,b) => Nil
     case MatTimesVec(a,v) => Nil
     case MatTimesScalar(a,x) => Nil
-    case MatRepmat(a,i,j) => Nil
-    case MatClone(a) => Nil
     case _ => super.aliasSyms(e)
   }
 
@@ -192,8 +190,6 @@ trait MatOpsExp extends MatOps with VariablesExp {
     case MatTimes(a,b) => Nil
     case MatTimesVec(a,v) => Nil
     case MatTimesScalar(a,x) => Nil
-    case MatRepmat(a,i,j) => Nil
-    case MatClone(a) => Nil
     case _ => super.containSyms(e)
   }
 
@@ -202,8 +198,6 @@ trait MatOpsExp extends MatOps with VariablesExp {
     case MatTimes(a,b) => Nil
     case MatTimesVec(a,v) => Nil
     case MatTimesScalar(a,x) => Nil
-    case MatRepmat(a,i,j) => Nil
-    case MatClone(a) => Nil
     case _ => super.extractSyms(e)
   }
 
@@ -212,8 +206,6 @@ trait MatOpsExp extends MatOps with VariablesExp {
     case MatTimes(a,b) => Nil
     case MatTimesVec(a,v) => Nil
     case MatTimesScalar(a,x) => Nil
-    case MatRepmat(a,i,j) => syms(a)
-    case MatClone(a) => syms(a)
     case _ => super.copySyms(e)
   } 
 
@@ -265,7 +257,7 @@ trait ScalaGenMatOps extends ScalaGenBase {
 
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case m@MatObjectNew(numRows,numCols) => emitValDef(sym,"new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@MatObjectNNew(numRows,numCols) => emitValDef(sym,"new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     //case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")
     case MatUpdate(x,i,j,y) => emitValDef(sym,quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
@@ -338,7 +330,7 @@ trait CGenMatOps extends CGenBase {
 
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
 
-    case MatObjectNew(numRows,numCols) =>
+    case MatObjectNNew(numRows,numCols) =>
       stream.println("%s *%s_data = malloc(sizeof(%s)*%s*%s);".format(remap(sym.Type.typeArguments(0)),quote(sym),remap(sym.Type.typeArguments(0)),quote(numRows),quote(numCols)))
       stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
       stream.println("%s.numRows = %s;".format(quote(sym),quote(numRows)))
