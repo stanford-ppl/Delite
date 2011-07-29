@@ -564,6 +564,21 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     def func = (a,b) => if (a > b) a else b
   }
   
+  case class VectorMinIndex[A:Manifest:Ordering:HasMinMax](inB: Exp[Vector[A]]) 
+    extends DeliteOpZipWithReduceTuple[Int,A,Int,A] {
+
+    val inA = copyTransformedOrElse(_.inA)(0::inB.length)
+    val size = copyTransformedOrElse(_.size)(inB.length)
+    val zero = (copyTransformedOrElse(_.zero._1)(unit(0)),copyTransformedOrElse(_.zero._2)(implicitly[HasMinMax[A]].maxValue)) // 0 sensible? maybe -1?
+    def zip = (a,b) => (a,b)
+    def reduce = (a,b) => (if (a._2 < b._2) a._1 else b._1, if (a._2 < b._2) a._2 else b._2)
+    
+    val m = manifest[A]
+    val o = implicitly[Ordering[A]]
+    val p = implicitly[HasMinMax[A]]
+  }
+
+/*
   // TODO: need to get rid of tuple allocations for performance (if we're lucky HotSpot's scalar replacement does it for us)
   case class VectorMinIndex[A:Manifest:Ordering:HasMinMax](inB: Exp[Vector[A]]) 
     extends DeliteOpZipWithReduce[Int,A,(Int,A)] {
@@ -572,13 +587,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     val size = copyTransformedOrElse(_.size)(inB.length)
     val zero = copyTransformedOrElse(_.zero)(make_tuple2(unit(0),implicitly[HasMinMax[A]].maxValue)) // 0 sensible? maybe -1?
     def zip = (a,b) => (a,b)
-    def reduce = (a,b) => if (a._2 < b._2) a else b
-    
+    def reduce = (a,b) => if (a._2 > b._2) a else b
+  
     val m = manifest[A]
     val o = implicitly[Ordering[A]]
     val p = implicitly[HasMinMax[A]]
   }
-  
+*/
   case class VectorMaxIndex[A:Manifest:Ordering:HasMinMax](inB: Exp[Vector[A]]) 
     extends DeliteOpZipWithReduce[Int,A,(Int,A)] {
 
@@ -759,7 +774,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
   def vector_sort[A:Manifest:Ordering](x: Exp[Vector[A]]) = reflectPure(VectorSort(x))
   def vector_min[A:Manifest:Ordering:HasMinMax](x: Exp[Vector[A]]) = reflectPure(VectorMin(x))
-  def vector_minindex[A:Manifest:Ordering:HasMinMax](x: Exp[Vector[A]]) = tuple2_get1(reflectPure(VectorMinIndex(x)))
+  def vector_minindex[A:Manifest:Ordering:HasMinMax](x: Exp[Vector[A]]) = /*tuple2_get1*/(reflectPure(VectorMinIndex(x)))
   def vector_max[A:Manifest:Ordering:HasMinMax](x: Exp[Vector[A]]) = reflectPure(VectorMax(x))
   def vector_maxindex[A:Manifest:Ordering:HasMinMax](x: Exp[Vector[A]]) = tuple2_get1(reflectPure(VectorMaxIndex(x)))
   def vector_median[A:Manifest:Ordering](x: Exp[Vector[A]]) = reflectPure(VectorMedian(x))

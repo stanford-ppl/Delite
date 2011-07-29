@@ -100,13 +100,8 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
 /*
   an alternative approach:
   val in = x.rowInd
-  val blocks = x.map { i=> block(i) }
-  if (blocks.length > 0) {
-    val first = blocks(0)
-    
-  } else
-    matrix_zeros[A](0,0)
-  
+  val data = x.flatMap { i=> block(i) }
+  matrix_reshape(in.length)
 */
     if ((x.rowInd.isInstanceOfL[IndexVector]) && (x.colInd.isInstanceOfL[IndexVectorWC])) {
       //Matrix(IndexVector2ConstructVectors(x.rowInd, block))
