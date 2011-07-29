@@ -835,6 +835,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       case e@MatrixSum(x) => reflectPure(new { override val original = Some(f,e) } with MatrixSum(f(x))(e.m, e.a))(mtype(manifest[A]))
       case e@MatrixMinus(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixMinus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
       case e@MatrixPlus(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixPlus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
+      case e@MatrixTimes(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixTimes(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
       case e@MatrixMap(x,g) => reflectPure(new { override val original = Some(f,e) } with MatrixMap(f(x),f(g))(e.mA, e.mB))(mtype(manifest[A]))
       case e@MatrixTimesVector(x,y) => reflectPure(new {override val original = Some(f,e) } with MatrixTimesVector(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
       case e@MatrixMultiply(x,y) => reflectPure(new {override val original = Some(f,e) } with MatrixMultiply(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))

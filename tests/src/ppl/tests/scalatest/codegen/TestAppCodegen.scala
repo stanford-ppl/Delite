@@ -99,9 +99,9 @@ class TestAppCodegen extends FileDiffSuite {
 
   def testKMeansFusing = testAppFusing("kmeans", ppl.apps.ml.kmeans.kmeansRunner, Array(datadir+"/ml/kmeans/mandrill-large.dat",datadir+"/ml/kmeans/initmu.dat"))
 
-  def testLBPDenoise = testApp("lbpdenoise", ppl.apps.ml.lbpdenoise.LBPDenoiseRunner, Array(datadir+"/ml/lbp/onlyedges1",datadir+"/ml/lbp/graphprint1"))
+  //def testLBPDenoise = testApp("lbpdenoise", ppl.apps.ml.lbpdenoise.LBPDenoiseRunner, Array(datadir+"/ml/lbp/onlyedges1",datadir+"/ml/lbp/graphprint1")) PENDING
 
-  def testLBPDenoiseFusing = testAppFusing("lbpdenoise", ppl.apps.ml.lbpdenoise.LBPDenoiseRunner, Array(datadir+"/ml/lbp/onlyedges1",datadir+"/ml/lbp/graphprint1"))
+  //def testLBPDenoiseFusing = testAppFusing("lbpdenoise", ppl.apps.ml.lbpdenoise.LBPDenoiseRunner, Array(datadir+"/ml/lbp/onlyedges1",datadir+"/ml/lbp/graphprint1"))
 
   def testLinReg = testApp("linreg", ppl.apps.ml.linreg.LinRegRunner, Array(datadir+"/ml/linreg/x-1024.dat",datadir+"/ml/linreg/y-1024.dat"))
 
@@ -121,8 +121,8 @@ class TestAppCodegen extends FileDiffSuite {
 
   // --- robotics
   
-  def testGradient = testApp("gradient", ppl.apps.robotics.gradient.gradientRunner)
+  //def testGradient = testApp("gradient", ppl.apps.robotics.gradient.gradientRunner) PENDING
 
-  def testGradientFusing = testAppFusing("gradient", ppl.apps.robotics.gradient.gradientRunner)
+  //def testGradientFusing = testAppFusing("gradient", ppl.apps.robotics.gradient.gradientRunner)
 
 }
