@@ -425,8 +425,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     def c = implicitly[Cloneable[A]]
   }
 
+/*
   case class SumIf[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], func: Exp[Int] => Exp[A], init: Exp[A])
-    extends DeliteOpFilterReduce[Int,A] {
+    extends DeliteOpFilterReduceFold[Int,A] {
 
     override val mutable = true // can we do this automatically?
     
@@ -434,6 +435,28 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val size = copyTransformedOrElse(_.size)(end - start)
     val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable))
     def reduce = (a,b) => a += b  
+/*    
+    def func = (v) => (v, cond(v))
+    def reduce = (a,b) => (if (a._2 && b._2) a._1 += b._1 else if (!a._2 && b._2)) b._2.mutable else if (), a._2 || b._2)
+    
+*/    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
+    def c = implicitly[Cloneable[A]]
+  }
+*/
+
+  case class SumIf[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], co: Exp[Int] => Exp[Boolean], fu: Exp[Int] => Exp[A])
+    extends DeliteOpFilterReduceFold[A] {
+
+    override val mutable = true // can we do this automatically?
+    
+    val in = copyTransformedOrElse(_.in)((start::end))
+    val size = copyTransformedOrElse(_.size)(end - start)
+    val zero = (copyTransformedOrElse(_.zero._1)(reifyEffects(a.empty)),copyTransformedOrElse(_.zero._2)(unit(-1)))
+
+    def func = (v) => (zero._1, reifyEffects(if (co(v)) v else -1))
+    def reduce = (a,b) => (reifyEffects(if (a._2 >= 0 && b._2 >= 0) a._1 += fu(b._2) else if (b._2 >= 0) fu(b._2).mutable else a._1), Math.max(a._2, b._2)) // FIXME: will not work in parallel!!!
     
     def m = manifest[A]
     def a = implicitly[Arith[A]]
@@ -449,7 +472,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 
   def optiml_sumif[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
-    val firstCond = cond(start)
+    reflectPure(SumIf(start+1, end, cond, block))
+/*    val firstCond = cond(start)
     val firstBlock = block(start)
     val out = reflectPure(SumIf(start+1, end, cond, block, firstBlock))
     flatIf (firstCond) {
@@ -457,6 +481,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     } {
       out
     }
+*/
   }
 
 /*  
@@ -737,11 +762,13 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     case e@MatrixDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceEuc(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
     case e@MatrixDistanceSquare(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceSquare(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
     case e@Sum(st,en,b,init) => reflectPure(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
-    case e@SumIf(st,en,c,b,init) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
+    case e@SumIf(st,en,c,b) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m, e.a, e.c))(mtype(manifest[A]))
+//    case e@SumIf(st,en,c,b,init) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
     case Reflect(ProfileStart(deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(ProfileStop(deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@Sum(st,en,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@SumIf(st,en,c,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),c,b,f(init))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SumIf(st,en,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
+//    case Reflect(e@SumIf(st,en,c,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }
