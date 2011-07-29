@@ -19,6 +19,7 @@ object ExternLibrary {
     val outDir = new File(buildPath); outDir.mkdirs()
     val outCFile = new File(buildPath + "scalaBLAS.c")
     val outScalaFile = new File(buildPath + "scalaBLAS.scala")
+    val outSharedLibrary = new File(buildPath + "scalaBLAS.so")
     val cstream = new PrintWriter(outCFile)
     val scalastream = new PrintWriter(outScalaFile)
     
@@ -28,7 +29,7 @@ object ExternLibrary {
     scalastream.println("""
 package %s
 object scalaBLAS {
-  System.load("%sscalaBLAS.so")
+  System.load("%s")
   @native
   def matMult[@specialized(Double,Float) T](mat1:Array[T], mat2:Array[T], mat3:Array[T], mat1_r:Int, mat1_c:Int, mat2_c:Int)
   @native
@@ -36,7 +37,7 @@ object scalaBLAS {
   @native
   def sigmoid[@specialized(Double,Float) T](vec1:Array[T], vec2:Array[T], start:Int, end:Int)
 }
-""".format(packageName, buildPath))
+""".format(packageName, outSharedLibrary.getAbsolutePath))
     scalastream.flush()
 
     cstream.println("""
@@ -164,6 +165,7 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
       "-I" + javaHome + "/../include", "-I" + javaHome + "/../include/linux",
       "-I" + Config.blasHome + "/mkl/include",
       "-L" + Config.blasHome + "/mkl/lib/em64t",
+      "-L" + Config.blasHome + "/mkl/lib/intel64",
       "-L" + Config.blasHome + "/lib/intel64",
       "-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-liomp5", "-lmkl_mc3", "-lmkl_def", "-lgfortran",
       "-shared", "-fPIC", //dynamic shared library
@@ -183,7 +185,7 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
         err = errorStream.read()
       }
       println()
-      sys.error("nvcc compilation failed")
+      sys.error("MKL BLAS compilation failed")
     }
   }
 
