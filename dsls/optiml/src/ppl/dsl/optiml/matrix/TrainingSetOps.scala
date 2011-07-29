@@ -73,6 +73,7 @@ trait TrainingSetOpsExp extends TrainingSetOps with BaseExp { this: DeliteOpsExp
   }).asInstanceOf[Exp[A]] // why??
 }
 
+
 trait ScalaGenTrainingSetOps extends ScalaGenBase {
   val IR: TrainingSetOpsExp
   import IR._

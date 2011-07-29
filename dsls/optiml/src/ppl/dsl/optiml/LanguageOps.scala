@@ -541,26 +541,26 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
                                                   block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) = {
 
     var delta = var_new(unit(scala.Double.MaxValue))
-    var prev = var_new(unit(null).asInstanceOfL[A])
-    var next = var_new(x)
+    var cur = var_new(x)
     var iter = var_new(unit(0))
 
     while ((Math.abs(delta) > thresh) && (iter < max_iter)){
-      if (clone_prev_val)
-        prev = next.cloneL()
+      val prev = if (clone_prev_val)
+        cur.cloneL()
       else
-        prev = next
+        cur
 
 //      try{
-        next = block(next)
+        val next = block(cur)
 //      }
 //      catch{
 //        case e: Exception => throw new ConvergenceException("Converging block threw exception: " + e)
 //      }
       iter += 1
-      //prev.asInstanceOfL[Matrix[Any]].pprint
+      //prev.asInstanceOfLOfL[Matrix[Any]].pprint
       //next.asInstanceOfL[Matrix[Any]].pprint
       delta = diff(next,prev)
+      cur = next
       //println("(" + delta + ")")
     }
 
@@ -570,7 +570,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
       returnL()
     }
 
-    next
+    cur
   }
 
   /**
