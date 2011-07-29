@@ -159,21 +159,21 @@ trait VectorOps extends DSLType with Variables {
   }
 */  
 
-  def EmptyVector[A](implicit mA: Manifest[A]): Rep[Vector[A]] = mA match {
+  def EmptyVector[A](implicit mA: Manifest[A]): Rep[Vector[A]] = (mA match {
     // these don't allocate any memory
-    case Manifest.Double => vector_empty_double.asInstanceOfL[Vector[A]]
-    case Manifest.Float => vector_empty_float.asInstanceOfL[Vector[A]]
-    case Manifest.Int => vector_empty_int.asInstanceOfL[Vector[A]]
+    case Manifest.Double => vector_empty_double
+    case Manifest.Float => vector_empty_float
+    case Manifest.Int => vector_empty_int
     // allocates a dummy polymorphic class
     case _ => vector_empty[A]
-  }
+  }).asInstanceOf[Rep[Vector[A]]]
 
-  def ZeroVector[A](length: Rep[Int], isRow: Rep[Boolean] = unit(true))(implicit mA: Manifest[A]): Rep[Vector[A]] = mA match {
-    case Manifest.Double => vector_zero_double(length, isRow).asInstanceOfL[Vector[A]]
-    case Manifest.Float => vector_zero_float(length, isRow).asInstanceOfL[Vector[A]]
-    case Manifest.Int => vector_zero_int(length, isRow).asInstanceOfL[Vector[A]]
+  def ZeroVector[A](length: Rep[Int], isRow: Rep[Boolean] = unit(true))(implicit mA: Manifest[A]): Rep[Vector[A]] = (mA match {
+    case Manifest.Double => vector_zero_double(length, isRow)
+    case Manifest.Float => vector_zero_float(length, isRow)
+    case Manifest.Int => vector_zero_int(length, isRow)
     case _ => throw new IllegalArgumentException("No ZeroVector exists of type " + mA)
-  }
+  }).asInstanceOf[Rep[Vector[A]]]
 
   // object defs
   def vector_obj_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]): Rep[Vector[A]]
@@ -955,6 +955,12 @@ trait VectorOpsExpOpt extends VectorOpsExp with DeliteCollectionOpsExp {
     case Def(d@VectorObjectRandF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     case _ => super.vector_mutable_clone(x)
   }
+
+  override def vector_slice[A:Manifest](x: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]): Rep[Vector[A]] = x match {
+    case Def(IndexVectorRange(s,e)) => indexvector_range(s+start,s+end).asInstanceOf[Rep[Vector[A]]] // TODO: assert s+end < e!
+    case _ => super.vector_slice(x,start,end)
+  }
+
 
   override def vector_length[A:Manifest](x: Exp[Vector[A]]) = x match {
     /* these are essential for fusing:    */

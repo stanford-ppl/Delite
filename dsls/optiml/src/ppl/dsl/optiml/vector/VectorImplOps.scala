@@ -103,7 +103,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     }
   }
 
-  def vector_slice_impl[A:Manifest](v: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]) = {
+  def vector_slice_impl[A:Manifest](v: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]) = { // TODO: use DeliteOp
     //v.chkRange(start, end)
     val out = Vector[A](end-start, v.isRow)
     for (i <- start until end){
