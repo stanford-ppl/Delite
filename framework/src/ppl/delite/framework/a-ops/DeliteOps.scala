@@ -1079,6 +1079,11 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       case (sym, elem: DeliteReduceElem[_]) =>
         stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
         stream.println("var " + quote(sym) + "_zero: " + remap(sym.Type) + " = _")
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+        stream.println("var " + quote(sym) + "  : " + remap(sym.Type) + " = _")
+        stream.println("var " + quote(sym) + "_2: " + remap(elem.func._2.Type) + " = _")
+        stream.println("var " + quote(sym) + "_zero  : " + remap(sym.Type) + " = _")
+        stream.println("var " + quote(sym) + "_zero_2" + ": " + remap(elem.func._2.Type) + " = _")
     }
     stream.println(/*{*/"}")
   }
@@ -1111,7 +1116,18 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         emitBlock(elem.zero)
         stream.println(quote(getBlockResult(elem.zero)))
         stream.println(/*{*/"}")
-        stream.println("__act." + quote(sym) + " = " + "__act." + quote(sym) + "_zero")
+        stream.println("__act." + quote(sym) + " = __act." + quote(sym) + "_zero")
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+        stream.println("__act." + quote(sym) + "_zero   = {"/*}*/) // better use emitFatBlock?
+        emitBlock(elem.zero._1)
+        stream.println(quote(getBlockResult(elem.zero._1)))
+        stream.println(/*{*/"}")
+        stream.println("__act." + quote(sym) + "_zero_2 = {"/*}*/)
+        emitBlock(elem.zero._2)
+        stream.println(quote(getBlockResult(elem.zero._2)))
+        stream.println(/*{*/"}")
+        stream.println("__act." + quote(sym) + "  " + " = __act." + quote(sym) + "_zero  ")
+        stream.println("__act." + quote(sym) + "_2" + " = __act." + quote(sym) + "_zero_2")
     }
     stream.println("__act")
     stream.println(/*{*/"}")
@@ -1145,6 +1161,13 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
             }
             emitReduceElem(op, sym, elem, "__act2.")
           }
+        case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+          // no strip first here ... stream.println("assert(false, \"TODO: tuple reduce\")")
+          stream.println("__act2." + quote(sym) + "_zero   = " + "__act." + quote(sym) + "_zero  ")
+          stream.println("__act2." + quote(sym) + "_zero_2 = " + "__act." + quote(sym) + "_zero_2")
+          stream.println("__act2." + quote(sym) + "   = " + "__act2." + quote(sym) + "_zero  ")
+          stream.println("__act2." + quote(sym) + "_2 = " + "__act2." + quote(sym) + "_zero_2")
+          emitReduceTupleElem(op, sym, elem, "__act2.")
       }
       stream.println("__act2")
     } else {
@@ -1163,6 +1186,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println("}")
       case (sym, elem: DeliteReduceElem[_]) =>
         emitReduceElem(op, sym, elem, "__act.")
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+        emitReduceTupleElem(op, sym, elem, "__act.")
     }
     stream.println(/*{*/"}")
     stream.println("def combine(__act: " + actType + ", rhs: " + actType + "): Unit = {"/*}*/)
@@ -1180,6 +1205,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         emitBlock(elem.rFunc)
         stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))
         stream.println(/*{*/"}")
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+        stream.println("assert(false, \"TODO: tuple reduce\")")
     }
     stream.println(/*{*/"}")
     // scan/postprocess follows
@@ -1192,6 +1219,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         }
       case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
     }
     stream.println(/*{*/"}")
     stream.println("def postProcInit(__act: " + actType + "): Unit = {"/*}*/) // only called for last chunk!!
@@ -1207,6 +1235,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         }
       case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
     }
     stream.println(/*{*/"}")
     stream.println("def postProcess(__act: " + actType + "): Unit = {"/*}*/)
@@ -1220,6 +1249,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         }
       case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
     }
     stream.println(/*{*/"}")
 
