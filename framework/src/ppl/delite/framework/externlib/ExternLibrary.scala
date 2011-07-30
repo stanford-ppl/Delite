@@ -182,7 +182,7 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
         args :+= """/LIBPATH:"%s\mkl\lib\intel64"""".format(blasHome)
         args :+= """/LIBPATH:"%s\compiler\lib\em64t"""".format(blasHome)
         args :+= """/LIBPATH:"%s\compiler\lib\intel64"""".format(blasHome)
-        args ++= List("mkl_intel_lp64.lib", "mkl_intel_thread.lib", "mkl_core.lib")
+        args ++= List("mkl_intel_lp64.lib", "mkl_intel_thread.lib", "mkl_core.lib", "libiomp5mt.lib")
         args :+= "/LD"
         args :+= "/Fe:scalaBLAS.dll"
         args :+= "scalaBLAS.c"
@@ -202,9 +202,7 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
         args :+= """-L"%s/mkl/lib/intel64"""".format(blasHome)
         args :+= """-L"%s/lib/em64t"""".format(blasHome)
         args :+= """-L"%s/lib/intel64"""".format(blasHome)
-        // originally, the code featured a bigger list of libraries, but I've removed the ones that are not used at the moment
-        // args ++= List("-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-liomp5", "-lmkl_mc3", "-lmkl_def", "-lgfortran")
-        args ++= List("-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-lmkl_mc3", "-lmkl_def")
+        args ++= List("-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-liomp5", "-lmkl_mc3", "-lmkl_def", "-lgfortran")
         args :+= "-shared -fPIC"
         args :+= "-o scalaBLAS.so"
         args :+= "scalaBLAS.c"
