@@ -9,7 +9,9 @@
 delite.properties
 *target
 *lib_managed
+*src_managed
 project/boot
+project/plugins/project
 runtime/project/boot
 generated
 generatedCache
