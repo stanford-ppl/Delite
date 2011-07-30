@@ -8,6 +8,7 @@ object Config {
   //var buildDir = System.getProperty("delite.build.dir", homeDir + java.io.File.separator + "generated")
   var buildDir = System.getProperty("delite.build.dir", "generated")
   var blasHome = System.getProperty("blas.home")
+  var blasInit = System.getProperty("blas.init")
   var useBlas = if (blasHome == null) false else true
   var nestedVariantsLevel = System.getProperty("nested.variants.level", "0").toInt
 }
