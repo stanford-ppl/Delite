@@ -180,21 +180,50 @@ object config {
 implicit def string2arg(s: String) = new Arg(s)
 implicit def arg2string(arg: Arg) = if (arg == null) null else arg.toString
 case class Arg(val arg: String) {
-    override def toString() = arg
+  override def toString() = arg
+}
+
+object javaopt {
+  def apply(k: String, v: String) = "-D%s=%s".format(k, v)
+  def unapply(s: String) = {
+    val regex = "^-D(.*?)=(.*)$".r
+    s match {
+      case regex(k, v) => Some(k, v)
+      case _ => None
+    }
+  }
 }
 
 implicit def arg2args(arg: Arg) = new Args(List(arg))
 implicit def args2string(args: Args) = if (args == null) null else args.toString
 implicit def args2seq(args: Args) = if (args == null) Seq() else args.args
 class Args(val args: List[Arg]) {
-    def this(args: Seq[Arg]) = this(args.toList)
-    def +:(arg: Arg) = new Args(arg +: args)
-    def :+(arg: Arg) = new Args(args :+ arg)
-    def +(other: Args) = new Args(args ++ other.args)
-    override def toString() = args map { arg => if (arg.contains(" ")) "\"%s\"".format(arg) else arg } mkString " "
+  def this(args: Seq[Arg]) = this(args.toList)
+  def +:(arg: Arg) = new Args(arg +: args)
+  def :+(arg: Arg) = new Args(args :+ arg)
+  def +(other: Args) = new Args(args ++ other.args)
+  override def toString() = args map { arg => if (arg.contains(" ")) "\"%s\"".format(arg) else arg } mkString " "
 }
 
 var args = argv
+
+def wrapCommandLineArgument(_s: String) = {
+  var s = _s
+  
+  if (windows) {
+    s = s.replace("\\\"", "\0")
+    s = s.replace("\"", "\\\"")
+    s = s.replace("\0", "\\\\\\\"")
+    if (s.endsWith("\\")) s += "\\"
+    "\"%s\"".format(s)
+  } else {
+    s = s.replace("\\\'", "\0")
+    s = s.replace("\'", "\\\'")
+    s = s.replace("\0", "\\\\\\\'")
+    if (s.endsWith("\\")) s += "\\"
+    "\'%s\'".format(s)
+  }
+}
 
 implicit def string2path(s: String) = if (s == null) null else new Path(s)
 implicit def file2path(file: File) = if (file == null) null else new Path(file)
@@ -202,8 +231,8 @@ implicit def path2string(path: Path) = if (path == null) null else path.toString
 implicit def path2file(path: Path) = if (path == null) null else new File(path)
 implicit def path2richfile(path: Path) = new RichFile(path)
 case class Path(val path: String) {
-    def this(file: File) = this(if (file == null) null else file.getAbsolutePath)
-    override def toString() = path
+  def this(file: File) = this(if (file == null) null else file.getAbsolutePath)
+  override def toString() = path
 }
 
 implicit def string2paths(s: String) = new Paths(List(s: Path))
@@ -211,12 +240,12 @@ implicit def path2paths(path: Path) = new Paths(List(path))
 implicit def paths2string(paths: Paths) = if (paths == null) null else paths.toString
 implicit def paths2seq(paths: Paths) = if (paths == null) Seq() else paths.paths
 class Paths(val paths: List[Path]) {
-    def this(paths: Seq[Path]) = this(paths.toList)
-    def +:(path: Path) = new Paths(path +: paths)
-    def :+(path: Path) = new Paths(paths :+ path)
-    def +(other: Paths) = new Paths(paths ++ other.paths)
-    def separator = if (windows) ";" else ":"
-    override def toString() = paths mkString separator
+  def this(paths: Seq[Path]) = this(paths.toList)
+  def +:(path: Path) = new Paths(path +: paths)
+  def :+(path: Path) = new Paths(paths :+ path)
+  def +(other: Paths) = new Paths(paths ++ other.paths)
+  def separator = if (windows) ";" else ":"
+  override def toString() = paths mkString separator
 }
 
 val env_classpath = if (System.getenv("CLASSPATH") == null) "" else System.getenv("CLASSPATH")
@@ -225,20 +254,20 @@ var classpath = new Paths(env_classpaths)
 var env = scala.collection.mutable.Map[String, String]()
 
 def exec(what: Path) = {
-    val builder = new ProcessBuilder
-    builder.redirectErrorStream(true)
-    builder.command(mutableSeqAsJavaList((what: String) +: args))
-    builder.environment.put("CLASSPATH", classpath)
-    env foreach { _ match { case (k, v) => builder.environment.put(k, v) } }
+  val builder = new ProcessBuilder
+  builder.redirectErrorStream(true)
+  builder.command(mutableSeqAsJavaList((what: String) +: args))
+  builder.environment.put("CLASSPATH", classpath)
+  env foreach { _ match { case (k, v) => builder.environment.put(k, v) } }
 
-    var process = builder.start
-    var stdout = new BufferedReader(new InputStreamReader(process.getInputStream))
-    var line = stdout.readLine
-    while (line != null) {
-      println(line)
-      line = stdout.readLine
-    }
+  var process = builder.start
+  var stdout = new BufferedReader(new InputStreamReader(process.getInputStream))
+  var line = stdout.readLine
+  while (line != null) {
+    println(line)
+    line = stdout.readLine
+  }
 
-    process.waitFor
-    sys.exit(process.exitValue)
+  process.waitFor
+  sys.exit(process.exitValue)
 }

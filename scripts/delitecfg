@@ -112,6 +112,10 @@ configureClasspath("framework_classes", "Framework", framework.target)
 configureClasspath("optiml_classes", "OptiML", optiml.target)
 configureClasspath("runtime_classes", "Runtime", runtime.target)
 
+println("Patching scala virtualized scripts...")
+patchScalaVirtualizedScript("scala compiler (scalac)", config.scala_virtualized_compiler)
+patchScalaVirtualizedScript("scala interpreter (scala)", config.scala_virtualized_interpreter)
+
 def configureScalapath(key: String, description: String, scala: Scala) = {
   println("Detecting the location of %s...".format(description))
   println("%s home: %s%n".format(description.capitalize, scala.home))
@@ -130,3 +134,25 @@ def configureClasspath(key: String, description: String, classpath: => String) =
   config(key) = classpath
 }
 
+def patchScalaVirtualizedScript(name: String, file: File) = {
+  if (windows) {
+    val bad_string = """if "%_JAVA_OPTS%"=="""""
+    val good_string = """if not defined _JAVA_OPTS"""
+
+    print("* %s... ".format(name))
+    val script = io.Source.fromFile(file).getLines.mkString(System.getProperty("line.separator"))
+    val script_needs_patching = script.contains(bad_string)
+    val script_already_patched = script.contains(good_string)
+    if (!script_needs_patching && script_already_patched) { println("already patched") }
+    if (!script_needs_patching && !script_already_patched) { println("does not need patches") }
+    if (script_needs_patching) {
+      val out = new PrintWriter(file)
+      try{ out.println(script.replace(bad_string, good_string)) }
+      finally{ out.close }
+      println("successfully patched")
+    }
+  }else {
+    print("* %s... ".format(name))
+    println("does not need patches")
+  }
+}

@@ -9,7 +9,8 @@ echo '} catch {' >> "$script"
 echo 'case e: Exception => {' >> "$script"
 echo 'var message = "%s".format(if (e.getMessage != null) e.getMessage else e.getCause )' >> "$script"
 echo 'message = "%s%n%s".format(message, "It may help to run delitecfg or manually adjust %s." .format(config.file.getAbsolutePath))' >> "$script"
-echo 'println(message)' >> "$script"
+#echo 'println(message)' >> "$script"
+echo 'println(e.printStackTrace)' >> "$script"
 echo '}' >> "$script"
 echo '}' >> "$script"
 export script_home="$(dirname "$0")"
@@ -17,12 +18,12 @@ export script_name="$(basename "$0")"
 exec scala "$script" "$@"
 !#*/
 
-args = "-Ddelite.code.cache.home=generatedCache" +: args
-args = "-Ddelite.home=%s".format(config.delite_home) +: args
+args = javaopt("delite.code.cache.home", "generatedCache") +: args
+args = javaopt("delite.home", config.delite_home) +: args
+classpath = config.runtime_classes +: config.scala_vanilla_library_jar +: config.scala_vanilla_compiler_jar
+
 args = Array()
 argv takeWhile { arg => arg.startsWith("-") && arg != "-" } foreach { arg => args = args :+ arg }
 args = args :+ "ppl.delite.runtime.Delite"
 argv dropWhile { arg => arg.startsWith("-") && arg != "-" } dropWhile { arg => arg == "-"} foreach { arg => args = args :+ arg }
-classpath = config.runtime_classes +: config.scala_vanilla_library_jar +: config.scala_vanilla_compiler_jar
 exec("java")
-

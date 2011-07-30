@@ -17,10 +17,15 @@ export script_name="$(basename "$0")"
 exec scala "$script" "$@"
 !#*/
 
-args = "-Ddelite.build.dir=generated" +: args
-args = "-Ddelite.home.dir=%s".format(config.delite_home) +: args
+args = javaopt("delite.build.dir", "generated") +: args
+args = javaopt("delite.home.dir", config.delite_home) +: args
 classpath += config.optiml_classes +: config.framework_classes +: config.lms_classes +: new Path(".")
-var java_opts = new Args(List())
-args takeWhile { arg => arg.startsWith("-") && arg != "-" } foreach { arg => java_opts = java_opts :+ "%s".format(arg) }
-env("JAVA_OPTS") = java_opts mkString " "
+
+if (windows) {
+  var java_opts = new Args(List())
+  args takeWhile { arg => arg.startsWith("-") && arg != "-" } foreach { arg => java_opts = java_opts :+ "%s".format(arg) }
+  env("JAVA_OPTS") = java_opts map { java_opt => wrapCommandLineArgument(java_opt) } mkString " "
+  args = args dropWhile { arg => arg.startsWith("-") && arg != "-" } dropWhile { arg => arg == "-" }
+}
+
 exec(config.scala_virtualized_interpreter)

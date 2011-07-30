@@ -18,5 +18,9 @@ exec scala "$script" "$@"
 !#*/
 
 classpath += config.optiml_classes +: config.framework_classes +: config.lms_classes
-exec(config.scala_virtualized_compiler)
 
+var java_opts = new Args(List())
+args takeWhile { arg => arg.startsWith("-") && arg != "-" } foreach { arg => java_opts = java_opts :+ "%s".format(arg) }
+env("JAVA_OPTS") = java_opts map { java_opt => wrapCommandLineArgument(java_opt) } mkString " "
+args = args dropWhile { arg => arg.startsWith("-") && arg != "-" } dropWhile { arg => arg == "-"}
+exec(config.scala_virtualized_compiler)
