@@ -1,0 +1,15 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object WhileStmt {
+        var a = 1
+        
+	def main() {
+		while(a < 10) {
+			Print(a)
+			a = a + 1
+		}
+	}
+} 
+

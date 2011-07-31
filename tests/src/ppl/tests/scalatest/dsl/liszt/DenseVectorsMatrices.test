@@ -1,0 +1,56 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object DenseVectorsMatrices {
+	val onesies = 		FieldWithConst[Cell, Vec[_1,Int]](Vec(0))
+	val twosies = 		FieldWithConst[Cell, Vec[_2,Int]](Vec(0,0))
+	val threesies = 	FieldWithConst[Cell, Vec[_3,Int]](Vec(0,0,0))
+	val foursies = 		FieldWithConst[Cell, Vec[_4,Int]](Vec(0,0,0,0))
+	val fivesies = 		FieldWithConst[Cell, Vec[_5,Int]](Vec(0,0,0,0,0))
+	
+	val f_onesies = 		FieldWithConst[Cell, Vec[_1,Float]](Vec(0.0f))
+	val f_twosies = 		FieldWithConst[Cell, Vec[_2,Float]](Vec(0.0f,0.0f))
+	val f_threesies = 	FieldWithConst[Cell, Vec[_3,Float]](Vec(0.0f,0.0f,0.0f))
+	val f_foursies = 		FieldWithConst[Cell, Vec[_4,Float]](Vec(0.0f,0.0f,0.0f,0.0f))
+	val f_fivesies = 		FieldWithConst[Cell, Vec[_5,Float]](Vec(0.0f,0.0f,0.0f,0.0f,0.0f))
+	
+	
+	
+	def main() {
+		for (c <- cells(mesh)) {
+			onesies(c) = 		Vec(1)
+			twosies(c) = 		Vec(1,1)
+			threesies(c) =	Vec(1,1,1)
+			foursies(c) = 	Vec(1,1,1,1)
+			fivesies(c) = 	Vec(1,1,1,1,1)
+			
+			f_onesies(c) = 		Vec(1.0f)
+			f_twosies(c) = 		Vec(1.0f,1.0f)
+			f_threesies(c) =	Vec(1.0f,1.0f,1.0f)
+			f_foursies(c) = 	Vec(1.0f,1.0f,1.0f,1.0f)
+			f_fivesies(c) = 	Vec(1.0f,1.0f,1.0f,1.0f,1.0f)
+		}
+		
+		for (c <- cells(mesh)) {
+			
+			Print(onesies(c))
+			Print(twosies(c))
+			Print(threesies(c))
+			Print(foursies(c))
+			Print(fivesies(c))
+			
+			Print(f_onesies(c))
+			Print(f_twosies(c))
+			Print(f_threesies(c))
+			Print(f_foursies(c))
+			Print(f_fivesies(c))
+
+		}
+		
+	}
+}
+
+
+

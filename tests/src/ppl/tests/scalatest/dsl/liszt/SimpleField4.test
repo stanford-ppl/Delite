@@ -1,0 +1,31 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object SimpleField4 {
+	val ones = FieldWithConst[Cell, Int](1)
+	val fours = FieldWithConst[Face, Int](0)
+	val sixteen = FieldWithConst[Vertex, Int](0)
+	
+	def main() {
+		for (c <- cells(mesh)) {
+			for (f <- faces(c)) {
+				for (v <- vertices(f)) {
+					sixteen(v) += 2*ones(c)
+				}
+				fours(f) += 2*ones(c)			
+			}
+			Print(ones(c), " ")
+		}
+		for (f <- faces(mesh)) {
+		 	Print(fours(f), " ")
+		}
+		for (v <- vertices(mesh)) {
+			Print(sixteen(v), " ")
+		}
+	}
+}
+
+
+

@@ -1,0 +1,15 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object BoolFields {
+	val iField = FieldWithConst[Cell,Boolean](false)
+	def main() {
+		for(c <- cells(mesh)) {
+			iField(c) = false
+		}
+		for(c <- cells(mesh)) {
+			Print(iField(c))
+		}
+	}
+}

@@ -1,0 +1,14 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object NonBasicVar3 {
+    // Assigning boundary to var. Not allowed
+    var inlet = BoundarySet[Face]("inlet") ;
+
+    def main() {
+	for (c <- inlet) {
+	    Print(ID(c))
+	}
+    }
+}

@@ -1,0 +1,50 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object Matrix {
+	def main() {
+		val m = Mat(Vec(1,2),Vec(3,4))
+		val a = 3 * m
+		val b = 3 / m
+		val c = m * 3
+		val d = m / 3
+		
+		val e = m + m
+		val f = m - m
+		val g = -m 
+		val h = m(_1,_1)
+		val v = Vec(1,2)
+		val mv = m * v
+		
+		val i = Mat(Vec(1))
+		val j = Mat(Vec(1,2),Vec(3,4))
+		val k = Mat(Vec(1,2,3),Vec(4,5,6),Vec(7,8,9))
+		val l = Mat(Vec(1,2,3,4),Vec(1,2,3,4),Vec(1,2,3,4),Vec(1,2,3,4))
+		val n = Mat(Vec(1,2,3,4),Vec(1,2,3,4),Vec(1,2,3,4),Vec(1,2,3,4),Vec(1,2,3,4))
+		
+		val o = Mat(Vec(1,2,3),Vec(4,5,6))
+		val vv = Vec(7,8,9)
+		val r = o * vv
+		val s = m * r
+		Print(m,a,b,c,d,e,f,g,h,v,mv,i,j,k,l,n,o,vv,r,s)
+
+
+		// Now to totally abuse Matrices...
+		val text_m = Mat(Vec("a", "b"), Vec("c", "d"))
+		val bool_m = Mat(Vec(true, false, false), Vec(false, true, false))
+		Print(text_m, bool_m)
+		// Commutativity
+		Print (a == c, a != c, a == b, a != b)
+		// Non numeric comparisons
+		val text_m2 = Mat(Vec("a", "b"), Vec("c", "e"))
+		val bool_m2 = Mat(Vec(true, false, false), Vec(true, true, false))
+		Print(text_m == text_m2, text_m != text_m2, bool_m == bool_m2, bool_m != bool_m2)
+		// Reversibility, Nullability
+		Print(m == -g, f == Mat(Vec(0, 0), Vec(0, 0)))
+		Print(row(j,0))
+		Print(row(j,1))
+		Print(col(j,0))
+		Print(col(j,1))
+	}
+}

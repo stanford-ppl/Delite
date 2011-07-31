@@ -1,0 +1,20 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object VecMatGlobals {
+	def main() {
+		
+		var a = Mat(Vec(0))
+		var b = Vec(0)
+		for (c <- cells(mesh)) {
+			a += Mat(Vec(1))
+			b += Vec(1)
+		}
+		
+		Print(size(cells(mesh)))
+		Print(a)
+		Print(b)
+		
+	}
+}

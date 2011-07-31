@@ -1,0 +1,14 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object NonBasicVar {
+    // Assigning a field to a var. Not allowed
+    var cellField = FieldWithConst[Cell, Int](0);
+
+    def main() {
+	for (c <- cells(mesh)) {
+	    Print(ID(c), ":", cellField(c))
+	}
+    }
+}

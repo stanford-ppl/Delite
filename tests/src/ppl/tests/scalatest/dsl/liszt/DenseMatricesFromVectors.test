@@ -1,0 +1,17 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object DenseMatricesFromVectors {
+	
+	def main() {
+		val a = Vec(1)
+		val b = Mat(a)
+		Print(a)
+		Print(b)
+	}
+}
+
+
+

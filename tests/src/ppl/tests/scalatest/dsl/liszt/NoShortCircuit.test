@@ -1,0 +1,15 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object NoShortCircuit {
+    def moo() : Boolean = {
+        Print("Is Called!")
+        false
+    }
+	def main() {
+	    if(size(vertices(mesh)) > 0 || moo()) {
+	    }
+	    else Print("something is wrong!")
+	}
+}

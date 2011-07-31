@@ -1,0 +1,18 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object InlineIfFunc {
+    def func(foo : Int) {
+	Print(foo)
+    }
+    def main() {
+	for (c <- cells(mesh)) {
+	    // Should be equivalent to
+	    // val a = if (ID(c) < 10) ID(c) else -1
+	    // Print(a)
+	    func(if (ID(c) < 10) ID(c) else -1)
+	}
+    }
+}

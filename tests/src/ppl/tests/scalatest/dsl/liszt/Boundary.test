@@ -1,0 +1,77 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object Boundary {
+    val inlet = BoundarySet[Face]("inlet") ;
+    val outlet = BoundarySet[Face]("outlet") ;
+    val farField = BoundarySet[Face]("far_field") ;
+    val fluid = BoundarySet[Cell]("fluid") ;
+    val defaultInterior = BoundarySet[Face]("default-interior") ;
+    val interior = BoundarySet[Face]("type:interior") ;
+    val bound1 = BoundarySet[Face]("bound1") ;
+    val bound2 = BoundarySet[Face]("bound2") ;
+    val bound3 = BoundarySet[Face]("bound3") ;
+    val bound4 = BoundarySet[Cell]("bound4") ;
+    val bound5 = BoundarySet[Face]("bound5") ;
+
+    def main() {
+        var inlet_count = 0;
+        var outlet_count = 0;
+        var farField_count = 0;
+        var fluid_count = 0;
+        var interior_count = 0;
+        var defaultInterior_count = 0;
+        var bound1_count = 0;
+        var bound2_count = 0;
+        var bound3_count = 0;
+        var bound4_count = 0;
+        var bound5_count = 0;
+        for ( f <- inlet ) {
+            if ( !( ID(inside(f)) == 0) ) {
+                if ( !(ID(outside(f)) == 0 ) ) {
+                    Print( "error, not boundary face: ", ID(f) ) ;
+                }
+            } 
+            inlet_count += 1;
+        }
+        for ( f <- outlet ) {
+            if ( !( ID(inside(f)) == 0) ) {
+                                if ( !(ID(outside(f)) == 0 ) ) {
+                                        Print( "error, not boundary face: ", ID(f) ) ;
+                                }
+                        }
+            outlet_count += 1;
+                }
+        for ( f <- farField ) {
+            if ( !( ID(inside(f)) == 0) ) {
+                                if ( !(ID(outside(f)) == 0 ) ) {
+                                        Print( "error, not boundary face: ", ID(f) ) ;
+                                }
+                        }
+            farField_count += 1
+                }
+        for ( f <- defaultInterior ) { defaultInterior_count += 1 }
+        for ( f <- interior ) { interior_count += 1 }
+        for ( f <- bound1 ) { bound1_count += 1 }
+        for ( f <- bound2 ) { bound2_count += 1 }
+        for ( f <- bound3 ) { bound3_count += 1 }
+        for ( c <- bound4 ) { bound4_count += 1 }
+        for ( c <- bound5 ) { bound5_count += 1 }
+        for ( c <- fluid ) { fluid_count += 1 }
+        if (fluid_count != bound4_count) {
+            Print( "error, bound4 and fluid counts mismatch. Expected ", fluid_count, ", got ", bound4_count )
+        }
+        Print( "inlet: ", inlet_count )
+        Print( "outlet: ", outlet_count )
+        Print( "farField: ", farField_count )
+        Print( "fluid: ", fluid_count )
+        Print( "default-interior: ", defaultInterior_count )
+        Print( "type:interior: ", interior_count )
+        Print( "bound1: ", bound1_count )
+        Print( "bound2: ", bound2_count )
+        Print( "bound3: ", bound3_count )
+        Print( "bound4: ", bound4_count )
+        Print( "bound5: ", bound5_count )
+    }
+}

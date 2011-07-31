@@ -1,0 +1,34 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object DenseVectorsMatrices2 {
+	val onesies = 		FieldWithConst[Cell, Mat[_1,_1,Int]](Mat(Vec(0)))
+	val twosies = 		FieldWithConst[Cell, Mat[_2,_2,Int]](Mat(Vec(0,0),Vec(0,0)))
+	val threesies = 	FieldWithConst[Cell, Mat[_3,_3,Int]](Mat(Vec(0,0,0),Vec(0,0,0),Vec(0,0,0)))
+	val foursies = 		FieldWithConst[Cell, Mat[_4,_4,Int]](Mat(Vec(0,0,0,0),Vec(0,0,0,0),Vec(0,0,0,0),Vec(0,0,0,0)))
+	val fivesies = 		FieldWithConst[Cell, Mat[_5,_5,Int]](Mat(Vec(0,0,0,0,0),Vec(0,0,0,0,0),Vec(0,0,0,0,0),Vec(0,0,0,0,0),Vec(0,0,0,0,0)))
+	
+	def main() {
+		for (c <- cells(mesh)) {
+			onesies(c) = 		Mat(Vec(1))
+			twosies(c) = 		Mat(Vec(1,2),Vec(1,2))
+			threesies(c) =	Mat(Vec(1,2,3),Vec(1,2,3),Vec(1,2,3))
+			foursies(c) = 	Mat(Vec(1,2,3,4),Vec(1,2,3,4),Vec(1,2,3,4),Vec(1,2,3,4))
+			fivesies(c) = 	Mat(Vec(1,2,3,4,5),Vec(1,2,3,4,5),Vec(1,2,3,4,5),Vec(1,2,3,4,5),Vec(1,2,3,4,5))
+		}
+		
+		for (c <- cells(mesh)) {			
+			Print(onesies(c))
+			Print(twosies(c))
+			Print(threesies(c))
+			Print(foursies(c))
+			Print(fivesies(c))
+		}
+		
+	}
+}
+
+
+

@@ -1,0 +1,24 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object FloatReductions {
+	val fField = FieldWithConst[Cell,Float](0.f)
+	def main() {
+		for(c <- cells(mesh)) {
+			fField(c) += 2.f
+		}
+		for(c <- cells(mesh)) {
+			fField(c) *= 2.f
+		}
+		for(c <- cells(mesh)) {
+			fField(c) = fField(c) min 2.f
+		}
+		for(c <- cells(mesh)) {
+			fField(c) = fField(c) max 5.f
+		}
+		for(c <- cells(mesh)) {
+			Print(fField(c))
+		}
+	}
+}
