@@ -80,7 +80,11 @@
 <span class="o">}</span>
 </pre></code></div>
 
+      <p>Start with Scala compilation. Run <code>delitec HelloWorld.scala</code>. As you might remember, that's normal if nothing gets printed to the output - if there were any errors, you'd see error messages.</p>
+
       <p>The rest of the tutorial is platform-dependent, since staging a BLAS-enabled application involves on-the-fly compilation of a native library. Below we describe how to use BLAS acceleration on Windows, Linux and Mac OS X. Please, pick the section that describes your operating system.</p>
+
+      <p>Also, note that it is necessary to install 64-bit versions of prerequisites. Currently, BLAS acceleration requires 64-bit compilers and libraries. This works sufficiently well for us at the moment, but we may also implement support for 32-bit versions later.</p>
 
       <h2>Windows</h2>
         
@@ -90,17 +94,11 @@
         <li>64-bit edition of Intel C++ Composer XE 2011 for Windows (you'll need to install both Intel's compiler and MKL libraries).</li>
       </ol>
 
-      <p>Note, that it is necessary to install 64-bit versions of prerequisites. Currently, BLAS acceleration requires 64-bit compilers and libraries. It works sufficiently well for us at the moment, but we may also implement support for 32-bit versions later.</p>
+      <p>Below we assume the default installation of ICC, i.e. that you have the <code>ICPP_COMPILER12</code> environment variable set up to point to the root of the installation and that there's the <code>ipsxe-comp-vars.bat</code> script in the <code>bin</code> subfolder of the installation root.</p>
 
-      <p>Below we assume the default installation of ICC, i.e. that you have the ICPP_COMPILER12 environmental variable set up to point at the root of the installation and that there's the ipsxe-comp-vars.bat script in bin subfolder of the installation root.</p>
+      <p>Run <code>delites HelloWorldRunner</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/win/bldaps_cls/cppug_ccw/bldaps_setup_envars.htm">"Using the compilervars File to Specify Location of Components"</a> documentation entry for ICC for more info regarding the latter option).</p>
 
-      <p>Run <code>delitec HelloWorld.scala</code>. Here's an example of output (as you see, nothing gets printed, but that's normal - if there were any errors, we'd see error messages).</p>
-
-      <div class="highlight"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld> delitec HelloWorld.scala</code></pre></div>
-
-      <p>Run <code>delites HelloWorldRunner</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization script (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/win/index.htm">"Using the compilervars File to Specify Location of Components"</a> documentation entry for ICC for more info regarding the latter option).</p>
-
-      <p>Be careful to properly quote whitespaces and slashes (e.g. note the slash that supercedes the value of blas.home - it is necessary because the ICPP_COMPILER12 variable itself ends with a slash, so it'd mess the following double-quote symbol if it weren't escaped).</p>
+      <p>Be careful to properly quote whitespaces and slashes (e.g. note the slash that supercedes the value of <code>blas.home</code> - it is necessary because the <code>ICPP_COMPILER12</code> variable itself ends with a slash, so it'd mess the following double-quote symbol if it weren't escaped).</p>
 
       <br />
       <div class="highlight" style="overflow: scroll"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delites "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" HelloWorldRunner
@@ -124,7 +122,7 @@ Patching scala virtualized scripts...
 Delite Application Being Staged:[HelloWorldRunner$]
 ******Generating the program******</code></pre></div>
 
-      <p>To make sure that everything went fine, navigate to <code>generated/scala/kernels</code> and look for <code>scalaBLAS.dll</code> - that's a compiled JNI-invokable stub that exposes Intel MKL API to Scala.</p>
+      <p>To make sure that everything went fine, navigate to <code>generated/scala/kernels</code> and look for <code>scalaBLAS.dll</code> - that's a native JNI-invokable stub that exposes Intel MKL API to Scala.</p>
 
       <div class="highlight"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld\generated\scala\kernels>dir /B
 scalaBLAS.c
@@ -140,8 +138,9 @@ x38.scala
 x40.scala
 x44.scala</code></pre></div>
 
-      <p>Finally, just run <code>delite out.deg</code>. There's no need to provide extra command-line arguments to <code>delite</code> or to use environment initialization scripts, since <code>scalaBLAS.dll</code> has been statically linked to MKL and doesn't need Intel libraries during the run time. Here's an example of output.</p>
-<div class="highlight"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delite out.deg
+      <p>Finally, just run <code>delite out.deg</code>. There's no need to provide extra command-line arguments to <code>delite</code> or to use environment initialization scripts, since <code>scalaBLAS.dll</code> has been statically linked to MKL and doesn't need Intel libraries during the run time.</p>
+
+      <div class="highlight"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delite out.deg
 Delite Runtime executing with the following arguments:
 out.deg
 Delite Runtime executing with 1 CPU thread(s) and 0 GPU(s)
@@ -160,11 +159,108 @@ Beginning Execution Run 1
 
       <h2>Linux</h2>
         
-      <p>To be implemented</p>
+      <p>Prerequisites:</p>
+      <ol>
+        <li>GCC infrastructure for 64-bit development (Intel's compiler needs GCC's infrastructure when run on Linux).</li>
+        <li>64-bit edition of Intel C++ Composer XE 2011 for Linux (you'll need to install both Intel's compiler and MKL libraries).</li>
+        <li>libgfortran 64-bit (todo. find out why it is required!)
+      </ol>
+
+      <p>Below we assume the default installation of ICC, i.e. that you have installed ICC to <code>/opt/intel</code> and that there is the <code>compilervars.sh</code> script in the <code>bin</code> subdirectory of the installation root.</p>
+
+      <p>Run <code>delites HelloWorldRunner</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/lin/bldaps_cls/common/bldaps_invoke_cl_comm.htm">"Invoking the Compiler from the Command Line"</a> documentation entry for ICC for more info regarding the latter option).</p>
+
+      <br />
+      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delites "-Dblas.home=/opt/intel" "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" HelloWorldRunner
+Delite Application Being Staged:[HelloWorldRunner$]
+******Generating the program******
+</code></pre></div>
+
+      <p>To make sure that everything went fine, navigate to <code>generated/scala/kernels</code> and look for <code>scalaBLAS.so</code> - that's a native JNI-invokable stub that exposes Intel MKL API to Scala.</p>
+
+      <div class="highlight"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld/generated/scala/kernels$ ls -1
+scalaBLAS.c
+scalaBLAS.scala
+scalaBLAS.so
+x19.scala
+x20.scala
+x37.scala
+x38.scala
+x40.scala
+x44.scala
+</code></pre></div>
+
+      <p>Finally, just run <code>delite out.deg</code>. However, unlike on Windows, it is impossible to link to MKL statically on Linux, that's why it is necessary to have MKL shared libraries in <code>LD_LIBRARY_PATH</code>. You can modify <code>LD_LIBRARY_PATH</code> manually, however, <code>delite</code> provides a shortcut for that. If you provide an initialization script in <code>blas.init</code>, <code>delite</code> will invoke it and set up necessary environment variables for you.</p>
+
+      <br />
+      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delite "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" out.deg
+Delite Runtime executing with the following arguments:
+out.deg
+Delite Runtime executing with 1 CPU thread(s) and 0 GPU(s)
+Beginning Execution Run 1
+[ 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 ]
+[METRICS]: Latest time for component all: 0.028000s</code></pre></div>
 
       <h2>Mac OS X</h2>
         
-      <p>To be implemented</p>
+      <p>Prerequisites:</p>
+      <ol>
+        <li>iOS SDK (Intel's compiler needs GCC's infrastructure when run on Mac OS X, and the latter is only provided with iOS SDK).</li>
+        <li>64-bit edition of Intel C++ Composer XE 2011 for Mac OS X (you'll need to install both Intel's compiler and MKL libraries).</li>
+      </ol>
+
+      <p>Below we assume the default installation of ICC, i.e. that you have installed ICC to <code>/opt/intel</code> and that there is the <code>compilervars.sh</code> script in the <code>bin</code> subdirectory of the installation root.</p>
+
+      <p>Run <code>delites HelloWorldRunner</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/mac/bldaps_cls/common/bldaps_invoke_cl_comm.htm">"Invoking the Compiler from the Command Line"</a> documentation entry for ICC for more info regarding the latter option).</p>
+
+      <br />
+      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delites "-Dblas.home=/opt/intel" "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" HelloWorldRunner
+Delite Application Being Staged:[HelloWorldRunner$]
+******Generating the program******
+</code></pre></div>
+
+      <p>To make sure that everything went fine, navigate to <code>generated/scala/kernels</code> and look for <code>scalaBLAS.dylib</code> - that's a native JNI-invokable stub that exposes Intel MKL API to Scala.</p>
+
+      <div class="highlight"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld/generated/scala/kernels$ ls -1
+scalaBLAS.c
+scalaBLAS.dylib
+scalaBLAS.scala
+x19.scala
+x20.scala
+x37.scala
+x38.scala
+x40.scala
+x44.scala
+</code></pre></div>
+
+      <p>Finally, just run <code>delite out.deg</code>. However, unlike on Windows, it is impossible to link to MKL statically on Mac OS X, that's why it is necessary to have MKL dynamic libraries in <code>DYLD_LIBRARY_PATH</code>. You can modify <code>DYLD_LIBRARY_PATH</code> manually, however, <code>delite</code> provides a shortcut for that. If you provide an initialization script in <code>blas.init</code>, <code>delite</code> will invoke it and set up necessary environment variables for you.</p>
+
+      <br />
+      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delite "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" out.deg
+Delite Runtime executing with the following arguments:
+out.deg
+Delite Runtime executing with 1 CPU thread(s) and 0 GPU(s)
+Beginning Execution Run 1
+[ 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 ]
+[METRICS]: Latest time for component all: 0.028000s</code></pre></div>
 
       </div>
       <div id='footer'>Copyright &copy; 2011</div>
