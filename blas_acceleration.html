@@ -1,0 +1,173 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>Delite &mdash; BLAS Acceleration</title>
+    <style type='text/css'>
+      @import 'css/default.css';
+      @import 'css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import 'css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/' title="Delite">Delite</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href='getting_started.html'>Getting Started</a></li>
+              <li><a href="dsl_example.html">My First DSL</a></li>
+              <li><a href="performance.html">Performance</a></li>
+              <li><a href="tests.html">Tests</a></li>
+              <li><a href="troubleshooting.html">Troubleshooting</a></li>
+              <li><a href="publications.html">Publications</a></li>
+            </ol>
+          </li>
+          <li>Getting it
+            <ol>
+            <!--
+              <li><a href='releases.html'>Releases</a></li>
+              <li><a href='snapshots.html'>Snapshots</a></li>
+            -->
+              <li><a href='source.html'>Source</a></li>
+              <li><a href='license.html'>License</a></li>
+            </ol>
+          </li>
+          <!--
+          <li>Reference
+            <ol>
+              <li><a href='api/0.3/index.html'>ScalaDoc API</a></li>
+              <li>&nbsp;</li>
+              <li><a href='sponsors.html'>Sponsors</a></li>
+              <li class="logo"><a href="http://ppl.stanford.edu"><img width="110" alt="Stanford Pervasive Parallelism Lab" src='images/ppl_logo_small.png'></a></li>
+            </ol>
+          </li>
+          -->
+        </ol>
+      </div>
+      <div id='content'> 
+        <h1 id='title_getting started'>BLAS Acceleration</h1>
+
+        <p>Delite provides support for accelerating certain operations with the help of Intel MKL library.</p>
+
+        <p>Here's how it works. As mentioned in <a href="getting_started.html">"Getting started"</a> document, all Delite applications have three phases: compiling (Scala), staging (DSL compilation), and executing (runtime). This pipeline uses BLAS as follows:</p>
+
+        <ol>
+          <li><p>Scala compilation is totally unaffected by BLAS. During that phase no Delite logic is executed, that's why the phase is unaware of possible acceleration opportunities.</p></li>
+          <li><p>DSL compilation is when the significant amount of duct-taping takes place. During staging Delite Framework reads <a href="https://github.com/stanford-ppl/Delite/blob/develop/framework/src/ppl/delite/framework/Config.scala">the configuration</a> and determines whether the user wants to use BLAS. If BLAS is enabled, the framework generates two proxies: a native library that exposes a subset of Intel MKL API and scalaBLAS, a Scala object, that provides this API to the application. Later on, during staging, the framework translates suitable operations into calls to methods of scalaBLAS.</p></li>
+          <li><p>By the moment when the application gets executed by the runtime, all the glue is already in place. The runtime itself does nothing more than compiling the code that was generated during the previous phase. If BLAS acceleration was enabled in the DSL compilation phase, it will be transparently invoked during the run time.</p></li>
+        </ol>
+
+        <p>At the moment, the feature has experimental status, so the list of supported operations is not documented, but you're welcome to browse the sources and find out the information by yourself. For example, take a look at <a href="https://github.com/stanford-ppl/Delite/blob/develop/dsls/optiml/src/ppl/dsl/optiml/matrix/MatrixOps.scala">MatrixOps</a> from OptiML. Hint: you can do that more efficiently if you search for usages of <a href="https://github.com/stanford-ppl/Delite/blob/develop/framework/src/ppl/delite/framework/Config.scala">Config.useBlas</a>.</p>
+
+        <p>Let us now perform a test-drive using a simple example. Before starting, make sure that you've successfully run the HelloWorld application from the <a href="getting_started.html">"Getting started"</a> tutorial - soon we'll need some stuff explained there. In our hands-on example we'll use the following application:</p>
+
+        <div class="highlight"><pre><code class="scala"><span class="k">import</span> <span class="nn">ppl.dsl.optiml._</span>
+<span class="k">object</span> <span class="nc">HelloWorldRunner</span> <span class="k">extends</span> <span class="nc">OptiMLApplicationRunner</span> <span class="k">with</span> <span class="nc">HelloWorld</span> 
+<span class="k">trait</span> <span class="nc">HelloWorld</span> <span class="k">extends</span> <span class="nc">OptiMLApplication</span> <span class="o">{</span> 
+  <span class="k">def</span> <span class="n">main() = {</span>
+    <span class="k">val</span> <span class="n">a = Matrix.identity</span>(<span class="s">10</span><span class="n">)</span>
+    <span class="k">val</span> <span class="n">b = Matrix.identity</span>(<span class="s">10</span><span class="n">)</span>
+    <span class="n">(a * b).pprint</span>
+  <span class="n">}</span>
+<span class="o">}</span>
+</pre></code></div>
+
+      <p>The rest of the tutorial is platform-dependent, since staging a BLAS-enabled application involves on-the-fly compilation of a native library. Below we describe how to use BLAS acceleration on Windows, Linux and Mac OS X. Please, pick the section that describes your operating system.</p>
+
+      <h2>Windows</h2>
+        
+      <p>Prerequisites:</p>
+      <ol>
+        <li>Microsoft Visual Studio 2005/2008/2010 with support for 64-bit development of C++ applications (Intel's compiler needs Microsoft's infrastructure when run on Windows).</li>
+        <li>64-bit edition of Intel C++ Composer XE 2011 for Windows (you'll need to install both Intel's compiler and MKL libraries).</li>
+      </ol>
+
+      <p>Note, that it is necessary to install 64-bit versions of prerequisites. Currently, BLAS acceleration requires 64-bit compilers and libraries. It works sufficiently well for us at the moment, but we may also implement support for 32-bit versions later.</p>
+
+      <p>Below we assume the default installation of ICC, i.e. that you have the ICPP_COMPILER12 environmental variable set up to point at the root of the installation and that there's the ipsxe-comp-vars.bat script in bin subfolder of the installation root.</p>
+
+      <p>Run <code>delitec HelloWorld.scala</code>. Here's an example of output (as you see, nothing gets printed, but that's normal - if there were any errors, we'd see error messages).</p>
+
+      <div class="highlight"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld> delitec HelloWorld.scala</code></pre></div>
+
+      <p>Run <code>delites HelloWorldRunner</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization script (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/win/index.htm">"Using the compilervars File to Specify Location of Components"</a> documentation entry for ICC for more info regarding the latter option).</p>
+
+      <p>Be careful to properly quote whitespaces and slashes (e.g. note the slash that supercedes the value of blas.home - it is necessary because the ICPP_COMPILER12 variable itself ends with a slash, so it'd mess the following double-quote symbol if it weren't escaped).</p>
+
+      <br />
+      <div class="highlight" style="overflow: scroll"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delites "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" HelloWorldRunner
+Error: =c:\Users\xeno.by\Projects\Active\Delite\Delite\\" "-Ddelite.build.dir=generated" "-Dblas.home=C:\Program was unexpected at this time.</code></pre></div>
+
+      <p>Wow, that's unexpected.</p>
+
+      <p>We've just faced a manifestation of a bug in Scala scripts for Windows (<a href="https://issues.scala-lang.org/browse/SI-4858">SI-4858 "Windows: cannot pass java opts that contain whitespaces"</a>). Until this bug is fixed, Delite scripts provide an automatic way to take care of the issue. All you need is to run <code>delitecfg</code>.</p> 
+
+      <div class="highlight"><pre><code>c:\Users\xeno.by\Projects\Active\Delite\HelloWorld>delitecfg
+*snip*
+
+Patching scala virtualized scripts...
+ * scala compiler (scalac)... successfully patched
+ * scala interpreter (scala)... successfully patched</code></pre></div>
+
+      <p>Rerun <code>delites HelloWorldRunner</code>. Now things work as they should work.</p>
+
+      <br />
+      <div class="highlight" style="overflow: scroll"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delites "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" HelloWorldRunner
+Delite Application Being Staged:[HelloWorldRunner$]
+******Generating the program******</code></pre></div>
+
+      <p>To make sure that everything went fine, navigate to <code>generated/scala/kernels</code> and look for <code>scalaBLAS.dll</code> - that's a compiled JNI-invokable stub that exposes Intel MKL API to Scala.</p>
+
+      <div class="highlight"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld\generated\scala\kernels>dir /B
+scalaBLAS.c
+scalaBLAS.dll
+scalaBLAS.exp
+scalaBLAS.lib
+scalaBLAS.obj
+scalaBLAS.scala
+x19.scala
+x20.scala
+x37.scala
+x38.scala
+x40.scala
+x44.scala</code></pre></div>
+
+      <p>Finally, just run <code>delite out.deg</code>. There's no need to provide extra command-line arguments to <code>delite</code> or to use environment initialization scripts, since <code>scalaBLAS.dll</code> has been statically linked to MKL and doesn't need Intel libraries during the run time. Here's an example of output.</p>
+<div class="highlight"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delite out.deg
+Delite Runtime executing with the following arguments:
+out.deg
+Delite Runtime executing with 1 CPU thread(s) and 0 GPU(s)
+Beginning Execution Run 1
+[ 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 0.0 ]
+[ 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 1.0 ]
+[METRICS]: Latest time for component all: 0,051000s</code></pre></div>
+
+      <h2>Linux</h2>
+        
+      <p>To be implemented</p>
+
+      <h2>Mac OS X</h2>
+        
+      <p>To be implemented</p>
+
+      </div>
+      <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>
