@@ -23,7 +23,7 @@ args = javaopt("delite.home", config.delite_home) +: args
 classpath = config.runtime_classes +: config.scala_vanilla_library_jar +: config.scala_vanilla_compiler_jar
 
 // unfortunately, intel mkl libs cannot be linked statically, since the distribution provides neither libmkl_mc3.a nor libmkl_def.a
-// that's why, unlike on Windows, we've got to either hardcode the libpath in LD_LIBRARY_PATH or provide it every time when running delite
+// that's why, unlike on Windows, we've got to either hardcode libpaths or provide them every time when running delite
 // this code presents a shortcut that hopefully simplifies the latter scenario
 if (unix) {
   for (javaopt("blas.init", v) <- args) {
@@ -32,13 +32,19 @@ if (unix) {
     stream.println("#!/usr/bin/env bash")
     stream.println(v)
     val output_file = File.createTempFile("blas.init.", ".output")
-    stream.println("echo $LD_LIBRARY_PATH >%s".format(output_file.getAbsolutePath))
+    stream.println("echo PATH=$PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo LIBRARY_PATH=$LIBRARY_PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo NLS_PATH=$NLS_PATH >> %s".format(output_file.getAbsolutePath))
     stream.close
 
     script.setExecutable(true)
     Runtime.getRuntime().exec(script.getAbsolutePath).waitFor
-    val output = Source.fromFile(output_file).getLines.toList(0)
-    env("LD_LIBRARY_PATH") = "%s:%s".format(System.getenv("LD_LIBRARY_PATH"), output)
+
+    val output = Source.fromFile(output_file).getLines.toList
+    val keyvalue = """^(.*?)=(.*)$""".r
+    for (keyvalue(k, v) <- output) env(k) = v
   }
 }
 

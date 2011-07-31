@@ -4,8 +4,14 @@ import ppl.delite.framework._
 import java.io._
 
 object ExternLibrary {
-  val os = System.getProperty("os.name")
-  val windows = os.startsWith("Windows")
+  var os : String = null
+  if (System.getProperty("os.name").startsWith("Windows")) os = "windows"
+  else if (System.getProperty("os.name").startsWith("Linux")) os = "linux"
+  else if (System.getProperty("os.name").startsWith("Mac OS X")) os = "mac"
+  if (os == null) sys.error("operating system %s is not supported".format(System.getProperty("os.name")))
+  val windows = os == "windows"
+  val linux = os == "linux"
+  val mac = os == "mac"
   val unix = !windows
 
   /* Emit and Compile external library */
@@ -22,7 +28,8 @@ object ExternLibrary {
     val outDir = new File(buildPath); outDir.mkdirs()
     val outCFile = new File(buildPath + "scalaBLAS.c")
     val outScalaFile = new File(buildPath + "scalaBLAS.scala")
-    val outSharedLibrary = if (windows) new File(buildPath + "scalaBLAS.dll") else new File(buildPath + "scalaBLAS.so")
+    val outSharedLibraryExtensions = Map("windows" -> "dll", "linux" -> "so", "mac" -> "dylib")
+    val outSharedLibrary = new File(buildPath + "scalaBLAS." + outSharedLibraryExtensions(os))
     val cstream = new PrintWriter(outCFile)
     val scalastream = new PrintWriter(outScalaFile)
     
@@ -168,8 +175,9 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
     if (unix) stream.println("#!/usr/bin/env bash")
     
     if (Config.blasInit != null) stream.println(Config.blasInit)
-    
-    if (windows) {
+
+    os match {
+      case "windows" => {
         val compiler = "icl"
         var args = List[String]()
         args :+= """/nologo"""
@@ -178,8 +186,10 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
         args :+= """/I"%s\..\include"""".format(javaHome)
         args :+= """/I"%s\..\include\win32"""".format(javaHome)
         args :+= """/I"%s\mkl\include"""".format(blasHome)
+        args :+= """/LIBPATH:"%s\mkl\lib"""".format(blasHome)
         args :+= """/LIBPATH:"%s\mkl\lib\em64t"""".format(blasHome)
         args :+= """/LIBPATH:"%s\mkl\lib\intel64"""".format(blasHome)
+        args :+= """/LIBPATH:"%s\compiler\lib"""".format(blasHome)
         args :+= """/LIBPATH:"%s\compiler\lib\em64t"""".format(blasHome)
         args :+= """/LIBPATH:"%s\compiler\lib\intel64"""".format(blasHome)
         args ++= List("mkl_intel_lp64.lib", "mkl_intel_thread.lib", "mkl_core.lib", "libiomp5mt.lib")
@@ -187,7 +197,9 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
         args :+= "/Fe:scalaBLAS.dll"
         args :+= "scalaBLAS.c"
         stream.println("%s %s".format(compiler, args.mkString(" ")))
-    } else {
+      }
+
+      case "linux" => {
         val compiler = "icc"
         var args = List[String]()
         args :+= """-w"""
@@ -198,8 +210,10 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
         // unfortunately, intel libs cannot be linked statically, since the distribution provides neither libmkl_mc3.a nor libmkl_def.a
         // that's why, unlike on Windows, we've got to either hardcode the libpath in LD_LIBRARY_PATH or provide it every time when running delite
         // args ++= List("-Bstatic", "-static-intel")
+        args :+= """-L"%s/mkl/lib"""".format(blasHome)
         args :+= """-L"%s/mkl/lib/em64t"""".format(blasHome)
         args :+= """-L"%s/mkl/lib/intel64"""".format(blasHome)
+        args :+= """-L"%s/lib"""".format(blasHome)
         args :+= """-L"%s/lib/em64t"""".format(blasHome)
         args :+= """-L"%s/lib/intel64"""".format(blasHome)
         args ++= List("-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-liomp5", "-lmkl_mc3", "-lmkl_def", "-lgfortran")
@@ -207,6 +221,36 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
         args :+= "-o scalaBLAS.so"
         args :+= "scalaBLAS.c"
         stream.println("%s %s".format(compiler, args.mkString(" ")))
+      }
+
+      case "mac" => {
+        val compiler = "icc"
+        var args = List[String]()
+        args :+= """-w"""
+        args :+= """-O3"""
+        args :+= """-I"/System/Library/Frameworks/JavaVM.framework/Headers""""
+        args :+= """-I"%s/mkl/include"""".format(blasHome)
+        // unfortunately, intel libs cannot be linked statically, since the distribution does not provide libmkl_mc3.a
+        // that's why, unlike on Windows, we've got to either hardcode the libpath in LD_LIBRARY_PATH or provide it every time when running delite
+        // args ++= List("-static-intel")
+        args :+= """-L"%s/mkl/lib"""".format(blasHome)
+        args :+= """-L"%s/mkl/lib/em64t"""".format(blasHome)
+        args :+= """-L"%s/mkl/lib/intel64"""".format(blasHome)
+        args :+= """-L"%s/lib"""".format(blasHome)
+        args :+= """-L"%s/lib/em64t"""".format(blasHome)
+        args :+= """-L"%s/lib/intel64"""".format(blasHome)
+        args ++= List("-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-liomp5", "-lmkl_mc3")
+        args :+= "-dynamiclib -fPIC"
+        args :+= "-o scalaBLAS.dylib"
+        args :+= "scalaBLAS.c"
+        stream.println("%s %s".format(compiler, args.mkString(" ")))
+     }
+
+      case _ => {
+        println("operating system %s is not supported".format(System.getProperty("os.name")))
+        println()
+        sys.error("MKL BLAS compilation failed")
+      }
     }
     
     stream.close
@@ -217,13 +261,16 @@ JNIEXPORT void JNICALL Java_%s_scalaBLAS_00024_sigmoid_00024mDc_00024sp
   }
 
   private def checkError(process: Process) {
-    val errorStream = process.getErrorStream
-    var err = errorStream.read()
-    if (err != -1) {
-      while (err != -1) {
-        print(err.asInstanceOf[Char])
-        err = errorStream.read()
-      }
+    var errors = io.Source.fromInputStream(process.getErrorStream).getLines.toList
+
+    // unfortunately Mac linker produces warnings even if we provide "-w" option to the compiler
+    // i guess, that's because icc calls libtool and libtool calls whatever it wishes, including ld
+    // however, libtool doesn't seem to expose an option to disable warnings, so it just swallows our "-w"
+    // that's why here we're manually filtering linker warnings
+    errors = errors filter { line => !line.startsWith("ld: warning:") }
+
+    if (errors.length != 0) {
+      println(errors mkString System.getProperty("line.separator"))
       println()
       sys.error("MKL BLAS compilation failed")
     }

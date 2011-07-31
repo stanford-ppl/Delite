@@ -3,8 +3,14 @@ import scala.io.{Source}
 import java.util.{Properties}
 import scala.collection.JavaConversions._
 
-val os = System.getProperty("os.name")
-val windows = os.startsWith("Windows")
+var os : String = null
+if (System.getProperty("os.name").startsWith("Windows")) os = "windows"
+else if (System.getProperty("os.name").startsWith("Linux")) os = "linux"
+else if (System.getProperty("os.name").startsWith("Mac OS X")) os = "mac"
+if (os == null) sys.error("operating system %s is not supported".format(System.getProperty("os.name")))
+val windows = os == "windows"
+val linux = os == "linux"
+val mac = os == "mac"
 val unix = !windows
 
 implicit def string2file(s: String) = if (s == null) null else new File(s)

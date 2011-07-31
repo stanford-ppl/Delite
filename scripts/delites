@@ -27,7 +27,7 @@ classpath += config.optiml_classes +: config.framework_classes +: config.lms_cla
 // or invoke delites as follows (note the slash that supercedes variable expansion for blas.home!):
 //delites "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" HelloWorldRunner
 
-// to enable BLAS on Linux, uncomment the lines below:
+// to enable BLAS on Linux / Mac OS X, uncomment the lines below:
 //args = javaopt("blas.home", "/opt/intel/") +: args
 //args = javaopt("blas.init", "source /opt/intel/bin/compilervars.sh intel64") +: args
 // or invoke delites as follows (note the slash that supercedes variable expansion for blas.home!):
