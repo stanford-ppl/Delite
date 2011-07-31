@@ -343,6 +343,10 @@ abstract class GPUExecutableGenerator {
         if (!first) out.append(',')
         first = false
         out.append(getSymGPU(sym))
+        if ((op.getMutableInputs. contains (input,sym)) && (input.getConsumers.filter(_.scheduledResource!=input.scheduledResource).nonEmpty)) {
+          out.append(',')
+          out.append(getSymCPU(sym))
+        }
       }
     }
     out.append(");\n")
@@ -433,6 +437,7 @@ abstract class GPUExecutableGenerator {
     }
 
     for (name <- op.getOutputs) {
+      var deleteLocalRef = false
       op.cudaMetadata.outputs.find(_._2 == name) match {
         case Some((data, n)) => {
           //copy output from GPU to CPU
@@ -445,6 +450,7 @@ abstract class GPUExecutableGenerator {
           out.append("env,") //JNI environment pointer
           out.append(getSymGPU(name)) //C++ object
           out.append(");\n")
+          deleteLocalRef = true
         }
         case None => //do nothing
       }
@@ -461,6 +467,12 @@ abstract class GPUExecutableGenerator {
       out.append(")V\"),")
       if (op.outputType(name) == "Unit") out.append("boxedUnit") else out.append(getSymCPU(name))
       out.append(");\n")
+
+      if (deleteLocalRef) {
+        out.append("env->DeleteLocalRef(")
+        out.append(getSymCPU(name))
+        out.append(");\n")
+      }
     }
   }
 

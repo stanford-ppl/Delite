@@ -36,6 +36,7 @@ class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Target
         thenGraph, thenValue, elseGraph, elseValue)
         r.dependencies = dependencies
         r.inputList = inputList
+        r.mutableInputs = mutableInputs
         r.consumers = consumers
         r.cudaMetadata = cudaMetadata
         for (dep <- getDependencies) dep.addConsumer(r)

@@ -43,7 +43,8 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     // Release
     out.append("\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
-
+    out.append("\tenv->DeleteLocalRef(data);\n")
+    out.append("\tenv->DeleteLocalRef(cls);\n")
     out.append("\treturn %s;\n".format(quote(sym)))
     out.toString
 
@@ -106,7 +107,9 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t\t%s->data = %s;\n".format(quote(sym),"devPtr"))
     // Release
     out.append("\t\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
+    out.append("\t\tenv->DeleteLocalRef(data);\n")
 	out.append("\t}\n")
+    out.append("\tenv->DeleteLocalRef(cls);\n")
     out.append("\treturn %s;\n".format(quote(sym)))
     out.toString
   }
@@ -127,6 +130,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t%s->start = env->CallIntMethod(obj,mid_start);\n".format(quote(sym)))
     out.append("\t%s->stride = env->CallIntMethod(obj,mid_stride);\n".format(quote(sym)))
     out.append("\t%s->end = env->CallIntMethod(obj,mid_end);\n".format(quote(sym)))
+    out.append("\tenv->DeleteLocalRef(cls);\n")
     out.append("\treturn %s;\n".format(quote(sym)))
 
     out.toString
@@ -168,6 +172,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t\t%s->data = %s;\n".format(quote(sym),"devPtr"))
     // Release
     out.append("\t\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
+    out.append("\t\tenv->DeleteLocalRef(data);\n")
 	out.append("\t}\n")
 
 	out.append("\telse {\n")
@@ -185,6 +190,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 	out.append("\t}\n")
 
 
+    out.append("\tenv->DeleteLocalRef(cls);\n")
     out.append("\t\treturn %s;\n".format(quote(sym)))
     out.toString
   }
@@ -216,6 +222,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
     out.append("\t%s->data = %s;\n".format(quote(sym),"devPtr"))
     out.append("\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
+    out.append("\tenv->DeleteLocalRef(data);\n")
 
     // Get object fields (labels / transposed)
     out.append("\tjmethodID fid_labels = env->GetMethodID(cls,\"labels\",\"()Lgenerated/scala/Labels;\");\n")
@@ -265,8 +272,12 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tmemcpy(%s, %s, sizeof(%s));\n".format("hostPtr_transposed_cls","&transposed",remap(sym.Type)))
     out.append("\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s+sizeof(%s));\n".format("devPtr_transposed","hostPtr_transposed",numBytesStr,remap(sym.Type)))
     out.append("\tenv->ReleasePrimitiveArrayCritical(data_transposed, dataPtr_transposed, 0);\n")
+    out.append("\tenv->DeleteLocalRef(data_transposed);\n")
     out.append("\t%s->transposed = (%s *)(devPtr_transposed + %s->size());\n".format(quote(sym),remap(sym.Type),quote(sym)))
 
+    out.append("\tenv->DeleteLocalRef(cls_labels);\n")
+    out.append("\tenv->DeleteLocalRef(cls_transposed);\n")
+    out.append("\tenv->DeleteLocalRef(cls);\n")
     out.append("\treturn %s;\n".format(quote(sym)))
     out.toString
   }
@@ -301,7 +312,8 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     // Release
     out.append("\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
-
+    out.append("\tenv->DeleteLocalRef(data);\n")
+    out.append("\tenv->DeleteLocalRef(cls);\n")
     out.append("\treturn obj;\n")
     out.toString
   }
@@ -321,6 +333,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMemcpyDtoHAsync(%s, %s.data, %s);\n".format("hostPtr",quote(sym),numBytesStr))
     out.append("\tmemcpy(%s, %s, %s);\n".format("dataPtr","hostPtr",numBytesStr))
     out.append("\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
+    out.append("\tenv->DeleteLocalRef(data);\n")
+    out.append("\tenv->DeleteLocalRef(cls);\n")
 
     out.toString
   }
@@ -355,6 +369,8 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     // Release
     out.append("\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
+    out.append("\tenv->DeleteLocalRef(data);\n")
+    out.append("\tenv->DeleteLocalRef(cls);\n")
 
     out.append("\treturn obj;\n")
     out.toString
@@ -376,6 +392,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMemcpyDtoHAsync(%s, %s.data, %s);\n".format("hostPtr",quote(sym),numBytesStr))
     out.append("\tmemcpy(%s, %s, %s);\n".format("dataPtr","hostPtr",numBytesStr))
     out.append("\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
+    out.append("\tenv->DeleteLocalRef(data);\n")
+    out.append("\tenv->DeleteLocalRef(cls);\n")
 
     out.toString
   }
