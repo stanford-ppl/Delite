@@ -1,0 +1,62 @@
+#!/bin/sh
+script="/tmp/$(basename "$0").$(mktemp -u XXXX)"
+cat "$(dirname "$0")/shared" > "$script"
+echo 'try {' >> "$script"
+echo '/\c' >> "$script"
+echo '*\c' >> "$script"
+cat "$0" >> "$script"
+echo '} catch {' >> "$script"
+echo 'case e: Exception => {' >> "$script"
+echo 'var message = "%s".format(if (e.getMessage != null) e.getMessage else e.getCause )' >> "$script"
+echo 'message = "%s%n%s".format(message, "It may help to run delitecfg or manually adjust %s." .format(config.file.getAbsolutePath))' >> "$script"
+echo 'println(message)' >> "$script"
+echo '}' >> "$script"
+echo '}' >> "$script"
+export script_home="$(dirname "$0")"
+export script_name="$(basename "$0")"
+exec scala "$script" "$@"
+!#*/
+
+args = javaopt("delite.code.cache.home", "generatedCache") +: args
+args = javaopt("delite.home", config.delite_home) +: args
+classpath = config.runtime_classes +: config.scala_vanilla_library_jar +: config.scala_vanilla_compiler_jar
+
+// to enable BLAS on Windows, you don't need to do anything
+// if your application was staged with BLAS enabled, delite runtime will automatically use BLAS
+
+// to enable BLAS on Linux / Mac OS X, uncomment the lines below:
+//args = javaopt("blas.init", "source /opt/intel/bin/compilervars.sh intel64") +: args
+// or invoke delite as follows:
+//delite "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" out.deg
+
+// unfortunately, intel mkl libs cannot be linked statically, since the distribution provides neither libmkl_mc3.a nor libmkl_def.a
+// that's why, unlike on Windows, we've got to either hardcode libpaths or provide them every time when running delite
+// this code presents a shortcut that hopefully simplifies the latter scenario
+if (unix) {
+  for (javaopt("blas.init", v) <- args) {
+    val script = File.createTempFile("blas.init.", ".script")
+    val stream = new PrintWriter(script)
+    stream.println("#!/usr/bin/env bash")
+    stream.println(v)
+    val output_file = File.createTempFile("blas.init.", ".output")
+    stream.println("echo PATH=$PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo LIBRARY_PATH=$LIBRARY_PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo NLS_PATH=$NLS_PATH >> %s".format(output_file.getAbsolutePath))
+    stream.close
+
+    script.setExecutable(true)
+    Runtime.getRuntime().exec(script.getAbsolutePath).waitFor
+
+    val output = Source.fromFile(output_file).getLines.toList
+    val keyvalue = """^(.*?)=(.*)$""".r
+    for (keyvalue(k, v) <- output) env(k) = v
+  }
+}
+
+args = Array()
+argv takeWhile { arg => arg.startsWith("-") && arg != "-" } foreach { arg => args = args :+ arg }
+args = args :+ "ppl.delite.runtime.Delite"
+argv dropWhile { arg => arg.startsWith("-") && arg != "-" } dropWhile { arg => arg == "-"} foreach { arg => args = args :+ arg }
+exec("java")
