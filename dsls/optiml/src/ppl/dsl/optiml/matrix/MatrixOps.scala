@@ -336,27 +336,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 //    extends DeliteOpSingleTask(reifyEffectsHere(matrix_foreachrow_impl(x,f)))
 
   case class MatrixFilterRows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[MatrixRow[A]] => Exp[Boolean])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_filterrows_impl(x,pred)))
-
-
-  /*
-  abstract case class MatrixTimesVector[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Vector[A]]) extends DeliteOpVectorLoop[A] {
-    def mV = manifest[VectorImpl[A]]
-    def mev = manifest[A]
-    def aev = implicitly[Arith[A]]
-  }
-
-  class MatrixTimesVectorFresh[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Vector[A]]) extends MatrixTimesVector(inA, inB) {
-    val size = inA.numRows
-    val isRow = unit(false)
-    val v = fresh[Int]
-    val body: Def[Vector[A]] = DeliteCollectElem[A,Vector[A]](
-      alloc = reifyEffects(Vector[A](size, isRow)),
-      func = reifyEffects(inA.getRow(v) *:* inB)
-    )
-  }
-  */
-  
+    extends DeliteOpSingleTask(reifyEffectsHere(matrix_filterrows_impl(x,pred)))  
 
   case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]]) 
     extends DeliteOpSingleTask(reifyEffects(matrix_sumcol_impl(x)))
@@ -375,175 +355,47 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def a = implicitly[Arith[A]]
   }
 
-  /*
-  // scala signature is only meaningful for the scala generator.. (inside ScalaGenDeliteOps)
-  // but currently that is baked into DeliteGenExternal too.. what is the cuBLAS calling convention?
-  //    -- we need to call CUDA from CUDA code, so no interface necessary... no JNI necessary? only CudaGenDeliteOps has to do something?
-  //    -- possibilities: JVM -> JVM, JVM -> C, C -> C, C -> JVM, currently we only handle JVM -> C
-  
-  abstract class MatrixTimesVectorExtd(x: Exp[Matrix[Double]], y: Exp[Vector[Double]]) extends DeliteOpExternal[Vector[Double]] {
-    def methods = Map(scalaTarget -> MatrixTimesVectorBLASd, cudaTarget -> MatrixTimesVectorCUBlasd)
-    def alloc = Vector[Double](x.numRows, unit(false))
-    def mV = manifest[VectorImpl[Double]]
-  }
-  */
-  
   case class MatrixTimesVectorBLAS[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]]) extends DeliteOpExternal[Vector[A]] {
     def alloc = Vector[A](x.numRows, unit(false))
     def mV = manifest[VectorImpl[A]]
-    val funcName = "MatMultV"
+    val funcName = "matMultV"
   }
-  /*
-  abstract class MatrixTimesVectorBLAS[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]]) extends DeliteOpExternal[Vector[A]] {
-    def lib = BLAS        
-    def alloc = Vector[A](x.numRows, unit(false))        
-    def args = scala.List(matrix_raw_data(x), vector_raw_data(y), vector_raw_data(allocVal), x.numRows, x.numCols, unit(0), unit(1))
-    
-    def scalaFuncSignatureSpec(tp: String) = 
-      "def " + scalaFuncName + "(mat1:Array[%1$s], vec2:Array[%1$s], vec3:Array[%1$s], mat_row:Int, mat_col:Int, vec_offset:Int, vec_stride:Int)".format(tp)  
-      
-    def nativeFuncSpec(tp: String, func: String) =
-      lib.JNIPrefix + "_00024_"+scalaFuncName+"""
-      (JNIEnv *env, jobject obj, j%1$sArray mat1, j%1$sArray vec2, j%1$sArray vec3, jint mat_row, jint mat_col, jint vec_offset, jint vec_stride)
-      {
-      	jboolean copy;
-
-      	j%1$s *mat1_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)mat1, &copy));
-      	j%1$s *vec2_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec2, &copy));
-      	jdouble *vec3_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec3, &copy));
-
-      	vec2_ptr += vec_offset;
-
-      	%2$s(CblasRowMajor, CblasNoTrans, mat_row, mat_col, 1.0, mat1_ptr, mat_col, vec2_ptr, vec_stride, 0.0, vec3_ptr, 1);
-
-      	(*env)->ReleasePrimitiveArrayCritical(env, mat1, mat1_ptr, 0);
-      	(*env)->ReleasePrimitiveArrayCritical(env, vec2, vec2_ptr, 0);
-      	(*env)->ReleasePrimitiveArrayCritical(env, vec3, vec3_ptr, 0);
-      }""".format(tp, func)
-    
-    def mV = manifest[VectorImpl[A]]
-  }  
-  case class MatrixTimesVectorBLASd(x: Exp[Matrix[Double]], y: Exp[Vector[Double]])
-    extends MatrixTimesVectorBLAS[Double](x,y) {
-    
-    def scalaFuncName = "matVMultD"        
-    def scalaFuncSignature = scalaFuncSignatureSpec("Double")
-    def nativeFunc = nativeFuncSpec("double", "cblas_dgemv")
-  }
-  case class MatrixTimesVectorBLASf(x: Exp[Matrix[Float]], y: Exp[Vector[Float]])
-    extends MatrixTimesVectorBLAS[Float](x,y) {
-    
-    def scalaFuncName = "matVMultF"        
-    def scalaFuncSignature = scalaFuncSignatureSpec("Float")
-    def nativeFunc = nativeFuncSpec("float", "cblas_sgemv")
-  }
-  */
   
   case class MatrixMultiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_multiply_impl(x,y)))
   
-  /*
-  abstract class MatrixMultiplyBLAS[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {
-    def lib = BLAS        
-    def alloc = Matrix[A](x.numRows, y.numCols)    
-    def args = scala.List(matrix_raw_data(x), matrix_raw_data(y), matrix_raw_data(allocVal), x.numRows, x.numCols, y.numCols)
-
-    def scalaFuncSignatureSpec(tp: String) =
-      "def " + scalaFuncName + "(mat1:Array[%1$s], mat2:Array[%1$s], mat3:Array[%1$s], mat1_r:Int, mat1_c:Int, mat2_c:Int)".format(tp)
-
-    def nativeFuncSpec(tp: String, func: String) = 
-      lib.JNIPrefix + "_00024_"+scalaFuncName+"""
-      (JNIEnv *env, jobject obj, j%1$sArray mat1, j%1$sArray mat2, j%1$sArray mat3, jint mat1_r, jint mat1_c, jint mat2_c)
-      {
-      	jboolean copy;
-      	j%1$s *mat1_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat1, &copy);
-      	j%1$s *mat2_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat2, &copy);
-      	j%1$s *mat3_ptr = (*env)->GetPrimitiveArrayCritical(env, (jarray)mat3, &copy);
-
-      	%2$s(CblasRowMajor, CblasNoTrans, CblasNoTrans, mat1_r, mat2_c, mat1_c, 1.0, mat1_ptr, mat1_c, mat2_ptr, mat2_c, 0.0, mat3_ptr, mat2_c);
-
-      	(*env)->ReleasePrimitiveArrayCritical(env, mat1, mat1_ptr, 0);
-      	(*env)->ReleasePrimitiveArrayCritical(env, mat2, mat2_ptr, 0);
-      	(*env)->ReleasePrimitiveArrayCritical(env, mat3, mat3_ptr, 0);
-      }""".format(tp, func)      
-
-    def mM = manifest[MatrixImpl[Double]]
+  case class MatrixMultiplyBLAS[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {
+    def alloc = Matrix[A](x.numRows, y.numCols)
+    val funcName = "matMult"
+    
+    def mM = manifest[MatrixImpl[A]]
   }
-  case class MatrixMultiplyBLASd(x: Exp[Matrix[Double]], y: Exp[Matrix[Double]])
-    extends MatrixMultiplyBLAS[Double](x,y) {
-
-    def scalaFuncName = "matMultD"    
-    def scalaFuncSignature = scalaFuncSignatureSpec("Double")
-    def nativeFunc = nativeFuncSpec("double", "cblas_dgemm")
-  }
-  case class MatrixMultiplyBLASf(x: Exp[Matrix[Float]], y: Exp[Matrix[Float]])
-    extends MatrixMultiplyBLAS[Float](x,y) {
-
-    def scalaFuncName = "matMultF"    
-    def scalaFuncSignature = scalaFuncSignatureSpec("Float")
-    def nativeFunc = nativeFuncSpec("float", "cblas_sgemm")
-  }
-  */
-
+  
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) {
-
-    val v = fresh[A]
-    val func = (1.0/(1.0+Math.exp(conv(v)*(-1))))
+    // extends DeliteOpMap[A,Double,Matrix[Double]] {
+    // 
+    //     def alloc = Matrix[Double](in.numRows, in.numCols)
+    //     val size = in.numRows*in.numCols
+    //     def func = e => (1.0/(1.0+Math.exp(conv(e)*(-1))))
   }  
   
   case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoidf_impl(in))) {
-
-    val v = fresh[A]
-    val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
+    // extends DeliteOpMap[A,Float,Matrix[Float]] {
+    // 
+    // def alloc = Matrix[Float](in.numRows, in.numCols)
+    // val size = in.numRows*in.numCols
+    // def func = e => (1.0/(1.0+Math.exp(conv(e)*(-1)))).asInstanceOfL[Float]
   }  
   
-  /*  
-  abstract class MatrixSigmoidBLAS[A:Manifest](in: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {
-    def lib = BLAS        
+  case class MatrixSigmoidVectorized[A:Manifest](in: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {
     def alloc = Matrix[A](in.numRows, in.numCols)    
-    def args = scala.List(matrix_raw_data(in), matrix_raw_data(allocVal), unit(0), in.numRows*in.numCols)
-
-    def scalaFuncSignatureSpec(tp: String) =
-      "def " + scalaFuncName + "(vec1:Array[%1$s], vec2:Array[%1$s], start:Int, end:Int)".format(tp)
-
-    def nativeFuncSpec(tp: String, func: String) = 
-      lib.JNIPrefix + "_00024_"+scalaFuncName+"""
-      (JNIEnv *env, jobject obj, j%1$sArray vec1, j%1$sArray vec2, jint start, jint end)
-      {
-      	int i = 0;
-      	jboolean copy;
-
-      	j%1$s *vec1_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec1, &copy));
-      	j%1$s *vec2_ptr = (j%1$s*)((*env)->GetPrimitiveArrayCritical(env, (jarray)vec2, &copy));
-
-      	for(i=start; i<end; i++) {
-      		vec2_ptr[i] = 1.0 / (1.0+%2$s(-1.0*vec1_ptr[i]));
-      	}
-
-      	(*env)->ReleasePrimitiveArrayCritical(env, vec1, vec1_ptr, 0);
-      	(*env)->ReleasePrimitiveArrayCritical(env, vec2, vec2_ptr, 0);
-      }""".format(tp, func)      
-
+    val funcName = "matSigmoid"
+    
     def mM = manifest[MatrixImpl[A]]
   }
-  case class MatrixSigmoidBLASd(in: Exp[Matrix[Double]])
-    extends MatrixSigmoidBLAS[Double](in) {
-
-    def scalaFuncName = "sigmoidD"    
-    def scalaFuncSignature = scalaFuncSignatureSpec("Double")
-    def nativeFunc = nativeFuncSpec("double", "exp")
-  }
-  case class MatrixSigmoidBLASf(in: Exp[Matrix[Float]])
-    extends MatrixSigmoidBLAS[Float](in) {
-
-    def scalaFuncName = "sigmoidF"    
-    def scalaFuncSignature = scalaFuncSignatureSpec("Float")
-    def nativeFunc = nativeFuncSpec("float", "expf")
-  }
-  */
-
+  
   ////////////////////////////////
   // implemented via delite ops
   
@@ -679,26 +531,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
     def func = e => e.exp
   }
-
-  /*
-  case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends DeliteOpMap[A,Double,Matrix] {
-
-    val alloc = reifyEffects(Matrix[Double](in.numRows, in.numCols))
-    val v = fresh[A]
-    val func = (1.0/(1.0+Math.exp(conv(v)*(-1))))
-    val mM = manifest[MatrixImpl[A]]
-  }
-
-  case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends DeliteOpMap[A,Float,Matrix] {
-
-    val alloc = reifyEffects(Matrix[Float](in.numRows, in.numCols))
-    val v = fresh[A]
-    val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
-    val mM = manifest[MatrixImpl[A]]
-  }
-  */
 
   case class MatrixMin[A:Manifest:Ordering:HasMinMax](in: Exp[Matrix[A]])
     extends DeliteOpReduce[A] {
@@ -837,7 +669,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_slicerows[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], end: Exp[Int]) = reflectPure(MatrixSliceRows(x,start,end))
   def matrix_numrows[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixNumRows(x))
   def matrix_numcols[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixNumCols(x))
-  def matrix_raw_data[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixRawData(x))
 
   def matrix_update[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) = reflectWrite(x)(MatrixUpdate[A](x,i,j,y))
   def matrix_updaterow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Exp[Vector[A]]) = reflectWrite(x)(MatrixUpdateRow(x,row,y))
@@ -861,9 +692,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_minus_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectPure(MatrixMinusScalar(x,y))
   def matrix_times[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectPure(MatrixTimes(x,y))
   def matrix_multiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = {
-    //if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixMultiplyBLASd(x.asInstanceOf[Exp[Matrix[Double]]],y.asInstanceOf[Exp[Matrix[Double]]])).asInstanceOf[Exp[Matrix[A]]]
-    //else if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixMultiplyBLASf(x.asInstanceOf[Exp[Matrix[Float]]],y.asInstanceOf[Exp[Matrix[Float]]])).asInstanceOf[Exp[Matrix[A]]]
-    /*else*/ reflectPure(MatrixMultiply(x,y))
+    if (Config.useBlas && (manifest[A] == manifest[Double] || manifest[A] == manifest[Float])) reflectPure(MatrixMultiplyBLAS(x,y))
+    else reflectPure(MatrixMultiply(x,y))
   }
   def matrix_times_vector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = {
     if (Config.useBlas && (manifest[A] == manifest[Double] || manifest[A] == manifest[Float])) reflectPure(MatrixTimesVectorBLAS(x,y))
@@ -880,12 +710,12 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_sumcol[A:Manifest:Arith](x: Exp[Matrix[A]]) = reflectPure(MatrixSumCol(x))
   def matrix_inverse[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = reflectPure(MatrixInverse(x))
   def matrix_sigmoid[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = {
-    //if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixSigmoidBLASd(x.asInstanceOf[Exp[Matrix[Double]]]))
-    /*else*/ reflectPure(MatrixSigmoid(x))
+    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixSigmoidVectorized(x))    
+    reflectPure(MatrixSigmoid(x))
   }
   def matrix_sigmoidf[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = {
-    //if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixSigmoidBLASf(x.asInstanceOf[Exp[Matrix[Float]]]))
-    /*else*/ reflectPure(MatrixSigmoidF(x))
+    if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixSigmoidVectorized(x))    
+    reflectPure(MatrixSigmoidF(x))
   }
 
   def matrix_plusequals[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectWrite(x)(MatrixPlusEquals(x,y))
@@ -924,6 +754,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   // internal
 
   def matrix_dcapply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = reflectPure(MatrixDCApply(x,i))
+  def matrix_raw_data[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixRawData(x))  
 
   //////////////
   // mirroring
@@ -1180,6 +1011,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true",false)
       currDim -= 1
 
+    /*
     case m@MatrixSigmoidF(x) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -1198,7 +1030,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(x)),false)
       currDim -= 1
 
-  /*
+  
     case MatrixPlusEquals(x,y) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
