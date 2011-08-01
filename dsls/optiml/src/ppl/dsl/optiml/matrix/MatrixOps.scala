@@ -374,7 +374,26 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def m = manifest[A]
     def a = implicitly[Arith[A]]
   }
+
+  /*
+  // scala signature is only meaningful for the scala generator.. (inside ScalaGenDeliteOps)
+  // but currently that is baked into DeliteGenExternal too.. what is the cuBLAS calling convention?
+  //    -- we need to call CUDA from CUDA code, so no interface necessary... no JNI necessary? only CudaGenDeliteOps has to do something?
+  //    -- possibilities: JVM -> JVM, JVM -> C, C -> C, C -> JVM, currently we only handle JVM -> C
   
+  abstract class MatrixTimesVectorExtd(x: Exp[Matrix[Double]], y: Exp[Vector[Double]]) extends DeliteOpExternal[Vector[Double]] {
+    def methods = Map(scalaTarget -> MatrixTimesVectorBLASd, cudaTarget -> MatrixTimesVectorCUBlasd)
+    def alloc = Vector[Double](x.numRows, unit(false))
+    def mV = manifest[VectorImpl[Double]]
+  }
+  */
+  
+  case class MatrixTimesVectorBLAS[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]]) extends DeliteOpExternal[Vector[A]] {
+    def alloc = Vector[A](x.numRows, unit(false))
+    def mV = manifest[VectorImpl[A]]
+    val funcName = "MatMultV"
+  }
+  /*
   abstract class MatrixTimesVectorBLAS[A:Manifest](x: Exp[Matrix[A]], y: Exp[Vector[A]]) extends DeliteOpExternal[Vector[A]] {
     def lib = BLAS        
     def alloc = Vector[A](x.numRows, unit(false))        
@@ -418,10 +437,12 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def scalaFuncSignature = scalaFuncSignatureSpec("Float")
     def nativeFunc = nativeFuncSpec("float", "cblas_sgemv")
   }
+  */
   
   case class MatrixMultiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_multiply_impl(x,y)))
   
+  /*
   abstract class MatrixMultiplyBLAS[A:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {
     def lib = BLAS        
     def alloc = Matrix[A](x.numRows, y.numCols)    
@@ -462,6 +483,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def scalaFuncSignature = scalaFuncSignatureSpec("Float")
     def nativeFunc = nativeFuncSpec("float", "cblas_sgemm")
   }
+  */
 
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) {
@@ -476,7 +498,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val v = fresh[A]
     val func = (1.0/(1.0+Math.exp(conv(v)*(-1)))).asInstanceOfL[Float]
   }  
-    
+  
+  /*  
   abstract class MatrixSigmoidBLAS[A:Manifest](in: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {
     def lib = BLAS        
     def alloc = Matrix[A](in.numRows, in.numCols)    
@@ -519,6 +542,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def scalaFuncSignature = scalaFuncSignatureSpec("Float")
     def nativeFunc = nativeFuncSpec("float", "expf")
   }
+  */
 
   ////////////////////////////////
   // implemented via delite ops
@@ -837,13 +861,12 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_minus_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectPure(MatrixMinusScalar(x,y))
   def matrix_times[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectPure(MatrixTimes(x,y))
   def matrix_multiply[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = {
-    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixMultiplyBLASd(x.asInstanceOf[Exp[Matrix[Double]]],y.asInstanceOf[Exp[Matrix[Double]]])).asInstanceOf[Exp[Matrix[A]]]
-    else if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixMultiplyBLASf(x.asInstanceOf[Exp[Matrix[Float]]],y.asInstanceOf[Exp[Matrix[Float]]])).asInstanceOf[Exp[Matrix[A]]]
-    else reflectPure(MatrixMultiply(x,y))
+    //if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixMultiplyBLASd(x.asInstanceOf[Exp[Matrix[Double]]],y.asInstanceOf[Exp[Matrix[Double]]])).asInstanceOf[Exp[Matrix[A]]]
+    //else if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixMultiplyBLASf(x.asInstanceOf[Exp[Matrix[Float]]],y.asInstanceOf[Exp[Matrix[Float]]])).asInstanceOf[Exp[Matrix[A]]]
+    /*else*/ reflectPure(MatrixMultiply(x,y))
   }
   def matrix_times_vector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = {
-    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixTimesVectorBLASd(x.asInstanceOf[Exp[Matrix[Double]]],y.asInstanceOf[Exp[Vector[Double]]])).asInstanceOf[Exp[Vector[A]]]
-    else if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixTimesVectorBLASf(x.asInstanceOf[Exp[Matrix[Float]]],y.asInstanceOf[Exp[Vector[Float]]])).asInstanceOf[Exp[Vector[A]]]
+    if (Config.useBlas && (manifest[A] == manifest[Double] || manifest[A] == manifest[Float])) reflectPure(MatrixTimesVectorBLAS(x,y))
     else reflectPure(MatrixTimesVector(x,y))
   }
   def matrix_times_scalar[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[A]) = reflectPure(MatrixTimesScalar(x,y))
@@ -857,12 +880,12 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_sumcol[A:Manifest:Arith](x: Exp[Matrix[A]]) = reflectPure(MatrixSumCol(x))
   def matrix_inverse[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = reflectPure(MatrixInverse(x))
   def matrix_sigmoid[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = {
-    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixSigmoidBLASd(x.asInstanceOf[Exp[Matrix[Double]]]))
-    else reflectPure(MatrixSigmoid(x))
+    //if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixSigmoidBLASd(x.asInstanceOf[Exp[Matrix[Double]]]))
+    /*else*/ reflectPure(MatrixSigmoid(x))
   }
   def matrix_sigmoidf[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = {
-    if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixSigmoidBLASf(x.asInstanceOf[Exp[Matrix[Float]]]))
-    else reflectPure(MatrixSigmoidF(x))
+    //if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixSigmoidBLASf(x.asInstanceOf[Exp[Matrix[Float]]]))
+    /*else*/ reflectPure(MatrixSigmoidF(x))
   }
 
   def matrix_plusequals[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectWrite(x)(MatrixPlusEquals(x,y))
@@ -920,7 +943,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       case e@MatrixPlus(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixPlus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
       case e@MatrixMap(x,g) => reflectPure(new { override val original = Some(f,e) } with MatrixMap(f(x),f(g))(e.mA, e.mB))(mtype(manifest[A]))
       case e@MatrixTimesVector(x,y) => reflectPure(new {override val original = Some(f,e) } with MatrixTimesVector(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
-      case e@MatrixTimesVectorBLASd(x,y) => reflectPure(MatrixTimesVectorBLASd(f(x),f(y)))(mtype(manifest[A]))
+      case e@MatrixTimesVectorBLAS(x,y) => reflectPure(MatrixTimesVectorBLAS(f(x),f(y)))(mtype(manifest[A]))
       case Reflect(MatrixNumRows(x), u, es) => reflectMirrored(Reflect(MatrixNumRows(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(MatrixNumCols(x), u, es) => reflectMirrored(Reflect(MatrixNumCols(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(MatrixClone(x), u, es) => reflectMirrored(Reflect(MatrixClone(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))

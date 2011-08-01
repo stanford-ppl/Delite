@@ -43,6 +43,7 @@ object DeliteTaskGraph {
       val opType = getFieldString(op, "type")
       opType match {
         case "SingleTask" => processCommon(op, "OP_Single")
+        case "External" => processCommon(op, "OP_External")
         case "MultiLoop" => processCommon(op, "OP_MultiLoop")
         case "Foreach" => processCommon(op, "OP_Foreach")
         case "Conditional" => processIfThenElseTask(op)
@@ -126,6 +127,7 @@ object DeliteTaskGraph {
 
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
+      case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
       case "OP_MultiLoop" => 
 			  val size = getFieldString(op, "sizeValue")
 				val sizeIsConst = getFieldString(op, "sizeType") == "const"				

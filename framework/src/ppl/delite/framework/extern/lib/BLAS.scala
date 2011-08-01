@@ -6,7 +6,7 @@ import java.io._
 
 object BLAS extends ExternalLibrary {
   //val target = "scala" // this should be well-typed, but we don't have an IR reference yet, so we need to generalize that...  
-  val JNIName = "scalaBLAS"
+  val name = "scalaBLAS"
   val configFile = "BLAS.xml"  
   val ext = "c"
   // should we consider library linking machine dependent? do we have a different external lib

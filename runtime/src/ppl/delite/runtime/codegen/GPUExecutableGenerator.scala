@@ -72,6 +72,7 @@ abstract class GPUExecutableGenerator {
     out.append("#include <cuda_runtime.h>\n") //Cuda runtime api
     out.append("#include \"DeliteCuda.cu\"\n") //Delite-Cuda interface for DSL
     out.append("#include \"dsl.h\"\n") //imports all dsl kernels and helper functions
+    out.append("#include \"library.h\"\n")
   }
 
   protected def writeFunctionHeader(location: Int, out: StringBuilder) {

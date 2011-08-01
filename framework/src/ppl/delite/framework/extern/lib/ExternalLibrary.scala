@@ -11,15 +11,12 @@ trait ExternalLibConfiguration {
 
 trait ExternalLibrary {
   //val target: Target
-  val JNIName: String // generated scala interface for this library will use this as its object name
+  val name: String // generated scala interface for this library will use this as its object name
   val ext: String // native file extension (can this ever be anything besides .c or .cpp??)
   val configFile: String // name of file, will always be searched for inside extern/src/ppl/delite/extern/lib/config
   val compileFlags: List[String] // machine-independent flags that are always passed to the compiler for this lib
   val outputSwitch: String // compiler parameter that allows us to specify destination dir (e.g. -o)
   val header: String = "" // an optional header to be included at the top of every generated call for this lib
-  
-  // generated.scala is hardcoded as a package name in many places; should this be more flexible? does it matter?
-  lazy val JNIPrefix = "JNIEXPORT void JNICALL Java_generated_scala_"+JNIName 
   
   /**
    * machine dependent, sourced from XML configuration 
@@ -35,7 +32,7 @@ trait ExternalLibrary {
     // invoke the compiler using Runtime.exec
     val javaHome = System.getProperty("java.home")
     val buildPath = new File(Config.buildDir, "scala/kernels")
-    val destPath = new File(destDir, "/" + JNIName + ".so")    
+    val destPath = new File(destDir, "/" + name + ".so")    
     val outputFlags = List(outputSwitch, destPath.toString)
 
     // this call is based on the gcc/icc invocation signature.. do we need to generalize it?

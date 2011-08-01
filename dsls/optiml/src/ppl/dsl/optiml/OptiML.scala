@@ -10,6 +10,7 @@ import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
+import ppl.dsl.optiml.extern.{OptiMLScalaGenExternal, OptiMLCudaGenExternal}
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
 import ppl.dsl.optiml.io._
 import ppl.dsl.optiml.vector._
@@ -174,8 +175,8 @@ trait OptiMLCodeGenBase extends GenericFatCodegen {
   }
 }
 
-trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
-  with ScalaGenApplicationOps
+trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with OptiMLScalaGenExternal with ScalaGenDeliteOps
+  with ScalaGenApplicationOps with ScalaGenLanguageOps 
   with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with ScalaGenIndexVectorOps with ScalaGenIndexVector2Ops with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
   with ScalaGenStreamOps with ScalaGenStreamRowOps
@@ -263,7 +264,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   }
 }
 
-trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenTrainingSetOps with CudaGenMatrixRowOps // with CudaGenVectorViewOps
+trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg with OptiMLCudaGenExternal /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenTrainingSetOps with CudaGenMatrixRowOps // with CudaGenVectorViewOps
   with CudaGenVariantsOps with DeliteCudaGenAllOverrides // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
   val IR: DeliteApplication with OptiMLExp

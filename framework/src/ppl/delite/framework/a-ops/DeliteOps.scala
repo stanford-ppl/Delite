@@ -67,16 +67,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * A method call to an external library. 
    */
   abstract class DeliteOpExternal[A:Manifest] extends DeliteOp[A] {
-    def lib: ExternalLibrary
     def alloc: Exp[A]
-    def args: List[Exp[Any]] 
-    // should these be Reps?
-    def scalaFuncName: String // the name of the JNI method to be invoked
-    def scalaFuncSignature: String // the signature of the JNI method to be invoked
-    def nativeFunc: String // the native method that actually makes the library call
-    
     val allocVal = reifyEffects(alloc) // can be used in args... is there a better way? should we expose this?
-    val argsVal = args // need reify list elems?
+    val funcName: String
   }
 
   /**
@@ -565,7 +558,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
                                                         // to be the case. similar question arises for sync
     case s: DeliteOpSingleTask[_] if s.requireInputs => syms(s.block) ++ super.syms(e) // super call: add case class syms (iff flag is set)
     case s: DeliteOpSingleTask[_] => syms(s.block)
-    case e: DeliteOpExternal[_] => syms(e.argsVal) ++ syms(e.allocVal)
+    case e: DeliteOpExternal[_] => syms(e.allocVal) ++ super.syms(e)
     case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.cond) ++ syms(op.alloc)
 //    case op: DeliteForeachElem[_] => syms(op.func) ++ syms(op.cond) ++ syms(op.sync)
     case op: DeliteForeachElem[_] => syms(op.func) ++ syms(op.sync)
@@ -578,7 +571,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   override def readSyms(e: Any): List[Sym[Any]] = e match { //TR FIXME: check this is actually correct
     case s: DeliteOpSingleTask[_] if s.requireInputs => syms(s.block) ++ super.syms(e) // super call: add case class syms (iff flag is set)
     case s: DeliteOpSingleTask[_] => syms(s.block)
-    case e: DeliteOpExternal[_] => syms(e.argsVal) ++ syms(e.allocVal)
+    case e: DeliteOpExternal[_] => syms(e.allocVal) ++ super.syms(e)
     case op: DeliteCollectElem[_,_] => syms(op.func) ++ syms(op.cond) ++ syms(op.alloc)
 //    case op: DeliteForeachElem[_] => syms(op.func) ++ syms(op.cond) ++ syms(op.sync)
     case op: DeliteForeachElem[_] => syms(op.func) ++ syms(op.sync)
@@ -604,7 +597,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
     case s: DeliteOpSingleTask[_] if s.requireInputs => freqNormal(s.block) ++ super.symsFreq(e) // super call: add case class syms (iff flag is set)
     case s: DeliteOpSingleTask[_] => freqNormal(s.block)
-    case e: DeliteOpExternal[_] => freqHot(e.argsVal) ++ freqNormal(e.allocVal)
+    case e: DeliteOpExternal[_] => freqNormal(e.allocVal) ++ super.symsFreq(e)
     case op: DeliteCollectElem[_,_] => freqNormal(op.alloc) ++ freqHot(op.cond) ++ freqHot(op.func)
 //    case op: DeliteForeachElem[_] => freqNormal(op.sync) ++ freqHot(op.cond) ++ freqHot(op.func)
     case op: DeliteForeachElem[_] => freqNormal(op.sync) ++ freqHot(op.func)
@@ -1096,14 +1089,6 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       }
       //deliteKernel = save
     }
-    case e:DeliteOpExternal[_] =>
-      // emit JNI call
-      stream.println("val " + quote(sym) + " = {")
-      emitBlock(e.allocVal) 
-      stream.println(quote(getBlockResult(e.allocVal)))
-      stream.println("}")                    
-      stream.println(e.lib.JNIName + "." + e.scalaFuncName + "(" + (e.argsVal map { quote } mkString ",") + ")")
-      // stream.println("val " + quote(sym) + " = " + quote(e.alloc))
     case op: AbstractLoop[_] => 
       // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
       stream.println("// a *thin* loop follows: " + quote(sym))

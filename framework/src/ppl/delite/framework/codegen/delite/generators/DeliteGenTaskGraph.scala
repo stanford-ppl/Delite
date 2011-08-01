@@ -135,9 +135,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         assert(hasOutputSlotTypes || sym.length == 1)
 
         // emit kernel
-        gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar)(kstream)
+        gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar, false)(kstream)
         kstream.println(bodyString.toString)
-        gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar)(kstream)
+        gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar, false)(kstream)
         
         if (hasOutputSlotTypes)
           gen.emitFatNodeKernelExtra(sym, rhs)(kstream) // activation record class declaration
@@ -237,6 +237,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _))
       case ThinDef(z) => z match {
         case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body))
+        case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case c:DeliteOpCondition[_] => emitIfThenElse(c.cond, c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
@@ -267,6 +268,14 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
    stream.println("},")
   }
 
+  def emitExternal(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
+    stream.print("{\"type\":\"External\"")
+    // TODO: add thread control, other configuration?
+    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
+    stream.println("},")
+  }
+  
   def emitSingleTask(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\"")
