@@ -20,9 +20,9 @@ final class CudaMetadata {
   val dimSizeX = new OPData
   val dimSizeY = new OPData
   var inputs = Map[(DeliteOP, String), OPData]()
-  var temps: List[OPData] = Nil
+  var temps: List[(OPData, String)] = Nil
   var tempOps: List[DeliteOP] = Nil
-  var output = new OPData
+  var outputs: List[(OPData, String)] = Nil
 
   def apply(field: String) = field match {
     case "gpuBlockSizeX" => blockSizeX
@@ -30,7 +30,6 @@ final class CudaMetadata {
     case "gpuBlockSizeZ" => blockSizeZ
     case "gpuDimSizeX" => dimSizeX
     case "gpuDimSizeY" => dimSizeY
-    case "output" => output
     case other => error("unknown field: " + other)
   }
 
@@ -40,10 +39,16 @@ final class CudaMetadata {
     in
   }
 
-  def newTemp = {
+  def newTemp(sym: String) = {
     val temp = new OPData
-    temps ::= temp
+    temps ::= (temp, sym)
     temp
+  }
+
+  def newOutput(sym: String) = {
+    val output = new OPData
+    outputs ::= (output, sym)
+    output
   }
 
   def replaceInput(old: DeliteOP, op: DeliteOP, sym: String) {
@@ -57,8 +62,8 @@ final class CudaMetadata {
       blockSizeZ.replaceInput(old, op, sym)
       dimSizeX.replaceInput(old, op, sym)
       dimSizeY.replaceInput(old, op, sym)
-      for (temp <- temps) temp.replaceInput(old, op, sym)
-      output.replaceInput(old, op, sym)
+      for ((temp,name) <- temps) temp.replaceInput(old, op, sym)
+      for ((output,name) <- outputs) output.replaceInput(old, op, sym)
     }
   }
 

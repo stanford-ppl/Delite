@@ -1354,24 +1354,37 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
       if(symList.length != 1) throw new GenerationFailedException("CudaGen: Only 1 output is supported for FatLoop (No fusing yet).")
-      currDim += 1
+      deliteKernel = false
+	  println("increasing currDim " + quote(symList(0)))
+		  currDim += 1
       val currDimStr = getCurrDimStr()
-      setCurrDimLength(quote(op.v)+"->size()")
-      stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(op.v)+".size()"))
+      //setCurrDimLength(quote(op.v)+"->size()")
+      setCurrDimLength(quote(op.size))
+      //stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(op.v)+".size()"))
+      stream.println(addTab()+"if( %s < %s ) {".format(currDimStr, quote(op.size)))
       tabWidth += 1
       (symList zip op.body) foreach {
         case (sym, elem:DeliteCollectElem[_,_]) =>
           emitAllocFunc(sym,elem.alloc)
           val (loopFunc,freeVars) = emitDevFunc(elem.func, List(op.v))
+          if(freeVars.length==0) {
+            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s));".format(quote(sym),currDimStr,loopFunc,currDimStr))
+          }
+          else {
+            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s,%s));".format(quote(sym),currDimStr,loopFunc,currDimStr,freeVars.map(quote).mkString(",")))
+          }
+        case (sym, elem:DeliteForeachElem[_]) =>
+          val (loopFunc,freeVars) = emitDevFunc(elem.func, List(op.v))
           if(freeVars.length==0)
-            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s)));".format(quote(sym),currDimStr,loopFunc,quote(op.v),currDimStr))
+            stream.println(addTab()+"%s(%s);".format(loopFunc,currDimStr))
           else
-            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s.dcApply(%s),%s));".format(quote(sym),currDimStr,loopFunc,quote(op.v),currDimStr,freeVars.map(quote).mkString(",")))
+            stream.println(addTab()+"%s(%s,%s);".format(loopFunc,currDimStr,freeVars.map(quote).mkString(",")))
         case _ =>
           throw new GenerationFailedException("CudaGen: DeliteReduceElem is not supported yet.")
       }
       tabWidth -= 1
       stream.println(addTab()+"}")
+      println("decreasing currDim " + quote(symList(0)))
       currDim -= 1
       //deliteKernel = true
 
@@ -1379,8 +1392,26 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case s:DeliteOpSingleTask[_] => throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable." + quote(sym))
-      // TODO: Generate single thread version of this work
+    case s:DeliteOpSingleTask[_] => {
+      val save = deliteKernel
+      deliteKernel = false
+      val b = s.block
+      if (!save) {
+        val (singleFunc, freeVars) = emitDevFunc(b,List())
+        val currDimStr = getCurrDimStr()
+        stream.println(addTab()+"%s %s = %s(%s);".format(remap(sym.Type),quote(sym),singleFunc,freeVars.map(quote).mkString(",")))
+      }
+      else {
+    	throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable." + quote(sym))
+      }
+      deliteKernel = save
+    }
+    
+    case op: AbstractLoop[_] => 
+      // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
+      stream.println("// a *thin* loop follows: " + quote(sym))
+      emitFatNode(List(sym), SimpleFatLoop(op.size, op.v, List(op.body)))
+    
     case foreach:DeliteOpForeach2[_,_] => {
       if(!isPrimitiveType(foreach.v.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for input of foreach.")
       currDim += 1
@@ -1397,6 +1428,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
       stream.println(addTab()+"}")
       currDim -= 1
     }
+
     case _ => super.emitNode(sym,rhs)
   }
   

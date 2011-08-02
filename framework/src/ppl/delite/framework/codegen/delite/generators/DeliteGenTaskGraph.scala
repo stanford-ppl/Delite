@@ -127,6 +127,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             case foreach: DeliteOpForeachBounded[_,_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
             case _ => gen.remap(sym.head.Type)
           }
+		  case ("cuda", op: AbstractFatLoop) =>
+			  hasOutputSlotTypes = true
+			  "void"
+		  case ("cuda", ThinDef(z)) => z match {
+            case op: AbstractLoop[_] => 
+            	hasOutputSlotTypes = true
+				"void"
+            case _ => "void"
+		  }
           case _ => 
             assert(sym.length == 1) // if not set hasOutputSlotTypes and use activation record
             gen.remap(sym.head.Type)

@@ -971,33 +971,43 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
     /* CUBLAS calls */
-    // case MatrixMultiplyBLAS(x,y) =>
-    //   val callStream = "cublasSetKernelStream(stream);"
-    //   val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
-    //     "cublasDgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
-    //   else if(remap(x.Type.typeArguments(0)) == "float")
-    //     "cublasSgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
-    //   else
-    //     throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatrixMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0))))
-    //   emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(y)),false)
-    //   emitLibCall(sym,List(callStream,callKernel))
-    // 
-    // case MatrixTimesVectorBLAS(x,y) =>
-    //   val callStream = "cublasSetKernelStream(stream);"
-    //   val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
-    //     "cublasDgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
-    //   else if(remap(x.Type.typeArguments(0)) == "float")
-    //     "cublasSgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
-    //   else
-    //     throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Matrix*Vector CUBLAS library)".format(remap(x.Type.typeArguments(0))))
-    //   emitVectorAlloc(sym,"%s->numRows".format(quote(x)),"false",false)
-    //   emitLibCall(sym,List(callStream,callKernel))
+    /*
+    case MatrixMultiplyBLAS(x,y) =>
+      val callStream = "cublasSetKernelStream(stream);"
+      val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
+        "cublasDgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
+      else if(remap(x.Type.typeArguments(0)) == "float")
+        "cublasSgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
+      else
+        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatrixMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0))))
+      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(y)),false)
+      emitLibCall(sym,List(callStream,callKernel))
+    
+    case MatrixTimesVectorBLAS(x,y) =>
+      val callStream = "cublasSetKernelStream(stream);"
+      val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
+        "cublasDgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
+      else if(remap(x.Type.typeArguments(0)) == "float")
+        "cublasSgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
+      else
+        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Matrix*Vector CUBLAS library)".format(remap(x.Type.typeArguments(0))))
+      emitVectorAlloc(sym,"%s.numRows".format(quote(x)),"false",false)
+      emitLibCall(sym,List(callStream,callKernel))
+    */
 
-    /* The ops that call through to the underlying data structure */
+    case MatrixObjectNew(numRows,numCols) =>
+      stream.println(addTab()+"%s *devPtr;".format(remap(sym.Type.typeArguments(0))))
+      stream.println(addTab()+"DeliteCudaMalloc((void**)&devPtr,%s*%s*sizeof(%s));".format(quote(numRows),quote(numCols),remap(sym.Type.typeArguments(0))))
+      stream.println("%s *%s_ptr = new %s(%s,%s,devPtr);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
+      //stream.println("%s.numRows = %s;".format(quote(sym),quote(numRows)))
+      //stream.println("%s.numCols = %s;".format(quote(sym),quote(numCols)))
+      //stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
+    
+	  /* The ops that call through to the underlying data structure */
     case MatrixDCApply(x,i) =>
       emitValDef(sym, "%s.dcApply(%s)".format(quote(x),quote(i)))
-    case MatrixApply(x,i,j) =>
-      emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
+    //case MatrixApply(x,i,j) =>
+    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
     case MatrixUpdate(x,i,j,y)  =>
       stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
     case MatrixNumRows(x)  =>
@@ -1017,6 +1027,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"}")
       currDim -= 1
 
+	  /*
     case MatrixObjectDiag(w, vals) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -1035,7 +1046,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s".format(quote(w)),"%s".format(quote(w)),false)
       currDim -= 1
-
+*/
     case MatrixTranspose(x) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -1047,7 +1058,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s->numCols".format(quote(x)),"%s->numRows".format(quote(x)),false)
+      emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)),false)
       currDim -= 1
 
     case MatrixSumCol(x) =>
@@ -1065,7 +1076,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"%s.update(%s,reducVal);".format(quote(sym),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true",false)
+      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false)
       currDim -= 1
 
     /*
@@ -1084,11 +1095,25 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
         stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)),%s);".format(quote(sym),sigmoidFunc,quote(x),freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(x)),false)
+      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)),false)
       currDim -= 1
-
   
-    case MatrixPlusEquals(x,y) =>
+	  case m@MatrixSigmoidFBLAS(x) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->size()".format(quote(x)))
+      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
+      tabWidth += 1
+	  stream.println(addTab()+"float %s_result = 1.0f/(1.0f + exp(-1*%s.dcApply(%s)));".format(quote(sym),quote(x),currDimStr)) 
+      stream.println(addTab()+"%s.dcUpdate(%s,%s_result);".format(quote(sym),currDimStr,quote(sym)))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)),false)
+      currDim -= 1
+  */
+  /*
+	case MatrixPlusEquals(x,y) =>
+		throw new GenerationFailedException("CudaGen: No dimension specified for this kernel.")
       currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength("%s->numCols".format(quote(x)))
@@ -1102,7 +1127,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       tabWidth -= 1
       stream.println(addTab()+"}")
       currDim -= 1
-
+    
     case MatrixPlusEquals(x,y) if(useLocalVar) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -1113,16 +1138,17 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
                  else "NOT FOUND Y"
       stream.println(addTab()+"%s = %s + %s;".format(varX,varX,varY))
       currDim -= 1
-
+	*/
+  /*
     case MatrixGetRow(x,i) =>
       if(kernelSymbol != sym) {
         //stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
         stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
         stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
         stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
-        emitVectorAlloc(sym,"%s->numCols".format(quote(x)),"true",false,"%s->data".format(quote(x)))
+        emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false,"%s->data".format(quote(x)))
       }
-      */
+  */
 
     case _ => super.emitNode(sym, rhs)
   }

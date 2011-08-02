@@ -366,7 +366,7 @@ object DeliteTaskGraph {
   }
 
   def extractCudaMetadata(superOp: OP_Nested, innerGraph: DeliteTaskGraph, outerGraph: DeliteTaskGraph) {
-    superOp.cudaMetadata.output = innerGraph.result._1.cudaMetadata.output
+    superOp.cudaMetadata.outputs = innerGraph.result._1.cudaMetadata.outputs
     for (op <- innerGraph._ops.values; key <- op.cudaMetadata.inputs.keys) {
       try {
         val inOp = getOp(key._2)(outerGraph)
@@ -440,8 +440,9 @@ object DeliteTaskGraph {
     }
 
     for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) { //temporaries list
+      val key = (temp.asInstanceOf[Map[String,Any]].keys.head)
       val value = (temp.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
-      val data = cudaMetadata.newTemp
+      val data = cudaMetadata.newTemp(key)
       data.resultType = value.head
       data.func = value.tail.head
       for (sym <- value.tail.tail.head.asInstanceOf[List[String]].reverse) {
@@ -449,19 +450,20 @@ object DeliteTaskGraph {
       }
     }
 
-    //output allocation
+    //output allocation  //TODO: support multiple outputs
     metadataMap.get("gpuOutput") match {
       case None => //do nothing
       case Some(field) => field match {
         case out: Map[Any,Any] => {
+          val output = cudaMetadata.newOutput(out.keys.head)
           val outList = out.values.head.asInstanceOf[List[Any]]
-          cudaMetadata.output.resultType = outList.head
-          cudaMetadata.output.func = outList.tail.head
+          output.resultType = outList.head
+          output.func = outList.tail.head
           for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
-            cudaMetadata.output.inputs ::= (getOpLike(sym), sym)
+            output.inputs ::= (getOpLike(sym), sym)
           }
           //output copy
-          cudaMetadata.output.funcReturn = outList.tail.tail.tail.head
+          output.funcReturn = outList.tail.tail.tail.head
         }
         case err => mapNotFound(err)
       }

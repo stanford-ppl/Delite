@@ -2,7 +2,7 @@ package ppl.delite.framework.ops
 
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Base, ScalaGenFat}
+import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Base, ScalaGenFat, CudaGenEffect}
 import scala.virtualization.lms.internal.{GenericFatCodegen}
 
 trait DeliteCollectionOps extends Base {
@@ -100,3 +100,19 @@ trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaG
 
   }
 }
+
+trait CudaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with CudaGenEffect {
+  val IR: DeliteCollectionOpsExp
+  import IR._
+  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+    rhs match {
+      case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".size()")
+      case DeliteCollectionApply(x,n) => emitValDef(sym, quote(getBlockResult(x)) + ".dcApply(" + quote(n) + ")")
+      //case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ")")
+      case DeliteCollectionUpdate(x,n,y) => stream.println(quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ");")
+      case _ => super.emitNode(sym, rhs)
+    }
+  }
+}
+
