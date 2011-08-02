@@ -411,10 +411,10 @@ object DeliteTaskGraph {
     val cudaMetadata = newop.cudaMetadata
 
     //check library call
-    cudaMetadata.libCall = metadataMap.get("gpuLibCall") match {
-      case Some(x) => x
-      case None => null
-    }
+//    cudaMetadata.libCall = metadataMap.get("gpuLibCall") match {
+//      case Some(x) => x
+//      case None => null
+//    }
 
     for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
       val inputMap = input.asInstanceOf[Map[String,Any]]
@@ -476,11 +476,13 @@ object DeliteTaskGraph {
       for (sym <- list.tail.head.asInstanceOf[List[String]].reverse) data.inputs ::= (getOpLike(sym), sym)
     }
 
-    fill("gpuBlockSizeX") //threads/block - x
-    fill("gpuBlockSizeY") //threads/block - y
-    fill("gpuBlockSizeZ") //threads/block - z
-    fill("gpuDimSizeX") //blocks in grid - x
-    fill("gpuDimSizeY") //blocks in grid - y
+    if (!newop.isInstanceOf[OP_External]){
+      fill("gpuBlockSizeX") //threads/block - x
+      fill("gpuBlockSizeY") //threads/block - y
+      fill("gpuBlockSizeZ") //threads/block - z
+      fill("gpuDimSizeX") //blocks in grid - x
+      fill("gpuDimSizeY") //blocks in grid - y
+    }
 
   }
 

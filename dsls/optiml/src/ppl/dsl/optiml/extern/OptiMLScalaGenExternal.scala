@@ -20,17 +20,17 @@ trait OptiMLScalaGenExternal extends ScalaGenExternalBase {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case e@MatrixTimesVectorBLAS(x,y) =>
       val args = scala.List("%1$s.data", "%2$s.data", "%3$s.data", "%1$s.numRows", "%1$s.numCols", "0", "1") 
-                 .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(getBlockResult(e.allocVal))) }
+                 .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
       emitMethodCall(sym, e, BLAS, args)
       
     case e@MatrixMultiplyBLAS(x,y) =>
       val args = scala.List("%1$s.data", "%2$s.data", "%3$s.data", "%1$s.numRows", "%1$s.numCols", "%2$s.numCols") 
-                 .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(getBlockResult(e.allocVal))) }
+                 .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
       emitMethodCall(sym, e, BLAS, args)
     
     case e@MatrixSigmoidVectorized(in) =>
       val args = scala.List("%1$s.data", "%2$s.data", "0", "%1$s.size") 
-                 .map { _.format(quote(getBlockResult(in)), quote(getBlockResult(e.allocVal))) }
+                 .map { _.format(quote(getBlockResult(in)), quote(sym)) }
       emitMethodCall(sym, e, BLAS, args)  
           
     case _ => super.emitNode(sym, rhs)

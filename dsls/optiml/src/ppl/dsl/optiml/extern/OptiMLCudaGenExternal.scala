@@ -10,19 +10,22 @@ import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.extern.codegen.cuda.CudaGenExternalBase
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite._
+import ppl.dsl.optiml.datastruct.CudaGenDataStruct
 
 import ppl.dsl.optiml.OptiMLExp
 
-trait OptiMLCudaGenExternal extends CudaGenExternalBase {
+trait OptiMLCudaGenExternal extends CudaGenExternalBase with CudaGenDataStruct {
   val IR: OptiMLExp
   import IR._
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case e@MatrixTimesVectorBLAS(x,y) =>
       val lib = cuBLAS
-      val args = scala.List("t", quote(x)+".numCols", quote(x)+".numRows", quote(x)+".data", quote(y)+".data", quote(e.allocVal)+".data")
-      emitMethodCall(sym, e, lib, args)
-      
+      val args = scala.List("'t'", "%1$s.numCols", "%1$s.numRows", "%1$s.data", "%2$s.data", "%3$s.data")
+                 .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
+      emitMethodCall(e, lib, args)
+      emitVectorAlloc(sym,"%s.numRows".format(quote(getBlockResult(x))),"false",false)
+
     case _ => super.emitNode(sym, rhs)
   }
     

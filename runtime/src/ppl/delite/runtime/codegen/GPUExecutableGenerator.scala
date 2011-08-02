@@ -172,7 +172,7 @@ abstract class GPUExecutableGenerator {
       //write the call
       if (op.isInstanceOf[OP_Nested])
         writeFunctionCall(op, out)
-      else if (op.cudaMetadata.libCall != null)
+      else if (op.isInstanceOf[OP_External])
         writeLibraryCall(op, out)
       else
         writeKernelCall(op, out)
@@ -314,7 +314,9 @@ abstract class GPUExecutableGenerator {
   }
 
   protected def writeLibraryCall(op: DeliteOP, out: StringBuilder) {
-    out.append(op.cudaMetadata.libCall)
+    //out.append(op.cudaMetadata.libCall)
+    if (op.task == null) return //dummy op
+    out.append(op.task) //kernel name
     out.append('(')
     assert(op.getOutputs.size == 1) //TODO: what does libCall support?
     for (name <- op.getOutputs) {
@@ -325,7 +327,7 @@ abstract class GPUExecutableGenerator {
       }
     }
     writeInputs(op, out) //then all op inputs
-    out.append(",kernelStream")
+    //out.append(",kernelStream") // aks TODO: how did this work for library calls?
     out.append(");\n")
   }
 

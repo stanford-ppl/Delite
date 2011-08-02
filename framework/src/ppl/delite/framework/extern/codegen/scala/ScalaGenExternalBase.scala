@@ -8,11 +8,11 @@ import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.extern.lib._
-import ppl.delite.framework.extern.codegen.GenericGenExternalBase
+import ppl.delite.framework.extern.codegen.GenericGenExternal
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite._
 
-trait ScalaGenExternalBase extends GenericGenExternalBase with ScalaGenBase {
+trait ScalaGenExternalBase extends GenericGenExternal with ScalaGenBase {
   val IR: DeliteOpsExp
   import IR._
 
@@ -23,6 +23,8 @@ package %s
 object %s {
 System.load("%s")
 """.format("generated.scala", lib.name, new File(libDir, "/" + lib.name + ".so"))
+
+  override def libInterfaceFtr(lib: ExternalLibrary) = "}"
 
   val hdrExt = "scala"
   

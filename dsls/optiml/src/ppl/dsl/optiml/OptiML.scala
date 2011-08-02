@@ -376,6 +376,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg with
     out.append("#include \"IndexVectorImpl.h\"\n")
     out.append("#include \"LabelsImpl.h\"\n")
     out.append("#include \"TrainingSetImpl.h\"\n")
+    out.append("#include \"library.h\"\n") // external library
     out.toString
   }
 

@@ -8,11 +8,11 @@ import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.extern.lib._
-import ppl.delite.framework.extern.codegen.GenericGenExternalBase
+import ppl.delite.framework.extern.codegen.GenericGenExternal
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite._
 
-trait CudaGenExternalBase extends GenericGenExternalBase with CudaGenBase {
+trait CudaGenExternalBase extends GenericGenExternal with CudaGenBase {
   val IR: DeliteOpsExp
   import IR._
 
@@ -23,8 +23,8 @@ trait CudaGenExternalBase extends GenericGenExternalBase with CudaGenBase {
   /////////////////
   // implementation
     
-  def emitMethodCall(sym: Sym[Any], e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String])(implicit stream: PrintWriter) = {
-    stream.println(lib.name + "." + e.funcName + "(" + (args mkString ",") + ")")    
+  def emitMethodCall(e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String])(implicit stream: PrintWriter) = {
+    stream.println(e.funcName + "(" + (args mkString ",") + ");")    
   }
   
   def emitInterfaceAndMethod(lib: ExternalLibrary, funcName: String, args: List[String], body: String) = {

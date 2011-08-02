@@ -11,7 +11,7 @@ import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite._
 
-trait GenericGenExternalBase extends GenericCodegen {
+trait GenericGenExternal extends GenericCodegen {
   val IR: DeliteOpsExp
   import IR._
 
@@ -28,6 +28,7 @@ trait GenericGenExternalBase extends GenericCodegen {
   val libDir = new File(Config.buildDir + "/libraries/")
   
   def libInterfaceHdr(lib: ExternalLibrary) = ""
+  def libInterfaceFtr(lib: ExternalLibrary) = ""
   def hdrName(lib: ExternalLibrary) = lib.name  // default header file name is library name
   val hdrExt: String // generator specific interface file / header file extension
   
@@ -39,7 +40,7 @@ trait GenericGenExternalBase extends GenericCodegen {
   }
   
   override def finalizeGenerator() {
-    interfaceStreams foreach { v => val s = v._2; s.println("}"); s.close() }
+    interfaceStreams foreach { v => val s = v._2; s.println(libInterfaceFtr(v._1)); s.close() }
     nativeStreams foreach { v => val s = v._2; s.close() }
     
     // compile native code into .so
@@ -59,8 +60,6 @@ trait GenericGenExternalBase extends GenericCodegen {
   /////////////////
   // implementation
     
-  def emitMethodCall(sym: Sym[Any], e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String])(implicit stream: PrintWriter) 
-  
   def emitInterfaceAndMethod(lib: ExternalLibrary, funcName: String, funcSignature: String, nativeFunc: String) {    
     if (!libraries.contains(lib)){
       emitHeader(lib)

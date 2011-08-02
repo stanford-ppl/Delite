@@ -8,12 +8,14 @@ object cuBLAS extends ExternalLibrary {
   val name = "cudaBLAS"
   val configFile = "cuBLAS.xml"  
   val ext = "cu"
-  val compileFlags = List( "-w", "-O3", "-arch", "compute_20", "-code", "sm_20", "-shared", "-Xcompiler", "-fPIC") // HJ TODO: these are Fermi-specific; where should they be specified?                           
+  val compileFlags = List( "-w", "-lcublas", "-O3", "-arch", "compute_20", "-code", "sm_20", "-shared", "-Xcompiler", "-fPIC") // HJ TODO: these are Fermi-specific; where should they be specified?                           
   val outputSwitch = "-o"
   
   override val header = """
 #include <stdlib.h>
 #include <stdio.h>
+#include <limits>
 #include <cuda_runtime.h>
+#include <cublas.h>
 """
 }

@@ -40,6 +40,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     var resultIsVar = false
     var skipEmission = false
     var nestedNode: TP[Any] = null
+    var external = false
 
     // we will try to generate any node that is not purely an effect node
     rhs match {
@@ -50,6 +51,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         //controlDeps = effects
         super.emitFatNode(sym, rhs); return
       case ThinDef(NewVar(x)) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
+      case ThinDef(e: DeliteOpExternal[_]) => external = true
       case _ => // continue and attempt to generate kernel
     }
 
@@ -144,9 +146,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         assert(hasOutputSlotTypes || sym.length == 1)
 
         // emit kernel
-        gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar, false)(kstream)
+        gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar, external)(kstream)
         kstream.println(bodyString.toString)
-        gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar, false)(kstream)
+        gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar, external)(kstream)
         
         if (hasOutputSlotTypes)
           gen.emitFatNodeKernelExtra(sym, rhs)(kstream) // activation record class declaration
@@ -186,7 +188,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
       } catch {
         case e:GenerationFailedException => // no generator found
           gen.exceptionHandler(e, outFile, kstream)
-          //println(gen.toString + ":" + quote(sym))
+          //println(gen.toString + ":" + (sym map(quote)))
           //e.printStackTrace
           
           //if(gen.nested > 1) {

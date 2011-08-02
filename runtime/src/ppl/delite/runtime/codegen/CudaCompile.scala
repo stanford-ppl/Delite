@@ -67,9 +67,7 @@ object CudaCompile extends CodeCache {
       "-arch", "compute_20",
       "-code", "sm_20",
       "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
-      "-L generated/libraries " + 
-      //"-l" + parsedLibName + // TODO: grab all the library names in generated/libraries and link them
-      "-lcublas", //cublas library // TODO: get rid of this
+      "-L " + Config.deliteBuildHome + sep + "libraries", 
       "-o", "cudaHost.so", //output name
       source //input name
       ), null, new File(destination))
