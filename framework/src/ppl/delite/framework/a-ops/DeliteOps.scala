@@ -579,7 +579,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   var deliteResult: Option[List[Exp[Any]]] = None
   var deliteInputs: List[Sym[Any]] = Nil
 
-  var simpleCodegen: Boolean = false // try to generate more readable code
+  var simpleCodegen: Boolean = false// try to generate more readable code
 
   // TODO: move to lms? TR: will that actually work? it looks pretty unsafe to rebind syms
   def rebind(sym: Sym[Any], rhs: Def[Any]) = createDefinition(sym, rhs).rhs
@@ -1131,6 +1131,29 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     }
     stream.println("__act")
     stream.println(/*{*/"}")
+    // processRange
+    stream.println("def processRange(__act: " + actType + ", start: Int, end: Int): " + actType + " = {"/*}*/)
+    stream.println("var idx = start")
+    stream.println("val __act2 = init(__act,idx)")
+    stream.println("while (idx < end) {"/*}*/)
+    stream.println("process(__act2, idx)")
+    stream.println("idx += 1")
+    stream.println("/*{*/}")
+    stream.println("__act2")
+    stream.println(/*{*/"}")
+
+/*  
+    out.append("val acc = head.closure.init(out, idx)\n") // copy of out per chunk
+                out.append("idx += 1\n")
+    out.append("val hc = head.closure\n")
+    out.append("while (idx < end) {\n")
+    out.append("hc.process(acc, idx)\n")
+    out.append("idx += 1\n")
+    out.append("}\n")
+*/
+    //out.append("val acc = head.closure.processRange(out,idx,end)\n")
+
+
     stream.println("def init(__act: " + actType + ", " + quotearg(op.v) + "): " + actType + " = {"/*}*/)
     if (op.body exists (loopBodyNeedsCombine _)) {
       emitMultiLoopFuncs(op, symList)                               

@@ -104,17 +104,18 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   matrix_reshape(in.length)
 */
     //if ((x.rowInd.isInstanceOfL[IndexVector]) && (x.colInd.isInstanceOfL[IndexVectorWC])) { // TR: first check needed??
-    if (x.colInd == indexvector2_wildcard) {
-      //Matrix(IndexVector2ConstructVectors(x.rowInd, block))
+    //if (x.colInd == indexvector2_wildcard) {
+    if (false/*x.colInd.isInstanceOfL[IndexVectorWC]*/) {
+     //Matrix(IndexVector2ConstructVectors(x.rowInd, block))
       val in = x.rowInd
-      if (in.length > 0){
+      //if (in.length > 0){
         val first = block(in(0)) 
         val out = matrix_obj_new[A](in.length, first.length)
         out(0) = first 
         reflectWrite(out)(IndexVector2ConstructRows(in.slice(1,in.length),block,out)) // TODO: do this more efficiently than with slice
         out.unsafeImmutable     
-      }
-      else matrix_obj_new[A](0,0).unsafeImmutable
+      //}
+      //else matrix_obj_new[A](0,0).unsafeImmutable
     }
     // should we allow this? it is rather inefficient...
     //     else if ((x.colInd.isInstanceOfL[IndexVector]) && (x.rowInd.isInstanceOfL[IndexVectorWC])) {
@@ -129,8 +130,13 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
     //  else matrix_obj_new[B](0,0)
     // }
     else {
-      println(unit("optiml runtime error: illegal matrix constructor"))
-      exit(-1)
+      //println(unit("optiml runtime error: illegal matrix constructor"))
+      //exit(-1)
+      val inr = x.rowInd
+      val inc = x.colInd
+      val out = matrix_obj_new[A](inr.length, inc.length)
+      reflectWrite(out)(IndexVector2ConstructRows(inr,block,out))
+      out.unsafeImmutable
     }
   }
   def indexvector2_construct[A:Manifest](x: Exp[IndexVector2], block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[Matrix[A]] = {
