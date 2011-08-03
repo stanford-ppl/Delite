@@ -1,0 +1,20 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object Interior {
+
+	val interior = BoundarySet[Face]("default-interior")
+
+	def main() {
+		for ( f <- interior ) {
+			val c0 = inside(f) ;
+			val c1 = outside(f) ;
+			if ( ID(c0) == 0 || ID(c1) == 0 ) {
+				Print( "boundary face: ", ID(f), " shown as interior face" ) ;
+			}
+		}
+		Print( "Everything ok if only this was printed") ;
+	}
+
+}

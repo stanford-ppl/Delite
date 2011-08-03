@@ -1,0 +1,18 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object InlineIfVec {
+    def main() {
+	// Should be equivalent to
+	// Print(Vec("p", "a", "s", "s"))
+	val foo = Vec(3.)
+	Print(Vec(
+		    if (1 > 2) "f" else "p",
+		    if (true == false) "a" else "a",
+		    if (4. < foo.x) "i" else "s",
+		    if (true ^ true) "l" else "s"
+		))
+    }
+}

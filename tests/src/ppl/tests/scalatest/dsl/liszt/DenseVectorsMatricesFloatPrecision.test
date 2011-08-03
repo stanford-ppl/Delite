@@ -1,0 +1,72 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object DenseVectorsMatricesFloatPrecision {
+		
+	val f_onesies = 		FieldWithConst[Cell, Vec[_1,Float]](Vec(0.0f))
+	val f_twosies = 		FieldWithConst[Cell, Vec[_2,Float]](Vec(0.0f,0.0f))
+	val f_threesies = 	FieldWithConst[Cell, Vec[_3,Float]](Vec(0.0f,0.0f,0.0f))
+	val f_foursies = 		FieldWithConst[Cell, Vec[_4,Float]](Vec(0.0f,0.0f,0.0f,0.0f))
+	val f_fivesies = 		FieldWithConst[Cell, Vec[_5,Float]](Vec(0.0f,0.0f,0.0f,0.0f,0.0f))	
+	val d_onesies = 		FieldWithConst[Cell, Vec[_1,Double]](Vec(0.0))
+	val d_twosies = 		FieldWithConst[Cell, Vec[_2,Double]](Vec(0.0,0.0))
+	val d_threesies = 	FieldWithConst[Cell, Vec[_3,Double]](Vec(0.0,0.0,0.0))
+	val d_foursies = 		FieldWithConst[Cell, Vec[_4,Double]](Vec(0.0,0.0,0.0,0.0))
+	val d_fivesies = 		FieldWithConst[Cell, Vec[_5,Double]](Vec(0.0,0.0,0.0,0.0,0.0))
+		
+	def main() {
+		for (c <- cells(mesh)) {			
+			f_onesies(c) = 		Vec(1.0f)
+			f_twosies(c) = 		Vec(1.0f,1.0f)
+			f_threesies(c) =	Vec(1.0f,1.0f,1.0f)
+			f_foursies(c) = 	Vec(1.0f,1.0f,1.0f,1.0f)
+			f_fivesies(c) = 	Vec(1.0f,1.0f,1.0f,1.0f,1.0f)
+			d_onesies(c) = 		Vec(1.0)
+			d_twosies(c) = 		Vec(1.0,1.0)
+			d_threesies(c) =	Vec(1.0,1.0,1.0)
+			d_foursies(c) = 	Vec(1.0,1.0,1.0,1.0)
+			d_fivesies(c) = 	Vec(1.0,1.0,1.0,1.0,1.0)
+		}
+		
+		var xf_onesies = 	0.f
+		var xf_twosies = 	0.f
+		var xf_threesies = 0.f
+		var xf_foursies = 0.f
+		var xf_fivesies = 0.f
+		var xd_onesies = 	0.0
+		var xd_twosies = 	0.0
+		var xd_threesies = 0.0
+		var xd_foursies = 0.0
+		var xd_fivesies = 0.0
+		
+		for (c <- cells(mesh)) {
+			xf_onesies 		+= (f_onesies(c))(_0)
+			xf_twosies 		+= f_twosies(c)(_1)
+			xf_threesies 	+= f_threesies(c)(_2)
+			xf_foursies 	+= f_foursies(c)(_3)
+			xf_fivesies	 	+= f_fivesies(c)(_4)
+			xd_onesies 		+= d_onesies(c)(_0)
+			xd_twosies 		+= d_twosies(c)(_1)
+			xd_threesies 	+= d_threesies(c)(_2)
+			xd_foursies 	+= d_foursies(c)(_3)
+			xd_fivesies 	+= d_fivesies(c)(_4)
+		}
+		
+		Print(xf_onesies)
+		Print(xf_twosies)
+		Print(xf_threesies)
+		Print(xf_foursies)
+		Print(xf_fivesies)
+		Print(xd_onesies)
+		Print(xd_twosies)
+		Print(xd_threesies)
+		Print(xd_foursies)
+		Print(xd_fivesies)
+		
+	}
+}
+
+
+

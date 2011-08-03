@@ -1,0 +1,23 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object SimpleField3 {
+	val ones = FieldWithConst[Cell, Int](1)
+	val fours = FieldWithConst[Face, Int](0)
+	def main() {
+		for (c <- cells(mesh)) {
+			for (f <- faces(c)) {
+				fours(f) += 2*ones(c)			
+			}
+			Print(ones(c), " ")
+		}
+		for (f <- faces(mesh)) {
+		 	Print(fours(f), " ")
+		}
+	}
+}
+
+
+

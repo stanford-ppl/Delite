@@ -1,0 +1,25 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object PositionTableTest1 {
+	val positions = FieldWithLabel[Vertex,Vec[_3,Float]]("position")
+	val xpos = FieldWithConst[Vertex,Float](0)
+	val ypos = FieldWithConst[Vertex,Float](0)
+	val zpos = FieldWithConst[Vertex,Float](0)
+	
+	def main() {
+		for (v <- vertices(mesh)) {
+			xpos(v) = positions(v).x
+			ypos(v) = positions(v).y
+			zpos(v) = positions(v).z
+		}
+		for (v <- vertices(mesh)) {
+			Print("(", xpos(v), ",", ypos(v), ",", zpos(v), ") ", positions(v))
+		}
+	}
+}
+
+
+

@@ -1,0 +1,27 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object TypePromotion {
+	
+
+	
+	def main() {
+		var i1 = 1
+		var i2 = 2
+		var f1 = 1.f
+		var f2 = 2.f
+		var d1 = 1.0
+		var d2 = 2.0
+		
+		i1 = i1 + i2
+		f1 = i1 + f2
+		d1 = i1 + d2
+		d1 = f1 + d2
+		Print("Success")
+	}
+}
+
+
+

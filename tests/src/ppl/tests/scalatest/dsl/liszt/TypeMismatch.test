@@ -1,0 +1,15 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object TypeMismatch {
+    def main() {
+	var a = 1
+	var b = a + 2
+	var fail = a + "fail"
+	Print(a)
+	Print(b)
+	Print(fail)
+	// Intentionally NOT printing fail to test dead code removal too
+    }
+}

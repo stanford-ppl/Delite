@@ -1,0 +1,12 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object Extern {
+	def sin(a : Float) : Float = __
+	def cos(a : Float) : Float = __
+	def main() {
+		Print(sin(0))
+		Print(cos(0))
+	}
+}

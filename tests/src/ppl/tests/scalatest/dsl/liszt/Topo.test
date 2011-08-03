@@ -1,0 +1,132 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object Topo {
+	def main() {
+		for(v <- vertices(mesh)) {
+			Print("v",ID(v))
+			
+			var a = 0
+			for(v2 <- vertices(v)) {
+				a += ID(v2)
+			}
+			Print("vv2",a)
+			a = 0
+			for(c <- cells(v)) {
+				a += ID(c)
+			}
+			Print("vc",a)
+			a = 0
+			for(e <- edges(v)) {
+				val ev = towards(e,v);
+				a += ID(e)
+				a += ID(ev)
+			}
+			Print("ve",a)
+			for(f <- faces(v)) {
+				a += ID(f)
+			}
+			Print("vf",a)
+		}
+		for(ee <- edges(mesh)) {
+			val e = if(ID(head(ee)) < ID(tail(ee))) ee else flip(ee)
+			Print("e",ID(e))
+			var a = 0
+			for(v <- vertices(e)) {
+				a += ID(v)
+			}
+			Print("ev",a)
+			a = 0
+			for(c <- cells(e)) {
+				a += ID(c)
+			}
+			Print("ec",a)
+			for(c <- cellsCCW(e)) {
+				Print("ec-ccw",ID(c))
+			}
+			
+			for(c <- cellsCW(e)) {
+				Print("ec-cw",ID(c))
+			}
+			a = 0
+			for(f <- faces(e)) {
+				a += ID(f)
+			}
+			Print("ef",a)
+			for(f <- facesCCW(e)) {
+				Print("ef-ccw",ID(f))
+			}
+			for(f <- facesCW(e)) {
+				Print("ef-cw",ID(f))
+			}
+			val c0 = head(e)
+			val c1 = tail(e)
+			val e2 = flip(e)
+			Print("ehead",ID(c0))
+			Print("etail",ID(c1))
+			Print("eflip",ID(e2))
+		}
+		for(f <- faces(mesh)) {
+			Print("f",ID(f))
+			var a = 0
+			for(c <- cells(f)) {
+				a += ID(c)
+			}
+			Print("fc",a)
+			a = 0
+			for(v <- vertices(f)) {
+				a += ID(v)
+			}
+			Print("fv",a)
+			for(v <- verticesCCW(f)) {
+				Print("fv-ccw",ID(v))
+			}
+			for(v <- verticesCW(f)) {
+				Print("fv-cw",ID(v))
+			}
+			a = 0
+			for(e <- edges(f)) {
+				a += ID(e)
+			}
+			Print("fe",a)
+			for(e <- edgesCCW(f)) {
+				Print("fe-ccw",ID(e))
+			}
+			for(e <- edgesCW(f)) {
+				Print("fe-cw",e)
+			}
+			val v0 = outside(f)
+			val v1 = inside(f)
+			val f2 = flip(f)
+			Print("foutside",ID(v0))
+			Print("finside",ID(v1))
+			Print("fflip",ID(f2))
+		}
+		for(c <- cells(mesh)) {
+			Print("c",ID(c))
+			var a = 0
+			for(c2 <- cells(c)) {
+				a += ID(c2)
+			}
+			Print("cc2",a)
+			a = 0
+			for(v <- vertices(c)) {
+				a += ID(v)
+			}
+			Print("cv",a)
+			a = 0
+			for(f <- faces(c)) {
+				val ev = towards(f,c);
+				a += ID(ev)
+				a += ID(f)
+			}
+			Print("cf",a)
+			a = 0
+			for(e <- edges(c)) {
+				a += ID(e)
+			}
+			Print("ce",a)
+		}
+	}
+} 

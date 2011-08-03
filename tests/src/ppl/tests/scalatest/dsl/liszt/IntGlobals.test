@@ -1,0 +1,25 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object IntGlobals {
+	var foo = 0
+	def main() {
+		for(c <- cells(mesh)) {
+			foo += 2
+		}
+		for(c <- cells(mesh)) {
+			foo *= 2
+		}
+		for(c <- cells(mesh)) {
+			foo |= 1
+		}
+		for(c <- cells(mesh)) {
+			foo &= 7
+		}
+		for(c <- cells(mesh)) {
+			foo ^= 7
+		}
+		Print(foo)
+	}
+}

@@ -1,0 +1,17 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object DoubleArith {
+	val field = FieldWithConst[Vertex,Double](0.)
+	def main() {
+		//for( v <- vertices(mesh) )
+		//	field(v) += 1.f
+		var a = 1.f
+		var b : Double = a
+		b += 1
+		a += b.toFloat
+		Print(a," ",b)
+	}
+}

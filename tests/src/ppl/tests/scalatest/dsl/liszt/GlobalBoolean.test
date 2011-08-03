@@ -1,0 +1,22 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object GlobalBoolean {
+	
+	val edgeField = FieldWithConst[Edge,Int](0) ;
+	
+	def main() {
+		var passedTest = true ;
+		for ( e <- edges(mesh) ) {
+			val storedValue = edgeField(e) ;
+			if ( !(storedValue == 0) ) {
+				Print( "unexpected value in edge: ", ID(e) ) ;
+				passedTest = false ;
+			}  
+		}
+		if (passedTest) {
+			Print("passed test") ;
+		}
+	}
+}

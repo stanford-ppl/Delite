@@ -1,0 +1,22 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+@lisztcode
+object Eg {
+    val interior = BoundarySet[Face]("default-interior")
+    val face_field = FieldWithConst[Face,Int](0)
+    val cell_field = FieldWithConst[Cell,Int](0)
+    def main() {
+        
+       var global = 0
+        for(f <- interior) {
+            global += ID(f)
+            face_field(f) = ID(f)
+        }
+        for(c <- cells(mesh))
+           for(f <- faces(c))
+            cell_field(c) += face_field(f)
+        
+        for(c <- cells(mesh))
+          Print(cell_field(c))
+    }
+}

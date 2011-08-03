@@ -1,0 +1,57 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object Func {
+	val field = FieldWithConst[Cell,Int](5)
+	val boundary = BoundarySet[Face]("inlet")
+	
+	def foo() {
+		Print("foo")
+	}
+	def fooint(a : Int) : Int = 1
+	def foofloat(a : Float) : Float = 2.f
+	def foobool(a : Boolean) : Boolean = false
+	def foostring(a : String) : String = "moosauces"
+	
+	def foovertex(a : Vertex) : Vertex = a
+	def fooedge(a : Edge) : Edge = a
+	def fooface(a : Face) : Face = a
+	def foocell(a : Cell) : Cell = a
+	
+	def foovec( a : Vec[_3,Float]) : Vec[_3,Float] = a
+	def fooset( a : Set[Face]) {
+		for(f <- a) {
+			Print(f)
+		}
+	}
+	//TODO(zach): the following test should fail but it does not
+	//need to add a check for returning a field from a function
+	//def foofield(a : Field[Cell,Int]) : Field[Cell,Int] = a
+	
+	def foomesh(a : Mesh) : Mesh = a
+	//def usefield(a : Field[Cell,Int], c : Cell) : Int = a(c)
+	def main() {
+		foo()
+		Print(fooint(1))
+		Print(foofloat(1.f))
+		Print(foobool(false))
+		Print(foostring("astring"))
+		val a = mesh
+		for(v <- vertices(foomesh(a))) {
+			Print(foovertex(v))
+		}
+		for(v <- edges(foomesh(a))) {
+			Print(fooedge(v))
+		}
+		for(v <- faces(foomesh(a))) {
+			Print(fooface(v))
+		}
+		for(v <- cells(foomesh(a))) {
+			Print(foocell(v))
+			//Print(usefield(foofield(field),v))
+		}
+		fooset(boundary)
+	}
+}

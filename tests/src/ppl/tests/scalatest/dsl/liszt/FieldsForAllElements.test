@@ -1,0 +1,52 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object FieldsForAllElements {
+
+	val edgesField = FieldWithConst[Edge,Int](0) ;
+	val facesField = FieldWithConst[Face,Int](0) ;
+	val verticesField = FieldWithConst[Vertex,Int](0) ;
+	val cellsField = FieldWithConst[Cell,Int](0) ;
+
+	def main() {
+
+		for ( c <- cells(mesh) ) {
+			cellsField(c) = ID(c) ;
+		}
+		for ( f <- faces(mesh) ) {
+			facesField(f) = ID(f) ;
+		}
+		for ( e <- edges(mesh) ) {
+			edgesField(e) = ID(e) ;
+		}
+		for ( v <- vertices(mesh) ) {
+			verticesField(v) = ID(v) ;
+		}
+
+		for ( c <- cells(mesh) ) {
+                        if( !(cellsField(c) == ID(c)) ) {
+				Print( "error at cell: ", ID(c) ) ;
+			}
+                }
+                for ( f <- faces(mesh) ) {
+                        if( !(facesField(f) == ID(f)) ) {
+                                Print( "error at face: ", ID(f) ) ;
+                        }
+
+                }
+                for ( e <- edges(mesh) ) {
+                        if( !(edgesField(e) == ID(e)) ) {
+                                Print( "error at edge: ", ID(e) ) ;
+                        }
+
+                }
+                for ( v <- vertices(mesh) ) {
+                        if( !(verticesField(v) == ID(v)) ) {
+                                Print( "error at vertex: ", ID(v) ) ;
+                        }
+
+                }
+		Print("Everything ok if only this was printed") ;	
+	}
+}
