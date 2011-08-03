@@ -308,6 +308,18 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     val o = implicitly[Ordering[A]]
     val p = implicitly[HasMinMax[A]]
   }
+  
+  case class VecZipMin[N<:IntM:Manifest:MVal, A:Manifest:Arith](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]])
+    extends VecArithmeticZipWith(inA, inB) {
+
+    def func = (a,b) => a min b
+  }
+  
+  case class VecZipMax[N<:IntM:Manifest:MVal, A:Manifest:Arith](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]])
+    extends VecArithmeticZipWith(inA, inB) {
+
+    def func = (a,b) => a max b
+  }
 
   //////////////
   // mirroring
@@ -329,6 +341,8 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     case e@VecAbs(x) => reflectPure(new { override val original = Some(f,e) } with VecAbs(f(x))(e.n, e.vn, e.m, e.a))(mtype(manifest[A]))
     case e@VecMin(x) => reflectPure(new { override val original = Some(f,e) } with VecMin(f(x))(e.n, e.vn, e.m, e.o, e.p))(mtype(manifest[A]))
     case e@VecMax(x) => reflectPure(new { override val original = Some(f,e) } with VecMax(f(x))(e.n, e.vn, e.m, e.o, e.p))(mtype(manifest[A]))
+    case e@VecZipMin(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMin(f(x),f(y))(e.n, e.vn, e.m, e.a))(mtype(manifest[A]))
+    case e@VecZipMax(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMax(f(x),f(y))(e.n, e.vn, e.m, e.a))(mtype(manifest[A]))
     // Read/write effects
     case Reflect(e@VecApply(l,r), u, es) => reflectMirrored(Reflect(VecApply(f(l),f(r))(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VecUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VecUpdate(f(l),f(i),f(r))(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -393,6 +407,9 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   //def vec_concat[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal, O<:IntM, A:Manifest](x: Exp[Vec[N,A]], y: Exp[Vec[M,A]]) = reflectPure(VecConcat[N,M,O,A](x,y))
 
   def vec_map[N<:IntM:Manifest:MVal,A:Manifest,B:Manifest](x: Exp[Vec[N,A]], f: Exp[A] => Exp[B]) = reflectPure(VecMap(x, f))
+  
+  def vec_zip_min[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(new VecZipMin(x,y))
+  def vec_zip_max[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(new VecZipMax(x,y))
   
   /* Language ops */
   def cross[A:Arith](a: Exp[Vec[_3,A]], b: Exp[Vec[_3,A]]) : Exp[Vec[_3,A]]
