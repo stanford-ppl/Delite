@@ -24,7 +24,7 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
   case class DeliteCollectionApply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) extends Def[A]
   case class DeliteCollectionUpdate[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
 
-  def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = x match {
+  def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = x match { // TODO: move to Opt trait ?
     case Def(e: DeliteOpMap[_,_,_]) => e.size
     case Def(e: DeliteOpZipWith[_,_,_,_]) => e.size
     //case Def(Reflect(e: DeliteOpMap[_,_,_], _,_)) => e.size // reasonable?

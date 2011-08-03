@@ -436,7 +436,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   
   abstract class MatrixArithmeticMap[A:Manifest:Arith](in: Exp[Matrix[A]]) extends DeliteOpMap[A,A,Matrix[A]] {
     def alloc = Matrix[A](in.numRows, in.numCols)
-    val size = in.numRows*in.numCols
+    val size = matrix_dcsize(in)
     
     def m = manifest[A]
     def a = implicitly[Arith[A]]
@@ -444,7 +444,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   
   abstract class MatrixArithmeticZipWith[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]]) extends DeliteOpZipWith[A,A,A,Matrix[A]] {
     def alloc = Matrix[A](inA.numRows, inA.numCols)
-    val size = inA.numRows*inA.numCols
+    val size = matrix_dcsize(inA)
     
     def m = manifest[A]
     def a = implicitly[Arith[A]]
@@ -465,7 +465,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixPlusEquals[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
     extends DeliteOpIndexedLoop {
 
-    val size = inA.numRows*inA.numCols
+    val size = matrix_dcsize(inA)
     def func = i => dc_update(inA, i, dc_apply(inA,i) + dc_apply(inB,i))
   }
 
@@ -511,7 +511,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val m = manifest[A] //TODO: externalize?
     val a = implicitly[Arith[A]]
 
-    val size = in.numRows*in.numCols
+    val size = matrix_dcsize(in)
     val zero = implicitly[Arith[A]].empty
     def func = (a,b) => a + b
   }
@@ -590,7 +590,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixMin[A:Manifest:Ordering:HasMinMax](in: Exp[Matrix[A]])
     extends DeliteOpReduce[A] {
 
-    val size = in.numRows*in.numCols
+    val size = matrix_dcsize(in)
     val zero = implicitly[HasMinMax[A]].maxValue
     def func = (a,b) => if (a < b) a else b
   }
@@ -598,7 +598,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixMax[A:Manifest:Ordering:HasMinMax](in: Exp[Matrix[A]])
     extends DeliteOpReduce[A] {
 
-    val size = in.numRows*in.numCols
+    val size = matrix_dcsize(in)
     val zero = implicitly[HasMinMax[A]].minValue
     def func = (a,b) => if (a > b) a else b
   }
@@ -607,7 +607,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpMap[A,B,Matrix[B]] {
 
     def alloc = Matrix[B](in.numRows, in.numCols)
-    val size = in.numRows*in.numCols
+    val size = matrix_dcsize(in)
     
     def mA = manifest[A]
     def mB = manifest[B]
@@ -616,7 +616,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixMutableMap[A:Manifest](in: Exp[Matrix[A]], block: Exp[A] => Exp[A])
     extends DeliteOpIndexedLoop {
 
-    val size = in.numRows*in.numCols
+    val size = matrix_dcsize(in)
     def func = i => dc_update(in, i, block(dc_apply(in,i)))
   }
 
@@ -646,7 +646,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixForeach[A:Manifest](in: Exp[Matrix[A]], func: Exp[A] => Exp[Unit])
     extends DeliteOpForeach[A] {
 
-    val size = in.numCols*in.numRows
+    val size = matrix_dcsize(in)
     def sync = n => List()
   }
 
@@ -662,7 +662,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpZipWith[A,B,R,Matrix[R]] {
 
     def alloc = Matrix[R](inA.numRows, inA.numCols)
-    val size = inA.numRows*inA.numCols
+    val size = matrix_dcsize(inA)
   }
 
   // More efficient (though slightly uglier) to express this as a loop directly. 
@@ -686,7 +686,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixCount[A:Manifest](in: Exp[Matrix[A]], cond: Exp[A] => Exp[Boolean]) 
     extends DeliteOpFilterReduce[A,Int] {
 
-    val size = in.numRows*in.numCols
+    val size = matrix_dcsize(in)
     val zero = unit(0)
     def func = e => unit(1)
     def reduce = (a,b) => a + b   
@@ -811,6 +811,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   // internal
 
   def matrix_dcapply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) = reflectPure(MatrixDCApply(x,i))
+  def matrix_dcsize[A:Manifest](x: Exp[Matrix[A]]) = x.numRows * x.numCols
 
   //////////////
   // mirroring
@@ -834,6 +835,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       case e@MatrixSum(x) => reflectPure(new { override val original = Some(f,e) } with MatrixSum(f(x))(e.m, e.a))(mtype(manifest[A]))
       case e@MatrixMinus(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixMinus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
       case e@MatrixPlus(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixPlus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
+      case e@MatrixTimes(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixTimes(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
       case e@MatrixMap(x,g) => reflectPure(new { override val original = Some(f,e) } with MatrixMap(f(x),f(g))(e.mA, e.mB))(mtype(manifest[A]))
       case e@MatrixTimesVector(x,y) => reflectPure(new {override val original = Some(f,e) } with MatrixTimesVector(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
       case e@MatrixMultiply(x,y) => reflectPure(new {override val original = Some(f,e) } with MatrixMultiply(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
@@ -936,6 +938,26 @@ trait MatrixOpsExpOpt extends MatrixOpsExp {
     case _ => super.matrix_times(x, y)
   }
 
+  override def matrix_numrows[A:Manifest](x: Exp[Matrix[A]]) = x match {
+    case Def(s@Reflect(MatrixObjectNew(rows,cols), u, es)) if context.contains(s) => rows // only if not modified! // TODO: check writes
+    case Def(MatrixObjectNew(rows,cols)) => rows
+    case Def(TrainingSetObjectFromMat(x,y)) => matrix_numrows(x) // TODO: move to TrainingSetOpsExpOpt ?
+    case _ => super.matrix_numrows(x)
+  }
+  
+  override def matrix_numcols[A:Manifest](x: Exp[Matrix[A]]) = x match {
+    case Def(s@Reflect(MatrixObjectNew(rows,cols), u, es)) if context.contains(s) => cols // only if not modified! // TODO: check writes
+    case Def(MatrixObjectNew(rows,cols)) => cols
+    case Def(TrainingSetObjectFromMat(x,y)) => matrix_numcols(x) // TODO: move to TrainingSetOpsExpOpt ?
+    case _ => super.matrix_numcols(x)
+  }
+
+  override def matrix_dcsize[A:Manifest](x: Exp[Matrix[A]]) = x match {
+    case Def(e: DeliteOpMap[_,_,_]) => e.size
+    case Def(e: DeliteOpZipWith[_,_,_,_]) => e.size
+    case _ => super.matrix_dcsize(x)
+  }
+  
 //  override def matrix_inverse[A:Manifest](x: Exp[Matrix[A]]) = x match {
 //    (X^-1)^-1 = X (if X is non-singular)
 //    case (Def(MatrixInverse(a))) => a.asInstanceOf[Exp[Matrix[A]]]

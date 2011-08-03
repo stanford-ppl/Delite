@@ -15,7 +15,7 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
 
   override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]) = ifThenElse(cond, thenp, elsep, false)
 
-  // a 'flat' is treated like any other statement in code motion, i.e. code will not be pushed explicitly into the branches
+  // a 'flat' if is treated like any other statement in code motion, i.e. code will not be pushed explicitly into the branches
   def flatIf[T:Manifest](cond: Rep[Boolean])(thenp: => Rep[T])(elsep: => Rep[T]) = ifThenElse(cond, thenp, elsep, true)
 
   def ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T], flat: Boolean): Rep[T] = cond match {
@@ -39,6 +39,11 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
+
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c, t, e, h) => syms(c):::syms(t):::syms(e)
+    case _ => super.syms(e)
+  }
 
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
     case DeliteIfThenElse(c, t, e, h) => effectSyms(t):::effectSyms(e)

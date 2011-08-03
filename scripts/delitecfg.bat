@@ -1,6 +1,6 @@
 @echo off
 
-SET SCRIPT=%TEMP%\delitecfg
+SET SCRIPT=%TEMP%\%~n0
 if exist "%SCRIPT%" del "%SCRIPT%"
 copy "%~dp0\shared" "%SCRIPT%.prefix" > NUL
 echo try { >> "%SCRIPT%.prefix"

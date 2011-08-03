@@ -417,7 +417,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     
     val in = copyTransformedOrElse(_.in)(start::end)
     val size = copyTransformedOrElse(_.size)(end - start)
-    val zero = copyTransformedOrElse(_.zero)(a.zero(init).mutable)
+    val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable)) // FIXME: zero can be a fresh matrix, mutable calls cloneL
     def reduce = (a,b) => a += b
     
     def m = manifest[A]
@@ -440,11 +440,12 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     def c = implicitly[Cloneable[A]]
   }
 
+  // FIXME: peeling off the first iteration manually can prevent fusion because the LoopOp is 1 smaller than its cousins
   // TODO: what is the deired behavior if the range is empty?
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
     val firstBlock = block(start)
     val out = reflectPure(Sum(start+1, end, block, firstBlock))
-    firstBlock + out
+    out + firstBlock
   }
 
   def optiml_sumif[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
@@ -452,7 +453,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val firstBlock = block(start)
     val out = reflectPure(SumIf(start+1, end, cond, block, firstBlock))
     flatIf (firstCond) {
-      firstBlock + out
+      out + firstBlock
     } {
       out
     }
@@ -540,26 +541,26 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
                                                   block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) = {
 
     var delta = var_new(unit(scala.Double.MaxValue))
-    var prev = var_new(unit(null).asInstanceOfL[A])
-    var next = var_new(x)
+    var cur = var_new(x)
     var iter = var_new(unit(0))
 
     while ((Math.abs(delta) > thresh) && (iter < max_iter)){
-      if (clone_prev_val)
-        prev = next.cloneL()
+      val prev = if (clone_prev_val)
+        cur.cloneL()
       else
-        prev = next
+        cur
 
 //      try{
-        next = block(next)
+        val next = block(cur)
 //      }
 //      catch{
 //        case e: Exception => throw new ConvergenceException("Converging block threw exception: " + e)
 //      }
       iter += 1
-      //prev.asInstanceOfL[Matrix[Any]].pprint
+      //prev.asInstanceOfLOfL[Matrix[Any]].pprint
       //next.asInstanceOfL[Matrix[Any]].pprint
       delta = diff(next,prev)
+      cur = next
       //println("(" + delta + ")")
     }
 
@@ -569,7 +570,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
       returnL()
     }
 
-    next
+    cur
   }
 
   /**

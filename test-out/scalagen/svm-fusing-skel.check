@@ -162,6 +162,12 @@ class SVMRunnerFusing extends ((Array[java.lang.String])=>(Unit)) {
         x1070 = { }
       } // end fat loop x1070
     }
+    val x651 = { }
+    while (x644 < x643) {  // begin fat loop x651
+      val x650 = {
+        if (x649) { } else { }
+      }
+    } // end fat loop x651
     val x685 = { }
     while (x654 < x652) {  // begin fat loop x685
       val x673 = { }
@@ -174,12 +180,6 @@ class SVMRunnerFusing extends ((Array[java.lang.String])=>(Unit)) {
         if (x682) { } else { }
       }
     } // end fat loop x685
-    val x651 = { }
-    while (x644 < x643) {  // begin fat loop x651
-      val x650 = {
-        if (x649) { } else { }
-      }
-    } // end fat loop x651
     val x691 = {
       if (x690) { } else { }
     }

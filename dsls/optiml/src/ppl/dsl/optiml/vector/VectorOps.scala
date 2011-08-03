@@ -159,21 +159,21 @@ trait VectorOps extends DSLType with Variables {
   }
 */  
 
-  def EmptyVector[A](implicit mA: Manifest[A]): Rep[Vector[A]] = mA match {
+  def EmptyVector[A](implicit mA: Manifest[A]): Rep[Vector[A]] = (mA match {
     // these don't allocate any memory
-    case Manifest.Double => vector_empty_double.asInstanceOfL[Vector[A]]
-    case Manifest.Float => vector_empty_float.asInstanceOfL[Vector[A]]
-    case Manifest.Int => vector_empty_int.asInstanceOfL[Vector[A]]
+    case Manifest.Double => vector_empty_double
+    case Manifest.Float => vector_empty_float
+    case Manifest.Int => vector_empty_int
     // allocates a dummy polymorphic class
     case _ => vector_empty[A]
-  }
+  }).asInstanceOf[Rep[Vector[A]]]
 
-  def ZeroVector[A](length: Rep[Int], isRow: Rep[Boolean] = unit(true))(implicit mA: Manifest[A]): Rep[Vector[A]] = mA match {
-    case Manifest.Double => vector_zero_double(length, isRow).asInstanceOfL[Vector[A]]
-    case Manifest.Float => vector_zero_float(length, isRow).asInstanceOfL[Vector[A]]
-    case Manifest.Int => vector_zero_int(length, isRow).asInstanceOfL[Vector[A]]
+  def ZeroVector[A](length: Rep[Int], isRow: Rep[Boolean] = unit(true))(implicit mA: Manifest[A]): Rep[Vector[A]] = (mA match {
+    case Manifest.Double => vector_zero_double(length, isRow)
+    case Manifest.Float => vector_zero_float(length, isRow)
+    case Manifest.Int => vector_zero_int(length, isRow)
     case _ => throw new IllegalArgumentException("No ZeroVector exists of type " + mA)
-  }
+  }).asInstanceOf[Rep[Vector[A]]]
 
   // object defs
   def vector_obj_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]): Rep[Vector[A]]
@@ -564,6 +564,21 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     def func = (a,b) => if (a > b) a else b
   }
   
+  case class VectorMinIndex[A:Manifest:Ordering:HasMinMax](inB: Exp[Vector[A]]) 
+    extends DeliteOpZipWithReduceTuple[Int,A,Int,A] {
+
+    val inA = copyTransformedOrElse(_.inA)(0::inB.length)
+    val size = copyTransformedOrElse(_.size)(inB.length)
+    val zero = (copyTransformedOrElse(_.zero._1)(unit(0)),copyTransformedOrElse(_.zero._2)(implicitly[HasMinMax[A]].maxValue)) // 0 sensible? maybe -1?
+    def zip = (a,b) => (a,b)
+    def reduce = (a,b) => (if (a._2 < b._2) a._1 else b._1, if (a._2 < b._2) a._2 else b._2)
+    
+    val m = manifest[A]
+    val o = implicitly[Ordering[A]]
+    val p = implicitly[HasMinMax[A]]
+  }
+
+/*
   // TODO: need to get rid of tuple allocations for performance (if we're lucky HotSpot's scalar replacement does it for us)
   case class VectorMinIndex[A:Manifest:Ordering:HasMinMax](inB: Exp[Vector[A]]) 
     extends DeliteOpZipWithReduce[Int,A,(Int,A)] {
@@ -572,13 +587,13 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     val size = copyTransformedOrElse(_.size)(inB.length)
     val zero = copyTransformedOrElse(_.zero)(make_tuple2(unit(0),implicitly[HasMinMax[A]].maxValue)) // 0 sensible? maybe -1?
     def zip = (a,b) => (a,b)
-    def reduce = (a,b) => if (a._2 < b._2) a else b
-    
+    def reduce = (a,b) => if (a._2 > b._2) a else b
+  
     val m = manifest[A]
     val o = implicitly[Ordering[A]]
     val p = implicitly[HasMinMax[A]]
   }
-  
+*/
   case class VectorMaxIndex[A:Manifest:Ordering:HasMinMax](inB: Exp[Vector[A]]) 
     extends DeliteOpZipWithReduce[Int,A,(Int,A)] {
 
@@ -759,7 +774,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
   def vector_sort[A:Manifest:Ordering](x: Exp[Vector[A]]) = reflectPure(VectorSort(x))
   def vector_min[A:Manifest:Ordering:HasMinMax](x: Exp[Vector[A]]) = reflectPure(VectorMin(x))
-  def vector_minindex[A:Manifest:Ordering:HasMinMax](x: Exp[Vector[A]]) = tuple2_get1(reflectPure(VectorMinIndex(x)))
+  def vector_minindex[A:Manifest:Ordering:HasMinMax](x: Exp[Vector[A]]) = /*tuple2_get1*/(reflectPure(VectorMinIndex(x)))
   def vector_max[A:Manifest:Ordering:HasMinMax](x: Exp[Vector[A]]) = reflectPure(VectorMax(x))
   def vector_maxindex[A:Manifest:Ordering:HasMinMax](x: Exp[Vector[A]]) = tuple2_get1(reflectPure(VectorMaxIndex(x)))
   def vector_median[A:Manifest:Ordering](x: Exp[Vector[A]]) = reflectPure(VectorMedian(x))
@@ -940,6 +955,12 @@ trait VectorOpsExpOpt extends VectorOpsExp with DeliteCollectionOpsExp {
     case Def(d@VectorObjectRandF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     case _ => super.vector_mutable_clone(x)
   }
+
+  override def vector_slice[A:Manifest](x: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]): Rep[Vector[A]] = x match {
+    case Def(IndexVectorRange(s,e)) => indexvector_range(s+start,s+end).asInstanceOf[Rep[Vector[A]]] // TODO: assert s+end < e!
+    case _ => super.vector_slice(x,start,end)
+  }
+
 
   override def vector_length[A:Manifest](x: Exp[Vector[A]]) = x match {
     /* these are essential for fusing:    */
