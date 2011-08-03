@@ -71,6 +71,9 @@ trait VecOps extends DSLType with Variables {
     def length(implicit v: MVal[N] = null) : Rep[Int] = size()
     def sum(implicit a: Arith[A]) = vec_sum(u)
     def abs(implicit a: Arith[A]) = vec_abs(u)
+
+    def max(vt: Rep[Self])(implicit o: Ordering[A]) = vec_zip_min(x, vt)
+    def max(vt: Rep[Self])(implicit o: Ordering[A]) = vec_zip_max(x, vt)
     
     //def map[B:Manifest](f: Rep[A] => Rep[B]) = vec_map(x,f)
 
@@ -108,6 +111,9 @@ trait VecOps extends DSLType with Variables {
   
   def vec_negate[N<:IntM:Manifest:MVal, A:Manifest](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
   //def vec_concat[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal, O<:IntM:Manifest:MVal,  A:Manifest](x: Rep[Vec[N,A]], rhs: Rep[Vec[M,A]]): Rep[Vec[O,A]]
+
+  def vec_zip_min[N<:IntM:Manifest:MVal, A:Manifest:Ordering](x: Rep[Vec[N,A]], y: Rep[Vec[N,A]]): Rep[Vec[N,A]]
+  def vec_zip_max[N<:IntM:Manifest:MVal, A:Manifest:Ordering](x: Rep[Vec[N,A]], y: Rep[Vec[N,A]]): Rep[Vec[N,A]]
 }
 
 trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {

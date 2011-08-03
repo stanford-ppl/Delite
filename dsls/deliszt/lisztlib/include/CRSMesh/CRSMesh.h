@@ -33,8 +33,6 @@ class Mesh;
 #include "CRSMesh/CRS.h"
 #include "CRSMesh/Iterators.h"
 
-
-
 #include "CRSMesh/DataObjects.h"
 
 #include "CRSMesh/MeshObject.h"
@@ -80,11 +78,11 @@ typedef CRSIterator<FacetEdge> facet_it;
 
 //expose the interface classes here
 namespace CRSMesh {
-    using CRSMeshPrivate::Vertex;
-    using CRSMeshPrivate::Edge;
-    using CRSMeshPrivate::Face;
-    using CRSMeshPrivate::Cell;
-    using CRSMeshPrivate::FacetEdge;
-    using CRSMeshPrivate::Mesh;
+using CRSMeshPrivate::Vertex;
+using CRSMeshPrivate::Edge;
+using CRSMeshPrivate::Face;
+using CRSMeshPrivate::Cell;
+using CRSMeshPrivate::FacetEdge;
+using CRSMeshPrivate::Mesh;
 }
 #endif /* FACETEDGEMESH_H_ */

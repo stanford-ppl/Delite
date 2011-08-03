@@ -36,10 +36,10 @@ CMAKE_COMMAND = /usr/bin/cmake
 RM = /usr/bin/cmake -E remove -f
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /media/sf_Dropbox/lisztlib
+CMAKE_SOURCE_DIR = /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /media/sf_Dropbox/lisztlib
+CMAKE_BINARY_DIR = /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -66,14 +66,14 @@ rebuild_cache/fast: rebuild_cache
 
 # The main all target
 all: cmake_check_build_system
-	cd /media/sf_Dropbox/lisztlib && $(CMAKE_COMMAND) -E cmake_progress_start /media/sf_Dropbox/lisztlib/CMakeFiles /media/sf_Dropbox/lisztlib/client/CMakeFiles/progress.marks
-	cd /media/sf_Dropbox/lisztlib && $(MAKE) -f CMakeFiles/Makefile2 client/all
-	$(CMAKE_COMMAND) -E cmake_progress_start /media/sf_Dropbox/lisztlib/CMakeFiles 0
+	cd /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib && $(CMAKE_COMMAND) -E cmake_progress_start /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib/CMakeFiles /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib/client/CMakeFiles/progress.marks
+	cd /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib && $(MAKE) -f CMakeFiles/Makefile2 client/all
+	$(CMAKE_COMMAND) -E cmake_progress_start /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
 clean:
-	cd /media/sf_Dropbox/lisztlib && $(MAKE) -f CMakeFiles/Makefile2 client/clean
+	cd /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib && $(MAKE) -f CMakeFiles/Makefile2 client/clean
 .PHONY : clean
 
 # The main clean target
@@ -82,17 +82,17 @@ clean/fast: clean
 
 # Prepare targets for installation.
 preinstall: all
-	cd /media/sf_Dropbox/lisztlib && $(MAKE) -f CMakeFiles/Makefile2 client/preinstall
+	cd /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib && $(MAKE) -f CMakeFiles/Makefile2 client/preinstall
 .PHONY : preinstall
 
 # Prepare targets for installation.
 preinstall/fast:
-	cd /media/sf_Dropbox/lisztlib && $(MAKE) -f CMakeFiles/Makefile2 client/preinstall
+	cd /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib && $(MAKE) -f CMakeFiles/Makefile2 client/preinstall
 .PHONY : preinstall/fast
 
 # clear depends
 depend:
-	cd /media/sf_Dropbox/lisztlib && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
+	cd /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 1
 .PHONY : depend
 
 # Help Target
@@ -114,6 +114,6 @@ help:
 # No rule that depends on this can have commands that come from listfiles
 # because they might be regenerated.
 cmake_check_build_system:
-	cd /media/sf_Dropbox/lisztlib && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
+	cd /home/mmwu/Dropbox/Delite/dsls/deliszt/lisztlib && $(CMAKE_COMMAND) -H$(CMAKE_SOURCE_DIR) -B$(CMAKE_BINARY_DIR) --check-build-system CMakeFiles/Makefile.cmake 0
 .PHONY : cmake_check_build_system
 

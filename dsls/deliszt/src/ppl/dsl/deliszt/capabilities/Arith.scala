@@ -24,4 +24,6 @@ trait ArithInternal[Rep[X], T] {
   def unary_-(a: Rep[T]): Rep[T]
   def empty: Rep[T]
   def zero(a: Rep[T]): Rep[T]
+  def min(a: Rep[T]): Rep[T]
+  def max(a: Rep[T]): Rep[T]
 }

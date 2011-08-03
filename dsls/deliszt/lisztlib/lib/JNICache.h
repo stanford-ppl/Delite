@@ -37,7 +37,7 @@ struct JNISignature {
       return false;
     }
   }
-}
+};
 
 class JNICache {
 public:
@@ -53,4 +53,5 @@ private:
   clsMap classes;
   typedef map<JNISignature, jmethodID> methodMap;
   methodMap methods;
-}
+};
+#endif

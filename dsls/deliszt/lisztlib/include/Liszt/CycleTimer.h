@@ -11,7 +11,7 @@
 #include <time.h>
 #else
 #include <cstdlib>
-#include <stdio.h>
+#include <cstdio>
 #include <string.h>
 #include <sys/time.h>
 #endif
