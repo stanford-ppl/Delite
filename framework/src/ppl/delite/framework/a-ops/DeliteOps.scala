@@ -1247,7 +1247,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println(/*{*/"}")
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         // stream.println("assert(false, \"TODO: tuple reduce\")")
-        emitReduceTupleElem(op, sym, elem, "__act2.", true)
+        emitReduceTupleElem(op, sym, elem, "__act.", true)
     }
     stream.println(/*{*/"}")
     // scan/postprocess follows
