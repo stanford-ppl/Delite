@@ -111,7 +111,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   val data = x.flatMap { i=> block(i) }
   matrix_reshape(in.length)
 */
-    if (!indexvector2_isWildcard(x.rowInd) && indexvector2_isWildcard(x.colInd)) {
+    if (/*!indexvector2_isWildcard(x.rowInd) &&*/ indexvector2_isWildcard(x.colInd)) {  //FIXME: check rowInd but make sure check is remove from code
       val in = x.rowInd
       //if (in.length > 0){
         val first = block(in(0)) 
@@ -134,15 +134,15 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
     //  }
     //  else matrix_obj_new[B](0,0)
     // }
-    else if (!indexvector2_isWildcard(x.rowInd) && !indexvector2_isWildcard(x.colInd)) {
+    else { //if (!indexvector2_isWildcard(x.rowInd) && !indexvector2_isWildcard(x.colInd)) {
       val inr = x.rowInd
       val inc = x.colInd
       val out = matrix_obj_new[A](inr.length, inc.length)
       reflectWrite(out)(IndexVector2ConstructRows(inr,block,out))
       out.unsafeImmutable
-    } else {
-      println(unit("optiml runtime error: illegal matrix constructor"))
-      exit(-1)
+    //} else {
+    //  println(unit("optiml runtime error: illegal matrix constructor"))
+    //  exit(-1)
     }
   }
   def indexvector2_construct[A:Manifest](x: Exp[IndexVector2], block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[Matrix[A]] = {
