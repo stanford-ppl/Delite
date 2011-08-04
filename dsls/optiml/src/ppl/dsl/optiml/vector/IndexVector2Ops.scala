@@ -105,7 +105,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
 */
     //if ((x.rowInd.isInstanceOfL[IndexVector]) && (x.colInd.isInstanceOfL[IndexVectorWC])) { // TR: first check needed??
     //if (x.colInd == indexvector2_wildcard) {
-    if (false/*x.colInd.isInstanceOfL[IndexVectorWC]*/) {
+    if (false/*x.colInd.isInstanceOfL[IndexVectorWC]*/) { // FIXME: re-enable IndexVectorWC
      //Matrix(IndexVector2ConstructVectors(x.rowInd, block))
       val in = x.rowInd
       //if (in.length > 0){

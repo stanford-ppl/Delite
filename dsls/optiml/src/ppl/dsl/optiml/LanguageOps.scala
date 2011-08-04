@@ -455,9 +455,24 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val size = copyTransformedOrElse(_.size)(end - start)
     val zero = (copyTransformedOrElse(_.zero._1)(reifyEffects(a.empty)),copyTransformedOrElse(_.zero._2)(unit(-1)))
 
+/*
     def func = (v) => (zero._1, reifyEffects(if (co(v)) v else -1))
     def reduce = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
                                         if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
+*/
+
+
+    def func = (v) => (zero._1, v)
+    
+    def reduceSeq = (a,b) => (reifyEffects(if (co(b._2)) { if (a._2 >= 0) a._1 += fu(b._2) else fu(b._2).mutable } else a._1), 
+                                    reifyEffects(if (co(b._2)) b._2 else a._2 )) // would not work in parallel...
+    
+    def reducePar = (a,b) => (if (b._2 >= 0) { if (a._2 >= 0) a._1 += b._1 else b._1.mutable } else a._1, if (b._2 >= 0) b._2 else a._2)
+    
+/*
+    def step = (a,v) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
+                                        if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
+*/
     
     def m = manifest[A]
     def a = implicitly[Arith[A]]

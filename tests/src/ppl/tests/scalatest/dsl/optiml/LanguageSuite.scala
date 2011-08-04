@@ -9,7 +9,7 @@ trait Sum extends DeliteTestModule with OptiMLApplication {
   def main() = {
     implicit val collector = ArrayBuffer[Boolean]()
 
-		val x = sum(0, 10) { i =>
+		val x = sum(0,10) { i =>
 			i*2
 		}
 		collect(x == 90)
