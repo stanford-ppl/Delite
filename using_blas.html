@@ -67,7 +67,9 @@
 
         <p>At the moment, the feature has experimental status, so the list of supported operations is not documented, but you're welcome to browse the sources and find out the information by yourself. For example, take a look at <a href="https://github.com/stanford-ppl/Delite/blob/develop/dsls/optiml/src/ppl/dsl/optiml/matrix/MatrixOps.scala">MatrixOps</a> from OptiML. Hint: you can do that more efficiently if you search for usages of <a href="https://github.com/stanford-ppl/Delite/blob/develop/framework/src/ppl/delite/framework/Config.scala">Config.useBlas</a>.</p>
 
-        <p>Let us now perform a test-drive using a simple example. Before starting, make sure that you've successfully run the HelloWorld application from the <a href="getting_started.html">"Getting started"</a> tutorial - soon we'll need some stuff explained there. In our hands-on example we'll use the following application:</p>
+        <p>Before starting, make sure that you've successfully run the HelloWorld application from the <a href="getting_started.html">"Getting started"</a> tutorial - soon we'll need some stuff explained there. For example, we use shortcuts to omit certain arguments of <code>delitec</code> and <code>delite</code> (see <a href="https://github.com/stanford-ppl/Delite/tree/develop/scripts">the docs</a> for more information about shortcuts).</p>
+
+        <p>Let us now perform a test-drive using a simple example. In our hands-on example we'll use the following application: </p>
 
         <div class="highlight"><pre><code class="scala"><span class="k">import</span> <span class="nn">ppl.dsl.optiml._</span>
 <span class="k">object</span> <span class="nc">HelloWorldRunner</span> <span class="k">extends</span> <span class="nc">OptiMLApplicationRunner</span> <span class="k">with</span> <span class="nc">HelloWorld</span> 
@@ -94,12 +96,12 @@
 
       <p>Below we assume the default installation of ICC, i.e. that you have the <code>ICPP_COMPILER12</code> environment variable set up to point to the root of the installation and that there's the <code>ipsxe-comp-vars.bat</code> script in the <code>bin</code> subfolder of the installation root.</p>
 
-      <p>Run <code>delitec -RHelloWorldRunner HelloWorld.scala</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/win/bldaps_cls/cppug_ccw/bldaps_setup_envars.htm">"Using the compilervars File to Specify Location of Components"</a> documentation entry for ICC for more info regarding the latter option).</p>
+      <p>Run <code>delitec HelloWorld.scala</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/win/bldaps_cls/cppug_ccw/bldaps_setup_envars.htm">"Using the compilervars File to Specify Location of Components"</a> documentation entry for ICC for more info regarding the latter option).</p>
 
       <p>Be careful to properly quote whitespaces and slashes (e.g. note the slash that supercedes the value of <code>blas.home</code> - it is necessary because the <code>ICPP_COMPILER12</code> variable itself ends with a slash, so it'd mess the following double-quote symbol if it weren't escaped).</p>
 
       <br />
-      <div class="highlight" style="overflow: scroll"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delitec "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" -RHelloWorldRunner HelloWorld.scala
+      <div class="highlight" style="overflow: scroll"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delitec "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" HelloWorld.scala
 (Phase one) Scala compilation...
 Error: =c:\Users\xeno.by\Projects\Active\Delite\Delite\\" "-Ddelite.build.dir=generated" "-Dblas.home=C:\Program was unexpected at this time.</code></pre></div>
 
@@ -114,10 +116,10 @@ Patching scala virtualized scripts...
  * scala compiler (scalac)... successfully patched
  * scala interpreter (scala)... successfully patched</code></pre></div>
 
-      <p>Rerun <code>delites HelloWorldRunner</code>. Now things work as they should work.</p>
+      <p>Rerun <code>delitec HelloWorld.scala</code>. Now things work as they should work.</p>
 
       <br />
-      <div class="highlight" style="overflow: scroll"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delitec "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" -RHelloWorldRunner HelloWorld.scala
+      <div class="highlight" style="overflow: scroll"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delitec "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" HelloWorld.scala
 (Phase one) Scala compilation...
 Successfully compiled
 
@@ -142,9 +144,9 @@ x38.scala
 x40.scala
 x44.scala</code></pre></div>
 
-      <p>Finally, just run <code>delite out.deg</code>. There's no need to provide extra command-line arguments to <code>delite</code> or to use environment initialization scripts, since <code>scalaBLAS.dll</code> has been statically linked to MKL and doesn't need Intel libraries during the run time.</p>
+      <p>Finally, just run <code>delite</code>. There's no need to provide extra command-line arguments to <code>delite</code> or to use environment initialization scripts, since <code>scalaBLAS.dll</code> has been statically linked to MKL and doesn't need Intel libraries during the run time.</p>
 
-      <div class="highlight"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delite out.deg
+      <div class="highlight"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delite
 Delite Runtime executing with the following arguments:
 out.deg
 Delite Runtime executing with 1 CPU thread(s) and 0 GPU(s)
@@ -172,10 +174,10 @@ Beginning Execution Run 1
 
       <p>Below we assume the default installation of ICC, i.e. that you have installed ICC to <code>/opt/intel</code> and that there is the <code>compilervars.sh</code> script in the <code>bin</code> subdirectory of the installation root.</p>
 
-      <p>Run <code>delites HelloWorldRunner</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/lin/bldaps_cls/common/bldaps_invoke_cl_comm.htm">"Invoking the Compiler from the Command Line"</a> documentation entry for ICC for more info regarding the latter option).</p>
+      <p>Run <code>delitec HelloWorld.scala</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/lin/bldaps_cls/common/bldaps_invoke_cl_comm.htm">"Invoking the Compiler from the Command Line"</a> documentation entry for ICC for more info regarding the latter option).</p>
 
       <br />
-      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delitec "-Dblas.home=/opt/intel" "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" -RHelloWorldRunner HelloWorld.scala
+      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delitec "-Dblas.home=/opt/intel" "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" HelloWorld.scala
 (Phase one) Scala compilation...
 Successfully compiled
 
@@ -198,10 +200,10 @@ x40.scala
 x44.scala
 </code></pre></div>
 
-      <p>Finally, just run <code>delite out.deg</code>. However, unlike on Windows, it is impossible to link to MKL statically on Linux, that's why it is necessary to have MKL shared libraries in <code>LD_LIBRARY_PATH</code>. You can modify <code>LD_LIBRARY_PATH</code> manually, however, <code>delite</code> provides a shortcut for that. If you provide an initialization script in <code>blas.init</code>, <code>delite</code> will invoke it and set up necessary environment variables for you.</p>
+      <p>Finally, just run <code>delite</code>. However, unlike on Windows, it is impossible to link to MKL statically on Linux, that's why it is necessary to have MKL shared libraries in <code>LD_LIBRARY_PATH</code>. You can modify <code>LD_LIBRARY_PATH</code> manually, however, <code>delite</code> provides a shortcut for that. If you provide an initialization script in <code>blas.init</code>, <code>delite</code> will invoke it and set up necessary environment variables for you.</p>
 
       <br />
-      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delite "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" out.deg
+      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delite "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64"
 Delite Runtime executing with the following arguments:
 out.deg
 Delite Runtime executing with 1 CPU thread(s) and 0 GPU(s)
@@ -228,10 +230,10 @@ Beginning Execution Run 1
 
       <p>Below we assume the default installation of ICC, i.e. that you have installed ICC to <code>/opt/intel</code> and that there is the <code>compilervars.sh</code> script in the <code>bin</code> subdirectory of the installation root.</p>
 
-      <p>Run <code>delites HelloWorldRunner</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/mac/bldaps_cls/common/bldaps_invoke_cl_comm.htm">"Invoking the Compiler from the Command Line"</a> documentation entry for ICC for more info regarding the latter option).</p>
+      <p>Run <code>delitec HelloWorld.scala</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/mac/bldaps_cls/common/bldaps_invoke_cl_comm.htm">"Invoking the Compiler from the Command Line"</a> documentation entry for ICC for more info regarding the latter option).</p>
 
       <br />
-      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delitec "-Dblas.home=/opt/intel" "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" -RHelloWorldRunner HelloWorld.scala
+      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delitec "-Dblas.home=/opt/intel" "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" HelloWorld.scala
 (Phase one) Scala compilation...
 Successfully compiled
 
@@ -254,10 +256,10 @@ x40.scala
 x44.scala
 </code></pre></div>
 
-      <p>Finally, just run <code>delite out.deg</code>. However, unlike on Windows, it is impossible to link to MKL statically on Mac OS X, that's why it is necessary to have MKL dynamic libraries in <code>DYLD_LIBRARY_PATH</code>. You can modify <code>DYLD_LIBRARY_PATH</code> manually, however, <code>delite</code> provides a shortcut for that. If you provide an initialization script in <code>blas.init</code>, <code>delite</code> will invoke it and set up necessary environment variables for you.</p>
+      <p>Finally, just run <code>delite</code>. However, unlike on Windows, it is impossible to link to MKL statically on Mac OS X, that's why it is necessary to have MKL dynamic libraries in <code>DYLD_LIBRARY_PATH</code>. You can modify <code>DYLD_LIBRARY_PATH</code> manually, however, <code>delite</code> provides a shortcut for that. If you provide an initialization script in <code>blas.init</code>, <code>delite</code> will invoke it and set up necessary environment variables for you.</p>
 
       <br />
-      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delite "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" out.deg
+      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delite "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64"
 Delite Runtime executing with the following arguments:
 out.deg
 Delite Runtime executing with 1 CPU thread(s) and 0 GPU(s)
