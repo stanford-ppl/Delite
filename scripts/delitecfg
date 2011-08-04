@@ -83,18 +83,12 @@ class Project(root: String, name: String) {
 // script code begins here
 
 println("Detecting the location of Delite...")
-try {
-  val delite_home = config.delite_home
-  config.validate_delite_home()
-  config.clear()
-  config.delite_home = delite_home
-} catch {
-  case _ => {
-    config.clear()
-    print("Please, enter home directory of Delite: ")
-    config.delite_home = readLine
-  }
-}
+if (args.length == 0 && config.props.getProperty("delite_home") == null) { print("Please, enter home directory of Delite: "); config.delite_home = readLine; }
+val delite_home: String = if (args.length > 0) args(0) else config.delite_home
+config.delite_home = delite_home
+config.validate_delite_home()
+config.clear()
+config.delite_home = delite_home
 println("Delite's home directory: %s%n".format(config.delite_home))
 
 val framework = new Project(config.delite_home, "Delite Framework")

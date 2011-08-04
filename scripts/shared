@@ -2,6 +2,7 @@ import java.io.{File, FileReader, BufferedReader, InputStreamReader, FileWriter,
 import scala.io.{Source}
 import java.util.{Properties}
 import scala.collection.JavaConversions._
+import util.control.Breaks._
 
 var os : String = null
 if (System.getProperty("os.name").startsWith("Windows")) os = "windows"
@@ -181,8 +182,17 @@ object config {
     props.setProperty("runtime_classes", value)
     save()
   }
+
+  def app_classes = {
+    val out_dirs = argv.toList sliding 2 collect { _ match { case "-d" :: snd => new File(snd.head) } } toList;
+    out_dirs.lastOption getOrElse new File(".")
+  }
 }
 
+implicit def file2arg(file: File): Arg = new Arg(file.toString)
+implicit def listoffile2listofarg(files: List[File]): List[Arg] = if (files == null) null else files map { file => (file: Arg) }
+implicit def path2arg(path: Path): Arg = new Arg((path: String))
+implicit def listofpath2listofarg(paths: List[Path]): List[Arg] = if (paths == null) null else paths map { path => (path: Arg) }
 implicit def string2arg(s: String): Arg = new Arg(s)
 implicit def listofstring2listofarg(ss: List[String]): List[Arg] = if (ss == null) null else ss map { s => (s: Arg) }
 implicit def arg2string(arg: Arg): String = if (arg == null) null else arg.toString
@@ -229,7 +239,6 @@ implicit def string2args(s: String) : Args = new Args(List(s: Arg))
 implicit def arg2args(arg: Arg) : Args = new Args(List(arg))
 implicit def list2args[T <% List[Arg]](args: T) : Args = new Args(args)
 implicit def args2list(args: Args) : List[Arg] = if (args == null) null else args.args
-implicit def args2string(args: Args) : String = if (args == null) null else args.toString
 class Args(val args: List[Arg]) {
   def this(args: Arg*) = this(args.toList)
   def +:(arg: Arg) = new Args(arg +: args)
@@ -241,12 +250,166 @@ class Args(val args: List[Arg]) {
 
 var args = new Args(argv.toList)
 
-def parse_args(args: Args) = {
-  val opts = args takeWhile { arg => arg.startsWith("-") && arg != "-" }
+def parse_args(args: Args, verbose: Boolean = true, interactive: Boolean = true): (List[Arg], List[Arg], List[Arg]) = {
+  // http://download.oracle.com/javase/6/docs/technotes/tools/solaris/java.html
+  var complex_opts = Set("-classpath", "-cp")
+  // http://www.scala-lang.org/docu/files/tools/scalac.html#options
+  // http://www.scala-lang.org/docu/files/tools/scala.html#options
+  complex_opts ++= Set("-classpath", "-sourcepath", "-bootclasspath", "-extdirs", "-d", "-encoding")
+  complex_opts ++= Set("-Xassem", "-Xassem-path", "-Xshow-class", "-Xshow-object", "-Xsource-reader", "-Xscript")
+
+  var opts = List[Arg]()
+  var prev_complex = false
+  breakable {
+    for (arg <- args) {
+      val help = "See https://github.com/stanford-ppl/Delite/blob/develop/scripts/README.md for more information."
+      if ((arg: String) == "-help") { 
+        if (interactive) {
+          println(help); 
+          sys.exit(0)
+        } else {
+          // do nothing
+        }
+      }
+
+      val is_opt = arg.startsWith("-")
+      var is_complex = complex_opts(arg)
+      if (is_complex && prev_complex) {
+        if (interactive) {
+          sys.error("Bad command-line. %s".format(help))
+        } else {
+          throw new Exception("Bad command-line")
+        }
+      }
+
+      if (is_opt || prev_complex) opts += arg
+      if (!is_opt && !prev_complex) break
+      prev_complex = is_complex
+    }  
+  }
+
   val java_opts = opts filter { arg => arg.startsWith("-D") }
   val other_opts = opts filterNot { arg => arg.startsWith("-D") }
-  val script_args = args dropWhile { arg => arg.startsWith("-") && arg != "-" } dropWhile { arg => arg == "-" }
-  (java_opts, other_opts, script_args)
+  val other_args = args drop opts.length
+
+  (java_opts, other_opts, other_args)
+}
+
+def parse_args_with_runner(args: Args, verbose: Boolean = true, interactive: Boolean = true): (List[Arg], Iterator[Arg], List[Arg], List[Arg]) = {
+  var (java_opts, other_opts, other_args) = parse_args(args, verbose, interactive)
+
+  val runner_opt = "-Xrunner:"
+  val runner_opts = other_opts filter { arg => arg.startsWith(runner_opt) }
+  other_opts = other_opts filterNot { arg => arg.startsWith(runner_opt) }
+
+  // these need to be lazy, because parse_args is typically called in the beginning of the script
+  // while runner inference might depend on intermediate results of script execution
+  // e.g. delitec first compiles the app and then stages it
+  // in that case we must not infer a runner before the app is compiled
+  val lazy_runner_opts = new Iterator[Arg] {
+    var current = -1
+    def hasNext() = impl.length > current + 1
+    def next() = { current += 1; impl(current); }
+
+    lazy val impl: List[Arg] = {
+      var runner: Arg = if (runner_opts.length == 0) null else runner_opts.last.substring(runner_opt.length)
+
+      if (runner == null) {
+        val out_dirs = other_opts sliding 2 collect { _ match { case Arg("-d") :: snd => new File(snd.head) } } toList
+        val app_classes = out_dirs.lastOption getOrElse new File(".")
+
+        if (interactive && verbose) println("No runner is specified. Guessing one in %s (%s)".format(app_classes, app_classes.getAbsolutePath))
+        val app_classfiles = new scala.tools.nsc.io.Directory(app_classes).deepFiles filter { file => file.extension == "class" } toList
+        val runners = app_classfiles filter { file => file.name.endsWith("Runner.class") }
+
+        if (runners.length == 0) {
+          if (interactive) {
+            println("Error: No *Runner.class files found in application classpath.")
+            sys.error("Specify a runner to be used during DSL compilation phase (-R<classname>).")
+          } else {
+            throw new Exception("Error: No *Runner.class files found in application classpath.")
+          }
+        }  
+        
+        if (runners.length > 1) {
+          if (interactive) {
+            println("Error: Multiple *Runner.class files found in application classpath:")
+            runners foreach println
+            sys.error("Specify a runner to be used during DSL compilation phase (-R<classname>).")
+          } else {
+            throw new Exception("Error: Multiple *Runner.class files found in application classpath:")
+          }
+        }
+
+        var runner_path = runners.head.toString
+        if (runner_path.startsWith("./")) runner_path = runner_path.substring(2)
+        val runner_file = new File(runner_path)
+        if (interactive && verbose) println("Assuming you meant %s (%s)".format(runner_file.toString, runner_file.getAbsolutePath))
+
+        var s_app_classes = app_classes.getCanonicalPath
+        var s_runner_file = runner_file.getCanonicalPath
+        assert(s_runner_file.startsWith(s_app_classes))
+        assert(s_runner_file.endsWith(".class"))
+        var runner_relative = s_runner_file.substring(s_app_classes.length)
+        if (runner_relative.startsWith(File.separator)) runner_relative = runner_relative.substring(1)
+        runner = runner_relative.replace(File.separator, ".").substring(0, runner_relative.length - ".class".length)
+        if (interactive && verbose) println("Which translates to: %s (with classpath at %s)".format(runner, app_classes.getAbsolutePath))
+      }
+
+      if (runner == null) List() else List(runner)
+    }
+  }
+
+  (java_opts, lazy_runner_opts, other_opts, other_args)
+}
+
+def parse_args_with_deg(args: Args, verbose: Boolean = true, interactive: Boolean = true): (List[Arg], List[Arg], Arg, List[Arg]) = {
+  var (java_opts, other_opts, other_args) = parse_args(args, verbose, interactive)
+
+  var deg_opt = "-Xdeg:"
+  var deg_opts = other_opts filter { arg => arg.startsWith(deg_opt) }
+  other_opts = other_opts filterNot { arg => arg.startsWith(deg_opt) }
+  var deg_args = if (deg_opts.length == 0) other_args.drop(1) else other_args
+  deg_opts ++= (if (deg_opts.length == 0) other_args.take(1).filter({ arg => arg.endsWith(".deg") }) else List())
+
+  var deg: Arg = deg_opts.lastOption getOrElse null
+  if (deg == null) {
+    val current_dir = new File(System.getProperty("user.dir"))
+    if (interactive && verbose) println("No DEG is specified. Guessing one in %s (%s)".format(current_dir, current_dir.getAbsolutePath))
+    val degs = new scala.tools.nsc.io.Directory(current_dir).files filter { file => file.extension == "deg" } toList
+
+    if (degs.length == 0) {
+      if (interactive) {
+        println("Error: No *.deg files found in current directory.")
+        sys.error("Specify a DEG to be used during runtime phase (-Xdeg:<path to deg file>).")
+      } else {
+        throw new Exception("Specify a DEG to be used during runtime phase (-Xdeg:<path to deg file>).")
+      }
+    }  
+    
+    if (degs.length > 1) {
+      if (interactive) {
+        println("Error: Multiple *.deg files found in current directory:")
+        degs foreach println
+        sys.error("Specify a DEG to be used during runtime phase (-Xdeg:<path to deg file>).")
+      } else {
+        throw new Exception("Specify a DEG to be used during runtime phase (-Xdeg:<path to deg file>).")
+      }
+    }
+
+    var deg_file = new File(degs.head.toString)
+    var s_current_dir = current_dir.getCanonicalPath
+    var s_deg_file = deg_file.getCanonicalPath
+    assert(s_deg_file.startsWith(s_current_dir))
+    assert(s_deg_file.endsWith(".deg"))
+    var deg_relative = s_deg_file.substring(s_current_dir.length)
+    if (deg_relative.startsWith(File.separator)) deg_relative = deg_relative.substring(1)
+
+    deg = deg_relative.toString
+    if (interactive && verbose) println("Assuming you meant %s (%s)".format(deg, new File(deg).getAbsolutePath))
+  }
+
+  (java_opts, other_opts, deg, deg_args)
 }
 
 implicit def string2path(s: String): Path = if (s == null) null else new Path(s)
@@ -268,7 +431,6 @@ implicit def file2paths(file: File): Paths = new Paths(List(file: Path))
 implicit def path2paths(path: Path): Paths = new Paths(List(path))
 implicit def list2paths[T <% List[Path]](paths: T) : Paths = new Paths(paths)
 implicit def paths2list(paths: Paths): List[Path] = if (paths == null) null else paths.paths
-implicit def paths2string(paths: Paths): String = if (paths == null) null else paths.toString
 class Paths(val paths: List[Path]) {
   def this(paths: Path*) = this(paths.toList)
   def +:(path: Path) = new Paths(path +: paths)
@@ -288,15 +450,8 @@ def run(what: Path) = {
   val builder = new ProcessBuilder
   builder.redirectErrorStream(true)
   builder.command(seqAsJavaList((new Arg(what) +: args).map({arg => (arg: String)})))
-  builder.environment.put("CLASSPATH", classpath)
+  builder.environment.put("CLASSPATH", classpath.toString)
   env foreach { _ match { case (k, v) => builder.environment.put(k, v) } }
-
-//  println("environment: ")
-//  for (k <- builder.environment.keySet) println("%s = %s".format(k, builder.environment.get(k)))
-//  println()
-//  println("command-line: ")
-//  builder.command foreach println
-//  println()
 
   var process = builder.start
   var stdout = new BufferedReader(new InputStreamReader(process.getInputStream))
