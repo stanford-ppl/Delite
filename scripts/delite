@@ -47,6 +47,7 @@ args = javaopt("delite.code.cache.home", "generatedCache") +: args
 args = javaopt("delite.home", config.delite_home) +: args
 var (java_opts, other_opts, script_args) = parse_args(args)
 var runtime = List("ppl.delite.runtime.Delite": Arg)
+if (windows) java_opts = java_opts map { arg => wrap(arg) }
 
 args = java_opts ++ other_opts ++ runtime ++ script_args
 classpath = env_classpath + config.runtime_classes + config.scala_vanilla_library_jar + config.scala_vanilla_compiler_jar

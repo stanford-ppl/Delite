@@ -20,7 +20,7 @@ exec scala "$script" "$@"
 args = javaopt("delite.build.dir", "generated") +: args
 args = javaopt("delite.home.dir", config.delite_home) +: args
 var (java_opts, other_opts, script_args) = parse_args(args)
-if (windows) env("JAVA_OPTS") = java_opts map { arg => wrap(arg) } mkString " "
+if (windows) { java_opts = java_opts map { arg => wrap(arg) }; env("JAVA_OPTS") = java_opts mkString " " }
 
 args = java_opts ++ other_opts ++ script_args
 classpath = env_classpath + config.optiml_classes + config.framework_classes + config.lms_classes + "."
