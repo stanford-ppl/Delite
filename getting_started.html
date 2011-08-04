@@ -140,16 +140,13 @@ cd ..
         So without further ado, let's get to it. Home directory of Delite has the <code>scripts</code> subdirectory that hosts several helpers scripts that we're going to use. Comprehensive documentation, which includes exact format of the command line and a list of configuration options, is available <a href="https://github.com/stanford-ppl/Delite/tree/develop/scripts">at Github</a>, but here we'll just illustrate a basic use case.
         </p> 
         <p>
-        First things first - to compile our application (phase one), run
-        <div class="highlight"><pre><code class="bash">delitec HelloWorld.scala</code></pre></div>
+        First things first - we compile our application with <code>delitec</code>. This combines the first two phases of Delite application's lifecycle: first, the app gets compiled by virtualized scala, then it gets staged by running the main method of <code>OptiMLApplicationRunner</code> object we just created. Don't forget to supply the name of the runner class or the compiler will be unable to proceed:
+        <div class="highlight"><pre><code class="bash">delitec -RHelloWorldRunner HelloWorld.scala</code></pre></div>
         </p>
-        <p>
-        Now we need to stage our program (phase two). We do this by running the main method of <code>OptiMLApplicationRunner</code> object we just created:
-        <div class="highlight"><pre><code class="bash">delites HelloWorldRunner</code></pre></div>
         <p>
         The generated execution graph will be in 'out.deg'. Also look around in the folder 'generated/' - it contains code OptiML generated!
         Note that you can specify a different file for the DEG by supplying the JVM parameter <code>delite.deg.filename</code>:
-        <div class="highlight"><pre><code class="bash">delites -Ddelite.deg.filename="hello.deg" HelloWorldRunner</code></pre></div>
+        <div class="highlight"><pre><code class="bash">delitec -Ddelite.deg.filename="hello.deg" -RHelloWorldRunner HelloWorld.scala</code></pre></div>
         </p>
         <p>
         The last thing we need to do is execute our generated program (phase three). To do this, we invoke the Delite runtime using:</p><p>

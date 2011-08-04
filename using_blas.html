@@ -80,8 +80,6 @@
 <span class="o">}</span>
 </pre></code></div>
 
-      <p>Start with Scala compilation. Run <code>delitec HelloWorld.scala</code>. As you might remember, that's normal if nothing gets printed to the output - if there were any errors, you'd see error messages.</p>
-
       <p>The rest of the tutorial is platform-dependent, since staging a BLAS-enabled application involves on-the-fly compilation of a native library. Below we describe how to use BLAS acceleration on Windows, Linux and Mac OS X. Please, pick the section that describes your operating system.</p>
 
       <p>Also, note that it is necessary to install 64-bit versions of prerequisites. Currently, BLAS acceleration requires 64-bit compilers and libraries. This works sufficiently well for us at the moment, but we may also implement support for 32-bit versions later.</p>
@@ -96,12 +94,13 @@
 
       <p>Below we assume the default installation of ICC, i.e. that you have the <code>ICPP_COMPILER12</code> environment variable set up to point to the root of the installation and that there's the <code>ipsxe-comp-vars.bat</code> script in the <code>bin</code> subfolder of the installation root.</p>
 
-      <p>Run <code>delites HelloWorldRunner</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/win/bldaps_cls/cppug_ccw/bldaps_setup_envars.htm">"Using the compilervars File to Specify Location of Components"</a> documentation entry for ICC for more info regarding the latter option).</p>
+      <p>Run <code>delitec -RHelloWorldRunner HelloWorld.scala</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/win/bldaps_cls/cppug_ccw/bldaps_setup_envars.htm">"Using the compilervars File to Specify Location of Components"</a> documentation entry for ICC for more info regarding the latter option).</p>
 
       <p>Be careful to properly quote whitespaces and slashes (e.g. note the slash that supercedes the value of <code>blas.home</code> - it is necessary because the <code>ICPP_COMPILER12</code> variable itself ends with a slash, so it'd mess the following double-quote symbol if it weren't escaped).</p>
 
       <br />
-      <div class="highlight" style="overflow: scroll"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delites "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" HelloWorldRunner
+      <div class="highlight" style="overflow: scroll"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delitec "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" -RHelloWorldRunner HelloWorld.scala
+(Phase one) Scala compilation...
 Error: =c:\Users\xeno.by\Projects\Active\Delite\Delite\\" "-Ddelite.build.dir=generated" "-Dblas.home=C:\Program was unexpected at this time.</code></pre></div>
 
       <p>Wow, that's unexpected.</p>
@@ -118,9 +117,14 @@ Patching scala virtualized scripts...
       <p>Rerun <code>delites HelloWorldRunner</code>. Now things work as they should work.</p>
 
       <br />
-      <div class="highlight" style="overflow: scroll"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delites "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" HelloWorldRunner
+      <div class="highlight" style="overflow: scroll"><pre><code>c:\Users\xeno.by\Projects\Delite\HelloWorld>delitec "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" -RHelloWorldRunner HelloWorld.scala
+(Phase one) Scala compilation...
+Successfully compiled
+
+(Phase two) DSL compilation...
 Delite Application Being Staged:[HelloWorldRunner$]
-******Generating the program******</code></pre></div>
+******Generating the program******
+Successfully compiled</code></pre></div>
 
       <p>To make sure that everything went fine, navigate to <code>generated/scala/kernels</code> and look for <code>scalaBLAS.dll</code> - that's a native JNI-invokable stub that exposes Intel MKL API to Scala.</p>
 
@@ -171,10 +175,14 @@ Beginning Execution Run 1
       <p>Run <code>delites HelloWorldRunner</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/lin/bldaps_cls/common/bldaps_invoke_cl_comm.htm">"Invoking the Compiler from the Command Line"</a> documentation entry for ICC for more info regarding the latter option).</p>
 
       <br />
-      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delites "-Dblas.home=/opt/intel" "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" HelloWorldRunner
+      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delitec "-Dblas.home=/opt/intel" "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" -RHelloWorldRunner HelloWorld.scala
+(Phase one) Scala compilation...
+Successfully compiled
+
+(Phase two) DSL compilation...
 Delite Application Being Staged:[HelloWorldRunner$]
 ******Generating the program******
-</code></pre></div>
+Successfully compiled</code></pre></div>
 
       <p>To make sure that everything went fine, navigate to <code>generated/scala/kernels</code> and look for <code>scalaBLAS.so</code> - that's a native JNI-invokable stub that exposes Intel MKL API to Scala.</p>
 
@@ -223,10 +231,14 @@ Beginning Execution Run 1
       <p>Run <code>delites HelloWorldRunner</code>. To enable BLAS, provide <code>blas.home</code> property set to the root of ICC installation and <code>blas.init</code> property that features environment initialization instructions (see <a href="http://software.intel.com/sites/products/documentation/hpc/composerxe/en-us/cpp/mac/bldaps_cls/common/bldaps_invoke_cl_comm.htm">"Invoking the Compiler from the Command Line"</a> documentation entry for ICC for more info regarding the latter option).</p>
 
       <br />
-      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delites "-Dblas.home=/opt/intel" "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" HelloWorldRunner
+      <div class="highlight" style="overflow: scroll"><pre><code>xeno_by@xeno-main:~/Projects/Delite/HelloWorld$ delitec "-Dblas.home=/opt/intel" "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" -RHelloWorldRunner HelloWorld.scala
+(Phase one) Scala compilation...
+Successfully compiled
+
+(Phase two) DSL compilation...
 Delite Application Being Staged:[HelloWorldRunner$]
 ******Generating the program******
-</code></pre></div>
+Successfully compiled</code></pre></div>
 
       <p>To make sure that everything went fine, navigate to <code>generated/scala/kernels</code> and look for <code>scalaBLAS.dylib</code> - that's a native JNI-invokable stub that exposes Intel MKL API to Scala.</p>
 
