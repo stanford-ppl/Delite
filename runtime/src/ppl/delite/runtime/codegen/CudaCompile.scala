@@ -56,6 +56,7 @@ object CudaCompile extends CodeCache {
       else error("OS " + os + " not currently supported with CUDA")
 
     val deliteHome = Config.deliteHome
+    val deliteLibs = Config.deliteBuildHome + sep + "libraries"
 
     val process = Runtime.getRuntime.exec(Array[String](
       "nvcc",
@@ -67,13 +68,26 @@ object CudaCompile extends CodeCache {
       "-arch", "compute_20",
       "-code", "sm_20",
       "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
-      "-L " + Config.deliteBuildHome + sep + "libraries", 
+      "-L" + deliteLibs)
+      ++ linkGeneratedLibs(deliteLibs) ++ Array[String](
       "-o", "cudaHost.so", //output name
       source //input name
       ), null, new File(destination))
 
     process.waitFor //wait for compilation to complete
     checkError(process)
+  }
+
+  private def linkGeneratedLibs(source: String): List[String] = {
+    var linkLibs = List[String]()
+    val libs = Directory(Path(source))
+    for (file <- libs.files) {
+      val name = file.stripExtension
+      if (name.startsWith("lib")) {
+        linkLibs = linkLibs :+ "-l"+name.drop(3)
+      }
+    }
+    linkLibs
   }
 
   private def checkError(process: Process) {

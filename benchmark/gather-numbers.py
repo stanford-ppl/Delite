@@ -143,7 +143,8 @@ def launchApps(options):
               continue
         
         java_opts = os.getenv("JAVA_OPTS", "")
-        opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + props["delite.home"] +  "/generated/ -Ddelite.deg.filename=" + app + ".deg"
+        build_dir = props["delite.home"] + "/generated/"
+        opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + build_dir + "-Ddelite.deg.filename=" + app + ".deg"
         if options['blas'] == True:
             opts = opts + " -Dblas.enabled"
         if options['variants'] == False:
@@ -167,6 +168,9 @@ def launchApps(options):
             exit(-1)
         #do it for each config of delite
         #do it for each thread configuration
+        ld_library_path = filter(len, os.getenv("LD_LIBRARY_PATH", "").split(":"))
+        ld_library_path.append(build_dir+"/libraries")
+        os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
         if options['run']['smp']: 
             for numThreads in options['delite.threads']:
                 os.putenv("MKL_NUM_THREADS", str(numThreads))

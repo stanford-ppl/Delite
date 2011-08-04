@@ -1,5 +1,4 @@
 <DeliteExternalLib>
-<name>BLAS</name>
 <compiler>/opt/intel/composerxe-2011.4.191/bin/intel64/icc</compiler>
 <include>
   <prefix> -I </prefix>

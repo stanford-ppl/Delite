@@ -1,5 +1,4 @@
 <DeliteExternalLib>
-<name>cuBLAS</name>
 <compiler>/usr/local/cuda/bin/nvcc</compiler>
 <include>
   <prefix> -I </prefix>

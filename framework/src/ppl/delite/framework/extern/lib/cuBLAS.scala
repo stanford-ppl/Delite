@@ -5,7 +5,7 @@ import ppl.delite.framework.codegen.scala._
 import java.io._
 
 object cuBLAS extends ExternalLibrary {
-  val name = "cudaBLAS"
+  val libName = "cudaBLAS"
   val configFile = "cuBLAS.xml"  
   val ext = "cu"
   val compileFlags = List( "-w", "-lcublas", "-O3", "-arch", "compute_20", "-code", "sm_20", "-shared", "-Xcompiler", "-fPIC") // HJ TODO: these are Fermi-specific; where should they be specified?                           

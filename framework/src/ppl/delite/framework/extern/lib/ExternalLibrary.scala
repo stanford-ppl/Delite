@@ -11,13 +11,15 @@ trait ExternalLibConfiguration {
 
 trait ExternalLibrary {
   //val target: Target
-  val name: String // generated scala interface for this library will use this as its object name
+  val libName: String
   val ext: String // native file extension (can this ever be anything besides .c or .cpp??)
   val configFile: String // name of file, will always be searched for inside extern/src/ppl/delite/extern/lib/config
   val compileFlags: List[String] // machine-independent flags that are always passed to the compiler for this lib
   val outputSwitch: String // compiler parameter that allows us to specify destination dir (e.g. -o)
   val header: String = "" // an optional header to be included at the top of every generated call for this lib
   
+  lazy val name = "lib" + libName // generated scala interface for this library will use this as its object name 
+
   /**
    * machine dependent, sourced from XML configuration 
    */  
@@ -62,7 +64,6 @@ trait ExternalLibrary {
     if (!configFile.exists) throw new FileNotFoundException("could not load library configuration: " + configFile)    
     
     val body = XML.loadFile(configFile)
-    val nameVal = body \\ "name" text
     val compilerVal = body \\ "compiler" text
     val includeVal = body \\ "include" flatMap { e => val prefix = e \ "prefix"; e \\ "path" map { prefix.text.trim + _.text.trim } } toList
 
