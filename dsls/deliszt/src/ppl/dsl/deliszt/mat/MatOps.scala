@@ -19,6 +19,28 @@ trait MatOps extends DSLType with Variables {
   object Mat {
     def apply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest]() = mat_obj_n_new[R,C,A](MIntDepth[R], MIntDepth[C])
     def apply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](r: Rep[Int], c: Rep[Int]) = mat_obj_n_new[R,C,A](r,c)
+    def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]]) = mat_obj_new[_1,N,VT](a1)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]]) = mat_obj_new[_2,N,VT](a1,a2)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]]) = mat_obj_new[_3,N,VT](a1,a2,a3)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]]) = mat_obj_new[_4,N,VT](a1,a2,a3,a4)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]]) = mat_obj_new[_5,N,VT](a1,a2,a3,a4,a5)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]]) = mat_obj_new[_6,N,VT](a1,a2,a3,a4,a5,a6)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]]) = mat_obj_new[_7,N,VT](a1,a2,a3,a4,a5,a6,a7)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]]) = mat_obj_new[_8,N,VT](a1,a2,a3,a4,a5,a6,a7,a8)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]]) = mat_obj_new[_9,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]]) = mat_obj_new[_10,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]]) = mat_obj_new[_11,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]],a12 : Rep[Vec[N,VT]]) = mat_obj_new[_12,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]],a12 : Rep[Vec[N,VT]],a13 : Rep[Vec[N,VT]]) = mat_obj_new[_13,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]],a12 : Rep[Vec[N,VT]],a13 : Rep[Vec[N,VT]],a14 : Rep[Vec[N,VT]]) = mat_obj_new[_14,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]],a12 : Rep[Vec[N,VT]],a13 : Rep[Vec[N,VT]],a14 : Rep[Vec[N,VT]],a15 : Rep[Vec[N,VT]]) = mat_obj_new[_15,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]],a12 : Rep[Vec[N,VT]],a13 : Rep[Vec[N,VT]],a14 : Rep[Vec[N,VT]],a15 : Rep[Vec[N,VT]],a16 : Rep[Vec[N,VT]]) = mat_obj_new[_16,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]],a12 : Rep[Vec[N,VT]],a13 : Rep[Vec[N,VT]],a14 : Rep[Vec[N,VT]],a15 : Rep[Vec[N,VT]],a16 : Rep[Vec[N,VT]],a17 : Rep[Vec[N,VT]]) = mat_obj_new[_17,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]],a12 : Rep[Vec[N,VT]],a13 : Rep[Vec[N,VT]],a14 : Rep[Vec[N,VT]],a15 : Rep[Vec[N,VT]],a16 : Rep[Vec[N,VT]],a17 : Rep[Vec[N,VT]],a18 : Rep[Vec[N,VT]]) = mat_obj_new[_18,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]],a12 : Rep[Vec[N,VT]],a13 : Rep[Vec[N,VT]],a14 : Rep[Vec[N,VT]],a15 : Rep[Vec[N,VT]],a16 : Rep[Vec[N,VT]],a17 : Rep[Vec[N,VT]],a18 : Rep[Vec[N,VT]],a19 : Rep[Vec[N,VT]]) = mat_obj_new[_19,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]],a12 : Rep[Vec[N,VT]],a13 : Rep[Vec[N,VT]],a14 : Rep[Vec[N,VT]],a15 : Rep[Vec[N,VT]],a16 : Rep[Vec[N,VT]],a17 : Rep[Vec[N,VT]],a18 : Rep[Vec[N,VT]],a19 : Rep[Vec[N,VT]],a20 : Rep[Vec[N,VT]]) = mat_obj_new[_20,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]],a12 : Rep[Vec[N,VT]],a13 : Rep[Vec[N,VT]],a14 : Rep[Vec[N,VT]],a15 : Rep[Vec[N,VT]],a16 : Rep[Vec[N,VT]],a17 : Rep[Vec[N,VT]],a18 : Rep[Vec[N,VT]],a19 : Rep[Vec[N,VT]],a20 : Rep[Vec[N,VT]],a21 : Rep[Vec[N,VT]]) = mat_obj_new[_21,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20,a21)
+		def apply[VT:Manifest,N<:IntM:Manifest:MVal](a1 : Rep[Vec[N,VT]],a2 : Rep[Vec[N,VT]],a3 : Rep[Vec[N,VT]],a4 : Rep[Vec[N,VT]],a5 : Rep[Vec[N,VT]],a6 : Rep[Vec[N,VT]],a7 : Rep[Vec[N,VT]],a8 : Rep[Vec[N,VT]],a9 : Rep[Vec[N,VT]],a10 : Rep[Vec[N,VT]],a11 : Rep[Vec[N,VT]],a12 : Rep[Vec[N,VT]],a13 : Rep[Vec[N,VT]],a14 : Rep[Vec[N,VT]],a15 : Rep[Vec[N,VT]],a16 : Rep[Vec[N,VT]],a17 : Rep[Vec[N,VT]],a18 : Rep[Vec[N,VT]],a19 : Rep[Vec[N,VT]],a20 : Rep[Vec[N,VT]],a21 : Rep[Vec[N,VT]],a22 : Rep[Vec[N,VT]]) = mat_obj_new[_22,N,VT](a1,a2,a3,a4,a5,a6,a7,a8,a9,a10,a11,a12,a13,a14,a15,a16,a17,a18,a19,a20,a21,a22)
   }
 
   implicit def repMatToMatOps[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Rep[Mat[R,C,A]]) = new matOpsCls(x)
@@ -54,7 +76,7 @@ trait MatOps extends DSLType with Variables {
     def /(y:Rep[A])(implicit a:Arith[A],o:Overloaded1) = mat_divide_scalar(x,y)
   }
 
-  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest]:Rep[Mat[R,C,A]]
+  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](xs: Rep[Vec[C,A]]*):Rep[Mat[R,C,A]]
   def mat_obj_n_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](r: Rep[Int], c: Rep[Int]): Rep[Mat[R,C,A]]
 
   // class defs
@@ -87,18 +109,72 @@ trait MatOpsExp extends MatOps with VariablesExp {
   //////////////////////////////////////////////////
   // implemented via method on real data structure
   
+  case class MatObjNew[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*)(implicit val mM : Manifest[MatImpl[R,C,A]]) extends Def[Mat[R,C,A]] {
+    def r = manifest[R]
+    def vr = implicitly[MVal[R]]
+    def c = manifest[C]
+    def vc = implicitly[MVal[C]]
+    def a = manifest[A]
+  }
+  
   case class MatObjectNNew[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](numRows:Exp[Int],numCols:Exp[Int]) extends Def[Mat[R,C,A]] {
     val mM = manifest[MatImpl[R,C,A]]
+    
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
   }
 
-  case class MatApply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int]) extends Def[A]
+  case class MatApply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int]) extends Def[A] {
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
+  }
 
-  case class MatDCApply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int]) extends Def[A]
+  case class MatDCApply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int]) extends Def[A] {
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
+  }
 
-  case class MatUpdate[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int],y:Exp[A]) extends Def[Unit]
+  case class MatUpdate[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int],y:Exp[A]) extends Def[Unit] {
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
+  }
 
   case class MatTranspose[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x: Exp[Mat[R,C,A]])
-    extends DeliteOpSingleTask(reifyEffectsHere(mat_transpose_impl(x)))
+    extends DeliteOpSingleTask(reifyEffectsHere(mat_transpose_impl(x))) {
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
+  }
+  
+  case class MatGetRow[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x: Exp[Mat[R,C,A]], i: Exp[Int]) extends Def[MatRow[C,A]] {
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
+  }
+
+  case class MatGetCol[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x: Exp[Mat[R,C,A]], i: Exp[Int]) extends Def[MatCol[R,A]] {
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
+  }
   
   case class MatNumRows(x:Exp[Mat[_,_,_]]) extends Def[Int]
 
@@ -113,14 +189,25 @@ trait MatOpsExp extends MatOps with VariablesExp {
     extends DeliteOpSingleTask(reifyEffectsHere(mat_times_vector_impl(x,y)),true) {
 
     val mV = manifest[VecImpl[C,A]]
-    def mev = manifest[A]
-    def aev = implicitly[Arith[A]]
+     
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
+    val aa = implicitly[Arith[A]]
   }
 
   case class MatMultiply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,CC<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[C,CC,A]])
     extends DeliteOpSingleTask(reifyEffectsHere(mat_multiply_impl(x,y)),true) {
 
     val mM = manifest[MatImpl[R,CC,A]]
+    
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
   }
 
   ////////////////////////////////
@@ -129,16 +216,24 @@ trait MatOpsExp extends MatOps with VariablesExp {
     def alloc = Mat[R,C,A](in.numRows, in.numCols)
     val size = in.numRows * in.numCols
 
-    def m = manifest[A]
-    def a = implicitly[Arith[A]]
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
+    val aa = implicitly[Arith[A]]
   }
 
   abstract class MatArithmeticZipWith[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]]) extends DeliteOpZipWith[A,A,A,Mat[R,C,A]] {
     def alloc = Mat[R,C,A](inA.numRows, inA.numCols)
     val size = inA.numRows * inA.numCols
 
-    def m = manifest[A]
-    def a = implicitly[Arith[A]]
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
+    val aa = implicitly[Arith[A]]
   }
 
   case class MatPlus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]])
@@ -177,6 +272,26 @@ trait MatOpsExp extends MatOps with VariablesExp {
     def func = (a,b) => a / b
   }
   
+  case class MatDivideScalar[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](in:Exp[Mat[R,C,A]],y:Exp[A])
+    extends MatArithmeticMap(in) {
+
+    def func = e => e / y
+  }
+  
+  case class MatPlusScalar[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](in:Exp[Mat[R,C,A]],y:Exp[A])
+    extends MatArithmeticMap(in) {
+
+    def func = e => e + y
+  }
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
+    (e match {
+      case MatNumRows(x) => mat_num_rows(f(x))
+      case MatNumCols(x) => mat_num_cols(f(x))
+      case _ => super.mirror(e, f)
+    }).asInstanceOf[Exp[A]] // why??
+  }
+  
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case MatMultiply(a,b) => Nil
     case MatTimes(a,b) => Nil
@@ -211,13 +326,17 @@ trait MatOpsExp extends MatOps with VariablesExp {
 
   ////////////////////
   // object interface
+  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*) = reflectMutable(MatObjNew[R,C,A](vs:_*))
   def mat_obj_n_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](r: Exp[Int], c: Exp[Int]) = reflectMutable(MatObjectNNew[R,C,A](r,c))
 
   ///////////////////
   // class interface
-
+  
   def mat_num_rows(x:Exp[Mat[_,_,_]]) = reflectPure(MatNumRows(x))
   def mat_num_cols(x:Exp[Mat[_,_,_]]) = reflectPure(MatNumCols(x))
+  
+  def row[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](m:Exp[Mat[R,C,A]],a:Exp[Int]) = reflectPure(MatGetRow(m,a))
+  def col[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](m:Exp[Mat[R,C,A]],a:Exp[Int]) = reflectPure(MatGetCol(m,a))
 
   def mat_apply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int]) = reflectPure(MatApply(x,i,j))
   def mat_update[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int],j:Exp[Int],y:Exp[A]) = reflectWrite(x)(MatUpdate(x,i,j,y))
@@ -225,6 +344,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
   def mat_transpose[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Rep[Mat[R,C,A]]) = reflectPure(MatTranspose(x))
 
   def mat_plus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatPlus(x,y))
+  def mat_plus_scalar[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[A]) = reflectPure(MatPlusScalar(x,y))
   def mat_minus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatMinus(x,y))
   def mat_unary_minus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]]) = MatUnaryMinus(x)
 
@@ -234,6 +354,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
   def mat_times_scalar[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[A]) = reflectPure(MatTimesScalar(x,y))
 
   def mat_divide[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[R,C,A]]) = reflectPure(MatDivide(x,y))
+  def mat_divide_scalar[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[A]) = reflectPure(MatDivideScalar(x,y))
 
   //////////////////
   // internal
@@ -257,11 +378,15 @@ trait ScalaGenMatOps extends ScalaGenBase {
 
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
+    case m@MatObjNew(vs @ _*) => emitValDef(sym, remap(m.mM) + "(" + vs.map(quote).reduceLeft(_+","+_) + ")")
     case m@MatObjectNNew(numRows,numCols) => emitValDef(sym,"new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     //case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")
     case MatUpdate(x,i,j,y) => emitValDef(sym,quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
 
+    case MatGetRow(x,i) => emitValDef(sym,quote(x) + ".row(" + quote(i) + ")")
+    case MatGetCol(x,i) => emitValDef(sym,quote(x) + ".col(" + quote(i) + ")")
+    
     case MatNumRows(x) => emitValDef(sym,quote(x) + ".numRows")
     case MatNumCols(x) => emitValDef(sym,quote(x) + ".numCols")
 

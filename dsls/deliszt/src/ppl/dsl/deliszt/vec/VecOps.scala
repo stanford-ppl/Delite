@@ -14,8 +14,8 @@ trait VecOps extends DSLType with Variables {
   this: DeLiszt with MetaInteger =>
 
   object Vec {
-    def apply[N<:IntM:Manifest:MVal,A](i : Rep[Int])(implicit o: Overloaded1) = vec_obj_n_new[N,A](i)
-    def apply[N<:IntM:Manifest:MVal,A]() = vec_obj_n_new[N,A](MIntDepth[N])
+    def apply[N<:IntM:Manifest:MVal,A:Manifest](i : Rep[Int])(implicit o: Overloaded1) = vec_obj_n_new[N,A](i)
+    def apply[N<:IntM:Manifest:MVal,A:Manifest]() = vec_obj_n_new[N,A](MIntDepth[N])
     def apply[A:Manifest](a : Rep[A]) = vec_obj_new[_1,A](a)
 		def apply[A:Manifest](a : Rep[A], b : Rep[A]) = vec_obj_new[_2,A](a,b)
 		def apply[A:Manifest](a : Rep[A], b : Rep[A], c : Rep[A]) = vec_obj_new[_3,A](a,b,c)
@@ -81,14 +81,14 @@ trait VecOps extends DSLType with Variables {
   }
 
   // Language ops
-  def cross[N<:IntM:Manifest:MVal,A:Manifest:Arith](a: Rep[Vec[_3,A]], b: Rep[Vec[_3,A]]) : Rep[Vec[_3,A]]
+  def cross[A:Manifest:Arith](a: Rep[Vec[_3,A]], b: Rep[Vec[_3,A]]) : Rep[Vec[_3,A]]
   def dot[N<:IntM:Manifest:MVal, A:Manifest:Arith](a: Rep[Vec[N,A]],b: Rep[Vec[N,A]]) = {val v = a * b; v.sum}
   def normalize[N<:IntM:Manifest:MVal](a: Rep[Vec[N,Double]]) : Rep[Vec[N,Double]]
   def length[N<:IntM:Manifest:MVal, A:Manifest](a: Rep[Vec[N,A]]) = vec_size(a)
   def outer[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, A:Manifest:Arith](a: Rep[Vec[R,A]], b: Rep[Vec[C,A]]) : Rep[Mat[R,C,A]]
   
-  def vec_obj_new[N<:IntM:Manifest:MVal, A](xs: Rep[A]*): Rep[Vec[N,A]]
-  def vec_obj_n_new[N<:IntM:Manifest:MVal, A](i : Rep[Int]): Rep[Vec[N,A]]
+  def vec_obj_new[N<:IntM:Manifest:MVal, A:Manifest](xs: Rep[A]*): Rep[Vec[N,A]]
+  def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i : Rep[Int]): Rep[Vec[N,A]]
 
   def vec_apply[N<:IntM:Manifest:MVal, A:Manifest](x: Rep[Vec[N, A]], i: Rep[Int]): Rep[A]
   def vec_update[N<:IntM:Manifest:MVal, A:Manifest](x: Rep[Vec[N, A]], i: Rep[Int], v: Rep[A]): Rep[Unit]
@@ -109,7 +109,7 @@ trait VecOps extends DSLType with Variables {
   def vec_sum[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]]): Rep[A]
   def vec_abs[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
   
-  def vec_negate[N<:IntM:Manifest:MVal, A:Manifest](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
+  def vec_negate[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
   //def vec_concat[N<:IntM:Manifest:MVal, M<:IntM:Manifest:MVal, O<:IntM:Manifest:MVal,  A:Manifest](x: Rep[Vec[N,A]], rhs: Rep[Vec[M,A]]): Rep[Vec[O,A]]
 
   def vec_zip_min[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]], y: Rep[Vec[N,A]]): Rep[Vec[N,A]]
@@ -166,9 +166,15 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   }
   
   case class VecNormalize[N<:IntM:Manifest:MVal](x: Exp[Vec[N,Double]])
-    extends DeliteOpSingleTask(reifyEffectsHere(vec_normalize_impl[N,Double](x))) {
+    extends DeliteOpSingleTask(reifyEffectsHere(vec_normalize_impl[N](x))) {
       def n = manifest[N]
       def vn = implicitly[MVal[N]]
+  }
+  
+  case class VecCross[A:Manifest:Arith](x: Exp[Vec[_3,A]], y: Exp[Vec[_3,A]])
+    extends DeliteOpSingleTask(reifyEffectsHere(vec_cross_impl[A](x,y))) {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
   }
 
   ////////////////////////////////
@@ -412,8 +418,8 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   def vec_zip_max[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(new VecZipMax(x,y))
   
   /* Language ops */
-  def cross[A:Arith](a: Exp[Vec[_3,A]], b: Exp[Vec[_3,A]]) : Exp[Vec[_3,A]]
-  def normalize[N<:IntM:Manifest:MVal](a: Exp[Vec[N,Double]]) : Exp[Vec[N,Double]]
+  def cross[A:Manifest:Arith](a: Exp[Vec[_3,A]], b: Exp[Vec[_3,A]]) = reflectPure(VecCross(a,b))
+  def normalize[N<:IntM:Manifest:MVal](a: Exp[Vec[N,Double]]) = reflectPure(VecNormalize(a))
   def outer[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, A:Manifest:Arith](a: Exp[Vec[R,A]], b: Exp[Vec[C,A]]) = reflectPure(VecOuter(a,b))
 }
 
