@@ -1,20 +1,24 @@
 #!/bin/sh
-script="/tmp/$(basename "$0").$(mktemp -u XXXX)"
-cat "$(dirname "$0")/shared" > "$script"
-echo 'try {' >> "$script"
-echo '/\c' >> "$script"
-echo '*\c' >> "$script"
-cat "$0" >> "$script"
-echo '} catch {' >> "$script"
-echo 'case e: Exception => {' >> "$script"
-echo 'var message = "%s".format(if (e.getMessage != null) e.getMessage else e.getCause )' >> "$script"
-echo 'message = "%s%n%s".format(message, "It may help to run delitecfg or manually adjust %s." .format(config.file.getAbsolutePath))' >> "$script"
-echo 'println(message)' >> "$script"
-echo '}' >> "$script"
-echo '}' >> "$script"
-export script_home="$(dirname "$0")"
-export script_name="$(basename "$0")"
-exec scala "$script" "$@"
+script_path=$0
+follow() { echo "$(readlink "$({ cd $(dirname "$1"); pwd -P; })/$(basename "$1")")"; }
+while [ -h "$script_path" ]; do script_path="$(follow "$script_path")"; done
+export script_home="$(dirname "$script_path")"
+export script_name="$(basename "$script_path")"
+synthetic="/tmp/$script_name.$(mktemp -u XXXX)"
+touch "$synthetic"
+cat "$script_home/shared" > "$synthetic"
+echo 'try {' >> "$synthetic"
+echo '/\c' >> "$synthetic"
+echo '*\c' >> "$synthetic"
+cat "$0" >> "$synthetic"
+echo '} catch {' >> "$synthetic"
+echo 'case e: Exception => {' >> "$synthetic"
+echo 'var message = "%s".format(if (e.getMessage != null) e.getMessage else e.getCause )' >> "$synthetic"
+echo 'message = "%s%n%s".format(message, "It may help to run delitecfg or manually adjust %s." .format(config.file.getAbsolutePath))' >> "$synthetic"
+echo 'println(message)' >> "$synthetic"
+echo '}' >> "$synthetic"
+echo '}' >> "$synthetic"
+exec scala "$synthetic" "$@"
 !#*/
 
 // unfortunately, intel mkl libs cannot be linked statically, since the distribution provides neither libmkl_mc3.a nor libmkl_def.a
