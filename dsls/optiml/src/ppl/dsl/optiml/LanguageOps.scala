@@ -465,9 +465,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     def func = (v) => (zero._1, v)
     
     def reduceSeq = (a,b) => (reifyEffects(if (co(b._2)) { if (a._2 >= 0) a._1 += fu(b._2) else fu(b._2).mutable } else a._1), 
-                                    reifyEffects(if (co(b._2)) b._2 else a._2 )) // would not work in parallel...
+                              reifyEffects(if (co(b._2)) b._2 else a._2 )) // would not work in parallel...
     
-    def reducePar = (a,b) => (if (b._2 >= 0) { if (a._2 >= 0) a._1 += b._1 else b._1.mutable } else a._1, if (b._2 >= 0) b._2 else a._2)
+    def reducePar = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += b._1 else b._1.mutable } else a._1), 
+                              reifyEffects(if (b._2 >= 0) b._2 else a._2))
     
 /*
     def step = (a,v) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
