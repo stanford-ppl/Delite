@@ -17,10 +17,27 @@ export script_name="$(basename "$0")"
 exec scala "$script" "$@"
 !#*/
 
-classpath += config.optiml_classes +: config.framework_classes +: config.lms_classes
+args = javaopt("delite.build.dir", "generated") +: args
+args = javaopt("delite.home.dir", config.delite_home) +: args
+var (java_opts, other_opts, script_args) = parse_args(args)
+var runner_opts = other_opts filter { arg => arg.startsWith("-R") }
+if (runner_opts.length == 0) sys.error("Specify a runner to be used during DSL compilation phase (-R<classname>).")
+var runner = List(runner_opts.head.substring(2): Arg)
+var runner_args = runner_opts.tail map { arg => new Arg(arg.substring(2)) }
+other_opts = other_opts filterNot { arg => arg.startsWith("-R") }
+if (windows) env("JAVA_OPTS") = java_opts map { arg => wrap(arg) } mkString " "
 
-var java_opts = new Args(List())
-args takeWhile { arg => arg.startsWith("-") && arg != "-" } foreach { arg => java_opts = java_opts :+ "%s".format(arg) }
-env("JAVA_OPTS") = java_opts map { java_opt => wrapCommandLineArgument(java_opt) } mkString " "
-args = args dropWhile { arg => arg.startsWith("-") && arg != "-" } dropWhile { arg => arg == "-"}
-exec(config.scala_virtualized_compiler)
+println("(Phase one) Scala compilation...")
+args = java_opts ++ other_opts ++ script_args
+classpath = env_classpath + config.optiml_classes + config.framework_classes + config.lms_classes
+val (_, lines1) = run(config.scala_virtualized_compiler)
+if (lines1.length > 0) sys.exit(1)
+println("%s%n".format("Successfully compiled"))
+
+println("(Phase two) DSL compilation...")
+args = java_opts ++ other_opts ++ runner ++ runner_args
+classpath = env_classpath + config.optiml_classes + config.framework_classes + config.lms_classes + "."
+val (_, lines2) = run(config.scala_virtualized_interpreter)
+if (lines2.length > 2) sys.exit(1)
+println("%s".format("Successfully compiled"))
+

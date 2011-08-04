@@ -17,18 +17,6 @@ export script_name="$(basename "$0")"
 exec scala "$script" "$@"
 !#*/
 
-args = javaopt("delite.code.cache.home", "generatedCache") +: args
-args = javaopt("delite.home", config.delite_home) +: args
-classpath = config.runtime_classes +: config.scala_vanilla_library_jar +: config.scala_vanilla_compiler_jar
-
-// to enable BLAS on Windows, you don't need to do anything
-// if your application was staged with BLAS enabled, delite runtime will automatically use BLAS
-
-// to enable BLAS on Linux / Mac OS X, uncomment the lines below:
-//args = javaopt("blas.init", "source /opt/intel/bin/compilervars.sh intel64") +: args
-// or invoke delite as follows:
-//delite "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" out.deg
-
 // unfortunately, intel mkl libs cannot be linked statically, since the distribution provides neither libmkl_mc3.a nor libmkl_def.a
 // that's why, unlike on Windows, we've got to either hardcode libpaths or provide them every time when running delite
 // this code presents a shortcut that hopefully simplifies the latter scenario
@@ -55,8 +43,12 @@ if (unix) {
   }
 }
 
-args = Array()
-argv takeWhile { arg => arg.startsWith("-") && arg != "-" } foreach { arg => args = args :+ arg }
-args = args :+ "ppl.delite.runtime.Delite"
-argv dropWhile { arg => arg.startsWith("-") && arg != "-" } dropWhile { arg => arg == "-"} foreach { arg => args = args :+ arg }
+args = javaopt("delite.code.cache.home", "generatedCache") +: args
+args = javaopt("delite.home", config.delite_home) +: args
+var (java_opts, other_opts, script_args) = parse_args(args)
+var runtime = List("ppl.delite.runtime.Delite": Arg)
+
+args = java_opts ++ other_opts ++ runtime ++ script_args
+classpath = env_classpath + config.runtime_classes + config.scala_vanilla_library_jar + config.scala_vanilla_compiler_jar
 exec("java")
+

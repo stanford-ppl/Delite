@@ -19,25 +19,12 @@ exec scala "$script" "$@"
 
 args = javaopt("delite.build.dir", "generated") +: args
 args = javaopt("delite.home.dir", config.delite_home) +: args
-classpath += config.optiml_classes +: config.framework_classes +: config.lms_classes +: new Path(".")
+var (java_opts, other_opts, script_args) = parse_args(args)
+if (windows) env("JAVA_OPTS") = java_opts map { arg => wrap(arg) } mkString " "
 
-// to enable BLAS on Windows, uncomment the lines below:
-//args = javaopt("blas.home", System.getenv("ICPP_COMPILER12")) +: args
-//args = javaopt("blas.init", """call "%s\bin\ipsxe-comp-vars.bat" intel64""".format(System.getenv("ICPP_COMPILER12"))) +: args
-// or invoke delites as follows (note the slash that supercedes variable expansion for blas.home!):
-//delites "-Dblas.home=%ICPP_COMPILER12%\" "-Dblas.init=call \"%ICPP_COMPILER12%\bin\ipsxe-comp-vars.bat\" intel64" HelloWorldRunner
+args = java_opts ++ other_opts ++ script_args
+classpath = env_classpath + config.optiml_classes + config.framework_classes + config.lms_classes + "."
+val (_, lines) = run(config.scala_virtualized_interpreter)
+if (lines.length > 2) sys.exit(1)
+println("%s".format("Successfully compiled"))
 
-// to enable BLAS on Linux / Mac OS X, uncomment the lines below:
-//args = javaopt("blas.home", "/opt/intel/") +: args
-//args = javaopt("blas.init", "source /opt/intel/bin/compilervars.sh intel64") +: args
-// or invoke delites as follows:
-//delites "-Dblas.home=/opt/intel" "-Dblas.init=source /opt/intel/bin/compilervars.sh intel64" HelloWorldRunner
-
-if (windows) {
-  var java_opts = new Args(List())
-  args takeWhile { arg => arg.startsWith("-") && arg != "-" } foreach { arg => java_opts = java_opts :+ "%s".format(arg) }
-  env("JAVA_OPTS") = java_opts map { java_opt => wrapCommandLineArgument(java_opt) } mkString " "
-  args = args dropWhile { arg => arg.startsWith("-") && arg != "-" } dropWhile { arg => arg == "-" }
-}
-
-exec(config.scala_virtualized_interpreter)
