@@ -1,6 +1,7 @@
 package ppl.dsl.deliszt.datastruct.scala
 
 import collection.mutable.ArrayBuilder
+import collection.immutable.Range
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -11,9 +12,7 @@ import collection.mutable.ArrayBuilder
  */
 
 class BoundarySetImpl[MO<:MeshObj](implicit moc: MeshObjConstruct[MO]) extends MeshSet[MO] with MeshObjImpl {
-  var ids = ArrayBuilder.make[Int]()
-  var ranges : Array[(Int,Int)] = null
-  var sizes : Array[Int] = null
+  val _ranges = ArrayBuilder.make[Range]
   var data : Array[Int] = null
 
   def apply(i : Int) = {
@@ -29,36 +28,17 @@ class BoundarySetImpl[MO<:MeshObj](implicit moc: MeshObjConstruct[MO]) extends M
     data.length
   }
 
-  def add(i: Int) = {ids += i}
   def freeze() {
-    data = ids.result().sorted
-    ids = null
+    val ids = ArrayBuilder.make[Int]
 
-    val rangeBuilder = ArrayBuilder.make[(Int,Int)]()
-    val sizeBuilder = ArrayBuilder.make[Int]()
-
-    if(data.size > 0) {
-      var start = data.apply(0)
-      var cur = start + 1
-      var i = 1
-      while(i < data.size) {
-        val next = data.apply(i)
-        if(next != cur) {
-          rangeBuilder += ((start,cur))
-          sizeBuilder += cur - start
-          start = next
-          cur = start
-        }
-
-        cur += 1
-      }
-      rangeBuilder += ((start,cur))
-      sizeBuilder += cur - start
+    for(range <- _ranges.result) {
+      ids ++= range
     }
 
-    ranges = rangeBuilder.result()
-    sizes = sizeBuilder.result()
+    data = ids.result
   }
 
-  def add(start: Int, end: Int) = {}
+  def add(start: Int, end: Int) = {
+    _ranges += start until end
+  }
 }

@@ -29,4 +29,13 @@ class MeshLoader {
 
   @native
   def loadMesh(file : String) : Mesh = null
+
+  def loadBoundaries[MO<:MeshObj:MeshObjConstruct](name : String) : MeshSet[MO] = {
+    val bs = new BoundarySetImpl[MO]
+    _loadBoundaries(name, bs)
+    bs
+  }
+
+  @native
+  def _loadBoundaries[MO<:MeshObj:MeshObjConstruct](name : String, bs : BoundarySetImpl[MO]) : MeshSet[MO] = null
 }

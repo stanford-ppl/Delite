@@ -61,8 +61,8 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
     def empty: Rep[T] = arith.empty
     def zero: Rep[T] = arith.zero(lhs)
 
-    def min(rhs: Rep[T]) = arith.min(lhs, rhs)
-    def max(rhs: Rep[T]) = arith.max(lhs, rhs)
+    def min(rhs: Rep[T]): Rep[T] = arith.min(lhs, rhs)
+    def max(rhs: Rep[T]): Rep[T] = arith.max(lhs, rhs)
   }
 
 
@@ -246,10 +246,6 @@ trait ArithOpsExpOpt extends ArithOpsExp {
     case _ => super.arith_times(lhs, rhs)
   }
   override def arith_negate[T: Manifest : Numeric](lhs: Exp[T]): Exp[T] = lhs match {
-    case Const(x) => unit(implicitly[Numeric[T]].negate(x))
-    case _ => super.arith_negate(lhs)
-  }
-  override def arith_min[T: Manifest : Numeric](lhs: Exp[T]): Exp[T] = lhs match {
     case Const(x) => unit(implicitly[Numeric[T]].negate(x))
     case _ => super.arith_negate(lhs)
   }
