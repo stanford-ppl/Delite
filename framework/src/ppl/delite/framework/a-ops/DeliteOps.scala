@@ -927,12 +927,12 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     }
   }
 
-  def emitReduceTupleElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceTupleElem[_,_], prefixSym: String = "", parallel: Boolean = false)(implicit stream: PrintWriter) {
+  def emitReduceTupleElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceTupleElem[_,_], prefixSym: String = "")(implicit stream: PrintWriter) {
     if (elem.cond.nonEmpty){
       sys.error("tuple reduce with external conditions not implemented!")
     }
     else {
-      emitReductionTuple(op, sym, elem, prefixSym, parallel)
+      emitReductionTuple(op, sym, elem, prefixSym)
     }
   }
   
@@ -956,9 +956,9 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     stream.println(prefixSym + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)))    
   }
 
-  def emitReductionTuple(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceTupleElem[_,_], prefixSym: String, parallel: Boolean)(implicit stream: PrintWriter) {
-    val rV = if (parallel) elem.rVPar else elem.rVSeq
-    val rFunc = if (parallel) elem.rFuncPar else elem.rFuncSeq
+  def emitReductionTuple(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceTupleElem[_,_], prefixSym: String)(implicit stream: PrintWriter) {
+    val rV = elem.rVSeq
+    val rFunc = elem.rFuncSeq
     stream.println("val " + quote(rV._1._1) + " = " + prefixSym + quote(sym) + "  ")
     stream.println("val " + quote(rV._1._2) + " = " + prefixSym + quote(sym) + "_2")
     stream.println("val " + quote(rV._2._1) + " = " + quote(getBlockResult(elem.func._1)))
@@ -1247,7 +1247,15 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println(/*{*/"}")
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         // stream.println("assert(false, \"TODO: tuple reduce\")")
-        emitReduceTupleElem(op, sym, elem, "__act.", true)
+        val rV = elem.rVPar
+        val rFunc = elem.rFuncPar
+        stream.println("val " + quote(rV._1._1) + " = " + "__act." + quote(sym) + "  ")
+        stream.println("val " + quote(rV._1._2) + " = " + "__act." + quote(sym) + "_2")
+        stream.println("val " + quote(rV._2._1) + " = " + "rhs." + quote(sym) + "  ")
+        stream.println("val " + quote(rV._2._2) + " = " + "rhs." + quote(sym) + "_2") 
+        emitFatBlock(List(rFunc._1, rFunc._2))
+        stream.println("__act." + quote(sym) + "   = " + quote(getBlockResult(rFunc._1)))
+        stream.println("__act." + quote(sym) + "_2 = " + quote(getBlockResult(rFunc._2)))
     }
     stream.println(/*{*/"}")
     // scan/postprocess follows
