@@ -18,6 +18,8 @@ trait TPCH extends OptiQLApplication {
   val debug = true
 
   def main() = {
+  
+  
     //println("TPCH style benchmarking")
     if (args.length < 1) printUsage
     
@@ -27,7 +29,9 @@ trait TPCH extends OptiQLApplication {
     //load TPCH data
     val lineItems = TPCH.loadLineItems(tpchDataPath)
 	tic(lineItems)
-    val res = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
+    val res = lineItems Select(e => new Row { val shipDate = e.shipDate  })
+    
+    /* Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
 	    val returnFlag = e.key._1
         val lineStatus = e.key._2
 		val sumQty = e.Sum(_.quantity)
@@ -40,10 +44,12 @@ trait TPCH extends OptiQLApplication {
 		val count = e.Count
 		//hack
 		ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-	}) 
+	}) */
 	toc(res)
     //lineItems.printAsTable()
     res.printAsTable()
+    
+    
 	
   }
   
