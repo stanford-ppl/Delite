@@ -138,6 +138,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar)(kstream)
         kstream.println(bodyString.toString)
         gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar)(kstream)
+        
+        if (hasOutputSlotTypes)
+          gen.emitFatNodeKernelExtra(sym, rhs)(kstream) // activation record class declaration
 
         // record that this kernel was successfully generated
         supportedTargets += gen.toString

@@ -130,7 +130,8 @@ abstract class GPUExecutableGenerator {
       for (dep <- op.getDependencies) { //foreach dependency
         if(!awaited.contains(dep)) { //this dependency does not yet exist for this resource
           awaited += dep
-          writeGetter(dep, out) //get to synchronize
+          for (sym <- dep.getOutputs)
+            writeGetter(dep, sym, location, out) //get to synchronize
         }
       }
       //get kernel inputs (dependencies that could require a memory transfer)
@@ -185,7 +186,8 @@ abstract class GPUExecutableGenerator {
         //sync output copy with kernel completion
         out.append("addEvent(kernelStream, d2hStream);\n")
         //write a setter
-        writeSetter(op, location, out)
+        for (sym <- op.getOutputs)
+          writeSetter(op, sym, location, out)
       }
       writeDataFrees(op, out, available)
     }
@@ -345,7 +347,7 @@ abstract class GPUExecutableGenerator {
     out.append(");\n")
   }
 
-  protected def writeGetter(op: DeliteOP, out: StringBuilder) {
+  protected def writeGetter(op: DeliteOP, sym: String, location: Int, out: StringBuilder) {
     //get data from CPU
     if (op.outputType != "Unit") { //skip the variable declaration if return type is "Unit"
       out.append(getJNIType(op.outputType))
@@ -360,7 +362,9 @@ abstract class GPUExecutableGenerator {
     out.append(",env->GetStaticMethodID(cls")
     out.append(op.scheduledResource)
     out.append(",\"get")
-    out.append(op.id) //scala get method
+    out.append(location)
+    out.append('_')
+    out.append(getScalaSym(op, sym))
     out.append("\",\"()")
     out.append(getJNIOutputType(op.outputType))
     out.append("\"));\n")
@@ -398,7 +402,7 @@ abstract class GPUExecutableGenerator {
     for ((input,name) <- op.getInputs) {
       if (!first) out.append(',')
       first = false
-      if (!isPrimitiveType(input.outputType)) out.append('*') //TODO: this is awkward
+      if (!isPrimitiveType(input.outputType)) out.append('*')
       out.append(getSymGPU(input))
     }
   }
@@ -411,7 +415,7 @@ abstract class GPUExecutableGenerator {
     }
   }
 
-  protected def writeSetter(op: DeliteOP, location: Int, out: StringBuilder) {
+  protected def writeSetter(op: DeliteOP, sym: String, location: Int, out: StringBuilder) {
     for ((in,sym) <- op.cudaMetadata.inputs.keys) {
       if (op.getMutableInputs.contains(in,sym)) {
         //copy any mutated inputs from GPU to CPU
@@ -444,7 +448,7 @@ abstract class GPUExecutableGenerator {
     out.append(",env->GetStaticMethodID(cls")
     out.append(location)
     out.append(",\"set")
-    out.append(op.id)
+    out.append(getScalaSym(op, sym))
     out.append("\",\"(")
     out.append(getJNIArgType(op.outputType))
     out.append(")V\"),")
@@ -545,7 +549,6 @@ abstract class GPUExecutableGenerator {
     out.append('\n')
   }
 
-  //TODO: GPU generation should support multiple outputs and naming conventions modified accordingly
   protected def getSymCPU(op: DeliteOP): String = {
     "xC"+op.id
   }
@@ -560,6 +563,10 @@ abstract class GPUExecutableGenerator {
 
   protected def getSymGPU(name: String): String = {
     "xG"+name
+  }
+
+  protected def getScalaSym(op: DeliteOP, name: String): String = {
+    "x"+name
   }
 
   protected def getJNIType(scalaType: String): String = {
@@ -696,13 +703,15 @@ abstract class GPUScalaExecutableGenerator extends ExecutableGenerator {
 
   protected def writeOuterSet(list: ArrayBuffer[DeliteOP], out: StringBuilder) {
     for (op <- list) {
-      out.append("def set")
-      out.append(op.id)
-      out.append("(result : ")
-      out.append(op.outputType)
-      out.append(") = ")
-      out.append(getSync(op))
-      out.append(".set(result)\n")
+      for (sym <- op.getOutputs) {
+        out.append("def set")
+        out.append(getSym(op, sym))
+        out.append("(result : ")
+        out.append(op.outputType(sym))
+        out.append(") = ")
+        out.append(getSync(op, sym))
+        out.append(".set(result)\n")
+      }
     }
   }
 }

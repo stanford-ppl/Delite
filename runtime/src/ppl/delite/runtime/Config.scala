@@ -31,12 +31,14 @@ object Config {
 
   val useFsc: Boolean = if (System.getProperty("delite.usefsc") == null) false else true
 
+  val noRegenerate: Boolean = if (System.getProperty("delite.debug.noregenerate") == null) false else true
+
   /***********
    *	Cost Modeling
    */
   
-	val whileCostThreshold: Int = System.getProperty("delite.while.threshold", "1000").toInt
-	val loopCostThreshold: Int = System.getProperty("delite.loop.threshold", "1000").toInt
+	val whileCostThreshold: Int = System.getProperty("delite.while.threshold", "-1").toInt
+	val loopCostThreshold: Int = System.getProperty("delite.loop.threshold", "-1").toInt
 	 
   /***********
     * Statistics and Metrics Section

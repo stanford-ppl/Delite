@@ -98,6 +98,7 @@ object Delite {
         // check if we are timing another component
         if(Config.dumpStatsComponent != "all")
           PerformanceTimer.print(Config.dumpStatsComponent)
+	System.gc()
       }
 
       if(Config.dumpStats)

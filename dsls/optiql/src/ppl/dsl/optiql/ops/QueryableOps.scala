@@ -94,10 +94,11 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]) = QueryableGroupingToDataTable(g)
   def queryable_grouping_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[TKey] = QueryableGroupingKey(g)
   
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
-    case QueryableSum(s,ss) => queryable_sum(f(s), ss).asInstanceOf[Exp[A]] //todo fix asInstanceOf
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case QueryableSum(s,ss) => queryable_sum(f(s), ss)
+    case QueryableWhere(s,p) => queryable_where(f(s), p)
     case _ => super.mirror(e,f)
-  }
+  }).asInstanceOf[Exp[A]] //todo fix asInstanceOf
   
   override def syms(e: Any): List[Sym[Any]] = e match { 
     //case QueryableGroupBy(s,v,k) => syms(s) 

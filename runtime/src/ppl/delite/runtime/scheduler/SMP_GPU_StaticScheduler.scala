@@ -29,16 +29,20 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with ParallelUtiliza
     scheduleFlat(graph)
   }
 
-  protected def scheduleSequential(graph: DeliteTaskGraph) 
-		= throw new UnsupportedOperationException("scheduleSequential is not yet implemented for SMP_GPU_StaticScheduler")
+  protected def scheduleSequential(graph: DeliteTaskGraph) = scheduleFlat(graph, true)
 
-  protected def scheduleFlat(graph: DeliteTaskGraph) {
+  protected def scheduleFlat(graph: DeliteTaskGraph) = scheduleFlat(graph, false)
+
+  protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
     val opQueue = new ArrayDeque[DeliteOP]
     val schedule = PartialSchedule(numCPUs + numGPUs)
     enqueueRoots(graph, opQueue)
     while (!opQueue.isEmpty) {
       val op = opQueue.remove
-      scheduleOne(op, graph, schedule)
+      if (sequential)
+        addSequential(op, graph, schedule, 0)
+      else
+        scheduleOne(op, graph, schedule)
       enqueueRoots(graph, opQueue)
     }
     ensureScheduled(graph)
@@ -53,8 +57,7 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with ParallelUtiliza
           if (op.isDataParallel)
             splitGPU(op, schedule)
           else {
-            schedule(gpu).add(op)
-            op.scheduledResource = gpu
+            scheduleOn(op, schedule, gpu)
           }
         }
         else if (op.variant != null && numGPUs > 0) { //kernel could be partially GPUable
@@ -66,7 +69,6 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with ParallelUtiliza
           else
             cluster(op, schedule)
         }
-        op.isScheduled = true
       }
     }
   }
@@ -80,8 +82,7 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with ParallelUtiliza
     val deps = op.getDependencies
     while (i < numCPUs && notDone) {
       if (deps.contains(schedule(i).peekLast)) {
-        schedule(i).add(op)
-        op.scheduledResource = i
+        scheduleOn(op, schedule, i)
         notDone = false
         if (nextThread == i) nextThread = (nextThread + 1) % numCPUs
       }
@@ -89,18 +90,14 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with ParallelUtiliza
     }
     //else submit op to next thread in the rotation (round-robin)
     if (notDone) {
-      schedule(nextThread).add(op)
-      op.scheduledResource = nextThread
+      scheduleOn(op, schedule, nextThread)
       nextThread = (nextThread + 1) % numCPUs
     }
-    op.isScheduled = true
   }
 
   private def splitGPU(op: DeliteOP, schedule: PartialSchedule) {
     val chunk = OpHelper.splitGPU(op)
-    schedule(gpu).add(chunk)
-    chunk.scheduledResource = gpu
-    chunk.isScheduled = true
+    scheduleOn(chunk, schedule, gpu)
   }
 
 }
