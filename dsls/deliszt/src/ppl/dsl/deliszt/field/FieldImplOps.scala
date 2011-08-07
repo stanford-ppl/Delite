@@ -15,7 +15,7 @@ import ppl.dsl.deliszt.datastruct.scala._
 
 trait FieldImplOps { this: DeLiszt =>
   def field_obj_const_impl[MO<:MeshObj:Manifest,VT:Manifest](v : Rep[VT]): Rep[Field[MO,VT]]
-  def field_obj_label_impl[MO<:MeshObj:Manifest,VT:Manifest](url : Rep[String]): Rep[Field[MO,VT]]
+  def field_obj_url_impl[MO<:MeshObj:Manifest,VT:Manifest](url : Rep[String]): Rep[Field[MO,VT]]
 }
 
 trait FieldImplOpsStandard extends FieldImplOps {
@@ -33,7 +33,7 @@ trait FieldImplOpsStandard extends FieldImplOps {
     v
   }
 
-  def field_obj_label_impl[MO<:MeshObj:Manifest,VT:Manifest](url: Rep[String]) = {
+  def field_obj_url_impl[MO<:MeshObj:Manifest,VT:Manifest](url: Rep[String]) = {
     val v = Field[MO,VT]()
     val lf = label[MO,VT](url)
 

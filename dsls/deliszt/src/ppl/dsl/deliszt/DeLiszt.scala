@@ -85,6 +85,7 @@ trait DeLisztCompiler extends DeLiszt with ListOps {  // FieldPrivateOps, MeshPr
 trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with LanguageOpsExp
   with LanguageImplOpsStandard
   with MeshSetOpsExp
+  with MeshPrivateOpsExp
   with ArithOpsExpOpt
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp
   with FieldOpsExp with FieldImplOpsStandard with MatOpsExp with MatImplOpsStandard with VecOpsExp with VecImplOpsStandard {
