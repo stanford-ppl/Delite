@@ -73,25 +73,8 @@ class ConditionGenerator(condition: OP_Condition, location: Int) extends NestedG
     ScalaCompile.addSource(out.toString, kernelName)
   }
 
-  override protected def getSync(op: DeliteOP, name: String) = {
-    if (condition.predicateGraph.ops.contains(op))
-      "Result_" + baseId + "P_" + name
-    else if (condition.thenGraph.ops.contains(op))
-      "Result_" + baseId + "T_" + name
-    else
-      "Result_" + baseId + "E_" + name
-  }
-
-  override protected def getSym(op: DeliteOP, name: String) = {
-    if (condition.predicateGraph.ops.contains(op))
-      "x" + baseId + "P_" + name
-    else if (condition.thenGraph.ops.contains(op))
-      "x" + baseId + "T_" + name
-    else if (condition.elseGraph.ops.contains(op))
-      "x" + baseId + "E_" + name
-    else //input
-      "x" + baseId + "_" + name
-  }
+  override protected def getSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
+  override protected def getSync(op: DeliteOP, name: String) = ConditionCommon.getSync(condition, baseId, op, name)
 
   protected def executableName = "Condition_" + baseId + "_"
 
@@ -176,16 +159,7 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
     out.toString
   }
 
-  override protected def getScalaSym(op: DeliteOP, name: String) = {
-    if (condition.predicateGraph.ops.contains(op))
-      "x" + baseId + "P_" + name
-    else if (condition.thenGraph.ops.contains(op))
-      "x" + baseId + "T_" + name
-    else if (condition.elseGraph.ops.contains(op))
-      "x" + baseId + "E_" + name
-    else //input
-      "x" + baseId + "_" + name
-  }
+  override protected def getScalaSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
 
   protected def executableName = "Condition_" + baseId + "_"
 
@@ -193,5 +167,22 @@ class GPUConditionGenerator(condition: OP_Condition, location: Int) extends GPUN
 
 class GPUScalaConditionGenerator(condition: OP_Condition, location: Int) extends GPUScalaNestedGenerator(condition, location) {
   protected def executableName = "Condition_" + baseId + "_"
+  override protected def getSym(op: DeliteOP, name: String) = ConditionCommon.getSym(condition, baseId, op, name)
+  override protected def getSync(op: DeliteOP, name: String) = ConditionCommon.getSync(condition, baseId, op, name)
 }
-        
+
+private[codegen] object ConditionCommon {
+  private def suffix(condition: OP_Condition, baseId: String, op: DeliteOP, name: String) = {
+    if (condition.predicateGraph.ops.contains(op))
+      baseId + "P_" + name
+    else if (condition.thenGraph.ops.contains(op))
+      baseId + "T_" + name
+    else if (condition.elseGraph.ops.contains(op))
+      baseId + "E_" + name
+    else //input
+      baseId + "_" + name
+  }
+
+  def getSym(condition: OP_Condition, baseId: String, op: DeliteOP, name: String) = "x" + suffix(condition, baseId, op, name)
+  def getSync(condition: OP_Condition, baseId: String, op: DeliteOP, name: String) = "Result_" + suffix(condition, baseId, op, name)
+}

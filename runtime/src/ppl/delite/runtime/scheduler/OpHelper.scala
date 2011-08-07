@@ -20,6 +20,7 @@ object OpHelper {
     case multi: OP_MultiLoop => MultiLoop_SMP_Array_Header_Generator.makeHeader(multi, numChunks, graph)
     case foreach: OP_Foreach => Foreach_SMP_Array_Header_Generator.makeHeader(foreach, graph)
     case single: OP_Single => error("OP Single cannot be expanded")
+    case external: OP_External => error("OP External cannot be expanded")
     case other => error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 
@@ -27,6 +28,7 @@ object OpHelper {
     case multi: OP_MultiLoop => MultiLoop_SMP_Array_Generator.makeChunk(multi, chunkIdx, numChunks, kernelPath)
     case foreach: OP_Foreach => Foreach_SMP_Array_Generator.makeChunk(foreach, chunkIdx, numChunks, kernelPath)
     case single: OP_Single => error("OP Single cannot be split")
+    case external: OP_External => error("OP External cannot be split")
     case other => error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 
@@ -34,6 +36,7 @@ object OpHelper {
     case multi: OP_MultiLoop => multi.setKernelName(multi.function); multi
     case foreach: OP_Foreach => foreach.setKernelName(foreach.function); foreach
     case single: OP_Single => error("OP Single cannot be split")
+    case external: OP_External => error("OP External cannot be split")
     case other => error("OP type not recognized: " + other.getClass.getSimpleName)
   }
 }

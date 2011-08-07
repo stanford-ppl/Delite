@@ -43,6 +43,7 @@ object DeliteTaskGraph {
       val opType = getFieldString(op, "type")
       opType match {
         case "SingleTask" => processCommon(op, "OP_Single")
+        case "External" => processCommon(op, "OP_External")
         case "MultiLoop" => processCommon(op, "OP_MultiLoop")
         case "Foreach" => processCommon(op, "OP_Foreach")
         case "Conditional" => processIfThenElseTask(op)
@@ -126,6 +127,7 @@ object DeliteTaskGraph {
 
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
+      case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
       case "OP_MultiLoop" => 
 			  val size = getFieldString(op, "sizeValue")
 				val sizeIsConst = getFieldString(op, "sizeType") == "const"				
@@ -364,7 +366,7 @@ object DeliteTaskGraph {
   }
 
   def extractCudaMetadata(superOp: OP_Nested, innerGraph: DeliteTaskGraph, outerGraph: DeliteTaskGraph) {
-    superOp.cudaMetadata.output = innerGraph.result._1.cudaMetadata.output
+    superOp.cudaMetadata.outputs = innerGraph.result._1.cudaMetadata.outputs
     for (op <- innerGraph._ops.values; key <- op.cudaMetadata.inputs.keys) {
       try {
         val inOp = getOp(key._2)(outerGraph)
@@ -408,12 +410,6 @@ object DeliteTaskGraph {
     val metadataMap = getFieldMap(metadataAll, "cuda")
     val cudaMetadata = newop.cudaMetadata
 
-    //check library call
-    cudaMetadata.libCall = metadataMap.get("gpuLibCall") match {
-      case Some(x) => x
-      case None => null
-    }
-
     for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
       val inputMap = input.asInstanceOf[Map[String,Any]]
       val sym = inputMap.keys.head
@@ -438,8 +434,9 @@ object DeliteTaskGraph {
     }
 
     for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) { //temporaries list
+      val key = (temp.asInstanceOf[Map[String,Any]].keys.head)
       val value = (temp.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
-      val data = cudaMetadata.newTemp
+      val data = cudaMetadata.newTemp(key)
       data.resultType = value.head
       data.func = value.tail.head
       for (sym <- value.tail.tail.head.asInstanceOf[List[String]].reverse) {
@@ -447,19 +444,20 @@ object DeliteTaskGraph {
       }
     }
 
-    //output allocation
+    //output allocation  //TODO: support multiple outputs
     metadataMap.get("gpuOutput") match {
       case None => //do nothing
       case Some(field) => field match {
         case out: Map[Any,Any] => {
+          val output = cudaMetadata.newOutput(out.keys.head)
           val outList = out.values.head.asInstanceOf[List[Any]]
-          cudaMetadata.output.resultType = outList.head
-          cudaMetadata.output.func = outList.tail.head
+          output.resultType = outList.head
+          output.func = outList.tail.head
           for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
-            cudaMetadata.output.inputs ::= (getOpLike(sym), sym)
+            output.inputs ::= (getOpLike(sym), sym)
           }
           //output copy
-          cudaMetadata.output.funcReturn = outList.tail.tail.tail.head
+          output.funcReturn = outList.tail.tail.tail.head
         }
         case err => mapNotFound(err)
       }
@@ -472,11 +470,13 @@ object DeliteTaskGraph {
       for (sym <- list.tail.head.asInstanceOf[List[String]].reverse) data.inputs ::= (getOpLike(sym), sym)
     }
 
-    fill("gpuBlockSizeX") //threads/block - x
-    fill("gpuBlockSizeY") //threads/block - y
-    fill("gpuBlockSizeZ") //threads/block - z
-    fill("gpuDimSizeX") //blocks in grid - x
-    fill("gpuDimSizeY") //blocks in grid - y
+    if (!newop.isInstanceOf[OP_External]){
+      fill("gpuBlockSizeX") //threads/block - x
+      fill("gpuBlockSizeY") //threads/block - y
+      fill("gpuBlockSizeZ") //threads/block - z
+      fill("gpuDimSizeX") //blocks in grid - x
+      fill("gpuDimSizeY") //blocks in grid - y
+    }
 
   }
 

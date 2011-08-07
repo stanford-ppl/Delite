@@ -33,7 +33,7 @@ abstract class OP_Nested extends DeliteOP {
       dep.addConsumer(this)
     }
     for (in <- inputs.reverse) {
-      this.addInput(in, in.id)
+      this.addInput(in, in.getOutputs.head)
     }
     scheduledResource = resource
 
