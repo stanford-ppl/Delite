@@ -17,12 +17,22 @@ trait CudaGenExternalBase extends GenericGenExternal with CudaGenBase {
   import IR._
 
   val hdrExt = "h"
-  // TODO: if we have multiple CUDA libraries, they have to share this header file, so the logic in GenericGenExternal needs to accomodate that..
-  override def hdrName(lib: ExternalLibrary) = "library" // runtime convention with GPUExecutableGenerator (better way to do this?)
-  
+  lazy val globalInterfaceStream = new PrintWriter(new File(headerDir + "/" + "library" + "." + hdrExt)) // runtime conventions with GPUExecutableGenerator
+
+  override def finalizeGenerator() {
+    globalInterfaceStream.close()
+    super.finalizeGenerator()
+  }
+
   /////////////////
   // implementation
-    
+  
+  override def emitHeader(lib: ExternalLibrary) {
+    // global interface file for all cuda libraries
+    globalInterfaceStream.println("#include \"" + hdrName(lib) + "." + hdrExt + "\"")
+    super.emitHeader(lib)
+  }
+
   def emitMethodCall(e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String])(implicit stream: PrintWriter) = {
     stream.println(e.funcName + "(" + (args mkString ",") + ");")    
   }

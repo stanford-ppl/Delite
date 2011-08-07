@@ -144,7 +144,7 @@ def launchApps(options):
         
         java_opts = os.getenv("JAVA_OPTS", "")
         build_dir = props["delite.home"] + "/generated/"
-        opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + build_dir + "-Ddelite.deg.filename=" + app + ".deg"
+        opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + app + ".deg"
         if options['blas'] == True:
             opts = opts + " -Dblas.enabled"
         if options['variants'] == False:

@@ -1,8 +1,7 @@
 package ppl.delite.framework.extern
 
 import _root_.scala.virtualization.lms.internal._
-import collection.mutable.{ListBuffer}
-import collection.mutable.HashMap
+import collection.mutable.{ListBuffer, HashMap, HashSet}
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 
 import ppl.delite.framework.{Config, DeliteApplication}
@@ -14,9 +13,10 @@ trait DeliteGenExternal extends DeliteCodegen {
   val IR: DeliteOpsExp
   import IR._
 
+  val generatedOps = HashSet[String]()
+
   override def emitFatNode(sym: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter): Unit = rhs match {
-    // TODO: only called once per op (even across repeated occurences)
-    case ThinDef(e:DeliteOpExternal[_]) =>
+    case ThinDef(e:DeliteOpExternal[_]) if !generatedOps.contains(e.funcName) => 
       var foundTarget = false
       for (g <- generators) {
         try{
@@ -29,6 +29,7 @@ trait DeliteGenExternal extends DeliteCodegen {
       }
       if (!foundTarget) throw new GenerationFailedException("No generator could be found for external lib: " + e)
 
+      generatedOps += e.funcName
       super.emitFatNode(sym, rhs) // pass on to DeliteGenTaskGraph
       
     case _ => super.emitFatNode(sym, rhs)

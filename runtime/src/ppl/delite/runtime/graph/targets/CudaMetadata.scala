@@ -13,7 +13,6 @@ import ppl.delite.runtime.graph.ops.DeliteOP
 
 final class CudaMetadata {
 
-  var libCall: String = null
   val blockSizeX = new OPData
   val blockSizeY = new OPData
   val blockSizeZ = new OPData

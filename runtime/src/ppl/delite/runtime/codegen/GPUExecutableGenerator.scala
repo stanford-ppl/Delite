@@ -314,7 +314,6 @@ abstract class GPUExecutableGenerator {
   }
 
   protected def writeLibraryCall(op: DeliteOP, out: StringBuilder) {
-    //out.append(op.cudaMetadata.libCall)
     if (op.task == null) return //dummy op
     out.append(op.task) //kernel name
     out.append('(')
