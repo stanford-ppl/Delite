@@ -41,13 +41,13 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
 
   class ArithOpsCls[T](lhs: Rep[T])(implicit mT: Manifest[T], arith: Arith[T]) {
     // TODO: if B == Rep[T] below, the ops implicit does not work unless it is called explicitly (no unambiguous resolution?)
-    def +=(rhs: Rep[T]): Rep[T] = arith.+=(lhs, rhs)
+    //def +=(rhs: Rep[T]): Rep[T] = arith.+=(lhs, rhs)
     def +(rhs: Rep[T]): Rep[T] = arith.+(lhs, rhs)
     def -(rhs: Rep[T]): Rep[T] = arith.-(lhs, rhs)
     def *(rhs: Rep[T]): Rep[T] = arith.*(lhs, rhs)
     def /(rhs: Rep[T]): Rep[T] = arith./(lhs, rhs)
 
-    def +=[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.+=(lhs, c(rhs))
+    //def +=[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.+=(lhs, c(rhs))
     def +[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.+(lhs, c(rhs))
     def -[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.-(lhs, c(rhs))
     def *[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.*(lhs, c(rhs))
@@ -124,7 +124,7 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
    */
 
   implicit val doubleArith: Arith[Double] = new Arith[Double] {
-    def +=(a: Rep[Double], b: Rep[Double]) = arith_plus(a, b)
+    //def +=(a: Rep[Double], b: Rep[Double]) = arith_plus(a, b)
     def +(a: Rep[Double], b: Rep[Double]) = arith_plus(a, b)
     def -(a: Rep[Double], b: Rep[Double]) = arith_minus(a, b)
     def *(a: Rep[Double], b: Rep[Double]) = arith_times(a, b)
@@ -139,7 +139,7 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
   }
 
   implicit val floatArith: Arith[Float] = new Arith[Float] {
-    def +=(a: Rep[Float], b: Rep[Float]) = arith_plus(a, b)
+    //def +=(a: Rep[Float], b: Rep[Float]) = arith_plus(a, b)
     def +(a: Rep[Float], b: Rep[Float]) = arith_plus(a, b)
     def -(a: Rep[Float], b: Rep[Float]) = arith_minus(a, b)
     def *(a: Rep[Float], b: Rep[Float]) = arith_times(a, b)
@@ -154,7 +154,7 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
   }
 
   implicit val intArith: Arith[Int] = new Arith[Int] {
-    def +=(a: Rep[Int], b: Rep[Int]) = arith_plus(a, b)
+   // def +=(a: Rep[Int], b: Rep[Int]) = arith_plus(a, b)
     def +(a: Rep[Int], b: Rep[Int]) = arith_plus(a, b)
     def -(a: Rep[Int], b: Rep[Int]) = arith_minus(a, b)
     def *(a: Rep[Int], b: Rep[Int]) = arith_times(a, b)
@@ -184,7 +184,7 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
 
   case class ArithPlus[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
 
-  case class ArithPlusEquals[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[Unit]
+  //case class ArithPlusEquals[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[Unit]
 
   case class ArithMinus[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
 

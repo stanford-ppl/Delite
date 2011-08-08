@@ -14,7 +14,7 @@ import scala.virtualization.lms.common.Base
 
 
 trait ArithInternal[Rep[X], T] {
-  def +=(a: Rep[T], b: Rep[T]): Rep[T]
+  //def +=(a: Rep[T], b: Rep[T]): Rep[T]
   def +(a: Rep[T], b: Rep[T]): Rep[T]
   def -(a: Rep[T], b: Rep[T]): Rep[T]
   def *(a: Rep[T], b: Rep[T]): Rep[T]
