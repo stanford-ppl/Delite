@@ -76,6 +76,7 @@ object Delite {
       //load task graph
       val graph = loadDeliteDEG(args(0))
       //val graph = new TestGraph
+      Config.deliteBuildHome = graph.kernelPath
 
       //load kernels & data structures
       loadSources(graph)

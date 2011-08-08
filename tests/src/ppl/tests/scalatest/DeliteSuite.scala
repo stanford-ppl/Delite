@@ -2,6 +2,7 @@ package ppl.tests.scalatest
 
 import org.scalatest._
 import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.Config
 import scala.virtualization.lms.common._
 import scala.collection.mutable.ArrayBuffer
 import java.io.{File, Console => _, _}
@@ -51,17 +52,22 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
 
   private def stageTest(app: DeliteTestRunner, degName: String) = {
     println("STAGING...")
-    System.setProperty("delite.deg.filename", degName)
-    val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
-    Console.withOut(screenOrVoid) {
-      app.main(Array())
-      if (verboseDefs) app.globalDefs.foreach { d => //TR print all defs
-        println(d)
-        val info = d.sym.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
-        println(info.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
+    val save = Config.degFilename
+    try {
+      Config.degFilename = degName      
+      val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
+      Console.withOut(screenOrVoid) {
+        app.main(Array())
+        if (verboseDefs) app.globalDefs.foreach { d => //TR print all defs
+          println(d)
+          val info = d.sym.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
+          println(info.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
+        }
+        //assert(!app.hadErrors) //TR should enable this check at some time ...
       }
-      //assert(!app.hadErrors) //TR should enable this check at some time ...
-    }
+    } finally {
+      Config.degFilename = save
+    }      
   }
 
   private def execTest(args: Array[String]) = {

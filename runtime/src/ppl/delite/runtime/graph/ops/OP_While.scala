@@ -28,6 +28,7 @@ class OP_While(val id: String,
         val r = new OP_While(id+"_"+idx, predicateGraph, predicateValue, bodyGraph, bodyValue, outputSym)
         r.dependencies = dependencies
         r.inputList = inputList
+        r.mutableInputs = mutableInputs
         r.consumers = consumers
         r.cudaMetadata = cudaMetadata
         for (dep <- getDependencies) dep.addConsumer(r)

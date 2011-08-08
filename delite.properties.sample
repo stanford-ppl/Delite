@@ -7,9 +7,6 @@ java.home=/home/kjbrown/java/jdk1.7.0_b121_x86_64
 
 apps.data=/home/hchafi/delite
 
-intel.icc=/opt/intel/bin
-intel.mkl=/opt/intel/bin
-
 nvidia.cuda=/usr/local/cuda
 
 libs.lms.home=/home/hchafi/projects/virtualization-lms-core

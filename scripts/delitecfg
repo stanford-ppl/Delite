@@ -1,19 +1,23 @@
 #!/bin/sh
-script="/tmp/$(basename "$0").$(mktemp -u XXXX)"
-cat "$(dirname "$0")/shared" > "$script"
-echo 'try {' >> "$script"
-echo '/\c' >> "$script"
-echo '*\c' >> "$script"
-cat "$0" >> "$script"
-echo '} catch {' >> "$script"
-echo 'case e: Exception => {' >> "$script"
-echo 'var message = "%s".format(if (e.getMessage != null) e.getMessage else e.getCause )' >> "$script"
-echo 'println(message)' >> "$script"
-echo '}' >> "$script"
-echo '}' >> "$script"
-export script_home="$(dirname "$0")"
-export script_name="$(basename "$0")"
-exec scala "$script" "$@"
+script_path=$0
+follow() { echo "$(readlink "$({ cd $(dirname "$1"); pwd -P; })/$(basename "$1")")"; }
+while [ -h "$script_path" ]; do script_path="$(follow "$script_path")"; done
+export script_home="$(dirname "$script_path")"
+export script_name="$(basename "$script_path")"
+synthetic="/tmp/$script_name.$(mktemp -u XXXX)"
+touch "$synthetic"
+cat "$script_home/shared" > "$synthetic"
+echo 'try {' >> "$synthetic"
+echo '/\c' >> "$synthetic"
+echo '*\c' >> "$synthetic"
+cat "$script_path" >> "$synthetic"
+echo '} catch {' >> "$synthetic"
+echo 'case e: Exception => {' >> "$synthetic"
+echo 'var message = "%s".format(if (e.getMessage != null) e.getMessage else e.getCause )' >> "$synthetic"
+echo 'println(message)' >> "$synthetic"
+echo '}' >> "$synthetic"
+echo '}' >> "$synthetic"
+exec scala "$synthetic" "$@"
 !#*/
 
 class Scala(project: Project) {
@@ -83,18 +87,12 @@ class Project(root: String, name: String) {
 // script code begins here
 
 println("Detecting the location of Delite...")
-try {
-  val delite_home = config.delite_home
-  config.validate_delite_home()
-  config.clear()
-  config.delite_home = delite_home
-} catch {
-  case _ => {
-    config.clear()
-    print("Please, enter home directory of Delite: ")
-    config.delite_home = readLine
-  }
-}
+if (args.length == 0 && config.props.getProperty("delite_home") == null) { print("Please, enter home directory of Delite: "); config.delite_home = readLine; }
+val delite_home: String = if (args.length > 0) args(0) else config.delite_home
+config.delite_home = delite_home
+config.validate_delite_home()
+config.clear()
+config.delite_home = delite_home
 println("Delite's home directory: %s%n".format(config.delite_home))
 
 val framework = new Project(config.delite_home, "Delite Framework")
