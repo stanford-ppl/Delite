@@ -410,7 +410,7 @@ trait CudaGenMatOps extends CudaGenBase with CudaGenDataStruct {
 
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
     /* CUBLAS calls */
-    case MatMultiply(x,y) => {
+    /* case MatMultiply(x,y) => {
       val callStream = "cublasSetKernelStream(stream);"
       val callKernel = if (remap(x.Type.typeArguments(0)) == "double")
         "cublasDgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
@@ -431,7 +431,7 @@ trait CudaGenMatOps extends CudaGenBase with CudaGenDataStruct {
         throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Mat*Vec CUBLAS library)".format(remap(x.Type.typeArguments(0))))
       emitVecAlloc(sym,"%s->numRows".format(quote(x)),"false",false)
       emitLibCall(sym,List(callStream,callKernel))
-    }
+    } */
     /* The ops that call through to the underlying data structure */
     case MatDCApply(x,i) =>
       emitValDef(sym,"%s.dcApply(%s)".format(quote(x),quote(i)))
