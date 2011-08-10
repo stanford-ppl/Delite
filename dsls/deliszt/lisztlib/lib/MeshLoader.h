@@ -33,8 +33,10 @@ public:
     /*
      env: JNI Environment pointer
      */
-    MeshLoader(JNIEnv* env);
+    MeshLoader();
     ~MeshLoader();
+    
+    void init(JNIEnv* env);
 
     /*
      Load mesh from file.
@@ -43,7 +45,9 @@ public:
      */
     jobject loadMesh(jstring str);
 
-private:
+    template<typename MO>
+    jobject loadBoundarySet(const char* name);
+
     /*
      Construct a Java object with the specific arguments.
      cls: Java class
@@ -87,7 +91,8 @@ private:
      */
     void setScalaField(jclass& cls, jobject& jobj, string field,
             string type, ...);
-
+    
+private:
     /*
      Set a CRS field
      jmesh: Mesh object
@@ -123,16 +128,13 @@ private:
     jobject getScalaObjField(jclass& cls, jobject& jobj,
             string field, string type);
 
-    template<typename MO>
-    void loadBoundarySet(jobject& jmesh, CRSMesh::Mesh& mesh, const char* name);
-
   jclass meshClass;
   JNIEnv* env;
-  JNICache cache;
+  JNICache* cache;
   BoundarySetBuilder boundary_builder;
   MeshIO::LisztFileReader reader;
   CRSMesh::Mesh mesh;
-  jobj jmesh;
+  jobject jmesh;
 };
         }
 

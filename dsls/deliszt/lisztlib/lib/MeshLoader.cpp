@@ -9,9 +9,13 @@
 namespace System {
 using namespace CRSMesh;
 
-MeshLoader::MeshLoader(JNIEnv* env) :
-        env(env), cache(env) {
-    meshClass = cache.getClass("ppl/dsl/deliszt/datastruct/scala/Mesh");
+MeshLoader::MeshLoader() {
+}
+
+void MeshLoader::init(JNIEnv* _env) {
+    env = _env;
+    cache = new JNICache(env);
+    meshClass = cache->getClass("ppl/dsl/deliszt/datastruct/scala/Mesh");
 }
 
 jobject MeshLoader::createObject(jclass& cls, string type, ...) {
@@ -27,7 +31,7 @@ jobject MeshLoader::createObjectV(jclass& cls, string type, va_list args) {
     string sig = "(" + type + ")V";
 
     /* Get the method ID for the String(char[]) constructor */
-    cid = cache.getMethod(cls, "<init>", sig);
+    cid = cache->getMethod(cls, "<init>", sig);
     if (cid == NULL) {
         throw new MeshLoadException("Failed to find <init> method"); /* exception thrown */
     }
@@ -39,7 +43,7 @@ jobject MeshLoader::createObject(string clsStr, string type, ...) {
     va_list args;
     va_start(args, type);
     jclass cls;
-    if(!(cls = cache.getClass(clsStr))) {
+    if(!(cls = cache->getClass(clsStr))) {
         throw new MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
@@ -63,11 +67,11 @@ jobject MeshLoader::callObjectMethod(jobject& obj, string clsStr, string method,
 jobject MeshLoader::callObjectMethodV(jobject& obj, string clsStr,
         string method, string sig, va_list args) {
     jclass cls;
-    if (!(cls = cache.getClass(clsStr))) {
+    if (!(cls = cache->getClass(clsStr))) {
         throw new MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
-    jmethodID cid = cache.getMethod(cls, method, sig);
+    jmethodID cid = cache->getMethod(cls, method, sig);
     if (cid == NULL) {
         throw new MeshLoadException(
                 "Failed to find method " + method + " with sig " + sig); /* exception thrown */
@@ -89,11 +93,11 @@ void MeshLoader::callVoidMethod(jobject& obj, string clsStr, string method,
 void MeshLoader::callVoidMethodV(jobject& jobj, string clsStr, string method,
         string sig, va_list args) {
     jclass cls;
-    if (!(cls = cache.getClass(clsStr))) {
+    if (!(cls = cache->getClass(clsStr))) {
         throw new MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
-    jmethodID cid = cache.getMethod(cls, method, sig);
+    jmethodID cid = cache->getMethod(cls, method, sig);
     if (cid == NULL) {
         throw new MeshLoadException(
                 "Failed to find method " + method + " with sig " + sig); /* exception thrown */
@@ -107,7 +111,7 @@ jint MeshLoader::callIntMethod(jobject& obj, string clsStr, string method,
             va_list args;
             va_start(args, sig);
 
-            jobject ret = callObjectMethodV(obj, clsStr, method, sig, args);
+            jint ret = callIntMethodV(obj, clsStr, method, sig, args);
 
             va_end(args);
             return ret;
@@ -116,11 +120,11 @@ jint MeshLoader::callIntMethod(jobject& obj, string clsStr, string method,
 jint MeshLoader::callIntMethodV(jobject& obj, string clsStr,
         string method, string sig, va_list args) {
     jclass cls;
-    if (!(cls = cache.getClass(clsStr))) {
+    if (!(cls = cache->getClass(clsStr))) {
         throw new MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
-    jmethodID cid = cache.getMethod(cls, method, sig);
+    jmethodID cid = cache->getMethod(cls, method, sig);
     if (cid == NULL) {
         throw new MeshLoadException(
                 "Failed to find method " + method + " with sig " + sig); /* exception thrown */
@@ -131,7 +135,7 @@ jint MeshLoader::callIntMethodV(jobject& obj, string clsStr,
 
 jobject MeshLoader::getScalaObjField(string clsStr, jobject& jobj, string field,
         string type) {
-    if (jclass cls = cache.getClass(clsStr)) {
+    if (jclass cls = cache->getClass(clsStr)) {
         return getScalaObjField(cls, jobj, field, type);
     }
     else {
@@ -145,7 +149,7 @@ jobject MeshLoader::getScalaObjField(jclass& cls, jobject& jobj, string field,
     string getter = field;
     string sig = "()" + type;
 
-    cid = cache.getMethod(cls, getter, sig);
+    cid = cache->getMethod(cls, getter, sig);
     if (cid == NULL) {
         throw new MeshLoadException("Failed to find getter for " + field); /* exception thrown */
     }
@@ -161,7 +165,7 @@ void MeshLoader::setScalaField(jclass& cls, jobject& jobj, string field,
             string setter = field + "_$eq";
             string sig = "(" + type + ")V";
 
-            cid = cache.getMethod(cls, setter, sig);
+            cid = cache->getMethod(cls, setter, sig);
             if (cid == NULL) {
                 throw new MeshLoadException("Failed to find setter for " + field); /* exception thrown */
   }
@@ -290,7 +294,7 @@ void MeshLoader::loadPositions(jobject& jmesh, CRSMesh::Mesh& mesh,
         MeshIO::LisztFileReader& reader) {
     size_t size = mesh.data.nvertices;
 
-    jclass darrCls = cache.getClass("[D");
+    jclass darrCls = cache->getClass("[D");
     if (darrCls == NULL) {
         throw new MeshLoadException("Failed to find double array class"); /* exception thrown */
     }
@@ -324,7 +328,7 @@ void MeshLoader::loadPositions(jobject& jmesh, CRSMesh::Mesh& mesh,
     jobject vertexLabels = getScalaObjField(meshClass, jmesh,
             string("vertexData"),
             string("Lppl/dsl/deliszt/datastruct/scala/LabelData"));
-    jclass labelClass = cache.getClass(
+    jclass labelClass = cache->getClass(
             "ppl/dsl/deliszt/datastruct/scala/LabelData");
     jobject vertexData = getScalaObjField(labelClass, vertexLabels, "data",
             string("Lscala/collection/mutable/Map"));
@@ -335,8 +339,8 @@ void MeshLoader::loadPositions(jobject& jmesh, CRSMesh::Mesh& mesh,
 }
 
 template<typename MO>
-void MeshLoader::loadBoundarySet(const char* name, string field) {
-    BoundarySet *bs = new BoundarySet();
+jobject MeshLoader::loadBoundarySet(const char* name) {
+    LisztPrivate::BoundarySet *bs = new LisztPrivate::BoundarySet();
     if (!bs) {
         throw new MeshLoadException("Could not create boundary set");
     }
@@ -344,14 +348,14 @@ void MeshLoader::loadBoundarySet(const char* name, string field) {
     jobject bounds = NULL;
     
     try {
-      if (boundary_builder.load<MO, BoundarySet>(&mesh, name, bs)) {
+      if (boundary_builder.load<MO, LisztPrivate::BoundarySet>(&mesh, name, bs)) {
           bounds = createObject(
                   "ppl/dsl/deliszt/datastruct/scala/BoundarySetImpl", "");
 
-          BoundarySet::ranges& ranges = bs->getRanges();
+          LisztPrivate::BoundarySet::ranges_t& ranges = bs->getRanges();
                   
           // For ranges in bs
-          for (BoundarySet::range_it it = ranges.first(), end = ranges.end(); it != end; it++) {
+          for (LisztPrivate::BoundarySet::range_it it = ranges.begin(), end = ranges.end(); it != end; it++) {
               callVoidMethod(bounds,
                       "ppl/dsl/deliszt/datastruct/scala/BoundarySetImpl", "add",
                       "(I,I)V", it->first(), it->second());
@@ -361,7 +365,7 @@ void MeshLoader::loadBoundarySet(const char* name, string field) {
                   "freeze", "()V");
       }
     }
-    catch(Exception e) {
+    catch(...) {
         bounds = NULL;
     }
 

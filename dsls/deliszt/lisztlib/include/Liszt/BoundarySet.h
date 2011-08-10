@@ -20,7 +20,8 @@ namespace LisztPrivate {
 class BoundarySet {
 public:
     typedef std::pair<size_t, size_t> range_t;
-    typedef std::vector<range_t> ranges;
+    typedef std::vector<range_t> ranges_t;
+    ranges_t ranges;
     typedef std::vector<range_t>::iterator range_it;
 
     //called before any calls to addSet
@@ -33,7 +34,7 @@ public:
     void endInit() {
     }
 
-    typedef std::vector<range_t>& getRanges() const {
+    const ranges_t& getRanges() const {
         return ranges;
     }
 };

@@ -8,13 +8,13 @@ JNICache::JNICache(JNIEnv* env) : env(env) {
 
 JNICache::~JNICache() {
   clsMap::const_iterator end = classes.end();
-  for (clsMap::const_iterator it = data.begin(); it != end; ++it)
+  for (clsMap::const_iterator it = classes.begin(); it != end; ++it)
   {
     env->DeleteWeakGlobalRef(it->second);
   }
 }
   
-jclass getClass(string clsStr) {
+jclass JNICache::getClass(string clsStr) {
   clsMap::iterator it = classes.find(clsStr);
   if(it != classes.end()) {
     return it->second;
@@ -22,20 +22,20 @@ jclass getClass(string clsStr) {
   else {
     jclass globalRef = NULL;
     if(jclass cls = env->FindClass(clsStr.c_str())) {
-      globalRef = env->NewWeakGlobalRef(cls);
+      globalRef = static_cast<jclass>(env->NewWeakGlobalRef(cls));
     }
     classes[clsStr] = globalRef;
     return globalRef;
   }
 }
 
-jmethodID getMethod(string clsStr, string method, string args) {
+jmethodID JNICache::getMethod(string clsStr, string method, string args) {
   jclass cls = getClass(clsStr);
   return getMethod(cls, method, args);
 }
 
-jmethodID getMethod(jclass cls, string method, string args) {
-  jmethodID cid = JNI_ERR;
+jmethodID JNICache::getMethod(jclass cls, string method, string args) {
+  jmethodID cid = (jmethodID) JNI_ERR;
   
   if(cls) {
     JNISignature sign(cls, method, args);
@@ -45,8 +45,8 @@ jmethodID getMethod(jclass cls, string method, string args) {
     }
     else {
       /* Get the method ID */
-      cid = env->GetMethodID(cls, "<init>", sig.c_str());
-      methodMap[sign] = cid;
+      cid = env->GetMethodID(cls, method.c_str(), args.c_str());
+      methods[sign] = cid;
     }  
   }
   

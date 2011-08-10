@@ -4,6 +4,9 @@
 
 #ifndef _Included_ppl_dsl_deliszt_datastruct_scala_MeshLoader
 #define _Included_ppl_dsl_deliszt_datastruct_scala_MeshLoader
+
+#include "CRSMesh/CRSMesh.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
