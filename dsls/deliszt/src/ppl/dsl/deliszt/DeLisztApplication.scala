@@ -19,7 +19,7 @@ trait DeLisztApplicationRunner extends DeLisztApplication with DeliteApplication
  
 trait DeLisztApplication extends DeliteApplication with DeLiszt with DeLisztLift with DeLisztLibrary {
   override def liftedMain(x: Rep[Array[String]]) = {
-    _init()
+    _init(x)
     this.args = x
     val y = main()
     this.args = null

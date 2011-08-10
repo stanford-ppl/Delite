@@ -71,6 +71,11 @@ private:
             string sig, va_list args);
     /*jobject callVoidMethod(jobject& obj, jclass cls, string method, string sig, ...);
      jobject callVoidMethodV(jobject& obj, jclass cls, string method, va_list args); */
+     
+    jint callIntMethod(jobject& obj, string clsStr, string method,
+            string sig, ...);
+    jint callIntMethodV(jobject& obj, string clsStr, string method,
+            string sig, va_list args);
 
     /*
      Set a Scala field
@@ -118,13 +123,16 @@ private:
     jobject getScalaObjField(jclass& cls, jobject& jobj,
             string field, string type);
 
-    template<typename MO, typename MeshSet, typename BoundarySet>
-    void loadBoundarySet(jobject& jmesh, CRSMesh::Mesh& mesh, const char* name,string field);
+    template<typename MO>
+    void loadBoundarySet(jobject& jmesh, CRSMesh::Mesh& mesh, const char* name);
 
   jclass meshClass;
   JNIEnv* env;
   JNICache cache;
   BoundarySetBuilder boundary_builder;
+  MeshIO::LisztFileReader reader;
+  CRSMesh::Mesh mesh;
+  jobj jmesh;
 };
         }
 

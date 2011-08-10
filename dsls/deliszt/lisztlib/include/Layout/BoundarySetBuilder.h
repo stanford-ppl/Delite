@@ -28,9 +28,8 @@ public:
 	}
 	
 	
-	template<typename MeshT, typename MO, typename BS>
-	bool load(const MeshT * mesh, 
-	          const char * name, 
+	template<typename MO, typename BS>
+	bool load(const char * name, 
 	          BS * bset) {
 		if(loaded_sets.count(bset) > 0)
 			return true; //set is already loaded
@@ -41,16 +40,15 @@ public:
 		bset->beginInit(total_size);
 		
 		for(range_list_t::iterator it = ranges.begin(), end = ranges.end(); it != end; it++)
-			bset->addSet(mesh,it->first,it->second);
+			bset->addSet(it->first,it->second);
 		bset->endInit();
 		loaded_sets.insert(bset);
 		
 		return true;
 	}
 	
-	template<typename MeshT, typename MO, typename BS, typename Filter>
-	bool loadWithFilter(const MeshT * mesh, 
-	                    const char * name,
+	template<typename MO, typename BS, typename Filter>
+	bool loadWithFilter(const char * name,
 	                    Filter & filter,
 	                    BS * bset) {
 		if(loaded_sets.count(bset) > 0)
@@ -83,12 +81,12 @@ public:
 			for(size_t i = 1; i < total_size; i++) {
 				MeshIO::id_t rl_next = expanded[i-1] + 1;
 				if(rl_next != expanded[i]) {
-					bset->addSet(mesh,start,rl_next);
+					bset->addSet(start,rl_next);
 					start = expanded[i];
 				}
 			}
 			
-			bset->addSet(mesh,start,expanded[total_size-1] + 1);
+			bset->addSet(start,expanded[total_size-1] + 1);
 			
 			delete [] expanded;
 		}

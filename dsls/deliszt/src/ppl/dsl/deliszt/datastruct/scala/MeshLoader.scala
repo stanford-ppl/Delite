@@ -12,11 +12,11 @@ import net.liftweb.json.JsonDSL._
  * Stanford University
  */
 
-class MeshLoader {
-  def init() {
+object MeshLoader {
+  def init(cfgFile : String) {
     System.loadLibrary("MeshLoader");
     
-    val cfg = new BufferedReader(new FileReader("liszt.cfg"))
+    val cfg = new BufferedReader(new FileReader(cfgFile))
     val json = JsonParser.parse(cfg)
 
     implicit val formats = net.liftweb.json.DefaultFormats
@@ -30,12 +30,10 @@ class MeshLoader {
   @native
   def loadMesh(file : String) : Mesh = null
 
-  def loadBoundaries[MO<:MeshObj:MeshObjConstruct](name : String) : MeshSet[MO] = {
-    val bs = new BoundarySetImpl[MO]
-    _loadBoundaries(name, bs)
-    bs
+  def loadBoundaries[MO<:MeshObj:MeshObjConstruct](name : String) : MeshSet[MO] = {  
+    _loadBoundaries(name)
   }
 
   @native
-  def _loadBoundaries[MO<:MeshObj:MeshObjConstruct](name : String, bs : BoundarySetImpl[MO]) : MeshSet[MO] = null
+  def _loadBoundaries[MO<:MeshObj:MeshObjConstruct](name : String) : MeshSet[MO] = null
 }

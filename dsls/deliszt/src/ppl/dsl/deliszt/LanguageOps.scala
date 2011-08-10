@@ -20,7 +20,7 @@ import ppl.dsl.deliszt.datastruct.scala._
  */
 
 trait LanguageOps extends Base { this: DeLiszt =>
-  def _init() : Unit
+  def _init(args: Rep[Array[String]]) : Unit
 
   def Print(as : Rep[Any]*) : Unit
 	def BoundarySet[MO<:MeshObj:Manifest](name : Rep[String]) : Rep[MeshSet[MO]]
@@ -90,7 +90,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   this: LanguageImplOps with DeLisztExp =>
 
   /******* Ops *********/
-  case class DeLisztInit() extends Def[Unit]
+  case class DeLisztInit(args: Exp[Array[String]]) extends Def[Unit]
   case class DeLisztPrint(as: Seq[Exp[Any]]) extends DeliteOpSingleTask(reifyEffectsHere(print_impl(as)))
 
   case class DeLisztBoundarySet[MO<:MeshObj : Manifest](name : Exp[String]) extends Def[MeshSet[MO]]
@@ -145,7 +145,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class MPIWTime() extends Def[Double]
 
   /******* Language functions *********/
-  def _init() = reflectEffect(DeLisztInit())
+  def _init(args: Exp[Array[String]]) = reflectEffect(DeLisztInit(args))
   def Print(as: Exp[Any]*) = reflectEffect(DeLisztPrint(as))
 
   def BoundarySet[MO<:MeshObj:Manifest](name : Exp[String])
@@ -220,7 +220,7 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case DeLisztInit() => emitValDef(sym, "generated.scala.Liszt.init()")
+      case DeLisztInit(args) => emitValDef(sym, "generated.scala.Liszt.init(" + quote(args) + ")")
       case DeLisztMesh() => emitValDef(sym, "generated.scala.Mesh.mesh")
       case DeLisztBoundarySet(name) => emitValDef(sym, "")
 

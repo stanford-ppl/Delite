@@ -10,44 +10,44 @@ public:
     int length;
 
     // Constructors
-    Field() {
+    __host__ __device__ Field() {
         length = 0;
         data = NULL;
     }
 
-    Field(int _length, T *_data) {
+    __host__ __device__ Field(int _length, T *_data) {
         length = _length;
         data = _data;
     }
 
     // Accessor Functions
-    T apply(int idx) {
+    __host__ __device__ T apply(int idx) {
         return data[idx];
     }
 
-    void update(int idx, T newVal) {
+    __host__ __device__ void update(int idx, T newVal) {
         data[idx] = newVal;
     }
     
     // Accessor Functions
-    T apply(MO mo) {
+    __host__ __device__ T apply(MO mo) {
         return data[mo.internalId()];
     }
 
-    void update(MO mo, T newVal) {
+    __host__ __device__ void update(MO mo, T newVal) {
         data[mo.internalId()] = newVal;
     }
 
     // DeliteCoolection
-    int size() {
+    __host__ __device__ int size() {
         return length;
     }
 
-    T dcApply(int idx) {
+    __host__ __device__ T dcApply(int idx) {
         return data[idx];
     }
 
-    void dcUpdate(int idx, T value) {
+    __host__ __device__ void dcUpdate(int idx, T value) {
         data[idx] = value;
     }
 };

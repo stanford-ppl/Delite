@@ -22,7 +22,7 @@ object Mesh extends MeshObjImpl {
   def verticesCCW(e: Face): DeLisztSet[Vertex] = IndexSetImpl(mesh.ftov, e)
   def verticesCW(e: Face): DeLisztSet[Vertex] = CWIndexSetImpl(mesh.ftov, e)
 
-  def cells(e: Mesh): DeLisztSet[Cell] = MeshSetImpl(mesh.ncells)
+  def cells(e: Mesh): DeLisztSet[Cell] = MeshSetImpl(mesh.ncells - 1)
   def cells(e: Vertex): DeLisztSet[Cell] = IndexSetImpl(mesh.vtoc, e)
   def cells(e: Edge): DeLisztSet[Cell] = IndexSetImpl(mesh.etoc, e)
   def cells(e: Face): DeLisztSet[Cell] = IndexSetImpl(mesh.ftoc, e)
@@ -105,7 +105,8 @@ class Mesh extends MeshObj with MetaInteger with MeshObjImpl {
   implicit val faceData = new LabelData[Face]
   implicit val vertexData = new LabelData[Vertex]
 
-  implicit def cellSet : MeshSet[Cell] = new MeshSetImpl[Cell](ncells)
+  // Use special CellSetImpl, don't expose 0 cell
+  implicit def cellSet : MeshSet[Cell] = new CellSetImpl(ncells-1)
   implicit def edgeSet : MeshSet[Edge] = new MeshSetImpl[Edge](nedges)
   implicit def faceSet : MeshSet[Face] = new MeshSetImpl[Face](nfaces)
   implicit def vertexSet : MeshSet[Vertex] = new MeshSetImpl[Vertex](nvertices)

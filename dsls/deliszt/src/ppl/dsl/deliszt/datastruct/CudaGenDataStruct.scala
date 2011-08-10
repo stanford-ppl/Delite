@@ -43,10 +43,10 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     // Release
     out.append("\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
-
+    out.append("\tenv->DeleteLocalRef(data);\n")
+    out.append("\tenv->DeleteLocalRef(cls);\n")
     out.append("\treturn %s;\n".format(quote(sym)))
     out.toString
-
   }
 
   def vecCopyInputHtoD(sym: Sym[Any]): String = {
@@ -58,20 +58,33 @@ trait CudaGenDataStruct extends CudaCodegen {
     // Get class, method ID
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"length\",\"()I\");\n")
-    out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"isRow\",\"()Z\");\n")
 
 	out.append("\tjclass viewCls = env->FindClass(\"generated/scala/%sVecViewImpl\");\n".format(typeArg.toString));
 	out.append("\tjboolean isViewCls = env->IsInstanceOf(obj,viewCls);\n");
+	out.append("\tjclass zeroCls = env->FindClass(\"generated/scala/VecImpl\");\n");
+	out.append("\tjboolean isZeroCls = env->IsInstanceOf(obj,zeroCls);\n");
 
 	  // If this is not RangeVec
-    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
-    out.append("\t\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
-    out.append("\t\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
-    out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
+    
+	out.append("\tif(isZeroCls) {\n")
+   	out.append("\t\t%s *hostPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+    out.append("\t\t%s *devPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
+    out.append("\t\tmemset(%s, 0, %s);\n".format("hostPtr",numBytesStr))
+    out.append("\t\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
+    out.append("\t\t%s->data = %s;\n".format(quote(sym),"devPtr"))
+	out.append("\t}\n")
+	out.append("\telse {\n")
+
+
+	out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
     out.append("\t\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\t\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
 	
-	// Check if vec view
+	// Check if vector view
 	out.append("\tif(isViewCls) {\n")
 	out.append("\t\tint start = 0;\n")
 	out.append("\t\tjmethodID mid_start = env->GetMethodID(cls,\"start\",\"()I\");\n")
@@ -91,31 +104,13 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t\t%s->data = %s;\n".format(quote(sym),"devPtr"))
     // Release
     out.append("\t\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
-    out.append("\t\treturn %s;\n".format(quote(sym)))
-    out.toString
-  }
-
-  def rangeVecCopyInputHtoD(sym: Sym[Any]): String = {
-    val out = new StringBuilder
-
-    // Get class, method ID
-    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    //out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"length\",\"()I\");\n")
-    out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"isRow\",\"()Z\");\n")
-    out.append("\tjmethodID mid_start = env->GetMethodID(cls,\"start\",\"()I\");\n")
-    out.append("\tjmethodID mid_stride = env->GetMethodID(cls,\"stride\",\"()I\");\n")
-    out.append("\tjmethodID mid_end = env->GetMethodID(cls,\"end\",\"()I\");\n")
-
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
-    out.append("\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
-    out.append("\t%s->start = env->CallIntMethod(obj,mid_start);\n".format(quote(sym)))
-    out.append("\t%s->stride = env->CallIntMethod(obj,mid_stride);\n".format(quote(sym)))
-    out.append("\t%s->end = env->CallIntMethod(obj,mid_end);\n".format(quote(sym)))
+    out.append("\t\tenv->DeleteLocalRef(data);\n")
+	out.append("\t}\n")
+    out.append("\tenv->DeleteLocalRef(cls);\n")
     out.append("\treturn %s;\n".format(quote(sym)))
-
     out.toString
   }
-  
+
   def matCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
@@ -180,7 +175,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tif(cls==NULL) std::cout << \"class NOT found\" << std::endl;\n")
     out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(IZ)V\");\n")
     out.append("\tif(mid==NULL) std::cout << \"constructor NOT found\" << std::endl;\n")
-    out.append("\tjobject obj = env->NewObject(cls,mid,%s->length,%s->isRow);\n".format(quote(sym),quote(sym)))
+    out.append("\tjobject obj = env->NewObject(cls,mid,%s->length);\n".format(quote(sym),quote(sym)))
     out.append("\tif(obj==NULL) std::cout << \"new object NOT created\" << std::endl;\n")
 
     // Allocate pinned-memory
@@ -225,17 +220,16 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  // Dummy methods temporarily just for the compilation
-  def emitVecAlloc(newSym:Sym[_],length:String,isRow:String,reset:Boolean,data:String=null) {}
+ // Dummy methods temporarily just for the compilation
+  //def emitVecAlloc(newSym:Sym[_],length:String,reset:Boolean,data:String=null) {}
   def emitVecAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
   def emitVecAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
-  def emitMatAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null) {}
+  //def emitMatAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null) {}
   def emitMatAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
   def emitMatAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
 
-  /*
   // Generate & register temporary data structures (which could be the output) for GPU kernel
-  def emitVecAlloc(newSym:Sym[_], length:String, isRow:String, reset:Boolean, data:String=null):Unit = {
+  def emitVecAlloc(newSym:Sym[_], length:String, reset:Boolean, data:String=null):Unit = {
     //TODO: Check if both symbols are Vecs
 
     //Do not add the same temporary if it already exists
@@ -258,14 +252,16 @@ trait CudaGenDataStruct extends CudaCodegen {
 	).mkString(",")
     val argStrTemp = inputs2.map("\""+quote(_)+"\"").mkString(",")
 
+	/*
     if(newSym == kernelSymbol)
       out.append("%s *gpuMemAlloc_%s_%s_%s(%s) {\n".format(remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx, paramStrOut))
     else
       out.append("%s *gpuMemAlloc_%s_%s_%s(%s) {\n".format(remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,paramStrTemp))
-    out.append("\t%s *%s = new %s();\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type)))
+    */
+	out.append("\t%s *%s = new %s();\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type)))
 
-	val mult = if(currDim==2) xDimList(0) else "1"
-	if(currDim==2) multDimInputs += newSym
+	//val mult = if(currDim==2) xDimList(0) else "1"
+	//if(currDim==2) multDimInputs += newSym
 
     // Check if new allocation is needed
     if(data==null) {
@@ -273,18 +269,25 @@ trait CudaGenDataStruct extends CudaCodegen {
       out.append("\tDeliteCudaMalloc((void**)%s,%s*sizeof(%s));\n".format("&devPtr",length,remap(newSym.Type.typeArguments(0))))
       if(reset) out.append("\tDeliteCudaMemset(devPtr,0,%s*sizeof(%s));\n".format(length,remap(newSym.Type.typeArguments(0))))
       out.append("\t%s->length = %s;\n".format(quote(newSym),length))
-      out.append("\t%s->isRow = %s;\n".format(quote(newSym),isRow))
       out.append("\t%s->data = devPtr;\n".format(quote(newSym)))
     }
     else {
       out.append("\t%s->length = %s;\n".format(quote(newSym),length))
-      out.append("\t%s->isRow = %s;\n".format(quote(newSym),isRow))
       out.append("\t%s->data = %s;\n".format(quote(newSym),data))      
     }
     out.append("\treturn %s;\n".format(quote(newSym)))
-    out.append("}\n")
+    //out.append("}\n")
 
-    // Register MetaData
+	val allocStr = emitAllocOutput(newSym, null, out.toString, inputs1)
+    helperFuncString.append(allocStr)
+	
+	val copyStr = emitCopyOutputDtoH(newSym, null, copyOutputDtoH(newSym)) 
+    helperFuncString.append(copyStr)
+	    
+	gpuOutputs = gpuOutputs :+ newSym
+    
+	/*
+	// Register MetaData
     if(newSym == kernelSymbol) {
       MetaData.gpuOutput = "{\"%s\":[\"%s\",\"gpuMemAlloc_%s_%s_%s\",[%s],\"gpuMemCopy_%s_%s_%s\",[\"%s\",\"%s\"]]}".format(quote(newSym),remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,argStrOut,quote(kernelSymbol), quote(newSym), helperFuncIdx,"env", quote(newSym))
       out.append(emitCopyOutputDtoH(newSym))
@@ -295,13 +298,15 @@ trait CudaGenDataStruct extends CudaCodegen {
       gpuTemps = gpuTemps :+ newSym
     }
     helperFuncString.append(out.toString)
+	*/
   }
+
+  /*
   def emitVecAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false): Unit = {
-    emitVecAlloc(newSym, quote(sym)+"->length", quote(sym)+"->isRow", reset)
+    emitVecAlloc(newSym, quote(sym)+"->length", reset)
   }
 
   def emitVecAllocRef(newSym:Sym[Any], sym:Sym[Any]): Unit = {
-
 
     // Do not add the same temporary if it already exists
     if(gpuTemps.contains(newSym)) return
@@ -329,8 +334,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     }
     helperFuncString.append(out.toString)
   }
-  */
-
+*/
   def vecPositionMultDimInputs(sym: Sym[Any]) : String = {
 	val out = new StringBuilder
 	currDim = 1
@@ -339,7 +343,6 @@ trait CudaGenDataStruct extends CudaCodegen {
 	out.toString
   }
 
-  /*
   def emitMatAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null): Unit = {
     //TODO: Check if both symbols are Matrices
 
@@ -363,11 +366,14 @@ trait CudaGenDataStruct extends CudaCodegen {
 	).mkString(",")
     val argStrTemp = inputs2.map("\""+quote(_)+"\"").mkString(",")
 
+	
+	/*
     if(newSym == kernelSymbol)
-      out.append("%s *gpuMemAlloc_%s_%s_%s(%s) {\n".format(remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,paramStrOut))
+      out.append("%s *allocFunc_%s(%s) {\n".format(remap(newSym.Type),helperFuncIdx,paramStrOut))
     else
-      out.append("%s *gpuMemAlloc_%s_%s_%s(%s) {\n".format(remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,paramStrTemp))
-    out.append("\t%s *%s = new %s();\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type)))
+      out.append("%s *allocFunc_%s(%s) {\n".format(remap(newSym.Type),helperFuncIdx,paramStrTemp))
+    */
+	out.append("\t%s *%s = new %s();\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type)))
 
     // Check if new allocation is needed
     if(data==null) {
@@ -384,20 +390,33 @@ trait CudaGenDataStruct extends CudaCodegen {
       out.append("\t%s->data = %sr;\n".format(quote(newSym),data))
     }
     out.append("\treturn %s;\n".format(quote(newSym)))
-    out.append("}\n")
+    //out.append("}\n")
 
+	val allocStr = emitAllocOutput(newSym, null, out.toString, inputs1)
+    helperFuncString.append(allocStr)
+	
+	val copyStr = emitCopyOutputDtoH(newSym, null, copyOutputDtoH(newSym)) 
+    helperFuncString.append(copyStr)
+
+	//TODO: Need to do this here? Or in the Cudagen?
+	gpuOutputs = gpuOutputs :+ newSym
+		/*
     // Register MetaData
     if(newSym == kernelSymbol) {
-      MetaData.gpuOutput = "{\"%s\":[\"%s\",\"gpuMemAlloc_%s_%s_%s\",[%s],\"gpuMemCopy_%s_%s_%s\",[\"%s\",\"%s\"]]}".format(quote(newSym),remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,argStrOut,quote(kernelSymbol), quote(newSym),helperFuncIdx,"env", quote(newSym))
-      out.append(emitCopyOutputDtoH(newSym))
+      MetaData.gpuOutput = "{\"%s\":[\"%s\",\"allocFunc_%s\",[%s],\"copyOutputDtoH_%s\",[\"%s\",\"%s\"]]}".format(quote(newSym),remap(newSym.Type),helperFuncIdx,argStrOut,helperFuncIdx,"env", quote(newSym))
+      out.append(copyOutputDtoH(newSym))
 	    gpuOutputs = gpuOutputs :+ newSym
     }
     else {
-      MetaData.gpuTemps.add("{\"%s\":[\"%s\",\"gpuMemAlloc_%s_%s_%s\",[%s]]}".format(quote(newSym),remap(newSym.Type),quote(kernelSymbol),quote(newSym),helperFuncIdx,argStrTemp))
+      MetaData.gpuTemps.add("{\"%s\":[\"%s\",\"allocFunc_%s\",[%s]]}".format(quote(newSym),remap(newSym.Type),helperFuncIdx,argStrTemp))
       gpuTemps = gpuTemps :+ newSym
     }
     helperFuncString.append(out.toString)
+	*/
+
   }
+
+  /*
   def emitMatAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false): Unit = {
     emitMatAlloc(newSym, quote(sym)+"->numRows", quote(sym)+"->numCols",reset)
   }
@@ -429,6 +448,6 @@ trait CudaGenDataStruct extends CudaCodegen {
     }
     helperFuncString.append(out.toString)
   }
- */
+  */
 }
 

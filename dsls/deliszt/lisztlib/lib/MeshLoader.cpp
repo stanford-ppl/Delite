@@ -102,6 +102,33 @@ void MeshLoader::callVoidMethodV(jobject& jobj, string clsStr, string method,
     env->CallVoidMethodV(jobj, cid, args);
 }
 
+jint MeshLoader::callIntMethod(jobject& obj, string clsStr, string method,
+        string sig, ...) {
+            va_list args;
+            va_start(args, sig);
+
+            jobject ret = callObjectMethodV(obj, clsStr, method, sig, args);
+
+            va_end(args);
+            return ret;
+        }
+
+jint MeshLoader::callIntMethodV(jobject& obj, string clsStr,
+        string method, string sig, va_list args) {
+    jclass cls;
+    if (!(cls = cache.getClass(clsStr))) {
+        throw new MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
+    }
+
+    jmethodID cid = cache.getMethod(cls, method, sig);
+    if (cid == NULL) {
+        throw new MeshLoadException(
+                "Failed to find method " + method + " with sig " + sig); /* exception thrown */
+    }
+
+    return env->CallIntMethodV(obj, cid, args);
+}
+
 jobject MeshLoader::getScalaObjField(string clsStr, jobject& jobj, string field,
         string type) {
     if (jclass cls = cache.getClass(clsStr)) {
@@ -192,9 +219,6 @@ jintArray MeshLoader::copyIdPairArray(CRSMeshPrivate::IDPair* array,
 }
 
 jobject MeshLoader::loadMesh(jstring str) {
-    MeshIO::LisztFileReader reader;
-    CRSMesh::Mesh mesh;
-
     try {
         // Convert file name
         string filename(env->GetStringUTFChars(str, 0));
@@ -215,7 +239,7 @@ jobject MeshLoader::loadMesh(jstring str) {
         // Set fields on mesh
         CRSMeshPrivate::MeshData& data = mesh.data;
 
-        jobject jmesh = createObject(meshClass, "");
+        jmesh = createObject(meshClass, "");
 
         // Set size fields
         setScalaField(meshClass, jmesh, "nvertices", "I", data.nvertices);
@@ -251,12 +275,12 @@ jobject MeshLoader::loadMesh(jstring str) {
 
         // Boundary sets
         loadBoundaries(jmesh, mesh, reader);
-
-        return jmesh;
     }
     catch (MeshLoadException e) {
-        return NULL;
+        jmesh = NULL;
     }
+    
+    return jmesh;
 }
 
 MeshLoader::~MeshLoader() {
@@ -310,81 +334,40 @@ void MeshLoader::loadPositions(jobject& jmesh, CRSMesh::Mesh& mesh,
             env->NewStringUTF("position"), positions);
 }
 
-void MeshLoader::loadBoundaries(jobject& jmesh, CRSMesh::Mesh& mesh,
-        MeshIO::LisztFileReader& reader) {
-    MeshIO::LisztHeader h = reader.header();
-    MeshIO::BoundarySetEntry* bounds = reader.boundaries();
-    boundary_builder.init(h.nBoundaries, bounds);
-
-    // Load the meshes we find!
-    for (size_t i = 0; i < h.nBoundaries; i++) {
-        // If it has a name, load it!
-        if (bounds[i].name.size() > 0) {
-            MeshIO::IOElemType typ = (MeshIO::IOElemType) (bounds[i].type
-                    & ~MeshIO::AGG_FLAG);
-
-            switch (typ) {
-            case LisztPrivate::ElemTypes::CELL:
-                loadBoundarySet<Cell, cell_set>(jmesh, mesh,
-                        bounds[i].name.c_str(), "cellBounds");
-                break;
-            case LisztPrivate::ElemTypes::EDGE:
-                loadBoundarySet<Edge, edge_set>(jmesh, mesh,
-                        bounds[i].name.c_str(), "edgeBounds");
-                break;
-            case LisztPrivate::ElemTypes::FACE:
-                loadBoundarySet<Face, face_set>(jmesh, mesh,
-                        bounds[i].name.c_str(), "faceBounds");
-                break;
-            case LisztPrivate::ElemTypes::VERTEX:
-                loadBoundarySet<Vertex, vertex_set>(jmesh, mesh,
-                        bounds[i].name.c_str(), "vertexBounds");
-                break;
-            default:
-                break;
-            }
-        }
-    }
-}
-
-template<typename MO, typename MeshSet, typename BoundarySet>
-void MeshLoader::loadBoundarySet(jobject& jmesh, CRSMesh::Mesh& mesh,
-        const char* name, string field) {
+template<typename MO>
+void MeshLoader::loadBoundarySet(const char* name, string field) {
     BoundarySet *bs = new BoundarySet();
     if (!bs) {
         throw new MeshLoadException("Could not create boundary set");
     }
 
-    if (boundary_builder.load<CRSMesh::Mesh, MO, BoundarySet>(&mesh, name, bs)) {
-        jobject boundMap = getScalaObjField(meshClass, jmesh, field,
-                "Lscala/collection/mutable/Map");
+    jobject bounds = NULL;
+    
+    try {
+      if (boundary_builder.load<MO, BoundarySet>(&mesh, name, bs)) {
+          bounds = createObject(
+                  "ppl/dsl/deliszt/datastruct/scala/BoundarySetImpl", "");
 
-        // Copy bs over I guess
-        jmethodID cid = cache.getMethod("scala/collection/mutable/Map", "put",
-                "(Ljava/lang/Object,Ljava/lang/Object)Lscala/Option");
-        if (cid == NULL) {
-            throw new MeshLoadException("Failed to find put method"); /* exception thrown */
-        }
+          BoundarySet::ranges& ranges = bs->getRanges();
+                  
+          // For ranges in bs
+          for (BoundarySet::range_it it = ranges.first(), end = ranges.end(); it != end; it++) {
+              callVoidMethod(bounds,
+                      "ppl/dsl/deliszt/datastruct/scala/BoundarySetImpl", "add",
+                      "(I,I)V", it->first(), it->second());
+          }
 
-        jobject bounds = createObject(
-                "ppl/dsl/deliszt/datastruct/scala/BoundSetImpl", "");
-
-        // For ranges in bs
-        for (MeshSet::iterator it = bs->iter(); it.hasNext();) {
-            callVoidMethod(bounds,
-                    "ppl/dsl/deliszt/datastruct/scala/BoundSetImpl", "add",
-                    "(I)V", it.next().ID());
-        }
-
-        callVoidMethod(bounds, "ppl/dsl/deliszt/datastruct/scala/BoundSetImpl",
-                "freeze", "()V");
-
-        callObjectMethod(boundMap, "scala/collection/mutable/Map", "put",
-                "(Ljava/lang/Object,Ljava/lang/Object)Lscala/Option",
-                env->NewStringUTF(name), bounds);
+          callVoidMethod(bounds, "ppl/dsl/deliszt/datastruct/scala/BoundarySetImpl",
+                  "freeze", "()V");
+      }
+    }
+    catch(Exception e) {
+        bounds = NULL;
     }
 
     delete bs;
+    
+    return bounds;
 }
 
 }

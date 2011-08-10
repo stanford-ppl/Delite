@@ -19,12 +19,6 @@ import ppl.dsl.deliszt.datastruct.scala._
 trait MeshPrivateOps extends DSLType with Variables {
   this: DeLiszt =>
 
-  object MeshLoader {
-    def init() = mesh_loader_init()
-  }
-  
-  def mesh_loader_init() : Rep[Unit]
-
   def meshSet[MO<:MeshObj:Manifest] : Rep[MeshSet[MO]]
   def label[MO<:MeshObj:Manifest,VT:Manifest] : Rep[LabelField[MO,VT]]
 }
@@ -42,7 +36,6 @@ trait MeshPrivateOpsExp extends MeshPrivateOps with VariablesExp with BaseFatExp
     val vtM = manifest[VT]
   }
 
-  def mesh_loader_init() = MeshLoaderInit()
   def meshSet[MO<:MeshObj:Manifest] = MeshSetNew[MO]()
   def label[MO<:MeshObj:Manifest,VT:Manifest] = reflectMutable(LabelFieldPrivateNew[MO,VT]())
 }
@@ -53,7 +46,6 @@ trait ScalaGenVecPrivateOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case MeshLoaderInit() => emitValDef(sym, "generated.scala.datastruct.MeshLoader.init()")
       case ms@MeshSetNew() => emitValDef(sym, "generated.scala.datastruct.Mesh.mesh.meshSet[" + remap(ms.moM) + "]")
       case lf@LabelFieldPrivateNew() => emitValDef(sym, "generated.scala.datastruct.Mesh.mesh.label[" + remap(lf.moM) + "," + remap(lf.vtM) + "]")
       case _ => super.emitNode(sym, rhs)

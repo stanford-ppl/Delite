@@ -18,3 +18,10 @@ class MeshSetImpl[MO<:MeshObj:MeshObjConstruct](val size : Int) extends MeshSet[
     MeshObjImpl[MO](i)
   }
 }
+
+// No zero cell
+class CellSetImpl(val size : Int) extends MeshSet[Cell] {
+  def apply(i : Int) = {
+    new CellImpl(i+1)
+  }
+}
