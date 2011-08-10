@@ -245,11 +245,12 @@ trait VectorImplOpsStandard extends VectorImplOps {
 
   def vector_contains_impl[A:Manifest](v: Rep[Vector[A]], elem: Rep[A]): Rep[Boolean] = {
     var i = unit(0)
-    while (i < v.length) {
-      if (v(i) == elem) return true
+    var found = false
+    while (i < v.length && !found) {
+      if (v(i) == elem) found = true
       i += 1
     }
-    return false
+    found
   }
 
   def vector_distinct_impl[A:Manifest](v: Rep[Vector[A]]) = {
