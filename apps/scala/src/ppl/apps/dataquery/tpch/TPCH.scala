@@ -28,9 +28,26 @@ trait TPCH extends OptiQLApplication {
 
     //load TPCH data
     val lineItems = TPCH.loadLineItems(tpchDataPath)
+    type Result = Row[Rep]
 
 	tic(lineItems)
-    val res = lineItems Select(e => new Row[Rep] { val shipDate = e.shipDate  })
+    val res = lineItems Select(e => new Result { val shipDate = e.shipDate  })
+    
+    /*
+    val res = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
+      val returnFlag = e.key._1
+      val lineStatus = e.key._2
+      val sumQty = e.Sum(_.quantity)
+      val sumBasePrice = e.Sum(_.extendedPrice)
+      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
+      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
+      val avgQty = e.Average(_.quantity)
+      val avgPrice = e.Average(_.extendedPrice)
+      val avgDiscount = e.Average(_.discount)
+      val count = e.Count
+      //hack
+      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
+    }) */
     toc(res)
     res.printAsTable()
 /*
