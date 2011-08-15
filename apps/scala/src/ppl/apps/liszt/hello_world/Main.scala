@@ -1,4 +1,4 @@
-package ppl.apps.ml.liszt.hello_world
+package ppl.apps.liszt.hello_world
 
 import ppl.dsl.deliszt.datastruct.scala._
 import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication}

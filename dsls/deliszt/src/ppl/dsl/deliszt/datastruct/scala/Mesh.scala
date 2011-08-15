@@ -12,6 +12,7 @@ import collection.mutable.{Map, HashMap}
 
 object Mesh extends MeshObjImpl {
   var mesh: Mesh = null
+  var loader: MeshLoader = null
 
   def vertices(e: Mesh): DeLisztSet[Vertex] = MeshSetImpl(mesh.nvertices)
   def vertices(e: Vertex): DeLisztSet[Vertex] = IndexSetImpl(mesh.vtov, e)
@@ -135,11 +136,8 @@ class Mesh extends MeshObj with MetaInteger with MeshObjImpl {
     }
   }
 
-  def meshSet[MO<:MeshObj](implicit ms: MeshSet[MO], mm: Manifest[MO]) = ms
-  def boundarySet[MO<:MeshObj](url: String)(implicit bm: Map[String,MeshSet[MO]], mm: Manifest[MO]) : MeshSet[MO] = {
-    bm.get(url) match {
-      case Some(bs) => bs.asInstanceOf[MeshSet[MO]]
-      case None => null
-    }
+  def meshSet[MO<:MeshObj](implicit ms: MeshSet[MO]) = ms
+  def boundarySet[MO<:MeshObj:MeshObjConstruct](name: String) : MeshSet[MO] = {
+    Mesh.loader.loadBoundaries(name)
   }
 }

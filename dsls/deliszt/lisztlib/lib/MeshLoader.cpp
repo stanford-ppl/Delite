@@ -282,6 +282,7 @@ jobject MeshLoader::loadMesh(jstring str) {
     }
     catch (MeshLoadException e) {
         jmesh = NULL;
+        std::cerr << e << std:endl;
     }
     
     return jmesh;

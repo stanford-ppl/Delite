@@ -2,19 +2,23 @@ import org.scalatest.FlatSpec
 import org.scalatest.matchers.ShouldMatchers
 
 import java.util.Stack
+import ppl.dsl.deliszt.datastruct.scala.MeshLoader
 
 class StackSpec extends FlatSpec with ShouldMatchers {
+  "The MeshLoader" should "load succesfully" in {
+    val path = System.getProperty("java.library.path")
+    println("Path:")
+    println(path)
 
-  "A Stack" should "pop values in last-in-first-out order" in {
-    val stack = new Stack[Int]
-    stack.push(1)
-    stack.push(2)
-    stack.pop() should equal (2)
-    stack.pop() should equal (1)
-  }
+    val cfg = getClass.getResource("/liszt.cfg").getPath()
+    println("Liszt CFG")
+    println(cfg)
 
-  it should "throw EmptyStackException if an empty stack is popped" in {
-    val emptyStack = new Stack[String]
-    evaluating { emptyStack.pop() } should produce [java.util.EmptyStackException]
+    try {
+      MeshLoader.init(cfg)
+    }
+    catch {
+      case e:java.lang.UnsatisfiedLinkError => {println(e); fail}
+    }
   }
 }
