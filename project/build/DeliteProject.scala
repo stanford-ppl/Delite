@@ -50,6 +50,9 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     override def mainScalaSourcePath = "src"
     override def mainResourcesPath = "resources"
     
+    override def testScalaSourcePath = "tests" / "src" / "scala"
+    override def testResourcesPath = "tests" / "resources"
+    
     override def compileOptions = super.compileOptions ++ compileOptions("-Yno-generic-signatures") // speed up bytecode gen a little
     override def testCompileOptions = super.testCompileOptions ++ compileOptions("-Yno-generic-signatures")
     
@@ -60,6 +63,9 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
       log.error("scala.virtualized.home needs to be defined in delite.properties and "+
       "must point to a valid scala-virtualized home directory"); "<undefined>"
     }))::Nil 
+    
+    val scalaToolsSnapshots = ScalaToolsSnapshots
+    val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT"
   }
   
   // Define projects

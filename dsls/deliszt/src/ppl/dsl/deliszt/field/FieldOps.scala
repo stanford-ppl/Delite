@@ -54,14 +54,36 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
   def reflectPure[VT:Manifest](x: Def[VT]): Exp[VT] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
 
   ///////////////////////////////////////////////////
-  // implemented via method on real data structure
-  case class FieldApply[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO]) extends Def[VT]
-  case class FieldUpdate[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO], v: Exp[VT]) extends Def[Unit]
+  // implemented via method on real data structure  
+  case class FieldApply[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO]) extends Def[VT] {
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
+  }
   
-  case class FieldPlusUpdate[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO], v: Exp[VT]) extends Def[Unit]
-  case class FieldTimesUpdate[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO], v: Exp[VT]) extends Def[Unit]
-  case class FieldMinusUpdate[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO], v: Exp[VT]) extends Def[Unit]
-  case class FieldDivideUpdate[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO], v: Exp[VT]) extends Def[Unit]
+  case class FieldUpdate[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO], v: Exp[VT]) extends Def[Unit] {
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
+  }
+  
+  case class FieldPlusUpdate[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO], v: Exp[VT]) extends Def[Unit] {
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
+  }
+  
+  case class FieldTimesUpdate[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO], v: Exp[VT]) extends Def[Unit] {
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
+  }
+  
+  case class FieldMinusUpdate[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO], v: Exp[VT]) extends Def[Unit] {
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
+  }
+  
+  case class FieldDivideUpdate[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO,VT]], mo: Exp[MO], v: Exp[VT]) extends Def[Unit] {
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
+  }
 
   ////////////////////////////////
   // implemented via delite ops
@@ -81,25 +103,97 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
   
   case class FieldObjectNew[MO<:MeshObj:Manifest,VT:Manifest]() extends Def[Field[MO,VT]] {
     val fM = manifest[FieldImpl[MO,VT]]
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
   }
 
   case class LabelFieldNew[MO<:MeshObj:Manifest,VT:Manifest](url: Exp[String]) extends Def[Field[MO,VT]] {
     val mM = manifest[MO]
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
   }
 
-  case class FieldIntApply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) extends Def[VT]
-  case class FieldIntUpdate[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT]) extends Def[Unit]
-  case class FieldSize[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]]) extends Def[Int]
+  case class FieldIntApply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) extends Def[VT] {
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
+  }
+  
+  case class FieldIntUpdate[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int], v: Exp[VT]) extends Def[Unit] {
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
+  }
+  
+  case class FieldSize[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]]) extends Def[Int] {
+    val moM = manifest[MO]
+    val vtM = manifest[VT]
+  }
 
   //////////////
   // mirroring
 
-/*  override def mirror[VT:Manifest](e: Def[VT], f: Transformer): Exp[VT] = (e match {
-    case FieldApply(x, n) => vec_apply(f(x), f(n))
-    case Reflect(FieldApply(l,r), u, es) => reflectMirrored(Reflect(FieldApply(f(l),f(r)), mapOver(f,u), f(es)))
-    case Reflect(FieldUpdate(l,i,r), u, es) => reflectMirrored(Reflect(FieldUpdate(f(l),f(i),f(r)), mapOver(f,u), f(es)))
+override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case e@FieldApply(x, i) => field_mo_apply(f(x), f(i))(e.moM, e.vtM)
+    case e@FieldIntApply(x, i) => field_apply(f(x), f(i))(e.moM, e.vtM)
+    // Read/write effects
+    case Reflect(e@FieldApply(l,r), u, es) => reflectMirrored(Reflect(FieldApply(f(l),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FieldIntApply(l,r), u, es) => reflectMirrored(Reflect(FieldIntApply(f(l),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FieldUpdate(l,i,r), u, es) => reflectMirrored(Reflect(FieldUpdate(f(l),f(i),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FieldPlusUpdate(l,i,r), u, es) => reflectMirrored(Reflect(FieldPlusUpdate(f(l),f(i),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FieldTimesUpdate(l,i,r), u, es) => reflectMirrored(Reflect(FieldTimesUpdate(f(l),f(i),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FieldDivideUpdate(l,i,r), u, es) => reflectMirrored(Reflect(FieldDivideUpdate(f(l),f(i),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FieldMinusUpdate(l,i,r), u, es) => reflectMirrored(Reflect(FieldMinusUpdate(f(l),f(i),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    // Effect with SingleTask and DeliteOpLoop
+    // Allocation
     case _ => super.mirror(e, f)
-  }).asInstanceOf[Exp[VT]] */
+  }).asInstanceOf[Exp[A]]
+
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case FieldApply(a,i) => Nil
+    case FieldIntApply(a,i) => Nil
+    case FieldUpdate(a,i,x) => Nil
+    case FieldIntUpdate(a,i,x) => Nil
+    case FieldPlusUpdate(a,i,x) => Nil
+    case FieldTimesUpdate(a,i,x) => Nil
+    case FieldDivideUpdate(a,i,x) => Nil
+    case FieldMinusUpdate(a,i,x) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case FieldApply(a,i) => Nil
+    case FieldIntApply(a,i) => Nil
+    case FieldUpdate(a,i,x) => syms(x)
+    case FieldIntUpdate(a,i,x) => syms(x)
+    case FieldPlusUpdate(a,i,x) => syms(x)
+    case FieldTimesUpdate(a,i,x) => syms(x)
+    case FieldDivideUpdate(a,i,x) => syms(x)
+    case FieldMinusUpdate(a,i,x) => syms(x)
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case FieldApply(a,i) => syms(a)
+    case FieldIntApply(a,i) => syms(a)
+    case FieldUpdate(a,i,x) => Nil
+    case FieldIntUpdate(a,i,x) => Nil
+    case FieldPlusUpdate(a,i,x) => Nil
+    case FieldTimesUpdate(a,i,x) => Nil
+    case FieldDivideUpdate(a,i,x) => Nil
+    case FieldMinusUpdate(a,i,x) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case FieldApply(a,i) => Nil
+    case FieldIntApply(a,i) => Nil
+    case FieldUpdate(a,i,x) => syms(a)
+    case FieldIntUpdate(a,i,x) => syms(a)
+    case FieldPlusUpdate(a,i,x) => syms(a)
+    case FieldTimesUpdate(a,i,x) => syms(a)
+    case FieldDivideUpdate(a,i,x) => syms(a)
+    case FieldMinusUpdate(a,i,x) => syms(a)
+    case _ => super.copySyms(e)
+  }
 
 
   /////////////////////
