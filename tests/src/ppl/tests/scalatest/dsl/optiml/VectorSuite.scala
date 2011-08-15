@@ -260,6 +260,20 @@ trait Dist extends DeliteTestModule with OptiMLApplication {
   }
 }
 
+object DistinctRunner extends DeliteTestRunner with OptiMLApplicationRunner with Distinct
+trait Distinct extends DeliteTestModule with OptiMLApplication {
+  def main() = {
+    implicit val collector = ArrayBuffer[Boolean]()
+
+    val v1 = Vector(10.,10.,5.,5.,0.)
+
+    collect(v1.contains(5.))
+    collect(!v1.contains(7.5))
+    collect(v1.distinct == Vector(10.,5.,0.))
+    mkReport
+  }
+}
+
 object MedianRunner extends DeliteTestRunner with OptiMLApplicationRunner with Median
 trait Median extends DeliteTestModule with OptiMLApplication {
   def main() = {
@@ -310,6 +324,7 @@ class VectorSuite extends DeliteSuite {
   // testFind() fails because of error with activation records allowing supertypes to be returned from a kernel
   def testFind() { compileAndTest(FindRunner) }
   def testDist() { compileAndTest(DistRunner) }
+  def testDistinct() { compileAndTest(DistinctRunner) }
   def testMedian() { compileAndTest(MedianRunner) }
   def testNearestNeighbor() { compileAndTest(NearestNeighborRunner) }
   def testSample() { compileAndTest(SampleRunner) }
