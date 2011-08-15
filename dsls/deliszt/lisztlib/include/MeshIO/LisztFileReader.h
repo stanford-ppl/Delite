@@ -19,14 +19,14 @@ public:
 		file = FOPEN(filename.c_str(),"r");
 		if(!file) {
 			perror(NULL);
-			assert(!"file read error");
+      throw new MeshLoadException("file read error");
 		}
 		if(fread(&head,sizeof(LisztHeader),1,file) != 1) {
 			perror(NULL);
-			assert(!"failed to read header");
+      throw new MeshLoadException("failed to read header");
 		}
 		if(head.magic_number != LISZT_MAGIC_NUMBER) {
-			assert(!"unexpected magic number, is this a liszt mesh?");
+      throw new MeshLoadException("unexpected magic number, is this a liszt mesh?");
 		}
 	}
 	

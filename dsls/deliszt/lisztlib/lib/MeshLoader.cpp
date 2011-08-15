@@ -44,7 +44,7 @@ jobject MeshLoader::createObjectV(jclass& cls, string type, va_list args) {
     /* Get the method ID for the String(char[]) constructor */
     cid = cache->getMethod(cls, "<init>", sig);
     if (cid == NULL) {
-        throw new MeshLoadException("Failed to find <init> method"); /* exception thrown */
+        throw new MeshIO::MeshLoadException("Failed to find <init> method"); /* exception thrown */
     }
 
     return env->NewObjectV(cls, cid, args);
@@ -55,7 +55,7 @@ jobject MeshLoader::createObject(string clsStr, string type, ...) {
     va_start(args, type);
     jclass cls;
     if(!(cls = cache->getClass(clsStr))) {
-        throw new MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
+        throw new MeshIO::MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
     jobject obj = createObjectV(cls, type, args);
@@ -79,12 +79,12 @@ jobject MeshLoader::callObjectMethodV(jobject& obj, string clsStr,
         string method, string sig, va_list args) {
     jclass cls;
     if (!(cls = cache->getClass(clsStr))) {
-        throw new MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
+        throw new MeshIO::MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
     jmethodID cid = cache->getMethod(cls, method, sig);
     if (cid == NULL) {
-        throw new MeshLoadException(
+        throw new MeshIO::MeshLoadException(
                 "Failed to find method " + method + " with sig " + sig); /* exception thrown */
     }
 
@@ -105,12 +105,12 @@ void MeshLoader::callVoidMethodV(jobject& jobj, string clsStr, string method,
         string sig, va_list args) {
     jclass cls;
     if (!(cls = cache->getClass(clsStr))) {
-        throw new MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
+        throw new MeshIO::MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
     jmethodID cid = cache->getMethod(cls, method, sig);
     if (cid == NULL) {
-        throw new MeshLoadException(
+        throw new MeshIO::MeshLoadException(
                 "Failed to find method " + method + " with sig " + sig); /* exception thrown */
     }
 
@@ -132,12 +132,12 @@ jint MeshLoader::callIntMethodV(jobject& obj, string clsStr,
         string method, string sig, va_list args) {
     jclass cls;
     if (!(cls = cache->getClass(clsStr))) {
-        throw new MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
+        throw new MeshIO::MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
     jmethodID cid = cache->getMethod(cls, method, sig);
     if (cid == NULL) {
-        throw new MeshLoadException(
+        throw new MeshIO::MeshLoadException(
                 "Failed to find method " + method + " with sig " + sig); /* exception thrown */
     }
 
@@ -162,7 +162,7 @@ jobject MeshLoader::getScalaObjField(jclass& cls, jobject& jobj, string field,
 
     cid = cache->getMethod(cls, getter, sig);
     if (cid == NULL) {
-        throw new MeshLoadException("Failed to find getter for " + field); /* exception thrown */
+        throw new MeshIO::MeshLoadException("Failed to find getter for " + field); /* exception thrown */
     }
 
     return env->CallObjectMethod(jobj, cid);
@@ -178,7 +178,7 @@ void MeshLoader::setScalaField(jclass& cls, jobject& jobj, string field,
 
             cid = cache->getMethod(cls, setter, sig);
             if (cid == NULL) {
-                throw new MeshLoadException("Failed to find setter for " + field); /* exception thrown */
+                throw new MeshIO::MeshLoadException("Failed to find setter for " + field); /* exception thrown */
   }
   
   env->CallVoidMethodV(jobj, cid, args);
@@ -245,6 +245,10 @@ jobject MeshLoader::loadMesh(jstring str) {
 
   std::cout << "header" << std::endl;
         MeshIO::LisztHeader h = reader.header();
+        if(h.magic_number != MeshIO::LISZT_MAGIC_NUMBER) {
+          std::cout << "wrong magic number" << std::endl;
+          throw new MeshIO::MeshLoadException("wrong magic number");
+        }
         MeshIO::FacetEdgeBuilder builder;
 
   std::cout << "builder init" << std::endl;
@@ -304,7 +308,7 @@ jobject MeshLoader::loadMesh(jstring str) {
         // Boundary sets
         loadBoundaries(jmesh, mesh, reader);
     }
-    catch (MeshLoadException e) {
+    catch (MeshIO::MeshLoadException e) {
         jmesh = NULL;
         std::cerr << e.what() << std::endl;
     }
@@ -321,12 +325,12 @@ void MeshLoader::loadPositions(jobject& jmesh, CRSMesh::Mesh& mesh,
 
     jclass darrCls = cache->getClass("[D");
     if (darrCls == NULL) {
-        throw new MeshLoadException("Failed to find double array class"); /* exception thrown */
+        throw new MeshIO::MeshLoadException("Failed to find double array class"); /* exception thrown */
     }
 
     jobjectArray positions = env->NewObjectArray(size, darrCls, NULL);
     if (positions == NULL) {
-        throw new MeshLoadException("Failed to create array of double arrays"); /* out of memory error thrown */
+        throw new MeshIO::MeshLoadException("Failed to create array of double arrays"); /* out of memory error thrown */
     }
 
     MeshIO::PositionTable* table = reader.positions();
@@ -336,7 +340,7 @@ void MeshLoader::loadPositions(jobject& jmesh, CRSMesh::Mesh& mesh,
 
         jdoubleArray darr = env->NewDoubleArray(size);
         if (darr == NULL) {
-            throw new MeshLoadException("Failed to create double array"); /* out of memory error thrown */
+            throw new MeshIO::MeshLoadException("Failed to create double array"); /* out of memory error thrown */
         }
 
         for (int j = 0; j < 3; j++) {
@@ -367,7 +371,7 @@ template<typename MO>
 jobject MeshLoader::loadBoundarySet(const char* name) {
     LisztPrivate::BoundarySet *bs = new LisztPrivate::BoundarySet();
     if (!bs) {
-        throw new MeshLoadException("Could not create boundary set");
+        throw new MeshIO::MeshLoadException("Could not create boundary set");
     }
 
     jobject bounds = NULL;

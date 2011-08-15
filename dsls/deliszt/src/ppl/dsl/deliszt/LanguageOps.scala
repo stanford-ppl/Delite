@@ -19,7 +19,7 @@ import ppl.dsl.deliszt.datastruct.scala._
  * Stanford University
  */
 
-trait LanguageOps extends Base { this: DeLiszt =>
+trait LanguageOps extends Base { this: DeLiszt with MathOps =>
   def _init(args: Rep[Array[String]]) : Unit
 
   def Print(as : Rep[Any]*) : Unit
@@ -81,6 +81,8 @@ trait LanguageOps extends Base { this: DeLiszt =>
   def MATH_PI() : Rep[Double]
   def MIN_FLOAT() : Rep[Float]
   def MAX_FLOAT() : Rep[Float]
+  def min[A:Manifest:Numeric](x: Rep[A], y: Rep[A]) = math_min(x, y)
+  def max[A:Manifest:Numeric](x: Rep[A], y: Rep[A]) = math_max(x, y)
   def sqrt(a: Rep[Double]) : Rep[Double]
   def fabs(value : Rep[Float]) : Rep[Float]
   def MPI_Wtime() : Rep[Double]

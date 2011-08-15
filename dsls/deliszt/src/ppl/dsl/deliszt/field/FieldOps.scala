@@ -23,7 +23,7 @@ trait FieldOps extends DSLType with Variables with OverloadHack {
   }
   
   def FieldWithConst[MO<:MeshObj:Manifest, VT:Manifest](c : Rep[VT]) : Rep[Field[MO,VT]]
-	def FieldWithURL[MO<:MeshObj:Manifest, VT:Manifest](url : Rep[String]) : Rep[Field[MO,VT]]
+	def FieldWithLabel[MO<:MeshObj:Manifest, VT:Manifest](url : Rep[String]) : Rep[Field[MO,VT]]
 
   /**
    * This class defines the public interface for the Field[T] class.
@@ -94,8 +94,8 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
     val vtM = manifest[VT]
   }
   
-  case class DeLisztFieldWithURL[MO<:MeshObj:Manifest, VT:Manifest](url : Exp[String])
-    extends DeliteOpSingleTask(reifyEffectsHere(field_obj_url_impl[MO,VT](url))) {
+  case class DeLisztFieldWithLabel[MO<:MeshObj:Manifest, VT:Manifest](url : Exp[String])
+    extends DeliteOpSingleTask(reifyEffectsHere(field_obj_label_impl[MO,VT](url))) {
     
     val moM = manifest[MO]
     val vtM = manifest[VT]
@@ -206,8 +206,8 @@ override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
 
   def FieldWithConst[MO<:MeshObj:Manifest, VT:Manifest](c : Exp[VT])
     = reflectMutable(DeLisztFieldWithConst[MO,VT](c))
-  def FieldWithURL[MO<:MeshObj:Manifest, VT:Manifest](url : Exp[String])
-    = reflectMutable(DeLisztFieldWithURL[MO,VT](url))
+  def FieldWithLabel[MO<:MeshObj:Manifest, VT:Manifest](url : Exp[String])
+    = reflectMutable(DeLisztFieldWithLabel[MO,VT](url))
   
   def label[MO<:MeshObj:Manifest,VT:Manifest](url: Exp[String]) = LabelFieldNew[MO,VT](url)
 

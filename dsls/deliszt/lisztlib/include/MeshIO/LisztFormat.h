@@ -2,6 +2,8 @@
 #define _LISZT_FORMAT_H
 
 #include <stdint.h>
+#include <string>
+#include <stdexcept>
 
 namespace MeshIO {
 
@@ -9,6 +11,14 @@ typedef uint64_t file_ptr;
 typedef uint32_t lsize_t;
 typedef uint32_t id_t;
 static const uint32_t LISZT_MAGIC_NUMBER = 0x18111022;
+
+class MeshLoadException : public std::runtime_error {
+public:
+    MeshLoadException(const std::string& message) :
+            std::runtime_error(message) {
+    }
+    ;
+};
 
 struct LisztHeader {
 	uint32_t magic_number; //LISZT_MAGIC_NUMBER

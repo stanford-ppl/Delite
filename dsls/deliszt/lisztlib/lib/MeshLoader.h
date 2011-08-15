@@ -13,15 +13,6 @@
 using namespace std;
 
 namespace System {
-
-class MeshLoadException : public runtime_error {
-public:
-    MeshLoadException(const string& message) :
-            std::runtime_error(message) {
-    }
-    ;
-};
-
 class MeshLoader {
 public:
     typedef CRSMesh::Mesh parent_mesh;
