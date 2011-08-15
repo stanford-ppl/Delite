@@ -9,19 +9,19 @@ package ppl.dsl.deliszt.datastruct.scala
  */
 
 object VecImpl extends MetaInteger {
-  def apply[N<:IntM:MVal, VT:Manifest]() = {
-    new VecImpl[N,VT](MIntDepth[N])
+  def apply[N<:IntM:MVal, T:Manifest]() = {
+    new VecImpl[N,T](MIntDepth[N])
   }
 }
 
-class VecImpl[N<:IntM:MVal, VT:Manifest](val size : Int) extends Vec[N, VT] {
-  val data = new Array[VT](size)
+class VecImpl[N<:IntM:MVal, @specialized T: ClassManifest](val size : Int) extends Vec[N, T] {
+  val data = new Array[T](size)
 
-  def apply[TT<:IntM](n : TT)(implicit mv: MVal[TT], f : EnsureSize[TT,N]) : VT = apply(MIntDepth[TT])
-  def update[TT<:IntM](n : TT, v : VT)(implicit mv: MVal[TT], f : EnsureSize[TT,N]) : Unit = update(MIntDepth[TT], v)
+  def apply[TT<:IntM](n : TT)(implicit mv: MVal[TT], f : EnsureSize[TT,N]) : T = apply(MIntDepth[TT])
+  def update[TT<:IntM](n : TT, v : T)(implicit mv: MVal[TT], f : EnsureSize[TT,N]) : Unit = update(MIntDepth[TT], v)
 
   def apply(n : Int) = data(n)
-  def update(n : Int, v : VT) = {
+  def update(n : Int, v : T) = {
     data(n) = v
   }
 }

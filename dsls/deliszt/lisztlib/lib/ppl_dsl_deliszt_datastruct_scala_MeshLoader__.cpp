@@ -5,9 +5,17 @@
 System::MeshLoader ml;
 
 JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader_loadMesh (JNIEnv* env, jobject obj, jstring str) {
+  std::cout << "init" << std::endl;
   ml.init(env);
+
+  std::cout << "load" << std::endl;
   jobject jmesh = ml.loadMesh(str);
-  
+
+  if(jmesh)  
+    std::cout << "has mesh" << std::endl;
+  else
+    std::cout << "no mesh" << std::endl;
+
   return jmesh;
 }
 

@@ -12,6 +12,7 @@ import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides,
 import ppl.delite.framework.ops._
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import ppl.dsl.deliszt.datastruct.scala.MetaInteger
+import scala.util.matching.Regex
 
 import ppl.dsl.deliszt.capabilities._
 import ppl.dsl.deliszt.field._
@@ -182,7 +183,7 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
     var res = line.replaceAll("object ", "object " + t)
     res = res.replaceAll("import ", "import " + t)
     res = res.replaceAll("@specialized T: ClassManifest", t)
-    res = res.replaceAll("T:Manifest", t)
+    res = res.replaceAll("\\bT:Manifest\\b", t)
     res = res.replaceAll("\\bT\\b", t)
     parmap(res)
   }
@@ -206,8 +207,19 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
   def parmap(line: String): String = {
     var res = line
     for(tpe1 <- List("Int","Long","Double","Float","Boolean")) {
+      val parSub = (m: Regex.Match) => {
+        val rest = (m.group(1) + m.group(3)).replaceAll("""^\s+""", "")
+        if(rest.length > 0) {
+          "[" + rest + "]"
+        }
+        else {
+          ""
+        }
+      }
+
       for (s <- specialize) {
-        res = res.replaceAll(s+"\\["+tpe1+"\\]", tpe1+s)
+        val expr = ("\\b" + s + "\\[(.*?)(,\\s*)?\\b" + tpe1 + "\\b(.*?)\\]\\(").r  
+        res = expr.replaceAllIn(res, m => tpe1 + s + parSub(m) + "(")
       }
       for(tpe2 <- List("Int","Long","Double","Float","Boolean")) {
         for (s <- specialize2) {
@@ -222,7 +234,7 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
 
   override def dsmap(line: String) : String = {
     var res = line.replaceAll("ppl.dsl.deliszt.datastruct", "generated")
-    res = res.replaceAll("ppl.delite.framework", "generated.scala")
+    res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
     res
   }
 }

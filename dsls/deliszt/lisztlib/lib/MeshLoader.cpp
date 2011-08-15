@@ -14,7 +14,11 @@ MeshLoader::MeshLoader() {
 
 void MeshLoader::init(JNIEnv* _env) {
     env = _env;
+
+    std::cout << "new cache" << std::endl;
     cache = new JNICache(env);
+
+  std::cout << "load class" << std::endl;
     meshClass = cache->getClass("ppl/dsl/deliszt/datastruct/scala/Mesh");
 }
 
@@ -224,25 +228,38 @@ jintArray MeshLoader::copyIdPairArray(CRSMeshPrivate::IDPair* array,
 
 jobject MeshLoader::loadMesh(jstring str) {
     try {
+  std::cout << "convert filename" << std::endl;
         // Convert file name
         string filename(env->GetStringUTFChars(str, 0));
 
+  std::cout << "read in file" << std::endl;
         // Read in mesh
         reader.init(filename);
 
+  std::cout << "header" << std::endl;
         MeshIO::LisztHeader h = reader.header();
         MeshIO::FacetEdgeBuilder builder;
+
+  std::cout << "builder init" << std::endl;
         builder.init(h.nV, h.nE, h.nF, h.nC, h.nFE);
+
+  std::cout << "facet edges" << std::endl;
         MeshIO::FileFacetEdge * fes = reader.facetEdges();
+
+  std::cout << "facetedges insert" << std::endl;
         builder.insert(0, h.nFE, fes);
+
+  std::cout << "free" << std::endl;
         reader.free(fes);
 
         // Load mesh
+  std::cout << "from facet edge builder" << std::endl;
         mesh.initFromFacetEdgeBuilder(&builder);
 
         // Set fields on mesh
         CRSMeshPrivate::MeshData& data = mesh.data;
 
+  std::cout << "create mesh" << std::endl;
         jmesh = createObject(meshClass, "");
 
         // Set size fields
@@ -282,7 +299,7 @@ jobject MeshLoader::loadMesh(jstring str) {
     }
     catch (MeshLoadException e) {
         jmesh = NULL;
-        std::cerr << e << std:endl;
+        std::cerr << e.what() << std::endl;
     }
     
     return jmesh;

@@ -74,6 +74,8 @@ public:
 		assert(start <= end);
 		lsize_t nfes = end - start;
 		seek(head.facet_edge_table + start * sizeof(FileFacetEdge));
+
+std::cout << "allocating " << nfes << " facets of size " << sizeof(FileFacetEdge) << std::endl;
 		
 		FileFacetEdge * fes = new FileFacetEdge[nfes];
 		
