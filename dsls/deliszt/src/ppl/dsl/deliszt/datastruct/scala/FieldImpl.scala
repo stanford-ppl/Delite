@@ -9,7 +9,7 @@ package ppl.dsl.deliszt.datastruct.scala
  */
 
 object FieldImpl {
-  def apply[MO<:MeshObj:Manifest,VT:Manifest]() = {
+  def apply[MO<:MeshObj:Manifest,VT:Manifest]() : Field[MO,VT] = {
     if(manifest[MO] <:< manifest[Cell]) {
        new FieldImpl(new Array[VT](Mesh.mesh.ncells))
     }
@@ -22,15 +22,14 @@ object FieldImpl {
     else if(manifest[MO] <:< manifest[Vertex]) {
       new FieldImpl(new Array[VT](Mesh.mesh.nvertices))
     }
+    else {
+      throw new RuntimeException("Invalid MeshObj type")
+      null
+    }
   }
 }
 
 class FieldImpl[MO<:MeshObj:Manifest, VT:Manifest](data : Array[VT]) extends Field[MO,VT] {
-  def apply(e: MO) : VT = data(e.internalId)
-  def update(e: MO, v : VT) = {
-    data(e.internalId) = v
-  }
-
   def size = data.length
   def dcApply(idx: Int) = data(idx)
   def dcUpdate(idx: Int, x: VT) = {

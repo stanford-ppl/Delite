@@ -9,8 +9,11 @@ package ppl.dsl.deliszt.datastruct.scala
  */
 
 trait Field[MO <: MeshObj, VT] extends ppl.delite.framework.datastruct.scala.DeliteCollection[VT] {
-  def apply(a : MO) : VT
-  def update(a : MO, v : VT)
+  def apply(a : MO) : VT = dcApply(a.internalId)
+  def update(a : MO, v : VT) : Unit = dcUpdate(a.internalId, v)
+
+  def apply(i : Int) : VT = dcApply(i)
+  def update(i : Int, v : VT) : Unit = dcUpdate(i, v)
 
   def size : Int
   def dcApply(idx: Int) : VT

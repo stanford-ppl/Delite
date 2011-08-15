@@ -12,14 +12,21 @@ using namespace CRSMesh;
 MeshLoader::MeshLoader() {
 }
 
-void MeshLoader::init(JNIEnv* _env) {
+void MeshLoader::init(JNIEnv* _env, bool generated) {
+    if(generated) {
+      prefix = "generated/scala";
+    }
+    else {
+      prefix = "ppl/dsl/deliszt/datastruct/scala";
+    }
+
     env = _env;
 
     std::cout << "new cache" << std::endl;
     cache = new JNICache(env);
 
-  std::cout << "load class" << std::endl;
-    meshClass = cache->getClass("ppl/dsl/deliszt/datastruct/scala/Mesh");
+    std::cout << "load class" << std::endl;
+    meshClass = cache->getClass(prefix + "/Mesh");
 }
 
 jobject MeshLoader::createObject(jclass& cls, string type, ...) {
@@ -182,22 +189,22 @@ void MeshLoader::setCRSField(jobject& jmesh, string field,
     jintArray row_idx = copyIdxArray(crs.row_idx, from);
     jintArray values = copyIdArray(crs.values, crs.row_idx[from]);
 
-    jobject jcrs = createObject("ppl/dsl/deliszt/datastruct/scala/CRS", "[I[I",
+    jobject jcrs = createObject(prefix + "/CRS", "[I[I",
             row_idx, values);
 
     setScalaField(meshClass, jmesh, field,
-            "ppl/dsl/deliszt/datastruct/scala/CRS", jcrs);
+            prefix + "/CRS", jcrs);
 }
 
 void MeshLoader::setCRSConstField(jobject& jmesh, string field,
         CRSMeshPrivate::CRSConst& crs, size_t from, size_t mult) {
     jintArray values = copyIdPairArray(crs.values, from * mult);
 
-    jobject jcrs = createObject("ppl/dsl/deliszt/datastruct/scala/CRSConst",
+    jobject jcrs = createObject(prefix + "/CRSConst",
             "[II", values, mult);
 
     setScalaField(meshClass, jmesh, field,
-            "ppl/dsl/deliszt/datastruct/scala/CRSConst", jcrs);
+            prefix + "/CRSConst", jcrs);
 }
 
 jintArray MeshLoader::copyIdxArray(CRSMeshPrivate::idx_type* array,
@@ -345,9 +352,9 @@ void MeshLoader::loadPositions(jobject& jmesh, CRSMesh::Mesh& mesh,
 
     jobject vertexLabels = getScalaObjField(meshClass, jmesh,
             string("vertexData"),
-            string("Lppl/dsl/deliszt/datastruct/scala/LabelData"));
+            string("L" + prefix + "/LabelData"));
     jclass labelClass = cache->getClass(
-            "ppl/dsl/deliszt/datastruct/scala/LabelData");
+            prefix + "/LabelData");
     jobject vertexData = getScalaObjField(labelClass, vertexLabels, "data",
             string("Lscala/collection/mutable/Map"));
 
@@ -368,18 +375,18 @@ jobject MeshLoader::loadBoundarySet(const char* name) {
     try {
       if (boundary_builder.load<MO, LisztPrivate::BoundarySet>(&mesh, name, bs)) {
           bounds = createObject(
-                  "ppl/dsl/deliszt/datastruct/scala/BoundarySetImpl", "");
+                  prefix + "/BoundarySetImpl", "");
 
           LisztPrivate::BoundarySet::ranges_t& ranges = bs->getRanges();
                   
           // For ranges in bs
           for (LisztPrivate::BoundarySet::range_it it = ranges.begin(), end = ranges.end(); it != end; it++) {
               callVoidMethod(bounds,
-                      "ppl/dsl/deliszt/datastruct/scala/BoundarySetImpl", "add",
+                      prefix + "/BoundarySetImpl", "add",
                       "(I,I)V", it->first(), it->second());
           }
 
-          callVoidMethod(bounds, "ppl/dsl/deliszt/datastruct/scala/BoundarySetImpl",
+          callVoidMethod(bounds, prefix + "/BoundarySetImpl",
                   "freeze", "()V");
       }
     }

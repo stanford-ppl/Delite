@@ -36,7 +36,7 @@ public:
     MeshLoader();
     ~MeshLoader();
     
-    void init(JNIEnv* env);
+    void init(JNIEnv* env, bool generated=false);
 
     /*
      Load mesh from file.
@@ -128,13 +128,14 @@ private:
     jobject getScalaObjField(jclass& cls, jobject& jobj,
             string field, string type);
 
-  jclass meshClass;
-  JNIEnv* env;
-  JNICache* cache;
-  BoundarySetBuilder boundary_builder;
-  MeshIO::LisztFileReader reader;
-  CRSMesh::Mesh mesh;
-  jobject jmesh;
+    jclass meshClass;
+    JNIEnv* env;
+    JNICache* cache;
+    BoundarySetBuilder boundary_builder;
+    MeshIO::LisztFileReader reader;
+    CRSMesh::Mesh mesh;
+    jobject jmesh;
+    string prefix;
 };
         }
 

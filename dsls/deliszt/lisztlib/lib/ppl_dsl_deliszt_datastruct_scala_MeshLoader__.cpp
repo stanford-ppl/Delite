@@ -19,6 +19,21 @@ JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader_loadM
   return jmesh;
 }
 
+JNIEXPORT jobject JNICALL Java_generated_scala_MeshLoader_loadMesh (JNIEnv* env, jobject obj, jstring str) {
+  std::cout << "init" << std::endl;
+  ml.init(env, true);
+
+  std::cout << "load" << std::endl;
+  jobject jmesh = ml.loadMesh(str);
+
+  if(jmesh)  
+    std::cout << "has mesh" << std::endl;
+  else
+    std::cout << "no mesh" << std::endl;
+
+  return jmesh;
+}
+
 JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loadBoundaries
   (JNIEnv * env, jobject obj, jstring str, jobject moc) {
   int type = ml.callIntMethod(moc,
@@ -41,4 +56,9 @@ JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loa
   }
   
   return NULL;
+}
+
+JNIEXPORT jobject JNICALL Java_generated_scala_MeshLoader__1loadBoundaries
+  (JNIEnv * env, jobject obj, jstring str, jobject moc) {
+  return Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loadBoundaries(env, obj, str, moc);
 }
