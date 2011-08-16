@@ -67,8 +67,8 @@ trait DeLisztCodeGenAnalysis extends DeLisztCodeGenScala {
     case ArithFractionalDivide(l,r) => super.emitNode(sym, rhs)
     case ArithAbs(l) => super.emitNode(sym, rhs)
     case ArithExp(l) => super.emitNode(sym, rhs)
-    case ArithMin(l,r) => super.emitNode(sym, rhs)
-    case ArithMax(l,r) => super.emitNode(sym, rhs)
+    case OrderingMin(l,r) => super.emitNode(sym, rhs)
+    case OrderingMax(l,r) => super.emitNode(sym, rhs)
     case _ => super.emitNode(sym, rhs)
   }
 }

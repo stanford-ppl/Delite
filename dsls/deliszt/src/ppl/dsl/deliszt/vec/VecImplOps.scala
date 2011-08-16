@@ -1,4 +1,5 @@
 package ppl.dsl.deliszt.vec
+import scala.virtualization.lms.common._
 
 import ppl.dsl.deliszt.datastruct.scala._
 import ppl.dsl.deliszt.{DeLisztLift, DeLisztCompiler, DeLiszt}
@@ -6,12 +7,12 @@ import ppl.dsl.deliszt.{DeLisztLift, DeLisztCompiler, DeLiszt}
 trait VecImplOps { this: DeLiszt with MetaInteger =>
 //  def vec_concatenate_impl[N<:IntM,VT:Manifest](v1: Rep[Vector[N,VT]], v2: Rep[Vector[N,VT]]): Rep[Vector[VT]]
   def vec_outer_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](v1: Rep[Vec[R,A]], v2: Rep[Vec[C,A]]): Rep[Mat[R,C,A]]
-  def vec_normalize_impl[N<:IntM:Manifest:MVal](x: Rep[Vec[N,Double]]): Rep[Vec[N,Double]]
+  def vec_normalize_impl[N<:IntM:Manifest:MVal,A:Manifest:Arith](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
   def vec_cross_impl[A:Manifest:Arith](a: Rep[Vec[_3,A]], b: Rep[Vec[_3,A]]): Rep[Vec[_3,A]]
 }
 
 trait VecImplOpsStandard extends VecImplOps {
-  this: DeLisztCompiler with DeLisztLift with MetaInteger =>
+  this: DeLisztCompiler with DeLisztLift with MetaInteger with MathOpsExp =>
 
 /*  def vec_concatenate_impl[VT:Manifest](v1: Rep[Vector[VT]], v2: Rep[Vector[VT]]) = {
     val out = Vector[VT](v1.length+v2.length, v1.isRow)
@@ -39,8 +40,8 @@ trait VecImplOpsStandard extends VecImplOps {
     out.unsafeImmutable
   }
   
-  def vec_normalize_impl[N<:IntM:Manifest:MVal](x: Rep[Vec[N,Double]]) = {
-    x / sqrt((x * x).sum)
+  def vec_normalize_impl[N<:IntM:Manifest:MVal,A:Manifest:Arith](x: Rep[Vec[N,A]]) = {
+    x / Math.sqrt((x * x).sum.asInstanceOfL[Double]).asInstanceOfL[A]
   }
   
   // Vector cross product for size 3 vector

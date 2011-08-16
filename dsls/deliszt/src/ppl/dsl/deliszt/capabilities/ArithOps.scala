@@ -60,9 +60,6 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
     
     def empty: Rep[T] = arith.empty
     def zero: Rep[T] = arith.zero(lhs)
-
-    def min(rhs: Rep[T]): Rep[T] = arith.min(lhs, rhs)
-    def max(rhs: Rep[T]): Rep[T] = arith.max(lhs, rhs)
   }
 
 
@@ -82,7 +79,7 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
    * Vec
    */
 
-  /*implicit def VecArith[N <: IntM : Manifest:MVal, T: Arith : Manifest]: Arith[Vec[N, T]] = new Arith[Vec[N, T]] {
+  implicit def VecArith[N <: IntM : Manifest:MVal, T: Arith : Manifest]: Arith[Vec[N, T]] = new Arith[Vec[N, T]] {
     // these are used in sum; dynamic checks are required due to conditionals
     def +(a: Rep[Vec[N, T]], b: Rep[Vec[N, T]]) = a + b
     def -(a: Rep[Vec[N, T]], b: Rep[Vec[N, T]]) = a - b
@@ -93,28 +90,28 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
     def abs(a: Rep[Vec[N,T]]) = a.abs
     def exp(a: Rep[Vec[N,T]]) = a.exp
     
-    def empty : Rep[Vec[_0,T]] = Vec[_0,T]()
+    def empty : Rep[Vec[N,T]] = Vec[N,T]()
     def zero(a: Rep[Vec[N,T]]) = Vec[N,T]()
-  }*/
+  }
 
 
   /**
    * Mat
    */
 
-  /*implicit def MatArith[R <: IntM : Manifest:MVal, C <: IntM : Manifest:MVal, T: Arith : Manifest]: Arith[Mat[R, C, T]] = new Arith[Mat[R, C, T]] {
-    def +(a: Rep[Mat[R, C, T]], b: Rep[Mat[R, C, T]]) = a + b
-    def -(a: Rep[Mat[R, C, T]], b: Rep[Mat[R, C, T]]) = a - b
-    def *(a: Rep[Mat[R, C, T]], b: Rep[Mat[R, C, T]]) = a * b
-    //def /(a: Rep[Mat[R,C,T]], b: Rep[Mat[R,C,T]]) = a/b
+  implicit def MatArith[R <: IntM : Manifest:MVal, C <: IntM : Manifest:MVal, T: Arith : Manifest]: Arith[Mat[R, C, T]] = new Arith[Mat[R, C, T]] {
+    def +(a: Rep[Mat[R,C,T]], b: Rep[Mat[R,C,T]]) = a + b
+    def -(a: Rep[Mat[R,C,T]], b: Rep[Mat[R,C,T]]) = a - b
+    def *(a: Rep[Mat[R,C,T]], b: Rep[Mat[R,C,T]]) = a *:* b
+    def /(a: Rep[Mat[R,C,T]], b: Rep[Mat[R,C,T]]) = a / b
     def unary_-(a: Rep[Mat[R, C, T]]) = -a
     
     def abs(a: Rep[Mat[R,C,T]]) = a.abs
     def exp(a: Rep[Mat[R,C,T]]) = a.exp
     
-    def empty : Rep[Mat[_0,_0,T]] = Mat[_0,_0,T]()
+    def empty : Rep[Mat[R,C,T]] = Mat[R,C,T]()
     def zero(a: Rep[Mat[R,C,T]]) = Mat[R,C,T]()
-  } */
+  }
 
   /**
    * Primitives
@@ -134,8 +131,6 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
     def unary_-(a: Rep[Double]) = arith_negate(a)
     def empty = unit(0.0)
     def zero(a: Rep[Double]) = empty
-    def min(a: Rep[Double], b: Rep[Double]) = arith_min(a, b)
-    def max(a: Rep[Double], b: Rep[Double]) = arith_max(a, b)
   }
 
   implicit val floatArith: Arith[Float] = new Arith[Float] {
@@ -149,8 +144,6 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
     def unary_-(a: Rep[Float]) = arith_negate(a)
     def empty = unit(0f)
     def zero(a: Rep[Float]) = empty
-    def min(a: Rep[Float], b: Rep[Float]) = arith_min(a, b)
-    def max(a: Rep[Float], b: Rep[Float]) = arith_max(a, b)
   }
 
   implicit val intArith: Arith[Int] = new Arith[Int] {
@@ -164,8 +157,6 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
     def unary_-(a: Rep[Int]) = arith_negate(a)
     def empty = unit(0)
     def zero(a: Rep[Int]) = empty
-    def min(a: Rep[Int], b: Rep[Int]) = arith_min(a, b)
-    def max(a: Rep[Int], b: Rep[Int]) = arith_max(a, b)
   }
 
   def arith_plus[T: Manifest : Numeric](lhs: Rep[T], rhs: Rep[T]): Rep[T]
@@ -175,8 +166,6 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
   def arith_abs[T: Manifest : Numeric](lhs: Rep[T]): Rep[T]
   def arith_exp[T: Manifest : Numeric](lhs: Rep[T]): Rep[Double]
   def arith_negate[T: Manifest : Numeric](lhs: Rep[T]): Rep[T]
-  def arith_min[T: Manifest : Numeric](lhs: Rep[T], rhs: Rep[T]): Rep[T]
-  def arith_max[T: Manifest : Numeric](lhs: Rep[T], rhs: Rep[T]): Rep[T]
 }
 
 trait ArithOpsExp extends ArithOps with VariablesExp {
@@ -200,10 +189,6 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
 
   case class ArithExp[T: Manifest : Numeric](lhs: Exp[T]) extends Def[Double]
 
-  case class ArithMin[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
-
-  case class ArithMax[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
-
   def arith_plus[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithPlus(lhs, rhs)
   def arith_minus[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithMinus(lhs, rhs)
   def arith_times[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithTimes(lhs, rhs)
@@ -211,8 +196,6 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   def arith_fractional_divide[T: Manifest : Fractional](lhs: Exp[T], rhs: Exp[T]): Exp[T] = ArithFractionalDivide(lhs, rhs)
   def arith_abs[T: Manifest : Numeric](lhs: Exp[T]) = ArithAbs(lhs)
   def arith_exp[T: Manifest : Numeric](lhs: Exp[T]) = ArithExp(lhs)
-  def arith_min[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]) = ArithMin(lhs, rhs)
-  def arith_max[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]) = ArithMax(lhs, rhs)
 
   override def mirror[A: Manifest](e: Def[A], f: Transformer): Exp[A] = {
     implicit var a: Fractional[A] = null // hack!! need to store it in Def instances??
@@ -223,8 +206,6 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
       case ArithNegate(lhs) => arith_negate(f(lhs))
       case ArithFractionalDivide(lhs, rhs) => arith_fractional_divide(f(lhs), f(rhs))
       case ArithAbs(lhs) => arith_abs(f(lhs))
-      case ArithMin(lhs, rhs) => arith_min(f(lhs), f(rhs))
-      case ArithMax(lhs, rhs) => arith_max(f(lhs), f(rhs))
       case _ => super.mirror(e, f)
     }
   }
@@ -249,14 +230,6 @@ trait ArithOpsExpOpt extends ArithOpsExp {
     case Const(x) => unit(implicitly[Numeric[T]].negate(x))
     case _ => super.arith_negate(lhs)
   }
-  override def arith_min[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = (lhs, rhs) match {
-    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].min(x, y))
-    case _ => super.arith_min(lhs, rhs)
-  }
-  override def arith_max[T: Manifest : Numeric](lhs: Exp[T], rhs: Exp[T]): Exp[T] = (lhs, rhs) match {
-    case (Const(x), Const(y)) => unit(implicitly[Numeric[T]].max(x, y))
-    case _ => super.arith_max(lhs, rhs)
-  }
 }
 
 
@@ -277,8 +250,6 @@ trait ScalaGenArithOps extends ScalaGenBase {
     //  case _ => emitValDef(sym, "Math.abs(" + quote(x) + ")")
     //}
     case ArithExp(a) => emitValDef(sym, "java.lang.Math.exp(" + quote(a) + ")")
-    case ArithMin(a, b) => emitValDef(sym, "java.lang.Math.min(" + quote(a) + ", " + quote(b) + ")")
-    case ArithMax(a, b) => emitValDef(sym, "java.lang.Math.max(" + quote(a) + ", " + quote(b) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -297,10 +268,6 @@ trait CLikeGenArithOps extends CLikeCodegen {
       case ArithTimes(a, b) =>
         emitValDef(sym, quote(a) + " * " + quote(b))
       case ArithFractionalDivide(a, b) =>
-        emitValDef(sym, quote(a) + " / " + quote(b))
-      case ArithMin(a, b) =>
-        emitValDef(sym, quote(a) + " / " + quote(b))
-      case ArithMax(a, b) =>
         emitValDef(sym, quote(a) + " / " + quote(b))
       case _ => super.emitNode(sym, rhs)
     }

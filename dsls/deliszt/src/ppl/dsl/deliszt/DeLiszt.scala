@@ -72,7 +72,7 @@ trait DeLisztCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderi
 trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps //with MetaInteger
   with MeshPrivateOps with MeshSetOps
   with MathOps
-  with ArithOps with FieldOps with MatOps with VecOps with HasMinMaxOps {
+  with ArithOps with FieldOps with MatOps with VecOps with OrderingOps with HasMinMaxOps {
   this: DeLisztApplication =>
 }
 
@@ -89,6 +89,7 @@ trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with Languag
   with MeshSetOpsExp
   with MeshPrivateOpsExp
   with ArithOpsExpOpt
+  with OrderingOpsExp
   with MathOpsExp
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp
   with FieldOpsExpOpt with FieldImplOpsStandard with MatOpsExp with MatImplOpsStandard with VecOpsExp with VecImplOpsStandard {

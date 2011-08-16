@@ -84,7 +84,11 @@ trait LanguageOps extends Base { this: DeLiszt with MathOps =>
   def min[A:Manifest:Numeric](x: Rep[A], y: Rep[A]) = math_min(x, y)
   def max[A:Manifest:Numeric](x: Rep[A], y: Rep[A]) = math_max(x, y)
   def sqrt(a: Rep[Double]) : Rep[Double]
-  def fabs(value : Rep[Float]) : Rep[Float]
+  def sqrtf(a: Rep[Float]) = math_sqrt(a)
+  def expf(a: Rep[Float]) = math_exp(a)
+  def sinf(a: Rep[Float]) = math_sin(a)
+  def cosf(a: Rep[Float]) = math_cos(a)
+  def fabs(a : Rep[Float]) = math_abs(a)
   def MPI_Wtime() : Rep[Double]
 }
 
@@ -212,7 +216,6 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def MIN_FLOAT() = MinFloat()
   def MAX_FLOAT() = MaxFloat()
   def sqrt(a: Exp[Double]) = MathSqrt(a)
-  def fabs(a: Exp[Float]) = MathFAbs(a)
   def MPI_Wtime() = MPIWTime()
 }
 
