@@ -311,12 +311,30 @@ trait Sample extends DeliteTestModule with OptiMLApplication {
   }
 }
 
+object GroupByRunner extends DeliteTestRunner with OptiMLApplicationRunner with GroupBy
+trait GroupBy extends DeliteTestModule with OptiMLApplication {
+  def main() = {
+    implicit val collector = ArrayBuffer[Boolean]()
+    
+    val v = Vector("one", "two", "two", "three", "four", "three", "four", "three", "four", "four")
+    val vs = v.groupBy(e=>e)
+    collect(vs.length == 4)
+    for (v <- vs) { 
+      if (v(0) == "one") collect(v.length == 1)
+      else if (v(0) == "two") collect(v.length == 2)
+      else if (v(0) == "three") collect(v.length == 3)
+      else if (v(0) == "four") collect(v.length == 4)
+    }
+    mkReport
+  }
+}
+
 class VectorSuite extends DeliteSuite {
   def testAccessors() { compileAndTest(VectorAccessorsRunner) }
   def testOperators() { compileAndTest(VectorOperatorsRunner) }
   def testUpdates() { compileAndTest(VectorUpdatesRunner) }
   def testRange() { compileAndTest(VectorRangeRunner) }
-
+  
   def testInit() { compileAndTest(InitRunner) }
   def testLoop() { compileAndTest(LoopRunner) }
   def testCount() { compileAndTest(CountRunner) }
@@ -328,5 +346,6 @@ class VectorSuite extends DeliteSuite {
   def testMedian() { compileAndTest(MedianRunner) }
   def testNearestNeighbor() { compileAndTest(NearestNeighborRunner) }
   def testSample() { compileAndTest(SampleRunner) }
+  def testGroupBy() { compileAndTest(GroupByRunner) }
 }
 

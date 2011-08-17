@@ -75,20 +75,33 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    * aggregate
    */
-  // 1D aggregate
-  def aggregate[A:Manifest](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[Vector[A]]): Rep[Vector[A]] = {
-    optiml_aggregate(start, end, block)
-  }
+  // 1D aggregate is just a Vector constructor!
+  // def aggregate[A:Manifest](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A]): Rep[Vector[A]] = {
+  //     optiml_aggregate(start, end, block)
+  //   }
+  
+  def aggregateIf[A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A]): Rep[Vector[A]] = {
+    optiml_aggregateif(start, end, cond, block)
+  }  
 
   // 2D aggregate
-  def aggregate[A:Manifest](rowStart: Rep[Int], rowEnd: Rep[Int], colStart: Rep[Int], colEnd: Rep[Int])
-                           (block: (Rep[Int], Rep[Int]) => Rep[Vector[A]]): Rep[Vector[A]] = {
-    optiml_aggregate2d(rowStart, rowEnd, colStart, colEnd, block)
+  def aggregate[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector])
+                           (block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]] = {
+    optiml_aggregate2d(rows, cols, block)
   }
+  
+  def aggregateIf[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector])
+                             (cond: (Rep[Int], Rep[Int]) => Rep[Boolean])(block: (Rep[Int], Rep[Int]) => Rep[A]) = {
+    optiml_aggregate2dif(rows, cols, cond, block)
+  }
+  
 
-  def optiml_aggregate[A:Manifest](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[Vector[A]]): Rep[Vector[A]]
-  def optiml_aggregate2d[A:Manifest](rowStart: Rep[Int], rowEnd: Rep[Int], colStart: Rep[Int], colEnd: Rep[Int],
-                                     block: (Rep[Int], Rep[Int]) => Rep[Vector[A]]): Rep[Vector[A]]
+  def optiml_aggregateif[A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A]): Rep[Vector[A]]
+  def optiml_aggregate2d[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector],
+                                     block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]]
+  def optiml_aggregate2dif[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector],
+                                       cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]]
+
 
 
   // TODO: for some reason, the implicit ops conversions aren't kicking in for sum/min/max
@@ -388,24 +401,62 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Aggregate
    */
-  def optiml_aggregate[A:Manifest](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[Vector[A]]) = {
-    // unroll
-    (start::end) flatMap { block }
 
-    // Other impl.: use a for loop to iterate over the data structure and use synchronization to aggregate values
+  case class AggregateIf[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], func: Exp[Int] => Exp[A])
+    extends DeliteOpFilter[Int,A,Vector[A]] {
+  
+    def alloc = Vector[A](unit(0), unit(true))      
+    val in = copyTransformedOrElse(_.in)(0::end-start)
+    val size = copyTransformedOrElse(_.size)(end-start)
+    
+    def m = manifest[A]
+  }
+  
+  def optiml_aggregateif[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
+    reflectPure(AggregateIf(start,end,cond,block))
+  }
+  
+  case class Aggregate2d[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                     func2: (Exp[Int], Exp[Int]) => Exp[A])
+    extends DeliteOpMap[Int,A,Vector[A]] {
+  
+    val flatSize = rows.length*cols.length        
+    def alloc = Vector[A](flatSize, unit(true))      
+    def func = i => func2(i/cols.length + rows(0), i%cols.length + cols(0))    
+    val in = copyTransformedOrElse(_.in)(0::flatSize)
+    val size = copyTransformedOrElse(_.size)(flatSize)
+    
+    def m = manifest[A]
+  }
+  
+  def optiml_aggregate2d[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                     block: (Exp[Int], Exp[Int]) => Exp[A]) = {
+    
+    reflectPure(Aggregate2d(rows, cols, block))
   }
 
-  def optiml_aggregate2d[A:Manifest](rowStart: Exp[Int], rowEnd: Exp[Int], colStart: Exp[Int], colEnd: Exp[Int],
-                                     block: (Exp[Int], Exp[Int]) => Exp[Vector[A]]) = {
-    // unroll
-    (rowStart::rowEnd) flatMap { y =>
-      (colStart::colEnd) flatMap { x =>
-        block(x, y)
-      }
-    }
+  
+  case class Aggregate2dIf[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                       cond2: (Exp[Int],Exp[Int]) => Exp[Boolean], func2: (Exp[Int], Exp[Int]) => Exp[A])
+    extends DeliteOpFilter[Int,A,Vector[A]] {
+  
+    val flatSize = rows.length*cols.length    
+    def alloc = Vector[A](unit(0), unit(true))      
+    def cond = i => cond2(i/cols.length + rows(0), i%cols.length + cols(0))
+    def func = i => func2(i/cols.length + rows(0), i%cols.length + cols(0))    
+    val in = copyTransformedOrElse(_.in)(0::flatSize)
+    val size = copyTransformedOrElse(_.size)(flatSize)
+    
+    def m = manifest[A]
+  }
+      
+  def optiml_aggregate2dif[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                       cond: (Exp[Int], Exp[Int]) => Exp[Boolean], block: (Exp[Int], Exp[Int]) => Exp[A]) = {
+    
+    reflectPure(Aggregate2dIf(rows, cols, cond, block))
   }
 
-
+                                       
   /**
    * Sum
    */

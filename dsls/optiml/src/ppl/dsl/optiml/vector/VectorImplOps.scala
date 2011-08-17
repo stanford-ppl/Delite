@@ -34,6 +34,7 @@ trait VectorImplOps { this: OptiML =>
   def vector_max_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
   def vector_find_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
   def vector_mkstring_impl[A:Manifest](v: Rep[Vector[A]], sep: Rep[String]): Rep[String]
+  def vector_groupby_impl[A:Manifest,K:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[K]): Rep[Vector[Vector[A]]]
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
@@ -308,5 +309,25 @@ trait VectorImplOpsStandard extends VectorImplOps {
       s = s + sep
     }
     s
+  }
+  
+  def vector_groupby_impl[A:Manifest,K:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[K]): Rep[Vector[Vector[A]]] = {
+    val groups = HashMap[K,Vector[A]]()
+
+    var i = 0
+    while (i < x.length) {
+      val key = pred(x(i))      
+      if (!(groups contains key)) {
+        groups(key) = Vector[A](0,x.isRow)        
+      }
+      groups(key) += x(i)
+      i += 1
+    }
+
+    val out = Vector[Vector[A]](0,true)
+    for (v <- groups.values) {
+      out += v.unsafeImmutable       
+    }    
+    out.unsafeImmutable
   }
 }

@@ -146,6 +146,7 @@ trait VectorOps extends DSLType with Variables {
     def count(pred: Rep[A] => Rep[Boolean]) = vector_count(x, pred)
     def flatMap[B:Manifest](f: Rep[A] => Rep[Vector[B]]) = vector_flatmap(x,f)
     def partition(pred: Rep[A] => Rep[Boolean]) = vector_partition(x,pred)
+    def groupBy[K:Manifest](pred: Rep[A] => Rep[K]) = vector_groupby(x,pred)
   }
 
   def __equal[A](a: Rep[Vector[A]], b: Rep[Vector[A]])(implicit o: Overloaded1, mA: Manifest[A]): Rep[Boolean] = vector_equals(a,b)
@@ -253,6 +254,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_count[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Int]
   def vector_flatmap[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[Vector[B]]): Rep[Vector[B]]
   def vector_partition[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[Vector[A]], Rep[Vector[A]])
+  def vector_groupby[A:Manifest,K:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[K]): Rep[Vector[Vector[A]]] 
 
   // other defs
   def vector_empty_double: Rep[Vector[Double]]
@@ -388,6 +390,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
 //  case class VectorFind[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean])
 //    extends DeliteOpSingleTask(reifyEffectsHere(vector_find_impl[A](x, pred)))
+
+  case class VectorGroupBy[A:Manifest,K:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[K])
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_groupby_impl(x,pred)))
+
 
 
   ////////////////////////////////
@@ -797,6 +803,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   def vector_count[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorCount(x, pred))
   def vector_flatmap[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[Vector[B]]) = reflectPure(VectorFlatMap(x, f))
   def vector_partition[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = t2(reflectPure(VectorPartition(x, pred)))
+  def vector_groupby[A:Manifest,K:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[K]) = reflectPure(VectorGroupBy(x,pred))
 
   def vector_empty_double = VectorEmptyDouble()
   def vector_empty_float = VectorEmptyFloat()
