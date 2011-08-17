@@ -5,9 +5,31 @@ import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication, DeLisztExp
 
 object ScalarConvectionRunner extends DeLisztApplicationRunner with SC
 
-trait SC extends DeLisztApplication {  
+trait SC extends DeLisztApplication {
+  lazy val position = FieldWithLabel[Vertex,Vec[_3,Float]]("position")
+  lazy val interior_set = BoundarySet[Face]("default-interior")
+  lazy val inlet_set = BoundarySet[Face]("inlet")
+  lazy val outlet_set = BoundarySet[Face]("outlet")
+  lazy val far_field_set = BoundarySet[Face]("far_field")
+  lazy val float3_zero = Vec(0.f,0.f,0.f)
+
+  lazy val faceCenter = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
+  lazy val faceArea = FieldWithConst[Face,Float](0.f)
+
+  lazy val Phi = FieldWithConst[Cell,Float](0.f)
+  lazy val Flux = FieldWithConst[Cell,Float](0.f)
+
+  //some geometry fields
+  lazy val face_centroid = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
+  lazy val face_area = FieldWithConst[Face,Float](0.f)
+  lazy val face_normal = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
+  lazy val face_unit_normal = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
+
+  lazy val cell_centroid = FieldWithConst[Cell,Vec[_3,Float]](float3_zero)
+  lazy val cell_volume = FieldWithConst[Cell,Float](0.f)
+  
   //some geometry functions
-  def calcFaceCenter(f : Rep[Face], position: Rep[Field[Vertex,Vec[_3,Float]]]) : Rep[Vec[_3,Float]] = {
+  def calcFaceCenter(f : Rep[Face]) : Rep[Vec[_3,Float]] = {
 	var center = Vec(0.f,0.f,0.f)
 	for(v <- vertices(f)) {
 	  center += position(v)
@@ -15,7 +37,7 @@ trait SC extends DeLisztApplication {
 	center = center / size(vertices(f))
 	return center
   }
-  def calcCellCenter(c : Rep[Cell], position: Rep[Field[Vertex,Vec[_3,Float]]]) : Rep[Vec[_3,Float]] = {
+  def calcCellCenter(c : Rep[Cell]) : Rep[Vec[_3,Float]] = {
 	var center = Vec(0.f,0.f,0.f)
 	for(v <- vertices(c)) {
 	  center += position(v)
@@ -23,8 +45,8 @@ trait SC extends DeLisztApplication {
 	center = center / size(vertices(c))
 	return center
   }
-  def calcFaceGeom(f : Rep[Face], position: Rep[Field[Vertex,Vec[_3,Float]]], face_centroid: Rep[Field[Face,Vec[_3,Float]]], face_area: Rep[Field[Face,Float]], face_normal: Rep[Field[Face,Vec[_3,Float]]], face_unit_normal: Rep[Field[Face,Vec[_3,Float]]]) : Rep[Unit] = {
-	val approxCenter = calcFaceCenter(f, position)
+  def calcFaceGeom(f : Rep[Face]) : Rep[Unit] = {
+	val approxCenter = calcFaceCenter(f)
 	var normal = Vec(0.f,0.f,0.f)
 	for(e <- edgesCCW(f)) {
 	  val v0 = position(head(e)) - approxCenter
@@ -48,8 +70,8 @@ trait SC extends DeLisztApplication {
 	face_unit_normal(f) = normal
   }
 
-  def calcCellGeom(c : Rep[Cell], position: Rep[Field[Vertex,Vec[_3,Float]]], face_centroid: Rep[Field[Face,Vec[_3,Float]]], cell_centroid: Rep[Field[Cell,Vec[_3,Float]]], cell_volume: Rep[Field[Cell,Float]]) : Rep[Unit] = {
-	val approxCenter = calcCellCenter(c, position)
+  def calcCellGeom(c : Rep[Cell]) : Rep[Unit] = {
+	val approxCenter = calcCellCenter(c)
 	var volume = 0.f
 	var center = Vec(0.f,0.f,0.f)
 	for(f <- faces(c)) {
@@ -71,43 +93,20 @@ trait SC extends DeLisztApplication {
   def normal_pdf(x : Rep[Float]) : Rep[Float] = expf(- x * x / 2.f) / sqrtf(2.f * MATH_PI.asInstanceOfL[Float])
   
   def main() {
-  val position = FieldWithLabel[Vertex,Vec[_3,Float]]("position")
-  val interior_set = BoundarySet[Face]("default-interior")
-  val inlet_set = BoundarySet[Face]("inlet")
-  val outlet_set = BoundarySet[Face]("outlet")
-  val far_field_set = BoundarySet[Face]("far_field")
-  val float3_zero = Vec(0.f,0.f,0.f)
-
-  val faceCenter = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
-  val faceArea = FieldWithConst[Face,Float](0.f)
-
-  val Phi = FieldWithConst[Cell,Float](0.f)
-  val Flux = FieldWithConst[Cell,Float](0.f)
-
-
-  //some geometry fields
-  val face_centroid = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
-  val face_area = FieldWithConst[Face,Float](0.f)
-  val face_normal = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
-  val face_unit_normal = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
-
-  val cell_centroid = FieldWithConst[Cell,Vec[_3,Float]](float3_zero)
-  val cell_volume = FieldWithConst[Cell,Float](0.f)
-  
 	val globalVelocity = Vec(1.f,0.f,0.f)
 	//initialize geometry fields
 	for(f <- faces(mesh)) {
 	  if(ID(outside(f)) < ID(inside(f))) {
-		calcFaceGeom(flip(f), position, face_centroid, face_area, face_normal, face_unit_normal)
+		calcFaceGeom(flip(f))
 	  } else {
-		calcFaceGeom(f, position, face_centroid, face_area, face_normal, face_unit_normal)
+		calcFaceGeom(f)
 	  }
 	}
 	for(f <- faces(mesh)) {
 	  Print(ID(f),"FaceArea: ",face_area(f),"normal: ",face_unit_normal(f),"face_centroid",face_centroid(f))
 	}
 	for(c <- cells(mesh)) {
-	  calcCellGeom(c, position, face_centroid, cell_centroid, cell_volume)
+	  calcCellGeom(c)
 	}
 	for(c <- cells(mesh)) {
 	  Print("c: ",ID(c)," ",cell_volume(c)," ",cell_centroid(c))

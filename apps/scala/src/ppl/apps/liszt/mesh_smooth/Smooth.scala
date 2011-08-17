@@ -6,9 +6,10 @@ import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication, DeLisztExp
 object MeshSmoothRunner extends DeLisztApplicationRunner with Smooth
 
 trait Smooth extends DeLisztApplication {
+  lazy val position = FieldWithLabel[Vertex,Vec[_3,Float]]("position")
+  lazy val smooth_pos = FieldWithConst[Vertex,Vec[_3,Float]]( Vec(0.f,0.f,0.f) )
+
 	def main() {
-    val position = FieldWithLabel[Vertex,Vec[_3,Float]]("position")
-    val smooth_pos = FieldWithConst[Vertex,Vec[_3,Float]]( Vec(0.f,0.f,0.f) )
 		var a = 0
 		while(a < 10) {
 			for(v <- vertices(mesh)) {

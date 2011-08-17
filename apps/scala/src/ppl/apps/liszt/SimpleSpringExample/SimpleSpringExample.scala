@@ -8,6 +8,10 @@ object SSSRunner extends DeLisztApplicationRunner with SSS
 trait SSS extends DeLisztApplication {
 type Float3 = Vec[_3, Float]
 
+lazy val Position = FieldWithLabel[Vertex,Float3]("position")
+lazy val Velocity = FieldWithConst[Vertex,Float3](Vec(0.f,0.f,0.f))
+lazy val Force = FieldWithConst[Vertex,Float3](Vec(0.f,0.f,0.f))
+
 def dampedSpringForce(L : Rep[Float3], W : Rep[Float3]) : Rep[Float3] = {
   val rl = 1
   val Ks = 20.0f
@@ -21,11 +25,6 @@ def dampedSpringForce(L : Rep[Float3], W : Rep[Float3]) : Rep[Float3] = {
 def main() {
 var deltat = 0.15f
 var maxforce = 0.0f
-
-val Position = FieldWithLabel[Vertex,Float3]("position")
-val Velocity = FieldWithConst[Vertex,Float3](Vec(0.f,0.f,0.f))
-val Force = FieldWithConst[Vertex,Float3](Vec(0.f,0.f,0.f))
-
 var t = 0.f;
 while (t < 2.0f) {
 for (spring <- edges(mesh)) {
