@@ -78,7 +78,7 @@ abstract class DeliteOpForeach[@specialized(Boolean, Int, Long, Float, Double) A
 }
 
 trait DeliteCollection[@specialized(Boolean, Int, Long, Float, Double) T] {
-  def size: Int
+  def dcSize: Int
   def dcApply(idx: Int): T
   def dcUpdate(idx: Int, x: T)
 }

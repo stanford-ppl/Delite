@@ -92,7 +92,7 @@ trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaG
   // have come from a reified block.
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".size")
+      case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".dcSize")
       case DeliteCollectionApply(x,n) => emitValDef(sym, quote(getBlockResult(x)) + ".dcApply(" + quote(n) + ")")
       case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ")")
       case _ => super.emitNode(sym, rhs)
@@ -107,7 +107,7 @@ trait CudaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with CudaGen
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".size()")
+      case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".dcSize()")
       case DeliteCollectionApply(x,n) => emitValDef(sym, quote(getBlockResult(x)) + ".dcApply(" + quote(n) + ")")
       //case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ")")
       case DeliteCollectionUpdate(x,n,y) => stream.println(quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ");")

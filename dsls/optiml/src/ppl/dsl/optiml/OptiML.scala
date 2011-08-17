@@ -200,7 +200,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   
   val IR: DeliteApplication with OptiMLExp
 
-  override val specialize = Set("VectorImpl", "MatrixImpl", "VectorViewImpl", "LabelsImpl",
+  override val specialize = Set("VectorImpl", "MatrixImpl", "SymmetricMatrixImpl", "VectorViewImpl", "LabelsImpl",
                                 "ImageImpl", "StreamImpl", "MatrixRowImpl", "MatrixColImpl", "StreamRowImpl")
   override val specialize2 = Set("TrainingSetImpl")
 

@@ -6,7 +6,7 @@ import ppl.dsl.optiml.datastruct.scala._
 import ppl.dsl.optiml.{OptiMLCompiler, OptiMLLift, OptiML}
 
 trait MLInputReaderImplOps { this: Base =>
-  def mlinput_read_impl(filename: Rep[String]) : Rep[Matrix[Double]]
+  def mlinput_read_impl(filename: Rep[String], delim: Rep[String]) : Rep[Matrix[Double]]
   def mlinput_read_vector_impl(filename : Rep[String]) : Rep[Vector[Double]]
   def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage]
   def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
@@ -19,12 +19,13 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   ///////////////
   // kernels
 
-  def mlinput_read_impl(filename: Rep[String]) = {
+  def mlinput_read_impl(filename: Rep[String], delim: Rep[String]) = {
     val xfs = BufferedReader(FileReader(filename))
     var line = xfs.readLine()
     line = line.trim()
     // TODO: weirdness with StringOps, losing a \        
-    var dbls = line.split("\\\\s+")
+    var dbls = line.split(delim)
+    //var dbls = line.split("\\\\s+")
     val x = Matrix[Double](0, dbls.length)
 
     while (line != null){
@@ -36,7 +37,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
       line = xfs.readLine()
       if (line != null) {
         line = line.trim()
-        dbls = line.split("\\\\s+")
+        dbls = line.split(delim)
       }
     }
     xfs.close()

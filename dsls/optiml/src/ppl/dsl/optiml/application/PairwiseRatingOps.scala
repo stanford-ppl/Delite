@@ -11,7 +11,7 @@ import scala.virtualization.lms.common.{EffectExp, Variables}
 trait PairwiseRatingOps extends DSLType with Variables with OverloadHack {
 
   object PairwiseRating {
-    def apply(profileA: Rep[Double], profileB: Rep[Double], scoreA: Rep[Double], scoreB: Rep[Double]) = pairwiserating_obj_new(profileA, profileB, scoreA, scoreB)
+    def apply(profileA: Rep[Int], profileB: Rep[Int], scoreA: Rep[Int], scoreB: Rep[Int]) = pairwiserating_obj_new(profileA, profileB, scoreA, scoreB)
   }
 
   implicit def repPairwiseRatingToPairwiseRatingOps(x: Rep[PairwiseRating]) = new pairwiseratingOpsCls(x)
@@ -25,23 +25,23 @@ trait PairwiseRatingOps extends DSLType with Variables with OverloadHack {
   }
 
   //object defs
-  def pairwiserating_obj_new(profileA: Rep[Double], profileB: Rep[Double], scoreA: Rep[Double], scoreB: Rep[Double]): Rep[PairwiseRating]
+  def pairwiserating_obj_new(profileA: Rep[Int], profileB: Rep[Int], scoreA: Rep[Int], scoreB: Rep[Int]): Rep[PairwiseRating]
 
   //class defs
-  def pairwiserating_profileA(__x: Rep[PairwiseRating]): Rep[Double]
-  def pairwiserating_profileB(__x: Rep[PairwiseRating]): Rep[Double]
-  def pairwiserating_scoreA(__x: Rep[PairwiseRating]): Rep[Double]
-  def pairwiserating_scoreB(__x: Rep[PairwiseRating]): Rep[Double]
+  def pairwiserating_profileA(__x: Rep[PairwiseRating]): Rep[Int]
+  def pairwiserating_profileB(__x: Rep[PairwiseRating]): Rep[Int]
+  def pairwiserating_scoreA(__x: Rep[PairwiseRating]): Rep[Int]
+  def pairwiserating_scoreB(__x: Rep[PairwiseRating]): Rep[Int]
 }
 
 trait PairwiseRatingOpsExp extends PairwiseRatingOps with EffectExp {
-  case class PairwiseRatingObjectNew(profileA: Exp[Double], profileB: Exp[Double], scoreA: Exp[Double], scoreB: Exp[Double]) extends Def[PairwiseRating]
-  case class PairwiseRatingProfilea(__x: Exp[PairwiseRating]) extends Def[Double]
-  case class PairwiseRatingProfileb(__x: Exp[PairwiseRating]) extends Def[Double]
-  case class PairwiseRatingScorea(__x: Exp[PairwiseRating]) extends Def[Double]
-  case class PairwiseRatingScoreb(__x: Exp[PairwiseRating]) extends Def[Double]
+  case class PairwiseRatingObjectNew(profileA: Exp[Int], profileB: Exp[Int], scoreA: Exp[Int], scoreB: Exp[Int]) extends Def[PairwiseRating]
+  case class PairwiseRatingProfilea(__x: Exp[PairwiseRating]) extends Def[Int]
+  case class PairwiseRatingProfileb(__x: Exp[PairwiseRating]) extends Def[Int]
+  case class PairwiseRatingScorea(__x: Exp[PairwiseRating]) extends Def[Int]
+  case class PairwiseRatingScoreb(__x: Exp[PairwiseRating]) extends Def[Int]
 
-  def pairwiserating_obj_new(profileA: Exp[Double], profileB: Exp[Double], scoreA: Exp[Double], scoreB: Exp[Double]) = reflectEffect(PairwiseRatingObjectNew(profileA, profileB, scoreA, scoreB))
+  def pairwiserating_obj_new(profileA: Exp[Int], profileB: Exp[Int], scoreA: Exp[Int], scoreB: Exp[Int]) = reflectEffect(PairwiseRatingObjectNew(profileA, profileB, scoreA, scoreB))
   def pairwiserating_profileA(__x: Rep[PairwiseRating]) = PairwiseRatingProfilea(__x)
   def pairwiserating_profileB(__x: Rep[PairwiseRating]) = PairwiseRatingProfileb(__x)
   def pairwiserating_scoreA(__x: Rep[PairwiseRating]) = PairwiseRatingScorea(__x)

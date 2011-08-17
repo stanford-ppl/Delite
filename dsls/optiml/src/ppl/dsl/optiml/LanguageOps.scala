@@ -147,6 +147,10 @@ trait LanguageOps extends Base { this: OptiML =>
   //def abs[A](vals: Rep[Vector[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = vals.abs
   //def abs[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded2) = vals.abs
 
+  /**
+   * sqrt 
+   */
+  def sqrt(e: Rep[Double]) = Math.sqrt(e)
 
   /**
    *  IndexVector construction
@@ -249,7 +253,7 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    *  i/o
    */
-  def readMatrix(filename: Rep[String]) = MLInputReader.read(filename)
+  def readMatrix(filename: Rep[String], delim: Rep[String] = unit("\\\\s+")) = MLInputReader.read(filename, delim)
   def readVector(filename: Rep[String]) = MLInputReader.readVector(filename)
   def readImage(filename: Rep[String]) = MLInputReader.readGrayscaleImage(filename)
 

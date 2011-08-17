@@ -17,6 +17,10 @@ import ppl.delite.framework.extern.lib._
 trait MatrixOps extends DSLType with Variables {
   this: OptiML =>
 
+  object SymmetricMatrix {
+    def apply[A:Manifest](n: Rep[Int]) = symmatrix_obj_new(n)
+  }
+  
   object Matrix {
     def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_new(numRows, numCols)
     def apply[A:Manifest](xs: Rep[Vector[Vector[A]]]): Rep[Matrix[A]] = matrix_obj_fromvec(xs)
@@ -145,6 +149,7 @@ trait MatrixOps extends DSLType with Variables {
   def infix_:<(x: Rep[Matrix[Int]], y: Rep[Matrix[Int]])(implicit o: Overloaded2): Rep[Matrix[Int]] = x.zip(y) { (a,b) => if (a > b) unit(1) else unit(0) }
 
   // object defs
+  def symmatrix_obj_new[A:Manifest](n: Rep[Int]): Rep[SymmetricMatrix[A]]
   def matrix_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[A]]
   def matrix_obj_fromseq[A:Manifest](xs: Seq[Rep[Vector[A]]]): Rep[Matrix[A]]
   def matrix_obj_fromvec[A:Manifest](xs: Rep[Vector[Vector[A]]]): Rep[Matrix[A]]
@@ -233,6 +238,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   //////////////////////////////////////////////////
   // implemented via method on real data structure
 
+  case class SymmetricMatrixObjectNew[A:Manifest](n:Exp[Int]) extends Def[SymmetricMatrix[A]] {
+     val m = manifest[A]
+     val mM = manifest[SymmetricMatrixImpl[A]]
+  }
+  
   case class MatrixObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends Def[Matrix[A]] {
      val m = manifest[A]
      val mM = manifest[MatrixImpl[A]]
@@ -663,6 +673,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   ////////////////////
   // object interface
 
+  def symmatrix_obj_new[A:Manifest](n: Exp[Int]) = reflectMutable(SymmetricMatrixObjectNew[A](n))
   def matrix_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectMutable(MatrixObjectNew[A](numRows, numCols)) //XXX
   def matrix_obj_fromseq[A:Manifest](xs: Seq[Exp[Vector[A]]]) = reflectPure(MatrixObjectFromSeq(xs)) //XXX
   def matrix_obj_fromvec[A:Manifest](xs: Exp[Vector[Vector[A]]]) = reflectPure(MatrixObjectFromVec(xs))
@@ -944,6 +955,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
+    case m@SymmetricMatrixObjectNew(n) => emitValDef(sym, "new " + remap(m.mM) + "(" + quote(n) + ")")
     case m@MatrixObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     case MatrixVView(x,start,stride,length,isRow) => emitValDef(sym, quote(x) + ".vview(" + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
     //case MatrixApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
