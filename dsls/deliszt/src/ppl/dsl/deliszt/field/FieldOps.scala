@@ -41,7 +41,6 @@ trait FieldOps extends DSLType with Variables with OverloadHack {
   def field_mo_update[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]], mo: Rep[MO], v : Rep[VT]) : Rep[Unit]
 
   def label[MO<:MeshObj:Manifest,VT:Manifest](url: Rep[String]): Rep[Field[MO,VT]]
-  def position[MO<:MeshObj:Manifest](mo: Rep[MO]) = { val lf = label[MO,Vec[_3,Float]](unit("position")); lf.apply(mo) }
   def field_obj_new[MO<:MeshObj:Manifest,VT:Manifest](): Rep[Field[MO,VT]]
 
   def field_apply[MO<:MeshObj:Manifest,VT:Manifest](x: Rep[Field[MO,VT]], n: Rep[Int]): Rep[VT]
@@ -114,12 +113,6 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
     val vtM = manifest[VT]
   }
   
-  /*case class PositionFor[MO<:MeshObj:Manifest](mo : Rep[MO])
-    extends DeliteOpSingleTask(reifyEffectsHere(position_for_impl[MO](mo))) {
-    
-    val moM = manifest[MO]
-  } */
-
   case class FieldIntApply[MO<:MeshObj:Manifest,VT:Manifest](x: Exp[Field[MO,VT]], n: Exp[Int]) extends Def[VT] {
     val moM = manifest[MO]
     val vtM = manifest[VT]

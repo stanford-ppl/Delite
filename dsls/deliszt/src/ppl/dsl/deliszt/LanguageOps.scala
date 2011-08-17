@@ -23,7 +23,7 @@ trait LanguageOps extends Base { this: DeLiszt with MathOps =>
   def _init(args: Rep[Array[String]]) : Unit
 
   def Print(as : Rep[Any]*) : Unit
-	def BoundarySet[MO<:MeshObj:Manifest](name : Rep[String]) : Rep[MeshSet[MO]]
+	def BoundarySet[MO<:MeshObj:Manifest](name : Rep[String]) : Rep[BoundarySet[MO]]
 
 	def mesh : Rep[Mesh]
 
@@ -84,11 +84,11 @@ trait LanguageOps extends Base { this: DeLiszt with MathOps =>
   def min[A:Manifest:Numeric](x: Rep[A], y: Rep[A]) = math_min(x, y)
   def max[A:Manifest:Numeric](x: Rep[A], y: Rep[A]) = math_max(x, y)
   def sqrt(a: Rep[Double]) : Rep[Double]
-  def sqrtf(a: Rep[Float]) = math_sqrt(a)
-  def expf(a: Rep[Float]) = math_exp(a)
-  def sinf(a: Rep[Float]) = math_sin(a)
-  def cosf(a: Rep[Float]) = math_cos(a)
-  def fabs(a : Rep[Float]) = math_abs(a)
+  def sqrtf(a: Rep[Float]) = math_sqrt(a).asInstanceOfL[Float]
+  def expf(a: Rep[Float]) = math_exp(a).asInstanceOfL[Float]
+  def sinf(a: Rep[Float]) = math_sin(a).asInstanceOfL[Float]
+  def cosf(a: Rep[Float]) = math_cos(a).asInstanceOfL[Float]
+  def fabs(a : Rep[Float]) = math_abs(a).asInstanceOfL[Float]
   def MPI_Wtime() : Rep[Double]
 }
 
@@ -99,7 +99,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class DeLisztInit(args: Exp[Array[String]]) extends Def[Unit]
   case class DeLisztPrint(as: Seq[Exp[Any]]) extends DeliteOpSingleTask(reifyEffectsHere(print_impl(as)))
 
-  case class DeLisztBoundarySet[MO<:MeshObj : Manifest](name : Exp[String]) extends Def[MeshSet[MO]]
+  case class DeLisztBoundarySet[MO<:MeshObj : Manifest](name : Exp[String]) extends Def[BoundarySet[MO]]
 
   case class DeLisztMesh() extends Def[Mesh]
 

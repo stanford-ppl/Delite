@@ -75,6 +75,9 @@ trait VecOps extends DSLType with Variables {
     def min(vt: Rep[Self])(implicit n: Ordering[A]) = vec_zip_min(u, vt)
     def max(vt: Rep[Self])(implicit n: Ordering[A]) = vec_zip_max(u, vt)
     
+    def *<*(vt: Rep[Self])(implicit n: Ordering[A]) = vec_zip_min(u, vt)
+    def *>*(vt: Rep[Self])(implicit n: Ordering[A]) = vec_zip_max(u, vt)
+    
     //def map[B:Manifest](f: Rep[A] => Rep[B]) = vec_map(x,f)
 
     //def &[M<:IntM:Manifest:MVal](rhs : Rep[Vec[M,A]]) = vec_concat[N,M,N+M,A](u, rhs)

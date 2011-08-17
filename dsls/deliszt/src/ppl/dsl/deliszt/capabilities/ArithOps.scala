@@ -21,7 +21,7 @@ import ppl.dsl.deliszt.{DeLiszt, DeLisztExp}
 */
 
 trait ArithOps extends Variables with OverloadHack with MetaInteger {
-  this: DeLiszt =>
+  this: DeLiszt with LowPriorityPrimitiveImplicits =>
 
   type Arith[X] = ArithInternal[Rep, X]
 
@@ -33,13 +33,13 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
   implicit def arithToArithOps[T: Arith : Manifest](n: T) = new ArithOpsCls(unit(n))
   implicit def repArithToArithOps[T: Arith : Manifest](n: Rep[T]) = new ArithOpsCls(n)
   implicit def varArithToArithOps[T: Arith : Manifest](n: Var[T]) = new ArithOpsCls(readVar(n))
-
+  
   // to do Rep[Int] * Float, it should get converted to Rep[Float] * Float
   // TODO: this only works when invoked explicitly (won't kick in itself)
-  implicit def chainRepArithToArithOps[A, B](a: Rep[A])
-                                            (implicit mA: Manifest[A], aA: Arith[A], mB: Manifest[B], aB: Arith[B], c: Rep[A] => Rep[B]) = new ArithOpsCls(c(a))
+  implicit def chainRepArithToArithOps[A:Manifest:Arith, B:Manifest:Arith](a: Rep[A])
+                                            (implicit c: Rep[A] => Rep[B]) = new ArithOpsCls(c(a))
 
-  class ArithOpsCls[T](lhs: Rep[T])(implicit mT: Manifest[T], arith: Arith[T]) {
+  class ArithOpsCls[T:Manifest:Arith](lhs: Rep[T])(implicit arith: Arith[T]) {
     // TODO: if B == Rep[T] below, the ops implicit does not work unless it is called explicitly (no unambiguous resolution?)
     //def +=(rhs: Rep[T]): Rep[T] = arith.+=(lhs, rhs)
     def +(rhs: Rep[T]): Rep[T] = arith.+(lhs, rhs)
@@ -64,7 +64,7 @@ trait ArithOps extends Variables with OverloadHack with MetaInteger {
 
 
   // TODO: why is this needed, given the definition of / above?
-  def infix_/[T, B](lhs: Rep[T], rhs: B)(implicit f: Fractional[T], c: B => Rep[T], mT: Manifest[T]) = arith_fractional_divide(lhs, c(rhs))
+  def infix_/[T:Manifest:Fractional, B](lhs: Rep[T], rhs: B)(implicit c: B => Rep[T]) = arith_fractional_divide(lhs, c(rhs))
 
   // why are these recursive? (perhaps because the abstract arith method has the same signature as the infix?)
   //  def infix_+=[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.+=(lhs,c(rhs))
