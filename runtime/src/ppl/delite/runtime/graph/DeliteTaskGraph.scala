@@ -396,6 +396,7 @@ object DeliteTaskGraph {
    */
   def processEOPTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val result = graph._result._1
+    val EOP = new EOP
     EOP.addDependency(result) //EOP depends on result of application
     result.addConsumer(EOP)
     graph.registerOp(EOP)

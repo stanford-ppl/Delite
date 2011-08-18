@@ -46,7 +46,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     validateParameters()
     val args = Array("test.deg")
     stageTest(app, args(0))
-    val outStr = execTest(args)
+    val outStr = execTest(app, args)
     checkTest(outStr)
   }
 
@@ -70,7 +70,21 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     }      
   }
 
-  private def execTest(args: Array[String]) = {
+  private def execTest(app: DeliteTestRunner, args: Array[String]) = {
+    println("EXECUTING...")
+    val name = "test.tmp"
+    Console.withOut(new PrintStream(new FileOutputStream(name))) {
+      println("test output for: "+app.toString)
+      ppl.delite.runtime.Delite.main(args)
+    }
+    val buf = new Array[Byte](new File(name).length().toInt)
+    val fis = new FileInputStream(name)
+    fis.read(buf)
+    fis.close()
+    new String(buf)
+  }
+  
+  private def execTestExternal(args: Array[String]) = {
     println("EXECUTING...")
     //Delite.main(args)
     // need to use a different compiler version to build and run Delite
