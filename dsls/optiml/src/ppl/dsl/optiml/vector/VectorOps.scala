@@ -957,8 +957,8 @@ trait VectorOpsExpOpt extends VectorOpsExp with DeliteCollectionOpsExp {
     case Def(d@VectorObjectFromSeq(xs)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])   
     case Def(d@VectorObjectZeros(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     case Def(d@VectorObjectZerosF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
-    case Def(d@VectorObjectOnes(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
-    case Def(d@VectorObjectOnesF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
+    //case Def(d@VectorObjectOnes(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]]) <--- actually a problem in testSumIf!
+    //case Def(d@VectorObjectOnesF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     case Def(d@VectorObjectRand(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     case Def(d@VectorObjectRandF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     case _ => super.vector_mutable_clone(x)
