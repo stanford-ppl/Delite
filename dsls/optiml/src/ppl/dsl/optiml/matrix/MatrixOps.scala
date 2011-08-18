@@ -628,7 +628,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixUpdateRow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Exp[Vector[A]])
     extends DeliteOpIndexedLoop {
     
-    val size = copyTransformedOrElse(_.size)(x.numCols)
+    val size = copyTransformedOrElse(_.size)(y.length) // TODO: assert y.length == x.numCols
     def func = j => { x(row,j) = y(j) } 
   }
 

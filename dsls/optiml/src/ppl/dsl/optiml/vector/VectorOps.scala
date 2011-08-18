@@ -734,7 +734,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
   def vector_length[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorLength(x))
   def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorIsRow(x))
-  def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = reflectPure(VectorApply(x, n))
+  def vector_apply[A:Manifest](x: Exp[Vector[A]], n: Exp[Int]) = dc_apply(x,n)//reflectPure(VectorApply(x, n))
   def vector_slice[A:Manifest](x: Exp[Vector[A]], start: Exp[Int], end: Exp[Int]) = reflectPure(VectorSlice(x, start, end))
   def vector_contains[A:Manifest](x: Exp[Vector[A]], y: Exp[A]) = reflectPure(VectorContains(x, y))
   def vector_distinct[A:Manifest](x: Exp[Vector[A]]) = reflectPure(VectorDistinct(x))
