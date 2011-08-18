@@ -87,6 +87,7 @@ class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.de
 
   implicit def cStrToInt(s: String) = Integer.parseInt(s)
   implicit def cStrToFloat(s: String) = java.lang.Float.parseFloat(s)
+  implicit def cStrToDouble(s: String) = java.lang.Double.parseDouble(s)
   implicit def cStrToChar(s: String) = {
     assert(s.size == 1, "expected char, got: " + s)
     s(0)

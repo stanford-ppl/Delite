@@ -1,15 +1,15 @@
 package ppl.dsl.optiql.datastruct.scala.liftables
 
 class Part(
-  val key:Int,
-  val name: String,
-  val mfgr: String,
-  val brand: String,
-  val pType: String,
-  val size: Int,
-  val container: String,
-  val retailPrice: Float,
-  val comment:String
+  val p_partkey: Int,
+  val p_name: String,
+  val p_mfgr: String,
+  val p_brand: String,
+  val p_type: String,
+  val p_size: Int,
+  val p_container: String,
+  val p_retailprice: Double,
+  val p_comment:String
 )
 
 

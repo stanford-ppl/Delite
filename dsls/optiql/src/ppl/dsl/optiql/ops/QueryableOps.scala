@@ -20,8 +20,8 @@ trait QueryableOps extends Base {
     def Where(predicate: Rep[TSource] => Rep[Boolean]) = queryable_where(s, predicate)
 	def GroupBy[TKey:Manifest](keySelector: Rep[TSource] => Rep[TKey]) = queryable_groupby(s,keySelector)
 	def Select[TResult:Manifest](resultSelector: Rep[TSource] => Rep[TResult]) = queryable_select(s, resultSelector)
-	def Sum(sumSelector: Rep[TSource] => Rep[Float]) = queryable_sum(s, sumSelector)
-	def Average(avgSelector: Rep[TSource] => Rep[Float]) = queryable_average(s, avgSelector)
+	def Sum(sumSelector: Rep[TSource] => Rep[Double]) = queryable_sum(s, sumSelector)
+	def Average(avgSelector: Rep[TSource] => Rep[Double]) = queryable_average(s, avgSelector)
 	def Count() = queryable_count(s)
   }
   
@@ -31,8 +31,8 @@ trait QueryableOps extends Base {
   def queryable_where[TSource:Manifest](s: Rep[DataTable[TSource]], predicate: Rep[TSource] => Rep[Boolean]): Rep[DataTable[TSource]]
   def queryable_groupby[TSource:Manifest, TKey:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[DataTable[Grouping[TKey, TSource]]]
   def queryable_select[TSource:Manifest, TResult:Manifest](s: Rep[DataTable[TSource]], resultSelector: Rep[TSource] => Rep[TResult]): Rep[DataTable[TResult]]
-  def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Float]): Rep[Float]
-  def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Float]): Rep[Float]
+  def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]): Rep[Double]
+  def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]): Rep[Double]
   def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]): Rep[Int]  
   
   def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[DataTable[TSource]]
@@ -57,18 +57,18 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   
   case class QueryableGroupBy[TSource:Manifest, TKey:Manifest](s: Exp[DataTable[TSource]], v:Sym[TSource], key: Exp[TKey]) extends Def[DataTable[Grouping[TKey, TSource]]]    
   
-  case class QueryableSum[TSource:Manifest](s: Exp[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Float]) extends DeliteOpLoop[Float] {
+  case class QueryableSum[TSource:Manifest](s: Exp[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]) extends DeliteOpLoop[Double] {
 	val size = s.size
 	val v = fresh[Int]
-	private[this] val rV = (fresh[Float], fresh[Float])
-	val body: Def[Float] = DeliteReduceElem[Float](
+	private[this] val rV = (fresh[Double], fresh[Double])
+	val body: Def[Double] = DeliteReduceElem[Double](
 		func = sumSelector(s(v)),
 		zero = unit(0.0f),
 		rV = rV,
 		rFunc = rV._1 + rV._2
 	)
   }
-  case class QueryableAverage[TSource:Manifest](s: Exp[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Float]) extends Def[Float]
+  case class QueryableAverage[TSource:Manifest](s: Exp[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) extends Def[Double]
   
   //case class QueryableCount[TSource:Manifest](s: Exp[DataTable[TSource]]) extends Def[Int]
 
@@ -87,8 +87,8 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     val key = keySelector(v)
     QueryableGroupBy(s, v, key)
   }
-  def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Float]) = QueryableSum(s,sumSelector)
-  def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Float]) = toAtom(QueryableSum(s, avgSelector))/s.size()
+  def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]) = QueryableSum(s,sumSelector)
+  def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) = toAtom(QueryableSum(s, avgSelector))/s.size()
   def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]) = s.size()
   
   def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]) = QueryableGroupingToDataTable(g)

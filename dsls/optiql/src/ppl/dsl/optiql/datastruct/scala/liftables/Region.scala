@@ -1,9 +1,9 @@
 package ppl.dsl.optiql.datastruct.scala.liftables
 
 class Region (
-  val key: Int,
-  val name: String,
-  val comment: String
+  val r_regionkey: Int,
+  val r_name: String,
+  val r_comment: String
 )
 
 

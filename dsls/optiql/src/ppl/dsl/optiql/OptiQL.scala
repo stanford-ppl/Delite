@@ -15,7 +15,7 @@ import ppl.delite.framework.codegen.{Utils, Target}
 /**
  * These are the lifted scala constructs that only operate on the Rep world. These are usually safe to mix in
  */
-trait OptiQLScalaOpsPkg extends Base with MiscOps with OrderingOps with PrimitiveOps with TupleOps with NumericOps with ArrayOps with IfThenElse with Refinement
+trait OptiQLScalaOpsPkg extends Base with MiscOps with OrderingOps with PrimitiveOps with TupleOps with NumericOps with ArrayOps with IfThenElse with RefinementOps
 
 /**
  * This trait adds the Ops that are specific to OptiQL
@@ -128,6 +128,9 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
 trait OptiQLApplication extends OptiQL with OptiQLLift {
   var args: Rep[Array[String]]
   def main(): Unit
+  
+  //optiql aliases
+  type Result = Refinement  
 }
 
 // ex. object TPCHRunner extends OptiQLApplicationRunner with  TPCH

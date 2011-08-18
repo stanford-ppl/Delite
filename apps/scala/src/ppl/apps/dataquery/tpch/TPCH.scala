@@ -25,28 +25,38 @@ trait TPCH extends OptiQLApplication {
     
     val tpchDataPath = args(0)
     
+     
+    class MyRow extends Row[Rep]
+    class ApplyDynamicOps {
+      def applyDynamic[T](n: String)(as: AnyRef*): Rep[T] = error(n + as.mkString("(", ",", ")"))
+    }
+    implicit def applyDynamicOps[T <: MyRow](qual: Rep[T]): ApplyDynamicOps = new ApplyDynamicOps
+  
+    val qual = new MyRow{ val xxx: Rep[Int] = 5    }
+    val x: Rep[Int] = qual.xxx 
+    
 
     //load TPCH data
     val lineItems = TPCH.loadLineItems(tpchDataPath)
-    type Result = Row[Rep]
-
 	tic(lineItems)
-    val res = lineItems Select(e => new Result { val shipDate = e.shipDate  })
     
+       
+    val res = lineItems //Select(e => new Result { val l_shipdate = e.l_shipdate  }) Where(_.l_shipdate <= Date("1998-12-01"))
+   
     /*
-    val res = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
-      val returnFlag = e.key._1
-      val lineStatus = e.key._2
-      val sumQty = e.Sum(_.quantity)
-      val sumBasePrice = e.Sum(_.extendedPrice)
-      val sumDiscountedPrice = e.Sum(l => l.extendedPrice * (1.0f-l.discount))
-      val sumCharge = e.Sum(l=> l.extendedPrice * (1.0f-l.discount) * (1.0f+l.tax))
-      val avgQty = e.Average(_.quantity)
-      val avgPrice = e.Average(_.extendedPrice)
-      val avgDiscount = e.Average(_.discount)
-      val count = e.Count
+    val res = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => {
+      val returnFlag = g.key._1
+      val lineStatus = g.key._2
+      val sumQty = g.Sum(_.l_quantity)
+      val sumBasePrice = g.Sum(_.l_extendedprice)
+      val sumDiscountedPrice = g.Sum(l => l.l_extendedprice * (1.0d - l.l_discount))
+      val sumCharge = g.Sum(l=> l.l_extendedprice * (1.0d - l.l_discount) * (1.0d + l.l_tax))
+      val avgQty = g.Average(_.l_quantity)
+      val avgPrice = g.Average(_.l_extendedprice)
+      val avgDiscount = g.Average(_.l_discount)
+      val countOrder = g.Count
       //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
+      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, countOrder)
     }) */
     toc(res)
     res.printAsTable()
