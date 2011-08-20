@@ -218,7 +218,7 @@ Beginning Execution Run 1
       <br />
       <div class="highlight" style="overflow: scroll"><pre><code>export ARCH="intel64"
 source "$ICC_HOME/bin/compilervars.sh" $ARCH
-icc -w -O3 "-I/System/Library/Frameworks/JavaVM.framework/Headers" "-L${ICC_HOME}/mkl/lib" "-L${ICC_HOME}/mkl/lib/${ARCH}" "-L${ICC_HOME}/lib" "-L${ICC_HOME}/mkl/${ARCH}" -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lmkl_mc3 -lmkl_def -dynamiclib -fPIC -o "$OUTPUT" "$INPUT"
+icc -w -O3 "-I/System/Library/Frameworks/JavaVM.framework/Headers" "-L${ICC_HOME}/mkl/lib" "-L${ICC_HOME}/mkl/lib/${ARCH}" "-L${ICC_HOME}/lib" "-L${ICC_HOME}/mkl/${ARCH}" -lmkl_intel_lp64 -lmkl_intel_thread -lmkl_core -liomp5 -lmkl_mc3 -dynamiclib -fPIC -o "$OUTPUT" "$INPUT"
 </code></pre></div>
 
       <p>If you're going to modify our template, note the <code>%INPUT%</code> and <code>%OUTPUT%</code> variables used the script. They're set by Delite's external libraries infrastructure and denote an input file (path to a generated JNI-callable stub written in C) and an output file (expected location of compilation result), correspondingly. Also keep in mind that we're only supporting 64-bit MKL libraries at the moment, so setting <code>%ARCH%</code> to <code>ia32</code> might result in a crashing application.</p>
