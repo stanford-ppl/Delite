@@ -34,10 +34,10 @@ JNIEXPORT jobject JNICALL Java_generated_scala_MeshLoader_loadMesh (JNIEnv* env,
   return jmesh;
 }
 
-JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loadBoundaries
+JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loadBoundarySet
   (JNIEnv * env, jobject obj, jstring str, jobject moc) {
   int type = ml.callIntMethod(moc,
-                    "ppl/dsl/deliszt/datastruct/scala/MeshObjConstruct", "_type",
+                    ml.prefix + "/MeshObjConstruct", "_type",
                     "()I");
   
   string name(env->GetStringUTFChars(str, 0));
@@ -58,7 +58,7 @@ JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loa
   return NULL;
 }
 
-JNIEXPORT jobject JNICALL Java_generated_scala_MeshLoader__1loadBoundaries
+JNIEXPORT jobject JNICALL Java_generated_scala_MeshLoader__1loadBoundarySet
   (JNIEnv * env, jobject obj, jstring str, jobject moc) {
-  return Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loadBoundaries(env, obj, str, moc);
+  return Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loadBoundarySet(env, obj, str, moc);
 }

@@ -19,14 +19,14 @@ public:
 		file = FOPEN(filename.c_str(),"r");
 		if(!file) {
 			perror(NULL);
-      throw new MeshLoadException("file read error");
+      throw MeshLoadException("file read error");
 		}
 		if(fread(&head,sizeof(LisztHeader),1,file) != 1) {
 			perror(NULL);
-      throw new MeshLoadException("failed to read header");
+      throw MeshLoadException("failed to read header");
 		}
 		if(head.magic_number != LISZT_MAGIC_NUMBER) {
-      throw new MeshLoadException("unexpected magic number, is this a liszt mesh?");
+      throw MeshLoadException("unexpected magic number, is this a liszt mesh?");
 		}
 	}
 	
@@ -40,7 +40,7 @@ public:
 		BoundarySet * b = new BoundarySet[head.nBoundaries];
 		if(fread(b,sizeof(BoundarySet),head.nBoundaries,file) != head.nBoundaries) {
 			perror(NULL);
-			assert(!"boundary read failed");
+      throw MeshLoadException("boundary read failed");
 		}
 		
 		BoundarySetEntry * entries = new BoundarySetEntry[head.nBoundaries];
@@ -54,7 +54,7 @@ public:
 			seek(b[i].name_string);
 			if(!fgets(buf,2048,file)) {
 				perror(NULL);
-				assert("failed to read string");
+        throw MeshLoadException("failed to read string");
 			}
 			entries[i].name = buf;
 		}
@@ -81,7 +81,7 @@ std::cout << "allocating " << nfes << " facets of size " << sizeof(FileFacetEdge
 		
 		if(fread(fes,sizeof(FileFacetEdge),nfes,file) != nfes) {
 			perror(NULL);
-			assert(!"error reading facet edges");
+      throw MeshLoadException("error reading facet edges");
 		}
 		
 		return fes;
@@ -103,7 +103,7 @@ std::cout << "allocating " << nfes << " facets of size " << sizeof(FileFacetEdge
 		
 		if(fread(buf,PSIZE,npos,file) != npos) {
 			perror(NULL);
-			assert(!"could not read positions");
+      throw MeshLoadException("could not read positions");
 		}
 		
 		return (PositionTable*) buf;
@@ -125,7 +125,7 @@ private:
 	void seek(file_ptr loc) {
 		if(fseeko(file,loc,SEEK_SET)) {
 			perror(NULL);
-			assert(!"error seeking stream");
+      throw MeshLoadException("error seeking stream");
 		}
 	}
 	LisztHeader head;

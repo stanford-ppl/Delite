@@ -138,6 +138,6 @@ class Mesh extends MeshObj with MetaInteger with MeshObjImpl {
 
   def meshSet[MO<:MeshObj](implicit ms: MeshSet[MO]) = ms
   def boundarySet[MO<:MeshObj:MeshObjConstruct](name: String) : MeshSet[MO] = {
-    Mesh.loader.loadBoundaries(name)
+    Mesh.loader.loadBoundarySet(name)
   }
 }
