@@ -16,6 +16,7 @@ trait Mat[R<:IntM,C<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] ext
 
   def apply(n: Int, m: Int) : T
   def update(n: Int, m: Int, v : T) : Unit
+  def size : Int
 
   def row(n: Int) : MatRow[C,T]
   def col(n: Int) : MatCol[R,T]
@@ -26,6 +27,7 @@ trait Mat[R<:IntM,C<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] ext
     // DeliteCollection
   def dcApply(idx: Int): T
   def dcUpdate(idx: Int, x: T): Unit
+  def dcSize : Int = size
 }
 
 trait VecView[N<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends Vec[N,T] with MetaInteger
