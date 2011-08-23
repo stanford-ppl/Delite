@@ -12,7 +12,7 @@ trait MLInputReaderOps extends DSLType with Base {
   object MLInputReader {
     // file format is m lines with n floats per line, each float separated by whitespaces
     // (same as matlab .dat)
-    def read(filename: Rep[String]) = obj_mlinput_read(filename)
+    def read(filename: Rep[String], delim: Rep[String] = unit("\\\\s+")) = obj_mlinput_read(filename, delim)
     def readVector(filename: Rep[String]) = obj_mlinput_read_vector(filename)
     def readGrayscaleImage(filename: Rep[String]) = obj_mlinput_read_grayscale_image(filename)
 
@@ -21,7 +21,7 @@ trait MLInputReaderOps extends DSLType with Base {
     def readTemplateModels(directory: Rep[String]) = obj_mlinput_read_template_models(directory)
   }
 
-  def obj_mlinput_read(filename: Rep[String]) : Rep[Matrix[Double]]
+  def obj_mlinput_read(filename: Rep[String], delim: Rep[String]) : Rep[Matrix[Double]]
   def obj_mlinput_read_vector(filename: Rep[String]) : Rep[Vector[Double]]
   def obj_mlinput_read_grayscale_image(filename: Rep[String]) : Rep[GrayscaleImage]
 
@@ -30,8 +30,8 @@ trait MLInputReaderOps extends DSLType with Base {
 }
 
 trait MLInputReaderOpsExp extends MLInputReaderOps with BaseFatExp { this: MLInputReaderImplOps with DeliteOpsExp with TupleOpsExp =>
-  case class MLInputRead(filename: Exp[String])
-    extends DeliteOpSingleTask(reifyEffects(mlinput_read_impl(filename)))
+  case class MLInputRead(filename: Exp[String], delim: Exp[String])
+    extends DeliteOpSingleTask(reifyEffects(mlinput_read_impl(filename, delim)))
 
   case class MLInputReadVector(filename: Exp[String])
     extends DeliteOpSingleTask(reifyEffects(mlinput_read_vector_impl(filename)))
@@ -46,7 +46,7 @@ trait MLInputReaderOpsExp extends MLInputReaderOps with BaseFatExp { this: MLInp
     extends DeliteOpSingleTask(reifyEffects(mlinput_read_template_models_impl(directory)))
 
 
-  def obj_mlinput_read(filename: Exp[String]) = reflectEffect(MLInputRead(filename))
+  def obj_mlinput_read(filename: Exp[String], delim: Exp[String]) = reflectEffect(MLInputRead(filename, delim))
   def obj_mlinput_read_vector(filename: Exp[String]) = reflectEffect(MLInputReadVector(filename))
   def obj_mlinput_read_grayscale_image(filename: Exp[String]) = reflectEffect(MLInputReadGrayscaleImage(filename))
 

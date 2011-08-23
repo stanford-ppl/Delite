@@ -5,7 +5,7 @@ import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 import ppl.dsl.optiml.{OptiMLExp, OptiMLCompiler, OptiMLLift, OptiML}
 
-trait MatrixImplOps { this: OptiMLExp =>
+trait MatrixImplOps { this: OptiML =>
   def matrix_obj_fromseq_impl[A:Manifest](xs: Seq[Rep[Vector[A]]]): Rep[Matrix[A]]
   def matrix_obj_fromvec_impl[A:Manifest](xs: Rep[Vector[Vector[A]]]): Rep[Matrix[A]]
   def matrix_obj_diag_impl[A:Manifest](w: Rep[Int], vals: Rep[Vector[A]]): Rep[Matrix[A]]
@@ -40,10 +40,12 @@ trait MatrixImplOps { this: OptiMLExp =>
   def matrix_sigmoid_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
   def matrix_sigmoidf_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]]
   def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]]
+  def matrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[Vector[A]] => Rep[K]): Rep[Vector[Matrix[A]]]
+  
 }
 
 trait MatrixImplOpsStandard extends MatrixImplOps {
-  this: OptiMLExp with OptiMLLift =>
+  this: OptiMLCompiler with OptiMLLift =>
   
 
   ///////////////
@@ -113,7 +115,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 
   def matrix_apply_impl[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]) = {
     val offset = i*x.numCols+j
-    matrix_dcapply(x, offset)
+    dc_apply(x,offset)
   }
 
   //def matrix_getrow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int]) = m.vview(row*m.numCols, 1, m.numCols, true)
@@ -344,7 +346,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     val yTrans = y.t
     val out = Matrix[A](x.numRows, y.numCols)
 
-    for (rowIdx <- (0::x.numRows)) {
+    for (rowIdx <- 0 until x.numRows) {
       var i = unit(0)
       while (i < out.numCols) {
         var j = unit(1)
@@ -366,7 +368,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 //  }
 
     val out = Vector[A](x.numRows, false)
-    for (rowIdx <- (0::x.numRows)) {
+    for (rowIdx <- 0 until x.numRows) {
       out(rowIdx) = x.getRow(rowIdx) *:* y
     }
     out.unsafeImmutable
@@ -386,9 +388,30 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 
   def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]] = {
     val out = Vector[A](x.numCols,true)
-    for(colIdx <- (0::x.numCols)) {
+    for(colIdx <- 0 until x.numCols) {
       out(colIdx) = x.getCol(colIdx).sum
     }
     out.unsafeImmutable
   }
+  
+  def matrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[Vector[A]] => Rep[K]): Rep[Vector[Matrix[A]]]  = {
+    val groups = HashMap[K,Matrix[A]]()
+    
+    var i = 0
+    while (i < x.numRows) {
+      val key = pred(x(i))      
+      if (!(groups contains key)) {
+        groups(key) = Matrix[A](0,0)        
+      }
+      groups(key) += x(i)
+      i += 1
+    }
+  
+    val out = Vector[Matrix[A]](0,true)
+    for (m <- groups.values) {
+      out += m.unsafeImmutable       
+    }    
+    out.unsafeImmutable
+  }
+    
 }

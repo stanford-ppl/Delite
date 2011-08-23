@@ -31,6 +31,8 @@ trait OptiMLKmeans {
     val mu = initMu getOrElse ((0::numClusters, *) { i => x(random(x.numRows)) })
     var iter = 0
 
+    println("m:"+m+",n:"+n+",numClusters:"+numClusters+",mu.numRows:"+mu.numRows);
+
     val newMu = untilconverged(mu, tol){ mu =>
       iter += 1
 
@@ -38,15 +40,17 @@ trait OptiMLKmeans {
       val c = (0::m){e => findNearestCluster(x(e), mu)}
 
       // update mu -- move each cluster centroid to the mean of the points assigned to it
-      (0::numClusters, *) { j =>
+      (0::numClusters, * /*0::n*/) { j =>
         val weightedpoints = sumIf[Vector[Double]](0, m) (c(_) == j) { x(_) }
-        val points = sumIf(0,m) (c(_) == j) { _ => 1 }
-        //val points = c.count(_ == j)  // cannot fuse because sum strips first iteration
+        //val points = sumIf(0,m) (c(_) == j) { _ => 1 }
+        val points = c.count(_ == j)  // cannot fuse because sum strips first iteration
 
-        if (points == 0) {
-          weightedpoints          
-        }
-        else weightedpoints / points
+        //if (points == 0) {
+        //  weightedpoints          
+        //}
+        //else weightedpoints / points
+        val d = if (points == 0) 1 else points
+        weightedpoints / d
       }
 
     }

@@ -23,7 +23,7 @@ trait kmeansApp extends OptiMLApplication {
     val x = TrainingSet(readMatrix(args(0)), Labels[Int](0))
     val mu = readMatrix(args(1))
 
-    tic()
+    tic(mu)
     val (iter, mu2) = kmeans.cluster(x, k, tol, Some(mu))
     toc(mu2)
     println("finished in " + iter + " iterations")

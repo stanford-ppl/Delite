@@ -51,7 +51,9 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
   }
 
   def insertRow(pos: Int, x: Vector[T]) {
+    //chkEquals(x._length, _numCols)
     val idx = pos*_numCols
+    if (size == 0) _numCols = x.length
     insertSpace(idx, _numCols)
     for (i <- idx until idx+_numCols){
       _data(i) = x(i-idx)
@@ -62,6 +64,7 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
   def insertAllRows(pos: Int, xs: Matrix[T]) {
     //chkEquals(xs._numCols, _numCols)
     val idx = pos*_numCols
+    if (size == 0) _numCols = xs.numCols
     val sz = _numCols*xs.numRows
     insertSpace(idx, sz)
     for (i <- idx until idx+sz){
@@ -73,6 +76,7 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
   def insertCol(pos: Int, x: Vector[T]) {
     //chkEquals(x._length, _numRows)
     val newCols = _numCols+1
+    if (size == 0) _numRows = x.length
     val out_data = new Array[T](_numRows*newCols)
     for (i <- 0 until _numRows){
       var col = 0
@@ -93,6 +97,7 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
   def insertAllCols(pos: Int, xs: Matrix[T]) {
     //m.chkEquals(xs._numRows, _numRows)
     val newCols = _numCols+xs.numCols
+    if (size == 0) _numRows = xs.numRows
     val out_data = new Array[T](_numRows*newCols)
     for (i <- 0 until _numRows){
       var col = 0

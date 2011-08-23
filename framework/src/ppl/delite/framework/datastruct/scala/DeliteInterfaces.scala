@@ -8,6 +8,7 @@ package ppl.delite.framework.datastruct.scala
 abstract class DeliteOpMultiLoop[A] {
   def size: Int
   def alloc: A
+  def processRange(__act: A, start: Int, end: Int): A //init+process
   def init(__act: A, idx: Int): A
   def process(__act: A, idx: Int): Unit
   def combine(__act: A, rhs: A): Unit
@@ -78,7 +79,7 @@ abstract class DeliteOpForeach[@specialized(Boolean, Int, Long, Float, Double) A
 }
 
 trait DeliteCollection[@specialized(Boolean, Int, Long, Float, Double) T] {
-  def size: Int
+  def dcSize: Int
   def dcApply(idx: Int): T
   def dcUpdate(idx: Int, x: T)
 }

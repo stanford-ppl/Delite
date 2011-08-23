@@ -28,6 +28,7 @@ trait IndexVector2Ops extends DSLType with Base { this: OptiML =>
   // impl defs
   def indexvector2_new(rowInd: Rep[IndexVector], colInd: Rep[IndexVector]): Rep[IndexVector2]
   def indexvector2_wildcard(): Rep[IndexVector]
+  def indexvector2_isWildcard(x: Rep[IndexVector]): Rep[Boolean]
 
   // class defs
   def indexvector2_construct_vectors[A:Manifest](x: Rep[IndexVector2], block: Rep[Int] => Rep[Vector[A]]): Rep[Matrix[A]]
@@ -43,6 +44,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
 
   case class IndexVector2New(rowInd: Exp[IndexVector], colInd: Exp[IndexVector]) extends Def[IndexVector2]
   case class IndexVector2Wildcard() extends Def[IndexVector]
+  case class IndexVector2IsWildcard() extends Def[IndexVector]
   case class IndexVector2RowInd(x: Exp[IndexVector2]) extends Def[IndexVector]
   case class IndexVector2ColInd(x: Exp[IndexVector2]) extends Def[IndexVector]
 
@@ -93,6 +95,12 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   // impl defs
   def indexvector2_new(rowInd: Exp[IndexVector], colInd: Exp[IndexVector]) = reflectPure(IndexVector2New(rowInd, colInd))
   def indexvector2_wildcard() = IndexVector2Wildcard()
+  def indexvector2_isWildcard(x: Exp[IndexVector]): Exp[Boolean] = x match {
+    case Def(IndexVector2Wildcard()) => Const(true)
+    case Def(IndexVectorRange(_,_)) => Const(false)
+    case Def(IndexVectorObjectFromVec(_)) => Const(false)
+    case _ => x.isInstanceOfL[IndexVectorWC]
+  }
 
   // class defs
   // TODO: verify these are zero-based and ranges, or generalize them to work otherwise
@@ -103,18 +111,16 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   val data = x.flatMap { i=> block(i) }
   matrix_reshape(in.length)
 */
-    //if ((x.rowInd.isInstanceOfL[IndexVector]) && (x.colInd.isInstanceOfL[IndexVectorWC])) { // TR: first check needed??
-    if (x.colInd == indexvector2_wildcard) {
-      //Matrix(IndexVector2ConstructVectors(x.rowInd, block))
+    if (/*!indexvector2_isWildcard(x.rowInd) &&*/ indexvector2_isWildcard(x.colInd)) {  //FIXME: check rowInd but make sure check is remove from code
       val in = x.rowInd
-      if (in.length > 0){
+      //if (in.length > 0){
         val first = block(in(0)) 
         val out = matrix_obj_new[A](in.length, first.length)
         out(0) = first 
-        reflectWrite(out)(IndexVector2ConstructRows(in.slice(1,in.length),block,out)) // TODO: do this more efficiently than with slice
+        reflectWrite(out)(IndexVector2ConstructRows(in.slice(1,in.length),block,out))
         out.unsafeImmutable     
-      }
-      else matrix_obj_new[A](0,0).unsafeImmutable
+      //}
+      //else matrix_obj_new[A](0,0).unsafeImmutable
     }
     // should we allow this? it is rather inefficient...
     //     else if ((x.colInd.isInstanceOfL[IndexVector]) && (x.rowInd.isInstanceOfL[IndexVectorWC])) {
@@ -128,9 +134,15 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
     //  }
     //  else matrix_obj_new[B](0,0)
     // }
-    else {
-      println(unit("optiml runtime error: illegal matrix constructor"))
-      exit(-1)
+    else { //if (!indexvector2_isWildcard(x.rowInd) && !indexvector2_isWildcard(x.colInd)) {
+      val inr = x.rowInd
+      val inc = x.colInd
+      val out = matrix_obj_new[A](inr.length, inc.length)
+      reflectWrite(out)(IndexVector2ConstructRows(inr,block,out))
+      out.unsafeImmutable
+    //} else {
+    //  println(unit("optiml runtime error: illegal matrix constructor"))
+    //  exit(-1)
     }
   }
   def indexvector2_construct[A:Manifest](x: Exp[IndexVector2], block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[Matrix[A]] = {
