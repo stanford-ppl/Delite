@@ -40,7 +40,7 @@ trait MeshPrivateOpsExp extends MeshPrivateOps with VariablesExp with BaseFatExp
   def label[MO<:MeshObj:Manifest,VT:Manifest] = reflectMutable(LabelFieldPrivateNew[MO,VT]())
 }
 
-trait ScalaGenVecPrivateOps extends ScalaGenBase {
+trait ScalaGenMeshPrivateOps extends ScalaGenBase {
   val IR: MeshPrivateOpsExp
   import IR._
 
@@ -54,7 +54,7 @@ trait ScalaGenVecPrivateOps extends ScalaGenBase {
 }
 
 
-trait CudaGenVecPrivateOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenMeshPrivateOps extends CudaGenBase with CudaGenDataStruct {
   val IR: MeshPrivateOpsExp
   import IR._
 
@@ -63,7 +63,7 @@ trait CudaGenVecPrivateOps extends CudaGenBase with CudaGenDataStruct {
   }
 }
 
-trait CGenVecPrivateOps extends CGenBase {
+trait CGenMeshPrivateOps extends CGenBase {
   val IR: MeshPrivateOpsExp
   import IR._
 

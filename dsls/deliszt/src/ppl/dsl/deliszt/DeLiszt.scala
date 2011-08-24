@@ -16,6 +16,7 @@ import scala.util.matching.Regex
 
 import ppl.dsl.deliszt.capabilities._
 import ppl.dsl.deliszt.field._
+import ppl.dsl.deliszt.intm._
 import ppl.dsl.deliszt.mat._
 import ppl.dsl.deliszt.vec._
 import ppl.dsl.deliszt.mesh._
@@ -71,6 +72,7 @@ trait DeLisztCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderi
  */
 trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps //with MetaInteger
   with MeshPrivateOps with MeshSetOps
+  with IntMOps
   with MathOps
   with ArithOps with FieldOps with MatOps with VecOps with OrderingOps with HasMinMaxOps {
   this: DeLisztApplication =>
@@ -91,6 +93,7 @@ trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with Languag
   with ArithOpsExpOpt
   with OrderingOpsExp
   with MathOpsExp
+  with IntMOpsExp
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp
   with FieldOpsExpOpt with FieldImplOpsStandard with MatOpsExp with MatImplOpsStandard with VecOpsExp with VecImplOpsStandard {
 
@@ -151,8 +154,10 @@ trait DeLisztCodeGenBase extends GenericFatCodegen {
 }
 
 trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
-  with DeliteScalaGenAllOverrides
-  with ScalaGenFieldOps with ScalaGenMatOps with ScalaGenVecOps { //with ScalaGenMLInputReaderOps {
+  with ScalaGenArithOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
+  with ScalaGenFieldOps with ScalaGenIntMOps with ScalaGenMeshPrivateOps with ScalaGenMeshSetOps
+  with ScalaGenMatOps with ScalaGenVecOps
+  with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
   val IR: DeliteApplication with DeLisztExp
 
@@ -242,8 +247,11 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
   }
 }
 
-trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVecOps with CudaGenMatOps with CudaGenDataStruct with CudaGenMatRowOps // with CudaGenVecViewOps
-  with CudaGenVariantsOps with DeliteCudaGenAllOverrides // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
+trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /*with CudaGenLanguageOps*/
+  with CudaGenArithOps with CudaGenDeliteOps
+  with CudaGenVariantsOps with CudaGenDeliteCollectionOps
+  with CudaGenFieldOps with CudaGenIntMOps with CudaGenMeshPrivateOps with CudaGenMeshSetOps
+  with CudaGenVecOps with CudaGenMatOps with CudaGenDataStruct with CudaGenMatRowOps
 {
   val IR: DeliteApplication with DeLisztExp
   import IR._
@@ -312,8 +320,10 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /
   }
 }
 
-trait DeLisztCodeGenC extends DeLisztCodeGenBase with DeLisztCCodeGenPkg with CGenArithOps with CGenDeliteOps with CGenFieldOps with CGenVecOps with CGenMatOps
+trait DeLisztCodeGenC extends DeLisztCodeGenBase with DeLisztCCodeGenPkg with CGenArithOps with CGenDeliteOps
   with CGenVariantsOps with DeliteCGenAllOverrides
+  with CGenFieldOps with CGenIntMOps with CGenMeshPrivateOps with CGenMeshSetOps
+  with CGenVecOps with CGenMatOps
 {
   val IR: DeliteApplication with DeLisztExp
   import IR._
