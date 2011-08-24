@@ -6,12 +6,9 @@ import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication}
 object HelloWorldRunner extends DeLisztApplicationRunner with HelloWorld
 
 trait HelloWorld extends DeLisztApplication {
-    var field : Rep[Field[Cell,Int]] = null
-    var ffield : Rep[Field[Face,Int]] = null
-
     def main() {
-      field = FieldWithConst[Cell,Int](0)
-      ffield = FieldWithConst[Face,Int](0)
+      val field = FieldWithConst[Cell,Int](0)
+      val ffield = FieldWithConst[Face,Int](0)
       
       for(c <- cells(mesh)) {
         field(c) += 1
