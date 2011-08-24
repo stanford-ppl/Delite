@@ -8,11 +8,12 @@ import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase}
 import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 
 trait IntMOps extends DSLType with Variables {
-  this: DeLiszt with MetaInteger =>
+  this: DeLiszt =>
 
   /* val _0 = intm_obj[_0]
   val _1 = intm_obj[_1]

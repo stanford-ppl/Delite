@@ -12,9 +12,10 @@ import ppl.delite.framework.Config
 import ppl.dsl.deliszt.{DeLisztExp,DeLiszt}
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 
 trait MatOps extends DSLType with Variables {
-  this: DeLiszt with MetaInteger =>
+  this: DeLiszt =>
 
   object Mat {
     def apply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest]() = mat_obj_n_new[R,C,A](MIntDepth[R], MIntDepth[C])

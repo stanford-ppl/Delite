@@ -1,5 +1,7 @@
 package ppl.dsl.deliszt.datastruct.scala
 
+import MetaInteger._
+
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
  * last modified: 04/30/2011
@@ -8,7 +10,7 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-object MatImpl extends MetaInteger {
+object MatImpl {
   def apply[R<:IntM:MVal, C<:IntM:MVal, T: Manifest] = {
     new MatImpl[R,C,T](MIntDepth[R],MIntDepth[C])
   }

@@ -106,7 +106,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class DeLisztInit(args: Exp[Array[String]]) extends Def[Unit]
   case class DeLisztPrint(as: Seq[Exp[Any]]) extends DeliteOpSingleTask(reifyEffectsHere(print_impl(as)))
 
-  case class DeLisztBoundarySet[MO<:MeshObj:Manifest](name: Exp[String]) extends Def[BoundarySet[MO]]
+  case class DeLisztBoundarySet[MO<:MeshObj:Manifest](name: Exp[String]) extends Def[BoundarySet[MO]] {
+    val moM = manifest[MO]
+  }
 
   case class DeLisztMesh() extends Def[Mesh]
 
@@ -234,7 +236,7 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
     rhs match {
       case DeLisztInit(args) => emitValDef(sym, "generated.scala.Liszt.init(" + quote(args) + ")")
       case DeLisztMesh() => emitValDef(sym, "generated.scala.Mesh.mesh")
-      case DeLisztBoundarySet(name) => emitValDef(sym, "")
+      case e@DeLisztBoundarySet(name) => emitValDef(sym, "generated.scala.Mesh.boundarySet[" + remap(e.moM) + "](" + quote(name) + ")")
 
       case DeLisztCells(e) => emitValDef(sym, "generated.scala.Mesh.cells(" + quote(e) + ")")
       case DeLisztEdgeCellsCCW(e) => emitValDef(sym, "generated.scala.Mesh.cellsCCW(" + quote(e) + ")")

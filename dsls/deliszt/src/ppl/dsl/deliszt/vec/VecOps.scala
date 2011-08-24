@@ -4,6 +4,7 @@ import _root_.scala.reflect.Manifest
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import java.io.PrintWriter
 import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 
 import ppl.delite.framework.DSLType
 import scala.virtualization.lms.common._
@@ -11,7 +12,7 @@ import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
 
 trait VecOps extends DSLType with Variables {
-  this: DeLiszt with MetaInteger =>
+  this: DeLiszt =>
 
   object Vec {
     def apply[N<:IntM:Manifest:MVal,A:Manifest](i : Rep[Int])(implicit o: Overloaded1) = vec_obj_n_new[N,A](i)

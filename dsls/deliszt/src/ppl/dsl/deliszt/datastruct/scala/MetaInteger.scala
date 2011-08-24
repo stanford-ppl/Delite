@@ -16,7 +16,7 @@ package ppl.dsl.deliszt.datastruct.scala
  */
 
 abstract class IntM {
-  type Succ <: IntM
+  type Suc <: IntM
   type Add[N <: IntM] <: IntM
 }
 
@@ -32,18 +32,18 @@ abstract class MVal[T] {
   val value: Int
 }
 
-trait MetaInteger {
+class Zero extends IntM {
+  type Suc = Succ[Zero]
+  type Add[N <: IntM] = N
+}
+
+class Succ[N <: IntM] extends IntM {
+  type Suc = Succ[Succ[N]]
+  type Add[M <: IntM] = (N#Add[M])#Suc
+}
+
+object MetaInteger {
   type +[N1 <: IntM, N2 <: IntM] = N1#Add[N2]
-
-  class Zero extends IntM {
-    type Succ = MetaInteger.this.Succ[Zero]
-    type Add[N <: IntM] = N
-  }
-
-  class Succ[N <: IntM] extends IntM {
-    type Succ = MetaInteger.this.Succ[MetaInteger.this.Succ[N]]
-    type Add[M <: IntM] = (N#Add[M])#Succ
-  }
 
   //Scala doesn't provide meta-integers like C++'s typename<int N>
   //so we have to define some integers here

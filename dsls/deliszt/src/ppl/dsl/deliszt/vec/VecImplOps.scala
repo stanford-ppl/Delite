@@ -2,9 +2,10 @@ package ppl.dsl.deliszt.vec
 import scala.virtualization.lms.common._
 
 import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 import ppl.dsl.deliszt.{DeLisztLift, DeLisztCompiler, DeLiszt}
 
-trait VecImplOps { this: DeLiszt with MetaInteger =>
+trait VecImplOps { this: DeLiszt =>
 //  def vec_concatenate_impl[N<:IntM,VT:Manifest](v1: Rep[Vector[N,VT]], v2: Rep[Vector[N,VT]]): Rep[Vector[VT]]
   def vec_outer_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](v1: Rep[Vec[R,A]], v2: Rep[Vec[C,A]]): Rep[Mat[R,C,A]]
   def vec_normalize_impl[N<:IntM:Manifest:MVal,A:Manifest:Arith](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
@@ -12,7 +13,7 @@ trait VecImplOps { this: DeLiszt with MetaInteger =>
 }
 
 trait VecImplOpsStandard extends VecImplOps {
-  this: DeLisztCompiler with DeLisztLift with MetaInteger with MathOpsExp =>
+  this: DeLisztCompiler with DeLisztLift with MathOpsExp =>
 
 /*  def vec_concatenate_impl[VT:Manifest](v1: Rep[Vector[VT]], v2: Rep[Vector[VT]]) = {
     val out = Vector[VT](v1.length+v2.length, v1.isRow)

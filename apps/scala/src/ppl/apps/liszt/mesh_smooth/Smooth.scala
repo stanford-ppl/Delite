@@ -1,6 +1,7 @@
 package ppl.apps.liszt.mesh_smooth
 
 import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication, DeLisztExp}
 
 object MeshSmoothRunner extends DeLisztApplicationRunner with Smooth

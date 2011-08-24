@@ -1,5 +1,6 @@
 package ppl.dsl.deliszt.datastruct.scala
 
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 import collection.mutable.{Map, HashMap}
 
 /**
@@ -76,6 +77,26 @@ object Mesh extends MeshObjImpl {
   // Todo
   def wall_time() = 0.0
   def processor_time() = 0.0
+  
+  def label[MO<:MeshObj,VT](url: String)(implicit ld: LabelData[MO], mm: Manifest[MO], mv: Manifest[VT]) : LabelField[MO,VT] = {
+    //TODO: clean this up
+    ld.data.get(url) match {
+      case Some(data) => new LabelFieldImpl[MO,VT](data, ld.fns.get(url).getOrElse(null))
+      case None => null
+    }
+  }
+
+  def meshSet[MO<:MeshObj](implicit ms: MeshSet[MO]) = ms
+  def boundarySet[MO<:MeshObj:MeshObjConstruct](name: String) : MeshSet[MO] = {
+    Mesh.loader.loadBoundarySet(name)
+  }
+}
+
+object LabelData {
+  implicit def cellData = Mesh.mesh.cellData
+  implicit def edgeData = Mesh.mesh.edgeData
+  implicit def faceData = Mesh.mesh.faceData
+  implicit def vertexData = Mesh.mesh.vertexData
 }
 
 class LabelData[MO<:MeshObj] {
@@ -83,7 +104,7 @@ class LabelData[MO<:MeshObj] {
   val fns: Map[String,Object => Object] = new HashMap[String,Object => Object]()
 }
 
-class Mesh extends MeshObj with MetaInteger with MeshObjImpl {
+class Mesh extends MeshObj with MeshObjImpl {
   def typeName = "Mesh"
 
   val id = 0
@@ -111,22 +132,17 @@ class Mesh extends MeshObj with MetaInteger with MeshObjImpl {
 	var ctof: CRS = null
 	var ctoc: CRS = null
 
-  implicit val cellData = new LabelData[Cell]
-  implicit val edgeData = new LabelData[Edge]
-  implicit val faceData = new LabelData[Face]
-  implicit val vertexData = new LabelData[Vertex]
+  val cellData = new LabelData[Cell]
+  val edgeData = new LabelData[Edge]
+  val faceData = new LabelData[Face]
+  val vertexData = new LabelData[Vertex]
 
   // Use special CellSetImpl, don't expose 0 cell
-  implicit def cellSet : MeshSet[Cell] = new CellSetImpl(ncells-1)
-  implicit def edgeSet : MeshSet[Edge] = new MeshSetImpl[Edge](nedges)
-  implicit def faceSet : MeshSet[Face] = new MeshSetImpl[Face](nfaces)
-  implicit def vertexSet : MeshSet[Vertex] = new MeshSetImpl[Vertex](nvertices)
-
-  implicit val cellBounds : Map[String,MeshSet[Cell]] = new HashMap[String,MeshSet[Cell]]()
-  implicit val edgeBounds : Map[String,MeshSet[Edge]] = new HashMap[String,MeshSet[Edge]]()
-  implicit val faceBounds : Map[String,MeshSet[Face]] = new HashMap[String,MeshSet[Face]]()
-  implicit val vertexBounds : Map[String,MeshSet[Vertex]] = new HashMap[String,MeshSet[Vertex]]()
-
+  val cells : MeshSet[Cell] = new CellSetImpl(ncells-1)
+  val edges : MeshSet[Edge] = new MeshSetImpl[Edge](nedges)
+  val faces : MeshSet[Face] = new MeshSetImpl[Face](nfaces)
+  val vertices : MeshSet[Vertex] = new MeshSetImpl[Vertex](nvertices)
+  
   def positionToVec(v: Object) : Object = {
       val vec = VecImpl[_3, Double]()
       val a = v.asInstanceOf[Array[Object]]
@@ -137,17 +153,4 @@ class Mesh extends MeshObj with MetaInteger with MeshObjImpl {
   }
 
   vertexData.fns("position") = positionToVec
-
-  def label[MO<:MeshObj,VT](url: String)(implicit ld: LabelData[MO], mm: Manifest[MO], mv: Manifest[VT]) : LabelField[MO,VT] = {
-    //TODO: clean this up
-    ld.data.get(url) match {
-      case Some(data) => new LabelFieldImpl[MO,VT](data, ld.fns.get(url).getOrElse(null))
-      case None => null
-    }
-  }
-
-  def meshSet[MO<:MeshObj](implicit ms: MeshSet[MO]) = ms
-  def boundarySet[MO<:MeshObj:MeshObjConstruct](name: String) : MeshSet[MO] = {
-    Mesh.loader.loadBoundarySet(name)
-  }
 }

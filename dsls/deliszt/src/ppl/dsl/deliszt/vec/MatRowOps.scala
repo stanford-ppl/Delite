@@ -7,6 +7,7 @@ import scala.virtualization.lms.util.OverloadHack
 import ppl.dsl.deliszt.{DeLiszt, DeLisztExp}
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 
 // TODO: discuss: do we want to allow "index"? we need it for downsampling as its currently written,
 // but this provides more expressivity with which the user can shoot themselves in the foot, which

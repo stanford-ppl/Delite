@@ -7,6 +7,7 @@ import scala.virtualization.lms.internal.{CLikeCodegen}
 import scala.virtualization.lms.util.OverloadHack
 
 import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 import ppl.dsl.deliszt.{DeLiszt, DeLisztExp}
 
 /*
@@ -20,7 +21,7 @@ import ppl.dsl.deliszt.{DeLiszt, DeLisztExp}
 *
 */
 
-trait ArithOps extends Variables with OverloadHack with MetaInteger {
+trait ArithOps extends Variables with OverloadHack {
   this: DeLiszt with LowPriorityPrimitiveImplicits =>
 
   type Arith[X] = ArithInternal[Rep, X]

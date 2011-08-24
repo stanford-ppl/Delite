@@ -1,4 +1,5 @@
 import Liszt.Language._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 
 @lisztcode
 object Constants {

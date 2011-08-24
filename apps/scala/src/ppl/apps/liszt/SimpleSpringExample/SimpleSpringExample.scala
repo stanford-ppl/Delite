@@ -1,6 +1,7 @@
 package ppl.apps.liszt.SimpleSpringExample
 
 import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication}
 
 object SSSRunner extends DeLisztApplicationRunner with SSS

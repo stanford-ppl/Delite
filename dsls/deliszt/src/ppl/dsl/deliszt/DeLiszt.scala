@@ -11,7 +11,6 @@ import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger
 import scala.util.matching.Regex
 
 import ppl.dsl.deliszt.capabilities._
@@ -70,7 +69,7 @@ trait DeLisztCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderi
 /**
  * This the trait that every DeLiszt application must extend.
  */
-trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps //with MetaInteger
+trait DeLiszt extends DeLisztScalaOpsPkg with LanguageOps
   with MeshPrivateOps with MeshSetOps
   with IntMOps
   with MathOps
@@ -189,7 +188,6 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
 
   def specmap(line: String, t: String) : String = {
     var res = line.replaceAll("object ", "object " + t)
-    res = res.replaceAll("import ", "import " + t)
     res = res.replaceAll("@specialized T: ClassManifest", t)
     res = res.replaceAll("\\bT:Manifest\\b", t)
     res = res.replaceAll("\\bT\\b", t)
@@ -198,7 +196,6 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
 
   def specmap2(line: String, t1: String, t2: String) : String = {
     var res = line.replaceAll("object ", "object " + t1 + t2)
-    res = res.replaceAll("import ", "import " + t1 + t2)
     res = res.replaceAll("@specialized T: ClassManifest", t1)
     res = res.replaceAll("@specialized L: ClassManifest", t2)
     res = res.replaceAll("T:Manifest", t1)

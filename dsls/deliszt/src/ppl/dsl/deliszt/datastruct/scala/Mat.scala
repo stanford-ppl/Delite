@@ -1,6 +1,7 @@
 package ppl.dsl.deliszt.datastruct.scala
 
 import ppl.delite.framework.datastruct.scala.DeliteCollection
+import MetaInteger._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -10,7 +11,7 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
  * Stanford University
  */
 
-trait Mat[R<:IntM,C<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] with MetaInteger {
+trait Mat[R<:IntM,C<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
   def apply[RR<:IntM:MVal, CC<:IntM:MVal](r: RR, c: CC) : T = apply(MIntDepth[RR], MIntDepth[CC])
   def update[RR<:IntM:MVal, CC<:IntM:MVal](r: RR, c: CC, v : T) : Unit = update(MIntDepth[RR], MIntDepth[CC], v)
 
@@ -30,8 +31,8 @@ trait Mat[R<:IntM,C<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] ext
   def dcSize : Int = size
 }
 
-trait VecView[N<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends Vec[N,T] with MetaInteger
+trait VecView[N<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends Vec[N,T]
 
-trait MatRow[C<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends VecView[C,T] with MetaInteger
+trait MatRow[C<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends VecView[C,T]
 
-trait MatCol[R<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends VecView[R,T] with MetaInteger
+trait MatCol[R<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends VecView[R,T]

@@ -1,5 +1,7 @@
 package ppl.dsl.deliszt.datastruct.scala
 
+import MetaInteger._
+
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
  * last modified: 04/25/2011
@@ -8,7 +10,7 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-object VecImpl extends MetaInteger {
+object VecImpl {
   def apply[N<:IntM:MVal, T:Manifest]() = {
     new VecImpl[N,T](MIntDepth[N])
   }

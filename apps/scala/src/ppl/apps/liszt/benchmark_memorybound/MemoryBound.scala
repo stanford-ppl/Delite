@@ -1,6 +1,7 @@
 package ppl.apps.liszt.benchmark_memorybound
 
 import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication, DeLisztExp}
 
 object MemoryBoundRunner extends DeLisztApplicationRunner with MemoryBound

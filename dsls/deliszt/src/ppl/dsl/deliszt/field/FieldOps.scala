@@ -108,7 +108,6 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
   }
 
   case class LabelFieldNew[MO<:MeshObj:Manifest,VT:Manifest](url: Exp[String]) extends Def[Field[MO,VT]] {
-    val mM = manifest[MO]
     val moM = manifest[MO]
     val vtM = manifest[VT]
   }
@@ -254,7 +253,7 @@ trait ScalaGenFieldOps extends ScalaGenBase {
       case FieldDivideUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") /= " + quote(v))
 
       case f@FieldObjectNew() => emitValDef(sym, remap(f.fM) + "()")
-      case f@LabelFieldNew(url) => emitValDef(sym, "generated.scala.Mesh.mesh.label[" + remap(f.mM) + "](" + quote(url) + ")")
+      case f@LabelFieldNew(url) => emitValDef(sym, "generated.scala.Mesh.label[" + remap(f.moM) + "," + remap(f.vtM) + "](" + quote(url) + ")")
       case FieldIntApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
       case FieldIntUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(v))
       case FieldSize(x) => emitValDef(sym, quote(x) + ".size")

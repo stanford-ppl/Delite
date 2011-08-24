@@ -7,8 +7,9 @@ import scala.virtualization.lms.util.OverloadHack
 import ppl.dsl.deliszt.{DeLiszt, DeLisztExp}
 import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 
-trait MatColOps extends DSLType with Variables with MetaInteger { this: DeLiszt =>
+trait MatColOps extends DSLType with Variables { this: DeLiszt =>
   def infix_index[R<:IntM,A](x: Rep[MatCol[R,A]])(implicit mA: Manifest[A], o: Overloaded1) = matcol_index(x)
 
   // class defs

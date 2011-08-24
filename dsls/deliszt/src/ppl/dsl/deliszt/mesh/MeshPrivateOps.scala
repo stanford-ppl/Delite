@@ -46,8 +46,8 @@ trait ScalaGenMeshPrivateOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case ms@MeshSetNew() => emitValDef(sym, "generated.scala.datastruct.Mesh.mesh.meshSet[" + remap(ms.moM) + "]")
-      case lf@LabelFieldPrivateNew() => emitValDef(sym, "generated.scala.datastruct.Mesh.mesh.label[" + remap(lf.moM) + "," + remap(lf.vtM) + "]")
+      case ms@MeshSetNew() => emitValDef(sym, "generated.scala.Mesh.meshSet[" + remap(ms.moM) + "]")
+      case lf@LabelFieldPrivateNew() => emitValDef(sym, "generated.scala.label[" + remap(lf.moM) + "," + remap(lf.vtM) + "]")
       case _ => super.emitNode(sym, rhs)
     }
   }
