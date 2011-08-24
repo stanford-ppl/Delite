@@ -15,4 +15,11 @@ vforeach|ppl.apps.tests.VerticesForeachRunner
 while|ppl.tests.microbenchmarks.WhileLoopsBenchmarkRunner
 multiloop|ppl.tests.microbenchmarks.MultiLoopsBenchmarkRunner
 liszthello|ppl.apps.liszt.hello_world.HelloWorldRunner
+lisztcpubound|ppl.apps.liszt.benchmark_computebound.ComputeBoundRunner
+lisztmembound|ppl.apps.liszt.benchmark_memorybound.MemoryBoundRunner
+lisztsss|ppl.apps.liszt.SimpleSpringExample.SSSRunner
+sc|ppl.apps.liszt.scalar_convection.ScalarConvectionRunner
+sc_rw|ppl.apps.liszt.scalar_convection_rw.SCRRunner
+mesh_smooth|ppl.apps.liszt.mesh_smooth.MeshSmoothRunner
+karthik_smooth|ppl.apps.liszt.KarthikSmooth.MeshSmoothRunner
 cf|ppl.apps.ml.cf.TopNRunner

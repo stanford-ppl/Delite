@@ -6,10 +6,10 @@ import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication, DeLisztExp
 object ComputeBoundRunner extends DeLisztApplicationRunner with ComputeBound
 
 trait ComputeBound extends DeLisztApplication {
-	lazy val position = FieldWithLabel[Vertex,Vec[_3,Float]]("position")
-	lazy val outc = FieldWithConst[Cell,Float](0f)
-	
 	def main() {
+    val position = FieldWithLabel[Vertex,Vec[_3,Float]]("position")
+    val outc = FieldWithConst[Cell,Float](0f)
+  
 		var t = 0.f
 		val deltat = 0.2f
 

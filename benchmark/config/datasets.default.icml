@@ -8,3 +8,10 @@ lbp|$data/ml/lbp/onlyedges1|$data/ml/lbp/graphprint1
 lbpdenoise|200|200
 lbpdenoiseraw|$data/ml/lbpdenoise/noisy200x200.raw
 liszthello|liszt.cfg
+lisztcpubound|liszt.cfg
+lisztmembound|liszt.cfg
+lisztsss|liszt.cfg
+sc|liszt.cfg
+sc_rw|liszt.cfg
+mesh_smooth|liszt.cfg
+karthik_smooth|liszt.cfg
