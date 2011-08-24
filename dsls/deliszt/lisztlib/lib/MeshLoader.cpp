@@ -278,6 +278,11 @@ jobject MeshLoader::loadMesh(jstring str) {
         setScalaField(meshClass, jmesh, "nedges", "I", data.nedges);
         setScalaField(meshClass, jmesh, "nfaces", "I", data.nfaces);
         setScalaField(meshClass, jmesh, "ncells", "I", data.ncells);
+        
+        std::cerr << "nvertices: " << data.nvertices << std::endl;
+        std::cerr << "nedges: " << data.nedges << std::endl;
+        std::cerr << "nfaces: " << data.nfaces << std::endl;
+        std::cerr << "ncells: " << data.ncells << std::endl;
 
         // Set vertex relations
         setCRSField(jmesh, "vtov", data.vtov, data.nvertices);
