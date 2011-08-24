@@ -22,6 +22,8 @@ object Mesh extends MeshObjImpl {
 
   def verticesCCW(e: Face): DeLisztSet[Vertex] = IndexSetImpl(mesh.ftov, e)
   def verticesCW(e: Face): DeLisztSet[Vertex] = CWIndexSetImpl(mesh.ftov, e)
+  
+  def vertex(e: Cell, i: Int): Vertex = extract[Vertex](mesh.ctov, e, i)
 
   def cells(e: Mesh): DeLisztSet[Cell] = MeshSetImpl(mesh.ncells - 1)
   def cells(e: Vertex): DeLisztSet[Cell] = IndexSetImpl(mesh.vtoc, e)
@@ -67,6 +69,11 @@ object Mesh extends MeshObjImpl {
     val facing = BitReverse.internal(mesh.ftoc.apply(e, 0)) == c.internalId
     val id = if(facing) e.id else BitReverse.reverse(e.id)
     new FaceImpl(id)
+  }
+  
+  def extract[MO<:MeshObj](crs: CRS, mo: MeshObj, i: Int)(implicit moc: MeshObjConstruct[MO]) : MO = {
+    val id = crs(mo, i)
+    moc(id)
   }
 }
 

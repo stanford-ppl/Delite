@@ -15,8 +15,8 @@ trait HelloWorld extends DeLisztApplication {
 		}
 		for(f <- faces(mesh)) {
 			val c = if(ID(f) == 4) inside(f) else outside(f)
-			// val v = if(ID(c) == 3) vertex(c,0) else vertex(c,1)
-			// Print(v)
+			val v = if(ID(c) == 3) vertex(c,0) else vertex(c,1)
+      Print(v)
 			for (ce <- cells(f)) {
 				field(ce) += 10
 				ffield(f) += 10
