@@ -6,48 +6,48 @@ import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication, DeLisztExp
 object MeshSmoothRunner extends DeLisztApplicationRunner with Smooth
 
 trait Smooth extends DeLisztApplication {
-  val float3_zero  = Vec(0.f,0.f,0.f)
-  lazy val float33_zero = Mat(float3_zero,float3_zero,float3_zero)
-  lazy val work_array = float33_zero
-  lazy val pi = MATH_PI.asInstanceOfL[Float]
-  lazy val Omega = 1.f
-  lazy val alpha = 0.f*pi
+  val float3_zero  : Rep[Vec[_3,Float]] = null
+  var float33_zero : Rep[Mat[_3,_3,Float]] = null
+  var work_array : Rep[Mat[_3,_3,Float]] = null
+  var pi : Rep[Float] = null
+  var Omega : Rep[Float] = null
+  var alpha : Rep[Float] = null
 
-  lazy val Phi        = FieldWithConst[Face,Float](0.f)
-  lazy val PhiOld     = FieldWithConst[Face,Float](0.f)
-  lazy val Phi_Grad   = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
-  lazy val Flux  	 = FieldWithConst[Face,Float](0.f)
-  lazy val Veloc 	 = FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
-  lazy val VelocOld	 = FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
-  lazy val Rhs_Veloc	 = FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
-  lazy val Velochat_Grad = FieldWithConst[Edge,Mat[_3,_3,Float]](float33_zero)
-  lazy val Phihat_Grad= FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
-  lazy val PMat       = FieldWithConst[Edge,Mat[_3,_3,Float]](float33_zero)
+  var Phi        : Rep[Field[Face,Float]] = null
+  var PhiOld     : Rep[Field[Face,Float]] = null
+  var Phi_Grad   : Rep[Field[Face,Vec[_3,Float]]] = null
+  var Flux  	 : Rep[Field[Face,Float]] = null
+  var Veloc 	 : Rep[Field[Edge,Vec[_3,Float]]] = null
+  var VelocOld	 : Rep[Field[Edge,Vec[_3,Float]]] = null
+  var Rhs_Veloc	 : Rep[Field[Edge,Vec[_3,Float]]] = null
+  var Velochat_Grad : Rep[Field[Edge,Mat[_3,_3,Float]]] = null
+  var Phihat_Grad : Rep[Field[Edge,Vec[_3,Float]]] = null
+  var PMat       : Rep[Field[Edge,Mat[_3,_3,Float]]] = null
 
     //some fields for output
-  lazy val Phiv  	 = FieldWithConst[Vertex,Float](0.f)
-  lazy val Phiv_Grad  = FieldWithConst[Vertex,Vec[_3,Float]](float3_zero)
-  lazy val Velocv     = FieldWithConst[Vertex,Vec[_3,Float]](float3_zero)
+  var Phiv  	 : Rep[Field[Vertex,Float]] = null
+  var Phiv_Grad  : Rep[Field[Vertex,Vec[_3,Float]]] = null
+  var Velocv     : Rep[Field[Vertex,Vec[_3,Float]]] = null
 
     //some geometry fields
-  lazy val position = FieldWithLabel[Vertex,Vec[_3,Float]]("position")
+  var position : Rep[Field[Vertex,Vec[_3,Float]]] = null
 
-  lazy val theta_vertex  = FieldWithConst[Vertex,Float](0.f)
-  lazy val lambda_vertex = FieldWithConst[Vertex,Float](0.f)
+  var theta_vertex  : Rep[Field[Vertex,Float]] = null
+  var lambda_vertex : Rep[Field[Vertex,Float]] = null
 
-  lazy val theta_face  = FieldWithConst[Face,Float](0.f)
-  lazy val lambda_face = FieldWithConst[Face,Float](0.f)
+  var theta_face  : Rep[Field[Face,Float]] = null
+  var lambda_face : Rep[Field[Face,Float]] = null
 
-  lazy val theta_edge  = FieldWithConst[Edge,Float](0.f)
-  lazy val lambda_edge = FieldWithConst[Edge,Float](0.f)
+  var theta_edge  : Rep[Field[Edge,Float]] = null
+  var lambda_edge : Rep[Field[Edge,Float]] = null
 
-  lazy val face_centroid = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
-  lazy val face_area = FieldWithConst[Face,Float](0.f)
-  lazy val face_normal = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
+  var face_centroid : Rep[Field[Face,Vec[_3,Float]]] = null
+  var face_area : Rep[Field[Face,Float]] = null
+  var face_normal : Rep[Field[Face,Vec[_3,Float]]] = null
 
-  lazy val edge_center  = FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
-  lazy val edge_length  = FieldWithConst[Edge,Float](0.f)
-  lazy val edge_normal  = FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
+  var edge_center  : Rep[Field[Edge,Vec[_3,Float]]] = null
+  var edge_length  : Rep[Field[Edge,Float]] = null
+  var edge_normal  : Rep[Field[Edge,Vec[_3,Float]]] = null
 
   def left(e : Rep[Edge]) : Rep[Face] = {
     val f0 = face(e,0)
@@ -444,6 +444,48 @@ trait Smooth extends DeLisztApplication {
 
   def main() {
     val iterations = 100
+    float3_zero  = Vec(0.f,0.f,0.f)
+    float33_zero = Mat(float3_zero,float3_zero,float3_zero)
+    work_array = float33_zero
+    pi = MATH_PI.asInstanceOfL[Float]
+    Omega = 1.f
+    alpha = 0.f*pi
+
+    Phi        = FieldWithConst[Face,Float](0.f)
+    PhiOld     = FieldWithConst[Face,Float](0.f)
+    Phi_Grad   = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
+    Flux  	 = FieldWithConst[Face,Float](0.f)
+    Veloc 	 = FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
+    VelocOld	 = FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
+    Rhs_Veloc	 = FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
+    Velochat_Grad = FieldWithConst[Edge,Mat[_3,_3,Float]](float33_zero)
+    Phihat_Grad= FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
+    PMat       = FieldWithConst[Edge,Mat[_3,_3,Float]](float33_zero)
+
+    //some fields for output
+    Phiv  	 = FieldWithConst[Vertex,Float](0.f)
+    Phiv_Grad  = FieldWithConst[Vertex,Vec[_3,Float]](float3_zero)
+    Velocv     = FieldWithConst[Vertex,Vec[_3,Float]](float3_zero)
+
+    //some geometry fields
+    position = FieldWithLabel[Vertex,Vec[_3,Float]]("position")
+
+    theta_vertex  = FieldWithConst[Vertex,Float](0.f)
+    lambda_vertex = FieldWithConst[Vertex,Float](0.f)
+
+    theta_face  = FieldWithConst[Face,Float](0.f)
+    lambda_face = FieldWithConst[Face,Float](0.f)
+
+    theta_edge  = FieldWithConst[Edge,Float](0.f)
+    lambda_edge = FieldWithConst[Edge,Float](0.f)
+
+    face_centroid = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
+    face_area = FieldWithConst[Face,Float](0.f)
+    face_normal = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
+
+    edge_center  = FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
+    edge_length  = FieldWithConst[Edge,Float](0.f)
+    edge_normal  = FieldWithConst[Edge,Vec[_3,Float]](float3_zero)
   
     for(f <- faces(mesh)) 
       calcFaceGeom(f)
