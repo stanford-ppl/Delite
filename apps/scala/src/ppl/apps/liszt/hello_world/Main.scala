@@ -10,6 +10,7 @@ trait HelloWorld extends DeLisztApplication {
     lazy val ffield = FieldWithConst[Face,Int](0)
 
     def main() {
+      val d = cells(mesh)
       for(c <- cells(mesh)) {
         field(c) += 1
       }

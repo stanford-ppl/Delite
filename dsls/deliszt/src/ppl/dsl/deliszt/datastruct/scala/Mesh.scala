@@ -14,41 +14,41 @@ object Mesh extends MeshObjImpl {
   var mesh: Mesh = null
   var loader: MeshLoader = null
 
-  def vertices(e: Mesh): DeLisztSet[Vertex] = MeshSetImpl(mesh.nvertices)
-  def vertices(e: Vertex): DeLisztSet[Vertex] = IndexSetImpl(mesh.vtov, e)
-  def vertices(e: Edge): DeLisztSet[Vertex] = IndexSetImpl(mesh.etov, e)
-  def vertices(e: Face): DeLisztSet[Vertex] = IndexSetImpl(mesh.ftov, e)
-  def vertices(e: Cell): DeLisztSet[Vertex] = IndexSetImpl(mesh.ctov, e)
+  def vertices(e: Mesh): MeshSet[Vertex] = MeshSetImpl(mesh.nvertices)
+  def vertices(e: Vertex): MeshSet[Vertex] = IndexSetImpl(mesh.vtov, e)
+  def vertices(e: Edge): MeshSet[Vertex] = IndexSetImpl(mesh.etov, e)
+  def vertices(e: Face): MeshSet[Vertex] = IndexSetImpl(mesh.ftov, e)
+  def vertices(e: Cell): MeshSet[Vertex] = IndexSetImpl(mesh.ctov, e)
 
-  def verticesCCW(e: Face): DeLisztSet[Vertex] = IndexSetImpl(mesh.ftov, e)
-  def verticesCW(e: Face): DeLisztSet[Vertex] = CWIndexSetImpl(mesh.ftov, e)
+  def verticesCCW(e: Face): MeshSet[Vertex] = IndexSetImpl(mesh.ftov, e)
+  def verticesCW(e: Face): MeshSet[Vertex] = CWIndexSetImpl(mesh.ftov, e)
   
   def vertex(e: Edge, i: Int): Vertex = { val set = IndexSetImpl[Vertex](mesh.etov, e); set(i) }
 
-  def cells(e: Mesh): DeLisztSet[Cell] = MeshSetImpl(mesh.ncells - 1)
-  def cells(e: Vertex): DeLisztSet[Cell] = IndexSetImpl(mesh.vtoc, e)
-  def cells(e: Edge): DeLisztSet[Cell] = IndexSetImpl(mesh.etoc, e)
-  def cells(e: Face): DeLisztSet[Cell] = IndexSetImpl(mesh.ftoc, e)
-  def cells(e: Cell): DeLisztSet[Cell] = IndexSetImpl(mesh.ctoc, e)
+  def cells(e: Mesh): MeshSet[Cell] = MeshSetImpl(mesh.ncells - 1)
+  def cells(e: Vertex): MeshSet[Cell] = IndexSetImpl(mesh.vtoc, e)
+  def cells(e: Edge): MeshSet[Cell] = IndexSetImpl(mesh.etoc, e)
+  def cells(e: Face): MeshSet[Cell] = IndexSetImpl(mesh.ftoc, e)
+  def cells(e: Cell): MeshSet[Cell] = IndexSetImpl(mesh.ctoc, e)
 
-  def cellsCCW(e: Edge): DeLisztSet[Cell] = IndexSetImpl(mesh.etoc, e)
-  def cellsCW(e: Edge): DeLisztSet[Cell] = CWIndexSetImpl(mesh.etoc, e)
+  def cellsCCW(e: Edge): MeshSet[Cell] = IndexSetImpl(mesh.etoc, e)
+  def cellsCW(e: Edge): MeshSet[Cell] = CWIndexSetImpl(mesh.etoc, e)
 
-  def edges(e: Mesh): DeLisztSet[Edge] = MeshSetImpl(mesh.nedges)
-  def edges(e: Vertex): DeLisztSet[Edge] = IndexSetImpl(mesh.vtoe, e)
-  def edges(e: Face): DeLisztSet[Edge] = IndexSetImpl(mesh.ftoe, e)
-  def edges(e: Cell): DeLisztSet[Edge] = IndexSetImpl(mesh.ctoe, e)
+  def edges(e: Mesh): MeshSet[Edge] = MeshSetImpl(mesh.nedges)
+  def edges(e: Vertex): MeshSet[Edge] = IndexSetImpl(mesh.vtoe, e)
+  def edges(e: Face): MeshSet[Edge] = IndexSetImpl(mesh.ftoe, e)
+  def edges(e: Cell): MeshSet[Edge] = IndexSetImpl(mesh.ctoe, e)
 
-  def edgesCCW(e: Face): DeLisztSet[Edge] = IndexSetImpl(mesh.ftoe, e)
-  def edgesCW(e: Face): DeLisztSet[Edge] = CWIndexSetImpl(mesh.ftoe, e)
+  def edgesCCW(e: Face): MeshSet[Edge] = IndexSetImpl(mesh.ftoe, e)
+  def edgesCW(e: Face): MeshSet[Edge] = CWIndexSetImpl(mesh.ftoe, e)
 
-  def faces(e: Mesh): DeLisztSet[Face] = MeshSetImpl(mesh.nfaces)
-  def faces(e: Vertex): DeLisztSet[Face] = IndexSetImpl(mesh.vtof, e)
-  def faces(e: Edge): DeLisztSet[Face] = IndexSetImpl(mesh.etof, e)
-  def faces(e: Cell): DeLisztSet[Face] = IndexSetImpl(mesh.ctof, e)
+  def faces(e: Mesh): MeshSet[Face] = MeshSetImpl(mesh.nfaces)
+  def faces(e: Vertex): MeshSet[Face] = IndexSetImpl(mesh.vtof, e)
+  def faces(e: Edge): MeshSet[Face] = IndexSetImpl(mesh.etof, e)
+  def faces(e: Cell): MeshSet[Face] = IndexSetImpl(mesh.ctof, e)
 
-  def facesCCW(e: Edge): DeLisztSet[Face] = IndexSetImpl(mesh.etof, e)
-  def facesCW(e: Edge): DeLisztSet[Face] = CWIndexSetImpl(mesh.etof, e)
+  def facesCCW(e: Edge): MeshSet[Face] = IndexSetImpl(mesh.etof, e)
+  def facesCW(e: Edge): MeshSet[Face] = CWIndexSetImpl(mesh.etof, e)
   
   def face(e: Cell, i: Int): Face = { val set = IndexSetImpl[Face](mesh.ctof, e); set(i) }
 

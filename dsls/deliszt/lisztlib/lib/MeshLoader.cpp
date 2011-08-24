@@ -6,6 +6,12 @@
 #include "MeshLoader.h"
 #include "Liszt/BoundarySet.h"
 
+#ifdef DEBUG
+#define DEBUG_PRINT(msg) std::cerr << msg << std::endl;
+#else
+#define DEBUG_PRINT(msg)
+#endif
+
 namespace System {
 using namespace CRSMesh;
 
@@ -22,10 +28,10 @@ void MeshLoader::init(JNIEnv* _env, bool generated) {
 
     env = _env;
 
-    std::cerr << "new cache" << std::endl;
+    DEBUG_PRINT("new cache");
     cache = new JNICache(env);
 
-    std::cerr << "load class" << std::endl;
+    DEBUG_PRINT("load class");
     meshClass = cache->getClass(prefix + "/Mesh");
 }
 
@@ -235,42 +241,42 @@ jintArray MeshLoader::copyIdPairArray(CRSMeshPrivate::IDPair* array,
 
 jobject MeshLoader::loadMesh(jstring str) {
     try {
-  std::cerr << "convert filename" << std::endl;
+        DEBUG_PRINT("convert filename");
         // Convert file name
         string filename(env->GetStringUTFChars(str, 0));
 
-  std::cerr << "read in file" << std::endl;
+        DEBUG_PRINT("read in file");
         // Read in mesh
         reader.init(filename);
 
-  std::cerr << "header" << std::endl;
+        DEBUG_PRINT("header");
         MeshIO::LisztHeader h = reader.header();
         if(h.magic_number != MeshIO::LISZT_MAGIC_NUMBER) {
-          std::cerr << "wrong magic number" << std::endl;
+          DEBUG_PRINT("wrong magic number");
           throw MeshIO::MeshLoadException("wrong magic number");
         }
         MeshIO::FacetEdgeBuilder builder;
 
-  std::cerr << "builder init" << std::endl;
+        DEBUG_PRINT("builder init");
         builder.init(h.nV, h.nE, h.nF, h.nC, h.nFE);
 
-  std::cerr << "facet edges" << std::endl;
+        DEBUG_PRINT("facet edges");
         MeshIO::FileFacetEdge * fes = reader.facetEdges();
 
-  std::cerr << "facetedges insert" << std::endl;
+        DEBUG_PRINT("facetedges insert");
         builder.insert(0, h.nFE, fes);
 
-  std::cerr << "free" << std::endl;
+        DEBUG_PRINT("free");
         reader.free(fes);
 
         // Load mesh
-  std::cerr << "from facet edge builder" << std::endl;
+        DEBUG_PRINT("from facet edge builder");
         mesh.initFromFacetEdgeBuilder(&builder);
 
         // Set fields on mesh
         CRSMeshPrivate::MeshData& data = mesh.data;
 
-  std::cerr << "create mesh" << std::endl;
+        DEBUG_PRINT("create mesh");
         jmesh = createObject(meshClass, "");
 
         // Set size fields
@@ -279,10 +285,10 @@ jobject MeshLoader::loadMesh(jstring str) {
         setScalaField(meshClass, jmesh, "nfaces", "I", data.nfaces);
         setScalaField(meshClass, jmesh, "ncells", "I", data.ncells);
         
-        std::cerr << "nvertices: " << data.nvertices << std::endl;
-        std::cerr << "nedges: " << data.nedges << std::endl;
-        std::cerr << "nfaces: " << data.nfaces << std::endl;
-        std::cerr << "ncells: " << data.ncells << std::endl;
+        DEBUG_PRINT("nvertices: " << data.nvertices);
+        DEBUG_PRINT("nedges: " << data.nedges);
+        DEBUG_PRINT("nfaces: " << data.nfaces);
+        DEBUG_PRINT("ncells: " << data.ncells);
 
         // Set vertex relations
         setCRSField(jmesh, "vtov", data.vtov, data.nvertices);

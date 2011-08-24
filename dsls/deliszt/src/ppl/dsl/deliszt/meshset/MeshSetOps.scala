@@ -54,11 +54,10 @@ trait MeshSetOpsExp extends MeshSetOps with VariablesExp with BaseFatExp {
 
   /////////////////////
   // class interface
-  def foreach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]])(block: Exp[MO] => Exp[Unit])  = {
+  
+  def meshset_foreach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]], block: Exp[MO] => Exp[Unit]) = {
     reflectEffect(MeshSetForeach(x, block))
   }
-  
-  def meshset_foreach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]], block: Exp[MO] => Exp[Unit]) = MeshSetForeach(x, block)
 }
 
 trait MeshSetOpsExpOpt extends MeshSetOpsExp {
