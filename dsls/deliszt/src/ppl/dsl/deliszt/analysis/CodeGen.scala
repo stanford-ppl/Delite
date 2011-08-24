@@ -26,9 +26,8 @@ trait DeLisztCodeGenAnalysis extends DeLisztCodeGenScala {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // While loops
     case While(c,b) =>
-      stream.print("val " + quote(sym) + " = {")
+      stream.print("{")
       emitBlock(c)
-      stream.print(quote(getBlockResult(c)))
       stream.println("}")
       stream.print("val " + quote(sym) + " = ")
       stream.println("{")
@@ -39,7 +38,6 @@ trait DeLisztCodeGenAnalysis extends DeLisztCodeGenScala {
     case IfThenElse(c,a,b) =>
       stream.println("{" + quote(c) + "} {")
       emitBlock(a)
-      stream.println(quote(getBlockResult(a)))
       stream.println("}")
       stream.println("val " + quote(sym) + " = {")
       emitBlock(b)
@@ -47,18 +45,20 @@ trait DeLisztCodeGenAnalysis extends DeLisztCodeGenScala {
       stream.println("}")
     // Foreach, only apply to top level foreach though...
     case DeLisztForeach(m, f) =>
+      stream.println("generated.scala.StencilCollector.mark_foreach(" + sym.id + ")")
       super.emitNode(sym, rhs)
+      stream.println("generated.scala.StencilCollector.unmark_foreach(" + sym.id + ")")
     // Just mark accesses
     case FieldApply(f,i) =>
-      stream.println("generated.scala.Analysis.FieldRead(" + quote(f) + "," + quote(i) + ")")
+      stream.println("generated.scala.StencilCollector.FieldRead(" + quote(f) + "," + quote(i) + ")")
     case FieldPlusUpdate(f,i,v) =>
-      stream.println("generated.scala.Analysis.FieldReduce(\"+\"," + quote(f) + "," + quote(i) + "," + quote(v) + ")")
+      stream.println("generated.scala.StencilCollector.FieldReduce(\"+\"," + quote(f) + "," + quote(i) + "," + quote(v) + ")")
     case FieldTimesUpdate(f,i,v) =>
-      stream.println("generated.scala.Analysis.FieldReduce(\"*\"," + quote(f) + "," + quote(i) + "," + quote(v) + ")")
+      stream.println("generated.scala.StencilCollector.FieldReduce(\"*\"," + quote(f) + "," + quote(i) + "," + quote(v) + ")")
     case FieldMinusUpdate(f,i,v) =>
-      stream.println("generated.scala.Analysis.FieldReduce(\"-\"," + quote(f) + "," + quote(i) + "," + quote(v) + ")")
+      stream.println("generated.scala.StencilCollector.FieldReduce(\"-\"," + quote(f) + "," + quote(i) + "," + quote(v) + ")")
     case FieldDivideUpdate(f,i,v) =>
-      stream.println("generated.scala.Analysis.FieldReduce(\"/\"," + quote(f) + "," + quote(i) + "," + quote(v) + ")")
+      stream.println("generated.scala.StencilCollector.FieldReduce(\"/\"," + quote(f) + "," + quote(i) + "," + quote(v) + ")")
     // Try to get rid of arithmetic?
     case ArithPlus(l,r) => super.emitNode(sym, rhs)
     case ArithMinus(l,r) => super.emitNode(sym, rhs)

@@ -171,8 +171,8 @@ trait Smooth extends DeLisztApplication {
     val cr = cosf(lambda*R)
     val sr = sinf(lambda*R)
 
-    var uhat =  omega*ct+K*powf(ct,(R-1).floatValue)*(st*st*R-ct*ct)*cr
-    var vhat = -K*R*powf(ct,(R-1).floatValue)*st*sr
+    var uhat =  omega*ct+K*powf(ct,(R-1).floatValueL)*(st*st*R-ct*ct)*cr
+    var vhat = -K*R*powf(ct,(R-1).floatValueL)*st*sr
     
     var ux = -uhat*sinf(lambda)-vhat*sinf(theta)*cosf(lambda)
     var uy =  uhat*cosf(lambda)-vhat*sinf(theta)*sinf(lambda)
@@ -196,10 +196,10 @@ trait Smooth extends DeLisztApplication {
     val ct = cosf(theta)
     val st = sinf(theta)
 
-    val atheta = omega*0.5f*(2.f+omega)*ct*ct+0.25f*K*K*powf(ct,(2*R).floatValue)*(ct*ct*(R+1)+(2*R*R-R-2)-(2*R*R).floatValue/(ct*ct+1.e-12f))
+    val atheta = omega*0.5f*(2.f+omega)*ct*ct+0.25f*K*K*powf(ct,(2*R).floatValueL)*(ct*ct*(R+1)+(2*R*R-R-2)-(2*R*R).floatValueL/(ct*ct+1.e-12f))
       
-    val btheta = 2*(1.f+omega)*K/(R+1)/(R+2)*powf(ct,(R).floatValue)*((R*R+2*R+2).floatValue-ct*ct*(R+1)*(R+1))
-    val ctheta = 0.25f*K*K*powf(ct,(2*R).floatValue)*(ct*ct*(R+1)-R-2)
+    val btheta = 2*(1.f+omega)*K/(R+1)/(R+2)*powf(ct,(R).floatValueL)*((R*R+2*R+2).floatValueL-ct*ct*(R+1)*(R+1))
+    val ctheta = 0.25f*K*K*powf(ct,(2*R).floatValueL)*(ct*ct*(R+1)-R-2)
 
     val phi = 0.3648f + atheta+btheta*cosf(lambda*R)+ctheta*cosf(lambda*2*R) // TODO
 

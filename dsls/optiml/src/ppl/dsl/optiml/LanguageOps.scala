@@ -75,20 +75,33 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    * aggregate
    */
-  // 1D aggregate
-  def aggregate[A:Manifest](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[Vector[A]]): Rep[Vector[A]] = {
-    optiml_aggregate(start, end, block)
-  }
+  // 1D aggregate is just a Vector constructor!
+  // def aggregate[A:Manifest](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A]): Rep[Vector[A]] = {
+  //     optiml_aggregate(start, end, block)
+  //   }
+  
+  def aggregateIf[A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A]): Rep[Vector[A]] = {
+    optiml_aggregateif(start, end, cond, block)
+  }  
 
   // 2D aggregate
-  def aggregate[A:Manifest](rowStart: Rep[Int], rowEnd: Rep[Int], colStart: Rep[Int], colEnd: Rep[Int])
-                           (block: (Rep[Int], Rep[Int]) => Rep[Vector[A]]): Rep[Vector[A]] = {
-    optiml_aggregate2d(rowStart, rowEnd, colStart, colEnd, block)
+  def aggregate[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector])
+                           (block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]] = {
+    optiml_aggregate2d(rows, cols, block)
   }
+  
+  def aggregateIf[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector])
+                             (cond: (Rep[Int], Rep[Int]) => Rep[Boolean])(block: (Rep[Int], Rep[Int]) => Rep[A]) = {
+    optiml_aggregate2dif(rows, cols, cond, block)
+  }
+  
 
-  def optiml_aggregate[A:Manifest](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[Vector[A]]): Rep[Vector[A]]
-  def optiml_aggregate2d[A:Manifest](rowStart: Rep[Int], rowEnd: Rep[Int], colStart: Rep[Int], colEnd: Rep[Int],
-                                     block: (Rep[Int], Rep[Int]) => Rep[Vector[A]]): Rep[Vector[A]]
+  def optiml_aggregateif[A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A]): Rep[Vector[A]]
+  def optiml_aggregate2d[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector],
+                                     block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]]
+  def optiml_aggregate2dif[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector],
+                                       cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]]
+
 
 
   // TODO: for some reason, the implicit ops conversions aren't kicking in for sum/min/max
@@ -134,6 +147,10 @@ trait LanguageOps extends Base { this: OptiML =>
   //def abs[A](vals: Rep[Vector[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = vals.abs
   //def abs[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded2) = vals.abs
 
+  /**
+   * sqrt 
+   */
+  def sqrt(e: Rep[Double]) = Math.sqrt(e)
 
   /**
    *  IndexVector construction
@@ -236,7 +253,7 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    *  i/o
    */
-  def readMatrix(filename: Rep[String]) = MLInputReader.read(filename)
+  def readMatrix(filename: Rep[String], delim: Rep[String] = unit("\\\\s+")) = MLInputReader.read(filename, delim)
   def readVector(filename: Rep[String]) = MLInputReader.readVector(filename)
   def readImage(filename: Rep[String]) = MLInputReader.readGrayscaleImage(filename)
 
@@ -388,24 +405,62 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Aggregate
    */
-  def optiml_aggregate[A:Manifest](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[Vector[A]]) = {
-    // unroll
-    (start::end) flatMap { block }
 
-    // Other impl.: use a for loop to iterate over the data structure and use synchronization to aggregate values
+  case class AggregateIf[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], func: Exp[Int] => Exp[A])
+    extends DeliteOpFilter[Int,A,Vector[A]] {
+  
+    def alloc = Vector[A](unit(0), unit(true))      
+    val in = copyTransformedOrElse(_.in)(0::end-start)
+    val size = copyTransformedOrElse(_.size)(end-start)
+    
+    def m = manifest[A]
+  }
+  
+  def optiml_aggregateif[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
+    reflectPure(AggregateIf(start,end,cond,block))
+  }
+  
+  case class Aggregate2d[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                     func2: (Exp[Int], Exp[Int]) => Exp[A])
+    extends DeliteOpMap[Int,A,Vector[A]] {
+  
+    val flatSize = rows.length*cols.length        
+    def alloc = Vector[A](flatSize, unit(true))      
+    def func = i => func2(i/cols.length + rows(0), i%cols.length + cols(0))    
+    val in = copyTransformedOrElse(_.in)(0::flatSize)
+    val size = copyTransformedOrElse(_.size)(flatSize)
+    
+    def m = manifest[A]
+  }
+  
+  def optiml_aggregate2d[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                     block: (Exp[Int], Exp[Int]) => Exp[A]) = {
+    
+    reflectPure(Aggregate2d(rows, cols, block))
   }
 
-  def optiml_aggregate2d[A:Manifest](rowStart: Exp[Int], rowEnd: Exp[Int], colStart: Exp[Int], colEnd: Exp[Int],
-                                     block: (Exp[Int], Exp[Int]) => Exp[Vector[A]]) = {
-    // unroll
-    (rowStart::rowEnd) flatMap { y =>
-      (colStart::colEnd) flatMap { x =>
-        block(x, y)
-      }
-    }
+  
+  case class Aggregate2dIf[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                       cond2: (Exp[Int],Exp[Int]) => Exp[Boolean], func2: (Exp[Int], Exp[Int]) => Exp[A])
+    extends DeliteOpFilter[Int,A,Vector[A]] {
+  
+    val flatSize = rows.length*cols.length    
+    def alloc = Vector[A](unit(0), unit(true))      
+    def cond = i => cond2(i/cols.length + rows(0), i%cols.length + cols(0))
+    def func = i => func2(i/cols.length + rows(0), i%cols.length + cols(0))    
+    val in = copyTransformedOrElse(_.in)(0::flatSize)
+    val size = copyTransformedOrElse(_.size)(flatSize)
+    
+    def m = manifest[A]
+  }
+      
+  def optiml_aggregate2dif[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                       cond: (Exp[Int], Exp[Int]) => Exp[Boolean], block: (Exp[Int], Exp[Int]) => Exp[A]) = {
+    
+    reflectPure(Aggregate2dIf(rows, cols, cond, block))
   }
 
-
+                                       
   /**
    * Sum
    */
@@ -425,8 +480,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     def c = implicitly[Cloneable[A]]
   }
 
+/*
   case class SumIf[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], func: Exp[Int] => Exp[A], init: Exp[A])
-    extends DeliteOpFilterReduce[Int,A] {
+    extends DeliteOpFilterReduceFold[Int,A] {
 
     override val mutable = true // can we do this automatically?
     
@@ -434,6 +490,45 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val size = copyTransformedOrElse(_.size)(end - start)
     val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable))
     def reduce = (a,b) => a += b  
+/*    
+    def func = (v) => (v, cond(v))
+    def reduce = (a,b) => (if (a._2 && b._2) a._1 += b._1 else if (!a._2 && b._2)) b._2.mutable else if (), a._2 || b._2)
+    
+*/    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
+    def c = implicitly[Cloneable[A]]
+  }
+*/
+
+  case class SumIf[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], co: Exp[Int] => Exp[Boolean], fu: Exp[Int] => Exp[A])
+    extends DeliteOpFilterReduceFold[A] {
+
+    override val mutable = true // can we do this automatically?
+    
+    val in = copyTransformedOrElse(_.in)((start::end))
+    val size = copyTransformedOrElse(_.size)(end - start)
+    val zero = (copyTransformedOrElse(_.zero._1)(reifyEffects(a.empty)),copyTransformedOrElse(_.zero._2)(unit(-1)))
+
+/*
+    def func = (v) => (zero._1, reifyEffects(if (co(v)) v else -1))
+    def reduce = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
+                                        if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
+*/
+
+
+    def func = (v) => (zero._1, v)
+    
+    def reduceSeq = (a,b) => (reifyEffects(if (co(b._2)) { if (a._2 >= 0) a._1 += fu(b._2) else fu(b._2).mutable } else a._1), 
+                              reifyEffects(if (co(b._2)) b._2 else a._2 )) // would not work in parallel...
+    
+    def reducePar = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += b._1 else b._1.mutable } else a._1), 
+                              reifyEffects(if (b._2 >= 0) b._2 else a._2))
+    
+/*
+    def step = (a,v) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
+                                        if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
+*/
     
     def m = manifest[A]
     def a = implicitly[Arith[A]]
@@ -449,7 +544,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 
   def optiml_sumif[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
-    val firstCond = cond(start)
+    reflectPure(SumIf(start, end, cond, block))
+/*    val firstCond = cond(start)
     val firstBlock = block(start)
     val out = reflectPure(SumIf(start+1, end, cond, block, firstBlock))
     flatIf (firstCond) {
@@ -457,6 +553,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     } {
       out
     }
+*/
   }
 
 /*  
@@ -737,11 +834,13 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     case e@MatrixDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceEuc(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
     case e@MatrixDistanceSquare(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceSquare(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
     case e@Sum(st,en,b,init) => reflectPure(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
-    case e@SumIf(st,en,c,b,init) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
+    case e@SumIf(st,en,c,b) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m, e.a, e.c))(mtype(manifest[A]))
+//    case e@SumIf(st,en,c,b,init) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
     case Reflect(ProfileStart(deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(ProfileStop(deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@Sum(st,en,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@SumIf(st,en,c,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),c,b,f(init))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SumIf(st,en,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
+//    case Reflect(e@SumIf(st,en,c,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

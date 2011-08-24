@@ -19,7 +19,7 @@ def dampedSpringForce(L : Rep[Float3], W : Rep[Float3]) : Rep[Float3] = {
 	val l = length(L)
 
 // Conversions suck
-	return -(L/l) * (Ks*(l-rl).asInstanceOf[Float] + Kd*(dot(L,W)/l))
+	return -(L/l) * (Ks*(l-rl).floatValueL + Kd*(dot(L,W)/l))
 }
 
 def main() {

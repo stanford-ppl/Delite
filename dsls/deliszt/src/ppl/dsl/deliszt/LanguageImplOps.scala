@@ -10,7 +10,7 @@ trait LanguageImplOps {
       print(a)
     }
     
-    println()
+    print(unit("""\n"""))
   }
 }
 

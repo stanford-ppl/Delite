@@ -78,12 +78,16 @@ object MultiLoop_SMP_Array_Generator {
     out.append('/')
     out.append(numChunks)
     out.append('\n')
+/*
     out.append("val acc = head.closure.init(out, idx)\n") // copy of out per chunk
 		out.append("idx += 1\n")
+    out.append("val hc = head.closure\n")
     out.append("while (idx < end) {\n")
-    out.append("head.closure.process(acc, idx)\n")
+    out.append("hc.process(acc, idx)\n")
     out.append("idx += 1\n")
     out.append("}\n")
+*/
+    out.append("val acc = head.closure.processRange(out,idx,end)\n")
 
     if (op.needsCombine) {
       var half = chunkIdx

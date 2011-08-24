@@ -9,7 +9,5 @@ package ppl.dsl.deliszt.datastruct.scala
  */
 
 trait LabelField[MO <: MeshObj, VT] extends Field[MO,VT] { 
-  def size : Int
-  def dcApply(idx: Int) : VT
-  def dcUpdate(idx: Int, x: VT) = throw new RuntimeException()
+  def update(idx: Int, x: VT) = throw new RuntimeException()
 }

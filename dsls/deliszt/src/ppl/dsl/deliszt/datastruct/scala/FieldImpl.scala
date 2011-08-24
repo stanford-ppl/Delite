@@ -30,9 +30,9 @@ object FieldImpl {
 }
 
 class FieldImpl[MO<:MeshObj:Manifest, VT:Manifest](data : Array[VT]) extends Field[MO,VT] {
-  def size = data.length
-  def dcApply(idx: Int) = data(idx)
-  def dcUpdate(idx: Int, x: VT) = {
+  def apply(idx: Int) = data(idx)
+  def update(idx: Int, x: VT) = {
     data(idx) = x
   }
+  def size = data.length
 }

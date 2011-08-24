@@ -44,16 +44,16 @@ trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   // DeliteCollection
   def dcApply(idx: Int) = apply(idx)
   def dcUpdate(idx: Int, x: T) = update(idx, x)
-  def size = length
+  def dcSize = length
   
   // value equality is needed for DeliteCollection zero
   override def equals(rhs: Any): Boolean = {
     if (!rhs.isInstanceOf[Vector[T]]) return false
         
     val rv = rhs.asInstanceOf[Vector[T]]
-    if (size != rv.size) return false
+    if (dcSize != rv.dcSize) return false
     var i = 0
-    while (i < rv.size) {
+    while (i < rv.dcSize) {
       if (dcApply(i) != rv.dcApply(i)) return false
       i += 1        
     }
@@ -152,7 +152,8 @@ trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   // DeliteCollection
   def dcApply(idx: Int): T
   def dcUpdate(idx: Int, x: T): Unit
-
+  def dcSize = size
+  
   // value equality is needed for DeliteCollection zero
   override def equals(rhs: Any): Boolean = {
     if (!rhs.isInstanceOf[Matrix[T]]) return false
@@ -167,6 +168,8 @@ trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
     true    
   }
 }
+
+trait SymmetricMatrix[@specialized(Boolean, Int, Float, Double) T] extends Matrix[T] 
 
 /**
  * TrainingSet

@@ -1,39 +1,52 @@
 #!/usr/local/bin/python
 
 from optparse import OptionParser
-import os
+import os, errno
 
 
 options = {}
 classes = []
 
 def main():
-    usage = "usage: %prog [options] impls_dir ops_dir"
+    usage = "usage: %prog [options] ops_dir data_dir impls_dir(s)"
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
 
     (opts, args) = parser.parse_args()
-    if len(args) != 2:
+    if len(args) < 2:
         parser.error("incorrect number of arguments")
-    impls_dir = args[0]
-    ops_dir = args[1]
-    
+
+    ops_dir = args.pop(0)
+    data_dir = args.pop(0)
+
+    initDir(ops_dir)
+    initDir(data_dir)
 
     loadOptions(opts)
 
     #get the list of files
-    files = os.listdir(impls_dir)
-    for fname in files:
-        if fname.endswith(".scala") and os.path.isdir(impls_dir + "/" + fname) == False:
-            print "processing file:[" + fname + "]"
-            liftClass(impls_dir, fname, ops_dir)
+    for impls_dir in args:
+      files = os.listdir(impls_dir)
+      for fname in files:
+          if fname.endswith(".scala") and os.path.isdir(impls_dir + "/" + fname) == False:
+              print "processing file:[" + fname + "]"
+              liftClass(impls_dir, fname, ops_dir)
+              copyClass(impls_dir, fname, data_dir)
     #now emit the application ops directory
     emitApplicationOps(ops_dir)
+
+def initDir(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST:
+          pass
+        else: raise
 
 def emitApplicationOps(ops_dir):
     out = []
     #package
-    l =     "package ppl.dsl.optiml\n\n"
+    l =     "package ppl.dsl.optiml.application\n\n"
     l = l + "trait ApplicationOps extends " + mixify(classes, "", "Ops") + "\n"
     l = l + "trait ApplicationOpsExp extends " + mixify(classes, "", "OpsExp") + "\n"
     l = l + "trait ScalaGenApplicationOps extends " + mixify(classes, "ScalaGen", "Ops") + " \n" 
@@ -51,6 +64,21 @@ def mixify(classes, pre, post):
             l = l + " with " 
     return l
 
+def copyClass(impls_dir, fname, data_dir):
+    pckNimp = "package ppl.dsl.optiml.datastruct.scala"
+
+    file = open(impls_dir + '/' + fname, 'r')
+    #file.readline() # skip first line
+
+    out = open(data_dir + '/' + fname, 'w')
+    out.write(pckNimp + "\n")
+    
+    for line in file:
+        out.write(line)
+
+    file.close()
+    out.close()
+
 def liftClass(impls_dir, fname, ops_dir):
     
     #dictionary to keep track of fields and their types
@@ -60,11 +88,11 @@ def liftClass(impls_dir, fname, ops_dir):
     out = []
 
     #take care of package and imports
-    pckNimp = "package ppl.dsl.optiml\n\n\
-import datastruct.scala._\n\
+    pckNimp = "package ppl.dsl.optiml.application\n\n\
+import ppl.dsl.optiml.datastruct.scala._\n\
 import java.io.PrintWriter\n\
 import ppl.delite.framework.{DSLType}\n\
-import scala.virtualization.lms.internal.ScalaGenBase\n\
+import scala.virtualization.lms.common.ScalaGenBase\n\
 import scala.virtualization.lms.util.OverloadHack\n\
 import scala.virtualization.lms.common.{EffectExp, Variables}\n\n"
     out.append(pckNimp)
@@ -78,7 +106,7 @@ import scala.virtualization.lms.common.{EffectExp, Variables}\n\n"
         if line.startswith("class "):
             if clazz != "":
                 print "Found what I think are two class definitions [" + clazz + "] and also this line:\n" + line
-            clazz = line[6:].lstrip().rstrip('{').rstrip()
+            clazz = line[6:].lstrip().rstrip('(').rstrip()
             classes.append(clazz)
             lclazz = clazz.lower()
             if options['verbose']:

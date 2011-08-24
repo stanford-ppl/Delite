@@ -82,6 +82,7 @@ public:
      */
     void setScalaField(jclass& cls, jobject& jobj, string field,
             string type, ...);
+    string prefix;
     
 private:
     /*
@@ -111,8 +112,6 @@ private:
 
     void loadPositions(jobject& jmesh, CRSMesh::Mesh& mesh,
             MeshIO::LisztFileReader& reader);
-    void loadBoundaries(jobject& jmesh, CRSMesh::Mesh& mesh,
-            MeshIO::LisztFileReader& reader);
 
     jobject getScalaObjField(string clsStr, jobject& jobj,
             string field, string type);
@@ -126,7 +125,6 @@ private:
     MeshIO::LisztFileReader reader;
     CRSMesh::Mesh mesh;
     jobject jmesh;
-    string prefix;
 };
         }
 

@@ -16,4 +16,5 @@ trait DeLisztSet[MO <: MeshObj] extends DeliteCollection[MO] {
 
   def dcApply(idx: Int) = apply(idx)
   def dcUpdate(idx: Int, x: MO) = {} // Read only, bitches
+  def dcSize : Int = size
 }
