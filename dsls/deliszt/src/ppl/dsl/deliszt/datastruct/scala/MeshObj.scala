@@ -12,9 +12,22 @@ trait MeshObj {
   def id : Int
   def internalId : Int = id & ~BitReverse.MASK
   def reversed = BitReverse.reversed(id)
+  def typeName : String
+  override def toString = typeName + " " + internalId
 }
 
-trait Vertex extends MeshObj
-trait Edge extends MeshObj
-trait Face extends MeshObj
-trait Cell extends MeshObj
+trait Cell extends MeshObj {
+  def typeName = "Cell"
+}
+
+trait Edge extends MeshObj {
+  def typeName = "Edge"
+}
+
+trait Face extends MeshObj {
+  def typeName = "Face"
+}
+
+trait Vertex extends MeshObj {
+  def typeName = "Vertex"
+}

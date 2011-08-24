@@ -23,7 +23,7 @@ object Mesh extends MeshObjImpl {
   def verticesCCW(e: Face): MeshSet[Vertex] = IndexSetImpl(mesh.ftov, e)
   def verticesCW(e: Face): MeshSet[Vertex] = CWIndexSetImpl(mesh.ftov, e)
   
-  def vertex(e: Edge, i: Int): Vertex = { val set = IndexSetImpl[Vertex](mesh.etov, e); set(i) }
+  def vertex(e: Cell, i: Int): Vertex = { val set = IndexSetImpl[Vertex](mesh.etov, e); set(i) }
 
   def cells(e: Mesh): MeshSet[Cell] = MeshSetImpl(mesh.ncells - 1)
   def cells(e: Vertex): MeshSet[Cell] = IndexSetImpl(mesh.vtoc, e)
@@ -50,7 +50,7 @@ object Mesh extends MeshObjImpl {
   def facesCCW(e: Edge): MeshSet[Face] = IndexSetImpl(mesh.etof, e)
   def facesCW(e: Edge): MeshSet[Face] = CWIndexSetImpl(mesh.etof, e)
   
-  def face(e: Cell, i: Int): Face = { val set = IndexSetImpl[Face](mesh.ctof, e); set(i) }
+  def face(e: Edge, i: Int): Face = { val set = IndexSetImpl[Face](mesh.ctof, e); set(i) }
 
   def head(e: Edge): Vertex = new VertexImpl(mesh.etov.apply(e, if(e.reversed) 0 else 1))
   def tail(e: Edge): Vertex = new VertexImpl(mesh.etov.apply(e, if(e.reversed) 1 else 0))
@@ -84,6 +84,8 @@ class LabelData[MO<:MeshObj] {
 }
 
 class Mesh extends MeshObj with MetaInteger with MeshObjImpl {
+  def typeName = "Mesh"
+
   val id = 0
 
   var nvertices: Int = 0

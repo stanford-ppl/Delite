@@ -8,7 +8,7 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-class CRSConst(val values : Array[Int], mult : Int) {
+class CRSConst(val values : Array[Int], mult : Int) extends CRS {
   def row(i: Int) = {i * mult}
   def apply(row: Int, i: Int) = {values(row*mult + i)}
   def update(row: Int, i: Int, v: Int) {values(row*mult + i) = v}
