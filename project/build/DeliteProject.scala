@@ -66,6 +66,11 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     
     val scalaToolsSnapshots = ScalaToolsSnapshots
     val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT"
+
+    //create a listener that writes to the normal output directory
+    def junitXmlListener: TestReportListener = new JUnitXmlTestsListener(outputPath.toString)
+    //add the new listener to the already configured ones
+    override def testListeners: Seq[TestReportListener] = super.testListeners ++ Seq(junitXmlListener)
   }
   
   // Define projects
