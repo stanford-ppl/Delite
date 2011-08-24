@@ -80,8 +80,6 @@ trait LanguageOps extends Base { this: DeLiszt with MathOps =>
 
   def ID[MO<:MeshObj:Manifest](x: Rep[MO]) : Rep[Int]
 
-  def foreach[MO<:MeshObj:Manifest](x: Rep[MeshSet[MO]])(fn: Rep[MO] => Rep[Unit]) : Rep[Unit]
-
   def MATH_PI(): Rep[Double]
   def MIN_FLOAT(): Rep[Float]
   def MAX_FLOAT(): Rep[Float]
@@ -148,13 +146,6 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class DeLisztTowardsFaceCell(e: Exp[Face], c: Exp[Cell]) extends Def[Face]
 
   case class DeLisztSize[MO<:MeshObj:Manifest](s: Exp[MeshSet[MO]]) extends Def[Int]
-
-  case class DeLisztForeach[MO<:MeshObj:Manifest](in: Exp[MeshSet[MO]], func: Exp[MO] => Exp[Unit])
-    extends DeliteOpForeach[MO] {
-
-    val sync = (n:Exp[Int]) => List()
-    val size = in.size
-  }
   
   case class DeLisztID[MO<:MeshObj:Manifest](x: Exp[MO]) extends Def[Int]
 
@@ -225,10 +216,6 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   def size[MO<:MeshObj:Manifest](s: Exp[MeshSet[MO]]) = reflectPure(DeLisztSize(s))
 
-  def foreach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]])(block: Exp[MO] => Exp[Unit]) = {
-    reflectEffect(DeLisztForeach(x, block))
-  }
-
   def ID[MO<:MeshObj:Manifest](x: Exp[MO]) = reflectPure(DeLisztID(x))
 
   def MATH_PI() = MathPi()
@@ -270,6 +257,12 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case DeLisztVertex(e,i) => emitValDef(sym, "generated.scala.Mesh.vertex(" + quote(e) + "," + quote(i) + ")")
 
       case DeLisztFlip(e) => emitValDef(sym, "generated.scala.Mesh.flip(" + quote(e) + ")")
+      
+      case DeLisztTowardsEdgeVertex(e,v) => emitValDef(sym, "generated.scala.Mesh.towards(" + quote(e) + "," + quote(v) + ")")
+      case DeLisztTowardsFaceCell(e,c) => emitValDef(sym, "generated.scala.Mesh.towards(" + quote(e) + "," + quote(c) + ")")
+      
+      case DeLisztID(x) => emitValDef(sym, quote(x) + ".id")
+      case DeLisztSize(s) => emitValDef(sym, quote(s) + ".size")
 
       case MinFloat() => emitValDef(sym, "scala.Float.MinValue")
       case MaxFloat() => emitValDef(sym, "scala.Float.MaxValue")
@@ -279,18 +272,6 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case _ => super.emitNode(sym, rhs)
     }
   }
-
-  /*
-  case class DeLisztTowardsEdgeVertex(e: Exp[Edge], v: Exp[Vertex]) extends Def[Edge]
-  case class DeLisztTowardsFaceCell(e: Exp[Face], c: Exp[Cell]) extends Def[Face]
-
-  case class DeLisztSize[MO<:MeshObj: Manifest](s: Exp[MeshSet[MO]]) extends Def[Int]
-
-  case class DeLisztForeach[MO<:MeshObj: Manifest](x: Exp[MeshSet[MO]], v: Sym[MO], func: Exp[Unit])
-    extends DeliteOpForeach[MO,Set]
-
-  case class DeLisztID[MO<:MeshObj: Manifest](x: Exp[MO]) extends Def[Int]
-   */
 }
 
 trait CudaGenLanguageOps extends CudaGenBase with CudaGenDataStruct {

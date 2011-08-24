@@ -44,7 +44,7 @@ trait DeLisztCodeGenAnalysis extends DeLisztCodeGenScala {
       stream.println(quote(getBlockResult(b)))
       stream.println("}")
     // Foreach, only apply to top level foreach though...
-    case DeLisztForeach(m, f) =>
+    case MeshSetForeach(m, f) =>
       stream.println("generated.scala.StencilCollector.mark_foreach(" + sym.id + ")")
       super.emitNode(sym, rhs)
       stream.println("generated.scala.StencilCollector.unmark_foreach(" + sym.id + ")")
