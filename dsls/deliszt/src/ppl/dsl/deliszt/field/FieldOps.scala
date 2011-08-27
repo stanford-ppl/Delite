@@ -23,7 +23,7 @@ trait FieldOps extends DSLType with Variables with OverloadHack {
   }
   
   def FieldWithConst[MO<:MeshObj:Manifest, VT:Manifest](c : Rep[VT]) : Rep[Field[MO,VT]]
-	def FieldWithLabel[MO<:MeshObj:Manifest, VT:Manifest](url : Rep[String]) : Rep[Field[MO,VT]]
+	def FieldWithLabel[MO<:MeshObj:Manifest, VT:Manifest](url : Rep[String]) = label[MO,VT](url)
 
   /**
    * This class defines the public interface for the Field[T] class.
@@ -89,13 +89,6 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
   // implemented via delite ops
   case class DeLisztFieldWithConst[MO<:MeshObj:Manifest, VT:Manifest](c: Exp[VT])
     extends DeliteOpSingleTask(reifyEffectsHere(field_obj_const_impl[MO,VT](c))) {
-    
-    val moM = manifest[MO]
-    val vtM = manifest[VT]
-  }
-  
-  case class DeLisztFieldWithLabel[MO<:MeshObj:Manifest, VT:Manifest](url : Exp[String])
-    extends DeliteOpSingleTask(reifyEffectsHere(field_obj_label_impl[MO,VT](url))) {
     
     val moM = manifest[MO]
     val vtM = manifest[VT]
@@ -205,10 +198,8 @@ override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
 
   def FieldWithConst[MO<:MeshObj:Manifest, VT:Manifest](c : Exp[VT])
     = reflectMutable(DeLisztFieldWithConst[MO,VT](c))
-  def FieldWithLabel[MO<:MeshObj:Manifest, VT:Manifest](url : Exp[String])
-    = reflectMutable(DeLisztFieldWithLabel[MO,VT](url))
   
-  def label[MO<:MeshObj:Manifest,VT:Manifest](url: Exp[String]) = LabelFieldNew[MO,VT](url)
+  def label[MO<:MeshObj:Manifest,VT:Manifest](url: Exp[String]) = reflectMutable(LabelFieldNew[MO,VT](url))
 //  def position[MO<:MeshObj:Manifest](mo: Exp[MO]) = PositionFor(mo)
   
   def field_obj_new[MO<:MeshObj:Manifest,VT:Manifest]() = reflectMutable(FieldObjectNew[MO,VT]())

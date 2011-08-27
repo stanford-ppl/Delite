@@ -12,10 +12,10 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 object MeshSet {
   // Use special CellSetImpl, don't expose 0 cell
-  implicit def cellSet : MeshSet[Cell] = Mesh.mesh.cells
-  implicit def edgeSet : MeshSet[Edge] = Mesh.mesh.edges
-  implicit def faceSet : MeshSet[Face] = Mesh.mesh.faces
-  implicit def vertexSet : MeshSet[Vertex] = Mesh.mesh.vertices
+  implicit def cellSet : MeshSet[Cell] = new CellSetImpl(Mesh.mesh.ncells)
+  implicit def edgeSet : MeshSet[Edge] = new MeshSetImpl(Mesh.mesh.nedges)
+  implicit def faceSet : MeshSet[Face] = new MeshSetImpl(Mesh.mesh.nfaces)
+  implicit def vertexSet : MeshSet[Vertex] = new MeshSetImpl(Mesh.mesh.nvertices)
 }
 
 trait MeshSet[MO <: MeshObj] extends DeliteCollection[MO] {

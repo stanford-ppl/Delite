@@ -3,6 +3,7 @@ package ppl.dsl.deliszt.datastruct.scala
 import java.io._
 import net.liftweb.json.{JsonParser, JsonAST}
 import net.liftweb.json.JsonDSL._
+import MetaInteger._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -62,6 +63,39 @@ object MeshLoader {
     if(file.exists()) {
       println("File exists, found at " + file.getPath)
       Mesh.mesh = Mesh.loader.loadMesh(file.getPath)
+      
+      val v = LabelData.vertexData
+      
+      println("LABELS")
+      for( (key, value) <- v.data ) {
+        println(key)
+      }
+      
+      val pos = v.data("position")
+      
+      for(i <- 0 until 3) {
+        val vec = pos(i).asInstanceOf[Array[Double]]
+        
+        println("Array " + i)
+        for(j <- 0 until 3) {
+          println(vec(j))
+        }
+      }
+      
+      val f = Mesh.label[Vertex,Vec[_3,Float]]("position")
+      
+      for(i <- 0 until 3) {
+        val vec = f(i)
+        
+        println("Vector " + i)
+        for(j <- 0 until 3) {
+          println(vec(j))
+        }
+      }
+	  
+	  val vs = Mesh.meshSet[Vertex]
+	  println("size")
+	  println(vs.size)
     }
     else {
       throw new FileNotFoundException("Mesh file " + meshFilename + " does not exist")

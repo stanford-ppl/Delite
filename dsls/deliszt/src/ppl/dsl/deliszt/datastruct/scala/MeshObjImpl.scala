@@ -5,7 +5,7 @@ abstract class MeshObjConstruct[MO <: MeshObj] {
   def _type : Int
 }
 
-trait MeshObjImpl {
+object MeshObjConstruct {
   implicit object CellConstruct extends MeshObjConstruct[Cell] {
     def apply(id : Int) = new CellImpl(id)
     def _type = 1
@@ -27,7 +27,7 @@ trait MeshObjImpl {
   }
 }
 
-object MeshObjImpl extends MeshObjImpl {
+object MeshObjImpl {
   def apply[MO<:MeshObj](id : Int)(implicit moc: MeshObjConstruct[MO]) : MO = moc(id)
 }
 

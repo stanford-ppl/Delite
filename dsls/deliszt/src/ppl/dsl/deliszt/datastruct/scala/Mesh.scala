@@ -11,7 +11,7 @@ import collection.mutable.{Map, HashMap}
  * Stanford University
  */
 
-object Mesh extends MeshObjImpl {
+object Mesh {
   var mesh: Mesh = null
   var loader: MeshLoader = null
 
@@ -104,7 +104,7 @@ class LabelData[MO<:MeshObj] {
   val fns: Map[String,Object => Object] = new HashMap[String,Object => Object]()
 }
 
-class Mesh extends MeshObj with MeshObjImpl {
+class Mesh extends MeshObj {
   def typeName = "Mesh"
 
   val id = 0
@@ -143,13 +143,15 @@ class Mesh extends MeshObj with MeshObjImpl {
   val faces : MeshSet[Face] = new MeshSetImpl[Face](nfaces)
   val vertices : MeshSet[Vertex] = new MeshSetImpl[Vertex](nvertices)
   
-  def positionToVec(v: Object) : Object = {
-      val vec = VecImpl[_3, Double]()
-      val a = v.asInstanceOf[Array[Object]]
-      vec(_0) = a.apply(0).asInstanceOf[Double]
-      vec(_1) = a.apply(1).asInstanceOf[Double]
-      vec(_2) = a.apply(2).asInstanceOf[Double]
-      vec
+  def positionToVec(p: Object) : Object = {
+    val a = p.asInstanceOf[Array[Double]]
+   
+    val v = VecImpl[_3, Float]()
+    v(0) = a(0).asInstanceOf[Float]
+    v(1) = a(1).asInstanceOf[Float]
+    v(2) = a(2).asInstanceOf[Float]
+    
+    v
   }
 
   vertexData.fns("position") = positionToVec

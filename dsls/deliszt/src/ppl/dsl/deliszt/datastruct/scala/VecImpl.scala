@@ -16,8 +16,11 @@ object VecImpl {
   }
 }
 
-class VecImpl[N<:IntM:MVal, @specialized T: ClassManifest](val size : Int) extends Vec[N, T] {
-  val data = new Array[T](size)
+class VecImpl[N<:IntM:MVal, @specialized T: ClassManifest](val data : Array[T]) extends Vec[N, T] {
+  def this(size : Int) = this(new Array[T](size))
+  def this(seq : Seq[T]) = this(seq.toArray)
+  
+  def size = data.length
 
   def apply[TT<:IntM](n : TT)(implicit mv: MVal[TT], f : EnsureSize[TT,N]) : T = apply(MIntDepth[TT])
   def update[TT<:IntM](n : TT, v : T)(implicit mv: MVal[TT], f : EnsureSize[TT,N]) : Unit = update(MIntDepth[TT], v)

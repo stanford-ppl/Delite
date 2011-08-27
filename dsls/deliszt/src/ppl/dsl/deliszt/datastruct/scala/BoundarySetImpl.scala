@@ -11,7 +11,7 @@ import collection.immutable.Range
  * Stanford University
  */
 
-class BoundarySetImpl[MO<:MeshObj](implicit moc: MeshObjConstruct[MO]) extends BoundarySet[MO] with MeshObjImpl {
+class BoundarySetImpl[MO<:MeshObj](implicit moc: MeshObjConstruct[MO]) extends BoundarySet[MO] {
   val _ranges = ArrayBuilder.make[Range]
   var data : Array[Int] = null
 
