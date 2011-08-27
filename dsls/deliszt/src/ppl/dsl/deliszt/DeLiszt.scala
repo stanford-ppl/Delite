@@ -226,6 +226,11 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
         val expr = ("\\b" + s + "\\[(.*?)(,\\s*)?\\b" + tpe1 + "\\b(.*?)\\]\\(").r  
         res = expr.replaceAllIn(res, m => tpe1 + s + parSub(m) + "(")
       }
+      
+      // Map methods (like in the companion)
+      val expr = ("\\[(.*?)(,\\s*)?\\b" + tpe1 + "\\s*:\\s*\\w+?\\b(.*?)\\]\\(").r  
+      res = expr.replaceAllIn(res, m => parSub(m) + "(")
+        
       for(tpe2 <- List("Int","Long","Double","Float","Boolean")) {
         for (s <- specialize2) {
           // should probably parse and trim whitespace, this is fragile

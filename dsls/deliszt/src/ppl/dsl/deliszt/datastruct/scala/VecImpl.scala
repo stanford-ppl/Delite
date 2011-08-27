@@ -11,14 +11,21 @@ import MetaInteger._
  */
 
 object VecImpl {
-  def apply[N<:IntM:MVal, T:Manifest]() = {
+  def apply[N<:IntM:MVal, T:ClassManifest]() = {
     new VecImpl[N,T](MIntDepth[N])
+  }
+  
+  def apply[N<:IntM:MVal, T:ClassManifest](xs: T*) = {
+    new VecImpl[N,T](xs.toArray)
+  }
+  
+  def apply[N<:IntM:MVal, T:ClassManifest](data : Array[T]) = {
+    new VecImpl[N,T](data)
   }
 }
 
 class VecImpl[N<:IntM:MVal, @specialized T: ClassManifest](val data : Array[T]) extends Vec[N, T] {
   def this(size : Int) = this(new Array[T](size))
-  def this(seq : Seq[T]) = this(seq.toArray)
   
   def size = data.length
 

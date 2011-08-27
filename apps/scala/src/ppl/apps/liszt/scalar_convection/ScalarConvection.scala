@@ -101,7 +101,7 @@ trait SC extends DeLisztApplication {
     far_field_set = BoundarySet[Face]("far_field")
     float3_zero = Vec(0.f,0.f,0.f)
 
-    faceCenter = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
+    /* faceCenter = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
     faceArea = FieldWithConst[Face,Float](0.f)
 
     Phi = FieldWithConst[Cell,Float](0.f)
@@ -134,6 +134,7 @@ trait SC extends DeLisztApplication {
     for(c <- cells(mesh)) {
       Print("c: ",ID(c)," ",cell_volume(c)," ",cell_centroid(c))
     }
+    
     var ll = Vec(MAX_FLOAT,MAX_FLOAT,MAX_FLOAT)
     var ur = Vec(MIN_FLOAT,MIN_FLOAT,MIN_FLOAT)
 
@@ -155,53 +156,54 @@ trait SC extends DeLisztApplication {
       Print("before cell number: ",ID(c)," -> phi value: ",Phi(c))
     }
     while(t < 2.f) {
-
       for(f <- interior_set) {
-      val normal = face_unit_normal(f)
-      val vDotN = dot(globalVelocity,normal)
-      val area = face_area(f)
-      var flux = 0.f
-      val cell = if(vDotN >= 0.f) inside(f) else outside(f)
-      
-      flux = area * vDotN * Phi(cell)
-      
-      Flux(inside(f)) -= flux
-      Flux(outside(f)) += flux
+        val normal = face_unit_normal(f)
+        val vDotN = dot(globalVelocity,normal)
+        val area = face_area(f)
+        var flux = 0.f
+        val cell = if(vDotN >= 0.f) inside(f) else outside(f)
+        
+        flux = area * vDotN * Phi(cell)
+        
+        Flux(inside(f)) -= flux
+        Flux(outside(f)) += flux
       }
-        for(f <- outlet_set) {
-          val normal = face_unit_normal(f)
-          if(ID(outside(f)) == 0)
-            Flux(inside(f)) -= face_area(f) * dot(normal,globalVelocity) * Phi(inside(f))
-          else
-            Flux(outside(f)) -= face_area(f) * dot(-normal,globalVelocity) * Phi(outside(f))
-        }
+      for(f <- outlet_set) {
+        val normal = face_unit_normal(f)
+        if(ID(outside(f)) == 0)
+          Flux(inside(f)) -= face_area(f) * dot(normal,globalVelocity) * Phi(inside(f))
+        else
+          Flux(outside(f)) -= face_area(f) * dot(-normal,globalVelocity) * Phi(outside(f))
+      }
       for(f <- inlet_set) {
-      val area = face_area(f)
-      val vDotN = dot(globalVelocity,face_unit_normal(f))
-       if(ID(outside(f)) == 0)
-        Flux(inside(f)) += area * vDotN * phi_sine_function(t)
-       else
-        Flux(outside(f)) += area * vDotN * phi_sine_function(t)		
+        val area = face_area(f)
+        val vDotN = dot(globalVelocity,face_unit_normal(f))
+        if(ID(outside(f)) == 0)
+          Flux(inside(f)) += area * vDotN * phi_sine_function(t)
+        else
+          Flux(outside(f)) += area * vDotN * phi_sine_function(t)		
       }
       for(f <- far_field_set) {
-       val normal = face_unit_normal(f)
-       if(ID(outside(f)) == 0)
-         Flux(inside(f)) -= dot(normal,globalVelocity) * face_area(f) * Phi(inside(f))
-       else
-         Flux(outside(f)) -= dot(-normal,globalVelocity) * face_area(f) * Phi(outside(f))
+        val normal = face_unit_normal(f)
+        if(ID(outside(f)) == 0)
+          Flux(inside(f)) -= dot(normal,globalVelocity) * face_area(f) * Phi(inside(f))
+        else
+          Flux(outside(f)) -= dot(-normal,globalVelocity) * face_area(f) * Phi(outside(f))
       }
 
       //TODO(zach): some more loops for boundary conditions go here
       for(c <- cells(mesh)) {
-      Phi(c) += deltat * Flux(c) / cell_volume(c)
+        Phi(c) += deltat * Flux(c) / cell_volume(c)
       }
       for(c <- cells(mesh)) {
-      Flux(c) = 0.f
+        Flux(c) = 0.f
       }
+      
       t += deltat
     }
+      
     for(c <- cells(mesh)) {
       Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
-    }
+    } */
   }
 }

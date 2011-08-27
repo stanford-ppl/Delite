@@ -20,12 +20,34 @@ abstract class IntM {
   type Add[N <: IntM] <: IntM
 }
 
+object EnsureSize {
+  implicit def EnsureSizeZero[T <: IntM] =
+  new EnsureSize[Zero,Succ[T]] {
+    def get(n : Int) : Int = n
+  }
+
+  implicit def EnsureSizeSucc[T <: IntM, TT <: IntM](implicit fn : EnsureSize[TT,T]) =
+  new EnsureSize[Succ[TT],Succ[T]] {
+    def get(n : Int) : Int = fn.get(n+1)
+  }
+}
+
 //meta-function(?)(what is the term for this thing?)
 //if IDX is less than SIZE, then an implicit object of type EnsureSize[IDX,SIZE] will
 //exist with a idx function that returns the number IDX as an integer
 abstract class EnsureSize[TT <: IntM,T <: IntM] {
   def get(n : Int) : Int
   def idx = get(0)
+}
+
+object MVal {
+  implicit val MValZero = new MVal[Zero] {
+    val value = 0
+  }
+
+  implicit def MValSucc[T <: IntM](implicit f: MVal[T]) = new MVal[Succ[T]] {
+    val value = f.value + 1
+  }
 }
 
 abstract class MVal[T] {
@@ -102,24 +124,6 @@ object MetaInteger {
   val _20 : _20 = new _20
   val _21 : _21 = new _21
   val _22 : _22 = new _22
-
-  implicit def EnsureSizeZero[T <: IntM] =
-  new EnsureSize[Zero,Succ[T]] {
-    def get(n : Int) : Int = n
-  }
-
-  implicit def EnsureSizeSucc[T <: IntM, TT <: IntM](implicit fn : EnsureSize[TT,T]) =
-  new EnsureSize[Succ[TT],Succ[T]] {
-    def get(n : Int) : Int = fn.get(n+1)
-  }
-
-  implicit val MValZero = new MVal[Zero] {
-    val value = 0
-  }
-
-  implicit def MValSucc[T <: IntM](implicit f: MVal[T]) = new MVal[Succ[T]] {
-    val value = f.value + 1
-  }
 
   def MIntDepth[T <: IntM]()(implicit n: MVal[T]) = n.value
   def MIntDepth[T <: IntM](m : T)(implicit n: MVal[T]) = n.value
