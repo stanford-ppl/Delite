@@ -87,9 +87,8 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
 
   ////////////////////////////////
   // implemented via delite ops
-  case class DeLisztFieldWithConst[MO<:MeshObj:Manifest, VT:Manifest](c: Exp[VT])
-    extends DeliteOpSingleTask(reifyEffectsHere(field_obj_const_impl[MO,VT](c))) {
-    
+  case class DeLisztFieldWithConst[MO<:MeshObj:Manifest,VT:Manifest](c: Exp[VT]) extends Def[Field[MO,VT]] {
+    val fM = manifest[FieldImpl[MO,VT]]
     val moM = manifest[MO]
     val vtM = manifest[VT]
   }
@@ -122,8 +121,7 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
 
   //////////////
   // mirroring
-
-override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case e@FieldApply(x, i) => field_mo_apply(f(x), f(i))(e.moM, e.vtM)
     case e@FieldIntApply(x, i) => field_apply(f(x), f(i))(e.moM, e.vtM)
     // Read/write effects
@@ -140,6 +138,7 @@ override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
   }).asInstanceOf[Exp[A]]
 
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case DeLisztFieldWithConst(x) => Nil
     case FieldApply(a,i) => Nil
     case FieldIntApply(a,i) => Nil
     case FieldUpdate(a,i,x) => Nil
@@ -152,6 +151,7 @@ override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
   }
 
   override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case DeLisztFieldWithConst(x) => Nil
     case FieldApply(a,i) => Nil
     case FieldIntApply(a,i) => Nil
     case FieldUpdate(a,i,x) => syms(x)
@@ -164,6 +164,7 @@ override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
   }
 
   override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case DeLisztFieldWithConst(x) => Nil  
     case FieldApply(a,i) => syms(a)
     case FieldIntApply(a,i) => syms(a)
     case FieldUpdate(a,i,x) => Nil
@@ -176,6 +177,7 @@ override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
   }
 
   override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case DeLisztFieldWithConst(x) => Nil
     case FieldApply(a,i) => Nil
     case FieldIntApply(a,i) => Nil
     case FieldUpdate(a,i,x) => syms(a)
@@ -196,8 +198,7 @@ override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
   def field_mo_apply[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO, VT]], mo: Exp[MO]) = reflectPure(FieldApply(x,mo))
   def field_mo_update[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]], mo: Rep[MO], v : Rep[VT]) = reflectWrite(x)(FieldUpdate(x,mo,v))
 
-  def FieldWithConst[MO<:MeshObj:Manifest, VT:Manifest](c : Exp[VT])
-    = reflectMutable(DeLisztFieldWithConst[MO,VT](c))
+  def FieldWithConst[MO<:MeshObj:Manifest,VT:Manifest](c: Exp[VT]) = reflectMutable(DeLisztFieldWithConst[MO,VT](c))
   
   def label[MO<:MeshObj:Manifest,VT:Manifest](url: Exp[String]) = reflectMutable(LabelFieldNew[MO,VT](url))
 //  def position[MO<:MeshObj:Manifest](mo: Exp[MO]) = PositionFor(mo)
@@ -243,6 +244,7 @@ trait ScalaGenFieldOps extends ScalaGenBase {
       case FieldMinusUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") -= " + quote(v))
       case FieldDivideUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") /= " + quote(v))
 
+      case f@DeLisztFieldWithConst(x) => emitValDef(sym, remap(f.fM) + ".withConst(" + quote(x) + ")")
       case f@FieldObjectNew() => emitValDef(sym, remap(f.fM) + "()")
       case f@LabelFieldNew(url) => emitValDef(sym, "generated.scala.Mesh.label[" + remap(f.moM) + "," + remap(f.vtM) + "](" + quote(url) + ")")
       case FieldIntApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")

@@ -14,7 +14,7 @@ import ppl.dsl.deliszt.datastruct.scala._
  */
 
 trait FieldImplOps { this: DeLiszt =>
-  def field_obj_const_impl[MO<:MeshObj:Manifest,VT:Manifest](v : Rep[VT]): Rep[Field[MO,VT]]
+//  def field_obj_const_impl[MO<:MeshObj:Manifest,VT:Manifest](v : Rep[VT]): Rep[Field[MO,VT]]
 }
 
 trait FieldImplOpsStandard extends FieldImplOps {
@@ -22,7 +22,7 @@ trait FieldImplOpsStandard extends FieldImplOps {
 
   //////////////////////////
   // kernel implementations
-  def field_obj_const_impl[MO<:MeshObj:Manifest,VT:Manifest](c : Rep[VT]) = {
+  /* def field_obj_const_impl[MO<:MeshObj:Manifest,VT:Manifest](c : Rep[VT]) = {
     val v = Field[MO,VT]()
     var i = 0
     while(i < v.size) {
@@ -30,5 +30,5 @@ trait FieldImplOpsStandard extends FieldImplOps {
       i += 1
     }
     v.unsafeImmutable
-  }
+  } */
 }

@@ -18,6 +18,9 @@ trait Mat[R<:IntM,C<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] ext
   def apply(n: Int, m: Int) : T
   def update(n: Int, m: Int, v : T) : Unit
   def size : Int
+  
+  def apply(idx: Int) : T
+  def update(idx: Int, v: T) : Unit
 
   def row(n: Int) : MatRow[C,T]
   def col(n: Int) : MatCol[R,T]

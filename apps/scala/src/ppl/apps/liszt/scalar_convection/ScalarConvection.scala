@@ -101,8 +101,8 @@ trait SC extends DeLisztApplication {
     far_field_set = BoundarySet[Face]("far_field")
     float3_zero = Vec(0.f,0.f,0.f)
 
-    /* faceCenter = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
-    faceArea = FieldWithConst[Face,Float](0.f)
+    faceCenter = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
+    /*faceArea = FieldWithConst[Face,Float](0.f)
 
     Phi = FieldWithConst[Cell,Float](0.f)
     Flux = FieldWithConst[Cell,Float](0.f)

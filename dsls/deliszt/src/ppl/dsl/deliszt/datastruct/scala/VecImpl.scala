@@ -24,7 +24,7 @@ object VecImpl {
   }
 }
 
-class VecImpl[N<:IntM:MVal, @specialized T: ClassManifest](val data : Array[T]) extends Vec[N, T] {
+class VecImpl[N<:IntM:MVal, @specialized T: ClassManifest](val data : Array[T]) extends Vec[N, T] with Copyable {
   def this(size : Int) = this(new Array[T](size))
   
   def size = data.length
@@ -35,5 +35,22 @@ class VecImpl[N<:IntM:MVal, @specialized T: ClassManifest](val data : Array[T]) 
   def apply(n : Int) = data(n)
   def update(n : Int, v : T) = {
     data(n) = v
+  }
+  
+  def copy() = {
+    val v = new VecImpl(size)
+  
+    if(classManifest[T] <:< classManifest[Copyable]) {
+      for(i <- 0 until size) {
+        v(i) = data(i).asInstanceOf[Copyable].copy.asInstanceOf[T]
+      }
+    }
+    else {
+      for(i <- 0 until size) {
+        v(i) = data(i)
+      }
+    }
+    
+    v
   }
 }
