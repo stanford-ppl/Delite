@@ -64,7 +64,7 @@ object MeshLoader {
       println("File exists, found at " + file.getPath)
       Mesh.mesh = Mesh.loader.loadMesh(file.getPath)
       
-      val v = LabelData.vertexData
+      /*val v = LabelData.vertexData
       
       println("LABELS")
       for( (key, value) <- v.data ) {
@@ -93,9 +93,15 @@ object MeshLoader {
         }
       }
 	  
-	  val vs = Mesh.meshSet[Vertex]
-	  println("size")
-	  println(vs.size)
+      val vs = Mesh.meshSet[Vertex]
+      println("size")
+      println(vs.size)
+      */
+      
+      println("ncells: " + Mesh.mesh.ncells)
+      println("nedges: " + Mesh.mesh.nedges)
+      println("nfaces: " + Mesh.mesh.nfaces)
+      println("nvertices: " + Mesh.mesh.nvertices)
     }
     else {
       throw new FileNotFoundException("Mesh file " + meshFilename + " does not exist")

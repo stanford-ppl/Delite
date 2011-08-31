@@ -192,7 +192,7 @@ void MeshLoader::setScalaField(jclass& cls, jobject& jobj, string field,
 
 void MeshLoader::setCRSField(jobject& jmesh, string field,
         CRSMeshPrivate::CRS& crs, size_t from) {
-    jintArray row_idx = copyIdxArray(crs.row_idx, from);
+    jintArray row_idx = copyIdxArray(crs.row_idx, from+1);
     jintArray values = copyIdArray(crs.values, crs.row_idx[from]);
 
     jobject jcrs = createObject(prefix + "/CRSImpl", "[I[I",

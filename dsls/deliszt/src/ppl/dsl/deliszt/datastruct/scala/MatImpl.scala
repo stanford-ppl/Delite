@@ -57,6 +57,16 @@ class MatImpl[R<:IntM,C<:IntM, @specialized T: ClassManifest](val numRows : Int,
     
     m
   }
+  
+  override def toString() = {
+    var s = "Mat[" + numRows + "," + numCols + "]"
+    
+    for(i <- 0 until numRows) {
+      s += "(" + (0 until numCols).map( this(i,_).toString ).reduceLeft(_ + "," + _) + ")"
+    }
+    
+    s
+  }
 }
 
 class MatRowImpl[C<:IntM, @specialized T: ClassManifest](mat: Mat[_,C,T], idx: Int) extends MatRow[C,T] with Copyable {
@@ -76,6 +86,10 @@ class MatRowImpl[C<:IntM, @specialized T: ClassManifest](mat: Mat[_,C,T], idx: I
   }
   
   def copy = cloneL
+  
+  override def toString() = {
+    "MatRow " + idx + "[" + size + "](" + (0 until size).map(this(_).toString).reduceLeft(_ + "," + _) + ")"
+  }
 }
 
 class MatColImpl[R<:IntM, @specialized T: ClassManifest](mat: Mat[R,_,T], idx: Int) extends MatCol[R,T] with Copyable {
@@ -94,4 +108,8 @@ class MatColImpl[R<:IntM, @specialized T: ClassManifest](mat: Mat[R,_,T], idx: I
   }
   
   def copy = cloneL
+  
+  override def toString() = {
+    "MatCol " + idx + "[" + size + "](" + (0 until size).map(this(_).toString).reduceLeft(_ + "," + _) + ")"
+  }
 }

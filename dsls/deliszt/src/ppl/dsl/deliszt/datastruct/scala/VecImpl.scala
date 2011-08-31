@@ -57,4 +57,8 @@ class VecImpl[N<:IntM, @specialized T: ClassManifest](val data : Array[T]) exten
     
     v
   }
+  
+  override def toString() = {
+    "Vec[" + size + "](" + data.map(_.toString).reduceLeft(_ + "," + _) + ")"
+  }
 }
