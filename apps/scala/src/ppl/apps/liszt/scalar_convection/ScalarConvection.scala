@@ -33,7 +33,8 @@ trait SC extends DeLisztApplication {
   def calcFaceCenter(f : Rep[Face]) : Rep[Vec[_3,Float]] = {
     var center = Vec(0.f,0.f,0.f)
     for(v <- vertices(f)) {
-      center += position(v)
+      // TODO
+      center = center + position(v)
     }
     center = center / size(vertices(f))
     return center
@@ -41,7 +42,8 @@ trait SC extends DeLisztApplication {
   def calcCellCenter(c : Rep[Cell]) : Rep[Vec[_3,Float]] = {
     var center = Vec(0.f,0.f,0.f)
     for(v <- vertices(c)) {
-      center += position(v)
+      // TODO
+      center = center + position(v)
     }
     center = center / size(vertices(c))
     return center
@@ -52,7 +54,8 @@ trait SC extends DeLisztApplication {
     for(e <- edgesCCW(f)) {
       val v0 = position(head(e)) - approxCenter
       val v1 = position(tail(e)) - approxCenter
-      normal += cross(v1,v0)
+      // TODO
+      normal = normal + cross(v1,v0)
     }
     normal = normalize(normal)
     var center = Vec(0.f,0.f,0.f)
@@ -62,7 +65,8 @@ trait SC extends DeLisztApplication {
       val v1 = position(tail(e)) - approxCenter
       val tmp_area = dot(normal,cross(v1,v0))
       area += tmp_area
-      center += ( approxCenter + position(head(e)) + position(tail(e))) * tmp_area
+      // TODO
+      center = center + ( approxCenter + position(head(e)) + position(tail(e))) * tmp_area
     }  
     face_centroid(f) = center / (area * 3.f)
     val farea = area / 2.f
@@ -72,21 +76,22 @@ trait SC extends DeLisztApplication {
   }
 
   def calcCellGeom(c : Rep[Cell]) : Rep[Unit] = {
+    var center = Vec(0.f,0.f,0.f)
     val approxCenter = calcCellCenter(c)
     var volume = 0.f
-    var center = Vec(0.f,0.f,0.f)
     for(f <- faces(c)) {
       val v0 = face_centroid(f) - approxCenter
       for(e <- edgesCCW(towards(f,c))) {
-      val v1 = position(head(e)) - approxCenter
-      val v2 = position(tail(e)) - approxCenter
-      val tetVol = dot(v0,cross(v1,v2))
-      volume += tetVol
-      center += ( approxCenter + face_centroid(f) + position(head(e)) + position(tail(e))) * tetVol
+        val v1 = position(head(e)) - approxCenter
+        val v2 = position(tail(e)) - approxCenter
+        val tetVol = dot(v0,cross(v1,v2))
+        volume += tetVol
+        center = center + (approxCenter + face_centroid(f) + position(head(e)) + position(tail(e)))*tetVol
       }
     }
     cell_centroid(c) = center / (volume * 4.f)
     cell_volume(c) = volume / 6.f
+    unit(0)
   }
   def phi_sine_function( t : Rep[Float]) : Rep[Float] = {
     return 10.f * sinf(t*2.f*MATH_PI.asInstanceOfL[Float])
@@ -102,7 +107,7 @@ trait SC extends DeLisztApplication {
     float3_zero = Vec(0.f,0.f,0.f)
 
     faceCenter = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
-    /*faceArea = FieldWithConst[Face,Float](0.f)
+    faceArea = FieldWithConst[Face,Float](0.f)
 
     Phi = FieldWithConst[Cell,Float](0.f)
     Flux = FieldWithConst[Cell,Float](0.f)
@@ -120,9 +125,9 @@ trait SC extends DeLisztApplication {
     //initialize geometry fields
     for(f <- faces(mesh)) {
       if(ID(outside(f)) < ID(inside(f))) {
-      calcFaceGeom(flip(f))
+        calcFaceGeom(flip(f))
       } else {
-      calcFaceGeom(f)
+        calcFaceGeom(f)
       }
     }
     for(f <- faces(mesh)) {
@@ -131,7 +136,7 @@ trait SC extends DeLisztApplication {
     for(c <- cells(mesh)) {
       calcCellGeom(c)
     }
-    for(c <- cells(mesh)) {
+    /*for(c <- cells(mesh)) {
       Print("c: ",ID(c)," ",cell_volume(c)," ",cell_centroid(c))
     }
     

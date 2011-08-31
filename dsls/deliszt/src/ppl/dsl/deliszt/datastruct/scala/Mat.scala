@@ -32,6 +32,8 @@ trait Mat[R<:IntM,C<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] ext
   def dcApply(idx: Int): T
   def dcUpdate(idx: Int, x: T): Unit
   def dcSize : Int = size
+  
+  def cloneL : Mat[R,C,T]
 }
 
 trait VecView[N<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends Vec[N,T]

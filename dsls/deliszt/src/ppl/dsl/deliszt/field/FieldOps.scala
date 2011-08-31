@@ -88,7 +88,6 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
   ////////////////////////////////
   // implemented via delite ops
   case class DeLisztFieldWithConst[MO<:MeshObj:Manifest,VT:Manifest](c: Exp[VT]) extends Def[Field[MO,VT]] {
-    val fM = manifest[FieldImpl[MO,VT]]
     val moM = manifest[MO]
     val vtM = manifest[VT]
   }
@@ -244,7 +243,7 @@ trait ScalaGenFieldOps extends ScalaGenBase {
       case FieldMinusUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") -= " + quote(v))
       case FieldDivideUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") /= " + quote(v))
 
-      case f@DeLisztFieldWithConst(x) => emitValDef(sym, remap(f.fM) + ".withConst(" + quote(x) + ")")
+      case f@DeLisztFieldWithConst(x) => emitValDef(sym, "generated.scala.FieldImpl.withConst[" + remap(f.moM) + "," + remap(f.vtM) + "](" + quote(x) + ")")
       case f@FieldObjectNew() => emitValDef(sym, remap(f.fM) + "()")
       case f@LabelFieldNew(url) => emitValDef(sym, "generated.scala.Mesh.label[" + remap(f.moM) + "," + remap(f.vtM) + "](" + quote(url) + ")")
       case FieldIntApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")

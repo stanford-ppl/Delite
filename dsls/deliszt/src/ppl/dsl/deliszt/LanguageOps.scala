@@ -247,10 +247,13 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case DeLisztEdges(e) => emitValDef(sym, "generated.scala.Mesh.edges(" + quote(e) + ")")
       case DeLisztEdgeHead(e) => emitValDef(sym, "generated.scala.Mesh.head(" + quote(e) + ")")
       case DeLisztEdgeTail(e) => emitValDef(sym, "generated.scala.Mesh.tail(" + quote(e) + ")")
+      
+      case DeLisztEdgeFacesCCW(e) => emitValDef(sym, "generated.scala.Mesh.facesCCW(" + quote(e) + ")")
+      case DeLisztEdgeFacesCW(e) => emitValDef(sym, "generated.scala.Mesh.facesCW(" + quote(e) + ")")
 
       case DeLisztFaces(e) => emitValDef(sym, "generated.scala.Mesh.faces(" + quote(e) + ")")
-      case DeLisztFaceEdgesCCW(e) => emitValDef(sym, "generated.scala.Mesh.facesCCW(" + quote(e) + ")")
-      case DeLisztFaceEdgesCW(e) => emitValDef(sym, "generated.scala.Mesh.facesCW(" + quote(e) + ")")
+      case DeLisztFaceEdgesCCW(e) => emitValDef(sym, "generated.scala.Mesh.edgesCCW(" + quote(e) + ")")
+      case DeLisztFaceEdgesCW(e) => emitValDef(sym, "generated.scala.Mesh.edgesCW(" + quote(e) + ")")
       case DeLisztFace(e,i) => emitValDef(sym, "generated.scala.Mesh.face(" + quote(e) + "," + quote(i) + ")")
 
       case DeLisztVertices(e) => emitValDef(sym, "generated.scala.Mesh.vertices(" + quote(e) + ")")

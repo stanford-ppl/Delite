@@ -76,6 +76,8 @@ trait MatOps extends DSLType with Variables {
 
     def /(y:Rep[Self])(implicit a:Arith[A]) = mat_zip_divide(x,y)
     def /(y:Rep[A])(implicit a:Arith[A],o:Overloaded1) = mat_divide_scalar(x,y)
+    
+    def mutable() = mat_mutable_clone(x)
   }
 
   def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](xs: Rep[Vec[C,A]]*):Rep[Mat[R,C,A]]
@@ -103,6 +105,8 @@ trait MatOps extends DSLType with Variables {
   def mat_divide_scalar[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[A]):Rep[Mat[R,C,A]]
   def mat_zip_divide[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]],y:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
   def mat_unary_minus[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Rep[Mat[R,C,A]]):Rep[Mat[R,C,A]]
+  
+  def mat_mutable_clone[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x: Rep[Mat[R,C,A]]): Rep[Mat[R,C,A]]
 }
 
 
@@ -212,6 +216,14 @@ trait MatOpsExp extends MatOps with VariablesExp {
     val vc = implicitly[MVal[C]]
     val a = manifest[A]
   }
+  
+  case class MatClone[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal, A:Manifest](x: Exp[Mat[R,C,A]]) extends Def[Mat[R,C,A]] {
+    val r = manifest[R]
+    val vr = implicitly[MVal[R]]
+    val c = manifest[C]
+    val vc = implicitly[MVal[C]]
+    val a = manifest[A]
+  }
 
   ////////////////////////////////
   // implemented via delite ops 
@@ -300,6 +312,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
     case MatTimes(a,b) => Nil
     case MatTimesVec(a,v) => Nil
     case MatTimesScalar(a,x) => Nil
+    case MatClone(a) => Nil
     case _ => super.aliasSyms(e)
   }
 
@@ -308,6 +321,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
     case MatTimes(a,b) => Nil
     case MatTimesVec(a,v) => Nil
     case MatTimesScalar(a,x) => Nil
+    case MatClone(a) => Nil
     case _ => super.containSyms(e)
   }
 
@@ -316,6 +330,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
     case MatTimes(a,b) => Nil
     case MatTimesVec(a,v) => Nil
     case MatTimesScalar(a,x) => Nil
+    case MatClone(a) => Nil
     case _ => super.extractSyms(e)
   }
 
@@ -324,13 +339,14 @@ trait MatOpsExp extends MatOps with VariablesExp {
     case MatTimes(a,b) => Nil
     case MatTimesVec(a,v) => Nil
     case MatTimesScalar(a,x) => Nil
+    case MatClone(a) => syms(a)
     case _ => super.copySyms(e)
   } 
 
   ////////////////////
   // object interface
-  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*) = reflectMutable(MatObjNew[R,C,A](vs:_*))
-  def mat_obj_n_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](r: Exp[Int], c: Exp[Int]) = reflectMutable(MatObjectNNew[R,C,A](r,c))
+  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*) = reflectPure(MatObjNew[R,C,A](vs:_*))
+  def mat_obj_n_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](r: Exp[Int], c: Exp[Int]) = reflectPure(MatObjectNNew[R,C,A](r,c))
 
   ///////////////////
   // class interface
@@ -363,6 +379,8 @@ trait MatOpsExp extends MatOps with VariablesExp {
   // internal
 
   def mat_dcapply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x:Exp[Mat[R,C,A]],i:Exp[Int]) = reflectPure(MatDCApply(x,i))
+  
+  def mat_mutable_clone[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](x: Exp[Mat[R,C,A]]) = reflectMutable(MatClone(x))
 }
 
 /**
@@ -392,6 +410,8 @@ trait ScalaGenMatOps extends ScalaGenBase {
     
     case MatNumRows(x) => emitValDef(sym,quote(x) + ".numRows")
     case MatNumCols(x) => emitValDef(sym,quote(x) + ".numCols")
+    
+    case MatClone(x) => emitValDef(sym, quote(x) + ".cloneL")
 
     // BLAS calls
     // all corresponding nodes should have their DeliteOpSingleTask second argument set to "true" (require inputs)

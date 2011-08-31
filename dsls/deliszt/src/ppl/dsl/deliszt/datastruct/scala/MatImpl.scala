@@ -16,8 +16,8 @@ object MatImpl {
   }
 }
 
-class MatImpl[R<:IntM,C<:IntM, @specialized T: ClassManifest](val numRows : Int, val numCols : Int) extends Mat[R,C,T] with Copyable {
-  val data = new Array[T](numRows * numCols)
+class MatImpl[R<:IntM,C<:IntM, @specialized T: ClassManifest](val numRows : Int, val numCols : Int, val data : Array[T]) extends Mat[R,C,T] with Copyable {
+  def this(numRows : Int, numCols : Int) = this(numRows, numCols, new Array[T](numRows * numCols))
 
   def apply(r: Int, c: Int) = data(r*numRows+c)
   def update(r: Int, c: Int, v: T) = {
@@ -37,8 +37,12 @@ class MatImpl[R<:IntM,C<:IntM, @specialized T: ClassManifest](val numRows : Int,
     data(idx) = x
   }
   
+  def cloneL = {
+    new MatImpl[R,C,T](numRows, numCols, data.clone)
+  }
+  
   def copy() = {
-    val m = new MatImpl(numRows, numCols)
+    val m = new MatImpl[R,C,T](numRows, numCols)
   
     if(classManifest[T] <:< classManifest[Copyable]) {
       for(i <- 0 until size) {
@@ -60,9 +64,18 @@ class MatRowImpl[C<:IntM, @specialized T: ClassManifest](mat: Mat[_,C,T], idx: I
   def update(n: Int, v: T) = mat.update(idx,n,v)
   val size = mat.numCols
   
-  def copy = {
-    new MatRowImpl(mat, idx)
+    
+  def cloneL = {
+    val v = new VecImpl[C,T](size)
+  
+    for(i <- 0 until size) {
+      v(i) = this(i)
+    }
+    
+    v
   }
+  
+  def copy = cloneL
 }
 
 class MatColImpl[R<:IntM, @specialized T: ClassManifest](mat: Mat[R,_,T], idx: Int) extends MatCol[R,T] with Copyable {
@@ -70,7 +83,15 @@ class MatColImpl[R<:IntM, @specialized T: ClassManifest](mat: Mat[R,_,T], idx: I
   def update(n: Int, v: T) = mat.update(idx,n,v)
   val size = mat.numRows
   
-  def copy = {
-    new MatColImpl(mat, idx)
+  def cloneL = {
+    val v = new VecImpl[R,T](size)
+  
+    for(i <- 0 until size) {
+      v(i) = this(i)
+    }
+    
+    v
   }
+  
+  def copy = cloneL
 }

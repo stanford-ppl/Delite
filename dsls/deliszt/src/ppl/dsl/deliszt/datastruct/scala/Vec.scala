@@ -21,4 +21,6 @@ trait Vec[N<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends ppl
   def dcApply(idx: Int) = apply(idx)
   def dcUpdate(idx: Int, x: T) = update(idx, x)
   def dcSize : Int = size
+  
+  def cloneL : Vec[N,T]
 }

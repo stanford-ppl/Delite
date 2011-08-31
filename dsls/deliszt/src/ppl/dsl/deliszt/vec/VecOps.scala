@@ -82,6 +82,8 @@ trait VecOps extends DSLType with Variables {
     //def map[B:Manifest](f: Rep[A] => Rep[B]) = vec_map(x,f)
 
     //def &[M<:IntM:Manifest:MVal](rhs : Rep[Vec[M,A]]) = vec_concat[N,M,N+M,A](u, rhs)
+    
+    def mutable() = vec_mutable_clone(u)
   }
 
   // Language ops
@@ -118,6 +120,8 @@ trait VecOps extends DSLType with Variables {
 
   def vec_zip_min[N<:IntM:Manifest:MVal, A:Manifest:Ordering](x: Rep[Vec[N,A]], y: Rep[Vec[N,A]]): Rep[Vec[N,A]]
   def vec_zip_max[N<:IntM:Manifest:MVal, A:Manifest:Ordering](x: Rep[Vec[N,A]], y: Rep[Vec[N,A]]): Rep[Vec[N,A]]
+  
+  def vec_mutable_clone[N<:IntM:Manifest:MVal, A:Manifest](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
 }
 
 trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
@@ -162,7 +166,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   case class VecOuter[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x: Exp[Vec[R,A]], y: Exp[Vec[C,A]])
     extends DeliteOpSingleTask(reifyEffectsHere(vec_outer_impl[R,C,A](x,y))) {
       def r = manifest[R]
-      def vr = implicitly[MVal[C]]
+      def vr = implicitly[MVal[R]]
       def c = manifest[C]
       def vc = implicitly[MVal[C]]
       def m = manifest[A]
@@ -173,14 +177,14 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     extends DeliteOpSingleTask(reifyEffectsHere(vec_normalize_impl[N,A](x))) {
       def n = manifest[N]
       def vn = implicitly[MVal[N]]
-      def ma = manifest[A]
+      def m = manifest[A]
       def a = implicitly[Arith[A]]
   }
   
   case class VecCross[A:Manifest:Arith](x: Exp[Vec[_3,A]], y: Exp[Vec[_3,A]])
     extends DeliteOpSingleTask(reifyEffectsHere(vec_cross_impl[A](x,y))) {
-      def m = manifest[A]
-      def a = implicitly[Arith[A]]
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
   }
 
   ////////////////////////////////
@@ -342,6 +346,12 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
 
     def func = (a,b) => a max b
   }
+  
+  case class VecClone[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]]) extends Def[Vec[N,A]] {
+    def n = manifest[N]
+    def vn = implicitly[MVal[N]]
+    def m = manifest[A]
+  }
 
   //////////////
   // mirroring
@@ -359,6 +369,8 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     case e@VecTimesScalar(x,y) => reflectPure(new { override val original = Some(f,e) } with VecTimesScalar(f(x),f(y))(e.n, e.vn, e.m, e.a))(mtype(manifest[A]))
     case e@VecDivide(x,y) => reflectPure(new { override val original = Some(f,e) } with VecDivide(f(x),f(y))(e.n, e.vn, e.m, e.a))(mtype(manifest[A]))
     case e@VecDivideScalar(x,y) => reflectPure(new { override val original = Some(f,e) } with VecDivideScalar(f(x),f(y))(e.n, e.vn, e.m, e.a))(mtype(manifest[A]))
+    case e@VecCross(x,y) => reflectPure(new { override val original = Some(f,e) } with VecCross(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
+    case e@VecNormalize(x) => reflectPure(new { override val original = Some(f,e) } with VecNormalize(f(x))(e.n, e.vn, e.m, e.a))(mtype(manifest[A]))
     case e@VecSum(x) => reflectPure(new { override val original = Some(f,e) } with VecSum(f(x))(e.n, e.vn, e.m, e.a))(mtype(manifest[A]))
     case e@VecAbs(x) => reflectPure(new { override val original = Some(f,e) } with VecAbs(f(x))(e.n, e.vn, e.m, e.a))(mtype(manifest[A]))
     case e@VecMin(x) => reflectPure(new { override val original = Some(f,e) } with VecMin(f(x))(e.n, e.vn, e.m, e.o, e.p))(mtype(manifest[A]))
@@ -378,31 +390,35 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case VecApply(a,i) => Nil
     case VecUpdate(a,i,x) => Nil
+    case VecClone(a) => Nil
     case _ => super.aliasSyms(e)
   }
 
   override def containSyms(e: Any): List[Sym[Any]] = e match {
     case VecApply(a,i) => Nil
     case VecUpdate(a,i,x) => syms(x)
+    case VecClone(a) => Nil
     case _ => super.containSyms(e)
   }
 
   override def extractSyms(e: Any): List[Sym[Any]] = e match {
     case VecApply(a,i) => syms(a)
     case VecUpdate(a,i,x) => Nil
+    case VecClone(a) => Nil
     case _ => super.extractSyms(e)
   }
 
   override def copySyms(e: Any): List[Sym[Any]] = e match {
     case VecApply(a,i) => Nil
     case VecUpdate(a,i,x) => syms(a)
+    case VecClone(a) => syms(a)
     case _ => super.copySyms(e)
   }
   
   /////////////////////
   // object interface
-  def vec_obj_new[N<:IntM:Manifest:MVal, A:Manifest](xs: Exp[A]*) = reflectMutable(VecObjNew[N,A](xs:_*))
-  def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i: Exp[Int]) = reflectMutable(VecObjNNew[N,A](i))
+  def vec_obj_new[N<:IntM:Manifest:MVal, A:Manifest](xs: Exp[A]*) = reflectPure(VecObjNew[N,A](xs:_*))
+  def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i: Exp[Int]) = reflectPure(VecObjNNew[N,A](i))
 
   /////////////////////
   // class interface
@@ -437,6 +453,8 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   def cross[A:Manifest:Arith](a: Exp[Vec[_3,A]], b: Exp[Vec[_3,A]]) = reflectPure(VecCross(a,b))
   def normalize[N<:IntM:Manifest:MVal, A:Manifest:Arith](a: Exp[Vec[N,A]]) = reflectPure(VecNormalize(a))
   def outer[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, A:Manifest:Arith](a: Exp[Vec[R,A]], b: Exp[Vec[C,A]]) = reflectPure(VecOuter(a,b))
+  
+  def vec_mutable_clone[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]]) = reflectMutable(VecClone(x))
 }
 
 trait VecOpsExpOpt extends VecOpsExp {
@@ -464,7 +482,8 @@ trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
       // these are the ops that call through to the underlying real data structure
       case VecApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
       case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
-      case VecSize(x) => emitValDef(sym, quote(x) + "size")
+      case VecSize(x) => emitValDef(sym, quote(x) + ".size")
+      case VecClone(x) => emitValDef(sym, quote(x) + ".cloneL")
       case _ => super.emitNode(sym, rhs)
     }
   }

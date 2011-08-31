@@ -78,8 +78,10 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     deliteGenerator.emitSource(liftedMain, "Application", stream)
     deliteGenerator.finalizeGenerator()
 
-    // println("Global definitions")
-    // println(globalDefs)
+    println("Global definitions")
+    for(globalDef <- globalDefs) {
+      println(globalDef)
+    }
     
     generators foreach { _.finalizeGenerator()}
   }
