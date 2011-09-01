@@ -2,7 +2,7 @@ package ppl.delite.framework.codegen.delite.overrides
 
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{WhileExp}
-import scala.virtualization.lms.common.{ScalaGenEffect, CudaGenEffect, CGenEffect}
+import scala.virtualization.lms.common.{ScalaGenEffect, CudaGenEffect, OpenCLGenEffect, CGenEffect}
 import scala.virtualization.lms.internal.{GenericNestedCodegen}
 import java.io.PrintWriter
 
@@ -11,7 +11,7 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
   this: DeliteOpsExp =>
 
   // there is a lot of duplication between DeliteWhile and While in lms -- do we really need a separate class here?
-  
+
   case class DeliteWhile(cond: Exp[Boolean], body: Exp[Unit]) extends DeliteOpWhileLoop
 
   override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit]) {
@@ -82,6 +82,34 @@ trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
 }
 
 trait DeliteCudaGenWhile extends CudaGenEffect with DeliteBaseGenWhile {
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+      rhs match {
+        case DeliteWhile(c,b) =>
+            // Get free variables list
+            //val freeVars = getFreeVarBlock(c,Nil)
+
+            // emit function for the condition evaluation
+            val (condFunc,freeVars) = emitDevFunc(c, Nil)
+            val argListStr = freeVars.map(quote(_)).mkString(", ")
+
+            // Emit while loop (only the result variable of condition)
+            stream.print(addTab() + "while (")
+            stream.print("%s(%s)".format(condFunc,argListStr))
+            stream.println(") {")
+            tabWidth += 1
+            emitBlock(b)
+            tabWidth -= 1
+            //stream.println(quote(getBlockResult(b)))   //TODO: Is this needed?
+            stream.println(addTab() + "}")
+        case _ => super.emitNode(sym, rhs)
+      }
+    }
+}
+
+
+trait DeliteOpenCLGenWhile extends OpenCLGenEffect with DeliteBaseGenWhile {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
