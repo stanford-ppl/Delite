@@ -87,7 +87,7 @@ object Mesh {
   }
 
   def meshSet[MO<:MeshObj](implicit ms: MeshSet[MO]) = ms
-  def boundarySet[MO<:MeshObj:MeshObjConstruct](name: String) : MeshSet[MO] = {
+  def boundarySet[MO<:MeshObj:MeshObjConstruct](name: String) : BoundarySet[MO] = {
     Mesh.loader.loadBoundarySet(name)
   }
 }

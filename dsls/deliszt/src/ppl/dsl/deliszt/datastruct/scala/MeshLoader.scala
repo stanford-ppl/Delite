@@ -113,10 +113,10 @@ class MeshLoader {
   @native
   def loadMesh(file : String) : Mesh = null
 
-  def loadBoundarySet[MO<:MeshObj:MeshObjConstruct](name : String) : MeshSet[MO] = {  
+  def loadBoundarySet[MO<:MeshObj:MeshObjConstruct](name : String) : BoundarySet[MO] = {  
     _loadBoundarySet(name)
   }
 
   @native
-  def _loadBoundarySet[MO<:MeshObj:MeshObjConstruct](name : String) : MeshSet[MO] = null
+  def _loadBoundarySet[MO<:MeshObj:MeshObjConstruct](name : String) : BoundarySet[MO] = null
 }

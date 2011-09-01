@@ -61,16 +61,14 @@ trait SCR extends DeLisztApplication {
     for(v <- vertices(f)) {
       center += position(v)
     }
-    center = center / size(vertices(f))
-    return center
+    center / size(vertices(f))
   }
   def calcCellCenter(c : Rep[Cell]) : Rep[Vec[_3,Float]] = {
     var center = Vec(0.f,0.f,0.f)
     for(v <- vertices(c)) {
       center += position(v)
     }
-    center = center / size(vertices(c))
-    return center
+    center / size(vertices(c))
   }
   def calcFaceGeom(f : Rep[Face]) : Rep[Unit] = {
     val approxCenter = calcFaceCenter(f)
@@ -78,7 +76,8 @@ trait SCR extends DeLisztApplication {
     for(e <- edgesCCW(f)) {
       val v0 = position(head(e)) - approxCenter
       val v1 = position(tail(e)) - approxCenter
-      normal += cross(v1,v0)
+      // TODO
+      normal = normal + cross(v1,v0)
     }
     normal = normalize(normal)
     var center = Vec(0.f,0.f,0.f)
@@ -88,7 +87,8 @@ trait SCR extends DeLisztApplication {
       val v1 = position(tail(e)) - approxCenter
       val tmp_area = dot(normal,cross(v1,v0))
       area += tmp_area
-      center += ( approxCenter + position(head(e)) + position(tail(e))) * tmp_area
+      // TODO
+      center = center + ( approxCenter + position(head(e)) + position(tail(e))) * tmp_area
     }  
     face_centroid(f) = center / (area * 3.f)
     val farea = area / 2.f
@@ -108,7 +108,8 @@ trait SCR extends DeLisztApplication {
       val v2 = position(tail(e)) - approxCenter
       val tetVol = dot(v0,cross(v1,v2))
       volume += tetVol
-      center += ( approxCenter + face_centroid(f) + position(head(e)) + position(tail(e))) * tetVol
+      // TODO
+      center = center + ( approxCenter + face_centroid(f) + position(head(e)) + position(tail(e))) * tetVol
       }
     }
     cell_centroid(c) = center / (volume * 4.f)
