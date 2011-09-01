@@ -11,7 +11,7 @@ import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.opencl.TargetOpenCL
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteOpenCLGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
-import ppl.dsl.optiml.extern.{OptiMLScalaGenExternal, OptiMLCudaGenExternal}
+import ppl.dsl.optiml.extern.{OptiMLScalaGenExternal, OptiMLCudaGenExternal, OptiMLOpenCLGenExternal}
 import ppl.dsl.optiml.datastruct.{CudaGenDataStruct, OpenCLGenDataStruct}
 import ppl.dsl.optiml.io._
 import ppl.dsl.optiml.vector._
