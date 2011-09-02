@@ -24,7 +24,12 @@ class GPUExecutionThread(deviceNum: Int) extends ExecutionThread {
 
   def load() {
     val sep = System.getProperty("file.separator")
-    System.load(Config.deliteHome + sep + "runtime" + sep + "cuda" + sep + "cudaInit.so")
+    if(Config.useOpenCL) {
+      System.load(Config.deliteHome + sep + "runtime" + sep + "opencl" + sep + "openclInit.dll")
+      System.load(Config.deliteHome + sep + "runtime" + sep + "opencl" + sep + "openclBLAS.dll")
+    }
+    else
+      System.load(Config.deliteHome + sep + "runtime" + sep + "cuda" + sep + "cudaInit.so")
   }
 
 }

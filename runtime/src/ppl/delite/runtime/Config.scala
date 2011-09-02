@@ -15,6 +15,8 @@ object Config {
 
   val numGPUs: Int = System.getProperty("delite.gpus", "0").toInt
 
+  val useOpenCL: Boolean = if (System.getProperty("delite.use.opencl") == null) false else true
+
   val queueSize: Int = System.getProperty("delite.debug.queue.size", "128").toInt
 
   val scheduler: String = System.getProperty("delite.scheduler", "default")
@@ -31,7 +33,10 @@ object Config {
 
   val useFsc: Boolean = if (System.getProperty("delite.usefsc") == null) false else true
 
+  /* Debug options */
   val noRegenerate: Boolean = if (System.getProperty("delite.debug.noregenerate") == null) false else true
+  val gpuBlackList: Array[String] = System.getProperty("delite.debug.gpu.blacklist","").split(",")
+  val profile: Boolean = if (System.getProperty("delite.debug.profile") == null) false else true
 
   /**
    * DEG specific, set after its parsed

@@ -30,7 +30,7 @@ class OP_While(val id: String,
         r.inputList = inputList
         r.mutableInputs = mutableInputs
         r.consumers = consumers
-        r.cudaMetadata = cudaMetadata
+        for (tgt <- Targets.GPU) r.setGPUMetadata(tgt, getGPUMetadata(tgt))
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)
 
