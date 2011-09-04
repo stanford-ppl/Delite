@@ -25,9 +25,9 @@ trait GPUCompile extends CodeCache {
 
     val paths = modules.map(m => Path(sourceCacheHome + m.name).path).toArray
 
-	  for (src <- sourceBuffer)
+	  for (src <- sourceBuffer) {
 		  compile(binCacheHome, sourceCacheHome + "runtime" + File.separator + src._2 + "." + ext, paths)
-
+    }
     sourceBuffer.clear()
   }
 
@@ -63,10 +63,11 @@ trait GPUCompile extends CodeCache {
     }
 
     if (process.exitValue != 0)
-      error(target + " host compilation failed..")
+      error(target + " host compilation failed with exirValue " + process.exitValue)
   }
 
 
+  //TODO: Needs to be different for windows
   protected def linkGeneratedLibs(source: String): List[String] = {
     var linkLibs = List[String]()
     val libs = Directory(Path(source))

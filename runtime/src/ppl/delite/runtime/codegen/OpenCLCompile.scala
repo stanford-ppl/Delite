@@ -5,6 +5,7 @@ import ppl.delite.runtime.Config
 import java.lang.StringBuilder
 import tools.nsc.io.{Directory, Path}
 import java.io.{File, FileReader, FileWriter}
+import ppl.delite.runtime.graph.targets.OS
 
 object OpenCLCompile extends GPUCompile {
 
@@ -23,25 +24,37 @@ object OpenCLCompile extends GPUCompile {
     val sep = File.separator
     //figure out where the jni header files are for this machine
     val javaHome = System.getProperty("java.home")
-    val os = System.getProperty("os.name")
-    val suffix =
-      if (os.contains("Linux")) "linux"
-      else if (os.contains("Windows")) "win32"
-      //else if (os.contains("Mac")) "??"
-      else error("OS " + os + " not currently supported with OpenCL")
 
     val deliteHome = Config.deliteHome
+    val deliteLibs = Config.deliteBuildHome + sep + "libraries"
 
     println("Compiling OpenCL...")
 
+    //TODO: How to set the OpenCL include path in general?
+     assert(Config.openclIncPath != "")
+
     //TODO:: fix the include path issue
-    val cmdString = Array[String]()
+    val cmdString = Array[String](
+      "g++",
+      "-w", //suppress warnings
+      "-I" + Config.openclIncPath,
+      "-I" + javaHome + sep + ".." + sep + "include",
+      "-I" + javaHome + sep + ".." + sep + "include" + sep + OS.jniMD) ++ //jni
+      paths.map("-I"+_) ++
+      Array[String](
+      "-I" + paths.mkString(" -I"),
+      "-I" + deliteHome + sep + "runtime" + sep + "opencl",
+      "-O2", //optimized
+      "-shared", "-fPIC", //dynamic shared library
+      "-lOpenCL",
+      "-L" + deliteLibs) ++ linkGeneratedLibs(deliteLibs) ++ Array[String](
+      "-o", "openclHost.so", //output name
+      source //input name
+    )
     val process = Runtime.getRuntime.exec(cmdString, null, new File(destination))
-    println("Compilation Command : " + cmdString.mkString(" "))
+    //println("Compilation Command : " + cmdString.mkString(" "))
 
     process.waitFor //wait for compilation to complete
-    println("OpenCL compilation finished.")
-
     checkError(process)
   }
 
@@ -52,7 +65,7 @@ object OpenCLCompile extends GPUCompile {
     val kernelWriter = new FileWriter(binCacheHome + "clKernels.cl")
 
     //TODO: How to figure out whether target supports double precision? Maybe by calling device properties API
-    //kernelStr.append("#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n")
+    kernelStr.append("#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n")
     kernelStr.append("#pragma OPENCL EXTENSION cl_khr_byte_addressable_store: enable\n")
     kernelStr.append("__kernel void dummy_kernel(__global float *dummy, int size) {\n")
     kernelStr.append("int i = get_global_id(0);\n")

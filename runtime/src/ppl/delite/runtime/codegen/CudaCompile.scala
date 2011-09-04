@@ -4,6 +4,7 @@ import collection.mutable.ArrayBuffer
 import java.io.File
 import ppl.delite.runtime.Config
 import tools.nsc.io.{Directory, Path}
+import ppl.delite.runtime.graph.targets.OS
 
 /**
  * Author: Kevin J. Brown
@@ -26,31 +27,26 @@ object CudaCompile extends GPUCompile {
     val sep = File.separator
     //figure out where the jni header files are for this machine
     val javaHome = System.getProperty("java.home")
-    val os = System.getProperty("os.name")
-    val suffix =
-      if (os.contains("Linux")) "linux"
-      else if (os.contains("Windows")) "win32"
-      //else if (os.contains("Mac")) "??"
-      else error("OS " + os + " not currently supported with CUDA")
 
     val deliteHome = Config.deliteHome
     val deliteLibs = Config.deliteBuildHome + sep + "libraries"
 
-    val process = Runtime.getRuntime.exec(Array[String](
+    val cmdString = Array[String](
       "nvcc",
       "-w", //suppress warnings
-      "-I" + javaHome + sep + ".." + sep + "include" + "," + javaHome + sep + ".." + sep + "include" + sep + suffix, //jni
+      "-I" + javaHome + sep + ".." + sep + "include" + "," + javaHome + sep + ".." + sep + "include" + sep + OS.jniMD, //jni
       "-I" + paths.mkString(","),
       "-I" + deliteHome + sep + "runtime" + sep + "cuda",
       "-O2", //optimized
       "-arch", "compute_20",
       "-code", "sm_20",
       "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
-      "-L" + deliteLibs)
-      ++ linkGeneratedLibs(deliteLibs) ++ Array[String](
+      "-L" + deliteLibs) ++ linkGeneratedLibs(deliteLibs) ++ Array[String](
       "-o", "cudaHost.so", //output name
       source //input name
-      ), null, new File(destination))
+      )
+    //println("cmd is " + cmdString.mkString(","))
+    val process = Runtime.getRuntime.exec(cmdString, null, new File(destination))
 
     process.waitFor //wait for compilation to complete
     checkError(process)

@@ -1,5 +1,7 @@
 package ppl.delite.runtime
 
+import graph.targets.OS
+
 /**
  * Author: Kevin J. Brown
  * Date: Oct 11, 2010
@@ -17,13 +19,9 @@ object Config {
 
   val useOpenCL: Boolean = if (System.getProperty("delite.use.opencl") == null) false else true
 
-  val queueSize: Int = System.getProperty("delite.debug.queue.size", "128").toInt
-
   val scheduler: String = System.getProperty("delite.scheduler", "default")
 
   val executor: String = System.getProperty("delite.executor", "default")
-
-  val printSources: Boolean = if (System.getProperty("delite.debug.print.sources") == null) false else true
 
   val numRuns: Int = System.getProperty("delite.runs", "1").toInt
 
@@ -34,9 +32,14 @@ object Config {
   val useFsc: Boolean = if (System.getProperty("delite.usefsc") == null) false else true
 
   /* Debug options */
+  val queueSize: Int = System.getProperty("delite.debug.queue.size", "128").toInt
   val noRegenerate: Boolean = if (System.getProperty("delite.debug.noregenerate") == null) false else true
   val gpuBlackList: Array[String] = System.getProperty("delite.debug.gpu.blacklist","").split(",")
   val profile: Boolean = if (System.getProperty("delite.debug.profile") == null) false else true
+  val printSources: Boolean = if (System.getProperty("delite.debug.print.sources") == null) false else true
+
+  /* OpenCL lib path */
+  val openclIncPath: String = System.getProperty("delite.opencl.incpath") //TODO: Where to move this?
 
   /**
    * DEG specific, set after its parsed

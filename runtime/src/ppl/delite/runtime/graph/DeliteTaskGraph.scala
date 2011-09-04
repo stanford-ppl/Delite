@@ -464,7 +464,7 @@ object DeliteTaskGraph {
     }
 
     //output allocation
-    for (out <- getFieldList(metadataMap, "gpuOutput").reverse) {
+    for (out <- getFieldList(metadataMap, "gpuOutputs").reverse) {
       val outputMap = out.asInstanceOf[Map[Any,Any]]
       val output = metadata.newOutput(outputMap.keys.head)
       val outList = outputMap.values.head.asInstanceOf[List[Any]]

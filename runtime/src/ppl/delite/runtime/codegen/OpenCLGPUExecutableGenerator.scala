@@ -140,8 +140,8 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("clFinish(command_queue);\n")
 
     // BLAS init
-    out.append("clblasInit(context,device_id);\n")
-    out.append("clblasSetQueue(command_queue);\n")
+    //out.append("clblasInit(context,device_id);\n")
+    //out.append("clblasSetQueue(command_queue);\n")
   }
 
 

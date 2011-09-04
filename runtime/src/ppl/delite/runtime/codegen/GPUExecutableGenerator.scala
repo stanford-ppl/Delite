@@ -3,8 +3,8 @@ package ppl.delite.runtime.codegen
 import java.util.ArrayDeque
 import ppl.delite.runtime.graph.ops._
 import collection.mutable.ArrayBuffer
-import ppl.delite.runtime.graph.targets.{OPData, Targets}
 import java.lang.annotation.Target
+import ppl.delite.runtime.graph.targets.{OS, OPData, Targets}
 
 /**
  * Author: Kevin J. Brown
@@ -186,14 +186,18 @@ class GPUScalaExecutableGenerator(target: Targets.Value) extends ExecutableGener
 
     //link the native code upon object creation
     if(target == Targets.Cuda) {
-      out.append("System.load(\"")
+      out.append("System.load(\"\"\"")
       out.append(CudaCompile.binCacheHome)
-      out.append("cudaHost.so\")\n")
+      out.append("cudaHost.")
+      out.append(OS.libExt)
+      out.append("\"\"\")\n")
     }
     else if (target == Targets.OpenCL) {
       out.append("System.load(\"\"\"")
       out.append(OpenCLCompile.binCacheHome)
-      out.append("openclHost.dll\"\"\")\n")
+      out.append("openclHost.")
+      out.append(OS.libExt)
+      out.append("\"\"\")\n")
     }
 
     //the sync methods/objects

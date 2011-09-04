@@ -130,7 +130,7 @@ trait StaticScheduler {
   protected def scheduleOnGPU(op:DeliteOP) = {
     if (Config.gpuBlackList.contains(op.id))
       false
-    else if (!op.supportsTarget(Targets.OpenCL) && !op.supportsTarget(Targets.OpenCL))
+    else if (!op.supportsTarget(Targets.Cuda) && !op.supportsTarget(Targets.OpenCL))
       false
     else
       true
