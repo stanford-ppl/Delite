@@ -74,7 +74,7 @@ trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with Cu
   with CudaGenEqual with CudaGenIfThenElse with CudaGenVariables with CudaGenWhile with CudaGenFunctions
   with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
   with CudaGenPrimitiveOps with CudaGenMiscOps
-  with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps with CudaGenSetOps
+  with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps with CudaGenSetOps with CudaGenObjectOps
   with CudaGenSynchronizedArrayBufferOps with CudaGenHashMapOps with CudaGenIterableOps
   { val IR: OptiMLScalaOpsPkgExp  }
 
@@ -82,14 +82,14 @@ trait OptiMLOpenCLCodeGenPkg extends OpenCLGenDSLOps with OpenCLGenImplicitOps w
   with OpenCLGenEqual with OpenCLGenIfThenElse with OpenCLGenVariables with OpenCLGenWhile with OpenCLGenFunctions
   with OpenCLGenStringOps with OpenCLGenRangeOps with OpenCLGenIOOps with OpenCLGenArrayOps with OpenCLGenBooleanOps
   with OpenCLGenPrimitiveOps with OpenCLGenMiscOps with OpenCLGenTupleOps
-  with OpenCLGenListOps with OpenCLGenSeqOps with OpenCLGenMathOps with OpenCLGenCastingOps with OpenCLGenSetOps
+  with OpenCLGenListOps with OpenCLGenSeqOps with OpenCLGenMathOps with OpenCLGenCastingOps with OpenCLGenSetOps with OpenCLGenObjectOps
   with OpenCLGenSynchronizedArrayBufferOps with OpenCLGenHashMapOps with OpenCLGenIterableOps
   { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
   with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
   with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
-  with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps
+  with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps with CGenObjectOps
   with CGenSynchronizedArrayBufferOps with CGenHashMapOps with CGenIterableOps
   { val IR: OptiMLScalaOpsPkgExp  }
 
@@ -315,6 +315,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg with
       case "ppl.dsl.optiml.datastruct.scala.Labels[Double]" => "Labels<double>"
       case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => "Labels<bool>"
       case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => "TrainingSet<double,double>"
+      case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Int]" => "TrainingSet<double,int>"
       case _ => super.remap(m)
     }
   }
@@ -338,6 +339,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg with
     case "ppl.dsl.optiml.datastruct.scala.Labels[Double]" => true
     case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => true
     case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => true
+    case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Int]" => true
     case _ => super.isObjectType(m)
   }
 
@@ -348,6 +350,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg with
     case "RangeVector" => rangeVectorCopyInputHtoD(sym)
     case "IndexVector" => indexVectorCopyInputHtoD(sym)
     case "TrainingSet<double,double>" => trainingSetCopyInputHtoD(sym)
+    case "TrainingSet<double,int>" => trainingSetCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
@@ -364,7 +367,19 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg with
     case "RangeVector" => rangeVectorCopyMutableInputDtoH(sym)
     case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
     case "TrainingSet<double,double>" => trainingSetCopyMutableInputDtoH(sym)
+    case "TrainingSet<double,int>" => trainingSetCopyMutableInputDtoH(sym)
     case _ => super.copyMutableInputDtoH(sym)
+  }
+
+  override def cloneObject(sym: Sym[Any], src: Sym[Any]) : String = remap(sym.Type) match {
+    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => matrixClone(sym, src)
+    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorClone(sym, src)
+    //case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => labelsCopyMutableInputDtoH(sym)
+    //case "RangeVector" => rangeVectorCopyMutableInputDtoH(sym)
+    //case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
+    //case "TrainingSet<double,double>" => trainingSetCopyMutableInputDtoH(sym)
+    //case "TrainingSet<double,int>" => trainingSetCopyMutableInputDtoH(sym)
+    case _ => super.cloneObject(sym,src)
   }
 
   /*

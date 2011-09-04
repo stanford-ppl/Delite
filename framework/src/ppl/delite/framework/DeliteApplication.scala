@@ -24,7 +24,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   lazy val openclTarget = new TargetOpenCL{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
   // TODO: this should be handled via command line options
-  lazy val targets = List[DeliteApplicationTarget](scalaTarget ,openclTarget /*, cudaTarget, cTarget*/)
+  lazy val targets = List[DeliteApplicationTarget](scalaTarget, cudaTarget, openclTarget/* , cudaTarget, cTarget*/)
   val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
 
   // TODO: refactor, this is from ScalaCompile trait

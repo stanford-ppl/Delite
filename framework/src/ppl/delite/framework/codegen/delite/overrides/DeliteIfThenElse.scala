@@ -207,6 +207,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
           */
           val objRetType = (!isVoidType(sym.Type)) && (!isPrimitiveType(sym.Type))
           objRetType match {
+            /*
             case true =>   //TODO: Remove this case
               //Least check
               (kernelSymbol==sym) match {
@@ -236,6 +237,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
               stream.println(addTab()+"}")
               saveLocalVar(sym,nextDimStr,outLocalVar)
 			        allocReference(sym,getBlockResult(a).asInstanceOf[Sym[_]])
+              */
             case _ =>
               isVoidType(sym.Type) match {
                 case true =>
