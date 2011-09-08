@@ -57,7 +57,8 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("#include <CL/cl.h>\n") //OpenCL API
     out.append("#include \"DeliteOpenCL.cpp\"\n") //Delite-OpenCL interface for DSL
     out.append("#include \"helperFuncs.h\"\n") //imports all dsl kernels and helper functions
-    out.append("#include \"openclBLAS.h\"\n")
+    out.append("#include \"clblas.h\"\n")
+    out.append("#include \"dsl.h\"\n")
     out.append("#define MAX_SRC_SIZE 1048576\n")
   }
 
@@ -140,8 +141,8 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("clFinish(command_queue);\n")
 
     // BLAS init
-    //out.append("clblasInit(context,device_id);\n")
-    //out.append("clblasSetQueue(command_queue);\n")
+    out.append("clblasInit(context,device_id);\n")
+    out.append("clblasSetQueue(command_queue);\n")
   }
 
 
@@ -206,7 +207,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
       //write the call
       if (op.isInstanceOf[OP_Nested])
         writeFunctionCall(op, out)
-      else if (op.getGPUMetadata(target).libCall != null)
+      else if (op.isInstanceOf[OP_External])
         writeLibraryCall(op, out)
       else
         writeKernelCall(op, out)
@@ -346,7 +347,8 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
   }
 
   protected def writeLibraryCall(op: DeliteOP, out: StringBuilder) {
-    out.append(op.getGPUMetadata(target).libCall)
+    if (op.task == null) return //dummy op
+    out.append(op.task)
     out.append('(')
     assert(op.getOutputs.size == 1) //TODO: what does libCall support?
     for (name <- op.getOutputs) {

@@ -1,0 +1,9 @@
+<DeliteExternalLib>
+<compiler>/usr/bin/g++</compiler>
+<include>
+  <prefix> -I </prefix>
+  <path> /usr/local/cuda/include </path>
+  <path> /home/hyouklee/delite/Delite/runtime/opencl/blas </path>
+</include>
+</DeliteExternalLib>
+

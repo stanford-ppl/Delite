@@ -1,4 +1,4 @@
-#include "openclBLAS.h"
+#include "clblas.h"
 
 //#define DEBUG
 

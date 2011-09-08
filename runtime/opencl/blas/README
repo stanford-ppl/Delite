@@ -1,0 +1,4 @@
+Since BLAS for OpenCL is not installed in the default location,
+after building this library, you need to include this path to dynamic library search paths.
+Linux: $LD_LIBRARY_PATH or /etc/ld.so.conf.d/ 
+Windows: %PATH% 

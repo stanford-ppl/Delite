@@ -1809,8 +1809,8 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
 
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
-      if (!deliteKernel && !enforcePar) emitInlineAbstractFatLoop(op, symList)
-      else if(isOuterSerial(op,symList)) emitKernelAbstractFatLoop2(op,symList)
+      if (!deliteKernel) emitInlineAbstractFatLoop(op, symList)
+      //else if(isOuterSerial(op,symList)) emitKernelAbstractFatLoop2(op,symList)
       else emitKernelAbstractFatLoop(op, symList)
     case _ => super.emitFatNode(symList, rhs)
   }
@@ -2046,7 +2046,6 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
         }
         else {
           emitAllocFunc(sym,elem.zero)
-          enforcePar = true
           stream.println("for(int i=0; i<%s; i++) {".format(quote(op.v)))
           emitMultiLoopFuncs(op,symList)
           //emitFatBlock(List(elem.rFunc))

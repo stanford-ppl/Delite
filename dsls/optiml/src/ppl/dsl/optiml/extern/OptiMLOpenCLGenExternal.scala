@@ -20,14 +20,14 @@ trait OptiMLOpenCLGenExternal extends OpenCLGenExternalBase with OpenCLGenDataSt
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case e@MatrixTimesVectorBLAS(x,y) =>
-      val lib = cuBLAS
+      val lib = clBLAS
       val args = scala.List("'t'", "%1$s.numCols", "%1$s.numRows", "%1$s.data", "%2$s.data", "%3$s.data")
                  .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
       emitMethodCall(e, lib, args)
       emitVectorAlloc(sym,"%s.numRows".format(quote(getBlockResult(x))),"false",false)
 
     case e@MatrixMultiplyBLAS(x,y) =>
-      val lib = cuBLAS
+      val lib = clBLAS
       val args = scala.List("'n'", "'n'", "%2$s.numCols", "%1$s.numRows", "%2$s.numRows", "1.0", "%2$s.data", "%2$s.numCols", "%1$s.data", "%1$s.numCols", "0.0", "%3$s.data", "%3$s.numCols")
                  .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
       emitMethodCall(e, lib, args)
@@ -38,32 +38,28 @@ trait OptiMLOpenCLGenExternal extends OpenCLGenExternalBase with OpenCLGenDataSt
     
   override def emitExternalLib(rhs: Def[Any]): Unit = rhs match {
     case e@MatrixTimesVectorBLAS(x,y) =>
-      val lib = cuBLAS
+      val lib = clBLAS
       val tp = e.mV.typeArguments.head.toString.toLowerCase
       val func = tp match {
-        case "double" => "cublasDgemv"
-        case "float" => "cublasSgemv"
+        case "double" => "clblasDgemv"
+        case "float" => "clblasSgemv"
       }
-      emitInterfaceAndMethod(lib, e.funcName, scala.List("char transpose", "int mat_col", "int mat_row", "%1$s* mat1".format(tp), "%1$s* vec2".format(tp), "%1$s* vec3".format(tp)),
+      emitInterfaceAndMethod(lib, e.funcName, scala.List("char transpose", "int mat_col", "int mat_row", "cl_mem mat1", "cl_mem vec2", "cl_mem vec3"),
 """
 {
-  // HJ TODO: use a real stream
-  //cublasSetKernelStream(stream);
   %1$s(transpose, mat_col, mat_row, 1.0, mat1, mat_col, vec2, 1, 0.0, vec3, 1);
 }""".format(func))
 
    case e@MatrixMultiplyBLAS(x,y) =>
-      val lib = cuBLAS
+      val lib = clBLAS
       val tp = e.mM.typeArguments.head.toString.toLowerCase
       val func = tp match {
-        case "double" => "cublasDgemm"
-        case "float" => "cublasSgemm"
+        case "double" => "clblasDgemm"
+        case "float" => "clblasSgemm"
       }
-      emitInterfaceAndMethod(lib, e.funcName, scala.List("char n1", "char n2", "int mat2_col", "int mat1_row", "int mat2_row", "double a", "%1$s* mat2".format(tp), "int mat2_col_b", "%1$s* mat1".format(tp), "int mat1_col", "double b", "%1$s* mat3".format(tp), "int mat3_col"),
+      emitInterfaceAndMethod(lib, e.funcName, scala.List("char n1", "char n2", "int mat2_col", "int mat1_row", "int mat2_row", tp+" a", "cl_mem mat2", "int mat2_col_b", "cl_mem mat1", "int mat1_col", tp+" b", "cl_mem mat3", "int mat3_col"),
 """
 {
-  // HJ TODO: use a real stream
-  //cublasSetKernelStream(stream);
   %1$s(n1, n2, mat2_col, mat1_row, mat2_row, a, mat2, mat2_col_b, mat1, mat1_col, b, mat3, mat3_col);
 }""".format(func)) 
 

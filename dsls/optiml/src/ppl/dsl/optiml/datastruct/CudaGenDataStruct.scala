@@ -22,6 +22,52 @@ trait CudaGenDataStruct extends CudaCodegen {
   val MatrixColImplCls = "jclass MatrixColImplCls = env->FindClass(\"generated/scala/MatrixColImpl\");\n"
   val TrainingSetImplCls = "jclass TrainingSetImplCls = env->FindClass(\"generated/scala/TrainingSetImpl\");\n"
 
+  def vectorCopyInputHtoD(sym: Sym[Any]): String = {
+    val out = new StringBuilder
+    val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
+    val typeStr = remap(typeArg)
+    val numBytesStr = "%s->length * sizeof(%s)".format(quote(sym),remap(typeArg))
+
+    // Get class, method ID
+    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
+    out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"length\",\"()I\");\n")
+    out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"isRow\",\"()Z\");\n")
+
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
+    out.append("\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
+    out.append("\t\t%s *hostPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+    out.append("\t\t%s *devPtr;\n".format(typeStr))
+    out.append("\t\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
+    out.append("\t%s->data = devPtr;\n".format(quote(sym)))
+
+    out.append(RangeVectorImplCls)
+
+      // If RangeVector
+      out.append("\tif(env->IsInstanceOf(obj,RangeVectorImplCls)) {\n")
+      out.append("\t\tint start = env->CallIntMethod(obj,env->GetMethodID(cls,\"start\",\"()I\"));\n")
+      out.append("\t\tint end = env->CallIntMethod(obj,env->GetMethodID(cls,\"end\",\"()I\"));\n")
+      out.append("\t\tint stride = env->CallIntMethod(obj,env->GetMethodID(cls,\"stride\",\"()I\"));\n")
+      out.append("\t\tfor(int i=0; i<%s->length; i++) { hostPtr[i] = start + i * stride; }\n".format(quote(sym)))
+      out.append("\t\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
+      out.append("\t}\n")
+
+      out.append("\telse {\n")
+      out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
+      out.append("\t\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
+      out.append("\t\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
+      out.append("\t\tmemcpy(%s, %s, %s);\n".format("hostPtr","dataPtr",numBytesStr))
+      out.append("\t\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
+      out.append("\t\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
+      out.append("\t\tenv->DeleteLocalRef(data);\n")
+      out.append("\t}\n")
+
+      out.append("\tenv->DeleteLocalRef(cls);\n")
+      out.append("\treturn %s;\n".format(quote(sym)))
+      out.toString
+    }
+
   def matrixCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeStr = remap(sym.Type.typeArguments(0))
@@ -62,51 +108,6 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   }
 
-  def vectorCopyInputHtoD(sym: Sym[Any]): String = {
-    val out = new StringBuilder
-    val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
-    val typeStr = remap(typeArg)
-    val numBytesStr = "%s->length * sizeof(%s)".format(quote(sym),remap(typeArg))
-
-    // Get class, method ID
-    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"length\",\"()I\");\n")
-    out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"isRow\",\"()Z\");\n")
-
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
-    out.append("\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
-    out.append("\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
-   	out.append("\t\t%s *hostPtr;\n".format(typeStr))
-    out.append("\t\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
-    out.append("\t\t%s *devPtr;\n".format(typeStr))
-    out.append("\t\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
-	  out.append("\t%s->data = devPtr;\n".format(quote(sym)))
-
-    out.append(RangeVectorImplCls)
-
-    // If this is RangeVector
-    out.append("\tif(env->IsInstanceOf(obj,RangeVectorImplCls)) {\n")
-    out.append("\t\tint start = env->CallIntMethod(obj,env->GetMethodID(cls,\"start\",\"()I\"));\n")
-    out.append("\t\tint end = env->CallIntMethod(obj,env->GetMethodID(cls,\"end\",\"()I\"));\n")
-    out.append("\t\tint stride = env->CallIntMethod(obj,env->GetMethodID(cls,\"stride\",\"()I\"));\n")
-    out.append("\t\tfor(int i=0; i<%s->length; i++) { hostPtr[i] = start + i * stride; }\n".format(quote(sym)))
-    out.append("\t\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
-    out.append("\t}\n")
-
-    out.append("\telse {\n")
-    out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg),JNITypeDescriptor(typeArg)))
-    out.append("\t\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
-    out.append("\t\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
-    out.append("\t\tmemcpy(%s, %s, %s);\n".format("hostPtr","dataPtr",numBytesStr))
-    out.append("\t\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
-    out.append("\t\tenv->ReleasePrimitiveArrayCritical(data, dataPtr, 0);\n")
-    out.append("\t\tenv->DeleteLocalRef(data);\n")
-    out.append("\t}\n")
-
-    out.append("\tenv->DeleteLocalRef(cls);\n")
-    out.append("\treturn %s;\n".format(quote(sym)))
-    out.toString
-  }
 
   def rangeVectorCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
@@ -494,7 +495,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     else {
       out.append("\t%s->numRows = %s;\n".format(quote(newSym),numRows))
       out.append("\t%s->numCols = %s;\n".format(quote(newSym),numCols))
-      out.append("\t%s->data = %sr;\n".format(quote(newSym),data))
+      out.append("\t%s->data = %s;\n".format(quote(newSym),data))
     }
     out.append("\treturn %s;\n".format(quote(newSym)))
 

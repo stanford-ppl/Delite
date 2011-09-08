@@ -10,10 +10,6 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
   val IR: Expressions
   import IR._
 
-  /**************************************************
-    * Copy Input from Host to Device
-    *************************************************/
-
   val VectorImplCls = "jclass VectorImplCls = env->FindClass(\"generated/scala/VectorImpl\");\n"
   val VectorViewImplCls = "jclass VectorViewImplCls = env->FindClass(\"generated/scala/VectorViewImpl\");\n"
   val RangeVectorImplCls = "jclass RangeVectorImplCls = env->FindClass(\"generated/scala/RangeVectorImpl\");\n"
@@ -25,12 +21,6 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
   val MatrixRowImplCls = "jclass MatrixRowImplCls = env->FindClass(\"generated/scala/MatrixRowImpl\");\n"
   val MatrixColImplCls = "jclass MatrixColImplCls = env->FindClass(\"generated/scala/MatrixColImpl\");\n"
   val TrainingSetImplCls = "jclass TrainingSetImplCls = env->FindClass(\"generated/scala/TrainingSetImpl\");\n"
-
-  /*
-  def checkClassType() {
-    val is
-  }
-  */
 
   def vectorCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
@@ -48,12 +38,7 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
     out.append("\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
     out.append("\t%s->data = DeliteOpenCLMalloc(%s);\n".format(quote(sym),numBytesStr))
 
-    //out.append(VectorImplCls)
-    //out.append(VectorViewImplCls)
     out.append(RangeVectorImplCls)
-    //out.append(ZeroVectorImplCls)
-    //out.append(EmptyVectorImplCls)
-    //out.append(LabelsImplCls)
 
     // If RangeVector
     out.append("\tif(env->IsInstanceOf(obj,RangeVectorImplCls)) {\n")
@@ -355,26 +340,19 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
     //TODO: Check if both symbols are Vectors
 
     //Do not add the same temporary if it already exists
-    if(gpuTemps.contains(newSym)) return
-    
-      helperFuncIdx += 1
+    if(getKernelTemps contains newSym) return
+
+    helperFuncIdx += 1
 
     val out = new StringBuilder
-    val inputs1 = (gpuOutputs ::: gpuInputs ::: gpuTemps) filterNot (_==newSym)
-    val inputs2 = (gpuInputs ::: gpuTemps) filterNot (_==newSym)
-    val paramStrOut = inputs1.map(ele=>
-      if(isObjectType(ele.Type)) remap(ele.Type) + " *" + quote(ele)
-      else remap(ele.Type) + " " + quote(ele)
-    ).mkString(",")
-    val argStrOut = inputs1.map("\""+quote(_)+"\"").mkString(",")
-    val paramStrTemp = inputs2.map(ele=>
-      if(isObjectType(ele.Type)) remap(ele.Type) + " *" + quote(ele)
-      else remap(ele.Type) + " " + quote(ele)
-    ).mkString(",")
-    val argStrTemp = inputs2.map("\""+quote(_)+"\"").mkString(",")
+
+    val args = (getKernelOutputs ::: getKernelInputs ::: getKernelTemps) filterNot (_==newSym)
 
     out.append("\t%s *%s = new %s();\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type)))
-    
+
+    //val mult = if(currDim==2) xDimList(0) else "1"
+    //if(currDim==2) multDimInputs += newSym
+
     // Check if new allocation is needed
     if(data==null) {
       out.append("\t%s->data = DeliteOpenCLMalloc(%s*sizeof(%s));\n".format(quote(newSym),length,remap(newSym.Type.typeArguments(0))))
@@ -389,27 +367,26 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
     }
     out.append("\treturn %s;\n".format(quote(newSym)))
 
-    val allocStr = emitAllocOutput(newSym, out.toString, inputs1)
+    val allocStr = emitAllocOutput(newSym, null, out.toString, args)
     helperFuncString.append(allocStr)
 
     val copyStr = emitCopyOutputDtoH(newSym, null, copyOutputDtoH(newSym))
     helperFuncString.append(copyStr)
-    
-    gpuOutputs = gpuOutputs :+ newSym
   }
 
   def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null):Unit = {
-    //TODO: Check if both symbols are Vectors
+    //TODO: Check if both symbols are Matrices
 
     //Do not add the same temporary if it already exists
-    if(gpuTemps.contains(newSym)) return
-    
+    if(getKernelTemps contains newSym) return
+
     helperFuncIdx += 1
 
     val out = new StringBuilder
-    val inputs = (gpuOutputs ::: gpuInputs ::: gpuTemps) filterNot (_==newSym)
+    val args = (getKernelOutputs ::: getKernelInputs ::: getKernelTemps) filterNot (_==newSym)
+
     out.append("\t%s *%s = new %s();\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type)))
-    
+
     // Check if new allocation is needed
     if(data==null) {
       out.append("\t%s->data = DeliteOpenCLMalloc(%s*%s*sizeof(%s));\n".format(quote(newSym),numRows,numCols,remap(newSym.Type.typeArguments(0))))
@@ -424,13 +401,12 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
     }
     out.append("\treturn %s;\n".format(quote(newSym)))
 
-    val allocStr = emitAllocOutput(newSym, out.toString, inputs)
+    val allocStr = emitAllocOutput(newSym, null, out.toString, args)
     helperFuncString.append(allocStr)
 
-    val copyStr = emitCopyOutputDtoH(newSym, null, copyOutputDtoH(newSym)) 
+    val copyStr = emitCopyOutputDtoH(newSym, null, copyOutputDtoH(newSym))
     helperFuncString.append(copyStr)
-    
-    gpuOutputs = gpuOutputs :+ newSym
+
   }
 
 }

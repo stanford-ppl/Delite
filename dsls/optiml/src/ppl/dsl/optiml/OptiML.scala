@@ -554,6 +554,7 @@ trait OptiMLCodeGenOpenCL extends OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg 
     out.append("#include \"IndexVectorImpl.h\"\n")
     out.append("#include \"RangeVectorImpl.h\"\n")
     out.append("#include \"TrainingSetImpl.h\"\n")
+    out.append("#include \"library.h\"\n") // external library
     out.toString
   }
 }

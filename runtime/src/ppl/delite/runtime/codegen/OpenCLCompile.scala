@@ -31,13 +31,14 @@ object OpenCLCompile extends GPUCompile {
     println("Compiling OpenCL...")
 
     //TODO: How to set the OpenCL include path in general?
-     assert(Config.openclIncPath != "")
+     assert(Config.openclIncPath != null,"OpenCL include path is not specified!")
 
     //TODO:: fix the include path issue
     val cmdString = Array[String](
       "g++",
       "-w", //suppress warnings
       "-I" + Config.openclIncPath,
+      "-I/home/hyouklee/delite/Delite/runtime/opencl/blas",
       "-I" + javaHome + sep + ".." + sep + "include",
       "-I" + javaHome + sep + ".." + sep + "include" + sep + OS.jniMD) ++ //jni
       paths.map("-I"+_) ++

@@ -28,7 +28,6 @@ class GPUExecutionThread(deviceNum: Int) extends ExecutionThread {
 
     if(Config.useOpenCL) {
       System.load(Config.deliteHome + sep + "runtime" + sep + "opencl" + sep + "openclInit." + OS.libExt)
-      System.load(Config.deliteHome + sep + "runtime" + sep + "opencl" + sep + "openclBLAS." + OS.libExt)
     }
     else
       System.load(Config.deliteHome + sep + "runtime" + sep + "cuda" + sep + "cudaInit." + OS.libExt)
