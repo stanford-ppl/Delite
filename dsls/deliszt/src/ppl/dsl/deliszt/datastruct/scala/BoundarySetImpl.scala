@@ -21,7 +21,8 @@ class BoundarySetImpl[MO<:MeshObj](implicit moc: MeshObjConstruct[MO]) extends B
     }
     MeshObjImpl(data(i))(moc)
   }
-  def size = {
+  
+  override def size = {
     if(data == null) {
       throw new RuntimeException("Boundary Set not finalized")
     }

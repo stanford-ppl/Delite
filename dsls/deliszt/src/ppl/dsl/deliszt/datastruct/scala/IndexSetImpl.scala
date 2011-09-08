@@ -28,7 +28,7 @@ object CWIndexSetImpl {
 
 class IndexSetImpl[MO <: MeshObj](data : Array[Int], start: Int, end : Int)(implicit moc: MeshObjConstruct[MO]) extends MeshSet[MO] {
   def apply(i : Int) : MO = MeshObjImpl[MO](data(start + i))(moc)
-  def size = end - start
+  override def size = end - start
 }
 
 // Direction bit should get reversed for CW

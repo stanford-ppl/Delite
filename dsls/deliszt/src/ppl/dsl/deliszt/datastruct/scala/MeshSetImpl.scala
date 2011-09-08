@@ -12,7 +12,7 @@ object MeshSetImpl {
   def apply[MO<:MeshObj:MeshObjConstruct](size: Int) = new MeshSetImpl[MO](size)
 }
 
-class MeshSetImpl[MO<:MeshObj:MeshObjConstruct](val size : Int) extends MeshSet[MO] {
+class MeshSetImpl[MO<:MeshObj:MeshObjConstruct](override val size : Int) extends MeshSet[MO] {
   def apply(i : Int) = {
     //TODO:bounds check here?
     MeshObjImpl[MO](i)
@@ -20,7 +20,7 @@ class MeshSetImpl[MO<:MeshObj:MeshObjConstruct](val size : Int) extends MeshSet[
 }
 
 // No zero cell
-class CellSetImpl(val size : Int) extends MeshSet[Cell] {
+class CellSetImpl(override val size : Int) extends MeshSet[Cell] {
   def apply(i : Int) = {
     new CellImpl(i+1)
   }

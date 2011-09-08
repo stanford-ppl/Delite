@@ -18,11 +18,12 @@ object MeshSet {
   implicit def vertexSet : MeshSet[Vertex] = new MeshSetImpl(Mesh.mesh.nvertices)
 }
 
-trait MeshSet[MO <: MeshObj] extends DeliteCollection[MO] {
+trait MeshSet[MO <: MeshObj] extends DeliteCollection[MO] with Traversable[MO] {
   def apply(i : Int) : MO
-  def size : Int
 
   def dcApply(idx: Int) = apply(idx)
   def dcUpdate(idx: Int, x: MO) = {} // Read only, bitches
   def dcSize : Int = size
+  
+  def foreach[U](f: MO => U) = for(i <- 0 until size) f(this(i))
 }
