@@ -14,7 +14,7 @@ trait DeliteScalaGenVariables extends ScalaGenEffect {
     var gen = false
     if (symIsResult) {
       rhs match {
-        case NewVar(init) => emitValDef(sym, "generated.scala.Ref(" + quote(getBlockResult(init)) + ")"); gen = true
+        case NewVar(init) => emitValDef(sym, "new generated.scala.Ref(" + quote(getBlockResult(init)) + ")"); gen = true
         case _ => // pass
       }
     }

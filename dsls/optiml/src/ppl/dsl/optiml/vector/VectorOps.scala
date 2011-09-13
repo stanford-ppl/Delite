@@ -722,8 +722,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   def vector_obj_onesf(len: Exp[Int]) = reflectPure(VectorObjectOnesF(len))
   def vector_obj_zeros(len: Exp[Int]) = reflectPure(VectorObjectZeros(len))
   def vector_obj_zerosf(len: Exp[Int]) = reflectPure(VectorObjectZerosF(len))
-  def vector_obj_rand(len: Exp[Int]) = reflectEffect(VectorObjectRand(len))
-  def vector_obj_randf(len: Exp[Int]) = reflectEffect(VectorObjectRandF(len))
+  def vector_obj_rand(len: Exp[Int]) = reflectEffect(VectorObjectRand(len)) // somehow causes recursive schedules -- looks like a lazy eval problem: internal IndexVectorConstruct depends on enclosing VectorObjectRand
+  def vector_obj_randf(len: Exp[Int]) = reflectEffect(VectorObjectRandF(len)) // same here
   def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean]) = reflectPure(VectorObjectRange(start, end, stride, isRow))
   def vector_obj_uniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean]) = reflectPure(VectorObjectUniform(start, step_size, end, isRow))
   def vector_obj_flatten[A:Manifest](pieces: Exp[Vector[Vector[A]]]) = reflectPure(VectorObjectFlatten(pieces))
@@ -959,8 +959,8 @@ trait VectorOpsExpOpt extends VectorOpsExp with DeliteCollectionOpsExp {
     case Def(d@VectorObjectZerosF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     //case Def(d@VectorObjectOnes(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]]) <--- actually a problem in testSumIf!
     //case Def(d@VectorObjectOnesF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
-    case Def(d@VectorObjectRand(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
-    case Def(d@VectorObjectRandF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
+    //case Def(d@VectorObjectRand(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]]) <--- will not match, reflected
+    //case Def(d@VectorObjectRandF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     case _ => super.vector_mutable_clone(x)
   }
 
