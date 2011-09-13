@@ -2,7 +2,7 @@ package ppl.dsl.deliszt
 
 import java.io._
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
+import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
