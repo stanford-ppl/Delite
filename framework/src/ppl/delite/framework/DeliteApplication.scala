@@ -5,6 +5,7 @@ import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
 
+import analaysis.TraversalAnalysis
 import codegen.c.TargetC
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
@@ -32,6 +33,8 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   // generators created by getCodeGenPkg will use the 'current' scope of the deliteGenerator as global scope
   val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
                                                val generators = DeliteApplication.this.generators }
+  
+  lazy val analyses: List[TraversalAnalysis] = List()
                                                
   var args: Rep[Array[String]] = _
   
@@ -67,6 +70,13 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       g.emitDataStructures(baseDir + "datastructures" + File.separator)
       g.initializeGenerator(baseDir + "kernels" + File.separator)
     }
+    
+    // Run any analyses defined
+    val mainBody = liftedMain
+    for(a <- analyses) {
+      a.traverse(mainBody)
+    }
+    reset
 
     if (Config.degFilename.endsWith(".deg")) {
       val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))

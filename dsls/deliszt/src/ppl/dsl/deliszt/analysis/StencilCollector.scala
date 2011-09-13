@@ -9,6 +9,7 @@ import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal._
 
 import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.codegen.analysis.TraversalAnalysis
 
 import ppl.dsl.deliszt.datastruct.scala._
 import ppl.dsl.deliszt._
@@ -44,7 +45,7 @@ class ReadWriteSet {
   val write = MSet[FieldAccess]()
 }
 
-trait DeLisztCodeGenAnalysis extends DeLisztCodeGenScala {
+trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   val IR: DeliteApplication with DeLisztExp
   import IR._
 

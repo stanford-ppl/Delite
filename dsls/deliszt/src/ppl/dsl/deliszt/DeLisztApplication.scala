@@ -1,7 +1,7 @@
 package ppl.dsl.deliszt
 
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.codegen.Target
+import ppl.delite.framework.codegen.analysis.TraversalAnalysis
 
 
 /**
@@ -20,7 +20,7 @@ import ppl.delite.framework.codegen.Target
 trait DeLisztApplicationRunner extends DeLisztApplication with DeliteApplication with DeLisztExp
  
 trait DeLisztApplication extends DeliteApplication with DeLiszt with DeLisztLift with DeLisztLibrary {
-  //lazy val analysisTarget = new TargetDeLizstAnalysis{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  override lazy val analyses = List(new DeLizstAnalysis{val IR: DeliteDelite.this.type = DeliteApplication.this})
 
   override def liftedMain(x: Rep[Array[String]]) = {
     _init(x)
@@ -33,10 +33,4 @@ trait DeLisztApplication extends DeliteApplication with DeLiszt with DeLisztLift
 
 trait DeLisztLibrary {
   this: DeLisztApplication =>
-}
-
-trait TargetDeLisztAnalysis extends Target {
-  import IR._
-
-  val name = "DeLiszt Analysis"
 }
