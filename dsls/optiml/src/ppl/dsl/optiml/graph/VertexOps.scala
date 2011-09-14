@@ -1,7 +1,6 @@
 package ppl.dsl.optiml.graph
 
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala._
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
@@ -9,7 +8,7 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import ppl.dsl.optiml._
 
 trait VertexOps extends DSLType with Variables {
   this: OptiML =>

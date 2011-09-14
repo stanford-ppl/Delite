@@ -1,7 +1,7 @@
 package ppl.dsl.optiml.stream
 
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala.{Vector, Stream, StreamImpl, StreamRow}
+import ppl.dsl.optiml.{Vector, Stream, StreamRow}
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
@@ -61,7 +61,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
 
   case class StreamObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], chunkSize: Exp[Int],
                                          func: Exp[(Int,Int) => A], isPure: Exp[Boolean]) extends Def[Stream[A]] {
-    val mI = manifest[StreamImpl[A]]
+    val mA = manifest[A]
   }
   case class StreamIsPure[A:Manifest](x: Exp[Stream[A]]) extends Def[Boolean]
   case class StreamNumRows[A:Manifest](x: Exp[Stream[A]]) extends Def[Int]
@@ -269,7 +269,7 @@ trait ScalaGenStreamOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case m@StreamObjectNew(numRows, numCols, chunkSize, func, isPure) =>
-      emitValDef(sym, "new " + remap(m.mI) + "(" + quote(numRows) + "," + quote(numCols) + "," + quote(chunkSize) + ","
+      emitValDef(sym, "new generated.scala.StreamImpl[" + remap(m.mA) + "](" + quote(numRows) + "," + quote(numCols) + "," + quote(chunkSize) + ","
                       + quote(func) + "," + quote(isPure) + ")")
     case StreamIsPure(x) => emitValDef(sym, quote(x) + ".isPure")
     case StreamNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")

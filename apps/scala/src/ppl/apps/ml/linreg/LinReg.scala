@@ -9,7 +9,6 @@
 package ppl.apps.ml.linreg
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
 object LinRegRunner extends OptiMLApplicationRunner with LinReg

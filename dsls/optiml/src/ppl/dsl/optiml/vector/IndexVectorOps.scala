@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.datastruct.scala.{IndexVectorSeqImpl, IndexVectorRangeImpl, Vector, IndexVector}
+import ppl.dsl.optiml.{Vector, IndexVector}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
@@ -84,9 +84,9 @@ trait ScalaGenIndexVectorOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case v@IndexVectorRange(start, end) =>
-      emitValDef(sym, "new " + remap(manifest[IndexVectorRangeImpl]) + "(" + quote(start) +  "," + quote(end) + ")")
+      emitValDef(sym, "new generated.scala.IndexVectorRangeImpl(" + quote(start) +  "," + quote(end) + ")")
     case v@IndexVectorObjectNew(len) =>
-      emitValDef(sym, "new " + remap(manifest[IndexVectorSeqImpl]) + "(" + quote(len) + ")")
+      emitValDef(sym, "new generated.scala.IndexVectorSeqImpl(" + quote(len) + ")")
 
     case _ => super.emitNode(sym, rhs)
   }

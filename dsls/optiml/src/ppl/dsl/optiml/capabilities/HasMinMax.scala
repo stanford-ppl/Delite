@@ -1,7 +1,7 @@
 package ppl.dsl.optiml.capabilities
 
 import scala.virtualization.lms.common.{Variables, Base}
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
+import ppl.dsl.optiml.{Vector,Matrix}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 trait HasMinMaxInternal[Rep[X], T] {

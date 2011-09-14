@@ -1,7 +1,7 @@
 package ppl.apps.robotics.gradient
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml.application._
 import ppl.delite.framework.DeliteApplication
 
 object gradientRunner extends OptiMLApplicationRunner with gradient

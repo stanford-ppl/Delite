@@ -11,9 +11,8 @@ package ppl.apps.ml.svm
  * Stanford University
  */
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.{OptiMLApplication, OptiML}
+import ppl.dsl.optiml._
 
 trait SVMModel { this: OptiMLApplication =>
 

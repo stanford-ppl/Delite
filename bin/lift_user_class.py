@@ -49,8 +49,12 @@ def emitApplicationOps(ops_dir):
     l =     "package ppl.dsl.optiml.application\n\n"
     l = l + "trait ApplicationOps extends " + mixify(classes, "", "Ops") + "\n"
     l = l + "trait ApplicationOpsExp extends " + mixify(classes, "", "OpsExp") + "\n"
-    l = l + "trait ScalaGenApplicationOps extends " + mixify(classes, "ScalaGen", "Ops") + " \n" 
+    l = l + "trait ScalaGenApplicationOps extends " + mixify(classes, "ScalaGen", "Ops") + " \n\n" 
     
+    l = l + "// abstract types for internal application data structures\n"
+    for c in classes:
+      l = l + "trait " + c + "\n"
+
     out.append(l)
     fileOut = open (ops_dir + "/ApplicationOps.scala", 'w')
     fileOut.writelines(out)
@@ -89,7 +93,7 @@ def liftClass(impls_dir, fname, ops_dir):
 
     #take care of package and imports
     pckNimp = "package ppl.dsl.optiml.application\n\n\
-import ppl.dsl.optiml.datastruct.scala._\n\
+import ppl.dsl.optiml._\n\
 import java.io.PrintWriter\n\
 import ppl.delite.framework.{DSLType}\n\
 import scala.virtualization.lms.common.ScalaGenBase\n\

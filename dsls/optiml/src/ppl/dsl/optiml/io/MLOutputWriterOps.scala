@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.io
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
+import ppl.dsl.optiml.{Vector,Matrix,TrainingSet}
 import java.io.{PrintWriter}
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import scala.virtualization.lms.common.Base

@@ -6,7 +6,7 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase, CudaGenBase, CGenBase}
 import scala.virtualization.lms.internal.GenericCodegen
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.dsl.optiml.datastruct.scala.{MatrixRow, MatrixRowImpl}
+import ppl.dsl.optiml.{MatrixRow}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
 // TODO: discuss: do we want to allow "index"? we need it for downsampling as its currently written,

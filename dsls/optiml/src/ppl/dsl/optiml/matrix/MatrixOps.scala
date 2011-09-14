@@ -10,8 +10,7 @@ import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.Config
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml._
 import ppl.delite.framework.extern.lib._
 
 trait MatrixOps extends DSLType with Variables {
@@ -240,12 +239,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   case class SymmetricMatrixObjectNew[A:Manifest](n:Exp[Int]) extends Def[SymmetricMatrix[A]] {
      val m = manifest[A]
-     val mM = manifest[SymmetricMatrixImpl[A]]
   }
   
   case class MatrixObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends Def[Matrix[A]] {
      val m = manifest[A]
-     val mM = manifest[MatrixImpl[A]]
   }
   //case class MatrixApply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) extends Def[A]
   case class MatrixVView[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends Def[Vector[A]]
@@ -380,7 +377,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def alloc = Vector[A](x.numRows, unit(false))
     val funcName = "matMultV"
 
-    def mV = manifest[VectorImpl[A]]    
     def m = manifest[A]
     def a = implicitly[Arith[A]]    
   }
@@ -396,7 +392,6 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def alloc = Matrix[A](x.numRows, y.numCols)
     val funcName = "matMult"
     
-    def mM = manifest[MatrixImpl[A]]
     def m = manifest[A]
     def a = implicitly[Arith[A]]
   }
@@ -422,8 +417,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixSigmoidVectorized[A:Manifest](in: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {
     def alloc = Matrix[A](in.numRows, in.numCols)    
     val funcName = "matSigmoid"
-    
-    def mM = manifest[MatrixImpl[A]]
+    val m = manifest[A]
   }
   
   ////////////////////////////////
@@ -955,8 +949,8 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case m@SymmetricMatrixObjectNew(n) => emitValDef(sym, "new " + remap(m.mM) + "(" + quote(n) + ")")
-    case m@MatrixObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@SymmetricMatrixObjectNew(n) => emitValDef(sym, "new generated.scala.SymmetricMatrixImpl[" + remap(m.m) + "](" + quote(n) + ")")
+    case m@MatrixObjectNew(numRows, numCols) => emitValDef(sym, "new generated.scala.MatrixImpl[" + remap(m.m) + "](" + quote(numRows) + "," + quote(numCols) + ")")
     case MatrixVView(x,start,stride,length,isRow) => emitValDef(sym, quote(x) + ".vview(" + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
     //case MatrixApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatrixGetRow(x,i) => emitValDef(sym, quote(x) + ".getRow(" + quote(i) + ")")

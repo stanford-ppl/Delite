@@ -4,12 +4,13 @@ import java.io.{PrintWriter}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
 import ppl.delite.framework.DSLType
-import ppl.dsl.optiml.datastruct.scala._
-
 
 /**
  * This file should be auto-generated!
  */
+
+trait DenoiseVertexData extends MessageData
+trait DenoiseEdgeData extends MessageData
 
 trait LBPOps extends DenoiseVertexDataOps with DenoiseEdgeDataOps
 trait LBPOpsExp extends DenoiseVertexDataOpsExp with DenoiseEdgeDataOpsExp
@@ -45,7 +46,7 @@ trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with VariablesExp wit
   
   case class DenoiseVertexDataObjectNew(id: Exp[Int], belief: Exp[Vector[Double]], potential: Exp[Vector[Double]])
     extends Def[DenoiseVertexData] {
-    val vD = manifest[DenoiseVertexDataImpl]
+    //val vD = manifest[DenoiseVertexDataImpl]
   }
   case class DenoiseVertexDataId(v: Exp[DenoiseVertexData]) extends Def[Int]
   case class DenoiseVertexDataBelief(v: Exp[DenoiseVertexData]) extends Def[Vector[Double]]
@@ -71,7 +72,7 @@ trait ScalaGenDenoiseVertexDataOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case v@DenoiseVertexDataObjectNew(id,b,p) => emitValDef(sym, "new " + remap(v.vD) + "(" + quote(id) + "," + quote(b) + "," + quote(p) + ")")
+      case v@DenoiseVertexDataObjectNew(id,b,p) => emitValDef(sym, "new generated.scala.DenoiseVertexDataImpl(" + quote(id) + "," + quote(b) + "," + quote(p) + ")")
       case DenoiseVertexDataId(v) => emitValDef(sym, quote(v) + ".id")
       case DenoiseVertexDataBelief(v) => emitValDef(sym, quote(v) + ".belief")
       case DenoiseVertexDataBeliefUpdate(v,b) => emitValDef(sym, quote(v) + ".setBelief(" + quote(b) + ")")
@@ -113,7 +114,7 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with VariablesExp with Ba
   
   case class DenoiseEdgeDataObjectNew(m: Exp[Vector[Double]], oM: Exp[Vector[Double]])
     extends Def[DenoiseEdgeData] {
-    val eD = manifest[DenoiseEdgeDataImpl]
+    //val eD = manifest[DenoiseEdgeDataImpl]
   }
   case class DenoiseEdgeDataMessage(e: Exp[DenoiseEdgeData]) extends Def[Vector[Double]]
   case class DenoiseEdgeDataMessageUpdate(e: Exp[DenoiseEdgeData], m: Exp[Vector[Double]]) extends Def[Unit]
@@ -142,7 +143,7 @@ trait ScalaGenDenoiseEdgeDataOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case e@DenoiseEdgeDataObjectNew(m,oM) => emitValDef(sym, "new " + remap(e.eD) + "(" + quote(m) + "," + quote(oM) + ")")
+      case e@DenoiseEdgeDataObjectNew(m,oM) => emitValDef(sym, "new generated.scala.DenoiseEdgeDataImpl(" + quote(m) + "," + quote(oM) + ")")
       case DenoiseEdgeDataMessage(e) => emitValDef(sym, quote(e) + ".message")
       case DenoiseEdgeDataMessageUpdate(e,m) => emitValDef(sym, quote(e) + ".setMessage(" + quote(m) + ")")
       case DenoiseEdgeDataOldMessage(e) => emitValDef(sym, quote(e) + ".oldMessage")

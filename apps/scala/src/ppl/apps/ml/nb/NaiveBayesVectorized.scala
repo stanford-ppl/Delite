@@ -1,7 +1,6 @@
 package ppl.apps.ml.nb
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet,Labels}
 import ppl.delite.framework.DeliteApplication
 
 object NaiveBayesVectorizedRunner extends OptiMLApplicationRunner with NaiveBayesVectorized

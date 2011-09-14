@@ -4,7 +4,8 @@ import java.io.{PrintWriter}
 import scala.virtualization.lms.common.{TupleOpsExp, Base, BaseFatExp}
 import ppl.delite.framework.{DSLType, DeliteApplication}
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml._
+import ppl.dsl.optiml.application.{BinarizedGradientTemplate}
 
 // TODO: we need to support an escape hatch, or move application-specific i/o to application ops. Either
 // way, they shouldn't be here.

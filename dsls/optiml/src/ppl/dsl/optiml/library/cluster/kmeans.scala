@@ -1,8 +1,7 @@
 package ppl.dsl.optiml.library.cluster
 
 import ppl.dsl.optiml.OptiMLApplication
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
-import ppl.dsl.optiml.datastruct.scala.TrainingSet
+import ppl.dsl.optiml.{Vector,Matrix,TrainingSet}
 
 /* K-means clustering API for OptiML programs.
  *

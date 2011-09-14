@@ -1,7 +1,6 @@
 package ppl.dsl.optiml.vector
 
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala._
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
@@ -10,7 +9,7 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import ppl.dsl.optiml._
 
 trait VectorOps extends DSLType with Variables {
   this: OptiML =>
@@ -276,7 +275,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
   case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean])
     extends Def[RangeVector]
-  case class VectorNew[A](len: Exp[Int], isRow: Exp[Boolean])(val mV: Manifest[VectorImpl[A]]) extends Def[Vector[A]]
+  case class VectorNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) extends Def[Vector[A]] {
+    val mA = manifest[A]
+  }
   case class VectorEmptyDouble() extends Def[Vector[Double]]
   case class VectorEmptyFloat() extends Def[Vector[Float]]
   case class VectorEmptyInt() extends Def[Vector[Int]]
@@ -317,10 +318,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     extends DeliteOpSingleTask(reifyEffectsHere(vector_obj_onesf_impl(len)))
 
   case class VectorObjectZeros(len: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffectsHere(reflectPure(VectorNew(len, Const(true))(manifest[VectorImpl[Double]])))) //vector_obj_zeros_impl(len)))
+    extends DeliteOpSingleTask(reifyEffectsHere(reflectPure(VectorNew[Double](len, Const(true))))) //vector_obj_zeros_impl(len)))
 
   case class VectorObjectZerosF(len: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffectsHere(reflectPure(VectorNew(len, Const(true))(manifest[VectorImpl[Float]])))) //vector_obj_zerosf_impl(len)))
+    extends DeliteOpSingleTask(reifyEffectsHere(reflectPure(VectorNew[Float](len, Const(true))))) //vector_obj_zerosf_impl(len)))
     
   case class VectorObjectRand(len: Exp[Int])
     extends DeliteOpSingleTask(reifyEffectsHere(vector_obj_rand_impl(len)))
@@ -716,7 +717,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   /////////////////////
   // object interface
 
-  def vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(VectorNew[A](len, isRow)(manifest[VectorImpl[A]])) //XXX
+  def vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(VectorNew[A](len, isRow)) //XXX
   def vector_obj_fromseq[A:Manifest](xs: Exp[Seq[A]]) = reflectPure(VectorObjectFromSeq(xs)) //XXX
   def vector_obj_ones(len: Exp[Int]) = reflectPure(VectorObjectOnes(len))
   def vector_obj_onesf(len: Exp[Int]) = reflectPure(VectorObjectOnesF(len))
@@ -859,7 +860,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     // allocations
     case Reflect(e@VectorObjectZeros(x), u, es) => reflectMirrored(Reflect(VectorObjectZeros(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorObjectRange(s,o,d,r), u, es) => reflectMirrored(Reflect(VectorObjectRange(f(s),f(o),f(d),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@VectorNew(l,r), u, es) => reflectMirrored(Reflect(VectorNew(f(l),f(r))(e.mV), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorNew(l,r), u, es) => reflectMirrored(Reflect(VectorNew(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
@@ -1073,8 +1074,8 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
     case VectorTrim(x) => emitValDef(sym, quote(x) + ".trim")
     case VectorClear(x) => emitValDef(sym, quote(x) + ".clear()")
     case VectorClone(x) => emitValDef(sym, quote(x) + ".cloneL")
-    case v@VectorNew(length, isRow) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(length) + "," + quote(isRow) + ")")
-    case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new " + remap(manifest[RangeVectorImpl]) + "(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
+    case v@VectorNew(length, isRow) => emitValDef(sym, "new generated.scala.VectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
+    case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new generated.scala.RangeVectorImpl(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
     case VectorZeroDouble(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorDoubleImpl(" + quote(length) + ", " + quote(isRow) + ")")
     case VectorZeroFloat(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorFloatImpl(" + quote(length) + ", " + quote(isRow) + ")")
     case VectorZeroInt(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorIntImpl(" + quote(length) + ", " + quote(isRow) + ")")

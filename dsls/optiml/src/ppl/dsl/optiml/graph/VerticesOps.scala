@@ -2,8 +2,7 @@ package ppl.dsl.optiml.graph
 
 import ppl.delite.framework.DSLType
 import scala.virtualization.lms.common.{VariablesExp, Variables}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import java.io.PrintWriter
@@ -47,7 +46,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
 
   case class VerticesObjNew[V <: Vertex:Manifest](len: Exp[Int])
     extends Def[Vertices[V]] {
-    val mV = manifest[VerticesImpl[V]]
+    val mV = manifest[V]
   }
   
   case class VerticesClone[V <: Vertex:Manifest](x: Exp[Vertices[V]]) extends Def[Vertices[V]]
@@ -94,7 +93,7 @@ trait ScalaGenVerticesOps extends BaseGenVerticesOps with ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case v@VerticesObjNew(len) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(len) + ")")
+      case v@VerticesObjNew(len) => emitValDef(sym, "new generated.scala.VerticesImpl[" + remap(v.mV) + "](" + quote(len) + ")")
       case VerticesApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
       case VerticesClone(x) => emitValDef(sym, quote(x) + ".cloneV")
       case VerticesPBeliefs(x) => emitValDef(sym, quote(x) + ".printBeliefs")

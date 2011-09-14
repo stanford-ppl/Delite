@@ -1,8 +1,7 @@
 package ppl.apps.ml.cf
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
-import ppl.dsl.optiml.datastruct.scala.{Similarity, PairwiseRating}
+import ppl.dsl.optiml.application.{Similarity, PairwiseRating}
 import ppl.delite.framework.DeliteApplication
 
 object TopNRunner extends OptiMLApplicationRunner with TopN

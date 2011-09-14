@@ -1,7 +1,6 @@
 package ppl.apps.ml.gda
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
 object GDARunner extends OptiMLApplicationRunner with GDA

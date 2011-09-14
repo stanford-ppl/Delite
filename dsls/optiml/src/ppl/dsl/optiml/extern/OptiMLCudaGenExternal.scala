@@ -39,7 +39,7 @@ trait OptiMLCudaGenExternal extends CudaGenExternalBase with CudaGenDataStruct {
   override def emitExternalLib(rhs: Def[Any]): Unit = rhs match {
     case e@MatrixTimesVectorBLAS(x,y) =>
       val lib = cuBLAS
-      val tp = e.mV.typeArguments.head.toString.toLowerCase
+      val tp = e.m.toString.toLowerCase
       val func = tp match {
         case "double" => "cublasDgemv"
         case "float" => "cublasSgemv"
@@ -54,7 +54,7 @@ trait OptiMLCudaGenExternal extends CudaGenExternalBase with CudaGenDataStruct {
 
    case e@MatrixMultiplyBLAS(x,y) =>
       val lib = cuBLAS
-      val tp = e.mM.typeArguments.head.toString.toLowerCase
+      val tp = e.m.toString.toLowerCase
       val func = tp match {
         case "double" => "cublasDgemm"
         case "float" => "cublasSgemm"

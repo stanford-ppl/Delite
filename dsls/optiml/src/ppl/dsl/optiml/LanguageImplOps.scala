@@ -1,7 +1,5 @@
 package ppl.dsl.optiml
 
-import datastruct.scala.{Vertex, Edge, Graph, Vector, Matrix, Vertices}
-
 trait LanguageImplOps { this: OptiML =>
   def optiml_untilconverged_impl[A:Manifest:Cloneable](
      x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],

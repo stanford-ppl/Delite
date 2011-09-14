@@ -1,36 +1,20 @@
 package ppl.dsl.optiml.datastruct.scala
 
-// TODO: putting everything in one file was convenient at first, but now that this is growing larger
-// it should be refactored into a more logical organization.
 
-//TR: Note that scalac's specialize phase took 15s (!) on this file (on my MacBook).
-// No wonder since DeliteOpZipWith and DeliteOpZipWithReduce each had 1000 specialized variants.
-// Adding @specialized(Boolean, Int, Long, Float, Double) reduced the time to 5s.
-// Note also that DeliteOpMultiLoop does not have that problem because it always
-// uses a custom activation record class for each use.
-
-// I changed some of the traits to abstract classes, that might yield a slight speed gain
-// at runtime (invokevirtual vs invokeinterface)
+// lots of violations of the LSP here, that can end up exposed to the user (TODO: fix)
 
 /**
  * Vector
  */
 
-// TODO: vector and matrix should not expose "data" fields. This needs to be refactored.
 trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
-  // methods required on real underlying data structure impl
-  // we need these for:
-  //   1) accessors to data fields
-  //   2) setters to data fields (alternatively, methods that can mutate data fields)
-  //   3) methods that the runtime expects
-  def length : Int
-  def isRow : Boolean
-  def apply(n: Int) : T
+  def length: Int
+  def isRow: Boolean
+  def mtrans: Vector[T]  
+  def apply(n: Int): T
   def update(index: Int, x: T)
-  def data: Array[T]
+  def cloneL: Vector[T]
   def toList: List[T]
-
-  def mtrans: Vector[T]
   def sort(implicit o: Ordering[T]): Vector[T] // because we use the underlying data field to sort
   def copyFrom(pos: Int, xs: Vector[T])
   def insert(pos: Int, x: T)
@@ -38,9 +22,7 @@ trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   def removeAll(pos: Int, len: Int)
   def clear()
   def trim
-  def cloneL: Vector[T]
-  def unsafeSetData(xs: Array[T], len: Int)
-
+    
   // DeliteCollection
   def dcApply(idx: Int) = apply(idx)
   def dcUpdate(idx: Int, x: T) = update(idx, x)
@@ -59,32 +41,45 @@ trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
     }
     true    
   }
+  
+  // TO BE MOVED TO DenseVector
+  def data: Array[T]
+  def unsafeSetData(xs: Array[T], len: Int)
 }
 
-trait ZeroVector[T] extends Vector[T]
+// TODO: enable this after switching VectorOps to DenseVectorOps
+trait DenseVector[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T] {
+//   def data: Array[T]
+//   def unsafeSetData(xs: Array[T], len: Int)  
+}
+
+trait ZeroVector[T] extends DenseVector[T]
 
 trait EmptyVector[T] extends Vector[T] {
   def length : Int = 0
-  def isRow: Boolean = true // shouldn't matter  
+  def isRow: Boolean = true // shouldn't matter
+  def mtrans = this  
+  def toList = List[T]()
+  def cloneL = new EmptyVectorImpl[T]  
+  def trim = ()
+  def clear() = ()  
+  def sort(implicit o: Ordering[T]) = this
   
-  def apply(i: Int): T = throw new UnsupportedOperationException()
-  def update(index: Int, x: T) = throw new UnsupportedOperationException()
-  def data = throw new UnsupportedOperationException()
-  def toList = throw new UnsupportedOperationException()
-
-  def mtrans = throw new UnsupportedOperationException()
-  def sort(implicit o: Ordering[T]) = throw new UnsupportedOperationException()
+  def apply(i: Int): T = throw new IndexOutOfBoundsException()
+  def update(index: Int, x: T) = throw new IndexOutOfBoundsException()
+  def removeAll(pos: Int, len: Int) = throw new IndexOutOfBoundsException()
+  def copyFrom(pos: Int, xs: Vector[T]) = throw new IndexOutOfBoundsException()    
+  
+  // TODO: implement these - return a non-empty Vector  
   def insert(pos: Int, x: T) = throw new UnsupportedOperationException()
   def insertAll(pos: Int, xs: Vector[T]) = throw new UnsupportedOperationException()
-  def copyFrom(pos: Int, xs: Vector[T]) = throw new UnsupportedOperationException()
-  def removeAll(pos: Int, len: Int) = throw new UnsupportedOperationException()
-  def trim = throw new UnsupportedOperationException()
-  def clear() = throw new UnsupportedOperationException()
-  def cloneL = throw new UnsupportedOperationException()
+  
+  // to be removed
+  def data: Array[T] = throw new UnsupportedOperationException()
   def unsafeSetData(xs: Array[T], len: Int) = throw new UnsupportedOperationException()
 }
 
-trait VectorView[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T]
+trait VectorView[@specialized(Boolean, Int, Long, Float, Double) T] extends DenseVector[T]
 
 trait MatrixRow[@specialized(Boolean, Int, Long, Float, Double) T] extends VectorView[T] {
   def index: Int
@@ -97,9 +92,9 @@ trait StreamRow[@specialized(Boolean, Int, Long, Float, Double) T] extends Vecto
   def index: Int
 }
 
-trait RangeVector extends Vector[Int]
+trait RangeVector extends DenseVector[Int]
 
-trait IndexVector extends Vector[Int]
+trait IndexVector extends DenseVector[Int]
 
 trait IndexVector2 {
   def rowInd: IndexVector
@@ -113,7 +108,6 @@ trait IndexVectorWC extends IndexVector {
   def update(index: Int, x: Int) = throw new UnsupportedOperationException()
   def data = throw new UnsupportedOperationException()
   def toList = throw new UnsupportedOperationException()
-
   def mtrans = throw new UnsupportedOperationException()
   def sort(implicit o: Ordering[Int]) = throw new UnsupportedOperationException()
   def insert(pos: Int, x: Int) = throw new UnsupportedOperationException()
@@ -130,14 +124,13 @@ trait IndexVectorWC extends IndexVector {
  * Matrix
  */
 trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
-  // fields required on real underlying data structure impl
   def numRows: Int
   def numCols: Int
   def size: Int
-  def data: Array[T]
-
   def apply(i: Int, j: Int): T
   def update(row: Int, col: Int, x: T)
+  
+  def data: Array[T]  
   def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
   def getRow(i: Int): MatrixRow[T]
   def getCol(j: Int): MatrixCol[T]

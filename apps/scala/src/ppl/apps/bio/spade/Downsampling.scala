@@ -1,6 +1,6 @@
 package ppl.apps.bio.spade
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet,StreamRow}
+import ppl.dsl.optiml.{Vector,Matrix,TrainingSet,StreamRow}
 import ppl.dsl.optiml.OptiMLApplication
 
 trait Downsampling {

@@ -5,7 +5,7 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.dsl.optiml.datastruct.scala.{VectorView, VectorViewImpl}
+import ppl.dsl.optiml.{VectorView}
 
 trait VectorViewOps extends DSLType with Base with OverloadHack {
 

@@ -2,8 +2,8 @@ package ppl.dsl.optiml.io
 
 import java.io._
 import scala.virtualization.lms.common.Base
-import ppl.dsl.optiml.datastruct.scala._
-import ppl.dsl.optiml.{OptiMLCompiler, OptiMLLift, OptiML}
+import ppl.dsl.optiml._
+import ppl.dsl.optiml.application.BinarizedGradientTemplate
 
 trait MLInputReaderImplOps { this: Base =>
   def mlinput_read_impl(filename: Rep[String], delim: Rep[String]) : Rep[Matrix[Double]]

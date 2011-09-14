@@ -1,7 +1,6 @@
 package ppl.apps.ml.rbm
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
 object RBMRunner extends OptiMLApplicationRunner with RBM

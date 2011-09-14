@@ -273,6 +273,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   override def dsmap(line: String) : String = {
     var res = line.replaceAll("ppl.dsl.optiml.datastruct", "generated")
     res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
+    res = res.replaceAll("ppl.dsl.optiml", "generated.scala")    
     res
   }
 }
@@ -287,47 +288,47 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg with
   // Maps the scala type to cuda type
   override def remap[A](m: Manifest[A]) : String = {
     m.toString match {
-      case "ppl.dsl.optiml.datastruct.scala.Matrix[Int]" => "Matrix<int>"
-      case "ppl.dsl.optiml.datastruct.scala.Matrix[Long]" => "Matrix<long>"
-      case "ppl.dsl.optiml.datastruct.scala.Matrix[Float]" => "Matrix<float>"
-      case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => "Matrix<double>"
-      case "ppl.dsl.optiml.datastruct.scala.Matrix[Boolean]" => "Matrix<bool>"
-      case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => "Vector<int>"
-      case "ppl.dsl.optiml.datastruct.scala.Vector[Long]" => "Vector<long>"
-      case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => "Vector<float>"
-      case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
-      case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
-      case "ppl.dsl.optiml.datastruct.scala.RangeVector" => "RangeVector"
-      case "ppl.dsl.optiml.datastruct.scala.IndexVector" => "IndexVector"
-      case "ppl.dsl.optiml.datastruct.scala.Labels[Int]" => "Labels<int>"
-      case "ppl.dsl.optiml.datastruct.scala.Labels[Long]" => "Labels<long>"
-      case "ppl.dsl.optiml.datastruct.scala.Labels[Float]" => "Labels<float>"
-      case "ppl.dsl.optiml.datastruct.scala.Labels[Double]" => "Labels<double>"
-      case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => "Labels<bool>"
-      case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => "TrainingSet<double,double>"
+      case "ppl.dsl.optiml.Matrix[Int]" => "Matrix<int>"
+      case "ppl.dsl.optiml.Matrix[Long]" => "Matrix<long>"
+      case "ppl.dsl.optiml.Matrix[Float]" => "Matrix<float>"
+      case "ppl.dsl.optiml.Matrix[Double]" => "Matrix<double>"
+      case "ppl.dsl.optiml.Matrix[Boolean]" => "Matrix<bool>"
+      case "ppl.dsl.optiml.Vector[Int]" => "Vector<int>"
+      case "ppl.dsl.optiml.Vector[Long]" => "Vector<long>"
+      case "ppl.dsl.optiml.Vector[Float]" => "Vector<float>"
+      case "ppl.dsl.optiml.Vector[Double]" => "Vector<double>"
+      case "ppl.dsl.optiml.Vector[Boolean]" => "Vector<bool>"
+      case "ppl.dsl.optiml.RangeVector" => "RangeVector"
+      case "ppl.dsl.optiml.IndexVector" => "IndexVector"
+      case "ppl.dsl.optiml.Labels[Int]" => "Labels<int>"
+      case "ppl.dsl.optiml.Labels[Long]" => "Labels<long>"
+      case "ppl.dsl.optiml.Labels[Float]" => "Labels<float>"
+      case "ppl.dsl.optiml.Labels[Double]" => "Labels<double>"
+      case "ppl.dsl.optiml.Labels[Boolean]" => "Labels<bool>"
+      case "ppl.dsl.optiml.TrainingSet[Double, Double]" => "TrainingSet<double,double>"
       case _ => super.remap(m)
     }
   }
 
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Int]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Long]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Float]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Boolean]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Long]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => true
-    case "ppl.dsl.optiml.datastruct.scala.RangeVector" => true
-    case "ppl.dsl.optiml.datastruct.scala.IndexVector" => true
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Int]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Long]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Float]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Double]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => true
-    case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => true
+    case "ppl.dsl.optiml.Matrix[Int]" => true
+    case "ppl.dsl.optiml.Matrix[Long]" => true
+    case "ppl.dsl.optiml.Matrix[Float]" => true
+    case "ppl.dsl.optiml.Matrix[Double]" => true
+    case "ppl.dsl.optiml.Matrix[Boolean]" => true
+    case "ppl.dsl.optiml.Vector[Int]" => true
+    case "ppl.dsl.optiml.Vector[Long]" => true
+    case "ppl.dsl.optiml.Vector[Float]" => true
+    case "ppl.dsl.optiml.Vector[Double]" => true
+    case "ppl.dsl.optiml.Vector[Boolean]" => true
+    case "ppl.dsl.optiml.RangeVector" => true
+    case "ppl.dsl.optiml.IndexVector" => true
+    case "ppl.dsl.optiml.Labels[Int]" => true
+    case "ppl.dsl.optiml.Labels[Long]" => true
+    case "ppl.dsl.optiml.Labels[Float]" => true
+    case "ppl.dsl.optiml.Labels[Double]" => true
+    case "ppl.dsl.optiml.Labels[Boolean]" => true
+    case "ppl.dsl.optiml.TrainingSet[Double, Double]" => true
     case _ => super.isObjectType(m)
   }
 
@@ -402,16 +403,16 @@ trait OptiMLCodeGenC extends OptiMLCodeGenBase with OptiMLCCodeGenPkg with CGenA
   import IR._
 
   override def remap[A](m: Manifest[A]) : String = m.toString match {
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Int]" => "Matrix<int>"
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Long]" => "Matrix<long>"
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Float]" => "Matrix<float>"
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => "Matrix<double>"
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Boolean]" => "Matrix<bool>"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => "Vector<int>"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Long]" => "Vector<long>"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => "Vector<float>"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
+    case "ppl.dsl.optiml.Matrix[Int]" => "Matrix<int>"
+    case "ppl.dsl.optiml.Matrix[Long]" => "Matrix<long>"
+    case "ppl.dsl.optiml.Matrix[Float]" => "Matrix<float>"
+    case "ppl.dsl.optiml.Matrix[Double]" => "Matrix<double>"
+    case "ppl.dsl.optiml.Matrix[Boolean]" => "Matrix<bool>"
+    case "ppl.dsl.optiml.Vector[Int]" => "Vector<int>"
+    case "ppl.dsl.optiml.Vector[Long]" => "Vector<long>"
+    case "ppl.dsl.optiml.Vector[Float]" => "Vector<float>"
+    case "ppl.dsl.optiml.Vector[Double]" => "Vector<double>"
+    case "ppl.dsl.optiml.Vector[Boolean]" => "Vector<bool>"
     case _ => super.remap(m)
   }
 }

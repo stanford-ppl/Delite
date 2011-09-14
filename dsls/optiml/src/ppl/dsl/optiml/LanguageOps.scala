@@ -856,6 +856,7 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+    // TODO: need fully qualified package name to Global? should remove the dependency on the package name.
     rhs match {
       case InternalRandDouble() => emitValDef(sym, "generated.scala.Global.intRandRef.nextDouble()")
       case InternalRandFloat() => emitValDef(sym, "generated.scala.Global.intRandRef.nextFloat()")

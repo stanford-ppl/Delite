@@ -1,7 +1,7 @@
 package ppl.dsl.optiml.graph
 
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml._
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}

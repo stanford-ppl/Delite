@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.matrix
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,MatrixRow}
+import ppl.dsl.optiml.{Vector,Matrix,MatrixRow}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 import ppl.dsl.optiml.{OptiMLExp, OptiMLCompiler, OptiMLLift, OptiML}

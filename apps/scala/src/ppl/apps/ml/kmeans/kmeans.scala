@@ -1,7 +1,6 @@
 package ppl.apps.ml.kmeans
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
 object kmeansRunner extends OptiMLApplicationRunner with kmeansApp
