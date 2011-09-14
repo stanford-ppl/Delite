@@ -9,7 +9,7 @@ import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal._
 
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.codegen.analysis.TraversalAnalysis
+import ppl.delite.framework.analysis.TraversalAnalysis
 
 import ppl.dsl.deliszt.datastruct.scala._
 import ppl.dsl.deliszt._
@@ -59,7 +59,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   var currentMo : Option[MeshObj] = None
   
   def init(args: Array[String]) {
-    MeshLoader.init(0)
+    MeshLoader.init(if(args.length > 0) args(0) else "liszt.cfg")
   }
   
   // Mark accesses
@@ -87,7 +87,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   def setFor(i: Int) {
     if(currentFor.isEmpty) {
       currentFor = Some(i)
-      forMap(i) = StencilMap()
+      forMap(i) = Map[MeshObj,ReadWriteSet]()
     }
   }
   
@@ -230,8 +230,6 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         // Get value for the mesh set
         val ms = value[MeshSet[_]](m)
         
-        b(f.i)
-        
         // Run foreach over mesh set
         for(mo <- ms) {
           // If top level foreach, mark the current element as one we are collecting stencil for
@@ -243,10 +241,14 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
           store(f.i, mo)
           
           // Re "emit" block
-          emitBlock(b)
+          f.body match {
+            case DeliteForeachElem(func, sync) => emitBlock(func)
+          }
         }
         
-        store(sym, blockValue(b))
+        f.body match {
+          case DeliteForeachElem(func, sync) => store(sym, blockValue(func))
+        }
       }
         
       // Mark 

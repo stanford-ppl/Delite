@@ -34,7 +34,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
                                                val generators = DeliteApplication.this.generators }
   
-  lazy val analyses: List[TraversalAnalysis] = List()
+  lazy val analyses: List[TraversalAnalysis{ val IR: DeliteApplication.this.type }] = List()
                                                
   var args: Rep[Array[String]] = _
   
