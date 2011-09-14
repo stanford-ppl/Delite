@@ -5,7 +5,7 @@ import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
 
-import analaysis.TraversalAnalysis
+import analysis.{MockStream, TraversalAnalysis}
 import codegen.c.TargetC
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
@@ -72,9 +72,10 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     }
     
     // Run any analyses defined
-    val mainBody = liftedMain
     for(a <- analyses) {
-      a.traverse(mainBody)
+      a.init(args)
+      // TODO WTF
+      //a.traverse(liftedMain)
     }
     reset
 

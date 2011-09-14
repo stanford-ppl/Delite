@@ -58,6 +58,10 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   // And the current mesh object in the top level for loop
   var currentMo : Option[MeshObj] = None
   
+  def init(args: Array[String]) {
+    MeshLoader.init(0)
+  }
+  
   // Mark accesses
   def markRead[N<:IntM,MO<:MeshObj](f: Exp[Field[N,MO]], i: Exp[MeshObj]) {
     val sym = f.asInstanceOf[Sym[Field[N,MO]]]

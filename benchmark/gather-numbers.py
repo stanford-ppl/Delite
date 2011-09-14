@@ -162,7 +162,7 @@ def launchApps(options):
         os.putenv('LMS_HOME', props['libs.lms.home'])
         os.putenv('SCALA_VIRT_HOME', props['scala.virtualized.home'])
         print "==  Generating DEG file with options: " + opts
-        ecode = os.system(props['delite.home'] + "/bin/gen " + classes[app])
+        ecode = os.system(props['delite.home'] + "/bin/gen " + classes[app] + " " + params[app])
         if ecode != 0 and options['keep-going'] == None:
             print "Detected abnormal exit code, exiting"
             exit(-1)
