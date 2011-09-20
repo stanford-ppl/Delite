@@ -60,7 +60,7 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
 
   override def shouldApplyFusion(currentScope: List[TTP])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
 
-  def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
+  def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): List[(Sym[Any],Any)] = {
 
     val x = fresh[A]
     val y = reifyEffects(f(x))
@@ -83,6 +83,7 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
     stream.println("{\"type\":\"EOP\"}\n]}}")
 
     stream.flush
+    Nil
   }
 
   /**

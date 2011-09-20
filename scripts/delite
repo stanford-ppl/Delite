@@ -47,7 +47,8 @@ if (unix) {
   }
 }
 
-args = javaopt("delite.code.cache.home", "generatedCache") +: args
+args = javaopt("delite.code.cache.home", config.delite_home + File.separator + "generatedCache") +: args
+//args = javaopt("delite.code.cache.home", "generatedCache") +: args
 args = javaopt("delite.home", config.delite_home) +: args
 var (java_opts, other_opts, deg, deg_args) = parse_args_with_deg(args, verbose = false)
 var runtime: Arg = "ppl.delite.runtime.Delite"
