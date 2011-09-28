@@ -1705,7 +1705,8 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         case (sym, elem: DeliteReduceElem[_]) =>
           if(isPrimitiveType(elem.zero.Type)) throw new GenerationFailedException("CudaGen: DeliteReduceElem is not supported yet.")
           val isAliased = checkAlias(elem.zero)
-          if(!isAliased) emitAllocFunc(sym,elem.zero)
+          assert(getBlockResult(elem.zero).isInstanceOf[Sym[Any]])
+          if(!isAliased) emitAllocFunc(getBlockResult(elem.zero).asInstanceOf[Sym[Any]],elem.zero)
           else stream.println("%s %s_zero = %s;".format(remap(sym.Type),quote(sym),quote(getBlockResult(elem.zero))))
           emitCloneFunc(sym,getBlockResult(elem.zero).asInstanceOf[Sym[_]])
           emitReduceElem(op, sym, elem)
@@ -1765,9 +1766,11 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         println("in 2, reduce")
         if(isPrimitiveType(elem.zero.Type)) throw new GenerationFailedException("CudaGen: DeliteReduceElem is not supported yet.")
         val isAliased = checkAlias(elem.zero)
-        if(!isAliased) emitAllocFunc(sym,elem.zero)
+        assert(getBlockResult(elem.zero).isInstanceOf[Sym[Any]])
+        if(!isAliased) { println("calling emitAllocfunc with sym:" + quote(getBlockResult(elem.zero))); emitAllocFunc(getBlockResult(elem.zero).asInstanceOf[Sym[Any]],elem.zero)  }
         else stream.println("%s %s_zero = %s;".format(remap(sym.Type),quote(sym),quote(getBlockResult(elem.zero))))
-        emitCloneFunc(sym,getBlockResult(elem.zero).asInstanceOf[Sym[_]])
+        println("calling clone with sym : " + quote(sym))
+        emitCloneFunc(sym,getBlockResult(elem.zero).asInstanceOf[Sym[Any]])
         emitReduceElem(op, sym, elem)
       case _ =>
         throw new GenerationFailedException("CudaGen: DeliteReduceTupleElem is not supported yet.")
@@ -1780,7 +1783,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
   }
 
   def checkAlias(exp: Exp[Any]): Boolean = {
-    true
+    false
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
@@ -1842,6 +1845,7 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
       case elem: DeliteCollectElem[_,_] => elem.func :: elem.cond
       case elem: DeliteForeachElem[_] => List(elem.func)
       case elem: DeliteReduceElem[_] => elem.func :: elem.cond
+      case elem: DeliteReduceTupleElem[_,_] => elem.func._1 :: elem.func._2 :: elem.cond
       case _ => throw new GenerationFailedException("CudaGen: ReduceTupleElem is not supported yet.")
     }
     println("starting to call emitFatBlock in emitMultiLoopFuncs")
@@ -1881,6 +1885,15 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
       }
   }
 
+ def emitReduceTupleElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceTupleElem[_,_], prefixSym: String = "")(implicit stream: PrintWriter) {
+    if (elem.cond.nonEmpty){
+      sys.error("tuple reduce with external conditions not implemented!")
+    }
+    else {
+      emitReductionTuple(op, sym, elem, prefixSym)
+    }
+  }
+
   def emitReduceElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "")(implicit stream: PrintWriter) {
     if (elem.cond.nonEmpty){
       stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
@@ -1916,6 +1929,19 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
     stream.println(prefixSym + quote(sym) + " = " + quote(getBlockResult(elem.rFunc)) + ";")
   }
 
+  def emitReductionTuple(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceTupleElem[_,_], prefixSym: String)(implicit stream: PrintWriter) {
+    val rV = elem.rVSeq
+    val rFunc = elem.rFuncSeq
+
+    stream.println("%s %s = %s;".format(remap(rV._1._1.Type),quote(rV._1._1),prefixSym+quote(sym)))
+    stream.println("%s %s = %s_2;".format(remap(rV._1._2.Type),quote(rV._1._2),prefixSym+quote(sym)))
+    stream.println("%s %s = %s;".format(remap(rV._2._1.Type),quote(rV._2._1),quote(getBlockResult(elem.func._1))))
+    stream.println("%s %s = %s;".format(remap(rV._2._2.Type),quote(rV._2._2),quote(getBlockResult(elem.func._2))))
+    emitFatBlock(List(rFunc._1, rFunc._2))
+    stream.println(prefixSym + quote(sym) + "   = " + quote(getBlockResult(rFunc._1)) + ";")
+    stream.println(prefixSym + quote(sym) + "_2 = " + quote(getBlockResult(rFunc._2)) + ";")
+  }
+
   def emitInlineAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]])(implicit stream: PrintWriter) {
     forceParallel = false
     (symList zip op.body) foreach {
@@ -1932,6 +1958,17 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
           stream.println("%s %s = %s();".format(remap(sym.Type),quote(sym),zeroFunc))
         else
           stream.println("%s %s = %s(%s);".format(remap(sym.Type),quote(sym),zeroFunc,freeVars))
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+        val (zeroFunc_1,freeVars_1) = emitDevFunc(elem.zero._1, List())
+        if(freeVars_1.length == 0)
+          stream.println("%s %s = %s();".format(remap(elem.zero._1.Type),quote(sym),zeroFunc_1))
+        else
+          stream.println("%s %s = %s(%s);".format(remap(elem.zero._1.Type),quote(sym),zeroFunc_1,freeVars_1))
+        val (zeroFunc_2,freeVars_2) = emitDevFunc(elem.zero._2, List())
+        if(freeVars_2.length == 0)
+          stream.println("%s %s_2 = %s();".format(remap(elem.zero._2.Type),quote(sym),zeroFunc_2))
+        else
+          stream.println("%s %s_2 = %s(%s);".format(remap(elem.zero._2.Type),quote(sym),zeroFunc_2,freeVars_2))
       case _ =>
         throw new GenerationFailedException("CudaGen: emitCollectElem with condition (filter) is not supported yet.")
     }
@@ -1974,6 +2011,9 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
       case (sym, elem: DeliteReduceElem[_]) =>
         stream.println("//start emitReduceElem")
         emitReduceElem(op, sym, elem)
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+        stream.println("//start emitReduceTupleElem")
+        emitReduceTupleElem(op, sym, elem)
       case _ =>
         throw new GenerationFailedException("CudaGen: emitCollectElem with condition (filter) is not supported yet.")
     }
@@ -2012,7 +2052,7 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
       (symList zip op.body) foreach {
         case (sym, elem:DeliteCollectElem[_,_]) =>
           emitAllocFunc(sym,elem.alloc)
-          stream.println(addTab()+"%s.dcUpdate(%s, %s);".format(quote(sym),quote(op.v),quote(getBlockResult(elem.func))))
+          stream.println(addTab()+"%s_dcUpdate(%s, %s, %s);".format(remap(sym.Type),quote(sym),quote(op.v),quote(getBlockResult(elem.func))))
           //val (loopFunc,freeVars) = emitDevFunc(elem.func, List(op.v))
           //if(freeVars.length==0) {
           //  stream.println(addTab()+"%s.dcUpdate(%s, %s(%s));".format(quote(sym),currDimStr,loopFunc,currDimStr))
@@ -2029,7 +2069,8 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
         case (sym, elem: DeliteReduceElem[_]) =>
           if(isPrimitiveType(elem.zero.Type)) throw new GenerationFailedException("CudaGen: DeliteReduceElem is not supported yet.")
           val isAliased = checkAlias(elem.zero)
-          if(!isAliased) emitAllocFunc(sym,elem.zero)
+          assert(getBlockResult(elem.zero).isInstanceOf[Sym[Any]])
+          if(!isAliased) emitAllocFunc(getBlockResult(elem.zero).asInstanceOf[Sym[Any]],elem.zero)
           else stream.println("%s %s_zero = %s;".format(remap(sym.Type),quote(sym),quote(getBlockResult(elem.zero))))
           emitCloneFunc(sym,getBlockResult(elem.zero).asInstanceOf[Sym[_]])
           emitReduceElem(op, sym, elem)
@@ -2070,7 +2111,7 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
       case (sym, elem:DeliteCollectElem[_,_]) =>
         println("in 2, collect" + quote(sym))
         emitAllocFunc(sym,elem.alloc)
-        stream.println(addTab()+"%s.dcUpdate(%s, %s);".format(quote(sym),quote(op.v),quote(getBlockResult(elem.func))))
+        stream.println(addTab()+"%s_dcUpdate(%s, %s, %s);".format(remap(sym.Type),quote(sym),quote(op.v),quote(getBlockResult(elem.func))))
         //val (loopFunc,freeVars) = emitDevFunc(elem.func, List(op.v))
         //if(freeVars.length==0) {
         //  stream.println(addTab()+"%s.dcUpdate(%s, %s(%s));".format(quote(sym),currDimStr,loopFunc,currDimStr))
@@ -2089,10 +2130,13 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
         println("in 2, reduce")
         if(isPrimitiveType(elem.zero.Type)) throw new GenerationFailedException("CudaGen: DeliteReduceElem is not supported yet.")
         val isAliased = checkAlias(elem.zero)
-        if(!isAliased) emitAllocFunc(sym,elem.zero)
+        assert(getBlockResult(elem.zero).isInstanceOf[Sym[Any]])
+        if(!isAliased) emitAllocFunc(getBlockResult(elem.zero).asInstanceOf[Sym[Any]],elem.zero)
         else stream.println("%s %s_zero = %s;".format(remap(sym.Type),quote(sym),quote(getBlockResult(elem.zero))))
-        emitCloneFunc(sym,getBlockResult(elem.zero).asInstanceOf[Sym[_]])
+        println("calling clone with sym : " + quote(sym))
+        emitCloneFunc(sym,getBlockResult(elem.zero).asInstanceOf[Sym[Any]])
         emitReduceElem(op, sym, elem)
+
       case _ =>
         throw new GenerationFailedException("CudaGen: DeliteReduceTupleElem is not supported yet.")
     }
@@ -2104,7 +2148,7 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
   }
 
   def checkAlias(exp: Exp[Any]): Boolean = {
-    true
+    false
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
@@ -2137,9 +2181,9 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
       tabWidth += 1
       val (foreachFunc,freeVars) = emitDevFunc(foreach.func, List(foreach.v))
       if(freeVars.length==0)
-        stream.println(addTab()+"%s(%s.dcApply(%s));".format(foreachFunc,quote(foreach.in),currDimStr))
+        stream.println(addTab()+"%s(%s_dcApply(%s,%s));".format(foreachFunc,remap(foreach.in.Type),quote(foreach.in),currDimStr))
       else
-        stream.println(addTab()+"%s(%s.dcApply(%s),%s);".format(foreachFunc,quote(foreach.in),currDimStr,freeVars.map(quote).mkString(",")))
+        stream.println(addTab()+"%s(%s_dcApply(%s,%s),%s);".format(foreachFunc,remap(foreach.in.Type),quote(foreach.in),currDimStr,freeVars.map(quote).mkString(",")))
       tabWidth -= 1
       stream.println(addTab()+"}")
       currDim -= 1

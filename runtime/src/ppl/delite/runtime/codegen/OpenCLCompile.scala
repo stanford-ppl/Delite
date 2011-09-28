@@ -33,7 +33,7 @@ object OpenCLCompile extends GPUCompile {
     //TODO: How to set the OpenCL include path in general?
      assert(Config.openclIncPath != null,"OpenCL include path is not specified!")
 
-    //TODO:: fix the include path issue
+    //TODO:: fix the include & library path issue
     val cmdString = Array[String](
       "g++",
       "-w", //suppress warnings
@@ -48,6 +48,8 @@ object OpenCLCompile extends GPUCompile {
       "-O2", //optimized
       "-shared", "-fPIC", //dynamic shared library
       "-lOpenCL",
+      "-lclblas",
+      "-L/home/hyouklee/delite/Delite/runtime/opencl/blas",
       "-L" + deliteLibs) ++ linkGeneratedLibs(deliteLibs) ++ Array[String](
       "-o", "openclHost.so", //output name
       source //input name

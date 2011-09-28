@@ -1008,13 +1008,20 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
     */
 
     case MatrixObjectNew(numRows,numCols) =>
-      stream.println(addTab()+"%s *devPtr;".format(remap(sym.Type.typeArguments(0))))
-      stream.println(addTab()+"DeliteCudaMalloc((void**)&devPtr,%s*%s*sizeof(%s));".format(quote(numRows),quote(numCols),remap(sym.Type.typeArguments(0))))
-      stream.println("%s *%s_ptr = new %s(%s,%s,devPtr);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
+      stream.println(addTab()+"%s *devPtr_%s;".format(remap(sym.Type.typeArguments(0)),quote(sym)))
+      stream.println(addTab()+"DeliteCudaMalloc((void**)&devPtr_%s,%s*%s*sizeof(%s));".format(quote(sym),quote(numRows),quote(numCols),remap(sym.Type.typeArguments(0))))
+      stream.println("%s *%s_ptr = new %s(%s,%s,devPtr_%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols),quote(sym)))
+      stream.println("%s %s = *(%s_ptr);".format(remap(sym.Type),quote(sym),quote(sym)))
       //stream.println("%s.numRows = %s;".format(quote(sym),quote(numRows)))
       //stream.println("%s.numCols = %s;".format(quote(sym),quote(numCols)))
       //stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
-    
+
+    case MatrixClone(x) =>
+      stream.println(addTab()+"%s *devPtr_%s;".format(remap(sym.Type.typeArguments(0)),quote(sym)))
+      stream.println(addTab()+"DeliteCudaMalloc((void**)&devPtr_%s,%s.numRows*%s.numCols*sizeof(%s));".format(quote(sym),quote(x),quote(x),remap(sym.Type.typeArguments(0))))
+      stream.println("%s *%s_ptr = new %s(%s.num,%s,%s_devPtr);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(x),quote(x),quote(sym)))
+      stream.println("%s %s = *(%s_ptr);".format(remap(sym.Type),quote(sym),quote(sym)))
+
 	  /* The ops that call through to the underlying data structure */
     //case MatrixDCApply(x,i) =>
     //  emitValDef(sym, "%s.dcApply(%s)".format(quote(x),quote(i)))

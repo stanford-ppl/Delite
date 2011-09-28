@@ -115,6 +115,7 @@ trait VectorOps extends DSLType with Variables {
     def *(y: Rep[A])(implicit a: Arith[A],o: Overloaded1) = vector_times_scalar(x,y)
     def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2) = vector_times_matrix(x,y)
     def **(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_outer(x,y)
+    def myouter(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_myouter(x,y)
     def *:*(y: Rep[Vector[A]])(implicit a: Arith[A]) = {val v = x*y; v.sum} //TODO: this is less efficient (space-wise) than: //vector_dot_product(x,y)
     def dot(y: Rep[Vector[A]])(implicit a: Arith[A]) = x *:* y
     def /(y: Rep[Vector[A]])(implicit a: Arith[A]) = vector_divide(x,y)
@@ -228,6 +229,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_times_withconvertright[A:Manifest,B:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[B]], conv: Rep[A] => Rep[B]): Rep[Vector[B]]
   def vector_times_scalar[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
   def vector_times_matrix[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Matrix[A]]): Rep[Vector[A]]
+  def vector_myouter[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Matrix[A]]
   def vector_outer[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Matrix[A]]
   def vector_dot_product[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[A]
   def vector_divide[A:Manifest:Arith](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
@@ -349,6 +351,19 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
       def m = manifest[A]
       def a = implicitly[Arith[A]]
     }
+
+  case class VectorMyOuter[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]])
+    extends DeliteOpMap[Int,A,Matrix[A]] {
+      def alloc = Matrix[A](x.length,y.length)
+      val in = (0::x.length*y.length)
+      val size = x.length*y.length
+      def func = i => x(i/y.length)*y(i%y.length)
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
+    }
+
+
+
 
   // this is a single task right now because of the likely early exit. should we have a delite op for this?
   case class VectorEquals[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]])
@@ -772,6 +787,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   def vector_times_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = reflectPure(VectorTimesScalar(x,y))
   def vector_times_matrix[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Matrix[A]]) = reflectPure(VectorTimesMatrix(x,y))
   def vector_outer[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(VectorOuter(x,y))
+  def vector_myouter[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(VectorMyOuter(x,y))
   def vector_dot_product[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(VectorDotProduct(x,y))
   def vector_divide[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[Vector[A]]) = reflectPure(VectorDivide(x,y))
   def vector_divide_scalar[A:Manifest:Arith](x: Exp[Vector[A]], y: Exp[A]) = reflectPure(VectorDivideScalar(x,y))
@@ -827,6 +843,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     case e@VectorObjectUniform(x,y,z,w) => reflectPure(new { override val original = Some(f,e) } with VectorObjectUniform(f(x),f(y),f(z),f(w)))(mtype(manifest[A]))
     case e@VectorTrans(x) => reflectPure(new { override val original = Some(f,e) } with VectorTrans(f(x))(e.m))(mtype(manifest[A]))
     case e@VectorOuter(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorOuter(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
+    case e@VectorMyOuter(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorMyOuter(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
     case e@VectorPlus(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorPlus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
     case e@VectorMinus(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorMinus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
     case e@VectorTimes(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorTimes(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))

@@ -264,11 +264,14 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append(">>>")
 
     out.append('(')
-    for ((data,name) <- op.getGPUMetadata(target).outputs) {
+    var first = true
+    for ((data,name) <- (op.getGPUMetadata(target).outputs)) {
+      if(!first) out.append(',')
       out.append('*')
       out.append(getSymGPU(name)) //first kernel inputs are OP outputs
-      out.append(',')
+      first=false
     }
+    if (op.getInputs.length>0 || op.getGPUMetadata(target).temps.length>0) out.append(",")
     writeInputs(op, out) //then all op inputs
     writeTemps(op, out) //then all op temporaries
     out.append(");\n")

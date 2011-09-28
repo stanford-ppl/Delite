@@ -446,6 +446,8 @@ trait OptiMLCodeGenOpenCL extends OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg 
     case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => true
     case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Float, Float]" => true
     case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Float, Int]" => true
+    case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => true
+    case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Int]" => true
     case "ppl.dsl.optiml.datastruct.scala.MatrixRow[Float]" => true
     case _ => super.isObjectType(m)
   }
@@ -470,6 +472,8 @@ trait OptiMLCodeGenOpenCL extends OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg 
     case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => "BooleanLabels"
     case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Float, Float]" => "FloatFloatTrainingSet"
     case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Float, Int]" => "FloatIntTrainingSet"
+    case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => "DoubleDoubleTrainingSet"
+    case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Int]" => "DoubleIntTrainingSet"
     case "ppl.dsl.optiml.datastruct.scala.MatrixRow[Float]" => "FloatMatrixRow"
     case _ => super.remap(m)
   }
@@ -480,7 +484,7 @@ trait OptiMLCodeGenOpenCL extends OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg 
     case "IntLabels" | "LongLabels" | "FloatLabels" | "DoubleLabels" | "BooleanLabels" => labelsCopyInputHtoD(sym)
     case "RangeVector" => rangeVectorCopyInputHtoD(sym)
     case "IndexVector" => indexVectorCopyInputHtoD(sym)
-    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" => trainingSetCopyInputHtoD(sym)
+    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
@@ -501,7 +505,7 @@ trait OptiMLCodeGenOpenCL extends OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg 
     case "IntLabels" | "LongLabels" | "FloatLabels" | "DoubleLabels" | "BooleanLabels" => labelsCopyMutableInputHtoD(sym)
     case "RangeVector" => rangeVectorCopyMutableInputHtoD(sym)
     case "IndexVector" => indexVectorCopyMutableInputHtoD(sym)
-    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" => trainingSetCopyMutableInputHtoD(sym)
+    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyMutableInputHtoD(sym)
     case _ => super.copyMutableInputDtoH(sym)
   }
 
@@ -538,7 +542,7 @@ trait OptiMLCodeGenOpenCL extends OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg 
       Map("isRow"->Manifest.Boolean, "length"->Manifest.Int, "data"->Manifest.Int.arrayManifest)
     case "RangeVector" =>
       Map("isRow"->Manifest.Boolean, "start"->Manifest.Int, "stride"->Manifest.Int, "end"->Manifest.Int)
-    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" =>
+    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" =>
       val dataArrayType1 = sym.Type.typeArguments(0)
       val dataArrayType2 = sym.Type.typeArguments(1)
       Map("numRows"->Manifest.Int, "numCols"->Manifest.Int, "data"->dataArrayType1.arrayManifest, "data_labels"->dataArrayType2.arrayManifest)

@@ -100,6 +100,99 @@ public:
     }
 };
 
+class DoubleDoubleTrainingSet {
+public:
+	cl_mem data;
+	int numRows;
+	int numCols;
+  	cl_mem data_labels;
+
+   	int numSamples(void) { return numRows; }
+   	int numFeatures(void) { return numCols; }
+
+    DoubleDoubleTrainingSet transposed(void) {
+        DoubleDoubleTrainingSet ret;
+        ret.data = data;
+        ret.numRows = numCols;
+        ret.numCols = numRows;
+        ret.data_labels = data_labels;
+        return ret;
+    }
+
+    DoubleLabels labels(void) {
+        DoubleLabels ret;
+        ret.data = data_labels;
+        ret.length = numCols;
+        ret.isRow = true;
+        return ret;
+    }
+
+	// Constructors
+    DoubleDoubleTrainingSet() {
+		data = NULL;
+		numRows = 0;
+		numCols = 0;
+	}
+
+	DoubleDoubleTrainingSet(cl_mem _data, int _numRows, int _numCols, cl_mem _data_labels) {
+		data = _data;
+		numRows = _numRows;
+		numCols = _numCols;
+		data_labels = _data_labels;
+	}
+
+    // DeliteCollection
+    int dcSize() {
+        return numRows*numCols;
+    }
+};
+
+class DoubleIntTrainingSet {
+public:
+	cl_mem data;
+	int numRows;
+	int numCols;
+  	cl_mem data_labels;
+
+   	int numSamples(void) { return numRows; }
+   	int numFeatures(void) { return numCols; }
+
+    DoubleIntTrainingSet transposed(void) {
+        DoubleIntTrainingSet ret;
+        ret.data = data;
+        ret.numRows = numCols;
+        ret.numCols = numRows;
+        ret.data_labels = data_labels;
+        return ret;
+    }
+
+    IntLabels labels(void) {
+        IntLabels ret;
+        ret.data = data_labels;
+        ret.length = numCols;
+        ret.isRow = true;
+        return ret;
+    }
+
+	// Constructors
+    DoubleIntTrainingSet() {
+		data = NULL;
+		numRows = 0;
+		numCols = 0;
+	}
+
+	DoubleIntTrainingSet(cl_mem _data, int _numRows, int _numCols, cl_mem _data_labels) {
+		data = _data;
+		numRows = _numRows;
+		numCols = _numCols;
+		data_labels = _data_labels;
+	}
+
+    // DeliteCollection
+    int dcSize() {
+        return numRows*numCols;
+    }
+};
 
 #endif
 
