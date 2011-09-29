@@ -180,8 +180,9 @@
   <span class="c">// a Delite parallel operation! was it really that easy?</span>
   <span class="k">case class</span> <span class="nc">ReportSum</span>(in: <span class="kt">Exp[ProfileArray]</span>) 
     <span class="k">extends</span> <span class="nc">DeliteOpReduce[Double]</span> {
-      <span class="k">val</span> v = (fresh[Double], fresh[Double])
-      <span class="k">val</span> func = v._1 + v._2
+      <span class="k">val</span> zero = unit(0.0)
+      <span class="k">val</span> size = copyTransformedOrElse(_.size)(in.length)
+      <span class="k">def</span> func = (a,b) => a + b
   }
 
   <span class="c">// median is a little trickier, let's just be sequential</span>
@@ -246,14 +247,14 @@
     rhs <span class="k">match</span> {
       <span class="k">case</span> <span class="nc">ReportMedian</span>(x) =>
         <span class="k">val</span> a = quote(x)
-        <span class="k">val</span> size = a + <span class="s">".size"</span>
+        <span class="k">val</span> size = a + <span class="s">".dcSize"</span>
         stream.println(<span class="s">"val "</span> + quote(sym) + <span class="s">" = {"</span>)
         stream.println(<span class="s">"val d = new Array[Double]("</span>+size+<span class="s">")"</span>)
         stream.println(<span class="s">"System.arraycopy("</span>+a+<span class="s">"._data, 0, d, 0, "</span>+size+<span class="s">")"</span>)
         stream.println(<span class="s">"scala.util.Sorting.quickSort(d)"</span>)
         stream.println(<span class="s">"d(Math.ceil("</span>+size+<span class="s">"/2).asInstanceOf[Int])"</span>)
         stream.println(<span class="s">"}"</span>)
-      <span class="k">case</span> <span class="nc">ProfileLength</span>(x) => emitValDef(sym, quote(x) + <span class="s">".size"</span>)
+      <span class="k">case</span> <span class="nc">ProfileLength</span>(x) => emitValDef(sym, quote(x) + <span class="s">".dcSize"</span>)
       <span class="k">case</span> _ => <span class="nc">super</span>.emitNode(sym, rhs)
     }
 }
@@ -312,7 +313,7 @@
                                         
   <span class="k">def</span> dsmap(s: <span class="kt">String</span>) = s.replaceAll(<span class="s">"example.profiling.datastruct"</span>, <span class="s">"generated"</span>)
   
-  <span class="k">override def</span> remap[A](m: <span class="kt">Manifest[A]</span>): <span class="kt">String</span> = dsmap(m.toString)
+  <span class="k">override def</span> remap[A](m: <span class="kt">Manifest[A]</span>): <span class="kt">String</span> = dsmap(super.remap(m))
   
   <span class="k">override def</span> emitDataStructures(path: <span class="s">String</span>) {
     <span class="k">val</span> s = File.separator
