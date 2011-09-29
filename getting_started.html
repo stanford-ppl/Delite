@@ -93,14 +93,9 @@ git checkout delite-develop</code></pre></div>
         this can be done as follows: </p>
         <div class="highlight"><pre><code class="bash">export DELITE=[insert absolute path to Delite repo]
 export LMS=[insert absolute path to LMS repo]</pre></code></div>
-        <p>Download the latest <code>scala-virtualized</code> <a href="dists/scala-virtualized-latest.tgz">binary distribution</a> or download and compile it from source. <code>scala-virtualized</code> is the compiler that will be used to compile Delite framework and apps.
-If you have troubles compiling <code>scala-virtualized</code>, take a look at the instructions at <a href="source.html">"Building from source"</a> page:</p> 
-        <div class="highlight"><pre><code class="bash">git clone https://github.com/TiarkRompf/scala-virtualized.git
-cd scala-virtualized
-ant fastdist
-</code></pre></div>
-        <p>Once <code>scala-virtualized</code> is built, edit $DELITE/delite.properties and $LMS/local.properties to point to its distribution (i.e. to the folder that contains /bin and /lib subfolders - if you built the compiler using the instructions above, the distribution will be located at dists/latest within scala-virtualized folder). Here is an example line to add in both of these files:
-        <div class="highlight"><pre><code class="bash">scala.virtualized.home=/ppl/scala-virtualized/dists/latest</code></pre></div>
+        <p>Download the latest <code>scala-virtualized</code> <a href="dists/scala-virtualized-latest.tgz">binary distribution</a> (or build it from source following the instructions at <a href="source.html">"Building from source"</a>).  <code>scala-virtualized</code> is the compiler that will be used to compile Delite framework and apps.
+        <p>Once you have <code>scala-virtualized</code>, edit $DELITE/delite.properties and $LMS/local.properties to point to its distribution (i.e. to the folder that contains /bin and /lib subfolders). Here is an example line to add in both of these files:
+        <div class="highlight"><pre><code class="bash">scala.virtualized.home=/ppl/scala-virtualized-latest/pack/</code></pre></div>
         <p>First, we need to compile the <code>virtualization-lms-core</code> library that Delite uses.        
         <div class="highlight"><pre><code class="bash">cd $LMS
 sbt update
@@ -138,16 +133,16 @@ cd ..
         </p>
         <p>
         So without further ado, let's get to it. Home directory of Delite has the <code>scripts</code> subdirectory that hosts several helpers scripts that we're going to use. Comprehensive documentation, which includes exact format of the command line and a list of configuration options, is available <a href="https://github.com/stanford-ppl/Delite/tree/develop/scripts">at Github</a>, but here we'll just illustrate a basic use case.
-        </p> 
+        </p>
+        <p> First, add the Delite scripts to your path and then configure them:
+        <div class="highlight"><pre><code class="bash">export PATH=$PATH:$DELITE/scripts
+delitecfg</code></pre></div>
+        </p>
         <p>
-        First things first - we compile our application with <code>delitec</code>. This combines the first two phases of Delite application's lifecycle: first, the app gets compiled by virtualized scala, then it gets staged by running the main method of <code>OptiMLApplicationRunner</code> object we just created.:
+        We compile our application with <code>delitec</code>. This combines the first two phases of Delite application's lifecycle: first, the app gets compiled by virtualized scala, then it gets staged by running the main method of <code>OptiMLApplicationRunner</code> object we just created.:
         <div class="highlight"><pre><code class="bash">delitec -Xrunner:HelloWorldRunner HelloWorld.scala</code></pre></div>
         </p>
-        <p>
-        You can also omit the <code>-Xrunner:HelloWorldRunner</code> part of the invocation, since <code>delitec</code> is smart enough to infer the location of the single runner in your application. However, if there are multiple runners and in some other cases <code>delitec</code> will get confused, and you'll have to resort to using <code>-Xrunner</code> again (see <a href="https://github.com/stanford-ppl/Delite/tree/develop/scripts">the docs</a> for more information about that):
-        <div class="highlight"><pre><code class="bash">delitec HelloWorld.scala</code></pre></div>
-        </p>
-        <p>
+       <p>
         The generated execution graph will be in 'out.deg'. Also look around in the folder 'generated/' - it contains code OptiML generated!
         Note that you can specify a different file for the DEG by supplying the JVM parameter <code>delite.deg.filename</code>:
         <div class="highlight"><pre><code class="bash">delitec -Ddelite.deg.filename="hello.deg" HelloWorld.scala</code></pre></div>
@@ -155,10 +150,6 @@ cd ..
         <p>
         The last thing we need to do is execute our generated program (phase three). To do this, we invoke the Delite runtime using:</p><p>
         <div class="highlight"><pre><code class="bash">delite out.deg</code></pre></div>
-        </p>
-        <p>
-        Similarly to <code>delitec</code>, Delite runtime script allows you to omit its arguments. If your current directory contains a single DEG file, you may leave it out when invoking <code>delite</code> (see <a href="https://github.com/stanford-ppl/Delite/tree/develop/scripts">the docs</a> for more information about this shortcut):</p><p>
-        <div class="highlight"><pre><code class="bash">delite</code></pre></div>
         </p>
         <p>
         You should see output like the following:
