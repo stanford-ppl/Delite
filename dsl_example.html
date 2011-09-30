@@ -102,7 +102,7 @@
    <span class="k">val</span> _data = <span class="k">new</span> <span class="nc">Array[Double]</span>(numMeasurements)
 
    <span class="c">// these are required for all DeliteCollections</span>
-   <span class="k">def</span> size = _data.length
+   <span class="k">def</span> dcSize = _data.length
    <span class="k">def</span> dcApply(i: <span class="kt">Int</span>) = _data(i)
    <span class="k">def</span> dcUpdate(i: <span class="kt">Int</span>, x: <span class="kt">Double</span>) { _data(i) = x }   
 }
@@ -143,6 +143,11 @@
   <span class="k">def</span> profile_body(n: <span class="kt">Exp[Int]</span>, func: <span class="kt">=> Exp[Any]</span>) = {
     reflectEffect(<span class="nc">Profile</span>(n, reifyEffects(func)))  <span class="c">// create an IR node</span>
   }
+
+  <span class="k">override def</span> boundSyms(e: <span class="kt">Any</span>): <span class="kt">List[Sym[Any]]</span> = e <span class="k">match</span> {
+    <span class="k">case</span> <span class="nc">Profile</span>(n, body) => effectSyms(body)
+    <span class="k">case</span> _ => <span class="nc">super</span>.boundSyms(e)
+  }  
 }
 </code></pre></div>
      <p>
@@ -209,11 +214,6 @@
   <span class="k">val</span> IR: <span class="kt">ProfileOpsExp</span>
   <span class="k">import</span> IR._
 
-  <span class="k">override def</span> boundSyms(e: <span class="kt">Any</span>): <span class="kt">List[Sym[Any]]</span> = e <span class="k">match</span> {
-    <span class="k">case</span> <span class="nc">Profile</span>(n, body) => effectSyms(body)
-    <span class="k">case</span> _ => <span class="nc">super</span>.boundSyms(e)
-  }
-
   <span class="k">override def</span> emitNode(sym: <span class="kt">Sym[Any]</span>, rhs: <span class="kt">Def[Any]</span>)(<span class="k">implicit</span> stream: <span class="kt">PrintWriter</span>) = 
     rhs <span class="k">match</span> {
       <span class="c">// insert instrumentation code around function body</span>
@@ -260,8 +260,9 @@
 }
 </code></pre></div>
     <p> So close! We've finishing defining our entire DSL. Now we just need to put some machinery together
-    so that applications can use it. Open up a file called Profile.scala. Here, we're going to add
-    package definitions and Delite hooks so that DSL applications can easily import our DSL into scope.
+    so that applications can use it. In the same directory as ProfileOps.scala, open up a file called
+    Profile.scala. Here, we're going to add package definitions and Delite hooks so that DSL applications
+    can easily import our DSL into scope.
     </p>
     <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling</span>
 <span class="k">import</span> <span class="nn">example.profiling.datastruct.scala.ProfileArray</span>
@@ -367,6 +368,10 @@
     the DSLs class:
     </p>
     <div class="highlight"><pre><code class="scala"><span class="k">lazy val</span> profiling = project(<span class="s">"profiling"</span>, <span class="s">"Profiling"</span>, <span class="k">new</span> <span class="nc">FlatProject</span>(_), framework)</code></pre></div>
+    <p>
+    Note that you can add the profiling DSL to your classpath so that <code>delitec</code> can find it using:
+    <div class="highlight" style="overflow: scroll"><pre><code class="bash">export CLASSPATH=$CLASSPATH:$DELITE/dsls/profiling/target/scala_2.9.x-virtualized-SNAPSHOT/classes/</code></pre></div>
+    </p>
     <p>
     Congratulations! You just built your first Delite DSL. Go try it out with some test apps!
     We've only scratched the surface though - Delite and LMS both offer many more features, including
