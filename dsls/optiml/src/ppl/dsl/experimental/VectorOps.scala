@@ -15,44 +15,50 @@ trait VectorOps extends DSLType with Variables {
 
   object Vector {
     // default to dense
-    def dense[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) = vector_obj_new(len, isRow)
+    def dense[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) = dense_vector_obj_new(len, isRow)
+    def sparse[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) = sparse_vector_obj_new(len, isRow)
   }
   
   /**
    * Experimenting with using implicit ops to handle abstract operations. 
    *  
-   * The main issue with this is that:  
-   *    1) you have to enumerate the combinations of various sub-types.
-   *       e.g. [DenseVector,RangeVector], [DenseVector,IndexVector], ...
-   *       there is no common interface to exploit
-   *    2) have to use unchecked variance to get the inheritance to work out
    */
-  /*
-  implicit def repVecToVecOps[A:Manifest](x: Rep[Vector[A]]) = new VecOpsCls1(x)
-  implicit def varToVecOps[A:Manifest](x: Var[Vector[A]]) = new VecOpsCls1(readVar(x))
 
-  class CanSum[-A,+R] {
-    def apply(a: Rep[A])(implicit ar: Arith[A]): Rep[R]
-  }
-  class CanSumVector[A] {
-    def apply(a: Rep[Vector[A]])(implicit ar: Arith[A]): Rep[A]
-  }
-  class CanSumDenseVector[A:Manifest] extends CanSumVector[A] {
-    def apply(a: Rep[DenseVector[A]])
-  }
-  // class CanSumDenseVector[A:Manifest] extends CanSum[DenseVector[A],A] {
-  //     def apply(a: Rep[DenseVector[A]])(implicit ar: Arith[A]) = a.sum
-  //   }  
-  implicit def canSumDenseVector[A:Manifest] = new CanSumDenseVector()
   
-  // we need CanSumDenseVector[A] <:< CanSum[Vector[A],A], but the function argument needs to be contravariant...  
-  class VecOpsCls1[A:Manifest](x: Rep[Vector[A]]) {
-    def sum(implicit a: Arith[A], cs: CanSum[Vector[A], A]) = cs(x)
-    // but how do you add ? to Dense/Sparse ?
-    // sum(Rep[Dense])
-    // sum(Rep[Sparse])
+  trait BinaryOp[A,B,R] {
+    def apply(a: Rep[A], b: Rep[B]): Rep[R]
   }
-  */
+  
+  trait CanAdd[A,B,R] extends BinaryOp[A,B,R]
+
+  // works, but requires a CanAdd instance to be supplied along with the IsVector instance (less desirable)
+  // def infix_+[A,B,R](x: Rep[A], y: Rep[B])(implicit ca: CanAdd[A,B,R]) = ca(x,y)
+  //   
+  //   abstract class IsVector[V[X],T:Manifest](x: Rep[V[T]]) {
+  //     def length: Rep[Int]
+  //   }
+  
+  implicit def isVectorToVectorOps[V[X],T:Manifest](lhs: Rep[V[T]])(implicit v: IsVector[V,T]) = new IsVectorOps[V,T](lhs)
+  
+  class IsVectorOps[V[X],T:Manifest](lhs: Rep[V[T]])(implicit v: IsVector[V,T]) {
+    def length = v.length(lhs)
+    //def +[B,R](rhs: Rep[B])(implicit ca: CanAdd[V[T],B,R]) = v.plus(lhs, rhs)    
+    //def +(rhs: Rep[V[T]])(implicit a: Arith[T]) = v.plus(lhs,rhs)
+    def +[Y[X]](rhs: Rep[Y[T]])(implicit a: Arith[T], yv: IsVector[Y,T]) = v.plus(lhs, rhs)
+  }
+  
+  trait IsVector[V[X],T] {
+    def length(lhs: Rep[V[T]]): Rep[Int]    
+    
+    // doesn't work unless we supply the CanAdd explicitly at the call site (can't construct it generically)
+    //def plus[B,R](lhs: Rep[V[T]], rhs: Rep[B])(implicit ca: CanAdd[V[T],B,R]) = ca(lhs,rhs)     
+    
+    // works, but not expressive
+    //def plus(lhs: Rep[V[T]], rhs: Rep[V[T]])(implicit a: Arith[T]): Rep[V[T]]
+    
+    // works, but return type is fixed like in Interface - would need to use same (ugly) type alias trick
+    def plus[Y[X]](lhs: Rep[V[T]], rhs: Rep[Y[T]])(implicit a: Arith[T], v: IsVector[Y,T]): Rep[V[T]]
+  }
   
 
   /**
@@ -77,8 +83,11 @@ trait VectorOps extends DSLType with Variables {
     
     // accessors
     def length: Rep[Int] 
-    def +(y: Rep[V[A]])(implicit a: Arith[A]): Rep[V[A]]
-    
+        
+    type VPLUSR[X]
+    def +(y: Interface[Vector[A]])(implicit a: Arith[A]): Rep[VPLUSR[A]]
+    def +(y: Rep[V[A]])(implicit a: Arith[A]): Rep[V[A]]    
+            
     // how can we add to another arbitrary vector of a different type (that also implements the vector/delitecollection interface)?
     // seems like it may be doable if we relax delite ops...
   }
@@ -86,7 +95,7 @@ trait VectorOps extends DSLType with Variables {
   // x: Rep[DenseVector[T]]
   // we implicitly convert that to an Interface[Vector[T]]: (this would be better if we didn't need Interface, but then Rep can't simply be an abstract type)  
   implicit def denseToInterfaceVecOps[A:Manifest](lhs: Rep[DenseVector[A]]) = VInterface[A](new DenseVecOpsCls[A](lhs))
-  // implicit def sparseToInterfaceVecOps[A:Manifest](lhs: Rep[SparseVector[A]]) = VInterface[A](new SparseVecOpsCls[A](lhs))
+  implicit def sparseToInterfaceVecOps[A:Manifest](lhs: Rep[SparseVector[A]]) = VInterface[A](new SparseVecOpsCls[A](lhs))
   
   // clients that can handle multiple kinds of vector must accept an Interface[Vector[T]],  not a Rep[Vector[T]]
   case class VInterface[A:Manifest](ops: VecOpsCls[A]) extends Interface[Vector[A]] // clients use Interface[Vector]
@@ -101,10 +110,12 @@ trait VectorOps extends DSLType with Variables {
   class InterfaceVecOpsCls[A:Manifest](val intf: VInterface[A]) {
     def length = intf.ops.length
     def +(y: Rep[intf.ops.V[A]])(implicit a: Arith[A]) = intf.ops.+(y)
+    def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.+(y)
   }
   
   // object defs
-  def vector_obj_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVector[A]]
+  def dense_vector_obj_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVector[A]]
+  def sparse_vector_obj_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]): Rep[SparseVector[A]]
 }
 
 trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
@@ -114,12 +125,16 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
-  case class VectorNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) extends Def[DenseVector[A]] {
+  case class DenseVectorNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) extends Def[DenseVector[A]] {
     val mA = manifest[A]
   }
 
+  case class SparseVectorNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) extends Def[SparseVector[A]] {
+    val mA = manifest[A]
+  }
 
-  def vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(VectorNew[A](len, isRow)) //XXX
+  def dense_vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(DenseVectorNew[A](len, isRow)) //XXX
+  def sparse_vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(SparseVectorNew[A](len, isRow)) //XXX
 }
 
 trait BaseGenVectorOps extends GenericFatCodegen {
@@ -134,7 +149,8 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case v@VectorNew(length, isRow) => emitValDef(sym, "new generated.scala.VectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
+    case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.VectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
+    case v@SparseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.VectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

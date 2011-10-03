@@ -24,6 +24,7 @@ trait Interface[T] {
 
 trait Vector[T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T]
 trait DenseVector[T] extends Vector[T]
+trait SparseVector[T] extends Vector[T]
 
 /**
  * These separate Sandbox applications from the Exp world.
@@ -74,7 +75,7 @@ trait SandboxScalaCodeGenPkg extends ScalaGenDSLOps
  * This the trait that every Sandbox application must extend.
  */
 trait Sandbox extends SandboxScalaOpsPkg
-  with ArithOps with VectorOps with DenseVectorOps  {
+  with ArithOps with VectorOps with DenseVectorOps with SparseVectorOps  {
 
   this: SandboxApplication =>
 }
@@ -91,7 +92,7 @@ trait SandboxCompiler extends Sandbox with DeliteCollectionOps with RangeOps wit
  * These are the corresponding IR nodes for Sandbox.
  */
 trait SandboxExp extends SandboxCompiler with SandboxScalaOpsPkgExp with DeliteOpsExp 
-  with VectorOpsExp with DenseVectorOpsExp 
+  with ArithOpsExp with VectorOpsExp with DenseVectorOpsExp with SparseVectorOpsExp
   with DeliteAllOverridesExp {
 
   // this: SandboxApplicationRunner => why doesn't this work?
@@ -120,7 +121,7 @@ trait SandboxCodeGenBase extends GenericFatCodegen {
 }
 
 trait SandboxCodeGenScala extends SandboxCodeGenBase with SandboxScalaCodeGenPkg with ScalaGenDeliteOps
-  with ScalaGenVectorOps with ScalaGenDenseVectorOps
+  with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenSparseVectorOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
   val IR: DeliteApplication with SandboxExp
