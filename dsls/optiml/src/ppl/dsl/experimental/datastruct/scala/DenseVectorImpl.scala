@@ -9,7 +9,7 @@ package ppl.dsl.experimental.datastruct.scala
  * Alternatively, everything in this class could be lifted, and we could generate a concrete class to be instantiated
  * in the generated code.
  */
-class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean) extends DenseVector[T] {
+class DenseVectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean) extends DenseVector[T] {
   protected var _length = __length
   protected var _isRow = __isRow
   protected var _data: Array[T] = new Array[T](_length)
@@ -32,7 +32,7 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
     _data(index) = x
   }
 
-  def cloneL = { val v = new VectorImpl[T](0, isRow); v.insertAll(0, this); v }
+  def cloneL = { val v = new DenseVectorImpl[T](0, isRow); v.insertAll(0, this); v }
 
   def unsafeSetData(xs: Array[T], len: Int) {
     _data = xs
@@ -44,7 +44,7 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
     val d = new Array[T](_length)
     System.arraycopy(_data, 0, d, 0, _length)
     scala.util.Sorting.quickSort(d)
-    new VectorImpl[T](d, isRow)
+    new DenseVectorImpl[T](d, isRow)
   }
 
   def insert(pos: Int, x: T) {

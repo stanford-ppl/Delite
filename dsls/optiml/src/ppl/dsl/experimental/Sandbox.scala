@@ -6,15 +6,18 @@ import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
-
+import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 /**
  * Sandbox types 
  */
 
-trait Vector[T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T]
-trait DenseVector[T] extends Vector[T]
-trait SparseVector[T] extends Vector[T]
+// this inheritance hierarchy should reflect the interface statically dispatched interface inheritance hierarchy,
+// e.g. Interface[Vector[A]] <:< Interface[DeliteCollection[A]]
+trait Vector[T] extends DeliteCollection[T]
+trait DenseVector[T] extends DeliteCollection[T]
+trait SparseVector[T] extends DeliteCollection[T]
+
 
 /**
  * These separate Sandbox applications from the Exp world.

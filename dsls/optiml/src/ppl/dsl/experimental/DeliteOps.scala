@@ -221,7 +221,8 @@ trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp wi
     type OpType <: DeliteOpMap[A,B,CB]
 
     // supplied by subclass
-    val in: Exp[DeliteCollection[A]]
+    //val in: Exp[DeliteCollection[A]]
+    val in: Interface[DeliteCollection[A]]
     //val size: Exp[Int] // could be dc_size(in), but we want type-specific pattern matching to work
     def func: Exp[A] => Exp[B]
     def alloc: Exp[CB]
@@ -229,7 +230,7 @@ trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp wi
     // loop
     lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B, CB](
       alloc = reifyEffects(this.alloc),
-      func = reifyEffects(this.func(dc_apply(in,v)))
+      func = reifyEffects(this.func(in.dcApply(v)))
     ))
   }
 
