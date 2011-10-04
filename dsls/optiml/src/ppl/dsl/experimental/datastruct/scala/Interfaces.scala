@@ -1,9 +1,12 @@
 package ppl.dsl.experimental.datastruct.scala
 
+// this file should not be needed using pure static dispatch!
+
 /**
  * Vector
  */
 
+/*
 trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
   def length: Int
   def isRow: Boolean
@@ -51,3 +54,4 @@ trait DenseVector[@specialized(Boolean, Int, Long, Float, Double) T] extends Vec
 }
 
 trait SparseVector[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T]
+*/

@@ -71,18 +71,23 @@ trait VectorOps extends DSLType with Variables {
   class Builder[-Elem, +To]  
   abstract class VectorBuilder[-Elem, +To] extends Builder[Elem,To] {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]): Rep[To]
-  }
-  
-  implicit def denseVecBuilder[A:Manifest] = new VectorBuilder[A,DenseVector[A]] {
+  }  
+  def denseVectorBuilder[A:Manifest] = new VectorBuilder[A,DenseVector[A]] {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = Vector.dense[A](length, isRow)
   }  
-  implicit def sparseVecBuilder[A:Manifest] = new VectorBuilder[A,SparseVector[A]] {
+  def sparseVectorBuilder[A:Manifest] = new VectorBuilder[A,SparseVector[A]] {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = Vector.sparse[A](length, isRow)
   }
     
   abstract class VecOpsCls[A:Manifest] extends DCInterfaceOps[A] {
-    type V[X] <: DeliteCollection[X] // necessary?
+    type V[X] // <: DeliteCollection[X] // necessary?
+    implicit def toIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]]    
+    implicit def builder[B:Manifest]: VectorBuilder[B,V[B]]    
+    implicit def mVB[B:Manifest]: Manifest[V[B]] 
+    
     val x: Rep[V[A]]
+    
+    def mutable: Rep[V[A]]
     
     // delite collection
     def dcSize: Rep[Int] 
@@ -96,10 +101,8 @@ trait VectorOps extends DSLType with Variables {
 
     def +(y: Rep[V[A]])(implicit a: Arith[A]): Rep[V[A]] // needed for Arith    
     def +(y: Interface[Vector[A]])(implicit a: Arith[A]): Interface[Vector[A]]
-    
-    def map[B:Manifest](f: Rep[A] => Rep[B])(implicit b: VectorBuilder[B,V[B]],
-                                                      toIntf: Rep[V[A]] => Interface[Vector[A]],
-                                                      mVB: Manifest[V[B]]): Rep[V[B]] = vector_map(x,f)
+
+    def map[B:Manifest](f: Rep[A] => Rep[B]): Rep[V[B]] = vector_map[A,B,V[B]](x,f)
   }
   
   // x: Rep[DenseVector[T]]
@@ -114,19 +117,21 @@ trait VectorOps extends DSLType with Variables {
   implicit def interfaceToVecOps[A:Manifest](intf: Interface[Vector[A]]): InterfaceVecOpsCls[A] = new InterfaceVecOpsCls(intf.asInstanceOf[VInterface[A]]) // should only be one instance of Interface[Vector], but can we enforce this?
   
   class InterfaceVecOpsCls[A:Manifest](val intf: VInterface[A]) {
+    def mutable: Interface[Vector[A]] = intf.ops.toIntf[A](intf.ops.mutable)
+    
     def length = intf.ops.length
     def apply(n: Rep[Int]) = intf.ops.apply(n)
     def update(n: Rep[Int], y: Rep[A]) = intf.ops.update(n,y)
     
     def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.+(y)
+    def map[B:Manifest](f: Rep[A] => Rep[B]): Interface[Vector[B]] = intf.ops.toIntf(intf.ops.map(f))
   }
   
   // object defs
   def dense_vector_obj_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVector[A]]
   def sparse_vector_obj_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]): Rep[SparseVector[A]]
   
-  def vector_map[V[X] <: DeliteCollection[X],A:Manifest,B:Manifest](x: Rep[V[A]], f: Rep[A] => Rep[B])
-    (implicit b: VectorBuilder[B,V[B]], toIntf: Rep[V[A]] => Interface[Vector[A]], mVB: Manifest[V[B]]): Rep[V[B]]
+  def vector_map[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Rep[A] => Rep[B])(implicit b: VectorBuilder[B,VB]): Rep[VB]
 }
 
 trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
@@ -144,8 +149,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     val mA = manifest[A]
   }
 
-  case class VectorMap[V[X] <: DeliteCollection[X],A:Manifest,B:Manifest](in: Interface[Vector[A]], func: Exp[A] => Exp[B])(implicit b: VectorBuilder[B,V[B]], mVB: Manifest[V[B]])
-    extends DeliteOpMap[A,B,V[B]] {
+  case class VectorMap[A:Manifest,B:Manifest,VB:Manifest](in: Interface[Vector[A]], func: Exp[A] => Exp[B])(implicit b: VectorBuilder[B,VB])
+    extends DeliteOpMap[A,B,VB] {
 
     val size = copyTransformedOrElse(_.size)(in.length)
     def alloc = b.alloc(in.length, unit(true))
@@ -157,9 +162,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   def dense_vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(DenseVectorNew[A](len, isRow)) //XXX
   def sparse_vector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(SparseVectorNew[A](len, isRow)) //XXX
   
-  def vector_map[V[X] <: DeliteCollection[X],A:Manifest,B:Manifest](x: Exp[V[A]], f: Exp[A] => Exp[B])
-    (implicit b: VectorBuilder[B,V[B]], toIntf: Exp[V[A]] => Interface[Vector[A]], mVB: Manifest[V[B]])
-      = reflectPure(VectorMap(x, f)(manifest[A],manifest[B],b,mVB)) // TODO: effect if func effectful!  
+  def vector_map[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[B])(implicit b: VectorBuilder[B,VB])
+    = reflectPure(VectorMap[A,B,VB](x, f)) // TODO: effect if func effectful!  
 }
 
 trait BaseGenVectorOps extends GenericFatCodegen {
@@ -174,8 +178,8 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.DenseVectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
-    case v@SparseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.SparseVectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
+    case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.DenseVector[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
+    case v@SparseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.SparseVector[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

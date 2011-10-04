@@ -73,6 +73,11 @@ trait DenseVectorOps extends DSLType with Variables {
   
   class DenseVecOpsCls[A:Manifest](val x: Rep[DenseVector[A]]) extends VecOpsCls[A] {
     type V[X] = DenseVector[X]
+    implicit def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
+    implicit def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]
+    implicit def mVB[B:Manifest] = manifest[DenseVector[B]] 
+     
+    def mutable = densevector_mutable_clone(x)
     
     def dcSize = densevector_length(x)
     def dcApply(n: Rep[Int]): Rep[A] = densevector_apply(x,n)
@@ -82,10 +87,11 @@ trait DenseVectorOps extends DSLType with Variables {
     def length = densevector_length(x)
     
     def +(y: Rep[V[A]])(implicit a: Arith[A]) = densevector_plus_dense(x,y)
-    def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = densevector_plus_generic(x,y)
+    def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = toIntf(densevector_plus_generic(x,y))
   }
   
   // class defs
+  def densevector_mutable_clone[A:Manifest](x: Rep[DenseVector[A]]): Rep[DenseVector[A]]
   def densevector_length[A:Manifest](x: Rep[DenseVector[A]]): Rep[Int]
   def densevector_apply[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int]): Rep[A]
   def densevector_update[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]  
@@ -100,6 +106,8 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
 
   this: SandboxExp =>
 
+  case class DenseVectorClone[A:Manifest](x: Exp[DenseVector[A]]) extends Def[DenseVector[A]] // should be statically implemented...
+  
   case class DenseVectorLength[A:Manifest](x: Exp[DenseVector[A]]) extends Def[Int]
   case class DenseVectorApply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int]) extends Def[A]
   case class DenseVectorUpdate[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
@@ -139,6 +147,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
   
  
   // class interface
+  def densevector_mutable_clone[A:Manifest](x: Rep[DenseVector[A]]) = reflectMutable(DenseVectorClone(x))
   def densevector_length[A:Manifest](x: Exp[DenseVector[A]]) = reflectPure(DenseVectorLength(x))
   def densevector_apply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int]) = reflectPure(DenseVectorApply(x,n))
   def densevector_update[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(DenseVectorUpdate(x,n,y))    
@@ -164,6 +173,7 @@ trait ScalaGenDenseVectorOps extends BaseGenDenseVectorOps with ScalaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
+    case DenseVectorClone(x) => emitValDef(sym, quote(x) + ".cloneL")
     case DenseVectorLength(x) => emitValDef(sym, quote(x) + ".length")
     case DenseVectorApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
     case DenseVectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))

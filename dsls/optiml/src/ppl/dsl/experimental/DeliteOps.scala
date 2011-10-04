@@ -103,7 +103,9 @@ trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp wi
     //cond: List[Exp[Boolean]] = Nil
   ) extends Def[Unit]
   
-  case class DeliteCollectElem[A, CA <: DeliteCollection[A]]( 
+  //case class DeliteCollectElem[A, CA <: DeliteCollection[A]]( 
+  // functions on CB currently happen at generation-time, and are not type-checked
+  case class DeliteCollectElem[A, CA]( 
     alloc: Exp[CA],
     func: Exp[A],
     cond: List[Exp[Boolean]] = Nil
@@ -215,8 +217,9 @@ trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp wi
    * @param  alloc function returning the output collection. if it is the same as the input collection,
    *               the operation is mutable; (=> DeliteCollection[B]).
    */ 
-  abstract class DeliteOpMap[A:Manifest,
-                             B:Manifest, CB <: DeliteCollection[B]:Manifest]
+   abstract class DeliteOpMap[A:Manifest,
+//                              B:Manifest, CB <: DeliteCollection[B]:Manifest]
+                              B:Manifest, CB:Manifest] 
     extends DeliteOpLoop[CB] {
     type OpType <: DeliteOpMap[A,B,CB]
 
@@ -564,21 +567,22 @@ trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp wi
     val sync: Exp[List[Any]]
 
     lazy val alloc = Const()
-    lazy val variant = {
-      implicit val mA: Manifest[A] = v.Type.asInstanceOf[Manifest[A]]
-      reifyEffects {
-        var index = var_new(unit(0))
-        var vs = var_new(unit(null).asInstanceOfL[A])
-        while (index < in.size) {
-          vs = in(index)
-          rebind(v.asInstanceOf[Sym[A]], ReadVar(vs))
-          //reflectEffect(findDefinition(func.asInstanceOf[Sym[Unit]]).get.rhs)
-          var x = var_new(func)
-          index += 1
-        }
-        alloc
-      }
-    }
+    lazy val variant = throw new UnsupportedOperationException()
+    // lazy val variant = {
+    //       implicit val mA: Manifest[A] = v.Type.asInstanceOf[Manifest[A]]
+    //       reifyEffects {
+    //         var index = var_new(unit(0))
+    //         var vs = var_new(unit(null).asInstanceOfL[A])
+    //         while (index < in.size) {
+    //           vs = in(index)
+    //           rebind(v.asInstanceOf[Sym[A]], ReadVar(vs))
+    //           //reflectEffect(findDefinition(func.asInstanceOf[Sym[Unit]]).get.rhs)
+    //           var x = var_new(func)
+    //           index += 1
+    //         }
+    //         alloc
+    //       }
+    //     }
   }
 
   // TODO: should we make all DeliteOps be boundable? This is probably not the right way to do this anyways.
@@ -896,6 +900,8 @@ trait SandboxScalaGenDeliteOps extends ScalaGenLoopsFat with SandboxBaseGenDelit
 
   //TODO: modularize code generators even more
 
+  // TODO: AKS: how should multiloop work without structs? how do we translate the object accesses at codegen (post IR) time?
+  
   /**
    * MultiLoop components
    */
@@ -907,7 +913,7 @@ trait SandboxScalaGenDeliteOps extends ScalaGenLoopsFat with SandboxBaseGenDelit
       else
         stream.println(prefixSym + quote(sym) + ".insert(" + prefixSym + quote(sym) + ".length, " + quote(getBlockResult(elem.func)) + ")")
     } else
-      stream.println(prefixSym + quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
+      stream.println(prefixSym + quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")") 
   }
   
   def emitForeachElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteForeachElem[_])(implicit stream: PrintWriter) {

@@ -6,13 +6,13 @@ import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Base, ScalaGenFat
 import scala.virtualization.lms.internal.{GenericFatCodegen}
 
 trait SandboxDeliteCollectionOps extends Base {
-  implicit def dcToDcOps[A:Manifest](x: Rep[DeliteCollection[A]]) = new deliteCollectionOpsCls(x)
-       
-  class deliteCollectionOpsCls[A:Manifest](x: Rep[DeliteCollection[A]]) {
-    def size = dc_size(x)
-    def apply(n: Rep[Int]) = dc_apply(x,n)
-    def update(n: Rep[Int], y: Rep[A]) = dc_update(x,n,y)
-  }
+  // implicit def dcToDcOps[A:Manifest](x: Rep[DeliteCollection[A]]) = new deliteCollectionOpsCls(x)
+  //      
+  // class deliteCollectionOpsCls[A:Manifest](x: Rep[DeliteCollection[A]]) {
+  //   def size = dc_size(x)
+  //   def apply(n: Rep[Int]) = dc_apply(x,n)
+  //   def update(n: Rep[Int], y: Rep[A]) = dc_update(x,n,y)
+  // }
   
   trait DCInterfaceOps[A] extends InterfaceOps {
     def dcSize: Rep[Int] 
