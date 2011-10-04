@@ -22,7 +22,6 @@ exec scala "$synthetic" "$@"
 !#*/
 
 args = javaopt("delite.build.dir", config.delite_home + File.separator + "generated") +: args
-//args = javaopt("delite.home.dir", config.delite_home) +: args
 args = javaopt("delite.home.dir", config.delite_home) +: args
 var (java_opts, runner_opts, other_opts, other_args) = parse_args_with_runner(args, verbose = false)
 if (other_args.length != 0) runner_opts = other_args.toIterator
