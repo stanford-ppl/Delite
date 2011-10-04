@@ -22,6 +22,7 @@ trait DenseVectorOps extends DSLType with Variables {
    * CanXX experiments 
    */
   
+  /*
   implicit def canAddDense[T:Manifest:Arith] = new CanAdd[DenseVector[T],DenseVector[T],DenseVector[T]] {
     def apply(lhs: Rep[DenseVector[T]], rhs: Rep[DenseVector[T]]) = densevector_plus_dense(lhs,rhs)
   }
@@ -49,6 +50,7 @@ trait DenseVectorOps extends DSLType with Variables {
     //def plus[B,R](lhs: Rep[DenseVector[T]], rhs: Rep[B])(implicit ca: CanAdd[DenseVector[T],B,R]) = ca(lhs,rhs) 
     def plus[V[X]](lhs: Rep[DenseVector[T]], rhs: Rep[V[T]])(implicit a: Arith[T], v: IsVector[V,T]) = { val t = canAddGeneric[T,V]; t(lhs, rhs)}
   }
+  */
   
   // TODO: switch this to infix, so that we don't have a chained implicit problem when doing e.g. dense + dense
   // if we change to infix, then we don't have the ops inheritance...
@@ -66,14 +68,16 @@ trait DenseVectorOps extends DSLType with Variables {
   //   def infix_distinct[A:Manifest](x: Rep[DenseVector[A]]) = vector_distinct(x)
   // ...
   
-  /*
   implicit def repVecToDenseVecOps[A:Manifest](x: Rep[DenseVector[A]]) = new DenseVecOpsCls(x)
   implicit def varToDenseVecOps[A:Manifest](x: Var[DenseVector[A]]) = new DenseVecOpsCls(readVar(x))
-  */
-  
+    
   class DenseVecOpsCls[A:Manifest](val x: Rep[DenseVector[A]]) extends VecOpsCls[A] {
     type V[X] = DenseVector[X]
     
+    def dcSize = densevector_length(x)
+    def dcApply(n: Rep[Int]): Rep[A] = densevector_apply(x,n)
+    def dcUpdate(n: Rep[Int], y: Rep[A]): Rep[Unit] = densevector_update(x,n,y)
+      
     // accessors
     def length = densevector_length(x)
     
@@ -82,22 +86,17 @@ trait DenseVectorOps extends DSLType with Variables {
     // even if it does, we would have to re-think delite op parameters
     type VPLUSR[X] = DenseVector[X]
     def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = densevector_plus_generic(x,y)
-    def +(y: Rep[DenseVector[A]])(implicit a: Arith[A]) = densevector_plus_dense(x,y)
-    //def +(y: Rep[SparseVector[A]])(implicit a: Arith[A]) = densevector_plus_sparse(x,y)
-    
-    
-    // how should this work? previously it was accepted as an argument because it was a Vector[Int],
-    // but now we do not accept arbitrary Vectors
-    //def +(y: Rep[RangeVector])
   }
   
   // class defs
   def densevector_length[A:Manifest](x: Rep[DenseVector[A]]): Rep[Int]
-  def densevector_plus_dense[A:Manifest:Arith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]]): Rep[DenseVector[A]]
+  def densevector_apply[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int]): Rep[A]
+  def densevector_update[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]  
+  //def densevector_plus_dense[A:Manifest:Arith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]]): Rep[DenseVector[A]]
   def densevector_plus_generic[A:Manifest:Arith](x: Rep[DenseVector[A]], y: Interface[Vector[A]]): Rep[DenseVector[A]]
   
   // CanXX
-  def densevector_plus_generic2[A:Manifest:Arith,V[X]](x: Rep[DenseVector[A]], y: Rep[V[A]])(implicit ev1: IsVector[V,A]): Rep[DenseVector[A]]
+  //def densevector_plus_generic2[A:Manifest:Arith,V[X]](x: Rep[DenseVector[A]], y: Rep[V[A]])(implicit ev1: IsVector[V,A]): Rep[DenseVector[A]]
 }
 
 trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp {
@@ -105,8 +104,20 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
   this: SandboxExp =>
 
   case class DenseVectorLength[A:Manifest](x: Exp[DenseVector[A]]) extends Def[Int]
+  case class DenseVectorApply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int]) extends Def[A]
+  case class DenseVectorUpdate[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
   
-  abstract class DenseVectorArithmeticZipWith[A:Manifest:Arith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]]) extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
+  // abstract class DenseVectorArithmeticZipWith[A:Manifest:Arith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]]) extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
+  //     def alloc = Vector.dense[A](inA.length, unit(true))
+  //     val size = copyTransformedOrElse(_.size)(inA.length)
+  //     
+  //     def m = manifest[A]
+  //     def a = implicitly[Arith[A]]
+  //   }
+  
+  abstract class DenseVectorArithmeticZipWith[A:Manifest:Arith](inA: Interface[Vector[A]], inB: Interface[Vector[A]])
+    extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
+      
     def alloc = Vector.dense[A](inA.length, unit(true))
     val size = copyTransformedOrElse(_.size)(inA.length)
     
@@ -114,25 +125,33 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
     def a = implicitly[Arith[A]]
   }
 
-  case class DenseVectorPlusDense[A:Manifest:Arith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]])
-    extends DenseVectorArithmeticZipWith[A](inA, inB) {
-
-    def func = (a,b) => a + b
-  }
+  // case class DenseVectorPlusDense[A:Manifest:Arith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]])
+  //     extends DenseVectorArithmeticZipWith[A](inA, inB) {
+  // 
+  //     def func = (a,b) => a + b
+  //   }
   
-  // TODO: test with modified delite ops
-  case class DenseVectorPlusGeneric[A:Manifest:Arith](inA: Exp[DenseVector[A]], inB: Interface[Vector[A]]) extends Def[DenseVector[A]]
+  case class DenseVectorPlusGeneric[A:Manifest:Arith](inA: Interface[Vector[A]], inB: Interface[Vector[A]])   
+   //extends Def[DenseVector[A]]
+   extends DenseVectorArithmeticZipWith[A](inA, inB) {
+
+   def func = (a,b) => a + b
+ }
   
  
   // class interface
   def densevector_length[A:Manifest](x: Exp[DenseVector[A]]) = reflectPure(DenseVectorLength(x))
-  def densevector_plus_dense[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) = reflectPure(DenseVectorPlusDense(x,y))
+  def densevector_apply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int]) = reflectPure(DenseVectorApply(x,n))
+  def densevector_update[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(DenseVectorUpdate(x,n,y))    
+  //def densevector_plus_dense[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) = reflectPure(DenseVectorPlusDense(x,y))
   def densevector_plus_generic[A:Manifest:Arith](x: Rep[DenseVector[A]], y: Interface[Vector[A]]) = reflectPure(DenseVectorPlusGeneric(x,y))
   
   // CanXX
+  /*
   case class DenseVectorPlusGeneric2[A:Manifest:Arith,V[X]](inA: Exp[DenseVector[A]], inB: Exp[V[A]])(implicit ev1: IsVector[V,A]) extends Def[DenseVector[A]]
   
   def densevector_plus_generic2[A:Manifest:Arith,V[X]](x: Exp[DenseVector[A]], y: Exp[V[A]])(implicit ev1: IsVector[V,A]) = reflectPure(DenseVectorPlusGeneric2(x,y))
+  */
 }
 
 trait BaseGenDenseVectorOps extends GenericFatCodegen {
@@ -146,7 +165,9 @@ trait ScalaGenDenseVectorOps extends BaseGenDenseVectorOps with ScalaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case DenseVectorLength(x)    => emitValDef(sym, quote(x) + ".length")
+    case DenseVectorLength(x) => emitValDef(sym, quote(x) + ".length")
+    case DenseVectorApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
+    case DenseVectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
     case _ => super.emitNode(sym, rhs)
   }
 }

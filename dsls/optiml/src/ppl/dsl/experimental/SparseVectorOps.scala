@@ -24,19 +24,25 @@ trait SparseVectorOps extends DSLType with Variables {
   class SparseVecOpsCls[A:Manifest](val x: Rep[SparseVector[A]]) extends VecOpsCls[A] {
     type V[X] = SparseVector[X]
     
+    def dcSize = sparsevector_length(x)
+    def dcApply(n: Rep[Int]): Rep[A] = throw new UnsupportedOperationException("not implemented yet")
+    def dcUpdate(n: Rep[Int], y: Rep[A]): Rep[Unit] = throw new UnsupportedOperationException("not implemented yet")
+  
     // accessors
     def length = sparsevector_length(x)
     
     // SparseVector + Generic = DenseVector[X]
     override type VPLUSR[X] = DenseVector[X]
     def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = sparsevector_plus_generic(x,y)
-    def +(y: Rep[SparseVector[A]])(implicit a: Arith[A]) = sparsevector_plus_sparse(x,y)
     
+    // allows Arith to still work
+    //def +(y: Rep[SparseVector[A]])(implicit a: Arith[A]) = sparsevector_plus_sparse(x,y)    
+    def +(y: Rep[SparseVector[A]])(implicit a: Arith[A]) = throw new UnsupportedOperationException("tbd")
   }
 
   // class defs
   def sparsevector_length[A:Manifest](x: Rep[SparseVector[A]]): Rep[Int]
-  def sparsevector_plus_sparse[A:Manifest:Arith](x: Rep[SparseVector[A]], y: Rep[SparseVector[A]]): Rep[SparseVector[A]]
+//  def sparsevector_plus_sparse[A:Manifest:Arith](x: Rep[SparseVector[A]], y: Rep[SparseVector[A]]): Rep[SparseVector[A]]
   def sparsevector_plus_generic[A:Manifest:Arith](x: Rep[SparseVector[A]], y: Interface[Vector[A]]): Rep[DenseVector[A]]
 }
 
@@ -46,7 +52,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
 
   case class SparseVectorLength[A:Manifest](x: Exp[SparseVector[A]]) extends Def[Int]
   
-  abstract class SparseVectorArithmeticZipWith[A:Manifest:Arith](inA: Exp[SparseVector[A]], inB: Exp[SparseVector[A]]) extends DeliteOpZipWith[A,A,A,SparseVector[A]] {
+  abstract class SparseVectorArithmeticZipWith[A:Manifest:Arith](inA: Interface[Vector[A]], inB: Interface[Vector[A]]) extends DeliteOpZipWith[A,A,A,SparseVector[A]] {
     def alloc = Vector.sparse[A](inA.length, unit(true))
     val size = copyTransformedOrElse(_.size)(inA.length)
     
@@ -54,17 +60,27 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
     def a = implicitly[Arith[A]]
   }
 
-  case class SparseVectorPlusSparse[A:Manifest:Arith](inA: Exp[SparseVector[A]], inB: Exp[SparseVector[A]])
-    extends SparseVectorArithmeticZipWith[A](inA, inB) {
+  // case class SparseVectorPlusSparse[A:Manifest:Arith](inA: Interface[SparseVector[A]], inB: Interface[SparseVector[A]])
+  //     extends SparseVectorArithmeticZipWith[A](inA, inB) {
+  //    
+  //     def func = (a,b) => a + b
+  //   }
 
+  case class SparseVectorPlusGeneric[A:Manifest:Arith](inA: Interface[Vector[A]], inB: Interface[Vector[A]]) 
+    //extends Def[DenseVector[A]]
+    extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
+      
+    def alloc = Vector.dense[A](inA.length, unit(true))
+    val size = copyTransformedOrElse(_.size)(inA.length)
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
+    
     def func = (a,b) => a + b
   }
-
-  case class SparseVectorPlusGeneric[A:Manifest:Arith](inA: Exp[SparseVector[A]], inB: Interface[Vector[A]]) extends Def[DenseVector[A]]
  
   // class interface
   def sparsevector_length[A:Manifest](x: Exp[SparseVector[A]]) = reflectPure(SparseVectorLength(x))
-  def sparsevector_plus_sparse[A:Manifest:Arith](x: Exp[SparseVector[A]], y: Exp[SparseVector[A]]) = reflectPure(SparseVectorPlusSparse(x,y))
+//  def sparsevector_plus_sparse[A:Manifest:Arith](x: Exp[SparseVector[A]], y: Exp[SparseVector[A]]) = reflectPure(SparseVectorPlusSparse(x,y))
   def sparsevector_plus_generic[A:Manifest:Arith](x: Rep[SparseVector[A]], y: Interface[Vector[A]]) = reflectPure(SparseVectorPlusGeneric(x,y))
 }
 

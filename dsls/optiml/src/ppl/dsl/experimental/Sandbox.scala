@@ -4,19 +4,9 @@ import java.io._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
-import ppl.delite.framework.codegen.Target
-import ppl.delite.framework.codegen.scala.TargetScala
-import ppl.delite.framework.codegen.cuda.TargetCuda
-import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
 
-
-// TODO: temp: move to base
-trait InterfaceOps  
-trait Interface[T] {
-  val ops: InterfaceOps
-}
 
 /**
  * Sandbox types 
@@ -31,7 +21,7 @@ trait SparseVector[T] extends Vector[T]
  */
 
 // ex. object GDARunner extends SandboxApplicationRunner with GDA
-trait SandboxApplicationRunner extends SandboxApplication with DeliteApplication with SandboxExp
+trait SandboxApplicationRunner extends SandboxApplication with SandboxDeliteApplication with SandboxExp
 
 // ex. trait GDA extends SandboxApplication
 trait SandboxApplication extends Sandbox with SandboxLift  {
@@ -74,14 +64,14 @@ trait SandboxScalaCodeGenPkg extends ScalaGenDSLOps
 /**
  * This the trait that every Sandbox application must extend.
  */
-trait Sandbox extends SandboxScalaOpsPkg
+trait Sandbox extends SandboxScalaOpsPkg with SandboxDeliteCollectionOps
   with ArithOps with VectorOps with DenseVectorOps with SparseVectorOps  {
-
+  
   this: SandboxApplication =>
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait SandboxCompiler extends Sandbox with DeliteCollectionOps with RangeOps with IOOps with SeqOps with SetOps
+trait SandboxCompiler extends Sandbox with RangeOps with IOOps with SeqOps with SetOps
   with ListOps with HashMapOps with IterableOps {
     
   this: SandboxApplication with SandboxExp =>
@@ -91,14 +81,14 @@ trait SandboxCompiler extends Sandbox with DeliteCollectionOps with RangeOps wit
 /**
  * These are the corresponding IR nodes for Sandbox.
  */
-trait SandboxExp extends SandboxCompiler with SandboxScalaOpsPkgExp with DeliteOpsExp 
-  with ArithOpsExp with VectorOpsExp with DenseVectorOpsExp with SparseVectorOpsExp
-  with DeliteAllOverridesExp {
+trait SandboxExp extends SandboxCompiler with SandboxScalaOpsPkgExp with SandboxDeliteOpsExp 
+  with ArithOpsExp with VectorOpsExp with DenseVectorOpsExp with SparseVectorOpsExp {
+//  with DeliteAllOverridesExp {
 
   // this: SandboxApplicationRunner => why doesn't this work?
-  this: DeliteApplication with SandboxApplication with SandboxExp => // can't be SandboxApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
+  this: SandboxDeliteApplication with SandboxApplication with SandboxExp => // can't be SandboxApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
 
-  def getCodeGenPkg(t: Target{val IR: SandboxExp.this.type}) : GenericFatCodegen{val IR: SandboxExp.this.type} = {
+  def getCodeGenPkg(t: SandboxTarget{val IR: SandboxExp.this.type}) : GenericFatCodegen{val IR: SandboxExp.this.type} = {
     t match {
       case _:TargetScala => new SandboxCodeGenScala{val IR: SandboxExp.this.type = SandboxExp.this}
       case _ => throw new RuntimeException("sandbox does not support this target")
@@ -111,19 +101,33 @@ trait SandboxExp extends SandboxCompiler with SandboxScalaOpsPkgExp with DeliteO
 /**
  * Sandbox code generators
  */
-trait SandboxCodeGenBase extends GenericFatCodegen {
+trait SandboxCodeGenBase extends GenericFatCodegen with ppl.delite.framework.codegen.Utils {
 
-  val IR: DeliteApplication with SandboxExp
+  val IR: SandboxDeliteApplication with SandboxExp
   override def initialDefs = IR.deliteGenerator.availableDefs
 
+  // borrow optiml data structures for sandbox
+  def dsmap(line: String) : String = {
+    var res = line.replaceAll("ppl.dsl.experimental.datastruct", "generated")
+    res = res.replaceAll("ppl.dsl.experimental", "generated.scala")   
+    res
+  }
+  
+  override def remap[A](m: Manifest[A]): String = dsmap(super.remap(m))
+  
+  override def emitDataStructures(path: String) {
+    val s = File.separator
+    val dsRoot = Config.homeDir + s+"dsls"+s+"optiml"+s+"src"+s+
+                 "ppl"+s+"dsl"+s+"experimental"+s+"datastruct"+s + this.toString
 
-  def dsmap(line: String) = line
+    copyDataStructures(dsRoot, path, dsmap)
+  }
 }
 
-trait SandboxCodeGenScala extends SandboxCodeGenBase with SandboxScalaCodeGenPkg with ScalaGenDeliteOps
-  with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenSparseVectorOps
-  with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
+trait SandboxCodeGenScala extends SandboxCodeGenBase with SandboxScalaCodeGenPkg with SandboxScalaGenDeliteOps
+  with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenSparseVectorOps {
+//  with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
-  val IR: DeliteApplication with SandboxExp
+  val IR: SandboxDeliteApplication with SandboxExp
 
 }

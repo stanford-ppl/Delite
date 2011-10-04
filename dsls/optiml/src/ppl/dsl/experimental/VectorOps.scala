@@ -24,7 +24,7 @@ trait VectorOps extends DSLType with Variables {
    *  
    */
 
-  
+  /*
   trait BinaryOp[A,B,R] {
     def apply(a: Rep[A], b: Rep[B]): Rep[R]
   }
@@ -59,7 +59,7 @@ trait VectorOps extends DSLType with Variables {
     // works, but return type is fixed like in Interface - would need to use same (ugly) type alias trick
     def plus[Y[X]](lhs: Rep[V[T]], rhs: Rep[Y[T]])(implicit a: Arith[T], v: IsVector[Y,T]): Rep[V[T]]
   }
-  
+  */
 
   /**
    * The following is a scheme meant to implement a version of "call-site dispatch" in lieu of dynamic dispatch for ops. 
@@ -75,41 +75,35 @@ trait VectorOps extends DSLType with Variables {
    * type wrapped inside an Interface. There is a idea of an ugly workaround now (see Arith.scala), that unfortunately doesn't quite work
    * (but looks like maybe it should).
    */
-  // TODO: one type variable is not enough.. e.g. Interface[Vector[A]] (from a DenseVector) + SparseVector, or Interface[Vector[A]] (from a SparseVector) + DenseVector
-  // TODO: switch to infix, so that any sub-type can invoke super-type implementations if they exist
-  abstract class VecOpsCls[A:Manifest] extends InterfaceOps {
+  abstract class VecOpsCls[A:Manifest] extends DCInterfaceOps[A] {
     type V[X]
     val x: Rep[V[A]]
+    
+    // delite collection
+    def dcSize: Rep[Int] 
+    def dcApply(n: Rep[Int]): Rep[A] 
+    def dcUpdate(n: Rep[Int], y: Rep[A]): Rep[Unit]
     
     // accessors
     def length: Rep[Int] 
         
     type VPLUSR[X]
     def +(y: Interface[Vector[A]])(implicit a: Arith[A]): Rep[VPLUSR[A]]
-    def +(y: Rep[V[A]])(implicit a: Arith[A]): Rep[V[A]]    
-            
-    // how can we add to another arbitrary vector of a different type (that also implements the vector/delitecollection interface)?
-    // seems like it may be doable if we relax delite ops...
   }
   
   // x: Rep[DenseVector[T]]
   // we implicitly convert that to an Interface[Vector[T]]: (this would be better if we didn't need Interface, but then Rep can't simply be an abstract type)  
-  implicit def denseToInterfaceVecOps[A:Manifest](lhs: Rep[DenseVector[A]]) = VInterface[A](new DenseVecOpsCls[A](lhs))
-  implicit def sparseToInterfaceVecOps[A:Manifest](lhs: Rep[SparseVector[A]]) = VInterface[A](new SparseVecOpsCls[A](lhs))
+  implicit def denseToInterface[A:Manifest](lhs: Rep[DenseVector[A]]) = VInterface[A](new DenseVecOpsCls[A](lhs))
+  implicit def sparseToInterface[A:Manifest](lhs: Rep[SparseVector[A]]) = VInterface[A](new SparseVecOpsCls[A](lhs))
   
   // clients that can handle multiple kinds of vector must accept an Interface[Vector[T]],  not a Rep[Vector[T]]
-  case class VInterface[A:Manifest](ops: VecOpsCls[A]) extends Interface[Vector[A]] // clients use Interface[Vector]
+  case class VInterface[A:Manifest](ops: VecOpsCls[A]) extends DCInterface[Vector[A],A] // clients use Interface[Vector]
 
-  // class DenseVecOpsCls[A:Manifest](x: Rep[DenseVector[A]]) extends VecOpsCls[A] {
-  //   type V[X] = DenseVector[X]  
-  // }
-  
   // then we convert from a Interface[Vector[T]] to an interfaceVecToOpsCls, providing all of the original vector methods  
-  implicit def interfaceToVecOps[A:Manifest](intf: Interface[Vector[A]]) = new InterfaceVecOpsCls(intf.asInstanceOf[VInterface[A]]) // should only be one instance of Interface[Vector], but can we enforce this?
+  implicit def interfaceToVecOps[A:Manifest](intf: Interface[Vector[A]]): InterfaceVecOpsCls[A] = new InterfaceVecOpsCls(intf.asInstanceOf[VInterface[A]]) // should only be one instance of Interface[Vector], but can we enforce this?
   
   class InterfaceVecOpsCls[A:Manifest](val intf: VInterface[A]) {
     def length = intf.ops.length
-    def +(y: Rep[intf.ops.V[A]])(implicit a: Arith[A]) = intf.ops.+(y)
     def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.+(y)
   }
   
@@ -150,7 +144,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.VectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
-    case v@SparseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.VectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
+    case v@SparseVectorNew(length, isRow) => throw new UnsupportedOperationException("sparse vector impl not yet implemented")
     case _ => super.emitNode(sym, rhs)
   }
 }
