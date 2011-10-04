@@ -17,19 +17,12 @@ import ppl.delite.runtime.graph.targets.OS
 
 object CudaCompile extends GPUCompile {
 
-  def target = "cuda"
+  override def target = "cuda"
   override def ext = "cu"
 
   //TODO: handle more than one runtime object
   def compile(destination: String, source: String, paths: Array[String]) {
     Directory(Path(destination)).createDirectory()
-
-    val sep = File.separator
-    //figure out where the jni header files are for this machine
-    val javaHome = System.getProperty("java.home")
-
-    val deliteHome = Config.deliteHome
-    val deliteLibs = Config.deliteBuildHome + sep + "libraries"
 
     val cmdString = Array[String](
       "nvcc",

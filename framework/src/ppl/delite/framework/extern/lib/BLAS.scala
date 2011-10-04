@@ -9,6 +9,7 @@ object BLAS extends ExternalLibrary {
   val libName = "scalaBLAS"
   val configFile = "BLAS.xml"  
   val ext = "c"
+  val libExt = "so"
   // should we consider library linking machine dependent? do we have a different external lib
   // for unix and windows?
   val compileFlags = List( "-w", "-O3", "-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-liomp5", "-lmkl_mc3", "-lmkl_def", 

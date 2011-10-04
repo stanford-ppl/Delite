@@ -38,8 +38,11 @@ object Config {
   val profile: Boolean = if (System.getProperty("delite.debug.profile") == null) false else true
   val printSources: Boolean = if (System.getProperty("delite.debug.print.sources") == null) false else true
 
-  /* OpenCL lib path */
-  val openclIncPath: String = System.getProperty("delite.opencl.incpath") //TODO: Where to move this?
+  //TODO: Remove below options with OP_External work
+  /* OpenCL header & lib path */
+  val clHeaderPath: String = System.getProperty("delite.cl.header")
+  val clBlasHeaderPath: String = System.getProperty("delite.cl.blas.header")
+  val clBlasLibPath: String = System.getProperty("delite.cl.blas.lib")
 
   /**
    * DEG specific, set after its parsed

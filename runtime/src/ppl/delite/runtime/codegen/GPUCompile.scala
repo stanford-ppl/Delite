@@ -13,6 +13,13 @@ trait GPUCompile extends CodeCache {
 
   //def cmdString: Array[String]
 
+  val sep = File.separator
+  //figure out where the jni header files are for this machine
+  val javaHome = System.getProperty("java.home")
+
+  val deliteHome = Config.deliteHome
+  val deliteLibs = Config.deliteBuildHome + sep + "libraries" + sep + target
+
   def addSource(source: String, name: String) {
     if (!sourceBuffer.contains((source, name)))
       sourceBuffer += Pair(source, name)

@@ -207,8 +207,10 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
       //write the call
       if (op.isInstanceOf[OP_Nested])
         writeFunctionCall(op, out)
-      else if (op.isInstanceOf[OP_External])
+      else if (op.isInstanceOf[OP_External]) {
+        OpenCLCompile.externList.append(op.id)
         writeLibraryCall(op, out)
+      }
       else
         writeKernelCall(op, out)
 

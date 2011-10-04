@@ -9,7 +9,11 @@ import ppl.delite.runtime.graph.targets.OS
 
 object OpenCLCompile extends GPUCompile {
 
-  def target = "opencl"
+  // List of kernel symbols of type OP_External
+  // (used to exclude those kernel files from the OpenCL kernel list)
+  val externList = ArrayBuffer[String]()
+
+  override def target = "opencl"
   override def ext = "cpp"
 
   override def compile() {
@@ -21,24 +25,21 @@ object OpenCLCompile extends GPUCompile {
   def compile(destination: String, source: String, paths: Array[String]) {
     Directory(Path(destination)).createDirectory()
 
-    val sep = File.separator
-    //figure out where the jni header files are for this machine
-    val javaHome = System.getProperty("java.home")
-
-    val deliteHome = Config.deliteHome
-    val deliteLibs = Config.deliteBuildHome + sep + "libraries"
 
     println("Compiling OpenCL...")
 
     //TODO: How to set the OpenCL include path in general?
-     assert(Config.openclIncPath != null,"OpenCL include path is not specified!")
+    assert(Config.clHeaderPath != null,"OpenCL header path is not specified!")
+    assert(Config.clBlasHeaderPath != null,"OpenCL blas header path is not specified!")
+    assert(Config.clBlasLibPath != null,"OpenCL blas library path is not specified!")
 
-    //TODO:: fix the include & library path issue
+    //TODO: fix the include & library path issue
+    //TODO: Can remove the clblas related options (-I,-l,-L) if the library init routines are included in the framework OP_External
     val cmdString = Array[String](
       "g++",
       "-w", //suppress warnings
-      "-I" + Config.openclIncPath,
-      "-I/home/hyouklee/delite/Delite/runtime/opencl/blas",
+      "-I" + Config.clHeaderPath,     // TODO: Remove
+      "-I" + Config.clBlasHeaderPath, // TODO: Remove
       "-I" + javaHome + sep + ".." + sep + "include",
       "-I" + javaHome + sep + ".." + sep + "include" + sep + OS.jniMD) ++ //jni
       paths.map("-I"+_) ++
@@ -48,8 +49,8 @@ object OpenCLCompile extends GPUCompile {
       "-O2", //optimized
       "-shared", "-fPIC", //dynamic shared library
       "-lOpenCL",
-      "-lclblas",
-      "-L/home/hyouklee/delite/Delite/runtime/opencl/blas",
+      "-lclblas",                    // TODO: Remove
+      "-L" + Config.clBlasLibPath,   // TODO: Remove
       "-L" + deliteLibs) ++ linkGeneratedLibs(deliteLibs) ++ Array[String](
       "-o", "openclHost.so", //output name
       source //input name
@@ -89,7 +90,7 @@ object OpenCLCompile extends GPUCompile {
       ch = devFuncReader.read()
     }
     val kernelLists = Directory(Path(sourceCacheHome + "kernels")).files
-    for (file <- kernelLists if((file.extension=="cl")&&(file.name!="devFuncs.cl"))) {
+    for (file <- kernelLists if((file.extension=="cl")&&(file.name!="devFuncs.cl")&&(!externList.contains(file.name.substring(0,file.name.length-3))))) {
       val srcChars = file.bytes()
       while (srcChars.hasNext) {
         kernelStr.append(srcChars.next().asInstanceOf[Char])
