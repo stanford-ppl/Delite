@@ -87,7 +87,11 @@ trait DenseVectorOps extends DSLType with Variables {
     def length = densevector_length(x)
     
     def +(y: Rep[V[A]])(implicit a: Arith[A]) = densevector_plus_dense(x,y)
-    def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = toIntf(densevector_plus_generic(x,y))
+    
+    type VPLUSR = DenseVector[A]
+    def vplusToIntf(x: Rep[VPLUSR]) = toIntf(x)
+    def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = densevector_plus_generic(x,y)
+    //def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = toIntf(densevector_plus_generic(x,y))
   }
   
   // class defs

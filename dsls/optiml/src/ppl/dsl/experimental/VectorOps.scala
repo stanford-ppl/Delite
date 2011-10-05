@@ -100,8 +100,14 @@ trait VectorOps extends DSLType with Variables {
     def update(n: Rep[Int], y: Rep[A]) = dcUpdate(n,y)
 
     def +(y: Rep[V[A]])(implicit a: Arith[A]): Rep[V[A]] // needed for Arith    
-    def +(y: Interface[Vector[A]])(implicit a: Arith[A]): Interface[Vector[A]]
 
+    // we only need to go through this gymnastic hack when we have different return values for different ops;
+    // usually this would just return Rep[V[A]] (i.e. the same as the lhs)
+    type VPLUSR
+    def vplusToIntf(x: Rep[VPLUSR]): Interface[Vector[A]]
+    def +(y: Interface[Vector[A]])(implicit a: Arith[A]): Rep[VPLUSR]
+    //def +(y: Interface[Vector[A]])(implicit a: Arith[A]): Rep[V[A]]
+    
     def map[B:Manifest](f: Rep[A] => Rep[B]): Rep[V[B]] = vector_map[A,B,V[B]](x,f)
   }
   
@@ -123,8 +129,13 @@ trait VectorOps extends DSLType with Variables {
     def apply(n: Rep[Int]) = intf.ops.apply(n)
     def update(n: Rep[Int], y: Rep[A]) = intf.ops.update(n,y)
     
-    def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.+(y)
+    //def +(y: Rep[intf.ops.V[A]])(implicit a: Arith[A]) = intf.ops.toIntf(intf.ops.+(y)) // doesn't work, would need dynamic type of ops
+    def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.vplusToIntf(intf.ops.+(y))
     def map[B:Manifest](f: Rep[A] => Rep[B]): Interface[Vector[B]] = intf.ops.toIntf(intf.ops.map(f))
+    
+    // would be nice - could short-circuit the operation if known statically!
+    // toSparse
+    // toDense
   }
   
   // object defs

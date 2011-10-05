@@ -30,36 +30,62 @@ trait Test extends SandboxApplication {
     //val t3: Rep[SparseVector[Double]] = sv1 map { e => 5.0 }
     //println(t3(0))
     
+    // -- testing Sparse+{Dense,Sparse} expressiveness
     val sv2 = Vector.sparse[Int](10, true)
-                
-    // this is weird.. Sparse+Sparse if wrapped in interfaces returns a dense, but Sparse+Sparse if unwrapped returns sparse?
+    val st1: Interface[Vector[Int]] = sv1
+    val st2: Interface[Vector[Int]] = sv2
+    val dt1: Interface[Vector[Int]] = dv1
+    
+    // these all have logical return values      
+    val s1: Rep[SparseVector[Int]] = sv1 + sv2
+    val d1: Rep[DenseVector[Int]] = sv1 + dv1
+    val d2: Rep[DenseVector[Int]] = sv1 + dt1
+    val dint1: Interface[Vector[Int]] = st1 + dt1  // wrapped DenseVector
+    assert(dint1.ops.isInstanceOf[DenseVecOpsCls[_]])
+
+    // this is weird.. Sparse+Sparse if wrapped in interfaces returns a dense, but Sparse+Sparse if unwrapped returns sparse.
     // wrapped and unwrapped behavior should be the same, except in terms of returning a wrapped (or unwrapped) result
-    // unfortunately this conflicts with Arith, which expects A+A to return A.
-    val y2 = foo(sv1, sv2) // Interface+Interface, but actually Sparse+Sparse, returns Interface that is actually dense
+    // unfortunately this conflicts with Arith, which expects A+A to return A.    
+
+    // these all should probably return a wrapped SparseVector, but they all return a wrapped DenseVector, due to being dispatched on an Interface[Vector]
+    val sintbroken1: Interface[Vector[Int]] = st1 + st2 // (Interface[Sparse] + Interface[Sparse] => Interface[Dense]). 
+    val sintbroken2: Interface[Vector[Int]] = st1 + sv2 // (Interface[Sparse] + Sparse => Interface[Sparse] + Interface[Sparse] => Interface[Dense])
+    val sintbroken3: Interface[Vector[Int]] = st1 + st2 // (Interface[Sparse] + Interface[Sparse] => Interface[Dense])                                                  
+    val sbroken2: Rep[DenseVector[Int]] = sv1 + st1 // Sparse + Interface[Sparse] => Dense. ideally, would => Sparse!    
+    // -- end testing Sparse+{Dense,Sparse} expressiveness
+                    
+    //val y2 = foo(sv1, sv2) // Interface+Interface, but actually Sparse+Sparse, returns Interface that is actually dense
     
     //y2(0) = 1 // mutation error
     //val y3 = y2.mutable
     //y3(0) = 1 // ok
     
-    println(y2(0)) 
+    //println(y2(0)) 
      
     //     val y3 = y2 + y // Interface+Interface, but actually Dense+Dense (returns Interface that is actually dense)
     //     val y4 = (sv1 + sv2) + y // Sparse+Interface, but actually Sparse+Dense (returns Interface that is actually dense)
     //     
     //     println(y4(0))
+    
+    // TODO: try a nested op (Vector[Vector[Int]])
+    
+    // TODO: primitive conversions (e.g. V[Int] + V[Double] => V[Double], V[Double] + V[Int] => V[Double], etc.)?
+    // we're just as bad as we were before... can we combine this approach with type classes to make this better?
   }
 
+  
   /**
    * Interface
    */
   
   // works
-  // single foo can accept any vector that can be converted to an interface
+  // single foo can accept any vector that can be converted to an interface  
   //def foo(x: Interface[Vector[Int]]) = x.length  
   def foo(x1: Interface[Vector[Int]], x2: Interface[Vector[Int]]) = {
+  //def foo(x1: Rep[SparseVector[Int]], x2: Interface[Vector[Int]]) = {  
     x1(0) = 5 // not an error
-    val t1: Interface[Vector[Int]] = x1 map { e => 10 }
-    t1 + x2
+    //val t1: Interface[Vector[Int]] = x1 map { e => 10 }
+    x1 + x2
   }
   
   //def foo(x1: Interface[Vector[Int]], x2: Rep[DenseVector[Int]]) = x1 + x2      
