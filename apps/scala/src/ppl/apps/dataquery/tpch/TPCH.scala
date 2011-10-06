@@ -25,26 +25,30 @@ trait TPCH extends OptiQLApplication {
     
     val tpchDataPath = args(0)
     
-     
-    class MyRow extends Row[Rep]
+    
+/*    
+    class Result extends Row[Rep]
+    
     class ApplyDynamicOps {
       def applyDynamic[T](n: String)(as: AnyRef*): Rep[T] = error(n + as.mkString("(", ",", ")"))
     }
-    implicit def applyDynamicOps[T <: MyRow](qual: Rep[T]): ApplyDynamicOps = new ApplyDynamicOps
-  
-    val qual = new MyRow{ val xxx: Rep[Int] = 5    }
-    val x: Rep[Int] = qual.xxx 
+    implicit def applyDynamicOps[T <: Result](qual: Rep[T]): ApplyDynamicOps = new ApplyDynamicOps 
     
+    
+    val qual = new Result{ val xxx: Rep[Int] = 5    }
+    val x: Rep[Int] = qual.xxx("foo",unit(5),unit(4)) 
+    x 
+  */  
 
     //load TPCH data
     val lineItems = TPCH.loadLineItems(tpchDataPath)
-	tic(lineItems)
+	  tic(lineItems)
     
-       
-    val res = lineItems //Select(e => new Result { val l_shipdate = e.l_shipdate  }) Where(_.l_shipdate <= Date("1998-12-01"))
+      
+    //val res = lineItems Select(e => new Result { val l_shipdate = e.l_shipdate  }) Where(_.l_shipdate <= Date("1998-12-01"))
    
-    /*
-    val res = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => {
+    
+    val res = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
       val returnFlag = g.key._1
       val lineStatus = g.key._2
       val sumQty = g.Sum(_.l_quantity)
@@ -54,12 +58,11 @@ trait TPCH extends OptiQLApplication {
       val avgQty = g.Average(_.l_quantity)
       val avgPrice = g.Average(_.l_extendedprice)
       val avgDiscount = g.Average(_.l_discount)
-      val countOrder = g.Count
-      //hack
-      ResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, countOrder)
-    }) */
+      val countOrder = g.Count            
+    }) 
+    
     toc(res)
-    res.printAsTable()
+    res.printAsTable() 
 /*
     val res1 = lineItems Where(_.shipDate <= Date("1998-12-01")) GroupBy(l => (l.returnFlag,l.lineStatus)) Select(e => {
       val returnFlag = e.key._1
