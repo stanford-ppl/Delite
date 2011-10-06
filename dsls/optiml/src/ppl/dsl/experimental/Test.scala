@@ -67,7 +67,22 @@ trait Test extends SandboxApplication {
     //     
     //     println(y4(0))
     
-    // TODO: try a nested op (Vector[Vector[Int]])
+    // nested op (Vector[Vector[Int]])
+    
+    // this is a bit weird.. Vector[Int] is not a very meaningful type anymore (only used as a parameter to Interface)
+    val nested1: Rep[DenseVector[Vector[Int]]] = Vector.dense[Vector[Int]](10, true)
+    //val useless = nested1(0)
+    //val useless1 = useless map { e => 5.0 } // error, nothing defined on Vector[Int] 
+    
+    val nested2: Rep[DenseVector[SparseVector[Int]]] = nested1 map { v => Vector.sparse[Int](5, true) }
+    val nested3: Rep[DenseVector[DenseVector[Int]]] = nested1 map { v => Vector.dense[Int](5, true) }
+    
+    // these operations are not dimension-safe anyways; should we really support them with Arith?
+    // maybe now is a good time to remove Vector and Matrix from the Arith type class and see which apps break
+    
+    //val nested4: Rep[DenseVector[DenseVector[Int]]] = nested2 + nested3 // not part of Arith
+    val nested5: Rep[DenseVector[DenseVector[Int]]] = nested3 + nested3
+    val nested6: Rep[DenseVector[SparseVector[Int]]] = nested2 + nested2
     
     // TODO: primitive conversions (e.g. V[Int] + V[Double] => V[Double], V[Double] + V[Int] => V[Double], etc.)?
     // we're just as bad as we were before... can we combine this approach with type classes to make this better?
