@@ -2,7 +2,8 @@
 script_path=$0
 follow() { echo "$(readlink "$({ cd $(dirname "$1"); pwd -P; })/$(basename "$1")")"; }
 while [ -h "$script_path" ]; do script_path="$(follow "$script_path")"; done
-export script_home="$(dirname "$script_path")"
+#export script_home="$(dirname "$script_path")"
+export script_home="$( cd "$( dirname "$0" )" && pwd )"
 export script_name="$(basename "$script_path")"
 synthetic="/tmp/$script_name.$(mktemp -u XXXX)"
 touch "$synthetic"

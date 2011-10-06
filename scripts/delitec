@@ -21,7 +21,7 @@ echo '}' >> "$synthetic"
 exec scala "$synthetic" "$@"
 !#*/
 
-args = javaopt("delite.build.dir", "generated") +: args
+args = javaopt("delite.build.dir", config.delite_home + File.separator + "generated") +: args
 args = javaopt("delite.home.dir", config.delite_home) +: args
 var (java_opts, runner_opts, other_opts, other_args) = parse_args_with_runner(args, verbose = false)
 if (windows) { java_opts = java_opts map { arg => wrap(arg) }; env("JAVA_OPTS") = java_opts mkString " " }
