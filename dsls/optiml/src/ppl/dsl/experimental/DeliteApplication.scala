@@ -1,37 +1,35 @@
-package ppl.delite.framework
+package ppl.dsl.experimental
 
 import java.io.{FileWriter, File, PrintWriter}
 import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
 
-import codegen.c.TargetC
-import codegen.cuda.TargetCuda
-import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
-import codegen.scala.TargetScala
-import codegen.Target
-import ops.DeliteOpsExp
+import ppl.delite.framework.codegen.delite.{DeliteCodegen, TargetDelite}
+import ppl.delite.framework._
 
-trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
-  type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
+trait SandboxDeliteCodeGenPkg extends SandboxDeliteGenTaskGraph
 
-  def getCodeGenPkg(t: DeliteApplicationTarget) : GenericFatCodegen{val IR: DeliteApplication.this.type}
+trait SandboxDeliteApplication extends SandboxDeliteOpsExp with ScalaCompile {
+  type DeliteApplicationTarget = SandboxTarget{val IR: SandboxDeliteApplication.this.type}
 
-  lazy val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
-  lazy val cudaTarget = new TargetCuda{val IR: DeliteApplication.this.type = DeliteApplication.this}
-  lazy val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  def getCodeGenPkg(t: DeliteApplicationTarget) : GenericFatCodegen{val IR: SandboxDeliteApplication.this.type}
+
+  lazy val scalaTarget = new TargetScala{val IR: SandboxDeliteApplication.this.type = SandboxDeliteApplication.this}
+  lazy val cudaTarget = new TargetCuda{val IR: SandboxDeliteApplication.this.type = SandboxDeliteApplication.this}
+  lazy val cTarget = new TargetC{val IR: SandboxDeliteApplication.this.type = SandboxDeliteApplication.this}
 
   // TODO: this should be handled via command line options
   lazy val targets = List[DeliteApplicationTarget](scalaTarget/*, cudaTarget, cTarget*/)
-  val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
+  val generators: List[GenericFatCodegen{ val IR: SandboxDeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
 
   // TODO: refactor, this is from ScalaCompile trait
-  lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
-    getCodeGenPkg(scalaTarget).asInstanceOf[ScalaCodegen { val IR: DeliteApplication.this.type }]
+  lazy val codegen: ScalaCodegen { val IR: SandboxDeliteApplication.this.type } = 
+    getCodeGenPkg(scalaTarget).asInstanceOf[ScalaCodegen { val IR: SandboxDeliteApplication.this.type }]
 
   // generators created by getCodeGenPkg will use the 'current' scope of the deliteGenerator as global scope
-  val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
-                                               val generators = DeliteApplication.this.generators }
+  val deliteGenerator = new SandboxDeliteCodeGenPkg { val IR : SandboxDeliteApplication.this.type = SandboxDeliteApplication.this;
+                                                      val generators = SandboxDeliteApplication.this.generators }
                                                
   var args: Rep[Array[String]] = _
   
