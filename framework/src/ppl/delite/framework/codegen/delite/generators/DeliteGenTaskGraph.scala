@@ -197,9 +197,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
       } catch {
         case e:GenerationFailedException => // no generator found
           gen.exceptionHandler(e, outFile, kstream)
-          println(gen.toString + ":" + (sym map(quote)))
-          e.printStackTrace
-          
+          if(Config.dumpException) {
+            println(gen.toString + ":" + (sym map(quote)))
+            e.printStackTrace
+          }
           //if(gen.nested > 1) {
           //  nestedNode = gen.lastNodeAttempted
           //}

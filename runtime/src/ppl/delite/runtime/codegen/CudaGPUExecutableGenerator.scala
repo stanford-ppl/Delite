@@ -271,7 +271,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
       out.append(getSymGPU(name)) //first kernel inputs are OP outputs
       first=false
     }
-    if (op.getInputs.length>0 || op.getGPUMetadata(target).temps.length>0) out.append(",")
+    if (!first && (op.getInputs.length>0 || op.getGPUMetadata(target).temps.length>0)) out.append(",")
     writeInputs(op, out) //then all op inputs
     writeTemps(op, out) //then all op temporaries
     out.append(");\n")
