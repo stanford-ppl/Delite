@@ -40,10 +40,24 @@ object CudaCompile extends GPUCompile {
       )
     //println("cmd is " + cmdString.mkString(","))
     val process = Runtime.getRuntime.exec(cmdString, null, new File(destination))
-
     process.waitFor //wait for compilation to complete
     checkError(process)
   }
 
+  def compileInit() {
+    val cmdString = Array[String](
+      "nvcc",
+      "-w", //suppress warnings
+      "-I" + javaHome + sep + ".." + sep + "include" + "," + javaHome + sep + ".." + sep + "include" + sep + OS.jniMD, //jni
+      "-arch", "compute_20",
+      "-code", "sm_20",
+      "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
+      "-o", Config.deliteHome + sep + "runtime" + sep + "cuda" + sep + "cudaInit.so", //output name
+      Config.deliteHome + sep + "runtime" + sep + "cuda" + sep + "cudaInit.cu"
+      )
+    val process = Runtime.getRuntime.exec(cmdString, null, new File(Config.deliteHome))
+    process.waitFor //wait for compilation to complete
+    checkError(process)
+  }
 
 }

@@ -62,6 +62,21 @@ object OpenCLCompile extends GPUCompile {
     checkError(process)
   }
 
+  def compileInit() {
+    val cmdString = Array[String](
+      "g++",
+      "-w", //suppress warnings
+      "-I" + javaHome + sep + ".." + sep + "include",
+      "-I" + javaHome + sep + ".." + sep + "include" + sep + OS.jniMD, //jni
+      "-shared", "-fPIC", //dynamic shared library
+      "-o", Config.deliteHome + sep + "runtime" + sep + "opencl" + sep + "openclInit.so", //output name
+      Config.deliteHome + sep + "runtime" + sep + "opencl" + sep + "openclInit.cpp"
+      )
+    val process = Runtime.getRuntime.exec(cmdString, null, new File(Config.deliteHome))
+    process.waitFor //wait for compilation to complete
+    checkError(process)
+  }
+
   // Generate the clKernels.cl file to be read by the GPU execution host thread
   // Basically read all the files with .cl extension
   private def collectKernels() {

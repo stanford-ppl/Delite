@@ -40,6 +40,8 @@ trait GPUCompile extends CodeCache {
 
   def compile(destination: String, source: String, paths: Array[String])
 
+  def compileInit(): Unit
+
   def printSources() {
     for (i <- 0 until sourceBuffer.length) {
       print(sourceBuffer(i))
