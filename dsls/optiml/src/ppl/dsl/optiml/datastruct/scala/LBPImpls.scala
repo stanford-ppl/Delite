@@ -1,5 +1,7 @@
 package ppl.dsl.optiml.datastruct.scala
 
+import ppl.dsl.optila.datastruct.scala._
+
 /* This file should be auto-generated from a preprocessing compilation stage of application code.
  * It represents the interface of any user-defined data structure, for which the user must provide
  * concrete implementations.

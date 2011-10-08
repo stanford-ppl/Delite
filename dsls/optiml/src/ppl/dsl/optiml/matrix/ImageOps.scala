@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.matrix
 
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+import ppl.dsl.optiml.CudaGenDataStruct
 import ppl.dsl.optiml.{Vector, Matrix, Image}
 import java.io.{PrintWriter}
 

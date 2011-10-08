@@ -1,5 +1,7 @@
 package ppl.dsl.optiml.datastruct.scala
 
+import ppl.dsl.optila.datastruct.scala._
+
 /* StreamRowImpl wraps a VectorView that represents a Stream row.
  *
  * author:  Arvind Sujeeth (asujeeth@stanford.edu)

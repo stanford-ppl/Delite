@@ -1,6 +1,6 @@
 //package ppl.dsl.optiml.graph
 //
-//import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+//import ppl.dsl.optiml.CudaGenDataStruct
 //import ppl.dsl.optiml.datastruct.scala._
 //import java.io.{PrintWriter}
 //

@@ -6,7 +6,7 @@ import ppl.dsl.optiml._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import java.io.PrintWriter
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+import ppl.dsl.optiml.CudaGenDataStruct
 
 /**
  * Created by IntelliJ IDEA.
@@ -29,6 +29,7 @@ trait VerticesOps extends DSLType with Variables {
     def apply(n: Rep[Int]) = vertices_apply(x, n)
     def foreach(block: Rep[V] => Rep[Unit]) = vertices_foreach(x, block)
     def mforeach(block: Rep[V] => Rep[Unit]) = vertices_foreach(x, block)
+    def cloneL() = vertices_clone(x) 
     def mutable() = vertices_mutable_clone(x)
     def printBeliefs() = vertices_pbeliefs(x)
   }
@@ -37,6 +38,7 @@ trait VerticesOps extends DSLType with Variables {
   def vertices_apply[V <: Vertex:Manifest](x: Rep[Vertices[V]], n: Rep[Int]): Rep[V]
   def vertices_foreach[V <: Vertex:Manifest](x: Rep[Vertices[V]], block: Rep[V] => Rep[Unit]): Rep[Unit]
   def vertices_mforeach[V <: Vertex:Manifest](x: Rep[Vertices[V]], block: Rep[V] => Rep[Unit]): Rep[Unit]
+  def vertices_clone[V <: Vertex:Manifest](x: Rep[Vertices[V]]): Rep[Vertices[V]]
   def vertices_mutable_clone[V <: Vertex:Manifest](x: Rep[Vertices[V]]): Rep[Vertices[V]]
   def vertices_pbeliefs[V <: Vertex:Manifest](x: Rep[Vertices[V]]): Rep[Unit]
 }
@@ -78,6 +80,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
   }
   
   def vertices_mutable_clone[V <: Vertex:Manifest](x: Exp[Vertices[V]]) = reflectMutable(VerticesClone(x))
+  def vertices_clone[V <: Vertex:Manifest](x: Exp[Vertices[V]]) = reflectPure(VerticesClone(x))
   def vertices_pbeliefs[V <: Vertex:Manifest](x: Exp[Vertices[V]]) = reflectEffect(VerticesPBeliefs(x))
 }
 

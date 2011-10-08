@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.stream
 
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+import ppl.dsl.optiml.CudaGenDataStruct
 import ppl.dsl.optiml.{Vector, Stream, StreamRow}
 import java.io.{PrintWriter}
 

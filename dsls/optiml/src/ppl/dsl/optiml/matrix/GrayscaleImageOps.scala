@@ -6,7 +6,7 @@ import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+import ppl.dsl.optiml.CudaGenDataStruct
 import ppl.dsl.optiml.{Vector, Matrix, GrayscaleImage}
 import ppl.dsl.optiml.{OptiML, OptiMLExp}
 

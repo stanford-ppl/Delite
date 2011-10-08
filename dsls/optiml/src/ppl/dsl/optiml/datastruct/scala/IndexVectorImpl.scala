@@ -1,5 +1,7 @@
 package ppl.dsl.optiml.datastruct.scala
 
+import ppl.dsl.optila.datastruct.scala._
+
 /* IndexVector is an IntVector whose elements represent indices (e.g., of another vector).
  * It is either backed by a discrete sequence of integers (e.g. 1,5,10) or a continouous RangeVector.
  *

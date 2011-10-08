@@ -23,7 +23,7 @@ trait SVMModel { this: OptiMLApplication =>
 
   // construct directly from model
   def load(modelFilename: Rep[String]) = {
-    val in = MLInputReader.readVector(modelFilename)
+    val in = readVector(modelFilename)
     val b = in(in.length-1)
     val weights = in.take(in.length-1)
     (weights, b)
@@ -180,6 +180,6 @@ trait SVMModel { this: OptiMLApplication =>
   def saveModel(weights: Rep[Vector[Double]], b: Rep[Double], filename: Rep[String]) = {
     val out = weights.cloneL
     out += b
-    MLOutputWriter.writeVector(out, filename)
+    writeVector(out, filename)
   }
 }

@@ -1,7 +1,6 @@
 package ppl.apps.ml.gda
 
 import ppl.dsl.optiml._
-import datastruct.scala.EmptyVector
 import ppl.delite.framework.DeliteApplication
 
 object GDAVectorizedRunner extends OptiMLApplicationRunner with GDAVectorized
@@ -16,8 +15,8 @@ trait GDAVectorized extends OptiMLApplication {
   def main() = {
     if (args.length < 2) print_usage
 
-    val x = MLInputReader.read(args(0))
-    val y = MLInputReader.readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
+    val x = readMatrix(args(0))
+    val y = readVector(args(1)).toBoolean(a => if (a <= 0) false else true)
 
     tic()
 

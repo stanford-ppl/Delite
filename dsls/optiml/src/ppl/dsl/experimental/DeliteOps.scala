@@ -9,7 +9,7 @@ import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
-trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp 
+trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with IfThenElseFatExp
     with SandboxVariantsOpsExp with SandboxDeliteCollectionOpsExp
     with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp  {
   

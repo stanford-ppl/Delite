@@ -6,8 +6,6 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.application.BinarizedGradientTemplate
 
 trait MLInputReaderImplOps { this: Base =>
-  def mlinput_read_impl(filename: Rep[String], delim: Rep[String]) : Rep[Matrix[Double]]
-  def mlinput_read_vector_impl(filename : Rep[String]) : Rep[Vector[Double]]
   def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage]
   def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
   def mlinput_read_template_models_impl(directory: Rep[String]): Rep[Vector[(String, Vector[BinarizedGradientTemplate])]]
@@ -18,49 +16,6 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   
   ///////////////
   // kernels
-
-  def mlinput_read_impl(filename: Rep[String], delim: Rep[String]) = {
-    val xfs = BufferedReader(FileReader(filename))
-    var line = xfs.readLine()
-    line = line.trim()
-    // TODO: weirdness with StringOps, losing a \        
-    var dbls = line.split(delim)
-    //var dbls = line.split("\\\\s+")
-    val x = Matrix[Double](0, dbls.length)
-
-    while (line != null){
-      val v = (0::dbls.length) { i =>
-	      Double.parseDouble(dbls(i))
-      }
-      x += v
-
-      line = xfs.readLine()
-      if (line != null) {
-        line = line.trim()
-        dbls = line.split(delim)
-      }
-    }
-    xfs.close()
-
-    x.unsafeImmutable
-  }
-
-  def mlinput_read_vector_impl(filename: Rep[String]) = {
-    val x = Vector[Double](0, true)
-
-    val xfs = BufferedReader(FileReader(filename))
-    var line = xfs.readLine()
-    while (line != null){
-      line = line.trim()
-      val dbl = Double.parseDouble(line)
-      x += dbl
-
-      line = xfs.readLine()
-    }
-    xfs.close()
-
-    x.unsafeImmutable
-  }
 
   def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage] = {
     val xfs = BufferedReader(FileReader(filename))

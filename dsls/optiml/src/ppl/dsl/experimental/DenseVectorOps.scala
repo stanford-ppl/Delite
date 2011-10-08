@@ -1,6 +1,6 @@
 package ppl.dsl.experimental
 
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+import ppl.dsl.optiml.CudaGenDataStruct
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
