@@ -17,8 +17,8 @@ trait GPUCompile extends CodeCache {
   //figure out where the jni header files are for this machine
   val javaHome = System.getProperty("java.home")
 
-  val deliteHome = Config.deliteHome
-  val deliteLibs = Config.deliteBuildHome + sep + "libraries" + sep + target
+  def deliteHome = Config.deliteHome
+  def deliteLibs = Config.deliteBuildHome + sep + "libraries" + sep + target
 
   def addSource(source: String, name: String) {
     if (!sourceBuffer.contains((source, name)))
