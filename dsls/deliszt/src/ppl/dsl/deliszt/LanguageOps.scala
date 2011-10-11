@@ -118,11 +118,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
   
   abstract class DeLisztVertices[MO<:MeshObj:Manifest](val e: Exp[MO]) extends Def[MeshSet[Vertex]]
-  case class DeLisztVerticesCell(e: Exp[Cell]) extends DeLisztVertices[Cell](e)
-  case class DeLisztVerticesEdge(e: Exp[Edge]) extends DeLisztVertices[Edge](e)
-  case class DeLisztVerticesFace(e: Exp[Face]) extends DeLisztVertices[Face](e)
-  case class DeLisztVerticesVertex(e: Exp[Vertex]) extends DeLisztVertices[Vertex](e)
-  case class DeLisztVerticesMesh(e: Exp[Mesh]) extends DeLisztVertices[Mesh](e)
+  case class DeLisztVerticesCell(override val e: Exp[Cell]) extends DeLisztVertices[Cell](e)
+  case class DeLisztVerticesEdge(override val e: Exp[Edge]) extends DeLisztVertices[Edge](e)
+  case class DeLisztVerticesFace(override val e: Exp[Face]) extends DeLisztVertices[Face](e)
+  case class DeLisztVerticesVertex(override val e: Exp[Vertex]) extends DeLisztVertices[Vertex](e)
+  case class DeLisztVerticesMesh(override val e: Exp[Mesh]) extends DeLisztVertices[Mesh](e)
 
   case class DeLisztVertex(e: Exp[Cell], i: Exp[Int]) extends Def[Vertex]
 
@@ -134,11 +134,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
   
   abstract class DeLisztCells[MO<:MeshObj:Manifest](val e: Exp[MO]) extends Def[MeshSet[Cell]]
-  case class DeLisztCellsCell(e: Exp[Cell]) extends DeLisztCells[Cell](e)
-  case class DeLisztCellsEdge(e: Exp[Edge]) extends DeLisztCells[Edge](e)
-  case class DeLisztCellsFace(e: Exp[Face]) extends DeLisztCells[Face](e)
-  case class DeLisztCellsVertex(e: Exp[Vertex]) extends DeLisztCells[Vertex](e)
-  case class DeLisztCellsMesh(e: Exp[Mesh]) extends DeLisztCells[Mesh](e)
+  case class DeLisztCellsCell(override val e: Exp[Cell]) extends DeLisztCells[Cell](e)
+  case class DeLisztCellsEdge(override val e: Exp[Edge]) extends DeLisztCells[Edge](e)
+  case class DeLisztCellsFace(override val e: Exp[Face]) extends DeLisztCells[Face](e)
+  case class DeLisztCellsVertex(override val e: Exp[Vertex]) extends DeLisztCells[Vertex](e)
+  case class DeLisztCellsMesh(override val e: Exp[Mesh]) extends DeLisztCells[Mesh](e)
 
   case class DeLisztEdgeCellsCCW(e: Exp[Edge]) extends Def[MeshSet[Cell]]
   case class DeLisztEdgeCellsCW(e: Exp[Edge]) extends Def[MeshSet[Cell]]
@@ -148,20 +148,20 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
   
   abstract class DeLisztEdges[MO<:MeshObj:Manifest](val e: Exp[MO]) extends Def[MeshSet[Edge]]
-  case class DeLisztEdgesCell(e: Exp[Cell]) extends DeLisztEdges[Cell](e)
-  case class DeLisztEdgesFace(e: Exp[Face]) extends DeLisztEdges[Face](e)
-  case class DeLisztEdgesVertex(e: Exp[Vertex]) extends  DeLisztEdges[Vertex](e)
-  case class DeLisztEdgesMesh(e: Exp[Mesh]) extends  DeLisztEdges[Mesh](e)
+  case class DeLisztEdgesCell(override val e: Exp[Cell]) extends DeLisztEdges[Cell](e)
+  case class DeLisztEdgesFace(override val e: Exp[Face]) extends DeLisztEdges[Face](e)
+  case class DeLisztEdgesVertex(override val e: Exp[Vertex]) extends  DeLisztEdges[Vertex](e)
+  case class DeLisztEdgesMesh(override val e: Exp[Mesh]) extends  DeLisztEdges[Mesh](e)
 
   object DeLisztFaces {
     def unapply[MO<:MeshObj:Manifest](m: DeLisztFaces[MO]) = Some(m.e)
   }
   
   abstract class DeLisztFaces[MO<:MeshObj:Manifest](val e: Exp[MO]) extends Def[MeshSet[Face]]
-  case class DeLisztFacesCell(e: Exp[Cell]) extends DeLisztFaces[Cell](e)
-  case class DeLisztFacesEdge(e: Exp[Edge]) extends DeLisztFaces[Edge](e)
-  case class DeLisztFacesVertex(e: Exp[Vertex]) extends DeLisztFaces[Vertex](e)
-  case class DeLisztFacesMesh(e: Exp[Mesh]) extends DeLisztFaces[Mesh](e)
+  case class DeLisztFacesCell(override val e: Exp[Cell]) extends DeLisztFaces[Cell](e)
+  case class DeLisztFacesEdge(override val e: Exp[Edge]) extends DeLisztFaces[Edge](e)
+  case class DeLisztFacesVertex(override val e: Exp[Vertex]) extends DeLisztFaces[Vertex](e)
+  case class DeLisztFacesMesh(override val e: Exp[Mesh]) extends DeLisztFaces[Mesh](e)
 
   case class DeLisztEdgeFacesCCW(e: Exp[Edge]) extends Def[MeshSet[Face]]
   case class DeLisztEdgeFacesCW(e: Exp[Edge]) extends Def[MeshSet[Face]]

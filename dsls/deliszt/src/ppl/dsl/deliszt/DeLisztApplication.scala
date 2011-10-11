@@ -1,9 +1,6 @@
 package ppl.dsl.deliszt
 
 import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.analysis.TraversalAnalysis
-
-import analysis.DeLisztCodeGenAnalysis
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -18,11 +15,7 @@ import analysis.DeLisztCodeGenAnalysis
  */
 
 // ex. object GDARunner extends DeLisztApplicationRunner with GDA
-trait DeLisztApplicationRunner extends DeLisztApplication with DeliteApplication with DeLisztExp
- 
-trait DeLisztApplication extends DeliteApplication with DeLiszt with DeLisztLift with DeLisztLibrary {
-  override lazy val analyses = List(new DeLisztCodeGenAnalysis{val IR: DeLizstApplication.this.type = DeLizstApplication.this})
-
+trait DeLisztApplicationRunner extends DeLisztApplication with DeliteApplication with DeLisztExp {
   override def liftedMain(x: Rep[Array[String]]) = {
     _init(x)
     this.args = x
@@ -31,6 +24,8 @@ trait DeLisztApplication extends DeliteApplication with DeLiszt with DeLisztLift
     unit(y)
   }
 }
+ 
+trait DeLisztApplication extends DeLiszt with DeLisztLift with DeLisztLibrary
 
 trait DeLisztLibrary {
   this: DeLisztApplication =>

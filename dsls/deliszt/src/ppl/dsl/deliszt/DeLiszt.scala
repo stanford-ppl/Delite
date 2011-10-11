@@ -4,6 +4,7 @@ import java.io._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.delite.framework.{Config, DeliteApplication}
+import ppl.delite.framework.analysis.TraversalAnalysis
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
@@ -20,6 +21,8 @@ import ppl.dsl.deliszt.mat._
 import ppl.dsl.deliszt.vec._
 import ppl.dsl.deliszt.mesh._
 import ppl.dsl.deliszt.meshset._
+
+import ppl.dsl.deliszt.analysis.DeLisztCodeGenAnalysis
 
 /**
  * These are the portions of Scala imported into DeLiszt's scope.
@@ -107,6 +110,7 @@ trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with Languag
     }
   }
 
+  override lazy val analyses = scala.collection.immutable.List(new DeLisztCodeGenAnalysis{val IR: DeLisztExp.this.type = DeLisztExp.this})
 }
 
 

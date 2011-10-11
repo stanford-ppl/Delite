@@ -10,9 +10,9 @@ trait Smooth extends DeLisztApplication {
   val float3_zero  : Rep[Vec[_3,Float]] = null
   var float33_zero : Rep[Mat[_3,_3,Float]] = null
   var work_array : Rep[Mat[_3,_3,Float]] = null
-  var pi : Rep[Float] = null
-  var Omega : Rep[Float] = null
-  var alpha : Rep[Float] = null
+  var pi : Rep[Float] = 0.f
+  var Omega : Rep[Float] = 0.f
+  var alpha : Rep[Float] = 0.f
 
   var Phi        : Rep[Field[Face,Float]] = null
   var PhiOld     : Rep[Field[Face,Float]] = null

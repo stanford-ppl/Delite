@@ -1,6 +1,7 @@
 package ppl.delite.framework
 
 import java.io.{FileWriter, File, PrintWriter}
+import scala.collection.mutable.{Map => MMap}
 import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
@@ -35,6 +36,9 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
                                                val generators = DeliteApplication.this.generators }
   
   lazy val analyses: List[TraversalAnalysis{ val IR: DeliteApplication.this.type }] = List()
+  
+  // Store and retrieve
+  val analysisResults = MMap[String,Any]()
                                                
   var args: Rep[Array[String]] = _
   
@@ -73,9 +77,10 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     
     // Run any analyses defined
     for(a <- analyses) {
-      a.init(args)
-      // TODO WTF
-      //a.traverse(liftedMain)
+      a.init(this, args)
+      a.traverse(liftedMain) match {
+        case Some(result) => { analysisResults(a.className) = result }
+      }
     }
     reset
 

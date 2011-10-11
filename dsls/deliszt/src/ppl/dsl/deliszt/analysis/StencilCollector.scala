@@ -58,20 +58,24 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   // And the current mesh object in the top level for loop
   var currentMo : Option[MeshObj] = None
   
+  val className = "DeLisztAnalysis"
+  
+  def result = Some(forMap)
+  
   def init(args: Array[String]) {
     MeshLoader.init(if(args.length > 0) args(0) else "liszt.cfg")
   }
   
   // Mark accesses
-  def markRead[N<:IntM,MO<:MeshObj](f: Exp[Field[N,MO]], i: Exp[MeshObj]) {
-    val sym = f.asInstanceOf[Sym[Field[N,MO]]]
+  def markRead[MO<:MeshObj,VT](f: Exp[Field[MO,VT]], i: Exp[MeshObj]) {
+    val sym = f.asInstanceOf[Sym[Field[MO,VT]]]
     val mo = value[MeshObj](i)
     
     forMap(currentFor.get)(currentMo.get).read += FieldAccess(sym.id, mo)
   }
   
-  def markWrite[N<:IntM,MO<:MeshObj](f: Exp[Field[N,MO]], i: Exp[MeshObj]) {
-    val sym = f.asInstanceOf[Sym[Field[N,MO]]]
+  def markWrite[MO<:MeshObj,VT](f: Exp[Field[MO,VT]], i: Exp[MeshObj]) {
+    val sym = f.asInstanceOf[Sym[Field[MO,VT]]]
     val mo = value[MeshObj](i)
     
     forMap(currentFor.get)(currentMo.get).write += FieldAccess(sym.id, mo)
@@ -118,12 +122,12 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   def rawValue(x: Exp[Any]) = x match {
     case Const(null) => None
+    case Const(s: String) => s
     case null => None
     case Const(f: Float) => f
     case Const(z) => z
     case Sym(n) => values.getOrElse(n, None)
     case External(s, args) => None
-    case Const(s: String) => s
     case _ => throw new RuntimeException("Could not get value")
   }
   
