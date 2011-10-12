@@ -6,10 +6,6 @@ import scala.virtualization.lms.common.{ScalaGenBase, ScalaGenEffect, BaseExp, B
 
 
 trait ResultOps extends Base {
-
-//Questions for tiark: 1) the whole thing about the recursive knot, what do I need to do there. 
-//2) what is the difference between selectDynamic and applyDynamic. 
-//3) compile time has increased significantly when trying to find the _new
   
   class Result extends Row[Rep]
       
@@ -37,13 +33,13 @@ trait ResultOps extends Base {
 
 trait ResultOpsExp extends ResultOps with BaseExp {
     
-  case class CreateResult[T](fields: Map[String, Rep[_]]) extends Def[T]
+  case class CreateResult[T](fields: Seq[(String, Rep[_])]) extends Def[T]
   case class ResultFieldAccess[T](res: Rep[Result], field: String) extends Def[T]
     
   def newResult[T:Manifest](fields: Seq[(String,Rep[T] => Rep[_])]): Rep[T] = {
     val x: Sym[T] = fresh[T]
-    val fieldMap: Map[String, Rep[_]] = fields map {case (n, rhs) => (n, rhs(x))} toMap
-    val nDef: Def[T] = CreateResult(fieldMap)
+    val flatFields: Seq[(String, Rep[_])] = fields map {case (n, rhs) => (n, rhs(x))}
+    val nDef: Def[T] = CreateResult(flatFields)
     createDefinition(x, nDef)
     return x
   }
@@ -64,7 +60,7 @@ trait ResultOpsExp extends ResultOps with BaseExp {
   }  
   
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
-    case CreateResult(fields) => fields flatMap{case (n, rhs) =>  freqNormal(rhs)} toList
+    case CreateResult(fields) => fields flatMap{case (n, rhs) => freqNormal(rhs)} toList
     case _ => super.symsFreq(e)
   }
     
