@@ -11,7 +11,11 @@ package ppl.dsl.deliszt.datastruct.scala
 
 
 object IndexSetImpl {
-  def apply[MO<:MeshObj:MeshObjConstruct](crs: CRS, e: MeshObj) : IndexSetImpl[MO] = apply(crs, e.internalId)
+  def apply[MO<:MeshObj:MeshObjConstruct](crs: CRS, e: MeshObj) : IndexSetImpl[MO] = {
+    assert(crs != null)
+    assert(e != null)
+    apply(crs, e.internalId)
+  }
 
   def apply[MO<:MeshObj:MeshObjConstruct](crs: CRS, n: Int) = {
     new IndexSetImpl[MO](crs.values, crs.row(n), crs.row(n+1))

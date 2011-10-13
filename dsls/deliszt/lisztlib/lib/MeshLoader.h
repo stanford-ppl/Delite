@@ -5,6 +5,7 @@
 #include "JNICache.h"
 #include "CRSMesh/CRSMesh.h"
 #include "MeshIO/LisztFileReader.h"
+#include "Liszt/BoundarySet.h"
 #include "Layout/BoundarySetBuilder.h"
 
 #ifndef MESHLOADER_H_
@@ -37,7 +38,41 @@ public:
     jobject loadMesh(jstring str);
 
     template<typename MO>
-    jobject loadBoundarySet(const char* name);
+    jobject loadBoundarySet(const char* name, jobject moc)
+    {
+        LisztPrivate::BoundarySet *bs = new LisztPrivate::BoundarySet();
+        if (!bs) {
+            throw MeshIO::MeshLoadException("Could not create boundary set");
+        }
+
+        jobject bounds = NULL;
+        
+        try {
+          if (boundary_builder.load<MO, LisztPrivate::BoundarySet>(name, bs)) {
+              bounds = createObject(
+                      prefix + "/BoundarySetImpl", "L" + prefix + "/MeshObjConstruct;", moc);
+
+              const LisztPrivate::BoundarySet::ranges_t& ranges = bs->getRanges();
+                      
+              // For ranges in bs
+              for (LisztPrivate::BoundarySet::range_it it = ranges.begin(), end = ranges.end(); it != end; it++) {
+                  callVoidMethod(bounds,
+                          prefix + "/BoundarySetImpl", "add",
+                          "(II)V", it->first, it->second);
+              }
+
+              callVoidMethod(bounds, prefix + "/BoundarySetImpl",
+                      "freeze", "()V");
+          }
+        }
+        catch(...) {
+            bounds = NULL;
+        }
+
+        delete bs;
+        
+        return bounds;
+    }
 
     /*
      Construct a Java object with the specific arguments.

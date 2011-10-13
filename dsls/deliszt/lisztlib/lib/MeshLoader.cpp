@@ -315,6 +315,8 @@ jobject MeshLoader::loadMesh(jstring str) {
         // Set properties we know about
         // Position for vertices
         loadPositions(jmesh, mesh, reader);
+        
+        boundary_builder.init(h.nBoundaries, reader.boundaries());
     }
     catch (MeshIO::MeshLoadException e) {
         jmesh = NULL;
@@ -373,42 +375,6 @@ void MeshLoader::loadPositions(jobject& jmesh, CRSMesh::Mesh& mesh,
     callObjectMethod(vertexData, "scala/collection/mutable/Map", "put",
             "(Ljava/lang/Object;Ljava/lang/Object;)Lscala/Option;",
             env->NewStringUTF("position"), positions);
-}
-
-template<typename MO>
-jobject MeshLoader::loadBoundarySet(const char* name) {
-    LisztPrivate::BoundarySet *bs = new LisztPrivate::BoundarySet();
-    if (!bs) {
-        throw MeshIO::MeshLoadException("Could not create boundary set");
-    }
-
-    jobject bounds = NULL;
-    
-    try {
-      if (boundary_builder.load<MO, LisztPrivate::BoundarySet>(&mesh, name, bs)) {
-          bounds = createObject(
-                  prefix + "/BoundarySetImpl", "");
-
-          LisztPrivate::BoundarySet::ranges_t& ranges = bs->getRanges();
-                  
-          // For ranges in bs
-          for (LisztPrivate::BoundarySet::range_it it = ranges.begin(), end = ranges.end(); it != end; it++) {
-              callVoidMethod(bounds,
-                      prefix + "/BoundarySetImpl", "add",
-                      "(II)V", it->first(), it->second());
-          }
-
-          callVoidMethod(bounds, prefix + "/BoundarySetImpl",
-                  "freeze", "()V");
-      }
-    }
-    catch(...) {
-        bounds = NULL;
-    }
-
-    delete bs;
-    
-    return bounds;
 }
 
 }

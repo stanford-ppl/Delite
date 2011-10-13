@@ -14,6 +14,8 @@ import ppl.delite.framework.analysis.TraversalAnalysis
 import ppl.dsl.deliszt.datastruct.scala._
 import ppl.dsl.deliszt._
 
+import ppl.delite.framework.datastruct.scala._
+
 object MeshObjVal {
   def apply[MO<:MeshObj](mo: MO) = new MeshObjValImpl(Set(mo))
   def apply[MO<:MeshObj](ms: MeshSet[MO]) = new MeshObjValImpl(ms.toSet)
@@ -60,10 +62,10 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   val className = "DeLisztAnalysis"
   
-  _result = Some(forMap)
-  
   override def init(app: DeliteApplication, args: Array[String]) {
     super.init(app, args)
+  
+    _result = Some(forMap)
   
     MeshLoader.init(if(args.length > 0) args(0) else "liszt.cfg")
   }
@@ -122,22 +124,34 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     combine(resultA,resultB)
   }
   
-  def rawValue(x: Exp[Any]) = x match {
+  def rawValue(x: Exp[Any]) : Option[Any] = x match {
     case Const(null) => None
-    case Const(s: String) => s
+    case Const(s: String) => Some(s)
     case null => None
-    case Const(f: Float) => f
-    case Const(z) => z
-    case Sym(n) => values.getOrElse(n, None)
+    case Const(f: Float) => Some(f)
+    case Const(z) => Some(z)
+    case Sym(n) => { System.out.println("SYM " + n); val temp = values.get(n); System.out.println(temp); temp }
     // Doesn't exist anymore?
-    // case External(s, args) => None
-    case _ => throw new RuntimeException("Could not get value")
+    // case External(s, args) => null
+    case _ => { throw new RuntimeException("Could not get value"); None }
   }
   
-  def value[T:Manifest](x: Exp[Any]) : T = rawValue(x).asInstanceOf[T]
+  def value[T:Manifest](x: Exp[Any]) : T = {System.out.println("Fetching value for")
+    System.out.println(x)
+    (rawValue(x) match {
+    case Some(o) => o
+    case None => null
+    case _ => null
+  }).asInstanceOf[T]}
   
-  def value(x: Def[Any])(implicit stream: PrintWriter) : Any = {
-    x match {
+  def value[T:Manifest](x: Def[Any]) : T = (maybeValue(x) match {
+    case Some(o) => o
+    case None => null
+    case _ => null
+  }).asInstanceOf[T]
+  
+  def maybeValue(x: Def[Any])(implicit stream: PrintWriter) : Option[Any] = {
+    val o = x match {
       // or could also lookup the exp
       case b@DeLisztBoundarySet(name) => Mesh.boundarySet(value[String](name))(b.moc)
 
@@ -193,6 +207,14 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       case DeLisztTowardsEdgeVertex(e, v) => Mesh.towards(value[Edge](e), value[Vertex](v))
       case DeLisztTowardsFaceCell(e, c) => Mesh.towards(value[Face](e), value[Cell](c))
       
+      case DeliteCollectionApply(e, i) => {
+        System.out.println("DC APPLY?")
+        (rawValue(e), rawValue(i)) match {
+          case (Some(c), Some(idx)) => (c.asInstanceOf[DeliteCollection[Any]]).dcApply(idx.asInstanceOf[Int])
+          case _ => None
+        }
+      }
+      
       // While loops. Execute once. Store results if results are a mesh element
       case While(c,b) => {
         emitBlock(c)
@@ -217,16 +239,23 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
 
       case _ => None
     }
+    
+    o match {
+      case None => None
+      case _ => Some(o)
+    }
   }
   
   def blockValue(b: Exp[Any]) = value(getBlockResult(b))
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
-    val result = value(rhs)
-    if(result != None) {
-      System.out.println("STORING SYM " + sym.id)
-      System.out.println(result)
-      store(sym, result)
+    maybeValue(rhs) match {
+      case Some(o) => {
+        System.out.println("STORING SYM " + sym.id)
+        System.out.println(o)
+        store(sym, o)
+      }
+      case None => { System.out.println("FAILTRAIN SYM " + sym.id); System.out.println(rhs) }
     }
   
     rhs match {
@@ -239,6 +268,12 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         // Get value for the mesh set
         val ms = value[MeshSet[_]](m)
         
+        System.out.println("RUNNING FOREACH")
+        
+        val mssize:Int = ms.size
+        val stuff:Int = 0
+        
+        var i: Int = 0
         // Run foreach over mesh set
         for(mo <- ms) {
           // If top level foreach, mark the current element as one we are collecting stencil for
@@ -246,17 +281,21 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
             currentMo = Some(mo)
           }
         
+          System.out.println("STORING SYM " + f.v.id)
+          System.out.println(mo)
+          
+          System.out.println("STORING SYM INDEX " + f.i.id)
+          System.out.println(i)
           // Store mesh object in loop index
-          store(f.i, mo)
+          store(f.i, i)
+          store(f.v, i)
           
           // Re "emit" block
           f.body match {
             case DeliteForeachElem(func, sync) => emitBlock(func)
           }
-        }
-        
-        f.body match {
-          case DeliteForeachElem(func, sync) => store(sym, blockValue(func))
+          
+          i += 1
         }
       }
         

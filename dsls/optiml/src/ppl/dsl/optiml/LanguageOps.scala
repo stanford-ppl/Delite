@@ -615,10 +615,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
       tasks.clear()
       //var totalTasks = unit(0)
       
-      for(i <- 0 until vertices.length) {
+      for(i <- range_until(0, vertices.length)) {
         val vtasks = vertices(i).tasks
         //totalTasks += vtasks.length
-        for(j <- 0 until vtasks.length) {
+        for(j <- range_until(0, vtasks.length)) {
           val task = vtasks(j).asInstanceOfL[V]
           if(!seen.contains(task)) {
             tasks += task   //TODO TR: non-mutable write (use mclone)
@@ -693,8 +693,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val y = x.labels
     val theta = Vector.zeros(x.numFeatures).mutable
     untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
-      for (i <- 0 until x.numSamples) {
-        for (j <- 0 until x.numFeatures ) {
+      for (i <- range_until(0, x.numSamples)) {
+        for (j <- range_until(0, x.numFeatures) ) {
           theta(j) = theta(j) + alpha*(y(i) - hyp(x(i)))*x(i)(j)
         }
       }
@@ -708,7 +708,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val y = x.labels
     val theta = Vector.zeros(x.numFeatures).mutable
     untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
-      for (j <- 0 until x.numFeatures) {
+      for (j <- range_until(0, x.numFeatures)) {
         val acc = sum(0, x.numSamples) { i =>
           (y(i) - hyp(x(i))*x(i)(j))   // parallel work
         }

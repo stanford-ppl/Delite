@@ -43,16 +43,16 @@ JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loa
   string name(env->GetStringUTFChars(str, 0));
   
   if(type == 1) {
-    return ml.loadBoundarySet<CRSMeshPrivate::Cell>(name.c_str());
+    return ml.loadBoundarySet<LisztPrivate::ElemTypes::CellType>(name.c_str(), moc);
   }
   else if(type == 2) {
-    return ml.loadBoundarySet<CRSMeshPrivate::Edge>(name.c_str());
+    return ml.loadBoundarySet<LisztPrivate::ElemTypes::EdgeType>(name.c_str(), moc);
   }
   else if(type == 3) {
-    return ml.loadBoundarySet<CRSMeshPrivate::Face>(name.c_str());
+    return ml.loadBoundarySet<LisztPrivate::ElemTypes::FaceType>(name.c_str(), moc);
   }
   else if(type == 4) {
-    return ml.loadBoundarySet<CRSMeshPrivate::Vertex>(name.c_str());
+    return ml.loadBoundarySet<LisztPrivate::ElemTypes::VertexType>(name.c_str(), moc);
   }
   
   return NULL;

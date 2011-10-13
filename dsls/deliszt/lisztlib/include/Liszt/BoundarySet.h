@@ -22,7 +22,7 @@ public:
     typedef std::pair<size_t, size_t> range_t;
     typedef std::vector<range_t> ranges_t;
     ranges_t ranges;
-    typedef std::vector<range_t>::iterator range_it;
+    typedef std::vector<range_t>::const_iterator range_it;
 
     //called before any calls to addSet
     void beginInit(size_t num_elems) {

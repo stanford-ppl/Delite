@@ -80,6 +80,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       a.init(this, args)
       a.traverse(liftedMain) match {
         case Some(result) => { analysisResults(a.className) = result }
+        case _ =>
       }
     }
     reset

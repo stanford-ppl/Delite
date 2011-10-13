@@ -39,7 +39,7 @@ class BoundarySetImpl[MO<:MeshObj](implicit moc: MeshObjConstruct[MO]) extends B
     data = ids.result
   }
 
-  def add(start: Int, end: Int) = {
+  def add(start: Int, end: Int) {
     _ranges += start until end
   }
 }
