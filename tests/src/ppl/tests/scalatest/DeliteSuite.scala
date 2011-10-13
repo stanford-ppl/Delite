@@ -4,7 +4,7 @@ import org.scalatest._
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.Config
 import scala.virtualization.lms.common._
-import scala.collection.mutable.ArrayBuffer
+import scala.collection.mutable.{ ArrayBuffer, SynchronizedBuffer }
 import java.io.{File, Console => _, _}
 
 trait DeliteTestConfig {
@@ -45,9 +45,10 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
 
     validateParameters()
     val args = Array("test.deg")
+    app.resultBuffer = new ArrayBuffer[Boolean] with SynchronizedBuffer[Boolean]
     stageTest(app, args(0))
     val outStr = execTest(app, args)
-    checkTest(outStr)
+    checkTest(app, outStr)
   }
 
   private def stageTest(app: DeliteTestRunner, degName: String) = {
@@ -75,7 +76,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val name = "test.tmp"
     Console.withOut(new PrintStream(new FileOutputStream(name))) {
       println("test output for: "+app.toString)
-      ppl.delite.runtime.Delite.main(args)
+      ppl.delite.runtime.Delite.embeddedMain(args, app.staticDataMap)
     }
     val buf = new Array[Byte](new File(name).length().toInt)
     val fis = new FileInputStream(name)
@@ -128,7 +129,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     buf.toString
   }
 
-  private def checkTest(outStr: String) {
+  private def checkTest(app: DeliteTestRunner, outStr: String) {
     println("CHECKING...")
     val resultStr = outStr substring (outStr.indexOf(MAGICDELIMETER) + MAGICDELIMETER.length, outStr.lastIndexOf(MAGICDELIMETER))
     val results = resultStr split ","
@@ -146,13 +147,18 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
 // how do we add our code generators? right now we expect a single codegen package being supplied by the dsl.
 // the workaround for now is that the dsl under test must include ArrayBuffer in its code gen
 trait DeliteTestRunner extends DeliteTestModule with DeliteApplication
-  with MiscOpsExp with SynchronizedArrayBufferOpsExp with StringOpsExp
+  with MiscOpsExp with SynchronizedArrayBufferOpsExp with StringOpsExp {
+ 
+  var resultBuffer: ArrayBuffer[Boolean] = _
+  
+  def collector: Rep[ArrayBuffer[Boolean]] = staticData(resultBuffer)
+}
 
 // it is not ideal that the test module imports these things into the application under test
 trait DeliteTestModule extends DeliteTestConfig
   with MiscOps with SynchronizedArrayBufferOps with StringOps {
 
-  var args: Rep[Array[String]]
+  //var args: Rep[Array[String]]
   def main(): Unit
 
   //var collector: Rep[ArrayBuffer[Boolean]] = null.asInstanceOf[Rep[ArrayBuffer[Boolean]]]
@@ -168,11 +174,23 @@ trait DeliteTestModule extends DeliteTestConfig
 //    println(MAGICDELIMETER + (ctest mkString unit(",")) + MAGICDELIMETER)
 //  }
 
+  
+  def collector: Rep[ArrayBuffer[Boolean]]
+  
+  def collect(s: Rep[Boolean]) { collector += s }
+
+  def mkReport(): Rep[Unit] = {
+    println(MAGICDELIMETER + (collector mkString unit(",")) + MAGICDELIMETER)
+  }
+  
+  /*
   def collect(s: Rep[Boolean])(implicit c: Rep[ArrayBuffer[Boolean]]) { c += s }
 
   def mkReport(implicit c: Rep[ArrayBuffer[Boolean]]): Rep[Unit] = {
     println(MAGICDELIMETER + (c mkString unit(",")) + MAGICDELIMETER)
   }
+  */
+
 
 
   /*

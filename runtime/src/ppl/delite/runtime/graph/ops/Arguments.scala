@@ -13,6 +13,14 @@ import ppl.delite.runtime.graph.targets.Targets
 
 object Arguments {
   var args: Array[String] = _
+  var staticDataMap: Map[String,_] = _
+  
+  def staticData[T](id: String): T = {
+    //assert(false,"do not have static data '"+id+"'").asInstanceOf[T]
+    System.err.println("*** lookup static data with id " + id + " in " + staticDataMap) //foobar
+    
+    staticDataMap(id).asInstanceOf[T]
+  }
 }
 
 final class Arguments(val id: String) extends OP_Executable {

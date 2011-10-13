@@ -36,14 +36,18 @@ object Delite {
   }
 
   def main(args: Array[String]) {
+    embeddedMain(args, Map())
+  }
+
+  def embeddedMain(args: Array[String], staticData: Map[String,_]) {
     mainThread = Thread.currentThread
     
     printArgs(args)
-
     printConfig()
 
     //extract application arguments
     Arguments.args = args.drop(1)
+    Arguments.staticDataMap = staticData
 
     val scheduler = Config.scheduler match {
       case "SMP" => new SMPStaticScheduler
@@ -114,6 +118,10 @@ object Delite {
     catch {
       case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception
       case e: Exception => abnormalShutdown(); throw e
+    }
+    finally {
+      Arguments.args = null
+      Arguments.staticDataMap = null
     }
   }
 
