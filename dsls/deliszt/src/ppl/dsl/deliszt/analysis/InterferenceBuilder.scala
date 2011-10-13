@@ -7,8 +7,8 @@ class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
   type StencilMap = Map[MeshObj,ReadWriteSet]
 
   def buildAndColor[MO<:MeshObj](ms: MeshSet[MO], stencil: StencilMap) : Coloring = {
-    val accesses = new HashMap[FieldAccess,MSet[MeshObj]]() { override def default(key:FieldAccess) = MSet[MeshObj]() }
-    val edges = new HashMap[MeshObj, MSet[MeshObj]]() { override def default(key:FieldAccess) = MSet[MeshObj]() }
+    val accesses = new HashMap[FieldAccess,MSet[MeshObj]]() { override def default(key: FieldAccess) = MSet[MeshObj]() }
+    val edges = new HashMap[MeshObj, MSet[MeshObj]]() { override def default(key: MeshObj) = MSet[MeshObj]() }
     var totalEdges = 0
   
     // Add edge between any that conflict on writes
@@ -36,7 +36,7 @@ class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
     }
     
     // Build a interference graph between densely-numbered blocks from sparsely-numbered elements
-    var numBlocks: Int = Math.ceil(ms.size / blockSize).toInt
+    var numBlocks: Int = math.ceil(ms.size / blockSize).toInt
     val blockEdges = Array.fill[MSet[Int]](numBlocks){ MSet[Int]() }
     
     for(i <- 0 until ms.size) {

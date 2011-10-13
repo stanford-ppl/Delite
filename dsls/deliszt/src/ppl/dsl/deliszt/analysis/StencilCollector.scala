@@ -60,9 +60,11 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   val className = "DeLisztAnalysis"
   
-  def result = Some(forMap)
+  _result = Some(forMap)
   
-  def init(args: Array[String]) {
+  override def init(app: DeliteApplication, args: Array[String]) {
+    super.init(app, args)
+  
     MeshLoader.init(if(args.length > 0) args(0) else "liszt.cfg")
   }
   
@@ -127,7 +129,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     case Const(f: Float) => f
     case Const(z) => z
     case Sym(n) => values.getOrElse(n, None)
-    case External(s, args) => None
+    // Doesn't exist anymore?
+    // case External(s, args) => None
     case _ => throw new RuntimeException("Could not get value")
   }
   
@@ -221,7 +224,9 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     val result = value(rhs)
     if(result != None) {
-      store(sym, rhs)
+      System.out.println("STORING SYM " + sym.id)
+      System.out.println(result)
+      store(sym, result)
     }
   
     rhs match {
@@ -267,7 +272,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       case FieldTimesUpdate(f,i,v) => {
         // Mark a write on the field for the current element... for i
       }
-      
+        
       case FieldMinusUpdate(f,i,v) => {
         // Mark a write on the field for the current element... for i
       }
@@ -278,7 +283,5 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       
       case _ => None
     }
-  
-    super.emitNode(sym, rhs)
   }
 }
