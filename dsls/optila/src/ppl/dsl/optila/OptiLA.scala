@@ -78,8 +78,8 @@ trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
 /**
  * This the trait that every OptiLA application must extend.
  */
-trait OptiLA extends OptiLAScalaOpsPkg 
-  with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps with VectorOps with MatrixOps with VectorViewOps
+trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps
+  with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps with VectorOps with DenseVectorOps with MatrixOps with VectorViewOps
   with LAInputReaderOps with LAOutputWriterOps
   with MatrixRowOps with MatrixColOps {
 
@@ -87,7 +87,7 @@ trait OptiLA extends OptiLAScalaOpsPkg
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait OptiLACompiler extends OptiLA with DeliteCollectionOps with RangeOps with IOOps with SeqOps with SetOps
+trait OptiLACompiler extends OptiLA with RangeOps with IOOps with SeqOps with SetOps
   with ListOps with HashMapOps with IterableOps {
     
   this: OptiLAApplication with OptiLAExp =>
@@ -99,10 +99,10 @@ trait OptiLACompiler extends OptiLA with DeliteCollectionOps with RangeOps with 
  */
 trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
   with LanguageOpsExp with ArithOpsExpOpt 
-  with VectorOpsExpOpt with MatrixOpsExpOpt with VectorViewOpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
+  with VectorOpsExp with DenseVectorOpsExpOpt with MatrixOpsExpOpt with VectorViewOpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with LAInputReaderOpsExp with LAOutputWriterOpsExp
   with LanguageImplOpsStandard
-  with VectorImplOpsStandard with MatrixImplOpsStandard 
+  with VectorImplOpsStandard with DenseVectorImplOpsStandard with MatrixImplOpsStandard 
   with LAInputReaderImplOpsStandard with LAOutputWriterImplOpsStandard
   with DeliteAllOverridesExp {
 
@@ -170,7 +170,7 @@ trait OptiLACodeGenBase extends GenericFatCodegen {
 }
 
 trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal with ScalaGenDeliteOps
-  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
+  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
   with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
@@ -224,7 +224,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
 }
 
 trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with OptiLACudaGenExternal
-  with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenMatrixRowOps // with CudaGenVectorViewOps
+  with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenMatrixRowOps // with CudaGenVectorViewOps
   with CudaGenVariantsOps with DeliteCudaGenAllOverrides with CudaGenDeliteCollectionOps // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
   val IR: DeliteApplication with OptiLAExp
@@ -315,7 +315,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
 }
 
 trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenDeliteOps 
-  with CGenArithOps with CGenVectorOps with CGenMatrixOps with CGenMatrixRowOps
+  with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenMatrixOps with CGenMatrixRowOps
   with CGenVariantsOps with DeliteCGenAllOverrides
 {
   val IR: DeliteApplication with OptiLAExp

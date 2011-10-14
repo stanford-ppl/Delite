@@ -17,6 +17,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   
 
   def optila_vectordistance_abs_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
+//  def optila_vectordistance_abs_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = {
     (v1-v2).abs.sum
 /*
     var result = (v1(0) - v2(0)).abs

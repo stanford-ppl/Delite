@@ -103,7 +103,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     //cond: List[Exp[Boolean]] = Nil
   ) extends Def[Unit]
   
-  case class DeliteCollectElem[A, CA <: DeliteCollection[A]]( 
+  //case class DeliteCollectElem[A, CA <: DeliteCollection[A]]( 
+  // functions on CA currently happen at generation-time, and are not type-checked
+  case class DeliteCollectElem[A, CA]( 
     alloc: Exp[CA],
     func: Exp[A],
     cond: List[Exp[Boolean]] = Nil
@@ -232,6 +234,26 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       func = reifyEffects(this.func(dc_apply(in,v)))
     ))
   }
+  
+  abstract class DeliteOpMap2[A:Manifest,
+//                              B:Manifest, CB <: DeliteCollection[B]:Manifest]
+                              B:Manifest, CB:Manifest] 
+    extends DeliteOpLoop[CB] {
+    type OpType <: DeliteOpMap2[A,B,CB]
+
+    // supplied by subclass
+    val in: Interface[DeliteCollection[A]]
+    //val size: Exp[Int] // could be dc_size(in), but we want type-specific pattern matching to work
+    def func: Exp[A] => Exp[B]
+    def alloc: Exp[CB]
+
+    // loop
+    lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B, CB](
+      alloc = reifyEffects(this.alloc),
+      func = reifyEffects(this.func(in.dcApply(v)))
+    ))
+  }
+
 
   /**
    *  Currently conditionally appends values to buffers, which are concatenated in the combine stage.
@@ -256,6 +278,26 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       alloc = reifyEffects(this.alloc),
       func = reifyEffects(this.func(dc_apply(in,v))),
       cond = reifyEffects(this.cond(dc_apply(in,v)))::Nil
+    ))
+  }  
+
+  abstract class DeliteOpFilter2[A:Manifest,
+                                B:Manifest, CB <: DeliteCollection[B]:Manifest]
+    extends DeliteOpLoop[CB] {
+    type OpType <: DeliteOpFilter2[A,B,CB]
+
+    // supplied by subclass
+    val in: Interface[DeliteCollection[A]]
+    //val size: Exp[Int] // could be dc_size(in), but we want type-specific pattern matching to work
+    def func: Exp[A] => Exp[B]
+    def alloc: Exp[CB]
+    def cond: Exp[A] => Exp[Boolean] // does this need to be more general (i.e. a List?)
+
+    // loop
+    lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B, CB](
+      alloc = reifyEffects(this.alloc),
+      func = reifyEffects(this.func(in.dcApply(v))),
+      cond = reifyEffects(this.cond(in.dcApply(v)))::Nil
     ))
   }  
   
@@ -292,6 +334,25 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     ))
   }
   
+  abstract class DeliteOpZipWith2[A:Manifest,
+                                 B:Manifest,
+                                 R:Manifest, CR:Manifest]
+    extends DeliteOpLoop[CR] {
+    type OpType <: DeliteOpZipWith2[A,B,R,CR]
+      
+    // supplied by subclass   
+    val inA: Interface[DeliteCollection[A]]
+    val inB: Interface[DeliteCollection[B]]
+    def func: (Exp[A], Exp[B]) => Exp[R]
+    def alloc: Exp[CR]
+    
+    // loop
+    lazy val body: Def[CR] = copyBodyOrElse(DeliteCollectElem[R, CR](
+      alloc = reifyEffects(this.alloc),
+      func = reifyEffects(this.func(inA.dcApply(v), inB.dcApply(v)))
+    ))
+  }  
+  
   abstract class DeliteOpReduceLike[A:Manifest] extends DeliteOpLoop[A] {
     type OpType <: DeliteOpReduceLike[A]
     final lazy protected val rV: (Sym[A],Sym[A]) = copyOrElse(_.rV)((reflectMutableSym(fresh[A]), fresh[A])) // TODO: transform vars??
@@ -324,6 +385,25 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
     ))
   }
+  
+  abstract class DeliteOpReduce2[A:Manifest] extends DeliteOpReduceLike[A] {
+    type OpType <: DeliteOpReduce2[A]
+      
+    // supplied by subclass   
+    val in: Interface[DeliteCollection[A]]
+    val zero: Exp[A] 
+    def func: (Exp[A], Exp[A]) => Exp[A]
+    
+    // loop    
+    lazy val body: Def[A] = copyBodyOrElse(DeliteReduceElem[A](
+      func = reifyEffects(in.dcApply(v)),
+      zero = this.zero,
+      rV = this.rV,
+      rFunc = reifyEffects(this.func(rV._1, rV._2)),
+      stripFirst = !isPrimitiveType(manifest[A]) && !this.mutable
+    ))
+  }
+  
   
   /**
    * Parallel map-reduction from a DeliteCollection[A] => R. The map-reduce is composed, so no temporary collection
@@ -377,6 +457,29 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
     ))
   }
+  
+  abstract class DeliteOpFilterReduce2[A:Manifest,R:Manifest]
+    extends DeliteOpReduceLike[R] {
+    type OpType <: DeliteOpFilterReduce2[A,R]
+    
+    // supplied by subclass   
+    val in: Interface[DeliteCollection[A]]
+    val zero: Exp[R] 
+    def func: Exp[A] => Exp[R]        
+    def reduce: (Exp[R], Exp[R]) => Exp[R]
+    def cond: Exp[A] => Exp[Boolean] // does this need to be more general (i.e. a List?)
+    
+    // loop
+    lazy val body: Def[R] = copyBodyOrElse(DeliteReduceElem[R](
+      func = reifyEffects(this.func(in.dcApply(v))),
+      cond = reifyEffects(this.cond(in.dcApply(v)))::Nil,
+      zero = this.zero,
+      rV = this.rV,
+      rFunc = reifyEffects(reduce(rV._1, rV._2)),
+      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
+    ))
+  }
+  
 
   // for sumIf ...
 /*
@@ -483,6 +586,27 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     ))
   }
 
+  abstract class DeliteOpZipWithReduce2[A:Manifest,B:Manifest,R:Manifest]
+    extends DeliteOpReduceLike[R] {
+    type OpType <: DeliteOpZipWithReduce2[A,B,R]
+      
+    // supplied by subclass   
+    val inA: Interface[DeliteCollection[A]]
+    val inB: Interface[DeliteCollection[B]]
+    val zero: Exp[R]
+    def zip: (Exp[A], Exp[B]) => Exp[R]
+    def reduce: (Exp[R], Exp[R]) => Exp[R]
+    
+    // loop
+    lazy val body: Def[R] = copyBodyOrElse(DeliteReduceElem[R](
+      func = reifyEffects(zip(inA.dcApply(v), inB.dcApply(v))),
+      zero = this.zero,
+      rV = this.rV,
+      rFunc = reifyEffects(reduce(rV._1, rV._2)),
+      stripFirst = !isPrimitiveType(manifest[R]) && !this.mutable
+    ))
+  }
+  
   // reduce tuple in parallel, return first component
   abstract class DeliteOpZipWithReduceTuple[A:Manifest,B:Manifest,R:Manifest,Q:Manifest]
     extends DeliteOpLoop[R] {
@@ -509,7 +633,31 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     ))
   }
 
-
+  abstract class DeliteOpZipWithReduceTuple2[A:Manifest,B:Manifest,R:Manifest,Q:Manifest]
+    extends DeliteOpLoop[R] {
+    type OpType <: DeliteOpZipWithReduceTuple2[A,B,R,Q]
+      
+    // supplied by subclass   
+    val inA: Interface[DeliteCollection[A]]
+    val inB: Interface[DeliteCollection[B]]
+    val zero: (Exp[R], Exp[Q])
+    def zip: (Exp[A], Exp[B]) => (Exp[R],Exp[Q])
+    def reduce: ((Exp[R],Exp[Q]), (Exp[R],Exp[Q])) => (Exp[R],Exp[Q])
+    
+    val mutable: Boolean = false
+    final lazy protected val rV: ((Sym[R],Sym[Q]),(Sym[R],Sym[Q])) = copyOrElse(_.rV)(((reflectMutableSym(fresh[R]),reflectMutableSym(fresh[Q])), (fresh[R],fresh[Q]))) // TODO: transform vars??
+    // loop
+    lazy val body: Def[R] = copyBodyOrElse(DeliteReduceTupleElem[R,Q](
+      func = /*reifyEffects*/(zip(inA.dcApply(v), inB.dcApply(v))), //FIXME: tupled reify
+      zero = this.zero,
+      rVPar = this.rV,
+      rVSeq = this.rV,
+      rFuncPar = /*reifyEffects*/(reduce(rV._1, rV._2)),  //FIXME: tupled reify
+      rFuncSeq = /*reifyEffects*/(reduce(rV._1, rV._2)),  //FIXME: tupled reify
+      stripFirst = (!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable
+    ))
+  }
+  
 
   /**
    * Parallel foreach from DeliteCollection[A] => Unit. Input functions must specify any free variables that it
@@ -534,6 +682,20 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       sync = reifyEffects(this.sync(i))
     ))
   }
+
+  abstract class DeliteOpForeachI[A:Manifest] extends DeliteOpLoop[Unit] { //DeliteOp[Unit] {    
+    type OpType <: DeliteOpForeachI[A]
+    val in: Interface[DeliteCollection[A]]
+    val size: Exp[Int]
+    def func: Exp[A] => Exp[Unit]
+    def sync: Exp[Int] => Exp[List[Any]] // TODO: need to extend runtime to do something with sync in multiloop
+    
+    final lazy val i: Sym[Int] = copyOrElse(_.i)(fresh[Int])
+    lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
+      func = reifyEffects(this.func(in.dcApply(v))),
+      sync = reifyEffects(this.sync(i))
+    ))
+  }
   
   abstract class DeliteOpIndexedLoop extends DeliteOpLoop[Unit] {
     type OpType <: DeliteOpIndexedLoop
@@ -545,7 +707,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       sync = unit(List())
     ))
   }
-  
+    
   /**
    * Deprecated Delite ops  
    */

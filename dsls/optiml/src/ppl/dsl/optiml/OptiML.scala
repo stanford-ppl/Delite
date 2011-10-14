@@ -50,7 +50,7 @@ trait OptiMLLift extends OptiLALift {
 
 trait OptiMLScalaOpsPkg extends OptiLAScalaOpsPkg
 
-trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg with OptiLAScalaOpsPkgExp
+trait OptiMLScalaOpsPkgExp extends OptiLAScalaOpsPkgExp with OptiMLScalaOpsPkg
 
 trait OptiMLScalaCodeGenPkg extends OptiLAScalaCodeGenPkg 
   { val IR: OptiMLScalaOpsPkgExp  }

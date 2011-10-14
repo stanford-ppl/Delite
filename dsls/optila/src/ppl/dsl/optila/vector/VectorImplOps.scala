@@ -1,40 +1,35 @@
 package ppl.dsl.optila.vector
 
-import ppl.dsl.optila.{Vector,Matrix,EmptyVector}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
+import ppl.dsl.optila.{Vector,Matrix,EmptyVector,DenseVector}
 import ppl.dsl.optila.{OptiLALift, OptiLACompiler, OptiLA}
 
 trait VectorImplOps { this: OptiLA =>
 
-  def vector_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[A]]): Rep[Vector[A]]
-  def vector_obj_ones_impl(length: Rep[Int]): Rep[Vector[Double]]
-  def vector_obj_onesf_impl(length: Rep[Int]): Rep[Vector[Float]]
-  //def vector_obj_zeros_impl(length: Rep[Int]): Rep[Vector[Double]]
-  //def vector_obj_zerosf_impl(length: Rep[Int]): Rep[Vector[Float]]
-  def vector_obj_rand_impl(length: Rep[Int]): Rep[Vector[Double]]
-  def vector_obj_randf_impl(length: Rep[Int]): Rep[Vector[Float]]
-  def vector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[Vector[Double]]
-  def vector_obj_flatten_impl[A:Manifest](pieces: Rep[Vector[Vector[A]]]): Rep[Vector[A]]
-
-  def vector_slice_impl[A:Manifest](v: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]): Rep[Vector[A]]
-  def vector_concatenate_impl[A:Manifest](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[Vector[A]]
-  def vector_times_matrix_impl[A:Manifest:Arith](v: Rep[Vector[A]], m: Rep[Matrix[A]]): Rep[Vector[A]]
-  def vector_outer_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[Matrix[A]]
-  def vector_equals_impl[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Boolean]
-  def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]): Rep[Unit]
-  def vector_repmat_impl[A:Manifest](m: Rep[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
-  def vector_trans_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], vA: Manifest[Vector[A]]): Rep[Vector[A]]
-  def vector_median_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[A]
-  def vector_filter_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Vector[A]]
-  def vector_partition_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[Vector[A]],Rep[Vector[A]])
-  def vector_contains_impl[A:Manifest](v: Rep[Vector[A]], elem: Rep[A]): Rep[Boolean]
-  def vector_distinct_impl[A:Manifest](v: Rep[Vector[A]]): Rep[Vector[A]]
-  def vector_min_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
-  def vector_max_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
-  def vector_find_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Vector[Int]]
-  def vector_mkstring_impl[A:Manifest](v: Rep[Vector[A]], sep: Rep[String]): Rep[String]
-  def vector_groupby_impl[A:Manifest,K:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[K]): Rep[Vector[Vector[A]]]
+  def densevector_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[A]]): Rep[DenseVector[A]]
+  def densevector_obj_ones_impl(length: Rep[Int]): Rep[DenseVector[Double]]
+  def densevector_obj_onesf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
+  //def densevector_obj_zeros_impl(length: Rep[Int]): Rep[DenseVector[Double]]
+  //def densevector_obj_zerosf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
+  def densevector_obj_rand_impl(length: Rep[Int]): Rep[DenseVector[Double]]
+  def densevector_obj_randf_impl(length: Rep[Int]): Rep[DenseVector[Float]]
+  def densevector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[DenseVector[Double]]
+  def densevector_obj_flatten_impl[A:Manifest](pieces: Rep[DenseVector[DenseVector[A]]]): Rep[DenseVector[A]]
+  
+  def vector_slice_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], start: Rep[Int], end: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def vector_contains_impl[A:Manifest](v: Interface[Vector[A]], elem: Rep[A]): Rep[Boolean]
+  def vector_distinct_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]  
+  def vector_clone_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]  
+  def vector_pprint_impl[A:Manifest](v: Interface[Vector[A]]): Rep[Unit]
+  def vector_repmat_impl[A:Manifest](v: Interface[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
+  def vector_mkstring_impl[A:Manifest](v: Interface[Vector[A]], sep: Rep[String]): Rep[String]
+  def vector_concatenate_impl[A:Manifest,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  
+  //def vector_times_matrix_impl[A:Manifest:Arith,VA:Manifest](v: Interface[Vector[A]], m: Rep[Matrix[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def vector_outer_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[Matrix[A]]  
+  
+  def vector_median_impl[A:Manifest:Ordering](v: Interface[Vector[A]]): Rep[A]
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
@@ -43,41 +38,39 @@ trait VectorImplOpsStandard extends VectorImplOps {
   //////////////////////////
   // kernel implementations
 
-  // TODO: support for asserts and other debugging tools
-
-  def vector_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[A]]) = {
-    val v = Vector[A](xs.length, true)
+  def densevector_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[A]]) = {
+    val v = DenseVector[A](xs.length, true)
     for (i <- 0 until xs.length) {
       v(i) = xs(i)
     }
     v //.unsafeImmutable
   }
 
-  def vector_obj_ones_impl(length: Rep[Int]) = Vector[Double](length, true) mmap { e => 1. } 
+  def densevector_obj_ones_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => 1. } 
 
-  def vector_obj_onesf_impl(length: Rep[Int]) = Vector[Float](length, true) mmap { e => 1f }
+  def densevector_obj_onesf_impl(length: Rep[Int]) = DenseVector[Float](length, true) mmap { e => 1f }
 
-  //def vector_obj_zeros_impl(length: Rep[Int]) = Vector[Double](length, true)
+  //def densevector_obj_zeros_impl(length: Rep[Int]) = DenseVector[Double](length, true)
 
-  //def vector_obj_zerosf_impl(length: Rep[Int]) = Vector[Float](length, true)
+  //def densevector_obj_zerosf_impl(length: Rep[Int]) = DenseVector[Float](length, true)
 
-  def vector_obj_rand_impl(length: Rep[Int]) = Vector[Double](length, true) mmap { e => random[Double] }
+  def densevector_obj_rand_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => random[Double] }
 
-  def vector_obj_randf_impl(length: Rep[Int]) = Vector[Float](length, true) mmap { i => random[Float] }
+  def densevector_obj_randf_impl(length: Rep[Int]) = DenseVector[Float](length, true) mmap { i => random[Float] }
 
-  def vector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]) = {
+  def densevector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]) = {
     val length = Math.ceil((end-start)/step_size).asInstanceOfL[Int]
     (0::length) map { i => step_size*i + start }
   }
 
-  def vector_obj_flatten_impl[A:Manifest](pieces: Rep[Vector[Vector[A]]]) = { // TODO: flatMap implementation
+  def densevector_obj_flatten_impl[A:Manifest](pieces: Rep[DenseVector[DenseVector[A]]]) = { // TODO: flatMap implementation
     if (pieces.length == 0){
-      Vector[A](0, pieces.isRow).unsafeImmutable
+      DenseVector[A](0, pieces.isRow).unsafeImmutable
     }
     else {
       val sizes = pieces map { e => e.length }
-      val (total,begins) = vector_precumulate[Int](sizes, 0)((_: Rep[Int]) + (_: Rep[Int]))
-      val result = Vector[A](total, pieces.isRow)
+      val (total,begins) = densevector_precumulate[Int](sizes, 0)((_: Rep[Int]) + (_: Rep[Int]))
+      val result = DenseVector[A](total, pieces.isRow)
       for (i <- 0 until pieces.length) {
         result.copyFrom(begins(i), pieces(i))
       }
@@ -85,11 +78,11 @@ trait VectorImplOpsStandard extends VectorImplOps {
     }
   }
 
-  private def vector_precumulate[A:Manifest](v: Rep[Vector[A]], identity: Rep[A])(func: (Rep[A],Rep[A]) => Rep[A]): (Rep[A], Rep[Vector[A]]) = {
+  private def densevector_precumulate[A:Manifest](v: Rep[DenseVector[A]], identity: Rep[A])(func: (Rep[A],Rep[A]) => Rep[A]): (Rep[A], Rep[DenseVector[A]]) = {
     if (v.length == 0) {
-      ((identity,Vector[A](0,v.isRow).unsafeImmutable))
+      ((identity,DenseVector[A](0,v.isRow).unsafeImmutable))
     } else {
-      val result = Vector[A](0, v.isRow)
+      val result = DenseVector[A](0, v.isRow)
       var accum = identity
       var i = unit(0)
       while (i < v.length) {
@@ -100,69 +93,50 @@ trait VectorImplOpsStandard extends VectorImplOps {
       (accum,result.unsafeImmutable)
     }
   }
-
-  def vector_slice_impl[A:Manifest](v: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]) = { // TODO: use DeliteOp
+  
+  def vector_slice_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], start: Rep[Int], end: Rep[Int])(implicit b: VectorBuilder[A,VA]) = { // TODO: use DeliteOp
     //v.chkRange(start, end)
-    val out = Vector[A](end-start, v.isRow)
+    val resultOut = b.alloc(end-start, v.isRow)
+    val result = b.toIntf(resultOut)    
     for (i <- start until end){
-      out(i-start) = v(i)
+      result(i-start) = v(i)
     }
-    out.unsafeImmutable
+    resultOut.unsafeImmutable
+  }
+  
+  def vector_contains_impl[A:Manifest](v: Interface[Vector[A]], elem: Rep[A]): Rep[Boolean] = {
+    var i = unit(0)
+    var found = false
+    while (i < v.length && !found) {
+      if (v(i) == elem) found = true
+      i += 1
+    }
+    found
   }
 
-  def vector_concatenate_impl[A:Manifest](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
-    // this check doesn't work with nil vectors
-    //if (v1.isRow != v2.isRow) {
-    //  println("error: trying to concatenate row and column vectors")
-      // TODo: need an exception throwing mechanism in generated code -- could be External, but needs to accessible from Base
-    //}
-    if (v1.isInstanceOfL[EmptyVector[A]]) v2
-    else if (v2.isInstanceOfL[EmptyVector[A]]) v1
-    else {
-      val out = Vector[A](v1.length+v2.length, v1.isRow)
-      for (i <- 0 until v1.length){
-        out(i) = v1(i)
-      }
-      for (i <- 0 until v2.length){
-        out(i+v1.length) = v2(i)
-      }
-      out.unsafeImmutable
+  def vector_distinct_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = {
+    val resultOut = b.alloc(v.length, v.isRow)
+    val result = b.toIntf(resultOut) // this is sub-optimal - passing toIntf as an implicit does't kick in all the time    
+    var i = unit(0)
+    while (i < v.length) {
+     if (!result.contains(v(i))) result += v(i)
+     i += 1
     }
+    resultOut.unsafeImmutable
   }
-
-  def vector_times_matrix_impl[A:Manifest:Arith](v: Rep[Vector[A]], m: Rep[Matrix[A]]) = {
-    //v.chkVecMatAgree(v, m)
-    val v_trans = v.t
-    m.t.mapRowsToVector { a_row => a_row *:* v_trans }
-  }
-
-  def vector_outer_impl[A:Manifest:Arith](collA: Rep[Vector[A]], collB: Rep[Vector[A]]) = {
-    val out = Matrix[A](collA.length, collB.length)
-    for (i <- 0 until collA.length ){
-      for (j <- 0 until collB.length ){
-        out(i,j) = collA(i)*collB(j)
-      }
+  
+  def vector_clone_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = {
+    val resultOut = b.alloc(v.length, v.isRow)
+    val result = b.toIntf(resultOut) 
+    var i = unit(0)
+    while (i < v.length) {
+     result(i) = v(i)
+     i += 1
     }
-    out.unsafeImmutable
+    resultOut.unsafeImmutable
   }
-
-  def vector_equals_impl[A:Manifest](x: Rep[Vector[A]], y: Rep[Vector[A]]) = {
-    if (x.length != y.length || x.isRow != y.isRow) {
-      false
-    }
-    else {
-      var foundDiff = false
-      var i = 0
-      while (i < x.length && !foundDiff) {
-        if (x(i) != y(i))
-          foundDiff = true
-        i += 1
-      }
-      !foundDiff
-    }
-  }
-
-  def vector_pprint_impl[A:Manifest](v: Rep[Vector[A]]) = {
+    
+  def vector_pprint_impl[A:Manifest](v: Interface[Vector[A]]) = {
     if (v.isRow){
       print("[ ")
       for (i <- 0 until v.length){
@@ -179,7 +153,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     }
   }
 
-  def vector_repmat_impl[A:Manifest](v: Rep[Vector[A]], iRep: Rep[Int], jRep: Rep[Int]) = {
+  def vector_repmat_impl[A:Manifest](v: Interface[Vector[A]], iRep: Rep[Int], jRep: Rep[Int]) = {
     if (v.isRow) {
       val out = Matrix[A](iRep, jRep*v.length)
       for (col <- (0::jRep*v.length)){
@@ -205,126 +179,45 @@ trait VectorImplOpsStandard extends VectorImplOps {
       out.unsafeImmutable
     }
   }
-
-  def vector_trans_impl[A](v: Rep[Vector[A]])(implicit mA: Manifest[A], vA: Manifest[Vector[A]]) = {
-    val out = Vector[A](v.length, !v.isRow)
-    for (i <- 0 until v.length){
-      out(i) = v(i)
-    }
-    out.unsafeImmutable
+  
+  def vector_concatenate_impl[A:Manifest,VA:Manifest](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = {
+    // should use static rewritings or static overloading to do this
+    //if (v1.isInstanceOfL[EmptyVector[A]]) v2
+    //else if (v2.isInstanceOfL[EmptyVector[A]]) v1
+    //else {
+      val outAlloc = b.alloc(v1.length+v2.length, v1.isRow)
+      val out = b.toIntf(outAlloc)
+      for (i <- 0 until v1.length){
+        out(i) = v1(i)
+      }
+      for (i <- 0 until v2.length){
+        out(i+v1.length) = v2(i)
+      }
+      outAlloc.unsafeImmutable
+    //}      
   }
-
-  def vector_median_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
+  
+  // def vector_times_matrix_impl[A:Manifest:Arith,VA:Manifest](v: Interface[Vector[A]], m: Rep[Matrix[A]])(implicit b: VectorBuilder[A,VA]) = {    
+  //   throw new UnsupportedOperationException("not implemented generically yet")
+  //    val v_trans = v.t
+  //    m.t.mapRowsToDenseVector { a_row => a_row *:* v_trans }    
+  // }
+  
+  def vector_outer_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = {
+    val out = Matrix[A](v1.length, v2.length)
+    for (i <- 0 until v1.length ){
+      for (j <- 0 until v2.length ){
+        out(i,j) = v1(i)*v2(j)
+      }
+    }
+    out.unsafeImmutable    
+  }
+  
+  def vector_median_impl[A:Manifest:Ordering](v: Interface[Vector[A]]) = {
     // TODO: this isn't the proper definition of median
     val x = v.sort
     x(x.length / 2)
   }
-
-  def vector_filter_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
-    val result = Vector[A](0, v.isRow)
-    for (i <- 0 until v.length) {
-      val x = v(i)
-      if (pred(x)) result += x
-    }
-
-    result.unsafeImmutable
-  }
-
-  def vector_partition_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
-    val resultT = Vector[A](0, v.isRow)
-    val resultF = Vector[A](0, v.isRow)
-    for (i <- 0 until v.length) {
-      val x = v(i)
-      (if (pred(x)) resultT else resultF) += x
-    }
-
-    (resultT.unsafeImmutable, resultF.unsafeImmutable)
-  }
-
-  def vector_contains_impl[A:Manifest](v: Rep[Vector[A]], elem: Rep[A]): Rep[Boolean] = {
-    var i = unit(0)
-    var found = false
-    while (i < v.length && !found) {
-      if (v(i) == elem) found = true
-      i += 1
-    }
-    found
-  }
-
-  def vector_distinct_impl[A:Manifest](v: Rep[Vector[A]]) = {
-    val result = Vector[A](0, v.isRow)
-    var i = unit(0)
-    while (i < v.length) {
-     if (!result.contains(v(i))) result += v(i)
-     i += 1
-    }
-    result.unsafeImmutable
-  }
-
-  def vector_min_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
-    var minIndex = 0
-    var min = v(0)
-    var j = 1
-    while( j < v.length ){
-      if (v(j) < min) {
-        min = v(j)
-        minIndex = j
-      }
-      j += 1
-    }
-
-    minIndex
-  }
-
-  def vector_max_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]) = {
-    var maxIndex = 0
-    var max = v(0)
-    var j = 1
-    while( j < v.length ){
-      if (v(j) > max) {
-        max = v(j)
-        maxIndex = j
-      }
-      j += 1
-    }
-
-    maxIndex
-  }
-
-  def vector_find_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
-    val indices = Vector[Int](0)
-    for (i <- 0 until v.length) {
-      if (pred(v(i))) indices += i
-    }
-    indices.unsafeImmutable.asInstanceOf[Rep[Vector[Int]]]
-  }
-
-  def vector_mkstring_impl[A:Manifest](v: Rep[Vector[A]], sep: Rep[String]) = {
-    var s = ""
-    for (i <- 0 until v.length) {
-      s = s + v(i)
-      s = s + sep
-    }
-    s
-  }
   
-  def vector_groupby_impl[A:Manifest,K:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[K]): Rep[Vector[Vector[A]]] = {
-    val groups = HashMap[K,Vector[A]]()
-
-    var i = 0
-    while (i < x.length) {
-      val key = pred(x(i))      
-      if (!(groups contains key)) {
-        groups(key) = Vector[A](0,x.isRow)        
-      }
-      groups(key) += x(i)
-      i += 1
-    }
-
-    val out = Vector[Vector[A]](0,true)
-    for (v <- groups.values) {
-      out += v.unsafeImmutable       
-    }    
-    out.unsafeImmutable
-  }
+  
 }

@@ -68,8 +68,7 @@ trait VectorOps extends DSLType with Variables {
    */
   
   // Delite needs to be able to pre-allocate builders for parallel ops. What's the right way to do this?
-  class Builder[-Elem, +To]  
-  abstract class VectorBuilder[-Elem, +To] extends Builder[Elem,To] {
+  abstract class VectorBuilder[-Elem, +To] {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]): Rep[To]
   }  
   def denseVectorBuilder[A:Manifest] = new VectorBuilder[A,DenseVector[A]] {

@@ -6,6 +6,26 @@ import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Base, ScalaGenFat
 import scala.virtualization.lms.internal.{GenericFatCodegen}
 
 trait DeliteCollectionOps extends Base {
+  trait DCInterfaceOps[A] extends InterfaceOps {
+    def dcSize: Rep[Int] 
+    def dcApply(n: Rep[Int]): Rep[A] 
+    def dcUpdate(n: Rep[Int], y: Rep[A]): Rep[Unit]
+  }
+
+  trait DCInterface[+T,A] extends Interface[T] {
+    val ops: DCInterfaceOps[A]
+  }
+  
+  implicit def interfaceToVecOps[A:Manifest](intf: Interface[DeliteCollection[A]]) = new DeliteCollectionInterfaceOps(intf.asInstanceOf[DCInterface[DeliteCollection[A],A]])
+  
+  // unlike before, don't assume that we know how to generate dcSize,dcApply,dcUpdate at run-time
+  class DeliteCollectionInterfaceOps[A:Manifest](val intf: DCInterface[DeliteCollection[A],A]) {
+    def dcSize = intf.ops.dcSize
+    def dcApply(n: Rep[Int]) = intf.ops.dcApply(n) 
+    def dcUpdate(n: Rep[Int], y: Rep[A]) = intf.ops.dcUpdate(n,y)
+  }
+  
+  // TODO -- AKS OLD: remove after refactor is complete
   implicit def dcToDcOps[A:Manifest](x: Rep[DeliteCollection[A]]) = new deliteCollectionOpsCls(x)
   
   class deliteCollectionOpsCls[A:Manifest](x: Rep[DeliteCollection[A]]) {
