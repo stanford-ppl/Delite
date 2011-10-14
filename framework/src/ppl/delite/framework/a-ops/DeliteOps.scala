@@ -282,7 +282,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }  
 
   abstract class DeliteOpFilter2[A:Manifest,
-                                B:Manifest, CB <: DeliteCollection[B]:Manifest]
+                                B:Manifest, CB:Manifest]
     extends DeliteOpLoop[CB] {
     type OpType <: DeliteOpFilter2[A,B,CB]
 

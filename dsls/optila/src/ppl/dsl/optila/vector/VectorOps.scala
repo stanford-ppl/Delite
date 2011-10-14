@@ -13,7 +13,7 @@ import ppl.dsl.optila._
 trait VectorOps extends DSLType with Variables {
   this: OptiLA =>
 
-  abstract class VectorBuilder[-Elem, +To] {
+  abstract class VectorBuilder[Elem, To] {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]): Rep[To]
     def toIntf(x: Rep[To]): Interface[Vector[Elem]]
   }  
@@ -40,6 +40,18 @@ trait VectorOps extends DSLType with Variables {
 
     def dense[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) = densevector_obj_new(len, isRow)//dense_densevector_obj_new(len, isRow)
     //def sparse[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) = sparsevector_obj_new(len, isRow)
+    
+    def flatten[A:Manifest](pieces: Rep[DenseVector[DenseVector[A]]]) = densevector_obj_flatten(pieces)
+    def ones(len: Rep[Int]) = densevector_obj_ones(len)
+    def onesf(len: Rep[Int]) = densevector_obj_onesf(len)
+    def zeros(len: Rep[Int]) = densevector_obj_zeros(len)
+    def zerosf(len: Rep[Int]) = densevector_obj_zerosf(len)
+    def rand(len: Rep[Int]) = densevector_obj_rand(len)
+    def randf(len: Rep[Int]) = densevector_obj_randf(len)
+    def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = 1, isRow: Rep[Boolean] = unit(true)) =
+      densevector_obj_range(start, end, stride, isRow)
+    def uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean] = unit(true)) =
+      densevector_obj_uniform(start, step_size, end, isRow)
   }
 
   // class OpInfo[A,That,Intf] {
@@ -50,7 +62,7 @@ trait VectorOps extends DSLType with Variables {
     
   abstract class VecOpsCls[A:Manifest] extends DCInterfaceOps[A] {
     type V[X] // <: DeliteCollection[X] // necessary?
-    implicit def toOps[B](x: Rep[V[B]]): VecOpsCls[B]
+    implicit def toOps[B:Manifest](x: Rep[V[B]]): VecOpsCls[B]
     implicit def toIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]]        
     implicit def builder[B:Manifest]: VectorBuilder[B,V[B]]    
     implicit def mVB[B:Manifest]: Manifest[V[B]]     
@@ -421,8 +433,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   case class DenseVectorObjectUniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean])
     extends DeliteOpSingleTask(reifyEffectsHere(densevector_obj_uniform_impl(start, step_size, end, isRow)))
 
-//  case class DenseVectorObjectFlatten[A:Manifest](pieces: Exp[DenseVector[DenseVector[A]]])
-//    extends DeliteOpSingleTask(reifyEffectsHere(densevector_obj_flatten_impl(pieces)))
+  case class DenseVectorObjectFlatten[A:Manifest](pieces: Exp[DenseVector[DenseVector[A]]])
+    extends DeliteOpSingleTask(reifyEffectsHere(densevector_obj_flatten_impl(pieces)))
 
   case class VectorSlice[A:Manifest,VA:Manifest](x: Interface[Vector[A]], start: Exp[Int], end: Exp[Int])(implicit b: VectorBuilder[A,VA])
     extends DeliteOpSingleTask(reifyEffectsHere(vector_slice_impl[A,VA](x,start,end)))

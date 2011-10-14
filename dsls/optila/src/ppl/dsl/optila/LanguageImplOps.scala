@@ -1,23 +1,22 @@
 package ppl.dsl.optila
 
 trait LanguageImplOps { this: OptiLA =>
-  def optila_vectordistance_abs_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[A]
-  def optila_vectordistance_euc_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[A]
-  def optila_vectordistance_square_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]): Rep[A]
+  def optila_vectordistance_abs_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
+  def optila_vectordistance_euc_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
+  def optila_vectordistance_square_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
   def optila_matrixdistance_abs_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
   def optila_matrixdistance_euc_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
   def optila_matrixdistance_square_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
 
   def optila_randsample_matrix_impl[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean]): Rep[Matrix[A]]
-  def optila_randsample_vector_impl[A:Manifest](v: Rep[Vector[A]], numSamples: Rep[Int]): Rep[Vector[A]]
+  def optila_randsample_vector_impl[A:Manifest](v: Rep[DenseVector[A]], numSamples: Rep[Int]): Rep[DenseVector[A]]
 }
 
 trait LanguageImplOpsStandard extends LanguageImplOps {
   this: OptiLACompiler with OptiLALift =>
   
 
-  def optila_vectordistance_abs_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
-//  def optila_vectordistance_abs_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = {
+  def optila_vectordistance_abs_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = {
     (v1-v2).abs.sum
 /*
     var result = (v1(0) - v2(0)).abs
@@ -30,13 +29,13 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 */
   }
 
-  def optila_vectordistance_euc_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
+  def optila_vectordistance_euc_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = {
     //Math.sqrt(((v1-v2) mmap {e => e*e}).sum)
     println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")
     v1(0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
   }
 
-  def optila_vectordistance_square_impl[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = {
+  def optila_vectordistance_square_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = {
     val d = v1-v2
     (d*d).sum
   }
@@ -83,10 +82,10 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     if (sampleRows) sampled else sampled.t
   }
 
-  def optila_randsample_vector_impl[A:Manifest](v: Rep[Vector[A]], numSamples: Rep[Int]): Rep[Vector[A]] = {
+  def optila_randsample_vector_impl[A:Manifest](v: Rep[DenseVector[A]], numSamples: Rep[Int]): Rep[DenseVector[A]] = {
     val candidates = (0::v.length).mutable
 
-    val sampled = Vector[A](0, v.isRow)
+    val sampled = DenseVector[A](0, v.isRow)
     for (i <- 0 until numSamples){
       val r = i + random(v.length-i)
       val idx = candidates(r)

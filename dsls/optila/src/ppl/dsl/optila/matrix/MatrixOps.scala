@@ -22,12 +22,12 @@ trait MatrixOps extends DSLType with Variables {
   
   object Matrix {
     def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_new(numRows, numCols)
-    def apply[A:Manifest](xs: Rep[Vector[Vector[A]]]): Rep[Matrix[A]] = matrix_obj_fromvec(xs)
+    def apply[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]]): Rep[Matrix[A]] = matrix_obj_fromvec(xs)
     // Vector is not covariant, so Rep[Vector[MatrixRow[A]]] is unfortunately not a subtype of Rep[Vector[Vector[A]]]
-    def apply[A](xs: Rep[Vector[MatrixRow[A]]])(implicit mA: Manifest[A], o: Overloaded1): Rep[Matrix[A]] = matrix_obj_fromvec(xs.asInstanceOf[Rep[Vector[Vector[A]]]])
-    def apply[A:Manifest](xs: Rep[Vector[A]]*): Rep[Matrix[A]] = Matrix(Vector(xs: _*))
+    def apply[A](xs: Rep[DenseVector[MatrixRow[A]]])(implicit mA: Manifest[A], o: Overloaded1): Rep[Matrix[A]] = matrix_obj_fromvec(xs.asInstanceOf[Rep[DenseVector[DenseVector[A]]]])
+    def apply[A:Manifest](xs: Rep[DenseVector[A]]*): Rep[Matrix[A]] = Matrix(DenseVector(xs: _*))
 
-    def diag[A:Manifest](w: Rep[Int], vals: Rep[Vector[A]]) = matrix_obj_diag(w, vals)
+    def diag[A:Manifest](w: Rep[Int], vals: Interface[Vector[A]]) = matrix_obj_diag(w, vals)
     def identity(w: Rep[Int]) = matrix_obj_identity(w)
     def zeros(numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_zeros(numRows, numCols)
     def zerosf(numRows: Rep[Int], numCols: Rep[Int]) = matrix_obj_zerosf(numRows, numCols)
@@ -75,13 +75,13 @@ trait MatrixOps extends DSLType with Variables {
 
     // data operations
     def update(i: Rep[Int], j: Rep[Int], y: Rep[A]) = matrix_update(x,i,j,y)
-    def update(i: Rep[Int], y: Rep[Vector[A]]) = updateRow(i, y)
-    def updateRow(row: Rep[Int], y: Rep[Vector[A]]) = matrix_updaterow(x,row,y)
-    def +=(y: Rep[Vector[A]]) = insertRow(x.numRows,y)
+    def update(i: Rep[Int], y: Interface[Vector[A]]) = updateRow(i, y)
+    def updateRow(row: Rep[Int], y: Interface[Vector[A]]) = matrix_updaterow(x,row,y)
+    def +=(y: Rep[DenseVector[A]]) = insertRow(x.numRows,y)
     def ++=(y: Rep[Matrix[A]]) = insertAllRows(x.numRows,y)
-    def insertRow(pos: Rep[Int], y: Rep[Vector[A]]) = matrix_insertrow(x,pos,y)
+    def insertRow(pos: Rep[Int], y: Rep[DenseVector[A]]) = matrix_insertrow(x,pos,y)
     def insertAllRows(pos: Rep[Int], y: Rep[Matrix[A]]) = matrix_insertallrows(x,pos,y)
-    def insertCol(pos: Rep[Int], y: Rep[Vector[A]]) = matrix_insertcol(x,pos,y)
+    def insertCol(pos: Rep[Int], y: Rep[DenseVector[A]]) = matrix_insertcol(x,pos,y)
     def insertAllCols(pos: Rep[Int], y: Rep[Matrix[A]]) = matrix_insertallcols(x,pos,y)
     def removeRow(pos: Rep[Int]) = removeRows(pos, 1)
     def removeRows(pos: Rep[Int], len: Rep[Int]) = matrix_removerows(x,pos,len)
@@ -96,7 +96,7 @@ trait MatrixOps extends DSLType with Variables {
     def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = matrix_minus_scalar(x,y)
     def *:*(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_times(x,y)
     def *(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_multiply(x,y)
-    def *(y: Rep[Vector[A]])(implicit a: Arith[A], o: Overloaded1) = matrix_times_vector(x,y)
+    def *(y: Rep[DenseVector[A]])(implicit a: Arith[A], o: Overloaded1) = matrix_times_vector(x,y)
     def *(y: Rep[A])(implicit a: Arith[A], o: Overloaded2) = matrix_times_scalar(x,y)
     def /(y: Rep[Matrix[A]])(implicit a: Arith[A]) = matrix_divide(x,y)
     def /(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = matrix_divide_scalar(x,y)
@@ -122,14 +122,14 @@ trait MatrixOps extends DSLType with Variables {
     def map[B:Manifest](f: Rep[A] => Rep[B]) = matrix_map(x,f)
     /// TODO: rename to transform?
     def mmap(f: Rep[A] => Rep[A]) = { matrix_mmap(x,f); x }
-    def mapRows[B:Manifest](f: Rep[MatrixRow[A]] => Rep[Vector[B]]) = matrix_maprows(x,f)
+    def mapRows[B:Manifest](f: Rep[MatrixRow[A]] => Rep[DenseVector[B]]) = matrix_maprows(x,f)
     def mapRowsToVector[B:Manifest](f: Rep[MatrixRow[A]] => Rep[B], isRow: Rep[Boolean] = unit(false)) = matrix_maprowstovec(x,f,isRow)
     def foreach(block: Rep[A] => Rep[Unit]) = matrix_foreach(x, block)
     def foreachRow(block: Rep[MatrixRow[A]] => Rep[Unit]) = matrix_foreachrow(x, block)
     def zip[B:Manifest,R:Manifest](y: Rep[Matrix[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = matrix_zipwith(x,y,f)
-    def reduceRows(f: (Rep[Vector[A]],Rep[Vector[A]]) => Rep[Vector[A]]) = matrix_reducerows(x,f)
+    def reduceRows(f: (Rep[DenseVector[A]],Rep[DenseVector[A]]) => Rep[DenseVector[A]]) = matrix_reducerows(x,f)
     def filterRows(pred: Rep[MatrixRow[A]] => Rep[Boolean]) = matrix_filterrows(x,pred)
-    def groupRowsBy[K:Manifest](pred: Rep[Vector[A]] => Rep[K]) = matrix_grouprowsby(x, pred)
+    def groupRowsBy[K:Manifest](pred: Rep[DenseVector[A]] => Rep[K]) = matrix_grouprowsby(x, pred)
     def count(pred: Rep[A] => Rep[Boolean]) = matrix_count(x, pred)
     // def countRows    
   }
@@ -150,9 +150,9 @@ trait MatrixOps extends DSLType with Variables {
   // object defs
   def symmatrix_obj_new[A:Manifest](n: Rep[Int]): Rep[SymmetricMatrix[A]]
   def matrix_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[A]]
-  def matrix_obj_fromseq[A:Manifest](xs: Seq[Rep[Vector[A]]]): Rep[Matrix[A]]
-  def matrix_obj_fromvec[A:Manifest](xs: Rep[Vector[Vector[A]]]): Rep[Matrix[A]]
-  def matrix_obj_diag[A:Manifest](w: Rep[Int], vals: Rep[Vector[A]]): Rep[Matrix[A]]
+  def matrix_obj_fromseq[A:Manifest](xs: Seq[Interface[Vector[A]]]): Rep[Matrix[A]]
+  def matrix_obj_fromvec[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]]): Rep[Matrix[A]]
+  def matrix_obj_diag[A:Manifest](w: Rep[Int], vals: Interface[Vector[A]]): Rep[Matrix[A]]
   def matrix_obj_identity(w: Rep[Int]): Rep[Matrix[Double]]
   def matrix_obj_zeros(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Double]]
   def matrix_obj_zerosf(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Float]]
@@ -167,7 +167,7 @@ trait MatrixOps extends DSLType with Variables {
 
   // class defs
   def matrix_apply[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
-  def matrix_vview[A:Manifest](x: Rep[Matrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[Vector[A]]
+  def matrix_vview[A:Manifest](x: Rep[Matrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVector[A]]
   def matrix_getrow[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int]): Rep[MatrixRow[A]]
   def matrix_getcol[A:Manifest](x: Rep[Matrix[A]], j: Rep[Int]): Rep[MatrixCol[A]]
   def matrix_slice[A:Manifest](x: Rep[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]): Rep[Matrix[A]]
@@ -183,10 +183,10 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_repmat[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
 
   def matrix_update[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int], y: Rep[A]): Rep[Unit]
-  def matrix_updaterow[A:Manifest](x: Rep[Matrix[A]], row: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
-  def matrix_insertrow[A:Manifest](x: Rep[Matrix[A]], pos: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
+  def matrix_updaterow[A:Manifest](x: Rep[Matrix[A]], row: Rep[Int], y: Interface[Vector[A]]): Rep[Unit]
+  def matrix_insertrow[A:Manifest](x: Rep[Matrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit]
   def matrix_insertallrows[A:Manifest](x: Rep[Matrix[A]], pos: Rep[Int], y: Rep[Matrix[A]]): Rep[Unit]
-  def matrix_insertcol[A:Manifest](x: Rep[Matrix[A]], pos: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
+  def matrix_insertcol[A:Manifest](x: Rep[Matrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit]
   def matrix_insertallcols[A:Manifest](x: Rep[Matrix[A]], pos: Rep[Int], y: Rep[Matrix[A]]): Rep[Unit]
   def matrix_removerows[A:Manifest](x: Rep[Matrix[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit]
   def matrix_removecols[A:Manifest](x: Rep[Matrix[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit]
@@ -198,7 +198,7 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_minus_scalar[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[A]): Rep[Matrix[A]]
   def matrix_times[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_multiply[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
-  def matrix_times_vector[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def matrix_times_vector[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[DenseVector[A]]): Rep[DenseVector[A]]
   def matrix_times_scalar[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[A]): Rep[Matrix[A]]
   def matrix_divide[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_divide_scalar[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[A]): Rep[Matrix[A]]
@@ -206,27 +206,27 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_abs[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_exp[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_sum[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[A]
-  def matrix_sumrow[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]]
-  def matrix_sumcol[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]]
+  def matrix_sumrow[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[DenseVector[A]]
+  def matrix_sumcol[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[DenseVector[A]]
   def matrix_inverse[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
   def matrix_sigmoid[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
   def matrix_sigmoidf[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]]
 
   def matrix_min[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[A]
-  def matrix_minrow[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[Vector[A]]
+  def matrix_minrow[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[DenseVector[A]]
   def matrix_max[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[A]
-  def matrix_maxrow[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[Vector[A]]
+  def matrix_maxrow[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[DenseVector[A]]
 
   def matrix_map[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[A] => Rep[B]): Rep[Matrix[B]]
   def matrix_mmap[A:Manifest](x: Rep[Matrix[A]], f: Rep[A] => Rep[A]): Rep[Unit]
-  def matrix_maprows[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
-  def matrix_maprowstovec[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[B], isRow: Rep[Boolean]): Rep[Vector[B]]
+  def matrix_maprows[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[DenseVector[B]]): Rep[Matrix[B]]
+  def matrix_maprowstovec[A:Manifest,B:Manifest](x: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[B], isRow: Rep[Boolean]): Rep[DenseVector[B]]
   def matrix_foreach[A:Manifest](x: Rep[Matrix[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
   def matrix_foreachrow[A:Manifest](x: Rep[Matrix[A]], block: Rep[MatrixRow[A]] => Rep[Unit]): Rep[Unit]
   def matrix_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[Matrix[R]]
-  def matrix_reducerows[A:Manifest](x: Rep[Matrix[A]], f: (Rep[Vector[A]],Rep[Vector[A]]) => Rep[Vector[A]]): Rep[Vector[A]]
+  def matrix_reducerows[A:Manifest](x: Rep[Matrix[A]], f: (Rep[DenseVector[A]],Rep[DenseVector[A]]) => Rep[DenseVector[A]]): Rep[DenseVector[A]]
   def matrix_filterrows[A:Manifest](x: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[Boolean]): Rep[Matrix[A]]
-  def matrix_grouprowsby[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[Vector[A]] => Rep[K]): Rep[Vector[Matrix[A]]] 
+  def matrix_grouprowsby[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[DenseVector[A]] => Rep[K]): Rep[DenseVector[Matrix[A]]] 
   def matrix_count[A:Manifest](x: Rep[Matrix[A]], pred: Rep[A] => Rep[Boolean]): Rep[Int]
 }
 
@@ -245,7 +245,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
      val m = manifest[A]
   }
   //case class MatrixApply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) extends Def[A]
-  case class MatrixVView[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends Def[Vector[A]]
+  case class MatrixVView[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends Def[DenseVector[A]]
   case class MatrixGetRow[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixRow[A]] {
     val m = manifest[A]
   }
@@ -257,9 +257,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixNumCols[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixClone[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
   case class MatrixUpdate[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) extends Def[Unit]
-  case class MatrixInsertRow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) extends Def[Unit]
+  case class MatrixInsertRow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[DenseVector[A]]) extends Def[Unit]
   case class MatrixInsertAllRows[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Matrix[A]]) extends Def[Unit]
-  case class MatrixInsertCol[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) extends Def[Unit]
+  case class MatrixInsertCol[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[DenseVector[A]]) extends Def[Unit]
   case class MatrixInsertAllCols[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Matrix[A]]) extends Def[Unit]
   case class MatrixRemoveRows[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], len: Exp[Int]) extends Def[Unit]
   case class MatrixRemoveCols[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], len: Exp[Int]) extends Def[Unit]
@@ -267,17 +267,17 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   /////////////////////////////////////
   // implemented via kernel embedding
 
-  case class MatrixObjectFromSeq[A:Manifest](xs: Seq[Rep[Vector[A]]])
+  case class MatrixObjectFromSeq[A:Manifest](xs: Seq[Interface[Vector[A]]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_fromseq_impl(xs))) {
       val m = manifest[A]
   }
 
-  case class MatrixObjectFromVec[A:Manifest](xs: Exp[Vector[Vector[A]]])
+  case class MatrixObjectFromVec[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_fromvec_impl(xs))) {
     val m = manifest[A]
   }
 
-  case class MatrixObjectDiag[A:Manifest](w: Exp[Int], vals: Exp[Vector[A]])
+  case class MatrixObjectDiag[A:Manifest](w: Exp[Int], vals: Interface[Vector[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_obj_diag_impl(w, vals))) {
       val m = manifest[A]
   }
@@ -357,7 +357,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]]) 
     extends DeliteOpSingleTask(reifyEffects(matrix_sumcol_impl(x)))
 
-  case class MatrixGroupRowsBy[A:Manifest,K:Manifest](x: Exp[Matrix[A]], pred: Exp[Vector[A]] => Exp[K])
+  case class MatrixGroupRowsBy[A:Manifest,K:Manifest](x: Exp[Matrix[A]], pred: Exp[DenseVector[A]] => Exp[K])
     extends DeliteOpSingleTask(reifyEffects(matrix_grouprowsby_impl(x,pred)))
 
   ///////////////////////////////////////////////////////////////////
@@ -366,14 +366,14 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   // TODO: generalize this so that we can generate fused, delite parallel op, or BLAS variants
   // having separate IR nodes breaks pattern matching optimizations... 
 
-  case class MatrixTimesVector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]])
+  case class MatrixTimesVector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[DenseVector[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_times_vector_impl(x,y))) {
 
     def m = manifest[A]
     def a = implicitly[Arith[A]]
   }
 
-  case class MatrixTimesVectorBLAS[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]]) extends DeliteOpExternal[Vector[A]] {
+  case class MatrixTimesVectorBLAS[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[DenseVector[A]]) extends DeliteOpExternal[DenseVector[A]] {
     def alloc = Vector[A](x.numRows, unit(false))
     val funcName = "matMultV"
 
@@ -508,9 +508,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   /* this would be nice, but case class inheritance is deprecated */
   //case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]]) extends MatrixMapRowsToVec[A,A](x, row => row.sum, unit(false))  
   case class MatrixSumRow[A:Manifest:Arith](x: Exp[Matrix[A]])
-    extends DeliteOpMap[Int,A,Vector[A]] {
+    extends DeliteOpMap[Int,A,DenseVector[A]] {
 
-    def alloc = Vector[A](x.numRows, unit(false))
+    def alloc = DenseVector[A](x.numRows, unit(false))
     val in = (0::x.numRows)
     val size = x.numRows
     def func = i => x(i).sum
@@ -589,7 +589,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def func = i => dc_update(in, i, block(dc_apply(in,i)))
   }
 
-  case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Vector[B]], out: Exp[Matrix[B]])
+  case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[DenseVector[B]], out: Exp[Matrix[B]])
     extends DeliteOpIndexedLoop {
 
     val size = x.numRows
@@ -604,9 +604,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
   case class MatrixMapRowsToVec[A:Manifest,B: Manifest](x: Exp[Matrix[A]], rowFunc: Exp[MatrixRow[A]] => Exp[B], isRow: Exp[Boolean])
-    extends DeliteOpMap[Int,B,Vector[B]] {
+    extends DeliteOpMap[Int,B,DenseVector[B]] {
 
-    def alloc = Vector[B](x.numRows, isRow)
+    def alloc = DenseVector[B](x.numRows, isRow)
     val in = (0::x.numRows)
     val size = x.numRows
     def func = i => rowFunc(x(i))   
@@ -619,7 +619,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     def sync = n => List()
   }
 
-  case class MatrixUpdateRow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Exp[Vector[A]])
+  case class MatrixUpdateRow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Interface[Vector[A]])
     extends DeliteOpIndexedLoop {
     
     val size = copyTransformedOrElse(_.size)(y.length) // TODO: assert y.length == x.numCols
@@ -636,13 +636,13 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   // More efficient (though slightly uglier) to express this as a loop directly. 
   // TODO: nicer DeliteOpLoop templates? e.g. DeliteOpReductionLoop, ...
-  case class MatrixReduceRows[A:Manifest](x: Exp[Matrix[A]], func: (Exp[Vector[A]], Exp[Vector[A]]) => Exp[Vector[A]])
-    extends DeliteOpReduceLike[Vector[A]] {
+  case class MatrixReduceRows[A:Manifest](x: Exp[Matrix[A]], func: (Exp[DenseVector[A]], Exp[DenseVector[A]]) => Exp[DenseVector[A]])
+    extends DeliteOpReduceLike[DenseVector[A]] {
 
     val size = x.numRows
     val zero = EmptyVector[A]
     
-    lazy val body: Def[Vector[A]] = copyBodyOrElse(DeliteReduceElem[Vector[A]](
+    lazy val body: Def[DenseVector[A]] = copyBodyOrElse(DeliteReduceElem[DenseVector[A]](
       func = reifyEffects(x(v)),
       Nil,
       zero = this.zero,
@@ -669,9 +669,9 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   def symmatrix_obj_new[A:Manifest](n: Exp[Int]) = reflectMutable(SymmetricMatrixObjectNew[A](n))
   def matrix_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectMutable(MatrixObjectNew[A](numRows, numCols)) //XXX
-  def matrix_obj_fromseq[A:Manifest](xs: Seq[Exp[Vector[A]]]) = reflectPure(MatrixObjectFromSeq(xs)) //XXX
-  def matrix_obj_fromvec[A:Manifest](xs: Exp[Vector[Vector[A]]]) = reflectPure(MatrixObjectFromVec(xs))
-  def matrix_obj_diag[A:Manifest](w: Exp[Int], vals: Exp[Vector[A]]) = reflectPure(MatrixObjectDiag(w, vals))
+  def matrix_obj_fromseq[A:Manifest](xs: Seq[Interface[Vector[A]]]) = reflectPure(MatrixObjectFromSeq(xs)) //XXX
+  def matrix_obj_fromvec[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]]) = reflectPure(MatrixObjectFromVec(xs))
+  def matrix_obj_diag[A:Manifest](w: Exp[Int], vals: Interface[Vector[A]]) = reflectPure(MatrixObjectDiag(w, vals))
   def matrix_obj_identity(w: Exp[Int]) = reflectPure(MatrixObjectIdentity(w))
   def matrix_obj_zeros(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectNew[Double](numRows, numCols))//MatrixObjectZeros(numRows, numCols))
   def matrix_obj_zerosf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(MatrixObjectNew[Float](numRows, numCols))//MatrixObjectZerosF(numRows, numCols))
@@ -698,10 +698,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_numcols[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixNumCols(x))
 
   def matrix_update[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A]) = reflectWrite(x)(MatrixUpdate[A](x,i,j,y))
-  def matrix_updaterow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Exp[Vector[A]]) = reflectWrite(x)(MatrixUpdateRow(x,row,y))
-  def matrix_insertrow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectWrite(x)(MatrixInsertRow(x,pos,y))
+  def matrix_updaterow[A:Manifest](x: Exp[Matrix[A]], row: Exp[Int], y: Interface[Vector[A]]) = reflectWrite(x)(MatrixUpdateRow(x,row,y))
+  def matrix_insertrow[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[DenseVector[A]]) = reflectWrite(x)(MatrixInsertRow(x,pos,y))
   def matrix_insertallrows[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Matrix[A]]) = reflectWrite(x)(MatrixInsertAllRows(x,pos,y))
-  def matrix_insertcol[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Vector[A]]) = reflectWrite(x)(MatrixInsertCol(x,pos,y))
+  def matrix_insertcol[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[DenseVector[A]]) = reflectWrite(x)(MatrixInsertCol(x,pos,y))
   def matrix_insertallcols[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], y: Exp[Matrix[A]]) = reflectWrite(x)(MatrixInsertAllCols(x,pos,y))
   def matrix_removerows[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], len: Exp[Int]) = reflectWrite(x)(MatrixRemoveRows(x,pos,len))
   def matrix_removecols[A:Manifest](x: Exp[Matrix[A]], pos: Exp[Int], len: Exp[Int]) = reflectWrite(x)(MatrixRemoveCols(x,pos,len))
@@ -722,7 +722,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     if (Config.useBlas && (manifest[A] == manifest[Double] || manifest[A] == manifest[Float])) reflectPure(MatrixMultiplyBLAS(x,y))
     else reflectPure(MatrixMultiply(x,y))
   }
-  def matrix_times_vector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Vector[A]]) = {
+  def matrix_times_vector[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[DenseVector[A]]) = {
     if (Config.useBlas && (manifest[A] == manifest[Double] || manifest[A] == manifest[Float])) reflectPure(MatrixTimesVectorBLAS(x,y))
     else reflectPure(MatrixTimesVector(x,y))
   }
@@ -754,7 +754,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   def matrix_map[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[A] => Exp[B]) = reflectPure(MatrixMap(x, f))
   def matrix_mmap[A:Manifest](x: Exp[Matrix[A]], f: Exp[A] => Exp[A]) = reflectWrite(x)(MatrixMutableMap(x, f)) // effect??
-  def matrix_maprows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[Vector[B]]) = {
+  def matrix_maprows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], f: Exp[MatrixRow[A]] => Exp[DenseVector[B]]) = {
     val out = matrix_obj_new[B](x.numRows, x.numCols)
     reflectWrite(out)(MatrixMapRows(x,f,out))
     out.unsafeImmutable // will this work?
@@ -771,11 +771,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[B]], f: (Exp[A],Exp[B]) => Exp[R]) = {
     reflectPure(MatrixZipWith(x, y, f))
   }
-  def matrix_reducerows[A:Manifest](x: Exp[Matrix[A]], f: (Exp[Vector[A]],Exp[Vector[A]]) => Exp[Vector[A]]) = {
+  def matrix_reducerows[A:Manifest](x: Exp[Matrix[A]], f: (Exp[DenseVector[A]],Exp[DenseVector[A]]) => Exp[DenseVector[A]]) = {
     reflectPure(MatrixReduceRows(x, f))
   }
   def matrix_filterrows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[MatrixRow[A]] => Exp[Boolean]) = reflectPure(MatrixFilterRows(x, pred))
-  def matrix_grouprowsby[A:Manifest,K:Manifest](x: Exp[Matrix[A]], pred: Exp[Vector[A]] => Exp[K]) = reflectPure(MatrixGroupRowsBy(x,pred))
+  def matrix_grouprowsby[A:Manifest,K:Manifest](x: Exp[Matrix[A]], pred: Exp[DenseVector[A]] => Exp[K]) = reflectPure(MatrixGroupRowsBy(x,pred))
   def matrix_count[A:Manifest](x: Exp[Matrix[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(MatrixCount(x, pred))
 
   //////////////////
@@ -797,7 +797,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       // delite ops
       case e@MatrixObjectIdentity(x) => reflectPure(new { override val original = Some(f,e) } with MatrixObjectIdentity(f(x)))(mtype(manifest[A]))
       case e@MatrixObjectFromVec(x) => reflectPure(new { override val original = Some(f,e) } with MatrixObjectFromVec(f(x))(e.m))(mtype(manifest[A]))
-      case e@MatrixObjectDiag(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixObjectDiag(f(x),f(y))(e.m))(mtype(manifest[A]))
+      //case e@MatrixObjectDiag(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixObjectDiag(f(x),f(y))(e.m))(mtype(manifest[A]))
       case e@MatrixApply(x,i,j) => reflectPure(new { override val original = Some(f,e) } with MatrixApply(f(x),f(i),f(j)))(mtype(manifest[A]))
       case e@MatrixAbs(x) => reflectPure(new { override val original = Some(f,e) } with MatrixAbs(f(x))(e.m, e.a))(mtype(manifest[A]))
       case e@MatrixSum(x) => reflectPure(new { override val original = Some(f,e) } with MatrixSum(f(x))(e.m, e.a))(mtype(manifest[A]))
@@ -823,7 +823,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       case Reflect(e@MatrixRemoveCols(x,y,z), u, es) => reflectMirrored(Reflect(MatrixRemoveCols(f(x),f(y),f(z)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixObjectNew(x,y), u, es) => reflectMirrored(Reflect(MatrixObjectNew(f(x),f(y))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
       // reflected ops
-      case Reflect(e@MatrixUpdateRow(x,r,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixUpdateRow(f(x),f(r),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      //case Reflect(e@MatrixUpdateRow(x,r,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixUpdateRow(f(x),f(r),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixZipWith(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixZipWith(f(x),f(y),f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case _ => super.mirror(e, f)
     }).asInstanceOf[Exp[A]] // why??
@@ -1023,10 +1023,10 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
     case MatrixUpdateRow(x, row, y) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->length".format(quote(y)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(y)))
+      setCurrDimLength("%s->length".format(quote(y.ops.elem)))
+      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(y.ops.elem)))
       tabWidth += 1
-      stream.println(addTab()+"%s.update(%s,%s,%s.apply(%s));".format(quote(x),quote(row),currDimStr,quote(y),currDimStr))
+      stream.println(addTab()+"%s.update(%s,%s,%s.apply(%s));".format(quote(x),quote(row),currDimStr,quote(y.ops.elem),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
       currDim -= 1

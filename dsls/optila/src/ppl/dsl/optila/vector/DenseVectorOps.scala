@@ -614,13 +614,13 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
 
   // TODO: this is an inefficient way to compute flatten (allocates a new buffer for every intermediate output)
   // should use a scan that allocates the output once (precumulate)
-  case class DenseVectorObjectFlatten[A:Manifest](in: Exp[DenseVector[DenseVector[A]]])
-    extends DeliteOpReduce[DenseVector[A]] {
-
-    val size = in.length
-    val zero = EmptyVector[A]
-    def func = (a,b) => a ++ b    
-  } 
+  // case class DenseVectorObjectFlatten[A:Manifest](in: Exp[DenseVector[DenseVector[A]]])
+  //     extends DeliteOpReduce[DenseVector[A]] {
+  // 
+  //     val size = in.length
+  //     val zero = EmptyVector[A]
+  //     def func = (a,b) => a ++ b    
+  //   } 
 
   case class DenseVectorFlatMap[A:Manifest,B:Manifest](in: Exp[DenseVector[A]], map: Exp[A] => Exp[DenseVector[B]])
     extends DeliteOpMapReduce[A,DenseVector[B]] {

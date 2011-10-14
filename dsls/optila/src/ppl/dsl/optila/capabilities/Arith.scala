@@ -4,7 +4,7 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{CLikeCodegen}
-import ppl.dsl.optila.{ZeroVector,Vector,Matrix}
+import ppl.dsl.optila.{DenseVector,ZeroVector,Vector,Matrix}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
 /*
@@ -91,20 +91,20 @@ trait ArithOps extends Variables with OverloadHack {
    * Vector
    */
 
-  implicit def vectorArith[T:Arith:Manifest] : Arith[Vector[T]] = new Arith[Vector[T]] {
+  implicit def denseVectorArith[T:Arith:Manifest]: Arith[DenseVector[T]] = new Arith[DenseVector[T]] {
     // these are used in sum; dynamic checks are required due to conditionals
-    // def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (!b.isInstanceOfL[ZeroVector[T]]) a += b else a
-    // def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = if (a.isInstanceOfL[ZeroVector[T]]) b
+    // def +=(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = if (!b.isInstanceOfL[ZeroVector[T]]) a += b else a
+    // def +(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = if (a.isInstanceOfL[ZeroVector[T]]) b
     //                                               else if (b.isInstanceOfL[ZeroVector[T]]) a
     //                                               else a+b
-    def +=(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a += b 
-    def +(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a+b
-    def -(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a-b
-    def *(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a*b
-    def /(a: Rep[Vector[T]], b: Rep[Vector[T]]) = a/b
+    def +=(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = a += b 
+    def +(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = a+b
+    def -(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = a-b
+    def *(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = a*b
+    def /(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = a/b
 
-    def abs(a: Rep[Vector[T]]) = a.abs
-    def exp(a: Rep[Vector[T]]) = a.exp
+    def abs(a: Rep[DenseVector[T]]) = a.abs
+    def exp(a: Rep[DenseVector[T]]) = a.exp
     
     /**
      * zero for Vector[T] is a little tricky. It is used in nested Vector/Matrix operations, e.g.
@@ -119,8 +119,8 @@ trait ArithOps extends Variables with OverloadHack {
      * but we don't always know k before running the function... (see sumIf in kmeans)
      */
     def empty = EmptyVector[T]
-    def zero(a: Rep[Vector[T]]) = ZeroVector[T](a.length)
-}
+    def zero(a: Rep[DenseVector[T]]) = ZeroVector[T](a.length)
+  }
 
 
   /**

@@ -1,14 +1,14 @@
 package ppl.dsl.optila.matrix
 
-import ppl.dsl.optila.{Vector,Matrix,MatrixRow}
+import ppl.dsl.optila.{DenseVector,Vector,Matrix,MatrixRow}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 import ppl.dsl.optila.{OptiLAExp, OptiLACompiler, OptiLALift, OptiLA}
 
 trait MatrixImplOps { this: OptiLA =>
-  def matrix_obj_fromseq_impl[A:Manifest](xs: Seq[Rep[Vector[A]]]): Rep[Matrix[A]]
-  def matrix_obj_fromvec_impl[A:Manifest](xs: Rep[Vector[Vector[A]]]): Rep[Matrix[A]]
-  def matrix_obj_diag_impl[A:Manifest](w: Rep[Int], vals: Rep[Vector[A]]): Rep[Matrix[A]]
+  def matrix_obj_fromseq_impl[A:Manifest](xs: Seq[Interface[Vector[A]]]): Rep[Matrix[A]]
+  def matrix_obj_fromvec_impl[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]]): Rep[Matrix[A]]
+  def matrix_obj_diag_impl[A:Manifest](w: Rep[Int], vals: Interface[Vector[A]]): Rep[Matrix[A]]
   def matrix_obj_identity_impl(w: Rep[Int]): Rep[Matrix[Double]]
   //def matrix_obj_zeros_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Double]]
   //def matrix_obj_zerosf_impl(numRows: Rep[Int], numCols: Rep[Int]): Rep[Matrix[Float]]
@@ -24,23 +24,23 @@ trait MatrixImplOps { this: OptiLA =>
   //def matrix_getcol_impl[A:Manifest](m: Rep[Matrix[A]], col: Rep[Int]): Rep[Vector[A]]
   def matrix_slice_impl[A:Manifest](m: Rep[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]): Rep[Matrix[A]]
   def matrix_slicerows_impl[A:Manifest](m: Rep[Matrix[A]], start: Rep[Int], end: Rep[Int]): Rep[Matrix[A]]
-  def matrix_updaterow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int], y: Rep[Vector[A]]): Rep[Unit]
+  def matrix_updaterow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int], y: Interface[Vector[A]]): Rep[Unit]
   def matrix_equals_impl[A:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Boolean]
   def matrix_transpose_impl[A:Manifest](m: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_pprint_impl[A:Manifest](m: Rep[Matrix[A]]): Rep[Unit]
   def matrix_repmat_impl[A:Manifest](m: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
   def matrix_inverse_impl[A](m: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
-  def matrix_minrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[Vector[A]]
-  def matrix_maxrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[Vector[A]]
+  def matrix_minrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[DenseVector[A]]
+  def matrix_maxrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[DenseVector[A]]
   //def matrix_maprows_impl[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
   //def matrix_foreachrow_impl[A:Manifest](m: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Unit]): Rep[Unit]
   def matrix_filterrows_impl[A:Manifest](m: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[Boolean]): Rep[Matrix[A]]
   def matrix_multiply_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
-  def matrix_times_vector_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
+  def matrix_times_vector_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[DenseVector[A]]): Rep[DenseVector[A]]
   def matrix_sigmoid_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
   def matrix_sigmoidf_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]]
-  def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]]
-  def matrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[Vector[A]] => Rep[K]): Rep[Vector[Matrix[A]]]
+  def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[DenseVector[A]]
+  def matrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[DenseVector[A]] => Rep[K]): Rep[DenseVector[Matrix[A]]]
   
 }
 
@@ -63,7 +63,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 
   // FIXME: the above functions return mutable objects but they should be immutable
 
-  def matrix_obj_diag_impl[A:Manifest](w: Rep[Int], vals: Rep[Vector[A]]) = {
+  def matrix_obj_diag_impl[A:Manifest](w: Rep[Int], vals: Interface[Vector[A]]) = {
     val out = Matrix[A](w,w)
     var i = unit(0)
     while (i < w){
@@ -73,7 +73,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out.unsafeImmutable
   }
 
-  def matrix_obj_fromseq_impl[A:Manifest](xs: Seq[Rep[Vector[A]]]): Rep[Matrix[A]] = {
+  def matrix_obj_fromseq_impl[A:Manifest](xs: Seq[Interface[Vector[A]]]): Rep[Matrix[A]] = {
     throw new UnsupportedOperationException("this is currently broken")
 //    val m = Matrix[A](0,0)
 //    for (i <- 0 until xs.length){
@@ -82,7 +82,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 //    m
   }
 
-  def matrix_obj_fromvec_impl[A:Manifest](xs: Rep[Vector[Vector[A]]]) = {
+  def matrix_obj_fromvec_impl[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]]) = {
     if (xs.length == 0) {
       Matrix[A](0,0).unsafeImmutable
     }
@@ -153,7 +153,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out.unsafeImmutable
   }
 
-  def matrix_updaterow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int], y: Rep[Vector[A]]) = {
+  def matrix_updaterow_impl[A:Manifest](m: Rep[Matrix[A]], row: Rep[Int], y: Interface[Vector[A]]) = {
     //chkEquals(x.length, numCols)
     // TODO: could be parallelized using a view
     var j = unit(0)
@@ -283,7 +283,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
           val tmpRow = currentMat(i)
           currentMat(i) = currentMat(r)
           currentMat(r) = tmpRow
-          currentMat(r) = repVecToVecOps(currentMat(r)) / currentMat(r,lead)
+          currentMat(r) = repVecToDenseVecOps(currentMat(r)) / currentMat(r,lead)
 
           for (i <- 0 until m.numRows){
             if (i != r)
@@ -298,14 +298,14 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     currentMat
   }
 
-  def matrix_minrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[Vector[A]] = {
+  def matrix_minrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[DenseVector[A]] = {
     throw new UnsupportedOperationException("not implemented yet")
 //    val sumRows = m.mapRowsToVec[B](row => row.sum[B])
 //    val idx = sumRows.minIndex
 //    m(idx).clone
   }
 
-  def matrix_maxrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[Vector[A]] = {
+  def matrix_maxrow_impl[A:Manifest:Ordering:HasMinMax](m: Rep[Matrix[A]]): Rep[DenseVector[A]] = {
     throw new UnsupportedOperationException("not implemented yet")
 //    val sumRows = mapRowsToVec[B](row => row.sum[B])
 //    val idx = sumRows.maxIndex
@@ -332,7 +332,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 //  }
 
   def matrix_filterrows_impl[A:Manifest](m: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[Boolean]) = {
-    val v = Vector[Vector[A]](0,true)
+    val v = DenseVector[DenseVector[A]](0,true)
     for (i <- 0 until m.numRows){
       val vv = m.getRow(i)
       if (pred(vv))
@@ -362,7 +362,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out.unsafeImmutable
   }
 
-  def matrix_times_vector_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Vector[A]] = {
+  def matrix_times_vector_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[DenseVector[A]]): Rep[DenseVector[A]] = {
 //  (0::x.numRows).t { rowIdx =>
 //    x.getRow(rowIdx) *:* y
 //  }
@@ -386,7 +386,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out
   }
 
-  def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]] = {
+  def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[DenseVector[A]] = {
     val out = Vector[A](x.numCols,true)
     for(colIdx <- 0 until x.numCols) {
       out(colIdx) = x.getCol(colIdx).sum
@@ -394,7 +394,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out.unsafeImmutable
   }
   
-  def matrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[Vector[A]] => Rep[K]): Rep[Vector[Matrix[A]]]  = {
+  def matrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[DenseVector[A]] => Rep[K]): Rep[DenseVector[Matrix[A]]]  = {
     val groups = HashMap[K,Matrix[A]]()
     
     var i = 0
