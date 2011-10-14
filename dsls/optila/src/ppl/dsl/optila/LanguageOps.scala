@@ -93,7 +93,7 @@ trait LanguageOps extends Base { this: OptiLA =>
   def min[A:Manifest:Ordering:HasMinMax](vals: Interface[Vector[A]]) = vals.min
   def min[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], mx: HasMinMax[A], o: Overloaded1) = repMatToMatOps(vals).min
   //def min[A:Manifest:Ordering:HasMinMax](vals: A*) = repVecToVecOps(Vector(vals: _*)).min
-  def min[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*) = repVecToDenseVecOps(DenseVector(vals: _*)).min
+  def min[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*) = repToDenseVecOps(DenseVector(vals: _*)).min
 
   /**
    * max
@@ -101,7 +101,7 @@ trait LanguageOps extends Base { this: OptiLA =>
   def max[A:Manifest:Ordering:HasMinMax](vals: Interface[Vector[A]]) = vals.max
   def max[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], mx: HasMinMax[A], o: Overloaded1) = repMatToMatOps(vals).max
   //def max[A:Manifest:Ordering:HasMinMax](vals: A*) = repVecToVecOps(Vector(vals: _*)).max
-  def max[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*) = repVecToDenseVecOps(DenseVector(vals: _*)).max
+  def max[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*) = repToDenseVecOps(DenseVector(vals: _*)).max
 
 
   /**
@@ -143,7 +143,7 @@ trait LanguageOps extends Base { this: OptiLA =>
   object EUC extends DistanceMetric
   object SQUARE extends DistanceMetric
 
-  implicit val vecDiff: (Interface[Vector[Double]], Interface[Vector[Double]]) => Rep[Double] = (v1,v2) => dist(v1,v2)
+  implicit val vecDiff: (Rep[DenseVector[Double]], Rep[DenseVector[Double]]) => Rep[Double] = (v1,v2) => dist(v1,v2)
   implicit val matDiff: (Rep[Matrix[Double]], Rep[Matrix[Double]]) => Rep[Double] = (m1,m2) => dist(m1,m2)
 
   // in 2.9, multiple overloaded values cannot all define default arguments

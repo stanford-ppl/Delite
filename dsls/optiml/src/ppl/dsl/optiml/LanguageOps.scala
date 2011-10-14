@@ -28,13 +28,13 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   //     optiml_aggregate(start, end, block)
   //   }
   
-  def aggregateIf[A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A]): Rep[Vector[A]] = {
+  def aggregateIf[A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A]): Rep[DenseVector[A]] = {
     optiml_aggregateif(start, end, cond, block)
   }  
 
   // 2D aggregate
   def aggregate[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector])
-                           (block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]] = {
+                           (block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]] = {
     optiml_aggregate2d(rows, cols, block)
   }
   
@@ -44,11 +44,11 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   }
   
 
-  def optiml_aggregateif[A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A]): Rep[Vector[A]]
+  def optiml_aggregateif[A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A]): Rep[DenseVector[A]]
   def optiml_aggregate2d[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector],
-                                     block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]]
+                                     block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]]
   def optiml_aggregate2dif[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector],
-                                       cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]]
+                                       cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]]
 
 
 
@@ -116,7 +116,7 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
    * gradient descent
    */
   def gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-               maxIter: Rep[Int] = unit(10000))(hyp: Rep[Vector[Double]] => Rep[Double]): Rep[Vector[Double]]
+               maxIter: Rep[Int] = unit(10000))(hyp: Rep[DenseVector[Double]] => Rep[Double]): Rep[DenseVector[Double]]
     = optiml_gradient(x, alpha, thresh, maxIter, hyp)
 
   // stochastic: block() updates every jth parameter for every ith training sample
@@ -128,7 +128,7 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
 
   // stochastic can only be parallelized across features, which is generally << samples
   def stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-                 maxIter: Rep[Int] = unit(10000))(hyp: Rep[Vector[Double]] => Rep[Double]): Rep[Vector[Double]]
+                 maxIter: Rep[Int] = unit(10000))(hyp: Rep[DenseVector[Double]] => Rep[Double]): Rep[DenseVector[Double]]
     = optiml_stochastic(x, alpha, thresh, maxIter, hyp)
 
   // batch: block() updates each jth parameter from the sum of all ith training samples
@@ -140,18 +140,18 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   // in batch, the sum(...) loops over the entire training set independently, which is where the parallelism comes from
   // batch can be parallized across samples
   def batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-               maxIter: Rep[Int] = unit(10000))(hyp: Rep[Vector[Double]] => Rep[Double]): Rep[Vector[Double]]
+               maxIter: Rep[Int] = unit(10000))(hyp: Rep[DenseVector[Double]] => Rep[Double]): Rep[DenseVector[Double]]
     = optiml_batch(x, alpha, thresh, maxIter, hyp)
 
 
   def optiml_gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                      maxIter: Rep[Int], hyp: Rep[Vector[Double]] => Rep[Double]): Rep[Vector[Double]]
+                      maxIter: Rep[Int], hyp: Rep[DenseVector[Double]] => Rep[Double]): Rep[DenseVector[Double]]
 
   def optiml_stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                        maxIter: Rep[Int], hyp: Rep[Vector[Double]] => Rep[Double]): Rep[Vector[Double]]
+                        maxIter: Rep[Int], hyp: Rep[DenseVector[Double]] => Rep[Double]): Rep[DenseVector[Double]]
 
   def optiml_batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                   maxIter: Rep[Int], hyp: Rep[Vector[Double]] => Rep[Double]): Rep[Vector[Double]]
+                   maxIter: Rep[Int], hyp: Rep[DenseVector[Double]] => Rep[Double]): Rep[DenseVector[Double]]
 
   // coordinate ascent: analogous to stochastic gradient descent, but updates m parameters (alphas(0)...alphas(m-1))
   // at each update, all but alpha(i) must be held constant, so there are dependencies between every iteration
@@ -186,9 +186,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    */
 
   case class AggregateIf[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], func: Exp[Int] => Exp[A])
-    extends DeliteOpFilter[Int,A,Vector[A]] {
+    extends DeliteOpFilter[Int,A,DenseVector[A]] {
   
-    def alloc = Vector[A](unit(0), unit(true))      
+    def alloc = DenseVector[A](unit(0), unit(true))      
     val in = copyTransformedOrElse(_.in)(0::end-start)
     val size = copyTransformedOrElse(_.size)(end-start)
     
@@ -201,10 +201,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   case class Aggregate2d[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
                                      func2: (Exp[Int], Exp[Int]) => Exp[A])
-    extends DeliteOpMap[Int,A,Vector[A]] {
+    extends DeliteOpMap[Int,A,DenseVector[A]] {
   
     val flatSize = rows.length*cols.length        
-    def alloc = Vector[A](flatSize, unit(true))      
+    def alloc = DenseVector[A](flatSize, unit(true))      
     def func = i => func2(i/cols.length + rows(0), i%cols.length + cols(0))    
     val in = copyTransformedOrElse(_.in)(0::flatSize)
     val size = copyTransformedOrElse(_.size)(flatSize)
@@ -221,10 +221,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   case class Aggregate2dIf[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
                                        cond2: (Exp[Int],Exp[Int]) => Exp[Boolean], func2: (Exp[Int], Exp[Int]) => Exp[A])
-    extends DeliteOpFilter[Int,A,Vector[A]] {
+    extends DeliteOpFilter[Int,A,DenseVector[A]] {
   
     val flatSize = rows.length*cols.length    
-    def alloc = Vector[A](unit(0), unit(true))      
+    def alloc = DenseVector[A](unit(0), unit(true))      
     def cond = i => cond2(i/cols.length + rows(0), i%cols.length + cols(0))
     def func = i => func2(i/cols.length + rows(0), i%cols.length + cols(0))    
     val in = copyTransformedOrElse(_.in)(0::flatSize)
@@ -454,7 +454,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    */
   private val MIN_BATCH_PROCS = 4
   def optiml_gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                      maxIter: Rep[Int], hyp: Rep[Vector[Double]] => Rep[Double]): Rep[Vector[Double]] = {
+                      maxIter: Rep[Int], hyp: Rep[DenseVector[Double]] => Rep[Double]): Rep[DenseVector[Double]] = {
 
     val y = x.labels
     val numProcs = 8 //Delite.threadNum // dynamically set
@@ -467,7 +467,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 
   def optiml_stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                        maxIter: Rep[Int], hyp: Rep[Vector[Double]] => Rep[Double]): Rep[Vector[Double]] = {
+                        maxIter: Rep[Int], hyp: Rep[DenseVector[Double]] => Rep[Double]): Rep[DenseVector[Double]] = {
 
     val y = x.labels
     val theta = Vector.zeros(x.numFeatures).mutable
@@ -482,7 +482,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 
   def optiml_batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                   maxIter: Rep[Int], hyp: Rep[Vector[Double]] => Rep[Double]): Rep[Vector[Double]] = {
+                   maxIter: Rep[Int], hyp: Rep[DenseVector[Double]] => Rep[Double]): Rep[DenseVector[Double]] = {
 
     val y = x.labels
     val theta = Vector.zeros(x.numFeatures).mutable

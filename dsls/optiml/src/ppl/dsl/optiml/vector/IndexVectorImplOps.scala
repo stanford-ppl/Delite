@@ -6,15 +6,14 @@ import ppl.dsl.optiml.OptiML
 import ppl.dsl.optiml.{Vector,IndexVector}
 
 trait IndexVectorImplOps { this: Base =>
-  def index_vector_obj_fromvec_impl(xs: Rep[Vector[Int]]): Rep[IndexVector]
+  def index_vector_obj_fromvec_impl(xs: Interface[Vector[Int]]): Rep[IndexVector]
 }
 
 trait IndexVectorImplOpsStandard extends IndexVectorImplOps {
   this: OptiML =>
 
-  def index_vector_obj_fromvec_impl(xs: Rep[Vector[Int]]) = {
-    val out = IndexVector(0)
-    out ++= xs
+  def index_vector_obj_fromvec_impl(xs: Interface[Vector[Int]]) = {
+    val out = IndexVector(0) ++ xs
     out.unsafeImmutable.asInstanceOf[Rep[IndexVector]]
   }
 

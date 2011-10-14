@@ -18,17 +18,21 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   //     // no way to extend a super-type object
   //   }
 
-  implicit def repVecToOVecOps[A:Manifest](x: Rep[Vector[A]]) = new OptiMLVecOpsCls(x)
-  implicit def varToOVecOps[A:Manifest](x: Var[Vector[A]]) = new OptiMLVecOpsCls(readVar(x))
+  // overrides for OptiLA types - we would have to override each OptiLA type conversion :(
+  override implicit def repToDenseVecOps[A:Manifest](x: Rep[DenseVector[A]]): OptiMLDenseVecOpsCls[A] = new OptiMLDenseVecOpsCls(x)
+  override implicit def varToDenseVecOps[A:Manifest](x: Var[DenseVector[A]]): OptiMLDenseVecOpsCls[A] = new OptiMLDenseVecOpsCls(readVar(x))
+  
+  class OptiMLDenseVecOpsCls[A:Manifest](val elem: Rep[DenseVector[A]]) extends DenseVecOpsCls[A](x) with OptiMLVecOpsCls[A]    
 
-  class OptiMLVecOpsCls[A:Manifest](x: Rep[Vector[A]]) extends vecOpsCls[A](x) {
+  trait OptiMLVecOpsCls[A] extends VecOpsCls[A] {
     def update(i: Rep[IndexVector], y: Rep[A])(implicit o: Overloaded1) = vector_update_indices(x,i,y)    
+    // returns a V[Int] in the super class, and we want to override to IndexVector, which has no relation to V[Int] anymore..
     override def find(pred: Rep[A] => Rep[Boolean]) = vector_find_override(x,pred)
   }
 
   // class defs
-  def vector_update_indices[A:Manifest](x: Rep[Vector[A]], i: Rep[IndexVector], y: Rep[A]): Rep[Unit]
-  def vector_find_override[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
+  def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Rep[IndexVector], y: Rep[A]): Rep[Unit]
+  def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
 }
 
 trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps with VariablesExp with BaseFatExp {
@@ -43,16 +47,16 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   ////////////////////////////////
   // implemented via delite ops
   
-  case class VectorUpdateIndices[A:Manifest](x: Exp[Vector[A]], in: Exp[IndexVector], y: Exp[A])
-    extends DeliteOpForeach[Int] {
+  case class VectorUpdateIndices[A:Manifest](x: Interface[Vector[A]], in: Exp[IndexVector], y: Exp[A])
+    extends DeliteOpForeach2[Int] {
 
     def sync = n => List()
     def func = i => x(i) = y
     val size = in.length
   } 
   
-  case class VectorFindOverride[A:Manifest](in: Exp[Vector[A]], cond: Exp[A] => Exp[Boolean])
-    extends DeliteOpFilter[A,Int,IndexVector] {
+  case class VectorFindOverride[A:Manifest](in: Interface[Vector[A]], cond: Exp[A] => Exp[Boolean])
+    extends DeliteOpFilter2[A,Int,IndexVector] {
       
     def alloc = IndexVector(0)
     def func = e => v // should we make available and use a helper function like index(e)?
@@ -69,8 +73,8 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   /////////////////////
   // class interface
 
-  def vector_update_indices[A:Manifest](x: Exp[Vector[A]], i: Exp[IndexVector], y: Exp[A]) = reflectWrite(x)(VectorUpdateIndices(x,i,y))
-  def vector_find_override[A:Manifest](x: Exp[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorFindOverride(x, pred))
+  def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Exp[IndexVector], y: Exp[A]) = reflectWrite(x)(VectorUpdateIndices(x,i,y))
+  def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorFindOverride(x, pred))
 
   //////////////
   // mirroring
@@ -113,39 +117,44 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
  */
 
 // have to extend DeliteCollectionOps to override dc_apply...
-trait VectorOpsExpOpt extends ppl.dsl.optila.vector.VectorOpsExpOpt with VectorOpsExp with DeliteCollectionOpsExp {
+trait VectorOpsExpOpt extends ppl.dsl.optila.vector.VectorOpsExp with VectorOpsExp with DeliteCollectionOpsExp {
   this: VectorImplOps with OptiMLExp =>
 
-  override def vector_slice[A:Manifest](x: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]): Rep[Vector[A]] = x match {
-    case Def(IndexVectorRange(s,e)) => indexvector_range(s+start,s+end).asInstanceOf[Rep[Vector[A]]] // TODO: assert s+end < e!
-    case _ => super.vector_slice(x,start,end)
-  }
-
-
-  override def vector_length[A:Manifest](x: Exp[Vector[A]]) = x match {
-    /* these are essential for fusing:    */
-    case Def(IndexVectorRange(s,e)) => e - s
-    case Def(StreamChunkRow(x, i, offset)) => x.numCols
-    case Def(StreamChunkRowFusable(x, i, offset)) => x.numCols // necessary, it's not a DeliteVectorLoop
-      
-    case _ => 
-      //printerr("could not short-circuit call to " + x.toString + ".length")
-      //printerr(findDefinition(x.asInstanceOf[Sym[Vector[A]]]))
-      super.vector_length(x)
-  }
-
-  override def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = x match {
-    case Def(IndexVectorRange(s,e)) => Const(true)
-    case _ => super.vector_isRow(x)
-  }
-  
-  // and this one also helps in the example:
-  override def vector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]): Option[Exp[A]] = x match {
-    case Def(IndexVectorRange(s,e)) => Some((s + n).asInstanceOf[Exp[A]])
-    case Def(StreamChunkRow(x, i, offset)) => Some(stream_chunk_elem(x,i,n))
-    //case Def(StreamChunkRowFusable(x, i, offset)) => Some(stream_chunk_elem(x,i,n)) <-- enabling this will remove the computation altogether
-    case _ => super.vector_optimize_apply(x,n)
-  }  
+  // override def vector_slice[A:Manifest,VA:Manifest](x: Interface[Vector[A]], start: Rep[Int], end: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA] = x match {
+  //   case Intf(Def(IndexVectorRange(s,e))) => indexvector_range(s+start,s+end).asInstanceOf[Rep[VA]]
+  //   case _ => super.vector_slice(x,start,end)
+  // }
+    
+  // override def vector_slice[A:Manifest](x: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]): Rep[Vector[A]] = x match {
+  //     case Def(IndexVectorRange(s,e)) => indexvector_range(s+start,s+end).asInstanceOf[Rep[Vector[A]]] // TODO: assert s+end < e!
+  //     case _ => super.vector_slice(x,start,end)
+  //   }
+  // 
+  // 
+  //   override def vector_length[A:Manifest](x: Exp[Vector[A]]) = x match {
+  //     /* these are essential for fusing:    */
+  //     case Def(IndexVectorRange(s,e)) => e - s
+  //     case Def(StreamChunkRow(x, i, offset)) => x.numCols
+  //     case Def(StreamChunkRowFusable(x, i, offset)) => x.numCols // necessary, it's not a DeliteVectorLoop
+  //       
+  //     case _ => 
+  //       //printerr("could not short-circuit call to " + x.toString + ".length")
+  //       //printerr(findDefinition(x.asInstanceOf[Sym[Vector[A]]]))
+  //       super.vector_length(x)
+  //   }
+  // 
+  //   override def vector_isRow[A:Manifest](x: Exp[Vector[A]]) = x match {
+  //     case Def(IndexVectorRange(s,e)) => Const(true)
+  //     case _ => super.vector_isRow(x)
+  //   }
+  //   
+  //   // and this one also helps in the example:
+  //   override def vector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]): Option[Exp[A]] = x match {
+  //     case Def(IndexVectorRange(s,e)) => Some((s + n).asInstanceOf[Exp[A]])
+  //     case Def(StreamChunkRow(x, i, offset)) => Some(stream_chunk_elem(x,i,n))
+  //     //case Def(StreamChunkRowFusable(x, i, offset)) => Some(stream_chunk_elem(x,i,n)) <-- enabling this will remove the computation altogether
+  //     case _ => super.vector_optimize_apply(x,n)
+  //   }  
 }
 
 trait BaseGenVectorOps extends GenericFatCodegen {

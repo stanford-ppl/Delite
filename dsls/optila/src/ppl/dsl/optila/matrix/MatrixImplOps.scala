@@ -283,7 +283,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
           val tmpRow = currentMat(i)
           currentMat(i) = currentMat(r)
           currentMat(r) = tmpRow
-          currentMat(r) = repVecToDenseVecOps(currentMat(r)) / currentMat(r,lead)
+          currentMat(r) = repToDenseVecOps(currentMat(r)) / currentMat(r,lead)
 
           for (i <- 0 until m.numRows){
             if (i != r)

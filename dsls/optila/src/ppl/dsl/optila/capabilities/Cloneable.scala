@@ -1,7 +1,7 @@
 package ppl.dsl.optila.capabilities
 
 import scala.virtualization.lms.common.{Variables, Base}
-import ppl.dsl.optila.{Vector,Matrix}
+import ppl.dsl.optila.{DenseVector,Matrix}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
 trait CloneableInternal[Rep[X],T] {
@@ -23,9 +23,9 @@ trait CloneableOps extends Variables {
     def mutable() = cloneable.mutable(lhs)
   }
   
-  implicit def vectorCloneable[T:Manifest]: Cloneable[Vector[T]] = new Cloneable[Vector[T]] {
-    def cloneL(lhs: Rep[Vector[T]]) = lhs.cloneL()
-    def mutable(lhs: Rep[Vector[T]]) = lhs.mutable()
+  implicit def denseVectorCloneable[T:Manifest]: Cloneable[DenseVector[T]] = new Cloneable[DenseVector[T]] {
+    def cloneL(lhs: Rep[DenseVector[T]]) = lhs.cloneL()
+    def mutable(lhs: Rep[DenseVector[T]]) = lhs.mutable()
   }
   
   implicit def matrixCloneable[T:Manifest]: Cloneable[Matrix[T]] = new Cloneable[Matrix[T]] {

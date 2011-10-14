@@ -14,7 +14,7 @@ import ppl.dsl.optila._
 trait DenseVectorOps extends DSLType with Variables {
   this: OptiLA =>
 
-  implicit def repVecToDenseVecOps[A:Manifest](x: Rep[DenseVector[A]]) = new DenseVecOpsCls(x)
+  implicit def repToDenseVecOps[A:Manifest](x: Rep[DenseVector[A]]) = new DenseVecOpsCls(x)
   implicit def varToDenseVecOps[A:Manifest](x: Var[DenseVector[A]]) = new DenseVecOpsCls(readVar(x))
   implicit def denseToInterface[A:Manifest](lhs: Rep[DenseVector[A]]) = VInterface[A](new DenseVecOpsCls[A](lhs))
 
@@ -35,10 +35,16 @@ trait DenseVectorOps extends DSLType with Variables {
   }
 
   class DenseVecOpsCls[A:Manifest](val elem: Rep[DenseVector[A]]) extends VecOpsCls[A] {
-    type V[X] = DenseVector[X]
-    def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repVecToDenseVecOps(x)
-    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
-    def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]
+    type VA = DenseVector[A]
+    def toOps(x: Rep[DenseVector[A]]) = toOpsB[A](x)
+    def toIntf(x: Rep[DenseVector[A]]) = toIntfB[A](x)
+    def builder: VectorBuilder[A,DenseVector[A]] = builderB[A]
+    def mVA = mVB[A]
+    
+    type V[X] = DenseVector[X]        
+    def toOpsB[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
+    def toIntfB[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
+    def builderB[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
     def mVB[B:Manifest] = manifest[DenseVector[B]] 
 
     def dcSize = densevector_length(x)
@@ -93,7 +99,7 @@ trait DenseVectorOps extends DSLType with Variables {
     // def +(y: Rep[V[A]])(implicit a: Arith[A]) = densevector_plus_dense(x,y)
     type VPLUSR = DenseVector[A]
     val mVPLUSR = manifest[VPLUSR]
-    val vplusBuilder = builder[A]
+    val vplusBuilder = builder
     def vplusToIntf(x: Rep[VPLUSR]) = toIntf(x)
     // def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = densevector_plus_generic(x,y)    
     // def +(y: Rep[DenseVector[A]])(implicit a: Arith[A]) = densevector_plus(x,y)
@@ -102,7 +108,7 @@ trait DenseVectorOps extends DSLType with Variables {
     
     type VMINUSR = DenseVector[A]
     val mVMINUSR = manifest[VMINUSR]
-    val vminusBuilder = builder[A]
+    val vminusBuilder = builder
     def vminusToIntf(x: Rep[VMINUSR]) = toIntf(x)    
     // def -(y: Rep[DenseVector[A]])(implicit a: Arith[A]) = densevector_minus(x,y)
     // def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = densevector_minus_scalar(x,y)
@@ -110,7 +116,7 @@ trait DenseVectorOps extends DSLType with Variables {
     
     type VTIMESR = DenseVector[A]
     val mVTIMESR = manifest[VTIMESR]
-    val vtimesBuilder = builder[A]
+    val vtimesBuilder = builder
     def vtimesToIntf(x: Rep[VTIMESR]) = toIntf(x)        
     //def *(y: Rep[DenseVector[A]])(implicit a: Arith[A]) = densevector_times(x,y)
     //def *[B](y: Rep[DenseVector[B]])(implicit mB: Manifest[B], a: Arith[A], conv: Rep[B] => Rep[A]) = densevector_times_withconvert(x,y,conv)
