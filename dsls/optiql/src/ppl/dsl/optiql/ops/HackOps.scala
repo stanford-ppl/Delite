@@ -29,30 +29,7 @@ trait HackOps extends Base {
   def hackops_obj_loadregions(path: Rep[String]): Rep[RegionTable]
   def hackops_obj_loadsuppliers(path: Rep[String]): Rep[SupplierTable]
   
-  //result types since we do not support lifting new yet  
-  object ResultQ1{
-	def apply(returnFlag: Rep[Char], 
-	  lineStatus: Rep[Char], 
-	  sumQty: Rep[Double], 
-      sumBasePrice: Rep[Double], 
-      sumDiscountedPrice: Rep[Double], 
-      sumCharge: Rep[Double], 
-      avgQty: Rep[Double], 
-      avgPrice: Rep[Double], 
-      avgDiscount: Rep[Double], 
-	  count: Rep[Int]):Rep[Q1] = hackops_obj_result_q1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
-  }
   
-  def hackops_obj_result_q1(returnFlag: Rep[Char], 
-    lineStatus: Rep[Char],
-    sumQty: Rep[Double], 
-    sumBasePrice: Rep[Double], 
-    sumDiscountedPrice: Rep[Double], 
-    sumCharge: Rep[Double], 
-    avgQty: Rep[Double], 
-    avgPrice: Rep[Double], 
-    avgDiscount: Rep[Double], 	
-	count: Rep[Int]): Rep[Q1]
 }
 
 trait HackOpsExp extends HackOps with FieldAccessOpsExp with EffectExp {
@@ -76,27 +53,6 @@ trait HackOpsExp extends HackOps with FieldAccessOpsExp with EffectExp {
   def hackops_obj_loadregions(path: Rep[String]): Rep[RegionTable] = reflectEffect(HackOpsObjLoadRegions(path))
   def hackops_obj_loadsuppliers(path: Rep[String]): Rep[SupplierTable] = reflectEffect(HackOpsObjLoadSuppliers(path))
   
-  //Hacks due to lack of lifting of new object constructor
-  case class HackOpsObjResultQ1(returnFlag: Rep[Char], 
-    lineStatus: Rep[Char],
-    sumQty: Rep[Double], 
-    sumBasePrice: Rep[Double], 
-    sumDiscountedPrice: Rep[Double], 
-    sumCharge: Rep[Double], 
-    avgQty: Rep[Double], 
-    avgPrice: Rep[Double], 
-    avgDiscount: Rep[Double],	
-    count: Rep[Int]) extends Def[Q1]
-  def hackops_obj_result_q1(returnFlag: Rep[Char], 
-    lineStatus: Rep[Char],
-    sumQty: Rep[Double], 
-    sumBasePrice: Rep[Double], 
-    sumDiscountedPrice: Rep[Double], 
-    sumCharge: Rep[Double], 
-    avgQty: Rep[Double], 
-    avgPrice: Rep[Double], 
-    avgDiscount: Rep[Double],	
-	count: Rep[Int]) = HackOpsObjResultQ1(returnFlag, lineStatus, sumQty, sumBasePrice, sumDiscountedPrice, sumCharge, avgQty, avgPrice, avgDiscount, count)
   
 
 }
@@ -108,7 +64,5 @@ trait ScalaGenHackOps extends ScalaGenEffect {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case HackOpsObjLoadCustomers(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadCustomers(" + quote(path) + ")")
     case HackOpsObjLoadLineItems(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadLineItems(" + quote(path) + ")")
-	case HackOpsObjResultQ1(rF, lS, sQ, sBP, sDP, sC, aQ, aP, aD, c) => emitValDef(sym, "new generated.scala.hacks.Q1(" + quote(rF) + "," + quote(lS) + "," + quote(sQ) + "," + quote(sBP) + "," + quote(sDP) + "," + quote(sC) + ","  + quote(aQ) + "," + quote(aP) + "," + quote(aD) + "," +  quote(c) + ")")
-    case _ => super.emitNode(sym, rhs)
   }
 }
