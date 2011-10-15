@@ -6,7 +6,7 @@ import ppl.dsl.optila._
 
 trait LAInputReaderImplOps { this: Base =>
   def lainput_read_impl(filename: Rep[String], delim: Rep[String]) : Rep[Matrix[Double]]
-  def lainput_read_vector_impl(filename : Rep[String]) : Rep[Vector[Double]]
+  def lainput_read_vector_impl(filename : Rep[String]): Rep[DenseVector[Double]]
 }
 
 trait LAInputReaderImplOpsStandard extends LAInputReaderImplOps {
@@ -40,7 +40,7 @@ trait LAInputReaderImplOpsStandard extends LAInputReaderImplOps {
   }
 
   def lainput_read_vector_impl(filename: Rep[String]) = {
-    val x = Vector[Double](0, true)
+    val x = DenseVector[Double](0, true)
 
     val xfs = BufferedReader(FileReader(filename))
     var line = xfs.readLine()

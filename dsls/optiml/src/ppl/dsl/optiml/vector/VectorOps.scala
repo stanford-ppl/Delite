@@ -11,6 +11,12 @@ import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import ppl.dsl.optiml._
 
+trait OptiMLDenseVectorOps extends VectorOps with ppl.dsl.optila.vector.DenseVectorOps {
+  this: OptiML =>
+  
+  implicit def repToDenseVecOverrides[A:Manifest](x: Rep[DenseVector[A]]) = new OptiMLVecOpsOverrides(x)  
+}
+
 trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   this: OptiML =>
 
@@ -19,20 +25,31 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   //   }
 
   // overrides for OptiLA types - we would have to override each OptiLA type conversion :(
-  override implicit def repToDenseVecOps[A:Manifest](x: Rep[DenseVector[A]]): OptiMLDenseVecOpsCls[A] = new OptiMLDenseVecOpsCls(x)
-  override implicit def varToDenseVecOps[A:Manifest](x: Var[DenseVector[A]]): OptiMLDenseVecOpsCls[A] = new OptiMLDenseVecOpsCls(readVar(x))
+  // override implicit def repToDenseVecOps[A:Manifest](x: Rep[DenseVector[A]]): OptiMLDenseVecOpsCls[A] = new OptiMLDenseVecOpsCls(x)
+  // override implicit def varToDenseVecOps[A:Manifest](x: Var[DenseVector[A]]): OptiMLDenseVecOpsCls[A] = new OptiMLDenseVecOpsCls(readVar(x))
+  //   
   
-  class OptiMLDenseVecOpsCls[A:Manifest](val elem: Rep[DenseVector[A]]) extends DenseVecOpsCls[A](x) with OptiMLVecOpsCls[A]    
-
-  trait OptiMLVecOpsCls[A] extends VecOpsCls[A] {
-    def update(i: Rep[IndexVector], y: Rep[A])(implicit o: Overloaded1) = vector_update_indices(x,i,y)    
-    // returns a V[Int] in the super class, and we want to override to IndexVector, which has no relation to V[Int] anymore..
-    override def find(pred: Rep[A] => Rep[Boolean]) = vector_find_override(x,pred)
+  // class OptiMLDenseVecOpsCls[A:Manifest](elem: Rep[DenseVector[A]]) extends DenseVecOpsCls[A](elem) with OptiMLVecOpsCls[A]    
+  // 
+  // trait OptiMLVecOpsCls[A] extends VecOpsCls[A] {
+  //   def update(i: Interface[IndexVector], y: Rep[A])(implicit o: Overloaded1) = vector_update_indices(x,i,y)    
+  // 
+  //   override type VFINDR = IndexVectorDense
+  //   override val mVFINDR = manifest[VFINDR]
+  //   override val vfindBuilder = indexVecDenseBuilder
+  //   override def vfindToIntf(x: Rep[VFINDR]) = indexVecDenseToInterface(x)
+  //   //override def find(pred: Rep[A] => Rep[Boolean]) = vector_find_override(x,pred)
+  // }
+  
+  class OptiMLVecOpsOverrides[A:Manifest](x: Interface[Vector[A]]) {
+    def update(i: Interface[IndexVector], y: Rep[A])(implicit o: Overloaded1) = vector_update_indices(x,i,y)    
+    def update(n: Rep[Int], y: Rep[A]) = x.update(n, y) // ?
+    def find(pred: Rep[A] => Rep[Boolean]) = vector_find_override(x, pred)
   }
 
   // class defs
-  def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Rep[IndexVector], y: Rep[A]): Rep[Unit]
-  def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
+  def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Rep[A]): Rep[Unit]
+  def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVectorDense]
 }
 
 trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps with VariablesExp with BaseFatExp {
@@ -47,16 +64,16 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   ////////////////////////////////
   // implemented via delite ops
   
-  case class VectorUpdateIndices[A:Manifest](x: Interface[Vector[A]], in: Exp[IndexVector], y: Exp[A])
-    extends DeliteOpForeach2[Int] {
+  case class VectorUpdateIndices[A:Manifest](x: Interface[Vector[A]], in: Interface[IndexVector], y: Exp[A])
+    extends DeliteOpForeachI[Int] {
 
-    def sync = n => List()
     def func = i => x(i) = y
+    def sync = i => List()
     val size = in.length
   } 
   
   case class VectorFindOverride[A:Manifest](in: Interface[Vector[A]], cond: Exp[A] => Exp[Boolean])
-    extends DeliteOpFilter2[A,Int,IndexVector] {
+    extends DeliteOpFilter2[A,Int,IndexVectorDense] {
       
     def alloc = IndexVector(0)
     def func = e => v // should we make available and use a helper function like index(e)?
@@ -73,14 +90,14 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   /////////////////////
   // class interface
 
-  def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Exp[IndexVector], y: Exp[A]) = reflectWrite(x)(VectorUpdateIndices(x,i,y))
+  def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Exp[A]) = reflectWrite(x.ops.elem)(VectorUpdateIndices(x,i,y))
   def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorFindOverride(x, pred))
 
   //////////////
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case Reflect(e@VectorUpdateIndices(x,i,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorUpdateIndices(f(x),f(i),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    //case Reflect(e@VectorUpdateIndices(x,i,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorUpdateIndices(f(x),f(i),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 

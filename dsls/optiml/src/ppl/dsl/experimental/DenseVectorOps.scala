@@ -71,11 +71,12 @@ trait DenseVectorOps extends DSLType with Variables {
   implicit def repVecToDenseVecOps[A:Manifest](x: Rep[DenseVector[A]]) = new DenseVecOpsCls(x)
   implicit def varToDenseVecOps[A:Manifest](x: Var[DenseVector[A]]) = new DenseVecOpsCls(readVar(x))
   
-  class DenseVecOpsCls[A:Manifest](val x: Rep[DenseVector[A]]) extends VecOpsCls[A] {
+  class DenseVecOpsCls[A:Manifest](val elem: Rep[DenseVector[A]]) extends VecOpsCls[A] {
     type V[X] = DenseVector[X]
     implicit def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
     implicit def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]
     implicit def mVB[B:Manifest] = manifest[DenseVector[B]] 
+    val x = elem
      
     def mutable = densevector_mutable_clone(x)
     

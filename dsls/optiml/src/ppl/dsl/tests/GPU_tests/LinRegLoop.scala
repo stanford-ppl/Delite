@@ -20,13 +20,13 @@ trait LinRegLoop extends OptiMLApplication {
   // input: input training vector x
   //        output training vector y
   // output: predictions along uniformly sampled points
-  def unweightedReg(x: Rep[Vector[Double]], y: Rep[Vector[Double]]) : Rep[Vector[Double]] =
+  def unweightedReg(x: Rep[DenseVector[Double]], y: Rep[DenseVector[Double]]) : Rep[DenseVector[Double]] =
   {
     // by convention, x_0 = 1
     // TODO: the nice syntax doesn't work because of our problems with instantiating Vectors from sequences
     //val X = Matrix(x.map(ele => Vector(1., ele)))
     // could be (probably should be) written as an insertCol
-    val X = Matrix[Double](x map {ele => val v = Vector[Double](2, true); v(0) = 1.; v(1) = ele; v})
+    val X = Matrix[Double](x map {ele => val v = DenseVector[Double](2, true); v(0) = 1.; v(1) = ele; v})
 
     val theta = ((X.t*X).inv)*(X.t*y.t)
 	//println("the is "); theta.pprint
@@ -35,22 +35,22 @@ trait LinRegLoop extends OptiMLApplication {
     return theta
   }
 
-  def weightedReg(x: Rep[Vector[Double]], y: Rep[Vector[Double]]) : Rep[Vector[Double]] = {
+  def weightedReg(x: Rep[DenseVector[Double]], y: Rep[DenseVector[Double]]) : Rep[DenseVector[Double]] = {
     val tau = 10
     //val X = Matrix(x.map(ele => Vector(1., ele)))
-    val X = Matrix[Double](x map {ele => val v = Vector[Double](2, true); v(0) = 1.; v(1) = ele; v})
+    val X = Matrix[Double](x map {ele => val v = DenseVector[Double](2, true); v(0) = 1.; v(1) = ele; v})
 
     // initialize prediction points
     val xstep = 25.0/X.numRows
     val xref_pts = Vector.uniform(-10, xstep, 14.99).t
     //val xref = Matrix(xref_pts.map(ele => Vector(1., ele)))
-    val xref = Matrix[Double](xref_pts map {ele => val v = Vector[Double](2, true); v(0) = 1.; v(1) = ele; v})
+    val xref = Matrix[Double](xref_pts map {ele => val v = DenseVector[Double](2, true); v(0) = 1.; v(1) = ele; v})
     //val O = Matrix.identity(X.numRows)
     val Xt = X.t
 
     // calculate predictions
 	  var e = 0
-    val guess = Vector[Double](xref.numRows,true)
+    val guess = DenseVector[Double](xref.numRows,true)
 	  while(e < xref.numRows ) {
     //val guess = (0::xref.numRows)( e => {
       val x_cur = xref(e,1)

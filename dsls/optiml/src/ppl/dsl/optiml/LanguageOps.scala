@@ -33,21 +33,21 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   }  
 
   // 2D aggregate
-  def aggregate[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector])
+  def aggregate[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector])
                            (block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]] = {
     optiml_aggregate2d(rows, cols, block)
   }
   
-  def aggregateIf[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector])
+  def aggregateIf[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector])
                              (cond: (Rep[Int], Rep[Int]) => Rep[Boolean])(block: (Rep[Int], Rep[Int]) => Rep[A]) = {
     optiml_aggregate2dif(rows, cols, cond, block)
   }
   
 
   def optiml_aggregateif[A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A]): Rep[DenseVector[A]]
-  def optiml_aggregate2d[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector],
+  def optiml_aggregate2d[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
                                      block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]]
-  def optiml_aggregate2dif[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector],
+  def optiml_aggregate2dif[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
                                        cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]]
 
 
@@ -83,10 +83,10 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   class IndexWildcard
   val * = new IndexWildcard
 
-  implicit def tuple2ToIndexVector1(tup: (Rep[IndexVector], IndexWildcard))(implicit overloaded1 : Overloaded1) = indexvector2_new(tup._1, indexvector2_wildcard())
+  implicit def tuple2ToIndexVector1(tup: (Interface[IndexVector], IndexWildcard))(implicit overloaded1 : Overloaded1) = indexvector2_new_wc(tup._1, tup._2)
 // currently not allowed
-//  implicit def tuple2ToIndexVector2(tup: (IndexWildcard, Rep[IndexVector]))(implicit overloaded2 : Overloaded2) = indexvector2_new(indexvector2_wildcard(), tup._2)
-  implicit def tuple2ToIndexVector3(tup: (Rep[IndexVector], Rep[IndexVector]))(implicit overloaded3 : Overloaded3) = indexvector2_new(tup._1, tup._2)
+//  implicit def tuple2ToIndexVector2(tup: (IndexWildcard, Interface[IndexVector]))(implicit overloaded2 : Overloaded2) = indexvector2_new(indexvector2_wildcard(), tup._2)
+  implicit def tuple2ToIndexVector3(tup: (Interface[IndexVector], Interface[IndexVector]))(implicit overloaded3 : Overloaded3) = indexvector2_new(tup._1, tup._2)
 
 
   /**
@@ -199,7 +199,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     reflectPure(AggregateIf(start,end,cond,block))
   }
   
-  case class Aggregate2d[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+  case class Aggregate2d[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
                                      func2: (Exp[Int], Exp[Int]) => Exp[A])
     extends DeliteOpMap[Int,A,DenseVector[A]] {
   
@@ -212,14 +212,14 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     def m = manifest[A]
   }
   
-  def optiml_aggregate2d[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+  def optiml_aggregate2d[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
                                      block: (Exp[Int], Exp[Int]) => Exp[A]) = {
     
     reflectPure(Aggregate2d(rows, cols, block))
   }
 
   
-  case class Aggregate2dIf[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+  case class Aggregate2dIf[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
                                        cond2: (Exp[Int],Exp[Int]) => Exp[Boolean], func2: (Exp[Int], Exp[Int]) => Exp[A])
     extends DeliteOpFilter[Int,A,DenseVector[A]] {
   
@@ -233,7 +233,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     def m = manifest[A]
   }
       
-  def optiml_aggregate2dif[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+  def optiml_aggregate2dif[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
                                        cond: (Exp[Int], Exp[Int]) => Exp[Boolean], block: (Exp[Int], Exp[Int]) => Exp[A]) = {
     
     reflectPure(Aggregate2dIf(rows, cols, cond, block))

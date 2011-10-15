@@ -108,23 +108,19 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     }
   }
   */
-  case class StreamInitAndForeachRow[A:Manifest](in: Exp[Vector[Int]], x: Exp[Stream[A]], offset: Exp[Int],
+  case class StreamInitAndForeachRow[A:Manifest](size: Exp[Int], x: Exp[Stream[A]], offset: Exp[Int],
                                                  block: Exp[StreamRow[A]] => Exp[Unit])
-    extends DeliteOpForeach[Int] {
+    extends DeliteOpIndexedLoop {
 
-    val size = in.length
-    def sync = i => List()
     def func = i => 
       // always initialize for now (must be pure)
       block(stream_init_and_chunk_row(x, i, offset))
   }
 
-  case class StreamForeachRow[A:Manifest](in: Exp[Vector[Int]], x: Exp[Stream[A]], offset: Exp[Int],
+  case class StreamForeachRow[A:Manifest](size: Exp[Int], x: Exp[Stream[A]], offset: Exp[Int],
                                           block: Exp[StreamRow[A]] => Exp[Unit], init: Exp[Unit])
-    extends DeliteOpForeach[Int] {
+    extends DeliteOpIndexedLoop {
 
-    val size = in.length
-    def sync = i => List()
     def func = i => block(stream_chunk_row(x, i, offset))
   }
 
@@ -164,12 +160,12 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
       if (x.isPure) {
         // fuse parallel initialization and foreach function
         //reflectEffect(StreamInitAndForeachRow(in, v, x, i, block))   // parallel // should use effect summary based on loop body
-        reflectEffect(StreamInitAndForeachRow(in, x, i, block))
+        reflectEffect(StreamInitAndForeachRow(rowsToProcess, x, i, block))
       }
       else {
         val init = stream_init_chunk(x, i)  // sequential
         //reflectEffect(StreamForeachRow(in, v, x, i, block, init)) // parallel // should use effect summary based on loop body
-        reflectEffect(StreamForeachRow(in, x, i, block, init))
+        reflectEffect(StreamForeachRow(rowsToProcess, x, i, block, init))
       }
 
       i += 1

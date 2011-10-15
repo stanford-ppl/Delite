@@ -77,6 +77,11 @@ trait VectorOps extends DSLType with Variables {
     val elem: Rep[VA]
     val x = elem
     
+    // DeliteCollection
+    def dcSize = length
+    def dcApply(n: Rep[Int]): Rep[A] = apply(n)
+    def dcUpdate(n: Rep[Int], y: Rep[A]) = update(n,y)
+    
     // conversions
     def toBoolean(implicit conv: Rep[A] => Rep[Boolean]) =  map(e => conv(e))
     def toDouble(implicit conv: Rep[A] => Rep[Double]) =  map(e => conv(e))
@@ -199,7 +204,14 @@ trait VectorOps extends DSLType with Variables {
     def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]): Rep[VA] = { vector_mzipwith(x,y,f); x }
     def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A]): Rep[A] = vector_reduce(x,f)
     def filter(pred: Rep[A] => Rep[Boolean]): Rep[VA] = vector_filter[A,VA](x,pred)
+    
+    // type VFINDR
+    // implicit val mVFINDR: Manifest[VFINDR]
+    // implicit val vfindBuilder: VectorBuilder[Int,VFINDR]    
+    // def vfindToIntf(x: Rep[VFINDR]): Interface[Vector[Int]]        
+    //def find(pred: Rep[A] => Rep[Boolean]): Rep[VFINDR] = vector_find[A,VFINDR](x,pred)
     def find(pred: Rep[A] => Rep[Boolean]): Rep[V[Int]] = vector_find[A,V[Int]](x,pred)
+    
     def count(pred: Rep[A] => Rep[Boolean]): Rep[Int] = vector_count(x, pred)
     // def flatMap[B:Manifest](f: Rep[A] => Rep[V[B]]): Rep[V[B]] = vector_flatmap[A,B,V[B]](x,f)
     // def partition(pred: Rep[A] => Rep[Boolean]): (Rep[VA], Rep[VA])  = vector_partition[A,VA](x,pred)
@@ -207,10 +219,10 @@ trait VectorOps extends DSLType with Variables {
   }
   
   // clients that can handle multiple kinds of vector must accept an Interface[Vector[T]],  not a Rep[Vector[T]]
-  case class VInterface[A:Manifest](ops: VecOpsCls[A]) extends DCInterface[Vector[A],A] // clients use Interface[Vector]
+  class VInterface[A:Manifest](val ops: VecOpsCls[A]) extends DCInterface[Vector[A],A] // clients use Interface[Vector]
 
   // then we convert from a Interface[Vector[T]] to an interfaceVecToOpsCls, providing all of the original vector methods  
-  implicit def interfaceToVecOps[A:Manifest](intf: Interface[Vector[A]]): InterfaceVecOpsCls[A] = new InterfaceVecOpsCls(intf.asInstanceOf[VInterface[A]]) // should only be one instance of Interface[Vector], but can we enforce this?
+  implicit def interfaceToVecOps[A:Manifest](intf: Interface[Vector[A]]): InterfaceVecOpsCls[A] = new InterfaceVecOpsCls(intf.asInstanceOf[VInterface[A]]) // all Interface[Vector] should be instances of VInterface, but can we enforce this?
   
   class InterfaceVecOpsCls[A:Manifest](val intf: VInterface[A]) {
     // would be nice - could short-circuit the operation if known statically!
@@ -230,23 +242,23 @@ trait VectorOps extends DSLType with Variables {
     def first = intf.ops.first
     def last = intf.ops.last
     def indices = intf.ops.indices
-    def drop(count: Rep[Int]): Interface[Vector[A]] = intf.ops.toIntf(intf.ops.drop(count))
-    def take(count: Rep[Int]): Interface[Vector[A]] = intf.ops.toIntf(intf.ops.take(count))
-    def slice(start: Rep[Int], end: Rep[Int]): Interface[Vector[A]] = intf.ops.toIntf(intf.ops.slice(start,end))
+    def drop(count: Rep[Int]) = intf.ops.toIntf(intf.ops.drop(count))
+    def take(count: Rep[Int]) = intf.ops.toIntf(intf.ops.take(count))
+    def slice(start: Rep[Int], end: Rep[Int]) = intf.ops.toIntf(intf.ops.slice(start,end))
     def contains(y: Rep[A]): Rep[Boolean] = intf.ops.contains(y)
-    def distinct: Interface[Vector[A]] = intf.ops.toIntf(intf.ops.distinct)    
+    def distinct = intf.ops.toIntf(intf.ops.distinct)    
     
     def t = intf.ops.t
     def mt() = intf.ops.mt
-    def cloneL(): Interface[Vector[A]] = intf.ops.toIntf(intf.ops.cloneL)
-    def mutable(): Interface[Vector[A]] = intf.ops.toIntf(intf.ops.mutable)
+    def cloneL() = intf.ops.toIntf(intf.ops.cloneL)
+    def mutable() = intf.ops.toIntf(intf.ops.mutable)
     def pprint() = intf.ops.pprint
     def replicate(i: Rep[Int], j: Rep[Int]) = intf.ops.replicate(i,j)
     def mkString(sep: Rep[String] = unit("")) = intf.ops.mkString(sep)
     
     def update(n: Rep[Int], y: Rep[A]) = intf.ops.update(n,y)
     def +=(y: Rep[A]) = intf.ops.+=(y)    
-    def ++(y: Interface[Vector[A]]): Interface[Vector[A]] = intf.ops.toIntf(intf.ops.++(y))
+    def ++(y: Interface[Vector[A]]) = intf.ops.toIntf(intf.ops.++(y))
     //def ++=(y: Rep[intf.ops.V[A]]) = intf.ops.++=(y)
     //def copyFrom(pos: Rep[Int], y: Rep[intf.ops.V[A]]) = intf.ops.copyFrom(pos,y)
     def insert(pos: Rep[Int], y: Rep[A]) = intf.ops.insert(pos,y)
@@ -290,6 +302,7 @@ trait VectorOps extends DSLType with Variables {
     def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]) = intf.ops.toIntf(intf.ops.mzip(y)(f))
     def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A]) = intf.ops.reduce(f)
     def filter(pred: Rep[A] => Rep[Boolean]) = intf.ops.toIntf(intf.ops.filter(pred))
+    //def find(pred: Rep[A] => Rep[Boolean]) = intf.ops.vfindToIntf(intf.ops.find(pred))
     def find(pred: Rep[A] => Rep[Boolean]) = intf.ops.toIntfB(intf.ops.find(pred))
     def count(pred: Rep[A] => Rep[Boolean]) = intf.ops.count(pred)
     // def flatMap[B:Manifest](f: Rep[A] => Rep[V[B]]) = intf.ops.toIntf(intf.ops.flatMap(f))
@@ -331,8 +344,8 @@ trait VectorOps extends DSLType with Variables {
   def vector_contains[A:Manifest](x: Interface[Vector[A]], y: Rep[A]): Rep[Boolean]
   def vector_distinct[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
   
-  def vector_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]]): Rep[VA]
-  def vector_mutable_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]]): Rep[VA]
+  def vector_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def vector_mutable_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
   def vector_pprint[A:Manifest](x: Interface[Vector[A]]): Rep[Unit]
   def vector_repmat[A:Manifest](x: Interface[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
   def vector_mkstring[A:Manifest](x: Interface[Vector[A]], sep: Rep[String]): Rep[String]  
@@ -376,7 +389,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_mzipwith[A:Manifest,B:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]], f: (Rep[A],Rep[B]) => Rep[A]): Rep[Unit]
   def vector_reduce[A:Manifest:Arith](x: Interface[Vector[A]], f: (Rep[A],Rep[A]) => Rep[A]): Rep[A]
   def vector_filter[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_find[A:Manifest,VINT:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[Int,VINT]): Rep[VINT]
+  def vector_find[A:Manifest,VFINDR:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[Int,VFINDR]): Rep[VFINDR]
   def vector_count[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Int]
   //def vector_flatmap[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Rep[A] => Rep[Vector[B]])(implicit b: VectorBuilder[B,VB]): Rep[VB]
   //def vector_partition[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[VA], Rep[VA])
@@ -747,8 +760,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     def m = manifest[A]  
   }
 
-  case class VectorFind[A:Manifest,VINT:Manifest](in: Interface[Vector[A]], cond: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[Int,VINT])
-    extends DeliteOpFilter2[A,Int,VINT] {
+  case class VectorFind[A:Manifest,VFINDR:Manifest](in: Interface[Vector[A]], cond: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[Int,VFINDR])
+    extends DeliteOpFilter2[A,Int,VFINDR] {
 
     def alloc = b.alloc(0,unit(true))
     def func = e => v // should we make available and use a helper function like index(e)?
@@ -851,7 +864,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   }
   def vector_reduce[A:Manifest:Arith](x: Interface[Vector[A]], f: (Exp[A],Exp[A]) => Exp[A]) = reflectPure(VectorReduce(x, f))
   def vector_filter[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorFilter[A,VA](x, pred))
-  def vector_find[A:Manifest,VINT:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[Int,VINT]) = reflectPure(VectorFind[A,VINT](x, pred))
+  def vector_find[A:Manifest,VFINDR:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[Int,VFINDR]) = reflectPure(VectorFind[A,VFINDR](x, pred))
   def vector_count[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorCount(x, pred))
   //def vector_flatmap[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[Vector[B]])(implicit b: VectorBuilder[B,VB]) = reflectPure(VectorFlatMap(x, f))
   //def vector_partition[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean]) = t2(reflectPure(VectorPartition(x, pred)))

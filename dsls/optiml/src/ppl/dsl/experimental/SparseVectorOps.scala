@@ -21,11 +21,12 @@ trait SparseVectorOps extends DSLType with Variables {
   implicit def repVecToSparseVecOps[A:Manifest](x: Rep[SparseVector[A]]) = new SparseVecOpsCls(x)
   implicit def varToSparseVecOps[A:Manifest](x: Var[SparseVector[A]]) = new SparseVecOpsCls(readVar(x))
 
-  class SparseVecOpsCls[A:Manifest](val x: Rep[SparseVector[A]]) extends VecOpsCls[A] {
+  class SparseVecOpsCls[A:Manifest](val elem: Rep[SparseVector[A]]) extends VecOpsCls[A] {
     type V[X] = SparseVector[X]
     implicit def toIntf[B:Manifest](x: Rep[SparseVector[B]]): Interface[Vector[B]] = sparseToInterface(x)
     implicit def builder[B:Manifest]: VectorBuilder[B,V[B]] = sparseVectorBuilder[B]
     implicit def mVB[B:Manifest] = manifest[SparseVector[B]]
+    val x = elem
     
     def mutable = throw new UnsupportedOperationException("not implemented yet")
     

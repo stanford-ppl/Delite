@@ -19,8 +19,8 @@ package object optiml {
   type EmptyVector[T] = optila.EmptyVector[T]
   type RangeVector = optila.RangeVector
   type VectorView[T] = optila.VectorView[T]
-  type MatrixRow[T] = optila.MatrixRow[T]
-  type MatrixCol[T] = optila.MatrixCol[T]
+  type MatrixRow[T] = optila.MatrixRow[T] // ! to be temporarily removed to simplify things for pldi
+  type MatrixCol[T] = optila.MatrixCol[T] // ! to be temporarily removed to simplify things for pldi
   
   type Matrix[T] = optila.Matrix[T]
   type DenseMatrix[T] = optila.DenseMatrix[T]
@@ -31,9 +31,11 @@ package object optiml {
   //////////////////
   // OptiML
 
-  trait Labels[T] extends DenseVector[T] 
-  trait StreamRow[T] extends VectorView[T]
+  trait Labels[T] extends DenseVector[T] // ! to be temporarily removed to simplify things for pldi
+  trait StreamRow[T] extends VectorView[T] // ! to be temporarily removed to simplify things for pldi
   trait IndexVector extends DenseVector[Int]
+  trait IndexVectorRange extends Vector[Int]
+  trait IndexVectorDense extends Vector[Int]
   trait IndexVectorWC extends IndexVector 
   trait IndexVector2
 

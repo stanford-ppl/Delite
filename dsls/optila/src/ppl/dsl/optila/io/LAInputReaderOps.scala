@@ -17,7 +17,7 @@ trait LAInputReaderOps extends DSLType with Base {
   }
 
   def obj_lainput_read(filename: Rep[String], delim: Rep[String]) : Rep[Matrix[Double]]
-  def obj_lainput_read_vector(filename: Rep[String]) : Rep[Vector[Double]]
+  def obj_lainput_read_vector(filename: Rep[String]) : Rep[DenseVector[Double]]
 }
 
 trait LAInputReaderOpsExp extends LAInputReaderOps with BaseFatExp { this: LAInputReaderImplOps with DeliteOpsExp with TupleOpsExp =>

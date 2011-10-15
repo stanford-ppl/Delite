@@ -7,7 +7,7 @@ import ppl.dsl.optiml.{OptiMLLift, OptiMLCompiler, OptiML}
 
 trait VectorImplOps { this: OptiML =>
 
-  def vector_find_override_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
+  def vector_find_override_impl[A:Manifest](v: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
@@ -16,7 +16,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   //////////////////////////
   // kernel implementations
 
-  def vector_find_override_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
+  def vector_find_override_impl[A:Manifest](v: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
     val indices = IndexVector(0)
     for (i <- 0 until v.length) {
       if (pred(v(i))) indices += i

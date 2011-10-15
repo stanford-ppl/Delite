@@ -180,6 +180,15 @@ trait VectorImplOpsStandard extends VectorImplOps {
     }
   }
   
+  def vector_mkstring_impl[A:Manifest](v: Interface[Vector[A]], sep: Rep[String]) = {
+    var s = ""
+    for (i <- 0 until v.length) {
+      s = s + v(i)
+      s = s + sep
+    }
+    s    
+  }
+  
   def vector_concatenate_impl[A:Manifest,VA:Manifest](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = {
     // should use static rewritings or static overloading to do this
     //if (v1.isInstanceOfL[EmptyVector[A]]) v2

@@ -16,7 +16,7 @@ trait DenseVectorOps extends DSLType with Variables {
 
   implicit def repToDenseVecOps[A:Manifest](x: Rep[DenseVector[A]]) = new DenseVecOpsCls(x)
   implicit def varToDenseVecOps[A:Manifest](x: Var[DenseVector[A]]) = new DenseVecOpsCls(readVar(x))
-  implicit def denseToInterface[A:Manifest](lhs: Rep[DenseVector[A]]) = VInterface[A](new DenseVecOpsCls[A](lhs))
+  implicit def denseToInterface[A:Manifest](lhs: Rep[DenseVector[A]]) = new VInterface[A](new DenseVecOpsCls[A](lhs))
 
   def denseVectorBuilder[A:Manifest] = new VectorBuilder[A,DenseVector[A]] {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = Vector.dense[A](length, isRow)
@@ -47,9 +47,9 @@ trait DenseVectorOps extends DSLType with Variables {
     def builderB[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
     def mVB[B:Manifest] = manifest[DenseVector[B]] 
 
-    def dcSize = densevector_length(x)
-    def dcApply(n: Rep[Int]): Rep[A] = densevector_apply(x,n)
-    def dcUpdate(n: Rep[Int], y: Rep[A]): Rep[Unit] = densevector_update(x,n,y)
+    // def dcSize = densevector_length(x)
+    // def dcApply(n: Rep[Int]): Rep[A] = densevector_apply(x,n)
+    // def dcUpdate(n: Rep[Int], y: Rep[A]): Rep[Unit] = densevector_update(x,n,y)
 
     // conversions
     // def toBoolean(implicit conv: Rep[A] => Rep[Boolean]) =  map(e => conv(e))
@@ -153,7 +153,13 @@ trait DenseVectorOps extends DSLType with Variables {
     // def mzip[B:Manifest](y: Rep[DenseVector[B]])(f: (Rep[A],Rep[B]) => Rep[A]) = densevector_mzipwith(x,y,f)
     // def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A]) = densevector_reduce(x,f)
     // def filter(pred: Rep[A] => Rep[Boolean]) = densevector_filter(x,pred)
+    
+    //type VFINDR = DenseVector[Int]
+    //val mVFINDR = manifest[VFINDR]
+    //val vfindBuilder = builderB[Int]
+    //def vfindToIntf(x: Rep[VFINDR]) = toIntfB[Int](x)
     // def find(pred: Rep[A] => Rep[Boolean]) = densevector_find(x,pred)
+    
     // def count(pred: Rep[A] => Rep[Boolean]) = densevector_count(x, pred)
     def flatMap[B:Manifest](f: Rep[A] => Rep[DenseVector[B]]) = densevector_flatmap(x,f)
     def partition(pred: Rep[A] => Rep[Boolean]) = densevector_partition(x,pred)

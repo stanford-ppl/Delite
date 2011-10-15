@@ -66,7 +66,7 @@ trait OptiMLCCodeGenPkg extends OptiLACCodeGenPkg
  */
 trait OptiML extends OptiLA with OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOpsshould be auto-generated with ApplicationOps
   with MLInputReaderOps with MLOutputWriterOps
-  with VectorOps with MatrixOps with IndexVectorOps with IndexVector2Ops 
+  with VectorOps with OptiMLDenseVectorOps with MatrixOps with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops 
   with StreamOps with StreamRowOps
   with GraphOps with VerticesOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps with VSetOps
   with LabelsOps with TrainingSetOps with ImageOps with GrayscaleImageOps {
@@ -87,7 +87,7 @@ trait OptiMLCompiler extends OptiLACompiler with OptiML {
 trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
   with LanguageOpsExp with ApplicationOpsExp with LBPOpsExp 
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
-  with VectorOpsExpOpt with MatrixOpsExpOpt with IndexVectorOpsExp with IndexVector2OpsExp 
+  with VectorOpsExpOpt with MatrixOpsExpOpt with IndexVectorOpsExp with IndexVectorDenseOpsExp with IndexVectorRangeOpsExp with IndexVector2OpsExp 
   with StreamOpsExpOpt with StreamRowOpsExpOpt
   with LabelsOpsExp with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard
