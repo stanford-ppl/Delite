@@ -13,7 +13,12 @@ trait IndexVectorRangeOps extends DSLType with Base with OverloadHack { this: Op
   implicit def varToIndexVecRangeOps(x: Var[IndexVectorRange]) = new IndexVecRangeOpsCls(readVar(x))
   implicit def indexVecRangeToInterface(lhs: Rep[IndexVectorRange]) = new IVInterface(new IndexVecRangeOpsCls(lhs))
   
-  def indexRangeVecBuilder = new VectorBuilder[Int,IndexVectorRange] {
+  // hack to allow index range vector builders to be found without explicit type parameters
+  //implicit def indexRangeVecBuilderGeneric[A <% Int]: VectorBuilder[A,IndexVectorRange] = indexRangeVecBuilder.asInstanceOf[VectorBuilder[A,IndexVectorRange]]
+  // manifest[A] match {
+  //     case Manifest.Int => indexRangeVecBuilder
+  //   }  
+  implicit def indexRangeVecBuilder = new VectorBuilder[Int,IndexVectorRange] {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = (0::length)
     def toIntf(x: Rep[IndexVectorRange]): Interface[IndexVector] = indexVecRangeToInterface(x)
   }  

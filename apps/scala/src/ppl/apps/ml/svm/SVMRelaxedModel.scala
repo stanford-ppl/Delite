@@ -19,8 +19,8 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
   class SVMRelaxedModel {
   
   // model data
-  private var weights : Rep[Vector[Double]] = null
-  private var alphas : Rep[Vector[Double]] = null
+  private var weights : Rep[DenseVector[Double]] = null
+  private var alphas : Rep[DenseVector[Double]] = null
   private var b = 0.0
   
   // construct directly from model
@@ -33,7 +33,7 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
   /////////////
   // training
 
-  def train(X: Rep[TrainingSet[Double,Double]], Y: Rep[Vector[Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
+  def train(X: Rep[TrainingSet[Double,Double]], Y: Rep[DenseVector[Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
     println("Training SVM using the SMO algorithm")
 
     // intermediate training info
@@ -143,13 +143,13 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
       alphas
 
     // in scala, closures bind variables by reference, so diff() sees the updates to max_passes and passes
-    }}((v1, v2) => if (passes > max_passes) unit(0) else max_passes - passes, manifest[Vector[Double]], vectorCloneable[Double]) // untilconverged
+    }}((v1, v2) => if (passes > max_passes) unit(0) else max_passes - passes, manifest[DenseVector[Double]], denseVectorCloneable[Double]) // untilconverged
 
     // SMO finished
     print("\n")
   }
 
-  def computeWeights(X: Rep[TrainingSet[Double,Double]], Y: Rep[Vector[Double]]){
+  def computeWeights(X: Rep[TrainingSet[Double,Double]], Y: Rep[DenseVector[Double]]){
     // compute the weights (assuming a linear kernel)
     weights = sum(0, X.numRows) { i=>
       X(i)*alphas(i)*Y(i)
@@ -159,7 +159,7 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
   ////////////
   // testing
 
-  def classify(test_pt : Rep[Vector[Double]]) : Rep[Int] = {
+  def classify(test_pt : Rep[DenseVector[Double]]) : Rep[Int] = {
     // SVM prediction is W'*X + b
     if ((weights*:*test_pt + b) < 0){
       unit(-1)

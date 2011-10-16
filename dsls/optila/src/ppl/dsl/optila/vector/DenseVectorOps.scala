@@ -36,6 +36,7 @@ trait DenseVectorOps extends DSLType with Variables {
 
   class DenseVecOpsCls[A:Manifest](val elem: Rep[DenseVector[A]]) extends VecOpsCls[A] {
     type VA = DenseVector[A]
+    def mA: Manifest[A] = manifest[A]    
     def toOps(x: Rep[DenseVector[A]]) = toOpsB[A](x)
     def toIntf(x: Rep[DenseVector[A]]) = toIntfB[A](x)
     def builder: VectorBuilder[A,DenseVector[A]] = builderB[A]

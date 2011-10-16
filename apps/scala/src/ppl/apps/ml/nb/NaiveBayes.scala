@@ -36,7 +36,7 @@ trait NaiveBayes extends OptiMLApplication {
     //PerformanceTimer.save("NaiveBayes")
   }
 
-  def train(ts: Rep[TrainingSet[Double,Double]]) : (Rep[Vector[Double]], Rep[Vector[Double]], Rep[Double]) = {
+  def train(ts: Rep[TrainingSet[Double,Double]]) : (Rep[DenseVector[Double]], Rep[DenseVector[Double]], Rep[Double]) = {
     val numTrainDocs = ts.numSamples
     val numTokens = ts.numFeatures
 
@@ -99,7 +99,7 @@ trait NaiveBayes extends OptiMLApplication {
     (phi_y1, phi_y0, phi_y)
   }
 
-  def test(ts: Rep[TrainingSet[Double,Double]], phi_y1: Rep[Vector[Double]], phi_y0: Rep[Vector[Double]], phi_y: Rep[Double]): Rep[Int] = {
+  def test(ts: Rep[TrainingSet[Double,Double]], phi_y1: Rep[DenseVector[Double]], phi_y0: Rep[DenseVector[Double]], phi_y: Rep[Double]): Rep[Int] = {
     val numTestDocs = ts.numSamples
     val numTokens = ts.numFeatures
 

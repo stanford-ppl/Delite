@@ -9,7 +9,7 @@ trait LanguageImplOps { this: OptiLA =>
   def optila_matrixdistance_square_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
 
   def optila_randsample_matrix_impl[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean]): Rep[Matrix[A]]
-  def optila_randsample_vector_impl[A:Manifest](v: Rep[DenseVector[A]], numSamples: Rep[Int]): Rep[DenseVector[A]]
+  def optila_randsample_vector_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA]
 }
 
 trait LanguageImplOpsStandard extends LanguageImplOps {
@@ -82,10 +82,11 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     if (sampleRows) sampled else sampled.t
   }
 
-  def optila_randsample_vector_impl[A:Manifest](v: Rep[DenseVector[A]], numSamples: Rep[Int]): Rep[DenseVector[A]] = {
+  def optila_randsample_vector_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]) = {
     val candidates = (0::v.length).mutable
 
-    val sampled = DenseVector[A](0, v.isRow)
+    val sampledOut = b.alloc(0, v.isRow)
+    val sampled = b.toIntf(sampledOut)
     for (i <- 0 until numSamples){
       val r = i + random(v.length-i)
       val idx = candidates(r)
@@ -97,7 +98,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
       candidates(i) = t
     }
 
-    sampled.cloneL
+    sampledOut
   }
 
   /*

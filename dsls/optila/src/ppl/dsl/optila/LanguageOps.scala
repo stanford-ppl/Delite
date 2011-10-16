@@ -188,19 +188,19 @@ trait LanguageOps extends Base { this: OptiLA =>
     }
   }
 
-  def sample[A:Manifest](v: Rep[DenseVector[A]], numSamples: Rep[Int]): Rep[DenseVector[A]] = {
-    optila_randsample_vector(v, numSamples)
+  def sample[A:Manifest,VA:Manifest](v: Rep[VA], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA], toIntf: Rep[VA] => Interface[Vector[A]]): Rep[VA] = {
+    optila_randsample_vector[A,VA](v, numSamples)
   }
 
-  def sample[A:Manifest](v: Rep[DenseVector[A]], numSamples: Rep[Int], method: SampleMethod): Rep[DenseVector[A]] = {
+  def sample[A:Manifest,VA:Manifest](v: Rep[VA], numSamples: Rep[Int], method: SampleMethod)(implicit b: VectorBuilder[A,VA], toIntf: Rep[VA] => Interface[Vector[A]]): Rep[VA] = {
     method match {
-      case RANDOM => optila_randsample_vector(v, numSamples)
+      case RANDOM => optila_randsample_vector[A,VA](v, numSamples)
       case _ => throw new UnsupportedOperationException("unknown sampling type selected")
     }
   }
 
   def optila_randsample_matrix[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean]): Rep[Matrix[A]]
-  def optila_randsample_vector[A:Manifest](v: Rep[DenseVector[A]], numSamples: Rep[Int]): Rep[DenseVector[A]]
+  def optila_randsample_vector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA]
   
  
   /**
@@ -325,15 +325,15 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class RandSampleMatrix[A:Manifest](m: Exp[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean])
     extends DeliteOpSingleTask[Matrix[A]](reifyEffects(optila_randsample_matrix_impl(m, numSamples, sampleRows)))
 
-  case class RandSampleVector[A:Manifest](v: Exp[DenseVector[A]], numSamples: Exp[Int])
-    extends DeliteOpSingleTask[DenseVector[A]](reifyEffects(optila_randsample_vector_impl(v, numSamples)))
+  case class RandSampleVector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Exp[Int])(implicit b: VectorBuilder[A,VA])
+    extends DeliteOpSingleTask[VA](reifyEffects(optila_randsample_vector_impl[A,VA](v, numSamples)))
   
   def optila_randsample_matrix[A:Manifest](m: Exp[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean]): Exp[Matrix[A]] = {
     reflectPure(RandSampleMatrix(m, numSamples, sampleRows))
   }
 
-  def optila_randsample_vector[A:Manifest](v: Exp[DenseVector[A]], numSamples: Exp[Int]): Exp[DenseVector[A]] = {
-    reflectPure(RandSampleVector(v, numSamples))
+  def optila_randsample_vector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Exp[Int])(implicit b: VectorBuilder[A,VA]) = {
+    reflectPure(RandSampleVector[A,VA](v, numSamples))
   }
 
 

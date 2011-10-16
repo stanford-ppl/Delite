@@ -62,7 +62,7 @@ trait VectorOps extends DSLType with Variables {
     
   trait VecOpsCls[A] extends DCInterfaceOps[A] {
     type VA // self type    
-    implicit def mA: Manifest[A] = manifest[A]    
+    implicit def mA: Manifest[A] 
     implicit def mVA: Manifest[VA]        
     implicit def toOps(x: Rep[VA]): VecOpsCls[A]
     implicit def toIntf(x: Rep[VA]): Interface[Vector[A]]        
@@ -164,8 +164,10 @@ trait VectorOps extends DSLType with Variables {
     implicit val vtimesBuilder: VectorBuilder[A,VTIMESR]    
     def vtimesToIntf(x: Rep[VTIMESR]): Interface[Vector[A]]    
     //def *[B](y: Rep[DenseVector[B]])(implicit mB: Manifest[B], a: Arith[A], conv: Rep[B] => Rep[A]) = densevector_times_withconvert(x,y,conv)
-    //def *[B](y: Rep[DenseVector[B]])(implicit mB: Manifest[B], aB: Arith[B], conv: Rep[A] => Rep[B], o: Overloaded1) = densevector_times_withconvertright(x,y,conv)
-    def *(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_times[A,VTIMESR](x,y)    
+    //def *[B](y: Rep[DenseVector[B]])(implicit mB: Manifest[B], aB: Arith[B], conv: Rep[A] => Rep[B], o: Overloaded1) = densevector_times_withconvertright(x,y,conv)    
+    // TODO: need to extend Arith to support this using CanXX dispatch
+    // Rep[DenseVector[Double]] * Rep[RangeVector] (Rep[DenseVector[Double]] * Interface[Vector[Int]])    
+    def *(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_times[A,VTIMESR](x,y)        
     def *(y: Rep[VA])(implicit a: Arith[A]) = vector_times[A,VA](x,y)
     def *(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_times_scalar[A,VTIMESR](x,y)
     def *=(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_timesequals[A](x,y)    

@@ -1,4 +1,9 @@
 import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optila.datastruct.scala._
+
+// object BinarizedGradientTemplate {
+//   def apply(val radius: Int, ...) = newStruct(("radius","Int", radius),
+// }
 
 class BinarizedGradientTemplate (
   // In the reduced image. The side of the template square is then 2*r+1.

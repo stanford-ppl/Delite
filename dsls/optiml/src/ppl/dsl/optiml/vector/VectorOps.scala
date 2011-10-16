@@ -14,6 +14,9 @@ import ppl.dsl.optiml._
 trait OptiMLDenseVectorOps extends VectorOps with ppl.dsl.optila.vector.DenseVectorOps {
   this: OptiML =>
   
+  //implicit def repToOptiMLVecOverrides[A:Manifest](x: Rep[A])(implicit toIntf: Rep[A] => Interface[Vector[A]]) = new OptiMLVecOpsOverrides(x)
+  
+  // overrides for OptiLA types - we would have to override each OptiLA type conversion, otherwise the implicit priorities tie :(
   implicit def repToDenseVecOverrides[A:Manifest](x: Rep[DenseVector[A]]) = new OptiMLVecOpsOverrides(x)  
 }
 

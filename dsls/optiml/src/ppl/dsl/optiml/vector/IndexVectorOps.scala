@@ -15,6 +15,7 @@ trait IndexVectorOps extends DSLType with Base with OverloadHack { this: OptiML 
   }
 
   trait IndexVecOpsCls extends VecOpsCls[Int] {
+    def mA = manifest[Int]
     implicit def toOps(x: Rep[VA]): IndexVecOpsCls
     implicit def toIntf(x: Rep[VA]): Interface[IndexVector]
     

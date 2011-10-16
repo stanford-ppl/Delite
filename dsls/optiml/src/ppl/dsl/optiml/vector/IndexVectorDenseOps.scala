@@ -3,7 +3,7 @@ package ppl.dsl.optiml.vector
 import ppl.dsl.optiml.{Vector, DenseVector, RangeVector, IndexVector, IndexVectorDense}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.{DeliteApplication, DSLType}
-import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
+import scala.virtualization.lms.common._
 import scala.virtualization.lms.util.OverloadHack
 import java.io.PrintWriter
 
@@ -20,6 +20,9 @@ trait IndexVectorDenseOps extends DSLType with Base with OverloadHack { this: Op
   
   // would like to have multiple inheritance here and inherit dense vector ops, but a
   // Rep[IndexVectorDense] and Rep[DenseVector] have no relation
+  
+  // for now, just duplicating the relevant implementations from DenseVectorOps :(
+  
   class IndexVecDenseOpsCls(val elem: Rep[IndexVectorDense]) extends IndexVecOpsCls {
     type VA = IndexVectorDense
     def toOps(x: Rep[IndexVectorDense]) = repToIndexVecDenseOps(x)
@@ -28,7 +31,7 @@ trait IndexVectorDenseOps extends DSLType with Base with OverloadHack { this: Op
     def mVA = manifest[IndexVectorDense]
           
     // VectorOps
-    def length = throw new UnsupportedOperationException("tbd") 
+    def length = indexvectordense_length(elem)
     def isRow = throw new UnsupportedOperationException("tbd") 
     def apply(n: Rep[Int]) = throw new UnsupportedOperationException("tbd") 
     def sort(implicit o: Ordering[Int]) = throw new UnsupportedOperationException("tbd")     
@@ -43,8 +46,23 @@ trait IndexVectorDenseOps extends DSLType with Base with OverloadHack { this: Op
     def trim() = throw new UnsupportedOperationException("tbd")
     def clear() = throw new UnsupportedOperationException("tbd")        
   }   
+  
+  def indexvectordense_length(x: Rep[IndexVectorDense]): Rep[Int]
 }
 
-trait IndexVectorDenseOpsExp extends IndexVectorDenseOps { this: OptiMLExp => 
+trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with VariablesExp with BaseFatExp { this: OptiMLExp => 
+  case class IndexVectorDenseLength(x: Exp[IndexVectorDense]) extends Def[Int]
+  
+  def indexvectordense_length(x: Exp[IndexVectorDense]) = reflectPure(IndexVectorDenseLength(x))
+}
+
+trait ScalaGenIndexVectorDenseOps extends ScalaGenFat {
+  val IR: IndexVectorDenseOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case IndexVectorDenseLength(x) => emitValDef(sym, quote(x) + ".length")
+    case _ => super.emitNode(sym, rhs)
+  }
 }
   

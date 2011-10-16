@@ -19,7 +19,7 @@ trait LinReg extends OptiMLApplication {
   // input: input training vector x
   //        output training vector y
   // output: predictions along uniformly sampled points
-  def unweightedReg(x: Rep[Vector[Double]], y: Rep[Vector[Double]]): Rep[Vector[Double]] =
+  def unweightedReg(x: Rep[DenseVector[Double]], y: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] =
   {
     // by convention, x_0 = 1
     val X = Matrix(Vector.ones(x.length).t, x)
@@ -32,7 +32,7 @@ trait LinReg extends OptiMLApplication {
     theta
   }
 
-  def weightedReg(x: Rep[Vector[Double]], y: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+  def weightedReg(x: Rep[DenseVector[Double]], y: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
     val tau = 10
     val X = Matrix(Vector.ones(x.length).t, x)
 

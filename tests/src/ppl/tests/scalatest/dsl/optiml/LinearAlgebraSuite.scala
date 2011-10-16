@@ -114,7 +114,7 @@ trait LinearAlgebraTestsCommon extends OptiMLApplication with OverloadHack {
     Math.abs(x - y) < .01
   }
 
-  def check(x: Rep[Vector[Double]], y: Rep[Vector[Double]]): Rep[Boolean] = {
+  def check(x: Rep[DenseVector[Double]], y: Rep[DenseVector[Double]]): Rep[Boolean] = {
     if (x.length != y.length) {
       false
     }

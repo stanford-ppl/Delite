@@ -15,7 +15,7 @@ trait TopN extends OptiMLApplication {
   /**
    * Pearson correlation 
    */
-  def similarity(ratings: Rep[Vector[PairwiseRating]]) = {    
+  def similarity(ratings: Rep[DenseVector[PairwiseRating]]) = {    
     val avgA = sum(0, ratings.length) { ratings(_).scoreA } / ratings.length
     val avgB = sum(0, ratings.length) { ratings(_).scoreB } / ratings.length
 
@@ -112,7 +112,8 @@ trait TopN extends OptiMLApplication {
     val sorted = prefs.sort    
     val topScores = sorted take N
     //val topUsers = indices take N
-    val topUsers = topScores map { e => (prefs find { _ == e })(0) } // HACK! need to implement sortWithIndex above    
+    // TODO: why is this type annotation required? inferencer ends up with Rep[DenseVector[Nothing]] otherwise
+    val topUsers: Rep[DenseVector[Int]] = topScores map { e => (prefs find { _ == e })(0) } // HACK! need to implement sortWithIndex above    
     
     toc(topUsers)
     

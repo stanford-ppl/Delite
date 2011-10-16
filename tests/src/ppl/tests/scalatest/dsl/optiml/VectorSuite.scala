@@ -10,7 +10,7 @@
  
 package ppl.tests.scalatest.dsl.optiml
 
-import ppl.dsl.optiml.{Vector,RangeVector}
+import ppl.dsl.optiml.{Vector,RangeVector,IndexVectorRange}
 import ppl.dsl.optiml.{OptiMLApplication, OptiMLApplicationRunner}
 import ppl.tests.scalatest._
 
@@ -305,7 +305,8 @@ trait Sample extends DeliteTestModule with OptiMLApplication {
     implicit val collector = ArrayBuffer[Boolean]()
 
     val v = (0::100)
-    val vs = sample(v, 10)
+    val vs = sample[Int,IndexVectorRange](v, 10)
+    //val vs = sample(v, 10)
     vs foreach { e => collect(v contains e) }
     mkReport
   }
