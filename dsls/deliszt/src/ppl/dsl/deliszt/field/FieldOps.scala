@@ -194,7 +194,7 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
 
   /////////////////////
   // class interface
-  def field_mo_apply[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO, VT]], mo: Exp[MO]) = reflectPure(FieldApply(x,mo))
+  def field_mo_apply[MO<:MeshObj:Manifest, VT:Manifest](x: Exp[Field[MO, VT]], mo: Exp[MO]) = reflectEffect(FieldApply(x,mo))
   def field_mo_update[MO<:MeshObj:Manifest, VT:Manifest](x: Rep[Field[MO, VT]], mo: Rep[MO], v : Rep[VT]) = reflectWrite(x)(FieldUpdate(x,mo,v))
 
   def FieldWithConst[MO<:MeshObj:Manifest,VT:Manifest](c: Exp[VT]) = reflectMutable(DeLisztFieldWithConst[MO,VT](c))

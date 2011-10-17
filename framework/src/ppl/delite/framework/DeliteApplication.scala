@@ -72,26 +72,33 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       val baseDir = Config.buildDir + File.separator + g.toString + File.separator
       writeModules(baseDir)
       g.emitDataStructures(baseDir + "datastructures" + File.separator)
-      g.initializeGenerator(baseDir + "kernels" + File.separator)
+      g.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults)
     }
+    
+    System.out.println("Running analysis")
     
     // Run any analyses defined
     for(a <- analyses) {
-      a.init(this, args)
+      val baseDir = Config.buildDir + File.separator + a.toString + File.separator
+      a.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults)
       a.traverse(liftedMain) match {
         case Some(result) => { analysisResults(a.className) = result }
         case _ =>
       }
     }
     reset
+    
+    System.out.println("Now printing")
 
     if (Config.degFilename.endsWith(".deg")) {
       val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
+      val baseDir = Config.buildDir + File.separator + codegen.toString + File.separator
+      codegen.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults) // whole scala application (for testing)
       codegen.emitSource(liftedMain, "Application", streamScala) // whole scala application (for testing)
       // TODO: dot output
       reset
     }
-    deliteGenerator.initializeGenerator(Config.buildDir)
+    deliteGenerator.initializeGenerator(Config.buildDir, args, analysisResults)
     deliteGenerator.emitSource(liftedMain, "Application", stream)
     deliteGenerator.finalizeGenerator()
 

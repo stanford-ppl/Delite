@@ -15,10 +15,8 @@ trait TraversalAnalysis extends GenericFatCodegen {
   import IR._
   implicit val stream: PrintWriter = new PrintWriter(new MockStream())
   val className: String
-  var _app: DeliteApplication = null
   var _result: Option[Any] = None
   
-  def init(app: DeliteApplication, args: Array[String]) = { _app = app }
   def traverseNode(sym: Sym[Any], a: Def[Any]) = emitNode(sym, a)(stream)
   def traverseBlock(b: Exp[Any]) = emitBlock(b)(stream)
   def traverse[A:Manifest,B:Manifest](f: Exp[A] => Exp[B]) = { emitSource(f, className, stream); result }

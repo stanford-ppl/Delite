@@ -1,88 +1,112 @@
 package ppl.dsl.deliszt.analysis
 
-import scala.virtualization.lms.common.SimplifyTransform
+import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal.GenericFatCodegen
 
-trait LoopColoringOpt extends internal.GenericFatCodegen with SimplifyTransform {
-  val IR: LoopsFatExp
-  import IR._  
+import ppl.delite.framework.DeliteApplication
 
-  object SimpleIndex {
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.meshset.MeshSetOpsExp
+
+import scala.collection.mutable.{Map => MMap}
+
+trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
+  val IR: DeliteApplication with LoopsFatExp with DeLisztExp
+  import IR._
+  
+  import StencilCollector.StencilMap
+  
+  val blockSize = 1
+
+  object LCSimpleIndex {
     def unapply(a: Def[Any]): Option[(Exp[Any], Exp[Int])] = unapplySimpleIndex(a)
   }
 
-  object SimpleDomain {
+  object LCSimpleDomain {
     def unapply(a: Def[Int]): Option[Exp[Any]] = unapplySimpleDomain(a)
   }
 
-  object SimpleCollect {
+  object LCSimpleCollect {
     def unapply(a: Def[Any]): Option[Exp[Any]] = unapplySimpleCollect(a)
   }
 
-  object SimpleCollectIf {
+  object LCSimpleCollectIf {
     def unapply(a: Def[Any]): Option[(Exp[Any],List[Exp[Boolean]])] = unapplySimpleCollectIf(a)
   }
-
+  
+  var loopPrint = false
 
   override def focusExactScopeFat[A](currentScope0: List[TTP])(result0: List[Exp[Any]])(body: List[TTP] => A): A = {
     var result: List[Exp[Any]] = result0
     var currentScope = currentScope0
     
-/*
-    println("--- pre-pre-loop fusion: bound")
-    val bound = currentScope.flatMap(z => boundSyms(z.rhs))
-    bound.foreach(println)
-
-    println("--- pre-pre-loop fusion: dependent on bound")
-    val g1 = getFatDependentStuff(currentScope)(bound)
-    g1.foreach(println)
-*/
-
-    // find loops at current top level
-    var Wloops = super.focusExactScopeFat(currentScope)(result) { levelScope => 
-      // TODO: cannot in general fuse several effect loops (one effectful and several pure ones is ok though)
-      // so we need a strategy. a simple one would be exclude all effectful loops right away (TODO).
-      levelScope collect { case e @ TTP(_, SimpleFatLoop(_,_,_)) => e }
+    // Get the map of for loops to Stencil
+    val forMap = analysisResults("StencilCollectorStencils").asInstanceOf[MMap[Int,StencilMap]]
+    val msMap = analysisResults("StencilCollectorMeshsets").asInstanceOf[MMap[Int,MeshSet[MeshObj]]]
+    
+    // Find loops at current top level that exist in the stencil
+    var foreachs = super.focusExactScopeFat(currentScope)(result) { levelScope => 
+      // Collect various types of loops. I believe #2 is the current style but it might change...
+      levelScope collect { case e @ TTP(syms, SimpleFatLoop(_,_,_)) if syms exists { s => forMap.contains(s.id) } => e
+                           case e @ TTP(syms, ThinDef(Reflect(MeshSetForeach(_,_),_,_))) if syms exists { s => forMap.contains(s.id) } => e
+                           case e @ TTP(syms, ThinDef(MeshSetForeach(_,_))) if syms exists { s => forMap.contains(s.id) } => e }
     }
     
-    // TODO: CHECK IF WLoops symbol is part of stencil
-    
-    // FIXME: more than one super call means exponential cost -- is there a better way?
-    // ---> implicit memoization or explicit data structure
-    
-    /* problem: fusion might change currentScope quite drastically
-       is there some kind of strength reduction transformation to go from here
-       to the fused version without recomputing as much as we do now?
-    */
-    
-    if (Wloops.nonEmpty) {
-      var done = false
-
-      // keep track of loops in inner scopes
-      var UloopSyms = currentScope collect { case e @ TTP(lhs, SimpleFatLoop(_,_,_)) if !Wloops.contains(e) => lhs }
+    // Color each loop!
+    for(loop <- foreachs) {
+      // Grab the MeshSet
+      val id = (loop.lhs.collectFirst {
+        case Sym(id) => id
+      }).get
+      
+      val ms = msMap(id)
+      val stencil = forMap(id)
+      
+      // Initialize colorers!
+      val colorer = new RegisterColorer()
+      val interferenceBuilder = new InterferenceBuilder(colorer, blockSize)
+      
+      // And color!
+      val coloring = interferenceBuilder.buildAndColor(ms, stencil)
+      
+      // Output coloring for debugging
+      var i = 0
+      System.out.print("Loop id: " + id)
+      System.out.println("Num colors: " + coloring.numColors)
+      while(i < ms.size) {
+        System.out.println("Node: " + coloring.nodes(i) + " color: " + coloring.colors(i))
+        i += 1
+      }
+      
+      // var UloopSyms = currentScope collect { case e @ TTP(lhs, SimpleFatLoop(_,_,_)) if !Wloops.contains(e) => lhs }
       
       // utils
-      def WgetLoopShape(e: TTP): Exp[Int] = e.rhs match { case SimpleFatLoop(s,x,rhs) => s }
-      def WgetLoopVar(e: TTP): List[Sym[Int]] = e.rhs match { case SimpleFatLoop(s,x,rhs) => List(x) }
+      def loopParams(e: TTP): (Exp[Int], Exp[Int]) = e.rhs match {
+        case SimpleFatLoop(s,x,rhs) => (s, x)
+        case ThinDef(d) => d match {
+          case Reflect(msf @ MeshSetForeach(_,_),_,_) => (msf.size, msf.v)
+          case msf @ MeshSetForeach(_,_) => (msf.size, msf.v)
+        }
+      }
+      
       def WgetLoopRes(e: TTP): List[Def[Any]] = e.rhs match { case SimpleFatLoop(s,x,rhs) => rhs }
 
-      val loopCollectSyms = Wloops flatMap (e => (e.lhs zip WgetLoopRes(e)) collect { case (s, SimpleCollectIf(_,_)) => s })
+      val loopCollectSyms = (loop.lhs zip WgetLoopRes(loop)) collect { case (s, LCSimpleCollectIf(_,_)) => s }
       
-      val loopSyms = Wloops flatMap (_.lhs)
-      val loopVars = Wloops flatMap WgetLoopVar
-
-      val WloopSyms = Wloops map (_.lhs)
-      val WloopVars = Wloops map WgetLoopVar
-
+      val (shape, loopVar) = loopParams(loop)
+      
       def extendLoopWithCondition(e: TTP, shape: Exp[Int], targetVar: Sym[Int], c: List[Exp[Boolean]]): List[Exp[Any]] = e.rhs match { 
         case SimpleFatLoop(s,x,rhs) => rhs.map { r => findOrCreateDefinition(SimpleLoop(shape,targetVar,applyAddCondition(r,c))).sym }
       }
              
       val t = new SubstTransformer
+    }
     
-      // actually do the fusion: now transform the loops bodies
+    /*  // actually do the fusion: now transform the loops bodies
       // within fused loops, remove accesses to outcomes of the fusion
       currentScope.foreach {
-        case e@TTP(List(s), ThinDef(SimpleIndex(a, i))) =>
+        case e@TTP(List(s), ThinDef(LCSimpleIndex(a, i))) =>
           printlog("considering " + e)
           Wloops.find(_.lhs contains a) match {
             case Some(fused) if WgetLoopVar(fused) contains t(i) => 
@@ -90,7 +114,7 @@ trait LoopColoringOpt extends internal.GenericFatCodegen with SimplifyTransform 
               
               printlog("replace " + e + " at " + index + " within " + fused)
 
-              val rhs = WgetLoopRes(fused)(index) match { case SimpleCollectIf(y,c) => y }
+              val rhs = WgetLoopRes(fused)(index) match { case LCSimpleCollectIf(y,c) => y }
               
               t.subst(s) = rhs
             case _ => //e
@@ -100,10 +124,6 @@ trait LoopColoringOpt extends internal.GenericFatCodegen with SimplifyTransform 
       
       
       currentScope = getFatSchedule(currentScope)(currentScope) // clean things up!
-
-      /*println("<1---"+result0+"/"+result)
-      currentScope.foreach(println)
-      println("---1>")*/
 
       // SIMPLIFY! <--- multiple steps necessary???
       
@@ -143,24 +163,12 @@ trait LoopColoringOpt extends internal.GenericFatCodegen with SimplifyTransform 
         printdbg(previousScope + "-->" + currentScope)
       }
       
-      /*println("<x---"+result0+"/"+result)
-      currentScope.foreach(println)
-      println("---x>")*/
-
       //Wloops = currentScope collect { case e @ TTP(_, FatLoop(_,_,_)) => e }
 
       Wloops = transformAll(Wloops, t)
       
       UloopSyms = UloopSyms map (t onlySyms _) // just lookup the symbols
     }
-    
-    // prune Wloops (some might be no longer necessary)
-    /* Wloops = Wloops map {
-      case TTP(lhs, SimpleFatLoop(s, x, rhs)) =>
-        val ex = lhs map (s => currentScope exists (_.lhs == List(s)))
-        def select[A](a: List[A], b: List[Boolean]) = (a zip b) collect { case (w, true) => w }
-        TTP(select(lhs, ex), SimpleFatLoop(s, x, select(rhs, ex)))
-    } */
     
     // PREVIOUS PROBLEM: don't throw out all loops, might have some that are *not* in levelScope
     // note: if we don't do it here, we will likely see a problem going back to innerScope in 
@@ -195,6 +203,7 @@ trait LoopColoringOpt extends internal.GenericFatCodegen with SimplifyTransform 
       }
       
     }
+    */
     
     // do what super does ...
     super.focusExactScopeFat(currentScope)(result0)(body)

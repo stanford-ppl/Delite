@@ -125,7 +125,7 @@ trait SC extends DeLisztApplication {
       if(ID(outside(f)) < ID(inside(f))) {
         calcFaceGeom(flip(f))
       } else {
-        calcFaceGeom(f)
+        calcFaceGeom(f)t
       }
     }
     for(f <- faces(mesh)) {

@@ -22,7 +22,7 @@ import ppl.dsl.deliszt.vec._
 import ppl.dsl.deliszt.mesh._
 import ppl.dsl.deliszt.meshset._
 
-import ppl.dsl.deliszt.analysis.DeLisztCodeGenAnalysis
+import ppl.dsl.deliszt.analysis.{DeLisztCodeGenAnalysis, LoopColoringOpt}
 
 /**
  * These are the portions of Scala imported into DeLiszt's scope.
@@ -117,7 +117,7 @@ trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with Languag
 /**
  * DeLiszt code generators
  */
-trait DeLisztCodeGenBase extends GenericFatCodegen {
+trait DeLisztCodeGenBase extends GenericFatCodegen with LoopColoringOpt {
 
   val IR: DeliteApplication with DeLisztExp
   override def initialDefs = IR.deliteGenerator.availableDefs

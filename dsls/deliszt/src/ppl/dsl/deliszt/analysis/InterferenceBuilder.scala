@@ -4,7 +4,7 @@ import collection.mutable.{HashMap, Set => MSet}
 import ppl.dsl.deliszt.datastruct.scala._
 
 class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
-  type StencilMap = Map[MeshObj,ReadWriteSet]
+  import StencilCollector.StencilMap
 
   def buildAndColor[MO<:MeshObj](ms: MeshSet[MO], stencil: StencilMap) : Coloring = {
     val accesses = new HashMap[FieldAccess,MSet[MeshObj]]() { override def default(key: FieldAccess) = MSet[MeshObj]() }
@@ -70,6 +70,6 @@ class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
     val nodes = (ms map { mo: MO => mo.internalId }).toArray
     
     // Now output them?
-    new Coloring(nodes, colors, numColors)
+    new Coloring(nodes, colors, numColors, blockSize)
   }
 }
