@@ -49,16 +49,6 @@ trait MeshSetOpsExp extends MeshSetOps with VariablesExp with BaseFatExp {
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[VT]] */
   
-  override def syms(e: Any): List[Sym[Any]] = e match {
-    case f@MeshSetForeach(in, func) => Nil
-    case _ => super.syms(e)
-  }
-
-  override def boundSyms(e: Any): List[Sym[Any]] = e match {
-    case f@MeshSetForeach(in, func) => Nil
-    case _ => super.boundSyms(e)
-  }
-
   /////////////////////
   // object interface
 

@@ -106,8 +106,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       }
     }
 
-    def apply[A<:MeshObj:Manifest,B<:MeshObj:Manifest](in: MultipleMeshObj[A], f: A => MultipleMeshObj[B]) : MultipleMeshObj[B] = {
-      var out = NoObjs[B]()
+    def multi[A<:MeshObj:Manifest,B<:MeshObj:Manifest](in: MultipleMeshObj[A], f: A => MultipleMeshObj[B]) : MultipleMeshObj[B] = {
+      var out: MultipleMeshObj[B] = NoObjs[B]()
       
       for(mo <- in.objs) {
         out = out ++ f(mo)
@@ -116,16 +116,16 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       out
     }
     
-    def apply[A<:MeshObj:Manifest,B<:MeshObj:Manifest](e: Exp[_], f: A => MultipleMeshObj[B]) : MultipleMeshObj[B] = {
-      apply(moValue[A](e), f)
+    def multi[A<:MeshObj:Manifest,B<:MeshObj:Manifest](e: Exp[_], f: A => MultipleMeshObj[B]) : MultipleMeshObj[B] = {
+      multi(moValue[A](e), f)
     }
     
-    def apply[A<:MeshObj:Manifest,B<:MeshObj:Manifest](e: A, f: A => MultipleMeshObj[B]) : MultipleMeshObj[B] = {
-      apply(OneObj(e), f)
+    def multi[A<:MeshObj:Manifest,B<:MeshObj:Manifest](e: A, f: A => MultipleMeshObj[B]) : MultipleMeshObj[B] = {
+      multi(OneObj(e), f)
     }
     
     def apply[A<:MeshObj:Manifest,B<:MeshObj:Manifest](in: MultipleMeshObj[A], f: A => B) : MultipleMeshObj[B] = {
-      var out = NoObjs[B]()
+      var out: MultipleMeshObj[B] = NoObjs[B]()
       
       for(mo <- in.objs) {
         out = out + f(mo)
@@ -145,7 +145,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   import StencilCollector.StencilMap
 
-  val forMap = new HashMap[Int,StencilMap]() { override def default(key: Int) = new HashMap[MeshObj,ReadWriteSet]() { override def default(key: MeshObj) = new ReadWriteSet() } }
+  val forMap = new HashMap[Int,StencilMap]()
   val msMap = MMap[Int,MeshSet[_]]()
   
   // Store the current top level for loop
@@ -169,36 +169,43 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   // Mark accesses
   def markRead[MO<:MeshObj,VT](f: Exp[Field[MO,VT]], i: Exp[MeshObj]) {
     val sym = f.asInstanceOf[Sym[Field[MO,VT]]]
-    val mo = value[MeshObj](i)
+    val mos = value[MultipleMeshObj[MeshObj]](i)
     
     currentFor match {
-	    case Some(x) => forMap(currentFor.get)(currentMo.get).read += FieldAccess(sym.id, mo)
-	    case None => System.out.println("CURRENT FOR IS NONE")
+	    case Some(x) => {
+	      for(mo <- mos.objs) {
+  	      forMap(x)(currentMo.get).read += FieldAccess(sym.id, mo)
+  	    }
+	    }
+	    case None => System.out.println("No top level for")
     }
   }
   
   def markWrite[MO<:MeshObj,VT](f: Exp[Field[MO,VT]], i: Exp[MeshObj]) {
     val sym = f.asInstanceOf[Sym[Field[MO,VT]]]
-    val mo = value[MeshObj](i)
+    val mos = value[MultipleMeshObj[MeshObj]](i)
     
     currentFor match {
-	    case Some(x) => forMap(currentFor.get)(currentMo.get).write += FieldAccess(sym.id, mo)
-	    case None => System.out.println("CURRENT FOR IS NONE")
+	    case Some(x) => {
+	      for(mo <- mos.objs) {
+  	      forMap(x)(currentMo.get).write += FieldAccess(sym.id, mo)
+	      }
+	    }
+	    case None => System.out.println("No top level for")
     }    
   }
   
   def matchFor(i: Int) = {
     currentFor match {
-      case Some(i) => true
+      case Some(x) => i == x
       case _ => false
     }
   }
   
   def setFor(i: Int, ms: MeshSet[_]) {
-    if(currentFor.isEmpty) {
-      currentFor = Some(i)
-      msMap(i) = ms
-    }
+    currentFor = Some(i)
+    forMap(i) = new HashMap[MeshObj,ReadWriteSet]() { override def default(key: MeshObj) = new ReadWriteSet() }
+    msMap(i) = ms
   }
   
   val values = MMap[Int,Any]()
@@ -209,9 +216,9 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     
   def combine(a: Any, b: Any) = {
     (a, b) match {
-      case (x: MultipleMeshObj[_], y: MultipleMeshObj[_]) => x ++ y
-      case (x: MultipleMeshObj[_], _) => x
-      case (_, y: MultipleMeshObj[_]) => y
+      case (x: MultipleMeshObj[MeshObj], y: MultipleMeshObj[MeshObj]) => x ++ y
+      case (x: MultipleMeshObj[MeshObj], _) => x
+      case (_, y: MultipleMeshObj[MeshObj]) => y
       
       // Just pick one, doesn't really matter
       case _ => a
@@ -232,14 +239,13 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     case null => None
     case Const(f: Float) => Some(f)
     case Const(z) => Some(z)
-    case Sym(n) => { System.out.println("SYM " + n); val temp = values.get(n); System.out.println(temp); temp }
+    case Sym(n) => values.get(n)
     // Doesn't exist anymore?
     // case External(s, args) => null
     case _ => { throw new RuntimeException("Could not get value"); None }
   }
   
-  def value[T:Manifest](x: Exp[Any]) : T = {System.out.println("Fetching value for")
-    System.out.println(x)
+  def value[T:Manifest](x: Exp[Any]) : T = {
     (rawValue(x) match {
     case Some(o) => o
     case None => null
@@ -308,8 +314,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       case DeLisztFlipEdge(e) => MultipleMeshObj[Edge,Edge](e, (mo:Edge) => Mesh.flip(mo))
       case DeLisztFlipFace(e) => MultipleMeshObj[Face,Face](e, (mo:Face) => Mesh.flip(mo))
 
-      case DeLisztTowardsEdgeVertex(e, v) => MultipleMeshObj(e, (mo: Edge) => MultipleMeshObj(mo, (e2: Edge) => Mesh.towards(e2, value(v))))
-      case DeLisztTowardsFaceCell(e, c) => MultipleMeshObj(e, (mo: Face) => MultipleMeshObj(mo, (e2: Face) => Mesh.towards(e2, value(c))))
+      case DeLisztTowardsEdgeVertex(e, v) => MultipleMeshObj.multi(e, (e1: Edge) => MultipleMeshObj(v, (e2: Vertex) => Mesh.towards(e1, e2)))
+      case DeLisztTowardsFaceCell(e, c) => MultipleMeshObj.multi(e, (e1: Face) => MultipleMeshObj(c, (e2: Cell) => Mesh.towards(e1, e2)))
       
       case DeliteCollectionApply(e, i) => {
         val obj = (rawValue(e), rawValue(i)) match {
@@ -322,12 +328,10 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       
       // While loops. Execute once. Store results if results are a mesh element
       case While(c,b) => {
-        System.out.println("A WHILE LOOP??")
         blockValue(b)
       }
       
       case DeliteWhile(c,b) => {
-        System.out.println("A WHILE LOOP??")
         blockValue(b)
       }
       
@@ -337,19 +341,15 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         val resultB = blockValue[Any](b)
         
         // Combine the two! Only care really if it is a mesh element though
-        // combine(resultA,resultB)
-        None
+        combine(resultA,resultB)
       }
       
       case DeliteIfThenElse(c,a,b,f) => {        
         val resultA = blockValue[Any](a)
         val resultB = blockValue[Any](b)
-        
-        System.out.println("IF ELSE")
-        
+                
         // Combine the two! Only care really if it is a mesh element though
-        // combine(resultA,resultB)
-        None
+        combine(resultA,resultB)
       }
 
       case _ => None
@@ -373,61 +373,43 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         // Get value for the mesh set
         val ms = value[MeshSet[_]](m)
     
-        System.out.println("FOUND A FOREACH SYM" + sym.id)
-	      System.out.println(rhs)
-    
         // if not current top, mark current top....
         if(currentFor.isEmpty) {
-          System.out.println("SETTING FOR")
           setFor(sym.id, ms)
+          System.out.println("Found a top level foreach sym " + sym.id)
         }
           
-        if(on) {
+        val mssize: Int = ms.size
+        val stuff: Int = 0
+        
+        var i: Int = 0
+        // Run foreach over mesh set
+        for(mo <- ms) {
+          // If top level foreach, mark the current element as one we are collecting stencil for
+          if(matchFor(sym.id)) {
+            currentMo = Some(mo)
+          }
+        
+          // Store loop index in loop index symbol
+          store(f.i, i)
+          store(f.v, i)
           
-          System.out.println("RUNNING FOREACH")
-          
-          val mssize:Int = ms.size
-          val stuff:Int = 0
-          
-          var i: Int = 0
-          // Run foreach over mesh set
-          for(mo <- ms) {
-            // If top level foreach, mark the current element as one we are collecting stencil for
-            if(matchFor(sym.id)) {
-              currentMo = Some(mo)
-            }
-          
-            System.out.println("STORING SYM " + f.v.id)
-            System.out.println(mo)
-            
-            System.out.println("STORING SYM INDEX " + f.i.id)
-            System.out.println(i)
-            
-            // Store loop index in loop index symbol
-            store(f.i, i)
-            store(f.v, i)
-            
-            // Re "emit" block
-            f.body match {
-              case DeliteForeachElem(func, sync) => emitBlock(func)
-            }
-            
-            i += 1
+          // Re "emit" block
+          f.body match {
+            case DeliteForeachElem(func, sync) => emitBlock(func)
           }
           
+          i += 1
         }
-          
+        
         // Clear out the current for loop if we are the top
         if(matchFor(sym.id)) {
-          System.out.println("CLEARING FOR")
-	        System.out.println(currentFor.get)
           currentFor = None
         }
       }
       
       // While loops. Execute once. Store results if results are a mesh element
       case DeliteWhile(c,b) => {
-        System.out.println("A WHILE LOOP??")
         emitBlock(c)
         
         emitBlock(b)
@@ -435,7 +417,6 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       
       // While loops. Execute once. Store results if results are a mesh element
       case While(c,b) => {
-        System.out.println("A WHILE LOOP??")
         emitBlock(c)
         
         emitBlock(b)
@@ -443,7 +424,6 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       
       // Execute both branches. Store results if results are a mesh element
       case IfThenElse(c,a,b) => {
-        System.out.println("IF ELSE?")
         emitBlock(c)
         
         emitBlock(a)
@@ -453,7 +433,6 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
             
       // Execute both branches. Store results if results are a mesh element
       case DeliteIfThenElse(c,a,b,h) => {
-        System.out.println("IF ELSE?")
         emitBlock(c)
         
         emitBlock(a)
@@ -491,8 +470,6 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     
     maybeValue(rhs) match {
       case Some(o) => {
-        System.out.println("STORING SYM " + sym.id)
-        System.out.println(o)
         store(sym, o)
       }
       case None => {}

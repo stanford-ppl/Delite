@@ -35,22 +35,32 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
     def unapply(a: Def[Any]): Option[(Exp[Any],List[Exp[Boolean]])] = unapplySimpleCollectIf(a)
   }
   
-  var loopPrint = false
+  var firstRun = true
 
   override def focusExactScopeFat[A](currentScope0: List[TTP])(result0: List[Exp[Any]])(body: List[TTP] => A): A = {
     var result: List[Exp[Any]] = result0
     var currentScope = currentScope0
     
+    System.out.println("focusing scopes")
+    
     // Get the map of for loops to Stencil
     val forMap = analysisResults("StencilCollectorStencils").asInstanceOf[MMap[Int,StencilMap]]
     val msMap = analysisResults("StencilCollectorMeshsets").asInstanceOf[MMap[Int,MeshSet[MeshObj]]]
+       
+    if(firstRun) {
+      System.out.println("Top level loops")
+      System.out.println(forMap.keys)
+      firstRun = false
+    }
     
     // Find loops at current top level that exist in the stencil
-    var foreachs = super.focusExactScopeFat(currentScope)(result) { levelScope => 
+    var foreachs = super.focusExactScopeFat(currentScope)(result) { levelScope =>   
+      System.out.println(levelScope)
       // Collect various types of loops. I believe #2 is the current style but it might change...
       levelScope collect { case e @ TTP(syms, SimpleFatLoop(_,_,_)) if syms exists { s => forMap.contains(s.id) } => e
                            case e @ TTP(syms, ThinDef(Reflect(MeshSetForeach(_,_),_,_))) if syms exists { s => forMap.contains(s.id) } => e
-                           case e @ TTP(syms, ThinDef(MeshSetForeach(_,_))) if syms exists { s => forMap.contains(s.id) } => e }
+                           case e @ TTP(syms, ThinDef(MeshSetForeach(_,_))) if syms exists { s => forMap.contains(s.id) } => e
+      }
     }
     
     // Color each loop!
@@ -67,13 +77,25 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
       val colorer = new RegisterColorer()
       val interferenceBuilder = new InterferenceBuilder(colorer, blockSize)
       
+      for((mo, rwset) <- stencil) {
+        System.out.println(mo)
+        for(FieldAccess(i, mo) <- rwset.read) {
+          System.out.println("read field " + i)
+          System.out.println(mo)
+        }
+        for(FieldAccess(i, mo) <- rwset.write) {
+          System.out.println("write field " + i)
+          System.out.println(mo)
+        }
+      }
+      
       // And color!
       val coloring = interferenceBuilder.buildAndColor(ms, stencil)
       
       // Output coloring for debugging
       var i = 0
       System.out.print("Loop id: " + id)
-      System.out.println("Num colors: " + coloring.numColors)
+      System.out.println(" Num colors: " + coloring.numColors)
       while(i < ms.size) {
         System.out.println("Node: " + coloring.nodes(i) + " color: " + coloring.colors(i))
         i += 1
@@ -90,9 +112,9 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         }
       }
       
-      def WgetLoopRes(e: TTP): List[Def[Any]] = e.rhs match { case SimpleFatLoop(s,x,rhs) => rhs }
+      //def WgetLoopRes(e: TTP): List[Def[Any]] = e.rhs match { case SimpleFatLoop(s,x,rhs) => rhs }
 
-      val loopCollectSyms = (loop.lhs zip WgetLoopRes(loop)) collect { case (s, LCSimpleCollectIf(_,_)) => s }
+      // val loopCollectSyms = (loop.lhs zip WgetLoopRes(loop)) collect { case (s, LCSimpleCollectIf(_,_)) => s }
       
       val (shape, loopVar) = loopParams(loop)
       
