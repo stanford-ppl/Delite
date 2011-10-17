@@ -23,10 +23,11 @@ object TPCH {
   implicit def cStrToDate(s: String) = Date(s)
 
   //pretty horrendous hack to use an int to decide which collection to load, but this is what you get with loss of having all these tables
+  //should be using builders
   def loadTPCHTable[T:Manifest](collectionType: Int, maxItems: Int = 0) =  {
       val path = collectionType match {
         case 1 => "lineitem"
-        case _ => error("Unsupported collection type")
+        case _ => sys.error("Unsupported collection type")
       }
       log("loading tpch table from file[" + tpchDataPath + File.separator + path +"] into memory")
       val filename = tpchDataPath + File.separator + path + ".tbl"
@@ -50,7 +51,7 @@ object TPCH {
         //dispatch based on type
         collectionType match {
           case 1 => data.append((new LineItem(fs(0),fs(1),fs(2),fs(3),fs(4),fs(5),fs(6),fs(7),fs(8),fs(9),fs(10),fs(11),fs(12),fs(13),fs(14),fs(15))).asInstanceOf[T]) 
-          case _ => error("Unsupported collection type") //only support lineitems for now
+          case _ => sys.error("Unsupported collection type") //only support lineitems for now
         }                        
         i += 1
         if(i%500000 == 0) {
