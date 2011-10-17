@@ -5,13 +5,12 @@ import java.io.{FileWriter, File, PrintWriter}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen, GenerationFailedException}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
-import ppl.delite.framework.datastructures._
 import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with IfThenElseFatExp
-    with VariantsOpsExp with DeliteCollectionOpsExp with DeliteArrayOpsExp
+    with VariantsOpsExp with DeliteCollectionOpsExp
     with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp  {
   
   
@@ -210,28 +209,28 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
    * variables, but they cannot depend on other elements of the input or output collection (disjoint access).
    *
-   * @param  in    the input DeliteArray[A]
-   * @param  out   the output DeliteArray[B]
+   * @param  in    the input collection
+   * @param  size  the size of the input collection
    * @param  func  the mapping function Exp[A] => Exp[B]
    * @param  alloc function returning the output collection. if it is the same as the input collection,
-   *               the operation is mutable; (=> DeliteArray[B]).
+   *               the operation is mutable; (=> DeliteCollection[B]).
    */ 
-  abstract class DeliteOpMap[A:Manifest, B:Manifest, CB:Manifest]
+  abstract class DeliteOpMap[A:Manifest,
+                             B:Manifest, CB <: DeliteCollection[B]:Manifest]
     extends DeliteOpLoop[CB] {
     type OpType <: DeliteOpMap[A,B,CB]
 
     // supplied by subclass
-    val in: Exp[DeliteArray[A]]
+    val in: Exp[DeliteCollection[A]]
     //val size: Exp[Int] // could be dc_size(in), but we want type-specific pattern matching to work
     def func: Exp[A] => Exp[B]
     def alloc: Exp[CB]
-    def out: Exp[DeliteArray[B]]
+    def update(value: Exp[B]): Exp[Unit] = dc_update(alloc, v, value)
 
     // loop
-    val size: Exp[Int] = copyTransformedOrElse(_.size)(in.length)
     lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B, CB](
       alloc = reifyEffects(this.alloc),
-      func = reifyEffects(this.func(in(v)))
+      func = reifyEffects(this.func(dc_apply(in,v)))
     ))
   }
 
@@ -275,22 +274,22 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    * @param  alloc function returning the output collection. if it is the same as the input collection,
    *               the operation is mutable; (=> DeliteCollection[B]).
    */
-  abstract class DeliteOpZipWith[A:Manifest, B:Manifest, R:Manifest, CR:Manifest]
+  abstract class DeliteOpZipWith[A:Manifest,
+                                 B:Manifest,
+                                 R:Manifest, CR <: DeliteCollection[R]:Manifest]
     extends DeliteOpLoop[CR] {
     type OpType <: DeliteOpZipWith[A,B,R,CR]
       
     // supplied by subclass   
-    val inA: Exp[DeliteArray[A]]
-    val inB: Exp[DeliteArray[B]]
+    val inA: Exp[DeliteCollection[A]]
+    val inB: Exp[DeliteCollection[B]]
     def func: (Exp[A], Exp[B]) => Exp[R]
     def alloc: Exp[CR]
-    def out: Exp[DeliteArray[R]]
     
     // loop
-    val size: Exp[Int] = copyTransformedOrElse(_.size)(inA.length)
     lazy val body: Def[CR] = copyBodyOrElse(DeliteCollectElem[R, CR](
       alloc = reifyEffects(this.alloc),
-      func = reifyEffects(this.func(inA(v), inB(v)))
+      func = reifyEffects(this.func(dc_apply(inA,v), dc_apply(inB,v)))
     ))
   }
   
@@ -907,8 +906,10 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println(prefixSym + quote(sym) + "_buf_append(" + quote(getBlockResult(elem.func)) + ")")
       else
         stream.println(prefixSym + quote(sym) + ".insert(" + prefixSym + quote(sym) + ".length, " + quote(getBlockResult(elem.func)) + ")")
-    } else
-      stream.println(prefixSym + quote(sym) + ".dcUpdate(" + quote(op.v) + ", " + quote(getBlockResult(elem.func)) + ")")
+    } else {
+      //TODO: this should use the DSL impl of dc_update
+      stream.println(prefixSym + quote(sym) + "(" + quote(op.v) + ") = " + quote(getBlockResult(elem.func)))
+    }
   }
   
   def emitForeachElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteForeachElem[_])(implicit stream: PrintWriter) {

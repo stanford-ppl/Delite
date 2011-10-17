@@ -1,11 +1,12 @@
 package ppl.delite.framework.datastructures
 
 import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.common.{Base, StructExp, StructExpOptCommon, StructFatExpOptCommon}
+import scala.virtualization.lms.common.{Base, EffectExp, StructExp, StructExpOptCommon, StructFatExpOptCommon, ScalaGenEffect}
+import java.io.PrintWriter
+
+class DeliteArray[T]
 
 trait DeliteArrayOps extends Base {
-  
-  class DeliteArray[T]
     
   object DeliteArray {
     def apply[T:Manifest](length: Rep[Int]) = darray_new(length)
@@ -25,10 +26,10 @@ trait DeliteArrayOps extends Base {
   def darray_length[T:Manifest](da: Rep[DeliteArray[T]]): Rep[Int]
   def darray_apply[T:Manifest](da: Rep[DeliteArray[T]], i: Rep[Int]): Rep[T]
   def darray_update[T:Manifest](da: Rep[DeliteArray[T]], i: Rep[Int], x: Rep[T]): Rep[Unit]
-  
+    
 }
 
-trait DeliteArrayOpsExp extends DeliteArrayOps with StructExp {
+trait DeliteArrayOpsExp extends DeliteArrayOps with StructExp with EffectExp {
   this: DeliteOpsExp =>
   
   case class DeliteArrayNew[T:Manifest](length: Exp[Int]) extends Def[DeliteArray[T]]
@@ -86,4 +87,26 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {
 
 trait DeliteArrayFatExp extends DeliteArrayOpsExpOpt with StructFatExpOptCommon {
   this: DeliteOpsExp =>
+}
+
+trait ScalaGenDeliteArrayOps extends ScalaGenEffect {
+  val IR: DeliteArrayOpsExp
+  import IR._
+  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case DeliteArrayNew(length) =>
+      emitValDef(sym, "new Array[" + sym.Type.typeArguments(0).toString + "](" + quote(length) + ")")
+    case DeliteArrayLength(da) =>
+      emitValDef(sym, quote(da) + ".length")
+    case DeliteArrayApply(da, idx) =>
+      emitValDef(sym, quote(da) + "(" + quote(idx) + ")")
+    case DeliteArrayUpdate(da, idx, x) =>
+      emitValDef(sym, quote(da) + "(" + quote(idx) + ") = " + quote(x))
+    case _ => super.emitNode(sym, rhs)
+  }
+  
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteArray" => "Array[" + remap(m.typeArguments(0)) + "]"
+    case _ => super.remap(m)
+  }
 }
