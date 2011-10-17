@@ -900,7 +900,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     //case Def(Reflect(e @ DenseVectorClone(a), _,_)) => densevector_length(a) // FIXME: in general this is unsafe, but hey...
     case Def(DenseVectorObjectZeros(l)) => l
     case Def(DenseVectorClone(a)) => densevector_length(a)
-    case Def(DenseVectorObjectRange(s,e,d,r)) => (e - s + d - 1) / d
+    //case Def(DenseVectorObjectRange(s,e,d,r)) => (e - s + d - 1) / d
     case Def(MatrixVView(x, start, stride, l, r)) => l
     case Def(MatrixGetRow(x,i)) => x.numCols
 
@@ -931,7 +931,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     //case Def(e: DenseVectorDeliteOp[A] => e.isRow)
     //case Def(Reflect(DenseVectorObjectZeros(l,r), _)) => r
     case Def(DenseVectorClone(a)) => densevector_isRow(a)
-    case Def(DenseVectorObjectRange(s,e,d,r)) => r
+    //case Def(DenseVectorObjectRange(s,e,d,r)) => r
     case Def(MatrixVView(x, start, stride, l, r)) => r
     case Def(MatrixGetRow(x,i)) => Const(true)
     case _ => super.densevector_isRow(x)
@@ -941,7 +941,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
   def densevector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]): Option[Exp[A]] = x match {
     case Def(DenseVectorObjectZeros(l)) => Some(unit(0).asInstanceOf[Exp[A]])
     case Def(DenseVectorObjectOnes(l)) => Some(unit(1).asInstanceOf[Exp[A]])
-    case Def(DenseVectorObjectRange(s,e,d,r)) => Some((s + n*d).asInstanceOf[Exp[A]])
+    //case Def(DenseVectorObjectRange(s,e,d,r)) => Some((s + n*d).asInstanceOf[Exp[A]])
     case Def(DenseVectorTrans(x)) => Some(densevector_apply(x,n))
     case Def(MatrixGetRow(x, i)) => Some(matrix_apply(x,i,n))
     case _ => None

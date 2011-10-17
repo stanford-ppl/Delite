@@ -49,7 +49,7 @@ trait VectorOps extends DSLType with Variables {
     def rand(len: Rep[Int]) = densevector_obj_rand(len)
     def randf(len: Rep[Int]) = densevector_obj_randf(len)
     def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = 1, isRow: Rep[Boolean] = unit(true)) =
-      densevector_obj_range(start, end, stride, isRow)
+      vector_obj_range(start, end, stride, isRow)
     def uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean] = unit(true)) =
       densevector_obj_uniform(start, step_size, end, isRow)
   }
@@ -135,6 +135,7 @@ trait VectorOps extends DSLType with Variables {
     // we only need to go through this gymnastic hack when we have different return values for different ops;
     // usually this would just return Rep[VA] (i.e. the same as the lhs)
     // would be really nice if we could use a default value here (VA), but the overrides don't seem to work...
+    // could overload for a more specific static type, but can't override +(y: Interface[Vector[A]]) in SparseVecOps because the return value Dense is not a subtype of VA
     type VPLUSR
     implicit val mVPLUSR: Manifest[VPLUSR]
     implicit val vplusBuilder: VectorBuilder[A,VPLUSR]    
@@ -337,7 +338,7 @@ trait VectorOps extends DSLType with Variables {
   def densevector_obj_zerosf(len: Rep[Int]): Rep[DenseVector[Float]]
   def densevector_obj_rand(len: Rep[Int]): Rep[DenseVector[Double]]
   def densevector_obj_randf(len: Rep[Int]): Rep[DenseVector[Float]]
-  def densevector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], isRow: Rep[Boolean]): Rep[RangeVector]
+  def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], isRow: Rep[Boolean]): Rep[RangeVector]
   def densevector_obj_uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[DenseVector[Double]]
   def densevector_obj_flatten[A:Manifest](pieces: Rep[DenseVector[DenseVector[A]]]): Rep[DenseVector[A]]
 
@@ -414,7 +415,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
 
-  case class DenseVectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean])
+  case class VectorObjectRange(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean])
     extends Def[RangeVector]
   case class DenseVectorNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) extends Def[DenseVector[A]] {
     val mA = manifest[A]
@@ -677,7 +678,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   case class VectorMinIndex[A:Manifest:Ordering:HasMinMax](inB: Interface[Vector[A]]) 
     extends DeliteOpZipWithReduceTuple2[Int,A,Int,A] {
 
-    val inA = copyOrElse(_.inA)(denseToInterface(0::inB.length))
+    val inA = copyOrElse(_.inA)(rangeToInterface(0::inB.length))
     val size = copyTransformedOrElse(_.size)(inB.length)
     val zero = (copyTransformedOrElse(_.zero._1)(unit(0)),copyTransformedOrElse(_.zero._2)(implicitly[HasMinMax[A]].maxValue)) // 0 sensible? maybe -1?
     def zip = (a,b) => (a,b)
@@ -691,7 +692,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   case class VectorMaxIndex[A:Manifest:Ordering:HasMinMax](inB: Interface[Vector[A]]) 
     extends DeliteOpZipWithReduceTuple2[Int,A,Int,A] {
 
-    val inA = copyOrElse(_.inA)(denseToInterface(0::inB.length))
+    val inA = copyOrElse(_.inA)(rangeToInterface(0::inB.length))
     val size = copyTransformedOrElse(_.size)(inB.length)
     val zero = (copyTransformedOrElse(_.zero._1)(unit(0)),copyTransformedOrElse(_.zero._2)(implicitly[HasMinMax[A]].minValue)) // 0 sensible? maybe -1?
     def zip = (a,b) => (a,b)
@@ -805,7 +806,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   def densevector_obj_zerosf(len: Exp[Int]) = reflectPure(DenseVectorObjectZerosF(len))
   def densevector_obj_rand(len: Exp[Int]) = reflectEffect(DenseVectorObjectRand(len))
   def densevector_obj_randf(len: Exp[Int]) = reflectEffect(DenseVectorObjectRandF(len))
-  def densevector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean]) = reflectPure(DenseVectorObjectRange(start, end, stride, isRow))
+  def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean]) = reflectPure(VectorObjectRange(start, end, stride, isRow))
   def densevector_obj_uniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean]) = reflectPure(DenseVectorObjectUniform(start, step_size, end, isRow))
   def densevector_obj_flatten[A:Manifest](pieces: Exp[DenseVector[DenseVector[A]]]) = reflectPure(DenseVectorObjectFlatten(pieces))
 
@@ -894,7 +895,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     case e@DenseVectorObjectUniform(x,y,z,w) => reflectPure(new { override val original = Some(f,e) } with DenseVectorObjectUniform(f(x),f(y),f(z),f(w)))(mtype(manifest[A]))
     // allocations
     case Reflect(e@DenseVectorObjectZeros(x), u, es) => reflectMirrored(Reflect(DenseVectorObjectZeros(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@DenseVectorObjectRange(s,o,d,r), u, es) => reflectMirrored(Reflect(DenseVectorObjectRange(f(s),f(o),f(d),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorObjectRange(s,o,d,r), u, es) => reflectMirrored(Reflect(VectorObjectRange(f(s),f(o),f(d),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@DenseVectorNew(l,r), u, es) => reflectMirrored(Reflect(DenseVectorNew(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
@@ -914,7 +915,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.VectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
-    case DenseVectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new generated.scala.RangeVectorImpl(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
+    case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new generated.scala.RangeVectorImpl(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
     case DenseVectorZeroDouble(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorDoubleImpl(" + quote(length) + ", " + quote(isRow) + ")")
     case DenseVectorZeroFloat(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorFloatImpl(" + quote(length) + ", " + quote(isRow) + ")")
     case DenseVectorZeroInt(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorIntImpl(" + quote(length) + ", " + quote(isRow) + ")")

@@ -17,10 +17,10 @@ import ppl.dsl.optila.{OptiLAExp, OptiLA}
 // however, as long as we don't provide access to the underlying matrix, it is still relatively constrained...
 trait MatrixRowOps extends DSLType with Base with OverloadHack { this: OptiLA =>
 
-  def infix_index[A:Manifest](x: Rep[MatrixRow[A]]) = matrixrow_index(x)
+  //def infix_index[A:Manifest](x: Rep[MatrixRow[A]]) = matrixrow_index(x)
 
   // class defs
-  def matrixrow_index[A:Manifest](x: Rep[MatrixRow[A]]): Rep[Int]
+  //def matrixrow_index[A:Manifest](x: Rep[MatrixRow[A]]): Rep[Int]
 }
 
 trait MatrixRowOpsExp extends MatrixRowOps with BaseExp { this: OptiLAExp =>
@@ -33,10 +33,10 @@ trait MatrixRowOpsExp extends MatrixRowOps with BaseExp { this: OptiLAExp =>
 
 trait MatrixRowOpsExpOpt extends MatrixRowOpsExp { this: OptiLAExp =>
 
-  override def matrixrow_index[A:Manifest](x: Exp[MatrixRow[A]]) = x match {
-    case Def(MatrixGetRow(m, i)) => i
-    case _ => super.matrixrow_index(x)
-  }
+  // override def matrixrow_index[A:Manifest](x: Exp[MatrixRow[A]]) = x match {
+  //     case Def(MatrixGetRow(m, i)) => i
+  //     case _ => super.matrixrow_index(x)
+  //   }
 }
 
 
@@ -50,11 +50,11 @@ trait ScalaGenMatrixRowOps extends BaseGenMatrixRowOps with ScalaGenBase {
   val IR: MatrixRowOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    // these are the ops that call through to the underlying real data structure
-    case MatrixRowIndex(x)   => emitValDef(sym, quote(x) + ".index")
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //     // these are the ops that call through to the underlying real data structure
+  //     case MatrixRowIndex(x)   => emitValDef(sym, quote(x) + ".index")
+  //     case _ => super.emitNode(sym, rhs)
+  //   }
 }
 
 trait CudaGenMatrixRowOps extends CudaGenBase with BaseGenMatrixRowOps

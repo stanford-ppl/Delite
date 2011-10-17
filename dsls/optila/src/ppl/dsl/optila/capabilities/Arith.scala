@@ -4,7 +4,7 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{CLikeCodegen}
-import ppl.dsl.optila.{DenseVector,ZeroVector,Vector,Matrix}
+import ppl.dsl.optila.{DenseVector,Vector,Matrix}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
 /*

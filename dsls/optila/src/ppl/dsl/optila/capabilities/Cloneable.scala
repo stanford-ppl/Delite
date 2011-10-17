@@ -23,10 +23,21 @@ trait CloneableOps extends Variables {
     def mutable() = cloneable.mutable(lhs)
   }
   
-  implicit def denseVectorCloneable[T:Manifest]: Cloneable[DenseVector[T]] = new Cloneable[DenseVector[T]] {
-    def cloneL(lhs: Rep[DenseVector[T]]) = lhs.cloneL()
-    def mutable(lhs: Rep[DenseVector[T]]) = lhs.mutable()
+//  implicit def vectorCloneable[A,VA <% Interface[Vector[A]]] = new Cloneable[VA] {
+  implicit def vectorCloneable[A,VA](implicit toOps: Rep[VA] => VecOpsCls[A]) = new Cloneable[VA] {
+    def cloneL(lhs: Rep[VA]) = lhs.cloneL().asInstanceOf[Rep[VA]] //toIntf(lhs).cloneL().ops.elem.asInstanceOf[Rep[VA]]
+    def mutable(lhs: Rep[VA]) = lhs.mutable().asInstanceOf[Rep[VA]] //toIntf(lhs).mutable().ops.elem.asInstanceOf[Rep[VA]]
   }
+  
+  // implicit def denseVectorCloneable[T:Manifest]: Cloneable[DenseVector[T]] = new Cloneable[DenseVector[T]] {
+  //   def cloneL(lhs: Rep[DenseVector[T]]) = lhs.cloneL()
+  //   def mutable(lhs: Rep[DenseVector[T]]) = lhs.mutable()
+  // }
+  // 
+  // implicit def rangeVectorCloneable: Cloneable[RangeVector] = new Cloneable[RangeVector] {
+  //   def cloneL(lhs: Rep[RangeVector]) = lhs.cloneL()
+  //   def mutable(lhs: Rep[RangeVector]) = lhs.mutable()
+  // }
   
   implicit def matrixCloneable[T:Manifest]: Cloneable[Matrix[T]] = new Cloneable[Matrix[T]] {
     def cloneL(lhs: Rep[Matrix[T]]) = lhs.cloneL()

@@ -2,7 +2,7 @@ package ppl.dsl.optila.vector
 
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
-import ppl.dsl.optila.{DenseVector,Matrix,EmptyVector}
+import ppl.dsl.optila.{DenseVector,Matrix}
 import ppl.dsl.optila.{OptiLALift, OptiLACompiler, OptiLA}
 
 trait DenseVectorImplOps { this: OptiLA =>
@@ -49,9 +49,12 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
     //  println("error: trying to concatenate row and column densevectors")
       // TODo: need an exception throwing mechanism in generated code -- could be External, but needs to accessible from Base
     //}
-    if (v1.isInstanceOfL[EmptyVector[A]]) v2
-    else if (v2.isInstanceOfL[EmptyVector[A]]) v1
-    else {
+    
+    // even if one of the vectors is empty, this operation should semantically result in a copy (which is very unfortunate if we use it to do flatMap-reduces in delite ops)
+    
+    //if (v1.isInstanceOfL[EmptyVector[A]]) v2
+    //else if (v2.isInstanceOfL[EmptyVector[A]]) v1
+    //else {
       val out = DenseVector[A](v1.length+v2.length, v1.isRow)
       for (i <- 0 until v1.length){
         out(i) = v1(i)
@@ -60,7 +63,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
         out(i+v1.length) = v2(i)
       }
       out.unsafeImmutable
-    }
+    //}
   }
 
   def densevector_times_matrix_impl[A:Manifest:Arith](v: Rep[DenseVector[A]], m: Rep[Matrix[A]]) = {

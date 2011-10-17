@@ -93,7 +93,8 @@ trait TopN extends OptiMLApplication {
     // uniqueness guaranteed by previous groupBy, but not statically provable... what should optiml do here? (nothing, because it's a foreach?)
     
     // TODO: this should be a SparseMatrix... only populated where we actually have a similarity value 
-    val similarityMatrix = SymmetricMatrix[Double](userRatings.length) // n x n where n is the number of unique users
+    //val similarityMatrix = SymmetricMatrix[Double](userRatings.length) // n x n where n is the number of unique users
+    val similarityMatrix = Matrix[Double](userRatings.length, userRatings.length)
     for (sim <- similarities) {
       similarityMatrix(sim.a, sim.b) = sim.value
     }

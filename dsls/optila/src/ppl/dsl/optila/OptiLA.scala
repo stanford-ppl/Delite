@@ -79,9 +79,10 @@ trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
  * This the trait that every OptiLA application must extend.
  */
 trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps
-  with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps with VectorOps with DenseVectorOps with MatrixOps with VectorViewOps
-  with LAInputReaderOps with LAOutputWriterOps
-  with MatrixRowOps with MatrixColOps {
+  with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
+  with VectorOps with DenseVectorOps with RangeVectorOps with VectorViewOps with MatrixRowOps with MatrixColOps
+  with MatrixOps 
+  with LAInputReaderOps with LAOutputWriterOps {
 
   this: OptiLAApplication =>
 }
@@ -99,7 +100,8 @@ trait OptiLACompiler extends OptiLA with RangeOps with IOOps with SeqOps with Se
  */
 trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
   with LanguageOpsExp with ArithOpsExpOpt 
-  with VectorOpsExp with DenseVectorOpsExpOpt with MatrixOpsExpOpt with VectorViewOpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
+  with VectorOpsExp with DenseVectorOpsExpOpt with RangeVectorOpsExp with VectorViewOpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
+  with MatrixOpsExpOpt 
   with LAInputReaderOpsExp with LAOutputWriterOpsExp
   with LanguageImplOpsStandard
   with VectorImplOpsStandard with DenseVectorImplOpsStandard with MatrixImplOpsStandard 
