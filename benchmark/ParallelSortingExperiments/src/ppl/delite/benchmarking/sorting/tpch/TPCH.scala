@@ -56,7 +56,7 @@ object TPCH {
         i += 1
         if(i%500000 == 0) {
           println("processed " + i + " records")
-          if(i >= maxItems)
+          if(maxItems !=0 && i >= maxItems)
             finish = true
         }
       }

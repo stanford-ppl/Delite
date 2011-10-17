@@ -10,7 +10,7 @@ object Config {
       sys.error("TPCH data directory not specified, specify using -Dtpch.dir=\"PATH_TO_DATA_DIR\"")
     else dir
   }
-  val tpch_num_elems = Integer.parseInt(System.getProperty("tpch.num_elems","2000000"))
+  val tpch_num_elems = Integer.parseInt(System.getProperty("tpch.num_elems","0"))
   
 
 }
