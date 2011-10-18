@@ -231,8 +231,8 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     // loop
     lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[Unit, CB](
       alloc = reifyEffects(this.alloc),
-      //func = this.func(dc_apply(in,v))
-      func = dc_update(alloc,v,this.func(dc_apply(in,v)))
+      //func = reifyEffects(this.func(dc_apply(in,v)))
+      func = reifyEffects(dc_update(alloc,v,this.func(dc_apply(in,v))))
     ))
   }
 
