@@ -26,6 +26,7 @@ class RegisterColorer extends Colorer {
     def apply(i: Int) = _colors(i)
     def update(i: Int, b: Boolean) {_colors(i) = b}
     def length = _colors.length
+    override def toString = _colors.map(_.toString + " ").mkString
   }
 	
 	// numNodes = number of nodes
@@ -42,15 +43,16 @@ class RegisterColorer extends Colorer {
     
     val colors = new Colors()
     
-    val pq = new UpdateablePriorityQueue(nodes, numNodes)
+    val pq = UpdateablePriorityQueue(nodes, numNodes)
     val removed = Array.fill[Boolean](numNodes) {false}
 		
-    var node: Option[Int] = None
+    var node: Option[NodeInfo[Int]] = None
     
 		while({ node = pq.pop(); node.isDefined }) {
       node match {
-        case Some(node) => { removed(node) = true
-          for(i <- sizes(node) until sizes(node+1)) {
+        case Some(node) => {
+          removed(node.obj) = true
+          for(i <- sizes(node.obj) until sizes(node.obj+1)) {
             val otherNode = edges(i)
             if(!removed(otherNode)) {
               pq.prioritize(nodes(otherNode),nodes(otherNode).priority - 1)

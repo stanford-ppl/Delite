@@ -1,33 +1,40 @@
 package ppl.dsl.deliszt.analysis
 
 object UpdateablePriorityQueue {
+  def apply[T](objs: IndexedSeq[NodeInfo[T]], max: Int) = {
+    val heap = new Array[NodeInfo[T]](max+1)
+    
+    for(i <- 0 until objs.length) {
+      objs(i).position = i+1
+      heap(i+1) = objs(i)
+    }
+    
+    val pq = new UpdateablePriorityQueue(heap, objs.length, max)
+    pq.heapify()
+    pq
+  }
+  
+  def apply[T](max: Int) : UpdateablePriorityQueue[T] = {
+    apply(new Array[NodeInfo[T]](0), max)
+  }
 }
 
 class NodeInfo[T](val obj: T, var priority: Int) {
   var position = 0
+
+  override def toString() : String = {
+    "Node(val: " + obj + ", pos: " + position + ", pri: " + priority + ")"
+  }
 }
 
-class UpdateablePriorityQueue[T](objs: Array[NodeInfo[T]], val max: Int) {
-  val heap = initData
-  var end = if(objs != null) objs.length else 0
-  
-  def initData = {
-    val nodes = new Array[NodeInfo[T]](max+1)
-    
-    for(i <- 0 until objs.length) {
-      objs(i).position = i+1
-      nodes(i+1) = objs(i)
-    }
-    
-    heapify()
-    nodes
-  }
-  
+class UpdateablePriorityQueue[T](val heap: Array[NodeInfo[T]], var end: Int, val max: Int) {
   def left(i: Int) = 2 * i
 	def right(i: Int) = 2*i + 1
 	def parent(i: Int) = i/2
 
-	def insert(obj: NodeInfo[T], pri: Int) {
+	def insert(obj: NodeInfo[T]) : Unit = insert(obj, obj.priority)
+
+	def insert(obj: NodeInfo[T], pri: Int) : Unit = {
 		assert(end < max)
     
     end += 1
@@ -43,7 +50,7 @@ class UpdateablePriorityQueue[T](objs: Array[NodeInfo[T]], val max: Int) {
 	//then the heap array will be in reverse sorted order
 	def pop() = {
 		if(end > 0) {
-			val obj = heap(1).obj
+			val obj = heap(1)
 			swap(1,end)
 			end -= 1
 			sink(1)
@@ -61,7 +68,6 @@ class UpdateablePriorityQueue[T](objs: Array[NodeInfo[T]], val max: Int) {
 		swim(t.position)
 	}
   
-	//def internal_array() { return heap + 1; }
   def internal_array() = heap
 
 	def heapify() {
@@ -131,11 +137,57 @@ class UpdateablePriorityQueue[T](objs: Array[NodeInfo[T]], val max: Int) {
 		heap(b).position = b
 	}
 	
-	/*
   def print() {
-    for(i < 1 to end) {
-      print(heap(i).priority + " ")
+    for(i <- 1 to end) {
+      System.out.print(heap(i).priority + " ")
     }
-    println()
-	} */
+    
+    System.out.println()
+	}
+}
+
+object PQTest {
+	def drain(p: UpdateablePriorityQueue[Int]) {
+		var last_pri = Math.MIN_INT
+		
+		var node: Option[NodeInfo[Int]] = None
+		var i = 0
+		
+		while({ node = p.pop(); node.isDefined }) {
+		  node match {
+		    case Some(node) => {
+		      val priority = node.priority
+		      System.out.println(i + ": " + priority)
+		      assert(priority >= last_pri)
+			    last_pri = priority
+		      i += 1
+	      }
+	      case _ =>
+		  }
+		}
+	}
+	
+	def main(args: Array[String]) {
+	  val numNodes = args.size
+	  	  
+		val nodes = ((0 until numNodes) map { i: Int =>
+      new NodeInfo(i, 0)
+    }).toArray
+    
+    val pq1 = UpdateablePriorityQueue[Int](numNodes)
+		
+		for(i <- 0 until numNodes) {
+  		nodes(i).priority = Integer.parseInt(args(i))
+			pq1.insert(nodes(i))
+			pq1.print();
+		}
+		
+		drain(pq1)
+		
+		System.out.println("STEP 2")
+		
+		val pq2 = UpdateablePriorityQueue(nodes, numNodes)
+		pq2.print()
+		drain(pq2)
+	}
 }

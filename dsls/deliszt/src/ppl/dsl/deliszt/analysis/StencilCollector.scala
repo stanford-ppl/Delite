@@ -204,7 +204,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   def setFor(i: Int, ms: MeshSet[_]) {
     currentFor = Some(i)
-    forMap(i) = new HashMap[MeshObj,ReadWriteSet]() { override def default(key: MeshObj) = new ReadWriteSet() }
+    forMap(i) = new HashMap[MeshObj,ReadWriteSet]() { override def default(key: MeshObj) = { val rwset = new ReadWriteSet(); this(key) = rwset; rwset }  }
+    
     msMap(i) = ms
   }
   
@@ -444,24 +445,33 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         // Mark a read on the field for the current element... for i
         markRead(f, i)
       }
+      
+      case FieldUpdate(f,i,v) => {
+        // Mark a write on the field for the current element... for i
+        markWrite(f, i)
+      }
         
       case FieldPlusUpdate(f,i,v) => {
         // Mark a write on the field for the current element... for i
+        System.out.println("Marking plus write")
         markWrite(f, i)
       }
       
       case FieldTimesUpdate(f,i,v) => {
         // Mark a write on the field for the current element... for i
+        System.out.println("Marking times write")
         markWrite(f, i)
       }
         
       case FieldMinusUpdate(f,i,v) => {
         // Mark a write on the field for the current element... for i
+        System.out.println("Marking minus write")
         markWrite(f, i)
       }
       
       case FieldDivideUpdate(f,i,v) => {
         // Mark a write on the field for the current element... for i
+        System.out.println("Marking divide write")
         markWrite(f, i)
       }
       

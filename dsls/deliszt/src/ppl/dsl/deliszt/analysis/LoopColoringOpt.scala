@@ -41,15 +41,17 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
     var result: List[Exp[Any]] = result0
     var currentScope = currentScope0
     
-    System.out.println("focusing scopes")
-    
     // Get the map of for loops to Stencil
     val forMap = analysisResults("StencilCollectorStencils").asInstanceOf[MMap[Int,StencilMap]]
     val msMap = analysisResults("StencilCollectorMeshsets").asInstanceOf[MMap[Int,MeshSet[MeshObj]]]
        
     if(firstRun) {
       System.out.println("Top level loops")
-      System.out.println(forMap.keys)
+      
+      for((id, stencil) <- forMap) {
+        System.out.println(id)
+      }
+      
       firstRun = false
     }
     
@@ -77,12 +79,9 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
       val colorer = new RegisterColorer()
       val interferenceBuilder = new InterferenceBuilder(colorer, blockSize)
       
+      System.out.println("Read write sets!")
       for((mo, rwset) <- stencil) {
         System.out.println(mo)
-        for(FieldAccess(i, mo) <- rwset.read) {
-          System.out.println("read field " + i)
-          System.out.println(mo)
-        }
         for(FieldAccess(i, mo) <- rwset.write) {
           System.out.println("write field " + i)
           System.out.println(mo)
