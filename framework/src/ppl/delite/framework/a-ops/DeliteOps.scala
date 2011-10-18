@@ -205,6 +205,11 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    *    to allocate the accumulator, and it IS used in the initial reduction.
    */
 
+   abstract class DeliteOpMapLike[A:Manifest, CA <: DeliteCollection[A]:Manifest] extends DeliteOpLoop[CA] {
+     type OpType <: DeliteOpMapLike[A,CA]
+     def alloc: Exp[CA]
+     final lazy val allocVal: Exp[CA] = copyTransformedOrElse(_.allocVal)(reifyEffects(alloc))
+   }
 
   /**
    * Parallel map from DeliteCollection[A] => DeliteCollection[B]. Input functions can depend on free
@@ -218,7 +223,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
    */ 
   abstract class DeliteOpMap[A:Manifest,
                              B:Manifest, CB <: DeliteCollection[B]:Manifest]
-    extends DeliteOpLoop[CB] {
+    extends DeliteOpMapLike[B,CB] {
     type OpType <: DeliteOpMap[A,B,CB]
 
     // supplied by subclass
@@ -230,9 +235,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     
     // loop
     lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[Unit, CB](
-      alloc = reifyEffects(this.alloc),
+      alloc = allocVal, //reifyEffects(this.alloc),
       //func = reifyEffects(this.func(dc_apply(in,v)))
-      func = reifyEffects(dc_update(alloc,v,this.func(dc_apply(in,v))))
+      func = reifyEffects(dc_update(allocVal,v,this.func(dc_apply(in,v))))
     ))
   }
 
