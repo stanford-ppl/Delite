@@ -21,24 +21,26 @@ trait RangeVectorOps extends DSLType with Base with OverloadHack { this: OptiLA 
   }  
   
   class RangeVecOpsCls(val elem: Rep[RangeVector]) extends VecOpsCls[Int] {
-    type VA = RangeVector
-    def toOps(x: Rep[RangeVector]) = repToRangeVecOps(x)
-    def toIntf(x: Rep[RangeVector]) = rangeToInterface(x)
-    def builder: VectorBuilder[Int,RangeVector] = rangeVectorBuilder
+    // type VA = RangeVector
+    // def toOps(x: Rep[RangeVector]) = repToRangeVecOps(x)
+    // def toIntf(x: Rep[RangeVector]) = rangeToInterface(x)
+    // def builder: VectorBuilder[Int,RangeVector] = rangeVectorBuilder
     def mA = manifest[Int]
-    def mVA = manifest[RangeVector]
+    //def mVA = manifest[RangeVector]
     
-    type V[X] = DenseVector[X]        
-    def toOpsB[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
-    def toIntfB[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
-    def builderB[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
-    def mVB[B:Manifest] = manifest[DenseVector[B]] 
+    type V[X] = DenseVector[X]       
+    type Self = RangeVector 
+    def selfToIntf(x: Rep[RangeVector]) = rangeToInterface(x)
+    def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
+    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
+    def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
+    def mV[B:Manifest] = manifest[DenseVector[B]] 
           
     // VectorOps
-    def length = rangevector_length(x)
-    def isRow = rangevector_isrow(x)
-    def apply(n: Rep[Int]) = rangevector_apply(x,n)
-    def sort(implicit o: Ordering[Int]) = x    
+    def length = rangevector_length(elem)
+    def isRow = rangevector_isrow(elem)
+    def apply(n: Rep[Int]) = rangevector_apply(elem,n)
+    def sort(implicit o: Ordering[Int]) = elem.cloneL    
     
     // generic
     type VPLUSR = DenseVector[Int]
@@ -60,9 +62,9 @@ trait RangeVectorOps extends DSLType with Base with OverloadHack { this: OptiLA 
     def mt() = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
     def update(n: Rep[Int], y: Rep[Int]): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def +=(y: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def copyFrom(pos: Rep[Int], y: Rep[RangeVector]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def insert(pos: Rep[Int], y: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def insertAll(pos: Rep[Int], y: Rep[RangeVector]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def removeAll(pos: Rep[Int], len: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def trim() = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def clear() = throw new UnsupportedOperationException("RangeVectors cannot be updated")        

@@ -29,10 +29,10 @@ trait GDAVectorized extends OptiMLApplication {
 
     val (y_zeros, y_ones, mu0_num, mu1_num) = t4( sum(0,m) { i =>
       if (y(i) == false){
-        (unit(1.),unit(0.),x(i),EmptyVector[Double])
+        (unit(1.),unit(0.),x(i).cloneL,EmptyVector[Double])
       }
       else {
-        (unit(0.),unit(1.),EmptyVector[Double],x(i))
+        (unit(0.),unit(1.),EmptyVector[Double],x(i).cloneL)
       }
     })
 
@@ -43,9 +43,9 @@ trait GDAVectorized extends OptiMLApplication {
     val mu0 = mu0_num / y_zeros
     val mu1 = mu1_num / y_ones
 
-    val x0 = Matrix((0::x.numRows) map { i => if (y(i) == true) Vector.zeros(x.numCols) else x(i) })
+    val x0 = Matrix((0::x.numRows) map { i => if (y(i) == true) Vector.zeros(x.numCols) else x(i).cloneL })
     val x0t = x0 filterRows { row => !(row.sum == 0.0) }
-    val x1 = Matrix((0::x.numRows) map { i => if (y(i) == false) Vector.zeros(x.numCols) else x(i) })
+    val x1 = Matrix((0::x.numRows) map { i => if (y(i) == false) Vector.zeros(x.numCols) else x(i).cloneL })
     val x1t = x1 filterRows { row => !(row.sum == 0.0) }
 
     val x0tt = x0t - mu0.replicate(y_zeros.asInstanceOfL[Int], 1)

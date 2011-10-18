@@ -24,25 +24,22 @@ trait IndexVectorRangeOps extends DSLType with Base with OverloadHack { this: Op
   }  
   
   class IndexVecRangeOpsCls(val elem: Rep[IndexVectorRange]) extends IndexVecOpsCls {
-    type VA = IndexVectorRange
-    def toOps(x: Rep[IndexVectorRange]) = repToIndexVecRangeOps(x)
-    def toIntf(x: Rep[IndexVectorRange]) = indexVecRangeToInterface(x)
-    def builder: VectorBuilder[Int,IndexVectorRange] = indexRangeVecBuilder
-    def mVA = manifest[IndexVectorRange]
+    type Self = IndexVectorRange
+    def selfToIntf(x: Rep[IndexVectorRange]) = indexVecRangeToInterface(x)
           
     // VectorOps
     def length = indexvectorrange_length(x)
     def isRow = unit(true)
     def apply(n: Rep[Int]) = n
-    def sort(implicit o: Ordering[Int]) = x    
+    def sort(implicit o: Ordering[Int]) = x.cloneL    
     
     def t = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
     def mt() = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
     def update(n: Rep[Int], y: Rep[Int]): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def +=(y: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def copyFrom(pos: Rep[Int], y: Rep[IndexVectorRange]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def insert(pos: Rep[Int], y: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def insertAll(pos: Rep[Int], y: Rep[IndexVectorRange]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def removeAll(pos: Rep[Int], len: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def trim() = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def clear() = throw new UnsupportedOperationException("RangeVectors cannot be updated")        

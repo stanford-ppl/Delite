@@ -453,7 +453,33 @@ trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp wi
       stripFirst = false //(!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable
     ))
   }
-
+  
+  abstract class DeliteOpFilterReduceFold2[A:Manifest,R:Manifest]
+    extends DeliteOpLoop[R] {
+    type OpType <: DeliteOpFilterReduceFold2[A,R]
+    
+    // supplied by subclass   
+    val in: Exp[DeliteCollection[Int]]
+    val zero: (Exp[R], Exp[Int])
+    def func: Exp[Int] => (Exp[R],Exp[Int])
+    def reducePar: ((Exp[R],Exp[Int]), (Exp[R],Exp[Int])) => (Exp[R],Exp[Int])
+    def reduceSeq: ((Exp[R],Exp[Int]), (Exp[R],Exp[Int])) => (Exp[R],Exp[Int]) // = reduce
+  
+    val mutable: Boolean = false
+    final lazy protected val rVPar: ((Sym[R],Sym[Int]),(Sym[R],Sym[Int])) = copyOrElse(_.rVPar)(((reflectMutableSym(fresh[R]),reflectMutableSym(fresh[Int])), (fresh[R],fresh[Int])))
+    final lazy protected val rVSeq: ((Sym[R],Sym[Int]),(Sym[R],Sym[Int])) = copyOrElse(_.rVSeq)(((reflectMutableSym(fresh[R]),reflectMutableSym(fresh[Int])), (fresh[R],fresh[Int])))
+    // loop
+    lazy val body: Def[R] = copyBodyOrElse(DeliteReduceTupleElem[R,Int](
+      func = /*reifyEffects*/func(dc_apply(in,v)), //FIXME: tupled reify
+      zero = this.zero,
+      rVPar = this.rVPar,
+      rVSeq = this.rVSeq,
+      rFuncPar = /*reifyEffects*/(reducePar(rVPar._1, rVPar._2)),  //FIXME: tupled reify
+      rFuncSeq = /*reifyEffects*/(reduceSeq(rVSeq._1, rVSeq._2)),  //FIXME: tupled reify
+      stripFirst = false //(!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable
+    ))
+  }
+  
   
   /**
    * Parallel zipWith-reduction from a (DeliteCollection[A],DeliteCollection[A]) => R. The map-reduce is composed,

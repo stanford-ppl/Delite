@@ -129,7 +129,7 @@ trait MatrixOps extends DSLType with Variables {
     def zip[B:Manifest,R:Manifest](y: Rep[Matrix[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = matrix_zipwith(x,y,f)
     def reduceRows(f: (Rep[DenseVector[A]],Rep[DenseVector[A]]) => Rep[DenseVector[A]]) = matrix_reducerows(x,f)
     def filterRows(pred: Rep[MatrixRow[A]] => Rep[Boolean]) = matrix_filterrows(x,pred)
-    def groupRowsBy[K:Manifest](pred: Rep[DenseVector[A]] => Rep[K]) = matrix_grouprowsby(x, pred)
+    def groupRowsBy[K:Manifest](pred: Rep[MatrixRow[A]] => Rep[K]) = matrix_grouprowsby(x, pred)
     def count(pred: Rep[A] => Rep[Boolean]) = matrix_count(x, pred)
     // def countRows    
   }
@@ -167,7 +167,7 @@ trait MatrixOps extends DSLType with Variables {
 
   // class defs
   def matrix_apply[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
-  def matrix_vview[A:Manifest](x: Rep[Matrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVector[A]]
+  def matrix_vview[A:Manifest](x: Rep[Matrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[VectorView[A]]
   def matrix_getrow[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int]): Rep[MatrixRow[A]]
   def matrix_getcol[A:Manifest](x: Rep[Matrix[A]], j: Rep[Int]): Rep[MatrixCol[A]]
   def matrix_slice[A:Manifest](x: Rep[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int]): Rep[Matrix[A]]
@@ -226,7 +226,7 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Rep[Matrix[A]], y: Rep[Matrix[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[Matrix[R]]
   def matrix_reducerows[A:Manifest](x: Rep[Matrix[A]], f: (Rep[DenseVector[A]],Rep[DenseVector[A]]) => Rep[DenseVector[A]]): Rep[DenseVector[A]]
   def matrix_filterrows[A:Manifest](x: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[Boolean]): Rep[Matrix[A]]
-  def matrix_grouprowsby[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[DenseVector[A]] => Rep[K]): Rep[DenseVector[Matrix[A]]] 
+  def matrix_grouprowsby[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[K]): Rep[DenseVector[Matrix[A]]] 
   def matrix_count[A:Manifest](x: Rep[Matrix[A]], pred: Rep[A] => Rep[Boolean]): Rep[Int]
 }
 
@@ -245,7 +245,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
      val m = manifest[A]
   }
   //case class MatrixApply[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int], j: Exp[Int]) extends Def[A]
-  case class MatrixVView[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends Def[DenseVector[A]]
+  case class MatrixVView[A:Manifest](x: Exp[Matrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends Def[VectorView[A]]
   case class MatrixGetRow[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixRow[A]] {
     val m = manifest[A]
   }
@@ -357,7 +357,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]]) 
     extends DeliteOpSingleTask(reifyEffects(matrix_sumcol_impl(x)))
 
-  case class MatrixGroupRowsBy[A:Manifest,K:Manifest](x: Exp[Matrix[A]], pred: Exp[DenseVector[A]] => Exp[K])
+  case class MatrixGroupRowsBy[A:Manifest,K:Manifest](x: Exp[Matrix[A]], pred: Exp[MatrixRow[A]] => Exp[K])
     extends DeliteOpSingleTask(reifyEffects(matrix_grouprowsby_impl(x,pred)))
 
   ///////////////////////////////////////////////////////////////////
@@ -636,21 +636,21 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
 
   // More efficient (though slightly uglier) to express this as a loop directly. 
   // TODO: nicer DeliteOpLoop templates? e.g. DeliteOpReductionLoop, ...
-  case class MatrixReduceRows[A:Manifest](x: Exp[Matrix[A]], func: (Exp[DenseVector[A]], Exp[DenseVector[A]]) => Exp[DenseVector[A]])
-    extends DeliteOpReduceLike[DenseVector[A]] {
-
-    val size = x.numRows
-    val zero = EmptyVector[A]
-    
-    lazy val body: Def[DenseVector[A]] = copyBodyOrElse(DeliteReduceElem[DenseVector[A]](
-      func = reifyEffects(x(v)),
-      Nil,
-      zero = this.zero,
-      rV = this.rV,
-      rFunc = reifyEffects(this.func(rV._1, rV._2)),
-      true
-    ))
-  }
+  // case class MatrixReduceRows[A:Manifest](x: Exp[Matrix[A]], func: (Exp[MatrixRow[A]], Exp[DenseVector[A]]) => Exp[DenseVector[A]])
+  //   extends DeliteOpReduceLike[MatrixRow[A],DenseVector[A]] {
+  // 
+  //   val size = x.numRows
+  //   val zero = EmptyVector[A]
+  //   
+  //   lazy val body: Def[DenseVector[A]] = copyBodyOrElse(DeliteReduceElem[DenseVector[A]](
+  //     func = reifyEffects(x(v)),
+  //     Nil,
+  //     zero = this.zero,
+  //     rV = this.rV,
+  //     rFunc = reifyEffects(this.func(rV._1, rV._2)),
+  //     true
+  //   ))
+  // }
 
   case class MatrixCount[A:Manifest](in: Exp[Matrix[A]], cond: Exp[A] => Exp[Boolean]) 
     extends DeliteOpFilterReduce[A,Int] {
@@ -772,10 +772,11 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     reflectPure(MatrixZipWith(x, y, f))
   }
   def matrix_reducerows[A:Manifest](x: Exp[Matrix[A]], f: (Exp[DenseVector[A]],Exp[DenseVector[A]]) => Exp[DenseVector[A]]) = {
-    reflectPure(MatrixReduceRows(x, f))
+    //reflectPure(MatrixReduceRows(x, f))
+    throw new UnsupportedOperationException("temporarily removed until new DeliteOpReduce[A,R] is supported")
   }
   def matrix_filterrows[A:Manifest](x: Exp[Matrix[A]], pred: Exp[MatrixRow[A]] => Exp[Boolean]) = reflectPure(MatrixFilterRows(x, pred))
-  def matrix_grouprowsby[A:Manifest,K:Manifest](x: Exp[Matrix[A]], pred: Exp[DenseVector[A]] => Exp[K]) = reflectPure(MatrixGroupRowsBy(x,pred))
+  def matrix_grouprowsby[A:Manifest,K:Manifest](x: Exp[Matrix[A]], pred: Exp[MatrixRow[A]] => Exp[K]) = reflectPure(MatrixGroupRowsBy(x,pred))
   def matrix_count[A:Manifest](x: Exp[Matrix[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(MatrixCount(x, pred))
 
   //////////////////

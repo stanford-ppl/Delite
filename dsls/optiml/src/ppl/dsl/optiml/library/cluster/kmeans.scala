@@ -1,7 +1,6 @@
 package ppl.dsl.optiml.library.cluster
 
-import ppl.dsl.optiml.OptiMLApplication
-import ppl.dsl.optiml.{DenseVector,Matrix,TrainingSet}
+import ppl.dsl.optiml._
 
 /* K-means clustering API for OptiML programs.
  *
@@ -40,7 +39,7 @@ trait OptiMLKmeans {
 
       // update mu -- move each cluster centroid to the mean of the points assigned to it
       (0::numClusters, * /*0::n*/) { j =>
-        val weightedpoints = sumIf[DenseVector[Double]](0, m) (c(_) == j) { x(_) }
+        val weightedpoints = sumIf[DenseVector[Double]](0, m) (c(_) == j) { x(_).cloneL } // AKS fix me - should not have to clone 
         //val points = sumIf(0,m) (c(_) == j) { _ => 1 }
         val points = c.count(_ == j)  // cannot fuse because sum strips first iteration
 
@@ -56,7 +55,7 @@ trait OptiMLKmeans {
     (iter,newMu)
   }
 
-  private def findNearestCluster( x_i: Rep[DenseVector[Double]], mu: Rep[Matrix[Double]] ): Rep[Int] = {
+  private def findNearestCluster( x_i: Rep[MatrixRow[Double]], mu: Rep[Matrix[Double]] ): Rep[Int] = {
     (mu mapRowsToVector { row => dist(x_i, row, SQUARE) }).minIndex
 //    var min_d = Double.PositiveInfinity
 //    var min_j = -1

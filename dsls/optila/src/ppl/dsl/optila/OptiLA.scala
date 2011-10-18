@@ -100,7 +100,7 @@ trait OptiLACompiler extends OptiLA with RangeOps with IOOps with SeqOps with Se
  */
 trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
   with LanguageOpsExp with ArithOpsExpOpt 
-  with VectorOpsExp with DenseVectorOpsExpOpt with RangeVectorOpsExp with VectorViewOpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
+  with VectorOpsExp with DenseVectorOpsExpOpt with RangeVectorOpsExp with VectorViewOpsExpOpt with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with MatrixOpsExpOpt 
   with LAInputReaderOpsExp with LAOutputWriterOpsExp
   with LanguageImplOpsStandard
@@ -172,7 +172,7 @@ trait OptiLACodeGenBase extends GenericFatCodegen {
 }
 
 trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal with ScalaGenDeliteOps
-  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
+  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with /*ScalaGenVectorViewOps with*/ ScalaGenMatrixOps
   with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
   with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {

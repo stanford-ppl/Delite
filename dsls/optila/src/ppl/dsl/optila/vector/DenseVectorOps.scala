@@ -35,18 +35,20 @@ trait DenseVectorOps extends DSLType with Variables {
   }
 
   class DenseVecOpsCls[A:Manifest](val elem: Rep[DenseVector[A]]) extends VecOpsCls[A] {
-    type VA = DenseVector[A]
+    //type VA = DenseVector[A]
     def mA: Manifest[A] = manifest[A]    
-    def toOps(x: Rep[DenseVector[A]]) = toOpsB[A](x)
-    def toIntf(x: Rep[DenseVector[A]]) = toIntfB[A](x)
-    def builder: VectorBuilder[A,DenseVector[A]] = builderB[A]
-    def mVA = mVB[A]
+    // def toOps(x: Rep[DenseVector[A]]) = toOpsB[A](x)
+    // def toIntf(x: Rep[DenseVector[A]]) = toIntfB[A](x)
+    // def builder: VectorBuilder[A,DenseVector[A]] = builderB[A]
+    // def mVA = mVB[A]
     
     type V[X] = DenseVector[X]        
-    def toOpsB[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
-    def toIntfB[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
-    def builderB[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
-    def mVB[B:Manifest] = manifest[DenseVector[B]] 
+    type Self = DenseVector[A]
+    def selfToIntf(x: Rep[DenseVector[A]]) = denseToInterface(x)
+    def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
+    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
+    def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
+    def mV[B:Manifest] = manifest[DenseVector[B]] 
 
     // def dcSize = densevector_length(x)
     // def dcApply(n: Rep[Int]): Rep[A] = densevector_apply(x,n)
@@ -60,9 +62,9 @@ trait DenseVectorOps extends DSLType with Variables {
     // def toLong(implicit conv: Rep[A] => Rep[Long]) = map(e => conv(e))
 
     // accessors
-    def length = densevector_length(x)
-    def isRow = densevector_isRow(x)
-    def apply(n: Rep[Int]) = densevector_apply(x, n)
+    def length = densevector_length(elem)
+    def isRow = densevector_isRow(elem)
+    def apply(n: Rep[Int]) = densevector_apply(elem, n)
     // def isEmpty = length == 0
     // def first = apply(0)
     // def last = apply(repArithToArithOps(length) - 1) // TODO: why doesn't this get invoked implicitly?
@@ -74,8 +76,8 @@ trait DenseVectorOps extends DSLType with Variables {
     // def distinct = densevector_distinct(x)
     
     // general
-    def t = densevector_trans(x)
-    def mt() = densevector_mutable_trans(x)
+    def t = densevector_trans(elem)
+    def mt() = densevector_mutable_trans(elem)
     // def cloneL() = densevector_clone(x)
     // def mutable() = densevector_mutable_clone(x)
     // def pprint() = densevector_pprint(x)
@@ -85,22 +87,22 @@ trait DenseVectorOps extends DSLType with Variables {
 
     // data operations
     //def ++(y: Rep[DenseVector[A]]) = densevector_concatenate(x,y)
-    def update(n: Rep[Int], y: Rep[A]) = densevector_update(x,n,y)
-    def +=(y: Rep[A]) = densevector_insert(x,x.length,y)
+    def update(n: Rep[Int], y: Rep[A]) = densevector_update(elem,n,y)
+    def +=(y: Rep[A]) = densevector_insert(elem,elem.length,y)
     //def ++=(y: Rep[DenseVector[A]]) = insertAll(length,y)
-    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[A]]) = densevector_copyfrom(x,pos,y)
-    def insert(pos: Rep[Int], y: Rep[A]) = densevector_insert(x,pos,y)
-    def insertAll(pos: Rep[Int], y: Rep[DenseVector[A]]) = densevector_insertall(x,pos,y)
+    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[A]]) = densevector_copyfrom(elem,pos,y)
+    def insert(pos: Rep[Int], y: Rep[A]) = densevector_insert(elem,pos,y)
+    def insertAll(pos: Rep[Int], y: Rep[DenseVector[A]]) = densevector_insertall(elem,pos,y)
     //def remove(pos: Rep[Int]) = removeAll(pos,1)
-    def removeAll(pos: Rep[Int], len: Rep[Int]) = densevector_removeall(x,pos,len)
-    def trim() = densevector_trim(x)
-    def clear() = densevector_clear(x)
+    def removeAll(pos: Rep[Int], len: Rep[Int]) = densevector_removeall(elem,pos,len)
+    def trim() = densevector_trim(elem)
+    def clear() = densevector_clear(elem)
 
     // arithmetic operations
     // def +(y: Rep[V[A]])(implicit a: Arith[A]) = densevector_plus_dense(x,y)
     type VPLUSR = DenseVector[A]
     val mVPLUSR = manifest[VPLUSR]
-    val vplusBuilder = builder
+    val vplusBuilder = builder[A]
     def vplusToIntf(x: Rep[VPLUSR]) = toIntf(x)
     // def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = densevector_plus_generic(x,y)    
     // def +(y: Rep[DenseVector[A]])(implicit a: Arith[A]) = densevector_plus(x,y)
@@ -109,7 +111,7 @@ trait DenseVectorOps extends DSLType with Variables {
     
     type VMINUSR = DenseVector[A]
     val mVMINUSR = manifest[VMINUSR]
-    val vminusBuilder = builder
+    val vminusBuilder = builder[A]
     def vminusToIntf(x: Rep[VMINUSR]) = toIntf(x)    
     // def -(y: Rep[DenseVector[A]])(implicit a: Arith[A]) = densevector_minus(x,y)
     // def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = densevector_minus_scalar(x,y)
@@ -117,13 +119,13 @@ trait DenseVectorOps extends DSLType with Variables {
     
     type VTIMESR = DenseVector[A]
     val mVTIMESR = manifest[VTIMESR]
-    val vtimesBuilder = builder
+    val vtimesBuilder = builder[A]
     def vtimesToIntf(x: Rep[VTIMESR]) = toIntf(x)        
     //def *(y: Rep[DenseVector[A]])(implicit a: Arith[A]) = densevector_times(x,y)
     //def *[B](y: Rep[DenseVector[B]])(implicit mB: Manifest[B], a: Arith[A], conv: Rep[B] => Rep[A]) = densevector_times_withconvert(x,y,conv)
     //def *[B](y: Rep[DenseVector[B]])(implicit mB: Manifest[B], aB: Arith[B], conv: Rep[A] => Rep[B], o: Overloaded1) = densevector_times_withconvertright(x,y,conv)
     //def *(y: Rep[A])(implicit a: Arith[A],o: Overloaded1) = densevector_times_scalar(x,y)
-    def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2) = densevector_times_matrix(x,y)
+    def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2) = densevector_times_matrix(elem,y)
     //def **(y: Rep[DenseVector[A]])(implicit a: Arith[A]) = densevector_outer(x,y)
     //def *:*(y: Rep[DenseVector[A]])(implicit a: Arith[A]) = {val v = x*y; v.sum} //TODO: this is less efficient (space-wise) than: //densevector_dot_product(x,y)
     //def dot(y: Rep[DenseVector[A]])(implicit a: Arith[A]) = x *:* y
@@ -137,7 +139,7 @@ trait DenseVectorOps extends DSLType with Variables {
     // def exp(implicit a: Arith[A]) = densevector_exp(x)
     
     // ordering operations
-    def sort(implicit o: Ordering[A]) = densevector_sort(x)
+    def sort(implicit o: Ordering[A]) = densevector_sort(elem)
     // def min(implicit o: Ordering[A], mx: HasMinMax[A]) = densevector_min(x)
     // def minIndex(implicit o: Ordering[A], mx: HasMinMax[A]) = densevector_minindex(x)
     // def max(implicit o: Ordering[A], mx: HasMinMax[A]) = densevector_max(x)
@@ -162,9 +164,9 @@ trait DenseVectorOps extends DSLType with Variables {
     // def find(pred: Rep[A] => Rep[Boolean]) = densevector_find(x,pred)
     
     // def count(pred: Rep[A] => Rep[Boolean]) = densevector_count(x, pred)
-    def flatMap[B:Manifest](f: Rep[A] => Rep[DenseVector[B]]) = densevector_flatmap(x,f)
-    def partition(pred: Rep[A] => Rep[Boolean]) = densevector_partition(x,pred)
-    def groupBy[K:Manifest](pred: Rep[A] => Rep[K]) = densevector_groupby(x,pred)            
+    def flatMap[B:Manifest](f: Rep[A] => Rep[DenseVector[B]]) = densevector_flatmap(elem,f)
+    def partition(pred: Rep[A] => Rep[Boolean]) = densevector_partition(elem,pred)
+    def groupBy[K:Manifest](pred: Rep[A] => Rep[K]) = densevector_groupby(elem,pred)            
   }
   
   def __equal[A](a: Rep[DenseVector[A]], b: Rep[DenseVector[A]])(implicit o: Overloaded1, mA: Manifest[A]): Rep[Boolean] = densevector_equals(a,b)
@@ -901,8 +903,6 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     case Def(DenseVectorObjectZeros(l)) => l
     case Def(DenseVectorClone(a)) => densevector_length(a)
     //case Def(DenseVectorObjectRange(s,e,d,r)) => (e - s + d - 1) / d
-    case Def(MatrixVView(x, start, stride, l, r)) => l
-    case Def(MatrixGetRow(x,i)) => x.numCols
 
     /* propagate output size information */
     // some of this could be handled in DeliteCollectionOps, but we need a way to link length (for single tasks)
@@ -932,8 +932,6 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     //case Def(Reflect(DenseVectorObjectZeros(l,r), _)) => r
     case Def(DenseVectorClone(a)) => densevector_isRow(a)
     //case Def(DenseVectorObjectRange(s,e,d,r)) => r
-    case Def(MatrixVView(x, start, stride, l, r)) => r
-    case Def(MatrixGetRow(x,i)) => Const(true)
     case _ => super.densevector_isRow(x)
   }
   
@@ -943,7 +941,6 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     case Def(DenseVectorObjectOnes(l)) => Some(unit(1).asInstanceOf[Exp[A]])
     //case Def(DenseVectorObjectRange(s,e,d,r)) => Some((s + n*d).asInstanceOf[Exp[A]])
     case Def(DenseVectorTrans(x)) => Some(densevector_apply(x,n))
-    case Def(MatrixGetRow(x, i)) => Some(matrix_apply(x,i,n))
     case _ => None
   }
   

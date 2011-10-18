@@ -61,20 +61,24 @@ trait VectorOps extends DSLType with Variables {
   //   }
     
   trait VecOpsCls[A] extends DCInterfaceOps[A] {
-    type VA // self type    
+    // type VA // self type    
     implicit def mA: Manifest[A] 
-    implicit def mVA: Manifest[VA]        
-    implicit def toOps(x: Rep[VA]): VecOpsCls[A]
-    implicit def toIntf(x: Rep[VA]): Interface[Vector[A]]        
-    implicit def builder: VectorBuilder[A,VA]        
+    // implicit def mVA: Manifest[VA]        
+    // implicit def toOps(x: Rep[VA]): VecOpsCls[A]
+    // implicit def toIntf(x: Rep[VA]): Interface[Vector[A]]        
+    // implicit def builder: VectorBuilder[A,VA]        
     
-    type V[X] // conversion type    
-    implicit def mVB[B:Manifest]: Manifest[V[B]]         
-    implicit def toOpsB[B:Manifest](x: Rep[V[B]]): VecOpsCls[B]
-    implicit def toIntfB[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]]        
-    implicit def builderB[B:Manifest]: VectorBuilder[B,V[B]]    
+    type V[X] // generic return type, unless overloaded for the op as below (TODO: use type classes to clean this up!)
+    implicit def mV[B:Manifest]: Manifest[V[B]]         
+    implicit def toOps[B:Manifest](x: Rep[V[B]]): VecOpsCls[B]
+    implicit def toIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]]        
+    implicit def builder[B:Manifest]: VectorBuilder[B,V[B]]    
     
-    val elem: Rep[VA]
+    type VA = V[A] // temporary for easy compatibility with old stuff
+    
+    type Self
+    implicit def selfToIntf(x: Rep[Self]): Interface[Vector[A]]
+    val elem: Rep[Self] 
     val x = elem
     
     // DeliteCollection
@@ -145,8 +149,8 @@ trait VectorOps extends DSLType with Variables {
     def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_plus[A,VPLUSR](x,y)
     def +(y: Rep[VA])(implicit a: Arith[A]): Rep[VA] = vector_plus[A,VA](x,y) // needed for Arith        
     def +(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_plus_scalar[A,VPLUSR](x,y) 
-    def +=(y: Interface[Vector[A]])(implicit a: Arith[A]) = { vector_plusequals[A](x,y); x }
-    def +=(y: Rep[VA])(implicit a: Arith[A]) = { vector_plusequals[A](x,y); x }
+    def +=(y: Interface[Vector[A]])(implicit a: Arith[A]) = { vector_plusequals[A](x,y); elem }
+    def +=(y: Rep[VA])(implicit a: Arith[A]) = { vector_plusequals[A](x,y); elem }
     def :+=(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_plusequals_scalar[A](x,y) 
     
     type VMINUSR
@@ -177,7 +181,7 @@ trait VectorOps extends DSLType with Variables {
     //def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2) = vector_times_matrix[A,VTIMESR](x,y)
     def **(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_outer[A](x,y)
     def *:*(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_dot_product(x,y)
-    def dot(y: Interface[Vector[A]])(implicit a: Arith[A]) = x *:* y
+    def dot(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_dot_product(x,y)
 
     def /(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_divide[A,VA](x,y)    
     def /(y: Rep[VA])(implicit a: Arith[A]) = vector_divide[A,VA](x,y)
@@ -201,10 +205,10 @@ trait VectorOps extends DSLType with Variables {
     
     // bulk operations
     def map[B:Manifest](f: Rep[A] => Rep[B]): Rep[V[B]] = vector_map[A,B,V[B]](x,f)
-    def mmap(f: Rep[A] => Rep[A]): Rep[VA] = { vector_mmap(x,f); x }
+    def mmap(f: Rep[A] => Rep[A]): Rep[Self] = { vector_mmap(x,f); elem }
     def foreach(block: Rep[A] => Rep[Unit]): Rep[Unit] = vector_foreach(x, block)
     def zip[B:Manifest,R:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R]): Rep[V[R]] = vector_zipwith[A,B,R,V[R]](x,y,f)
-    def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]): Rep[VA] = { vector_mzipwith(x,y,f); x }
+    def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]): Rep[Self] = { vector_mzipwith(x,y,f); elem }
     def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A]): Rep[A] = vector_reduce(x,f)
     def filter(pred: Rep[A] => Rep[Boolean]): Rep[VA] = vector_filter[A,VA](x,pred)
     
@@ -232,11 +236,11 @@ trait VectorOps extends DSLType with Variables {
     // asSparse, toSparse
     // asDense, toDense
     
-    def toBoolean(implicit conv: Rep[A] => Rep[Boolean]) = intf.ops.toIntfB(intf.ops.toBoolean)
-    def toDouble(implicit conv: Rep[A] => Rep[Double]) = intf.ops.toIntfB(intf.ops.toDouble)
-    def toFloat(implicit conv: Rep[A] => Rep[Float]) = intf.ops.toIntfB(intf.ops.toFloat)
-    def toInt(implicit conv: Rep[A] => Rep[Int]) = intf.ops.toIntfB(intf.ops.toInt)
-    def toLong(implicit conv: Rep[A] => Rep[Long]) = intf.ops.toIntfB(intf.ops.toLong)
+    def toBoolean(implicit conv: Rep[A] => Rep[Boolean]) = intf.ops.toIntf(intf.ops.toBoolean)
+    def toDouble(implicit conv: Rep[A] => Rep[Double]) = intf.ops.toIntf(intf.ops.toDouble)
+    def toFloat(implicit conv: Rep[A] => Rep[Float]) = intf.ops.toIntf(intf.ops.toFloat)
+    def toInt(implicit conv: Rep[A] => Rep[Int]) = intf.ops.toIntf(intf.ops.toInt)
+    def toLong(implicit conv: Rep[A] => Rep[Long]) = intf.ops.toIntf(intf.ops.toLong)
     
     def length = intf.ops.length
     def isRow = intf.ops.isRow    
@@ -298,15 +302,15 @@ trait VectorOps extends DSLType with Variables {
     def :>(y: Interface[Vector[A]])(implicit o: Ordering[A]) = intf.ops.:>(y)
     def :<(y: Interface[Vector[A]])(implicit o: Ordering[A]) = intf.ops.:<(y)
     
-    def map[B:Manifest](f: Rep[A] => Rep[B]) = intf.ops.toIntfB(intf.ops.map(f))
-    def mmap(f: Rep[A] => Rep[A]) = intf.ops.toIntf(intf.ops.mmap(f))
+    def map[B:Manifest](f: Rep[A] => Rep[B]) = intf.ops.toIntf(intf.ops.map(f))
+    def mmap(f: Rep[A] => Rep[A]) = intf.ops.selfToIntf(intf.ops.mmap(f))
     def foreach(block: Rep[A] => Rep[Unit]) = intf.ops.foreach(block)
-    def zip[B:Manifest,R:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = intf.ops.toIntfB(intf.ops.zip(y)(f))
-    def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]) = intf.ops.toIntf(intf.ops.mzip(y)(f))
+    def zip[B:Manifest,R:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = intf.ops.toIntf(intf.ops.zip(y)(f))
+    def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]) = intf.ops.selfToIntf(intf.ops.mzip(y)(f))
     def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A]) = intf.ops.reduce(f)
     def filter(pred: Rep[A] => Rep[Boolean]) = intf.ops.toIntf(intf.ops.filter(pred))
     //def find(pred: Rep[A] => Rep[Boolean]) = intf.ops.vfindToIntf(intf.ops.find(pred))
-    def find(pred: Rep[A] => Rep[Boolean]) = intf.ops.toIntfB(intf.ops.find(pred))
+    def find(pred: Rep[A] => Rep[Boolean]) = intf.ops.toIntf(intf.ops.find(pred))
     def count(pred: Rep[A] => Rep[Boolean]) = intf.ops.count(pred)
     // def flatMap[B:Manifest](f: Rep[A] => Rep[V[B]]) = intf.ops.toIntf(intf.ops.flatMap(f))
     // def partition(pred: Rep[A] => Rep[Boolean]) = { val a = intf.ops.partition(pred); (intf.ops.toIntf(a._1), intf.ops.toIntf(a._2)) }

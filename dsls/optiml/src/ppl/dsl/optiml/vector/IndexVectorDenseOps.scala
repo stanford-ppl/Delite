@@ -23,15 +23,13 @@ trait IndexVectorDenseOps extends DSLType with Base with OverloadHack { this: Op
   
   // for now, just duplicating the relevant implementations from DenseVectorOps :(
   
-  class IndexVecDenseOpsCls(val elem: Rep[IndexVectorDense]) extends IndexVecOpsCls {
-    type VA = IndexVectorDense
-    def toOps(x: Rep[IndexVectorDense]) = repToIndexVecDenseOps(x)
-    def toIntf(x: Rep[IndexVectorDense]) = indexVecDenseToInterface(x)
-    def builder: VectorBuilder[Int,IndexVectorDense] = indexVecDenseBuilder
-    def mVA = manifest[IndexVectorDense]
+  class IndexVecDenseOpsCls(val elem: Rep[IndexVectorDense]) extends IndexVecOpsCls {    
+    type Self = IndexVectorDense    
+    def selfToIntf(x: Rep[IndexVectorDense]) = indexVecDenseToInterface(x)
           
     // VectorOps
     def length = indexvectordense_length(elem)
+    
     def isRow = throw new UnsupportedOperationException("tbd") 
     def apply(n: Rep[Int]) = throw new UnsupportedOperationException("tbd") 
     def sort(implicit o: Ordering[Int]) = throw new UnsupportedOperationException("tbd")     
@@ -39,9 +37,9 @@ trait IndexVectorDenseOps extends DSLType with Base with OverloadHack { this: Op
     def mt() = throw new UnsupportedOperationException("tbd")    
     def update(n: Rep[Int], y: Rep[Int]): Rep[Unit] = throw new UnsupportedOperationException("tbd")
     def +=(y: Rep[Int]) = throw new UnsupportedOperationException("tbd")
-    def copyFrom(pos: Rep[Int], y: Rep[IndexVectorDense]) = throw new UnsupportedOperationException("tbd")
+    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("tbd")
     def insert(pos: Rep[Int], y: Rep[Int]) = throw new UnsupportedOperationException("tbd")
-    def insertAll(pos: Rep[Int], y: Rep[IndexVectorDense]) = throw new UnsupportedOperationException("tbd")
+    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("tbd")
     def removeAll(pos: Rep[Int], len: Rep[Int]) = throw new UnsupportedOperationException("tbd")
     def trim() = throw new UnsupportedOperationException("tbd")
     def clear() = throw new UnsupportedOperationException("tbd")        

@@ -40,7 +40,7 @@ trait MatrixImplOps { this: OptiLA =>
   def matrix_sigmoid_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
   def matrix_sigmoidf_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]]
   def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[DenseVector[A]]
-  def matrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[DenseVector[A]] => Rep[K]): Rep[DenseVector[Matrix[A]]]
+  def matrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[K]): Rep[DenseVector[Matrix[A]]]
   
 }
 
@@ -283,7 +283,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
           val tmpRow = currentMat(i)
           currentMat(i) = currentMat(r)
           currentMat(r) = tmpRow
-          currentMat(r) = repToDenseVecOps(currentMat(r)) / currentMat(r,lead)
+          currentMat(r) = currentMat(r) / currentMat(r,lead)
 
           for (i <- 0 until m.numRows){
             if (i != r)
@@ -332,13 +332,13 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 //  }
 
   def matrix_filterrows_impl[A:Manifest](m: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[Boolean]) = {
-    val v = DenseVector[DenseVector[A]](0,true)
+    val out = Matrix[A](0,0)
     for (i <- 0 until m.numRows){
       val vv = m.getRow(i)
       if (pred(vv))
-        v += vv
+        out += vv.cloneL // AKS TODO: should not need to clone
     }
-    Matrix[A](v)
+    out.unsafeImmutable
   }
 
   def matrix_multiply_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]] = {
@@ -394,7 +394,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out.unsafeImmutable
   }
   
-  def matrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[DenseVector[A]] => Rep[K]): Rep[DenseVector[Matrix[A]]]  = {
+  def matrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[MatrixRow[A]] => Rep[K]): Rep[DenseVector[Matrix[A]]]  = {
     val groups = HashMap[K,Matrix[A]]()
     
     var i = 0
@@ -403,7 +403,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
       if (!(groups contains key)) {
         groups(key) = Matrix[A](0,0)        
       }
-      groups(key) += x(i)
+      groups(key) += x(i).cloneL // AKS TODO: should not need clone
       i += 1
     }
   

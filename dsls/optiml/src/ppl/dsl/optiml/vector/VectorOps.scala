@@ -16,8 +16,20 @@ trait OptiMLDenseVectorOps extends VectorOps with ppl.dsl.optila.vector.DenseVec
   
   //implicit def repToOptiMLVecOverrides[A:Manifest](x: Rep[A])(implicit toIntf: Rep[A] => Interface[Vector[A]]) = new OptiMLVecOpsOverrides(x)
   
-  // overrides for OptiLA types - we would have to override each OptiLA type conversion, otherwise the implicit priorities tie :(
-  implicit def repToDenseVecOverrides[A:Manifest](x: Rep[DenseVector[A]]) = new OptiMLVecOpsOverrides(x)  
+  // overrides for OptiLA types - we have to override each OptiLA type conversion, otherwise the implicit priorities tie :(
+  implicit def denseToVecOverrides[A:Manifest](x: Rep[DenseVector[A]]) = new OptiMLVecOpsOverrides(x)  
+}
+
+trait OptiMLVectorViewOps extends VectorOps with ppl.dsl.optila.vector.VectorViewOps {
+  this: OptiML =>
+  
+  implicit def viewToVecOverrides[A:Manifest](x: Rep[VectorView[A]]) = new OptiMLVecOpsOverrides(x)  
+}
+
+trait OptiMLRangeVectorOps extends VectorOps with ppl.dsl.optila.vector.RangeVectorOps {
+  this: OptiML =>
+  
+  implicit def rangeToVecOverrides(x: Rep[RangeVector]) = new OptiMLVecOpsOverrides(x)  
 }
 
 trait VectorOps extends ppl.dsl.optila.vector.VectorOps {

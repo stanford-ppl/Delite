@@ -166,7 +166,7 @@ trait SVMModel { this: OptiMLApplication =>
   ////////////
   // testing
 
-  def classify(weights: Rep[DenseVector[Double]], b: Rep[Double], test_pt: Rep[DenseVector[Double]]): Rep[Int] = {
+  def classify(weights: Rep[DenseVector[Double]], b: Rep[Double], test_pt: Interface[Vector[Double]]): Rep[Int] = {
     // SVM prediction is W'*X + b
     if ((weights*:*test_pt + b) < 0){
       -1

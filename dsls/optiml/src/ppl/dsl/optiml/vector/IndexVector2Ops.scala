@@ -85,7 +85,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   }
   */
   
-  case class IndexVector2ConstructRows[A:Manifest](in: Interface[IndexVector], block: Exp[Int] => Interface[Vector[A]], out: Exp[Matrix[A]])
+  case class IndexVector2ConstructRows[A:Manifest](in: Interface[Vector[Int]], block: Exp[Int] => Interface[Vector[A]], out: Exp[Matrix[A]])
     extends DeliteOpForeachI[Int] {
 
     val size = copyTransformedOrElse(_.size)(in.length)

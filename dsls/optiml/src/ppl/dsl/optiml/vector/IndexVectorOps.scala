@@ -15,15 +15,15 @@ trait IndexVectorOps extends DSLType with Base with OverloadHack { this: OptiML 
   }
 
   trait IndexVecOpsCls extends VecOpsCls[Int] {
-    def mA = manifest[Int]
-    implicit def toOps(x: Rep[VA]): IndexVecOpsCls
-    implicit def toIntf(x: Rep[VA]): Interface[IndexVector]
-    
+    //implicit def toOps(x: Rep[VA]): IndexVecOpsCls
+    //implicit def toIntf(x: Rep[VA]): Interface[IndexVector]    
     type V[X] = DenseVector[X] // conversion operations on IndexVectors will return a DenseVector
-    def toOpsB[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
-    def toIntfB[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
-    def builderB[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
-    def mVB[B:Manifest] = manifest[DenseVector[B]] 
+    def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
+    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
+    def selfToIntf(x: Rep[Self]): Interface[IndexVector]
+    def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
+    def mV[B:Manifest] = manifest[DenseVector[B]] 
+    def mA = manifest[Int]    
     
     // VectorOps generic - math on an IndexVector turns it into a DenseVector (is this the right thing to do?)
     type VPLUSR = DenseVector[Int]
@@ -41,8 +41,7 @@ trait IndexVectorOps extends DSLType with Base with OverloadHack { this: OptiML 
     val vtimesBuilder = denseVectorBuilder[Int]
     def vtimesToIntf(x: Rep[VTIMESR]) = denseToInterface(x)            
         
-    def apply[A:Manifest](block: Rep[Int] => Rep[A]): Rep[V[A]] = indexvector_construct(x, block)
-    
+    def apply[A:Manifest](block: Rep[Int] => Rep[A]): Rep[V[A]] = indexvector_construct(selfToIntf(x), block)    
     def *(y: Rep[Matrix[Int]])(implicit a: Arith[Int],o: Overloaded2) = throw new UnsupportedOperationException("tbd")
     def flatMap[B:Manifest](f: Rep[Int] => Rep[DenseVector[B]]) = throw new UnsupportedOperationException("tbd")
     def partition(pred: Rep[Int] => Rep[Boolean]) = throw new UnsupportedOperationException("tbd")
