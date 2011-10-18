@@ -110,6 +110,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     // TODO: note that the alloc block right now directly references the size
     // which is not part of DeliteCollectElem instance. we might want to fix that 
   ) extends Def[CA]
+
   
   case class DeliteReduceElem[A](
     func: Exp[A],
@@ -225,12 +226,13 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     //val size: Exp[Int] // could be dc_size(in), but we want type-specific pattern matching to work
     def func: Exp[A] => Exp[B]
     def alloc: Exp[CB]
-    def update(value: Exp[B]): Exp[Unit] = dc_update(alloc, v, value)
-
+    
+    
     // loop
-    lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[B, CB](
+    lazy val body: Def[CB] = copyBodyOrElse(DeliteCollectElem[Unit, CB](
       alloc = reifyEffects(this.alloc),
-      func = reifyEffects(this.func(dc_apply(in,v)))
+      //func = this.func(dc_apply(in,v))
+      func = dc_update(alloc,v,this.func(dc_apply(in,v)))
     ))
   }
 
@@ -287,9 +289,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     def alloc: Exp[CR]
     
     // loop
-    lazy val body: Def[CR] = copyBodyOrElse(DeliteCollectElem[R, CR](
+    lazy val body: Def[CR] = copyBodyOrElse(DeliteCollectElem[Unit, CR](
       alloc = reifyEffects(this.alloc),
-      func = reifyEffects(this.func(dc_apply(inA,v), dc_apply(inB,v)))
+      func = reifyEffects(dc_update(alloc,v,this.func(dc_apply(inA,v), dc_apply(inB,v))))
     ))
   }
   
@@ -908,7 +910,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println(prefixSym + quote(sym) + ".insert(" + prefixSym + quote(sym) + ".length, " + quote(getBlockResult(elem.func)) + ")")
     } else {
       //TODO: this should use the DSL impl of dc_update
-      stream.println(prefixSym + quote(sym) + "(" + quote(op.v) + ") = " + quote(getBlockResult(elem.func)))
+      //stream.println(prefixSym + quote(sym) + "(" + quote(op.v) + ") = " + quote(getBlockResult(elem.func)))
     }
   }
   

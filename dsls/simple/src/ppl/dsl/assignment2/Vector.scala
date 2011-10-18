@@ -72,7 +72,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
   }
   
   def vectorNew[A:Manifest](length: Exp[Int]) = struct[Vector[A]](List("Vector"), Map("data" -> DeliteArray[A](length)))   
-  private def infix_data[A:Manifest](x: Exp[Vector[A]]) = field[DeliteArray[A]](x, "data")
+  private def infix_data[A:Manifest](x: Exp[Vector[A]]) = mfield[DeliteArray[A]](x, "data")
   
   //def length[A:Manifest](x: Exp[Vector[A]]) = x.data.length
   def length[A:Manifest](x: Exp[Vector[A]]) = darray_length(x.data)
@@ -90,7 +90,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
 
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]): Exp[Int] = ifVector(x)(length(_))(super.dc_size(x))
   override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int]): Exp[A] = ifVector(x)(apply(_, idx))(super.dc_apply(x, idx))
-  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int], value: Exp[A]): Exp[Unit] = ifVector(x)(v => darray_update(v.data, idx, value))(super.dc_update(x,idx,value))
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int], value: Exp[A]): Exp[Unit] = ifVector(x)(v => reifyEffectsHere(darray_update(v.data, idx, value)))(super.dc_update(x,idx,value))
   
 }
 
