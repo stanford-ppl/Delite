@@ -78,7 +78,7 @@ trait VectorOps extends DSLType with Variables {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = Vector.sparse[A](length, isRow)
   }
     
-  abstract class VecOpsCls[A:Manifest] extends DCInterfaceOps[A] {
+  abstract class VecOpsCls[A:Manifest] extends DCInterfaceOps[Vector[A],A] {
     type V[X] // <: DeliteCollection[X] // necessary?
     implicit def toIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]]    
     implicit def builder[B:Manifest]: VectorBuilder[B,V[B]]    

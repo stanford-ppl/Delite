@@ -60,7 +60,7 @@ trait VectorOps extends DSLType with Variables {
   //     def builder: VectorBuilder[A,That]
   //   }
     
-  trait VecOpsCls[A] extends DCInterfaceOps[A] {
+  trait VecOpsCls[A] extends DCInterfaceOps[Vector[A],A] {
     // type VA // self type    
     implicit def mA: Manifest[A] 
     // implicit def mVA: Manifest[VA]        
@@ -77,7 +77,7 @@ trait VectorOps extends DSLType with Variables {
     type VA = V[A] // temporary for easy compatibility with old stuff
     
     type Self
-    implicit def selfToIntf(x: Rep[Self]): Interface[Vector[A]]
+    implicit def wrap(x: Rep[Self]): Interface[Vector[A]]
     val elem: Rep[Self] 
     val x = elem
     
@@ -303,10 +303,10 @@ trait VectorOps extends DSLType with Variables {
     def :<(y: Interface[Vector[A]])(implicit o: Ordering[A]) = intf.ops.:<(y)
     
     def map[B:Manifest](f: Rep[A] => Rep[B]) = intf.ops.toIntf(intf.ops.map(f))
-    def mmap(f: Rep[A] => Rep[A]) = intf.ops.selfToIntf(intf.ops.mmap(f))
+    def mmap(f: Rep[A] => Rep[A]) = intf.ops.wrap(intf.ops.mmap(f))
     def foreach(block: Rep[A] => Rep[Unit]) = intf.ops.foreach(block)
     def zip[B:Manifest,R:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = intf.ops.toIntf(intf.ops.zip(y)(f))
-    def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]) = intf.ops.selfToIntf(intf.ops.mzip(y)(f))
+    def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]) = intf.ops.wrap(intf.ops.mzip(y)(f))
     def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A]) = intf.ops.reduce(f)
     def filter(pred: Rep[A] => Rep[Boolean]) = intf.ops.toIntf(intf.ops.filter(pred))
     //def find(pred: Rep[A] => Rep[Boolean]) = intf.ops.vfindToIntf(intf.ops.find(pred))
@@ -506,7 +506,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   ///////////////////////////////////////
   // implemented via parallel delite ops
 
-  abstract class VectorArithmeticMap[A:Manifest:Arith,VA:Manifest](in: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) extends DeliteOpMap2[A,A,VA] {
+  abstract class VectorArithmeticMap[A:Manifest:Arith,VA:Manifest](in: Interface[Vector[A]])(implicit val b: VectorBuilder[A,VA]) extends DeliteOpMap2[A,A,VA] {
     def alloc = b.alloc(in.length, in.isRow)
     val size = copyTransformedOrElse(_.size)(in.length)
 
@@ -515,7 +515,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     def a = implicitly[Arith[A]]
   }
 
-  abstract class VectorArithmeticZipWith[A:Manifest:Arith,VA:Manifest](inA: Interface[Vector[A]], inB: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) extends DeliteOpZipWith2[A,A,A,VA] {
+  abstract class VectorArithmeticZipWith[A:Manifest:Arith,VA:Manifest](inA: Interface[Vector[A]], inB: Interface[Vector[A]])(implicit val b: VectorBuilder[A,VA]) extends DeliteOpZipWith2[A,A,A,VA] {
     def alloc = b.alloc(inA.length, inA.isRow)
     val size = copyTransformedOrElse(_.size)(inA.length)
 
@@ -707,7 +707,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     val p = implicitly[HasMinMax[A]]
   }
   
-  case class VectorMap[A:Manifest,B:Manifest,VB:Manifest](in: Interface[Vector[A]], func: Exp[A] => Exp[B])(implicit b: VectorBuilder[B,VB])
+  case class VectorMap[A:Manifest,B:Manifest,VB:Manifest](in: Interface[Vector[A]], func: Exp[A] => Exp[B])(implicit val b: VectorBuilder[B,VB])
     extends DeliteOpMap2[A,B,VB] {
 
     val size = copyTransformedOrElse(_.size)(in.length)
@@ -715,6 +715,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
     val mA = manifest[A]
     val mB = manifest[B]
+    def mVB = manifest[VB]
   }
 
   case class VectorMutableMap[A:Manifest](in: Interface[Vector[A]], block: Exp[A] => Exp[A])
@@ -757,7 +758,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     val zero = implicitly[Arith[A]].empty
   }
 
-  case class VectorFilter[A:Manifest,VA:Manifest](in: Interface[Vector[A]], cond: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[A,VA])
+  case class VectorFilter[A:Manifest,VA:Manifest](in: Interface[Vector[A]], cond: Exp[A] => Exp[Boolean])(implicit val b: VectorBuilder[A,VA])
     extends DeliteOpFilter2[A,A,VA] {
 
     def alloc = b.alloc(0, in.isRow)
@@ -765,9 +766,10 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     val size = in.length
 
     def m = manifest[A]  
+    def mVA = manifest[VA]
   }
 
-  case class VectorFind[A:Manifest,VFINDR:Manifest](in: Interface[Vector[A]], cond: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[Int,VFINDR])
+  case class VectorFind[A:Manifest,VFINDR:Manifest](in: Interface[Vector[A]], cond: Exp[A] => Exp[Boolean])(implicit val b: VectorBuilder[Int,VFINDR])
     extends DeliteOpFilter2[A,Int,VFINDR] {
 
     def alloc = b.alloc(0,unit(true))
@@ -775,6 +777,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     val size = in.length
 
     def m = manifest[A]  
+    def mVA = manifest[VFINDR]
   }
 
   case class VectorCount[A:Manifest](in: Interface[Vector[A]], cond: Exp[A] => Exp[Boolean]) 
@@ -897,6 +900,31 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     case e@DenseVectorObjectOnes(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorObjectOnes(f(x)))(mtype(manifest[A]))
     case e@DenseVectorObjectOnesF(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorObjectOnesF(f(x)))(mtype(manifest[A]))
     case e@DenseVectorObjectUniform(x,y,z,w) => reflectPure(new { override val original = Some(f,e) } with DenseVectorObjectUniform(f(x),f(y),f(z),f(w)))(mtype(manifest[A]))
+    
+    case e@VectorOuter(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorOuter(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
+    case e@VectorPlus(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorPlus(f(x),f(y))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))
+    case e@VectorMinus(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorMinus(f(x),f(y))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))
+    case e@VectorTimes(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorTimes(f(x),f(y))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))
+    case e@VectorTimesScalar(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorTimesScalar(f(x),f(y))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))
+    case e@VectorDivideScalar(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDivideScalar(f(x),f(y))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))
+    case e@VectorSum(x) => reflectPure(new { override val original = Some(f,e) } with VectorSum(f(x))(e.m, e.a))(mtype(manifest[A]))
+    case e@VectorAbs(x) => reflectPure(new { override val original = Some(f,e) } with VectorAbs(f(x))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))
+    case e@VectorExp(x) => reflectPure(new { override val original = Some(f,e) } with VectorExp(f(x))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))
+    case e@VectorFilter(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorFilter(f(x),f(p))(e.m, e.mVA, e.b))(mtype(manifest[A]))
+    case e@VectorFind(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorFind(f(x),f(p))(e.m, e.mVA, e.b))(mtype(manifest[A]))
+    case e@VectorCount(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorCount(f(x),f(p))(e.m))(mtype(manifest[A]))
+    case e@VectorMinIndex(x) => reflectPure(new { override val original = Some(f,e) } with VectorMinIndex(f(x))(e.m,e.o,e.p))(mtype(manifest[A]))
+    case e@VectorMap(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorMap(f(x),f(p))(e.mA,e.mB,e.mVB,e.b))(mtype(manifest[A]))
+    
+    case Reflect(e@VectorTimesScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorTimesScalar(f(x),f(y))(e.m, e.a, e.mVA, e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorDivideScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorDivideScalar(f(x),f(y))(e.m, e.a, e.mVA, e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorPlus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorPlus(f(x),f(y))(e.m, e.a, e.mVA, e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorMinus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorMinus(f(x),f(y))(e.m, e.a, e.mVA, e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorForeach(a,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorForeach(f(a),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorPlusEquals(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorPlusEquals(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorMutableMap(x,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorMutableMap(f(x),f(g))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorPPrint(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorPPrint(f(x))(f(e.block)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    
     // allocations
     case Reflect(e@DenseVectorObjectZeros(x), u, es) => reflectMirrored(Reflect(DenseVectorObjectZeros(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorObjectRange(s,o,d,r), u, es) => reflectMirrored(Reflect(VectorObjectRange(f(s),f(o),f(d),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -904,6 +932,35 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
+
+  /////////////////////
+  // aliases and sharing
+
+  // TODO: precise sharing info for other IR types (default is conservative)
+
+  override def aliasSyms(e: Any): List[Sym[Any]] = e match {
+    case VectorRepmat(a,i,j) => Nil
+    case VectorClone(a) => Nil
+    case _ => super.aliasSyms(e)
+  }
+
+  override def containSyms(e: Any): List[Sym[Any]] = e match {
+    case VectorRepmat(a,i,j) => Nil
+    case VectorClone(a) => Nil
+    case _ => super.containSyms(e)
+  }
+
+  override def extractSyms(e: Any): List[Sym[Any]] = e match {
+    case VectorRepmat(a,i,j) => Nil
+    case VectorClone(a) => Nil
+    case _ => super.extractSyms(e)
+  }
+
+  override def copySyms(e: Any): List[Sym[Any]] = e match {
+    case VectorRepmat(a,i,j) => syms(a)
+    case VectorClone(a) => syms(a)
+    case _ => super.copySyms(e)
+  }  
 }
 
 trait BaseGenVectorOps extends GenericFatCodegen {

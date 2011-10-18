@@ -25,7 +25,7 @@ trait IndexVectorRangeOps extends DSLType with Base with OverloadHack { this: Op
   
   class IndexVecRangeOpsCls(val elem: Rep[IndexVectorRange]) extends IndexVecOpsCls {
     type Self = IndexVectorRange
-    def selfToIntf(x: Rep[IndexVectorRange]) = indexVecRangeToInterface(x)
+    def wrap(x: Rep[IndexVectorRange]) = indexVecRangeToInterface(x)
           
     // VectorOps
     def length = indexvectorrange_length(x)

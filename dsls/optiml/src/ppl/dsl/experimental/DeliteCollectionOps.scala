@@ -14,14 +14,14 @@ trait SandboxDeliteCollectionOps extends Base {
   //   def update(n: Rep[Int], y: Rep[A]) = dc_update(x,n,y)
   // }
   
-  trait DCInterfaceOps[A] extends InterfaceOps {
+  trait DCInterfaceOps[+T,A] extends InterfaceOps[T] {
     def dcSize: Rep[Int] 
     def dcApply(n: Rep[Int]): Rep[A] 
     def dcUpdate(n: Rep[Int], y: Rep[A]): Rep[Unit]
   }
 
   trait DCInterface[+T,A] extends Interface[T] {
-    val ops: DCInterfaceOps[A]
+    val ops: DCInterfaceOps[T,A]
   }
   
   implicit def interfaceToVecOps[A:Manifest](intf: Interface[DeliteCollection[A]]) = new DeliteCollectionInterfaceOps(intf.asInstanceOf[DCInterface[DeliteCollection[A],A]])

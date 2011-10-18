@@ -6,14 +6,14 @@ import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Base, ScalaGenFat
 import scala.virtualization.lms.internal.{GenericFatCodegen}
 
 trait DeliteCollectionOps extends Base {
-  trait DCInterfaceOps[A] extends InterfaceOps {
+  trait DCInterfaceOps[+T,A] extends InterfaceOps[T] {
     def dcSize: Rep[Int] 
     def dcApply(n: Rep[Int]): Rep[A] 
     def dcUpdate(n: Rep[Int], y: Rep[A]): Rep[Unit]
   }
 
   trait DCInterface[+T,A] extends Interface[T] {
-    val ops: DCInterfaceOps[A]
+    val ops: DCInterfaceOps[T,A]
   }
   
   implicit def interfaceToVecOps[A:Manifest](intf: Interface[DeliteCollection[A]]) = new DeliteCollectionInterfaceOps(intf.asInstanceOf[DCInterface[DeliteCollection[A],A]])

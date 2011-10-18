@@ -23,6 +23,8 @@ trait SparseVectorOps extends DSLType with Variables {
 
   class SparseVecOpsCls[A:Manifest](val elem: Rep[SparseVector[A]]) extends VecOpsCls[A] {
     type V[X] = SparseVector[X]
+    type Self = SparseVector[A]
+    def wrap(x: Rep[SparseVector[A]]) = sparseToInterface(x)    
     implicit def toIntf[B:Manifest](x: Rep[SparseVector[B]]): Interface[Vector[B]] = sparseToInterface(x)
     implicit def builder[B:Manifest]: VectorBuilder[B,V[B]] = sparseVectorBuilder[B]
     implicit def mVB[B:Manifest] = manifest[SparseVector[B]]

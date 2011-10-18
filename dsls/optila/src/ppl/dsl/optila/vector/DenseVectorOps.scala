@@ -44,7 +44,7 @@ trait DenseVectorOps extends DSLType with Variables {
     
     type V[X] = DenseVector[X]        
     type Self = DenseVector[A]
-    def selfToIntf(x: Rep[DenseVector[A]]) = denseToInterface(x)
+    def wrap(x: Rep[DenseVector[A]]) = denseToInterface(x)
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
     def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    

@@ -112,7 +112,7 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    //case Reflect(e@VectorUpdateIndices(x,i,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorUpdateIndices(f(x),f(i),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorUpdateIndices(x,i,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorUpdateIndices(f(x),f(i),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 

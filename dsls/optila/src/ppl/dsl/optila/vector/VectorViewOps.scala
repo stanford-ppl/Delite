@@ -25,7 +25,7 @@ trait VectorViewOps extends DSLType with Base with OverloadHack { this: OptiLA =
     
     type V[X] = DenseVector[X]       
     type Self = VectorView[A]
-    def selfToIntf(x: Rep[VectorView[A]]) = vectorViewToInterface(x)
+    def wrap(x: Rep[VectorView[A]]) = vectorViewToInterface(x)
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
     def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    

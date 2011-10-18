@@ -25,7 +25,7 @@ trait IndexVectorDenseOps extends DSLType with Base with OverloadHack { this: Op
   
   class IndexVecDenseOpsCls(val elem: Rep[IndexVectorDense]) extends IndexVecOpsCls {    
     type Self = IndexVectorDense    
-    def selfToIntf(x: Rep[IndexVectorDense]) = indexVecDenseToInterface(x)
+    def wrap(x: Rep[IndexVectorDense]) = indexVecDenseToInterface(x)
           
     // VectorOps
     def length = indexvectordense_length(elem)

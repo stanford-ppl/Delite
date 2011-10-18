@@ -14,13 +14,13 @@ trait IndexVectorOps extends DSLType with Base with OverloadHack { this: OptiML 
     def apply(xs: Interface[Vector[Int]])(implicit o: Overloaded1) = indexvector_obj_fromvec(xs)
   }
 
-  trait IndexVecOpsCls extends VecOpsCls[Int] {
+  trait IndexVecOpsCls extends VecOpsCls[Int] with InterfaceOps[IndexVector] {
     //implicit def toOps(x: Rep[VA]): IndexVecOpsCls
     //implicit def toIntf(x: Rep[VA]): Interface[IndexVector]    
-    type V[X] = DenseVector[X] // conversion operations on IndexVectors will return a DenseVector
+    type V[X] = DenseVector[X] // conversion operations on IndexVectors will return a DenseVector    
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
-    def selfToIntf(x: Rep[Self]): Interface[IndexVector]
+    def wrap(x: Rep[Self]): Interface[IndexVector]
     def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
     def mV[B:Manifest] = manifest[DenseVector[B]] 
     def mA = manifest[Int]    
@@ -41,7 +41,7 @@ trait IndexVectorOps extends DSLType with Base with OverloadHack { this: OptiML 
     val vtimesBuilder = denseVectorBuilder[Int]
     def vtimesToIntf(x: Rep[VTIMESR]) = denseToInterface(x)            
         
-    def apply[A:Manifest](block: Rep[Int] => Rep[A]): Rep[V[A]] = indexvector_construct(selfToIntf(x), block)    
+    def apply[A:Manifest](block: Rep[Int] => Rep[A]): Rep[V[A]] = indexvector_construct(wrap(x), block)    
     def *(y: Rep[Matrix[Int]])(implicit a: Arith[Int],o: Overloaded2) = throw new UnsupportedOperationException("tbd")
     def flatMap[B:Manifest](f: Rep[Int] => Rep[DenseVector[B]]) = throw new UnsupportedOperationException("tbd")
     def partition(pred: Rep[Int] => Rep[Boolean]) = throw new UnsupportedOperationException("tbd")
@@ -109,8 +109,8 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    //case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m))(mtype(manifest[A]))
-    //case Reflect(e@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m))(mtype(manifest[A]))
+    case Reflect(e@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
 }

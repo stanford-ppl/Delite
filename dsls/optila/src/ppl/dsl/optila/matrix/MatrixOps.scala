@@ -824,7 +824,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       case Reflect(e@MatrixRemoveCols(x,y,z), u, es) => reflectMirrored(Reflect(MatrixRemoveCols(f(x),f(y),f(z)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixObjectNew(x,y), u, es) => reflectMirrored(Reflect(MatrixObjectNew(f(x),f(y))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
       // reflected ops
-      //case Reflect(e@MatrixUpdateRow(x,r,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixUpdateRow(f(x),f(r),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatrixUpdateRow(x,r,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixUpdateRow(f(x),f(r),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixZipWith(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixZipWith(f(x),f(y),f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case _ => super.mirror(e, f)
     }).asInstanceOf[Exp[A]] // why??
