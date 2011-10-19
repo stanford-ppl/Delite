@@ -12,6 +12,8 @@ import codegen.scala.TargetScala
 import codegen.Target
 import ops.DeliteOpsExp
 
+trait DSLType // FIXME: remove
+
 trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 

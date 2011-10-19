@@ -52,14 +52,16 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
   case class VectorPlus[A:Manifest:Numeric](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector[A]] {
 
-    def alloc = Vector[A](inA.length)
+    def alloc = Vector[A](inA.length) // ignored
+    override def allocWithArray = data => struct[Vector[A]](List("Vector"), Map("data" -> data))
     val size = copyTransformedOrElse(_.size)(inA.length)
     
     def func = (a,b) => a + b
   }
   
   abstract class VectorMap[A:Manifest:Numeric](in: Exp[Vector[A]]) extends DeliteOpMap[A,A,Vector[A]] {
-    def alloc = Vector[A](in.length)
+    def alloc = Vector[A](in.length) // not used
+    override def allocWithArray = data => struct[Vector[A]](List("Vector"), Map("data" -> data))
     val size = copyTransformedOrElse(_.size)(in.length)
   }
 
@@ -72,7 +74,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
   }
   
   def vectorNew[A:Manifest](length: Exp[Int]) = struct[Vector[A]](List("Vector"), Map("data" -> DeliteArray[A](length)))   
-  private def infix_data[A:Manifest](x: Exp[Vector[A]]) = mfield[DeliteArray[A]](x, "data")
+  private def infix_data[A:Manifest](x: Exp[Vector[A]]) = field[DeliteArray[A]](x, "data")
   
   //def length[A:Manifest](x: Exp[Vector[A]]) = x.data.length
   def length[A:Manifest](x: Exp[Vector[A]]) = darray_length(x.data)

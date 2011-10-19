@@ -23,6 +23,7 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
   case class DeliteCollectionSize[A:Manifest](x: Exp[DeliteCollection[A]]) extends Def[Int]
   case class DeliteCollectionApply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) extends Def[A]
   case class DeliteCollectionUpdate[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
+  case class DeliteCollectionUnsafeSetData[A:Manifest](x: Exp[DeliteCollection[A]], d: Exp[Array[A]], l: Exp[Int]) extends Def[Unit] // legacy...
 
   def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = x match { // TODO: move to Opt trait ?
     case Def(e: DeliteOpMap[_,_,_]) => e.size
@@ -34,6 +35,9 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
   def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = reflectPure(DeliteCollectionApply(x,n))
   def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(DeliteCollectionUpdate(x,n,y))
 
+  def dc_unsafeSetData[A:Manifest](x: Exp[DeliteCollection[A]], d: Exp[Array[A]], l: Exp[Int]) = reflectWrite(x)(DeliteCollectionUnsafeSetData(x,d,l)) // legacy...
+
+
   //////////////
   // mirroring
 
@@ -42,6 +46,7 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
     case DeliteCollectionSize(x) => dc_size(f(x))
     case Reflect(DeliteCollectionApply(l,r), u, es) => reflectMirrored(Reflect(DeliteCollectionApply(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(DeliteCollectionSize(l), u, es) => reflectMirrored(Reflect(DeliteCollectionSize(f(l)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(DeliteCollectionUnsafeSetData(x, d, l), u, es) => reflectMirrored(Reflect(DeliteCollectionUnsafeSetData(f(x),f(d),f(l)), mapOver(f,u), f(es)))(mtype(manifest[Unit]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
   
@@ -94,7 +99,8 @@ trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaG
     rhs match {
       case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".dcSize")
       case DeliteCollectionApply(x,n) => emitValDef(sym, quote(getBlockResult(x)) + ".dcApply(" + quote(n) + ")")
-      case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ")")
+      case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(y) + ")")
+      case DeliteCollectionUnsafeSetData(x,d,l) => emitValDef(sym, quote(getBlockResult(x)) + ".unsafeSetData(" + quote(d) + "," + quote(l) + ")")
       case _ => super.emitNode(sym, rhs)
     }
 
@@ -109,8 +115,9 @@ trait CudaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with CudaGen
     rhs match {
       case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".dcSize()")
       case DeliteCollectionApply(x,n) => emitValDef(sym, quote(getBlockResult(x)) + ".dcApply(" + quote(n) + ")")
-      //case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ")")
-      case DeliteCollectionUpdate(x,n,y) => stream.println(quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(getBlockResult(y)) + ");")
+      //case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(y) + ")")
+      case DeliteCollectionUpdate(x,n,y) => stream.println(quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(y) + ");")
+      case DeliteCollectionUnsafeSetData(x,d,l) => emitValDef(sym, quote(getBlockResult(x)) + ".unsafeSetData(" + quote(d) + "," + quote(l) + ")")
       case _ => super.emitNode(sym, rhs)
     }
   }

@@ -4,7 +4,7 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{Base, EffectExp, StructExp, StructExpOptCommon, StructFatExpOptCommon, ScalaGenEffect}
 import java.io.PrintWriter
 
-class DeliteArray[T]
+class DeliteArray[T] // TBD: extends DeliteCollection or not?
 
 trait DeliteArrayOps extends Base {
     
@@ -33,6 +33,7 @@ trait DeliteArrayOpsExp extends DeliteArrayOps with StructExp with EffectExp {
   this: DeliteOpsExp =>
   
   case class DeliteArrayNew[T:Manifest](length: Exp[Int]) extends Def[DeliteArray[T]]
+  /* TODO: re-enable
   case class DeliteArrayFromFunction[T:Manifest](length: Exp[Int], f: Exp[Int] => Exp[T]) extends DeliteOpLoop[DeliteArray[T]] {
     val size = copyTransformedOrElse(_.size)(length)
     lazy val body = copyBodyOrElse(DeliteCollectElem[T, DeliteArray[T]](
@@ -40,6 +41,7 @@ trait DeliteArrayOpsExp extends DeliteArrayOps with StructExp with EffectExp {
       func = reifyEffects(f(v))
     ))
   }
+  */
   
   case class DeliteArrayLength[T:Manifest](da: Exp[DeliteArray[T]]) extends Def[Int]
   case class DeliteArrayApply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int]) extends Def[T]
