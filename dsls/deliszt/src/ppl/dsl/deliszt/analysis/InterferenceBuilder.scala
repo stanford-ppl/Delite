@@ -74,6 +74,6 @@ class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
     val nodes = (ms map { mo: MO => mo.internalId }).toArray
     
     // Now output them?
-    new Coloring(nodes, colors, numColors, blockSize)
+    new Coloring(nodes, colors, numColors, blockSize, elements)
   }
 }

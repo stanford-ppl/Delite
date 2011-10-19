@@ -41,6 +41,8 @@ def main():
     parser.add_option("--nv", dest="no_variants", action="store_true" , help="disables variant support in the framework")
     parser.add_option("--nb", dest="no_blas", action="store_true", help="disables blas calls in generated code")
     parser.add_option("--nf", dest="no_fusion", action="store_true", help="disables op fusion")
+    parser.add_option("--ns", dest="no_stencil", action="store_true", help="disables stencil collection")
+    parser.add_option("--globals", dest="print_globals", action="store_true", help="print globals")
     parser.add_option("--home", dest="delite_home", default="_env", help="allows you to specify a different Delite Home than the one that should be specificed in the environment")
     parser.add_option("--stats-dir", dest="stats_dir", default=None, help="allows you to specify a different statistics output directory. environment variables are interpolated")
     parser.add_option("--timestamp", dest="stats_time", action="store_true", help="store statistics under a timestamped directory")
@@ -54,6 +56,7 @@ def main():
     loadProps(options)
     loadParams(options)
     loadClasses(options)
+    
     launchApps(options)
     
 
@@ -82,6 +85,8 @@ def loadOptions(opts):
     options['variants'] = not opts.no_variants
     options['blas'] = not opts.no_blas
     options['fusion'] = not opts.no_fusion
+    options['stencil'] = not opts.no_stencil
+    options['print_globals'] = opts.print_globals
 
     #set delite home
     if(opts.delite_home != "_env"):
@@ -151,6 +156,10 @@ def launchApps(options):
             opts = opts + " -Dnested.variants.level=0"
         if options['fusion'] == True:
             opts = opts + " -Ddelite.opfusion.enabled=true"
+        if options['stencil'] == True:
+            opts = opts + " -Dliszt.stencil.enabled=true"
+        if options['print_globals'] == True:
+            opts = opts + " -Ddelite.print_globals.enabled=true"
         opts = opts + " " + java_opts
         os.putenv("JAVA_OPTS", opts)
         os.putenv("GEN_OPTS", opts)
@@ -162,6 +171,7 @@ def launchApps(options):
         os.putenv('LMS_HOME', props['libs.lms.home'])
         os.putenv('SCALA_VIRT_HOME', props['scala.virtualized.home'])
         print "==  Generating DEG file with options: " + opts
+        print "COMMAND: " + props['delite.home'] + "/bin/gen " + classes[app] + " " + params[app]
         ecode = os.system(props['delite.home'] + "/bin/gen " + classes[app] + " " + params[app])
         if ecode != 0 and options['keep-going'] == None:
             print "Detected abnormal exit code, exiting"
@@ -219,7 +229,7 @@ def isTflop():
 def loadClasses(options):
     f = open(props['delite.home'] + "/benchmark/config/classes", 'r')
     for line in f:
-        tokens = line.split('|')
+        tokens = line.strip().split('|')
         app = tokens.pop(0)
         clazz = tokens.pop(0)
         classes[app] = clazz
@@ -236,13 +246,13 @@ def loadParams(options):
     else:
       f = open(options['datasets'], 'r')
     for line in f:
-        settings = line.split('|')
+        settings = line.strip().split('|')
         app = settings.pop(0)
         app_params = ''
         for param in settings:
             param = expand(param)
             app_params = app_params + ' ' + param
-        params[app] = app_params
+        params[app] = app_params.strip()
     f.close()
  
 def expand(param):

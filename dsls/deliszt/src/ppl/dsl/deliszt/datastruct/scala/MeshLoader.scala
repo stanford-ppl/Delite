@@ -112,9 +112,22 @@ object MeshLoader {
 class MeshLoader {
   @native
   def loadMesh(file : String) : Mesh = null
-
+  
   def loadBoundarySet[MO<:MeshObj:MeshObjConstruct](name : String) : BoundarySet[MO] = {  
-    _loadBoundarySet(name)
+    val bs = _loadBoundarySet(name)
+    
+    val moc = implicitly[MeshObjConstruct[MO]]
+    if(moc._type == 3) {
+      System.out.println("FACES BOUNDARY SET " + name)
+      for(f <- bs.asInstanceOf[BoundarySet[Face]]) {
+        System.out.println(f)
+        for(c <- Mesh.cells(f)) {
+          System.out.println(c)
+        }
+      }
+    }
+    
+    bs
   }
 
   @native

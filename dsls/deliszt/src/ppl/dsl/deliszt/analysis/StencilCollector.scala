@@ -8,7 +8,7 @@ import scala.collection.mutable.{Set => MSet, Map => MMap, HashMap, ArrayBuilder
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal._
 
-import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.analysis.TraversalAnalysis
 
 import ppl.dsl.deliszt.datastruct.scala._
@@ -368,121 +368,119 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     // System.out.println("EMITTING NODE")
     // System.out.println(rhs)
   
-    rhs match {
-      // Foreach, only apply to top level foreach though...
-      case f@MeshSetForeach(m, b) => {
-        // Get value for the mesh set
-        val ms = value[MeshSet[_]](m)
-    
-        // if not current top, mark current top....
-        if(currentFor.isEmpty) {
-          setFor(sym.id, ms)
-          System.out.println("Found a top level foreach sym " + sym.id)
-        }
-          
-        val mssize: Int = ms.size
-        val stuff: Int = 0
-        
-        var i: Int = 0
-        // Run foreach over mesh set
-        for(mo <- ms) {
-          // If top level foreach, mark the current element as one we are collecting stencil for
-          if(matchFor(sym.id)) {
-            currentMo = Some(mo)
+    if(Config.collectStencil) {
+      rhs match {
+        // Foreach, only apply to top level foreach though...
+        case f@MeshSetForeach(m, b) => {
+          // Get value for the mesh set
+          val ms = value[MeshSet[_]](m)
+      
+          // if not current top, mark current top....
+          if(currentFor.isEmpty) {
+            setFor(sym.id, ms)
+            System.out.println("Found a top level foreach sym " + sym.id)
           }
-        
-          // Store loop index in loop index symbol
-          store(f.i, i)
-          store(f.v, i)
-          
-          // Re "emit" block
-          f.body match {
-            case DeliteForeachElem(func, sync) => emitBlock(func)
-          }
-          
-          i += 1
-        }
-        
-        // Clear out the current for loop if we are the top
-        if(matchFor(sym.id)) {
-          currentFor = None
-        }
-      }
-      
-      // While loops. Execute once. Store results if results are a mesh element
-      case DeliteWhile(c,b) => {
-        emitBlock(c)
-        
-        emitBlock(b)
-      }
-      
-      // While loops. Execute once. Store results if results are a mesh element
-      case While(c,b) => {
-        emitBlock(c)
-        
-        emitBlock(b)
-      }
-      
-      // Execute both branches. Store results if results are a mesh element
-      case IfThenElse(c,a,b) => {
-        emitBlock(c)
-        
-        emitBlock(a)
-        emitBlock(b)
-      }
-      
             
-      // Execute both branches. Store results if results are a mesh element
-      case DeliteIfThenElse(c,a,b,h) => {
-        emitBlock(c)
+          val mssize: Int = ms.size
+          val stuff: Int = 0
+          
+          var i: Int = 0
+          // Run foreach over mesh set
+          for(mo <- ms) {
+            // If top level foreach, mark the current element as one we are collecting stencil for
+            if(matchFor(sym.id)) {
+              currentMo = Some(mo)
+            }
+          
+            // Store loop index in loop index symbol
+            store(f.i, i)
+            store(f.v, i)
+            
+            // Re "emit" block
+            f.body match {
+              case DeliteForeachElem(func, sync) => emitBlock(func)
+            }
+            
+            i += 1
+          }
+          
+          // Clear out the current for loop if we are the top
+          if(matchFor(sym.id)) {
+            currentFor = None
+          }
+        }
         
-        emitBlock(a)
-        emitBlock(b)
-      }
+        // While loops. Execute once. Store results if results are a mesh element
+        case DeliteWhile(c,b) => {
+          emitBlock(c)
+          
+          emitBlock(b)
+        }
         
-      // Mark 
-      case FieldApply(f,i) => {
-        // Mark a read on the field for the current element... for i
-        markRead(f, i)
+        // While loops. Execute once. Store results if results are a mesh element
+        case While(c,b) => {
+          emitBlock(c)
+          
+          emitBlock(b)
+        }
+        
+        // Execute both branches. Store results if results are a mesh element
+        case IfThenElse(c,a,b) => {
+          emitBlock(c)
+          
+          emitBlock(a)
+          emitBlock(b)
+        }
+        
+              
+        // Execute both branches. Store results if results are a mesh element
+        case DeliteIfThenElse(c,a,b,h) => {
+          emitBlock(c)
+          
+          emitBlock(a)
+          emitBlock(b)
+        }
+          
+        // Mark 
+        case FieldApply(f,i) => {
+          // Mark a read on the field for the current element... for i
+          markRead(f, i)
+        }
+        
+        case FieldUpdate(f,i,v) => {
+          // Mark a write on the field for the current element... for i
+          markWrite(f, i)
+        }
+          
+        case FieldPlusUpdate(f,i,v) => {
+          // Mark a write on the field for the current element... for i
+          markWrite(f, i)
+        }
+        
+        case FieldTimesUpdate(f,i,v) => {
+          // Mark a write on the field for the current element... for i
+          markWrite(f, i)
+        }
+          
+        case FieldMinusUpdate(f,i,v) => {
+          // Mark a write on the field for the current element... for i
+          markWrite(f, i)
+        }
+        
+        case FieldDivideUpdate(f,i,v) => {
+          // Mark a write on the field for the current element... for i
+          markWrite(f, i)
+        }
+        
+        case _ => None
       }
       
-      case FieldUpdate(f,i,v) => {
-        // Mark a write on the field for the current element... for i
-        markWrite(f, i)
+      maybeValue(rhs) match {
+        case Some(o) => {
+          store(sym, o)
+        }
+        case None => {}
       }
-        
-      case FieldPlusUpdate(f,i,v) => {
-        // Mark a write on the field for the current element... for i
-        System.out.println("Marking plus write")
-        markWrite(f, i)
-      }
-      
-      case FieldTimesUpdate(f,i,v) => {
-        // Mark a write on the field for the current element... for i
-        System.out.println("Marking times write")
-        markWrite(f, i)
-      }
-        
-      case FieldMinusUpdate(f,i,v) => {
-        // Mark a write on the field for the current element... for i
-        System.out.println("Marking minus write")
-        markWrite(f, i)
-      }
-      
-      case FieldDivideUpdate(f,i,v) => {
-        // Mark a write on the field for the current element... for i
-        System.out.println("Marking divide write")
-        markWrite(f, i)
-      }
-      
-      case _ => None
-    }
-    
-    maybeValue(rhs) match {
-      case Some(o) => {
-        store(sym, o)
-      }
-      case None => {}
     }
   }
 }

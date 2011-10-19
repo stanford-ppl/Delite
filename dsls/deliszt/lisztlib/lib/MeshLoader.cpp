@@ -217,15 +217,31 @@ jintArray MeshLoader::copyIdxArray(CRSMeshPrivate::idx_type* array,
         size_t len) {
     jintArray jarray = env->NewIntArray(len);
 
+    jint* buffer = new jint[len * 2];
+    
+    for(size_t i = 0; i < len; i++) {
+      buffer[i] = array[i];
+    }
+    
     env->SetIntArrayRegion(jarray, 0, len, (jint*) array);
+    
+    delete[] buffer;
 
     return jarray;
 }
 
 jintArray MeshLoader::copyIdArray(CRSMeshPrivate::id_type* array, size_t len) {
     jintArray jarray = env->NewIntArray(len);
+    
+    jint* buffer = new jint[len * 2];
+    
+    for(size_t i = 0; i < len; i++) {
+      buffer[i] = array[i];
+    }
 
-    env->SetIntArrayRegion(jarray, 0, len, (jint*) array);
+    env->SetIntArrayRegion(jarray, 0, len, buffer);
+    
+    delete[] buffer;
 
     return jarray;
 }
@@ -233,8 +249,17 @@ jintArray MeshLoader::copyIdArray(CRSMeshPrivate::id_type* array, size_t len) {
 jintArray MeshLoader::copyIdPairArray(CRSMeshPrivate::IDPair* array,
         size_t len) {
     jintArray jarray = env->NewIntArray(len * 2);
+    
+    jint* buffer = new jint[len * 2];
+    
+    for(size_t i = 0; i < len; i++) {
+      buffer[2*i] = array[i].data[0];
+      buffer[2*i+1] = array[i].data[1];
+    }
+    
+    delete[] buffer;
 
-    env->SetIntArrayRegion(jarray, 0, len * 2, (jint*) array);
+    env->SetIntArrayRegion(jarray, 0, len * 2, buffer);
 
     return jarray;
 }
