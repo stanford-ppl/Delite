@@ -9,4 +9,7 @@ object Config {
   var buildDir = System.getProperty("delite.build.dir", "generated")
   var useBlas = System.getProperty("blas.enabled", "false") != "false"
   var nestedVariantsLevel = System.getProperty("nested.variants.level", "0").toInt
+
+  //Print generationFailedException info
+  val dumpException: Boolean = if(System.getProperty("delite.dump.exception") == null) false else true
 }

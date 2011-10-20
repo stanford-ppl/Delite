@@ -37,7 +37,7 @@ class OP_Variant(val id: String, private[graph] val outputTypesMap: Map[Targets.
         r.dependencies = superOp.dependencies
         r.inputList = superOp.inputList
         r.consumers = superOp.consumers
-        r.cudaMetadata = this.cudaMetadata
+        for (tgt <- Targets.GPU) r.setGPUMetadata(tgt, getGPUMetadata(tgt))
         for (dep <- r.getDependencies) dep.addConsumer(r)
         for (c <- r.getConsumers) c.addDependency(r)
         if (idx == returnerIdx) returnOp = r

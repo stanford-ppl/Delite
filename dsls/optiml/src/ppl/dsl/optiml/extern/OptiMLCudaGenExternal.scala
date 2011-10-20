@@ -59,7 +59,7 @@ trait OptiMLCudaGenExternal extends CudaGenExternalBase with CudaGenDataStruct {
         case "double" => "cublasDgemm"
         case "float" => "cublasSgemm"
       }
-      emitInterfaceAndMethod(lib, e.funcName, scala.List("char n1", "char n2", "int mat2_col", "int mat1_row", "int mat2_row", "double a", "%1$s* mat2".format(tp), "int mat2_col_b", "%1$s* mat1".format(tp), "int mat1_col", "double b", "%1$s* mat3".format(tp), "int mat3_col"),
+      emitInterfaceAndMethod(lib, e.funcName, scala.List("char n1", "char n2", "int mat2_col", "int mat1_row", "int mat2_row", tp+" a", "%1$s* mat2".format(tp), "int mat2_col_b", "%1$s* mat1".format(tp), "int mat1_col", tp+" b", "%1$s* mat3".format(tp), "int mat3_col"),
 """
 {
   // HJ TODO: use a real stream
