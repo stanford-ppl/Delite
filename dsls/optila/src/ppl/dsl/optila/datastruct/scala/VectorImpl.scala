@@ -40,7 +40,7 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
   }
   
 
-  def sort(implicit o: Ordering[T]) = {
+  def sort(implicit o: Ordering[T]): DenseVector[T] = {
     val d = new Array[T](_length)
     System.arraycopy(_data, 0, d, 0, _length)
     scala.util.Sorting.quickSort(d)

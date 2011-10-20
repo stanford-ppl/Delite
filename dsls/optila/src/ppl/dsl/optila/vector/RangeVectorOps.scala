@@ -80,11 +80,13 @@ trait RangeVectorOps extends DSLType with Base with OverloadHack { this: OptiLA 
 trait RangeVectorOpsExp extends RangeVectorOps with DeliteCollectionOpsExp { this: OptiLAExp =>
   
   def rangevector_length(x: Rep[RangeVector]) = x match {
-    case Def(VectorObjectRange(s, e, stride, isRow)) => e - s
+    case Def(VectorObjectRange(start,end,stride,r)) => (end-start + stride - 1) / stride
+    case Def(v@Reflect(VectorObjectRange(start,end,stride,r), u, es)) /*if context.contains(v)*/ => (end-start + stride - 1) / stride
   }
   
   def rangevector_isrow(x: Exp[RangeVector]) = x match {
     case Def(VectorObjectRange(s,e,d,r)) => r
+    case Def(v@Reflect(VectorObjectRange(s,e,d,r), u, es)) /*if context.contains(v)*/ => r
   }
   
   def rangevector_apply(x: Exp[RangeVector], n: Exp[Int]) = rangevector_optimize_apply(x,n).get
@@ -92,6 +94,7 @@ trait RangeVectorOpsExp extends RangeVectorOps with DeliteCollectionOpsExp { thi
   // and this one also helps in the example:
   def rangevector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]): Option[Exp[A]] = x match {
     case Def(VectorObjectRange(s,e,d,r)) => Some((s + n*d).asInstanceOf[Exp[A]])
+    case Def(v@Reflect(VectorObjectRange(s,e,d,r), u, es)) /*if context.contains(v)*/ => Some((s + n*d).asInstanceOf[Exp[A]])
     case _ => None
   }
   

@@ -6,6 +6,7 @@ import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Base, ScalaGenFat
 import scala.virtualization.lms.internal.{GenericFatCodegen}
 
 trait DeliteCollectionOps extends Base {
+    
   trait DCInterfaceOps[+T,A] extends InterfaceOps[T] {
     def dcSize: Rep[Int] 
     def dcApply(n: Rep[Int]): Rep[A] 
@@ -16,7 +17,7 @@ trait DeliteCollectionOps extends Base {
     val ops: DCInterfaceOps[T,A]
   }
   
-  implicit def interfaceToVecOps[A:Manifest](intf: Interface[DeliteCollection[A]]) = new DeliteCollectionInterfaceOps(intf.asInstanceOf[DCInterface[DeliteCollection[A],A]])
+  implicit def interfaceToDCOps[A:Manifest](intf: Interface[DeliteCollection[A]]) = new DeliteCollectionInterfaceOps(intf.asInstanceOf[DCInterface[DeliteCollection[A],A]])
   
   // unlike before, don't assume that we know how to generate dcSize,dcApply,dcUpdate at run-time
   class DeliteCollectionInterfaceOps[A:Manifest](val intf: DCInterface[DeliteCollection[A],A]) {
@@ -49,10 +50,10 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
     case Def(e: DeliteOpZipWith[_,_,_,_]) => e.size
     //case Def(Reflect(e: DeliteOpMap[_,_,_], _,_)) => e.size // reasonable?
     //case Def(Reflect(e: DeliteOpZipWith[_,_,_,_], _,_)) => e.size // reasonable?
-    case _ => reflectPure(DeliteCollectionSize(x))
+    case _ => throw new RuntimeException("no static implementation found for dc_size on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get)//reflectPure(DeliteCollectionSize(x))
   }
-  def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = reflectPure(DeliteCollectionApply(x,n))
-  def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(DeliteCollectionUpdate(x,n,y))
+  def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]): Exp[A] = throw new RuntimeException("no static implementation found for dc_apply on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get + " --- x.Type is " + x.Type)//reflectPure(DeliteCollectionApply(x,n))
+  def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]): Exp[Unit] = throw new RuntimeException("no static implementation found for dc_update on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get) //reflectWrite(x)(DeliteCollectionUpdate(x,n,y))
 
   //////////////
   // mirroring

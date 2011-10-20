@@ -98,7 +98,7 @@ trait OptiLACompiler extends OptiLA with RangeOps with IOOps with SeqOps with Se
 /**
  * These are the corresponding IR nodes for OptiLA.
  */
-trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
+trait OptiLAExp extends OptiLACompiler with OptiLAUtilities with OptiLAScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
   with LanguageOpsExp with ArithOpsExpOpt 
   with VectorOpsExp with DenseVectorOpsExpOpt with RangeVectorOpsExp with VectorViewOpsExpOpt with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with MatrixOpsExpOpt 
@@ -119,7 +119,15 @@ trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsE
       case _ => throw new RuntimeException("optiml does not support this target")
     }
   }
+}
 
+trait OptiLAUtilities {
+  // better way to do this? manifest <:< comparisons seem to fail
+  def isSubtype(x: java.lang.Class[_], cls: java.lang.Class[_]): Boolean = {
+    if ((x == cls) || x.getInterfaces().contains(cls)) true
+    else if (x.getSuperclass() == null) false
+    else isSubtype(x.getSuperclass(), cls)
+  }    
 }
 
 
@@ -172,7 +180,7 @@ trait OptiLACodeGenBase extends GenericFatCodegen {
 }
 
 trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal with ScalaGenDeliteOps
-  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with /*ScalaGenVectorViewOps with*/ ScalaGenMatrixOps
+  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
   with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {

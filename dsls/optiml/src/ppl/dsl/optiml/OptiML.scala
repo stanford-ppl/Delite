@@ -88,7 +88,7 @@ trait OptiMLCompiler extends OptiLACompiler with OptiML {
 trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
   with LanguageOpsExp with ApplicationOpsExp with LBPOpsExp 
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
-  with VectorOpsExpOpt with MatrixOpsExpOpt with IndexVectorOpsExp with IndexVectorDenseOpsExp with IndexVectorRangeOpsExp with IndexVector2OpsExp 
+  with VectorOpsExpOpt with MatrixOpsExpOpt with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp 
   with StreamOpsExpOpt with StreamRowOpsExpOpt
   with LabelsOpsExp with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard

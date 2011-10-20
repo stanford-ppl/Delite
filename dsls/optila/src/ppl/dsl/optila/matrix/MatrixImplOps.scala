@@ -280,7 +280,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
         }
 
         if (!finished){
-          val tmpRow = currentMat(i)
+          val tmpRow = currentMat(i).cloneL
           currentMat(i) = currentMat(r)
           currentMat(r) = tmpRow
           currentMat(r) = currentMat(r) / currentMat(r,lead)

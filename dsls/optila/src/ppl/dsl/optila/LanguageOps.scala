@@ -188,11 +188,11 @@ trait LanguageOps extends Base { this: OptiLA =>
     }
   }
 
-  def sample[A:Manifest,VA:Manifest](v: Rep[VA], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA], toIntf: Rep[VA] => Interface[Vector[A]]): Rep[VA] = {
+  def sample[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA] = {
     optila_randsample_vector[A,VA](v, numSamples)
   }
-
-  def sample[A:Manifest,VA:Manifest](v: Rep[VA], numSamples: Rep[Int], method: SampleMethod)(implicit b: VectorBuilder[A,VA], toIntf: Rep[VA] => Interface[Vector[A]]): Rep[VA] = {
+  
+  def sample[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int], method: SampleMethod)(implicit b: VectorBuilder[A,VA]): Rep[VA] = {
     method match {
       case RANDOM => optila_randsample_vector[A,VA](v, numSamples)
       case _ => throw new UnsupportedOperationException("unknown sampling type selected")

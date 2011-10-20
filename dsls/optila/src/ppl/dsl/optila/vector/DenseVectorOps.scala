@@ -18,7 +18,7 @@ trait DenseVectorOps extends DSLType with Variables {
   implicit def varToDenseVecOps[A:Manifest](x: Var[DenseVector[A]]) = new DenseVecOpsCls(readVar(x))
   implicit def denseToInterface[A:Manifest](lhs: Rep[DenseVector[A]]) = new VInterface[A](new DenseVecOpsCls[A](lhs))
 
-  def denseVectorBuilder[A:Manifest] = new VectorBuilder[A,DenseVector[A]] {
+  implicit def denseVectorBuilder[A:Manifest] = new VectorBuilder[A,DenseVector[A]] {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = Vector.dense[A](length, isRow)
     def toIntf(x: Rep[DenseVector[A]]): Interface[Vector[A]] = denseToInterface(x)
   }  
@@ -63,7 +63,7 @@ trait DenseVectorOps extends DSLType with Variables {
 
     // accessors
     def length = densevector_length(elem)
-    def isRow = densevector_isRow(elem)
+    def isRow = densevector_isrow(elem)
     def apply(n: Rep[Int]) = densevector_apply(elem, n)
     // def isEmpty = length == 0
     // def first = apply(0)
@@ -180,7 +180,7 @@ trait DenseVectorOps extends DSLType with Variables {
 
   // class defs
   def densevector_length[A:Manifest](x: Rep[DenseVector[A]]): Rep[Int]
-  def densevector_isRow[A:Manifest](x: Rep[DenseVector[A]]): Rep[Boolean]
+  def densevector_isrow[A:Manifest](x: Rep[DenseVector[A]]): Rep[Boolean]
   def densevector_apply[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int]): Rep[A]
   def densevector_slice[A:Manifest](x: Rep[DenseVector[A]], start: Rep[Int], end: Rep[Int]): Rep[DenseVector[A]]
   def densevector_contains[A:Manifest](x: Rep[DenseVector[A]], y: Rep[A]): Rep[Boolean]
@@ -683,8 +683,8 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
   // def densevector_plus_generic[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Interface[Vector[A]]) = reflectPure(DenseVectorPlusGeneric(x,y))
   
   def densevector_length[A:Manifest](x: Exp[DenseVector[A]]) = reflectPure(DenseVectorLength(x))
-  def densevector_isRow[A:Manifest](x: Exp[DenseVector[A]]) = reflectPure(DenseVectorIsRow(x))
-  def densevector_apply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int]) = dc_apply(x,n)//reflectPure(DenseVectorApply(x, n))
+  def densevector_isrow[A:Manifest](x: Exp[DenseVector[A]]) = reflectPure(DenseVectorIsRow(x))
+  def densevector_apply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int]) = reflectPure(DenseVectorApply(x, n))
   def densevector_slice[A:Manifest](x: Exp[DenseVector[A]], start: Exp[Int], end: Exp[Int]) = reflectPure(DenseVectorSlice(x, start, end))
   def densevector_contains[A:Manifest](x: Exp[DenseVector[A]], y: Exp[A]) = reflectPure(DenseVectorContains(x, y))
   def densevector_distinct[A:Manifest](x: Exp[DenseVector[A]]) = reflectPure(DenseVectorDistinct(x))
@@ -761,7 +761,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case DenseVectorApply(x, n) => densevector_apply(f(x), f(n))
     case DenseVectorLength(x) => densevector_length(f(x))
-    case DenseVectorIsRow(x) => densevector_isRow(f(x))
+    case DenseVectorIsRow(x) => densevector_isrow(f(x))
     // implemented as DeliteOpSingleTask and DeliteOpLoop
     case e@DenseVectorTrans(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorTrans(f(x))(e.m))(mtype(manifest[A]))
     case e@DenseVectorOuter(x,y) => reflectPure(new { override val original = Some(f,e) } with DenseVectorOuter(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
@@ -901,6 +901,13 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     //case Def(Reflect(e @ DenseVectorObjectZeros(l), _,_)) => l // FIXME: in general this is unsafe, but hey...
     //case Def(Reflect(e @ DenseVectorClone(a), _,_)) => densevector_length(a) // FIXME: in general this is unsafe, but hey...
     case Def(DenseVectorObjectZeros(l)) => l
+    case Def(DenseVectorEmptyDouble()) => Const(0)
+    case Def(DenseVectorEmptyFloat()) => Const(0)
+    case Def(DenseVectorEmptyInt()) => Const(0)
+    case Def(DenseVectorEmpty()) => Const(0)
+    case Def(DenseVectorZeroDouble(l,r)) => l
+    case Def(DenseVectorZeroFloat(l,r)) => l
+    case Def(DenseVectorZeroInt(l,r)) => l
     case Def(DenseVectorClone(a)) => densevector_length(a)
     //case Def(DenseVectorObjectRange(s,e,d,r)) => (e - s + d - 1) / d
 
@@ -924,15 +931,22 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
       super.densevector_length(x)
   }
 
-  override def densevector_isRow[A:Manifest](x: Exp[DenseVector[A]]) = x match {
+  override def densevector_isrow[A:Manifest](x: Exp[DenseVector[A]]) = x match {
     case Def(e: DenseVectorArithmeticMap[A]) => e.in.asInstanceOf[Exp[DenseVector[A]]].isRow 
     case Def(e: DenseVectorArithmeticZipWith[A]) => e.inA.asInstanceOf[Exp[DenseVector[A]]].isRow 
     //case Def(e: DeliteOpDenseVectorLoop[A]) => e.isRow
     //case Def(e: DenseVectorDeliteOp[A] => e.isRow)
     //case Def(Reflect(DenseVectorObjectZeros(l,r), _)) => r
-    case Def(DenseVectorClone(a)) => densevector_isRow(a)
+    case Def(DenseVectorClone(a)) => densevector_isrow(a)
+    case Def(DenseVectorEmptyDouble()) => Const(true)
+    case Def(DenseVectorEmptyFloat()) => Const(true)
+    case Def(DenseVectorEmptyInt()) => Const(true)
+    case Def(DenseVectorEmpty()) => Const(true)
+    case Def(DenseVectorZeroDouble(l,r)) => r
+    case Def(DenseVectorZeroFloat(l,r)) => r
+    case Def(DenseVectorZeroInt(l,r)) => r
     //case Def(DenseVectorObjectRange(s,e,d,r)) => r
-    case _ => super.densevector_isRow(x)
+    case _ => super.densevector_isrow(x)
   }
   
   // and this one also helps in the example:
@@ -940,6 +954,13 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     case Def(DenseVectorObjectZeros(l)) => Some(unit(0).asInstanceOf[Exp[A]])
     case Def(DenseVectorObjectOnes(l)) => Some(unit(1).asInstanceOf[Exp[A]])
     //case Def(DenseVectorObjectRange(s,e,d,r)) => Some((s + n*d).asInstanceOf[Exp[A]])
+    case Def(s@DenseVectorEmptyDouble()) => throw new IndexOutOfBoundsException(s + " has no elements")
+    case Def(s@DenseVectorEmptyFloat()) => throw new IndexOutOfBoundsException(s + " has no elements")
+    case Def(s@DenseVectorEmptyInt()) => throw new IndexOutOfBoundsException(s + " has no elements")
+    case Def(s@DenseVectorEmpty()) => throw new IndexOutOfBoundsException(s + " has no elements")
+    case Def(DenseVectorZeroDouble(l,r)) => Some(Const(0.0).asInstanceOf[Exp[A]])
+    case Def(DenseVectorZeroFloat(l,r)) => Some(Const(0f).asInstanceOf[Exp[A]])
+    case Def(DenseVectorZeroInt(l,r)) => Some(Const(0).asInstanceOf[Exp[A]])
     case Def(DenseVectorTrans(x)) => Some(densevector_apply(x,n))
     case _ => None
   }

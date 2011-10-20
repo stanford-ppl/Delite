@@ -33,10 +33,10 @@ package object optiml {
 
   trait Labels[T] extends DenseVector[T] // ! to be temporarily removed to simplify things for pldi
   trait StreamRow[T] extends VectorView[T] 
-  trait IndexVector extends DenseVector[Int]
-  trait IndexVectorRange extends Vector[Int]
-  trait IndexVectorDense extends Vector[Int]
-  trait IndexVectorWC extends IndexVector 
+  trait IndexVector extends Vector[Int] with RowVector[Int]
+  trait IndexVectorRange extends IndexVector
+  trait IndexVectorDense extends IndexVector
+  //trait IndexVectorWC extends IndexVector 
   trait IndexVector2
 
   trait TrainingSet[T,L] extends Matrix[T] 

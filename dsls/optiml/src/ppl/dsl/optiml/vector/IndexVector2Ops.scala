@@ -85,10 +85,11 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   }
   */
   
-  case class IndexVector2ConstructRows[A:Manifest](in: Interface[Vector[Int]], block: Exp[Int] => Interface[Vector[A]], out: Exp[Matrix[A]])
-    extends DeliteOpForeachI[Int] {
-
-    val size = copyTransformedOrElse(_.size)(in.length)
+  case class IndexVector2ConstructRows[A:Manifest](intf: Interface[Vector[Int]], block: Exp[Int] => Interface[Vector[A]], out: Exp[Matrix[A]])
+    extends DeliteOpForeach[Int] {
+    
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[Int]]]
+    val size = copyTransformedOrElse(_.size)(intf.length)
     def sync = i => List()
     def func = i => { out(i) = block(i) } // updateRow should be fused with function application
     
@@ -99,10 +100,10 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
 //    extends DeliteOpForeach[Int]
 
   case class IndexVector2Construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A], out: Exp[Matrix[A]])
-    extends DeliteOpForeachI[Int] {
+    extends DeliteOpForeach[Int] {
   
-    val in = rowInd
-    val size = in.length
+    val in = rowInd.ops.elem.asInstanceOf[Exp[Vector[Int]]]
+    val size = rowInd.length
     def sync = i => List()
     def func = i => out(i) = colInd map { j => block(i,j) } // updateRow should be fused with function application
   } 

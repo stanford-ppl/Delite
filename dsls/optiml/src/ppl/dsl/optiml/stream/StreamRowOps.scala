@@ -5,8 +5,8 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.dsl.optiml.{StreamRow}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import ppl.dsl.optila.vector.{VectorViewOpsExp}
+import ppl.dsl.optiml._
 
 trait StreamRowOps extends DSLType with Base with OverloadHack { this: OptiML =>
 
@@ -24,14 +24,26 @@ trait StreamRowOpsExp extends StreamRowOps with BaseExp { this: OptiMLExp =>
   def streamrow_index[A:Manifest](x: Exp[StreamRow[A]]) = reflectPure(StreamRowIndex(x))
 }
 
-trait StreamRowOpsExpOpt extends StreamRowOpsExp { this: OptiMLExp =>
+trait StreamRowOpsExpOpt extends StreamRowOpsExp with VectorViewOpsExp { this: OptiMLExp =>
 
-   override def streamrow_index[A:Manifest](x: Exp[StreamRow[A]]) = x match {
-     case Def(StreamChunkRow(Def(/*Reflect(*/StreamObjectNew(numRows,numCols,chunkSize,func,isPure)/*,_,_)*/), i, offset)) => offset*chunkSize + i
-     //case Def(StreamChunkRow(Def(StreamObjectNew(numRows,numCols,chunkSize,func,isPure)), i, offset)) => offset*chunkSize + i
-     case Def(StreamChunkRowFusable(Def(/*Reflect(*/StreamObjectNew(numRows,numCols,chunkSize,func,isPure)/*,_,_)*/), i, offset)) => offset*chunkSize + i
-     case _ => super.streamrow_index(x)
-   }
+  override def vectorview_length[A:Manifest](x: Exp[VectorView[A]]) = x match {
+    case Def(StreamChunkRow(s, idx, off)) => s.numCols
+    case Def(v@Reflect(StreamChunkRow(s,idx,off), u, es)) /*if context.contains(v)*/ => s.numCols 
+    case _ => super.vectorview_length(x) 
+  }  
+  
+  override def vectorview_isrow[A:Manifest](x: Exp[VectorView[A]]) = x match {
+    case Def(StreamChunkRow(s, idx, off)) => Const(true)
+    case Def(v@Reflect(StreamChunkRow(s,idx,off), u, es)) /*if context.contains(v)*/ => Const(true)
+    case _ => super.vectorview_isrow(x) //throw new RuntimeException("could not resolve type of " + findDefinition(x.asInstanceOf[Sym[VectorView[A]]]).get.rhs) 
+  }
+  
+  override def streamrow_index[A:Manifest](x: Exp[StreamRow[A]]) = x match {
+    case Def(StreamChunkRow(Def(/*Reflect(*/StreamObjectNew(numRows,numCols,chunkSize,func,isPure)/*,_,_)*/), i, offset)) => offset*chunkSize + i
+    //case Def(StreamChunkRow(Def(StreamObjectNew(numRows,numCols,chunkSize,func,isPure)), i, offset)) => offset*chunkSize + i
+    case Def(StreamChunkRowFusable(Def(/*Reflect(*/StreamObjectNew(numRows,numCols,chunkSize,func,isPure)/*,_,_)*/), i, offset)) => offset*chunkSize + i
+    case _ => super.streamrow_index(x)
+  }
 }
 
 trait ScalaGenStreamRowOps extends ScalaGenBase {

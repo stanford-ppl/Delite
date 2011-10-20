@@ -1,20 +1,41 @@
 package ppl.dsl.optila.matrix
 
-import ppl.dsl.optila.CudaGenDataStruct
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase}
-import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{GenerationFailedException}
+
+import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.Config
-import ppl.dsl.optila._
 import ppl.delite.framework.extern.lib._
+
+import ppl.dsl.optila._
 
 trait MatrixOps extends DSLType with Variables {
   this: OptiLA =>
+
+
+  // -- 
+  /*
+  implicit def matToDCInterface[A:Manifest](x: Rep[Matrix[A]]) = new MatDCInterface(new MatDCOps[A](x))
+
+  class MatDCOps[A:Manifest](elem: Rep[DeliteCollection[A]]) extends DCInterfaceOps[DeliteCollection[A], A] {
+    type Self = Matrix[A]
+    implicit def wrap(x: Rep[Self]) = matToDCInterface(x)
+    
+    def dcSize = dc_size(x,a)
+    def dcApply(n: Rep[Int]) = dc_apply(x,n)
+    def dcUpdate(n: Rep[Int], y: Rep[A]) = dc_update(x,n,y)
+  }
+
+  class MatDCInterface[A:Manifest](val ops: MatDCOps[A]) extends DCInterface[DeliteCollection[A],A]   
+  */
+  // --
+
 
   // object SymmetricMatrix {
   //     def apply[A:Manifest](n: Rep[Int]) = symmatrix_obj_new(n)
@@ -45,7 +66,7 @@ trait MatrixOps extends DSLType with Variables {
   implicit def varToMatOps[A:Manifest](x: Var[Matrix[A]]) = new matOpsCls(readVar(x))
 
   // could convert to infix, but apply doesn't work with it anyways yet
-  class matOpsCls[A:Manifest](x: Rep[Matrix[A]]) {
+  class matOpsCls[A:Manifest](x: Rep[Matrix[A]]) {    
     // conversions
     def toBoolean(implicit conv: Rep[A] => Rep[Boolean]) =  map(e => conv(e))
     def toDouble(implicit conv: Rep[A] => Rep[Double]) = map(e => conv(e))
@@ -231,7 +252,7 @@ trait MatrixOps extends DSLType with Variables {
 }
 
 
-trait MatrixOpsExp extends MatrixOps with VariablesExp {
+trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesExp {
   this: MatrixImplOps with OptiLAExp  =>
 
   //////////////////////////////////////////////////
@@ -664,6 +685,28 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   } 
 
 
+  /////////////////////
+  // delite collection
+  
+  def isMatrix[A](x: Exp[DeliteCollection[A]]) = isSubtype(x.Type.erasure,classOf[Matrix[A]])  
+  def asMatrix[A](x: Exp[DeliteCollection[A]]) = x.asInstanceOf[Exp[Matrix[A]]]
+  
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = { 
+    if (isMatrix(x)) matrix_dcsize(asMatrix(x))
+    else super.dc_size(x)
+  }
+  
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = {
+    if (isMatrix(x)) matrix_dcapply(asMatrix(x),n)
+    else super.dc_apply(x,n)    
+  }
+  
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = {
+    if (isMatrix(x)) matrix_dcupdate(asMatrix(x),n,y)
+    else super.dc_update(x,n,y)        
+  }
+  
+  
   ////////////////////
   // object interface
 
@@ -783,6 +826,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   // internal
 
   def matrix_dcsize[A:Manifest](x: Exp[Matrix[A]]) = x.numRows * x.numCols
+  def matrix_dcapply[A:Manifest](x: Exp[Matrix[A]], n: Exp[Int]) = matrix_raw_data(x).apply(n)
+  def matrix_dcupdate[A:Manifest](x: Exp[Matrix[A]], n: Exp[Int], y: Exp[A]) = matrix_raw_data(x).update(n,y)
   def matrix_raw_data[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixRawData(x))  
 
   //////////////

@@ -79,20 +79,22 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   ////////////////////////////////
   // implemented via delite ops
   
-  case class VectorUpdateIndices[A:Manifest](x: Interface[Vector[A]], in: Interface[IndexVector], y: Exp[A])
-    extends DeliteOpForeachI[Int] {
+  case class VectorUpdateIndices[A:Manifest](x: Interface[Vector[A]], intf: Interface[IndexVector], y: Exp[A])
+    extends DeliteOpForeach[Int] {
 
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[Int]]]
     def func = i => x(i) = y
     def sync = i => List()
-    val size = in.length
+    val size = intf.length
   } 
   
-  case class VectorFindOverride[A:Manifest](in: Interface[Vector[A]], cond: Exp[A] => Exp[Boolean])
-    extends DeliteOpFilter2[A,Int,IndexVectorDense] {
+  case class VectorFindOverride[A:Manifest](intf: Interface[Vector[A]], cond: Exp[A] => Exp[Boolean])
+    extends DeliteOpFilter[A,Int,IndexVectorDense] {
       
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
     def alloc = IndexVector(0)
     def func = e => v // should we make available and use a helper function like index(e)?
-    val size = in.length
+    val size = intf.length
 
     def m = manifest[A]  
   }

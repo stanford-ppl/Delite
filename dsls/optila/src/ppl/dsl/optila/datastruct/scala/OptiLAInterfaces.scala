@@ -49,13 +49,15 @@ trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
 
 // TODO: enable this after switching VectorOps to DenseVectorOps
 trait DenseVector[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T] {
+  def cloneL: DenseVector[T]
+  def sort(implicit o: Ordering[T]): DenseVector[T] // because we use the underlying data field to sort
 //   def data: Array[T]
 //   def unsafeSetData(xs: Array[T], len: Int)  
 }
 
 trait ZeroVector[T] extends DenseVector[T]
 
-trait EmptyVector[T] extends Vector[T] {
+trait EmptyVector[T] extends DenseVector[T] {
   def length : Int = 0
   def isRow: Boolean = true // shouldn't matter
   def mtrans = this  

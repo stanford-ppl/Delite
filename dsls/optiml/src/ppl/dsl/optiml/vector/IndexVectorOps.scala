@@ -73,7 +73,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   // implemented via method on real data structure
 
   case class IndexVectorRangeNew(start: Exp[Int], end: Exp[Int]) extends Def[IndexVectorRange]
-  case class IndexVectorObjectNew(len: Exp[Int]) extends Def[IndexVectorDense]
+  case class IndexVectorDenseNew(len: Exp[Int]) extends Def[IndexVectorDense]
 
   ////////////////////////////////
   // implemented via delite ops
@@ -82,19 +82,18 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
 
   // Note: Construction from a discrete index vector set will curently return a contiguous (non-sparse) vector.
   // Is this what we want?
-  case class IndexVectorConstruct[B:Manifest](in: Interface[IndexVector], func: Exp[Int] => Exp[B])
-    extends DeliteOpMap2[Int,B,DenseVector[B]] {
+  case class IndexVectorConstruct[B:Manifest](intf: Interface[IndexVector], func: Exp[Int] => Exp[B])
+    extends DeliteOpMap[Int,B,DenseVector[B]] {
 
-    val size = copyTransformedOrElse(_.size)(in.length)
-    
-    def alloc = DenseVector[B](in.length, in.isRow)
-
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[Int]]]
+    val size = copyTransformedOrElse(_.size)(intf.length)    
+    def alloc = DenseVector[B](intf.length, intf.isRow)
     def m = manifest[B]
   }
   
   // impl defs
   def indexvector_range(start: Exp[Int], end: Exp[Int]) = reflectPure(IndexVectorRangeNew(start, end))
-  def indexvector_obj_new(len: Exp[Int]) = reflectMutable(IndexVectorObjectNew(len))
+  def indexvector_obj_new(len: Exp[Int]) = reflectMutable(IndexVectorDenseNew(len))
   def indexvector_obj_fromvec(xs: Interface[Vector[Int]]) = reflectPure(IndexVectorObjectFromVec(xs))
 
   // class defs
@@ -122,8 +121,8 @@ trait ScalaGenIndexVectorOps extends ScalaGenBase {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case v@IndexVectorRangeNew(start, end) =>
       emitValDef(sym, "new generated.scala.IndexVectorRangeImpl(" + quote(start) +  "," + quote(end) + ")")
-    case v@IndexVectorObjectNew(len) =>
-      emitValDef(sym, "new generated.scala.IndexVectorSeqImpl(" + quote(len) + ")")
+    case v@IndexVectorDenseNew(len) =>
+      emitValDef(sym, "new generated.scala.IndexVectorDenseImpl(" + quote(len) + ")")
 
     case _ => super.emitNode(sym, rhs)
   }

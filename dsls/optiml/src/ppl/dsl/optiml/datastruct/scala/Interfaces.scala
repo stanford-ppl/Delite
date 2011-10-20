@@ -15,6 +15,8 @@ trait StreamRow[@specialized(Boolean, Int, Long, Float, Double) T] extends Vecto
 
 trait IndexVector extends DenseVector[Int]
 
+trait IndexVectorDense extends IndexVector
+
 trait IndexVector2 {
   def rowInd: IndexVector
   def colInd: IndexVector

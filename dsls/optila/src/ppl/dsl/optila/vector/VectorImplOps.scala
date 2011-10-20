@@ -115,7 +115,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
 
   def vector_distinct_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = {
-    val resultOut = b.alloc(v.length, v.isRow)
+    val resultOut = b.alloc(0, v.isRow)
     val result = b.toIntf(resultOut) // this is sub-optimal - passing toIntf as an implicit does't kick in all the time    
     var i = unit(0)
     while (i < v.length) {
