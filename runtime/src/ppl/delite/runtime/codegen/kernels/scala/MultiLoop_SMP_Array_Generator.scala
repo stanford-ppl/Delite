@@ -116,7 +116,8 @@ object MultiLoop_SMP_Array_Generator {
       if (chunkIdx != numChunks-1) out.append("head.getB"+(numChunks-1)+"\n") // wait for last one
       out.append("head.closure.postProcess(acc)\n")
     }
-    if (chunkIdx == 0) out.append("acc\n")    
+    if (chunkIdx == 0) out.append("head.closure.finalize(acc)\n")
+    if (chunkIdx == 0) out.append("acc\n")
     out.append("}\n")
   }
 

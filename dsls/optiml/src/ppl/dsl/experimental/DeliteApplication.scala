@@ -101,8 +101,6 @@ trait SandboxDeliteApplication extends SandboxDeliteOpsExp with ScalaCompile {
     g(args)
   }
 
-  def registerDSLType(name: String): DSLTypeRepresentation = nop
-
   /**
    * this is the entry method for our applications, user implement this method. Note, that it is missing the
    * args parameter, args are now accessed via the args field. This basically hides the notion of Reps from

@@ -15,6 +15,7 @@ abstract class DeliteOpMultiLoop[A] {
   def postCombine(__act: A, rhs: A): Unit
   def postProcInit(__act: A): Unit
   def postProcess(__act: A): Unit
+  def finalize(__act: A): Unit
 }
 
 /**
