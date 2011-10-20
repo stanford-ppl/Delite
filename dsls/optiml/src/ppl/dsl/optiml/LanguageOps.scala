@@ -75,32 +75,46 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    * aggregate
    */
-  // 1D aggregate
-  def aggregate[A:Manifest](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[Vector[A]]): Rep[Vector[A]] = {
-    optiml_aggregate(start, end, block)
-  }
+  // 1D aggregate is just a Vector constructor!
+  // def aggregate[A:Manifest](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A]): Rep[Vector[A]] = {
+  //     optiml_aggregate(start, end, block)
+  //   }
+  
+  def aggregateIf[A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A]): Rep[Vector[A]] = {
+    optiml_aggregateif(start, end, cond, block)
+  }  
 
   // 2D aggregate
-  def aggregate[A:Manifest](rowStart: Rep[Int], rowEnd: Rep[Int], colStart: Rep[Int], colEnd: Rep[Int])
-                           (block: (Rep[Int], Rep[Int]) => Rep[Vector[A]]): Rep[Vector[A]] = {
-    optiml_aggregate2d(rowStart, rowEnd, colStart, colEnd, block)
+  def aggregate[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector])
+                           (block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]] = {
+    optiml_aggregate2d(rows, cols, block)
   }
+  
+  def aggregateIf[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector])
+                             (cond: (Rep[Int], Rep[Int]) => Rep[Boolean])(block: (Rep[Int], Rep[Int]) => Rep[A]) = {
+    optiml_aggregate2dif(rows, cols, cond, block)
+  }
+  
 
-  def optiml_aggregate[A:Manifest](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[Vector[A]]): Rep[Vector[A]]
-  def optiml_aggregate2d[A:Manifest](rowStart: Rep[Int], rowEnd: Rep[Int], colStart: Rep[Int], colEnd: Rep[Int],
-                                     block: (Rep[Int], Rep[Int]) => Rep[Vector[A]]): Rep[Vector[A]]
+  def optiml_aggregateif[A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A]): Rep[Vector[A]]
+  def optiml_aggregate2d[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector],
+                                     block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]]
+  def optiml_aggregate2dif[A:Manifest](rows: Rep[IndexVector], cols: Rep[IndexVector],
+                                       cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[Vector[A]]
+
 
 
   // TODO: for some reason, the implicit ops conversions aren't kicking in for sum/min/max
   /**
    * sum
    */
-  def sum[A:Manifest:Arith](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A]) = optiml_sum(start, end, block)
-  def sum[A:Manifest:Arith](vals: Rep[Vector[A]]) = repVecToVecOps(vals).sum
-  def sum[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = repMatToMatOps(vals).sum
-
-  def optiml_sum[A:Manifest:Arith](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A]): Rep[A]
-
+  def sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A]) = optiml_sum(start, end, block)
+  def sum[A:Manifest:Arith:Cloneable](vals: Rep[Vector[A]]) = repVecToVecOps(vals).sum
+  def sum[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], c: Cloneable[A], o: Overloaded1) = repMatToMatOps(vals).sum
+  def sumIf[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A]) = optiml_sumif(start, end, cond, block)
+  
+  def optiml_sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A]): Rep[A]
+  def optiml_sumif[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A]): Rep[A]
 
   /**
    * min
@@ -133,6 +147,10 @@ trait LanguageOps extends Base { this: OptiML =>
   //def abs[A](vals: Rep[Vector[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = vals.abs
   //def abs[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded2) = vals.abs
 
+  /**
+   * sqrt 
+   */
+  def sqrt(e: Rep[Double]) = Math.sqrt(e)
 
   /**
    *  IndexVector construction
@@ -235,7 +253,7 @@ trait LanguageOps extends Base { this: OptiML =>
   /**
    *  i/o
    */
-  def readMatrix(filename: Rep[String]) = MLInputReader.read(filename)
+  def readMatrix(filename: Rep[String], delim: Rep[String] = unit("\\\\s+")) = MLInputReader.read(filename, delim)
   def readVector(filename: Rep[String]) = MLInputReader.readVector(filename)
   def readImage(filename: Rep[String]) = MLInputReader.readGrayscaleImage(filename)
 
@@ -381,50 +399,195 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   def optiml_reseed() = reflectEffect(RandReseed())
   
-  def identityHashCode(x:Exp[Any]) = IdentityHashCode(x)
+  def identityHashCode(x:Exp[Any]) = reflectPure(IdentityHashCode(x))
 
 
   /**
    * Aggregate
    */
-  def optiml_aggregate[A:Manifest](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[Vector[A]]) = {
-    // unroll
-    (start::end) flatMap { block }
 
-    // Other impl.: use a for loop to iterate over the data structure and use synchronization to aggregate values
+  case class AggregateIf[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], func: Exp[Int] => Exp[A])
+    extends DeliteOpFilter[Int,A,Vector[A]] {
+  
+    def alloc = Vector[A](unit(0), unit(true))      
+    val in = copyTransformedOrElse(_.in)(0::end-start)
+    val size = copyTransformedOrElse(_.size)(end-start)
+    
+    def m = manifest[A]
+  }
+  
+  def optiml_aggregateif[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
+    reflectPure(AggregateIf(start,end,cond,block))
+  }
+  
+  case class Aggregate2d[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                     func2: (Exp[Int], Exp[Int]) => Exp[A])
+    extends DeliteOpMap[Int,A,Vector[A]] {
+  
+    val flatSize = rows.length*cols.length        
+    def alloc = Vector[A](flatSize, unit(true))      
+    def func = i => func2(i/cols.length + rows(0), i%cols.length + cols(0))    
+    val in = copyTransformedOrElse(_.in)(0::flatSize)
+    val size = copyTransformedOrElse(_.size)(flatSize)
+    
+    def m = manifest[A]
+  }
+  
+  def optiml_aggregate2d[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                     block: (Exp[Int], Exp[Int]) => Exp[A]) = {
+    
+    reflectPure(Aggregate2d(rows, cols, block))
   }
 
-  def optiml_aggregate2d[A:Manifest](rowStart: Exp[Int], rowEnd: Exp[Int], colStart: Exp[Int], colEnd: Exp[Int],
-                                     block: (Exp[Int], Exp[Int]) => Exp[Vector[A]]) = {
-    // unroll
-    (rowStart::rowEnd) flatMap { y =>
-      (colStart::colEnd) flatMap { x =>
-        block(x, y)
-      }
-    }
+  
+  case class Aggregate2dIf[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                       cond2: (Exp[Int],Exp[Int]) => Exp[Boolean], func2: (Exp[Int], Exp[Int]) => Exp[A])
+    extends DeliteOpFilter[Int,A,Vector[A]] {
+  
+    val flatSize = rows.length*cols.length    
+    def alloc = Vector[A](unit(0), unit(true))      
+    def cond = i => cond2(i/cols.length + rows(0), i%cols.length + cols(0))
+    def func = i => func2(i/cols.length + rows(0), i%cols.length + cols(0))    
+    val in = copyTransformedOrElse(_.in)(0::flatSize)
+    val size = copyTransformedOrElse(_.size)(flatSize)
+    
+    def m = manifest[A]
+  }
+      
+  def optiml_aggregate2dif[A:Manifest](rows: Exp[IndexVector], cols: Exp[IndexVector],
+                                       cond: (Exp[Int], Exp[Int]) => Exp[Boolean], block: (Exp[Int], Exp[Int]) => Exp[A]) = {
+    
+    reflectPure(Aggregate2dIf(rows, cols, cond, block))
   }
 
-
+                                       
   /**
    * Sum
    */
 
-  case class Sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], map: Exp[Int] => Exp[A])
+  case class Sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], map: Exp[Int] => Exp[A], init: Exp[A])
     extends DeliteOpMapReduce[Int,A] {
 
-    val in = (start::end)
-    val size = end - start
-    val zero = implicitly[Arith[A]].zero
+    override val mutable = true // can we do this automatically?
+    
+    val in = copyTransformedOrElse(_.in)(start::end)
+    val size = copyTransformedOrElse(_.size)(end - start)
+    val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable)) // FIXME: zero can be a fresh matrix, mutable calls cloneL
     def reduce = (a,b) => a += b
-  } 
-
-  def optiml_sum[A:Manifest:Arith](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
-
-    Sum(start, end, block)
-    // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
-    //reflectEffect(Sum(start, end, block))
+    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]    
+    def c = implicitly[Cloneable[A]]
   }
 
+/*
+  case class SumIf[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], func: Exp[Int] => Exp[A], init: Exp[A])
+    extends DeliteOpFilterReduceFold[Int,A] {
+
+    override val mutable = true // can we do this automatically?
+    
+    val in = copyTransformedOrElse(_.in)((start::end))
+    val size = copyTransformedOrElse(_.size)(end - start)
+    val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable))
+    def reduce = (a,b) => a += b  
+/*    
+    def func = (v) => (v, cond(v))
+    def reduce = (a,b) => (if (a._2 && b._2) a._1 += b._1 else if (!a._2 && b._2)) b._2.mutable else if (), a._2 || b._2)
+    
+*/    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
+    def c = implicitly[Cloneable[A]]
+  }
+*/
+
+  case class SumIf[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], co: Exp[Int] => Exp[Boolean], fu: Exp[Int] => Exp[A])
+    extends DeliteOpFilterReduceFold[A] {
+
+    override val mutable = true // can we do this automatically?
+    
+    val in = copyTransformedOrElse(_.in)((start::end))
+    val size = copyTransformedOrElse(_.size)(end - start)
+    val zero = (copyTransformedOrElse(_.zero._1)(reifyEffects(a.empty)),copyTransformedOrElse(_.zero._2)(unit(-1)))
+
+/*
+    def func = (v) => (zero._1, reifyEffects(if (co(v)) v else -1))
+    def reduce = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
+                                        if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
+*/
+
+
+    def func = (v) => (zero._1, v)
+    
+    def reduceSeq = (a,b) => (reifyEffects(if (co(b._2)) { if (a._2 >= 0) a._1 += fu(b._2) else fu(b._2).mutable } else a._1), 
+                              reifyEffects(if (co(b._2)) b._2 else a._2 )) // would not work in parallel...
+    
+    def reducePar = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += b._1 else b._1.mutable } else a._1), 
+                              reifyEffects(if (b._2 >= 0) b._2 else a._2))
+    
+/*
+    def step = (a,v) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
+                                        if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
+*/
+    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
+    def c = implicitly[Cloneable[A]]
+  }
+
+  // FIXME: peeling off the first iteration manually can prevent fusion because the LoopOp is 1 smaller than its cousins
+  // TODO: what is the deired behavior if the range is empty?
+  def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
+    val firstBlock = block(start)
+    val out = reflectPure(Sum(start+1, end, block, firstBlock))
+    out + firstBlock
+  }
+
+  def optiml_sumif[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
+    reflectPure(SumIf(start, end, cond, block))
+/*    val firstCond = cond(start)
+    val firstBlock = block(start)
+    val out = reflectPure(SumIf(start+1, end, cond, block, firstBlock))
+    flatIf (firstCond) {
+      out + firstBlock
+    } {
+      out
+    }
+*/
+  }
+
+/*  
+  def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
+
+    //Sum(start, end, block)
+    // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
+    //reflectEffect(Sum(start, end, block))
+    val firstBlock = block(start)
+    val out = reflectPure(Sum(start+1, end, block, firstBlock))
+    // add the first value back in (exploit commutativity of +)
+//    out += firstBlock      
+//    out.unsafeImmutable
+    out + firstBlock
+  }
+  
+  def optiml_sumif[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
+    val firstCond = cond(start)
+    val firstBlock = block(start)
+    val out = reflectPure(SumIf(start+1, end, cond, block, firstBlock))
+    // add the first value back in (exploit commutativity of +)
+    if (firstCond) {
+//      out += firstBlock
+//      ()
+      out + firstBlock
+    }
+//    out.unsafeImmutable
+    else {
+      out
+    }
+  }
+*/  
+  
+  
 
   /**
    * untilconverged
@@ -475,26 +638,26 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
                                                   block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) = {
 
     var delta = var_new(unit(scala.Double.MaxValue))
-    var prev = var_new(unit(null).asInstanceOfL[A])
-    var next = var_new(x)
+    var cur = var_new(x)
     var iter = var_new(unit(0))
 
     while ((Math.abs(delta) > thresh) && (iter < max_iter)){
-      if (clone_prev_val)
-        prev = next.cloneL()
+      val prev = if (clone_prev_val)
+        cur.cloneL()
       else
-        prev = next
+        cur
 
 //      try{
-        next = block(next)
+        val next = block(cur)
 //      }
 //      catch{
 //        case e: Exception => throw new ConvergenceException("Converging block threw exception: " + e)
 //      }
       iter += 1
-      //prev.asInstanceOfL[Matrix[Any]].pprint
+      //prev.asInstanceOfLOfL[Matrix[Any]].pprint
       //next.asInstanceOfL[Matrix[Any]].pprint
       delta = diff(next,prev)
+      cur = next
       //println("(" + delta + ")")
     }
 
@@ -504,7 +667,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
       returnL()
     }
 
-    next
+    cur
   }
 
   /**
@@ -562,32 +725,50 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   trait VectorDistance
 
   case class VectorDistanceAbs[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_abs_impl(v1,v2))) with VectorDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_abs_impl(v1,v2))) with VectorDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]] //TODO factor into DeliteOp subclass
+    }
 
   case class VectorDistanceEuc[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_euc_impl(v1,v2))) with VectorDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_euc_impl(v1,v2))) with VectorDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
+    }
 
   case class VectorDistanceSquare[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_square_impl(v1,v2))) with VectorDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_vectordistance_square_impl(v1,v2))) with VectorDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
+    }
 
 
   trait MatrixDistance
 
   case class MatrixDistanceAbs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_abs_impl(m1,m2))) with MatrixDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_abs_impl(m1,m2))) with MatrixDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
+    }
 
   case class MatrixDistanceEuc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_euc_impl(m1,m2))) with MatrixDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_euc_impl(m1,m2))) with MatrixDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
+    }
 
   case class MatrixDistanceSquare[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])
-    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_square_impl(m1,m2))) with MatrixDistance
+    extends DeliteOpSingleTask[A](reifyEffects(optiml_matrixdistance_square_impl(m1,m2))) with MatrixDistance {
+      def m = manifest[A]
+      def a = implicitly[Arith[A]]
+    }
 
-  def optiml_vector_dist_abs[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceAbs(v1,v2)
-  def optiml_vector_dist_euc[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceEuc(v1,v2)
-  def optiml_vector_dist_square[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = VectorDistanceSquare(v1,v2)
-  def optiml_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceAbs(m1,m2)
-  def optiml_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceEuc(m1,m2)
-  def optiml_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = MatrixDistanceSquare(m1,m2)
+  def optiml_vector_dist_abs[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = reflectPure(VectorDistanceAbs(v1,v2))
+  def optiml_vector_dist_euc[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = reflectPure(VectorDistanceEuc(v1,v2))
+  def optiml_vector_dist_square[A:Manifest:Arith](v1: Rep[Vector[A]], v2: Rep[Vector[A]]) = reflectPure(VectorDistanceSquare(v1,v2))
+  def optiml_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceAbs(m1,m2))
+  def optiml_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceEuc(m1,m2))
+  def optiml_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceSquare(m1,m2))
 
 
   /**
@@ -601,11 +782,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     extends DeliteOpSingleTask[Vector[A]](reifyEffects(optiml_randsample_vector_impl(v, numSamples)))
   
   def optiml_randsample_matrix[A:Manifest](m: Exp[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean]): Exp[Matrix[A]] = {
-    RandSampleMatrix(m, numSamples, sampleRows)
+    reflectPure(RandSampleMatrix(m, numSamples, sampleRows))
   }
 
   def optiml_randsample_vector[A:Manifest](v: Exp[Vector[A]], numSamples: Exp[Int]): Exp[Vector[A]] = {
-    RandSampleVector(v, numSamples)
+    reflectPure(RandSampleVector(v, numSamples))
   }
 
 
@@ -616,7 +797,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     // unroll
     val dists = (0::m.numRows){ i =>
       val d = dist(m(row),m(i))
-      if (d == implicitly[Arith[A]].zero && !allowSame) implicitly[HasMinMax[A]].maxValue else d
+      if (d == implicitly[Arith[A]].empty && !allowSame) implicitly[HasMinMax[A]].maxValue else d
     }
     dists.minIndex
     /*
@@ -635,11 +816,33 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    *   Profiling
    */
-  case class ProfileStart(deps: Exp[Seq[Any]]) extends Def[Unit]
-  case class ProfileStop(deps: Exp[Seq[Any]]) extends Def[Unit]
+  case class ProfileStart(deps: List[Exp[Any]]) extends Def[Unit]
+  case class ProfileStop(deps: List[Exp[Any]]) extends Def[Unit]
 
-  def profile_start(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStart(Seq(deps: _*)))
-  def profile_stop(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStop(Seq(deps: _*)))
+  def profile_start(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStart(deps.toList))
+  def profile_stop(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStop(deps.toList))
+  
+  
+  /**
+   * Mirroring
+   */
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case e@VectorDistanceAbs(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceAbs(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@VectorDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceEuc(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@VectorDistanceSquare(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceSquare(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@MatrixDistanceAbs(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceAbs(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@MatrixDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceEuc(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@MatrixDistanceSquare(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixDistanceSquare(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
+    case e@Sum(st,en,b,init) => reflectPure(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
+    case e@SumIf(st,en,c,b) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m, e.a, e.c))(mtype(manifest[A]))
+//    case e@SumIf(st,en,c,b,init) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
+    case Reflect(ProfileStart(deps), u, es) => reflectMirrored(Reflect(ProfileStart(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(ProfileStop(deps), u, es) => reflectMirrored(Reflect(ProfileStop(f(deps)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@Sum(st,en,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SumIf(st,en,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
+//    case Reflect(e@SumIf(st,en,c,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 trait BaseGenLanguageOps extends GenericFatCodegen {

@@ -39,19 +39,35 @@ trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   def clear()
   def trim
   def cloneL: Vector[T]
+  def unsafeSetData(xs: Array[T], len: Int)
 
   // DeliteCollection
   def dcApply(idx: Int) = apply(idx)
   def dcUpdate(idx: Int, x: T) = update(idx, x)
-  def size = length
+  def dcSize = length
+  
+  // value equality is needed for DeliteCollection zero
+  override def equals(rhs: Any): Boolean = {
+    if (!rhs.isInstanceOf[Vector[T]]) return false
+        
+    val rv = rhs.asInstanceOf[Vector[T]]
+    if (dcSize != rv.dcSize) return false
+    var i = 0
+    while (i < rv.dcSize) {
+      if (dcApply(i) != rv.dcApply(i)) return false
+      i += 1        
+    }
+    true    
+  }
 }
 
 trait ZeroVector[T] extends Vector[T]
 
 trait EmptyVector[T] extends Vector[T] {
   def length : Int = 0
+  def isRow: Boolean = true // shouldn't matter  
+  
   def apply(i: Int): T = throw new UnsupportedOperationException()
-  def isRow: Boolean = throw new UnsupportedOperationException()
   def update(index: Int, x: T) = throw new UnsupportedOperationException()
   def data = throw new UnsupportedOperationException()
   def toList = throw new UnsupportedOperationException()
@@ -65,6 +81,7 @@ trait EmptyVector[T] extends Vector[T] {
   def trim = throw new UnsupportedOperationException()
   def clear() = throw new UnsupportedOperationException()
   def cloneL = throw new UnsupportedOperationException()
+  def unsafeSetData(xs: Array[T], len: Int) = throw new UnsupportedOperationException()
 }
 
 trait VectorView[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T]
@@ -106,6 +123,7 @@ trait IndexVectorWC extends IndexVector {
   def trim = throw new UnsupportedOperationException()
   def clear() = throw new UnsupportedOperationException()
   def cloneL = throw new UnsupportedOperationException()
+  def unsafeSetData(xs: Array[Int], len: Int) = throw new UnsupportedOperationException()
 }
 
 /**
@@ -134,8 +152,24 @@ trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   // DeliteCollection
   def dcApply(idx: Int): T
   def dcUpdate(idx: Int, x: T): Unit
-
+  def dcSize = size
+  
+  // value equality is needed for DeliteCollection zero
+  override def equals(rhs: Any): Boolean = {
+    if (!rhs.isInstanceOf[Matrix[T]]) return false
+        
+    val rv = rhs.asInstanceOf[Matrix[T]]
+    if (size != rv.size) return false
+    var i = 0
+    while (i < rv.size) {
+      if (dcApply(i) != rv.dcApply(i)) return false
+      i += 1        
+    }
+    true    
+  }
 }
+
+trait SymmetricMatrix[@specialized(Boolean, Int, Float, Double) T] extends Matrix[T] 
 
 /**
  * TrainingSet

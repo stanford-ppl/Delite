@@ -1,0 +1,270 @@
+object RBMRunnerFusingMain {
+  def main(args: Array[String]) { }
+}
+class RBMRunnerFusing extends ((Array[java.lang.String])=>(Unit)) {
+  def apply(x0:Array[java.lang.String]): Unit = { val x1 = { generated.scala.Global.randRef.setSeed(generated.scala.Global.INITIAL_SEED);   generated.scala.Global.intRandRef.setSeed(generated.scala.Global.INITIAL_SEED); }
+    val x7 = {
+      if (x3) { }
+    }
+    val x17 = { 
+      val x60 = while ({val x31 = x21 x32}) {
+        val x44 = { }
+        while (x37 < x35) {  // begin fat loop x44 } // end fat loop x44
+        val x58 = { if (x51) {}
+          else { }
+        }
+      }
+    }
+    val x72 = { }
+    while (x67 < x66) {  // begin fat loop x72 } // end fat loop x72
+    val x88 = { 
+      while (x80 < x79) {  // begin fat loop x86
+        x86 = { }
+      } // end fat loop x86
+    }
+    val x100 = { }
+    while (x92 < x91) {  // begin fat loop x100 } // end fat loop x100
+    val x104 = {  }
+    val x107 = {  }
+    val x103 = {  }
+    val x106 = {  }
+    val x175 = { 
+      val x172 = while (x158 < x156) {
+        val x170 = while (x161 < x159) {
+          val x167 = {  }
+        }
+      }
+    }
+    val x201 = { 
+      val x199 = {
+        if (x184) {
+          while (x793 < x186) {  // begin fat loop x189
+            val x805 = while ({val x797 = x796 x798}) { }
+            x189 = { }
+          } // end fat loop x189
+        } else {
+          while (x808 < x193) {  // begin fat loop x196
+            val x820 = while ({val x812 = x811 x813}) { }
+            x196 = { }
+          } // end fat loop x196
+        }
+      }
+    }
+    val x305 = { 
+      while (x297 < x296) {  // begin fat loop x303
+        x303 = { }
+      } // end fat loop x303
+    }
+    val x358 = { 
+      val x355 = while (x343 < x341) {
+        val x353 = while (x346 < x344) {
+          val x350 = {  }
+        }
+      }
+    }
+    val x383 = { 
+      val x381 = {
+        if (x366) {
+          while (x865 < x368) {  // begin fat loop x371
+            val x877 = while ({val x869 = x868 x870}) { }
+            x371 = { }
+          } // end fat loop x371
+        } else {
+          while (x880 < x375) {  // begin fat loop x378
+            val x892 = while ({val x884 = x883 x885}) { }
+            x378 = { }
+          } // end fat loop x378
+        }
+      }
+    }
+    val x749 = while ({val x114 = x113 x115}) {
+      val x740 = while ({val x119 = x118 x120}) {
+        val x152 = { 
+          val x149 = while ({val x129 = x128 x130}) {
+            val x146 = while ({val x133 = x132 x134}) {
+              val x142 = {  }
+            }
+          }
+        }
+        val x183 = { 
+          while (x752 < x176) {  // begin fat loop x180
+            val x761 = {  }
+            val x789 = while ({val x754 = x753 x756}) {
+              val x765 = {  }
+              val x784 = while ({val x768 = x758 x769}) {
+                val x774 = {  }
+                val x779 = {  }
+              }
+            }
+            x180 = { }
+          } // end fat loop x180
+        }
+        val x211 = { }
+        while (x205 < x204) {  // begin fat loop x211 } // end fat loop x211
+        val x231 = { }
+        while (x219 < x204) {  // begin fat loop x231 } // end fat loop x231
+        val x232 = {  }
+        val x315 = { }
+        while (x307 < x306) {  // begin fat loop x315
+          val x313 = {
+            if (x312) { } else { }
+          }
+        } // end fat loop x315
+        val x365 = { 
+          while (x823 < x359) {  // begin fat loop x362
+            val x833 = {  }
+            val x862 = while ({val x825 = x824 x827}) {
+              val x838 = {  }
+              val x857 = while ({val x841 = x829 x842}) {
+                val x847 = {  }
+                val x852 = {  }
+              }
+            }
+            x362 = { }
+          } // end fat loop x362
+        }
+        val x393 = { }
+        while (x387 < x386) {  // begin fat loop x393 } // end fat loop x393
+        val x413 = { }
+        while (x401 < x386) {  // begin fat loop x413 } // end fat loop x413
+        val x414 = {  }
+        val x1099_zero = { }
+        while (x561 < x553) {  // begin fat loop x1099 } // end fat loop x1099
+        val x578 = {
+          if (x577) { } else { }
+        }
+        val x588 = { }
+        while (x583 < x582) {  // begin fat loop x588 } // end fat loop x588
+        val x252 = { 
+          val x249 = while (x237 < x235) {
+            val x247 = while (x240 < x238) {
+              val x244 = {  }
+            }
+          }
+        }
+        val x273 = { 
+          val x270 = while (x258 < x256) {
+            val x268 = while (x261 < x259) {
+              val x265 = {  }
+            }
+          }
+        }
+        val x280 = { 
+          while (x895 < x274) {  // begin fat loop x277
+            val x905 = {  }
+            val x934 = while ({val x897 = x896 x899}) {
+              val x910 = {  }
+              val x929 = while ({val x913 = x901 x914}) {
+                val x919 = {  }
+                val x924 = {  }
+              }
+            }
+            x277 = { }
+          } // end fat loop x277
+        }
+        val x444 = { 
+          while (x937 < x437) {  // begin fat loop x441
+            val x946 = {  }
+            val x974 = while ({val x939 = x938 x941}) {
+              val x950 = {  }
+              val x969 = while ({val x953 = x943 x954}) {
+                val x959 = {  }
+                val x964 = {  }
+              }
+            }
+            x441 = { }
+          } // end fat loop x441
+        }
+        val x471 = { }
+        while (x465 < x464) {  // begin fat loop x471 } // end fat loop x471
+        val x491 = { }
+        while (x479 < x464) {  // begin fat loop x491 } // end fat loop x491
+        val x492 = {  }
+        val x512 = { 
+          val x509 = while (x497 < x495) {
+            val x507 = while (x500 < x498) {
+              val x504 = {  }
+            }
+          }
+        }
+        val x533 = { 
+          val x530 = while (x518 < x516) {
+            val x528 = while (x521 < x519) {
+              val x525 = {  }
+            }
+          }
+        }
+        val x540 = { 
+          while (x977 < x534) {  // begin fat loop x537
+            val x987 = {  }
+            val x1016 = while ({val x979 = x978 x981}) {
+              val x992 = {  }
+              val x1011 = while ({val x995 = x983 x996}) {
+                val x1001 = {  }
+                val x1006 = {  }
+              }
+            }
+            x537 = { }
+          } // end fat loop x537
+        }
+        val x598 = { }
+        while (x592 < x591) {  // begin fat loop x598 } // end fat loop x598
+        val x607 = { }
+        while (x600 < x591) {  // begin fat loop x607 } // end fat loop x607
+        val x619 = { }
+        while (x611 < x610) {  // begin fat loop x619 } // end fat loop x619
+        val x628 = { }
+        while (x620 < x591) {  // begin fat loop x628 } // end fat loop x628
+        val x636 = { }
+        while (x629 < x591) {  // begin fat loop x636 } // end fat loop x636
+        val x645 = { }
+        while (x637 < x582) {  // begin fat loop x645 } // end fat loop x645
+        val x292 = { 
+          while (x1019 < x233) {  // begin fat loop x289
+            val x1027_zero = { }
+            while (x1022 < x1021) {  // begin fat loop x1027 } // end fat loop x1027
+            x289 = { }
+          } // end fat loop x289
+        }
+        val x552 = { 
+          while (x1031 < x493) {  // begin fat loop x549
+            val x1039_zero = { }
+            while (x1034 < x1033) {  // begin fat loop x1039 } // end fat loop x1039
+            x549 = { }
+          } // end fat loop x549
+        }
+        val x1070 = { }
+        while (x657 < x656) {  // begin fat loop x1070 } // end fat loop x1070
+        val x1073 = { }
+        while (x649 < x648) {  // begin fat loop x1073 } // end fat loop x1073
+        val x286 = { 
+          while (x1043 < x253) {  // begin fat loop x283
+            val x1051_zero = { }
+            while (x1046 < x1045) {  // begin fat loop x1051 } // end fat loop x1051
+            x283 = { }
+          } // end fat loop x283
+        }
+        val x546 = { 
+          while (x1055 < x513) {  // begin fat loop x543
+            val x1063_zero = { }
+            while (x1058 < x1057) {  // begin fat loop x1063 } // end fat loop x1063
+            x543 = { }
+          } // end fat loop x543
+        }
+        val x1076 = { }
+        while (x690 < x689) {  // begin fat loop x1076 } // end fat loop x1076
+        val x1079 = { }
+        while (x682 < x681) {  // begin fat loop x1079 } // end fat loop x1079
+        while (x713 < x610) {  // begin fat loop x719
+          x719 = { }
+        } // end fat loop x719
+        while (x722 < x721) {  // begin fat loop x1086
+          x1086 = { }
+        } // end fat loop x1086
+        while (x731 < x730) {  // begin fat loop x1092
+          x1092 = { }
+        } // end fat loop x1092
+      }
+    }
+  }
+}

@@ -1,0 +1,60 @@
+#!/bin/sh
+script_path=$0
+follow() { echo "$(readlink "$({ cd $(dirname "$1"); pwd -P; })/$(basename "$1")")"; }
+while [ -h "$script_path" ]; do script_path="$(follow "$script_path")"; done
+export script_home="$(dirname "$script_path")"
+export script_name="$(basename "$script_path")"
+synthetic="/tmp/$script_name.$(mktemp -u XXXX)"
+touch "$synthetic"
+cat "$script_home/shared" > "$synthetic"
+echo 'try {' >> "$synthetic"
+echo '/\c' >> "$synthetic"
+echo '*\c' >> "$synthetic"
+cat "$0" >> "$synthetic"
+echo '} catch {' >> "$synthetic"
+echo 'case e: Exception => {' >> "$synthetic"
+echo 'var message = "%s".format(if (e.getMessage != null) e.getMessage else e.getCause )' >> "$synthetic"
+echo 'message = "%s%n%s".format(message, "It may help to run delitecfg or manually adjust %s." .format(config.file.getAbsolutePath))' >> "$synthetic"
+echo 'println(message)' >> "$synthetic"
+echo '}' >> "$synthetic"
+echo '}' >> "$synthetic"
+exec scala "$synthetic" "$@"
+!#*/
+
+// unfortunately, intel mkl libs cannot be linked statically, since the distribution provides neither libmkl_mc3.a nor libmkl_def.a
+// that's why, unlike on Windows, we've got to either hardcode libpaths or provide them every time when running delite
+// this code presents a shortcut that hopefully simplifies the latter scenario
+if (unix) {
+  for (javaopt("blas.init", v) <- args) {
+    val script = File.createTempFile("blas.init.", ".script")
+    val stream = new PrintWriter(script)
+    stream.println("#!/usr/bin/env bash")
+    stream.println(v)
+    val output_file = File.createTempFile("blas.init.", ".output")
+    stream.println("echo PATH=$PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo DYLD_LIBRARY_PATH=$DYLD_LIBRARY_PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo LD_LIBRARY_PATH=$LD_LIBRARY_PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo LIBRARY_PATH=$LIBRARY_PATH >> %s".format(output_file.getAbsolutePath))
+    stream.println("echo NLS_PATH=$NLS_PATH >> %s".format(output_file.getAbsolutePath))
+    stream.close
+
+    script.setExecutable(true)
+    Runtime.getRuntime().exec(script.getAbsolutePath).waitFor
+
+    val output = Source.fromFile(output_file).getLines.toList
+    val keyvalue = """^(.*?)=(.*)$""".r
+    for (keyvalue(k, v) <- output) env(k) = v
+  }
+}
+
+args = javaopt("delite.code.cache.home", config.delite_home + File.separator + "generatedCache") +: args
+//args = javaopt("delite.code.cache.home", "generatedCache") +: args
+args = javaopt("delite.home", config.delite_home) +: args
+var (java_opts, other_opts, deg, deg_args) = parse_args_with_deg(args, verbose = false)
+var runtime: Arg = "ppl.delite.runtime.Delite"
+if (windows) java_opts = java_opts map { arg => wrap(arg) }
+
+args = java_opts ++ other_opts + runtime + deg ++ deg_args
+classpath = env_classpath + config.runtime_classes + config.scala_vanilla_library_jar + config.scala_vanilla_compiler_jar
+exec("java")
+

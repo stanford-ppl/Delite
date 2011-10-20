@@ -20,7 +20,7 @@ trait TPCH extends OptiQLApplication {
   def main() = {
   
   
-    //println("TPCH style benchmarking")
+    println("TPCH style benchmarking")
     if (args.length < 1) printUsage
     
     val tpchDataPath = args(0)
@@ -42,6 +42,7 @@ trait TPCH extends OptiQLApplication {
 
     //load TPCH data
     val lineItems = TPCH.loadLineItems(tpchDataPath)
+    println("Loading Complete")
 	  tic(lineItems)
     
     

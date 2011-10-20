@@ -1,0 +1,484 @@
+import java.io.{File, FileReader, BufferedReader, InputStreamReader, FileWriter, PrintWriter}
+import scala.io.{Source}
+import java.util.{Properties}
+import scala.collection.JavaConversions._
+import util.control.Breaks._
+
+var os : String = null
+if (System.getProperty("os.name").startsWith("Windows")) os = "windows"
+else if (System.getProperty("os.name").startsWith("Linux")) os = "linux"
+else if (System.getProperty("os.name").startsWith("Mac OS X")) os = "mac"
+if (os == null) sys.error("operating system %s is not supported".format(System.getProperty("os.name")))
+val windows = os == "windows"
+val linux = os == "linux"
+val mac = os == "mac"
+val unix = !windows
+
+implicit def string2file(s: String) = if (s == null) null else new File(s)
+implicit def string2richfile(s: String) = new RichFile(s)
+implicit def file2richfile(file: File) = new RichFile(file)
+class RichFile(val file: File) {
+  def exist = if (file == null) false else file.exists
+}
+
+object config {
+  val windows_path = System.getProperty("user.home") + File.separator + ".delitecfg.bat"
+  val unix_path = System.getProperty("user.home") + File.separator + ".delitecfg"
+  val file = new File(if (windows) windows_path else unix_path)
+
+  lazy val props = {
+    val props = new Properties()
+    
+    if (file.exist) {
+      Source.fromFile(file).getLines foreach { line =>
+        val windows_regex = """^\s*SET\s*(\w+)=(.*)$""".r
+        val unix_regex = """^\s*(\w+)="(.*)"\s*$""".r
+        val r = if (windows) windows_regex else unix_regex
+
+        line match {
+          case r(k, v) => props.setProperty(k.toLowerCase, v)
+          case _ => // do nothing
+        }
+      }
+    }
+    
+    props
+  }
+
+  def apply(key: String) : String = {
+    try {
+      val m = this.getClass.getMethod(key, classOf[String])
+      m.invoke(this).asInstanceOf[String]
+    } catch {
+      case _: NoSuchMethodException => null
+    }
+  }
+
+  def update(key: String, value: String) = {
+    try {
+      val m = this.getClass.getMethod(key + "_$eq", classOf[String])
+      m.invoke(this, value)
+    } catch {
+      case _: NoSuchMethodException => // do nothing
+    }
+  }
+
+  def clear() = {
+    props.clear()
+    save()
+  }
+  
+  def save() = {
+    var w : PrintWriter = null
+    try {
+      w = new PrintWriter(file)
+      
+      var names : List[String] = List()
+      val it = props.propertyNames
+      while (it.hasMoreElements()) {
+          val k = it.nextElement.asInstanceOf[String]
+          names = names ++ List(k)
+      }
+
+      names sortWith {_ < _} foreach { k =>
+          val v = props.getProperty(k)
+          if (windows) w.println("SET %s=%s".format(k.toUpperCase, v))
+          else w.println("%s=\"%s\"".format(k, v))
+      }
+    } finally {
+      if (w != null) w.close()
+    }
+  }
+
+  def script_home = if (windows) System.getenv.get("SCRIPT_HOME") else System.getenv.get("script_home")
+  def script_name = if (windows) System.getenv.get("SCRIPT_NAME") else System.getenv.get("script_name")
+
+  def delite_home = { val value = props.getProperty("delite_home"); validate_delite_home(value); new Path(value); }
+  def delite_home_=(value: String) = { validate_delite_home(value); props.setProperty("delite_home", value); save(); }
+  def validate_delite_home(_value: String = null) = {
+    val value = if (_value != null) _value else props.getProperty("delite_home");
+    if (value == null) throw new Exception("Delite's home directory configuration entry is not found.")
+    if (!value.exist) throw new Exception("Delite's home directory (configured as \"%s\") cannot be found or is inaccessible.".format(value))
+    var optiml_home = value + File.separator + "dsls" + File.separator + "optiml"
+    if (!optiml_home.exist) throw new Exception("Sanity check failed. \"%s\" is not a valid Delite's home directory.".format(value))
+  }
+
+  def scala_virtualized_compiler = { val value = props.getProperty("scala_virtualized_compiler"); validate_scala_virtualized_compiler(value); new Path(value); }
+  def scala_virtualized_compiler_=(value: String) = { validate_scala_virtualized_compiler(value); props.setProperty("scala_virtualized_compiler", value); save(); }
+  def validate_scala_virtualized_compiler(_value: String = null) = {
+    val value = if (_value != null) _value else props.getProperty("scala_virtualized_compiler");
+    if (value == null) throw new Exception("Scala virtualized compiler configuration entry is not found.")
+    if (!value.exist) throw new Exception("Scala virtualized compiler (configured as \"%s\") cannot be found or is inaccessible.".format(value))
+    props.setProperty("scala_virtualized_compiler", value)
+    save()
+  }
+
+  def scala_virtualized_interpreter = { val value = props.getProperty("scala_virtualized_interpreter"); validate_scala_virtualized_interpreter(value); new Path(value); }
+  def scala_virtualized_interpreter_=(value: String) = { validate_scala_virtualized_interpreter(value); props.setProperty("scala_virtualized_interpreter", value); save(); }
+  def validate_scala_virtualized_interpreter(_value: String = null) = {
+    val value = if (_value != null) _value else props.getProperty("scala_virtualized_interpreter");
+    if (value == null) throw new Exception("Scala virtualized interpreter configuration entry is not found.")
+    if (!value.exist) throw new Exception("Scala virtualized interpreter (configured as \"%s\") cannot be found or is inaccessible.".format(value))
+    props.setProperty("scala_virtualized_interpreter", value)
+    save()
+  }
+
+  def scala_vanilla_compiler_jar = { val value = props.getProperty("scala_vanilla_compiler_jar"); validate_scala_vanilla_compiler_jar(value); new Path(value); }
+  def scala_vanilla_compiler_jar_=(value: String) = { validate_scala_vanilla_compiler_jar(value); props.setProperty("scala_vanilla_compiler_jar", value); save(); }
+  def validate_scala_vanilla_compiler_jar(_value: String = null) = {
+    val value = if (_value != null) _value else props.getProperty("scala_vanilla_compiler_jar");
+    if (value == null) throw new Exception("scala-compiler.jar from scala vanilla configuration entry is not found.")
+    if (!value.exist) throw new Exception("scala-compiler.jar from scala vanilla (configured as \"%s\") cannot be found or is inaccessible.".format(value))
+    props.setProperty("scala_vanilla_compiler_jar", value)
+    save()
+  }
+
+  def scala_vanilla_library_jar = { val value = props.getProperty("scala_vanilla_library_jar"); validate_scala_vanilla_library_jar(value); new Path(value); }
+  def scala_vanilla_library_jar_=(value: String) = { validate_scala_vanilla_library_jar(value); props.setProperty("scala_vanilla_library_jar", value); save(); }
+  def validate_scala_vanilla_library_jar(_value: String = null) = {
+    val value = if (_value != null) _value else props.getProperty("scala_vanilla_library_jar");
+    if (value == null) throw new Exception("scala-library.jar from scala vanilla configuration entry is not found.")
+    if (!value.exist) throw new Exception("scala-library.jar from scala vanilla (configured as \"%s\") cannot be found or is inaccessible.".format(value))
+    props.setProperty("scala_vanilla_library_jar", value)
+    save()
+  }
+
+  def lms_classes = { val value = props.getProperty("lms_classes"); validate_lms_classes(value); new Path(value); }
+  def lms_classes_=(value: String) = { validate_lms_classes(value); props.setProperty("lms_classes", value); save(); }
+  def validate_lms_classes(_value: String = null) = {
+    val value = if (_value != null) _value else props.getProperty("lms_classes");
+    if (value == null) throw new Exception("LMS configuration entry is not found.")
+    if (!value.exist) throw new Exception("LMS (configured as \"%s\") cannot be found or is inaccessible. Have you compiled Delite?".format(value))
+    props.setProperty("lms_classes", value)
+    save()
+  }
+
+  def framework_classes = { val value = props.getProperty("framework_classes"); validate_framework_classes(value); new Path(value); }
+  def framework_classes_=(value: String) = { validate_framework_classes(value); props.setProperty("framework_classes", value); save(); }
+  def validate_framework_classes(_value: String = null) = {
+    val value = if (_value != null) _value else props.getProperty("framework_classes");
+    if (value == null) throw new Exception("Delite Framework configuration entry is not found.")
+    if (!value.exist) throw new Exception("Delite Framework (configured as \"%s\") cannot be found or is inaccessible. Have you compiled Delite?".format(value))
+    props.setProperty("framework_classes", value)
+    save()
+  }
+
+  def optiml_classes = { val value = props.getProperty("optiml_classes"); validate_optiml_classes(value); new Path(value); }
+  def optiml_classes_=(value: String) = { validate_optiml_classes(value); props.setProperty("optiml_classes", value); save(); }
+  def validate_optiml_classes(_value: String = null) = {
+    val value = if (_value != null) _value else props.getProperty("optiml_classes");
+    if (value == null) throw new Exception("OptiML configuration entry is not found.")
+    if (!value.exist) throw new Exception("OptiML (configured as \"%s\") cannot be found or is inaccessible. Have you compiled Delite?".format(value))
+    props.setProperty("optiml_classes", value)
+    save()
+  }
+
+  def runtime_classes = { val value = props.getProperty("runtime_classes"); validate_runtime_classes(value); new Path(value); }
+  def runtime_classes_=(value: String) = { validate_runtime_classes(value); props.setProperty("runtime_classes", value); save(); }
+  def validate_runtime_classes(_value: String = null) = {
+    val value = if (_value != null) _value else props.getProperty("runtime_classes");
+    if (value == null) throw new Exception("Delite Runtime configuration entry is not found.")
+    if (!value.exist) throw new Exception("Delite Runtime (configured as \"%s\") cannot be found or is inaccessible. Have you compiled Delite Runtime?".format(value))
+    props.setProperty("runtime_classes", value)
+    save()
+  }
+
+  def app_classes = {
+    val out_dirs = argv.toList sliding 2 collect { _ match { case "-d" :: snd => new File(snd.head) } } toList;
+    out_dirs.lastOption getOrElse new File(".")
+  }
+}
+
+implicit def file2arg(file: File): Arg = new Arg(file.toString)
+implicit def listoffile2listofarg(files: List[File]): List[Arg] = if (files == null) null else files map { file => (file: Arg) }
+implicit def path2arg(path: Path): Arg = new Arg((path: String))
+implicit def listofpath2listofarg(paths: List[Path]): List[Arg] = if (paths == null) null else paths map { path => (path: Arg) }
+implicit def string2arg(s: String): Arg = new Arg(s)
+implicit def listofstring2listofarg(ss: List[String]): List[Arg] = if (ss == null) null else ss map { s => (s: Arg) }
+implicit def arg2string(arg: Arg): String = if (arg == null) null else arg.toString
+implicit def listofarg2listofstring(ss: List[Arg]): List[String] = if (ss == null) null else ss map { s => (s: String) }
+case class Arg(val arg: String) {
+  override def toString() = arg
+}
+
+def needWrap(arg: Arg): Boolean = {
+  var s: String = arg
+  s.contains(" ") || s.contains("\"") || s.contains("\'")
+}
+
+def wrap(arg: Arg): Arg = {
+  var s: String = arg
+  
+  if (windows) {
+    s = s.replace("\\\"", "\0")
+    s = s.replace("\"", "\\\"")
+    s = s.replace("\0", "\\\\\\\"")
+    if (s.endsWith("\\")) s += "\\"
+    "\"%s\"".format(s)
+  } else {
+    s = s.replace("\\\'", "\0")
+    s = s.replace("\'", "\\\'")
+    s = s.replace("\0", "\\\\\\\'")
+    if (s.endsWith("\\")) s += "\\"
+    "\'%s\'".format(s)
+  }
+}
+
+object javaopt {
+  def apply(k: String, v: String): Arg = "-D%s=%s".format(k, v)
+  def unapply(s: Arg) = {
+    val regex = "^-D(.*?)=(.*)$".r
+    (s: String) match {
+      case regex(k, v) => Some(k, v)
+      case _ => None
+    }
+  }
+}
+
+implicit def string2args(s: String) : Args = new Args(List(s: Arg))
+implicit def arg2args(arg: Arg) : Args = new Args(List(arg))
+implicit def list2args[T <% List[Arg]](args: T) : Args = new Args(args)
+implicit def args2list(args: Args) : List[Arg] = if (args == null) null else args.args
+class Args(val args: List[Arg]) {
+  def this(args: Arg*) = this(args.toList)
+  def +:(arg: Arg) = new Args(arg +: args)
+  def :+(arg: Arg) = new Args(args :+ arg)
+  def +(other: Args) = new Args(args ++ other.args)
+  def +(arg: Arg) = new Args(args :+ arg)
+  override def toString() = args mkString " "
+}
+
+var args = new Args(argv.toList)
+
+def parse_args(args: Args, verbose: Boolean = true, interactive: Boolean = true): (List[Arg], List[Arg], List[Arg]) = {
+  // http://download.oracle.com/javase/6/docs/technotes/tools/solaris/java.html
+  var complex_opts = Set("-classpath", "-cp")
+  // http://www.scala-lang.org/docu/files/tools/scalac.html#options
+  // http://www.scala-lang.org/docu/files/tools/scala.html#options
+  complex_opts ++= Set("-classpath", "-sourcepath", "-bootclasspath", "-extdirs", "-d", "-encoding")
+  complex_opts ++= Set("-Xassem", "-Xassem-path", "-Xshow-class", "-Xshow-object", "-Xsource-reader", "-Xscript")
+
+  var opts = List[Arg]()
+  var prev_complex = false
+  breakable {
+    for (arg <- args) {
+      val help = "See https://github.com/stanford-ppl/Delite/blob/develop/scripts/README.md for more information."
+      if ((arg: String) == "-help") { 
+        if (interactive) {
+          println(help); 
+          sys.exit(0)
+        } else {
+          // do nothing
+        }
+      }
+
+      val is_opt = arg.startsWith("-")
+      var is_complex = complex_opts(arg)
+      if (is_complex && prev_complex) {
+        if (interactive) {
+          sys.error("Bad command-line. %s".format(help))
+        } else {
+          throw new Exception("Bad command-line")
+        }
+      }
+
+      if (is_opt || prev_complex) opts += arg
+      if (!is_opt && !prev_complex) break
+      prev_complex = is_complex
+    }  
+  }
+
+  val java_opts = opts filter { arg => arg.startsWith("-D") }
+  val other_opts = opts filterNot { arg => arg.startsWith("-D") }
+  val other_args = args drop opts.length
+
+  (java_opts, other_opts, other_args)
+}
+
+def parse_args_with_runner(args: Args, verbose: Boolean = true, interactive: Boolean = true): (List[Arg], Iterator[Arg], List[Arg], List[Arg]) = {
+  var (java_opts, other_opts, other_args) = parse_args(args, verbose, interactive)
+
+  val runner_opt = "-Xrunner:"
+  val runner_opts = other_opts filter { arg => arg.startsWith(runner_opt) }
+  other_opts = other_opts filterNot { arg => arg.startsWith(runner_opt) }
+
+  // these need to be lazy, because parse_args is typically called in the beginning of the script
+  // while runner inference might depend on intermediate results of script execution
+  // e.g. delitec first compiles the app and then stages it
+  // in that case we must not infer a runner before the app is compiled
+  val lazy_runner_opts = new Iterator[Arg] {
+    var current = -1
+    def hasNext() = impl.length > current + 1
+    def next() = { current += 1; impl(current); }
+
+    lazy val impl: List[Arg] = {
+      var runner: Arg = if (runner_opts.length == 0) null else runner_opts.last.substring(runner_opt.length)
+
+      if (runner == null) {
+        val out_dirs = other_opts sliding 2 collect { _ match { case Arg("-d") :: snd => new File(snd.head) } } toList
+        val app_classes = out_dirs.lastOption getOrElse new File(".")
+
+        if (interactive && verbose) println("No runner is specified. Guessing one in %s (%s)".format(app_classes, app_classes.getAbsolutePath))
+        val app_classfiles = new scala.tools.nsc.io.Directory(app_classes).deepFiles filter { file => file.extension == "class" } toList
+        val runners = app_classfiles filter { file => file.name.endsWith("Runner.class") }
+
+        if (runners.length == 0) {
+          if (interactive) {
+            println("Error: No *Runner.class files found in application classpath.")
+            sys.error("Specify a runner to be used during DSL compilation phase (-R<classname>).")
+          } else {
+            throw new Exception("Error: No *Runner.class files found in application classpath.")
+          }
+        }  
+        
+        if (runners.length > 1) {
+          if (interactive) {
+            println("Error: Multiple *Runner.class files found in application classpath:")
+            runners foreach println
+            sys.error("Specify a runner to be used during DSL compilation phase (-R<classname>).")
+          } else {
+            throw new Exception("Error: Multiple *Runner.class files found in application classpath:")
+          }
+        }
+
+        var runner_path = runners.head.toString
+        if (runner_path.startsWith("./")) runner_path = runner_path.substring(2)
+        val runner_file = new File(runner_path)
+        if (interactive && verbose) println("Assuming you meant %s (%s)".format(runner_file.toString, runner_file.getAbsolutePath))
+
+        var s_app_classes = app_classes.getCanonicalPath
+        var s_runner_file = runner_file.getCanonicalPath
+        assert(s_runner_file.startsWith(s_app_classes))
+        assert(s_runner_file.endsWith(".class"))
+        var runner_relative = s_runner_file.substring(s_app_classes.length)
+        if (runner_relative.startsWith(File.separator)) runner_relative = runner_relative.substring(1)
+        runner = runner_relative.replace(File.separator, ".").substring(0, runner_relative.length - ".class".length)
+        if (interactive && verbose) println("Which translates to: %s (with classpath at %s)".format(runner, app_classes.getAbsolutePath))
+      }
+
+      if (runner == null) List() else List(runner)
+    }
+  }
+
+  (java_opts, lazy_runner_opts, other_opts, other_args)
+}
+
+def parse_args_with_deg(args: Args, verbose: Boolean = true, interactive: Boolean = true): (List[Arg], List[Arg], Arg, List[Arg]) = {
+  var (java_opts, other_opts, other_args) = parse_args(args, verbose, interactive)
+
+  var deg_opt = "-Xdeg:"
+  var deg_opts = other_opts filter { arg => arg.startsWith(deg_opt) }
+  other_opts = other_opts filterNot { arg => arg.startsWith(deg_opt) }
+  var deg_args = if (deg_opts.length == 0) other_args.drop(1) else other_args
+  deg_opts ++= (if (deg_opts.length == 0) other_args.take(1).filter({ arg => arg.endsWith(".deg") }) else List())
+
+  var deg: Arg = deg_opts.lastOption getOrElse null
+  if (deg == null) {
+    val current_dir = new File(System.getProperty("user.dir"))
+    if (interactive && verbose) println("No DEG is specified. Guessing one in %s (%s)".format(current_dir, current_dir.getAbsolutePath))
+    val degs = new scala.tools.nsc.io.Directory(current_dir).files filter { file => file.extension == "deg" } toList
+
+    if (degs.length == 0) {
+      if (interactive) {
+        println("Error: No *.deg files found in current directory.")
+        sys.error("Specify a DEG to be used during runtime phase (-Xdeg:<path to deg file>).")
+      } else {
+        throw new Exception("Specify a DEG to be used during runtime phase (-Xdeg:<path to deg file>).")
+      }
+    }  
+    
+    if (degs.length > 1) {
+      if (interactive) {
+        println("Error: Multiple *.deg files found in current directory:")
+        degs foreach println
+        sys.error("Specify a DEG to be used during runtime phase (-Xdeg:<path to deg file>).")
+      } else {
+        throw new Exception("Specify a DEG to be used during runtime phase (-Xdeg:<path to deg file>).")
+      }
+    }
+
+    var deg_file = new File(degs.head.toString)
+    var s_current_dir = current_dir.getCanonicalPath
+    var s_deg_file = deg_file.getCanonicalPath
+    assert(s_deg_file.startsWith(s_current_dir))
+    assert(s_deg_file.endsWith(".deg"))
+    var deg_relative = s_deg_file.substring(s_current_dir.length)
+    if (deg_relative.startsWith(File.separator)) deg_relative = deg_relative.substring(1)
+
+    deg = deg_relative.toString
+    if (interactive && verbose) println("Assuming you meant %s (%s)".format(deg, new File(deg).getAbsolutePath))
+  }
+
+  (java_opts, other_opts, deg, deg_args)
+}
+
+implicit def string2path(s: String): Path = if (s == null) null else new Path(s)
+implicit def listofstring2listofpath(ss: List[String]): List[Path] = if (ss == null) null else ss map { s => (s: Path) }
+implicit def file2path(file: File): Path = if (file == null) null else new Path(file)
+implicit def listoffile2listofpath(files: List[File]): List[Path] = if (files == null) null else files map { file => (file: Path) }
+implicit def path2string(path: Path): String = if (path == null) null else path.toString
+implicit def listofpath2listofstring(paths: List[Path]): List[String] = if (paths == null) null else paths map { path => (path: String) }
+implicit def path2file(path: Path): File = if (path == null) null else new File(path)
+implicit def listofpath2listoffile(paths: List[Path]): List[File] = if (paths == null) null else paths map { path => (path: File) }
+implicit def path2richfile(path: Path): RichFile = new RichFile(path)
+case class Path(val path: String) {
+  def this(file: File) = this(if (file == null) null else file.getAbsolutePath)
+  override def toString() = path
+}
+
+implicit def string2paths(s: String): Paths = new Paths(List(s: Path))
+implicit def file2paths(file: File): Paths = new Paths(List(file: Path))
+implicit def path2paths(path: Path): Paths = new Paths(List(path))
+implicit def list2paths[T <% List[Path]](paths: T) : Paths = new Paths(paths)
+implicit def paths2list(paths: Paths): List[Path] = if (paths == null) null else paths.paths
+class Paths(val paths: List[Path]) {
+  def this(paths: Path*) = this(paths.toList)
+  def +:(path: Path) = new Paths(path +: paths)
+  def :+(path: Path) = new Paths(paths :+ path)
+  def +(other: Paths) = new Paths(paths ++ other.paths)
+  def +(path: Path) = new Paths(paths :+ path)
+  def separator = if (windows) ";" else ":"
+  override def toString() = paths mkString separator
+}
+
+val s_env_classpath = if (System.getenv("CLASSPATH") == null) "" else System.getenv("CLASSPATH")
+val env_classpath = new Paths((s_env_classpath split ":").toList)
+var classpath = new Paths()
+var env = scala.collection.mutable.Map[String, String]()
+
+def run(what: Path) = {
+  val builder = new ProcessBuilder
+  builder.redirectErrorStream(true)
+  builder.command(seqAsJavaList((new Arg(what) +: args).map({arg => (arg: String)})))
+  builder.environment.put("CLASSPATH", classpath.toString)
+  env foreach { _ match { case (k, v) => builder.environment.put(k, v) } }
+
+  var process = builder.start
+  var stdout = new BufferedReader(new InputStreamReader(process.getInputStream))
+  var line = stdout.readLine
+  var lines = List[String]()
+  while (line != null) {
+    println(line)
+    line = stdout.readLine
+    lines :+= line
+  }
+
+  process.waitFor
+
+  // unfortunately, when running scala/scalac, exitValue gets swallowed by Java runtime
+  // in a quest to defeat this buggy behavior, we tried to: 
+  // 1) invoke bare scalac, 
+  // 2) tried to dynamically build a shell script that invoked scalac,
+  // 3) and even tried to invoke "sh -c 'scalac blah-blah-blah'" inside that dynamically built shell script
+  // in any case, there was no good: when run from within Java, $? was always 0, even if scala compilations failed
+  // however, when run in a shell interpreter, $? was correctly set to 1, when scala compilations failed
+  // upd. tested this with 1.6 and 1.7 java runtimes on Ubuntu 11.04 x64
+  val exitValue = process.exitValue
+  (exitValue, lines)
+}
+
+def exec(what: Path) = {
+  val (exitValue, _) = run(what)
+  sys.exit(exitValue)
+}
+

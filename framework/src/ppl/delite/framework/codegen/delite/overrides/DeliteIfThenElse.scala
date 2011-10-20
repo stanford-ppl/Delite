@@ -5,66 +5,74 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{GenericNestedCodegen,GenerationFailedException}
 
-trait DeliteIfThenElseExp extends IfThenElseExp with DeliteOpsExp {
+trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExpBridge with DeliteOpsExp {
 
   this: DeliteOpsExp =>
 
   // there is a lot of code duplication between DeliteIfThenElse and IfThenElse in lms -- do we really need a separate DeliteIfThenElse?
 
-  case class DeliteIfThenElse[T:Manifest](cond: Exp[Boolean], thenp: Exp[T], elsep: Exp[T]) extends DeliteOpCondition[T]
+  case class DeliteIfThenElse[T:Manifest](cond: Exp[Boolean], thenp: Exp[T], elsep: Exp[T], flat: Boolean) extends DeliteOpCondition[T]
 
-  override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]) = cond match {
+  override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]) = ifThenElse(cond, thenp, elsep, false)
+
+  // a 'flat' if is treated like any other statement in code motion, i.e. code will not be pushed explicitly into the branches
+  def flatIf[T:Manifest](cond: Rep[Boolean])(thenp: => Rep[T])(elsep: => Rep[T]) = ifThenElse(cond, thenp, elsep, true)
+
+  def ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T], flat: Boolean): Rep[T] = cond match {
       // TODO: need to handle vars differently, this could be unsound
     case Const(true) => thenp
     case Const(false) => elsep
+    case Def(BooleanNegate(a)) => ifThenElse(a, elsep, thenp, flat)
+    case Def(NotEqual(a,b)) => ifThenElse(equals(a,b), elsep, thenp, flat)
     case _ =>
-//      val a = reifyEffectsHere(thenp)
-//      val b = reifyEffectsHere(elsep)
-//      (a,b) match {
-//        case (Def(Reify(_,_,_)), _) | (_, Def(Reify(_,_,_))) => reflectEffect(DeliteIfThenElse(cond,a,b))
-//        case _ => DeliteIfThenElse(cond, a, b)
-//      }
-    val a = reifyEffectsHere(thenp)
-    val b = reifyEffectsHere(elsep)
-    val ae = summarizeEffects(a)
-    val be = summarizeEffects(b)
-    reflectEffect(DeliteIfThenElse(cond,a,b), ae orElse be)
-  }
+      val a = reifyEffectsHere(thenp)
+      val b = reifyEffectsHere(elsep)
+      val ae = summarizeEffects(a)
+      val be = summarizeEffects(b)
+      reflectEffect(DeliteIfThenElse(cond,a,b,flat), ae orElse be)
+  }  
+  
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case Reflect(DeliteIfThenElse(c,a,b), u, es) => reflectMirrored(Reflect(DeliteIfThenElse(f(c),f(a),f(b)), mapOver(f,u), f(es)))
-    case DeliteIfThenElse(c,a,b) => DeliteIfThenElse(f(c),f(a),f(b))
+    case DeliteIfThenElse(c,a,b,h) => reflectPure(DeliteIfThenElse(f(c),f(a),f(b),h))(mtype(manifest[A]))
+    case Reflect(DeliteIfThenElse(c,a,b,h), u, es) => reflectMirrored(Reflect(DeliteIfThenElse(f(c),f(a),f(b),h), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 
 
+  override def syms(e: Any): List[Sym[Any]] = e match {
+    case DeliteIfThenElse(c, t, e, h) => syms(c):::syms(t):::syms(e)
+    case _ => super.syms(e)
+  }
+
   override def boundSyms(e: Any): List[Sym[Any]] = e match {
-    case DeliteIfThenElse(c, t, e) => effectSyms(t):::effectSyms(e)
+    case DeliteIfThenElse(c, t, e, h) => effectSyms(t):::effectSyms(e)
     case _ => super.boundSyms(e)
   }
 
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
-    case DeliteIfThenElse(c, t, e) => freqNormal(c):::freqCold(t):::freqCold(e)
+    case DeliteIfThenElse(c, t, e, true) => freqNormal(c):::freqNormal(t):::freqNormal(e)
+    case DeliteIfThenElse(c, t, e, _) => freqNormal(c):::freqCold(t):::freqCold(e)
     case _ => super.symsFreq(e)
   }
 
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
-    case DeliteIfThenElse(c,a,b) => syms(a):::syms(b)
+    case DeliteIfThenElse(c,a,b,h) => syms(a):::syms(b)
     case _ => super.aliasSyms(e)
   }
 
   override def containSyms(e: Any): List[Sym[Any]] = e match {
-    case DeliteIfThenElse(c,a,b) => Nil
+    case DeliteIfThenElse(c,a,b,h) => Nil
     case _ => super.containSyms(e)
   }
 
   override def extractSyms(e: Any): List[Sym[Any]] = e match {
-    case DeliteIfThenElse(c,a,b) => Nil
+    case DeliteIfThenElse(c,a,b,h) => Nil
     case _ => super.extractSyms(e)
   }
 
   override def copySyms(e: Any): List[Sym[Any]] = e match {
-    case DeliteIfThenElse(c,a,b) => Nil // could return a,b but implied by aliasSyms
+    case DeliteIfThenElse(c,a,b,h) => Nil // could return a,b but implied by aliasSyms
     case _ => super.copySyms(e)
   }
 
@@ -84,18 +92,18 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
      * IfThenElse generates methods for each branch due to empirically discovered performance issues in the JVM
      * when generating long blocks of straight-line code in each branch.
      */
-    case DeliteIfThenElse(c,a,b) =>
-      val save = deliteKernel
-      deliteKernel = false
+    case DeliteIfThenElse(c,a,b,h) =>
+      //val save = deliteKernel
+      //deliteKernel = false
       stream.println("val " + quote(sym) + " = {")
       (a,b) match {
         case (Const(()), Const(())) => stream.println("()")
-        case (_, Const(())) => generateThenOnly(sym, c, a, !save)
-        case (Const(()), _) => generateElseOnly(sym, c, b, !save)
-        case _ => generateThenElse(sym, c, a, b, !save)
+        case (_, Const(())) => generateThenOnly(sym, c, a, !deliteKernel && !simpleCodegen)
+        case (Const(()), _) => generateElseOnly(sym, c, b, !deliteKernel && !simpleCodegen)
+        case _ => generateThenElse(sym, c, a, b, !deliteKernel && !simpleCodegen)
       }
       stream.println("}")
-      deliteKernel = save
+      //deliteKernel = save
 
     case _ => super.emitNode(sym, rhs)
   }
@@ -157,7 +165,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
-        case DeliteIfThenElse(c,a,b) =>
+        case DeliteIfThenElse(c,a,b,h) =>
           // TODO: Not GPUable if the result is not primitive types.
           // TODO: Changing the reference of the output is dangerous in general.
           // TODO: In the future, consider passing the object references to the GPU kernels rather than copying by value.
@@ -266,7 +274,7 @@ trait DeliteCGenIfThenElse extends CGenEffect with DeliteBaseGenIfThenElse {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
-        case DeliteIfThenElse(c,a,b) =>
+        case DeliteIfThenElse(c,a,b,h) =>
           //TODO: using if-else does not work
           remap(sym.Type) match {
             case "void" =>

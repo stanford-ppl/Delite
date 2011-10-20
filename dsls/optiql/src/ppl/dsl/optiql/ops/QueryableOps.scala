@@ -55,19 +55,26 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     val size = in.size
   }
   
-  case class QueryableGroupBy[TSource:Manifest, TKey:Manifest](s: Exp[DataTable[TSource]], v:Sym[TSource], key: Exp[TKey]) extends Def[DataTable[Grouping[TKey, TSource]]]    
   
-  case class QueryableSum[TSource:Manifest](s: Exp[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]) extends DeliteOpLoop[Double] {
-	val size = s.size
-	val v = fresh[Int]
-	private[this] val rV = (fresh[Double], fresh[Double])
-	val body: Def[Double] = DeliteReduceElem[Double](
-		func = sumSelector(s(v)),
-		zero = unit(0.0f),
-		rV = rV,
-		rFunc = rV._1 + rV._2
-	)
-  }
+  //these are hacked up for now untill we have proper Delite support
+  case class HackQueryableGroupBy[TSource:Manifest, TKey:Manifest](s: Exp[DataTable[TSource]], v:Sym[TSource], key: Exp[TKey]) extends Def[DataTable[Grouping[TKey, TSource]]]    
+  case class HackQueryableSum[TSource:Manifest](s:Exp[DataTable[TSource]], sym: Sym[TSource], value: Exp[Double]) extends Def[Double]
+  
+  /*
+  case class QueryableSum[TSource:Manifest](s: Exp[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]) extends DeliteOpReduce[Double] {
+	  val size = copyTransformedOrElse(_.size)(s.size)
+	  
+    def func = (a,b) => sumSelector(a) + sumSelector(b)
+    val zero = unit(0.0f)
+	  /*
+    val body: Def[Double] = DeliteReduceElem[Double](
+		  func = sumSelector(s(v)),
+		  zero = unit(0.0f),
+		  rV = rV,
+		  rFunc = rV._1 + rV._2,
+      stripFirst = false
+	  )*/
+  }*/
   case class QueryableAverage[TSource:Manifest](s: Exp[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) extends Def[Double]
   
   //case class QueryableCount[TSource:Manifest](s: Exp[DataTable[TSource]]) extends Def[Int]
@@ -85,17 +92,20 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   def queryable_groupby[TSource:Manifest, TKey:Manifest](s: Exp[DataTable[TSource]], keySelector: Exp[TSource] => Exp[TKey]) = {
     val v = fresh[TSource]
     val key = keySelector(v)
-    QueryableGroupBy(s, v, key)
+    HackQueryableGroupBy(s, v, key)
   }
-  def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]) = QueryableSum(s,sumSelector)
-  def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) = toAtom(QueryableSum(s, avgSelector))/s.size()
+  def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]) = {
+    val sym = fresh[TSource]
+    val value = sumSelector(sym)
+    HackQueryableSum(s,sym,value)
+  }
+  def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) = s.Sum(avgSelector)/s.size()
   def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]) = s.size()
   
   def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]) = QueryableGroupingToDataTable(g)
   def queryable_grouping_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[TKey] = QueryableGroupingKey(g)
   
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case QueryableSum(s,ss) => queryable_sum(f(s), ss)
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {    
     case QueryableWhere(s,p) => queryable_where(f(s), p)
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]] //todo fix asInstanceOf
@@ -106,8 +116,9 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   }
   
   override def boundSyms(e: Any): List[Sym[Any]] = e match {    
-    case QueryableGroupBy(s,v,k) => v::syms(k)
-	case _ => super.boundSyms(e)
+    case HackQueryableGroupBy(s,v,k) => v::syms(k)
+    case HackQueryableSum(s,sym,value) => sym::syms(value)
+	  case _ => super.boundSyms(e)
   }  
   
 }
@@ -117,11 +128,16 @@ trait ScalaGenQueryableOps extends ScalaGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-	case QueryableGroupBy(s, v, k) =>  {
+	case HackQueryableGroupBy(s, v, k) =>  {
 	  stream.println("val " + quote(sym) + " =  " + quote(s) + ".GroupBy( " + quote(v) + " => {")	  
 	  emitBlock(k)	 
 	  stream.println(quote(getBlockResult(k)) + "})")
 	}
+  case HackQueryableSum(s,sym2,value) => {
+    stream.println("val " + quote(sym) + " = " + quote(s) + ".Sum( " + quote(sym2) + " => {")
+    emitBlock(value)
+    stream.println(quote(getBlockResult(value)) + "})")    
+  }
 		
 	case QueryableGroupingToDataTable(g) => emitValDef(sym, "generated.scala.container.DataTable.convertIterableToDataTable(" + quote(g) + ")")
 	case QueryableGroupingKey(g) => emitValDef(sym, quote(g) + ".key")

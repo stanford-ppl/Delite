@@ -1,0 +1,42 @@
+#!/bin/sh
+script_path=$0
+follow() { echo "$(readlink "$({ cd $(dirname "$1"); pwd -P; })/$(basename "$1")")"; }
+while [ -h "$script_path" ]; do script_path="$(follow "$script_path")"; done
+export script_home="$(dirname "$script_path")"
+export script_name="$(basename "$script_path")"
+synthetic="/tmp/$script_name.$(mktemp -u XXXX)"
+touch "$synthetic"
+cat "$script_home/shared" > "$synthetic"
+echo 'try {' >> "$synthetic"
+echo '/\c' >> "$synthetic"
+echo '*\c' >> "$synthetic"
+cat "$0" >> "$synthetic"
+echo '} catch {' >> "$synthetic"
+echo 'case e: Exception => {' >> "$synthetic"
+echo 'var message = "%s".format(if (e.getMessage != null) e.getMessage else e.getCause )' >> "$synthetic"
+echo 'message = "%s%n%s".format(message, "It may help to run delitecfg or manually adjust %s." .format(config.file.getAbsolutePath))' >> "$synthetic"
+echo 'println(message)' >> "$synthetic"
+echo '}' >> "$synthetic"
+echo '}' >> "$synthetic"
+exec scala "$synthetic" "$@"
+!#*/
+
+args = javaopt("delite.build.dir", config.delite_home + File.separator + "generated") +: args
+args = javaopt("delite.home.dir", config.delite_home) +: args
+var (java_opts, runner_opts, other_opts, other_args) = parse_args_with_runner(args, verbose = false)
+if (windows) { java_opts = java_opts map { arg => wrap(arg) }; env("JAVA_OPTS") = java_opts mkString " " }
+
+println("(Phase one) Scala compilation...")
+args = java_opts ++ other_opts ++ other_args
+classpath = env_classpath + config.optiml_classes + config.framework_classes + config.lms_classes
+val (_, lines1) = run(config.scala_virtualized_compiler)
+if (lines1.length > 0) sys.exit(1)
+println("%s%n".format("Successfully compiled"))
+
+println("(Phase two) DSL compilation...")
+args = java_opts ++ other_opts ++ runner_opts
+classpath = env_classpath + config.optiml_classes + config.framework_classes + config.lms_classes + config.app_classes
+val (_, lines2) = run(config.scala_virtualized_interpreter)
+if (lines2.length > 2) sys.exit(1)
+println("%s".format("Successfully compiled"))
+

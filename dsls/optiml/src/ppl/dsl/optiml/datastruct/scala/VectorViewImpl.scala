@@ -29,6 +29,8 @@ class VectorViewImpl[T:Manifest](x: Array[T], val start: Int, val stride: Int, v
 
   def cloneL = { val v = new VectorImpl[T](0, isRow); v.insertAll(0, this); v }
 
+  def unsafeSetData(xs: Array[T], len: Int) = throw new UnsupportedOperationException()
+
   // TODO: these semantics are ambiguous/ill-defined. e.g., copy on insert but write-through on update.
   // need to decide on a clean semantics and stick with it.
   def sort(implicit o: Ordering[T]) = cloneL.sort

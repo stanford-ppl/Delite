@@ -39,7 +39,35 @@ trait FileDiffSuite extends Suite {
     new String(buf)
   }
   def assertFileEqualsCheck(name: String): Unit = {
-    assert(readFile(name) == readFile(name+".check"), name) // TODO: diff output
+    assert(readFile(name) == readFile(name+".check"), "File contents do not match: "+name) // TODO: diff output
     new File(name) delete ()
   }
+  def assertFileEqualsCheckModulo(name: String)(s: String, r: String): Unit = {
+    assert(readFile(name).replaceAll(s,r) == readFile(name+".check").replaceAll(s,r), "File contents do not match: "+name) // TODO: diff output
+    //new File(name) delete ()
+  }
+
+  def summarizeFile(name: String): Unit = {
+    val str = readFile(name)
+    val lines = str.split("\n").filter(line => line.contains("{") || line.contains("}")) //.map(line => line.replace)
+    var indent = 0
+    var opened = false
+    for (l <- lines) {
+      if (opened) {
+        opened = false
+        if (l.contains("}")) {
+          print(" " + l)
+        } else {
+          indent += 1
+          println()
+          print("  "*indent + l)
+        }
+      } else {
+        if (l.contains("}")) indent -= 1
+        print("  "*indent + l)
+      }
+      if (l.contains("{")) { opened = true } else println()
+    }
+  }
+
 }

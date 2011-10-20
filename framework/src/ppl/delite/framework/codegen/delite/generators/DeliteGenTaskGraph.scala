@@ -40,6 +40,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     var resultIsVar = false
     var skipEmission = false
     var nestedNode: TP[Any] = null
+    var external = false
 
     // we will try to generate any node that is not purely an effect node
     rhs match {
@@ -50,6 +51,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         //controlDeps = effects
         super.emitFatNode(sym, rhs); return
       case ThinDef(NewVar(x)) => resultIsVar = true // if sym is a NewVar, we must mangle the result type
+      case ThinDef(e: DeliteOpExternal[_]) => external = true
       case _ => // continue and attempt to generate kernel
     }
 
@@ -93,11 +95,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
       try{
         // DISCUSS: use a predicate instead of inheriting from DeliteOp?
-        rhs match {
-//          case op:DeliteFatOp => deliteKernel = true
-          case op:AbstractFatLoop => deliteKernel = true
-          case ThinDef(op:DeliteOp[_]) => deliteKernel = true
-          case _ => deliteKernel = false
+        deliteKernel = rhs match {
+//          case op:DeliteFatOp => true
+          case op:AbstractFatLoop => true
+          case ThinDef(op:DeliteOp[_]) => true
+          case _ => false
         }
 
         //initialize
@@ -127,6 +129,15 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             case foreach: DeliteOpForeachBounded[_,_,_] => "generated.scala.DeliteOpForeach[" + gen.remap(foreach.v.Type) + "]"
             case _ => gen.remap(sym.head.Type)
           }
+		  case ("cuda", op: AbstractFatLoop) =>
+			  hasOutputSlotTypes = true
+			  "void"
+		  case ("cuda", ThinDef(z)) => z match {
+            case op: AbstractLoop[_] => 
+            	hasOutputSlotTypes = true
+				"void"
+            case _ => "void"
+		  }
           case _ => 
             assert(sym.length == 1) // if not set hasOutputSlotTypes and use activation record
             gen.remap(sym.head.Type)
@@ -135,9 +146,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         assert(hasOutputSlotTypes || sym.length == 1)
 
         // emit kernel
-        gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar)(kstream)
+        gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar, external)(kstream)
         kstream.println(bodyString.toString)
-        gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar)(kstream)
+        gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar, external)(kstream)
         
         if (hasOutputSlotTypes)
           gen.emitFatNodeKernelExtra(sym, rhs)(kstream) // activation record class declaration
@@ -177,7 +188,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
       } catch {
         case e:GenerationFailedException => // no generator found
           gen.exceptionHandler(e, outFile, kstream)
-          //println(gen.toString + ":" + quote(sym))
+          //println(gen.toString + ":" + (sym map(quote)))
           //e.printStackTrace
           
           //if(gen.nested > 1) {
@@ -234,9 +245,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     // emit task graph node
     rhs match {
       case op: AbstractFatLoop => 
-        emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _))
+        emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _))
       case ThinDef(z) => z match {
-        case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body))
+        case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body))
+        case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case c:DeliteOpCondition[_] => emitIfThenElse(c.cond, c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
@@ -257,15 +269,24 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
    * @param antiDeps    a list of WAR dependencies (need to be committed in program order)
    */
 
-  def emitMultiLoop(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean)
+  def emitMultiLoop(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]], size: Exp[Int], needsCombine: Boolean, needsPostProcess: Boolean)
        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
    stream.println("{\"type\":\"MultiLoop\",")
    emitConstOrSym(size, "size")
    stream.print(",\"needsCombine\":" + needsCombine)
+   stream.print(",\"needsPostProcess\":" + needsPostProcess)
    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
    stream.println("},")
   }
 
+  def emitExternal(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+        (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
+    stream.print("{\"type\":\"External\"")
+    // TODO: add thread control, other configuration?
+    emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
+    stream.println("},")
+  }
+  
   def emitSingleTask(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\"")
@@ -294,7 +315,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     stream.println("  \"controlDeps\":[" + makeString(controlDeps) + "],")
     stream.println("  \"antiDeps\":[" + makeString(antiDeps) + "],")
     if (remap(thenp.Type) != remap(elsep.Type))
-      throw new RuntimeException("Delite conditional with different then and else return types")
+      throw new RuntimeException("Delite conditional with different then and else return types: " + remap(thenp.Type) + " and " + remap(elsep.Type))
     val returnTypesStr = if(returnTypes.isEmpty) "" else returnTypes.mkString(",")
     stream.println("  \"return-types\":{" + returnTypesStr + "}")
     stream.println("},")

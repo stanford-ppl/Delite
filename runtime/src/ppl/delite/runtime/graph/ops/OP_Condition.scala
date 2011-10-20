@@ -36,6 +36,7 @@ class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Target
         thenGraph, thenValue, elseGraph, elseValue)
         r.dependencies = dependencies
         r.inputList = inputList
+        r.mutableInputs = mutableInputs
         r.consumers = consumers
         r.cudaMetadata = cudaMetadata
         for (dep <- getDependencies) dep.addConsumer(r)
@@ -44,7 +45,7 @@ class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Target
 
         //add special consumer ops
         if (predicateValue == "") predicateGraph.schedule(idx).add(new GetterOp(id+"p_"+idx, idx, Seq(predicateGraph.result._1), Seq(predicateGraph.result._1))) //get predicate result on all chunks
-        if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
+        if (r.outputType != "Unit") { //returns result and isReturner
           if (thenValue == "") thenGraph.schedule(idx).add(new GetterOp(id+"t_"+idx, idx, Seq(thenGraph.result._1), Seq(thenGraph.result._1))) //get then result on returner chunk
           if (elseValue == "") elseGraph.schedule(idx).add(new GetterOp(id+"e_"+idx, idx, Seq(elseGraph.result._1), Seq(elseGraph.result._1))) //get else result on returner chunk
         }

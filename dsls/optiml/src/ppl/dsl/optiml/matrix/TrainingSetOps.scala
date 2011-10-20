@@ -58,12 +58,21 @@ trait TrainingSetOpsExp extends TrainingSetOps with BaseExp { this: DeliteOpsExp
      val mM = manifest[TrainingSetImpl[A,B]]
   }
   case class TrainingSetTransposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) extends Def[TrainingSet[A,B]]
-  case class TrainingSetLabels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) extends Def[Labels[B]]
+  case class TrainingSetLabels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) extends Def[Labels[B]] {
+    val mA = manifest[A]
+    val mB = manifest[B]
+  }
 
   def trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Exp[Matrix[A]], labels: Exp[Labels[B]]) = reflectEffect(TrainingSetObjectFromMat(xs, labels))
-  def trainingset_transposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = TrainingSetTransposed(x)
-  def trainingset_labels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = TrainingSetLabels(x)
+  def trainingset_transposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = reflectPure(TrainingSetTransposed(x))
+  def trainingset_labels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = reflectPure(TrainingSetLabels(x))
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case e@TrainingSetLabels(x) => trainingset_labels(f(x))(e.mA,e.mB)
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
+
 
 trait ScalaGenTrainingSetOps extends ScalaGenBase {
   val IR: TrainingSetOpsExp

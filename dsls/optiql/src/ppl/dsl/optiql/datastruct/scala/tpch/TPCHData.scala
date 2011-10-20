@@ -49,7 +49,7 @@ class CustomerTable extends DataTable[Customer]  {
   override def addRecord(fs: Array[String]) {
     assert(fs.size == 8, "Expecting 8 fields, got: " + fs.toList.toString)
     val record = new Customer(fs(0),fs(1),fs(2),fs(3),fs(4),fs(5),fs(6),fs(7))
-    data.append(record)
+    _data.append(record)
   }
   def instantiateTable() = new CustomerTable
 }
@@ -60,7 +60,7 @@ class LineItemTable extends DataTable[LineItem] {
   override def addRecord(fs: Array[String]) {
     assert(fs.size == 16, "Expecting 16 fields, got: " + fs)
     val record = new LineItem(fs(0),fs(1),fs(2),fs(3),fs(4),fs(5),fs(6),fs(7),fs(8),fs(9),fs(10),fs(11),fs(12),fs(13),fs(14),fs(15))
-    data.append(record)
+    _data.append(record)
   }
   def instantiateTable() = new LineItemTable
 }
@@ -71,7 +71,7 @@ class NationTable extends DataTable[Nation] {
   override def addRecord(fs: Array[String]) {
     assert(fs.size == 4, "Expecting 4 fields, got: " + fs)
     val record = new Nation(fs(0),fs(1),fs(2),fs(3))
-    data.append(record)
+    _data.append(record)
   }
   def instantiateTable() = new NationTable
 }
@@ -82,7 +82,7 @@ class OrderTable extends DataTable[Order] {
   override def addRecord(fs: Array[String]) {
     assert(fs.size == 9, "Expecting 9 fields, got: " + fs)
     val record = new Order(fs(0),fs(1),fs(2),fs(3),fs(4),fs(5),fs(6),fs(7),fs(8))
-    data.append(record)
+    _data.append(record)
   }
   def instantiateTable() = new OrderTable
 }
@@ -93,7 +93,7 @@ class PartTable extends DataTable[Part]  {
   override def addRecord(fs: Array[String]) {
     assert(fs.size == 9, "Expecting 9 fields, got: " + fs)
     val record = new Part(fs(0),fs(1),fs(2),fs(3),fs(4),fs(5),fs(6),fs(7),fs(8))
-    data.append(record)
+    _data.append(record)
   }
   def instantiateTable() = new PartTable
 }
@@ -104,7 +104,7 @@ class PartSupplierTable extends DataTable[PartSupplier] {
   override def addRecord(fs: Array[String]) {
     assert(fs.size == 5, "Expecting 5 fields, got: " + fs)
     val record = new PartSupplier(fs(0),fs(1),fs(2),fs(3),fs(4))
-    data.append(record)
+    _data.append(record)
   }
   def instantiateTable() = new PartSupplierTable
 }
@@ -115,7 +115,7 @@ class RegionTable extends DataTable[Region] {
   override def addRecord(fs: Array[String]) {
     assert(fs.size == 3, "Expecting 3 fields, got: " + fs)
     val record = new Region(fs(0),fs(1),fs(2))
-    data.append(record)
+    _data.append(record)
   }
   def instantiateTable() = new RegionTable
 }
@@ -126,7 +126,7 @@ class SupplierTable extends DataTable[Supplier] {
   override def addRecord(fs: Array[String]) {
     assert(fs.size == 7, "Expecting 7 fields, got: " + fs)
     val record = new Supplier(fs(0),fs(1),fs(2),fs(3),fs(4),fs(5),fs(6))
-    data.append(record)
+    _data.append(record)
   }
   def instantiateTable() = new SupplierTable
 }

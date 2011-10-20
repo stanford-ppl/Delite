@@ -10,11 +10,11 @@ object DataTable {
     if(i.isInstanceOf[DataTable[T]]) {
       i.asInstanceOf[DataTable[T]]
     }
-    else if(i.isInstanceOf[ArrayBuffer[T]]) {
+    else if(i.isInstanceOf[UnsafeArrayBuffer[T]]) {
 
       return new DataTable[T] {
 
-        data = i.asInstanceOf[ArrayBuffer[T]]
+        _data = i.asInstanceOf[UnsafeArrayBuffer[T]]
 
         override def addRecord(arr: Array[String]) {
           throw new RuntimeException("Cannot add Record into a projected DataTable")
@@ -25,10 +25,10 @@ object DataTable {
 	else if(i.isInstanceOf[Grouping[_,T]]) {
 	  println("converting grouping to DataTable")
 	  val g = i.asInstanceOf[Grouping[_,T]]
-	  assert(g.elems.isInstanceOf[ArrayBuffer[T]])
+	  assert(g.elems.isInstanceOf[UnsafeArrayBuffer[T]])
 	  return new DataTable[T] {
 
-        data = g.elems.asInstanceOf[ArrayBuffer[T]]
+        _data = g.elems.asInstanceOf[UnsafeArrayBuffer[T]]
 
         override def addRecord(arr: Array[String]) {
           throw new RuntimeException("Cannot add Record into a projected DataTable")
@@ -37,13 +37,14 @@ object DataTable {
 	  
 	}
     else {
-      val arrbuf = new ArrayBuffer[T]();
+      val arrbuf = new UnsafeArrayBuffer[T]
+      
       for (e <- i) {
         arrbuf.append(e)
       }
       return new DataTable[T] {
 
-        data = arrbuf
+        _data = arrbuf
 
         override def addRecord(arr: Array[String]) {
           throw new RuntimeException("Cannot add Record into a projected DataTable")
@@ -53,34 +54,56 @@ object DataTable {
   }
 }
 
+class UnsafeArrayBuffer[T] extends ArrayBuffer[T] {
+
+  def getArray = array
+
+  def unsafeSetData(arr: Array[AnyRef], nsize: Int) {
+    array = arr
+    size0 = nsize
+  }
+    
+  def unsafeFillWithNull(initialSize:Int) {
+    array = new Array(initialSize)
+    size0 = initialSize
+  }
+}
+
 class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.delite.framework.datastruct.scala.DeliteCollection[TSource] {
   import DataTable._
 
   println("initialSize : " + initialSize)
-  var data = ArrayBuffer.fill[TSource](initialSize)(null.asInstanceOf[TSource])
-  println("size of internal data is : " + data.size)
+  var _data = new UnsafeArrayBuffer[TSource]
+  
+  if(initialSize!=0) _data.unsafeFillWithNull(initialSize)
+  
+  //ArrayBuffer.fill[TSource](initialSize)(null.asInstanceOf[TSource])
+  println("size of internal _data is : " + _data.size)
   val grouped = false
-  def iterator = data.iterator
+  def iterator = _data.iterator
 
 
-  def dcApply(idx: Int) = data(idx)
+  def dcApply(idx: Int) = _data(idx)
   def dcUpdate(idx: Int, x: TSource) {
-    data(idx) = x
+    _data(idx) = x
   }
+  def dcSize = _data.size
+  def unsafeSetData(arr: Array[TSource], size: Int) = _data.unsafeSetData(arr.asInstanceOf[Array[AnyRef]], size)
+  def data = _data.getArray
   
   def this() = this(0)
 	
 
   //TODO HCXXX: NEED TO REMOVE ALL THIS STUFF OR ADD IT TO DELITE COLLECTION
-  def apply(idx: Int): TSource = data(idx)
+  def apply(idx: Int): TSource = _data(idx)
   def cloneL = new DataTable[TSource]
   def insert(pos: Int, x: TSource) {
-    data.insert(pos, x)
+    _data.insert(pos, x)
   }
   def insertAll(pos: Int, x: DataTable[TSource]) {
-    data.insertAll(pos, x)
+    _data.insertAll(pos, x)
   }
-  def length = data.size
+  def length = _data.size
 
 
   def addRecord(fields: Array[String]): Unit = throw new RuntimeException("You forgot to implement addRecord for " + this.getClass)
@@ -112,7 +135,7 @@ class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.de
   def printAsTable() {
 
     // Check if Table is empty
-    if(data.size == 0) {
+    if(_data.size == 0) {
       println("=====================================================")
       println("|                  EMPTY TABLE                      |")
       println("=====================================================")
@@ -130,7 +153,7 @@ class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.de
   }
 
   private def handleGroupedTable() {
-    for(key <- data) {
+    for(key <- _data) {
       val group = key.asInstanceOf[Grouping[_,_]]
       println("Key = " + group.key)
       val table = convertIterableToDataTable(group.elems)
@@ -154,7 +177,7 @@ class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.de
 
     horizontalRule
     import ReflectionHelper._
-    val fieldStrs = data.head.fieldsAsStrings
+    val fieldStrs = _data.head.fieldsAsStrings
     tableStr append("|")
     for(i <- 0 until columnSizes.size) {
       tableStr append( " " + fieldStrs(i))
@@ -166,7 +189,7 @@ class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.de
     print(tableStr.toString)
     tableStr.clear
 
-    for(r <- 0 until data.size) {
+    for(r <- 0 until _data.size) {
       emitRecordAsRow(r, columnSizes)
     }
     print(tableStr.toString)
@@ -181,10 +204,10 @@ class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.de
   private def max(a: Int, b: Int) = if(a > b)  a else b
 
   private def getTableColSizes(): Array[Int] = {
-    if(data.size==0)
+    if(_data.size==0)
       return new Array[Int](0)
 
-    val datum = data.head
+    val datum = _data.head
     import ReflectionHelper._
     val fieldStrs = datum.fieldsAsStrings
     val fields = datum.fields
@@ -199,7 +222,7 @@ class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.de
     }
 
     //columns should be at least the size of maximal element
-    for(d <- data) {
+    for(d <- _data) {
       idx = 0
       while ( idx < fields.size) {
         columnSizes(idx) = max(columnSizes(idx), fields(idx).get(d).toString.length + 2)
@@ -214,7 +237,7 @@ class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.de
     sb append("| ")
     var str = ""
 
-    val row = data(r)
+    val row = _data(r)
 
     import ReflectionHelper._
     val fields = row.fields
@@ -241,21 +264,31 @@ class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.de
       override val grouped = true
     }
     for(key <- keys) {
-      result.data += new Grouping(key,hTable.getOrElse(key, new ArrayBuffer[TSource]))
+      result._data += new Grouping(key,hTable.getOrElse(key, new UnsafeArrayBuffer[TSource]))
     }
     result
+  }
+  
+  def Sum[@specialized T:Numeric](selector: TSource => T): T = {
+    val n = implicitly[Numeric[T]]
+    import n._
+    var sum = n.zero
+    for(e <- _data) {
+      sum += selector(e)
+    }
+    sum
   }
   
   /*****
    * Internal Implementation functions
    */
   private def buildHash[TSource,TKey](source:Iterable[TSource], keySelector: TSource => TKey) = {
-    val hash = HashMap[TKey, ArrayBuffer[TSource]]()
+    val hash = HashMap[TKey, UnsafeArrayBuffer[TSource]]()
     val keys = new ArrayBuffer[TKey]
     for (elem <- source; key = keySelector(elem)) {
       hash.getOrElseUpdate(key,{
         keys.append(key)
-        new ArrayBuffer[TSource]() //if there is no key
+        new UnsafeArrayBuffer[TSource]() //if there is no key
       }) += elem
     }
     (hash,keys)

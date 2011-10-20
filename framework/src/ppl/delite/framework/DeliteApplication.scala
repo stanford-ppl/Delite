@@ -1,16 +1,16 @@
 package ppl.delite.framework
 
+import java.io.{FileWriter, File, PrintWriter}
+import scala.tools.nsc.io._
+import scala.virtualization.lms.common.{BaseExp, Base}
+import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
+
 import codegen.c.TargetC
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
 import codegen.scala.TargetScala
 import codegen.Target
-import externlib.ExternLibrary
 import ops.DeliteOpsExp
-import scala.tools.nsc.io._
-import scala.virtualization.lms.common.{BaseExp, Base}
-import java.io.{FileWriter, File, PrintWriter}
-import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
 
 trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
@@ -29,7 +29,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
   val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.reverse.map(getCodeGenPkg(_))
 
-
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
     getCodeGenPkg(scalaTarget).asInstanceOf[ScalaCodegen { val IR: DeliteApplication.this.type }]
@@ -37,7 +36,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   // generators created by getCodeGenPkg will use the 'current' scope of the deliteGenerator as global scope
   val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
                                                val generators = DeliteApplication.this.generators }
-
+                                               
   var args: Rep[Array[String]] = _
   
   final def main(args: Array[String]) {
@@ -70,22 +69,31 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       val baseDir = Config.buildDir + File.separator + g.toString + File.separator
       writeModules(baseDir)
       g.emitDataStructures(baseDir + "datastructures" + File.separator)
-      g.generatorInit(baseDir + "kernels" + File.separator)
+      g.initializeGenerator(baseDir + "kernels" + File.separator)
     }
 
-    //Emit and Compile external library (MKL BLAS)
-    ExternLibrary.init()
-    
     if (Config.degFilename.endsWith(".deg")) {
       val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
       codegen.emitSource(liftedMain, "Application", streamScala) // whole scala application (for testing)
       // TODO: dot output
       reset
     }
-    deliteGenerator.emitSource(liftedMain, "Application", stream)
+    deliteGenerator.initializeGenerator(Config.buildDir)
+    deliteGenerator.emitSource(liftedMain, "Application", stream)    
+    deliteGenerator.finalizeGenerator()
+    
+    generators foreach { _.finalizeGenerator()}
   }
 
   final def generateScalaSource(name: String, stream: PrintWriter) = {
+    reset
+    stream.println("object "+name+"Main {"/*}*/)
+    stream.println("def main(args: Array[String]) {"/*}*/)
+    stream.println("val o = new "+name)
+    stream.println("o.apply(args)")
+    stream.println("ppl.delite.runtime.profiler.PerformanceTimer.print(\"app\")")
+    stream.println(/*{*/"}")
+    stream.println(/*{*/"}")
     codegen.emitSource(liftedMain, name, stream)
   }
 

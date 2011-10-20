@@ -1,24 +1,27 @@
 #!/usr/local/bin/python
 
 from optparse import OptionParser
-import os
+import os, errno
 
 
 options = {}
 classes = []
 
 def main():
-    usage = "usage: %prog [options] impls_dir ops_dir"
+    usage = "usage: %prog [options] ops_dir data_dir impls_dir(s)"
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
     parser.add_option("--dsl", dest="dsl_name", default="optiml", help="specify which dsl you want to process ops on behalf")
 
     (opts, args) = parser.parse_args()
-    if len(args) != 2:
+    if len(args) < 2:
         parser.error("incorrect number of arguments")
-    impls_dir = args[0]
-    ops_dir = args[1]
-    
+
+    ops_dir = args.pop(0)
+    data_dir = args.pop(0)
+
+    initDir(ops_dir)
+    initDir(data_dir)
 
     loadOptions(opts)
     
@@ -44,9 +47,19 @@ def emitApplicationOps(fileOut):
     l = "trait ApplicationOps extends " + mixify(classes, "", "Ops") + "\n"
     l = l + "trait ApplicationOpsExp extends FieldAccessOpsExp with " + mixify(classes, "", "OpsExp") + "\n"
     l = l + "trait ScalaGenApplicationOps extends ScalaGenFieldAccessOps with " + mixify(classes, "ScalaGen", "Ops") + " \n" 
-    
     out.append(l)
     fileOut.writelines(out)
+
+
+def initDir(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:
+        if exc.errno == errno.EEXIST:
+          pass
+        else: raise
+
+    
     
 def emitHeader(fileOut):
     out = []
@@ -83,8 +96,9 @@ def mixify(classes, pre, post):
             l = l + " with " 
     return l
 
+
 def liftClass(impls_dir, fname, fileOut):
-    
+   
     #dictionary to keep track of fields and their types
     fields = []
     types = {}
@@ -232,10 +246,6 @@ def listify(fields):
 def loadOptions(opts):
     options['verbose'] = opts.verbose
     options['dsl'] = opts.dsl_name
-
-
-
-
-
+S
 if __name__ == "__main__":
     main()

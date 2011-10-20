@@ -7,6 +7,8 @@ import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
+import ppl.delite.framework.extern.DeliteGenExternal
+
 
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
@@ -56,10 +58,9 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
   override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e))
   override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e))
 
-  override def shouldApplyFusion(currentScope: List[TTP])(result: Exp[Any]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
+  override def shouldApplyFusion(currentScope: List[TTP])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
 
-
-  def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): Unit = {
+  def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): List[(Sym[Any],Any)] = {
 
     val x = fresh[A]
     val y = reifyEffects(f(x))
@@ -69,8 +70,7 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
 
     printlog("-- emitSource")
     availableDefs.foreach(printlog(_))
-
-
+    
     stream.println("{\"DEG\":{\n"+
                    "\"version\" : 0.1,\n"+
                    "\"kernelpath\" : \"" + Config.buildDir  + "\",\n"+
@@ -82,8 +82,8 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
     //stream.println(quote(getBlockResult(y)))
     stream.println("{\"type\":\"EOP\"}\n]}}")
 
-
     stream.flush
+    Nil
   }
 
   /**
@@ -94,7 +94,7 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
    * This is all because we allow individual generators to refine their dependencies, which directly impacts
    * the generated schedule. We may want to consider another organization.
    */
-  override def emitFatBlockFocused(currentScope: List[TTP])(result: Exp[Any])(implicit stream: PrintWriter): Unit = {
+  override def emitFatBlockFocused(currentScope: List[TTP])(result: List[Exp[Any]])(implicit stream: PrintWriter): Unit = {
     printlog("-- block for "+result)
     currentScope.foreach(printlog(_))
 
@@ -207,4 +207,4 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
 
 }
 
-trait DeliteCodeGenPkg extends DeliteGenTaskGraph
+trait DeliteCodeGenPkg extends DeliteGenTaskGraph with DeliteGenExternal

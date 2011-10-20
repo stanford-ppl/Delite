@@ -10,6 +10,7 @@ import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
+import ppl.dsl.optiml.extern.{OptiMLScalaGenExternal, OptiMLCudaGenExternal}
 import ppl.dsl.optiml.datastruct.CudaGenDataStruct
 import ppl.dsl.optiml.io._
 import ppl.dsl.optiml.vector._
@@ -18,6 +19,7 @@ import ppl.dsl.optiml.graph._
 import ppl.dsl.optiml.stream._
 import ppl.dsl.optiml.capabilities._
 import ppl.dsl.optiml.library.cluster._
+import ppl.dsl.optiml.application._
 
 
 /**
@@ -48,7 +50,7 @@ trait OptiMLScalaOpsPkg extends Base
   with Equal with IfThenElse with Variables with While with Functions
   with ImplicitOps with OrderingOps with StringOps
   with BooleanOps with PrimitiveOps with MiscOps with TupleOps
-  with MathOps with CastingOps with ObjectOps
+  with MathOps with CastingOps with ObjectOps with IOOps
   // only included because of args. TODO: investigate passing args as a vector
   with ArrayOps
 
@@ -57,14 +59,14 @@ trait OptiMLScalaOpsPkgExp extends OptiMLScalaOpsPkg with DSLOpsExp
   with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
   with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
   with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp with ObjectOpsExp
-  with ArrayBufferOpsExp
+  with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp
 
 trait OptiMLScalaCodeGenPkg extends ScalaGenDSLOps
   with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenFunctions
   with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
   with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenTupleOps
   with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps with ScalaGenObjectOps
-  with ScalaGenArrayBufferOps
+  with ScalaGenSynchronizedArrayBufferOps with ScalaGenHashMapOps with ScalaGenIterableOps
   { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
@@ -72,20 +74,20 @@ trait OptiMLCudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with Cu
   with CudaGenStringOps with CudaGenRangeOps with CudaGenIOOps with CudaGenArrayOps with CudaGenBooleanOps
   with CudaGenPrimitiveOps with CudaGenMiscOps
   with CudaGenListOps with CudaGenSeqOps with CudaGenMathOps with CudaGenCastingOps with CudaGenSetOps
-  with CudaGenArrayBufferOps
+  with CudaGenSynchronizedArrayBufferOps with CudaGenHashMapOps with CudaGenIterableOps
   { val IR: OptiMLScalaOpsPkgExp  }
 
 trait OptiMLCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
   with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
   with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
   with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps
-  with CGenArrayBufferOps
+  with CGenSynchronizedArrayBufferOps with CGenHashMapOps with CGenIterableOps
   { val IR: OptiMLScalaOpsPkgExp  }
 
 /**
  * This the trait that every OptiML application must extend.
  */
-trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps 
+trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOpsshould be auto-generated with ApplicationOps
   with ArithOps with CloneableOps with HasMinMaxOps
   with VectorOps with MatrixOps with MLInputReaderOps with MLOutputWriterOps with VectorViewOps
   with IndexVectorOps with IndexVector2Ops with MatrixRowOps with MatrixColOps
@@ -97,7 +99,9 @@ trait OptiML extends OptiMLScalaOpsPkg with LanguageOps with ApplicationOps
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait OptiMLCompiler extends OptiML with RangeOps with IOOps with SeqOps with SetOps with ListOps {
+trait OptiMLCompiler extends OptiML with DeliteCollectionOps with RangeOps with IOOps with SeqOps with SetOps
+  with ListOps with HashMapOps with IterableOps {
+    
   this: OptiMLApplication with OptiMLExp =>
 }
 
@@ -106,7 +110,7 @@ trait OptiMLCompiler extends OptiML with RangeOps with IOOps with SeqOps with Se
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
-  with LanguageOpsExp with ApplicationOpsExp
+  with LanguageOpsExp with ApplicationOpsExp with LBPOpsExp 
   with ArithOpsExpOpt 
   with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp
   with IndexVectorOpsExp with IndexVector2OpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
@@ -148,6 +152,10 @@ trait OptiMLCodeGenBase extends GenericFatCodegen {
   def genSpec(f: File, outPath: String) = {}
   def genSpec2(f: File, outPath: String) = {}
 
+  def getFiles(d: File): Array[File] = {
+    d.listFiles flatMap { f => if (f.isDirectory()) getFiles(f) else Array(f) }
+  }
+  
   override def emitDataStructures(path: String) {
     val s = File.separator
     val dsRoot = Config.homeDir + s+"dsls"+s+"optiml"+s+"src"+s+"ppl"+s+"dsl"+s+"optiml"+s+"datastruct"+s + this.toString
@@ -157,25 +165,31 @@ trait OptiMLCodeGenBase extends GenericFatCodegen {
     val outDir = new File(path)
     outDir.mkdirs()
 
-    for (f <- dsDir.listFiles) {
-      if (specialize contains (f.getName.substring(0, f.getName.indexOf(".")))) {
-        genSpec(f, path)
+    val files = getFiles(dsDir)    
+    for (f <- files) {
+      if (f.isDirectory){
+        emitDataStructures(f.getPath())
       }
-      if (specialize2 contains (f.getName.substring(0, f.getName.indexOf(".")))) {
-        genSpec2(f, path)
+      else {
+        if (specialize contains (f.getName.substring(0, f.getName.indexOf(".")))) {
+          genSpec(f, path)
+        }
+        if (specialize2 contains (f.getName.substring(0, f.getName.indexOf(".")))) {
+          genSpec2(f, path)
+        }
+        val outFile = path + s + f.getName
+        val out = new BufferedWriter(new FileWriter(outFile))
+        for (line <- scala.io.Source.fromFile(f).getLines) {
+          out.write(dsmap(line) + "\n")
+        }
+        out.close()
       }
-      val outFile = path + s + f.getName
-      val out = new BufferedWriter(new FileWriter(outFile))
-      for (line <- scala.io.Source.fromFile(f).getLines) {
-        out.write(dsmap(line) + "\n")
-      }
-      out.close()
     }
   }
 }
 
-trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
-  with ScalaGenApplicationOps
+trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with OptiMLScalaGenExternal with ScalaGenDeliteOps
+  with ScalaGenApplicationOps with ScalaGenLBPOps with ScalaGenLanguageOps 
   with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
   with ScalaGenIndexVectorOps with ScalaGenIndexVector2Ops with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
   with ScalaGenStreamOps with ScalaGenStreamRowOps
@@ -186,7 +200,7 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   
   val IR: DeliteApplication with OptiMLExp
 
-  override val specialize = Set("VectorImpl", "MatrixImpl", "VectorViewImpl", "LabelsImpl",
+  override val specialize = Set("VectorImpl", "MatrixImpl", "SymmetricMatrixImpl", "VectorViewImpl", "LabelsImpl",
                                 "ImageImpl", "StreamImpl", "MatrixRowImpl", "MatrixColImpl", "StreamRowImpl")
   override val specialize2 = Set("TrainingSetImpl")
 
@@ -263,8 +277,8 @@ trait OptiMLCodeGenScala extends OptiMLCodeGenBase with OptiMLScalaCodeGenPkg wi
   }
 }
 
-trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenTrainingSetOps with CudaGenMatrixRowOps // with CudaGenVectorViewOps
-  with CudaGenVariantsOps with DeliteCudaGenAllOverrides // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
+trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg with OptiMLCudaGenExternal /*with CudaGenLanguageOps*/ with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenTrainingSetOps with CudaGenMatrixRowOps // with CudaGenVectorViewOps
+  with CudaGenVariantsOps with DeliteCudaGenAllOverrides with CudaGenDeliteCollectionOps// with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._
@@ -375,6 +389,7 @@ trait OptiMLCodeGenCuda extends OptiMLCodeGenBase with OptiMLCudaCodeGenPkg /*wi
     out.append("#include \"IndexVectorImpl.h\"\n")
     out.append("#include \"LabelsImpl.h\"\n")
     out.append("#include \"TrainingSetImpl.h\"\n")
+    out.append("#include \"library.h\"\n") // external library
     out.toString
   }
 

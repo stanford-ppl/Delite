@@ -10,8 +10,8 @@ trait VectorImplOps { this: OptiML =>
   def vector_obj_fromseq_impl[A:Manifest](xs: Rep[Seq[A]]): Rep[Vector[A]]
   def vector_obj_ones_impl(length: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_onesf_impl(length: Rep[Int]): Rep[Vector[Float]]
-  def vector_obj_zeros_impl(length: Rep[Int]): Rep[Vector[Double]]
-  def vector_obj_zerosf_impl(length: Rep[Int]): Rep[Vector[Float]]
+  //def vector_obj_zeros_impl(length: Rep[Int]): Rep[Vector[Double]]
+  //def vector_obj_zerosf_impl(length: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_rand_impl(length: Rep[Int]): Rep[Vector[Double]]
   def vector_obj_randf_impl(length: Rep[Int]): Rep[Vector[Float]]
   def vector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[Vector[Double]]
@@ -34,6 +34,7 @@ trait VectorImplOps { this: OptiML =>
   def vector_max_index_impl[A:Manifest:Ordering](v: Rep[Vector[A]]): Rep[Int]
   def vector_find_impl[A:Manifest](v: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
   def vector_mkstring_impl[A:Manifest](v: Rep[Vector[A]], sep: Rep[String]): Rep[String]
+  def vector_groupby_impl[A:Manifest,K:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[K]): Rep[Vector[Vector[A]]]
 }
 
 trait VectorImplOpsStandard extends VectorImplOps {
@@ -52,29 +53,27 @@ trait VectorImplOpsStandard extends VectorImplOps {
     v //.unsafeImmutable
   }
 
-  def vector_obj_ones_impl(length: Rep[Int]) = Vector[Double](length, true) mmap { e => 1. }
+  def vector_obj_ones_impl(length: Rep[Int]) = (0::length) { i => 1. } //Vector[Double](length, true) mmap { e => 1. } 
 
-  def vector_obj_onesf_impl(length: Rep[Int]) = Vector[Float](length, true) mmap { e => 1f }
+  def vector_obj_onesf_impl(length: Rep[Int]) = (0::length) { i => 1f } //Vector[Float](length, true) mmap { e => 1f }
 
-  def vector_obj_zeros_impl(length: Rep[Int]) = Vector[Double](length, true)
+  //def vector_obj_zeros_impl(length: Rep[Int]) = Vector[Double](length, true)
 
-  def vector_obj_zerosf_impl(length: Rep[Int]) = Vector[Float](length, true)
+  //def vector_obj_zerosf_impl(length: Rep[Int]) = Vector[Float](length, true)
 
-  def vector_obj_rand_impl(length: Rep[Int]) = Vector[Double](length, true) mmap { e => random[Double] }
+  def vector_obj_rand_impl(length: Rep[Int]) = (0::length) { i => random[Double] }
 
-  def vector_obj_randf_impl(length: Rep[Int]) = Vector[Float](length, true) mmap { e => random[Float] }
+  def vector_obj_randf_impl(length: Rep[Int]) = (0::length) { i => random[Float] }
 
   def vector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]) = {
     val length = Math.ceil((end-start)/step_size).asInstanceOfL[Int]
-    val out = Vector[Double](length, true)
-    for (i <- 0 until length) {
+    (0::length) { i =>
       // TODO: i*step_size (int*double returning double) doesn't work yet (needs to chain 2 implicits: intToDouble, repArithToArithOps)
-      out(i) = step_size*i + start
+      step_size*i + start
     }
-    out.unsafeImmutable
   }
 
-  def vector_obj_flatten_impl[A:Manifest](pieces: Rep[Vector[Vector[A]]]) = {
+  def vector_obj_flatten_impl[A:Manifest](pieces: Rep[Vector[Vector[A]]]) = { // TODO: flatMap implementation
     if (pieces.length == 0){
       Vector[A](0, pieces.isRow).unsafeImmutable
     }
@@ -105,7 +104,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     }
   }
 
-  def vector_slice_impl[A:Manifest](v: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]) = {
+  def vector_slice_impl[A:Manifest](v: Rep[Vector[A]], start: Rep[Int], end: Rep[Int]) = { // TODO: use DeliteOp
     //v.chkRange(start, end)
     val out = Vector[A](end-start, v.isRow)
     for (i <- start until end){
@@ -141,7 +140,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
 
   def vector_outer_impl[A:Manifest:Arith](collA: Rep[Vector[A]], collB: Rep[Vector[A]]) = {
-    val out = Matrix[A](collA.length, collA.length)
+    val out = Matrix[A](collA.length, collB.length)
     for (i <- 0 until collA.length ){
       for (j <- 0 until collB.length ){
         out(i,j) = collA(i)*collB(j)
@@ -247,11 +246,12 @@ trait VectorImplOpsStandard extends VectorImplOps {
 
   def vector_contains_impl[A:Manifest](v: Rep[Vector[A]], elem: Rep[A]): Rep[Boolean] = {
     var i = unit(0)
-    while (i < v.length) {
-      if (v(i) == elem) return true
+    var found = false
+    while (i < v.length && !found) {
+      if (v(i) == elem) found = true
       i += 1
     }
-    return false
+    found
   }
 
   def vector_distinct_impl[A:Manifest](v: Rep[Vector[A]]) = {
@@ -309,5 +309,25 @@ trait VectorImplOpsStandard extends VectorImplOps {
       s = s + sep
     }
     s
+  }
+  
+  def vector_groupby_impl[A:Manifest,K:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[K]): Rep[Vector[Vector[A]]] = {
+    val groups = HashMap[K,Vector[A]]()
+
+    var i = 0
+    while (i < x.length) {
+      val key = pred(x(i))      
+      if (!(groups contains key)) {
+        groups(key) = Vector[A](0,x.isRow)        
+      }
+      groups(key) += x(i)
+      i += 1
+    }
+
+    val out = Vector[Vector[A]](0,true)
+    for (v <- groups.values) {
+      out += v.unsafeImmutable       
+    }    
+    out.unsafeImmutable
   }
 }

@@ -157,8 +157,30 @@ trait MatrixUpdates extends DeliteTestModule with OptiMLApplication {
   }
 }
 
+object GroupRowsByRunner extends DeliteTestRunner with OptiMLApplicationRunner with GroupRowsBy
+trait GroupRowsBy extends DeliteTestModule with OptiMLApplication {
+  def main() = {
+    implicit val collector = ArrayBuffer[Boolean]()
+
+    val m = Matrix(Vector(1,2,3,4),
+                   Vector(2,-2,-3,-4),
+                   Vector(1,5,6,7),
+                   Vector(2,-5,-6,-7))
+    
+    val ms = m.groupRowsBy(row => row(0))
+    collect(ms.length == 2)
+    for (m <- ms) {
+      m.pprint
+      collect(m.numRows == 2)
+      collect(m.numCols == 4) 
+    }
+    mkReport
+  }
+}
+
 class MatrixSuite extends DeliteSuite {
-  def testAccessors() { compileAndTest(MatrixAccessorsRunner) }
-  def testOperators() { compileAndTest(MatrixOperatorsRunner) }
-  def testUpdates() { compileAndTest(MatrixUpdatesRunner) }
+  // def testAccessors() { compileAndTest(MatrixAccessorsRunner) }
+  //  def testOperators() { compileAndTest(MatrixOperatorsRunner) }
+  //  def testUpdates() { compileAndTest(MatrixUpdatesRunner) }
+  def testGroupRowsBy() { compileAndTest(GroupRowsByRunner) }
 }

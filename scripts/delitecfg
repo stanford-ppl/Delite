@@ -1,0 +1,157 @@
+#!/bin/sh
+script_path=$0
+follow() { echo "$(readlink "$({ cd $(dirname "$1"); pwd -P; })/$(basename "$1")")"; }
+while [ -h "$script_path" ]; do script_path="$(follow "$script_path")"; done
+#export script_home="$(dirname "$script_path")"
+export script_home="$( cd "$( dirname "$0" )" && pwd )"
+export script_name="$(basename "$script_path")"
+synthetic="/tmp/$script_name.$(mktemp -u XXXX)"
+touch "$synthetic"
+cat "$script_home/shared" > "$synthetic"
+echo 'try {' >> "$synthetic"
+echo '/\c' >> "$synthetic"
+echo '*\c' >> "$synthetic"
+cat "$script_path" >> "$synthetic"
+echo '} catch {' >> "$synthetic"
+echo 'case e: Exception => {' >> "$synthetic"
+echo 'var message = "%s".format(if (e.getMessage != null) e.getMessage else e.getCause )' >> "$synthetic"
+echo 'println(message)' >> "$synthetic"
+echo '}' >> "$synthetic"
+echo '}' >> "$synthetic"
+exec scala "$synthetic" "$@"
+!#*/
+
+class Scala(project: Project) {
+  lazy val script = "println(current.buildCompiler.scalaInstance.compilerJar.getParentFile.getParentFile.getAbsolutePath)"
+  lazy val home = project.invokeScript(script)(0)
+  lazy val interpreter = (if (windows) "%s/bin/scala.bat" else "%s/bin/scala").format(home).replace("/", File.separator)
+  lazy val compiler = (if (windows) "%s/bin/scalac.bat" else "%s/bin/scalac").format(home).replace("/", File.separator)
+  lazy val compiler_jar = "%s/lib/scala-compiler.jar".format(home).replace("/", File.separator)
+  lazy val library_jar = "%s/lib/scala-library.jar".format(home).replace("/", File.separator)
+}
+
+class Project(root: String, name: String) {
+  def invokeScript(script : String) : List[String] = {
+    val input_file = File.createTempFile("delitecfg.", ".input")
+    input_file.delete
+    val input_writer = new PrintWriter(input_file)
+    input_writer.println("project %s".format(name))
+    input_writer.println("console-project")
+    input_writer.println(script)
+    input_writer.println("exit")
+    input_writer.println("exit")
+    input_writer.close
+
+    val output_file = File.createTempFile("delitecfg.", ".output")
+    output_file.delete
+    
+    val sbt_windows_wrapper = File.createTempFile("delitecfg.", ".bat")
+    val sbt_unix_wrapper = File.createTempFile("delitecfg.", "")
+    val sbt_wrapper = if (windows) sbt_windows_wrapper else sbt_unix_wrapper
+    sbt_wrapper.delete
+    val sbt_wrapper_writer = new PrintWriter(sbt_wrapper)
+    sbt_wrapper_writer.println("cd %s".format(root))
+    val sbt_windows_path = config.script_home + File.separator + "sbt.bat"
+    val sbt_unix_path = config.script_home + File.separator + "sbt"
+    val sbt_path = if (windows) sbt_windows_path else sbt_unix_path
+    sbt_wrapper_writer.println("%s <%s >%s".format(sbt_path, input_file.getAbsolutePath, output_file.getAbsolutePath))
+    sbt_wrapper_writer.close
+
+    sbt_wrapper.setExecutable(true)
+    Runtime.getRuntime().exec(sbt_wrapper.getAbsolutePath).waitFor
+
+    val lines = Source.fromFile(output_file).getLines.toList
+    val lines_without_prefix = (lines dropWhile {_ != "scala> " + script} drop 1).toList
+    (lines_without_prefix takeWhile {!_.startsWith("scala> ")}).toList dropRight 1
+  }
+
+  lazy val scala = {
+    new Scala(this)
+  }
+
+  lazy val deps = {
+    val script = "current.mainDependencies.all.getPaths foreach println"
+    invokeScript(script)
+  }
+
+  def dep(q : String) = {
+    val results = (deps filter {_.contains(q)}).toList
+    if (results.length == 0) "not found" else results(0)
+  }
+
+  lazy val target = {
+    val script = "println(current.mainCompilePath.absolutePath)"
+    invokeScript(script)(0)
+  }
+}
+
+// script code begins here
+
+println("Detecting the location of Delite...")
+if (args.length == 0 && config.props.getProperty("delite_home") == null) { print("Please, enter home directory of Delite: "); config.delite_home = readLine; }
+val delite_home: String = if (args.length > 0) args(0) else config.delite_home
+config.delite_home = delite_home
+config.validate_delite_home()
+config.clear()
+config.delite_home = delite_home
+println("Delite's home directory: %s%n".format(config.delite_home))
+
+val framework = new Project(config.delite_home, "Delite Framework")
+val optiml = new Project(config.delite_home, "OptiML")
+val dsls = new Project(config.delite_home, "DSLs")
+val scala_apps = new Project(config.delite_home, "Scala Apps")
+val applications = new Project(config.delite_home, "Applications")
+val delite = new Project(config.delite_home, "Delite")
+val runtime = new Project(config.delite_home + File.separator + "runtime", "runtime")
+
+configureScalapath("scala_virtualized", "scala virtualized", framework.scala)
+configureScalapath("scala_vanilla", "scala vanilla", runtime.scala)
+configureClasspath("lms_classes", "LMS", framework.dep("virtualization-lms-core"))
+configureClasspath("framework_classes", "Framework", framework.target)
+configureClasspath("optiml_classes", "OptiML", optiml.target)
+configureClasspath("runtime_classes", "Runtime", runtime.target)
+
+println("Patching scala virtualized scripts...")
+patchScalaVirtualizedScript("scala compiler (scalac)", config.scala_virtualized_compiler)
+patchScalaVirtualizedScript("scala interpreter (scala)", config.scala_virtualized_interpreter)
+
+def configureScalapath(key: String, description: String, scala: Scala) = {
+  println("Detecting the location of %s...".format(description))
+  println("%s home: %s%n".format(description.capitalize, scala.home))
+
+  config(key + "_home") = scala.home
+  config(key + "_interpreter") = scala.interpreter
+  config(key + "_compiler") = scala.compiler
+  config(key + "_library_jar") = scala.library_jar
+  config(key + "_compiler_jar") = scala.compiler_jar
+}
+
+def configureClasspath(key: String, description: String, classpath: => String) = {
+  println("Detecting the location of %s...".format(description))
+  println("%s's main compile path: %s%n".format(description.capitalize, classpath))
+
+  config(key) = classpath
+}
+
+def patchScalaVirtualizedScript(name: String, file: File) = {
+  if (windows) {
+    val bad_string = """if "%_JAVA_OPTS%"=="""""
+    val good_string = """if not defined _JAVA_OPTS"""
+
+    print("* %s... ".format(name))
+    val script = io.Source.fromFile(file).getLines.mkString(System.getProperty("line.separator"))
+    val script_needs_patching = script.contains(bad_string)
+    val script_already_patched = script.contains(good_string)
+    if (!script_needs_patching && script_already_patched) { println("already patched") }
+    if (!script_needs_patching && !script_already_patched) { println("does not need patches") }
+    if (script_needs_patching) {
+      val out = new PrintWriter(file)
+      try{ out.println(script.replace(bad_string, good_string)) }
+      finally{ out.close }
+      println("successfully patched")
+    }
+  }else {
+    print("* %s... ".format(name))
+    println("does not need patches")
+  }
+}

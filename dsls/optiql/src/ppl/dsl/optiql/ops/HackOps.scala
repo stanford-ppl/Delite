@@ -5,7 +5,6 @@ import java.io.PrintWriter
 import ppl.delite.framework.datastructures._
 import ppl.dsl.optiql.datastruct.scala.tpch._
 import ppl.dsl.optiql.datastruct.scala.container.DataTable
-import ppl.dsl.optiql.datastruct.scala.hacks._
 
 trait HackOps extends Base {
 
@@ -64,5 +63,6 @@ trait ScalaGenHackOps extends ScalaGenEffect {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case HackOpsObjLoadCustomers(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadCustomers(" + quote(path) + ")")
     case HackOpsObjLoadLineItems(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadLineItems(" + quote(path) + ")")
+    case _ => super.emitNode(sym, rhs)
   }
 }
