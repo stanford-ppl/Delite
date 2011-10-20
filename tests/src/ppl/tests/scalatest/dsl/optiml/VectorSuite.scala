@@ -242,6 +242,7 @@ trait Find extends DeliteTestModule with OptiMLApplication {
 
     val v = Vector(1,2,3,5,5,5,7,8,9,10)
     val i = v.find { _ == 5 }
+    i.pprint
     collect(i == Vector(3,4,5))
     mkReport
   }

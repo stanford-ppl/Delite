@@ -11,7 +11,7 @@ import ppl.delite.framework.extern.lib._
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with IfThenElseFatExp
     with VariantsOpsExp with DeliteCollectionOpsExp
-    with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp  {
+    with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with ArrayOpsExp  {
   
   
 
@@ -210,7 +210,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
      type OpType <: DeliteOpMapLike[A,CA]
 
      def alloc: Exp[CA]
-     def allocWithArray: Exp[Array[A]] => Exp[CA] = { data => val res = alloc; dc_unsafeSetData(res, data, size); res }
+     def allocWithArray: Exp[Array[A]] => Exp[CA] = { data => val res = alloc; dc_unsafeSetData(res, data, array_length(data)); res }
      
      //final lazy val allocVal: Exp[CA] = copyTransformedOrElse(_.allocVal)(reifyEffects(alloc))
      final lazy val aV: Sym[Array[A]] = copyTransformedOrElse(_.aV)(fresh[Array[A]]).asInstanceOf[Sym[Array[A]]]
@@ -1339,12 +1339,14 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_]) =>
         if (elem.cond.nonEmpty) {
-          stream.println("if (__act." + quote(sym) + "_offset > 0) {"/*}*/) // set data array for result object
+          // TODO: re-enable fast path for offset 0. requires that result data structure 
+          // supports backing array larger than logical size
+//          stream.println("if (__act." + quote(sym) + "_offset > 0) {"/*}*/) // set data array for result object
           stream.println("val len = __act." + quote(sym) + "_offset + __act." + quote(sym) + "_size")
           stream.println("__act." + quote(sym) + "_data = new Array(len)")
-          stream.println(/*{*/"} else {"/*}*/)
-          stream.println("__act." + quote(sym) + "_data = __act." +quote(sym) + "_buf")
-          stream.println(/*{*/"}")
+//          stream.println(/*{*/"} else {"/*}*/)
+//          stream.println("__act." + quote(sym) + "_data = __act." +quote(sym) + "_buf")
+//          stream.println(/*{*/"}")
         }
       case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
