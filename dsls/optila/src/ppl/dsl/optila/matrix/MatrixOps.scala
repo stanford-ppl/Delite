@@ -273,7 +273,9 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   case class MatrixGetCol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixCol[A]] {
     val m = manifest[A]
   }
-  case class MatrixRawData[A:Manifest](x: Exp[Matrix[A]]) extends Def[Array[A]]
+  case class MatrixRawData[A:Manifest](x: Exp[Matrix[A]]) extends Def[Array[A]] {
+    def m = manifest[A]
+  }
   case class MatrixNumRows[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixNumCols[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixClone[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
@@ -837,6 +839,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     (e match {
       case MatrixNumRows(x) => matrix_numrows(f(x))
       case MatrixNumCols(x) => matrix_numcols(f(x))
+      case e@MatrixRawData(x) => matrix_raw_data(f(x))(e.m)
       case e@MatrixGetRow(x,i) => matrix_getrow(f(x),f(i))(e.m)
       case e@MatrixGetCol(x,i) => matrix_getcol(f(x),f(i))(e.m)
       case MatrixVView(x, start, stride, length, isRow) => matrix_vview(f(x),f(start),f(stride),f(length),f(isRow)) // should set original, too?
