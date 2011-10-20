@@ -212,7 +212,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
      type OpType <: DeliteOpMapLike[A,CA]
 
      def alloc: Exp[CA]
-     def allocWithArray: Exp[Array[A]] => Exp[CA] = { data => val res = alloc; dc_unsafeSetData(res.asInstanceOf[Exp[DeliteCollection[A]]], data, size); res }
+     def allocWithArray: Exp[Array[A]] => Exp[CA] = { data => val res = alloc; dc_unsafeSetData(res.asInstanceOf[Exp[DeliteCollection[A]]], data); res }
      
      //final lazy val allocVal: Exp[CA] = copyTransformedOrElse(_.allocVal)(reifyEffects(alloc))
      final lazy val aV: Sym[Array[A]] = copyTransformedOrElse(_.aV)(fresh[Array[A]]).asInstanceOf[Sym[Array[A]]]
@@ -1339,12 +1339,14 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_]) =>
         if (elem.cond.nonEmpty) {
-          stream.println("if (__act." + quote(sym) + "_offset > 0) {"/*}*/) // set data array for result object
+          // aks: this optimization can result in writing a too-large output array as the result of the delite op.
+          // are we always guaranteed to have a logical size field in the output?
+          //stream.println("if (__act." + quote(sym) + "_offset > 0) {"/*}*/) // set data array for result object
           stream.println("val len = __act." + quote(sym) + "_offset + __act." + quote(sym) + "_size")
           stream.println("__act." + quote(sym) + "_data = new Array(len)")
-          stream.println(/*{*/"} else {"/*}*/)
-          stream.println("__act." + quote(sym) + "_data = __act." +quote(sym) + "_buf")
-          stream.println(/*{*/"}")
+          //stream.println(/*{*/"} else {"/*}*/)
+          //stream.println("__act." + quote(sym) + "_data = __act." +quote(sym) + "_buf")
+          //stream.println(/*{*/"}")
         }
       case (sym, elem: DeliteForeachElem[_]) =>
       case (sym, elem: DeliteReduceElem[_]) =>
@@ -1356,7 +1358,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       case (sym, elem: DeliteCollectElem[_,_]) => //FIXME: get rid of .data and adapt to new alloc style
         if (elem.cond.nonEmpty) {
           //calculate start offset from rhs.offset + rhs.size
-          stream.println("if (__act." + quote(sym) + "_data ne __act." + quote(sym) + "_buf)")
+          //stream.println("if (__act." + quote(sym) + "_data ne __act." + quote(sym) + "_buf)")
           stream.println("System.arraycopy(__act." + quote(sym) + "_buf, 0, __act." + quote(sym) + "_data, __act." + quote(sym) + "_offset, __act." + quote(sym) + "_size)")
           stream.println("__act." + quote(sym) + "_buf = null")
         }
