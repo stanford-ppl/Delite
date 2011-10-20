@@ -36,7 +36,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   
   val scalaToolsSnapshots = ScalaToolsSnapshots
   // FIXME: custom-built scalatest
-  override def repositories = Set("Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized")
+  val dropboxRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
   val scalatest = "org.scalatest" % "scalatest_2.10.0-virtualized-SNAPSHOT" % "1.6.1-SNAPSHOT" //% "test"
 
   //create a listener that writes to the normal output directory
