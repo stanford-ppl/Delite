@@ -1060,15 +1060,24 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.VectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
-    case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new generated.scala.RangeVectorImpl(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
-    case DenseVectorZeroDouble(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorDoubleImpl(" + quote(length) + ", " + quote(isRow) + ")")
-    case DenseVectorZeroFloat(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorFloatImpl(" + quote(length) + ", " + quote(isRow) + ")")
-    case DenseVectorZeroInt(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorIntImpl(" + quote(length) + ", " + quote(isRow) + ")")
-    case DenseVectorEmptyDouble() => emitValDef(sym, "generated.scala.EmptyVectorDoubleImpl")
-    case DenseVectorEmptyFloat() => emitValDef(sym, "generated.scala.EmptyVectorFloatImpl")
-    case DenseVectorEmptyInt() => emitValDef(sym, "generated.scala.EmptyVectorIntImpl")
-    case v@DenseVectorEmpty() => emitValDef(sym, "new generated.scala.EmptyVectorImpl[" + remap(v.mA) + "]")
+//     case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.VectorImpl[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
+//     case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new generated.scala.RangeVectorImpl(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
+//     case DenseVectorZeroDouble(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorDoubleImpl(" + quote(length) + ", " + quote(isRow) + ")")
+//     case DenseVectorZeroFloat(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorFloatImpl(" + quote(length) + ", " + quote(isRow) + ")")
+//     case DenseVectorZeroInt(length, isRow) => emitValDef(sym, "new generated.scala.ZeroVectorIntImpl(" + quote(length) + ", " + quote(isRow) + ")")
+//     case DenseVectorEmptyDouble() => emitValDef(sym, "generated.scala.EmptyVectorDoubleImpl")
+//     case DenseVectorEmptyFloat() => emitValDef(sym, "generated.scala.EmptyVectorFloatImpl")
+//     case DenseVectorEmptyInt() => emitValDef(sym, "generated.scala.EmptyVectorIntImpl")
+//     case v@DenseVectorEmpty() => emitValDef(sym, "new generated.scala.EmptyVectorImpl[" + remap(v.mA) + "]")
+    case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.DenseVector[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
+    case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new generated.scala.RangeVector(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
+    case DenseVectorZeroDouble(length, isRow) => emitValDef(sym, "new generated.scala.DenseVector[Double](" + quote(length) + ", " + quote(isRow) + ")")
+    case DenseVectorZeroFloat(length, isRow) => emitValDef(sym, "new generated.scala.DenseVector[Float](" + quote(length) + ", " + quote(isRow) + ")")
+    case DenseVectorZeroInt(length, isRow) => emitValDef(sym, "new generated.scala.DenseVector[Int](" + quote(length) + ", " + quote(isRow) + ")")
+    case DenseVectorEmptyDouble() => emitValDef(sym, "new generated.scala.DenseVector[Double](0,true)")
+    case DenseVectorEmptyFloat() => emitValDef(sym, "new generated.scala.DenseVector[Float](0,true)")
+    case DenseVectorEmptyInt() => emitValDef(sym, "new generated.scala.DenseVector[Int](0,true)")
+    case v@DenseVectorEmpty() => emitValDef(sym, "new generated.scala.DenseVector[" + remap(v.mA) + "](0,true)")
     case _ => super.emitNode(sym, rhs)
   }
 }

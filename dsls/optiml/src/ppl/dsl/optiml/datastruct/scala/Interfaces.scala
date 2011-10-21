@@ -13,39 +13,40 @@ trait StreamRow[@specialized(Boolean, Int, Long, Float, Double) T] extends Vecto
   def index: Int
 }
 
-trait IndexVector extends DenseVector[Int]
+trait IndexVector extends Vector[Int] //extends DenseVector[Int]
 
 trait IndexVectorDense extends IndexVector
+trait IndexVectorRange extends IndexVector
 
-trait IndexVector2 {
-  def rowInd: IndexVector
-  def colInd: IndexVector
-}
+// trait IndexVector2 {
+//   def rowInd: IndexVector
+//   def colInd: IndexVector
+// }
 
-trait IndexVectorWC extends IndexVector {
-  override def length : Int = 0
-  def apply(i: Int) = throw new UnsupportedOperationException()
-  def isRow : Boolean = throw new UnsupportedOperationException()
-  def update(index: Int, x: Int) = throw new UnsupportedOperationException()
-  def data = throw new UnsupportedOperationException()
-  def toList = throw new UnsupportedOperationException()
-  def mtrans = throw new UnsupportedOperationException()
-  def sort(implicit o: Ordering[Int]) = throw new UnsupportedOperationException()
-  def insert(pos: Int, x: Int) = throw new UnsupportedOperationException()
-  def insertAll(pos: Int, xs: Vector[Int]) = throw new UnsupportedOperationException()
-  def copyFrom(pos: Int, xs: Vector[Int]) = throw new UnsupportedOperationException()
-  def removeAll(pos: Int, len: Int) = throw new UnsupportedOperationException()
-  def trim = throw new UnsupportedOperationException()
-  def clear() = throw new UnsupportedOperationException()
-  def cloneL = throw new UnsupportedOperationException()
-  def unsafeSetData(xs: Array[Int], len: Int) = throw new UnsupportedOperationException()
-}
+// trait IndexVectorWC extends IndexVector {
+//   def length : Int = 0
+//   def apply(i: Int) = throw new UnsupportedOperationException()
+//   def isRow : Boolean = throw new UnsupportedOperationException()
+//   def update(index: Int, x: Int) = throw new UnsupportedOperationException()
+//   def data = throw new UnsupportedOperationException()
+//   def toList = throw new UnsupportedOperationException()
+//   def mtrans = throw new UnsupportedOperationException()
+//   def sort(implicit o: Ordering[Int]) = throw new UnsupportedOperationException()
+//   def insert(pos: Int, x: Int) = throw new UnsupportedOperationException()
+//   def insertAll(pos: Int, xs: Vector[Int]) = throw new UnsupportedOperationException()
+//   def copyFrom(pos: Int, xs: Vector[Int]) = throw new UnsupportedOperationException()
+//   def removeAll(pos: Int, len: Int) = throw new UnsupportedOperationException()
+//   def trim = throw new UnsupportedOperationException()
+//   def clear() = throw new UnsupportedOperationException()
+//   def cloneL = throw new UnsupportedOperationException()
+//   def unsafeSetData(xs: Array[Int], len: Int) = throw new UnsupportedOperationException()
+// }
 
 /**
  * TrainingSet
  */
 
-trait Labels[@specialized(Boolean, Int, Long, Float, Double) L] extends Vector[L] {
+trait Labels[L] extends DenseVector[L] {
   def numLabels = length
 }
 
@@ -56,9 +57,9 @@ trait TrainingSet[@specialized(Boolean, Int, Long, Float, Double) T,@specialized
 
   def transposed: TrainingSet[T,L]
   override def update(row: Int, col: Int, x: T) = throw new UnsupportedOperationException("Training sets are immutable")
-  override def insertRow(pos: Int, x: Vector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+  override def insertRow(pos: Int, x: DenseVector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
   override def insertAllRows(pos: Int, xs: Matrix[T]) = throw new UnsupportedOperationException("Training sets are immutable")
-  override def insertCol(pos: Int, x: Vector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+  override def insertCol(pos: Int, x: DenseVector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
   override def insertAllCols(pos: Int, xs: Matrix[T]) = throw new UnsupportedOperationException("Training sets are immutable")
   override def removeRows(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
   override def removeCols(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
@@ -117,19 +118,19 @@ trait Edge {
   def graph: G
 }
 
-trait Vertices[V <: Vertex] extends Vector[V] {
+trait Vertices[V <: Vertex] extends DenseVector[V] {
   def cloneV: Vertices[V]
   def printBeliefs(): Unit
 }
 
-trait Edges[E <: Edge] extends Vector[E]
+trait Edges[E <: Edge] extends DenseVector[E]
 
 
 /**
  * Bidirectional graph
  */
 
-trait InOutEdges[E <: Edge] extends Vector[(E,E)]
+trait InOutEdges[E <: Edge] extends DenseVector[(E,E)]
 
 trait MessageVertex extends Vertex {
   type V = MessageVertex

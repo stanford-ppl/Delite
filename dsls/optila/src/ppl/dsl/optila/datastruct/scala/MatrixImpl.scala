@@ -36,15 +36,19 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
   }
 
   def getRow(row: Int) = {
-    new MatrixRowImpl[T](row, this, _data)
+    //new MatrixRowImpl[T](row, this, _data)
+    ////   extends VectorViewImpl[T](x, index*matrix.numCols, 1, matrix.numCols, true) with MatrixRow[T]
+    new VectorView[T](_data, row*_numCols, 1, _numCols, true) 
   }
 
   def getCol(col: Int) = {
-    new MatrixColImpl[T](col, this, _data)
+    //new MatrixColImpl[T](col, this, _data)
+    //   extends VectorViewImpl[T](x, index, matrix.numCols, matrix.numRows, false) with MatrixCol[T]
+    new VectorView[T](_data, col, _numCols, _numRows, false) 
   }
 
   def vview(start: Int, stride: Int, length: Int, isRow: Boolean) = {
-    new VectorViewImpl[T](_data, start, stride, length, isRow)
+    new VectorView[T](_data, start, stride, length, isRow)
   }
 
   def cloneL = {
@@ -55,7 +59,7 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
     res
   }
 
-  def insertRow(pos: Int, x: Vector[T]) {
+  def insertRow(pos: Int, x: DenseVector[T]) {
     //chkEquals(x._length, _numCols)
     val idx = pos*_numCols
     if (size == 0) _numCols = x.length
@@ -78,7 +82,7 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
     _numRows += xs.numRows
   }
 
-  def insertCol(pos: Int, x: Vector[T]) {
+  def insertCol(pos: Int, x: DenseVector[T]) {
     //chkEquals(x._length, _numRows)
     val newCols = _numCols+1
     if (size == 0) _numRows = x.length

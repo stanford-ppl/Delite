@@ -9,7 +9,8 @@ package ppl.dsl.optila.datastruct.scala
  * Alternatively, everything in this class could be lifted, and we could generate a concrete class to be instantiated
  * in the generated code.
  */
-class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean) extends DenseVector[T] {
+//class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean) extends DenseVector[T] {
+class DenseVector[@specialized T: ClassManifest](__length: Int, __isRow: Boolean) extends Vector[T] {
   protected var _length = __length
   protected var _isRow = __isRow
   protected var _data: Array[T] = new Array[T](_length)
@@ -23,7 +24,20 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
     _data = __data
     _length = _data.length
   }
-
+  
+  // override def equals(rhs: Any): Boolean = {
+  //   if (!rhs.isInstanceOf[DenseVector[T]]) return false
+  //       
+  //   val rv = rhs.asInstanceOf[DenseVector[T]]
+  //   if (length != rv.length) return false
+  //   var i = 0
+  //   while (i < rv.length) {
+  //     if (_data(i) != rv(i)) return false
+  //     i += 1        
+  //   }
+  //   true    
+  // }
+  
   def apply(n: Int): T = {
     _data(n)
   }
@@ -32,7 +46,7 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
     _data(index) = x
   }
 
-  def cloneL = { val v = new VectorImpl[T](0, isRow); v.insertAll(0, this); v }
+  def cloneL = { val v = new DenseVector[T](0, isRow); v.insertAll(0, this); v }
 
   def unsafeSetData(xs: Array[T], len: Int) {
     _data = xs
@@ -44,7 +58,7 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
     val d = new Array[T](_length)
     System.arraycopy(_data, 0, d, 0, _length)
     scala.util.Sorting.quickSort(d)
-    new VectorImpl[T](d, isRow)
+    new DenseVector[T](d, isRow)
   }
 
   def insert(pos: Int, x: T) {
@@ -52,14 +66,14 @@ class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean)
     _data(pos) = x
   }
 
-  def insertAll(pos: Int, xs: Vector[T]) {
-    if (xs.isInstanceOf[EmptyVector[Any]]) return
+  def insertAll(pos: Int, xs: DenseVector[T]) {
+    //if (xs.isInstanceOf[EmptyVector[Any]]) return
 
     insertSpace(pos, xs.length)
     copyFrom(pos, xs)
   }
 
-  def copyFrom(pos: Int, xs: Vector[T]) {
+  def copyFrom(pos: Int, xs: DenseVector[T]) {
     //chkRange(pos, pos + xs.length)
     var i = 0
     while (i < xs.length) {

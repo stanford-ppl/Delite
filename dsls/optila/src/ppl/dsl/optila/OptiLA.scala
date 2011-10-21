@@ -104,7 +104,7 @@ trait OptiLAExp extends OptiLACompiler with OptiLAUtilities with OptiLAScalaOpsP
   with MatrixOpsExpOpt 
   with LAInputReaderOpsExp with LAOutputWriterOpsExp
   with LanguageImplOpsStandard
-  with VectorImplOpsStandard with DenseVectorImplOpsStandard with MatrixImplOpsStandard 
+  with VectorImplOpsStandard with DenseVectorImplOpsStandard with VectorViewImplOpsStandard with MatrixImplOpsStandard 
   with LAInputReaderImplOpsStandard with LAOutputWriterImplOpsStandard
   with DeliteAllOverridesExp {
 
