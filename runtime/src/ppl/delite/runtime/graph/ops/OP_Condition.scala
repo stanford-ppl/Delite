@@ -16,11 +16,16 @@ class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Target
   def nestedGraphs = Seq(predicateGraph, thenGraph, elseGraph)
 
   def returner(indices: Seq[Int]) = {
+    /*
     if (thenGraph.result._1 != null && !thenGraph.result._1.isInstanceOf[OP_Input])
       thenGraph.result._1.scheduledResource
     else if (elseGraph.result._1 != null && !elseGraph.result._1.isInstanceOf[OP_Input])
       elseGraph.result._1.scheduledResource
     else indices(0)
+    */
+    // Returner is always 0 (assuming the index 0 is CPU)
+    //TODO: Change this so that GPU can also be the returner
+    indices(0)
   }
 
   /**
@@ -38,7 +43,7 @@ class OP_Condition(val id: String, private[graph] val outputTypesMap: Map[Target
         r.inputList = inputList
         r.mutableInputs = mutableInputs
         r.consumers = consumers
-        r.cudaMetadata = cudaMetadata
+        for (tgt <- Targets.GPU) r.setGPUMetadata(tgt, getGPUMetadata(tgt))
         for (dep <- getDependencies) dep.addConsumer(r)
         for (c <- getConsumers) c.addDependency(r)
         if (idx == returnerIdx) returnOp = r

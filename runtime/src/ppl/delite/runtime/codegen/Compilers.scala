@@ -24,16 +24,22 @@ object Compilers {
     val schedule = graph.schedule
     assert((numThreads + numGPUs) == schedule.numResources)
     MainGenerator.makeExecutables(schedule.slice(0,numThreads), graph.kernelPath)
-    for (i <- 0 until numGPUs) GPUMainGenerator.makeExecutable(schedule.slice(numThreads+i, numThreads+i+1), graph.kernelPath)
+    for (i <- 0 until numGPUs) {
+      if (Config.useOpenCL){
+        OpenCLMainGenerator.makeExecutable(schedule.slice(numThreads+i, numThreads+i+1), graph.kernelPath)
+      }
+      else
+        CudaMainGenerator.makeExecutable(schedule.slice(numThreads+i, numThreads+i+1), graph.kernelPath)
+    }
 
     if (Config.printSources) { //DEBUG option
       ScalaCompile.printSources()
-      CudaCompile.printSources()
+      if (Config.useOpenCL) OpenCLCompile.printSources() else CudaCompile.printSources()
     }
 
-    CudaCompile.compile()
-
+    if (Config.useOpenCL) OpenCLCompile.compile() else CudaCompile.compile()
     val classLoader = ScalaCompile.compile
+
     val queues = new Array[ArrayDeque[DeliteExecutable]](schedule.numResources)
     for (i <- 0 until schedule.numResources) {
       val cls = classLoader.loadClass("Executable"+i) //load the Executable class

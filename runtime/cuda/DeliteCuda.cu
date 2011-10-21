@@ -114,7 +114,7 @@ void DeliteCudaMalloc(void** ptr, size_t size) {
 } */
 
 char* bufferStart = 0;
-size_t bufferSize = 5368709120;
+size_t bufferSize = 5368709120/4;
 char* bufferEnd;
 char* bufferCurrent;
 
@@ -139,6 +139,10 @@ void DeliteCudaMemcpyHtoDAsync(void* dptr, void* sptr, size_t size) {
 void DeliteCudaMemcpyDtoHAsync(void* dptr, void* sptr, size_t size) {
 	cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyDeviceToHost, d2hStream);
 	cudaStreamSynchronize(d2hStream);
+}
+
+void DeliteCudaMemcpyDtoDAsync(void *dptr, void* sptr, size_t size) {
+	cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyDeviceToDevice, h2dStream);
 }
 
 void DeliteCudaMemset(void *ptr, int value, size_t count) {

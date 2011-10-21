@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
+import ppl.dsl.optiml.datastruct.{CudaGenDataStruct, OpenCLGenDataStruct}
 import ppl.dsl.optiml.datastruct.scala._
 import java.io.{PrintWriter}
 
@@ -254,7 +254,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_count[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Int]
   def vector_flatmap[A:Manifest,B:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[Vector[B]]): Rep[Vector[B]]
   def vector_partition[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[Vector[A]], Rep[Vector[A]])
-  def vector_groupby[A:Manifest,K:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[K]): Rep[Vector[Vector[A]]] 
+  def vector_groupby[A:Manifest,K:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[K]): Rep[Vector[Vector[A]]]
 
   // other defs
   def vector_empty_double: Rep[Vector[Double]]
@@ -570,7 +570,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     def func = (a,b) => if (a > b) a else b
   }
   
-  case class VectorMinIndex[A:Manifest:Ordering:HasMinMax](inB: Exp[Vector[A]]) 
+  case class VectorMinIndex[A:Manifest:Ordering:HasMinMax](inB: Exp[Vector[A]])
     extends DeliteOpZipWithReduceTuple[Int,A,Int,A] {
 
     val inA = copyTransformedOrElse(_.inA)(0::inB.length)
@@ -578,7 +578,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     val zero = (copyTransformedOrElse(_.zero._1)(unit(0)),copyTransformedOrElse(_.zero._2)(implicitly[HasMinMax[A]].maxValue)) // 0 sensible? maybe -1?
     def zip = (a,b) => (a,b)
     def reduce = (a,b) => (if (a._2 < b._2) a._1 else b._1, if (a._2 < b._2) a._2 else b._2)
-    
+
     val m = manifest[A]
     val o = implicitly[Ordering[A]]
     val p = implicitly[HasMinMax[A]]
@@ -594,7 +594,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     val zero = copyTransformedOrElse(_.zero)(make_tuple2(unit(0),implicitly[HasMinMax[A]].maxValue)) // 0 sensible? maybe -1?
     def zip = (a,b) => (a,b)
     def reduce = (a,b) => if (a._2 > b._2) a else b
-  
+
     val m = manifest[A]
     val o = implicitly[Ordering[A]]
     val p = implicitly[HasMinMax[A]]
@@ -869,7 +869,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   // aliases and sharing
 
   // TODO: precise sharing info for other IR types (default is conservative)
-  
+
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case VectorApply(a,i) => Nil
     case VectorUpdate(a,i,x) => Nil           // syms(a) <-- any use to return a?
@@ -1082,7 +1082,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
     case VectorEmptyFloat() => emitValDef(sym, "generated.scala.EmptyVectorFloatImpl")
     case VectorEmptyInt() => emitValDef(sym, "generated.scala.EmptyVectorIntImpl")
     case v@VectorEmpty() => emitValDef(sym, "new generated.scala.EmptyVectorImpl[" + remap(v.mA) + "]")
-    case VectorRawData(x) => emitValDef(sym, quote(getBlockResult(x)) + ".data")  
+    case VectorRawData(x) => emitValDef(sym, quote(getBlockResult(x)) + ".data")
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -1166,6 +1166,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
     */
 
     /* Test for using local variables */
+      /*
     case VectorMinus(x,y) if(useLocalVar) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -1233,6 +1234,46 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
       saveLocalVar(sym,currDimStr,outLocalVar)
       currDim -= 1
       emitMatrixAlloc(sym,"%s.length".format(quote(x)),"%s.length".format(quote(x)),false)
+*/
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait OpenCLGenVectorOps extends BaseGenVectorOps with OpenCLGenFat with OpenCLGenDataStruct {
+  val IR: VectorOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    /* Object creation */
+    //TODO: Assertion to check if this is generated only within the alloc function
+    case VectorNew(len,isRow) =>
+      stream.println("cl_mem %s_data = DeliteOpenCLMalloc(sizeof(%s)*%s);".format(quote(sym),remap(sym.Type.typeArguments(0)),quote(len)))
+      stream.println("%s *%s_ptr = new %s(%s,%s,%s_data);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(len),quote(isRow),quote(sym)))
+    
+    /* Member functions/fields on vector datastructure */
+    case VectorApply(x, n) =>
+      emitValDef(sym, quote(x) + ".data[" + quote(n) + "]")
+    case VectorUpdate(x,n,y) =>
+      stream.println("%s.data[%s] = %s;".format(quote(x),quote(n),quote(y)))
+    case VectorLength(x)    =>
+      emitValDef(sym, quote(x) + ".length")
+    case VectorIsRow(x)     =>
+      emitValDef(sym, quote(x) + ".isRow")
+
+    /* Specialized OpenCL code generations for DeliteOpSingleTasks */
+    case VectorRepmat(x,i,j) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->length * %s * %s".format(quote(x),quote(i),quote(j)))
+      stream.println(addTab()+"if( %s < %s_dcSize(%s) ) {".format(currDimStr,remap(sym.Type),quote(sym)))
+      tabWidth += 1
+      stream.println(addTab()+"int i = %s / (%s.length * %s);".format(currDimStr,quote(x),quote(j)))
+      stream.println(addTab()+"int j = " + currDimStr + " % " + "(%s.length * %s);".format(quote(x),quote(j)))
+      stream.println(addTab()+"%s_dcUpdate(%s,i*%s.numCols+j,%s_dcApply(%s,%s));".format(remap(sym.Type),quote(sym),quote(sym),remap(x.Type),quote(x),"j%"+quote(x)+".length"))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s".format(quote(i)),"%s.length*%s".format(quote(x),quote(j)),false)
+      currDim -= 1
 
     case _ => super.emitNode(sym, rhs)
   }

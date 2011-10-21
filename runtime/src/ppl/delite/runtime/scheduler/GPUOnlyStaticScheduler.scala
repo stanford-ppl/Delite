@@ -21,6 +21,7 @@ import ppl.delite.runtime.cost._
  * All OPs that can be executed on the GPU do so
  * The remaining ops execute in a single CPU thread
  */
+@deprecated("For debugging only. Use SMP_GPU_StaticScheduler")
 final class GPUOnlyStaticScheduler extends StaticScheduler with ParallelUtilizationCostModel {
 
   private val cpu = 0
@@ -55,7 +56,7 @@ final class GPUOnlyStaticScheduler extends StaticScheduler with ParallelUtilizat
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Seq(cpu,gpu))
       case _ => {
-        if (op.supportsTarget(Targets.Cuda)) { //schedule on GPU resource
+        if (scheduleOnGPU(op)) { //schedule on GPU resource
           if (op.isDataParallel) {
             splitGPU(op, schedule)
           }

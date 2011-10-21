@@ -63,6 +63,7 @@ object Delite {
     val executor = Config.executor match {
       case "SMP" => new SMPExecutor
       case "SMP+GPU" => new SMP_GPU_Executor
+      case "OpenCLExecutor" => new OpenCLExecutor     //TODO: Remove this option after debugging
       case "default" => {
         if (Config.numGPUs == 0) new SMPExecutor
         else new SMP_GPU_Executor
@@ -72,7 +73,8 @@ object Delite {
 
     def abnormalShutdown() {
       executor.shutdown()
-      Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
+      if (!Config.noRegenerate)
+        Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
     }
 
     try {
@@ -106,6 +108,7 @@ object Delite {
         // check if we are timing another component
         if(Config.dumpStatsComponent != "all")
           PerformanceTimer.print(Config.dumpStatsComponent)
+        System.gc()
       }
 
       println("Done Executing " + numTimes + " Runs")
@@ -116,8 +119,8 @@ object Delite {
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception
-      case e: Exception => abnormalShutdown(); throw e
+      case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception        
+      case e: Exception => abnormalShutdown(); throw e       
     }
     finally {
       Arguments.args = null
@@ -137,6 +140,8 @@ object Delite {
       ScalaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + ScalaCompile.target + File.separator).toAbsolute))
     if (graph.targets contains Targets.Cuda)
       CudaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + CudaCompile.target + File.separator).toAbsolute))
+    if (graph.targets contains Targets.OpenCL)
+      OpenCLCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + OpenCLCompile.target + File.separator).toAbsolute))
   }
 
   //abnormal shutdown

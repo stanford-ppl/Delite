@@ -15,4 +15,7 @@ vforeach|ppl.apps.tests.VerticesForeachRunner
 untilc|ppl.apps.tests.UntilConvergedRunner
 while|ppl.tests.microbenchmarks.WhileLoopsBenchmarkRunner
 multiloop|ppl.tests.microbenchmarks.MultiLoopsBenchmarkRunner
+tpchsf1|ppl.apps.dataquery.tpch.TPCHRunner
+tpchsf3|ppl.apps.dataquery.tpch.TPCHRunner
+tpchsf5|ppl.apps.dataquery.tpch.TPCHRunner
 cf|ppl.apps.ml.cf.TopNRunner
