@@ -35,6 +35,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   val virtualization_lms_core = "scala" % "virtualization-lms-core_2.10.0-virtualized-SNAPSHOT" % "0.1"
   
   val scalaToolsSnapshots = ScalaToolsSnapshots
+
   // FIXME: custom-built scalatest
   val dropboxRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
   val scalatest = "org.scalatest" % "scalatest_2.10.0-virtualized-SNAPSHOT" % "1.6.1-SNAPSHOT" //% "test"
@@ -65,8 +66,15 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     }))::Nil 
   }
   
+  // Using OptiQL plugin
+  class OptiQLProject(info: ProjectInfo) extends FlatProject(info) {
+    //override def compileOptions = CompileOption("-Xplugin:dsls/optiql/plugin/querysyntax.jar") :: super.compileOptions.toList    
+  }
+  
   // Define projects
-  lazy val framework = project("framework", "Delite Framework", new FlatProject(_))
+  lazy val framework = project("framework", "Delite Framework", new FlatProject(_))  
+
+  //HC: We should not include runtime here as it is compiled with release versions of Scala.
   //lazy val runtime = project("runtime", "Delite Runtime", new FlatProject(_) {
   //  override def mainClass = Some("ppl.delite.runtime.Delite")
   //})
@@ -75,6 +83,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     lazy val optiml = project("optiml", "OptiML", new FlatProject(_){
       override def mainClass = Some("ppl.dsl.tests.SimpleVectorTest")
     }, framework)
+    lazy val optiql = project("optiql", "OptiQL", new OptiQLProject(_), framework)
   }
 
   lazy val dsls = project("dsls", "DSLs", new DSLs(_), framework)
@@ -82,6 +91,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   lazy val apps = project("apps", "Applications", new APPs(_), framework, dsls)
   class APPs(info: ProjectInfo) extends DefaultProject(info) {
 	  lazy val scala = project("scala", "Scala Apps", new FlatProject(_), framework, dsls)
+    override def compileOptions = CompileOption("-Xprint:typer -Ydebug -Ylog:typer") :: super.compileOptions.toList    
   }
   
   //TR is anybody using this? conflict with defining 'tests' as test source path above...

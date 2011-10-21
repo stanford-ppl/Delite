@@ -4,6 +4,9 @@ object Config {
   //var degFilename = System.getProperty("delite.deg.filename", "")
   var degFilename = System.getProperty("delite.deg.filename", "out.deg")
   var opfusionEnabled = System.getProperty("delite.opfusion.enabled", "false") != "false"
+  var generateCUDA = System.getProperty("delite.generation.cuda", "false") != "false"
+  var generateC = System.getProperty("delite.generation.c", "false") != "false"
+  var generateOpenCL = System.getProperty("delite.generation.opencl", "false") != "false"
   var homeDir = System.getProperty("delite.home.dir", System.getProperty("user.dir"))
   //var buildDir = System.getProperty("delite.build.dir", homeDir + java.io.File.separator + "generated")
   var buildDir = System.getProperty("delite.build.dir", "generated")

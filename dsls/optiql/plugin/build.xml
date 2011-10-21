@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<project name="querysyntaxplugin" default="build">
+
+    <!-- Directory that holds this ant file -->
+    <dirname property="basedir" file="${ant.file}"/>
+
+    <property file="${basedir}/build.properties"/>
+
+    <!-- Global Libraries -->
+
+    <path id="scala.classpath">
+        <pathelement location="${scala.home}/lib/scala-compiler.jar"/>
+        <pathelement location="${scala.home}/lib/scala-library.jar"/>
+    </path>
+
+    <taskdef name="scalac" classname="scala.tools.ant.Scalac" classpathref="scala.classpath" />
+
+
+<!-- =================  MAJOR TARGETS  ================================================ -->
+
+    <target name="build">
+        <mkdir dir="${basedir}/compiled"/>
+
+        <scalac srcdir="${basedir}"
+                destdir="${basedir}/compiled"
+                classpathref="scala.classpath"/>
+
+
+        <copy file="${basedir}/scalac-plugin.xml"
+              todir="${basedir}/compiled">
+        </copy>
+
+        <jar destfile="querysyntax.jar"
+             basedir="${basedir}/compiled">
+        </jar>
+    </target>
+
+    <target name="clean">
+        <delete dir="${basedir}/compiled"
+                includeemptydirs="true"
+                quiet="true">
+        </delete>
+
+        <delete file="querysyntax.jar" />
+    </target>
+
+
+</project>

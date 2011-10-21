@@ -8,3 +8,5 @@ lbp|$data/ml/lbp/onlyedges1|$data/ml/lbp/graphprint1
 gradient|$data/robotics/gradient/cokeImage.dat|$data/robotics/gradient/templates
 lbpdenoise|200|200
 lbpdenoiseraw|$data/ml/lbpdenoise/noisy200x200.raw
+tpchsf1|$data/query/tpch/SF1
+tpchsf5|$data/query/tpch/SF5

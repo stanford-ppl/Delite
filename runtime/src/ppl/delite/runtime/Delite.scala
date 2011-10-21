@@ -101,6 +101,7 @@ object Delite {
         // check if we are timing another component
         if(Config.dumpStatsComponent != "all")
           PerformanceTimer.print(Config.dumpStatsComponent)
+	System.gc()
       }
 
       if(Config.dumpStats)
@@ -109,9 +110,11 @@ object Delite {
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception
-      case e: Exception => abnormalShutdown(); throw e
+      case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception        
+      case e: Exception => abnormalShutdown(); throw e       
     }
+    
+
   }
 
   def loadDeliteDEG(filename: String) = {

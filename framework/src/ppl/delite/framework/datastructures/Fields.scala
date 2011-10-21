@@ -1,4 +1,4 @@
-package ppl.delite.framework.datafields
+package ppl.delite.framework.datastructures
 
 abstract class Field
 

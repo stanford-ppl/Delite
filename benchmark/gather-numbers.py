@@ -229,12 +229,20 @@ def isTflop():
         return False
 
 def loadClasses(options):
+    print """
+=============================
+==  Loading App Classes
+============================="""
     f = open(props['delite.home'] + "/benchmark/config/classes", 'r')
     for line in f:
+#        print "line: " + line
         tokens = line.split('|')
-        app = tokens.pop(0)
-        clazz = tokens.pop(0)
-        classes[app] = clazz
+        if len(tokens) == 2:
+            app = tokens.pop(0)
+            clazz = tokens.pop(0)
+            classes[app] = clazz
+        else:
+            print "ignoring[" + line + "] from class list"
     f.close()
 
 def loadParams(options):
