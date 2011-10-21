@@ -8,7 +8,7 @@ package ppl.dsl.optila.datastruct.scala
  * Stanford University
  *
  */
-
+/*
 abstract class ZeroVectorImpl[T:Manifest](val length: Int, __isRow: Boolean) extends ZeroVector[T] {
 
   protected var _isRow = __isRow
@@ -52,3 +52,4 @@ class ZeroVectorDoubleImpl(__length: Int, __isRow: Boolean) extends ZeroVectorIm
 class ZeroVectorFloatImpl(__length: Int, __isRow: Boolean) extends ZeroVectorImpl[Float](__length, __isRow) {
   def apply(n: Int) = 0f
 }
+*/

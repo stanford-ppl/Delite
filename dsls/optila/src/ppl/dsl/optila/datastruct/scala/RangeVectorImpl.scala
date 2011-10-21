@@ -11,7 +11,8 @@ package ppl.dsl.optila.datastruct.scala
  *
  */
 
-class RangeVectorImpl(val start: Int, val end: Int, val stride: Int, __isRow: Boolean) extends RangeVector {
+//class RangeDenseVector(val start: Int, val end: Int, val stride: Int, __isRow: Boolean) extends RangeVector {
+class RangeVector(val start: Int, val end: Int, val stride: Int, __isRow: Boolean) extends Vector[Int] {
 
   protected var _isRow = __isRow
 
@@ -20,7 +21,7 @@ class RangeVectorImpl(val start: Int, val end: Int, val stride: Int, __isRow: Bo
 
   // TODO (tiark): this crashes scalac for some reason
   //lazy val data = Array.range(start, end, stride)
-  def data = throw new UnsupportedOperationException("there is a known bug with accessing data in RangeVectorImpl")
+  def data = throw new UnsupportedOperationException("there is a known bug with accessing data in RangeDenseVector")
 
   def apply(n: Int) : Int = {
     start + n*stride
@@ -31,7 +32,7 @@ class RangeVectorImpl(val start: Int, val end: Int, val stride: Int, __isRow: Bo
     this
   }
 
-  def cloneL = { val v = new VectorImpl[Int](0, isRow); v.insertAll(0, this); v }
+  //def cloneL = { val v = new DenseVector[Int](0, isRow); v.insertAll(0, this); v }
 
   def unsafeSetData(xs: Array[Int], len: Int) {
     throw new IllegalArgumentException("RangeVector cannot be updated")
@@ -71,6 +72,6 @@ class RangeVectorImpl(val start: Int, val end: Int, val stride: Int, __isRow: Bo
   }
 
   def toList = {
-    throw new UnsupportedOperationException("toList is not implemented on RangeVectorImpl yet")
+    throw new UnsupportedOperationException("toList is not implemented on RangeDenseVector yet")
   }
 }

@@ -18,6 +18,6 @@ import ppl.dsl.optila.datastruct.scala._
  *
  */
 
-class IndexVectorDenseImpl(len: Int) extends VectorImpl[Int](len, true) with IndexVectorDense
+class IndexVectorDenseImpl(len: Int) extends DenseVector[Int](len, true) with IndexVectorDense
 
-class IndexVectorRangeImpl(_start: Int, _end: Int) extends RangeVectorImpl(_start, _end, 1, true) with IndexVector
+class IndexVectorRangeImpl(_start: Int, _end: Int) extends RangeVector(_start, _end, 1, true) with IndexVectorRange
