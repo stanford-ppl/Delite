@@ -2,7 +2,7 @@
 package ppl.delite.framework.codegen.delite.overrides
 
 import scala.virtualization.lms.common.RangeOpsExp
-import scala.virtualization.lms.common.{ScalaGenEffect, CudaGenEffect, CGenEffect}
+import scala.virtualization.lms.common.{ScalaGenEffect, CudaGenEffect, CGenEffect, OpenCLGenEffect}
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{GenericNestedCodegen}
@@ -11,7 +11,7 @@ trait DeliteRangeOpsExp extends RangeOpsExp with DeliteOpsExp {
   this: DeliteOpsExp =>
 
   // there is a lot of code duplication between DeliteWhile and While in lms -- do we really need a separate class?
-  
+
   case class DeliteRangeForEach(start: Exp[Int], end: Exp[Int], index: Sym[Int], body: Exp[Unit])
     extends DeliteOpIndexedLoop
 
@@ -34,7 +34,7 @@ trait DeliteRangeOpsExp extends RangeOpsExp with DeliteOpsExp {
     case DeliteRangeForEach(start, end, i, body) => i::effectSyms(body)
     case _ => super.boundSyms(e)
   }
-  
+
   override def symsFreq(e: Any): List[(Sym[Any], Double)] = e match {
     case DeliteRangeForEach(start, end, i, body) => freqNormal(start) ++ freqNormal(end) ++ freqHot(body)
     case _ => super.symsFreq(e)
@@ -68,6 +68,22 @@ trait DeliteScalaGenRange extends ScalaGenEffect with DeliteBaseGenRangeOps {
 }
 
 trait DeliteCudaGenRange extends CudaGenEffect with DeliteBaseGenRangeOps {
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    // TODO: What if the range is not continuous integer set?
+    case DeliteRangeForEach(start, end, i, body) => {
+      stream.println(addTab()+"for(int %s=%s; %s < %s; %s++) {".format(quote(i),quote(start),quote(i),quote(end),quote(i)))
+      tabWidth += 1
+      emitBlock(body)
+      tabWidth -= 1
+      stream.println(addTab() + "}")
+    }
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait DeliteOpenCLGenRange extends OpenCLGenEffect with DeliteBaseGenRangeOps {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {

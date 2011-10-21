@@ -2,7 +2,7 @@ package ppl.delite.framework.ops
 
 import scala.virtualization.lms.common.EffectExp
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{CudaGenEffect, CGenEffect, ScalaGenEffect}
+import scala.virtualization.lms.common.{CudaGenEffect, OpenCLGenEffect, CGenEffect, ScalaGenEffect}
 import scala.virtualization.lms.internal.{GenericNestedCodegen}
 
 trait VariantsOpsExp extends EffectExp {
@@ -49,5 +49,6 @@ trait ScalaGenVariantsOps extends BaseGenVariantsOps with ScalaGenEffect {
 }
 
 trait CudaGenVariantsOps extends CudaGenEffect with BaseGenVariantsOps
+trait OpenCLGenVariantsOps extends OpenCLGenEffect with BaseGenVariantsOps
 trait CGenVariantsOps extends CGenEffect with BaseGenVariantsOps
 

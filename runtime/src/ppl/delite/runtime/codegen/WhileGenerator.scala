@@ -2,6 +2,7 @@ package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.ops.{DeliteOP, OP_While}
+import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * Author: Kevin J. Brown
@@ -81,14 +82,26 @@ class WhileGenerator(whileLoop: OP_While, location: Int) extends NestedGenerator
 
 }
 
-class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGenerator(whileLoop, location) {
-
+class CudaGPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUWhileGenerator(whileLoop, location, Targets.Cuda) with CudaGPUExecutableGenerator {
   def makeExecutable() {
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     updateOP()
-    GPUMainGenerator.addFunction(emitCpp(syncList))
-    ScalaCompile.addSource(new GPUScalaWhileGenerator(whileLoop, location).emitScala(syncList), kernelName)
+    CudaMainGenerator.addFunction(emitCpp(syncList))
+    ScalaCompile.addSource(new GPUScalaWhileGenerator(whileLoop, location, target).emitScala(syncList), kernelName)
   }
+}
+
+class OpenCLGPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUWhileGenerator(whileLoop, location, Targets.OpenCL) with OpenCLGPUExecutableGenerator {
+  def makeExecutable() {
+    val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
+    updateOP()
+    OpenCLMainGenerator.addFunction(emitCpp(syncList))
+    ScalaCompile.addSource(new GPUScalaWhileGenerator(whileLoop, location, target).emitScala(syncList), kernelName)
+  }
+}
+
+abstract class GPUWhileGenerator(whileLoop: OP_While, location: Int, target: Targets.Value) extends GPUNestedGenerator(whileLoop, location, target) {
+  def makeExecutable(): Unit
 
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
     val out = new StringBuilder //the output string
@@ -152,8 +165,8 @@ class GPUWhileGenerator(whileLoop: OP_While, location: Int) extends GPUNestedGen
 
 }
 
-class GPUScalaWhileGenerator(whileLoop: OP_While, location: Int) extends GPUScalaNestedGenerator(whileLoop, location) {
-  protected def executableName = "While_" + baseId + "_"
+class GPUScalaWhileGenerator(whileLoop: OP_While, location: Int, target: Targets.Value) extends GPUScalaNestedGenerator(whileLoop, location, target) {
+  override protected def executableName = "While_" + baseId + "_"
   override protected def getSym(op: DeliteOP, name: String) = WhileCommon.getSym(whileLoop, baseId, op, name)
   override protected def getSync(op: DeliteOP, name: String) = WhileCommon.getSync(whileLoop, baseId, op, name)
 }

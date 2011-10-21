@@ -12,7 +12,10 @@ package ppl.delite.runtime.graph.targets
 object Targets extends Enumeration {
   val Scala = Value("scala")
   val Cuda = Value("cuda")
+  val OpenCL = Value("opencl")
   val C = Value("c")
+
+  val GPU = List(Cuda, OpenCL)
 
   /**
    * Return the value of a target
@@ -20,6 +23,7 @@ object Targets extends Enumeration {
   def target(s: String): Value = s.toLowerCase() match {
     case "scala" => Scala
     case "cuda" => Cuda
+    case "opencl" => OpenCL
     case "c" => C
     case _ => throw new IllegalArgumentException("unsupported target: " + s)
   }
@@ -53,6 +57,7 @@ object Targets extends Enumeration {
     target match {
       case Scala => "Unit"
       case Cuda => "void"
+      case OpenCL => "void"
       case C => "void"
     }
   }

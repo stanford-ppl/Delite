@@ -2,6 +2,7 @@ package ppl.delite.runtime.codegen
 
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.ops.{DeliteOP, OP_Variant}
+import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * Author: Kevin J. Brown
@@ -49,14 +50,28 @@ class VariantGenerator(variant: OP_Variant, location: Int) extends NestedGenerat
 
 }
 
-class GPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUNestedGenerator(variant, location) {
-
+class CudaGPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUVariantGenerator(variant, location, Targets.Cuda) with CudaGPUExecutableGenerator {
   def makeExecutable() {
+    assert(false, "OP_Variant is temporarily disabled")
     val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
     updateOP()
-    GPUMainGenerator.addFunction(emitCpp(syncList))
-    ScalaCompile.addSource(new GPUScalaVariantGenerator(variant, location).emitScala(syncList), kernelName)
+    CudaMainGenerator.addFunction(emitCpp(syncList))
+    ScalaCompile.addSource(new GPUScalaVariantGenerator(variant, location, target).emitScala(syncList), kernelName)
   }
+}
+class OpenCLGPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUVariantGenerator(variant, location, Targets.OpenCL) with OpenCLGPUExecutableGenerator {
+  def makeExecutable() {
+    assert(false, "OP_Variant is temporarily disabled")
+    val syncList = new ArrayBuffer[DeliteOP] //list of ops needing sync added
+    updateOP()
+    OpenCLMainGenerator.addFunction(emitCpp(syncList))
+    ScalaCompile.addSource(new GPUScalaVariantGenerator(variant, location, target).emitScala(syncList), kernelName)
+  }
+}
+
+abstract class GPUVariantGenerator(variant: OP_Variant, location: Int, target: Targets.Value) extends GPUNestedGenerator(variant, location, target) {
+
+  def makeExecutable(): Unit
 
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
     val out = new StringBuilder //the output string
@@ -88,6 +103,6 @@ class GPUVariantGenerator(variant: OP_Variant, location: Int) extends GPUNestedG
 
 }
 
-class GPUScalaVariantGenerator(variant: OP_Variant, location: Int) extends GPUScalaNestedGenerator(variant, location) {
-  protected def executableName = "Variant_" + baseId + "_"
+class GPUScalaVariantGenerator(variant: OP_Variant, location: Int, target: Targets.Value) extends GPUScalaNestedGenerator(variant, location, target) {
+  override protected def executableName = "Variant_" + baseId + "_"
 }
