@@ -11,8 +11,12 @@ trait SimpleVectorApp extends SimpleVectorApplication {
     val y = Vector[Int](100) + 2
 
     val z = x + y
-    val c = x * 5
-    //val d = 5 * x
-    z.pprint()
+    z.pprint
+
+    //val f = z.filter
+    //f.pprint
+    
+    //val res = z.sum
+    //println(res)
   }
 }

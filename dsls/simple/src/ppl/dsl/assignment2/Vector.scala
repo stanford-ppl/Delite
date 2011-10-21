@@ -21,6 +21,8 @@ trait VectorOps extends Variables {
   def infix_+[A](x: Rep[Vector[A]], y: Rep[A])(implicit m: Manifest[A], n: Numeric[A], o: Overloaded1) = vectorPlusScalar(x,y)
   
   def infix_*[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[A]) = scalarTimes(x,y)
+  def infix_sum[A:Manifest:Numeric](x: Rep[Vector[A]]) = vectorSum(x)
+  def infix_filter[A:Manifest](x: Rep[Vector[A]]) = vectorFilter(x)
   
   def infix_length[A:Manifest](x: Rep[Vector[A]]) = length(x)
   def infix_apply[A:Manifest](x: Rep[Vector[A]], idx: Rep[Int]) = apply(x, idx)
@@ -32,8 +34,10 @@ trait VectorOps extends Variables {
   
   def vectorPlus[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def vectorPlusScalar[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
-  
   def scalarTimes[A:Manifest:Numeric](x: Rep[Vector[A]], y: Rep[A]): Rep[Vector[A]]
+  def vectorSum[A:Manifest:Numeric](x: Rep[Vector[A]]): Rep[A]
+  def vectorFilter[A:Manifest](x: Rep[Vector[A]]): Rep[Vector[A]]
+
   
   def length[A:Manifest](x: Rep[Vector[A]]): Rep[Int]
   def apply[A:Manifest](x: Rep[Vector[A]], idx: Rep[Int]): Rep[A]
@@ -73,6 +77,21 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
     def func = e => e * s
   }
   
+  case class VectorSum[A:Manifest:Numeric](in: Exp[Vector[A]]) extends DeliteOpReduce[A] {
+    val size = copyTransformedOrElse(_.size)(in.length)
+    val zero = unit(0).asInstanceOfL[A]
+    def func = (a,b) => a + b
+  }
+  
+  case class VectorFilter[A:Manifest](in: Exp[Vector[A]]) extends DeliteOpFilter[A,A,Vector[A]] {
+    val size = copyTransformedOrElse(_.size)(in.length)
+    def alloc = Vector[A](0) // not used
+    override def allocWithArray = data => struct[Vector[A]](List("Vector"), Map("data" -> data))
+    
+    def func = a => a
+    def cond = a => v > 50
+  }
+  
   def vectorNew[A:Manifest](length: Exp[Int]) = struct[Vector[A]](List("Vector"), Map("data" -> DeliteArray[A](length)))   
   private def infix_data[A:Manifest](x: Exp[Vector[A]]) = field[DeliteArray[A]](x, "data")
   
@@ -83,6 +102,8 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
   def vectorPlus[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[Vector[A]]) = VectorPlus(x,y)
   def vectorPlusScalar[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[A]) = VectorPlusScalar(x,y)
   def scalarTimes[A:Manifest:Numeric](x: Exp[Vector[A]], y: Exp[A]) = VectorTimesScalar(x, y)
+  def vectorSum[A:Manifest:Numeric](x: Exp[Vector[A]]) = VectorSum(x)
+  def vectorFilter[A:Manifest](x: Exp[Vector[A]]) = VectorFilter(x)
 
   def vectorPrint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(PPrint(x, reifyEffectsHere(pprint_impl(x))))
 

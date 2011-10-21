@@ -60,7 +60,14 @@ trait DeliteArrayOpsExp extends DeliteArrayOps with StructExp with EffectExp {
 trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {
   this: DeliteOpsExp =>
   
-  override def darray_length[T:Manifest](da: Exp[DeliteArray[T]]) = da match {
+  override def field[T:Manifest](struct: Rep[Any], index: String): Rep[T] = struct match {
+    //case Def(m: DeliteOpMapLike[_,_]) =>
+    //  val alloc = m.body.asInstanceOf[DeliteCollectElem[_,_]].alloc
+    //  field(alloc, index)
+    case _ => super.field[T](struct, index)
+  }
+  
+  /* override def darray_length[T:Manifest](da: Exp[DeliteArray[T]]) = da match {
     case Def(l: DeliteOpLoop[_]) => l.size
     case Def(Struct(prefix::tag, elems:Map[String,Exp[DeliteArray[T]]])) =>
       assert(prefix == "DeliteArray")
@@ -84,7 +91,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {
     case Def(DeliteArrayApply(da,i)) if (da.length == length) => da.asInstanceOf[Exp[DeliteArray[T]]] //eta-reduce!
     case _ => super.darray_create(length, elem)
   } */
-  
+  */
 }
 
 trait DeliteArrayFatExp extends DeliteArrayOpsExpOpt with StructFatExpOptCommon {
