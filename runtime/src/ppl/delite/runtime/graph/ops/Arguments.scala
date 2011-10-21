@@ -16,9 +16,7 @@ object Arguments {
   var staticDataMap: Map[String,_] = _
   
   def staticData[T](id: String): T = {
-    //assert(false,"do not have static data '"+id+"'").asInstanceOf[T]
-    System.err.println("*** lookup static data with id " + id + " in " + staticDataMap) //foobar
-    
+    //System.err.println("*** lookup static data with id " + id + " in " + staticDataMap)    
     staticDataMap(id).asInstanceOf[T]
   }
 }

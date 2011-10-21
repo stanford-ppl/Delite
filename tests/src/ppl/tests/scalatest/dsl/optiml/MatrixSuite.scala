@@ -17,7 +17,6 @@ import ppl.tests.scalatest._
 object MatrixAccessorsRunner extends DeliteTestRunner with OptiMLApplicationRunner with MatrixAccessors
 trait MatrixAccessors extends DeliteTestModule with OptiMLApplication {
   def main() {
-    implicit val collector = ArrayBuffer[Boolean]()
     val m = Matrix.rand(100,100)
 
     collect(m.numRows == 100)
@@ -63,7 +62,6 @@ trait MatrixAccessors extends DeliteTestModule with OptiMLApplication {
 object MatrixOperatorsRunner extends DeliteTestRunner with OptiMLApplicationRunner with MatrixOperators
 trait MatrixOperators extends DeliteTestModule with OptiMLApplication {
   def main() {
-    implicit val collector = ArrayBuffer[Boolean]()
     val m_rand = Matrix.rand(2,2)
     collect(m_rand(0,0) != m_rand(0,1))
     collect(m_rand(0,0) != m_rand(1,0))
@@ -76,7 +74,6 @@ trait MatrixOperators extends DeliteTestModule with OptiMLApplication {
 object MatrixUpdatesRunner extends DeliteTestRunner with OptiMLApplicationRunner with MatrixUpdates
 trait MatrixUpdates extends DeliteTestModule with OptiMLApplication {
   def main() {
-    implicit val collector = ArrayBuffer[Boolean]()
     val v = Vector.rand(100)
     val m = Matrix.rand(100,100).mutable
     val mb = Matrix.rand(100,100).mutable
@@ -160,7 +157,6 @@ trait MatrixUpdates extends DeliteTestModule with OptiMLApplication {
 object GroupRowsByRunner extends DeliteTestRunner with OptiMLApplicationRunner with GroupRowsBy
 trait GroupRowsBy extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val m = Matrix(Vector(1,2,3,4),
                    Vector(2,-2,-3,-4),
