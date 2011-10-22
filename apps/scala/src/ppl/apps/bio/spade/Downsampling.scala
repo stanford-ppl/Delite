@@ -1,6 +1,6 @@
 package ppl.apps.bio.spade
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet,StreamRow}
+import ppl.dsl.optiml.{Vector,Matrix,TrainingSet,StreamRow}
 import ppl.dsl.optiml.OptiMLApplication
 
 trait Downsampling {
@@ -59,7 +59,7 @@ trait Downsampling {
     for (row <- distances.rows) {
       if(row.index%1000 == 0) println("  (streaming) # processed node = " + row.index)
       if(densities(row.index) == 0) {
-        val neighbors = row find { _ < apprxWidth }
+        val neighbors = viewToVecOverrides(row) find { _ < apprxWidth }
         densities(neighbors) = row count { _ < kernelWidth }
       }
     }

@@ -1,17 +1,17 @@
 package ppl.dsl.optiml.matrix
 
-import ppl.dsl.optiml.datastruct.scala._
 import java.io.PrintWriter
-import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.util.OverloadHack
-import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
-import scala.virtualization.lms.common.{Variables, Base, BaseExp, CGenBase, CudaGenBase, ScalaGenBase, OpenCLGenBase}
+import scala.virtualization.lms.common.{Variables, Base, BaseExp, CGenBase, CudaGenBase, OpenCLGenBase, ScalaGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
+
+import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.dsl.optiml._
 
 // TODO: should TrainingSet be a Stream instead of a Matrix?
 
-trait TrainingSetOps extends DSLType with Variables with OverloadHack {
+trait TrainingSetOps extends Variables with OverloadHack {
   this: OptiML =>
 
   object TrainingSet {
@@ -55,7 +55,8 @@ trait TrainingSetOpsExp extends TrainingSetOps with BaseExp { this: DeliteOpsExp
   
   // implemented via method on real data structure
   case class TrainingSetObjectFromMat[A:Manifest,B:Manifest](xs: Exp[Matrix[A]], labels: Exp[Labels[B]]) extends Def[TrainingSet[A,B]] {
-     val mM = manifest[TrainingSetImpl[A,B]]
+     val mA = manifest[A]
+     val mB = manifest[B]
   }
   case class TrainingSetTransposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) extends Def[TrainingSet[A,B]]
   case class TrainingSetLabels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) extends Def[Labels[B]] {
@@ -80,7 +81,7 @@ trait ScalaGenTrainingSetOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case t@TrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap(t.mM) + "(" + quote(xs) + "," + quote(labels) + ")")
+    case t@TrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new generated.scala.TrainingSetImpl[" + remap(t.mA) + "," + remap(t.mB) + "](" + quote(xs) + "," + quote(labels) + ")")
     case TrainingSetTransposed(x) => emitValDef(sym, quote(x) + ".transposed")
     case TrainingSetLabels(x) => emitValDef(sym, quote(x) + ".labels")
     case _ => super.emitNode(sym, rhs)
@@ -120,8 +121,8 @@ trait CGenTrainingSetOps extends CGenBase {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
     //case t@TrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap(t.mM) + "(" + quote(xs) + "," + quote(labels) + ")")
-    //case TrainingSetTransposed(x) => emitValDef(sym, "%s_transposed(%s)".format(remap(sym.Type),quote(x)))
-    //case TrainingSetLabels(x) => emitValDef(sym, "%s_labels(%s)".format(remap(sym.Type),quote(x)))
+    case TrainingSetTransposed(x) => emitValDef(sym, quote(x) + ".transposed")
+    case TrainingSetLabels(x) => emitValDef(sym, quote(x) + ".labels")
     case _ => super.emitNode(sym, rhs)
   }
 }

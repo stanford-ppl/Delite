@@ -10,7 +10,7 @@
  
 package ppl.tests.scalatest.dsl.optiml
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,RangeVector}
+import ppl.dsl.optiml.{Vector,DenseVector,RangeVector,IndexVectorRange}
 import ppl.dsl.optiml.{OptiMLApplication, OptiMLApplicationRunner}
 import ppl.tests.scalatest._
 
@@ -305,7 +305,8 @@ trait Sample extends DeliteTestModule with OptiMLApplication {
     implicit val collector = ArrayBuffer[Boolean]()
 
     val v = (0::100)
-    val vs = sample(v, 10)
+    val vs = sample[Int,DenseVector[Int]](v, 10)
+    //val vs = sample(v, 10)
     vs foreach { e => collect(v contains e) }
     mkReport
   }
@@ -339,7 +340,6 @@ class VectorSuite extends DeliteSuite {
   def testLoop() { compileAndTest(LoopRunner) }
   def testCount() { compileAndTest(CountRunner) }
   def testBulkUpdate() { compileAndTest(BulkUpdateRunner) }
-  // testFind() fails because of error with activation records allowing supertypes to be returned from a kernel
   def testFind() { compileAndTest(FindRunner) }
   def testDist() { compileAndTest(DistRunner) }
   def testDistinct() { compileAndTest(DistinctRunner) }

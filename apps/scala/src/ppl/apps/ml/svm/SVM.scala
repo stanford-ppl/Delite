@@ -1,7 +1,6 @@
 package ppl.apps.ml.svm
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
 object SVMRunner extends OptiMLApplicationRunner with SVM

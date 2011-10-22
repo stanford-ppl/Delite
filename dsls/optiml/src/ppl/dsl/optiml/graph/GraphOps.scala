@@ -1,16 +1,14 @@
 package ppl.dsl.optiml.graph
 
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml.CudaGenDataStruct
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.DSLType
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import ppl.dsl.optiml._
 
-trait GraphOps extends DSLType with Variables {
+trait GraphOps extends Variables {
   this: OptiML =>
 
   object Graph {
@@ -66,10 +64,8 @@ trait GraphOpsExp extends GraphOps with EffectExp {
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
 
-  case class GraphObjectNew[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E])
-    extends Def[Graph[V,E]] {
-    val mG = manifest[UndirectedGraphImpl[V,E]]
-  }
+  case class GraphObjectNew[V <: Vertex,E <: Edge]()(implicit val mV: Manifest[V], val mE: Manifest[E])
+    extends Def[Graph[V,E]]     
   case class GraphVertices[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Vertices[V]]
   case class GraphEdges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Edges[E]]
   //case class GraphAdjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
@@ -151,7 +147,7 @@ trait ScalaGenGraphOps extends BaseGenGraphOps with ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case g@GraphObjectNew() => emitValDef(sym, "new " + remap(g.mG) + "()")
+      case g@GraphObjectNew() => emitValDef(sym, "new generated.scala.UndirectedGraphImpl[" + remap(g.mV) + "," + remap(g.mE) +"]()")
       case GraphVertices(g) => emitValDef(sym, quote(g) + ".vertices")
       case GraphEdges(g) => emitValDef(sym, quote(g) + ".edges")
       //case GraphAdjacent(g,a,b) => emitValDef(sym, quote(g) + ".adjacent(" + quote(a) + "," + quote(b) + ")")

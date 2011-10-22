@@ -1,10 +1,10 @@
 package ppl.dsl.optiml.stream
 
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala.{Vector, Stream, StreamImpl, StreamRow}
+import ppl.dsl.optiml.CudaGenDataStruct
+import ppl.dsl.optiml.{Vector, Stream, StreamRow}
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.{VariablesExp, Variables, DSLOpsExp, CGenBase, CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
@@ -14,7 +14,7 @@ import ppl.dsl.optiml.{OptiMLExp, OptiML}
  * Streams are Matrix-like, but are not Matrices. A Stream (slice) can be converted to a Vector or Matrix.
  * Streams only support bulk operations with other streams.
  */
-trait StreamOps extends DSLType with Variables {
+trait StreamOps extends Variables {
   this: OptiML =>
 
   object Stream {
@@ -61,7 +61,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
 
   case class StreamObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], chunkSize: Exp[Int],
                                          func: Exp[(Int,Int) => A], isPure: Exp[Boolean]) extends Def[Stream[A]] {
-    val mI = manifest[StreamImpl[A]]
+    val mA = manifest[A]
   }
   case class StreamIsPure[A:Manifest](x: Exp[Stream[A]]) extends Def[Boolean]
   case class StreamNumRows[A:Manifest](x: Exp[Stream[A]]) extends Def[Int]
@@ -108,23 +108,19 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     }
   }
   */
-  case class StreamInitAndForeachRow[A:Manifest](in: Exp[Vector[Int]], x: Exp[Stream[A]], offset: Exp[Int],
+  case class StreamInitAndForeachRow[A:Manifest](size: Exp[Int], x: Exp[Stream[A]], offset: Exp[Int],
                                                  block: Exp[StreamRow[A]] => Exp[Unit])
-    extends DeliteOpForeach[Int] {
+    extends DeliteOpIndexedLoop {
 
-    val size = in.length
-    def sync = i => List()
     def func = i => 
       // always initialize for now (must be pure)
       block(stream_init_and_chunk_row(x, i, offset))
   }
 
-  case class StreamForeachRow[A:Manifest](in: Exp[Vector[Int]], x: Exp[Stream[A]], offset: Exp[Int],
+  case class StreamForeachRow[A:Manifest](size: Exp[Int], x: Exp[Stream[A]], offset: Exp[Int],
                                           block: Exp[StreamRow[A]] => Exp[Unit], init: Exp[Unit])
-    extends DeliteOpForeach[Int] {
+    extends DeliteOpIndexedLoop {
 
-    val size = in.length
-    def sync = i => List()
     def func = i => block(stream_chunk_row(x, i, offset))
   }
 
@@ -164,12 +160,12 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
       if (x.isPure) {
         // fuse parallel initialization and foreach function
         //reflectEffect(StreamInitAndForeachRow(in, v, x, i, block))   // parallel // should use effect summary based on loop body
-        reflectEffect(StreamInitAndForeachRow(in, x, i, block))
+        reflectEffect(StreamInitAndForeachRow(rowsToProcess, x, i, block))
       }
       else {
         val init = stream_init_chunk(x, i)  // sequential
         //reflectEffect(StreamForeachRow(in, v, x, i, block, init)) // parallel // should use effect summary based on loop body
-        reflectEffect(StreamForeachRow(in, x, i, block, init))
+        reflectEffect(StreamForeachRow(rowsToProcess, x, i, block, init))
       }
 
       i += 1
@@ -180,6 +176,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   // internal
 
   def stream_chunk_row[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) = reflectPure(StreamChunkRow(x, idx, offset))
+  def stream_chunk_row_mutable[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) = reflectMutable(StreamChunkRow(x, idx, offset))
   def stream_init_chunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectEffect/*Write(x)*/(StreamInitChunk(x, offset))
   def stream_init_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = reflectEffect/*Write(x)*/(StreamInitRow(x, row, offset))
   def stream_init_and_chunk_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = { stream_init_row(x,row,offset); stream_chunk_row(x,row,offset) }
@@ -230,6 +227,9 @@ trait StreamOpsExpOpt extends StreamOpsExp {
   // TODO: do we still need this now that we use the new foreach op above?
   abstract case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]]
   
+  // no unsafeSetData exists for views... so we have to unfortunately do an extra copy to wrap the array result (i.e. safeSetData)
+  def updateViewWithArray[A:Manifest](a: Exp[Array[A]], v: Exp[StreamRow[A]]): Exp[StreamRow[A]] = { vectorview_update_impl(v, a); v }
+  
   override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = st match {
 
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))/*,_,_)*/) =>
@@ -247,8 +247,10 @@ trait StreamOpsExpOpt extends StreamOpsExp {
 */
       val r: Def[StreamRow[A]] = new StreamChunkRowFusable(st, row, offset) {
         val size = numCols
+        val aV = fresh[Array[A]]
         val body: Def[StreamRow[A]] = new DeliteCollectElem[A,StreamRow[A]](
-          alloc = reifyEffects(stream_chunk_row(st,row,offset)),
+          aV = this.aV,
+          alloc = reifyEffects(updateViewWithArray(aV,stream_chunk_row_mutable(st,row,offset))),
           func = reifyEffects(stfunc(offset*chunkSize+row,v))
         )
       }
@@ -269,7 +271,7 @@ trait ScalaGenStreamOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case m@StreamObjectNew(numRows, numCols, chunkSize, func, isPure) =>
-      emitValDef(sym, "new " + remap(m.mI) + "(" + quote(numRows) + "," + quote(numCols) + "," + quote(chunkSize) + ","
+      emitValDef(sym, "new generated.scala.StreamImpl[" + remap(m.mA) + "](" + quote(numRows) + "," + quote(numCols) + "," + quote(chunkSize) + ","
                       + quote(func) + "," + quote(isPure) + ")")
     case StreamIsPure(x) => emitValDef(sym, quote(x) + ".isPure")
     case StreamNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")

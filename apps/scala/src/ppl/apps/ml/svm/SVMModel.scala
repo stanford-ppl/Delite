@@ -11,9 +11,8 @@ package ppl.apps.ml.svm
  * Stanford University
  */
 
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet}
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.{OptiMLApplication, OptiML}
+import ppl.dsl.optiml._
 
 trait SVMModel { this: OptiMLApplication =>
 
@@ -24,7 +23,7 @@ trait SVMModel { this: OptiMLApplication =>
 
   // construct directly from model
   def load(modelFilename: Rep[String]) = {
-    val in = MLInputReader.readVector(modelFilename)
+    val in = readVector(modelFilename)
     val b = in(in.length-1)
     val weights = in.take(in.length-1)
     (weights, b)
@@ -167,7 +166,7 @@ trait SVMModel { this: OptiMLApplication =>
   ////////////
   // testing
 
-  def classify(weights: Rep[Vector[Double]], b: Rep[Double], test_pt: Rep[Vector[Double]]): Rep[Int] = {
+  def classify(weights: Rep[DenseVector[Double]], b: Rep[Double], test_pt: Interface[Vector[Double]]): Rep[Int] = {
     // SVM prediction is W'*X + b
     if ((weights*:*test_pt + b) < 0){
       -1
@@ -178,9 +177,9 @@ trait SVMModel { this: OptiMLApplication =>
   ////////////
   // utility
 
-  def saveModel(weights: Rep[Vector[Double]], b: Rep[Double], filename: Rep[String]) = {
+  def saveModel(weights: Rep[DenseVector[Double]], b: Rep[Double], filename: Rep[String]) = {
     val out = weights.cloneL
     out += b
-    MLOutputWriter.writeVector(out, filename)
+    writeVector(out, filename)
   }
 }

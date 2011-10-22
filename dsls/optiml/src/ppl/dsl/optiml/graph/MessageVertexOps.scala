@@ -1,17 +1,16 @@
 package ppl.dsl.optiml.graph
 
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml.CudaGenDataStruct
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import ppl.dsl.optiml._
 
-trait MessageVertexOps extends DSLType with Variables {
+trait MessageVertexOps extends Variables {
   this: OptiML =>
 
   object MessageVertex {
@@ -40,9 +39,7 @@ trait MessageVertexOpsExp extends MessageVertexOps with EffectExp {
   // implemented via method on real data structure
 
   case class MessageVertexObjectNew(g: Exp[Graph[MessageVertex,MessageEdge]], d: Exp[MessageData])
-    extends Def[MessageVertex] {
-    val mV = manifest[MessageVertexImpl]
-  }
+    extends Def[MessageVertex]
   case class MessageVertexData(v: Exp[MessageVertex]) extends Def[MessageData]
   case class MessageVertexTarget(v: Exp[MessageVertex], e: Exp[MessageEdge]) extends Def[MessageVertex]
 
@@ -72,7 +69,7 @@ trait ScalaGenMessageVertexOps extends BaseGenMessageVertexOps with ScalaGenBase
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case v@MessageVertexObjectNew(g,d) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(g) + "," + quote(d) + ")")
+      case v@MessageVertexObjectNew(g,d) => emitValDef(sym, "new generated.scala.MessageVertexImpl(" + quote(g) + "," + quote(d) + ")")
       case MessageVertexData(v) => emitValDef(sym, quote(v) + ".data")
       case MessageVertexTarget(v,e) => emitValDef(sym, quote(v) + ".target(" + quote(e) + ")")
       case _ => super.emitNode(sym, rhs)

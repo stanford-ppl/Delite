@@ -1,6 +1,8 @@
 package ppl.dsl.optiml.datastruct.scala
 
-class EdgesImpl[E <: Edge](len: Int)(implicit mE: ClassManifest[E]) extends VectorImpl[E](len, false) with Edges[E] {
+import ppl.dsl.optila.datastruct.scala._
+
+class EdgesImpl[E <: Edge](len: Int)(implicit mE: ClassManifest[E]) extends DenseVector[E](len, false) with Edges[E] {
 
   def this(__data: Array[E])(implicit mE: ClassManifest[E]){
     this(0)

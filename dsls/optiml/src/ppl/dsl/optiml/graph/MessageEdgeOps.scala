@@ -1,17 +1,16 @@
 package ppl.dsl.optiml.graph
 
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml.CudaGenDataStruct
+import ppl.dsl.optiml._
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
-trait MessageEdgeOps extends DSLType with Variables {
+trait MessageEdgeOps extends Variables {
   this: OptiML =>
 
   object MessageEdge {
@@ -45,7 +44,7 @@ trait MessageEdgeOpsExp extends MessageEdgeOps with EffectExp {
 
   case class MessageEdgeObjectNew(g: Exp[Graph[MessageVertex,MessageEdge]], in: Exp[MessageData], out: Exp[MessageData], a: Exp[MessageVertex], b: Exp[MessageVertex])
     extends Def[MessageEdge] {
-    val mE = manifest[MessageEdgeImpl]
+    //val mE = manifest[MessageEdgeImpl]
   }
   case class MessageEdgeIn(e: Exp[MessageEdge], v: Exp[MessageVertex]) extends Def[MessageData]
   case class MessageEdgeOut(e: Exp[MessageEdge], v: Exp[MessageVertex]) extends Def[MessageData]
@@ -78,7 +77,7 @@ trait ScalaGenMessageEdgeOps extends BaseGenMessageEdgeOps with ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case e@MessageEdgeObjectNew(g,in,out,a,b) => emitValDef(sym, "new " + remap(e.mE) + "(" + quote(g) + "," + quote(in) + "," + quote(out) + "," + quote(a) + "," + quote(b) + ")")
+      case e@MessageEdgeObjectNew(g,in,out,a,b) => emitValDef(sym, "new generated.scala.MessageEdgeImpl(" + quote(g) + "," + quote(in) + "," + quote(out) + "," + quote(a) + "," + quote(b) + ")")
       case MessageEdgeIn(e,v) => emitValDef(sym, quote(e) + ".in(" + quote(v) + ")")
       case MessageEdgeOut(e,v) => emitValDef(sym, quote(e) + ".out(" + quote(v) + ")")
       case MessageEdgeTarget(e,v) => emitValDef(sym, quote(e) + ".target(" + quote(v) + ")")

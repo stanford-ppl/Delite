@@ -1,5 +1,6 @@
 package ppl.dsl.optiml.datastruct.scala
 
+import ppl.dsl.optila.datastruct.scala._
 import collection.mutable.{HashMap, Map}
 
 class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V], mE: ClassManifest[E]) extends Graph[V,E] {

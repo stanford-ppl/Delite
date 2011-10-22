@@ -1,7 +1,6 @@
 package ppl.apps.ml.rbm
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
 object RBMRunner extends OptiMLApplicationRunner with RBM
@@ -33,7 +32,7 @@ trait RBM extends OptiMLApplication {
     println("Reading MNIST dataset")
     val numcases = Integer.parseInt(args(2)) // batchsize
     //val numcases = 100 // batchsize
-    val trainingdata = MLInputReader.read(args(0)).toFloat(e => e.floatValue())
+    val trainingdata = readMatrix(args(0)).toFloat(e => e.floatValue())
     val numdims = trainingdata.numCols
     val numbatches = trainingdata.numRows / numcases
 

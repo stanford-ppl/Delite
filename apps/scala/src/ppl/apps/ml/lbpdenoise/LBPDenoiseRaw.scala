@@ -20,7 +20,7 @@ trait LBPDenoiseRaw extends LBPDenoise {
   }
   
   override def loadImage(args: Rep[Array[String]], colors: Rep[Int], sigma: Rep[Int]) = {
-    val img = MLInputReader.read(args(0))
+    val img = readMatrix(args(0))
     MLOutputWriter.writeImgPgm(img, "check.pgm")
     img
   }

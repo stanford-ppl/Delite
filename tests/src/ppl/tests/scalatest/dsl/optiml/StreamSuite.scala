@@ -2,7 +2,7 @@ package ppl.tests.scalatest.dsl.optiml
 
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication, OptiMLExp}
-import ppl.dsl.optiml.datastruct.scala.{Vector, Stream}
+import ppl.dsl.optiml.{Vector, Stream}
 import ppl.tests.scalatest._
 
 /* Testing stream operations
@@ -77,7 +77,7 @@ trait StreamCorrectSmall extends DeliteTestModule with OptiMLApplication {
     //should be row vectors starting at 0, 10, ... 90
     val s = Stream[Double](10,10){ (i,j) => i*10+j }
     s.foreachRow { v => collect(v(2) == v.index*10+2) }
-
+    
     mkReport
   }
 }
@@ -102,6 +102,6 @@ class StreamSuite extends DeliteSuite {
   def testStreamInitEffectLarge() { compileAndTest(StreamInitEffectLargeRunner) }
   def testStreamForeach() { compileAndTest(StreamForeachRunner) }
   def testStreamCorrectSmall() { compileAndTest(StreamCorrectSmallRunner) }
-  //def testStreamCorrectLarge() { compileAndTest(StreamCorrectLargeRunner) }
+  def testStreamCorrectLarge() { compileAndTest(StreamCorrectLargeRunner) }
   // def testFileStream() ...
 }

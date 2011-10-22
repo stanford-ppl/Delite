@@ -1,3 +1,5 @@
 package ppl.dsl.optiml.datastruct.scala
 
-class LabelsImpl[T:Manifest](xs: Vector[T]) extends VectorImpl[T](xs.data, false) with Labels[T] {}
+import ppl.dsl.optila.datastruct.scala._
+
+class LabelsImpl[T:Manifest](xs: DenseVector[T]) extends DenseVector[T](xs.data, false) with Labels[T] {}

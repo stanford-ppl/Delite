@@ -28,11 +28,6 @@ object OpenCLCompile extends GPUCompile {
 
     println("Compiling OpenCL...")
 
-    //TODO: How to set the OpenCL include path in general?
-    assert(Config.clHeaderPath != null,"OpenCL header path is not specified!")
-    assert(Config.clBlasHeaderPath != null,"OpenCL blas header path is not specified!")
-    assert(Config.clBlasLibPath != null,"OpenCL blas library path is not specified!")
-
     //TODO: fix the include & library path issue
     //TODO: Can remove the clblas related options (-I,-l,-L) if the library init routines are included in the framework OP_External
     val cmdString = Array[String](

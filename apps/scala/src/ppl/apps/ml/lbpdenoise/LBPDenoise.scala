@@ -1,8 +1,7 @@
 package ppl.apps.ml.lbpdenoise
 
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.datastruct.scala._
-import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication, OptiMLExp}
+import ppl.dsl.optiml._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -365,41 +364,41 @@ trait LBPDenoise extends OptiMLApplication {
     unaryFactorNormalizeM(factor)
   }
 
-  def unaryFactorNormalize(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+  def unaryFactorNormalize(uf: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
     val logZ = Math.log((uf map {Math.exp(_)}).sum)
     uf map {_ - logZ}
   }
   
-  def unaryFactorNormalizeM(uf: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+  def unaryFactorNormalizeM(uf: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
     val logZ = Math.log((uf map {Math.exp(_)}).sum)
     uf mmap {_ - logZ}
   }
 
   // Multiply elementwise by other factor
-  def unaryFactorTimes(a: Rep[Vector[Double]], b: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+  def unaryFactorTimes(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
     a + b
   }
   
-  def unaryFactorTimesM(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) {
+  def unaryFactorTimesM(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]]) {
     a += b
   }
 
   // Add other factor elementwise
-  def unaryFactorPlus(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
+  def unaryFactorPlus(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]]) = {
     (a.exp + b.exp) map {Math.log(_)}
   }
 
   // Divide elementwise by other factor
-  def unaryFactorDivide(a: Rep[Vector[Double]], b: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+  def unaryFactorDivide(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
     a - b
   }
   
   // Divide elementwise by other factor
-  def unaryFactorDivideM(a: Rep[Vector[Double]], b: Rep[Vector[Double]]) = {
+  def unaryFactorDivideM(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]]) = {
     a -= b
   }
 
-  def unaryFactorConvolve(bf: Rep[Matrix[Double]], other: Rep[Vector[Double]]): Rep[Vector[Double]] = {
+  def unaryFactorConvolve(bf: Rep[Matrix[Double]], other: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
     bf.mapRowsToVector { (row) =>
       val csum = (row + other).exp.sum
       if(csum == 0) {
@@ -412,7 +411,7 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   // This = other * damping + this * (1-damping)
-  def unaryFactorDamp(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]): Rep[Vector[Double]] = {
+  def unaryFactorDamp(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]], damping: Rep[Double]): Rep[DenseVector[Double]] = {
     if (damping != 0) {
       (b.exp * damping + a.exp * (1.0 - damping)) map {Math.log(_)}
     }
@@ -421,7 +420,7 @@ trait LBPDenoise extends OptiMLApplication {
     }
   }
   
-  def unaryFactorDampM(a: Rep[Vector[Double]], b: Rep[Vector[Double]], damping: Rep[Double]) = {
+  def unaryFactorDampM(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]], damping: Rep[Double]) = {
 /*    if (damping != 0) {
       a.mzip(b){(x:Rep[Double],y:Rep[Double]) => Math.log(Math.exp(x)*(1.0-damping)+Math.exp(y)*damping)}
     }
@@ -432,12 +431,12 @@ trait LBPDenoise extends OptiMLApplication {
   }
   
   // Compute the residual between two unary factors
-  def unaryFactorResidual(a: Rep[Vector[Double]], b: Rep[Vector[Double]]): Rep[Double] = {
+  def unaryFactorResidual(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]]): Rep[Double] = {
     ((a map {Math.exp(_)}) - (b map {Math.exp(_)})).abs.sum / a.length
   }
 
   // Max assignment
-  def unaryFactorMaxAsg(uf: Rep[Vector[Double]]): Rep[Int] = {
+  def unaryFactorMaxAsg(uf: Rep[DenseVector[Double]]): Rep[Int] = {
     var max_asg = 0
     var max_value = uf(0)
 
@@ -453,9 +452,10 @@ trait LBPDenoise extends OptiMLApplication {
     max_asg
   }
 
-  def unaryFactorExpectation(uf: Rep[Vector[Double]]): Rep[Double] = {
-    val indices = Vector.range(0, uf.length)
+  def unaryFactorExpectation(uf: Rep[DenseVector[Double]]): Rep[Double] = {
+    //val indices = Vector.range(0, uf.length)
+    val indices = (0::uf.length)
 
-    (uf.exp * indices).sum / uf.exp.sum
+    (uf.exp * indices.toDouble).sum / uf.exp.sum
   }
 }

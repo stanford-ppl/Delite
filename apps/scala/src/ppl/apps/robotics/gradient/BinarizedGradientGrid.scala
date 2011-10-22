@@ -1,7 +1,7 @@
 package ppl.apps.robotics.gradient
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml.application._
 import ppl.delite.framework.DeliteApplication
 
 trait BinarizedGradientGridFuncs {
@@ -22,7 +22,7 @@ trait BinarizedGradientGridFuncs {
   val borderPixels = 5
 
   // Runs the object detection of the current image.
-  def detectAllObjects(all_templates: Rep[Vector[(String, Vector[BinarizedGradientTemplate])]], image: Rep[GrayscaleImage]) = {
+  def detectAllObjects(all_templates: Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]], image: Rep[GrayscaleImage]) = {
 //    println("detectAllObjects.1")
     val img_gray = image // assuming image is single-channel. Needs to be made such if not.
 
@@ -54,7 +54,7 @@ trait BinarizedGradientGridFuncs {
   }
 
   //Run detection for this object class.
-  def detectSingleObject(name: Rep[String], gradSummary: Rep[GrayscaleImage], templates: Rep[Vector[BinarizedGradientTemplate]], template_radius: Rep[Int], level: Rep[Int], accept_threshold: Rep[Float]): Rep[Vector[BiGGDetection]] = {
+  def detectSingleObject(name: Rep[String], gradSummary: Rep[GrayscaleImage], templates: Rep[DenseVector[BinarizedGradientTemplate]], template_radius: Rep[Int], level: Rep[Int], accept_threshold: Rep[Float]): Rep[DenseVector[BiGGDetection]] = {
 //println("detectSingleObject.1")
     (borderPixels :: gradSummary.numRows - borderPixels).flatMap { y =>
 //println("detectSingleObject.2")
@@ -65,7 +65,7 @@ trait BinarizedGradientGridFuncs {
     }
   }
 
-  def searchTemplates(name: Rep[String], gradSummary: Rep[GrayscaleImage], x: Rep[Int], y: Rep[Int], template_radius: Rep[Int], level: Rep[Int], accept_threshold: Rep[Float], templates: Rep[Vector[BinarizedGradientTemplate]]): Rep[Vector[BiGGDetection]] = {
+  def searchTemplates(name: Rep[String], gradSummary: Rep[GrayscaleImage], x: Rep[Int], y: Rep[Int], template_radius: Rep[Int], level: Rep[Int], accept_threshold: Rep[Float], templates: Rep[DenseVector[BinarizedGradientTemplate]]): Rep[DenseVector[BiGGDetection]] = {
 //println("x: " + x)
 //println("y: " + y)
 //println("searchTemplates.1")
@@ -84,12 +84,12 @@ if (crt_template.match_list.length < 0) println("dummy")
 //println("y: " + y)
         val bbox = templates(j).rect
         val roi = Rect((reduction_factor * x - bbox.width / 2).asInstanceOfL[Int], (reduction_factor * y - bbox.height / 2).asInstanceOfL[Int], bbox.width, bbox.height)
-        val out = Vector[BiGGDetection](1, true)
+        val out = DenseVector[BiGGDetection](1, true)
         out(0) = BiGGDetection(name, res, roi, null, j, x, y, templates(j), crt_template)
         out
       }
       else {
-        Vector[BiGGDetection](0, true)
+        DenseVector[BiGGDetection](0, true)
       }
     }
   }
@@ -97,7 +97,7 @@ if (crt_template.match_list.length < 0) println("dummy")
   // Construct a template from a region of a gradient summary image.
   def fillTemplateFromGradientImage(gradSummary: Rep[GrayscaleImage], xc: Rep[Int], yc: Rep[Int], r: Rep[Int], level: Rep[Int]): Rep[BinarizedGradientTemplate] = {
     val span = 2 * r
-    val tpl = BinarizedGradientTemplate(r, null, null, level, Vector[Int](span * span, false), IndexVector(0), null, null, null)
+    val tpl = BinarizedGradientTemplate(r, null, null, level, DenseVector[Int](span * span, false), IndexVector(0), null, null, null)
 
     //Bear with me, we have to worry a bit about stepping off the image boundaries:
     val (xstart, xoffset) = t2(if (xc - r < 0) (unit(0), r - xc) else (xc - r, unit(0)))
@@ -164,7 +164,7 @@ if (crt_template.match_list.length < 0) println("dummy")
     // (Each pixel location contains just one orientation at this point)
     repGrayscaleImageToGrayscaleImageOps(binaryGradient).windowedFilter (3, 3) { slice /*3x3 Matrix[T]*/ =>
       // for each element, pick the most frequently occurring gradient direction if it's at least 2; otherwise pick 0(no direction)
-      val histogram = Vector[Int](256, true)
+      val histogram = DenseVector[Int](256, true)
       // TODO: Make this a scan-like op once supported
       var row = 0
       while (row < slice.numRows) {
@@ -217,7 +217,7 @@ if (crt_template.match_list.length < 0) println("dummy")
   // Suppress overlapping rectangles to be the rectangle with the highest score
   // detections: vector of detections to work with
   // overlapThreshold: what fraction of overlap between 2 rectangles constitutes overlap
-  def nonMaxSuppress(detections: Rep[Vector[BiGGDetection]], overlapThreshold: Rep[Float]): Rep[Vector[BiGGDetection]] = {
+  def nonMaxSuppress(detections: Rep[DenseVector[BiGGDetection]], overlapThreshold: Rep[Float]): Rep[DenseVector[BiGGDetection]] = {
     var len = detections.length
 println("Detections before NMS: " + len)
 

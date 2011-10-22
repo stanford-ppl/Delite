@@ -1,3 +1,5 @@
 package ppl.dsl.optiml.datastruct.scala
 
-object IndexVectorWCImpl extends IndexVectorWC
+import ppl.dsl.optila.datastruct.scala._
+
+//object IndexVectorWCImpl extends IndexVectorWC

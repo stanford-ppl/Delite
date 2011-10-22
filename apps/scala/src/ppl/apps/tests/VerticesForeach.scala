@@ -1,8 +1,7 @@
 package ppl.apps.tests
 
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.datastruct.scala._
-import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication, OptiMLExp}
+import ppl.dsl.optiml._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)

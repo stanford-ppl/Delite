@@ -6,7 +6,6 @@ package ppl.dsl.optiql.user.applications
 
 import ppl.dsl.optiql.datastruct.scala.liftables._
 import java.io.PrintWriter
-import ppl.delite.framework.{DSLType}
 import ppl.delite.framework.datastructures._
 import scala.virtualization.lms.common.ScalaGenFat
 import scala.virtualization.lms.util.OverloadHack
@@ -16,7 +15,7 @@ import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Variables}
 import ppl.dsl.optiql.datastruct.scala.util.Date
 
 
-trait CustomerOps extends DSLType with Variables with OverloadHack {
+trait CustomerOps extends Variables with OverloadHack {
 
   object Customer {
     def apply(c_custkey: Rep[Int], c_name: Rep[String], c_address: Rep[String], c_nationkey: Rep[Int], c_phone: Rep[String], c_acctbal: Rep[Double], c_mktsegment: Rep[String], c_comment: Rep[String]) = customer_obj_new(c_custkey, c_name, c_address, c_nationkey, c_phone, c_acctbal, c_mktsegment, c_comment)
@@ -78,7 +77,7 @@ trait ScalaGenCustomerOps extends ScalaGenFat {
   }
 }
 
-trait LineItemOps extends DSLType with Variables with OverloadHack {
+trait LineItemOps extends Variables with OverloadHack {
 
   object LineItem {
     def apply(l_orderkey: Rep[Int], l_partkey: Rep[Int], l_suppkey: Rep[Int], l_linenumber: Rep[Int], l_quantity: Rep[Double], l_extendedprice: Rep[Double], l_discount: Rep[Double], l_tax: Rep[Double], l_returnflag: Rep[Char], l_linestatus: Rep[Char], l_shipdate: Rep[Date], l_commitdate: Rep[Date], l_receiptdate: Rep[Date], l_shipinstruct: Rep[String], l_shipmode: Rep[String], l_comment: Rep[String]) = lineitem_obj_new(l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment)
@@ -164,7 +163,7 @@ trait ScalaGenLineItemOps extends ScalaGenFat {
   }
 }
 
-trait NationOps extends DSLType with Variables with OverloadHack {
+trait NationOps extends Variables with OverloadHack {
 
   object Nation {
     def apply(n_nationkey: Rep[Int], n_name: Rep[String], n_regionkey: Rep[Int], n_comment: Rep[String]) = nation_obj_new(n_nationkey, n_name, n_regionkey, n_comment)
@@ -214,7 +213,7 @@ trait ScalaGenNationOps extends ScalaGenFat {
   }
 }
 
-trait OrderOps extends DSLType with Variables with OverloadHack {
+trait OrderOps extends Variables with OverloadHack {
 
   object Order {
     def apply(o_orderkey: Rep[Int], o_custkey: Rep[Int], o_orderstatus: Rep[Char], o_totalprice: Rep[Double], o_orderdate: Rep[Date], o_orderpriority: Rep[String], o_clerk: Rep[String], o_shippriority: Rep[Int], o_comment: Rep[String]) = order_obj_new(o_orderkey, o_custkey, o_orderstatus, o_totalprice, o_orderdate, o_orderpriority, o_clerk, o_shippriority, o_comment)
@@ -279,7 +278,7 @@ trait ScalaGenOrderOps extends ScalaGenFat {
   }
 }
 
-trait PartOps extends DSLType with Variables with OverloadHack {
+trait PartOps extends Variables with OverloadHack {
 
   object Part {
     def apply(p_partkey: Rep[Int], p_name: Rep[String], p_mfgr: Rep[String], p_brand: Rep[String], p_type: Rep[String], p_size: Rep[Int], p_container: Rep[String], p_retailprice: Rep[Double], p_comment: Rep[String]) = part_obj_new(p_partkey, p_name, p_mfgr, p_brand, p_type, p_size, p_container, p_retailprice, p_comment)
@@ -344,7 +343,7 @@ trait ScalaGenPartOps extends ScalaGenFat {
   }
 }
 
-trait PartSupplierOps extends DSLType with Variables with OverloadHack {
+trait PartSupplierOps extends Variables with OverloadHack {
 
   object PartSupplier {
     def apply(ps_partkey: Rep[Int], ps_suppkey: Rep[Int], ps_availqty: Rep[Int], ps_supplycost: Rep[Double], ps_comment: Rep[String]) = partsupplier_obj_new(ps_partkey, ps_suppkey, ps_availqty, ps_supplycost, ps_comment)
@@ -397,7 +396,7 @@ trait ScalaGenPartSupplierOps extends ScalaGenFat {
   }
 }
 
-trait RegionOps extends DSLType with Variables with OverloadHack {
+trait RegionOps extends Variables with OverloadHack {
 
   object Region {
     def apply(r_regionkey: Rep[Int], r_name: Rep[String], r_comment: Rep[String]) = region_obj_new(r_regionkey, r_name, r_comment)
@@ -444,7 +443,7 @@ trait ScalaGenRegionOps extends ScalaGenFat {
   }
 }
 
-trait SupplierOps extends DSLType with Variables with OverloadHack {
+trait SupplierOps extends Variables with OverloadHack {
 
   object Supplier {
     def apply(s_suppkey: Rep[Int], s_name: Rep[String], s_address: Rep[String], s_nationkey: Rep[Int], s_phone: Rep[String], s_acctbal: Rep[Double], s_comment: Rep[String]) = supplier_obj_new(s_suppkey, s_name, s_address, s_nationkey, s_phone, s_acctbal, s_comment)

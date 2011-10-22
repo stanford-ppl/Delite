@@ -1,8 +1,7 @@
 package ppl.apps.ml.cf
 
 import ppl.dsl.optiml._
-import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
-import ppl.dsl.optiml.datastruct.scala.{Similarity, PairwiseRating}
+import ppl.dsl.optiml.application.{Similarity, PairwiseRating}
 import ppl.delite.framework.DeliteApplication
 
 object TopNRunner extends OptiMLApplicationRunner with TopN
@@ -16,7 +15,7 @@ trait TopN extends OptiMLApplication {
   /**
    * Pearson correlation 
    */
-  def similarity(ratings: Rep[Vector[PairwiseRating]]) = {    
+  def similarity(ratings: Rep[DenseVector[PairwiseRating]]) = {    
     val avgA = sum(0, ratings.length) { ratings(_).scoreA } / ratings.length
     val avgB = sum(0, ratings.length) { ratings(_).scoreB } / ratings.length
 
@@ -94,7 +93,8 @@ trait TopN extends OptiMLApplication {
     // uniqueness guaranteed by previous groupBy, but not statically provable... what should optiml do here? (nothing, because it's a foreach?)
     
     // TODO: this should be a SparseMatrix... only populated where we actually have a similarity value 
-    val similarityMatrix = SymmetricMatrix[Double](userRatings.length) // n x n where n is the number of unique users
+    //val similarityMatrix = SymmetricMatrix[Double](userRatings.length) // n x n where n is the number of unique users
+    val similarityMatrix = Matrix[Double](userRatings.length, userRatings.length)
     for (sim <- similarities) {
       similarityMatrix(sim.a, sim.b) = sim.value
     }
@@ -113,7 +113,8 @@ trait TopN extends OptiMLApplication {
     val sorted = prefs.sort    
     val topScores = sorted take N
     //val topUsers = indices take N
-    val topUsers = topScores map { e => (prefs find { _ == e })(0) } // HACK! need to implement sortWithIndex above    
+    // TODO: why is this type annotation required? inferencer ends up with Rep[DenseVector[Nothing]] otherwise
+    val topUsers: Rep[DenseVector[Int]] = topScores map { e => (prefs find { _ == e })(0) } // HACK! need to implement sortWithIndex above    
     
     toc(topUsers)
     

@@ -1,5 +1,7 @@
 package ppl.dsl.optiml.datastruct.scala
 
+import ppl.dsl.optila.datastruct.scala._
+
 class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: Int, val func: (Int,Int) => T, val isPure: Boolean) extends Stream[T] {
     val bufRows = math.min(numRows, chunkSize)
     val size = numCols*bufRows
@@ -32,6 +34,6 @@ class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: 
     }
 
     def vview(start: Int, stride: Int, length: Int, isRow: Boolean) = {
-      new VectorViewImpl[T](_data, start, stride, length, isRow)
+      new VectorView[T](_data, start, stride, length, isRow)
     }
 }

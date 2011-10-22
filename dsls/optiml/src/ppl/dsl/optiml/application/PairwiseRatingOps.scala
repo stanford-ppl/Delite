@@ -1,14 +1,13 @@
 package ppl.dsl.optiml.application
 
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml._
 import java.io.PrintWriter
-import ppl.delite.framework.{DSLType}
 import scala.virtualization.lms.common.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
-trait PairwiseRatingOps extends DSLType with Variables with OverloadHack {
+trait PairwiseRatingOps extends Variables with OverloadHack {
 
   object PairwiseRating {
     def apply(profileA: Rep[Int], profileB: Rep[Int], scoreA: Rep[Int], scoreB: Rep[Int]) = pairwiserating_obj_new(profileA, profileB, scoreA, scoreB)

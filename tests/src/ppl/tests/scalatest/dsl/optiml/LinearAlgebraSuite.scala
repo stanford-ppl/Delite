@@ -1,7 +1,6 @@
 package ppl.tests.scalatest.dsl.optiml
 
-import ppl.dsl.optiml.datastruct.scala.{Matrix, Vector}
-import ppl.dsl.optiml.{OptiMLApplication, OptiMLApplicationRunner}
+import ppl.dsl.optiml._
 import scala.virtualization.lms.util.OverloadHack
 import ppl.tests.scalatest._
 
@@ -115,7 +114,7 @@ trait LinearAlgebraTestsCommon extends OptiMLApplication with OverloadHack {
     Math.abs(x - y) < .01
   }
 
-  def check(x: Rep[Vector[Double]], y: Rep[Vector[Double]]): Rep[Boolean] = {
+  def check(x: Rep[DenseVector[Double]], y: Rep[DenseVector[Double]]): Rep[Boolean] = {
     if (x.length != y.length) {
       false
     }

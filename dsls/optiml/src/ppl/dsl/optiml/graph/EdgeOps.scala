@@ -1,17 +1,17 @@
 package ppl.dsl.optiml.graph
 
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml.CudaGenDataStruct
+import ppl.dsl.optiml._
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 
-trait EdgeOps extends DSLType with Variables {
+trait EdgeOps extends Variables {
   this: OptiML =>
 
   // base class edges cannot be instantiated at the moment

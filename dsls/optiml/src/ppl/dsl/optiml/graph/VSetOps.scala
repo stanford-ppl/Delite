@@ -8,25 +8,24 @@ package ppl.dsl.optiml.graph
  * Stanford University
  */
 
-import ppl.dsl.optiml.datastruct.scala._
 import collection.mutable.{Set => MSet}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import ppl.dsl.optiml._
 
 import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 
-trait VSetOps extends DSLType with Variables {
+trait VSetOps extends Variables {
   def vset_vertices[V<:Vertex:Manifest](s: Rep[MSet[V]]) : Rep[Vertices[V]]
 }
 
 trait VSetOpsExp extends VSetOps with EffectExp {
   case class VSetVertices[V<:Vertex:Manifest](s: Exp[MSet[V]]) extends Def[Vertices[V]] {
-    val mV = manifest[VerticesImpl[V]]
+    val mV = manifest[V]
   }
 
   def vset_vertices[V<:Vertex:Manifest](s: Exp[MSet[V]]) = reflectMutable(VSetVertices(s))
@@ -46,7 +45,7 @@ trait ScalaGenVSetOps extends BaseGenVSetOps with ScalaGenEffect {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case o@VSetVertices(s) => emitValDef(sym, "new " + remap(o.mV) + "(" + quote(s) + ".toArray)")
+    case o@VSetVertices(s) => emitValDef(sym, "new generated.scala.VerticesImpl[" + remap(o.mV) + "](" + quote(s) + ".toArray)")
     case _ => super.emitNode(sym, rhs)
   }
 }

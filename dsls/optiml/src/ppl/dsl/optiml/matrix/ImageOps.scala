@@ -1,17 +1,17 @@
 package ppl.dsl.optiml.matrix
 
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala.{MatrixImpl, VectorImpl, ImageImpl, Vector, Matrix, Image}
+import ppl.dsl.optiml.CudaGenDataStruct
+import ppl.dsl.optiml.{Vector, Matrix, Image}
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.{VariablesExp, Variables, DSLOpsExp, CGenBase, CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.Config
 import ppl.dsl.optiml.{OptiML, OptiMLExp}
 
-trait ImageOps extends DSLType with Variables {
+trait ImageOps extends Variables {
   this: OptiML =>
 
   object Image {
@@ -48,10 +48,10 @@ trait ImageOpsExp extends ImageOps with VariablesExp {
   // implemented via method on real data structure
 
   case class ImageObjectNew[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) extends Def[Image[A]] {
-    val mI = manifest[ImageImpl[A]]
+    val mA = manifest[A]
   }
   case class ImageObjectFromMat[A:Manifest](x: Exp[Matrix[A]]) extends Def[Image[A]] {
-    val mI = manifest[ImageImpl[A]]
+    val mA = manifest[A]
   }
 
   ////////////////////////////////
@@ -107,8 +107,8 @@ trait ScalaGenImageOps extends ScalaGenBase {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case m@ImageObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap(m.mI) + "(" + quote(numRows) + "," + quote(numCols) + ")")
-    case m@ImageObjectFromMat(x) => emitValDef(sym, "new " + remap(m.mI) + "(" + quote(x) + ")")
+    case m@ImageObjectNew(numRows, numCols) => emitValDef(sym, "new generated.scala.ImageImpl[" + remap(m.mA) + "](" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@ImageObjectFromMat(x) => emitValDef(sym, "new generated.scala.ImageImpl[" + remap(m.mA) + "](" + quote(x) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

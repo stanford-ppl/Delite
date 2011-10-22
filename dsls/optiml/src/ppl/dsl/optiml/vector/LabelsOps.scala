@@ -1,15 +1,14 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.datastruct.scala._
 import java.io.PrintWriter
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.common.ScalaGenBase
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.dsl.optiml.{OptiML, OptiMLExp}
+import ppl.dsl.optiml._
 
-trait LabelsOps extends DSLType with Base with OverloadHack {
+trait LabelsOps extends Base with OverloadHack {
   this: OptiML =>
 
   object Labels {
@@ -32,7 +31,7 @@ trait LabelsOpsExp extends LabelsOps with BaseExp { this: OptiMLExp =>
 
   // implemented via method on real data structure
   case class LabelsObjectFromVec[A:Manifest](xs: Exp[Vector[A]]) extends Def[Labels[A]] {
-    val mV = manifest[LabelsImpl[A]]
+    val mA = manifest[A]
   }
   case class LabelsMutableMap[A:Manifest](in: Exp[Labels[A]], func: Exp[A] => Exp[A])
     extends DeliteOpMap[A,A,Labels[A]] {
@@ -54,7 +53,7 @@ trait ScalaGenLabelsOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case l@LabelsObjectFromVec(xs) => emitValDef(sym, "new " + remap(l.mV) + "(" + quote(xs) + ")")
+    case l@LabelsObjectFromVec(xs) => emitValDef(sym, "new generated.scala.LabelsVectorImpl(" + quote(xs) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }
