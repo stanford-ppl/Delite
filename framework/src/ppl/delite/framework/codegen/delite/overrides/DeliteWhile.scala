@@ -12,7 +12,7 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
 
   // there is a lot of duplication between DeliteWhile and While in lms -- do we really need a separate class here?
   
-  case class DeliteWhile(cond: Exp[Boolean], body: Exp[Unit]) extends DeliteOpWhileLoop
+  case class DeliteWhile(cond: Block[Boolean], body: Block[Unit]) extends DeliteOpWhileLoop
 
   override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit]) {
     //val c = reifyEffects(cond)
@@ -20,7 +20,7 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
     // TODO: reflectEffect(new While(c, a) with DeliteOpWhile))
     //reflectEffect(DeliteWhile(c, a))
     val c = reifyEffects(cond)
-    c match {
+    c.res match {
       case Const(true)  => // print warning?
       case Const(false)  => return
       case _ => // pass

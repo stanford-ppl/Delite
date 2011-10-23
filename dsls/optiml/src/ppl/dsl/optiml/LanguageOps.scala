@@ -472,7 +472,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     
     val in = copyTransformedOrElse(_.in)(start::end)
     val size = copyTransformedOrElse(_.size)(end - start)
-    val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable)) // FIXME: zero can be a fresh matrix, mutable calls cloneL
+    //val zero = copyTransformedBlockOrElse(_.zero)(reifyEffects(a.zero(init).mutable)) // FIXME: zero can be a fresh matrix, mutable calls cloneL
+    def zero = a.zero(init).mutable
     def reduce = (a,b) => a += b
     
     def m = manifest[A]
@@ -508,7 +509,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     
     val in = copyTransformedOrElse(_.in)((start::end))
     val size = copyTransformedOrElse(_.size)(end - start)
-    val zero = (copyTransformedOrElse(_.zero._1)(reifyEffects(a.empty)),copyTransformedOrElse(_.zero._2)(unit(-1)))
+    val zero = (copyTransformedBlockOrElse(_.zero._1)(reifyEffects(a.empty)),copyTransformedBlockOrElse(_.zero._2)(reifyEffects(unit(-1))))
 
 /*
     def func = (v) => (zero._1, reifyEffects(if (co(v)) v else -1))
@@ -517,7 +518,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 */
 
 
-    def func = (v) => (zero._1, v)
+    def func = (v) => (zero._1, reifyEffects(v)) // will copy block that is zero._1, not just reference result!
     
     def reduceSeq = (a,b) => (reifyEffects(if (co(b._2)) { if (a._2 >= 0) a._1 += fu(b._2) else fu(b._2).mutable } else a._1), 
                               reifyEffects(if (co(b._2)) b._2 else a._2 )) // would not work in parallel...

@@ -14,16 +14,16 @@ trait DeliteScalaGenVariables extends ScalaGenEffect {
     var gen = false
     if (symIsResult) {
       rhs match {
-        case NewVar(init) => emitValDef(sym, "new generated.scala.Ref(" + quote(getBlockResult(init)) + ")"); gen = true
+        case NewVar(init) => emitValDef(sym, "new generated.scala.Ref(" + quote(init) + ")"); gen = true
         case _ => // pass
       }
     }
     if (!(deliteInputs intersect syms(rhs)).isEmpty) {
       rhs match {
         case ReadVar(Variable(a)) => emitValDef(sym, quote(a) + ".get"); gen = true
-        case Assign(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(getBlockResult(b)) + ")"); gen = true
-        case VarPlusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get + " + quote(getBlockResult(b)) + ")"); gen = true
-        case VarMinusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get - " + quote(getBlockResult(b)) + ")"); gen = true
+        case Assign(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(b) + ")"); gen = true
+        case VarPlusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get + " + quote(b) + ")"); gen = true
+        case VarMinusEquals(Variable(a), b) => emitValDef(sym, quote(a) + ".set(" + quote(a) + ".get - " + quote(b) + ")"); gen = true
         case _ => // pass
       }
     }

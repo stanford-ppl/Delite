@@ -354,7 +354,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   case class VectorEquals[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(vector_equals_impl[A](x,y)))
 
-  case class VectorPPrint[A](x: Exp[Vector[A]])(block: Exp[Unit]) // stupid limitation...
+  case class VectorPPrint[A](x: Exp[Vector[A]])(block: Block[Unit]) // stupid limitation...
     extends DeliteOpSingleTask(block)
     // reifyEffects(vector_pprint_impl[A](x))
 
@@ -575,9 +575,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
     val inA = copyTransformedOrElse(_.inA)(0::inB.length)
     val size = copyTransformedOrElse(_.size)(inB.length)
-    val zero = (copyTransformedOrElse(_.zero._1)(unit(0)),copyTransformedOrElse(_.zero._2)(implicitly[HasMinMax[A]].maxValue)) // 0 sensible? maybe -1?
-    def zip = (a,b) => (a,b)
-    def reduce = (a,b) => (if (a._2 < b._2) a._1 else b._1, if (a._2 < b._2) a._2 else b._2)
+    val zero = (copyTransformedBlockOrElse(_.zero._1)(reifyEffects(unit(0))),copyTransformedBlockOrElse(_.zero._2)(reifyEffects(implicitly[HasMinMax[A]].maxValue))) // 0 sensible? maybe -1?
+    def zip = (a,b) => (reifyEffects(a),reifyEffects(b))
+    def reduce = (a,b) => (reifyEffects(if (a._2 < b._2) a._1 else b._1), reifyEffects(if (a._2 < b._2) a._2 else b._2))
     
     val m = manifest[A]
     val o = implicitly[Ordering[A]]
@@ -1082,7 +1082,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
     case VectorEmptyFloat() => emitValDef(sym, "generated.scala.EmptyVectorFloatImpl")
     case VectorEmptyInt() => emitValDef(sym, "generated.scala.EmptyVectorIntImpl")
     case v@VectorEmpty() => emitValDef(sym, "new generated.scala.EmptyVectorImpl[" + remap(v.mA) + "]")
-    case VectorRawData(x) => emitValDef(sym, quote(getBlockResult(x)) + ".data")  
+    case VectorRawData(x) => emitValDef(sym, quote(x) + ".data")
     case _ => super.emitNode(sym, rhs)
   }
 }

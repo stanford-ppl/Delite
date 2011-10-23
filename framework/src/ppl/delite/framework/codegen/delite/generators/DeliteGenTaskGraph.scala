@@ -68,7 +68,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 //      }}
       //println(used)
       //focusFatBlock(used) { freeInScope(bound, used) } filter { case Def(r@Reflect(x,u,es)) => used contains r; case _ => true } // distinct
-      focusFatBlock(used) { freeInScope(bound, used) } // distinct
+      focusFatBlock(used.map(Block(_))) { freeInScope(bound, used) } // distinct
       //syms(rhs).flatMap(s => focusBlock(s) { freeInScope(boundSyms(rhs), s) } ).distinct
     }
 
@@ -249,7 +249,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
       case ThinDef(z) => z match {
         case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body))
         case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-        case c:DeliteOpCondition[_] => emitIfThenElse(c.cond, c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+        case c:DeliteOpCondition[_] => emitIfThenElse(Block(c.cond), c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
         case f:DeliteOpForeach2[_,_] => emitForeach(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
@@ -302,7 +302,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     stream.println("},")
   }
 
-  def emitIfThenElse(cond: Exp[Boolean], thenp: Exp[Any], elsep: Exp[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitIfThenElse(cond: Block[Boolean], thenp: Block[Any], elsep: Block[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Conditional\",")
     stream.println("  \"outputId\" : \"" + id + "\",")
@@ -321,7 +321,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     stream.println("},")
   }
 
-  def emitWhileLoop(cond: Exp[Boolean], body: Exp[Unit], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitWhileLoop(cond: Block[Boolean], body: Block[Unit], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.println("{\"type\":\"WhileLoop\",")
     stream.println("  \"outputId\" : \"" + id + "\",")
@@ -392,7 +392,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
     // post
     emitEOG()
-    emitOutput(getBlockResult(rhs.asInstanceOf[Variant].variant))
+    emitOutput(getBlockResult(Block(rhs.asInstanceOf[Variant].variant))) // FIXME: block?
     stream.println("}")
     kernelInputDeps = saveInputDeps
     kernelMutatingDeps = saveMutatingDeps
@@ -406,9 +406,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     // manually lift alloc out of the variant loop. TODO: this should not be required, see comment in DeliteOps.scala
     // we should be able to remove this when we merge with opfusing
     //val save = scope
-    emitBlock(vw.alloc)
+    emitBlock(Block(vw.alloc)) //FIXME: block?
     //scope = appendScope()
-    emitBlock(vw.variant)
+    emitBlock(Block(vw.variant)) //FIXME: block?
     //scope = save
   }
 
@@ -416,22 +416,22 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
     //val save = scope
-    emitBlock(vw.Index)
-    emitBlock(vw.Acc)
+    emitBlock(Block(vw.Index)) //FIXME: block?
+    emitBlock(Block(vw.Acc)) //FIXME: block?
     //scope = appendScope()
 
-    def emitSubGraphOp(block: Exp[Any], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]]) {
+    def emitSubGraphOp(block: Block[Any], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]]) {
       stream.print("{\"type\":\"SubGraph\", ")
-      val resultId = if (quote(getBlockResult(block)) == "()") quote(block) else quote(getBlockResult(block)) //TODO: :(
+      val resultId = if (quote(getBlockResult(block)) == "()") quote(block.res) else quote(getBlockResult(block)) //TODO: :(
       stream.print("\"outputId\":\"" + resultId + "\",\n")
       emitDepsCommon(controlDeps, antiDeps)
       emitSubGraph("", block)
-      emitOutput(block)
+      emitOutput(block.res)
       stream.println("},")
     }
 
-    emitSubGraphOp(vw.init, Nil, Nil)
-    emitSubGraphOp(vw.variant, List(vw.init), Nil)
+    emitSubGraphOp(Block(vw.init), Nil, Nil) //FIXME: block?
+    emitSubGraphOp(Block(vw.variant), List(vw.init), Nil) //FIXME: block?
     //scope = save
   }
 
@@ -439,7 +439,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
                          stream.println("  \"" + prefix + "Value\": \"" + quote(x) + "\"")
     case s:Sym[Any] =>   stream.println("  \"" + prefix + "Type\": \"symbol\",")
-                         stream.println("  \"" + prefix + "Value\": \"" + quote(getBlockResult(x)) + "\"")    
+                         stream.println("  \"" + prefix + "Value\": \"" + quote(getBlockResult(Block(x))) + "\"") // x might be a Reify
   }
   
   def emitOutput(x: Exp[Any])(implicit stream: PrintWriter) = emitConstOrSym(x, "output")
@@ -448,10 +448,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     stream.print("{\"type\":\"EOG\"}\n],\n")
   }
 
-  def emitSubGraph(prefix: String, e: Exp[Any])(implicit stream: PrintWriter) = e match {
-    case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
-                         stream.println("  \"" + prefix + "Value\": \"" + quote(e) + "\",")
-    case s:Sym[Any] =>  stream.println("  \"" + prefix + "Type\": \"symbol\",")
+  def emitSubGraph(prefix: String, e: Block[Any])(implicit stream: PrintWriter) = e match {
+    case Block(c:Const[Any]) => stream.println("  \"" + prefix + "Type\": \"const\",")
+                         stream.println("  \"" + prefix + "Value\": \"" + quote(c) + "\",")
+    case Block(s:Sym[Any]) =>  stream.println("  \"" + prefix + "Type\": \"symbol\",")
                         stream.println("  \"" + prefix + "Ops\": [")
                         val saveMutatingDeps = kernelMutatingDeps
                         val saveInputDeps = kernelInputDeps

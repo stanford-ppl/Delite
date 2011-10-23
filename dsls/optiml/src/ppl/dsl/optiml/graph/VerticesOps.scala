@@ -53,7 +53,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
   case class VerticesClone[V <: Vertex:Manifest](x: Exp[Vertices[V]]) extends Def[Vertices[V]]
   case class VerticesPBeliefs[V <: Vertex:Manifest](x: Exp[Vertices[V]]) extends Def[Unit]
   
-  case class VerticesForeach[V <:Vertex:Manifest](in: Exp[Vertices[V]], v: Sym[V], func: Exp[Unit])
+  case class VerticesForeach[V <:Vertex:Manifest](in: Exp[Vertices[V]], v: Sym[V], func: Block[Unit])
     extends DeliteOpForeachBounded[Vertex,V,Vertices] {
 
     val i = fresh[Int]

@@ -651,7 +651,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     lazy val body: Def[Vector[A]] = copyBodyOrElse(DeliteReduceElem[Vector[A]](
       func = reifyEffects(x(v)),
       Nil,
-      zero = this.zero,
+      zero = reifyEffects(this.zero),
       rV = this.rV,
       rFunc = reifyEffects(this.func(rV._1, rV._2)),
       true
@@ -971,7 +971,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixInsertAllCols(x,pos,y) => emitValDef(sym, quote(x) + ".insertAllCols(" + quote(pos) + "," + quote(y) + ")")
     case MatrixRemoveRows(x,pos,len) => emitValDef(sym, quote(x) + ".removeRows(" + quote(pos) + "," + quote(len) + ")")
     case MatrixRemoveCols(x,pos,len) => emitValDef(sym, quote(x) + ".removeCols(" + quote(pos) + "," + quote(len) + ")")
-    case MatrixRawData(x) => emitValDef(sym, quote(getBlockResult(x)) + ".data")  // getBlockResult necessary?? should it be everywhere?
+    case MatrixRawData(x) => emitValDef(sym, quote(x) + ".data")
     case _ => super.emitNode(sym, rhs)
   }
 }

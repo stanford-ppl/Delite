@@ -43,7 +43,7 @@ trait EdgeOpsExp extends EdgeOps with EffectExp {
   
   ///////////////////////////////////////////////////
   // implemented via delite ops
-  case class EdgesForeach[E <:Edge:Manifest](in: Exp[Edges[E]], v: Sym[E], func: Exp[Unit])
+  case class EdgesForeach[E <:Edge:Manifest](in: Exp[Edges[E]], v: Sym[E], func: Block[Unit])
     extends DeliteOpForeachBounded[Edge,E,Edges] {
 
     val i = fresh[Int]
