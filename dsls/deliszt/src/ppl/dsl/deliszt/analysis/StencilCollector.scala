@@ -200,7 +200,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   def matchFor(i: Int) = {
     currentFor match {
-      case Some(x) => i == x
+      case Some(x: Int) => i == x
       case _ => false
     }
   }

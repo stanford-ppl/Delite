@@ -22,6 +22,9 @@ sc|ppl.apps.liszt.scalar_convection.ScalarConvectionRunner
 sc_rw|ppl.apps.liszt.scalar_convection_rw.SCRRunner
 mesh_smooth|ppl.apps.liszt.mesh_smooth.MeshSmoothRunner
 karthik_smooth|ppl.apps.liszt.KarthikSmooth.MeshSmoothRunner
+tpchsf1|ppl.apps.dataquery.tpch.TPCHRunner
+tpchsf3|ppl.apps.dataquery.tpch.TPCHRunner
+tpchsf5|ppl.apps.dataquery.tpch.TPCHRunner
 cf|ppl.apps.ml.cf.TopNRunner
 sl|ppl.apps.liszt.test.SimpleLoopRunner
 rl|ppl.apps.liszt.test.RangeLoopRunner

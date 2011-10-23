@@ -44,4 +44,6 @@ trait DeliteCLikeGenVariables extends CLikeCodegen {
 
 trait DeliteCudaGenVariables extends CudaGenEffect with DeliteCLikeGenVariables
 
+trait DeliteOpenCLGenVariables extends OpenCLGenEffect with DeliteCLikeGenVariables
+
 trait DeliteCGenVariables extends CGenEffect with DeliteCLikeGenVariables

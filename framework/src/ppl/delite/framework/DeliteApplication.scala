@@ -10,6 +10,7 @@ import analysis.{MockStream, TraversalAnalysis}
 import codegen.c.TargetC
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
+import codegen.opencl.TargetOpenCL
 import codegen.scala.TargetScala
 import codegen.Target
 import ops.DeliteOpsExp
@@ -22,10 +23,18 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   lazy val scalaTarget = new TargetScala{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val cudaTarget = new TargetCuda{val IR: DeliteApplication.this.type = DeliteApplication.this}
   lazy val cTarget = new TargetC{val IR: DeliteApplication.this.type = DeliteApplication.this}
+  lazy val openclTarget = new TargetOpenCL{val IR: DeliteApplication.this.type = DeliteApplication.this}
 
-  // TODO: this should be handled via command line options
-  lazy val targets = List[DeliteApplicationTarget](scalaTarget, cudaTarget /*, cTarget*/)
-  val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.map(getCodeGenPkg(_))
+  var targets = List[DeliteApplicationTarget](scalaTarget)
+  if(Config.generateCUDA)
+    targets = cudaTarget :: targets
+  if(Config.generateC)
+    targets = cTarget :: targets
+  if(Config.generateOpenCL)
+    targets = openclTarget :: targets
+
+  val generators: List[GenericFatCodegen{ val IR: DeliteApplication.this.type }] = targets.reverse.map(getCodeGenPkg(_))
+
 
   // TODO: refactor, this is from ScalaCompile trait
   lazy val codegen: ScalaCodegen { val IR: DeliteApplication.this.type } = 
@@ -34,12 +43,12 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   // generators created by getCodeGenPkg will use the 'current' scope of the deliteGenerator as global scope
   val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
                                                val generators = DeliteApplication.this.generators }
-  
+
   lazy val analyses: List[TraversalAnalysis{ val IR: DeliteApplication.this.type }] = List()
   
   // Store and retrieve
   val analysisResults = MMap[String,Any]()
-                                               
+
   var args: Rep[Array[String]] = _
   
   final def main(args: Array[String]) {
@@ -98,6 +107,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       // TODO: dot output
       reset
     }
+    
     deliteGenerator.initializeGenerator(Config.buildDir, args, analysisResults)
     deliteGenerator.emitSource(liftedMain, "Application", stream)
     deliteGenerator.finalizeGenerator()
@@ -108,7 +118,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
         println(globalDef)
       }
     }
-    
+
     generators foreach { _.finalizeGenerator()}
   }
 

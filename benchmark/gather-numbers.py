@@ -52,6 +52,8 @@ def main():
     if len(args) != 0:
         parser.error("incorrect number of arguments")
     
+
+
     loadOptions(opts)
     loadProps(options)
     loadParams(options)
@@ -88,18 +90,27 @@ def loadOptions(opts):
     options['stencil'] = not opts.no_stencil
     options['print_globals'] = opts.print_globals
 
-    #set delite home
-    if(opts.delite_home != "_env"):
-        props["delite.home"] = opts.delite_home
-    else:
-        props["delite.home"] = DELITE_HOME
-        
     options['keep-going'] = opts.keep_going
     options['input-size'] = opts.input_size
     
     if opts.datasets:
       options['datasets'] = opts.datasets
-    
+      
+    #set delite home
+    if(opts.delite_home != "_env"):
+        props["delite.home"] = opts.delite_home
+    else:
+        props["delite.home"] = DELITE_HOME
+
+    if props["delite.home"] is None:
+        #try to check if it is in the usual place
+        script_path = os.path.realpath(__file__)
+        candidate_path = script_path 
+        candidate_path = candidate_path.replace('/benchmark/gather-numbers.py','',1)
+        if os.path.isfile(candidate_path + os.sep + "delite.properties"):
+            props['delite.home']= candidate_path
+        else:
+            exit("DELITE_HOME not defined and delite.properties not at ../ from script, needs to be set to point to Delite home directory")
     stats_dir = opts.stats_dir
     if props['delite.home']:
       stats_dir = stats_dir or props['delite.home']  + "/benchmark/times"
@@ -116,8 +127,8 @@ def loadOptions(opts):
 
 def loadProps(options):
     #load and check all the required environment variables
-    if props["delite.home"] is None:
-        exit("DELITE_HOME not defined, needs to be set to point to Delite home directory")
+    
+    
     config = ConfigParser.ConfigParser()
     config.readfp(open(props["delite.home"] + '/delite.properties'))
     items = config.items('delite')
@@ -171,7 +182,7 @@ def launchApps(options):
         os.putenv('LMS_HOME', props['libs.lms.home'])
         os.putenv('SCALA_VIRT_HOME', props['scala.virtualized.home'])
         print "==  Generating DEG file with options: " + opts
-        print "COMMAND: " + props['delite.home'] + "/bin/gen " + classes[app] + " " + params[app]
+        print "executing command: " + props['delite.home'] + "/bin/gen " + classes[app] + " " + params[app]
         ecode = os.system(props['delite.home'] + "/bin/gen " + classes[app] + " " + params[app])
         if ecode != 0 and options['keep-going'] == None:
             print "Detected abnormal exit code, exiting"
@@ -227,12 +238,19 @@ def isTflop():
         return False
 
 def loadClasses(options):
+    print """
+=============================
+==  Loading App Classes
+============================="""
     f = open(props['delite.home'] + "/benchmark/config/classes", 'r')
     for line in f:
-        tokens = line.strip().split('|')
-        app = tokens.pop(0)
-        clazz = tokens.pop(0)
-        classes[app] = clazz
+        tokens = line.split('|')
+        if len(tokens) == 2:
+            app = tokens.pop(0)
+            clazz = tokens.pop(0)
+            classes[app] = clazz
+        else:
+            print "ignoring[" + line + "] from class list"
     f.close()
 
 def loadParams(options):

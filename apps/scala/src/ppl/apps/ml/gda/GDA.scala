@@ -53,10 +53,10 @@ trait GDA extends OptiMLApplication {
     /* x(i) is a row vector for us, while it is defined a column vector in the formula */
     val sigma = sum(0, m) { i =>
       if (y(i) == false){
-        (((x(i)-mu0).t)**(x(i)-mu0))
+        (((x(i)-mu0).t) ** (x(i)-mu0))
       }
       else{
-        (((x(i)-mu1).t)**(x(i)-mu1))
+        (((x(i)-mu1).t) ** (x(i)-mu1))
       }
     }
 

@@ -4,6 +4,8 @@ import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.ops._
 import java.util.ArrayDeque
 import ppl.delite.runtime.cost._
+import ppl.delite.runtime.Config
+import ppl.delite.runtime.graph.targets.Targets
 
 /**
  * Author: Kevin J. Brown
@@ -121,6 +123,17 @@ trait StaticScheduler {
       if (!op.isScheduled)
         error("Graph dependencies are unsatisfiable")
     }
+  }
+
+
+  //TODO: Separate hardware and programming model
+  protected def scheduleOnGPU(op:DeliteOP) = {
+    if (Config.gpuBlackList.contains(op.id))
+      false
+    else if (!op.supportsTarget(Targets.Cuda) && !op.supportsTarget(Targets.OpenCL))
+      false
+    else
+      true
   }
 
 }

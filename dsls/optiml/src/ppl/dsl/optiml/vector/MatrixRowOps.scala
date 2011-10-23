@@ -3,7 +3,7 @@ package ppl.dsl.optiml.vector
 import java.io.PrintWriter
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase, CudaGenBase, CGenBase}
+import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase, CudaGenBase, CGenBase, OpenCLGenBase}
 import scala.virtualization.lms.internal.GenericCodegen
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml.datastruct.scala.{MatrixRow, MatrixRowImpl}
@@ -58,4 +58,5 @@ trait ScalaGenMatrixRowOps extends BaseGenMatrixRowOps with ScalaGenBase {
 }
 
 trait CudaGenMatrixRowOps extends CudaGenBase with BaseGenMatrixRowOps
+trait OpenCLGenMatrixRowOps extends OpenCLGenBase with BaseGenMatrixRowOps
 trait CGenMatrixRowOps extends CGenBase with BaseGenMatrixRowOps

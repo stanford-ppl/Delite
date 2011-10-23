@@ -133,10 +133,19 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             hasOutputSlotTypes = true
             "void"
           case ("cuda", ThinDef(z)) => z match {
-                case op: AbstractLoop[_] => 
+                case op: AbstractLoop[_] =>
                   hasOutputSlotTypes = true
             "void"
                 case _ => "void"
+          }
+          case ("opencl", op: AbstractFatLoop) =>
+            hasOutputSlotTypes = true
+            "void"
+          case ("opencl", ThinDef(z)) => z match {
+            case op: AbstractLoop[_] =>
+            	hasOutputSlotTypes = true
+              "void"
+            case _ => "void"
           }
           case _ => 
             assert(sym.length == 1) // if not set hasOutputSlotTypes and use activation record
@@ -188,9 +197,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
       } catch {
         case e:GenerationFailedException => // no generator found
           gen.exceptionHandler(e, outFile, kstream)
-          //println(gen.toString + ":" + (sym map(quote)))
-          //e.printStackTrace
-          
+          if(Config.dumpException) {
+            println(gen.toString + ":" + (sym map(quote)))
+            e.printStackTrace
+          }
           //if(gen.nested > 1) {
           //  nestedNode = gen.lastNodeAttempted
           //}
@@ -286,7 +296,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     emitExecutionOpCommon(id, outputs, inputs, mutableInputs, controlDeps, antiDeps)
     stream.println("},")
   }
-  
+
   def emitSingleTask(id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"SingleTask\"")
