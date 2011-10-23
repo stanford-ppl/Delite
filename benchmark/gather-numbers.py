@@ -248,7 +248,7 @@ def loadClasses(options):
         if len(tokens) == 2:
             app = tokens.pop(0)
             clazz = tokens.pop(0)
-            classes[app] = clazz
+            classes[app] = clazz.strip()
         else:
             print "ignoring[" + line + "] from class list"
     f.close()

@@ -67,8 +67,8 @@ case class MultipleMeshObjSet[MO<:MeshObj](val ms : MeshSet[MO]) extends Multipl
 case class FieldAccess(field: Int, mo: MeshObj)
 
 class ReadWriteSet {
-  val read = MSet[FieldAccess]()
-  val write = MSet[FieldAccess]()
+  var read = ISet[FieldAccess]()
+  var write = ISet[FieldAccess]()
 }
 
 object StencilCollector {

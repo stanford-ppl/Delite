@@ -69,6 +69,16 @@ class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
     
     edge_idx(numBlocks) = currEdgeV
     
+    System.out.println("BLOCK BLOCK NB " + numBlocks + " NE " + totalEdges)
+  
+    for(i <- 0 until numBlocks) {
+      System.out.println("START " + edge_idx(i) + " END " + edge_idx(i+1))
+    
+      for(j <- edge_idx(i) until edge_idx(i+1)) {
+        System.out.println(edge_vals(j))
+      }
+    }
+    
     // Color!
     val (colors, numColors) = colorer.color(numBlocks, edge_idx, edge_vals)
     val nodes = (ms map { mo: MO => mo.internalId }).toArray
