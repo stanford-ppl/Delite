@@ -20,7 +20,9 @@ class MeshSetImpl[MO<:MeshObj:MeshObjConstruct](override val size : Int) extends
 }
 
 // No zero cell
-class CellSetImpl(override val size : Int) extends MeshSet[Cell] {
+class CellSetImpl(val ncells : Int) extends MeshSet[Cell] {
+  override val size = ncells - 1
+
   def apply(i : Int) = {
     new CellImpl(i+1)
   }

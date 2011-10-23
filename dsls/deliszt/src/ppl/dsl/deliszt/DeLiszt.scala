@@ -36,6 +36,8 @@ trait DeLisztScalaOpsPkg extends Base
   with ImplicitOps with OrderingOps with StringOps
   with BooleanOps with PrimitiveOps with MiscOps with TupleOps
   with MathOps with CastingOps with ObjectOps
+  // TEST
+  with RangeOps
   // only included because of args. TODO: investigate passing args as a vec
   with ArrayOps
 

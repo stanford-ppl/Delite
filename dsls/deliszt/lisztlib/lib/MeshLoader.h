@@ -138,8 +138,8 @@ private:
      from: Size of CRS
      mult: Size of each item
      */
-    void setCRSConstField(jobject& jmesh, string field,
-            CRSMeshPrivate::CRSConst& crs, size_t from, size_t mult);
+    void setCRSPairField(jobject& jmesh, string field,
+            CRSMeshPrivate::CRSConst& crs, size_t from);
 
     jintArray copyIdxArray(CRSMeshPrivate::idx_type* array, size_t len);
     jintArray copyIdArray(CRSMeshPrivate::id_type* array, size_t len);

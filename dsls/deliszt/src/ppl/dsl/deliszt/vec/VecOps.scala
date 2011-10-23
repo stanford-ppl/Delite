@@ -417,8 +417,13 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   
   /////////////////////
   // object interface
-  def vec_obj_new[N<:IntM:Manifest:MVal, A:Manifest](xs: Exp[A]*) = reflectPure(VecObjNew[N,A](xs:_*))
-  def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i: Exp[Int]) = reflectPure(VecObjNNew[N,A](i))
+  def vec_obj_new[N<:IntM:Manifest:MVal, A:Manifest](xs: Exp[A]*) = {
+    reflectMutable(VecObjNew[N,A](xs:_*)).unsafeImmutable
+  }
+  
+  def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i: Exp[Int]) = {
+    reflectMutable(VecObjNNew[N,A](i)).unsafeImmutable
+  }
 
   /////////////////////
   // class interface
@@ -430,8 +435,8 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   def vec_plus_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecPlusScalar(x,y))
   def vec_minus[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecMinus(x,y))
   def vec_minus_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecMinusScalar(x,y))
-  def vec_times[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(new VecTimes(x,y))
-  def vec_times_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(new VecTimesScalar(x,y))
+  def vec_times[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecTimes(x,y))
+  def vec_times_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecTimesScalar(x,y))
 
   def vec_divide[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecDivide(x,y))
   def vec_divide_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecDivideScalar(x,y))
@@ -446,8 +451,8 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
 
   def vec_map[N<:IntM:Manifest:MVal,A:Manifest,B:Manifest](x: Exp[Vec[N,A]], f: Exp[A] => Exp[B]) = reflectPure(VecMap(x, f))
   
-  def vec_zip_min[N<:IntM:Manifest:MVal, A:Manifest:Ordering](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(new VecZipMin(x,y))
-  def vec_zip_max[N<:IntM:Manifest:MVal, A:Manifest:Ordering](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(new VecZipMax(x,y))
+  def vec_zip_min[N<:IntM:Manifest:MVal, A:Manifest:Ordering](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecZipMin(x,y))
+  def vec_zip_max[N<:IntM:Manifest:MVal, A:Manifest:Ordering](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecZipMax(x,y))
   
   /* Language ops */
   def cross[A:Manifest:Arith](a: Exp[Vec[_3,A]], b: Exp[Vec[_3,A]]) = reflectPure(VecCross(a,b))

@@ -188,7 +188,10 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     currentFor match {
 	    case Some(x) => {
 	      for(mo <- mos.objs) {
-  	      forMap(x)(currentMo.get).write += FieldAccess(sym.id, mo)
+          mo match {
+            case Cell(0) => // Ignore
+            case _ => forMap(x)(currentMo.get).write += FieldAccess(sym.id, mo)
+          }
 	      }
 	    }
 	    case None => System.out.println("No top level for")

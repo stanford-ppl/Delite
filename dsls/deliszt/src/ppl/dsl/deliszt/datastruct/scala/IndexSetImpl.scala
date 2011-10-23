@@ -37,5 +37,5 @@ class IndexSetImpl[MO <: MeshObj](data : Array[Int], start: Int, end : Int)(impl
 
 // Direction bit should get reversed for CW
 class CWIndexSetImpl[MO <: MeshObj](data: Array[Int], start: Int, end: Int)(implicit moc: MeshObjConstruct[MO]) extends IndexSetImpl[MO](data, start, end) {
-  override def apply(i : Int) : MO = MeshObjImpl[MO](BitReverse.MASK ^ data(start + i))(moc)
+  override def apply(i : Int) : MO = MeshObjImpl[MO](BitReverse.MASK ^ data(end - i - 1))(moc)
 }

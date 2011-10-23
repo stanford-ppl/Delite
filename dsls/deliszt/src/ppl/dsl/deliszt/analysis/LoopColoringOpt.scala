@@ -94,10 +94,11 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         
         // Output coloring for debugging
         System.out.print("Loop id: " + id)
+        System.out.println(" num elements: " + ms.size)
         System.out.println(" num colors: " + coloring.numColors)
         
         var i = 0
-        while(i < coloring.numColors) {
+        while(i <= coloring.numColors) {
           System.out.println("color_idx: " + i + " " + color_idx(i))
           i += 1
         }

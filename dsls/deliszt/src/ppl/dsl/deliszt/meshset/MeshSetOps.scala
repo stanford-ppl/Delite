@@ -36,6 +36,13 @@ trait MeshSetOpsExp extends MeshSetOps with VariablesExp with BaseFatExp {
 
     def sync = n => List()
     val size = in.size
+    val reifiedFunc = reifyEffects(this.func(dc_apply(in,v)))
+    
+    // loop
+    override lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
+      func = reifiedFunc,
+      sync = reifyEffects(this.sync(i))
+    ))
   }
 
   ////////////////////////////////
@@ -56,7 +63,8 @@ trait MeshSetOpsExp extends MeshSetOps with VariablesExp with BaseFatExp {
   // class interface
   
   def meshset_foreach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]], block: Exp[MO] => Exp[Unit]) = {
-    reflectEffect(MeshSetForeach(x, block))
+    val t = MeshSetForeach(x,block)
+    reflectEffect(t, summarizeEffects(t.reifiedFunc).star)
   }
 }
 

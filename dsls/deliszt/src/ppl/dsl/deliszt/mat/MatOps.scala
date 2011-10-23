@@ -345,8 +345,13 @@ trait MatOpsExp extends MatOps with VariablesExp {
 
   ////////////////////
   // object interface
-  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*) = reflectPure(MatObjNew[R,C,A](vs:_*))
-  def mat_obj_n_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](r: Exp[Int], c: Exp[Int]) = reflectPure(MatObjectNNew[R,C,A](r,c))
+  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*) = {
+    reflectMutable(MatObjNew[R,C,A](vs:_*)).unsafeImmutable
+  }
+  
+  def mat_obj_n_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](r: Exp[Int], c: Exp[Int]) = {
+    reflectMutable(MatObjectNNew[R,C,A](r,c)).unsafeImmutable
+  }
 
   ///////////////////
   // class interface

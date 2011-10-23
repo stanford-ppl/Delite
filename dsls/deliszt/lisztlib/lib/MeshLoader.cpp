@@ -202,12 +202,12 @@ void MeshLoader::setCRSField(jobject& jmesh, string field,
             "L" + prefix + "/CRS;", jcrs);
 }
 
-void MeshLoader::setCRSConstField(jobject& jmesh, string field,
-        CRSMeshPrivate::CRSConst& crs, size_t from, size_t mult) {
-    jintArray values = copyIdPairArray(crs.values, from * mult);
+void MeshLoader::setCRSPairField(jobject& jmesh, string field,
+        CRSMeshPrivate::CRSConst& crs, size_t from) {
+    jintArray values = copyIdPairArray(crs.values, from);
 
     jobject jcrs = createObject(prefix + "/CRSConst",
-            "[II", values, mult);
+            "[II", values, 2);
 
     setScalaField(meshClass, jmesh, field,
             "L" + prefix + "/CRS;", jcrs);
@@ -256,10 +256,10 @@ jintArray MeshLoader::copyIdPairArray(CRSMeshPrivate::IDPair* array,
       buffer[2*i] = array[i].data[0];
       buffer[2*i+1] = array[i].data[1];
     }
-    
-    delete[] buffer;
 
     env->SetIntArrayRegion(jarray, 0, len * 2, buffer);
+
+    delete[] buffer;
 
     return jarray;
 }
@@ -322,14 +322,14 @@ jobject MeshLoader::loadMesh(jstring str) {
         setCRSField(jmesh, "vtoc", data.vtoc, data.nvertices);
 
         // Set edge relations
-        setCRSConstField(jmesh, "etov", data.etov, data.nedges, 2);
+        setCRSPairField(jmesh, "etov", data.etov, data.nedges);
         setCRSField(jmesh, "etof", data.etof, data.nedges);
         setCRSField(jmesh, "etoc", data.etoc, data.nedges);
 
         // Set face relations
         setCRSField(jmesh, "ftov", data.ftov, data.nfaces);
         setCRSField(jmesh, "ftoe", data.ftoe, data.nfaces);
-        setCRSConstField(jmesh, "ftoc", data.ftoc, data.nfaces, 2);
+        setCRSPairField(jmesh, "ftoc", data.ftoc, data.nfaces);
 
         // Set cell relations
         setCRSField(jmesh, "ctov", data.ctov, data.ncells);

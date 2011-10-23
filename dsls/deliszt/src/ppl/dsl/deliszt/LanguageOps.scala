@@ -256,12 +256,12 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   def ID[MO<:MeshObj:Manifest](x: Exp[MO]) = reflectPure(DeLisztID(x))
 
-  def MATH_PI() = MathPi()
-  def MIN_FLOAT() = MinFloat()
-  def MAX_FLOAT() = MaxFloat()
+  def MATH_PI() = reflectPure(MathPi())
+  def MIN_FLOAT() = reflectPure(MinFloat())
+  def MAX_FLOAT() = reflectPure(MaxFloat())
   
-  def wall_time() = WallTime()
-  def processor_time() = ProcessorTime()
+  def wall_time() = reflectEffect(WallTime())
+  def processor_time() = reflectEffect(ProcessorTime())
 }
 
 trait ScalaGenLanguageOps extends ScalaGenBase {
@@ -303,7 +303,7 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case DeLisztTowardsEdgeVertex(e,v) => emitValDef(sym, "generated.scala.Mesh.towards(" + quote(e) + "," + quote(v) + ")")
       case DeLisztTowardsFaceCell(e,c) => emitValDef(sym, "generated.scala.Mesh.towards(" + quote(e) + "," + quote(c) + ")")
       
-      case DeLisztID(x) => emitValDef(sym, quote(x) + ".id")
+      case DeLisztID(x) => emitValDef(sym, quote(x) + ".internalId")
       case DeLisztSize(s) => emitValDef(sym, quote(s) + ".size")
 
       case MinFloat() => emitValDef(sym, "scala.Float.MinValue")

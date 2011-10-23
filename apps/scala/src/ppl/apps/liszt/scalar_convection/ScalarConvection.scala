@@ -74,19 +74,29 @@ trait SC extends DeLisztApplication {
   }
 
   def calcCellGeom(c : Rep[Cell]) : Rep[Unit] = {
+    Print("Calc cell geom ", ID(c))
     var center = Vec(0.f,0.f,0.f)
     val approxCenter = calcCellCenter(c)
+    Print("approx center ", approxCenter)
     var volume = 0.f
     for(f <- faces(c)) {
+      Print("Face ", ID(f))
       val v0 = face_centroid(f) - approxCenter
+      Print("v0", v0)
       for(e <- edgesCCW(towards(f,c))) {
+        Print("edge ccw ", ID(e))
         val v1 = position(head(e)) - approxCenter
         val v2 = position(tail(e)) - approxCenter
+        Print(ID(head(e)), " v1 ", v1)
+        Print(ID(tail(e)), " v2 ", v2)
         val tetVol = dot(v0,cross(v1,v2))
+        Print("tetvol ", tetVol)
         volume += tetVol
         center = center + (approxCenter + face_centroid(f) + position(head(e)) + position(tail(e)))*tetVol
+        Print("center ", center)
       }
     }
+    Print("final center ", center)
     cell_centroid(c) = center / (volume * 4.f)
     cell_volume(c) = volume / 6.f
     unit(0)
@@ -158,8 +168,12 @@ trait SC extends DeLisztApplication {
     for(c <- cells(mesh)) {
       Print("before cell number: ",ID(c)," -> phi value: ",Phi(c))
     }
+    
+    Print("ZA WHILE LOOP")
     while(t < 2.f) {
+      Print("INTERIOR SET")
       for(f <- interior_set) {
+        Print(ID(f))
         val normal = face_unit_normal(f)
         val vDotN = dot(globalVelocity,normal)
         val area = face_area(f)
@@ -171,12 +185,20 @@ trait SC extends DeLisztApplication {
         Flux(inside(f)) -= flux
         Flux(outside(f)) += flux
       }
+      
+      Print("OUTSET SET")
       for(f <- outlet_set) {
+        Print(ID(f))
         val normal = face_unit_normal(f)
         if(ID(outside(f)) == 0)
+        {
+          Print("outside 0 ", ID(inside(f)))
           Flux(inside(f)) -= face_area(f) * dot(normal,globalVelocity) * Phi(inside(f))
-        else
+        }
+        else {
+          Print("outside okay ", ID(outside(f)))
           Flux(outside(f)) -= face_area(f) * dot(-normal,globalVelocity) * Phi(outside(f))
+        }
       }
       for(f <- inlet_set) {
         val area = face_area(f)

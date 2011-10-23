@@ -17,6 +17,10 @@ trait MeshObj {
   override def hashCode = typeName.hashCode + id
 }
 
+object Cell {
+  def unapply(c: Cell) = Some(c.internalId)
+}
+
 trait Cell extends MeshObj {
   def typeName = "Cell"
   
