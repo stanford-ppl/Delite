@@ -32,7 +32,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
   override def testScalaSourcePath = "tests" / "src" / "ppl" / "tests" / "scalatest" 
   override def testResourcesPath = "tests" / "resources"
 
-  val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
+  val virtualization_lms_core = "scala" % "virtualization-lms-core_2.10.0-virtualized-SNAPSHOT" % "0.1"
   
   val scalaToolsSnapshots = ScalaToolsSnapshots
   val scalatest = "org.scalatest" % "scalatest" % "1.4-SNAPSHOT"
@@ -56,7 +56,7 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     override def compileOptions = super.compileOptions ++ compileOptions("-Yno-generic-signatures") // speed up bytecode gen a little
     override def testCompileOptions = super.testCompileOptions ++ compileOptions("-Yno-generic-signatures")
     
-    val virtualization_lms_core = "scala" % "virtualization-lms-core_2.9.x-virtualized-SNAPSHOT" % "0.1"
+    val virtualization_lms_core = "scala" % "virtualization-lms-core_2.10.0-virtualized-SNAPSHOT" % "0.1"
     
     override def localScala =
     defineScala("2.9.x-virtualized-SNAPSHOT", new File(local.scalaVirtualizedHome.get.getOrElse {

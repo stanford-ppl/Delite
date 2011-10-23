@@ -148,7 +148,7 @@ class UpdateablePriorityQueue[T](val heap: Array[NodeInfo[T]], var end: Int, val
 
 object PQTest {
 	def drain(p: UpdateablePriorityQueue[Int]) {
-		var last_pri = Math.MIN_INT
+		var last_pri = Int.MinValue
 		
 		var node: Option[NodeInfo[Int]] = None
 		var i = 0
