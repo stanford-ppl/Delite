@@ -44,7 +44,9 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
   case class DeliteCollectionSize[A:Manifest](x: Exp[DeliteCollection[A]]) extends Def[Int]
   case class DeliteCollectionApply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) extends Def[A]
   case class DeliteCollectionUpdate[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
-  case class DeliteCollectionUnsafeSetData[A:Manifest](x: Exp[DeliteCollection[A]], d: Exp[Array[A]]) extends Def[Unit] // legacy...
+  case class DeliteCollectionUnsafeSetData[A:Manifest](x: Exp[DeliteCollection[A]], d: Exp[Array[A]]) extends Def[Unit] { // legacy...
+    def m = manifest[A]
+  }
 
   def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = x match { // TODO: move to Opt trait ?
     case Def(e: DeliteOpMap[_,_,_]) => e.size
@@ -67,7 +69,7 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
     case DeliteCollectionSize(x) => dc_size(f(x))
     case Reflect(DeliteCollectionApply(l,r), u, es) => reflectMirrored(Reflect(DeliteCollectionApply(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(DeliteCollectionSize(l), u, es) => reflectMirrored(Reflect(DeliteCollectionSize(f(l)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(DeliteCollectionUnsafeSetData(x, d), u, es) => reflectMirrored(Reflect(DeliteCollectionUnsafeSetData(f(x),f(d)), mapOver(f,u), f(es)))(mtype(manifest[Unit]))
+    case Reflect(dc@DeliteCollectionUnsafeSetData(x, d), u, es) => reflectMirrored(Reflect(DeliteCollectionUnsafeSetData(f(x),f(d))(dc.m), mapOver(f,u), f(es)))(mtype(manifest[Unit]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
   
