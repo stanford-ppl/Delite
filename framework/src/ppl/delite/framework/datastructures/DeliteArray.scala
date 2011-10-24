@@ -3,6 +3,7 @@ package ppl.delite.framework.datastructures
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{Base, EffectExp, StructExp, StructExpOptCommon, StructFatExpOptCommon, ScalaGenEffect}
 import java.io.PrintWriter
+import scala.reflect.SourceContext
 
 class DeliteArray[T] // TBD: extends DeliteCollection or not?
 
@@ -60,7 +61,7 @@ trait DeliteArrayOpsExp extends DeliteArrayOps with StructExp with EffectExp {
 trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {
   this: DeliteOpsExp =>
   
-  override def field[T:Manifest](struct: Rep[Any], index: String): Rep[T] = struct match {
+  override def field[T:Manifest](struct: Rep[Any], index: String)(implicit ctx: SourceContext): Rep[T] = struct match {
     //case Def(m: DeliteOpMapLike[_,_]) =>
     //  val alloc = m.body.asInstanceOf[DeliteCollectElem[_,_]].alloc
     //  field(alloc, index)
