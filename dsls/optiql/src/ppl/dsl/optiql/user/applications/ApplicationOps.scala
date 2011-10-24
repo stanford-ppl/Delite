@@ -62,7 +62,7 @@ trait CustomerOpsExp extends CustomerOps with FieldAccessOpsExp with EffectExp w
   def customer_c_mktsegment(__x: Rep[Customer]) = FieldRead[String](__x, "c_mktsegment", "String")
   def customer_c_comment(__x: Rep[Customer]) = FieldRead[String](__x, "c_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -148,7 +148,7 @@ trait LineItemOpsExp extends LineItemOps with FieldAccessOpsExp with EffectExp w
   def lineitem_l_shipmode(__x: Rep[LineItem]) = FieldRead[String](__x, "l_shipmode", "String")
   def lineitem_l_comment(__x: Rep[LineItem]) = FieldRead[String](__x, "l_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -198,7 +198,7 @@ trait NationOpsExp extends NationOps with FieldAccessOpsExp with EffectExp with 
   def nation_n_regionkey(__x: Rep[Nation]) = FieldRead[Int](__x, "n_regionkey", "Int")
   def nation_n_comment(__x: Rep[Nation]) = FieldRead[String](__x, "n_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -263,7 +263,7 @@ trait OrderOpsExp extends OrderOps with FieldAccessOpsExp with EffectExp with Ba
   def order_o_shippriority(__x: Rep[Order]) = FieldRead[Int](__x, "o_shippriority", "Int")
   def order_o_comment(__x: Rep[Order]) = FieldRead[String](__x, "o_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -328,7 +328,7 @@ trait PartOpsExp extends PartOps with FieldAccessOpsExp with EffectExp with Base
   def part_p_retailprice(__x: Rep[Part]) = FieldRead[Double](__x, "p_retailprice", "Double")
   def part_p_comment(__x: Rep[Part]) = FieldRead[String](__x, "p_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -381,7 +381,7 @@ trait PartSupplierOpsExp extends PartSupplierOps with FieldAccessOpsExp with Eff
   def partsupplier_ps_supplycost(__x: Rep[PartSupplier]) = FieldRead[Double](__x, "ps_supplycost", "Double")
   def partsupplier_ps_comment(__x: Rep[PartSupplier]) = FieldRead[String](__x, "ps_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -428,7 +428,7 @@ trait RegionOpsExp extends RegionOps with FieldAccessOpsExp with EffectExp with 
   def region_r_name(__x: Rep[Region]) = FieldRead[String](__x, "r_name", "String")
   def region_r_comment(__x: Rep[Region]) = FieldRead[String](__x, "r_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -487,7 +487,7 @@ trait SupplierOpsExp extends SupplierOps with FieldAccessOpsExp with EffectExp w
   def supplier_s_acctbal(__x: Rep[Supplier]) = FieldRead[Double](__x, "s_acctbal", "Double")
   def supplier_s_comment(__x: Rep[Supplier]) = FieldRead[String](__x, "s_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }

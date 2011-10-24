@@ -34,7 +34,7 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
   }  
   
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case DeliteIfThenElse(c,a,b,h) => reflectPure(DeliteIfThenElse(f(c),f(a),f(b),h))(mtype(manifest[A]))
     case Reflect(DeliteIfThenElse(c,a,b,h), u, es) => reflectMirrored(Reflect(DeliteIfThenElse(f(c),f(a),f(b),h), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
