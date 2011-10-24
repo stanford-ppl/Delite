@@ -3,6 +3,7 @@ package ppl.apps.ml.nb
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
 
+/*
 object NaiveBayesVectorizedRunner extends OptiMLApplicationRunner with NaiveBayesVectorized
 trait NaiveBayesVectorized extends OptiMLApplication {
 	
@@ -109,3 +110,4 @@ trait NaiveBayesVectorized extends OptiMLApplication {
     incorrect_classifications
   }
 }
+*/

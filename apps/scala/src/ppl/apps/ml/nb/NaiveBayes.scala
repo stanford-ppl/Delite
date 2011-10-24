@@ -20,26 +20,28 @@ trait NaiveBayes extends OptiMLApplication {
     val testFile = args(1)
 
     // Train Model
-    val trainingSet = MLInputReader.readTokenMatrix(trainingFile)
+    val (trainingSet,trainingLabels) = MLInputReader.readTokenMatrix(trainingFile)
     //val start_train = System.currentTimeMillis()
-    println("Training model on " + trainingSet.numSamples + " documents.")
+    println("Training model on " + trainingSet.numRows/*numSamples*/ + " documents.")
     tic()
-    val (phi_y1, phi_y0, phi_y) = train(trainingSet)
+    val (phi_y1, phi_y0, phi_y) = train(trainingSet, trainingLabels)//train(trainingSet)
     toc(phi_y1,phi_y0)
 
     // test
-    val testSet = MLInputReader.readTokenMatrix(testFile)
+    //val testSet = MLInputReader.readTokenMatrix(testFile)
+    val (testSet,testLabels) = MLInputReader.readTokenMatrix(testFile)
     println("phi_y1: "); phi_y1.pprint; println("phi_y0: "); phi_y0.pprint; println("phi_y: "+ phi_y)
-    val incorrect_classifications = test(testSet, phi_y1, phi_y0, phi_y)
-    println("Test error: " + incorrect_classifications.doubleValue() / testSet.numSamples.doubleValue())
+    val incorrect_classifications = test(testSet, testLabels, phi_y1, phi_y0, phi_y)//test(testSet, phi_y1, phi_y0, phi_y)
+    println("Test error: " + incorrect_classifications.doubleValue() / testSet.numRows/*numSamples*/.doubleValue())
 
     //PerformanceTimer.save("NaiveBayes")
   }
 
-  def train(ts: Rep[TrainingSet[Double,Double]]) : (Rep[DenseVector[Double]], Rep[DenseVector[Double]], Rep[Double]) = {
-    val numTrainDocs = ts.numSamples
-    val numTokens = ts.numFeatures
-
+  //def train(ts: Rep[TrainingSet[Double,Double]]) : (Rep[DenseVector[Double]], Rep[DenseVector[Double]], Rep[Double]) = {
+  def train(ts: Rep[Matrix[Double]], labels: Rep[DenseVector[Double]]): (Rep[DenseVector[Double]], Rep[DenseVector[Double]], Rep[Double]) = {
+    val numTrainDocs = ts.numRows //ts.numSamples
+    val numTokens = ts.numCols //ts.numFeatures
+    val tsTrans = ts.t
 //    println("training set: ")
 //    ts.pprint
 //    println("training set transposed: ")
@@ -51,21 +53,21 @@ trait NaiveBayes extends OptiMLApplication {
 
     val words_per_email = (0::numTrainDocs){ i => ts(i).sum }
 
-    val spamcount = ts.labels.sum
+    val spamcount = labels.sum //ts.labels.sum
 
 //    val phi_y1 = Vector.zeros(numTokens).mutable
 //    val phi_y0 = Vector.zeros(numTokens).mutable
-
+    
     val phi_y1 = (0::numTokens) { j =>
-      val spamwordcount   = sumIf(0, numTrainDocs) { ts.labels(_) == 1 } { i => ts.t(j,i) }
-      val spam_totalwords = sumIf(0, numTrainDocs) { ts.labels(_) == 1 } { i => words_per_email(i) }
+      val spamwordcount   = sumIf(0, numTrainDocs) { /*ts.*/labels(_) == 1 } { i => /*ts.t*/tsTrans(j,i) }
+      val spam_totalwords = sumIf(0, numTrainDocs) { /*ts.*/labels(_) == 1 } { i => words_per_email(i) }
       
       (spamwordcount + 1) / (spam_totalwords + numTokens)
     }
     
     val phi_y0 = (0::numTokens) { j => 
-      val nonspamwordcount   = sumIf(0, numTrainDocs) { ts.labels(_) != 1 } { i => ts.t(j,i) }
-      val nonspam_totalwords = sumIf(0, numTrainDocs) { ts.labels(_) != 1 } { i => words_per_email(i) }
+      val nonspamwordcount   = sumIf(0, numTrainDocs) { /*ts.*/labels(_) != 1 } { i => /*ts.t*/tsTrans(j,i) }
+      val nonspam_totalwords = sumIf(0, numTrainDocs) { /*ts.*/labels(_) != 1 } { i => words_per_email(i) }
 
       (nonspamwordcount + 1) / (nonspam_totalwords + numTokens)
     }
@@ -99,9 +101,10 @@ trait NaiveBayes extends OptiMLApplication {
     (phi_y1, phi_y0, phi_y)
   }
 
-  def test(ts: Rep[TrainingSet[Double,Double]], phi_y1: Rep[DenseVector[Double]], phi_y0: Rep[DenseVector[Double]], phi_y: Rep[Double]): Rep[Int] = {
-    val numTestDocs = ts.numSamples
-    val numTokens = ts.numFeatures
+  //def test(ts: Rep[TrainingSet[Double,Double]], phi_y1: Rep[DenseVector[Double]], phi_y0: Rep[DenseVector[Double]], phi_y: Rep[Double]): Rep[Int] = {
+  def test(ts: Rep[Matrix[Double]], labels: Rep[DenseVector[Double]], phi_y1: Rep[DenseVector[Double]], phi_y0: Rep[DenseVector[Double]], phi_y: Rep[Double]): Rep[Int] = {
+    val numTestDocs = ts.numRows //ts.numSamples
+    val numTokens = ts.numCols //ts.numFeatures
 
     println("Testing model on " + numTestDocs + " documents.")
 
@@ -117,7 +120,7 @@ trait NaiveBayes extends OptiMLApplication {
     // Compute error on test set
     // why does sum without Int infer a double when we return 1/0?
     val incorrectClassifications = sum(0, numTestDocs) { i =>
-     if (ts.labels(i) != output(i)) 1
+     if (/*ts.*/labels(i) != output(i)) 1
      else 0
     }
     incorrectClassifications

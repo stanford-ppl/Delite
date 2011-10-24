@@ -53,7 +53,10 @@ trait ScalaGenLabelsOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case l@LabelsObjectFromVec(xs) => emitValDef(sym, "new generated.scala.LabelsVectorImpl(" + quote(xs) + ")")
+    // TODO aks: this should create a Struct with the same fields as a DenseVector (Data,IsRow) is the new data structure implementation
+    //           DenseVector operations will read the struct to extract the same fields, leaving no dependencies on the Labels struct
+    //           NOTE: any leftover dependencies on the Labels struct should be erased / remapped to be a dependency on a Map  
+    //case l@LabelsObjectFromVec(xs) => emitValDef(sym, "new generated.scala.LabelsVectorImpl(" + quote(xs) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }
