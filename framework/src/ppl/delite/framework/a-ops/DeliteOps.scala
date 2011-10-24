@@ -2,6 +2,7 @@ package ppl.delite.framework.ops
 
 import java.io.{FileWriter, File, PrintWriter}
 
+import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen, GenerationFailedException}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
@@ -11,7 +12,7 @@ import ppl.delite.framework.extern.lib._
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with IfThenElseFatExp
     with VariantsOpsExp with DeliteCollectionOpsExp
-    with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp  {
+    with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
   
   
 
@@ -650,7 +651,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   // alternative: leave reflectPure as above and override toAtom...
 
-  def reflectPure[A:Manifest](d: Def[A]): Exp[A] = d match {
+  def reflectPure[A:Manifest](d: Def[A]): Exp[A] = d match {  // TODO: should take a SourceContext, too
     case x: DeliteOpLoop[_] =>
       val mutableInputs = readMutableData(d) //TODO: necessary or not??
       //val mutableInputs = Nil // readMutableData(d) TODO: necessary or not??
@@ -658,9 +659,21 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       val be = summarizeBody(x.body)
       reflectEffect(d, re andAlso be)
     case _ => 
-      toAtom(d) // TODO: just to make refactoring easier in case we want to change to reflectSomething
+      toAtom(d)
   }
 
+  // TBD: move logic from reflectPure (above) into reflectEffect?
+
+  // HACK lazy val bites again: must make sure that block is evaluated!
+  override def reflectEffect[A:Manifest](d: Def[A], u: Summary)(implicit ctx: SourceContext): Exp[A] = d match {
+    case x: DeliteOpSingleTask[_] =>
+      x.block
+      super.reflectEffect(d,u)
+    case _ =>
+      super.reflectEffect(d,u)
+  }
+
+  // what about this: enable?
   // override def reflectMutable[A:Manifest](d: Def[A]): Exp[A] = d match {
   //   case x: DeliteOpLoop[_] => 
   //     val mutableInputs = readMutableData(d)    
@@ -835,7 +848,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
 
 
-trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
+trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt with BaseGenStaticData {
   val IR: DeliteOpsExp
   import IR._
 
@@ -894,7 +907,22 @@ trait BaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
 
 }
 
-trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
+
+
+trait ScalaGenStaticDataDelite extends ScalaGenStaticData {
+  val IR: StaticDataExp
+  import IR._
+  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case StaticData(x) => 
+      // TODO: should call super if we're generating a single big scala file
+      emitValDef(sym, "ppl.delite.runtime.graph.ops.Arguments.staticData["+remap(sym.Type)+"](\""+quote(sym)+"\") // static data: " + x)
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+
+trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite with BaseGenDeliteOps { // not sure where to mix in ScalaGenStaticData
   import IR._
 
   def quotearg(x: Sym[Any]) = quote(x) + ": " + quotetp(x)

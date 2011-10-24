@@ -12,6 +12,7 @@ import ops._
  */
 
 class TestGraph extends ForeachGraph { //test choice
+  val EOP = new EOP
   EOP.addDependency(_result._1)
   _result._1.addConsumer(EOP)
   _result = (EOP, EOP.id)

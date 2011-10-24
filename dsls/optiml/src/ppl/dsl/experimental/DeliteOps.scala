@@ -11,7 +11,7 @@ import ppl.delite.framework.extern.lib._
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with IfThenElseFatExp
     with SandboxVariantsOpsExp with SandboxDeliteCollectionOpsExp
-    with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp  {
+    with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with StaticDataExp {
   
   
 
@@ -852,7 +852,7 @@ trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp wi
 
 
 
-trait SandboxBaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt {
+trait SandboxBaseGenDeliteOps extends BaseGenLoopsFat with LoopFusionOpt with BaseGenStaticData {
   val IR: SandboxDeliteOpsExp
   import IR._
 

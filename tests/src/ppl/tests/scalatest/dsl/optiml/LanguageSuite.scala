@@ -7,7 +7,6 @@ import ppl.tests.scalatest._
 object SumRunner extends DeliteTestRunner with OptiMLApplicationRunner with Sum
 trait Sum extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
 		val x = sum(0,10) { i =>
 			i*2
@@ -20,7 +19,6 @@ trait Sum extends DeliteTestModule with OptiMLApplication {
 object SumIfRunner extends DeliteTestRunner with OptiMLApplicationRunner with SumIf
 trait SumIf extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val y = Vector(true, false, true, false, true, false, false, false, true, true)
     val x = sumIf(0,10) { y(_) } { i => Vector.ones(5) }
@@ -33,7 +31,6 @@ trait SumIf extends DeliteTestModule with OptiMLApplication {
 object AggregateIfRunner extends DeliteTestRunner with OptiMLApplicationRunner with AggregateIf
 trait AggregateIf extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
 		val x = aggregateIf(0, 10) { i => i > 4 } { i =>
 			i*2
@@ -46,7 +43,6 @@ trait AggregateIf extends DeliteTestModule with OptiMLApplication {
 object Aggregate2dRunner extends DeliteTestRunner with OptiMLApplicationRunner with Aggregate2d
 trait Aggregate2d extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val x = aggregate(10::13, 3::6) { (i,j) => 
       i*j
@@ -59,7 +55,6 @@ trait Aggregate2d extends DeliteTestModule with OptiMLApplication {
 object Aggregate2dIfRunner extends DeliteTestRunner with OptiMLApplicationRunner with Aggregate2dIf
 trait Aggregate2dIf extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val x = aggregateIf(0::3, 0::4) { (i,j) => i < j } { (i,j) => 
       i*j
@@ -73,7 +68,6 @@ trait Aggregate2dIf extends DeliteTestModule with OptiMLApplication {
 object IndexVectorConstructRunner extends DeliteTestRunner with OptiMLApplicationRunner with IndexVectorConstruct
 trait IndexVectorConstruct extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
 		val x = (0::10) { i =>
 			i*2
@@ -86,7 +80,6 @@ trait IndexVectorConstruct extends DeliteTestModule with OptiMLApplication {
 object IndexVectorConstruct2Runner extends DeliteTestRunner with OptiMLApplicationRunner with IndexVectorConstruct2
 trait IndexVectorConstruct2 extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
 		val x = (0::10, *) { i =>
 			Vector.ones(2) * i
