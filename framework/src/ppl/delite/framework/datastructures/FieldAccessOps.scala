@@ -9,7 +9,7 @@ trait FieldAccessOpsExp extends BaseFatExp {
 
   case class FieldRead[T](o: Exp[_], f: String, t: String) extends Def[T]
   
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case FieldRead(o,fld,t) => FieldRead[A](f(o), fld , t)
     case _ => super.mirror(e,f)
   }
