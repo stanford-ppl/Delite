@@ -197,7 +197,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
   
   val IR: DeliteApplication with OptiLAExp
 
-  override val specialize = Set("VectorImpl", "MatrixImpl", "SymmetricMatrixImpl", "VectorViewImpl", "MatrixRowImpl", "MatrixColImpl")
+  override val specialize = Set("DenseVector", "MatrixImpl"/*, "VectorView"*/)
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
@@ -219,6 +219,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
     parmap(res)
   }
 
+  override def remap(s: String) = parmap(s)
   override def remap[A](m: Manifest[A]): String = {
     var res = super.remap(m)
     res = res.replaceAllLiterally("package$", "")

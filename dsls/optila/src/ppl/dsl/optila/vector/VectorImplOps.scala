@@ -156,7 +156,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   def vector_repmat_impl[A:Manifest](v: Interface[Vector[A]], iRep: Rep[Int], jRep: Rep[Int]) = {
     if (v.isRow) {
       val out = Matrix[A](iRep, jRep*v.length)
-      for (col <- (0::jRep*v.length)){
+      for (col <- 0 until jRep*v.length){
         val colToRep = col % v.length
         var rI = unit(0)
         while(rI < iRep){
@@ -168,7 +168,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
     }
     else {
       val out = Matrix[A](iRep*v.length, jRep)
-      for (row <- (0::iRep*v.length)){
+      for (row <- 0 until iRep*v.length){
         val rowToRep = row % v.length
         var cI = unit(0)
         while(cI < jRep){

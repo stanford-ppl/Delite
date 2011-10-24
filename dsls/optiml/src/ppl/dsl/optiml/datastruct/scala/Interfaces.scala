@@ -57,9 +57,9 @@ trait TrainingSet[@specialized(Boolean, Int, Long, Float, Double) T,@specialized
 
   def transposed: TrainingSet[T,L]
   override def update(row: Int, col: Int, x: T) = throw new UnsupportedOperationException("Training sets are immutable")
-  override def insertRow(pos: Int, x: DenseVector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+  override def insertRow(pos: Int, x: Vector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
   override def insertAllRows(pos: Int, xs: Matrix[T]) = throw new UnsupportedOperationException("Training sets are immutable")
-  override def insertCol(pos: Int, x: DenseVector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+  override def insertCol(pos: Int, x: Vector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
   override def insertAllCols(pos: Int, xs: Matrix[T]) = throw new UnsupportedOperationException("Training sets are immutable")
   override def removeRows(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
   override def removeCols(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")

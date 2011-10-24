@@ -59,7 +59,7 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
     res
   }
 
-  def insertRow(pos: Int, x: DenseVector[T]) {
+  def insertRow(pos: Int, x: Vector[T]) {
     //chkEquals(x._length, _numCols)
     val idx = pos*_numCols
     if (size == 0) _numCols = x.length
@@ -82,7 +82,7 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
     _numRows += xs.numRows
   }
 
-  def insertCol(pos: Int, x: DenseVector[T]) {
+  def insertCol(pos: Int, x: Vector[T]) {
     //chkEquals(x._length, _numRows)
     val newCols = _numCols+1
     if (size == 0) _numRows = x.length

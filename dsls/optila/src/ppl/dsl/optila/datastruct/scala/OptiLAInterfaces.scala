@@ -8,10 +8,10 @@ package ppl.dsl.optila.datastruct.scala
  */
 
  trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] { //extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
-//   def length: Int
+   def length: Int
 //   def isRow: Boolean
 //   def mtrans: Vector[T]  
-//   def apply(n: Int): T
+   def apply(n: Int): T
 //   def update(index: Int, x: T)
 //   def cloneL: Vector[T]
 //   def toList: List[T]
@@ -108,9 +108,9 @@ trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
   def getRow(i: Int): VectorView[T]
   def getCol(j: Int): VectorView[T]
-  def insertRow(pos: Int, x: DenseVector[T])
+  def insertRow(pos: Int, x: Vector[T])
   def insertAllRows(pos: Int, xs: Matrix[T])
-  def insertCol(pos: Int, x: DenseVector[T])
+  def insertCol(pos: Int, x: Vector[T])
   def insertAllCols(pos: Int, xs: Matrix[T])
   def removeRows(pos: Int, len: Int)
   def removeCols(pos: Int, len: Int)

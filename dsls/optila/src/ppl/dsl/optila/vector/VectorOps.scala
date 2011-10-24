@@ -681,7 +681,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpReduce[A] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
-    val size = intf.length
+    val size = copyTransformedOrElse(_.size)(intf.length)
     val zero = implicitly[HasMinMax[A]].maxValue
     def func = (a,b) => if (a < b) a else b
   }
@@ -690,7 +690,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpReduce[A] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
-    val size = intf.length
+    val size = copyTransformedOrElse(_.size)(intf.length)
     val zero = implicitly[HasMinMax[A]].minValue
     def func = (a,b) => if (a > b) a else b
   }
@@ -761,7 +761,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     val inA = intfA.ops.elem.asInstanceOf[Exp[Vector[A]]]  
     val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[B]]]  
     def alloc = b.alloc(intfA.length, intfA.isRow)
-    val size = intfA.length
+    val size = copyTransformedOrElse(_.size)(intfA.length)
   }
 
   case class VectorMutableZipWith[A:Manifest,B:Manifest](intfA: Interface[Vector[A]], intfB: Interface[Vector[B]],
@@ -777,7 +777,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpReduce[A] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
-    val size = intf.length
+    val size = copyTransformedOrElse(_.size)(intf.length)
     val zero = implicitly[Arith[A]].empty
   }
 
@@ -787,7 +787,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
     def alloc = b.alloc(0, intf.isRow)
     def func = e => e 
-    val size = intf.length
+    val size = copyTransformedOrElse(_.size)(intf.length)
 
     def m = manifest[A]  
     def mVA = manifest[VA]
@@ -799,7 +799,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
     def alloc = b.alloc(0,unit(true))
     def func = e => v // should we make available and use a helper function like index(e)?
-    val size = intf.length
+    val size = copyTransformedOrElse(_.size)(intf.length)
 
     def m = manifest[A]  
     def mVA = manifest[VFINDR]
@@ -809,7 +809,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpFilterReduce[A,Int] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
-    val size = intf.length
+    val size = copyTransformedOrElse(_.size)(intf.length)
     val zero = unit(0)
     def func = e => unit(1)
     def reduce = (a,b) => a + b   
@@ -928,7 +928,10 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   
   def vector_map[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[B])(implicit b: VectorBuilder[B,VB]) = reflectPure(VectorMap[A,B,VB](x,f)) // TODO: effect if func effectful!
   def vector_mmap[A:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[A]) = reflectWrite(x.ops.elem)(VectorMutableMap(x,f)) // TODO: effect if func effectful!
-  def vector_foreach[A:Manifest](x: Interface[Vector[A]], block: Exp[A] => Exp[Unit]) = reflectEffect(VectorForeach(x, block))
+  def vector_foreach[A:Manifest](x: Interface[Vector[A]], block: Exp[A] => Exp[Unit]) = {
+    val vf = VectorForeach(x, block) //reflectEffect(VectorForeach(x, block)) 
+    reflectEffect(vf, summarizeEffects(vf.body.asInstanceOf[DeliteForeachElem[A]].func).star)
+  }
   def vector_zipwith[A:Manifest,B:Manifest,R:Manifest,VR:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]], f: (Exp[A],Exp[B]) => Exp[R])(implicit b: VectorBuilder[R,VR]) = {
     reflectPure(VectorZipWith[A,B,R,VR](x,y,f))
   }
@@ -1071,15 +1074,15 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
 //     case DenseVectorEmptyFloat() => emitValDef(sym, "generated.scala.EmptyVectorFloatImpl")
 //     case DenseVectorEmptyInt() => emitValDef(sym, "generated.scala.EmptyVectorIntImpl")
 //     case v@DenseVectorEmpty() => emitValDef(sym, "new generated.scala.EmptyVectorImpl[" + remap(v.mA) + "]")
-    case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new generated.scala.DenseVector[" + remap(v.mA) + "](" + quote(length) + "," + quote(isRow) + ")")
+    case v@DenseVectorNew(length, isRow) => emitValDef(sym, "new " + remap("generated.scala.DenseVector[" + remap(v.mA) + "]")+"(" + quote(length) + "," + quote(isRow) + ")")
     case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new generated.scala.RangeVector(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
-    case DenseVectorZeroDouble(length, isRow) => emitValDef(sym, "new generated.scala.DenseVector[Double](" + quote(length) + ", " + quote(isRow) + ")")
-    case DenseVectorZeroFloat(length, isRow) => emitValDef(sym, "new generated.scala.DenseVector[Float](" + quote(length) + ", " + quote(isRow) + ")")
-    case DenseVectorZeroInt(length, isRow) => emitValDef(sym, "new generated.scala.DenseVector[Int](" + quote(length) + ", " + quote(isRow) + ")")
-    case DenseVectorEmptyDouble() => emitValDef(sym, "new generated.scala.DenseVector[Double](0,true)")
-    case DenseVectorEmptyFloat() => emitValDef(sym, "new generated.scala.DenseVector[Float](0,true)")
-    case DenseVectorEmptyInt() => emitValDef(sym, "new generated.scala.DenseVector[Int](0,true)")
-    case v@DenseVectorEmpty() => emitValDef(sym, "new generated.scala.DenseVector[" + remap(v.mA) + "](0,true)")
+    case DenseVectorZeroDouble(length, isRow) => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Double]")+"(" + quote(length) + ", " + quote(isRow) + ")")
+    case DenseVectorZeroFloat(length, isRow) => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Float]")+"(" + quote(length) + ", " + quote(isRow) + ")")
+    case DenseVectorZeroInt(length, isRow) => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Int]")+"(" + quote(length) + ", " + quote(isRow) + ")")
+    case DenseVectorEmptyDouble() => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Double]")+"(0,true)")
+    case DenseVectorEmptyFloat() => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Float]")+"(0,true)")
+    case DenseVectorEmptyInt() => emitValDef(sym, "new " + remap("generated.scala.DenseVector[Int]")+"(0,true)")
+    case v@DenseVectorEmpty() => emitValDef(sym, "new " + remap("generated.scala.DenseVector[" + remap(v.mA) + "]")+"(0,true)")
     case _ => super.emitNode(sym, rhs)
   }
 }
