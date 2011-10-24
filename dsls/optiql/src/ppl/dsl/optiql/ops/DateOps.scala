@@ -3,7 +3,7 @@ package ppl.dsl.optiql.ops
 import ppl.dsl.optiql.datastruct.scala.util.Date
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{ScalaGenBase, ScalaGenEffect, BaseExp, Base}
-
+import scala.reflect.SourceContext
 
 trait DateOps extends Base {
 
@@ -33,7 +33,7 @@ trait DateOpsExp extends DateOps with BaseExp {
   def dateObjectApply(str: Rep[String]) = DateObjectApply(str)
   def dateLessThan(ld: Rep[Date], rd: Rep[Date]) = DateLessThan(ld, rd)
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case DateLessThan(l,r) => dateLessThan(f(l), f(r));
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]

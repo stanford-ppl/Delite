@@ -4,6 +4,7 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Base, ScalaGenFat, CudaGenEffect, OpenCLGenEffect}
 import scala.virtualization.lms.internal.{GenericFatCodegen}
+import scala.reflect.SourceContext
 
 trait DeliteCollectionOps extends Base {
     
@@ -64,7 +65,7 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
   //////////////
   // mirroring
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case DeliteCollectionApply(x, n) => dc_apply(f(x), f(n))
     case DeliteCollectionSize(x) => dc_size(f(x))
     case Reflect(DeliteCollectionApply(l,r), u, es) => reflectMirrored(Reflect(DeliteCollectionApply(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))

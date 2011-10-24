@@ -1,5 +1,6 @@
 package ppl.dsl.optiml.io
 
+import scala.reflect.SourceContext
 import java.io.{PrintWriter}
 import scala.virtualization.lms.common.{TupleOpsExp, Base, BaseFatExp}
 import ppl.delite.framework.DeliteApplication
@@ -43,7 +44,7 @@ trait MLInputReaderOpsExp extends MLInputReaderOps with BaseFatExp { this: MLInp
   def obj_mlinput_read_tokenmatrix(filename: Exp[String]) = reflectEffect(MLInputReadTokenMatrix(filename))
   def obj_mlinput_read_template_models(directory: Exp[String]) = reflectEffect(MLInputReadTemplateModels(directory))
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(e@MLInputReadTokenMatrix(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MLInputReadTokenMatrix(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
