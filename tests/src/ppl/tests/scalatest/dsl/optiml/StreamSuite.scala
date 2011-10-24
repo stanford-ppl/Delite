@@ -18,7 +18,6 @@ import ppl.tests.scalatest._
 object StreamInitSmallRunner extends DeliteTestRunner with OptiMLApplicationRunner with StreamInitSmall
 trait StreamInitSmall extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val s = Stream[Int](1000, 1000){ (i,j) => random[Int] }
 
@@ -32,7 +31,6 @@ trait StreamInitSmall extends DeliteTestModule with OptiMLApplication {
 object StreamInitPureLargeRunner extends DeliteTestRunner with OptiMLApplicationRunner with StreamInitPureLarge
 trait StreamInitPureLarge extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val s = Stream[Int](1000000, 10000){ (i,j) => i+j }
 
@@ -46,7 +44,6 @@ trait StreamInitPureLarge extends DeliteTestModule with OptiMLApplication {
 object StreamInitEffectLargeRunner extends DeliteTestRunner with OptiMLApplicationRunner with StreamInitEffectLarge
 trait StreamInitEffectLarge extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val s = Stream[Int](1000000, 10000){ (i,j) => random[Int] }
 
@@ -60,7 +57,6 @@ trait StreamInitEffectLarge extends DeliteTestModule with OptiMLApplication {
 object StreamForeachRunner extends DeliteTestRunner with OptiMLApplicationRunner with StreamForeach
 trait StreamForeach extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val s = Stream[Int](100000, 1000){ (i,j) => random[Int] }
     s.foreachRow { v => collect(v.length == 1000 && v.sum.abs > 0) }
@@ -72,7 +68,6 @@ trait StreamForeach extends DeliteTestModule with OptiMLApplication {
 object StreamCorrectSmallRunner extends DeliteTestRunner with OptiMLApplicationRunner with StreamCorrectSmall
 trait StreamCorrectSmall extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     //should be row vectors starting at 0, 10, ... 90
     val s = Stream[Double](10,10){ (i,j) => i*10+j }
@@ -85,7 +80,6 @@ trait StreamCorrectSmall extends DeliteTestModule with OptiMLApplication {
 object StreamCorrectLargeRunner extends DeliteTestRunner with OptiMLApplicationRunner with StreamCorrectLarge
 trait StreamCorrectLarge extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     //should be row vectors starting at 0, 10, ... 109990
     val s = Stream[Double](11000,10){ (i,j) => i*10+j }

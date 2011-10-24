@@ -51,8 +51,8 @@ object ScalaCompile extends CodeCache {
 
     def compile() = {
       if (Config.useFsc) {
-        //CompileClient.process(args) != 0 //fsc TR FIXME 2.9 for sbt ...
-        CompileClient.main0(args) != 0 //fsc
+        CompileClient.process(args) != 0 //fsc TR FIXME 2.9 for sbt ...
+        //CompileClient.main0(args) != 0 //fsc
       }
       else {
         Main.process(args) //scalac

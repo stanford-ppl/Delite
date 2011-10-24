@@ -90,7 +90,7 @@ trait DeliteCollection[@specialized(Boolean, Int, Long, Float, Double) T] {
  * Ref
  */
 
-case class Ref[@specialized(Boolean, Int, Long, Float, Double) T](v: T) {
+class Ref[@specialized(Boolean, Int, Long, Float, Double) T](v: T) {
   private[this] var _v = v
 
   def get = _v

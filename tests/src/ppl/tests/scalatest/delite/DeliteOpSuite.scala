@@ -17,7 +17,6 @@ import ppl.tests.scalatest._
 object DeliteMapRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteMap
 trait DeliteMap extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v = Vector[Double](1000,true)
     val v2 = v map { e => 10 }
@@ -36,7 +35,6 @@ trait DeliteMap extends DeliteTestModule with OptiMLApplication {
 object DeliteZipRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteZip
 trait DeliteZip extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v1 = Vector.ones(1000)
     val v2 = Vector[Double](1000,true) map { e => 2. }
@@ -57,7 +55,6 @@ trait DeliteZip extends DeliteTestModule with OptiMLApplication {
 object DeliteReduceRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteReduce
 trait DeliteReduce extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v = Vector.range(0, 1000)
     collect(v.sum == 499500)
@@ -69,7 +66,6 @@ trait DeliteReduce extends DeliteTestModule with OptiMLApplication {
 object DeliteMapReduceRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteMapReduce
 trait DeliteMapReduce extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v = Vector.range(0, 1000)
     val x = sum(0, v.length) { i => v(i) }
@@ -82,7 +78,6 @@ trait DeliteMapReduce extends DeliteTestModule with OptiMLApplication {
 object DeliteFilterRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteFilter
 trait DeliteFilter extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v1 = Vector.range(0, 100)
     val v2 = v1.filter(_ % 2 == 1)
@@ -101,7 +96,6 @@ trait DeliteFilter extends DeliteTestModule with OptiMLApplication {
 object DeliteForeachRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteForeach
 trait DeliteForeach extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v = Vector.range(0, 10)
     for (e <- v) {
@@ -117,7 +111,6 @@ trait DeliteForeach extends DeliteTestModule with OptiMLApplication {
 object DeliteNestedMapRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteNestedMap
 trait DeliteNestedMap extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val res = Vector[Double](1,true) map { e =>
       val v = Vector[Double](1000,true)
@@ -139,7 +132,6 @@ trait DeliteNestedMap extends DeliteTestModule with OptiMLApplication {
 object DeliteNestedZipRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteNestedZip
 trait DeliteNestedZip extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val res = Vector[Double](1,true) map { e =>
       val v1 = Vector.ones(1000)
@@ -162,7 +154,6 @@ trait DeliteNestedZip extends DeliteTestModule with OptiMLApplication {
 object DeliteNestedReduceRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteNestedReduce
 trait DeliteNestedReduce extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val res = Vector[Double](1,true) map { e =>
       val v = Vector.range(0, 1000)
@@ -177,7 +168,6 @@ trait DeliteNestedReduce extends DeliteTestModule with OptiMLApplication {
 object DeliteNestedMapReduceRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteNestedMapReduce
 trait DeliteNestedMapReduce extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val res = Vector[Double](1,true) map { e =>
       val v = Vector.range(0, 1000)
@@ -192,7 +182,6 @@ trait DeliteNestedMapReduce extends DeliteTestModule with OptiMLApplication {
 object DeliteNestedForeachRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteNestedForeach
 trait DeliteNestedForeach extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val res = Vector[Double](1,true) map { e =>
       val v = Vector.range(0, 10)
@@ -210,7 +199,6 @@ trait DeliteNestedForeach extends DeliteTestModule with OptiMLApplication {
 object DeliteIfThenElseRunner extends DeliteTestRunner with OptiMLApplicationRunner with DeliteIfThenElse
 trait DeliteIfThenElse extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val y = Vector.rand(10)
     if (y(0) == false){

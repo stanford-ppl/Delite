@@ -7,7 +7,6 @@ import ppl.tests.scalatest._
 object SimpleVectorArithmeticRunner extends DeliteTestRunner with OptiMLApplicationRunner with SimpleVectorArithmetic
 trait SimpleVectorArithmetic extends DeliteTestModule with LinearAlgebraTestsCommon {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
     // TODO: these can't be factored out right now because they throw an NPE when the test is being initialized
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
@@ -33,7 +32,6 @@ trait SimpleVectorArithmetic extends DeliteTestModule with LinearAlgebraTestsCom
 object SimpleMatrixArithmeticRunner extends DeliteTestRunner with OptiMLApplicationRunner with SimpleMatrixArithmetic
 trait SimpleMatrixArithmetic extends DeliteTestModule with LinearAlgebraTestsCommon {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
     val colC = Vector(7., 3.2, 13.3).t
@@ -74,7 +72,6 @@ trait SimpleMatrixArithmetic extends DeliteTestModule with LinearAlgebraTestsCom
 object CombinedVecMatArithmeticRunner extends DeliteTestRunner with OptiMLApplicationRunner with CombinedVecMatArithmetic
 trait CombinedVecMatArithmetic extends DeliteTestModule with LinearAlgebraTestsCommon {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
     val rowA = Vector(11., 22., 33.)
     val rowB = Vector(-5.3, -17.2, -131.)
     val rowD = Vector(-1.1, -6.2)
