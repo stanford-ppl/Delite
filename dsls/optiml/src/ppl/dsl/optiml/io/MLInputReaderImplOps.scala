@@ -7,7 +7,8 @@ import ppl.dsl.optiml.application.BinarizedGradientTemplate
 
 trait MLInputReaderImplOps { this: Base =>
   def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage]
-  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
+  //def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
+  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): (Rep[Matrix[Double]],Rep[DenseVector[Double]])
   def mlinput_read_template_models_impl(directory: Rep[String]): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]]
 }
 
@@ -50,7 +51,8 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   *    each line of the doc word matrix begins with class (0 or 1) and ends with -1
   *    the matrix is sparse, so each row has a tuple of (tokenIndex, number of appearances)
   */
-  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]] = {
+  //def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]] = {
+  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): (Rep[Matrix[Double]], Rep[DenseVector[Double]]) = {
 
     val xs = BufferedReader(FileReader(filename))
 
@@ -93,7 +95,8 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     xs.close()
 
     //return (trainMatrix,tokenlist,trainCategory)
-    TrainingSet[Double,Double](trainMatrix.unsafeImmutable, Labels(trainCategory.unsafeImmutable))
+    (trainMatrix.unsafeImmutable, trainCategory.unsafeImmutable)
+    //TrainingSet[Double,Double](trainMatrix.unsafeImmutable, Labels(trainCategory.unsafeImmutable))
   }
 
   def mlinput_read_template_models_impl(directory: Rep[String]): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]] = {

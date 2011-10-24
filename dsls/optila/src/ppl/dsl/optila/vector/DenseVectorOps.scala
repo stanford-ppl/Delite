@@ -391,8 +391,8 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
   
   // and this one also helps in the example:
   def densevector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]): Option[Exp[A]] = x match {
-    case Def(DenseVectorObjectZeros(l)) => Some(unit(0).asInstanceOf[Exp[A]])
-    case Def(DenseVectorObjectOnes(l)) => Some(unit(1).asInstanceOf[Exp[A]])
+    case Def(DenseVectorObjectZeros(l)) => Some(unit(0.0).asInstanceOf[Exp[A]])
+    case Def(DenseVectorObjectOnes(l)) => Some(unit(1.0).asInstanceOf[Exp[A]])
     //case Def(DenseVectorObjectRange(s,e,d,r)) => Some((s + n*d).asInstanceOf[Exp[A]])
     case Def(s@DenseVectorEmptyDouble()) => throw new IndexOutOfBoundsException(s + " has no elements")
     case Def(s@DenseVectorEmptyFloat()) => throw new IndexOutOfBoundsException(s + " has no elements")

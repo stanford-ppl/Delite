@@ -19,7 +19,7 @@ trait kmeansApp extends OptiMLApplication {
     
     if (args.length < 1) print_usage
 
-    val x = TrainingSet(readMatrix(args(0)), Labels[Int](0))
+    val x = readMatrix(args(0)) //TrainingSet(readMatrix(args(0)), Labels[Int](0))
     val mu = readMatrix(args(1))
 
     tic(mu)
