@@ -39,10 +39,11 @@ object FieldImpl {
   }
 }
 
-class FieldImpl[MO<:MeshObj:Manifest, T:Manifest](data : Array[T]) extends Field[MO,T] {
-  def apply(idx: Int) = data(idx)
+class FieldImpl[MO<:MeshObj:Manifest, T:Manifest](_data : Array[T]) extends Field[MO,T] {
+  def data:Array[T] = _data
+  def apply(idx: Int) = _data(idx)
   def update(idx: Int, x: T) = {
-    data(idx) = x
+    _data(idx) = x
   }
-  def size = data.length
+  def size = _data.length
 }

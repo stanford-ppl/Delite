@@ -321,6 +321,12 @@ trait CudaGenLanguageOps extends CudaGenBase with CudaGenDataStruct {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    //TODO: Use mesh symbol
+    case DeLisztFaceInside(e) => emitValDef(sym, "inside(" + quote(e) + ")")
+    case DeLisztFaceOutside(e) => emitValDef(sym, "outside(" + quote(e) + ")")
+    case DeLisztVertex(e,i) => emitValDef(sym, "vertex(" + quote(e) + "," + quote(i) + ")")
+    case DeLisztID(x) => emitValDef(sym, "internalId(" + quote(x) + ")")
+    case DeLisztSize(s) => emitValDef(sym, quote(s) + ".size()")
     case _ => super.emitNode(sym, rhs)
   }
 }

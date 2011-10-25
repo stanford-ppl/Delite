@@ -1,6 +1,7 @@
 #ifndef _VECIMPL_H_
 #define _VECIMPL_H_
 
+/*
 #include <stdio.h>
 
 template <class T>
@@ -43,5 +44,5 @@ public:
     }
     
 };
-
+*/
 #endif

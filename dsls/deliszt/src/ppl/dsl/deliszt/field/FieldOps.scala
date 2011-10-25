@@ -261,6 +261,12 @@ trait CudaGenFieldOps extends CudaGenBase with CudaGenDataStruct {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case FieldApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
+    case FieldUpdate(x,n,v) => stream.println(addTab() + quote(x) + ".update(" + quote(n) + ") = " + quote(v) + ";")
+    //case FieldPlusUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") += " + quote(v))
+    //case FieldTimesUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") *= " + quote(v))
+    //case FieldMinusUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") -= " + quote(v))
+    //case FieldDivideUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") /= " + quote(v))
     case _ => super.emitNode(sym, rhs)
   }
 }

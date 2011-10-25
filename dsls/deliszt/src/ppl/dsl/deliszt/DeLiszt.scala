@@ -255,11 +255,11 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
   }
 }
 
-trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /*with CudaGenLanguageOps*/
-  with CudaGenArithOps with CudaGenDeliteOps
-  with CudaGenVariantsOps with CudaGenDeliteCollectionOps
+trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg with CudaGenDeliteOps with CudaGenLanguageOps
+  with CudaGenArithOps with CudaGenVariantsOps with CudaGenDeliteCollectionOps
   with CudaGenFieldOps with CudaGenIntMOps with CudaGenMeshPrivateOps with CudaGenMeshSetOps
-  with CudaGenVecOps with CudaGenMatOps with CudaGenDataStruct with CudaGenMatRowOps
+  with CudaGenMatOps with CudaGenVecOps with CudaGenDataStruct
+  with DeliteCudaGenAllOverrides
 {
   val IR: DeliteApplication with DeLisztExp
   import IR._
@@ -267,6 +267,21 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /
   // Maps the scala type to cuda type
   override def remap[A](m: Manifest[A]) : String = {
     m.toString match {
+      case "ppl.dsl.deliszt.datastruct.scala.Cell" => "Cell"
+      case "ppl.dsl.deliszt.datastruct.scala.Face" => "Face"
+      case "ppl.dsl.deliszt.datastruct.scala.Vertex" => "Vertex"
+      case "ppl.dsl.deliszt.datastruct.scala.Edge" => "Edge"
+      case "ppl.dsl.deliszt.datastruct.scala.MeshSet[ppl.dsl.deliszt.datastruct.scala.Cell]" => "MeshSet<Cell>"
+      case "ppl.dsl.deliszt.datastruct.scala.MeshSet[ppl.dsl.deliszt.datastruct.scala.Face]" => "MeshSet<Face>"
+      case "ppl.dsl.deliszt.datastruct.scala.MeshSet[ppl.dsl.deliszt.datastruct.scala.Vertex]" => "MeshSet<Vertex>"
+      case "ppl.dsl.deliszt.datastruct.scala.MeshSet[ppl.dsl.deliszt.datastruct.scala.Edge]" => "MeshSet<Edge>"
+      case "ppl.dsl.deliszt.datastruct.scala.Field[ppl.dsl.deliszt.datastruct.scala.Cell, Int]" => "Field<int>"
+      case "ppl.dsl.deliszt.datastruct.scala.Field[ppl.dsl.deliszt.datastruct.scala.Face, Int]" => "Field<int>"
+      case "ppl.dsl.deliszt.datastruct.scala.Field[ppl.dsl.deliszt.datastruct.scala.Vertex, Int]" => "Field<int>"
+      case "ppl.dsl.deliszt.datastruct.scala.Field[ppl.dsl.deliszt.datastruct.scala.Edge, Int]" => "Field<int>"
+      case "ppl.dsl.deliszt.datastruct.scala.Mesh" => "Mesh"
+      case "scala.collection.immutable.List[ppl.dsl.deliszt.datastruct.scala.Cell]" => "List<Cell>" //TODO: Remove this
+      /*
       case "ppl.dsl.deliszt.datastruct.scala.Mat[Int]" => "Mat<int>"
       case "ppl.dsl.deliszt.datastruct.scala.Mat[Long]" => "Mat<long>"
       case "ppl.dsl.deliszt.datastruct.scala.Mat[Float]" => "Mat<float>"
@@ -277,11 +292,18 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /
       case "ppl.dsl.deliszt.datastruct.scala.Vec[Float]" => "Vec<float>"
       case "ppl.dsl.deliszt.datastruct.scala.Vec[Double]" => "Vec<double>"
       case "ppl.dsl.deliszt.datastruct.scala.Vec[Boolean]" => "Vec<bool>"
+      */
       case _ => super.remap(m)
     }
   }
 
-  override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
+  override def isObjectType[T](m: Manifest[T]) : Boolean = remap(m) match {
+    case "Cell" | "Face" | "Vertex" | "Edge" => true
+    case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => true
+    case "Field<int>" | "Field<long>" | "Field<float>" | "Field<double>" | "Field<bool>" => true
+    case "Mesh" => true
+    case "List<Cell>" => true //TODO: Remove this
+    /*
     case "ppl.dsl.deliszt.datastruct.scala.Mat[Int]" => true
     case "ppl.dsl.deliszt.datastruct.scala.Mat[Long]" => true
     case "ppl.dsl.deliszt.datastruct.scala.Mat[Float]" => true
@@ -292,38 +314,53 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg /
     case "ppl.dsl.deliszt.datastruct.scala.Vec[Float]" => true
     case "ppl.dsl.deliszt.datastruct.scala.Vec[Double]" => true
     case "ppl.dsl.deliszt.datastruct.scala.Vec[Boolean]" => true
+    */
     case _ => super.isObjectType(m)
   }
 
   override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyInputHtoD(sym)
-    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyInputHtoD(sym)
+    case "Cell" | "Face" | "Vertex" | "Edge" => "//copy\n"
+    case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => MeshSetCopyInputHtoD(sym, sym.Type.typeArguments(0))
+    case "Field<int>" | "Field<long>" | "Field<float>" | "Field<double>" | "Field<bool>" => FieldCopyInputHtoD(sym, sym.Type.typeArguments(1))
+    case "Mesh" => MeshCopyInputHtoD(sym)
+    case "List<Cell>" => "//copy\n" //TODO: Remove this
+    //case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyInputHtoD(sym)
+    //case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
   override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyOutputDtoH(sym)
-    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyOutputDtoH(sym)
+    case "Cell" | "Face" | "Vertex" | "Edge" => "//copy\n"
+    case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => MeshSetCopyOutputDtoH(sym, sym.Type.typeArguments(0))
+    case "Field<int>" | "Field<long>" | "Field<float>" | "Field<double>" | "Field<bool>" => FieldCopyOutputDtoH(sym, sym.Type.typeArguments(1))
+    case "Mesh" => MeshCopyOutputDtoH(sym)
+    case "List<Cell>" => "//copy\n" //TODO: Remove this
+    //case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyOutputDtoH(sym)
+    //case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyOutputDtoH(sym)
     case _ => super.copyOutputDtoH(sym)
   }
 
   override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyMutableInputDtoH(sym)
-    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyMutableInputDtoH(sym)
+    case "Cell" | "Face" | "Vertex" | "Edge" => "//copy\n"
+    case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => MeshSetCopyMutableInputDtoH(sym, sym.Type.typeArguments(0))
+    case "Field<int>" | "Field<long>" | "Field<float>" | "Field<double>" | "Field<bool>" => FieldCopyMutableInputDtoH(sym, sym.Type.typeArguments(1))
+    case "Mesh" => MeshCopyMutableInputDtoH(sym)
+    case "List<Cell>" => "//copy\n" //TODO: Remove this
+    //case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyMutableInputDtoH(sym)
+    //case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyMutableInputDtoH(sym)
     case _ => super.copyMutableInputDtoH(sym)
-  }
-
-  override def positionMultDimInputs(sym: Sym[Any]) : String = remap(sym.Type) match {
-    //TODO: Add mat reposition, and also do safety check for datastructures that do not have data field
-    case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecPositionMultDimInputs(sym)
-    case _ => super.positionMultDimInputs(sym)
   }
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
     out.append("#include <float.h>\n")
-    out.append("#include \"VecImpl.h\"\n")
+    out.append("#include \"CRS.h\"\n")
+    out.append("#include \"Field.h\"\n")
+    out.append("#include \"Mesh.h\"\n")
+    out.append("#include \"MeshObj.h\"\n")
+    out.append("#include \"MeshSet.h\"\n")
     out.append("#include \"MatImpl.h\"\n")
+    out.append("#include \"VecImpl.h\"\n")
     out.toString
   }
 }
