@@ -38,7 +38,6 @@ trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
     def t = throw new UnsupportedOperationException("tbd") 
     def mt() = throw new UnsupportedOperationException("tbd")    
     def update(n: Rep[Int], y: Rep[Int]): Rep[Unit] = throw new UnsupportedOperationException("tbd")
-    def +=(y: Rep[Int]) = throw new UnsupportedOperationException("tbd")
     def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("tbd")
     def insert(pos: Rep[Int], y: Rep[Int]) = throw new UnsupportedOperationException("tbd")
     def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("tbd")

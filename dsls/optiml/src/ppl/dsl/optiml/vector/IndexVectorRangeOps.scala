@@ -38,7 +38,6 @@ trait IndexVectorRangeOps extends Base with OverloadHack { this: OptiML =>
     def t = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
     def mt() = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
     def update(n: Rep[Int], y: Rep[Int]): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def +=(y: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def insert(pos: Rep[Int], y: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")

@@ -58,7 +58,6 @@ trait DenseVectorOps extends Variables {
     
     // data operations
     def update(n: Rep[Int], y: Rep[A]) = densevector_update(elem,n,y)
-    def +=(y: Rep[A]) = densevector_insert(elem,elem.length,y)
     def copyFrom(pos: Rep[Int], y: Rep[DenseVector[A]]) = densevector_copyfrom(elem,pos,y)
     def insert(pos: Rep[Int], y: Rep[A]) = densevector_insert(elem,pos,y)
     def insertAll(pos: Rep[Int], y: Rep[DenseVector[A]]) = densevector_insertall(elem,pos,y)

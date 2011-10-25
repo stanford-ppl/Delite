@@ -57,7 +57,6 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def vtimesToIntf(x: Rep[VTIMESR]) = denseToInterface(x)        
         
     def mt() = throw new UnsupportedOperationException("VectorViews cannot be updated")    
-    def +=(y: Rep[A]) = throw new UnsupportedOperationException("VectorViews cannot be updated")
     def copyFrom(pos: Rep[Int], y: Rep[DenseVector[A]]) = throw new UnsupportedOperationException("VectorViews cannot be updated")
     def insert(pos: Rep[Int], y: Rep[A]) = throw new UnsupportedOperationException("VectorViews cannot be updated")
     def insertAll(pos: Rep[Int], y: Rep[DenseVector[A]]) = throw new UnsupportedOperationException("VectorViews cannot be updated")

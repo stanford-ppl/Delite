@@ -23,6 +23,7 @@ import ppl.dsl.optiml.graph._
 import ppl.dsl.optiml.stream._
 import ppl.dsl.optiml.library.cluster._
 import ppl.dsl.optiml.application._
+import ppl.dsl.optiml.capabilities._
 
 
 /**
@@ -70,6 +71,7 @@ trait OptiMLCCodeGenPkg extends OptiLACCodeGenPkg
  */
 trait OptiML extends OptiLA with OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOpsshould be auto-generated with ApplicationOps
   with MLInputReaderOps with MLOutputWriterOps
+  with CanSumOps
   with VectorOps with OptiMLDenseVectorOps with OptiMLVectorViewOps with OptiMLRangeVectorOps
   with MatrixOps with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops 
   with StreamOps with StreamRowOps

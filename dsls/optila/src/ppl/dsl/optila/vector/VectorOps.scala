@@ -123,7 +123,7 @@ trait VectorOps extends Variables {
     // TODO: should these be moved to another interface, e.g. MutableVecInterface? how do we deal with immutable vectors that
     // don't implement these (e.g. RangeVector). Instead of Interface, would clients require a MutableInterface[...]? (yet another type constructor... :( )
     def update(n: Rep[Int], y: Rep[A]): Rep[Unit]
-    def +=(y: Rep[A]): Rep[Unit]    
+    def +=(y: Rep[A]): Rep[Unit] = insert(length,y)
     def ++(y: Interface[Vector[A]]): Rep[VA] = vector_concatenate[A,VA](x,y)    
     def ++=(y: Rep[VA]) = insertAll(length,y)
     def copyFrom(pos: Rep[Int], y: Rep[VA]): Rep[Unit]
@@ -631,6 +631,9 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     def reduce = (a,b) => a + b
     val size = intfA.length
     val zero = implicitly[Arith[A]].empty
+    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
   }
 
   
@@ -972,6 +975,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     case e@VectorMinus(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorMinus(f(x),f(y))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))
     case e@VectorTimes(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorTimes(f(x),f(y))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))
     case e@VectorTimesScalar(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorTimesScalar(f(x),f(y))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))
+    case e@VectorDotProduct(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDotProduct(f(x),f(y))(e.m, e.a))(mtype(manifest[A]))
     case e@VectorDivideScalar(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDivideScalar(f(x),f(y))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))
     case e@VectorSum(x) => reflectPure(new { override val original = Some(f,e) } with VectorSum(f(x))(e.m, e.a))(mtype(manifest[A]))
     case e@VectorAbs(x) => reflectPure(new { override val original = Some(f,e) } with VectorAbs(f(x))(e.m, e.a, e.mVA, e.b))(mtype(manifest[A]))

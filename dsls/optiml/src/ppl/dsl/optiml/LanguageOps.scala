@@ -49,18 +49,16 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
                                      block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]]
   def optiml_aggregate2dif[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
                                        cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]]
-
-
-
+                                    
   // TODO: for some reason, the implicit ops conversions aren't kicking in for sum/min/max
   /**
    * sum
    */
   def sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A]) = optiml_sum(start, end, block)
-  def sumIf[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A]) = optiml_sumif(start, end, cond, block)
+  def sumIf[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A]) = optiml_sumif[R,A](start,end,cond,block)
   
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A]): Rep[A]
-  def optiml_sumif[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A]): Rep[A]
+  def optiml_sumif[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A]): Rep[R]
 
   /**
    *  IndexVector construction
@@ -280,40 +278,62 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 */
 
-  case class SumIf[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], co: Exp[Int] => Exp[Boolean], fu: Exp[Int] => Exp[A])
-    extends DeliteOpFilterReduceFold[A] {
+  case class SumIf[R:Manifest:Arith:Cloneable,A:Manifest](start: Exp[Int], end: Exp[Int], co: Exp[Int] => Exp[Boolean], fu: Exp[Int] => Exp[A])(implicit canSum: CanSum[R,A]) // TODO aks: CS into Arith
+    extends DeliteOpFilterReduceFold[R] {
 
     override val mutable = true // can we do this automatically?
-    
+
     val in = copyTransformedOrElse(_.in)((start::end))
     val size = copyTransformedOrElse(_.size)(end - start)
-    val zero = (copyTransformedOrElse(_.zero._1)(reifyEffects(a.empty)),copyTransformedOrElse(_.zero._2)(unit(-1)))
+    val zero = (copyTransformedOrElse(_.zero._1)(reifyEffects(a.empty)),copyTransformedOrElse(_.zero._2)(unit(-1))) // (zero, -1)
 
-/*
-    def func = (v) => (zero._1, reifyEffects(if (co(v)) v else -1))
-    def reduce = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
-                                        if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
-*/
-
-
-    def func = (v) => (zero._1, v)
+    /*
+        def func = (v) => (zero._1, reifyEffects(if (co(v)) v else -1))
+        def reduce = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
+                                            if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
+    */
     
-    def reduceSeq = (a,b) => (reifyEffects(if (co(b._2)) { if (a._2 >= 0) a._1 += fu(b._2) else fu(b._2).mutable } else a._1), 
-                              reifyEffects(if (co(b._2)) b._2 else a._2 )) // would not work in parallel...
+    def func = (v) => (zero._1, v) // (zero, v)
+
+    // rV = ((mutable(R), mutable(Int)), (R, Int))
+    // rVSeq = ((zero, zero_2), (elem.func._1, elem.func._2))
+    //         ((zero, init), (zero, index))
+    // rvPar = (__act, __act._2), (rhs, rhs._2) 
+    //         ((zero, init), (zero, init))
     
+    // FOR REDUCE SEQ
+    // a._1 = accumulator
+    // a._2 = zero_2 = initialization check: -1 if uninitialized, >= 0 otherwise
+    // b._1 = unused 
+    // b._2 = loop index
+    
+    // FOR REDUCE PAR
+    // a._1 = accumulator
+    // a._2 = act zero_2 = initialization check: -1 if uninitialized, >= 0 otherwise
+    // b._1 = next value to reduce
+    // b._2 = rhs zero_2 = initialization check: -1 if uninitialized, >= 0 otherwise
+    
+    
+    // this is the reduce used inside each chunk (R,A) => R
+    def reduceSeq = (a,b) => (reifyEffects(if (co(b._2)) { if (a._2 >= 0) canSum.+=(a._1, fu(b._2)) else canSum.mutable(fu(b._2)) } else a._1), 
+                              reifyEffects(if (co(b._2)) b._2 else a._2 )) // would not work in parallel...  // returns the current index (v) if the condition is true, or a._2, which is defaulted to -1 (uninitialized)
+
+    // this is the reduce used in the tree (R,R) => R
     def reducePar = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += b._1 else b._1.mutable } else a._1), 
                               reifyEffects(if (b._2 >= 0) b._2 else a._2))
-    
-/*
-    def step = (a,v) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
-                                        if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
-*/
-    
-    def m = manifest[A]
-    def a = implicitly[Arith[A]]
-    def c = implicitly[Cloneable[A]]
-  }
 
+    /*
+        def step = (a,v) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
+                                            if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
+    */
+    
+    def m = manifest[R]
+    def a = implicitly[Arith[R]]
+    def c = implicitly[Cloneable[R]]
+    def mA = manifest[A]
+    def cs = implicitly[CanSum[R,A]]
+  }
+  
   // FIXME: peeling off the first iteration manually can prevent fusion because the LoopOp is 1 smaller than its cousins
   // TODO: what is the deired behavior if the range is empty?
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
@@ -322,19 +342,20 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     out + firstBlock
   }
 
-  def optiml_sumif[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
-    reflectPure(SumIf(start, end, cond, block))
-/*    val firstCond = cond(start)
-    val firstBlock = block(start)
-    val out = reflectPure(SumIf(start+1, end, cond, block, firstBlock))
-    flatIf (firstCond) {
-      out + firstBlock
-    } {
-      out
-    }
-*/
-  }
+  def optiml_sumif[R:Manifest:Arith:Cloneable,A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A])(implicit cs: CanSum[R,A]) = {
+    reflectPure(SumIf[R,A](start, end, cond, block))
+    /*val firstCond = cond(start)
+      val firstBlock = block(start)
+      val out = reflectPure(SumIf(start+1, end, cond, block, firstBlock))
+      flatIf (firstCond) {
+        out + firstBlock
+      } {
+        out
+      }
+  */
 
+  }
+  
 /*  
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
 
@@ -525,10 +546,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    */
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case e@Sum(st,en,b,init) => reflectPure(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
-    case e@SumIf(st,en,c,b) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m, e.a, e.c))(mtype(manifest[A]))
+    case e@SumIf(st,en,c,b) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m, e.a, e.c,e.mA,e.cs))(mtype(manifest[A]))
 //    case e@SumIf(st,en,c,b,init) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
     case Reflect(e@Sum(st,en,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@SumIf(st,en,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SumIf(st,en,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m,e.a,e.c,e.mA,e.cs), mapOver(f,u), f(es)))(mtype(manifest[A]))
 //    case Reflect(e@SumIf(st,en,c,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m,e.a,e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
