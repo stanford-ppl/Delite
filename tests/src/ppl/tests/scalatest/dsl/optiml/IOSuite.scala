@@ -17,7 +17,6 @@ import ppl.tests.scalatest._
 object SimpleWriteReadRunner extends DeliteTestRunner with OptiMLApplicationRunner with SimpleWriteRead
 trait SimpleWriteRead extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val x = Matrix.ones(10,10)
     writeMatrix(x, "test.mat")

@@ -133,17 +133,17 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
             hasOutputSlotTypes = true
             "void"
           case ("cuda", ThinDef(z)) => z match {
-                case op: AbstractLoop[_] =>
-                  hasOutputSlotTypes = true
-            "void"
-                case _ => "void"
+            case op: AbstractLoop[_] =>
+              hasOutputSlotTypes = true
+              "void"
+            case _ => "void"
           }
           case ("opencl", op: AbstractFatLoop) =>
             hasOutputSlotTypes = true
             "void"
           case ("opencl", ThinDef(z)) => z match {
             case op: AbstractLoop[_] =>
-            	hasOutputSlotTypes = true
+              hasOutputSlotTypes = true
               "void"
             case _ => "void"
           }
