@@ -2,6 +2,7 @@ package ppl.dsl.optiql.ops
 
 import ppl.dsl.optiql.datastruct.scala.container.DataTable
 import scala.virtualization.lms.common.{ScalaGenFat, BaseFatExp, Base}
+import scala.reflect.SourceContext
 import ppl.dsl.optiql.OptiQLExp
 import java.io.PrintWriter
 
@@ -52,7 +53,7 @@ trait DataTableOpsExp extends DataTableOps with BaseFatExp { this: DataTableOpsE
   def dataTableSize[T:Manifest](t: Exp[DataTable[T]]): Exp[Int] = DataTableSize(t)
   def dataTablePrintAsTable[T:Manifest](t: Exp[DataTable[T]]): Exp[Unit] = reflectEffect(DataTablePrintAsTable(t))
   
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
     case DataTableApply(t,i) => dataTableApply(f(t), f(i))
     case _ => super.mirror(e,f)
   }

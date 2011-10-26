@@ -6,6 +6,7 @@ import java.io.{PrintWriter}
 
 import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.{VariablesExp, Variables, DSLOpsExp, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.reflect.SourceContext
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
@@ -187,7 +188,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   //////////////
   // mirroring
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@StreamRawElem(x, idx) => reflectPure(StreamRawElem(f(x),f(idx)))(mtype(manifest[A]))
     case e@StreamChunkElem(x, idx, j) => reflectPure(new { override val original = Some(f,e) } with StreamChunkElem(f(x),f(idx),f(j)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)

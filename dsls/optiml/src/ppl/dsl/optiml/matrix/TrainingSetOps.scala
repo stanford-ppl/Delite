@@ -4,6 +4,7 @@ import java.io.PrintWriter
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{Variables, Base, BaseExp, CGenBase, CudaGenBase, OpenCLGenBase, ScalaGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
+import scala.reflect.SourceContext
 
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
@@ -68,7 +69,7 @@ trait TrainingSetOpsExp extends TrainingSetOps with BaseExp { this: DeliteOpsExp
   def trainingset_transposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = reflectPure(TrainingSetTransposed(x))
   def trainingset_labels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = reflectPure(TrainingSetLabels(x))
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@TrainingSetLabels(x) => trainingset_labels(f(x))(e.mA,e.mB)
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
