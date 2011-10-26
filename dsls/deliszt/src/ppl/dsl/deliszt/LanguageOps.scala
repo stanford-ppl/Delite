@@ -262,6 +262,15 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   def wall_time() = reflectEffect(WallTime())
   def processor_time() = reflectEffect(ProcessorTime())
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case DeLisztFacesEdge(e) => faces(f(e))
+    case DeLisztFacesCell(e) => faces(f(e))
+    case DeLisztFacesVertex(e) => faces(f(e))
+    case DeLisztFacesMesh(e) => faces(f(e))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
+  
 }
 
 trait ScalaGenLanguageOps extends ScalaGenBase {

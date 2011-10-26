@@ -15,7 +15,9 @@ import scala.collection.mutable.{Map => MMap}
 trait LoopColoringOpsExp extends BaseFatExp with EffectExp { this: DeLisztExp =>
   case class ColorIndexSetNew(indices: Exp[Array[Int]], start: Exp[Int], end: Exp[Int], mo: Manifest[MeshSet[MeshObj]]) extends Def[MeshSet[MeshObj]]    
   
-  def color_index_set_new(indices: Array[Int], start: Int, end: Int)(implicit mo: Manifest[MeshSet[MeshObj]]): Exp[MeshSet[MeshObj]] = ColorIndexSetNew(unit(indices),unit(start),unit(end),mo) 
+  def color_index_set_new(indices: Array[Int], start: Int, end: Int)(implicit mo: Manifest[MeshSet[MeshObj]]): Exp[MeshSet[MeshObj]] = {
+    reifyEffects(ColorIndexSetNew(Array(indices: _*),unit(start),unit(end),mo))
+  }
   def color_lift(x: Int) = Const(x)
 }
 
@@ -90,17 +92,16 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
       
       // Find loops at current top level that exist in the stencil
       var Wloops = super.focusExactScopeFat(currentScope)(result) { levelScope =>   
-        println(levelScope)
         levelScope collect { case e @ TTP(syms, ThinDef(Reflect(MeshSetForeach(_,_),_,_))) if syms exists { s => forMap.contains(s.id) } => e }
       }
       
       // keep track of loops in inner scopes
-      var UloopSyms = currentScope collect {case e @ TTP(lhs, ThinDef(Reflect(MeshSetForeach(_,_),_,_))) if !Wloops.contains(e) => lhs }
+      // var UloopSyms = currentScope collect {case e @ TTP(lhs, ThinDef(Reflect(MeshSetForeach(_,_),_,_))) if !Wloops.contains(e) => lhs }
       
       // Color each loop!
       for(loop <- Wloops) { 
         assert(loop.lhs.length == 1)
-               
+        
         // Grab the MeshSet
         val id = (loop.lhs.collectFirst {
           case Sym(id) => id
@@ -183,7 +184,8 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           val save = globalDefs
           val out = func
           val addedDefs = globalDefs diff save
-          innerScope = (innerScope ::: addedDefs).distinct
+          //innerScope = (innerScope ::: addedDefs).distinct
+          currentScope = (currentScope ::: fattenAll(addedDefs)).distinct
           out
         }
         
@@ -191,7 +193,13 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         i = 0        
         var deps = List[TTP]()
         var colorLoops = List[TTP]()         
-        var prevLoop: List[TTP] = Nil
+        var prevLoop: Option[TTP] = None
+        val loopRefTransformer = new SubstTransformer                      
+        
+        println("<SCOPE BEFORE COLORING ---"+result0+"/"+result)
+        currentScope.foreach(println)
+        println("--->")          
+        
         while (i < coloring.numColors) {
           var j = color_idx(i)
           val indices = ArrayBuffer[Int]()
@@ -202,29 +210,40 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
 
           // new loop dependencies
           val (in,size,v,f,body) = WgetLoopParams(loop)          
+          val colorLoopVar = fresh(v.Type) // shouldn't need to transform the loop var, but what the hey...
           val colorSet = buildInScope(color_index_set_new(indices.toArray, 0, indices.length)(in.Type))
           val colorSize = buildInScope(color_lift(indices.length))
-          val colorFunc = buildInScope(reifyEffects(f(dc_apply(colorSet,v))))
+          val colorFunc = buildInScope(reifyEffects(f(dc_apply(colorSet,colorLoopVar))))
           //innerScope :+= findDefinition(colorSet.asInstanceOf[Sym[MeshSet[MeshObj]]]).get 
           //innerScope :+= findDefinition(colorFunc.asInstanceOf[Sym[Unit]]).get 
           // currentScope :+= fatten(findDefinition(colorSet.asInstanceOf[Sym[MeshSet[MeshObj]]]).get)
           // currentScope :+= fatten(findDefinition(colorFunc.asInstanceOf[Sym[Unit]]).get)
           //innerScope :::= buildScheduleForResult(colorFunc)
-          deps = fattenAll(buildScheduleForResult(colorFunc))
-          colog("=== found new deps: " + deps)
-
+          //deps = deps union fattenAll(buildScheduleForResult(colorFunc))          
+          
+          // add dependencies to scope
+          // currentScope = currentScope union fattenAll(buildScheduleForResult(colorFunc))
+            
           // transform loop
           val t = new SubstTransformer
+          t.subst(v) = colorLoopVar
           t.subst(in) = colorSet 
           t.subst(size) = colorSize          
           t.subst(body) = colorFunc
-          val transformedLoop = withEffectContext { transformAll(List(loop), t) }                          
+          val transformedLoop = (withEffectContext { transformAll(List(loop), t) })(0)                          
+          // val (newScope, transformedLoopSyms) = transformAllFully(currentScope, loop.lhs, t) 
+          // val (newScope, transformedLoopSyms) = transformAllFully(getFatSchedule(currentScope)(loop.lhs), loop.lhs, t)
+          // currentScope = currentScope union newScope //(newScope diff colorLoops)
+          // val transformedLoop = newScope.find(_.lhs == transformedLoopSyms).get          
+          //colog("TransformedLoopExp: " + transformedLoopExp.toString)
           // add previous transformedLoop to new one as a dep
-          val transformedLoop2 = transformedLoop map (e => e match {
-            case TTP(lhs, ThinDef(Reflect(a,u,d))) => TTP(lhs, ThinDef(Reflect(a,u,d ::: prevLoop.flatMap(_.lhs))))
-          })
-          prevLoop = transformedLoop2
-          colorLoops ++= transformedLoop2          
+          val transformedLoop2 = transformedLoop match { 
+            case TTP(lhs, ThinDef(Reflect(a,u,d))) if prevLoop.isDefined => TTP(lhs, ThinDef(Reflect(a,u,d ::: prevLoop.get.lhs)))
+            case _ => transformedLoop
+          }
+          
+          prevLoop = Some(transformedLoop2)
+          colorLoops :+= transformedLoop2          
           i += 1
         }                
         colog("colored loop " + id + " into " + colorLoops.length + " loops using " + coloring.numColors + " colors")
@@ -232,41 +251,58 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         colorLoops foreach { l => colog("colored loop: " + l.toString) }
       
         // replace old loop with new loops
-        currentScope = fission(currentScope, loop, deps ::: colorLoops).distinct
+        println("<SCOPE BEFORE FISSION ---"+result0+"/"+result)
+        currentScope.foreach(println)
+        println("--->")          
+
+        println("=== DEPS: " + deps)
+        
+        //currentScope = fission(currentScope, loop, deps union colorLoops).distinct        
+        currentScope = fission(currentScope, loop, colorLoops).distinct        
+        
+        println("<SCOPE AFTER FISSION ---"+result0+"/"+result)
+        currentScope.foreach(println)
+        println("--->")          
+        
         //currentScope = fission(currentScope, loop, getFatDependentStuff(currentScope)(colorLoops.flatMap(e => syms(e.rhs))) ::: colorLoops)
         
         // replace references to old loop (since we are replacing effectful loops of type Unit, should only be effectful dependencies...)
-        val t = new SubstTransformer
         currentScope = currentScope map (e => e match {
-          case TTP(lhs, ThinDef(Reify(x,u,es))) =>           
-            val dirty = loop.lhs(0)
-            val cleanEs = fission(es,dirty,colorLoops flatMap { _.lhs })
+          case TTP(lhs, ThinDef(Reify(x,u,es))) if (es contains loop.lhs(0)) =>           
+            val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
             val o = lhs(0)
             val n = fresh(x.Type)            
-            t.subst(o) = n
+            loopRefTransformer.subst(o) = n
             TTP(List(n), ThinDef(Reify(x,u,cleanEs))) 
           case _ => e
         })
         
-        // how do we get the new dependencies into our new schedule? --> should be from getFatSchedule, but the possible deps need to be added to currentScope!
-        if (colorLoops.length > 1) {
-          println("<BEFORE ---"+result0+"/"+result)
-          currentScope.foreach(println)
-          println("--->")      
-        }
+        println("<SCOPE AFTER COLORING ---"+result0+"/"+result)
+        currentScope.foreach(println)
+        println("--->")          
         
-        result = t(result) 
+        // how do we get the new dependencies into our new schedule? --> should be from getFatSchedule, but the possible deps need to be added to currentScope!
+                
+        result = loopRefTransformer(result) 
         currentScope = getFatSchedule(currentScope)(result) // clean things up!  
         //currentScope = getFatSchedule(currentScope)(currentScope) // clean things up!  
         
-        if (colorLoops.length > 1) {
-          println("<AFTER ---"+result0+"/"+result)
-          currentScope.foreach(println)
-          println("--->")      
-        }
+        // println("<BEFORE ITERATING ---"+result0+"/"+result)
+        // currentScope.foreach(println)
+        // println("--->")      
+
+//        transformAllFully(currentScope, result, loopRefTransformer) match { case (a,b) => // too bad we can't use pair assigment
+        // transformAllFully(getFatSchedule(currentScope)(currentScope), result, loopRefTransformer) match { case (a,b) => // too bad we can't use pair assigment
+        //   currentScope = a
+        //   result = b
+        // }
+
+        println("<AFTER ITERATING ---"+result0+"/"+result)
+        currentScope.foreach(println)
+        println("--->")              
+        
       } // end loop foreach
-      
-      
+              
       // replace old loop with new loops
       // currentScope = currentScope.filter {
       //   case e@TTP(lhs, ThinDef(Reflect(f@MeshSetForeach(in,_),_,_))) => 
@@ -290,9 +326,9 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           
     } // end if Config.collectStencil
     
-    println("<!!!!---"+result0+"/"+result)
-    currentScope.foreach(println)
-    println("---!!!!>")      
+    // println("<!!!!---"+result0+"/"+result)
+    // currentScope.foreach(println)
+    // println("---!!!!>")      
     
     // result0 does not depend on any of our newly introduced loops...
     
