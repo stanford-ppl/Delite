@@ -1,6 +1,6 @@
 CC=g++
 CFLAGS=-c -O3 -Wall -I../../ 
-LDFLAGS= -O3 -larmadillo
+LDFLAGS= -O3
 HEADERS= ../OptiML.hpp
 SOURCES=kmeans.cpp 
 OBJECTS=$(SOURCES:.cpp=.o)
