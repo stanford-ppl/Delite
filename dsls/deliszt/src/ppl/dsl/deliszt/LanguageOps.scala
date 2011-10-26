@@ -274,7 +274,7 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case DeLisztInit(args) => emitValDef(sym, "generated.scala.Liszt.init(" + quote(args) + ")")
-      case DeLisztMesh() => emitValDef(sym, "generated.scala.Mesh.mesh")
+      case DeLisztMesh() => emitValDef(sym, "0")
       
       case DeLisztBoundarySetCells(name) => emitValDef(sym, "generated.scala.Mesh.boundarySetCells(" + quote(name) + ")")
       case DeLisztBoundarySetEdges(name) => emitValDef(sym, "generated.scala.Mesh.boundarySetCells(" + quote(name) + ")")
@@ -328,7 +328,7 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case DeLisztTowardsEdgeVertex(e,v,m) => emitValDef(sym, "generated.scala.Mesh.towardsEdgeVertex(" + quote(e) + "," + quote(v) + ")")
       case DeLisztTowardsFaceCell(e,c,m) => emitValDef(sym, "generated.scala.Mesh.towardsFaceCell(" + quote(e) + "," + quote(c) + ")")
       
-      case DeLisztID(x) => emitValDef(sym, "generated.scala.Mesh.internalId(" + quote(x) + ")")
+      case DeLisztID(x) => emitValDef(sym, "generated.scala.Mesh.internal(" + quote(x) + ")")
       
       case DeLisztSize(s) => emitValDef(sym, quote(s) + ".size")
 

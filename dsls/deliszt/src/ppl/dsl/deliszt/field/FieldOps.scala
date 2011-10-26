@@ -305,20 +305,20 @@ trait ScalaGenFieldOps extends ScalaGenBase {
       case FieldMinusUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") -= " + quote(v))
       case FieldDivideUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") /= " + quote(v))
 
-      case f@DeLisztFieldWithConstCell(x) => emitValDef(sym, "generated.scala.Field.withConstCell[" + remap(f.t) + "](" + quote(x) + ")")
-      case f@DeLisztFieldWithConstEdge(x) => emitValDef(sym, "generated.scala.Field.withConstEdge[" + remap(f.t) + "](" + quote(x) + ")")
-      case f@DeLisztFieldWithConstFace(x) => emitValDef(sym, "generated.scala.Field.withConstFace[" + remap(f.t) + "](" + quote(x) + ")")
-      case f@DeLisztFieldWithConstVertex(x) => emitValDef(sym, "generated.scala.Field.withConstVertex[" + remap(f.t) + "](" + quote(x) + ")")
+      case f@DeLisztFieldWithConstCell(x) => emitValDef(sym, "generated.scala.Field.cellWithConst[" + remap(f.t) + "](" + quote(x) + ")")
+      case f@DeLisztFieldWithConstEdge(x) => emitValDef(sym, "generated.scala.Field.edgeWithConst[" + remap(f.t) + "](" + quote(x) + ")")
+      case f@DeLisztFieldWithConstFace(x) => emitValDef(sym, "generated.scala.Field.faceWithConst[" + remap(f.t) + "](" + quote(x) + ")")
+      case f@DeLisztFieldWithConstVertex(x) => emitValDef(sym, "generated.scala.Field.vertexWithConst[" + remap(f.t) + "](" + quote(x) + ")")
       
       case f@FieldObjectNewCell() => emitValDef(sym, "generated.scala.Field.ofCell[" + remap(f.t) + "]()")
       case f@FieldObjectNewEdge() => emitValDef(sym, "generated.scala.Field.ofEdge[" + remap(f.t) + "]()")
       case f@FieldObjectNewFace() => emitValDef(sym, "generated.scala.Field.ofFace[" + remap(f.t) + "]()")
       case f@FieldObjectNewVertex() => emitValDef(sym, "generated.scala.Field.ofVertex[" + remap(f.t) + "]()")
       
-      case f@LabelFieldNewCell(url) => emitValDef(sym, "generated.scala.Mesh.labelCell[" + remap(f.t) + "](" + quote(url) + ")")
-      case f@LabelFieldNewEdge(url) => emitValDef(sym, "generated.scala.Mesh.labelEdge[" + remap(f.t) + "](" + quote(url) + ")")
-      case f@LabelFieldNewFace(url) => emitValDef(sym, "generated.scala.Mesh.labelFace[" + remap(f.t) + "](" + quote(url) + ")")
-      case f@LabelFieldNewVertex(url) => emitValDef(sym, "generated.scala.Mesh.labelVertex[" + remap(f.t) + "](" + quote(url) + ")")
+      case f@LabelFieldNewCell(url) => emitValDef(sym, "generated.scala.Mesh.labelCells[" + remap(f.t) + "](" + quote(url) + ")")
+      case f@LabelFieldNewEdge(url) => emitValDef(sym, "generated.scala.Mesh.labelEdges[" + remap(f.t) + "](" + quote(url) + ")")
+      case f@LabelFieldNewFace(url) => emitValDef(sym, "generated.scala.Mesh.labelFaces[" + remap(f.t) + "](" + quote(url) + ")")
+      case f@LabelFieldNewVertex(url) => emitValDef(sym, "generated.scala.Mesh.labelVertices[" + remap(f.t) + "](" + quote(url) + ")")
       
       case FieldIntApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
       case FieldIntUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(v))

@@ -210,16 +210,18 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
     parmap(res)
   }
 
+
+  def remap(s: String) = parmap(s)
   override def remap[A](m: Manifest[A]): String = {
-    parmap(map_meshobj(super.remap(m)))
+    var res = super.remap(m)
+    res = res.replaceAllLiterally("package$", "")
+    parmap(res)
   }
-  
-  def map_meshobj(line: String): String = {
+
+  def parmap(line: String): String = {
     var res = line
     
-    System.out.println(line)
-    
-    // Vec
+ // Vec
     if(res.indexOf("Vec") > 0)
       System.out.println("FOUND VEC " + res)
       
@@ -237,27 +239,24 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
     
     // Vec, Mat, Field, anything with that final parameter of some value type
     for(s <- List("Vec", "Mat", "Field")) {
-      val expr = ("\\b" + s + "\\[.*?,\\s*([^\\s]+)\\s*\\]\\(").r  
+      val expr = ("\\b" + s + "\\[.*?,\\s*([^\\s]+)\\s*\\]").r  
+      System.out.println("replacing " + res)
       res = expr.replaceAllIn(res, m => s + moSub(m))
+      System.out.println("replaced " + res)
     }
     
     // MeshSet
     val meshSetExpr = ("MeshSet\\[.+\\]").r  
-    res = meshSetExpr.replaceAllIn(res, m => "MeshObj")
+    System.out.println("replacing " + res)
+    res = meshSetExpr.replaceAllIn(res, m => "MeshSet")
+    System.out.println("replaced " + res)    
       
     // MeshObject types
-    for(s <- List("Cell", "Edge", "Face", "Vertex")) {
-      val expr = ("\\b" + s + "\\b").r  
-      res = expr.replaceAllIn(res, m => "Int")
+    for(s <- List("Cell", "Edge", "Face", "Vertex", "Mesh")) {
+      val expr = ("(ppl\\.dsl\\.deliszt|generated\\.scala)\\." + s + "\\b").r  
+      res = expr.replaceAllIn(res, "Int")
     }
     
-    // Parameters of 
-  
-    line
-  }
-
-  def parmap(line: String): String = {
-    var res = line
     for(tpe1 <- List("Int","Long","Double","Float","Boolean")) {
       val parSub = (m: Regex.Match) => {
         val rest = (m.group(1) + m.group(3)).replaceAll("""^\s+""", "")
@@ -286,12 +285,14 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
         }
       }
     }
+    
     dsmap(res)
   }
 
   override def dsmap(line: String) : String = {
     var res = line.replaceAll("ppl.dsl.deliszt.datastruct", "generated")
     res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
+    res = res.replaceAll("ppl.dsl.deliszt", "generated.scala")    
     res
   }
 }
