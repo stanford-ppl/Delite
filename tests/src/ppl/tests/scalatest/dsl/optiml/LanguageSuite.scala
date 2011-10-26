@@ -2,6 +2,7 @@ package ppl.tests.scalatest.dsl.optiml
 
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication}
+import ppl.dsl.optila.{DenseVector}
 import ppl.tests.scalatest._
 
 object SumRunner extends DeliteTestRunner with OptiMLApplicationRunner with Sum
@@ -21,7 +22,7 @@ trait SumIf extends DeliteTestModule with OptiMLApplication {
   def main() = {
 
     val y = Vector(true, false, true, false, true, false, false, false, true, true)
-    val x = sumIf(0,10) { y(_) } { i => Vector.ones(5) }
+    val x = sumIf[DenseVector[Double],DenseVector[Double]](0,10) { y(_) } { i => Vector.ones(5) }
     //x.pprint
 		collect(x == Vector(5.0, 5.0, 5.0, 5.0, 5.0))
     mkReport
