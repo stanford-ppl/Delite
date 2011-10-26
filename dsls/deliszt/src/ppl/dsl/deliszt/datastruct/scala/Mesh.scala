@@ -78,10 +78,10 @@ object Mesh {
   def edgesCCW(e: Face): MeshSet[Edge] = {
     val c = outside(e)
     if(mesh.ftoc.apply(e.internalId, OUTSIDE) == c.internalId) {
-      System.out.println("EDDGES NORMAL")
+      //System.out.println("EDDGES NORMAL")
       IndexSetImpl(mesh.ftoe, e)
     } else {
-      System.out.println("EDDGES CW")
+      //System.out.println("EDDGES CW")
       CWIndexSetImpl(mesh.ftoe, e)
     }
   }

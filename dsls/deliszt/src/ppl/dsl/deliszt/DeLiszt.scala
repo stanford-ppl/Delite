@@ -22,7 +22,7 @@ import ppl.dsl.deliszt.vec._
 import ppl.dsl.deliszt.mesh._
 import ppl.dsl.deliszt.meshset._
 
-import ppl.dsl.deliszt.analysis.{DeLisztCodeGenAnalysis, LoopColoringOpt}
+import ppl.dsl.deliszt.analysis.{DeLisztCodeGenAnalysis, LoopColoringOpt, LoopColoringOpsExp, ScalaGenLoopColoringOps}
 
 /**
  * These are the portions of Scala imported into DeLiszt's scope.
@@ -98,6 +98,7 @@ trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with Languag
   with OrderingOpsExp
   with MathOpsExp
   with IntMOpsExp
+  with LoopColoringOpsExp
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp
   with FieldOpsExpOpt with FieldImplOpsStandard with MatOpsExp with MatImplOpsStandard with VecOpsExp with VecImplOpsStandard {
 
@@ -119,7 +120,7 @@ trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with Languag
 /**
  * DeLiszt code generators
  */
-trait DeLisztCodeGenBase extends GenericFatCodegen with LoopColoringOpt {
+trait DeLisztCodeGenBase extends GenericFatCodegen {
 
   val IR: DeliteApplication with DeLisztExp
   override def initialDefs = IR.deliteGenerator.availableDefs
@@ -161,7 +162,7 @@ trait DeLisztCodeGenBase extends GenericFatCodegen with LoopColoringOpt {
 trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
   with ScalaGenArithOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with ScalaGenFieldOps with ScalaGenIntMOps with ScalaGenMeshPrivateOps with ScalaGenMeshSetOps
-  with ScalaGenMatOps with ScalaGenVecOps
+  with ScalaGenMatOps with ScalaGenVecOps with ScalaGenLoopColoringOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
   val IR: DeliteApplication with DeLisztExp

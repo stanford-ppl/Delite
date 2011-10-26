@@ -1,6 +1,8 @@
 package ppl.dsl.deliszt
 
 import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.codegen.delite.DeliteCodeGenPkg
+import ppl.dsl.deliszt.analysis.{LoopColoringOpt}
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -15,7 +17,7 @@ import ppl.delite.framework.DeliteApplication
  */
 
 // ex. object GDARunner extends DeLisztApplicationRunner with GDA
-trait DeLisztApplicationRunner extends DeLisztApplication with DeliteApplication with DeLisztExp {
+trait DeLisztApplicationRunner extends DeLisztApplication with DeLisztExp {
   override def liftedMain(x: Rep[Array[String]]) = {
     _init(x)
     this.args = x
@@ -23,9 +25,12 @@ trait DeLisztApplicationRunner extends DeLisztApplication with DeliteApplication
     this.args = null
     unit(y)
   }
+  
+  override val deliteGenerator = new DeliteCodeGenPkg with LoopColoringOpt { val IR: DeLisztApplicationRunner.this.type = DeLisztApplicationRunner.this;
+                                                                             val generators = DeLisztApplicationRunner.this.generators }                                                                               
 }
  
-trait DeLisztApplication extends DeLiszt with DeLisztLift with DeLisztLibrary
+trait DeLisztApplication extends DeliteApplication with DeLiszt with DeLisztLift with DeLisztLibrary
 
 trait DeLisztLibrary {
   this: DeLisztApplication =>
