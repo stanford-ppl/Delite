@@ -658,6 +658,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       val re = Read(mutableInputs)
       val be = summarizeBody(x.body)
       reflectEffect(d, re andAlso be)
+    case x: DeliteOpSingleTask[_] =>      
+      val mutableInputs = readMutableData(d) //TODO: necessary or not??
+      //val mutableInputs = Nil // readMutableData(d) TODO: necessary or not??
+      val re = Read(mutableInputs)
+      val be = summarizeEffects(x.block)
+      reflectEffect(d, re andAlso be)
     case _ => 
       toAtom(d)
   }
@@ -668,6 +674,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   override def reflectEffect[A:Manifest](d: Def[A], u: Summary)(implicit ctx: SourceContext): Exp[A] = d match {
     case x: DeliteOpSingleTask[_] =>
       x.block
+      super.reflectEffect(d,u)
+    case x: DeliteOpLoop[_] =>
+      x.body
       super.reflectEffect(d,u)
     case _ =>
       super.reflectEffect(d,u)

@@ -201,7 +201,7 @@ trait VectorOpsExpOpt extends ppl.dsl.optila.vector.VectorOpsExp with VectorOpsE
   //     case Def(StreamChunkRow(x, i, offset)) => Some(stream_chunk_elem(x,i,n))
   //     //case Def(StreamChunkRowFusable(x, i, offset)) => Some(stream_chunk_elem(x,i,n)) <-- enabling this will remove the computation altogether
   //     case _ => super.vector_optimize_apply(x,n)
-  //   }  
+  //   }
 }
 
 trait BaseGenVectorOps extends GenericFatCodegen {
