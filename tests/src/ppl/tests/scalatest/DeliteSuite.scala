@@ -74,6 +74,7 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   private def execTest(app: DeliteTestRunner, args: Array[String]) = {
     println("EXECUTING...")
     val name = "test.tmp"
+    System.setProperty("delite.threads", threads.toString)
     Console.withOut(new PrintStream(new FileOutputStream(name))) {
       println("test output for: "+app.toString)
       ppl.delite.runtime.Delite.embeddedMain(args, app.staticDataMap)
