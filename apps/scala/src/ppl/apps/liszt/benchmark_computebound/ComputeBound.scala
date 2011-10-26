@@ -1,8 +1,7 @@
 package ppl.apps.liszt.benchmark_computebound
 
-import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
-import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication, DeLisztExp}
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.MetaInteger._
 
 object ComputeBoundRunner extends DeLisztApplicationRunner with ComputeBound
 

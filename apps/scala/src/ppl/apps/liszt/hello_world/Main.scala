@@ -1,8 +1,7 @@
 package ppl.apps.liszt.hello_world
 
-import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
-import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication}
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.MetaInteger._
 
 object HelloWorldRunner extends DeLisztApplicationRunner with HelloWorld
 

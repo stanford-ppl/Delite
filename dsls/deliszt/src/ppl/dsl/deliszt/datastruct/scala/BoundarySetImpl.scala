@@ -11,7 +11,7 @@ import collection.immutable.Range
  * Stanford University
  */
 
-class BoundarySetImpl[MO<:MeshObj](implicit moc: MeshObjConstruct[MO]) extends BoundarySet[MO] {
+class BoundarySetImpl extends BoundarySet {
   val _ranges = ArrayBuilder.make[Range]
   var data : Array[Int] = null
 
@@ -19,7 +19,7 @@ class BoundarySetImpl[MO<:MeshObj](implicit moc: MeshObjConstruct[MO]) extends B
     if(data == null) {
       throw new RuntimeException("Boundary Set not finalized")
     }
-    MeshObjImpl(data(i))(moc)
+    data(i)
   }
   
   override def size = {

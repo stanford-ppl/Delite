@@ -11,7 +11,6 @@ import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
-import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import scala.util.matching.Regex
 
 import ppl.dsl.deliszt.capabilities._
@@ -212,7 +211,16 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
   }
 
   override def remap[A](m: Manifest[A]): String = {
-    parmap(super.remap(m))
+    val sig = parmap(super.remap(m))
+    
+    map_vecmat(sig)
+  }
+  
+  def map_vecmat(line: String): String = {
+    if(line.indexOf("Vec") > 0)
+      System.out.println("FOUND REMAPPING " + line)
+  
+    line
   }
 
   def parmap(line: String): String = {

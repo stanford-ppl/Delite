@@ -10,9 +10,8 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
 
 import ppl.dsl.deliszt.{DeLisztExp,DeLiszt}
-import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
-import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.MetaInteger._
 
 trait MatOps extends DSLType with Variables {
   this: DeLiszt =>
@@ -116,7 +115,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
   //////////////////////////////////////////////////
   // implemented via method on real data structure
   
-  case class MatObjNew[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*)(implicit val mM : Manifest[MatImpl[R,C,A]]) extends Def[Mat[R,C,A]] {
+  case class MatObjNew[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*) extends Def[Mat[R,C,A]] {
     def r = manifest[R]
     def vr = implicitly[MVal[R]]
     def c = manifest[C]
@@ -125,8 +124,6 @@ trait MatOpsExp extends MatOps with VariablesExp {
   }
   
   case class MatObjectNNew[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](numRows:Exp[Int],numCols:Exp[Int]) extends Def[Mat[R,C,A]] {
-    val mM = manifest[MatImpl[R,C,A]]
-    
     val r = manifest[R]
     val vr = implicitly[MVal[R]]
     val c = manifest[C]
@@ -194,9 +191,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
 
   case class MatTimesVec[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Vec[C,A]])
     extends DeliteOpSingleTask(reifyEffectsHere(mat_times_vector_impl(x,y)),true) {
-
-    val mV = manifest[VecImpl[C,A]]
-     
+    
     val r = manifest[R]
     val vr = implicitly[MVal[R]]
     val c = manifest[C]
@@ -207,8 +202,6 @@ trait MatOpsExp extends MatOps with VariablesExp {
 
   case class MatMultiply[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,CC<:IntM:Manifest:MVal,A:Manifest:Arith](x:Exp[Mat[R,C,A]],y:Exp[Mat[C,CC,A]])
     extends DeliteOpSingleTask(reifyEffectsHere(mat_multiply_impl(x,y)),true) {
-
-    val mM = manifest[MatImpl[R,CC,A]]
     
     val r = manifest[R]
     val vr = implicitly[MVal[R]]
@@ -404,8 +397,8 @@ trait ScalaGenMatOps extends ScalaGenBase {
 
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case m@MatObjNew(vs @ _*) => emitValDef(sym, remap(m.mM) + "(" + vs.map(quote).reduceLeft(_+","+_) + ")")
-    case m@MatObjectNNew(numRows,numCols) => emitValDef(sym,"new " + remap(m.mM) + "(" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@MatObjNew(vs @ _*) => emitValDef(sym, "generated.scala.Mat[" + remap(m.a) + "](" + vs.map(quote).reduceLeft(_+","+_) + ")")
+    case m@MatObjectNNew(numRows,numCols) => emitValDef(sym, "generated.scala.Mat[" + remap(m.a) + "].ofSize(" + quote(numRows) + "," + quote(numCols) + ")")
     //case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")
     case MatUpdate(x,i,j,y) => emitValDef(sym,quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
@@ -421,10 +414,10 @@ trait ScalaGenMatOps extends ScalaGenBase {
     // BLAS calls
     // all corresponding nodes should have their DeliteOpSingleTask second argument set to "true" (require inputs)
     case m@MatMultiply(x,y) if (Config.useBlas) =>
-      emitValDef(sym,"new " + remap(m.mM) + "(" + quote(x) + ".numRows," + quote(y) + ".numCols)")
+      emitValDef(sym,"generated.scala.Mat[" + remap(m.a) + "](" + quote(x) + ".numRows," + quote(y) + ".numCols)")
       stream.println("scalaBLAS.matMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,%s.numCols)".format(quote(x),quote(y),quote(sym),quote(x),quote(x),quote(y)))
     case m@MatTimesVec(x,y) if (Config.useBlas) =>
-      emitValDef(sym,"new " + remap(m.mV) + "(" + quote(x) + ".numRows, false)")
+      emitValDef(sym,"generated.scala.Mat[" + remap(m.a) + "](" + quote(x) + ".numRows, false)")
       stream.println("scalaBLAS.matVMult(%s.data,%s.data,%s.data,%s.numRows,%s.numCols,0,1)".format(quote(x),quote(y),quote(sym),quote(x),quote(x)))
       stream.println("scalaBLAS.sigmoid(%s.data,%s.data,0,%s.numRows*%s.numCols)".format(quote(x),quote(sym),quote(x),quote(x)))
     case _ => super.emitNode(sym,rhs)

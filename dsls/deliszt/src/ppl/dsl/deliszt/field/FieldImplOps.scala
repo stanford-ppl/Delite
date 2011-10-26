@@ -1,9 +1,8 @@
 package ppl.dsl.deliszt.field
 
-import scala.virtualization.lms.common.ScalaOpsPkg
-import scala.virtualization.lms.common.{BaseExp, Base}
-import ppl.dsl.deliszt.{DeLisztLift, DeLisztCompiler, DeLiszt}
-import ppl.dsl.deliszt.datastruct.scala._
+import scala.virtualization.lms.common._
+
+import ppl.dsl.deliszt._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)

@@ -1,8 +1,7 @@
 package ppl.dsl.deliszt.meshset
 
-import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import java.io.PrintWriter
-import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt._
 
 import ppl.delite.framework.DSLType
 import reflect.Manifest

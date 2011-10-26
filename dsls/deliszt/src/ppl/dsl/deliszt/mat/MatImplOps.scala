@@ -1,7 +1,7 @@
 package ppl.dsl.deliszt.mat
 
-import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.MetaInteger._
 import ppl.dsl.deliszt.{DeLisztExp, DeLisztCompiler, DeLisztLift, DeLiszt}
 
 trait MatImplOps { this: DeLisztExp =>

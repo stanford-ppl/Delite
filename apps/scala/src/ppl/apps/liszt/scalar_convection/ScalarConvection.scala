@@ -1,8 +1,7 @@
 package ppl.apps.liszt.scalar_convection
 
-import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
-import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication, DeLisztExp}
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.MetaInteger._
 
 object ScalarConvectionRunner extends DeLisztApplicationRunner with SC
 

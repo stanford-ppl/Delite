@@ -1,4 +1,4 @@
-package ppl.dsl.deliszt.datastruct
+package ppl.dsl.deliszt
 
 import _root_.scala.virtualization.lms.internal.{Expressions, CudaCodegen}
 

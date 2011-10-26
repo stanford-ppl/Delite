@@ -5,8 +5,7 @@ import java.io.PrintWriter
 import ppl.delite.framework.DSLType
 import scala.virtualization.lms.common._
 import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
-import ppl.dsl.deliszt.datastruct._
-import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)

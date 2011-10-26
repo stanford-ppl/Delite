@@ -6,7 +6,6 @@ import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.delite.framework.{Config, DeliteApplication}
 
 import ppl.dsl.deliszt._
-import ppl.dsl.deliszt.datastruct.scala._
 import ppl.dsl.deliszt.meshset.MeshSetOpsExp
 
 import scala.collection.mutable.{Map => MMap}
@@ -15,7 +14,7 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
   val IR: DeliteApplication with LoopsFatExp with DeLisztExp
   import IR._
   
-  import StencilCollector.StencilMap
+  import Stencil._
   
   val blockSize = 1
 
@@ -43,8 +42,8 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
     
     if(Config.collectStencil) {
       // Get the map of for loops to Stencil
-      val forMap = analysisResults("StencilCollectorStencils").asInstanceOf[MMap[Int,StencilMap]]
-      val msMap = analysisResults("StencilCollectorMeshsets").asInstanceOf[MMap[Int,MeshSet[MeshObj]]]
+      val forMap = analysisResults("StencilCollectorStencils").asInstanceOf[ForMap]
+      val msMap = analysisResults("StencilCollectorMeshsets").asInstanceOf[MeshSetMap]
          
       if(firstRun) {
         System.out.println("Top level loops")

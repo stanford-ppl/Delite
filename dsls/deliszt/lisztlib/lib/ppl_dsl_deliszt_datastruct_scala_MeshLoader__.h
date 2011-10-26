@@ -23,8 +23,8 @@ JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader_loadM
  * Method:    _loadBoundarySet
  * Signature: (Ljava/lang/String;Lppl/dsl/deliszt/datastruct/scala/BoundarySetImpl;Lppl/dsl/deliszt/datastruct/scala/MeshObjConstruct;)Lppl/dsl/deliszt/datastruct/scala/BoundarySet;
  */
-JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loadBoundarySet
-  (JNIEnv *, jobject, jstring, jobject);
+JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader_loadBoundarySet
+  (JNIEnv *, jobject, jstring, jint);
 
 /*
  * Class:     ppl_dsl_deliszt_datastruct_scala_MeshLoader
@@ -39,8 +39,8 @@ JNIEXPORT jobject JNICALL Java_generated_scala_MeshLoader_loadMesh
  * Method:    _loadBoundarySet
  * Signature: (Ljava/lang/String;Lppl/dsl/deliszt/datastruct/scala/BoundarySetImpl;Lppl/dsl/deliszt/datastruct/scala/MeshObjConstruct;)Lppl/dsl/deliszt/datastruct/scala/BoundarySet;
  */
-JNIEXPORT jobject JNICALL Java_generated_scala_MeshLoader__1loadBoundarySet
-  (JNIEnv *, jobject, jstring, jobject);
+JNIEXPORT jobject JNICALL Java_generated_scala_MeshLoader_loadBoundarySet
+  (JNIEnv *, jobject, jstring, jint);
 
 #ifdef __cplusplus
 }
