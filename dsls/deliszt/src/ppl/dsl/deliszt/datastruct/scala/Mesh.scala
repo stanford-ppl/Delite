@@ -123,21 +123,21 @@ object Mesh {
   
   def face(e: Int, i: Int): Int = { val set = IndexSetImpl(mesh.ctof, e); set(i) }
 
-  def head(e: Int): Int = mesh.etov.apply(e, if(reversed(e)) 1 else 0)
-  def tail(e: Int): Int = mesh.etov.apply(e, if(reversed(e)) 0 else 1)
+  def head(e: Int): Int = mesh.etov.apply(internal(e), if(reversed(e)) 1 else 0)
+  def tail(e: Int): Int = mesh.etov.apply(internal(e), if(reversed(e)) 0 else 1)
 
-  def outside(e: Int): Int = mesh.ftoc.apply(e, if(reversed(e)) 1 else 0)
-  def inside(e: Int): Int = mesh.ftoc.apply(e, if(reversed(e)) 0 else 1)
+  def outside(e: Int): Int = mesh.ftoc.apply(internal(e), if(reversed(e)) 1 else 0)
+  def inside(e: Int): Int = mesh.ftoc.apply(internal(e), if(reversed(e)) 0 else 1)
 
   def flip(e: Int): Int = {e ^ MASK}
 
   def towardsEdgeVertex(e: Int, v: Int): Int = {
-    val facing = internal(mesh.etov.apply(e, HEAD)) == internal(v)
+    val facing = internal(mesh.etov.apply(internal(e), HEAD)) == internal(v)
     if(facing) e else flip(e)
   }
 
   def towardsFaceCell(e: Int, c: Int): Int = {
-    val facing = internal(mesh.ftoc.apply(e, OUTSIDE)) == internal(c)
+    val facing = internal(mesh.ftoc.apply(internal(e), OUTSIDE)) == internal(c)
     if(facing) e else flip(e)
   }
   

@@ -12,13 +12,13 @@ package ppl.dsl.deliszt.datastruct.scala
 
 object IndexSetImpl {
   def apply(crs: CRS, n: Int) = {
-    new IndexSetImpl(crs.values, crs.row(Mesh.internal(n)), crs.row(n+1))
+    new IndexSetImpl(crs.values, crs.row(Mesh.internal(n)), crs.row(Mesh.internal(n)+1))
   }
 }
 
 object CWIndexSetImpl {
   def apply(crs: CRS, n: Int) = {
-    new CWIndexSetImpl(crs.values, crs.row(Mesh.internal(n)), crs.row(n+1))
+    new CWIndexSetImpl(crs.values, crs.row(Mesh.internal(n)), crs.row(Mesh.internal(n)+1))
   }
 }
 

@@ -211,14 +211,47 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
   }
 
   override def remap[A](m: Manifest[A]): String = {
-    val sig = parmap(super.remap(m))
-    
-    map_vecmat(sig)
+    parmap(map_meshobj(super.remap(m)))
   }
   
-  def map_vecmat(line: String): String = {
-    if(line.indexOf("Vec") > 0)
-      System.out.println("FOUND REMAPPING " + line)
+  def map_meshobj(line: String): String = {
+    var res = line
+    
+    System.out.println(line)
+    
+    // Vec
+    if(res.indexOf("Vec") > 0)
+      System.out.println("FOUND VEC " + res)
+      
+    // Matrices
+    if(res.indexOf("Mat") > 0)
+      System.out.println("FOUND MAT " + res)
+    
+    // Field
+    if(res.indexOf("Field") > 0)
+      System.out.println("FOUND Field " + res)
+    
+    val moSub = (m: Regex.Match) => {
+      "[" + m.group(1) + "]"
+    }
+    
+    // Vec, Mat, Field, anything with that final parameter of some value type
+    for(s <- List("Vec", "Mat", "Field")) {
+      val expr = ("\\b" + s + "\\[.*?,\\s*([^\\s]+)\\s*\\]\\(").r  
+      res = expr.replaceAllIn(res, m => s + moSub(m))
+    }
+    
+    // MeshSet
+    val meshSetExpr = ("MeshSet\\[.+\\]").r  
+    res = meshSetExpr.replaceAllIn(res, m => "MeshObj")
+      
+    // MeshObject types
+    for(s <- List("Cell", "Edge", "Face", "Vertex")) {
+      val expr = ("\\b" + s + "\\b").r  
+      res = expr.replaceAllIn(res, m => "Int")
+    }
+    
+    // Parameters of 
   
     line
   }
