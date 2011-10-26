@@ -73,29 +73,29 @@ trait SC extends DeLisztApplication {
   }
 
   def calcCellGeom(c : Rep[Cell]) : Rep[Unit] = {
-    Print("Calc cell geom ", ID(c))
+    // Print("Calc cell geom ", ID(c))
     var center = Vec(0.f,0.f,0.f)
     val approxCenter = calcCellCenter(c)
-    Print("approx center ", approxCenter)
+    // Print("approx center ", approxCenter)
     var volume = 0.f
     for(f <- faces(c)) {
-      Print("Face ", ID(f))
+      // Print("Face ", ID(f))
       val v0 = face_centroid(f) - approxCenter
-      Print("v0", v0)
+      // Print("v0", v0)
       for(e <- edgesCCW(towards(f,c))) {
-        Print("edge ccw ", ID(e))
+        // Print("edge ccw ", ID(e))
         val v1 = position(head(e)) - approxCenter
         val v2 = position(tail(e)) - approxCenter
-        Print(ID(head(e)), " v1 ", v1)
-        Print(ID(tail(e)), " v2 ", v2)
+        // Print(ID(head(e)), " v1 ", v1)
+        // Print(ID(tail(e)), " v2 ", v2)
         val tetVol = dot(v0,cross(v1,v2))
-        Print("tetvol ", tetVol)
+        // Print("tetvol ", tetVol)
         volume += tetVol
         center = center + (approxCenter + face_centroid(f) + position(head(e)) + position(tail(e)))*tetVol
-        Print("center ", center)
+        // Print("center ", center)
       }
     }
-    Print("final center ", center)
+    // Print("final center ", center)
     cell_centroid(c) = center / (volume * 4.f)
     cell_volume(c) = volume / 6.f
     unit(0)

@@ -277,9 +277,9 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case DeLisztMesh() => emitValDef(sym, "0")
       
       case DeLisztBoundarySetCells(name) => emitValDef(sym, "generated.scala.Mesh.boundarySetCells(" + quote(name) + ")")
-      case DeLisztBoundarySetEdges(name) => emitValDef(sym, "generated.scala.Mesh.boundarySetCells(" + quote(name) + ")")
-      case DeLisztBoundarySetFaces(name) => emitValDef(sym, "generated.scala.Mesh.boundarySetCells(" + quote(name) + ")")
-      case DeLisztBoundarySetVertices(name) => emitValDef(sym, "generated.scala.Mesh.boundarySetCells(" + quote(name) + ")")
+      case DeLisztBoundarySetEdges(name) => emitValDef(sym, "generated.scala.Mesh.boundarySetEdges(" + quote(name) + ")")
+      case DeLisztBoundarySetFaces(name) => emitValDef(sym, "generated.scala.Mesh.boundarySetFaces(" + quote(name) + ")")
+      case DeLisztBoundarySetVertices(name) => emitValDef(sym, "generated.scala.Mesh.boundarySetVertices(" + quote(name) + ")")
 
       case DeLisztCellsCell(e, m) => emitValDef(sym, "generated.scala.Mesh.cellsCell(" + quote(e) + ")")
       case DeLisztCellsEdge(e, m) => emitValDef(sym, "generated.scala.Mesh.cellsEdge(" + quote(e) + ")")
