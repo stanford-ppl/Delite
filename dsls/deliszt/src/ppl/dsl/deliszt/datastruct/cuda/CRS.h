@@ -4,7 +4,7 @@
 #include <cuda.h>
 
 class CRS {
-
+public:
   int *rows;
   int *values;
 
@@ -23,6 +23,6 @@ class CRS {
   __device__ __host__ int len(int row) {
     rows[row+1] - rows[row];
   }
-}
+};
 
 #endif

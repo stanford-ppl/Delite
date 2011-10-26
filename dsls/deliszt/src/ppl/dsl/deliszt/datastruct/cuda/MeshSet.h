@@ -21,7 +21,7 @@ public:
     }
 
     // DeliteCoolection
-    __host__ __device__ int size() {
+    __host__ __device__ int dcSize() {
         return size;
     }
 
@@ -33,7 +33,7 @@ public:
         data[idx] = value;
     }
 
-}
+};
 
 //TODO: Deal with CellSet (No zero cell)
 

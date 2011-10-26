@@ -39,7 +39,7 @@ object FieldImpl {
   }
 }
 
-class FieldImpl[MO<:MeshObj:Manifest, T:Manifest](_data : Array[T]) extends Field[MO,T] {
+class FieldImpl[MO<:MeshObj:Manifest, @specialized(Boolean, Int, Long, Float, Double) T:Manifest](_data : Array[T]) extends Field[MO,T] {
   def data:Array[T] = _data
   def apply(idx: Int) = _data(idx)
   def update(idx: Int, x: T) = {

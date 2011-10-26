@@ -8,16 +8,16 @@ template <class T>
 class Field {
 public:
     T *data;
-    int length;
+    int size;
 
     // Constructors
     __host__ __device__ Field() {
-        length = 0;
+        size = 0;
         data = NULL;
     }
 
-    __host__ __device__ Field(int _length, T *_data) {
-        length = _length;
+    __host__ __device__ Field(int _size, T *_data) {
+        size = _size;
         data = _data;
     }
     
@@ -31,8 +31,8 @@ public:
     }
 
     // DeliteCoolection
-    __host__ __device__ int size() {
-        return length;
+    __host__ __device__ int dcSize() {
+        return size;
     }
 
     //TODO: Is dcApply/dcUpdate different from normal apply/update above?

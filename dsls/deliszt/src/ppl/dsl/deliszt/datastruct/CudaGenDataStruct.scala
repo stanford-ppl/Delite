@@ -15,11 +15,13 @@ trait CudaGenDataStruct extends CudaCodegen {
   val FaceImplCls = "jclass FaceImplCls = env->FindClass(\"generated/scala/FaceImpl\");\n"
   val VertexImplCls = "jclass VertexImplCls = env->FindClass(\"generated/scala/VertexImpl\");\n"
 
-  def writeImplCls {
-    println(CellImplCls)
-    println(EdgeImplCls)
-    println(FaceImplCls)
-    println(VertexImplCls)
+  def writeImplCls: String = {
+    val out = new StringBuilder
+    out.append(CellImplCls)
+    out.append(EdgeImplCls)
+    out.append(FaceImplCls)
+    out.append(VertexImplCls)
+    out.toString
   }
 
   /* Transfer Mesh Objects (Cell, Edge, Face, Vertex) */
@@ -31,7 +33,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     val typeStr = remap(argType)
     val numBytesStr = "%s->size * sizeof(%s)".format(quote(sym),typeStr)
 
-    writeImplCls
+    out.append(writeImplCls)
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_size = env->GetMethodID(cls,\"size\",\"()I\");\n")
@@ -46,8 +48,8 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t%s->data = devPtr;\n".format(quote(sym)))
 
     /* Iterate over the input array to retrieve the values from the object type elements */
-    out.append("\tfor(int i=0; i<%s->length; i++) { \n".format(quote(sym)))
-    out.append("\t\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
+    out.append("\tfor(int i=0; i<%s->size; i++) { \n".format(quote(sym)))
+    out.append("\t\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Lgenerated/scala/%sImpl;\");\n".format(typeStr))
     out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
     remap(argType) match {
       case "Cell" => out.append("\t\tjmethodID mid_id = env->GetMethodID(CellImplCls,\"id\",\"()I\");\n")
@@ -78,7 +80,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   def FieldCopyInputHtoD(sym: Sym[Any], argType: Manifest[_]): String = {
     val out = new StringBuilder
     val typeStr = remap(argType)
-    val numBytesStr = "%s->length * sizeof(%s)".format(quote(sym),typeStr)
+    val numBytesStr = "%s->size * sizeof(%s)".format(quote(sym),typeStr)
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_size = env->GetMethodID(cls,\"size\",\"()I\");\n")
@@ -111,10 +113,10 @@ trait CudaGenDataStruct extends CudaCodegen {
   def FieldCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
     val out = new StringBuilder
     val typeStr = remap(argType)
-    val numBytesStr = "%s->size() * sizeof(%s)".format(quote(sym),remap(argType))
+    val numBytesStr = "%s.size * sizeof(%s)".format(quote(sym),remap(argType))
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
     out.append("\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
     out.append("\t%s *hostPtr;\n".format(typeStr))
