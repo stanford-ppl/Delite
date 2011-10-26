@@ -52,10 +52,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         if (a.productPrefix == b.productPrefix) {
           val r1 = a.productIterator.toList == b.productIterator.toList
           val r2 = syms(a) == syms(b)
-          val inMirror = Thread.currentThread.getStackTrace.exists(_.getMethodName == "mirror")
+          lazy val inMirror = Thread.currentThread.getStackTrace.exists(_.getMethodName == "mirror")
           //if (r1 != r2)
             //printdbg("?== "+this+","+x + " is "+r1+"/"+r2+" syms "+syms(a)+"/"+syms(b))
-          if (inMirror) r1 && r2 else r1
+          r1 && (!inMirror || r2)
         } else false
       case _ => super.equals(x)
     }
