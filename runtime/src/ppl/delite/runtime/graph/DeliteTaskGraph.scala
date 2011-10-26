@@ -128,7 +128,7 @@ object DeliteTaskGraph {
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
       case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
-      case "OP_MultiLoop" => 
+      case "OP_MultiLoop" =>
 			  val size = getFieldString(op, "sizeValue")
 				val sizeIsConst = getFieldString(op, "sizeType") == "const"				
 				new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
@@ -172,8 +172,10 @@ object DeliteTaskGraph {
     graph.registerOp(newop)
     graph._result = (newop, newop.getOutputs.head)
 
-    //process target metadata
-    if (resultMap.contains(Targets.Cuda)) processCudaMetadata(op, newop)
+    //process target GPU metadata
+    for (tgt <- Targets.GPU) {
+      if (resultMap.contains(tgt)) processGPUMetadata(op, newop, tgt)
+    }
 
     //process kernel variant
     op.get("variant") match {
@@ -228,7 +230,9 @@ object DeliteTaskGraph {
 
     val v = new OP_Variant(op.id, resultType, op, varGraph)
 
-    extractCudaMetadata(v, varGraph, outerGraph)
+    for (tgt <- Targets.GPU) {
+      extractGPUMetadata(v, varGraph, outerGraph, tgt)
+    }
     v
   }
 
@@ -281,9 +285,15 @@ object DeliteTaskGraph {
     conditionOp.inputList = ifInputs.toList
     conditionOp.mutableInputs = ifMutableInputs
 
-    if (predValue == "") extractCudaMetadata(conditionOp, predGraph, graph)
-    if (thenValue == "") extractCudaMetadata(conditionOp, thenGraph, graph)
-    if (elseValue == "") extractCudaMetadata(conditionOp, elseGraph, graph)
+    if (predValue == "") {
+      for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, predGraph, graph, tgt)
+    }
+    if (thenValue == "") {
+      for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, thenGraph, graph, tgt)
+    }
+    if (elseValue == "") {
+      for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, elseGraph, graph, tgt)
+    }
 
     //add consumer edges
     for(dep <- ifDeps)
@@ -316,10 +326,14 @@ object DeliteTaskGraph {
     whileOp.dependencies = whileDeps
     whileOp.inputList = whileInputs.toList
     whileOp.mutableInputs = whileMutableInputs
-		
-    if (predValue == "") extractCudaMetadata(whileOp, predGraph, graph)
-    if (bodyValue == "") extractCudaMetadata(whileOp, bodyGraph, graph)
-		
+
+    if (predValue == "") {
+      for (tgt <- Targets.GPU) extractGPUMetadata(whileOp, predGraph, graph, tgt)
+    }
+    if (bodyValue == "") {
+      for (tgt <- Targets.GPU) extractGPUMetadata(whileOp, bodyGraph, graph, tgt)
+    }
+
     //add consumer edges
     for (dep <- whileDeps)
       dep.addConsumer(whileOp)
@@ -354,7 +368,7 @@ object DeliteTaskGraph {
     graphOp.inputList = graphInputs.toList
     graphOp.mutableInputs = graphMutableInputs
 
-    extractCudaMetadata(graphOp, bodyGraph, graph)
+    for (tgt <- Targets.GPU) extractGPUMetadata(graphOp, bodyGraph, graph, tgt)
 
     //add consumer edges
     for (dep <- graphDeps)
@@ -365,12 +379,13 @@ object DeliteTaskGraph {
     graph._result = (graphOp, graphOp.getOutputs.head)
   }
 
-  def extractCudaMetadata(superOp: OP_Nested, innerGraph: DeliteTaskGraph, outerGraph: DeliteTaskGraph) {
-    superOp.cudaMetadata.outputs = innerGraph.result._1.cudaMetadata.outputs
-    for (op <- innerGraph._ops.values; key <- op.cudaMetadata.inputs.keys) {
+  // Change Metadata apply method from Target -> specific metadata in DeliteOP
+  def extractGPUMetadata(superOp: OP_Nested, innerGraph: DeliteTaskGraph, outerGraph: DeliteTaskGraph, tgt: Targets.Value) {
+    superOp.getGPUMetadata(tgt).outputs = innerGraph.result._1.getGPUMetadata(tgt).outputs
+    for (op <- innerGraph._ops.values; key <- op.getGPUMetadata(tgt).inputs.keys) {
       try {
         val inOp = getOp(key._2)(outerGraph)
-        superOp.cudaMetadata.inputs += (inOp, key._2) -> op.cudaMetadata.inputs(key)
+        superOp.getGPUMetadata(tgt).inputs += (inOp, key._2) -> op.getGPUMetadata(tgt).inputs(key)
       }
       catch {
         case e => //symbol only exists in inner graph, therefore ignore
@@ -404,21 +419,25 @@ object DeliteTaskGraph {
   }
 
   /**
-   * Extract the required Cuda metadata from the DEG
+   * Extract the required GPU (Cuda/OpenCL) metadata from the DEG
    */
-  def processCudaMetadata(op: Map[Any, Any], newop: DeliteOP)(implicit graph: DeliteTaskGraph) {
+  def processGPUMetadata(op: Map[Any, Any], newop: DeliteOP, tgt: Targets.Value)(implicit graph: DeliteTaskGraph) {
     val metadataAll = getFieldMap(op, "metadata")
-    val metadataMap = getFieldMap(metadataAll, "cuda")
-    val cudaMetadata = newop.cudaMetadata
+    val metadataMap = getFieldMap(metadataAll, tgt.toString)
+    val metadata = newop.getGPUMetadata(tgt)
 
     for (input <- getFieldList(metadataMap, "gpuInputs").reverse) { //input list
       val inputMap = input.asInstanceOf[Map[String,Any]]
       val sym = inputMap.keys.head
       val value = inputMap.values.head.asInstanceOf[List[Any]]
-      val data = cudaMetadata.newInput(getOp(sym), sym)
+      val data = metadata.newInput(getOp(sym), sym)
       data.resultType = value.head
       data.func = value.tail.head
       data.funcReturn = value.tail.tail.head
+      tgt match {
+        case Targets.OpenCL => data.objFields = value.tail.tail.tail.head.asInstanceOf[Map[String,String]]
+        case _ =>
+      }
     }
 
     val tempSyms = new HashMap[String,DeliteOP]
@@ -426,7 +445,7 @@ object DeliteTaskGraph {
       val key = (temp.asInstanceOf[Map[String,Any]].keys.head)
       val tempOp = new OP_Single(key, null, null)
       tempSyms(key) = tempOp
-      cudaMetadata.tempOps ::= tempOp
+      metadata.tempOps ::= tempOp
     }
 
     def getOpLike(sym: String) = {
@@ -437,7 +456,7 @@ object DeliteTaskGraph {
     for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) { //temporaries list
       val key = (temp.asInstanceOf[Map[String,Any]].keys.head)
       val value = (temp.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
-      val data = cudaMetadata.newTemp(key)
+      val data = metadata.newTemp(key)
       data.resultType = value.head
       data.func = value.tail.head
       for (sym <- value.tail.tail.head.asInstanceOf[List[String]].reverse) {
@@ -445,28 +464,27 @@ object DeliteTaskGraph {
       }
     }
 
-    //output allocation  //TODO: support multiple outputs
-    metadataMap.get("gpuOutput") match {
-      case None => //do nothing
-      case Some(field) => field match {
-        case out: Map[Any,Any] => {
-          val output = cudaMetadata.newOutput(out.keys.head)
-          val outList = out.values.head.asInstanceOf[List[Any]]
-          output.resultType = outList.head
-          output.func = outList.tail.head
-          for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
-            output.inputs ::= (getOpLike(sym), sym)
-          }
-          //output copy
-          output.funcReturn = outList.tail.tail.tail.head
-        }
-        case err => mapNotFound(err)
+    //output allocation
+    for (out <- getFieldList(metadataMap, "gpuOutputs").reverse) {
+      val outputMap = out.asInstanceOf[Map[Any,Any]]
+      val output = metadata.newOutput(outputMap.keys.head)
+      val outList = outputMap.values.head.asInstanceOf[List[Any]]
+      output.resultType = outList.head
+      output.func = outList.tail.head
+      for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
+        output.inputs ::= (getOpLike(sym), sym)
+      }
+      //output copy
+      output.funcReturn = outList.tail.tail.tail.head
+      tgt match {
+        case Targets.OpenCL => output.objFields = outList.tail.tail.tail.tail.head.asInstanceOf[Map[String,String]]
+        case _ =>
       }
     }
 
     def fill(field: String) {
       val list = getFieldList(metadataMap, field)
-      val data = cudaMetadata(field)
+      val data = metadata(field)
       data.func = list.head
       for (sym <- list.tail.head.asInstanceOf[List[String]].reverse) data.inputs ::= (getOpLike(sym), sym)
     }
@@ -525,7 +543,7 @@ class DeliteTaskGraph {
       c.replaceDependency(old, op)
       for ((x,sym) <- c.getInputs; if (x == old)) {
         c.replaceInput(old, op, sym)
-        c.cudaMetadata.replaceInput(old, op, sym)
+        for (tgt <- Targets.GPU) c.getGPUMetadata(tgt).replaceInput(old, op, sym)
       }
     }
 

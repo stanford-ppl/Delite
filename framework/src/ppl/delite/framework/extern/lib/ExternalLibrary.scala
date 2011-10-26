@@ -6,13 +6,15 @@ import scala.xml._
 
 trait ExternalLibConfiguration {
   val compiler: String
-  val include: List[String]
+  val headerDir: List[String]
+  val libDir: List[String]
 }
 
 trait ExternalLibrary {
   //val target: Target
   val libName: String
   val ext: String // native file extension (can this ever be anything besides .c or .cpp??)
+  val libExt: String // library file extension (dynamic: .so, static: .a)
   val configFile: String // name of file, will always be searched for inside extern/src/ppl/delite/extern/lib/config
   val compileFlags: List[String] // machine-independent flags that are always passed to the compiler for this lib
   val outputSwitch: String // compiler parameter that allows us to specify destination dir (e.g. -o)
@@ -25,7 +27,8 @@ trait ExternalLibrary {
    */  
   lazy val config = loadConfig(configFile)
   lazy val compiler: String = config.compiler
-  lazy val includeFlags: List[String] = config.include
+  lazy val headerDir: List[String] = config.headerDir
+  lazy val libDir: List[String] = config.libDir
   
   def compile(src: String, destDir: String) {
     val srcFile = new File(src)
@@ -34,11 +37,11 @@ trait ExternalLibrary {
     // invoke the compiler using Runtime.exec
     val javaHome = System.getProperty("java.home")
     val buildPath = new File(Config.buildDir, "scala/kernels")
-    val destPath = new File(destDir, "/" + name + ".so")    
+    val destPath = new File(destDir, "/" + name + "." + libExt)
     val outputFlags = List(outputSwitch, destPath.toString)
 
     // this call is based on the gcc/icc invocation signature.. do we need to generalize it?
-    val args = Array(compiler) ++ compileFlags ++ includeFlags ++ outputFlags ++ Array(srcFile.toString)
+    val args = Array(compiler) ++ headerDir ++ libDir ++ compileFlags ++ outputFlags ++ Array(srcFile.toString)
     //println("--external compile args: " + (args mkString ","))
     val process = Runtime.getRuntime.exec(args, null, buildPath)
     process.waitFor
@@ -65,11 +68,13 @@ trait ExternalLibrary {
     
     val body = XML.loadFile(configFile)
     val compilerVal = body \\ "compiler" text
-    val includeVal = body \\ "include" flatMap { e => val prefix = e \ "prefix"; e \\ "path" map { prefix.text.trim + _.text.trim } } toList
+    val headerDirVal = body \\ "headerDir" flatMap { e => val prefix = e \ "prefix"; e \\ "path" map { prefix.text.trim + _.text.trim } } toList
+    val libDirVal = body \\ "libDir" flatMap { e => val prefix = e \ "prefix"; e \\ "path" map { prefix.text.trim + _.text.trim } } toList
 
     new ExternalLibConfiguration {
       val compiler = compilerVal
-      val include = includeVal
+      val headerDir = headerDirVal
+      val libDir = libDirVal
     }
   }
 }

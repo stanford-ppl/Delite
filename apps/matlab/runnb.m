@@ -1,6 +1,6 @@
 function exectime = runnb(gpu)
 addpath nb
-trainfile = '/kunle/ppl/delite/data/ml/nb/MATRIX.TRAIN.RANDOM.250K';
+trainfile = '/kunle/ppl/delite/data/ml/nb/MATRIX.TRAIN.50k';
 if (gpu == 1)
     exectime = nb_traingpu(trainfile);
 elseif(gpu == 2)

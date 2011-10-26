@@ -1,6 +1,6 @@
 package ppl.delite.framework
 
-import datafields.ScalarField
+import datastructures.ScalarField
 import types.Type
 import scala.virtualization.lms.common.{EffectExp}
 

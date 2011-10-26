@@ -207,6 +207,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
           */
           val objRetType = (!isVoidType(sym.Type)) && (!isPrimitiveType(sym.Type))
           objRetType match {
+            /*
             case true =>   //TODO: Remove this case
               //Least check
               (kernelSymbol==sym) match {
@@ -236,6 +237,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
               stream.println(addTab()+"}")
               saveLocalVar(sym,nextDimStr,outLocalVar)
 			        allocReference(sym,getBlockResult(a).asInstanceOf[Sym[_]])
+              */
             case _ =>
               isVoidType(sym.Type) match {
                 case true =>
@@ -264,6 +266,35 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
               }
           }
 
+        case _ => super.emitNode(sym, rhs)
+      }
+    }
+}
+
+trait DeliteOpenCLGenIfThenElse extends OpenCLGenEffect with DeliteBaseGenIfThenElse {
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+      rhs match {
+        case DeliteIfThenElse(c,a,b,h) =>
+          //TODO: using if-else does not work
+          remap(sym.Type) match {
+            case "void" =>
+              stream.println("if (" + quote(c) + ") {")
+              emitBlock(a)
+              stream.println("} else {")
+              emitBlock(b)
+              stream.println("}")
+            case _ =>
+              stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
+              stream.println("if (" + quote(c) + ") {")
+              emitBlock(a)
+              stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(a))))
+              stream.println("} else {")
+              emitBlock(b)
+              stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(b))))
+              stream.println("}")
+          }
         case _ => super.emitNode(sym, rhs)
       }
     }

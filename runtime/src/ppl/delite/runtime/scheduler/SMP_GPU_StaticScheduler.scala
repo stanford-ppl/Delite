@@ -34,6 +34,7 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with ParallelUtiliza
   protected def scheduleFlat(graph: DeliteTaskGraph) = scheduleFlat(graph, false)
 
   protected def scheduleFlat(graph: DeliteTaskGraph, sequential: Boolean) {
+    assert(numGPUs > 0)
     val opQueue = new ArrayDeque[DeliteOP]
     val schedule = PartialSchedule(numCPUs + numGPUs)
     enqueueRoots(graph, opQueue)
@@ -53,7 +54,7 @@ final class SMP_GPU_StaticScheduler extends StaticScheduler with ParallelUtiliza
     op match {
       case c: OP_Nested => addNested(c, graph, schedule, Range(0, numCPUs + numGPUs))
       case _ => {
-        if (op.supportsTarget(Targets.Cuda) && numGPUs > 0) { //schedule on GPU resource
+        if (scheduleOnGPU(op)) { //schedule on GPU resource
           if (op.isDataParallel)
             splitGPU(op, schedule)
           else {

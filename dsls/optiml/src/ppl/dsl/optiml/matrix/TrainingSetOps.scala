@@ -6,7 +6,7 @@ import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.util.OverloadHack
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
-import scala.virtualization.lms.common.{Variables, Base, BaseExp, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.common.{Variables, Base, BaseExp, CGenBase, CudaGenBase, ScalaGenBase, OpenCLGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
 
 // TODO: should TrainingSet be a Stream instead of a Matrix?
@@ -100,15 +100,28 @@ trait CudaGenTrainingSetOps extends CudaGenBase {
   }
 }
 
+trait OpenCLGenTrainingSetOps extends OpenCLGenBase {
+  val IR: TrainingSetOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case TrainingSetObjectFromMat(xs, labels) => throw new GenerationFailedException("OpenCLGen: TrainingSet Cannot be generated from GPU")
+    //case TrainingSetTransposed(x) => emitValDef(sym, "(*"+quote(x) + ".transposed)")
+    case TrainingSetTransposed(x) => emitValDef(sym, "%s_transposed(%s)".format(remap(sym.Type),quote(x)))
+    case TrainingSetLabels(x) => emitValDef(sym, "%s_labels(%s)".format(remap(sym.Type),quote(x)))
+    case _ => super.emitNode(sym,rhs)
+  }
+}
+
 trait CGenTrainingSetOps extends CGenBase {
   val IR: TrainingSetOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
-    case t@TrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap(t.mM) + "(" + quote(xs) + "," + quote(labels) + ")")
-    case TrainingSetTransposed(x) => emitValDef(sym, quote(x) + ".transposed")
-    case TrainingSetLabels(x) => emitValDef(sym, quote(x) + ".labels")
+    //case t@TrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap(t.mM) + "(" + quote(xs) + "," + quote(labels) + ")")
+    //case TrainingSetTransposed(x) => emitValDef(sym, "%s_transposed(%s)".format(remap(sym.Type),quote(x)))
+    //case TrainingSetLabels(x) => emitValDef(sym, "%s_labels(%s)".format(remap(sym.Type),quote(x)))
     case _ => super.emitNode(sym, rhs)
   }
 }
