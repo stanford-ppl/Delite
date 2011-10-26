@@ -644,10 +644,30 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       val re = Read(mutableInputs)
       val be = summarizeBody(x.body)
       reflectEffect(d, re andAlso be)
+    case x: DeliteOpSingleTask[_] =>      
+      val mutableInputs = readMutableData(d) //TODO: necessary or not??
+      //val mutableInputs = Nil // readMutableData(d) TODO: necessary or not??
+      val re = Read(mutableInputs)
+      val be = summarizeEffects(x.block)
+      reflectEffect(d, re andAlso be)
     case _ => 
-      toAtom(d) // TODO: just to make refactoring easier in case we want to change to reflectSomething
+      toAtom(d)
   }
 
+  // TBD: move logic from reflectPure (above) into reflectEffect?
+
+  // HACK lazy val bites again: must make sure that block is evaluated!
+  override def reflectEffect[A:Manifest](d: Def[A], u: Summary): Exp[A] = d match {
+    case x: DeliteOpSingleTask[_] =>
+      x.block
+      super.reflectEffect(d,u)
+    case x: DeliteOpLoop[_] =>
+      x.body
+      super.reflectEffect(d,u)
+    case _ =>
+      super.reflectEffect(d,u)
+  }
+  
   // override def reflectMutable[A:Manifest](d: Def[A]): Exp[A] = d match {
   //   case x: DeliteOpLoop[_] => 
   //     val mutableInputs = readMutableData(d)    
