@@ -3,10 +3,10 @@ package ppl.dsl.optiml.matrix
 import ppl.dsl.optiml.CudaGenDataStruct
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
-import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase}
+import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase, OpenCLGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.Config

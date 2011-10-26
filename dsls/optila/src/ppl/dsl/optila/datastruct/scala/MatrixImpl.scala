@@ -30,16 +30,25 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
   def dcApply(idx: Int) : T = _data(idx)
   def dcUpdate(idx: Int, x: T) { _data(idx) = x }
 
+  def unsafeSetData(xs: Array[T], len: Int) {
+    _data = xs
+    // _length = len
+  }
+
   def getRow(row: Int) = {
-    new MatrixRowImpl[T](row, this, _data)
+    //new MatrixRowImpl[T](row, this, _data)
+    ////   extends VectorViewImpl[T](x, index*matrix.numCols, 1, matrix.numCols, true) with MatrixRow[T]
+    new VectorView[T](_data, row*_numCols, 1, _numCols, true) 
   }
 
   def getCol(col: Int) = {
-    new MatrixColImpl[T](col, this, _data)
+    //new MatrixColImpl[T](col, this, _data)
+    //   extends VectorViewImpl[T](x, index, matrix.numCols, matrix.numRows, false) with MatrixCol[T]
+    new VectorView[T](_data, col, _numCols, _numRows, false) 
   }
 
   def vview(start: Int, stride: Int, length: Int, isRow: Boolean) = {
-    new VectorViewImpl[T](_data, start, stride, length, isRow)
+    new VectorView[T](_data, start, stride, length, isRow)
   }
 
   def cloneL = {

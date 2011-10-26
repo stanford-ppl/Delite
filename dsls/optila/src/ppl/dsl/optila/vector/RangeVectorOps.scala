@@ -2,14 +2,14 @@ package ppl.dsl.optila.vector
 
 import ppl.dsl.optila.{Vector, DenseVector, RangeVector}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import scala.virtualization.lms.util.OverloadHack
 import java.io.PrintWriter
 
-trait RangeVectorOps extends DSLType with Base with OverloadHack { this: OptiLA =>
+trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
 
   implicit def repToRangeVecOps(x: Rep[RangeVector]) = new RangeVecOpsCls(x)
   implicit def varToRangeVecOps(x: Var[RangeVector]) = new RangeVecOpsCls(readVar(x))
@@ -61,7 +61,6 @@ trait RangeVectorOps extends DSLType with Base with OverloadHack { this: OptiLA 
     def t = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
     def mt() = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
     def update(n: Rep[Int], y: Rep[Int]): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def +=(y: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def insert(pos: Rep[Int], y: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
     def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")

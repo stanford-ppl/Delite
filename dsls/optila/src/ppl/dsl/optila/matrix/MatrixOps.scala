@@ -4,10 +4,10 @@ import java.io.{PrintWriter}
 
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
-import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase}
+import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, OpenCLGenBase, CGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.Config
@@ -15,7 +15,7 @@ import ppl.delite.framework.extern.lib._
 
 import ppl.dsl.optila._
 
-trait MatrixOps extends DSLType with Variables {
+trait MatrixOps extends Variables {
   this: OptiLA =>
 
 
@@ -273,7 +273,9 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   case class MatrixGetCol[A:Manifest](x: Exp[Matrix[A]], i: Exp[Int]) extends Def[MatrixCol[A]] {
     val m = manifest[A]
   }
-  case class MatrixRawData[A:Manifest](x: Exp[Matrix[A]]) extends Def[Array[A]]
+  case class MatrixRawData[A:Manifest](x: Exp[Matrix[A]]) extends Def[Array[A]] {
+    def m = manifest[A]
+  }
   case class MatrixNumRows[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixNumCols[A:Manifest](x: Exp[Matrix[A]]) extends Def[Int]
   case class MatrixClone[A:Manifest](x: Exp[Matrix[A]]) extends Def[Matrix[A]]
@@ -475,8 +477,11 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   case class MatrixPlusEquals[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
     extends DeliteOpIndexedLoop {
 
-    val size = matrix_dcsize(inA)
+    val size = copyTransformedOrElse(_.size)(dc_size(inA))
     def func = i => dc_update(inA, i, dc_apply(inA,i) + dc_apply(inB,i))
+    
+    def m = manifest[A]
+    def a = implicitly[Arith[A]]
   }
 
   case class MatrixMinus[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
@@ -826,9 +831,9 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   // internal
 
   def matrix_dcsize[A:Manifest](x: Exp[Matrix[A]]) = x.numRows * x.numCols
-  def matrix_dcapply[A:Manifest](x: Exp[Matrix[A]], n: Exp[Int]) = matrix_raw_data(x).apply(n)
-  def matrix_dcupdate[A:Manifest](x: Exp[Matrix[A]], n: Exp[Int], y: Exp[A]) = matrix_raw_data(x).update(n,y)
-  def matrix_raw_data[A:Manifest](x: Exp[Matrix[A]]) = reflectPure(MatrixRawData(x))  
+  def matrix_dcapply[A:Manifest](x: Exp[Matrix[A]], n: Exp[Int]) = reflectPure(DeliteCollectionApply(x,n))//matrix_raw_data(x).apply(n)
+  def matrix_dcupdate[A:Manifest](x: Exp[Matrix[A]], n: Exp[Int], y: Exp[A]) = /*reflectWrite(x)*/reflectPure(DeliteCollectionUpdate(x,n,y))//matrix_raw_data(x).update(n,y)
+  //def matrix_raw_data[A:Manifest](x: Exp[Matrix[A]]) = reflectMutable(MatrixRawData(x))  
 
   //////////////
   // mirroring
@@ -837,6 +842,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     (e match {
       case MatrixNumRows(x) => matrix_numrows(f(x))
       case MatrixNumCols(x) => matrix_numcols(f(x))
+      //case e@MatrixRawData(x) => matrix_raw_data(f(x))(e.m)
       case e@MatrixGetRow(x,i) => matrix_getrow(f(x),f(i))(e.m)
       case e@MatrixGetCol(x,i) => matrix_getcol(f(x),f(i))(e.m)
       case MatrixVView(x, start, stride, length, isRow) => matrix_vview(f(x),f(start),f(stride),f(length),f(isRow)) // should set original, too?
@@ -866,6 +872,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
       case Reflect(MatrixClone(x), u, es) => reflectMirrored(Reflect(MatrixClone(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(MatrixUpdate(x,i,j,r), u, es) => reflectMirrored(Reflect(MatrixUpdate(f(x),f(i),f(j),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixInsertAllCols(x,y,z), u, es) => reflectMirrored(Reflect(MatrixInsertAllCols(f(x),f(y),f(z)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatrixPlusEquals(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixPlusEquals(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixRemoveCols(x,y,z), u, es) => reflectMirrored(Reflect(MatrixRemoveCols(f(x),f(y),f(z)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixObjectNew(x,y), u, es) => reflectMirrored(Reflect(MatrixObjectNew(f(x),f(y))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
       // reflected ops
@@ -994,7 +1001,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
     //case m@SymmetricMatrixObjectNew(n) => emitValDef(sym, "new generated.scala.SymmetricMatrixImpl[" + remap(m.m) + "](" + quote(n) + ")")
-    case m@MatrixObjectNew(numRows, numCols) => emitValDef(sym, "new generated.scala.MatrixImpl[" + remap(m.m) + "](" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@MatrixObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap("generated.scala.MatrixImpl[" + remap(m.m) + "]")+"(" + quote(numRows) + "," + quote(numCols) + ")")
     case MatrixVView(x,start,stride,length,isRow) => emitValDef(sym, quote(x) + ".vview(" + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
     //case MatrixApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatrixGetRow(x,i) => emitValDef(sym, quote(x) + ".getRow(" + quote(i) + ")")
@@ -1200,6 +1207,80 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       }
   */
 
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait OpenCLGenMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
+  val IR: MatrixOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+   
+    case MatrixObjectNew(numRows,numCols) =>
+      stream.println(addTab()+"%s *devPtr;".format(remap(sym.Type.typeArguments(0))))
+      stream.println(addTab()+"DeliteCudaMalloc((void**)&devPtr,%s*%s*sizeof(%s));".format(quote(numRows),quote(numCols),remap(sym.Type.typeArguments(0))))
+      stream.println("%s *%s_ptr = new %s(%s,%s,devPtr);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
+      //stream.println("%s.numRows = %s;".format(quote(sym),quote(numRows)))
+      //stream.println("%s.numCols = %s;".format(quote(sym),quote(numCols)))
+      //stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
+    
+	  /* The ops that call through to the underlying data structure */
+    //case MatrixDCApply(x,i) =>
+    //  emitValDef(sym, "%s.dcApply(%s)".format(quote(x),quote(i)))
+    //case MatrixApply(x,i,j) =>
+    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
+    case MatrixUpdate(x,i,j,y)  =>
+      stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
+    case MatrixNumRows(x)  =>
+      emitValDef(sym, quote(x) + ".numRows")
+    case MatrixNumCols(x)  =>
+      emitValDef(sym, quote(x) + ".numCols")
+
+    /* Specialized CUDA code generations for DeliteOpSingleTasks */
+    case MatrixUpdateRow(x, row, y) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->length".format(quote(y.ops.elem)))
+      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(y.ops.elem)))
+      tabWidth += 1
+      stream.println(addTab()+"%s.update(%s,%s,%s.apply(%s));".format(quote(x),quote(row),currDimStr,quote(y.ops.elem),currDimStr))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      currDim -= 1
+
+    case MatrixTranspose(x) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->size()".format(quote(x)))
+      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
+      tabWidth += 1
+      stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
+      stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
+      stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)),false)
+      currDim -= 1
+
+    case MatrixSumCol(x) =>
+      currDim += 1
+      val currDimStr = getCurrDimStr()
+      setCurrDimLength("%s->numCols".format(quote(x)))
+      stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
+      tabWidth += 1
+      stream.println(addTab()+"%s reducVal = 0;".format(remap(x.Type.typeArguments(0))))
+      stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
+      tabWidth += 1
+      stream.println(addTab()+"reducVal += %s.apply(i,%s);".format(quote(x),currDimStr))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      stream.println(addTab()+"%s.update(%s,reducVal);".format(quote(sym),currDimStr))
+      tabWidth -= 1
+      stream.println(addTab()+"}")
+      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false)
+      currDim -= 1
+  
     case _ => super.emitNode(sym, rhs)
   }
 }

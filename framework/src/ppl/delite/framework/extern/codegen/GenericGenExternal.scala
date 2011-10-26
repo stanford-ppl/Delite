@@ -25,7 +25,7 @@ trait GenericGenExternal extends GenericCodegen {
   val nativeDir = new File(Config.buildDir + "/native/")
   
   /* location for compiled .so shared libraries */
-  val libDir = new File(Config.buildDir + "/libraries/")
+  val libDir = new File(Config.buildDir + "/libraries/" + this.toString)
   
   def libInterfaceHdr(lib: ExternalLibrary) = ""
   def libInterfaceFtr(lib: ExternalLibrary) = ""
@@ -35,7 +35,8 @@ trait GenericGenExternal extends GenericCodegen {
   override def initializeGenerator(buildDir: String) {
     headerDir.mkdirs()
     nativeDir.mkdirs()
-    libDir.mkdirs()    
+    libDir.mkdirs()
+
     super.initializeGenerator(buildDir)        
   }
   

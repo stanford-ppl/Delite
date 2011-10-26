@@ -3,7 +3,6 @@ package ppl.dsl.optiml
 import java.io.{PrintWriter}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
-import ppl.delite.framework.DSLType
 
 /**
  * This file should be auto-generated!
@@ -16,7 +15,7 @@ trait LBPOps extends DenoiseVertexDataOps with DenoiseEdgeDataOps
 trait LBPOpsExp extends DenoiseVertexDataOpsExp with DenoiseEdgeDataOpsExp
 trait ScalaGenLBPOps extends ScalaGenDenoiseVertexDataOps with ScalaGenDenoiseEdgeDataOps
 
-trait DenoiseVertexDataOps extends DSLType with Variables {
+trait DenoiseVertexDataOps extends Variables {
   object DenoiseVertexData {
     def apply(id: Rep[Int], b: Rep[DenseVector[Double]], p: Rep[DenseVector[Double]]) = denoise_vertex_data_obj_new(id, b, p)
   }
@@ -82,7 +81,7 @@ trait ScalaGenDenoiseVertexDataOps extends ScalaGenBase {
   }
 }
 
-trait DenoiseEdgeDataOps extends DSLType with Variables {
+trait DenoiseEdgeDataOps extends Variables {
   object DenoiseEdgeData {
     def apply(m: Rep[DenseVector[Double]], oM: Rep[DenseVector[Double]]) = denoise_edge_data_obj_new(m, oM)
   }

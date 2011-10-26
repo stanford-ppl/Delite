@@ -2,13 +2,12 @@ package ppl.dsl.optiml.application
 
 import ppl.dsl.optiml._
 import java.io.PrintWriter
-import ppl.delite.framework.{DSLType}
 import scala.virtualization.lms.common.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
-trait BinarizedGradientTemplateOps extends DSLType with Variables with OverloadHack {
+trait BinarizedGradientTemplateOps extends Variables with OverloadHack {
 
   object BinarizedGradientTemplate {
     def apply(radius: Rep[Int], rect: Rep[Rect], mask_list: Rep[DenseVector[Int]], level: Rep[Int], binary_gradients: Rep[DenseVector[Int]], match_list: Rep[IndexVectorDense], occlusions: Rep[DenseVector[DenseVector[Int]]], templates: Rep[DenseVector[BinarizedGradientTemplate]], hist: Rep[DenseVector[Float]]) = binarizedgradienttemplate_obj_new(radius, rect, mask_list, level, binary_gradients, match_list, occlusions, templates, hist)

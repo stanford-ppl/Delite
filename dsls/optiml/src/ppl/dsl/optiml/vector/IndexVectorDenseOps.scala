@@ -2,14 +2,14 @@ package ppl.dsl.optiml.vector
 
 import ppl.dsl.optiml.{Vector, DenseVector, RangeVector, IndexVector, IndexVectorDense}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.util.OverloadHack
 import java.io.PrintWriter
 
-trait IndexVectorDenseOps extends DSLType with Base with OverloadHack { this: OptiML =>
+trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
 
   implicit def repToIndexVecDenseOps(x: Rep[IndexVectorDense]) = new IndexVecDenseOpsCls(x)
   implicit def varToIndexVecDenseOps(x: Var[IndexVectorDense]) = new IndexVecDenseOpsCls(readVar(x))
@@ -38,7 +38,6 @@ trait IndexVectorDenseOps extends DSLType with Base with OverloadHack { this: Op
     def t = throw new UnsupportedOperationException("tbd") 
     def mt() = throw new UnsupportedOperationException("tbd")    
     def update(n: Rep[Int], y: Rep[Int]): Rep[Unit] = throw new UnsupportedOperationException("tbd")
-    def +=(y: Rep[Int]) = throw new UnsupportedOperationException("tbd")
     def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("tbd")
     def insert(pos: Rep[Int], y: Rep[Int]) = throw new UnsupportedOperationException("tbd")
     def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("tbd")

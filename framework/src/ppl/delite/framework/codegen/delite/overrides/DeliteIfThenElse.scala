@@ -4,6 +4,7 @@ import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{GenericNestedCodegen,GenerationFailedException}
+import scala.reflect.SourceContext
 
 trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExpBridge with DeliteOpsExp {
 
@@ -13,13 +14,13 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
 
   case class DeliteIfThenElse[T:Manifest](cond: Exp[Boolean], thenp: Exp[T], elsep: Exp[T], flat: Boolean) extends DeliteOpCondition[T]
 
-  override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T]) = ifThenElse(cond, thenp, elsep, false)
+  override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T])(implicit ctx: SourceContext) = ifThenElse(cond, thenp, elsep, false)
 
   // a 'flat' if is treated like any other statement in code motion, i.e. code will not be pushed explicitly into the branches
   def flatIf[T:Manifest](cond: Rep[Boolean])(thenp: => Rep[T])(elsep: => Rep[T]) = ifThenElse(cond, thenp, elsep, true)
 
   def ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T], flat: Boolean): Rep[T] = cond match {
-      // TODO: need to handle vars differently, this could be unsound
+      // TODO: need to handle vars differently, this could be unsound  <--- don't understand ...
     case Const(true) => thenp
     case Const(false) => elsep
     case Def(BooleanNegate(a)) => ifThenElse(a, elsep, thenp, flat)
@@ -207,6 +208,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
           */
           val objRetType = (!isVoidType(sym.Type)) && (!isPrimitiveType(sym.Type))
           objRetType match {
+            /*
             case true =>   //TODO: Remove this case
               //Least check
               (kernelSymbol==sym) match {
@@ -236,6 +238,7 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
               stream.println(addTab()+"}")
               saveLocalVar(sym,nextDimStr,outLocalVar)
 			        allocReference(sym,getBlockResult(a).asInstanceOf[Sym[_]])
+              */
             case _ =>
               isVoidType(sym.Type) match {
                 case true =>
@@ -264,6 +267,35 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
               }
           }
 
+        case _ => super.emitNode(sym, rhs)
+      }
+    }
+}
+
+trait DeliteOpenCLGenIfThenElse extends OpenCLGenEffect with DeliteBaseGenIfThenElse {
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+      rhs match {
+        case DeliteIfThenElse(c,a,b,h) =>
+          //TODO: using if-else does not work
+          remap(sym.Type) match {
+            case "void" =>
+              stream.println("if (" + quote(c) + ") {")
+              emitBlock(a)
+              stream.println("} else {")
+              emitBlock(b)
+              stream.println("}")
+            case _ =>
+              stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
+              stream.println("if (" + quote(c) + ") {")
+              emitBlock(a)
+              stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(a))))
+              stream.println("} else {")
+              emitBlock(b)
+              stream.println("%s = %s;".format(quote(sym),quote(getBlockResult(b))))
+              stream.println("}")
+          }
         case _ => super.emitNode(sym, rhs)
       }
     }

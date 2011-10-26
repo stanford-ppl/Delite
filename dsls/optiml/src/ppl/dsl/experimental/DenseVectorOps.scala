@@ -3,7 +3,7 @@ package ppl.dsl.experimental
 import ppl.dsl.optiml.CudaGenDataStruct
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import reflect.Manifest
@@ -15,7 +15,7 @@ import ppl.dsl.experimental._
  * This file defines all Dense and Dense-Dense vector operations. 
  */
 
-trait DenseVectorOps extends DSLType with Variables {
+trait DenseVectorOps extends Variables {
   this: Sandbox =>
 
   /**

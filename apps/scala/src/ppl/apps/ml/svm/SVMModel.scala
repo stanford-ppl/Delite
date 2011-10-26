@@ -32,11 +32,12 @@ trait SVMModel { this: OptiMLApplication =>
   /////////////
   // training
 
-  def train(X: Rep[TrainingSet[Double,Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
+  //def train(X: Rep[TrainingSet[Double,Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
+  def train(X: Rep[Matrix[Double]], labels: Rep[DenseVector[Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
     println("Training SVM using the SMO algorithm")
 
     // adjust the classification labels to -1 and +1 for SMO
-    val Y = X.labels map { e => if (e == 0) -1. else 1. }
+    val Y = /*X.*/labels map { e => if (e == 0) -1. else 1. }
 
     // internal model storage
     //val weights = Vector.zeros(X.numCols).mutable

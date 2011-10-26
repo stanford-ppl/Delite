@@ -3,14 +3,14 @@ package ppl.dsl.optiml.graph
 import ppl.dsl.optiml.CudaGenDataStruct
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optiml._
 
-trait MessageVertexOps extends DSLType with Variables {
+trait MessageVertexOps extends Variables {
   this: OptiML =>
 
   object MessageVertex {

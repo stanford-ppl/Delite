@@ -5,10 +5,6 @@ import java.io.{BufferedWriter, File, PrintWriter, FileWriter}
 import scala.collection.mutable.ArrayBuffer
 import ppl.delite.runtime.Config
 
-/**
- * User: Anand Atreya
- */
-
 object PerformanceTimer
 {
   val currentTimer = new HashMap[String, Long]

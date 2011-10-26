@@ -3,14 +3,14 @@ package ppl.dsl.experimental
 import ppl.dsl.optiml.CudaGenDataStruct
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 
-trait VectorOps extends DSLType with Variables {
+trait VectorOps extends Variables {
   this: Sandbox =>
 
   object Vector {

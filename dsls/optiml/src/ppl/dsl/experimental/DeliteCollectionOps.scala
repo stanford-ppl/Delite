@@ -4,6 +4,7 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Base, ScalaGenFat, CudaGenEffect}
 import scala.virtualization.lms.internal.{GenericFatCodegen}
+import scala.reflect.SourceContext
 
 trait SandboxDeliteCollectionOps extends Base {
   // implicit def dcToDcOps[A:Manifest](x: Rep[DeliteCollection[A]]) = new deliteCollectionOpsCls(x)

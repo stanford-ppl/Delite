@@ -2,7 +2,7 @@ package ppl.dsl.optila.vector
 
 import ppl.dsl.optila.{Vector, DenseVector, VectorView}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase, ScalaGenFat}
@@ -10,7 +10,7 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.internal.{GenericFatCodegen}
 import java.io.PrintWriter
 
-trait VectorViewOps extends DSLType with Base with OverloadHack { this: OptiLA =>
+trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
 
   implicit def repToVectorViewVecOps[A:Manifest](x: Rep[VectorView[A]]) = new VectorViewVecOpsCls(x)
   implicit def varToVectorViewVecOps[A:Manifest](x: Var[VectorView[A]]) = new VectorViewVecOpsCls(readVar(x))
@@ -57,7 +57,6 @@ trait VectorViewOps extends DSLType with Base with OverloadHack { this: OptiLA =
     def vtimesToIntf(x: Rep[VTIMESR]) = denseToInterface(x)        
         
     def mt() = throw new UnsupportedOperationException("VectorViews cannot be updated")    
-    def +=(y: Rep[A]) = throw new UnsupportedOperationException("VectorViews cannot be updated")
     def copyFrom(pos: Rep[Int], y: Rep[DenseVector[A]]) = throw new UnsupportedOperationException("VectorViews cannot be updated")
     def insert(pos: Rep[Int], y: Rep[A]) = throw new UnsupportedOperationException("VectorViews cannot be updated")
     def insertAll(pos: Rep[Int], y: Rep[DenseVector[A]]) = throw new UnsupportedOperationException("VectorViews cannot be updated")

@@ -1,6 +1,6 @@
 package ppl.dsl.optila.datastruct.scala
 
-class SymmetricMatrixImpl[T:Manifest](n: Int) extends MatrixImpl[T](0,0) with SymmetricMatrix[T] {
+class SymmetricMatrixImpl[T:Manifest](n: Int) extends MatrixImpl[T](0,0) { //with SymmetricMatrix[T] {
   _numRows = n
   _numCols = n
   

@@ -3,7 +3,7 @@ package ppl.dsl.experimental
 import ppl.dsl.optiml.CudaGenDataStruct
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import reflect.Manifest
@@ -15,7 +15,7 @@ import ppl.dsl.experimental._
  * This file defines all Sparse and Sparse-Sparse vector operations. 
  */
 
-trait SparseVectorOps extends DSLType with Variables {
+trait SparseVectorOps extends Variables {
   this: Sandbox =>
 
   implicit def repVecToSparseVecOps[A:Manifest](x: Rep[SparseVector[A]]) = new SparseVecOpsCls(x)

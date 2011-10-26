@@ -3,14 +3,14 @@ package ppl.dsl.optiml.matrix
 import java.io.{PrintWriter}
 import scala.virtualization.lms.common.{VariablesExp, Variables, CGenBase, CudaGenBase, ScalaGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
 import ppl.dsl.optiml.CudaGenDataStruct
 import ppl.dsl.optiml.{Vector, Matrix, GrayscaleImage}
 import ppl.dsl.optiml.{OptiML, OptiMLExp}
 
-trait GrayscaleImageOps extends DSLType with Variables {
+trait GrayscaleImageOps extends Variables {
   this: OptiML =>
 
   object GrayscaleImage {

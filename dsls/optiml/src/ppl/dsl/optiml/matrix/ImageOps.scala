@@ -4,14 +4,14 @@ import ppl.dsl.optiml.CudaGenDataStruct
 import ppl.dsl.optiml.{Vector, Matrix, Image}
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.{VariablesExp, Variables, DSLOpsExp, CGenBase, CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{GenerationFailedException}
 import ppl.delite.framework.Config
 import ppl.dsl.optiml.{OptiML, OptiMLExp}
 
-trait ImageOps extends DSLType with Variables {
+trait ImageOps extends Variables {
   this: OptiML =>
 
   object Image {

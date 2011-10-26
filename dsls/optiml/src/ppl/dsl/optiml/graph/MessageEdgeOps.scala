@@ -4,13 +4,13 @@ import ppl.dsl.optiml.CudaGenDataStruct
 import ppl.dsl.optiml._
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 
-trait MessageEdgeOps extends DSLType with Variables {
+trait MessageEdgeOps extends Variables {
   this: OptiML =>
 
   object MessageEdge {

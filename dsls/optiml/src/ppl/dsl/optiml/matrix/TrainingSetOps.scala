@@ -2,16 +2,16 @@ package ppl.dsl.optiml.matrix
 
 import java.io.PrintWriter
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.common.{Variables, Base, BaseExp, CGenBase, CudaGenBase, ScalaGenBase}
+import scala.virtualization.lms.common.{Variables, Base, BaseExp, CGenBase, CudaGenBase, OpenCLGenBase, ScalaGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml._
 
 // TODO: should TrainingSet be a Stream instead of a Matrix?
 
-trait TrainingSetOps extends DSLType with Variables with OverloadHack {
+trait TrainingSetOps extends Variables with OverloadHack {
   this: OptiML =>
 
   object TrainingSet {
@@ -98,6 +98,19 @@ trait CudaGenTrainingSetOps extends CudaGenBase {
     case TrainingSetTransposed(x) => emitValDef(sym, "(*"+quote(x) + ".transposed)")
     //case TrainingSetLabels(x) => emitValDef(sym, quote(x) + ".labels")
     case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait OpenCLGenTrainingSetOps extends OpenCLGenBase {
+  val IR: TrainingSetOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case TrainingSetObjectFromMat(xs, labels) => throw new GenerationFailedException("OpenCLGen: TrainingSet Cannot be generated from GPU")
+    //case TrainingSetTransposed(x) => emitValDef(sym, "(*"+quote(x) + ".transposed)")
+    case TrainingSetTransposed(x) => emitValDef(sym, "%s_transposed(%s)".format(remap(sym.Type),quote(x)))
+    case TrainingSetLabels(x) => emitValDef(sym, "%s_labels(%s)".format(remap(sym.Type),quote(x)))
+    case _ => super.emitNode(sym,rhs)
   }
 }
 

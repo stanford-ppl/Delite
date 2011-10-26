@@ -38,8 +38,8 @@ trait GDA extends OptiMLApplication {
 
     val y_zeros = y count { _ == false } 
     val y_ones = y count { _ == true }
-    val mu0_num = sumIf[DenseVector[Double]](0,m) { !y(_) } { x(_).cloneL } // AKS TODO: should not need to clone        
-    val mu1_num = sumIf[DenseVector[Double]](0,m) { y(_) } { x(_).cloneL } // AKS TODO: should not need to clone
+    val mu0_num = sumIf[DenseVector[Double],VectorView[Double]](0,m) { !y(_) } { x(_) } 
+    val mu1_num = sumIf[DenseVector[Double],VectorView[Double]](0,m) { y(_) } { x(_) } 
     
     //println("y_zeros: " + y_zeros)
     //println("y_ones: " + y_ones)
@@ -52,10 +52,10 @@ trait GDA extends OptiMLApplication {
     /* x(i) is a row vector for us, while it is defined a column vector in the formula */
     val sigma = sum(0, m) { i =>
       if (y(i) == false){
-        (((x(i)-mu0).t)**(x(i)-mu0))
+        (((x(i)-mu0).t) ** (x(i)-mu0))
       }
       else{
-        (((x(i)-mu1).t)**(x(i)-mu1))
+        (((x(i)-mu1).t) ** (x(i)-mu1))
       }
     }
 

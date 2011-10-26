@@ -2,13 +2,12 @@ package ppl.dsl.optiml.application
 
 import ppl.dsl.optiml._
 import java.io.PrintWriter
-import ppl.delite.framework.{DSLType}
 import scala.virtualization.lms.common.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
-trait BinarizedGradientPyramidOps extends DSLType with Variables with OverloadHack {
+trait BinarizedGradientPyramidOps extends Variables with OverloadHack {
 
   object BinarizedGradientPyramid {
     def apply(pyramid: Rep[DenseVector[GrayscaleImage]], start_level: Rep[Int], levels: Rep[Int], fixedLevelIndex: Rep[Int]) = binarizedgradientpyramid_obj_new(pyramid, start_level, levels, fixedLevelIndex)

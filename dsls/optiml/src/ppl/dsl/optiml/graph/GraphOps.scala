@@ -3,13 +3,12 @@ package ppl.dsl.optiml.graph
 import ppl.dsl.optiml.CudaGenDataStruct
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.DSLType
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 import ppl.dsl.optiml._
 
-trait GraphOps extends DSLType with Variables {
+trait GraphOps extends Variables {
   this: OptiML =>
 
   object Graph {

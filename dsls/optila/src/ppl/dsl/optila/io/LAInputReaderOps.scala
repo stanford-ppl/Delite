@@ -2,13 +2,13 @@ package ppl.dsl.optila.io
 
 import java.io.{PrintWriter}
 import scala.virtualization.lms.common.{TupleOpsExp, Base, BaseFatExp}
-import ppl.delite.framework.{DSLType, DeliteApplication}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optila._
 
 // TODO: we need to support an escape hatch, or move application-specific i/o to application ops. Either
 // way, they shouldn't be here.
-trait LAInputReaderOps extends DSLType with Base {
+trait LAInputReaderOps extends Base {
   object LAInputReader {
     // file format is m lines with n floats per line, each float separated by whitespaces
     // (same as matlab .dat)

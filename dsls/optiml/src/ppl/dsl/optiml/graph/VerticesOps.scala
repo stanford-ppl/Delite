@@ -1,6 +1,5 @@
 package ppl.dsl.optiml.graph
 
-import ppl.delite.framework.DSLType
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import ppl.dsl.optiml._
 import scala.virtualization.lms.common._
@@ -16,7 +15,7 @@ import ppl.dsl.optiml.CudaGenDataStruct
  * To change this template use File | Settings | File Templates.
  */
 
-trait VerticesOps extends DSLType with Variables {
+trait VerticesOps extends Variables {
   this: OptiML =>
 
   object Vertices {

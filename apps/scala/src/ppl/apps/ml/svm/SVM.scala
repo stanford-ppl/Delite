@@ -32,12 +32,15 @@ trait SVM extends OptiMLApplication with SVMModel {
     //  tokenlist:  a long string containing the list of all tokens (words)
     //  inCategory: a (numDocs x 1) vector containing the true classifications for the documents just read
     //                 the ith entry gives the correct class for the ith email, where spam is 1 and non-spam is 0.
-    val inMatrixTrain = MLInputReader.readTokenMatrix(trainfile)
-    val inMatrixTest = MLInputReader.readTokenMatrix(testfile)
+    //val inMatrixTrain = MLInputReader.readTokenMatrix(trainfile)
+    val (inMatrixTrain, trainLabels) = MLInputReader.readTokenMatrix(trainfile)
+    //val inMatrixTest = MLInputReader.readTokenMatrix(testfile)
+    val (inMatrixTest, testLabels) = MLInputReader.readTokenMatrix(testfile)
 
     // run the SMO training algorithm
     tic()
-    val (weights, b) = train(inMatrixTrain, 1, .001, 10)
+    //val (weights, b) = train(inMatrixTrain, 1, .001, 10)
+    val (weights, b) = train(inMatrixTrain, trainLabels, 1, .001, 10)
     toc()
     //svm.computeWeights(inMatrixTrain, YTrain)
     //svm.saveModel(weights, b, modelFile)
@@ -46,7 +49,7 @@ trait SVM extends OptiMLApplication with SVMModel {
 
     // TEST RESULTS
     // adjust the classification labels to -1 and +1 for SMO
-    val YTest = inMatrixTest.labels map { e => if (e == 0) -1. else 1. }
+    val YTest = /*inMatrixTest.*/testLabels map { e => if (e == 0) -1. else 1. }
     val numTestDocs = inMatrixTest.numRows
     //svm.load(modelFile)
     val outputLabels = (0::numTestDocs){ i => classify(weights, b, inMatrixTest(i)) }

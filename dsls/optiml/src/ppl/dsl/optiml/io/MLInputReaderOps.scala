@@ -1,15 +1,16 @@
 package ppl.dsl.optiml.io
 
+import scala.reflect.SourceContext
 import java.io.{PrintWriter}
 import scala.virtualization.lms.common.{TupleOpsExp, Base, BaseFatExp}
-import ppl.delite.framework.{DSLType, DeliteApplication}
+import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml._
 import ppl.dsl.optiml.application.{BinarizedGradientTemplate}
 
 // TODO: we need to support an escape hatch, or move application-specific i/o to application ops. Either
 // way, they shouldn't be here.
-trait MLInputReaderOps extends DSLType with Base {
+trait MLInputReaderOps extends Base {
   object MLInputReader {
     // file format is m lines with n floats per line, each float separated by whitespaces
     // (same as matlab .dat)
@@ -22,7 +23,8 @@ trait MLInputReaderOps extends DSLType with Base {
 
   def obj_mlinput_read_grayscale_image(filename: Rep[String]) : Rep[GrayscaleImage]
   
-  def obj_mlinput_read_tokenmatrix(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
+  //def obj_mlinput_read_tokenmatrix(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
+  def obj_mlinput_read_tokenmatrix(filename: Rep[String]): (Rep[Matrix[Double]],Rep[DenseVector[Double]])
   def obj_mlinput_read_template_models(directory: Rep[String]): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]]
 }
 

@@ -4,7 +4,7 @@ import ppl.dsl.optiml.CudaGenDataStruct
 import ppl.dsl.optiml.{Vector, Stream, StreamRow}
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.{VariablesExp, Variables, DSLOpsExp, CGenBase, CudaGenBase, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.delite.framework.Config
@@ -14,7 +14,7 @@ import ppl.dsl.optiml.{OptiMLExp, OptiML}
  * Streams are Matrix-like, but are not Matrices. A Stream (slice) can be converted to a Vector or Matrix.
  * Streams only support bulk operations with other streams.
  */
-trait StreamOps extends DSLType with Variables {
+trait StreamOps extends Variables {
   this: OptiML =>
 
   object Stream {
@@ -176,6 +176,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   // internal
 
   def stream_chunk_row[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) = reflectPure(StreamChunkRow(x, idx, offset))
+  def stream_chunk_row_mutable[A:Manifest](x: Exp[Stream[A]], idx: Exp[Int], offset: Exp[Int]) = reflectMutable(StreamChunkRow(x, idx, offset))
   def stream_init_chunk[A:Manifest](x: Exp[Stream[A]], offset: Exp[Int]) = reflectEffect/*Write(x)*/(StreamInitChunk(x, offset))
   def stream_init_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = reflectEffect/*Write(x)*/(StreamInitRow(x, row, offset))
   def stream_init_and_chunk_row[A:Manifest](x: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = { stream_init_row(x,row,offset); stream_chunk_row(x,row,offset) }
@@ -226,6 +227,9 @@ trait StreamOpsExpOpt extends StreamOpsExp {
   // TODO: do we still need this now that we use the new foreach op above?
   abstract case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]]
   
+  // no unsafeSetData exists for views... so we have to unfortunately do an extra copy to wrap the array result (i.e. safeSetData)
+  def updateViewWithArray[A:Manifest](a: Exp[Array[A]], v: Exp[StreamRow[A]]): Exp[StreamRow[A]] = { vectorview_update_impl(v, a); v }
+  
   override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = st match {
 
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))/*,_,_)*/) =>
@@ -243,8 +247,10 @@ trait StreamOpsExpOpt extends StreamOpsExp {
 */
       val r: Def[StreamRow[A]] = new StreamChunkRowFusable(st, row, offset) {
         val size = numCols
+        val aV = fresh[Array[A]]
         val body: Def[StreamRow[A]] = new DeliteCollectElem[A,StreamRow[A]](
-          alloc = reifyEffects(stream_chunk_row(st,row,offset)),
+          aV = this.aV,
+          alloc = reifyEffects(updateViewWithArray(aV,stream_chunk_row_mutable(st,row,offset))),
           func = reifyEffects(stfunc(offset*chunkSize+row,v))
         )
       }

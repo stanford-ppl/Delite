@@ -2,14 +2,14 @@ package ppl.dsl.optila.io
 
 import ppl.dsl.optila.{Vector,Matrix}
 import java.io.{PrintWriter}
-import ppl.delite.framework.{DSLType, DeliteApplication}
+import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.Base
 import ppl.delite.framework.ops.DeliteOpsExp
 
 // file format is m lines with n floats per line, each float separated by whitespaces
 // (same as matlab .dat)
 
-trait LAOutputWriterOps extends DSLType with Base {
+trait LAOutputWriterOps extends Base {
   object LAOutputWriter {
     def write[A](m: Rep[Matrix[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]) = obj_laoutput_write(m,filename,conv)
     def writeVector[A](v: Interface[Vector[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]) = obj_laoutput_write_vector(v,filename,conv)

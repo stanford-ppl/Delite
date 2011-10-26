@@ -392,5 +392,6 @@ trait CLikeGenArithOps extends CLikeCodegen {
 }
 
 trait CudaGenArithOps extends CudaGenBase with CLikeGenArithOps
+trait OpenCLGenArithOps extends OpenCLGenBase with CLikeGenArithOps
 trait CGenArithOps extends CGenBase with CLikeGenArithOps
 

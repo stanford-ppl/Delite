@@ -10,5 +10,5 @@ package ppl.dsl.optila.datastruct.scala
  *
  */
 
-class MatrixColImpl[T:Manifest](val index: Int, matrix: Matrix[T], x: Array[T])
-  extends VectorViewImpl[T](x, index, matrix.numCols, matrix.numRows, false) with MatrixCol[T]
+// class MatrixColImpl[T:Manifest](val index: Int, matrix: Matrix[T], x: Array[T])
+//   extends VectorViewImpl[T](x, index, matrix.numCols, matrix.numRows, false) with MatrixCol[T]

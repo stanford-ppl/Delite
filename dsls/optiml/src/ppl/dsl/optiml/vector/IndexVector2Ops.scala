@@ -2,10 +2,10 @@ package ppl.dsl.optiml.vector
 
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml._
 
-trait IndexVector2Ops extends DSLType with Base { this: OptiML =>
+trait IndexVector2Ops extends Base { this: OptiML =>
 
   // chained implicits from LanguageOps
   implicit def tuple2ToIndexVectorOpsWC[A <% Interface[IndexVector]](tup: (A, IndexWildcard))

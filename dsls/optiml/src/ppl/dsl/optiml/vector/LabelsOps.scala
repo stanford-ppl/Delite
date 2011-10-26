@@ -1,14 +1,14 @@
 package ppl.dsl.optiml.vector
 
 import java.io.PrintWriter
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.common.ScalaGenBase
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml._
 
-trait LabelsOps extends DSLType with Base with OverloadHack {
+trait LabelsOps extends Base with OverloadHack {
   this: OptiML =>
 
   object Labels {
@@ -53,7 +53,10 @@ trait ScalaGenLabelsOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case l@LabelsObjectFromVec(xs) => emitValDef(sym, "new generated.scala.LabelsVectorImpl(" + quote(xs) + ")")
+    // TODO aks: this should create a Struct with the same fields as a DenseVector (Data,IsRow) is the new data structure implementation
+    //           DenseVector operations will read the struct to extract the same fields, leaving no dependencies on the Labels struct
+    //           NOTE: any leftover dependencies on the Labels struct should be erased / remapped to be a dependency on a Map  
+    //case l@LabelsObjectFromVec(xs) => emitValDef(sym, "new generated.scala.LabelsVectorImpl(" + quote(xs) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

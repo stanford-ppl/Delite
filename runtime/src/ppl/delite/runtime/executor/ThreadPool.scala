@@ -38,6 +38,7 @@ class ThreadPool(numThreads: Int) {
 
   def shutdown() {
     for (i <- 0 until threads.length) {
+      println("shutting down executor thread "+i)
       threads(i).interrupt()
     }
   }

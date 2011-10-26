@@ -2,7 +2,7 @@ package ppl.delite.runtime
 
 import codegen._
 import executor._
-import graph.ops.{EOP, Arguments}
+import graph.ops.{EOP_Global, Arguments}
 import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
 import profiler.PerformanceTimer
@@ -20,7 +20,7 @@ import tools.nsc.io._
 
 object Delite {
 
-  private val mainThread = Thread.currentThread
+  private var mainThread: Thread = null
 
   private def printArgs(args: Array[String]) {
     if(args.length == 0) {
@@ -36,12 +36,18 @@ object Delite {
   }
 
   def main(args: Array[String]) {
-    printArgs(args)
+    embeddedMain(args, Map())
+  }
 
+  def embeddedMain(args: Array[String], staticData: Map[String,_]) {
+    mainThread = Thread.currentThread
+    
+    printArgs(args)
     printConfig()
 
     //extract application arguments
     Arguments.args = args.drop(1)
+    Arguments.staticDataMap = staticData
 
     val scheduler = Config.scheduler match {
       case "SMP" => new SMPStaticScheduler
@@ -57,6 +63,7 @@ object Delite {
     val executor = Config.executor match {
       case "SMP" => new SMPExecutor
       case "SMP+GPU" => new SMP_GPU_Executor
+      case "OpenCLExecutor" => new OpenCLExecutor     //TODO: Remove this option after debugging
       case "default" => {
         if (Config.numGPUs == 0) new SMPExecutor
         else new SMP_GPU_Executor
@@ -66,7 +73,8 @@ object Delite {
 
     def abnormalShutdown() {
       executor.shutdown()
-      Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
+      if (!Config.noRegenerate)
+        Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
     }
 
     try {
@@ -93,22 +101,30 @@ object Delite {
         println("Beginning Execution Run " + i)
         PerformanceTimer.start("all", false)
         executor.run(executable)
-        EOP.await //await the end of the application program
+        println("awaiting EOP")
+        EOP_Global.await //await the end of the application program
         PerformanceTimer.stop("all", false)
         PerformanceTimer.print("all")
         // check if we are timing another component
         if(Config.dumpStatsComponent != "all")
           PerformanceTimer.print(Config.dumpStatsComponent)
+        System.gc()
       }
 
+      println("Done Executing " + numTimes + " Runs")
+      
       if(Config.dumpStats)
         PerformanceTimer.dumpStats()
 
       executor.shutdown()
     }
     catch {
-      case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception
-      case e: Exception => abnormalShutdown(); throw e
+      case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception        
+      case e: Exception => abnormalShutdown(); throw e       
+    }
+    finally {
+      Arguments.args = null
+      Arguments.staticDataMap = null
     }
   }
 
@@ -124,6 +140,8 @@ object Delite {
       ScalaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + ScalaCompile.target + File.separator).toAbsolute))
     if (graph.targets contains Targets.Cuda)
       CudaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + CudaCompile.target + File.separator).toAbsolute))
+    if (graph.targets contains Targets.OpenCL)
+      OpenCLCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + OpenCLCompile.target + File.separator).toAbsolute))
   }
 
   //abnormal shutdown

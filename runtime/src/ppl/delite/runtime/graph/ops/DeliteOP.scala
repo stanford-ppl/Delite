@@ -108,8 +108,21 @@ abstract class DeliteOP {
   //TODO: should revisit this when we have more complex dataParallel patterns
   def isDataParallel : Boolean
 
-  //TODO: do all OP subtypes support CUDA? (maybe shouldn't be here)
-  var cudaMetadata = new CudaMetadata
+  private var cudaMetadata: GPUMetadata = new CudaMetadata
+  private var openclMetadata: GPUMetadata = new OpenCLMetadata
+  def getGPUMetadata(tgt: Targets.Value): GPUMetadata = tgt match {
+    case Targets.Cuda => cudaMetadata
+    case Targets.OpenCL => openclMetadata
+    case _ => throw new IllegalArgumentException("unsupported target for metadata: " + tgt)
+  }
+  def setGPUMetadata(tgt: Targets.Value, metadata: GPUMetadata) {
+    tgt match {
+      case Targets.Cuda => cudaMetadata = metadata
+      case Targets.OpenCL => openclMetadata = metadata
+      case _ => throw new IllegalArgumentException("unsupported target for metadata: " + tgt)
+    }
+  }
+
 
   /**
    * these methods/state are used for scheduling

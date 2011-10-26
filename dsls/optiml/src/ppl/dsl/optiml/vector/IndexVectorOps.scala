@@ -2,12 +2,12 @@ package ppl.dsl.optiml.vector
 
 import ppl.dsl.optiml.{DenseVector,Vector, IndexVector, IndexVectorRange, IndexVectorDense, Matrix}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import scala.virtualization.lms.util.OverloadHack
 import java.io.PrintWriter
 
-trait IndexVectorOps extends DSLType with Base with OverloadHack { this: OptiML =>
+trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
   
   object IndexVector {
     def apply(len: Rep[Int]) = indexvector_obj_new(len)

@@ -2,7 +2,7 @@ package ppl.dsl.optiml.datastruct.scala
 
 import ppl.dsl.optila.datastruct.scala._
 
-class VerticesImpl[V <: Vertex](len: Int)(implicit mV: ClassManifest[V]) extends VectorImpl[V](len, false) with Vertices[V] {
+class VerticesImpl[V <: Vertex](len: Int)(implicit mV: ClassManifest[V]) extends DenseVector[V](len, false) with Vertices[V] {
 
   def this(__data: Array[V])(implicit mV: ClassManifest[V]){
     this(0)

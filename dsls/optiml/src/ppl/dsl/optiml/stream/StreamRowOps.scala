@@ -1,14 +1,14 @@
 package ppl.dsl.optiml.stream
 
 import java.io.PrintWriter
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optila.vector.{VectorViewOpsExp}
 import ppl.dsl.optiml._
 
-trait StreamRowOps extends DSLType with Base with OverloadHack { this: OptiML =>
+trait StreamRowOps extends Base with OverloadHack { this: OptiML =>
 
   def infix_index[A](x: Rep[StreamRow[A]])(implicit mA: Manifest[A], o: Overloaded2) = streamrow_index(x)
 

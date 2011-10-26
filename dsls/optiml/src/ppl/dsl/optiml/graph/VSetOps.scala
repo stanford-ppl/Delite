@@ -10,7 +10,7 @@ package ppl.dsl.optiml.graph
 
 import collection.mutable.{Set => MSet}
 
-import ppl.delite.framework.{DeliteApplication, DSLType}
+import ppl.delite.framework.DeliteApplication
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
@@ -19,7 +19,7 @@ import ppl.dsl.optiml._
 import java.io.PrintWriter
 import scala.virtualization.lms.internal._
 
-trait VSetOps extends DSLType with Variables {
+trait VSetOps extends Variables {
   def vset_vertices[V<:Vertex:Manifest](s: Rep[MSet[V]]) : Rep[Vertices[V]]
 }
 

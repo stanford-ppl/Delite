@@ -17,7 +17,6 @@ import ppl.tests.scalatest._
 object VectorAccessorsRunner extends DeliteTestRunner with OptiMLApplicationRunner with VectorAccessors
 trait VectorAccessors extends DeliteTestModule with OptiMLApplication {
   def main() {
-    implicit val collector = ArrayBuffer[Boolean]()
     val v = Vector.rand(1000)
 
     collect(v.length == 1000)
@@ -62,7 +61,6 @@ trait VectorAccessors extends DeliteTestModule with OptiMLApplication {
 object VectorOperatorsRunner extends DeliteTestRunner with OptiMLApplicationRunner with VectorOperators
 trait VectorOperators extends DeliteTestModule with OptiMLApplication {
   def main() {
-    implicit val collector = ArrayBuffer[Boolean]()
     val v = Vector.rand(1000)
 
     val vt = v.t
@@ -78,7 +76,6 @@ trait VectorOperators extends DeliteTestModule with OptiMLApplication {
 object VectorUpdatesRunner extends DeliteTestRunner with OptiMLApplicationRunner with VectorUpdates
 trait VectorUpdates extends DeliteTestModule with OptiMLApplication {
   def main() {
-    implicit val collector = ArrayBuffer[Boolean]()
     val v = Vector.rand(1000).mutable
     val vb = Vector.rand(10).mutable
 
@@ -147,7 +144,6 @@ trait VectorUpdates extends DeliteTestModule with OptiMLApplication {
 object VectorRangeRunner extends DeliteTestRunner with OptiMLApplicationRunner with VectorRange
 trait VectorRange extends DeliteTestModule with OptiMLApplication {
   def main() {
-    implicit val collector = ArrayBuffer[Boolean]()
     val rangeEasy = Vector.range(0, 1000)
     val rangeHard = Vector.range(11, 100, 2)
 
@@ -169,7 +165,6 @@ trait VectorRange extends DeliteTestModule with OptiMLApplication {
 object InitRunner extends DeliteTestRunner with OptiMLApplicationRunner with Init
 trait Init extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v1 = Vector(1,2,3,4,5)
     val v2 = Vector(1.,2.,3.,4.,5.)
@@ -183,7 +178,6 @@ trait Init extends DeliteTestModule with OptiMLApplication {
 object LoopRunner extends DeliteTestRunner with OptiMLApplicationRunner with Loop
 trait Loop extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val vec1 = Vector.rand(5)
     val vec2 = Vector.rand(5).mutable
@@ -202,7 +196,6 @@ trait Loop extends DeliteTestModule with OptiMLApplication {
 object ConversionsRunner extends DeliteTestRunner with OptiMLApplicationRunner with Conversions
 trait Conversions extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     // TODO: test int*double, double*int, vec[int]*vec[double], vec[double]*vec[int]
     collect(true)
@@ -213,7 +206,6 @@ trait Conversions extends DeliteTestModule with OptiMLApplication {
 object CountRunner extends DeliteTestRunner with OptiMLApplicationRunner with Count
 trait Count extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v = Vector(1,2,3,5,5,5,7,8,9,10)
     val c = v.count { _ == 5 }
@@ -225,7 +217,6 @@ trait Count extends DeliteTestModule with OptiMLApplication {
 object BulkUpdateRunner extends DeliteTestRunner with OptiMLApplicationRunner with BulkUpdate
 trait BulkUpdate extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v = Vector.zeros(10).mutable
     val i = (0::5)
@@ -238,7 +229,6 @@ trait BulkUpdate extends DeliteTestModule with OptiMLApplication {
 object FindRunner extends DeliteTestRunner with OptiMLApplicationRunner with Find
 trait Find extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v = Vector(1,2,3,5,5,5,7,8,9,10)
     val i = v.find { _ == 5 }
@@ -250,7 +240,6 @@ trait Find extends DeliteTestModule with OptiMLApplication {
 object DistRunner extends DeliteTestRunner with OptiMLApplicationRunner with Dist
 trait Dist extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v1 = Vector(10.,10.,5.,5.,0.)
     val v2 = Vector(5.,5.,10.,10.,-5.)
@@ -263,7 +252,6 @@ trait Dist extends DeliteTestModule with OptiMLApplication {
 object DistinctRunner extends DeliteTestRunner with OptiMLApplicationRunner with Distinct
 trait Distinct extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v1 = Vector(10.,10.,5.,5.,0.)
 
@@ -277,7 +265,6 @@ trait Distinct extends DeliteTestModule with OptiMLApplication {
 object MedianRunner extends DeliteTestRunner with OptiMLApplicationRunner with Median
 trait Median extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v = Vector(1,5,3,4,2,6,7,8,9)
     collect(v.median == 5)
@@ -288,7 +275,6 @@ trait Median extends DeliteTestModule with OptiMLApplication {
 object NearestNeighborRunner extends DeliteTestRunner with OptiMLApplicationRunner with NearestNeighbor
 trait NearestNeighbor extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val m = Matrix(Vector(1,1,1,1), Vector(9,9,9,9), Vector(-2,-2,-2,-2), Vector(0,0,0,0), Vector(1,1,1,1))
     val nearestUnique = nearestNeighborIndex(0, m, false)
@@ -302,7 +288,6 @@ trait NearestNeighbor extends DeliteTestModule with OptiMLApplication {
 object SampleRunner extends DeliteTestRunner with OptiMLApplicationRunner with Sample
 trait Sample extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
 
     val v = (0::100)
     val vs = sample[Int,DenseVector[Int]](v, 10)
@@ -315,7 +300,6 @@ trait Sample extends DeliteTestModule with OptiMLApplication {
 object GroupByRunner extends DeliteTestRunner with OptiMLApplicationRunner with GroupBy
 trait GroupBy extends DeliteTestModule with OptiMLApplication {
   def main() = {
-    implicit val collector = ArrayBuffer[Boolean]()
     
     val v = Vector("one", "two", "two", "three", "four", "three", "four", "three", "four", "four")
     val vs = v.groupBy(e=>e)

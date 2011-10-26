@@ -10,6 +10,15 @@ trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
   val IR: Expressions
   import IR._
 
+  val ZeroVectorImplCls = "jclass ZeroVectorImplCls = env->FindClass(\"generated/scala/ZeroVectorImpl\");\n"
+  val EmptyVectorImplCls = "jclass EmptyVectorImplCls = env->FindClass(\"generated/scala/EmptyVectorImpl\");\n"
+  val LabelsImplCls = "jclass LabelsImplCls = env->FindClass(\"generated/scala/LabelsImpl\");\n"
+
+  val MatrixRowImplCls = "jclass MatrixRowImplCls = env->FindClass(\"generated/scala/MatrixRowImpl\");\n"
+  val MatrixColImplCls = "jclass MatrixColImplCls = env->FindClass(\"generated/scala/MatrixColImpl\");\n"
+  val TrainingSetImplCls = "jclass TrainingSetImplCls = env->FindClass(\"generated/scala/TrainingSetImpl\");\n"
+
+  
   def indexVectorCopyInputHtoD(sym: Sym[Any]): String = {
     //vectorCopyHtoD(sym)
     val out = new StringBuilder
@@ -28,7 +37,7 @@ trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
     out.append("\t\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
     out.append("\t\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
     out.append("\t\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
-	
+
 	// If this is not RangeVector
 	out.append("\tif(isRangeCls == false) {\n")
     out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
@@ -100,7 +109,7 @@ trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
 
     // Get object fields (labels / transposed)
     out.append("\tjmethodID fid_labels = env->GetMethodID(cls,\"labels\",\"()Lgenerated/scala/Labels;\");\n")
-    out.append("\tjfieldID fid_transposed = env->GetFieldID(cls,\"transposed\",\"Lgenerated/scala/%s%sTrainingSetImpl;\");\n".format(sym.Type.typeArguments(0).toString,sym.Type.typeArguments(0).toString))
+    out.append("\tjfieldID fid_transposed = env->GetFieldID(cls,\"transposed\",\"Lgenerated/scala/%s%sTrainingSetImpl;\");\n".format(sym.Type.typeArguments(0).toString,sym.Type.typeArguments(1).toString))
     out.append("\tjobject obj_labels = env->CallObjectMethod(obj,fid_labels);\n")
     out.append("\tjobject obj_transposed = env->GetObjectField(obj,fid_transposed);\n")
 
@@ -155,7 +164,6 @@ trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
     out.append("\treturn %s;\n".format(quote(sym)))
     out.toString
   }
-  
 
   def indexVectorCopyMutableInputDtoH(sym: Sym[Any]): String = {
     vectorCopyMutableInputDtoH(sym)
@@ -171,4 +179,3 @@ trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
     out.toString
   }
 }
-
