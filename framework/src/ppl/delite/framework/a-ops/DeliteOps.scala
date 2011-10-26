@@ -52,10 +52,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
         if (a.productPrefix == b.productPrefix) {
           val r1 = a.productIterator.toList == b.productIterator.toList
           val r2 = syms(a) == syms(b)
-          val inMirror = Thread.currentThread.getStackTrace.exists(_.getMethodName == "mirror")
+          lazy val inMirror = Thread.currentThread.getStackTrace.exists(_.getMethodName == "mirror")
           //if (r1 != r2)
             //printdbg("?== "+this+","+x + " is "+r1+"/"+r2+" syms "+syms(a)+"/"+syms(b))
-          if (inMirror) r1 && r2 else r1
+          r1 && (!inMirror || r2)
         } else false
       case _ => super.equals(x)
     }
@@ -649,6 +649,12 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
       val re = Read(mutableInputs)
       val be = summarizeBody(x.body)
       reflectEffect(d, re andAlso be)
+    case x: DeliteOpSingleTask[_] =>      
+      val mutableInputs = readMutableData(d) //TODO: necessary or not??
+      //val mutableInputs = Nil // readMutableData(d) TODO: necessary or not??
+      val re = Read(mutableInputs)
+      val be = summarizeEffects(x.block)
+      reflectEffect(d, re andAlso be)
     case _ => 
       toAtom(d)
   }
@@ -659,6 +665,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   override def reflectEffect[A:Manifest](d: Def[A], u: Summary): Exp[A] = d match {
     case x: DeliteOpSingleTask[_] =>
       x.block
+      super.reflectEffect(d,u)
+    case x: DeliteOpLoop[_] =>
+      x.body
       super.reflectEffect(d,u)
     case _ =>
       super.reflectEffect(d,u)
@@ -938,18 +947,18 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
   // -- begin emit reduce
   
   def emitFirstReduceElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "")(implicit stream: PrintWriter) {
-      if (elem.cond.nonEmpty) {
-        // if we have conditionals, we have to delay the the initialization of the accumulator to the
-        // first element where the condition is true
-        stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
-        stream.println(quote(getBlockResult(elem.func)))
-        stream.println("} else {")
-        stream.println(prefixSym + quote(sym) + "_zero")
-        stream.println("}")
-      }
-      else {
-        stream.println(quote(getBlockResult(elem.func)))        
-      }
+    if (elem.cond.nonEmpty) {
+      // if we have conditionals, we have to delay the the initialization of the accumulator to the
+      // first element where the condition is true
+      stream.println("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") {")
+      stream.println(quote(getBlockResult(elem.func)))
+      stream.println("} else {")
+      stream.println(prefixSym + quote(sym) + "_zero")
+      stream.println("}")
+    }
+    else {
+      stream.println(quote(getBlockResult(elem.func)))        
+    }
   }
 
   def emitReduceElem(op: AbstractFatLoop, sym: Sym[Any], elem: DeliteReduceElem[_], prefixSym: String = "")(implicit stream: PrintWriter) {
@@ -1039,8 +1048,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         emitBlock(elem.zero)
         stream.println(quote(getBlockResult(elem.zero)))
         stream.println(/*{*/"}")
-        /*stream.println("val " + quote(sym) + "_zero = " + elem.zero)
-        stream.println("var " + quotearg(sym) + " = " + quote(sym) + "_zero")*/
+        /*stream.println("val " + quote(sym) + "_zero = " + elem.zero)*/
+        stream.println("var " + quotearg(sym) + " = " + quote(sym) + "_zero")
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
         stream.println("val " + quote(sym) + "_zero   = {"/*}*/) // better use emitFatBlock?
         emitBlock(elem.zero._1)
@@ -1051,9 +1060,9 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
         stream.println(quote(getBlockResult(elem.zero._2)))
         stream.println(/*{*/"}")
         /*stream.println("val " + quote(sym) + "_zero   = " + elem.zero._1)
-        stream.println("val " + quote(sym) + "_zero_2 = " + elem.zero._2)        
+        stream.println("val " + quote(sym) + "_zero_2 = " + elem.zero._2)*/
         stream.println("var " + quote(sym) + "  " + " = " + quote(sym) + "_zero  ") // should have types...
-        stream.println("var " + quote(sym) + "_2" + " = " + quote(sym) + "_zero_2")*/
+        stream.println("var " + quote(sym) + "_2" + " = " + quote(sym) + "_zero_2")
     }
     stream.println("var " + quote(op.v) + " = 0")
     //if (true) { //op.body exists (loopBodyNeedsStripFirst _)) { preserve line count as indicator for succesful fusing
@@ -1379,7 +1388,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with BaseGenDeliteOps {
       val b = s.block
       if (!deliteKernel) {
         // straight-line
-        stream.println("val " + quote(sym) + " = { " )
+        stream.println("val " + quote(sym) + " = { " + "// " + s)
         emitBlock(b)
         stream.println(quote(getBlockResult(b)))
         stream.println("}")

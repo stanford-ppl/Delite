@@ -134,7 +134,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   def stream_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], func: (Rep[Int],Rep[Int]) => Rep[A]) = {
     val y = doLambda2(func)
     val isPure = y match {
-      case Def(Lambda2(a,b,c,Def(Reify(d,u,es)))) => false
+      case Def(Lambda2(a,b,c,Block(Def(Reify(d,u,es))))) => false
       case _ => true
     }
     // Streams are only mutable from an implementation standpoint (they hold underlying state)
