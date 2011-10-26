@@ -485,8 +485,8 @@ trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
       case v@VecObjNew(xs @ _*) => emitValDef(sym, remap(v.mV) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
       case v@VecObjNNew(i) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(i) + ")")
       // these are the ops that call through to the underlying real data structure
-      case VecApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
-      case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+      case VecApply(x,n) => emitValDef(sym, quote(x) + ".dcApply(" + quote(n) + ")")
+      case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + ".dcUpdate(" + quote(n) + ") = " + quote(y))
       case VecSize(x) => emitValDef(sym, quote(x) + ".size")
       case VecClone(x) => emitValDef(sym, quote(x) + ".cloneL")
       case _ => super.emitNode(sym, rhs)
@@ -500,6 +500,13 @@ trait CudaGenVecOps extends BaseGenVecOps with CudaGenFat with CudaGenDataStruct
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    //case v@VecObjNew(xs @ _*) => emitValDef(sym, remap(v.mV) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
+    //case v@VecObjNNew(i) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(i) + ")")
+    // these are the ops that call through to the underlying real data structure
+    case VecApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
+    case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+    case VecSize(x) => emitValDef(sym, quote(x) + ".size")
+    //case VecClone(x) => emitValDef(sym, quote(x) + ".cloneL")
     case _ => super.emitNode(sym, rhs)
   }
 }

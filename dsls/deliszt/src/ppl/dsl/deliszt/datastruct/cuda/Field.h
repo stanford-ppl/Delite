@@ -3,6 +3,7 @@
 
 #include <cuda.h>
 #include "MeshObj.h"
+#include "VecImpl.h"
 
 template <class T>
 class Field {
@@ -42,6 +43,27 @@ public:
 
     __host__ __device__ void dcUpdate(int idx, T value) {
         data[idx] = value;
+    }
+};
+
+
+template <class T, int N>
+class VecField {
+public:
+    T *data;
+    int size;
+
+    // Accessor Functions
+    __host__ __device__ Vec<T,N> apply(MeshObj mo) {
+        Vec<T,N> ret;
+        int idx = internalId(mo);
+        for(int i=0; i<N; i++) { ret.data[i] = data[idx*N+i]; }
+        return ret;
+    }
+
+    // DeliteCoolection
+    __host__ __device__ int dcSize() {
+        return size;
     }
 };
 

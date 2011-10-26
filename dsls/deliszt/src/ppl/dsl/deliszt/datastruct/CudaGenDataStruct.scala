@@ -14,6 +14,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   val EdgeImplCls = "jclass EdgeImplCls = env->FindClass(\"generated/scala/EdgeImpl\");\n"
   val FaceImplCls = "jclass FaceImplCls = env->FindClass(\"generated/scala/FaceImpl\");\n"
   val VertexImplCls = "jclass VertexImplCls = env->FindClass(\"generated/scala/VertexImpl\");\n"
+  val VecImplCls = "jclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n"
 
   def writeImplCls: String = {
     val out = new StringBuilder
@@ -76,7 +77,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
 
-  /* Transfer function for Field<T> */
+  /* Transfer function for Field<T> (T:Primitve Types) */
   def FieldCopyInputHtoD(sym: Sym[Any], argType: Manifest[_]): String = {
     val out = new StringBuilder
     val typeStr = remap(argType)
@@ -129,6 +130,51 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tenv->DeleteLocalRef(cls);\n")
 
     out.toString
+  }
+
+  /* Transfer function for Field<T> (T:Short Vector Types) */
+  def VecFieldCopyInputHtoD(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+    val out = new StringBuilder
+    val typeStr = remap(argType)
+    val numBytesStr = "%s->size * sizeof(%s) * %s".format(quote(sym),typeStr,size)
+
+    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
+    out.append("\tjmethodID mid_size = env->GetMethodID(cls,\"size\",\"()I\");\n")
+
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s->size = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_size)"))
+
+    out.append("\t%s *hostPtr;\n".format(typeStr))
+    out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+    out.append("\t%s *devPtr;\n".format(typeStr))
+    out.append("\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
+    out.append("\t%s->data = devPtr;\n".format(quote(sym)))
+
+    out.append("\t"+VecImplCls)
+    out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
+    out.append("\tjmethodID mid_elem_data = env->GetMethodID(VecImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+
+    out.append("\tfor(int i=0; i<%s->size; i++) {\n".format(quote(sym)))
+    out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
+    out.append("\t\tj%sArray elem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr,typeStr))
+    out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = elem_data_ptr[j]; }\n".format(size,size))
+    out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\tenv->DeleteLocalRef(elem_data);\n")
+    out.append("\t}\n")
+    out.append("\tDeliteCudaMemcpyHtoDAsync(devPtr, hostPtr, %s);\n".format(numBytesStr))
+
+    out.append("\tenv->DeleteLocalRef(cls);\n")
+    out.append("\treturn %s;\n".format(quote(sym)))
+    out.toString
+  }
+
+  def VecFieldCopyOutputDtoH(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+    "//TODO: Implement this!\n"
+  }
+
+  def VecFieldCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+    "//TODO: Implement this!\n"
   }
 
   /* Transfer Mesh */
