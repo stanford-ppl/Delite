@@ -953,10 +953,10 @@ trait VectorOpsExpOpt extends VectorOpsExp with DeliteCollectionOpsExp {
     //       val y = x.mutable // should clone!
     //       val z = x + 5
     // val x = Vector(10, true).mutable // should not clone!
-    case Def(d@VectorNew(len, isRow)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
-    case Def(d@VectorObjectFromSeq(xs)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])   
-    case Def(d@VectorObjectZeros(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
-    case Def(d@VectorObjectZerosF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
+    //case Def(d@VectorNew(len, isRow)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
+    //case Def(d@VectorObjectFromSeq(xs)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])   
+    //case Def(d@VectorObjectZeros(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]]) <-- problem in rbm: contents of op not copied
+    //case Def(d@VectorObjectZerosF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     //case Def(d@VectorObjectOnes(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]]) <--- actually a problem in testSumIf!
     //case Def(d@VectorObjectOnesF(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]])
     //case Def(d@VectorObjectRand(len)) => reflectMutable(d.asInstanceOf[Def[Vector[A]]]) <--- will not match, reflected
