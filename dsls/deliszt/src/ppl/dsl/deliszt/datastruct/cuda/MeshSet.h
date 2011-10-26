@@ -37,4 +37,10 @@ public:
 
 //TODO: Deal with CellSet (No zero cell)
 
+template <class T>
+class BoundarySet : public MeshSet<T>
+{
+
+};
+
 #endif

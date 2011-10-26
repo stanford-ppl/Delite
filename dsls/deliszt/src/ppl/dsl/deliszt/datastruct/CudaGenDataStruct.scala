@@ -50,7 +50,8 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     /* Iterate over the input array to retrieve the values from the object type elements */
     out.append("\tfor(int i=0; i<%s->size; i++) { \n".format(quote(sym)))
-    out.append("\t\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Lgenerated/scala/%sImpl;\");\n".format(typeStr))
+    //out.append("\t\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Lgenerated/scala/%sImpl;\");\n".format(typeStr))
+    out.append("\t\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Lgenerated/scala/MeshObj;\");\n")
     out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
     remap(argType) match {
       case "Cell" => out.append("\t\tjmethodID mid_id = env->GetMethodID(CellImplCls,\"id\",\"()I\");\n")
@@ -232,13 +233,37 @@ trait CudaGenDataStruct extends CudaCodegen {
     "//TODO: Implement this!\n"
   }
 
+  def VecCopyInputHtoD(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+    val out = new StringBuilder
+    val typeStr = remap(argType)
+
+    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+
+    out.append("\t" + VecImplCls)
+    out.append("\tjmethodID mid_elem = env->GetMethodID(VecImplCls,\"apply$mc%s$sp\",\"(I)%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\tfor(int i=0; i<%s; i++) {\n".format(size))
+    out.append("\t\t%s->data[i] = env->CallIntMethod(obj,mid_elem,i);\n")
+    out.append("\t}\n")
+
+    out.append("\tenv->DeleteLocalRef(cls);\n")
+    out.append("\treturn %s;\n".format(quote(sym)))
+    out.toString
+  }
+
+  def VecCopyOutputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
+    "//TODO: Implement this!\n"
+  }
+  def VecCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
+    "//TODO: Implement this!\n"
+  }
+
+
 
   def matCopyInputHtoD(sym: Sym[Any]): String = { "" }
-  def vecCopyInputHtoD(sym: Sym[Any]): String = { "" }
   def matCopyOutputDtoH(sym: Sym[Any]): String = { "" }
   def matCopyMutableInputDtoH(sym: Sym[Any]): String = { "" }
-  def vecCopyOutputDtoH(sym: Sym[Any]): String = { "" }
-  def vecCopyMutableInputDtoH(sym: Sym[Any]): String = { "" }
+
 
   // Dummy methods temporarily just for the compilation
   def emitVecAlloc(newSym:Sym[_],length:String,reset:Boolean,data:String=null) {}
