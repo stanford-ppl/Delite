@@ -1,4 +1,4 @@
-package ppl.dsl.optiml
+package ppl.dsl.CVX
 
 import java.io._
 import scala.virtualization.lms.common._
@@ -11,10 +11,13 @@ import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
 
-import ppl.dsl.optila.{OptiLAApplication}
-import ppl.dsl.optila.{OptiLAScalaOpsPkg, OptiLAScalaOpsPkgExp, OptiLA, OptiLAExp, OptiLACompiler, OptiLALift}
-import ppl.dsl.optila.{OptiLAScalaCodeGenPkg, OptiLACudaCodeGenPkg, OptiLACCodeGenPkg, OptiLACodeGenBase, OptiLACodeGenScala, OptiLACodeGenCuda, OptiLACodeGenC}
+//import ppl.dsl.optila.{OptiLAApplication}
+//import ppl.dsl.optila.{OptiLAScalaOpsPkg, OptiLAScalaOpsPkgExp, OptiLA, OptiLAExp, OptiLACompiler, OptiLALift}
+//import ppl.dsl.optila.{OptiLAScalaCodeGenPkg, OptiLACudaCodeGenPkg, OptiLACCodeGenPkg, OptiLACodeGenBase, OptiLACodeGenScala, OptiLACodeGenCuda, OptiLACodeGenC}
 
+/**
+ * DSL specific
+ */
 import ppl.dsl.optiml.io._
 import ppl.dsl.optiml.vector._
 import ppl.dsl.optiml.matrix._
@@ -25,14 +28,15 @@ import ppl.dsl.optiml.application._
 
 
 /**
- * These separate OptiML applications from the Exp world.
+ * These separate CVX applications from the Exp world.
  */
 
 // ex. object GDARunner extends OptiMLApplicationRunner with GDA
-trait OptiMLApplicationRunner extends OptiMLApplication with DeliteApplication with OptiMLExp
+trait CVXApplicationRunner extends CVXApplication with DeliteApplication with CVXExp
 
 // ex. trait GDA extends OptiMLApplication
-trait OptiMLApplication extends OptiLAApplication with OptiML with OptiMLLift with OptiMLLibrary {
+//trait OptiMLApplication extends OptiLAApplication with OptiML with OptiMLLift with OptiMLLibrary {
+trait CVXApplication extends CVX with CVXLift
   var args: Rep[Array[String]]
   def main(): Unit
 }
