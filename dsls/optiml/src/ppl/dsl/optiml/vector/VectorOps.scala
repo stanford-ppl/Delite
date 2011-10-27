@@ -139,7 +139,7 @@ trait VectorOps extends DSLType with Variables {
     def mmap(f: Rep[A] => Rep[A]) = { vector_mmap(x,f); x }
     def foreach(block: Rep[A] => Rep[Unit]) = vector_foreach(x, block)
     def zip[B:Manifest,R:Manifest](y: Rep[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = vector_zipwith(x,y,f)
-    def mzip[B:Manifest](y: Rep[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]) = vector_mzipwith(x,y,f)
+    def mzip[B:Manifest](y: Rep[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]) = { vector_mzipwith(x,y,f); x }
     def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A]) = vector_reduce(x,f)
     def filter(pred: Rep[A] => Rep[Boolean]) = vector_filter(x,pred)
     def find(pred: Rep[A] => Rep[Boolean]) = vector_find(x,pred)
@@ -247,7 +247,7 @@ trait VectorOps extends DSLType with Variables {
   def vector_mmap[A:Manifest](x: Rep[Vector[A]], f: Rep[A] => Rep[A]): Rep[Unit]
   def vector_foreach[A:Manifest](x: Rep[Vector[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
   def vector_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[R]): Rep[Vector[R]]
-  def vector_mzipwith[A:Manifest,B:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[A]): Rep[Vector[A]]
+  def vector_mzipwith[A:Manifest,B:Manifest](x: Rep[Vector[A]], y: Rep[Vector[B]], f: (Rep[A],Rep[B]) => Rep[A]): Rep[Unit]
   def vector_reduce[A:Manifest:Arith](x: Rep[Vector[A]], f: (Rep[A],Rep[A]) => Rep[A]): Rep[A]
   def vector_filter[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Vector[A]]
   def vector_find[A:Manifest](x: Rep[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVector]
@@ -648,12 +648,21 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     val size = inA.length
   }
   
+/*
   case class VectorMutableZipWith[A:Manifest,B:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]],
                                                          func: (Exp[A], Exp[B]) => Exp[A])
     extends DeliteOpZipWith[A,B,A,Vector[A]] {
 
-    def alloc = inA
+    def alloc = inA //FIXME: use indexed loop
     val size = inA.length
+  }
+*/
+  case class VectorMutableZipWith[A:Manifest,B:Manifest](inA: Exp[Vector[A]], inB: Exp[Vector[B]],
+                                                         f: (Exp[A], Exp[B]) => Exp[A])
+    extends DeliteOpIndexedLoop {
+
+    val size = copyTransformedOrElse(_.size)(inA.length)
+    def func = i => inA(i) = f(inA(i), inB(i))
   }
   
   // note: we may want to factor 'HasEmpty' out of 'Arith' to make this more general, if the need arises.

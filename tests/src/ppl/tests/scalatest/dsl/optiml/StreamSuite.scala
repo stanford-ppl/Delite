@@ -76,7 +76,17 @@ trait StreamCorrectSmall extends DeliteTestModule with OptiMLApplication {
 
     //should be row vectors starting at 0, 10, ... 90
     val s = Stream[Double](10,10){ (i,j) => i*10+j }
-    s.foreachRow { v => collect(v(2) == v.index*10+2) }
+    s.foreachRow { v => 
+      v.pprint
+      print(" ")
+      print(v(2))
+      print(" ")
+      print(v.index*10+2)
+      print(" nl ")
+      
+      collect(v(2) == v.index*10+2) }
+
+    print("done")
 
     mkReport
   }

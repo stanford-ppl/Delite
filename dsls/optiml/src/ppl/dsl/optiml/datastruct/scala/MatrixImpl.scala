@@ -30,6 +30,11 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
   def dcApply(idx: Int) : T = _data(idx)
   def dcUpdate(idx: Int, x: T) { _data(idx) = x }
 
+  def unsafeSetData(xs: Array[T], len: Int) {
+    _data = xs
+    // _length = len
+  }
+
   def getRow(row: Int) = {
     new MatrixRowImpl[T](row, this, _data)
   }

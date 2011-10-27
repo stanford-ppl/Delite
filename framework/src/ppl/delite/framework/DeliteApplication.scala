@@ -13,6 +13,8 @@ import codegen.scala.TargetScala
 import codegen.Target
 import ops.DeliteOpsExp
 
+trait DSLType // FIXME: remove
+
 trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   type DeliteApplicationTarget = Target{val IR: DeliteApplication.this.type}
 
@@ -111,8 +113,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     val g = compile(liftedMain)
     g(args)
   }
-
-  def registerDSLType(name: String): DSLTypeRepresentation = nop
 
   /**
    * this is the entry method for our applications, user implement this method. Note, that it is missing the
