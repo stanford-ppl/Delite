@@ -129,19 +129,19 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
     val t = manifest[T]
   }
 
-  case class LabelFieldNewCell[T:Manifest](url: Exp[String]) extends Def[Field[Cell,T]] {
+  case class LabelFieldNewCell[T:Manifest](url: Exp[String], m: Exp[Mesh]) extends Def[Field[Cell,T]] {
     val t = manifest[T]
   }
   
-  case class LabelFieldNewEdge[T:Manifest](url: Exp[String]) extends Def[Field[Edge,T]] {
+  case class LabelFieldNewEdge[T:Manifest](url: Exp[String], m: Exp[Mesh]) extends Def[Field[Edge,T]] {
     val t = manifest[T]
   }
   
-  case class LabelFieldNewFace[T:Manifest](url: Exp[String]) extends Def[Field[Face,T]] {
+  case class LabelFieldNewFace[T:Manifest](url: Exp[String], m: Exp[Mesh]) extends Def[Field[Face,T]] {
     val t = manifest[T]
   }
   
-  case class LabelFieldNewVertex[T:Manifest](url: Exp[String]) extends Def[Field[Vertex,T]] {
+  case class LabelFieldNewVertex[T:Manifest](url: Exp[String], m: Exp[Mesh]) extends Def[Field[Vertex,T]] {
     val t = manifest[T]
   }
   
@@ -256,10 +256,10 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
   def FieldWithConst[MO<:Face:Manifest, T:Manifest](c: Exp[T])(implicit ev : MO =:= Face, o: Overloaded2) = reflectMutable(DeLisztFieldWithConstFace(c))
   def FieldWithConst[MO<:Vertex:Manifest, T:Manifest](c: Exp[T])(implicit ev : MO =:= Vertex, o: Overloaded3) = reflectMutable(DeLisztFieldWithConstVertex(c))
   
-  def FieldWithLabel[MO<:Cell:Manifest, T:Manifest](url : Exp[String])(implicit ev : MO =:= Cell) = reflectMutable(LabelFieldNewCell[T](url))
-  def FieldWithLabel[MO<:Edge:Manifest, T:Manifest](url : Exp[String])(implicit ev : MO =:= Edge, o: Overloaded1) = reflectMutable(LabelFieldNewEdge[T](url))
-  def FieldWithLabel[MO<:Face:Manifest, T:Manifest](url : Exp[String])(implicit ev : MO =:= Face, o: Overloaded2) = reflectMutable(LabelFieldNewFace[T](url))
-  def FieldWithLabel[MO<:Vertex:Manifest, T:Manifest](url : Exp[String])(implicit ev : MO =:= Vertex, o: Overloaded3) = reflectMutable(LabelFieldNewVertex[T](url))
+  def FieldWithLabel[MO<:Cell:Manifest, T:Manifest](url : Exp[String])(implicit ev : MO =:= Cell) = reflectMutable(LabelFieldNewCell[T](url, mesh))
+  def FieldWithLabel[MO<:Edge:Manifest, T:Manifest](url : Exp[String])(implicit ev : MO =:= Edge, o: Overloaded1) = reflectMutable(LabelFieldNewEdge[T](url, mesh))
+  def FieldWithLabel[MO<:Face:Manifest, T:Manifest](url : Exp[String])(implicit ev : MO =:= Face, o: Overloaded2) = reflectMutable(LabelFieldNewFace[T](url, mesh))
+  def FieldWithLabel[MO<:Vertex:Manifest, T:Manifest](url : Exp[String])(implicit ev : MO =:= Vertex, o: Overloaded3) = reflectMutable(LabelFieldNewVertex[T](url, mesh))
 
   def field_obj_new_cell[T:Manifest]() = reflectMutable(FieldObjectNewCell[T]())
   def field_obj_new_edge[T:Manifest]() = reflectMutable(FieldObjectNewEdge[T]())
@@ -315,10 +315,10 @@ trait ScalaGenFieldOps extends ScalaGenBase {
       case f@FieldObjectNewFace() => emitValDef(sym, "generated.scala.Field.ofFace[" + remap(f.t) + "]()")
       case f@FieldObjectNewVertex() => emitValDef(sym, "generated.scala.Field.ofVertex[" + remap(f.t) + "]()")
       
-      case f@LabelFieldNewCell(url) => emitValDef(sym, "generated.scala.Mesh.labelCells[" + remap(f.t) + "](" + quote(url) + ")")
-      case f@LabelFieldNewEdge(url) => emitValDef(sym, "generated.scala.Mesh.labelEdges[" + remap(f.t) + "](" + quote(url) + ")")
-      case f@LabelFieldNewFace(url) => emitValDef(sym, "generated.scala.Mesh.labelFaces[" + remap(f.t) + "](" + quote(url) + ")")
-      case f@LabelFieldNewVertex(url) => emitValDef(sym, "generated.scala.Mesh.labelVertices[" + remap(f.t) + "](" + quote(url) + ")")
+      case f@LabelFieldNewCell(url, m) => emitValDef(sym, quote(m) + ".labelCells[" + remap(f.t) + "](" + quote(url) + ")")
+      case f@LabelFieldNewEdge(url, m) => emitValDef(sym, quote(m) + ".labelEdges[" + remap(f.t) + "](" + quote(url) + ")")
+      case f@LabelFieldNewFace(url, m) => emitValDef(sym, quote(m) + ".labelFaces[" + remap(f.t) + "](" + quote(url) + ")")
+      case f@LabelFieldNewVertex(url, m) => emitValDef(sym, quote(m) + ".labelVertices[" + remap(f.t) + "](" + quote(url) + ")")
       
       case FieldIntApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
       case FieldIntUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(v))

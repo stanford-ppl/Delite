@@ -221,18 +221,6 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
   def parmap(line: String): String = {
     var res = line
     
- // Vec
-    if(res.indexOf("Vec") > 0)
-      System.out.println("FOUND VEC " + res)
-      
-    // Matrices
-    if(res.indexOf("Mat") > 0)
-      System.out.println("FOUND MAT " + res)
-    
-    // Field
-    if(res.indexOf("Field") > 0)
-      System.out.println("FOUND Field " + res)
-    
     val moSub = (m: Regex.Match) => {
       "[" + m.group(1) + "]"
     }
@@ -240,19 +228,15 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
     // Vec, Mat, Field, anything with that final parameter of some value type
     for(s <- List("Vec", "Mat", "Field")) {
       val expr = ("\\b" + s + "\\[.*?,\\s*([^\\s]+)\\s*\\]").r  
-      System.out.println("replacing " + res)
       res = expr.replaceAllIn(res, m => s + moSub(m))
-      System.out.println("replaced " + res)
     }
     
     // MeshSet
     val meshSetExpr = ("MeshSet\\[.+\\]").r  
-    System.out.println("replacing " + res)
     res = meshSetExpr.replaceAllIn(res, m => "MeshSet")
-    System.out.println("replaced " + res)    
       
     // MeshObject types
-    for(s <- List("Cell", "Edge", "Face", "Vertex", "Mesh")) {
+    for(s <- List("Cell", "Edge", "Face", "Vertex")) {
       val expr = ("(ppl\\.dsl\\.deliszt|generated\\.scala)\\." + s + "\\b").r  
       res = expr.replaceAllIn(res, "Int")
     }

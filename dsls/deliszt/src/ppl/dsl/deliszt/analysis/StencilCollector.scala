@@ -215,55 +215,55 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
 
       case DeLisztMesh() => OneObj(0)
 
-      case DeLisztVerticesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.verticesCell(mo))
-      case DeLisztVerticesEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.verticesEdge(mo))
-      case DeLisztVerticesFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.verticesFace(mo))
-      case DeLisztVerticesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.verticesVertex(mo))
-      case DeLisztVerticesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.verticesMesh(mo))
+      case DeLisztVerticesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesCell(mo))
+      case DeLisztVerticesEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesEdge(mo))
+      case DeLisztVerticesFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesFace(mo))
+      case DeLisztVerticesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesVertex(mo))
+      case DeLisztVerticesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesMesh)
 
-      case DeLisztVertex(e, i, m) => MultipleMeshObj(e, (mo:Int) => Mesh.vertex(mo, value(i)))
+      case DeLisztVertex(e, i, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.vertex(mo, value(i)))
 
-      case DeLisztFaceVerticesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.verticesCCW(mo))
-      case DeLisztFaceVerticesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.verticesCW(mo))
+      case DeLisztFaceVerticesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesCCW(mo))
+      case DeLisztFaceVerticesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesCW(mo))
 
-      case DeLisztCellsCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.cellsCell(mo))
-      case DeLisztCellsEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.cellsEdge(mo))
-      case DeLisztCellsFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.cellsFace(mo))
-      case DeLisztCellsVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.cellsVertex(mo))
-      case DeLisztCellsMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.cellsMesh(mo))
+      case DeLisztCellsCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsCell(mo))
+      case DeLisztCellsEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsEdge(mo))
+      case DeLisztCellsFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsFace(mo))
+      case DeLisztCellsVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsVertex(mo))
+      case DeLisztCellsMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsMesh)
 
-      case DeLisztEdgeCellsCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.cellsCCW(mo))
-      case DeLisztEdgeCellsCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.cellsCW(mo))
+      case DeLisztEdgeCellsCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsCCW(mo))
+      case DeLisztEdgeCellsCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsCW(mo))
 
-      case DeLisztEdgesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.edgesCell(mo))
-      case DeLisztEdgesFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.edgesFace(mo))
-      case DeLisztEdgesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.edgesVertex(mo))
-      case DeLisztEdgesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.edgesMesh(mo))
+      case DeLisztEdgesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesCell(mo))
+      case DeLisztEdgesFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesFace(mo))
+      case DeLisztEdgesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesVertex(mo))
+      case DeLisztEdgesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesMesh)
 
-      case DeLisztFacesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.facesCell(mo))
-      case DeLisztFacesEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.facesEdge(mo))
-      case DeLisztFacesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.facesVertex(mo))
-      case DeLisztFacesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.facesMesh(mo))
+      case DeLisztFacesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesCell(mo))
+      case DeLisztFacesEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesEdge(mo))
+      case DeLisztFacesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesVertex(mo))
+      case DeLisztFacesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesMesh)
 
-      case DeLisztEdgeFacesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.facesCCW(mo))
-      case DeLisztEdgeFacesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.facesCW(mo))
+      case DeLisztEdgeFacesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesCCW(mo))
+      case DeLisztEdgeFacesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesCW(mo))
   
-      case DeLisztFaceEdgesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.edgesCCW(mo))
-      case DeLisztFaceEdgesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.edgesCW(mo))
+      case DeLisztFaceEdgesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesCCW(mo))
+      case DeLisztFaceEdgesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesCW(mo))
 
-      case DeLisztEdgeHead(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.head(mo))
-      case DeLisztEdgeTail(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.tail(mo))
+      case DeLisztEdgeHead(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.head(mo))
+      case DeLisztEdgeTail(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.tail(mo))
 
-      case DeLisztFaceInside(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.inside(mo))
-      case DeLisztFaceOutside(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.outside(mo))
+      case DeLisztFaceInside(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.inside(mo))
+      case DeLisztFaceOutside(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.outside(mo))
   
-      case DeLisztFace(e, i, m) => MultipleMeshObj(e, (mo: Int) => Mesh.face(mo, value(i)))
+      case DeLisztFace(e, i, m) => MultipleMeshObj(e, (mo: Int) => Mesh.mesh.face(mo, value(i)))
 
       case DeLisztFlipEdge(e) => MultipleMeshObj(e, (mo:Int) => Mesh.flip(mo))
       case DeLisztFlipFace(e) => MultipleMeshObj(e, (mo:Int) => Mesh.flip(mo))
 
-      case DeLisztTowardsEdgeVertex(e, v, m) => MultipleMeshObj.multi(e, (e1: Int) => MultipleMeshObj(v, (e2: Int) => Mesh.towardsEdgeVertex(e1, e2)))
-      case DeLisztTowardsFaceCell(e, c, m) => MultipleMeshObj.multi(e, (e1: Int) => MultipleMeshObj(c, (e2: Int) => Mesh.towardsFaceCell(e1, e2)))
+      case DeLisztTowardsEdgeVertex(e, v, m) => MultipleMeshObj.multi(e, (e1: Int) => MultipleMeshObj(v, (e2: Int) => Mesh.mesh.towardsEdgeVertex(e1, e2)))
+      case DeLisztTowardsFaceCell(e, c, m) => MultipleMeshObj.multi(e, (e1: Int) => MultipleMeshObj(c, (e2: Int) => Mesh.mesh.towardsFaceCell(e1, e2)))
       
       case DeliteCollectionApply(e, i) => {
         val obj = (rawValue(e), rawValue(i)) match {
