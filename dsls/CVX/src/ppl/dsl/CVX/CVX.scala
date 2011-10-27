@@ -87,7 +87,7 @@ trait CVXScalaCodeGenPkg extends ScalaGenDSLOps
 //   this: OptiMLApplication =>
 // }
 trait CVX extends CVXScalaOpsPkg 
-  with OptVarOps
+  with OptVarOps with ExprOps
   with DeliteCollectionOps
 {
   this: CVXApplication =>
@@ -104,8 +104,8 @@ trait CVXCompiler extends CVX {
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait CVXExp extends CVXCompiler
-  with CVXScalaOpsPkgExp with OptVarOpsExp
+trait CVXExp extends CVXCompiler with CVXScalaOpsPkgExp 
+  with OptVarOpsExp with ExprOpsExp
   with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?
