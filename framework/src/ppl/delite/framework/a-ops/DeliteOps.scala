@@ -1584,8 +1584,8 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
       //TODO: Check if primitive type operations
       case (sym, elem: DeliteCollectElem[_,_]) =>
         throw new GenerationFailedException("CudaGen: Inlined DeliteCollectElem is not supported yet due to memory allocations.")
-      case (sym, elem: DeliteForeachElem[_]) => 
-        throw new GenerationFailedException("CudaGen: Inlined DeliteForeachElem is not supported yet due to memory allocations.")
+      case (sym, elem: DeliteForeachElem[_]) =>
+        //throw new GenerationFailedException("CudaGen: Inlined DeliteForeachElem is not supported yet due to memory allocations.")
         //TODO: Why do we need this?
         //stream.println("var " + quotearg(sym) + " = ()") // must be type Unit
       case (sym, elem: DeliteReduceElem[_]) =>

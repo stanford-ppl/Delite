@@ -222,7 +222,7 @@ trait CudaGenDataStruct extends CudaCodegen {
           out.append("\telse {\n")    // When CRSConst
           out.append("\tjmethodID mid_%s_mult = env->GetMethodID(cls_%s,\"mult\",\"()I\");\n".format(crs,crs))
           out.append("\tjint %s_mult = (jint)(env->CallIntMethod(obj_%s,mid_%s_mult));\n".format(crs,crs,crs))
-          out.append("\tjint %s_num_rows = %s_values_size / 4 / %s_mult;\n".format(crs,crs,crs))
+          out.append("\tjint %s_num_rows = 1 + %s_values_size / 4 / %s_mult;\n".format(crs,crs,crs))
           out.append("\tDeliteCudaMallocHost((void**)&hostPtr,%s_num_rows*4);\n".format(crs))
           out.append("\tDeliteCudaMalloc((void**)&devPtr,%s_num_rows*4);\n".format(crs))
           out.append("\tfor(int i=0; i<%s_num_rows; i++) { hostPtr[i] = %s_mult * i; }\n".format(crs,crs))

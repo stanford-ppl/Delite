@@ -53,6 +53,13 @@ public:
     return ftoc.apply(f, offset);
   }
 
+  __device__ __host__ MeshSet<Cell> cellsFace(Face f) {
+    MeshSet<Cell> ret;
+    ret.data = ftoc.values + ftoc.row(internal(f));
+    ret.size = ftoc.row(internal(f)+1) - ftoc.row(internal(f));
+    return ret;
+  }
+
 };
 
 #endif

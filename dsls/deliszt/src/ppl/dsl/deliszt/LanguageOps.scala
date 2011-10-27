@@ -353,6 +353,9 @@ trait CudaGenLanguageOps extends CudaGenBase {
     case DeLisztVertex(e,i,m) => emitValDef(sym, quote(m) + "vertex(" + quote(e) + "," + quote(i) + ")")
     case DeLisztID(x) => emitValDef(sym, "internalId(" + quote(x) + ")")
     case DeLisztSize(s) => emitValDef(sym, quote(s) + ".size()")
+
+    case DeLisztCellsFace(e, m) => emitValDef(sym, quote(m) + ".cellsFace(" + quote(e) + ")")
+
     case _ => super.emitNode(sym, rhs)
   }
 }
