@@ -6,7 +6,8 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
-import scala.reflect.{Manifest, SourceContext}
+import scala.reflect.Manifest
+import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import ppl.dsl.optila._
@@ -234,7 +235,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
     case DenseVectorLength(x) => densevector_length(f(x))
     case DenseVectorIsRow(x) => densevector_isrow(f(x))
     // implemented as DeliteOpSingleTask and DeliteOpLoop
-    case e@DenseVectorTrans(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorTrans(f(x))(e.m))(mtype(manifest[A]))
+    case e@DenseVectorTrans(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorTrans(f(x))(e.m))(mtype(manifest[A]),implicitly[SourceContext])
     // read/write effects
     case Reflect(DenseVectorApply(l,r), u, es) => reflectMirrored(Reflect(DenseVectorApply(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(DenseVectorLength(x), u, es) => reflectMirrored(Reflect(DenseVectorLength(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))

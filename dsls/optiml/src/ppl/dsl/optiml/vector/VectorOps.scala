@@ -2,14 +2,14 @@ package ppl.dsl.optiml.vector
 
 import ppl.dsl.optiml.{CudaGenDataStruct, OpenCLGenDataStruct}
 import java.io.{PrintWriter}
-
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
-import scala.reflect.{Manifest, SourceContext}
+import scala.reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import ppl.dsl.optiml._
+import scala.reflect.SourceContext
 
 trait OptiMLDenseVectorOps extends VectorOps with ppl.dsl.optila.vector.DenseVectorOps {
   this: OptiML =>
@@ -63,8 +63,8 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   }
 
   // class defs
-  def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Rep[A]): Rep[Unit]
-  def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[IndexVectorDense]
+  def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
+  def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[IndexVectorDense]
 }
 
 trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps with VariablesExp with BaseFatExp {
@@ -120,8 +120,8 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   /////////////////////
   // class interface
 
-  def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Exp[A]) = reflectWrite(x.ops.elem)(VectorUpdateIndices(x,i,y))
-  def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorFindOverride(x, pred))
+  def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorUpdateIndices(x,i,y))
+  def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(VectorFindOverride(x, pred))
 
   //////////////
   // mirroring

@@ -5,6 +5,9 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{Variables, Base, BaseExp, CGenBase, CudaGenBase, OpenCLGenBase, ScalaGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
 import scala.reflect.SourceContext
+import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.dsl.optiml._
 
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp

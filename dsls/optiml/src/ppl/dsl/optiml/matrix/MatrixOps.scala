@@ -9,6 +9,7 @@ import scala.virtualization.lms.common.{VariablesExp, Variables}
 import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase, OpenCLGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.internal.{GenerationFailedException}
+import scala.reflect.SourceContext
 import ppl.delite.framework.Config
 import ppl.dsl.optiml._
 import ppl.delite.framework.extern.lib._
