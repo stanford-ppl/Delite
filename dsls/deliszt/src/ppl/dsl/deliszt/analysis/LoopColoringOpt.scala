@@ -16,7 +16,8 @@ trait LoopColoringOpsExp extends BaseFatExp with EffectExp { this: DeLisztExp =>
   case class ColorIndexSetNew(indices: Exp[Array[Int]], start: Exp[Int], end: Exp[Int], mo: Manifest[MeshSet[MeshObj]]) extends Def[MeshSet[MeshObj]]    
   
   def color_index_set_new(indices: Array[Int], start: Int, end: Int)(implicit mo: Manifest[MeshSet[MeshObj]]): Exp[MeshSet[MeshObj]] = {
-    reifyEffects(ColorIndexSetNew(Array(indices: _*),unit(start),unit(end),mo))
+    //reifyEffects(ColorIndexSetNew(Array(indices: _*),unit(start),unit(end),mo))
+    ColorIndexSetNew(Array(indices: _*),unit(start),unit(end),mo)
   }
   def color_lift(x: Int) = Const(x)
 }
@@ -147,7 +148,7 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         //   i += 1
         // }
         
-        // transform loop into multiple loops, one per color
+        /* transform loop into multiple loops, one per color */
         
         // utils
         def WgetLoopParams(e: TTP): (Exp[MeshSet[MeshObj]], Exp[Int], Exp[Int], Exp[MeshObj] => Exp[Unit], Exp[Unit]) = e.rhs match {
@@ -155,18 +156,6 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           // case SimpleFatLoop(s,v,body) => body match {
           //   case List(DeliteForeachElem(func, sync)) => (v, func)
           // }
-        }
-        
-        // testing -- TODO: use the one in SimplifyTransform (refactor it up a little)
-        def withEffectContext(body: =>List[TTP]): List[TTP] = {
-          val save = context
-          context = Nil
-          val scope = body
-          val leftovereffects = context.filterNot((scope.flatMap(_.lhs)) contains _)
-          if (leftovereffects.nonEmpty) 
-            printlog("warning: transformation left effect context (will be discarded): "+leftovereffects)
-          context = save
-          scope
         }
         
         def fission[A](in: List[A], old: A, replace: List[A]) = {
@@ -184,7 +173,7 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           val save = globalDefs
           val out = func
           val addedDefs = globalDefs diff save
-          //innerScope = (innerScope ::: addedDefs).distinct
+          innerScope = (innerScope ::: addedDefs).distinct
           currentScope = (currentScope ::: fattenAll(addedDefs)).distinct
           out
         }
@@ -211,9 +200,14 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           // new loop dependencies
           val (in,size,v,f,body) = WgetLoopParams(loop)          
           val colorLoopVar = fresh(v.Type) // shouldn't need to transform the loop var, but what the hey...
-          val colorSet = buildInScope(color_index_set_new(indices.toArray, 0, indices.length)(in.Type))
+          val colorSet = buildInScope(reifyEffects(color_index_set_new(indices.toArray, 0, indices.length)(in.Type)))
           val colorSize = buildInScope(color_lift(indices.length))
           val colorFunc = buildInScope(reifyEffects(f(dc_apply(colorSet,colorLoopVar))))
+          
+          colog("old func was: " + body.toString)
+          colog("old func def: " + findDefinition(body.asInstanceOf[Sym[Unit]]).get.toString)
+          colog("colorFunc is: " + colorFunc.toString)
+          colog("colorFunc def is: " + findDefinition(colorFunc.asInstanceOf[Sym[Unit]]).get.toString)
           //innerScope :+= findDefinition(colorSet.asInstanceOf[Sym[MeshSet[MeshObj]]]).get 
           //innerScope :+= findDefinition(colorFunc.asInstanceOf[Sym[Unit]]).get 
           // currentScope :+= fatten(findDefinition(colorSet.asInstanceOf[Sym[MeshSet[MeshObj]]]).get)
@@ -230,11 +224,11 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           t.subst(in) = colorSet 
           t.subst(size) = colorSize          
           t.subst(body) = colorFunc
-          val transformedLoop = (withEffectContext { transformAll(List(loop), t) })(0)                          
-          // val (newScope, transformedLoopSyms) = transformAllFully(currentScope, loop.lhs, t) 
+          // val transformedLoop = (withEffectContext { transformAll(List(loop), t) })(0)                          
+          val (newScope, transformedLoopSyms) = transformAllFully(currentScope, loop.lhs, t) 
           // val (newScope, transformedLoopSyms) = transformAllFully(getFatSchedule(currentScope)(loop.lhs), loop.lhs, t)
           // currentScope = currentScope union newScope //(newScope diff colorLoops)
-          // val transformedLoop = newScope.find(_.lhs == transformedLoopSyms).get          
+          val transformedLoop = newScope.find(_.lhs == transformedLoopSyms).get          
           //colog("TransformedLoopExp: " + transformedLoopExp.toString)
           // add previous transformedLoop to new one as a dep
           val transformedLoop2 = transformedLoop match { 
@@ -291,8 +285,9 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         // currentScope.foreach(println)
         // println("--->")      
 
-//        transformAllFully(currentScope, result, loopRefTransformer) match { case (a,b) => // too bad we can't use pair assigment
-        // transformAllFully(getFatSchedule(currentScope)(currentScope), result, loopRefTransformer) match { case (a,b) => // too bad we can't use pair assigment
+        // result = loopRefTransformer(result) 
+        // transformAllFully(currentScope, result, loopRefTransformer) match { case (a,b) => // ENDS UP EMPTY - try when transforming result first
+        // // transformAllFully(getFatSchedule(currentScope)(result), result, loopRefTransformer) match { case (a,b) => // too bad we can't use pair assigment
         //   currentScope = a
         //   result = b
         // }

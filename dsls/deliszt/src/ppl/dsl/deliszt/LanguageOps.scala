@@ -104,7 +104,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   /******* Ops *********/
   case class DeLisztInit(args: Exp[Array[String]]) extends Def[Unit]
-  case class DeLisztPrint(as: Seq[Exp[Any]]) extends DeliteOpSingleTask(reifyEffectsHere(print_impl(as)))
+  case class DeLisztPrint(as: Seq[Exp[Any]])(block: Exp[Unit]) // stupid limitation...
+    extends DeliteOpSingleTask(block)
 
   case class DeLisztBoundarySet[MO<:MeshObj:Manifest:MeshObjConstruct](name: Exp[String]) extends Def[BoundarySet[MO]] {
     val moM = manifest[MO]
@@ -195,7 +196,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   /******* Language functions *********/
   def _init(args: Exp[Array[String]]) = reflectEffect(DeLisztInit(args))
-  def Print(as: Exp[Any]*) = reflectEffect(DeLisztPrint(as))
+  def Print(as: Exp[Any]*) = reflectEffect(DeLisztPrint(as)(reifyEffectsHere(print_impl(as))))
 
   def BoundarySet[MO<:MeshObj:Manifest:MeshObjConstruct](name: Exp[String])
     = reflectPure(DeLisztBoundarySet(name))
@@ -268,6 +269,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     case DeLisztFacesCell(e) => faces(f(e))
     case DeLisztFacesVertex(e) => faces(f(e))
     case DeLisztFacesMesh(e) => faces(f(e))
+    case DeLisztID(e) => ID(f(e))
+    case DeLisztVertex(a,b) => vertex(f(a),f(b))
+    case Reflect(e@DeLisztPrint(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeLisztPrint(f(x))(f(e.block)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
   
