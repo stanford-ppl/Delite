@@ -348,9 +348,9 @@ trait CudaGenLanguageOps extends CudaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     //TODO: Use mesh symbol
-    case DeLisztFaceInside(e,m) => emitValDef(sym, quote(m)+".inside(" + quote(e) + ")")
-    case DeLisztFaceOutside(e,m) => emitValDef(sym, quote(m)+"outside(" + quote(e) + ")")
-    case DeLisztVertex(e,i,m) => emitValDef(sym, quote(m)+"vertex(" + quote(e) + "," + quote(i) + ")")
+    case DeLisztFaceInside(e,m) => emitValDef(sym, quote(m) + ".inside(" + quote(e) + ")")
+    case DeLisztFaceOutside(e,m) => emitValDef(sym, quote(m) + ".outside(" + quote(e) + ")")
+    case DeLisztVertex(e,i,m) => emitValDef(sym, quote(m) + "vertex(" + quote(e) + "," + quote(i) + ")")
     case DeLisztID(x) => emitValDef(sym, "internalId(" + quote(x) + ")")
     case DeLisztSize(s) => emitValDef(sym, quote(s) + ".size()")
     case _ => super.emitNode(sym, rhs)

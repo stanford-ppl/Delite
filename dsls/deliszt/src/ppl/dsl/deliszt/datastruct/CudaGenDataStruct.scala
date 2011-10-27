@@ -15,6 +15,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   val FaceImplCls = "jclass FaceImplCls = env->FindClass(\"generated/scala/FaceImpl\");\n"
   val VertexImplCls = "jclass VertexImplCls = env->FindClass(\"generated/scala/VertexImpl\");\n"
   val VecImplCls = "jclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n"
+  val CRSImplCls = "jclass CRSImplCls = env->FindClass(\"generated/scala/CRSImpl\");\n"
 
   def writeImplCls: String = {
     val out = new StringBuilder
@@ -195,23 +196,40 @@ trait CudaGenDataStruct extends CudaCodegen {
     //Copy CRS fields
     out.append("\tint *hostPtr;\n")
     out.append("\tint *devPtr;\n")
+    out.append("\t"+CRSImplCls)
     for (crs <- List("vtov","vtoe","vtof","vtoc","etov","etof","etoc","ftov","ftoe","ftoc","ctov","ctoe","ctof","ctoc")) {
       out.append("\tCRS %s;\n".format(crs))
-      out.append("\tjmethodID mid_%s = env->GetMethodID(cls,\"%s\",\"()Ljava/lang/Object\");\n".format(crs,crs))
+      out.append("\tjmethodID mid_%s = env->GetMethodID(cls,\"%s\",\"()Lgenerated/scala/CRS;\");\n".format(crs,crs))
       out.append("\tjobject obj_%s = env->CallObjectMethod(obj,mid_%s);\n".format(crs,crs))
       out.append("\tjclass cls_%s = env->GetObjectClass(obj_%s);\n".format(crs,crs))
-      for (array <- List("rows","values")) {
+      for (array <- List("values","rows")) {
+        if (array == "rows") {
+          out.append("\tif(env->IsInstanceOf(obj_%s,CRSImplCls)) {\n".format(crs))
+        }
         out.append("\tjmethodID mid_%s_%s = env->GetMethodID(cls_%s,\"%s\",\"()[I\");\n".format(crs,array,crs,array))
         out.append("\tjintArray %s_%s = (jintArray)(env->CallObjectMethod(obj_%s,mid_%s_%s));\n".format(crs,array,crs,crs,array))
-        out.append("\tint %s_%s_size = 4 * env->GetArrayLength(%s_%s);".format(crs,array,crs,array))
+        out.append("\tint %s_%s_size = 4 * env->GetArrayLength(%s_%s);\n".format(crs,array,crs,array))
         out.append("\tDeliteCudaMallocHost((void**)&hostPtr,%s_%s_size);\n".format(crs,array))
-        out.append("\tDeliteCudaMalloc((void**)&devPtr,%s_size);\n".format(crs))
+        out.append("\tDeliteCudaMalloc((void**)&devPtr,%s_%s_size);\n".format(crs,array))
         out.append("\tjint *%s_%s_ptr = (jint *)env->GetPrimitiveArrayCritical(%s_%s,0);\n".format(crs,array,crs,array))
         out.append("\tmemcpy(hostPtr, %s_%s_ptr, %s_%s_size);\n".format(crs,array,crs,array))
         out.append("\tDeliteCudaMemcpyHtoDAsync(devPtr, hostPtr, %s_%s_size);\n".format(crs,array))
         out.append("\t%s.%s = devPtr;\n".format(crs,array))
         out.append("\tenv->ReleasePrimitiveArrayCritical(%s_%s, %s_%s_ptr, 0);\n".format(crs,array,crs,array))
         out.append("\tenv->DeleteLocalRef(%s_%s);\n".format(crs,array))
+        if (array == "rows") {
+          out.append("\t}\n")
+          out.append("\telse {\n")    // When CRSConst
+          out.append("\tjmethodID mid_%s_mult = env->GetMethodID(cls_%s,\"mult\",\"()I\");\n".format(crs,crs))
+          out.append("\tjint %s_mult = (jint)(env->CallIntMethod(obj_%s,mid_%s_mult));\n".format(crs,crs,crs))
+          out.append("\tjint %s_num_rows = %s_values_size / 4 / %s_mult;\n".format(crs,crs,crs))
+          out.append("\tDeliteCudaMallocHost((void**)&hostPtr,%s_num_rows*4);\n".format(crs))
+          out.append("\tDeliteCudaMalloc((void**)&devPtr,%s_num_rows*4);\n".format(crs))
+          out.append("\tfor(int i=0; i<%s_num_rows; i++) { hostPtr[i] = %s_mult * i; }\n".format(crs,crs))
+          out.append("\tDeliteCudaMemcpyHtoDAsync(devPtr, hostPtr, %s_num_rows*4);\n".format(crs))
+          out.append("\t%s.%s = devPtr;\n".format(crs,array))
+          out.append("\t}\n")
+        }
       }
       out.append("\t%s->%s = %s;\n".format(quote(sym),crs,crs))
     }
