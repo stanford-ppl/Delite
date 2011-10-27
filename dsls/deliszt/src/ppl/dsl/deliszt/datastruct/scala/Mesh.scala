@@ -15,6 +15,8 @@ object Mesh {
   var loader: MeshLoader = null
   
   val MASK = 0x80000000
+  val FORWARD = 1
+  val REVERSE = -1
 
   def reversed(id : Int) = {(id & MASK) != 0}
   def reverse(id : Int) = {id ^ MASK}

@@ -9,25 +9,24 @@ package ppl.dsl.deliszt.datastruct.scala
  */
 
 
-
 object IndexSetImpl {
   def apply(crs: CRS, n: Int) = {
-    new IndexSetImpl(crs.values, crs.row(Mesh.internal(n)), crs.row(Mesh.internal(n)+1))
+    val start = crs.row(Mesh.internal(n))
+    val end = crs.row(Mesh.internal(n)+1)
+    val size = end - start
+    new IndexSetImpl(crs.values, size, start, end, Mesh.FORWARD)
   }
 }
 
 object CWIndexSetImpl {
   def apply(crs: CRS, n: Int) = {
-    new CWIndexSetImpl(crs.values, crs.row(Mesh.internal(n)), crs.row(Mesh.internal(n)+1))
+    val start = crs.row(Mesh.internal(n)+1) - 1
+    val end = crs.row(Mesh.internal(n))
+    val size = start - end
+    new IndexSetImpl(crs.values, size, start, end, Mesh.REVERSE)
   }
 }
 
-class IndexSetImpl(data : Array[Int], start: Int, end : Int) extends MeshSet {
-  def apply(i : Int) : Int = data(start + i)
-  override def size = end - start
-}
-
-// Direction bit should get reversed for CW
-class CWIndexSetImpl(data: Array[Int], start: Int, end: Int) extends IndexSetImpl(data, start, end) {
-  override def apply(i : Int) : Int = BitReverse.MASK ^ data(end - i - 1)
+class IndexSetImpl(data : Array[Int], override val size: Int, start: Int, end: Int, dir: Int) extends MeshSet {
+  def apply(i : Int) : Int = data(start + i*dir) ^ (dir & Mesh.MASK)
 }
