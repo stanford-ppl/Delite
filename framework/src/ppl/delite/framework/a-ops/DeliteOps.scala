@@ -678,9 +678,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     case x: DeliteOpSingleTask[_] =>
       x.block
       super.reflectEffect(d,u)
-    case x: DeliteOpLoop[_] =>
-      x.body
-      super.reflectEffect(d,u)
+    //case x: DeliteOpLoop[_] => 
+    //  x.body  //  <-- not lazy
+    //  super.reflectEffect(d,u)
     case _ =>
       super.reflectEffect(d,u)
   }
@@ -1163,11 +1163,16 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
   def emitAbstractFatLoopKernelExtra(op: AbstractFatLoop, symList: List[Sym[Any]])(implicit stream: PrintWriter): Unit = {
     val kernelName = symList.map(quote).mkString("")
     stream.println("final class activation_" + kernelName + " {"/*}*/)
+    stream.println("var left_act: activation_" + kernelName + " = _") // XX need to link frames
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_]) => 
         stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
         stream.println("var " + quote(sym) + "_data: Array[" + remap(getBlockResult(elem.func).Type) + "] = _")
         if (elem.cond.nonEmpty) {
+          stream.println("def " + quote(sym) + "_data_set(xs: Array[" + remap(getBlockResult(elem.func).Type) + "]): Unit = {"/*}*/)
+          stream.println(quote(sym) + "_data = xs")
+          stream.println("if (left_act ne null) left_act." + quote(sym) + "_data_set(xs)") // XX linked frame
+          stream.println(/*{*/"}")
           stream.println("var " + quote(sym) + "_buf: Array[" + remap(getBlockResult(elem.func).Type) + "] = _")
           stream.println("var " + quote(sym) + "_size = 0")
           stream.println("var " + quote(sym) + "_offset = 0")
@@ -1382,6 +1387,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
       case (sym, elem: DeliteReduceElem[_]) =>
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
     }
+    //XX link act frames so we can set data later
+    stream.println("__act.left_act = rhs")
     stream.println(/*{*/"}")
     stream.println("def postProcInit(__act: " + actType + "): Unit = {"/*}*/) // only called for last chunk!!
     (symList zip op.body) foreach {
@@ -1391,7 +1398,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
           // supports backing array larger than logical size
 //          stream.println("if (__act." + quote(sym) + "_offset > 0) {"/*}*/) // set data array for result object
           stream.println("val len = __act." + quote(sym) + "_offset + __act." + quote(sym) + "_size")
-          stream.println("__act." + quote(sym) + "_data = new Array(len)")
+          stream.println("__act." + quote(sym) + "_data_set(new Array(len))")
 //          stream.println(/*{*/"} else {"/*}*/)
 //          stream.println("__act." + quote(sym) + "_data = __act." +quote(sym) + "_buf")
 //          stream.println(/*{*/"}")
