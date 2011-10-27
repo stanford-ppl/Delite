@@ -1,4 +1,4 @@
-    package ppl.apps.dataquery.tpch
+package ppl.apps.dataquery.tpch
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 import java.io.File
