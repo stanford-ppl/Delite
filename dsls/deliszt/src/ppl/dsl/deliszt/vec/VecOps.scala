@@ -1,10 +1,9 @@
 package ppl.dsl.deliszt.vec
 
 import _root_.scala.reflect.Manifest
-import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import java.io.PrintWriter
-import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.MetaInteger._
 
 import ppl.delite.framework.DSLType
 import scala.virtualization.lms.common._
@@ -131,13 +130,13 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
-  case class VecObjNew[N<:IntM:Manifest:MVal,A:Manifest](xs: Exp[A]*)(implicit val mV : Manifest[VecImpl[N,A]]) extends Def[Vec[N,A]] {
+  case class VecObjNew[N<:IntM:Manifest:MVal,A:Manifest](xs: Exp[A]*) extends Def[Vec[N,A]] {
     def n = manifest[N]
     def vn = implicitly[MVal[N]]
     def a = manifest[A]
   }
   
-  case class VecObjNNew[N<:IntM:Manifest:MVal,A:Manifest](i: Exp[Int])(implicit val mV : Manifest[VecImpl[N,A]]) extends Def[Vec[N,A]] {
+  case class VecObjNNew[N<:IntM:Manifest:MVal,A:Manifest](i: Exp[Int]) extends Def[Vec[N,A]] {
     def n = manifest[N]
     def vn = implicitly[MVal[N]]
     def a = manifest[A]
@@ -382,8 +381,8 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     case Reflect(e@VecUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VecUpdate(f(l),f(i),f(r))(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     // Effect with SingleTask and DeliteOpLoop
     // Allocation
-    case Reflect(e@VecObjNew(xs @ _*), u, es) => reflectMirrored(Reflect(VecObjNew(f(xs) : _*)(e.n, e.vn, e.a, e.mV), mapOver(f,u), f(es)))
-    case Reflect(e@VecObjNNew(n), u, es) => reflectMirrored(Reflect(VecObjNNew(f(n))(e.n, e.vn, e.a, e.mV), mapOver(f,u), f(es)))
+    case Reflect(e@VecObjNew(xs @ _*), u, es) => reflectMirrored(Reflect(VecObjNew(f(xs) : _*)(e.n, e.vn, e.a), mapOver(f,u), f(es)))
+    case Reflect(e@VecObjNNew(n), u, es) => reflectMirrored(Reflect(VecObjNNew(f(n))(e.n, e.vn, e.a), mapOver(f,u), f(es)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
 
@@ -482,8 +481,8 @@ trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case v@VecObjNew(xs @ _*) => emitValDef(sym, remap(v.mV) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
-      case v@VecObjNNew(i) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(i) + ")")
+      case v@VecObjNew(xs @ _*) => emitValDef(sym, "generated.scala.Vec[" + remap(v.a) + "](" + xs.map(quote).reduceLeft(_+","+_) + ")")
+      case v@VecObjNNew(i) => emitValDef(sym, "generated.scala.Vec.ofSize[" + remap(v.a) + "](" + quote(i) + ")")
       // these are the ops that call through to the underlying real data structure
       case VecApply(x,n) => emitValDef(sym, quote(x) + ".dcApply(" + quote(n) + ")")
       case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + ".dcUpdate(" + quote(n) + ") = " + quote(y))
@@ -495,7 +494,7 @@ trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
 }
 
 
-trait CudaGenVecOps extends BaseGenVecOps with CudaGenFat with CudaGenDataStruct {
+trait CudaGenVecOps extends BaseGenVecOps with CudaGenFat {
   val IR: VecOpsExp
   import IR._
 

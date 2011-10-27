@@ -8,42 +8,10 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-object FieldImpl {
-  def apply[MO<:MeshObj:Manifest,T:Manifest]() : Field[MO,T] = {
-    if(manifest[MO] <:< manifest[Cell]) {
-       new FieldImpl(new Array[T](Mesh.mesh.ncells))
-    }
-    else if(manifest[MO] <:< manifest[Face]) {
-      new FieldImpl(new Array[T](Mesh.mesh.nfaces))
-    }
-    else if(manifest[MO] <:< manifest[Edge]) {
-      new FieldImpl(new Array[T](Mesh.mesh.nedges))
-    }
-    else if(manifest[MO] <:< manifest[Vertex]) {
-      new FieldImpl(new Array[T](Mesh.mesh.nvertices))
-    }
-    else {
-      throw new RuntimeException("Invalid MeshObj type")
-      null
-    }
-  }
-  
-  def withConst[MO<:MeshObj:Manifest,T:Manifest](v: T) : Field[MO,T] = {
-    val f = FieldImpl[MO,T]()
-    
-    for(i <- 0 until f.size) {
-      f(i) = if(v.isInstanceOf[Copyable]) v.asInstanceOf[Copyable].copy.asInstanceOf[T] else v
-    }
-    
-    f
-  }
-}
-
-class FieldImpl[MO<:MeshObj:Manifest, @specialized(Boolean, Int, Long, Float, Double) T:Manifest](_data : Array[T]) extends Field[MO,T] {
-  def data:Array[T] = _data
-  def apply(idx: Int) = _data(idx)
+class FieldImpl[@specialized(Boolean, Int, Long, Float, Double) T](val data : Array[T]) extends Field[T] {
+  def apply(idx: Int) = data(Mesh.internal(idx))
   def update(idx: Int, x: T) = {
-    _data(idx) = x
+    data(Mesh.internal(idx)) = x
   }
-  def size = _data.length
+  def size = data.length
 }

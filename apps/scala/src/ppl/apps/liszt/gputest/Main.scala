@@ -1,8 +1,7 @@
 package ppl.apps.liszt.gputest
 
-import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
-import ppl.dsl.deliszt.{DeLisztApplicationRunner, DeLisztApplication}
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.MetaInteger._
 
 object HelloGPURunner extends DeLisztApplicationRunner with HelloGPU
 

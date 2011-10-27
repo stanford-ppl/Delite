@@ -8,4 +8,4 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-trait BoundarySet[MO<:MeshObj] extends MeshSet[MO]
+trait BoundarySet extends MeshSet

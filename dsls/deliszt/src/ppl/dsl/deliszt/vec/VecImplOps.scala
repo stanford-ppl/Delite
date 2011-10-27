@@ -1,8 +1,8 @@
 package ppl.dsl.deliszt.vec
 import scala.virtualization.lms.common._
 
-import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.MetaInteger._
 import ppl.dsl.deliszt.{DeLisztLift, DeLisztCompiler, DeLiszt}
 
 trait VecImplOps { this: DeLiszt =>

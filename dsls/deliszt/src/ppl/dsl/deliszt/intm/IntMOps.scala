@@ -1,16 +1,13 @@
 package ppl.dsl.deliszt.intm
 
-import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import java.io.{PrintWriter}
 
 import ppl.delite.framework.{DeliteApplication, DSLType}
 import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, CGenBase}
-import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
-import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
-import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.MetaInteger._
 
 trait IntMOps extends DSLType with Variables {
   this: DeLiszt =>
@@ -73,7 +70,7 @@ trait ScalaGenIntMOps extends ScalaGenBase {
   }
 }
 
-trait CudaGenIntMOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenIntMOps extends CudaGenBase {
   val IR: IntMOpsExp
   import IR._
 

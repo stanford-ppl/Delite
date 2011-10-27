@@ -1,4 +1,4 @@
-package ppl.dsl.deliszt.datastruct.scala
+package ppl.dsl.deliszt
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)

@@ -1,6 +1,6 @@
 package ppl.dsl.deliszt.datastruct.scala
 
-import MetaInteger._
+import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -10,10 +10,7 @@ import MetaInteger._
  * Stanford University
  */
 
-trait Vec[N<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
-  def apply[TT<:IntM:MVal](n:T) : T = apply(MIntDepth[TT])
-  def update[TT<:IntM:MVal](n:TT, v:T) : Unit = update(MIntDepth[TT], v)
-
+trait Vec[@specialized(Boolean, Int, Long, Float, Double) T] extends DeliteCollection[T] with Traversable[T] {
   def apply(n:Int) : T
   def update(n:Int, v : T) : Unit
 
@@ -22,5 +19,21 @@ trait Vec[N<:IntM,@specialized(Boolean, Int, Long, Float, Double) T] extends ppl
   def dcUpdate(idx: Int, x: T) = update(idx, x)
   def dcSize : Int = size
   
-  def cloneL : Vec[N,T]
+  def cloneL : Vec[T]
+  
+  def foreach[U](f: T => U) = for(i <- 0 until size) f(this(i))
+}
+
+object Vec {
+  def ofSize[T:ClassManifest](size: Int) = {
+    new VecImpl[T](size)
+  }
+  
+  def withData[T:ClassManifest](data : Array[T]) = {
+    new VecImpl[T](data)
+  }
+  
+  def apply[T:ClassManifest](xs: T*) = {
+    new VecImpl[T](xs.toArray)
+  }
 }

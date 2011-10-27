@@ -1,5 +1,6 @@
 package ppl.dsl.deliszt
 
+import datastruct.CudaGenDataStruct
 import extern.{DeLisztCudaGenExternal, DeLisztScalaGenExternal}
 import java.io._
 import scala.virtualization.lms.common._
@@ -12,7 +13,6 @@ import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
-import ppl.dsl.deliszt.datastruct.CudaGenDataStruct
 import scala.util.matching.Regex
 
 import ppl.dsl.deliszt.capabilities._
@@ -212,12 +212,37 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
     parmap(res)
   }
 
+
+  def remap(s: String) = parmap(s)
   override def remap[A](m: Manifest[A]): String = {
-    parmap(super.remap(m))
+    var res = super.remap(m)
+    res = res.replaceAllLiterally("package$", "")
+    parmap(res)
   }
 
   def parmap(line: String): String = {
     var res = line
+    
+    val moSub = (m: Regex.Match) => {
+      "[" + m.group(1) + "]"
+    }
+    
+    // Vec, Mat, Field, anything with that final parameter of some value type
+    for(s <- List("Vec", "Mat", "Field")) {
+      val expr = ("\\b" + s + "\\[.*?,\\s*([^\\s]+)\\s*\\]").r  
+      res = expr.replaceAllIn(res, m => s + moSub(m))
+    }
+    
+    // MeshSet
+    val meshSetExpr = ("MeshSet\\[.+\\]").r  
+    res = meshSetExpr.replaceAllIn(res, m => "MeshSet")
+      
+    // MeshObject types
+    for(s <- List("Cell", "Edge", "Face", "Vertex")) {
+      val expr = ("(ppl\\.dsl\\.deliszt|generated\\.scala)\\." + s + "\\b").r  
+      res = expr.replaceAllIn(res, "Int")
+    }
+    
     for(tpe1 <- List("Int","Long","Double","Float","Boolean")) {
       val parSub = (m: Regex.Match) => {
         val rest = (m.group(1) + m.group(3)).replaceAll("""^\s+""", "")
@@ -246,12 +271,14 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
         }
       }
     }
+    
     dsmap(res)
   }
 
   override def dsmap(line: String) : String = {
     var res = line.replaceAll("ppl.dsl.deliszt.datastruct", "generated")
     res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
+    res = res.replaceAll("ppl.dsl.deliszt", "generated.scala")    
     res
   }
 }
@@ -266,15 +293,15 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
   import IR._
 
   def isVecType[A](m: Manifest[A]) = {
-    if (m.toString.startsWith("ppl.dsl.deliszt.datastruct.scala.Vec")) true
+    if (m.toString.startsWith("ppl.dsl.deliszt.Vec")) true
     else false
   }
 
   def getVecSize[A](m: Manifest[A]):Int = {
     val startsWith = m.toString.split("\\[")
     startsWith(0) match {
-      case "ppl.dsl.deliszt.datastruct.scala.Succ" => getVecSize(m.typeArguments(0)) + 1
-      case "ppl.dsl.deliszt.datastruct.scala.Zero" => 0
+      case "ppl.dsl.deliszt.Succ" => getVecSize(m.typeArguments(0)) + 1
+      case "ppl.dsl.deliszt.Zero" => 0
       case _ => throw new GenerationFailedException("CudaGen: Unknown Vec Type: " + m.toString)
     }
   }
@@ -284,17 +311,17 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
 
     val startsWith = m.toString.split("\\[")
     startsWith(0) match {
-      case "ppl.dsl.deliszt.datastruct.scala.Mesh" => "Mesh"
-      case "ppl.dsl.deliszt.datastruct.scala.Cell" => "Cell"
-      case "ppl.dsl.deliszt.datastruct.scala.Face" => "Face"
-      case "ppl.dsl.deliszt.datastruct.scala.Vertex" => "Vertex"
-      case "ppl.dsl.deliszt.datastruct.scala.Edge" => "Edge"
-      case "ppl.dsl.deliszt.datastruct.scala.Vec" => "Vec<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">" //TODO: Is nested Vec type supported on Liszt?
-      case "ppl.dsl.deliszt.datastruct.scala.VecImpl" => "Vec<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">" //TODO: Is nested Vec type supported on Liszt?
-      case "ppl.dsl.deliszt.datastruct.scala.MeshSet" => "MeshSet<" + remap(m.typeArguments(0)) + ">"
-      case "ppl.dsl.deliszt.datastruct.scala.BoundarySet" => "BoundarySet<" + remap(m.typeArguments(0)) + ">"
-      case "ppl.dsl.deliszt.datastruct.scala.Field" if (isPrimitiveType(m.typeArguments(1))) => "Field<" + remap(m.typeArguments(1)) + ">"
-      case "ppl.dsl.deliszt.datastruct.scala.Field" if (isVecType(m.typeArguments(1))) => "VecField<" + remap(m.typeArguments(1).typeArguments(1)) + "," + getVecSize(m.typeArguments(1).typeArguments(0)) + ">"
+      case "ppl.dsl.deliszt.Mesh" => "Mesh"
+      case "ppl.dsl.deliszt.Cell" => "Cell"
+      case "ppl.dsl.deliszt.Face" => "Face"
+      case "ppl.dsl.deliszt.Vertex" => "Vertex"
+      case "ppl.dsl.deliszt.Edge" => "Edge"
+      case "ppl.dsl.deliszt.Vec" => "Vec<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">" //TODO: Is nested Vec type supported on Liszt?
+      case "ppl.dsl.deliszt.VecImpl" => "Vec<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">" //TODO: Is nested Vec type supported on Liszt?
+      case "ppl.dsl.deliszt.MeshSet" => "MeshSet<" + remap(m.typeArguments(0)) + ">"
+      case "ppl.dsl.deliszt.BoundarySet" => "BoundarySet<" + remap(m.typeArguments(0)) + ">"
+      case "ppl.dsl.deliszt.Field" if (isPrimitiveType(m.typeArguments(1))) => "Field<" + remap(m.typeArguments(1)) + ">"
+      case "ppl.dsl.deliszt.Field" if (isVecType(m.typeArguments(1))) => "VecField<" + remap(m.typeArguments(1).typeArguments(1)) + "," + getVecSize(m.typeArguments(1).typeArguments(0)) + ">"
       case "scala.collection.immutable.List" => "CudaArrayList<" + remap(m.typeArguments(0)) + ">"  //TODO: Remove this
       case _ => super.remap(m)
     }

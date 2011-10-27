@@ -1,6 +1,5 @@
 package ppl.dsl.deliszt.datastruct.scala
 
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
 import collection.mutable.{Map, HashMap}
 
 /**
@@ -15,163 +14,46 @@ object Mesh {
   var mesh: Mesh = null
   var loader: MeshLoader = null
   
+  val MASK = 0x80000000
+
+  def reversed(id : Int) = {(id & MASK) != 0}
+  def reverse(id : Int) = {id ^ MASK}
+  def internal(id : Int) = {id & ~MASK}
+  
+  def flip(e: Int): Int = {e ^ MASK}
+  
   val OUTSIDE = 0
   val INSIDE = 1
   val HEAD = 0
   val TAIL = 1
-
-  def vertices(e: Mesh): MeshSet[Vertex] = MeshSetImpl(mesh.nvertices)
-  def vertices(e: Vertex): MeshSet[Vertex] = IndexSetImpl(mesh.vtov, e)
-  def vertices(e: Edge): MeshSet[Vertex] = IndexSetImpl(mesh.etov, e)
-  def vertices(e: Face): MeshSet[Vertex] = IndexSetImpl(mesh.ftov, e)
-  def vertices(e: Cell): MeshSet[Vertex] = IndexSetImpl(mesh.ctov, e)
-
-  def verticesCCW(e: Face): MeshSet[Vertex] = {
-    val c = outside(e)
-    if(mesh.ftoc.apply(e.internalId, OUTSIDE) == c.internalId) {
-      IndexSetImpl(mesh.ftov, e)
-    } else {
-      CWIndexSetImpl(mesh.ftov, e)
-    }
+  
+  def boundarySetCells(name: String) : BoundarySet = {
+    Mesh.loader.loadBoundarySet(name, MeshObj.CELL_TYPE)
   }
   
-  def verticesCW(e: Face): MeshSet[Vertex] = {
-    val c = outside(e)
-    if(mesh.ftoc.apply(e.internalId, INSIDE) == c.internalId) {
-      IndexSetImpl(mesh.ftov, e)
-    } else {
-      CWIndexSetImpl(mesh.ftov, e)
-    }
+  def boundarySetEdges(name: String) : BoundarySet = {
+    Mesh.loader.loadBoundarySet(name, MeshObj.EDGE_TYPE)
   }
   
-  def vertex(e: Cell, i: Int): Vertex = { val set = IndexSetImpl[Vertex](mesh.etov, e); set(i) }
-
-  def cells(e: Mesh): MeshSet[Cell] = new CellSetImpl(mesh.ncells)
-  def cells(e: Vertex): MeshSet[Cell] = IndexSetImpl(mesh.vtoc, e)
-  def cells(e: Edge): MeshSet[Cell] = IndexSetImpl(mesh.etoc, e)
-  def cells(e: Face): MeshSet[Cell] = IndexSetImpl(mesh.ftoc, e)
-  def cells(e: Cell): MeshSet[Cell] = IndexSetImpl(mesh.ctoc, e)
-
-  def cellsCCW(e: Edge): MeshSet[Cell] = {
-    val v = head(e)
-    if(mesh.etov.apply(e.internalId, HEAD) == v.internalId) {
-      IndexSetImpl(mesh.etoc, e)
-    } else {
-      CWIndexSetImpl(mesh.etoc, e)
-    }
+  def boundarySetFaces(name: String) : BoundarySet = {
+    Mesh.loader.loadBoundarySet(name, MeshObj.FACE_TYPE)
   }
   
-  def cellsCW(e: Edge): MeshSet[Cell] = {
-    val v = head(e)
-    if(mesh.etov.apply(e.internalId, TAIL) == v.internalId) {
-      IndexSetImpl(mesh.etoc, e)
-    } else {
-      CWIndexSetImpl(mesh.etoc, e)
-    }
-  }
-
-  def edges(e: Mesh): MeshSet[Edge] = MeshSetImpl(mesh.nedges)
-  def edges(e: Vertex): MeshSet[Edge] = IndexSetImpl(mesh.vtoe, e)
-  def edges(e: Face): MeshSet[Edge] = IndexSetImpl(mesh.ftoe, e)
-  def edges(e: Cell): MeshSet[Edge] = IndexSetImpl(mesh.ctoe, e)
-
-  def edgesCCW(e: Face): MeshSet[Edge] = {
-    val c = outside(e)
-    if(mesh.ftoc.apply(e.internalId, OUTSIDE) == c.internalId) {
-      System.out.println("EDDGES NORMAL")
-      IndexSetImpl(mesh.ftoe, e)
-    } else {
-      System.out.println("EDDGES CW")
-      CWIndexSetImpl(mesh.ftoe, e)
-    }
-  }
-  
-  def edgesCW(e: Face): MeshSet[Edge] = {
-    val c = outside(e)
-    if(mesh.ftoc.apply(e.internalId, INSIDE) == c.internalId) {
-      IndexSetImpl(mesh.ftoe, e)
-    } else {
-      CWIndexSetImpl(mesh.ftoe, e)
-    }
-  }
-  
-  def faces(e: Mesh): MeshSet[Face] = MeshSetImpl(mesh.nfaces)
-  def faces(e: Vertex): MeshSet[Face] = IndexSetImpl(mesh.vtof, e)
-  def faces(e: Edge): MeshSet[Face] = IndexSetImpl(mesh.etof, e)
-  def faces(e: Cell): MeshSet[Face] = IndexSetImpl(mesh.ctof, e)
-
-  def facesCCW(e: Edge): MeshSet[Face] = {
-    val v = head(e)
-    if(mesh.etov.apply(e.internalId, HEAD) == v.internalId) {
-      IndexSetImpl(mesh.etof, e)
-    } else {
-      CWIndexSetImpl(mesh.etof, e)
-    }
-  }
-  
-  def facesCW(e: Edge): MeshSet[Face] = {
-    val v = head(e)
-    if(mesh.etov.apply(e.internalId, TAIL) == v.internalId) {
-      IndexSetImpl(mesh.etoc, e)
-    } else {
-      CWIndexSetImpl(mesh.etoc, e)
-    }
-  }
-  
-  def face(e: Edge, i: Int): Face = { val set = IndexSetImpl[Face](mesh.ctof, e); set(i) }
-
-  def head(e: Edge): Vertex = new VertexImpl(mesh.etov.apply(e, if(e.reversed) 1 else 0))
-  def tail(e: Edge): Vertex = new VertexImpl(mesh.etov.apply(e, if(e.reversed) 0 else 1))
-
-  def outside(e: Face): Cell = new CellImpl(mesh.ftoc.apply(e, if(e.reversed) 1 else 0))
-  def inside(e: Face): Cell = new CellImpl(mesh.ftoc.apply(e, if(e.reversed) 0 else 1))
-
-  def flip(e: Edge): Edge = new EdgeImpl(BitReverse.reverse(e.id))
-  def flip(e: Face): Face = new FaceImpl(BitReverse.reverse(e.id))
-
-  def towards(e: Edge, v: Vertex): Edge = {
-    val facing = BitReverse.internal(mesh.etov.apply(e, HEAD)) == v.internalId
-    val id = if(facing) e.id else BitReverse.reverse(e.id)
-    new EdgeImpl(id)
-  }
-
-  def towards(e: Face, c: Cell): Face = {
-    val facing = BitReverse.internal(mesh.ftoc.apply(e, OUTSIDE)) == c.internalId
-    val id = if(facing) e.id else BitReverse.reverse(e.id)
-    new FaceImpl(id)
+  def boundarySetVertices(name: String) : BoundarySet = {
+    Mesh.loader.loadBoundarySet(name, MeshObj.VERTEX_TYPE)
   }
   
   // Todo
   def wall_time() = 0.0
   def processor_time() = 0.0
-  
-  def label[MO<:MeshObj,VT](url: String)(implicit ld: LabelData[MO], mm: Manifest[MO], mv: Manifest[VT]) : LabelField[MO,VT] = {
-    //TODO: clean this up
-    ld.data.get(url) match {
-      case Some(data) => new LabelFieldImpl[MO,VT](data, ld.fns.get(url).getOrElse(null))
-      case None => null
-    }
-  }
-
-  def meshSet[MO<:MeshObj](implicit ms: MeshSet[MO]) = ms
-  def boundarySet[MO<:MeshObj:MeshObjConstruct](name: String) : BoundarySet[MO] = {
-    Mesh.loader.loadBoundarySet(name)
-  }
 }
 
-object LabelData {
-  implicit def cellData = Mesh.mesh.cellData
-  implicit def edgeData = Mesh.mesh.edgeData
-  implicit def faceData = Mesh.mesh.faceData
-  implicit def vertexData = Mesh.mesh.vertexData
-}
-
-class LabelData[MO<:MeshObj] {
+class LabelData {
   val data: Map[String,Array[Object]] = new HashMap[String,Array[Object]]()
   val fns: Map[String,Object => Object] = new HashMap[String,Object => Object]()
 }
 
-class Mesh extends MeshObj {
+class Mesh {
   def typeName = "Mesh"
 
   val id = 0
@@ -199,21 +81,147 @@ class Mesh extends MeshObj {
 	var ctof: CRS = null
 	var ctoc: CRS = null
 
-  val cellData = new LabelData[Cell]
-  val edgeData = new LabelData[Edge]
-  val faceData = new LabelData[Face]
-  val vertexData = new LabelData[Vertex]
+  val cellData = new LabelData
+  val edgeData = new LabelData
+  val faceData = new LabelData
+  val vertexData = new LabelData
+  
+  def verticesMesh: MeshSet = MeshSetImpl(nvertices)
+  def verticesVertex(e: Int): MeshSet = IndexSetImpl(vtov, e)
+  def verticesEdge(e: Int): MeshSet = IndexSetImpl(etov, e)
+  def verticesFace(e: Int): MeshSet = IndexSetImpl(ftov, e)
+  def verticesCell(e: Int): MeshSet = IndexSetImpl(ctov, e)
+
+  def verticesCCW(e: Int): MeshSet = {
+    val c = outside(e)
+    if(ftoc.apply(Mesh.internal(e), Mesh.OUTSIDE) == Mesh.internal(c)) {
+      IndexSetImpl(ftov, e)
+    } else {
+      CWIndexSetImpl(ftov, e)
+    }
+  }
+  
+  def verticesCW(e: Int): MeshSet = {
+    val c = outside(e)
+    if(ftoc.apply(Mesh.internal(e), Mesh.INSIDE) == Mesh.internal(c)) {
+      IndexSetImpl(ftov, e)
+    } else {
+      CWIndexSetImpl(ftov, e)
+    }
+  }
+  
+  def vertex(e: Int, i: Int): Int = { val set = IndexSetImpl(etov, e); set(i) }
+
+  def cellsMesh: MeshSet = new CellSetImpl(ncells)
+  def cellsVertex(e: Int): MeshSet = IndexSetImpl(vtoc, e)
+  def cellsEdge(e: Int): MeshSet = IndexSetImpl(etoc, e)
+  def cellsFace(e: Int): MeshSet = IndexSetImpl(ftoc, e)
+  def cellsCell(e: Int): MeshSet = IndexSetImpl(ctoc, e)
+
+  def cellsCCW(e: Int): MeshSet = {
+    val v = head(e)
+    if(etov.apply(Mesh.internal(e), Mesh.HEAD) == Mesh.internal(v)) {
+      IndexSetImpl(etoc, e)
+    } else {
+      CWIndexSetImpl(etoc, e)
+    }
+  }
+  
+  def cellsCW(e: Int): MeshSet = {
+    val v = head(e)
+    if(etov.apply(Mesh.internal(e), Mesh.TAIL) == Mesh.internal(v)) {
+      IndexSetImpl(etoc, e)
+    } else {
+      CWIndexSetImpl(etoc, e)
+    }
+  }
+
+  def edgesMesh: MeshSet = MeshSetImpl(nedges)
+  def edgesVertex(e: Int): MeshSet = IndexSetImpl(vtoe, e)
+  def edgesFace(e: Int): MeshSet = IndexSetImpl(ftoe, e)
+  def edgesCell(e: Int): MeshSet = IndexSetImpl(ctoe, e)
+
+  def edgesCCW(e: Int): MeshSet = {
+    val c = outside(e)
+    if(ftoc.apply(Mesh.internal(e), Mesh.OUTSIDE) == Mesh.internal(c)) {
+      IndexSetImpl(ftoe, e)
+    } else {
+      CWIndexSetImpl(ftoe, e)
+    }
+  }
+  
+  def edgesCW(e: Int): MeshSet = {
+    val c = outside(e)
+    if(ftoc.apply(Mesh.internal(e), Mesh.INSIDE) == Mesh.internal(c)) {
+      IndexSetImpl(ftoe, e)
+    } else {
+      CWIndexSetImpl(ftoe, e)
+    }
+  }
+  
+  def facesMesh: MeshSet = MeshSetImpl(nfaces)
+  def facesVertex(e: Int): MeshSet = IndexSetImpl(vtof, e)
+  def facesEdge(e: Int): MeshSet = IndexSetImpl(etof, e)
+  def facesCell(e: Int): MeshSet = IndexSetImpl(ctof, e)
+
+  def facesCCW(e: Int): MeshSet = {
+    val v = head(e)
+    if(etov.apply(Mesh.internal(e), Mesh.HEAD) == Mesh.internal(v)) {
+      IndexSetImpl(etof, e)
+    } else {
+      CWIndexSetImpl(etof, e)
+    }
+  }
+  
+  def facesCW(e: Int): MeshSet = {
+    val v = head(e)
+    if(etov.apply(Mesh.internal(e), Mesh.TAIL) == Mesh.internal(v)) {
+      IndexSetImpl(etoc, e)
+    } else {
+      CWIndexSetImpl(etoc, e)
+    }
+  }
+  
+  def face(e: Int, i: Int): Int = { val set = IndexSetImpl(ctof, e); set(i) }
+
+  def head(e: Int): Int = etov.apply(Mesh.internal(e), if(Mesh.reversed(e)) 1 else 0)
+  def tail(e: Int): Int = etov.apply(Mesh.internal(e), if(Mesh.reversed(e)) 0 else 1)
+
+  def outside(e: Int): Int = ftoc.apply(Mesh.internal(e), if(Mesh.reversed(e)) 1 else 0)
+  def inside(e: Int): Int = ftoc.apply(Mesh.internal(e), if(Mesh.reversed(e)) 0 else 1)
+
+  def towardsEdgeVertex(e: Int, v: Int): Int = {
+    val facing = Mesh.internal(etov.apply(Mesh.internal(e), Mesh.HEAD)) == Mesh.internal(v)
+    if(facing) e else Mesh.flip(e)
+  }
+
+  def towardsFaceCell(e: Int, c: Int): Int = {
+    val facing = Mesh.internal(ftoc.apply(Mesh.internal(e), Mesh.OUTSIDE)) == Mesh.internal(c)
+    if(facing) e else Mesh.flip(e)
+  }
+  
+  def label[T](ld: LabelData, url: String) : LabelField[T] = {
+    ld.data.get(url) match {
+      case Some(data) => new LabelFieldImpl[T](data, ld.fns.get(url).getOrElse(null))
+      case None => null
+    }
+  }
+  
+  def labelCells[T](url: String) : LabelField[T] = label(cellData, url)
+  def labelEdges[T](url: String) : LabelField[T] = label(edgeData, url)
+  def labelFaces[T](url: String) : LabelField[T] = label(faceData, url)
+  def labelVertices[T](url: String) : LabelField[T] = label(vertexData, url)
 
   // Use special CellSetImpl, don't expose 0 cell
-  val cells : MeshSet[Cell] = new CellSetImpl(ncells-1)
-  val edges : MeshSet[Edge] = new MeshSetImpl[Edge](nedges)
-  val faces : MeshSet[Face] = new MeshSetImpl[Face](nfaces)
-  val vertices : MeshSet[Vertex] = new MeshSetImpl[Vertex](nvertices)
+  val cells : MeshSet = new CellSetImpl(ncells-1)
+  val edges : MeshSet = new MeshSetImpl(nedges)
+  val faces : MeshSet = new MeshSetImpl(nfaces)
+  val vertices : MeshSet = new MeshSetImpl(nvertices)
   
   def positionToVec(p: Object) : Object = {
     val a = p.asInstanceOf[Array[Double]]
    
-    val v = VecImpl[_3, Float]()
+    val v = Vec.ofSize[Float](3)
     v(0) = a(0).asInstanceOf[Float]
     v(1) = a(1).asInstanceOf[Float]
     v(2) = a(2).asInstanceOf[Float]

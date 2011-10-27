@@ -1,7 +1,5 @@
 package ppl.dsl.deliszt.datastruct.scala
 
-import MetaInteger._
-
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
  * last modified: 04/30/2011
@@ -10,13 +8,7 @@ import MetaInteger._
  * Stanford University
  */
 
-object MatImpl {
-  def apply[R<:IntM:MVal, C<:IntM:MVal, T: Manifest] = {
-    new MatImpl[R,C,T](MIntDepth[R],MIntDepth[C])
-  }
-}
-
-class MatImpl[R<:IntM,C<:IntM, @specialized T: ClassManifest](val numRows : Int, val numCols : Int, val data : Array[T]) extends Mat[R,C,T] with Copyable {
+class MatImpl[@specialized T: ClassManifest](val numRows : Int, val numCols : Int, val data : Array[T]) extends Mat[T] with Copyable {
   def this(numRows : Int, numCols : Int) = this(numRows, numCols, new Array[T](numRows * numCols))
 
   def apply(r: Int, c: Int) = data(r*numRows+c)
@@ -24,7 +16,7 @@ class MatImpl[R<:IntM,C<:IntM, @specialized T: ClassManifest](val numRows : Int,
     data(r*numRows+c) = v
   }
 
-  def size = numRows * numCols
+  override val size = numRows * numCols
   
   def apply(idx: Int) = dcApply(idx)
   def update(idx: Int, v: T) = dcUpdate(idx, v)
@@ -38,11 +30,11 @@ class MatImpl[R<:IntM,C<:IntM, @specialized T: ClassManifest](val numRows : Int,
   }
   
   def cloneL = {
-    new MatImpl[R,C,T](numRows, numCols, data.clone)
+    new MatImpl[T](numRows, numCols, data.clone)
   }
   
   def copy() = {
-    val m = new MatImpl[R,C,T](numRows, numCols)
+    val m = new MatImpl[T](numRows, numCols)
   
     if(classManifest[T] <:< classManifest[Copyable]) {
       for(i <- 0 until size) {
@@ -69,14 +61,13 @@ class MatImpl[R<:IntM,C<:IntM, @specialized T: ClassManifest](val numRows : Int,
   }
 }
 
-class MatRowImpl[C<:IntM, @specialized T: ClassManifest](mat: Mat[_,C,T], idx: Int) extends MatRow[C,T] with Copyable {
+class MatRowImpl[@specialized T: ClassManifest](mat: Mat[T], idx: Int) extends MatRow[T] with Copyable {
   def apply(n: Int) = mat.apply(idx,n)
   def update(n: Int, v: T) = mat.update(idx,n,v)
-  val size = mat.numCols
-  
+  override val size = mat.numCols
     
   def cloneL = {
-    val v = new VecImpl[C,T](size)
+    val v = new VecImpl[T](size)
   
     for(i <- 0 until size) {
       v(i) = this(i)
@@ -92,13 +83,13 @@ class MatRowImpl[C<:IntM, @specialized T: ClassManifest](mat: Mat[_,C,T], idx: I
   }
 }
 
-class MatColImpl[R<:IntM, @specialized T: ClassManifest](mat: Mat[R,_,T], idx: Int) extends MatCol[R,T] with Copyable {
+class MatColImpl[@specialized T: ClassManifest](mat: Mat[T], idx: Int) extends MatCol[T] with Copyable {
   def apply(n: Int) = mat.apply(idx,n)
   def update(n: Int, v: T) = mat.update(idx,n,v)
-  val size = mat.numRows
+  override val size = mat.numRows
   
   def cloneL = {
-    val v = new VecImpl[R,T](size)
+    val v = new VecImpl[T](size)
   
     for(i <- 0 until size) {
       v(i) = this(i)

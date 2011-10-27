@@ -6,9 +6,8 @@ import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{CLikeCodegen}
 import scala.virtualization.lms.util.OverloadHack
 
-import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
-import ppl.dsl.deliszt.{DeLiszt, DeLisztExp}
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.MetaInteger._
 
 /*
 * Arith definitions for OptiML supported types.

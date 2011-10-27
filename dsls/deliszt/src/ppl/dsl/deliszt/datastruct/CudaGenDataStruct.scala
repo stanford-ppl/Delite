@@ -34,7 +34,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     val typeStr = remap(argType)
     val numBytesStr = "%s->size * sizeof(%s)".format(quote(sym),typeStr)
 
-    out.append(writeImplCls)
+    //out.append(writeImplCls)
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_size = env->GetMethodID(cls,\"size\",\"()I\");\n")
@@ -49,10 +49,10 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t%s->data = devPtr;\n".format(quote(sym)))
 
     /* Iterate over the input array to retrieve the values from the object type elements */
+    //TODO: Since we know the type of the return meshset, we can calculate the result value here instead of calling apply method for each element
     out.append("\tfor(int i=0; i<%s->size; i++) { \n".format(quote(sym)))
-    //out.append("\t\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Lgenerated/scala/%sImpl;\");\n".format(typeStr))
-    out.append("\t\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Lgenerated/scala/MeshObj;\");\n")
-    out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
+    out.append("\t\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)I\");\n")
+    /*
     remap(argType) match {
       case "Cell" => out.append("\t\tjmethodID mid_id = env->GetMethodID(CellImplCls,\"id\",\"()I\");\n")
       case "Edge" => out.append("\t\tjmethodID mid_id = env->GetMethodID(EdgeImplCls,\"id\",\"()I\");\n")
@@ -61,7 +61,8 @@ trait CudaGenDataStruct extends CudaCodegen {
       case "int" => out.append("\t\tjmethodID mid_id = env->GetMethodID(IntImplCls,\"id\",\"()I\");\n")
       case _ => throw new GenerationFailedException("Cuda: Cannot find method ID for MeshSet Transfer")
     }
-    out.append("\t\thostPtr[i] = env->CallIntMethod(elem,mid_id);\n")
+    */
+    out.append("\t\thostPtr[i] = env->CallIntMethod(obj,mid_elem,i);\n")
     out.append("\t}\n")
     out.append("\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s);\n".format("devPtr","hostPtr",numBytesStr))
     out.append("\tenv->DeleteLocalRef(cls);\n")

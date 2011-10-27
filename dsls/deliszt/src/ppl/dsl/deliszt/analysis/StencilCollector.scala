@@ -10,104 +10,45 @@ import scala.virtualization.lms.internal._
 
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.analysis.TraversalAnalysis
-
-import ppl.dsl.deliszt.datastruct.scala._
-import ppl.dsl.deliszt._
-
 import ppl.delite.framework.datastruct.scala._
 
-class MultipleMeshSetImpl[MO<:MeshObj:MeshObjConstruct](objs: IndexedSeq[Int]) extends MeshSet[MO] {
-  def apply(i : Int) = {
-    MeshObjImpl[MO](objs(i))
-  }
-  
-  override val size = objs.size
-}
-
-class MultipleMeshSetBuilder {
-  val builder = ArrayBuilder.make[Int]()
-  val members = MSet[Int]()
-  
-  def addSet[MO<:MeshObj](ms: MeshSet[MO]) {
-    for(mo <- ms) {
-      if(!members.contains(mo.internalId)) {
-        builder += mo.internalId
-      }
-    }
-  }
-  
-  def +=[MO<:MeshObj](ms: MeshSet[MO]) = addSet(ms)
-  
-  def result[MO<:MeshObj:MeshObjConstruct] = new MultipleMeshSetImpl(builder.result)
-}
-
-trait MultipleMeshObj[MO<:MeshObj] {
-  def +(b: MO) : MultipleMeshObj[MO] = new MultipleMeshObjImpl(objs + b)
-  def ++(b: MultipleMeshObj[MO]) : MultipleMeshObj[MO] = new MultipleMeshObjImpl(objs ++ b.objs)
-  val objs : Set[MO]
-}
-
-class MultipleMeshObjImpl[MO<:MeshObj](val objs : Set[MO] = Set[MO]()) extends MultipleMeshObj[MO] {
-}
-
-case class NoObjs[MO<:MeshObj]() extends MultipleMeshObj[MO] {
-  val objs = Set[MO]()
-  
-  override def ++(b: MultipleMeshObj[MO]) = b
-}
-
-case class OneObj[MO<:MeshObj](mo: MO) extends MultipleMeshObj[MO] {
-  val objs = Set[MO](mo)
-}
-
-case class MultipleMeshObjSet[MO<:MeshObj](val ms : MeshSet[MO]) extends MultipleMeshObj[MO] {
-  val objs = ms.toSet
-} 
-
-case class FieldAccess(field: Int, mo: MeshObj)
-
-class ReadWriteSet {
-  var read = ISet[FieldAccess]()
-  var write = ISet[FieldAccess]()
-}
-
-object StencilCollector {
-  type StencilMap = MMap[MeshObj,ReadWriteSet]
-}
+import ppl.dsl.deliszt.{DeLisztExp}
+import ppl.dsl.deliszt.datastruct.scala._
+import ppl.dsl.deliszt.{MeshObj, Cell}
 
 trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   val IR: DeliteApplication with DeLisztExp
   import IR._
   
   object MultipleMeshSet {
-    def apply[A<:MeshObj:Manifest,B<:MeshObj:Manifest:MeshObjConstruct](in: MultipleMeshObj[A], f: A => MeshSet[B]) : MeshSet[B] = {
+    def apply(in: MultipleMeshObj, f: Int => MeshSet) : MeshSet = {
       val builder = new MultipleMeshSetBuilder()
       
       for(mo <- in.objs) {
         builder += f(mo)
       }
       
-      builder.result[B]
+      builder.result
     }
   
-    def apply[A<:MeshObj:Manifest,B<:MeshObj:Manifest:MeshObjConstruct](e: Exp[A], f: A => MeshSet[B]) : MeshSet[B] = {
-      apply(moValue[A](e), f)
+    def apply(e: Exp[_], f: Int => MeshSet) : MeshSet = {
+      apply(moValue(e), f)
     }
   }
   
   object MultipleMeshObj {
-    def apply[MO<:MeshObj:Manifest](mo: MO) = new MultipleMeshObjImpl(ISet(mo))
-    def apply[MO<:MeshObj:Manifest](ms: MeshSet[MO]) = new MultipleMeshObjImpl(ms.toSet)
+    def apply(mo: Int) = new MultipleMeshObjImpl(ISet(mo))
+    def apply(ms: MeshSet) = new MultipleMeshObjImpl(ms.toSet)
     
     def apply(e: Any) = {
       e match {
-        case mo: MeshObj => OneObj(mo)
+        case mo: Int => OneObj(mo)
         case _ => e
       }
     }
 
-    def multi[A<:MeshObj:Manifest,B<:MeshObj:Manifest](in: MultipleMeshObj[A], f: A => MultipleMeshObj[B]) : MultipleMeshObj[B] = {
-      var out: MultipleMeshObj[B] = NoObjs[B]()
+    def multi(in: MultipleMeshObj, f: Int => MultipleMeshObj) : MultipleMeshObj = {
+      var out: MultipleMeshObj = NoObjs()
       
       for(mo <- in.objs) {
         out = out ++ f(mo)
@@ -116,16 +57,16 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       out
     }
     
-    def multi[A<:MeshObj:Manifest,B<:MeshObj:Manifest](e: Exp[_], f: A => MultipleMeshObj[B]) : MultipleMeshObj[B] = {
-      multi(moValue[A](e), f)
+    def multi(e: Exp[_], f: Int => MultipleMeshObj) : MultipleMeshObj = {
+      multi(moValue(e), f)
     }
     
-    def multi[A<:MeshObj:Manifest,B<:MeshObj:Manifest](e: A, f: A => MultipleMeshObj[B]) : MultipleMeshObj[B] = {
+    def multi(e: Int, f: Int => MultipleMeshObj) : MultipleMeshObj = {
       multi(OneObj(e), f)
     }
     
-    def apply[A<:MeshObj:Manifest,B<:MeshObj:Manifest](in: MultipleMeshObj[A], f: A => B) : MultipleMeshObj[B] = {
-      var out: MultipleMeshObj[B] = NoObjs[B]()
+    def apply(in: MultipleMeshObj, f: Int => Int) : MultipleMeshObj = {
+      var out: MultipleMeshObj = NoObjs()
       
       for(mo <- in.objs) {
         out = out + f(mo)
@@ -134,25 +75,25 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       out
     }
     
-    def apply[A<:MeshObj:Manifest,B<:MeshObj:Manifest](e: Exp[_], f: A => B) : MultipleMeshObj[B] = {
-      apply(moValue[A](e), f)
+    def apply(e: Exp[_], f: Int => Int) : MultipleMeshObj = {
+      apply(moValue(e), f)
     }
     
-    def apply[A<:MeshObj:Manifest,B<:MeshObj:Manifest](e: A, f: A => B) : MultipleMeshObj[B] = {
+    def apply(e: Int, f: Int => Int) : MultipleMeshObj = {
       apply(OneObj(e), f)
     }
   }
   
-  import StencilCollector.StencilMap
+  import Stencil.StencilMap
 
   val forMap = new HashMap[Int,StencilMap]()
-  val msMap = MMap[Int,MeshSet[_]]()
+  val msMap = MMap[Int,MeshSet]()
   
   // Store the current top level for loop
   var currentFor : Option[Int] = None
   
   // And the current mesh object in the top level for loop
-  var currentMo : Option[MeshObj] = None
+  var currentMo : Option[Int] = None
   
   val className = "StencilCollector"
   val on = true
@@ -167,9 +108,9 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   }
   
   // Mark accesses
-  def markRead[MO<:MeshObj,VT](f: Exp[Field[MO,VT]], i: Exp[MeshObj]) {
-    val sym = f.asInstanceOf[Sym[Field[MO,VT]]]
-    val mos = value[MultipleMeshObj[MeshObj]](i)
+  def markRead[T](f: Exp[_], i: Exp[MeshObj]) {
+    val sym = f.asInstanceOf[Sym[_]]
+    val mos = value[MultipleMeshObj](i)
     
     currentFor match {
 	    case Some(x) => {
@@ -181,15 +122,15 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     }
   }
   
-  def markWrite[MO<:MeshObj,VT](f: Exp[Field[MO,VT]], i: Exp[MeshObj]) {
-    val sym = f.asInstanceOf[Sym[Field[MO,VT]]]
-    val mos = value[MultipleMeshObj[MeshObj]](i)
+  def markWrite[T](f: Exp[_], i: Exp[MeshObj], moType: Manifest[_]) {
+    val sym = f.asInstanceOf[Sym[_]]
+    val mos = value[MultipleMeshObj](i)
     
     currentFor match {
 	    case Some(x) => {
 	      for(mo <- mos.objs) {
           mo match {
-            case Cell(0) => // Ignore
+            case 0 if moType <:< manifest[Cell] => // Ignore
             case _ => forMap(x)(currentMo.get).write += FieldAccess(sym.id, mo)
           }
 	      }
@@ -205,9 +146,9 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     }
   }
   
-  def setFor(i: Int, ms: MeshSet[_]) {
+  def setFor(i: Int, ms: MeshSet) {
     currentFor = Some(i)
-    forMap(i) = new HashMap[MeshObj,ReadWriteSet]() { override def default(key: MeshObj) = { val rwset = new ReadWriteSet(); this(key) = rwset; rwset }  }
+    forMap(i) = new HashMap[Int,ReadWriteSet]() { override def default(key: Int) = { val rwset = new ReadWriteSet(); this(key) = rwset; rwset }  }
     
     msMap(i) = ms
   }
@@ -220,9 +161,9 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     
   def combine(a: Any, b: Any) = {
     (a, b) match {
-      case (x: MultipleMeshObj[MeshObj], y: MultipleMeshObj[MeshObj]) => x ++ y
-      case (x: MultipleMeshObj[MeshObj], _) => x
-      case (_, y: MultipleMeshObj[MeshObj]) => y
+      case (x: MultipleMeshObj, y: MultipleMeshObj) => x ++ y
+      case (x: MultipleMeshObj, _) => x
+      case (_, y: MultipleMeshObj) => y
       
       // Just pick one, doesn't really matter
       case _ => a
@@ -262,64 +203,67 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     case _ => null
   }).asInstanceOf[T]
   
-  def moValue[MO<:MeshObj:Manifest](x: Exp[Any]) = value[MultipleMeshObj[MO]](x)
+  def moValue(x: Exp[Any]) = value[MultipleMeshObj](x)
   
   def maybeValue(x: Def[Any])(implicit stream: PrintWriter) : Option[Any] = {
     val o = x match {
       // or could also lookup the exp
-      case b@DeLisztBoundarySet(name) => Mesh.boundarySet(value[String](name))(b.moc)
+      case DeLisztBoundarySetCells(name) => Mesh.boundarySetCells(value[String](name))
+      case DeLisztBoundarySetEdges(name) => Mesh.boundarySetEdges(value[String](name))
+      case DeLisztBoundarySetFaces(name) => Mesh.boundarySetFaces(value[String](name))
+      case DeLisztBoundarySetVertices(name) => Mesh.boundarySetVertices(value[String](name))
 
-      case DeLisztMesh() => OneObj(Mesh.mesh)
+      case DeLisztMesh() => OneObj(0)
 
-      case DeLisztVerticesCell(e) => MultipleMeshSet(e, (mo:Cell) => Mesh.vertices(mo))
-      case DeLisztVerticesEdge(e) => MultipleMeshSet(e, (mo:Edge) => Mesh.vertices(mo))
-      case DeLisztVerticesFace(e) => MultipleMeshSet(e, (mo:Face) => Mesh.vertices(mo))
-      case DeLisztVerticesVertex(e) => MultipleMeshSet(e, (mo:Vertex) => Mesh.vertices(mo))
-      case DeLisztVerticesMesh(e) => MultipleMeshSet(e, (mo:Mesh) => Mesh.vertices(mo))
+      case DeLisztVerticesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesCell(mo))
+      case DeLisztVerticesEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesEdge(mo))
+      case DeLisztVerticesFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesFace(mo))
+      case DeLisztVerticesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesVertex(mo))
+      case DeLisztVerticesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesMesh)
 
-      case DeLisztVertex(e, i) => MultipleMeshObj(e, (mo: Cell) => Mesh.vertex(mo, value(i)))
+      case DeLisztVertex(e, i, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.vertex(mo, value(i)))
 
-      case DeLisztFaceVerticesCCW(e) => MultipleMeshSet(e, (mo:Face) => Mesh.verticesCCW(mo))
-      case DeLisztFaceVerticesCW(e) => MultipleMeshSet(e, (mo:Face) => Mesh.verticesCW(mo))
+      case DeLisztFaceVerticesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesCCW(mo))
+      case DeLisztFaceVerticesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesCW(mo))
 
-      case DeLisztCellsCell(e) => MultipleMeshSet(e, (mo:Cell) => Mesh.cells(mo))
-      case DeLisztCellsEdge(e) => MultipleMeshSet(e, (mo:Edge) => Mesh.cells(mo))
-      case DeLisztCellsFace(e) => MultipleMeshSet(e, (mo:Face) => Mesh.cells(mo))
-      case DeLisztCellsVertex(e) => MultipleMeshSet(e, (mo:Vertex) => Mesh.cells(mo))
-      case DeLisztCellsMesh(e) => MultipleMeshSet(e, (mo:Mesh) => Mesh.cells(mo))
+      case DeLisztCellsCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsCell(mo))
+      case DeLisztCellsEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsEdge(mo))
+      case DeLisztCellsFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsFace(mo))
+      case DeLisztCellsVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsVertex(mo))
+      case DeLisztCellsMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsMesh)
 
-      case DeLisztEdgeCellsCCW(e) => MultipleMeshSet(e, (mo:Edge) => Mesh.cellsCCW(mo))
-      case DeLisztEdgeCellsCW(e) => MultipleMeshSet(e, (mo:Edge) => Mesh.cellsCW(mo))
+      case DeLisztEdgeCellsCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsCCW(mo))
+      case DeLisztEdgeCellsCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsCW(mo))
 
-      case DeLisztEdgesCell(e) => MultipleMeshSet(e, (mo:Cell) => Mesh.edges(mo))
-      case DeLisztEdgesFace(e) => MultipleMeshSet(e, (mo:Face) => Mesh.edges(mo))
-      case DeLisztEdgesVertex(e) => MultipleMeshSet(e, (mo:Vertex) => Mesh.edges(mo))
-      case DeLisztEdgesMesh(e) => MultipleMeshSet(e, (mo:Mesh) => Mesh.edges(mo))
+      case DeLisztEdgesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesCell(mo))
+      case DeLisztEdgesFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesFace(mo))
+      case DeLisztEdgesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesVertex(mo))
+      case DeLisztEdgesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesMesh)
 
-      case DeLisztFacesCell(e) => MultipleMeshSet(e, (mo:Cell) => Mesh.faces(mo))
-      case DeLisztFacesEdge(e) => MultipleMeshSet(e, (mo:Edge) => Mesh.faces(mo))
-      case DeLisztFacesVertex(e) => MultipleMeshSet(e, (mo:Vertex) => Mesh.faces(mo))
-      case DeLisztFacesMesh(e) => MultipleMeshSet(e, (mo:Mesh) => Mesh.faces(mo))
+      case DeLisztFacesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesCell(mo))
+      case DeLisztFacesEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesEdge(mo))
+      case DeLisztFacesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesVertex(mo))
+      case DeLisztFacesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesMesh)
 
-      case DeLisztEdgeFacesCCW(e) => MultipleMeshSet(e, (mo:Edge) => Mesh.facesCCW(mo))
-      case DeLisztEdgeFacesCW(e) => MultipleMeshSet(e, (mo:Edge) => Mesh.facesCW(mo))
+      case DeLisztEdgeFacesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesCCW(mo))
+      case DeLisztEdgeFacesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesCW(mo))
   
-      case DeLisztFaceEdgesCCW(e) => MultipleMeshSet(e, (mo:Face) => Mesh.edgesCCW(mo))
-      case DeLisztFaceEdgesCW(e) => MultipleMeshSet(e, (mo:Face) => Mesh.edgesCW(mo))
+      case DeLisztFaceEdgesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesCCW(mo))
+      case DeLisztFaceEdgesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesCW(mo))
 
-      case DeLisztEdgeHead(e) => MultipleMeshObj[Edge,Vertex](e, (mo:Edge) => Mesh.head(mo))
-      case DeLisztEdgeTail(e) => MultipleMeshObj[Edge,Vertex](e, (mo:Edge) => Mesh.tail(mo))
+      case DeLisztEdgeHead(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.head(mo))
+      case DeLisztEdgeTail(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.tail(mo))
 
-      case DeLisztFaceInside(e) => MultipleMeshObj[Face,Cell](e, (mo:Face) => Mesh.inside(mo))
-      case DeLisztFaceOutside(e) => MultipleMeshObj[Face,Cell](e, (mo:Face) => Mesh.outside(mo))
+      case DeLisztFaceInside(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.inside(mo))
+      case DeLisztFaceOutside(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.outside(mo))
   
-      case DeLisztFace(e, i) => MultipleMeshObj[Edge,Face](e, (mo: Edge) => Mesh.face(mo, value(i)))
+      case DeLisztFace(e, i, m) => MultipleMeshObj(e, (mo: Int) => Mesh.mesh.face(mo, value(i)))
 
-      case DeLisztFlipEdge(e) => MultipleMeshObj[Edge,Edge](e, (mo:Edge) => Mesh.flip(mo))
-      case DeLisztFlipFace(e) => MultipleMeshObj[Face,Face](e, (mo:Face) => Mesh.flip(mo))
+      case DeLisztFlipEdge(e) => MultipleMeshObj(e, (mo:Int) => Mesh.flip(mo))
+      case DeLisztFlipFace(e) => MultipleMeshObj(e, (mo:Int) => Mesh.flip(mo))
 
-      case DeLisztTowardsEdgeVertex(e, v) => MultipleMeshObj.multi(e, (e1: Edge) => MultipleMeshObj(v, (e2: Vertex) => Mesh.towards(e1, e2)))
-      case DeLisztTowardsFaceCell(e, c) => MultipleMeshObj.multi(e, (e1: Face) => MultipleMeshObj(c, (e2: Cell) => Mesh.towards(e1, e2)))
+      case DeLisztTowardsEdgeVertex(e, v, m) => MultipleMeshObj.multi(e, (e1: Int) => MultipleMeshObj(v, (e2: Int) => Mesh.mesh.towardsEdgeVertex(e1, e2)))
+      case DeLisztTowardsFaceCell(e, c, m) => MultipleMeshObj.multi(e, (e1: Int) => MultipleMeshObj(c, (e2: Int) => Mesh.mesh.towardsFaceCell(e1, e2)))
       
       case DeliteCollectionApply(e, i) => {
         val obj = (rawValue(e), rawValue(i)) match {
@@ -376,7 +320,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         // Foreach, only apply to top level foreach though...
         case f@MeshSetForeach(m, b) => {
           // Get value for the mesh set
-          val ms = value[MeshSet[_]](m)
+          val ms = value[MeshSet](m)
       
           // if not current top, mark current top....
           if(currentFor.isEmpty) {
@@ -450,29 +394,29 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
           markRead(f, i)
         }
         
-        case FieldUpdate(f,i,v) => {
+        case w@FieldUpdate(f,i,v) => {
           // Mark a write on the field for the current element... for i
-          markWrite(f, i)
+          markWrite(f, i, w.moM)
         }
           
-        case FieldPlusUpdate(f,i,v) => {
+        case w@FieldPlusUpdate(f,i,v) => {
           // Mark a write on the field for the current element... for i
-          markWrite(f, i)
+          markWrite(f, i, w.moM)
         }
         
-        case FieldTimesUpdate(f,i,v) => {
+        case w@FieldTimesUpdate(f,i,v) => {
           // Mark a write on the field for the current element... for i
-          markWrite(f, i)
+          markWrite(f, i, w.moM)
         }
           
-        case FieldMinusUpdate(f,i,v) => {
+        case w@FieldMinusUpdate(f,i,v) => {
           // Mark a write on the field for the current element... for i
-          markWrite(f, i)
+          markWrite(f, i, w.moM)
         }
         
-        case FieldDivideUpdate(f,i,v) => {
+        case w@FieldDivideUpdate(f,i,v) => {
           // Mark a write on the field for the current element... for i
-          markWrite(f, i)
+          markWrite(f, i, w.moM)
         }
         
         case _ => None

@@ -3,7 +3,6 @@ package ppl.dsl.deliszt.datastruct.scala
 import java.io._
 import net.liftweb.json.{JsonParser, JsonAST}
 import net.liftweb.json.JsonDSL._
-import MetaInteger._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -64,40 +63,6 @@ object MeshLoader {
       println("File exists, found at " + file.getPath)
       Mesh.mesh = Mesh.loader.loadMesh(file.getPath)
       
-      /*val v = LabelData.vertexData
-      
-      println("LABELS")
-      for( (key, value) <- v.data ) {
-        println(key)
-      }
-      
-      val pos = v.data("position")
-      
-      for(i <- 0 until 3) {
-        val vec = pos(i).asInstanceOf[Array[Double]]
-        
-        println("Array " + i)
-        for(j <- 0 until 3) {
-          println(vec(j))
-        }
-      }
-      
-      val f = Mesh.label[Vertex,Vec[_3,Float]]("position")
-      
-      for(i <- 0 until 3) {
-        val vec = f(i)
-        
-        println("Vector " + i)
-        for(j <- 0 until 3) {
-          println(vec(j))
-        }
-      }
-	  
-      val vs = Mesh.meshSet[Vertex]
-      println("size")
-      println(vs.size)
-      */
-      
       println("ncells: " + Mesh.mesh.ncells)
       println("nedges: " + Mesh.mesh.nedges)
       println("nfaces: " + Mesh.mesh.nfaces)
@@ -112,24 +77,7 @@ object MeshLoader {
 class MeshLoader {
   @native
   def loadMesh(file : String) : Mesh = null
-  
-  def loadBoundarySet[MO<:MeshObj:MeshObjConstruct](name : String) : BoundarySet[MO] = {  
-    val bs = _loadBoundarySet(name)
-    
-    val moc = implicitly[MeshObjConstruct[MO]]
-    if(moc._type == 3) {
-      System.out.println("FACES BOUNDARY SET " + name)
-      for(f <- bs.asInstanceOf[BoundarySet[Face]]) {
-        System.out.println(f)
-        for(c <- Mesh.cells(f)) {
-          System.out.println(c)
-        }
-      }
-    }
-    
-    bs
-  }
 
   @native
-  def _loadBoundarySet[MO<:MeshObj:MeshObjConstruct](name : String) : BoundarySet[MO] = null
+  def loadBoundarySet(name : String, mo_type: Int) : BoundarySet = null
 }

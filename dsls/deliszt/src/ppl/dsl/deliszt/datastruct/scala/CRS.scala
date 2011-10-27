@@ -13,9 +13,6 @@ trait CRS {
   def apply(row: Int, i: Int): Int
   def update(row: Int, i: Int, v : Int) : Unit
 
-  def apply(e: MeshObj, i: Int): Int = apply(e.internalId, i)
-  def update(e: MeshObj, i: Int, v : Int) {update(e.internalId, i, v)}
-
   def len(row : Int) : Int
   def values : Array[Int]
 }

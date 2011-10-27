@@ -8,12 +8,12 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-class LabelFieldImpl[MO<:MeshObj:Manifest, VT:Manifest](data: Array[Object], fn: Object => Object) extends LabelField[MO,VT] {
+class LabelFieldImpl[T](data: Array[Object], fn: Object => Object) extends LabelField[T] {
   def size = data.length
-  def apply(idx: Int) : VT = {  
+  def apply(idx: Int) : T = {  
     (Option(fn) match {
       case Some(fn) => fn(data(idx))
       case None => data(idx)
-    }).asInstanceOf[VT]
+    }).asInstanceOf[T]
   }
 }

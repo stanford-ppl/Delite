@@ -38,7 +38,7 @@ public:
     jobject loadMesh(jstring str);
 
     template<typename MO>
-    jobject loadBoundarySet(const char* name, jobject moc)
+    jobject loadBoundarySet(const char* name)
     {
         LisztPrivate::BoundarySet *bs = new LisztPrivate::BoundarySet();
         if (!bs) {
@@ -50,7 +50,7 @@ public:
         try {
           if (boundary_builder.load<MO, LisztPrivate::BoundarySet>(name, bs)) {
               bounds = createObject(
-                      prefix + "/BoundarySetImpl", "L" + prefix + "/MeshObjConstruct;", moc);
+                      prefix + "/BoundarySetImpl", "");
 
               const LisztPrivate::BoundarySet::ranges_t& ranges = bs->getRanges();
                       

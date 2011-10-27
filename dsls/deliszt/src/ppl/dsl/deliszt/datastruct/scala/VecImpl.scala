@@ -1,7 +1,5 @@
 package ppl.dsl.deliszt.datastruct.scala
 
-import MetaInteger._
-
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
  * last modified: 04/25/2011
@@ -10,27 +8,10 @@ import MetaInteger._
  * Stanford University
  */
 
-object VecImpl {
-  def apply[N<:IntM:MVal, T:ClassManifest]() = {
-    new VecImpl[N,T](MIntDepth[N])
-  }
-  
-  def apply[N<:IntM, T:ClassManifest](xs: T*) = {
-    new VecImpl[N,T](xs.toArray)
-  }
-  
-  def apply[N<:IntM, T:ClassManifest](data : Array[T]) = {
-    new VecImpl[N,T](data)
-  }
-}
-
-class VecImpl[N<:IntM, @specialized T: ClassManifest](val data : Array[T]) extends Vec[N, T] with Copyable {
+class VecImpl[@specialized T: ClassManifest](val data : Array[T]) extends Vec[T] with Copyable {
   def this(size : Int) = this(new Array[T](size))
   
-  def size = data.length
-
-  def apply[TT<:IntM](n : TT)(implicit mv: MVal[TT], f : EnsureSize[TT,N]) : T = apply(MIntDepth[TT])
-  def update[TT<:IntM](n : TT, v : T)(implicit mv: MVal[TT], f : EnsureSize[TT,N]) : Unit = update(MIntDepth[TT], v)
+  override def size = data.length
 
   def apply(n : Int) = data(n)
   def update(n : Int, v : T) = {
@@ -38,11 +19,11 @@ class VecImpl[N<:IntM, @specialized T: ClassManifest](val data : Array[T]) exten
   }
   
   def cloneL = {
-    new VecImpl[N,T](data.clone)
+    new VecImpl[T](data.clone)
   }
   
   def copy() = {
-    val v = new VecImpl[N,T](size)
+    val v = new VecImpl[T](size)
   
     if(classManifest[T] <:< classManifest[Copyable]) {
       for(i <- 0 until size) {
