@@ -1,0 +1,3 @@
+#!/bin/bash
+
+export CLASSPATH=$CLASSPATH:/Users/echu/src/Delite/dsls/CVX/target/scala_2.10.0-virtualized-SNAPSHOT/classes/
