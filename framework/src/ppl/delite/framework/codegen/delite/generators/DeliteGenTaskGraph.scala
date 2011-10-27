@@ -98,6 +98,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         deliteKernel = rhs match {
 //          case op:DeliteFatOp => true
           case op:AbstractFatLoop => true
+          case op:AbstractFatIfThenElse => true
           case ThinDef(op:DeliteOp[_]) => true
           case _ => false
         }
@@ -121,6 +122,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
           case ("scala", op: AbstractFatLoop) =>
             hasOutputSlotTypes = true
             "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
+          case ("scala", op: AbstractFatIfThenElse) =>
+            //hasOutputSlotTypes = true
+            //"generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
+            //TODO: support fat if
+            assert(sym.length == 1, "TODO: support fat if")
+            gen.remap(sym.head.Type)
           case ("scala", ThinDef(z)) => z match {
             case op: AbstractLoop[_] => 
               hasOutputSlotTypes = true
@@ -132,6 +139,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
           case ("cuda", op: AbstractFatLoop) =>
             hasOutputSlotTypes = true
             "void"
+          case ("cuda", op: AbstractFatIfThenElse) =>
+            //hasOutputSlotTypes = true
+            assert(sym.length == 1, "TODO: support fat if")
+            "void"
           case ("cuda", ThinDef(z)) => z match {
             case op: AbstractLoop[_] =>
               hasOutputSlotTypes = true
@@ -140,6 +151,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
           }
           case ("opencl", op: AbstractFatLoop) =>
             hasOutputSlotTypes = true
+            "void"
+          case ("opencl", op: AbstractFatIfThenElse) =>
+            //hasOutputSlotTypes = true
+            assert(sym.length == 1, "TODO: support fat if")
             "void"
           case ("opencl", ThinDef(z)) => z match {
             case op: AbstractLoop[_] =>
@@ -222,6 +237,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     // effectful operations inside kernel
     val defs = rhs match {
       case op:AbstractFatLoop => op.body
+      case op:AbstractFatIfThenElse => (op.thenp zip op.elsep) map (p => IfThenElse(op.cond,p._1,p._2))
       case ThinDef(d) => List(d)
     }
     val kernelContext = getEffectsBlock(defs)
@@ -256,6 +272,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     rhs match {
       case op: AbstractFatLoop => 
         emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _))
+      case op: AbstractFatIfThenElse => 
+        assert(sym.length == 1, "TODO: implement fat if then else")
+        emitIfThenElse(Block(op.cond), op.thenp.head, op.elsep.head, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
       case ThinDef(z) => z match {
         case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body))
         case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)

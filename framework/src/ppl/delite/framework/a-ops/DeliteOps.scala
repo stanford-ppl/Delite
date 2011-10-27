@@ -957,9 +957,10 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
       stream.print("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") ")
       if (deliteKernel)
         stream.println(prefixSym + quote(sym) + "_buf_append(" + quote(getBlockResult(elem.func)) + ")")
-      else
-        stream.println("throw new RuntimeException(\"FIXME: buffer growing\")")
-        //stream.println(prefixSym + quote(sym) + ".insert(" + prefixSym + quote(sym) + ".length, " + quote(getBlockResult(elem.func)) + ") // FIXME: buffer growing")
+      else {
+        stream.print(prefixSym + quote(sym) + "_data += " + quote(getBlockResult(elem.func)))
+        stream.println(" // TODO: more efficient buffer handling")
+      }
     } else {
       stream.println(prefixSym + quote(sym) + "_data(" + quote(op.v) + ") = " + quote(getBlockResult(elem.func)))
     }
@@ -1066,7 +1067,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_]) =>
         if (elem.cond.nonEmpty) {
-          stream.println("var " + quote(sym) + "_data: Array[" + remap(getBlockResult(elem.func).Type) + "] = _ // FIXME: buffer handling")
+          //stream.println("var " + quote(sym) + "_data: Array[" + remap(getBlockResult(elem.func).Type) + "] = _ // FIXME: buffer handling")
+          stream.println("var " + quote(sym) + "_data: ArrayBuffer[" + remap(getBlockResult(elem.func).Type) + "] = new ArrayBuffer // TODO: more efficient buffer handling")
         } else {
           stream.println("val " + quote(sym) + "_data: Array[" + remap(getBlockResult(elem.func).Type) + "] = new Array(" + quote(op.size) + ")")
         }
@@ -1147,7 +1149,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     // finalize
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_]) =>
-        emitValDef(elem.aV, quote(sym) + "_data")
+        emitValDef(elem.aV, quote(sym) + "_data.toArray")
         stream.println("val " + quote(sym) + " = {"/*}*/)
         emitBlock(elem.alloc)
         stream.println(quote(getBlockResult(elem.alloc)))

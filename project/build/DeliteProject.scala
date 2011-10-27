@@ -54,6 +54,9 @@ final class DeliteProject(info: ProjectInfo) extends DefaultProject(info) with M
     override def mainScalaSourcePath = "src"
     override def mainResourcesPath = "resources"
     
+    override def testScalaSourcePath = "test-src"
+    override def testResourcesPath = "test-resources"
+
     override def compileOptions = super.compileOptions ++ compileOptions("-Yno-generic-signatures") // speed up bytecode gen a little
     override def testCompileOptions = super.testCompileOptions ++ compileOptions("-Yno-generic-signatures")
     

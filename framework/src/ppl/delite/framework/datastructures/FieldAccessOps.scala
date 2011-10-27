@@ -1,12 +1,16 @@
 package ppl.delite.framework.datastructures
 
-import scala.virtualization.lms.common.{ScalaGenFat, BaseFatExp}
+import scala.virtualization.lms.common.{ScalaGenFat, BaseFatExp, StructExp}
 import scala.virtualization.lms.internal.{Effects}
 import java.io.PrintWriter
 
-trait FieldAccessOpsExp extends BaseFatExp {
+trait FieldAccessOpsExp extends BaseFatExp with StructExp {
 
   case class FieldRead[T](o: Exp[_], f: String, t: String) extends Def[T]
+  
+  object FieldRead { //TR HACK
+    def apply[T:Manifest](o: Exp[_], f: String, t: String) = field[T](o,f)
+  }
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
     case FieldRead(o,fld,t) => FieldRead[A](f(o), fld , t)

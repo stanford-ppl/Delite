@@ -44,6 +44,8 @@ trait QueryableOps extends Base {
 trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   this: QueryableOps with OptiQLExp =>
 
+
+
   case class QueryableWhere[TSource:Manifest](in: Exp[DataTable[TSource]], cond: Exp[TSource] => Exp[Boolean]) extends DeliteOpFilter[TSource, TSource,DataTable[TSource]] {
     def alloc = DataTable[TSource]()
     def func = e => e
@@ -60,21 +62,6 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   case class HackQueryableGroupBy[TSource:Manifest, TKey:Manifest](s: Exp[DataTable[TSource]], v:Sym[TSource], key: Block[TKey]) extends Def[DataTable[Grouping[TKey, TSource]]]
   case class HackQueryableSum[TSource:Manifest](s:Exp[DataTable[TSource]], sym: Sym[TSource], value: Block[Double]) extends Def[Double]
   
-  /*
-  case class QueryableSum[TSource:Manifest](s: Exp[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]) extends DeliteOpReduce[Double] {
-    val size = copyTransformedOrElse(_.size)(s.size)
-    
-    def func = (a,b) => sumSelector(a) + sumSelector(b)
-    val zero = unit(0.0f)
-    /*
-    val body: Def[Double] = DeliteReduceElem[Double](
-      func = sumSelector(s(v)),
-      zero = unit(0.0f),
-      rV = rV,
-      rFunc = rV._1 + rV._2,
-      stripFirst = false
-    )*/
-  }*/
   case class QueryableAverage[TSource:Manifest](s: Exp[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) extends Def[Double]
   
   //case class QueryableCount[TSource:Manifest](s: Exp[DataTable[TSource]]) extends Def[Int]
@@ -85,10 +72,17 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   def queryable_select[TSource:Manifest, TResult:Manifest](s: Rep[DataTable[TSource]], resultSelector: Rep[TSource] => Rep[TResult]) = {
 //  val v = fresh[TSource]
 //  val func = reifyEffects(resultSelector(v))
-    QueryableSelect(s, resultSelector)
+//    QueryableSelect(s, resultSelector)
+    val data = arraySelect(s.size)(i => resultSelector(s(i)))
+    DataTable(data, data.length)
   }
   
-  def queryable_where[TSource:Manifest](s: Exp[DataTable[TSource]], predicate: Exp[TSource] => Exp[Boolean]) = QueryableWhere(s,predicate)
+  def queryable_where[TSource:Manifest](s: Exp[DataTable[TSource]], predicate: Exp[TSource] => Exp[Boolean]) = {
+    //QueryableWhere(s,predicate)
+    val data = arrayWhere(s.size)(i => predicate(s(i)))(i => s(i))
+    DataTable(data, data.length)
+  }
+  
   def queryable_groupby[TSource:Manifest, TKey:Manifest](s: Exp[DataTable[TSource]], keySelector: Exp[TSource] => Exp[TKey]) = {
     val v = fresh[TSource]
     val key = reifyEffects(keySelector(v))
