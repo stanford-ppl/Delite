@@ -159,10 +159,10 @@ trait DeLisztCodeGenBase extends GenericFatCodegen {
   }
 }
 
-trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps
+trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg with ScalaGenDeliteOps with ScalaGenLanguageOps 
   with ScalaGenArithOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with ScalaGenFieldOps with ScalaGenIntMOps with ScalaGenMeshPrivateOps with ScalaGenMeshSetOps
-  with ScalaGenMatOps with ScalaGenVecOps with ScalaGenLoopColoringOps
+  with ScalaGenMatOps with ScalaGenVecOps with ScalaGenLoopColoringOps /*with LoopColoringOpt*/ // LoopColoringOpt only needed here for debugging (it's mixed into DeLiszt's DeliteCodeGenPkg)
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
   val IR: DeliteApplication with DeLisztExp

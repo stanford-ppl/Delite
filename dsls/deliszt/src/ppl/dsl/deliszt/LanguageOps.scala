@@ -264,13 +264,59 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def wall_time() = reflectEffect(WallTime())
   def processor_time() = reflectEffect(ProcessorTime())
   
+  
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case DeLisztVerticesCell(e) => vertices(f(e))
+    case DeLisztVerticesEdge(e) => vertices(f(e))
+    case DeLisztVerticesFace(e) => vertices(f(e))
+    case DeLisztVerticesVertex(e) => vertices(f(e))
+    case DeLisztVerticesMesh(e) => vertices(f(e))
+
+    case DeLisztVertex(e,i) => vertex(f(e),f(i))
+
+    case DeLisztFaceVerticesCCW(e) => verticesCCW(f(e))
+    case DeLisztFaceVerticesCW(e) => verticesCW(f(e))
+
+    case DeLisztCellsCell(e) => cells(f(e))
+    case DeLisztCellsEdge(e) => cells(f(e))
+    case DeLisztCellsFace(e) => cells(f(e))
+    case DeLisztCellsVertex(e) => cells(f(e))
+    case DeLisztCellsMesh(e) => cells(f(e))
+
+    case DeLisztEdgeCellsCCW(e) => cellsCCW(f(e))
+    case DeLisztEdgeCellsCW(e) => cellsCW(f(e))
+
+    case DeLisztEdgesCell(e) => edges(f(e))
+    case DeLisztEdgesFace(e) => edges(f(e))
+    case DeLisztEdgesVertex(e) => edges(f(e))
+    case DeLisztEdgesMesh(e) => edges(f(e))
+
     case DeLisztFacesEdge(e) => faces(f(e))
     case DeLisztFacesCell(e) => faces(f(e))
     case DeLisztFacesVertex(e) => faces(f(e))
     case DeLisztFacesMesh(e) => faces(f(e))
+    case DeLisztFaceInside(e) => inside(f(e))
+    case DeLisztFaceOutside(e) => outside(f(e))
+    
+    case DeLisztEdgeFacesCCW(e) => facesCCW(e)
+    case DeLisztEdgeFacesCW(e) => facesCW(e)
+    
+    case DeLisztFaceEdgesCCW(e) => edgesCCW(f(e))
+    case DeLisztFaceEdgesCW(e) => edgesCW(f(e))
+
+    case DeLisztEdgeHead(e) => head(f(e))
+    case DeLisztEdgeTail(e) => tail(f(e))
+
+    case DeLisztFace(e,i) => face(f(e),f(i))
+
+    case DeLisztFlipEdge(e) => flip(f(e))
+    case DeLisztFlipFace(e) => flip(f(e))
+
+    case DeLisztTowardsEdgeVertex(e,v) => towards(f(e),f(v))
+    case DeLisztTowardsFaceCell(e,c) => towards(f(e),f(c))
+    case DeLisztSize(s) => size(f(s))
+    
     case DeLisztID(e) => ID(f(e))
-    case DeLisztVertex(a,b) => vertex(f(a),f(b))
     case Reflect(e@DeLisztPrint(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeLisztPrint(f(x))(f(e.block)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
