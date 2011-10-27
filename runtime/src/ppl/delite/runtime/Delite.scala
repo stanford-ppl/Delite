@@ -36,14 +36,18 @@ object Delite {
   }
 
   def main(args: Array[String]) {
+    embeddedMain(args, Map())
+  }
+
+  def embeddedMain(args: Array[String], staticData: Map[String,_]) {
     mainThread = Thread.currentThread
     
     printArgs(args)
-
     printConfig()
 
     //extract application arguments
     Arguments.args = args.drop(1)
+    Arguments.staticDataMap = staticData
 
     val scheduler = Config.scheduler match {
       case "SMP" => new SMPStaticScheduler
@@ -104,7 +108,7 @@ object Delite {
         // check if we are timing another component
         if(Config.dumpStatsComponent != "all")
           PerformanceTimer.print(Config.dumpStatsComponent)
-	System.gc()
+        System.gc()
       }
 
       println("Done Executing " + numTimes + " Runs")
@@ -118,8 +122,10 @@ object Delite {
       case i: InterruptedException => abnormalShutdown(); exit(1) //a worker thread threw the original exception        
       case e: Exception => abnormalShutdown(); throw e       
     }
-    
-
+    finally {
+      Arguments.args = null
+      Arguments.staticDataMap = null
+    }
   }
 
   def loadDeliteDEG(filename: String) = {

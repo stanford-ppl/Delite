@@ -71,7 +71,7 @@ trait CGenMatrixOps2 extends CGenFat {
   }
 }
 */
-
+/*
 trait DeliteGenMatrixOps2 extends DeliteCodegen {
   val IR: MatrixOpsExp2
   import IR._
@@ -83,3 +83,4 @@ trait DeliteGenMatrixOps2 extends DeliteCodegen {
     case _ => super.emitNode(sym, rhs)
   }
 }
+*/

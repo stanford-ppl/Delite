@@ -3,6 +3,7 @@ package ppl.delite.framework.codegen.delite
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 import scala.virtualization.lms.internal._
+import scala.virtualization.lms.common.{BaseGenStaticData, StaticDataExp}
 import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
@@ -13,8 +14,8 @@ import ppl.delite.framework.extern.DeliteGenExternal
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
  */
-trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.Utils {
-  val IR: Expressions with FatExpressions with Effects
+trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.delite.framework.codegen.Utils {
+  val IR: Expressions with FatExpressions with Effects with StaticDataExp
   import IR._
 
   // these are the target-specific kernel generators (e.g. scala, cuda, etc.)
@@ -68,6 +69,8 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
     val sA = mA.toString
     val sB = mB.toString
 
+    val staticData = getFreeDataBlock(y)
+
     printlog("-- emitSource")
     availableDefs.foreach(printlog(_))
     
@@ -83,7 +86,7 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
     stream.println("{\"type\":\"EOP\"}\n]}}")
 
     stream.flush
-    Nil
+    staticData
   }
 
   /**
