@@ -22,8 +22,21 @@ trait DSArrayOpsExp extends BaseFatExp with LoopsFatExp with ArrayOpsExp  { this
         
         struct[A]("Array"::tag, elems.map(p=>(p._1, copyLoop(Block(p._2))(p._2.Type))))
 
-      case Block(Def(ArrayApply(xs,v))) if b.cond == Nil && array_length(xs) == size => xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
-      case _ => super.simpleLoop(size, v, body)
+        case Block(Def(ArrayApply(xs,v))) if b.cond == Nil && array_length(xs) == size => xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
+        case _ => super.simpleLoop(size, v, body)
+    }
+    case b: DeliteHashCollectElem[k,A,Array[Array[A]]] => b.valFunc match { // unchecked!
+      case Block(Def(Struct(tag, elems))) => 
+        //assert(b.alloc == Block(b.aV), "TODO: only works on simple arrays for now")
+        def copyLoop[B:Manifest](valFunc: Block[B]): Exp[Array[Array[B]]] = {
+          //val aV = fresh[Array[B]]
+          simpleLoop(size, v, DeliteHashCollectElem[k,B,Array[Array[B]]](cond = b.cond, keyFunc = b.keyFunc, valFunc = valFunc))
+        }
+
+        struct[A]("Array"::"Array"::tag, elems.map(p=>(p._1, copyLoop(Block(p._2))(p._2.Type))))
+
+        //TODO!!case Block(Def(ArrayApply(xs,v))) if b.cond == Nil && array_length(xs) == size => xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
+        case _ => super.simpleLoop(size, v, body)
     }
     case _ => super.simpleLoop(size, v, body)
   }
@@ -74,6 +87,18 @@ trait DSArrayOpsExp extends BaseFatExp with LoopsFatExp with ArrayOpsExp  { this
       alloc = reifyEffects(aV),
       func = reifyEffects(func(v)),
       cond = reifyEffects(cond(v))::Nil
+    ))
+  }
+
+  def arrayGroup[K:Manifest,V:Manifest](size: Exp[Int])(keyFunc: Exp[Int]=>Exp[K])(valFunc: Exp[Int]=>Exp[V]): Exp[Array[Array[V]]] = {
+    val v = fresh[Int]
+    //val aV = fresh[Array[A]]
+    simpleLoop(size,v,DeliteHashCollectElem[K,V, Array[Array[V]]](
+      //aV = aV,
+      //alloc = reifyEffects(aV),
+      keyFunc = reifyEffects(keyFunc(v)),
+      valFunc = reifyEffects(valFunc(v))
+      //cond = reifyEffects(cond(v))::Nil
     ))
   }
 

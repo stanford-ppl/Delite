@@ -84,20 +84,33 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   }
   
   def queryable_groupby[TSource:Manifest, TKey:Manifest](s: Exp[DataTable[TSource]], keySelector: Exp[TSource] => Exp[TKey]) = {
-    val v = fresh[TSource]
+    /*val v = fresh[TSource]
     val key = reifyEffects(keySelector(v))
-    HackQueryableGroupBy(s, v, key)
+    HackQueryableGroupBy(s, v, key)*/
+    val data1 = arrayGroup(s.size)(i => keySelector(s(i)))(i => s(i))
+    val data = arraySelect(s.size)(i => 
+      grouping_apply(Const("DUMMY").asInstanceOf[Exp[TKey]], 
+      DataTable(data1(i), data1(i).length)))
+    DataTable(data, data.length)
   }
   def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]) = {
-    val sym = fresh[TSource]
+    /*val sym = fresh[TSource]
     val value = reifyEffects(sumSelector(sym))
-    HackQueryableSum(s,sym,value)
+    HackQueryableSum(s,sym,value)*/
+    val res = reducePlain(s.size)(i => sumSelector(s(i)))(0)(_ + _)
+    res
   }
   def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) = s.Sum(avgSelector)/s.size()
   def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]) = s.size()
   
-  def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]) = QueryableGroupingToDataTable(g)
-  def queryable_grouping_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[TKey] = QueryableGroupingKey(g)
+  def grouping_apply[TKey:Manifest, TSource:Manifest](k: Rep[TKey], v: Rep[DataTable[TSource]]): Rep[Grouping[TKey, TSource]] =
+    struct[Grouping[TKey,TSource]](List("Grouping"), Map("key"->k, "values"->v))
+  
+  //def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]) = QueryableGroupingToDataTable(g)
+  //def queryable_grouping_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[TKey] = QueryableGroupingKey(g)
+  
+  def queryable_grouping_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[TKey] = field[TKey](g, "key")
+  def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[DataTable[TSource]] = field[DataTable[TSource]](g, "values")
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {    
     // FIXME: this won't work. mirroring delite ops needs to look like this:
