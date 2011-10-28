@@ -9,7 +9,7 @@ import java.io.PrintWriter
 
 // this is just an IR node
 // has no concrete storage
-trait OptVarOps extends Base with OverloadHack with ExprOps {
+trait OptVarOps extends Base with OverloadHack with ExprOps with Vexity {
   // an optvar is one of the many types
   // we're going to need "Constants" (?)
   //

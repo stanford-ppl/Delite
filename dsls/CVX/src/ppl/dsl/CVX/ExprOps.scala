@@ -8,7 +8,7 @@ import java.io.PrintWriter
 
 // this is just an IR node
 // has no concrete storage
-trait ExprOps extends Base with OverloadHack {
+trait ExprOps extends Base with OverloadHack with Vexity {
   
   abstract class Expr
   class ConstExpr extends Expr
