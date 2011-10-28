@@ -2,6 +2,7 @@ package ppl.dsl.optiml.vector
 
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
+import scala.reflect.SourceContext
 import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml._
 
@@ -195,7 +196,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   //////////////
   // mirroring
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(e@IndexVector2ConstructRows(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows(f(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??

@@ -3,7 +3,7 @@ package ppl.dsl.optila
 import datastruct.scala._
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
-import reflect.Manifest
+import scala.reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.internal.GenericFatCodegen
 import scala.virtualization.lms.common._
 
@@ -350,7 +350,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Mirroring
    */
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@VectorDistanceAbs(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceAbs(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
     case e@VectorDistanceEuc(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceEuc(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))
     case e@VectorDistanceSquare(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorDistanceSquare(f(x),f(y))(e.m,e.a))(mtype(manifest[A]))

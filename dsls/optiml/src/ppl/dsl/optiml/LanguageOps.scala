@@ -3,7 +3,7 @@ package ppl.dsl.optiml
 import datastruct.scala._
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
-import reflect.Manifest
+import scala.reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.internal.GenericFatCodegen
 import scala.virtualization.lms.common._
 
@@ -544,7 +544,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Mirroring
    */
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@Sum(st,en,b,init) => reflectPure(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
     case e@SumIf(st,en,c,b) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m, e.a, e.c,e.mA,e.cs))(mtype(manifest[A]))
 //    case e@SumIf(st,en,c,b,init) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))

@@ -6,6 +6,7 @@ import scala.virtualization.lms.common.DSLOpsExp
 import scala.virtualization.lms.common.{VariablesExp, Variables}
 import scala.virtualization.lms.common.{CudaGenBase, ScalaGenBase, OpenCLGenBase, CGenBase}
 import scala.virtualization.lms.internal.{GenerationFailedException}
+import scala.reflect.SourceContext
 
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastruct.scala.DeliteCollection
@@ -838,7 +839,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   //////////////
   // mirroring
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = {
     (e match {
       case MatrixNumRows(x) => matrix_numrows(f(x))
       case MatrixNumCols(x) => matrix_numcols(f(x))

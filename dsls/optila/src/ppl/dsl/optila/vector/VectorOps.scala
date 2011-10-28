@@ -1,7 +1,7 @@
 package ppl.dsl.optila.vector
 
 import java.io.{PrintWriter}
-import reflect.Manifest
+import scala.reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 
@@ -964,7 +964,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   //////////////
   // mirroring
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     // implemented as DeliteOpSingleTask and DeliteOpLoop
     case e@DenseVectorObjectOnes(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorObjectOnes(f(x)))(mtype(manifest[A]))
     case e@DenseVectorObjectOnesF(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorObjectOnesF(f(x)))(mtype(manifest[A]))

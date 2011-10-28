@@ -5,6 +5,7 @@ import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import scala.virtualization.lms.util.OverloadHack
+import scala.reflect.SourceContext
 import java.io.PrintWriter
 
 trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
@@ -107,7 +108,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   //////////////
   // mirroring
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m))(mtype(manifest[A]))
     case Reflect(e@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)

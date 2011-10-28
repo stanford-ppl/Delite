@@ -2,6 +2,7 @@ package ppl.dsl.optila.capabilities
 
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
+import scala.reflect.SourceContext
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{CLikeCodegen}
 import ppl.dsl.optila.{DenseVector,Vector,Matrix}
@@ -313,7 +314,7 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   def arith_abs[T:Manifest:Numeric](lhs: Exp[T]) = reflectPure(ArithAbs(lhs))
   def arith_exp[T:Manifest:Numeric](lhs: Exp[T]) = reflectPure(ArithExp(lhs))
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = {
     implicit var a: Fractional[A] = null // hack!! need to store it in Def instances??
     e match {
       case ArithPlus(lhs,rhs) => arith_plus(f(lhs), f(rhs))
