@@ -171,7 +171,7 @@ trait CVXCodeGenBase extends GenericFatCodegen {
 
 // insert code generators here
 trait CVXCodeGenScala extends CVXCodeGenBase
-  with ScalaGenOptVarOps
+  with ScalaGenOptVarOps with ScalaGenExprOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
   val IR: DeliteApplication with CVXExp
