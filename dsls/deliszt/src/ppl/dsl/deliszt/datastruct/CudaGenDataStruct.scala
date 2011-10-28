@@ -235,9 +235,9 @@ trait CudaGenDataStruct extends CudaCodegen {
     }
 
     //TODO: Copy MeshSet fields
-    //for (tpe <- List("Cell","Edge","Face","Vertex")) {
-    //  out.append("\tMeshSet<%s> meshset_%s;\n".format(tpe,tpe))
-    //}
+    for (tpe <- List("Cell","Edge","Face","Vertex")) {
+      out.append("\tMeshSet<%s> meshset_%s;\n".format(tpe,tpe))
+    }
 
     out.append("\tenv->DeleteLocalRef(cls);\n")
     out.append("\treturn %s;\n".format(quote(sym)))

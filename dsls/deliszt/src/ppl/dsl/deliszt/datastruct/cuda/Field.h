@@ -2,6 +2,7 @@
 #define _FIELD_H_
 
 #include <cuda.h>
+#include "BitReverse.h"
 #include "MeshObj.h"
 #include "VecImpl.h"
 
@@ -24,11 +25,11 @@ public:
     
     // Accessor Functions
     __host__ __device__ T apply(MeshObj mo) {
-        return data[internalId(mo)];
+        return data[internal(mo)];
     }
 
     __host__ __device__ void update(MeshObj mo, T newVal) {
-        data[internalId(mo)] = newVal;
+        data[internal(mo)] = newVal;
     }
 
     // DeliteCoolection
@@ -56,7 +57,7 @@ public:
     // Accessor Functions
     __host__ __device__ Vec<T,N> apply(MeshObj mo) {
         Vec<T,N> ret;
-        int idx = internalId(mo);
+        int idx = internal(mo);
         for(int i=0; i<N; i++) { ret.data[i] = data[idx*N+i]; }
         return ret;
     }

@@ -386,6 +386,7 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     val out = new StringBuilder
     out.append("#include <float.h>\n")
     out.append("#include \"CudaArrayList.h\"\n")  //TODO: Remove this
+    out.append("#include \"BitReverse.h\"\n")
     out.append("#include \"CRS.h\"\n")
     out.append("#include \"Field.h\"\n")
     out.append("#include \"Mesh.h\"\n")
