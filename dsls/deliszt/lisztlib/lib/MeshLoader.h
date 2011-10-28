@@ -160,6 +160,7 @@ private:
     MeshIO::LisztFileReader reader;
     CRSMesh::Mesh mesh;
     jobject jmesh;
+    bool loaded;
 };
         }
 
