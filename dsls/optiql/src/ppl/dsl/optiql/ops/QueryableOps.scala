@@ -87,10 +87,10 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     /*val v = fresh[TSource]
     val key = reifyEffects(keySelector(v))
     HackQueryableGroupBy(s, v, key)*/
-    val data1 = arrayGroup(s.size)(i => keySelector(s(i)))(i => s(i))
-    val data = arraySelect(s.size)(i => 
-      grouping_apply(Const("DUMMY").asInstanceOf[Exp[TKey]], 
-      DataTable(data1(i), data1(i).length)))
+    val keyData = arrayDistinct(s.size)(i => keySelector(s(i)))
+    val valData = arrayGroup(s.size)(i => keySelector(s(i)))(i => s(i))
+    val data = arraySelect(keyData.length)(i => 
+      grouping_apply(keyData(i), DataTable(valData(i), valData(i).length)))
     DataTable(data, data.length)
   }
   def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]) = {

@@ -21,6 +21,12 @@ trait OptiQLMiscOpsExp extends OptiQLMiscOps with EffectExp { this : OptiQLExp =
 
   def optiql_profile_start(deps: Seq[Rep[Any]]): Rep[Unit] = reflectEffect(OptiQLProfileStart(Seq(deps: _*)))
   def optiql_profile_stop(deps: Seq[Rep[Any]]): Rep[Unit] =  reflectEffect(OptiQLProfileStop(Seq(deps: _*)))
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case Reflect(OptiQLProfileStop(x), u, es) => reflectMirrored(Reflect(OptiQLProfileStop(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e,f)
+  }).asInstanceOf[Exp[A]]
+
 }
 
 trait ScalaGenOptiQLMiscOps extends ScalaGenEffect {

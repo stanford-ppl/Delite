@@ -109,7 +109,9 @@ trait OptiQLCodeGenBase extends GenericFatCodegen {
 }
 
 trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg with ScalaGenHackOps
-  with ScalaGenDataTableOps with ScalaGenDateOps with ScalaGenQueryableOps with ScalaGenOptiQLMiscOps with ScalaGenResultOps with ScalaGenApplicationOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteOps {
+  with ScalaGenDataTableOps with ScalaGenDateOps with ScalaGenQueryableOps with ScalaGenOptiQLMiscOps 
+  with ScalaGenResultOps with ScalaGenApplicationOps with ScalaGenDeliteCollectionOps 
+  with ScalaGenDeliteOps with ScalaGenDSArrayOps {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = {    
