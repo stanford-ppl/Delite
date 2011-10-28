@@ -88,6 +88,7 @@ trait CVXScalaCodeGenPkg extends ScalaGenDSLOps
 // }
 trait CVX extends CVXScalaOpsPkg 
   with OptVarOps with ExprOps
+  with ConstExprOps
   with DeliteCollectionOps
 {
   this: CVXApplication =>
@@ -106,6 +107,7 @@ trait CVXCompiler extends CVX {
  */
 trait CVXExp extends CVXCompiler with CVXScalaOpsPkgExp 
   with OptVarOpsExp with ExprOpsExp
+  with ConstExprOpsExp
   with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?
@@ -172,6 +174,7 @@ trait CVXCodeGenBase extends GenericFatCodegen {
 // insert code generators here
 trait CVXCodeGenScala extends CVXCodeGenBase
   with ScalaGenOptVarOps with ScalaGenExprOps
+  with ScalaGenConstExprOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
   val IR: DeliteApplication with CVXExp

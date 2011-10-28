@@ -4,9 +4,9 @@ object HelloCVXRunner extends CVXApplicationRunner with HelloCVX
 trait HelloCVX extends CVXApplication {
   def main() = {
     val x = OptVar(10) 
-    val y = x + 3  // does nothing! woohoo
-    val z = 3 + x
-    val a = x + x
+    val y = x + intToExpr(3) // does nothing! woohoo
+    val z = intToExpr(3) + x
+    val a = x + x + z
     //val z = x + doubleToExpr(3.0)
     //val w = floatToExpr(3.0f) + x
   }
