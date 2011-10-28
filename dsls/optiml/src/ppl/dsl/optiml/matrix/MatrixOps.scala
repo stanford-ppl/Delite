@@ -769,10 +769,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     reflectPure(MatrixMapRowsToVec(x, f, isRow))
   }
   def matrix_foreach[A:Manifest](x: Exp[Matrix[A]], block: Exp[A] => Exp[Unit]) = {
-    reflectEffect(MatrixForeach(x, block)) // read??
+    reflectPure(MatrixForeach(x, block)) // read??
   }
   def matrix_foreachrow[A:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Unit]) = {
-    reflectEffect(MatrixForeachRow(x, block)) // read??
+    reflectPure(MatrixForeachRow(x, block)) // read??
   }
   def matrix_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[B]], f: (Exp[A],Exp[B]) => Exp[R]) = {
     reflectPure(MatrixZipWith(x, y, f))
