@@ -45,25 +45,25 @@ object Field {
   }
   
   def cellWithConst[T:Manifest](v: T) : Field[T] = {
-    val f = Field.ofCell()
+    val f = Field.ofCell[T]()
     f.fill(v)
     f
   }
   
   def edgeWithConst[T:Manifest](v: T) : Field[T] = {
-    val f = Field.ofEdge()
+    val f = Field.ofEdge[T]()
     f.fill(v)
     f
   }
   
   def faceWithConst[T:Manifest](v: T) : Field[T] = {
-    val f = Field.ofFace()
+    val f = Field.ofFace[T]()
     f.fill(v)
     f
   }
   
   def vertexWithConst[T:Manifest](v: T) : Field[T] = {
-    val f = Field.ofVertex()
+    val f = Field.ofVertex[T]()
     f.fill(v)
     f
   }

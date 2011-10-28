@@ -69,7 +69,7 @@ class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
     }
     
     edge_idx(numBlocks) = currEdgeV
-    
+    /*
     System.out.println("BLOCK BLOCK NB " + numBlocks + " NE " + totalEdges)
   
     for(i <- 0 until numBlocks) {
@@ -79,6 +79,7 @@ class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
         System.out.println(edge_vals(j))
       }
     }
+    */
     
     // Color!
     val (colors, numColors) = colorer.color(numBlocks, edge_idx, edge_vals)

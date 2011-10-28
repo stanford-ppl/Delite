@@ -105,7 +105,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   /******* Ops *********/
   case class DeLisztInit(args: Exp[Array[String]]) extends Def[Unit]
-  case class DeLisztPrint(as: Seq[Exp[Any]]) extends DeliteOpSingleTask(reifyEffectsHere(print_impl(as)))
+  case class DeLisztPrint(as: Seq[Exp[Any]])(block: Exp[Unit]) // stupid limitation...
+    extends DeliteOpSingleTask(block)
 
   case class DeLisztBoundarySetCells(name: Exp[String]) extends Def[MeshSet[Cell]]
   case class DeLisztBoundarySetEdges(name: Exp[String]) extends Def[MeshSet[Edge]]
@@ -196,7 +197,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   /******* Language functions *********/
   def _init(args: Exp[Array[String]]) = reflectEffect(DeLisztInit(args))
-  def Print(as: Exp[Any]*) = reflectEffect(DeLisztPrint(as))
+  def Print(as: Exp[Any]*) = reflectEffect(DeLisztPrint(as)(reifyEffectsHere(print_impl(as))))
 
   def BoundarySet[MO<:Cell:Manifest](name: Exp[String])(implicit ev : MO =:= Cell) = reflectPure(DeLisztBoundarySetCells(name))
   def BoundarySet[MO<:Edge:Manifest](name: Exp[String])(implicit ev : MO =:= Edge, o: Overloaded1) = reflectPure(DeLisztBoundarySetEdges(name))
@@ -265,6 +266,51 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   def wall_time() = reflectEffect(WallTime())
   def processor_time() = reflectEffect(ProcessorTime())
+  
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {    
+    case DeLisztVerticesCell(e,m) => reflectPure(DeLisztVerticesCell(f(e),f(m)))
+    case DeLisztVerticesEdge(e,m) => reflectPure(DeLisztVerticesEdge(f(e),f(m)))
+    case DeLisztVerticesFace(e,m) => reflectPure(DeLisztVerticesFace(f(e),f(m)))
+    case DeLisztVerticesVertex(e,m) => reflectPure(DeLisztVerticesVertex(f(e),f(m)))
+    case DeLisztVerticesMesh(e) => reflectPure(DeLisztVerticesMesh(f(e)))
+    case DeLisztVertex(e,i,m) => reflectPure(DeLisztVertex(f(e),f(i),f(m)))
+    case DeLisztFaceVerticesCCW(e,m) => reflectPure(DeLisztFaceVerticesCCW(f(e),f(m)))
+    case DeLisztFaceVerticesCW(e,m) => reflectPure(DeLisztFaceVerticesCW(f(e),f(m)))
+    case DeLisztCellsCell(e,m) => reflectPure(DeLisztCellsCell(f(e),f(m)))
+    case DeLisztCellsEdge(e,m) => reflectPure(DeLisztCellsEdge(f(e),f(m)))
+    case DeLisztCellsFace(e,m) => reflectPure(DeLisztCellsFace(f(e),f(m)))
+    case DeLisztCellsVertex(e,m) => reflectPure(DeLisztCellsVertex(f(e),f(m)))
+    case DeLisztCellsMesh(e) => reflectPure(DeLisztCellsMesh(f(e)))
+    case DeLisztEdgeCellsCCW(e,m) => reflectPure(DeLisztEdgeCellsCCW(f(e),f(m)))
+    case DeLisztEdgeCellsCW(e,m) => reflectPure(DeLisztEdgeCellsCW(f(e),f(m)))
+    case DeLisztEdgesCell(e,m) => reflectPure(DeLisztEdgesCell(f(e),f(m)))
+    case DeLisztEdgesFace(e,m) => reflectPure(DeLisztEdgesFace(f(e),f(m)))
+    case DeLisztEdgesVertex(e,m) => reflectPure(DeLisztEdgesVertex(f(e),f(m)))
+    case DeLisztEdgesMesh(e) => reflectPure(DeLisztEdgesMesh(f(e)))
+    case DeLisztFacesEdge(e,m) => reflectPure(DeLisztFacesEdge(f(e),f(m)))
+    case DeLisztFacesCell(e,m) => reflectPure(DeLisztFacesCell(f(e),f(m)))
+    case DeLisztFacesVertex(e,m) => reflectPure(DeLisztFacesVertex(f(e),f(m)))
+    case DeLisztFacesMesh(e) => reflectPure(DeLisztFacesMesh(f(e)))    
+    case DeLisztFaceInside(e,m) => reflectPure(DeLisztFaceInside(f(e),f(m)))
+    case DeLisztFaceOutside(e,m) => reflectPure(DeLisztFaceOutside(f(e),f(m)))  
+    case DeLisztEdgeFacesCCW(e,m) => reflectPure(DeLisztEdgeFacesCCW(f(e),f(m)))
+    case DeLisztEdgeFacesCW(e,m) => reflectPure(DeLisztEdgeFacesCW(f(e),f(m)))    
+    case DeLisztFaceEdgesCCW(e,m) => reflectPure(DeLisztFaceEdgesCCW(f(e),f(m)))
+    case DeLisztFaceEdgesCW(e,m) => reflectPure(DeLisztFaceEdgesCW(f(e),f(m)))
+    case DeLisztEdgeHead(e,m) => reflectPure(DeLisztEdgeHead(f(e),f(m)))
+    case DeLisztEdgeTail(e,m) => reflectPure(DeLisztEdgeTail(f(e),f(m)))
+    case DeLisztFace(e,i,m) => reflectPure(DeLisztFace(f(e),f(i),f(m)))
+    case DeLisztFlipEdge(e) => reflectPure(DeLisztFlipEdge(f(e)))
+    case DeLisztFlipFace(e) => reflectPure(DeLisztFlipFace(f(e)))
+    case DeLisztTowardsEdgeVertex(e,v,m) => reflectPure(DeLisztTowardsEdgeVertex(f(e),f(v),f(m)))
+    case DeLisztTowardsFaceCell(e,c,m) => reflectPure(DeLisztTowardsFaceCell(f(e),f(c),f(m)))    
+    case DeLisztSize(s) => size(f(s))    
+    case DeLisztID(e) => ID(f(e))
+    case Reflect(e@DeLisztPrint(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeLisztPrint(f(x))(f(e.block)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
+  
 }
 
 trait ScalaGenLanguageOps extends ScalaGenBase {

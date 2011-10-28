@@ -28,32 +28,25 @@ trait MeshSetOps extends DSLType with Variables {
 trait MeshSetOpsExp extends MeshSetOps with VariablesExp with BaseFatExp {
   this: DeLisztExp =>
 
-  ///////////////////////////////////////////////////
-  // implemented via method on real data structure
-  case class MeshSetForeach[MO<:MeshObj:Manifest](in: Exp[MeshSet[MO]], func: Exp[MO] => Exp[Unit])
+  ////////////////////////////////
+  // implemented via delite ops
+
+  case class MeshSetForeach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]], func: Exp[MO] => Exp[Unit])
     extends DeliteOpForeach[MO] {
 
     def sync = n => List()
-    val size = in.size
-    val reifiedFunc = reifyEffects(this.func(dc_apply(in,v)))
-    
-    // loop
-    override lazy val body: Def[Unit] = copyBodyOrElse(DeliteForeachElem(
-      func = reifiedFunc,
-      sync = reifyEffects(this.sync(i))
-    ))
+    val in = copyTransformedOrElse(_.in)(x)
+    val size = copyTransformedOrElse(_.size)(x.size)
   }
 
-  ////////////////////////////////
-  // implemented via delite ops
 
   //////////////
   // mirroring
 
-/*  override def mirror[VT:Manifest](e: Def[VT], f: Transformer): Exp[VT] = (e match {
-    case FieldApply(x, n) => vec_apply(f(x), f(n))
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case Reflect(e@MeshSetForeach(a,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MeshSetForeach(f(a),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
-  }).asInstanceOf[Exp[VT]] */
+  }).asInstanceOf[Exp[A]] // why??
   
   /////////////////////
   // object interface
@@ -63,7 +56,7 @@ trait MeshSetOpsExp extends MeshSetOps with VariablesExp with BaseFatExp {
   
   def meshset_foreach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]], block: Exp[MO] => Exp[Unit]) = {
     val t = MeshSetForeach(x,block)
-    reflectEffect(t, summarizeEffects(t.reifiedFunc).star)
+    reflectEffect(t, summarizeEffects(t.body.asInstanceOf[DeliteForeachElem[MO]].func).star)
   }
 }
 

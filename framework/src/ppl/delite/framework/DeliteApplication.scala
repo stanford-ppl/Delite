@@ -74,15 +74,6 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       writer.write("kernels:datastructures\n")
       writer.close()
     }
-
-    deliteGenerator.emitDataStructures(Config.buildDir + File.separator)
-
-    for (g <- generators) {
-      val baseDir = Config.buildDir + File.separator + g.toString + File.separator
-      writeModules(baseDir)
-      g.emitDataStructures(baseDir + "datastructures" + File.separator)
-      g.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults)
-    }
     
     System.out.println("Running analysis")
     
@@ -98,7 +89,16 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     reset
     
     System.out.println("Now printing")
+    
+    deliteGenerator.emitDataStructures(Config.buildDir + File.separator)
 
+    for (g <- generators) {
+      val baseDir = Config.buildDir + File.separator + g.toString + File.separator
+      writeModules(baseDir)
+      g.emitDataStructures(baseDir + "datastructures" + File.separator)
+      g.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults)
+    }
+    
     if (Config.degFilename.endsWith(".deg")) {
       val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
       val baseDir = Config.buildDir + File.separator + codegen.toString + File.separator
