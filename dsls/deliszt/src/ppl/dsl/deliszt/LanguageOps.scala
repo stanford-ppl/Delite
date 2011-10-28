@@ -98,6 +98,16 @@ trait LanguageOps extends Base { this: DeLiszt with MathOps =>
   
   def wall_time() : Rep[Double]
   def processor_time() : Rep[Double]
+  
+  /**
+   *   Profiling
+   */
+  // lightweight profiling, matlab style
+  def tic(deps: Rep[Any]*) = profile_start(deps)
+  def toc(deps: Rep[Any]*) = profile_stop(deps)
+
+  def profile_start(deps: Seq[Rep[Any]]): Rep[Unit]
+  def profile_stop(deps: Seq[Rep[Any]]): Rep[Unit]
 }
 
 trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
@@ -193,6 +203,15 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class MathFAbs(a: Exp[Float]) extends Def[Float]
   case class WallTime() extends Def[Double]
   case class ProcessorTime() extends Def[Double]
+  
+  /**
+   *   Profiling
+   */
+  case class ProfileStart(deps: List[Exp[Any]]) extends Def[Unit]
+  case class ProfileStop(deps: List[Exp[Any]]) extends Def[Unit]
+
+  def profile_start(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStart(deps.toList))
+  def profile_stop(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStop(deps.toList))
 
   /******* Language functions *********/
   def _init(args: Exp[Array[String]]) = reflectEffect(DeLisztInit(args))
@@ -335,8 +354,10 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case MinFloat() => emitValDef(sym, "scala.Float.MinValue")
       case MaxFloat() => emitValDef(sym, "scala.Float.MaxValue")
       case MathFAbs(a) => emitValDef(sym, "Math.abs(" + quote(a) + ")")
-      case ProcessorTime() => emitValDef(sym, "generated.scala.Mesh.processor_time()")
-      case WallTime() => emitValDef(sym, "generated.scala.Mesh.wall_time()")
+      case ProcessorTime() => emitValDef(sym, "generated.scala.Global.processor_time")
+      case WallTime() => emitValDef(sym, "generated.scala.Global.wall_time")
+      case ProfileStart(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
+      case ProfileStop(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
       case _ => super.emitNode(sym, rhs)
     }
   }

@@ -16,7 +16,9 @@ object MeshLoader {
   var loaded = false
 
   def init(cfgPath : String) {
-    if(!loaded) {
+    Global.wall_start = System.currentTimeMillis
+  
+    if(!loaded) {    
       try {
         System.loadLibrary("MeshLoader");
       }

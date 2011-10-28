@@ -98,7 +98,6 @@ trait SC extends DeLisztApplication {
     // Print("final center ", center)
     cell_centroid(c) = center / (volume * 4.f)
     cell_volume(c) = volume / 6.f
-    unit(0)
   }
   def phi_sine_function( t : Rep[Float]) : Rep[Float] = {
     10.f * sinf(t*2.f*MATH_PI.asInstanceOfL[Float])
@@ -129,6 +128,8 @@ trait SC extends DeLisztApplication {
     cell_volume = FieldWithConst[Cell,Float](0.f)
     
     val globalVelocity = Vec(1.f,0.f,0.f)
+    
+    tic()
     //initialize geometry fields
     for(f <- faces(mesh)) {
       if(ID(outside(f)) < ID(inside(f))) {
@@ -168,11 +169,11 @@ trait SC extends DeLisztApplication {
       Print("before cell number: ",ID(c)," -> phi value: ",Phi(c))
     }
     
-    Print("ZA WHILE LOOP")
+    // Print("ZA WHILE LOOP")
     while(t < 2.f) {
-      Print("INTERIOR SET")
+      // Print("INTERIOR SET")
       for(f <- interior_set) {
-        Print(ID(f))
+        // Print(ID(f))
         val normal = face_unit_normal(f)
         val vDotN = dot(globalVelocity,normal)
         val area = face_area(f)
@@ -185,17 +186,17 @@ trait SC extends DeLisztApplication {
         Flux(outside(f)) += flux
       }
       
-      Print("OUTSET SET")
+      // Print("OUTSET SET")
       for(f <- outlet_set) {
-        Print(ID(f))
+        // Print(ID(f))
         val normal = face_unit_normal(f)
         if(ID(outside(f)) == 0)
         {
-          Print("outside 0 ", ID(inside(f)))
+          // Print("outside 0 ", ID(inside(f)))
           Flux(inside(f)) -= face_area(f) * dot(normal,globalVelocity) * Phi(inside(f))
         }
         else {
-          Print("outside okay ", ID(outside(f)))
+          // Print("outside okay ", ID(outside(f)))
           Flux(outside(f)) -= face_area(f) * dot(-normal,globalVelocity) * Phi(outside(f))
         }
       }
@@ -225,6 +226,8 @@ trait SC extends DeLisztApplication {
       
       t += deltat
     }
+    
+    toc()
       
     for(c <- cells(mesh)) {
       Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
