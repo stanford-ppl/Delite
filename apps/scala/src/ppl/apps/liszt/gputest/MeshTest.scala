@@ -14,7 +14,12 @@ trait MeshTest extends DeLisztApplication {
       for(f <- faces(mesh)) {
         val c = if(ID(f) == 4) inside(f) else outside(f)
         val v = if(ID(c) == 3) vertex(c,0) else vertex(c,1)
-        face_values(f) += ID(c) + ID(v)
+        for(e <- edges(f)) {
+          for(c <- cells(e)) {
+            face_values(f) += ID(c)
+          }
+        }
+
       }
       for(f <- faces(mesh)) {
         Print(face_values(f))
