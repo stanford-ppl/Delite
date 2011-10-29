@@ -45,7 +45,7 @@ trait ExprOpsExp extends ExprOps with BaseExp with EffectExp {
 
     
     def vexity[T](vex:FuncAttribute, mono:ArgAttribute, arg:Manifest[T]) : FuncAttribute ={
-            
+      // BUG: somehow, the manifest only tracks the super class....
       val argument : FuncAttribute = {
         if(arg <:< manifest[Affine]) AffineFunc
         else if(arg <:< manifest[Convex]) ConvexFunc
@@ -74,10 +74,10 @@ trait ExprOpsExp extends ExprOps with BaseExp with EffectExp {
       val vex2 = vexity(T1, T3, manifest[B])
       
       (vex1, vex2) match {
-        case (_:Affine, _:Affine) => reflectEffect(new AffineBinaryOp[A,B](op, x, y))
-        case (_:Convex, _:Convex) => reflectEffect(new ConvexBinaryOp[A,B](op, x, y))
-        case (_:Concave, _:Concave) => reflectEffect(new ConcaveBinaryOp[A,B](op, x, y))
-        case _ => reflectEffect(new BinaryOp[A,B](op, x, y))
+        case (_:Affine, _:Affine) => reflectEffect(AffineBinaryOp(op, x, y))
+        case (_:Convex, _:Convex) => reflectEffect(ConvexBinaryOp(op, x, y))
+        case (_:Concave, _:Concave) => reflectEffect(ConcaveBinaryOp(op, x, y))
+        case _ => reflectEffect(BinaryOp(op, x, y))
       }
     }
     
@@ -86,10 +86,10 @@ trait ExprOpsExp extends ExprOps with BaseExp with EffectExp {
       val vex = vexity(T1, T2, manifest[A])
       
       vex match {
-        case _:Affine => reflectEffect(new AffineUnaryOp[A](op, x))
-        case _:Convex => reflectEffect(new ConvexUnaryOp[A](op, x))
-        case _:Concave => reflectEffect(new ConcaveUnaryOp[A](op, x))
-        case _ => reflectEffect(new UnaryOp[A](op, x))
+        case _:Affine => reflectEffect(AffineUnaryOp(op, x))
+        case _:Convex => reflectEffect(ConvexUnaryOp(op, x))
+        case _:Concave => reflectEffect(ConcaveUnaryOp(op, x))
+        case _ => reflectEffect(UnaryOp(op, x))
       }
     }
 

@@ -6,12 +6,12 @@ package ppl.dsl.CVX
   trait Affine extends Convex with Concave
   
   sealed abstract class Expr
-  trait ConvexExpr extends Expr with Convex
-  trait ConcaveExpr extends Expr with Concave
+  class ConvexExpr extends Expr with Convex
+  class ConcaveExpr extends Expr with Concave
   // affine expressions are both convex and concave
   // this allows us to define behavior on convex and concave functions
   // and have affine functions properly handled without a separate case
-  trait AffineExpr extends Expr with Affine
+  class AffineExpr extends Expr with Affine
   
   // these are singleton objects for DCP verification
   sealed abstract class ArgAttribute
