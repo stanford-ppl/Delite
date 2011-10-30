@@ -397,7 +397,8 @@ trait CudaGenLanguageOps extends CudaGenBase {
 
     case DeLisztID(x) => emitValDef(sym, "internal(" + quote(x) + ")")
 
-    case DeLisztSize(s) => emitValDef(sym, quote(s) + ".size()")
+    //TODO: Why is this node here?
+    case DeLisztSize(s) => emitValDef(sym, quote(s) + ".dcSize()")
 
     //TODO: Below IR nodes needs to be removed (already in the LMS)
     //case MinFloat() => emitValDef(sym, "scala.Float.MinValue")

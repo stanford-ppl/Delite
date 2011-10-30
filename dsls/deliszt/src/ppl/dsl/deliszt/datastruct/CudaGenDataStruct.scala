@@ -73,11 +73,11 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
   def MeshSetCopyOutputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
-    "//TODO: Implement this!\n"
+    "assert(false);\n"
   }
 
   def MeshSetCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
-    "//TODO: Implement this!\n"
+    "assert(false);\n"
   }
 
 
@@ -112,7 +112,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
   def FieldCopyOutputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
-    "//TODO: Implement this!\n"
+    "assert(false);\n"
   }
 
   def FieldCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
@@ -174,11 +174,34 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
   def VecFieldCopyOutputDtoH(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
-    "//TODO: Implement this!\n"
+    "assert(false);\n"
   }
 
   def VecFieldCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
-    "//TODO: Implement this!\n"
+    val out = new StringBuilder
+    val typeStr = remap(argType)
+    val numBytesStr = "%s.size * sizeof(%s) * %s".format(quote(sym),remap(argType),size)
+
+    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
+    out.append("\t"+VecImplCls)
+    out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
+    out.append("\tjmethodID mid_elem_data = env->GetMethodID(VecImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    
+    out.append("\t%s *hostPtr;\n".format(typeStr))
+    out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+    out.append("\tDeliteCudaMemcpyDtoHAsync(hostPtr, %s.data, %s);\n".format(quote(sym),numBytesStr))
+    
+    out.append("\tfor(int i=0; i<%s.size; i++) {\n".format(quote(sym)))
+    out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
+    out.append("\t\tj%sArray elem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr,typeStr))
+    out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\tfor(int j=0; j<%s; j++) { elem_data_ptr[j] = hostPtr[i*%s+j]; }\n".format(size,size))
+    out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\tenv->DeleteLocalRef(elem_data);\n")
+    out.append("\t}\n")
+
+    out.append("\tenv->DeleteLocalRef(cls);\n")
+    out.toString
   }
 
   /* Transfer Mesh */
@@ -246,11 +269,11 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
   def MeshCopyOutputDtoH(sym: Sym[Any]): String = {
-    "//TODO: Implement this!\n"
+    "assert(false);\n"
   }
 
   def MeshCopyMutableInputDtoH(sym: Sym[Any]): String = {
-    "//TODO: Implement this!\n"
+    "assert(false);\n"
   }
 
   def VecCopyInputHtoD(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
@@ -263,7 +286,13 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t" + VecImplCls)
     out.append("\tjmethodID mid_elem = env->GetMethodID(VecImplCls,\"apply$mc%s$sp\",\"(I)%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
     out.append("\tfor(int i=0; i<%s; i++) {\n".format(size))
-    out.append("\t\t%s->data[i] = env->CallIntMethod(obj,mid_elem,i);\n")
+    typeStr match {
+      case "int" => out.append("\t\t%s->data[i] = env->CallIntMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case "long" => out.append("\t\t%s->data[i] = env->CallLongMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case "float" => out.append("\t\t%s->data[i] = env->CallFloatMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case "bool" => out.append("\t\t%s->data[i] = env->CallBooleanMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case _ => throw new GenerationFailedException("CudaGen: Cannot call JNI method for this type.")
+    }
     out.append("\t}\n")
 
     out.append("\tenv->DeleteLocalRef(cls);\n")
@@ -272,26 +301,22 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
   def VecCopyOutputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
-    "//TODO: Implement this!\n"
+    "assert(false);\n"
   }
   def VecCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
-    "//TODO: Implement this!\n"
+    "assert(false);\n"
   }
 
 
 
-  def matCopyInputHtoD(sym: Sym[Any]): String = { "" }
-  def matCopyOutputDtoH(sym: Sym[Any]): String = { "" }
-  def matCopyMutableInputDtoH(sym: Sym[Any]): String = { "" }
-
-
-  // Dummy methods temporarily just for the compilation
-  def emitVecAlloc(newSym:Sym[_],length:String,reset:Boolean,data:String=null) {}
-  def emitVecAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
-  def emitVecAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
-  def emitMatAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null) {}
-  def emitMatAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
-  def emitMatAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
-
+  def matCopyInputHtoD(sym: Sym[Any]): String = { 
+    "assert(false);\n"
+  }
+  def matCopyOutputDtoH(sym: Sym[Any]): String = { 
+    "assert(false);\n"
+  }
+  def matCopyMutableInputDtoH(sym: Sym[Any]): String = { 
+    "assert(false);\n"
+  }
 }
 

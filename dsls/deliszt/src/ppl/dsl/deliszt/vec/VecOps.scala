@@ -485,7 +485,7 @@ trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
       case v@VecObjNNew(i) => emitValDef(sym, "generated.scala.Vec.ofSize[" + remap(v.a) + "](" + quote(i) + ")")
       // these are the ops that call through to the underlying real data structure
       case VecApply(x,n) => emitValDef(sym, quote(x) + ".dcApply(" + quote(n) + ")")
-      case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + ".dcUpdate(" + quote(n) + ") = " + quote(y))
+      case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + ".dcUpdate(" + quote(n) + "," + quote(y) + ")")
       case VecSize(x) => emitValDef(sym, quote(x) + ".size")
       case VecClone(x) => emitValDef(sym, quote(x) + ".cloneL")
       case _ => super.emitNode(sym, rhs)
@@ -499,13 +499,14 @@ trait CudaGenVecOps extends BaseGenVecOps with CudaGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    //case v@VecObjNew(xs @ _*) => emitValDef(sym, remap(v.mV) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
-    //case v@VecObjNNew(i) => emitValDef(sym, "new " + remap(v.mV) + "(" + quote(i) + ")")
+    case v@VecObjNew(xs @ _*) => emitValDef(sym, remap(sym.Type) + "()");
+                                 xs.zipWithIndex.foreach(elem => stream.println("%s.data[%s] = %s;".format(quote(sym),elem._2,quote(elem._1))))
+    case v@VecObjNNew(i) => emitValDef(sym, "Vec<"+remap(v.a) + "," + quote(i) + ">()")
     // these are the ops that call through to the underlying real data structure
     case VecApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
-    case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+    case VecUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + ", " + quote(y) + ");")
     case VecSize(x) => emitValDef(sym, quote(x) + ".size")
-    //case VecClone(x) => emitValDef(sym, quote(x) + ".cloneL")
+    case VecClone(x) => emitValDef(sym, quote(x))
     case _ => super.emitNode(sym, rhs)
   }
 }

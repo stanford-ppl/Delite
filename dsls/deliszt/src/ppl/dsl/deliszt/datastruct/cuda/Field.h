@@ -61,6 +61,10 @@ public:
         for(int i=0; i<N; i++) { ret.data[i] = data[idx*N+i]; }
         return ret;
     }
+    __host__ __device__ void update(MeshObj mo, Vec<T,N> in) {
+        int idx = internal(mo);
+        for(int i=0; i<N; i++) { data[idx*N+i] = in.data[i]; }
+    }
 
     // DeliteCoolection
     __host__ __device__ int dcSize() {
