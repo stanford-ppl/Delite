@@ -146,10 +146,7 @@ trait SCTest extends DeLisztApplication {
       ll = ll min position(v)
       ur = ur max position(v)
     }
-    val mesh_center = Vec(0.f,0.f,0.f)
-    mesh_center(0) =  (ll(0) + ur(0)) * .5f
-    mesh_center(1) =  (ll(1) + ur(1)) * .5f
-    mesh_center(2) =  (ll(2) + ur(2)) * .5f
+    val mesh_center = (ll + ur) * .5f
     for(c <- cells(mesh)) {
       val center = cell_centroid(c)
       val x = normal_pdf(center.x - mesh_center.x)

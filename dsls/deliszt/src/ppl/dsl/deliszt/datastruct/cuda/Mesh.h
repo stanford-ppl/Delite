@@ -88,7 +88,7 @@ public:
       ret.dir = FORWARD;
     } else {
       ret.data = ftov.values + ftov.row(internal(f)+1)-1;
-      ret.size = ftov.row(internal(f)+1) - 1 - ftov.row(internal(f));
+      ret.size = ftov.row(internal(f)+1) - ftov.row(internal(f));
       ret.dir = REVERSE;
     }
     return ret;
@@ -102,7 +102,7 @@ public:
       ret.dir = FORWARD;
     } else {
       ret.data = ftov.values + ftov.row(internal(f)+1)-1;
-      ret.size = ftov.row(internal(f)+1) - 1 - ftov.row(internal(f));
+      ret.size = ftov.row(internal(f)+1) - ftov.row(internal(f));
       ret.dir = REVERSE;
     }
     return ret;
@@ -153,7 +153,7 @@ public:
       ret.dir = FORWARD;
     } else {
       ret.data = etoc.values + etoc.row(internal(e)+1)-1;
-      ret.size = etoc.row(internal(e)+1) - 1 - etoc.row(internal(e));
+      ret.size = etoc.row(internal(e)+1) - etoc.row(internal(e));
       ret.dir = REVERSE;
     }
     return ret;
@@ -167,7 +167,7 @@ public:
       ret.dir = FORWARD;
     } else {
       ret.data = etoc.values + etoc.row(internal(e)+1)-1;
-      ret.size = etoc.row(internal(e)+1) - 1 - etoc.row(internal(e));
+      ret.size = etoc.row(internal(e)+1) - etoc.row(internal(e));
       ret.dir = REVERSE;
     }
     return ret;
@@ -208,7 +208,7 @@ public:
       ret.dir = FORWARD;
     } else {
       ret.data = ftoe.values + ftoe.row(internal(f)+1)-1;
-      ret.size = ftoe.row(internal(f)+1) - 1 - ftoe.row(internal(f));
+      ret.size = ftoe.row(internal(f)+1) - ftoe.row(internal(f));
       ret.dir = REVERSE;
     }
     return ret;
@@ -222,7 +222,7 @@ public:
       ret.dir = FORWARD;
     } else {
       ret.data = ftoe.values + ftoe.row(internal(f)+1)-1;
-      ret.size = ftoe.row(internal(f)+1) - 1 - ftoe.row(internal(f));
+      ret.size = ftoe.row(internal(f)+1) - ftoe.row(internal(f));
       ret.dir = REVERSE;
     }
     return ret;
@@ -263,7 +263,7 @@ public:
       ret.dir = FORWARD;
     } else {
       ret.data = etof.values + etof.row(internal(e)+1)-1;
-      ret.size = etof.row(internal(e)+1) - 1 - etof.row(internal(e));
+      ret.size = etof.row(internal(e)+1) - etof.row(internal(e));
       ret.dir = REVERSE;
     }
     return ret;
@@ -277,7 +277,7 @@ public:
       ret.dir = FORWARD;
     } else {
       ret.data = etoc.values + etoc.row(internal(e)+1)-1;
-      ret.size = etoc.row(internal(e)+1) - 1 - etoc.row(internal(e));
+      ret.size = etoc.row(internal(e)+1) - etoc.row(internal(e));
       ret.dir = REVERSE;
     }
     return ret;

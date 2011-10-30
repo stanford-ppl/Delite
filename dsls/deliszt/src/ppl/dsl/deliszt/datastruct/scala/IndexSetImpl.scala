@@ -21,7 +21,7 @@ object IndexSetImpl {
 object CWIndexSetImpl {
   def apply(crs: CRS, n: Int) = {
     val start = crs.row(Mesh.internal(n)+1) - 1
-    val end = crs.row(Mesh.internal(n))
+    val end = crs.row(Mesh.internal(n)) - 1
     val size = start - end
     new IndexSetImpl(crs.values, size, start, end, Mesh.REVERSE)
   }
