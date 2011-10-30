@@ -13,6 +13,8 @@ public:
   const static int INSIDE = 1;
   const static int HEAD = 0;
   const static int TAIL = 1;
+  const static int FORWARD = 1;
+  const static int REVERSE = -1;
   const static int id = 0;
 
   int nvertices;
@@ -53,24 +55,28 @@ public:
     MeshSet<Vertex> ret;
     ret.data = vtov.values + vtov.row(internal(v));
     ret.size = vtov.row(internal(v)+1) - vtov.row(internal(v));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Vertex> verticesEdge(Edge e) {
     MeshSet<Vertex> ret;
     ret.data = etov.values + etov.row(internal(e));
     ret.size = etov.row(internal(e)+1) - etov.row(internal(e));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Vertex> verticesFace(Face f) {
     MeshSet<Vertex> ret;
     ret.data = ftov.values + ftov.row(internal(f));
     ret.size = ftov.row(internal(f)+1) - ftov.row(internal(f));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Vertex> verticesCell(Cell c) {
     MeshSet<Vertex> ret;
     ret.data = ctov.values + ctov.row(internal(c));
     ret.size = ctov.row(internal(c)+1) - ctov.row(internal(c));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Vertex> verticesCCW(Face f) {
@@ -79,8 +85,11 @@ public:
     if(ftoc.apply(internal(f), OUTSIDE) == internal(c)) {
       ret.data = ftov.values + ftov.row(internal(f));
       ret.size = ftov.row(internal(f)+1) - ftov.row(internal(f));
+      ret.dir = FORWARD;
     } else {
-      //CWIndexSetImpl(ftov, e)
+      ret.data = ftov.values + ftov.row(internal(f)+1)-1;
+      ret.size = ftov.row(internal(f)+1) - 1 - ftov.row(internal(f));
+      ret.dir = REVERSE;
     }
     return ret;
   }
@@ -90,8 +99,11 @@ public:
     if(ftoc.apply(internal(f), INSIDE) == internal(c)) {
       ret.data = ftov.values + ftov.row(internal(f));
       ret.size = ftov.row(internal(f)+1) - ftov.row(internal(f));
+      ret.dir = FORWARD;
     } else {
-      //CWIndexSetImpl(ftov, e)
+      ret.data = ftov.values + ftov.row(internal(f)+1)-1;
+      ret.size = ftov.row(internal(f)+1) - 1 - ftov.row(internal(f));
+      ret.dir = REVERSE;
     }
     return ret;
   }
@@ -108,24 +120,28 @@ public:
     MeshSet<Cell> ret;
     ret.data = vtoc.values + vtoc.row(internal(v));
     ret.size = vtoc.row(internal(v)+1) - vtoc.row(internal(v));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Cell> cellsEdge(Edge e) {
     MeshSet<Cell> ret;
     ret.data = etoc.values + etoc.row(internal(e));
     ret.size = etoc.row(internal(e)+1) - etoc.row(internal(e));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Cell> cellsFace(Face f) {
     MeshSet<Cell> ret;
     ret.data = ftoc.values + ftoc.row(internal(f));
     ret.size = ftoc.row(internal(f)+1) - ftoc.row(internal(f));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Cell> cellsCell(Cell c) {
     MeshSet<Cell> ret;
     ret.data = ctoc.values + ctoc.row(internal(c));
     ret.size = ctoc.row(internal(c)+1) - ctoc.row(internal(c));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Cell> cellsCCW(Edge e) {
@@ -134,8 +150,11 @@ public:
     if(etov.apply(internal(e), HEAD) == internal(c)) {
       ret.data = etoc.values + etoc.row(internal(e));
       ret.size = etoc.row(internal(e)+1) - etoc.row(internal(e));
+      ret.dir = FORWARD;
     } else {
-      //CWIndexSetImpl(ftov, e)
+      ret.data = etoc.values + etoc.row(internal(e)+1)-1;
+      ret.size = etoc.row(internal(e)+1) - 1 - etoc.row(internal(e));
+      ret.dir = REVERSE;
     }
     return ret;
   }
@@ -145,11 +164,15 @@ public:
     if(etov.apply(internal(e), TAIL) == internal(c)) {
       ret.data = etoc.values + etoc.row(internal(e));
       ret.size = etoc.row(internal(e)+1) - etoc.row(internal(e));
+      ret.dir = FORWARD;
     } else {
-      //CWIndexSetImpl(ftov, e)
+      ret.data = etoc.values + etoc.row(internal(e)+1)-1;
+      ret.size = etoc.row(internal(e)+1) - 1 - etoc.row(internal(e));
+      ret.dir = REVERSE;
     }
     return ret;
   }
+
 
   /* Return MeshSet<Edge> given MeshObj T */
   __device__ __host__ MeshSet<Edge> edgesMesh(void) {
@@ -159,18 +182,21 @@ public:
     MeshSet<Edge> ret;
     ret.data = vtoe.values + vtoe.row(internal(v));
     ret.size = vtoe.row(internal(v)+1) - vtoe.row(internal(v));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Edge> edgesFace(Face f) {
     MeshSet<Edge> ret;
     ret.data = ftoe.values + ftoe.row(internal(f));
     ret.size = ftoe.row(internal(f)+1) - ftoe.row(internal(f));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Edge> edgesCell(Cell c) {
     MeshSet<Edge> ret;
     ret.data = ctoe.values + ctoe.row(internal(c));
     ret.size = ctoe.row(internal(c)+1) - ctoe.row(internal(c));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Edge> edgesCCW(Face f) {
@@ -179,8 +205,11 @@ public:
     if(ftoc.apply(internal(f), HEAD) == internal(c)) {
       ret.data = ftoe.values + ftoe.row(internal(f));
       ret.size = ftoe.row(internal(f)+1) - ftoe.row(internal(f));
+      ret.dir = FORWARD;
     } else {
-      //CWIndexSetImpl(ftov, e)
+      ret.data = ftoe.values + ftoe.row(internal(f)+1)-1;
+      ret.size = ftoe.row(internal(f)+1) - 1 - ftoe.row(internal(f));
+      ret.dir = REVERSE;
     }
     return ret;
   }
@@ -190,11 +219,15 @@ public:
     if(ftoc.apply(internal(f), TAIL) == internal(c)) {
       ret.data = ftoe.values + ftoe.row(internal(f));
       ret.size = ftoe.row(internal(f)+1) - ftoe.row(internal(f));
+      ret.dir = FORWARD;
     } else {
-      //CWIndexSetImpl(ftov, e)
+      ret.data = ftoe.values + ftoe.row(internal(f)+1)-1;
+      ret.size = ftoe.row(internal(f)+1) - 1 - ftoe.row(internal(f));
+      ret.dir = REVERSE;
     }
     return ret;
   }
+
 
   /* Return MeshSet<Face> given MeshObj T */
   __device__ __host__ MeshSet<Face> facesMesh(void) {
@@ -204,18 +237,21 @@ public:
     MeshSet<Face> ret;
     ret.data = vtof.values + vtof.row(internal(v));
     ret.size = vtof.row(internal(v)+1) - vtof.row(internal(v));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Face> facesEdge(Edge e) {
     MeshSet<Face> ret;
     ret.data = etof.values + etof.row(internal(e));
     ret.size = etof.row(internal(e)+1) - etof.row(internal(e));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Face> facesCell(Cell c) {
     MeshSet<Face> ret;
     ret.data = ctof.values + ctof.row(internal(c));
     ret.size = ctof.row(internal(c)+1) - ctof.row(internal(c));
+    ret.dir = FORWARD;
     return ret;
   }
   __device__ __host__ MeshSet<Face> facesCCW(Edge e) {
@@ -224,8 +260,11 @@ public:
     if(ftoc.apply(internal(e), HEAD) == internal(v)) {
       ret.data = etof.values + etof.row(internal(e));
       ret.size = etof.row(internal(e)+1) - etof.row(internal(e));
+      ret.dir = FORWARD;
     } else {
-      //CWIndexSetImpl(ftov, e)
+      ret.data = etof.values + etof.row(internal(e)+1)-1;
+      ret.size = etof.row(internal(e)+1) - 1 - etof.row(internal(e));
+      ret.dir = REVERSE;
     }
     return ret;
   }
@@ -235,11 +274,15 @@ public:
     if(ftoc.apply(internal(e), TAIL) == internal(v)) {
       ret.data = etoc.values + etoc.row(internal(e));
       ret.size = etoc.row(internal(e)+1) - etoc.row(internal(e));
+      ret.dir = FORWARD;
     } else {
-      //CWIndexSetImpl(ftov, e)
+      ret.data = etoc.values + etoc.row(internal(e)+1)-1;
+      ret.size = etoc.row(internal(e)+1) - 1 - etoc.row(internal(e));
+      ret.dir = REVERSE;
     }
     return ret;
   }
+
 
   __device__ __host__ Face face(Cell c, int i) {
     int start = ctof.row(c);
@@ -259,18 +302,18 @@ public:
   }
 
   __device__ __host__ Cell inside(Face f) {
-    int offset = reversed(f)? 0 : 1;
+    int offset = reversed(f) ? 0 : 1;
     return ftoc.apply(f, offset);
   }
 
   __device__ __host__ Edge towardsEdgeVertex(Edge e, Vertex v) {
     bool facing = internal(etov.apply(internal(e), HEAD)) == internal(v);
-    return (facing) ? e : flip(e);
+    return ((facing) ? e : flip(e));
   }
 
   __device__ __host__ Face towardsFaceCell(Face f, Cell c) {
     bool facing = internal(ftoc.apply(internal(f), OUTSIDE)) == internal(c);
-    return (facing) ? f : flip(f);
+    return ((facing) ? f : flip(f));
   }
 
 };

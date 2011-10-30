@@ -42,6 +42,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
     out.append("\t%s->size = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_size)"))
+    out.append("\t%s->dir = 1;\n".format(quote(sym)))
 
     out.append("\t%s *hostPtr;\n".format(typeStr))
     out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))

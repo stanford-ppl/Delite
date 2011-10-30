@@ -3,21 +3,18 @@
 
 #include <cuda.h>
 #include "MeshObj.h"
+#include "BitReverse.h"
 
 template <class T>
 class MeshSet {
 public:
     T *data;
     int size;
+    int dir;
 
     // Accessor Functions
     __host__ __device__ T apply(MeshObj idx) {
-        return data[idx];
-    }
-
-    //TODO: Is MeshSet mutable?
-    __host__ __device__ void update(MeshObj idx, T newVal) {
-        data[idx] = newVal;
+        return data[idx*dir] ^ (dir & MASK);
     }
 
     // DeliteCoolection
@@ -26,13 +23,8 @@ public:
     }
 
     __host__ __device__ T dcApply(MeshObj idx) {
-        return data[idx];
+        return data[idx*dir] ^ (dir & MASK);
     }
-
-    __host__ __device__ void dcUpdate(MeshObj idx, T value) {
-        data[idx] = value;
-    }
-
 };
 
 //TODO: Deal with CellSet (No zero cell)
