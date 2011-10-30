@@ -56,9 +56,11 @@ public:
                       
               // For ranges in bs
               for (LisztPrivate::BoundarySet::range_it it = ranges.begin(), end = ranges.end(); it != end; it++) {
+                  // env->PushLocalFrame(16);
                   callVoidMethod(bounds,
                           prefix + "/BoundarySetImpl", "add",
                           "(II)V", it->first, it->second);
+                  // env->PopLocalFrame(NULL);
               }
 
               callVoidMethod(bounds, prefix + "/BoundarySetImpl",
@@ -66,6 +68,7 @@ public:
           }
         }
         catch(...) {
+            std::cerr << "Failed to load boundary set: " << name << std::endl;
             bounds = NULL;
         }
 

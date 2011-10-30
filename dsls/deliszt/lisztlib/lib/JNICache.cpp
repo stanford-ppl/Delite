@@ -1,5 +1,6 @@
 #include <jni.h>
 #include <string>
+#include <iostream>
 
 #include "JNICache.h"
 
@@ -8,8 +9,7 @@ JNICache::JNICache(JNIEnv* env) : env(env) {
 
 JNICache::~JNICache() {
   clsMap::const_iterator end = classes.end();
-  for (clsMap::const_iterator it = classes.begin(); it != end; ++it)
-  {
+  for (clsMap::const_iterator it = classes.begin(); it != end; ++it) {
     env->DeleteWeakGlobalRef(it->second);
   }
 }
@@ -21,6 +21,7 @@ jclass JNICache::getClass(string clsStr) {
   }
   else {
     jclass globalRef = NULL;
+    std::cout << "creating new class ref" << std::endl;
     if(jclass cls = env->FindClass(clsStr.c_str())) {
       globalRef = static_cast<jclass>(env->NewWeakGlobalRef(cls));
     }
@@ -45,6 +46,7 @@ jmethodID JNICache::getMethod(jclass cls, string method, string args) {
     }
     else {
       /* Get the method ID */
+      std::cout << "grabbed new method id" << std::endl;
       cid = env->GetMethodID(cls, method.c_str(), args.c_str());
       methods[sign] = cid;
     }  
