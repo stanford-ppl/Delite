@@ -298,12 +298,12 @@ public:
 
   __device__ __host__ Cell outside(Face f) {
     int offset = reversed(f) ? 1 : 0;
-    return ftoc.apply(f, offset);
+    return ftoc.apply(internal(f), offset);
   }
 
   __device__ __host__ Cell inside(Face f) {
     int offset = reversed(f) ? 0 : 1;
-    return ftoc.apply(f, offset);
+    return ftoc.apply(internal(f), offset);
   }
 
   __device__ __host__ Edge towardsEdgeVertex(Edge e, Vertex v) {

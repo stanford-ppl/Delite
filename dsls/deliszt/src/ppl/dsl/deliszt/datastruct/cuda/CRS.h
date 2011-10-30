@@ -21,7 +21,7 @@ public:
   }
 
   __device__ __host__ int len(int row) {
-    rows[row+1] - rows[row];
+    return rows[row+1] - rows[row];
   }
 };
 
