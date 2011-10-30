@@ -34,7 +34,7 @@ JNIEXPORT jobject JNICALL Java_generated_scala_MeshLoader_loadMesh (JNIEnv* env,
   return jmesh;
 }
 
-JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader_loadBoundarySet
+JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loadBoundarySet
   (JNIEnv * env, jobject obj, jstring str, jint type) {
   string name(env->GetStringUTFChars(str, 0));
   
@@ -54,7 +54,7 @@ JNIEXPORT jobject JNICALL Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader_loadB
   return NULL;
 }
 
-JNIEXPORT jobject JNICALL Java_generated_scala_MeshLoader_loadBoundarySet
+JNIEXPORT jobject JNICALL Java_generated_scala_MeshLoader__1loadBoundarySet
   (JNIEnv * env, jobject obj, jstring str, jint type) {
-  return Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader_loadBoundarySet(env, obj, str, type);
+  return Java_ppl_dsl_deliszt_datastruct_scala_MeshLoader__1loadBoundarySet(env, obj, str, type);
 }

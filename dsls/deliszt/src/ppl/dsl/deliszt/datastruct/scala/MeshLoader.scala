@@ -78,8 +78,18 @@ object MeshLoader {
 
 class MeshLoader {
   @native
-  def loadMesh(file : String) : Mesh = null
+  def loadMesh(file: String) : Mesh = null
 
+  def loadBoundarySet(name: String, mo_type: Int) = {
+    val bs = _loadBoundarySet(name, mo_type)
+    
+    if(bs == null) {
+      throw new RuntimeException("Loading boundary set " + name + " of type " + mo_type + " failed!")
+    }
+    
+    bs
+  }
+  
   @native
-  def loadBoundarySet(name : String, mo_type: Int) : BoundarySet = null
+  def _loadBoundarySet(name: String, mo_type: Int) : BoundarySet = null
 }

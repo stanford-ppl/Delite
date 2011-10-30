@@ -47,7 +47,7 @@ trait ScalaGenLoopColoringOps extends ScalaGenBase {
     rhs match {
       case e@ColorIndexSetNew(indices,start,end,mo) => 
         //val moc = meshObjConstructor(mo)
-        emitValDef(sym, "new generated.scala.IndexSetImpl(" + quote(indices) + "," + quote(indices) + ".length" + "," + quote(start) + "," + quote(end) +", 1)")/*(" + moc + ")")*/        
+        emitValDef(sym, "new generated.scala.IndexSetImpl(" + quote(indices) + "," + quote(indices) + ".length" + "," + quote(start) + "," + quote(end) +", 1)")
       case _ => super.emitNode(sym,rhs)
     }
   }
