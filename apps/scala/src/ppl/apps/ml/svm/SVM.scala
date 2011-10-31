@@ -4,6 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
+object SVMRunnerNCNR extends OptiMLApplicationRunnerBase with OptiMLNoCSE with OptiMLExp with SVM
+object SVMRunnerNC extends OptiMLApplicationRunner with OptiMLNoCSE with SVM
+object SVMRunnerNR extends OptiMLApplicationRunnerBase with OptiMLExp with SVM
 object SVMRunner extends OptiMLApplicationRunner with SVM
 
 trait SVM extends OptiMLApplication with SVMModel {

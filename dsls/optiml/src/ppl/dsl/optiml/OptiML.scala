@@ -2,7 +2,7 @@ package ppl.dsl.optiml
 
 import java.io._
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
+import scala.virtualization.lms.internal.{Expressions,GenericFatCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
@@ -22,13 +22,23 @@ import ppl.dsl.optiml.capabilities._
 import ppl.dsl.optiml.library.cluster._
 import ppl.dsl.optiml.application._
 
+/**
+ * Microbenchmark experiments: OptiMLApplicationRunners with optimizations disabled
+ */
+
+trait OptiMLNoCSE extends Expressions {
+  override def findDefinition[T](d: Def[T]) = None
+}
+
 
 /**
  * These separate OptiML applications from the Exp world.
  */
 
+trait OptiMLApplicationRunner extends OptiMLApplicationRunnerBase with OptiMLExpOpt
+
 // ex. object GDARunner extends OptiMLApplicationRunner with GDA
-trait OptiMLApplicationRunner extends OptiMLApplication with DeliteApplication with OptiMLExp
+trait OptiMLApplicationRunnerBase extends OptiMLApplication with DeliteApplication
 
 // ex. trait GDA extends OptiMLApplication
 trait OptiMLApplication extends OptiML with OptiMLLift with OptiMLLibrary {
@@ -119,11 +129,10 @@ trait OptiMLCompiler extends OptiML with DeliteCollectionOps with RangeOps with 
  * These are the corresponding IR nodes for OptiML.
  */
 trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
-  with LanguageOpsExp with ApplicationOpsExp with LBPOpsExp
-  with ArithOpsExpOpt 
-  with VectorOpsExpOpt with MatrixOpsExpOpt with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp
-  with IndexVectorOpsExp with IndexVector2OpsExp with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
-  with StreamOpsExpOpt with StreamRowOpsExpOpt
+  with LanguageOpsExp with ApplicationOpsExp with LBPOpsExp with ArithOpsExp 
+  with VectorOpsExp with MatrixOpsExp with MLInputReaderOpsExp with MLOutputWriterOpsExp with VectorViewOpsExp
+  with IndexVectorOpsExp with IndexVector2OpsExp with MatrixRowOpsExp with MatrixColOpsExp
+  with StreamOpsExp with StreamRowOpsExp
   with LabelsOpsExp with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with VectorViewImplOpsStandard with IndexVectorImplOpsStandard
   with MatrixImplOpsStandard with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
@@ -142,9 +151,15 @@ trait OptiMLExp extends OptiMLCompiler with OptiMLScalaOpsPkgExp with DeliteOpsE
       case _ => throw new RuntimeException("optiml does not support this target")
     }
   }
-
 }
 
+// add rewritings
+trait OptiMLExpOpt extends OptiMLExp
+  with ArithOpsExpOpt with VectorOpsExpOpt with MatrixOpsExpOpt with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
+  with StreamOpsExpOpt with StreamRowOpsExpOpt {
+    
+  this: DeliteApplication with OptiMLApplication with OptiMLExp =>
+}
 
 /**
  * OptiML code generators

@@ -12,6 +12,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
+object LinRegRunnerNCNR extends OptiMLApplicationRunnerBase with OptiMLNoCSE with OptiMLExp with LinReg
+object LinRegRunnerNC extends OptiMLApplicationRunner with OptiMLNoCSE with LinReg
+object LinRegRunnerNR extends OptiMLApplicationRunnerBase with OptiMLExp with LinReg
 object LinRegRunner extends OptiMLApplicationRunner with LinReg
 
 trait LinReg extends OptiMLApplication {
