@@ -19,39 +19,39 @@ trait TrainingSetOps extends Variables with OverloadHack {
   this: OptiML =>
 
   object TrainingSet {
-    def apply[A:Manifest,B:Manifest](xs: Rep[Matrix[A]], labels: Rep[Labels[B]]) = trainingset_obj_fromMat(xs, labels)
+    def apply[A:Manifest,B:Manifest](xs: Rep[Matrix[A]], labels: Rep[Labels[B]])(implicit ctx: SourceContext) = trainingset_obj_fromMat(xs, labels)
   }
 
   implicit def repTrainingSetToTrainingSetOps[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]]) = new trainingSetOpsCls(x)
   implicit def varToTrainingSetOps[A:Manifest,B:Manifest](x: Var[TrainingSet[A,B]]): trainingSetOpsCls[A,B]
 
   class trainingSetOpsCls[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]]) {
-    def t = trainingset_transposed(x)
-    def labels = trainingset_labels(x)
-    def numSamples = x.numRows
-    def numFeatures = x.numCols
+    def t(implicit ctx: SourceContext) = trainingset_transposed(x)
+    def labels(implicit ctx: SourceContext) = trainingset_labels(x)
+    def numSamples(implicit ctx: SourceContext) = x.numRows
+    def numFeatures(implicit ctx: SourceContext) = x.numCols
 
-    def update(i: Rep[Int], j: Rep[Int], y: Rep[A]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def update(i: Rep[Int], y: Rep[Vector[A]]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def updateRow(row: Rep[Int], y: Rep[Vector[A]]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def +=(y: Rep[Vector[A]]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def ++=(y: Rep[Matrix[A]]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def insertRow(pos: Rep[Int], y: Rep[Vector[A]]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def insertAllRows(pos: Rep[Int], y: Rep[Matrix[A]]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def insertCol(pos: Rep[Int], y: Rep[Vector[A]]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def insertAllCols(pos: Rep[Int], y: Rep[Matrix[A]]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def removeRow(pos: Rep[Int]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def removeRows(pos: Rep[Int], len: Rep[Int]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def removeCol(pos: Rep[Int]) = throw new UnsupportedOperationException("Training sets are immutable")
-    def removeCols(pos: Rep[Int], len: Rep[Int]) = throw new UnsupportedOperationException("Training sets are immutable")
+    def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def update(i: Rep[Int], y: Rep[Vector[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def updateRow(row: Rep[Int], y: Rep[Vector[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def +=(y: Rep[Vector[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def ++=(y: Rep[Matrix[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def insertRow(pos: Rep[Int], y: Rep[Vector[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def insertAllRows(pos: Rep[Int], y: Rep[Matrix[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def insertCol(pos: Rep[Int], y: Rep[Vector[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def insertAllCols(pos: Rep[Int], y: Rep[Matrix[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def removeRow(pos: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def removeRows(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def removeCol(pos: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
+    def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("Training sets are immutable")
   }
       
   // object defs
-  def trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Rep[Matrix[A]], labels: Rep[Labels[B]]): Rep[TrainingSet[A,B]]
+  def trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Rep[Matrix[A]], labels: Rep[Labels[B]])(implicit ctx: SourceContext): Rep[TrainingSet[A,B]]
   
   // class defs
-  def trainingset_transposed[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]]): Rep[TrainingSet[A,B]]
-  def trainingset_labels[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]]): Rep[Labels[B]]
+  def trainingset_transposed[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]])(implicit ctx: SourceContext): Rep[TrainingSet[A,B]]
+  def trainingset_labels[A:Manifest,B:Manifest](x: Rep[TrainingSet[A,B]])(implicit ctx: SourceContext): Rep[Labels[B]]
 }
 
 trait TrainingSetOpsExp extends TrainingSetOps with BaseExp { this: DeliteOpsExp with OptiMLExp =>
@@ -68,12 +68,12 @@ trait TrainingSetOpsExp extends TrainingSetOps with BaseExp { this: DeliteOpsExp
     val mB = manifest[B]
   }
 
-  def trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Exp[Matrix[A]], labels: Exp[Labels[B]]) = reflectEffect(TrainingSetObjectFromMat(xs, labels))
-  def trainingset_transposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = reflectPure(TrainingSetTransposed(x))
-  def trainingset_labels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]]) = reflectPure(TrainingSetLabels(x))
+  def trainingset_obj_fromMat[A:Manifest,B:Manifest](xs: Exp[Matrix[A]], labels: Exp[Labels[B]])(implicit ctx: SourceContext) = reflectEffect(TrainingSetObjectFromMat(xs, labels))
+  def trainingset_transposed[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]])(implicit ctx: SourceContext) = reflectPure(TrainingSetTransposed(x))
+  def trainingset_labels[A:Manifest,B:Manifest](x: Exp[TrainingSet[A,B]])(implicit ctx: SourceContext) = reflectPure(TrainingSetLabels(x))
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@TrainingSetLabels(x) => trainingset_labels(f(x))(e.mA,e.mB)
+    case e@TrainingSetLabels(x) => trainingset_labels(f(x))(e.mA,e.mB,implicitly[SourceContext])
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

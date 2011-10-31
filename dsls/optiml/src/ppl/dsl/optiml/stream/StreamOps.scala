@@ -19,35 +19,35 @@ trait StreamOps extends Variables {
   this: OptiML =>
 
   object Stream {
-    def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(func: (Rep[Int],Rep[Int]) => Rep[A]) = stream_obj_new(numRows, numCols, func)
+    def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(func: (Rep[Int],Rep[Int]) => Rep[A])(implicit ctx: SourceContext) = stream_obj_new(numRows, numCols, func)
   }
 
   implicit def repStreamToStreamOps[A:Manifest](x: Rep[Stream[A]]) = new streamOpsCls(x)
   implicit def varToStreamOps[A:Manifest](x: Var[Stream[A]]) = new streamOpsCls(readVar(x))
 
   class streamOpsCls[A:Manifest](x: Rep[Stream[A]]) {
-    def numRows = stream_numrows(x)
-    def numCols = stream_numcols(x)
-    def isPure = stream_ispure(x)
+    def numRows(implicit ctx: SourceContext) = stream_numrows(x)
+    def numCols(implicit ctx: SourceContext) = stream_numcols(x)
+    def isPure(implicit ctx: SourceContext) = stream_ispure(x)
 
     def rows = new streamRowOpsCls(x)
-    def foreachRow(block: Rep[StreamRow[A]] => Rep[Unit]) = stream_foreachrow(x, block)
+    def foreachRow(block: Rep[StreamRow[A]] => Rep[Unit])(implicit ctx: SourceContext) = stream_foreachrow(x, block)
   }
 
   // syntactic sugar
   class streamRowOpsCls[A:Manifest](x: Rep[Stream[A]]) {
-    def foreach(block: Rep[StreamRow[A]] => Rep[Unit]) = x.foreachRow(block)
+    def foreach(block: Rep[StreamRow[A]] => Rep[Unit])(implicit ctx: SourceContext) = x.foreachRow(block)
   }
 
   // object defs
-  def stream_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int], func: (Rep[Int],Rep[Int]) => Rep[A]): Rep[Stream[A]]
+  def stream_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int], func: (Rep[Int],Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[Stream[A]]
 
   // class defs
-  def stream_ispure[A:Manifest](x: Rep[Stream[A]]): Rep[Boolean]
-  def stream_numrows[A:Manifest](x: Rep[Stream[A]]): Rep[Int]
-  def stream_numcols[A:Manifest](x: Rep[Stream[A]]): Rep[Int]
+  def stream_ispure[A:Manifest](x: Rep[Stream[A]])(implicit ctx: SourceContext): Rep[Boolean]
+  def stream_numrows[A:Manifest](x: Rep[Stream[A]])(implicit ctx: SourceContext): Rep[Int]
+  def stream_numcols[A:Manifest](x: Rep[Stream[A]])(implicit ctx: SourceContext): Rep[Int]
 
-  def stream_foreachrow[A:Manifest](x: Rep[Stream[A]], block: Rep[StreamRow[A]] => Rep[Unit]): Rep[Unit]
+  def stream_foreachrow[A:Manifest](x: Rep[Stream[A]], block: Rep[StreamRow[A]] => Rep[Unit])(implicit ctx: SourceContext): Rep[Unit]
 }
 
 trait StreamOpsExp extends StreamOps with VariablesExp {
@@ -128,7 +128,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   ////////////////////
   // object interface
 
-  def stream_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], func: (Rep[Int],Rep[Int]) => Rep[A]) = {
+  def stream_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], func: (Rep[Int],Rep[Int]) => Rep[A])(implicit ctx: SourceContext) = {
     val y = doLambda2(func)
     val isPure = y match {
       case Def(Lambda2(a,b,c,Def(Reify(d,u,es)))) => false
@@ -141,11 +141,11 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   ////////////////////
   // class interface
 
-  def stream_ispure[A:Manifest](x: Rep[Stream[A]]) = reflectPure(StreamIsPure(x))
-  def stream_numrows[A:Manifest](x: Exp[Stream[A]]) = reflectPure(StreamNumRows(x))
-  def stream_numcols[A:Manifest](x: Exp[Stream[A]]) = reflectPure(StreamNumCols(x))
+  def stream_ispure[A:Manifest](x: Rep[Stream[A]])(implicit ctx: SourceContext) = reflectPure(StreamIsPure(x))
+  def stream_numrows[A:Manifest](x: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(StreamNumRows(x))
+  def stream_numcols[A:Manifest](x: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(StreamNumCols(x))
 
-  def stream_foreachrow[A:Manifest](x: Exp[Stream[A]], block: Exp[StreamRow[A]] => Exp[Unit]) = {
+  def stream_foreachrow[A:Manifest](x: Exp[Stream[A]], block: Exp[StreamRow[A]] => Exp[Unit])(implicit ctx: SourceContext) = {
     // we do not know at compile time how many streaming chunks are needed (therefore how many ops to submit)
     // so we submit a While loop, where each iteration of the while depends on the next, and let the runtime unroll it
     val numChunks = Math.ceil(x.numRows / chunkSize(x.numCols).doubleValue()).asInstanceOfL[Int]
@@ -198,17 +198,17 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
 trait StreamOpsExpOpt extends StreamOpsExp {
   this: OptiMLExp with StreamImplOps =>
   
-  override def stream_ispure[A:Manifest](x: Rep[Stream[A]]) = x match {
+  override def stream_ispure[A:Manifest](x: Rep[Stream[A]])(implicit ctx: SourceContext) = x match {
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, func, isPure)/*,_,_)*/) => isPure
     case _ => super.stream_ispure(x)
   }
   
-  override def stream_numrows[A:Manifest](x: Exp[Stream[A]]) = x match {
+  override def stream_numrows[A:Manifest](x: Exp[Stream[A]])(implicit ctx: SourceContext) = x match {
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, func, isPure)/*,_,_)*/) => numRows
     case _ => super.stream_numrows(x)
   }
   
-  override def stream_numcols[A:Manifest](x: Exp[Stream[A]]) = x match {
+  override def stream_numcols[A:Manifest](x: Exp[Stream[A]])(implicit ctx: SourceContext) = x match {
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, func, isPure)/*,_,_)*/) => numCols
     case _ => super.stream_numcols(x)
   }

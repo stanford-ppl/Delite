@@ -57,9 +57,9 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   // }
   
   class OptiMLVecOpsOverrides[A:Manifest](x: Interface[Vector[A]]) {
-    def update(i: Interface[IndexVector], y: Rep[A])(implicit o: Overloaded1) = vector_update_indices(x,i,y)    
-    def update(n: Rep[Int], y: Rep[A]) = x.update(n, y) // ?
-    def find(pred: Rep[A] => Rep[Boolean]) = vector_find_override(x, pred)
+    def update(i: Interface[IndexVector], y: Rep[A])(implicit o: Overloaded1, ctx: SourceContext) = vector_update_indices(x,i,y)    
+    def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = x.update(n, y) // ?
+    def find(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = vector_find_override(x, pred)
   }
 
   // class defs

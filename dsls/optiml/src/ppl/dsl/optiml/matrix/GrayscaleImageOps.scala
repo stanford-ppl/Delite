@@ -15,9 +15,9 @@ trait GrayscaleImageOps extends Variables {
   this: OptiML =>
 
   object GrayscaleImage {
-    def apply(numRows: Rep[Int], numCols: Rep[Int]) = grayscaleimage_obj_new(numRows, numCols)
-    def apply(x: Rep[Matrix[Int]]) = grayscaleimage_obj_frommat(x)
-    def cartToPolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]) = grayscaleimage_obj_carttopolar(x,y)
+    def apply(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = grayscaleimage_obj_new(numRows, numCols)
+    def apply(x: Rep[Matrix[Int]])(implicit ctx: SourceContext) = grayscaleimage_obj_frommat(x)
+    def cartToPolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]])(implicit ctx: SourceContext) = grayscaleimage_obj_carttopolar(x,y)
 
 //    val scharrYkernel = Matrix(Vector[Int](-3, -10, -3), Vector[Int](0, 0, 0), Vector[Int](3, 10, 3))
 //    val scharrXkernel = scharrYkernel.t
@@ -29,8 +29,8 @@ trait GrayscaleImageOps extends Variables {
   class grayscaleImageOpsCls(x: Rep[GrayscaleImage]) {
     import GrayscaleImage._
 
-    def bitwiseOrDownsample() = GrayscaleImage(x.downsample(2,2) { slice => slice(0,0) | slice(1,0) | slice(0,1) | slice(1,1) })
-    def gradients(polar: Rep[Boolean] = unit(false)) = { // unroll at call site for parallelism (temporary until we have composite op)
+    def bitwiseOrDownsample()(implicit ctx: SourceContext) = GrayscaleImage(x.downsample(2,2) { slice => slice(0,0) | slice(1,0) | slice(0,1) | slice(1,1) })
+    def gradients(polar: Rep[Boolean] = unit(false))(implicit ctx: SourceContext) = { // unroll at call site for parallelism (temporary until we have composite op)
       val scharrYkernel = Matrix[Int](3, 3)
       scharrYkernel(0,0) = -3; scharrYkernel(0,1) = -10; scharrYkernel(0,2) = -3
       scharrYkernel(2,0) =  3; scharrYkernel(2,1) =  10; scharrYkernel(2,2) =  3
@@ -41,14 +41,14 @@ trait GrayscaleImageOps extends Variables {
     }
     // TODO: need to refactor using CanBuildFrom and 2.8 techniques to avoid this duplication.
     //def convolve(kernel: Rep[Matrix[Int]]) = GrayscaleImage(x.windowedFilter(kernel.numRows, kernel.numCols) { slice => (slice *:* kernel).sum })
-    def windowedFilter(rowDim: Rep[Int], colDim: Rep[Int])(block: Rep[Matrix[Int]] => Rep[Int]) =
+    def windowedFilter(rowDim: Rep[Int], colDim: Rep[Int])(block: Rep[Matrix[Int]] => Rep[Int])(implicit ctx: SourceContext) =
       GrayscaleImage(image_windowed_filter(x,rowDim, colDim, block))
   }
 
   // object defs
-  def grayscaleimage_obj_new(numRows: Rep[Int], numCols: Rep[Int]): Rep[GrayscaleImage]
-  def grayscaleimage_obj_frommat(x: Rep[Matrix[Int]]): Rep[GrayscaleImage]
-  def grayscaleimage_obj_carttopolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]): (Rep[Matrix[Float]],Rep[Matrix[Float]])
+  def grayscaleimage_obj_new(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[GrayscaleImage]
+  def grayscaleimage_obj_frommat(x: Rep[Matrix[Int]])(implicit ctx: SourceContext): Rep[GrayscaleImage]
+  def grayscaleimage_obj_carttopolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]])(implicit ctx: SourceContext): (Rep[Matrix[Float]],Rep[Matrix[Float]])
 }
 
 
@@ -80,9 +80,9 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   ////////////////////
   // object interface
 
-  def grayscaleimage_obj_new(numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(GrayscaleImageObjectNew(numRows, numCols))
-  def grayscaleimage_obj_frommat(x: Exp[Matrix[Int]]) = reflectEffect(GrayscaleImageObjectFromMat(x))
-  def grayscaleimage_obj_carttopolar(x: Exp[Matrix[Float]], y: Exp[Matrix[Float]]) = {
+  def grayscaleimage_obj_new(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(GrayscaleImageObjectNew(numRows, numCols))
+  def grayscaleimage_obj_frommat(x: Exp[Matrix[Int]])(implicit ctx: SourceContext) = reflectEffect(GrayscaleImageObjectFromMat(x))
+  def grayscaleimage_obj_carttopolar(x: Exp[Matrix[Float]], y: Exp[Matrix[Float]])(implicit ctx: SourceContext) = {
     val mag = reflectPure(GrayscaleImageObjectCartToPolarMagnitude(x,y))
     val phase = reflectPure(GrayscaleImageObjectCartToPolarPhase(x,y)) map { a => if (a < 0f) a + 360f else a } 
     (mag,phase)

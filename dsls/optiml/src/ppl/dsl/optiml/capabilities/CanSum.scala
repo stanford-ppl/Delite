@@ -3,6 +3,7 @@ package ppl.dsl.optiml.capabilities
 import scala.virtualization.lms.common.{Variables, Base}
 import ppl.dsl.optiml.{DenseVector,VectorView}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import scala.reflect.SourceContext
 
 // trait CanSumInternal[Rep[X],R,A] {
 //   def +=(acc: Rep[R], y: Rep[A]): Rep[R] // should be unit! (but we have an issue using the same type class for primitives...)
@@ -15,19 +16,19 @@ trait CanSumOps extends Variables {
   //type CanSum[R,A] = CanSumInternal[Rep,R,A]
   
   trait CanSum[R,A] {
-    def +=(acc: Rep[R], y: Rep[A]): Rep[R] // should be unit! (but we have an issue using the same type class for primitives...)
-    def mutable(lhs: Rep[A]): Rep[R]      
+    def +=(acc: Rep[R], y: Rep[A])(implicit ctx: SourceContext): Rep[R] // should be unit! (but we have an issue using the same type class for primitives...)
+    def mutable(lhs: Rep[A])(implicit ctx: SourceContext): Rep[R]      
   }
 
   // scalac: erroneous or inaccessible type. wtf?
   implicit def canSumView[A:Manifest:Arith] = new CanSum[DenseVector[A],VectorView[A]] {
-    def +=(acc: Rep[DenseVector[A]], y: Rep[VectorView[A]]) = /*acc.+=(vectorViewToInterface[A](y)) //*/ acc += y   
-    def mutable(lhs: Rep[VectorView[A]]) = /*vectorViewToInterface(lhs).mutable //*/ lhs.mutable
+    def +=(acc: Rep[DenseVector[A]], y: Rep[VectorView[A]])(implicit ctx: SourceContext) = /*acc.+=(vectorViewToInterface[A](y)) //*/ acc += y   
+    def mutable(lhs: Rep[VectorView[A]])(implicit ctx: SourceContext) = /*vectorViewToInterface(lhs).mutable //*/ lhs.mutable
   }
 
   implicit def canSumArith[A:Manifest:Arith:Cloneable] = new CanSum[A,A] {
-    def +=(acc: Rep[A], y: Rep[A]) = acc += y
-    def mutable(lhs: Rep[A]) = lhs.mutable
+    def +=(acc: Rep[A], y: Rep[A])(implicit ctx: SourceContext) = acc += y
+    def mutable(lhs: Rep[A])(implicit ctx: SourceContext) = lhs.mutable
   } 
   
   /*

@@ -95,26 +95,26 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
                         max_iter: Rep[Int] = unit(1000),
                         clone_prev_val: Rep[Boolean] = unit(false))
                         (block: Rep[A] => Rep[A])
-                        (implicit diff: (Rep[A],Rep[A]) => Rep[Double], mA: Manifest[A], c: Cloneable[A]): Rep[A]
+                        (implicit diff: (Rep[A],Rep[A]) => Rep[Double], mA: Manifest[A], c: Cloneable[A], ctx: SourceContext): Rep[A]
     = optiml_untilconverged(x, thresh, max_iter, clone_prev_val, block, diff)
 
 
   def optiml_untilconverged[A:Manifest:Cloneable](x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
-                                                  block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double]): Rep[A]
+                                                  block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double])(implicit ctx: SourceContext): Rep[A]
 
   def untilconverged[V <: Vertex, E <: Edge](g: Rep[Graph[V, E]])
                         (block: Rep[V] => Rep[Unit])
-                        (implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
+                        (implicit mV: Manifest[V], mE: Manifest[E], ctx: SourceContext): Rep[Unit]
     = optiml_untilconverged(g, block)
 
-  def optiml_untilconverged[V <: Vertex :Manifest, E <: Edge :Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) : Rep[Unit]
+  def optiml_untilconverged[V <: Vertex :Manifest, E <: Edge :Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit])(implicit ctx: SourceContext) : Rep[Unit]
 
 
   /**
    * gradient descent
    */
   def gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-               maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+               maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
     = optiml_gradient(x, alpha, thresh, maxIter, hyp)
 
   // stochastic: block() updates every jth parameter for every ith training sample
@@ -126,7 +126,7 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
 
   // stochastic can only be parallelized across features, which is generally << samples
   def stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-                 maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+                 maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
     = optiml_stochastic(x, alpha, thresh, maxIter, hyp)
 
   // batch: block() updates each jth parameter from the sum of all ith training samples
@@ -138,18 +138,18 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   // in batch, the sum(...) loops over the entire training set independently, which is where the parallelism comes from
   // batch can be parallized across samples
   def batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-               maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+               maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
     = optiml_batch(x, alpha, thresh, maxIter, hyp)
 
 
   def optiml_gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                      maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+                      maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
   def optiml_stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                        maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+                        maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
   def optiml_batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                   maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+                   maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
   // coordinate ascent: analogous to stochastic gradient descent, but updates m parameters (alphas(0)...alphas(m-1))
   // at each update, all but alpha(i) must be held constant, so there are dependencies between every iteration
@@ -163,16 +163,16 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   /**
    *  i/o
    */
-  def readImage(filename: Rep[String]) = MLInputReader.readGrayscaleImage(filename)
+  def readImage(filename: Rep[String])(implicit ctx: SourceContext) = MLInputReader.readGrayscaleImage(filename)
 
   /**
    * Nearest neighbor
    */
   // returns the index of the nearest neighbor of row inside data
-  def nearestNeighborIndex[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean] = unit(true)): Rep[Int]
+  def nearestNeighborIndex[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean] = unit(true))(implicit ctx: SourceContext): Rep[Int]
     = optiml_nearest_neighbor_index(row, data, allowSame)
 
-  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int]
+  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean])(implicit ctx: SourceContext): Rep[Int]
 
 }
 
@@ -405,7 +405,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   // for now, just unroll the implementation
   // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
-  def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
+  def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit])(implicit ctx: SourceContext) = {
     val vertices = g.vertices
     val tasks : Rep[Vertices[V]] = vertices.mutable
     val seen = Set[V]()
@@ -435,7 +435,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 
   def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
-                                                  block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) = {
+                                                  block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double])(implicit ctx: SourceContext) = {
 
     var delta = var_new(unit(scala.Double.MaxValue))
     var cur = var_new(x)
@@ -475,7 +475,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    */
   private val MIN_BATCH_PROCS = 4
   def optiml_gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                      maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]] = {
+                      maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels
     val numProcs = 8 //Delite.threadNum // dynamically set
@@ -488,7 +488,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 
   def optiml_stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                        maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]] = {
+                        maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels
     val theta = Vector.zeros(x.numFeatures).mutable
@@ -504,7 +504,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 
   def optiml_batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                   maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]] = {
+                   maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels
     val theta = Vector.zeros(x.numFeatures).mutable
@@ -524,7 +524,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Nearest neighbor
    */
-  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int] = {
+  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean])(implicit ctx: SourceContext): Rep[Int] = {
     // unroll
     val dists = (0::m.numRows){ i =>
       val d = dist(m(row),m(i))
