@@ -12,6 +12,7 @@
 #include "Liszt/ElemTypes.h"
 #include "Liszt/IteratorFacade.h"
 
+using namespace std;
 
 namespace LisztPrivate {
 //represents a range of mesh elements with IDs in range [start,finish)

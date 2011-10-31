@@ -18,37 +18,32 @@ using namespace CRSMesh;
 MeshLoader::MeshLoader() : loaded(false) {
 }
 
-void MeshLoader::init(JNIEnv* _env, bool generated) {
+void MeshLoader::init(bool generated) {
     if(generated) {
       prefix = "generated/scala";
     }
     else {
       prefix = "ppl/dsl/deliszt/datastruct/scala";
     }
-
-    env = _env;
-
+    
     DEBUG_PRINT("new cache");
-    cache = new JNICache(env);
-
-    DEBUG_PRINT("load class");
-    meshClass = cache->getClass(prefix + "/Mesh");
+    cache = new JNICache();
 }
 
-jobject MeshLoader::createObject(jclass& cls, string type, ...) {
+jobject MeshLoader::createObject(JNIEnv* env, jclass& cls, string type, ...) {
     va_list args;
     va_start(args, type);
-    jobject obj = createObjectV(cls, type, args);
+    jobject obj = createObjectV(env, cls, type, args);
     va_end(args);
     return obj;
 }
 
-jobject MeshLoader::createObjectV(jclass& cls, string type, va_list args) {
+jobject MeshLoader::createObjectV(JNIEnv* env, jclass& cls, string type, va_list args) {
     jmethodID cid;
     string sig = "(" + type + ")V";
     
     /* Get the method ID for the String(char[]) constructor */
-    cid = cache->getMethod(cls, "<init>", sig);
+    cid = cache->getMethod(env, cls, "<init>", sig);
     if (cid == NULL) {
         throw MeshIO::MeshLoadException("Failed to find <init> method"); /* exception thrown */
     }
@@ -56,39 +51,39 @@ jobject MeshLoader::createObjectV(jclass& cls, string type, va_list args) {
     return env->NewObjectV(cls, cid, args);
 }
 
-jobject MeshLoader::createObject(string clsStr, string type, ...) {
+jobject MeshLoader::createObject(JNIEnv* env, string clsStr, string type, ...) {
     va_list args;
     va_start(args, type);
     jclass cls;
-    if(!(cls = cache->getClass(clsStr))) {
+    if(!(cls = cache->getClass(env, clsStr))) {
         throw MeshIO::MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
-    jobject obj = createObjectV(cls, type, args);
+    jobject obj = createObjectV(env, cls, type, args);
 
     va_end(args);
     return obj;
 }
 
-jobject MeshLoader::callObjectMethod(jobject& obj, string clsStr, string method,
+jobject MeshLoader::callObjectMethod(JNIEnv* env, jobject& obj, string clsStr, string method,
         string sig, ...) {
             va_list args;
             va_start(args, sig);
 
-            jobject ret = callObjectMethodV(obj, clsStr, method, sig, args);
+            jobject ret = callObjectMethodV(env, obj, clsStr, method, sig, args);
 
             va_end(args);
             return ret;
         }
 
-jobject MeshLoader::callObjectMethodV(jobject& obj, string clsStr,
+jobject MeshLoader::callObjectMethodV(JNIEnv* env, jobject& obj, string clsStr,
         string method, string sig, va_list args) {
     jclass cls;
-    if (!(cls = cache->getClass(clsStr))) {
+    if (!(cls = cache->getClass(env, clsStr))) {
         throw MeshIO::MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
-    jmethodID cid = cache->getMethod(cls, method, sig);
+    jmethodID cid = cache->getMethod(env, cls, method, sig);
     if (cid == NULL) {
         throw MeshIO::MeshLoadException(
                 "Failed to find method " + method + " with sig " + sig); /* exception thrown */
@@ -97,24 +92,24 @@ jobject MeshLoader::callObjectMethodV(jobject& obj, string clsStr,
     return env->CallObjectMethodV(obj, cid, args);
 }
 
-void MeshLoader::callVoidMethod(jobject& obj, string clsStr, string method,
+void MeshLoader::callVoidMethod(JNIEnv* env, jobject& obj, string clsStr, string method,
         string sig, ...) {
             va_list args;
             va_start(args, sig);
 
-            callVoidMethodV(obj, clsStr, method, sig, args);
+            callVoidMethodV(env, obj, clsStr, method, sig, args);
 
             va_end(args);
         }
 
-void MeshLoader::callVoidMethodV(jobject& jobj, string clsStr, string method,
+void MeshLoader::callVoidMethodV(JNIEnv* env, jobject& jobj, string clsStr, string method,
         string sig, va_list args) {
     jclass cls;
-    if (!(cls = cache->getClass(clsStr))) {
+    if (!(cls = cache->getClass(env, clsStr))) {
         throw MeshIO::MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
-    jmethodID cid = cache->getMethod(cls, method, sig);
+    jmethodID cid = cache->getMethod(env, cls, method, sig);
     if (cid == NULL) {
         throw MeshIO::MeshLoadException(
                 "Failed to find method " + method + " with sig " + sig); /* exception thrown */
@@ -123,25 +118,25 @@ void MeshLoader::callVoidMethodV(jobject& jobj, string clsStr, string method,
     env->CallVoidMethodV(jobj, cid, args);
 }
 
-jint MeshLoader::callIntMethod(jobject& obj, string clsStr, string method,
+jint MeshLoader::callIntMethod(JNIEnv* env, jobject& obj, string clsStr, string method,
         string sig, ...) {
             va_list args;
             va_start(args, sig);
 
-            jint ret = callIntMethodV(obj, clsStr, method, sig, args);
+            jint ret = callIntMethodV(env, obj, clsStr, method, sig, args);
 
             va_end(args);
             return ret;
         }
 
-jint MeshLoader::callIntMethodV(jobject& obj, string clsStr,
+jint MeshLoader::callIntMethodV(JNIEnv* env, jobject& obj, string clsStr,
         string method, string sig, va_list args) {
     jclass cls;
-    if (!(cls = cache->getClass(clsStr))) {
+    if (!(cls = cache->getClass(env, clsStr))) {
         throw MeshIO::MeshLoadException("Failed to find class " + clsStr); /* exception thrown */
     }
 
-    jmethodID cid = cache->getMethod(cls, method, sig);
+    jmethodID cid = cache->getMethod(env, cls, method, sig);
     if (cid == NULL) {
         throw MeshIO::MeshLoadException(
                 "Failed to find method " + method + " with sig " + sig); /* exception thrown */
@@ -150,23 +145,23 @@ jint MeshLoader::callIntMethodV(jobject& obj, string clsStr,
     return env->CallIntMethodV(obj, cid, args);
 }
 
-jobject MeshLoader::getScalaObjField(string clsStr, jobject& jobj, string field,
+jobject MeshLoader::getScalaObjField(JNIEnv* env, string clsStr, jobject& jobj, string field,
         string type) {
-    if (jclass cls = cache->getClass(clsStr)) {
-        return getScalaObjField(cls, jobj, field, type);
+    if (jclass cls = cache->getClass(env, clsStr)) {
+        return getScalaObjField(env, cls, jobj, field, type);
     }
     else {
         return NULL;
     }
 }
 
-jobject MeshLoader::getScalaObjField(jclass& cls, jobject& jobj, string field,
+jobject MeshLoader::getScalaObjField(JNIEnv* env, jclass& cls, jobject& jobj, string field,
         string type) {
     jmethodID cid;
     string getter = field;
     string sig = "()" + type;
 
-    cid = cache->getMethod(cls, getter, sig);
+    cid = cache->getMethod(env, cls, getter, sig);
     if (cid == NULL) {
         throw MeshIO::MeshLoadException("Failed to find getter for " + field); /* exception thrown */
     }
@@ -174,7 +169,7 @@ jobject MeshLoader::getScalaObjField(jclass& cls, jobject& jobj, string field,
     return env->CallObjectMethod(jobj, cid);
 }
 
-void MeshLoader::setScalaField(jclass& cls, jobject& jobj, string field,
+void MeshLoader::setScalaField(JNIEnv* env, jclass& cls, jobject& jobj, string field,
         string type, ...) {
             va_list args;
             va_start(args, type);
@@ -182,7 +177,7 @@ void MeshLoader::setScalaField(jclass& cls, jobject& jobj, string field,
             string setter = field + "_$eq";
             string sig = "(" + type + ")V";
 
-            cid = cache->getMethod(cls, setter, sig);
+            cid = cache->getMethod(env, cls, setter, sig);
             if (cid == NULL) {
                 throw MeshIO::MeshLoadException("Failed to find setter for " + field); /* exception thrown */
   }
@@ -190,30 +185,32 @@ void MeshLoader::setScalaField(jclass& cls, jobject& jobj, string field,
   env->CallVoidMethodV(jobj, cid, args);
 }
 
-void MeshLoader::setCRSField(jobject& jmesh, string field,
+void MeshLoader::setCRSField(JNIEnv* env, jobject& jmesh, string field,
         CRSMeshPrivate::CRS& crs, size_t from) {
-    jintArray row_idx = copyIdxArray(crs.row_idx, from+1);
-    jintArray values = copyIdArray(crs.values, crs.row_idx[from]);
+    jintArray row_idx = copyIdxArray(env, crs.row_idx, from+1);
+    jintArray values = copyIdArray(env, crs.values, crs.row_idx[from]);
 
-    jobject jcrs = createObject(prefix + "/CRSImpl", "[I[I",
+    jobject jcrs = createObject(env, prefix + "/CRSImpl", "[I[I",
             row_idx, values);
 
-    setScalaField(meshClass, jmesh, field,
+    jclass meshClass = cache->getClass(env, prefix + "/Mesh");
+    setScalaField(env, meshClass, jmesh, field,
             "L" + prefix + "/CRS;", jcrs);
 }
 
-void MeshLoader::setCRSPairField(jobject& jmesh, string field,
+void MeshLoader::setCRSPairField(JNIEnv* env, jobject& jmesh, string field,
         CRSMeshPrivate::CRSConst& crs, size_t from) {
-    jintArray values = copyIdPairArray(crs.values, from);
+    jintArray values = copyIdPairArray(env, crs.values, from);
 
-    jobject jcrs = createObject(prefix + "/CRSConst",
+    jobject jcrs = createObject(env, prefix + "/CRSConst",
             "[II", values, 2);
 
-    setScalaField(meshClass, jmesh, field,
+    jclass meshClass = cache->getClass(env, prefix + "/Mesh");
+    setScalaField(env, meshClass, jmesh, field,
             "L" + prefix + "/CRS;", jcrs);
 }
 
-jintArray MeshLoader::copyIdxArray(CRSMeshPrivate::idx_type* array,
+jintArray MeshLoader::copyIdxArray(JNIEnv* env, CRSMeshPrivate::idx_type* array,
         size_t len) {
     jintArray jarray = env->NewIntArray(len);
 
@@ -230,7 +227,7 @@ jintArray MeshLoader::copyIdxArray(CRSMeshPrivate::idx_type* array,
     return jarray;
 }
 
-jintArray MeshLoader::copyIdArray(CRSMeshPrivate::id_type* array, size_t len) {
+jintArray MeshLoader::copyIdArray(JNIEnv* env, CRSMeshPrivate::id_type* array, size_t len) {
     jintArray jarray = env->NewIntArray(len);
     
     jint* buffer = new jint[len * 2];
@@ -246,7 +243,7 @@ jintArray MeshLoader::copyIdArray(CRSMeshPrivate::id_type* array, size_t len) {
     return jarray;
 }
 
-jintArray MeshLoader::copyIdPairArray(CRSMeshPrivate::IDPair* array,
+jintArray MeshLoader::copyIdPairArray(JNIEnv* env, CRSMeshPrivate::IDPair* array,
         size_t len) {
     jintArray jarray = env->NewIntArray(len * 2);
     
@@ -264,7 +261,7 @@ jintArray MeshLoader::copyIdPairArray(CRSMeshPrivate::IDPair* array,
     return jarray;
 }
 
-jobject MeshLoader::loadMesh(jstring str) {
+jobject MeshLoader::loadMesh(JNIEnv* env, jstring str) {
     if(!loaded) {
         try {
             DEBUG_PRINT("convert filename");
@@ -303,13 +300,14 @@ jobject MeshLoader::loadMesh(jstring str) {
             CRSMeshPrivate::MeshData& data = mesh.data;
 
             DEBUG_PRINT("create mesh");
-            jmesh = createObject(meshClass, "");
+            jclass meshClass = cache->getClass(env, prefix + "/Mesh");
+            jmesh = createObject(env, meshClass, "");
 
             // Set size fields
-            setScalaField(meshClass, jmesh, "nvertices", "I", data.nvertices);
-            setScalaField(meshClass, jmesh, "nedges", "I", data.nedges);
-            setScalaField(meshClass, jmesh, "nfaces", "I", data.nfaces);
-            setScalaField(meshClass, jmesh, "ncells", "I", data.ncells);
+            setScalaField(env, meshClass, jmesh, "nvertices", "I", data.nvertices);
+            setScalaField(env, meshClass, jmesh, "nedges", "I", data.nedges);
+            setScalaField(env, meshClass, jmesh, "nfaces", "I", data.nfaces);
+            setScalaField(env, meshClass, jmesh, "ncells", "I", data.ncells);
             
             DEBUG_PRINT("nvertices: " << data.nvertices);
             DEBUG_PRINT("nedges: " << data.nedges);
@@ -317,30 +315,30 @@ jobject MeshLoader::loadMesh(jstring str) {
             DEBUG_PRINT("ncells: " << data.ncells);
 
             // Set vertex relations
-            setCRSField(jmesh, "vtov", data.vtov, data.nvertices);
-            setCRSField(jmesh, "vtoe", data.vtoe, data.nvertices);
-            setCRSField(jmesh, "vtof", data.vtof, data.nvertices);
-            setCRSField(jmesh, "vtoc", data.vtoc, data.nvertices);
+            setCRSField(env, jmesh, "vtov", data.vtov, data.nvertices);
+            setCRSField(env, jmesh, "vtoe", data.vtoe, data.nvertices);
+            setCRSField(env, jmesh, "vtof", data.vtof, data.nvertices);
+            setCRSField(env, jmesh, "vtoc", data.vtoc, data.nvertices);
 
             // Set edge relations
-            setCRSPairField(jmesh, "etov", data.etov, data.nedges);
-            setCRSField(jmesh, "etof", data.etof, data.nedges);
-            setCRSField(jmesh, "etoc", data.etoc, data.nedges);
+            setCRSPairField(env, jmesh, "etov", data.etov, data.nedges);
+            setCRSField(env, jmesh, "etof", data.etof, data.nedges);
+            setCRSField(env, jmesh, "etoc", data.etoc, data.nedges);
 
             // Set face relations
-            setCRSField(jmesh, "ftov", data.ftov, data.nfaces);
-            setCRSField(jmesh, "ftoe", data.ftoe, data.nfaces);
-            setCRSPairField(jmesh, "ftoc", data.ftoc, data.nfaces);
+            setCRSField(env, jmesh, "ftov", data.ftov, data.nfaces);
+            setCRSField(env, jmesh, "ftoe", data.ftoe, data.nfaces);
+            setCRSPairField(env, jmesh, "ftoc", data.ftoc, data.nfaces);
 
             // Set cell relations
-            setCRSField(jmesh, "ctov", data.ctov, data.ncells);
-            setCRSField(jmesh, "ctoe", data.ctoe, data.ncells);
-            setCRSField(jmesh, "ctof", data.ctof, data.ncells);
-            setCRSField(jmesh, "ctoc", data.ctoc, data.ncells);
+            setCRSField(env, jmesh, "ctov", data.ctov, data.ncells);
+            setCRSField(env, jmesh, "ctoe", data.ctoe, data.ncells);
+            setCRSField(env, jmesh, "ctof", data.ctof, data.ncells);
+            setCRSField(env, jmesh, "ctoc", data.ctoc, data.ncells);
 
             // Set properties we know about
             // Position for vertices
-            loadPositions(jmesh, mesh, reader);
+            loadPositions(env, jmesh, mesh, reader);
             
             boundary_builder.init(h.nBoundaries, reader.boundaries());
             
@@ -358,11 +356,11 @@ jobject MeshLoader::loadMesh(jstring str) {
 MeshLoader::~MeshLoader() {
 }
 
-void MeshLoader::loadPositions(jobject& jmesh, CRSMesh::Mesh& mesh,
+void MeshLoader::loadPositions(JNIEnv* env, jobject& jmesh, CRSMesh::Mesh& mesh,
         MeshIO::LisztFileReader& reader) {
     size_t size = mesh.data.nvertices;
 
-    jclass darrCls = cache->getClass("[D");
+    jclass darrCls = cache->getClass(env, "[D");
     if (darrCls == NULL) {
         throw MeshIO::MeshLoadException("Failed to find double array class"); /* exception thrown */
     }
@@ -393,15 +391,16 @@ void MeshLoader::loadPositions(jobject& jmesh, CRSMesh::Mesh& mesh,
 
     reader.free(table);
 
-    jobject vertexLabels = getScalaObjField(meshClass, jmesh,
+    jclass meshClass = cache->getClass(env, prefix + "/Mesh");
+    jobject vertexLabels = getScalaObjField(env, meshClass, jmesh,
             "vertexData",
             "L" + prefix + "/LabelData;");
-    jclass labelClass = cache->getClass(
+    jclass labelClass = cache->getClass(env,
             prefix + "/LabelData");
-    jobject vertexData = getScalaObjField(labelClass, vertexLabels, "data",
+    jobject vertexData = getScalaObjField(env, labelClass, vertexLabels, "data",
             "Lscala/collection/mutable/Map;");
 
-    callObjectMethod(vertexData, "scala/collection/mutable/Map", "put",
+    callObjectMethod(env, vertexData, "scala/collection/mutable/Map", "put",
             "(Ljava/lang/Object;Ljava/lang/Object;)Lscala/Option;",
             env->NewStringUTF("position"), positions);
 }

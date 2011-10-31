@@ -86,7 +86,6 @@ trait SCTest extends DeLisztApplication {
     }
     cell_centroid(c) = center / (volume * 4.f)
     cell_volume(c) = volume / 6.f
-    unit(0)
   }
   def phi_sine_function( t : Rep[Float]) : Rep[Float] = {
     10.f * sinf(t*2.f*MATH_PI.asInstanceOfL[Float])

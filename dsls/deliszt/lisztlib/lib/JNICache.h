@@ -8,14 +8,22 @@
 using namespace std;
 
 struct JNISignature {
+  JNIEnv* env;
   jclass cls;
   string method;
   string sign;
   
-  JNISignature(jclass cls, string method, string sign) : cls(cls), method(method), sign(sign) {}
+  JNISignature(JNIEnv* env, jclass cls, string method, string sign) : env(env), cls(cls), method(method), sign(sign) {}
   
   bool operator<(const JNISignature& other) const
-  {   
+  { 
+    if(env < other.env) {
+      return true;
+    }
+    else if(env > other.env) {
+      return false;
+    }
+  
     if(cls < other.cls) {
       return true;
     }
@@ -41,14 +49,13 @@ struct JNISignature {
 
 class JNICache {
 public:
-  JNICache(JNIEnv* env);
+  JNICache();
   ~JNICache();
   
-  jclass getClass(string desc);
-  jmethodID getMethod(string clsStr, string method, string sign);
-  jmethodID getMethod(jclass cls, string method, string sign);
+  jclass getClass(JNIEnv* env, string desc);
+  jmethodID getMethod(JNIEnv* env, string clsStr, string method, string sign);
+  jmethodID getMethod(JNIEnv* env, jclass cls, string method, string sign);
 private:
-  JNIEnv* env;
   typedef map<string, jclass> clsMap;
   clsMap classes;
   typedef map<JNISignature, jmethodID> methodMap;

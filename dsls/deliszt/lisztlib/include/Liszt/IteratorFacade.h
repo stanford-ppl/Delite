@@ -1,6 +1,7 @@
 #ifndef _LISZT_ITERATOR_FACADE_H
 #define _LISZT_ITERATOR_FACADE_H
 
+using namespace std;
 
 template<typename SelfType, typename RefType>
 class liszt_iterator_facade {
