@@ -7,6 +7,7 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import scala.virtualization.lms.util.OverloadHack
+import scala.reflect.SourceContext
 import java.io.PrintWriter
 
 trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
@@ -37,10 +38,10 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
     def mV[B:Manifest] = manifest[DenseVector[B]] 
           
     // VectorOps
-    def length = rangevector_length(elem)
-    def isRow = rangevector_isrow(elem)
-    def apply(n: Rep[Int]) = rangevector_apply(elem,n)
-    def sort(implicit o: Ordering[Int]) = elem.cloneL    
+    def length(implicit ctx: SourceContext) = rangevector_length(elem)
+    def isRow(implicit ctx: SourceContext) = rangevector_isrow(elem)
+    def apply(n: Rep[Int])(implicit ctx: SourceContext) = rangevector_apply(elem,n)
+    def sort(implicit o: Ordering[Int], ctx: SourceContext) = elem.cloneL    
     
     // generic
     type VPLUSR = DenseVector[Int]
@@ -58,46 +59,46 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
     val vtimesBuilder = denseVectorBuilder[Int]
     def vtimesToIntf(x: Rep[VTIMESR]) = denseToInterface(x)        
         
-    def t = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
-    def mt() = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
-    def update(n: Rep[Int], y: Rep[Int]): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def insert(pos: Rep[Int], y: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def removeAll(pos: Rep[Int], len: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def trim() = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def clear() = throw new UnsupportedOperationException("RangeVectors cannot be updated")        
+    def t(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
+    def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
+    def update(n: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def insert(pos: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def trim()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def clear()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")        
   } 
   
-  def rangevector_length(x: Rep[RangeVector]): Rep[Int]
-  def rangevector_isrow(x: Rep[RangeVector]): Rep[Boolean]
-  def rangevector_apply(x: Rep[RangeVector], n: Rep[Int]): Rep[Int]
+  def rangevector_length(x: Rep[RangeVector])(implicit ctx: SourceContext): Rep[Int]
+  def rangevector_isrow(x: Rep[RangeVector])(implicit ctx: SourceContext): Rep[Boolean]
+  def rangevector_apply(x: Rep[RangeVector], n: Rep[Int])(implicit ctx: SourceContext): Rep[Int]
   // def rangevector_times_matrix(x: Rep[RangeVector], y: Rep[Matrix[Int]]): Rep[DenseVector[Int]]
   // def rangevector_flatmap[B:Manifest](x: Rep[RangeVector], f: Rep[A] => Rep[DenseVector[B]]): Rep[DenseVector[B]]
 }
 
 trait RangeVectorOpsExp extends RangeVectorOps with DeliteCollectionOpsExp { this: OptiLAExp =>
   
-  def rangevector_length(x: Rep[RangeVector]) = x match {
+  def rangevector_length(x: Rep[RangeVector])(implicit ctx: SourceContext) = x match {
     case Def(VectorObjectRange(start,end,stride,r)) => (end-start + stride - 1) / stride
     case Def(v@Reflect(VectorObjectRange(start,end,stride,r), u, es)) /*if context.contains(v)*/ => (end-start + stride - 1) / stride
   }
   
-  def rangevector_isrow(x: Exp[RangeVector]) = x match {
+  def rangevector_isrow(x: Exp[RangeVector])(implicit ctx: SourceContext) = x match {
     case Def(VectorObjectRange(s,e,d,r)) => r
     case Def(v@Reflect(VectorObjectRange(s,e,d,r), u, es)) /*if context.contains(v)*/ => r
   }
   
-  def rangevector_apply(x: Exp[RangeVector], n: Exp[Int]) = rangevector_optimize_apply(x,n).get
+  def rangevector_apply(x: Exp[RangeVector], n: Exp[Int])(implicit ctx: SourceContext) = rangevector_optimize_apply(x,n).get
   
   // and this one also helps in the example:
-  def rangevector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]): Option[Exp[A]] = x match {
+  def rangevector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext): Option[Exp[A]] = x match {
     case Def(VectorObjectRange(s,e,d,r)) => Some((s + n*d).asInstanceOf[Exp[A]])
     case Def(v@Reflect(VectorObjectRange(s,e,d,r), u, es)) /*if context.contains(v)*/ => Some((s + n*d).asInstanceOf[Exp[A]])
     case _ => None
   }
   
-  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = {
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
     rangevector_optimize_apply(x,n) getOrElse super.dc_apply(x,n)
   }
   

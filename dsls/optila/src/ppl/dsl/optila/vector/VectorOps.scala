@@ -1,10 +1,9 @@
 package ppl.dsl.optila.vector
 
 import java.io.{PrintWriter}
-import reflect.Manifest
+import reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
-import scala.reflect.SourceContext
 
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
@@ -83,9 +82,9 @@ trait VectorOps extends Variables {
     val x = elem
     
     // DeliteCollection
-    def dcSize = length
-    def dcApply(n: Rep[Int]): Rep[A] = apply(n)
-    def dcUpdate(n: Rep[Int], y: Rep[A]) = update(n,y)
+    def dcSize(implicit ctx: SourceContext) = length
+    def dcApply(n: Rep[Int])(implicit ctx: SourceContext): Rep[A] = apply(n)
+    def dcUpdate(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = update(n,y)
     
     // conversions
     def toBoolean(implicit conv: Rep[A] => Rep[Boolean]) =  map(e => conv(e))
@@ -95,27 +94,27 @@ trait VectorOps extends Variables {
     def toLong(implicit conv: Rep[A] => Rep[Long]) = map(e => conv(e))
     
     // accessors
-    def length: Rep[Int] 
-    def isRow: Rep[Boolean] 
-    def apply(n: Rep[Int]): Rep[A] 
-    def isEmpty = length == 0
-    def first = apply(0)
-    def last = apply(repArithToArithOps(length) - 1) // TODO: why doesn't this get invoked implicitly?
-    def indices = (0::length)
-    def drop(count: Rep[Int]) = slice(count, length)
-    def take(count: Rep[Int]) = slice(0, count)
-    def slice(start: Rep[Int], end: Rep[Int]): Rep[VA] = vector_slice[A,VA](x, start, end)
-    def contains(y: Rep[A]): Rep[Boolean] = vector_contains(x,y)
-    def distinct: Rep[VA] = vector_distinct[A,VA](x)  
+    def length(implicit ctx: SourceContext): Rep[Int] 
+    def isRow(implicit ctx: SourceContext): Rep[Boolean] 
+    def apply(n: Rep[Int])(implicit ctx: SourceContext): Rep[A] 
+    def isEmpty(implicit ctx: SourceContext) = length == 0
+    def first(implicit ctx: SourceContext) = apply(0)
+    def last(implicit ctx: SourceContext) = apply(repArithToArithOps(length) - 1) // TODO: why doesn't this get invoked implicitly?
+    def indices(implicit ctx: SourceContext) = (0::length)
+    def drop(count: Rep[Int])(implicit ctx: SourceContext) = slice(count, length)
+    def take(count: Rep[Int])(implicit ctx: SourceContext) = slice(0, count)
+    def slice(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext): Rep[VA] = vector_slice[A,VA](x, start, end)
+    def contains(y: Rep[A])(implicit ctx: SourceContext): Rep[Boolean] = vector_contains(x,y)
+    def distinct(implicit ctx: SourceContext): Rep[VA] = vector_distinct[A,VA](x)  
     
     // general
-    def t: Rep[VA] // TODO: move to type-system
-    def mt(): Rep[VA]
-    def cloneL(): Rep[VA] = vector_clone[A,VA](x) 
-    def mutable(): Rep[VA] = vector_mutable_clone[A,VA](x)
-    def pprint(): Rep[Unit] = vector_pprint(x)
-    def replicate(i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]] = vector_repmat(x,i,j)
-    def mkString(sep: Rep[String] = unit("")): Rep[String] = vector_mkstring(x, sep)      
+    def t(implicit ctx: SourceContext): Rep[VA] // TODO: move to type-system
+    def mt()(implicit ctx: SourceContext): Rep[VA]
+    def cloneL()(implicit ctx: SourceContext): Rep[VA] = vector_clone[A,VA](x) 
+    def mutable()(implicit ctx: SourceContext): Rep[VA] = vector_mutable_clone[A,VA](x)
+    def pprint()(implicit ctx: SourceContext): Rep[Unit] = vector_pprint(x)
+    def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext): Rep[Matrix[A]] = vector_repmat(x,i,j)
+    def mkString(sep: Rep[String] = unit(""))(implicit ctx: SourceContext): Rep[String] = vector_mkstring(x, sep)      
     
     // data operations
     // most of these these can't operate on Interfaces because they happen at runtime right now...
@@ -123,17 +122,17 @@ trait VectorOps extends Variables {
     
     // TODO: should these be moved to another interface, e.g. MutableVecInterface? how do we deal with immutable vectors that
     // don't implement these (e.g. RangeVector). Instead of Interface, would clients require a MutableInterface[...]? (yet another type constructor... :( )
-    def update(n: Rep[Int], y: Rep[A]): Rep[Unit]
-    def +=(y: Rep[A]): Rep[Unit] = insert(length,y)
-    def ++(y: Interface[Vector[A]]): Rep[VA] = vector_concatenate[A,VA](x,y)    
-    def ++=(y: Rep[VA]) = insertAll(length,y)
-    def copyFrom(pos: Rep[Int], y: Rep[VA]): Rep[Unit]
-    def insert(pos: Rep[Int], y: Rep[A]): Rep[Unit]
-    def insertAll(pos: Rep[Int], y: Rep[VA]): Rep[Unit]
-    def remove(pos: Rep[Int]) = removeAll(pos,1)
-    def removeAll(pos: Rep[Int], len: Rep[Int]): Rep[Unit]
-    def trim(): Rep[Unit]
-    def clear(): Rep[Unit]
+    def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
+    def +=(y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] = insert(length,y)
+    def ++(y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[VA] = vector_concatenate[A,VA](x,y)    
+    def ++=(y: Rep[VA])(implicit ctx: SourceContext) = insertAll(length,y)
+    def copyFrom(pos: Rep[Int], y: Rep[VA])(implicit ctx: SourceContext): Rep[Unit]
+    def insert(pos: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
+    def insertAll(pos: Rep[Int], y: Rep[VA])(implicit ctx: SourceContext): Rep[Unit]
+    def remove(pos: Rep[Int])(implicit ctx: SourceContext) = removeAll(pos,1)
+    def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
+    def trim()(implicit ctx: SourceContext): Rep[Unit]
+    def clear()(implicit ctx: SourceContext): Rep[Unit]
     
     // arithmetic operations
     
@@ -147,23 +146,23 @@ trait VectorOps extends Variables {
     def vplusToIntf(x: Rep[VPLUSR]): Interface[Vector[A]]
     //val plusInfo: OpInfo[A,VPLUSR,Interface[Vector[A]]]    
     //def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_plus[A,VPLUSR](x,y)(manifest[A], implicitly[Arith[A]], plusInfo.mR, plusInfo.b)
-    def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_plus[A,VPLUSR](x,y)
-    def +(y: Rep[VA])(implicit a: Arith[A]): Rep[VA] = vector_plus[A,VA](x,y) // needed for Arith        
-    def +(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_plus_scalar[A,VPLUSR](x,y) 
-    def +=(y: Interface[Vector[A]])(implicit a: Arith[A]) = { vector_plusequals[A](x,y); elem }
-    def +=(y: Rep[VA])(implicit a: Arith[A]) = { vector_plusequals[A](x,y); elem }
-    def :+=(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_plusequals_scalar[A](x,y) 
+    def +(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = vector_plus[A,VPLUSR](x,y)
+    def +(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext): Rep[VA] = vector_plus[A,VA](x,y) // needed for Arith        
+    def +(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = vector_plus_scalar[A,VPLUSR](x,y) 
+    def +=(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = { vector_plusequals[A](x,y); elem }
+    def +=(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext) = { vector_plusequals[A](x,y); elem }
+    def :+=(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = vector_plusequals_scalar[A](x,y) 
     
     type VMINUSR
     implicit val mVMINUSR: Manifest[VMINUSR]
     implicit val vminusBuilder: VectorBuilder[A,VMINUSR]    
     def vminusToIntf(x: Rep[VMINUSR]): Interface[Vector[A]]
-    def -(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_minus[A,VMINUSR](x,y)
-    def -(y: Rep[VA])(implicit a: Arith[A]) = vector_minus[A,VA](x,y)
-    def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_minus_scalar[A,VMINUSR](x,y)
-    def -=(y: Interface[Vector[A]])(implicit a: Arith[A]) = { vector_minusequals[A](x,y); x }
-    def -=(y: Rep[VA])(implicit a: Arith[A]) = { vector_minusequals[A](x,y); x }    
-    def -=(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_minusequals_scalar[A](x,y)
+    def -(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = vector_minus[A,VMINUSR](x,y)
+    def -(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext) = vector_minus[A,VA](x,y)
+    def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = vector_minus_scalar[A,VMINUSR](x,y)
+    def -=(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = { vector_minusequals[A](x,y); x }
+    def -=(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext) = { vector_minusequals[A](x,y); x }    
+    def -=(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = vector_minusequals_scalar[A](x,y)
     
     type VTIMESR
     implicit val mVTIMESR: Manifest[VTIMESR]
@@ -173,54 +172,54 @@ trait VectorOps extends Variables {
     //def *[B](y: Rep[DenseVector[B]])(implicit mB: Manifest[B], aB: Arith[B], conv: Rep[A] => Rep[B], o: Overloaded1) = densevector_times_withconvertright(x,y,conv)    
     // TODO: need to extend Arith to support this using CanXX dispatch
     // Rep[DenseVector[Double]] * Rep[RangeVector] (Rep[DenseVector[Double]] * Interface[Vector[Int]])    
-    def *(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_times[A,VTIMESR](x,y)        
-    def *(y: Rep[VA])(implicit a: Arith[A]) = vector_times[A,VA](x,y)
-    def *(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_times_scalar[A,VTIMESR](x,y)
-    def *=(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_timesequals[A](x,y)    
-    def *=(y: Rep[VA])(implicit a: Arith[A]) = vector_timesequals[A](x,y)
-    def *=(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_timesequals_scalar[A](x,y)    
+    def *(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = vector_times[A,VTIMESR](x,y)        
+    def *(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext) = vector_times[A,VA](x,y)
+    def *(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = vector_times_scalar[A,VTIMESR](x,y)
+    def *=(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = vector_timesequals[A](x,y)    
+    def *=(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext) = vector_timesequals[A](x,y)
+    def *=(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = vector_timesequals_scalar[A](x,y)    
     //def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2) = vector_times_matrix[A,VTIMESR](x,y)
-    def **(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_outer[A](x,y)
-    def *:*(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_dot_product(x,y)
-    def dot(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_dot_product(x,y)
+    def **(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = vector_outer[A](x,y)
+    def *:*(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = vector_dot_product(x,y)
+    def dot(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = vector_dot_product(x,y)
 
-    def /(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_divide[A,VA](x,y)    
-    def /(y: Rep[VA])(implicit a: Arith[A]) = vector_divide[A,VA](x,y)
-    def /(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_divide_scalar[A,VA](x,y)    
-    def /=(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_divideequals[A](x,y)    
-    def /=(y: Rep[VA])(implicit a: Arith[A]) = vector_divideequals[A](x,y)
-    def /=(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_divideequals_scalar[A](x,y)
+    def /(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = vector_divide[A,VA](x,y)    
+    def /(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext) = vector_divide[A,VA](x,y)
+    def /(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = vector_divide_scalar[A,VA](x,y)    
+    def /=(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = vector_divideequals[A](x,y)    
+    def /=(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext) = vector_divideequals[A](x,y)
+    def /=(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = vector_divideequals_scalar[A](x,y)
     
-    def sum(implicit a: Arith[A]) = vector_sum(x)
-    def abs(implicit a: Arith[A]) = vector_abs[A,VA](x)
-    def exp(implicit a: Arith[A]) = vector_exp[A,VA](x)    
+    def sum(implicit a: Arith[A], ctx: SourceContext) = vector_sum(x)
+    def abs(implicit a: Arith[A], ctx: SourceContext) = vector_abs[A,VA](x)
+    def exp(implicit a: Arith[A], ctx: SourceContext) = vector_exp[A,VA](x)    
     
-    def sort(implicit o: Ordering[A]): Rep[VA]
-    def min(implicit o: Ordering[A], mx: HasMinMax[A]) = vector_min(x)
-    def minIndex(implicit o: Ordering[A], mx: HasMinMax[A]) = vector_minindex(x)
-    def max(implicit o: Ordering[A], mx: HasMinMax[A]) = vector_max(x)
-    def maxIndex(implicit o: Ordering[A], mx: HasMinMax[A]) = vector_maxindex(x)
-    def median(implicit o: Ordering[A]) = vector_median(x)
-    def :>(y: Interface[Vector[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a > b }
-    def :<(y: Interface[Vector[A]])(implicit o: Ordering[A]) = zip(y) { (a,b) => a < b }    
+    def sort(implicit o: Ordering[A], ctx: SourceContext): Rep[VA]
+    def min(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = vector_min(x)
+    def minIndex(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = vector_minindex(x)
+    def max(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = vector_max(x)
+    def maxIndex(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = vector_maxindex(x)
+    def median(implicit o: Ordering[A], ctx: SourceContext) = vector_median(x)
+    def :>(y: Interface[Vector[A]])(implicit o: Ordering[A], ctx: SourceContext) = zip(y) { (a,b) => a > b }
+    def :<(y: Interface[Vector[A]])(implicit o: Ordering[A], ctx: SourceContext) = zip(y) { (a,b) => a < b }    
     
     // bulk operations
-    def map[B:Manifest](f: Rep[A] => Rep[B]): Rep[V[B]] = vector_map[A,B,V[B]](x,f)
-    def mmap(f: Rep[A] => Rep[A]): Rep[Self] = { vector_mmap(x,f); elem }
-    def foreach(block: Rep[A] => Rep[Unit]): Rep[Unit] = vector_foreach(x, block)
-    def zip[B:Manifest,R:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R]): Rep[V[R]] = vector_zipwith[A,B,R,V[R]](x,y,f)
-    def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]): Rep[Self] = { vector_mzipwith(x,y,f); elem }
-    def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A]): Rep[A] = vector_reduce(x,f)
-    def filter(pred: Rep[A] => Rep[Boolean]): Rep[VA] = vector_filter[A,VA](x,pred)
+    def map[B:Manifest](f: Rep[A] => Rep[B])(implicit ctx: SourceContext): Rep[V[B]] = vector_map[A,B,V[B]](x,f)
+    def mmap(f: Rep[A] => Rep[A])(implicit ctx: SourceContext): Rep[Self] = { vector_mmap(x,f); elem }
+    def foreach(block: Rep[A] => Rep[Unit])(implicit ctx: SourceContext): Rep[Unit] = vector_foreach(x, block)
+    def zip[B:Manifest,R:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R])(implicit ctx: SourceContext): Rep[V[R]] = vector_zipwith[A,B,R,V[R]](x,y,f)
+    def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A])(implicit ctx: SourceContext): Rep[Self] = { vector_mzipwith(x,y,f); elem }
+    def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A], ctx: SourceContext): Rep[A] = vector_reduce(x,f)
+    def filter(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[VA] = vector_filter[A,VA](x,pred)
     
     // type VFINDR
     // implicit val mVFINDR: Manifest[VFINDR]
     // implicit val vfindBuilder: VectorBuilder[Int,VFINDR]    
     // def vfindToIntf(x: Rep[VFINDR]): Interface[Vector[Int]]        
     //def find(pred: Rep[A] => Rep[Boolean]): Rep[VFINDR] = vector_find[A,VFINDR](x,pred)
-    def find(pred: Rep[A] => Rep[Boolean]): Rep[V[Int]] = vector_find[A,V[Int]](x,pred)
+    def find(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[V[Int]] = vector_find[A,V[Int]](x,pred)
     
-    def count(pred: Rep[A] => Rep[Boolean]): Rep[Int] = vector_count(x, pred)
+    def count(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[Int] = vector_count(x, pred)
     // def flatMap[B:Manifest](f: Rep[A] => Rep[V[B]]): Rep[V[B]] = vector_flatmap[A,B,V[B]](x,f)
     // def partition(pred: Rep[A] => Rep[Boolean]): (Rep[VA], Rep[VA])  = vector_partition[A,VA](x,pred)
     // def groupBy[K:Manifest](pred: Rep[A] => Rep[K]): Rep[V[VA]] = vector_groupby[A,K,VA,V[VA]](x,pred)                        
@@ -245,76 +244,76 @@ trait VectorOps extends Variables {
     def toInt(implicit conv: Rep[A] => Rep[Int]) = intf.ops.toIntf(intf.ops.toInt)
     def toLong(implicit conv: Rep[A] => Rep[Long]) = intf.ops.toIntf(intf.ops.toLong)
     
-    def length = intf.ops.length
-    def isRow = intf.ops.isRow    
-    def apply(n: Rep[Int]) = intf.ops.apply(n)
-    def isEmpty = intf.ops.isEmpty
-    def first = intf.ops.first
-    def last = intf.ops.last
-    def indices = intf.ops.indices
-    def drop(count: Rep[Int]) = intf.ops.toIntf(intf.ops.drop(count))
-    def take(count: Rep[Int]) = intf.ops.toIntf(intf.ops.take(count))
-    def slice(start: Rep[Int], end: Rep[Int]) = intf.ops.toIntf(intf.ops.slice(start,end))
-    def contains(y: Rep[A]): Rep[Boolean] = intf.ops.contains(y)
-    def distinct = intf.ops.toIntf(intf.ops.distinct)    
+    def length(implicit ctx: SourceContext) = intf.ops.length
+    def isRow(implicit ctx: SourceContext) = intf.ops.isRow    
+    def apply(n: Rep[Int])(implicit ctx: SourceContext) = intf.ops.apply(n)
+    def isEmpty(implicit ctx: SourceContext) = intf.ops.isEmpty
+    def first(implicit ctx: SourceContext) = intf.ops.first
+    def last(implicit ctx: SourceContext) = intf.ops.last
+    def indices(implicit ctx: SourceContext) = intf.ops.indices
+    def drop(count: Rep[Int])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.drop(count))
+    def take(count: Rep[Int])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.take(count))
+    def slice(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.slice(start,end))
+    def contains(y: Rep[A])(implicit ctx: SourceContext): Rep[Boolean] = intf.ops.contains(y)
+    def distinct(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.distinct)    
     
-    def t = intf.ops.t
-    def mt() = intf.ops.mt
-    def cloneL() = intf.ops.toIntf(intf.ops.cloneL)
-    def mutable() = intf.ops.toIntf(intf.ops.mutable)
-    def pprint() = intf.ops.pprint
-    def replicate(i: Rep[Int], j: Rep[Int]) = intf.ops.replicate(i,j)
-    def mkString(sep: Rep[String] = unit("")) = intf.ops.mkString(sep)
+    def t(implicit ctx: SourceContext) = intf.ops.t
+    def mt()(implicit ctx: SourceContext) = intf.ops.mt
+    def cloneL()(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.cloneL)
+    def mutable()(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.mutable)
+    def pprint()(implicit ctx: SourceContext) = intf.ops.pprint
+    def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = intf.ops.replicate(i,j)
+    def mkString(sep: Rep[String] = unit(""))(implicit ctx: SourceContext) = intf.ops.mkString(sep)
     
-    def update(n: Rep[Int], y: Rep[A]) = intf.ops.update(n,y)
-    def +=(y: Rep[A]) = intf.ops.+=(y)    
-    def ++(y: Interface[Vector[A]]) = intf.ops.toIntf(intf.ops.++(y))
+    def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.update(n,y)
+    def +=(y: Rep[A])(implicit ctx: SourceContext) = intf.ops.+=(y)    
+    def ++(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.++(y))
     //def ++=(y: Rep[intf.ops.V[A]]) = intf.ops.++=(y)
     //def copyFrom(pos: Rep[Int], y: Rep[intf.ops.V[A]]) = intf.ops.copyFrom(pos,y)
-    def insert(pos: Rep[Int], y: Rep[A]) = intf.ops.insert(pos,y)
+    def insert(pos: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.insert(pos,y)
     //def insertAll(pos: Rep[Int], y: Rep[intf.ops.V[A]]) = intf.ops.insertAll(pos,y)
-    def remove(pos: Rep[Int]) = intf.ops.remove(pos)
-    def removeAll(pos: Rep[Int], len: Rep[Int]) = intf.ops.removeAll(pos,len)
-    def trim() = intf.ops.trim
-    def clear() = intf.ops.clear    
+    def remove(pos: Rep[Int])(implicit ctx: SourceContext) = intf.ops.remove(pos)
+    def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = intf.ops.removeAll(pos,len)
+    def trim()(implicit ctx: SourceContext) = intf.ops.trim
+    def clear()(implicit ctx: SourceContext) = intf.ops.clear    
     
     // //def +(y: Rep[intf.ops.V[A]])(implicit a: Arith[A]) = intf.ops.toIntf(intf.ops.+(y)) // doesn't work, would need dynamic type of ops
-    def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.vplusToIntf(intf.ops.+(y))    
-    def +(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = intf.ops.vplusToIntf(intf.ops.+(y))
-    def -(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.vminusToIntf(intf.ops.-(y))    
-    def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = intf.ops.vminusToIntf(intf.ops.-(y))
-    def *(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.vtimesToIntf(intf.ops.*(y))    
-    def *(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = intf.ops.vtimesToIntf(intf.ops.*(y))  
+    def +(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vplusToIntf(intf.ops.+(y))    
+    def +(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = intf.ops.vplusToIntf(intf.ops.+(y))
+    def -(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vminusToIntf(intf.ops.-(y))    
+    def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = intf.ops.vminusToIntf(intf.ops.-(y))
+    def *(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vtimesToIntf(intf.ops.*(y))    
+    def *(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = intf.ops.vtimesToIntf(intf.ops.*(y))  
     //def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2) = intf.ops.vtimesToIntf(intf.ops.*(y))
-    def **(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.**(y)
-    def *:*(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.*:*(y)
-    def dot(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.dot(y)
-    def /(y: Interface[Vector[A]])(implicit a: Arith[A]) = intf.ops.toIntf(intf.ops./(y))    
-    def /(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = intf.ops.toIntf(intf.ops./(y))      
+    def **(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.**(y)
+    def *:*(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.*:*(y)
+    def dot(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.dot(y)
+    def /(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops./(y))    
+    def /(y: Rep[A])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) = intf.ops.toIntf(intf.ops./(y))      
     
-    def sum(implicit a: Arith[A]) = intf.ops.sum
-    def abs(implicit a: Arith[A]) = intf.ops.toIntf(intf.ops.abs)
-    def exp(implicit a: Arith[A]) = intf.ops.toIntf(intf.ops.exp)        
+    def sum(implicit a: Arith[A], ctx: SourceContext) = intf.ops.sum
+    def abs(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops.abs)
+    def exp(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops.exp)        
     
-    def sort(implicit o: Ordering[A]) = intf.ops.toIntf(intf.ops.sort)
-    def min(implicit o: Ordering[A], mx: HasMinMax[A]) = intf.ops.min
-    def minIndex(implicit o: Ordering[A], mx: HasMinMax[A]) = intf.ops.minIndex
-    def max(implicit o: Ordering[A], mx: HasMinMax[A]) = intf.ops.max
-    def maxIndex(implicit o: Ordering[A], mx: HasMinMax[A]) = intf.ops.maxIndex
-    def median(implicit o: Ordering[A]) = intf.ops.median
-    def :>(y: Interface[Vector[A]])(implicit o: Ordering[A]) = intf.ops.:>(y)
-    def :<(y: Interface[Vector[A]])(implicit o: Ordering[A]) = intf.ops.:<(y)
+    def sort(implicit o: Ordering[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops.sort)
+    def min(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = intf.ops.min
+    def minIndex(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = intf.ops.minIndex
+    def max(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = intf.ops.max
+    def maxIndex(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = intf.ops.maxIndex
+    def median(implicit o: Ordering[A], ctx: SourceContext) = intf.ops.median
+    def :>(y: Interface[Vector[A]])(implicit o: Ordering[A], ctx: SourceContext) = intf.ops.:>(y)
+    def :<(y: Interface[Vector[A]])(implicit o: Ordering[A], ctx: SourceContext) = intf.ops.:<(y)
     
-    def map[B:Manifest](f: Rep[A] => Rep[B]) = intf.ops.toIntf(intf.ops.map(f))
-    def mmap(f: Rep[A] => Rep[A]) = intf.ops.wrap(intf.ops.mmap(f))
-    def foreach(block: Rep[A] => Rep[Unit]) = intf.ops.foreach(block)
-    def zip[B:Manifest,R:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R]) = intf.ops.toIntf(intf.ops.zip(y)(f))
-    def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A]) = intf.ops.wrap(intf.ops.mzip(y)(f))
-    def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A]) = intf.ops.reduce(f)
-    def filter(pred: Rep[A] => Rep[Boolean]) = intf.ops.toIntf(intf.ops.filter(pred))
+    def map[B:Manifest](f: Rep[A] => Rep[B])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.map(f))
+    def mmap(f: Rep[A] => Rep[A])(implicit ctx: SourceContext) = intf.ops.wrap(intf.ops.mmap(f))
+    def foreach(block: Rep[A] => Rep[Unit])(implicit ctx: SourceContext) = intf.ops.foreach(block)
+    def zip[B:Manifest,R:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.zip(y)(f))
+    def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A])(implicit ctx: SourceContext) = intf.ops.wrap(intf.ops.mzip(y)(f))
+    def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.reduce(f)
+    def filter(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.filter(pred))
     //def find(pred: Rep[A] => Rep[Boolean]) = intf.ops.vfindToIntf(intf.ops.find(pred))
-    def find(pred: Rep[A] => Rep[Boolean]) = intf.ops.toIntf(intf.ops.find(pred))
-    def count(pred: Rep[A] => Rep[Boolean]) = intf.ops.count(pred)
+    def find(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.find(pred))
+    def count(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.count(pred)
     // def flatMap[B:Manifest](f: Rep[A] => Rep[V[B]]) = intf.ops.toIntf(intf.ops.flatMap(f))
     // def partition(pred: Rep[A] => Rep[Boolean]) = { val a = intf.ops.partition(pred); (intf.ops.toIntf(a._1), intf.ops.toIntf(a._2)) }
     // def groupBy[K:Manifest](pred: Rep[A] => Rep[K]) = intf.ops.toIntf(intf.ops.groupBy(pred))
@@ -350,57 +349,57 @@ trait VectorOps extends Variables {
   def densevector_obj_flatten[A:Manifest](pieces: Rep[DenseVector[DenseVector[A]]]): Rep[DenseVector[A]]
 
   // class defs
-  def vector_slice[A:Manifest,VA:Manifest](x: Interface[Vector[A]], start: Rep[Int], end: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_contains[A:Manifest](x: Interface[Vector[A]], y: Rep[A]): Rep[Boolean]
-  def vector_distinct[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def vector_slice[A:Manifest,VA:Manifest](x: Interface[Vector[A]], start: Rep[Int], end: Rep[Int])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
+  def vector_contains[A:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit ctx: SourceContext): Rep[Boolean]
+  def vector_distinct[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
   
-  def vector_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_mutable_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_pprint[A:Manifest](x: Interface[Vector[A]]): Rep[Unit]
-  def vector_repmat[A:Manifest](x: Interface[Vector[A]], i: Rep[Int], j: Rep[Int]): Rep[Matrix[A]]
-  def vector_mkstring[A:Manifest](x: Interface[Vector[A]], sep: Rep[String]): Rep[String]  
+  def vector_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
+  def vector_mutable_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
+  def vector_pprint[A:Manifest](x: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def vector_repmat[A:Manifest](x: Interface[Vector[A]], i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext): Rep[Matrix[A]]
+  def vector_mkstring[A:Manifest](x: Interface[Vector[A]], sep: Rep[String])(implicit ctx: SourceContext): Rep[String]  
   
-  def vector_concatenate[A:Manifest,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def vector_concatenate[A:Manifest,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
   
-  def vector_plus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_plus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]): Rep[VA] 
-  def vector_plusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[Unit]
-  def vector_plusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]): Rep[Unit]   
-  def vector_minus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_minus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]): Rep[VA] 
-  def vector_minusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[Unit]
-  def vector_minusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]): Rep[Unit] 
-  def vector_times[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_times_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]): Rep[VA] 
-  def vector_timesequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[Unit]
-  def vector_timesequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]): Rep[Unit] 
+  def vector_plus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
+  def vector_plus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA] 
+  def vector_plusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def vector_plusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]   
+  def vector_minus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
+  def vector_minus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA] 
+  def vector_minusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def vector_minusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] 
+  def vector_times[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
+  def vector_times_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA] 
+  def vector_timesequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def vector_timesequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] 
   //def vector_times_matrix[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[Matrix[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_dot_product[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[A]
-  def vector_outer[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[Matrix[A]]  
-  def vector_divide[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_divide_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]): Rep[VA] 
-  def vector_divideequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[Unit]
-  def vector_divideequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]): Rep[Unit] 
+  def vector_dot_product[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]
+  def vector_outer[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Matrix[A]]  
+  def vector_divide[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
+  def vector_divide_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA] 
+  def vector_divideequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def vector_divideequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] 
   
-  def vector_sum[A:Manifest:Arith](x: Interface[Vector[A]]): Rep[A]
-  def vector_abs[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_exp[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def vector_sum[A:Manifest:Arith](x: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]
+  def vector_abs[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
+  def vector_exp[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
   
-  def vector_min[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]]): Rep[A]
-  def vector_minindex[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]]): Rep[Int]
-  def vector_max[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]]): Rep[A]
-  def vector_maxindex[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]]): Rep[Int]
-  def vector_median[A:Manifest:Ordering](x: Interface[Vector[A]]): Rep[A]  
+  def vector_min[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]
+  def vector_minindex[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Int]
+  def vector_max[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]
+  def vector_maxindex[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Int]
+  def vector_median[A:Manifest:Ordering](x: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]  
   
-  def vector_map[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Rep[A] => Rep[B])(implicit b: VectorBuilder[B,VB]): Rep[VB]
-  def vector_mmap[A:Manifest](x: Interface[Vector[A]], f: Rep[A] => Rep[A]): Rep[Unit]
-  def vector_foreach[A:Manifest](x: Interface[Vector[A]], block: Rep[A] => Rep[Unit]): Rep[Unit]
-  def vector_zipwith[A:Manifest,B:Manifest,R:Manifest,VR:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]], f: (Rep[A],Rep[B]) => Rep[R])(implicit b: VectorBuilder[R,VR]): Rep[VR]
-  def vector_mzipwith[A:Manifest,B:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]], f: (Rep[A],Rep[B]) => Rep[A]): Rep[Unit]
-  def vector_reduce[A:Manifest:Arith](x: Interface[Vector[A]], f: (Rep[A],Rep[A]) => Rep[A]): Rep[A]
-  def vector_filter[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def vector_find[A:Manifest,VFINDR:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[Int,VFINDR]): Rep[VFINDR]
-  def vector_count[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]): Rep[Int]
+  def vector_map[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Rep[A] => Rep[B])(implicit b: VectorBuilder[B,VB], ctx: SourceContext): Rep[VB]
+  def vector_mmap[A:Manifest](x: Interface[Vector[A]], f: Rep[A] => Rep[A])(implicit ctx: SourceContext): Rep[Unit]
+  def vector_foreach[A:Manifest](x: Interface[Vector[A]], block: Rep[A] => Rep[Unit])(implicit ctx: SourceContext): Rep[Unit]
+  def vector_zipwith[A:Manifest,B:Manifest,R:Manifest,VR:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]], f: (Rep[A],Rep[B]) => Rep[R])(implicit b: VectorBuilder[R,VR], ctx: SourceContext): Rep[VR]
+  def vector_mzipwith[A:Manifest,B:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]], f: (Rep[A],Rep[B]) => Rep[A])(implicit ctx: SourceContext): Rep[Unit]
+  def vector_reduce[A:Manifest:Arith](x: Interface[Vector[A]], f: (Rep[A],Rep[A]) => Rep[A])(implicit ctx: SourceContext): Rep[A]
+  def vector_filter[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
+  def vector_find[A:Manifest,VFINDR:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[Int,VFINDR], ctx: SourceContext): Rep[VFINDR]
+  def vector_count[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[Int]
   //def vector_flatmap[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Rep[A] => Rep[Vector[B]])(implicit b: VectorBuilder[B,VB]): Rep[VB]
   //def vector_partition[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[VA], Rep[VA])
   //def vector_groupby[A:Manifest,K:Manifest,VA:Manifest,VVA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[K])(implicit b: VectorBuilder[VA,VVA]): Rep[VVA]           
@@ -834,23 +833,23 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   /////////////////////
   // delite collection
     
-  def isDense[A](x: Exp[DeliteCollection[A]]) = isSubtype(x.Type.erasure,classOf[DenseVector[A]])  
-  def asDense[A](x: Exp[DeliteCollection[A]]) = x.asInstanceOf[Exp[DenseVector[A]]]
+  def isDense[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[DenseVector[A]])  
+  def asDense[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[DenseVector[A]]]
   
-  def isRange[A](x: Exp[DeliteCollection[A]]) = isSubtype(x.Type.erasure,classOf[RangeVector])  
-  def asRange[A](x: Exp[DeliteCollection[A]]) = x.asInstanceOf[Exp[RangeVector]]
+  def isRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[RangeVector])  
+  def asRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[RangeVector]]
   
-  def isView[A](x: Exp[DeliteCollection[A]]) = isSubtype(x.Type.erasure,classOf[VectorView[A]])
-  def asView[A](x: Exp[DeliteCollection[A]]) = x.asInstanceOf[Exp[VectorView[A]]]  
+  def isView[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[VectorView[A]])
+  def asView[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[VectorView[A]]]  
   
-  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = { 
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
     if (isDense(x)) asDense(x).length
     else if (isRange(x)) asRange(x).length
     else if (isView(x)) asView(x).length
     else super.dc_size(x)
   }
   
-  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = {
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
     if (isDense(x)) asDense(x).apply(n)
     else if (isRange(x)) (asRange(x).apply(n)).asInstanceOf[Exp[A]]
     else if (isView(x)) asView(x).apply(n)
@@ -861,7 +860,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     }
   }
   
-  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = {
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isDense(x)) asDense(x).update(n,y)
     else if (isRange(x)) asRange(x).update(n,y.asInstanceOf[Exp[Int]])
     else if (isView(x)) asView(x).update(n,y)
@@ -888,64 +887,64 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   /////////////////////
   // class interface
   
-  def vector_slice[A:Manifest,VA:Manifest](x: Interface[Vector[A]], start: Exp[Int], end: Exp[Int])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorSlice[A,VA](x, start, end))
-  def vector_contains[A:Manifest](x: Interface[Vector[A]], y: Exp[A]) = reflectPure(VectorContains(x,y))
-  def vector_distinct[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorDistinct[A,VA](x))
+  def vector_slice[A:Manifest,VA:Manifest](x: Interface[Vector[A]], start: Exp[Int], end: Exp[Int])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorSlice[A,VA](x, start, end))
+  def vector_contains[A:Manifest](x: Interface[Vector[A]], y: Exp[A])(implicit ctx: SourceContext) = reflectPure(VectorContains(x,y))
+  def vector_distinct[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorDistinct[A,VA](x))
   
-  def vector_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorClone[A,VA](x))
-  def vector_mutable_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectMutable(VectorClone[A,VA](x))
-  def vector_pprint[A:Manifest](x: Interface[Vector[A]]) = reflectEffect(VectorPPrint(x)(reifyEffectsHere(vector_pprint_impl[A](x))))  
-  def vector_repmat[A:Manifest](x: Interface[Vector[A]], i: Rep[Int], j: Rep[Int]) = reflectPure(VectorRepmat(x,i,j))
-  def vector_mkstring[A:Manifest](x: Interface[Vector[A]], sep: Rep[String]) = reflectPure(VectorMkString(x,sep))
+  def vector_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorClone[A,VA](x))
+  def vector_mutable_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectMutable(VectorClone[A,VA](x))
+  def vector_pprint[A:Manifest](x: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectEffect(VectorPPrint(x)(reifyEffectsHere(vector_pprint_impl[A](x))))  
+  def vector_repmat[A:Manifest](x: Interface[Vector[A]], i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = reflectPure(VectorRepmat(x,i,j))
+  def vector_mkstring[A:Manifest](x: Interface[Vector[A]], sep: Rep[String])(implicit ctx: SourceContext) = reflectPure(VectorMkString(x,sep))
   
-  def vector_concatenate[A:Manifest,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorConcatenate[A,VA](x,y))
+  def vector_concatenate[A:Manifest,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorConcatenate[A,VA](x,y))
   
-  def vector_plus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorPlus[A,VA](x,y))
-  def vector_plus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorPlusScalar[A,VA](x,y))
-  def vector_plusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectWrite(x.ops.elem)(VectorPlusEquals(x,y))
-  def vector_plusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]) = reflectWrite(x.ops.elem)(VectorPlusEqualsScalar(x,y))
-  def vector_minus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorMinus[A,VA](x,y))
-  def vector_minus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorMinusScalar[A,VA](x,y))
-  def vector_minusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectWrite(x.ops.elem)(VectorMinusEquals(x,y))
-  def vector_minusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]) = reflectWrite(x.ops.elem)(VectorMinusEqualsScalar(x,y))  
-  def vector_times[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorTimes[A,VA](x,y))
-  def vector_times_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorTimesScalar[A,VA](x,y))
-  def vector_timesequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectWrite(x.ops.elem)(VectorTimesEquals(x,y))
-  def vector_timesequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]) = reflectWrite(x.ops.elem)(VectorTimesEqualsScalar(x,y))  
+  def vector_plus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorPlus[A,VA](x,y))
+  def vector_plus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorPlusScalar[A,VA](x,y))
+  def vector_plusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorPlusEquals(x,y))
+  def vector_plusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorPlusEqualsScalar(x,y))
+  def vector_minus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorMinus[A,VA](x,y))
+  def vector_minus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorMinusScalar[A,VA](x,y))
+  def vector_minusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorMinusEquals(x,y))
+  def vector_minusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorMinusEqualsScalar(x,y))  
+  def vector_times[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorTimes[A,VA](x,y))
+  def vector_times_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorTimesScalar[A,VA](x,y))
+  def vector_timesequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorTimesEquals(x,y))
+  def vector_timesequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorTimesEqualsScalar(x,y))  
   //def vector_times_matrix[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Exp[Matrix[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorTimesMatrix[A,VA](x,y))
-  def vector_dot_product[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectPure(VectorDotProduct(x,y))
-  def vector_outer[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectPure(VectorOuter(x,y))
-  def vector_divide[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorDivide[A,VA](x,y))
-  def vector_divide_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorDivideScalar[A,VA](x,y))
-  def vector_divideequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectWrite(x.ops.elem)(VectorDivideEquals(x,y))
-  def vector_divideequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]) = reflectWrite(x.ops.elem)(VectorDivideEqualsScalar(x,y))  
+  def vector_dot_product[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorDotProduct(x,y))
+  def vector_outer[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorOuter(x,y))
+  def vector_divide[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorDivide[A,VA](x,y))
+  def vector_divide_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorDivideScalar[A,VA](x,y))
+  def vector_divideequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorDivideEquals(x,y))
+  def vector_divideequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorDivideEqualsScalar(x,y))  
 
-  def vector_sum[A:Manifest:Arith](x: Interface[Vector[A]]) = reflectPure(VectorSum(x))
-  def vector_abs[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorAbs[A,VA](x))
-  def vector_exp[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorExp[A,VA](x))
+  def vector_sum[A:Manifest:Arith](x: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorSum(x))
+  def vector_abs[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorAbs[A,VA](x))
+  def vector_exp[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorExp[A,VA](x))
   
-  def vector_min[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]]) = reflectPure(VectorMin(x))
-  def vector_minindex[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]]) = reflectPure(VectorMinIndex(x))
-  def vector_max[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]]) = reflectPure(VectorMax(x))
-  def vector_maxindex[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]]) = reflectPure(VectorMaxIndex(x))
-  def vector_median[A:Manifest:Ordering](x: Interface[Vector[A]]) = reflectPure(VectorMedian(x))
+  def vector_min[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorMin(x))
+  def vector_minindex[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorMinIndex(x))
+  def vector_max[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorMax(x))
+  def vector_maxindex[A:Manifest:Ordering:HasMinMax](x: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorMaxIndex(x))
+  def vector_median[A:Manifest:Ordering](x: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorMedian(x))
   
-  def vector_map[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[B])(implicit b: VectorBuilder[B,VB]) = reflectPure(VectorMap[A,B,VB](x,f)) // TODO: effect if func effectful!
-  def vector_mmap[A:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[A]) = reflectWrite(x.ops.elem)(VectorMutableMap(x,f)) // TODO: effect if func effectful!
-  def vector_foreach[A:Manifest](x: Interface[Vector[A]], block: Exp[A] => Exp[Unit]) = {
+  def vector_map[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[B])(implicit b: VectorBuilder[B,VB], ctx: SourceContext) = reflectPure(VectorMap[A,B,VB](x,f)) // TODO: effect if func effectful!
+  def vector_mmap[A:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[A])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorMutableMap(x,f)) // TODO: effect if func effectful!
+  def vector_foreach[A:Manifest](x: Interface[Vector[A]], block: Exp[A] => Exp[Unit])(implicit ctx: SourceContext) = {
     val vf = VectorForeach(x, block) //reflectEffect(VectorForeach(x, block)) 
     reflectEffect(vf, summarizeEffects(vf.body.asInstanceOf[DeliteForeachElem[A]].func).star)
   }
-  def vector_zipwith[A:Manifest,B:Manifest,R:Manifest,VR:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]], f: (Exp[A],Exp[B]) => Exp[R])(implicit b: VectorBuilder[R,VR]) = {
+  def vector_zipwith[A:Manifest,B:Manifest,R:Manifest,VR:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]], f: (Exp[A],Exp[B]) => Exp[R])(implicit b: VectorBuilder[R,VR], ctx: SourceContext) = {
     reflectPure(VectorZipWith[A,B,R,VR](x,y,f))
   }
-  def vector_mzipwith[A:Manifest,B:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]], f: (Exp[A],Exp[B]) => Exp[A]) = {
+  def vector_mzipwith[A:Manifest,B:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]], f: (Exp[A],Exp[B]) => Exp[A])(implicit ctx: SourceContext) = {
     reflectWrite(x.ops.elem)(VectorMutableZipWith(x,y,f))
   }
-  def vector_reduce[A:Manifest:Arith](x: Interface[Vector[A]], f: (Exp[A],Exp[A]) => Exp[A]) = reflectPure(VectorReduce(x, f))
-  def vector_filter[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorFilter[A,VA](x, pred))
-  def vector_find[A:Manifest,VFINDR:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[Int,VFINDR]) = reflectPure(VectorFind[A,VFINDR](x, pred))
-  def vector_count[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean]) = reflectPure(VectorCount(x, pred))
+  def vector_reduce[A:Manifest:Arith](x: Interface[Vector[A]], f: (Exp[A],Exp[A]) => Exp[A])(implicit ctx: SourceContext) = reflectPure(VectorReduce(x, f))
+  def vector_filter[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorFilter[A,VA](x, pred))
+  def vector_find[A:Manifest,VFINDR:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[Int,VFINDR], ctx: SourceContext) = reflectPure(VectorFind[A,VFINDR](x, pred))
+  def vector_count[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(VectorCount(x, pred))
   //def vector_flatmap[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[Vector[B]])(implicit b: VectorBuilder[B,VB]) = reflectPure(VectorFlatMap(x, f))
   //def vector_partition[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean]) = t2(reflectPure(VectorPartition(x, pred)))
   //def vector_groupby[A:Manifest,K:Manifest,VA:Manifest,VVA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[K])(implicit b: VectorBuilder[VA,VVA]) = reflectPure(VectorGroupBy(x, pred))

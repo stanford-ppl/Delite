@@ -35,7 +35,7 @@ trait LanguageOps extends Base { this: OptiLA =>
   }
 
   // public version for application use
-  def random[A](implicit mA: Manifest[A]): Rep[A] =
+  def random[A](implicit mA: Manifest[A], ctx: SourceContext): Rep[A] =
     mA match {
       case Manifest.Double => optila_rand_double.asInstanceOfL[A]
       case Manifest.Float => optila_rand_float.asInstanceOfL[A]
@@ -45,16 +45,16 @@ trait LanguageOps extends Base { this: OptiLA =>
       case _ => throw new UnsupportedOperationException()
   }
 
-  def random(max: Rep[Int]): Rep[Int] = optila_rand_int_max(max)
+  def random(max: Rep[Int])(implicit ctx: SourceContext): Rep[Int] = optila_rand_int_max(max)
 
-  def randomGaussian = optila_rand_gaussian
+  def randomGaussian(implicit ctx: SourceContext) = optila_rand_gaussian
 
-  def reseed {
+  def reseed(implicit ctx: SourceContext) {
     // reseeds for all threads
     optila_reseed()
   }
   
-  def identityHashCode(x:Rep[Any]): Rep[Int]
+  def identityHashCode(x:Rep[Any])(implicit ctx: SourceContext): Rep[Int]
 
   def optila_internal_rand_double(): Rep[Double]
   def optila_internal_rand_float(): Rep[Float]
@@ -62,15 +62,15 @@ trait LanguageOps extends Base { this: OptiLA =>
   def optila_internal_rand_long(): Rep[Long]
   def optila_internal_rand_boolean(): Rep[Boolean]
 
-  def optila_rand_double(): Rep[Double]
-  def optila_rand_float(): Rep[Float]
-  def optila_rand_int(): Rep[Int]
-  def optila_rand_int_max(max: Rep[Int]): Rep[Int]
-  def optila_rand_long(): Rep[Long]
-  def optila_rand_boolean(): Rep[Boolean]
-  def optila_rand_gaussian(): Rep[Double]
+  def optila_rand_double()(implicit ctx: SourceContext): Rep[Double]
+  def optila_rand_float()(implicit ctx: SourceContext): Rep[Float]
+  def optila_rand_int()(implicit ctx: SourceContext): Rep[Int]
+  def optila_rand_int_max(max: Rep[Int])(implicit ctx: SourceContext): Rep[Int]
+  def optila_rand_long()(implicit ctx: SourceContext): Rep[Long]
+  def optila_rand_boolean()(implicit ctx: SourceContext): Rep[Boolean]
+  def optila_rand_gaussian()(implicit ctx: SourceContext): Rep[Double]
 
-  def optila_reseed(): Rep[Unit]
+  def optila_reseed()(implicit ctx: SourceContext): Rep[Unit]
 
   /**
    * range 
@@ -79,30 +79,30 @@ trait LanguageOps extends Base { this: OptiLA =>
   implicit def repIntToRangeOp(i: Rep[Int]) = new RangeOp(i)
 
   class RangeOp(val _end : Rep[Int]) {
-    def ::(_start : Rep[Int]) = Vector.range(_start, _end)
+    def ::(_start : Rep[Int])(implicit ctx: SourceContext) = Vector.range(_start, _end)
   }
   
   /**
    * sum
    */
-  def sum[A:Manifest:Arith:Cloneable](vals: Interface[Vector[A]]) = vals.sum
-  def sum[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], c: Cloneable[A], o: Overloaded1) = repMatToMatOps(vals).sum
+  def sum[A:Manifest:Arith:Cloneable](vals: Interface[Vector[A]])(implicit ctx: SourceContext) = vals.sum
+  def sum[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], c: Cloneable[A], o: Overloaded1, ctx: SourceContext) = repMatToMatOps(vals).sum
     
   /**
    * min
    */
-  def min[A:Manifest:Ordering:HasMinMax](vals: Interface[Vector[A]]) = vals.min
-  def min[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], mx: HasMinMax[A], o: Overloaded1) = repMatToMatOps(vals).min
+  def min[A:Manifest:Ordering:HasMinMax](vals: Interface[Vector[A]])(implicit ctx: SourceContext) = vals.min
+  def min[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], mx: HasMinMax[A], o: Overloaded1, ctx: SourceContext) = repMatToMatOps(vals).min
   //def min[A:Manifest:Ordering:HasMinMax](vals: A*) = repVecToVecOps(Vector(vals: _*)).min
-  def min[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*) = repToDenseVecOps(DenseVector(vals: _*)).min
+  def min[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*)(implicit ctx: SourceContext) = repToDenseVecOps(DenseVector(vals: _*)).min
 
   /**
    * max
    */
-  def max[A:Manifest:Ordering:HasMinMax](vals: Interface[Vector[A]]) = vals.max
-  def max[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], mx: HasMinMax[A], o: Overloaded1) = repMatToMatOps(vals).max
+  def max[A:Manifest:Ordering:HasMinMax](vals: Interface[Vector[A]])(implicit ctx: SourceContext) = vals.max
+  def max[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], ord: Ordering[A], mx: HasMinMax[A], o: Overloaded1, ctx: SourceContext) = repMatToMatOps(vals).max
   //def max[A:Manifest:Ordering:HasMinMax](vals: A*) = repVecToVecOps(Vector(vals: _*)).max
-  def max[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*) = repToDenseVecOps(DenseVector(vals: _*)).max
+  def max[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*)(implicit ctx: SourceContext) = repToDenseVecOps(DenseVector(vals: _*)).max
 
 
   /**
@@ -115,25 +115,25 @@ trait LanguageOps extends Base { this: OptiLA =>
    * abs
    */
   // TODO: sbt fails without the explicit invocation of arithToArithOps, but IDEA compiles. wtf?
-  def abs[A:Manifest:Arith](elem: Rep[A]) = repArithToArithOps(elem).abs
+  def abs[A:Manifest:Arith](elem: Rep[A])(implicit ctx: SourceContext) = repArithToArithOps(elem).abs
   //def abs[A](vals: Rep[Vector[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = vals.abs
   //def abs[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded2) = vals.abs
 
   /**
    * sqrt 
    */
-  def sqrt(e: Rep[Double]) = Math.sqrt(e)
+  def sqrt(e: Rep[Double])(implicit ctx: SourceContext) = Math.sqrt(e)
 
 
   /**
    *  i/o
    */  
-  def readMatrix(filename: Rep[String], delim: Rep[String] = unit("\\\\s+")) = LAInputReader.read(filename, delim)
-  def readVector(filename: Rep[String]) = LAInputReader.readVector(filename)
+  def readMatrix(filename: Rep[String], delim: Rep[String] = unit("\\\\s+"))(implicit ctx: SourceContext) = LAInputReader.read(filename, delim)
+  def readVector(filename: Rep[String])(implicit ctx: SourceContext) = LAInputReader.readVector(filename)
 
-  def writeMatrix[A](x: Rep[Matrix[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double])
+  def writeMatrix[A](x: Rep[Matrix[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double], ctx: SourceContext)
     = LAOutputWriter.write(x, filename)
-  def writeVector[A](x: Interface[Vector[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double])
+  def writeVector[A](x: Interface[Vector[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double], ctx: SourceContext)
     = LAOutputWriter.writeVector(x, filename)
 
   /**
@@ -148,17 +148,17 @@ trait LanguageOps extends Base { this: OptiLA =>
   implicit val matDiff: (Rep[Matrix[Double]], Rep[Matrix[Double]]) => Rep[Double] = (m1,m2) => dist(m1,m2)
 
   // in 2.9, multiple overloaded values cannot all define default arguments
-  def dist[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = optila_vector_dist_abs(v1,v2)
-  def dist[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]], metric: DistanceMetric) = metric match {
+  def dist[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext) = optila_vector_dist_abs(v1,v2)
+  def dist[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]], metric: DistanceMetric)(implicit ctx: SourceContext) = metric match {
     case ABS => optila_vector_dist_abs(v1,v2)
     case EUC => optila_vector_dist_euc(v1,v2)
     case SQUARE => optila_vector_dist_square(v1,v2)
     case _ => throw new IllegalArgumentException("Unknown distance metric selected")
   }
 
-  def dist[A](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = optila_matrix_dist_abs(m1,m2)
+  def dist[A](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded1, ctx: SourceContext) = optila_matrix_dist_abs(m1,m2)
   def dist[A](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]], metric: DistanceMetric)
-             (implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = metric match {
+             (implicit mA: Manifest[A], a: Arith[A], o: Overloaded1, ctx: SourceContext) = metric match {
 
     case ABS => optila_matrix_dist_abs(m1,m2)
     case EUC => optila_matrix_dist_euc(m1,m2)
@@ -166,12 +166,12 @@ trait LanguageOps extends Base { this: OptiLA =>
     case _ => throw new IllegalArgumentException("Unknown distance metric selected")
   }
 
-  def optila_vector_dist_abs[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
-  def optila_vector_dist_euc[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
-  def optila_vector_dist_square[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
-  def optila_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
-  def optila_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
-  def optila_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
+  def optila_vector_dist_abs[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]
+  def optila_vector_dist_euc[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]
+  def optila_vector_dist_square[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]
+  def optila_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])(implicit ctx: SourceContext): Rep[A]
+  def optila_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])(implicit ctx: SourceContext): Rep[A]
+  def optila_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])(implicit ctx: SourceContext): Rep[A]
 
 
   /**
@@ -182,26 +182,26 @@ trait LanguageOps extends Base { this: OptiLA =>
   object RANDOM extends SampleMethod
 
   // sampling of input to reduce data size
-  def sample[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean] = unit(true), method: SampleMethod = RANDOM): Rep[Matrix[A]] = {
+  def sample[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean] = unit(true), method: SampleMethod = RANDOM)(implicit ctx: SourceContext): Rep[Matrix[A]] = {
     method match {
       case RANDOM => optila_randsample_matrix(m, numSamples, sampleRows)
       case _ => throw new UnsupportedOperationException("unknown sampling type selected")
     }
   }
 
-  def sample[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA] = {
+  def sample[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA] = {
     optila_randsample_vector[A,VA](v, numSamples)
   }
   
-  def sample[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int], method: SampleMethod)(implicit b: VectorBuilder[A,VA]): Rep[VA] = {
+  def sample[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int], method: SampleMethod)(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA] = {
     method match {
       case RANDOM => optila_randsample_vector[A,VA](v, numSamples)
       case _ => throw new UnsupportedOperationException("unknown sampling type selected")
     }
   }
 
-  def optila_randsample_matrix[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean]): Rep[Matrix[A]]
-  def optila_randsample_vector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def optila_randsample_matrix[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit ctx: SourceContext): Rep[Matrix[A]]
+  def optila_randsample_vector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
   
  
   /**
@@ -215,11 +215,11 @@ trait LanguageOps extends Base { this: OptiLA =>
    *   Profiling
    */
   // lightweight profiling, matlab style
-  def tic(deps: Rep[Any]*) = profile_start(deps)
-  def toc(deps: Rep[Any]*) = profile_stop(deps)
+  def tic(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_start(deps)
+  def toc(deps: Rep[Any]*)(implicit ctx: SourceContext) = profile_stop(deps)
 
-  def profile_start(deps: Seq[Rep[Any]]): Rep[Unit]
-  def profile_stop(deps: Seq[Rep[Any]]): Rep[Unit]
+  def profile_start(deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
+  def profile_stop(deps: Seq[Rep[Any]])(implicit ctx: SourceContext): Rep[Unit]
 }
 
 trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
@@ -254,17 +254,17 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def optila_internal_rand_long() = reflectEffect(InternalRandLong())
   def optila_internal_rand_boolean() = reflectEffect(InternalRandBoolean())
 
-  def optila_rand_double() = reflectEffect(RandDouble())
-  def optila_rand_float() = reflectEffect(RandFloat())
-  def optila_rand_int() = reflectEffect(RandInt())
-  def optila_rand_int_max(max: Exp[Int]) = reflectEffect(RandIntMax(max))
-  def optila_rand_long() = reflectEffect(RandLong())
-  def optila_rand_boolean() = reflectEffect(RandBoolean())
-  def optila_rand_gaussian() = reflectEffect(RandGaussian())
+  def optila_rand_double()(implicit ctx: SourceContext) = reflectEffect(RandDouble())
+  def optila_rand_float()(implicit ctx: SourceContext) = reflectEffect(RandFloat())
+  def optila_rand_int()(implicit ctx: SourceContext) = reflectEffect(RandInt())
+  def optila_rand_int_max(max: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(RandIntMax(max))
+  def optila_rand_long()(implicit ctx: SourceContext) = reflectEffect(RandLong())
+  def optila_rand_boolean()(implicit ctx: SourceContext) = reflectEffect(RandBoolean())
+  def optila_rand_gaussian()(implicit ctx: SourceContext) = reflectEffect(RandGaussian())
 
-  def optila_reseed() = reflectEffect(RandReseed())
+  def optila_reseed()(implicit ctx: SourceContext) = reflectEffect(RandReseed())
   
-  def identityHashCode(x:Exp[Any]) = reflectPure(IdentityHashCode(x))
+  def identityHashCode(x:Exp[Any])(implicit ctx: SourceContext) = reflectPure(IdentityHashCode(x))
 
 
   /**
@@ -311,12 +311,12 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
       def a = implicitly[Arith[A]]
     }
 
-  def optila_vector_dist_abs[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = reflectPure(VectorDistanceAbs(v1,v2))
-  def optila_vector_dist_euc[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = reflectPure(VectorDistanceEuc(v1,v2))
-  def optila_vector_dist_square[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = reflectPure(VectorDistanceSquare(v1,v2))
-  def optila_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceAbs(m1,m2))
-  def optila_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceEuc(m1,m2))
-  def optila_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = reflectPure(MatrixDistanceSquare(m1,m2))
+  def optila_vector_dist_abs[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorDistanceAbs(v1,v2))
+  def optila_vector_dist_euc[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorDistanceEuc(v1,v2))
+  def optila_vector_dist_square[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(VectorDistanceSquare(v1,v2))
+  def optila_matrix_dist_abs[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])(implicit ctx: SourceContext) = reflectPure(MatrixDistanceAbs(m1,m2))
+  def optila_matrix_dist_euc[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])(implicit ctx: SourceContext) = reflectPure(MatrixDistanceEuc(m1,m2))
+  def optila_matrix_dist_square[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]])(implicit ctx: SourceContext) = reflectPure(MatrixDistanceSquare(m1,m2))
 
 
   /**
@@ -329,11 +329,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class RandSampleVector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Exp[Int])(implicit b: VectorBuilder[A,VA])
     extends DeliteOpSingleTask[VA](reifyEffects(optila_randsample_vector_impl[A,VA](v, numSamples)))
   
-  def optila_randsample_matrix[A:Manifest](m: Exp[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean]): Exp[Matrix[A]] = {
+  def optila_randsample_matrix[A:Manifest](m: Exp[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean])(implicit ctx: SourceContext): Exp[Matrix[A]] = {
     reflectPure(RandSampleMatrix(m, numSamples, sampleRows))
   }
 
-  def optila_randsample_vector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Exp[Int])(implicit b: VectorBuilder[A,VA]) = {
+  def optila_randsample_vector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Exp[Int])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = {
     reflectPure(RandSampleVector[A,VA](v, numSamples))
   }
 
@@ -344,8 +344,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class ProfileStart(deps: List[Exp[Any]]) extends Def[Unit]
   case class ProfileStop(deps: List[Exp[Any]]) extends Def[Unit]
 
-  def profile_start(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStart(deps.toList))
-  def profile_stop(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStop(deps.toList))
+  def profile_start(deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(ProfileStart(deps.toList))
+  def profile_stop(deps: Seq[Exp[Any]])(implicit ctx: SourceContext) = reflectEffect(ProfileStop(deps.toList))
   
   
   /**

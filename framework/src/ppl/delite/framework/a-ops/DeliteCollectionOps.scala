@@ -9,9 +9,9 @@ import scala.reflect.SourceContext
 trait DeliteCollectionOps extends Base {
     
   trait DCInterfaceOps[+T,A] extends InterfaceOps[T] {
-    def dcSize: Rep[Int] 
-    def dcApply(n: Rep[Int]): Rep[A] 
-    def dcUpdate(n: Rep[Int], y: Rep[A]): Rep[Unit]
+    def dcSize(implicit ctx: SourceContext): Rep[Int] 
+    def dcApply(n: Rep[Int])(implicit ctx: SourceContext): Rep[A] 
+    def dcUpdate(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
   }
 
   trait DCInterface[+T,A] extends Interface[T] {
@@ -22,9 +22,9 @@ trait DeliteCollectionOps extends Base {
   
   // unlike before, don't assume that we know how to generate dcSize,dcApply,dcUpdate at run-time
   class DeliteCollectionInterfaceOps[A:Manifest](val intf: DCInterface[DeliteCollection[A],A]) {
-    def dcSize = intf.ops.dcSize
-    def dcApply(n: Rep[Int]) = intf.ops.dcApply(n) 
-    def dcUpdate(n: Rep[Int], y: Rep[A]) = intf.ops.dcUpdate(n,y)
+    def dcSize(implicit ctx: SourceContext) = intf.ops.dcSize
+    def dcApply(n: Rep[Int])(implicit ctx: SourceContext) = intf.ops.dcApply(n) 
+    def dcUpdate(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.dcUpdate(n,y)
   }
   
   // TODO -- AKS OLD: remove after refactor is complete

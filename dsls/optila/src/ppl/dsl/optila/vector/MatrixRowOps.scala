@@ -5,6 +5,7 @@ import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase, CudaGenBase, CGenBase, OpenCLGenBase}
 import scala.virtualization.lms.internal.GenericCodegen
+import scala.reflect.SourceContext
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optila.{MatrixRow}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
@@ -28,7 +29,7 @@ trait MatrixRowOpsExp extends MatrixRowOps with BaseExp { this: OptiLAExp =>
   // implemented via method on real data structure
   case class MatrixRowIndex[A:Manifest](x: Exp[MatrixRow[A]]) extends Def[Int]
 
-  def matrixrow_index[A:Manifest](x: Exp[MatrixRow[A]]) = reflectPure(MatrixRowIndex(x))
+  def matrixrow_index[A:Manifest](x: Exp[MatrixRow[A]])(implicit ctx: SourceContext) = reflectPure(MatrixRowIndex(x))
 }
 
 trait MatrixRowOpsExpOpt extends MatrixRowOpsExp { this: OptiLAExp =>
