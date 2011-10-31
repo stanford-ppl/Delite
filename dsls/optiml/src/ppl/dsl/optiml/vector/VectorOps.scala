@@ -10,7 +10,7 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import ppl.dsl.optiml.{OptiMLExp, OptiMLExpOpt, OptiML}
 
 trait VectorOps extends DSLType with Variables {
   this: OptiML =>
@@ -931,7 +931,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
 // have to extend DeliteCollectionOps to override dc_apply...
 trait VectorOpsExpOpt extends VectorOpsExp with DeliteCollectionOpsExp {
-  this: VectorImplOps with OptiMLExp =>
+  this: VectorImplOps with OptiMLExpOpt =>
 
   override def vector_equals[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
     case (a,b) if (a == b) => unit(true) // same symbol

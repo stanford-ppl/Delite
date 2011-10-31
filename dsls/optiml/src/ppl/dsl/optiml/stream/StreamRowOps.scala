@@ -6,7 +6,7 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml.datastruct.scala.{StreamRow, StreamRowImpl}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import ppl.dsl.optiml.{OptiMLExp, OptiMLExpOpt, OptiML}
 
 trait StreamRowOps extends DSLType with Base with OverloadHack { this: OptiML =>
 
@@ -24,7 +24,7 @@ trait StreamRowOpsExp extends StreamRowOps with BaseExp { this: OptiMLExp =>
   def streamrow_index[A:Manifest](x: Exp[StreamRow[A]]) = reflectPure(StreamRowIndex(x))
 }
 
-trait StreamRowOpsExpOpt extends StreamRowOpsExp { this: OptiMLExp =>
+trait StreamRowOpsExpOpt extends StreamRowOpsExp { this: OptiMLExpOpt =>
 
   override def streamrow_index[A:Manifest](x: Exp[StreamRow[A]]) = x match {
     case Def(StreamChunkRow(Def(/*Reflect(*/StreamObjectNew(numRows,numCols,chunkSize,func,isPure)/*,_,_)*/), i, offset)) => offset*chunkSize + i

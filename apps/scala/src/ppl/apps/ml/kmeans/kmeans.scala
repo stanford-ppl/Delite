@@ -4,6 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
+object kmeansRunnerNCNR extends OptiMLApplicationRunnerBase with OptiMLNoCSE with OptiMLExp with kmeansApp
+object kmeansRunnerNC extends OptiMLApplicationRunner with OptiMLNoCSE with kmeansApp
+object kmeansRunnerNR extends OptiMLApplicationRunnerBase with OptiMLExp with kmeansApp
 object kmeansRunner extends OptiMLApplicationRunner with kmeansApp
 
 trait kmeansApp extends OptiMLApplication {
