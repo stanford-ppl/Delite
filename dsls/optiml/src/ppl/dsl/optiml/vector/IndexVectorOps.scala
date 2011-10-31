@@ -53,10 +53,10 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
   implicit def interfaceToIndexVecOps(intf: Interface[IndexVector]): InterfaceIndexVecOpsCls = new InterfaceIndexVecOpsCls(intf.asInstanceOf[IVInterface])
   
   class InterfaceIndexVecOpsCls(override val intf: IVInterface) extends InterfaceVecOpsCls[Int](intf) {
-    def apply[A:Manifest](block: Rep[Int] => Rep[A]) = intf.ops.apply(block)    
+    def apply[A:Manifest](block: Rep[Int] => Rep[A])(implicit ctx: SourceContext) = intf.ops.apply(block)    
     
     // this is unfortunately required to get the static return type right... TODO: any solution?
-    override def slice(start: Rep[Int], end: Rep[Int]) = intf.ops.toIntf(intf.ops.slice(start,end))
+    override def slice(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.slice(start,end))
   }
   
   // impl defs

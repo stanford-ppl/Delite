@@ -7,6 +7,7 @@ import ppl.delite.framework.ops.{DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.util.OverloadHack
+import scala.reflect.SourceContext
 import java.io.PrintWriter
 
 trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
@@ -30,50 +31,50 @@ trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
     def wrap(x: Rep[IndexVectorDense]) = indexVecDenseToInterface(x)
           
     // VectorOps
-    def length = indexvectordense_length(elem)
-    def apply(n: Rep[Int]) = indexvectordense_apply(elem,n)
+    def length(implicit ctx: SourceContext) = indexvectordense_length(elem)
+    def apply(n: Rep[Int])(implicit ctx: SourceContext) = indexvectordense_apply(elem,n)
     
-    def isRow = throw new UnsupportedOperationException("tbd") 
-    def sort(implicit o: Ordering[Int]) = throw new UnsupportedOperationException("tbd")     
-    def t = throw new UnsupportedOperationException("tbd") 
-    def mt() = throw new UnsupportedOperationException("tbd")    
-    def update(n: Rep[Int], y: Rep[Int]): Rep[Unit] = throw new UnsupportedOperationException("tbd")
-    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("tbd")
-    def insert(pos: Rep[Int], y: Rep[Int]) = throw new UnsupportedOperationException("tbd")
-    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("tbd")
-    def removeAll(pos: Rep[Int], len: Rep[Int]) = throw new UnsupportedOperationException("tbd")
-    def trim() = throw new UnsupportedOperationException("tbd")
-    def clear() = throw new UnsupportedOperationException("tbd")        
+    def isRow(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd") 
+    def sort(implicit o: Ordering[Int], ctx: SourceContext) = throw new UnsupportedOperationException("tbd")     
+    def t(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd") 
+    def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")    
+    def update(n: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = throw new UnsupportedOperationException("tbd")
+    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
+    def insert(pos: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
+    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
+    def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
+    def trim()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
+    def clear()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")        
   }   
   
-  def indexvectordense_length(x: Rep[IndexVectorDense]): Rep[Int]
-  def indexvectordense_apply(x: Rep[IndexVectorDense], n: Rep[Int]): Rep[Int]
+  def indexvectordense_length(x: Rep[IndexVectorDense])(implicit ctx: SourceContext): Rep[Int]
+  def indexvectordense_apply(x: Rep[IndexVectorDense], n: Rep[Int])(implicit ctx: SourceContext): Rep[Int]
 }
 
 trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOpsExp with VariablesExp with BaseFatExp { this: OptiMLExp => 
   case class IndexVectorDenseLength(x: Exp[IndexVectorDense]) extends Def[Int]
   case class IndexVectorDenseApply(x: Exp[IndexVectorDense], n: Exp[Int]) extends Def[Int]
     
-  def indexvectordense_length(x: Exp[IndexVectorDense]) = reflectPure(IndexVectorDenseLength(x))
-  def indexvectordense_apply(x: Exp[IndexVectorDense], n: Exp[Int]) = reflectPure(IndexVectorDenseApply(x,n))
+  def indexvectordense_length(x: Exp[IndexVectorDense])(implicit ctx: SourceContext) = reflectPure(IndexVectorDenseLength(x))
+  def indexvectordense_apply(x: Exp[IndexVectorDense], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(IndexVectorDenseApply(x,n))
     
   /////////////////////
   // delite collection
   
-  def isIndexDense[A](x: Exp[DeliteCollection[A]]) = x.Type.erasure == classOf[IndexVectorDense]  
-  def asIndexDense[A](x: Exp[DeliteCollection[A]]) = x.asInstanceOf[Exp[IndexVectorDense]]
+  def isIndexDense[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.Type.erasure == classOf[IndexVectorDense]  
+  def asIndexDense[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[IndexVectorDense]]
     
-  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = { 
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
     if (isIndexDense(x)) asIndexDense(x).length
     else super.dc_size(x)
   }
   
-  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = {
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
     if (isIndexDense(x)) (asIndexDense(x).apply(n)).asInstanceOf[Exp[A]]
     else super.dc_apply(x,n)    
   }
   
-  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = {
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isIndexDense(x)) asIndexDense(x).update(n,y.asInstanceOf[Exp[Int]])
     else super.dc_update(x,n,y)        
   }  
@@ -81,7 +82,7 @@ trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOp
 
 trait IndexVectorDenseOpsExpOpt extends IndexVectorDenseOpsExp { this: OptiMLExp => 
   
-  override def indexvectordense_length(x: Rep[IndexVectorDense]) = x match {
+  override def indexvectordense_length(x: Rep[IndexVectorDense])(implicit ctx: SourceContext) = x match {
     case Def(IndexVectorDenseNew(l)) => l
     case Def(v@Reflect(IndexVectorDenseNew(l), u, es)) if context.contains(v) => l
     case Def(IndexVectorObjectFromVec(xs)) => xs.length
@@ -90,7 +91,7 @@ trait IndexVectorDenseOpsExpOpt extends IndexVectorDenseOpsExp { this: OptiMLExp
   }
 
 
-  override def indexvectordense_apply(x: Rep[IndexVectorDense], n: Rep[Int]) = x match {
+  override def indexvectordense_apply(x: Rep[IndexVectorDense], n: Rep[Int])(implicit ctx: SourceContext) = x match {
     case Def(IndexVectorObjectFromVec(xs)) => xs(n)
     case Def(v@Reflect(IndexVectorObjectFromVec(xs), u, es)) if context.contains(v) => xs(n)    
     case _ => super.indexvectordense_apply(x,n)

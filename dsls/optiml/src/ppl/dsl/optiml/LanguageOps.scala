@@ -496,7 +496,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
       for (i <- 0 until x.numSamples) {
         for (j <- 0 until x.numFeatures ) {
-          theta(j) = theta(j) + alpha*(y(i) - hyp(x(i)))*x(i)(j)          
+          val tmp = x(i)
+          theta(j) = theta(j) + alpha*(y(i) - hyp(x(i)))*tmp(j)          
         }
       }
       theta
@@ -511,7 +512,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
       for (j <- 0 until x.numFeatures) {
         val acc = sum(0, x.numSamples) { i =>
-          (y(i) - hyp(x(i))*x(i)(j))   // parallel work
+          val tmp = x(i)
+          (y(i) - hyp(x(i))*tmp(j))   // parallel work
         }
         theta(j) = theta(j) + alpha*acc
       }
