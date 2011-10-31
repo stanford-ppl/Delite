@@ -3,10 +3,9 @@ package ppl.dsl.optiml
 import datastruct.scala._
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
-import reflect.Manifest
+import reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.internal.GenericFatCodegen
 import scala.virtualization.lms.common._
-import scala.reflect.SourceContext
 
 /* Machinery provided by OptiML itself (language features and control structures).
  *
@@ -29,27 +28,27 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   //     optiml_aggregate(start, end, block)
   //   }
   
-  def aggregateIf[A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A]): Rep[DenseVector[A]] = {
+  def aggregateIf[A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]] = {
     optiml_aggregateif(start, end, cond, block)
   }  
 
   // 2D aggregate
   def aggregate[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector])
-                           (block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]] = {
+                           (block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]] = {
     optiml_aggregate2d(rows, cols, block)
   }
   
   def aggregateIf[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector])
-                             (cond: (Rep[Int], Rep[Int]) => Rep[Boolean])(block: (Rep[Int], Rep[Int]) => Rep[A]) = {
+                             (cond: (Rep[Int], Rep[Int]) => Rep[Boolean])(block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext) = {
     optiml_aggregate2dif(rows, cols, cond, block)
   }
   
 
-  def optiml_aggregateif[A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A]): Rep[DenseVector[A]]
+  def optiml_aggregateif[A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]]
   def optiml_aggregate2d[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
-                                     block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]]
+                                     block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]]
   def optiml_aggregate2dif[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
-                                       cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]]
+                                       cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]]
                                     
   // TODO: for some reason, the implicit ops conversions aren't kicking in for sum/min/max
   /**
@@ -194,7 +193,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     def m = manifest[A]
   }
   
-  def optiml_aggregateif[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
+  def optiml_aggregateif[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A])(implicit ctx: SourceContext) = {
     reflectPure(AggregateIf(start,end,cond,block))
   }
   
@@ -212,7 +211,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
   
   def optiml_aggregate2d[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
-                                     block: (Exp[Int], Exp[Int]) => Exp[A]) = {
+                                     block: (Exp[Int], Exp[Int]) => Exp[A])(implicit ctx: SourceContext) = {
     
     reflectPure(Aggregate2d(rows, cols, block))
   }
@@ -233,7 +232,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
       
   def optiml_aggregate2dif[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
-                                       cond: (Exp[Int], Exp[Int]) => Exp[Boolean], block: (Exp[Int], Exp[Int]) => Exp[A]) = {
+                                       cond: (Exp[Int], Exp[Int]) => Exp[Boolean], block: (Exp[Int], Exp[Int]) => Exp[A])(implicit ctx: SourceContext) = {
     
     reflectPure(Aggregate2dIf(rows, cols, cond, block))
   }
