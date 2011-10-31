@@ -109,7 +109,7 @@ trait MatrixOps extends DSLType with Variables {
     def sumCol(implicit a: Arith[A]) = matrix_sumcol(x)
     def inv(implicit conv: Rep[A] => Rep[Double]) = matrix_inverse(x)
     def sigmoid(implicit conv: Rep[A] => Rep[Double]) = matrix_sigmoid(x)
-    def sigmoidf(implicit conv: Rep[A] => Rep[Double]) = matrix_sigmoidf(x)
+    def sigmoidf(implicit conv: Rep[A] => Rep[Float]) = matrix_sigmoidf(x)
 
     // ordering operations
     def min(implicit o: Ordering[A], mx: HasMinMax[A]) = matrix_min(x)
@@ -211,7 +211,7 @@ trait MatrixOps extends DSLType with Variables {
   def matrix_sumcol[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]]
   def matrix_inverse[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
   def matrix_sigmoid[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
-  def matrix_sigmoidf[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]]
+  def matrix_sigmoidf[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Float]): Rep[Matrix[Float]]
 
   def matrix_min[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[A]
   def matrix_minrow[A:Manifest:Ordering:HasMinMax](x: Rep[Matrix[A]]): Rep[Vector[A]]
@@ -402,21 +402,21 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   }
 
   case class MatrixSigmoid[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) {
-    // extends DeliteOpMap[A,Double,Matrix[Double]] {
-    //
-    //     def alloc = Matrix[Double](in.numRows, in.numCols)
-    //     val size = in.numRows*in.numCols
-    //     def func = e => (1.0/(1.0+Math.exp(conv(e)*(-1))))
+    //extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoid_impl(in))) {
+    extends DeliteOpMap[A,Double,Matrix[Double]] {
+    
+    def alloc = Matrix[Double](in.numRows, in.numCols)
+    val size = copyTransformedOrElse(_.size)(in.numRows*in.numCols)
+    def func = e => (1.0/(1.0+Math.exp(conv(e)*(-1))))
   }  
 
-  case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoidf_impl(in))) {
-    // extends DeliteOpMap[A,Float,Matrix[Float]] {
-    //
-    // def alloc = Matrix[Float](in.numRows, in.numCols)
-    // val size = in.numRows*in.numCols
-    // def func = e => (1.0/(1.0+Math.exp(conv(e)*(-1)))).asInstanceOfL[Float]
+  case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Float])
+    //extends DeliteOpSingleTask(reifyEffectsHere(matrix_sigmoidf_impl(in))) {
+    extends DeliteOpMap[A,Float,Matrix[Float]] {
+    
+    def alloc = Matrix[Float](in.numRows, in.numCols)
+    val size = copyTransformedOrElse(_.size)(in.numRows*in.numCols)
+    def func = e => (1.0/(1.0+Math.exp(conv(e)*(-1)))).asInstanceOfL[Float]
   }  
 
   case class MatrixSigmoidVectorized[A:Manifest](in: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {
@@ -431,7 +431,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   
   abstract class MatrixArithmeticMap[A:Manifest:Arith](in: Exp[Matrix[A]]) extends DeliteOpMap[A,A,Matrix[A]] {
     def alloc = Matrix[A](in.numRows, in.numCols)
-    val size = matrix_dcsize(in)
+    val size = copyTransformedOrElse(_.size)(matrix_dcsize(in))
     
     def m = manifest[A]
     def a = implicitly[Arith[A]]
@@ -439,7 +439,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   
   abstract class MatrixArithmeticZipWith[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]]) extends DeliteOpZipWith[A,A,A,Matrix[A]] {
     def alloc = Matrix[A](inA.numRows, inA.numCols)
-    val size = matrix_dcsize(inA)
+    val size = copyTransformedOrElse(_.size)(matrix_dcsize(inA))
     
     def m = manifest[A]
     def a = implicitly[Arith[A]]
@@ -460,7 +460,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixPlusEquals[A:Manifest:Arith](inA: Exp[Matrix[A]], inB: Exp[Matrix[A]])
     extends DeliteOpIndexedLoop {
 
-    val size = matrix_dcsize(inA)
+    val size = copyTransformedOrElse(_.size)(matrix_dcsize(inA))
     def func = i => dc_update(inA, i, dc_apply(inA,i) + dc_apply(inB,i))
   }
 
@@ -506,8 +506,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     val m = manifest[A] //TODO: externalize?
     val a = implicitly[Arith[A]]
 
-    val size = matrix_dcsize(in)
-    val zero = implicitly[Arith[A]].empty
+    val size = copyTransformedOrElse(_.size)(matrix_dcsize(in))
+    val zero = copyTransformedOrElse(_.zero)(implicitly[Arith[A]].empty)
     def func = (a,b) => a + b
   }
   
@@ -517,8 +517,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpMap[Int,A,Vector[A]] {
 
     def alloc = Vector[A](x.numRows, unit(false))
-    val in = (0::x.numRows)
-    val size = x.numRows
+    val in = copyTransformedOrElse(_.in)(0::x.numRows)
+    val size = copyTransformedOrElse(_.size)(x.numRows)
     def func = i => x(i).sum
   } 
 
@@ -565,16 +565,16 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixMin[A:Manifest:Ordering:HasMinMax](in: Exp[Matrix[A]])
     extends DeliteOpReduce[A] {
 
-    val size = matrix_dcsize(in)
-    val zero = implicitly[HasMinMax[A]].maxValue
+    val size = copyTransformedOrElse(_.size)(matrix_dcsize(in))
+    val zero = copyTransformedOrElse(_.zero)(implicitly[HasMinMax[A]].maxValue)
     def func = (a,b) => if (a < b) a else b
   }
 
   case class MatrixMax[A:Manifest:Ordering:HasMinMax](in: Exp[Matrix[A]])
     extends DeliteOpReduce[A] {
 
-    val size = matrix_dcsize(in)
-    val zero = implicitly[HasMinMax[A]].minValue
+    val size = copyTransformedOrElse(_.size)(matrix_dcsize(in))
+    val zero = copyTransformedOrElse(_.zero)(implicitly[HasMinMax[A]].minValue)
     def func = (a,b) => if (a > b) a else b
   }
 
@@ -582,7 +582,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpMap[A,B,Matrix[B]] {
 
     def alloc = Matrix[B](in.numRows, in.numCols)
-    val size = matrix_dcsize(in)
+    val size = copyTransformedOrElse(_.size)(matrix_dcsize(in))
     
     def mA = manifest[A]
     def mB = manifest[B]
@@ -591,21 +591,21 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixMutableMap[A:Manifest](in: Exp[Matrix[A]], block: Exp[A] => Exp[A])
     extends DeliteOpIndexedLoop {
 
-    val size = matrix_dcsize(in)
+    val size = copyTransformedOrElse(_.size)(matrix_dcsize(in))
     def func = i => dc_update(in, i, block(dc_apply(in,i)))
   }
 
   case class MatrixMapRows[A:Manifest,B:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Vector[B]], out: Exp[Matrix[B]])
     extends DeliteOpIndexedLoop {
 
-    val size = x.numRows
+    val size = copyTransformedOrElse(_.size)(x.numRows)
     def func = i => { out(i) = block(x(i)) } // updateRow should be fused with function application
   }
 
   case class MatrixForeachRow[A:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Unit])
     extends DeliteOpIndexedLoop {
 
-    val size = x.numRows
+    val size = copyTransformedOrElse(_.size)(x.numRows)
     def func = i => block(x(i))
   }
 
@@ -613,15 +613,15 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpMap[Int,B,Vector[B]] {
 
     def alloc = Vector[B](x.numRows, isRow)
-    val in = (0::x.numRows)
-    val size = x.numRows
+    val in = copyTransformedOrElse(_.in)(0::x.numRows)
+    val size = copyTransformedOrElse(_.size)(x.numRows)
     def func = i => rowFunc(x(i))   
   }
 
   case class MatrixForeach[A:Manifest](in: Exp[Matrix[A]], func: Exp[A] => Exp[Unit])
     extends DeliteOpForeach[A] {
 
-    val size = matrix_dcsize(in)
+    val size = copyTransformedOrElse(_.size)(matrix_dcsize(in))
     def sync = n => List()
   }
 
@@ -637,7 +637,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     extends DeliteOpZipWith[A,B,R,Matrix[R]] {
 
     def alloc = Matrix[R](inA.numRows, inA.numCols)
-    val size = matrix_dcsize(inA)
+    val size = copyTransformedOrElse(_.size)(matrix_dcsize(inA))
   }
 
   // More efficient (though slightly uglier) to express this as a loop directly. 
@@ -645,7 +645,7 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixReduceRows[A:Manifest](x: Exp[Matrix[A]], func: (Exp[Vector[A]], Exp[Vector[A]]) => Exp[Vector[A]])
     extends DeliteOpReduceLike[Vector[A]] {
 
-    val size = x.numRows
+    val size = copyTransformedOrElse(_.size)(x.numRows)
     val zero = EmptyVector[A]
     
     lazy val body: Def[Vector[A]] = copyBodyOrElse(DeliteReduceElem[Vector[A]](
@@ -661,8 +661,8 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   case class MatrixCount[A:Manifest](in: Exp[Matrix[A]], cond: Exp[A] => Exp[Boolean]) 
     extends DeliteOpFilterReduce[A,Int] {
 
-    val size = matrix_dcsize(in)
-    val zero = unit(0)
+    val size = copyTransformedOrElse(_.size)(matrix_dcsize(in))
+    val zero = copyTransformedOrElse(_.zero)(unit(0))
     def func = e => unit(1)
     def reduce = (a,b) => a + b   
     
@@ -743,12 +743,12 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
   def matrix_sumcol[A:Manifest:Arith](x: Exp[Matrix[A]]) = reflectPure(MatrixSumCol(x))
   def matrix_inverse[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = reflectPure(MatrixInverse(x))
   def matrix_sigmoid[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = {
-    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixSigmoidVectorized(x))
-    reflectPure(MatrixSigmoid(x))
+    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(MatrixSigmoidVectorized(x)).asInstanceOf[Exp[Matrix[Double]]]
+    else reflectPure(MatrixSigmoid(x))
   }
-  def matrix_sigmoidf[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double]) = {
-    if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixSigmoidVectorized(x))
-    reflectPure(MatrixSigmoidF(x))
+  def matrix_sigmoidf[A](x: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Float]) = {
+    if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(MatrixSigmoidVectorized(x)).asInstanceOf[Exp[Matrix[Float]]]
+    else reflectPure(MatrixSigmoidF(x))
   }
 
   def matrix_plusequals[A:Manifest:Arith](x: Exp[Matrix[A]], y: Exp[Matrix[A]]) = reflectWrite(x)(MatrixPlusEquals(x,y))
@@ -769,10 +769,10 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
     reflectPure(MatrixMapRowsToVec(x, f, isRow))
   }
   def matrix_foreach[A:Manifest](x: Exp[Matrix[A]], block: Exp[A] => Exp[Unit]) = {
-    reflectEffect(MatrixForeach(x, block)) // read??
+    reflectPure(MatrixForeach(x, block)) // read??
   }
   def matrix_foreachrow[A:Manifest](x: Exp[Matrix[A]], block: Exp[MatrixRow[A]] => Exp[Unit]) = {
-    reflectEffect(MatrixForeachRow(x, block)) // read??
+    reflectPure(MatrixForeachRow(x, block)) // read??
   }
   def matrix_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Exp[Matrix[A]], y: Exp[Matrix[B]], f: (Exp[A],Exp[B]) => Exp[R]) = {
     reflectPure(MatrixZipWith(x, y, f))
@@ -822,13 +822,18 @@ trait MatrixOpsExp extends MatrixOps with VariablesExp {
       case Reflect(MatrixNumCols(x), u, es) => reflectMirrored(Reflect(MatrixNumCols(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixGetRow(x,i), u, es) => reflectMirrored(Reflect(MatrixGetRow(f(x),f(i))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixGetCol(x,i), u, es) => reflectMirrored(Reflect(MatrixGetCol(f(x),f(i))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
-      case Reflect(MatrixApply(x,i,j), u, es) => reflectMirrored(Reflect(MatrixApply(f(x),f(i),f(j)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(MatrixClone(x), u, es) => reflectMirrored(Reflect(MatrixClone(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(MatrixUpdate(x,i,j,r), u, es) => reflectMirrored(Reflect(MatrixUpdate(f(x),f(i),f(j),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixInsertAllCols(x,y,z), u, es) => reflectMirrored(Reflect(MatrixInsertAllCols(f(x),f(y),f(z)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixRemoveCols(x,y,z), u, es) => reflectMirrored(Reflect(MatrixRemoveCols(f(x),f(y),f(z)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixObjectNew(x,y), u, es) => reflectMirrored(Reflect(MatrixObjectNew(f(x),f(y))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
       // reflected ops
+      case Reflect(e@MatrixApply(x,i,j), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixApply(f(x),f(i),f(j)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatrixObjectIdentity(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixObjectIdentity(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatrixObjectFromVec(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixObjectFromVec(f(x))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatrixObjectDiag(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixObjectDiag(f(x),f(y))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatrixTranspose(x), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e) } with MatrixTranspose(f(x))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatrixInverse(x), u, es) => reflectMirrored(Reflect(new {override val original = Some(f,e) } with MatrixInverse(f(x))(e.mA,f(e.conv)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixUpdateRow(x,r,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixUpdateRow(f(x),f(r),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatrixZipWith(x,y,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixZipWith(f(x),f(y),f(g)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case _ => super.mirror(e, f)
