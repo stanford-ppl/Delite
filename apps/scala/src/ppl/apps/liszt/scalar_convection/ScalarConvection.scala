@@ -129,7 +129,6 @@ trait SC extends DeLisztApplication {
     
     val globalVelocity = Vec(1.f,0.f,0.f)
     
-    tic()
     //initialize geometry fields
     for(f <- faces(mesh)) {
       if(ID(outside(f)) < ID(inside(f))) {
@@ -226,8 +225,6 @@ trait SC extends DeLisztApplication {
       
       t += deltat
     }
-    
-    toc()
       
     for(c <- cells(mesh)) {
       Print("cell number: ",ID(c)," -> phi value: ",Phi(c))

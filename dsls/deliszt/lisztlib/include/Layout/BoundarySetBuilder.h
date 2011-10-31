@@ -142,7 +142,7 @@ private:
 			*size = 0;
 		MeshIO::BoundarySetEntry * e = entry(name);
 		if(!e) {
-			printf("warning: bounary set not in file, it will be initialized as empty: %s\n",name);
+			printf("warning: boundary set not in file, it will be initialized as empty: %s\n",name);
 			return true;
 		}
 		MeshIO::IOElemType typ = (MeshIO::IOElemType)(e->type & ~MeshIO::AGG_FLAG);
