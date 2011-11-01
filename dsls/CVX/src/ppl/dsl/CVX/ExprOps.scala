@@ -16,8 +16,13 @@ trait ExprOps extends Base with OverloadHack { //with Atoms
   // or should i have a separate thing convert Rep[Numeric] => Expr??
   // T is of type numeric, Int, Double, Float, Matrix, Vector
 
-  def infix_+[A<:Expr:Manifest, B<:Expr:Manifest](x: Rep[A], y: Rep[B]) 
-    = apply_binary_op(AffineFunc, Nondecreasing, Nondecreasing)("+", x, y)
+  // i may need different "+"'s... that's terrible :(
+  def infix_+[A<:Expr:Manifest, B<:Expr:Manifest](x: Rep[A], y: Rep[B]) ={
+    // why does the compiler compile (x+x +3) in to (Expr + ConstExpr)?
+    // why can't it figure out that x+x is an affine expr?
+      println("%s + %s".format(manifest[A].erasure, manifest[B].erasure))
+      apply_binary_op(AffineFunc, Nondecreasing, Nondecreasing)("+", x, y)
+    }
   def infix_-[A<:Expr:Manifest, B<:Expr:Manifest](x: Rep[A], y: Rep[B])
     = apply_binary_op(AffineFunc, Nondecreasing, Nonincreasing)("-", x, y)
   
@@ -27,24 +32,24 @@ trait ExprOps extends Base with OverloadHack { //with Atoms
     
   // just define operations between two exprs
   // er. generated code just returns Rep[Expr] instead of Rep[subclass of Expr]
-  def apply_binary_op[A:Manifest, B:Manifest](T1:FuncAttribute = Nonconvex, T2:ArgAttribute, T3:ArgAttribute)(op: String, x: Rep[A], y: Rep[B]): Rep[Expr]
-  def apply_unary_op[A:Manifest](T1:FuncAttribute = Nonconvex, T2:ArgAttribute)(op: String, x: Rep[A]): Rep[Expr]
+  def apply_binary_op[A<:Expr:Manifest, B<:Expr:Manifest](T1:FuncAttribute = Nonconvex, T2:ArgAttribute, T3:ArgAttribute)(op: String, x: Rep[A], y: Rep[B]): Rep[Expr]
+  def apply_unary_op[A<:Expr:Manifest](T1:FuncAttribute = Nonconvex, T2:ArgAttribute)(op: String, x: Rep[A]): Rep[Expr]
 }
 
 trait ExprOpsExp extends ExprOps with BaseExp with EffectExp {
   
-    case class BinaryOp[A:Manifest, B:Manifest](op: String, x: Exp[A], y: Exp[B]) extends Def[Expr]
-    case class ConvexBinaryOp[A:Manifest, B:Manifest](op: String, x: Exp[A], y: Exp[B]) extends Def[ConvexExpr]
-    case class ConcaveBinaryOp[A:Manifest, B:Manifest](op: String, x: Exp[A], y: Exp[B]) extends Def[ConcaveExpr]
-    case class AffineBinaryOp[A:Manifest, B:Manifest](op: String, x: Exp[A], y: Exp[B]) extends Def[AffineExpr]
+    case class BinaryOp[A<:Expr:Manifest, B<:Expr:Manifest](op: String, x: Exp[A], y: Exp[B]) extends Def[Expr]
+    case class ConvexBinaryOp[A<:Expr:Manifest, B<:Expr:Manifest](op: String, x: Exp[A], y: Exp[B]) extends Def[ConvexExpr]
+    case class ConcaveBinaryOp[A<:Expr:Manifest, B<:Expr:Manifest](op: String, x: Exp[A], y: Exp[B]) extends Def[ConcaveExpr]
+    case class AffineBinaryOp[A<:Expr:Manifest, B<:Expr:Manifest](op: String, x: Exp[A], y: Exp[B]) extends Def[AffineExpr]
     
-    case class UnaryOp[A:Manifest](op: String, x: Rep[A]) extends Def[Expr]
-    case class ConvexUnaryOp[A:Manifest](op: String, x: Rep[A]) extends Def[ConvexExpr]
-    case class ConcaveUnaryOp[A:Manifest](op: String, x: Rep[A]) extends Def[ConcaveExpr]
-    case class AffineUnaryOp[A:Manifest](op: String, x: Rep[A]) extends Def[AffineExpr]
+    case class UnaryOp[A<:Expr:Manifest](op: String, x: Rep[A]) extends Def[Expr]
+    case class ConvexUnaryOp[A<:Expr:Manifest](op: String, x: Rep[A]) extends Def[ConvexExpr]
+    case class ConcaveUnaryOp[A<:Expr:Manifest](op: String, x: Rep[A]) extends Def[ConcaveExpr]
+    case class AffineUnaryOp[A<:Expr:Manifest](op: String, x: Rep[A]) extends Def[AffineExpr]
 
     
-    def vexity[T](vex:FuncAttribute, mono:ArgAttribute, arg:Manifest[T]) : FuncAttribute ={
+    def vexity[T<:Expr](vex:FuncAttribute, mono:ArgAttribute, arg:Manifest[T]) : FuncAttribute ={
       // BUG: somehow, the manifest only tracks the super class....
       val argument : FuncAttribute = {
         if(arg <:< manifest[Affine]) AffineFunc
@@ -69,7 +74,7 @@ trait ExprOpsExp extends ExprOps with BaseExp with EffectExp {
     }
     
     // of course, can do compiler optimizations here
-    def apply_binary_op[A:Manifest, B:Manifest](T1:FuncAttribute, T2:ArgAttribute, T3:ArgAttribute)(op: String, x: Exp[A], y: Exp[B]) = {
+    def apply_binary_op[A<:Expr:Manifest, B<:Expr:Manifest](T1:FuncAttribute, T2:ArgAttribute, T3:ArgAttribute)(op: String, x: Exp[A], y: Exp[B]) = {
       val vex1 = vexity(T1, T2, manifest[A])
       val vex2 = vexity(T1, T3, manifest[B])
       
@@ -81,7 +86,7 @@ trait ExprOpsExp extends ExprOps with BaseExp with EffectExp {
       }
     }
     
-    def apply_unary_op[A:Manifest](T1:FuncAttribute, T2:ArgAttribute)(op: String, x: Rep[A]) = {
+    def apply_unary_op[A<:Expr:Manifest](T1:FuncAttribute, T2:ArgAttribute)(op: String, x: Rep[A]) = {
       
       val vex = vexity(T1, T2, manifest[A])
       
