@@ -1,4 +1,5 @@
 #include <jni.h>
+#include <pthread.h>
 #include <string>
 #include <stdexcept>
 #include <stdarg.h>
@@ -22,10 +23,8 @@ public:
     typedef SizedMeshSet<parent_mesh::face_set::iterator> face_set;
     typedef SizedMeshSet<parent_mesh::cell_set::iterator> cell_set;
 
-    MeshLoader();
+    MeshLoader(bool generated=false);
     ~MeshLoader();
-    
-    void init(bool generated=false);
 
     /*
      Load mesh from file.
@@ -37,44 +36,57 @@ public:
     template<typename MO>
     jobject loadBoundarySet(JNIEnv* env, const char* name)
     {
-        LisztPrivate::BoundarySet *bs = new LisztPrivate::BoundarySet();
-        if (!bs) {
-            throw MeshIO::MeshLoadException("Could not create boundary set");
-        }
+      std::cout << "Loading boundary set " << name << std::endl;
+  
+      LisztPrivate::BoundarySet *bs = new LisztPrivate::BoundarySet();
+      if (!bs) {
+        throw MeshIO::MeshLoadException("Could not create boundary set");
+      }
 
-        jobject bounds = NULL;
-        
-        try {
-          if (boundary_builder.load<MO, LisztPrivate::BoundarySet>(name, bs)) {
-              bounds = createObject(env,
-                      prefix + "/BoundarySetImpl", "");
+      std::cout << "Created boundary set " << name << std::endl;
+      
+      jobject bounds = NULL;
+      
+      pthread_mutex_lock(&lock);
+      try {
+        std::cout << "calling loader " << name << std::endl;
+      
+        if (boundary_builder.load<MO, LisztPrivate::BoundarySet>(name, bs)) {
+          std::cout << "loaded " << name << std::endl;
+          bounds = createObject(env,
+                  prefix + "/BoundarySetImpl", "");
+          std::cout << "created " << name << std::endl;
 
-              const LisztPrivate::BoundarySet::ranges_t& ranges = bs->getRanges();
-                      
-              // For ranges in bs
-              for (LisztPrivate::BoundarySet::range_it it = ranges.begin(), end = ranges.end(); it != end; it++) {
-                  // env->PushLocalFrame(16);
-                  callVoidMethod(env,bounds,
-                          prefix + "/BoundarySetImpl", "add",
-                          "(II)V", it->first, it->second);
-                  // env->PopLocalFrame(NULL);
-              }
-
-              callVoidMethod(env,bounds, prefix + "/BoundarySetImpl",
-                      "freeze", "()V");
+          const LisztPrivate::BoundarySet::ranges_t& ranges = bs->getRanges();
+                  
+          // For ranges in bs
+          for (LisztPrivate::BoundarySet::range_it it = ranges.begin(), end = ranges.end(); it != end; it++) {
+              std::cout << "iter " << name << std::endl;
+              callVoidMethod(env, bounds,
+                      prefix + "/BoundarySetImpl", "add",
+                      "(II)V", it->first, it->second);
           }
-          else {
-              std::cerr << "Failed to load boundary set: " << name << std::endl;
-          }
-        }
-        catch(...) {
-            std::cerr << "Failed to load boundary set: " << name << ": Exception thrown" << std::endl;
-            bounds = NULL;
-        }
 
-        delete bs;
-        
-        return bounds;
+          std::cout << "done iter " << name << std::endl;
+          callVoidMethod(env, bounds, prefix + "/BoundarySetImpl",
+                  "freeze", "()V");
+          std::cout << "freeze " << name << std::endl;
+        }
+        else {
+          std::cerr << "Failed to load boundary set: " << name << std::endl;
+        }
+      }
+      catch(...) {
+        std::cerr << "Failed to load boundary set: " << name << ": Exception thrown" << std::endl;
+        bounds = NULL;
+      }
+      pthread_mutex_unlock(&lock);
+      
+      std::cout << "return " << name << std::endl;
+
+      delete bs;
+      
+      return bounds;
     }
 
     /*
@@ -162,7 +174,8 @@ private:
     CRSMesh::Mesh mesh;
     jobject jmesh;
     bool loaded;
+    pthread_mutex_t lock;
 };
-        }
+}
 
 #endif
