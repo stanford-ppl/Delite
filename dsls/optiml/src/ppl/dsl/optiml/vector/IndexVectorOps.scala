@@ -11,8 +11,8 @@ import java.io.PrintWriter
 trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
   
   object IndexVector {
-    def apply(len: Rep[Int]) = indexvector_obj_new(len)
-    def apply(xs: Interface[Vector[Int]])(implicit o: Overloaded1) = indexvector_obj_fromvec(xs)
+    def apply(len: Rep[Int])(implicit ctx: SourceContext) = indexvector_obj_new(len)
+    def apply(xs: Interface[Vector[Int]])(implicit o: Overloaded1, ctx: SourceContext) = indexvector_obj_fromvec(xs)
   }
 
   trait IndexVecOpsCls extends VecOpsCls[Int] with InterfaceOps[IndexVector] {
@@ -60,9 +60,9 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
   }
   
   // impl defs
-  def indexvector_range(start: Rep[Int], end: Rep[Int]): Rep[IndexVectorRange]
-  def indexvector_obj_new(len: Rep[Int]): Rep[IndexVectorDense]
-  def indexvector_obj_fromvec(xs: Interface[Vector[Int]]): Rep[IndexVectorDense]
+  def indexvector_range(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext): Rep[IndexVectorRange]
+  def indexvector_obj_new(len: Rep[Int])(implicit ctx: SourceContext): Rep[IndexVectorDense]
+  def indexvector_obj_fromvec(xs: Interface[Vector[Int]])(implicit ctx: SourceContext): Rep[IndexVectorDense]
 
   // class defs
   def indexvector_construct[A:Manifest](x: Interface[IndexVector], block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]]
@@ -93,9 +93,9 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   }
   
   // impl defs
-  def indexvector_range(start: Exp[Int], end: Exp[Int]) = reflectPure(IndexVectorRangeNew(start, end))
-  def indexvector_obj_new(len: Exp[Int]) = reflectMutable(IndexVectorDenseNew(len))
-  def indexvector_obj_fromvec(xs: Interface[Vector[Int]]) = reflectPure(IndexVectorObjectFromVec(xs))
+  def indexvector_range(start: Exp[Int], end: Exp[Int])(implicit ctx: SourceContext) = reflectPure(IndexVectorRangeNew(start, end))
+  def indexvector_obj_new(len: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(IndexVectorDenseNew(len))
+  def indexvector_obj_fromvec(xs: Interface[Vector[Int]])(implicit ctx: SourceContext) = reflectPure(IndexVectorObjectFromVec(xs))
 
   // class defs
   def indexvector_construct[A:Manifest](x: Interface[IndexVector], block: Exp[Int] => Exp[A])(implicit ctx: SourceContext): Exp[DenseVector[A]] = {
