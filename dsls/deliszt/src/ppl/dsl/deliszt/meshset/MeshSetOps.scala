@@ -77,7 +77,7 @@ trait ScalaGenMeshSetOps extends ScalaGenBase {
 }
 
 
-trait CudaGenMeshSetOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenMeshSetOps extends CudaGenBase {
   val IR: MeshSetOpsExp
   import IR._
 

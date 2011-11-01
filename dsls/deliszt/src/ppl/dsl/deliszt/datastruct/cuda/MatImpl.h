@@ -1,7 +1,7 @@
 #ifndef _MATIMPL_H_
 #define _MATIMPL_H_
 
-#include stdio.h
+/*
 
 template class T
 class Mat {
@@ -42,6 +42,6 @@ __host__ __device__ void update(int idxR, int idxC, T newVal) {
       data[idx] = value;
   }
 };
-
+*/
 #endif
 

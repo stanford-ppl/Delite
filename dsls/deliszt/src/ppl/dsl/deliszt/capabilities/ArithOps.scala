@@ -261,14 +261,13 @@ trait CLikeGenArithOps extends CLikeCodegen {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case ArithPlus(a, b) =>
-        emitValDef(sym, quote(a) + " + " + quote(b))
-      case ArithMinus(a, b) =>
-        emitValDef(sym, quote(a) + " - " + quote(b))
-      case ArithTimes(a, b) =>
-        emitValDef(sym, quote(a) + " * " + quote(b))
-      case ArithFractionalDivide(a, b) =>
-        emitValDef(sym, quote(a) + " / " + quote(b))
+      case ArithPlus(a, b) => emitValDef(sym, quote(a) + " + " + quote(b))
+      case ArithMinus(a, b) => emitValDef(sym, quote(a) + " - " + quote(b))
+      case ArithTimes(a, b) => emitValDef(sym, quote(a) + " * " + quote(b))
+      case ArithNegate(a) => emitValDef(sym, "-" + quote(a))
+      case ArithFractionalDivide(a, b) => emitValDef(sym, quote(a) + " / " + quote(b))
+      case ArithAbs(x) => emitValDef(sym, "abs(" + quote(x) + ")")
+      case ArithExp(a) => emitValDef(sym, "exp(" + quote(a) + ")")
       case _ => super.emitNode(sym, rhs)
     }
   }

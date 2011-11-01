@@ -53,7 +53,7 @@ trait ScalaGenMeshPrivateOps extends ScalaGenBase {
 }
 
 
-trait CudaGenMeshPrivateOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenMeshPrivateOps extends CudaGenBase {
   val IR: MeshPrivateOpsExp
   import IR._
 
