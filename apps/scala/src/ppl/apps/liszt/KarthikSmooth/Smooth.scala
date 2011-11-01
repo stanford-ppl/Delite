@@ -544,9 +544,9 @@ trait Smooth extends DeLisztApplication {
 // --------------- time step --------------
       var dt_min  = 100000.f
       
-      Print("STEP ", step)
+      // Print("STEP ", step)
 
-      Print("dt_min loop")
+      // Print("dt_min loop")
       
       for(f <- faces(mesh)) {
         val centroid = face_centroid(f)
@@ -591,7 +591,7 @@ trait Smooth extends DeLisztApplication {
           CalcEdgeGrad(e)
 
     //---------------- Update Phi ---------------------
-        Print("UPDATE FLUX")
+        // Print("UPDATE FLUX")
     
         for(e <- edges(mesh)) {
 
@@ -625,14 +625,14 @@ trait Smooth extends DeLisztApplication {
         for(f <- faces(mesh)) 
           Phi(f) = PhiOld(f) + factor/face_area(f)*Flux(f) 
 
-        Print("RESET FLUX")
+        // Print("RESET FLUX")
           
         for(f <- faces(mesh)) 
           Flux(f) = 0.f
 
     //---------------- Update Velocities ---------------------
     
-        Print("UPDATE RHS")
+        // Print("UPDATE RHS")
     
         for(e <- edges(mesh)) {
 
@@ -651,7 +651,7 @@ trait Smooth extends DeLisztApplication {
           Rhs_Veloc(e) = rhs
         }
         
-        Print("UPDATE VELOC")
+        // Print("UPDATE VELOC")
 
         for(e <- edges(mesh)) 
           Veloc(e) = VelocOld(e) + Rhs_Veloc(e)*factor
