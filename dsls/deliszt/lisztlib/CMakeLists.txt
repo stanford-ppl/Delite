@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 2.6)
 #for finding external libraries. 
 
 set(CMAKE_CXX_FLAGS "-Wall -m64 -O3 -DNDEBUG -funroll-loops -Wall -Wno-deprecated -g")
-SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -DDEBUG")
+SET(CMAKE_CXX_FLAGS_DEBUG "-O0 -g -ggdb -rdynamic -DDEBUG")
 
 find_package(OpenMP)
 find_package(JNI REQUIRED)

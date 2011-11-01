@@ -184,7 +184,7 @@ class Mesh {
     }
   }
   
-  def face(e: Int, i: Int): Int = { val set = IndexSetImpl(ctof, e); set(i) }
+  def face(e: Int, i: Int): Int = etof.apply(Mesh.internal(e), i)
 
   def head(e: Int): Int = etov.apply(Mesh.internal(e), if(Mesh.reversed(e)) 1 else 0)
   def tail(e: Int): Int = etov.apply(Mesh.internal(e), if(Mesh.reversed(e)) 0 else 1)
