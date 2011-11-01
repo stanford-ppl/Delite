@@ -1,4 +1,6 @@
-Delite 2.0
+DeLiszt
 ==========
 
-[Setup instructions](http://stanford-ppl.github.com/Delite/source.html)
+1.  Build the `deliszt` branch of `virtualization-lms-core` and publish locally
+2.  Build the `lisztlib` library under `dsls/deliszt/lisztlib`. Run `cmake` to generate the `Makefile` then run `make`
+3.  Set your `LD_LIBRARY_PATH` to `dsls/deliszt/lisztlib/lib`
