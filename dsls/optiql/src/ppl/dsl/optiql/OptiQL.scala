@@ -111,12 +111,18 @@ trait OptiQLCodeGenBase extends GenericFatCodegen {
 trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg with ScalaGenHackOps
   with ScalaGenDataTableOps with ScalaGenDateOps with ScalaGenQueryableOps with ScalaGenOptiQLMiscOps 
   with ScalaGenResultOps with ScalaGenApplicationOps with ScalaGenDeliteCollectionOps 
-  with ScalaGenDeliteOps with ScalaGenDSArrayOps {
+  with ScalaGenDeliteOps /*with ScalaGenDSArrayOps*/ {
   val IR: DeliteApplication with OptiQLExp
 
   override def remap[A](m: Manifest[A]): String = {    
     m match {
-      case m if m.toString.startsWith("ppl.dsl.optiql.datastruct.scala.container.DataTable") => "generated.scala.container.DataTable[" + remap(m.typeArguments(0)) + "]"
+      case m if m.toString.startsWith("ppl.dsl.optiql.datastruct.scala.container.DataTable") => "generated.scala.container.DataTable[" + remap(m.typeArguments(0)) + "]"     
+      case m if m.erasure.isArray => {
+        println("MAPPING ARRAY TYPE TO : " + remap(Manifest.classType(m.erasure.getComponentType)))
+        "Array[" + remap(Manifest.classType(m.erasure.getComponentType)) + "]"
+      }
+      case m if m.toString == "double" => "Double"
+      case m if m.toString == "char" => "Char"
       case rm: RefinedManifest[A] =>  "AnyRef{" + rm.fields.foldLeft(""){(acc, f) => {val (n,mnf) = f; acc + "val " + n + ": " + remap(mnf) + ";"}} + "}"
       case _ => dsmap(super.remap(m))
     }

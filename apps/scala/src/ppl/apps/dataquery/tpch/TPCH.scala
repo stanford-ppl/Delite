@@ -3,9 +3,9 @@ package ppl.apps.dataquery.tpch
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
 import java.io.File
 
-object TPCHRunner extends OptiQLApplicationRunner with TPCH
+object TPCHQ1 extends OptiQLApplicationRunner with TPCHBaseTrait
 
-trait TPCH extends OptiQLApplication {
+trait TPCHBaseTrait extends OptiQLApplication {
 
   val s = File.separator
 
@@ -48,8 +48,13 @@ trait TPCH extends OptiQLApplication {
     
       
     //val res = lineItems Select(e => new Result { val l_shipdate = e.l_shipdate  }) Where(_.l_shipdate <= Date("1998-12-01"))
+    
+    val res = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => l.l_returnflag) Select(g => new Result {
+     val returnFlag = g.key
+     val sumQty = g.Sum(_.l_quantity)
+   })
    
-    ///*
+    /*
     val res = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
       val returnFlag = g.key._1
       val lineStatus = g.key._2

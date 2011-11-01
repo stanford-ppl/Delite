@@ -133,7 +133,7 @@ trait ScalaGenHackOps extends ScalaGenEffect {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case HackOpsObjLoadCustomers(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadCustomers(" + quote(path) + ")")
     case HackOpsObjLoadLineItems(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadLineItems(" + quote(path) + ")")
-    case InputColumn(x,id) => emitValDef(sym, quote(x) + ".map(_."+id+") // TODO: store as columns during read")
+    case InputColumn(x,id) => emitValDef(sym, quote(x) + ".map(_."+id+").toArray // TODO: store as columns during read")
     case InputSize(x) => emitValDef(sym, quote(x) + ".size")
     case _ => super.emitNode(sym, rhs)
   }
