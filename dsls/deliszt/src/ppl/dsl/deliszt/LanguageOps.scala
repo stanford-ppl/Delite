@@ -95,6 +95,7 @@ trait LanguageOps extends Base { this: DeLiszt with MathOps =>
   def atan2f(a: Rep[Float], b: Rep[Float]) = math_atan2(a,b).asInstanceOfL[Float]
   def powf(a: Rep[Float], b: Rep[Float]) = math_pow(a,b).asInstanceOfL[Float]
   def fabs(a: Rep[Float]) = math_abs(a).asInstanceOfL[Float]
+  def fabsf(a: Rep[Float]) = math_abs(a).asInstanceOfL[Float]
   
   def wall_time() : Rep[Double]
   def processor_time() : Rep[Double]

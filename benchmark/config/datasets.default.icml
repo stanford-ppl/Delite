@@ -11,9 +11,9 @@ liszthello|liszt.cfg
 lisztcpubound|liszt.cfg
 lisztmembound|liszt.cfg
 lisztsss|liszt.cfg
-sc|liszt.cfg
-sc_rw|liszt.cfg
+sc|sc.cfg
+sc_rw|sc.cfg
 mesh_smooth|liszt.cfg
-karthik_smooth|liszt.cfg
+karthik_smooth|karthik.cfg
 sl|liszt.cfg
 rl|liszt.cfg
