@@ -425,7 +425,7 @@ trait ScalaGenMatOps extends ScalaGenBase {
   }
 }
 
-trait CudaGenMatOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenMatOps extends CudaGenBase {
   val IR:MatOpsExp
 
   import IR._

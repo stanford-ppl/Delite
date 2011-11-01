@@ -70,7 +70,7 @@ trait ScalaGenIntMOps extends ScalaGenBase {
   }
 }
 
-trait CudaGenIntMOps extends CudaGenBase with CudaGenDataStruct {
+trait CudaGenIntMOps extends CudaGenBase {
   val IR: IntMOpsExp
   import IR._
 

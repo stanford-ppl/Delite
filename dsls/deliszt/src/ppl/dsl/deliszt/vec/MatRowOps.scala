@@ -42,6 +42,6 @@ trait ScalaGenMatRowOps extends ScalaGenBase {
   }
 }
 
-trait CudaGenMatRowOps extends CudaGenBase with CudaGenDataStruct
+trait CudaGenMatRowOps extends CudaGenBase
 
 trait CGenMatRowOps extends CGenBase

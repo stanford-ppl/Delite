@@ -139,10 +139,11 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         writeKernelCall(op, out)
 
       //write the setter
-      var addSetter = false
-      for (cons <- op.getConsumers) {
-        if (cons.scheduledResource != location) addSetter = true
+      val addWriteBack = needsWriteBack(op)       
+      if (addWriteBack) {
+        writeCopyBack(op, location, out)
       }
+      val addSetter = op.getConsumers exists { _.scheduledResource != location }
       if (addSetter) {
         syncList += op //add op to list that needs sync generation
         //sync output copy with kernel completion
@@ -160,6 +161,22 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     for (dep <- op.getDependencies) {
       if (dep.getMutableInputs.contains(input, sym) && dep.scheduledResource != op.scheduledResource) {
         return true
+      }
+    }
+    false
+  }
+
+  protected def needsWriteBack(op: DeliteOP): Boolean = {
+    // try to coalesce writes
+    for (cons <- op.getConsumers) {
+      if (cons.scheduledResource != op.scheduledResource) {
+        val deps = op.getMutableInputs intersect cons.getInputs.toSet
+        for (d <- deps) {
+          if (!(op.getConsumers exists { c => c.getMutableInputs.contains(d) &&
+                                              c.getConsumers.contains(cons) && 
+                                              c.scheduledResource == op.scheduledResource }))
+            return true
+        }
       }
     }
     false
@@ -388,7 +405,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     }
   }
 
-  protected def writeSetters(op: DeliteOP, location: Int, out: StringBuilder) {
+  protected def writeCopyBack(op: DeliteOP, location: Int, out: StringBuilder) {
     for ((in,name) <- op.getGPUMetadata(target).inputs.keys) {
       if (op.getMutableInputs.contains(in,name)) {
         //copy any mutated inputs from GPU to CPU
@@ -400,8 +417,10 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         out.append(getSymGPU(name)) //C++ object
         out.append(");\n")
       }
-    }
+    }   
+  }
 
+  protected def writeSetters(op: DeliteOP, location: Int, out: StringBuilder) {    
     for (name <- op.getOutputs) {
       var deleteLocalRef = false
       op.getGPUMetadata(target).outputs.find(_._2 == name) match {

@@ -1,24 +1,10 @@
 #ifndef _VECIMPL_H_
 #define _VECIMPL_H_
 
-#include <stdio.h>
-
-template <class T>
+template <class T, int N>
 class Vec {
 public:
-    T *data;
-    int length;
-
-    // Constructors
-    __host__ __device__ Vec() {
-        length = 0;
-        data = NULL;
-    }
-
-    __host__ __device__ Vec(int _length, T *_data) {
-        length = _length;
-        data = _data;
-    }
+    T data[N];
 
     // Accessor Functions
     __host__ __device__ T apply(int idx) {
@@ -30,8 +16,8 @@ public:
     }
 
     // DeliteCoolection
-    __host__ __device__ int size() {
-        return length;
+    __host__ __device__ int dcSize() {
+        return N;
     }
 
     __host__ __device__ T dcApply(int idx) {
@@ -43,5 +29,6 @@ public:
     }
     
 };
+
 
 #endif

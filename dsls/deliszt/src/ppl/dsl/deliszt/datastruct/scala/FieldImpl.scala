@@ -8,7 +8,7 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-class FieldImpl[T](data : Array[T]) extends Field[T] {
+class FieldImpl[@specialized(Boolean, Int, Long, Float, Double) T](val data : Array[T]) extends Field[T] {
   def apply(idx: Int) = data(Mesh.internal(idx))
   def update(idx: Int, x: T) = {
     data(Mesh.internal(idx)) = x
