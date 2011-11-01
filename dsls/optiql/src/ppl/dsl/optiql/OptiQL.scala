@@ -122,7 +122,9 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
         "Array[" + remap(Manifest.classType(m.erasure.getComponentType)) + "]"
       }
       case m if m.toString == "double" => "Double"
+      case m if m.toString == "float" => "Float"
       case m if m.toString == "char" => "Char"
+      case m if m.toString == "int" => "Int"
       case rm: RefinedManifest[A] =>  "AnyRef{" + rm.fields.foldLeft(""){(acc, f) => {val (n,mnf) = f; acc + "val " + n + ": " + remap(mnf) + ";"}} + "}"
       case _ => dsmap(super.remap(m))
     }

@@ -1541,8 +1541,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
           // TODO: re-enable fast path for offset 0. requires that result data structure 
           // supports backing array larger than logical size
 //          stream.println("if (__act." + quote(sym) + "_offset > 0) {"/*}*/) // set data array for result object
-          stream.println("val len = __act." + quote(sym) + "_offset + __act." + quote(sym) + "_size")
-          stream.println("__act." + quote(sym) + "_data_set(new Array(len))")
+          stream.println("val len_" + quote(sym) + " = __act." + quote(sym) + "_offset + __act." + quote(sym) + "_size")
+          stream.println("__act." + quote(sym) + "_data_set(new Array(len_" + quote(sym) + "))")
 //          stream.println(/*{*/"} else {"/*}*/)
 //          stream.println("__act." + quote(sym) + "_data = __act." +quote(sym) + "_buf")
 //          stream.println(/*{*/"}")
