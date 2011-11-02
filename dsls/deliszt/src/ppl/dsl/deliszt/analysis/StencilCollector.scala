@@ -2,6 +2,8 @@ package ppl.dsl.deliszt.analysis
 
 import java.io.{PrintWriter}
 
+import util.control.Breaks._
+
 import scala.collection.immutable.{Set => ISet}
 import scala.collection.mutable.{Set => MSet, Map => MMap, HashMap, ArrayBuilder}
 
@@ -97,6 +99,10 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   val className = "StencilCollector"
   val on = true
+  var detectingTrivial = false
+  var trivial = false
+  var indexSym : Sym[Any] = null
+  var moSym : Sym[Any] = null
   
   override def initializeGenerator(buildDir:String, args: Array[String], _analysisResults: MMap[String,Any]): Unit = {
     super.initializeGenerator(buildDir, args, _analysisResults)
@@ -314,46 +320,81 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     // System.out.println("EMITTING NODE")
     // System.out.println(rhs)
-  
+    
     if(Config.collectStencil) {
       rhs match {
+        case DeliteCollectionApply(e, i) if detectingTrivial => {
+          // Found the sym for the top level foreach index meshobj
+          System.out.println("APPLY " + sym.id + " collection: " + e.asInstanceOf[Sym[Any]].id + " index " + i.asInstanceOf[Sym[Any]].id)
+          
+          i match {
+            case indexSym => { moSym = sym; System.out.println("FOUND INDEX SYM " + sym.id) }
+          }
+        }
+      
         // Foreach, only apply to top level foreach though...
         case f@MeshSetForeach(m, b) => {
-          // Get value for the mesh set
-          val ms = value[MeshSet](m)
-      
-          // if not current top, mark current top....
-          if(currentFor.isEmpty) {
-            setFor(sym.id, ms)
-            System.out.println("Found a top level foreach sym " + sym.id)
-          }
-            
-          val mssize: Int = ms.size
-          val stuff: Int = 0
-          
-          var i: Int = 0
-          // Run foreach over mesh set
-          for(mo <- ms) {
-            // If top level foreach, mark the current element as one we are collecting stencil for
-            if(matchFor(sym.id)) {
-              currentMo = Some(mo)
-            }
-          
-            // Store loop index in loop index symbol
-            store(f.i, i)
-            store(f.v, i)
-            
-            // Re "emit" block
+          if(detectingTrivial) {
             f.body match {
               case DeliteForeachElem(func, sync) => emitBlock(func)
             }
-            
-            i += 1
           }
-          
-          // Clear out the current for loop if we are the top
-          if(matchFor(sym.id)) {
-            currentFor = None
+          else {
+            // Get value for the mesh set
+            val ms = value[MeshSet](m)
+        
+            // if not current top, mark current top....
+            if(currentFor.isEmpty) {
+              setFor(sym.id, ms)
+              System.out.println("Found a top level foreach sym " + sym.id)
+              
+              // Do trivial coloring detection
+              detectingTrivial = true
+              trivial = true
+              moSym = f.v
+              
+              System.out.println("MOSYM " + moSym.id)
+              
+              f.body match {
+                case DeliteForeachElem(func, sync) => emitBlock(func)
+              }
+              
+              detectingTrivial = false
+            }
+            
+            if(matchFor(sym.id) && trivial) {            
+              System.out.println("Detected trivial loop")
+              forMap.remove(sym.id)
+            }
+            else {
+              val mssize: Int = ms.size
+              val stuff: Int = 0
+              
+              var i: Int = 0
+              // Run foreach over mesh set
+              for(mo <- ms) {
+                // If top level foreach, mark the current element as one we are collecting stencil for
+                if(matchFor(sym.id)) {
+                  currentMo = Some(mo)
+                }
+              
+                // Store loop index in loop index symbol
+                store(f.i, i)
+                store(f.v, i)
+                
+                // Re "emit" block
+                f.body match {
+                  case DeliteForeachElem(func, sync) => emitBlock(func)
+                }
+                
+                i += 1
+              }
+            }
+            
+            // Clear out the current for loop if we are the top
+            if(matchFor(sym.id)) {
+              currentFor = None
+            }
           }
         }
         
@@ -390,43 +431,87 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
           
         // Mark 
         case FieldApply(f,i) => {
-          // Mark a read on the field for the current element... for i
-          markRead(f, i)
+          if(!detectingTrivial) {
+            // Mark a read on the field for the current element... for i
+            markRead(f, i)
+          }
         }
         
         case w@FieldUpdate(f,i,v) => {
-          // Mark a write on the field for the current element... for i
-          markWrite(f, i, w.moM)
+          if(detectingTrivial) {
+            i match {
+              case Sym(i) => if(i == moSym.id) { trivial = false }
+              case _ =>
+            }
+          }
+          else {
+            // Mark a write on the field for the current element... for i
+            markWrite(f, i, w.moM)
+          }
         }
           
         case w@FieldPlusUpdate(f,i,v) => {
-          // Mark a write on the field for the current element... for i
-          markWrite(f, i, w.moM)
+          if(detectingTrivial) {
+            i match {
+              case Sym(i) => if(i == moSym.id) { trivial = false }
+              case _ =>
+            }
+          }
+          else {
+            // Mark a write on the field for the current element... for i
+            markWrite(f, i, w.moM)
+          }
         }
         
         case w@FieldTimesUpdate(f,i,v) => {
-          // Mark a write on the field for the current element... for i
-          markWrite(f, i, w.moM)
+          if(detectingTrivial) {
+            i match {
+              case Sym(i) => if(i == moSym.id) { trivial = false }
+              case _ =>
+            }
+          }
+          else {
+            // Mark a write on the field for the current element... for i
+            markWrite(f, i, w.moM)
+          }
         }
           
         case w@FieldMinusUpdate(f,i,v) => {
-          // Mark a write on the field for the current element... for i
-          markWrite(f, i, w.moM)
+          if(detectingTrivial) {
+            i match {
+              case Sym(i) => if(i == moSym.id) { trivial = false }
+              case _ =>
+            }
+          }
+          else {
+            // Mark a write on the field for the current element... for i
+            markWrite(f, i, w.moM)
+          }
         }
         
         case w@FieldDivideUpdate(f,i,v) => {
-          // Mark a write on the field for the current element... for i
-          markWrite(f, i, w.moM)
+          if(detectingTrivial) {
+            i match {
+              case Sym(i) => if(i == moSym.id) { trivial = false }
+              case _ =>
+            }
+          }
+          else {
+            // Mark a write on the field for the current element... for i
+            markWrite(f, i, w.moM)
+          }
         }
         
         case _ => None
       }
       
-      maybeValue(rhs) match {
-        case Some(o) => {
-          store(sym, o)
+      if(!detectingTrivial) {
+        maybeValue(rhs) match {
+          case Some(o) => {
+            store(sym, o)
+          }
+          case None => {}
         }
-        case None => {}
       }
     }
   }

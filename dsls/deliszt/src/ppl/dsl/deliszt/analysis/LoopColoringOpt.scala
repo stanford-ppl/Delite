@@ -111,44 +111,57 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         }).get
         
         val ms = msMap(id)
-        val stencil = forMap(id)
         
-        // Initialize colorers!
-        val colorer = new RegisterColorer()
-        val interferenceBuilder = new InterferenceBuilder(colorer, blockSize)
+        val coloring = if(forMap.contains(id)) {
+          val stencil = forMap(id)
+          
+          // Initialize colorers!
+          val colorer = new RegisterColorer()
+          val interferenceBuilder = new InterferenceBuilder(colorer, blockSize)
+          
+          // println("Read write sets!")
+          // for((mo, rwset) <- stencil) {
+          //   println("Element: " + mo)
+          //   for(FieldAccess(i, mo) <- rwset.write) {
+          //     println("write field " + i + " mo: " + mo)
+          //   }
+          // }
+          
+          // And color!
+          interferenceBuilder.buildAndColor(ms, stencil)
+        }
+        else {
+          val interferenceBuilder = new InterferenceBuilder(null, blockSize)
+          interferenceBuilder.trivialColoring(ms)
+        }
         
-        // println("Read write sets!")
-        // for((mo, rwset) <- stencil) {
-        //   println("Element: " + mo)
-        //   for(FieldAccess(i, mo) <- rwset.write) {
-        //     println("write field " + i + " mo: " + mo)
-        //   }
-        // }
-        
-        // And color!
-        val coloring = interferenceBuilder.buildAndColor(ms, stencil)
         val (color_idx, color_values) = coloring.collect()
         
-        // Output coloring for debugging
         print("Loop id: " + id)
-        println(" num elements: " + ms.size)
-        println(" num colors: " + coloring.numColors)
-        
-        var i = 0
-        // while(i <= coloring.numColors) {
-        //   println("color_idx: " + i + " " + color_idx(i))
-        //   i += 1
-        // }
-        // 
-        // i = 0
-        // while(i < coloring.numColors) {
-        //   var j = color_idx(i)
-        //   while (j < color_idx(i+1)) {
-        //     println("color_values: " + i + " " + color_values(j))
-        //     j += 1
-        //   }
-        //   i += 1
-        // }
+        if(forMap.contains(id)) {
+          // Output coloring for debugging
+          println(" num elements: " + ms.size)
+          println(" num colors: " + coloring.numColors)
+                  
+          var i = 0
+          while(i <= coloring.numColors) {
+            println("color_idx: " + i + " " + color_idx(i))
+            i += 1
+          }
+          
+          i = 0
+          while(i < coloring.numColors) {
+            var j = color_idx(i)
+            while (j < color_idx(i+1)) {
+              println("color_values: " + i + " " + color_values(j))
+              j += 1
+            }
+            i += 1
+          }
+        }
+        else {
+          println(" trivial coloring")
+        }
         
         /* transform loop into multiple loops, one per color */
         
@@ -181,7 +194,7 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         }
         
         // build colored loops
-        i = 0        
+        var i = 0        
         var colorLoops = List[TTP]()         
         var prevLoop: Option[TTP] = None
         val loopRefTransformer = new SubstTransformer                      

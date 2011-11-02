@@ -34,7 +34,7 @@ void handler(int sig) {
 namespace System {
 using namespace CRSMesh;
 
-MeshLoader::MeshLoader(bool generated ) : loaded(false) {
+MeshLoader::MeshLoader(bool generated) : jmesh(NULL), loaded(false) {
   if(generated) {
     prefix = "generated/scala";
   }
@@ -282,96 +282,102 @@ jintArray MeshLoader::copyIdPairArray(JNIEnv* env, CRSMeshPrivate::IDPair* array
 }
 
 jobject MeshLoader::loadMesh(JNIEnv* env, jstring str) {
-  jmesh = NULL;
+  if(!loaded) {
+    try {
+      jmesh = NULL;
+      DEBUG_PRINT("convert filename");
+      // Convert file name
+      string filename(env->GetStringUTFChars(str, 0));
 
-  try {
-    DEBUG_PRINT("convert filename");
-    // Convert file name
-    string filename(env->GetStringUTFChars(str, 0));
+      DEBUG_PRINT("read in file");
+      // Read in mesh
+      reader.init(filename);
 
-    DEBUG_PRINT("read in file");
-    // Read in mesh
-    reader.init(filename);
+      DEBUG_PRINT("header");
+      MeshIO::LisztHeader h = reader.header();
+      
+      if(h.magic_number != MeshIO::LISZT_MAGIC_NUMBER) {
+        DEBUG_PRINT("wrong magic number");
+        throw MeshIO::MeshLoadException("wrong magic number");
+      }
+      
+      MeshIO::FacetEdgeBuilder builder;
 
-    DEBUG_PRINT("header");
-    MeshIO::LisztHeader h = reader.header();
-    
-    if(h.magic_number != MeshIO::LISZT_MAGIC_NUMBER) {
-      DEBUG_PRINT("wrong magic number");
-      throw MeshIO::MeshLoadException("wrong magic number");
+      DEBUG_PRINT("builder init");
+      builder.init(h.nV, h.nE, h.nF, h.nC, h.nFE);
+
+      DEBUG_PRINT("facet edges");
+      MeshIO::FileFacetEdge * fes = reader.facetEdges();
+
+      DEBUG_PRINT("facetedges insert");
+      builder.insert(0, h.nFE, fes);
+
+      DEBUG_PRINT("free");
+      reader.free(fes);
+
+      // Load mesh
+      DEBUG_PRINT("from facet edge builder");
+      mesh.initFromFacetEdgeBuilder(&builder);
+
+      // Set fields on mesh
+      CRSMeshPrivate::MeshData& data = mesh.data;
+
+      DEBUG_PRINT("create mesh");
+      jclass meshClass = cache->getClass(env, prefix + "/Mesh");
+      jmesh = createObject(env, meshClass, "");            
+
+      // Set size fields
+      setScalaField(env, meshClass, jmesh, "nvertices", "I", data.nvertices);
+      setScalaField(env, meshClass, jmesh, "nedges", "I", data.nedges);
+      setScalaField(env, meshClass, jmesh, "nfaces", "I", data.nfaces);
+      setScalaField(env, meshClass, jmesh, "ncells", "I", data.ncells);
+      
+      DEBUG_PRINT("nvertices: " << data.nvertices);
+      DEBUG_PRINT("nedges: " << data.nedges);
+      DEBUG_PRINT("nfaces: " << data.nfaces);
+      DEBUG_PRINT("ncells: " << data.ncells);
+
+      // Set vertex relations
+      setCRSField(env, jmesh, "vtov", data.vtov, data.nvertices);
+      setCRSField(env, jmesh, "vtoe", data.vtoe, data.nvertices);
+      setCRSField(env, jmesh, "vtof", data.vtof, data.nvertices);
+      setCRSField(env, jmesh, "vtoc", data.vtoc, data.nvertices);
+
+      // Set edge relations
+      setCRSPairField(env, jmesh, "etov", data.etov, data.nedges);
+      setCRSField(env, jmesh, "etof", data.etof, data.nedges);
+      setCRSField(env, jmesh, "etoc", data.etoc, data.nedges);
+
+      // Set face relations
+      setCRSField(env, jmesh, "ftov", data.ftov, data.nfaces);
+      setCRSField(env, jmesh, "ftoe", data.ftoe, data.nfaces);
+      setCRSPairField(env, jmesh, "ftoc", data.ftoc, data.nfaces);
+
+      // Set cell relations
+      setCRSField(env, jmesh, "ctov", data.ctov, data.ncells);
+      setCRSField(env, jmesh, "ctoe", data.ctoe, data.ncells);
+      setCRSField(env, jmesh, "ctof", data.ctof, data.ncells);
+      setCRSField(env, jmesh, "ctoc", data.ctoc, data.ncells);
+
+      // Set properties we know about
+      // Position for vertices
+      loadPositions(env, jmesh, mesh, reader);
+      
+      boundary_builder.init(h.nBoundaries, reader.boundaries());
+      
+      loaded = true;
     }
-    
-    MeshIO::FacetEdgeBuilder builder;
-
-    DEBUG_PRINT("builder init");
-    builder.init(h.nV, h.nE, h.nF, h.nC, h.nFE);
-
-    DEBUG_PRINT("facet edges");
-    MeshIO::FileFacetEdge * fes = reader.facetEdges();
-
-    DEBUG_PRINT("facetedges insert");
-    builder.insert(0, h.nFE, fes);
-
-    DEBUG_PRINT("free");
-    reader.free(fes);
-
-    // Load mesh
-    DEBUG_PRINT("from facet edge builder");
-    mesh.initFromFacetEdgeBuilder(&builder);
-
-    // Set fields on mesh
-    CRSMeshPrivate::MeshData& data = mesh.data;
-
-    DEBUG_PRINT("create mesh");
-    jclass meshClass = cache->getClass(env, prefix + "/Mesh");
-    jmesh = createObject(env, meshClass, "");            
-
-    // Set size fields
-    setScalaField(env, meshClass, jmesh, "nvertices", "I", data.nvertices);
-    setScalaField(env, meshClass, jmesh, "nedges", "I", data.nedges);
-    setScalaField(env, meshClass, jmesh, "nfaces", "I", data.nfaces);
-    setScalaField(env, meshClass, jmesh, "ncells", "I", data.ncells);
-    
-    DEBUG_PRINT("nvertices: " << data.nvertices);
-    DEBUG_PRINT("nedges: " << data.nedges);
-    DEBUG_PRINT("nfaces: " << data.nfaces);
-    DEBUG_PRINT("ncells: " << data.ncells);
-
-    // Set vertex relations
-    setCRSField(env, jmesh, "vtov", data.vtov, data.nvertices);
-    setCRSField(env, jmesh, "vtoe", data.vtoe, data.nvertices);
-    setCRSField(env, jmesh, "vtof", data.vtof, data.nvertices);
-    setCRSField(env, jmesh, "vtoc", data.vtoc, data.nvertices);
-
-    // Set edge relations
-    setCRSPairField(env, jmesh, "etov", data.etov, data.nedges);
-    setCRSField(env, jmesh, "etof", data.etof, data.nedges);
-    setCRSField(env, jmesh, "etoc", data.etoc, data.nedges);
-
-    // Set face relations
-    setCRSField(env, jmesh, "ftov", data.ftov, data.nfaces);
-    setCRSField(env, jmesh, "ftoe", data.ftoe, data.nfaces);
-    setCRSPairField(env, jmesh, "ftoc", data.ftoc, data.nfaces);
-
-    // Set cell relations
-    setCRSField(env, jmesh, "ctov", data.ctov, data.ncells);
-    setCRSField(env, jmesh, "ctoe", data.ctoe, data.ncells);
-    setCRSField(env, jmesh, "ctof", data.ctof, data.ncells);
-    setCRSField(env, jmesh, "ctoc", data.ctoc, data.ncells);
-
-    // Set properties we know about
-    // Position for vertices
-    loadPositions(env, jmesh, mesh, reader);
-    
-    boundary_builder.init(h.nBoundaries, reader.boundaries());
-    
-    loaded = true;
+    catch (MeshIO::MeshLoadException e) {
+      std::cerr << e.what() << std::endl;
+      jmesh = NULL;
+    }
+    catch (...) {
+      std::cerr << "System exception while loading mesh" << std::endl;
+      jmesh = NULL;
+    }
   }
-  catch (MeshIO::MeshLoadException e) {
-    std::cerr << e.what() << std::endl;
-  }
-  catch (...) {
-    std::cerr << "System exception while loading mesh" << std::endl;
+  else {
+    std::cerr << "Mesh already loaded!" << std::endl; 
   }
   
   return jmesh;

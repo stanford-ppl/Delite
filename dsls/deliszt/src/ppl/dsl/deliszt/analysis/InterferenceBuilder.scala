@@ -7,6 +7,25 @@ import ppl.dsl.deliszt.datastruct.scala._
 class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
   import Stencil.StencilMap
 
+  def trivialColoring(ms: MeshSet) : Coloring = {
+    var numBlocks: Int = math.ceil(ms.size / blockSize).toInt
+    val edge_idx = Array.fill[Int](numBlocks+1) {0}
+    // This will OVERESTIMATE the number of edges.
+    val edge_vals = new Array[Int](0)
+    
+    val oneColorer = new OneColorer()
+    val (colors, numColors) = oneColorer.color(numBlocks, edge_idx, edge_vals)
+    val nodes = (ms map { mo: Int => Mesh.internal(mo) }).toArray
+    
+    val elements = new Array[Int](ms.size)
+    for(i <- 0 until ms.size) {
+      elements(i) = Mesh.internal(ms(i))
+    }
+    
+    // Now output them?
+    new Coloring(nodes, colors, numColors, blockSize, elements)
+  }
+  
   def buildAndColor(ms: MeshSet, stencil: StencilMap) : Coloring = {
     val accesses = new HashMap[FieldAccess,MSet[Int]]() { override def default(key: FieldAccess) = { val mset = MSet[Int](); this(key) = mset; mset } }
     val edges = new HashMap[Int, MSet[Int]]() { override def default(key: Int) = { val mset = MSet[Int](); this(key) = mset; mset } }
