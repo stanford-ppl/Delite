@@ -1,39 +1,22 @@
 #ifndef _MATIMPL_H_
 #define _MATIMPL_H_
 
-/*
-
-template class T
+template <class T, int R, int C>
 class Mat {
 public
-  T data;
-  int numRows;
-  int numCols;
-
-  // Constructors
-  __host__ __device__ Mat() {
-    numRows = 0;
-    numCols = 0;
-    data = NULL;
-  }
-
-  __host__ __device__ Mat(int _numRows, int _numCols, T _data) {
-    numRows = _numRows;
-    numCols = _numCols;
-    data = _data;
-  }
+  T data[N*M];
 
   // Accessor Functions
   __host__ __device__ T apply(int idxR, int idxC) {
-    return data[idxRnumCols+idxC];
+    return data[idxR*C+idxC];
   }
 __host__ __device__ void update(int idxR, int idxC, T newVal) {
-    data[idxRnumCols+idxC] = newVal;
+    data[idxR*C+idxC] = newVal;
   }
 
   // DeliteCollection
-  __host__ __device__ int size() {
-      return numRowsnumCols;
+  __host__ __device__ int dcSize() {
+      return R * C;
   }
   __host__ __device__ T dcApply(int idx) {
       return data[idx];
@@ -41,7 +24,12 @@ __host__ __device__ void update(int idxR, int idxC, T newVal) {
   __host__ __device__ void dcUpdate(int idx, T value) {
       data[idx] = value;
   }
-};
-*/
-#endif
 
+  // Vector Update
+  __host__ __device__ void vectorUpdate(int idx, Vector<T,C> vec) {
+      for(int i=0; i<C; i++) 
+          data[idx*C+i] = vec.data[i];
+  }
+};
+
+#endif

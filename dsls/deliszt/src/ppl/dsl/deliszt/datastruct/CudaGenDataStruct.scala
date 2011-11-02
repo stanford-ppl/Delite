@@ -15,6 +15,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   val FaceImplCls = "jclass FaceImplCls = env->FindClass(\"generated/scala/FaceImpl\");\n"
   val VertexImplCls = "jclass VertexImplCls = env->FindClass(\"generated/scala/VertexImpl\");\n"
   val VecImplCls = "jclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n"
+  val MatImplCls = "jclass MatImplCls = env->FindClass(\"generated/scala/MatImpl\");\n"
   val CRSImplCls = "jclass CRSImplCls = env->FindClass(\"generated/scala/CRSImpl\");\n"
 
   def writeImplCls: String = {
@@ -204,6 +205,74 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
+  /* Transfer function for Field<T> (T:Short Matrix Types) */
+  def MatFieldCopyInputHtoD(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+    val out = new StringBuilder
+    val typeStr = remap(argType)
+    val numBytesStr = "%s->size * sizeof(%s) * %s".format(quote(sym),typeStr,size)
+
+    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
+    out.append("\tjmethodID mid_size = env->GetMethodID(cls,\"size\",\"()I\");\n")
+
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s->size = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_size)"))
+
+    out.append("\t%s *hostPtr;\n".format(typeStr))
+    out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+    out.append("\t%s *devPtr;\n".format(typeStr))
+    out.append("\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
+    out.append("\t%s->data = devPtr;\n".format(quote(sym)))
+
+    out.append("\t"+MatImplCls)
+    out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
+    out.append("\tjmethodID mid_elem_data = env->GetMethodID(MatImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+
+    out.append("\tfor(int i=0; i<%s->size; i++) {\n".format(quote(sym)))
+    out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
+    out.append("\t\tj%sArray elem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr,typeStr))
+    out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = elem_data_ptr[j]; }\n".format(size,size))
+    out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\tenv->DeleteLocalRef(elem_data);\n")
+    out.append("\t}\n")
+    out.append("\tDeliteCudaMemcpyHtoDAsync(devPtr, hostPtr, %s);\n".format(numBytesStr))
+
+    out.append("\tenv->DeleteLocalRef(cls);\n")
+    out.append("\treturn %s;\n".format(quote(sym)))
+    out.toString
+  }
+
+  def MatFieldCopyOutputDtoH(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+    "assert(false);\n"
+  }
+
+  def MatFieldCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+    val out = new StringBuilder
+    val typeStr = remap(argType)
+    val numBytesStr = "%s.size * sizeof(%s) * %s".format(quote(sym),remap(argType),size)
+
+    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
+    out.append("\t"+MatImplCls)
+    out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
+    out.append("\tjmethodID mid_elem_data = env->GetMethodID(MatImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    
+    out.append("\t%s *hostPtr;\n".format(typeStr))
+    out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
+    out.append("\tDeliteCudaMemcpyDtoHAsync(hostPtr, %s.data, %s);\n".format(quote(sym),numBytesStr))
+    
+    out.append("\tfor(int i=0; i<%s.size; i++) {\n".format(quote(sym)))
+    out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
+    out.append("\t\tj%sArray elem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr,typeStr))
+    out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\tfor(int j=0; j<%s; j++) { elem_data_ptr[j] = hostPtr[i*%s+j]; }\n".format(size,size))
+    out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\tenv->DeleteLocalRef(elem_data);\n")
+    out.append("\t}\n")
+
+    out.append("\tenv->DeleteLocalRef(cls);\n")
+    out.toString
+  }
+
   /* Transfer Mesh */
   def MeshCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
@@ -304,6 +373,37 @@ trait CudaGenDataStruct extends CudaCodegen {
     "assert(false);\n"
   }
   def VecCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
+    "assert(false);\n"
+  }
+
+  def MatCopyInputHtoD(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+    val out = new StringBuilder
+    val typeStr = remap(argType)
+
+    out.append("\tjclass cls = env->GetObjectClass(obj);\n")
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+
+    out.append("\t" + MatImplCls)
+    out.append("\tjmethodID mid_elem = env->GetMethodID(MatImplCls,\"apply$mc%s$sp\",\"(I)%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\tfor(int i=0; i<%s; i++) {\n".format(size))
+    typeStr match {
+      case "int" => out.append("\t\t%s->data[i] = env->CallIntMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case "long" => out.append("\t\t%s->data[i] = env->CallLongMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case "float" => out.append("\t\t%s->data[i] = env->CallFloatMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case "bool" => out.append("\t\t%s->data[i] = env->CallBooleanMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case _ => throw new GenerationFailedException("CudaGen: Cannot call JNI method for this type.")
+    }
+    out.append("\t}\n")
+
+    out.append("\tenv->DeleteLocalRef(cls);\n")
+    out.append("\treturn %s;\n".format(quote(sym)))
+    out.toString
+  }
+
+  def MatCopyOutputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
+    "assert(false);\n"
+  }
+  def MatCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_]): String = {
     "assert(false);\n"
   }
 

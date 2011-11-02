@@ -430,41 +430,22 @@ trait CudaGenMatOps extends CudaGenBase {
   import IR._
 
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
-    /* CUBLAS calls */
-    /* case MatMultiply(x,y) => {
-      val callStream = "cublasSetKernelStream(stream);"
-      val callKernel = if (remap(x.Type.typeArguments(0)) == "double")
-        "cublasDgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
-      else if (remap(x.Type.typeArguments(0)) == "float")
-        "cublasSgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
-      else
-        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0))))
-      emitMatAlloc(sym,"%s->numRows".format(quote(x)),"%s->numCols".format(quote(y)),false)
-      emitLibCall(sym,List(callStream,callKernel))
-    }
-    case MatTimesVec(x,y) => {
-      val callStream = "cublasSetKernelStream(stream);"
-      val callKernel = if (remap(x.Type.typeArguments(0)) == "double")
-        "cublasDgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
-      else if (remap(x.Type.typeArguments(0)) == "float")
-        "cublasSgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
-      else
-        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Mat*Vec CUBLAS library)".format(remap(x.Type.typeArguments(0))))
-      emitVecAlloc(sym,"%s->numRows".format(quote(x)),"false",false)
-      emitLibCall(sym,List(callStream,callKernel))
-    } */
-    /* The ops that call through to the underlying data structure */
-    case MatDCApply(x,i) =>
-      emitValDef(sym,"%s.dcApply(%s)".format(quote(x),quote(i)))
-    case MatApply(x,i,j) =>
-      emitValDef(sym,"%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
-    case MatUpdate(x,i,j,y) =>
-      stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
-    case MatNumRows(x) =>
-      emitValDef(sym,quote(x) + ".numRows")
-    case MatNumCols(x) =>
-      emitValDef(sym,quote(x) + ".numCols")
+    // these are the ops that call through to the underlying real data structure
+    case m@MatObjNew(vs @ _*) if(!isHostAlloc) => emitValDef(sym, remap(sym.Type) + "()")
+                                                 vs.zipWithIndex.foreach(elem => stream.println("%s.vectorUpdate(%s, %s);".format(quote(sym),elem._2,quote(elem._1))))
+    case m@MatObjectNNew(numRows,numCols) if(!isHostAlloc) => emitValDef(sym, "Mat<" + remap(m.a) + "," + quote(numRows) + "," + quote(numCols) + ">()")
+    //case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
+    case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")
+    case MatUpdate(x,i,j,y) => stream.println(quote(x) + ".update(" + quote(i) + ", " + quote(j) + "," + quote(y) + ");")
 
+    //case MatGetRow(x,i) => emitValDef(sym,quote(x) + ".row(" + quote(i) + ")")
+    //case MatGetCol(x,i) => emitValDef(sym,quote(x) + ".col(" + quote(i) + ")")
+    
+    case MatNumRows(x) => emitValDef(sym,quote(x) + ".numRows")
+    case MatNumCols(x) => emitValDef(sym,quote(x) + ".numCols")
+    
+    case MatClone(x) => emitValDef(sym, quote(x))
+    
     case _ => super.emitNode(sym,rhs)
   }
 }
@@ -475,23 +456,6 @@ trait CGenMatOps extends CGenBase {
   import IR._
 
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
-
-    case MatObjectNNew(numRows,numCols) =>
-      stream.println("%s *%s_data = malloc(sizeof(%s)*%s*%s);".format(remap(sym.Type.typeArguments(0)),quote(sym),remap(sym.Type.typeArguments(0)),quote(numRows),quote(numCols)))
-      stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
-      stream.println("%s.numRows = %s;".format(quote(sym),quote(numRows)))
-      stream.println("%s.numCols = %s;".format(quote(sym),quote(numCols)))
-      stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
-    case MatDCApply(x,i) =>
-      emitValDef(sym,"%s.apply(%s)".format(quote(x),quote(i)))
-    //case MatApply(x,i,j) =>
-    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
-    case MatUpdate(x,i,j,y) =>
-      stream.println("%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
-    case MatNumRows(x) =>
-      emitValDef(sym,quote(x) + ".numRows")
-    case MatNumCols(x) =>
-      emitValDef(sym,quote(x) + ".numCols")
     case _ => super.emitNode(sym,rhs)
   }
 }

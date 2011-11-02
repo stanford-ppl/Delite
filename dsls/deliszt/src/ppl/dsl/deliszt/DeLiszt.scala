@@ -298,12 +298,17 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     else false
   }
 
+  def isMatType[A](m: Manifest[A]) = {
+    if (m.toString.startsWith("ppl.dsl.deliszt.Mat")) true
+    else false
+  }
+
   def getVecSize[A](m: Manifest[A]):Int = {
     val startsWith = m.toString.split("\\[")
     startsWith(0) match {
       case "ppl.dsl.deliszt.Succ" => getVecSize(m.typeArguments(0)) + 1
       case "ppl.dsl.deliszt.Zero" => 0
-      case _ => throw new GenerationFailedException("CudaGen: Unknown Vec Type: " + m.toString)
+      case _ => throw new GenerationFailedException("CudaGen: Unknown Vec/Mat Type: " + m.toString)
     }
   }
 
@@ -318,12 +323,15 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
       case "ppl.dsl.deliszt.Vertex" => "Vertex"
       case "ppl.dsl.deliszt.Edge" => "Edge"
       case "ppl.dsl.deliszt.MeshObj" => "MeshObj"
-      case "ppl.dsl.deliszt.Vec" => "Vec<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">" //TODO: Is nested Vec type supported on Liszt?
-      case "ppl.dsl.deliszt.VecImpl" => "Vec<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">" //TODO: Is nested Vec type supported on Liszt?
+      case "ppl.dsl.deliszt.Vec" => "Vec<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">" //TODO: Is nested Vec/Mat type supported on Liszt?
+      case "ppl.dsl.deliszt.Mat" => "Mat<" + remap(m.typeArguments(2)) + "," + getVecSize(m.typeArguments(0)) + "," + getVecSize(m.typeArguments(1)) + ">" 
+      case "ppl.dsl.deliszt.VecImpl" => "Vec<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">"
+      case "ppl.dsl.deliszt.MatImpl" => "Mat<" + remap(m.typeArguments(2)) + "," + getVecSize(m.typeArguments(0)) + "," + getVecSize(m.typeArguments(1)) + ">"
       case "ppl.dsl.deliszt.MeshSet" => "MeshSet<" + remap(m.typeArguments(0)) + ">"
       case "ppl.dsl.deliszt.BoundarySet" => "BoundarySet<" + remap(m.typeArguments(0)) + ">"
       case "ppl.dsl.deliszt.Field" if (isPrimitiveType(m.typeArguments(1))) => "Field<" + remap(m.typeArguments(1)) + ">"
       case "ppl.dsl.deliszt.Field" if (isVecType(m.typeArguments(1))) => "VecField<" + remap(m.typeArguments(1).typeArguments(1)) + "," + getVecSize(m.typeArguments(1).typeArguments(0)) + ">"
+      case "ppl.dsl.deliszt.Field" if (isMatType(m.typeArguments(1))) => "MatField<" + remap(m.typeArguments(1).typeArguments(2)) + "," + getVecSize(m.typeArguments(1).typeArguments(0)) + "," + getVecSize(m.typeArguments(1).typeArguments(1)) + ">"
       case "scala.collection.immutable.List" => "CudaArrayList<" + remap(m.typeArguments(0)) + ">"  //TODO: Remove this
       case _ => super.remap(m)
     }
@@ -335,7 +343,10 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     case "BoundarySet<Cell>" | "BoundarySet<Face>" | "BoundarySet<Edge>" | "BoundarySet<Vertex>" => true
     case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" => true
     case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" => true
+    case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" => true
+    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" => true
     case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" => true
+    case "MatField<int,3,3>" | "MatField<long,3,3>" | "MatField<float,3,3>" | "MatField<bool,3,3>" => true
     case "Mesh" => true
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => true //TODO: Remove this
 
@@ -348,7 +359,10 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     case "BoundarySet<Cell>" | "BoundarySet<Face>" | "BoundarySet<Edge>" | "BoundarySet<Vertex>" => MeshSetCopyInputHtoD(sym, sym.Type.typeArguments(0))
     case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" => FieldCopyInputHtoD(sym, sym.Type.typeArguments(1))
     case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" => VecCopyInputHtoD(sym, sym.Type.typeArguments(1), 3)
+    case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" => VecCopyInputHtoD(sym, sym.Type.typeArguments(1), 4)
+    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" => MatCopyInputHtoD(sym, sym.Type.typeArguments(1), 9)
     case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" => VecFieldCopyInputHtoD(sym, sym.Type.typeArguments(1).typeArguments(1), 3)
+    case "MatField<int,3,3>" | "MatField<long,3,3>" | "MatField<float,3,3>" | "MatField<bool,3,3>" => MatFieldCopyInputHtoD(sym, sym.Type.typeArguments(1).typeArguments(2), 9)
     case "Mesh" => MeshCopyInputHtoD(sym)
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => "return new CudaArrayList<int>();\n" //TODO: Remove this
     //case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyInputHtoD(sym)
@@ -363,6 +377,7 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" => FieldCopyOutputDtoH(sym, sym.Type.typeArguments(1))
     case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" => VecCopyOutputDtoH(sym, sym.Type.typeArguments(1))
     case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" => VecFieldCopyOutputDtoH(sym, sym.Type.typeArguments(1).typeArguments(1), 3)
+    case "MatField<int,3>" | "MatField<long,3>" | "MatField<float,3>" | "MatField<bool,3>" => MatFieldCopyOutputDtoH(sym, sym.Type.typeArguments(1).typeArguments(2), 9)
     case "Mesh" => MeshCopyOutputDtoH(sym)
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => "//copy\n" //TODO: Remove this
     //case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyOutputDtoH(sym)
@@ -376,7 +391,9 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     case "BoundarySet<Cell>" | "BoundarySet<Face>" | "BoundarySet<Edge>" | "BoundarySet<Vertex>" => MeshSetCopyMutableInputDtoH(sym, sym.Type.typeArguments(0))
     case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" => FieldCopyMutableInputDtoH(sym, sym.Type.typeArguments(1))
     case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" => VecCopyMutableInputDtoH(sym, sym.Type.typeArguments(1))
+    case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" => VecCopyMutableInputDtoH(sym, sym.Type.typeArguments(1))
     case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" => VecFieldCopyMutableInputDtoH(sym, sym.Type.typeArguments(1).typeArguments(1), 3)
+    case "MatField<int,3,3>" | "MatField<long,3,3>" | "MatField<float,3,3>" | "MatField<bool,3,3>" => MatFieldCopyMutableInputDtoH(sym, sym.Type.typeArguments(1).typeArguments(2), 9)
     case "Mesh" => MeshCopyMutableInputDtoH(sym)
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => "//copy\n" //TODO: Remove this
     //case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyMutableInputDtoH(sym)
