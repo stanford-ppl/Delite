@@ -168,8 +168,10 @@ trait SC extends DeLisztApplication {
       Print("before cell number: ",ID(c)," -> phi value: ",Phi(c))
     }
     
+    val start_time = wall_time()
+    var num_iter = 0
     // Print("ZA WHILE LOOP")
-    while(t < 2.f) {
+    while(t < 4.f) {
       // Print("INTERIOR SET")
       for(f <- interior_set) {
         // Print(ID(f))
@@ -227,7 +229,10 @@ trait SC extends DeLisztApplication {
       }
       
       t += deltat
+      num_iter += 1
     }
+    
+    Print( "TIME_FOR_LOOP: ", wall_time() - start_time, " num iter: ", num_iter )
       
     for(c <- cells(mesh)) {
       Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
