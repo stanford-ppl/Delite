@@ -5,6 +5,7 @@
 #include "BitReverse.h"
 #include "MeshObj.h"
 #include "VecImpl.h"
+#include "MatImpl.h"
 
 template <class T>
 class Field {
@@ -79,13 +80,13 @@ public:
     int size;
 
     // Accessor Functions
-    __host__ __device__ Vec<T,R,C> apply(MeshObj mo) {
-        Vec<T,R,C> ret;
+    __host__ __device__ Mat<T,R,C> apply(MeshObj mo) {
+        Mat<T,R,C> ret;
         int idx = internal(mo);
         for(int i=0; i<R*C; i++) { ret.data[i] = data[idx*R*C+i]; }
         return ret;
     }
-    __host__ __device__ void update(MeshObj mo, Vec<T,R,C> in) {
+    __host__ __device__ void update(MeshObj mo, Mat<T,R,C> in) {
         int idx = internal(mo);
         for(int i=0; i<R*C; i++) { data[idx*R*C+i] = in.data[i]; }
     }

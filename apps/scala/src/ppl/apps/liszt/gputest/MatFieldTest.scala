@@ -15,10 +15,10 @@ trait MatFieldTest extends DeLisztApplication {
     int3_zero  = Vec(1,2,3)
     int33_zero = Mat(int3_zero,int3_zero,int3_zero)
     PMat = FieldWithConst[Edge,Mat[_3,_3,Int]](int33_zero)
-    edge_values = FieldWithConst[Edge,Int](0)
+    edge_values = FieldWithConst[Edge,Mat[_3,_3,Int]](int33_zero)
     
     for(e <- edges(mesh)) {
-      edge_values(e) += PMat(e)
+      edge_values(e) += (PMat(e) + int33_zero)
     }
     for(e <- edges(mesh)) {
       Print(edge_values(e))

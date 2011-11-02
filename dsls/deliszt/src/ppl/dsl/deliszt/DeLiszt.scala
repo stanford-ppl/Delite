@@ -360,13 +360,11 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" => FieldCopyInputHtoD(sym, sym.Type.typeArguments(1))
     case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" => VecCopyInputHtoD(sym, sym.Type.typeArguments(1), 3)
     case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" => VecCopyInputHtoD(sym, sym.Type.typeArguments(1), 4)
-    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" => MatCopyInputHtoD(sym, sym.Type.typeArguments(1), 9)
+    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" => MatCopyInputHtoD(sym, sym.Type.typeArguments(2), 9)
     case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" => VecFieldCopyInputHtoD(sym, sym.Type.typeArguments(1).typeArguments(1), 3)
     case "MatField<int,3,3>" | "MatField<long,3,3>" | "MatField<float,3,3>" | "MatField<bool,3,3>" => MatFieldCopyInputHtoD(sym, sym.Type.typeArguments(1).typeArguments(2), 9)
     case "Mesh" => MeshCopyInputHtoD(sym)
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => "return new CudaArrayList<int>();\n" //TODO: Remove this
-    //case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyInputHtoD(sym)
-    //case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
@@ -376,12 +374,12 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     case "BoundarySet<Cell>" | "BoundarySet<Face>" | "BoundarySet<Edge>" | "BoundarySet<Vertex>" => MeshSetCopyOutputDtoH(sym, sym.Type.typeArguments(0))
     case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" => FieldCopyOutputDtoH(sym, sym.Type.typeArguments(1))
     case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" => VecCopyOutputDtoH(sym, sym.Type.typeArguments(1))
+    case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" => VecCopyOutputDtoH(sym, sym.Type.typeArguments(1))
+    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" => MatCopyOutputDtoH(sym, sym.Type.typeArguments(2))
     case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" => VecFieldCopyOutputDtoH(sym, sym.Type.typeArguments(1).typeArguments(1), 3)
     case "MatField<int,3>" | "MatField<long,3>" | "MatField<float,3>" | "MatField<bool,3>" => MatFieldCopyOutputDtoH(sym, sym.Type.typeArguments(1).typeArguments(2), 9)
     case "Mesh" => MeshCopyOutputDtoH(sym)
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => "//copy\n" //TODO: Remove this
-    //case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyOutputDtoH(sym)
-    //case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyOutputDtoH(sym)
     case _ => super.copyOutputDtoH(sym)
   }
 
@@ -392,12 +390,11 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" => FieldCopyMutableInputDtoH(sym, sym.Type.typeArguments(1))
     case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" => VecCopyMutableInputDtoH(sym, sym.Type.typeArguments(1))
     case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" => VecCopyMutableInputDtoH(sym, sym.Type.typeArguments(1))
+    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" => MatCopyMutableInputDtoH(sym, sym.Type.typeArguments(2))
     case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" => VecFieldCopyMutableInputDtoH(sym, sym.Type.typeArguments(1).typeArguments(1), 3)
     case "MatField<int,3,3>" | "MatField<long,3,3>" | "MatField<float,3,3>" | "MatField<bool,3,3>" => MatFieldCopyMutableInputDtoH(sym, sym.Type.typeArguments(1).typeArguments(2), 9)
     case "Mesh" => MeshCopyMutableInputDtoH(sym)
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => "//copy\n" //TODO: Remove this
-    //case "Mat<int>" | "Mat<long>" | "Mat<float>" | "Mat<double>" | "Mat<bool>" => matCopyMutableInputDtoH(sym)
-    //case "Vec<int>" | "Vec<long>" | "Vec<float>" | "Vec<double>" | "Vec<bool>" => vecCopyMutableInputDtoH(sym)
     case _ => super.copyMutableInputDtoH(sym)
   }
 

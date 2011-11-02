@@ -1,10 +1,12 @@
 #ifndef _MATIMPL_H_
 #define _MATIMPL_H_
 
+#include "VecImpl.h"
+
 template <class T, int R, int C>
 class Mat {
-public
-  T data[N*M];
+public:
+  T data[R*C];
 
   // Accessor Functions
   __host__ __device__ T apply(int idxR, int idxC) {
@@ -26,7 +28,7 @@ __host__ __device__ void update(int idxR, int idxC, T newVal) {
   }
 
   // Vector Update
-  __host__ __device__ void vectorUpdate(int idx, Vector<T,C> vec) {
+  __host__ __device__ void vectorUpdate(int idx, Vec<T,C> vec) {
       for(int i=0; i<C; i++) 
           data[idx*C+i] = vec.data[i];
   }
