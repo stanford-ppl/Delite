@@ -25,12 +25,12 @@ trait VectorOps extends Variables {
   object Vector {
     def apply[A:Manifest](len: Int, isRow: Boolean) = densevector_obj_new(unit(len), unit(isRow)) // needed to resolve ambiguities
     def apply[A](len: Rep[Int], isRow: Rep[Boolean])(implicit mA: Manifest[A], o: Overloaded1) = densevector_obj_new(len, isRow)
-//    def apply[A:Manifest](xs: A*) = {
-//      val out = densevector_obj_new[A](unit(0),unit(true))
-//      // interpreted (not lifted)
-//      xs.foreach { out += unit(_) }
-//      out
-//    }
+    def apply[A:Manifest](xs: A*) = {
+      val out = densevector_obj_new[A](unit(0),unit(true))
+      // interpreted (not lifted)
+      xs.foreach { out += unit(_) }
+      out
+    }
     def apply[A](xs: Rep[A]*)(implicit mA: Manifest[A], o: Overloaded2) = {
       val out = densevector_obj_new[A](unit(0),unit(true))
       // interpreted (not lifted)

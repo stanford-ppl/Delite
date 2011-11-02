@@ -93,23 +93,29 @@ trait VectorViewOpsExpOpt extends VectorViewOpsExp { this: OptiLAExp =>
   override def vectorview_length[A:Manifest](x: Exp[VectorView[A]]) = x match {
     case Def(MatrixVView(m, start, stride, l, r)) => l
     case Def(MatrixGetRow(m,i)) => m.numCols
+    case Def(MatrixGetCol(m,i)) => m.numRows
     case Def(s@Reflect(MatrixVView(m, start, stride, l, r), u, es)) if context.contains(s) => l
     case Def(s@Reflect(MatrixGetRow(m,i), u, es)) if context.contains(s) => m.numCols 
+    case Def(s@Reflect(MatrixGetCol(m,i), u, es)) if context.contains(s) => m.numRows
     case _ => super.vectorview_length(x) //throw new RuntimeException("could not resolve type of " + findDefinition(x.asInstanceOf[Sym[VectorView[A]]]).get.rhs)
   }  
   
   override def vectorview_isrow[A:Manifest](x: Exp[VectorView[A]]) = x match {
     case Def(MatrixVView(m, start, stride, l, r)) => r
     case Def(MatrixGetRow(m,i)) => Const(true)
+    case Def(MatrixGetCol(m,i)) => Const(false)
     case Def(s@Reflect(MatrixVView(m, start, stride, l, r), u, es)) if context.contains(s) => r
     case Def(s@Reflect(MatrixGetRow(m,i), u, es)) if context.contains(s) => Const(true)
+    case Def(s@Reflect(MatrixGetCol(m,i), u, es)) if context.contains(s) => Const(false)
     case _ => super.vectorview_isrow(x) //throw new RuntimeException("could not resolve type of " + findDefinition(x.asInstanceOf[Sym[VectorView[A]]]).get.rhs) 
   }
   
   // and this one also helps in the example:
   def vectorview_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]): Option[Exp[A]] = x match {
     case Def(MatrixGetRow(m,i)) => Some(matrix_apply(m,i,n))
+    case Def(MatrixGetCol(m,j)) => Some(matrix_apply(m,n,j))
     case Def(s@Reflect(MatrixGetRow(m,i), u, es)) if context.contains(s) => Some(matrix_apply(m,i,n))
+    case Def(s@Reflect(MatrixGetCol(m,j), u, es)) if context.contains(s) => Some(matrix_apply(m,n,j))
     case _ => None
   }
   
