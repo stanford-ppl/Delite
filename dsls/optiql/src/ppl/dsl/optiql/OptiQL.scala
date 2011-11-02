@@ -38,7 +38,7 @@ trait OptiQLLift extends LiftString {
  * Scala IR nodes
  */
 trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsExp with SeqOpsExp with OrderingOpsExp
-  with PrimitiveOpsExp with TupleOpsExp with NumericOpsExp with ArrayOpsExp with IfThenElseExp with StructFatExpOptCommon with ResultOps
+  with PrimitiveOpsExp with TupleOpsExp with NumericOpsExp with ArrayOpsExp with IfThenElseExp with StructFatExpOptCommon with CastingOpsExp with ResultOps
 
 /**
  * Ops available only to the compiler, and not our applications
@@ -68,7 +68,7 @@ trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with HackOpsExp
  * Codegen traits
  */
 trait OptiQLScalaCodeGenPkg extends ScalaGenMiscOps with ScalaGenIOOps with ScalaGenSeqOps with ScalaGenOrderingOps 
-  with ScalaGenPrimitiveOps with ScalaGenTupleOps with ScalaGenNumericOps with ScalaGenArrayOps with ScalaGenIfThenElseFat with ScalaGenImplicitOps with ScalaGenFatStruct {
+  with ScalaGenPrimitiveOps with ScalaGenTupleOps with ScalaGenNumericOps with ScalaGenArrayOps with ScalaGenIfThenElseFat with ScalaGenImplicitOps with ScalaGenCastingOps with ScalaGenFatStruct {
   val IR: OptiQLScalaOpsPkgExp
 }
 

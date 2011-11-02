@@ -121,7 +121,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with LoopsFatExp with If
       //alloc = reifyEffects(aV),
       keyFunc = reifyEffects(func(v)),
       valFunc = reifyEffects(func(v)),
-      zero = reifyEffects(Const(null.asInstanceOf[A])),
+      zero = reifyEffects(unit(null).asInstanceOfL[A]),
       rV = rV,
       rFunc = reifyEffects(rV._2)
     ))
