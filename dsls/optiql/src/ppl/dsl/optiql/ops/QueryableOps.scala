@@ -100,7 +100,10 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     val res = reducePlain(s.size)(i => sumSelector(s(i)))(0)(_ + _)
     res
   }
-  def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) = s.Sum(avgSelector)/s.size()
+
+  def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) = 
+    s.Sum(avgSelector)/s.Sum(_ => 1)
+    
   def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]) = s.size()
   
   def grouping_apply[TKey:Manifest, TSource:Manifest](k: Rep[TKey], v: Rep[DataTable[TSource]]): Rep[Grouping[TKey, TSource]] =

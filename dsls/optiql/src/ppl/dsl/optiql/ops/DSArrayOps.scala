@@ -9,6 +9,10 @@ import ppl.delite.framework.datastructures.FieldAccessOpsExp
 
 trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with LoopsFatExp with IfThenElseFatExp { this: OptiQLExp =>
 
+  //object ToReduceElem {
+  //  def unapply[T](x: Def)
+  //}
+
   // overrides for optimization
   override def simpleLoop[A:Manifest](size: Exp[Int], v: Sym[Int], body: Def[A]): Exp[A] = body match {
     case b: DeliteCollectElem[A,Array[A]] => b.func match { // unchecked!
@@ -25,19 +29,49 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with LoopsFatExp with If
       // collect(reduce(hashCollect)) --> hashReduce
       case Block(Def(SimpleLoop(nestedSize /*Def(ArrayLength(input))*/, redV, redBody: DeliteReduceElem[cc]))) =>
         // sz is not guaranteed to match ....
-        Console.println("******* investigation nested collect reduce " + redBody)
+        Console.println("******* investigating nested collect reduce " + redBody)
         redBody.func match {
-          case Block(Def(ArrayApply(Def(ArrayApply(Def(SimpleLoop(origSize, grpV, grpBody: DeliteHashCollectElem[aa,`cc`,_])), idx1)), idx2))) =>
+          case Block(Def(ArrayApply(Def(ArrayApply(
+              Def(SimpleLoop(origSize, grpV, grpBody: DeliteHashCollectElem[aa,`cc`,_])), idx1)), idx2))) =>
             Console.println("******* TADAAA!!! ")
             Console.println(""+idx1 + " " + v)
             Console.println(""+idx2 + " " + redV)
             assert(idx1 == v, "TODO: case not handled" + idx1 + " " + grpV)
             assert(idx2 == redV, "TODO: case not handled")
-            //Console.println("******* ALMOST " + idx1 + "," + idx2)
             
             simpleLoop(origSize, grpV, DeliteHashReduceElem[aa,cc, A](
               keyFunc = grpBody.keyFunc, valFunc = grpBody.valFunc, 
               zero = redBody.zero, rV = redBody.rV, rFunc = redBody.rFunc))
+          case _ =>
+            super.simpleLoop(size, v, body)
+        }
+      // hash collect with average -- TODO: generalize??
+      case Block(Def(d@NumericDivide(Def(SimpleLoop(nestedSize1 /*Def(ArrayLength(input))*/, redV1, redBody1: DeliteReduceElem[cc1])), 
+                                   Def(SimpleLoop(nestedSize2 /*Def(ArrayLength(input))*/, redV2, redBody2: DeliteReduceElem[cc2])) ))) =>
+        // sz is not guaranteed to match ....
+        Console.println("******* investigating nested collect reduce / reduce " + redBody1 + "," + redBody2)
+
+        // FIXME: code duplication is bad. extract common functionality.
+
+        (redBody1.func, redBody2.func) match {
+          case (Block(Def(ArrayApply(Def(ArrayApply(
+              Def(SimpleLoop(origSize1, grpV1, grpBody1: DeliteHashCollectElem[aa1,`cc1`,_])), idxA1)), idxB1))),
+            valFunc2 @ Block(Const(_))) =>
+
+           Console.println("******* TADAAA!!! (average)")
+           assert(idxA1 == v, "TODO: case not handled")
+           assert(idxB1 == redV1, "TODO: case not handled")
+
+           val l1 = simpleLoop(origSize1, grpV1, DeliteHashReduceElem[aa1,cc1, A](
+             keyFunc = grpBody1.keyFunc, valFunc = grpBody1.valFunc, 
+             zero = redBody1.zero, rV = redBody1.rV, rFunc = redBody1.rFunc))
+
+           val l2 = simpleLoop(origSize1, grpV1, DeliteHashReduceElem[aa1,cc2, A](
+             keyFunc = grpBody1.keyFunc, valFunc = valFunc2, 
+             zero = redBody2.zero, rV = redBody2.rV, rFunc = redBody2.rFunc))
+
+           numeric_divide(l1,l2)(d.aev,d.mev)
+
           case _ =>
             super.simpleLoop(size, v, body)
         }
