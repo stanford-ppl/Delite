@@ -325,6 +325,8 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
       case "ppl.dsl.deliszt.MeshObj" => "MeshObj"
       case "ppl.dsl.deliszt.Vec" => "Vec<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">" //TODO: Is nested Vec/Mat type supported on Liszt?
       case "ppl.dsl.deliszt.Mat" => "Mat<" + remap(m.typeArguments(2)) + "," + getVecSize(m.typeArguments(0)) + "," + getVecSize(m.typeArguments(1)) + ">" 
+      case "ppl.dsl.deliszt.MatRow" => "MatRow<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">"
+      case "ppl.dsl.deliszt.MatCol" => "MatCol<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">"
       case "ppl.dsl.deliszt.VecImpl" => "Vec<" + remap(m.typeArguments(1)) + "," + getVecSize(m.typeArguments(0)) + ">"
       case "ppl.dsl.deliszt.MatImpl" => "Mat<" + remap(m.typeArguments(2)) + "," + getVecSize(m.typeArguments(0)) + "," + getVecSize(m.typeArguments(1)) + ">"
       case "ppl.dsl.deliszt.MeshSet" => "MeshSet<" + remap(m.typeArguments(0)) + ">"

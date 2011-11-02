@@ -435,12 +435,12 @@ trait CudaGenMatOps extends CudaGenBase {
     case m@MatObjNew(vs @ _*) if(!isHostAlloc) => emitValDef(sym, remap(sym.Type) + "()")
                                                  vs.zipWithIndex.foreach(elem => stream.println("%s.vectorUpdate(%s, %s);".format(quote(sym),elem._2,quote(elem._1))))
     case m@MatObjectNNew(numRows,numCols) if(!isHostAlloc) => emitValDef(sym, "Mat<" + remap(m.a) + "," + quote(numRows) + "," + quote(numCols) + ">()")
-    //case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")
+    case MatApply(x,i,j) => emitValDef(sym, quote(x) + ".apply(" + quote(i) + ", " + quote(j) + ")")
     case MatUpdate(x,i,j,y) => stream.println(quote(x) + ".update(" + quote(i) + ", " + quote(j) + "," + quote(y) + ");")
 
-    //case MatGetRow(x,i) => emitValDef(sym,quote(x) + ".row(" + quote(i) + ")")
-    //case MatGetCol(x,i) => emitValDef(sym,quote(x) + ".col(" + quote(i) + ")")
+    case MatGetRow(x,i) => emitValDef(sym,quote(x) + ".row(" + quote(i) + ")")
+    case MatGetCol(x,i) => emitValDef(sym,quote(x) + ".col(" + quote(i) + ")")
     
     case MatNumRows(x) => emitValDef(sym,quote(x) + ".numRows")
     case MatNumCols(x) => emitValDef(sym,quote(x) + ".numCols")

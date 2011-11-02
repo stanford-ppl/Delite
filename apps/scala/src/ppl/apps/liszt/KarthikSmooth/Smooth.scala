@@ -580,7 +580,7 @@ trait Smooth extends DeLisztApplication {
       var iter = 0
 
       while (iter <= 4) {
-        var factor = deltat/(5.f-iter.asInstanceOfL[Float])
+        val factor = deltat/(5.f-iter.asInstanceOfL[Float])
 
     //calcGradient()
    
