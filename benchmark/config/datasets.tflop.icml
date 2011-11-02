@@ -11,10 +11,10 @@ liszthello|liszt.cfg
 lisztcpubound|liszt.cfg
 lisztmembound|liszt.cfg
 lisztsss|liszt.cfg
-sc|liszt.cfg
-sc_rw|liszt.cfg
-mesh_smooth|liszt.cfg
-karthik_smooth|liszt.cfg
+sc|$data/liszt/sc.cfg
+sc_rw|$data/liszt/sc.cfg
+mesh_smooth|$data/liszt/sc.cfg
+karthik_smooth|$data/liszt/karthik.cfg
 tpchsf1|/home/hchafi/projects/tpch/SF1
 tpchsf3|/home/hchafi/projects/tpch/SF3
 tpchsf5|/home/hchafi/projects/tpch/SF5

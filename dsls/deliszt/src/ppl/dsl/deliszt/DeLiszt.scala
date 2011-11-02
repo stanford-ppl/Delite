@@ -230,7 +230,7 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
     
     // Vec, Mat, Field, anything with that final parameter of some value type
     for(s <- List("Vec", "Mat", "Field")) {
-      val expr = ("\\b" + s + "\\[.*?,\\s*([^\\s]+)\\s*\\]").r  
+      val expr = ("\\b" + s + "\\[.*,\\s*([^\\s]+)\\s*\\]").r  
       res = expr.replaceAllIn(res, m => s + moSub(m))
     }
     

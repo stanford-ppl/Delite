@@ -163,6 +163,8 @@ def launchApps(options):
         opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + app + ".deg"
         if options['blas'] == True:
             opts = opts + " -Dblas.enabled"
+        if options['run']['gpu'] == True:
+            opts = opts + " -Ddelite.generation.cuda"
         if options['variants'] == False:
             opts = opts + " -Dnested.variants.level=0"
         if options['fusion'] == True:
@@ -204,6 +206,7 @@ def launchApps(options):
                 
                 print "== executing application: " + app + " " + params[app],
                 print "== with options: " + opts + "\n"
+                print props['delite.home'] + "/bin/exec " + app + ".deg " + params[app]
                 ecode = os.system(props['delite.home'] + "/bin/exec " + app + ".deg " + params[app])
                 if ecode != 0 and options['keep-going'] == None:
                     print "Detected abnormal exit code, exiting"

@@ -398,9 +398,10 @@ trait ScalaGenMatOps extends ScalaGenBase {
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case m@MatObjNew(vs @ _*) => emitValDef(sym, "generated.scala.Mat[" + remap(m.a) + "](" + vs.map(quote).reduceLeft(_+","+_) + ")")
-    case m@MatObjectNNew(numRows,numCols) => emitValDef(sym, "generated.scala.Mat[" + remap(m.a) + "].ofSize(" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@MatObjectNNew(numRows,numCols) => emitValDef(sym, "generated.scala.Mat.ofSize[" + remap(m.a) + "](" + quote(numRows) + "," + quote(numCols) + ")")
     //case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")
+    case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatUpdate(x,i,j,y) => emitValDef(sym,quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
 
     case MatGetRow(x,i) => emitValDef(sym,quote(x) + ".row(" + quote(i) + ")")
