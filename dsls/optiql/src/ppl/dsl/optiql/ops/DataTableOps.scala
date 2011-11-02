@@ -89,7 +89,7 @@ trait ScalaGenDataTableOps extends ScalaGenFat {
     case DataTableApply(t, i) => emitValDef(sym, quote(t) + "(" + quote(i) + ")")
     case DataTableObjectApply(mnfst, initSize) => emitValDef(sym, "new " + remap(mnfst) + "(" + quote(initSize) + ")")
     case DataTableSize(t) => emitValDef(sym, quote(t) + ".size")
-    case DataTablePrintAsTable(t) => emitValDef(sym, quote(t) + ".printAsTable()")
+    case DataTablePrintAsTable(t) => emitValDef(sym, "generated.scala.container.DataTable.printAsTable("+ quote(t) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 

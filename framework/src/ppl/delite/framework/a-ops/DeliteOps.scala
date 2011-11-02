@@ -1320,9 +1320,12 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         } else {
         }
       case (sym, elem: DeliteHashCollectElem[_,_,_]) =>
-        stream.println("assert(false, \"FIXME: hash not supported\")")
+        stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
+        stream.println("var " + quote(sym) + "_hash: scala.collection.mutable.HashMap[" + remap(getBlockResult(elem.keyFunc).Type) + ", scala.collection.mutable.ArrayBuffer[" + remap(getBlockResult(elem.valFunc).Type) + "]] = _")
       case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
-        stream.println("assert(false, \"FIXME: hash not supported\")")
+        stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
+        stream.println("var " + quote(sym) + "_hash: scala.collection.mutable.HashMap[" + remap(getBlockResult(elem.keyFunc).Type) + ", " + remap(getBlockResult(elem.valFunc).Type) + "] = _")
+        stream.println("var " + quote(sym) + "_zero: " + remap(sym.Type) + " = _")
       case (sym, elem: DeliteForeachElem[_]) =>
         stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
       case (sym, elem: DeliteReduceElem[_]) =>

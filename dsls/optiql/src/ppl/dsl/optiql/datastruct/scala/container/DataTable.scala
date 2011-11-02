@@ -6,6 +6,11 @@ import ppl.dsl.optiql.datastruct.scala.util.{ReflectionHelper, Date}
 
 object DataTable {
 
+  def printAsTable(m: Map[String,Any]) {
+    println("TODO: output formatting")
+    println("data table: " + m)
+  }
+  
   implicit def convertIterableToDataTable[T](i: Iterable[T]) : DataTable[T] = {
     if(i.isInstanceOf[DataTable[T]]) {
       i.asInstanceOf[DataTable[T]]

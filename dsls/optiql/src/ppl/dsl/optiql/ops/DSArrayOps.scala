@@ -151,6 +151,12 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with LoopsFatExp with If
     ))
   }
 
+
+  // override -- shouldn't belong here
+  override def struct[T:Manifest](tag: List[String], elems: Map[String, Rep[Any]]): Rep[T] = 
+    toAtom(SimpleStruct[T](tag, elems))(mtype(manifest[Map[String,Any]]))
+
+
 }
 
 
@@ -166,4 +172,19 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
     case ArrayLength(a @ Def(SimpleLoop(_,_,_:DeliteCollectElem[_,_]))) => Some(a) // exclude hash collect!
     case _ => super.unapplySimpleDomain(e)
   }
+  
+/*
+  // override -- shouldn't belong here
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case Struct(tag, elems) =>
+      //emitValDef(sym, "new " + tag.last + "(" + elems.map(e => quote(e._2)).mkString(",") + ")")
+      emitValDef(sym, "Map(" + elems.map(e => "\"" + e._1 + "\"->" + quote(e._2)).mkString(",") + ") //" + tag.mkString(" "))
+    case Field(struct, index, tp) =>  
+      //emitValDef(sym, quote(struct) + "." + index)
+      println("WARNING: emitting field access: " + quote(struct) + "." + index)
+      emitValDef(sym, quote(struct) + "(\"" + index + "\").asInstanceOf[" + remap(tp) + "]")
+    case _ => super.emitNode(sym, rhs)
+  }*/
+  
+  
 }
