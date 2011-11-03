@@ -464,6 +464,10 @@ trait Joe extends DeLisztApplication {
 
       UgpWithCvCompFlow.calcRansStateVarAndMaterialProperties()
       
+    for ( c <- cells(mesh) ) {
+      Print("RANS CELL: ", ID(c), " rho ", JoeWithModels.rho(c), " xcv: " , MeshGeometryCalc.x_cv(c), " vel ", UgpWithCvCompFlow.vel(c), " kine ", UgpWithCvCompFlow.kine(c), " press ", UgpWithCvCompFlow.press(c), " temp ", UgpWithCvCompFlow.temp(c), " enth ", UgpWithCvCompFlow.enthalpy(c), " sos ", UgpWithCvCompFlow.sos(c))
+    }
+      
       setNavierStokesBC()
    
       // HERE TIME SHOULD START TICKING !!!!!!

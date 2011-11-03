@@ -137,15 +137,15 @@ trait SC extends DeLisztApplication {
         calcFaceGeom(f)
       }
     }
-    for(f <- faces(mesh)) {
-      Print(ID(f),"FaceArea: ",face_area(f)," normal: ",face_unit_normal(f)," face_centroid: ",face_centroid(f))
-    }
+    // for(f <- faces(mesh)) {
+      // Print(ID(f),"FaceArea: ",face_area(f)," normal: ",face_unit_normal(f)," face_centroid: ",face_centroid(f))
+    // }
     for(c <- cells(mesh)) {
       calcCellGeom(c)
     }
-    for(c <- cells(mesh)) {
-      Print("c: ",ID(c)," ",cell_volume(c)," ",cell_centroid(c))
-    }
+    // for(c <- cells(mesh)) {
+      // Print("c: ",ID(c)," ",cell_volume(c)," ",cell_centroid(c))
+    // }
     
     var ll = Vec(MAX_FLOAT,MAX_FLOAT,MAX_FLOAT)
     var ur = Vec(MIN_FLOAT,MIN_FLOAT,MIN_FLOAT)
@@ -164,14 +164,17 @@ trait SC extends DeLisztApplication {
     }
     val deltat = .015f
     var t = 0.f
-    for(c <- cells(mesh)) {
-      Print("before cell number: ",ID(c)," -> phi value: ",Phi(c))
-    }
+    // for(c <- cells(mesh)) {
+      // Print("before cell number: ",ID(c)," -> phi value: ",Phi(c))
+    // }
     
-    val start_time = wall_time()
+    var start_time = 0.0
     var num_iter = 0
     // Print("ZA WHILE LOOP")
     while(t < 4.f) {
+      if(num_iter > 0) {
+        start_time = wall_time()
+      }
       // Print("INTERIOR SET")
       for(f <- interior_set) {
         // Print(ID(f))
@@ -234,8 +237,8 @@ trait SC extends DeLisztApplication {
     
     Print( "TIME_FOR_LOOP: ", wall_time() - start_time, " num iter: ", num_iter )
       
-    for(c <- cells(mesh)) {
-      Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
-    }
+    // for(c <- cells(mesh)) {
+      // Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
+    // }
   }
 }
