@@ -22,6 +22,7 @@ import ppl.dsl.optiml.matrix._
 import ppl.dsl.optiml.graph._
 import ppl.dsl.optiml.stream._
 import ppl.dsl.optiml.library.cluster._
+import ppl.dsl.optiml.library.regression._
 import ppl.dsl.optiml.application._
 import ppl.dsl.optiml.capabilities._
 
@@ -39,7 +40,7 @@ trait OptiMLApplication extends OptiLAApplication with OptiML with OptiMLLift wi
   def main(): Unit
 }
 
-trait OptiMLLibrary extends OptiMLKmeans {
+trait OptiMLLibrary extends OptiMLKmeans with OptiMLLinReg {
   this: OptiMLApplication =>
 }
 

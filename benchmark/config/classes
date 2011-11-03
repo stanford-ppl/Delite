@@ -19,3 +19,4 @@ tpchsf1|ppl.apps.dataquery.tpch.TPCHRunner
 tpchsf3|ppl.apps.dataquery.tpch.TPCHRunner
 tpchsf5|ppl.apps.dataquery.tpch.TPCHRunner
 cf|ppl.apps.ml.cf.TopNRunner
+interop|ppl.apps.interop.CustomerPricingRunner
