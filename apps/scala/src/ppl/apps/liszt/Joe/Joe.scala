@@ -13,10 +13,10 @@ trait Joe extends DeLisztApplication {
     var IMPL_EULER_POINT : Rep[Int] = null
     
     def init() {
-      EXPL_EULER = 0 
-      IMPL_EULER = 1 
-      EXPL_RK = 2 
-      IMPL_EULER_POINT = 3 
+      EXPL_EULER = unit(0)
+      IMPL_EULER = unit(1) 
+      EXPL_RK = unit(2) 
+      IMPL_EULER_POINT = unit(3) 
     }
   }
   
@@ -26,7 +26,7 @@ trait Joe extends DeLisztApplication {
     
     def init() {
       float3_zero = Vec(0.f,0.f,0.f) 
-      iterations = 10
+      iterations = unit(10)
     }
   }
 
@@ -47,19 +47,19 @@ trait Joe extends DeLisztApplication {
     var dt_minCPU : Rep[Float] = null
     
     def init() = {
-      rho_init = 1.f
-      p_init = 0.119783502243532f
+      rho_init = unit(1.f)
+      p_init = unit(0.119783502243532f)
       u_init = Vec(1.f, 0.f, 0.f)
-      T_init = 0.119783502243532f
-      GAMMA = 1.4f 
-      cfl = 0.5f 
+      T_init = unit(0.119783502243532f)
+      GAMMA = unit(1.4f)
+      cfl = unit(0.5f) 
       navierStokesSolver = NavierStokesSolvers.EXPL_EULER 
-      check_interval = 1 
+      check_interval = unit(1) 
       R_gas = p_init / rho_init / T_init 
-      first = true 
-      timeStepMode = 2  // notice here that this depends on cfl
-      const_dt = 0.f 
-      DT = 0.001f 
+      first = unit(true) 
+      timeStepMode = unit(2)  // notice here that this depends on cfl
+      const_dt = unit(0.f) 
+      DT = unit(0.001f) 
       dt_minCPU = MIN_FLOAT 
     }
   }
@@ -239,7 +239,7 @@ trait Joe extends DeLisztApplication {
       lamOcp_fa = FieldWithConst[Face,Float](0.f)
       rho_fa = FieldWithConst[Face,Float](0.f)
     
-      Print("UgpWithCvCompFlow()")
+      /* Print("UgpWithCvCompFlow()")
 
       // ----------------------------------------------------------------------------------------
           // write some parameters on the screen
@@ -271,7 +271,7 @@ trait Joe extends DeLisztApplication {
         JoeWithModels.rho(c) = IC.rho_init
               JoeWithModels.rhou(c) = IC.u_init * IC.rho_init
               JoeWithModels.rhoE(c) = IC.p_init / (IC.GAMMA - 1.f)  +  0.5f * IC.rho_init * dot( IC.u_init, IC.u_init )
-      }	
+      }	*/
     }
 
     def calcEulerFlux_HLLC( rhoL : Rep[Float], uL : Rep[Vec[_3,Float]], pL : Rep[Float], h0 : Rep[Float], gammaL : Rep[Float], rhoR : Rep[Float], uR : Rep[Vec[_3,Float]], pR : Rep[Float], h1 : Rep[Float], gammaR : Rep[Float], area : Rep[Float], nVec : Rep[Vec[_3,Float]], surfVeloc : Rep[Float], kL : Rep[Float], kR : Rep[Float] ) : Rep[Vec[_5,Float]] = {
@@ -395,25 +395,45 @@ trait Joe extends DeLisztApplication {
   }
   
   object JoeWithModels {
-    val rhs_rho = FieldWithConst[Cell,Float](0.f)
-    val rhs_rhou = FieldWithConst[Cell,Vec[_3,Float]](Constants.float3_zero)
-    val rhs_rhoE = FieldWithConst[Cell,Float](0.f)
+    var rhs_rho : Rep[Field[Cell,Float]] = null
+    var rhs_rhou : Rep[Field[Cell,Vec[_3,Float]]] = null
+    var rhs_rhoE : Rep[Field[Cell,Float]] = null
 
     // notice that this would originally be called in JoeWithModels.initialHook()
-    val rho = FieldWithConst[Cell,Float](IC.rho_init)
-    val rhou = FieldWithConst[Cell,Vec[_3,Float]](IC.u_init * IC.rho_init)
-    val rhoE = FieldWithConst[Cell,Float](IC.p_init / (IC.GAMMA - 1.f)  +  0.5f * IC.rho_init * dot( IC.u_init, IC.u_init ))
+    var rho : Rep[Field[Cell,Float]] = null
+    var rhou : Rep[Field[Cell,Vec[_3,Float]]] = null
+    var rhoE : Rep[Field[Cell,Float]] = null
 
-    val zone_interior = BoundarySet[Face]("zone_interior")
-    val zone_boundary = BoundarySet[Face]("zone_boundary")
-    val symmetry = BoundarySet[Face]("symmetry")
-    //val wall = BoundarySet[Face]("wall")
-    val other_boundaries = BoundarySet[Face]("other_boundaries")
-    val cbc = BoundarySet[Face]("cbc")
-    //val hook = BoundarySet[Face]("hook")
-    //val cbc_subsonic_outlet = BoundarySet[Face]("cbc_subsonic_outlet")
+    var zone_interior : Rep[BoundarySet[Face]] = null
+    var zone_boundary : Rep[BoundarySet[Face]] = null
+    var symmetry : Rep[BoundarySet[Face]] = null
+    //var wall : Rep[BoundarySet[Face]] = null
+    var other_boundaries : Rep[BoundarySet[Face]] = null
+    var cbc : Rep[BoundarySet[Face]] = null
+    //var hook : Rep[BoundarySet[Face]] = null
+    //var cbc_subsonic_outlet : Rep[BoundarySet[Face]] = null
     
-    def init() { Print("JoeWithModels()")}
+    def init() {
+      Print("JoeWithModels()")
+      
+      rhs_rho = FieldWithConst[Cell,Float](0.f)
+      rhs_rhou = FieldWithConst[Cell,Vec[_3,Float]](Constants.float3_zero)
+      rhs_rhoE = FieldWithConst[Cell,Float](0.f)
+
+      // notice that this would originally be called in JoeWithModels.initialHook()
+      rho = FieldWithConst[Cell,Float](IC.rho_init)
+      rhou = FieldWithConst[Cell,Vec[_3,Float]](IC.u_init * IC.rho_init)
+      rhoE = FieldWithConst[Cell,Float](IC.p_init / (IC.GAMMA - 1.f)  +  0.5f * IC.rho_init * dot( IC.u_init, IC.u_init ))
+
+      zone_interior = BoundarySet[Face]("zone_interior")
+      zone_boundary = BoundarySet[Face]("zone_boundary")
+      symmetry = BoundarySet[Face]("symmetry")
+      //wall = BoundarySet[Face]("wall")
+      other_boundaries = BoundarySet[Face]("other_boundaries")
+      cbc = BoundarySet[Face]("cbc")
+      //hook = BoundarySet[Face]("hook")
+      //cbc_subsonic_outlet = BoundarySet[Face]("cbc_subsonic_outlet")
+    }
     def initialHook() {Print("setInitialConditions()")}
 
 
@@ -444,9 +464,8 @@ trait Joe extends DeLisztApplication {
 
       UgpWithCvCompFlow.calcRansStateVarAndMaterialProperties()
       
-   
       setNavierStokesBC()
-      
+   
       // HERE TIME SHOULD START TICKING !!!!!!
       var start_time = 0.0;
       var step = 0
@@ -558,7 +577,7 @@ trait Joe extends DeLisztApplication {
       for (f <- zone_boundary) {
         setRhoFa(f)
       }
-      IC.first = false
+      IC.first = unit(false)
     }
 
     
@@ -708,8 +727,8 @@ trait Joe extends DeLisztApplication {
     IC.init()
     MeshGeometryCalc.init()
     
+    JoeWithModels.init()
 		UgpWithCvCompFlow.init() 
-		JoeWithModels.init() 
 		Print("MyJoe()") 
     JoeWithModels.run()
 	}

@@ -6,12 +6,6 @@
 #include "MeshLoader.h"
 #include "Liszt/BoundarySet.h"
 
-#ifdef DEBUG
-#define DEBUG_PRINT(msg) std::cerr << msg << std::endl;
-#else
-#define DEBUG_PRINT(msg)
-#endif
-
 #include <stdio.h>
 #include <execinfo.h>
 #include <signal.h>
