@@ -123,7 +123,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
     def a = manifest[A]
   }
   
-  case class MatObjectNNew[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](numRows:Exp[Int],numCols:Exp[Int]) extends Def[Mat[R,C,A]] {
+  case class MatObjNNew[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](numRows:Exp[Int],numCols:Exp[Int]) extends Def[Mat[R,C,A]] {
     val r = manifest[R]
     val vr = implicitly[MVal[R]]
     val c = manifest[C]
@@ -207,7 +207,10 @@ trait MatOpsExp extends MatOps with VariablesExp {
     val vr = implicitly[MVal[R]]
     val c = manifest[C]
     val vc = implicitly[MVal[C]]
+    val cc = manifest[CC]
+    val vcc = implicitly[MVal[CC]]
     val a = manifest[A]
+    val aa = implicitly[Arith[A]]
   }
   
   case class MatClone[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal, A:Manifest](x: Exp[Mat[R,C,A]]) extends Def[Mat[R,C,A]] {
@@ -294,8 +297,28 @@ trait MatOpsExp extends MatOps with VariablesExp {
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
     (e match {
+      case e@MatApply(x,i,j) => mat_apply(f(x), f(i), f(j))(e.r, e.vr, e.c, e.vc, e.a)
+      case e@MatGetRow(x,i) => row(f(x),f(i))(e.r, e.vr, e.c, e.vc, e.a)
+      case e@MatGetCol(x,i) => col(f(x),f(i))(e.r, e.vr, e.c, e.vc, e.a)
+      case e@MatMultiply(x,y) => reflectPure(new { override val original = Some(f,e) } with MatMultiply(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.cc, e.vcc, e.a, e.aa))(mtype(manifest[A]))
+      case e@MatTimes(x,y) => reflectPure(new { override val original = Some(f,e) } with MatTimes(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa))(mtype(manifest[A]))
+      case e@MatTimesScalar(x,y) => reflectPure(new { override val original = Some(f,e) } with MatTimesScalar(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa))(mtype(manifest[A]))
+      case e@MatTimesVec(x,y) => reflectPure(new { override val original = Some(f,e) } with MatTimesVec(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa))(mtype(manifest[A]))
+      case e@MatDivide(x,y) => reflectPure(new { override val original = Some(f,e) } with MatDivide(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa))(mtype(manifest[A]))
+      case e@MatDivideScalar(x,y) => reflectPure(new { override val original = Some(f,e) } with MatDivideScalar(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa))(mtype(manifest[A]))
+      case e@MatPlus(x,y) => reflectPure(new { override val original = Some(f,e) } with MatPlus(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa))(mtype(manifest[A]))
+      case e@MatPlusScalar(x,y) => reflectPure(new { override val original = Some(f,e) } with MatPlusScalar(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa))(mtype(manifest[A]))
+      case e@MatMinus(x,y) => reflectPure(new { override val original = Some(f,e) } with MatMinus(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa))(mtype(manifest[A]))
+      case e@MatUnaryMinus(x) => reflectPure(new { override val original = Some(f,e) } with MatUnaryMinus(f(x))(e.r, e.vr, e.c, e.vc, e.a, e.aa))(mtype(manifest[A]))
       case MatNumRows(x) => mat_num_rows(f(x))
       case MatNumCols(x) => mat_num_cols(f(x))
+      // Read/write effects
+      case Reflect(e@MatApply(x,i,j), u, es) => reflectMirrored(Reflect(MatApply(f(x),f(i),f(j))(e.r, e.vr, e.c, e.vc, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatUpdate(x,i,j,r), u, es) => reflectMirrored(Reflect(MatUpdate(f(x),f(i),f(j),f(r))(e.r, e.vr, e.c, e.vc, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      // Effect with SingleTask and DeliteOpLoop
+      // Allocation
+      case Reflect(e@MatObjNew(xs @ _*), u, es) => reflectMirrored(Reflect(MatObjNew(f(xs) : _*)(e.r, e.vr, e.c, e.vc, e.a), mapOver(f,u), f(es)))
+      case Reflect(e@MatObjNNew(i,j), u, es) => reflectMirrored(Reflect(MatObjNNew(f(i),f(j))(e.r, e.vr, e.c, e.vc, e.a), mapOver(f,u), f(es)))
       case _ => super.mirror(e, f)
     }).asInstanceOf[Exp[A]] // why??
   }
@@ -343,7 +366,7 @@ trait MatOpsExp extends MatOps with VariablesExp {
   }
   
   def mat_obj_n_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](r: Exp[Int], c: Exp[Int]) = {
-    reflectMutable(MatObjectNNew[R,C,A](r,c)).unsafeImmutable
+    reflectMutable(MatObjNNew[R,C,A](r,c)).unsafeImmutable
   }
 
   ///////////////////
@@ -398,7 +421,7 @@ trait ScalaGenMatOps extends ScalaGenBase {
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case m@MatObjNew(vs @ _*) => emitValDef(sym, "generated.scala.Mat[" + remap(m.a) + "](" + vs.map(quote).reduceLeft(_+","+_) + ")")
-    case m@MatObjectNNew(numRows,numCols) => emitValDef(sym, "generated.scala.Mat.ofSize[" + remap(m.a) + "](" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@MatObjNNew(numRows,numCols) => emitValDef(sym, "generated.scala.Mat.ofSize[" + remap(m.a) + "](" + quote(numRows) + "," + quote(numCols) + ")")
     //case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")
     case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
@@ -434,7 +457,7 @@ trait CudaGenMatOps extends CudaGenBase {
     // these are the ops that call through to the underlying real data structure
     case m@MatObjNew(vs @ _*) if(!isHostAlloc) => emitValDef(sym, remap(sym.Type) + "()")
                                                  vs.zipWithIndex.foreach(elem => stream.println("%s.vectorUpdate(%s, %s);".format(quote(sym),elem._2,quote(elem._1))))
-    case m@MatObjectNNew(numRows,numCols) if(!isHostAlloc) => emitValDef(sym, "Mat<" + remap(m.a) + "," + quote(numRows) + "," + quote(numCols) + ">()")
+    case m@MatObjNNew(numRows,numCols) if(!isHostAlloc) => emitValDef(sym, "Mat<" + remap(m.a) + "," + quote(numRows) + "," + quote(numCols) + ">()")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")
     case MatApply(x,i,j) => emitValDef(sym, quote(x) + ".apply(" + quote(i) + ", " + quote(j) + ")")
     case MatUpdate(x,i,j,y) => stream.println(quote(x) + ".update(" + quote(i) + ", " + quote(j) + "," + quote(y) + ");")
