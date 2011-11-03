@@ -62,15 +62,20 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with LoopsFatExp with If
            assert(idxA1 == v, "TODO: case not handled")
            assert(idxB1 == redV1, "TODO: case not handled")
 
-           val l1 = simpleLoop(origSize1, grpV1, DeliteHashReduceElem[aa1,cc1, A](
+           val l1 = simpleLoop[A](origSize1, grpV1, DeliteHashReduceElem[aa1,cc1, A](
              keyFunc = grpBody1.keyFunc, valFunc = grpBody1.valFunc, 
              zero = redBody1.zero, rV = redBody1.rV, rFunc = redBody1.rFunc))
 
-           val l2 = simpleLoop(origSize1, grpV1, DeliteHashReduceElem[aa1,cc2, A](
+           val l2 = simpleLoop[A](origSize1, grpV1, DeliteHashReduceElem[aa1,cc2, A](
              keyFunc = grpBody1.keyFunc, valFunc = valFunc2, 
              zero = redBody2.zero, rV = redBody2.rV, rFunc = redBody2.rFunc))
 
-           numeric_divide(l1,l2)(d.aev,d.mev)
+           arraySelect[cc1](size) { i => 
+             numeric_divide(
+               array_apply(l1.asInstanceOf[Exp[Array[cc1]]],i)(mtype(d.mev)),
+               array_apply(l2.asInstanceOf[Exp[Array[cc1]]],i)(mtype(d.mev))
+              )(d.aev.asInstanceOf[Numeric[cc1]],mtype(d.mev))
+            } (mtype(d.mev)) .asInstanceOf[Exp[A]]
 
           case _ =>
             super.simpleLoop(size, v, body)
