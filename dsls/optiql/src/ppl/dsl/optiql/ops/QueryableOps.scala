@@ -23,6 +23,7 @@ trait QueryableOps extends Base {
     def Sum(sumSelector: Rep[TSource] => Rep[Double]) = queryable_sum(s, sumSelector)
     def Average(avgSelector: Rep[TSource] => Rep[Double]) = queryable_average(s, avgSelector)
     def Count() = queryable_count(s)
+    def OrderBy[TKey:Ordering:Manifest](keySelector: Rep[TSource] => Rep[TKey]) = queryable_orderby(s, keySelector)
   }
   
   //Grouping stuff
@@ -34,6 +35,7 @@ trait QueryableOps extends Base {
   def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]): Rep[Double]
   def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]): Rep[Double]
   def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]): Rep[Int]  
+  def queryable_orderby[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[DataTable[TSource]]
   
   def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[DataTable[TSource]]
   def queryable_grouping_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[TKey]
@@ -105,6 +107,16 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     s.Sum(avgSelector)/s.Sum(_ => 1)
     
   def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]) = s.size()
+
+  def queryable_orderby[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]) = {
+    val permutation = arraySort(s.size)((i,j) => keySelector(s(i)) <= keySelector(s(j)))
+    
+    val data = arraySelect(s.size)(i => s(permutation(i)))
+    DataTable(data, data.length)
+  }
+
+
+
   
   def grouping_apply[TKey:Manifest, TSource:Manifest](k: Rep[TKey], v: Rep[DataTable[TSource]]): Rep[Grouping[TKey, TSource]] =
     struct[Grouping[TKey,TSource]](List("Grouping"), Map("key"->k, "values"->v))

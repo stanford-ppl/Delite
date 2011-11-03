@@ -77,7 +77,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with LoopsFatExp with If
         }
         
       // remove identity collect
-      case Block(Def(ArrayApply(xs,v))) if b.cond == Nil /*&& array_length(xs) == size*/ => xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
+      case Block(Def(ArrayApply(xs,`v`))) if b.cond == Nil /*&& array_length(xs) == size*/ => xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
       case _ => super.simpleLoop(size, v, body)
     }
 
@@ -173,6 +173,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with LoopsFatExp with If
     ))
   }
 
+
   def reducePlain[A:Manifest](size: Exp[Int])(func: Exp[Int]=>Exp[A])(zero: =>Exp[A])(red: (Exp[A],Exp[A])=>Exp[A]): Exp[A] = {
     val v = fresh[Int]
     val rV = (fresh[A], fresh[A])
@@ -184,6 +185,26 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with LoopsFatExp with If
       stripFirst = false
     ))
   }
+
+
+  case class ArraySort(len: Exp[Int], v: (Sym[Int],Sym[Int]), comp: Block[Boolean]) extends Def[Array[Int]]
+
+  def arraySort(size: Exp[Int])(compFunc: (Exp[Int],Exp[Int])=>Exp[Boolean]): Exp[Array[Int]] = {
+    val v = (fresh[Int],fresh[Int])
+    ArraySort(size, v, reifyEffects(compFunc(v._1,v._2)))
+  }
+
+  override def boundSyms(e: Any): List[Sym[Any]] = e match {
+    case ArraySort(len, v, comp) => syms(v) ++ effectSyms(comp)
+    case _ => super.boundSyms(e)
+  }
+
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+    case ArraySort(len, v, comp) => toAtom(ArraySort(f(len),(f(v._1).asInstanceOf[Sym[Int]],f(v._2).asInstanceOf[Sym[Int]]),f(comp)))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]]
+
 
 
   // override -- shouldn't belong here
@@ -203,22 +224,26 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
     case _ => super.unapplySimpleIndex(e)
   }
   override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
-    case ArrayLength(a @ Def(SimpleLoop(_,_,_:DeliteCollectElem[_,_]))) => Some(a) // exclude hash collect!
+    case ArrayLength(a @ Def(SimpleLoop(_,_,_:DeliteCollectElem[_,_]))) => Some(a) // exclude hash collect (?)
     case _ => super.unapplySimpleDomain(e)
   }
   
-/*
-  // override -- shouldn't belong here
+
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case Struct(tag, elems) =>
-      //emitValDef(sym, "new " + tag.last + "(" + elems.map(e => quote(e._2)).mkString(",") + ")")
-      emitValDef(sym, "Map(" + elems.map(e => "\"" + e._1 + "\"->" + quote(e._2)).mkString(",") + ") //" + tag.mkString(" "))
-    case Field(struct, index, tp) =>  
-      //emitValDef(sym, quote(struct) + "." + index)
-      println("WARNING: emitting field access: " + quote(struct) + "." + index)
-      emitValDef(sym, quote(struct) + "(\"" + index + "\").asInstanceOf[" + remap(tp) + "]")
+    case ArraySort(len, (v1,v2), comp) =>
+      emitValDef(sym, "{"/*}*/)
+      stream.println("val array = new Array[Int](" + quote(len) + ")")
+      stream.println("var i=0; while (i < array.length) {array(i)=i;i+=1}")
+      stream.println("//FIXME: probably inefficient because of boxing")
+      stream.println("val comp: java.util.Comparator[Int] = new java.util.Comparator { def compare("+quote(v1)+","+quote(v2)+") = {"/*}}*/)
+      emitBlock(comp)
+      stream.println("if ("+quote(getBlockResult(comp))+") -1 else 1")
+      stream.println(/*{{*/"}}")
+      stream.println("java.util.Arrays.sort(array, comp)")
+      stream.println("array")
+      stream.println(/*{*/"}")
     case _ => super.emitNode(sym, rhs)
-  }*/
+  }
   
   
 }
