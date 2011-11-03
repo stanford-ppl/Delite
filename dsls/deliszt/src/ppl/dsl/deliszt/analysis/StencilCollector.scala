@@ -99,10 +99,11 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   val className = "StencilCollector"
   val on = true
+  
   var detectingTrivial = false
   var trivial = false
   var indexSym : Sym[Any] = null
-  var moSym : Sym[Any] = null
+  var moSyms : ISet[Int] = null
   
   override def initializeGenerator(buildDir:String, args: Array[String], _analysisResults: MMap[String,Any]): Unit = {
     super.initializeGenerator(buildDir, args, _analysisResults)
@@ -324,11 +325,28 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     if(Config.collectStencil) {
       rhs match {
         case DeliteCollectionApply(e, i) if detectingTrivial => {
-          // Found the sym for the top level foreach index meshobj
-          System.out.println("APPLY " + sym.id + " collection: " + e.asInstanceOf[Sym[Any]].id + " index " + i.asInstanceOf[Sym[Any]].id)
-          
+          // Found the sym for the top level foreach index meshobj          
           i match {
-            case indexSym => { moSym = sym; System.out.println("FOUND INDEX SYM " + sym.id) }
+            case Sym(i) if(indexSym.id == i) => { moSyms += sym.id }
+            case _ =>
+          }
+        }
+        
+        case DeLisztFlipEdge(e) => {
+          if(detectingTrivial) {
+            e match {
+              case Sym(i) if(moSyms.contains(i)) => { moSyms += sym.id }
+              case _ =>
+            }
+          }
+        }
+        
+        case DeLisztFlipFace(e) => {
+          if(detectingTrivial) {
+            e match {
+              case Sym(i) if(moSyms.contains(i)) => { moSyms += sym.id }
+              case _ =>
+            }
           }
         }
       
@@ -351,9 +369,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
               // Do trivial coloring detection
               detectingTrivial = true
               trivial = true
-              moSym = f.v
-              
-              System.out.println("MOSYM " + moSym.id)
+              indexSym = f.v
+              moSyms = ISet()
               
               f.body match {
                 case DeliteForeachElem(func, sync) => emitBlock(func)
@@ -362,7 +379,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
               detectingTrivial = false
             }
             
-            if(matchFor(sym.id) && trivial) {            
+            if(matchFor(sym.id) && trivial) {
               System.out.println("Detected trivial loop")
               forMap.remove(sym.id)
             }
@@ -440,7 +457,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         case w@FieldUpdate(f,i,v) => {
           if(detectingTrivial) {
             i match {
-              case Sym(i) => if(i == moSym.id) { trivial = false }
+              case Sym(i) if !moSyms.contains(i) => { trivial = false }
               case _ =>
             }
           }
@@ -453,7 +470,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         case w@FieldPlusUpdate(f,i,v) => {
           if(detectingTrivial) {
             i match {
-              case Sym(i) => if(i == moSym.id) { trivial = false }
+              case Sym(i) if !moSyms.contains(i) => { trivial = false }
               case _ =>
             }
           }
@@ -466,7 +483,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         case w@FieldTimesUpdate(f,i,v) => {
           if(detectingTrivial) {
             i match {
-              case Sym(i) => if(i == moSym.id) { trivial = false }
+              case Sym(i) if !moSyms.contains(i) => { trivial = false }
               case _ =>
             }
           }
@@ -479,7 +496,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         case w@FieldMinusUpdate(f,i,v) => {
           if(detectingTrivial) {
             i match {
-              case Sym(i) => if(i == moSym.id) { trivial = false }
+              case Sym(i) if !moSyms.contains(i) => { trivial = false }
               case _ =>
             }
           }
@@ -492,7 +509,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         case w@FieldDivideUpdate(f,i,v) => {
           if(detectingTrivial) {
             i match {
-              case Sym(i) => if(i == moSym.id) { trivial = false }
+              case Sym(i) if !moSyms.contains(i) => { trivial = false }
               case _ =>
             }
           }

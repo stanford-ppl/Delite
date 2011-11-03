@@ -136,7 +136,8 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         }
         
         val (color_idx, color_values) = coloring.collect()
-        
+       
+/*       
         print("Loop id: " + id)
         if(forMap.contains(id)) {
           // Output coloring for debugging
@@ -162,7 +163,7 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         else {
           println(" trivial coloring")
         }
-        
+*/        
         /* transform loop into multiple loops, one per color */
         
         // utils
