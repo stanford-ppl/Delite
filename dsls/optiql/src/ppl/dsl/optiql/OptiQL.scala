@@ -17,7 +17,7 @@ import ppl.delite.framework.codegen.{Utils, Target}
 /**
  * These are the lifted scala constructs that only operate on the Rep world. These are usually safe to mix in
  */
-trait OptiQLScalaOpsPkg extends Base with MiscOps with OrderingOps with PrimitiveOps with TupleOps with NumericOps with ArrayOps with IfThenElse
+trait OptiQLScalaOpsPkg extends Base with MiscOps with OrderingOps with PrimitiveOps with TupleOps with NumericOps with ArrayOps with IfThenElse with Equal
 
 /**
  * This trait adds the Ops that are specific to OptiQL
@@ -37,7 +37,7 @@ trait OptiQLLift extends LiftString {
 /**
  * Scala IR nodes
  */
-trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsExp with SeqOpsExp with OrderingOpsExp
+trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsExp with SeqOpsExp with OrderingOpsExp with BooleanOpsExp with EqualExp
   with PrimitiveOpsExp with TupleOpsExp with NumericOpsExp with ArrayOpsExp with IfThenElseExp with StructFatExpOptCommon with CastingOpsExp with ResultOps
 
 /**
@@ -67,7 +67,7 @@ trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with HackOpsExp
 /**
  * Codegen traits
  */
-trait OptiQLScalaCodeGenPkg extends ScalaGenMiscOps with ScalaGenIOOps with ScalaGenSeqOps with ScalaGenOrderingOps 
+trait OptiQLScalaCodeGenPkg extends ScalaGenMiscOps with ScalaGenIOOps with ScalaGenSeqOps with ScalaGenOrderingOps with ScalaGenBooleanOps with ScalaGenEqual
   with ScalaGenPrimitiveOps with ScalaGenTupleOps with ScalaGenNumericOps with ScalaGenArrayOps with ScalaGenIfThenElseFat with ScalaGenImplicitOps with ScalaGenCastingOps with ScalaGenFatStruct {
   val IR: OptiQLScalaOpsPkgExp
 }

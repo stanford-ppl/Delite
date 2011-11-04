@@ -13,7 +13,11 @@ trait QueryableOps extends Base {
 
   implicit def repToQueryableOps[TSource:Manifest](r: Rep[DataTable[TSource]]) = new QOpsCls(r) 
   implicit def repGroupingToQueryableOps[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]) = new QOpsCls(queryable_grouping_toDatatable(g))
-
+  
+  abstract class OrderedQueryable[TSource:Manifest]
+  implicit def repOQtoOQOps[TSource:Manifest](r: Rep[OrderedQueryable[TSource]]) = new OQOpsCls(r)  
+  implicit def repOQtoDT[TSource:Manifest](r: Rep[OrderedQueryable[TSource]]): Rep[DataTable[TSource]]
+  
   //override def __forward[A,B,C](self: TransparentProxy[A], method: String, x: TransparentProxy[B]*): TransparentProxy[C] = throw new RuntimeException("forwarding to " + method)
 
   class QOpsCls[TSource:Manifest](s: Rep[DataTable[TSource]]) {
@@ -26,6 +30,10 @@ trait QueryableOps extends Base {
     def OrderBy[TKey:Ordering:Manifest](keySelector: Rep[TSource] => Rep[TKey]) = queryable_orderby(s, keySelector)
   }
   
+  class OQOpsCls[TSource:Manifest](oq: Rep[OrderedQueryable[TSource]]) {
+    def ThenBy[TKey:Ordering:Manifest](keySelector: Rep[TSource] => Rep[TKey]) = queryable_thenby(oq, keySelector) 
+  }
+  
   //Grouping stuff
   def infix_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]) = queryable_grouping_key(g) 
 
@@ -35,7 +43,8 @@ trait QueryableOps extends Base {
   def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]): Rep[Double]
   def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]): Rep[Double]
   def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]): Rep[Int]  
-  def queryable_orderby[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[DataTable[TSource]]
+  def queryable_orderby[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[OrderedQueryable[TSource]]
+  def queryable_thenby[TSource:Manifest, TKey:Ordering:Manifest](oq: Rep[OrderedQueryable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[OrderedQueryable[TSource]]
   
   def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[DataTable[TSource]]
   def queryable_grouping_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[TKey]
@@ -70,6 +79,11 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
 
   case class QueryableGroupingToDataTable[TSource:Manifest, TKey:Manifest](g: Rep[Grouping[TKey, TSource]]) extends Def[DataTable[TSource]]
   case class QueryableGroupingKey[TSource:Manifest, TKey:Manifest](g: Rep[Grouping[TKey, TSource]]) extends Def[TKey]
+  
+  case class NewOrderedQueryable[TSource:Manifest](s: Exp[DataTable[TSource]], orig: Exp[DataTable[TSource]], sel: (Exp[Int], Exp[Int]) => Exp[Int]) extends Def[OrderedQueryable[TSource]]
+  implicit def repOQtoDT[TSource:Manifest](x: Exp[OrderedQueryable[TSource]]) = x match {
+    case Def(NewOrderedQueryable(s,_,_)) => s
+  }
 
   def queryable_select[TSource:Manifest, TResult:Manifest](s: Rep[DataTable[TSource]], resultSelector: Rep[TSource] => Rep[TResult]) = {
 //  val v = fresh[TSource]
@@ -108,15 +122,33 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     
   def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]) = s.size()
 
+  def queryable_compare[TSource:Manifest, TKey:Ordering:Manifest](i: Rep[Int], j: Rep[Int], s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[Int] = {
+    if (keySelector(s(i)) < keySelector(s(j))) unit(-1) else if (keySelector(s(i)) > keySelector(s(j))) unit(1) else unit(0)
+  }
+  
   def queryable_orderby[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]) = {
-    val permutation = arraySort(s.size)((i,j) => keySelector(s(i)) <= keySelector(s(j)))
-    
+    val permutation = arraySort(s.size)((i,j) => keySelector(s(i)) <= keySelector(s(j)))    
     val data = arraySelect(s.size)(i => s(permutation(i)))
-    DataTable(data, data.length)
+    val sel: (Rep[Int],Rep[Int]) => Rep[Int] = (i,j) => queryable_compare(i,j,s,keySelector)
+    NewOrderedQueryable(DataTable(data, data.length), s, sel)
   }
 
-
-
+  def queryable_thenby[TSource:Manifest, TKey:Ordering:Manifest](oq: Rep[OrderedQueryable[TSource]], keySelector: Rep[TSource] => Rep[TKey]) = {
+    val (s,sel) = oq match {
+      case Def(NewOrderedQueryable(n, s, sel)) => (s,sel)
+    }
+    val permutation = arraySort(s.size)((i,j) => {
+      val prev = sel(i,j)
+      if (prev == unit(-1)) unit(true) else if (prev == unit(1)) unit(false) else keySelector(s(i)) <= keySelector(s(j))
+    })
+    val data = arraySelect(s.size)(i => s(permutation(i)))
+    val compoundSel: (Rep[Int],Rep[Int]) => Rep[Int] = (i,j) => {
+      val prev = sel(i,j)
+      if (prev == unit(0)) queryable_compare(i,j,s,keySelector)
+      else prev 
+    }
+    NewOrderedQueryable(DataTable(data, data.length), s, compoundSel)
+  }
   
   def grouping_apply[TKey:Manifest, TSource:Manifest](k: Rep[TKey], v: Rep[DataTable[TSource]]): Rep[Grouping[TKey, TSource]] =
     struct[Grouping[TKey,TSource]](List("Grouping"), Map("key"->k, "values"->v))
@@ -131,11 +163,13 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     // FIXME: this won't work. mirroring delite ops needs to look like this:
     //case e@VectorMap(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorMap(f(x),f(p))(e.mA,e.mB))(mtype(manifest[A]))
     case QueryableWhere(s,p) => queryable_where(f(s), p)
+    case NewOrderedQueryable(n,s,sel) => reflectPure(NewOrderedQueryable(f(n),f(s),f(sel)))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]] //todo fix asInstanceOf
   
   override def syms(e: Any): List[Sym[Any]] = e match { 
     //case QueryableGroupBy(s,v,k) => syms(s) 
+    case NewOrderedQueryable(n,s,sel) => syms(n)
     case _ => super.syms(e)
   }
   
@@ -152,6 +186,11 @@ trait ScalaGenQueryableOps extends ScalaGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case NewOrderedQueryable(n,s,sel) => //super.emitNode()
+                                      /*val d = findDefinition(s.asInstanceOf[Sym[Any]]).get; emitNode(d.sym,d.rhs)*/ 
+                                       stream.println("val " + quote(sym) + " = {")
+                                       emitBlock(Block(n)) 
+                                       stream.println("}")
     case HackQueryableGroupBy(s, v, k) =>  {
       stream.println("val " + quote(sym) + " =  " + quote(s) + ".GroupBy( " + quote(v) + " => {")   
       emitBlock(k)   

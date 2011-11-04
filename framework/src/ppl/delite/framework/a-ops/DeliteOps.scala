@@ -1427,9 +1427,10 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
           stream.println("__act2." + quote(sym) + "_zero = {"/*}*/)
           emitBlock(elem.zero)
-          stream.println(quote(getBlockResult(elem.zero)))
+          stream.println(quote(getBlockResult(elem.zero)))          
           stream.println(/*{*/"}")
           stream.println("__act2." + quote(sym) + "_hash = new scala.collection.mutable.HashMap // TODO: more efficient buffer handling")
+          emitHashReduceElem(op, sym, elem, "__act2.")
         case (sym, elem: DeliteForeachElem[_]) => 
           stream.println("__act2." + quote(sym) + " = {"/*}*/)
           emitForeachElem(op, sym, elem)

@@ -237,15 +237,15 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case ArraySort(len, (v1,v2), comp) =>
       emitValDef(sym, "{"/*}*/)
-      stream.println("val array = new Array[Int](" + quote(len) + ")")
+      stream.println("val array = new Array[Integer](" + quote(len) + ")")
       stream.println("var i=0; while (i < array.length) {array(i)=i;i+=1}")
       stream.println("//FIXME: probably inefficient because of boxing")
-      stream.println("val comp: java.util.Comparator[Int] = new java.util.Comparator { def compare("+quote(v1)+","+quote(v2)+") = {"/*}}*/)
+      stream.println("val comp: java.util.Comparator[Integer] = new java.util.Comparator[Integer] { def compare("+quote(v1)+": Integer,"+quote(v2)+": Integer) = {"/*}}*/)
       emitBlock(comp)
       stream.println("if ("+quote(getBlockResult(comp))+") -1 else 1")
       stream.println(/*{{*/"}}")
       stream.println("java.util.Arrays.sort(array, comp)")
-      stream.println("array")
+      stream.println("array map { e => e.toInt }")
       stream.println(/*{*/"}")
     case _ => super.emitNode(sym, rhs)
   }
