@@ -11,6 +11,11 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
  */
 
 trait Vec[@specialized(Boolean, Int, Long, Float, Double) T] extends DeliteCollection[T] with Traversable[T] {
+  def x = apply(0)
+  def y = apply(1)
+  def z = apply(2)
+  def w = apply(3)
+  
   def apply(n:Int) : T
   def update(n:Int, v : T) : Unit
 
@@ -22,18 +27,4 @@ trait Vec[@specialized(Boolean, Int, Long, Float, Double) T] extends DeliteColle
   def cloneL : Vec[T]
   
   def foreach[U](f: T => U) = for(i <- 0 until size) f(this(i))
-}
-
-object Vec {
-  def ofSize[T:ClassManifest](size: Int) = {
-    new VecImpl[T](size)
-  }
-  
-  def withData[T:ClassManifest](data : Array[T]) = {
-    new VecImpl[T](data)
-  }
-  
-  def apply[T:ClassManifest](xs: T*) = {
-    new VecImpl[T](xs.toArray)
-  }
 }

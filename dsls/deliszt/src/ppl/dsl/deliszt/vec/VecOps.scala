@@ -478,11 +478,13 @@ trait BaseGenVecOps extends GenericFatCodegen {
 trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
   val IR: VecOpsExp
   import IR._
+  
+  val vecImplPath = "ppl.dsl.deliszt.datastruct.scala.VecImpl"
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case v@VecObjNew(xs @ _*) => emitValDef(sym, "generated.scala.Vec[" + remap(v.a) + "](" + xs.map(quote).reduceLeft(_+","+_) + ")")
-      case v@VecObjNNew(i) => emitValDef(sym, "generated.scala.Vec.ofSize[" + remap(v.a) + "](" + quote(i) + ")")
+      case v@VecObjNew(xs @ _*) => emitValDef(sym, remap(vecImplPath, "", v.a) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
+      case v@VecObjNNew(i) => emitValDef(sym, remap(vecImplPath, ".ofSize", v.a) + "(" + quote(i) + ")")
       // these are the ops that call through to the underlying real data structure
       case VecApply(x,n) => emitValDef(sym, quote(x) + ".dcApply(" + quote(n) + ")")
       case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + ".dcUpdate(" + quote(n) + "," + quote(y) + ")")

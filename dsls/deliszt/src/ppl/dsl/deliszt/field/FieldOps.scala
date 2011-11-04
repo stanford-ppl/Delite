@@ -295,6 +295,8 @@ trait ScalaGenFieldOps extends ScalaGenBase {
   val IR: FieldOpsExp
   import IR._
 
+  val fieldImplPath = "ppl.dsl.deliszt.datastruct.scala.FieldImpl"
+  
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       // these are the ops that call through to the underlying real data structure
@@ -305,15 +307,15 @@ trait ScalaGenFieldOps extends ScalaGenBase {
       case FieldMinusUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") -= " + quote(v))
       case FieldDivideUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") /= " + quote(v))
 
-      case f@DeLisztFieldWithConstCell(x) => emitValDef(sym, "generated.scala.Field.cellWithConst[" + remap(f.t) + "](" + quote(x) + ")")
-      case f@DeLisztFieldWithConstEdge(x) => emitValDef(sym, "generated.scala.Field.edgeWithConst[" + remap(f.t) + "](" + quote(x) + ")")
-      case f@DeLisztFieldWithConstFace(x) => emitValDef(sym, "generated.scala.Field.faceWithConst[" + remap(f.t) + "](" + quote(x) + ")")
-      case f@DeLisztFieldWithConstVertex(x) => emitValDef(sym, "generated.scala.Field.vertexWithConst[" + remap(f.t) + "](" + quote(x) + ")")
+      case f@DeLisztFieldWithConstCell(x) => emitValDef(sym, remap(fieldImplPath, ".cellWithConst", f.t) + "(" + quote(x) + ")")
+      case f@DeLisztFieldWithConstEdge(x) => emitValDef(sym, remap(fieldImplPath, ".edgeWithConst", f.t) + "(" + quote(x) + ")")
+      case f@DeLisztFieldWithConstFace(x) => emitValDef(sym, remap(fieldImplPath, ".faceWithConst", f.t) + "(" + quote(x) + ")")
+      case f@DeLisztFieldWithConstVertex(x) => emitValDef(sym, remap(fieldImplPath, ".vertexWithConst", f.t) + "(" + quote(x) + ")")
       
-      case f@FieldObjectNewCell() => emitValDef(sym, "generated.scala.Field.ofCell[" + remap(f.t) + "]()")
-      case f@FieldObjectNewEdge() => emitValDef(sym, "generated.scala.Field.ofEdge[" + remap(f.t) + "]()")
-      case f@FieldObjectNewFace() => emitValDef(sym, "generated.scala.Field.ofFace[" + remap(f.t) + "]()")
-      case f@FieldObjectNewVertex() => emitValDef(sym, "generated.scala.Field.ofVertex[" + remap(f.t) + "]()")
+      case f@FieldObjectNewCell() => emitValDef(sym, remap(fieldImplPath, ".ofCell", f.t) + "()")
+      case f@FieldObjectNewEdge() => emitValDef(sym, remap(fieldImplPath, ".ofEdge", f.t) + "()")
+      case f@FieldObjectNewFace() => emitValDef(sym, remap(fieldImplPath, ".ofFace", f.t) + "()")
+      case f@FieldObjectNewVertex() => emitValDef(sym, remap(fieldImplPath, ".ofVertex", f.t) + "()")
       
       case f@LabelFieldNewCell(url, m) => emitValDef(sym, quote(m) + ".labelCells[" + remap(f.t) + "](" + quote(url) + ")")
       case f@LabelFieldNewEdge(url, m) => emitValDef(sym, quote(m) + ".labelEdges[" + remap(f.t) + "](" + quote(url) + ")")
