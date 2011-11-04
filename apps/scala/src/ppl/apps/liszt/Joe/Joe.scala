@@ -131,9 +131,9 @@ trait Joe extends DeLisztApplication {
 
     def calcCellGeom( c: Rep[Cell] ) {
       val approxCenter = calcCellCenter(c)
-      if(ID(c) < 100) {
-        Print(ID(c), " CELL CENTER ", approxCenter)
-      }
+      // if(ID(c) < 100) {
+        // Print(ID(c), " CELL CENTER ", approxCenter)
+      // }
       var volume = 0.0
       var center = Constants.float3_zero
       for( f <- faces(c) ) {
@@ -362,7 +362,7 @@ trait Joe extends DeLisztApplication {
 
     // def calcDt( cfl_target : Rep[Double] ) : Rep[Double] = {
     def calcDt( cfl_target : Rep[Double] ) : Rep[Unit] = {
-      Print("CALC DT")
+      // Print("CALC DT")
       
       // var dt = unit(0.0)
       // var minCPU = IC.dt_minCPU
@@ -381,7 +381,7 @@ trait Joe extends DeLisztApplication {
         IC.timeStepMode = unit(0)
       }
       else if ( IC.timeStepMode == 2 ) { */
-        Print("TIME 2")
+        // Print("TIME 2")
         for( icv <- cells(mesh) ) {
           var lambdaMax = 0.0
 
@@ -478,15 +478,15 @@ trait Joe extends DeLisztApplication {
 
     def runExplicitBackwardEuler() {
 
-    Print("RUNNING BACK EULER")
+    // Print("RUNNING BACK EULER")
     
       UgpWithCvCompFlow.calcRansStateVarAndMaterialProperties()
       
-    for ( c <- cells(mesh) ) {
-      if(ID(c) < 100) {
-        Print("RANS CELL: ", ID(c), " rho ", JoeWithModels.rho(c), " xcv: " , MeshGeometryCalc.x_cv(c), " vel ", UgpWithCvCompFlow.vel(c), " kine ", UgpWithCvCompFlow.kine(c), " press ", UgpWithCvCompFlow.press(c), " temp ", UgpWithCvCompFlow.temp(c), " enth ", UgpWithCvCompFlow.enthalpy(c), " sos ", UgpWithCvCompFlow.sos(c))
-      }
-    }
+    // for ( c <- cells(mesh) ) {
+      // if(ID(c) < 100) {
+        // Print("RANS CELL: ", ID(c), " rho ", JoeWithModels.rho(c), " xcv: " , MeshGeometryCalc.x_cv(c), " vel ", UgpWithCvCompFlow.vel(c), " kine ", UgpWithCvCompFlow.kine(c), " press ", UgpWithCvCompFlow.press(c), " temp ", UgpWithCvCompFlow.temp(c), " enth ", UgpWithCvCompFlow.enthalpy(c), " sos ", UgpWithCvCompFlow.sos(c))
+      // }
+    // }
       
       setNavierStokesBC()
       
@@ -508,38 +508,51 @@ trait Joe extends DeLisztApplication {
         calcRhs() // note that this function originally would take rhs_rho, rhs_rhou, rhs_rhoE, rho, rhou, rhoE fields as arguments
         
         for( c <- cells(mesh) ) {
-          if(ID(c) < 100) {
-            Print("local_dt ", UgpWithCvCompFlow.local_dt(c), " cv_volume ", MeshGeometryCalc.cv_volume(c), " rhs_rho ", rhs_rho(c))
-          }
+          // if(ID(c) < 100) {
+            // Print("local_dt ", UgpWithCvCompFlow.local_dt(c), " cv_volume ", MeshGeometryCalc.cv_volume(c), " rhs_rho ", rhs_rho(c))
+          // }
           val tmp = UgpWithCvCompFlow.local_dt(c) / MeshGeometryCalc.cv_volume(c)
           rho(c) = rho(c) + rhs_rho(c) * tmp
           rhou(c) = rhou(c) + rhs_rhou(c) * tmp
           rhoE(c) = rhoE(c) + rhs_rhoE(c) * tmp
         }
+        
+        // for( c <- cells(mesh) ) {
+          // if(ID(c) < 100) {
+            // Print("rho ", rho(c), " rhou ", rhou(c), " rhoE ", rhoE(c))
+          // }
+        // }
 
         if ( step % IC.check_interval == 0 ) {
           if ( step % ( IC.check_interval * 10 ) == 0 ) {
             Print( "" ) // print nothing to simulate a \n !!!!
             Print( "done step: " , step , ", cfl: " , IC.cfl) // , ", min. dt:   " , dtMin ) 
           }
-          var my_resid = Vec(0.0,0.0,0.0,0.0,0.0)
-          for( c <- cells(mesh) ) {
-            my_resid = my_resid + Vec(abs(rhs_rho(c)),
-                            abs(rhs_rhou(c).x),
-                            abs(rhs_rhou(c).y),
-                            abs(rhs_rhou(c).z),
-                            abs(rhs_rhoE(c)))
-          }
-          showResidue( my_resid, step )
+          // var my_resid = Vec(0.0,0.0,0.0,0.0,0.0)
+          // for( c <- cells(mesh) ) {
+            // if(ID(c) < 100) {
+            // Print("RES ", abs(rhs_rho(c)),
+                            // abs(rhs_rhou(c).x),
+                            // abs(rhs_rhou(c).y),
+                            // abs(rhs_rhou(c).z),
+                            // abs(rhs_rhoE(c)))
+            // }
+            // my_resid = my_resid + Vec(abs(rhs_rho(c)),
+                            // abs(rhs_rhou(c).x),
+                            // abs(rhs_rhou(c).y),
+                            // abs(rhs_rhou(c).z),
+                            // abs(rhs_rhoE(c)))
+          // }
+          // showResidue( my_resid, step )
         } 
 
         UgpWithCvCompFlow.calcRansStateVarAndMaterialProperties()
 
-        for ( c <- cells(mesh) ) {
-          if(ID(c) < 100) {
-            Print("RANS CELL: ", ID(c), " rho ", JoeWithModels.rho(c), " xcv: " , MeshGeometryCalc.x_cv(c), " vel ", UgpWithCvCompFlow.vel(c), " kine ", UgpWithCvCompFlow.kine(c), " press ", UgpWithCvCompFlow.press(c), " temp ", UgpWithCvCompFlow.temp(c), " enth ", UgpWithCvCompFlow.enthalpy(c), " sos ", UgpWithCvCompFlow.sos(c))
-          }
-        }
+        // for ( c <- cells(mesh) ) {
+          // if(ID(c) < 100) {
+            // Print("RANS CELL: ", ID(c), " rho ", JoeWithModels.rho(c), " xcv: " , MeshGeometryCalc.x_cv(c), " vel ", UgpWithCvCompFlow.vel(c), " kine ", UgpWithCvCompFlow.kine(c), " press ", UgpWithCvCompFlow.press(c), " temp ", UgpWithCvCompFlow.temp(c), " enth ", UgpWithCvCompFlow.enthalpy(c), " sos ", UgpWithCvCompFlow.sos(c))
+          // }
+        // }
         
         setNavierStokesBC()
         

@@ -31,8 +31,8 @@ class MatImpl[@specialized T: ClassManifest](val numRows : Int, val numCols : In
   def apply(idx: Int) = dcApply(idx)
   def update(idx: Int, v: T) = dcUpdate(idx, v)
 
-  def row(n : Int) = new MatRowImpl(this, n)
-  def col(n : Int) = new MatColImpl(this, n)
+  def row(n : Int) = new MatRowImpl[T](this, n)
+  def col(n : Int) = new MatColImpl[T](this, n)
 
   def dcApply(idx: Int) = data(idx)
   def dcUpdate(idx: Int, x: T) = {
