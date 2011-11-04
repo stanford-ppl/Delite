@@ -141,6 +141,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
       //write the setter
       val addWriteBack = needsWriteBack(op)       
       if (addWriteBack) {
+        out.append("addEvent(kernelStream, d2hStream);\n")
         writeCopyBack(op, location, out)
       }
       val addSetter = op.getConsumers exists { _.scheduledResource != location }
