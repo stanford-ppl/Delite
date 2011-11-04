@@ -284,9 +284,15 @@ public:
   }
 
 
+  /*
   __device__ __host__ Face face(Cell c, int i) {
     int start = ctof.row(c);
     return ctof.values[start + i];
+  }
+  */
+
+  __device__ __host__ Face face(Edge e, int i) {
+    return etof.apply(internal(e),i);
   }
 
   __device__ __host__ int head(Edge e) {

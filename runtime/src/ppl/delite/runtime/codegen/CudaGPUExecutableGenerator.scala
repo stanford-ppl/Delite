@@ -141,13 +141,14 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
       //write the setter
       val addWriteBack = needsWriteBack(op)       
       if (addWriteBack) {
+        out.append("addEvent(kernelStream, d2hStream);\n")
         writeCopyBack(op, location, out)
       }
       val addSetter = op.getConsumers exists { _.scheduledResource != location }
       if (addSetter) {
         syncList += op //add op to list that needs sync generation
         //sync output copy with kernel completion
-        out.append("addEvent(kernelStream, d2hStream);\n")
+        //out.append("addEvent(kernelStream, d2hStream);\n")
         //write a setter
         writeSetters(op, location, out)
       }
@@ -326,7 +327,8 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         if (!first) out.append(',')
         first = false
         out.append(getSymGPU(sym))
-        if ((op.getMutableInputs. contains (input,sym)) && (input.getConsumers.filter(_.scheduledResource!=input.scheduledResource).nonEmpty)) {
+        if ((op.getMutableInputs contains (input,sym)) && (input.scheduledResource != op.scheduledResource)) {
+        //if ((op.getMutableInputs. contains (input,sym)) && (input.getConsumers.filter(_.scheduledResource!=input.scheduledResource).nonEmpty)) {
           out.append(',')
           out.append(getSymCPU(sym))
         }
