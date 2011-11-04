@@ -360,6 +360,7 @@ trait CudaGenDataStruct extends CudaCodegen {
       case "long" => out.append("\t\t%s->data[i] = env->CallLongMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case "float" => out.append("\t\t%s->data[i] = env->CallFloatMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case "bool" => out.append("\t\t%s->data[i] = env->CallBooleanMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case "double" => out.append("\t\t%s->data[i] = env->CallDoubleMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case _ => throw new GenerationFailedException("CudaGen: Cannot call JNI method for this type.")
     }
     out.append("\t}\n")
@@ -391,6 +392,7 @@ trait CudaGenDataStruct extends CudaCodegen {
       case "long" => out.append("\t\t%s->data[i] = env->CallLongMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case "float" => out.append("\t\t%s->data[i] = env->CallFloatMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case "bool" => out.append("\t\t%s->data[i] = env->CallBooleanMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case "double" => out.append("\t\t%s->data[i] = env->CallDoubleMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case _ => throw new GenerationFailedException("CudaGen: Cannot call JNI method for this type.")
     }
     out.append("\t}\n")
