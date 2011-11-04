@@ -34,6 +34,9 @@ trait Joe extends DeLisztApplication {
     var rho_init : Rep[Double] = null
     var p_init : Rep[Double] = null
     var u_init : Rep[Vec[_3,Double]] = null
+    var u_init_x : Rep[Double] = null
+    var u_init_y : Rep[Double] = null
+    var u_init_z : Rep[Double] = null
     var T_init : Rep[Double] = null
     var GAMMA : Rep[Double] = null
     var cfl : Rep[Double] = null
@@ -44,12 +47,15 @@ trait Joe extends DeLisztApplication {
     var timeStepMode : Rep[Int] = null  // notice here that this depends on cfl
     var const_dt : Rep[Double] = null
     var DT : Rep[Double] = null
-    var dt_minCPU : Rep[Double] = null
+    // var dt_minCPU : Rep[Double] = null
     
     def init() = {
       rho_init = unit(1.0)
       p_init = unit(0.119783502243532)
       u_init = Vec(1.0, 0.0, 0.0)
+      u_init_x = unit(1.0)
+      u_init_y = unit(0.0)
+      u_init_z = unit(0.0)
       T_init = unit(0.119783502243532)
       GAMMA = unit(1.4)
       cfl = unit(0.5) 
@@ -60,7 +66,7 @@ trait Joe extends DeLisztApplication {
       timeStepMode = unit(2)  // notice here that this depends on cfl
       const_dt = unit(0.0) 
       DT = unit(0.001) 
-      dt_minCPU = MIN_DOUBLE
+      //dt_minCPU = MIN_DOUBLE
     }
   }
   
@@ -84,8 +90,7 @@ trait Joe extends DeLisztApplication {
       for(v <- vertices(f) ) {
         center = center + position(v)
       }
-      center = center / size(vertices(f))
-      return center
+      center / size(vertices(f))
     }
 
     def calcCellCenter( c: Rep[Cell] ) : Rep[Vec[_3,Double]] = {
@@ -93,8 +98,7 @@ trait Joe extends DeLisztApplication {
             for (v <- vertices(c)) {
                     center = center + position(v)
             }
-            center = center / size(vertices(c))
-            return center
+            center / size(vertices(c))
     }
 
 
@@ -127,6 +131,9 @@ trait Joe extends DeLisztApplication {
 
     def calcCellGeom( c: Rep[Cell] ) {
       val approxCenter = calcCellCenter(c)
+      if(ID(c) < 100) {
+        Print(ID(c), " CELL CENTER ", approxCenter)
+      }
       var volume = 0.0
       var center = Constants.float3_zero
       for( f <- faces(c) ) {
@@ -239,7 +246,7 @@ trait Joe extends DeLisztApplication {
       lamOcp_fa = FieldWithConst[Face,Double](0.0)
       rho_fa = FieldWithConst[Face,Double](0.0)
     
-      /* Print("UgpWithCvCompFlow()")
+      Print("UgpWithCvCompFlow()")
 
       // ----------------------------------------------------------------------------------------
           // write some parameters on the screen
@@ -269,9 +276,9 @@ trait Joe extends DeLisztApplication {
         RoM(c) = IC.R_gas
 
         JoeWithModels.rho(c) = IC.rho_init
-              JoeWithModels.rhou(c) = IC.u_init * IC.rho_init
-              JoeWithModels.rhoE(c) = IC.p_init / (IC.GAMMA - 1.0)  +  0.5f * IC.rho_init * dot( IC.u_init, IC.u_init )
-      }	*/
+        JoeWithModels.rhou(c) = IC.u_init * IC.rho_init
+        JoeWithModels.rhoE(c) = IC.p_init / (IC.GAMMA - 1.0)  +  0.5 * IC.rho_init * dot( IC.u_init, IC.u_init )
+      }
     }
 
     def calcEulerFlux_HLLC( rhoL : Rep[Double], uL : Rep[Vec[_3,Double]], pL : Rep[Double], h0 : Rep[Double], gammaL : Rep[Double], rhoR : Rep[Double], uR : Rep[Vec[_3,Double]], pR : Rep[Double], h1 : Rep[Double], gammaR : Rep[Double], area : Rep[Double], nVec : Rep[Vec[_3,Double]], surfVeloc : Rep[Double], kL : Rep[Double], kR : Rep[Double] ) : Rep[Vec[_5,Double]] = {
@@ -350,24 +357,31 @@ trait Joe extends DeLisztApplication {
       Frhou = Frhou * area
       FrhoE = FrhoE * area
       
-      return Vec(Frho, Frhou.x, Frhou.y, Frhou.z, FrhoE)		
+      Vec(Frho, Frhou.x, Frhou.y, Frhou.z, FrhoE)		
     }
 
-    def calcDt( cfl_target : Rep[Double] ) : Rep[Double] = {
-      var dt = 0.0
-
-      if ( IC.timeStepMode == 0 ) {
-        return IC.const_dt
+    // def calcDt( cfl_target : Rep[Double] ) : Rep[Double] = {
+    def calcDt( cfl_target : Rep[Double] ) : Rep[Unit] = {
+      Print("CALC DT")
+      
+      // var dt = unit(0.0)
+      // var minCPU = IC.dt_minCPU
+      
+      /* if ( IC.timeStepMode == 0 ) {
+        Print("CONST DT")
+        // dt = IC.const_dt
       }
-      if ( IC.timeStepMode == 1 ) {
-        dt = IC.DT
+      else if ( IC.timeStepMode == 1 ) {
+        Print("TIME 1")
+        // dt = IC.DT
         IC.const_dt = IC.DT
         for( c <- cells(mesh) ) {
-          local_dt(c) = dt
+          local_dt(c) = IC.DT
         }
-        IC.timeStepMode = 0
+        IC.timeStepMode = unit(0)
       }
-      if ( IC.timeStepMode == 2 ) {
+      else if ( IC.timeStepMode == 2 ) { */
+        Print("TIME 2")
         for( icv <- cells(mesh) ) {
           var lambdaMax = 0.0
 
@@ -384,12 +398,19 @@ trait Joe extends DeLisztApplication {
           }
       
           val dt_cv = cfl_target * MeshGeometryCalc.cv_volume(icv) / lambdaMax
-          IC.dt_minCPU = IC.dt_minCPU.min(dt_cv)
+          // BUT THIS NEVER GOES BELOW 0 WTF
+          // minCPU = minCPU min dt_cv
+          
+          /* if(ID(icv) < 100) {
+            Print(ID(icv), " CALC DT: gamma", gamma(icv), " press ", press(icv), " rho ", JoeWithModels.rho(icv), " cv_volume ", MeshGeometryCalc.cv_volume(icv), " dt_cv ", dt_cv, " dt_minCPU ", IC.dt_minCPU)
+          }  */
+          
           local_dt(icv) = dt_cv
         }
-        dt = IC.dt_minCPU
-      }
-      return dt
+        // dt = minCPU
+        // IC.dt_minCPU = minCPU.e
+      // }
+      // dt
     }
 
   }
@@ -444,8 +465,7 @@ trait Joe extends DeLisztApplication {
             // forgotten why). This equivalent code works though.
             val inside_cell = inside(f);
       val outside_cell = outside(f);
-      val result = if (ID(inside_cell) == 0) outside_cell else inside_cell;
-            return result;
+      if (ID(inside_cell) == 0) outside_cell else inside_cell;
       //val c = if ( ID(inside(f)) == 0 ) outside(f) else inside(f)
       //return c
     }	
@@ -453,37 +473,44 @@ trait Joe extends DeLisztApplication {
     def run() {
       initialHook()
       
-      if ( IC.navierStokesSolver == NavierStokesSolvers.EXPL_EULER ){ 
-        runExplicitBackwardEuler()
-      } else if ( IC.navierStokesSolver == NavierStokesSolvers.IMPL_EULER ){
-      } else if ( IC.navierStokesSolver == NavierStokesSolvers.EXPL_RK ){
-      } else { Print("ERROR: no or wrong time integration scheme specified !") }
+      runExplicitBackwardEuler()
     }
 
     def runExplicitBackwardEuler() {
 
+    Print("RUNNING BACK EULER")
+    
       UgpWithCvCompFlow.calcRansStateVarAndMaterialProperties()
       
     for ( c <- cells(mesh) ) {
-      Print("RANS CELL: ", ID(c), " rho ", JoeWithModels.rho(c), " xcv: " , MeshGeometryCalc.x_cv(c), " vel ", UgpWithCvCompFlow.vel(c), " kine ", UgpWithCvCompFlow.kine(c), " press ", UgpWithCvCompFlow.press(c), " temp ", UgpWithCvCompFlow.temp(c), " enth ", UgpWithCvCompFlow.enthalpy(c), " sos ", UgpWithCvCompFlow.sos(c))
+      if(ID(c) < 100) {
+        Print("RANS CELL: ", ID(c), " rho ", JoeWithModels.rho(c), " xcv: " , MeshGeometryCalc.x_cv(c), " vel ", UgpWithCvCompFlow.vel(c), " kine ", UgpWithCvCompFlow.kine(c), " press ", UgpWithCvCompFlow.press(c), " temp ", UgpWithCvCompFlow.temp(c), " enth ", UgpWithCvCompFlow.enthalpy(c), " sos ", UgpWithCvCompFlow.sos(c))
+      }
     }
       
       setNavierStokesBC()
+      
+      Print("set nav")
    
       // HERE TIME SHOULD START TICKING !!!!!!
       var start_time = 0.0;
       var step = 0
       while (step < Constants.iterations ) {
         if (step == 1) {
-          start_time = wall_time();
+          start_time = wall_time()
         }
-        //Print("looping: ", step)
+        Print("looping: ", step)
         step += 1
         
-        var dtMin = UgpWithCvCompFlow.calcDt(IC.cfl)
+        // Always min double, why bother
+        // var dtMin = UgpWithCvCompFlow.calcDt(IC.cfl)
+        UgpWithCvCompFlow.calcDt(IC.cfl)
         calcRhs() // note that this function originally would take rhs_rho, rhs_rhou, rhs_rhoE, rho, rhou, rhoE fields as arguments
         
         for( c <- cells(mesh) ) {
+          if(ID(c) < 100) {
+            Print("local_dt ", UgpWithCvCompFlow.local_dt(c), " cv_volume ", MeshGeometryCalc.cv_volume(c), " rhs_rho ", rhs_rho(c))
+          }
           val tmp = UgpWithCvCompFlow.local_dt(c) / MeshGeometryCalc.cv_volume(c)
           rho(c) = rho(c) + rhs_rho(c) * tmp
           rhou(c) = rhou(c) + rhs_rhou(c) * tmp
@@ -493,7 +520,7 @@ trait Joe extends DeLisztApplication {
         if ( step % IC.check_interval == 0 ) {
           if ( step % ( IC.check_interval * 10 ) == 0 ) {
             Print( "" ) // print nothing to simulate a \n !!!!
-            Print( "done step: " , step , ", cfl: " , IC.cfl , ", min. dt:   " , dtMin ) 
+            Print( "done step: " , step , ", cfl: " , IC.cfl) // , ", min. dt:   " , dtMin ) 
           }
           var my_resid = Vec(0.0,0.0,0.0,0.0,0.0)
           for( c <- cells(mesh) ) {
@@ -508,11 +535,18 @@ trait Joe extends DeLisztApplication {
 
         UgpWithCvCompFlow.calcRansStateVarAndMaterialProperties()
 
+        for ( c <- cells(mesh) ) {
+          if(ID(c) < 100) {
+            Print("RANS CELL: ", ID(c), " rho ", JoeWithModels.rho(c), " xcv: " , MeshGeometryCalc.x_cv(c), " vel ", UgpWithCvCompFlow.vel(c), " kine ", UgpWithCvCompFlow.kine(c), " press ", UgpWithCvCompFlow.press(c), " temp ", UgpWithCvCompFlow.temp(c), " enth ", UgpWithCvCompFlow.enthalpy(c), " sos ", UgpWithCvCompFlow.sos(c))
+          }
+        }
+        
         setNavierStokesBC()
+        
+        unit()
       }
 
        Print( "TIME_FOR_LOOP: ", wall_time() - start_time )
-        
     }
 
 
@@ -542,7 +576,7 @@ trait Joe extends DeLisztApplication {
       //for (f <- hook) { UgpWithCvCompFlow.ComputeBCProperties_T(f) }
       // TODO(mbarrien): Is there a need for a different BoundaryInfo for subranges
       // inside a larger boundary?
-      val vector_bc = Vec( IC.u_init.x, IC.u_init.y, IC.u_init.z, IC.T_init, IC.p_init )
+      val vector_bc = Vec( IC.u_init_x, IC.u_init_y, IC.u_init_z, IC.T_init, IC.p_init )
       val T_bc = vector_bc(_3)
       val p_bc = vector_bc(_4)
       val u_bc = Vec( vector_bc.x, vector_bc.y, vector_bc.z )
