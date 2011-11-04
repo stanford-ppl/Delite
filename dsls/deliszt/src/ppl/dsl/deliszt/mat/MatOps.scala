@@ -418,11 +418,13 @@ trait ScalaGenMatOps extends ScalaGenBase {
   val IR:MatOpsExp
 
   import IR._
+  
+  val matImplPath = "ppl.dsl.deliszt.datastruct.scala.MatImpl"
 
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case m@MatObjNew(vs @ _*) => emitValDef(sym, "generated.scala.Mat[" + remap(m.a) + "](" + vs.map(quote).reduceLeft(_+","+_) + ")")
-    case m@MatObjNNew(numRows,numCols) => emitValDef(sym, "generated.scala.Mat.ofSize[" + remap(m.a) + "](" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@MatObjNew(vs @ _*) => emitValDef(sym, remap(matImplPath, "", m.a) + "(" + vs.map(quote).reduceLeft(_+","+_) + ")")
+    case m@MatObjNNew(numRows,numCols) => emitValDef(sym, remap(matImplPath, ".ofSize", m.a) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     //case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")
     case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")

@@ -168,7 +168,7 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
   
   val IR: DeliteApplication with DeLisztExp
 
-  override val specialize = Set("VecImpl", "MatImpl", "MatColImpl", "MatRowImpl", "VecViewImpl")
+  override val specialize = Set("VecImpl", "MatImpl", "MatColImpl", "MatRowImpl", "VecViewImpl", "FieldImpl")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
@@ -213,8 +213,31 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
     parmap(res)
   }
 
+  // For object methods
+  override def remap(s: String, method: String, t: String) = {
+    val ds = dsmap(s)
+    val u = remap(t)
+  
+    // We have a specialized type
+    if(List("Double","Int","Float","Long","Boolean").contains(u)) {
+      // And it's one of the impls we are going to specialize
+      specialize.find(e => ds.indexOf(e) > 0) match {
+        case Some(impl) => {
+          // Generate the specialized impl method
+          var res = ds.replaceAll(impl, u + impl)
+          
+          // Don't need type parameters!
+          res + method
+        }
+        case _ => super.remap(ds, method, u)
+      }
+    }
+    else {
+      super.remap(ds, method, u)
+    }
+  }
 
-  def remap(s: String) = parmap(s)
+  override def remap(s: String) = parmap(s)
   override def remap[A](m: Manifest[A]): String = {
     var res = super.remap(m)
     res = res.replaceAllLiterally("package$", "")

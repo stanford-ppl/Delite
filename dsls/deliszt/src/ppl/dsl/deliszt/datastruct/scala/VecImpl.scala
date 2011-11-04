@@ -7,6 +7,20 @@ package ppl.dsl.deliszt.datastruct.scala
  * Pervasive Parallelism Laboratory (PPL)
  * Stanford University
  */
+ 
+object VecImpl {
+  def ofSize[T:ClassManifest](size: Int) = {
+    new VecImpl[T](size)
+  }
+  
+  def withData[T:ClassManifest](data : Array[T]) = {
+    new VecImpl[T](data)
+  }
+  
+  def apply[T:ClassManifest](xs: T*) = {
+    new VecImpl[T](xs.toArray)
+  }
+}
 
 class VecImpl[@specialized T: ClassManifest](val data : Array[T]) extends Vec[T] with Copyable {
   def this(size : Int) = this(new Array[T](size))
@@ -43,3 +57,53 @@ class VecImpl[@specialized T: ClassManifest](val data : Array[T]) extends Vec[T]
     "Vec[" + size + "](" + data.map(_.toString).reduceLeft(_ + "," + _) + ")"
   }
 }
+
+/*
+class ThreeVecImpl[@specialized T: ClassManifest](val data : Array[T]) extends Vec[T] with Copyable {
+  override var x : T
+  override var y : T
+  override var z : T
+  
+  override def size = 3
+
+  def apply(n : Int) = {
+    n match {
+      case 0 => x
+      case 1 => y
+      case 2 => z
+      case _ =>
+    }
+  }
+  
+  def update(n : Int, v : T) = {
+    n match {
+      case 0 => {x = v}
+    }
+  }
+  
+  def cloneL = {
+    new VecImpl[T](data.clone)
+  }
+  
+  def copy() = {
+    val v = new VecImpl[T](size)
+  
+    if(classManifest[T] <:< classManifest[Copyable]) {
+      for(i <- 0 until size) {
+        v(i) = data(i).asInstanceOf[Copyable].copy.asInstanceOf[T]
+      }
+    }
+    else {
+      for(i <- 0 until size) {
+        v(i) = data(i)
+      }
+    }
+    
+    v
+  }
+  
+  override def toString() = {
+    "Vec[" + size + "](" + data.map(_.toString).reduceLeft(_ + "," + _) + ")"
+  }
+}
+*/
