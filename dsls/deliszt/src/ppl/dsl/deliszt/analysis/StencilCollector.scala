@@ -2,6 +2,8 @@ package ppl.dsl.deliszt.analysis
 
 import java.io.{PrintWriter}
 
+import util.control.Breaks._
+
 import scala.collection.immutable.{Set => ISet}
 import scala.collection.mutable.{Set => MSet, Map => MMap, HashMap, ArrayBuilder}
 
@@ -88,15 +90,29 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
 
   val forMap = new HashMap[Int,StencilMap]()
   val msMap = MMap[Int,MeshSet]()
+  val schedules = new HashMap[Int,ArrayBuilder[TP[Any]]]() { override def default(key: Int) = { val buf = ArrayBuilder.make[TP[Any]](); this(key) = buf; buf } }
   
   // Store the current top level for loop
+  var topFor : Option[Int] = None
   var currentFor : Option[Int] = None
   
+  def addSchedule(sym: Sym[Any], rhs: Def[Any]) {
+    currentFor match {
+      case Some(i) => { schedules(i) += TP(sym, rhs) }
+      case _ => { throw new RuntimeException("No current for set") }
+    }
+  }
+  
   // And the current mesh object in the top level for loop
-  var currentMo : Option[Int] = None
+  var topMo : Option[Int] = None
   
   val className = "StencilCollector"
   val on = true
+  
+  var collectingSchedule = false
+  var trivial = false
+  var indexSym : Sym[Any] = null
+  var moSyms : ISet[Int] = null
   
   override def initializeGenerator(buildDir:String, args: Array[String], _analysisResults: MMap[String,Any]): Unit = {
     super.initializeGenerator(buildDir, args, _analysisResults)
@@ -112,10 +128,10 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     val sym = f.asInstanceOf[Sym[_]]
     val mos = value[MultipleMeshObj](i)
     
-    currentFor match {
+    topFor match {
 	    case Some(x) => {
 	      for(mo <- mos.objs) {
-  	      forMap(x)(currentMo.get).read += FieldAccess(sym.id, mo)
+  	      forMap(x)(topMo.get).read += FieldAccess(sym.id, mo)
   	    }
 	    }
 	    case None => System.out.println("No top level for")
@@ -126,12 +142,12 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     val sym = f.asInstanceOf[Sym[_]]
     val mos = value[MultipleMeshObj](i)
     
-    currentFor match {
+    topFor match {
 	    case Some(x) => {
 	      for(mo <- mos.objs) {
           mo match {
             case 0 if moType <:< manifest[Cell] => // Ignore
-            case _ => forMap(x)(currentMo.get).write += FieldAccess(sym.id, mo)
+            case _ => forMap(x)(topMo.get).write += FieldAccess(sym.id, mo)
           }
 	      }
 	    }
@@ -140,14 +156,14 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   }
   
   def matchFor(i: Int) = {
-    currentFor match {
+    topFor match {
       case Some(x: Int) => i == x
       case _ => false
     }
   }
   
   def setFor(i: Int, ms: MeshSet) {
-    currentFor = Some(i)
+    topFor = Some(i)
     forMap(i) = new HashMap[Int,ReadWriteSet]() { override def default(key: Int) = { val rwset = new ReadWriteSet(); this(key) = rwset; rwset }  }
     
     msMap(i) = ms
@@ -311,87 +327,35 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   def blockValue[T:Manifest](b: Exp[Any]) = value[T](getBlockResult(b))
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
-    // System.out.println("EMITTING NODE")
-    // System.out.println(rhs)
-  
-    if(Config.collectStencil) {
+  def runSchedule(tps: Seq[TP[Any]]) {
+    for(TP(sym, rhs) <- tps) {
       rhs match {
         // Foreach, only apply to top level foreach though...
         case f@MeshSetForeach(m, b) => {
           // Get value for the mesh set
           val ms = value[MeshSet](m)
-      
-          // if not current top, mark current top....
-          if(currentFor.isEmpty) {
-            setFor(sym.id, ms)
-            System.out.println("Found a top level foreach sym " + sym.id)
-          }
-            
-          val mssize: Int = ms.size
-          val stuff: Int = 0
           
-          var i: Int = 0
+          // Definitely not a top level foreach
           // Run foreach over mesh set
-          for(mo <- ms) {
-            // If top level foreach, mark the current element as one we are collecting stencil for
-            if(matchFor(sym.id)) {
-              currentMo = Some(mo)
-            }
+          var i = 0
           
+          for(mo <- ms) {
             // Store loop index in loop index symbol
             store(f.i, i)
             store(f.v, i)
             
             // Re "emit" block
-            f.body match {
-              case DeliteForeachElem(func, sync) => emitBlock(func)
-            }
+            runSchedule(schedules(sym.id).result)
             
             i += 1
           }
-          
-          // Clear out the current for loop if we are the top
-          if(matchFor(sym.id)) {
-            currentFor = None
-          }
         }
         
-        // While loops. Execute once. Store results if results are a mesh element
-        case DeliteWhile(c,b) => {
-          emitBlock(c)
-          
-          emitBlock(b)
-        }
-        
-        // While loops. Execute once. Store results if results are a mesh element
-        case While(c,b) => {
-          emitBlock(c)
-          
-          emitBlock(b)
-        }
-        
-        // Execute both branches. Store results if results are a mesh element
-        case IfThenElse(c,a,b) => {
-          emitBlock(c)
-          
-          emitBlock(a)
-          emitBlock(b)
-        }
-        
-              
-        // Execute both branches. Store results if results are a mesh element
-        case DeliteIfThenElse(c,a,b,h) => {
-          emitBlock(c)
-          
-          emitBlock(a)
-          emitBlock(b)
-        }
-          
         // Mark 
         case FieldApply(f,i) => {
           // Mark a read on the field for the current element... for i
-          markRead(f, i)
+          // BUT WE DON'T EVEN USE READS SO SCREW IT
+          // markRead(f, i)
         }
         
         case w@FieldUpdate(f,i,v) => {
@@ -421,12 +385,274 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         
         case _ => None
       }
-      
+    
       maybeValue(rhs) match {
         case Some(o) => {
           store(sym, o)
         }
         case None => {}
+      }
+    }
+  }
+  
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+    // System.out.println("EMITTING NODE")
+    // System.out.println(rhs)
+    
+    if(Config.collectStencil) {
+      if(collectingSchedule) {
+        var matched = true
+        
+        rhs match {
+          case DeliteCollectionApply(e, i) => {
+            // Found the sym for the top level foreach index meshobj          
+            i match {
+              case Sym(i) if(indexSym.id == i) => { moSyms += sym.id }
+              case _ =>
+            }
+          }
+          
+          case DeLisztFlipEdge(e) => {
+            e match {
+              case Sym(i) if(moSyms.contains(i)) => { moSyms += sym.id }
+              case _ =>
+            }
+          }
+          
+          case DeLisztFlipFace(e) => {
+            e match {
+              case Sym(i) if(moSyms.contains(i)) => { moSyms += sym.id }
+              case _ =>
+            }
+          }
+          
+          // Control constructs
+          
+          case f@MeshSetForeach(m, b) => {
+            // Set
+            currentFor = Some(sym.id)
+
+            f.body match {
+              case DeliteForeachElem(func, sync) => emitBlock(func)
+            }
+            
+            // Restore
+            currentFor = Some(sym.id)
+          }
+          
+          // While loops. Execute once. Store results if results are a mesh element
+          case DeliteWhile(c,b) => {
+            emitBlock(c)
+            
+            emitBlock(b)
+          }
+          
+          // While loops. Execute once. Store results if results are a mesh element
+          case While(c,b) => {
+            emitBlock(c)
+            
+            emitBlock(b)
+          }
+          
+          // Execute both branches. Store results if results are a mesh element
+          case IfThenElse(c,a,b) => {
+            emitBlock(c)
+            
+            emitBlock(a)
+            emitBlock(b)
+          }
+          
+                
+          // Execute both branches. Store results if results are a mesh element
+          case DeliteIfThenElse(c,a,b,h) => {
+            emitBlock(c)
+            
+            emitBlock(a)
+            emitBlock(b)
+          }
+          
+          // Field accesses, check for triviality
+          case FieldApply(f,i) =>
+          
+          case FieldUpdate(f,i,v) => {
+            i match {
+              case Sym(i) if !moSyms.contains(i) => { trivial = false }
+              case _ =>
+            }
+          }
+            
+          case w@FieldPlusUpdate(f,i,v) => {
+            i match {
+              case Sym(i) if !moSyms.contains(i) => { trivial = false }
+              case _ =>
+            }
+          }
+          
+          case w@FieldTimesUpdate(f,i,v) => {
+            i match {
+              case Sym(i) if !moSyms.contains(i) => { trivial = false }
+              case _ =>
+            }
+          }
+            
+          case w@FieldMinusUpdate(f,i,v) => {
+            i match {
+              case Sym(i) if !moSyms.contains(i) => { trivial = false }
+              case _ =>
+            }
+          }
+          
+          case w@FieldDivideUpdate(f,i,v) => {
+            i match {
+              case Sym(i) if !moSyms.contains(i) => { trivial = false }
+              case _ =>
+            }
+          }
+          
+          // Rest should just be added to schedule
+          case DeLisztBoundarySetCells(name) =>
+          case DeLisztBoundarySetEdges(name) =>
+          case DeLisztBoundarySetFaces(name) =>
+          case DeLisztBoundarySetVertices(name) =>
+          case DeLisztMesh() =>
+          case DeLisztVerticesCell(e, m) =>
+          case DeLisztVerticesEdge(e, m) =>
+          case DeLisztVerticesFace(e, m) =>
+          case DeLisztVerticesVertex(e, m) =>
+          case DeLisztVerticesMesh(e) =>
+          case DeLisztVertex(e, i, m) =>
+          case DeLisztFaceVerticesCCW(e, m) =>
+          case DeLisztFaceVerticesCW(e, m) =>
+          case DeLisztCellsCell(e, m) =>
+          case DeLisztCellsEdge(e, m) =>
+          case DeLisztCellsFace(e, m) =>
+          case DeLisztCellsVertex(e, m) =>
+          case DeLisztCellsMesh(e) =>
+          case DeLisztEdgeCellsCCW(e, m) =>
+          case DeLisztEdgeCellsCW(e, m) =>
+          case DeLisztEdgesCell(e, m) =>
+          case DeLisztEdgesFace(e, m) =>
+          case DeLisztEdgesVertex(e, m) =>
+          case DeLisztEdgesMesh(e) =>
+          case DeLisztFacesCell(e, m) =>
+          case DeLisztFacesEdge(e, m) =>
+          case DeLisztFacesVertex(e, m) =>
+          case DeLisztFacesMesh(e) =>
+          case DeLisztEdgeFacesCCW(e, m) =>
+          case DeLisztEdgeFacesCW(e, m) =>
+          case DeLisztFaceEdgesCCW(e, m) =>
+          case DeLisztFaceEdgesCW(e, m) =>
+          case DeLisztEdgeHead(e, m) =>
+          case DeLisztEdgeTail(e, m) =>
+          case DeLisztFaceInside(e, m) =>
+          case DeLisztFaceOutside(e, m) =>
+          case DeLisztFace(e, i, m) =>
+          case DeLisztTowardsEdgeVertex(e, v, m) =>
+          case DeLisztTowardsFaceCell(e, c, m) =>
+          
+          case _ => { matched = false }
+        }
+        
+        // Add to schedule for this for loop
+        if(matched) {
+          addSchedule(sym, rhs)
+        }
+      }
+      else {
+        rhs match {
+          // Foreach, only apply to top level foreach though...
+          case f@MeshSetForeach(m, b) => {
+            // Get value for the mesh set
+            val ms = value[MeshSet](m)
+        
+            // Mark current top foreach....
+            setFor(sym.id, ms)
+            System.out.println("Found a top level foreach sym " + sym.id)
+            
+            // Do trivial coloring detection
+            collectingSchedule = true
+            trivial = true
+            indexSym = f.v
+            moSyms = ISet()
+            currentFor = Some(sym.id)
+            
+            f.body match {
+              case DeliteForeachElem(func, sync) => emitBlock(func)
+            }
+            
+            collectingSchedule = false
+            
+            if(matchFor(sym.id) && trivial) {
+              System.out.println("Detected trivial loop")
+              forMap.remove(sym.id)
+            }
+            else {
+              // Get value for the mesh set
+              val ms = value[MeshSet](m)
+              
+              // Definitely not a top level foreach
+              // Run foreach over mesh set
+              var i = 0
+              
+              for(mo <- ms) {
+                topMo = Some(mo)
+              
+                // Store loop index in loop index symbol
+                store(f.i, i)
+                store(f.v, i)
+                
+                // Re "emit" block
+                runSchedule(schedules(sym.id).result)
+                
+                i += 1
+              }
+            }
+            
+            // Clear out the current for loop
+            topFor = None
+          }
+          
+          // While loops. Execute once. Store results if results are a mesh element
+          case DeliteWhile(c,b) => {
+            emitBlock(c)
+            
+            emitBlock(b)
+          }
+          
+          // While loops. Execute once. Store results if results are a mesh element
+          case While(c,b) => {
+            emitBlock(c)
+            
+            emitBlock(b)
+          }
+          
+          // Execute both branches. Store results if results are a mesh element
+          case IfThenElse(c,a,b) => {
+            emitBlock(c)
+            
+            emitBlock(a)
+            emitBlock(b)
+          }
+          
+                
+          // Execute both branches. Store results if results are a mesh element
+          case DeliteIfThenElse(c,a,b,h) => {
+            emitBlock(c)
+            
+            emitBlock(a)
+            emitBlock(b)
+          }
+            
+          // There shouldn't be any field accesses if we aren't collecting the schedule          
+          case _ =>
+        }
+      
+        maybeValue(rhs) match {
+          case Some(o) => {
+            store(sym, o)
+          }
+          case None => {}
+        }
       }
     }
   }

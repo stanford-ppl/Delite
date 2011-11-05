@@ -8,6 +8,16 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
+object MatImpl {
+  def ofSize[T: Manifest](rows: Int, cols: Int) = {
+    new MatImpl[T](rows, cols)
+  }
+  
+  def apply[T: Manifest](xs: Vec[T]*) = {
+    new MatImpl[T](xs.size, xs(0).size, xs.flatten.toArray)
+  }
+}
+ 
 class MatImpl[@specialized T: ClassManifest](val numRows : Int, val numCols : Int, val data : Array[T]) extends Mat[T] with Copyable {
   def this(numRows : Int, numCols : Int) = this(numRows, numCols, new Array[T](numRows * numCols))
 

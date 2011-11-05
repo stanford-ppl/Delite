@@ -12,6 +12,12 @@
 #ifndef MESHLOADER_H_
 #define MESHLOADER_H_
 
+#ifdef DEBUG
+#define DEBUG_PRINT(msg) std::cerr << msg << std::endl
+#else
+#define DEBUG_PRINT(msg)
+#endif
+
 using namespace std;
 
 namespace System {
@@ -36,53 +42,53 @@ public:
     template<typename MO>
     jobject loadBoundarySet(JNIEnv* env, const char* name)
     {
-      std::cout << "Loading boundary set " << name << std::endl;
+      DEBUG_PRINT("Loading boundary set " << name);
   
       LisztPrivate::BoundarySet *bs = new LisztPrivate::BoundarySet();
       if (!bs) {
         throw MeshIO::MeshLoadException("Could not create boundary set");
       }
 
-      std::cout << "Created boundary set " << name << std::endl;
+      DEBUG_PRINT("Created boundary set " << name)
       
       jobject bounds = NULL;
       
       pthread_mutex_lock(&lock);
       try {
-        std::cout << "calling loader " << name << std::endl;
+        DEBUG_PRINT("calling loader " << name)
       
         if (boundary_builder.load<MO, LisztPrivate::BoundarySet>(name, bs)) {
-          std::cout << "loaded " << name << std::endl;
+          DEBUG_PRINT("loaded " << name);
           bounds = createObject(env,
                   prefix + "/BoundarySetImpl", "");
-          std::cout << "created " << name << std::endl;
+          DEBUG_PRINT("created " << name);
 
           const LisztPrivate::BoundarySet::ranges_t& ranges = bs->getRanges();
                   
           // For ranges in bs
           for (LisztPrivate::BoundarySet::range_it it = ranges.begin(), end = ranges.end(); it != end; it++) {
-              std::cout << "iter " << name << std::endl;
+              DEBUG_PRINT("iter " << name);
               callVoidMethod(env, bounds,
                       prefix + "/BoundarySetImpl", "add",
                       "(II)V", it->first, it->second);
           }
 
-          std::cout << "done iter " << name << std::endl;
+          DEBUG_PRINT("done iter " << name);
           callVoidMethod(env, bounds, prefix + "/BoundarySetImpl",
                   "freeze", "()V");
-          std::cout << "freeze " << name << std::endl;
+          DEBUG_PRINT("freeze " << name);
         }
         else {
-          std::cerr << "Failed to load boundary set: " << name << std::endl;
+          DEBUG_PRINT("Failed to load boundary set: " << name);
         }
       }
       catch(...) {
-        std::cerr << "Failed to load boundary set: " << name << ": Exception thrown" << std::endl;
+        DEBUG_PRINT("Failed to load boundary set: " << name);
         bounds = NULL;
       }
       pthread_mutex_unlock(&lock);
       
-      std::cout << "return " << name << std::endl;
+      DEBUG_PRINT("return " << name);
 
       delete bs;
       

@@ -39,13 +39,3 @@ trait VecView[@specialized(Boolean, Int, Long, Float, Double) T] extends Vec[T]
 trait MatRow[@specialized(Boolean, Int, Long, Float, Double) T] extends VecView[T]
 
 trait MatCol[@specialized(Boolean, Int, Long, Float, Double) T] extends VecView[T]
-
-object Mat {
-  def ofSize[T: Manifest](rows: Int, cols: Int) = {
-    new MatImpl[T](rows, cols)
-  }
-  
-  def apply[T: Manifest](xs: Vec[T]*) = {
-    new MatImpl[T](xs.size, xs(0).size, xs.flatten.toArray)
-  }
-}

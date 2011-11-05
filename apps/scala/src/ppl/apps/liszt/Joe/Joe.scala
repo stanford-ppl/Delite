@@ -13,73 +13,73 @@ trait Joe extends DeLisztApplication {
     var IMPL_EULER_POINT : Rep[Int] = null
     
     def init() {
-      EXPL_EULER = 0 
-      IMPL_EULER = 1 
-      EXPL_RK = 2 
-      IMPL_EULER_POINT = 3 
+      EXPL_EULER = unit(0)
+      IMPL_EULER = unit(1) 
+      EXPL_RK = unit(2) 
+      IMPL_EULER_POINT = unit(3) 
     }
   }
   
   object Constants {
-    var float3_zero : Rep[Vec[_3,Float]] = null
+    var float3_zero : Rep[Vec[_3,Double]] = null
     var iterations : Rep[Int] = null
     
     def init() {
-      float3_zero = Vec(0.f,0.f,0.f) 
-      iterations = 10
+      float3_zero = Vec(0.0,0.0,0.0) 
+      iterations = unit(10)
     }
   }
 
   object IC {
-    var rho_init : Rep[Float] = null
-    var p_init : Rep[Float] = null
-    var u_init : Rep[Vec[_3,Float]] = null
-    var T_init : Rep[Float] = null
-    var GAMMA : Rep[Float] = null
-    var cfl : Rep[Float] = null
+    var rho_init : Rep[Double] = null
+    var p_init : Rep[Double] = null
+    var u_init : Rep[Vec[_3,Double]] = null
+    var T_init : Rep[Double] = null
+    var GAMMA : Rep[Double] = null
+    var cfl : Rep[Double] = null
     var navierStokesSolver : Rep[Int] = null
     var check_interval : Rep[Int] = null
-    var R_gas : Rep[Float] = null
+    var R_gas : Rep[Double] = null
     var first : Rep[Boolean] = null
     var timeStepMode : Rep[Int] = null  // notice here that this depends on cfl
-    var const_dt : Rep[Float] = null
-    var DT : Rep[Float] = null
-    var dt_minCPU : Rep[Float] = null
+    var const_dt : Rep[Double] = null
+    var DT : Rep[Double] = null
+    var dt_minCPU : Rep[Double] = null
     
     def init() = {
-      rho_init = 1.f
-      p_init = 0.119783502243532f
-      u_init = Vec(1.f, 0.f, 0.f)
-      T_init = 0.119783502243532f
-      GAMMA = 1.4f 
-      cfl = 0.5f 
+      rho_init = unit(1.0)
+      p_init = unit(0.119783502243532)
+      u_init = Vec(1.0, 0.0, 0.0)
+      T_init = unit(0.119783502243532)
+      GAMMA = unit(1.4)
+      cfl = unit(0.5) 
       navierStokesSolver = NavierStokesSolvers.EXPL_EULER 
-      check_interval = 1 
+      check_interval = unit(1) 
       R_gas = p_init / rho_init / T_init 
-      first = true 
-      timeStepMode = 2  // notice here that this depends on cfl
-      const_dt = 0.f 
-      DT = 0.001f 
-      dt_minCPU = MIN_FLOAT 
+      first = unit(true) 
+      timeStepMode = unit(2)  // notice here that this depends on cfl
+      const_dt = unit(0.0) 
+      DT = unit(0.001) 
+      dt_minCPU = MIN_DOUBLE
     }
   }
   
   object MeshGeometryCalc {
-    var position : Rep[Field[Vertex,Vec[_3, Float]]] = null
-    var x_fa : Rep[Field[Face,Vec[_3, Float]]] = null
-    var x_cv : Rep[Field[Cell,Vec[_3, Float]]] = null
-    var fa_normal : Rep[Field[Face,Vec[_3, Float]]] = null
-    var cv_volume : Rep[Field[Cell,Float]] = null
+    var position : Rep[Field[Vertex,Vec[_3, Double]]] = null
+    var x_fa : Rep[Field[Face,Vec[_3, Double]]] = null
+    var x_cv : Rep[Field[Cell,Vec[_3, Double]]] = null
+    var fa_normal : Rep[Field[Face,Vec[_3, Double]]] = null
+    var cv_volume : Rep[Field[Cell,Double]] = null
     
     def init() {
-      position = FieldWithLabel[Vertex,Vec[_3,Float]]("position")
-      x_fa = FieldWithConst[Face, Vec[_3, Float]](Constants.float3_zero)
-      x_cv = FieldWithConst[Cell, Vec[_3, Float]](Constants.float3_zero)	
-      fa_normal = FieldWithConst[Face, Vec[_3, Float]](Constants.float3_zero)
-      cv_volume = FieldWithConst[Cell, Float](0.f)
+      position = FieldWithLabel[Vertex,Vec[_3,Double]]("position")
+      x_fa = FieldWithConst[Face, Vec[_3, Double]](Constants.float3_zero)
+      x_cv = FieldWithConst[Cell, Vec[_3, Double]](Constants.float3_zero)	
+      fa_normal = FieldWithConst[Face, Vec[_3, Double]](Constants.float3_zero)
+      cv_volume = FieldWithConst[Cell, Double](0.0)
     }
 
-    def calcFaceCenter( f: Rep[Face] ) : Rep[Vec[_3, Float]] = {
+    def calcFaceCenter( f: Rep[Face] ) : Rep[Vec[_3, Double]] = {
       var center = Constants.float3_zero
       for(v <- vertices(f) ) {
         center = center + position(v)
@@ -88,7 +88,7 @@ trait Joe extends DeLisztApplication {
       return center
     }
 
-    def calcCellCenter( c: Rep[Cell] ) : Rep[Vec[_3,Float]] = {
+    def calcCellCenter( c: Rep[Cell] ) : Rep[Vec[_3,Double]] = {
             var center = Constants.float3_zero
             for (v <- vertices(c)) {
                     center = center + position(v)
@@ -109,7 +109,7 @@ trait Joe extends DeLisztApplication {
       normal = normalize(normal)
       
       var center = Constants.float3_zero
-      var area = 0.f
+      var area = 0.0
       for(e <- edgesCCW(f)) {
         val v0 = position(head(e)) - approxCenter
         val v1 = position(tail(e)) - approxCenter
@@ -117,8 +117,8 @@ trait Joe extends DeLisztApplication {
         area += tmp_area
         center = center + ( approxCenter + position(head(e)) + position(tail(e)) ) * tmp_area
       }
-      x_fa(f) = center/ (area * 3.f)
-      var farea = area / 2.f
+      x_fa(f) = center/ (area * 3.0)
+      var farea = area / 2.0
       var tmpNormal = normal * farea
       if ( flipNormal )
         tmpNormal = -tmpNormal
@@ -127,7 +127,7 @@ trait Joe extends DeLisztApplication {
 
     def calcCellGeom( c: Rep[Cell] ) {
       val approxCenter = calcCellCenter(c)
-      var volume = 0.f
+      var volume = 0.0
       var center = Constants.float3_zero
       for( f <- faces(c) ) {
         val v0 = x_fa(f) - approxCenter
@@ -139,37 +139,37 @@ trait Joe extends DeLisztApplication {
           center = center + (approxCenter + x_fa(f) + position(head(e)) + position(tail(e))) * tetVol
         }
       }
-      x_cv(c) = center/ (volume * 4.f)
-      cv_volume(c) = volume/ 6.f
+      x_cv(c) = center/ (volume * 4.0)
+      cv_volume(c) = volume/ 6.0
     }
 
   }
   
   object UgpWithCvCompFlow {
-    var vel : Rep[Field[Cell,Vec[_3,Float]]] = null
-    var press : Rep[Field[Cell,Float]] = null
-    var temp : Rep[Field[Cell,Float]] = null
-    var enthalpy : Rep[Field[Cell,Float]] = null
-    var LambdaOverCp : Rep[Field[Cell,Float]] = null
-    var sos : Rep[Field[Cell,Float]] = null
-    var kine : Rep[Field[Cell,Float]] = null
-    var local_dt : Rep[Field[Cell,Float]] = null
+    var vel : Rep[Field[Cell,Vec[_3,Double]]] = null
+    var press : Rep[Field[Cell,Double]] = null
+    var temp : Rep[Field[Cell,Double]] = null
+    var enthalpy : Rep[Field[Cell,Double]] = null
+    var LambdaOverCp : Rep[Field[Cell,Double]] = null
+    var sos : Rep[Field[Cell,Double]] = null
+    var kine : Rep[Field[Cell,Double]] = null
+    var local_dt : Rep[Field[Cell,Double]] = null
 
     // these fields should be build in "initialHookScalarRansCombModel(), so we got rid of the whole function
-    var RoM : Rep[Field[Cell,Float]] = null
-    var gamma : Rep[Field[Cell,Float]] = null
-    var muLam : Rep[Field[Cell,Float]] = null
+    var RoM : Rep[Field[Cell,Double]] = null
+    var gamma : Rep[Field[Cell,Double]] = null
+    var muLam : Rep[Field[Cell,Double]] = null
     
     // this should be called in runExplicitBackwardEuler
-    var gam_fa : Rep[Field[Face,Float]] = null
-    var RoM_fa : Rep[Field[Face,Float]] = null
-    var h_fa : Rep[Field[Face,Float]] = null
-    var T_fa : Rep[Field[Face,Float]] = null
-    var vel_fa : Rep[Field[Face,Vec[_3,Float]]] = null
-    var p_fa : Rep[Field[Face,Float]] = null
-    var mu_fa : Rep[Field[Face,Float]] = null
-    var lamOcp_fa : Rep[Field[Face,Float]] = null
-    var rho_fa : Rep[Field[Face,Float]] = null
+    var gam_fa : Rep[Field[Face,Double]] = null
+    var RoM_fa : Rep[Field[Face,Double]] = null
+    var h_fa : Rep[Field[Face,Double]] = null
+    var T_fa : Rep[Field[Face,Double]] = null
+    var vel_fa : Rep[Field[Face,Vec[_3,Double]]] = null
+    var p_fa : Rep[Field[Face,Double]] = null
+    var mu_fa : Rep[Field[Face,Double]] = null
+    var lamOcp_fa : Rep[Field[Face,Double]] = null
+    var rho_fa : Rep[Field[Face,Double]] = null
 
     def calcRansStateVarAndMaterialProperties() {
       for ( c <- cells(mesh) ) {
@@ -179,21 +179,21 @@ trait Joe extends DeLisztApplication {
 
         vel(c) = JoeWithModels.rhou(c) / JoeWithModels.rho(c)
         
-        var kinecv = 0.f
+        var kinecv = 0.0
         kinecv = kine(c)
 
-        val pr = ( gamma(c) - 1.f ) * ( JoeWithModels.rhoE(c) - 0.5f * dot(JoeWithModels.rhou(c),JoeWithModels.rhou(c)) / JoeWithModels.rho(c) - JoeWithModels.rho(c) * kinecv )
+        val pr = ( gamma(c) - 1.0 ) * ( JoeWithModels.rhoE(c) - 0.5 * dot(JoeWithModels.rhou(c),JoeWithModels.rhou(c)) / JoeWithModels.rho(c) - JoeWithModels.rho(c) * kinecv )
         press(c) = pr
-        if ( pr <= 0.f ) {
+        if ( pr <= 0.0 ) {
           Print( "negative pressure at xcv: " , MeshGeometryCalc.x_cv(c), " ", ID(c) )
         }
         
         val tp = pr / ( JoeWithModels.rho(c) * RoM(c) )
         temp(c) = tp
-        enthalpy(c) = gamma(c) * RoM(c) / ( gamma(c) - 1.f ) * tp
-        sos(c) = sqrtf( gamma(c) * pr / JoeWithModels.rho(c) )
+        enthalpy(c) = gamma(c) * RoM(c) / ( gamma(c) - 1.0 ) * tp
+        sos(c) = sqrt( gamma(c) * pr / JoeWithModels.rho(c) )
   //if (ID(c) == 6806) {
-  // 	Print( "CALCRANSSTATE c: " , ID(c), "	x_cv: ", MeshGeometryCalc.x_cv(c), " gamma: ", gamma(c), " press: ", pr, " rho: ", JoeWithModels.rho(c), " rhou: ", JoeWithModels.rhou(c), " rhoE: ", JoeWithModels.rhoE(c), " RoM: ", RoM(c), " kine: ", kine(c), " temp: ", tp, " enthalpy ", gamma(c) * RoM(c) / ( gamma(c) - 1.f ) * tp, " sos: ", sqrtf( gamma(c) * pr / JoeWithModels.rho(c) ) );
+  // 	Print( "CALCRANSSTATE c: " , ID(c), "	x_cv: ", MeshGeometryCalc.x_cv(c), " gamma: ", gamma(c), " press: ", pr, " rho: ", JoeWithModels.rho(c), " rhou: ", JoeWithModels.rhou(c), " rhoE: ", JoeWithModels.rhoE(c), " RoM: ", RoM(c), " kine: ", kine(c), " temp: ", tp, " enthalpy ", gamma(c) * RoM(c) / ( gamma(c) - 1.0 ) * tp, " sos: ", sqrt( gamma(c) * pr / JoeWithModels.rho(c) ) );
   //}
       }
     } 
@@ -201,7 +201,7 @@ trait Joe extends DeLisztApplication {
     def ComputeBCProperties_T( f: Rep[Face] ) {
       gam_fa(f) = IC.GAMMA
       RoM_fa(f) = IC.R_gas
-      h_fa(f) = IC.GAMMA * IC.R_gas / ( IC.GAMMA - 1.f ) * T_fa(f)
+      h_fa(f) = IC.GAMMA * IC.R_gas / ( IC.GAMMA - 1.0 ) * T_fa(f)
     }
     
 
@@ -215,31 +215,31 @@ trait Joe extends DeLisztApplication {
     }
 
     def init() {
-      vel = FieldWithConst[Cell,Vec[_3,Float]](Constants.float3_zero)
-      press = FieldWithConst[Cell,Float](0.f)
-      temp = FieldWithConst[Cell,Float](0.f)
-      enthalpy = FieldWithConst[Cell,Float](0.f)
-      LambdaOverCp = FieldWithConst[Cell,Float](0.f)
-      sos = FieldWithConst[Cell,Float](0.f)
-      kine = FieldWithConst[Cell,Float](0.f)
-      local_dt = FieldWithConst[Cell,Float](0.f)
+      vel = FieldWithConst[Cell,Vec[_3,Double]](Constants.float3_zero)
+      press = FieldWithConst[Cell,Double](0.0)
+      temp = FieldWithConst[Cell,Double](0.0)
+      enthalpy = FieldWithConst[Cell,Double](0.0)
+      LambdaOverCp = FieldWithConst[Cell,Double](0.0)
+      sos = FieldWithConst[Cell,Double](0.0)
+      kine = FieldWithConst[Cell,Double](0.0)
+      local_dt = FieldWithConst[Cell,Double](0.0)
       // these fields should be build in "initialHookScalarRansCombModel(), so we got rid of the whole function
-      RoM = FieldWithConst[Cell,Float](IC.R_gas)
-      gamma = FieldWithConst[Cell,Float](IC.GAMMA)
-      muLam = FieldWithConst[Cell,Float](0.f)
+      RoM = FieldWithConst[Cell,Double](IC.R_gas)
+      gamma = FieldWithConst[Cell,Double](IC.GAMMA)
+      muLam = FieldWithConst[Cell,Double](0.0)
       
       // this should be called in runExplicitBackwardEuler
-      gam_fa = FieldWithConst[Face,Float](0.f)
-      RoM_fa = FieldWithConst[Face,Float](0.f)
-      h_fa = FieldWithConst[Face,Float](0.f)
-      T_fa = FieldWithConst[Face,Float](0.f)
-      vel_fa = FieldWithConst[Face,Vec[_3,Float]](Constants.float3_zero)
-      p_fa = FieldWithConst[Face,Float](0.f)
-      mu_fa = FieldWithConst[Face,Float](0.f)
-      lamOcp_fa = FieldWithConst[Face,Float](0.f)
-      rho_fa = FieldWithConst[Face,Float](0.f)
+      gam_fa = FieldWithConst[Face,Double](0.0)
+      RoM_fa = FieldWithConst[Face,Double](0.0)
+      h_fa = FieldWithConst[Face,Double](0.0)
+      T_fa = FieldWithConst[Face,Double](0.0)
+      vel_fa = FieldWithConst[Face,Vec[_3,Double]](Constants.float3_zero)
+      p_fa = FieldWithConst[Face,Double](0.0)
+      mu_fa = FieldWithConst[Face,Double](0.0)
+      lamOcp_fa = FieldWithConst[Face,Double](0.0)
+      rho_fa = FieldWithConst[Face,Double](0.0)
     
-      Print("UgpWithCvCompFlow()")
+      /* Print("UgpWithCvCompFlow()")
 
       // ----------------------------------------------------------------------------------------
           // write some parameters on the screen
@@ -253,7 +253,7 @@ trait Joe extends DeLisztApplication {
             Print("    P_REF            : ", IC.p_init );
             Print("    RHO_REF          : ", IC.rho_init );
             Print("    T_REF            : ", IC.T_init );
-            Print("    SOS_REF          : ", sqrtf(IC.GAMMA*IC.R_gas*IC.T_init) );
+            Print("    SOS_REF          : ", sqrt(IC.GAMMA*IC.R_gas*IC.T_init) );
             Print("Solver settings        ");
             Print("    nsteps           : ", Constants.iterations);
             Print("    timeStepMode     : ", IC.timeStepMode);
@@ -270,37 +270,37 @@ trait Joe extends DeLisztApplication {
 
         JoeWithModels.rho(c) = IC.rho_init
               JoeWithModels.rhou(c) = IC.u_init * IC.rho_init
-              JoeWithModels.rhoE(c) = IC.p_init / (IC.GAMMA - 1.f)  +  0.5f * IC.rho_init * dot( IC.u_init, IC.u_init )
-      }	
+              JoeWithModels.rhoE(c) = IC.p_init / (IC.GAMMA - 1.0)  +  0.5f * IC.rho_init * dot( IC.u_init, IC.u_init )
+      }	*/
     }
 
-    def calcEulerFlux_HLLC( rhoL : Rep[Float], uL : Rep[Vec[_3,Float]], pL : Rep[Float], h0 : Rep[Float], gammaL : Rep[Float], rhoR : Rep[Float], uR : Rep[Vec[_3,Float]], pR : Rep[Float], h1 : Rep[Float], gammaR : Rep[Float], area : Rep[Float], nVec : Rep[Vec[_3,Float]], surfVeloc : Rep[Float], kL : Rep[Float], kR : Rep[Float] ) : Rep[Vec[_5,Float]] = {
-      var Frho = 0.f
+    def calcEulerFlux_HLLC( rhoL : Rep[Double], uL : Rep[Vec[_3,Double]], pL : Rep[Double], h0 : Rep[Double], gammaL : Rep[Double], rhoR : Rep[Double], uR : Rep[Vec[_3,Double]], pR : Rep[Double], h1 : Rep[Double], gammaR : Rep[Double], area : Rep[Double], nVec : Rep[Vec[_3,Double]], surfVeloc : Rep[Double], kL : Rep[Double], kR : Rep[Double] ) : Rep[Vec[_5,Double]] = {
+      var Frho = 0.0
       var Frhou = Constants.float3_zero
-      var FrhoE = 0.f		
+      var FrhoE = 0.0		
       
       val unL = dot(uL,nVec)
       val uLuL = dot(uL,uL)
-      val cL = sqrtf( gammaL * pL / rhoL )
-      val hL = gammaL / ( gammaL - 1.f ) * pL / rhoL + 0.5f * uLuL + kL
+      val cL = sqrt( gammaL * pL / rhoL )
+      val hL = gammaL / ( gammaL - 1.0 ) * pL / rhoL + 0.5 * uLuL + kL
       val eL = hL * rhoL - pL
 
       val unR = dot(uR,nVec)
       val uRuR = dot(uR,uR)
-      val cR = sqrtf( gammaR * pR / rhoR )
-      val hR = gammaR / ( gammaR - 1.f ) * pR / rhoR + 0.5f * uRuR + kR
+      val cR = sqrt( gammaR * pR / rhoR )
+      val hR = gammaR / ( gammaR - 1.0 ) * pR / rhoR + 0.5 * uRuR + kR
       val eR = hR * rhoR - pR
 
       // Roe's averaging
-      val Rrho = sqrtf( rhoR / rhoL )
-      val tmp = 1.f / ( 1.f + Rrho )
+      val Rrho = sqrt( rhoR / rhoL )
+      val tmp = 1.0 / ( 1.0 + Rrho )
       val velRoe = ( uL + uR *Rrho ) * tmp
       val uRoe = dot( velRoe, nVec )
       //val hRoe = tmp * ( hL + hR * Rrho )
       
-      //val cRoe = sqrtf( (gammaL - 1.f) * ( hRoe - 0.5f * dot( velRoe, velRoe ) ) )
-      val gamPdivRho = tmp * ( (gammaL * pL / rhoL + 0.5f * (gammaL - 1.f) * uLuL ) + (gammaR * pR / rhoR + 0.5f * (gammaR - 1.f) * uRuR ) * Rrho )
-      val cRoe = sqrtf( gamPdivRho - ((gammaL + gammaR) * 0.5f - 1.f ) * 0.5f * dot( velRoe, velRoe ) );
+      //val cRoe = sqrt( (gammaL - 1.0) * ( hRoe - 0.5f * dot( velRoe, velRoe ) ) )
+      val gamPdivRho = tmp * ( (gammaL * pL / rhoL + 0.5 * (gammaL - 1.0) * uLuL ) + (gammaR * pR / rhoR + 0.5 * (gammaR - 1.0) * uRuR ) * Rrho )
+      val cRoe = sqrt( gamPdivRho - ((gammaL + gammaR) * 0.5 - 1.0 ) * 0.5f * dot( velRoe, velRoe ) );
 
       // speed of sound at L and R 
       val sL = (uRoe - cRoe).min(unL - cL)
@@ -313,9 +313,9 @@ trait Joe extends DeLisztApplication {
       val pStar = rhoR * (unR - sR) * (unR - sM) + pR
 
       // Calculate the nested code first.
-      val sL_gt_0 = sL > 0.f;
-      val sR_ge_0 = sR >= 0.f;
-      val sM_ge_0 = sM >= 0.f;
+      val sL_gt_0 = sL > 0.0;
+      val sR_ge_0 = sR >= 0.0;
+      val sM_ge_0 = sM >= 0.0;
 
       val top_nest = (sM_ge_0 && !sL_gt_0);
       val btm_nest = (!sM_ge_0 && sR_ge_0);
@@ -330,7 +330,7 @@ trait Joe extends DeLisztApplication {
       if (either_nest) {
         val sSide = if (sM_ge_0) sL else sR;
 
-        val inv_diff = 1.f / (sSide - sM);
+        val inv_diff = 1.0 / (sSide - sM);
         val sSide_minus_other = sSide - unSide;
         val scaled_rho = rhoSide * sSide_minus_other * inv_diff;
         val scaled_more = (uSide * rhoSide * sSide_minus_other + nVec * (pStar - pSide)) * inv_diff
@@ -353,8 +353,8 @@ trait Joe extends DeLisztApplication {
       return Vec(Frho, Frhou.x, Frhou.y, Frhou.z, FrhoE)		
     }
 
-    def calcDt( cfl_target : Rep[Float] ) : Rep[Float] = {
-      var dt = 0.f
+    def calcDt( cfl_target : Rep[Double] ) : Rep[Double] = {
+      var dt = 0.0
 
       if ( IC.timeStepMode == 0 ) {
         return IC.const_dt
@@ -369,17 +369,17 @@ trait Joe extends DeLisztApplication {
       }
       if ( IC.timeStepMode == 2 ) {
         for( icv <- cells(mesh) ) {
-          var lambdaMax = 0.f
+          var lambdaMax = 0.0
 
-          val c = sqrtf( gamma(icv) * press(icv) / JoeWithModels.rho(icv) )
+          val c = sqrt( gamma(icv) * press(icv) / JoeWithModels.rho(icv) )
 
           for ( f <- faces(icv) ) {
             var nVec = MeshGeometryCalc.fa_normal(f)
-            val area = sqrtf(dot(nVec, nVec))
+            val area = sqrt(dot(nVec, nVec))
             nVec = normalize(nVec)
 
             val Uk = dot( JoeWithModels.rhou(icv), nVec ) / JoeWithModels.rho(icv)
-            val lambda = ( fabsf(Uk) + c ) * area
+            val lambda = ( abs(Uk) + c ) * area
             lambdaMax = lambdaMax.max(lambda)
           }
       
@@ -395,25 +395,45 @@ trait Joe extends DeLisztApplication {
   }
   
   object JoeWithModels {
-    val rhs_rho = FieldWithConst[Cell,Float](0.f)
-    val rhs_rhou = FieldWithConst[Cell,Vec[_3,Float]](Constants.float3_zero)
-    val rhs_rhoE = FieldWithConst[Cell,Float](0.f)
+    var rhs_rho : Rep[Field[Cell,Double]] = null
+    var rhs_rhou : Rep[Field[Cell,Vec[_3,Double]]] = null
+    var rhs_rhoE : Rep[Field[Cell,Double]] = null
 
     // notice that this would originally be called in JoeWithModels.initialHook()
-    val rho = FieldWithConst[Cell,Float](IC.rho_init)
-    val rhou = FieldWithConst[Cell,Vec[_3,Float]](IC.u_init * IC.rho_init)
-    val rhoE = FieldWithConst[Cell,Float](IC.p_init / (IC.GAMMA - 1.f)  +  0.5f * IC.rho_init * dot( IC.u_init, IC.u_init ))
+    var rho : Rep[Field[Cell,Double]] = null
+    var rhou : Rep[Field[Cell,Vec[_3,Double]]] = null
+    var rhoE : Rep[Field[Cell,Double]] = null
 
-    val zone_interior = BoundarySet[Face]("zone_interior")
-    val zone_boundary = BoundarySet[Face]("zone_boundary")
-    val symmetry = BoundarySet[Face]("symmetry")
-    //val wall = BoundarySet[Face]("wall")
-    val other_boundaries = BoundarySet[Face]("other_boundaries")
-    val cbc = BoundarySet[Face]("cbc")
-    //val hook = BoundarySet[Face]("hook")
-    //val cbc_subsonic_outlet = BoundarySet[Face]("cbc_subsonic_outlet")
+    var zone_interior : Rep[BoundarySet[Face]] = null
+    var zone_boundary : Rep[BoundarySet[Face]] = null
+    var symmetry : Rep[BoundarySet[Face]] = null
+    //var wall : Rep[BoundarySet[Face]] = null
+    var other_boundaries : Rep[BoundarySet[Face]] = null
+    var cbc : Rep[BoundarySet[Face]] = null
+    //var hook : Rep[BoundarySet[Face]] = null
+    //var cbc_subsonic_outlet : Rep[BoundarySet[Face]] = null
     
-    def init() { Print("JoeWithModels()")}
+    def init() {
+      Print("JoeWithModels()")
+      
+      rhs_rho = FieldWithConst[Cell,Double](0.0)
+      rhs_rhou = FieldWithConst[Cell,Vec[_3,Double]](Constants.float3_zero)
+      rhs_rhoE = FieldWithConst[Cell,Double](0.0)
+
+      // notice that this would originally be called in JoeWithModels.initialHook()
+      rho = FieldWithConst[Cell,Double](IC.rho_init)
+      rhou = FieldWithConst[Cell,Vec[_3,Double]](IC.u_init * IC.rho_init)
+      rhoE = FieldWithConst[Cell,Double](IC.p_init / (IC.GAMMA - 1.0)  +  0.5 * IC.rho_init * dot( IC.u_init, IC.u_init ))
+
+      zone_interior = BoundarySet[Face]("zone_interior")
+      zone_boundary = BoundarySet[Face]("zone_boundary")
+      symmetry = BoundarySet[Face]("symmetry")
+      //wall = BoundarySet[Face]("wall")
+      other_boundaries = BoundarySet[Face]("other_boundaries")
+      cbc = BoundarySet[Face]("cbc")
+      //hook = BoundarySet[Face]("hook")
+      //cbc_subsonic_outlet = BoundarySet[Face]("cbc_subsonic_outlet")
+    }
     def initialHook() {Print("setInitialConditions()")}
 
 
@@ -444,9 +464,12 @@ trait Joe extends DeLisztApplication {
 
       UgpWithCvCompFlow.calcRansStateVarAndMaterialProperties()
       
-   
-      setNavierStokesBC()
+    for ( c <- cells(mesh) ) {
+      Print("RANS CELL: ", ID(c), " rho ", JoeWithModels.rho(c), " xcv: " , MeshGeometryCalc.x_cv(c), " vel ", UgpWithCvCompFlow.vel(c), " kine ", UgpWithCvCompFlow.kine(c), " press ", UgpWithCvCompFlow.press(c), " temp ", UgpWithCvCompFlow.temp(c), " enth ", UgpWithCvCompFlow.enthalpy(c), " sos ", UgpWithCvCompFlow.sos(c))
+    }
       
+      setNavierStokesBC()
+   
       // HERE TIME SHOULD START TICKING !!!!!!
       var start_time = 0.0;
       var step = 0
@@ -472,13 +495,13 @@ trait Joe extends DeLisztApplication {
             Print( "" ) // print nothing to simulate a \n !!!!
             Print( "done step: " , step , ", cfl: " , IC.cfl , ", min. dt:   " , dtMin ) 
           }
-          var my_resid = Vec(0.f,0.f,0.f,0.f,0.f)
+          var my_resid = Vec(0.0,0.0,0.0,0.0,0.0)
           for( c <- cells(mesh) ) {
-            my_resid = my_resid + Vec(fabsf(rhs_rho(c)),
-                            fabsf(rhs_rhou(c).x),
-                            fabsf(rhs_rhou(c).y),
-                            fabsf(rhs_rhou(c).z),
-                            fabsf(rhs_rhoE(c)))
+            my_resid = my_resid + Vec(abs(rhs_rho(c)),
+                            abs(rhs_rhou(c).x),
+                            abs(rhs_rhou(c).y),
+                            abs(rhs_rhou(c).z),
+                            abs(rhs_rhoE(c)))
           }
           showResidue( my_resid, step )
         } 
@@ -496,9 +519,9 @@ trait Joe extends DeLisztApplication {
 
     def calcRhs() {
       for( c <- cells(mesh) ) {
-        rhs_rho(c) = 0.f
+        rhs_rho(c) = 0.0
         rhs_rhou(c) =  Constants.float3_zero
-        rhs_rhoE(c) = 0.f
+        rhs_rhoE(c) = 0.0
       }
         // count how switched back to first order due to extrapolated negative pressure at the faces 
 
@@ -535,7 +558,7 @@ trait Joe extends DeLisztApplication {
 
       // Ignore cbc_subsonic_inlet
       // TODO(mbarrien): This vec should probably not be hardcoded like this.
-      val cbc_p_bc = 0.f
+      val cbc_p_bc = 0.0
       if (IC.first) {
         Print ( "Applying CBC_SUBSONIC_OUTLET \t pOut: ", cbc_p_bc )
       }
@@ -558,11 +581,11 @@ trait Joe extends DeLisztApplication {
       for (f <- zone_boundary) {
         setRhoFa(f)
       }
-      IC.first = false
+      IC.first = unit(false)
     }
 
     
-    def showResidue( rhsResid: Rep[Vec[_5,Float]], step: Rep[Int] ) {
+    def showResidue( rhsResid: Rep[Vec[_5,Double]], step: Rep[Int] ) {
       var sCount = 0;
       if ( step % (IC.check_interval * 10 ) == 0 ) {
         Print( "		rho		rhou-X		rhou-Y		rhou-Z		rhoE")
@@ -571,7 +594,7 @@ trait Joe extends DeLisztApplication {
     }
 
     
-    def CBCBoundary( f: Rep[Face], T_bc : Rep[Float], p_bc : Rep[Float], u_bc : Rep[Vec[_3,Float]] ) {
+    def CBCBoundary( f: Rep[Face], T_bc : Rep[Double], p_bc : Rep[Double], u_bc : Rep[Vec[_3,Double]] ) {
   //if ( ID(f) == 95000 ) {
   //	Print( "CBC face with Id: ", ID(f), " T: ", T_bc, " u: ", u_bc, " p: ", p_bc )
   //}
@@ -581,7 +604,7 @@ trait Joe extends DeLisztApplication {
     }
     /*
 
-    def CBCSubsonicOutletBoundary( f: Face, p_bc : Float ) {
+    def CBCSubsonicOutletBoundary( f: Face, p_bc : Double ) {
       val icv0 = getInsideBoundaryCell(f)
       UgpWithCvCompFlow.T_fa(f) = UgpWithCvCompFlow.temp(icv0)
       UgpWithCvCompFlow.vel_fa(f) = rhou(icv0) / rho(icv0)
@@ -609,7 +632,7 @@ trait Joe extends DeLisztApplication {
       UgpWithCvCompFlow.h_fa(f) = UgpWithCvCompFlow.enthalpy(icv0)	
 
   //if ( ID(f) == 17777 || ID(f) == 95500 || ID(f) == 94000 || ID(f) == 94500 || ID(f) == 60000 ) {
-  //Print( "Symmetry face: ", ID(f), " vel: ", u0 - 1.f * un * nVec, " T: ", UgpWithCvCompFlow.temp(icv0), " p: ", UgpWithCvCompFlow.press(icv0), " RoM: ", UgpWithCvCompFlow.RoM(icv0), "gam: ", UgpWithCvCompFlow.gamma(icv0), "mu: ", UgpWithCvCompFlow.muLam(icv0), " lamOcp: ", UgpWithCvCompFlow.LambdaOverCp(icv0), " h: ", UgpWithCvCompFlow.enthalpy(icv0) )
+  //Print( "Symmetry face: ", ID(f), " vel: ", u0 - 1.0 * un * nVec, " T: ", UgpWithCvCompFlow.temp(icv0), " p: ", UgpWithCvCompFlow.press(icv0), " RoM: ", UgpWithCvCompFlow.RoM(icv0), "gam: ", UgpWithCvCompFlow.gamma(icv0), "mu: ", UgpWithCvCompFlow.muLam(icv0), " lamOcp: ", UgpWithCvCompFlow.LambdaOverCp(icv0), " h: ", UgpWithCvCompFlow.enthalpy(icv0) )
   //}
     }
 
@@ -633,7 +656,7 @@ trait Joe extends DeLisztApplication {
 
       // face unit normal and area...
       var nVec = MeshGeometryCalc.fa_normal(f)
-      val area = sqrtf(dot(nVec,nVec))
+      val area = sqrt(dot(nVec,nVec))
       //nVec = normalize(nVec)
       nVec = nVec / area
     
@@ -641,7 +664,7 @@ trait Joe extends DeLisztApplication {
       val kine1 = UgpWithCvCompFlow.kine(icv1)
 
       //Frho5[_0] = Frho, Frho5[_1] = Frhou.x , Frho5[_2] = Frhou.y, Frho5[_3] = Frhou.y, Frho5[_4] = FrhoE
-      val Frho5 = UgpWithCvCompFlow.calcEulerFlux_HLLC(rho0, u0, p0, h0, UgpWithCvCompFlow.gamma(icv0), rho1, u1, p1, h1, UgpWithCvCompFlow.gamma(icv1), area, nVec, 0.f, kine0, kine1)
+      val Frho5 = UgpWithCvCompFlow.calcEulerFlux_HLLC(rho0, u0, p0, h0, UgpWithCvCompFlow.gamma(icv0), rho1, u1, p1, h1, UgpWithCvCompFlow.gamma(icv1), area, nVec, 0.0, kine0, kine1)
       
       rhs_rho(icv0) = rhs_rho(icv0) - Frho5(_0)
       rhs_rhou(icv0) = rhs_rhou(icv0) - Vec(Frho5(_1), Frho5(_2), Frho5(_3))
@@ -657,7 +680,7 @@ trait Joe extends DeLisztApplication {
       val icv0 = getInsideBoundaryCell(f)
 
       var nVec = MeshGeometryCalc.fa_normal(f)
-      val area = sqrtf(dot(nVec,nVec))
+      val area = sqrt(dot(nVec,nVec))
       //nVec = normalize(nVec)
                   nVec = nVec / area
     
@@ -665,7 +688,7 @@ trait Joe extends DeLisztApplication {
       val kine1 = UgpWithCvCompFlow.kine(icv0)
 
       val Frho5 = UgpWithCvCompFlow.calcEulerFlux_HLLC(UgpWithCvCompFlow.rho_fa(f), UgpWithCvCompFlow.vel_fa(f), UgpWithCvCompFlow.p_fa(f), UgpWithCvCompFlow.h_fa(f), UgpWithCvCompFlow.gam_fa(f), 
-        UgpWithCvCompFlow.rho_fa(f), UgpWithCvCompFlow.vel_fa(f), UgpWithCvCompFlow.p_fa(f), UgpWithCvCompFlow.h_fa(f), UgpWithCvCompFlow.gam_fa(f), area, nVec, 0.f, kine0, kine1)
+        UgpWithCvCompFlow.rho_fa(f), UgpWithCvCompFlow.vel_fa(f), UgpWithCvCompFlow.p_fa(f), UgpWithCvCompFlow.h_fa(f), UgpWithCvCompFlow.gam_fa(f), area, nVec, 0.0, kine0, kine1)
 
       rhs_rho(icv0) = rhs_rho(icv0) - Frho5(_0)
       rhs_rhou(icv0) = rhs_rhou(icv0) - Vec(Frho5(_1), Frho5(_2), Frho5(_3))
@@ -685,14 +708,14 @@ trait Joe extends DeLisztApplication {
 
       // face unit normal and area...
       var nVec = MeshGeometryCalc.fa_normal(f)
-      val area = sqrtf(dot(nVec,nVec))
+      val area = sqrt(dot(nVec,nVec))
       nVec = normalize(nVec)
     
       val kine0 = UgpWithCvCompFlow.kine(icv0)
       val kine1 = UgpWithCvCompFlow.kine(icv0)
 
       //Frho5[_0] = Frho, Frho5[_1] = Frhou.x , Frho5[_2] = Frhou.y, Frho5[_3] = Frhou.y, Frho5[_4] = FrhoE
-      val Frho5 = UgpWithCvCompFlow.calcEulerFlux_HLLC(rho0, u0, p0, h0, gam0, UgpWithCvCompFlow.rho_fa(f), UgpWithCvCompFlow.vel_fa(f), UgpWithCvCompFlow.p_fa(f), UgpWithCvCompFlow.h_fa(f), UgpWithCvCompFlow.gam_fa(f), area, nVec, 0.f, kine0, kine1)
+      val Frho5 = UgpWithCvCompFlow.calcEulerFlux_HLLC(rho0, u0, p0, h0, gam0, UgpWithCvCompFlow.rho_fa(f), UgpWithCvCompFlow.vel_fa(f), UgpWithCvCompFlow.p_fa(f), UgpWithCvCompFlow.h_fa(f), UgpWithCvCompFlow.gam_fa(f), area, nVec, 0.0, kine0, kine1)
       
       rhs_rho(icv0) = rhs_rho(icv0) - Frho5(_0)
       rhs_rhou(icv0) = rhs_rhou(icv0) - Vec(Frho5(_1), Frho5(_2), Frho5(_3))
@@ -708,8 +731,8 @@ trait Joe extends DeLisztApplication {
     IC.init()
     MeshGeometryCalc.init()
     
+    JoeWithModels.init()
 		UgpWithCvCompFlow.init() 
-		JoeWithModels.init() 
 		Print("MyJoe()") 
     JoeWithModels.run()
 	}

@@ -111,140 +111,159 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         }).get
         
         val ms = msMap(id)
-        val stencil = forMap(id)
         
-        // Initialize colorers!
-        val colorer = new RegisterColorer()
-        val interferenceBuilder = new InterferenceBuilder(colorer, blockSize)
-        
-        // println("Read write sets!")
-        // for((mo, rwset) <- stencil) {
-        //   println("Element: " + mo)
-        //   for(FieldAccess(i, mo) <- rwset.write) {
-        //     println("write field " + i + " mo: " + mo)
-        //   }
-        // }
-        
-        // And color!
-        val coloring = interferenceBuilder.buildAndColor(ms, stencil)
-        val (color_idx, color_values) = coloring.collect()
-        
-        // Output coloring for debugging
-        print("Loop id: " + id)
-        println(" num elements: " + ms.size)
-        println(" num colors: " + coloring.numColors)
-        
-        var i = 0
-        // while(i <= coloring.numColors) {
-        //   println("color_idx: " + i + " " + color_idx(i))
-        //   i += 1
-        // }
-        // 
-        // i = 0
-        // while(i < coloring.numColors) {
-        //   var j = color_idx(i)
-        //   while (j < color_idx(i+1)) {
-        //     println("color_values: " + i + " " + color_values(j))
-        //     j += 1
-        //   }
-        //   i += 1
-        // }
-        
-        /* transform loop into multiple loops, one per color */
-        
-        // utils
-        def WgetLoopParams(e: TTP): (Exp[MeshSet[MeshObj]], Exp[Int], Exp[Int], Exp[MeshObj] => Exp[Unit], Exp[Unit]) = e.rhs match {
-          case ThinDef(Reflect(f@MeshSetForeach(in,func),_,_)) => (in, f.size, f.v, func, f.body.asInstanceOf[DeliteForeachElem[Unit]].func)
-          // case SimpleFatLoop(s,v,body) => body match {
-          //   case List(DeliteForeachElem(func, sync)) => (v, func)
+        val coloring = if(forMap.contains(id)) {
+          val stencil = forMap(id)
+          
+          // Initialize colorers!
+          val colorer = new RegisterColorer()
+          val interferenceBuilder = new InterferenceBuilder(colorer, blockSize)
+          
+          // println("Read write sets!")
+          // for((mo, rwset) <- stencil) {
+          //   println("Element: " + mo)
+          //   for(FieldAccess(i, mo) <- rwset.write) {
+          //     println("write field " + i + " mo: " + mo)
+          //   }
           // }
+          
+          // And color!
+          interferenceBuilder.buildAndColor(ms, stencil)
+        }
+        else {
+          val interferenceBuilder = new InterferenceBuilder(null, blockSize)
+          interferenceBuilder.trivialColoring(ms)
         }
         
-        def fission[A](in: List[A], old: A, replace: List[A]) = {
-          val pos = in.indexOf(old)
-          pos match {
-            case -1 => in
-            case _ => 
-              val left = in.slice(0,pos)
-              val right = in.slice(pos+1, in.length)
-              left ::: replace ::: right
-          }
+        if(coloring.numColors <= 1) {
+          println("Found one color for loop " + id)
         }
-        
-        def buildInScope[A](func: => Exp[A]): Exp[A] = {
-          val save = globalDefs
-          val out = func
-          val addedDefs = globalDefs diff save
-          innerScope = innerScope union addedDefs 
-          currentScope = currentScope union fattenAll(addedDefs) 
-          out
-        }
-        
-        // build colored loops
-        i = 0        
-        var colorLoops = List[TTP]()         
-        var prevLoop: Option[TTP] = None
-        val loopRefTransformer = new SubstTransformer                      
-        
-        codbg("<loop " + loop.toString + " scope before coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")                  
-        
-        while (i < coloring.numColors) {
-          var j = color_idx(i)
-          val indices = ArrayBuffer[Int]()
-          while (j < color_idx(i+1)) {
-            indices += color_values(j)
-            j += 1
-          }
-
-          // new loop dependencies
-          val (in,size,v,f,body) = WgetLoopParams(loop)          
-          val colorLoopVar = fresh(v.Type) 
-          val colorSet = buildInScope(reifyEffects(color_index_set_new(indices.toArray, 0, indices.length)(in.Type)))
-          val colorSize = buildInScope(color_lift(indices.length))
-          val colorFunc = buildInScope(reifyEffects(f(dc_apply(colorSet,colorLoopVar))))
-                      
-          // transform loop
-          val t = new SubstTransformer
-          t.subst(v) = colorLoopVar
-          t.subst(in) = colorSet 
-          t.subst(size) = colorSize          
-          t.subst(body) = colorFunc
-          val (newScope, transformedLoopSyms) = transformAllFully(currentScope, loop.lhs, t) 
-          val transformedLoop = newScope.find(_.lhs == transformedLoopSyms).get          
+        if(coloring.numColors > 1) {
+          println("Coloring loop " + id + " num colors: " + coloring.numColors)
+          val (color_idx, color_values) = coloring.collect()
+         
+  /*       
+          print("Loop id: " + id)
+          if(forMap.contains(id)) {
+            // Output coloring for debugging
+            println(" num elements: " + ms.size)
+            println(" num colors: " + coloring.numColors)
                     
-          // add previous transformedLoop to new one as a dependency
-          val transformedLoop2 = transformedLoop match { 
-            case TTP(lhs, ThinDef(Reflect(a,u,d))) if prevLoop.isDefined => TTP(lhs, ThinDef(Reflect(a,u,d ::: prevLoop.get.lhs)))
-            case _ => transformedLoop
-          }          
-          prevLoop = Some(transformedLoop2)
-          colorLoops :+= transformedLoop2          
-          i += 1
-        }                
-        colog("colored loop " + id + " into " + colorLoops.length + " loops using " + coloring.numColors + " colors")
-        colog("original loop: " + loop.toString)
-        colorLoops foreach { l => colog("colored loop: " + l.toString) }
-      
-        // replace old loop with new loops
-        currentScope = fission(currentScope, loop, colorLoops) 
+            var i = 0
+            while(i <= coloring.numColors) {
+              println("color_idx: " + i + " " + color_idx(i))
+              i += 1
+            }
+            
+            i = 0
+            while(i < coloring.numColors) {
+              var j = color_idx(i)
+              while (j < color_idx(i+1)) {
+                println("color_values: " + i + " " + color_values(j))
+                j += 1
+              }
+              i += 1
+            }
+          }
+          else {
+            println(" trivial coloring")
+          }
+  */        
+          /* transform loop into multiple loops, one per color */
+          
+          // utils
+          def WgetLoopParams(e: TTP): (Exp[MeshSet[MeshObj]], Exp[Int], Exp[Int], Exp[MeshObj] => Exp[Unit], Exp[Unit]) = e.rhs match {
+            case ThinDef(Reflect(f@MeshSetForeach(in,func),_,_)) => (in, f.size, f.v, func, f.body.asInstanceOf[DeliteForeachElem[Unit]].func)
+            // case SimpleFatLoop(s,v,body) => body match {
+            //   case List(DeliteForeachElem(func, sync)) => (v, func)
+            // }
+          }
+          
+          def fission[A](in: List[A], old: A, replace: List[A]) = {
+            val pos = in.indexOf(old)
+            pos match {
+              case -1 => in
+              case _ => 
+                val left = in.slice(0,pos)
+                val right = in.slice(pos+1, in.length)
+                left ::: replace ::: right
+            }
+          }
+          
+          def buildInScope[A](func: => Exp[A]): Exp[A] = {
+            val save = globalDefs
+            val out = func
+            val addedDefs = globalDefs diff save
+            innerScope = innerScope union addedDefs 
+            currentScope = currentScope union fattenAll(addedDefs) 
+            out
+          }
+          
+          // build colored loops
+          var i = 0        
+          var colorLoops = List[TTP]()         
+          var prevLoop: Option[TTP] = None
+          val loopRefTransformer = new SubstTransformer                      
+          
+          codbg("<loop " + loop.toString + " scope before coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")                  
+          
+          while (i < coloring.numColors) {
+            var j = color_idx(i)
+            val indices = ArrayBuffer[Int]()
+            while (j < color_idx(i+1)) {
+              indices += color_values(j)
+              j += 1
+            }
+
+            // new loop dependencies
+            val (in,size,v,f,body) = WgetLoopParams(loop)          
+            val colorLoopVar = fresh(v.Type) 
+            val colorSet = buildInScope(reifyEffects(color_index_set_new(indices.toArray, 0, indices.length)(in.Type)))
+            val colorSize = buildInScope(color_lift(indices.length))
+            val colorFunc = buildInScope(reifyEffects(f(dc_apply(colorSet,colorLoopVar))))
+                        
+            // transform loop
+            val t = new SubstTransformer
+            t.subst(v) = colorLoopVar
+            t.subst(in) = colorSet 
+            t.subst(size) = colorSize          
+            t.subst(body) = colorFunc
+            val (newScope, transformedLoopSyms) = transformAllFully(currentScope, loop.lhs, t) 
+            val transformedLoop = newScope.find(_.lhs == transformedLoopSyms).get          
+                      
+            // add previous transformedLoop to new one as a dependency
+            val transformedLoop2 = transformedLoop match { 
+              case TTP(lhs, ThinDef(Reflect(a,u,d))) if prevLoop.isDefined => TTP(lhs, ThinDef(Reflect(a,u,d ::: prevLoop.get.lhs)))
+              case _ => transformedLoop
+            }          
+            prevLoop = Some(transformedLoop2)
+            colorLoops :+= transformedLoop2          
+            i += 1
+          }                
+          colog("colored loop " + id + " into " + colorLoops.length + " loops using " + coloring.numColors + " colors")
+          colog("original loop: " + loop.toString)
+          colorLoops foreach { l => colog("colored loop: " + l.toString) }
         
-        // replace references to old loop (since we are replacing effectful loops of type Unit, should only be effectful dependencies...)
-        currentScope = currentScope map (e => e match {
-          case TTP(lhs, ThinDef(Reify(x,u,es))) if (es contains loop.lhs(0)) =>           
-            val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
-            val o = lhs(0)
-            val n = fresh(x.Type)            
-            loopRefTransformer.subst(o) = n
-            TTP(List(n), ThinDef(Reify(x,u,cleanEs))) 
-          case _ => e
-        })
-        
-        codbg("<loop " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")          
-        
-        // update the schedule
-        result = loopRefTransformer(result) 
-        currentScope = getFatSchedule(currentScope)(result) // clean things up!  
-        
+          // replace old loop with new loops
+          currentScope = fission(currentScope, loop, colorLoops) 
+          
+          // replace references to old loop (since we are replacing effectful loops of type Unit, should only be effectful dependencies...)
+          currentScope = currentScope map (e => e match {
+            case TTP(lhs, ThinDef(Reify(x,u,es))) if (es contains loop.lhs(0)) =>           
+              val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
+              val o = lhs(0)
+              val n = fresh(x.Type)            
+              loopRefTransformer.subst(o) = n
+              TTP(List(n), ThinDef(Reify(x,u,cleanEs))) 
+            case _ => e
+          })
+          
+          codbg("<loop " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")          
+          
+          // update the schedule
+          result = loopRefTransformer(result) 
+          currentScope = getFatSchedule(currentScope)(result) // clean things up! 
+        }
       } // end loop foreach
               
     } // end if Config.collectStencil
