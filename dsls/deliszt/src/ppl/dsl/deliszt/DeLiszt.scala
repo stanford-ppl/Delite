@@ -135,8 +135,9 @@ trait DeLisztCodeGenBase extends GenericFatCodegen {
   def genSpec2(f: File, outPath: String) = {}
 
   override def emitDataStructures(path: String) {
+    System.out.print("PRINTING DATA STRUCTURES")
     val s = File.separator
-    val dsRoot = Config.homeDir + s+"dsls"+s+"deliszt"+s+"datastruct"+s+"ppl"+s+"dsl"+s+"deliszt"+s+"datastruct"+s + this.toString
+    val dsRoot = Config.homeDir + s+"dsls"+s+"deliszt"+s+"src"+s+"ppl"+s+"dsl"+s+"deliszt"+s+"datastruct"+s + this.toString
 
     val dsDir = new File(dsRoot)
     if (!dsDir.exists) return
@@ -151,12 +152,15 @@ trait DeLisztCodeGenBase extends GenericFatCodegen {
         genSpec2(f, path)
       }
       val outFile = path + f.getName
+      System.out.println("EMITTING " + f + " to " + outFile)
       val out = new BufferedWriter(new FileWriter(outFile))
       for (line <- scala.io.Source.fromFile(f).getLines) {
         out.write(dsmap(line) + "\n")
       }
       out.close()
     }
+    
+    super.emitDataStructures(path)
   }
 }
 
@@ -269,6 +273,23 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
     
     for(tpe1 <- List("Int","Long","Double","Float","Boolean")) {
       val parSub = (m: Regex.Match) => {
+        val rest = (m.group(2) + m.group(4)).replaceAll("""^\s+""", "")
+        val fun = if(m.group(1) != null) m.group(1) else ""
+        if(rest.length > 0) {
+          fun + "[" + rest + "]"
+        }
+        else {
+          fun
+        }
+      }
+
+      for (s <- specialize) {
+        // Object apply, methods, new
+        val expr = ("\\b" + s + "(\\.\\w+)?\\[(.*?)(,\\s*)?\\b" + tpe1 + "\\b(.*?)\\]\\(").r  
+        res = expr.replaceAllIn(res, m => tpe1 + s + parSub(m) + "(")
+      }
+      
+      val parSub2 = (m: Regex.Match) => {
         val rest = (m.group(1) + m.group(3)).replaceAll("""^\s+""", "")
         if(rest.length > 0) {
           "[" + rest + "]"
@@ -277,15 +298,10 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
           ""
         }
       }
-
-      for (s <- specialize) {
-        val expr = ("\\b" + s + "\\[(.*?)(,\\s*)?\\b" + tpe1 + "\\b(.*?)\\]\\(").r  
-        res = expr.replaceAllIn(res, m => tpe1 + s + parSub(m) + "(")
-      }
       
-      // Map methods (like in the companion)
-      val expr = ("\\[(.*?)(,\\s*)?\\b" + tpe1 + "\\s*:\\s*\\w+?\\b(.*?)\\]\\(").r  
-      res = expr.replaceAllIn(res, m => parSub(m) + "(")
+      // Map methods defs (like in the companion)
+      val expr = ("\\[(.*?)(,\\s*)?\\b" + tpe1 + "\\s*:\\s*\\w+?\\b(.*?)\\]\\(").r
+      res = expr.replaceAllIn(res, m => parSub2(m) + "(")
         
       for(tpe2 <- List("Int","Long","Double","Float","Boolean")) {
         for (s <- specialize2) {

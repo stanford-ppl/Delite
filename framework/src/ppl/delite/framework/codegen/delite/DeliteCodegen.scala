@@ -44,6 +44,7 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
   }
 
   override def emitDataStructures(path: String): Unit = {
+    System.out.println("UHHHH OKAY NORMAL COPY")
     val s = File.separator
     for (g <- generators) {
       val dsRoot = Config.homeDir + s+"framework"+s+"src"+s+"ppl"+s+"delite"+s+"framework"+s+"datastruct"+s+g

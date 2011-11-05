@@ -10,19 +10,19 @@ package ppl.dsl.deliszt.datastruct.scala
 
 object FieldImpl {
   def ofCell[T:ClassManifest]() : Field[T] = {
-    new FieldImpl(new Array[T](Mesh.mesh.ncells))
+    new FieldImpl[T](new Array[T](Mesh.mesh.ncells))
   }
   
   def ofEdge[T:ClassManifest]() : Field[T] = {
-    new FieldImpl(new Array[T](Mesh.mesh.nedges))
+    new FieldImpl[T](new Array[T](Mesh.mesh.nedges))
   }
   
   def ofFace[T:ClassManifest]() : Field[T] = {
-    new FieldImpl(new Array[T](Mesh.mesh.nfaces))
+    new FieldImpl[T](new Array[T](Mesh.mesh.nfaces))
   }
   
   def ofVertex[T:ClassManifest]() : Field[T] = {
-    new FieldImpl(new Array[T](Mesh.mesh.nvertices))
+    new FieldImpl[T](new Array[T](Mesh.mesh.nvertices))
   }
   
   def cellWithConst[T:ClassManifest](v: T) : Field[T] = {
