@@ -223,7 +223,7 @@ class Mesh {
   def positionToVec(p: Object) : Object = {
     val a = p.asInstanceOf[Array[Double]]
    
-    val v = VecImpl.ofSize[Double](3)
+    val v = DoubleVecImpl.ofSize(3)
     v(0) = a(0)
     v(1) = a(1)
     v(2) = a(2)
