@@ -88,7 +88,8 @@ abstract class GPUNestedGenerator(nested: OP_Nested, location: Int, target: Targ
         out.append(metadata.inputs((in,sym)).resultType)
         out.append("* ")
         out.append(getSymGPU(sym))
-        if ((nested.getMutableInputs. contains (in,sym)) && (in.getConsumers.filter(_.scheduledResource!=in.scheduledResource).nonEmpty)) {
+        if ((nested.getMutableInputs contains (in,sym)) && (in.scheduledResource != nested.scheduledResource)) {
+        //if ((nested.getMutableInputs. contains (in,sym)) && (in.getConsumers.filter(_.scheduledResource!=in.scheduledResource).nonEmpty)) {
           out.append(',')
           out.append(getJNIType(in.outputType(sym)))
           out.append(' ')
