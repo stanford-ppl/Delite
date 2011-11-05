@@ -56,4 +56,21 @@ class FieldImpl[@specialized T: ClassManifest](val data : Array[T]) extends Fiel
     data(Mesh.internal(idx)) = x
   }
   def size = data.length
+  
+  def fill(v: T) = {  
+    if(classManifest[T] <:< classManifest[Copyable]) {
+      var i = 0
+      while(i < size) {
+        data(i) = v.asInstanceOf[Copyable].copy.asInstanceOf[T]
+        i += 1
+      }
+    }
+    else {
+      var i = 0
+      while(i < size) {
+        data(i) = v
+        i += 1
+      }
+    }
+  }
 }
