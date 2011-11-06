@@ -51,8 +51,8 @@ trait TPCH extends OptiQLApplication {
     /*val res = lineItems.Select(e => new Result { val l_shipdate = e.l_shipdate; 
       val l_discount = e.l_discount }).Where(_.l_shipdate <= Date("1998-12-01"))*/
    
-    val res = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => l.l_returnflag) Select(g => new Result {
-      val returnFlag = g.key
+    val res = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
+      val returnFlag = g.key._1
       val sumQty = g.Sum(_.l_quantity + 1.0)
       val sumCharge = g.Sum(l=> l.l_extendedprice * (1.0d - l.l_discount) * (1.0d + l.l_tax))
       val count = g.Count

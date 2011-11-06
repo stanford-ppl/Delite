@@ -2,12 +2,12 @@ package ppl.dsl.optiql.ops
 
 import ppl.dsl.optiql.datastruct.scala.container.{DataTable, Grouping}
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{Base, ScalaGenFat, BaseFatExp, LoopsFatExp, IfThenElseFatExp, ArrayOpsExp, LoopFusionOpt}
+import scala.virtualization.lms.common.{Base, ScalaGenFat, BaseFatExp, LoopsFatExp, IfThenElseFatExp, TupleOpsExp, ArrayOpsExp, LoopFusionOpt}
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.dsl.optiql.OptiQLExp
 import ppl.delite.framework.datastructures.FieldAccessOpsExp
 
-trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with LoopsFatExp with IfThenElseFatExp { this: OptiQLExp =>
+trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with LoopsFatExp with IfThenElseFatExp { this: OptiQLExp =>
 
   //object ToReduceElem {
   //  def unapply[T](x: Def)
@@ -296,6 +296,11 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with LoopsFatExp with If
     toAtom(SimpleStruct[T](tag, elems))(mtype(manifest[Map[String,Any]]))
 
 
+  //case class CharTuple(a: Exp[Char], b: Exp[Char]) extends Def[(Char,Char)]
+  /*override def make_tuple2[A:Manifest,B:Manifest](t: (Exp[A],Exp[B])): Exp[(A,B)] = 
+    if (manifest[A] == manifest[Char] && manifest[B] == manifest[Char])
+      toAtom(ETuple2(t._1, t._2))(mtype(manifest[Int]))
+    else super.make_tuple2(t)*/
 }
 
 
@@ -314,6 +319,12 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
   
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case e@ETuple2(a, b) if e.m1 == manifest[Char] && e.m2 == manifest[Char] =>
+      emitValDef(sym, "("+ quote(a) + ".toInt << 16) + " + quote(b)) 
+    case a@Tuple2Access1(t) if a.m == manifest[Char] =>
+      emitValDef(sym, "((" + quote(t) + " & 0xffff0000) >>> 16).toChar")
+    case a@Tuple2Access2(t) if a.m == manifest[Char] =>
+      emitValDef(sym, "(" + quote(t) + " & 0xffff).toChar")
     case ArraySort(len, (v1,v2), comp) =>
       emitValDef(sym, "{"/*}*/)
       stream.println("val array = new Array[Integer](" + quote(len) + ")")

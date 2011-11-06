@@ -121,6 +121,8 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
         println("MAPPING ARRAY TYPE TO : " + remap(Manifest.classType(m.erasure.getComponentType)))
         "Array[" + remap(Manifest.classType(m.erasure.getComponentType)) + "]"
       }
+      case m if m.toString == "scala.Tuple2" => "Int" //HACK
+      case m if m.toString == "scala.Tuple2[Char, Char]" => "Int"
       case m if m.toString == "double" => "Double"
       case m if m.toString == "float" => "Float"
       case m if m.toString == "char" => "Char"
