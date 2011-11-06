@@ -188,10 +188,10 @@ class Mesh {
   
   def face(e: Int, i: Int): Int = etof.apply(e, i)
 
-  def head(e: Int): Int = etov.apply(Mesh.IMASK & e, (e & Mesh.DMASK) >>> Mesh.SHIFT)
+  def head(e: Int): Int = etov.apply(Mesh.IMASK & e, e >>> Mesh.SHIFT)
   def tail(e: Int): Int = etov.apply(Mesh.IMASK & e, (e ^ Mesh.DMASK) >>> Mesh.SHIFT)
 
-  def outside(e: Int): Int = ftoc.apply(Mesh.IMASK & e, (e & Mesh.DMASK) >>> Mesh.SHIFT)
+  def outside(e: Int): Int = ftoc.apply(Mesh.IMASK & e, e >>> Mesh.SHIFT)
   def inside(e: Int): Int = ftoc.apply(Mesh.IMASK & e, (e ^ Mesh.DMASK) >>> Mesh.SHIFT)
 
   def towardsEdgeVertex(e: Int, v: Int): Int = {

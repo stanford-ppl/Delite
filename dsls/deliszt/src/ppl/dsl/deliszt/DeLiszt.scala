@@ -16,6 +16,7 @@ import ppl.delite.framework.ops._
 import scala.util.matching.Regex
 
 import ppl.dsl.deliszt.capabilities._
+import ppl.dsl.deliszt.crs._
 import ppl.dsl.deliszt.field._
 import ppl.dsl.deliszt.intm._
 import ppl.dsl.deliszt.mat._
@@ -91,7 +92,7 @@ trait DeLisztCompiler extends DeLiszt with ListOps {  // FieldPrivateOps, MeshPr
 /**
  * These are the corresponding IR nodes for DeLiszt.
  */
-trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with LanguageOpsExp
+trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with LanguageOpsExpOpt
   with LanguageImplOpsStandard
   with MeshSetOpsExp
   with MeshPrivateOpsExp
