@@ -26,5 +26,11 @@ trait Vec[@specialized(Boolean, Int, Long, Float, Double) T] extends DeliteColle
   
   def cloneL : Vec[T]
   
-  def foreach[U](f: T => U) = for(i <- 0 until size) f(this(i))
+  def foreach[U](f: T => U) = {
+    var i = 0
+    while(i < size) {
+       f(this(i))
+       i += 1
+    }
+  }
 }

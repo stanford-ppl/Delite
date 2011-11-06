@@ -173,7 +173,7 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
   
   val IR: DeliteApplication with DeLisztExp
 
-  override val specialize = Set("VecImpl", "MatImpl", "MatColImpl", "MatRowImpl", "VecViewImpl", "FieldImpl", "LabelFieldImpl")
+  override val specialize = Set("Vec3Impl", "Mat3x3Impl", "VecImpl", "MatImpl", "MatColImpl", "MatRowImpl", "VecViewImpl", "FieldImpl", "LabelFieldImpl")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
@@ -204,6 +204,15 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
     res = res.replaceAll("@specialized T: ClassManifest", t)
     res = res.replaceAll("\\bT:Manifest\\b", t)
     res = res.replaceAll("\\bT\\b", t)
+    res = res.replaceAll("\\bT: ClassManifest, V: ClassManifest\\b", "\\b" + t + ",V\\b")
+    val size = t match {
+    	case "Double" => 8
+	case _ => 4
+    }
+    res = res.replaceAll("\\/\\*unsafe.UnsafeAccessor.unsafe.getT\\(this, 16 \\+ n\\*UNSAFE_SIZE\\)\\*\\/ v0", "unsafe.UnsafeAccessor.unsafe.get"+t+"\\(this, 16 \\+ n\\*"+size+"\\)")    
+    res = res.replaceAll("\\/\\*unsafe.UnsafeAccessor.unsafe.putT\\(this, 16 \\+ n\\*UNSAFE_SIZE, v\\)\\*\\/", "unsafe.UnsafeAccessor.unsafe.put"+t+"\\(this, 16 \\+ n\\*"+size+", v\\)")
+    res = res.replaceAll("\\/\\*unsafe.UnsafeAccessor.unsafe.getT\\(this, 16 \\+ idx\\*UNSAFE_SIZE\\)\\*\\/ v00", "unsafe.UnsafeAccessor.unsafe.get"+t+"\\(this, 16 \\+ idx\\*"+size+"\\)")
+    res = res.replaceAll("\\/\\*unsafe.UnsafeAccessor.unsafe.putT\\(this, 16 \\+ idx\\*UNSAFE_SIZE, x\\)\\*\\/","unsafe.UnsafeAccessor.unsafe.put"+t+"\\(this, 16 \\+ idx\\*"+size+", x\\)")
     parmap(res)
   }
 
@@ -261,6 +270,7 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
       val expr = ("\\b" + s + "\\[.*,\\s*([^\\s]+)\\s*\\]").r  
       res = expr.replaceAllIn(res, m => s + moSub(m))
     }
+
     
     // MeshSet
     val meshSetExpr = ("MeshSet\\[.+\\]").r  
@@ -283,6 +293,12 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
           fun
         }
       }
+
+      for (s <- List("Vec3Impl", "Mat3x3ColImpl", "Mat3x3RowImpl", "Mat3x3Impl")) {
+        // should probably parse and trim whitespace, this is fragile
+        res = res.replaceAll(s+"\\["+tpe1+"\\]", tpe1+s)
+      }
+
 
       for (s <- specialize) {
         // Object apply, methods, new

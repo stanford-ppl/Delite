@@ -17,5 +17,11 @@ trait MeshSet extends DeliteCollection[Int] with Traversable[Int] {
   def dcUpdate(idx: Int, x: Int) = {} // Read only, bitches
   def dcSize : Int = size
   
-  def foreach[U](f: Int => U) = for(i <- 0 until size) f(this(i))
+  def foreach[U](f: Int => U) = {
+     var i = 0
+     while(i < size) {
+        f(this(i))
+        i += 1
+     }
+  }
 }
