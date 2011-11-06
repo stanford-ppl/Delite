@@ -168,13 +168,13 @@ trait SC extends DeLisztApplication {
       // Print("before cell number: ",ID(c)," -> phi value: ",Phi(c))
     // }
     
-    var start_time = 0.0
-    var num_iter = 0
+    //var start_time = 0.0
+    //var num_iter = 0
     // Print("ZA WHILE LOOP")
+     // if(num_iter == 1) {
+    val start_time = wall_time()
+     // }
     while(t < 4.0) {
-      if(num_iter == 1) {
-        start_time = wall_time()
-      }
       // Print("INTERIOR SET")
       for(f <- interior_set) {
         // Print(ID(f))
@@ -232,13 +232,13 @@ trait SC extends DeLisztApplication {
       }
       
       t += deltat
-      num_iter += 1
+      //num_iter += 1
     }
     
-    Print( "TIME_FOR_LOOP: ", wall_time() - start_time, " num iter: ", num_iter )
+    Print( "TIME_FOR_LOOP: ", wall_time() - start_time, " num iter: " )
       
-    // for(c <- cells(mesh)) {
-      // Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
-    // }
+     for(c <- cells(mesh)) {
+       Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
+     }
   }
 }

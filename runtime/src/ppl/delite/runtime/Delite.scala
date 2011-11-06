@@ -67,8 +67,8 @@ object Delite {
 
     def abnormalShutdown() {
       executor.shutdown()
-      if (!Config.noRegenerate)
-        Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
+      //if (!Config.noRegenerate)
+      //  Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
     }
 
     try {
@@ -127,8 +127,9 @@ object Delite {
   def loadSources(graph: DeliteTaskGraph) {
     if (graph.targets contains Targets.Scala)
       ScalaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + ScalaCompile.target + File.separator).toAbsolute))
-    if (graph.targets contains Targets.Cuda)
+    if (graph.targets contains Targets.Cuda) {
       CudaCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + CudaCompile.target + File.separator).toAbsolute))
+    }
     if (graph.targets contains Targets.OpenCL)
       OpenCLCompile.cacheDegSources(Directory(Path(graph.kernelPath + File.separator + OpenCLCompile.target + File.separator).toAbsolute))
   }

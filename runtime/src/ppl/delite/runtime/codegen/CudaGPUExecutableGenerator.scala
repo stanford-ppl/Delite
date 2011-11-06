@@ -48,6 +48,8 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("#include <cuda_runtime.h>\n") //Cuda runtime api
     out.append("#include \"DeliteCuda.cu\"\n") //Delite-Cuda interface for DSL
     out.append("#include \"dsl.h\"\n") //imports all dsl kernels and helper functions
+    //TODO: Not enabling C target would not generate dsl.hpp
+    out.append("#include \"dsl.hpp\"\n") //imports all dsl kernels and helper functions
     out.append("#include \"library.h\"\n")
     out.append("#include \"profiler.cu\"\n")
   }
@@ -132,12 +134,17 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
       //write the output allocation
       writeOutputAllocs(op, out)
       //write the call
-      if (op.isInstanceOf[OP_Nested])
-        writeFunctionCall(op, out)
-      else if (op.isInstanceOf[OP_External])
-        writeLibraryCall(op, out)
-      else
-        writeKernelCall(op, out)
+      
+      if (op.task != null) {
+        if (!op.supportsTarget(target)) 
+          writeHostKernelCall(op, out)
+        else if (op.isInstanceOf[OP_Nested])
+          writeFunctionCall(op, out)
+        else if (op.isInstanceOf[OP_External])
+          writeLibraryCall(op, out)
+        else
+          writeKernelCall(op, out)
+      }
 
       //write the setter
       val addWriteBack = needsWriteBack(op)       
@@ -175,7 +182,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         val deps = op.getMutableInputs intersect cons.getInputs.toSet
         for (d <- deps) {
           if (!(op.getConsumers exists { c => c.getMutableInputs.contains(d) &&
-                                              c.getConsumers.contains(cons) && 
+                                              c.getConsumers.contains(cons) &&
                                               c.scheduledResource == op.scheduledResource }))
             return true
         }
@@ -185,7 +192,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
   }
 
   protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
-    if (op.isInstanceOf[OP_Executable]) {
+    if (op.isInstanceOf[OP_Executable] && op.supportsTarget(target)) {
       for ((data,name) <- op.getGPUMetadata(target).outputs) {
         out.append(op.outputType(Targets.Cuda,name))
         out.append("* ")
@@ -237,8 +244,8 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
   protected def writeKernelCall(op: DeliteOP, out: StringBuilder) {
     if (op.task == null) return //dummy op
-    //out.append("cudaDeviceSynchronize();\n")
-    //out.append("mytic();\n")
+    out.append("cudaDeviceSynchronize();\n")
+    out.append("mytic();\n")
     out.append(op.task) //kernel name
     val dims = op.getGPUMetadata(target)
     out.append("<<<") //kernel dimensions
@@ -296,10 +303,9 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     writeInputs(op, out) //then all op inputs
     writeTemps(op, out) //then all op temporaries
     out.append(");\n")
-    //out.append("cudaDeviceSynchronize();\n")
-    //out.append("mytoc();\n")
-    //out.append("printTime();\n")
-
+    out.append("cudaDeviceSynchronize();\n")
+    out.append("mytoc();\n")
+    out.append("printf(\"%s\\n\",cudaGetErrorString(cudaGetLastError()));")
   }
 
   protected def writeLibraryCall(op: DeliteOP, out: StringBuilder) {
@@ -319,6 +325,18 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append(");\n")
   }
 
+  protected def writeHostKernelCall(op: DeliteOP, out: StringBuilder) {
+    if (op.outputType != "Unit") {
+      out.append(op.outputType(Targets.C))
+      out.append(' ')
+      assert(op.getOutputs.size == 1, "C Host kernel does not support multiple outputs")
+      out.append(getSymGPU(op.getOutputs.head))
+      out.append(" = ")
+    }
+    out.append(op.task)
+    out.append(op.getInputs.map(in => getSymGPU(in._2)).mkString("(",", ",");\n"))
+  }
+
   protected def writeFunctionCall(op: DeliteOP, out: StringBuilder) {
     if (op.outputType != "Unit") {
       out.append(op.outputType(Targets.Cuda))
@@ -335,7 +353,6 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         first = false
         out.append(getSymGPU(sym))
         if ((op.getMutableInputs contains (input,sym)) && (input.scheduledResource != op.scheduledResource)) {
-        //if ((op.getMutableInputs. contains (input,sym)) && (input.getConsumers.filter(_.scheduledResource!=input.scheduledResource).nonEmpty)) {
           out.append(',')
           out.append(getSymCPU(sym))
         }
@@ -370,7 +387,8 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
   protected def writeInputCopy(op: DeliteOP, sym: String, function: String, opType: String, out: StringBuilder) {
     //copy data from CPU to GPU
     out.append(opType)
-    out.append("* ")
+    out.append(ref(op,sym))
+    out.append(" ")
     out.append(getSymGPU(sym))
     out.append(" = ")
     out.append(function)
@@ -378,7 +396,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("env,") //JNI environment pointer
     out.append(getSymCPU(sym)) //jobject
     out.append(");\n")
-    writeMemoryAdd(sym, out)
+    if(!isPrimitiveType(op.outputType(sym))) writeMemoryAdd(sym, out)
   }
 
   protected def writeInputCast(op: DeliteOP, sym: String, out: StringBuilder) {
@@ -401,7 +419,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     for ((input,name) <- op.getInputs) {
       if (!first) out.append(',')
       first = false
-      if (!isPrimitiveType(input.outputType(name))) out.append('*')
+      out.append(ref(input,name))
       out.append(getSymGPU(name))
     }
   }
@@ -412,6 +430,13 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
       out.append('*')
       out.append(getSymGPU(name))
     }
+  }
+
+  protected def ref(op: DeliteOP, sym: String) = {
+    if(!isPrimitiveType(op.outputType(sym))) "*"
+    else ""
+    //if (op.supportsTarget(target) && !isPrimitiveType(op.outputType(target, sym))) "*" //Cuda objects allocated on heap
+    //else "" //primitive types and C types allocated on stack
   }
 
   protected def writeCopyBack(op: DeliteOP, location: Int, out: StringBuilder) {

@@ -534,20 +534,11 @@ trait Smooth extends DeLisztApplication {
     } */
 
     var t = 0.0
-    var start_time = 0.0;
     var step = 0;
-    while(step < iterations) {
-      if (step == 1) {
-        start_time = wall_time();
-      }
-      step += 1;
-// --------------- time step --------------
+    val start_time = wall_time();
+    
+    //TODO: Moved out of the while loop
       var dt_min  = 100000.0
-      
-      // Print("STEP ", step)
-
-      // Print("dt_min loop")
-      
       for(f <- faces(mesh)) {
         val centroid = face_centroid(f)
         //Print(ID(f), " EDGES")
@@ -561,8 +552,12 @@ trait Smooth extends DeLisztApplication {
         }
       }
 
-      var deltat = dt_min
+    while(step < iterations) {
+      step += 1;
 // --------------- time step --------------
+
+// --------------- time step --------------
+      val deltat = dt_min
 
 // --------------- Store  --------------
 
@@ -658,7 +653,7 @@ trait Smooth extends DeLisztApplication {
         iter+=1
       }
       t += deltat
-      Print("Simulation time = ",t," delta t = ",deltat)
+      //Print("Simulation time = ",t," delta t = ",deltat)
     }	
     Print( "TIME_FOR_LOOP: ", wall_time() - start_time ) ;
 // ========================== Core ===============================

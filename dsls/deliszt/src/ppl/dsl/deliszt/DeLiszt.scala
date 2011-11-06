@@ -1,6 +1,6 @@
 package ppl.dsl.deliszt
 
-import datastruct.CudaGenDataStruct
+import datastruct.{CudaGenDataStruct,CGenDataStruct}
 import extern.{DeLisztCudaGenExternal, DeLisztScalaGenExternal}
 import java.io._
 import scala.virtualization.lms.common._
@@ -65,11 +65,8 @@ trait DeLisztCudaCodeGenPkg extends CudaGenDSLOps
   with CudaGenArrayBufferOps
   { val IR: DeLisztScalaOpsPkgExp  }
 
-trait DeLisztCCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderingOps
-  with CGenStringOps with CGenRangeOps with CGenIOOps with CGenArrayOps with CGenBooleanOps
-  with CGenPrimitiveOps with CGenMiscOps with CGenFunctions with CGenEqual with CGenIfThenElse
-  with CGenVariables with CGenWhile with CGenListOps with CGenSeqOps
-  with CGenArrayBufferOps
+trait DeLisztCCodeGenPkg extends CGenEqual with CGenVariables with CGenImplicitOps with CGenOrderingOps 
+  with CGenBooleanOps with CGenPrimitiveOps with CGenCastingOps with CGenMathOps
   { val IR: DeLisztScalaOpsPkgExp  }
 
 /**
@@ -440,11 +437,30 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
   }
 }
 
-trait DeLisztCodeGenC extends DeLisztCodeGenBase with DeLisztCCodeGenPkg with CGenArithOps with CGenDeliteOps
-  with CGenVariantsOps with DeliteCGenAllOverrides
-  with CGenFieldOps with CGenIntMOps with CGenMeshPrivateOps with CGenMeshSetOps
-  with CGenVecOps with CGenMatOps
+trait DeLisztCodeGenC extends DeLisztCodeGenBase with DeLisztCCodeGenPkg with CGenDeliteOps with CGenArithOps with CGenDataStruct
+  with DeliteCGenAllOverrides 
 {
   val IR: DeliteApplication with DeLisztExp
   import IR._
+ 
+  override def isObjectType[T](m: Manifest[T]) : Boolean = {
+    if (m.erasure == classOf[Variable[Any]]) true
+    else super.isObjectType(m)
+  }
+  
+  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
+    case "int" | "long" | "float" | "double" | "bool" => refCopyInputHtoD(sym)
+    case _ => super.copyInputHtoD(sym)
+  }
+
+  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+    case "int" | "long" | "float" | "double" | "bool" => refCopyOutputDtoH(sym)
+    case _ => super.copyInputHtoD(sym)
+  }
+
+  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+    case "int" | "long" | "float" | "double" | "bool" => refCopyMutableInputDtoH(sym)
+    case _ => super.copyInputHtoD(sym)
+  }
+
 }
