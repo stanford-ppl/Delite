@@ -124,21 +124,21 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   }
   
   // Mark accesses
-  def markRead[T](f: Exp[_], i: Exp[MeshObj]) {
+  def markRead[T](f: Exp[_], i: Exp[Int]) {
     val sym = f.asInstanceOf[Sym[_]]
     val mos = value[MultipleMeshObj](i)
     
     topFor match {
 	    case Some(x) => {
 	      for(mo <- mos.objs) {
-  	      forMap(x)(topMo.get).read += FieldAccess(sym.id, mo)
+  	      forMap(x)(topMo.get).read += FieldAccess(sym.id, Mesh.internal(mo))
   	    }
 	    }
 	    case None => System.out.println("No top level for")
     }
   }
   
-  def markWrite[T](f: Exp[_], i: Exp[MeshObj], moType: Manifest[_]) {
+  def markWrite[T](f: Exp[_], i: Exp[Int], moType: Manifest[_]) {
     val sym = f.asInstanceOf[Sym[_]]
     val mos = value[MultipleMeshObj](i)
     
@@ -147,7 +147,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
 	      for(mo <- mos.objs) {
           mo match {
             case 0 if moType <:< manifest[Cell] => // Ignore
-            case _ => forMap(x)(topMo.get).write += FieldAccess(sym.id, mo)
+            case _ => { forMap(x)(topMo.get).write += FieldAccess(sym.id, Mesh.internal(mo)) }
           }
 	      }
 	    }
@@ -281,6 +281,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       case DeLisztTowardsEdgeVertex(e, v, m) => MultipleMeshObj.multi(e, (e1: Int) => MultipleMeshObj(v, (e2: Int) => Mesh.mesh.towardsEdgeVertex(e1, e2)))
       case DeLisztTowardsFaceCell(e, c, m) => MultipleMeshObj.multi(e, (e1: Int) => MultipleMeshObj(c, (e2: Int) => Mesh.mesh.towardsFaceCell(e1, e2)))
       
+      case DeLisztID(e) => MultipleMeshObj(e, (mo:Int) => Mesh.internal(mo))
+      
       case DeliteCollectionApply(e, i) => {
         val obj = (rawValue(e), rawValue(i)) match {
           case (Some(c), Some(idx)) => (c.asInstanceOf[DeliteCollection[Any]]).dcApply(idx.asInstanceOf[Int])
@@ -395,6 +397,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     }
   }
   
+  var level = 0
+  
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     // System.out.println("EMITTING NODE")
     // System.out.println(rhs)
@@ -426,18 +430,32 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
             }
           }
           
+          case DeLisztID(e) => {
+            e match {
+              case Sym(i) if(moSyms.contains(i)) => { moSyms += sym.id }
+              case _ =>
+            }
+          }
+          
           // Control constructs
           
           case f@MeshSetForeach(m, b) => {
-            // Set
+            // Save
+            val parentFor = currentFor
+
+            // Set current
             currentFor = Some(sym.id)
 
+            level += 1
+            
             f.body match {
               case DeliteForeachElem(func, sync) => emitBlock(func)
             }
             
+            level -= 1
+            
             // Restore
-            currentFor = Some(sym.id)
+            currentFor = parentFor
           }
           
           // While loops. Execute once. Store results if results are a mesh element
@@ -580,6 +598,10 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
               case DeliteForeachElem(func, sync) => emitBlock(func)
             }
             
+            /* for(op <- schedules(sym.id).result) {
+              System.out.println(op)
+            } */
+            
             collectingSchedule = false
             
             if(matchFor(sym.id) && trivial) {
@@ -595,7 +617,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
               var i = 0
               
               for(mo <- ms) {
-                topMo = Some(mo)
+                topMo = Some(Mesh.internal(mo))
               
                 // Store loop index in loop index symbol
                 store(f.i, i)
