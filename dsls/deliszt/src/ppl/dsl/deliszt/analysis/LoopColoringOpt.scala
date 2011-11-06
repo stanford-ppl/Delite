@@ -331,15 +331,17 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
               TTP(List(n), ThinDef(Reify(x,u,cleanEs))) 
             case _ => e
           })
-          innerScope = innerScope map (e => e match {
+         innerScope = innerScope map (e => e match {
             case TP(lhs, Reify(x,u,es)) if (es contains loop.lhs(0)) =>           
               val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
               val o = lhs
               val n = fresh(x.Type)            
               loopRefTransformer.subst(o) = n
-             TP(n, Reify(x,u,cleanEs))
+              TP(n, Reify(x,u,cleanEs))
             case _ => e
           }) 
+          
+        codbg("<loop " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")          
           
           // update the schedule
           /*
