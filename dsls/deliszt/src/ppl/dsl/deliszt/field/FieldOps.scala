@@ -228,6 +228,7 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
 
   /////////////////////
   // class interface
+
   def field_mo_apply[MO<:MeshObj:Manifest, T:Manifest](x: Exp[Field[MO, T]], mo: Exp[MO]) = field_apply(x, ID(mo))
   def field_mo_update[MO<:MeshObj:Manifest, T:Manifest](x: Exp[Field[MO, T]], mo: Exp[MO], v : Exp[T]) = field_update(x, ID(mo), v)
 
