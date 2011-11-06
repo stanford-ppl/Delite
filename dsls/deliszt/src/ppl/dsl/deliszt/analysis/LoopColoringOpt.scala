@@ -110,7 +110,7 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
     stream.println("{\"type\" : \"Arguments\" , \"kernelId\" : \"x0\"},")
 
     // first run coloring 
-    /*val (newScope, newResult) =*/ focusBlock(y) {
+    /*val (newScope, newResult) =*/ val newResult = focusBlock(y) {
       // from emitBlockFocused -- TODO: clean up
       var currentScope = fattenAll(innerScope)
       val fatRes = y match {
@@ -120,14 +120,15 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
       val (newScope, newResult) = colorLoops(currentScope)(fatRes)
       codbg("<current scope after coloring ---"+"/"+newResult); newScope.foreach(e=>codbg(e.toString)); codbg("--->")          
       codbg("<inner scope after coloring ---"+"/"+newResult); innerScope.foreach(e=>codbg(e.toString)); codbg("--->")          
-      emitFatBlockFocused(newScope)(newResult)(stream)
+      //emitFatBlockFocused(newScope)(newResult)(stream)
+      newResult
     }
 
     // then do scheduling (code motion)
 
     //emitFatBlockFocused(newScope)(newResult)(stream)
     //currentScope = newScope
-    //emitFatBlock(newResult)(stream)
+    emitFatBlock(newResult)(stream)
     //stream.println(quote(getBlockResult(y)))
     stream.println("{\"type\":\"EOP\"}\n]}}")
 
@@ -268,7 +269,7 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           var i = 0        
           var colorLoops = List[TTP]()         
           var prevLoop: Option[TTP] = None
-          val loopRefTransformer = new SubstTransformer                      
+          //val loopRefTransformer = new SubstTransformer                      
           
           codbg("<loop " + loop.toString + " scope before coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")                  
           
@@ -321,12 +322,16 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           }) 
           innerScope = fission(innerScope, thinLoop, thinColors)
 
+          val loopRefTransformer = new SubstTransformer
+
           // replace references to old loop (since we are replacing effectful loops of type Unit, should only be effectful dependencies...)
+/*
           currentScope = currentScope map (e => e match {
             case TTP(lhs, ThinDef(Reify(x,u,es))) if (es contains loop.lhs(0)) =>           
               val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
               val o = lhs(0)
-              val n = fresh(x.Type)            
+              val n = fresh(x.Type) 
+		colog("in currentScope " + o + "->" + n)           
               loopRefTransformer.subst(o) = n
               TTP(List(n), ThinDef(Reify(x,u,cleanEs))) 
             case _ => e
@@ -335,28 +340,67 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
             case TP(lhs, Reify(x,u,es)) if (es contains loop.lhs(0)) =>           
               val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
               val o = lhs
-              val n = fresh(x.Type)            
-              loopRefTransformer.subst(o) = n
+              val n = loopRefTransformer(lhs).asInstanceOf[Sym[Any]] //fresh(x.Type)            
+                colog("in innerScope" + o + "->" + n)
+              //loopRefTransformer.subst(o) = n
               TP(n, Reify(x,u,cleanEs))
             case _ => e
           }) 
+*/
+
+	innerScope foreach {
+	  case TP(lhs, Reify(x,u,es)) if (es contains loop.lhs(0)) =>
+	    val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
+	    val o = lhs
+            val n = findOrCreateDefinition(Reify(x,u,cleanEs)).sym
+	    loopRefTransformer.subst(o) = n
+	  case _ =>
+	}
           
-        codbg("<loop " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")          
+        codbg("<loop A " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")          
           
+
+	println(loopRefTransformer.subst)
+
+/*
+    def withEffectContext(body: =>List[TTP]): List[TTP] = {
+      val save = context
+      context = Nil
+      val scope = body
+      val leftovereffects = context.filterNot((scope.flatMap(_.lhs)) contains _)
+      if (leftovereffects.nonEmpty) 
+        printlog("warning: transformation left effect context (will be discarded): "+leftovereffects)
+      context = save
+      scope
+    }
+  
+	currentScope = getFatSchedule(currentScope)(currentScope) // clean things up!
+        currentScope = withEffectContext { transformAll(currentScope, loopRefTransformer) }
+//	currentScope = getFatSchedule(currentScope)(currentScope) // clean things up!
+
+
+	println(loopRefTransformer.subst)
+
+//        currentScope = getFatSchedule(currentScope)(loopRefTransformer(result)) // clean things up!
+
+        codbg("<loop A2 " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")
+
+
           // update the schedule
           /*
           result = loopRefTransformer(result) 
           currentScope = getFatSchedule(currentScope)(result) // clean things up! 
           innerScope = getSchedule(innerScope)(result) // clean things up!                    
           */
-          
+*/          
           transformAllFully(currentScope, result, loopRefTransformer) match { case (a,b) => // too bad we can't use pair assigment
             currentScope = a
             result = b
           }
           
-          codbg("<loop " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")          
-        }
+          codbg("<loop B " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")          
+                  println(loopRefTransformer.subst)
+	}
       } // end loop foreach
       
       //currentScope = getFatScheduleM(currentScope)(result, false, true) // clean things up! 
