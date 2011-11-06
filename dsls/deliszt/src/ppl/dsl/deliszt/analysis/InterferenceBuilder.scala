@@ -31,10 +31,17 @@ class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
     val edges = new HashMap[Int, MSet[Int]]() { override def default(key: Int) = { val mset = MSet[Int](); this(key) = mset; mset } }
     var totalEdges = 0
   
+   /*  var out_access = new java.io.FileOutputStream("accesses.txt") 
+    var access_stream = new java.io.PrintStream(out_access)
+    
+    access_stream.println("ACCESS FOR MS") */
+    
     // Add edge between any that conflict on writes
     for((mo, rwset) <- stencil) {
+      // access_stream.println("ELEMENT " + mo)
       for(write <- rwset.write) {
         for(access <- accesses(write)) {
+         // access_stream.println("ACCESS " + Mesh.internal(access))
           if(Mesh.internal(access) != Mesh.internal(mo)) {
             if(!edges(mo).contains(access)) {
               edges(mo) += access
@@ -48,6 +55,8 @@ class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
       }
     }
     
+    // access_stream.close
+    
     // Build a dense list of indices for the sparse list of elements in the top-level set
     val elements = new Array[Int](ms.size)
     val elementsToIndices = new HashMap[Int,Int]()
@@ -55,6 +64,20 @@ class InterferenceBuilder(val colorer: Colorer, val blockSize: Int) {
       elements(i) = Mesh.internal(ms(i))
       elementsToIndices(ms(i)) = i
     }
+    
+    /* var out_edges = new java.io.FileOutputStream("edges.txt") 
+    var edges_stream = new java.io.PrintStream(out_edges) 
+    edges_stream.print("hello file!") 
+    
+    edges_stream.println("Workgroup start");
+    for (i <- 0 until ms.size) {
+      edges_stream.println("ELEMENT " + elements(i))
+      
+      for(e <- edges(i)) {
+				edges_stream.println(e)
+      }
+    }
+    edges_stream.close */
     
     // Build a interference graph between densely-numbered blocks from sparsely-numbered elements
     var numBlocks: Int = math.ceil(ms.size / blockSize).toInt

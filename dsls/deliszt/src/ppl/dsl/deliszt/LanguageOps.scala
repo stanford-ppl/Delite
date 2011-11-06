@@ -124,55 +124,35 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   case class DeLisztMesh() extends Def[Mesh]
   
-  object DeLisztVertices {
-    def unapply[MO<:MeshObj:Manifest](m: DeLisztVertices[MO]) = Some(m.e)
-  }
+  case class DeLisztVerticesCell(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Vertex]]
+  case class DeLisztVerticesEdge(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Vertex]]
+  case class DeLisztVerticesFace(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Vertex]]
+  case class DeLisztVerticesVertex(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Vertex]]
+  case class DeLisztVerticesMesh(val e: Exp[Mesh]) extends Def[MeshSet[Vertex]]
   
-  abstract class DeLisztVertices[MO<:MeshObj:Manifest](val e: Exp[MO]) extends Def[MeshSet[Vertex]]
-  case class DeLisztVerticesCell(override val e: Exp[Cell], mesh: Exp[Mesh]) extends DeLisztVertices[Cell](e)
-  case class DeLisztVerticesEdge(override val e: Exp[Edge], mesh: Exp[Mesh]) extends DeLisztVertices[Edge](e)
-  case class DeLisztVerticesFace(override val e: Exp[Face], mesh: Exp[Mesh]) extends DeLisztVertices[Face](e)
-  case class DeLisztVerticesVertex(override val e: Exp[Vertex], mesh: Exp[Mesh]) extends DeLisztVertices[Vertex](e)
-  case class DeLisztVerticesMesh(override val e: Exp[Mesh]) extends DeLisztVertices[Mesh](e)
-  
-  case class DeLisztVertex(e: Exp[Cell], i: Exp[Int], mesh: Exp[Mesh]) extends Def[Vertex]
+  case class DeLisztVertex(e: Exp[Int], i: Exp[Int], mesh: Exp[Mesh]) extends Def[Vertex]
   
   case class DeLisztFaceVerticesCCW(e: Exp[Face], mesh: Exp[Mesh]) extends Def[MeshSet[Vertex]]
   case class DeLisztFaceVerticesCW(e: Exp[Face], mesh: Exp[Mesh]) extends Def[MeshSet[Vertex]]
 
-  object DeLisztCells {
-    def unapply[MO<:MeshObj:Manifest](m: DeLisztCells[MO]) = Some(m.e)
-  }
-  
-  abstract class DeLisztCells[MO<:MeshObj:Manifest](val e: Exp[MO]) extends Def[MeshSet[Cell]]
-  case class DeLisztCellsCell(override val e: Exp[Cell], mesh: Exp[Mesh]) extends DeLisztCells[Cell](e)
-  case class DeLisztCellsEdge(override val e: Exp[Edge], mesh: Exp[Mesh]) extends DeLisztCells[Edge](e)
-  case class DeLisztCellsFace(override val e: Exp[Face], mesh: Exp[Mesh]) extends DeLisztCells[Face](e)
-  case class DeLisztCellsVertex(override val e: Exp[Vertex], mesh: Exp[Mesh]) extends DeLisztCells[Vertex](e)
-  case class DeLisztCellsMesh(override val e: Exp[Mesh]) extends DeLisztCells[Mesh](e)
+  case class DeLisztCellsCell(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Cell]]
+  case class DeLisztCellsEdge(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Cell]]
+  case class DeLisztCellsFace(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Cell]]
+  case class DeLisztCellsVertex(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Cell]]
+  case class DeLisztCellsMesh(val e: Exp[Mesh]) extends Def[MeshSet[Cell]]
   
   case class DeLisztEdgeCellsCCW(e: Exp[Edge], mesh: Exp[Mesh]) extends Def[MeshSet[Cell]]
   case class DeLisztEdgeCellsCW(e: Exp[Edge], mesh: Exp[Mesh]) extends Def[MeshSet[Cell]]
 
-  object DeLisztEdges {
-    def unapply[MO<:MeshObj:Manifest](m: DeLisztEdges[MO]) = Some(m.e)
-  }
-  
-  abstract class DeLisztEdges[MO<:MeshObj:Manifest](val e: Exp[MO]) extends Def[MeshSet[Edge]]
-  case class DeLisztEdgesCell(override val e: Exp[Cell], mesh: Exp[Mesh]) extends DeLisztEdges[Cell](e)
-  case class DeLisztEdgesFace(override val e: Exp[Face], mesh: Exp[Mesh]) extends DeLisztEdges[Face](e)
-  case class DeLisztEdgesVertex(override val e: Exp[Vertex], mesh: Exp[Mesh]) extends  DeLisztEdges[Vertex](e)
-  case class DeLisztEdgesMesh(override val e: Exp[Mesh]) extends  DeLisztEdges[Mesh](e)
+  case class DeLisztEdgesCell(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Edge]]
+  case class DeLisztEdgesFace(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Edge]]
+  case class DeLisztEdgesVertex(val e: Exp[Int], mesh: Exp[Mesh]) extends  Def[MeshSet[Edge]]
+  case class DeLisztEdgesMesh(val e: Exp[Mesh]) extends Def[MeshSet[Edge]]
 
-  object DeLisztFaces {
-    def unapply[MO<:MeshObj:Manifest](m: DeLisztFaces[MO]) = Some(m.e)
-  }
-  
-  abstract class DeLisztFaces[MO<:MeshObj:Manifest](val e: Exp[MO]) extends Def[MeshSet[Face]]
-  case class DeLisztFacesCell(override val e: Exp[Cell], mesh: Exp[Mesh]) extends DeLisztFaces[Cell](e)
-  case class DeLisztFacesEdge(override val e: Exp[Edge], mesh: Exp[Mesh]) extends DeLisztFaces[Edge](e)
-  case class DeLisztFacesVertex(override val e: Exp[Vertex], mesh: Exp[Mesh]) extends DeLisztFaces[Vertex](e)
-  case class DeLisztFacesMesh(override val e: Exp[Mesh]) extends DeLisztFaces[Mesh](e)
+  case class DeLisztFacesCell(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Face]]
+  case class DeLisztFacesEdge(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Face]]
+  case class DeLisztFacesVertex(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Face]]
+  case class DeLisztFacesMesh(val e: Exp[Mesh]) extends Def[MeshSet[Face]]
 
   case class DeLisztEdgeFacesCCW(e: Exp[Edge], mesh: Exp[Mesh]) extends Def[MeshSet[Face]]
   case class DeLisztEdgeFacesCW(e: Exp[Edge], mesh: Exp[Mesh]) extends Def[MeshSet[Face]]
@@ -186,7 +166,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class DeLisztFaceInside(e: Exp[Face], mesh: Exp[Mesh]) extends Def[Cell]
   case class DeLisztFaceOutside(e: Exp[Face], mesh: Exp[Mesh]) extends Def[Cell]
   
-  case class DeLisztFace(e: Exp[Edge], i: Exp[Int], mesh: Exp[Mesh]) extends Def[Face]
+  case class DeLisztFace(e: Exp[Int], i: Exp[Int], mesh: Exp[Mesh]) extends Def[Face]
   
   case class DeLisztFlipEdge(e: Exp[Edge]) extends Def[Edge]
   case class DeLisztFlipFace(e: Exp[Face]) extends Def[Face]
@@ -216,43 +196,43 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   def mesh = reflectPure(DeLisztMesh())
 
-  def vertices(e: Exp[Cell])(implicit x: Overloaded5) = reflectPure(DeLisztVerticesCell(e, mesh))
-  def vertices(e: Exp[Edge])(implicit x: Overloaded3) = reflectPure(DeLisztVerticesEdge(e, mesh))
-  def vertices(e: Exp[Face])(implicit x: Overloaded4) = reflectPure(DeLisztVerticesFace(e, mesh))
-  def vertices(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztVerticesVertex(e, mesh))
+  def vertices(e: Exp[Cell])(implicit x: Overloaded5) = reflectPure(DeLisztVerticesCell(ID(e), mesh))
+  def vertices(e: Exp[Edge])(implicit x: Overloaded3) = reflectPure(DeLisztVerticesEdge(ID(e), mesh))
+  def vertices(e: Exp[Face])(implicit x: Overloaded4) = reflectPure(DeLisztVerticesFace(ID(e), mesh))
+  def vertices(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztVerticesVertex(ID(e), mesh))
   def vertices(e: Exp[Mesh])(implicit x: Overloaded1) = reflectPure(DeLisztVerticesMesh(e))
 
   def verticesCCW(e: Exp[Face]) = reflectPure(DeLisztFaceVerticesCCW(e, mesh))
   def verticesCW(e: Exp[Face]) = reflectPure(DeLisztFaceVerticesCW(e, mesh))
   
-  def vertex(e: Exp[Cell], i: Exp[Int]) = reflectPure(DeLisztVertex(e,i, mesh))
+  def vertex(e: Exp[Cell], i: Exp[Int]) = reflectPure(DeLisztVertex(ID(e),i, mesh))
 
-  def cells(e: Exp[Cell])(implicit x: Overloaded5) = reflectPure(DeLisztCellsCell(e, mesh))
-  def cells(e: Exp[Edge])(implicit x: Overloaded3) = reflectPure(DeLisztCellsEdge(e, mesh))
-  def cells(e: Exp[Face])(implicit x: Overloaded4) = reflectPure(DeLisztCellsFace(e, mesh))
-  def cells(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztCellsVertex(e, mesh))
+  def cells(e: Exp[Cell])(implicit x: Overloaded5) = reflectPure(DeLisztCellsCell(ID(e), mesh))
+  def cells(e: Exp[Edge])(implicit x: Overloaded3) = reflectPure(DeLisztCellsEdge(ID(e), mesh))
+  def cells(e: Exp[Face])(implicit x: Overloaded4) = reflectPure(DeLisztCellsFace(ID(e), mesh))
+  def cells(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztCellsVertex(ID(e), mesh))
   def cells(e: Exp[Mesh])(implicit x: Overloaded1) = reflectPure(DeLisztCellsMesh(e))
   
   def cellsCCW(e: Exp[Edge]) = reflectPure(DeLisztEdgeCellsCCW(e, mesh))
   def cellsCW(e: Exp[Edge]) = reflectPure(DeLisztEdgeCellsCW(e, mesh))
 
-  def edges(e: Exp[Cell])(implicit x: Overloaded4) = reflectPure(DeLisztEdgesCell(e, mesh))
-  def edges(e: Exp[Face])(implicit x: Overloaded3) = reflectPure(DeLisztEdgesFace(e, mesh))
-  def edges(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztEdgesVertex(e, mesh))
+  def edges(e: Exp[Cell])(implicit x: Overloaded4) = reflectPure(DeLisztEdgesCell(ID(e), mesh))
+  def edges(e: Exp[Face])(implicit x: Overloaded3) = reflectPure(DeLisztEdgesFace(ID(e), mesh))
+  def edges(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztEdgesVertex(ID(e), mesh))
   def edges(e: Exp[Mesh])(implicit x: Overloaded1) = reflectPure(DeLisztEdgesMesh(e))
 
   def edgesCCW(e: Exp[Face]) = reflectPure(DeLisztFaceEdgesCCW(e, mesh))
   def edgesCW(e: Exp[Face]) = reflectPure(DeLisztFaceEdgesCW(e, mesh))
 
-  def faces(e: Exp[Edge])(implicit x: Overloaded3) = reflectPure(DeLisztFacesEdge(e, mesh))
-  def faces(e: Exp[Cell])(implicit x: Overloaded4) = reflectPure(DeLisztFacesCell(e, mesh))
-  def faces(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztFacesVertex(e, mesh))
+  def faces(e: Exp[Edge])(implicit x: Overloaded3) = reflectPure(DeLisztFacesEdge(ID(e), mesh))
+  def faces(e: Exp[Cell])(implicit x: Overloaded4) = reflectPure(DeLisztFacesCell(ID(e), mesh))
+  def faces(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztFacesVertex(ID(e), mesh))
   def faces(e: Exp[Mesh])(implicit x: Overloaded1) = reflectPure(DeLisztFacesMesh(e))
 
   def facesCCW(e: Exp[Edge]) = reflectPure(DeLisztEdgeFacesCCW(e, mesh))
   def facesCW(e: Exp[Edge]) = reflectPure(DeLisztEdgeFacesCW(e, mesh))
   
-  def face(e: Exp[Edge], i: Exp[Int]) = reflectPure(DeLisztFace(e, i, mesh))
+  def face(e: Exp[Edge], i: Exp[Int]) = reflectPure(DeLisztFace(ID(e), i, mesh))
 
   def head(e: Exp[Edge]) = reflectPure(DeLisztEdgeHead(e, mesh))
   def tail(e: Exp[Edge]) = reflectPure(DeLisztEdgeTail(e, mesh))
@@ -407,10 +387,10 @@ trait CudaGenLanguageOps extends CudaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     //TODO: Use mesh symbol
-    case DeLisztCellsCell(e, m) => emitValDef(sym, quote(m) + ".cellsCell(" + quote(e) + ")")
-    case DeLisztCellsEdge(e, m) => emitValDef(sym, quote(m) + ".cellsEdge(" + quote(e) + ")")
-    case DeLisztCellsFace(e, m) => emitValDef(sym, quote(m) + ".cellsFace(" + quote(e) + ")")
-    case DeLisztCellsVertex(e, m) => emitValDef(sym, quote(m) + ".cellsVertex(" + quote(e) + ")")
+    case DeLisztCellsCell(e, m) => emitValDef(sym, quote(m) + ".cellsCell(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztCellsEdge(e, m) => emitValDef(sym, quote(m) + ".cellsEdge(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztCellsFace(e, m) => emitValDef(sym, quote(m) + ".cellsFace(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztCellsVertex(e, m) => emitValDef(sym, quote(m) + ".cellsVertex(generated.scala.Mesh.IMASK &" + quote(e) + ")")
     case DeLisztCellsMesh(e) => emitValDef(sym, quote(e) + ".cellsMesh")
 
     case DeLisztEdgeCellsCCW(e,m) => emitValDef(sym, quote(m) + ".cellsCCW(" + quote(e) + ")")
@@ -418,9 +398,9 @@ trait CudaGenLanguageOps extends CudaGenBase {
     case DeLisztFaceInside(e,m) => emitValDef(sym, quote(m) + ".inside(" + quote(e) + ")")
     case DeLisztFaceOutside(e,m) => emitValDef(sym, quote(m) + ".outside(" + quote(e) + ")")
 
-    case DeLisztEdgesCell(e, m) => emitValDef(sym, quote(m) + ".edgesCell(" + quote(e) + ")")
-    case DeLisztEdgesFace(e, m) => emitValDef(sym, quote(m) + ".edgesFace(" + quote(e) + ")")
-    case DeLisztEdgesVertex(e, m) => emitValDef(sym, quote(m) + ".edgesVertex(" + quote(e) + ")")
+    case DeLisztEdgesCell(e, m) => emitValDef(sym, quote(m) + ".edgesCell(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztEdgesFace(e, m) => emitValDef(sym, quote(m) + ".edgesFace(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztEdgesVertex(e, m) => emitValDef(sym, quote(m) + ".edgesVertex(generated.scala.Mesh.IMASK &" + quote(e) + ")")
     case DeLisztEdgesMesh(e) => emitValDef(sym, quote(e) + ".edgesMesh")
 
     case DeLisztEdgeHead(e,m) => emitValDef(sym, quote(m) + ".head(" + quote(e) + ")")
@@ -429,32 +409,32 @@ trait CudaGenLanguageOps extends CudaGenBase {
     case DeLisztEdgeFacesCCW(e,m) => emitValDef(sym, quote(m) + ".facesCCW(" + quote(e) + ")")
     case DeLisztEdgeFacesCW(e,m) => emitValDef(sym, quote(m) + ".facesCW(" + quote(e) + ")")
 
-    case DeLisztFacesCell(e, m) => emitValDef(sym, quote(m) + ".facesCell(" + quote(e) + ")")
-    case DeLisztFacesEdge(e, m) => emitValDef(sym, quote(m) + ".facesEdge(" + quote(e) + ")")
-    case DeLisztFacesVertex(e, m) => emitValDef(sym, quote(m) + ".facesVertex(" + quote(e) + ")")
+    case DeLisztFacesCell(e, m) => emitValDef(sym, quote(m) + ".facesCell(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztFacesEdge(e, m) => emitValDef(sym, quote(m) + ".facesEdge(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztFacesVertex(e, m) => emitValDef(sym, quote(m) + ".facesVertex(generated.scala.Mesh.IMASK &" + quote(e) + ")")
     case DeLisztFacesMesh(e) => emitValDef(sym, quote(e) + ".facesMesh")
 
-    case DeLisztFaceEdgesCCW(e,m) => emitValDef(sym, quote(m) + ".edgesCCW(" + quote(e) + ")")
-    case DeLisztFaceEdgesCW(e,m) => emitValDef(sym, quote(m) + ".edgesCW(" + quote(e) + ")")
+    case DeLisztFaceEdgesCCW(e,m) => emitValDef(sym, quote(m) + ".edgesCCW(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztFaceEdgesCW(e,m) => emitValDef(sym, quote(m) + ".edgesCW(generated.scala.Mesh.IMASK &" + quote(e) + ")")
     case DeLisztFace(e,i,m) => emitValDef(sym, quote(m) + ".face(" + quote(e) + "," + quote(i) + ")")
 
-    case DeLisztVerticesCell(e, m) => emitValDef(sym, quote(m) + ".verticesCell(" + quote(e) + ")")
-    case DeLisztVerticesEdge(e, m) => emitValDef(sym, quote(m) + ".verticesEdge(" + quote(e) + ")")
-    case DeLisztVerticesFace(e, m) => emitValDef(sym, quote(m) + ".verticesFace(" + quote(e) + ")")
-    case DeLisztVerticesVertex(e, m) => emitValDef(sym, quote(m) + ".verticesVertex(" + quote(e) + ")")
-    case DeLisztVerticesMesh(e) => emitValDef(sym, quote(e) + ".verticesMesh()")
+    case DeLisztVerticesCell(e, m) => emitValDef(sym, quote(m) + ".verticesCell(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztVerticesEdge(e, m) => emitValDef(sym, quote(m) + ".verticesEdge(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztVerticesFace(e, m) => emitValDef(sym, quote(m) + ".verticesFace(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztVerticesVertex(e, m) => emitValDef(sym, quote(m) + ".verticesVertex(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztVerticesMesh(e) => emitValDef(sym, quote(e) + ".verticesMesh")
 
     case DeLisztFaceVerticesCCW(e,m) => emitValDef(sym, quote(m) + ".verticesCCW(" + quote(e) + ")")
     case DeLisztFaceVerticesCW(e,m) => emitValDef(sym, quote(m) + ".verticesCW(" + quote(e) + ")")
-    case DeLisztVertex(e,i,m) => emitValDef(sym, quote(m) + ".vertex(" + quote(e) + "," + quote(i) + ")")
+    case DeLisztVertex(e,i,m) => emitValDef(sym, quote(m) + ".vertex(generated.scala.Mesh.IMASK &" + quote(e) + "," + quote(i) + ")")
 
-    case DeLisztFlipEdge(e) => emitValDef(sym, "flip(" + quote(e) + ")")
-    case DeLisztFlipFace(e) => emitValDef(sym, "flip(" + quote(e) + ")")
+    case DeLisztFlipEdge(e) => emitValDef(sym, "generated.scala.Mesh.IMASK ^" + quote(e))
+    case DeLisztFlipFace(e) => emitValDef(sym, "generated.scala.Mesh.IMASK ^" + quote(e))
 
     case DeLisztTowardsEdgeVertex(e,v,m) => emitValDef(sym, quote(m) + ".towardsEdgeVertex(" + quote(e) + "," + quote(v) + ")")
     case DeLisztTowardsFaceCell(e,c,m) => emitValDef(sym, quote(m) + ".towardsFaceCell(" + quote(e) + "," + quote(c) + ")")
 
-    case DeLisztID(x) => emitValDef(sym, "internal(" + quote(x) + ")")
+    case DeLisztID(x) => emitValDef(sym, "generated.scala.Mesh.IMASK &" + quote(x))
 
     //TODO: Why is this node here?
     case DeLisztSize(s) => emitValDef(sym, quote(s) + ".dcSize()")
