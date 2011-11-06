@@ -491,47 +491,59 @@ trait Smooth extends DeLisztApplication {
     for(f <- faces(mesh)) 
       calcFaceGeom(f)
     
-    /* for(f <- faces(mesh)) {
+          /*
+    for(f <- faces(mesh)) {
       Print(ID(f)," FaceArea: ",face_area(f)," normal: ",face_normal(f),"face_centroid",face_centroid(f))
-    } */
+    }
+    */
 
 		for(e <- edges(mesh)) 
 			calcEdgeGeom(e)
 
-    /* for(e <- edges(mesh)) {
+          /*
+    for(e <- edges(mesh)) {
       Print(ID(e)," PMat: ",PMat(e))
-    } */
+    }
+    */
       
 		for(f <- faces(mesh)) 
 			SetFaceCoords(f)
     
-    /* for(f <- faces(mesh)) {
+          /*
+    for(f <- faces(mesh)) {
       Print(ID(f)," theta_face: ",theta_face(f)," lamba_face: ", lambda_face(f))
-    } */
+    }
+    */
    
 		for(e <- edges(mesh)) 
 			SetEdgeCoords(e)
 	  
-    /* for(e <- edges(mesh)) {
+          /*
+     for(e <- edges(mesh)) {
       Print(ID(e)," theta_edge: ",theta_edge(e)," lamba_edge: ", lambda_edge(e))
-    } */
+    }
+    */
     
 		for(e <- edges(mesh))  
 			SetEdgeVel(e)
     
-    /* for(e <- edges(mesh)) {
+          /*
+    for(e <- edges(mesh)) {
       Print(ID(e)," Vel: ",Veloc(e))
-    } */
+    }
+    */
                
     
 // ========================== Core ===============================
 
     for(f <- faces(mesh)) 
       SetIC(f)
-      
-    /* for(f <- faces(mesh)) {
+   
+          /*
+    for(f <- faces(mesh)) {
       Print(ID(f)," Phi: ",Phi(f))
-    } */
+    }
+    */
 
     var t = 0.0
     var step = 0;
@@ -588,34 +600,89 @@ trait Smooth extends DeLisztApplication {
     //---------------- Update Phi ---------------------
         // Print("UPDATE FLUX")
     
-        for(e <- edges(mesh)) {
-
+        //for(e <- edges(mesh)) {
+        //Color 1
+        for(e <- edgesColor(args(1) + "2146")) {
           val normal = edge_normal(e)
           val center = edge_center(e)
           val vDotN = dot(Veloc(e),normal)
-          
           var flux = 0.0
           val left_face  = left(e)
           val right_face = right(e)
-          
           val left_centroid  = face_centroid(left_face)
           val right_centroid = face_centroid(right_face)
-
           var r0 = center-left_centroid
           var r1 = center-right_centroid
-
           var Phil = Phi(left_face)+dot(Phi_Grad(left_face),r0)
           var Phir = Phi(right_face)+dot(Phi_Grad(right_face),r1)
-
           if(vDotN>=0.0) 
             flux = vDotN*Phil
           else
             flux = vDotN*Phir
-
           Flux(left_face)  = Flux(left_face) - flux
           Flux(right_face) = Flux(right_face) + flux
-                             
         }	
+        for(e <- edgesColor(args(1) + "2755")) {
+          val normal = edge_normal(e)
+          val center = edge_center(e)
+          val vDotN = dot(Veloc(e),normal)
+          var flux = 0.0
+          val left_face  = left(e)
+          val right_face = right(e)
+          val left_centroid  = face_centroid(left_face)
+          val right_centroid = face_centroid(right_face)
+          var r0 = center-left_centroid
+          var r1 = center-right_centroid
+          var Phil = Phi(left_face)+dot(Phi_Grad(left_face),r0)
+          var Phir = Phi(right_face)+dot(Phi_Grad(right_face),r1)
+          if(vDotN>=0.0) 
+            flux = vDotN*Phil
+          else
+            flux = vDotN*Phir
+          Flux(left_face)  = Flux(left_face) - flux
+          Flux(right_face) = Flux(right_face) + flux
+        }	
+        for(e <- edgesColor(args(1) + "3364")) {
+          val normal = edge_normal(e)
+          val center = edge_center(e)
+          val vDotN = dot(Veloc(e),normal)
+          var flux = 0.0
+          val left_face  = left(e)
+          val right_face = right(e)
+          val left_centroid  = face_centroid(left_face)
+          val right_centroid = face_centroid(right_face)
+          var r0 = center-left_centroid
+          var r1 = center-right_centroid
+          var Phil = Phi(left_face)+dot(Phi_Grad(left_face),r0)
+          var Phir = Phi(right_face)+dot(Phi_Grad(right_face),r1)
+          if(vDotN>=0.0) 
+            flux = vDotN*Phil
+          else
+            flux = vDotN*Phir
+          Flux(left_face)  = Flux(left_face) - flux
+          Flux(right_face) = Flux(right_face) + flux
+        }	
+        for(e <- edgesColor(args(1) + "3973")) {
+          val normal = edge_normal(e)
+          val center = edge_center(e)
+          val vDotN = dot(Veloc(e),normal)
+          var flux = 0.0
+          val left_face  = left(e)
+          val right_face = right(e)
+          val left_centroid  = face_centroid(left_face)
+          val right_centroid = face_centroid(right_face)
+          var r0 = center-left_centroid
+          var r1 = center-right_centroid
+          var Phil = Phi(left_face)+dot(Phi_Grad(left_face),r0)
+          var Phir = Phi(right_face)+dot(Phi_Grad(right_face),r1)
+          if(vDotN>=0.0) 
+            flux = vDotN*Phil
+          else
+            flux = vDotN*Phir
+          Flux(left_face)  = Flux(left_face) - flux
+          Flux(right_face) = Flux(right_face) + flux
+        }	
+
         
         for(f <- faces(mesh)) 
           Phi(f) = PhiOld(f) + factor/face_area(f)*Flux(f) 
@@ -659,6 +726,13 @@ trait Smooth extends DeLisztApplication {
 // ========================== Core ===============================
          
 // ========================== Output ===============================
+    for(f <- faces(mesh)) 
+      Print("Phi:",ID(f),Phi(f))
+    for(f <- faces(mesh)) 
+      Print("face_area:",ID(f),face_area(f))
+    for(f <- faces(mesh)) 
+      Print("PhiOld:",ID(f),PhiOld(f))
+
     var Totalarea = 0.0
     var diff = 0.0
     for(f <- faces(mesh)) {

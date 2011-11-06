@@ -67,8 +67,8 @@ object Delite {
 
     def abnormalShutdown() {
       executor.shutdown()
-      //if (!Config.noRegenerate)
-      //  Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
+      if (!Config.noRegenerate)
+        Directory(Path(Config.codeCacheHome)).deleteRecursively() //clear the code cache (could be corrupted)
     }
 
     try {

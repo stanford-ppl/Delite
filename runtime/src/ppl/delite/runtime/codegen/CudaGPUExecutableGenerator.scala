@@ -244,8 +244,8 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
   protected def writeKernelCall(op: DeliteOP, out: StringBuilder) {
     if (op.task == null) return //dummy op
-    out.append("cudaDeviceSynchronize();\n")
-    out.append("mytic();\n")
+    //out.append("cudaDeviceSynchronize();\n")
+    //out.append("mytic();\n")
     out.append(op.task) //kernel name
     val dims = op.getGPUMetadata(target)
     out.append("<<<") //kernel dimensions
@@ -303,9 +303,9 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     writeInputs(op, out) //then all op inputs
     writeTemps(op, out) //then all op temporaries
     out.append(");\n")
-    out.append("cudaDeviceSynchronize();\n")
-    out.append("mytoc();\n")
-    out.append("printf(\"%s\\n\",cudaGetErrorString(cudaGetLastError()));")
+    //out.append("cudaDeviceSynchronize();\n")
+    //out.append("mytoc();\n")
+    //out.append("printf(\"%s\\n\",cudaGetErrorString(cudaGetLastError()));")
   }
 
   protected def writeLibraryCall(op: DeliteOP, out: StringBuilder) {

@@ -1,6 +1,7 @@
 package ppl.dsl.deliszt.datastruct.scala
 
-import collection.mutable.{Map, HashMap}
+import collection.mutable.{Map, HashMap, ArrayBuffer}
+import java.io._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -142,6 +143,24 @@ class Mesh {
   def edgesVertex(e: Int): MeshSet = IndexSetImpl(vtoe, e)
   def edgesFace(e: Int): MeshSet = IndexSetImpl(ftoe, e)
   def edgesCell(e: Int): MeshSet = IndexSetImpl(ctoe, e)
+
+  def edgesColor(filename: String): MeshSet = {
+    //File READ
+    val ab = new ArrayBuffer[Int]()
+    val xfs = new BufferedReader(new FileReader(filename))
+    var line = xfs.readLine()
+    while (line != null){
+      line = line.trim()
+      val idx = Integer.parseInt(line)
+      ab.append(idx)
+      line = xfs.readLine()
+    }
+    xfs.close()
+
+    val arr = ab.toArray
+    new IndexSetImpl(arr, arr.size, 0, arr.size, Mesh.FORWARD)
+  }
+
 
   def edgesCCW(e: Int): MeshSet = {
     val c = outside(e)
