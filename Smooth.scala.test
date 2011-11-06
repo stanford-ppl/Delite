@@ -1,0 +1,40 @@
+package ppl.apps.liszt.KarthikSmooth
+
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.MetaInteger._
+
+object MeshSmoothRunner extends DeLisztApplicationRunner with Smooth
+
+trait Smooth extends DeLisztApplication {
+
+  val zero_vec  : Rep[Vec[_3,Double]] = null
+  val zero_mat : Rep[Mat[_3,_3,Double]] = null
+  var app_state : Rep[Field[Edge,Mat[_3,_3,Double]]] = null
+  
+	def edgeCalc(e : Rep[Edge]) : Rep[Unit] = {
+		val v1 = Vec(1.0,1.0,1.0)
+		val v2 = Vec(1.0,1.0,1.0)
+   
+		var dx = v1*4.0 + v2*2.0
+		var dy = v1*7.0 + v2*3.0
+		var dz = v2*5.0
+    
+		val C  = Mat(dx,dy,dz)
+		val P  = Mat(dz,dx,dy)
+		val CP = C*P
+		app_state(e) = CP
+	}
+  
+  def main() {
+
+    Print("Test App Started")
+    zero_vec  = Vec(0.0,0.0,0.0)
+    zero_mat = Mat(zero_vec,zero_vec,zero_vec)
+    
+    app_state = FieldWithConst[Edge,Mat[_3,_3,Double]](zero_mat)
+    for(e <- edges(mesh)) {
+       edgeCalc(e)
+    }
+    
+  }
+}
