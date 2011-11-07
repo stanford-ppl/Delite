@@ -14,6 +14,9 @@ import ppl.dsl.deliszt._
 import ppl.dsl.deliszt.MetaInteger._
 import ppl.dsl.deliszt.vec.VecOpsExp
 
+import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollectionOpsExp
+
 trait MatOps extends DSLType with Variables {
   this: DeLiszt =>
 
@@ -110,13 +113,21 @@ trait MatOps extends DSLType with Variables {
 }
 
 
-trait MatOpsExp extends MatOps with VariablesExp {
+trait MatOpsExp extends MatOps with VariablesExp with DeliteCollectionOpsExp {
   this:MatImplOps with DeLisztExp =>
 
   //////////////////////////////////////////////////
   // implemented via method on real data structure
   
   case class MatObjNew[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*) extends Def[Mat[R,C,A]] {
+    def r = manifest[R]
+    def vr = implicitly[MVal[R]]
+    def c = manifest[C]
+    def vc = implicitly[MVal[C]]
+    def a = manifest[A]
+  }
+
+  case class Mat3New[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Array[Exp[A]]) extends Def[Mat[R,C,A]] {
     def r = manifest[R]
     def vr = implicitly[MVal[R]]
     def c = manifest[C]
@@ -363,8 +374,38 @@ trait MatOpsExp extends MatOps with VariablesExp {
 
   ////////////////////
   // object interface
-  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*) = {
-    reflectMutable(MatObjNew[R,C,A](vs:_*)).unsafeImmutable
+  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*) = {    
+    if (vs.length == 3) {
+      Predef.println("!!! found a matrix constructor with Vec3 args !!!")
+      val buf = new scala.collection.mutable.ArrayBuffer[Exp[A]]()
+      vs foreach { e => e match {
+        case Def(Vec3New(a,b,c)) => buf += a; buf += b; buf += c
+        
+        // could also rewrite the vec3 delite op operations to return VecNew nodes instead..        
+        case Def(m: DeliteOpMap[A,A,_]) => m.body match {
+          case ce: DeliteCollectElem[_,_] => ce.alloc match {
+            case Def(Vec3New(a,b,c)) => 
+              buf ++= (0 to 2) map { i => reifyEffects(m.func(dc_apply(m.in.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]) }
+          }
+        }        
+        case Def(z: DeliteOpZipWith[A,A,_,_]) => z.body match {
+          case ce: DeliteCollectElem[_,_] => ce.alloc match {
+            case Def(Vec3New(a,b,c)) =>
+              buf ++= (0 to 2) map { i => reifyEffects(z.func(dc_apply(z.inA.asInstanceOf[Exp[DeliteCollection[A]]],unit(i)),dc_apply(z.inB.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]) }
+          }
+        }            
+        // case Def(e: DeliteOpLoop[_]) => e.body match {
+        //           case ce: DeliteCollectElem[_,_] => ce.alloc match {
+        //             case Def(Vec3New(a,b,c)) => buf += a.asInstanceOf[Exp[A]]; buf += b.asInstanceOf[Exp[A]]; buf += c.asInstanceOf[Exp[A]]            
+        //           }
+        //         }
+        case _ => Predef.println(" found non vec3?! : " + e.Type.toString)
+                  Predef.println(" def is: " + findDefinition(e.asInstanceOf[Sym[Any]]).toString)
+      }}
+      Mat3New[R,C,A](buf.toArray)
+    }
+    else 
+      reflectMutable(MatObjNew[R,C,A](vs:_*)).unsafeImmutable
   }
   
   def mat_obj_n_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](r: Exp[Int], c: Exp[Int]) = {
@@ -427,11 +468,12 @@ trait ScalaGenMatOps extends ScalaGenBase {
     // these are the ops that call through to the underlying real data structure
     case m@MatObjNew(vs @ _*) => {
         if(vs.length == 3) {	 
-	    emitValDef(sym, remap(mat3x3ImplPath, "", m.a) + "(" + vs.map(quote).mkString(",") + ")")
+	        emitValDef(sym, remap(mat3x3ImplPath, "", m.a) + "(" + vs.map(quote).mkString(",") + ")")
         } else {
-            emitValDef(sym, remap(matImplPath, "", m.a) + "(" + vs.map(quote).reduceLeft(_+","+_) + ")")
+          emitValDef(sym, remap(matImplPath, "", m.a) + "(" + vs.map(quote).reduceLeft(_+","+_) + ")")
         }
     } 
+    case m@Mat3New(xs) => emitValDef(sym, " new " + remap(mat3x3ImplPath, "", m.a) + "(" + xs.map(quote).mkString(",") + ")")
     case m@MatObjNNew(numRows,numCols) => emitValDef(sym, remap(matImplPath, ".ofSize", m.a) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     //case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")

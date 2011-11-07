@@ -101,7 +101,7 @@ trait DeLisztExp extends DeLisztCompiler with DeLisztScalaOpsPkgExp with Languag
   with IntMOpsExp
   with LoopColoringOpsExp
   with DeliteOpsExp with VariantsOpsExp with DeliteAllOverridesExp
-  with FieldOpsExpOpt with FieldImplOpsStandard with MatOpsExp with MatImplOpsStandard with VecOpsExp with VecImplOpsStandard {
+  with FieldOpsExpOpt with FieldImplOpsStandard with MatOpsExp with MatImplOpsStandard with VecOpsExpOpt with VecImplOpsStandard {
 
   this: DeliteApplication with DeLisztApplication with DeLisztExp => // can't be DeLisztApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
 
