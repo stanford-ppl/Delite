@@ -16,7 +16,6 @@ import ppl.delite.framework.ops._
 import scala.util.matching.Regex
 
 import ppl.dsl.deliszt.capabilities._
-import ppl.dsl.deliszt.crs._
 import ppl.dsl.deliszt.field._
 import ppl.dsl.deliszt.intm._
 import ppl.dsl.deliszt.mat._
