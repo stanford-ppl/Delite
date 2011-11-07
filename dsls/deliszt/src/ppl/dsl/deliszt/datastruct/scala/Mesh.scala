@@ -144,24 +144,6 @@ class Mesh {
   def edgesFace(e: Int): MeshSet = IndexSetImpl(ftoe, e)
   def edgesCell(e: Int): MeshSet = IndexSetImpl(ctoe, e)
 
-  def edgesColor(filename: String): MeshSet = {
-    //File READ
-    val ab = new ArrayBuffer[Int]()
-    val xfs = new BufferedReader(new FileReader(filename))
-    var line = xfs.readLine()
-    while (line != null){
-      line = line.trim()
-      val idx = Integer.parseInt(line)
-      ab.append(idx)
-      line = xfs.readLine()
-    }
-    xfs.close()
-
-    val arr = ab.toArray
-    new IndexSetImpl(arr, arr.size, 0, arr.size, Mesh.FORWARD)
-  }
-
-
   def edgesCCW(e: Int): MeshSet = {
     val c = outside(e)
     if(ftoc.apply(Mesh.internal(e), Mesh.OUTSIDE) == Mesh.internal(c)) {
@@ -251,4 +233,23 @@ class Mesh {
   }
 
   vertexData.fns("position") = positionToVec
+  
+  //Coloring hack: remove this!
+  def coloredIndexSet(filename: String): MeshSet = {
+    //File READ
+    val ab = new ArrayBuffer[Int]()
+    val xfs = new BufferedReader(new FileReader(filename))
+    var line = xfs.readLine()
+    while (line != null){
+      line = line.trim()
+      val idx = Integer.parseInt(line)
+      ab.append(idx)
+      line = xfs.readLine()
+    }
+    xfs.close()
+
+    val arr = ab.toArray
+    new IndexSetImpl(arr, arr.size, 0, arr.size, Mesh.FORWARD)
+  }
+
 }

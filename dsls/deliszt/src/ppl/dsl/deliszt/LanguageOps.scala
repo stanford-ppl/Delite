@@ -53,8 +53,6 @@ trait LanguageOps extends Base { this: DeLiszt with MathOps =>
   def edges(e: Rep[Face])(implicit x: Overloaded3) : Rep[MeshSet[Edge]]
   def edges(e: Rep[Cell])(implicit x: Overloaded4) : Rep[MeshSet[Edge]]
 
-  def edgesColor(s: Rep[String]) : Rep[MeshSet[Edge]]
-
   def edgesCCW(e: Rep[Face]) : Rep[MeshSet[Edge]]
   def edgesCW(e: Rep[Face]) : Rep[MeshSet[Edge]]
 
@@ -109,6 +107,10 @@ trait LanguageOps extends Base { this: DeLiszt with MathOps =>
   
   def wall_time() : Rep[Double]
   def processor_time() : Rep[Double]
+
+  //Coloring hack: remove this!
+  def edgesColor(s: Rep[String]) : Rep[MeshSet[Edge]]
+  def facesColor(s: Rep[String]) : Rep[MeshSet[Face]]
 }
 
 trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
@@ -166,8 +168,6 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class DeLisztEdgesVertex(override val e: Exp[Vertex], mesh: Exp[Mesh]) extends  DeLisztEdges[Vertex](e)
   case class DeLisztEdgesMesh(override val e: Exp[Mesh]) extends  DeLisztEdges[Mesh](e)
 
-  case class DeLisztEdgesColor(val s: Exp[String], mesh: Exp[Mesh]) extends Def[MeshSet[Edge]]
-
   object DeLisztFaces {
     def unapply[MO<:MeshObj:Manifest](m: DeLisztFaces[MO]) = Some(m.e)
   }
@@ -209,6 +209,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class WallTime() extends Def[Double]
   case class ProcessorTime() extends Def[Double]
 
+  //Coloring hack: remove this!
+  case class DeLisztEdgesColor(val s: Exp[String], mesh: Exp[Mesh]) extends Def[MeshSet[Edge]]
+  case class DeLisztFacesColor(val s: Exp[String], mesh: Exp[Mesh]) extends Def[MeshSet[Face]]
+
   /******* Language functions *********/
   def _init(args: Exp[Array[String]]) = reflectEffect(DeLisztInit(args))
   def Print(as: Exp[Any]*) = reflectEffect(DeLisztPrint(as)(reifyEffectsHere(print_impl(as))))
@@ -244,8 +248,6 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def edges(e: Exp[Face])(implicit x: Overloaded3) = reflectPure(DeLisztEdgesFace(e, mesh))
   def edges(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztEdgesVertex(e, mesh))
   def edges(e: Exp[Mesh])(implicit x: Overloaded1) = reflectPure(DeLisztEdgesMesh(e))
-
-  def edgesColor(s: Exp[String]) = reflectPure(DeLisztEdgesColor(s, mesh))
 
   def edgesCCW(e: Exp[Face]) = reflectPure(DeLisztFaceEdgesCCW(e, mesh))
   def edgesCW(e: Exp[Face]) = reflectPure(DeLisztFaceEdgesCW(e, mesh))
@@ -285,6 +287,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def wall_time() = reflectEffect(WallTime())
   def processor_time() = reflectEffect(ProcessorTime())
   
+  //Coloring hack: remove this!
+  def edgesColor(s: Exp[String]) = reflectPure(DeLisztEdgesColor(s, mesh))
+  def facesColor(s: Exp[String]) = reflectPure(DeLisztFacesColor(s, mesh))
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {    
     case DeLisztVerticesCell(e,m) => reflectPure(DeLisztVerticesCell(f(e),f(m)))
@@ -306,7 +311,6 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     case DeLisztEdgesFace(e,m) => reflectPure(DeLisztEdgesFace(f(e),f(m)))
     case DeLisztEdgesVertex(e,m) => reflectPure(DeLisztEdgesVertex(f(e),f(m)))
     case DeLisztEdgesMesh(e) => reflectPure(DeLisztEdgesMesh(f(e)))
-    case DeLisztEdgesColor(s,m) => reflectPure(DeLisztEdgesColor(f(s),f(m)))
     case DeLisztFacesEdge(e,m) => reflectPure(DeLisztFacesEdge(f(e),f(m)))
     case DeLisztFacesCell(e,m) => reflectPure(DeLisztFacesCell(f(e),f(m)))
     case DeLisztFacesVertex(e,m) => reflectPure(DeLisztFacesVertex(f(e),f(m)))
@@ -327,6 +331,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     case DeLisztSize(s) => size(f(s))    
     case DeLisztID(e) => ID(f(e))
     case Reflect(e@DeLisztPrint(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeLisztPrint(f(x))(f(e.block)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    //Coloring hack: remove this!
+    case DeLisztEdgesColor(s,m) => reflectPure(DeLisztEdgesColor(f(s),f(m)))
+    case DeLisztFacesColor(s,m) => reflectPure(DeLisztFacesColor(f(s),f(m)))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
   
@@ -361,8 +368,6 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case DeLisztEdgesFace(e, m) => emitValDef(sym, quote(m) + ".edgesFace(" + quote(e) + ")")
       case DeLisztEdgesVertex(e, m) => emitValDef(sym, quote(m) + ".edgesVertex(" + quote(e) + ")")
       case DeLisztEdgesMesh(e) => emitValDef(sym, quote(e) + ".edgesMesh")
-      
-      case DeLisztEdgesColor(s,m) => emitValDef(sym, quote(m) + ".edgesColor(" + quote(s) + ")")
       
       case DeLisztEdgeHead(e,m) => emitValDef(sym, quote(m) + ".head(" + quote(e) + ")")
       case DeLisztEdgeTail(e,m) => emitValDef(sym, quote(m) + ".tail(" + quote(e) + ")")
@@ -405,6 +410,11 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case MaxDouble() => emitValDef(sym, "scala.Double.MaxValue")
       case ProcessorTime() => emitValDef(sym, "generated.scala.Global.processor_time")
       case WallTime() => emitValDef(sym, "generated.scala.Global.wall_time")
+      
+      //Coloring hack: remove this!
+      case DeLisztEdgesColor(s,m) => emitValDef(sym, quote(m) + ".coloredIndexSet(" + quote(s) + ")")
+      case DeLisztFacesColor(s,m) => emitValDef(sym, quote(m) + ".coloredIndexSet(" + quote(s) + ")")
+
       case _ => super.emitNode(sym, rhs)
     }
   }
