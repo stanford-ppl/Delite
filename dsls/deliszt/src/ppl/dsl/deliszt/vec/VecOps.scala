@@ -478,11 +478,31 @@ trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
   import IR._
   
   val vecImplPath = "ppl.dsl.deliszt.datastruct.scala.VecImpl"
+  val vec3ImplPath = "ppl.dsl.deliszt.datastruct.scala.Vec3Impl"
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case v@VecObjNew(xs @ _*) => emitValDef(sym, remap(vecImplPath, "", v.a) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
-      case v@VecObjNNew(i) => emitValDef(sym, remap(vecImplPath, ".ofSize", v.a) + "(" + quote(i) + ")")
+      case v@VecObjNew(xs @ _*) => {
+           if(xs.length == 3) {
+              emitValDef(sym, remap(vec3ImplPath, "", v.a) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
+      	   } else {
+              emitValDef(sym, remap(vecImplPath, "", v.a) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
+           }
+      }
+      case v@VecObjNNew(i) => {
+        i match {
+          case Const(n) if n==3 => emitValDef(sym, remap(vec3ImplPath, "", v.a) + "(0,0,0)")
+          case _ => {
+		stream.println(quote(sym) + " = {")
+        	stream.println(" if(" + quote(i) + " == 3) {")
+		stream.println("	" + remap(vec3ImplPath, "", v.a) + "(0,0,0)")
+        	stream.println(" } else { ")
+        	stream.println("	" + remap(vecImplPath, ".ofSize", v.a) + "(" + quote(i) + ")")
+        	stream.println(" }")
+        	stream.println("}")
+	  }
+        }
+      }
       // these are the ops that call through to the underlying real data structure
       case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + ".dcUpdate(" + quote(n) + "," + quote(y) + ")")
       case VecSize(x) => emitValDef(sym, quote(x) + ".size")

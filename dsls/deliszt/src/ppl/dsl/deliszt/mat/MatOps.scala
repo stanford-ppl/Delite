@@ -12,6 +12,7 @@ import ppl.delite.framework.Config
 import ppl.dsl.deliszt.{DeLisztExp,DeLiszt}
 import ppl.dsl.deliszt._
 import ppl.dsl.deliszt.MetaInteger._
+import ppl.dsl.deliszt.vec.VecOpsExp
 
 trait MatOps extends DSLType with Variables {
   this: DeLiszt =>
@@ -415,15 +416,22 @@ trait MatOpsExpOpt extends MatOpsExp {
 
 
 trait ScalaGenMatOps extends ScalaGenBase {
-  val IR:MatOpsExp
+  val IR:MatOpsExp with VecOpsExp
 
   import IR._
   
-  val matImplPath = "ppl.dsl.deliszt.datastruct.scala.MatImpl"
+  val matImplPath = "ppl.dsl.deliszt.datastruct.scala.MatImpl"  
+  val mat3x3ImplPath = "ppl.dsl.deliszt.datastruct.scala.Mat3x3Impl"
 
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case m@MatObjNew(vs @ _*) => emitValDef(sym, remap(matImplPath, "", m.a) + "(" + vs.map(quote).reduceLeft(_+","+_) + ")")
+    case m@MatObjNew(vs @ _*) => {
+        if(vs.length == 3) {	 
+	    emitValDef(sym, remap(mat3x3ImplPath, "", m.a) + "(" + vs.map(quote).mkString(",") + ")")
+        } else {
+            emitValDef(sym, remap(matImplPath, "", m.a) + "(" + vs.map(quote).reduceLeft(_+","+_) + ")")
+        }
+    } 
     case m@MatObjNNew(numRows,numCols) => emitValDef(sym, remap(matImplPath, ".ofSize", m.a) + "(" + quote(numRows) + "," + quote(numCols) + ")")
     //case MatApply(x,i,j) => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ")")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")
