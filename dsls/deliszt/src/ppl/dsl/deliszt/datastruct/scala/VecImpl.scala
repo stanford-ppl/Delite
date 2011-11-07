@@ -36,21 +36,22 @@ class VecImpl[@specialized T: ClassManifest](val data : Array[T]) extends Vec[T]
     new VecImpl[T](data.clone)
   }
   
-  def copy() = {
-    val v = new VecImpl[T](size)
-  
+  def copy() = {  
     if(classManifest[T] <:< classManifest[Copyable]) {
+      val v = new VecImpl[T](size)
+      
       for(i <- 0 until size) {
         v(i) = data(i).asInstanceOf[Copyable].copy.asInstanceOf[T]
       }
+      
+      v
     }
     else {
-      for(i <- 0 until size) {
-        v(i) = data(i)
-      }
+      val copy = new Array[T](size)
+      Array.copy(data, 0, copy, 0, size)
+      
+      new VecImpl[T](copy)
     }
-    
-    v
   }
   
   override def toString() = {

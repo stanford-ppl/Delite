@@ -356,7 +356,6 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case e@VecApply(x, i) => vec_apply(f(x), f(i))(e.n, e.vn, e.a)
     case e@VecSize(x) => vec_size(f(x))(e.n, e.vn, e.a)
     // DeliteOpSingleTask and DeliteOpLoop
     case e@VecNegate(x) => reflectPure(new { override val original = Some(f,e) } with VecNegate(f(x))(e.n, e.vn, e.m, e.a))(mtype(manifest[A]))
@@ -377,7 +376,6 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     case e@VecZipMin(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMin(f(x),f(y))(e.n, e.vn, e.m, e.o))(mtype(manifest[A]))
     case e@VecZipMax(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMax(f(x),f(y))(e.n, e.vn, e.m, e.o))(mtype(manifest[A]))
     // Read/write effects
-    case Reflect(e@VecApply(l,r), u, es) => reflectMirrored(Reflect(VecApply(f(l),f(r))(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VecUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VecUpdate(f(l),f(i),f(r))(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     // Effect with SingleTask and DeliteOpLoop
     // Allocation
@@ -426,7 +424,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
 
   /////////////////////
   // class interface
-  def vec_apply[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]], i: Exp[Int]) = reflectPure(VecApply(x, i))
+  def vec_apply[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]], i: Exp[Int]) = dc_apply(x,i)
   
   def vec_update[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N, A]], i: Exp[Int], v: Exp[A]) = reflectWrite(x)(VecUpdate(x, i, v))
 
@@ -486,7 +484,6 @@ trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
       case v@VecObjNew(xs @ _*) => emitValDef(sym, remap(vecImplPath, "", v.a) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
       case v@VecObjNNew(i) => emitValDef(sym, remap(vecImplPath, ".ofSize", v.a) + "(" + quote(i) + ")")
       // these are the ops that call through to the underlying real data structure
-      case VecApply(x,n) => emitValDef(sym, quote(x) + ".dcApply(" + quote(n) + ")")
       case VecUpdate(x,n,y) => emitValDef(sym, quote(x) + ".dcUpdate(" + quote(n) + "," + quote(y) + ")")
       case VecSize(x) => emitValDef(sym, quote(x) + ".size")
       case VecClone(x) => emitValDef(sym, quote(x) + ".cloneL")

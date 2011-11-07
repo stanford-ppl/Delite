@@ -148,7 +148,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
       if (addSetter) {
         syncList += op //add op to list that needs sync generation
         //sync output copy with kernel completion
-        out.append("addEvent(kernelStream, d2hStream);\n")
+        //out.append("addEvent(kernelStream, d2hStream);\n")
         //write a setter
         writeSetters(op, location, out)
       }
@@ -293,6 +293,9 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     writeInputs(op, out) //then all op inputs
     writeTemps(op, out) //then all op temporaries
     out.append(");\n")
+    //out.append("cudaDeviceSynchronize();\n")
+    //out.append("printf(\"%s\\n\", cudaGetErrorString(cudaGetLastError()));")
+
   }
 
   protected def writeLibraryCall(op: DeliteOP, out: StringBuilder) {
@@ -327,7 +330,8 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         if (!first) out.append(',')
         first = false
         out.append(getSymGPU(sym))
-        if ((op.getMutableInputs. contains (input,sym)) && (input.getConsumers.filter(_.scheduledResource!=input.scheduledResource).nonEmpty)) {
+        if ((op.getMutableInputs contains (input,sym)) && (input.scheduledResource != op.scheduledResource)) {
+        //if ((op.getMutableInputs. contains (input,sym)) && (input.getConsumers.filter(_.scheduledResource!=input.scheduledResource).nonEmpty)) {
           out.append(',')
           out.append(getSymCPU(sym))
         }
