@@ -6,6 +6,8 @@ import ppl.dsl.deliszt._
 import ppl.dsl.deliszt.MetaInteger._
 
 import ppl.delite.framework.DSLType
+import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.DeliteCollectionOpsExp
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.dsl.deliszt.{DeLisztExp, DeLiszt}
@@ -140,6 +142,12 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     def n = manifest[N]
     def vn = implicitly[MVal[N]]
     def a = manifest[A]
+  }
+  
+  case class Vec3New[N<:IntM:Manifest:MVal,A:Manifest](x: Exp[A], y: Exp[A], z: Exp[A]) extends Def[Vec[N,A]] {
+    def n = manifest[N]
+    def vn = implicitly[MVal[N]]
+    def a = manifest[A]    
   }
 
   case class VecApply[N<:IntM:Manifest:MVal,A:Manifest](x: Exp[Vec[N,A]], i: Exp[Int]) extends Def[A] {
@@ -415,11 +423,20 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   /////////////////////
   // object interface
   def vec_obj_new[N<:IntM:Manifest:MVal, A:Manifest](xs: Exp[A]*) = {
-    reflectMutable(VecObjNew[N,A](xs:_*)).unsafeImmutable
+    if(xs.length == 3) {
+        //reflectMutable(Vec3New[N,A](xs(0),xs(1),xs(2))).unsafeImmutable
+        Vec3New[N,A](xs(0),xs(1),xs(2))
+	   } else {
+        reflectMutable(VecObjNew[N,A](xs:_*)).unsafeImmutable
+     }    
   }
   
-  def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i: Exp[Int]) = {
-    reflectMutable(VecObjNNew[N,A](i)).unsafeImmutable
+  def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i: Exp[Int]) = i match {
+    case Const(3) => 
+      reflectMutable(Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]))).unsafeImmutable
+      //Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A])))
+	case _ =>
+      reflectMutable(VecObjNNew[N,A](i)).unsafeImmutable
   }
 
   /////////////////////
@@ -459,8 +476,116 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   def vec_mutable_clone[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]]) = reflectMutable(VecClone(x))
 }
 
-trait VecOpsExpOpt extends VecOpsExp {
+trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
   this: VecImplOps with DeLisztExp =>
+  
+  // TODO: clean up, reuse matches, avoid as much casting
+  
+  def const_vec_apply[A:Manifest](x: Exp[A], y: Exp[A], z: Exp[A], n: Exp[Int]): Option[Exp[A]] = x match {
+    case Const(0) => Some(x)
+    case Const(1) => Some(y)
+    case Const(2) => Some(z)
+    case _ => None
+  }
+    
+  override def vec_apply[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]], n: Exp[Int]) = x match {
+    case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,n) getOrElse super.vec_apply(x,n)    
+    // case Def(e: DeliteOpLoop[_]) => e.body match {
+    //   case ce: DeliteCollectElem[_,_] => ce.alloc match {
+    //     case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,i).asInstanceOf[Option[Exp[A]]] getOrElse super.vec_apply(x,i)
+    //     case _ => super.vec_apply(x,i)
+    //   }
+    //   case _ => super.vec_apply(x,i)
+    //}
+    case Def(e: DeliteOpMap[A,_,_]) => e.body match {
+      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+        case Def(Vec3New(a,b,c)) => reifyEffects(e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
+        case _ => super.dc_apply(x,n)    
+      }
+      case _ => super.dc_apply(x,n)    
+    }
+    case Def(e: DeliteOpZipWith[A,A,_,_]) => e.body match {
+      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+        case Def(Vec3New(a,b,c)) =>
+          reifyEffects(e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
+        case _ => super.dc_apply(x,n)    
+      }
+      case _ => super.dc_apply(x,n)  
+    }    
+    // case Def(Reflect(Def(VecUpdate(Def(Reflect(Vec3New(a,b,c), u, es), i, v))), u, es)) => (n,i) match {
+    //   case (Const(l),Const(r)) if l == r => v
+    //   case _ => const_vec_apply(a,b,c,i) getOrElse super.vec_apply(x,i)    
+    // }
+    case _ => super.vec_apply(x,n)
+  }
+
+  def isVec3[A](x: Exp[DeliteCollection[A]]) = x match {
+    case Def(Vec3New(a,b,c)) => true
+    case Def(e: DeliteOpMap[A,_,_]) => e.body match {
+      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+        case Def(Vec3New(a,b,c)) => true
+        case _ => false
+      }
+      case _ => false
+    }
+    case Def(e: DeliteOpZipWith[A,A,_,_]) => e.body match {
+      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+        case Def(Vec3New(a,b,c)) => true
+        case _ => false
+      }
+      case _ => false
+    }
+    case _ => false
+  }
+
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = { 
+    if (isVec3(x)) unit(3)
+    else {
+      Predef.println("couldn't find dc_size for " + x.Type.toString)
+      super.dc_size(x)
+    }
+  }
+
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = x match {
+    case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,n) getOrElse super.dc_apply(x,n)    
+    case Def(e: DeliteOpMap[A,_,_]) => e.body match {
+      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+        case Def(Vec3New(a,b,c)) => reifyEffects(e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
+        case _ => super.dc_apply(x,n)    
+      }
+      case _ => super.dc_apply(x,n)    
+    }
+    case Def(e: DeliteOpZipWith[A,A,_,_]) => e.body match {
+      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+        case Def(Vec3New(a,b,c)) =>
+          reifyEffects(e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
+        case _ => super.dc_apply(x,n)    
+      }
+      case _ => super.dc_apply(x,n)  
+    }
+    case _ =>
+      Predef.println("couldn't find dc_apply for " + x.Type.toString)
+      Predef.println("*** Def was: " + findDefinition(x.asInstanceOf[Sym[Any]]).get.toString)
+      super.dc_apply(x,n)    
+  }
+
+  /*
+  def vec_plus[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecPlus(x,y))
+  def vec_plus_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecPlusScalar(x,y))
+  def vec_minus[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecMinus(x,y))
+  def vec_minus_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecMinusScalar(x,y))
+  def vec_times[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecTimes(x,y))
+  def vec_times_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecTimesScalar(x,y))
+
+  def vec_divide[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[Vec[N,A]]) = reflectPure(VecDivide(x,y))
+  def vec_divide_scalar[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]], y: Exp[A]) = reflectPure(VecDivideScalar(x,y))
+
+  def vec_negate[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Exp[Vec[N,A]]) = reflectPure(VecNegate(x))
+
+  def vec_sum[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]]) = reflectPure(VecSum(x))
+  def vec_abs[N<:IntM:Manifest:MVal, A:Manifest:Arith](x: Rep[Vec[N,A]]) = reflectPure(VecAbs(x))
+  */
+  override def vec_size[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]]) = if (isVec3(x)) unit(3) else super.vec_size(x)
 }
 
 trait BaseGenVecOps extends GenericFatCodegen {
@@ -489,6 +614,7 @@ trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
               emitValDef(sym, remap(vecImplPath, "", v.a) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
            }
       }
+      case v@Vec3New(a,b,c) => emitValDef(sym, remap(vec3ImplPath, "", v.a) + "(" + quote(v.x) + "," + quote(v.y) + "," + quote(v.z) + ")")
       case v@VecObjNNew(i) => {
         i match {
           case Const(n) if n==3 => emitValDef(sym, remap(vec3ImplPath, "", v.a) + "(0,0,0)")

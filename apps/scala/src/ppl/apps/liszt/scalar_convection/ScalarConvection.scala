@@ -176,7 +176,7 @@ trait SC extends DeLisztApplication {
     var start_time = 0.0
     var num_iter = 0
     // Print("ZA WHILE LOOP")
-    while(t < 4.0) {
+    while(t < 2.0) {
       if(num_iter == 1) {
         start_time = wall_time()
       }

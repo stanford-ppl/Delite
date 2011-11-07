@@ -6,8 +6,8 @@ import ppl.dsl.deliszt.MetaInteger._
 object MeshSmoothRunner extends DeLisztApplicationRunner with Smooth
 
 trait Smooth extends DeLisztApplication {
-  val float3_zero  : Rep[Vec[_3,Double]] = null
-  var float33_zero : Rep[Mat[_3,_3,Double]] = null
+  val double3_zero  : Rep[Vec[_3,Double]] = null
+  var double33_zero : Rep[Mat[_3,_3,Double]] = null
   var work_array : Rep[Mat[_3,_3,Double]] = null
   var pi : Rep[Double] = null
   var Omega : Rep[Double] = null
@@ -69,7 +69,7 @@ trait Smooth extends DeLisztApplication {
 
   def calcFaceCenter(f : Rep[Face]) : Rep[Vec[_3,Double]] = {
     var center = Vec(0.0,0.0,0.0)
-    val test = Vec(0.0,0.0,0.0,0.0)
+    val test = Vec(0.0,0.0,0.0)
     for(v <- vertices(f)) {
       center = center + position(v)
     }
@@ -79,7 +79,7 @@ trait Smooth extends DeLisztApplication {
 
   def InterpolateVertex(v : Rep[Vertex]) : Rep[Unit] = {
     var phiv = 0.0
-    var phiv_grad = float3_zero
+    var phiv_grad = double3_zero
 
     for(f <- faces(v)) {
       phiv = phiv + Phi(f)
@@ -94,7 +94,7 @@ trait Smooth extends DeLisztApplication {
     Phiv(v)=phiv
     Phiv_Grad(v)=phiv_grad
 
-    var velv = float3_zero
+    var velv = double3_zero
     for(e <- edges(v)) {
       velv = velv + Veloc(e)
     }
@@ -132,7 +132,7 @@ trait Smooth extends DeLisztApplication {
     var e1 = position(head(e)) 
     var e2 = position(tail(e))
     var e3 = e2-e1
-    var center = (e1+e2)*0.5f
+    var center = (e1+e2)*0.5
     var normal = cross(center,e3)
     var length = sqrt(dot(e3,e3))
     normal = normalize(normal)*length
@@ -143,7 +143,7 @@ trait Smooth extends DeLisztApplication {
   
     var rad2i = 1.0/dot(center,center)
 
-    work_array = float33_zero.mutable
+    work_array = double33_zero.mutable
     work_array(0,0)= 1.0 - center.x*center.x*rad2i
     work_array(0,1)=     - center.x*center.y*rad2i
     work_array(0,2)=     - center.x*center.z*rad2i
@@ -163,7 +163,7 @@ trait Smooth extends DeLisztApplication {
     var center = edge_center(e)
     var rad = sqrt(dot(center,center))
     var theta = acos(center.z/rad)
-    theta=(pi*0.5).asInstanceOfL[Double]-theta
+    theta=(pi*0.5)-theta
   
     var lambda = atan2(center.y,center.x)
   
@@ -172,8 +172,8 @@ trait Smooth extends DeLisztApplication {
     val cr = cos(lambda*R)
     val sr = sin(lambda*R)
 
-    var uhat =  omega*ct+K*pow(ct,(R-1))*(st*st*R-ct*ct)*cr
-    var vhat = -K*R*pow(ct,(R-1))*st*sr
+    var uhat =  omega*ct+K*pow(ct,unit(R-1.0))*(st*st*R-ct*ct)*cr
+    var vhat = -K*R*pow(ct,unit(R-1.0))*st*sr
     
     var ux = -uhat*sin(lambda)-vhat*sin(theta)*cos(lambda)
     var uy =  uhat*cos(lambda)-vhat*sin(theta)*sin(lambda)
@@ -189,7 +189,7 @@ trait Smooth extends DeLisztApplication {
   def SetIC(f : Rep[Face]) : Rep[Unit] = {
     val omega = 0.1079
     val K = 0.1079
-    val R = 4.0
+    val R = 4
     
     val center = face_centroid(f)
     val theta  = theta_face(f)
@@ -197,10 +197,10 @@ trait Smooth extends DeLisztApplication {
     val ct = cos(theta)
     val st = sin(theta)
 
-    val atheta = omega*0.5*(2.0+omega)*ct*ct+0.25*K*K*pow(ct,(2*R))*(ct*ct*(R+1)+(2*R*R-R-2)-(2*R*R)/(ct*ct+1.e-12))
+    val atheta = omega*0.5*(2.0+omega)*ct*ct+0.25*K*K*pow(ct,unit(2.0*R))*(ct*ct*(R+1)+(2*R*R-R-2)-unit(2.0*R*R)/(ct*ct+1.0e-12))
       
-    val btheta = 2*(1.0+omega)*K/(R+1)/(R+2)*pow(ct,(R))*((R*R+2*R+2)-ct*ct*(R+1)*(R+1))
-    val ctheta = 0.25*K*K*pow(ct,(2*R))*(ct*ct*(R+1)-R-2)
+    val btheta = 2*(1.0+omega)*K/(R+1)/(R+2)*pow(ct,unit(1.0*R))*(unit(R*R+2.0*R+2)-ct*ct*(R+1)*(R+1))
+    val ctheta = 0.25*K*K*pow(ct,unit(2.0*R))*(ct*ct*(R+1)-R-2)
 
     val phi = 0.3648 + atheta+btheta*cos(lambda*R)+ctheta*cos(lambda*2*R) // TODO
 
@@ -211,7 +211,7 @@ trait Smooth extends DeLisztApplication {
     var coords = position(v) 
     var rad = sqrt(dot(coords,coords))
     var theta = acos(coords.z/rad)
-    theta=(pi*0.5f).asInstanceOfL[Double]-theta
+    theta=(pi*0.5)-theta
   
     var lambda = atan2(coords.y,coords.x)
 
@@ -223,7 +223,7 @@ trait Smooth extends DeLisztApplication {
     var coords = face_centroid(f) 
     var rad = sqrt(dot(coords,coords))
     var theta = acos(coords.z/rad)
-    theta=pi*0.5f-theta
+    theta=pi*0.5-theta
     var lambda = atan2(coords.y,coords.x)
 
     theta_face(f)  = theta
@@ -234,7 +234,7 @@ trait Smooth extends DeLisztApplication {
     var coords = edge_center(e) 
     var rad = sqrt(dot(coords,coords))
     var theta = acos(coords.z/rad)
-    theta=pi*0.5f-theta
+    theta=pi*0.5-theta
   
     var lambda = atan2(coords.y,coords.x)
 
@@ -261,7 +261,7 @@ trait Smooth extends DeLisztApplication {
     var coords2_z = coords1_x*thetas+coords1_z*thetac
 
     var theta = acos(coords2_z/sqrt(coords2_x*coords2_x+coords2_y*coords2_y+coords2_z*coords2_z))
-    theta=pi*0.5f-theta
+    theta=pi*0.5-theta
     var lambda = atan2(coords2_y,coords2_x)
     var Phif = Phi(f)
 
@@ -284,9 +284,9 @@ trait Smooth extends DeLisztApplication {
           var coords2c_x = coords1c_x*thetac-coords1c_z*thetas
           var coords2c_z = coords1c_x*thetas+coords1c_z*thetac
             
-              var theta_c  = acos(coords2c_z/sqrt(coords2c_x*coords2c_x+coords2c_y*coords2c_y+coords2c_z*coords2c_z))
-          theta_c=(pi*0.5f).asInstanceOfL[Double]-theta_c
-              var lambda_c = atan2(coords2c_y,coords2c_x)
+          var theta_c  = acos(coords2c_z/sqrt(coords2c_x*coords2c_x+coords2c_y*coords2c_y+coords2c_z*coords2c_z))
+          theta_c=(pi*0.5)-theta_c
+          var lambda_c = atan2(coords2c_y,coords2c_x)
 
           var dlambda = (lambda_c-lambda)
           var dtheta  = (theta_c-theta)
@@ -336,7 +336,7 @@ trait Smooth extends DeLisztApplication {
     var coords2_z = coords1_x*thetas+coords1_z*thetac
 
     var theta = acos(coords2_z/sqrt(coords2_x*coords2_x+coords2_y*coords2_y+coords2_z*coords2_z))
-    theta=(pi*0.5f).asInstanceOfL[Double]-theta
+    theta=(pi*0.5)-theta
     var lambda = atan2(coords2_y,coords2_x)
     var Vele = Veloc(e)
 
@@ -365,7 +365,7 @@ trait Smooth extends DeLisztApplication {
           var coords2c_z = coords1c_x*thetas+coords1c_z*thetac
             
               var theta_c  = acos(coords2c_z/sqrt(coords2c_x*coords2c_x+coords2c_y*coords2c_y+coords2c_z*coords2c_z))
-          theta_c = (pi*0.5f).asInstanceOfL[Double]-theta_c
+          theta_c = (pi*0.5)-theta_c
               var lambda_c = atan2(coords2c_y,coords2c_x)
 
           var dVel  = Veloc(e_c)-Vele
@@ -412,18 +412,18 @@ trait Smooth extends DeLisztApplication {
         
     Velochat_Grad(e) = CP
              
-    var grad = float3_zero
+    var grad = double3_zero
         
     for (f <- faces(e)) 
       grad = grad + Phi_Grad(f)
         
     val grad1 = P*grad
-    Phihat_Grad(e)=grad1*0.5f
+    Phihat_Grad(e)=grad1*0.5
   }
 
   def calcGradient() {
    for( f <- faces(mesh) ) 
-    Phi_Grad(f) = float3_zero 
+    Phi_Grad(f) = double3_zero 
 
 
   for (e <- edges(mesh)) {
@@ -445,28 +445,28 @@ trait Smooth extends DeLisztApplication {
 
   def main() {
     val iterations = 100
-    float3_zero  = Vec(0.0,0.0,0.0)
-    float33_zero = Mat(float3_zero,float3_zero,float3_zero)
-    work_array = float33_zero
-    pi = MATH_PI.asInstanceOfL[Double]
+    double3_zero  = Vec(0.0,0.0,0.0)
+    double33_zero = Mat(double3_zero,double3_zero,double3_zero)
+    work_array = double33_zero
+    pi = MATH_PI
     Omega = unit(1.0)
     alpha = 0.0*pi
 
     Phi        = FieldWithConst[Face,Double](0.0)
     PhiOld     = FieldWithConst[Face,Double](0.0)
-    Phi_Grad   = FieldWithConst[Face,Vec[_3,Double]](float3_zero)
+    Phi_Grad   = FieldWithConst[Face,Vec[_3,Double]](double3_zero)
     Flux  	 = FieldWithConst[Face,Double](0.0)
-    Veloc 	 = FieldWithConst[Edge,Vec[_3,Double]](float3_zero)
-    VelocOld	 = FieldWithConst[Edge,Vec[_3,Double]](float3_zero)
-    Rhs_Veloc	 = FieldWithConst[Edge,Vec[_3,Double]](float3_zero)
-    Velochat_Grad = FieldWithConst[Edge,Mat[_3,_3,Double]](float33_zero)
-    Phihat_Grad= FieldWithConst[Edge,Vec[_3,Double]](float3_zero)
-    PMat       = FieldWithConst[Edge,Mat[_3,_3,Double]](float33_zero)
+    Veloc 	 = FieldWithConst[Edge,Vec[_3,Double]](double3_zero)
+    VelocOld	 = FieldWithConst[Edge,Vec[_3,Double]](double3_zero)
+    Rhs_Veloc	 = FieldWithConst[Edge,Vec[_3,Double]](double3_zero)
+    Velochat_Grad = FieldWithConst[Edge,Mat[_3,_3,Double]](double33_zero)
+    Phihat_Grad= FieldWithConst[Edge,Vec[_3,Double]](double3_zero)
+    PMat       = FieldWithConst[Edge,Mat[_3,_3,Double]](double33_zero)
 
     //some fields for output
     Phiv  	 = FieldWithConst[Vertex,Double](0.0)
-    Phiv_Grad  = FieldWithConst[Vertex,Vec[_3,Double]](float3_zero)
-    Velocv     = FieldWithConst[Vertex,Vec[_3,Double]](float3_zero)
+    Phiv_Grad  = FieldWithConst[Vertex,Vec[_3,Double]](double3_zero)
+    Velocv     = FieldWithConst[Vertex,Vec[_3,Double]](double3_zero)
 
     //some geometry fields
     position = FieldWithLabel[Vertex,Vec[_3,Double]]("position")
@@ -480,13 +480,13 @@ trait Smooth extends DeLisztApplication {
     theta_edge  = FieldWithConst[Edge,Double](0.0)
     lambda_edge = FieldWithConst[Edge,Double](0.0)
 
-    face_centroid = FieldWithConst[Face,Vec[_3,Double]](float3_zero)
+    face_centroid = FieldWithConst[Face,Vec[_3,Double]](double3_zero)
     face_area = FieldWithConst[Face,Double](0.0)
-    face_normal = FieldWithConst[Face,Vec[_3,Double]](float3_zero)
+    face_normal = FieldWithConst[Face,Vec[_3,Double]](double3_zero)
 
-    edge_center  = FieldWithConst[Edge,Vec[_3,Double]](float3_zero)
+    edge_center  = FieldWithConst[Edge,Vec[_3,Double]](double3_zero)
     edge_length  = FieldWithConst[Edge,Double](0.0)
-    edge_normal  = FieldWithConst[Edge,Vec[_3,Double]](float3_zero)
+    edge_normal  = FieldWithConst[Edge,Vec[_3,Double]](double3_zero)
   
     for(f <- faces(mesh)) 
       calcFaceGeom(f)
@@ -557,11 +557,11 @@ trait Smooth extends DeLisztApplication {
           val Vel = Veloc(e)
           val dist = sqrt(dot(center-centroid,center-centroid))
           val Velmag = sqrt(dot(Vel,Vel))
-          dt_min = dt_min min (dist/Velmag*0.025f)
+          dt_min = dt_min min (dist/Velmag*0.025)
         }
       }
 
-      var deltat = dt_min
+     var deltat = dt_min
 // --------------- time step --------------
 
 // --------------- Store  --------------
@@ -577,24 +577,10 @@ trait Smooth extends DeLisztApplication {
       } 
 // --------------- Store  --------------
 
-      var iter = 0
-      
-    /*  for(e <- edges(mesh)) {
-        val left_face  = left(e)
-        val right_face = right(e)
-        
-        Flux(left_face)  = Flux(left_face)
-        Flux(right_face) = Flux(right_face)
-        
-        if(ID(e) < 200) {
-          Print("EDGE ", ID(e), " LEFT ", ID(left_face), " RIGHT ", ID(right_face))
-        }
-      }	
-
-      */
+      var iter = 0.0
       
       while (iter <= 4) {
-        val factor = deltat/(5.0-iter.asInstanceOfL[Double])
+        var factor = deltat/(5.0-readVar(iter))
 
     //calcGradient()
    
@@ -672,7 +658,7 @@ trait Smooth extends DeLisztApplication {
         iter+=1
       }
       t += deltat
-      Print("Simulation time = ",t," delta t = ",deltat)
+     // Print("Simulation time = ",t," delta t = ",deltat)
     }	
     Print( "TIME_FOR_LOOP: ", wall_time() - start_time ) ;
 // ========================== Core ===============================
