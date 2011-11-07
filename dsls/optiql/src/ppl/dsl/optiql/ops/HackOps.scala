@@ -45,7 +45,7 @@ trait HackOpsExp extends HackOps with FieldAccessOpsExp with EffectExp with Arra
 
   case class InputColumn[T](x: Exp[Any], id: String) extends Def[Array[T]]
   case class InputSize[T](x: Exp[Any]) extends Def[Int]
-  def get_column[T:Manifest](x: Exp[Any], id: String): Exp[Array[T]] = InputColumn[T](x, id)
+  def get_column[T:Manifest](x: Exp[Any], id: String): Exp[Array[T]] = reflectEffect(InputColumn[T](x, id))
   def get_size[T:Manifest](x: Exp[Any]): Exp[Int] = InputSize(x)
 
   def soa_convert[T:Manifest](x: Exp[Any], tp: String, fields: Map[String,Manifest[_]]): Exp[T] = {
