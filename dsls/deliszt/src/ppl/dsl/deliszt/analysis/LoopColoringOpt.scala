@@ -135,7 +135,11 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           interferenceBuilder.trivialColoring(ms)
         }
         
+        if(coloring.numColors <= 1) {
+          println("Found one color for loop " + id)
+        }
         if(coloring.numColors > 1) {
+          println("Coloring loop " + id + " num colors: " + coloring.numColors)
           val (color_idx, color_values) = coloring.collect()
          
   /*       
