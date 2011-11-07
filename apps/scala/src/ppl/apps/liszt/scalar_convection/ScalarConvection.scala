@@ -237,8 +237,8 @@ trait SC extends DeLisztApplication {
     
     Print( "TIME_FOR_LOOP: ", wall_time() - start_time, " num iter: ", num_iter )
       
-    // for(c <- cells(mesh)) {
-      // Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
-    // }
+    for(c <- cells(mesh)) {
+      Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
+    }
   }
 }
