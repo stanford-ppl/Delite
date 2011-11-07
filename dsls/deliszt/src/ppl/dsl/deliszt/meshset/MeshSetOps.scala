@@ -174,7 +174,7 @@ trait ScalaGenMeshSetOps extends ScalaGenBase {
             stream.println("var i = " + quote(crs) + ".row(" + quote(f.eid) + "+1)-1")
             stream.println("val end = " + quote(crs) + ".row(" + quote(f.eid) + ")-1")
             stream.println("while (i > end) {")
-              stream.println("val " + quote(f.mo) + " = " + quote(crs) + ".values(i)") 
+              stream.println("val " + quote(f.mo) + " = " + quote(crs) + ".values(i) ^ generated.scala.Mesh.DMASK") 
               emitBlock(f.body)
               stream.println("i -= 1")
               stream.print(quote(getBlockResult(f.body)))
