@@ -69,7 +69,7 @@ trait Smooth extends DeLisztApplication {
 
   def calcFaceCenter(f : Rep[Face]) : Rep[Vec[_3,Double]] = {
     var center = Vec(0.0,0.0,0.0)
-    val test = Vec(0.0,0.0,0.0)
+    //val test = Vec(0.0,0.0,0.0)
     for(v <- vertices(f)) {
       center = center + position(v)
     }
@@ -300,8 +300,8 @@ trait Smooth extends DeLisztApplication {
         }
       }
     }
-    var dPhi_dlam = (df*cf-ef*bf)/(af*cf-bf*bf)
-    var dPhi_dthe = (ef*af-df*bf)/(af*cf-bf*bf)
+    val dPhi_dlam = (df*cf-ef*bf)/(af*cf-bf*bf)
+    val dPhi_dthe = (ef*af-df*bf)/(af*cf-bf*bf)
       
     var arg = 1.0/sqrt(1.0-coords.z*coords.z/rad2)
     var dthe_dx = -coords.z*coords.x*arg
@@ -310,9 +310,9 @@ trait Smooth extends DeLisztApplication {
     var dlam_dx = -coords.y/(sqrt(coords.x*coords.x+coords.y*coords.y))
     var dlam_dy =  coords.x/(sqrt(coords.x*coords.x+coords.y*coords.y))
         
-    var dPhi_dx = dPhi_dlam*dlam_dx+dPhi_dthe*dthe_dx
-    var dPhi_dy = dPhi_dlam*dlam_dy+dPhi_dthe*dthe_dy
-    var dPhi_dz = dPhi_dthe*dthe_dz
+    val dPhi_dx = dPhi_dlam*dlam_dx+dPhi_dthe*dthe_dx
+    val dPhi_dy = dPhi_dlam*dlam_dy+dPhi_dthe*dthe_dy
+    val dPhi_dz = dPhi_dthe*dthe_dz
 
     Phi_Grad(f) = Vec(dPhi_dx,dPhi_dy,dPhi_dz)
   }
@@ -349,8 +349,8 @@ trait Smooth extends DeLisztApplication {
     var ef0 = 0.0
     var ef1 = 0.0
     var ef2 = 0.0
-    var df = Vec(0.0,0.0,0.0)
-    var ef = Vec(0.0,0.0,0.0)
+    //var df = Vec(0.0,0.0,0.0)
+    //var ef = Vec(0.0,0.0,0.0)
 
     for (f <- faces(e)) {
       for (e_c <- edges(f)) {
@@ -388,11 +388,11 @@ trait Smooth extends DeLisztApplication {
         }
       }
     }
-    df = Vec(df0,df1,df2)
-    ef = Vec(ef0,ef1,ef2)
+    val df = Vec(df0,df1,df2)
+    val ef = Vec(ef0,ef1,ef2)
         
-    var dVel_dlam = (df*cf-ef*bf)/(af*cf-bf*bf)
-    var dVel_dthe = (ef*af-df*bf)/(af*cf-bf*bf)
+    val dVel_dlam = (df*cf-ef*bf)/(af*cf-bf*bf)
+    val dVel_dthe = (ef*af-df*bf)/(af*cf-bf*bf)
       
     var arg = 1.0/sqrt(1.0-coords.z*coords.z/rad2)
     var dthe_dx =  -coords.z*coords.x*arg
@@ -401,9 +401,9 @@ trait Smooth extends DeLisztApplication {
     var dlam_dx = -coords.y/(sqrt(coords.x*coords.x+coords.y*coords.y))
     var dlam_dy =  coords.x/(sqrt(coords.x*coords.x+coords.y*coords.y))
 
-    var dVel_dx = dVel_dlam*dlam_dx+dVel_dthe*dthe_dx
-    var dVel_dy = dVel_dlam*dlam_dy+dVel_dthe*dthe_dy
-    var dVel_dz = dVel_dthe*dthe_dz
+    val dVel_dx = dVel_dlam*dlam_dx+dVel_dthe*dthe_dx
+    val dVel_dy = dVel_dlam*dlam_dy+dVel_dthe*dthe_dy
+    val dVel_dz = dVel_dthe*dthe_dz
         
     val C  = Mat(dVel_dx,dVel_dy,dVel_dz)
     val P  = PMat(e)
@@ -547,7 +547,7 @@ trait Smooth extends DeLisztApplication {
       // Print("STEP ", step)
 
       // Print("dt_min loop")
-      
+     
       for(f <- faces(mesh)) {
         val centroid = face_centroid(f)
         //Print(ID(f), " EDGES")
