@@ -374,7 +374,7 @@ trait MatOpsExp extends MatOps with VariablesExp with DeliteCollectionOpsExp {
 
   ////////////////////
   // object interface
-  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*) = {    
+  def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*): Exp[Mat[R,C,A]] = {    
     if (vs.length == 3) {
       Predef.println("!!! found a matrix constructor with Vec3 args !!!")
       val buf = new scala.collection.mutable.ArrayBuffer[Exp[A]]()
@@ -402,7 +402,9 @@ trait MatOpsExp extends MatOps with VariablesExp with DeliteCollectionOpsExp {
         case _ => Predef.println(" found non vec3?! : " + e.Type.toString)
                   Predef.println(" def is: " + findDefinition(e.asInstanceOf[Sym[Any]]).toString)
       }}
-      Mat3New[R,C,A](buf.toArray)
+      if (buf.length == 0) return reflectMutable(MatObjNew[R,C,A](vs:_*)).unsafeImmutable 
+      else return reflectMutable(Mat3New[R,C,A](buf.toArray)).unsafeImmutable
+      //else return Mat3New[R,C,A](buf.toArray)
     }
     else 
       reflectMutable(MatObjNew[R,C,A](vs:_*)).unsafeImmutable

@@ -424,6 +424,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   // object interface
   def vec_obj_new[N<:IntM:Manifest:MVal, A:Manifest](xs: Exp[A]*) = {
     if(xs.length == 3) {
+        //reflectMutable(Vec3New[N,A](xs(0),xs(1),xs(2))).unsafeImmutable
         Vec3New[N,A](xs(0),xs(1),xs(2))
 	   } else {
         reflectMutable(VecObjNew[N,A](xs:_*)).unsafeImmutable
@@ -432,8 +433,9 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   
   def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i: Exp[Int]) = i match {
     case Const(3) => 
-      Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]))
-	  case _ =>
+      reflectMutable(Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]))).unsafeImmutable
+      //Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A])))
+	case _ =>
       reflectMutable(VecObjNNew[N,A](i)).unsafeImmutable
   }
 
@@ -563,6 +565,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     }
     case _ =>
       Predef.println("couldn't find dc_apply for " + x.Type.toString)
+      Predef.println("*** Def was: " + findDefinition(x.asInstanceOf[Sym[Any]]).get.toString)
       super.dc_apply(x,n)    
   }
 
