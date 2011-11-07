@@ -51,9 +51,9 @@ object FieldImpl {
 }
 
 class FieldImpl[@specialized T: ClassManifest](val data : Array[T]) extends Field[T] {
-  def apply(idx: Int) = data(Mesh.internal(idx))
+  def apply(idx: Int) = data(idx)
   def update(idx: Int, x: T) = {
-    data(Mesh.internal(idx)) = x
+    data(idx) = x
   }
   def size = data.length
   

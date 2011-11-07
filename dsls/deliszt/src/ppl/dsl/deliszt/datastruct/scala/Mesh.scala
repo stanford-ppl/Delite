@@ -14,15 +14,17 @@ object Mesh {
   var mesh: Mesh = null
   var loader: MeshLoader = null
   
-  val MASK = 0x80000000
+  val DMASK = 0x80000000
+  val IMASK = 0x7FFFFFFF
+  val SHIFT = 31
   val FORWARD = 1
   val REVERSE = -1
 
-  def reversed(id : Int) = {(id & MASK) != 0}
-  def reverse(id : Int) = {id ^ MASK}
-  def internal(id : Int) = {id & ~MASK}
+  def reversed(id : Int) = {(id & DMASK) != 0}
+  def reverse(id : Int) = {id ^ DMASK}
+  def internal(id : Int) = {id & IMASK}
   
-  def flip(e: Int): Int = {e ^ MASK}
+  def flip(e: Int): Int = {e ^ DMASK}
   
   val OUTSIDE = 0
   val INSIDE = 1
@@ -96,7 +98,7 @@ class Mesh {
 
   def verticesCCW(e: Int): MeshSet = {
     val c = outside(e)
-    if(ftoc.apply(Mesh.internal(e), Mesh.OUTSIDE) == Mesh.internal(c)) {
+    if(ftoc.apply(Mesh.IMASK & e, Mesh.OUTSIDE) == (Mesh.IMASK & c)) {
       IndexSetImpl(ftov, e)
     } else {
       CWIndexSetImpl(ftov, e)
@@ -105,14 +107,14 @@ class Mesh {
   
   def verticesCW(e: Int): MeshSet = {
     val c = outside(e)
-    if(ftoc.apply(Mesh.internal(e), Mesh.INSIDE) == Mesh.internal(c)) {
+    if(ftoc.apply(Mesh.IMASK & e, Mesh.INSIDE) == (Mesh.IMASK & c)) {
       IndexSetImpl(ftov, e)
     } else {
       CWIndexSetImpl(ftov, e)
     }
   }
   
-  def vertex(e: Int, i: Int): Int = { val set = IndexSetImpl(etov, e); set(i) }
+  def vertex(e: Int, i: Int): Int = { ctov.apply(e, i) }
 
   def cellsMesh: MeshSet = new CellSetImpl(ncells)
   def cellsVertex(e: Int): MeshSet = IndexSetImpl(vtoc, e)
@@ -122,7 +124,7 @@ class Mesh {
 
   def cellsCCW(e: Int): MeshSet = {
     val v = head(e)
-    if(etov.apply(Mesh.internal(e), Mesh.HEAD) == Mesh.internal(v)) {
+    if(etov.apply(Mesh.IMASK & e, Mesh.HEAD) == (Mesh.IMASK & v)) {
       IndexSetImpl(etoc, e)
     } else {
       CWIndexSetImpl(etoc, e)
@@ -131,7 +133,7 @@ class Mesh {
   
   def cellsCW(e: Int): MeshSet = {
     val v = head(e)
-    if(etov.apply(Mesh.internal(e), Mesh.TAIL) == Mesh.internal(v)) {
+    if(etov.apply(Mesh.IMASK & e, Mesh.TAIL) == (Mesh.IMASK & v)) {
       IndexSetImpl(etoc, e)
     } else {
       CWIndexSetImpl(etoc, e)
@@ -145,7 +147,7 @@ class Mesh {
 
   def edgesCCW(e: Int): MeshSet = {
     val c = outside(e)
-    if(ftoc.apply(Mesh.internal(e), Mesh.OUTSIDE) == Mesh.internal(c)) {
+    if(ftoc.apply(Mesh.IMASK & e, Mesh.OUTSIDE) == (Mesh.IMASK & c)) {
       IndexSetImpl(ftoe, e)
     } else {
       CWIndexSetImpl(ftoe, e)
@@ -154,7 +156,7 @@ class Mesh {
   
   def edgesCW(e: Int): MeshSet = {
     val c = outside(e)
-    if(ftoc.apply(Mesh.internal(e), Mesh.INSIDE) == Mesh.internal(c)) {
+    if(ftoc.apply(Mesh.IMASK & e, Mesh.INSIDE) == (Mesh.IMASK & c)) {
       IndexSetImpl(ftoe, e)
     } else {
       CWIndexSetImpl(ftoe, e)
@@ -168,7 +170,7 @@ class Mesh {
 
   def facesCCW(e: Int): MeshSet = {
     val v = head(e)
-    if(etov.apply(Mesh.internal(e), Mesh.HEAD) == Mesh.internal(v)) {
+    if(etov.apply(Mesh.IMASK & e, Mesh.HEAD) == (Mesh.IMASK & v)) {
       IndexSetImpl(etof, e)
     } else {
       CWIndexSetImpl(etof, e)
@@ -177,28 +179,28 @@ class Mesh {
   
   def facesCW(e: Int): MeshSet = {
     val v = head(e)
-    if(etov.apply(Mesh.internal(e), Mesh.TAIL) == Mesh.internal(v)) {
+    if(etov.apply((Mesh.IMASK & e), Mesh.TAIL) == (Mesh.IMASK & v)) {
       IndexSetImpl(etoc, e)
     } else {
       CWIndexSetImpl(etoc, e)
     }
   }
   
-  def face(e: Int, i: Int): Int = etof.apply(Mesh.internal(e), i)
+  def face(e: Int, i: Int): Int = etof.apply(e, i)
 
-  def head(e: Int): Int = etov.apply(Mesh.internal(e), if(Mesh.reversed(e)) 1 else 0)
-  def tail(e: Int): Int = etov.apply(Mesh.internal(e), if(Mesh.reversed(e)) 0 else 1)
+  def head(e: Int): Int = etov.apply(Mesh.IMASK & e, (e & Mesh.DMASK) >>> Mesh.SHIFT)
+  def tail(e: Int): Int = etov.apply(Mesh.IMASK & e, (e ^ Mesh.DMASK) >>> Mesh.SHIFT)
 
-  def outside(e: Int): Int = ftoc.apply(Mesh.internal(e), if(Mesh.reversed(e)) 1 else 0)
-  def inside(e: Int): Int = ftoc.apply(Mesh.internal(e), if(Mesh.reversed(e)) 0 else 1)
+  def outside(e: Int): Int = ftoc.apply(Mesh.IMASK & e, (e & Mesh.DMASK) >>> Mesh.SHIFT)
+  def inside(e: Int): Int = ftoc.apply(Mesh.IMASK & e, (e ^ Mesh.DMASK) >>> Mesh.SHIFT)
 
   def towardsEdgeVertex(e: Int, v: Int): Int = {
-    val facing = Mesh.internal(etov.apply(Mesh.internal(e), Mesh.HEAD)) == Mesh.internal(v)
+    val facing = (Mesh.IMASK & etov.apply(Mesh.IMASK & e, Mesh.HEAD)) == (Mesh.IMASK & v)
     if(facing) e else Mesh.flip(e)
   }
 
   def towardsFaceCell(e: Int, c: Int): Int = {
-    val facing = Mesh.internal(ftoc.apply(Mesh.internal(e), Mesh.OUTSIDE)) == Mesh.internal(c)
+    val facing = (Mesh.IMASK & ftoc.apply(Mesh.IMASK & e, Mesh.HEAD)) == (Mesh.IMASK & c)
     if(facing) e else Mesh.flip(e)
   }
   
@@ -249,3 +251,4 @@ class Mesh {
 
   vertexData.fns("position") = positionToVec
 }
+

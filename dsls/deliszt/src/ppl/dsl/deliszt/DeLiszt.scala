@@ -272,6 +272,10 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
       res = expr.replaceAllIn(res, "Int")
     }
     
+    // Replace fields with just flat arrays
+    /* val fieldExpr = ("(ppl\\.dsl\\.deliszt|generated\\.scala)\\.Field\\b").r  
+    res = fieldExpr.replaceAllIn(res, "Array") */
+    
     for(tpe1 <- List("Int","Long","Double","Float","Boolean")) {
       val parSub = (m: Regex.Match) => {
         val rest = (m.group(2) + m.group(4)).replaceAll("""^\s+""", "")

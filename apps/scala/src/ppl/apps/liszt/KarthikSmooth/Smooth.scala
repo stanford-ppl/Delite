@@ -578,6 +578,18 @@ trait Smooth extends DeLisztApplication {
 // --------------- Store  --------------
 
       var iter = 0
+      
+      for(e <- edges(mesh)) {
+        val left_face  = left(e)
+        val right_face = right(e)
+        
+        Flux(left_face)  = Flux(left_face)
+        Flux(right_face) = Flux(right_face)
+        
+        if(ID(e) < 200) {
+          Print("EDGE ", ID(e), " LEFT ", ID(left_face), " RIGHT ", ID(right_face))
+        }
+      }	
 
       while (iter <= 4) {
         val factor = deltat/(5.0-iter.asInstanceOfL[Double])

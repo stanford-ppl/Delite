@@ -138,11 +138,10 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         if(coloring.numColors <= 1) {
           println("Found one color for loop " + id)
         }
-        if(coloring.numColors > 1) {
+        else if(coloring.numColors > 1) {
           println("Coloring loop " + id + " num colors: " + coloring.numColors)
           val (color_idx, color_values) = coloring.collect()
-         
-  /*       
+              
           print("Loop id: " + id)
           if(forMap.contains(id)) {
             // Output coloring for debugging
@@ -155,7 +154,7 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
               i += 1
             }
             
-            i = 0
+            /* i = 0
             while(i < coloring.numColors) {
               var j = color_idx(i)
               while (j < color_idx(i+1)) {
@@ -163,12 +162,12 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
                 j += 1
               }
               i += 1
-            }
+            } */
           }
           else {
             println(" trivial coloring")
           }
-  */        
+     
           /* transform loop into multiple loops, one per color */
           
           // utils

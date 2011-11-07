@@ -28,5 +28,5 @@ object CWIndexSetImpl {
 }
 
 class IndexSetImpl(data : Array[Int], override val size: Int, start: Int, end: Int, dir: Int) extends MeshSet {
-  def apply(i : Int) : Int = data(start + i*dir) ^ (dir & Mesh.MASK)
+  def apply(i : Int) : Int = data(start + i*dir) ^ (dir & Mesh.DMASK)
 }
