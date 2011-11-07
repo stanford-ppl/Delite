@@ -157,6 +157,7 @@ trait SC extends DeLisztApplication {
       val v = ms(i)
       ll = ll min position(v)
       ur = ur max position(v)
+      i += 1
     }
     val mesh_center = (ll + ur) * .5
     for(c <- cells(mesh)) {
@@ -241,8 +242,8 @@ trait SC extends DeLisztApplication {
     
     Print( "TIME_FOR_LOOP: ", wall_time() - start_time, " num iter: ", num_iter )
       
-    // for(c <- cells(mesh)) {
-      // Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
-    // }
+    for(c <- cells(mesh)) {
+      Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
+    }
   }
 }

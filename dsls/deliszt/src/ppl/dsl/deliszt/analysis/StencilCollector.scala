@@ -120,8 +120,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   val values = MMap[Int,Any]()
   
   def store(sym: Sym[_], x: Any) {
-    //System.out.println("STORING IN " + sym.id)
-    //System.out.println(x)
+    // System.out.println("STORING IN " + sym.id)
+    // System.out.println(x)
     values(sym.id) = x
   }
     
@@ -145,6 +145,12 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   }
   
   def rawValue(x: Exp[Any]) : Option[Any] = x match {
+    // case Const(null) => { System.out.println("null"); None }
+    // case Const(s: String) => { System.out.println("string"); Some(s) }
+    // case null => { System.out.println("null"); None }
+    // case Const(f: Float) => { System.out.println("float"); Some(f) }
+    // case Const(z) => { System.out.println("const"); Some(z) }
+    // case Sym(n) => { System.out.println("GET SYM " + n); values.get(n) }
     case Const(null) => None
     case Const(s: String) => Some(s)
     case null => None
@@ -253,9 +259,13 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       }
       
       case DeliteCollectionApply(e, i) => {
+        // System.out.println("VALUE OF APPLY")
+        // System.out.println(rawValue(e))
+        // System.out.println(rawValue(i))
+      
         val obj = (rawValue(e), rawValue(i)) match {
           case (Some(c), Some(idx)) => { OneObj(c.asInstanceOf[DeliteCollection[Int]].dcApply(idx.asInstanceOf[Int])) }
-          case _ => { NoObjs } // What is going on here 
+          case _ => { System.out.println("FOUND NO OBJ"); NoObjs() } // What is going on here 
         }
         
         obj
@@ -303,8 +313,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   def runSchedule(tps: Seq[TP[Any]]) {
     for(TP(sym, rhs) <- tps) {
-      //System.out.println("RUNNING SCHEDULE " + sym.id)
-      //System.out.println(rhs)
+      // System.out.println("RUNNING SCHEDULE " + sym.id)
+      // System.out.println(rhs)
       rhs match {
         // Foreach, only apply to top level foreach though...
         case f@NestedMeshSetForeach(m, crs, e, b) => {
@@ -423,7 +433,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   var level = 0
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
-    // System.out.println("EMITTING NODE")
+    // System.out.println("EMITTING NODE " + sym.id)
     // System.out.println(rhs)
     
     if(Config.collectStencil) {
