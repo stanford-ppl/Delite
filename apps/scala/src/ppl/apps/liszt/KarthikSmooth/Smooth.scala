@@ -69,11 +69,7 @@ trait Smooth extends DeLisztApplication {
 
   def calcFaceCenter(f : Rep[Face]) : Rep[Vec[_3,Double]] = {
     var center = Vec(0.0,0.0,0.0)
-<<<<<<< HEAD
     //val test = Vec(0.0,0.0,0.0)
-=======
-    val test = Vec(0.0,0.0,0.0,0.0)
->>>>>>> parent of de3a886... Merge branch 'deliszt_opt' of github.com:stanford-ppl/Delite into deliszt_opt
     for(v <- vertices(f)) {
       center = center + position(v)
     }
@@ -582,10 +578,6 @@ trait Smooth extends DeLisztApplication {
 // --------------- Store  --------------
 
       var iter = 0
-<<<<<<< HEAD
-=======
-
->>>>>>> parent of de3a886... Merge branch 'deliszt_opt' of github.com:stanford-ppl/Delite into deliszt_opt
       while (iter <= 4) {
         val factor = deltat/(5.0-iter.asInstanceOfL[Double])
 
