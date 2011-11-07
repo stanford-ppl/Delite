@@ -22,72 +22,20 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   val IR: DeliteApplication with DeLisztExp
   import IR._
   
-  object MultipleMeshSet {
-    def apply(in: MultipleMeshObj, f: Int => MeshSet) : MeshSet = {
-      val builder = new MultipleMeshSetBuilder()
-      
-      for(mo <- in.objs) {
-        builder += f(mo)
-      }
-      
-      builder.result
-    }
-  
-    def apply(e: Exp[_], f: Int => MeshSet) : MeshSet = {
-      apply(moValue(e), f)
-    }
+  import Stencil._
+
+  def multiset(e: Exp[_], f: Int => MeshSet) : MeshSet = {
+    MultipleMeshSet.apply(moValue(e), f)
+  }
+   
+  def multiobj(e: Exp[_], f: Int => Int) : MultipleMeshObj = {
+    MultipleMeshObj(moValue(e), f)
   }
   
-  object MultipleMeshObj {
-    def apply(mo: Int) = new MultipleMeshObjImpl(ISet(mo))
-    def apply(ms: MeshSet) = new MultipleMeshObjImpl(ms.toSet)
-    
-    def apply(e: Any) = {
-      e match {
-        case mo: Int => OneObj(mo)
-        case _ => e
-      }
-    }
-
-    def multi(in: MultipleMeshObj, f: Int => MultipleMeshObj) : MultipleMeshObj = {
-      var out: MultipleMeshObj = NoObjs()
-      
-      for(mo <- in.objs) {
-        out = out ++ f(mo)
-      }
-      
-      out
-    }
-    
-    def multi(e: Exp[_], f: Int => MultipleMeshObj) : MultipleMeshObj = {
-      multi(moValue(e), f)
-    }
-    
-    def multi(e: Int, f: Int => MultipleMeshObj) : MultipleMeshObj = {
-      multi(OneObj(e), f)
-    }
-    
-    def apply(in: MultipleMeshObj, f: Int => Int) : MultipleMeshObj = {
-      var out: MultipleMeshObj = NoObjs()
-      
-      for(mo <- in.objs) {
-        out = out + f(mo)
-      }
-      
-      out
-    }
-    
-    def apply(e: Exp[_], f: Int => Int) : MultipleMeshObj = {
-      apply(moValue(e), f)
-    }
-    
-    def apply(e: Int, f: Int => Int) : MultipleMeshObj = {
-      apply(OneObj(e), f)
-    }
+  def multimultiobj(e: Exp[_], f: Int => MultipleMeshObj) : MultipleMeshObj = {
+    MultipleMeshObj.multi(moValue(e), f)
   }
   
-  import Stencil.StencilMap
-
   val forMap = new HashMap[Int,StencilMap]()
   val msMap = MMap[Int,MeshSet]()
   val schedules = new HashMap[Int,ArrayBuilder[TP[Any]]]() { override def default(key: Int) = { val buf = ArrayBuilder.make[TP[Any]](); this(key) = buf; buf } }
@@ -172,6 +120,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   val values = MMap[Int,Any]()
   
   def store(sym: Sym[_], x: Any) {
+    //System.out.println("STORING IN " + sym.id)
+    //System.out.println(x)
     values(sym.id) = x
   }
     
@@ -231,65 +181,84 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
 
       case DeLisztMesh() => OneObj(0)
 
-      case DeLisztVerticesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesCell(mo))
-      case DeLisztVerticesEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesEdge(mo))
-      case DeLisztVerticesFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesFace(mo))
-      case DeLisztVerticesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesVertex(mo))
-      case DeLisztVerticesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesMesh)
+      case DeLisztVerticesCell(e, m) => multiset(e, (mo:Int) => Mesh.mesh.verticesCell(mo))
+      case DeLisztVerticesEdge(e, m) => multiset(e, (mo:Int) => Mesh.mesh.verticesEdge(mo))
+      case DeLisztVerticesFace(e, m) => multiset(e, (mo:Int) => Mesh.mesh.verticesFace(mo))
+      case DeLisztVerticesVertex(e, m) => multiset(e, (mo:Int) => Mesh.mesh.verticesVertex(mo))
+      case DeLisztVerticesMesh(e) => multiset(e, (mo:Int) => Mesh.mesh.verticesMesh)
 
-      case DeLisztVertex(e, i, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.vertex(mo, value(i)))
+      case DeLisztVertex(e, i, m) => multiobj(e, (mo:Int) => Mesh.mesh.vertex(mo, value(i)))
 
-      case DeLisztFaceVerticesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesCCW(mo))
-      case DeLisztFaceVerticesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.verticesCW(mo))
+      case DeLisztFaceVerticesCCW(e, m) => multiset(e, (mo:Int) => Mesh.mesh.verticesCCW(mo))
+      case DeLisztFaceVerticesCW(e, m) => multiset(e, (mo:Int) => Mesh.mesh.verticesCW(mo))
 
-      case DeLisztCellsCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsCell(mo))
-      case DeLisztCellsEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsEdge(mo))
-      case DeLisztCellsFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsFace(mo))
-      case DeLisztCellsVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsVertex(mo))
-      case DeLisztCellsMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsMesh)
+      case DeLisztCellsCell(e, m) => multiset(e, (mo:Int) => Mesh.mesh.cellsCell(mo))
+      case DeLisztCellsEdge(e, m) => multiset(e, (mo:Int) => Mesh.mesh.cellsEdge(mo))
+      case DeLisztCellsFace(e, m) => multiset(e, (mo:Int) => Mesh.mesh.cellsFace(mo))
+      case DeLisztCellsVertex(e, m) => multiset(e, (mo:Int) => Mesh.mesh.cellsVertex(mo))
+      case DeLisztCellsMesh(e) => multiset(e, (mo:Int) => Mesh.mesh.cellsMesh)
 
-      case DeLisztEdgeCellsCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsCCW(mo))
-      case DeLisztEdgeCellsCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.cellsCW(mo))
+      case DeLisztEdgeCellsCCW(e, m) => multiset(e, (mo:Int) => Mesh.mesh.cellsCCW(mo))
+      case DeLisztEdgeCellsCW(e, m) => multiset(e, (mo:Int) => Mesh.mesh.cellsCW(mo))
 
-      case DeLisztEdgesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesCell(mo))
-      case DeLisztEdgesFace(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesFace(mo))
-      case DeLisztEdgesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesVertex(mo))
-      case DeLisztEdgesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesMesh)
+      case DeLisztEdgesCell(e, m) => multiset(e, (mo:Int) => Mesh.mesh.edgesCell(mo))
+      case DeLisztEdgesFace(e, m) => multiset(e, (mo:Int) => Mesh.mesh.edgesFace(mo))
+      case DeLisztEdgesVertex(e, m) => multiset(e, (mo:Int) => Mesh.mesh.edgesVertex(mo))
+      case DeLisztEdgesMesh(e) => multiset(e, (mo:Int) => Mesh.mesh.edgesMesh)
 
-      case DeLisztFacesCell(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesCell(mo))
-      case DeLisztFacesEdge(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesEdge(mo))
-      case DeLisztFacesVertex(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesVertex(mo))
-      case DeLisztFacesMesh(e) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesMesh)
+      case DeLisztFacesCell(e, m) => multiset(e, (mo:Int) => Mesh.mesh.facesCell(mo))
+      case DeLisztFacesEdge(e, m) => multiset(e, (mo:Int) => Mesh.mesh.facesEdge(mo))
+      case DeLisztFacesVertex(e, m) => multiset(e, (mo:Int) => Mesh.mesh.facesVertex(mo))
+      case DeLisztFacesMesh(e) => multiset(e, (mo:Int) => Mesh.mesh.facesMesh)
 
-      case DeLisztEdgeFacesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesCCW(mo))
-      case DeLisztEdgeFacesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.facesCW(mo))
+      case DeLisztEdgeFacesCCW(e, m) => multiset(e, (mo:Int) => Mesh.mesh.facesCCW(mo))
+      case DeLisztEdgeFacesCW(e, m) => multiset(e, (mo:Int) => Mesh.mesh.facesCW(mo))
   
-      case DeLisztFaceEdgesCCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesCCW(mo))
-      case DeLisztFaceEdgesCW(e, m) => MultipleMeshSet(e, (mo:Int) => Mesh.mesh.edgesCW(mo))
+      case DeLisztFaceEdgesCCW(e, m) => multiset(e, (mo:Int) => Mesh.mesh.edgesCCW(mo))
+      case DeLisztFaceEdgesCW(e, m) => multiset(e, (mo:Int) => Mesh.mesh.edgesCW(mo))
 
-      case DeLisztEdgeHead(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.head(mo))
-      case DeLisztEdgeTail(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.tail(mo))
+      case DeLisztEdgeHead(e, m) => multiobj(e, (mo:Int) => Mesh.mesh.head(mo))
+      case DeLisztEdgeTail(e, m) => multiobj(e, (mo:Int) => Mesh.mesh.tail(mo))
 
-      case DeLisztFaceInside(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.inside(mo))
-      case DeLisztFaceOutside(e, m) => MultipleMeshObj(e, (mo:Int) => Mesh.mesh.outside(mo))
+      case DeLisztFaceInside(e, m) => multiobj(e, (mo:Int) => Mesh.mesh.inside(mo))
+      case DeLisztFaceOutside(e, m) => multiobj(e, (mo:Int) => Mesh.mesh.outside(mo))
   
-      case DeLisztFace(e, i, m) => MultipleMeshObj(e, (mo: Int) => Mesh.mesh.face(mo, value(i)))
+      case DeLisztFace(e, i, m) => multiobj(e, (mo: Int) => Mesh.mesh.face(mo, value(i)))
 
-      case DeLisztFlipEdge(e) => MultipleMeshObj(e, (mo:Int) => Mesh.flip(mo))
-      case DeLisztFlipFace(e) => MultipleMeshObj(e, (mo:Int) => Mesh.flip(mo))
+      case DeLisztFlipEdge(e) => multiobj(e, (mo:Int) => Mesh.flip(mo))
+      case DeLisztFlipFace(e) => multiobj(e, (mo:Int) => Mesh.flip(mo))
 
-      case DeLisztTowardsEdgeVertex(e, v, m) => MultipleMeshObj.multi(e, (e1: Int) => MultipleMeshObj(v, (e2: Int) => Mesh.mesh.towardsEdgeVertex(e1, e2)))
-      case DeLisztTowardsFaceCell(e, c, m) => MultipleMeshObj.multi(e, (e1: Int) => MultipleMeshObj(c, (e2: Int) => Mesh.mesh.towardsFaceCell(e1, e2)))
+      case DeLisztTowardsEdgeVertex(e, v, m) => multimultiobj(e, (e1: Int) => multiobj(v, (e2: Int) => Mesh.mesh.towardsEdgeVertex(e1, e2)))
+      case DeLisztTowardsFaceCell(e, c, m) => multimultiobj(e, (e1: Int) => multiobj(c, (e2: Int) => Mesh.mesh.towardsFaceCell(e1, e2)))
       
-      case DeLisztID(e) => MultipleMeshObj(e, (mo:Int) => Mesh.internal(mo))
+      case DeLisztCtov(m) => Mesh.mesh.ctov
+      case DeLisztEtov(m) => Mesh.mesh.etov
+      case DeLisztFtov(m) => Mesh.mesh.ftov
+      case DeLisztVtov(m) => Mesh.mesh.vtov
+      case DeLisztCtoc(m) => Mesh.mesh.ctoc
+      case DeLisztEtoc(m) => Mesh.mesh.etoc
+      case DeLisztFtoc(m) => Mesh.mesh.ftoc
+      case DeLisztVtoc(m) => Mesh.mesh.vtoc
+      case DeLisztCtoe(m) => Mesh.mesh.ctoe
+      case DeLisztFtoe(m) => Mesh.mesh.ftoe
+      case DeLisztVtoe(m) => Mesh.mesh.vtoe
+      case DeLisztCtof(m) => Mesh.mesh.ctof
+      case DeLisztEtof(m) => Mesh.mesh.etof
+      case DeLisztVtof(m) => Mesh.mesh.vtof
+      
+      case DeLisztID(e) => {
+        //System.out.println("VALUE OF E")
+        //System.out.println(value(e).toString)
+        multiobj(e, (mo:Int) => Mesh.internal(mo))
+      }
       
       case DeliteCollectionApply(e, i) => {
         val obj = (rawValue(e), rawValue(i)) match {
-          case (Some(c), Some(idx)) => (c.asInstanceOf[DeliteCollection[Any]]).dcApply(idx.asInstanceOf[Int])
-          case _ => None
+          case (Some(c), Some(idx)) => { OneObj(c.asInstanceOf[DeliteCollection[Int]].dcApply(idx.asInstanceOf[Int])) }
+          case _ => { NoObjs } // What is going on here 
         }
         
-        MultipleMeshObj(obj)
+        obj
       }
       
       // While loops. Execute once. Store results if results are a mesh element
@@ -321,6 +290,9 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       case _ => None
     }
     
+    //System.out.println("Maybe value result")
+    //System.out.println(o)
+    
     o match {
       case None => None
       case _ => Some(o)
@@ -331,7 +303,51 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   def runSchedule(tps: Seq[TP[Any]]) {
     for(TP(sym, rhs) <- tps) {
+      //System.out.println("RUNNING SCHEDULE " + sym.id)
+      //System.out.println(rhs)
       rhs match {
+        // Foreach, only apply to top level foreach though...
+        case f@NestedMeshSetForeach(m, crs, e, b) => {
+          // Get value for the mesh set
+          val ccrs = value[CRS](crs)
+          val ms = multiset(e, (mo:Int) => IndexSetImpl(ccrs, mo))
+          
+          // Definitely not a top level foreach
+          // Run foreach over mesh set
+          var i = 0
+          
+          for(mo <- ms) {
+            // Store current mesh element in a map
+            store(f.mo, OneObj(mo))
+            
+            // Re "emit" block
+            runSchedule(schedules(sym.id).result)
+            
+            i += 1
+          }
+        }
+        
+        // Foreach, only apply to top level foreach though...
+        case f@DirectedNestedMeshSetForeach(m, crs, dir, e, b) => {
+          // Get value for the mesh set
+          val ccrs = value[CRS](crs)
+          val ms = multiset(e, (mo:Int) => DirectedIndexSetImpl(ccrs, mo, dir))
+          
+          // Definitely not a top level foreach
+          // Run foreach over mesh set
+          var i = 0
+          
+          for(mo <- ms) {
+            // Store current mesh element in a map
+            store(f.mo, OneObj(mo))
+            
+            // Re "emit" block
+            runSchedule(schedules(sym.id).result)
+            
+            i += 1
+          }
+        }
+      
         // Foreach, only apply to top level foreach though...
         case f@MeshSetForeach(m, b) => {
           // Get value for the mesh set
@@ -340,6 +356,10 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
           // Definitely not a top level foreach
           // Run foreach over mesh set
           var i = 0
+          
+          // Save and set current For
+          val parentFor = currentFor
+          currentFor = Some(sym.id)
           
           for(mo <- ms) {
             // Store loop index in loop index symbol
@@ -351,6 +371,9 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
             
             i += 1
           }
+          
+          // Restore
+          currentFor = parentFor
         }
         
         // Mark 
@@ -405,6 +428,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     
     if(Config.collectStencil) {
       if(collectingSchedule) {
+        System.out.println("COLLECTING SCHEDULE " + sym.id)
+        System.out.println(rhs)
         var matched = true
         
         rhs match {
@@ -437,7 +462,37 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
             }
           }
           
-          // Control constructs
+          // Control constructs    
+          case f@NestedMeshSetForeach(m, crs, i, b) => {
+            // Save and set current
+            val parentFor = currentFor
+            currentFor = Some(sym.id)
+
+            level += 1
+            
+            emitBlock(f.body)
+            
+            level -= 1
+            
+            // Restore
+            currentFor = parentFor
+          }
+          
+          // Control constructs    
+          case f@DirectedNestedMeshSetForeach(m, crs, dir, i, b) => {
+            // Save and set current
+            val parentFor = currentFor
+            currentFor = Some(sym.id)
+
+            level += 1
+            
+            emitBlock(f.body)
+            
+            level -= 1
+            
+            // Restore
+            currentFor = parentFor
+          }
           
           case f@MeshSetForeach(m, b) => {
             // Save
@@ -567,6 +622,20 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
           case DeLisztFace(e, i, m) =>
           case DeLisztTowardsEdgeVertex(e, v, m) =>
           case DeLisztTowardsFaceCell(e, c, m) =>
+          // Intentionally ignored
+          /* case DeLisztCtov(m) =>
+          case DeLisztEtov(m) =>
+          case DeLisztFtov(m) =>
+          case DeLisztVtov(m) =>
+          case DeLisztCtoc(m) =>
+          case DeLisztEtoc(m) =>
+          case DeLisztFtoc(m) =>
+          case DeLisztVtoc(m) =>
+          case DeLisztCtoe(m) =>
+          case DeLisztFtoe(m) =>
+          case DeLisztCtof(m) =>
+          case DeLisztEtof(m) =>
+          case DeLisztVtof(m) => */
           
           case _ => { matched = false }
         }
@@ -577,6 +646,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         }
       }
       else {
+        System.out.println("EMITTING SCHEDULE " + sym.id)
+        System.out.println(rhs)
         rhs match {
           // Foreach, only apply to top level foreach though...
           case f@MeshSetForeach(m, b) => {
@@ -616,6 +687,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
               // Run foreach over mesh set
               var i = 0
               
+              currentFor = Some(sym.id)
               for(mo <- ms) {
                 topMo = Some(Mesh.internal(mo))
               

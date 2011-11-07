@@ -27,6 +27,17 @@ object CWIndexSetImpl {
   }
 }
 
+object DirectedIndexSetImpl {
+  def apply(crs: CRS, n: Int, dir: Int) = {
+    if((n >>> Mesh.SHIFT) == dir) {
+      IndexSetImpl(crs, n)
+    }
+    else {
+      CWIndexSetImpl(crs, n)
+    }
+  }
+}
+
 class IndexSetImpl(data : Array[Int], override val size: Int, start: Int, end: Int, dir: Int) extends MeshSet {
   def apply(i : Int) : Int = data(start + i*dir) ^ (dir & Mesh.DMASK)
 }

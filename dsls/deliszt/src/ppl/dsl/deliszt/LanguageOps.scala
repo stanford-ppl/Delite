@@ -130,6 +130,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class DeLisztVerticesVertex(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Vertex]]
   case class DeLisztVerticesMesh(val e: Exp[Mesh]) extends Def[MeshSet[Vertex]]
   
+  case class DeLisztCtov(val mesh: Exp[Mesh]) extends Def[CRS]
+  case class DeLisztEtov(val mesh: Exp[Mesh]) extends Def[CRS]
+  case class DeLisztFtov(val mesh: Exp[Mesh]) extends Def[CRS]
+  case class DeLisztVtov(val mesh: Exp[Mesh]) extends Def[CRS]
+  
   case class DeLisztVertex(e: Exp[Int], i: Exp[Int], mesh: Exp[Mesh]) extends Def[Vertex]
   
   case class DeLisztFaceVerticesCCW(e: Exp[Face], mesh: Exp[Mesh]) extends Def[MeshSet[Vertex]]
@@ -141,18 +146,31 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class DeLisztCellsVertex(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Cell]]
   case class DeLisztCellsMesh(val e: Exp[Mesh]) extends Def[MeshSet[Cell]]
   
+  case class DeLisztCtoc(val mesh: Exp[Mesh]) extends Def[CRS]
+  case class DeLisztEtoc(val mesh: Exp[Mesh]) extends Def[CRS]
+  case class DeLisztFtoc(val mesh: Exp[Mesh]) extends Def[CRS]
+  case class DeLisztVtoc(val mesh: Exp[Mesh]) extends Def[CRS]
+  
   case class DeLisztEdgeCellsCCW(e: Exp[Edge], mesh: Exp[Mesh]) extends Def[MeshSet[Cell]]
   case class DeLisztEdgeCellsCW(e: Exp[Edge], mesh: Exp[Mesh]) extends Def[MeshSet[Cell]]
 
   case class DeLisztEdgesCell(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Edge]]
   case class DeLisztEdgesFace(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Edge]]
-  case class DeLisztEdgesVertex(val e: Exp[Int], mesh: Exp[Mesh]) extends  Def[MeshSet[Edge]]
+  case class DeLisztEdgesVertex(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Edge]]
   case class DeLisztEdgesMesh(val e: Exp[Mesh]) extends Def[MeshSet[Edge]]
+  
+  case class DeLisztCtoe(val mesh: Exp[Mesh]) extends Def[CRS]
+  case class DeLisztFtoe(val mesh: Exp[Mesh]) extends Def[CRS]
+  case class DeLisztVtoe(val mesh: Exp[Mesh]) extends Def[CRS]
 
   case class DeLisztFacesCell(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Face]]
   case class DeLisztFacesEdge(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Face]]
   case class DeLisztFacesVertex(val e: Exp[Int], mesh: Exp[Mesh]) extends Def[MeshSet[Face]]
   case class DeLisztFacesMesh(val e: Exp[Mesh]) extends Def[MeshSet[Face]]
+  
+  case class DeLisztCtof(val mesh: Exp[Mesh]) extends Def[CRS]
+  case class DeLisztEtof(val mesh: Exp[Mesh]) extends Def[CRS]
+  case class DeLisztVtof(val mesh: Exp[Mesh]) extends Def[CRS]
 
   case class DeLisztEdgeFacesCCW(e: Exp[Edge], mesh: Exp[Mesh]) extends Def[MeshSet[Face]]
   case class DeLisztEdgeFacesCW(e: Exp[Edge], mesh: Exp[Mesh]) extends Def[MeshSet[Face]]
@@ -201,6 +219,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def vertices(e: Exp[Face])(implicit x: Overloaded4) = reflectPure(DeLisztVerticesFace(ID(e), mesh))
   def vertices(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztVerticesVertex(ID(e), mesh))
   def vertices(e: Exp[Mesh])(implicit x: Overloaded1) = reflectPure(DeLisztVerticesMesh(e))
+  
+  def crs_ctov(mesh: Exp[Mesh]) = reflectPure(DeLisztCtov(mesh))
+  def crs_etov(mesh: Exp[Mesh]) = reflectPure(DeLisztEtov(mesh))
+  def crs_ftov(mesh: Exp[Mesh]) = reflectPure(DeLisztFtov(mesh))
+  def crs_vtov(mesh: Exp[Mesh]) = reflectPure(DeLisztVtov(mesh))
 
   def verticesCCW(e: Exp[Face]) = reflectPure(DeLisztFaceVerticesCCW(e, mesh))
   def verticesCW(e: Exp[Face]) = reflectPure(DeLisztFaceVerticesCW(e, mesh))
@@ -213,6 +236,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def cells(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztCellsVertex(ID(e), mesh))
   def cells(e: Exp[Mesh])(implicit x: Overloaded1) = reflectPure(DeLisztCellsMesh(e))
   
+  def crs_ctoc(mesh: Exp[Mesh]) = reflectPure(DeLisztCtoc(mesh))
+  def crs_etoc(mesh: Exp[Mesh]) = reflectPure(DeLisztEtoc(mesh))
+  def crs_ftoc(mesh: Exp[Mesh]) = reflectPure(DeLisztFtoc(mesh))
+  def crs_vtoc(mesh: Exp[Mesh]) = reflectPure(DeLisztVtoc(mesh))
+  
   def cellsCCW(e: Exp[Edge]) = reflectPure(DeLisztEdgeCellsCCW(e, mesh))
   def cellsCW(e: Exp[Edge]) = reflectPure(DeLisztEdgeCellsCW(e, mesh))
 
@@ -220,6 +248,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def edges(e: Exp[Face])(implicit x: Overloaded3) = reflectPure(DeLisztEdgesFace(ID(e), mesh))
   def edges(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztEdgesVertex(ID(e), mesh))
   def edges(e: Exp[Mesh])(implicit x: Overloaded1) = reflectPure(DeLisztEdgesMesh(e))
+  
+  def crs_ctoe(mesh: Exp[Mesh]) = reflectPure(DeLisztCtoe(mesh))
+  def crs_ftoe(mesh: Exp[Mesh]) = reflectPure(DeLisztFtoe(mesh))
+  def crs_vtoe(mesh: Exp[Mesh]) = reflectPure(DeLisztVtoe(mesh))
 
   def edgesCCW(e: Exp[Face]) = reflectPure(DeLisztFaceEdgesCCW(e, mesh))
   def edgesCW(e: Exp[Face]) = reflectPure(DeLisztFaceEdgesCW(e, mesh))
@@ -228,6 +260,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def faces(e: Exp[Cell])(implicit x: Overloaded4) = reflectPure(DeLisztFacesCell(ID(e), mesh))
   def faces(e: Exp[Vertex])(implicit x: Overloaded2) = reflectPure(DeLisztFacesVertex(ID(e), mesh))
   def faces(e: Exp[Mesh])(implicit x: Overloaded1) = reflectPure(DeLisztFacesMesh(e))
+  
+  def crs_ctof(mesh: Exp[Mesh]) = reflectPure(DeLisztCtof(mesh))
+  def crs_etof(mesh: Exp[Mesh]) = reflectPure(DeLisztEtof(mesh))
+  def crs_vtof(mesh: Exp[Mesh]) = reflectPure(DeLisztVtof(mesh))
 
   def facesCCW(e: Exp[Edge]) = reflectPure(DeLisztEdgeFacesCCW(e, mesh))
   def facesCW(e: Exp[Edge]) = reflectPure(DeLisztEdgeFacesCW(e, mesh))
@@ -258,7 +294,6 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   def wall_time() = reflectEffect(WallTime())
   def processor_time() = reflectEffect(ProcessorTime())
-  
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {    
     case DeLisztVerticesCell(e,m) => reflectPure(DeLisztVerticesCell(f(e),f(m)))
@@ -301,8 +336,17 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     case DeLisztID(e) => ID(f(e))
     case Reflect(e@DeLisztPrint(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeLisztPrint(f(x))(f(e.block)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
-  }).asInstanceOf[Exp[A]] // why??
+  }).asInstanceOf[Exp[A]] // why??  
+}
+
+trait LanguageOpsExpOpt extends LanguageOpsExp {
+  this: DeLisztExp =>
   
+  override def ID[MO<:MeshObj:Manifest](x: Exp[MO]) = x match {
+    case Def(DeLisztFlipEdge(e)) => super.ID(e)
+    case Def(DeLisztFlipFace(e)) => super.ID(e)
+    case _ => super.ID(x)
+  }
 }
 
 trait ScalaGenLanguageOps extends ScalaGenBase {
@@ -325,6 +369,11 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case DeLisztCellsVertex(e, m) => emitValDef(sym, quote(m) + ".cellsVertex(" + quote(e) + ")")
       case DeLisztCellsMesh(e) => emitValDef(sym, quote(e) + ".cellsMesh")
       
+      case DeLisztCtoc(m) => emitValDef(sym, quote(m) + ".ctoc")
+      case DeLisztEtoc(m) => emitValDef(sym, quote(m) + ".etoc")
+      case DeLisztFtoc(m) => emitValDef(sym, quote(m) + ".ftoc")
+      case DeLisztVtoc(m) => emitValDef(sym, quote(m) + ".vtoc")
+      
       case DeLisztEdgeCellsCCW(e,m) => emitValDef(sym, quote(m) + ".cellsCCW(" + quote(e) + ")")
       case DeLisztEdgeCellsCW(e,m) => emitValDef(sym, quote(m) + ".cellsCW(" + quote(e) + ")")
       case DeLisztFaceInside(e,m) => emitValDef(sym, quote(m) + ".inside(" + quote(e) + ")")
@@ -334,6 +383,10 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case DeLisztEdgesFace(e, m) => emitValDef(sym, quote(m) + ".edgesFace(" + quote(e) + ")")
       case DeLisztEdgesVertex(e, m) => emitValDef(sym, quote(m) + ".edgesVertex(" + quote(e) + ")")
       case DeLisztEdgesMesh(e) => emitValDef(sym, quote(e) + ".edgesMesh")
+      
+      case DeLisztCtoe(m) => emitValDef(sym, quote(m) + ".ctoe")
+      case DeLisztFtoe(m) => emitValDef(sym, quote(m) + ".ftoe")
+      case DeLisztVtoe(m) => emitValDef(sym, quote(m) + ".vtoe")
       
       case DeLisztEdgeHead(e,m) => emitValDef(sym, quote(m) + ".head(" + quote(e) + ")")
       case DeLisztEdgeTail(e,m) => emitValDef(sym, quote(m) + ".tail(" + quote(e) + ")")
@@ -346,6 +399,10 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case DeLisztFacesVertex(e, m) => emitValDef(sym, quote(m) + ".facesVertex(" + quote(e) + ")")
       case DeLisztFacesMesh(e) => emitValDef(sym, quote(e) + ".facesMesh")
       
+      case DeLisztCtof(m) => emitValDef(sym, quote(m) + ".ctof")
+      case DeLisztEtof(m) => emitValDef(sym, quote(m) + ".etof")
+      case DeLisztVtof(m) => emitValDef(sym, quote(m) + ".vtof")
+      
       case DeLisztFaceEdgesCCW(e,m) => emitValDef(sym, quote(m) + ".edgesCCW(" + quote(e) + ")")
       case DeLisztFaceEdgesCW(e,m) => emitValDef(sym, quote(m) + ".edgesCW(" + quote(e) + ")")
       case DeLisztFace(e,i,m) => emitValDef(sym, quote(m) + ".face(" + quote(e) + "," + quote(i) + ")")
@@ -355,6 +412,11 @@ trait ScalaGenLanguageOps extends ScalaGenBase {
       case DeLisztVerticesFace(e, m) => emitValDef(sym, quote(m) + ".verticesFace(" + quote(e) + ")")
       case DeLisztVerticesVertex(e, m) => emitValDef(sym, quote(m) + ".verticesVertex(" + quote(e) + ")")
       case DeLisztVerticesMesh(e) => emitValDef(sym, quote(e) + ".verticesMesh")
+      
+      case DeLisztCtov(m) => emitValDef(sym, quote(m) + ".ctov")
+      case DeLisztEtov(m) => emitValDef(sym, quote(m) + ".etov")
+      case DeLisztFtov(m) => emitValDef(sym, quote(m) + ".ftov")
+      case DeLisztVtov(m) => emitValDef(sym, quote(m) + ".vtov")
       
       case DeLisztFaceVerticesCCW(e,m) => emitValDef(sym, quote(m) + ".verticesCCW(" + quote(e) + ")")
       case DeLisztFaceVerticesCW(e,m) => emitValDef(sym, quote(m) + ".verticesCW(" + quote(e) + ")")
