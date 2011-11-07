@@ -157,6 +157,7 @@ trait SC extends DeLisztApplication {
       val v = ms(i)
       ll = ll min position(v)
       ur = ur max position(v)
+      i += 1
     }
     val mesh_center = (ll + ur) * .5
     for(c <- cells(mesh)) {
