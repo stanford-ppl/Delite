@@ -1119,7 +1119,36 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
   }
 
   def emitMultiHashReduceCombine(op: AbstractFatLoop, ps: List[(Sym[Any], DeliteHashReduceElem[_,_,_])], prefixSym: String = "")(implicit stream: PrintWriter) {
-    stream.println("assert(false, \"TODO: implement hash combine (iterate over combined key and value arrays)\")")
+    // TODO: extract and generalize common parts
+    // TODO: use multi-phase parallel combine instead of this reduction based one
+    for ((key,kps) <- ps.groupBy(_._2.keyFunc)) {
+      val quotedGroup = kps.map(p=>quote(p._1)).mkString("")
+      stream.println("// common key "+key+" for "+quotedGroup)
+      stream.println("for (i <- (0 until rhs." + quotedGroup + "_hash_pos.size)) {"/*}*/) // TODO: while // common key "+key+" for "+quotedGroup)
+      stream.println("val " + quotedGroup + "_k = rhs." + quotedGroup + "_hash_pos.unsafeKeys(i)")
+      stream.println("val " + quotedGroup + "_sze = " + prefixSym + quotedGroup + "_hash_pos.size")
+      stream.println("val " + quotedGroup + "_idx = " + prefixSym + quotedGroup + "_hash_pos.put("+quotedGroup+"_k)")
+      stream.println("if (" + quotedGroup + "_idx == " + quotedGroup + "_sze) {"/*}*/)
+      stream.println("// TODO: handle buffer resizing!")
+      for ((sym,elem) <- kps) {
+        stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
+        stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(sym) + "_v")
+      }
+      stream.println(/*{*/"} else {"/*}*/)
+      for ((sym,elem) <- kps) {
+        stream.println("val " + quote(sym) + "_v = rhs." + quote(sym) + "_hash_data(i)")
+        if (elem.rFunc == Block(elem.rV._2)) {
+          stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(sym) + "_v")
+        } else {
+          stream.println("val " + quote(elem.rV._1) + " = " + prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx)")
+          stream.println("val " + quote(elem.rV._2) + " = " + quote(sym) + "_v")
+          emitBlock(elem.rFunc)
+          stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = " + quote(getBlockResult(elem.rFunc)))
+        }
+      }
+      stream.println(/*{*/"}")
+      stream.println(/*{*/"}") // end for
+    }
     /*stream.println("for((k,v) <- rhs." + quote(sym) + "_hash) {") 
     stream.println("  val " + quote(elem.rV._1) + " =  __act." + quote(sym) + "_hash.getOrElse(k , " + "__act." + quote(sym) + "_zero)")
     stream.println("  val " + quote(elem.rV._2) + " = v")                        
