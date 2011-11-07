@@ -202,17 +202,33 @@ class Mesh {
     if(facing) e else Mesh.flip(e)
   }
   
-  def label[T](ld: LabelData, url: String) : LabelField[T] = {
+  def label[T:ClassManifest](ld: LabelData, url: String) : Array[T] = {
     ld.data.get(url) match {
-      case Some(data) => new LabelFieldImpl[T](data, ld.fns.get(url).getOrElse(null))
-      case None => null
+      case Some(data) => {
+        ld.fns.get(url) match {
+          // If we find a function, use it to convert
+          case Some(fn) => {
+            val labelData = new Array[T](data.size)
+            var i = 0
+            while(i < data.size) {
+              labelData(i) = fn(data(i)).asInstanceOf[T]
+              i += 1
+            }
+            labelData
+          }
+          
+          // Straight up data
+          case _ => data.asInstanceOf[Array[T]]
+        }
+      }
+      case _ => null
     }
   }
   
-  def labelCells[T](url: String) : LabelField[T] = label(cellData, url)
-  def labelEdges[T](url: String) : LabelField[T] = label(edgeData, url)
-  def labelFaces[T](url: String) : LabelField[T] = label(faceData, url)
-  def labelVertices[T](url: String) : LabelField[T] = label(vertexData, url)
+  def labelCell[T:ClassManifest](url: String) : Array[T] = label(cellData, url)
+  def labelEdge[T:ClassManifest](url: String) : Array[T] = label(edgeData, url)
+  def labelFace[T:ClassManifest](url: String) : Array[T] = label(faceData, url)
+  def labelVertex[T:ClassManifest](url: String) : Array[T] = label(vertexData, url)
 
   // Use special CellSetImpl, don't expose 0 cell
   val cells : MeshSet = new CellSetImpl(ncells-1)

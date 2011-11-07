@@ -8,12 +8,24 @@ package ppl.dsl.deliszt.datastruct.scala
  * Stanford University
  */
 
-class LabelFieldImpl[T](data: Array[Object], fn: Object => Object) extends LabelField[T] {
-  def size = data.length
-  def apply(idx: Int) : T = {  
-    (Option(fn) match {
-      case Some(fn) => fn(data(idx))
-      case None => data(idx)
-    }).asInstanceOf[T]
+object LabelFieldImpl {
+  def ofCell[T:ClassManifest](mesh: Mesh, url: String) : Field[T] = {  
+    val data = mesh.labelCell[T](url)
+    new FieldImpl[T](data)
+  }
+  
+  def ofEdge[T:ClassManifest](mesh: Mesh, url: String) : Field[T] = {  
+    val data = mesh.labelEdge[T](url)
+    new FieldImpl[T](data)
+  }
+  
+  def ofFace[T:ClassManifest](mesh: Mesh, url: String) : Field[T] = {  
+    val data = mesh.labelFace[T](url)
+    new FieldImpl[T](data)
+  }
+  
+  def ofVertex[T:ClassManifest](mesh: Mesh, url: String) : Field[T] = {  
+    val data = mesh.labelVertex[T](url)
+    new FieldImpl[T](data)
   }
 }

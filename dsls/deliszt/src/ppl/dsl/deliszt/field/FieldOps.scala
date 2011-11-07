@@ -248,7 +248,7 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
 
   /////////////////////
   // class interface
-  def field_mo_apply[MO<:MeshObj:Manifest, T:Manifest](x: Exp[Field[MO, T]], mo: Exp[MO]) = reflectEffect(FieldApply(x,mo))
+  def field_mo_apply[MO<:MeshObj:Manifest, T:Manifest](x: Exp[Field[MO, T]], mo: Exp[MO]) = reflectPure(FieldApply(x,mo))
   def field_mo_update[MO<:MeshObj:Manifest, T:Manifest](x: Exp[Field[MO, T]], mo: Exp[MO], v : Exp[T]) = reflectWrite(x)(FieldUpdate(x,mo,v))
 
   def FieldWithConst[MO<:Cell:Manifest, T:Manifest](c: Exp[T])(implicit ev : MO =:= Cell) = reflectMutable(DeLisztFieldWithConstCell(c))
@@ -296,6 +296,7 @@ trait ScalaGenFieldOps extends ScalaGenBase {
   import IR._
 
   val fieldImplPath = "ppl.dsl.deliszt.datastruct.scala.FieldImpl"
+  val labelImplPath = "ppl.dsl.deliszt.datastruct.scala.LabelFieldImpl"
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
@@ -317,10 +318,10 @@ trait ScalaGenFieldOps extends ScalaGenBase {
       case f@FieldObjectNewFace() => emitValDef(sym, remap(fieldImplPath, ".ofFace", f.t) + "()")
       case f@FieldObjectNewVertex() => emitValDef(sym, remap(fieldImplPath, ".ofVertex", f.t) + "()")
       
-      case f@LabelFieldNewCell(url, m) => emitValDef(sym, quote(m) + ".labelCells[" + remap(f.t) + "](" + quote(url) + ")")
-      case f@LabelFieldNewEdge(url, m) => emitValDef(sym, quote(m) + ".labelEdges[" + remap(f.t) + "](" + quote(url) + ")")
-      case f@LabelFieldNewFace(url, m) => emitValDef(sym, quote(m) + ".labelFaces[" + remap(f.t) + "](" + quote(url) + ")")
-      case f@LabelFieldNewVertex(url, m) => emitValDef(sym, quote(m) + ".labelVertices[" + remap(f.t) + "](" + quote(url) + ")")
+      case f@LabelFieldNewCell(url, m) => emitValDef(sym, remap(labelImplPath, ".ofCell", f.t) + "(" + quote(m) + "," + quote(url) + ")")
+      case f@LabelFieldNewEdge(url, m) => emitValDef(sym, remap(labelImplPath, ".ofEdge", f.t) + "(" + quote(m) + "," + quote(url) + ")")
+      case f@LabelFieldNewFace(url, m) => emitValDef(sym, remap(labelImplPath, ".ofFace", f.t) + "(" + quote(m) + "," + quote(url) + ")")
+      case f@LabelFieldNewVertex(url, m) => emitValDef(sym, remap(labelImplPath, ".ofVertex", f.t) + "(" + quote(m) + "," + quote(url) + ")")
       
       case FieldIntApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
       case FieldIntUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(v))

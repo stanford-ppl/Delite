@@ -145,14 +145,15 @@ trait DeLisztCodeGenBase extends GenericFatCodegen {
     outDir.mkdirs()
 
     for (f <- dsDir.listFiles) {
-      if (specialize contains (f.getName.substring(0, f.getName.indexOf(".")))) {
-        genSpec(f, path)
-      }
-      if (specialize2 contains (f.getName.substring(0, f.getName.indexOf(".")))) {
-        genSpec2(f, path)
+      if(f.getName.indexOf(".") > -1) {
+        if (specialize contains (f.getName.substring(0, f.getName.indexOf(".")))) {
+          genSpec(f, path)
+        }
+        if (specialize2 contains (f.getName.substring(0, f.getName.indexOf(".")))) {
+          genSpec2(f, path)
+        }
       }
       val outFile = path + f.getName
-      System.out.println("EMITTING " + f + " to " + outFile)
       val out = new BufferedWriter(new FileWriter(outFile))
       for (line <- scala.io.Source.fromFile(f).getLines) {
         out.write(dsmap(line) + "\n")
@@ -172,7 +173,7 @@ trait DeLisztCodeGenScala extends DeLisztCodeGenBase with DeLisztScalaCodeGenPkg
   
   val IR: DeliteApplication with DeLisztExp
 
-  override val specialize = Set("VecImpl", "MatImpl", "MatColImpl", "MatRowImpl", "VecViewImpl", "FieldImpl")
+  override val specialize = Set("VecImpl", "MatImpl", "MatColImpl", "MatRowImpl", "VecViewImpl", "FieldImpl", "LabelFieldImpl")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
