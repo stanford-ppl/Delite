@@ -277,6 +277,7 @@ trait ScalaGenFieldOps extends ScalaGenBase {
 
   val fieldImplPath = "ppl.dsl.deliszt.datastruct.scala.FieldImpl"
   val labelImplPath = "ppl.dsl.deliszt.datastruct.scala.LabelFieldImpl"
+  val vec3FieldImplPath = "ppl.dsl.deliszt.datastruct.scala.Vec3FieldImpl"
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
@@ -288,11 +289,40 @@ trait ScalaGenFieldOps extends ScalaGenBase {
       case FieldMinusUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") -= " + quote(v))
       case FieldDivideUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") /= " + quote(v))
 
-      case f@DeLisztFieldWithConstCell(x) => emitValDef(sym, remap(fieldImplPath, ".cellWithConst", f.t) + "(" + quote(x) + ")")
-      case f@DeLisztFieldWithConstEdge(x) => emitValDef(sym, remap(fieldImplPath, ".edgeWithConst", f.t) + "(" + quote(x) + ")")
-      case f@DeLisztFieldWithConstFace(x) => emitValDef(sym, remap(fieldImplPath, ".faceWithConst", f.t) + "(" + quote(x) + ")")
-      case f@DeLisztFieldWithConstVertex(x) => emitValDef(sym, remap(fieldImplPath, ".vertexWithConst", f.t) + "(" + quote(x) + ")")
-      
+      case f@DeLisztFieldWithConstCell(x) => {
+         val mv = manifest[ppl.dsl.deliszt.datastruct.scala.Vec[Any]]
+         if(x.Type.toString().contains("Vec")) {  
+           emitValDef(sym, remap(vec3FieldImplPath, ".cellWithConst", f.t) + "(" + quote(x) + ")")
+         } else {
+           emitValDef(sym, remap(fieldImplPath, ".cellWithConst", f.t) + "(" + quote(x) + ")")
+         }
+      }
+      case f@DeLisztFieldWithConstEdge(x) => {
+         val mv = manifest[ppl.dsl.deliszt.datastruct.scala.Vec[Any]]
+         Predef.println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX X.TYPE: " + x.Type)
+         if(x.Type.toString().contains("Vec")) {
+             emitValDef(sym, remap(vec3FieldImplPath, ".edgeWithConst", f.t) + "(" + quote(x) + ")")
+         } else {
+             emitValDef(sym, remap(fieldImplPath, ".edgeWithConst", f.t) + "(" + quote(x) + ")")
+         }
+      }
+
+      case f@DeLisztFieldWithConstFace(x) => {
+         val mv = manifest[ppl.dsl.deliszt.datastruct.scala.Vec[Any]]
+         if(x.Type.toString().contains("Vec")) {
+             emitValDef(sym, remap(vec3FieldImplPath, ".faceWithConst", f.t) + "(" + quote(x) + ")")
+         } else {
+             emitValDef(sym, remap(fieldImplPath, ".faceWithConst", f.t) + "(" + quote(x) + ")")
+         }
+      }
+      case f@DeLisztFieldWithConstVertex(x) => {
+         val mv = manifest[ppl.dsl.deliszt.datastruct.scala.Vec[Any]]
+         if(x.Type.toString().contains("Vec")) {
+             emitValDef(sym, remap(vec3FieldImplPath, ".vertexWithConst", f.t) + "(" + quote(x) + ")")
+         } else {
+             emitValDef(sym, remap(fieldImplPath, ".vertexWithConst", f.t) + "(" + quote(x) + ")")
+         }
+      }
       case f@FieldObjectNewCell() => emitValDef(sym, remap(fieldImplPath, ".ofCell", f.t) + "()")
       case f@FieldObjectNewEdge() => emitValDef(sym, remap(fieldImplPath, ".ofEdge", f.t) + "()")
       case f@FieldObjectNewFace() => emitValDef(sym, remap(fieldImplPath, ".ofFace", f.t) + "()")
