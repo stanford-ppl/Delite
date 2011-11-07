@@ -81,6 +81,7 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   case class QueryableGroupingKey[TSource:Manifest, TKey:Manifest](g: Rep[Grouping[TKey, TSource]]) extends Def[TKey]
   
   case class NewOrderedQueryable[TSource:Manifest](s: Exp[DataTable[TSource]], orig: Exp[DataTable[TSource]], sel: (Exp[Int], Exp[Int]) => Exp[Int]) extends Def[OrderedQueryable[TSource]]
+
   implicit def repOQtoDT[TSource:Manifest](x: Exp[OrderedQueryable[TSource]]) = x match {
     case Def(NewOrderedQueryable(s,_,_)) => s
   }
@@ -130,7 +131,9 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     val permutation = arraySort(s.size)((i,j) => keySelector(s(i)) <= keySelector(s(j)))    
     val data = arraySelect(s.size)(i => s(permutation(i)))
     val sel: (Rep[Int],Rep[Int]) => Rep[Int] = (i,j) => queryable_compare(i,j,s,keySelector)
-    NewOrderedQueryable(DataTable(data, data.length), s, sel)
+    val table = DataTable(data, data.length)
+    Console.println("NewOrderedQueryable type " + table.Type)
+    toAtom(NewOrderedQueryable(table, s, sel))(mtype(table.Type))
   }
 
   def queryable_thenby[TSource:Manifest, TKey:Ordering:Manifest](oq: Rep[OrderedQueryable[TSource]], keySelector: Rep[TSource] => Rep[TKey]) = {
@@ -139,7 +142,7 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     }
     val permutation = arraySort(s.size)((i,j) => {
       val prev = sel(i,j)
-      if (prev == unit(-1)) unit(true) else if (prev == unit(1)) unit(false) else keySelector(s(i)) <= keySelector(s(j))
+      if (unit(-1) == prev) unit(true) else if (prev == unit(1)) unit(false) else keySelector(s(i)) <= keySelector(s(j))
     })
     val data = arraySelect(s.size)(i => s(permutation(i)))
     val compoundSel: (Rep[Int],Rep[Int]) => Rep[Int] = (i,j) => {
@@ -147,7 +150,9 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
       if (prev == unit(0)) queryable_compare(i,j,s,keySelector)
       else prev 
     }
-    NewOrderedQueryable(DataTable(data, data.length), s, compoundSel)
+    val table = DataTable(data, data.length)
+    Console.println("NewOrderedQueryable type " + table.Type)
+    toAtom(NewOrderedQueryable(table, s, compoundSel))(mtype(table.Type))
   }
   
   def grouping_apply[TKey:Manifest, TSource:Manifest](k: Rep[TKey], v: Rep[DataTable[TSource]]): Rep[Grouping[TKey, TSource]] =
@@ -163,7 +168,7 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     // FIXME: this won't work. mirroring delite ops needs to look like this:
     //case e@VectorMap(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorMap(f(x),f(p))(e.mA,e.mB))(mtype(manifest[A]))
     case QueryableWhere(s,p) => queryable_where(f(s), p)
-    case NewOrderedQueryable(n,s,sel) => reflectPure(NewOrderedQueryable(f(n),f(s),f(sel)))
+    case NewOrderedQueryable(n,s,sel) => reflectPure(NewOrderedQueryable(f(n),f(s),f(sel)))(mtype(f(n).Type))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]] //todo fix asInstanceOf
   
@@ -171,6 +176,12 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
     //case QueryableGroupBy(s,v,k) => syms(s) 
     case NewOrderedQueryable(n,s,sel) => syms(n)
     case _ => super.syms(e)
+  }
+  
+  override def symsFreq(e: Any): List[(Sym[Any],Double)] = e match { 
+    //case QueryableGroupBy(s,v,k) => syms(s) 
+    case NewOrderedQueryable(n,s,sel) => freqNormal(n)
+    case _ => super.symsFreq(e)
   }
   
   override def boundSyms(e: Any): List[Sym[Any]] = e match {    
@@ -190,6 +201,7 @@ trait ScalaGenQueryableOps extends ScalaGenFat {
                                       /*val d = findDefinition(s.asInstanceOf[Sym[Any]]).get; emitNode(d.sym,d.rhs)*/ 
                                        stream.println("val " + quote(sym) + " = {")
                                        emitBlock(Block(n)) 
+                                       stream.println(quote(n))
                                        stream.println("}")
     case HackQueryableGroupBy(s, v, k) =>  {
       stream.println("val " + quote(sym) + " =  " + quote(s) + ".GroupBy( " + quote(v) + " => {")   
