@@ -150,7 +150,11 @@ trait SC extends DeLisztApplication {
     var ll = Vec(MAX_DOUBLE,MAX_DOUBLE,MAX_DOUBLE)
     var ur = Vec(MIN_DOUBLE,MIN_DOUBLE,MIN_DOUBLE)
 
-    for(v <- vertices(mesh)) {
+    // Atomic reduce fails.. just do sequentially
+    val ms = vertices(mesh)
+    var i = 0
+    while(i < ms.size) {
+      val v = ms(i)
       ll = ll min position(v)
       ur = ur max position(v)
     }
