@@ -579,7 +579,7 @@ trait Smooth extends DeLisztApplication {
 
       var iter = 0
       
-      for(e <- edges(mesh)) {
+    /*  for(e <- edges(mesh)) {
         val left_face  = left(e)
         val right_face = right(e)
         
@@ -591,6 +591,8 @@ trait Smooth extends DeLisztApplication {
         }
       }	
 
+      */
+      
       while (iter <= 4) {
         val factor = deltat/(5.0-iter.asInstanceOfL[Double])
 

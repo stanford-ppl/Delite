@@ -428,8 +428,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
     
     if(Config.collectStencil) {
       if(collectingSchedule) {
-        System.out.println("COLLECTING SCHEDULE " + sym.id)
-        System.out.println(rhs)
+        // System.out.println("COLLECTING SCHEDULE " + sym.id)
+        // System.out.println(rhs)
         var matched = true
         
         rhs match {
@@ -622,8 +622,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
           case DeLisztFace(e, i, m) =>
           case DeLisztTowardsEdgeVertex(e, v, m) =>
           case DeLisztTowardsFaceCell(e, c, m) =>
-          // Intentionally ignored
-          /* case DeLisztCtov(m) =>
+          case DeLisztCtov(m) =>
           case DeLisztEtov(m) =>
           case DeLisztFtov(m) =>
           case DeLisztVtov(m) =>
@@ -635,7 +634,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
           case DeLisztFtoe(m) =>
           case DeLisztCtof(m) =>
           case DeLisztEtof(m) =>
-          case DeLisztVtof(m) => */
+          case DeLisztVtof(m) =>
           
           case _ => { matched = false }
         }
@@ -646,8 +645,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         }
       }
       else {
-        System.out.println("EMITTING SCHEDULE " + sym.id)
-        System.out.println(rhs)
+        // System.out.println("EMITTING SCHEDULE " + sym.id)
+        // System.out.println(rhs)
         rhs match {
           // Foreach, only apply to top level foreach though...
           case f@MeshSetForeach(m, b) => {

@@ -61,11 +61,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     val dataDeps = { // don't use getFreeVarNode...
       val bound = boundSyms(rhs)
       val used = syms(rhs)
-      println( "=== used for " + sym)
-      used foreach { s => s match {
-        case Def(x) => println(s + " = " + x)
-        case _ => println(s)
-      }}
+      // println( "=== used for " + sym)
+      // used foreach { s => s match {
+        // case Def(x) => println(s + " = " + x)
+        // case _ => println(s)
+      // }}
       //println(used)
       //focusFatBlock(used) { freeInScope(bound, used) } filter { case Def(r@Reflect(x,u,es)) => used contains r; case _ => true } // distinct
       focusFatBlock(used) { freeInScope(bound, used) } // distinct
