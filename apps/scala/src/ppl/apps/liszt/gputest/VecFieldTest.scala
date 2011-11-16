@@ -6,14 +6,14 @@ import ppl.dsl.deliszt.MetaInteger._
 object VecFieldTestRunner extends DeLisztApplicationRunner with VecFieldTest
 
 trait VecFieldTest extends DeLisztApplication {
-    var int3_init : Rep[Vec[_3,Int]] = null
-    var cell_centroid : Rep[Field[Cell,Vec[_3,Int]]] = null
-    var cell_volume : Rep[Field[Cell,Int]] = null
+    var int3_init : Rep[Vec[_3,Double]] = null
+    var cell_centroid : Rep[Field[Cell,Vec[_3,Double]]] = null
+    var cell_volume : Rep[Field[Cell,Double]] = null
     
     def main() {
-      int3_init = Vec(1,2,3)
-      cell_centroid = FieldWithConst[Cell,Vec[_3,Int]](int3_init)
-      cell_volume = FieldWithConst[Cell,Int](0)
+      int3_init = Vec(1.0,2.0,3.0)
+      cell_centroid = FieldWithConst[Cell,Vec[_3,Double]](int3_init)
+      cell_volume = FieldWithConst[Cell,Double](0)
       
       for(c <- cells(mesh)) {
         cell_volume(c) += cell_centroid(c)(2)

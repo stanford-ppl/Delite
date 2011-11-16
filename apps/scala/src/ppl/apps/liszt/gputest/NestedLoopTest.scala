@@ -6,10 +6,10 @@ import ppl.dsl.deliszt.MetaInteger._
 object NestedLoopTestRunner extends DeLisztApplicationRunner with NestedLoopTest
 
 trait NestedLoopTest extends DeLisztApplication {
-    var face_values : Rep[Field[Face,Int]] = null
+    var face_values : Rep[Field[Face,Double]] = null
     
     def main() {
-      face_values = FieldWithConst[Face,Int](0)
+      face_values = FieldWithConst[Face,Double](0.0)
       
       for(f <- faces(mesh)) {
         for(c <- cells(f)) {

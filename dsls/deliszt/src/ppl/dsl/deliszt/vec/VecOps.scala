@@ -383,10 +383,12 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     case e@VecMax(x) => reflectPure(new { override val original = Some(f,e) } with VecMax(f(x))(e.n, e.vn, e.m, e.o, e.p))(mtype(manifest[A]))
     case e@VecZipMin(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMin(f(x),f(y))(e.n, e.vn, e.m, e.o))(mtype(manifest[A]))
     case e@VecZipMax(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMax(f(x),f(y))(e.n, e.vn, e.m, e.o))(mtype(manifest[A]))
+    case e@Vec3New(x,y,z) => reflectPure(Vec3New(f(x),f(y),f(z))(e.n, e.vn, e.a))
     // Read/write effects
     case Reflect(e@VecUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VecUpdate(f(l),f(i),f(r))(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     // Effect with SingleTask and DeliteOpLoop
     // Allocation
+    case Reflect(e@Vec3New(x,y,z), u, es) => reflectMirrored(Reflect(Vec3New(f(x),f(y),f(z))(e.n, e.vn, e.a), mapOver(f,u), f(es)))
     case Reflect(e@VecObjNew(xs @ _*), u, es) => reflectMirrored(Reflect(VecObjNew(f(xs) : _*)(e.n, e.vn, e.a), mapOver(f,u), f(es)))
     case Reflect(e@VecObjNNew(n), u, es) => reflectMirrored(Reflect(VecObjNNew(f(n))(e.n, e.vn, e.a), mapOver(f,u), f(es)))
     case _ => super.mirror(e, f)
@@ -424,19 +426,21 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   // object interface
   def vec_obj_new[N<:IntM:Manifest:MVal, A:Manifest](xs: Exp[A]*) = {
     if(xs.length == 3) {
-        //reflectMutable(Vec3New[N,A](xs(0),xs(1),xs(2))).unsafeImmutable
+        //reflectMutable(Vec3New[N,A](xs(0),xs(1),xs(2)))//.unsafeImmutable
         Vec3New[N,A](xs(0),xs(1),xs(2))
 	   } else {
-        reflectMutable(VecObjNew[N,A](xs:_*)).unsafeImmutable
+        //reflectMutable(VecObjNew[N,A](xs:_*))//.unsafeImmutable
+        VecObjNew[N,A](xs:_*)//.unsafeImmutable
      }    
   }
   
   def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i: Exp[Int]) = i match {
     case Const(3) => 
-      reflectMutable(Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]))).unsafeImmutable
+      reflectMutable(Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A])))//.unsafeImmutable
       //Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A])))
 	case _ =>
-      reflectMutable(VecObjNNew[N,A](i)).unsafeImmutable
+      //reflectMutable(VecObjNNew[N,A](i))//.unsafeImmutable
+      reflectMutable(VecObjNNew[N,A](i))//.unsafeImmutable
   }
 
   /////////////////////

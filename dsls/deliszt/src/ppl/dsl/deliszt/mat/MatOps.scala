@@ -309,6 +309,7 @@ trait MatOpsExp extends MatOps with VariablesExp with DeliteCollectionOpsExp {
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
     (e match {
+      case e@MatObjNew(xs @ _*) => reflectPure(MatObjNew(f(xs) : _*)(e.r, e.vr, e.c, e.vc, e.a))
       case e@MatApply(x,i,j) => mat_apply(f(x), f(i), f(j))(e.r, e.vr, e.c, e.vc, e.a)
       case e@MatGetRow(x,i) => row(f(x),f(i))(e.r, e.vr, e.c, e.vc, e.a)
       case e@MatGetCol(x,i) => col(f(x),f(i))(e.r, e.vr, e.c, e.vc, e.a)
@@ -323,6 +324,17 @@ trait MatOpsExp extends MatOps with VariablesExp with DeliteCollectionOpsExp {
       case e@MatMinus(x,y) => reflectPure(new { override val original = Some(f,e) } with MatMinus(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa))(mtype(manifest[A]))
       case e@MatUnaryMinus(x) => reflectPure(new { override val original = Some(f,e) } with MatUnaryMinus(f(x))(e.r, e.vr, e.c, e.vc, e.a, e.aa))(mtype(manifest[A]))
       case e@MatTranspose(x) => reflectPure(new { override val original = Some(f,e) } with MatTranspose(f(x))(e.r, e.vr, e.c, e.vc, e.a))(mtype(manifest[A]))
+      case Reflect(e@MatMultiply(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatMultiply(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.cc, e.vcc, e.a, e.aa), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatTimes(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatTimes(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatTimesScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatTimesScalar(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatTimesVec(x,y), u, es)  => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatTimesVec(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatDivide(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatDivide(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatDivideScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatDivideScalar(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatPlus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatPlus(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatPlusScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatPlusScalar(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatMinus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatMinus(f(x),f(y))(e.r, e.vr, e.c, e.vc, e.a, e.aa), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatUnaryMinus(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatUnaryMinus(f(x))(e.r, e.vr, e.c, e.vc, e.a, e.aa), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatTranspose(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatTranspose(f(x))(e.r, e.vr, e.c, e.vc, e.a), mapOver(f,u), f(es)))(mtype(manifest[A])) 
       case MatNumRows(x) => mat_num_rows(f(x))
       case MatNumCols(x) => mat_num_cols(f(x))
       // Read/write effects
@@ -375,6 +387,7 @@ trait MatOpsExp extends MatOps with VariablesExp with DeliteCollectionOpsExp {
   ////////////////////
   // object interface
   def mat_obj_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](vs: Exp[Vec[C,A]]*): Exp[Mat[R,C,A]] = {    
+    /*
     if (vs.length == 3) {
       Predef.println("!!! found a matrix constructor with Vec3 args !!!")
       val buf = new scala.collection.mutable.ArrayBuffer[Exp[A]]()
@@ -412,16 +425,19 @@ trait MatOpsExp extends MatOps with VariablesExp with DeliteCollectionOpsExp {
         case _ => Predef.println(" found non vec3?! : " + e.Type.toString)
                   Predef.println(" def is: " + findDefinition(e.asInstanceOf[Sym[Any]]).toString)
       }}
-      if (buf.length == 0) return reflectMutable(MatObjNew[R,C,A](vs:_*)).unsafeImmutable 
-      else return reflectMutable(Mat3New[R,C,A](buf.toArray)).unsafeImmutable
-      //else return Mat3New[R,C,A](buf.toArray)
+      //if (buf.length == 0) return reflectMutable(MatObjNew[R,C,A](vs:_*))//.unsafeImmutable 
+      //else return reflectMutable(Mat3New[R,C,A](buf.toArray))//.unsafeImmutable
+      if (buf.length == 0) return MatObjNew[R,C,A](vs:_*)
+      else return Mat3New[R,C,A](buf.toArray)
     }
     else 
-      reflectMutable(MatObjNew[R,C,A](vs:_*)).unsafeImmutable
+    */
+      //reflectMutable(MatObjNew[R,C,A](vs:_*))//.unsafeImmutable
+      MatObjNew[R,C,A](vs:_*)
   }
   
   def mat_obj_n_new[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest](r: Exp[Int], c: Exp[Int]) = {
-    reflectMutable(MatObjNNew[R,C,A](r,c)).unsafeImmutable
+    reflectMutable(MatObjNNew[R,C,A](r,c))//.unsafeImmutable
   }
 
   ///////////////////

@@ -34,6 +34,7 @@ object CudaCompile extends GPUCompile {
       "-arch", "compute_20",
       "-code", "sm_20",
       "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
+      "--use_fast_math",
       "-L" + deliteLibs) ++ linkGeneratedLibs(deliteLibs) ++ Array[String](
       "-o", "cudaHost.so", //output name
       source //input name
