@@ -14,16 +14,8 @@ import scala.collection.mutable.{Map => MMap}
 trait LoopColoringOpsExp extends BaseFatExp with EffectExp { this: DeLisztExp =>
   case class ColorIndexSetNew(indices: Exp[Array[Int]], start: Exp[Int], end: Exp[Int], mo: Manifest[MeshSet[MeshObj]]) extends Def[MeshSet[MeshObj]]    
   
-  private def baseManifest[A<:MeshObj:Manifest] = manifest[MeshSet[A]]
-  
   def color_index_set_new(indices: Array[Int], start: Int, end: Int)(implicit mo: Manifest[MeshSet[MeshObj]]): Exp[MeshSet[MeshObj]] = {
-    // this shouldn't need to be effectful, but this is a workaround for the issue that if this node is promoted to
-    // an effect in a more specific scope, it gains the more specific Type manifest, which we don't want in this case.
-    
-    // we could also probably use remap to fix this, but I didn't want to disturb anything else.
-    //reflectEffect(ColorIndexSetNew(Array(indices: _*),unit(start),unit(end),mo))(baseManifest(mo.typeArguments(0).asInstanceOf[Manifest[MeshObj]]))
     ColorIndexSetNew(Array(indices: _*),unit(start),unit(end),mo)
-    //ColorIndexSetNew(Array(0,0),unit(start),unit(end),mo)
   }
   def color_lift(x: Int) = Const(x)
 
@@ -42,23 +34,9 @@ trait ScalaGenLoopColoringOps extends ScalaGenBase {
   val IR: LoopColoringOpsExp
   import IR._
 
-  // clean this up when deliszt front-end does not depend on deliszt back-end
-  // def meshObjConstructor(mo: Manifest[MeshSet[MeshObj]]) = {
-  //   val tp = mo.typeArguments(0)
-  //   val (cellM,edgeM,faceM,vertexM) = (manifest[Cell],manifest[Edge],manifest[Face],manifest[Vertex])
-  // 
-  //   tp match {
-  //     case `cellM` => "generated.scala.MeshObjConstruct.CellConstruct"
-  //     case `edgeM` => "generated.scala.MeshObjConstruct.EdgeConstruct"
-  //     case `faceM` => "generated.scala.MeshObjConstruct.FaceConstruct"
-  //     case `vertexM` => "generated.scala.MeshObjConstruct.VertexConstruct"
-  //   }
-  // }
-  
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case e@ColorIndexSetNew(indices,start,end,mo) => 
-        //val moc = meshObjConstructor(mo)
         emitValDef(sym, "new generated.scala.IndexSetImpl(" + quote(indices) + "," + quote(indices) + ".length" + "," + quote(start) + "," + quote(end) +", 1)")
       case _ => super.emitNode(sym,rhs)
     }
@@ -77,8 +55,8 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
 
   var firstRun = true
 
-  def colog(s: String) = printlog("[deliszt coloring] " + s)
-  def codbg(s: String) = colog(s) //printdbg("[deliszt coloring] " + s)
+  def colog(s: String) = printlog("[deliszt coloring log] " + s)
+  def codbg(s: String) = printdbg("[deliszt coloring debug] " + s)
   
   // the issue here is that to transform the MeshSetForeach, we need more information than SimpleFatLoop keeps around.
   // by not turning into a SimpleFatLoop, we preclude the ability to fuse MeshSetForeachs. If fusing is important in Liszt,
@@ -90,8 +68,6 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
   }
  
   override def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): List[(Sym[Any],Any)] = {
-    println("OVERRIDING DELITE EMIT SOURCE")
-
     val x = fresh[A]
     val y = reifyEffects(f(x))
 
@@ -325,87 +301,41 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           val loopRefTransformer = new SubstTransformer
 
           // replace references to old loop (since we are replacing effectful loops of type Unit, should only be effectful dependencies...)
-/*
-          currentScope = currentScope map (e => e match {
-            case TTP(lhs, ThinDef(Reify(x,u,es))) if (es contains loop.lhs(0)) =>           
-              val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
-              val o = lhs(0)
-              val n = fresh(x.Type) 
-		colog("in currentScope " + o + "->" + n)           
-              loopRefTransformer.subst(o) = n
-              TTP(List(n), ThinDef(Reify(x,u,cleanEs))) 
-            case _ => e
-          })
-         innerScope = innerScope map (e => e match {
-            case TP(lhs, Reify(x,u,es)) if (es contains loop.lhs(0)) =>           
+         
+          // NOTE: we get (so far) harmless violated ordering of effects errors due to the fact
+          // that we are transforming the currentScope below using transformAllFully, but simply
+          // modifying effectful nodes directly here. if the schedule changes, the spliced in order
+          // may be wrong.
+
+          innerScope foreach {
+            case TP(lhs, Reify(x,u,es)) if (es contains loop.lhs(0)) =>
               val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
               val o = lhs
-              val n = loopRefTransformer(lhs).asInstanceOf[Sym[Any]] //fresh(x.Type)            
-                colog("in innerScope" + o + "->" + n)
-              //loopRefTransformer.subst(o) = n
-              TP(n, Reify(x,u,cleanEs))
-            case _ => e
-          }) 
-*/
-
-	innerScope foreach {
-	  case TP(lhs, Reify(x,u,es)) if (es contains loop.lhs(0)) =>
-	    val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
-	    val o = lhs
-            val n = findOrCreateDefinition(Reify(x,u,cleanEs)).sym
-	    loopRefTransformer.subst(o) = n
-	  case _ =>
-	}
+              val n = findOrCreateDefinition(Reify(x,u,cleanEs)).sym
+              loopRefTransformer.subst(o) = n
+            case TP(lhs, Reflect(x,u,es)) if (es contains loop.lhs(0)) =>
+              val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
+              val o = lhs
+              val n = findOrCreateDefinition(Reflect(x,u,cleanEs)).sym
+              loopRefTransformer.subst(o) = n
+            case _ =>
+          }
           
-        codbg("<loop A " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")          
           
-
-	println(loopRefTransformer.subst)
-
-/*
-    def withEffectContext(body: =>List[TTP]): List[TTP] = {
-      val save = context
-      context = Nil
-      val scope = body
-      val leftovereffects = context.filterNot((scope.flatMap(_.lhs)) contains _)
-      if (leftovereffects.nonEmpty) 
-        printlog("warning: transformation left effect context (will be discarded): "+leftovereffects)
-      context = save
-      scope
-    }
-  
-	currentScope = getFatSchedule(currentScope)(currentScope) // clean things up!
-        currentScope = withEffectContext { transformAll(currentScope, loopRefTransformer) }
-//	currentScope = getFatSchedule(currentScope)(currentScope) // clean things up!
-
-
-	println(loopRefTransformer.subst)
-
-//        currentScope = getFatSchedule(currentScope)(loopRefTransformer(result)) // clean things up!
-
-        codbg("<loop A2 " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")
-
+          codbg("<loop A " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")          
+          codbg(loopRefTransformer.subst.toString)
 
           // update the schedule
-          /*
-          result = loopRefTransformer(result) 
-          currentScope = getFatSchedule(currentScope)(result) // clean things up! 
-          innerScope = getSchedule(innerScope)(result) // clean things up!                    
-          */
-*/          
           transformAllFully(currentScope, result, loopRefTransformer) match { case (a,b) => // too bad we can't use pair assigment
             currentScope = a
             result = b
           }
-          
+
           codbg("<loop B " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")          
                   println(loopRefTransformer.subst)
 	}
       } // end loop foreach
       
-      //currentScope = getFatScheduleM(currentScope)(result, false, true) // clean things up! 
-      //currentScope = getFatSchedule(currentScope)(result) // clean things up! 
-      //innerScope = getSchedule(innerScope)(result) // clean things up!             
     } // end if Config.collectStencil
         
     // do what super does ...
