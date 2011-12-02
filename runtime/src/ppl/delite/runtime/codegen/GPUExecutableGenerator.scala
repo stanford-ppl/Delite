@@ -150,14 +150,13 @@ trait GPUExecutableGenerator {
     case _ => false
   }
 
-  protected def writeJNIInitializer(location: Int, out: StringBuilder) {
-    //TODO: this loop should not assume its location is the last
-    for (i <- 0 to location) {
+  protected def writeJNIInitializer(locations: Set[Int], out: StringBuilder) {
+    for (loc <- locations) {
       out.append("jclass cls")
-      out.append(i)
+      out.append(loc)
       out.append(" = env->FindClass(\"")
       out.append(executableName)
-      out.append(i)
+      out.append(loc)
       out.append("\");\n")
     }
     //add a reference to the singleton of scala.runtime.BoxedUnit for use everywhere required

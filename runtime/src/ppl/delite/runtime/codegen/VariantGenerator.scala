@@ -80,7 +80,8 @@ abstract class GPUVariantGenerator(variant: OP_Variant, location: Int, target: T
 
 
     writeFunctionHeader(out)
-    writeJNIInitializer(location, out)
+    val locations = variant.nestedGraphs.flatMap(_.ops.map(_.scheduledResource)).toSet
+    writeJNIInitializer(locations, out)
 
     val available = new ArrayBuffer[DeliteOP]
     val awaited = new ArrayBuffer[DeliteOP]
