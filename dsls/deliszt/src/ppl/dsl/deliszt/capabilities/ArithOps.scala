@@ -206,6 +206,13 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
       case ArithNegate(lhs) => arith_negate(f(lhs))
       case ArithFractionalDivide(lhs, rhs) => arith_fractional_divide(f(lhs), f(rhs))
       case ArithAbs(lhs) => arith_abs(f(lhs))
+      
+      case Reflect(e@ArithPlus(lhs,rhs), u, es) => reflectMirrored(Reflect(ArithPlus(f(lhs),f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@ArithMinus(lhs,rhs), u, es) => reflectMirrored(Reflect(ArithMinus(f(lhs),f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@ArithTimes(lhs,rhs), u, es) => reflectMirrored(Reflect(ArithTimes(f(lhs),f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@ArithNegate(lhs), u, es) => reflectMirrored(Reflect(ArithNegate(f(lhs)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@ArithFractionalDivide(lhs,rhs), u, es) => reflectMirrored(Reflect(ArithFractionalDivide(f(lhs),f(rhs)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@ArithAbs(lhs), u, es) => reflectMirrored(Reflect(ArithAbs(f(lhs)), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case _ => super.mirror(e, f)
     }
   }

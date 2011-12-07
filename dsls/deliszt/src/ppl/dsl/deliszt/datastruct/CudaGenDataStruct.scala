@@ -14,8 +14,8 @@ trait CudaGenDataStruct extends CudaCodegen {
   val EdgeImplCls = "jclass EdgeImplCls = env->FindClass(\"generated/scala/EdgeImpl\");\n"
   val FaceImplCls = "jclass FaceImplCls = env->FindClass(\"generated/scala/FaceImpl\");\n"
   val VertexImplCls = "jclass VertexImplCls = env->FindClass(\"generated/scala/VertexImpl\");\n"
-  val VecImplCls = "jclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n"
-  val MatImplCls = "jclass MatImplCls = env->FindClass(\"generated/scala/MatImpl\");\n"
+  //val VecImplCls = "jclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n"
+  //val MatImplCls = "jclass MatImplCls = env->FindClass(\"generated/scala/MatImpl\");\n"
   val CRSImplCls = "jclass CRSImplCls = env->FindClass(\"generated/scala/CRSImpl\");\n"
 
   def writeImplCls: String = {
@@ -100,7 +100,17 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
     out.append("\t%s->data = devPtr;\n".format(quote(sym)))
 
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\tjclass FieldImplCls = env->FindClass(\"generated/scala/FieldImpl\");\n")
+    out.append("\tjclass FieldImplCls_spec = env->FindClass(\"generated/scala/%sFieldImpl\");\n".format(argType.toString))
+    
+    out.append("\tjmethodID mid_data;\n")
+    out.append("\tif(env->IsInstanceOf(obj,FieldImplCls_spec)) {\n")
+    out.append("\t\tmid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
+    out.append("\t}\n")
+    out.append("\telse {\n")
+    out.append("\t\tmid_data = env->GetMethodID(cls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\t}\n")
+
     out.append("\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
     out.append("\tmemcpy(%s, %s, %s);\n".format("hostPtr","dataPtr",numBytesStr))
@@ -122,7 +132,18 @@ trait CudaGenDataStruct extends CudaCodegen {
     val numBytesStr = "%s.size * sizeof(%s)".format(quote(sym),remap(argType))
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    
+    out.append("\tjclass FieldImplCls = env->FindClass(\"generated/scala/FieldImpl\");\n")
+    out.append("\tjclass FieldImplCls_spec = env->FindClass(\"generated/scala/%sFieldImpl\");\n".format(argType.toString))
+
+    out.append("\tjmethodID mid_data;\n")
+    out.append("\tif(env->IsInstanceOf(obj,FieldImplCls_spec)) {\n")
+    out.append("\t\tmid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
+    out.append("\t}\n")
+    out.append("\telse {\n")
+    out.append("\t\tmid_data = env->GetMethodID(cls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\t}\n")
+    
     out.append("\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
     out.append("\t%s *hostPtr;\n".format(typeStr))
@@ -155,13 +176,21 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
     out.append("\t%s->data = devPtr;\n".format(quote(sym)))
 
-    out.append("\t"+VecImplCls)
     out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
+    out.append("\tjclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n")
+    out.append("\tjclass VecImplCls_spec = env->FindClass(\"generated/scala/%sVecImpl\");\n".format(argType.toString))
     out.append("\tjmethodID mid_elem_data = env->GetMethodID(VecImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\tjmethodID mid_elem_data_spec = env->GetMethodID(VecImplCls_spec,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
 
     out.append("\tfor(int i=0; i<%s->size; i++) {\n".format(quote(sym)))
     out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
-    out.append("\t\tj%sArray elem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr,typeStr))
+    out.append("\t\tj%sArray elem_data;\n".format(typeStr))
+    out.append("\t\tif(env->IsInstanceOf(elem,VecImplCls_spec)) {\n")
+    out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data_spec));\n".format(typeStr))
+    out.append("\t\t} else {\n")
+    out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr))
+    out.append("\t\t}")
+    
     out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
     out.append("\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = elem_data_ptr[j]; }\n".format(size,size))
     out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
@@ -184,9 +213,11 @@ trait CudaGenDataStruct extends CudaCodegen {
     val numBytesStr = "%s.size * sizeof(%s) * %s".format(quote(sym),remap(argType),size)
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\t"+VecImplCls)
     out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
+    out.append("\tjclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n".format(argType.toString))
+    out.append("\tjclass VecImplCls_spec = env->FindClass(\"generated/scala/%sVecImpl\");\n".format(argType.toString))
     out.append("\tjmethodID mid_elem_data = env->GetMethodID(VecImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\tjmethodID mid_elem_data_spec = env->GetMethodID(VecImplCls_spec,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
     
     out.append("\t%s *hostPtr;\n".format(typeStr))
     out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
@@ -194,7 +225,13 @@ trait CudaGenDataStruct extends CudaCodegen {
     
     out.append("\tfor(int i=0; i<%s.size; i++) {\n".format(quote(sym)))
     out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
-    out.append("\t\tj%sArray elem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr,typeStr))
+    out.append("\t\tj%sArray elem_data;\n".format(typeStr))
+    out.append("\t\tif(env->IsInstanceOf(elem,VecImplCls_spec)) {\n")
+    out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data_spec));\n".format(typeStr))
+    out.append("\t\t} else {\n")
+    out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr))
+    out.append("\t\t}")
+
     out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
     out.append("\t\tfor(int j=0; j<%s; j++) { elem_data_ptr[j] = hostPtr[i*%s+j]; }\n".format(size,size))
     out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
@@ -223,13 +260,20 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMalloc((void**)%s,%s);\n".format("&devPtr",numBytesStr))
     out.append("\t%s->data = devPtr;\n".format(quote(sym)))
 
-    out.append("\t"+MatImplCls)
     out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
+    out.append("\tjclass MatImplCls = env->FindClass(\"generated/scala/MatImpl\");\n")
+    out.append("\tjclass MatImplCls_spec = env->FindClass(\"generated/scala/%sMatImpl\");\n".format(argType.toString))
     out.append("\tjmethodID mid_elem_data = env->GetMethodID(MatImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\tjmethodID mid_elem_data_spec = env->GetMethodID(MatImplCls_spec,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
 
     out.append("\tfor(int i=0; i<%s->size; i++) {\n".format(quote(sym)))
     out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
-    out.append("\t\tj%sArray elem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr,typeStr))
+    out.append("\t\tj%sArray elem_data;\n".format(typeStr))
+    out.append("\t\tif(env->IsInstanceOf(elem,MatImplCls_spec)) {\n")
+    out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data_spec));\n".format(typeStr))
+    out.append("\t\t} else {\n")
+    out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr))
+    out.append("\t\t}")
     out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
     out.append("\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = elem_data_ptr[j]; }\n".format(size,size))
     out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
@@ -252,9 +296,11 @@ trait CudaGenDataStruct extends CudaCodegen {
     val numBytesStr = "%s.size * sizeof(%s) * %s".format(quote(sym),remap(argType),size)
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\t"+MatImplCls)
     out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
+    out.append("\tjclass MatImplCls = env->FindClass(\"generated/scala/MatImpl\");\n".format(argType.toString))
+    out.append("\tjclass MatImplCls_spec = env->FindClass(\"generated/scala/%sMatImpl\");\n".format(argType.toString))
     out.append("\tjmethodID mid_elem_data = env->GetMethodID(MatImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\tjmethodID mid_elem_data_spec = env->GetMethodID(MatImplCls_spec,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
     
     out.append("\t%s *hostPtr;\n".format(typeStr))
     out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
@@ -262,7 +308,12 @@ trait CudaGenDataStruct extends CudaCodegen {
     
     out.append("\tfor(int i=0; i<%s.size; i++) {\n".format(quote(sym)))
     out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
-    out.append("\t\tj%sArray elem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr,typeStr))
+    out.append("\t\tj%sArray elem_data;\n".format(typeStr))
+    out.append("\t\tif(env->IsInstanceOf(elem,MatImplCls_spec)) {\n")
+    out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data_spec));\n".format(typeStr))
+    out.append("\t\t} else {\n")
+    out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr))
+    out.append("\t\t}")
     out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
     out.append("\t\tfor(int j=0; j<%s; j++) { elem_data_ptr[j] = hostPtr[i*%s+j]; }\n".format(size,size))
     out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
@@ -352,14 +403,24 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
 
-    out.append("\t" + VecImplCls)
-    out.append("\tjmethodID mid_elem = env->GetMethodID(VecImplCls,\"apply$mc%s$sp\",\"(I)%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\tjclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n")
+    out.append("\tjclass VecImplCls_spec = env->FindClass(\"generated/scala/%sVecImpl\");\n".format(argType.toString))
+
+    out.append("\tjmethodID mid_elem;")
+    out.append("\tif(env->IsInstanceOf(obj,VecImplCls_spec)) {\n")
+    out.append("\t\tmid_elem = env->GetMethodID(VecImplCls_spec,\"apply\",\"(I)%s\");\n".format(JNITypeDescriptor(argType)))
+    out.append("\t}\n")
+    out.append("\telse {\n")
+    out.append("\t\tmid_elem = env->GetMethodID(VecImplCls,\"apply$mc%s$sp\",\"(I)%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\t}\n")
+    
     out.append("\tfor(int i=0; i<%s; i++) {\n".format(size))
     typeStr match {
       case "int" => out.append("\t\t%s->data[i] = env->CallIntMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case "long" => out.append("\t\t%s->data[i] = env->CallLongMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case "float" => out.append("\t\t%s->data[i] = env->CallFloatMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case "bool" => out.append("\t\t%s->data[i] = env->CallBooleanMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case "double" => out.append("\t\t%s->data[i] = env->CallDoubleMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case _ => throw new GenerationFailedException("CudaGen: Cannot call JNI method for this type.")
     }
     out.append("\t}\n")
@@ -383,14 +444,24 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
 
-    out.append("\t" + MatImplCls)
-    out.append("\tjmethodID mid_elem = env->GetMethodID(MatImplCls,\"apply$mc%s$sp\",\"(I)%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\tjclass MatImplCls = env->FindClass(\"generated/scala/MatImpl\");\n")
+    out.append("\tjclass MatImplCls_spec = env->FindClass(\"generated/scala/%sMatImpl\");\n".format(argType.toString))
+    
+    out.append("\tjmethodID mid_elem;")
+    out.append("\tif(env->IsInstanceOf(obj,MatImplCls_spec)) {\n")
+    out.append("\t\tmid_elem = env->GetMethodID(MatImplCls_spec,\"apply\",\"(I)%s\");\n".format(JNITypeDescriptor(argType)))
+    out.append("\t}\n")
+    out.append("\telse {\n")
+    out.append("\t\tmid_elem = env->GetMethodID(MatImplCls,\"apply$mc%s$sp\",\"(I)%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\t}\n")
+
     out.append("\tfor(int i=0; i<%s; i++) {\n".format(size))
     typeStr match {
       case "int" => out.append("\t\t%s->data[i] = env->CallIntMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case "long" => out.append("\t\t%s->data[i] = env->CallLongMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case "float" => out.append("\t\t%s->data[i] = env->CallFloatMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case "bool" => out.append("\t\t%s->data[i] = env->CallBooleanMethod(obj,mid_elem,i);\n".format(quote(sym)))
+      case "double" => out.append("\t\t%s->data[i] = env->CallDoubleMethod(obj,mid_elem,i);\n".format(quote(sym)))
       case _ => throw new GenerationFailedException("CudaGen: Cannot call JNI method for this type.")
     }
     out.append("\t}\n")

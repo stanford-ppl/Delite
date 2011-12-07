@@ -29,7 +29,6 @@ trait MeshSet[MO <: MeshObj] extends DeliteCollection[MO]
 trait BoundarySet[MO<:MeshObj] extends MeshSet[MO]
 
 // Fields
-trait Field[MO<:MeshObj,T] extends DeliteCollection[T]
-trait LabelField[MO<:MeshObj,T] extends DeliteCollection[T]
-
 trait CRS
+trait Field[+MO<:MeshObj,T] extends DeliteCollection[T]
+trait LabelField[MO<:MeshObj,T] extends DeliteCollection[T]

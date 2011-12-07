@@ -49,11 +49,21 @@ class Vec3FieldImpl(val numVec:Int, val data: Array[Double]) extends Field[Vec[D
     new Vec3ViewImpl(data, Mesh.internal(idx)*3)
   }
   
+  override def raw_apply(idx: Int, elem: Int) = {
+    val offset = idx*3//Mesh.internal(idx)*3
+    data(offset+elem)
+  }
+
   def update(idx: Int, x: Vec[Double]) = {
-    val offset = Mesh.internal(idx)*3
+    val offset = idx*3//Mesh.internal(idx)*3
     data(offset) = x(0)
     data(offset+1) = x(1)
     data(offset+2) = x(2)
+  }
+
+  override def raw_update(idx: Int, elem: Int, v: Double) = {
+    val offset = Mesh.internal(idx)*3
+    data(offset+elem) = v
   }
   
   def size = numVec

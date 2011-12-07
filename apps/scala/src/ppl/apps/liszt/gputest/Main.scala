@@ -7,8 +7,8 @@ object HelloGPURunner extends DeLisztApplicationRunner with HelloGPU
 
 trait HelloGPU extends DeLisztApplication {
     def main() {
-      val field = FieldWithConst[Cell,Int](0)
-      val ffield = FieldWithConst[Face,Int](0)
+      val field = FieldWithConst[Cell,Double](0.0)
+      val ffield = FieldWithConst[Face,Double](0.0)
       
       for(c <- cells(mesh)) {
         field(c) += 3

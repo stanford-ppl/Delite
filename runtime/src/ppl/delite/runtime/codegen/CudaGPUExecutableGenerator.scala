@@ -49,6 +49,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("#include \"DeliteCuda.cu\"\n") //Delite-Cuda interface for DSL
     out.append("#include \"dsl.h\"\n") //imports all dsl kernels and helper functions
     out.append("#include \"library.h\"\n")
+    out.append("#include \"profiler.cu\"\n")
   }
 
   protected def writeFunctionHeader(location: Int, out: StringBuilder) {
@@ -236,6 +237,8 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
   protected def writeKernelCall(op: DeliteOP, out: StringBuilder) {
     if (op.task == null) return //dummy op
+    //out.append("cudaDeviceSynchronize();\n")
+    //out.append("mytic();\n")
     out.append(op.task) //kernel name
     val dims = op.getGPUMetadata(target)
     out.append("<<<") //kernel dimensions
@@ -294,7 +297,8 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     writeTemps(op, out) //then all op temporaries
     out.append(");\n")
     //out.append("cudaDeviceSynchronize();\n")
-    //out.append("printf(\"%s\\n\", cudaGetErrorString(cudaGetLastError()));")
+    //out.append("mytoc();\n")
+    //out.append("printTime();\n")
 
   }
 

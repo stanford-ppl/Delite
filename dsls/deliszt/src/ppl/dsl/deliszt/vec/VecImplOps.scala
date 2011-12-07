@@ -27,7 +27,7 @@ trait VecImplOpsStandard extends VecImplOps {
   } */
   
   def vec_outer_impl[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](collA: Rep[Vec[R,A]], collB: Rep[Vec[C,A]]) = {
-    val out = Mat[R,C,A](collA.size, collB.size).mutable
+    val out = Mat[R,C,A](collA.size, collB.size)
     
     var i = 0
     while(i < collA.size) {
@@ -47,12 +47,18 @@ trait VecImplOpsStandard extends VecImplOps {
   
   // Vector cross product for size 3 vector
   def vec_cross_impl[A:Manifest:Arith](a: Rep[Vec[_3,A]], b: Rep[Vec[_3,A]]) = {
-    val out = Vec[_3,A](3).mutable
+    /*
+    val out = Vec[_3,A](3)
     
     out(_0) = a(1) * b(2) - a(2) * b(1)
     out(_1) = a(2) * b(0) - a(0) * b(2)
     out(_2) = a(0) * b(1) - a(1) * b(0)
     
     out.unsafeImmutable
+    */
+    val x = a(1) * b(2) - a(2) * b(1)
+    val y = a(2) * b(0) - a(0) * b(2)
+    val z = a(0) * b(1) - a(1) * b(0)
+    Vec(x,y,z)
   }
 }

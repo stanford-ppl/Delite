@@ -83,7 +83,7 @@ trait VecOps extends DSLType with Variables {
     //def map[B:Manifest](f: Rep[A] => Rep[B]) = vec_map(x,f)
 
     //def &[M<:IntM:Manifest:MVal](rhs : Rep[Vec[M,A]]) = vec_concat[N,M,N+M,A](u, rhs)
-    
+    def cloneL() = vec_clone(u)
     def mutable() = vec_mutable_clone(u)
   }
 
@@ -123,12 +123,13 @@ trait VecOps extends DSLType with Variables {
   def vec_zip_max[N<:IntM:Manifest:MVal, A:Manifest:Ordering](x: Rep[Vec[N,A]], y: Rep[Vec[N,A]]): Rep[Vec[N,A]]
   
   def vec_mutable_clone[N<:IntM:Manifest:MVal, A:Manifest](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
+  def vec_clone[N<:IntM:Manifest:MVal, A:Manifest](x: Rep[Vec[N,A]]): Rep[Vec[N,A]]
 }
 
 trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   this: VecImplOps with DeLisztExp =>
 
-  override def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
+  //override def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
@@ -383,10 +384,31 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     case e@VecMax(x) => reflectPure(new { override val original = Some(f,e) } with VecMax(f(x))(e.n, e.vn, e.m, e.o, e.p))(mtype(manifest[A]))
     case e@VecZipMin(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMin(f(x),f(y))(e.n, e.vn, e.m, e.o))(mtype(manifest[A]))
     case e@VecZipMax(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMax(f(x),f(y))(e.n, e.vn, e.m, e.o))(mtype(manifest[A]))
+    case e@Vec3New(x,y,z) => reflectPure(Vec3New(f(x),f(y),f(z))(e.n, e.vn, e.a))
+    
+    case Reflect(e@VecNegate(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecNegate(f(x))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecPlus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecPlus(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecPlusScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecPlusScalar(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecMinus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecMinus(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecMinusScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecMinusScalar(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecTimes(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecTimes(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecTimesScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecTimesScalar(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecDivide(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecDivide(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecDivideScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecDivideScalar(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecCross(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecCross(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecNormalize(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecNormalize(f(x))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecSum(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecSum(f(x))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecAbs(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecAbs(f(x))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecMin(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecMin(f(x))(e.n, e.vn, e.m, e.o, e.p), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecMax(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecMax(f(x))(e.n, e.vn, e.m, e.o, e.p), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecZipMin(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecZipMin(f(x),f(y))(e.n, e.vn, e.m, e.o), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecZipMax(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecZipMax(f(x),f(y))(e.n, e.vn, e.m, e.o), mapOver(f,u), f(es)))(mtype(manifest[A]))
+
     // Read/write effects
     case Reflect(e@VecUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VecUpdate(f(l),f(i),f(r))(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     // Effect with SingleTask and DeliteOpLoop
     // Allocation
+    case Reflect(e@Vec3New(x,y,z), u, es) => reflectMirrored(Reflect(Vec3New(f(x),f(y),f(z))(e.n, e.vn, e.a), mapOver(f,u), f(es)))
     case Reflect(e@VecObjNew(xs @ _*), u, es) => reflectMirrored(Reflect(VecObjNew(f(xs) : _*)(e.n, e.vn, e.a), mapOver(f,u), f(es)))
     case Reflect(e@VecObjNNew(n), u, es) => reflectMirrored(Reflect(VecObjNNew(f(n))(e.n, e.vn, e.a), mapOver(f,u), f(es)))
     case _ => super.mirror(e, f)
@@ -424,19 +446,21 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   // object interface
   def vec_obj_new[N<:IntM:Manifest:MVal, A:Manifest](xs: Exp[A]*) = {
     if(xs.length == 3) {
-        //reflectMutable(Vec3New[N,A](xs(0),xs(1),xs(2))).unsafeImmutable
+        //reflectMutable(Vec3New[N,A](xs(0),xs(1),xs(2)))//.unsafeImmutable
         Vec3New[N,A](xs(0),xs(1),xs(2))
 	   } else {
-        reflectMutable(VecObjNew[N,A](xs:_*)).unsafeImmutable
+        //reflectMutable(VecObjNew[N,A](xs:_*))//.unsafeImmutable
+        VecObjNew[N,A](xs:_*)//.unsafeImmutable
      }    
   }
   
   def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i: Exp[Int]) = i match {
     case Const(3) => 
-      reflectMutable(Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]))).unsafeImmutable
+      reflectMutable(Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A])))//.unsafeImmutable
       //Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A])))
 	case _ =>
-      reflectMutable(VecObjNNew[N,A](i)).unsafeImmutable
+      //reflectMutable(VecObjNNew[N,A](i))//.unsafeImmutable
+      reflectMutable(VecObjNNew[N,A](i))//.unsafeImmutable
   }
 
   /////////////////////
@@ -474,6 +498,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   def outer[R<:IntM:Manifest:MVal, C<:IntM:Manifest:MVal, A:Manifest:Arith](a: Exp[Vec[R,A]], b: Exp[Vec[C,A]]) = reflectPure(VecOuter(a,b))
   
   def vec_mutable_clone[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]]) = reflectMutable(VecClone(x))
+  def vec_clone[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]]) = reflectPure(VecClone(x))
 }
 
 trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
@@ -481,7 +506,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
   
   // TODO: clean up, reuse matches, avoid as much casting
   
-  def const_vec_apply[A:Manifest](x: Exp[A], y: Exp[A], z: Exp[A], n: Exp[Int]): Option[Exp[A]] = x match {
+  def const_vec_apply[A:Manifest](x: Exp[A], y: Exp[A], z: Exp[A], n: Exp[Int]): Option[Exp[A]] = n match {
     case Const(0) => Some(x)
     case Const(1) => Some(y)
     case Const(2) => Some(z)
@@ -490,6 +515,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     
   override def vec_apply[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]], n: Exp[Int]) = x match {
     case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,n) getOrElse super.vec_apply(x,n)    
+
     // case Def(e: DeliteOpLoop[_]) => e.body match {
     //   case ce: DeliteCollectElem[_,_] => ce.alloc match {
     //     case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,i).asInstanceOf[Option[Exp[A]]] getOrElse super.vec_apply(x,i)
@@ -499,8 +525,8 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     //}
     case Def(e: DeliteOpMap[A,_,_]) => e.body match {
       case ce: DeliteCollectElem[_,_] => ce.alloc match {
-        case Def(Vec3New(a,b,c)) => reifyEffects(e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
-        case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)),_,_)) => reifyEffects(e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
+        case Def(Vec3New(a,b,c)) => e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
+        case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)),_,_)) => e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case _ => super.dc_apply(x,n)    
       }
       case _ => super.dc_apply(x,n)    
@@ -508,9 +534,9 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     case Def(e: DeliteOpZipWith[A,A,_,_]) => e.body match {
       case ce: DeliteCollectElem[_,_] => ce.alloc match {
         case Def(Vec3New(a,b,c)) =>
-          reifyEffects(e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
+          e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)),_,_)) =>
-          reifyEffects(e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
+          e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case _ => super.dc_apply(x,n)    
       }
       case _ => super.dc_apply(x,n)  
@@ -528,7 +554,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     case Def(e: DeliteOpMap[A,_,_]) => e.body match {
       case ce: DeliteCollectElem[_,_] => ce.alloc match {
         case Def(Vec3New(a,b,c)) => true
-	case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) => true
+        case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) => true
         case _ => false
       }
       case _ => false
@@ -536,7 +562,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     case Def(e: DeliteOpZipWith[A,A,_,_]) => e.body match {
       case ce: DeliteCollectElem[_,_] => ce.alloc match {
         case Def(Vec3New(a,b,c)) => true
-	case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) => true
+        case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) => true
         case _ => false
       }
       case _ => false
@@ -553,11 +579,20 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
   }
 
   override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = x match {
-    case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,n) getOrElse super.dc_apply(x,n)    
+    case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,n) getOrElse super.dc_apply(x,n)  
+
+    // field might have changed state since it was read, so reading the underlying field could be incorrect if there was a copy on read
+    // but the read is just a view into the underlying field anyways, so it doesn't matter
+    // issue is that the old Reflect node sticks around because of the effect...
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstCell(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstEdge(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstFace(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstVertex(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
+
     case Def(e: DeliteOpMap[A,_,_]) => e.body match {
       case ce: DeliteCollectElem[_,_] => ce.alloc match {
-        case Def(Vec3New(a,b,c)) => reifyEffects(e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
-        case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) => reifyEffects(e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
+        case Def(Vec3New(a,b,c)) => e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
+        case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) => e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case _ => super.dc_apply(x,n)    
       }
       case _ => super.dc_apply(x,n)    
@@ -565,9 +600,9 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     case Def(e: DeliteOpZipWith[A,A,_,_]) => e.body match {
       case ce: DeliteCollectElem[_,_] => ce.alloc match {
         case Def(Vec3New(a,b,c)) =>
-          reifyEffects(e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
+          e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) =>
-          reifyEffects(e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]])
+          e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case _ => super.dc_apply(x,n)    
       }
       case _ => super.dc_apply(x,n)  

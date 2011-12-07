@@ -6,40 +6,41 @@ import ppl.dsl.deliszt.MetaInteger._
 object SCTestRunner extends DeLisztApplicationRunner with SCTest
 
 trait SCTest extends DeLisztApplication {
-  var position : Rep[Field[Vertex,Vec[_3,Float]]] = null
+  /*
+  var position : Rep[Field[Vertex,Vec[_3,Double]]] = null
   var interior_set : Rep[BoundarySet[Face]] = null
   var inlet_set : Rep[BoundarySet[Face]] = null
   var outlet_set : Rep[BoundarySet[Face]] = null
   var far_field_set : Rep[BoundarySet[Face]] = null
-  var float3_zero : Rep[Vec[_3,Float]] = null
+  var float3_zero : Rep[Vec[_3,Double]] = null
 
-  var faceCenter : Rep[Field[Face,Vec[_3,Float]]] = null
-  var faceArea : Rep[Field[Face,Float]] = null
+  var faceCenter : Rep[Field[Face,Vec[_3,Double]]] = null
+  var faceArea : Rep[Field[Face,Double]] = null
 
-  var Phi : Rep[Field[Cell,Float]] = null
-  var Flux : Rep[Field[Cell,Float]] = null
+  var Phi : Rep[Field[Cell,Double]] = null
+  var Flux : Rep[Field[Cell,Double]] = null
 
   //some geometry fields
-  var face_centroid : Rep[Field[Face,Vec[_3,Float]]] = null
-  var face_area : Rep[Field[Face,Float]] = null
-  var face_normal : Rep[Field[Face,Vec[_3,Float]]] = null
-  var face_unit_normal : Rep[Field[Face,Vec[_3,Float]]] = null
+  var face_centroid : Rep[Field[Face,Vec[_3,Double]]] = null
+  var face_area : Rep[Field[Face,Double]] = null
+  var face_normal : Rep[Field[Face,Vec[_3,Double]]] = null
+  var face_unit_normal : Rep[Field[Face,Vec[_3,Double]]] = null
 
-  var cell_centroid : Rep[Field[Cell,Vec[_3,Float]]] = null
-  var cell_volume : Rep[Field[Cell,Float]] = null
+  var cell_centroid : Rep[Field[Cell,Vec[_3,Double]]] = null
+  var cell_volume : Rep[Field[Cell,Double]] = null
     
-  var testField : Rep[Field[Face,Float]] = null
+  var testField : Rep[Field[Face,Double]] = null
 
   //some geometry functions
-  def calcFaceCenter(f : Rep[Face]) : Rep[Vec[_3,Float]] = {
-    var center = Vec(0.f,0.f,0.f)
+  def calcFaceCenter(f : Rep[Face]) : Rep[Vec[_3,Double]] = {
+    var center = Vec(0.0,0.0,0.0)
     for(v <- vertices(f)) {
       center = center + position(v)
     }
     center / size(vertices(f))
   }
-  def calcCellCenter(c : Rep[Cell]) : Rep[Vec[_3,Float]] = {
-    var center = Vec(0.f,0.f,0.f)
+  def calcCellCenter(c : Rep[Cell]) : Rep[Vec[_3,Double]] = {
+    var center = Vec(0.0,0.0,0.0)
     for(v <- vertices(c)) {
       center = center + position(v)
     }
@@ -47,15 +48,15 @@ trait SCTest extends DeLisztApplication {
   }
   def calcFaceGeom(f : Rep[Face]) : Rep[Unit] = {
     val approxCenter = calcFaceCenter(f)
-    var normal = Vec(0.f,0.f,0.f)
+    var normal = Vec(0.0,0.0,0.0)
     for(e <- edgesCCW(f)) {
       val v0 = position(head(e)) - approxCenter
       val v1 = position(tail(e)) - approxCenter
       normal = normal + cross(v1,v0)
     }
     normal = normalize(normal)
-    var center = Vec(0.f,0.f,0.f)
-    var area = 0.f
+    var center = Vec(0.0,0.0,0.0)
+    var area = 0.0
     for(e <- edgesCCW(f)) {
       val v0 = position(head(e)) - approxCenter
       val v1 = position(tail(e)) - approxCenter
@@ -63,17 +64,17 @@ trait SCTest extends DeLisztApplication {
       area += tmp_area
       center = center + ( approxCenter + position(head(e)) + position(tail(e))) * tmp_area
     }  
-    face_centroid(f) = center / (area * 3.f)
-    val farea = area / 2.f
+    face_centroid(f) = center / (area * 3.0)
+    val farea = area / 2.0
     face_area(f) = farea
     face_normal(f) = normal*farea
     face_unit_normal(f) = normal
   }
 
   def calcCellGeom(c : Rep[Cell]) : Rep[Unit] = {
-    var center = Vec(0.f,0.f,0.f)
+    var center = Vec(0.0,0.0,0.0)
     val approxCenter = calcCellCenter(c)
-    var volume = 0.f
+    var volume = 0.0
     for(f <- faces(c)) {
       val v0 = face_centroid(f) - approxCenter
       for(e <- edgesCCW(towards(f,c))) {
@@ -84,41 +85,42 @@ trait SCTest extends DeLisztApplication {
         center = center + (approxCenter + face_centroid(f) + position(head(e)) + position(tail(e)))*tetVol
       }
     }
-    cell_centroid(c) = center / (volume * 4.f)
-    cell_volume(c) = volume / 6.f
+    cell_centroid(c) = center / (volume * 4.0)
+    cell_volume(c) = volume / 6.0
   }
-  def phi_sine_function( t : Rep[Float]) : Rep[Float] = {
-    10.f * sinf(t*2.f*MATH_PI.asInstanceOfL[Float])
+  def phi_sine_function( t : Rep[Double]) : Rep[Double] = {
+    10.0 * sinf(t*2.0*MATH_PI.asInstanceOfL[Double])
   }
-  def normal_pdf(x : Rep[Float]) : Rep[Float] = expf(- x * x / 2.f) / sqrtf(2.f * MATH_PI.asInstanceOfL[Float])
-
+  def normal_pdf(x : Rep[Double]) : Rep[Double] = expf(- x * x / 2.0) / sqrtf(2.0 * MATH_PI.asInstanceOfL[Double])
+*/
 
   def main() {
-    position = FieldWithLabel[Vertex,Vec[_3,Float]]("position")
+    /*
+    position = FieldWithLabel[Vertex,Vec[_3,Double]]("position")
     interior_set = BoundarySet[Face]("default-interior")
     inlet_set = BoundarySet[Face]("inlet")
     outlet_set = BoundarySet[Face]("outlet")
     far_field_set = BoundarySet[Face]("far_field")
-    float3_zero = Vec(7.f,6.f,5.f)
+    float3_zero = Vec(7.0,6.0,5.0)
 
-    faceCenter = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
-    faceArea = FieldWithConst[Face,Float](8.f)
+    faceCenter = FieldWithConst[Face,Vec[_3,Double]](float3_zero)
+    faceArea = FieldWithConst[Face,Double](8.0)
 
-    Phi = FieldWithConst[Cell,Float](2.f)
-    Flux = FieldWithConst[Cell,Float](6.f)
+    Phi = FieldWithConst[Cell,Double](2.0)
+    Flux = FieldWithConst[Cell,Double](6.0)
 
     //some geometry fields
-    face_centroid = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
-    face_area = FieldWithConst[Face,Float](9.f)
-    face_normal = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
-    face_unit_normal = FieldWithConst[Face,Vec[_3,Float]](float3_zero)
+    face_centroid = FieldWithConst[Face,Vec[_3,Double]](float3_zero)
+    face_area = FieldWithConst[Face,Double](9.0)
+    face_normal = FieldWithConst[Face,Vec[_3,Double]](float3_zero)
+    face_unit_normal = FieldWithConst[Face,Vec[_3,Double]](float3_zero)
 
-    cell_centroid = FieldWithConst[Cell,Vec[_3,Float]](float3_zero)
-    cell_volume = FieldWithConst[Cell,Float](17.f)
+    cell_centroid = FieldWithConst[Cell,Vec[_3,Double]](float3_zero)
+    cell_volume = FieldWithConst[Cell,Double](17.0)
      
-    testField = FieldWithConst[Face,Float](0.f)
+    testField = FieldWithConst[Face,Double](0.0)
 
-    val globalVelocity = Vec(1.f,0.f,0.f)
+    val globalVelocity = Vec(1.f,0.0,0.0)
       
     //initialize geometry fields
     for(f <- faces(mesh)) {
@@ -145,7 +147,7 @@ trait SCTest extends DeLisztApplication {
       ll = ll min position(v)
       ur = ur max position(v)
     }
-    val mesh_center = (ll + ur) * .5f
+    val mesh_center = (ll + ur) * .50
     for(c <- cells(mesh)) {
       val center = cell_centroid(c)
       val x = normal_pdf(center.x - mesh_center.x)
@@ -158,17 +160,17 @@ trait SCTest extends DeLisztApplication {
       Print("before cell number: ",ID(c)," -> phi value: ",Phi(c))
     }
     
-    val deltat = .015f
-    var t = 0.1f
+    val deltat = .0150
+    var t = 0.10
 
-    while(t < 2.f) {
+    while(t < 2.0) {
       
       for(f <- interior_set) {
         val normal = face_unit_normal(f)
         val vDotN = dot(globalVelocity,normal)
         val area = face_area(f)
-        var flux = 0.f
-        val cell = if(vDotN >= 0.f) inside(f) else outside(f)
+        var flux = 0.0
+        val cell = if(vDotN >= 0.0) inside(f) else outside(f)
         
         flux = area * vDotN * Phi(cell)
 
@@ -180,7 +182,7 @@ trait SCTest extends DeLisztApplication {
 
       for(f <- outlet_set) {
         val normal = face_unit_normal(f)
-        var flux = 0.f
+        var flux = 0.0
         if(ID(outside(f)) == 0)
         {
           //Flux(inside(f)) -= face_area(f) * dot(normal,globalVelocity) * Phi(inside(f))
@@ -193,12 +195,12 @@ trait SCTest extends DeLisztApplication {
         testField(f) += flux
       }
 
-      //Note: Below is manually hoisted to prevent Ref[Float] type from being the input of the GPU kernel
+      //Note: Below is manually hoisted to prevent Ref[Double] type from being the input of the GPU kernel
       val multiplier = phi_sine_function(t)
       for(f <- inlet_set) {
         val area = face_area(f)
         val vDotN = dot(globalVelocity,face_unit_normal(f))
-        var flux = 0.f
+        var flux = 0.0
         if(ID(outside(f)) == 0) {
           //Flux(inside(f)) += area * vDotN * phi_sine_function(t)
           flux = area * vDotN * multiplier
@@ -212,7 +214,7 @@ trait SCTest extends DeLisztApplication {
 
       for(f <- far_field_set) {
         val normal = face_unit_normal(f)
-        var flux = 0.f
+        var flux = 0.0
         if(ID(outside(f)) == 0) {
           //Flux(inside(f)) -= dot(normal,globalVelocity) * face_area(f) * Phi(inside(f))
           flux = dot(normal,globalVelocity) * face_area(f) * Phi(inside(f))
@@ -228,7 +230,7 @@ trait SCTest extends DeLisztApplication {
         Phi(c) += deltat * Flux(c) / cell_volume(c)
       }
       for(c <- cells(mesh)) {
-        Flux(c) += 12.f
+        Flux(c) += 12.0
       }
 
       t += deltat
@@ -240,5 +242,6 @@ trait SCTest extends DeLisztApplication {
     for(c <- cells(mesh)) {
       Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
     }
+  */
   }
 }

@@ -335,6 +335,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     case DeLisztSize(s) => size(f(s))    
     case DeLisztID(e) => ID(f(e))
     case Reflect(e@DeLisztPrint(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with DeLisztPrint(f(x))(f(e.block)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(WallTime(), u, es) => reflectMirrored(Reflect(WallTime(), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
 }

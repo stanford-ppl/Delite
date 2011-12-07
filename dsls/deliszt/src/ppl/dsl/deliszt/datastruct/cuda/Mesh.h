@@ -283,10 +283,7 @@ public:
     return ret;
   }
 
-
   __device__ __host__ Face face(Edge e, int i) {
-    //int start = etof.row(c);
-    //return etof.values[start + i];
     return etof.apply(internal(e),i);
   }
 
