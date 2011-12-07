@@ -578,6 +578,7 @@ trait Smooth extends DeLisztApplication {
 // --------------- Store  --------------
 
       var iter = 0.0
+      
       while (iter <= 4) {
         val factor = deltat/(5.0-iter.asInstanceOfL[Double])
 
