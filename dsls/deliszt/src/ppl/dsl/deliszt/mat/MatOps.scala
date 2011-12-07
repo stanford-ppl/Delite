@@ -311,6 +311,7 @@ trait MatOpsExp extends MatOps with VariablesExp with DeliteCollectionOpsExp {
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = {
     (e match {
+      case e@Mat3New(xs) => reflectPure(Mat3New(xs.map(z=>f(z)))(e.r, e.vr, e.c, e.vc, e.a))
       case e@MatObjNew(xs @ _*) => reflectPure(MatObjNew(f(xs) : _*)(e.r, e.vr, e.c, e.vc, e.a))
       case e@MatApply(x,i,j) => mat_apply(f(x), f(i), f(j))(e.r, e.vr, e.c, e.vc, e.a)
       case e@MatGetRow(x,i) => row(f(x),f(i))(e.r, e.vr, e.c, e.vc, e.a)
@@ -341,6 +342,7 @@ trait MatOpsExp extends MatOps with VariablesExp with DeliteCollectionOpsExp {
       case MatNumCols(x) => mat_num_cols(f(x))
       // Read/write effects
       case Reflect(e@MatApply(x,i,j), u, es) => reflectMirrored(Reflect(MatApply(f(x),f(i),f(j))(e.r, e.vr, e.c, e.vc, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+      case Reflect(e@MatGetRow(x,i), u, es) => reflectMirrored(Reflect(MatGetRow(f(x),f(i))(e.r, e.vr, e.c, e.vc, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
       case Reflect(e@MatUpdate(x,i,j,r), u, es) => reflectMirrored(Reflect(MatUpdate(f(x),f(i),f(j),f(r))(e.r, e.vr, e.c, e.vc, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
       // Effect with SingleTask and DeliteOpLoop
       // Allocation

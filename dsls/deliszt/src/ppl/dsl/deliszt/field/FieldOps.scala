@@ -62,7 +62,7 @@ trait FieldOps extends DSLType with Variables with OverloadHack {
 trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
   this: DeLisztExp with FieldImplOps =>
 
-  def reflectPure[T:Manifest](x: Def[T]): Exp[T] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
+  //def reflectPure[T:Manifest](x: Def[T]): Exp[T] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure  
@@ -167,7 +167,9 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
     case e@FieldApply(x, i) => field_apply(f(x), f(i))(e.moM, e.vtM)
     // Read/write effects
     case Reflect(e@FieldApply(l,r), u, es) => reflectMirrored(Reflect(FieldApply(f(l),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FieldRawApply(l,o,r), u, es) => reflectMirrored(Reflect(FieldRawApply(f(l),f(o),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@FieldUpdate(l,i,r), u, es) => reflectMirrored(Reflect(FieldUpdate(f(l),f(i),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FieldRawUpdate(l,i,o,r), u, es) => reflectMirrored(Reflect(FieldRawUpdate(f(l),f(i),f(o),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@FieldPlusUpdate(l,i,r), u, es) => reflectMirrored(Reflect(FieldPlusUpdate(f(l),f(i),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@FieldTimesUpdate(l,i,r), u, es) => reflectMirrored(Reflect(FieldTimesUpdate(f(l),f(i),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@FieldDivideUpdate(l,i,r), u, es) => reflectMirrored(Reflect(FieldDivideUpdate(f(l),f(i),f(r))(e.moM, e.vtM), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -177,7 +179,6 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
   
-  /*
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case DeLisztFieldWithConstCell(x) => Nil
     case DeLisztFieldWithConstEdge(x) => Nil
@@ -233,7 +234,6 @@ trait FieldOpsExp extends FieldOps with VariablesExp with BaseFatExp {
     case FieldMinusUpdate(a,i,x) => syms(a)
     case _ => super.copySyms(e)
   }
-  */
 
   /////////////////////
   // object interface

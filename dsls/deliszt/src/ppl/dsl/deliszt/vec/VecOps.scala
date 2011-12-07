@@ -129,7 +129,7 @@ trait VecOps extends DSLType with Variables {
 trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   this: VecImplOps with DeLisztExp =>
 
-  override def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
+  //override def reflectPure[A:Manifest](x: Def[A]): Exp[A] = toAtom(x) // TODO: just to make refactoring easier in case we want to change to reflectSomething
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
@@ -385,6 +385,25 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     case e@VecZipMin(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMin(f(x),f(y))(e.n, e.vn, e.m, e.o))(mtype(manifest[A]))
     case e@VecZipMax(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMax(f(x),f(y))(e.n, e.vn, e.m, e.o))(mtype(manifest[A]))
     case e@Vec3New(x,y,z) => reflectPure(Vec3New(f(x),f(y),f(z))(e.n, e.vn, e.a))
+    
+    case Reflect(e@VecNegate(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecNegate(f(x))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecPlus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecPlus(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecPlusScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecPlusScalar(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecMinus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecMinus(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecMinusScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecMinusScalar(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecTimes(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecTimes(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecTimesScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecTimesScalar(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecDivide(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecDivide(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecDivideScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecDivideScalar(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecCross(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecCross(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecNormalize(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecNormalize(f(x))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecSum(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecSum(f(x))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecAbs(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecAbs(f(x))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecMin(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecMin(f(x))(e.n, e.vn, e.m, e.o, e.p), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecMax(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecMax(f(x))(e.n, e.vn, e.m, e.o, e.p), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecZipMin(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecZipMin(f(x),f(y))(e.n, e.vn, e.m, e.o), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecZipMax(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecZipMax(f(x),f(y))(e.n, e.vn, e.m, e.o), mapOver(f,u), f(es)))(mtype(manifest[A]))
+
     // Read/write effects
     case Reflect(e@VecUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VecUpdate(f(l),f(i),f(r))(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     // Effect with SingleTask and DeliteOpLoop
@@ -496,7 +515,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     
   override def vec_apply[N<:IntM:Manifest:MVal, A:Manifest](x: Exp[Vec[N,A]], n: Exp[Int]) = x match {
     case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,n) getOrElse super.vec_apply(x,n)    
-    case Def(s@Reflect(fa@FieldApply(f,idx),u,es)) if (context.contains(s) && fa.Type.toString.contains("Vec")) => field_raw_apply(f.asInstanceOf[Exp[Field[MeshObj,DeliteCollection[A]]]],idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
+
     // case Def(e: DeliteOpLoop[_]) => e.body match {
     //   case ce: DeliteCollectElem[_,_] => ce.alloc match {
     //     case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,i).asInstanceOf[Option[Exp[A]]] getOrElse super.vec_apply(x,i)
@@ -561,7 +580,15 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
 
   override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = x match {
     case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,n) getOrElse super.dc_apply(x,n)  
-    case Def(s@Reflect(fa@FieldApply(f,idx),u,es)) if (context.contains(s) && fa.Type.toString.contains("Vec")) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
+
+    // field might have changed state since it was read, so reading the underlying field could be incorrect if there was a copy on read
+    // but the read is just a view into the underlying field anyways, so it doesn't matter
+    // issue is that the old Reflect node sticks around because of the effect...
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstCell(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstEdge(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstFace(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstVertex(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
+
     case Def(e: DeliteOpMap[A,_,_]) => e.body match {
       case ce: DeliteCollectElem[_,_] => ce.alloc match {
         case Def(Vec3New(a,b,c)) => e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
