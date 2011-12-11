@@ -3,6 +3,7 @@ package ppl.delite.runtime.cost
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.Config
 import scala.collection.mutable.ListBuffer
+import ppl.delite.runtime.graph.targets.Targets
 
 trait AbstractCostModel {	
 	def shouldParallelize(op: OP_While, sizeDict: Map[String, Int]): Boolean
@@ -45,4 +46,21 @@ trait ParallelUtilizationCostModel extends AbstractCostModel {
 	def shouldParallelize(l: OP_MultiLoop, sizeDict: Map[String, Int]) = {
 		getLoopSize(l, sizeDict) > multiloopThreshold
 	}
+}
+
+trait GPULoopCostModel extends AbstractCostModel {
+	def shouldParallelize(op: OP_While, sizeDict: Map[String, Int]) = !gpuOnly(op)
+
+  private def gpuOnly(op: DeliteOP): Boolean = op match {
+    case n: OP_Nested =>
+      var result = true
+      for (graph <- n.nestedGraphs) {
+        for (op <- graph.ops)
+          result &= gpuOnly(op)
+      }
+      result
+    case _ => op.supportsTarget(Targets.Cuda) || op.supportsTarget(Targets.C)
+  }
+
+  def shouldParallelize(op: OP_MultiLoop, sizeDict: Map[String, Int]) = true
 }

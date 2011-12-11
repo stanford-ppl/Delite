@@ -102,7 +102,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     out.append("\tjclass FieldImplCls = env->FindClass(\"generated/scala/FieldImpl\");\n")
     out.append("\tjclass FieldImplCls_spec = env->FindClass(\"generated/scala/%sFieldImpl\");\n".format(argType.toString))
-    
+
     out.append("\tjmethodID mid_data;\n")
     out.append("\tif(env->IsInstanceOf(obj,FieldImplCls_spec)) {\n")
     out.append("\t\tmid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
@@ -179,25 +179,37 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
     out.append("\tjclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n")
     out.append("\tjclass VecImplCls_spec = env->FindClass(\"generated/scala/%sVecImpl\");\n".format(argType.toString))
+    out.append("\tjclass VecImplCls_stack%s = env->FindClass(\"generated/scala/%sVec%sImpl\");\n".format(size,argType.toString,size))
+    out.append("\tjclass Vec3ViewImplCls = env->FindClass(\"generated/scala/Vec3ViewImpl\");\n")
+
     out.append("\tjmethodID mid_elem_data = env->GetMethodID(VecImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
     out.append("\tjmethodID mid_elem_data_spec = env->GetMethodID(VecImplCls_spec,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
+    out.append("\tjmethodID mid_elem_data_stack%s = env->GetMethodID(VecImplCls_stack%s,\"apply\",\"(I)%s\");\n".format(size,size,JNITypeDescriptor(argType)))
+    out.append("\tjmethodID mid_elem_data_view = env->GetMethodID(Vec3ViewImplCls,\"apply\",\"(I)%s\");\n".format(JNITypeDescriptor(argType)))
 
     out.append("\tfor(int i=0; i<%s->size; i++) {\n".format(quote(sym)))
     out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
     out.append("\t\tj%sArray elem_data;\n".format(typeStr))
     out.append("\t\tif(env->IsInstanceOf(elem,VecImplCls_spec)) {\n")
     out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data_spec));\n".format(typeStr))
+    out.append("\t\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = elem_data_ptr[j]; }\n".format(size,size))
+    out.append("\t\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\t\tenv->DeleteLocalRef(elem_data);\n")
+    out.append("\t\t} else if(env->IsInstanceOf(elem,VecImplCls_stack%s)) {\n".format(size))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = env->Call%sMethod(elem,mid_elem_data_stack%s,j); }\n".format(size,size,argType.toString,size))
+    out.append("\t\t} else if(env->IsInstanceOf(elem,Vec3ViewImplCls)) {\n")
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = env->Call%sMethod(elem,mid_elem_data_view,j); }\n".format(size,size,argType.toString))
     out.append("\t\t} else {\n")
     out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr))
-    out.append("\t\t}")
-    
-    out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
-    out.append("\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = elem_data_ptr[j]; }\n".format(size,size))
-    out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
-    out.append("\t\tenv->DeleteLocalRef(elem_data);\n")
+    out.append("\t\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = elem_data_ptr[j]; }\n".format(size,size))
+    out.append("\t\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\t\tenv->DeleteLocalRef(elem_data);\n")
     out.append("\t}\n")
+    out.append("\t}\n")
+    
     out.append("\tDeliteCudaMemcpyHtoDAsync(devPtr, hostPtr, %s);\n".format(numBytesStr))
-
     out.append("\tenv->DeleteLocalRef(cls);\n")
     out.append("\treturn %s;\n".format(quote(sym)))
     out.toString
@@ -216,9 +228,12 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
     out.append("\tjclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n".format(argType.toString))
     out.append("\tjclass VecImplCls_spec = env->FindClass(\"generated/scala/%sVecImpl\");\n".format(argType.toString))
+    out.append("\tjclass VecImplCls_stack%s = env->FindClass(\"generated/scala/%sVec%sImpl\");\n".format(size,argType.toString,size))
+    out.append("\tjclass Vec3ViewImplCls = env->FindClass(\"generated/scala/Vec3ViewImpl\");\n")
     out.append("\tjmethodID mid_elem_data = env->GetMethodID(VecImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
     out.append("\tjmethodID mid_elem_data_spec = env->GetMethodID(VecImplCls_spec,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
-    
+    out.append("\tjmethodID mid_elem_data_stack%s = env->GetMethodID(VecImplCls_stack%s,\"update\",\"(I%s)V\");\n".format(size,size,JNITypeDescriptor(argType))) 
+    out.append("\tjmethodID mid_elem_data_view = env->GetMethodID(Vec3ViewImplCls,\"update\",\"(I%s)V\");\n".format(JNITypeDescriptor(argType)))
     out.append("\t%s *hostPtr;\n".format(typeStr))
     out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
     out.append("\tDeliteCudaMemcpyDtoHAsync(hostPtr, %s.data, %s);\n".format(quote(sym),numBytesStr))
@@ -228,14 +243,21 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t\tj%sArray elem_data;\n".format(typeStr))
     out.append("\t\tif(env->IsInstanceOf(elem,VecImplCls_spec)) {\n")
     out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data_spec));\n".format(typeStr))
+    out.append("\t\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { elem_data_ptr[j] = hostPtr[i*%s+j]; }\n".format(size,size))
+    out.append("\t\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\t\tenv->DeleteLocalRef(elem_data);\n")
+    out.append("\t\t} else if(env->IsInstanceOf(elem,VecImplCls_stack%s)) {\n".format(size))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { env->CallVoidMethod(elem,mid_elem_data_stack%s,j,hostPtr[i*%s+j]); }\n".format(size,size,size))
+    out.append("\t\t} else if(env->IsInstanceOf(elem,Vec3ViewImplCls)) {\n")
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { env->CallVoidMethod(elem,mid_elem_data_view,j,hostPtr[i*%s+j]); }\n".format(size,size))
     out.append("\t\t} else {\n")
     out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr))
-    out.append("\t\t}")
-
-    out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
-    out.append("\t\tfor(int j=0; j<%s; j++) { elem_data_ptr[j] = hostPtr[i*%s+j]; }\n".format(size,size))
-    out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
-    out.append("\t\tenv->DeleteLocalRef(elem_data);\n")
+    out.append("\t\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { elem_data_ptr[j] = hostPtr[i*%s+j]; }\n".format(size,size))
+    out.append("\t\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\t\tenv->DeleteLocalRef(elem_data);\n")
+    out.append("\t}\n")
     out.append("\t}\n")
 
     out.append("\tenv->DeleteLocalRef(cls);\n")
@@ -243,9 +265,10 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
   /* Transfer function for Field<T> (T:Short Matrix Types) */
-  def MatFieldCopyInputHtoD(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+  def MatFieldCopyInputHtoD(sym: Sym[Any], argType: Manifest[_], row: Int, col: Int): String = {
     val out = new StringBuilder
     val typeStr = remap(argType)
+    val size = row * col
     val numBytesStr = "%s->size * sizeof(%s) * %s".format(quote(sym),typeStr,size)
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
@@ -263,21 +286,29 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
     out.append("\tjclass MatImplCls = env->FindClass(\"generated/scala/MatImpl\");\n")
     out.append("\tjclass MatImplCls_spec = env->FindClass(\"generated/scala/%sMatImpl\");\n".format(argType.toString))
+    out.append("\tjclass MatImplCls_stack%s%s = env->FindClass(\"generated/scala/%sMat%sx%sImpl\");\n".format(row,col,argType.toString,row,col))
     out.append("\tjmethodID mid_elem_data = env->GetMethodID(MatImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
     out.append("\tjmethodID mid_elem_data_spec = env->GetMethodID(MatImplCls_spec,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
+    out.append("\tjmethodID mid_elem_data_stack%s%s = env->GetMethodID(MatImplCls_stack%s%s,\"dcApply\",\"(I)%s\");\n".format(row,col,row,col,JNITypeDescriptor(argType)))
 
     out.append("\tfor(int i=0; i<%s->size; i++) {\n".format(quote(sym)))
     out.append("\t\tjobject elem = env->CallObjectMethod(obj,mid_elem,i);\n")
     out.append("\t\tj%sArray elem_data;\n".format(typeStr))
     out.append("\t\tif(env->IsInstanceOf(elem,MatImplCls_spec)) {\n")
     out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data_spec));\n".format(typeStr))
+    out.append("\t\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = elem_data_ptr[j]; }\n".format(size,size))
+    out.append("\t\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\t\tenv->DeleteLocalRef(elem_data);\n")
+    out.append("\t\t} else if(env->IsInstanceOf(elem,MatImplCls_stack%s%s)) {\n".format(row,col))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = env->Call%sMethod(elem,mid_elem_data_stack%s%s,j); }\n".format(size,size,argType.toString,row,col))
     out.append("\t\t} else {\n")
     out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr))
+    out.append("\t\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = elem_data_ptr[j]; }\n".format(size,size))
+    out.append("\t\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\t\tenv->DeleteLocalRef(elem_data);\n")
     out.append("\t\t}")
-    out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
-    out.append("\t\tfor(int j=0; j<%s; j++) { hostPtr[i*%s+j] = elem_data_ptr[j]; }\n".format(size,size))
-    out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
-    out.append("\t\tenv->DeleteLocalRef(elem_data);\n")
     out.append("\t}\n")
     out.append("\tDeliteCudaMemcpyHtoDAsync(devPtr, hostPtr, %s);\n".format(numBytesStr))
 
@@ -286,21 +317,24 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def MatFieldCopyOutputDtoH(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+  def MatFieldCopyOutputDtoH(sym: Sym[Any], argType: Manifest[_], row: Int, col: Int): String = {
     "assert(false);\n"
   }
 
-  def MatFieldCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+  def MatFieldCopyMutableInputDtoH(sym: Sym[Any], argType: Manifest[_], row: Int, col: Int): String = {
     val out = new StringBuilder
     val typeStr = remap(argType)
+    val size = row * col
     val numBytesStr = "%s.size * sizeof(%s) * %s".format(quote(sym),remap(argType),size)
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_elem = env->GetMethodID(cls,\"apply\",\"(I)Ljava/lang/Object;\");\n")
     out.append("\tjclass MatImplCls = env->FindClass(\"generated/scala/MatImpl\");\n".format(argType.toString))
     out.append("\tjclass MatImplCls_spec = env->FindClass(\"generated/scala/%sMatImpl\");\n".format(argType.toString))
+    out.append("\tjclass MatImplCls_stack%s%s = env->FindClass(\"generated/scala/%sMat%sx%sImpl\");\n".format(row,col,argType.toString,row,col))
     out.append("\tjmethodID mid_elem_data = env->GetMethodID(MatImplCls,\"data$mc%s$sp\",\"()[%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
     out.append("\tjmethodID mid_elem_data_spec = env->GetMethodID(MatImplCls_spec,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(argType)))
+    out.append("\tjmethodID mid_elem_data_stack%s%s = env->GetMethodID(MatImplCls_stack%s%s,\"dcUpdate\",\"(I%s)V\");\n".format(row,col,row,col,JNITypeDescriptor(argType)))
     
     out.append("\t%s *hostPtr;\n".format(typeStr))
     out.append("\tDeliteCudaMallocHost((void**)%s,%s);\n".format("&hostPtr",numBytesStr))
@@ -311,13 +345,19 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\t\tj%sArray elem_data;\n".format(typeStr))
     out.append("\t\tif(env->IsInstanceOf(elem,MatImplCls_spec)) {\n")
     out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data_spec));\n".format(typeStr))
+    out.append("\t\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { elem_data_ptr[j] = hostPtr[i*%s+j]; }\n".format(size,size))
+    out.append("\t\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\t\tenv->DeleteLocalRef(elem_data);\n")
+    out.append("\t\t} else if(env->IsInstanceOf(elem,MatImplCls_stack%s%s)) {\n".format(row,col))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { env->CallVoidMethod(elem,mid_elem_data_stack%s%s,j,hostPtr[i*%s+j]); }\n".format(size,row,col,size))
     out.append("\t\t} else {\n")
     out.append("\t\t\telem_data = (j%sArray)(env->CallObjectMethod(elem,mid_elem_data));\n".format(typeStr))
+    out.append("\t\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
+    out.append("\t\t\tfor(int j=0; j<%s; j++) { elem_data_ptr[j] = hostPtr[i*%s+j]; }\n".format(size,size))
+    out.append("\t\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
+    out.append("\t\t\tenv->DeleteLocalRef(elem_data);\n")
     out.append("\t\t}")
-    out.append("\t\tj%s *elem_data_ptr = (j%s *)env->GetPrimitiveArrayCritical(elem_data,0);\n".format(typeStr,typeStr))
-    out.append("\t\tfor(int j=0; j<%s; j++) { elem_data_ptr[j] = hostPtr[i*%s+j]; }\n".format(size,size))
-    out.append("\t\tenv->ReleasePrimitiveArrayCritical(elem_data, elem_data_ptr, 0);\n")
-    out.append("\t\tenv->DeleteLocalRef(elem_data);\n")
     out.append("\t}\n")
 
     out.append("\tenv->DeleteLocalRef(cls);\n")
@@ -405,10 +445,14 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     out.append("\tjclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n")
     out.append("\tjclass VecImplCls_spec = env->FindClass(\"generated/scala/%sVecImpl\");\n".format(argType.toString))
+    out.append("\tjclass VecImplCls_stack%s = env->FindClass(\"generated/scala/%sVec%sImpl\");\n".format(size,argType.toString,size))
 
     out.append("\tjmethodID mid_elem;")
     out.append("\tif(env->IsInstanceOf(obj,VecImplCls_spec)) {\n")
     out.append("\t\tmid_elem = env->GetMethodID(VecImplCls_spec,\"apply\",\"(I)%s\");\n".format(JNITypeDescriptor(argType)))
+    out.append("\t}\n")
+    out.append("\telse if(env->IsInstanceOf(obj,VecImplCls_stack%s)) {\n".format(size))
+    out.append("\t\tmid_elem = env->GetMethodID(VecImplCls_stack%s,\"apply\",\"(I)%s\");\n".format(size,JNITypeDescriptor(argType)))
     out.append("\t}\n")
     out.append("\telse {\n")
     out.append("\t\tmid_elem = env->GetMethodID(VecImplCls,\"apply$mc%s$sp\",\"(I)%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
@@ -437,22 +481,27 @@ trait CudaGenDataStruct extends CudaCodegen {
     "assert(false);\n"
   }
 
-  def MatCopyInputHtoD(sym: Sym[Any], argType: Manifest[_], size: Int): String = {
+  def MatCopyInputHtoD(sym: Sym[Any], argType: Manifest[_], row: Int, col: Int): String = {
     val out = new StringBuilder
     val typeStr = remap(argType)
+    val size = row * col
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
 
     out.append("\tjclass MatImplCls = env->FindClass(\"generated/scala/MatImpl\");\n")
     out.append("\tjclass MatImplCls_spec = env->FindClass(\"generated/scala/%sMatImpl\");\n".format(argType.toString))
+    out.append("\tjclass MatImplCls_stack%s%s = env->FindClass(\"generated/scala/%sMat%sx%sImpl\");\n".format(row,col,argType.toString,row,col))
     
     out.append("\tjmethodID mid_elem;")
     out.append("\tif(env->IsInstanceOf(obj,MatImplCls_spec)) {\n")
-    out.append("\t\tmid_elem = env->GetMethodID(MatImplCls_spec,\"apply\",\"(I)%s\");\n".format(JNITypeDescriptor(argType)))
+    out.append("\t\tmid_elem = env->GetMethodID(MatImplCls_spec,\"dcApply\",\"(I)%s\");\n".format(JNITypeDescriptor(argType)))
+    out.append("\t}\n")
+    out.append("\telse if(env->IsInstanceOf(obj,MatImplCls_stack%s%s)) {\n".format(row,col))
+    out.append("\t\tmid_elem = env->GetMethodID(MatImplCls_stack%s%s,\"dcApply\",\"(I)%s\");\n".format(row,col,JNITypeDescriptor(argType)))
     out.append("\t}\n")
     out.append("\telse {\n")
-    out.append("\t\tmid_elem = env->GetMethodID(MatImplCls,\"apply$mc%s$sp\",\"(I)%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
+    out.append("\t\tmid_elem = env->GetMethodID(MatImplCls,\"dcApply$mc%s$sp\",\"(I)%s\");\n".format(JNITypeDescriptor(argType),JNITypeDescriptor(argType)))
     out.append("\t}\n")
 
     out.append("\tfor(int i=0; i<%s; i++) {\n".format(size))

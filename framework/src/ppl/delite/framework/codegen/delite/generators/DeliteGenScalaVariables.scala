@@ -1,6 +1,6 @@
 package ppl.delite.framework.codegen.delite.generators
 
-import scala.virtualization.lms.common.{ VariablesExp, ScalaGenEffect }
+import scala.virtualization.lms.common.{ VariablesExp, ScalaGenEffect, CGenEffect }
 import java.io.PrintWriter
 
 trait DeliteGenScalaVariables extends ScalaGenEffect {
@@ -15,3 +15,4 @@ trait DeliteGenScalaVariables extends ScalaGenEffect {
     case _ => super.emitNode(sym, rhs)
   }
 }
+

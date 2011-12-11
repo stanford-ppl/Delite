@@ -60,14 +60,14 @@ trait StaticScheduler {
 				scheduleSequential(c.predicateGraph)
 				scheduleSequential(c.thenGraph)
 				scheduleSequential(c.elseGraph)				
-				splitNotEmpty(c, graph, schedule, List(c.predicateGraph.schedule, c.thenGraph.schedule, c.elseGraph.schedule), Seq(0))			
+				splitNotEmpty(c, graph, schedule, List(c.predicateGraph.schedule, c.thenGraph.schedule, c.elseGraph.schedule), Seq(resource))			
 			}
 			case w: OP_While => {
 				scheduleSequential(w.predicateGraph)
 				scheduleSequential(w.bodyGraph)
-				splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), Seq(0))			
+				splitNotEmpty(w, graph, schedule, List(w.predicateGraph.schedule, w.bodyGraph.schedule), Seq(resource))			
 			}
-			case op if op.isDataParallel => split(op, graph, schedule, Seq(0))
+			case op if op.isDataParallel => split(op, graph, schedule, Seq(resource))
 			case op => scheduleOn(op, schedule, resource)
 		}		
 	}

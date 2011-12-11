@@ -450,21 +450,30 @@ trait CudaGenLanguageOps extends CudaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     //TODO: Use mesh symbol
-    case DeLisztCellsCell(e, m) => emitValDef(sym, quote(m) + ".cellsCell(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztCellsEdge(e, m) => emitValDef(sym, quote(m) + ".cellsEdge(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztCellsFace(e, m) => emitValDef(sym, quote(m) + ".cellsFace(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztCellsVertex(e, m) => emitValDef(sym, quote(m) + ".cellsVertex(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztCellsCell(e, m) => emitValDef(sym, quote(m) + ".cellsCell(" + quote(e) + ")")
+    case DeLisztCellsEdge(e, m) => emitValDef(sym, quote(m) + ".cellsEdge(" + quote(e) + ")")
+    case DeLisztCellsFace(e, m) => emitValDef(sym, quote(m) + ".cellsFace(" + quote(e) + ")")
+    case DeLisztCellsVertex(e, m) => emitValDef(sym, quote(m) + ".cellsVertex(" + quote(e) + ")")
     case DeLisztCellsMesh(e) => emitValDef(sym, quote(e) + ".cellsMesh")
+
+    case DeLisztCtoc(m) => emitValDef(sym, quote(m) + ".ctoc")
+    case DeLisztEtoc(m) => emitValDef(sym, quote(m) + ".etoc")
+    case DeLisztFtoc(m) => emitValDef(sym, quote(m) + ".ftoc")
+    case DeLisztVtoc(m) => emitValDef(sym, quote(m) + ".vtoc")
 
     case DeLisztEdgeCellsCCW(e,m) => emitValDef(sym, quote(m) + ".cellsCCW(" + quote(e) + ")")
     case DeLisztEdgeCellsCW(e,m) => emitValDef(sym, quote(m) + ".cellsCW(" + quote(e) + ")")
     case DeLisztFaceInside(e,m) => emitValDef(sym, quote(m) + ".inside(" + quote(e) + ")")
     case DeLisztFaceOutside(e,m) => emitValDef(sym, quote(m) + ".outside(" + quote(e) + ")")
 
-    case DeLisztEdgesCell(e, m) => emitValDef(sym, quote(m) + ".edgesCell(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztEdgesFace(e, m) => emitValDef(sym, quote(m) + ".edgesFace(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztEdgesVertex(e, m) => emitValDef(sym, quote(m) + ".edgesVertex(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztEdgesCell(e, m) => emitValDef(sym, quote(m) + ".edgesCell(" + quote(e) + ")")
+    case DeLisztEdgesFace(e, m) => emitValDef(sym, quote(m) + ".edgesFace(" + quote(e) + ")")
+    case DeLisztEdgesVertex(e, m) => emitValDef(sym, quote(m) + ".edgesVertex(" + quote(e) + ")")
     case DeLisztEdgesMesh(e) => emitValDef(sym, quote(e) + ".edgesMesh")
+
+    case DeLisztCtoe(m) => emitValDef(sym, quote(m) + ".ctoe")
+    case DeLisztFtoe(m) => emitValDef(sym, quote(m) + ".ftoe")
+    case DeLisztVtoe(m) => emitValDef(sym, quote(m) + ".vtoe")
 
     case DeLisztEdgeHead(e,m) => emitValDef(sym, quote(m) + ".head(" + quote(e) + ")")
     case DeLisztEdgeTail(e,m) => emitValDef(sym, quote(m) + ".tail(" + quote(e) + ")")
@@ -472,32 +481,41 @@ trait CudaGenLanguageOps extends CudaGenBase {
     case DeLisztEdgeFacesCCW(e,m) => emitValDef(sym, quote(m) + ".facesCCW(" + quote(e) + ")")
     case DeLisztEdgeFacesCW(e,m) => emitValDef(sym, quote(m) + ".facesCW(" + quote(e) + ")")
 
-    case DeLisztFacesCell(e, m) => emitValDef(sym, quote(m) + ".facesCell(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztFacesEdge(e, m) => emitValDef(sym, quote(m) + ".facesEdge(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztFacesVertex(e, m) => emitValDef(sym, quote(m) + ".facesVertex(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztFacesCell(e, m) => emitValDef(sym, quote(m) + ".facesCell(" + quote(e) + ")")
+    case DeLisztFacesEdge(e, m) => emitValDef(sym, quote(m) + ".facesEdge(" + quote(e) + ")")
+    case DeLisztFacesVertex(e, m) => emitValDef(sym, quote(m) + ".facesVertex(" + quote(e) + ")")
     case DeLisztFacesMesh(e) => emitValDef(sym, quote(e) + ".facesMesh")
 
-    case DeLisztFaceEdgesCCW(e,m) => emitValDef(sym, quote(m) + ".edgesCCW(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztFaceEdgesCW(e,m) => emitValDef(sym, quote(m) + ".edgesCW(generated.scala.Mesh.IMASK &" + quote(e) + ")")
+    case DeLisztCtof(m) => emitValDef(sym, quote(m) + ".ctof")
+    case DeLisztEtof(m) => emitValDef(sym, quote(m) + ".etof")
+    case DeLisztVtof(m) => emitValDef(sym, quote(m) + ".vtof")
+
+    case DeLisztFaceEdgesCCW(e,m) => emitValDef(sym, quote(m) + ".edgesCCW(" + quote(e) + ")")
+    case DeLisztFaceEdgesCW(e,m) => emitValDef(sym, quote(m) + ".edgesCW(" + quote(e) + ")")
     case DeLisztFace(e,i,m) => emitValDef(sym, quote(m) + ".face(" + quote(e) + "," + quote(i) + ")")
 
-    case DeLisztVerticesCell(e, m) => emitValDef(sym, quote(m) + ".verticesCell(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztVerticesEdge(e, m) => emitValDef(sym, quote(m) + ".verticesEdge(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztVerticesFace(e, m) => emitValDef(sym, quote(m) + ".verticesFace(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztVerticesVertex(e, m) => emitValDef(sym, quote(m) + ".verticesVertex(generated.scala.Mesh.IMASK &" + quote(e) + ")")
-    case DeLisztVerticesMesh(e) => emitValDef(sym, quote(e) + ".verticesMesh")
+    case DeLisztVerticesCell(e, m) => emitValDef(sym, quote(m) + ".verticesCell(" + quote(e) + ")")
+    case DeLisztVerticesEdge(e, m) => emitValDef(sym, quote(m) + ".verticesEdge(" + quote(e) + ")")
+    case DeLisztVerticesFace(e, m) => emitValDef(sym, quote(m) + ".verticesFace(" + quote(e) + ")")
+    case DeLisztVerticesVertex(e, m) => emitValDef(sym, quote(m) + ".verticesVertex(" + quote(e) + ")")
+    case DeLisztVerticesMesh(e) => emitValDef(sym, quote(e) + ".verticesMesh()")
+
+    case DeLisztCtov(m) => emitValDef(sym, quote(m) + ".ctov")
+    case DeLisztEtov(m) => emitValDef(sym, quote(m) + ".etov")
+    case DeLisztFtov(m) => emitValDef(sym, quote(m) + ".ftov")
+    case DeLisztVtov(m) => emitValDef(sym, quote(m) + ".vtov")
 
     case DeLisztFaceVerticesCCW(e,m) => emitValDef(sym, quote(m) + ".verticesCCW(" + quote(e) + ")")
     case DeLisztFaceVerticesCW(e,m) => emitValDef(sym, quote(m) + ".verticesCW(" + quote(e) + ")")
-    case DeLisztVertex(e,i,m) => emitValDef(sym, quote(m) + ".vertex(generated.scala.Mesh.IMASK &" + quote(e) + "," + quote(i) + ")")
+    case DeLisztVertex(e,i,m) => emitValDef(sym, quote(m) + ".vertex(" + quote(e) + "," + quote(i) + ")")
 
-    case DeLisztFlipEdge(e) => emitValDef(sym, "generated.scala.Mesh.IMASK ^" + quote(e))
-    case DeLisztFlipFace(e) => emitValDef(sym, "generated.scala.Mesh.IMASK ^" + quote(e))
+    case DeLisztFlipEdge(e) => emitValDef(sym, "flip(" + quote(e) + ")")
+    case DeLisztFlipFace(e) => emitValDef(sym, "flip(" + quote(e) + ")")
 
     case DeLisztTowardsEdgeVertex(e,v,m) => emitValDef(sym, quote(m) + ".towardsEdgeVertex(" + quote(e) + "," + quote(v) + ")")
     case DeLisztTowardsFaceCell(e,c,m) => emitValDef(sym, quote(m) + ".towardsFaceCell(" + quote(e) + "," + quote(c) + ")")
 
-    case DeLisztID(x) => emitValDef(sym, "generated.scala.Mesh.IMASK &" + quote(x))
+    case DeLisztID(x) => emitValDef(sym, "internal(" + quote(x) + ")")
 
     //TODO: Why is this node here?
     case DeLisztSize(s) => emitValDef(sym, quote(s) + ".dcSize()")

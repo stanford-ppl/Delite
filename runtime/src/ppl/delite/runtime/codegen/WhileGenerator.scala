@@ -108,7 +108,8 @@ abstract class GPUWhileGenerator(whileLoop: OP_While, location: Int, target: Tar
     val inputs = (whileLoop.predicateGraph.inputOps ++ whileLoop.bodyGraph.inputOps)
 
     writeFunctionHeader(out)
-    writeJNIInitializer(location, out)
+    val locations = whileLoop.nestedGraphs.flatMap(_.ops.map(_.scheduledResource)).toSet
+    writeJNIInitializer(locations, out)
 
     val available = new ArrayBuffer[DeliteOP]
     val awaited = new ArrayBuffer[DeliteOP]

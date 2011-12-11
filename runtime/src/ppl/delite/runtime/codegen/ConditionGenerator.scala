@@ -109,7 +109,8 @@ abstract class GPUConditionGenerator(condition: OP_Condition, location: Int, tar
     val inputs = (condition.predicateGraph.inputOps ++ condition.thenGraph.inputOps ++ condition.elseGraph.inputOps)
 
     writeFunctionHeader(out)
-    writeJNIInitializer(location, out)
+    val locations = condition.nestedGraphs.flatMap(_.ops.map(_.scheduledResource)).toSet
+    writeJNIInitializer(locations, out)
 
     val available = new ArrayBuffer[DeliteOP]
     val awaited = new ArrayBuffer[DeliteOP]
