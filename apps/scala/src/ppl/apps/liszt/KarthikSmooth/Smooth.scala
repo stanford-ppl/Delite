@@ -68,8 +68,7 @@ trait Smooth extends DeLisztApplication {
   }
 
   def calcFaceCenter(f : Rep[Face]) : Rep[Vec[_3,Double]] = {
-    var center = Vec(0.0,0.0,0.0)
-    //val test = Vec(0.0,0.0,0.0)
+    var center = Vec(0.0,0.0,0.0)      
     for(v <- vertices(f)) {
       center = center + position(v)
     }
@@ -444,6 +443,7 @@ trait Smooth extends DeLisztApplication {
   }
 
   def main() {
+    //val test = Vec(0.0,0.0,0.0,0.0)
     val iterations = 100
     float3_zero  = Vec(0.0,0.0,0.0)
     float33_zero = Mat(float3_zero,float3_zero,float3_zero)

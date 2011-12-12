@@ -122,10 +122,10 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
       val msMap = analysisResults("StencilCollectorMeshsets").asInstanceOf[MeshSetMap]
          
       if(firstRun) {
-        println("Top level loops")
+        colog("Top level loops")
         
         for((id, stencil) <- forMap) {
-          println(id)
+          colog(id.toString)
         }
         
         firstRun = false
@@ -178,21 +178,21 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
         }
         
         if(coloring.numColors <= 1) {
-          println("Found one color for loop " + id)
+          colog("Found one color for loop " + id)
         }
         else if(coloring.numColors > 1) {
-          println("Coloring loop " + id + " num colors: " + coloring.numColors)
+          colog("Coloring loop " + id + " num colors: " + coloring.numColors)
           val (color_idx, color_values) = coloring.collect()
               
-          print("Loop id: " + id)
+          colog("Loop id: " + id)
           if(forMap.contains(id)) {
             // Output coloring for debugging
-            println(" num elements: " + ms.size)
-            println(" num colors: " + coloring.numColors)
+            colog(" num elements: " + ms.size)
+            colog(" num colors: " + coloring.numColors)
                     
             var i = 0
             while(i <= coloring.numColors) {
-              println("color_idx: " + i + " " + color_idx(i))
+              colog("color_idx: " + i + " " + color_idx(i))
               i += 1
             }
             
@@ -200,14 +200,14 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
             while(i < coloring.numColors) {
               var j = color_idx(i)
               while (j < color_idx(i+1)) {
-                println("color_values: " + i + " " + color_values(j))
+                colog("color_values: " + i + " " + color_values(j))
                 j += 1
               }
               i += 1
             } */
           }
           else {
-            println(" trivial coloring")
+            colog(" trivial coloring")
           }
      
           /* transform loop into multiple loops, one per color */
@@ -331,7 +331,7 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           }
 
           codbg("<loop B " + loop.toString + " scope after coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")          
-                  println(loopRefTransformer.subst)
+          codbg(loopRefTransformer.subst.toString)
 	}
       } // end loop foreach
       

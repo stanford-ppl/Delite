@@ -82,7 +82,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   	      forMap(x)(topMo.get).read += FieldAccess(sym.id, Mesh.internal(mo))
   	    }
 	    }
-	    case None => System.out.println("No top level for")
+	    case None => printlog("No top level for")
     }
   }
   
@@ -99,7 +99,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
           }
 	      }
 	    }
-	    case None => System.out.println("No top level for")
+	    case None => printlog("No top level for")
     }    
   }
   
@@ -120,8 +120,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   val values = MMap[Int,Any]()
   
   def store(sym: Sym[_], x: Any) {
-    // System.out.println("STORING IN " + sym.id)
-    // System.out.println(x)
+    // printlog("STORING IN " + sym.id)
+    // printlog(x)
     values(sym.id) = x
   }
     
@@ -145,12 +145,12 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   }
   
   def rawValue(x: Exp[Any]) : Option[Any] = x match {
-    // case Const(null) => { System.out.println("null"); None }
-    // case Const(s: String) => { System.out.println("string"); Some(s) }
-    // case null => { System.out.println("null"); None }
-    // case Const(f: Float) => { System.out.println("float"); Some(f) }
-    // case Const(z) => { System.out.println("const"); Some(z) }
-    // case Sym(n) => { System.out.println("GET SYM " + n); values.get(n) }
+    // case Const(null) => { printlog("null"); None }
+    // case Const(s: String) => { printlog("string"); Some(s) }
+    // case null => { printlog("null"); None }
+    // case Const(f: Float) => { printlog("float"); Some(f) }
+    // case Const(z) => { printlog("const"); Some(z) }
+    // case Sym(n) => { printlog("GET SYM " + n); values.get(n) }
     case Const(null) => None
     case Const(s: String) => Some(s)
     case null => None
@@ -253,19 +253,19 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       case DeLisztVtof(m) => Mesh.mesh.vtof
       
       case DeLisztID(e) => {
-        //System.out.println("VALUE OF E")
-        //System.out.println(value(e).toString)
+        //printlog("VALUE OF E")
+        //printlog(value(e).toString)
         multiobj(e, (mo:Int) => Mesh.internal(mo))
       }
       
       case DeliteCollectionApply(e, i) => {
-        // System.out.println("VALUE OF APPLY")
-        // System.out.println(rawValue(e))
-        // System.out.println(rawValue(i))
+        // printlog("VALUE OF APPLY")
+        // printlog(rawValue(e))
+        // printlog(rawValue(i))
       
         val obj = (rawValue(e), rawValue(i)) match {
           case (Some(c), Some(idx)) => { OneObj(c.asInstanceOf[DeliteCollection[Int]].dcApply(idx.asInstanceOf[Int])) }
-          case _ => { System.out.println("FOUND NO OBJ"); NoObjs() } // What is going on here 
+          case _ => { printlog("FOUND NO OBJ"); NoObjs() } // What is going on here 
         }
         
         obj
@@ -300,8 +300,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
       case _ => None
     }
     
-    //System.out.println("Maybe value result")
-    //System.out.println(o)
+    //printlog("Maybe value result")
+    //printlog(o)
     
     o match {
       case None => None
@@ -313,8 +313,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   def runSchedule(tps: Seq[TP[Any]]) {
     for(TP(sym, rhs) <- tps) {
-      // System.out.println("RUNNING SCHEDULE " + sym.id)
-      // System.out.println(rhs)
+      // printlog("RUNNING SCHEDULE " + sym.id)
+      // printlog(rhs)
       rhs match {
         // Foreach, only apply to top level foreach though...
         case f@NestedMeshSetForeach(m, crs, e, b) => {
@@ -433,13 +433,13 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   var level = 0
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
-    // System.out.println("EMITTING NODE " + sym.id)
-    // System.out.println(rhs)
+    // printlog("EMITTING NODE " + sym.id)
+    // printlog(rhs)
     
     if(Config.collectStencil) {
       if(collectingSchedule) {
-        // System.out.println("COLLECTING SCHEDULE " + sym.id)
-        // System.out.println(rhs)
+        // printlog("COLLECTING SCHEDULE " + sym.id)
+        // printlog(rhs)
         var matched = true
         
         rhs match {
@@ -655,8 +655,8 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         }
       }
       else {
-        // System.out.println("EMITTING SCHEDULE " + sym.id)
-        // System.out.println(rhs)
+        // printlog("EMITTING SCHEDULE " + sym.id)
+        // printlog(rhs)
         rhs match {
           // Foreach, only apply to top level foreach though...
           case f@MeshSetForeach(m, b) => {
@@ -665,7 +665,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
         
             // Mark current top foreach....
             setFor(sym.id, ms)
-            System.out.println("Found a top level foreach sym " + sym.id)
+            printlog("Found a top level foreach sym " + sym.id)
             
             // Do trivial coloring detection
             collectingSchedule = true
@@ -679,13 +679,13 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
             }
             
             /* for(op <- schedules(sym.id).result) {
-              System.out.println(op)
+              printlog(op)
             } */
             
             collectingSchedule = false
             
             if(matchFor(sym.id) && trivial) {
-              System.out.println("Detected trivial loop")
+              printlog("Detected trivial loop")
               forMap.remove(sym.id)
             }
             else {

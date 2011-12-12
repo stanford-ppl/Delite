@@ -548,7 +548,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     case _ => super.vec_apply(x,n)
   }
 
-  def isVec3[A](x: Exp[DeliteCollection[A]]) = x match {
+  def isVec3[A](x: Exp[Any]) = x match {
     case Def(Vec3New(a,b,c)) => true
     case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) => true
     case Def(e: DeliteOpMap[A,_,_]) => e.body match {
@@ -573,7 +573,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = { 
     if (isVec3(x)) unit(3)
     else {
-      Predef.println("couldn't find dc_size for " + x.Type.toString)
+      printdbg("couldn't find dc_size for " + x.Type.toString)
       super.dc_size(x)
     }
   }
@@ -608,8 +608,8 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
       case _ => super.dc_apply(x,n)  
     }
     case _ =>
-      Predef.println("couldn't find dc_apply for " + x.Type.toString)
-      Predef.println("*** Def was: " + findDefinition(x.asInstanceOf[Sym[Any]]).get.toString)
+      printdbg("couldn't find dc_apply for " + x.Type.toString)
+      printdbg("*** Def was: " + findDefinition(x.asInstanceOf[Sym[Any]]).get.toString)
       super.dc_apply(x,n)    
   }
 
@@ -652,20 +652,20 @@ trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
       case v@VecObjNew(xs @ _*) => {
-           if(xs.length == 3) {
-              emitValDef(sym, remap(vec3ImplPath, "", v.a) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
-      	   } else {
-              emitValDef(sym, remap(vecImplPath, "", v.a) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
-           }
+         //if(xs.length == 3) {
+         //   emitValDef(sym, remap(vec3ImplPath, "", v.a) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
+         //} else {
+            emitValDef(sym, remap(vecImplPath, "", v.a) + "(" + xs.map(quote).reduceLeft(_+","+_) + ")")
+         //}
       }
       case v@Vec3New(a,b,c) => emitValDef(sym, remap(vec3ImplPath, "", v.a) + "(" + quote(v.x) + "," + quote(v.y) + "," + quote(v.z) + ")")
       case v@VecObjNNew(i) => {
         i match {
-          case Const(n) if n==3 => emitValDef(sym, remap(vec3ImplPath, "", v.a) + "(0,0,0)")
+          //case Const(n) if n==3 => emitValDef(sym, remap(vec3ImplPath, "", v.a) + "(0,0,0)")
           case _ => {
-		stream.println(quote(sym) + " = {")
+            stream.println(quote(sym) + " = {")
         	stream.println(" if(" + quote(i) + " == 3) {")
-		stream.println("	" + remap(vec3ImplPath, "", v.a) + "(0,0,0)")
+            stream.println("	" + remap(vec3ImplPath, "", v.a) + "(0,0,0)")
         	stream.println(" } else { ")
         	stream.println("	" + remap(vecImplPath, ".ofSize", v.a) + "(" + quote(i) + ")")
         	stream.println(" }")

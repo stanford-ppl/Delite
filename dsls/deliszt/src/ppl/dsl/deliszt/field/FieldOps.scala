@@ -1,15 +1,17 @@
 package ppl.dsl.deliszt.field
 
 import java.io.PrintWriter
-import ppl.dsl.deliszt.capabilities._
-import ppl.dsl.deliszt._
-
-import ppl.delite.framework.DSLType
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenerationFailedException}
+
+import ppl.delite.framework.DSLType
 import ppl.delite.framework.datastruct.scala.DeliteCollection
+
+import ppl.dsl.deliszt.capabilities._
+import ppl.dsl.deliszt._
+import ppl.dsl.deliszt.vec.VecOpsExpOpt
 
 trait FieldOps extends DSLType with Variables with OverloadHack {
   this: DeLiszt =>
@@ -296,7 +298,7 @@ trait FieldOpsExpOpt extends FieldOpsExp {
 }
 
 trait ScalaGenFieldOps extends ScalaGenBase {
-  val IR: FieldOpsExp
+  val IR: FieldOpsExp with VecOpsExpOpt
   import IR._
 
   val fieldImplPath = "ppl.dsl.deliszt.datastruct.scala.FieldImpl"
@@ -316,17 +318,14 @@ trait ScalaGenFieldOps extends ScalaGenBase {
       case FieldDivideUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") /= " + quote(v))
 
       case f@DeLisztFieldWithConstCell(x) => {
-         val mv = manifest[ppl.dsl.deliszt.datastruct.scala.Vec[Any]]
-         if(x.Type.toString().contains("Vec")) {  
+         if (isVec3(x)) {
            emitValDef(sym, remap(vec3FieldImplPath, ".cellWithConst", f.t) + "(" + quote(x) + ")")
          } else {
            emitValDef(sym, remap(fieldImplPath, ".cellWithConst", f.t) + "(" + quote(x) + ")")
          }
       }
       case f@DeLisztFieldWithConstEdge(x) => {
-         val mv = manifest[ppl.dsl.deliszt.datastruct.scala.Vec[Any]]
-         Predef.println("XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX X.TYPE: " + x.Type)
-         if(x.Type.toString().contains("Vec")) {
+         if (isVec3(x)) {
              emitValDef(sym, remap(vec3FieldImplPath, ".edgeWithConst", f.t) + "(" + quote(x) + ")")
          } else {
              emitValDef(sym, remap(fieldImplPath, ".edgeWithConst", f.t) + "(" + quote(x) + ")")
@@ -334,16 +333,14 @@ trait ScalaGenFieldOps extends ScalaGenBase {
       }
 
       case f@DeLisztFieldWithConstFace(x) => {
-         val mv = manifest[ppl.dsl.deliszt.datastruct.scala.Vec[Any]]
-         if(x.Type.toString().contains("Vec")) {
+         if (isVec3(x)) {
              emitValDef(sym, remap(vec3FieldImplPath, ".faceWithConst", f.t) + "(" + quote(x) + ")")
          } else {
              emitValDef(sym, remap(fieldImplPath, ".faceWithConst", f.t) + "(" + quote(x) + ")")
          }
       }
       case f@DeLisztFieldWithConstVertex(x) => {
-         val mv = manifest[ppl.dsl.deliszt.datastruct.scala.Vec[Any]]
-         if(x.Type.toString().contains("Vec")) {
+         if (isVec3(x)) {
              emitValDef(sym, remap(vec3FieldImplPath, ".vertexWithConst", f.t) + "(" + quote(x) + ")")
          } else {
              emitValDef(sym, remap(fieldImplPath, ".vertexWithConst", f.t) + "(" + quote(x) + ")")

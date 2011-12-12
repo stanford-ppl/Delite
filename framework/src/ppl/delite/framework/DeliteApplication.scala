@@ -75,7 +75,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       writer.close()
     }
     
-    System.out.println("Running analysis")
+    //System.out.println("Running analysis")
     
     // Run any analyses defined
     for(a <- analyses) {
@@ -88,7 +88,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
     }
     reset
     
-    System.out.println("Now printing")
+    //System.out.println("Staging application")
     
     deliteGenerator.emitDataStructures(Config.buildDir + File.separator)
 

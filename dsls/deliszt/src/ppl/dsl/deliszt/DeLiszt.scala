@@ -135,7 +135,6 @@ trait DeLisztCodeGenBase extends GenericFatCodegen {
   def genSpec2(f: File, outPath: String) = {}
 
   override def emitDataStructures(path: String) {
-    System.out.print("PRINTING DATA STRUCTURES")
     val s = File.separator
     val dsRoot = Config.homeDir + s+"dsls"+s+"deliszt"+s+"src"+s+"ppl"+s+"dsl"+s+"deliszt"+s+"datastruct"+s + this.toString
 

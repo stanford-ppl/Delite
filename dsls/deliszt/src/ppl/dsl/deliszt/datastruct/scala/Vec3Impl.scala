@@ -10,6 +10,8 @@ class Vec3Impl[@specialized T: ClassManifest](var v0: T, var v1: T, var v2: T) e
   
   override def size = 3
 
+  // ! unsafe comments are intentional - used as wildcards when specializing datastructures !
+
   def apply(n : Int) = {
     /*unsafe.UnsafeAccessor.unsafe.getT(this, 16 + n*UNSAFE_SIZE)*/ v0
   }
