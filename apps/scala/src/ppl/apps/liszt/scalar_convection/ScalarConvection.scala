@@ -150,14 +150,9 @@ trait SC extends DeLisztApplication {
     var ll = Vec(MAX_DOUBLE,MAX_DOUBLE,MAX_DOUBLE)
     var ur = Vec(MIN_DOUBLE,MIN_DOUBLE,MIN_DOUBLE)
 
-    // Atomic reduce fails.. just do sequentially
-    val ms = vertices(mesh)
-    var i = 0
-    while(i < ms.size) {
-      val v = ms(i)
+    for(v <- vertices(mesh)) {
       ll = ll min position(v)
       ur = ur max position(v)
-      i += 1
     }
     val mesh_center = (ll + ur) * .5
     for(c <- cells(mesh)) {
@@ -173,16 +168,20 @@ trait SC extends DeLisztApplication {
       // Print("before cell number: ",ID(c)," -> phi value: ",Phi(c))
     // }
     
-    var start_time = 0.0
-    var num_iter = 0
+    //var start_time = 0.0
+    //var num_iter = 0
     // Print("ZA WHILE LOOP")
+     // if(num_iter == 1) {
+    val start_time = wall_time()
+     // }
     while(t < 2.0) {
-      if(num_iter == 1) {
-        start_time = wall_time()
-      }
+
       // Print("INTERIOR SET")
+      
+      /**********
+       * Loop 1 *
+       **********/
       for(f <- interior_set) {
-        // Print(ID(f))
         val normal = face_unit_normal(f)
         val vDotN = dot(globalVelocity,normal)
         val area = face_area(f)
@@ -195,8 +194,11 @@ trait SC extends DeLisztApplication {
         Flux(outside(f)) += flux
       }
       
-      // Print("OUTSET SET")
+      /**********
+       * Loop 2 *
+       **********/
       for(f <- outlet_set) {
+      // Print("OUTSET SET")
         // Print(ID(f))
         val normal = face_unit_normal(f)
         if(ID(outside(f)) == 0)
@@ -210,7 +212,10 @@ trait SC extends DeLisztApplication {
         }
       }
 
-	  //Note: 'phi_sine_function(t)' is manually hoisted from the loop to prevent Ref[Double] type input for a GPU kernel
+      /**********
+       * Loop 3 *
+       **********/
+	    //Note: 'phi_sine_function(t)' is manually hoisted from the loop to prevent Ref[Double] type input for a GPU kernel
       val multiplier = phi_sine_function(t)
       for(f <- inlet_set) {
         val area = face_area(f)
@@ -220,6 +225,10 @@ trait SC extends DeLisztApplication {
         else
           Flux(outside(f)) += area * vDotN * multiplier	
       }
+
+      /**********
+       * Loop 4 *
+       **********/
       for(f <- far_field_set) {
         val normal = face_unit_normal(f)
         if(ID(outside(f)) == 0)
@@ -237,13 +246,14 @@ trait SC extends DeLisztApplication {
       }
       
       t += deltat
-      num_iter += 1
+      //num_iter += 1
     }
     
-    Print( "TIME_FOR_LOOP: ", wall_time() - start_time, " num iter: ", num_iter )
+    Print( "TIME_FOR_LOOP: ", wall_time() - start_time, " num iter: " )
       
-    for(c <- cells(mesh)) {
-      Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
-    }
+     for(c <- cells(mesh)) {
+       Print("cell number: ",ID(c)," -> phi value: ",Phi(c))
+     }
   }
 }
+

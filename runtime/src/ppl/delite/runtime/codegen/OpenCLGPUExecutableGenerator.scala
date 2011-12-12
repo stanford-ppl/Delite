@@ -38,7 +38,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
 
     //initialize
     writeGlobalsInitializer(out)
-    writeJNIInitializer(location, out)
+    writeJNIInitializer(Range.inclusive(0,location).toSet, out)
 
     //execute
     addKernelCalls(schedule, location, new ArrayBuffer[DeliteOP], new ArrayBuffer[DeliteOP], syncList, out)

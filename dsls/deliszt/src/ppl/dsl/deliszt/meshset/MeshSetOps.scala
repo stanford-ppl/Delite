@@ -99,6 +99,7 @@ trait MeshSetOpsExp extends MeshSetOps with VariablesExp with BaseFatExp {
   
     x match {
       // Why do I have to cast? I hate you
+      /*
       case Def(DeLisztCellsCell(e,m)) => nms_foreach(x, crs_ctoc(m), e, block)
       case Def(DeLisztCellsEdge(e,m)) => nms_foreach(x, crs_etoc(m), e, block)
       case Def(DeLisztCellsFace(e,m)) => nms_foreach(x, crs_ftoc(m), e, block)
@@ -121,6 +122,7 @@ trait MeshSetOpsExp extends MeshSetOps with VariablesExp with BaseFatExp {
       case Def(DeLisztEdgeCellsCW(e,m)) => dnms_foreach(x, crs_etof(m), Mesh.TAIL, e, block)
       case Def(DeLisztFaceVerticesCCW(e,m)) => dnms_foreach(x, crs_ftov(m), Mesh.OUTSIDE, e, block)
       case Def(DeLisztFaceVerticesCW(e,m)) => dnms_foreach(x, crs_ftov(m), Mesh.INSIDE, e, block)
+      */
       case _ => reflectEffect(t, summarizeEffects(t.body.asInstanceOf[DeliteForeachElem[MO]].func).star)
     }
   }

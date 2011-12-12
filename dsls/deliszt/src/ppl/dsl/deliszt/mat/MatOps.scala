@@ -548,6 +548,8 @@ trait CudaGenMatOps extends CudaGenBase {
     // these are the ops that call through to the underlying real data structure
     case m@MatObjNew(vs @ _*) if(!isHostAlloc) => emitValDef(sym, remap(sym.Type) + "()")
                                                  vs.zipWithIndex.foreach(elem => stream.println("%s.vectorUpdate(%s, %s);".format(quote(sym),elem._2,quote(elem._1))))
+    case m@Mat3New(xs) if(!isHostAlloc) => emitValDef(sym, remap(sym.Type) + "()")
+                                                 xs.zipWithIndex.foreach(elem => stream.println("%s.dcUpdate(%s, %s);".format(quote(sym),elem._2,quote(elem._1))))
     case m@MatObjNNew(numRows,numCols) if(!isHostAlloc) => emitValDef(sym, "Mat<" + remap(m.a) + "," + quote(numRows) + "," + quote(numCols) + ">()")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")
     case MatApply(x,i,j) => emitValDef(sym, quote(x) + ".apply(" + quote(i) + ", " + quote(j) + ")")

@@ -372,7 +372,10 @@ trait CudaGenFieldOps extends CudaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case FieldApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
+    case FieldRawApply(x,n,off) => emitValDef(sym, quote(x) + ".raw_apply(" + quote(n) + "," + quote(off) + ")")
     case FieldUpdate(x,n,v) => stream.println(addTab() + quote(x) + ".update(" + quote(n) + "," + quote(v) + ");")
+    case FieldRawUpdate(x,n,off,v) => stream.println(addTab() + quote(x) + ".raw_update(" + quote(n) + "," + quote(off) + "," + quote(v) + ");")
+
     //case FieldPlusUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") += " + quote(v))
     //case FieldTimesUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") *= " + quote(v))
     //case FieldMinusUpdate(x,n,v) => emitValDef(sym, quote(x) + "(" + quote(n) + ") -= " + quote(v))

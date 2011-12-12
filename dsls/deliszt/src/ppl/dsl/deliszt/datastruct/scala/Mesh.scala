@@ -1,6 +1,7 @@
 package ppl.dsl.deliszt.datastruct.scala
 
-import collection.mutable.{Map, HashMap}
+import collection.mutable.{Map, HashMap, ArrayBuffer}
+import java.io._
 
 /**
  * author: Michael Wu (mikemwu@stanford.edu)
@@ -250,5 +251,24 @@ class Mesh {
   }
 
   vertexData.fns("position") = positionToVec
+  
+  //Coloring hack: remove this!
+  def coloredIndexSet(filename: String): MeshSet = {
+    //File READ
+    val ab = new ArrayBuffer[Int]()
+    val xfs = new BufferedReader(new FileReader(filename))
+    var line = xfs.readLine()
+    while (line != null){
+      line = line.trim()
+      val idx = Integer.parseInt(line)
+      ab.append(idx)
+      line = xfs.readLine()
+    }
+    xfs.close()
+
+    val arr = ab.toArray
+    new IndexSetImpl(arr, arr.size, 0, arr.size, Mesh.FORWARD)
+  }
+
 }
 

@@ -107,9 +107,9 @@ public:
     }
     return ret;
   }
-  __device__ __host__ Vertex vertex(Edge e, int i) {
-    int start = etov.row(internal(e));
-    return etov.values[start+i];
+  //TODO: etov? ctov? Which one is correct?
+  __device__ __host__ Vertex vertex(int eIdx, int i) {
+    return ctov.apply(eIdx, i);
   }
 
   /* Return MeshSet<Cell> given MeshObj T */
@@ -283,8 +283,8 @@ public:
     return ret;
   }
 
-  __device__ __host__ Face face(Edge e, int i) {
-    return etof.apply(internal(e),i);
+  __device__ __host__ Face face(int eIdx, int i) {
+    return etof.apply(eIdx,i);
   }
 
   __device__ __host__ int head(Edge e) {

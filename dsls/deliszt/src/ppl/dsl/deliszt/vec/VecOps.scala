@@ -384,7 +384,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     case e@VecMax(x) => reflectPure(new { override val original = Some(f,e) } with VecMax(f(x))(e.n, e.vn, e.m, e.o, e.p))(mtype(manifest[A]))
     case e@VecZipMin(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMin(f(x),f(y))(e.n, e.vn, e.m, e.o))(mtype(manifest[A]))
     case e@VecZipMax(x,y) => reflectPure(new { override val original = Some(f,e) } with VecZipMax(f(x),f(y))(e.n, e.vn, e.m, e.o))(mtype(manifest[A]))
-    case e@Vec3New(x,y,z) => reflectPure(Vec3New(f(x),f(y),f(z))(e.n, e.vn, e.a))
+    case e@Vec3New(x,y,z) => reflectPure(Vec3New(f(x),f(y),f(z))(e.n, e.vn, e.a))(mtype(manifest[A]))
     
     case Reflect(e@VecNegate(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecNegate(f(x))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VecPlus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VecPlus(f(x),f(y))(e.n, e.vn, e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -408,9 +408,9 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
     case Reflect(e@VecUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VecUpdate(f(l),f(i),f(r))(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     // Effect with SingleTask and DeliteOpLoop
     // Allocation
-    case Reflect(e@Vec3New(x,y,z), u, es) => reflectMirrored(Reflect(Vec3New(f(x),f(y),f(z))(e.n, e.vn, e.a), mapOver(f,u), f(es)))
-    case Reflect(e@VecObjNew(xs @ _*), u, es) => reflectMirrored(Reflect(VecObjNew(f(xs) : _*)(e.n, e.vn, e.a), mapOver(f,u), f(es)))
-    case Reflect(e@VecObjNNew(n), u, es) => reflectMirrored(Reflect(VecObjNNew(f(n))(e.n, e.vn, e.a), mapOver(f,u), f(es)))
+    case Reflect(e@Vec3New(x,y,z), u, es) => reflectMirrored(Reflect(Vec3New(f(x),f(y),f(z))(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecObjNew(xs @ _*), u, es) => reflectMirrored(Reflect(VecObjNew(f(xs) : _*)(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VecObjNNew(n), u, es) => reflectMirrored(Reflect(VecObjNNew(f(n))(e.n, e.vn, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
 
@@ -444,7 +444,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   
   /////////////////////
   // object interface
-  def vec_obj_new[N<:IntM:Manifest:MVal, A:Manifest](xs: Exp[A]*) = {
+  def vec_obj_new[N<:IntM:Manifest:MVal, A:Manifest](xs: Exp[A]*): Exp[Vec[N,A]] = {
     if(xs.length == 3) {
         //reflectMutable(Vec3New[N,A](xs(0),xs(1),xs(2)))//.unsafeImmutable
         Vec3New[N,A](xs(0),xs(1),xs(2))
@@ -454,7 +454,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
      }    
   }
   
-  def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i: Exp[Int]) = i match {
+  def vec_obj_n_new[N<:IntM:Manifest:MVal, A:Manifest](i: Exp[Int]): Exp[Vec[N,A]] = i match {
     case Const(3) => 
       reflectMutable(Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A])))//.unsafeImmutable
       //Vec3New[N,A](unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A]), unit(0.asInstanceOf[A])))
@@ -584,10 +584,10 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     // field might have changed state since it was read, so reading the underlying field could be incorrect if there was a copy on read
     // but the read is just a view into the underlying field anyways, so it doesn't matter
     // issue is that the old Reflect node sticks around because of the effect...
-    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstCell(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
-    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstEdge(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
-    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstFace(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
-    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstVertex(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(0).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstCell(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstEdge(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstFace(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
+    case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstVertex(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
 
     case Def(e: DeliteOpMap[A,_,_]) => e.body match {
       case ce: DeliteCollectElem[_,_] => ce.alloc match {
@@ -690,6 +690,8 @@ trait CudaGenVecOps extends BaseGenVecOps with CudaGenFat {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case v@VecObjNew(xs @ _*) if(!isHostAlloc) => emitValDef(sym, remap(sym.Type) + "()");
                                                  xs.zipWithIndex.foreach(elem => stream.println("%s.data[%s] = %s;".format(quote(sym),elem._2,quote(elem._1))))
+    case v@Vec3New(a,b,c) if(!isHostAlloc) => emitValDef(sym, remap(sym.Type) + "()");
+                                              List(a,b,c).zipWithIndex.foreach(elem => stream.println("%s.data[%s] = %s;".format(quote(sym),elem._2,quote(elem._1))))
     case v@VecObjNNew(i) if(!isHostAlloc) => emitValDef(sym, "Vec<"+remap(v.a) + "," + quote(i) + ">()")
     // these are the ops that call through to the underlying real data structure
     case VecApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")

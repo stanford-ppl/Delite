@@ -2570,12 +2570,11 @@ trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
 
 }
 
-trait CGenDeliteOps extends CGenEffect with BaseGenDeliteOps {
+trait CGenDeliteOps extends CGenLoopsFat with BaseGenDeliteOps {
   import IR._
 
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
-      //println("TODO: implement emitFatNode in CGenDeliteOps")
       throw new GenerationFailedException("TODO: implement emitFatNode in CGenDeliteOps")
     case _ => super.emitFatNode(symList, rhs)
   }
@@ -2585,10 +2584,6 @@ trait CGenDeliteOps extends CGenEffect with BaseGenDeliteOps {
       emitBlock(s.block)
       emitValDef(sym,quote(getBlockResult(s.block)))
 
-    //TODO: implement deliteops
-    //case map:DeliteOpMap[_,_,_] =>
-    //case zip: DeliteOpZipWith[_,_,_,_] =>
-    //case mapR:DeliteOpMapReduce[_,_,_] =>
     case _ => super.emitNode(sym,rhs)
   }
 }

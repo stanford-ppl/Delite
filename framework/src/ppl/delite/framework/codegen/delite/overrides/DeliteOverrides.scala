@@ -20,6 +20,6 @@ trait DeliteOpenCLGenAllOverrides extends DeliteOpenCLGenVariables with DeliteOp
   val IR: DeliteApplication with DeliteAllOverridesExp
 }
 
-trait DeliteCGenAllOverrides extends DeliteCGenVariables with DeliteCGenIfThenElse /*with DeliteCGenRange*/ with DeliteCGenWhile {
+trait DeliteCGenAllOverrides extends DeliteCGenVariables /*with DeliteCGenIfThenElse with DeliteCGenRange with DeliteCGenWhile */ {
   val IR: DeliteApplication with DeliteAllOverridesExp
 }

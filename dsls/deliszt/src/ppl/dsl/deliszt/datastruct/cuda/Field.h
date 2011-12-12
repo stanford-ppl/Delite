@@ -25,12 +25,12 @@ public:
     }
     
     // Accessor Functions
-    __host__ __device__ T apply(MeshObj mo) {
-        return data[internal(mo)];
+    __host__ __device__ T apply(int moIdx) {
+        return data[moIdx];
     }
 
-    __host__ __device__ void update(MeshObj mo, T newVal) {
-        data[internal(mo)] = newVal;
+    __host__ __device__ void update(int moIdx, T newVal) {
+        data[moIdx] = newVal;
     }
 
     // DeliteCoolection
@@ -65,6 +65,14 @@ public:
     __host__ __device__ void update(MeshObj mo, Vec<T,N> in) {
         int idx = internal(mo);
         for(int i=0; i<N; i++) { data[idx*N+i] = in.data[i]; }
+    }
+    __host__ __device__ T raw_apply(MeshObj mo, int offset) {
+        int idx = internal(mo);
+        return data[idx*N+offset];
+    }
+    __host__ __device__ void raw_update(MeshObj mo, int offset, T in) {
+        int idx = internal(mo);
+        data[idx*N+offset] = in;
     }
 
     // DeliteCoolection

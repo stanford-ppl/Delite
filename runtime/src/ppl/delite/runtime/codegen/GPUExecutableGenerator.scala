@@ -61,6 +61,7 @@ trait GPUExecutableGenerator {
       case "Short" => "jshort"
       case "Char" => "jchar"
       case "Byte" => "jbyte"
+      //case r if r.startsWith("generated.scala.Ref[") => getJNIType(r.slice(20,r.length-1))
       case _ => "jobject"//all other types are objects
     }
   }
@@ -76,6 +77,7 @@ trait GPUExecutableGenerator {
       case "Short" => "S"
       case "Char" => "C"
       case "Byte" => "B"
+      //case r if r.startsWith("generated.scala.Ref[") => getJNIArgType(r.slice(20,r.length-1))
       case array if array.startsWith("Array[") => "[" + getJNIArgType(array.slice(6,array.length-1))
       case _ => { //all other types are objects
         var objectType = scalaType.replace('.','/')
@@ -96,6 +98,7 @@ trait GPUExecutableGenerator {
       case "Short" => "S"
       case "Char" => "C"
       case "Byte" => "B"
+      //case r if r.startsWith("generated.scala.Ref[") => getJNIOutputType(r.slice(20,r.length-1))
       case array if array.startsWith("Array[") => "[" + getJNIOutputType(array.slice(6,array.length-1))
       case _ => { //all other types are objects
         var objectType = scalaType.replace('.','/')
@@ -115,6 +118,7 @@ trait GPUExecutableGenerator {
     case "Short" => "Short"
     case "Char" => "Char"
     case "Byte" => "Byte"
+    //case r if r.startsWith("generated.scala.Ref[") => getJNIFuncType(r.slice(20,r.length-1))
     case _ => "Object"//all other types are objects
   }
 
@@ -128,6 +132,7 @@ trait GPUExecutableGenerator {
     case "Short" => "short"
     case "Char" => "char"
     case "Byte" => "char"
+    case r if r.startsWith("generated.scala.Ref[") => getCPrimitiveType(r.slice(20,r.length-1))
     case other => error(other + " is not a primitive type")
   }
 
@@ -141,17 +146,17 @@ trait GPUExecutableGenerator {
     case "Short" => true
     case "Char" => true
     case "Byte" => true
+    case r if r.startsWith("generated.scala.Ref[") => isPrimitiveType(r.slice(20,r.length-1))
     case _ => false
   }
 
-  protected def writeJNIInitializer(location: Int, out: StringBuilder) {
-    //TODO: this loop should not assume its location is the last
-    for (i <- 0 to location) {
+  protected def writeJNIInitializer(locations: Set[Int], out: StringBuilder) {
+    for (loc <- locations) {
       out.append("jclass cls")
-      out.append(i)
+      out.append(loc)
       out.append(" = env->FindClass(\"")
       out.append(executableName)
-      out.append(i)
+      out.append(loc)
       out.append("\");\n")
     }
     //add a reference to the singleton of scala.runtime.BoxedUnit for use everywhere required

@@ -86,7 +86,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
     if (!skipEmission) for (gen <- generators) {
       val sep = java.io.File.separator
-      val buildPath = Config.buildDir + sep + gen + sep + "kernels" + sep
+      val buildPath = Config.buildDir + sep + (if(gen.toString=="c") "cuda" else gen) + sep + "kernels" + sep
       val outDir = new File(buildPath); outDir.mkdirs()
       val outFile = new File(buildPath + kernelName + "." + gen.kernelFileExt)
       val kstream = new PrintWriter(outFile)
@@ -165,7 +165,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         // record that this kernel was successfully generated
         supportedTargets += gen.toString
         if (!hasOutputSlotTypes) { // return type is sym type
-          if (resultIsVar) {
+          if (resultIsVar && gen.toString=="scala") {
             returnTypes += new Pair[String,String](gen.toString,"generated.scala.Ref[" + gen.remap(sym.head.Type) + "]") {
               override def toString = "\"" + _1 + "\" : \"" + _2 + "\""
             }
