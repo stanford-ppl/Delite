@@ -10,8 +10,6 @@ import java.io.PrintWriter
 // has no concrete storage
 trait ExprOps extends Base with OverloadHack { //with Atoms
   
-
-
   // don't really want "int", want just numeric types
   // or should i have a separate thing convert Rep[Numeric] => Expr??
   // T is of type numeric, Int, Double, Float, Matrix, Vector
@@ -23,6 +21,7 @@ trait ExprOps extends Base with OverloadHack { //with Atoms
       println("%s + %s".format(manifest[A].erasure, manifest[B].erasure))
       apply_binary_op(AffineFunc, Nondecreasing, Nondecreasing)("+", x, y)
     }
+    
   def infix_-[A<:Expr:Manifest, B<:Expr:Manifest](x: Rep[A], y: Rep[B])
     = apply_binary_op(AffineFunc, Nondecreasing, Nonincreasing)("-", x, y)
   
@@ -48,7 +47,6 @@ trait ExprOpsExp extends ExprOps with BaseExp with EffectExp {
     case class ConcaveUnaryOp[A<:Expr:Manifest](op: String, x: Rep[A]) extends Def[ConcaveExpr]
     case class AffineUnaryOp[A<:Expr:Manifest](op: String, x: Rep[A]) extends Def[AffineExpr]
 
-    
     def vexity[T<:Expr](vex:FuncAttribute, mono:ArgAttribute, arg:Manifest[T]) : FuncAttribute ={
       // BUG: somehow, the manifest only tracks the super class....
       val argument : FuncAttribute = {
@@ -56,8 +54,7 @@ trait ExprOpsExp extends ExprOps with BaseExp with EffectExp {
         else if(arg <:< manifest[Convex]) ConvexFunc
         else if(arg <:< manifest[Concave]) ConcaveFunc
         else {
-          println("arg %s is nonconvex".format(arg.erasure))
-          Nonconvex
+            Nonconvex
         }
       }
       
@@ -75,14 +72,20 @@ trait ExprOpsExp extends ExprOps with BaseExp with EffectExp {
     
     // of course, can do compiler optimizations here
     def apply_binary_op[A<:Expr:Manifest, B<:Expr:Manifest](T1:FuncAttribute, T2:ArgAttribute, T3:ArgAttribute)(op: String, x: Exp[A], y: Exp[B]) = {
-      val vex1 = vexity(T1, T2, manifest[A])
-      val vex2 = vexity(T1, T3, manifest[B])
+      val vex1 = vexity(T1, T2, x.Type)
+      val vex2 = vexity(T1, T3, y.Type)
+      
+      println("func attribute: %s, %s; result: %s,%s".format(T1, T2,vex1,vex2))
+      
+      x match {
+        case Def(BinaryOp(Def(UnaryOp(a,contraints)),arg2,contraints)) 
+      }
       
       (vex1, vex2) match {
-        case (_:Affine, _:Affine) => reflectEffect(AffineBinaryOp(op, x, y))
-        case (_:Convex, _:Convex) => reflectEffect(ConvexBinaryOp(op, x, y))
-        case (_:Concave, _:Concave) => reflectEffect(ConcaveBinaryOp(op, x, y))
-        case _ => reflectEffect(BinaryOp(op, x, y))
+        case (_:Affine, _:Affine) => println("affine!"); reflectEffect(AffineBinaryOp(op, x, y))
+        case (_:Convex, _:Convex) => println("convex!"); reflectEffect(ConvexBinaryOp(op, x, y))
+        case (_:Concave, _:Concave) => println("concave!"); reflectEffect(ConcaveBinaryOp(op, x, y))
+        case _ => println("nonconvex"); reflectEffect(BinaryOp(op, x, y))
       }
     }
     
