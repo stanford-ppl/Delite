@@ -244,10 +244,11 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
           var i = 0        
           var colorLoops = List[TTP]()         
           var prevLoop: Option[TTP] = None
+          var depChain = List[Sym[Any]]()
           //val loopRefTransformer = new SubstTransformer                      
           
           codbg("<loop " + loop.toString + " scope before coloring ---"+result0+"/"+result); currentScope.foreach(e=>codbg(e.toString)); codbg("--->")                  
-          
+                             
           while (i < coloring.numColors) {
             var j = color_idx(i)
             val indices = ArrayBuffer[Int]()
@@ -256,7 +257,7 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
               j += 1
             }
 
-            // new loop dependencies
+            // new loop dependencies            
             val (in,size,v,f,body) = WgetLoopParams(loop)          
             val colorLoopVar = fresh(v.Type) 
             val colorSet = buildInScope(color_index_set_new(indices.toArray, 0, indices.length)(in.Type))
@@ -271,11 +272,13 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
             t.subst(body) = colorFunc
             val (newScope, transformedLoopSyms) = transformAllFully(currentScope, loop.lhs, t) 
             val transformedLoop = newScope.find(_.lhs == transformedLoopSyms).get          
+            assert(transformedLoop.lhs.size == 1)
                       
             // add previous transformedLoop to new one as a dependency
             val transformedLoop2 = transformedLoop match { 
               case TTP(lhs, ThinDef(Reflect(a,u,d))) if prevLoop.isDefined => 
-                fatten(findOrCreateDefinition(Reflect(a,u,d ::: prevLoop.get.lhs)))
+                depChain :+= prevLoop.get.lhs(0)
+                fatten(findOrCreateDefinition(Reflect(a,u,d ::: depChain))(prevLoop.get.lhs(0).Type))
                 //TTP(lhs, ThinDef(Reflect(a,u,d ::: prevLoop.get.lhs)))
               case _ => transformedLoop
             }          
@@ -284,8 +287,8 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
             i += 1
           }                
           colog("colored loop " + id + " into " + colorLoops.length + " loops using " + coloring.numColors + " colors")
-          colog("original loop: " + loop.toString)
-          colorLoops foreach { l => colog("colored loop: " + l.toString) }
+          colog("original loop: " + loop.toString + ", type: " + loop.lhs(0).Type.toString)
+          colorLoops foreach { l => colog("colored loop: " + l.toString + ", type: " + l.lhs(0).Type.toString) }
         
           // replace old loop with new loops
           currentScope = fission(currentScope, loop, colorLoops)  
@@ -310,12 +313,12 @@ trait LoopColoringOpt extends GenericFatCodegen with SimplifyTransform {
             case TP(lhs, Reify(x,u,es)) if (es contains loop.lhs(0)) =>
               val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
               val o = lhs
-              val n = findOrCreateDefinition(Reify(x,u,cleanEs)).sym
+              val n = (findOrCreateDefinition(Reify(x,u,cleanEs))(lhs.Type)).sym
               loopRefTransformer.subst(o) = n
             case TP(lhs, Reflect(x,u,es)) if (es contains loop.lhs(0)) =>
               val cleanEs = fission(es,loop.lhs(0),colorLoops flatMap { _.lhs })
               val o = lhs
-              val n = findOrCreateDefinition(Reflect(x,u,cleanEs)).sym
+              val n = (findOrCreateDefinition(Reflect(x,u,cleanEs))(lhs.Type)).sym
               loopRefTransformer.subst(o) = n
             case _ =>
           }
