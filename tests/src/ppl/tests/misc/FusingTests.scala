@@ -1,7 +1,7 @@
 package ppl.tests.misc
 
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.{OptiMLApplication, OptiMLApplicationRunner, OptiMLExp}
+import ppl.dsl.optiml._
 
 object FusingTestsRunner extends OptiMLApplicationRunner with FusingTests
 
@@ -16,15 +16,15 @@ trait FusingTests extends OptiMLApplication {
   }
 
   def fuseMix2() {
-    val a = Vector.range(1,10)
-    val b = Vector.range(10,19)
-    val c = Vector.range(20,29)
+    val a = Vector.range(1,10).cloneL
+    val b = Vector.range(10,19).cloneL
+    val c = Vector.range(20,29).cloneL
     val res = (a+b).t-c.t
     res.pprint
   }
 
   def fuseSum() {
-    val a = Vector.range(1,10)
+    val a = Vector.range(1,10).cloneL
     println(a.t.sum)
   }
 
