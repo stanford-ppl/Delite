@@ -1,0 +1,76 @@
+#!/usr/bin/env python
+
+from optparse import OptionParser
+import multiprocessing
+import os, sys
+import math
+from socket import gethostname
+from string import *
+from time import localtime, strftime
+
+import delitecommon
+from delitecommon import *
+
+def main():
+    usage = "usage: %prog <application runner> [params] [options]"
+    parser = OptionParser(usage)
+    parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
+    parser.add_option("-t", "--threads", dest="num_threads", default="1", help="num execution threads e.g. 4")
+    parser.add_option("-r", "--runs", dest="num_runs", default="1", type="string", help="the number of times the runtime will execute the applications")
+
+    (opts, args) = parser.parse_args()
+    if len(args) < 1:
+        parser.error("a DEG file is required as an argument")
+
+    delitecommon.initialize()
+    run(args[0], args[1:len(args)], opts)
+ 
+def parseBuildDir(deg):
+    if not os.path.isfile(deg):
+        err("couldn't find DEG file " + deg)
+
+    with open(deg) as f:
+      head = [f.next() for x in xrange(3)]
+    
+    fields = ''.join(head).split(",")
+    kernelpath = fields[len(fields)-2].split(":") 
+    build_dir = kernelpath[len(kernelpath)-1]
+    if (build_dir.strip('\n') == ""):
+      err("DEG file " + deg + " appears to be invalid; could not parse kernelpath")
+
+    return build_dir
+
+def run(deg, params, opts):
+    java_opts = os.getenv("JAVA_OPTS", "")
+
+    if not os.path.isfile(deg):
+      if not (os.path.isfile(deg + ".deg")):
+        err("couldn't find DEG file: " + deg)
+      else:
+        deg = deg + ".deg"
+
+    build_dir = parseBuildDir(deg)
+    ld_library_path = filter(len, os.getenv("LD_LIBRARY_PATH", "").split(":"))
+    ld_library_path.append(build_dir+"/libraries")
+
+    java_opts = java_opts + "-Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.runs=" + opts.num_runs + " -Dstats.dump.component=app"
+
+    os.putenv("JAVA_OPTS", java_opts)
+
+    #MKL ENV
+    os.putenv("LD_PRELOAD", delitecommon.JAVA_HOME + "/jre/lib/amd64/libjsig.so")
+    os.putenv("MKL_NUM_THREADS", str(opts.num_threads))
+    
+    #emit other envs
+    os.putenv('DELITE_HOME', delitecommon.DELITE_HOME)
+    os.putenv('JAVA_HOME', delitecommon.JAVA_HOME)
+    os.putenv('SCALA_VIRT_HOME', delitecommon.SCALA_VIRT_HOME)
+
+    print "== executing application: " + deg + " " + ' '.join(params)
+    print "== with options: " + java_opts + "\n"
+    ecode = os.system(delitecommon.DELITE_HOME + "/bin/exec " + deg + " " + ' '.join(params))
+    if ecode != 0:
+        err("Delite execution failed")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,82 @@
+#!/usr/bin/env python
+
+from optparse import OptionParser
+import multiprocessing
+import os, sys
+import math
+from socket import gethostname
+from string import *
+import ConfigParser
+from time import localtime, strftime
+
+import delitecommon
+
+LMS_HOME = os.getenv("LMS_HOME")
+lms_version = "virtualization-lms-core_2.10.0-virtualized-SNAPSHOT"
+
+def err(s):
+    exit("error: " + s)
+
+def warn(s):
+    print("warn: " + s)
+
+def main():
+    usage = "usage: %prog <application runner> [options]"
+    parser = OptionParser(usage)
+    parser.add_option("-v", "--verbose", action="store_true", default=False, dest="verbose")
+    parser.add_option("--nb", dest="no_blas", action="store_true", default=False, help="disable blas calls")
+    parser.add_option("--nf", dest="no_fusion", action="store_true", default=False, help="disables op fusion")
+    parser.add_option("--gpu", dest="gpu", action="store_true", default=False, help="enables gpu generation")
+    parser.add_option("-d", "--dest", action="store", dest="build_dir", default=os.getenv("PWD"), help="output location for generated files")
+
+    (opts, args) = parser.parse_args()
+    if len(args) != 1:
+        parser.error("only a single application file should be passed to delitec as an argument")
+    
+    delitecommon.initialize()
+    checkLMSEnv()
+    stage(args[0], opts)
+ 
+def checkLMSEnv():
+    global LMS_HOME
+
+    if LMS_HOME is None:
+        lms_home = delitecommon.DELITE_HOME + "/lib_managed/jars/scala/" + lms_version + "/"
+        if not os.path.isdir(lms_home):
+          warn("couldn't find the LMS library at: " + lms_home)
+          lms_home = delitecommon.props["libs.lms.home"]
+          if lms_home is None:
+            err("couldn't find the LMS library at: " + lms_home + ". Please set the LMS_HOME environment variable or libs.lms.home entry in delite.properties manually.")
+        LMS_HOME = lms_home
+
+def stage(runner, opts):
+    java_opts = os.getenv("JAVA_OPTS", "")
+
+    build_dir = opts.build_dir + "/generated/"
+    java_opts = java_opts + " -Ddelite.home.dir=" + delitecommon.DELITE_HOME + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + runner + ".deg"
+    if opts.no_blas == False:
+        java_opts = java_opts + " -Ddelite.extern.blas"
+    if opts.gpu == True:
+        java_opts = java_opts + " -Ddelite.generate.cuda"
+    if opts.no_fusion == True:
+        java_opts = java_opts + " -Ddelite.enable.fusion=false"
+    java_opts = java_opts + " -Dnested.variants.level=0"
+
+    os.putenv("JAVA_OPTS", java_opts)
+
+    #MKL ENV
+    os.putenv("LD_PRELOAD", delitecommon.JAVA_HOME + "/jre/lib/amd64/libjsig.so")
+    
+    #emit other envs
+    os.putenv('LMS_HOME', LMS_HOME)
+    os.putenv('DELITE_HOME', delitecommon.DELITE_HOME)
+    os.putenv('JAVA_HOME', delitecommon.JAVA_HOME)
+    os.putenv('SCALA_VIRT_HOME', delitecommon.SCALA_VIRT_HOME)
+
+    print "==  Generating DEG file with options: " + str(opts)
+    ecode = os.system(delitecommon.DELITE_HOME + "/bin/gen " + runner)
+    if ecode != 0:
+        err("Delite compilation failed")
+
+if __name__ == "__main__":
+    main()

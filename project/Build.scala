@@ -17,6 +17,8 @@ object DeliteBuild extends Build {
     // needed for scala.tools, which is apparently not included in sbt's built in version
     libraryDependencies += "org.scala-lang" % "scala-library" % virtScala,
     libraryDependencies += "org.scala-lang" % "scala-compiler" % virtScala,
+    // used in delitec to access jars
+    retrieveManaged := true,
     scalacOptions += "-Yno-generic-signatures"
   )
 
@@ -29,6 +31,14 @@ object DeliteBuild extends Build {
     libraryDependencies += "org.scala-lang" % "scala-library" % vanillaScala,
     libraryDependencies += "org.scala-lang" % "scala-compiler" % vanillaScala
   )
+  */
+
+  /*
+  lazy val getJars = TaskKey[Unit]("get-jars")
+  lazy val getJarsTask = getJars <<= (target, fullClasspath in Runtime) map { (target, cp) =>
+    println("Target path is: "+target)
+    println("Full classpath is: "+cp.map(_.data).mkString(":"))
+  }
   */
 
   // build targets

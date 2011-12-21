@@ -51,14 +51,11 @@ def main():
         parser.error("incorrect number of arguments")
     
 
-
     loadOptions(opts)
     loadProps(options)
     loadParams(options)
     loadClasses(options)
     launchApps(options)
-    
-
 
 def loadOptions(opts):
     options['verbose'] = opts.verbose
@@ -122,8 +119,6 @@ def loadOptions(opts):
 
 def loadProps(options):
     #load and check all the required environment variables
-    
-    
     config = ConfigParser.ConfigParser()
     config.readfp(open(props["delite.home"] + '/delite.properties'))
     items = config.items('delite')
