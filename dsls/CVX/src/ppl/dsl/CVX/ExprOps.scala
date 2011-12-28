@@ -77,9 +77,9 @@ trait ExprOpsExp extends ExprOps with BaseExp with EffectExp {
       
       println("func attribute: %s, %s; result: %s,%s".format(T1, T2,vex1,vex2))
       
-      x match {
-        case Def(BinaryOp(Def(UnaryOp(a,contraints)),arg2,contraints)) 
-      }
+      // x match {
+      //   case Def(BinaryOp(Def(UnaryOp(a,contraints)),arg2,contraints)) 
+      // }
       
       (vex1, vex2) match {
         case (_:Affine, _:Affine) => println("affine!"); reflectEffect(AffineBinaryOp(op, x, y))
