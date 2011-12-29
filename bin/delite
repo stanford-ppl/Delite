@@ -66,6 +66,9 @@ def run(deg, params, opts):
     os.putenv('JAVA_HOME', delitecommon.JAVA_HOME)
     os.putenv('SCALA_VIRT_HOME', delitecommon.SCALA_VIRT_HOME)
 
+    if opts.verbose:
+        delitecommon.printEnv()
+
     print "== executing application: " + deg + " " + ' '.join(params)
     print "== with options: " + java_opts + "\n"
     ecode = os.system(delitecommon.DELITE_HOME + "/bin/exec " + deg + " " + ' '.join(params))

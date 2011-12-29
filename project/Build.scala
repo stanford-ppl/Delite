@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 
 object DeliteBuild extends Build {
-  val virtualization_lms_core = "scala" % "virtualization-lms-core_2.10.0-virtualized-SNAPSHOT" % "0.1"
+  val virtualization_lms_core = "EPFL" % "lms_2.10.0-virtualized-SNAPSHOT" % "0.1"
   
   // FIXME: custom-built scalatest
   val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
@@ -12,6 +12,7 @@ object DeliteBuild extends Build {
   val virtBuildSettings = Defaults.defaultSettings ++ Seq(
     scalaSource in Compile <<= baseDirectory(_ / "src"),
     resolvers += ScalaToolsSnapshots, 
+    resolvers += dropboxScalaTestRepo,
     scalaVersion := virtScala,
     libraryDependencies += virtualization_lms_core,
     // needed for scala.tools, which is apparently not included in sbt's built in version
@@ -64,7 +65,6 @@ object DeliteBuild extends Build {
   lazy val tests = Project("tests", file("tests"), settings = virtBuildSettings ++ Seq(
     scalaSource in Test := file("tests/src/ppl/tests/scalatest"),
     libraryDependencies += scalatest,
-    resolvers += dropboxScalaTestRepo,
     parallelExecution in Test := false
     // don't appear to be able to depend on a different scala version simultaneously, so just using scala-virtualized for everything
   )) dependsOn(framework % "test->compile;compile->compile", optiml % "test->compile;compile->compile", optiql % "test", optimlApps % "test->compile;compile->compile", runtime % "test->compile;compile->compile")

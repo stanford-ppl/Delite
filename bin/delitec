@@ -12,7 +12,7 @@ from time import localtime, strftime
 import delitecommon
 
 LMS_HOME = os.getenv("LMS_HOME")
-lms_version = "virtualization-lms-core_2.10.0-virtualized-SNAPSHOT"
+lms_version = "lms_2.10.0-virtualized-SNAPSHOT"
 
 def err(s):
     exit("error: " + s)
@@ -41,7 +41,7 @@ def checkLMSEnv():
     global LMS_HOME
 
     if LMS_HOME is None:
-        lms_home = delitecommon.DELITE_HOME + "/lib_managed/jars/scala/" + lms_version + "/"
+        lms_home = delitecommon.DELITE_HOME + "/lib_managed/jars/EPFL/" + lms_version + "/"
         if not os.path.isdir(lms_home):
           warn("couldn't find the LMS library at: " + lms_home)
           lms_home = delitecommon.props["libs.lms.home"]
@@ -72,6 +72,10 @@ def stage(runner, opts):
     os.putenv('DELITE_HOME', delitecommon.DELITE_HOME)
     os.putenv('JAVA_HOME', delitecommon.JAVA_HOME)
     os.putenv('SCALA_VIRT_HOME', delitecommon.SCALA_VIRT_HOME)
+
+    if opts.verbose:
+       delitecommon.printEnv()
+       print("LMS_HOME = " + LMS_HOME)
 
     print "==  Generating DEG file with options: " + str(opts)
     ecode = os.system(delitecommon.DELITE_HOME + "/bin/gen " + runner)
