@@ -24,8 +24,10 @@
               <li><a href='index.html'>Welcome</a></li>
               <li><a href='getting_started.html'>Getting Started</a></li>
               <li><a href="dsl_example.html">My First DSL</a></li>
+              <!--
               <li><a href="performance.html">Performance</a></li>
               <li><a href="tests.html">Tests</a></li>
+              -->
               <li><a href="troubleshooting.html">Troubleshooting</a></li>
               <li><a href="publications.html">Publications</a></li>
             </ol>
@@ -54,9 +56,15 @@
       </div>
       <div id='content'> 
         <h1 id='title_troubleshooting'>Troubleshooting</h1>
+        <p> SBT setup:
+        Our repositories are tested with version 0.11.2 of sbt. If you encounter an <code>OutOfMemoryError</code> while compiling, you may also need to modify the sbt startup script to increase the available JVM
+        memory. An example script (the 'sbt' file in your ~/bin directory) that we have found to work is:
+        </p><p>
+        <div class="highlight" style="overflow: scroll"><pre><code class="bash">java -Xmx1g -XX:MaxPermSize=512m -XX:ReservedCodeCacheSize=128m -jar `dirname $0`/sbt-launch.jar "$@"</pre></code></div>
+        </p>
+ 
         <p>
-        Soon we will have a list of frequently encountered error messages, what they mean, and how to resolve them here. In the meantime, if you encounter
-        an error you can't decipher, please <a href="mailto:cs442-spr1011-staff@lists.stanford.edu">contact us</a> or <a href="https://github.com/stanford-ppl/Delite/issues/new">file a ticket</a>.
+        If you can't encounter an error you can't decipher, please <a href="mailto:cs442-spr1011-staff@lists.stanford.edu">contact us</a> or <a href="https://github.com/stanford-ppl/Delite/issues/new">file a ticket</a>.
         </p>
       </div>
       <div id='footer'>Copyright &copy; 2011</div>

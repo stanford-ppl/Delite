@@ -24,8 +24,9 @@
               <li><a href='index.html'>Welcome</a></li>
               <li><a href='getting_started.html'>Getting Started</a></li>
               <li><a href="dsl_example.html">My First DSL</a></li>
-              <li><a href="performance.html">Performance</a></li>
+              <!--<li><a href="performance.html">Performance</a></li>
               <li><a href="tests.html">Tests</a></li>
+              <-->
               <li><a href="troubleshooting.html">Troubleshooting</a></li>
               <li><a href="publications.html">Publications</a></li>
             </ol>
@@ -54,15 +55,32 @@
       </div>
       <div id='content'> 
         <h1 id='title_getting started'>Getting started</h1>
-        <p> To get started, grab the source for <code>Delite</code> and <code>virtualization-lms-core</code>, the lightweight modular
-        staging library that Delite uses. Delite uses <a href="http://git-scm.com/">git</a> for version control. Instructions on how
-        to install git can be found here: <a href="http://book.git-scm.com/2_installing_git.html">http://book.git-scm.com/2_installing_git.html</a>.
+        <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. For Windows instructions, click <a href="getting_started_windows.html">here</a>.</p>
+
+        <p> Delite requires <a href="http://java.com">Java 1.6 or later</a>, <a href="http://python.org">Python 2.6</a>, <a href="http://git-scm.com">git</a> and <a href="https://github.com/harrah/xsbt/wiki">SBT 0.11.x</a>. Instructions for installing
+        these can be found at their respective websites.</p>
+        
+        <p>To get started, you first need to
+        download the source for <code>Delite</code> and <code>virtualization-lms-core</code>, the lightweight modular
+        staging library that Delite uses. Delite uses <a href="http://git-scm.com/">git</a> for version control (see <a href="http://book.git-scm.com/2_installing_git.html">here</a> for installation instructions).
+        First, make a copy of the repository on your machine:
         </p><p>
         <div class="highlight"><pre><code class="bash">git clone https://github.com/stanford-ppl/Delite.git
-git clone https://github.com/TiarkRompf/virtualization-lms-core.git</code></pre></div> <p>You will also need to switch to the right LMS branch, from the root of the LMS repository: </p> 
-        <div class="highlight"><pre><code class="bash">cd virtualization-lms-core
-git checkout delite-develop</code></pre></div>
+git clone https://github.com/TiarkRompf/virtualization-lms-core.git</code></pre></div> 
         
+        <p>Next, we need to compile LMS so Delite can use it. From the same directory where we ran <code>git clone</code>, type </p> 
+        <div class="highlight"><pre><code class="bash">cd virtualization-lms-core
+git checkout optiml-alpha
+sbt publish-local
+</code></pre></div>
+
+        <p> Now we are ready to compile and run Delite. Navigate back to the Delite directory and load the LMS library: </p>
+<div class="highlight"><pre><code class="bash">cd ..
+cd Delite
+git checkout optiml-alpha
+sbt update
+</code></pre></div>
+
         <p> The Delite repository currently includes several modules: </p>
         <ol>
           <li> <b>Applications:</b> these are example Delite applications written in a Delite DSL
@@ -75,49 +93,23 @@ git checkout delite-develop</code></pre></div>
         <p> For now, we'll get you up and running simple applications in the Delite environment so you can see what's going on.
         If you are using IDEA, make sure that you have the <code>framework</code>, <code>dsls</code>, and
         <code>virtualization-lms-core</code> modules in your classpath. Also make sure that you are using
-        the <code>scala-virtualized</code> compiler. The rest of this guide will assume a UNIX environment and
+        the <code>scala-virtualized</code> compiler. The rest of this guide will assume a UNIX/bash environment and
         use SBT and our shell scripts, but as long as IDEA is configured correctly, you should be able to follow along.
         See <a href="source.html">here</a> for detailed IDEA build instructions.
         </p>
-        <p> SBT setup:
-        We use <a href="http://code.google.com/p/simple-build-tool/wiki/Setup">sbt</a> to build our repositories. If you don't
-        have it installed already, download and install it by following the linked setup guide. Our repositories are tested
-        with version 0.7.4 of sbt. You may also need to modify the sbt startup script to increase the available JVM
-        memory. An example script (the 'sbt' file in your ~/bin directory) that we have found to work is:
-        </p><p>
-        <div class="highlight" style="overflow: scroll"><pre><code class="bash">java -Xmx1g -XX:MaxPermSize=512m -XX:ReservedCodeCacheSize=128m -jar `dirname $0`/sbt-launch.jar "$@"</pre></code></div>
-        </p>
-        <p>If you haven't already, we need to compile Delite. We'll assume that the root directory
-        of the Delite and LMS distributions you downloaded are <code>$DELITE</code> and <code>$LMS</code> respectively. 
-        To follow the rest of these instructions, it is easiest if you set these locations explicitly. In BASH,
-        this can be done as follows: </p>
-        <div class="highlight"><pre><code class="bash">export DELITE=[insert absolute path to Delite repo]
-export LMS=[insert absolute path to LMS repo]</pre></code></div>
-        <p>Download the latest <code>scala-virtualized</code> <a href="dists/scala-virtualized-latest.tgz">binary distribution</a> (or build it from source following the instructions at <a href="source.html">"Building from source"</a>).  <code>scala-virtualized</code> is the compiler that will be used to compile Delite framework and apps.
-        <p>Once you have <code>scala-virtualized</code>, edit $DELITE/delite.properties and $LMS/local.properties to point to its distribution (i.e. to the folder that contains /bin and /lib subfolders). Here is an example line to add in both of these files:
-        <div class="highlight"><pre><code class="bash">scala.virtualized.home=/ppl/scala-virtualized-latest/pack/</code></pre></div>
-        <p>First, we need to compile the <code>virtualization-lms-core</code> library that Delite uses.        
-        <div class="highlight"><pre><code class="bash">cd $LMS
-sbt update
-sbt publish-local
-</code></pre></div>         
-        <p>Now, compile the Delite compiler framework using</p>
-        <div class="highlight"><pre><code class="bash">cd $DELITE
-sbt update
-sbt compile
-</code></pre></div>
+       <p>The easiest way to compile Delite and OptiML is to use Delite's build scripts. From the Delite root directory, they can be added to your path as follows: <p>
+<div class="highlight"><pre><code class="bash"> export PATH=$PATH:$PWD/bin</code></pre></div>
+
+        <p> Delite scripts require the JAVA_HOME environment variable to be set. If it is not already, you will need to set it: </p>
+<div class="highlight"><pre><code class="bash">export JAVA_HOME=[absolute path of Java installation] </code></pre></div> 
+
+        <p> We are all set to compile Delite and OptiML. This can be done simply by running thei following script, which simply uses SBT to compile the required projects. </p>
+<div class="highlight"><pre><code class="bash">build-optiml</code></pre></div> 
+
         <p>
-        We also need to compile the Delite runtime separately (this is because it uses a normal Scala compiler instead of the virtualized one,
-        and we haven't figured out how to use different compilers within the same SBT project yet).
-        </p>
-        <div class="highlight"><pre><code class="bash">cd runtime
-sbt update
-sbt compile
-cd ..
-</code></pre></div>
-        <p>
-        Now we are ready to get started. Let's write "hello world" in OptiML. 
-        At the root of the Delite repo, open up a file called 'HelloWorld.scala' and copy this text in:
+        Now we are ready to write "hello world" in OptiML. Existing OptiML applications are located in the <code>apps/optiml/src</code> directory from the root of the Delite repository. It is
+        easiest to add your application here, but you can add it anywhere you want as long as you update the SBT configuration to point to your new location. For now, let's open up a file
+        in <code>apps/optiml/src</code> called 'HelloWorld.scala' and copy this text in:
         </p>
         <div class="highlight"><pre><code class="scala"><span class="k">import</span> <span class="nn">ppl.dsl.optiml._</span>
 <span class="k">object</span> <span class="nc">HelloWorldRunner</span> <span class="k">extends</span> <span class="nc">OptiMLApplicationRunner</span> <span class="k">with</span> <span class="nc">HelloWorld</span> 
@@ -132,29 +124,21 @@ cd ..
         generated kernels and executes the application.      
         </p>
         <p>
-        So without further ado, let's get to it. Home directory of Delite has the <code>scripts</code> subdirectory that hosts several helpers scripts that we're going to use. Comprehensive documentation, which includes exact format of the command line and a list of configuration options, is available <a href="https://github.com/stanford-ppl/Delite/tree/develop/scripts">at Github</a>, but here we'll just illustrate a basic use case.
+        So without further ado, let's get to it. Starting from the root of the Delite repository, first compile using SBT:
         </p>
-        <p> First, add the Delite scripts to your path and then configure them:
-        <div class="highlight"><pre><code class="bash">export PATH=$PATH:$DELITE/scripts
-delitecfg</code></pre></div>
-        </p>
+<div class="highlight"><pre><code class="bash">sbt "; project optiml-apps; compile"</code></pre></div> 
         <p>
-        We compile our application with <code>delitec</code>. This combines the first two phases of Delite application's lifecycle: first, the app gets compiled by virtualized scala, then it gets staged by running the main method of <code>OptiMLApplicationRunner</code> object we just created.:
-        <div class="highlight"><pre><code class="bash">delitec -Xrunner:HelloWorldRunner HelloWorld.scala</code></pre></div>
+        Next, we need to stage the application. We do this using the <code>delitec</code> script, where the argument to the script is the name of the <code>Runner</code> object that defines our application. Note that our <code>HelloWorld</code> application does not have a package, but if it does, we would need to include that. For example, to run the GDA application in OptiML, we would use <code>ppl.apps.ml.GDARunner</code>.  Of course, there is no magic here (it is just a Python script - look inside if you are interested in seeing what's happening).
         </p>
-       <p>
-        The generated execution graph will be in 'out.deg'. Also look around in the folder 'generated/' - it contains code OptiML generated!
-        Note that you can specify a different file for the DEG by supplying the JVM parameter <code>delite.deg.filename</code>:
-        <div class="highlight"><pre><code class="bash">delitec -Ddelite.deg.filename="hello.deg" HelloWorld.scala</code></pre></div>
-        </p>
-        <p>
-        The last thing we need to do is execute our generated program (phase three). To do this, we invoke the Delite runtime using:</p><p>
-        <div class="highlight"><pre><code class="bash">delite out.deg</code></pre></div>
+<div class="highlight"><pre><code class="bash">delitec HelloWorldRunner</code></pre></div> 
+        <p>The generated execution graph will be in 'HelloWorldRunner.deg'. Also look around in the folder 'generated/' - it contains code OptiML generated!</p>
+        <p>The last thing we need to do is execute our generated program (phase three). To do this, we invoke the Delite runtime using:</p><p>
+        <div class="highlight"><pre><code class="bash">delite HelloWorldRunner</code></pre></div>
         </p>
         <p>
         You should see output like the following:
         <div class="highlight"><pre><code class="bash">Delite Runtime executing with the following arguments:
-out.deg
+HelloWorldRunner.deg
 Delite Runtime executing with 1 CPU thread(s) and 0 GPU(s)
 Beginning Execution Run 1
 hello world
