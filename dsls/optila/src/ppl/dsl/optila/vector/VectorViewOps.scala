@@ -1,14 +1,15 @@
 package ppl.dsl.optila.vector
 
-import ppl.dsl.optila.{Vector, DenseVector, VectorView}
-import ppl.dsl.optila.{OptiLAExp, OptiLA}
-import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.datastruct.scala.DeliteCollection
-import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
+import java.io.PrintWriter
+import scala.reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase, ScalaGenFat}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.internal.{GenericFatCodegen}
-import java.io.PrintWriter
+import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
+import ppl.dsl.optila.{Vector, DenseVector, VectorView}
+import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
 trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
 
@@ -86,6 +87,15 @@ trait VectorViewOpsExp extends VectorViewOps with DeliteCollectionOpsExp { this:
   def vectorview_apply[A:Manifest](x: Exp[VectorView[A]], n: Exp[Int]): Exp[A] = VectorViewApply(x,n)
   def vectorview_update[A:Manifest](x: Exp[VectorView[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(VectorViewUpdate(x, n, y))
   def vectorview_transpose[A:Manifest](x: Exp[VectorView[A]]): Exp[DenseVector[A]] = DenseVector[A](0, !x.isRow) ++ x
+  
+  //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case Reflect(e@VectorViewApply(x,n), u, es) => reflectMirrored(Reflect(VectorViewApply(f(x),f(n))(mtype(manifest[A])), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
+  
 }
 
 trait VectorViewOpsExpOpt extends VectorViewOpsExp { this: OptiLAExp =>

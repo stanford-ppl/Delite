@@ -36,7 +36,7 @@ def checkDeliteEnv():
 
 def loadProps():
     propf = DELITE_HOME + "/delite.properties"
-    if not os.path.isfile(DELITE_HOME):
+    if not os.path.isfile(propf):
         return
 
     config = ConfigParser.ConfigParser()

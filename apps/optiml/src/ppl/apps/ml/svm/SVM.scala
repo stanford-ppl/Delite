@@ -8,17 +8,17 @@ object SVMRunner extends OptiMLApplicationRunner with SVM
 trait SVM extends OptiMLApplication with SVMModel {
 
   def print_usage = {
-    println("Usage: SVM <train data file> <test data file> <model filename> <num tests>")
+    println("Usage: SVM <train data file> <test data file>")//" <model filename> <num tests>")
     exit(-1)
   }
 
   def main() = {
-    if (args.length < 1) print_usage
+    if (args.length < 2) print_usage
 
     val trainfile = args(0)
     val testfile = args(1)
-    val modelFile = args(2)
-    val numTests = Integer.parseInt(args(3))
+    //val modelFile = args(2)
+    //val numTests = Integer.parseInt(args(3))
 
     //val f1 = File(trainfile)
     //val f2 = File(testfile)

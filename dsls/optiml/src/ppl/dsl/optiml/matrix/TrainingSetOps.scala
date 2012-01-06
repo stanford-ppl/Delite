@@ -28,6 +28,7 @@ trait TrainingSetOps extends Variables with OverloadHack {
     def numSamples = x.numRows
     def numFeatures = x.numCols
 
+    // these are necessary, otherwise we will default to MatrixOps
     def update(i: Rep[Int], j: Rep[Int], y: Rep[A]) = throw new UnsupportedOperationException("Training sets are immutable")
     def update(i: Rep[Int], y: Rep[Vector[A]]) = throw new UnsupportedOperationException("Training sets are immutable")
     def updateRow(row: Rep[Int], y: Rep[Vector[A]]) = throw new UnsupportedOperationException("Training sets are immutable")

@@ -67,6 +67,8 @@ trait TopN extends OptiMLApplication {
       // since we're in the outer flatMap, could do this sequentially, but how do we express it?
       // aggregateIf(i@0::submat.numRows, i::submat.numRows) --> then could still represent as a flattened multiloop internally
       // another option is to try to optimize the multiloop + conditional, but we would need a 2d multiloop representation
+      
+      // another option is to represent this as a triangular matrix explicitly, and use a bulk operation on that
       aggregateIf(0::submat.numRows, 0::submat.numRows) ((i,j) => i < j) { (i,j) =>
         // canonical ordering, smaller profile id always comes first in the pair
         // so (10,20) and (20,10) are both stored at (10,20)

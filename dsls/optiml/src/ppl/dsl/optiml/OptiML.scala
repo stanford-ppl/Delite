@@ -93,7 +93,7 @@ trait OptiMLCompiler extends OptiML with DeliteCollectionOps with RangeOps with 
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
+trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLUtilities with OptiMLScalaOpsPkgExp 
   with LanguageOpsExp with ApplicationOpsExp with LBPOpsExp 
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
   with VectorOpsExpOpt with MatrixOpsExpOpt with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp 
@@ -117,6 +117,15 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp
     }
   }
 
+}
+
+
+trait OptiMLUtilities {
+  def error(s: String) = {
+    println("[optiml error]: " + s)
+    exit(1)
+  }
+  def warn(s: String) = println("[optiml warning]: " + s)
 }
 
 
