@@ -3,7 +3,7 @@ package ppl.dsl.optiml.datastruct.scala
 import ppl.dsl.optila.datastruct.scala._
 import collection.mutable.{HashMap, Map}
 
-class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: ClassManifest[V], mE: ClassManifest[E]) extends Graph[V,E] {
+class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E]) extends Graph[V,E] {
   // TODO: we are storing a lot of data here. investigate reducing the footprint vs. performance.
   protected var edgeToVertices = Map[E, (V, V)]()
   //protected var verticesToEdges = Map[(V, V), E]()

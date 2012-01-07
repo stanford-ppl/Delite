@@ -9,8 +9,8 @@ package ppl.dsl.optila.datastruct.scala
  * Alternatively, everything in this class could be lifted, and we could generate a concrete class to be instantiated
  * in the generated code.
  */
-//class VectorImpl[@specialized T: ClassManifest](__length: Int, __isRow: Boolean) extends DenseVector[T] {
-class DenseVector[@specialized T: ClassManifest](__length: Int, __isRow: Boolean) extends Vector[T] {
+//class VectorImpl[@specialized T: Manifest](__length: Int, __isRow: Boolean) extends DenseVector[T] {
+class DenseVector[@specialized T: Manifest](__length: Int, __isRow: Boolean) extends Vector[T] {
   protected var _length = __length
   protected var _isRow = __isRow
   protected var _data: Array[T] = new Array[T](_length)

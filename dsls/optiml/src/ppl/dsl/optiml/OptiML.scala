@@ -11,6 +11,7 @@ import ppl.delite.framework.codegen.c.TargetC
 import ppl.delite.framework.codegen.opencl.TargetOpenCL
 import ppl.delite.framework.codegen.delite.overrides.{DeliteCudaGenAllOverrides, DeliteOpenCLGenAllOverrides, DeliteCGenAllOverrides, DeliteScalaGenAllOverrides, DeliteAllOverridesExp}
 import ppl.delite.framework.ops._
+import ppl.delite.framework.datastructures._
 
 import ppl.dsl.optila.{OptiLAApplication}
 import ppl.dsl.optila.{OptiLAScalaOpsPkg, OptiLAScalaOpsPkgExp, OptiLA, OptiLAExp, OptiLACompiler, OptiLALift}
@@ -70,7 +71,8 @@ trait OptiMLCCodeGenPkg extends OptiLACCodeGenPkg
 /**
  * This is the trait that every OptiML application must extend.
  */
-trait OptiML extends OptiLA with OptiMLScalaOpsPkg with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOpsshould be auto-generated with ApplicationOps
+trait OptiML extends OptiLA with OptiMLScalaOpsPkg with RecordOps 
+  with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOps should be auto-generated with ApplicationOps
   with MLInputReaderOps with MLOutputWriterOps
   with CanSumOps
   with VectorOps with OptiMLDenseVectorOps with OptiMLVectorViewOps with OptiMLRangeVectorOps
@@ -93,7 +95,7 @@ trait OptiMLCompiler extends OptiML with DeliteCollectionOps with RangeOps with 
 /**
  * These are the corresponding IR nodes for OptiML.
  */
-trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLUtilities with OptiMLScalaOpsPkgExp 
+trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLUtilities with OptiMLScalaOpsPkgExp with RecordOpsExp
   with LanguageOpsExp with ApplicationOpsExp with LBPOpsExp 
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
   with VectorOpsExpOpt with MatrixOpsExpOpt with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp 
@@ -175,7 +177,7 @@ trait OptiMLCodeGenBase extends OptiLACodeGenBase {
   }
 }
 
-trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with OptiMLScalaCodeGenPkg
+trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with OptiMLScalaCodeGenPkg with ScalaGenRecordOps
   with ScalaGenApplicationOps with ScalaGenLBPOps with ScalaGenLanguageOps 
   with ScalaGenVectorOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps with ScalaGenIndexVectorDenseOps with ScalaGenIndexVector2Ops 
   with ScalaGenStreamOps with ScalaGenStreamRowOps
@@ -211,8 +213,8 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
     var res = line.replaceAll("object ", "object " + t1 + t2)
     res = res.replaceAll("import ppl.dsl.optila.datastruct.scala._", "") 
     res = res.replaceAll("import ", "import " + t1 + t2)
-    res = res.replaceAll("@specialized T: ClassManifest", t1)
-    res = res.replaceAll("@specialized L: ClassManifest", t2)
+    res = res.replaceAll("@specialized T: Manifest", t1)
+    res = res.replaceAll("@specialized L: Manifest", t2)
     res = res.replaceAll("T:Manifest", t1)
     res = res.replaceAll("L:Manifest", t2)
     res = res.replaceAll("\\bT\\b", t1)

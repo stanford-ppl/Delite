@@ -7,6 +7,7 @@ import ppl.dsl.optiml.application.BinarizedGradientTemplate
 
 trait MLInputReaderImplOps { this: Base =>
   def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage]
+  def mlinput_read_arff_impl[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row]): Rep[DenseVector[Row]]
   //def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
   def mlinput_read_tokenmatrix_impl(filename: Rep[String]): (Rep[Matrix[Double]],Rep[DenseVector[Double]])
   def mlinput_read_template_models_impl(directory: Rep[String]): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]]
@@ -42,6 +43,38 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     GrayscaleImage(x.unsafeImmutable)
   }
 
+
+  def mlinput_read_arff_impl[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row]): Rep[DenseVector[Row]] = {
+    val xfs = BufferedReader(FileReader(filename))    
+    
+    // skip past the header to the data section
+    // since we are using schemaBldr, we don't care about the attribute types
+    var line = xfs.readLine()
+    while (!line.startsWith("@DATA") && line != null) {
+      line = xfs.readLine()
+    }
+    
+    val out = DenseVector[Row](0, false)
+    
+    if (line != null) {
+      line = xfs.readLine()
+      while (line != null) {
+        line = line.trim()
+        if (!line.startsWith("%")) {
+           val row = line.split(",")
+           val schemaData = DenseVector[String](0, true)         
+           for (e <- row) {
+             schemaData += e
+           }
+           out += schemaBldr(schemaData)
+        }
+        line = xfs.readLine()
+      }
+    }
+    
+    out
+  }
+        
 
  /* the input file is expected to follow the format:
   *  <header>

@@ -213,7 +213,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
   def specmap(line: String, t: String) : String = {
     var res = line.replaceAll("object ", "object " + t)
     res = res.replaceAll("import ", "import " + t)
-    res = res.replaceAll("@specialized T: ClassManifest", t)
+    res = res.replaceAll("@specialized T: Manifest", t)
     res = res.replaceAll("T:Manifest", t)
     res = res.replaceAll("\\bT\\b", t)
     parmap(res)

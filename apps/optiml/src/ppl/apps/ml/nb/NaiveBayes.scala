@@ -20,7 +20,7 @@ trait NaiveBayes extends OptiMLApplication {
     val testFile = args(1)
 
     // Train Model
-    val (trainingSet,trainingLabels) = MLInputReader.readTokenMatrix(trainingFile)
+    val (trainingSet,trainingLabels) = readTokenMatrix(trainingFile)
     //val start_train = System.currentTimeMillis()
     println("Training model on " + trainingSet.numRows/*numSamples*/ + " documents.")
     tic()
@@ -28,8 +28,8 @@ trait NaiveBayes extends OptiMLApplication {
     toc(phi_y1,phi_y0)
 
     // test
-    //val testSet = MLInputReader.readTokenMatrix(testFile)
-    val (testSet,testLabels) = MLInputReader.readTokenMatrix(testFile)
+    //val testSet = readTokenMatrix(testFile)
+    val (testSet,testLabels) = readTokenMatrix(testFile)
     println("phi_y1: "); phi_y1.pprint; println("phi_y0: "); phi_y0.pprint; println("phi_y: "+ phi_y)
     val incorrect_classifications = test(testSet, testLabels, phi_y1, phi_y0, phi_y)//test(testSet, phi_y1, phi_y0, phi_y)
     println("Test error: " + incorrect_classifications.doubleValue() / testSet.numRows/*numSamples*/.doubleValue())

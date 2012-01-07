@@ -12,9 +12,9 @@ trait gradient extends OptiMLApplication
   def main() = {
 
 //    println("gradientapp.1")
-    val image = MLInputReader.readGrayscaleImage(args(0))
+    val image = readGrayscaleImage(args(0))
 //    println("gradientapp.2")
-    val all_templates = MLInputReader.readTemplateModels(args(1))
+    val all_templates = readTemplateModels(args(1))
 //    println("gradientapp.3: " + all_templates.length)
 
     tic()

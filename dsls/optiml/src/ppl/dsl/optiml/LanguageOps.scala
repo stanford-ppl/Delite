@@ -161,11 +161,6 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   //}
 
   /**
-   *  i/o
-   */
-  def readImage(filename: Rep[String]) = MLInputReader.readGrayscaleImage(filename)
-
-  /**
    * Nearest neighbor
    */
   // returns the index of the nearest neighbor of row inside data

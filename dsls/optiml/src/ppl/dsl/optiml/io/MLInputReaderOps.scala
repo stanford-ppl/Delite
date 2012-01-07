@@ -11,17 +11,18 @@ import ppl.dsl.optiml.application.{BinarizedGradientTemplate}
 // TODO: we need to support an escape hatch, or move application-specific i/o to application ops. Either
 // way, they shouldn't be here.
 trait MLInputReaderOps extends Base {
-  object MLInputReader {
-    // file format is m lines with n floats per line, each float separated by whitespaces
-    // (same as matlab .dat)
-    def readGrayscaleImage(filename: Rep[String]) = obj_mlinput_read_grayscale_image(filename)
+  
+  // file format is m lines with n floats per line, each float separated by whitespaces
+  // (same as matlab .dat)
+  def readGrayscaleImage(filename: Rep[String]) = obj_mlinput_read_grayscale_image(filename)
+  def readARFF[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row]) = obj_mlinput_read_arff(filename, schemaBldr)
+  
+  // app specific! to be removed
+  def readTokenMatrix(filename: Rep[String]) = obj_mlinput_read_tokenmatrix(filename)
+  def readTemplateModels(directory: Rep[String]) = obj_mlinput_read_template_models(directory)
 
-    // app specific! to be removed
-    def readTokenMatrix(filename: Rep[String]) = obj_mlinput_read_tokenmatrix(filename)
-    def readTemplateModels(directory: Rep[String]) = obj_mlinput_read_template_models(directory)
-  }
-
-  def obj_mlinput_read_grayscale_image(filename: Rep[String]) : Rep[GrayscaleImage]
+  def obj_mlinput_read_grayscale_image(filename: Rep[String]): Rep[GrayscaleImage]
+  def obj_mlinput_read_arff[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row]): Rep[DenseVector[Row]]
   
   //def obj_mlinput_read_tokenmatrix(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
   def obj_mlinput_read_tokenmatrix(filename: Rep[String]): (Rep[Matrix[Double]],Rep[DenseVector[Double]])
@@ -31,6 +32,9 @@ trait MLInputReaderOps extends Base {
 trait MLInputReaderOpsExp extends MLInputReaderOps with BaseFatExp { this: MLInputReaderImplOps with DeliteOpsExp with TupleOpsExp =>
   case class MLInputReadGrayscaleImage(filename: Exp[String])
     extends DeliteOpSingleTask(reifyEffects(mlinput_read_grayscale_image_impl(filename)))
+    
+  case class MLInputReadARFF[Row:Manifest](filename: Exp[String], schemaBldr: Exp[DenseVector[String]] => Exp[Row])
+    extends DeliteOpSingleTask(reifyEffects(mlinput_read_arff_impl(filename, schemaBldr)))
 
   case class MLInputReadTokenMatrix(filename: Exp[String])
     extends DeliteOpSingleTask(reifyEffects(mlinput_read_tokenmatrix_impl(filename)))
@@ -40,6 +44,7 @@ trait MLInputReaderOpsExp extends MLInputReaderOps with BaseFatExp { this: MLInp
 
 
   def obj_mlinput_read_grayscale_image(filename: Exp[String]) = reflectEffect(MLInputReadGrayscaleImage(filename))
+  def obj_mlinput_read_arff[Row:Manifest](filename: Exp[String], schemaBldr: Exp[DenseVector[String]] => Exp[Row]) = reflectEffect(MLInputReadARFF(filename, schemaBldr))
 
   def obj_mlinput_read_tokenmatrix(filename: Exp[String]) = reflectEffect(MLInputReadTokenMatrix(filename))
   def obj_mlinput_read_template_models(directory: Exp[String]) = reflectEffect(MLInputReadTemplateModels(directory))

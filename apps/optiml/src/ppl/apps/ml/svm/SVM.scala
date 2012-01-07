@@ -32,10 +32,10 @@ trait SVM extends OptiMLApplication with SVMModel {
     //  tokenlist:  a long string containing the list of all tokens (words)
     //  inCategory: a (numDocs x 1) vector containing the true classifications for the documents just read
     //                 the ith entry gives the correct class for the ith email, where spam is 1 and non-spam is 0.
-    //val inMatrixTrain = MLInputReader.readTokenMatrix(trainfile)
-    val (inMatrixTrain, trainLabels) = MLInputReader.readTokenMatrix(trainfile)
-    //val inMatrixTest = MLInputReader.readTokenMatrix(testfile)
-    val (inMatrixTest, testLabels) = MLInputReader.readTokenMatrix(testfile)
+    //val inMatrixTrain = readTokenMatrix(trainfile)
+    val (inMatrixTrain, trainLabels) = readTokenMatrix(trainfile)
+    //val inMatrixTest = readTokenMatrix(testfile)
+    val (inMatrixTest, testLabels) = readTokenMatrix(testfile)
 
     // run the SMO training algorithm
     tic()
