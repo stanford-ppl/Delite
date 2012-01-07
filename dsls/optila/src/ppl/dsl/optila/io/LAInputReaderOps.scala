@@ -9,13 +9,12 @@ import ppl.dsl.optila._
 // TODO: we need to support an escape hatch, or move application-specific i/o to application ops. Either
 // way, they shouldn't be here.
 trait LAInputReaderOps extends Base {
-  object LAInputReader {
-    // file format is m lines with n floats per line, each float separated by whitespaces
-    // (same as matlab .dat)
-    def read(filename: Rep[String], delim: Rep[String] = unit("\\\\s+")) = obj_lainput_read(filename, delim)
-    def readVector(filename: Rep[String]) = obj_lainput_read_vector(filename)
-  }
-
+  // file format is m lines with n floats per line, each float separated by whitespaces
+  // (same as matlab .dat)  
+  
+  def readMatrix(filename: Rep[String], delim: Rep[String] = unit("\\\\s+")) = obj_lainput_read(filename, delim)
+  def readVector(filename: Rep[String]) = obj_lainput_read_vector(filename)
+  
   def obj_lainput_read(filename: Rep[String], delim: Rep[String]) : Rep[Matrix[Double]]
   def obj_lainput_read_vector(filename: Rep[String]) : Rep[DenseVector[Double]]
 }

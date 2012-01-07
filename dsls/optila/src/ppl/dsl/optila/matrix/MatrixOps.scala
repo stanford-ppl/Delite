@@ -426,7 +426,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     // 
     //     def alloc = Matrix[Double](in.numRows, in.numCols)
     //     val size = in.numRows*in.numCols
-    //     def func = e => (1.0/(1.0+Math.exp(conv(e)*(-1))))
+    //     def func = e => (1.0/(1.0+exp(conv(e)*(-1))))
   }  
   
   case class MatrixSigmoidF[A](in: Exp[Matrix[A]])(implicit mA: Manifest[A], conv: Exp[A] => Exp[Double])
@@ -435,7 +435,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     // 
     // def alloc = Matrix[Float](in.numRows, in.numCols)
     // val size = in.numRows*in.numCols
-    // def func = e => (1.0/(1.0+Math.exp(conv(e)*(-1)))).asInstanceOfL[Float]
+    // def func = e => (1.0/(1.0+exp(conv(e)*(-1)))).asInstanceOfL[Float]
   }  
   
   case class MatrixSigmoidVectorized[A:Manifest](in: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {

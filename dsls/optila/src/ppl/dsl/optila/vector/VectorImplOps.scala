@@ -59,7 +59,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   def densevector_obj_randf_impl(length: Rep[Int]) = DenseVector[Float](length, true) mmap { i => random[Float] }
 
   def densevector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]) = {
-    val length = Math.ceil((end-start)/step_size).asInstanceOfL[Int]
+    val length = ceil((end-start)/step_size).asInstanceOfL[Int]
     (0::length) map { i => step_size*i + start }
   }
 

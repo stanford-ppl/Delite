@@ -110,8 +110,8 @@ trait NaiveBayes extends OptiMLApplication {
 
     val output = (0::numTestDocs) { j =>
       // compute log(p(x|y=1)p(y=1)) and log(p(x|y=0)p(y=0))
-      val p_norm = sumIf[Double,Double](0,numTokens) { i => ts(j,i) > 0 } { i => (Math.log(phi_y0(i)) + Math.log(1.-phi_y)) * ts(j,i) }
-      val p_spam = sumIf[Double,Double](0,numTokens) { i => ts(j,i) > 0 } { i => (Math.log(phi_y1(i)) + Math.log(phi_y)) * ts(j,i) }
+      val p_norm = sumIf[Double,Double](0,numTokens) { i => ts(j,i) > 0 } { i => (log(phi_y0(i)) + log(1.-phi_y)) * ts(j,i) }
+      val p_spam = sumIf[Double,Double](0,numTokens) { i => ts(j,i) > 0 } { i => (log(phi_y1(i)) + log(phi_y)) * ts(j,i) }
 
       if (p_spam > p_norm) 1.
       else 0.

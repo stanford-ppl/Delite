@@ -376,13 +376,13 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 
   def matrix_sigmoid_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]] = {
 
-    val out = x.map(in => (1.0/(1.0+Math.exp(conv(in)*(-1)))))
+    val out = x.map(in => (1.0/(1.0+exp(conv(in)*(-1)))))
     out
   }
 
   def matrix_sigmoidf_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]] = {
 
-    val out = x.map(in => (1.0/(1.0+Math.exp(conv(in)*(-1)))).asInstanceOfL[Float])
+    val out = x.map(in => (1.0/(1.0+exp(conv(in)*(-1)))).asInstanceOfL[Float])
     out
   }
 

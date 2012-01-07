@@ -436,7 +436,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     var cur = var_new(x)
     var iter = var_new(unit(0))
 
-    while ((Math.abs(delta) > thresh) && (iter < max_iter)){
+    while ((abs(delta) > thresh) && (iter < max_iter)){
       val prev = if (clone_prev_val)
         cur.cloneL()
       else

@@ -50,7 +50,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     var next = x
     var iter = unit(0)
 
-    while ((Math.abs(delta) > thresh) && (iter < max_iter)){
+    while ((abs(delta) > thresh) && (iter < max_iter)){
       if (clone_prev_val)
         prev = next.cloneL()
       else

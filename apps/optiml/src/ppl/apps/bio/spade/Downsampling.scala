@@ -15,7 +15,7 @@ trait Downsampling {
     // TODO: we need to push this implementation detail out of the application and into the DSL
     // (1) number of cells if data matrix is small, (2) block size = 2000 if data large, (3) if number of cells is
     //  extremely large, we need to limit block size, otherwise line 38 (in matlab code) will be out of memory
-    val numSamples = min(data.numRows, 2000, Math.floor(2500000000l/data.numRows).asInstanceOfL[Int])
+    val numSamples = min(data.numRows, 2000, floor(2500000000l/data.numRows).asInstanceOfL[Int])
     println("   numSamples = " + numSamples)
 
     val medMinDist = computeMedianMinDist(data, numSamples)

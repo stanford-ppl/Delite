@@ -83,8 +83,8 @@ trait NaiveBayesVectorized extends OptiMLApplication {
       // compute log(p(x|y=1)p(y=1)) and log(p(x|y=0)p(y=0))
       val (p_norm, p_spam) = t2( sum(0,numTokens) { i =>
         if (ts(j,i) > 0){
-          ((Math.log(phi_y0(i)) + Math.log(1.-phi_y)) * ts(j,i),
-           (Math.log(phi_y1(i)) + Math.log(phi_y)) * ts(j,i))
+          ((log(phi_y0(i)) + log(1.-phi_y)) * ts(j,i),
+           (log(phi_y1(i)) + log(phi_y)) * ts(j,i))
         }
         else{
           (unit(0.0), unit(0.0))

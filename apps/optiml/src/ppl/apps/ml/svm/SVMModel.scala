@@ -67,9 +67,9 @@ trait SVMModel { this: OptiMLApplication =>
 
         if (((Y(i)*E_i < -1.*tol) && (alphasOld(i) < C)) || ((Y(i)*E_i > tol) && (alphasOld(i) > 0))){
           // select a candidate j from the remaining numSamples-i samples at random
-          var j = Math.floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
+          var j = floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
           while (j == i){
-            j = Math.floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
+            j = floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
           }
 
           val f_j = (alphasOld*Y*(X*X(j).t)).sum + b //TR M*V alph0 -- inside if, cannot be fused with the one in f_i (calc actually happens further down)
@@ -83,11 +83,11 @@ trait SVMModel { this: OptiMLApplication =>
           var L = 0.0
           var H = 0.0
           if (Y(i) != Y(j)){
-            L = Math.max(0., alphasOld(j) - alphasOld(i))
-            H = Math.min(C, C + alphasOld(j) - alphasOld(i))
+            L = max(0., alphasOld(j) - alphasOld(i))
+            H = min(C, C + alphasOld(j) - alphasOld(i))
           }else{
-            L = Math.max(0., alphasOld(i) + alphasOld(j) - C)
-            H = Math.min(C, alphasOld(i) + alphasOld(j))
+            L = max(0., alphasOld(i) + alphasOld(j) - C)
+            H = min(C, alphasOld(i) + alphasOld(j))
           }
 
           if (L != H){ //TR: problem: if/then/else will not force old_aj
@@ -105,7 +105,7 @@ trait SVMModel { this: OptiMLApplication =>
               else if (alphas(j) < L) alphas(j) = L
 
               // check alphas(j) convergence
-              if (Math.abs(alphas(j) - old_aj) >  .00001){
+              if (abs(alphas(j) - old_aj) >  .00001){
                 // find a_i to maximize objective function
 
                 val old_ai = alphasOld(i)

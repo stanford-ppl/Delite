@@ -70,9 +70,9 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
         if (((Y(i)*E_i < -1.*tol) && (alphas(i) < C)) || ((Y(i)*E_i > tol) && (alphas(i) > 0))){
           // select a candidate j from the remaining numSamples-i samples at random
           //println("next rand: " + random[Double])
-          var j = Math.floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
+          var j = floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
           while (j == i){
-            j = Math.floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
+            j = floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
           }
 
           val f_j = (alphas*Y*(X*X(j).t)).sum + b
@@ -86,11 +86,11 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
           var L = 0.0
           var H = 0.0
           if (Y(i) != Y(j)){
-            L = Math.max(0., alphas(j) - alphas(i))
-            H = Math.min(C, C + alphas(j) - alphas(i))
+            L = max(0., alphas(j) - alphas(i))
+            H = min(C, C + alphas(j) - alphas(i))
           }else{
-            L = Math.max(0., alphas(i) + alphas(j) - C)
-            H = Math.min(C, alphas(i) + alphas(j))
+            L = max(0., alphas(i) + alphas(j) - C)
+            H = min(C, alphas(i) + alphas(j))
           }
 
           if (L != H){
@@ -105,7 +105,7 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
               else if (alphas(j) < L) alphas(j) = L
 
               // check alphas(j) convergence
-              if (Math.abs(alphas(j) - old_aj) > tol){
+              if (abs(alphas(j) - old_aj) > tol){
                 // find a_i to maximize objective function
                 old_ai = alphas(i)
                 alphas(i) = alphas(i) + Y(i)*Y(j)*(old_aj-alphas(j))

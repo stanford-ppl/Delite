@@ -59,8 +59,8 @@ trait OptiMLLinReg {
     // calculate predictions
     val guess = (0::xref.numRows){ e =>
       val x_cur = xref(e) //xref(e,1)
-      val weights = X.mapRowsToVector(row => Math.exp(((x_cur-row)*:*(x_cur-row).t)/(2.0*tau*tau)*(-1)))
-      //val weights = x.map(ele => Math.exp(-.1*(x_cur-ele)*(x_cur-ele)/(2.0*tau*tau))/2.0)
+      val weights = X.mapRowsToVector(row => exp(((x_cur-row)*:*(x_cur-row).t)/(2.0*tau*tau)*(-1)))
+      //val weights = x.map(ele => exp(-.1*(x_cur-ele)*(x_cur-ele)/(2.0*tau*tau))/2.0)
       val W = Matrix.diag(weights.length, weights) // M x M
       val t1 = Xt*W
       val theta = ((t1*X).inv)*(t1*y)

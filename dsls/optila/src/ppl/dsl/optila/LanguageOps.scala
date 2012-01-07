@@ -119,22 +119,22 @@ trait LanguageOps extends Base { this: OptiLA =>
   //def abs[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded2) = vals.abs
 
   /**
-   * sqrt 
+   * aliases for other scala.math._ operations supported by optila
    */
-  def sqrt(e: Rep[Double]) = Math.sqrt(e)
-
-
-  /**
-   *  i/o
-   */  
-  def readMatrix(filename: Rep[String], delim: Rep[String] = unit("\\\\s+")) = LAInputReader.read(filename, delim)
-  def readVector(filename: Rep[String]) = LAInputReader.readVector(filename)
-
-  def writeMatrix[A](x: Rep[Matrix[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double])
-    = LAOutputWriter.write(x, filename)
-  def writeVector[A](x: Interface[Vector[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double])
-    = LAOutputWriter.writeVector(x, filename)
-
+  def sqrt(e: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def ceil(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double] 
+  def floor(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def exp(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def log(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def sin(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def cos(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def acos(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def atan(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def atan2(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def pow(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def Pi(implicit ctx: SourceContext): Rep[Double]
+  def E(implicit ctx: SourceContext): Rep[Double]
+  
   /**
    * distance
    */
@@ -223,7 +223,10 @@ trait LanguageOps extends Base { this: OptiLA =>
 
 trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   this: OptiLAExp with LanguageImplOps =>
-
+    
+  /**
+   * Random
+   */
   case class InternalRandDouble() extends Def[Double]
   case class InternalRandFloat() extends Def[Float]
   case class InternalRandInt() extends Def[Int]
@@ -243,10 +246,6 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   case class IdentityHashCode(x: Exp[Any]) extends Def[Int]
 
-
-  /**
-   * Random
-   */
   def optila_internal_rand_double() = reflectEffect(InternalRandDouble())
   def optila_internal_rand_float() = reflectEffect(InternalRandFloat())
   def optila_internal_rand_int() = reflectEffect(InternalRandInt())
@@ -265,7 +264,23 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   def identityHashCode(x:Exp[Any]) = reflectPure(IdentityHashCode(x))
 
-
+  /**
+   * aliases for scala.math._ operations supported by optila
+   */
+  def sqrt(e: Rep[Double])(implicit ctx: SourceContext) = Math.sqrt(e)   
+  def ceil(x: Rep[Double])(implicit ctx: SourceContext) = Math.ceil(x)
+  def floor(x: Rep[Double])(implicit ctx: SourceContext) = Math.floor(x)
+  def exp(x: Rep[Double])(implicit ctx: SourceContext) = Math.exp(x)
+  def log(x: Rep[Double])(implicit ctx: SourceContext) = Math.log(x)
+  def sin(x: Rep[Double])(implicit ctx: SourceContext) = Math.sin(x)
+  def cos(x: Rep[Double])(implicit ctx: SourceContext) = Math.cos(x)
+  def acos(x: Rep[Double])(implicit ctx: SourceContext) = Math.acos(x)
+  def atan(x: Rep[Double])(implicit ctx: SourceContext) = Math.atan(x)
+  def atan2(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext) = Math.atan2(x,y)
+  def pow(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext) = Math.pow(x,y)
+  def Pi(implicit ctx: SourceContext) = Math.Pi
+  def E(implicit ctx: SourceContext) = Math.E
+  
   /**
    *  dist
    */

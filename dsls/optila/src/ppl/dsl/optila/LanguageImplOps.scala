@@ -30,7 +30,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   }
 
   def optila_vectordistance_euc_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = {
-    //Math.sqrt(((v1-v2) mmap {e => e*e}).sum)
+    //sqrt(((v1-v2) mmap {e => e*e}).sum)
     println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")
     v1(0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
   }

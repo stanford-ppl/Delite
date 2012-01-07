@@ -42,7 +42,7 @@ trait OptiLAScalaOpsPkg extends Base
   with Equal with IfThenElse with Variables with While with Functions
   with ImplicitOps with OrderingOps with StringOps
   with BooleanOps with PrimitiveOps with MiscOps with TupleOps
-  with MathOps with CastingOps with ObjectOps with IOOps
+  with CastingOps with ObjectOps with IOOps
   // only included because of args. TODO: investigate passing args as a vector
   with ArrayOps
 

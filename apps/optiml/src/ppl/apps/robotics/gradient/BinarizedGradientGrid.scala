@@ -69,7 +69,7 @@ trait BinarizedGradientGridFuncs {
 //println("x: " + x)
 //println("y: " + y)
 //println("searchTemplates.1")
-    val reduction_factor = Math.pow(2, level).asInstanceOfL[Int]//(1 << level)
+    val reduction_factor = pow(2, level).asInstanceOfL[Int]//(1 << level)
 //println("searchTemplates.2")
 //println("reduction_factor: " + reduction_factor)
     val crt_template = fillTemplateFromGradientImage(gradSummary, x, y, template_radius, level)
@@ -134,7 +134,7 @@ if (crt_template.match_list.length < 0) println("dummy")
           if (angle >= 180) {
             angle = angle - 180 //Ignore polarity of the angle
           }
-          Math.pow(2, (angle.asInstanceOfL[Double] / (180.0 / 8)).asInstanceOfL[Int]).asInstanceOfL[Int]
+          pow(2, (angle.asInstanceOfL[Double] / (180.0 / 8)).asInstanceOfL[Int]).asInstanceOfL[Int]
         }
       else unit(0)
     }})

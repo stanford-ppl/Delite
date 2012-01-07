@@ -287,19 +287,19 @@ trait LBPDenoise extends OptiMLApplication {
   def imgPaintSunset(img: Rep[Matrix[Double]], numRings: Rep[Int]) = {
     val centerR = img.numRows.asInstanceOfL[Double] / 2.0
     val centerC = img.numCols.asInstanceOfL[Double] / 2.0
-    val maxRadius = Math.min(img.numRows, img.numCols).asInstanceOfL[Double] / 2.0
+    val maxRadius = min(img.numRows, img.numCols).asInstanceOfL[Double] / 2.0
 
     var r = 0
     var c = 0
     while (r < img.numRows) {
       c = 0
       while (c < img.numCols) {
-        val distance = Math.sqrt((r.asInstanceOfL[Double] - centerR) * (r.asInstanceOfL[Double] - centerR) + (c.asInstanceOfL[Double] - centerC) * (c.asInstanceOfL[Double] - centerC))
+        val distance = sqrt((r.asInstanceOfL[Double] - centerR) * (r.asInstanceOfL[Double] - centerR) + (c.asInstanceOfL[Double] - centerC) * (c.asInstanceOfL[Double] - centerC))
 
         // If on top of image
         if (r < img.numRows / 2) {
           // Compute ring of sunset
-          val ring = Math.floor(Math.min(1.0, distance / maxRadius) * (numRings - 1))
+          val ring = floor(min(1.0, distance / maxRadius) * (numRings - 1))
 
           img(r, c) = ring
         }
@@ -345,7 +345,7 @@ trait LBPDenoise extends OptiMLApplication {
     while (i < bf.numRows) {
       j = 0
       while (j < bf.numCols) {
-        bf(i, j) = 0.0 - lambda * Math.abs(i - j);
+        bf(i, j) = 0.0 - lambda * abs(i - j);
         j += 1
       }
       i += 1
@@ -354,7 +354,7 @@ trait LBPDenoise extends OptiMLApplication {
     /*
     // def update(IndexVector2, f: (i,j) => val): Unit
     bf(0::bf.numRows, 0::bf.numCols) = { i, j =>
-      0.0 - lambda * Math.abs(i - j)
+      0.0 - lambda * abs(i - j)
     }
     */
   }
@@ -365,12 +365,12 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   def unaryFactorNormalize(uf: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
-    val logZ = Math.log((uf map {Math.exp(_)}).sum)
+    val logZ = log((uf map {exp(_)}).sum)
     uf map {_ - logZ}
   }
   
   def unaryFactorNormalizeM(uf: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
-    val logZ = Math.log((uf map {Math.exp(_)}).sum)
+    val logZ = log((uf map {exp(_)}).sum)
     uf mmap {_ - logZ}
   }
 
@@ -385,7 +385,7 @@ trait LBPDenoise extends OptiMLApplication {
 
   // Add other factor elementwise
   def unaryFactorPlus(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]]) = {
-    (a.exp + b.exp) map {Math.log(_)}
+    (a.exp + b.exp) map {log(_)}
   }
 
   // Divide elementwise by other factor
@@ -402,10 +402,10 @@ trait LBPDenoise extends OptiMLApplication {
     bf.mapRowsToVector { (row) =>
       val csum = (row + other).exp.sum
       if(csum == 0) {
-        Math.log(Double.MinValue)
+        log(Double.MinValue)
       }
       else {
-        Math.log(csum)
+        log(csum)
       }
     }
   }
@@ -413,7 +413,7 @@ trait LBPDenoise extends OptiMLApplication {
   // This = other * damping + this * (1-damping)
   def unaryFactorDamp(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]], damping: Rep[Double]): Rep[DenseVector[Double]] = {
     if (damping != 0) {
-      (b.exp * damping + a.exp * (1.0 - damping)) map {Math.log(_)}
+      (b.exp * damping + a.exp * (1.0 - damping)) map {log(_)}
     }
     else {
       a
@@ -422,17 +422,17 @@ trait LBPDenoise extends OptiMLApplication {
   
   def unaryFactorDampM(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]], damping: Rep[Double]) = {
 /*    if (damping != 0) {
-      a.mzip(b){(x:Rep[Double],y:Rep[Double]) => Math.log(Math.exp(x)*(1.0-damping)+Math.exp(y)*damping)}
+      a.mzip(b){(x:Rep[Double],y:Rep[Double]) => log(exp(x)*(1.0-damping)+exp(y)*damping)}
     }
     
     a */
     
-    a.mzip(b){(x:Rep[Double],y:Rep[Double]) => Math.log(Math.exp(x)*(1.0-damping)+Math.exp(y)*damping)}
+    a.mzip(b){(x:Rep[Double],y:Rep[Double]) => log(exp(x)*(1.0-damping)+exp(y)*damping)}
   }
   
   // Compute the residual between two unary factors
   def unaryFactorResidual(a: Rep[DenseVector[Double]], b: Rep[DenseVector[Double]]): Rep[Double] = {
-    ((a map {Math.exp(_)}) - (b map {Math.exp(_)})).abs.sum / a.length
+    ((a map {exp(_)}) - (b map {exp(_)})).abs.sum / a.length
   }
 
   // Max assignment

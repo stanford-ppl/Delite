@@ -6,15 +6,15 @@ import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.Base
 import ppl.delite.framework.ops.DeliteOpsExp
 
-// file format is m lines with n floats per line, each float separated by whitespaces
-// (same as matlab .dat)
-
 trait LAOutputWriterOps extends Base {
-  object LAOutputWriter {
-    def write[A](m: Rep[Matrix[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]) = obj_laoutput_write(m,filename,conv)
-    def writeVector[A](v: Interface[Vector[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]) = obj_laoutput_write_vector(v,filename,conv)
-  }
-
+  // file format is m lines with n floats per line, each float separated by whitespaces
+  // (same as matlab .dat)
+  
+  def writeMatrix[A](x: Rep[Matrix[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double])
+    = obj_laoutput_write(x,filename,conv)
+  def writeVector[A](x: Interface[Vector[A]], filename: Rep[String])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double])
+    = obj_laoutput_write_vector(x,filename,conv)
+  
   def obj_laoutput_write[A:Manifest](m: Rep[Matrix[A]], filename: Rep[String], conv: Rep[A] => Rep[Double]): Rep[Unit]
   def obj_laoutput_write_vector[A:Manifest](v: Interface[Vector[A]], filename: Rep[String], conv: Rep[A] => Rep[Double]): Rep[Unit]
 }

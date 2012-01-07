@@ -21,7 +21,7 @@ trait StreamImplOpsStandard extends StreamImplOps {
     val chunkSz = chunkSize(x.numCols)
     val remainingRows = x.numRows - offset*chunkSz
     val leftover = if (remainingRows < 0) x.numRows else remainingRows // in case numRows < chunkSize
-    Math.min(chunkSz, leftover).asInstanceOfL[Int]
+    min(chunkSz, leftover).asInstanceOfL[Int]
   }
 
   def stream_init_chunk_impl[A:Manifest](x: Rep[Stream[A]], offset: Rep[Int]) = {
