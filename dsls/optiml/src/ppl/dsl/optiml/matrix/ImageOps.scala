@@ -79,7 +79,7 @@ trait ImageOpsExp extends ImageOps with VariablesExp {
   // class interface
 
   def image_downsample[A:Manifest](x: Exp[Image[A]], rowFactor: Exp[Int], colFactor: Exp[Int], block: Exp[Matrix[A]] => Exp[A]) = {
-    val y = (0 :: x.numRows / rowFactor, 0 :: x.numCols / colFactor) { (row, col) =>
+    val y = (unit(0) :: x.numRows / rowFactor, unit(0) :: x.numCols / colFactor) { (row, col) =>
       block(x.slice(rowFactor * row, rowFactor * row + rowFactor, colFactor * col, colFactor * col + colFactor))
     }
     Image(y)
@@ -87,11 +87,11 @@ trait ImageOpsExp extends ImageOps with VariablesExp {
   }
   def image_windowed_filter[A:Manifest,B:Manifest:Arith](x: Exp[Image[A]], rowDim: Exp[Int], colDim: Exp[Int], block: Exp[Matrix[A]] => Exp[B]) = {
     // Need to enforce odd values for sliceRows and sliceCols
-    val rowOffset = (rowDim - 1) / 2
-    val colOffset = (colDim - 1) / 2
-    val y = (0 :: x.numRows, 0 :: x.numCols) { (row,col) =>
+    val rowOffset = (rowDim - unit(1)) / unit(2)
+    val colOffset = (colDim - unit(1)) / unit(2)
+    val y = (unit(0) :: x.numRows, unit(0) :: x.numCols) { (row,col) =>
       if ((row >= rowOffset) && (row < x.numRows - rowOffset) && (col >= colOffset) && (col < x.numCols - colOffset)) {
-        block(x.slice(row - rowOffset, row + rowOffset + 1, col - colOffset, col + colOffset + 1))
+        block(x.slice(row - rowOffset, row + rowOffset + unit(1), col - colOffset, col + colOffset + unit(1)))
       } else {
         unit(0).asInstanceOfL[B]
       }

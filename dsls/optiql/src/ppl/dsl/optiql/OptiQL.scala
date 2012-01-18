@@ -30,7 +30,7 @@ trait OptiQL extends OptiQLScalaOpsPkg with HackOps with DataTableOps with Query
  * These are the lifted scala constructs, which convert a concrete type to a Rep type.
  * These can be dangerous if you mix them in to the wrong place
  */
-trait OptiQLLift extends LiftString {
+trait OptiQLLift extends LiftString with LiftPrimitives {
   this: OptiQL =>
 }
 

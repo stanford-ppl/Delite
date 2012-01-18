@@ -55,7 +55,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
 
   // used for all operations
   //val chunkSize = 10000
-  def chunkSize(numCols: Rep[Int]): Rep[Int] = 100000/numCols + 1000 // heuristic, total buffer size is chunkSize x numCols
+  def chunkSize(numCols: Rep[Int]): Rep[Int] = unit(100000)/numCols + unit(1000) // heuristic, total buffer size is chunkSize x numCols
 
   //////////////////////////////////////////////////
   // implemented via method on real data structure
@@ -149,10 +149,10 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
     // we do not know at compile time how many streaming chunks are needed (therefore how many ops to submit)
     // so we submit a While loop, where each iteration of the while depends on the next, and let the runtime unroll it
     val numChunks = ceil(x.numRows / chunkSize(x.numCols).doubleValue()).asInstanceOfL[Int]
-    val i = var_new(0)
+    val i = var_new(unit(0))
     while (i < numChunks) {
       val rowsToProcess = stream_rowsin(x, i)
-      val in = (0::rowsToProcess)
+      val in = (unit(0)::rowsToProcess)
       //val v = fresh[Int]
 
       // discuss: 2 kinds of streams (computation-backed and file-backed)
@@ -169,7 +169,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
         reflectEffect(StreamForeachRow(rowsToProcess, x, i, block, init))
       }
 
-      i += 1
+      i += unit(1)
     }
   }
 

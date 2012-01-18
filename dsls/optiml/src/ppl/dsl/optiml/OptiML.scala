@@ -42,7 +42,7 @@ trait OptiMLApplication extends OptiLAApplication with OptiML with OptiMLLift wi
 }
 
 trait OptiMLLibrary extends OptiMLKmeans with OptiMLLinReg {
-  this: OptiMLApplication =>
+  this: OptiMLApplication with OptiMLLift =>
 }
 
 /**

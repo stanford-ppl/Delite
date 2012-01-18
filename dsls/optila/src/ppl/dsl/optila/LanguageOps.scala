@@ -74,7 +74,7 @@ trait LanguageOps extends Base { this: OptiLA =>
   /**
    * range 
    */  
-  implicit def intToRangeOp(i: Int) = new RangeOp(i)
+  implicit def intToRangeOp(i: Int) = new RangeOp(unit(i))
   implicit def repIntToRangeOp(i: Rep[Int]) = new RangeOp(i)
 
   class RangeOp(val _end : Rep[Int]) {

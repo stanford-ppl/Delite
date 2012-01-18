@@ -86,7 +86,7 @@ trait VectorViewOpsExp extends VectorViewOps with DeliteCollectionOpsExp { this:
   def vectorview_isrow[A:Manifest](x: Exp[VectorView[A]]): Exp[Boolean] = VectorViewIsRow(x)
   def vectorview_apply[A:Manifest](x: Exp[VectorView[A]], n: Exp[Int]): Exp[A] = VectorViewApply(x,n)
   def vectorview_update[A:Manifest](x: Exp[VectorView[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(VectorViewUpdate(x, n, y))
-  def vectorview_transpose[A:Manifest](x: Exp[VectorView[A]]): Exp[DenseVector[A]] = DenseVector[A](0, !x.isRow) ++ x
+  def vectorview_transpose[A:Manifest](x: Exp[VectorView[A]]): Exp[DenseVector[A]] = DenseVector[A](unit(0), !x.isRow) ++ x
   
   //////////////
   // mirroring

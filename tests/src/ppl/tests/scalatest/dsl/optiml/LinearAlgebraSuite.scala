@@ -108,7 +108,7 @@ trait LinearAlgebraTestsCommon extends OptiMLApplication with OverloadHack {
   def approx(x: Rep[Double], y: Rep[Double]): Rep[Boolean] = {
     // be very generous w.r.t. precision, because the ground truth
     // answers have not all been entered with high precision
-    Math.abs(x - y) < .01
+    abs(x - y) < .01
   }
 
   def check(x: Rep[DenseVector[Double]], y: Rep[DenseVector[Double]]): Rep[Boolean] = {

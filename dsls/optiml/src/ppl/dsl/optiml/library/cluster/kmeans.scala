@@ -13,7 +13,7 @@ import ppl.dsl.optiml._
  */
 
 trait OptiMLKmeans {
-  this: OptiMLApplication =>
+  this: OptiMLApplication with OptiMLLift =>
 
   val kmeans = new kmeansOps
 
@@ -49,7 +49,7 @@ trait OptiMLKmeans {
         //  weightedpoints          
         //}
         //else weightedpoints / points
-        val d = if (points == 0) 1 else points
+        val d = if (points == 0) 1 else points 
         weightedpoints / d
       }
 

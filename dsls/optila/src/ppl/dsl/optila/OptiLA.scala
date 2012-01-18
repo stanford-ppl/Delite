@@ -34,7 +34,7 @@ trait OptiLAApplication extends OptiLA with OptiLALift {
 /**
  * These are the portions of Scala imported into OptiLA's scope.
  */
-trait OptiLALift extends LiftVariables with LiftEquals with LiftString with LiftBoolean with LiftNumeric {
+trait OptiLALift extends LiftVariables with LiftEquals with LiftString with LiftBoolean /*with LiftNumeric*/ with LiftPrimitives {
   this: OptiLA =>
 }
 
@@ -88,7 +88,7 @@ trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
  * This the trait that every OptiLA application must extend.
  */
 trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps
-  with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
+  with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps  
   with VectorOps with DenseVectorOps with RangeVectorOps with VectorViewOps with MatrixRowOps with MatrixColOps
   with MatrixOps 
   with LAInputReaderOps with LAOutputWriterOps {

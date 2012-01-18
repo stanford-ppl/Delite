@@ -9,12 +9,12 @@ trait MultiLoopsBenchmark extends OptiMLApplication {
 	
 	def testSmallOp() {
 		val v = Vector[Double](100, true)
-		var y = v map { i => Math.pow(Math.exp(i), 2) }		
+		var y = v map { i => pow(exp(i), 2) }		
 	}
 	
 	def testLargeOp() {
 		val v = Vector[Double](1000000, true)
-		var y = v map { i => Math.pow(Math.exp(i), 2) }		
+		var y = v map { i => pow(exp(i), 2) }		
 	}
 	
 	def main() = {

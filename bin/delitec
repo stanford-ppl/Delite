@@ -41,13 +41,18 @@ def checkLMSEnv():
     global LMS_HOME
 
     if LMS_HOME is None:
-        lms_home = delitecommon.DELITE_HOME + "/lib_managed/jars/EPFL/" + lms_version + "/"
-        if not os.path.isdir(lms_home):
-          warn("couldn't find the LMS library at: " + lms_home)
-          lms_home = delitecommon.props["libs.lms.home"]
-          if lms_home is None:
-            err("couldn't find the LMS library at: " + lms_home + ". Please set the LMS_HOME environment variable or libs.lms.home entry in delite.properties manually.")
-        LMS_HOME = lms_home
+        if "libs.lms.home" in delitecommon.props:
+            lms_home = delitecommon.props["libs.lms.home"]
+            if not os.path.isdir(lms_home):
+                warn("couldn't find the LMS library at: " + lms_home)
+            else:
+                LMS_HOME = lms_home
+
+    if LMS_HOME is None:
+          lms_home = delitecommon.DELITE_HOME + "/lib_managed/jars/EPFL/" + lms_version + "/"
+          if not os.path.isdir(lms_home):
+              err("couldn't find the LMS library at: " + lms_home + ". Please set the LMS_HOME environment variable or libs.lms.home entry in delite.properties manually.")
+          LMS_HOME = lms_home
 
 def stage(runner, opts):
     java_opts = os.getenv("JAVA_OPTS", "")

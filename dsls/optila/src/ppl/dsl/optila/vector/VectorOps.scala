@@ -48,7 +48,7 @@ trait VectorOps extends Variables {
     def zerosf(len: Rep[Int]) = densevector_obj_zerosf(len)
     def rand(len: Rep[Int]) = densevector_obj_rand(len)
     def randf(len: Rep[Int]) = densevector_obj_randf(len)
-    def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = 1, isRow: Rep[Boolean] = unit(true)) =
+    def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = unit(1), isRow: Rep[Boolean] = unit(true)) =
       vector_obj_range(start, end, stride, isRow)
     def uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean] = unit(true)) =
       densevector_obj_uniform(start, step_size, end, isRow)
@@ -91,18 +91,18 @@ trait VectorOps extends Variables {
     def toDouble(implicit conv: Rep[A] => Rep[Double]) =  map(e => conv(e))
     def toFloat(implicit conv: Rep[A] => Rep[Float]) = map(e => conv(e))
     def toInt(implicit conv: Rep[A] => Rep[Int]) = map(e => conv(e))
-    def toLong(implicit conv: Rep[A] => Rep[Long]) = map(e => conv(e))
+    //def toLong(implicit conv: Rep[A] => Rep[Long]) = map(e => conv(e))
     
     // accessors
     def length: Rep[Int] 
     def isRow: Rep[Boolean] 
     def apply(n: Rep[Int]): Rep[A] 
-    def isEmpty = length == 0
-    def first = apply(0)
-    def last = apply(repArithToArithOps(length) - 1) // TODO: why doesn't this get invoked implicitly?
-    def indices = (0::length)
+    def isEmpty = length == unit(0)
+    def first = apply(unit(0))
+    def last = apply(length - unit(1)) 
+    def indices = (unit(0)::length)
     def drop(count: Rep[Int]) = slice(count, length)
-    def take(count: Rep[Int]) = slice(0, count)
+    def take(count: Rep[Int]) = slice(unit(0), count)
     def slice(start: Rep[Int], end: Rep[Int]): Rep[VA] = vector_slice[A,VA](x, start, end)
     def contains(y: Rep[A]): Rep[Boolean] = vector_contains(x,y)
     def distinct: Rep[VA] = vector_distinct[A,VA](x)  
@@ -129,7 +129,7 @@ trait VectorOps extends Variables {
     def copyFrom(pos: Rep[Int], y: Rep[VA]): Rep[Unit]
     def insert(pos: Rep[Int], y: Rep[A]): Rep[Unit]
     def insertAll(pos: Rep[Int], y: Rep[VA]): Rep[Unit]
-    def remove(pos: Rep[Int]) = removeAll(pos,1)
+    def remove(pos: Rep[Int]) = removeAll(pos,unit(1))
     def removeAll(pos: Rep[Int], len: Rep[Int]): Rep[Unit]
     def trim(): Rep[Unit]
     def clear(): Rep[Unit]
@@ -242,7 +242,7 @@ trait VectorOps extends Variables {
     def toDouble(implicit conv: Rep[A] => Rep[Double]) = intf.ops.toIntf(intf.ops.toDouble)
     def toFloat(implicit conv: Rep[A] => Rep[Float]) = intf.ops.toIntf(intf.ops.toFloat)
     def toInt(implicit conv: Rep[A] => Rep[Int]) = intf.ops.toIntf(intf.ops.toInt)
-    def toLong(implicit conv: Rep[A] => Rep[Long]) = intf.ops.toIntf(intf.ops.toLong)
+    //def toLong(implicit conv: Rep[A] => Rep[Long]) = intf.ops.toIntf(intf.ops.toLong)
     
     def length = intf.ops.length
     def isRow = intf.ops.isRow    
@@ -702,7 +702,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpZipWithReduceTuple[Int,A,Int,A] {
     
     val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[A]]]  
-    val inA = copyOrElse(_.inA)(0::intfB.length)
+    val inA = copyOrElse(_.inA)(unit(0)::intfB.length)
     val size = copyTransformedOrElse(_.size)(intfB.length)
     val zero = (copyTransformedOrElse(_.zero._1)(unit(0)),copyTransformedOrElse(_.zero._2)(implicitly[HasMinMax[A]].maxValue)) // 0 sensible? maybe -1?
     def zip = (a,b) => (a,b)
@@ -717,7 +717,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpZipWithReduceTuple[Int,A,Int,A] {
 
     val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[A]]]  
-    val inA = copyOrElse(_.inA)(0::intfB.length)
+    val inA = copyOrElse(_.inA)(unit(0)::intfB.length)
     val size = copyTransformedOrElse(_.size)(intfB.length)
     val zero = (copyTransformedOrElse(_.zero._1)(unit(0)),copyTransformedOrElse(_.zero._2)(implicitly[HasMinMax[A]].minValue)) // 0 sensible? maybe -1?
     def zip = (a,b) => (a,b)
@@ -788,7 +788,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpFilter[A,A,VA] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
-    def alloc = b.alloc(0, intf.isRow)
+    def alloc = b.alloc(unit(0), intf.isRow)
     def func = e => e 
     val size = copyTransformedOrElse(_.size)(intf.length)
 
@@ -800,7 +800,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpFilter[A,Int,VFINDR] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
-    def alloc = b.alloc(0,unit(true))
+    def alloc = b.alloc(unit(0), unit(true))
     def func = e => v // should we make available and use a helper function like index(e)?
     val size = copyTransformedOrElse(_.size)(intf.length)
 

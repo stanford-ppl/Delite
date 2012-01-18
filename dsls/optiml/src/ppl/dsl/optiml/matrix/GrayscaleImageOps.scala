@@ -29,11 +29,11 @@ trait GrayscaleImageOps extends Variables {
   class grayscaleImageOpsCls(x: Rep[GrayscaleImage]) {
     import GrayscaleImage._
 
-    def bitwiseOrDownsample() = GrayscaleImage(x.downsample(2,2) { slice => slice(0,0) | slice(1,0) | slice(0,1) | slice(1,1) })
+    def bitwiseOrDownsample() = GrayscaleImage(x.downsample(unit(2),unit(2)) { slice => slice(unit(0),unit(0)) | slice(unit(1),unit(0)) | slice(unit(0),unit(1)) | slice(unit(1),unit(1)) })
     def gradients(polar: Rep[Boolean] = unit(false)) = { // unroll at call site for parallelism (temporary until we have composite op)
-      val scharrYkernel = Matrix[Int](3, 3)
-      scharrYkernel(0,0) = -3; scharrYkernel(0,1) = -10; scharrYkernel(0,2) = -3
-      scharrYkernel(2,0) =  3; scharrYkernel(2,1) =  10; scharrYkernel(2,2) =  3
+      val scharrYkernel = Matrix[Int](unit(3), unit(3))
+      scharrYkernel(unit(0),unit(0)) = unit(-3); scharrYkernel(unit(0),unit(1)) = unit(-10); scharrYkernel(unit(0),unit(2)) = unit(-3)
+      scharrYkernel(unit(2),unit(0)) = unit(3); scharrYkernel(unit(2),unit(1)) = unit(10); scharrYkernel(unit(2),unit(2)) = unit(3)
       val scharrXkernel = scharrYkernel.t
       val a = x.convolve(scharrXkernel)
       val b = x.convolve(scharrYkernel)
@@ -74,7 +74,7 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   case class GrayscaleImageObjectCartToPolarPhase(inA: Exp[Matrix[Float]], inB: Exp[Matrix[Float]])
     extends MatrixArithmeticZipWith(inA, inB) {
 
-    def func = (a,b) => (atan2(b, a)*180/Pi).asInstanceOfL[Float]
+    def func = (a,b) => (atan2(b, a)*unit(180)/Pi).asInstanceOfL[Float]
   }
 
   ////////////////////
@@ -84,7 +84,7 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   def grayscaleimage_obj_frommat(x: Exp[Matrix[Int]]) = reflectEffect(GrayscaleImageObjectFromMat(x))
   def grayscaleimage_obj_carttopolar(x: Exp[Matrix[Float]], y: Exp[Matrix[Float]]) = {
     val mag = reflectPure(GrayscaleImageObjectCartToPolarMagnitude(x,y))
-    val phase = reflectPure(GrayscaleImageObjectCartToPolarPhase(x,y)) map { a => if (a < 0f) a + 360f else a } 
+    val phase = reflectPure(GrayscaleImageObjectCartToPolarPhase(x,y)) map { a => if (a < unit(0f)) a + unit(360f) else a } 
     (mag,phase)
   }
 

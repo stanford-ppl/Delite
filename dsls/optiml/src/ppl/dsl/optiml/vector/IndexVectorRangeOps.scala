@@ -21,7 +21,7 @@ trait IndexVectorRangeOps extends Base with OverloadHack { this: OptiML =>
   //     case Manifest.Int => indexRangeVecBuilder
   //   }  
   implicit def indexRangeVecBuilder = new VectorBuilder[Int,IndexVectorRange] {
-    def alloc(length: Rep[Int], isRow: Rep[Boolean]) = (0::length)
+    def alloc(length: Rep[Int], isRow: Rep[Boolean]) = (unit(0)::length)
     def toIntf(x: Rep[IndexVectorRange]): Interface[IndexVector] = indexVecRangeToInterface(x)
   }  
   

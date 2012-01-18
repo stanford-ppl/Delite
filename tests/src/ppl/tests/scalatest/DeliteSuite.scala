@@ -180,7 +180,7 @@ trait DeliteTestModule extends DeliteTestConfig
   def collect(s: Rep[Boolean]) { collector += s }
 
   def mkReport(): Rep[Unit] = {
-    println(MAGICDELIMETER + (collector mkString unit(",")) + MAGICDELIMETER)
+    println(unit(MAGICDELIMETER) + (collector mkString unit(",")) + unit(MAGICDELIMETER))
   }
   
   /*

@@ -65,7 +65,7 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
    *  
    *  Overrides OptiLA's (x::n) to create an IndexVector instead of a RangeVector.
    */
-  implicit def intToIndexOp(i: Int): IndexOp = new IndexOp(i)
+  implicit def intToIndexOp(i: Int): IndexOp = new IndexOp(unit(i))
   implicit def repIntToIndexOp(i: Rep[Int]): IndexOp = new IndexOp(i)
 
   class IndexOp(val _end: Rep[Int]) {
@@ -182,7 +182,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     extends DeliteOpFilter[Int,A,DenseVector[A]] {
   
     def alloc = DenseVector[A](unit(0), unit(true))      
-    val in = copyTransformedOrElse(_.in)(0::end-start)
+    val in = copyTransformedOrElse(_.in)(unit(0)::end-start)
     val size = copyTransformedOrElse(_.size)(end-start)
     
     def m = manifest[A]
@@ -198,8 +198,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
     val flatSize = rows.length*cols.length        
     def alloc = DenseVector[A](flatSize, unit(true))      
-    def func = i => func2(i/cols.length + rows(0), i%cols.length + cols(0))    
-    val in = copyTransformedOrElse(_.in)(0::flatSize)
+    def func = i => func2(i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))    
+    val in = copyTransformedOrElse(_.in)(unit(0)::flatSize)
     val size = copyTransformedOrElse(_.size)(flatSize)
     
     def m = manifest[A]
@@ -218,9 +218,9 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
     val flatSize = rows.length*cols.length    
     def alloc = DenseVector[A](unit(0), unit(true))      
-    def cond = i => cond2(i/cols.length + rows(0), i%cols.length + cols(0))
-    def func = i => func2(i/cols.length + rows(0), i%cols.length + cols(0))    
-    val in = copyTransformedOrElse(_.in)(0::flatSize)
+    def cond = i => cond2(i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))
+    def func = i => func2(i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))    
+    val in = copyTransformedOrElse(_.in)(unit(0)::flatSize)
     val size = copyTransformedOrElse(_.size)(flatSize)
     
     def m = manifest[A]
@@ -310,12 +310,12 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     
     
     // this is the reduce used inside each chunk (R,A) => R
-    def reduceSeq = (a,b) => (reifyEffects(if (co(b._2)) { if (a._2 >= 0) canSum.+=(a._1, fu(b._2)) else canSum.mutable(fu(b._2)) } else a._1), 
+    def reduceSeq = (a,b) => (reifyEffects(if (co(b._2)) { if (a._2 >= unit(0)) canSum.+=(a._1, fu(b._2)) else canSum.mutable(fu(b._2)) } else a._1), 
                               reifyEffects(if (co(b._2)) b._2 else a._2 )) // would not work in parallel...  // returns the current index (v) if the condition is true, or a._2, which is defaulted to -1 (uninitialized)
 
     // this is the reduce used in the tree (R,R) => R
-    def reducePar = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += b._1 else b._1.mutable } else a._1), 
-                              reifyEffects(if (b._2 >= 0) b._2 else a._2))
+    def reducePar = (a,b) => (reifyEffects(if (b._2 >= unit(0)) { if (a._2 >= unit(0)) a._1 += b._1 else b._1.mutable } else a._1), 
+                              reifyEffects(if (b._2 >= unit(0)) b._2 else a._2))
 
     /*
         def step = (a,v) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
@@ -333,7 +333,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   // TODO: what is the deired behavior if the range is empty?
   def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
     val firstBlock = block(start)
-    val out = reflectPure(Sum(start+1, end, block, firstBlock))
+    val out = reflectPure(Sum(start+unit(1), end, block, firstBlock))
     out + firstBlock
   }
 
@@ -405,15 +405,15 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val tasks : Rep[Vertices[V]] = vertices.mutable
     val seen = Set[V]()
     
-    while(tasks.length > 0) {
+    while(tasks.length > unit(0)) {
       tasks.mforeach(block)
       tasks.clear()
       //var totalTasks = unit(0)
       
-      for(i <- 0 until vertices.length) {
+      for(i <- unit(0) until vertices.length) {
         val vtasks = vertices(i).tasks
         //totalTasks += vtasks.length
-        for(j <- 0 until vtasks.length) {
+        for(j <- unit(0) until vtasks.length) {
           val task = vtasks(j).asInstanceOfL[V]
           if(!seen.contains(task)) {
             tasks += task   //TODO TR: non-mutable write (use mclone)
@@ -488,8 +488,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val y = x.labels
     val theta = Vector.zeros(x.numFeatures).mutable
     untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
-      for (i <- 0 until x.numSamples) {
-        for (j <- 0 until x.numFeatures ) {
+      for (i <- unit(0) until x.numSamples) {
+        for (j <- unit(0) until x.numFeatures ) {
           theta(j) = theta(j) + alpha*(y(i) - hyp(x(i)))*x(i)(j)          
         }
       }
@@ -503,8 +503,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     val y = x.labels
     val theta = Vector.zeros(x.numFeatures).mutable
     untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
-      for (j <- 0 until x.numFeatures) {
-        val acc = sum(0, x.numSamples) { i =>
+      for (j <- unit(0) until x.numFeatures) {
+        val acc = sum(unit(0), x.numSamples) { i =>
           (y(i) - hyp(x(i))*x(i)(j))   // parallel work
         }
         theta(j) = theta(j) + alpha*acc
@@ -519,7 +519,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    */
   def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int] = {
     // unroll
-    val dists = (0::m.numRows){ i =>
+    val dists = (unit(0)::m.numRows){ i =>
       val d = dist(m(row),m(i))
       if (d == implicitly[Arith[A]].empty && !allowSame) implicitly[HasMinMax[A]].maxValue else d
     }

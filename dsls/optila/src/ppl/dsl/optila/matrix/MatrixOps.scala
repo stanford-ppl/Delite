@@ -73,7 +73,7 @@ trait MatrixOps extends Variables {
     def toDouble(implicit conv: Rep[A] => Rep[Double]) = map(e => conv(e))
     def toFloat(implicit conv: Rep[A] => Rep[Float]) = map(e => conv(e))
     def toInt(implicit conv: Rep[A] => Rep[Int]) = map(e => conv(e))
-    def toLong(implicit conv: Rep[A] => Rep[Long]) = map(e => conv(e))
+    //def toLong(implicit conv: Rep[A] => Rep[Long]) = map(e => conv(e))
 
     // accessors
     def apply(i: Rep[Int]) = getRow(i)
@@ -105,9 +105,9 @@ trait MatrixOps extends Variables {
     def insertAllRows(pos: Rep[Int], y: Rep[Matrix[A]]) = matrix_insertallrows(x,pos,y)
     def insertCol(pos: Rep[Int], y: Rep[DenseVector[A]]) = matrix_insertcol(x,pos,y)
     def insertAllCols(pos: Rep[Int], y: Rep[Matrix[A]]) = matrix_insertallcols(x,pos,y)
-    def removeRow(pos: Rep[Int]) = removeRows(pos, 1)
+    def removeRow(pos: Rep[Int]) = removeRows(pos, unit(1))
     def removeRows(pos: Rep[Int], len: Rep[Int]) = matrix_removerows(x,pos,len)
-    def removeCol(pos: Rep[Int]) = removeCols(pos, 1)
+    def removeCol(pos: Rep[Int]) = removeCols(pos, unit(1))
     def removeCols(pos: Rep[Int], len: Rep[Int]) = matrix_removecols(x,pos,len)
 
     // arithmetic operations
@@ -538,7 +538,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[Int,A,DenseVector[A]] {
 
     def alloc = DenseVector[A](x.numRows, unit(false))
-    val in = (0::x.numRows)
+    val in = (unit(0)::x.numRows)
     val size = x.numRows
     def func = i => x(i).sum
   } 
@@ -634,7 +634,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[Int,B,DenseVector[B]] {
 
     def alloc = DenseVector[B](x.numRows, isRow)
-    val in = (0::x.numRows)
+    val in = (unit(0)::x.numRows)
     val size = x.numRows
     def func = i => rowFunc(x(i))   
   }

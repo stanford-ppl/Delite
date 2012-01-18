@@ -16,7 +16,7 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
   implicit def rangeToInterface(lhs: Rep[RangeVector]) = new VInterface(new RangeVecOpsCls(lhs))
   
   implicit def rangeVectorBuilder = new VectorBuilder[Int,RangeVector] {
-    def alloc(length: Rep[Int], isRow: Rep[Boolean]) = (0::length)
+    def alloc(length: Rep[Int], isRow: Rep[Boolean]) = (unit(0)::length)
     def toIntf(x: Rep[RangeVector]): Interface[Vector[Int]] = rangeToInterface(x)
   }  
   
@@ -79,8 +79,8 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
 trait RangeVectorOpsExp extends RangeVectorOps with DeliteCollectionOpsExp { this: OptiLAExp =>
   
   def rangevector_length(x: Rep[RangeVector]) = x match {
-    case Def(VectorObjectRange(start,end,stride,r)) => (end-start + stride - 1) / stride
-    case Def(v@Reflect(VectorObjectRange(start,end,stride,r), u, es)) /*if context.contains(v)*/ => (end-start + stride - 1) / stride
+    case Def(VectorObjectRange(start,end,stride,r)) => (end-start + stride - unit(1)) / stride
+    case Def(v@Reflect(VectorObjectRange(start,end,stride,r), u, es)) /*if context.contains(v)*/ => (end-start + stride - unit(1)) / stride
   }
   
   def rangevector_isrow(x: Exp[RangeVector]) = x match {

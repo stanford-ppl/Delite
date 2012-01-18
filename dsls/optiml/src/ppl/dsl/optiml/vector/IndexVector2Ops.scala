@@ -121,10 +121,10 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
 
   // class defs
   def indexvector2_construct_vectors_wildcard[A:Manifest](in: Interface[IndexVector], block: Exp[Int] => Interface[Vector[A]]): Exp[Matrix[A]] = {
-    val first = block(in(0)) 
+    val first = block(in(unit(0))) 
     val out = matrix_obj_new[A](in.length, first.length)
-    out(0) = first 
-    reflectWrite(out)(IndexVector2ConstructRows(in.slice(1,in.length),block,out))
+    out(unit(0)) = first 
+    reflectWrite(out)(IndexVector2ConstructRows(in.slice(unit(1),in.length),block,out))
     out.unsafeImmutable
   }
   

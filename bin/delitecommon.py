@@ -54,17 +54,22 @@ def checkCommonEnv():
 
     if JAVA_HOME is None:
         if "java.home" in props:
-          JAVA_HOME = props["java.home"]
+            JAVA_HOME = props["java.home"]
         else:
-          err("The JAVA_HOME environment variable must be defined or the java.home entry in delite.properties must be set.")
+            err("The JAVA_HOME environment variable must be defined or the java.home entry in delite.properties must be set.")
 
+    if SCALA_VIRT_HOME is None:
+        if "scala.virtualized.home" in props:
+            scala_virt_home = props["scala.virtualized.home"]
+            if not os.path.isdir(scala_virt_home):
+                warn("couldn't find scala virtualized at: " + scala_virt_home)
+            else:
+                SCALA_VIRT_HOME = scala_virt_home
+    
     if SCALA_VIRT_HOME is None:
         scala_virt_home = USER_HOME + "/.sbt/boot/" + scala_virt_version + "/lib/"
         if not os.path.isdir(scala_virt_home):
-            warn("couldn't find scala virtualized at: " + scala_virt_home)
-            scala_virt_home = props["scala.virtualized.home"]
-            if not os.path.isdir(scala_virt_home):
-              err("couldn't find scala virtualized at: " + scala_virt_home + ". Please set the SCALA_VIRT_HOME environment variable or scala.virtualized.home entry in delite.properties manually.")
+            err("couldn't find scala virtualized at: " + scala_virt_home + ". Please set the SCALA_VIRT_HOME environment variable or scala.virtualized.home entry in delite.properties manually.")
         SCALA_VIRT_HOME = scala_virt_home
 
 def printEnv():

@@ -50,24 +50,13 @@ trait ArithOps extends Variables with OverloadHack {
   implicit def repArithToArithOps[T:Arith:Manifest](n: Rep[T]) = new ArithOpsCls(n)
   implicit def varArithToArithOps[T:Arith:Manifest](n: Var[T]) = new ArithOpsCls(readVar(n))
 
-  // to do Rep[Int] * Float, it should get converted to Rep[Float] * Float
-  // TODO: this only works when invoked explicitly (won't kick in itself)
-  implicit def chainRepArithToArithOps[A,B](a: Rep[A])
-    (implicit mA: Manifest[A], aA: Arith[A], mB: Manifest[B], aB: Arith[B], c: Rep[A] => Rep[B]) = new ArithOpsCls(c(a))
-
   class ArithOpsCls[T](lhs: Rep[T])(implicit mT: Manifest[T], arith: Arith[T]){
-    // TODO: if B == Rep[T] below, the ops implicit does not work unless it is called explicitly (no unambiguous resolution?)
     def +=(rhs: Rep[T]): Rep[T] = arith.+=(lhs,rhs)
+    def +=[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.+=(lhs,c(rhs))    
     def +(rhs: Rep[T]): Rep[T] = arith.+(lhs,rhs)
     def -(rhs: Rep[T]): Rep[T] = arith.-(lhs,rhs)
     def *(rhs: Rep[T]): Rep[T] = arith.*(lhs,rhs)
     def /(rhs: Rep[T]): Rep[T] = arith./(lhs,rhs)
-
-    def +=[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.+=(lhs,c(rhs))
-    def +[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.+(lhs,c(rhs))
-    def -[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.-(lhs,c(rhs))
-    def *[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith.*(lhs,c(rhs))
-    def /[B](rhs: B)(implicit c: B => Rep[T]): Rep[T] = arith./(lhs,c(rhs))
 
     def abs: Rep[T] = arith.abs(lhs)
     def exp: Rep[T] = arith.exp(lhs)
@@ -76,18 +65,75 @@ trait ArithOps extends Variables with OverloadHack {
   }
 
 
-  // TODO: why is this needed, given the definition of / above?
-  def infix_/[T,B](lhs: Rep[T], rhs: B)(implicit f: Fractional[T], c: B => Rep[T], mT: Manifest[T]) = arith_fractional_divide(lhs,c(rhs))
+  /**
+   * These infix methods support promoting one side of the binary op to a compatible type (precision widening).
+   *  
+   * This slightly asymmetric combination is the cleanest non-ambiguous way I've found to support most
+   * left- and right-hand side arithmetic conversions.  Still, the overloading and implicit resolution here is
+   * not fine-grained enough to cover all combinations of literal and Rep[] value promotions, so we add
+   * special-cases to cover other OptiML primitive widenings. 
+   * 
+   * See ArithmeticConversionSuite.scala for a list of test cases.
+   */     
 
-  // why are these recursive? (perhaps because the abstract arith method has the same signature as the infix?)
-//  def infix_+=[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.+=(lhs,c(rhs))
-//  def infix_+[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.+(lhs,c(rhs))
-//  def infix_-[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.-(lhs,c(rhs))
-//  def infix_*[T,B](lhs: Rep[T], rhs:B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a.*(lhs,c(rhs))
-//  def infix_/[T,B](lhs: Rep[T], rhs: B)(implicit a: Arith[T], c: B => Rep[T], mT: Manifest[T]) = a./(lhs,c(rhs))
-//  def infix_abs[T](lhs: Rep[T])(implicit a: Arith[T], mT: Manifest[T]) = a.abs(lhs)
-//  def infix_exp[T](lhs: Rep[T])(implicit a: Arith[T], mT: Manifest[T]) = a.exp(lhs)
+  // kind of works, but doesn't cover all cases (if we start with a Rep[L] and need to convert that to R, the wrong signature is still preferred)
+  def infix_-[L:Arith:Manifest,R](lhs: Rep[L], rhs: R)(implicit c: R => Rep[L]): Rep[L] = implicitly[Arith[L]].-(lhs,c(rhs))
+  def infix_-[L:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[R])(implicit c: Rep[L] => Rep[R]): Rep[R] = implicitly[Arith[R]].-(c(lhs),rhs)  
 
+  // special cases to fill the holes - note that some redundancy is required here to prevent auto primitive widening
+  def infix_-(lhs: Int, rhs: Rep[Int]): Rep[Int] = implicitly[Arith[Int]].-(unit(lhs), rhs)
+  def infix_-(lhs: Float, rhs: Rep[Int]): Rep[Float] = implicitly[Arith[Float]].-(unit(lhs),rhs)  
+  def infix_-(lhs: Float, rhs: Rep[Float])(implicit o: Overloaded1): Rep[Float] = implicitly[Arith[Float]].-(unit(lhs), rhs)
+  def infix_-(lhs: Double, rhs: Rep[Int]): Rep[Double] = implicitly[Arith[Double]].-(unit(lhs),rhs)  
+  def infix_-(lhs: Double, rhs: Rep[Float])(implicit o: Overloaded1): Rep[Double] = implicitly[Arith[Double]].-(unit(lhs),rhs)
+  def infix_-(lhs: Rep[Int], rhs: Int): Rep[Int] = implicitly[Arith[Int]].-(lhs, unit(rhs))  
+  def infix_-(lhs: Rep[Int], rhs: Double): Rep[Double] = implicitly[Arith[Double]].-(lhs, unit(rhs))
+  def infix_-(lhs: Rep[Int], rhs: Float): Rep[Float] = implicitly[Arith[Float]].-(lhs, unit(rhs))
+  def infix_-(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1): Rep[Float] = implicitly[Arith[Float]].-(lhs, unit(rhs))
+  def infix_-(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1): Rep[Double] = implicitly[Arith[Double]].-(lhs, unit(rhs))
+
+  def infix_+[L:Arith:Manifest,R](lhs: Rep[L], rhs: R)(implicit c: R => Rep[L]): Rep[L] = implicitly[Arith[L]].+(lhs,c(rhs))
+  def infix_+[L:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[R])(implicit c: Rep[L] => Rep[R]): Rep[R] = implicitly[Arith[R]].+(c(lhs),rhs)  
+  
+  def infix_+(lhs: Int, rhs: Rep[Int]): Rep[Int] = implicitly[Arith[Int]].+(unit(lhs), rhs)
+  def infix_+(lhs: Float, rhs: Rep[Int]): Rep[Float] = implicitly[Arith[Float]].+(unit(lhs),rhs)  
+  def infix_+(lhs: Float, rhs: Rep[Float])(implicit o: Overloaded1): Rep[Float] = implicitly[Arith[Float]].+(unit(lhs), rhs)
+  def infix_+(lhs: Double, rhs: Rep[Int]): Rep[Double] = implicitly[Arith[Double]].+(unit(lhs),rhs)  
+  def infix_+(lhs: Double, rhs: Rep[Float])(implicit o: Overloaded1): Rep[Double] = implicitly[Arith[Double]].+(unit(lhs),rhs)
+  def infix_+(lhs: Rep[Int], rhs: Int): Rep[Int] = implicitly[Arith[Int]].+(lhs, unit(rhs))  
+  def infix_+(lhs: Rep[Int], rhs: Double): Rep[Double] = implicitly[Arith[Double]].+(lhs, unit(rhs))
+  def infix_+(lhs: Rep[Int], rhs: Float): Rep[Float] = implicitly[Arith[Float]].+(lhs, unit(rhs))
+  def infix_+(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1): Rep[Float] = implicitly[Arith[Float]].+(lhs, unit(rhs))
+  def infix_+(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1): Rep[Double] = implicitly[Arith[Double]].+(lhs, unit(rhs))
+
+  def infix_*[L:Arith:Manifest,R](lhs: Rep[L], rhs: R)(implicit c: R => Rep[L]): Rep[L] = implicitly[Arith[L]].*(lhs,c(rhs))
+  def infix_*[L:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[R])(implicit c: Rep[L] => Rep[R]): Rep[R] = implicitly[Arith[R]].*(c(lhs),rhs)  
+  
+  def infix_*(lhs: Int, rhs: Rep[Int]): Rep[Int] = implicitly[Arith[Int]].*(unit(lhs), rhs)
+  def infix_*(lhs: Float, rhs: Rep[Int]): Rep[Float] = implicitly[Arith[Float]].*(unit(lhs),rhs)  
+  def infix_*(lhs: Float, rhs: Rep[Float])(implicit o: Overloaded1): Rep[Float] = implicitly[Arith[Float]].*(unit(lhs), rhs)
+  def infix_*(lhs: Double, rhs: Rep[Int]): Rep[Double] = implicitly[Arith[Double]].*(unit(lhs),rhs)  
+  def infix_*(lhs: Double, rhs: Rep[Float])(implicit o: Overloaded1): Rep[Double] = implicitly[Arith[Double]].*(unit(lhs),rhs)
+  def infix_*(lhs: Rep[Int], rhs: Int): Rep[Int] = implicitly[Arith[Int]].*(lhs, unit(rhs))  
+  def infix_*(lhs: Rep[Int], rhs: Double): Rep[Double] = implicitly[Arith[Double]].*(lhs, unit(rhs))
+  def infix_*(lhs: Rep[Int], rhs: Float): Rep[Float] = implicitly[Arith[Float]].*(lhs, unit(rhs))
+  def infix_*(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1): Rep[Float] = implicitly[Arith[Float]].*(lhs, unit(rhs))
+  def infix_*(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1): Rep[Double] = implicitly[Arith[Double]].*(lhs, unit(rhs))
+
+  def infix_/[L:Arith:Manifest,R](lhs: Rep[L], rhs: R)(implicit c: R => Rep[L]): Rep[L] = implicitly[Arith[L]]./(lhs,c(rhs))
+  def infix_/[L:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[R])(implicit c: Rep[L] => Rep[R]): Rep[R] = implicitly[Arith[R]]./(c(lhs),rhs)  
+  
+  def infix_/(lhs: Int, rhs: Rep[Int]): Rep[Int] = implicitly[Arith[Int]]./(unit(lhs), rhs)
+  def infix_/(lhs: Float, rhs: Rep[Int]): Rep[Float] = implicitly[Arith[Float]]./(unit(lhs),rhs)  
+  def infix_/(lhs: Float, rhs: Rep[Float])(implicit o: Overloaded1): Rep[Float] = implicitly[Arith[Float]]./(unit(lhs), rhs)
+  def infix_/(lhs: Double, rhs: Rep[Int]): Rep[Double] = implicitly[Arith[Double]]./(unit(lhs),rhs)  
+  def infix_/(lhs: Double, rhs: Rep[Float])(implicit o: Overloaded1): Rep[Double] = implicitly[Arith[Double]]./(unit(lhs),rhs)
+  def infix_/(lhs: Rep[Int], rhs: Int): Rep[Int] = implicitly[Arith[Int]]./(lhs, unit(rhs))  
+  def infix_/(lhs: Rep[Int], rhs: Double): Rep[Double] = implicitly[Arith[Double]]./(lhs, unit(rhs))
+  def infix_/(lhs: Rep[Int], rhs: Float): Rep[Float] = implicitly[Arith[Float]]./(lhs, unit(rhs))
+  def infix_/(lhs: Rep[Float], rhs: Float)(implicit o: Overloaded1): Rep[Float] = implicitly[Arith[Float]]./(lhs, unit(rhs))
+  def infix_/(lhs: Rep[Float], rhs: Double)(implicit o: Overloaded1): Rep[Double] = implicitly[Arith[Double]]./(lhs, unit(rhs))
+       
   /**
    * Vector
    */
@@ -98,14 +144,13 @@ trait ArithOps extends Variables with OverloadHack {
     // def +(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = if (a.isInstanceOfL[ZeroVector[T]]) b
     //                                               else if (b.isInstanceOfL[ZeroVector[T]]) a
     //                                               else a+b
-    def +=(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = a += b 
-    def +(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = a+b
-    def -(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = a-b
-    def *(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = a*b
-    def /(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = a/b
-
-    def abs(a: Rep[DenseVector[T]]) = a.abs
-    def exp(a: Rep[DenseVector[T]]) = a.exp
+    def +=(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = repToDenseVecOps(a).+=(b) 
+    def +(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = repToDenseVecOps(a).+(b)
+    def -(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = repToDenseVecOps(a).-(b)
+    def *(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = repToDenseVecOps(a).*(b)
+    def /(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = repToDenseVecOps(a)./(b)
+    def abs(a: Rep[DenseVector[T]]) = repToDenseVecOps(a).abs
+    def exp(a: Rep[DenseVector[T]]) = repToDenseVecOps(a).exp
     
     /**
      * zero for Vector[T] is a little tricky. It is used in nested Vector/Matrix operations, e.g.
@@ -129,14 +174,14 @@ trait ArithOps extends Variables with OverloadHack {
    */
 
   implicit def matrixArith[T:Arith:Manifest] : Arith[Matrix[T]] = new Arith[Matrix[T]] {
-    def +=(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a += b
-    def +(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a+b
-    def -(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a-b
-    def *(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a*b
-    def /(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = a/b
-    def abs(a: Rep[Matrix[T]]) = a.abs
-    def exp(a: Rep[Matrix[T]]) = a.exp
-    def empty = Matrix[T](0,0) // EmptyMatrix? 
+    def +=(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = repMatToMatOps(a).+=(b)
+    def +(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = repMatToMatOps(a).+(b)
+    def -(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = repMatToMatOps(a).-(b)
+    def *(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = repMatToMatOps(a).*(b)
+    def /(a: Rep[Matrix[T]], b: Rep[Matrix[T]]) = repMatToMatOps(a)./(b)
+    def abs(a: Rep[Matrix[T]]) = repMatToMatOps(a).abs
+    def exp(a: Rep[Matrix[T]]) = repMatToMatOps(a).exp
+    def empty = Matrix[T](unit(0),unit(0)) // EmptyMatrix? 
     def zero(a: Rep[Matrix[T]]) = Matrix[T](a.numRows, a.numCols)
     /*
     def unary_-(a: Rep[Matrix[T]]) = -a
