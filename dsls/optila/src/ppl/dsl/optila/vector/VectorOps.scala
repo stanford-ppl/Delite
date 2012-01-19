@@ -99,7 +99,7 @@ trait VectorOps extends Variables {
     def apply(n: Rep[Int]): Rep[A] 
     def isEmpty = length == unit(0)
     def first = apply(unit(0))
-    def last = apply(length - unit(1)) 
+    def last = apply(length - unit(1))
     def indices = (unit(0)::length)
     def drop(count: Rep[Int]) = slice(count, length)
     def take(count: Rep[Int]) = slice(unit(0), count)
@@ -1099,23 +1099,11 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
-    // Only allow allocating primitive type Vectors
-    case DenseVectorNew(length, isRow) => {
-      stream.println(addTab()+"%s *devPtr;".format(remap(sym.Type.typeArguments(0))))
-      stream.println(addTab()+"DeliteCudaMalloc((void**)&devPtr,%s*sizeof(%s));".format(quote(length),remap(sym.Type.typeArguments(0))))
-      stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,devPtr);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(length),quote(isRow)))
-    }
+    case DenseVectorNew(length, isRow) => stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(length),quote(isRow)))
+    case VectorObjectRange(start, end, stride, isRow) => stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(start),quote(end),quote(stride),quote(isRow)))
 
     /* Specialized CUDA code generations for DeliteOpSingleTasks */
     /*
-    case VectorObjectRange(start, end, stride, isRow) =>
-      stream.println(addTab()+"RangeVector %s;".format(quote(sym)))
-      stream.println(addTab()+"%s.start = %s;".format(quote(sym),quote(start)))
-      stream.println(addTab()+"%s.end = %s;".format(quote(sym),quote(end)))
-      stream.println(addTab()+"%s.stride = %s;".format(quote(sym),quote(stride)))
-      stream.println(addTab()+"%s.isRow = %s;".format(quote(sym),quote(isRow)))
-
-
     case VectorObjectZeros(len) =>
         currDim += 1
         val currDimStr = getCurrDimStr()
@@ -1155,20 +1143,6 @@ trait CGenVectorOps extends BaseGenVectorOps with CGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case DenseVectorObjectZeros(len) =>
-      stream.println("%s *%s_data = malloc(sizeof(%s)*%s);".format(remap(sym.Type.typeArguments(0)),quote(sym),remap(sym.Type.typeArguments(0)),quote(len)))
-      stream.println("memset(%s_data,0,sizeof(%s)*%s);".format(quote(sym),remap(sym.Type.typeArguments(0)),quote(len)))
-      stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
-      stream.println("%s.length = %s;".format(quote(sym),quote(len)))
-      stream.println("%s.isRow = true;".format(quote(sym)))
-      stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
-    case DenseVectorNew(len,isRow) =>
-      stream.println("%s *%s_data = malloc(sizeof(%s)*%s);".format(remap(sym.Type.typeArguments(0)),quote(sym),remap(sym.Type.typeArguments(0)),quote(len)))
-      stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
-      stream.println("%s.length = %s;".format(quote(sym),quote(len)))
-      stream.println("%s.isRow = %s;".format(quote(sym),quote(isRow)))
-      stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
-
     case _ => super.emitNode(sym, rhs)
   }
 }

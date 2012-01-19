@@ -71,7 +71,7 @@ trait OptiMLCCodeGenPkg extends OptiLACCodeGenPkg
 /**
  * This is the trait that every OptiML application must extend.
  */
-trait OptiML extends OptiLA with OptiMLScalaOpsPkg with RecordOps 
+trait OptiML extends OptiLA with OptiMLScalaOpsPkg with RecordOps
   with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOps should be auto-generated with ApplicationOps
   with MLInputReaderOps with MLOutputWriterOps
   with CanSumOps
@@ -259,17 +259,6 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
   // Maps the scala type to cuda type
   override def remap[A](m: Manifest[A]) : String = {
     m.toString match {
-      case "ppl.dsl.optiml.datastruct.scala.Matrix[Int]" => "Matrix<int>"
-      case "ppl.dsl.optiml.datastruct.scala.Matrix[Long]" => "Matrix<long>"
-      case "ppl.dsl.optiml.datastruct.scala.Matrix[Float]" => "Matrix<float>"
-      case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => "Matrix<double>"
-      case "ppl.dsl.optiml.datastruct.scala.Matrix[Boolean]" => "Matrix<bool>"
-      case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => "Vector<int>"
-      case "ppl.dsl.optiml.datastruct.scala.Vector[Long]" => "Vector<long>"
-      case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => "Vector<float>"
-      case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => "Vector<double>"
-      case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => "Vector<bool>"
-      case "ppl.dsl.optiml.datastruct.scala.RangeVector" => "RangeVector"
       case "ppl.dsl.optiml.datastruct.scala.IndexVector" => "IndexVector"
       case "ppl.dsl.optiml.datastruct.scala.Labels[Int]" => "Labels<int>"
       case "ppl.dsl.optiml.datastruct.scala.Labels[Long]" => "Labels<long>"
@@ -283,17 +272,6 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
   }
 
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Int]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Long]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Float]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Double]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Matrix[Boolean]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Int]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Long]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Float]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Double]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Vector[Boolean]" => true
-    case "ppl.dsl.optiml.datastruct.scala.RangeVector" => true
     case "ppl.dsl.optiml.datastruct.scala.IndexVector" => true
     case "ppl.dsl.optiml.datastruct.scala.Labels[Int]" => true
     case "ppl.dsl.optiml.datastruct.scala.Labels[Long]" => true
@@ -306,10 +284,7 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
   }
 
   override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => matrixCopyInputHtoD(sym)
-    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorCopyInputHtoD(sym)
     case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => labelsCopyInputHtoD(sym)
-    case "RangeVector" => rangeVectorCopyInputHtoD(sym)
     case "IndexVector" => indexVectorCopyInputHtoD(sym)
     case "TrainingSet<double,double>" => trainingSetCopyInputHtoD(sym)
     case "TrainingSet<double,int>" => trainingSetCopyInputHtoD(sym)
@@ -317,16 +292,11 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
   }
 
   override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => matrixCopyOutputDtoH(sym)
-    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorCopyOutputDtoH(sym)
     case _ => super.copyOutputDtoH(sym)
   }
 
   override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => matrixCopyMutableInputDtoH(sym)
-    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorCopyMutableInputDtoH(sym)
     case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => labelsCopyMutableInputDtoH(sym)
-    case "RangeVector" => rangeVectorCopyMutableInputDtoH(sym)
     case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
     case "TrainingSet<double,double>" => trainingSetCopyMutableInputDtoH(sym)
     case "TrainingSet<double,int>" => trainingSetCopyMutableInputDtoH(sym)
@@ -334,8 +304,6 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
   }
 
   override def cloneObject(sym: Sym[Any], src: Sym[Any]) : String = remap(sym.Type) match {
-    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => matrixClone(sym, src)
-    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorClone(sym, src)
     //case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => labelsCopyMutableInputDtoH(sym)
     //case "RangeVector" => rangeVectorCopyMutableInputDtoH(sym)
     //case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
@@ -361,16 +329,17 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
   }
    */
 
+  /*
   override def positionMultDimInputs(sym: Sym[Any]) : String = remap(sym.Type) match {
     //TODO: Add matrix reposition, and also do safety check for datastructures that do not have data field
     case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorPositionMultDimInputs(sym)
     case _ => super.positionMultDimInputs(sym)
   }
+  */
 
   override def getDSLHeaders: String = {
     val out = new StringBuilder
     out.append(super.getDSLHeaders)
-    out.append("#include \"RangeVectorImpl.h\"\n")
     out.append("#include \"IndexVectorImpl.h\"\n")
     out.append("#include \"LabelsImpl.h\"\n")
     out.append("#include \"TrainingSetImpl.h\"\n")

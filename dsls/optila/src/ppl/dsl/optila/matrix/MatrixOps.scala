@@ -1028,39 +1028,8 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
-    /* CUBLAS calls */
-    /*
-    case MatrixMultiplyBLAS(x,y) =>
-      val callStream = "cublasSetKernelStream(stream);"
-      val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
-        "cublasDgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
-      else if(remap(x.Type.typeArguments(0)) == "float")
-        "cublasSgemm('n','n',%s.numCols,%s.numRows,%s.numRows,1.0,%s.data,%s.numCols,%s.data,%s.numCols,0.0,%s.data,%s.numCols);".format(quote(y),quote(x),quote(y),quote(y),quote(y),quote(x),quote(x),quote(sym),quote(sym))
-      else
-        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for MatrixMulitply CUBLAS library)".format(remap(x.Type.typeArguments(0))))
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(y)),false)
-      emitLibCall(sym,List(callStream,callKernel))
-    
-    case MatrixTimesVectorBLAS(x,y) =>
-      val callStream = "cublasSetKernelStream(stream);"
-      val callKernel = if(remap(x.Type.typeArguments(0)) == "double")
-        "cublasDgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
-      else if(remap(x.Type.typeArguments(0)) == "float")
-        "cublasSgemv('t', %s.numCols, %s.numRows, 1.0, %s.data, %s.numCols, %s.data, 1, 0.0, %s.data, 1);".format(quote(x),quote(x),quote(x),quote(x),quote(y),quote(sym))
-      else
-        throw new RuntimeException("CudaGen: Not GPUable (Type %s is not supported for Matrix*Vector CUBLAS library)".format(remap(x.Type.typeArguments(0))))
-      emitVectorAlloc(sym,"%s.numRows".format(quote(x)),"false",false)
-      emitLibCall(sym,List(callStream,callKernel))
-    */
+    case MatrixObjectNew(numRows,numCols) => stream.println("%s *%s_ptr = new %s(%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
 
-    case MatrixObjectNew(numRows,numCols) =>
-      stream.println(addTab()+"%s *devPtr;".format(remap(sym.Type.typeArguments(0))))
-      stream.println(addTab()+"DeliteCudaMalloc((void**)&devPtr,%s*%s*sizeof(%s));".format(quote(numRows),quote(numCols),remap(sym.Type.typeArguments(0))))
-      stream.println("%s *%s_ptr = new %s(%s,%s,devPtr);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
-      //stream.println("%s.numRows = %s;".format(quote(sym),quote(numRows)))
-      //stream.println("%s.numCols = %s;".format(quote(sym),quote(numCols)))
-      //stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
-    
 	  /* The ops that call through to the underlying data structure */
     //case MatrixDCApply(x,i) =>
     //  emitValDef(sym, "%s.dcApply(%s)".format(quote(x),quote(i)))

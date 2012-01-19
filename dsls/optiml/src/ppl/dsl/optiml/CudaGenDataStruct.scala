@@ -79,7 +79,7 @@ trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
   }
 
   def labelsCopyInputHtoD(sym: Sym[Any]): String = {
-    vectorCopyInputHtoD(sym)
+    densevectorCopyInputHtoD(sym)
   }
 
   def trainingSetCopyInputHtoD(sym: Sym[Any]): String = {
@@ -166,11 +166,11 @@ trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
   }
 
   def indexVectorCopyMutableInputDtoH(sym: Sym[Any]): String = {
-    vectorCopyMutableInputDtoH(sym)
+    densevectorCopyMutableInputDtoH(sym)
   }
 
   def labelsCopyMutableInputDtoH(sym: Sym[Any]): String = {
-    vectorCopyMutableInputDtoH(sym)
+    densevectorCopyMutableInputDtoH(sym)
   }
 
   def trainingSetCopyMutableInputDtoH(sym: Sym[Any]): String = {

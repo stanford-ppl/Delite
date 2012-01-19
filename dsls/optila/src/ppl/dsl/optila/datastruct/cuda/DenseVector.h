@@ -1,26 +1,24 @@
-#ifndef _VECTORIMPL_H_
-#define _VECTORIMPL_H_
+#ifndef _DENSEVECTOR_H_
+#define _DENSEVECTOR_H_
 
+#include <DeliteArray.h>
 #include <stdio.h>
 
 template <class T>
-class Vector {
+class DenseVector {
 public:
     T *data;
     int length;
     bool isRow;
 
-    // Constructors
-    __host__ __device__ Vector() {
-        length = 0;
-        isRow = true;
-        data = NULL;
+    // Constructor
+    __host__ DenseVector() {
     }
 
-    __host__ __device__ Vector(int _length, bool _isRow, T *_data) {
+    __host__ DenseVector(int _length, bool _isRow) {
         length = _length;
         isRow = _isRow;
-        data = _data;
+        DeliteCudaMalloc((void**)&data,length*sizeof(T));
     }
 
     // Accessor Functions
@@ -43,6 +41,12 @@ public:
 
     __host__ __device__ void dcUpdate(int idx, T value) {
         data[idx] = value;
+    }
+
+    // unsafeSetData
+    __host__ void unsafeSetData(DeliteArray<T> *da, int _length) {
+        data = da->data;
+        length = _length;
     }
     
 };
