@@ -1,3 +1,4 @@
+/*
 #ifndef _VECTORVIEWIMPL_H_
 #define _VECTORVIEWIMPL_H_
 
@@ -54,3 +55,4 @@ public:
 };
 
 #endif
+*/

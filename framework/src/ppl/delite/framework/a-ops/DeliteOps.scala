@@ -1781,7 +1781,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
     }
       (symList zip op.body) foreach {
         case (sym, elem:DeliteCollectElem[_,_]) =>
-          emitAllocFunc(sym,elem.alloc)
+          emitAllocFunc(sym,elem.alloc,elem.aV,op.size)
           stream.println(addTab()+"%s.dcUpdate(%s, %s);".format(quote(sym),quote(op.v),quote(getBlockResult(elem.func))))
           //val (loopFunc,freeVars) = emitDevFunc(elem.func, List(op.v))
           //if(freeVars.length==0) {
@@ -1800,7 +1800,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
           if(isPrimitiveType(elem.zero.Type)) throw new GenerationFailedException("CudaGen: DeliteReduceElem is not supported yet.")
           val isAliased = checkAlias(elem.zero)
           assert(getBlockResult(elem.zero).isInstanceOf[Sym[Any]])
-          if(!isAliased) emitAllocFunc(getBlockResult(elem.zero).asInstanceOf[Sym[Any]],elem.zero)
+          if(!isAliased) emitAllocFunc(getBlockResult(elem.zero).asInstanceOf[Sym[Any]],elem.zero,null,op.size)
           else stream.println("%s %s_zero = %s;".format(remap(sym.Type),quote(sym),quote(getBlockResult(elem.zero))))
           emitCloneFunc(sym,getBlockResult(elem.zero).asInstanceOf[Sym[_]])
           emitReduceElem(op, sym, elem)

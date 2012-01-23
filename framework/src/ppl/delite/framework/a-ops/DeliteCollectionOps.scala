@@ -142,7 +142,7 @@ trait CudaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with CudaGen
       case DeliteCollectionApply(x,n) => emitValDef(sym, quote(getBlockResult(x)) + ".dcApply(" + quote(n) + ")")
       //case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(y) + ")")
       case DeliteCollectionUpdate(x,n,y) => stream.println(quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(y) + ");")
-      case DeliteCollectionUnsafeSetData(x,d) => emitValDef(sym, quote(getBlockResult(x)) + ".unsafeSetData(" + quote(d) + "," + quote(d) + ".length)")
+      case DeliteCollectionUnsafeSetData(x,d) => stream.println(quote(getBlockResult(x)) + "_ptr->unsafeSetData(" + quote(d) + "," + quote(d) + "->length);")
       case _ => super.emitNode(sym, rhs)
     }
   }

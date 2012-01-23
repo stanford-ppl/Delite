@@ -11,16 +11,12 @@ public:
 	int numCols;
 	
 	// Constructors
-	__host__ __device__ Matrix() {
-		numRows = 0;
-		numCols = 0;
-		data = NULL;
-	}
+	__host__ __device__ Matrix() {}
 
-	__host__ __device__ Matrix(int _numRows, int _numCols, T *_data) {
-		numRows = _numRows;
-		numCols = _numCols;
-		data = _data;
+	__host__ __device__ Matrix(int _numRows, int _numCols) {
+        numRows = _numRows;
+        numCols = _numCols;
+        DeliteCudaMalloc((void**)&data,numRows*numCols*sizeof(T));
 	}
 
 	// Accessor Functions
@@ -42,16 +38,11 @@ public:
         data[idx] = value;
     }
 
-/*
-    __host__ __device__ Vector<T> vview(int _start, int _stride, int _length, bool _isRow) {
-      VectorView<T> res;
-      res.data = data;
-      res.length = _length;
-      res.isRow = _isRow;
-      res.start = _start;
-      res.stride = _stride;
+    // unsafeSetData
+    __host__ void unsafeSetData(DeliteArray<T> *da, int _length) {
+        data = da->data;
+        //length = _length;
     }
-*/	
 };
 
 #endif
