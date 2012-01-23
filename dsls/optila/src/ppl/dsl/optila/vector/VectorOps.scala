@@ -147,6 +147,7 @@ trait VectorOps extends Variables {
     //val plusInfo: OpInfo[A,VPLUSR,Interface[Vector[A]]]    
     //def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_plus[A,VPLUSR](x,y)(manifest[A], implicitly[Arith[A]], plusInfo.mR, plusInfo.b)
     def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_plus[A,VPLUSR](x,y)
+    def +[B:Manifest](y: Interface[Vector[B]])(implicit a: Arith[A], c: Rep[B] => Rep[A]) = vector_plus_withconvert[B,A,VPLUSR](y,x)
     def +(y: Rep[VA])(implicit a: Arith[A]): Rep[VA] = vector_plus[A,VA](x,y) // needed for Arith        
     def +(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_plus_scalar[A,VPLUSR](x,y) 
     def +=(y: Interface[Vector[A]])(implicit a: Arith[A]) = { vector_plusequals[A](x,y); elem }
@@ -158,6 +159,7 @@ trait VectorOps extends Variables {
     implicit val vminusBuilder: VectorBuilder[A,VMINUSR]    
     def vminusToIntf(x: Rep[VMINUSR]): Interface[Vector[A]]
     def -(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_minus[A,VMINUSR](x,y)
+    def -[B:Manifest](y: Interface[Vector[B]])(implicit a: Arith[A], c: Rep[B] => Rep[A]) = vector_minus_withconvert[B,A,VMINUSR](y,x)
     def -(y: Rep[VA])(implicit a: Arith[A]) = vector_minus[A,VA](x,y)
     def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_minus_scalar[A,VMINUSR](x,y)
     def -=(y: Interface[Vector[A]])(implicit a: Arith[A]) = { vector_minusequals[A](x,y); x }
@@ -168,11 +170,10 @@ trait VectorOps extends Variables {
     implicit val mVTIMESR: Manifest[VTIMESR]
     implicit val vtimesBuilder: VectorBuilder[A,VTIMESR]    
     def vtimesToIntf(x: Rep[VTIMESR]): Interface[Vector[A]]    
-    //def *[B](y: Rep[DenseVector[B]])(implicit mB: Manifest[B], a: Arith[A], conv: Rep[B] => Rep[A]) = densevector_times_withconvert(x,y,conv)
-    //def *[B](y: Rep[DenseVector[B]])(implicit mB: Manifest[B], aB: Arith[B], conv: Rep[A] => Rep[B], o: Overloaded1) = densevector_times_withconvertright(x,y,conv)    
     // TODO: need to extend Arith to support this using CanXX dispatch
     // Rep[DenseVector[Double]] * Rep[RangeVector] (Rep[DenseVector[Double]] * Interface[Vector[Int]])    
     def *(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_times[A,VTIMESR](x,y)        
+    def *[B:Manifest](y: Interface[Vector[B]])(implicit a: Arith[A], c: Rep[B] => Rep[A]) = vector_times_withconvert[B,A,VTIMESR](y,x)
     def *(y: Rep[VA])(implicit a: Arith[A]) = vector_times[A,VA](x,y)
     def *(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_times_scalar[A,VTIMESR](x,y)
     def *=(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_timesequals[A](x,y)    
@@ -184,6 +185,7 @@ trait VectorOps extends Variables {
     def dot(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_dot_product(x,y)
 
     def /(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_divide[A,VA](x,y)    
+    def /[B:Manifest](y: Interface[Vector[B]])(implicit a: Arith[A], c: Rep[B] => Rep[A]) = vector_divide_withconvert[B,A,VA](y,x)
     def /(y: Rep[VA])(implicit a: Arith[A]) = vector_divide[A,VA](x,y)
     def /(y: Rep[A])(implicit a: Arith[A], o: Overloaded1) = vector_divide_scalar[A,VA](x,y)    
     def /=(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_divideequals[A](x,y)    
@@ -225,6 +227,19 @@ trait VectorOps extends Variables {
     // def groupBy[K:Manifest](pred: Rep[A] => Rep[K]): Rep[V[VA]] = vector_groupby[A,K,VA,V[VA]](x,pred)                        
   }
   
+  // somehow matching Double for VL?!
+  // def infix_+[L,R:Arith:Manifest,VR <: Vector[R]:Manifest](lhs: L, rhs: Rep[VR])(implicit c: L => Rep[R], vb: VectorBuilder[R,VR], toIntf: Rep[VR] => Interface[Vector[R]], o: Overloaded2): Rep[VR] = vector_plus_scalar[R,VR](toIntf(rhs),c(lhs))(manifest[R],implicitly[Arith[R]],manifest[VR],vb)
+  // def infix_+[L:Arith:Manifest,R:Manifest,VL <: Vector[L]:Manifest,VR <: Vector[R]:Manifest](lhs: Rep[L], rhs: Rep[VR])(implicit c: Rep[R] => Rep[L], vb: VectorBuilder[L,VL], toIntf: Rep[VR] => Interface[Vector[R]], o: Overloaded3): Rep[VL] = vector_plus_scalar_withconvert[R,L,VL](toIntf(rhs),lhs)(manifest[R],manifest[L],implicitly[Arith[L]],manifest[VL],c,vb)
+  // def infix_+[L:Manifest,R:Arith:Manifest,VL <: Vector[L]:Manifest,VR <: Vector[R]:Manifest](lhs: Rep[VL], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,VR], toIntf: Rep[VL] => Interface[Vector[L]], o: Overloaded4): Rep[VR] = vector_plus_scalar_withconvert[L,R,VR](toIntf(lhs),rhs)(manifest[L],manifest[R],implicitly[Arith[R]],manifest[VR],c,vb)
+  // def infix_+[L:Manifest,R:Arith:Manifest,VL <: Vector[L]:Manifest,VR <: Vector[R]:Manifest](lhs: Rep[VL], rhs: R)(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,VR], toIntf: Rep[VL] => Interface[Vector[L]], o: Overloaded5): Rep[VR] = vector_plus_scalar_withconvert[L,R,VR](toIntf(lhs),unit(rhs))(manifest[L],manifest[R],implicitly[Arith[R]],manifest[VR],c,vb)  
+  // def infix_+[L:Manifest,R:Arith:Manifest,VL <: Vector[L]:Manifest,VR <: Vector[R]:Manifest](lhs: Rep[VL], rhs: Rep[VR])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,VR], toIntfL: Rep[VL] => Interface[Vector[L]], toIntfR: Rep[VR] => Interface[Vector[R]], o: Overloaded6): Rep[VR] = vector_plus_withconvert[L,R,VR](toIntfL(lhs),toIntfR(rhs))(manifest[L],manifest[R],implicitly[Arith[R]],manifest[VR],c,vb)  
+  // def infix_+[VR <: Vector[Double]:Manifest](lhs: Rep[Int], rhs: Rep[VR])(implicit vb: VectorBuilder[Double,VR], toIntf: Rep[VR] => Interface[Vector[Double]], o: Overloaded7): Rep[VR] = vector_plus_scalar[Double,VR](toIntf(rhs),repIntToRepDouble(lhs))(manifest[Double],implicitly[Arith[Double]],manifest[VR],vb)
+  // def infix_+[VR <: Vector[Float]:Manifest](lhs: Rep[Int], rhs: Rep[VR])(implicit vb: VectorBuilder[Float,VR], toIntf: Rep[VR] => Interface[Vector[Float]], o: Overloaded8): Rep[VR] = vector_plus_scalar[Float,VR](toIntf(rhs),repIntToRepFloat(lhs))(manifest[Float],implicitly[Arith[Float]],manifest[VR],vb)
+  // def infix_+[VR <: Vector[Double]:Manifest](lhs: Rep[Float], rhs: Rep[VR])(implicit vb: VectorBuilder[Double,VR], toIntf: Rep[VR] => Interface[Vector[Double]], o: Overloaded9): Rep[VR] = vector_plus_scalar[Double,VR](toIntf(rhs),repFloatToRepDouble(lhs))(manifest[Double],implicitly[Arith[Double]],manifest[VR],vb)
+  // def infix_+[VR <: Vector[Int]:Manifest,VF <: Vector[Float]:Manifest](lhs: Float, rhs: Rep[VR])(implicit vb: VectorBuilder[Float,VF], toIntf: Rep[VR] => Interface[Vector[Int]], o: Overloaded10): Rep[VF] = vector_plus_scalar_withconvert[Int,Float,VF](toIntf(rhs),unit(lhs))(manifest[Int],manifest[Float],implicitly[Arith[Float]],manifest[VF],repIntToRepFloat,vb)
+  // def infix_+[VR <: Vector[Int]:Manifest,VD <: Vector[Double]:Manifest](lhs: Double, rhs: Rep[VR])(implicit vb: VectorBuilder[Double,VD], toIntf: Rep[VR] => Interface[Vector[Int]], o: Overloaded11): Rep[VD] = vector_plus_scalar_withconvert[Int,Double,VD](toIntf(rhs),unit(lhs))(manifest[Int],manifest[Double],implicitly[Arith[Double]],manifest[VD],repIntToRepDouble,vb)
+  // def infix_+[VR <: Vector[Float]:Manifest,VD <: Vector[Double]:Manifest](lhs: Double, rhs: Rep[VR])(implicit vb: VectorBuilder[Double,VD], toIntf: Rep[VR] => Interface[Vector[Float]], o: Overloaded12): Rep[VD] = vector_plus_scalar_withconvert[Float,Double,VD](toIntf(rhs),unit(lhs))(manifest[Float],manifest[Double],implicitly[Arith[Double]],manifest[VD],repFloatToRepDouble,vb)
+    
   // clients that can handle multiple kinds of vector must accept an Interface[Vector[T]],  not a Rep[Vector[T]]
   class VInterface[A:Manifest](val ops: VecOpsCls[A]) extends DCInterface[Vector[A],A] {// clients use Interface[Vector]
     override def toString = "VInterface(" + ops.elem.toString + "  [manifest: " + ops.mA.toString + "])"
@@ -362,22 +377,30 @@ trait VectorOps extends Variables {
   def vector_concatenate[A:Manifest,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
   
   def vector_plus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def vector_plus_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]])(implicit conv: Rep[A] => Rep[B], b: VectorBuilder[B,VB]): Rep[VB]
   def vector_plus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]): Rep[VA] 
+  def vector_plus_scalar_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Rep[B])(implicit conv: Rep[A] => Rep[B], b: VectorBuilder[B,VB]): Rep[VB]
   def vector_plusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[Unit]
   def vector_plusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]): Rep[Unit]   
   def vector_minus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def vector_minus_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]])(implicit conv: Rep[A] => Rep[B], b: VectorBuilder[B,VB]): Rep[VB]
   def vector_minus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]): Rep[VA] 
+  def vector_minus_scalar_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Rep[B])(implicit conv: Rep[A] => Rep[B], b: VectorBuilder[B,VB]): Rep[VB]
   def vector_minusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[Unit]
   def vector_minusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]): Rep[Unit] 
   def vector_times[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def vector_times_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]])(implicit conv: Rep[A] => Rep[B], b: VectorBuilder[B,VB]): Rep[VB]
   def vector_times_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]): Rep[VA] 
+  def vector_times_scalar_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Rep[B])(implicit conv: Rep[A] => Rep[B], b: VectorBuilder[B,VB]): Rep[VB]
   def vector_timesequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[Unit]
   def vector_timesequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]): Rep[Unit] 
   //def vector_times_matrix[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[Matrix[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
   def vector_dot_product[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[A]
   def vector_outer[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[Matrix[A]]  
   def vector_divide[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def vector_divide_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]])(implicit conv: Rep[A] => Rep[B], b: VectorBuilder[B,VB]): Rep[VB]
   def vector_divide_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]): Rep[VA] 
+  def vector_divide_scalar_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Rep[B])(implicit conv: Rep[A] => Rep[B], b: VectorBuilder[B,VB]): Rep[VB]
   def vector_divideequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]): Rep[Unit]
   def vector_divideequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]): Rep[Unit] 
   
@@ -555,12 +578,42 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     def func = (a,b) => a + b
   }
 
+  case class VectorPlusWithConvert[A:Manifest,B:Manifest:Arith,VB:Manifest](intfA: Interface[Vector[A]], intfB: Interface[Vector[B]])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB])
+    extends DeliteOpZipWith[A,B,B,VB] {
+    
+    val inA = intfA.ops.elem.asInstanceOf[Exp[Vector[A]]]
+    val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[B]]]
+    
+    def alloc = b.alloc(intfA.length, intfA.isRow)
+    val size = copyTransformedOrElse(_.size)(intfA.length)
+
+    def m = manifest[B]
+    def mVB = manifest[VB]
+    def a = implicitly[Arith[B]]
+  
+    def func = (a,b) => conv(a) + b
+  }
+  
   case class VectorPlusScalar[A:Manifest:Arith,VA:Manifest](intf: Interface[Vector[A]], y: Exp[A])(implicit b: VectorBuilder[A,VA])
     extends VectorArithmeticMap[A,VA] {
 
     def func = e => e + y
   }
+  
+  case class VectorPlusScalarWithConvert[A:Manifest,B:Manifest:Arith,VB:Manifest](intf: Interface[Vector[A]], y: Exp[B])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB])
+    extends DeliteOpMap[A,B,VB] {
+    
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
+    def alloc = b.alloc(intf.length, intf.isRow)
+    val size = copyTransformedOrElse(_.size)(intf.length)
 
+    def m = manifest[B]
+    def mVB = manifest[VB]
+    def a = implicitly[Arith[B]]
+  
+    def func = e => conv(e) + y
+  }
+  
   case class VectorPlusEquals[A:Manifest:Arith](intf: Interface[Vector[A]], intfB: Interface[Vector[A]])
     extends VectorArithmeticIndexedLoop { 
 
@@ -578,13 +631,43 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
 
     def func = (a,b) => a - b
   }
+  
+  case class VectorMinusWithConvert[A:Manifest,B:Manifest:Arith,VB:Manifest](intfA: Interface[Vector[A]], intfB: Interface[Vector[B]])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB])
+    extends DeliteOpZipWith[A,B,B,VB] {
+    
+    val inA = intfA.ops.elem.asInstanceOf[Exp[Vector[A]]]
+    val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[B]]]
+    
+    def alloc = b.alloc(intfA.length, intfA.isRow)
+    val size = copyTransformedOrElse(_.size)(intfA.length)
 
+    def m = manifest[B]
+    def mVB = manifest[VB]
+    def a = implicitly[Arith[B]]
+  
+    def func = (a,b) => conv(a) - b
+  }
+  
   case class VectorMinusScalar[A:Manifest:Arith,VA:Manifest](intf: Interface[Vector[A]], y: Exp[A])(implicit b: VectorBuilder[A,VA])
     extends VectorArithmeticMap[A,VA] {
 
     def func = e => e - y
   }
 
+  case class VectorMinusScalarWithConvert[A:Manifest,B:Manifest:Arith,VB:Manifest](intf: Interface[Vector[A]], y: Exp[B])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB])
+    extends DeliteOpMap[A,B,VB] {
+    
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
+    def alloc = b.alloc(intf.length, intf.isRow)
+    val size = copyTransformedOrElse(_.size)(intf.length)
+
+    def m = manifest[B]
+    def mVB = manifest[VB]
+    def a = implicitly[Arith[B]]
+  
+    def func = e => conv(e) - y
+  }
+  
   case class VectorMinusEquals[A:Manifest:Arith](intf: Interface[Vector[A]], intfB: Interface[Vector[A]])
     extends VectorArithmeticIndexedLoop { 
 
@@ -602,13 +685,43 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
 
     def func = (a,b) => a * b
   }
+  
+  case class VectorTimesWithConvert[A:Manifest,B:Manifest:Arith,VB:Manifest](intfA: Interface[Vector[A]], intfB: Interface[Vector[B]])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB])
+    extends DeliteOpZipWith[A,B,B,VB] {
+    
+    val inA = intfA.ops.elem.asInstanceOf[Exp[Vector[A]]]
+    val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[B]]]
+    
+    def alloc = b.alloc(intfA.length, intfA.isRow)
+    val size = copyTransformedOrElse(_.size)(intfA.length)
 
+    def m = manifest[B]
+    def mVB = manifest[VB]
+    def a = implicitly[Arith[B]]
+  
+    def func = (a,b) => conv(a) * b
+  }
+  
   case class VectorTimesScalar[A:Manifest:Arith,VA:Manifest](intf: Interface[Vector[A]], y: Exp[A])(implicit b: VectorBuilder[A,VA])
     extends VectorArithmeticMap[A,VA] {
 
     def func = e => e * y
   }
+  
+  case class VectorTimesScalarWithConvert[A:Manifest,B:Manifest:Arith,VB:Manifest](intf: Interface[Vector[A]], y: Exp[B])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB])
+    extends DeliteOpMap[A,B,VB] {
+    
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
+    def alloc = b.alloc(intf.length, intf.isRow)
+    val size = copyTransformedOrElse(_.size)(intf.length)
 
+    def m = manifest[B]
+    def mVB = manifest[VB]
+    def a = implicitly[Arith[B]]
+  
+    def func = e => conv(e) * y
+  }
+  
   case class VectorTimesEquals[A:Manifest:Arith](intf: Interface[Vector[A]], intfB: Interface[Vector[A]])
     extends VectorArithmeticIndexedLoop { 
 
@@ -642,12 +755,42 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
 
     def func = (a,b) => a / b
   }
+  
+  case class VectorDivideWithConvert[A:Manifest,B:Manifest:Arith,VB:Manifest](intfA: Interface[Vector[A]], intfB: Interface[Vector[B]])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB])
+    extends DeliteOpZipWith[A,B,B,VB] {
+    
+    val inA = intfA.ops.elem.asInstanceOf[Exp[Vector[A]]]
+    val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[B]]]
+    
+    def alloc = b.alloc(intfA.length, intfA.isRow)
+    val size = copyTransformedOrElse(_.size)(intfA.length)
+
+    def m = manifest[B]
+    def mVB = manifest[VB]
+    def a = implicitly[Arith[B]]
+  
+    def func = (a,b) => conv(a) / b
+  }
 
   case class VectorDivideScalar[A:Manifest:Arith,VA:Manifest](intf: Interface[Vector[A]], y: Exp[A])(implicit b: VectorBuilder[A,VA])
     extends VectorArithmeticMap[A,VA] {
 
     def func = e => e / y
   }
+  
+  case class VectorDivideScalarWithConvert[A:Manifest,B:Manifest:Arith,VB:Manifest](intf: Interface[Vector[A]], y: Exp[B])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB])
+    extends DeliteOpMap[A,B,VB] {
+    
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
+    def alloc = b.alloc(intf.length, intf.isRow)
+    val size = copyTransformedOrElse(_.size)(intf.length)
+
+    def m = manifest[B]
+    def mVB = manifest[VB]
+    def a = implicitly[Arith[B]]
+  
+    def func = e => conv(e) / y
+  }  
 
   case class VectorDivideEquals[A:Manifest:Arith](intf: Interface[Vector[A]], intfB: Interface[Vector[A]])
     extends VectorArithmeticIndexedLoop { 
@@ -900,22 +1043,30 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   def vector_concatenate[A:Manifest,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorConcatenate[A,VA](x,y))
   
   def vector_plus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorPlus[A,VA](x,y))
+  def vector_plus_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB]) = reflectPure(VectorPlusWithConvert[A,B,VB](x,y))
   def vector_plus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorPlusScalar[A,VA](x,y))
+  def vector_plus_scalar_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Exp[B])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB]) = reflectPure(VectorPlusScalarWithConvert[A,B,VB](x,y))
   def vector_plusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectWrite(x.ops.elem)(VectorPlusEquals(x,y))
   def vector_plusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]) = reflectWrite(x.ops.elem)(VectorPlusEqualsScalar(x,y))
   def vector_minus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorMinus[A,VA](x,y))
+  def vector_minus_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB]) = reflectPure(VectorMinusWithConvert[A,B,VB](x,y))
   def vector_minus_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorMinusScalar[A,VA](x,y))
+  def vector_minus_scalar_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Exp[B])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB]) = reflectPure(VectorMinusScalarWithConvert[A,B,VB](x,y))
   def vector_minusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectWrite(x.ops.elem)(VectorMinusEquals(x,y))
   def vector_minusequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]) = reflectWrite(x.ops.elem)(VectorMinusEqualsScalar(x,y))  
   def vector_times[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorTimes[A,VA](x,y))
+  def vector_times_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB]) = reflectPure(VectorTimesWithConvert[A,B,VB](x,y))
   def vector_times_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorTimesScalar[A,VA](x,y))
+  def vector_times_scalar_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Exp[B])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB]) = reflectPure(VectorTimesScalarWithConvert[A,B,VB](x,y))
   def vector_timesequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectWrite(x.ops.elem)(VectorTimesEquals(x,y))
   def vector_timesequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]) = reflectWrite(x.ops.elem)(VectorTimesEqualsScalar(x,y))  
   //def vector_times_matrix[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Exp[Matrix[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorTimesMatrix[A,VA](x,y))
   def vector_dot_product[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectPure(VectorDotProduct(x,y))
   def vector_outer[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectPure(VectorOuter(x,y))
   def vector_divide[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorDivide[A,VA](x,y))
+  def vector_divide_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB]) = reflectPure(VectorDivideWithConvert[A,B,VB](x,y))
   def vector_divide_scalar[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Rep[A])(implicit b: VectorBuilder[A,VA]) = reflectPure(VectorDivideScalar[A,VA](x,y))
+  def vector_divide_scalar_withconvert[A:Manifest,B:Manifest:Arith,VB:Manifest](x: Interface[Vector[A]], y: Exp[B])(implicit conv: Exp[A] => Exp[B], b: VectorBuilder[B,VB]) = reflectPure(VectorDivideScalarWithConvert[A,B,VB](x,y))
   def vector_divideequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = reflectWrite(x.ops.elem)(VectorDivideEquals(x,y))
   def vector_divideequals_scalar[A:Manifest:Arith](x: Interface[Vector[A]], y: Rep[A]) = reflectWrite(x.ops.elem)(VectorDivideEqualsScalar(x,y))  
 

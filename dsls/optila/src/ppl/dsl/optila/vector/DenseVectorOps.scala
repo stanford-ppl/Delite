@@ -91,11 +91,69 @@ trait DenseVectorOps extends Variables {
     def partition(pred: Rep[A] => Rep[Boolean]) = densevector_partition(elem,pred)
     def groupBy[K:Manifest](pred: Rep[A] => Rep[K]) = densevector_groupby(elem,pred)                  
   }
+
+  // !!
+  // these unfortunately have to be duplicated right now for each type of Vector. Any way to incorporate this into our generic dispatch?
   
   def __equal[A](a: Rep[DenseVector[A]], b: Rep[DenseVector[A]])(implicit o: Overloaded1, mA: Manifest[A]): Rep[Boolean] = densevector_equals(a,b)
   def __equal[A](a: Rep[DenseVector[A]], b: Var[DenseVector[A]])(implicit o: Overloaded2, mA: Manifest[A]): Rep[Boolean] = densevector_equals(a,b)
   def __equal[A](a: Var[DenseVector[A]], b: Rep[DenseVector[A]])(implicit o: Overloaded3, mA: Manifest[A]): Rep[Boolean] = densevector_equals(a,b)
   def __equal[A](a: Var[DenseVector[A]], b: Var[DenseVector[A]])(implicit o: Overloaded4, mA: Manifest[A]): Rep[Boolean] = densevector_equals(a,b)
+
+
+  /**
+   * Binary math operations on DenseVectors with unit conversions. This should be generalized for all Vectors, 
+   * but so far we've encountered issues getting the type inference to work out (see VectorOps.scala)  
+   */  
+  
+  // generic addition
+  def infix_+[L,R:Arith:Manifest](lhs: L, rhs: Rep[DenseVector[R]])(implicit c: L => Rep[R], o: Overloaded1): Rep[DenseVector[R]] = vector_plus_scalar[R,DenseVector[R]](denseToInterface(rhs),c(lhs))
+  def infix_+[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[DenseVector[R]])(implicit c: Rep[R] => Rep[L], o: Overloaded2): Rep[DenseVector[L]] = vector_plus_scalar_withconvert[R,L,DenseVector[L]](denseToInterface(rhs),lhs)
+  def infix_+[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], o: Overloaded3): Rep[DenseVector[R]] = vector_plus_scalar_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),rhs)
+  def infix_+[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: R)(implicit c: Rep[L] => Rep[R], o: Overloaded4): Rep[DenseVector[R]] = vector_plus_scalar_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),unit(rhs))
+  def infix_+[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: Rep[DenseVector[R]])(implicit c: Rep[L] => Rep[R], o: Overloaded13): Rep[DenseVector[R]] = vector_plus_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),denseToInterface(rhs))
+  
+  // special cases to fill in the holes
+  def infix_+(lhs: Rep[Int], rhs: Rep[DenseVector[Double]])(implicit o: Overloaded5): Rep[DenseVector[Double]] = vector_plus_scalar[Double,DenseVector[Double]](denseToInterface(rhs),repIntToRepDouble(lhs))
+  def infix_+(lhs: Rep[Int], rhs: Rep[DenseVector[Float]])(implicit o: Overloaded6): Rep[DenseVector[Float]] = vector_plus_scalar[Float,DenseVector[Float]](denseToInterface(rhs),repIntToRepFloat(lhs))
+  def infix_+(lhs: Rep[Float], rhs: Rep[DenseVector[Double]])(implicit o: Overloaded7): Rep[DenseVector[Double]] = vector_plus_scalar[Double,DenseVector[Double]](denseToInterface(rhs),repFloatToRepDouble(lhs))
+  def infix_+(lhs: Int, rhs: Rep[DenseVector[Int]])(implicit o: Overloaded8): Rep[DenseVector[Int]] = repToDenseVecOps(rhs).+(unit(lhs))
+  def infix_+(lhs: Float, rhs: Rep[DenseVector[Float]])(implicit o: Overloaded9): Rep[DenseVector[Float]] = repToDenseVecOps(rhs).+(unit(lhs))
+  def infix_+(lhs: Float, rhs: Rep[DenseVector[Int]])(implicit o: Overloaded10): Rep[DenseVector[Float]] = vector_plus_scalar_withconvert[Int,Float,DenseVector[Float]](denseToInterface(rhs),unit(lhs))
+  def infix_+(lhs: Double, rhs: Rep[DenseVector[Int]])(implicit o: Overloaded11): Rep[DenseVector[Double]] = vector_plus_scalar_withconvert[Int,Double,DenseVector[Double]](denseToInterface(rhs),unit(lhs))
+  def infix_+(lhs: Double, rhs: Rep[DenseVector[Float]])(implicit o: Overloaded12): Rep[DenseVector[Double]] = vector_plus_scalar_withconvert[Float,Double,DenseVector[Double]](denseToInterface(rhs),unit(lhs))
+
+  def infix_-[L,R:Arith:Manifest](lhs: L, rhs: Rep[DenseVector[R]])(implicit c: L => Rep[R], o: Overloaded1): Rep[DenseVector[R]] = vector_minus_scalar[R,DenseVector[R]](denseToInterface(rhs),c(lhs))
+  def infix_-[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[DenseVector[R]])(implicit c: Rep[R] => Rep[L], o: Overloaded2): Rep[DenseVector[L]] = vector_minus_scalar_withconvert[R,L,DenseVector[L]](denseToInterface(rhs),lhs)
+  def infix_-[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], o: Overloaded3): Rep[DenseVector[R]] = vector_minus_scalar_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),rhs)
+  def infix_-[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: R)(implicit c: Rep[L] => Rep[R], o: Overloaded4): Rep[DenseVector[R]] = vector_minus_scalar_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),unit(rhs))
+  def infix_-[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: Rep[DenseVector[R]])(implicit c: Rep[L] => Rep[R], o: Overloaded13): Rep[DenseVector[R]] = vector_minus_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),denseToInterface(rhs))
+  def infix_-(lhs: Rep[Int], rhs: Rep[DenseVector[Double]])(implicit o: Overloaded5): Rep[DenseVector[Double]] = vector_minus_scalar[Double,DenseVector[Double]](denseToInterface(rhs),repIntToRepDouble(lhs))
+  def infix_-(lhs: Rep[Int], rhs: Rep[DenseVector[Float]])(implicit o: Overloaded6): Rep[DenseVector[Float]] = vector_minus_scalar[Float,DenseVector[Float]](denseToInterface(rhs),repIntToRepFloat(lhs))
+  def infix_-(lhs: Rep[Float], rhs: Rep[DenseVector[Double]])(implicit o: Overloaded7): Rep[DenseVector[Double]] = vector_minus_scalar[Double,DenseVector[Double]](denseToInterface(rhs),repFloatToRepDouble(lhs))
+  def infix_-(lhs: Int, rhs: Rep[DenseVector[Int]])(implicit o: Overloaded8): Rep[DenseVector[Int]] = repToDenseVecOps(rhs).-(unit(lhs))
+  def infix_-(lhs: Float, rhs: Rep[DenseVector[Float]])(implicit o: Overloaded9): Rep[DenseVector[Float]] = repToDenseVecOps(rhs).-(unit(lhs))
+  def infix_-(lhs: Float, rhs: Rep[DenseVector[Int]])(implicit o: Overloaded10): Rep[DenseVector[Float]] = vector_minus_scalar_withconvert[Int,Float,DenseVector[Float]](denseToInterface(rhs),unit(lhs))
+  def infix_-(lhs: Double, rhs: Rep[DenseVector[Int]])(implicit o: Overloaded11): Rep[DenseVector[Double]] = vector_minus_scalar_withconvert[Int,Double,DenseVector[Double]](denseToInterface(rhs),unit(lhs))
+  def infix_-(lhs: Double, rhs: Rep[DenseVector[Float]])(implicit o: Overloaded12): Rep[DenseVector[Double]] = vector_minus_scalar_withconvert[Float,Double,DenseVector[Double]](denseToInterface(rhs),unit(lhs))
+  
+  def infix_*[L,R:Arith:Manifest](lhs: L, rhs: Rep[DenseVector[R]])(implicit c: L => Rep[R], o: Overloaded1): Rep[DenseVector[R]] = vector_times_scalar[R,DenseVector[R]](denseToInterface(rhs),c(lhs))
+  def infix_*[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[L], rhs: Rep[DenseVector[R]])(implicit c: Rep[R] => Rep[L], o: Overloaded2): Rep[DenseVector[L]] = vector_times_scalar_withconvert[R,L,DenseVector[L]](denseToInterface(rhs),lhs)
+  def infix_*[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], o: Overloaded3): Rep[DenseVector[R]] = vector_times_scalar_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),rhs)
+  def infix_*[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: R)(implicit c: Rep[L] => Rep[R], o: Overloaded4): Rep[DenseVector[R]] = vector_times_scalar_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),unit(rhs))
+  def infix_*[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: Rep[DenseVector[R]])(implicit c: Rep[L] => Rep[R], o: Overloaded13): Rep[DenseVector[R]] = vector_times_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),denseToInterface(rhs))
+  def infix_*(lhs: Rep[Int], rhs: Rep[DenseVector[Double]])(implicit o: Overloaded5): Rep[DenseVector[Double]] = vector_times_scalar[Double,DenseVector[Double]](denseToInterface(rhs),repIntToRepDouble(lhs))
+  def infix_*(lhs: Rep[Int], rhs: Rep[DenseVector[Float]])(implicit o: Overloaded6): Rep[DenseVector[Float]] = vector_times_scalar[Float,DenseVector[Float]](denseToInterface(rhs),repIntToRepFloat(lhs))
+  def infix_*(lhs: Rep[Float], rhs: Rep[DenseVector[Double]])(implicit o: Overloaded7): Rep[DenseVector[Double]] = vector_times_scalar[Double,DenseVector[Double]](denseToInterface(rhs),repFloatToRepDouble(lhs))
+  def infix_*(lhs: Int, rhs: Rep[DenseVector[Int]])(implicit o: Overloaded8): Rep[DenseVector[Int]] = repToDenseVecOps(rhs).*(unit(lhs))
+  def infix_*(lhs: Float, rhs: Rep[DenseVector[Float]])(implicit o: Overloaded9): Rep[DenseVector[Float]] = repToDenseVecOps(rhs).*(unit(lhs))
+  def infix_*(lhs: Float, rhs: Rep[DenseVector[Int]])(implicit o: Overloaded10): Rep[DenseVector[Float]] = vector_times_scalar_withconvert[Int,Float,DenseVector[Float]](denseToInterface(rhs),unit(lhs))
+  def infix_*(lhs: Double, rhs: Rep[DenseVector[Int]])(implicit o: Overloaded11): Rep[DenseVector[Double]] = vector_times_scalar_withconvert[Int,Double,DenseVector[Double]](denseToInterface(rhs),unit(lhs))
+  def infix_*(lhs: Double, rhs: Rep[DenseVector[Float]])(implicit o: Overloaded12): Rep[DenseVector[Double]] = vector_times_scalar_withconvert[Float,Double,DenseVector[Double]](denseToInterface(rhs),unit(lhs))
+  
+  def infix_/[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], o: Overloaded3): Rep[DenseVector[R]] = vector_divide_scalar_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),rhs)
+  def infix_/[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: R)(implicit c: Rep[L] => Rep[R], o: Overloaded4): Rep[DenseVector[R]] = vector_divide_scalar_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),unit(rhs))
+  def infix_/[L:Arith:Manifest,R:Arith:Manifest](lhs: Rep[DenseVector[L]], rhs: Rep[DenseVector[R]])(implicit c: Rep[L] => Rep[R], o: Overloaded13): Rep[DenseVector[R]] = vector_divide_withconvert[L,R,DenseVector[R]](denseToInterface(lhs),denseToInterface(rhs))
   
   // class defs
   def densevector_length[A:Manifest](x: Rep[DenseVector[A]]): Rep[Int]
