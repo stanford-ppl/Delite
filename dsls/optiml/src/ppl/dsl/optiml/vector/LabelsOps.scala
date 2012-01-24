@@ -7,24 +7,25 @@ import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.common.ScalaGenBase
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml._
+import scala.reflect.SourceContext
 
 trait LabelsOps extends Base with OverloadHack {
   this: OptiML =>
 
   object Labels {
-    def apply[A:Manifest](length: Rep[Int]) = labels_obj_fromVec(Vector[A](length, unit(false)).unsafeImmutable)
-    def apply[A](xs: Rep[Vector[A]])(implicit mA: Manifest[A], o: Overloaded1) = labels_obj_fromVec(xs)
+    def apply[A:Manifest](length: Rep[Int])(implicit ctx: SourceContext) = labels_obj_fromVec(Vector[A](length, unit(false)).unsafeImmutable)
+    def apply[A](xs: Rep[Vector[A]])(implicit mA: Manifest[A], o: Overloaded1, ctx: SourceContext) = labels_obj_fromVec(xs)
   }
 
   // object defs
-  def labels_obj_fromVec[A:Manifest](xs: Rep[Vector[A]]): Rep[Labels[A]]
+  def labels_obj_fromVec[A:Manifest](xs: Rep[Vector[A]])(implicit ctx: SourceContext): Rep[Labels[A]]
 
   implicit def repLabelsToLabelsOps[A:Manifest](x: Rep[Labels[A]]) = new LabelsOpsCls(x)
 
   class LabelsOpsCls[A:Manifest](x: Rep[Labels[A]]){
-    def mmap(f: Rep[A] => Rep[A]) = labels_mmap(x,f)
+    def mmap(f: Rep[A] => Rep[A])(implicit ctx: SourceContext) = labels_mmap(x,f)
   }
-  def labels_mmap[A:Manifest](x: Rep[Labels[A]], f: Rep[A] => Rep[A]): Rep[Labels[A]]
+  def labels_mmap[A:Manifest](x: Rep[Labels[A]], f: Rep[A] => Rep[A])(implicit ctx: SourceContext): Rep[Labels[A]]
 }
 
 trait LabelsOpsExp extends LabelsOps with BaseExp { this: OptiMLExp =>
@@ -40,9 +41,9 @@ trait LabelsOpsExp extends LabelsOps with BaseExp { this: OptiMLExp =>
     val size = in.length    
   }  
 
-  def labels_obj_fromVec[A:Manifest](xs: Exp[Vector[A]]) = reflectEffect(LabelsObjectFromVec(xs))
+  def labels_obj_fromVec[A:Manifest](xs: Exp[Vector[A]])(implicit ctx: SourceContext) = reflectEffect(LabelsObjectFromVec(xs))
 
-  def labels_mmap[A:Manifest](x: Exp[Labels[A]], f: Exp[A] => Exp[A]) = {
+  def labels_mmap[A:Manifest](x: Exp[Labels[A]], f: Exp[A] => Exp[A])(implicit ctx: SourceContext) = {
     reflectWrite(x)(LabelsMutableMap(x, f)) //reflectReadWrite(x)
   }
 }

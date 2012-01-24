@@ -15,9 +15,9 @@ trait GrayscaleImageOps extends Variables {
   this: OptiML =>
 
   object GrayscaleImage {
-    def apply(numRows: Rep[Int], numCols: Rep[Int]) = grayscaleimage_obj_new(numRows, numCols)
-    def apply(x: Rep[Matrix[Int]]) = grayscaleimage_obj_frommat(x)
-    def cartToPolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]) = grayscaleimage_obj_carttopolar(x,y)
+    def apply(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = grayscaleimage_obj_new(numRows, numCols)
+    def apply(x: Rep[Matrix[Int]])(implicit ctx: SourceContext) = grayscaleimage_obj_frommat(x)
+    def cartToPolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]])(implicit ctx: SourceContext) = grayscaleimage_obj_carttopolar(x,y)
 
 //    val scharrYkernel = Matrix(Vector[Int](-3, -10, -3), Vector[Int](0, 0, 0), Vector[Int](3, 10, 3))
 //    val scharrXkernel = scharrYkernel.t
@@ -29,8 +29,8 @@ trait GrayscaleImageOps extends Variables {
   class grayscaleImageOpsCls(x: Rep[GrayscaleImage]) {
     import GrayscaleImage._
 
-    def bitwiseOrDownsample() = GrayscaleImage(x.downsample(unit(2),unit(2)) { slice => slice(unit(0),unit(0)) | slice(unit(1),unit(0)) | slice(unit(0),unit(1)) | slice(unit(1),unit(1)) })
-    def gradients(polar: Rep[Boolean] = unit(false)) = { // unroll at call site for parallelism (temporary until we have composite op)
+    def bitwiseOrDownsample()(implicit ctx: SourceContext) = GrayscaleImage(x.downsample(unit(2),unit(2)) { slice => slice(unit(0),unit(0)) | slice(unit(1),unit(0)) | slice(unit(0),unit(1)) | slice(unit(1),unit(1)) })
+    def gradients(polar: Rep[Boolean] = unit(false))(implicit ctx: SourceContext) = { // unroll at call site for parallelism (temporary until we have composite op)
       val scharrYkernel = Matrix[Int](unit(3), unit(3))
       scharrYkernel(unit(0),unit(0)) = unit(-3); scharrYkernel(unit(0),unit(1)) = unit(-10); scharrYkernel(unit(0),unit(2)) = unit(-3)
       scharrYkernel(unit(2),unit(0)) = unit(3); scharrYkernel(unit(2),unit(1)) = unit(10); scharrYkernel(unit(2),unit(2)) = unit(3)
@@ -41,14 +41,14 @@ trait GrayscaleImageOps extends Variables {
     }
     // TODO: need to refactor using CanBuildFrom and 2.8 techniques to avoid this duplication.
     //def convolve(kernel: Rep[Matrix[Int]]) = GrayscaleImage(x.windowedFilter(kernel.numRows, kernel.numCols) { slice => (slice *:* kernel).sum })
-    def windowedFilter(rowDim: Rep[Int], colDim: Rep[Int])(block: Rep[Matrix[Int]] => Rep[Int]) =
+    def windowedFilter(rowDim: Rep[Int], colDim: Rep[Int])(block: Rep[Matrix[Int]] => Rep[Int])(implicit ctx: SourceContext) =
       GrayscaleImage(image_windowed_filter(x,rowDim, colDim, block))
   }
 
   // object defs
-  def grayscaleimage_obj_new(numRows: Rep[Int], numCols: Rep[Int]): Rep[GrayscaleImage]
-  def grayscaleimage_obj_frommat(x: Rep[Matrix[Int]]): Rep[GrayscaleImage]
-  def grayscaleimage_obj_carttopolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]]): (Rep[Matrix[Float]],Rep[Matrix[Float]])
+  def grayscaleimage_obj_new(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[GrayscaleImage]
+  def grayscaleimage_obj_frommat(x: Rep[Matrix[Int]])(implicit ctx: SourceContext): Rep[GrayscaleImage]
+  def grayscaleimage_obj_carttopolar(x: Rep[Matrix[Float]], y: Rep[Matrix[Float]])(implicit ctx: SourceContext): (Rep[Matrix[Float]],Rep[Matrix[Float]])
 }
 
 
@@ -80,9 +80,9 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   ////////////////////
   // object interface
 
-  def grayscaleimage_obj_new(numRows: Exp[Int], numCols: Exp[Int]) = reflectEffect(GrayscaleImageObjectNew(numRows, numCols))
-  def grayscaleimage_obj_frommat(x: Exp[Matrix[Int]]) = reflectEffect(GrayscaleImageObjectFromMat(x))
-  def grayscaleimage_obj_carttopolar(x: Exp[Matrix[Float]], y: Exp[Matrix[Float]]) = {
+  def grayscaleimage_obj_new(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(GrayscaleImageObjectNew(numRows, numCols))
+  def grayscaleimage_obj_frommat(x: Exp[Matrix[Int]])(implicit ctx: SourceContext) = reflectEffect(GrayscaleImageObjectFromMat(x))
+  def grayscaleimage_obj_carttopolar(x: Exp[Matrix[Float]], y: Exp[Matrix[Float]])(implicit ctx: SourceContext) = {
     val mag = reflectPure(GrayscaleImageObjectCartToPolarMagnitude(x,y))
     val phase = reflectPure(GrayscaleImageObjectCartToPolarPhase(x,y)) map { a => if (a < unit(0f)) a + unit(360f) else a } 
     (mag,phase)
@@ -92,7 +92,7 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case GrayscaleImageObjectCartToPolarPhase(a,b) => reflectPure(new { override val original = Some(f,e) } with GrayscaleImageObjectCartToPolarPhase(f(a),f(b)))(mtype(manifest[A]))
+    case GrayscaleImageObjectCartToPolarPhase(a,b) => reflectPure(new { override val original = Some(f,e) } with GrayscaleImageObjectCartToPolarPhase(f(a),f(b)))(mtype(manifest[A]), implicitly[SourceContext])
     case Reflect(GrayscaleImageObjectFromMat(x), u, es) => reflectMirrored(Reflect(GrayscaleImageObjectFromMat(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??

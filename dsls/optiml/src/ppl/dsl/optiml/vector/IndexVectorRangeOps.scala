@@ -7,6 +7,7 @@ import ppl.delite.framework.ops.{DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import scala.virtualization.lms.util.OverloadHack
+import scala.reflect.SourceContext
 import java.io.PrintWriter
 
 trait IndexVectorRangeOps extends Base with OverloadHack { this: OptiML =>
@@ -30,36 +31,36 @@ trait IndexVectorRangeOps extends Base with OverloadHack { this: OptiML =>
     def wrap(x: Rep[IndexVectorRange]) = indexVecRangeToInterface(x)
           
     // VectorOps
-    def length = indexvectorrange_length(x)
-    def isRow = unit(true)
-    def apply(n: Rep[Int]) = indexvectorrange_apply(x,n)
-    def sort(implicit o: Ordering[Int]) = x.cloneL    
+    def length(implicit ctx: SourceContext) = indexvectorrange_length(x)
+    def isRow(implicit ctx: SourceContext) = unit(true)
+    def apply(n: Rep[Int])(implicit ctx: SourceContext) = indexvectorrange_apply(x,n)
+    def sort(implicit o: Ordering[Int], ctx: SourceContext) = x.cloneL    
     
-    def t = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
-    def mt() = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
-    def update(n: Rep[Int], y: Rep[Int]): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def insert(pos: Rep[Int], y: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def removeAll(pos: Rep[Int], len: Rep[Int]) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def trim() = throw new UnsupportedOperationException("RangeVectors cannot be updated")
-    def clear() = throw new UnsupportedOperationException("RangeVectors cannot be updated")        
+    def t(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
+    def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
+    def update(n: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def insert(pos: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def trim()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")
+    def clear()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")        
   } 
   
-  def indexvectorrange_length(x: Rep[IndexVectorRange]): Rep[Int]
-  def indexvectorrange_apply(x: Rep[IndexVectorRange], n: Rep[Int]): Rep[Int]
+  def indexvectorrange_length(x: Rep[IndexVectorRange])(implicit ctx: SourceContext): Rep[Int]
+  def indexvectorrange_apply(x: Rep[IndexVectorRange], n: Rep[Int])(implicit ctx: SourceContext): Rep[Int]
   // def indexvectorrange_times_matrix(x: Rep[IndexVectorRange], y: Rep[Matrix[Int]]): Rep[DenseVector[Int]]
   // def indexvectorrange_flatmap[B:Manifest](x: Rep[IndexVectorRange], f: Rep[A] => Rep[DenseVector[B]]): Rep[DenseVector[B]]
 }
 
 trait IndexVectorRangeOpsExp extends IndexVectorRangeOps with DeliteCollectionOpsExp { this: OptiMLExp =>
     
-  def indexvectorrange_length(x: Rep[IndexVectorRange]) = x match {
+  def indexvectorrange_length(x: Rep[IndexVectorRange])(implicit ctx: SourceContext) = x match {
     case Def(IndexVectorRangeNew(s,e)) => e - s
     case Def(v@Reflect(IndexVectorRangeNew(s,e), u, es)) /*if context.contains(v)*/ => e - s
   }
   
-  def indexvectorrange_apply(x: Rep[IndexVectorRange], n: Rep[Int]) = x match {
+  def indexvectorrange_apply(x: Rep[IndexVectorRange], n: Rep[Int])(implicit ctx: SourceContext) = x match {
     case Def(IndexVectorRangeNew(s,e)) => s + n
     case Def(v@Reflect(IndexVectorRangeNew(s,e), u, es)) /*if context.contains(v)*/ => s + n
   }  
@@ -67,20 +68,20 @@ trait IndexVectorRangeOpsExp extends IndexVectorRangeOps with DeliteCollectionOp
   /////////////////////
   // delite collection
   
-  def isIndexRange[A](x: Exp[DeliteCollection[A]]) = x.Type.erasure == classOf[IndexVectorRange]  
-  def asIndexRange[A](x: Exp[DeliteCollection[A]]) = x.asInstanceOf[Exp[IndexVectorRange]]
+  def isIndexRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.Type.erasure == classOf[IndexVectorRange]  
+  def asIndexRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[IndexVectorRange]]
     
-  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = { 
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
     if (isIndexRange(x)) asIndexRange(x).length
     else super.dc_size(x)
   }
   
-  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = {
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
     if (isIndexRange(x)) (asIndexRange(x).apply(n)).asInstanceOf[Exp[A]]
     else super.dc_apply(x,n)    
   }
   
-  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) = {
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isIndexRange(x)) asIndexRange(x).update(n,y.asInstanceOf[Exp[Int]])
     else super.dc_update(x,n,y)        
   }

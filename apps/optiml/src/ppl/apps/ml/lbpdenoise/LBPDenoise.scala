@@ -251,15 +251,18 @@ trait LBPDenoise extends OptiMLApplication {
           val edgeData = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
           val edgeData2 = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
         
-          val edgeRight = MessageEdge(g, edgeData, edgeData2, vertices(i)(j), vertices(i)(j+1))
-          g.addEdge(edgeRight, vertices(i)(j), vertices(i)(j+1))
+          val tmp = vertices(i)
+          val edgeRight = MessageEdge(g, edgeData, edgeData2, tmp(j), tmp(j+1))
+          g.addEdge(edgeRight, tmp(j), tmp(j+1))
         }
 
         if(i < img.numRows - 1) {
           val edgeData = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
           val edgeData2 = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
-          val edgeDown = MessageEdge(g, edgeData, edgeData2, vertices(i)(j), vertices(i+1)(j))
-          g.addEdge(edgeDown, vertices(i)(j), vertices(i+1)(j))
+          val tmp1 = vertices(i)
+          val tmp2 = vertices(i+1)
+          val edgeDown = MessageEdge(g, edgeData, edgeData2, tmp1(j), tmp2(j))
+          g.addEdge(edgeDown, tmp1(j), tmp2(j))
         }
         j += 1
       }

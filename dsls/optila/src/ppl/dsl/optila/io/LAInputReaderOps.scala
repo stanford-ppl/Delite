@@ -2,21 +2,20 @@ package ppl.dsl.optila.io
 
 import java.io.{PrintWriter}
 import scala.virtualization.lms.common.{TupleOpsExp, Base, BaseFatExp}
+import scala.reflect.SourceContext
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optila._
 
-// TODO: we need to support an escape hatch, or move application-specific i/o to application ops. Either
-// way, they shouldn't be here.
 trait LAInputReaderOps extends Base {
   // file format is m lines with n floats per line, each float separated by whitespaces
   // (same as matlab .dat)  
   
-  def readMatrix(filename: Rep[String], delim: Rep[String] = unit("\\\\s+")) = obj_lainput_read(filename, delim)
-  def readVector(filename: Rep[String]) = obj_lainput_read_vector(filename)
+  def readMatrix(filename: Rep[String], delim: Rep[String] = unit("\\\\s+"))(implicit ctx: SourceContext) = obj_lainput_read(filename, delim)
+  def readVector(filename: Rep[String])(implicit ctx: SourceContext) = obj_lainput_read_vector(filename)
   
-  def obj_lainput_read(filename: Rep[String], delim: Rep[String]) : Rep[Matrix[Double]]
-  def obj_lainput_read_vector(filename: Rep[String]) : Rep[DenseVector[Double]]
+  def obj_lainput_read(filename: Rep[String], delim: Rep[String])(implicit ctx: SourceContext): Rep[Matrix[Double]]
+  def obj_lainput_read_vector(filename: Rep[String])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 }
 
 trait LAInputReaderOpsExp extends LAInputReaderOps with BaseFatExp { this: LAInputReaderImplOps with DeliteOpsExp with TupleOpsExp =>
@@ -27,8 +26,8 @@ trait LAInputReaderOpsExp extends LAInputReaderOps with BaseFatExp { this: LAInp
     extends DeliteOpSingleTask(reifyEffects(lainput_read_vector_impl(filename)))
 
 
-  def obj_lainput_read(filename: Exp[String], delim: Exp[String]) = reflectEffect(LAInputRead(filename, delim))
-  def obj_lainput_read_vector(filename: Exp[String]) = reflectEffect(LAInputReadVector(filename))
+  def obj_lainput_read(filename: Exp[String], delim: Exp[String])(implicit ctx: SourceContext) = reflectEffect(LAInputRead(filename, delim))
+  def obj_lainput_read_vector(filename: Exp[String])(implicit ctx: SourceContext) = reflectEffect(LAInputReadVector(filename))
 }
 
 

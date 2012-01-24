@@ -1,6 +1,7 @@
 package ppl.dsl.assignment2
 
 import virtualization.lms.common.{Variables, VariablesExp, BaseFatExp}
+import scala.reflect.SourceContext
 import ppl.delite.framework.ops._
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.datastructures._
@@ -111,9 +112,9 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
     if (x.Type.erasure == classOf[Vector[A]]) then(x.asInstanceOf[Exp[Vector[A]]]) else orElse
   }
 
-  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]): Exp[Int] = ifVector(x)(length(_))(super.dc_size(x))
-  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int]): Exp[A] = ifVector(x)(apply(_, idx))(super.dc_apply(x, idx))
-  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int], value: Exp[A]): Exp[Unit] = ifVector(x)(v => reifyEffectsHere(darray_update(v.data, idx, value)))(super.dc_update(x,idx,value))
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext): Exp[Int] = ifVector(x)(length(_))(super.dc_size(x))
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int])(implicit ctx: SourceContext): Exp[A] = ifVector(x)(apply(_, idx))(super.dc_apply(x, idx))
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int], value: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = ifVector(x)(v => reifyEffectsHere(darray_update(v.data, idx, value)))(super.dc_update(x,idx,value))
   
 }
 

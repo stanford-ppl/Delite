@@ -116,7 +116,9 @@ trait TopN extends OptiMLApplication {
     val topScores = sorted take N
     //val topUsers = indices take N
     // TODO: why is this type annotation required? inferencer ends up with Rep[DenseVector[Nothing]] otherwise
-    val topUsers: Rep[DenseVector[Int]] = topScores map { e => (prefs find { _ == e })(0) } // HACK! need to implement sortWithIndex above    
+    val topUsers: Rep[DenseVector[Int]] = topScores map { e =>
+      val tmp = prefs find { _ == e }
+      tmp(0) } // HACK! need to implement sortWithIndex above    
     
     toc(topUsers)
     

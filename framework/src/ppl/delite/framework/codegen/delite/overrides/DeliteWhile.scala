@@ -4,6 +4,7 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{WhileExp}
 import scala.virtualization.lms.common.{ScalaGenEffect, CudaGenEffect, OpenCLGenEffect, CGenEffect}
 import scala.virtualization.lms.internal.{GenericNestedCodegen}
+import scala.reflect.SourceContext
 import java.io.PrintWriter
 import scala.reflect.SourceContext
 
@@ -49,7 +50,7 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
   }
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case DeliteWhile(c,b) => reflectPure(DeliteWhile(f(c),f(b)))(mtype(manifest[A]))
+    case DeliteWhile(c,b) => reflectPure(DeliteWhile(f(c),f(b)))(mtype(manifest[A]), implicitly[SourceContext])
     case Reflect(DeliteWhile(c,b), u, es) => reflectMirrored(Reflect(DeliteWhile(f(c),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??

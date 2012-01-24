@@ -3,7 +3,7 @@ package ppl.dsl.optiml
 import datastruct.scala._
 import ppl.delite.framework.ops.DeliteOpsExp
 import java.io.PrintWriter
-import scala.reflect.{Manifest, SourceContext}
+import reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.internal.GenericFatCodegen
 import scala.virtualization.lms.common._
 
@@ -28,37 +28,37 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   //     optiml_aggregate(start, end, block)
   //   }
   
-  def aggregateIf[A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A]): Rep[DenseVector[A]] = {
+  def aggregateIf[A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]] = {
     optiml_aggregateif(start, end, cond, block)
   }  
 
   // 2D aggregate
   def aggregate[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector])
-                           (block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]] = {
+                           (block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]] = {
     optiml_aggregate2d(rows, cols, block)
   }
   
   def aggregateIf[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector])
-                             (cond: (Rep[Int], Rep[Int]) => Rep[Boolean])(block: (Rep[Int], Rep[Int]) => Rep[A]) = {
+                             (cond: (Rep[Int], Rep[Int]) => Rep[Boolean])(block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext) = {
     optiml_aggregate2dif(rows, cols, cond, block)
   }
   
 
-  def optiml_aggregateif[A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A]): Rep[DenseVector[A]]
+  def optiml_aggregateif[A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]]
   def optiml_aggregate2d[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
-                                     block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]]
+                                     block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]]
   def optiml_aggregate2dif[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
-                                       cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A]): Rep[DenseVector[A]]
+                                       cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]]
                                     
   // TODO: for some reason, the implicit ops conversions aren't kicking in for sum/min/max
   /**
    * sum
    */
-  def sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A]) = optiml_sum(start, end, block)
-  def sumIf[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A]) = optiml_sumif[R,A](start,end,cond,block)
+  def sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int])(block: Rep[Int] => Rep[A])(implicit ctx: SourceContext) = optiml_sum(start, end, block)
+  def sumIf[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int])(cond: Rep[Int] => Rep[Boolean])(block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A], ctx: SourceContext) = optiml_sumif[R,A](start,end,cond,block)
   
-  def optiml_sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A]): Rep[A]
-  def optiml_sumif[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A]): Rep[R]
+  def optiml_sum[A:Manifest:Arith:Cloneable](start: Rep[Int], end: Rep[Int], block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[A]
+  def optiml_sumif[R:Manifest:Arith:Cloneable,A:Manifest](start: Rep[Int], end: Rep[Int], cond: Rep[Int] => Rep[Boolean], block: Rep[Int] => Rep[A])(implicit cs: CanSum[R,A], ctx: SourceContext): Rep[R]
 
   /**
    *  IndexVector construction
@@ -95,26 +95,26 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
                         max_iter: Rep[Int] = unit(1000),
                         clone_prev_val: Rep[Boolean] = unit(false))
                         (block: Rep[A] => Rep[A])
-                        (implicit diff: (Rep[A],Rep[A]) => Rep[Double], mA: Manifest[A], c: Cloneable[A]): Rep[A]
+                        (implicit diff: (Rep[A],Rep[A]) => Rep[Double], mA: Manifest[A], c: Cloneable[A], ctx: SourceContext): Rep[A]
     = optiml_untilconverged(x, thresh, max_iter, clone_prev_val, block, diff)
 
 
   def optiml_untilconverged[A:Manifest:Cloneable](x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
-                                                  block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double]): Rep[A]
+                                                  block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double])(implicit ctx: SourceContext): Rep[A]
 
   def untilconverged[V <: Vertex, E <: Edge](g: Rep[Graph[V, E]])
                         (block: Rep[V] => Rep[Unit])
-                        (implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
+                        (implicit mV: Manifest[V], mE: Manifest[E], ctx: SourceContext): Rep[Unit]
     = optiml_untilconverged(g, block)
 
-  def optiml_untilconverged[V <: Vertex :Manifest, E <: Edge :Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) : Rep[Unit]
+  def optiml_untilconverged[V <: Vertex :Manifest, E <: Edge :Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit])(implicit ctx: SourceContext) : Rep[Unit]
 
 
   /**
    * gradient descent
    */
   def gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-               maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+               maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
     = optiml_gradient(x, alpha, thresh, maxIter, hyp)
 
   // stochastic: block() updates every jth parameter for every ith training sample
@@ -126,7 +126,7 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
 
   // stochastic can only be parallelized across features, which is generally << samples
   def stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-                 maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+                 maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
     = optiml_stochastic(x, alpha, thresh, maxIter, hyp)
 
   // batch: block() updates each jth parameter from the sum of all ith training samples
@@ -138,18 +138,18 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   // in batch, the sum(...) loops over the entire training set independently, which is where the parallelism comes from
   // batch can be parallized across samples
   def batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
-               maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+               maxIter: Rep[Int] = unit(10000))(hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
     = optiml_batch(x, alpha, thresh, maxIter, hyp)
 
 
   def optiml_gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                      maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+                      maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
   def optiml_stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                        maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+                        maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
   def optiml_batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                   maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]]
+                   maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
   // coordinate ascent: analogous to stochastic gradient descent, but updates m parameters (alphas(0)...alphas(m-1))
   // at each update, all but alpha(i) must be held constant, so there are dependencies between every iteration
@@ -164,10 +164,10 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
    * Nearest neighbor
    */
   // returns the index of the nearest neighbor of row inside data
-  def nearestNeighborIndex[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean] = unit(true)): Rep[Int]
+  def nearestNeighborIndex[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean] = unit(true))(implicit ctx: SourceContext): Rep[Int]
     = optiml_nearest_neighbor_index(row, data, allowSame)
 
-  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int]
+  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], data: Rep[Matrix[A]], allowSame: Rep[Boolean])(implicit ctx: SourceContext): Rep[Int]
 
 }
 
@@ -188,7 +188,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     def m = manifest[A]
   }
   
-  def optiml_aggregateif[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A]) = {
+  def optiml_aggregateif[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A])(implicit ctx: SourceContext) = {
     reflectPure(AggregateIf(start,end,cond,block))
   }
   
@@ -206,7 +206,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
   
   def optiml_aggregate2d[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
-                                     block: (Exp[Int], Exp[Int]) => Exp[A]) = {
+                                     block: (Exp[Int], Exp[Int]) => Exp[A])(implicit ctx: SourceContext) = {
     
     reflectPure(Aggregate2d(rows, cols, block))
   }
@@ -227,7 +227,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
       
   def optiml_aggregate2dif[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
-                                       cond: (Exp[Int], Exp[Int]) => Exp[Boolean], block: (Exp[Int], Exp[Int]) => Exp[A]) = {
+                                       cond: (Exp[Int], Exp[Int]) => Exp[Boolean], block: (Exp[Int], Exp[Int]) => Exp[A])(implicit ctx: SourceContext) = {
     
     reflectPure(Aggregate2dIf(rows, cols, cond, block))
   }
@@ -331,13 +331,13 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   // FIXME: peeling off the first iteration manually can prevent fusion because the LoopOp is 1 smaller than its cousins
   // TODO: what is the deired behavior if the range is empty?
-  def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A]) = {
+  def optiml_sum[A:Manifest:Arith:Cloneable](start: Exp[Int], end: Exp[Int], block: Exp[Int] => Exp[A])(implicit ctx: SourceContext) = {
     val firstBlock = block(start)
     val out = reflectPure(Sum(start+unit(1), end, block, firstBlock))
     out + firstBlock
   }
 
-  def optiml_sumif[R:Manifest:Arith:Cloneable,A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A])(implicit cs: CanSum[R,A]) = {
+  def optiml_sumif[R:Manifest:Arith:Cloneable,A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], block: Exp[Int] => Exp[A])(implicit cs: CanSum[R,A], ctx: SourceContext) = {
     reflectPure(SumIf[R,A](start, end, cond, block))
     /*val firstCond = cond(start)
       val firstBlock = block(start)
@@ -400,7 +400,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   // for now, just unroll the implementation
   // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
-  def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
+  def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit])(implicit ctx: SourceContext) = {
     val vertices = g.vertices
     val tasks : Rep[Vertices[V]] = vertices.mutable
     val seen = Set[V]()
@@ -430,7 +430,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 
   def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
-                                                  block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double]) = {
+                                                  block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double])(implicit ctx: SourceContext) = {
 
     var delta = var_new(unit(scala.Double.MaxValue))
     var cur = var_new(x)
@@ -470,7 +470,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    */
   private val MIN_BATCH_PROCS = 4
   def optiml_gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                      maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]] = {
+                      maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels
     val numProcs = 8 //Delite.threadNum // dynamically set
@@ -483,14 +483,15 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 
   def optiml_stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                        maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]] = {
+                        maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels
     val theta = Vector.zeros(x.numFeatures).mutable
     untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
       for (i <- unit(0) until x.numSamples) {
         for (j <- unit(0) until x.numFeatures ) {
-          theta(j) = theta(j) + alpha*(y(i) - hyp(x(i)))*x(i)(j)          
+          val tmp = x(i) // SourceContext hack
+          theta(j) = theta(j) + alpha*(y(i) - hyp(x(i)))*tmp(j)          
         }
       }
       theta
@@ -498,14 +499,15 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
 
   def optiml_batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
-                   maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double]): Rep[DenseVector[Double]] = {
+                   maxIter: Rep[Int], hyp: Rep[MatrixRow[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels
     val theta = Vector.zeros(x.numFeatures).mutable
     untilconverged(theta, thresh, maxIter, unit(true)) { theta =>
-      for (j <- unit(0) until x.numFeatures) {
+      for (j <- unit(0) until x.numFeatures) {        
         val acc = sum(unit(0), x.numSamples) { i =>
-          (y(i) - hyp(x(i))*x(i)(j))   // parallel work
+          val tmp = x(i) // SourceContext hack
+          (y(i) - hyp(x(i))*tmp(j))   // parallel work
         }
         theta(j) = theta(j) + alpha*acc
       }
@@ -517,7 +519,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * Nearest neighbor
    */
-  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean]): Rep[Int] = {
+  def optiml_nearest_neighbor_index[A:Manifest:Arith:Ordering:HasMinMax](row: Rep[Int], m: Rep[Matrix[A]], allowSame: Rep[Boolean])(implicit ctx: SourceContext): Rep[Int] = {
     // unroll
     val dists = (unit(0)::m.numRows){ i =>
       val d = dist(m(row),m(i))
@@ -540,8 +542,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    * Mirroring
    */
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@Sum(st,en,b,init) => reflectPure(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
-    case e@SumIf(st,en,c,b) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m, e.a, e.c,e.mA,e.cs))(mtype(manifest[A]))
+    case e@Sum(st,en,b,init) => reflectPure(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]), implicitly[SourceContext])
+    case e@SumIf(st,en,c,b) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m, e.a, e.c,e.mA,e.cs))(mtype(manifest[A]), implicitly[SourceContext])
 //    case e@SumIf(st,en,c,b,init) => reflectPure(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b),f(init))(e.m, e.a, e.c))(mtype(manifest[A]))
     case Reflect(e@Sum(st,en,b,init), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with Sum(f(st),f(en),f(b),f(init))(e.m, e.a, e.c), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SumIf(st,en,c,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SumIf(f(st),f(en),f(c),f(b))(e.m,e.a,e.c,e.mA,e.cs), mapOver(f,u), f(es)))(mtype(manifest[A]))

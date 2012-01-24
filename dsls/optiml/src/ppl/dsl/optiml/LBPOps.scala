@@ -3,6 +3,7 @@ package ppl.dsl.optiml
 import java.io.{PrintWriter}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
+import scala.reflect.SourceContext
 
 /**
  * This file should be auto-generated!
@@ -23,20 +24,20 @@ trait DenoiseVertexDataOps extends Variables {
   implicit def repDenoiseVertexDataToDenoiseVertexDataOps(v: Rep[DenoiseVertexData]) = new denoiseVertexDataOpsCls(v)
 
   class denoiseVertexDataOpsCls(v: Rep[DenoiseVertexData]) {
-    def id = denoise_vertex_data_id(v)
-    def belief = denoise_vertex_data_belief(v)
-    def setBelief(b: Rep[DenseVector[Double]]) = denoise_vertex_data_belief_update(v, b)
-    def potential = denoise_vertex_data_potential(v)
+    def id(implicit ctx: SourceContext) = denoise_vertex_data_id(v)
+    def belief(implicit ctx: SourceContext) = denoise_vertex_data_belief(v)
+    def setBelief(b: Rep[DenseVector[Double]])(implicit ctx: SourceContext) = denoise_vertex_data_belief_update(v, b)
+    def potential(implicit ctx: SourceContext) = denoise_vertex_data_potential(v)
   }
 
   // object defs
   def denoise_vertex_data_obj_new(id: Rep[Int], b: Rep[DenseVector[Double]], p: Rep[DenseVector[Double]]): Rep[DenoiseVertexData]
 
   // class defs
-  def denoise_vertex_data_id(v: Rep[DenoiseVertexData]): Rep[Int]
-  def denoise_vertex_data_belief(v: Rep[DenoiseVertexData]): Rep[DenseVector[Double]]
-  def denoise_vertex_data_belief_update(v: Rep[DenoiseVertexData], b: Rep[DenseVector[Double]])
-  def denoise_vertex_data_potential(v: Rep[DenoiseVertexData]): Rep[DenseVector[Double]]
+  def denoise_vertex_data_id(v: Rep[DenoiseVertexData])(implicit ctx: SourceContext): Rep[Int]
+  def denoise_vertex_data_belief(v: Rep[DenoiseVertexData])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+  def denoise_vertex_data_belief_update(v: Rep[DenoiseVertexData], b: Rep[DenseVector[Double]])(implicit ctx: SourceContext)
+  def denoise_vertex_data_potential(v: Rep[DenoiseVertexData])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 }
 
 trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with VariablesExp with BaseFatExp {
@@ -59,10 +60,10 @@ trait DenoiseVertexDataOpsExp extends DenoiseVertexDataOps with VariablesExp wit
   /////////////////////
   // class interface
 
-  def denoise_vertex_data_id(v: Exp[DenoiseVertexData]) = toAtom(DenoiseVertexDataId(v))
-  def denoise_vertex_data_belief(v: Exp[DenoiseVertexData]) = reflectMutable(DenoiseVertexDataBelief(v))
-  def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[DenseVector[Double]]) = reflectWrite(v)(DenoiseVertexDataBeliefUpdate(v, b))
-  def denoise_vertex_data_potential(v: Exp[DenoiseVertexData]) = toAtom(DenoiseVertexDataPotential(v))
+  def denoise_vertex_data_id(v: Exp[DenoiseVertexData])(implicit ctx: SourceContext) = toAtom(DenoiseVertexDataId(v))
+  def denoise_vertex_data_belief(v: Exp[DenoiseVertexData])(implicit ctx: SourceContext) = reflectMutable(DenoiseVertexDataBelief(v))
+  def denoise_vertex_data_belief_update(v: Exp[DenoiseVertexData], b: Exp[DenseVector[Double]])(implicit ctx: SourceContext) = reflectWrite(v)(DenoiseVertexDataBeliefUpdate(v, b))
+  def denoise_vertex_data_potential(v: Exp[DenoiseVertexData])(implicit ctx: SourceContext) = toAtom(DenoiseVertexDataPotential(v))
 }
 
 trait ScalaGenDenoiseVertexDataOps extends ScalaGenBase {
@@ -89,22 +90,22 @@ trait DenoiseEdgeDataOps extends Variables {
   implicit def repDenoiseEdgeDataToDenoiseEdgeDataOps(e: Rep[DenoiseEdgeData]) = new denoiseEdgeDataOpsCls(e)
 
   class denoiseEdgeDataOpsCls(e: Rep[DenoiseEdgeData]) {
-    def message = denoise_edge_data_message(e)
-    def setMessage(m: Rep[DenseVector[Double]]) = denoise_edge_data_message_update(e,m)
-    def oldMessage = denoise_edge_data_old_message(e)
-    def setOldMessage(m: Rep[DenseVector[Double]]) = denoise_edge_data_old_message_update(e,m)
-    def cloneL = denoise_edge_data_cloneL(e)
+    def message(implicit ctx: SourceContext) = denoise_edge_data_message(e)
+    def setMessage(m: Rep[DenseVector[Double]])(implicit ctx: SourceContext) = denoise_edge_data_message_update(e,m)
+    def oldMessage(implicit ctx: SourceContext) = denoise_edge_data_old_message(e)
+    def setOldMessage(m: Rep[DenseVector[Double]])(implicit ctx: SourceContext) = denoise_edge_data_old_message_update(e,m)
+    def cloneL(implicit ctx: SourceContext) = denoise_edge_data_cloneL(e)
   }
 
   // object defs
   def denoise_edge_data_obj_new(m: Rep[DenseVector[Double]], oM: Rep[DenseVector[Double]]): Rep[DenoiseEdgeData]
 
   // class defs
-  def denoise_edge_data_message(e: Rep[DenoiseEdgeData]): Rep[DenseVector[Double]]
-  def denoise_edge_data_message_update(e: Rep[DenoiseEdgeData], m: Rep[DenseVector[Double]])
-  def denoise_edge_data_old_message(e: Rep[DenoiseEdgeData]): Rep[DenseVector[Double]]
-  def denoise_edge_data_old_message_update(e: Rep[DenoiseEdgeData], m: Rep[DenseVector[Double]])
-  def denoise_edge_data_cloneL(e: Rep[DenoiseEdgeData]): Rep[DenoiseEdgeData]
+  def denoise_edge_data_message(e: Rep[DenoiseEdgeData])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+  def denoise_edge_data_message_update(e: Rep[DenoiseEdgeData], m: Rep[DenseVector[Double]])(implicit ctx: SourceContext)
+  def denoise_edge_data_old_message(e: Rep[DenoiseEdgeData])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+  def denoise_edge_data_old_message_update(e: Rep[DenoiseEdgeData], m: Rep[DenseVector[Double]])(implicit ctx: SourceContext)
+  def denoise_edge_data_cloneL(e: Rep[DenoiseEdgeData])(implicit ctx: SourceContext): Rep[DenoiseEdgeData]
 }
 
 trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with VariablesExp with BaseFatExp {
@@ -129,11 +130,11 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with VariablesExp with Ba
   /////////////////////
   // class interface
 
-  def denoise_edge_data_message(e: Exp[DenoiseEdgeData]) = reflectMutable(DenoiseEdgeDataMessage(e))
-  def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[DenseVector[Double]]) = reflectWrite(e)(DenoiseEdgeDataMessageUpdate(e, m))
-  def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData]) = reflectMutable(DenoiseEdgeDataOldMessage(e))
-  def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[DenseVector[Double]]) = reflectWrite(e)(DenoiseEdgeDataOldMessageUpdate(e, m))
-  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData]) = reflectMutable(DenoiseEdgeDataCloneL(e))
+  def denoise_edge_data_message(e: Exp[DenoiseEdgeData])(implicit ctx: SourceContext) = reflectMutable(DenoiseEdgeDataMessage(e))
+  def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[DenseVector[Double]])(implicit ctx: SourceContext) = reflectWrite(e)(DenoiseEdgeDataMessageUpdate(e, m))
+  def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData])(implicit ctx: SourceContext) = reflectMutable(DenoiseEdgeDataOldMessage(e))
+  def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[DenseVector[Double]])(implicit ctx: SourceContext) = reflectWrite(e)(DenoiseEdgeDataOldMessageUpdate(e, m))
+  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData])(implicit ctx: SourceContext) = reflectMutable(DenoiseEdgeDataCloneL(e))
 }
 
 trait ScalaGenDenoiseEdgeDataOps extends ScalaGenBase {
