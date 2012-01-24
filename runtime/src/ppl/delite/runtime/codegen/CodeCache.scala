@@ -17,8 +17,8 @@ import collection.mutable.ListBuffer
  
 trait CodeCache {
 
-  protected val cacheHome = Config.codeCacheHome + File.separator + target + File.separator
-  protected val sourceCacheHome = cacheHome + "src" + File.separator
+  val cacheHome = Config.codeCacheHome + File.separator + target + File.separator
+  val sourceCacheHome = cacheHome + "src" + File.separator
   protected var modules = List.empty[Module]
 
   def cacheDegSources(directory: Directory) {
@@ -90,7 +90,7 @@ trait CodeCache {
     tempDir.createDirectory()
 
     for (i <- 0 until sources.length) {
-      val sourcePath = tempDir.path + File.separator + sources(i)._2 + "." + ext
+      val sourcePath = tempDir.path + File.separator + sources(i)._2 // + "." + ext
       val writer = new FileWriter(sourcePath)
       writer.write(sources(i)._1)
       writer.close()

@@ -1,7 +1,7 @@
 #ifndef _RANGEVECTOR_H_
 #define _RANGEVECTOR_H_
 
-#include <stdio.h>
+#include "DeliteCuda.h"
 
 class RangeVector {
 public:

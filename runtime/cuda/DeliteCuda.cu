@@ -1,20 +1,11 @@
-#include <cuda_runtime.h>
-#include <list>
-#include <map>
-#include <queue>
-#include <iostream>
+#ifndef _DELITE_CUDA_
+#define _DELITE_CUDA_
+
+#include "DeliteCuda.h"
 
 using namespace std;
 
-extern cudaStream_t h2dStream;
-extern cudaStream_t d2hStream;
-
 list<void*>* lastAlloc = new list<void*>();
-
-struct FreeItem {
-    cudaEvent_t event;
-    list<void*>* keys;
-};
 
 queue<FreeItem>* freeList = new queue<FreeItem>();
 
@@ -148,3 +139,5 @@ void DeliteCudaMemcpyDtoDAsync(void *dptr, void* sptr, size_t size) {
 void DeliteCudaMemset(void *ptr, int value, size_t count) {
 	cudaMemset(ptr,value,count);
 }
+
+#endif

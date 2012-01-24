@@ -37,6 +37,9 @@ object Compilers {
       if (Config.useOpenCL) OpenCLCompile.printSources() else CudaCompile.printSources()
     }
 
+    //assert(false)
+
+
     if (Config.useOpenCL) OpenCLCompile.compile() else CudaCompile.compile()
     val classLoader = ScalaCompile.compile
 

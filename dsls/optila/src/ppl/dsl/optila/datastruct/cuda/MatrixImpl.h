@@ -1,7 +1,7 @@
 #ifndef _MATRIXIMPL_H_
 #define _MATRIXIMPL_H_
 
-#include <stdio.h>
+#include "DeliteCuda.h"
 
 template <class T>
 class Matrix {

@@ -16,8 +16,8 @@ object ScalaCompile extends CodeCache {
   def target = "scala"
 
   def addSource(source: String, name: String) {
-    if (!sourceBuffer.contains((source, name))) //avoid duplicate kernels //TODO: there must be a better way
-      sourceBuffer += Pair(source, name)
+    if (!sourceBuffer.contains((source, name+"."+ext))) //avoid duplicate kernels //TODO: there must be a better way
+      sourceBuffer += Pair(source, name+"."+ext)
   }
 
   def compile: ClassLoader = {

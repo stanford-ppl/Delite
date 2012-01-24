@@ -30,14 +30,17 @@ object CudaCompile extends GPUCompile {
       "-I" + javaHome + sep + ".." + sep + "include" + "," + javaHome + sep + ".." + sep + "include" + sep + OS.jniMD, //jni
       "-I" + paths.mkString(","),
       "-I" + deliteHome + sep + "runtime" + sep + "cuda",
+      "-I" + "/home/hyouklee/local/cudpp_src_2.0/include",
       "-O2", //optimized
       "-arch", "compute_20",
       "-code", "sm_20",
       "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
       "-L" + deliteLibs) ++ linkGeneratedLibs(deliteLibs) ++ Array[String](
-      "-o", "cudaHost.so", //output name
-      source //input name
-      )
+      "-L" + "/home/hyouklee/local/cudpp/lib",
+      "-lcudpp",
+      "-o", "cudaHost.so") ++ //output name
+      source.split(" ") //input name
+
     //println("cmd is " + cmdString.mkString(","))
     val process = Runtime.getRuntime.exec(cmdString, null, new File(destination))
     process.waitFor //wait for compilation to complete

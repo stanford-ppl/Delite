@@ -1043,6 +1043,8 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       emitValDef(sym, quote(x) + ".numCols")
 
     /* Specialized CUDA code generations for DeliteOpSingleTasks */
+
+      /*
     case MatrixUpdateRow(x, row, y) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -1053,27 +1055,8 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       tabWidth -= 1
       stream.println(addTab()+"}")
       currDim -= 1
+        */
 
-	  /*
-    case MatrixObjectDiag(w, vals) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s * %s".format(quote(w),quote(w)))
-      stream.println(addTab()+"if( %s < %s*%s ) {".format(currDimStr,quote(w),quote(w)))
-      tabWidth += 1
-      stream.println(addTab()+"int i = %s / %s;".format(currDimStr,quote(w)))
-      stream.println(addTab()+"int j = " + currDimStr + " % "  + quote(w) + ";")
-      stream.println(addTab()+"%s.update(i,j,0);".format(quote(sym)))
-      stream.println(addTab()+"if(i == j) {")
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(i, j, %s.apply(i));".format(quote(sym),quote(vals)))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s".format(quote(w)),"%s".format(quote(w)),false)
-      currDim -= 1
-*/
     case MatrixTranspose(x) =>
       currDim += 1
       val currDimStr = getCurrDimStr()
@@ -1105,77 +1088,6 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       stream.println(addTab()+"}")
       emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false)
       currDim -= 1
-
-    /*
-    case m@MatrixSigmoidF(x) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->size()".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-      val (sigmoidFunc,freeVars) = emitDevFunc(m.func,List(m.v))
-      stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
-      stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
-      if(freeVars.length == 0)
-        stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
-      else
-        stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)),%s);".format(quote(sym),sigmoidFunc,quote(x),freeVars.map(quote).mkString(",")))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)),false)
-      currDim -= 1
-  
-	  case m@MatrixSigmoidFBLAS(x) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->size()".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-	  stream.println(addTab()+"float %s_result = 1.0f/(1.0f + exp(-1*%s.dcApply(%s)));".format(quote(sym),quote(x),currDimStr)) 
-      stream.println(addTab()+"%s.dcUpdate(%s,%s_result);".format(quote(sym),currDimStr,quote(sym)))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)),false)
-      currDim -= 1
-  */
-  /*
-	case MatrixPlusEquals(x,y) =>
-		throw new GenerationFailedException("CudaGen: No dimension specified for this kernel.")
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->numCols".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(i,%s,%s.apply(i,%s)+%s.apply(i,%s));".format(quote(x),currDimStr,quote(x),currDimStr,quote(y),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      currDim -= 1
-    
-    case MatrixPlusEquals(x,y) if(useLocalVar) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength(quote(x)+"->size()")
-      val varX = if(hasLocalVar(x,currDimStr)) getLocalVar(x,currDimStr)
-                 else "NOT FOUND X"
-      val varY = if(hasLocalVar(y,currDimStr)) getLocalVar(y,currDimStr)
-                 else "NOT FOUND Y"
-      stream.println(addTab()+"%s = %s + %s;".format(varX,varX,varY))
-      currDim -= 1
-	*/
-  /*
-    case MatrixGetRow(x,i) =>
-      if(kernelSymbol != sym) {
-        //stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
-        stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
-        stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
-        stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
-        emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false,"%s->data".format(quote(x)))
-      }
-  */
 
     case _ => super.emitNode(sym, rhs)
   }

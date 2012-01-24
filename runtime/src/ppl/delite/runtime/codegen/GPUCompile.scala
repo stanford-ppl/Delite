@@ -10,8 +10,10 @@ trait GPUCompile extends CodeCache {
   val binCacheHome = cacheHome + "bin" + File.separator + "runtime" + File.separator
 
   private val sourceBuffer = new ArrayBuffer[(String, String)]
+  private val headerBuffer = new ArrayBuffer[(String, String)]
 
-  //def cmdString: Array[String]
+  def sources = sourceBuffer.map(s => s._2)
+  def headers = headerBuffer.map(s => s._2)
 
   val sep = File.separator
   //figure out where the jni header files are for this machine
@@ -20,21 +22,24 @@ trait GPUCompile extends CodeCache {
   def deliteHome = Config.deliteHome
   def deliteLibs = Config.deliteBuildHome + sep + "libraries" + sep + target
 
+  def addHeader(source: String, name: String) {
+    if (!headerBuffer.contains((source, name+".h")))
+      headerBuffer += Pair(source, name+".h")
+  }
   def addSource(source: String, name: String) {
-    if (!sourceBuffer.contains((source, name)))
-      sourceBuffer += Pair(source, name)
+    if (!sourceBuffer.contains((source, name+"."+ext)))
+      sourceBuffer += Pair(source, name+"."+ext)
   }
 
   def compile() {
     if (sourceBuffer.length == 0) return
 
-    cacheRuntimeSources(sourceBuffer.toArray)
+    cacheRuntimeSources((sourceBuffer++headerBuffer).toArray)
 
     val paths = modules.map(m => Path(sourceCacheHome + m.name).path).toArray
-
-	  for (src <- sourceBuffer) {
-		  compile(binCacheHome, sourceCacheHome + "runtime" + File.separator + src._2 + "." + ext, paths)
-    }
+    
+    val sources = sourceBuffer.map(s => sourceCacheHome + "runtime" + File.separator + s._2).mkString(" ")
+    compile(binCacheHome, sources, paths)
     sourceBuffer.clear()
   }
 
@@ -72,7 +77,7 @@ trait GPUCompile extends CodeCache {
     }
 
     if (process.exitValue != 0)
-      error(target + " host compilation failed with exirValue " + process.exitValue)
+      error(target + " host compilation failed with exit value " + process.exitValue)
   }
 
 

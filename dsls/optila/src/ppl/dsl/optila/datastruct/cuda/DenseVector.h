@@ -2,7 +2,7 @@
 #define _DENSEVECTOR_H_
 
 #include <DeliteArray.h>
-#include <stdio.h>
+#include "DeliteCuda.h"
 
 template <class T>
 class DenseVector {

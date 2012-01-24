@@ -476,10 +476,20 @@ object DeliteTaskGraph {
       }
       //output copy
       output.funcReturn = outList.tail.tail.tail.head
+
+      //Added for new GPU execution model
+      output.loopType = outList.tail.tail.tail.tail.head
+      output.hasCond = java.lang.Boolean.parseBoolean(outList.tail.tail.tail.tail.tail.head)
+      output.loopFuncInputs = outList.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
+      output.loopFuncOutputType = outList.tail.tail.tail.tail.tail.tail.tail.head
+      if(output.hasCond) output.loopCondInputs = outList.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
+
       tgt match {
         case Targets.OpenCL => output.objFields = outList.tail.tail.tail.tail.head.asInstanceOf[Map[String,String]]
         case _ =>
       }
+
+
     }
 
     def fill(field: String) {

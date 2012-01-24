@@ -78,6 +78,13 @@ final class OPData {
   //TODO: Might want to separate for Cuda and OpenCL
   var objFields: Map[String,String] = _
 
+  //Added for new GPU execution model (might need to clean up)
+  var loopType: String = _
+  var hasCond: Boolean = false
+  var loopFuncInputs: List[String] = Nil
+  var loopFuncOutputType: String = _
+  var loopCondInputs: List[String] = Nil
+
   private[targets] def replaceInput(old: DeliteOP, op: DeliteOP, sym: String) {
     if (inputs contains (old, sym))
       inputs = inputs.patch(inputs.indexOf((old,sym)), List((op,sym)), 1)
