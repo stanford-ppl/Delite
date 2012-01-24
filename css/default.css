@@ -29,6 +29,12 @@ code {
   font-size: 10pt;
 }
 
+#warn {
+  padding: 0.1em 0.5em 1.2em 0.5em;
+  background-color: #993300;
+  color: #fff;
+}
+
 pre {
   border: 1px solid #a0a0a0;
   padding: 0.6em;

@@ -62,7 +62,27 @@
         
         <p>To get started, you first need to
         download the source for <code>Delite</code> and <code>virtualization-lms-core</code>, the lightweight modular
-        staging library that Delite uses. Delite uses <a href="http://git-scm.com/">git</a> for version control (see <a href="http://book.git-scm.com/2_installing_git.html">here</a> for installation instructions).
+        staging library that Delite uses. Delite uses <a href="http://git-scm.com/">git</a> for version control (see <a href="http://book.git-scm.com/2_installing_git.html">here</a> for installation instructions).</p>
+
+      <br>
+      <div id="warn">
+        <p>
+        Our <code>sbt</code> project is configured to auto-download the scala-virtualized compiler.
+        However, there is a bug in sbt 0.11.2 that is incompatible with the latest scala-virtualized
+        snapshots. Until a patch is released, you will need to download <a href="dists/scala-virt-sbt.tgz">  an older scala-virtualized tarball.</a>
+        <br><br>
+        Unpack the tar to the <code>boot</code> directory
+        inside your <code>sbt</code> home directory (usually <code>~/.sbt/boot/</code>):
+        <br><br><code>cd ~/.sbt/boot/</code>
+        <br><code>tar -xzf scala-virt-sbt.tgz</code>
+        <br><br>
+        You should
+        then see the folder <code>~/.sbt/boot/scala-2.10.0-virtualized-SNAPSHOT</code>, and can
+        safely continue the rest of the instructions on this guide.
+        </p>
+      </div>
+
+      <p>
         First, make a copy of the repository on your machine:
         </p><p>
         <div class="highlight"><pre><code class="bash">git clone git://github.com/stanford-ppl/Delite.git
@@ -74,11 +94,9 @@ git checkout optiml-alpha
 sbt publish-local
 </code></pre></div>
 
-        <p> Now we are ready to compile and run Delite. Navigate back to the Delite directory and load the LMS library: </p>
-<div class="highlight"><pre><code class="bash">cd ..
-cd Delite
+        <p> Now we are ready to compile and run Delite. Navigate back to the Delite directory and checkout the correct branch: </p>
+<div class="highlight"><pre><code class="bash">cd ../Delite
 git checkout optiml-alpha
-sbt update
 </code></pre></div>
 
         <p> The Delite repository currently includes several modules: </p>
@@ -124,7 +142,7 @@ sbt update
         generated kernels and executes the application.      
         </p>
         <p>
-        So without further ado, let's get to it. Starting from the root of the Delite repository, first compile using SBT:
+        So without further ado, let's get to it. Starting from the root of the Delite repository, first compile using SBT (alternative, just run <code>build-optiml</code> again):
         </p>
 <div class="highlight"><pre><code class="bash">sbt "; project optiml-apps; compile"</code></pre></div> 
         <p>
