@@ -20,7 +20,8 @@ object DeliteBuild extends Build {
     libraryDependencies += "org.scala-lang" % "scala-compiler" % virtScala,
     // used in delitec to access jars
     retrieveManaged := true,
-    scalacOptions += "-Yno-generic-signatures"
+    scalacOptions += "-Yno-generic-signatures",
+    scalacOptions += "-Yvirtualize" 
   )
 
   /*
