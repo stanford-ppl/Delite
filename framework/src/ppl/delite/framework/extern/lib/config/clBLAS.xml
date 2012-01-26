@@ -1,13 +1,13 @@
 <DeliteExternalLib>
 <compiler>/usr/bin/g++</compiler>
-<headerDir>
+<headers>
   <prefix> -I </prefix>
   <path> /usr/local/cuda/include </path>
   <path> /home/hyouklee/delite/Delite/runtime/opencl/blas </path>
-</headerDir>
-<libDir>
+</headers>
+<libs>
     <prefix> -L </prefix>
-    <path> /home/hyouklee/delite/Delite/runtime/opencl/blas</path>
-</libDir>
+    <path> /home/hyouklee/delite/Delite/runtime/opencl/blas </path>
+</libs>
 </DeliteExternalLib>
 

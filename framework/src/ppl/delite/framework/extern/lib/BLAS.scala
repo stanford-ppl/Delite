@@ -12,15 +12,13 @@ object BLAS extends ExternalLibrary {
   val libExt = "so"
   // should we consider library linking machine dependent? do we have a different external lib
   // for unix and windows?
-  val compileFlags = List( "-w", "-O3", "-lmkl_intel_lp64", "-lmkl_intel_thread", "-lmkl_core", "-liomp5", "-lmkl_mc3", "-lmkl_def", 
-                           "-shared", "-fPIC") // dynamic shared library
+  val compileFlags = List( "-w", "-O3", "-shared", "-fPIC") // dynamic shared library
   val outputSwitch = "-o"
-  
-  override val header = """
+
+  override lazy val header = """
 #include <stdlib.h>
 #include <stdio.h>
 
 #include <jni.h>
-#include "mkl.h"
-"""
+""" + configHeader.map(h => "#include \"" + h + "\"\n").mkString("")
 }
