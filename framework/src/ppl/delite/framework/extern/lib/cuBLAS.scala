@@ -11,8 +11,8 @@ object cuBLAS extends ExternalLibrary {
   val libExt = "so"
   val compileFlags = List( "-w", "-lcublas", "-O3", "-arch", "compute_20", "-code", "sm_20", "-shared", "-Xcompiler", "-fPIC") // HJ TODO: these are Fermi-specific; where should they be specified?
   val outputSwitch = "-o"
-  
-  override val header = """
+
+  override lazy val header = """
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits>
