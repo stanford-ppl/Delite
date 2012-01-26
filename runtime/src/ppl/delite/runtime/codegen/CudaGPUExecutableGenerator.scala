@@ -50,8 +50,8 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("#include <cudpp.h>\n")
     out.append("#include \"DeliteCuda.cu\"\n") //Delite-Cuda interface for DSL
     out.append("#include \"helperFuncs.cu\"\n")
-    //out.append("#include \"dsl.h\"\n") //imports all dsl kernels and helper functions
     out.append("#include \"library.h\"\n")
+    out.append("#include \"dsl.h\"\n") //imports all dsl kernels
     out.append(CudaCompile.headers.map(s => "#include \"" + s + "\"\n").mkString(""))
   }
 
@@ -177,16 +177,16 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         out.append(op.outputType(Targets.Cuda,name))
         out.append("* ")
         out.append(getSymGPU(name))
-        //if (op.isInstanceOf[OP_MultiLoop])
-        //  out.append(";\n")
-        //else {
+        if (op.isInstanceOf[OP_MultiLoop])
+          out.append(";\n")
+        else {
           out.append(" = ")
           out.append(data.func)
           out.append('(')
           writeInputList(op, data, out)
           out.append(");\n")
           writeMemoryAdd(name, out)
-        //}
+        }
       }
     }
   }
@@ -311,7 +311,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     var first = true
     for ((data,name) <- (op.getGPUMetadata(target).outputs)) {
       if(!first) out.append(',')
-      //out.append('&')
+      out.append('&')
       out.append(getSymGPU(name)) //first kernel inputs are OP outputs
       first = false
     }
@@ -443,7 +443,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
           out.append("env,") //JNI environment pointer
           out.append(getSymGPU(name)) //C++ object
           out.append(");\n")
-          deleteLocalRef = true
+          if(!isPrimitiveType(op.outputType(name))) deleteLocalRef = true
         }
         case None => //do nothing
       }

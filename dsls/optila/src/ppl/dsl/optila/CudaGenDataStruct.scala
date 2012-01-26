@@ -210,12 +210,13 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   // Dummy methods temporarily just for the compilation
   //def emitVectorAlloc(newSym:Sym[_],length:String,isRow:String,reset:Boolean,data:String=null) {}
-  def emitVectorAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
-  def emitVectorAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
+  //def emitVectorAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
+  //def emitVectorAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
   //def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null) {}
-  def emitMatrixAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
-  def emitMatrixAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
+  //def emitMatrixAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
+  //def emitMatrixAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
 
+  /*
   // Generate & register temporary data structures (which could be the output) for GPU kernel
   def emitVectorAlloc(newSym:Sym[_], length:String, isRow:String, reset:Boolean, data:String=null):Unit = {
     //TODO: Check if both symbols are Vectors
@@ -226,14 +227,11 @@ trait CudaGenDataStruct extends CudaCodegen {
     helperFuncIdx += 1
 
     val out = new StringBuilder
-
     val args = (getKernelOutputs ::: getKernelInputs ::: getKernelTemps) filterNot (_==newSym)
 
-    out.append("\t%s *%s = new %s();\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type)))
+    out.append("\t%s *%s = new %s(%s,%s);\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type),length,isRow))
 
-    //val mult = if(currDim==2) xDimList(0) else "1"
-    //if(currDim==2) multDimInputs += newSym
-
+    /*
     // Check if new allocation is needed
     if(data==null) {
       out.append("\t%s *devPtr;\n".format(remap(newSym.Type.typeArguments(0))))
@@ -248,6 +246,7 @@ trait CudaGenDataStruct extends CudaCodegen {
       out.append("\t%s->isRow = %s;\n".format(quote(newSym),isRow))
       out.append("\t%s->data = %s;\n".format(quote(newSym),data))      
     }
+    */
     out.append("\treturn %s;\n".format(quote(newSym)))
 
     val allocStr = emitAllocOutput(newSym, null, out.toString, args)
@@ -257,13 +256,15 @@ trait CudaGenDataStruct extends CudaCodegen {
     helperFuncString.append(copyStr)
   }
 
+  /*
   def vectorPositionMultDimInputs(sym: Sym[Any]) : String = {
     val out = new StringBuilder
-    currDim = 1
-    val currDimStr = getCurrDimStr()
+    //currDim = 1
+    //val currDimStr = getCurrDimStr()
     out.append("\t%s.data += %s * %s.length;\n".format(quote(sym),currDimStr,quote(sym)))
     out.toString
   }
+  */
 
   def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null): Unit = {
     //TODO: Check if both symbols are Matrices
@@ -276,8 +277,9 @@ trait CudaGenDataStruct extends CudaCodegen {
     val out = new StringBuilder
     val args = (getKernelOutputs ::: getKernelInputs ::: getKernelTemps) filterNot (_==newSym)
 
-    out.append("\t%s *%s = new %s();\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type)))
+    out.append("\t%s *%s = new %s(%s,%s);\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type),numRows,numCols))
 
+    /*
     // Check if new allocation is needed
     if(data==null) {
       out.append("\t%s *devPtr;\n".format(remap(newSym.Type.typeArguments(0))))
@@ -292,6 +294,7 @@ trait CudaGenDataStruct extends CudaCodegen {
       out.append("\t%s->numCols = %s;\n".format(quote(newSym),numCols))
       out.append("\t%s->data = %s;\n".format(quote(newSym),data))
     }
+    */
     out.append("\treturn %s;\n".format(quote(newSym)))
 
     val allocStr = emitAllocOutput(newSym, null, out.toString, args)
@@ -337,5 +340,6 @@ trait CudaGenDataStruct extends CudaCodegen {
 
     out.toString
   }
+  */
 }
 

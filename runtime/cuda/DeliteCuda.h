@@ -9,13 +9,18 @@
 
 using namespace std;
 
-extern cudaStream_t h2dStream;
-extern cudaStream_t d2hStream;
-
 struct FreeItem {
     cudaEvent_t event;
     list<void*>* keys;
 };
+
+extern cudaStream_t h2dStream;
+extern cudaStream_t d2hStream;
+extern cudaStream_t kernelStream;
+
+extern list<void*>* lastAlloc;
+extern queue<FreeItem>* freeList;
+extern map<void*,list<void*>*>* cudaMemoryMap;
 
 extern void freeCudaMemory(FreeItem item);
 extern void DeliteCudaMalloc(void** ptr, size_t size);

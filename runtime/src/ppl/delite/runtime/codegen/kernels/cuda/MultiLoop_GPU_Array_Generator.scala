@@ -1,29 +1,58 @@
 package ppl.delite.runtime.codegen.kernels.cuda
 
-import ppl.delite.runtime.graph.targets.Targets
 import ppl.delite.runtime.codegen.{CudaGPUExecutableGenerator, CudaCompile, CudaMainGenerator}
 import tools.nsc.io._
 import ppl.delite.runtime.graph.ops.{OP_Executable, DeliteOP, OP_MultiLoop}
-
-/*
-* Pervasive Parallelism Laboratory (PPL)
-* Stanford University
-*
-*/
-
-/**
- * @author Kevin J. Brown
- */
+import ppl.delite.runtime.graph.targets.{OPData, Targets}
 
 object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   def executableName = error("MultiLoop is not a stand-alone executable")
 
+  private def needsReduction(op: OP_MultiLoop): Boolean = {
+    if (reductionList(op).nonEmpty) true
+    else false
+  }
+  private def needsReductionTuple(op: OP_MultiLoop): Boolean = {
+    if (reductionTupleList(op).nonEmpty) true
+    else false
+  }
+  private def needsCondition(op: OP_MultiLoop): Boolean = {
+    if (conditionList(op).nonEmpty) true
+    else false
+  }
+
+  private def reductionList(op: OP_MultiLoop): List[(OPData,String)] = {
+    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.loopType=="REDUCE")
+  }
+  private def reductionTupleList(op: OP_MultiLoop): List[(OPData,String)] = {
+    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.loopType=="REDUCE_TUPLE")
+  }
+  private def conditionList(op: OP_MultiLoop): List[(OPData,String)] = {
+    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond)
+  }
+
+  private def needDeref(op:OP_MultiLoop, in: DeliteOP, sym:String): Boolean = {
+    //println("in: " + in.id + "," + in.scheduledResource)
+    //println("op: " + op.id + "," + op.scheduledResource)
+    isPrimitiveType(in.outputType(sym)) && (in.scheduledResource==op.scheduledResource)
+  }
+
+  private def addDeref(out: StringBuilder, op: OP_MultiLoop) = {
+    for ((in,sym) <- op.getInputs) if (needDeref(op, in, sym)) {
+      out.append(getCPrimitiveType(in.outputType(sym)))
+      out.append(' ')
+      out.append(sym)
+      out.append(" = *")
+      out.append(sym)
+      out.append("_ptr;\n")
+    }
+  }
+
   //TODO: expand to multiple chunks (multiple GPUs)
   def makeChunk(op: OP_MultiLoop): OP_MultiLoop = {
     val src = makeKernel(op)
     val header = makeHeader(op)
-    //CudaMainGenerator.addFunction(src)
     CudaCompile.addHeader(header, kernelName(op))
     CudaCompile.addSource(src, kernelName(op))
     op
@@ -38,8 +67,6 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   private def makeKernel(op: OP_MultiLoop) = {
     val out = new StringBuilder
-
-    //update the op with this kernel
     updateOP(op)
     writeFileHeader(out, op)
     makeKernels(out, op)
@@ -58,6 +85,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   private def writeFileHeader(out: StringBuilder, op: OP_MultiLoop) {
     out.append("#include <cuda.h>\n")
     out.append("#include <cudpp.h>\n")
+    out.append("#include \"helperFuncs.h\"\n")
     out.append("#include \"" + op.id + ".cu\"\n")
     out.append("extern cudaStream_t kernelStream;\n")
     out.append("extern CUDPPHandle cudppHandle;\n")
@@ -66,12 +94,10 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   private def writeLauncherHeader(out: StringBuilder, op: OP_MultiLoop) {
     out.append("void ")
     out.append(kernelName(op))
-    def deref(op: DeliteOP, tp: String) = if (isPrimitiveType(op.outputType(tp))) "" else "*"
-    out.append(op.getOutputs.map(o => op.outputType(Targets.Cuda, o) + "* " + o).mkString("(",", ",""))
-    if (op.getOutputs.size > 0) out.append(", ")
+    out.append(op.getOutputs.map(o => op.outputType(Targets.Cuda, o) + "** " + o).mkString("(",", ",""))
+    if ((op.getOutputs.size>0) && (op.getInputs.size>0)) out.append(", ")
     writeInputs(out,op,true)
     out.append(")\n")
-    //out.append(op.getGPUMetadata(Targets.Cuda).temps.map(i => i._1.resultType + "* " + i._2).mkString(", ",", ",")\n"))
   }
 
   private def writeFooter(out: StringBuilder) {
@@ -79,83 +105,92 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   }
 
   private def makeKernels(out: StringBuilder, op: OP_MultiLoop) {
-    //copyFunctionOutSymbolMap(op)
-
-    //TODO: Fix DEG
-    //if (op.needsCombine)
-    //  error("ERROR: reductions not yet supported on GPU")
-
-    if (op.needsPostProcess) {
-      //makeTemps(out, op)
-      writeConditionKernel(out, op)
-      writeMapLikeKernel(out, op, true)
-    }
-    else {
-      writeMapLikeKernel(out, op, false)
-    }
+    if(needsCondition(op)) writeConditionKernel(out, op)
+    writeMapReduceKernel(out, op)
+    if(needsReduction(op)) writeReduceKernel(out,op)
+    if(needsReductionTuple(op)) writeReduceTupleKernel(out,op)
   }
 
   private def writeKernelLauncher(out: StringBuilder, op: OP_MultiLoop) {
     writeLauncherHeader(out, op)
     out.append("{\n")
-    writeSize(out, op)
 
-    if (op.needsPostProcess) {
-      makeTemps(out, op)
+    makeTemps(out, op)
+    if(needsCondition(op)) {
       writeKernelCall(out, op, "Cond")
       writeScanKernel(out, op)
-      //writeCopyBackKernel(out, op)
-      //writeOutAllocs(op, out)
-      writeKernelCall(out, op, "Map")
+      writeCopyBackKernel(out, op)
     }
-    else {
-      //writeOutAllocs(op, out)
-      writeKernelCall(out, op, "Map")
+
+    writeOutputAllocs(op, out)
+    writeKernelCall(out, op, "MapReduce")
+
+    if(needsReduction(op)) {
+      writeKernelCall(out, op, "Reduce")
     }
+    if(needsReductionTuple(op)) {
+      writeKernelCall(out, op, "ReduceTuple")
+    }
+    writeCopyBackReduceKernel(out, op)
 
     writeFooter(out)
   }
 
   private def writeKernelCall(out: StringBuilder, op: OP_MultiLoop, id: String) {
-    out.append(kernelName(op))
-    out.append(id)
-    out.append("<<<") //kernel dimensions
-    //grid dimensions
-    out.append("dim3")
-    out.append('(')
-    out.append(dimSize)
-    out.append(",1,1),") //Y & Z dims = 1
-    //block dimensions
-    out.append("dim3")
-    out.append('(')
-    out.append(blockSize)
-    out.append(",1,1),0,")
-    //stream
-    out.append("kernelStream")
-    out.append(">>>")
-
     def dimSize = "(1 +((" + op.size + "-1)/" + blockSize + "))"
     def blockSize = "1024"
     def deref(op: DeliteOP, tp: String) = if (isPrimitiveType(op.outputType(tp))) "" else "*"
+    def cudaLaunch(dimConfig: String): String = {
+      val str = new StringBuilder
+      str.append(kernelName(op))
+      str.append(id)
+      str.append("<<<") //kernel dimensions
+      str.append("dim3")
+      str.append('(')
+      str.append(dimConfig)
+      str.append(",dim3")
+      str.append('(')
+      str.append(blockSize)
+      str.append(",1,1),0,")
+      str.append("kernelStream")
+      str.append(">>>")
+      str.toString
+    }
 
-    out.append('(')
     id match {
       case "Cond" =>
-        out.append(op.getGPUMetadata(Targets.Cuda).outputs.filter(_._1.hasCond).map(o => "bitmap_" + o._2 + ", *" + o._2).mkString("",", ",""))
-        out.append(op.getInputs.map(i => deref(i._1,i._2) + i._2).mkString(", ",", ",""))
-        //out.append(op.getOutputs.filter(o => outSymbolMap(o)._3).map(o => "*" + o + "_bitmap").mkString(", ",", ",""))
-      case "Map" =>
-        out.append(op.getGPUMetadata(Targets.Cuda).outputs.filter(_._1.hasCond).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2 + ", *" + o._2).mkString("",", ",""))
-        //out.append(op.getOutputs.map(o => "*" + outSymbolMap(o)._1).mkString(", "))
-        out.append(op.getInputs.map(i => deref(i._1,i._2) + i._2).mkString(", ",", ",""))
-        //out.append(op.getOutputs.filter(o => outSymbolMap(o)._3).map(o => "*" + o + "_bitmap").mkString(", ",", ",""))
-        //out.append(op.getOutputs.filter(o => outSymbolMap(o)._3).map(o => "*" + o + "_scanmap").mkString(", ",", ",""))
+        out.append(cudaLaunch(dimSize + ",1,1)"))
+        val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
+        out.append(args.mkString("(",",",");\n"))
+      case "MapReduce"  =>
+        out.append(cudaLaunch(dimSize + ",1,1)"))
+        val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ reductionList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
+        out.append(args.mkString("(",",",");\n"))
+      case "Reduce" | "ReduceTuple" =>
+        out.append("int num_blocks_" + id + " = " + dimSize + ";\n")
+        out.append("while(num_blocks_" + id + " != 1) {\n")
+        out.append(cudaLaunch("1+(num_blocks_" + id + "-1)/1024,1,1)"))
+        val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ reductionList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else "")) ++ List("num_blocks_"+id)
+        out.append(args.mkString("(",",",");\n"))
+        out.append("num_blocks_" + id + " = 1 + (num_blocks_" + id + "-1)/1024;\n")
+        for((odata,osym) <- reductionList(op)) {
+          out.append(odata.loopFuncOutputType + " *temp_" + osym + "_t = temp_" + osym + ";\n")
+          out.append("temp_" + osym + " = temp_" + osym + "_2;\n")
+          out.append("temp_" + osym + "_2 = temp_" + osym + "_t;\n")
+        }
+        for((odata,osym) <- reductionTupleList(op)) {
+          out.append(odata.loopFuncOutputType + " *temp_1_" + osym + "_t = temp_1_" + osym + ";\n")
+          out.append("temp_1_" + osym + " = temp_1_" + osym + "_2;\n")
+          out.append("temp_1_" + osym + "_2 = temp_1_" + osym + "_t;\n")
+          out.append(odata.loopFuncOutputType_2 + " *temp_2_" + osym + "_t = temp_2_" + osym + ";\n")
+          out.append("temp_2_" + osym + " = temp_2_" + osym + "_2;\n")
+          out.append("temp_2_" + osym + "_2 = temp_2_" + osym + "_t;\n")
+        }
+        out.append("}\n")
+
       case _ => error(id + " is not a known kernel type")
     }
-    out.append(");\n")
   }
-
-  private var outSymbolMap = Map[String,(String,String,Boolean)]()
 
   private def writeKernelHeader(out: StringBuilder, op: OP_MultiLoop, id: String) {
     out.append("__global__ void ")
@@ -165,109 +200,188 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
     id match {
       case "Cond" =>
-        out.append(op.getGPUMetadata(Targets.Cuda).outputs.filter(_._1.hasCond).map(o => "unsigned int *" + "bitmap_" + o._2 + "," + op.outputType(Targets.Cuda,o._2) + " " + o._2).mkString("",", ",""))
-
-        if (op.getInputs.nonEmpty) out.append(",")
+        val params = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => op.outputType(Targets.Cuda, o) + " " + o) ++ conditionList(op).map(o => "unsigned int * bitmap_" + o._2)
+        out.append(params.mkString(","))
+        if (params.nonEmpty && op.getInputs.nonEmpty) out.append(',')
         writeInputs(out,op,false)
-      case "Map" =>
-        out.append(op.getGPUMetadata(Targets.Cuda).outputs.filter(_._1.hasCond).map(o => "unsigned int * bitmap_" + o._2 + ", unsigned int * scanmap_" + o._2 + ", " + op.outputType(Targets.Cuda,o._2) + " " + o._2).mkString("",", ",""))
-        //out.append(op.getOutputs.map(o => outSymbolMap(o)._2 + " " + outSymbolMap(o)._1).mkString("",", ",", "))
-        if (op.getInputs.nonEmpty) out.append(",")
+      case "MapReduce" | "Reduce" | "ReduceTuple" =>
+        val params = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => op.outputType(Targets.Cuda, o) + " " + o) ++ conditionList(op).map(o => "unsigned int * bitmap_" + o._2 + ", unsigned int * scanmap_" + o._2) ++ reductionList(op).map(o => o._1.loopFuncOutputType + " *temp_" + o._2 + "," + o._1.loopFuncOutputType + " *temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => o._1.loopFuncOutputType + " *temp_1_" + o._2 + "," + o._1.loopFuncOutputType + " *temp_1_" + o._2 + "_2," + o._1.loopFuncOutputType_2 + " *temp_2_" + o._2 + "," + o._1.loopFuncOutputType_2 + " *temp_2_" + o._2 + "_2")
+        out.append(params.mkString(","))
+        if (params.nonEmpty && op.getInputs.nonEmpty) out.append(',')
         writeInputs(out,op,false)
-        //out.append(op.getOutputs.filter(o => outSymbolMap(o)._3).map(o => "unsigned int* " + o + "_bitmap").mkString(", ",", ",""))
-        //out.append(op.getOutputs.filter(o => outSymbolMap(o)._3).map(o => "unsigned int* " + o + "_scanmap").mkString(", ",", ",""))
+        if((id=="Reduce") || (id=="ReduceTuple")) {
+          out.append(", int size")
+        }
       case _ => error(id + " is not a known kernel type")
     }
 
     out.append(") {\n")
     out.append("int idxX = blockIdx.x * blockDim.x + threadIdx.x;\n")
-    out.append("if (idxX < " + op.size + ") {\n")
+    addDeref(out, op)
+    allocateSharedMem(out, op)
+  }
+
+  /* Allocate shared memory for reduction operation */
+  private def allocateSharedMem(out: StringBuilder, op: OP_MultiLoop) {
+    for((odata,osym) <- reductionList(op))
+      out.append("__shared__ " + odata.loopFuncOutputType + " smem_" + osym + "[1024];\n")
+    for((odata,osym) <- reductionTupleList(op)) {
+      out.append("__shared__ " + odata.loopFuncOutputType + " smem_1_" + osym + "[1024];\n")
+      out.append("__shared__ " + odata.loopFuncOutputType_2 + " smem_2_" + osym + "[1024];\n")
+    }
   }
 
   private def writeKernelFooter(out: StringBuilder) {
-    out.append("}\n}\n") //end if, end kernel
-  }
-
-  private def parseFile(op: OP_MultiLoop, marker: String, process: String => Unit) {
-    val file = File(Path(CudaCompile.sourceCacheHome + "kernels" + File.separator + op.id + "." + CudaCompile.ext))
-    val c = file.chars()
-    val endMarker = "#END"
-    var copy = false
-    for (line <- c.getLines) {
-      if (line == endMarker) copy = false
-      if (copy) process(line)
-      if (line == marker) copy = true
-    }
-    c.close()
-  }
-
-  private def copyFunction(out: StringBuilder, op: OP_MultiLoop, marker: String) {
-    val process: String => Unit = line => {
-      out.append(line)
-      out.append('\n')
-    }
-    parseFile(op, marker, process)
-  }
-
-  private def copyFunctionOutSymbolMap(op: OP_MultiLoop) {
-    val marker = "#MAPPING"
-    val process: String => Unit = line => {
-      val str = line.split(":")
-      outSymbolMap = outSymbolMap + (str(0)->(str(1),str(2),str(3)=="true"))
-    }
-    parseFile(op, marker, process)
-  }
-
-  private def writeMapLikeKernel(out: StringBuilder, op: OP_MultiLoop, needsPostProcess: Boolean) {
-    writeKernelHeader(out, op, "Map")
-    out.append("//map kernel code\n")
-    for((odata,osym) <- op.getGPUMetadata(Targets.Cuda).outputs) {
-      if (odata.hasCond) {
-        out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + osym + "(" + odata.loopFuncInputs.mkString("",",",",") + "idxX);\n")
-        out.append("if(bitmap_" + osym + "[idxX] == 1) " + osym + ".dcUpdate(scanmap_" + osym + "[idxX], collect_" + osym + ");\n")
-      }
-      else {
-        out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + osym + "(" + odata.loopFuncInputs.mkString("",",",",") + "idxX);\n")
-        out.append(osym + ".dcUpdate(scanmap_" + osym + "[idxX]], collect_" + osym + ");\n")
-      }
-    }
-
-    //copyFunction(out, op, "#MAP")
-    writeKernelFooter(out)
+    out.append("}\n") //end if, end kernel
   }
 
   private def writeConditionKernel(out: StringBuilder, op: OP_MultiLoop) {
     writeKernelHeader(out, op, "Cond")
-    out.append("//condition kernel code\n")
-    for((odata,osym) <- op.getGPUMetadata(Targets.Cuda).outputs if (odata.hasCond)) {
-      out.append("bool cond_" + osym + " = dev_cond_" + osym + "(" + odata.loopCondInputs.mkString("",",",",") + "idxX);\n")
+    out.append("if (idxX < " + op.size + ") {\n")
+    for((odata,osym) <- conditionList(op)) {
+      out.append("bool cond_" + osym + " = dev_cond_" + osym + "(" + (odata.loopCondInputs:+"idxX").mkString(",") + ");\n")
       out.append("if(cond_" + osym + " == 1) bitmap_" + osym + "[idxX] = 1;\n")
       out.append("else bitmap_" + osym + "[idxX] = 0;\n")
     }
-    //copyFunction(out, op, "#COND")
+    out.append("}\n")
     writeKernelFooter(out)
   }
 
-  private def writeSize(out: StringBuilder, op: OP_MultiLoop) {
-    copyFunction(out, op, "#SIZE")
+  private def writeMapReduceKernel(out: StringBuilder, op: OP_MultiLoop) {
+    writeKernelHeader(out, op, "MapReduce")
+    for((odata,osym) <- op.getGPUMetadata(Targets.Cuda).outputs) {
+      odata.loopType match {
+        case "COLLECT" =>
+          if (odata.hasCond) out.append("if (idxX<" + op.size + " && bitmap_" + osym + "[idxX]==1) {\n")
+          else out.append("if (idxX < " + op.size + ") {\n")
+          out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + osym + "(" + (odata.loopFuncInputs:+"idxX").mkString(",") + ");\n")
+          if(odata.hasCond) out.append(osym + ".dcUpdate(scanmap_" + osym + "[idxX], collect_" + osym + ");\n")
+          else out.append(osym + ".dcUpdate(idxX, collect_" + osym + ");\n")
+          out.append("}\n")
+        /*
+        case "FOREACH" =>
+          if (odata.hasCond) out.append("if (idxX<" + op.size + " && bitmap_" + osym + "[idxX]==1) {\n")
+          else out.append("if (idxX < " + op.size + ") {\n")
+          out.append("dev_foreach_" + osym + "(" + odata.loopFuncInputs.mkString("",",",",") + "idxX);\n")
+          out.append("}\n")
+        */
+        case "REDUCE" =>
+          if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_" + osym + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
+          else out.append("smem_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_" + osym + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
+          out.append("__syncthreads();\n")
+          out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
+          out.append("if((idxX%(2*s))==0) { \n")
+          out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + osym + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+          out.append("}\n")
+          out.append("__syncthreads();\n")
+          out.append("}\n")
+          out.append("if(threadIdx.x==0) temp_" + osym + "[blockIdx.x] = smem_" + osym + "[0];\n")
+        case "REDUCE_TUPLE" =>
+          if (odata.hasCond) {
+            out.append("smem_1_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_1_" + osym + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") + " : dev_zero_1_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
+            out.append("smem_2_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_2_" + osym + (odata.loopFuncInputs_2:+"idxX").mkString("(",",",")") + " : dev_zero_2_" + osym + odata.loopZeroInputs_2.mkString("(",",",");\n"))
+          }
+          else {
+            out.append("smem_1_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_1_" + osym + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") + " : dev_zero_1_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
+            out.append("smem_2_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_2_" + osym + (odata.loopFuncInputs_2:+"idxX").mkString("(",",",")") + " : dev_zero_2_" + osym + odata.loopZeroInputs_2.mkString("(",",",");\n"))
+          }
+          out.append("if(idxX<" + op.size + ") smem_1_" + osym + "[threadIdx.x] = dev_reduce_seq_1_" + osym + (odata.loopReduceInputs ++ List("dev_zero_1_"+osym+odata.loopZeroInputs.mkString("(",",",")"),"dev_zero_2_"+osym+odata.loopZeroInputs_2.mkString("(",",",")"),"smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","idxX")).mkString("(",",",");\n"))
+          out.append("if(idxX<" + op.size + ") smem_2_" + osym + "[threadIdx.x] = dev_reduce_seq_2_" + osym + (odata.loopReduceInputs_2 ++ List("dev_zero_1_"+osym+odata.loopZeroInputs.mkString("(",",",")"),"dev_zero_2_"+osym+odata.loopZeroInputs_2.mkString("(",",",")"),"smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","idxX")).mkString("(",",",");\n"))
+          out.append("__syncthreads();\n")
+          out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
+          out.append("if((idxX%(2*s))==0) { \n")
+          out.append("smem_1_" + osym + "[threadIdx.x] = dev_reduce_par_1_" + osym + (odata.loopReduceParInputs ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+          out.append("smem_2_" + osym + "[threadIdx.x] = dev_reduce_par_2_" + osym + (odata.loopReduceParInputs_2 ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+          out.append("}\n")
+          out.append("__syncthreads();\n")
+          out.append("}\n")
+          out.append("if(threadIdx.x==0) {\n")
+          out.append("temp_1_" + osym + "[blockIdx.x] = smem_1_" + osym + "[0];\n")
+          out.append("temp_2_" + osym + "[blockIdx.x] = smem_2_" + osym + "[0];\n")
+          out.append("}\n")
+      }
+    }
+    writeKernelFooter(out)
   }
 
-  /*
-  private def writeOutAllocs(op: OP_MultiLoop, out: StringBuilder) {
-    for ((data,name) <- op.getGPUMetadata(target).outputs) {
-      //Parse the file
-      copyFunction(out,op,"#ALLOC_" + name)
-      writeMemoryAdd(name, out)
+  //TODO: Use more efficient reduction algorithm
+  private def writeReduceKernel(out: StringBuilder, op: OP_MultiLoop) {
+    writeKernelHeader(out, op, "Reduce")
+    for((odata,osym) <- reductionList(op)) {
+      if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_" + osym + "[idxX] : dev_zero_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
+      else out.append("smem_" + osym + "[threadIdx.x] = (idxX < size) ? temp_" + osym + "[idxX] : dev_zero_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
+      out.append("__syncthreads();\n")
+      out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
+      out.append("if((idxX%(2*s))==0) { \n")
+      out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + osym + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+      out.append("}\n")
+      out.append("__syncthreads();\n")
+      out.append("}\n")
+      out.append("if(threadIdx.x==0) temp_" + osym + "_2[blockIdx.x] = smem_" + osym + "[0];\n")
     }
+    writeKernelFooter(out)
   }
-  */
+
+  private def writeReduceTupleKernel(out: StringBuilder, op: OP_MultiLoop) {
+    writeKernelHeader(out, op, "ReduceTuple")
+    for((odata,osym) <- reductionTupleList(op)) {
+      if (odata.hasCond) {
+        out.append("smem_1_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_1_" + osym + "[idxX] : dev_zero_1_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
+        out.append("smem_2_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_2_" + osym + "[idxX] : dev_zero_2_" + osym + odata.loopZeroInputs_2.mkString("(",",",");\n"))
+      }
+      else {
+        out.append("smem_1_" + osym + "[threadIdx.x] = (idxX < size) ? temp_1_" + osym + "[idxX] : dev_zero_1_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
+        out.append("smem_2_" + osym + "[threadIdx.x] = (idxX < size) ? temp_2_" + osym + "[idxX] : dev_zero_2_" + osym + odata.loopZeroInputs_2.mkString("(",",",");\n"))
+      }
+      out.append("__syncthreads();\n")
+      out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
+      out.append("if((idxX%(2*s))==0) { \n")
+      out.append("smem_1_" + osym + "[threadIdx.x] = dev_reduce_par_1_" + osym + (odata.loopReduceParInputs ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+      out.append("smem_2_" + osym + "[threadIdx.x] = dev_reduce_par_2_" + osym + (odata.loopReduceParInputs_2 ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+      out.append("}\n")
+      out.append("__syncthreads();\n")
+      out.append("}\n")
+      out.append("if(threadIdx.x==0) {\n")
+      out.append("temp_1_" + osym + "_2[blockIdx.x] = smem_1_" + osym + "[0];\n")
+      out.append("temp_2_" + osym + "_2[blockIdx.x] = smem_2_" + osym + "[0];\n")
+      out.append("}\n")
+    }
+    writeKernelFooter(out)
+  }
+
+  override protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
+      for ((odata,osym) <- op.getGPUMetadata(target).outputs) {// if !isPrimitiveType(op.outputType(osym))) {
+        out.append("*" + osym)
+        out.append(" = ")
+        out.append(odata.func)
+        out.append('(')
+        writeInputList(op, odata, out)
+        if(odata.inputs.nonEmpty && odata.loopType=="COLLECT" && odata.hasCond) out.append(',')
+        if(odata.loopType=="COLLECT" && odata.hasCond) out.append("*" + osym + "_size_ptr")
+        out.append(");\n")
+        out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
+        out.append("*" + osym)
+        out.append(",lastAlloc));\n")
+        out.append("lastAlloc = new list<void*>();\n")
+      }
+  }
 
   private def writeCopyBackKernel(out: StringBuilder, op: OP_MultiLoop) {
-    for (output <- op.getOutputs if (outSymbolMap(output)._3)) {
-      out.append("int *%s_size_ptr;\n".format(output))
-      out.append("DeliteCudaMallocHost((void**)&%s_size_ptr,sizeof(int));\n".format(output))
-      out.append("DeliteCudaMemcpyDtoHAsync((void*)%s_size_ptr,*%s_scanmap+%s_size-1,sizeof(int));\n".format(output,output,op.id))
-      out.append("int %s_size = *(%s_size_ptr);\n".format(output,output))
+    for((odata,osym) <- conditionList(op)) {
+      out.append("unsigned int *%s_size_ptr;\n".format(osym))
+      out.append("DeliteCudaMallocHost((void**)&%s_size_ptr,2*sizeof(unsigned int));\n".format(osym))
+      out.append("DeliteCudaMemcpyDtoHAsync((void*)%s_size_ptr,scanmap_%s+%s-1,sizeof(unsigned int));\n".format(osym,osym,op.size))
+      out.append("DeliteCudaMemcpyDtoHAsync((void*)(%s_size_ptr+1),bitmap_%s+%s-1,sizeof(unsigned int));\n".format(osym,osym,op.size))
+      out.append("*%s_size_ptr = *%s_size_ptr + *(%s_size_ptr+1);\n".format(osym,osym,osym))
+    }
+  }
+
+  private def writeCopyBackReduceKernel(out: StringBuilder, op: OP_MultiLoop) {
+    for((odata,osym) <- reductionList(op)) {
+      out.append("DeliteCudaMemcpyDtoDAsync((void*)(*%s),temp_%s,sizeof(%s));\n".format(osym,osym,odata.loopFuncOutputType))
+    }
+    for((odata,osym) <- reductionTupleList(op)) {
+      out.append("DeliteCudaMemcpyDtoDAsync((void*)(*%s),temp_1_%s,sizeof(%s));\n".format(osym,osym,odata.loopFuncOutputType))
     }
   }
 
@@ -280,24 +394,46 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     out.append("config.options = CUDPP_OPTION_FORWARD | CUDPP_OPTION_EXCLUSIVE;\n")
     out.append("CUDPPHandle plan;\n")
     out.append("cudppPlan(cudppHandle, &plan, config, " + op.size + ", 1, 0);\n")
-    for ((odata,osym) <- op.getGPUMetadata(Targets.Cuda).outputs if (odata.hasCond)) {
+    for ((odata,osym) <- conditionList(op)) {
       out.append("cudppScan(plan, " + "scanmap_" + osym + ", bitmap_" + osym + ", " + op.size + ");\n")
     }
     out.append("cudppDestroyPlan(plan);\n")
   }
 
+  // Allocate & Register temporary memory for filter and reduction operations
   private def makeTemps(out: StringBuilder, op: OP_MultiLoop) {
-    allocateMaps(out, op) //TODO: read per-output tag in DEG to find out how many bitmaps are needed
+    allocateMaps(out, op)
+    allocateTemps(out, op)
     //addOpTemps(op)
   }
 
+  // Allocate bitmap and scanmap for filter operations
   private def allocateMaps(out: StringBuilder, op: OP_MultiLoop) {
     for (name <- List("bitmap_", "scanmap_")) {
-      for ((odata,osym) <- op.getGPUMetadata(Targets.Cuda).outputs if(odata.hasCond)) {
-        //out.append("unsigned int * " + name + osym + " = (unsigned int *) malloc(sizeof(unsigned int *));\n")
+      for ((odata,osym) <- conditionList(op)) {
         out.append("unsigned int * " + name + osym + ";\n")
         out.append("DeliteCudaMalloc((void**)&" + name + osym + ", " + op.size + "*sizeof(unsigned int));\n")
       }
+    }
+  }
+
+  // Allocate temporary outputs for reduction operations
+  private def allocateTemps(out: StringBuilder, op: OP_MultiLoop) {
+    for ((odata,osym) <- reductionList(op)) {
+      out.append(odata.loopFuncOutputType + " *temp_" + osym + ";\n")
+      out.append("DeliteCudaMalloc((void**)&temp_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
+      out.append(odata.loopFuncOutputType + " *temp_" + osym + "_2;\n")
+      out.append("DeliteCudaMalloc((void**)&temp_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
+    }
+    for ((odata,osym) <- reductionTupleList(op)) {
+      out.append(odata.loopFuncOutputType + " *temp_1_" + osym + ";\n")
+      out.append("DeliteCudaMalloc((void**)&temp_1_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
+      out.append(odata.loopFuncOutputType + " *temp_1_" + osym + "_2;\n")
+      out.append("DeliteCudaMalloc((void**)&temp_1_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType + "));\n")
+      out.append(odata.loopFuncOutputType_2 + " *temp_2_" + osym + ";\n")
+      out.append("DeliteCudaMalloc((void**)&temp_2_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + "));\n")
+      out.append(odata.loopFuncOutputType_2 + " *temp_2_" + osym + "_2;\n")
+      out.append("DeliteCudaMalloc((void**)&temp_2_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + "));\n")
     }
   }
 
@@ -316,19 +452,14 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
       else if (isPrimitiveType(in.outputType(sym))) {
         if (!first) out.append(", ")
         first = false
-        out.append(getCPrimitiveType(in.outputType(sym)))
-        out.append(" " + sym)
-      }
-    }
-  }
-
-  private def addOpTemps(op: OP_MultiLoop) {
-    for (name <- List("_bitmap", "_scanmap")) {
-      for (output <- op.getOutputs if (outSymbolMap(output)._3)) {
-        val temp = op.getGPUMetadata(Targets.Cuda).newTemp(output + name)
-        temp.func = output + name
-        temp.resultType = "unsigned int*"
-        temp.inputs = op.getInputs.toList
+        if(needDeref(op,in,sym)) {
+          out.append(getCPrimitiveType(in.outputType(sym)))
+          out.append(" *" + sym + "_ptr")
+        }
+        else {
+          out.append(getCPrimitiveType(in.outputType(sym)))
+          out.append(" " + sym)
+        }
       }
     }
   }

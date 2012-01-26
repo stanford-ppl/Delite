@@ -6,9 +6,7 @@
 using namespace std;
 
 list<void*>* lastAlloc = new list<void*>();
-
 queue<FreeItem>* freeList = new queue<FreeItem>();
-
 map<void*,list<void*>*>* cudaMemoryMap = new map<void*,list<void*>*>();
 
 void freeCudaMemory(FreeItem item) {
@@ -133,7 +131,7 @@ void DeliteCudaMemcpyDtoHAsync(void* dptr, void* sptr, size_t size) {
 }
 
 void DeliteCudaMemcpyDtoDAsync(void *dptr, void* sptr, size_t size) {
-	cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyDeviceToDevice, h2dStream);
+	cudaMemcpyAsync(dptr, sptr, size, cudaMemcpyDeviceToDevice, kernelStream);
 }
 
 void DeliteCudaMemset(void *ptr, int value, size_t count) {
