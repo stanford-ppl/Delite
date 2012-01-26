@@ -57,31 +57,24 @@
         <h1 id='title_getting started'>Getting started</h1>
         <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. For Windows instructions, click <a href="getting_started_windows.html">here</a>.</p>
 
-        <p> Delite requires <a href="http://java.com">Java 1.6 or later</a>, <a href="http://python.org">Python 2.6</a>, <a href="http://git-scm.com">git</a> and <a href="https://github.com/harrah/xsbt/wiki">SBT 0.11.x</a>. Instructions for installing
+        <p> Delite requires <a href="http://java.com">Java 1.6 or later</a>, <a href="http://python.org">Python 2.6</a>, <a href="http://git-scm.com">git</a> and <a href="https://github.com/harrah/xsbt/wiki">SBT 0.11.3</a>. Instructions for installing
         these can be found at their respective websites.</p>
-        
-        <p>To get started, you first need to
+        <br>
+        <div id="warn">
+          <p> Delite currently requires a pre-release version of the <a href="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/0.11.3-20120125-052127/sbt-launch.jar">sbt.</a> 
+          <br><br>Download this jar and place it in an executable location, e.g. <code>~/bin/</code>. As with other versions of sbt, you will also need a simple shell script to run the jar. Create an executable script named 'sbt' in the same directory, containing the following line (our recommended parameters for running Delite):
+          <br><br>
+          <code>java -Xmx2g -XX:MaxPermSize=1g -XX:ReservedCodeCacheSize=128m -jar `dirname $0`/sbt-launch.jar "$@"</code>
+          <br><br>
+          If you have installed Delite before and are upgrading, you will need to run the command: 
+          <br><br><code>sbt "reboot full"</code><br><br>
+          from the LMS home directory before continuing the rest of the guide.
+          </p>
+        </div>
+       
+      <p>To get started, you first need to
         download the source for <code>Delite</code> and <code>virtualization-lms-core</code>, the lightweight modular
         staging library that Delite uses. Delite uses <a href="http://git-scm.com/">git</a> for version control (see <a href="http://book.git-scm.com/2_installing_git.html">here</a> for installation instructions).</p>
-
-      <br>
-      <div id="warn">
-        <p>
-        Our <code>sbt</code> project is configured to auto-download the scala-virtualized compiler.
-        However, there is a bug in sbt 0.11.2 that is incompatible with the latest scala-virtualized
-        snapshots. Until a patch is released, you will need to download <a href="dists/scala-virt-sbt.tgz">  an older scala-virtualized tarball.</a>
-        <br><br>
-        Unpack the tar to the <code>boot</code> directory
-        inside your <code>sbt</code> home directory (usually <code>~/.sbt/boot/</code>):
-        <br><br><code>cd ~/.sbt/boot/</code>
-        <br><code>tar -xzf scala-virt-sbt.tgz</code>
-        <br><br>
-        You should
-        then see the folder <code>~/.sbt/boot/scala-2.10.0-virtualized-SNAPSHOT</code>, and can
-        safely continue the rest of the instructions on this guide.
-        </p>
-      </div>
-
       <p>
         First, make a copy of the repository on your machine:
         </p><p>
@@ -97,6 +90,7 @@ sbt publish-local
         <p> Now we are ready to compile and run Delite. Navigate back to the Delite directory and checkout the correct branch: </p>
 <div class="highlight"><pre><code class="bash">cd ../Delite
 git checkout optiml-alpha
+sbt clean
 </code></pre></div>
 
         <p> The Delite repository currently includes several modules: </p>
