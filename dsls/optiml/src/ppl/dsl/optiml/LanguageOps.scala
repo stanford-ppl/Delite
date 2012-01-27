@@ -244,7 +244,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     
     val in = copyTransformedOrElse(_.in)(start::end)
     val size = copyTransformedOrElse(_.size)(end - start)
-    val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable)) // FIXME: zero can be a fresh matrix, mutable calls cloneL
+    val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable)) // FIXME: zero can be a fresh matrix, mutable calls Clone
     def reduce = (a,b) => a += b
     
     def m = manifest[A]
@@ -414,7 +414,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
         val vtasks = vertices(i).tasks
         //totalTasks += vtasks.length
         for(j <- unit(0) until vtasks.length) {
-          val task = vtasks(j).asInstanceOfL[V]
+          val task = vtasks(j).AsInstanceOf[V]
           if(!seen.contains(task)) {
             tasks += task   //TODO TR: non-mutable write (use mclone)
             seen.add(task)   //TODO TR: non-mutable write
@@ -438,7 +438,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
     while ((abs(delta) > thresh) && (iter < max_iter)){
       val prev = if (clone_prev_val)
-        cur.cloneL()
+        cur.Clone()
       else
         cur
 
@@ -449,8 +449,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 //        case e: Exception => throw new ConvergenceException("Converging block threw exception: " + e)
 //      }
       iter += 1
-      //prev.asInstanceOfLOfL[Matrix[Any]].pprint
-      //next.asInstanceOfL[Matrix[Any]].pprint
+      //prev.AsInstanceOfOfL[Matrix[Any]].pprint
+      //next.AsInstanceOf[Matrix[Any]].pprint
       delta = diff(next,prev)
       cur = next
       //println("(" + delta + ")")

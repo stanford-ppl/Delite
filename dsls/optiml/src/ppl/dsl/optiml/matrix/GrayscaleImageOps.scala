@@ -68,13 +68,13 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   case class GrayscaleImageObjectCartToPolarMagnitude(inA: Exp[Matrix[Float]], inB: Exp[Matrix[Float]])
     extends MatrixArithmeticZipWith(inA, inB) {
 
-    def func = (a,b) => sqrt(a*a + b*b).asInstanceOfL[Float]
+    def func = (a,b) => sqrt(a*a + b*b).AsInstanceOf[Float]
   }
 
   case class GrayscaleImageObjectCartToPolarPhase(inA: Exp[Matrix[Float]], inB: Exp[Matrix[Float]])
     extends MatrixArithmeticZipWith(inA, inB) {
 
-    def func = (a,b) => (atan2(b, a)*unit(180)/Pi).asInstanceOfL[Float]
+    def func = (a,b) => (atan2(b, a)*unit(180)/Pi).AsInstanceOf[Float]
   }
 
   ////////////////////

@@ -59,7 +59,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   def densevector_obj_randf_impl(length: Rep[Int]) = DenseVector[Float](length, true) mmap { i => random[Float] }
 
   def densevector_obj_uniform_impl(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]) = {
-    val length = ceil((end-start)/step_size).asInstanceOfL[Int]
+    val length = ceil((end-start)/step_size).AsInstanceOf[Int]
     (0::length) map { i => step_size*i + start }
   }
 
@@ -191,8 +191,8 @@ trait VectorImplOpsStandard extends VectorImplOps {
   
   def vector_concatenate_impl[A:Manifest,VA:Manifest](v1: Interface[Vector[A]], v2: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]) = {
     // should use static rewritings or static overloading to do this
-    //if (v1.isInstanceOfL[EmptyVector[A]]) v2
-    //else if (v2.isInstanceOfL[EmptyVector[A]]) v1
+    //if (v1.IsInstanceOf[EmptyVector[A]]) v2
+    //else if (v2.IsInstanceOf[EmptyVector[A]]) v1
     //else {
       val outAlloc = b.alloc(v1.length+v2.length, v1.isRow)
       val out = b.toIntf(outAlloc)

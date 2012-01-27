@@ -41,7 +41,7 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
     def length(implicit ctx: SourceContext) = rangevector_length(elem)
     def isRow(implicit ctx: SourceContext) = rangevector_isrow(elem)
     def apply(n: Rep[Int])(implicit ctx: SourceContext) = rangevector_apply(elem,n)
-    def sort(implicit o: Ordering[Int], ctx: SourceContext) = elem.cloneL    
+    def sort(implicit o: Ordering[Int], ctx: SourceContext) = elem.Clone    
     
     // generic
     type VPLUSR = DenseVector[Int]

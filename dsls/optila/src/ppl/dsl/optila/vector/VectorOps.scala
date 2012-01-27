@@ -110,7 +110,7 @@ trait VectorOps extends Variables {
     // general
     def t(implicit ctx: SourceContext): Rep[VA] // TODO: move to type-system
     def mt()(implicit ctx: SourceContext): Rep[VA]
-    def cloneL()(implicit ctx: SourceContext): Rep[VA] = vector_clone[A,VA](x) 
+    def Clone()(implicit ctx: SourceContext): Rep[VA] = vector_clone[A,VA](x) 
     def mutable()(implicit ctx: SourceContext): Rep[VA] = vector_mutable_clone[A,VA](x)
     def pprint()(implicit ctx: SourceContext): Rep[Unit] = vector_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext): Rep[Matrix[A]] = vector_repmat(x,i,j)
@@ -309,7 +309,7 @@ trait VectorOps extends Variables {
     
     def t(implicit ctx: SourceContext) = intf.ops.t
     def mt()(implicit ctx: SourceContext) = intf.ops.mt
-    def cloneL()(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.cloneL)
+    def Clone()(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.Clone)
     def mutable()(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.mutable)
     def pprint()(implicit ctx: SourceContext) = intf.ops.pprint
     def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = intf.ops.replicate(i,j)

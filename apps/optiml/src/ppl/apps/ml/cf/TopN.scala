@@ -40,7 +40,7 @@ trait TopN extends OptiMLApplication {
     if (args.length < 3) printUsage
 
     // each row is in the format (userID, profileID, rating)    
-    val data = readMatrix(args(0), ",") map { e => e.asInstanceOfL[Int] }     
+    val data = readMatrix(args(0), ",") map { e => e.AsInstanceOf[Int] }     
     val testUser = Integer.parseInt(args(1))
     val N = Integer.parseInt(args(2))
     

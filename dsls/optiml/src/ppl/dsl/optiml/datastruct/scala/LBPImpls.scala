@@ -28,7 +28,7 @@ trait DenoiseEdgeData extends MessageData {
   def setMessage(m: DenseVector[Double])
   def oldMessage: DenseVector[Double]
   def setOldMessage(oM: DenseVector[Double])
-  def cloneL : DenoiseEdgeData
+  def Clone : DenoiseEdgeData
 }
 
 class DenoiseVertexDataImpl(val _id : Int, var _belief : DenseVector[Double], var _potential : DenseVector[Double]) extends DenoiseVertexData {
@@ -62,7 +62,7 @@ class DenoiseEdgeDataImpl(var _msg : DenseVector[Double], var _oldMsg : DenseVec
     _oldMsg = msg
   }
 
-  def cloneL = {
-    new DenoiseEdgeDataImpl(_msg.cloneL, _oldMsg.cloneL)
+  def Clone = {
+    new DenoiseEdgeDataImpl(_msg.Clone, _oldMsg.Clone)
   }
 }

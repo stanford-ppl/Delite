@@ -71,9 +71,9 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
         if (((Y(i)*E_i < -1.*tol) && (alphas(i) < C)) || ((Y(i)*E_i > tol) && (alphas(i) > 0))){
           // select a candidate j from the remaining numSamples-i samples at random
           //println("next rand: " + random[Double])
-          var j = floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
+          var j = floor(random[Double]*(numSamples-1)).AsInstanceOf[Int]+1
           while (j == i){
-            j = floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
+            j = floor(random[Double]*(numSamples-1)).AsInstanceOf[Int]+1
           }
 
           val f_j = (alphas*Y*(X*X(j).t)).sum + b
@@ -172,7 +172,7 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
   // utility
 
   def saveModel(filename : Rep[String]) = {
-    val out = weights.cloneL
+    val out = weights.Clone
     out += b
     writeVector(out, filename)
   }

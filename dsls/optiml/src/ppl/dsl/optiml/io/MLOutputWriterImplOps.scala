@@ -29,7 +29,7 @@ trait MLOutputWriterImplOpsStandard extends MLOutputWriterImplOps {
     img.foreachRow( vec => {
       vec.foreach( p => {
         if (min != max) {
-          val pixel = (255.0 * (p - min) / (max - min)).asInstanceOfL[Int]
+          val pixel = (255.0 * (p - min) / (max - min)).AsInstanceOf[Int]
           xfs.write(pixel + "")
         }
         else

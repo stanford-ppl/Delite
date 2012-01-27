@@ -93,7 +93,7 @@ trait ImageOpsExp extends ImageOps with VariablesExp {
       if ((row >= rowOffset) && (row < x.numRows - rowOffset) && (col >= colOffset) && (col < x.numCols - colOffset)) {
         block(x.slice(row - rowOffset, row + rowOffset + unit(1), col - colOffset, col + colOffset + unit(1)))
       } else {
-        unit(0).asInstanceOfL[B]
+        unit(0).AsInstanceOf[B]
       }
     }
     Image(y)

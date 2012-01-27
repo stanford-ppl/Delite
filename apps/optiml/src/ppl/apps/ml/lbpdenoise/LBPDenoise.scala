@@ -78,7 +78,7 @@ trait LBPDenoise extends OptiMLApplication {
     
     untilconverged(g) {
       v =>
-        val vdata = v.data.asInstanceOfL[DenoiseVertexData]
+        val vdata = v.data.AsInstanceOf[DenoiseVertexData]
         /*if(count % 100000 == 0) {
           print("ITER")
           vdata.belief.pprint
@@ -92,7 +92,7 @@ trait LBPDenoise extends OptiMLApplication {
 
         // Multiply belief by messages
         for (e <- v.edges) {  //TODO TR: non-mutable write
-          val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]  
+          val in = e.AsInstanceOf[MessageEdge].in(v).AsInstanceOf[DenoiseEdgeData]  
           unaryFactorTimesM(belief, in.message)  //TODO TR: non-mutable write
           
          /* if(count % 100000 == 0) {
@@ -114,8 +114,8 @@ trait LBPDenoise extends OptiMLApplication {
 
         // Send outbound messages
         for (e <- v.edges) { //TODO TR: non-mutable write (within)
-          val in = e.asInstanceOfL[MessageEdge].in(v).asInstanceOfL[DenoiseEdgeData]
-          val out = e.asInstanceOfL[MessageEdge].out(v).asInstanceOfL[DenoiseEdgeData]
+          val in = e.AsInstanceOf[MessageEdge].in(v).AsInstanceOf[DenoiseEdgeData]
+          val out = e.AsInstanceOf[MessageEdge].out(v).AsInstanceOf[DenoiseEdgeData]
        
           val cavity = vdata.belief.mutable
           
@@ -184,7 +184,7 @@ trait LBPDenoise extends OptiMLApplication {
          
           // Enqueue update function on target vertex if residual is greater than bound
           if (residual > bound) {
-            v.addTask(e.asInstanceOfL[MessageEdge].target(v)) //TODO TR: non-mutable write
+            v.addTask(e.AsInstanceOf[MessageEdge].target(v)) //TODO TR: non-mutable write
           }
         }
       count += 1 
@@ -194,7 +194,7 @@ trait LBPDenoise extends OptiMLApplication {
 
     // Predict the image!
    g.vertices foreach { v =>
-      imgUpdate(cleanImg, v.data.asInstanceOfL[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.asInstanceOfL[DenoiseVertexData].belief))   //TODO TR: non-mutable write (use mclone)
+      imgUpdate(cleanImg, v.data.AsInstanceOf[DenoiseVertexData].id, unaryFactorMaxAsg(v.data.AsInstanceOf[DenoiseVertexData].belief))   //TODO TR: non-mutable write (use mclone)
     }
     
     MLOutputWriter.writeImgPgm(cleanImg, "pred.pgm")
@@ -288,16 +288,16 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   def imgPaintSunset(img: Rep[Matrix[Double]], numRings: Rep[Int]) = {
-    val centerR = img.numRows.asInstanceOfL[Double] / 2.0
-    val centerC = img.numCols.asInstanceOfL[Double] / 2.0
-    val maxRadius = min(img.numRows, img.numCols).asInstanceOfL[Double] / 2.0
+    val centerR = img.numRows.AsInstanceOf[Double] / 2.0
+    val centerC = img.numCols.AsInstanceOf[Double] / 2.0
+    val maxRadius = min(img.numRows, img.numCols).AsInstanceOf[Double] / 2.0
 
     var r = 0
     var c = 0
     while (r < img.numRows) {
       c = 0
       while (c < img.numCols) {
-        val distance = sqrt((r.asInstanceOfL[Double] - centerR) * (r.asInstanceOfL[Double] - centerR) + (c.asInstanceOfL[Double] - centerC) * (c.asInstanceOfL[Double] - centerC))
+        val distance = sqrt((r.AsInstanceOf[Double] - centerR) * (r.AsInstanceOf[Double] - centerR) + (c.AsInstanceOf[Double] - centerC) * (c.AsInstanceOf[Double] - centerC))
 
         // If on top of image
         if (r < img.numRows / 2) {

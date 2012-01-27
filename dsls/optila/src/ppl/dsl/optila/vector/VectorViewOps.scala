@@ -37,7 +37,7 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def length(implicit ctx: SourceContext) = vectorview_length(elem)
     def isRow(implicit ctx: SourceContext) = vectorview_isrow(elem)
     def apply(n: Rep[Int])(implicit ctx: SourceContext) = vectorview_apply(elem,n)
-    def sort(implicit o: Ordering[A], ctx: SourceContext) = elem.cloneL.sort    
+    def sort(implicit o: Ordering[A], ctx: SourceContext) = elem.Clone.sort    
     def t(implicit ctx: SourceContext) = vectorview_transpose(x)
     def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] = vectorview_update(x,n,y)
     

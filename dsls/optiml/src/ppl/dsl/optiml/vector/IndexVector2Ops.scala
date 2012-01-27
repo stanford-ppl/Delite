@@ -116,7 +116,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   //   case Def(IndexVector2Wildcard()) => Const(true)
   //   case Def(IndexVectorRange(_,_)) => Const(false)
   //   case Def(IndexVectorObjectFromVec(_)) => Const(false)
-  //   case _ => x.isInstanceOfL[IndexVectorWC]
+  //   case _ => x.IsInstanceOf[IndexVectorWC]
   // }
 
   // class defs
@@ -154,7 +154,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
 //       //else matrix_obj_new[A](0,0).unsafeImmutable
 //     }
 //     // should we allow this? it is rather inefficient...
-//     //     else if ((x.colInd.isInstanceOfL[IndexVector]) && (x.rowInd.isInstanceOfL[IndexVectorWC])) {
+//     //     else if ((x.colInd.IsInstanceOf[IndexVector]) && (x.rowInd.IsInstanceOf[IndexVectorWC])) {
 //     //       //Matrix(IndexVector2ConstructVectors(x.colInd, block))
 //     //  val in = x.colInd
 //     //  if (in.length > 0){

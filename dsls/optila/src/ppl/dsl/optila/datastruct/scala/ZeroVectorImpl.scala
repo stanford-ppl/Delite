@@ -30,14 +30,14 @@ abstract class ZeroVectorImpl[T:Manifest](val length: Int, __isRow: Boolean) ext
     this
   }
 
-  def cloneL = new VectorImpl[T](length, isRow)
+  def Clone = new VectorImpl[T](length, isRow)
   def sort(implicit o: Ordering[T]) = this
-  def insert(pos:Int, x: T) = cloneL.insert(pos,x)
-  def insertAll(pos: Int, xs: Vector[T]) = cloneL.insertAll(pos,xs)
-  def copyFrom(pos: Int, xs: Vector[T]) = cloneL.copyFrom(pos, xs)
-  def removeAll(pos: Int, len: Int) = cloneL.removeAll(pos, len)
-  def trim = cloneL.trim
-  def clear() = cloneL.clear()
+  def insert(pos:Int, x: T) = Clone.insert(pos,x)
+  def insertAll(pos: Int, xs: Vector[T]) = Clone.insertAll(pos,xs)
+  def copyFrom(pos: Int, xs: Vector[T]) = Clone.copyFrom(pos, xs)
+  def removeAll(pos: Int, len: Int) = Clone.removeAll(pos, len)
+  def trim = Clone.trim
+  def clear() = Clone.clear()
   def toList = data.toList
 }
 

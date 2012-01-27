@@ -598,7 +598,7 @@ trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp wi
     //       implicit val mA: Manifest[A] = v.Type.asInstanceOf[Manifest[A]]
     //       reifyEffects {
     //         var index = var_new(unit(0))
-    //         var vs = var_new(unit(null).asInstanceOfL[A])
+    //         var vs = var_new(unit(null).AsInstanceOf[A])
     //         while (index < in.size) {
     //           vs = in(index)
     //           rebind(v.asInstanceOf[Sym[A]], ReadVar(vs))
@@ -1252,7 +1252,7 @@ trait SandboxScalaGenDeliteOps extends ScalaGenLoopsFat with SandboxBaseGenDelit
             if (isPrimitiveType(sym.Type)) {
               stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero")
             } else {
-              stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero.cloneL") // separate zero buffer
+              stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero.Clone") // separate zero buffer
             }
             emitReduceElem(op, sym, elem, "__act2.")
           }

@@ -28,7 +28,7 @@ trait VerticesOps extends Variables {
     def apply(n: Rep[Int]) = vertices_apply(x, n)
     def foreach(block: Rep[V] => Rep[Unit]) = vertices_foreach(x, block)
     def mforeach(block: Rep[V] => Rep[Unit]) = vertices_foreach(x, block)
-    def cloneL() = vertices_clone(x) 
+    def Clone() = vertices_clone(x) 
     def mutable() = vertices_mutable_clone(x)
     def printBeliefs() = vertices_pbeliefs(x)
     def toList() = vertices_tolist(x)

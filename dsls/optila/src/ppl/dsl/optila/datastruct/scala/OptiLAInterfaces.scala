@@ -13,7 +13,7 @@ package ppl.dsl.optila.datastruct.scala
 //   def mtrans: Vector[T]  
    def apply(n: Int): T
 //   def update(index: Int, x: T)
-//   def cloneL: Vector[T]
+//   def Clone: Vector[T]
 //   def toList: List[T]
 //   def sort(implicit o: Ordering[T]): Vector[T] // because we use the underlying data field to sort
 //   def copyFrom(pos: Int, xs: Vector[T])
@@ -51,7 +51,7 @@ package ppl.dsl.optila.datastruct.scala
 
 // TODO: enable this after switching VectorOps to DenseVectorOps
 // trait DenseVector[@specialized(Boolean, Int, Long, Float, Double) T] extends Vector[T] {
-//   def cloneL: DenseVector[T]
+//   def Clone: DenseVector[T]
 //   def sort(implicit o: Ordering[T]): DenseVector[T] // because we use the underlying data field to sort
 // //   def data: Array[T]
 // //   def unsafeSetData(xs: Array[T], len: Int)  
@@ -64,7 +64,7 @@ package ppl.dsl.optila.datastruct.scala
 //   def isRow: Boolean = true // shouldn't matter
 //   def mtrans = this  
 //   def toList = List[T]()
-//   def cloneL = new EmptyVectorImpl[T]  
+//   def Clone = new EmptyVectorImpl[T]  
 //   def trim = ()
 //   def clear() = ()  
 //   def sort(implicit o: Ordering[T]) = this
@@ -114,7 +114,7 @@ trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   def insertAllCols(pos: Int, xs: Matrix[T])
   def removeRows(pos: Int, len: Int)
   def removeCols(pos: Int, len: Int)
-  def cloneL: Matrix[T]
+  def Clone: Matrix[T]
 
   // DeliteCollection
   def dcApply(idx: Int): T

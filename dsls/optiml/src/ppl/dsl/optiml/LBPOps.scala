@@ -94,7 +94,7 @@ trait DenoiseEdgeDataOps extends Variables {
     def setMessage(m: Rep[DenseVector[Double]])(implicit ctx: SourceContext) = denoise_edge_data_message_update(e,m)
     def oldMessage(implicit ctx: SourceContext) = denoise_edge_data_old_message(e)
     def setOldMessage(m: Rep[DenseVector[Double]])(implicit ctx: SourceContext) = denoise_edge_data_old_message_update(e,m)
-    def cloneL(implicit ctx: SourceContext) = denoise_edge_data_cloneL(e)
+    def Clone(implicit ctx: SourceContext) = denoise_edge_data_Clone(e)
   }
 
   // object defs
@@ -105,7 +105,7 @@ trait DenoiseEdgeDataOps extends Variables {
   def denoise_edge_data_message_update(e: Rep[DenoiseEdgeData], m: Rep[DenseVector[Double]])(implicit ctx: SourceContext)
   def denoise_edge_data_old_message(e: Rep[DenoiseEdgeData])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
   def denoise_edge_data_old_message_update(e: Rep[DenoiseEdgeData], m: Rep[DenseVector[Double]])(implicit ctx: SourceContext)
-  def denoise_edge_data_cloneL(e: Rep[DenoiseEdgeData])(implicit ctx: SourceContext): Rep[DenoiseEdgeData]
+  def denoise_edge_data_Clone(e: Rep[DenoiseEdgeData])(implicit ctx: SourceContext): Rep[DenoiseEdgeData]
 }
 
 trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with VariablesExp with BaseFatExp {
@@ -134,7 +134,7 @@ trait DenoiseEdgeDataOpsExp extends DenoiseEdgeDataOps with VariablesExp with Ba
   def denoise_edge_data_message_update(e: Exp[DenoiseEdgeData], m: Exp[DenseVector[Double]])(implicit ctx: SourceContext) = reflectWrite(e)(DenoiseEdgeDataMessageUpdate(e, m))
   def denoise_edge_data_old_message(e: Exp[DenoiseEdgeData])(implicit ctx: SourceContext) = reflectMutable(DenoiseEdgeDataOldMessage(e))
   def denoise_edge_data_old_message_update(e: Exp[DenoiseEdgeData], m: Exp[DenseVector[Double]])(implicit ctx: SourceContext) = reflectWrite(e)(DenoiseEdgeDataOldMessageUpdate(e, m))
-  def denoise_edge_data_cloneL(e: Exp[DenoiseEdgeData])(implicit ctx: SourceContext) = reflectMutable(DenoiseEdgeDataCloneL(e))
+  def denoise_edge_data_Clone(e: Exp[DenoiseEdgeData])(implicit ctx: SourceContext) = reflectMutable(DenoiseEdgeDataCloneL(e))
 }
 
 trait ScalaGenDenoiseEdgeDataOps extends ScalaGenBase {
@@ -148,7 +148,7 @@ trait ScalaGenDenoiseEdgeDataOps extends ScalaGenBase {
       case DenoiseEdgeDataMessageUpdate(e,m) => emitValDef(sym, quote(e) + ".setMessage(" + quote(m) + ")")
       case DenoiseEdgeDataOldMessage(e) => emitValDef(sym, quote(e) + ".oldMessage")
       case DenoiseEdgeDataOldMessageUpdate(e,m) => emitValDef(sym, quote(e) + ".setOldMessage(" + quote(m) + ")")
-      case DenoiseEdgeDataCloneL(e) => emitValDef(sym, quote(e) + ".cloneL")
+      case DenoiseEdgeDataCloneL(e) => emitValDef(sym, quote(e) + ".Clone")
       case _ => super.emitNode(sym, rhs)
     }
   }

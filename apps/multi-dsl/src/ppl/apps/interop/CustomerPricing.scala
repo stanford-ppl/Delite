@@ -18,7 +18,7 @@ trait CustomerPricing extends OptiMLApplication {
     //val data = Matrix(orderData map { t => Array(t._1,t._2,t._3)})
     val data = Matrix(orderData map { t => Vector[Double](t._1,t._2,t._3) })
     val x = data.t.sliceRows(0,1).t
-    val y = data.getCol(2).cloneL
+    val y = data.getCol(2).Clone
     val theta = linreg.weighted(x,y)
     println("theta: ")
     theta.pprint

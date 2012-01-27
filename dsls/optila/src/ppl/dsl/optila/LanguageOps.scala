@@ -26,22 +26,22 @@ trait LanguageOps extends Base { this: OptiLA =>
   // this version is for optila's use exclusively, so it does not interfere with application behavior
   private def _random[A](implicit mA: Manifest[A]): Rep[A] =
     mA match {
-      case Manifest.Double => optila_internal_rand_double.asInstanceOfL[A]
-      case Manifest.Float => optila_internal_rand_float.asInstanceOfL[A]
-      case Manifest.Int => optila_internal_rand_int.asInstanceOfL[A]
-      case Manifest.Long => optila_internal_rand_long.asInstanceOfL[A]
-      case Manifest.Boolean => optila_internal_rand_boolean.asInstanceOfL[A]
+      case Manifest.Double => optila_internal_rand_double.AsInstanceOf[A]
+      case Manifest.Float => optila_internal_rand_float.AsInstanceOf[A]
+      case Manifest.Int => optila_internal_rand_int.AsInstanceOf[A]
+      case Manifest.Long => optila_internal_rand_long.AsInstanceOf[A]
+      case Manifest.Boolean => optila_internal_rand_boolean.AsInstanceOf[A]
       case _ => throw new UnsupportedOperationException()
   }
 
   // public version for application use
   def random[A](implicit mA: Manifest[A], ctx: SourceContext): Rep[A] =
     mA match {
-      case Manifest.Double => optila_rand_double.asInstanceOfL[A]
-      case Manifest.Float => optila_rand_float.asInstanceOfL[A]
-      case Manifest.Int => optila_rand_int.asInstanceOfL[A]
-      case Manifest.Long => optila_rand_long.asInstanceOfL[A]
-      case Manifest.Boolean => optila_rand_boolean.asInstanceOfL[A]
+      case Manifest.Double => optila_rand_double.AsInstanceOf[A]
+      case Manifest.Float => optila_rand_float.AsInstanceOf[A]
+      case Manifest.Int => optila_rand_int.AsInstanceOf[A]
+      case Manifest.Long => optila_rand_long.AsInstanceOf[A]
+      case Manifest.Boolean => optila_rand_boolean.AsInstanceOf[A]
       case _ => throw new UnsupportedOperationException()
   }
 

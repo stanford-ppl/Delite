@@ -80,7 +80,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
   
   case class VectorSum[A:Manifest:Numeric](in: Exp[Vector[A]]) extends DeliteOpReduce[A] {
     val size = copyTransformedOrElse(_.size)(in.length)
-    val zero = unit(0).asInstanceOfL[A]
+    val zero = unit(0).AsInstanceOf[A]
     def func = (a,b) => a + b
   }
   

@@ -38,7 +38,7 @@ trait IndexVectorRange extends IndexVector
 //   def removeAll(pos: Int, len: Int) = throw new UnsupportedOperationException()
 //   def trim = throw new UnsupportedOperationException()
 //   def clear() = throw new UnsupportedOperationException()
-//   def cloneL = throw new UnsupportedOperationException()
+//   def Clone = throw new UnsupportedOperationException()
 //   def unsafeSetData(xs: Array[Int], len: Int) = throw new UnsupportedOperationException()
 // }
 

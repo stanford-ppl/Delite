@@ -13,7 +13,7 @@ trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.deli
   def mtrans: Vector[T]  
   def apply(n: Int): T
   def update(index: Int, x: T)
-  def cloneL: Vector[T]
+  def Clone: Vector[T]
   def toList: List[T]
   def sort(implicit o: Ordering[T]): Vector[T] // because we use the underlying data field to sort
   def copyFrom(pos: Int, xs: Vector[T])

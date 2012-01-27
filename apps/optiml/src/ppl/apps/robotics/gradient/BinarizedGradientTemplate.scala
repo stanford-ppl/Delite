@@ -17,16 +17,16 @@ trait BinarizedGradientTemplateFuncs {
     if (test1.radius != test2.radius) {
       -1.0f
     } else {
-    var total: Rep[Float] = test1.match_list.length.asInstanceOfL[Float]
+    var total: Rep[Float] = test1.match_list.length.AsInstanceOf[Float]
     if (total == 0.0) {
       -1.0f
     } else {
-    val num_test: Rep[Float] = test2.match_list.length.asInstanceOfL[Float]
+    val num_test: Rep[Float] = test2.match_list.length.AsInstanceOf[Float]
     if ((num_test / total) < match_thresh) {
       num_test / total //Not enough entries in the other list to be above match_thresh
     } else {
     var matches = 0f
-    var limit = (total * (1.0f - match_thresh) + 0.5f).asInstanceOfL[Int] //Miss more than this number and we can't be above match_thresh
+    var limit = (total * (1.0f - match_thresh) + 0.5f).AsInstanceOf[Int] //Miss more than this number and we can't be above match_thresh
     // TODO: Change this to some sort of "filterUntil" construct to allow the code to short-circuit if we cross limit
     var i = 0
     var keepRunning = true
@@ -49,7 +49,7 @@ trait BinarizedGradientTemplateFuncs {
 if (!keepRunning) {
 (match_thresh - 0.000001f) //sunk below the limit of misses, early terminate
 } else {
-    (matches / total).asInstanceOfL[Float]
+    (matches / total).AsInstanceOf[Float]
 }
 }
 }

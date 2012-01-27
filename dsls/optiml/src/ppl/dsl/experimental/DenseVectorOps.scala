@@ -180,7 +180,7 @@ trait ScalaGenDenseVectorOps extends BaseGenDenseVectorOps with ScalaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case DenseVectorClone(x) => emitValDef(sym, quote(x) + ".cloneL")
+    case DenseVectorClone(x) => emitValDef(sym, quote(x) + ".Clone")
     case DenseVectorLength(x) => emitValDef(sym, quote(x) + ".length")
     case DenseVectorApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
     case DenseVectorUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))

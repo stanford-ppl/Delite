@@ -90,7 +90,7 @@ trait MatrixOps extends Variables {
     def t(implicit ctx: SourceContext) = matrix_transpose(x)
     // TODO: implicit won't trigger
     //override def clone = matrix_clone(x)
-    def cloneL()(implicit ctx: SourceContext) = matrix_clone(x)
+    def Clone()(implicit ctx: SourceContext) = matrix_clone(x)
     def mutable()(implicit ctx: SourceContext) = matrix_mutable_clone(x)
     def pprint()(implicit ctx: SourceContext) = matrix_pprint(x)
     def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = matrix_repmat(x,i,j)
@@ -435,7 +435,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     // 
     // def alloc = Matrix[Float](in.numRows, in.numCols)
     // val size = in.numRows*in.numCols
-    // def func = e => (1.0/(1.0+exp(conv(e)*(-1)))).asInstanceOfL[Float]
+    // def func = e => (1.0/(1.0+exp(conv(e)*(-1)))).AsInstanceOf[Float]
   }  
   
   case class MatrixSigmoidVectorized[A:Manifest](in: Exp[Matrix[A]]) extends DeliteOpExternal[Matrix[A]] {
@@ -1009,7 +1009,7 @@ trait ScalaGenMatrixOps extends ScalaGenBase {
     case MatrixGetCol(x,j) => emitValDef(sym, quote(x) + ".getCol(" + quote(j) + ")")
     case MatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case MatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
-    case MatrixClone(x) => emitValDef(sym, quote(x) + ".cloneL")
+    case MatrixClone(x) => emitValDef(sym, quote(x) + ".Clone")
     case MatrixUpdate(x,i,j,y)  => emitValDef(sym, quote(x) + "(" + quote(i) + ", " + quote(j) + ") = " + quote(y))
     case MatrixInsertRow(x,pos,y)  => emitValDef(sym, quote(x) + ".insertRow(" + quote(pos) + "," + quote(y) + ")")
     case MatrixInsertAllRows(x,pos,y) => emitValDef(sym, quote(x) + ".insertAllRows(" + quote(pos) + "," + quote(y) + ")")

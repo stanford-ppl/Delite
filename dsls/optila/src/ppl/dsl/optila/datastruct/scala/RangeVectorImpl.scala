@@ -32,7 +32,7 @@ class RangeVector(val start: Int, val end: Int, val stride: Int, __isRow: Boolea
     this
   }
 
-  //def cloneL = { val v = new DenseVector[Int](0, isRow); v.insertAll(0, this); v }
+  //def Clone = { val v = new DenseVector[Int](0, isRow); v.insertAll(0, this); v }
 
   def unsafeSetData(xs: Array[Int], len: Int) {
     throw new IllegalArgumentException("RangeVector cannot be updated")

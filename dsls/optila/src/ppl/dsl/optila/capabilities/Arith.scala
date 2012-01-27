@@ -144,9 +144,9 @@ trait ArithOps extends Variables with OverloadHack {
 
   implicit def denseVectorArith[T:Arith:Manifest]: Arith[DenseVector[T]] = new Arith[DenseVector[T]] {
     // these are used in sum; dynamic checks are required due to conditionals
-    // def +=(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = if (!b.isInstanceOfL[ZeroVector[T]]) a += b else a
-    // def +(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = if (a.isInstanceOfL[ZeroVector[T]]) b
-    //                                               else if (b.isInstanceOfL[ZeroVector[T]]) a
+    // def +=(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = if (!b.IsInstanceOf[ZeroVector[T]]) a += b else a
+    // def +(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]]) = if (a.IsInstanceOf[ZeroVector[T]]) b
+    //                                               else if (b.IsInstanceOf[ZeroVector[T]]) a
     //                                               else a+b
 
     def +=(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToDenseVecOps(a).+=(b) 
@@ -317,7 +317,7 @@ trait ArithOps extends Variables with OverloadHack {
     def *(a: Rep[Float], b: Rep[Float])(implicit ctx: SourceContext) = arith_times(a,b)
     def /(a: Rep[Float], b: Rep[Float])(implicit ctx: SourceContext) = arith_fractional_divide(a,b)
     def abs(a: Rep[Float])(implicit ctx: SourceContext) = arith_abs(a)
-    def exp(a: Rep[Float])(implicit ctx: SourceContext) = arith_exp(a).asInstanceOfL[Float]
+    def exp(a: Rep[Float])(implicit ctx: SourceContext) = arith_exp(a).AsInstanceOf[Float]
     def empty(implicit ctx: SourceContext) = unit(0f)
     def zero(a: Rep[Float])(implicit ctx: SourceContext) = empty
     //def unary_-(a: Rep[Float]) = -a
@@ -330,7 +330,7 @@ trait ArithOps extends Variables with OverloadHack {
     def *(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = arith_times(a,b)
     def /(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = int_divide(a,b)
     def abs(a: Rep[Int])(implicit ctx: SourceContext) = arith_abs(a)
-    def exp(a: Rep[Int])(implicit ctx: SourceContext) = arith_exp(a).asInstanceOfL[Int]
+    def exp(a: Rep[Int])(implicit ctx: SourceContext) = arith_exp(a).AsInstanceOf[Int]
     def empty(implicit ctx: SourceContext) = unit(0)
     def zero(a: Rep[Int])(implicit ctx: SourceContext) = empty
     //def unary_-(a: Rep[Int]) = -a

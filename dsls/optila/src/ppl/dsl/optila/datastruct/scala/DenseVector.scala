@@ -46,7 +46,7 @@ class DenseVector[@specialized T: Manifest](__length: Int, __isRow: Boolean) ext
     _data(index) = x
   }
 
-  def cloneL = { val v = new DenseVector[T](0, isRow); v.insertAll(0, this); v }
+  def Clone = { val v = new DenseVector[T](0, isRow); v.insertAll(0, this); v }
 
   def unsafeSetData(xs: Array[T], len: Int) {
     _data = xs

@@ -282,7 +282,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
         }
 
         if (!finished){
-          val tmpRow = currentMat(i).cloneL
+          val tmpRow = currentMat(i).Clone
           currentMat(i) = currentMat(r)
           currentMat(r) = tmpRow
           currentMat(r) = currentMat(r) / currentMat(r,lead)
@@ -338,7 +338,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     for (i <- 0 until m.numRows){
       val vv = m.getRow(i)
       if (pred(vv))
-        out += vv.cloneL // AKS TODO: should not need to clone
+        out += vv.Clone // AKS TODO: should not need to clone
     }
     out.unsafeImmutable
   }
@@ -384,7 +384,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 
   def matrix_sigmoidf_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]] = {
 
-    val out = x.map(in => (1.0/(1.0+exp(conv(in)*(-1)))).asInstanceOfL[Float])
+    val out = x.map(in => (1.0/(1.0+exp(conv(in)*(-1)))).AsInstanceOf[Float])
     out
   }
 
@@ -405,7 +405,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
       if (!(groups contains key)) {
         groups(key) = Matrix[A](0,0)        
       }
-      groups(key) += x(i).cloneL // AKS TODO: should not need clone
+      groups(key) += x(i).Clone // AKS TODO: should not need clone
       i += 1
     }
   

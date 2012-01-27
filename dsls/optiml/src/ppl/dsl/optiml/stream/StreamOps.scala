@@ -148,7 +148,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   def stream_foreachrow[A:Manifest](x: Exp[Stream[A]], block: Exp[StreamRow[A]] => Exp[Unit])(implicit ctx: SourceContext) = {
     // we do not know at compile time how many streaming chunks are needed (therefore how many ops to submit)
     // so we submit a While loop, where each iteration of the while depends on the next, and let the runtime unroll it
-    val numChunks = ceil(x.numRows / chunkSize(x.numCols).doubleValue()).asInstanceOfL[Int]
+    val numChunks = ceil(x.numRows / chunkSize(x.numCols).doubleValue()).AsInstanceOf[Int]
     val i = var_new(unit(0))
     while (i < numChunks) {
       val rowsToProcess = stream_rowsin(x, i)
