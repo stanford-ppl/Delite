@@ -5,11 +5,11 @@ import scala.virtualization.lms.common._
 
 trait RecordOps extends Base {
   
-  class Record extends Row[Rep]
+  class Record extends Struct[Rep]
       
-  def __new[T<:Row[Rep]:Manifest](fields: (String, Rep[T] => Rep[_])*): Rep[T] = newRecord[T](fields)
+  def __new[T<:Struct[Rep]:Manifest](fields: (String, Boolean, Rep[T] => Rep[_])*): Rep[T] = newRecord[T](fields)
     
-  def newRecord[T:Manifest](fields: Seq[(String,Rep[T] => Rep[_])]): Rep[T]
+  def newRecord[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T]
   
   implicit def RepToRecordOps(r: Rep[Record]) = new RecordOpsCls(r)
   
@@ -34,9 +34,9 @@ trait RecordOpsExp extends RecordOps with BaseExp {
   case class CreateRecord[T:Manifest](fields: Seq[(String, Rep[_])]) extends Def[T]
   case class RecordFieldAccess[T:Manifest](res: Rep[Record], field: String) extends Def[T]
     
-  def newRecord[T:Manifest](fields: Seq[(String,Rep[T] => Rep[_])]): Rep[T] = {
+  def newRecord[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T] = {
     val x: Sym[T] = fresh[T]
-    val flatFields: Seq[(String, Rep[_])] = fields map {case (n, rhs) => (n, rhs(x))}
+    val flatFields: Seq[(String, Rep[_])] = fields map {case (n, _, rhs) => (n, rhs(x))}
     val nDef: Def[T] = CreateRecord(flatFields)
     createDefinition(x, nDef)
     return x

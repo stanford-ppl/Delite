@@ -18,11 +18,14 @@ trait ArithOps extends Variables with OverloadHack {
   implicit def repArithToArithOps[T:Arith:Manifest](n: Rep[T]) = new ArithOpsCls(n)
   implicit def varArithToArithOps[T:Arith:Manifest](n: Var[T]) = new ArithOpsCls(readVar(n))
 
+/*
+  TR disabled to work with Scala 2.10.0-M1
+  
   // to do Rep[Int] * Float, it should get converted to Rep[Float] * Float
   // TODO: this only works when invoked explicitly (won't kick in itself)
   implicit def chainRepArithToArithOps[A,B](a: Rep[A])
     (implicit mA: Manifest[A], aA: Arith[A], mB: Manifest[B], aB: Arith[B], c: Rep[A] => Rep[B]) = new ArithOpsCls(c(a))
-
+*/
   class ArithOpsCls[T](lhs: Rep[T])(implicit mT: Manifest[T], arith: Arith[T]){
     // TODO: if B == Rep[T] below, the ops implicit does not work unless it is called explicitly (no unambiguous resolution?)
     def +(rhs: Rep[T]): Rep[T] = arith.+(lhs,rhs)

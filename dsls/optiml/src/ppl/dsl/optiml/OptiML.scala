@@ -3,7 +3,7 @@ package ppl.dsl.optiml
 import java.io._
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
-import ppl.delite.framework.{Config, DeliteApplication}
+import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
@@ -44,6 +44,20 @@ trait OptiMLApplication extends OptiLAApplication with OptiML with OptiMLLift wi
 trait OptiMLLibrary extends OptiMLKmeans with OptiMLLinReg {
   this: OptiMLApplication with OptiMLLift =>
 }
+
+
+trait OptiMLInteractive extends OptiMLApplication with DeliteInteractive
+
+trait OptiMLInteractiveRunner extends OptiMLApplicationRunner with DeliteInteractiveRunner
+
+object OptiML {
+  def apply[R](b: => R) = new Scope[OptiMLInteractive, OptiMLInteractiveRunner, R](b)
+}
+
+
+
+
+
 
 /**
  * These are the portions of Scala imported into OptiML's scope.
