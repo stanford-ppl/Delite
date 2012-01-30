@@ -55,13 +55,13 @@
       </div>
       <div id='content'> 
         <h1 id='title_getting started'>Getting started</h1>
-        <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. For Windows instructions, click <a href="getting_started_windows.html">here</a>.</p>
+        <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. Windows support is coming soon.</p>
 
         <p> Delite requires <a href="http://java.com">Java 1.6 or later</a>, <a href="http://python.org">Python 2.6</a>, <a href="http://git-scm.com">git</a> and <a href="https://github.com/harrah/xsbt/wiki">SBT 0.11.3</a>. Instructions for installing
         these can be found at their respective websites.</p>
         <br>
         <div id="warn">
-          <p> Delite currently requires a pre-release version of the <a href="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/0.11.3-20120125-052127/sbt-launch.jar">sbt.</a> 
+          <p> Delite currently requires a pre-release version of <a href="http://typesafe.artifactoryonline.com/typesafe/ivy-snapshots/org.scala-tools.sbt/sbt-launch/0.11.3-20120125-052127/sbt-launch.jar">sbt.</a> 
           <br><br>Download this jar and place it in an executable location, e.g. <code>~/bin/</code>. As with other versions of sbt, you will also need a simple shell script to run the jar. Create an executable script named 'sbt' in the same directory, containing the following line (our recommended parameters for running Delite):
           <br><br>
           <code>java -Xmx2g -XX:MaxPermSize=1g -XX:ReservedCodeCacheSize=128m -jar `dirname $0`/sbt-launch.jar "$@"</code>
