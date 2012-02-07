@@ -94,8 +94,8 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   private def writeLauncherHeader(out: StringBuilder, op: OP_MultiLoop) {
     out.append("void ")
     out.append(kernelName(op))
-    out.append(op.getOutputs.map(o => op.outputType(Targets.Cuda, o) + "** " + o).mkString("(",", ",""))
-    if ((op.getOutputs.size>0) && (op.getInputs.size>0)) out.append(", ")
+    out.append(op.getOutputs.filter(o => op.outputType(Targets.Cuda,o)!="void").map(o => op.outputType(Targets.Cuda, o) + "** " + o).mkString("(",", ",""))
+    if ((op.getOutputs.filter(o => op.outputType(Targets.Cuda,o)!="void").size>0) && (op.getInputs.size>0)) out.append(", ")
     writeInputs(out,op,true)
     out.append(")\n")
   }
@@ -162,7 +162,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
         out.append(cudaLaunch(dimSize + ",1,1)"))
         val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         out.append(args.mkString("(",",",");\n"))
-      case "MapReduce"  =>
+      case "MapReduce" =>
         out.append(cudaLaunch(dimSize + ",1,1)"))
         val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ reductionList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         out.append(args.mkString("(",",",");\n"))
@@ -258,13 +258,10 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
           if(odata.hasCond) out.append(osym + ".dcUpdate(scanmap_" + osym + "[idxX], collect_" + osym + ");\n")
           else out.append(osym + ".dcUpdate(idxX, collect_" + osym + ");\n")
           out.append("}\n")
-        /*
         case "FOREACH" =>
-          if (odata.hasCond) out.append("if (idxX<" + op.size + " && bitmap_" + osym + "[idxX]==1) {\n")
-          else out.append("if (idxX < " + op.size + ") {\n")
+          out.append("if (idxX < " + op.size + ") {\n")
           out.append("dev_foreach_" + osym + "(" + odata.loopFuncInputs.mkString("",",",",") + "idxX);\n")
           out.append("}\n")
-        */
         case "REDUCE" =>
           if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_" + osym + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
           else out.append("smem_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_" + osym + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
@@ -350,7 +347,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   }
 
   override protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
-      for ((odata,osym) <- op.getGPUMetadata(target).outputs) {// if !isPrimitiveType(op.outputType(osym))) {
+      for ((odata,osym) <- op.getGPUMetadata(target).outputs if odata.resultType!="void") {// if !isPrimitiveType(op.outputType(osym))) {
         out.append("*" + osym)
         out.append(" = ")
         out.append(odata.func)

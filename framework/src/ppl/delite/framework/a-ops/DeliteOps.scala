@@ -1697,8 +1697,13 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
           lf.loopFuncOutputType = remap(getBlockResult(elem.func).Type)
 
         //TODO: Handle when synclist exists!
-        //case (sym, elem:DeliteForeachElem[_]) =>
-        //  emitMultiLoopFunc(sym, "FOREACH", elem.func, op.v, "foreach_"+quote(sym), stream)
+        case (sym, elem:DeliteForeachElem[_]) =>
+          metaData.outputs.put(sym,new TransferFunc)
+          val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
+          metaData.loopFuncs.put(sym,lf)
+          lf.tpe = "FOREACH"
+          lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "foreach_"+quote(sym), List(op.v), stream)
+          lf.loopFuncOutputType = remap(getBlockResult(elem.func).Type)
 
         case (sym, elem: DeliteReduceElem[_]) =>
           if(!isPrimitiveType(sym.Type)) throw new GenerationFailedException("CudaGen: DeliteReduceElem with non-primitive types is not supported.")

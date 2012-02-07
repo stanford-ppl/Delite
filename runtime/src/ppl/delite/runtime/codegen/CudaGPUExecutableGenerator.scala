@@ -173,7 +173,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
   protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
     if (op.isInstanceOf[OP_Executable]) {
-      for ((data,name) <- op.getGPUMetadata(target).outputs) {
+      for ((data,name) <- op.getGPUMetadata(target).outputs if data.resultType!="void") {
         out.append(op.outputType(Targets.Cuda,name))
         out.append("* ")
         out.append(getSymGPU(name))
@@ -275,7 +275,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
     out.append('(')
     var first = true
-    for ((data,name) <- (op.getGPUMetadata(target).outputs)) {
+    for ((data,name) <- (op.getGPUMetadata(target).outputs) if data.resultType!="void") {
       if(!first) out.append(',')
       out.append('*')
       out.append(getSymGPU(name)) //first kernel inputs are OP outputs
@@ -309,7 +309,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append(op.task) //kernel name
     out.append('(')
     var first = true
-    for ((data,name) <- (op.getGPUMetadata(target).outputs)) {
+    for ((data,name) <- (op.getGPUMetadata(target).outputs) if data.resultType!="void") {
       if(!first) out.append(',')
       out.append('&')
       out.append(getSymGPU(name)) //first kernel inputs are OP outputs
@@ -431,7 +431,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
     for (name <- op.getOutputs) {
       var deleteLocalRef = false
-      op.getGPUMetadata(target).outputs.find(_._2 == name) match {
+      op.getGPUMetadata(target).outputs.find(o => (o._2==name)&&(o._1.resultType!="void")) match {
         case Some((data, n)) => {
           //copy output from GPU to CPU
           out.append(getJNIType(op.outputType(name))) //jobject
