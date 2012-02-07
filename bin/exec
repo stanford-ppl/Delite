@@ -1,3 +1,3 @@
 #!/bin/bash
 
-$JAVA_HOME/bin/java -server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx18g -Xms18g -Xmn12g -XX:+UseConcMarkSweepGC $JAVA_OPTS -cp $DELITE_HOME/runtime/target/scala-2.10.0-virtualized-SNAPSHOT/classes:$SCALA_VIRT_HOME/lib/scala-library.jar:$SCALA_VIRT_HOME/lib/scala-compiler.jar:$SCALA_VIRT_HOME/* ppl.delite.runtime.Delite "$@"
+$JAVA_HOME/bin/java -server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx18g -Xms18g -Xmn12g -XX:+UseConcMarkSweepGC $JAVA_OPTS -cp $DELITE_HOME/runtime/target/scala-2.10/classes:$SCALA_VIRT_HOME/lib/scala-library.jar:$SCALA_VIRT_HOME/lib/scala-compiler.jar:$SCALA_VIRT_HOME/* ppl.delite.runtime.Delite "$@"

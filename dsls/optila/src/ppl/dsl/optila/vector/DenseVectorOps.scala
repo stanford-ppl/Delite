@@ -6,7 +6,8 @@ import java.io.{PrintWriter}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
-import scala.reflect.{Manifest, SourceContext}
+import scala.reflect.Manifest
+import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import ppl.dsl.optila._
@@ -48,22 +49,22 @@ trait DenseVectorOps extends Variables {
     def mA: Manifest[A] = manifest[A]        
     
     // accessors
-    def length = densevector_length(elem)
-    def isRow = densevector_isrow(elem)
-    def apply(n: Rep[Int]) = densevector_apply(elem, n)
+    def length(implicit ctx: SourceContext) = densevector_length(elem)
+    def isRow(implicit ctx: SourceContext) = densevector_isrow(elem)
+    def apply(n: Rep[Int])(implicit ctx: SourceContext) = densevector_apply(elem, n)
     
     // general
-    def t = densevector_trans(elem)
-    def mt() = densevector_mutable_trans(elem)
+    def t(implicit ctx: SourceContext) = densevector_trans(elem)
+    def mt()(implicit ctx: SourceContext) = densevector_mutable_trans(elem)
     
     // data operations
-    def update(n: Rep[Int], y: Rep[A]) = densevector_update(elem,n,y)
-    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[A]]) = densevector_copyfrom(elem,pos,y)
-    def insert(pos: Rep[Int], y: Rep[A]) = densevector_insert(elem,pos,y)
-    def insertAll(pos: Rep[Int], y: Rep[DenseVector[A]]) = densevector_insertall(elem,pos,y)
-    def removeAll(pos: Rep[Int], len: Rep[Int]) = densevector_removeall(elem,pos,len)
-    def trim() = densevector_trim(elem)
-    def clear() = densevector_clear(elem)
+    def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = densevector_update(elem,n,y)
+    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = densevector_copyfrom(elem,pos,y)
+    def insert(pos: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = densevector_insert(elem,pos,y)
+    def insertAll(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = densevector_insertall(elem,pos,y)
+    def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densevector_removeall(elem,pos,len)
+    def trim()(implicit ctx: SourceContext) = densevector_trim(elem)
+    def clear()(implicit ctx: SourceContext) = densevector_clear(elem)
         
     // generic arithmetic
     type VPLUSR = DenseVector[A]
@@ -81,41 +82,43 @@ trait DenseVectorOps extends Variables {
     val vtimesBuilder = builder[A]
     def vtimesToIntf(x: Rep[VTIMESR]) = toIntf(x)        
     
-    def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2) = densevector_times_matrix(elem,y)
+    def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2, ctx: SourceContext) = densevector_times_matrix(elem,y)
     
     // ordering operations
-    def sort(implicit o: Ordering[A]) = densevector_sort(elem)
+    def sort(implicit o: Ordering[A], ctx: SourceContext) = densevector_sort(elem)
     
     // bulk operations
-    def flatMap[B:Manifest](f: Rep[A] => Rep[DenseVector[B]]) = densevector_flatmap(elem,f)
-    def partition(pred: Rep[A] => Rep[Boolean]) = densevector_partition(elem,pred)
-    def groupBy[K:Manifest](pred: Rep[A] => Rep[K]) = densevector_groupby(elem,pred)                  
+    def flatMap[B:Manifest](f: Rep[A] => Rep[DenseVector[B]])(implicit ctx: SourceContext) = densevector_flatmap(elem,f)
+    def partition(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = densevector_partition(elem,pred)
+    def groupBy[K:Manifest](pred: Rep[A] => Rep[K])(implicit ctx: SourceContext) = densevector_groupby(elem,pred)                  
   }
-  
-  def __equal[A](a: Rep[DenseVector[A]], b: Rep[DenseVector[A]])(implicit o: Overloaded1, mA: Manifest[A]): Rep[Boolean] = densevector_equals(a,b)
-  def __equal[A](a: Rep[DenseVector[A]], b: Var[DenseVector[A]])(implicit o: Overloaded2, mA: Manifest[A]): Rep[Boolean] = densevector_equals(a,b)
-  def __equal[A](a: Var[DenseVector[A]], b: Rep[DenseVector[A]])(implicit o: Overloaded3, mA: Manifest[A]): Rep[Boolean] = densevector_equals(a,b)
-  def __equal[A](a: Var[DenseVector[A]], b: Var[DenseVector[A]])(implicit o: Overloaded4, mA: Manifest[A]): Rep[Boolean] = densevector_equals(a,b)
+
+  // !!
+  // these unfortunately have to be duplicated right now for each type of Vector. Any way to incorporate this into our generic dispatch?  
+  def __equal[A](a: Rep[DenseVector[A]], b: Rep[DenseVector[A]])(implicit o: Overloaded1, mA: Manifest[A], ctx: SourceContext): Rep[Boolean] = densevector_equals(a,b)
+  def __equal[A](a: Rep[DenseVector[A]], b: Var[DenseVector[A]])(implicit o: Overloaded2, mA: Manifest[A], ctx: SourceContext): Rep[Boolean] = densevector_equals(a,b)
+  def __equal[A](a: Var[DenseVector[A]], b: Rep[DenseVector[A]])(implicit o: Overloaded3, mA: Manifest[A], ctx: SourceContext): Rep[Boolean] = densevector_equals(a,b)
+  def __equal[A](a: Var[DenseVector[A]], b: Var[DenseVector[A]])(implicit o: Overloaded4, mA: Manifest[A], ctx: SourceContext): Rep[Boolean] = densevector_equals(a,b)
   
   // class defs
-  def densevector_length[A:Manifest](x: Rep[DenseVector[A]]): Rep[Int]
-  def densevector_isrow[A:Manifest](x: Rep[DenseVector[A]]): Rep[Boolean]
-  def densevector_apply[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int]): Rep[A]  
-  def densevector_equals[A:Manifest](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]]): Rep[Boolean]
-  def densevector_trans[A:Manifest](x: Rep[DenseVector[A]]): Rep[DenseVector[A]]
-  def densevector_mutable_trans[A:Manifest](x: Rep[DenseVector[A]]): Rep[DenseVector[A]]
-  def densevector_update[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
-  def densevector_copyfrom[A:Manifest](x: Rep[DenseVector[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit]
-  def densevector_insert[A:Manifest](x: Rep[DenseVector[A]], pos: Rep[Int], y: Rep[A]): Rep[Unit]
-  def densevector_insertall[A:Manifest](x: Rep[DenseVector[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit]
-  def densevector_removeall[A:Manifest](x: Rep[DenseVector[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit]
-  def densevector_trim[A:Manifest](x: Rep[DenseVector[A]]): Rep[Unit]
-  def densevector_clear[A:Manifest](x: Rep[DenseVector[A]]): Rep[Unit]
-  def densevector_times_matrix[A:Manifest:Arith](x: Rep[DenseVector[A]], y: Rep[Matrix[A]]): Rep[DenseVector[A]]
-  def densevector_sort[A:Manifest:Ordering](x: Rep[DenseVector[A]]): Rep[DenseVector[A]]
-  def densevector_flatmap[A:Manifest,B:Manifest](x: Rep[DenseVector[A]], f: Rep[A] => Rep[DenseVector[B]]): Rep[DenseVector[B]]
-  def densevector_partition[A:Manifest](x: Rep[DenseVector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[DenseVector[A]], Rep[DenseVector[A]])
-  def densevector_groupby[A:Manifest,K:Manifest](x: Rep[DenseVector[A]], pred: Rep[A] => Rep[K]): Rep[DenseVector[DenseVector[A]]]         
+  def densevector_length[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Int]
+  def densevector_isrow[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Boolean]
+  def densevector_apply[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]  
+  def densevector_equals[A:Manifest](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Boolean]
+  def densevector_trans[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]]
+  def densevector_mutable_trans[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]]
+  def densevector_update[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
+  def densevector_copyfrom[A:Manifest](x: Rep[DenseVector[A]], pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def densevector_insert[A:Manifest](x: Rep[DenseVector[A]], pos: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
+  def densevector_insertall[A:Manifest](x: Rep[DenseVector[A]], pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def densevector_removeall[A:Manifest](x: Rep[DenseVector[A]], pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
+  def densevector_trim[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def densevector_clear[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def densevector_times_matrix[A:Manifest:Arith](x: Rep[DenseVector[A]], y: Rep[Matrix[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]]
+  def densevector_sort[A:Manifest:Ordering](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]]
+  def densevector_flatmap[A:Manifest,B:Manifest](x: Rep[DenseVector[A]], f: Rep[A] => Rep[DenseVector[B]])(implicit ctx: SourceContext): Rep[DenseVector[B]]
+  def densevector_partition[A:Manifest](x: Rep[DenseVector[A]], pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): (Rep[DenseVector[A]], Rep[DenseVector[A]])
+  def densevector_groupby[A:Manifest,K:Manifest](x: Rep[DenseVector[A]], pred: Rep[A] => Rep[K])(implicit ctx: SourceContext): Rep[DenseVector[DenseVector[A]]]         
 }
 
 trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp {
@@ -201,29 +204,29 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
   /////////////////////
   // class interface
 
-  def densevector_length[A:Manifest](x: Exp[DenseVector[A]]) = reflectPure(DenseVectorLength(x))
-  def densevector_isrow[A:Manifest](x: Exp[DenseVector[A]]) = reflectPure(DenseVectorIsRow(x))
-  def densevector_apply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int]) = reflectPure(DenseVectorApply(x, n))
+  def densevector_length[A:Manifest](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(DenseVectorLength(x))
+  def densevector_isrow[A:Manifest](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(DenseVectorIsRow(x))
+  def densevector_apply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorApply(x, n))
 
-  def densevector_equals[A:Manifest](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) = reflectPure(DenseVectorEquals(x,y))
-  def densevector_trans[A:Manifest](x: Exp[DenseVector[A]]) = reflectPure(DenseVectorTrans(x))
-  def densevector_mutable_trans[A:Manifest](x: Exp[DenseVector[A]]) = reflectWrite(x)(DenseVectorMutableTrans(x))
+  def densevector_equals[A:Manifest](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(DenseVectorEquals(x,y))
+  def densevector_trans[A:Manifest](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(DenseVectorTrans(x))
+  def densevector_mutable_trans[A:Manifest](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorMutableTrans(x))
 
-  def densevector_update[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(DenseVectorUpdate(x, n, y))
-  def densevector_copyfrom[A:Manifest](x: Exp[DenseVector[A]], pos: Exp[Int], y: Exp[DenseVector[A]]) = reflectWrite(x)(DenseVectorCopyFrom(x, pos, y))
-  def densevector_insert[A:Manifest](x: Exp[DenseVector[A]], pos: Exp[Int], y: Exp[A]) = reflectWrite(x)(DenseVectorInsert(x, pos, y))
-  def densevector_insertall[A:Manifest](x: Exp[DenseVector[A]], pos: Exp[Int], y: Exp[DenseVector[A]]) = reflectWrite(x)(DenseVectorInsertAll(x, pos, y))
-  def densevector_removeall[A:Manifest](x: Exp[DenseVector[A]], pos: Exp[Int], len: Exp[Int]) = reflectWrite(x)(DenseVectorRemoveAll(x, pos, len))
-  def densevector_trim[A:Manifest](x: Exp[DenseVector[A]]) = reflectWrite(x)(DenseVectorTrim(x))
-  def densevector_clear[A:Manifest](x: Exp[DenseVector[A]]) = reflectWrite(x)(DenseVectorClear(x))
+  def densevector_update[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorUpdate(x, n, y))
+  def densevector_copyfrom[A:Manifest](x: Exp[DenseVector[A]], pos: Exp[Int], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorCopyFrom(x, pos, y))
+  def densevector_insert[A:Manifest](x: Exp[DenseVector[A]], pos: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorInsert(x, pos, y))
+  def densevector_insertall[A:Manifest](x: Exp[DenseVector[A]], pos: Exp[Int], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorInsertAll(x, pos, y))
+  def densevector_removeall[A:Manifest](x: Exp[DenseVector[A]], pos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorRemoveAll(x, pos, len))
+  def densevector_trim[A:Manifest](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorTrim(x))
+  def densevector_clear[A:Manifest](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseVectorClear(x))
 
-  def densevector_times_matrix[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[Matrix[A]]) = reflectPure(DenseVectorTimesMatrix(x,y))
+  def densevector_times_matrix[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[Matrix[A]])(implicit ctx: SourceContext) = reflectPure(DenseVectorTimesMatrix(x,y))
 
-  def densevector_sort[A:Manifest:Ordering](x: Exp[DenseVector[A]]) = reflectPure(DenseVectorSort(x))
+  def densevector_sort[A:Manifest:Ordering](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(DenseVectorSort(x))
 
-  def densevector_flatmap[A:Manifest,B:Manifest](x: Exp[DenseVector[A]], f: Exp[A] => Exp[DenseVector[B]]) = reflectPure(DenseVectorFlatMap(x, f))
-  def densevector_partition[A:Manifest](x: Exp[DenseVector[A]], pred: Exp[A] => Exp[Boolean]) = t2(reflectPure(DenseVectorPartition(x, pred)))
-  def densevector_groupby[A:Manifest,K:Manifest](x: Exp[DenseVector[A]], pred: Exp[A] => Exp[K]) = reflectPure(DenseVectorGroupBy(x,pred))
+  def densevector_flatmap[A:Manifest,B:Manifest](x: Exp[DenseVector[A]], f: Exp[A] => Exp[DenseVector[B]])(implicit ctx: SourceContext) = reflectPure(DenseVectorFlatMap(x, f))
+  def densevector_partition[A:Manifest](x: Exp[DenseVector[A]], pred: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = t2(reflectPure(DenseVectorPartition(x, pred)))
+  def densevector_groupby[A:Manifest,K:Manifest](x: Exp[DenseVector[A]], pred: Exp[A] => Exp[K])(implicit ctx: SourceContext) = reflectPure(DenseVectorGroupBy(x,pred))
   
   
   //////////////
@@ -234,7 +237,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
     case DenseVectorLength(x) => densevector_length(f(x))
     case DenseVectorIsRow(x) => densevector_isrow(f(x))
     // implemented as DeliteOpSingleTask and DeliteOpLoop
-    case e@DenseVectorTrans(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorTrans(f(x))(e.m))(mtype(manifest[A]))
+    case e@DenseVectorTrans(x) => reflectPure(new { override val original = Some(f,e) } with DenseVectorTrans(f(x))(e.m))(mtype(manifest[A]),implicitly[SourceContext])
     // read/write effects
     case Reflect(DenseVectorApply(l,r), u, es) => reflectMirrored(Reflect(DenseVectorApply(f(l),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(DenseVectorLength(x), u, es) => reflectMirrored(Reflect(DenseVectorLength(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -291,7 +294,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
 trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp {
   this: DenseVectorImplOps with OptiLAExp =>
 
-  override def densevector_equals[A:Manifest](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) = (x, y) match {
+  override def densevector_equals[A:Manifest](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = (x, y) match {
     case (a,b) if (a == b) => unit(true) // same symbol
     case _ => super.densevector_equals(x,y)
   }
@@ -332,7 +335,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
   //     case _ => super.densevector_mutable_clone(x)
   //   }
 
-  override def densevector_length[A:Manifest](x: Exp[DenseVector[A]]) = x match {
+  override def densevector_length[A:Manifest](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = x match {
     /* these are essential for fusing:    */
 //    case Def(Reflect(e @ DenseVectorTimes(_,_), _,_)) => e.asInstanceOf[DeliteOpDenseVectorLoop[A]].size // FIXME: in general this is unsafe, but hey...
     case Def(DenseVectorNew(len, isRow)) => len
@@ -370,7 +373,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
       super.densevector_length(x)
   }
 
-  override def densevector_isrow[A:Manifest](x: Exp[DenseVector[A]]) = x match {
+  override def densevector_isrow[A:Manifest](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = x match {
     //case Def(e: DenseVectorArithmeticMap[A]) => e.in.asInstanceOf[Exp[DenseVector[A]]].isRow 
     //case Def(e: DenseVectorArithmeticZipWith[A]) => e.inA.asInstanceOf[Exp[DenseVector[A]]].isRow 
     //case Def(e: DeliteOpDenseVectorLoop[A]) => e.isRow
@@ -389,7 +392,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
   }
   
   // and this one also helps in the example:
-  def densevector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]): Option[Exp[A]] = x match {
+  def densevector_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext): Option[Exp[A]] = x match {
     case Def(DenseVectorObjectZeros(l)) => Some(unit(0.0).asInstanceOf[Exp[A]])
     case Def(DenseVectorObjectOnes(l)) => Some(unit(1.0).asInstanceOf[Exp[A]])
     //case Def(DenseVectorObjectRange(s,e,d,r)) => Some((s + n*d).asInstanceOf[Exp[A]])
@@ -404,11 +407,11 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     case _ => None
   }
   
-  override def densevector_apply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int]) = {
+  override def densevector_apply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
     densevector_optimize_apply(x.asInstanceOf[Exp[DeliteCollection[A]]],n) getOrElse super.densevector_apply(x,n)
   }
   
-  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) = {
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
     densevector_optimize_apply(x,n) getOrElse super.dc_apply(x,n)
   }
 }

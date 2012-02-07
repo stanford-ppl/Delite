@@ -9,9 +9,9 @@ import scala.reflect.SourceContext
 trait DeliteCollectionOps extends Base {
     
   trait DCInterfaceOps[+T,A] extends InterfaceOps[T] {
-    def dcSize: Rep[Int] 
-    def dcApply(n: Rep[Int]): Rep[A] 
-    def dcUpdate(n: Rep[Int], y: Rep[A]): Rep[Unit]
+    def dcSize(implicit ctx: SourceContext): Rep[Int] 
+    def dcApply(n: Rep[Int])(implicit ctx: SourceContext): Rep[A] 
+    def dcUpdate(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
   }
 
   trait DCInterface[+T,A] extends Interface[T] {
@@ -22,23 +22,23 @@ trait DeliteCollectionOps extends Base {
   
   // unlike before, don't assume that we know how to generate dcSize,dcApply,dcUpdate at run-time
   class DeliteCollectionInterfaceOps[A:Manifest](val intf: DCInterface[DeliteCollection[A],A]) {
-    def dcSize = intf.ops.dcSize
-    def dcApply(n: Rep[Int]) = intf.ops.dcApply(n) 
-    def dcUpdate(n: Rep[Int], y: Rep[A]) = intf.ops.dcUpdate(n,y)
+    def dcSize(implicit ctx: SourceContext) = intf.ops.dcSize
+    def dcApply(n: Rep[Int])(implicit ctx: SourceContext) = intf.ops.dcApply(n) 
+    def dcUpdate(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.dcUpdate(n,y)
   }
   
   // TODO -- AKS OLD: remove after refactor is complete
   implicit def dcToDcOps[A:Manifest](x: Rep[DeliteCollection[A]]) = new deliteCollectionOpsCls(x)
   
   class deliteCollectionOpsCls[A:Manifest](x: Rep[DeliteCollection[A]]) {
-    def size = dc_size(x)
-    def apply(n: Rep[Int]) = dc_apply(x,n)
-    def update(n: Rep[Int], y: Rep[A]) = dc_update(x,n,y)
+    def size(implicit ctx: SourceContext) = dc_size(x)
+    def apply(n: Rep[Int])(implicit ctx: SourceContext) = dc_apply(x,n)
+    def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = dc_update(x,n,y)
   }
   
-  def dc_size[A:Manifest](x: Rep[DeliteCollection[A]]): Rep[Int]
-  def dc_apply[A:Manifest](x: Rep[DeliteCollection[A]], n: Rep[Int]): Rep[A]
-  def dc_update[A:Manifest](x: Rep[DeliteCollection[A]], n: Rep[Int], y: Rep[A]): Rep[Unit]
+  def dc_size[A:Manifest](x: Rep[DeliteCollection[A]])(implicit ctx: SourceContext): Rep[Int]
+  def dc_apply[A:Manifest](x: Rep[DeliteCollection[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
+  def dc_update[A:Manifest](x: Rep[DeliteCollection[A]], n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
 }
 
 trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with EffectExp { this: DeliteOpsExp =>
@@ -49,17 +49,17 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
     def m = manifest[A]
   }
 
-  def dc_size[A:Manifest](x: Exp[DeliteCollection[A]]) = x match { // TODO: move to Opt trait ?
+  def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x match { // TODO: move to Opt trait ?
     case Def(e: DeliteOpMap[_,_,_]) => e.size
     case Def(e: DeliteOpZipWith[_,_,_,_]) => e.size
     //case Def(Reflect(e: DeliteOpMap[_,_,_], _,_)) => e.size // reasonable?
     //case Def(Reflect(e: DeliteOpZipWith[_,_,_,_], _,_)) => e.size // reasonable?
     case _ => throw new RuntimeException("no static implementation found for dc_size on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get)//reflectPure(DeliteCollectionSize(x))
   }
-  def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]): Exp[A] = throw new RuntimeException("no static implementation found for dc_apply on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get + " --- x.Type is " + x.Type)//reflectPure(DeliteCollectionApply(x,n))
-  def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]): Exp[Unit] = throw new RuntimeException("no static implementation found for dc_update on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get) //reflectWrite(x)(DeliteCollectionUpdate(x,n,y))
+  def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext): Exp[A] = throw new RuntimeException("no static implementation found for dc_apply on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get + " --- x.Type is " + x.Type)//reflectPure(DeliteCollectionApply(x,n))
+  def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = throw new RuntimeException("no static implementation found for dc_update on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get) //reflectWrite(x)(DeliteCollectionUpdate(x,n,y))
 
-  def dc_unsafeSetData[A:Manifest](x: Exp[DeliteCollection[A]], d: Exp[Array[A]]) = reflectWrite(x)(DeliteCollectionUnsafeSetData(x,d)) // legacy...
+  def dc_unsafeSetData[A:Manifest](x: Exp[DeliteCollection[A]], d: Exp[Array[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DeliteCollectionUnsafeSetData(x,d)) // legacy...
 
 
   //////////////

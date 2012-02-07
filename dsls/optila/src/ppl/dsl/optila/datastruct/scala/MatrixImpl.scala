@@ -51,7 +51,7 @@ class MatrixImpl[T:Manifest](nRows: Int, nCols: Int) extends Matrix[T] {
     new VectorView[T](_data, start, stride, length, isRow)
   }
 
-  def cloneL = {
+  def Clone = {
     val res = new MatrixImpl[T](numRows, numCols)
     for (i <- 0 until size){
       res.dcUpdate(i, _data(i))

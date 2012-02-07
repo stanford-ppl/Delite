@@ -19,7 +19,7 @@ trait LAOutputWriterImplOpsStandard extends LAOutputWriterImplOps {
     val xfs = BufferedWriter(FileWriter(filename))
     m.foreachRow( vec => {
       vec.foreach( e => {
-        xfs.write(conv(e).toStringL)
+        xfs.write(conv(e).ToString)
         xfs.write("  ")
       })
     xfs.write("\\n")
@@ -31,7 +31,7 @@ trait LAOutputWriterImplOpsStandard extends LAOutputWriterImplOps {
     val xfs = BufferedWriter(FileWriter(filename))
 
     v.foreach( e => {
-      xfs.write(conv(e).toStringL + "\\n")
+      xfs.write(conv(e).ToString + "\\n")
     })
     xfs.close()
   }

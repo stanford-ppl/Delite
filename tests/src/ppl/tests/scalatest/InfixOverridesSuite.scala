@@ -15,7 +15,7 @@ trait InfixOverrides extends DeliteTestModule with OptiMLApplication {
     /* THIS DOES */
     //collect(infix_toString(a) == "1.0")
     /* THIS DOES TOO */
-    collect(a.toStringL == "1.0")
+    collect(a.ToString == "1.0")
 
     // clone
     //val b = a.clone

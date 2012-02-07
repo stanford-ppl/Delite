@@ -14,8 +14,8 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   def optiml_untilconverged_impl[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit]) = {
     val vertices = g.vertices
 
-    val tasks = vertices.cloneL
-    //val tasks = repCloneableToCloneableOps(vertices)(vectorCloneable[V],manifest[Vertices[V]]).cloneL
+    val tasks = vertices.Clone
+    //val tasks = repCloneableToCloneableOps(vertices)(vectorCloneable[V],manifest[Vertices[V]]).Clone
     val seen = Set[V]()
     
     while(tasks.length > 0) {
@@ -27,7 +27,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
         val vtasks = vertices(i).tasks
         totalTasks += vtasks.length
         for(j <- 0 until vtasks.length) {
-          val task = vtasks(j).asInstanceOfL[V]
+          val task = vtasks(j).AsInstanceOf[V]
           if(!seen.contains(task)) {
             tasks += task
             seen.add(task)
@@ -46,13 +46,13 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
      block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double]): Rep[A] = {
 
     var delta = unit(scala.Double.MaxValue)
-    var prev = unit(null).asInstanceOfL[A]
+    var prev = unit(null).AsInstanceOf[A]
     var next = x
     var iter = unit(0)
 
     while ((abs(delta) > thresh) && (iter < max_iter)){
       if (clone_prev_val)
-        prev = next.cloneL()
+        prev = next.Clone()
       else
         prev = next
 

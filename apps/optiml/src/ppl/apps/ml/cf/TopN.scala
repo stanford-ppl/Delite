@@ -40,7 +40,7 @@ trait TopN extends OptiMLApplication {
     if (args.length < 3) printUsage
 
     // each row is in the format (userID, profileID, rating)    
-    val data = readMatrix(args(0), ",") map { e => e.asInstanceOfL[Int] }     
+    val data = readMatrix(args(0), ",") map { e => e.AsInstanceOf[Int] }     
     val testUser = Integer.parseInt(args(1))
     val N = Integer.parseInt(args(2))
     
@@ -116,7 +116,9 @@ trait TopN extends OptiMLApplication {
     val topScores = sorted take N
     //val topUsers = indices take N
     // TODO: why is this type annotation required? inferencer ends up with Rep[DenseVector[Nothing]] otherwise
-    val topUsers: Rep[DenseVector[Int]] = topScores map { e => (prefs find { _ == e })(0) } // HACK! need to implement sortWithIndex above    
+    val topUsers: Rep[DenseVector[Int]] = topScores map { e =>
+      val tmp = prefs find { _ == e }
+      tmp(0) } // HACK! need to implement sortWithIndex above    
     
     toc(topUsers)
     

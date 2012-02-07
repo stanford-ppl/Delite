@@ -55,7 +55,7 @@ trait DeliteArrayOpsExp extends DeliteArrayOps with StructExp with EffectExp {
   def darray_apply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int]) = reflectPure(DeliteArrayApply[T](da,i))
   def darray_update[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T]) = reflectWrite(da)(DeliteArrayUpdate[T](da,i,x))
   
-  def reflectPure[T](x: Def[T]) = x
+  def reflectPure[T](x: Def[T])(implicit ctx: SourceContext) = x
 }
 
 trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {

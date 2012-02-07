@@ -1,12 +1,12 @@
 package ppl.dsl.experimental
 
 import java.io.{FileWriter, File, PrintWriter}
-
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen, GenerationFailedException}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._
+import scala.reflect.SourceContext
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with IfThenElseFatExp
@@ -598,7 +598,7 @@ trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp wi
     //       implicit val mA: Manifest[A] = v.Type.asInstanceOf[Manifest[A]]
     //       reifyEffects {
     //         var index = var_new(unit(0))
-    //         var vs = var_new(unit(null).asInstanceOfL[A])
+    //         var vs = var_new(unit(null).AsInstanceOf[A])
     //         while (index < in.size) {
     //           vs = in(index)
     //           rebind(v.asInstanceOf[Sym[A]], ReadVar(vs))
@@ -668,7 +668,7 @@ trait SandboxDeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp wi
 
   // alternative: leave reflectPure as above and override toAtom...
 
-  def reflectPure[A:Manifest](d: Def[A]): Exp[A] = d match {
+  def reflectPure[A:Manifest](d: Def[A])(implicit ctx: SourceContext): Exp[A] = d match {
     case x: DeliteOpLoop[_] =>
       val mutableInputs = readMutableData(d) //TODO: necessary or not??
       //val mutableInputs = Nil // readMutableData(d) TODO: necessary or not??
@@ -1252,7 +1252,7 @@ trait SandboxScalaGenDeliteOps extends ScalaGenLoopsFat with SandboxBaseGenDelit
             if (isPrimitiveType(sym.Type)) {
               stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero")
             } else {
-              stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero.cloneL") // separate zero buffer
+              stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero.Clone") // separate zero buffer
             }
             emitReduceElem(op, sym, elem, "__act2.")
           }

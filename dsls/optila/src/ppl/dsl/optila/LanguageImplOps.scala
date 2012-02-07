@@ -71,7 +71,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     for (i <- 0 until numSamples){
       val r = i + random(length-i)
       val idx = candidates(r)
-      sampled += mt(idx).cloneL
+      sampled += mt(idx).Clone
 
       // remove index r from consideration
       val t = candidates(r)
@@ -103,7 +103,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 
   /*
   private def sampleCollection[A:Manifest](in: Rep[DeliteCollection[A]], out: Rep[DeliteCollection[A]], numSamples: Rep[Int]): Rep[DeliteCollection[A]] = {
-    val candidates = (0::numSamples).cloneL // .mutable
+    val candidates = (0::numSamples).Clone // .mutable
 
     for (i <- 0 until numSamples){
       val r = i + random(in.size - i)

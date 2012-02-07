@@ -16,15 +16,15 @@ trait FusingTests extends OptiMLApplication {
   }
 
   def fuseMix2() {
-    val a = Vector.range(1,10).cloneL
-    val b = Vector.range(10,19).cloneL
-    val c = Vector.range(20,29).cloneL
+    val a = Vector.range(1,10).Clone
+    val b = Vector.range(10,19).Clone
+    val c = Vector.range(20,29).Clone
     val res = (a+b).t-c.t
     res.pprint
   }
 
   def fuseSum() {
-    val a = Vector.range(1,10).cloneL
+    val a = Vector.range(1,10).Clone
     println(a.t.sum)
   }
 

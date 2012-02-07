@@ -11,22 +11,20 @@ import ppl.dsl.optiml.application.{BinarizedGradientTemplate}
 // TODO: we need to support an escape hatch, or move application-specific i/o to application ops. Either
 // way, they shouldn't be here.
 trait MLInputReaderOps extends Base {
-  
   // file format is m lines with n floats per line, each float separated by whitespaces
   // (same as matlab .dat)
-  def readGrayscaleImage(filename: Rep[String]) = obj_mlinput_read_grayscale_image(filename)
-  def readARFF[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row]) = obj_mlinput_read_arff(filename, schemaBldr)
+  def readGrayscaleImage(filename: Rep[String])(implicit ctx: SourceContext) = obj_mlinput_read_grayscale_image(filename)
+  def readARFF[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row])(implicit ctx: SourceContext) = obj_mlinput_read_arff(filename, schemaBldr)
   
   // app specific! to be removed
-  def readTokenMatrix(filename: Rep[String]) = obj_mlinput_read_tokenmatrix(filename)
-  def readTemplateModels(directory: Rep[String]) = obj_mlinput_read_template_models(directory)
+  def readTokenMatrix(filename: Rep[String])(implicit ctx: SourceContext) = obj_mlinput_read_tokenmatrix(filename)
+  def readTemplateModels(directory: Rep[String])(implicit ctx: SourceContext) = obj_mlinput_read_template_models(directory)
 
-  def obj_mlinput_read_grayscale_image(filename: Rep[String]): Rep[GrayscaleImage]
-  def obj_mlinput_read_arff[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row]): Rep[DenseVector[Row]]
-  
-  //def obj_mlinput_read_tokenmatrix(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
-  def obj_mlinput_read_tokenmatrix(filename: Rep[String]): (Rep[Matrix[Double]],Rep[DenseVector[Double]])
-  def obj_mlinput_read_template_models(directory: Rep[String]): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]]
+  def obj_mlinput_read_grayscale_image(filename: Rep[String])(implicit ctx: SourceContext): Rep[GrayscaleImage]
+  def obj_mlinput_read_arff[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row])(implicit ctx: SourceContext): Rep[DenseVector[Row]]
+  //def obj_mlinput_read_tokenmatrix(filename: Rep[String])(implicit ctx: SourceContext): Rep[TrainingSet[Double,Double]]
+  def obj_mlinput_read_tokenmatrix(filename: Rep[String])(implicit ctx: SourceContext): (Rep[Matrix[Double]],Rep[DenseVector[Double]])
+  def obj_mlinput_read_template_models(directory: Rep[String])(implicit ctx: SourceContext): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]]
 }
 
 trait MLInputReaderOpsExp extends MLInputReaderOps with BaseFatExp { this: MLInputReaderImplOps with DeliteOpsExp with TupleOpsExp =>
@@ -43,11 +41,10 @@ trait MLInputReaderOpsExp extends MLInputReaderOps with BaseFatExp { this: MLInp
     extends DeliteOpSingleTask(reifyEffects(mlinput_read_template_models_impl(directory)))
 
 
-  def obj_mlinput_read_grayscale_image(filename: Exp[String]) = reflectEffect(MLInputReadGrayscaleImage(filename))
-  def obj_mlinput_read_arff[Row:Manifest](filename: Exp[String], schemaBldr: Exp[DenseVector[String]] => Exp[Row]) = reflectEffect(MLInputReadARFF(filename, schemaBldr))
-
-  def obj_mlinput_read_tokenmatrix(filename: Exp[String]) = reflectEffect(MLInputReadTokenMatrix(filename))
-  def obj_mlinput_read_template_models(directory: Exp[String]) = reflectEffect(MLInputReadTemplateModels(directory))
+  def obj_mlinput_read_grayscale_image(filename: Exp[String])(implicit ctx: SourceContext) = reflectEffect(MLInputReadGrayscaleImage(filename))
+  def obj_mlinput_read_arff[Row:Manifest](filename: Exp[String], schemaBldr: Exp[DenseVector[String]] => Exp[Row])(implicit ctx: SourceContext) = reflectEffect(MLInputReadARFF(filename, schemaBldr))
+  def obj_mlinput_read_tokenmatrix(filename: Exp[String])(implicit ctx: SourceContext) = reflectEffect(MLInputReadTokenMatrix(filename))
+  def obj_mlinput_read_template_models(directory: Exp[String])(implicit ctx: SourceContext) = reflectEffect(MLInputReadTemplateModels(directory))
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(e@MLInputReadTokenMatrix(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MLInputReadTokenMatrix(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))

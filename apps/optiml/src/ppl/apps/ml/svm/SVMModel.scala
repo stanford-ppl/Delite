@@ -60,16 +60,16 @@ trait SVMModel { this: OptiMLApplication =>
       while(i < numSamples){ //TR
       //for (i <- 0 until numSamples) {
         // TODO: x761 -- code is recalculating alphas from original definition here
-        val alphasOld = alphas.cloneL
+        val alphasOld = alphas.Clone
         
         val f_i = (alphasOld*Y*(X*X(i).t)).sum + b //TR M*V alph0
         val E_i = f_i - Y(i)
 
         if (((Y(i)*E_i < -1.*tol) && (alphasOld(i) < C)) || ((Y(i)*E_i > tol) && (alphasOld(i) > 0))){
           // select a candidate j from the remaining numSamples-i samples at random
-          var j = floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
+          var j = floor(random[Double]*(numSamples-1)).AsInstanceOf[Int]+1
           while (j == i){
-            j = floor(random[Double]*(numSamples-1)).asInstanceOfL[Int]+1
+            j = floor(random[Double]*(numSamples-1)).AsInstanceOf[Int]+1
           }
 
           val f_j = (alphasOld*Y*(X*X(j).t)).sum + b //TR M*V alph0 -- inside if, cannot be fused with the one in f_i (calc actually happens further down)
@@ -97,7 +97,7 @@ trait SVMModel { this: OptiMLApplication =>
             if (eta < 0){
               // compute new alphas(j)
 
-              //alphas = alphas.cloneL //TR
+              //alphas = alphas.Clone //TR
               alphas(j) = alphasOld(j) - Y(j)*(E_i-E_j)/eta //TR functionalize?
 
               // clip alphas(j) if necessary
@@ -109,7 +109,7 @@ trait SVMModel { this: OptiMLApplication =>
                 // find a_i to maximize objective function
 
                 val old_ai = alphasOld(i)
-                //alphas = alphas.cloneL //TR
+                //alphas = alphas.Clone //TR
                 alphas(i) = alphasOld(i) + Y(i)*Y(j)*(old_aj-alphas(j)) //TR functionalize?
 
                 // compute the new b such that KKT conditions are satisfied
@@ -179,7 +179,7 @@ trait SVMModel { this: OptiMLApplication =>
   // utility
 
   def saveModel(weights: Rep[DenseVector[Double]], b: Rep[Double], filename: Rep[String]) = {
-    val out = weights.cloneL
+    val out = weights.Clone
     out += b
     writeVector(out, filename)
   }

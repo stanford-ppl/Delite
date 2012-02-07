@@ -6,10 +6,9 @@ object clBLAS extends ExternalLibrary {
   val ext = "cpp"
   val libExt = "so"
   val compileFlags = List( "-w", "-lOpenCL", "-lclblas", "-O3", "-shared", "-fPIC")
-  //val compileFlags = List( "-w", "-O3", "-shared", "-fPIC")
   val outputSwitch = "-o"
-  
-  override val header = """
+
+  override lazy val header = """
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits>

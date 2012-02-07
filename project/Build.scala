@@ -2,7 +2,8 @@ import sbt._
 import Keys._
 
 object DeliteBuild extends Build {
-  val virtualization_lms_core = "EPFL" % "lms_2.10.0-virtualized-SNAPSHOT" % "0.1"
+  //val virtualization_lms_core = "EPFL" % "lms_2.10" % "0.1" % "2.10.0-virtualized-SNAPSHOT" 
+  val virtualization_lms_core = "EPFL" % "lms" % "0.1" 
   
   // FIXME: custom-built scalatest
   val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
@@ -20,7 +21,8 @@ object DeliteBuild extends Build {
     libraryDependencies += "org.scala-lang" % "scala-compiler" % virtScala,
     // used in delitec to access jars
     retrieveManaged := true,
-    scalacOptions += "-Yno-generic-signatures"
+    scalacOptions += "-Yno-generic-signatures",
+    scalacOptions += "-Yvirtualize" 
   )
 
   /*

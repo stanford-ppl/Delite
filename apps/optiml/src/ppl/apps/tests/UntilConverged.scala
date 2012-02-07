@@ -41,7 +41,7 @@ trait UntilConverged extends OptiMLApplication {
     
     untilconverged(g) {
       v =>
-        val vdata = v.data.asInstanceOfL[DenoiseVertexData]
+        val vdata = v.data.AsInstanceOf[DenoiseVertexData]
         
         val belief = vdata.belief + Vector.ones(numRings)
         

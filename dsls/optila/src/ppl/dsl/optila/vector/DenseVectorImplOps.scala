@@ -52,8 +52,8 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
     
     // even if one of the vectors is empty, this operation should semantically result in a copy (which is very unfortunate if we use it to do flatMap-reduces in delite ops)
     
-    //if (v1.isInstanceOfL[EmptyVector[A]]) v2
-    //else if (v2.isInstanceOfL[EmptyVector[A]]) v1
+    //if (v1.IsInstanceOf[EmptyVector[A]]) v2
+    //else if (v2.IsInstanceOf[EmptyVector[A]]) v1
     //else {
       val out = DenseVector[A](v1.length+v2.length, v1.isRow)
       for (i <- 0 until v1.length){

@@ -69,7 +69,7 @@ trait BinarizedGradientGridFuncs {
 //println("x: " + x)
 //println("y: " + y)
 //println("searchTemplates.1")
-    val reduction_factor = pow(2, level).asInstanceOfL[Int]//(1 << level)
+    val reduction_factor = pow(2, level).AsInstanceOf[Int]//(1 << level)
 //println("searchTemplates.2")
 //println("reduction_factor: " + reduction_factor)
     val crt_template = fillTemplateFromGradientImage(gradSummary, x, y, template_radius, level)
@@ -83,7 +83,7 @@ if (crt_template.match_list.length < 0) println("dummy")
 //println("x: " + x)
 //println("y: " + y)
         val bbox = templates(j).rect
-        val roi = Rect((reduction_factor * x - bbox.width / 2).asInstanceOfL[Int], (reduction_factor * y - bbox.height / 2).asInstanceOfL[Int], bbox.width, bbox.height)
+        val roi = Rect((reduction_factor * x - bbox.width / 2).AsInstanceOf[Int], (reduction_factor * y - bbox.height / 2).AsInstanceOf[Int], bbox.width, bbox.height)
         val out = DenseVector[BiGGDetection](1, true)
         out(0) = BiGGDetection(name, res, roi, null, j, x, y, templates(j), crt_template)
         out
@@ -134,7 +134,7 @@ if (crt_template.match_list.length < 0) println("dummy")
           if (angle >= 180) {
             angle = angle - 180 //Ignore polarity of the angle
           }
-          pow(2, (angle.asInstanceOfL[Double] / (180.0 / 8)).asInstanceOfL[Int]).asInstanceOfL[Int]
+          pow(2, (angle.AsInstanceOf[Double] / (180.0 / 8)).AsInstanceOf[Int]).AsInstanceOf[Int]
         }
       else unit(0)
     }})

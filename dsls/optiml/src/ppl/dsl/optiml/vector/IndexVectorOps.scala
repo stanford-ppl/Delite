@@ -11,8 +11,8 @@ import java.io.PrintWriter
 trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
   
   object IndexVector {
-    def apply(len: Rep[Int]) = indexvector_obj_new(len)
-    def apply(xs: Interface[Vector[Int]])(implicit o: Overloaded1) = indexvector_obj_fromvec(xs)
+    def apply(len: Rep[Int])(implicit ctx: SourceContext) = indexvector_obj_new(len)
+    def apply(xs: Interface[Vector[Int]])(implicit o: Overloaded1, ctx: SourceContext) = indexvector_obj_fromvec(xs)
   }
 
   trait IndexVecOpsCls extends VecOpsCls[Int] with InterfaceOps[IndexVector] {
@@ -42,30 +42,30 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
     val vtimesBuilder = denseVectorBuilder[Int]
     def vtimesToIntf(x: Rep[VTIMESR]) = denseToInterface(x)            
         
-    def apply[A:Manifest](block: Rep[Int] => Rep[A]): Rep[V[A]] = indexvector_construct(wrap(x), block)    
-    def *(y: Rep[Matrix[Int]])(implicit a: Arith[Int],o: Overloaded2) = throw new UnsupportedOperationException("tbd")
-    def flatMap[B:Manifest](f: Rep[Int] => Rep[DenseVector[B]]) = throw new UnsupportedOperationException("tbd")
-    def partition(pred: Rep[Int] => Rep[Boolean]) = throw new UnsupportedOperationException("tbd")
-    def groupBy[K:Manifest](pred: Rep[Int] => Rep[K]) = throw new UnsupportedOperationException("tbd")    
+    def apply[A:Manifest](block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[V[A]] = indexvector_construct(wrap(x), block)    
+    def *(y: Rep[Matrix[Int]])(implicit a: Arith[Int], o: Overloaded2, ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
+    def flatMap[B:Manifest](f: Rep[Int] => Rep[DenseVector[B]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
+    def partition(pred: Rep[Int] => Rep[Boolean])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
+    def groupBy[K:Manifest](pred: Rep[Int] => Rep[K])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")    
   }
     
   class IVInterface(override val ops: IndexVecOpsCls) extends VInterface[Int](ops) with Interface[IndexVector]  
   implicit def interfaceToIndexVecOps(intf: Interface[IndexVector]): InterfaceIndexVecOpsCls = new InterfaceIndexVecOpsCls(intf.asInstanceOf[IVInterface])
   
   class InterfaceIndexVecOpsCls(override val intf: IVInterface) extends InterfaceVecOpsCls[Int](intf) {
-    def apply[A:Manifest](block: Rep[Int] => Rep[A]) = intf.ops.apply(block)    
+    def apply[A:Manifest](block: Rep[Int] => Rep[A])(implicit ctx: SourceContext) = intf.ops.apply(block)    
     
     // this is unfortunately required to get the static return type right... TODO: any solution?
-    override def slice(start: Rep[Int], end: Rep[Int]) = intf.ops.toIntf(intf.ops.slice(start,end))
+    override def slice(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.slice(start,end))
   }
   
   // impl defs
-  def indexvector_range(start: Rep[Int], end: Rep[Int]): Rep[IndexVectorRange]
-  def indexvector_obj_new(len: Rep[Int]): Rep[IndexVectorDense]
-  def indexvector_obj_fromvec(xs: Interface[Vector[Int]]): Rep[IndexVectorDense]
+  def indexvector_range(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext): Rep[IndexVectorRange]
+  def indexvector_obj_new(len: Rep[Int])(implicit ctx: SourceContext): Rep[IndexVectorDense]
+  def indexvector_obj_fromvec(xs: Interface[Vector[Int]])(implicit ctx: SourceContext): Rep[IndexVectorDense]
 
   // class defs
-  def indexvector_construct[A:Manifest](x: Interface[IndexVector], block: Rep[Int] => Rep[A]): Rep[DenseVector[A]]
+  def indexvector_construct[A:Manifest](x: Interface[IndexVector], block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]]
 }
 
 trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp with IndexVectorImplOps =>
@@ -93,12 +93,12 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   }
   
   // impl defs
-  def indexvector_range(start: Exp[Int], end: Exp[Int]) = reflectPure(IndexVectorRangeNew(start, end))
-  def indexvector_obj_new(len: Exp[Int]) = reflectMutable(IndexVectorDenseNew(len))
-  def indexvector_obj_fromvec(xs: Interface[Vector[Int]]) = reflectPure(IndexVectorObjectFromVec(xs))
+  def indexvector_range(start: Exp[Int], end: Exp[Int])(implicit ctx: SourceContext) = reflectPure(IndexVectorRangeNew(start, end))
+  def indexvector_obj_new(len: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(IndexVectorDenseNew(len))
+  def indexvector_obj_fromvec(xs: Interface[Vector[Int]])(implicit ctx: SourceContext) = reflectPure(IndexVectorObjectFromVec(xs))
 
   // class defs
-  def indexvector_construct[A:Manifest](x: Interface[IndexVector], block: Exp[Int] => Exp[A]): Exp[DenseVector[A]] = {
+  def indexvector_construct[A:Manifest](x: Interface[IndexVector], block: Exp[Int] => Exp[A])(implicit ctx: SourceContext): Exp[DenseVector[A]] = {
     reflectPure(IndexVectorConstruct(x, block))
     // HACK -- better scheduling performance in our apps, forces some expensive dependencies to be hoisted
     // TR TODO: use effect summary of func
@@ -109,7 +109,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m))(mtype(manifest[A]))
+    case e@IndexVectorConstruct(in,b) => reflectPure(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m))(mtype(manifest[A]), implicitly[SourceContext])
     case Reflect(e@IndexVectorConstruct(in,b), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVectorConstruct(f(in),f(b))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
