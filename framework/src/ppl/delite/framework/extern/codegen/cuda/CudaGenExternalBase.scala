@@ -33,7 +33,8 @@ trait CudaGenExternalBase extends GenericGenExternal with CudaGenBase {
     super.emitHeader(lib)
   }
 
-  def emitMethodCall(e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String])(implicit stream: PrintWriter) = {
+  def emitMethodCall(sym: Sym[Any], e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String])(implicit stream: PrintWriter) = {
+    emitAllocFunc(sym, e.allocVal)
     stream.println(e.funcName + "(" + (args mkString ",") + ");")    
   }
   

@@ -1505,82 +1505,14 @@ trait SandboxCudaGenDeliteOps extends CudaGenLoopsFat with SandboxBaseGenDeliteO
 
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
-      if(symList.length != 1) throw new GenerationFailedException("CudaGen: Only 1 output is supported for FatLoop (No fusing yet).")
-      deliteKernel = false
-	  //println("increasing currDim " + quote(symList(0)))
-		  currDim += 1
-      val currDimStr = getCurrDimStr()
-      //setCurrDimLength(quote(op.v)+"->size()")
-      setCurrDimLength(quote(op.size))
-      //stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(op.v)+".size()"))
-      stream.println(addTab()+"if( %s < %s ) {".format(currDimStr, quote(op.size)))
-      tabWidth += 1
-      (symList zip op.body) foreach {
-        case (sym, elem:DeliteCollectElem[_,_]) =>
-          emitAllocFunc(sym,elem.alloc)
-          val (loopFunc,freeVars) = emitDevFunc(elem.func, List(op.v))
-          if(freeVars.length==0) {
-            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s));".format(quote(sym),currDimStr,loopFunc,currDimStr))
-          }
-          else {
-            stream.println(addTab()+"%s.dcUpdate(%s, %s(%s,%s));".format(quote(sym),currDimStr,loopFunc,currDimStr,freeVars.map(quote).mkString(",")))
-          }
-        case (sym, elem:DeliteForeachElem[_]) =>
-          val (loopFunc,freeVars) = emitDevFunc(elem.func, List(op.v))
-          if(freeVars.length==0)
-            stream.println(addTab()+"%s(%s);".format(loopFunc,currDimStr))
-          else
-            stream.println(addTab()+"%s(%s,%s);".format(loopFunc,currDimStr,freeVars.map(quote).mkString(",")))
-        case _ =>
-          throw new GenerationFailedException("CudaGen: DeliteReduceElem is not supported yet.")
-      }
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      //println("decreasing currDim " + quote(symList(0)))
-      currDim -= 1
-      //deliteKernel = true
-
+      throw new GenerationFailedException("TODO: implement emitFatNode in CudaGenDeliteOps")
     case _ => super.emitFatNode(symList, rhs)
   }
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case s:DeliteOpSingleTask[_] => {
-      val save = deliteKernel
-      deliteKernel = false
-      val b = s.block
-      if (!save) {
-        val (singleFunc, freeVars) = emitDevFunc(b,List())
-        val currDimStr = getCurrDimStr()
-        stream.println(addTab()+"%s %s = %s(%s);".format(remap(sym.Type),quote(sym),singleFunc,freeVars.map(quote).mkString(",")))
-      }
-      else {
-    	throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable." + quote(sym))
-      }
-      deliteKernel = save
-    }
-    
-    case op: AbstractLoop[_] => 
-      // TODO: we'd like to always have fat loops but currently they are not allowed to have effects
-      stream.println("// a *thin* loop follows: " + quote(sym))
-      emitFatNode(List(sym), SimpleFatLoop(op.size, op.v, List(op.body)))
-    
-    case foreach:DeliteOpForeach2[_,_] => {
-      if(!isPrimitiveType(foreach.v.Type)) throw new GenerationFailedException("CudaGen: Only primitive Types are allowed for input of foreach.")
-      currDim += 1
-      setCurrDimLength(quote(foreach.in)+"->size()")
-      val currDimStr = getCurrDimStr()
-      stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(foreach.in)+".size()"))
-      tabWidth += 1
-      val (foreachFunc,freeVars) = emitDevFunc(foreach.func, List(foreach.v))
-      if(freeVars.length==0)
-        stream.println(addTab()+"%s(%s.dcApply(%s));".format(foreachFunc,quote(foreach.in),currDimStr))
-      else
-        stream.println(addTab()+"%s(%s.dcApply(%s),%s);".format(foreachFunc,quote(foreach.in),currDimStr,freeVars.map(quote).mkString(",")))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      currDim -= 1
-    }
-
+    case s:DeliteOpSingleTask[_] =>
+      emitBlock(s.block)
+      emitValDef(sym,quote(getBlockResult(s.block)))
     case _ => super.emitNode(sym,rhs)
   }
   
@@ -1591,7 +1523,6 @@ trait SandboxCGenDeliteOps extends CGenEffect with SandboxBaseGenDeliteOps {
 
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
     case op: AbstractFatLoop =>
-      println("TODO: implement emitFatNode in CGenDeliteOps")
       throw new GenerationFailedException("TODO: implement emitFatNode in CGenDeliteOps")
     case _ => super.emitFatNode(symList, rhs)
   }
@@ -1600,11 +1531,6 @@ trait SandboxCGenDeliteOps extends CGenEffect with SandboxBaseGenDeliteOps {
     case s:DeliteOpSingleTask[_] =>
       emitBlock(s.block)
       emitValDef(sym,quote(getBlockResult(s.block)))
-
-    //TODO: implement deliteops
-    //case map:DeliteOpMap[_,_,_] =>
-    //case zip: DeliteOpZipWith[_,_,_,_] =>
-    //case mapR:DeliteOpMapReduce[_,_,_] =>
     case _ => super.emitNode(sym,rhs)
   }
 }

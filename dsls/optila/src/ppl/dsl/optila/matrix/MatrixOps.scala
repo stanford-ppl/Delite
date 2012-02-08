@@ -1029,6 +1029,7 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
 
     case MatrixObjectNew(numRows,numCols) => stream.println("%s *%s_ptr = new %s(%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
+    case MatrixGetRow(x,i) => emitValDef(sym, quote(x) + ".getRow(" + quote(i) + ")")
 
 	  /* The ops that call through to the underlying data structure */
     //case MatrixDCApply(x,i) =>
@@ -1055,10 +1056,9 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       tabWidth -= 1
       stream.println(addTab()+"}")
       currDim -= 1
-        */
 
     case MatrixTranspose(x) =>
-      currDim += 1
+      //currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength("%s->size()".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
@@ -1069,10 +1069,10 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)),false)
-      currDim -= 1
+      //currDim -= 1
 
     case MatrixSumCol(x) =>
-      currDim += 1
+      //currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength("%s->numCols".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
@@ -1087,8 +1087,8 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false)
-      currDim -= 1
-
+      //currDim -= 1
+     */
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -1119,9 +1119,10 @@ trait OpenCLGenMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
     case MatrixNumCols(x)  =>
       emitValDef(sym, quote(x) + ".numCols")
 
+      /*
     /* Specialized CUDA code generations for DeliteOpSingleTasks */
     case MatrixUpdateRow(x, row, y) =>
-      currDim += 1
+      //currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength("%s->length".format(quote(y.ops.elem)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(y.ops.elem)))
@@ -1129,10 +1130,10 @@ trait OpenCLGenMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
       stream.println(addTab()+"%s.update(%s,%s,%s.apply(%s));".format(quote(x),quote(row),currDimStr,quote(y.ops.elem),currDimStr))
       tabWidth -= 1
       stream.println(addTab()+"}")
-      currDim -= 1
+      //currDim -= 1
 
     case MatrixTranspose(x) =>
-      currDim += 1
+      //currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength("%s->size()".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
@@ -1143,10 +1144,10 @@ trait OpenCLGenMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)),false)
-      currDim -= 1
+      //currDim -= 1
 
     case MatrixSumCol(x) =>
-      currDim += 1
+      //currDim += 1
       val currDimStr = getCurrDimStr()
       setCurrDimLength("%s->numCols".format(quote(x)))
       stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
@@ -1161,8 +1162,8 @@ trait OpenCLGenMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
       tabWidth -= 1
       stream.println(addTab()+"}")
       emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false)
-      currDim -= 1
-  
+      //currDim -= 1
+    */
     case _ => super.emitNode(sym, rhs)
   }
 }

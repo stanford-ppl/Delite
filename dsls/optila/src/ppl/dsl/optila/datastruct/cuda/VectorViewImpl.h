@@ -1,4 +1,3 @@
-/*
 #ifndef _VECTORVIEWIMPL_H_
 #define _VECTORVIEWIMPL_H_
 
@@ -14,7 +13,7 @@ public:
     int stride;
 
     // Constructors
-    __host__ __device__ Vector() {
+    __host__ __device__ VectorView() {
         length = 0;
         isRow = true;
         data = NULL;
@@ -22,7 +21,7 @@ public:
         stride = 1;
     }
 
-    __host__ __device__ Vector(int _length, bool _isRow, T *_data, int _start, int _stride) {
+    __host__ __device__ VectorView(int _length, bool _isRow, T *_data, int _start, int _stride) {
         length = _length;
         isRow = _isRow;
         data = _data;
@@ -55,4 +54,3 @@ public:
 };
 
 #endif
-*/
