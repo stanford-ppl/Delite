@@ -2,6 +2,8 @@ package ppl.delite.runtime.executor
 
 import ppl.delite.runtime.Config
 import ppl.delite.runtime.graph.targets.OS
+import ppl.delite.runtime.codegen.{CCompile, CudaCompile, OpenCLCompile}
+import java.io.File
 
 /**
  * Author: Kevin J. Brown
@@ -23,14 +25,21 @@ class GPUExecutionThread(deviceNum: Int) extends ExecutionThread {
 
   load()
 
-  def load() {
-    val sep = System.getProperty("file.separator")
-
-    if(Config.useOpenCL) {
-      System.load(Config.deliteHome + sep + "runtime" + sep + "opencl" + sep + "openclInit." + OS.libExt)
+  //load gpu init library (and create it if absent)
+  private def load() {
+    def loadGPU(target: String, compiler: CCompile) = {
+      val sep = File.separator
+      val path = Config.deliteHome + sep + "runtime" + sep + target + sep + target + "Init." + OS.libExt
+      val lib = new File(path)
+      if (!lib.exists)
+        compiler.compileInit()
+      System.load(path)
     }
+
+    if (Config.useOpenCL)
+      loadGPU("opencl", OpenCLCompile)
     else
-      System.load(Config.deliteHome + sep + "runtime" + sep + "cuda" + sep + "cudaInit." + OS.libExt)
+      loadGPU("cuda", CudaCompile)
   }
 
 }

@@ -1,0 +1,20 @@
+<DeliteExternalLib>
+<compiler> gcc </compiler> <!-- path to C compiler (gcc, icc, etc.) -->
+<headers>
+  <prefix> -I </prefix>
+  <!-- insert path to JNI include directory -->
+  <path> /usr/lib/jvm/java-7-openjdk-amd64/include </path>
+  <path> /usr/lib/jvm/java-7-openjdk-amd64/include/linux </path>
+  <!-- insert path to BLAS include directory -->
+  <path> </path>
+  <!-- insert name of header file that includes CBLAS functions -->
+  <include> cblas.h </include>
+</headers>
+<libs>
+  <prefix> -L </prefix>
+  <!-- insert path to BLAS libraries -->
+  <path> </path>
+  <!-- insert BLAS libraries -->
+  <library> -lcblas </library>
+</libs>
+</DeliteExternalLib>

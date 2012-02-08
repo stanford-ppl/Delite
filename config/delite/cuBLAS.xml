@@ -1,0 +1,13 @@
+<DeliteExternalLib>
+<compiler> /usr/local/cuda/bin/nvcc </compiler> <!-- path to nvcc -->
+<arch> 2.0 </arch> <!-- compute capability of gpu -->
+<headers>
+  <prefix> -I </prefix>
+  <include> cublas.h </include>
+</headers>
+<libs>
+  <prefix> -L </prefix>
+  <library> -lcublas </library>
+</libs>
+</DeliteExternalLib>
+

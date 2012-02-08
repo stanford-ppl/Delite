@@ -43,7 +43,7 @@ class OP_Variant(val id: String, private[graph] val outputTypesMap: Map[Targets.
         if (idx == returnerIdx) returnOp = r
 
         //add special consumer ops
-        if (resultMap(Targets.Scala) != "Unit") { //returns result and isReturner
+        if (r.outputType != "Unit") { //returns result and isReturner
           variantGraph.schedule(idx).add(new GetterOp(id+"v_"+idx, idx, Seq(variantGraph.result._1), Seq(variantGraph.result._1))) //get result on returner chunk
         }
         r

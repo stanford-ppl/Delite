@@ -9,7 +9,7 @@ package ppl.delite.runtime.codegen
 import ppl.delite.runtime.Config
 import tools.nsc.io._
 import java.io.FileWriter
-import collection.mutable.ListBuffer
+import collection.mutable.{ArrayBuffer, ListBuffer}
 
 /**
  * @author Kevin J. Brown
@@ -20,6 +20,9 @@ trait CodeCache {
   val cacheHome = Config.codeCacheHome + File.separator + target + File.separator
   val sourceCacheHome = cacheHome + "src" + File.separator
   protected var modules = List.empty[Module]
+  
+  def target: String
+  def ext: String = target //source file extension
 
   def cacheDegSources(directory: Directory) {
     parseModules(directory)
@@ -33,6 +36,13 @@ trait CodeCache {
       if (m.deps.exists(_.needsCompile))
         m.needsCompile = true
     }
+  }
+
+  protected val sourceBuffer = new ArrayBuffer[(String, String)]
+
+  def addSource(source: String, name: String) {
+    if (!sourceBuffer.contains((source, name+"."+ext))) //avoid duplicate kernels //TODO: there must be a better way
+      sourceBuffer += Pair(source, name+"."+ext)
   }
 
   private def parseModules(directory: Directory) {
@@ -102,11 +112,9 @@ trait CodeCache {
     }
     tempDir.deleteRecursively()
   }
-
-  def target: String
-
-  def ext: String = target
-
+  
+  protected def sep = File.separator
+  
   protected def directoriesMatch(source: Directory, cache: Directory): Boolean = {
     //quick check: see if directory structure & file names match
     assert(source.exists, "source directory does not exist: " + source.path)
@@ -143,6 +151,13 @@ trait CodeCache {
 
     for (file <- source.files)
       file.copyTo(Path(base + file.name))
+  }
+
+  def printSources() {
+    for (i <- 0 until sourceBuffer.length) {
+      print(sourceBuffer(i))
+      print("\n /*********/ \n \n")
+    }
   }
 
 }
