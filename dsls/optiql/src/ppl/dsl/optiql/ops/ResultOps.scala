@@ -8,7 +8,7 @@ trait ResultOps extends Base {
   
   class Result extends Struct[Rep]
       
-  def __new[T<:Struct[Rep]:Manifest](fields: (String, Boolean, Rep[T] => Rep[_])*): Rep[T] = newResult[T](fields)
+  def __new[T:Manifest](fields: (String, Boolean, Rep[T] => Rep[_])*): Rep[T] = newResult[T](fields)
     
   def newResult[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T]
   
@@ -37,7 +37,7 @@ trait ResultOpsExp extends ResultOps with BaseExp {
     
   def newResult[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T] = {
     val x: Sym[T] = fresh[T]
-    val flatFields: Seq[(String, Rep[_])] = fields map {case (n, b, rhs) => (n, rhs(x))}
+    val flatFields: Seq[(String, Rep[_])] = fields map {case (n, _, rhs) => (n, rhs(x))}
     val nDef: Def[T] = CreateResult(flatFields)
     createDefinition(x, nDef)
     return x

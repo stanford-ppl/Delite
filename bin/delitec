@@ -12,8 +12,7 @@ from time import localtime, strftime
 import delitecommon
 
 LMS_HOME = os.getenv("LMS_HOME")
-#lms_version = "lms_2.10.0-virtualized-SNAPSHOT"
-lms_version = "lms"
+lms_version = "lms_2.10.0-M1-virtualized"
 
 def err(s):
     exit("error: " + s)

@@ -4,7 +4,7 @@ import java.io._
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
-import ppl.delite.framework.{Config, DeliteApplication}
+import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
@@ -31,6 +31,15 @@ trait OptiLAApplication extends OptiLA with OptiLALift {
   var args: Rep[Array[String]]
   def main(): Unit
 }
+
+trait OptiLAInteractive extends OptiLAApplication with DeliteInteractive
+
+trait OptiLAInteractiveRunner extends OptiLAApplicationRunner with DeliteInteractiveRunner
+
+object OptiLA {
+  def apply[R](b: => R) = new Scope[OptiLAInteractive, OptiLAInteractiveRunner, R](b)
+}
+
 
 /**
  * These are the portions of Scala imported into OptiLA's scope.

@@ -1,5 +1,5 @@
 version := "0.1"
 
-organization := "Stanford PPL"
+organization := "Stanford_PPL"
 
 retrieveManaged := true

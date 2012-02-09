@@ -36,7 +36,7 @@ trait RecordOpsExp extends RecordOps with BaseExp {
     
   def newRecord[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T] = {
     val x: Sym[T] = fresh[T]
-    val flatFields: Seq[(String, Rep[_])] = fields map {case (n, b, rhs) => (n, rhs(x))}
+    val flatFields: Seq[(String, Rep[_])] = fields map {case (n, _, rhs) => (n, rhs(x))}
     val nDef: Def[T] = CreateRecord(flatFields)
     createDefinition(x, nDef)
     return x
