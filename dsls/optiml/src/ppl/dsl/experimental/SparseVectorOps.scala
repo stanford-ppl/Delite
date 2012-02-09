@@ -40,7 +40,7 @@ trait SparseVectorOps extends Variables {
     def length = sparsevector_length(x)
     
     type VPLUSR = DenseVector[A]
-    def vplusToIntf(x: Rep[VPLUSR]) = denseToInterface(x)
+    def vplusToIntf(x: Rep[VPLUSR]) = denseVecToInterface(x)
     def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = sparsevector_plus_generic(x,y)    
     // unfortunately, this doesn't work unless we pass around complicated structural types
     //def +(y: Interface[Vector[A]]{ val ops: SparseVecOpsCls[A] })(implicit a: Arith[A], o: Overloaded1) = sparsevector_plus_sparse(x,y.ops.x)

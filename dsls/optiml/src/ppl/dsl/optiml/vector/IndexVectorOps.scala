@@ -20,7 +20,7 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
     //implicit def toIntf(x: Rep[VA]): Interface[IndexVector]    
     type V[X] = DenseVector[X] // conversion operations on IndexVectors will return a DenseVector    
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
-    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
+    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
     def wrap(x: Rep[Self]): Interface[IndexVector]
     def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
     def mV[B:Manifest] = manifest[DenseVector[B]] 
@@ -30,17 +30,17 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
     type VPLUSR = DenseVector[Int]
     val mVPLUSR = manifest[VPLUSR]
     val vplusBuilder = denseVectorBuilder[Int]
-    def vplusToIntf(x: Rep[VPLUSR]) = denseToInterface(x)
+    def vplusToIntf(x: Rep[VPLUSR]) = denseVecToInterface(x)
     
     type VMINUSR = DenseVector[Int]
     val mVMINUSR = manifest[VMINUSR]
     val vminusBuilder = denseVectorBuilder[Int]
-    def vminusToIntf(x: Rep[VMINUSR]) = denseToInterface(x)    
+    def vminusToIntf(x: Rep[VMINUSR]) = denseVecToInterface(x)    
     
     type VTIMESR = DenseVector[Int]
     val mVTIMESR = manifest[VTIMESR]
     val vtimesBuilder = denseVectorBuilder[Int]
-    def vtimesToIntf(x: Rep[VTIMESR]) = denseToInterface(x)            
+    def vtimesToIntf(x: Rep[VTIMESR]) = denseVecToInterface(x)            
         
     def apply[A:Manifest](block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[V[A]] = indexvector_construct(wrap(x), block)    
     def *(y: Rep[Matrix[Int]])(implicit a: Arith[Int], o: Overloaded2, ctx: SourceContext) = throw new UnsupportedOperationException("tbd")

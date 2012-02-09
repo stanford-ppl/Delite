@@ -28,7 +28,7 @@ trait TopN extends OptiMLApplication {
     Similarity(ratings(0).profileA, ratings(0).profileB, num/den)
   }
   
-  def preferences(user: Rep[Int], ratings: Rep[Matrix[Int]], sims: Rep[Matrix[Double]]) = {
+  def preferences(user: Rep[Int], ratings: Rep[DenseMatrix[Int]], sims: Rep[DenseMatrix[Double]]) = {
     (0::sims.numRows) { testProfile => // each row is a unique profile
       val num = sum(0, ratings.numRows) { i => sims(testProfile, ratings(i,1))*ratings(i,2) }
       val den = sum(0, ratings.numRows) { i => abs(sims(testProfile, ratings(i,1))) }
@@ -96,7 +96,7 @@ trait TopN extends OptiMLApplication {
     
     // TODO: this should be a SparseMatrix... only populated where we actually have a similarity value 
     //val similarityMatrix = SymmetricMatrix[Double](userRatings.length) // n x n where n is the number of unique users
-    val similarityMatrix = Matrix[Double](userRatings.length, userRatings.length)
+    val similarityMatrix = DenseMatrix[Double](userRatings.length, userRatings.length)
     for (sim <- similarities) {
       similarityMatrix(sim.a, sim.b) = sim.value
     }

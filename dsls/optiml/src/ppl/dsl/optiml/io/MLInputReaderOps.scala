@@ -23,7 +23,7 @@ trait MLInputReaderOps extends Base {
   def obj_mlinput_read_grayscale_image(filename: Rep[String])(implicit ctx: SourceContext): Rep[GrayscaleImage]
   def obj_mlinput_read_arff[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row])(implicit ctx: SourceContext): Rep[DenseVector[Row]]
   //def obj_mlinput_read_tokenmatrix(filename: Rep[String])(implicit ctx: SourceContext): Rep[TrainingSet[Double,Double]]
-  def obj_mlinput_read_tokenmatrix(filename: Rep[String])(implicit ctx: SourceContext): (Rep[Matrix[Double]],Rep[DenseVector[Double]])
+  def obj_mlinput_read_tokenmatrix(filename: Rep[String])(implicit ctx: SourceContext): (Rep[DenseMatrix[Double]],Rep[DenseVector[Double]])
   def obj_mlinput_read_template_models(directory: Rep[String])(implicit ctx: SourceContext): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]]
 }
 

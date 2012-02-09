@@ -26,7 +26,7 @@ trait LBPDenoise extends OptiMLApplication {
     val cols = Integer.parseInt(args(1))
 
     // Generate image
-    val img = Matrix[Double](rows, cols)
+    val img = Image[Double](rows, cols)
     imgPaintSunset(img, colors)
     MLOutputWriter.writeImgPgm(img, "src.pgm")
     imgCorrupt(img, sigma)
@@ -47,7 +47,7 @@ trait LBPDenoise extends OptiMLApplication {
     var smoothing = "laplace"
     val pred_type = "map"
 
-    val edgePotential = Matrix[Double](colors, colors).mutable
+    val edgePotential = DenseMatrix[Double](colors, colors).mutable
     
     val img = loadImage(args, colors, sigma)
     rows = img.numRows
@@ -201,12 +201,12 @@ trait LBPDenoise extends OptiMLApplication {
     println("Update functions ran: " + count)
   }
 
-  def constructGraph(img: Rep[Matrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Rep[Graph[MessageVertex, MessageEdge]] = {
+  def constructGraph(img: Rep[DenseMatrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Rep[Graph[MessageVertex, MessageEdge]] = {
     val g = Graph[MessageVertex, MessageEdge]()
 
     val sigmaSq = sigma * sigma
 
-    val vertices = Matrix[MessageVertex](img.numRows, img.numCols)
+    val vertices = DenseMatrix[MessageVertex](img.numRows, img.numCols)
 
     // Set vertex potential based on image
     var i = 0
@@ -272,22 +272,22 @@ trait LBPDenoise extends OptiMLApplication {
     g
   }
 
-  def imgPixels(img: Rep[Matrix[Double]]) = {
+  def imgPixels(img: Rep[DenseMatrix[Double]]) = {
     img.numRows * img.numCols
   }
 
-  def imgPixelId(img: Rep[Matrix[Double]], i: Rep[Int], j: Rep[Int]) = {
+  def imgPixelId(img: Rep[DenseMatrix[Double]], i: Rep[Int], j: Rep[Int]) = {
     i * img.numCols + j
   }
 
-  def imgUpdate(img: Rep[Matrix[Double]], id: Rep[Int], pixel: Rep[Double]) = {
+  def imgUpdate(img: Rep[DenseMatrix[Double]], id: Rep[Int], pixel: Rep[Double]) = {
     val row = id / img.numCols
     val col = id % img.numCols
 
     img(row, col) = pixel
   }
 
-  def imgPaintSunset(img: Rep[Matrix[Double]], numRings: Rep[Int]) = {
+  def imgPaintSunset(img: Rep[DenseMatrix[Double]], numRings: Rep[Int]) = {
     val centerR = img.numRows.AsInstanceOf[Double] / 2.0
     val centerC = img.numCols.AsInstanceOf[Double] / 2.0
     val maxRadius = min(img.numRows, img.numCols).AsInstanceOf[Double] / 2.0
@@ -316,15 +316,15 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   // Corrupt the image with Gaussian noise
-  def imgCorrupt(img: Rep[Matrix[Double]], sigma: Rep[Double]) = {
+  def imgCorrupt(img: Rep[DenseMatrix[Double]], sigma: Rep[Double]) = {
     img mmap { _ + randomGaussian*sigma }
   }
 
-  def imgSave(img: Rep[Matrix[Double]], filename: Rep[String]) = {
-      MLOutputWriter.writeImgPgm(img, filename)
+  def imgSave(img: Rep[Image[Double]], filename: Rep[String]) = {
+    MLOutputWriter.writeImgPgm(img, filename)
   }
 
-  def binaryFactorSetAgreement(bf: Rep[Matrix[Double]], lambda: Rep[Double]) = {
+  def binaryFactorSetAgreement(bf: Rep[DenseMatrix[Double]], lambda: Rep[Double]) = {
     var i = 0
     var j = 0
     while (i < bf.numRows) {
@@ -341,8 +341,8 @@ trait LBPDenoise extends OptiMLApplication {
   }
 
   // TODO: passing lambda somehow causing a scalac internal error, even if lambda is not used anywhere
-  //def binaryFactorSetLaplace(bf: Rep[Matrix[Double]]) {
-  def binaryFactorSetLaplace(bf: Rep[Matrix[Double]], lambda: Rep[Double]) {
+  //def binaryFactorSetLaplace(bf: Rep[DenseMatrix[Double]]) {
+  def binaryFactorSetLaplace(bf: Rep[DenseMatrix[Double]], lambda: Rep[Double]) {
     var i = 0
     var j = 0
     while (i < bf.numRows) {
@@ -401,7 +401,7 @@ trait LBPDenoise extends OptiMLApplication {
     a -= b
   }
 
-  def unaryFactorConvolve(bf: Rep[Matrix[Double]], other: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
+  def unaryFactorConvolve(bf: Rep[DenseMatrix[Double]], other: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
     bf.mapRowsToVector { (row) =>
       val csum = (row + other).exp.sum
       if(csum == 0) {

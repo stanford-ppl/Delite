@@ -1,7 +1,7 @@
 package ppl.dsl.optila.vector
 
 import ppl.dsl.optila.{Vector, DenseVector, RangeVector}
-import ppl.dsl.optila.{OptiLAExp, OptiLA}
+import ppl.dsl.optila.{OptiLAExp, OptiLA, OptiLACompiler}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
@@ -33,7 +33,7 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
     type Self = RangeVector 
     def wrap(x: Rep[RangeVector]) = rangeToInterface(x)
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
-    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
+    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
     def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
     def mV[B:Manifest] = manifest[DenseVector[B]] 
           
@@ -47,18 +47,19 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
     type VPLUSR = DenseVector[Int]
     val mVPLUSR = manifest[VPLUSR]
     val vplusBuilder = denseVectorBuilder[Int]
-    def vplusToIntf(x: Rep[VPLUSR]) = denseToInterface(x)
+    def vplusToIntf(x: Rep[VPLUSR]) = denseVecToInterface(x)
     
     type VMINUSR = DenseVector[Int]
     val mVMINUSR = manifest[VMINUSR]
     val vminusBuilder = denseVectorBuilder[Int]
-    def vminusToIntf(x: Rep[VMINUSR]) = denseToInterface(x)    
+    def vminusToIntf(x: Rep[VMINUSR]) = denseVecToInterface(x)    
     
     type VTIMESR = DenseVector[Int]
     val mVTIMESR = manifest[VTIMESR]
     val vtimesBuilder = denseVectorBuilder[Int]
-    def vtimesToIntf(x: Rep[VTIMESR]) = denseToInterface(x)        
+    def vtimesToIntf(x: Rep[VTIMESR]) = denseVecToInterface(x)        
         
+    // should forward to a RangeVectorOpsExp implementation which throws an OptiLA compiler error instead of using exceptions
     def t(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
     def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
     def update(n: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = throw new UnsupportedOperationException("RangeVectors cannot be updated")

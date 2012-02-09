@@ -20,7 +20,7 @@ trait SimpleFlatten extends DeliteTestModule with OptiMLApplication {
   def main() = {
 
 		val x = Vector(Vector(1,2,3,4,5), Vector(6,7,8,9))
-		val y = Vector.flatten(x)
+		val y = DenseVector.flatten(x)
 		collect(y == Vector(1,2,3,4,5,6,7,8,9))		
     mkReport
   }

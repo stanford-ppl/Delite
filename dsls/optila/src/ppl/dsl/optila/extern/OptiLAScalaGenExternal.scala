@@ -18,17 +18,17 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
   import IR._
   
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case e@MatrixTimesVectorBLAS(x,y) =>
+    case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val args = scala.List("%1$s.data", "%2$s.data", "%3$s.data", "%1$s.numRows", "%1$s.numCols", "0", "1") 
                  .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
       emitMethodCall(sym, e, BLAS, args)
       
-    case e@MatrixMultiplyBLAS(x,y) =>
+    case e@DenseMatrixMultiplyBLAS(x,y) =>
       val args = scala.List("%1$s.data", "%2$s.data", "%3$s.data", "%1$s.numRows", "%1$s.numCols", "%2$s.numCols") 
                  .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
       emitMethodCall(sym, e, BLAS, args)
     
-    case e@MatrixSigmoidVectorized(in) =>
+    case e@DenseMatrixSigmoidVectorized(in) =>
       val args = scala.List("%1$s.data", "%2$s.data", "0", "%1$s.size") 
                  .map { _.format(quote(getBlockResult(in)), quote(sym)) }
       emitMethodCall(sym, e, BLAS, args)  
@@ -40,7 +40,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
     /**
      * MatrixTimesVector 
      */
-    case e@MatrixTimesVectorBLAS(x,y) =>
+    case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val tp = e.m.toString
       val func = tp match {
         case "Double" => "cblas_dgemv"
@@ -70,7 +70,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
     /**
      * MatrixMultiply 
      */
-    case e@MatrixMultiplyBLAS(x,y) =>
+    case e@DenseMatrixMultiplyBLAS(x,y) =>
       val tp = e.m.toString
       val func = tp match {
         case "Double" => "cblas_dgemm"
@@ -97,7 +97,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
     /**    
      * MatrixSigmoid 
      */
-    case e@MatrixSigmoidVectorized(in) =>
+    case e@DenseMatrixSigmoidVectorized(in) =>
       val tp = e.m.toString
       val func = tp match {
         case "Double" => "exp"

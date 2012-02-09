@@ -16,6 +16,10 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 // subtyping is also required for interface covariance; Interface[Vector[T]] <:< Interface[DeliteCollection[T]]
 
+/**
+ * Vector 
+ */
+ 
 // involve representation & require their own ops to implement vector abstract methods
 trait Vector[T] extends DeliteCollection[T]
 trait DenseVector[T] extends Vector[T]
@@ -35,11 +39,16 @@ trait RowVector[T]
 trait ColVector[T]
 trait DenseRowVector[T] extends DenseVector[T] with RowVector[T]
 trait DenseColVector[T] extends DenseVector[T] with RowVector[T]
-trait MatrixRow[T] extends RowVector[T] with VectorView[T]
-trait MatrixCol[T] extends ColVector[T] with VectorView[T]
+//trait MatrixRow[T] extends RowVector[T] with VectorView[T]
+//trait MatrixCol[T] extends ColVector[T] with VectorView[T]
 
 
+/**
+ * Matrix 
+ */
+ 
 trait Matrix[T] extends DeliteCollection[T]
-//trait DenseMatrix[T] extends Matrix[T]
+trait DenseMatrix[T] extends Matrix[T]
+trait Image[T] extends DenseMatrix[T]
 //trait SparseMatrix[T] extends Matrix[T]
 //trait SymmetricMatrix[T] extends DenseMatrix[T]

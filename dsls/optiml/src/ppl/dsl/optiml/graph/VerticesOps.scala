@@ -99,9 +99,9 @@ trait ScalaGenVerticesOps extends BaseGenVerticesOps with ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case v@VerticesObjNew(len) => emitValDef(sym, "new generated.scala.VerticesImpl[" + remap(v.mV) + "](" + quote(len) + ")")
+      case v@VerticesObjNew(len) => emitValDef(sym, "new generated.scala.Vertices[" + remap(v.mV) + "](" + quote(len) + ")")
       case VerticesApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
-      case VerticesClone(x) => emitValDef(sym, quote(x) + ".cloneV")
+      case VerticesClone(x) => emitValDef(sym, quote(x) + ".Clone")
       case VerticesPBeliefs(x) => emitValDef(sym, quote(x) + ".printBeliefs")
       case VerticesToList(x) => emitValDef(sym, quote(x) + ".toList")
       case _ => super.emitNode(sym, rhs)

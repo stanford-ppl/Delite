@@ -18,10 +18,10 @@ trait OptiMLLinReg {
   val linreg = new LinregOps
 
   class LinregOps {
-    def weighted(x: Rep[Matrix[Double]], y: Rep[DenseVector[Double]])
+    def weighted(x: Rep[DenseMatrix[Double]], y: Rep[DenseVector[Double]])
       = linreg_weighted(x,y)
       
-    def unweighted(x: Rep[Matrix[Double]], y: Rep[DenseVector[Double]])
+    def unweighted(x: Rep[DenseMatrix[Double]], y: Rep[DenseVector[Double]])
       = linreg_unweighted(x,y)
   }
 
@@ -29,7 +29,7 @@ trait OptiMLLinReg {
   // input: input training vector x
   //        output training vector y
   // output: predictions along uniformly sampled points
-  private def linreg_unweighted(x: Rep[Matrix[Double]], y: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
+  private def linreg_unweighted(x: Rep[DenseMatrix[Double]], y: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
     // by convention, x_0 = 1
     val X = x.mutable
     X.insertCol(0, Vector.ones(X.numRows).t) 
@@ -42,7 +42,7 @@ trait OptiMLLinReg {
     theta
   }
 
-  private def linreg_weighted(x: Rep[Matrix[Double]], y: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
+  private def linreg_weighted(x: Rep[DenseMatrix[Double]], y: Rep[DenseVector[Double]]): Rep[DenseVector[Double]] = {
     val tau = 10
     val X = x.mutable
     X.insertCol(0, Vector.ones(X.numRows).t) 

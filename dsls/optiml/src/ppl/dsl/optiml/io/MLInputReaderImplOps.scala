@@ -9,7 +9,7 @@ trait MLInputReaderImplOps { this: Base =>
   def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage]
   def mlinput_read_arff_impl[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row]): Rep[DenseVector[Row]]
   //def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
-  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): (Rep[Matrix[Double]],Rep[DenseVector[Double]])
+  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): (Rep[DenseMatrix[Double]],Rep[DenseVector[Double]])
   def mlinput_read_template_models_impl(directory: Rep[String]): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]]
 }
 
@@ -24,7 +24,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     var line = xfs.readLine()
     line = line.trim()
     var ints = line.split("\\\\s+")
-    val x = Matrix[Int](0, ints.length)
+    val x = DenseMatrix[Int](0, ints.length)
 
     while (line != null) {
       val v = (0::ints.length) { i =>
@@ -85,7 +85,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   *    the matrix is sparse, so each row has a tuple of (tokenIndex, number of appearances)
   */
   //def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]] = {
-  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): (Rep[Matrix[Double]], Rep[DenseVector[Double]]) = {
+  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): (Rep[DenseMatrix[Double]], Rep[DenseVector[Double]]) = {
 
     val xs = BufferedReader(FileReader(filename))
 
@@ -123,7 +123,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
       trainMatSeq += row.unsafeImmutable
     }
     val trainCategory = trainCatSeq.t
-    val trainMatrix = Matrix(trainMatSeq)
+    val trainMatrix = DenseMatrix(trainMatSeq)
 
     xs.close()
 

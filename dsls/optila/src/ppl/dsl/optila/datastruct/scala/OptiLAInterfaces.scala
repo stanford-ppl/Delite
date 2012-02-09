@@ -7,11 +7,11 @@ package ppl.dsl.optila.datastruct.scala
  * Vector
  */
 
- trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] { //extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
-   def length: Int
+// trait Vector[@specialized(Boolean, Int, Long, Float, Double) T] { //extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
+//   def length: Int
 //   def isRow: Boolean
 //   def mtrans: Vector[T]  
-   def apply(n: Int): T
+//   def apply(n: Int): T
 //   def update(index: Int, x: T)
 //   def Clone: Vector[T]
 //   def toList: List[T]
@@ -42,7 +42,7 @@ package ppl.dsl.optila.datastruct.scala
   //     i += 1        
   //   }
   //   true    
-  }
+//  }
   
   // TO BE MOVED TO DenseVector
 //  def data: Array[T]
@@ -97,43 +97,43 @@ package ppl.dsl.optila.datastruct.scala
 /**
  * Matrix
  */
-trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
-  def numRows: Int
-  def numCols: Int
-  def size: Int
-  def apply(i: Int, j: Int): T
-  def update(row: Int, col: Int, x: T)
+//trait Matrix[@specialized(Boolean, Int, Long, Float, Double) T] extends ppl.delite.framework.datastruct.scala.DeliteCollection[T] {
+//  def numRows: Int
+//  def numCols: Int
+  // def size: Int
+//  def apply(i: Int, j: Int): T
+//  def update(row: Int, col: Int, x: T)
   
-  def data: Array[T]  
-  def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
-  def getRow(i: Int): VectorView[T]
-  def getCol(j: Int): VectorView[T]
-  def insertRow(pos: Int, x: Vector[T])
-  def insertAllRows(pos: Int, xs: Matrix[T])
-  def insertCol(pos: Int, x: Vector[T])
-  def insertAllCols(pos: Int, xs: Matrix[T])
-  def removeRows(pos: Int, len: Int)
-  def removeCols(pos: Int, len: Int)
-  def Clone: Matrix[T]
+  //def data: Array[T]  
+  // def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
+  // def getRow(i: Int): VectorView[T]
+  // def getCol(j: Int): VectorView[T]
+//  def insertRow(pos: Int, x: Vector[T])
+//  def insertAllRows(pos: Int, xs: Matrix[T])
+//  def insertCol(pos: Int, x: Vector[T])
+//  def insertAllCols(pos: Int, xs: Matrix[T])
+//  def removeRows(pos: Int, len: Int)
+//  def removeCols(pos: Int, len: Int)
+  //  def Clone: Matrix[T]
 
   // DeliteCollection
-  def dcApply(idx: Int): T
-  def dcUpdate(idx: Int, x: T): Unit
-  def dcSize = size
-  
-  // value equality is needed for DeliteCollection zero
-  override def equals(rhs: Any): Boolean = {
-    if (!rhs.isInstanceOf[Matrix[T]]) return false
-        
-    val rv = rhs.asInstanceOf[Matrix[T]]
-    if (size != rv.size) return false
-    var i = 0
-    while (i < rv.size) {
-      if (dcApply(i) != rv.dcApply(i)) return false
-      i += 1        
-    }
-    true    
-  }
-}
+  // def dcApply(idx: Int): T
+  // def dcUpdate(idx: Int, x: T): Unit
+  // def dcSize = size
+  // 
+  // // value equality is needed for DeliteCollection zero
+  // override def equals(rhs: Any): Boolean = {
+  //   if (!rhs.isInstanceOf[Matrix[T]]) return false
+  //       
+  //   val rv = rhs.asInstanceOf[Matrix[T]]
+  //   if (size != rv.size) return false
+  //   var i = 0
+  //   while (i < rv.size) {
+  //     if (dcApply(i) != rv.dcApply(i)) return false
+  //     i += 1        
+  //   }
+  //   true    
+  // }
+//}
 
 //trait SymmetricMatrix[@specialized(Boolean, Int, Float, Double) T] extends Matrix[T] 

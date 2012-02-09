@@ -11,13 +11,13 @@ package ppl.dsl.optiml
 trait Labels[T] extends DenseVector[T] // ! to be temporarily removed to simplify things for pldi
 trait StreamRow[T] extends VectorView[T]
 trait IndexVector extends Vector[Int] with RowVector[Int]
-trait IndexVectorRange extends IndexVector
-trait IndexVectorDense extends IndexVector
+trait IndexVectorRange extends IndexVector with RangeVector
+trait IndexVectorDense extends IndexVector with DenseVector[Int]
 //trait IndexVectorWC extends IndexVector
 trait IndexVector2
 
-trait TrainingSet[T,L] extends Matrix[T]
-trait Image[T] extends Matrix[T]
+trait TrainingSet[T,L] extends DenseMatrix[T]
+trait Image[T] extends DenseMatrix[T]
 trait GrayscaleImage extends Image[Int]
 
 // no covariance here, since Graph is mutable.

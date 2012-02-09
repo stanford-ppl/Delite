@@ -14,7 +14,7 @@ trait LAInputReaderOps extends Base {
   def readMatrix(filename: Rep[String], delim: Rep[String] = unit("\\\\s+"))(implicit ctx: SourceContext) = obj_lainput_read(filename, delim)
   def readVector(filename: Rep[String])(implicit ctx: SourceContext) = obj_lainput_read_vector(filename)
   
-  def obj_lainput_read(filename: Rep[String], delim: Rep[String])(implicit ctx: SourceContext): Rep[Matrix[Double]]
+  def obj_lainput_read(filename: Rep[String], delim: Rep[String])(implicit ctx: SourceContext): Rep[DenseMatrix[Double]]
   def obj_lainput_read_vector(filename: Rep[String])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 }
 

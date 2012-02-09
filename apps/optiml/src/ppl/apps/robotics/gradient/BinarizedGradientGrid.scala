@@ -28,7 +28,7 @@ trait BinarizedGradientGridFuncs {
 
 //    println("detectAllObjects.2")
 
-    val (mag: Rep[Matrix[Float]], phase: Rep[Matrix[Float]]) = t2(repGrayscaleImageToGrayscaleImageOps(img_gray).gradients(true))
+    val (mag: Rep[DenseMatrix[Float]], phase: Rep[DenseMatrix[Float]]) = t2(repGrayscaleImageToGrayscaleImageOps(img_gray).gradients(true))
 //    println("detectAllObjects.3")
     val binGrad = binarizeGradients(mag, phase)
 //    println("detectAllObjects.4")
@@ -127,7 +127,7 @@ if (crt_template.match_list.length < 0) println("dummy")
   }
 
   //Turn mag and phase into a binary representation of 8 gradient directions.
-  def binarizeGradients(mag: Rep[Matrix[Float]], phase: Rep[Matrix[Float]]): Rep[GrayscaleImage] = {
+  def binarizeGradients(mag: Rep[DenseMatrix[Float]], phase: Rep[DenseMatrix[Float]]): Rep[GrayscaleImage] = {
     GrayscaleImage((mag zip phase) {(a,b) => {
       if (a >= magnitude_threshold_) {
           var angle = b

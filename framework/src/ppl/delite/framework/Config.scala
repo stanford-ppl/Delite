@@ -22,6 +22,7 @@ object Config {
   var buildDir = getProperty("delite.build.dir", "generated")
   var useBlas = getProperty("delite.extern.blas", "false") != "false"
   var nestedVariantsLevel = getProperty("nested.variants.level", "0").toInt
+  var debug = getProperty("delite.debug","false") != "false"
 
   //Print generationFailedException info
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"

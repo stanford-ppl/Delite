@@ -4,18 +4,17 @@ trait LanguageImplOps { this: OptiLA =>
   def optila_vectordistance_abs_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
   def optila_vectordistance_euc_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
   def optila_vectordistance_square_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]): Rep[A]
-  def optila_matrixdistance_abs_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
-  def optila_matrixdistance_euc_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
-  def optila_matrixdistance_square_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]): Rep[A]
+  def optila_matrixdistance_abs_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]): Rep[A]
+  def optila_matrixdistance_euc_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]): Rep[A]
+  def optila_matrixdistance_square_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]): Rep[A]
 
-  def optila_randsample_matrix_impl[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean]): Rep[Matrix[A]]
+  def optila_randsample_matrix_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,MA]): Rep[MA]
   def optila_randsample_vector_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA]
 }
 
 trait LanguageImplOpsStandard extends LanguageImplOps {
   this: OptiLACompiler with OptiLALift =>
   
-
   def optila_vectordistance_abs_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = {
     (v1-v2).abs.sum
 /*
@@ -31,7 +30,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
 
   def optila_vectordistance_euc_impl[A:Manifest:Arith](v1: Interface[Vector[A]], v2: Interface[Vector[A]]) = {
     //sqrt(((v1-v2) mmap {e => e*e}).sum)
-    println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")
+    println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")  // TODO AKS
     v1(0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
   }
 
@@ -40,33 +39,34 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     (d*d).sum
   }
 
-  def optila_matrixdistance_abs_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {
+  def optila_matrixdistance_abs_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]) = {
     (m1-m2).abs.sum
   }
 
-  def optila_matrixdistance_euc_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {
-    println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED")
+  def optila_matrixdistance_euc_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]) = {
+    println("NOT IMPLEMENTED YET -- SHOULD NOT BE CALLED") // TODO AKS
     m1(0,0)//External[Rep[A]]("throw new UnsupportedOperationException('not implemented yet')")
   }
 
-  def optila_matrixdistance_square_impl[A:Manifest:Arith](m1: Rep[Matrix[A]], m2: Rep[Matrix[A]]) = {
+  def optila_matrixdistance_square_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]) = {
     val d = m1-m2
-    matrix_times(d,d).sum
+    (d*:*d).sum
   }
 
   // TODO: refactor to call sampleCollection
-  def optila_randsample_matrix_impl[A:Manifest](m: Rep[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean]): Rep[Matrix[A]] = {
+  def optila_randsample_matrix_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,MA]): Rep[MA] = {
     val length = if (sampleRows) m.numRows else m.numCols
     val newRows = if (sampleRows) numSamples else m.numRows
     val newCols = if (sampleRows) m.numCols else numSamples
 
-    val sampled = if(sampleRows) Matrix[A](0, newCols)
-                  else Matrix[A](0,newRows) // transposed for efficiency
+    val sampledOut = if(sampleRows) b.alloc(0, newCols)
+                  else b.alloc(0,newRows) // transposed for efficiency
+    val sampled = b.toIntf(sampledOut)
 
     val candidates = (0::length).mutable
 
     // transpose to make constructing sampling more efficient
-    val mt = if (sampleRows) m else m.t
+    val mt = b.toIntf(if (sampleRows) m.ops.elem.asInstanceOf[Rep[MA]] else m.t.ops.elem.asInstanceOf[Rep[MA]])
 
     for (i <- 0 until numSamples){
       val r = i + random(length-i)
@@ -79,7 +79,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
       candidates(i) = t
     }
 
-    if (sampleRows) sampled else sampled.t
+    if (sampleRows) sampledOut.unsafeImmutable else sampled.t.ops.elem.asInstanceOf[Rep[MA]]
   }
 
   def optila_randsample_vector_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]) = {

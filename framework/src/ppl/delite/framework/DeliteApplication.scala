@@ -80,11 +80,13 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       g.initializeGenerator(baseDir + "kernels" + File.separator)
     }
 
-    if (Config.degFilename.endsWith(".deg")) {
-      val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
-      codegen.emitSource(liftedMain, "Application", streamScala) // whole scala application (for testing)
-      // TODO: dot output
-      reset
+    if (Config.debug) {
+      if (Config.degFilename.endsWith(".deg")) {
+        val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
+        codegen.emitSource(liftedMain, "Application", streamScala) // whole scala application (for testing)
+        // TODO: dot output
+        reset
+      }
     }
     deliteGenerator.initializeGenerator(Config.buildDir)
     val sd = deliteGenerator.emitSource(liftedMain, "Application", stream)    

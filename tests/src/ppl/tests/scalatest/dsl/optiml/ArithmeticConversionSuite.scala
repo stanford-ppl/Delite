@@ -131,9 +131,64 @@ trait VectorConversions extends DeliteTestModule with OptiMLApplication {
 object MatrixConversionsRunner extends DeliteTestRunner with OptiMLApplicationRunner with MatrixConversions
 trait MatrixConversions extends DeliteTestModule with OptiMLApplication {
   def main() { 
-    // TBD
+    val mint = DenseMatrix[Int](100,100)
+    val mdbl = DenseMatrix[Double](100,100)
+    val mflt = DenseMatrix[Float](100,100)
+    
+    val int = unit(1)
+    val dbl = unit(1.0)    
+    val flt = unit(1f)
+    
+    val l1 = mint + mint
+    val l2 = mint + mdbl
+    val l3 = mint + mflt
+    val l4 = mdbl + mint
+    val l5 = mdbl + mflt
+    val l6 = mdbl + mdbl
+    val l7 = mflt + mint
+    val l8 = mflt + mflt
+    val l9 = mflt + mdbl
+  
+    val lift1 = int + mint
+    val lift2 = int + mflt
+    val lift3 = int + mdbl
+    val lift4 = flt + mint    
+    val lift5 = flt + mflt
+    val lift6 = flt + mdbl
+    val lift7 = dbl + mint
+    val lift8 = dbl + mflt
+    val lift9 = dbl + mdbl
+    val lift10 = mint + int
+    val lift11 = mflt + int
+    val lift12 = mdbl + int
+    val lift13 = mint + flt
+    val lift14 = mflt + flt
+    val lift15 = mdbl + flt
+    val lift16 = mint + dbl
+    val lift17 = mflt + dbl
+    val lift18 = mdbl + dbl
+    
+    val lit1 = 1 + mint
+    val lit2 = 1 + mflt
+    val lit3 = 1 + mdbl
+    val lit4 = 1f + mint
+    val lit5 = 1f + mflt
+    val lit6 = 1f + mdbl
+    val lit7 = 1.0 + mint
+    val lit8 = 1.0 + mflt
+    val lit9 = 1.0 + mdbl
+    val lit10 = mint + 1
+    val lit11 = mflt + 1
+    val lit12 = mdbl + 1
+    val lit13 = mint + 1f
+    val lit14 = mflt + 1f
+    val lit15 = mdbl + 1f
+    val lit16 = mint + 1.0
+    val lit17 = mflt + 1.0
+    val lit18 = mdbl + 1.0
+    
     collect(true)
-    mkReport
+    mkReport    
   }
 }
 

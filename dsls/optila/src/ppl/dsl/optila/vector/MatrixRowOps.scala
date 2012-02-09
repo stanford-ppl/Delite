@@ -7,7 +7,7 @@ import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase, CudaGenBase
 import scala.virtualization.lms.internal.GenericCodegen
 import scala.reflect.SourceContext
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.dsl.optila.{MatrixRow}
+//import ppl.dsl.optila.{MatrixRow}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
 // TODO: discuss: do we want to allow "index"? we need it for downsampling as its currently written,
@@ -16,6 +16,7 @@ import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
 // perhaps we allow this only for Streams (where you can't use the index to do anything bad)
 // however, as long as we don't provide access to the underlying matrix, it is still relatively constrained...
+/*
 trait MatrixRowOps extends Base with OverloadHack { this: OptiLA =>
 
   //def infix_index[A:Manifest](x: Rep[MatrixRow[A]]) = matrixrow_index(x)
@@ -61,3 +62,4 @@ trait ScalaGenMatrixRowOps extends BaseGenMatrixRowOps with ScalaGenBase {
 trait CudaGenMatrixRowOps extends CudaGenBase with BaseGenMatrixRowOps
 trait OpenCLGenMatrixRowOps extends OpenCLGenBase with BaseGenMatrixRowOps
 trait CGenMatrixRowOps extends CGenBase with BaseGenMatrixRowOps
+*/

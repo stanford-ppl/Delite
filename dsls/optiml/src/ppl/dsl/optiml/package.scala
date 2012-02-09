@@ -15,11 +15,11 @@ package object optiml {
   //type EmptyVector[T] = optila.EmptyVector[T]
   type RangeVector = optila.RangeVector
   type VectorView[T] = optila.VectorView[T]
-  type MatrixRow[T] = optila.MatrixRow[T]
-  type MatrixCol[T] = optila.MatrixCol[T]
+  //type MatrixRow[T] = optila.MatrixRow[T]
+  //type MatrixCol[T] = optila.MatrixCol[T]
 
   type Matrix[T] = optila.Matrix[T]
-  //type DenseMatrix[T] = optila.DenseMatrix[T]
+  type DenseMatrix[T] = optila.DenseMatrix[T]
   //type SparseMatrix[T] = optila.SparseMatrix[T]
   //type SymmetricMatrix[T] = optila.SymmetricMatrix[T]
 }

@@ -1,6 +1,11 @@
 package ppl.dsl.optila.datastruct.scala
 
-class SymmetricMatrixImpl[T:Manifest](n: Int) extends MatrixImpl[T](0,0) { //with SymmetricMatrix[T] {
+/* 
+ * TODO AKS
+ * this should be its own stand-alone data structure with a single array representing the diagonal vector.
+ */
+/*
+class SymmetricMatrixImpl[T:Manifest](n: Int) extends DenseMatrix[T](0,0) { //with SymmetricMatrix[T] {
   _numRows = n
   _numCols = n
   
@@ -21,3 +26,4 @@ class SymmetricMatrixImpl[T:Manifest](n: Int) extends MatrixImpl[T](0,0) { //wit
     _data(a*numCols+b) = x
   }
 }
+*/

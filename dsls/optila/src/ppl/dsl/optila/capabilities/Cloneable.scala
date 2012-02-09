@@ -40,9 +40,9 @@ trait CloneableOps extends Variables {
   //   def mutable(lhs: Rep[RangeVector]) = lhs.mutable()
   // }
   
-  implicit def matrixCloneable[T:Manifest]: Cloneable[Matrix[T]] = new Cloneable[Matrix[T]] {
-    def Clone(lhs: Rep[Matrix[T]])(implicit ctx: SourceContext) = lhs.Clone()
-    def mutable(lhs: Rep[Matrix[T]])(implicit ctx: SourceContext) = lhs.mutable()
+  implicit def matrixCloneable[A,MA](implicit tOps: Rep[MA] => MatOpsCls[A]) = new Cloneable[MA] {
+    def Clone(lhs: Rep[MA])(implicit ctx: SourceContext) = lhs.Clone().asInstanceOf[Rep[MA]]
+    def mutable(lhs: Rep[MA])(implicit ctx: SourceContext) = lhs.mutable().asInstanceOf[Rep[MA]]
   }
   
   implicit def tuple2Cloneable[A:Manifest:Cloneable,B:Manifest:Cloneable]: Cloneable[Tuple2[A,B]] =

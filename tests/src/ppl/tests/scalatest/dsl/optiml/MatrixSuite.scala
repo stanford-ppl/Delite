@@ -175,8 +175,8 @@ trait GroupRowsBy extends DeliteTestModule with OptiMLApplication {
 }
 
 class MatrixSuite extends DeliteSuite {
-  // def testAccessors() { compileAndTest(MatrixAccessorsRunner) }
-  //  def testOperators() { compileAndTest(MatrixOperatorsRunner) }
-  //  def testUpdates() { compileAndTest(MatrixUpdatesRunner) }
+  def testAccessors() { compileAndTest(MatrixAccessorsRunner) }
+  def testOperators() { compileAndTest(MatrixOperatorsRunner) }
+  def testUpdates() { compileAndTest(MatrixUpdatesRunner) }
   def testGroupRowsBy() { compileAndTest(GroupRowsByRunner) }
 }

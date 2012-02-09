@@ -74,8 +74,8 @@ trait DenseVectorOps extends Variables {
   class DenseVecOpsCls[A:Manifest](val elem: Rep[DenseVector[A]]) extends VecOpsCls[A] {
     type V[X] = DenseVector[X]
     type Self = DenseVector[A]
-    def wrap(x: Rep[DenseVector[A]]) = denseToInterface[A](x)
-    implicit def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface[B](x)
+    def wrap(x: Rep[DenseVector[A]]) = denseVecToInterface[A](x)
+    implicit def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)
     implicit def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]
     implicit def mVB[B:Manifest] = manifest[DenseVector[B]] 
     val x = elem
@@ -158,7 +158,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
   def densevector_length[A:Manifest](x: Exp[DenseVector[A]]) = reflectPure(DenseVectorLength(x))
   def densevector_apply[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int]) = reflectPure(DenseVectorApply(x,n))
   def densevector_update[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int], y: Exp[A]) = reflectWrite(x)(DenseVectorUpdate(x,n,y))    
-  def densevector_plus_dense[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) = reflectPure(DenseVectorPlusGeneric(denseToInterface(x),denseToInterface(y)))//reflectPure(DenseVectorPlusDense(x,y))
+  def densevector_plus_dense[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) = reflectPure(DenseVectorPlusGeneric(denseVecToInterface(x),denseVecToInterface(y)))//reflectPure(DenseVectorPlusDense(x,y))
   def densevector_plus_generic[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Interface[Vector[A]]) = reflectPure(DenseVectorPlusGeneric(x,y))
   
   // CanXX

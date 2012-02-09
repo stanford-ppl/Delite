@@ -124,7 +124,7 @@ trait LinearAlgebraTestsCommon extends OptiMLApplication with OverloadHack {
 
   // if we use Overloaded1 here, we get an ambiguous implicit inside Equal; we need to separate
   // the Overloaded "namespaces" from Application and Framework to be able to use this trick consistently
-  def check(x: Rep[Matrix[Double]], y: Rep[Matrix[Double]])(implicit o: Overloaded9): Rep[Boolean] = {
+  def check(x: Rep[DenseMatrix[Double]], y: Rep[DenseMatrix[Double]])(implicit o: Overloaded9): Rep[Boolean] = {
     if ((x.numRows != y.numRows) || (x.numCols != y.numCols)) {
       false
     }

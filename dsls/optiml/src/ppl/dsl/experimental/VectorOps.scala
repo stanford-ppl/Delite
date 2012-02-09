@@ -112,7 +112,7 @@ trait VectorOps extends Variables {
   
   // x: Rep[DenseVector[T]]
   // we implicitly convert that to an Interface[Vector[T]]: (this would be better if we didn't need Interface, but then Rep can't simply be an abstract type)  
-  implicit def denseToInterface[A:Manifest](lhs: Rep[DenseVector[A]]) = VInterface[A](new DenseVecOpsCls[A](lhs))
+  implicit def denseVecToInterface[A:Manifest](lhs: Rep[DenseVector[A]]) = VInterface[A](new DenseVecOpsCls[A](lhs))
   implicit def sparseToInterface[A:Manifest](lhs: Rep[SparseVector[A]]) = VInterface[A](new SparseVecOpsCls[A](lhs))
   
   // clients that can handle multiple kinds of vector must accept an Interface[Vector[T]],  not a Rep[Vector[T]]

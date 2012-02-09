@@ -1,6 +1,7 @@
 package ppl.dsl.optila
 
 import java.io._
+import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication}
@@ -44,21 +45,21 @@ trait OptiLAScalaOpsPkg extends Base
   with BooleanOps with PrimitiveOps with MiscOps with TupleOps
   with CastingOps with ObjectOps with IOOps
   // only included because of args. TODO: investigate passing args as a vector
-  with ArrayOps
+  with ArrayOps with ExceptionOps
 
 trait OptiLAScalaOpsPkgExp extends OptiLAScalaOpsPkg with DSLOpsExp
   with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
   with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
   with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
   with ListOpsExp with SeqOpsExp with MathOpsExp with CastingOpsExp with SetOpsExp with ObjectOpsExp
-  with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp
+  with SynchronizedArrayBufferOpsExp with HashMapOpsExp with IterableOpsExp with ExceptionOpsExp
 
 trait OptiLAScalaCodeGenPkg extends ScalaGenDSLOps
   with ScalaGenEqual with ScalaGenIfThenElse with ScalaGenVariables with ScalaGenWhile with ScalaGenFunctions
   with ScalaGenImplicitOps with ScalaGenOrderingOps with ScalaGenStringOps with ScalaGenRangeOps with ScalaGenIOOps
   with ScalaGenArrayOps with ScalaGenBooleanOps with ScalaGenPrimitiveOps with ScalaGenMiscOps with ScalaGenTupleOps
   with ScalaGenListOps with ScalaGenSeqOps with ScalaGenMathOps with ScalaGenCastingOps with ScalaGenSetOps with ScalaGenObjectOps
-  with ScalaGenSynchronizedArrayBufferOps with ScalaGenHashMapOps with ScalaGenIterableOps
+  with ScalaGenSynchronizedArrayBufferOps with ScalaGenHashMapOps with ScalaGenIterableOps with ScalaGenExceptionOps
   { val IR: OptiLAScalaOpsPkgExp  }
 
 trait OptiLACudaCodeGenPkg extends CudaGenDSLOps with CudaGenImplicitOps with CudaGenOrderingOps
@@ -89,16 +90,16 @@ trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
  */
 trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps
   with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
-  with VectorOps with DenseVectorOps with RangeVectorOps with VectorViewOps with MatrixRowOps with MatrixColOps
-  with MatrixOps 
+  with VectorOps with DenseVectorOps with RangeVectorOps with VectorViewOps //with MatrixRowOps with MatrixColOps
+  with MatrixOps with DenseMatrixOps
   with LAInputReaderOps with LAOutputWriterOps {
 
   this: OptiLAApplication =>
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait OptiLACompiler extends OptiLA with RangeOps with IOOps with SeqOps with SetOps
-  with ListOps with HashMapOps with IterableOps {
+trait OptiLACompiler extends OptiLA with OptiLAUtilities with DenseVectorCompilerOps with DenseMatrixCompilerOps with MathOps with RangeOps with IOOps with SeqOps with SetOps
+  with ListOps with HashMapOps with IterableOps with ExceptionOps {
     
   this: OptiLAApplication with OptiLAExp =>
 }
@@ -107,13 +108,14 @@ trait OptiLACompiler extends OptiLA with RangeOps with IOOps with SeqOps with Se
 /**
  * These are the corresponding IR nodes for OptiLA.
  */
-trait OptiLAExp extends OptiLACompiler with OptiLAUtilities with OptiLAScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
+trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
   with LanguageOpsExp with ArithOpsExpOpt 
-  with VectorOpsExp with DenseVectorOpsExpOpt with RangeVectorOpsExp with VectorViewOpsExpOpt with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
-  with MatrixOpsExpOpt 
+  with VectorOpsExp with DenseVectorOpsExpOpt with RangeVectorOpsExp with VectorViewOpsExpOpt //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
+  with MatrixOpsExpOpt with DenseMatrixOpsExpOpt
   with LAInputReaderOpsExp with LAOutputWriterOpsExp
+  with ExceptionOpsExp
   with LanguageImplOpsStandard
-  with VectorImplOpsStandard with DenseVectorImplOpsStandard with VectorViewImplOpsStandard with MatrixImplOpsStandard 
+  with VectorImplOpsStandard with DenseVectorImplOpsStandard with VectorViewImplOpsStandard with MatrixImplOpsStandard with DenseMatrixImplOpsStandard
   with LAInputReaderImplOpsStandard with LAOutputWriterImplOpsStandard
   with DeliteAllOverridesExp {
 
@@ -126,9 +128,13 @@ trait OptiLAExp extends OptiLACompiler with OptiLAUtilities with OptiLAScalaOpsP
       case _:TargetCuda => new OptiLACodeGenCuda{val IR: OptiLAExp.this.type = OptiLAExp.this}
       case _:TargetOpenCL => new OptiLACodeGenOpenCL{val IR: OptiLAExp.this.type = OptiLAExp.this}
       case _:TargetC => new OptiLACodeGenC{val IR: OptiLAExp.this.type = OptiLAExp.this}
-      case _ => throw new RuntimeException("optila does not support this target")
+      case _ => err("optila does not support this target")
     }
   }
+  
+  abstract class DefWithManifest[A:Manifest,R] extends Def[R] {
+    val m = manifest[A]
+  }  
 }
 
 trait OptiLAUtilities {
@@ -138,6 +144,13 @@ trait OptiLAUtilities {
     else if (x.getSuperclass() == null) false
     else isSubtype(x.getSuperclass(), cls)
   }    
+  
+  def err(s: String)(implicit ctx: SourceContext) = {
+    println("[optila error]: " + s)
+    println("  at " + (ctx.fileName.split("/").last + ":" + ctx.line).mkString("//").mkString(";"))
+    exit(1)
+  }
+  def warn(s: String) = println("[optila warning]: " + s)  
 }
 
 
@@ -190,8 +203,9 @@ trait OptiLACodeGenBase extends GenericFatCodegen {
 }
 
 trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal with ScalaGenDeliteOps
-  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps
-  with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
+  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps  
+  //with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
+  with ScalaGenExceptionOps
   with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
@@ -245,7 +259,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
 }
 
 trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with OptiLACudaGenExternal
-  with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenMatrixRowOps // with CudaGenVectorViewOps
+  with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenMatrixOps with CudaGenDenseMatrixOps with CudaGenDataStruct //with CudaGenMatrixRowOps // with CudaGenVectorViewOps
   with CudaGenVariantsOps with DeliteCudaGenAllOverrides with CudaGenDeliteCollectionOps // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
   val IR: DeliteApplication with OptiLAExp
@@ -328,7 +342,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
 
 }
 
-trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg with OptiLAOpenCLGenExternal /*with OpenCLGenLanguageOps*/ with OpenCLGenArithOps with OpenCLGenDeliteOps with OpenCLGenVectorOps with OpenCLGenMatrixOps with OpenCLGenDataStruct// with OpenCLGenVectorViewOps
+trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg with OptiLAOpenCLGenExternal /*with OpenCLGenLanguageOps*/ with OpenCLGenArithOps with OpenCLGenDeliteOps with OpenCLGenVectorOps with OpenCLGenMatrixOps with OpenCLGenDenseMatrixOps with OpenCLGenDataStruct// with OpenCLGenVectorViewOps
   /*with OpenCLGenVariantsOps*/ with DeliteOpenCLGenAllOverrides with OpenCLGenDeliteCollectionOps // with DeliteCodeGenOverrideOpenCL // with OpenCLGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
   val IR: DeliteApplication with OptiLAExp
@@ -431,7 +445,7 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
 }
 
 trait OptiLACodeGenC extends OptiLACodeGenBase with OptiLACCodeGenPkg with CGenDeliteOps 
-  with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenMatrixOps with CGenMatrixRowOps
+  with CGenArithOps with CGenVectorOps with CGenDenseVectorOps with CGenMatrixOps with CGenDenseMatrixOps //with CGenMatrixRowOps
   with CGenVariantsOps with DeliteCGenAllOverrides
 {
   val IR: DeliteApplication with OptiLAExp

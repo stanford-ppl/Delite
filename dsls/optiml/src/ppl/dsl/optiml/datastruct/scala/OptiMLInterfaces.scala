@@ -13,7 +13,7 @@ trait StreamRow[@specialized(Boolean, Int, Long, Float, Double) T] extends Vecto
   def index: Int
 }
 
-trait IndexVector extends Vector[Int] //extends DenseVector[Int]
+trait IndexVector //extends Vector[Int] //extends DenseVector[Int]
 
 trait IndexVectorDense extends IndexVector
 trait IndexVectorRange extends IndexVector
@@ -46,32 +46,32 @@ trait IndexVectorRange extends IndexVector
  * TrainingSet
  */
 
-trait Labels[L] extends DenseVector[L] {
-  def numLabels = length
-}
+// trait Labels[L] extends DenseVector[L] {
+//   def numLabels = length
+// }
 
-trait TrainingSet[@specialized(Boolean, Int, Long, Float, Double) T,@specialized(Boolean, Int, Long, Float, Double) L] extends Matrix[T] {
-  def numSamples = numRows
-  def numFeatures = numCols
-  def labels: Labels[L]
-
-  def transposed: TrainingSet[T,L]
-  override def update(row: Int, col: Int, x: T) = throw new UnsupportedOperationException("Training sets are immutable")
-  override def insertRow(pos: Int, x: Vector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
-  override def insertAllRows(pos: Int, xs: Matrix[T]) = throw new UnsupportedOperationException("Training sets are immutable")
-  override def insertCol(pos: Int, x: Vector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
-  override def insertAllCols(pos: Int, xs: Matrix[T]) = throw new UnsupportedOperationException("Training sets are immutable")
-  override def removeRows(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
-  override def removeCols(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
-}
+// trait TrainingSet[@specialized(Boolean, Int, Long, Float, Double) T,@specialized(Boolean, Int, Long, Float, Double) L] extends DenseMatrix[T] {
+//   def numSamples = _numRows
+//   def numFeatures = _numCols
+//   def labels: Labels[L]
+// 
+//   def transposed: TrainingSet[T,L]
+//   override def update(row: Int, col: Int, x: T) = throw new UnsupportedOperationException("Training sets are immutable")
+//   override def insertRow(pos: Int, x: DenseVector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+//   override def insertAllRows(pos: Int, xs: DenseMatrix[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+//   override def insertCol(pos: Int, x: DenseVector[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+//   override def insertAllCols(pos: Int, xs: DenseMatrix[T]) = throw new UnsupportedOperationException("Training sets are immutable")
+//   override def removeRows(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
+//   override def removeCols(pos: Int, len: Int) = throw new UnsupportedOperationException("Training sets are immutable")
+// }
 
 /**
  * Image
  */
 
-trait Image[@specialized(Int,Float,Double) T] extends Matrix[T]
+//trait Image[@specialized(Int,Float,Double) T] //extends DenseMatrix[T]
 
-trait GrayscaleImage extends Image[Int]
+//trait GrayscaleImage extends Image[Int]
 
 /**
  * Graph
@@ -118,10 +118,10 @@ trait Edge {
   def graph: G
 }
 
-trait Vertices[V <: Vertex] extends DenseVector[V] {
-  def cloneV: Vertices[V]
-  def printBeliefs(): Unit
-}
+// trait Vertices[V <: Vertex] extends DenseVector[V] {
+//   def Clone: Vertices[V]
+//   def printBeliefs(): Unit
+// }
 
 trait Edges[E <: Edge] extends DenseVector[E]
 

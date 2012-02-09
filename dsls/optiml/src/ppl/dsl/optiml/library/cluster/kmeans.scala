@@ -20,12 +20,12 @@ trait OptiMLKmeans {
   // TODO: TrainingSet needs to have Labels be optional
   class kmeansOps {
     //def cluster(x: Rep[TrainingSet[Double,Int]], numClusters: Rep[Int] = 32, tol: Rep[Double] = .001, initMu: Option[Rep[Matrix[Double]]] = None)
-    def cluster(x: Rep[Matrix[Double]], numClusters: Rep[Int] = 32, tol: Rep[Double] = .001, initMu: Option[Rep[Matrix[Double]]] = None)
+    def cluster(x: Rep[DenseMatrix[Double]], numClusters: Rep[Int] = 32, tol: Rep[Double] = .001, initMu: Option[Rep[DenseMatrix[Double]]] = None)
       = kmeans_cluster(x, numClusters, tol, initMu)
   }
 
   //private def kmeans_cluster(x: Rep[TrainingSet[Double,Int]], numClusters: Rep[Int], tol: Rep[Double], initMu: Option[Rep[Matrix[Double]]]) = {
-  private def kmeans_cluster(x: Rep[Matrix[Double]], numClusters: Rep[Int], tol: Rep[Double], initMu: Option[Rep[Matrix[Double]]]) = {
+  private def kmeans_cluster(x: Rep[DenseMatrix[Double]], numClusters: Rep[Int], tol: Rep[Double], initMu: Option[Rep[DenseMatrix[Double]]]) = {
     val m = x.numRows //x.numSamples
     val n = x.numCols //x.numFeatures
     val mu = initMu getOrElse ((0::numClusters, *) { i => x(random(m)) })
@@ -57,7 +57,7 @@ trait OptiMLKmeans {
     (iter,newMu)
   }
 
-  private def findNearestCluster( x_i: Rep[MatrixRow[Double]], mu: Rep[Matrix[Double]] ): Rep[Int] = {
+  private def findNearestCluster( x_i: Rep[VectorView[Double]], mu: Rep[DenseMatrix[Double]] ): Rep[Int] = {
     (mu mapRowsToVector { row => dist(x_i, row, SQUARE) }).minIndex
 //    var min_d = Double.PositiveInfinity
 //    var min_j = -1

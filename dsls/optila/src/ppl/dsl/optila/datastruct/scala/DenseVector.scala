@@ -10,20 +10,20 @@ package ppl.dsl.optila.datastruct.scala
  * in the generated code.
  */
 //class VectorImpl[@specialized T: Manifest](__length: Int, __isRow: Boolean) extends DenseVector[T] {
-class DenseVector[@specialized T: Manifest](__length: Int, __isRow: Boolean) extends Vector[T] {
-  protected var _length = __length
-  protected var _isRow = __isRow
-  protected var _data: Array[T] = new Array[T](_length)
+class DenseVector[@specialized T: Manifest](__length: Int, __isRow: Boolean) { //extends Vector[T] {
+  var _length = __length
+  var _isRow = __isRow
+  var _data: Array[T] = new Array[T](_length)
 
-  def length = _length
-  def isRow = _isRow
-  def data = _data
-
-  def this(__data: Array[T], __isRow: Boolean){
-    this(0, __isRow)
-    _data = __data
-    _length = _data.length
-  }
+  // def length = _length
+  // def isRow = _isRow
+  // def data = _data
+  // 
+  // def this(__data: Array[T], __isRow: Boolean){
+  //   this(0, __isRow)
+  //   _data = __data
+  //   _length = _data.length
+  // }
   
   // override def equals(rhs: Any): Boolean = {
   //   if (!rhs.isInstanceOf[DenseVector[T]]) return false
@@ -38,96 +38,102 @@ class DenseVector[@specialized T: Manifest](__length: Int, __isRow: Boolean) ext
   //   true    
   // }
   
-  def apply(n: Int): T = {
-    _data(n)
-  }
+  // def apply(n: Int): T = {
+  //   _data(n)
+  // }
+  // 
+  // def update(index: Int, x: T) {
+  //   _data(index) = x
+  // }
 
-  def update(index: Int, x: T) {
-    _data(index) = x
-  }
-
-  def Clone = { val v = new DenseVector[T](0, isRow); v.insertAll(0, this); v }
-
+  /**
+   * These are temporarily needed because they are hard-coded into DeliteOp code gen. 
+   */    
   def unsafeSetData(xs: Array[T], len: Int) {
     _data = xs
     _length = len
   }
   
+  def Clone = { 
+    val v = new DenseVector[T](_length, _isRow);
+    v._data = _data.clone
+    v
+  }  
 
-  def sort(implicit o: Ordering[T]): DenseVector[T] = {
-    val d = new Array[T](_length)
-    System.arraycopy(_data, 0, d, 0, _length)
-    scala.util.Sorting.quickSort(d)
-    new DenseVector[T](d, isRow)
-  }
+  // def sort(implicit o: Ordering[T]): DenseVector[T] = {
+  //   val d = new Array[T](_length)
+  //   System.arraycopy(_data, 0, d, 0, _length)
+  //   scala.util.Sorting.quickSort(d)
+  //   new DenseVector[T](d, isRow)
+  // }
 
-  def insert(pos: Int, x: T) {
-    insertSpace(pos, 1)
-    _data(pos) = x
-  }
-
-  def insertAll(pos: Int, xs: DenseVector[T]) {
-    //if (xs.isInstanceOf[EmptyVector[Any]]) return
-
-    insertSpace(pos, xs.length)
-    copyFrom(pos, xs)
-  }
-
-  def copyFrom(pos: Int, xs: DenseVector[T]) {
-    //chkRange(pos, pos + xs.length)
-    var i = 0
-    while (i < xs.length) {
-      _data(pos + i) = xs(i)
-      i += 1
-    }
-  }
-
-  def removeAll(pos: Int, len: Int) {
-    //chkRange(pos, pos + len)
-    System.arraycopy(_data, pos + len, _data, pos, _length - (pos + len))
-    _length -= len
-  }
-
-  def trim {
-    if (_length < _data.length) {
-      val d = new Array[T](_length)
-      System.arraycopy(_data, 0, d, 0, _length)
-      _data = d
-    }
-  }
-  
-  def clear() {
-    _length = 0
-    _data = new Array[T](0)
-  }
-
-  def mtrans = {
-    _isRow = !_isRow
-    this
-  }
-
-  def toList = {
-    _data.toList 
-  }
-
-  protected def insertSpace(pos: Int, len: Int) {
-    ensureExtra(len)
-    System.arraycopy(_data, pos, _data, pos + len, _length - pos)
-    _length += len
-  }
-
-  protected def ensureExtra(extra: Int) {
-    if (_data.length - _length < extra) {
-      realloc(_length + extra)
-    }
-  }
-
-  protected def realloc(minLen: Int) {
-    var n = java.lang.Math.max(4, _data.length * 2)
-    while (n < minLen) n *= 2
-    val d = new Array[T](n)
-    System.arraycopy(_data, 0, d, 0, _length)
-    _data = d
-  }
+  // def insert(pos: Int, x: T) {
+  //   insertSpace(pos, 1)
+  //   _data(pos) = x
+  // }
+  // 
+  // def insertAll(pos: Int, xs: DenseVector[T]) {
+  //   //if (xs.isInstanceOf[EmptyVector[Any]]) return
+  // 
+  //   insertSpace(pos, xs.length)
+  //   copyFrom(pos, xs)
+  // }
+  // 
+  // def copyFrom(pos: Int, xs: DenseVector[T]) {
+  //   //chkRange(pos, pos + xs.length)
+  //   var i = 0
+  //   while (i < xs.length) {
+  //     _data(pos + i) = xs(i)
+  //     i += 1
+  //   }
+  // }
+  // 
+  // def removeAll(pos: Int, len: Int) {
+  //   //chkRange(pos, pos + len)
+  //   System.arraycopy(_data, pos + len, _data, pos, _length - (pos + len))
+  //   _length -= len
+  // }
+  // 
+  // def trim {
+  //   if (_length < _data.length) {
+  //     val d = new Array[T](_length)
+  //     System.arraycopy(_data, 0, d, 0, _length)
+  //     _data = d
+  //   }
+  // }
+  // 
+  // def clear() {
+  //   _length = 0
+  //   _data = new Array[T](0)
+  // }
+  // 
+  // def mtrans = {
+  //   _isRow = !_isRow
+  //   this
+  // }
+  // 
+  // def toList = {
+  //   _data.toList 
+  // }
+  // 
+  // protected def insertSpace(pos: Int, len: Int) {
+  //   ensureExtra(len)
+  //   System.arraycopy(_data, pos, _data, pos + len, _length - pos)
+  //   _length += len
+  // }
+  // 
+  // protected def ensureExtra(extra: Int) {
+  //   if (_data.length - _length < extra) {
+  //     realloc(_length + extra)
+  //   }
+  // }
+  // 
+  // protected def realloc(minLen: Int) {
+  //   var n = java.lang.Math.max(4, _data.length * 2)
+  //   while (n < minLen) n *= 2
+  //   val d = new Array[T](n)
+  //   System.arraycopy(_data, 0, d, 0, _length)
+  //   _data = d
+  // }
 
 }

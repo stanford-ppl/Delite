@@ -5,9 +5,10 @@ import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{BaseExp, Base, ScalaGenBase}
 import ppl.delite.framework.ops.DeliteOpsExp
-import ppl.dsl.optila.{MatrixCol}
+//import ppl.dsl.optila.{MatrixCol}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
+/*
 trait MatrixColOps extends Base with OverloadHack { this: OptiLA =>
 
   //def infix_index[A](x: Rep[MatrixCol[A]])(implicit mA: Manifest[A], o: Overloaded1) = matrixcol_index(x)
@@ -42,3 +43,4 @@ trait ScalaGenMatrixColOps extends ScalaGenBase {
   //     case _ => super.emitNode(sym, rhs)
   //   }
 }
+*/

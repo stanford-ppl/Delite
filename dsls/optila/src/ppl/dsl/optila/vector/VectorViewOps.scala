@@ -17,6 +17,10 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
   implicit def varToVectorViewVecOps[A:Manifest](x: Var[VectorView[A]]) = new VectorViewVecOpsCls(readVar(x))
   implicit def vectorViewToInterface[A:Manifest](lhs: Rep[VectorView[A]]) = new VInterface(new VectorViewVecOpsCls(lhs))
     
+  object VectorView {
+    def apply[A:Manifest](x: Rep[Array[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]) = vectorview_obj_new(x,start,stride,length,isRow)
+  }
+  
   class VectorViewVecOpsCls[A:Manifest](val elem: Rep[VectorView[A]]) extends VecOpsCls[A] {
     // type VA = VectorView
     // def toOps(x: Rep[VectorView[A]]) = repToVectorViewVecOps(x)
@@ -29,7 +33,7 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
     type Self = VectorView[A]
     def wrap(x: Rep[VectorView[A]]) = vectorViewToInterface(x)
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
-    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseToInterface(x)
+    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
     def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
     def mV[B:Manifest] = manifest[DenseVector[B]] 
           
@@ -45,17 +49,17 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
     type VPLUSR = DenseVector[A]
     val mVPLUSR = manifest[VPLUSR]
     val vplusBuilder = denseVectorBuilder[A]
-    def vplusToIntf(x: Rep[VPLUSR]) = denseToInterface(x)
+    def vplusToIntf(x: Rep[VPLUSR]) = denseVecToInterface(x)
     
     type VMINUSR = DenseVector[A]
     val mVMINUSR = manifest[VMINUSR]
     val vminusBuilder = denseVectorBuilder[A]
-    def vminusToIntf(x: Rep[VMINUSR]) = denseToInterface(x)    
+    def vminusToIntf(x: Rep[VMINUSR]) = denseVecToInterface(x)    
     
     type VTIMESR = DenseVector[A]
     val mVTIMESR = manifest[VTIMESR]
     val vtimesBuilder = denseVectorBuilder[A]
-    def vtimesToIntf(x: Rep[VTIMESR]) = denseToInterface(x)        
+    def vtimesToIntf(x: Rep[VTIMESR]) = denseVecToInterface(x)        
         
     def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("VectorViews cannot be updated")    
     def copyFrom(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("VectorViews cannot be updated")
@@ -66,6 +70,7 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def clear()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("VectorViews cannot be updated")        
   } 
   
+  def vectorview_obj_new[A:Manifest](x: Rep[Array[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[VectorView[A]]
   def vectorview_length[A:Manifest](x: Rep[VectorView[A]])(implicit ctx: SourceContext): Rep[Int]
   def vectorview_isrow[A:Manifest](x: Rep[VectorView[A]])(implicit ctx: SourceContext): Rep[Boolean]
   def vectorview_apply[A:Manifest](x: Rep[VectorView[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
@@ -77,11 +82,15 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
 }
 
 trait VectorViewOpsExp extends VectorViewOps with DeliteCollectionOpsExp { this: OptiLAExp =>
+  case class VectorViewNew[A:Manifest](x: Exp[Array[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends Def[VectorView[A]] {
+    val m = manifest[A]
+  }
   case class VectorViewLength[A:Manifest](x: Exp[VectorView[A]]) extends Def[Int]
   case class VectorViewIsRow[A:Manifest](x: Exp[VectorView[A]]) extends Def[Boolean]
   case class VectorViewApply[A:Manifest](x: Exp[VectorView[A]], n: Exp[Int]) extends Def[A]  
   case class VectorViewUpdate[A:Manifest](x: Exp[VectorView[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
   
+  def vectorview_obj_new[A:Manifest](x: Exp[Array[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) = VectorViewNew(x,start,stride,length,isRow)
   def vectorview_length[A:Manifest](x: Exp[VectorView[A]])(implicit ctx: SourceContext): Exp[Int] = VectorViewLength(x)
   def vectorview_isrow[A:Manifest](x: Exp[VectorView[A]])(implicit ctx: SourceContext): Exp[Boolean] = VectorViewIsRow(x)
   def vectorview_apply[A:Manifest](x: Exp[VectorView[A]], n: Exp[Int])(implicit ctx: SourceContext): Exp[A] = VectorViewApply(x,n)
@@ -100,20 +109,20 @@ trait VectorViewOpsExp extends VectorViewOps with DeliteCollectionOpsExp { this:
 trait VectorViewOpsExpOpt extends VectorViewOpsExp { this: OptiLAExp =>
   
   override def vectorview_length[A:Manifest](x: Exp[VectorView[A]])(implicit ctx: SourceContext) = x match {
-    case Def(MatrixVView(m, start, stride, l, r)) => l
+    case Def(DenseMatrixVView(m, start, stride, l, r)) => l
     case Def(MatrixGetRow(m,i)) => m.numCols
     case Def(MatrixGetCol(m,i)) => m.numRows
-    case Def(s@Reflect(MatrixVView(m, start, stride, l, r), u, es)) if context.contains(s) => l
+    case Def(s@Reflect(DenseMatrixVView(m, start, stride, l, r), u, es)) if context.contains(s) => l
     case Def(s@Reflect(MatrixGetRow(m,i), u, es)) if context.contains(s) => m.numCols 
     case Def(s@Reflect(MatrixGetCol(m,i), u, es)) if context.contains(s) => m.numRows
     case _ => super.vectorview_length(x) //throw new RuntimeException("could not resolve type of " + findDefinition(x.asInstanceOf[Sym[VectorView[A]]]).get.rhs)
   }  
   
   override def vectorview_isrow[A:Manifest](x: Exp[VectorView[A]])(implicit ctx: SourceContext) = x match {
-    case Def(MatrixVView(m, start, stride, l, r)) => r
+    case Def(DenseMatrixVView(m, start, stride, l, r)) => r
     case Def(MatrixGetRow(m,i)) => Const(true)
     case Def(MatrixGetCol(m,i)) => Const(false)
-    case Def(s@Reflect(MatrixVView(m, start, stride, l, r), u, es)) if context.contains(s) => r
+    case Def(s@Reflect(DenseMatrixVView(m, start, stride, l, r), u, es)) if context.contains(s) => r
     case Def(s@Reflect(MatrixGetRow(m,i), u, es)) if context.contains(s) => Const(true)
     case Def(s@Reflect(MatrixGetCol(m,i), u, es)) if context.contains(s) => Const(false)
     case _ => super.vectorview_isrow(x) //throw new RuntimeException("could not resolve type of " + findDefinition(x.asInstanceOf[Sym[VectorView[A]]]).get.rhs) 
@@ -121,10 +130,10 @@ trait VectorViewOpsExpOpt extends VectorViewOpsExp { this: OptiLAExp =>
   
   // and this one also helps in the example:
   def vectorview_optimize_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext): Option[Exp[A]] = x match {
-    case Def(MatrixGetRow(m,i)) => Some(matrix_apply(m,i,n))
-    case Def(MatrixGetCol(m,j)) => Some(matrix_apply(m,n,j))
-    case Def(s@Reflect(MatrixGetRow(m,i), u, es)) if context.contains(s) => Some(matrix_apply(m,i,n))
-    case Def(s@Reflect(MatrixGetCol(m,j), u, es)) if context.contains(s) => Some(matrix_apply(m,n,j))
+    case Def(MatrixGetRow(m,i)) => Some(m(i,n))
+    case Def(MatrixGetCol(m,j)) => Some(m(n,j))
+    case Def(s@Reflect(MatrixGetRow(m,i), u, es)) if context.contains(s) => Some(m(i,n))
+    case Def(s@Reflect(MatrixGetCol(m,j), u, es)) if context.contains(s) => Some(m(n,j))
     case _ => None
   }
   
@@ -153,6 +162,7 @@ trait ScalaGenVectorViewOps extends BaseGenVectorViewOps with ScalaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
+    case v@VectorViewNew(x,start,stride,length,isRow) => emitValDef(sym, "new VectorView[" + remap(v.m) + "](" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
     case VectorViewApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
     case VectorViewUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
     case VectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")

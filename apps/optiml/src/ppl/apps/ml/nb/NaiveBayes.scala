@@ -38,7 +38,7 @@ trait NaiveBayes extends OptiMLApplication {
   }
 
   //def train(ts: Rep[TrainingSet[Double,Double]]) : (Rep[DenseVector[Double]], Rep[DenseVector[Double]], Rep[Double]) = {
-  def train(ts: Rep[Matrix[Double]], labels: Rep[DenseVector[Double]]): (Rep[DenseVector[Double]], Rep[DenseVector[Double]], Rep[Double]) = {
+  def train(ts: Rep[DenseMatrix[Double]], labels: Rep[DenseVector[Double]]): (Rep[DenseVector[Double]], Rep[DenseVector[Double]], Rep[Double]) = {
     val numTrainDocs = ts.numRows //ts.numSamples
     val numTokens = ts.numCols //ts.numFeatures
     val tsTrans = ts.t
@@ -102,7 +102,7 @@ trait NaiveBayes extends OptiMLApplication {
   }
 
   //def test(ts: Rep[TrainingSet[Double,Double]], phi_y1: Rep[DenseVector[Double]], phi_y0: Rep[DenseVector[Double]], phi_y: Rep[Double]): Rep[Int] = {
-  def test(ts: Rep[Matrix[Double]], labels: Rep[DenseVector[Double]], phi_y1: Rep[DenseVector[Double]], phi_y0: Rep[DenseVector[Double]], phi_y: Rep[Double]): Rep[Int] = {
+  def test(ts: Rep[DenseMatrix[Double]], labels: Rep[DenseVector[Double]], phi_y1: Rep[DenseVector[Double]], phi_y0: Rep[DenseVector[Double]], phi_y: Rep[Double]): Rep[Int] = {
     val numTestDocs = ts.numRows //ts.numSamples
     val numTokens = ts.numCols //ts.numFeatures
 

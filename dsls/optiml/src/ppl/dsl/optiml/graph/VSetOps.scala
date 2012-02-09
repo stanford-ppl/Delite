@@ -45,7 +45,7 @@ trait ScalaGenVSetOps extends BaseGenVSetOps with ScalaGenEffect {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case o@VSetVertices(s) => emitValDef(sym, "new generated.scala.VerticesImpl[" + remap(o.mV) + "](" + quote(s) + ".toArray)")
+    case o@VSetVertices(s) => emitValDef(sym, "new generated.scala.Vertices[" + remap(o.mV) + "](" + quote(s) + ".toArray)")
     case _ => super.emitNode(sym, rhs)
   }
 }

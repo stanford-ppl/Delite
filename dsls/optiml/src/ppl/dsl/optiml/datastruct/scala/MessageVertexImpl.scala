@@ -13,7 +13,7 @@ class MessageVertexImpl(val graph: Graph[MessageVertex,MessageEdge], val data: M
     _tasks += v
   }
 
-  def tasks = new VerticesImpl[MessageVertex](_tasks.toArray)
+  def tasks = new Vertices[MessageVertex](_tasks.toArray)
 
   def clearTasks() = {
     _tasks.clear()

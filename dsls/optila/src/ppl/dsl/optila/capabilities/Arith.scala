@@ -4,7 +4,7 @@ import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{CLikeCodegen}
-import ppl.dsl.optila.{DenseVector,Vector,Matrix}
+import ppl.dsl.optila.{DenseVector,Vector,DenseMatrix,Matrix}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
 import scala.reflect.SourceContext
 
@@ -178,18 +178,18 @@ trait ArithOps extends Variables with OverloadHack {
    * Matrix
    */
 
-  implicit def matrixArith[T:Arith:Manifest] : Arith[Matrix[T]] = new Arith[Matrix[T]] {
-    def +=(a: Rep[Matrix[T]], b: Rep[Matrix[T]])(implicit ctx: SourceContext) = repMatToMatOps(a).+=(b)
-    def +(a: Rep[Matrix[T]], b: Rep[Matrix[T]])(implicit ctx: SourceContext) = repMatToMatOps(a).+(b)
-    def -(a: Rep[Matrix[T]], b: Rep[Matrix[T]])(implicit ctx: SourceContext) = repMatToMatOps(a).-(b)
-    def *(a: Rep[Matrix[T]], b: Rep[Matrix[T]])(implicit ctx: SourceContext) = repMatToMatOps(a).*(b)
-    def /(a: Rep[Matrix[T]], b: Rep[Matrix[T]])(implicit ctx: SourceContext) = repMatToMatOps(a)./(b)
-    def abs(a: Rep[Matrix[T]])(implicit ctx: SourceContext) = repMatToMatOps(a).abs
-    def exp(a: Rep[Matrix[T]])(implicit ctx: SourceContext) = repMatToMatOps(a).exp
-    def empty(implicit ctx: SourceContext) = Matrix[T](unit(0),unit(0)) // EmptyMatrix? 
-    def zero(a: Rep[Matrix[T]])(implicit ctx: SourceContext) = Matrix[T](a.numRows, a.numCols)
+  implicit def denseMatrixArith[T:Arith:Manifest]: Arith[DenseMatrix[T]] = new Arith[DenseMatrix[T]] {
+    def +=(a: Rep[DenseMatrix[T]], b: Rep[DenseMatrix[T]])(implicit ctx: SourceContext) = repToDenseMatOps(a).+=(b)
+    def +(a: Rep[DenseMatrix[T]], b: Rep[DenseMatrix[T]])(implicit ctx: SourceContext) = repToDenseMatOps(a).+(b)
+    def -(a: Rep[DenseMatrix[T]], b: Rep[DenseMatrix[T]])(implicit ctx: SourceContext) = repToDenseMatOps(a).-(b)
+    def *(a: Rep[DenseMatrix[T]], b: Rep[DenseMatrix[T]])(implicit ctx: SourceContext) = repToDenseMatOps(a).*(b)
+    def /(a: Rep[DenseMatrix[T]], b: Rep[DenseMatrix[T]])(implicit ctx: SourceContext) = repToDenseMatOps(a)./(b)
+    def abs(a: Rep[DenseMatrix[T]])(implicit ctx: SourceContext) = repToDenseMatOps(a).abs
+    def exp(a: Rep[DenseMatrix[T]])(implicit ctx: SourceContext) = repToDenseMatOps(a).exp
+    def empty(implicit ctx: SourceContext) = DenseMatrix[T](unit(0),unit(0)) // EmptyDenseMatrix? 
+    def zero(a: Rep[DenseMatrix[T]])(implicit ctx: SourceContext) = DenseMatrix[T](a.numRows, a.numCols)
     /*
-    def unary_-(a: Rep[Matrix[T]]) = -a
+    def unary_-(a: Rep[DenseMatrix[T]]) = -a
     */
   }
 

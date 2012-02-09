@@ -26,10 +26,10 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE:
 
   def vertices = {
     if(_frozen) {
-      new VerticesImpl(_vertices.toArray)
+      new Vertices(_vertices.toArray)
     }
     else {
-      new VerticesImpl(adjacencies.keySet.toArray)
+      new Vertices(adjacencies.keySet.toArray)
     }
   }
 
@@ -95,10 +95,10 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE:
 
     val sorted = _vertices map {adjacencies(_).sortBy{case(e, v) => vertexIds(v)}}
     vertexEdges = sorted map {(l: List[(E,V)]) => new EdgesImpl((l map {_._1}).toArray)}
-    neighbors = sorted map {(l: List[(E,V)]) => new VerticesImpl((l map {_._2}).toArray)}
+    neighbors = sorted map {(l: List[(E,V)]) => new Vertices((l map {_._2}).toArray)}
 
     neighborsSelf = _vertices map {(v: V) => val ns = v :: (adjacencies(v) map {_._2})
-    new VerticesImpl(ns.sortBy{(v: V) => vertexIds(v)}.toArray)}
+    new Vertices(ns.sortBy{(v: V) => vertexIds(v)}.toArray)}
     
     adjacencies = null
     _frozen = true
@@ -113,7 +113,7 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE:
     if (!_frozen) throw new RuntimeException("Graph has not been finalized")
 
     if (!vertexIds.contains(v)) {
-      new VerticesImpl[V](0)
+      new Vertices[V](0)
     }
     else {
       val id = vertexIds(v)
@@ -126,7 +126,7 @@ class UndirectedGraphImpl[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE:
     if (!_frozen) throw new RuntimeException("Graph has not been finalized")
 
     if (!vertexIds.contains(v)) {
-      new VerticesImpl[V](0)
+      new Vertices[V](0)
     }
     else {
       val id = vertexIds(v)

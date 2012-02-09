@@ -46,9 +46,9 @@ trait IndexVector2Ops extends Base { this: OptiML =>
 //  def indexvector2_isWildcard(x: Interface[IndexVector]): Rep[Boolean]
 
   // class defs
-  def indexvector2_construct_vectors[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: Rep[Int] => Interface[Vector[A]]): Rep[Matrix[A]]
-  def indexvector2_construct_vectors_wildcard[A:Manifest](rowInd: Interface[IndexVector], block: Rep[Int] => Interface[Vector[A]]): Rep[Matrix[A]]
-  def indexvector2_construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Rep[Int],Rep[Int]) => Rep[A]): Rep[Matrix[A]]
+  def indexvector2_construct_vectors[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: Rep[Int] => Interface[Vector[A]]): Rep[DenseMatrix[A]]
+  def indexvector2_construct_vectors_wildcard[A:Manifest](rowInd: Interface[IndexVector], block: Rep[Int] => Interface[Vector[A]]): Rep[DenseMatrix[A]]
+  def indexvector2_construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Rep[Int],Rep[Int]) => Rep[A]): Rep[DenseMatrix[A]]
   // def indexvector2_rowind(x: Rep[IndexVector2]): Interface[IndexVector]
   // def indexvector2_colind(x: Rep[IndexVector2]): Interface[IndexVector]
 }
@@ -86,7 +86,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   }
   */
   
-  case class IndexVector2ConstructRows[A:Manifest](intf: Interface[Vector[Int]], block: Exp[Int] => Interface[Vector[A]], out: Exp[Matrix[A]])
+  case class IndexVector2ConstructRows[A:Manifest](intf: Interface[Vector[Int]], block: Exp[Int] => Interface[Vector[A]], out: Exp[DenseMatrix[A]])
     extends DeliteOpForeach[Int] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[Int]]]
@@ -100,7 +100,7 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
 //  case class IndexVector2ConstructCols[A:Manifest](in: Exp[IndexVector], block: Exp[Int] => Exp[Vector[A]], out: Exp[Matrix[A]])
 //    extends DeliteOpForeach[Int]
 
-  case class IndexVector2Construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A], out: Exp[Matrix[A]])
+  case class IndexVector2Construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A], out: Exp[DenseMatrix[A]])
     extends DeliteOpForeach[Int] {
   
     val in = rowInd.ops.elem.asInstanceOf[Exp[Vector[Int]]]
@@ -120,16 +120,16 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   // }
 
   // class defs
-  def indexvector2_construct_vectors_wildcard[A:Manifest](in: Interface[IndexVector], block: Exp[Int] => Interface[Vector[A]]): Exp[Matrix[A]] = {
+  def indexvector2_construct_vectors_wildcard[A:Manifest](in: Interface[IndexVector], block: Exp[Int] => Interface[Vector[A]]): Exp[DenseMatrix[A]] = {
     val first = block(in(unit(0))) 
-    val out = matrix_obj_new[A](in.length, first.length)
+    val out = DenseMatrix[A](in.length, first.length)
     out(unit(0)) = first 
     reflectWrite(out)(IndexVector2ConstructRows(in.slice(unit(1),in.length),block,out))
     out.unsafeImmutable
   }
   
-  def indexvector2_construct_vectors[A:Manifest](inr: Interface[IndexVector], inc: Interface[IndexVector], block: Exp[Int] => Interface[Vector[A]]): Exp[Matrix[A]] = {
-    val out = matrix_obj_new[A](inr.length, inc.length)
+  def indexvector2_construct_vectors[A:Manifest](inr: Interface[IndexVector], inc: Interface[IndexVector], block: Exp[Int] => Interface[Vector[A]]): Exp[DenseMatrix[A]] = {
+    val out = DenseMatrix[A](inr.length, inc.length)
     reflectWrite(out)(IndexVector2ConstructRows(inr,block,out))
     out.unsafeImmutable    
   }
@@ -178,9 +178,9 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
 //   }
 //  def indexvector2_construct[A:Manifest](x: IndexVector2, block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[Matrix[A]] = {
   
-  def indexvector2_construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[Matrix[A]] = {
+  def indexvector2_construct[A:Manifest](rowInd: Interface[IndexVector], colInd: Interface[IndexVector], block: (Exp[Int],Exp[Int]) => Exp[A]): Exp[DenseMatrix[A]] = {
     //Matrix(IndexVector2Construct(x, block))
-    val out = matrix_obj_new[A](rowInd.length, colInd.length)
+    val out = DenseMatrix[A](rowInd.length, colInd.length)
     reflectWrite(out)(IndexVector2Construct(rowInd,colInd,block,out)) 
     out.unsafeImmutable
   }
