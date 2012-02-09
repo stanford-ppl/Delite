@@ -165,111 +165,46 @@ trait DeliteCudaGenIfThenElse extends CudaGenEffect with DeliteBaseGenIfThenElse
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
-      rhs match {
-        case DeliteIfThenElse(c,a,b,h) =>
-          // TODO: Not GPUable if the result is not primitive types.
-          // TODO: Changing the reference of the output is dangerous in general.
-          // TODO: In the future, consider passing the object references to the GPU kernels rather than copying by value.
-          // Below is a safety check related to changing the output reference of the kernel.
-          // This is going to be changed when above TODOs are done.
-          //if( (sym==kernelSymbol) && (isObjectType(sym.Type)) ) throw new RuntimeException("CudaGen: Changing the reference of output is not allowed within GPU kernel.")
+    rhs match {
+      case DeliteIfThenElse(c,a,b,h) =>
+        // TODO: Not GPUable if the result is not primitive types (or void type).
+        // Changing the reference of the output is not safe in general.
+        // Consider passing the object references to the GPU kernels rather than copying by value.
 
-          /*
-          val objRetType = (!isVoidType(sym.Type)) && (!isPrimitiveType(sym.Type))
-          objRetType match {
-            case true => throw new GenerationFailedException("CudaGen: If-Else cannot return object type.")
-            case _ =>
-          }
-          isVoidType(sym.Type) match {
-            case true =>
-              stream.println(addTab() + "if (" + quote(c) + ") {")
-              tabWidth += 1
-              emitBlock(a)
-              tabWidth -= 1
-              stream.println(addTab() + "} else {")
-              tabWidth += 1
-              emitBlock(b)
-              tabWidth -= 1
-              stream.println(addTab()+"}")
-            case false =>
-              stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
-              stream.println(addTab() + "if (" + quote(c) + ") {")
-              tabWidth += 1
-              emitBlock(a)
-              stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(a))))
-              tabWidth -= 1
-              stream.println(addTab() + "} else {")
-              tabWidth += 1
-              emitBlock(b)
-              stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
-              tabWidth -= 1
-              stream.println(addTab()+"}")
-          }
-          */
-          val objRetType = (!isVoidType(sym.Type)) && (!isPrimitiveType(sym.Type))
-          objRetType match {
-            /*
-            case true =>   //TODO: Remove this case
-              //Least check
-              (kernelSymbol==sym) match {
-                case true => throw new GenerationFailedException("CudaGen: If-Else cannot return object type as kernel output.")
-                case _ =>
-              }
-              //stream.println(addTab() + "%s %s;".format(remap(sym.Type),quote(sym)))
-              (sym.Type.typeArguments.length>0) && (isPrimitiveType(sym.Type.typeArguments(0))) match {
-                case false => throw new GenerationFailedException("CudaGen: If-Else at least needs to have primitive types for the resulting object elements.")
-                case true =>
-              }
-              val outLocalVar = getNewLocalVar()
-              val nextDimStr = getNextDimStr()
-              stream.println(addTab() + "%s %s;".format(remap(sym.Type.typeArguments(0)),outLocalVar))
-              stream.println(addTab() + "if (" + quote(c) + ") {")
-              tabWidth += 1
-              emitBlock(a)
-              stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(a))))
-              stream.println(addTab() + "%s = %s;".format(outLocalVar,getLocalVar(getBlockResult(a),nextDimStr)))
-              tabWidth -= 1
-              stream.println(addTab() + "} else {")
-              tabWidth += 1
-              emitBlock(b)
-              stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
-              stream.println(addTab() + "%s = %s;".format(outLocalVar,getLocalVar(getBlockResult(b),nextDimStr)))
-              tabWidth -= 1
-              stream.println(addTab()+"}")
-              saveLocalVar(sym,nextDimStr,outLocalVar)
-			        allocReference(sym,getBlockResult(a).asInstanceOf[Sym[_]])
-              */
-            case _ =>
-              isVoidType(sym.Type) match {
-                case true =>
-                  stream.println(addTab() + "if (" + quote(c) + ") {")
-                  tabWidth += 1
-                  emitBlock(a)
-                  tabWidth -= 1
-                  stream.println(addTab() + "} else {")
-                  tabWidth += 1
-                  emitBlock(b)
-                  tabWidth -= 1
-                  stream.println(addTab()+"}")
-                case false =>
-                  stream.println(addTab() + "%s %s;".format(remap(sym.Type),quote(sym)))
-                  stream.println(addTab() + "if (" + quote(c) + ") {")
-                  tabWidth += 1
-                  emitBlock(a)
-                  stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(a))))
-                  tabWidth -= 1
-                  stream.println(addTab() + "} else {")
-                  tabWidth += 1
-                  emitBlock(b)
-                  stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
-                  tabWidth -= 1
-                  stream.println(addTab()+"}")
-              }
-          }
+        val objRetType = (!isVoidType(sym.Type)) && (!isPrimitiveType(sym.Type))
+        objRetType match {
+          case true => throw new GenerationFailedException("CudaGen: If-Else cannot return object type.")
+          case _ =>
+        }
 
+        isVoidType(sym.Type) match {
+          case true =>
+            stream.println(addTab() + "if (" + quote(c) + ") {")
+            tabWidth += 1
+            emitBlock(a)
+            tabWidth -= 1
+            stream.println(addTab() + "} else {")
+            tabWidth += 1
+            emitBlock(b)
+            tabWidth -= 1
+            stream.println(addTab()+"}")
+          case false =>
+            stream.println(addTab() + "%s %s;".format(remap(sym.Type),quote(sym)))
+            stream.println(addTab() + "if (" + quote(c) + ") {")
+            tabWidth += 1
+            emitBlock(a)
+            stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(a))))
+            tabWidth -= 1
+            stream.println(addTab() + "} else {")
+            tabWidth += 1
+            emitBlock(b)
+            stream.println(addTab() + "%s = %s;".format(quote(sym),quote(getBlockResult(b))))
+            tabWidth -= 1
+            stream.println(addTab()+"}")
+          }
         case _ => super.emitNode(sym, rhs)
       }
-    }
+  }
 }
 
 trait DeliteOpenCLGenIfThenElse extends OpenCLGenEffect with DeliteBaseGenIfThenElse {

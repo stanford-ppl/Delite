@@ -16,6 +16,7 @@ def main():
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose", action="store_true", dest="verbose")
     parser.add_option("-t", "--threads", dest="num_threads", default="1", help="num execution threads e.g. 4")
+    parser.add_option("-g", "--gpu", action="store_const", const="1", dest="num_gpus", default="0", help="enable gpu execution")
     parser.add_option("-r", "--runs", dest="num_runs", default="1", type="string", help="the number of times the runtime will execute the applications")
 
     (opts, args) = parser.parse_args()
@@ -52,14 +53,16 @@ def run(deg, params, opts):
     build_dir = parseBuildDir(deg)
     ld_library_path = filter(len, os.getenv("LD_LIBRARY_PATH", "").split(":"))
     ld_library_path.append(build_dir+"/libraries")
+    os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
 
-    java_opts = java_opts + "-Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.runs=" + opts.num_runs + " -Dstats.dump.component=app"
+
+    java_opts = java_opts + "-Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.gpus=" + opts.num_gpus + " -Ddelite.runs=" + opts.num_runs + " -Dstats.dump.component=app"
 
     os.putenv("JAVA_OPTS", java_opts)
 
     #MKL ENV
     os.putenv("LD_PRELOAD", delitecommon.JAVA_HOME + "/jre/lib/amd64/libjsig.so")
-    os.putenv("MKL_NUM_THREADS", str(opts.num_threads))
+    os.putenv("OMP_NUM_THREADS", str(opts.num_threads))
     
     #emit other envs
     os.putenv('DELITE_HOME', delitecommon.DELITE_HOME)

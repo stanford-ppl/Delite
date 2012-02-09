@@ -23,15 +23,17 @@ trait OptiLACudaGenExternal extends CudaGenExternalBase with CudaGenDataStruct {
       val lib = cuBLAS
       val args = scala.List("'t'", "%1$s.numCols", "%1$s.numRows", "%1$s.data", "%2$s.data", "%3$s.data")
                  .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
-      emitMethodCall(e, lib, args)
-      emitVectorAlloc(sym,"%s.numRows".format(quote(getBlockResult(x))),"false",false)
+      emitMethodCall(sym, e, lib, args)
+      //emitVectorAlloc(sym,"%s.numRows".format(quote(getBlockResult(x))),"false",false)
+      registerKernel(scala.List(sym))
 
     case e@DenseMatrixMultiplyBLAS(x,y) =>
       val lib = cuBLAS
       val args = scala.List("'n'", "'n'", "%2$s.numCols", "%1$s.numRows", "%2$s.numRows", "1.0", "%2$s.data", "%2$s.numCols", "%1$s.data", "%1$s.numCols", "0.0", "%3$s.data", "%3$s.numCols")
                  .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
-      emitMethodCall(e, lib, args)
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(getBlockResult(x))),"%s.numCols".format(quote(getBlockResult(y))),false)
+      emitMethodCall(sym, e, lib, args)
+      //emitMatrixAlloc(sym,"%s.numRows".format(quote(getBlockResult(x))),"%s.numCols".format(quote(getBlockResult(y))),false)
+      registerKernel(scala.List(sym))
 
     case _ => super.emitNode(sym, rhs)
   }

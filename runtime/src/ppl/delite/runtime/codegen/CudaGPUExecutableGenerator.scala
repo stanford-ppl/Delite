@@ -1,6 +1,7 @@
 package ppl.delite.runtime.codegen
 
 import java.util.ArrayDeque
+import kernels.cuda.MultiLoop_GPU_Array_Generator
 import ppl.delite.runtime.graph.ops._
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.targets.{OPData, Targets}
@@ -46,9 +47,12 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
   protected def writeHeader(out: StringBuilder) {
     out.append("#include <jni.h>\n") //jni
     out.append("#include <cuda_runtime.h>\n") //Cuda runtime api
+    out.append("#include <cudpp.h>\n")
     out.append("#include \"DeliteCuda.cu\"\n") //Delite-Cuda interface for DSL
-    out.append("#include \"dsl.h\"\n") //imports all dsl kernels and helper functions
+    out.append("#include \"helperFuncs.cu\"\n")
     out.append("#include \"library.h\"\n")
+    out.append("#include \"dsl.h\"\n") //imports all dsl kernels
+    out.append(CudaCompile.headers.map(s => "#include \"" + s + "\"\n").mkString(""))
   }
 
   protected def writeFunctionHeader(location: Int, out: StringBuilder) {
@@ -65,6 +69,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("cudaStream_t kernelStream;\n")
     out.append("cudaStream_t h2dStream;\n")
     out.append("cudaStream_t d2hStream;\n")
+    out.append("CUDPPHandle cudppHandle;\n")
   }
 
   protected def writeGlobalsInitializer(out: StringBuilder) {
@@ -72,6 +77,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("cudaStreamCreate(&kernelStream);\n")
     out.append("cudaStreamCreate(&h2dStream);\n")
     out.append("cudaStreamCreate(&d2hStream);\n")
+    out.append("cudppCreate(&cudppHandle);\n")
   }
 
 
@@ -131,12 +137,12 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
       //write the output allocation
       writeOutputAllocs(op, out)
       //write the call
-      if (op.isInstanceOf[OP_Nested])
-        writeFunctionCall(op, out)
-      else if (op.isInstanceOf[OP_External])
-        writeLibraryCall(op, out)
-      else
-        writeKernelCall(op, out)
+      op match {
+        case n: OP_Nested => writeFunctionCall(op, out)
+        case e: OP_External => writeLibraryCall(op, out)
+        case m: OP_MultiLoop => writeMultiKernelCall(op, out)
+        case _ => writeKernelCall(op, out)
+      }
 
       //write the setter
       var addSetter = false
@@ -167,16 +173,20 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
   protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
     if (op.isInstanceOf[OP_Executable]) {
-      for ((data,name) <- op.getGPUMetadata(target).outputs) {
+      for ((data,name) <- op.getGPUMetadata(target).outputs if data.resultType!="void") {
         out.append(op.outputType(Targets.Cuda,name))
         out.append("* ")
         out.append(getSymGPU(name))
-        out.append(" = ")
-        out.append(data.func)
-        out.append('(')
-        writeInputList(op, data, out)
-        out.append(");\n")
-        writeMemoryAdd(name, out)
+        if (op.isInstanceOf[OP_MultiLoop])
+          out.append(";\n")
+        else {
+          out.append(" = ")
+          out.append(data.func)
+          out.append('(')
+          writeInputList(op, data, out)
+          out.append(");\n")
+          writeMemoryAdd(name, out)
+        }
       }
     }
   }
@@ -265,13 +275,13 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
     out.append('(')
     var first = true
-    for ((data,name) <- (op.getGPUMetadata(target).outputs)) {
+    for ((data,name) <- (op.getGPUMetadata(target).outputs) if data.resultType!="void") {
       if(!first) out.append(',')
       out.append('*')
       out.append(getSymGPU(name)) //first kernel inputs are OP outputs
-      first=false
+      first = false
     }
-    if (!first && (op.getInputs.length>0 || op.getGPUMetadata(target).temps.length>0)) out.append(",")
+    if (!first && (op.getInputs.length > 0 || op.getGPUMetadata(target).temps.length > 0)) out.append(",")
     writeInputs(op, out) //then all op inputs
     writeTemps(op, out) //then all op temporaries
     out.append(");\n")
@@ -291,6 +301,23 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     }
     writeInputs(op, out) //then all op inputs
     //out.append(",kernelStream") // aks TODO: how did this work for library calls?
+    out.append(");\n")
+  }
+
+  protected def writeMultiKernelCall(op: DeliteOP, out: StringBuilder) {
+    if (op.task == null) return //dummy op
+    out.append(op.task) //kernel name
+    out.append('(')
+    var first = true
+    for ((data,name) <- (op.getGPUMetadata(target).outputs) if data.resultType!="void") {
+      if(!first) out.append(',')
+      out.append('&')
+      out.append(getSymGPU(name)) //first kernel inputs are OP outputs
+      first = false
+    }
+    if (!first && (op.getInputs.length > 0 || op.getGPUMetadata(target).temps.length > 0)) out.append(",")
+    writeInputs(op, out, false) //then all op inputs
+    writeTemps(op, out, false) //then all op temporaries
     out.append(");\n")
   }
 
@@ -370,20 +397,20 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     }
   }
 
-  protected def writeInputs(op: DeliteOP, out: StringBuilder) {
+  protected def writeInputs(op: DeliteOP, out: StringBuilder, dereference: Boolean = true) {
     var first = true
     for ((input,name) <- op.getInputs) {
       if (!first) out.append(',')
       first = false
-      if (!isPrimitiveType(input.outputType(name))) out.append('*')
+      if (!isPrimitiveType(input.outputType(name)) && dereference) out.append('*')
       out.append(getSymGPU(name))
     }
   }
 
-  protected def writeTemps(op: DeliteOP, out: StringBuilder) {
+  protected def writeTemps(op: DeliteOP, out: StringBuilder, dereference: Boolean = true) {
     for ((temp, name) <- op.getGPUMetadata(target).temps) {
       out.append(',')
-      out.append('*')
+      if (dereference) out.append('*')
       out.append(getSymGPU(name))
     }
   }
@@ -404,7 +431,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
     for (name <- op.getOutputs) {
       var deleteLocalRef = false
-      op.getGPUMetadata(target).outputs.find(_._2 == name) match {
+      op.getGPUMetadata(target).outputs.find(o => (o._2==name)&&(o._1.resultType!="void")) match {
         case Some((data, n)) => {
           //copy output from GPU to CPU
           out.append(getJNIType(op.outputType(name))) //jobject
@@ -416,7 +443,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
           out.append("env,") //JNI environment pointer
           out.append(getSymGPU(name)) //C++ object
           out.append(");\n")
-          deleteLocalRef = true
+          if(!isPrimitiveType(op.outputType(name))) deleteLocalRef = true
         }
         case None => //do nothing
       }

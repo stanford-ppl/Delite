@@ -1,6 +1,8 @@
 #ifndef _DELITEARRAY_H_
 #define _DELITEARRAY_H_
 
+#include "DeliteCuda.h"
+
 template <class T>
 class DeliteArray {
 public:

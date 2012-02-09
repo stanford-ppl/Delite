@@ -23,19 +23,9 @@ class SMP_GPU_Executor extends Executor {
   val numThreads = Config.numThreads
   val numGPUs = Config.numGPUs
 
-  compileInit()
-
   private val smpExecutor = new SMPExecutor
   private val gpuExecutor = new Array[GPUExecutor](numGPUs)
   for (i <- 0 until numGPUs) gpuExecutor(i) = new GPUExecutor(i)
-
-  /* Compiles cudaInit.so or openclInit.so for GPU init routines */
-  def compileInit() {
-    if(Config.useOpenCL)
-      OpenCLCompile.compileInit()
-    else
-      CudaCompile.compileInit()
-  }
 
   def init() {
     smpExecutor.init

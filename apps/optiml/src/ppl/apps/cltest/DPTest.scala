@@ -15,7 +15,7 @@ trait DPTest extends OptiMLApplication {
 
     vec1(4) = 3.4f                // Update an element of the vector
 
-    val vec2 = vec1 + 1.0f        // Add 1.0f to all the elements of the vector (data-parallel)
+    val vec2 = vec1.filter(e => e > 3.0f )        // Add 1.0f to all the elements of the vector (data-parallel)
 
     vec2.pprint                   // Print the result vector
 

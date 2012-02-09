@@ -2,7 +2,7 @@ package ppl.dsl.optila.vector
 
 import java.io.PrintWriter
 import scala.reflect.{Manifest, SourceContext}
-import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase, ScalaGenFat}
+import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase, ScalaGenFat, CudaGenBase, CudaGenFat}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.internal.{GenericFatCodegen}
 import ppl.delite.framework.DeliteApplication
@@ -165,6 +165,20 @@ trait ScalaGenVectorViewOps extends BaseGenVectorViewOps with ScalaGenFat {
     case v@VectorViewNew(x,start,stride,length,isRow) => emitValDef(sym, "new VectorView[" + remap(v.m) + "](" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
     case VectorViewApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
     case VectorViewUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+    case VectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")
+    case VectorViewIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait CudaGenVectorViewOps extends BaseGenVectorViewOps with CudaGenFat {
+  val IR: VectorViewOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    // these are the ops that call through to the underlying real data structure
+    case VectorViewApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
+    case VectorViewUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");\n")
     case VectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")
     case VectorViewIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
     case _ => super.emitNode(sym, rhs)

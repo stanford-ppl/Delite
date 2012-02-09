@@ -259,7 +259,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
 }
 
 trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with OptiLACudaGenExternal
-  with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenMatrixOps with CudaGenDenseMatrixOps with CudaGenDataStruct //with CudaGenMatrixRowOps // with CudaGenVectorViewOps
+  with CudaGenArithOps with CudaGenDeliteOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenMatrixOps with CudaGenDataStruct with CudaGenVectorViewOps
   with CudaGenVariantsOps with DeliteCudaGenAllOverrides with CudaGenDeliteCollectionOps // with DeliteCodeGenOverrideCuda // with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
   val IR: DeliteApplication with OptiLAExp
@@ -280,6 +280,11 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
       case "ppl.dsl.optila.Matrix[Float]" => "Matrix<float>"
       case "ppl.dsl.optila.Matrix[Double]" => "Matrix<double>"
       case "ppl.dsl.optila.Matrix[Boolean]" => "Matrix<bool>"
+      case "ppl.dsl.optila.MatrixRow[Int]" => "VectorView<int>"
+      case "ppl.dsl.optila.MatrixRow[Long]" => "VectorView<long>"
+      case "ppl.dsl.optila.MatrixRow[Float]" => "VectorView<float>"
+      case "ppl.dsl.optila.MatrixRow[Double]" => "VectorView<double>"
+      case "ppl.dsl.optila.MatrixRow[Boolean]" => "VectorView<bool>"
       case "Array[Int]" => "DeliteArray<int>"
       case "Array[Long]" => "DeliteArray<long>"
       case "Array[Float]" => "DeliteArray<float>"

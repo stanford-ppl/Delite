@@ -40,17 +40,6 @@ object Config {
   val profile: Boolean = getProperty("delite.debug.profile", "false") != "false"
   val printSources: Boolean = getProperty("delite.debug.print.sources", "false") != "false"
 
-  //TODO: Remove below options with OP_External work
-  /* OpenCL header & lib path */
-  val clHeaderPath: String = getProperty("delite.cl.header", "")
-  if (useOpenCL && clHeaderPath == "") error("OpenCL header path is not specified!")
-  
-  val clBlasHeaderPath: String = getProperty("delite.cl.blas.header", "")
-  if (useOpenCL && clBlasHeaderPath == "") error("OpenCL blas header path is not specified!")
-
-  val clBlasLibPath: String = getProperty("delite.cl.blas.lib", "")
-  if (useOpenCL && clBlasLibPath == "") error("OpenCL blas library path is not specified!")
-
 
   /**
    * DEG specific, set after its parsed
@@ -77,7 +66,5 @@ object Config {
 
    val statsOutputFilename: String = getProperty("stats.output.filename", "")
    if(dumpStats && statsOutputFilename == "") error("stats.dump option enabled but did not provide a statsOutputFilename")
-  
 
 }
-

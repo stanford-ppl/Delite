@@ -1,7 +1,8 @@
 #ifndef _MATRIXIMPL_H_
 #define _MATRIXIMPL_H_
 
-#include <stdio.h>
+#include "DeliteCuda.h"
+#include "VectorViewImpl.h"
 
 template <class T>
 class Matrix {
@@ -43,6 +44,12 @@ public:
         data = da->data;
         //length = _length;
     }
+
+    __host__  __device__ VectorView<T> getRow(int row) {
+      VectorView<T> v(numCols,true,data,row*numCols,1);
+      return v;
+    }
+
 };
 
 #endif
