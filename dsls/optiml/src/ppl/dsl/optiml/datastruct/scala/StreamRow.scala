@@ -12,8 +12,8 @@ import ppl.dsl.optila.datastruct.scala._
  *
  */
 
-class StreamRowImpl[T:Manifest](chunkRow: Int, offset: Int, stream: Stream[T], x: Array[T])
-  extends VectorView[T](x, chunkRow*stream.numCols, 1, stream.numCols, true) with StreamRow[T] {
+class StreamRow[T:Manifest](chunkRow: Int, offset: Int, stream: Stream[T], x: Array[T])
+  extends VectorView[T](x, chunkRow*stream.numCols, 1, stream.numCols, true) /*with StreamRow[T]*/ {
 
   // absolute row index in the stream
   val index = offset*stream.chunkSize + chunkRow

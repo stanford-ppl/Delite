@@ -16,10 +16,10 @@ trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
   implicit def varToIndexVecDenseOps(x: Var[IndexVectorDense]) = new IndexVecDenseOpsCls(readVar(x))
   implicit def indexVecDenseToInterface(lhs: Rep[IndexVectorDense]) = new IVInterface(new IndexVecDenseOpsCls(lhs))
   
-  implicit def indexVecDenseBuilder = new VectorBuilder[Int,IndexVectorDense] {
-    def alloc(length: Rep[Int], isRow: Rep[Boolean]) = IndexVector(length)
-    def toIntf(x: Rep[IndexVectorDense]): Interface[IndexVector] = indexVecDenseToInterface(x)
-  }  
+  // implicit def indexVecDenseBuilder = new VectorBuilder[Int,IndexVectorDense] {
+  //   def alloc(length: Rep[Int], isRow: Rep[Boolean]) = IndexVector(length)
+  //   def toIntf(x: Rep[IndexVectorDense]): Interface[IndexVector] = indexVecDenseToInterface(x)
+  // }  
   
   // would like to have multiple inheritance here and inherit dense vector ops, but a
   // Rep[IndexVectorDense] and Rep[DenseVector] have no relation

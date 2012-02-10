@@ -272,7 +272,7 @@ trait ScalaGenStreamOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case m@StreamObjectNew(numRows, numCols, chunkSize, func, isPure) =>
-      emitValDef(sym, "new generated.scala.StreamImpl[" + remap(m.mA) + "](" + quote(numRows) + "," + quote(numCols) + "," + quote(chunkSize) + ","
+      emitValDef(sym, "new generated.scala.Stream[" + remap(m.mA) + "](" + quote(numRows) + "," + quote(numCols) + "," + quote(chunkSize) + ","
                       + quote(func) + "," + quote(isPure) + ")")
     case StreamIsPure(x) => emitValDef(sym, quote(x) + ".isPure")
     case StreamNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")

@@ -135,8 +135,9 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     val idx = pos*x.numCols
     if (x.size == 0) densematrix_set_numcols(x, y.length)
     densematrix_insertspace(x, idx, x.numCols)
+    val data = densematrix_raw_data(x)
     for (i <- idx until idx+x.numCols){
-      array_unsafe_update(densematrix_raw_data(x),i,y(i-idx))
+      array_unsafe_update(data,i,y(i-idx))
     }
     densematrix_set_numrows(x, x.numRows+1)
   }
@@ -147,8 +148,9 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     if (x.size == 0) densematrix_set_numcols(x, xs.numCols)
     val sz = x.numCols*xs.numRows
     densematrix_insertspace(x, idx, sz)
+    val data = densematrix_raw_data(x)
     for (i <- idx until idx+sz){
-      array_unsafe_update(densematrix_raw_data(x),i,xs.dcApply(i-idx))
+      array_unsafe_update(data,i,xs.dcApply(i-idx))
     }
     densematrix_set_numrows(x, x.numRows+xs.numRows)
   }

@@ -94,7 +94,7 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
   with MatrixOps with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops 
   with StreamOps with StreamRowOps
   with GraphOps with VerticesOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps with VSetOps
-  with LabelsOps with TrainingSetOps with ImageOps with GrayscaleImageOps {
+  with TrainingSetOps with ImageOps with GrayscaleImageOps {
 
   this: OptiMLApplication =>
 }
@@ -115,7 +115,7 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
   with VectorOpsExpOpt with MatrixOpsExpOpt with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp 
   with StreamOpsExpOpt with StreamRowOpsExpOpt
-  with LabelsOpsExp with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
+  with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard
   with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
   with GraphOpsExp with VerticesOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp with VSetOpsExp
@@ -198,14 +198,14 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
   with ScalaGenVectorOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps with ScalaGenIndexVectorDenseOps with ScalaGenIndexVector2Ops 
   with ScalaGenStreamOps with ScalaGenStreamRowOps
   with ScalaGenGraphOps with ScalaGenVerticesOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenMessageEdgeOps with ScalaGenMessageVertexOps with ScalaGenVSetOps
-  with ScalaGenLabelsOps with ScalaGenTrainingSetOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
+  with ScalaGenTrainingSetOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with ScalaGenImageOps with ScalaGenGrayscaleImageOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
   val IR: DeliteApplication with OptiMLExp
 
-  override val mlspecialize = Set(/*"LabelsImpl", "ImageImpl",*/ "StreamImpl", "StreamRowImpl")
-  //override val mlspecialize2 = Set(/*"TrainingSetImpl"*/)
+  override val mlspecialize = Set(/*"LabelsImpl", "ImageImpl", "UnsupervisedTrainingSet",*/ "Stream", "StreamRow")
+  //override val mlspecialize2 = Set(/*"SupervisedTrainingSet"*/)
 
   override def genSpec2(f: File, dsOut: String) {
     for (s1 <- List("Double","Int","Float","Long","Boolean")) {
@@ -217,6 +217,15 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
         }
         out.close()
     }
+    }
+  }
+
+  override def remap[A](m: Manifest[A]): String = {
+    val mGI = manifest[GrayscaleImage]
+    m match {
+      case `mGI` => remap(manifest[DenseMatrix[Int]])
+     // AKS TODO: remap Image[T] to DenseMatrix[T]
+      case _ => super.remap(m)
     }
   }
 
@@ -276,11 +285,6 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
   override def remap[A](m: Manifest[A]) : String = {
     m.toString match {
       case "ppl.dsl.optiml.datastruct.scala.IndexVector" => "IndexVector"
-      case "ppl.dsl.optiml.datastruct.scala.Labels[Int]" => "Labels<int>"
-      case "ppl.dsl.optiml.datastruct.scala.Labels[Long]" => "Labels<long>"
-      case "ppl.dsl.optiml.datastruct.scala.Labels[Float]" => "Labels<float>"
-      case "ppl.dsl.optiml.datastruct.scala.Labels[Double]" => "Labels<double>"
-      case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => "Labels<bool>"
       case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => "TrainingSet<double,double>"
       case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Int]" => "TrainingSet<double,int>"
       case _ => super.remap(m)
@@ -289,18 +293,12 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
 
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
     case "ppl.dsl.optiml.datastruct.scala.IndexVector" => true
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Int]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Long]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Float]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Double]" => true
-    case "ppl.dsl.optiml.datastruct.scala.Labels[Boolean]" => true
     case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Double]" => true
     case "ppl.dsl.optiml.datastruct.scala.TrainingSet[Double, Int]" => true
     case _ => super.isObjectType(m)
   }
 
   override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => labelsCopyInputHtoD(sym)
     case "IndexVector" => indexVectorCopyInputHtoD(sym)
     case "TrainingSet<double,double>" => trainingSetCopyInputHtoD(sym)
     case "TrainingSet<double,int>" => trainingSetCopyInputHtoD(sym)
@@ -312,7 +310,6 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
   }
 
   override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => labelsCopyMutableInputDtoH(sym)
     case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
     case "TrainingSet<double,double>" => trainingSetCopyMutableInputDtoH(sym)
     case "TrainingSet<double,int>" => trainingSetCopyMutableInputDtoH(sym)
@@ -320,7 +317,6 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
   }
 
   override def cloneObject(sym: Sym[Any], src: Sym[Any]) : String = remap(sym.Type) match {
-    //case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => labelsCopyMutableInputDtoH(sym)
     //case "RangeVector" => rangeVectorCopyMutableInputDtoH(sym)
     //case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
     //case "TrainingSet<double,double>" => trainingSetCopyMutableInputDtoH(sym)
@@ -340,7 +336,6 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
   override def allocReference(newSym: Sym[Any], sym: Sym[Any]) : Unit = remap(newSym.Type) match {
     case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => emitMatrixAllocRef(newSym,sym)
     case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => emitVectorAllocRef(newSym,sym)
-    case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => emitVectorAllocRef(newSym,sym)
     case _ => super.allocReference(newSym,sym)
   }
    */
@@ -357,7 +352,6 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
     val out = new StringBuilder
     out.append(super.getDSLHeaders)
     out.append("#include \"IndexVectorImpl.h\"\n")
-    out.append("#include \"LabelsImpl.h\"\n")
     out.append("#include \"TrainingSetImpl.h\"\n")
     out.toString
   }
@@ -371,11 +365,6 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
 
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
     case "ppl.dsl.optiml.IndexVector" => true
-    case "ppl.dsl.optiml.Labels[Int]" => true
-    case "ppl.dsl.optiml.Labels[Long]" => true
-    case "ppl.dsl.optiml.Labels[Float]" => true
-    case "ppl.dsl.optiml.Labels[Double]" => true
-    case "ppl.dsl.optiml.Labels[Boolean]" => true
     case "ppl.dsl.optiml.TrainingSet[Float, Float]" => true
     case "ppl.dsl.optiml.TrainingSet[Float, Int]" => true
     case "ppl.dsl.optiml.TrainingSet[Double, Double]" => true
@@ -386,11 +375,6 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
 
   override def remap[A](m: Manifest[A]) : String = m.toString match {
     case "ppl.dsl.optiml.IndexVector" => "IndexVector"
-    case "ppl.dsl.optiml.Labels[Int]" => "IntLabels"
-    case "ppl.dsl.optiml.Labels[Long]" => "LongLabels"
-    case "ppl.dsl.optiml.Labels[Float]" => "FloatLabels"
-    case "ppl.dsl.optiml.Labels[Double]" => "DoubleLabels"
-    case "ppl.dsl.optiml.Labels[Boolean]" => "BooleanLabels"
     case "ppl.dsl.optiml.TrainingSet[Float, Float]" => "FloatFloatTrainingSet"
     case "ppl.dsl.optiml.TrainingSet[Float, Int]" => "FloatIntTrainingSet"
     case "ppl.dsl.optiml.TrainingSet[Double, Double]" => "DoubleDoubleTrainingSet"
@@ -400,14 +384,12 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
   }
 
   override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "IntLabels" | "LongLabels" | "FloatLabels" | "DoubleLabels" | "BooleanLabels" => labelsCopyInputHtoD(sym)
     case "IndexVector" => indexVectorCopyInputHtoD(sym)
     case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
   override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
-    case "IntLabels" | "LongLabels" | "FloatLabels" | "DoubleLabels" | "BooleanLabels" => labelsCopyMutableInputHtoD(sym)
     case "IndexVector" => indexVectorCopyMutableInputHtoD(sym)
     case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyMutableInputHtoD(sym)
     case _ => super.copyMutableInputDtoH(sym)
@@ -432,10 +414,6 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
   */
 
   override def unpackObject[A](sym: Sym[Any]) : Map[String,Manifest[_]] = remap(sym.Type) match {
-    case "IntLabels" | "LongLabels" | "FloatLabels" | "DoubleLabels" | "BooleanLabels" => 
-      val dataArrayType = sym.Type.typeArguments(0)
-      Map("isRow"->Manifest.Boolean, "length"->Manifest.Int, "data"->dataArrayType.arrayManifest)
-      //Map("isRow"->Manifest.Boolean, "length"->Manifest.Int, "numLabels"->Manifest.Int, "data"->dataArrayType.arrayManifest)
     case "IndexVector" =>
       Map("isRow"->Manifest.Boolean, "length"->Manifest.Int, "data"->Manifest.Int.arrayManifest)
     case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" =>
@@ -448,7 +426,6 @@ trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase wit
   override def getDSLHeaders: String = {
     val out = new StringBuilder
     out.append(super.getDSLHeaders)
-    out.append("#include \"LabelsImpl.h\"\n")
     out.append("#include \"IndexVectorImpl.h\"\n")
     out.append("#include \"TrainingSetImpl.h\"\n")
     out.toString

@@ -1,21 +1,20 @@
 package ppl.apps.bio.spade
 
-import ppl.dsl.optiml.{Vector,Matrix,TrainingSet,StreamRow}
-import ppl.dsl.optiml.OptiMLApplication
+import ppl.dsl.optiml._
 
 trait Downsampling {
   this: OptiMLApplication =>
 
-  def downsample(data: Rep[TrainingSet[Double,Int]], arcsinhCofactor: Rep[Double], scale: Rep[Double],
-                 usedMarkers: Rep[Vector[Int]], isNormalize: Rep[Boolean], normalizeWeight: Rep[Double]): Rep[Vector[Int]] = {
+  def downsample(data: Rep[UnsupervisedTrainingSet[Double]], arcsinhCofactor: Rep[Double], scale: Rep[Double],
+                 usedMarkers: Rep[DenseVector[Int]], isNormalize: Rep[Boolean], normalizeWeight: Rep[Double]): Rep[Vector[Int]] = {
 
 
-    println("   Input matrix size: " + data.numRows + "*" + data.numCols)
+    println("   Input matrix size: " + data.numSamples + "*" + data.numFeatures)
 
     // TODO: we need to push this implementation detail out of the application and into the DSL
     // (1) number of cells if data matrix is small, (2) block size = 2000 if data large, (3) if number of cells is
     //  extremely large, we need to limit block size, otherwise line 38 (in matlab code) will be out of memory
-    val numSamples = min(data.numRows, 2000, floor(2500000000l/data.numRows).AsInstanceOf[Int])
+    val numSamples = min(data.numSamples, 2000, floor(2500000000l/data.numSamples).AsInstanceOf[Int])
     println("   numSamples = " + numSamples)
 
     val medMinDist = computeMedianMinDist(data, numSamples)
@@ -23,17 +22,17 @@ trait Downsampling {
 
     val kernelWidth = scale * medMinDist
     val apprxWidth  = 1.5 * medMinDist
-    println("   For this " + data.numRows + " channel data, KERNEL WIDTH is " + kernelWidth + ", APPRX WIDTH is " + apprxWidth)
+    println("   For this " + data.numSamples + " channel data, KERNEL WIDTH is " + kernelWidth + ", APPRX WIDTH is " + apprxWidth)
 
     countNeighbors(data, kernelWidth, apprxWidth)
   }
 
-  private def computeMedianMinDist(data: Rep[TrainingSet[Double,Int]], numSamples: Rep[Int],
+  private def computeMedianMinDist(data: Rep[UnsupervisedTrainingSet[Double]], numSamples: Rep[Int],
                                    targetPrctile: Rep[Int] = 5, kernelWidthPara: Rep[Int] = 10) = {
     println("   finding empirical dist of the min distance between cells ...")
 
-    // sampled_data is numSamples x data.numCols
-//    val sampleIndices = sample(0::data.numRows, numSamples)
+    // sampled_data is numSamples x data.numFeatures
+//    val sampleIndices = sample(0::data.numSamples, numSamples)
 //
 //    val minDist = (0::numSamples) { i =>
 //      val sampleIdx = sampleIndices(i)
@@ -46,13 +45,13 @@ trait Downsampling {
     4.4593519740000005
   }
 
-  private def countNeighbors(data: Rep[TrainingSet[Double,Int]], kernelWidth: Rep[Double], apprxWidth: Rep[Double]): Rep[Vector[Int]] = {
+  private def countNeighbors(data: Rep[UnsupervisedTrainingSet[Double]], kernelWidth: Rep[Double], apprxWidth: Rep[Double]): Rep[Vector[Int]] = {
 
     println("   finding local density for each cell ...")
 
     //streaming version (fastest streaming version)
-    val distances = Stream[Double](data.numRows, data.numRows){ (i,j) => dist(data(i),data(j)) }
-    val densities = Vector[Int](data.numRows, true)
+    val distances = Stream[Double](data.numSamples, data.numSamples){ (i,j) => dist(data(i),data(j)) }
+    val densities = DenseVector[Int](data.numSamples, true)
 
     // NOTE: by allowing row.index to be expressed, we have essentially enabled writing the data race with densities.
     // This is a trade-off of restricted expression for performance, but is it the trade-off we want?
@@ -67,8 +66,8 @@ trait Downsampling {
 
     /* alternative :
     
-    for (i <- (0 until data.numRows)) {
-      val row = (0::data.numRows) { j => dist(data(i), data(j)) }
+    for (i <- (0 until data.numSamples)) {
+      val row = (0::data.numSamples) { j => dist(data(i), data(j)) }
       if(i%1000 == 0) println("  (streaming) # processed node = " + i)
       if(densities(row.index) == 0) {
         val neighbors = row find { _ < apprxWidth }
@@ -83,7 +82,7 @@ trait Downsampling {
     /*
      * Fused should look like this:
      *
-    val nRows = data.numRows
+    val nRows = data.numSamples
     val densities = Vector[Int](nRows)
     distances.foreachRow { (row, idx) =>
      if(idx%1000 == 0) println("  (streaming fusing - nRows, Array) # processed node = " + idx)

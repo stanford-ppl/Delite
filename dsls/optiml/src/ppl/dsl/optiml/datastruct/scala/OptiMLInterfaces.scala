@@ -9,14 +9,13 @@ import ppl.dsl.optila.datastruct.scala._
  */
 
 
-trait StreamRow[@specialized(Boolean, Int, Long, Float, Double) T] extends VectorView[T] {
-  def index: Int
-}
+// trait StreamRow[@specialized(Boolean, Int, Long, Float, Double) T] extends VectorView[T] {
+//   def index: Int
+// }
 
-trait IndexVector //extends Vector[Int] //extends DenseVector[Int]
-
-trait IndexVectorDense extends IndexVector
-trait IndexVectorRange extends IndexVector
+//trait IndexVector //extends Vector[Int] //extends DenseVector[Int]
+//trait IndexVectorDense extends IndexVector
+//trait IndexVectorRange extends IndexVector
 
 // trait IndexVector2 {
 //   def rowInd: IndexVector
@@ -157,13 +156,13 @@ trait MessageData
  * Stream
  */
 
-trait Stream[@specialized(Boolean, Int, Long, Float, Double) T] {
-  def numRows: Int
-  def numCols: Int
-  def chunkSize: Int
-  def initRow(row: Int, offset: Int)
-  def isPure: Boolean
-  def chunkRow(idx: Int, offset: Int): StreamRow[T]
-  def rawElem(idx: Int): T
-  def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
-}
+// trait Stream[@specialized(Boolean, Int, Long, Float, Double) T] {
+//   def numRows: Int
+//   def numCols: Int
+//   def chunkSize: Int
+//   def initRow(row: Int, offset: Int)
+//   def isPure: Boolean
+//   def chunkRow(idx: Int, offset: Int): StreamRow[T]
+//   def rawElem(idx: Int): T
+//   def vview(start: Int, stride: Int, length: Int, isRow: Boolean): VectorView[T]
+// }

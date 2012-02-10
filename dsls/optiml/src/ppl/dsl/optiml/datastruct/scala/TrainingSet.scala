@@ -26,3 +26,6 @@ class TrainingSetImpl[T:Manifest,L:Manifest](xs: Matrix[T], var _labels: Labels[
 
 }
 */
+
+class SupervisedTrainingSet[T:Manifest,L:Manifest](val _data: DenseMatrix[T], val _labels: DenseVector[L])
+class UnsupervisedTrainingSet[T:Manifest](val _data: DenseMatrix[T])

@@ -113,7 +113,7 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   /**
    * gradient descent
    */
-  def gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
+  def gradient(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
                maxIter: Rep[Int] = unit(10000))(hyp: Rep[VectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
     = optiml_gradient(x, alpha, thresh, maxIter, hyp)
 
@@ -125,7 +125,7 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   // hypothesis function maps a training example to a prediction
 
   // stochastic can only be parallelized across features, which is generally << samples
-  def stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
+  def stochastic(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
                  maxIter: Rep[Int] = unit(10000))(hyp: Rep[VectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
     = optiml_stochastic(x, alpha, thresh, maxIter, hyp)
 
@@ -137,18 +137,18 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
 
   // in batch, the sum(...) loops over the entire training set independently, which is where the parallelism comes from
   // batch can be parallized across samples
-  def batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
+  def batch(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double] = unit(.001), thresh: Rep[Double] = unit(.0001),
                maxIter: Rep[Int] = unit(10000))(hyp: Rep[VectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
     = optiml_batch(x, alpha, thresh, maxIter, hyp)
 
 
-  def optiml_gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
+  def optiml_gradient(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
                       maxIter: Rep[Int], hyp: Rep[VectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
-  def optiml_stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
+  def optiml_stochastic(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
                         maxIter: Rep[Int], hyp: Rep[VectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
-  def optiml_batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
+  def optiml_batch(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
                    maxIter: Rep[Int], hyp: Rep[VectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
 
   // coordinate ascent: analogous to stochastic gradient descent, but updates m parameters (alphas(0)...alphas(m-1))
@@ -469,7 +469,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    * gradient descent
    */
   private val MIN_BATCH_PROCS = 4
-  def optiml_gradient(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
+  def optiml_gradient(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
                       maxIter: Rep[Int], hyp: Rep[VectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels
@@ -482,7 +482,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     }
   }
 
-  def optiml_stochastic(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
+  def optiml_stochastic(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
                         maxIter: Rep[Int], hyp: Rep[VectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels
@@ -498,7 +498,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     }
   }
 
-  def optiml_batch(x: Rep[TrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
+  def optiml_batch(x: Rep[SupervisedTrainingSet[Double,Double]], alpha: Rep[Double], thresh: Rep[Double],
                    maxIter: Rep[Int], hyp: Rep[VectorView[Double]] => Rep[Double])(implicit ctx: SourceContext): Rep[DenseVector[Double]] = {
 
     val y = x.labels

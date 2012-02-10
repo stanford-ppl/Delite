@@ -17,17 +17,14 @@ trait OptiMLKmeans {
 
   val kmeans = new kmeansOps
 
-  // TODO: TrainingSet needs to have Labels be optional
   class kmeansOps {
-    //def cluster(x: Rep[TrainingSet[Double,Int]], numClusters: Rep[Int] = 32, tol: Rep[Double] = .001, initMu: Option[Rep[Matrix[Double]]] = None)
-    def cluster(x: Rep[DenseMatrix[Double]], numClusters: Rep[Int] = 32, tol: Rep[Double] = .001, initMu: Option[Rep[DenseMatrix[Double]]] = None)
+    def cluster(x: Rep[UnsupervisedTrainingSet[Double]], numClusters: Rep[Int] = 32, tol: Rep[Double] = .001, initMu: Option[Rep[DenseMatrix[Double]]] = None)
       = kmeans_cluster(x, numClusters, tol, initMu)
   }
 
-  //private def kmeans_cluster(x: Rep[TrainingSet[Double,Int]], numClusters: Rep[Int], tol: Rep[Double], initMu: Option[Rep[Matrix[Double]]]) = {
-  private def kmeans_cluster(x: Rep[DenseMatrix[Double]], numClusters: Rep[Int], tol: Rep[Double], initMu: Option[Rep[DenseMatrix[Double]]]) = {
-    val m = x.numRows //x.numSamples
-    val n = x.numCols //x.numFeatures
+  private def kmeans_cluster(x: Rep[UnsupervisedTrainingSet[Double]], numClusters: Rep[Int], tol: Rep[Double], initMu: Option[Rep[DenseMatrix[Double]]]) = {
+    val m = x.numSamples
+    val n = x.numFeatures
     val mu = initMu getOrElse ((0::numClusters, *) { i => x(random(m)) })
     var iter = 0
 
