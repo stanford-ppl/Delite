@@ -1,0 +1,120 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>Delite &mdash; Getting started with native libraries</title>
+    <style type='text/css'>
+      @import 'css/default.css';
+      @import 'css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import 'css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/' title="Delite">Delite</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href='getting_started.html'>Getting Started</a></li>
+              <li><a href="dsl_example.html">My First DSL</a></li>
+              <!--<li><a href="performance.html">Performance</a></li>
+              <li><a href="tests.html">Tests</a></li>
+              <-->
+              <li><a href="troubleshooting.html">Troubleshooting</a></li>
+              <li><a href="publications.html">Publications</a></li>
+            </ol>
+          </li>
+          <li>Getting it
+            <ol>
+            <!--
+              <li><a href='releases.html'>Releases</a></li>
+              <li><a href='snapshots.html'>Snapshots</a></li>
+            -->
+              <li><a href='source.html'>Source</a></li>
+              <li><a href='license.html'>License</a></li>
+            </ol>
+          </li>
+          <!--
+          <li>Reference
+            <ol>
+              <li><a href='api/0.3/index.html'>ScalaDoc API</a></li>
+              <li>&nbsp;</li>
+              <li><a href='sponsors.html'>Sponsors</a></li>
+              <li class="logo"><a href="http://ppl.stanford.edu"><img width="110" alt="Stanford Pervasive Parallelism Lab" src='images/ppl_logo_small.png'></a></li>
+            </ol>
+          </li>
+          -->
+        </ol>
+      </div>
+      <div id='content'> 
+        <h1 id='title_getting started'>Getting started with CUDA</h1>
+        <p style="font-size: 10pt"> The following instructions are for the Unix and OSX platforms. Windows support is coming soon.</p>
+		
+		<p> In order to utilize the GPU, Delite requires that <a href="http://developer.nvidia.com/cuda-toolkit">CUDA 3.2 or later</a> be installed.  In addition Delite also requires the CUDA libraries Thrust and cuBLAS.  These libraries are included automatically with the CUDA toolkit download as of CUDA 4.0. </p>
+		
+		<p> Once installed, you must add the information necessary for Delite to connect to the CUDA installation in Delite's configuration files. From the Delite home directory navigate to <code>config/delite</code> and open up <code>CUDA.xml</code> in a text editor.  You must now modify 3 pieces of information:</p>
+		<br />
+		<list> 
+		  <li>Within the <code>&lt;compiler&gt;</code> tag, add the absolute path to <code>nvcc</code>.  For example
+		  <div class="highlight"><pre><code class="bash"> &lt;compiler&gt; /usr/local/cuda/bin/nvcc &lt;/compiler&gt; </code></pre></div>
+		  </li>
+		  <li>Within the <code>&lt;arch&gt;</code> tag, specify the compute capability of the installed gpu (e.g., "2.0" for Fermi devices or "1.<em>x</em>" for Tesla devices)</li>
+		  <br />
+		  <li>Within the <code>&lt;headers&gt;</code> tag, add the path to <code>"jni.h"</code> of your current JDK distribution as shown below:
+		  
+		  <div class="highlight"><pre><code class="bash"> &lt;path&gt; <em>absolute_path_to_jdk_home_dir</em>/include &lt;/path&gt; </code></pre></div>
+		  
+		  For Linux machines, add the additional path to <code>"jni_md.h"</code>:
+		  
+		  <div class="highlight"><pre><code class="bash"> &lt;path&gt; <em>absolute_path_to_jdk_home_dir</em>/include/linux &lt;/path&gt; </code></pre></div>
+		  
+		  These are required because Delite links the generated CUDA code to the generated Scala code via JNI. </li>
+		  </list>
+		  
+		  <p> Almost done.  Now just open up <code>cuBLAS.xml</code> and modify the <code>&lt;compiler&gt;</code> tag with the path to <code>nvcc</code> and the <code>&lt;arch&gt;</code> tag with your GPU's compute capability just as you did in <code>CUDA.xml</code>. </p>
+
+		  <p> Congratulations! You're now ready to run OptiML applications on the GPU.  You can enable or disable gpu execution for each application.  In order to enable CUDA code generation in the compiler use the <code>"--gpu"</code> flag when calling <code>delitec</code>: </p>
+		  
+		  <div class="highlight"><pre><code class="bash"> delitec AppRunner --gpu </code></pre></div>
+		  
+		  <p> With this flag the compiler generates both Scala and CUDA versions of the application kernels.  You still have the option to run the application using only the CPU(s) or the CPU(s) and GPU.  In order to utilize the GPU when running the application, add the <code>"--gpu"</code> flag when calling <code>delite</code>: </p>
+		  
+		  <div class="highlight"><pre><code class="bash"> delite AppRunner [app_params] --gpu </code></pre></div>
+		  <br /><br />
+		  
+		  <h1 id='title_getting started'>Getting started with BLAS</h1>
+		  <p> OptiML can optionally utilize BLAS libraries for performing certain linear algebra operations on the CPU.  It is highly recommended that you provide OptiML with a BLAS implementation as certain dense matrix operations (e.g., matrix multiplication) are significantly faster than OptiML's default implementation.  You should be able to use any implementation of BLAS that adheres to the CBLAS specification (e.g., MKL, GotoBLAS).  Once BLAS is installed on your machine, from the Delite home directory navigate to <code>config/delite</code> and open <code>BLAS.xml</code> in a text editor.  You must now modify a few pieces of information so that Delite can link to BLAS when compiling.  An example of a typical <code>BLAS.xml</code> file is provided in <code>BLAS.xml.example</code>. </p>
+		  <br />
+		  <list>
+		    <li> Within the <code>&lt;compiler&gt;</code> tag, add the absolute path to the C compiler installed on your machine (e.g., <code>gcc</code>, <code>icc</code>) </li>
+			<br />
+			<li> Within the <code>&lt;headers&gt;</code> tag, add the absolute path to <code>"jni.h"</code> provided by your JDK
+			<div class="highlight"><pre><code class="bash"> &lt;path&gt; <em>absolute_path_to_jdk_home_dir</em>/include &lt;/path&gt; </code></pre></div>
+		  
+		    For Linux machines, add the additional path to <code>"jni_md.h"</code>:
+		  
+		    <div class="highlight"><pre><code class="bash"> &lt;path&gt; <em>absolute_path_to_jdk_home_dir</em>/include/linux &lt;path&gt; </code></pre></div>
+		    </li>
+		    <li> Similary add the absolute path(s) to all include directory for BLAS. </li>
+			<br />
+			<li> Finally for <code>&lt;headers&gt;</code>, add the name of the header file that contains the CBLAS interface within the <code>&lt;include&gt;</code> tag.  This is typically <code>"cblas.h"</code> (or <code>"mkl.h"</code> if using MKL). </li>
+			<br />
+			<li> Within the <code>&lt;libs&gt;</code> tag, add all paths to BLAS library directories within <code>&lt;path&gt;</code> tags. </li>
+			<br />
+			<li> Finally, add all the necessary BLAS libraries within <code>&lt;library&gt;</code> tags (e.g., <code>-lcblas</code>).  Delite can only be linked with shared object libraries (should end in <code>".so"</code> rather than <code>".a"</code>). </li>
+		  </list>
+		  
+		  <p> Congratulations! Your OptiML applications will now be accelerated with BLAS.  To ensure that the OptiML compiler is using BLAS libraries when possible, make sure that the option <code>"no_blas=False"</code> is included in the echoed options when running <code>delitec</code>. </p>
+
+      </div>
+      <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>
