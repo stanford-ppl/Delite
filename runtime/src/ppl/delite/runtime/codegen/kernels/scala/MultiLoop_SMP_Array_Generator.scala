@@ -3,6 +3,7 @@ package ppl.delite.runtime.codegen.kernels.scala
 import ppl.delite.runtime.graph.ops.OP_MultiLoop
 import ppl.delite.runtime.codegen.{ExecutableGenerator, ScalaCompile}
 import ppl.delite.runtime.graph.DeliteTaskGraph
+import ppl.delite.runtime.Config
 
 /**
  * Author: Kevin J. Brown
@@ -51,6 +52,7 @@ object MultiLoop_SMP_Array_Generator {
   }
 
   private def writeHeader(out: StringBuilder, master: OP_MultiLoop, idx: Int, kernelPath: String) {
+    out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     ExecutableGenerator.writePath(kernelPath, out)
     out.append("object ")
     out.append(kernelName(master, idx))
@@ -63,6 +65,10 @@ object MultiLoop_SMP_Array_Generator {
     out.append("): ")
     out.append(op.outputType)
     out.append(" = {\n")
+
+    // profiling
+    if (Config.profile)
+      out.append("PerformanceTimer.startChunked(\""+master.id+"\", Thread.currentThread.getName(), "+numChunks+", "+chunkIdx+")\n")
 
     //tree reduction
     //first every chunk performs its primary (map-)reduction
@@ -88,6 +94,10 @@ object MultiLoop_SMP_Array_Generator {
     out.append("}\n")
 */
     out.append("val acc = head.closure.processRange(out,idx,end)\n")
+
+    // profiling
+    if (Config.profile)
+      out.append("PerformanceTimer.stopChunked(\""+master.id+"\", "+chunkIdx+")\n")
 
     if (op.needsCombine) {
       var half = chunkIdx
