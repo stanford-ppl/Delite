@@ -52,6 +52,8 @@ object Config {
   if (useOpenCL && clBlasLibPath == "") error("OpenCL blas library path is not specified!")
 
 
+  var degFilename = System.getProperty("delite.deg.filename", "out.deg")
+  
   /**
    * DEG specific, set after its parsed
    * TODO: handle this more rigorously

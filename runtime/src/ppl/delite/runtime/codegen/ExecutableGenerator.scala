@@ -2,6 +2,7 @@ package ppl.delite.runtime.codegen
 
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.scheduler.PartialSchedule
+import ppl.delite.runtime.Config
 import java.util.ArrayDeque
 import collection.mutable.{ArrayBuffer, HashSet}
 
@@ -63,6 +64,7 @@ abstract class ExecutableGenerator {
 
   protected def writeHeader(out: StringBuilder, location: Int, kernelPath: String) {
     out.append("import ppl.delite.runtime.codegen.DeliteExecutable\n") //base trait
+    out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import java.util.concurrent.locks._\n") //locking primitives
     ExecutableGenerator.writePath(kernelPath, out) //package of scala kernels
     out.append("object Executable")
@@ -111,6 +113,8 @@ abstract class ExecutableGenerator {
     def resultName = if (returnsResult) getSym(op, op.getOutputs.head) else "op_" + getSym(op, op.id)
 
     if (op.task == null) return //dummy op
+    if (Config.profile && !op.isInstanceOf[OP_MultiLoop])
+      out.append("PerformanceTimer.start(\""+op.id+"\", Thread.currentThread.getName(), false)\n")
     out.append("val ")
     out.append(resultName)
     out.append(" : ")
@@ -125,6 +129,8 @@ abstract class ExecutableGenerator {
       out.append(getSym(input, name))
     }
     out.append(")\n")
+    if (Config.profile && !op.isInstanceOf[OP_MultiLoop])
+      out.append("PerformanceTimer.stop(\""+op.id+"\", false)\n")
 
     if (!returnsResult) {
       for (name <- op.getOutputs) {
