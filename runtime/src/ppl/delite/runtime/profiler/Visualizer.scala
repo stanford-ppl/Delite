@@ -3,6 +3,7 @@ package ppl.delite.runtime.profiler
 import java.io.{File, PrintWriter, FileWriter, FileInputStream}
 import scala.io.Source
 import ppl.delite.runtime.graph.ops._
+import ppl.delite.runtime.Config
 
 case class TaskNode(timing: Timing, parent: Option[TaskNode])
 
@@ -496,7 +497,29 @@ object Visualizer {
   import java.text.DateFormat
   
   def writeHtmlProfile(writer: PrintWriter, symbolMap: Map[String, (String, String, Int)]) {
-    copyFileTo("profile-viz-top.html", writer)
+    println("PROFILER: writing HTML profile...")
+    println("delite.home: "+Config.deliteHome)
+    
+    val deliteHomeProfiler = Config.deliteHome + "/profiler"
+    
+    val cssFiles = List("hover.css", "less/bootstrap.css")
+    val jsFiles = List("jquery.js", "bootstrap-twipsy.js", "bootstrap-popover.js", "d3.js")
+    
+    val htmlHeader = """
+<!DOCTYPE HTML PUBLIC "-//IETF//DTD HTML//EN">
+<html>
+<head>"""
+    
+    writer.println(htmlHeader)
+    for (css <- cssFiles.map(f => deliteHomeProfiler + "/" + f)) {
+      writer.println("<link href=\"" + css + "\" type=\"text/css\" rel=\"stylesheet\"></link>")
+    }
+    for (js <- jsFiles.map(f => deliteHomeProfiler + "/" + f)) {
+      writer.println("<script src=\"" + js + "\" type=\"text/javascript\"></script>")
+    }
+    writer.println("<script src=\"" + "profileData.js" + "\" type=\"text/javascript\"></script>")
+
+    copyFileTo(deliteHomeProfiler + "/" + "profile-viz-top.html", writer)
     
     val cal = Calendar.getInstance()
     val df = DateFormat.getDateTimeInstance(DateFormat.FULL, DateFormat.MEDIUM)
@@ -512,7 +535,7 @@ object Visualizer {
     // post process to replace <br></br>
     writer.println(replaceHtmlLineBreaks(gensourceHtmlAsString))
 
-    copyFileTo("profile-viz-bot.html", writer)
+    copyFileTo(deliteHomeProfiler + "/" + "profile-viz-bot.html", writer)
     writer.flush()
   }
 }
