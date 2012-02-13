@@ -1,34 +1,23 @@
 package ppl.dsl.optiml.graph
 
-/**
- * author: Michael Wu (mikemwu@stanford.edu)
- * last modified: 05/03/2011
- *
- * Pervasive Parallelism Laboratory (PPL)
- * Stanford University
- */
-
-import collection.mutable.{Set => MSet}
-
-import ppl.delite.framework.DeliteApplication
-import reflect.Manifest
+import java.io.PrintWriter
+import scala.reflect.Manifest
+import scala.collection.mutable.Set
 import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
+import scala.virtualization.lms.internal._
+import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml._
 
-import java.io.PrintWriter
-import scala.virtualization.lms.internal._
-
 trait VSetOps extends Variables {
-  def vset_vertices[V<:Vertex:Manifest](s: Rep[MSet[V]]) : Rep[Vertices[V]]
+  def vset_vertices(s: Rep[Set[Vertex]]) : Rep[DenseVector[Vertex]]
 }
 
 trait VSetOpsExp extends VSetOps with EffectExp {
-  case class VSetVertices[V<:Vertex:Manifest](s: Exp[MSet[V]]) extends Def[Vertices[V]] {
-    val mV = manifest[V]
+  case class VSetVertices(s: Exp[Set[Vertex]]) extends Def[DenseVector[Vertex]] {
+    val mV = manifest[Vertex]
   }
 
-  def vset_vertices[V<:Vertex:Manifest](s: Exp[MSet[V]]) = reflectMutable(VSetVertices(s))
+  def vset_vertices(s: Exp[Set[Vertex]]) = reflectMutable(VSetVertices(s))
 }
 
 trait BaseGenVSetOps extends GenericNestedCodegen {
@@ -45,7 +34,7 @@ trait ScalaGenVSetOps extends BaseGenVSetOps with ScalaGenEffect {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case o@VSetVertices(s) => emitValDef(sym, "new generated.scala.Vertices[" + remap(o.mV) + "](" + quote(s) + ".toArray)")
+    case o@VSetVertices(s) => emitValDef(sym, "new generated.scala.DenseVector[Vertex](" + quote(s) + ".toArray)")
     case _ => super.emitNode(sym, rhs)
   }
 }

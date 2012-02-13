@@ -102,12 +102,12 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   def optiml_untilconverged[A:Manifest:Cloneable](x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
                                                   block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double])(implicit ctx: SourceContext): Rep[A]
 
-  def untilconverged[V <: Vertex, E <: Edge](g: Rep[Graph[V, E]])
-                        (block: Rep[V] => Rep[Unit])
-                        (implicit mV: Manifest[V], mE: Manifest[E], ctx: SourceContext): Rep[Unit]
+  def untilconverged(g: Rep[Graph])
+                    (block: Rep[Vertex] => Rep[Unit])
+                    (implicit ctx: SourceContext): Rep[Unit]
     = optiml_untilconverged(g, block)
 
-  def optiml_untilconverged[V <: Vertex :Manifest, E <: Edge :Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit])(implicit ctx: SourceContext) : Rep[Unit]
+  def optiml_untilconverged(g: Rep[Graph], block: Rep[Vertex] => Rep[Unit])(implicit ctx: SourceContext) : Rep[Unit]
 
 
   /**
@@ -400,13 +400,14 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   // for now, just unroll the implementation
   // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
-  def optiml_untilconverged[V <: Vertex : Manifest, E <: Edge : Manifest](g: Rep[Graph[V, E]], block: Rep[V] => Rep[Unit])(implicit ctx: SourceContext) = {
+  def optiml_untilconverged(g: Rep[Graph], block: Rep[Vertex] => Rep[Unit])(implicit ctx: SourceContext) = {
     val vertices = g.vertices
-    val tasks : Rep[Vertices[V]] = vertices.mutable
-    val seen = Set[V]()
+    val tasks : Rep[DenseVector[Vertex]] = vertices.mutable
+    val seen = Set[Vertex]()
     
     while(tasks.length > unit(0)) {
-      tasks.mforeach(block)
+      //tasks.mforeach(block)
+      tasks.foreach(block)
       tasks.clear()
       //var totalTasks = unit(0)
       
@@ -414,7 +415,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
         val vtasks = vertices(i).tasks
         //totalTasks += vtasks.length
         for(j <- unit(0) until vtasks.length) {
-          val task = vtasks(j).AsInstanceOf[V]
+          val task = vtasks(j).AsInstanceOf[Vertex]
           if(!seen.contains(task)) {
             tasks += task   //TODO TR: non-mutable write (use mclone)
             seen.add(task)   //TODO TR: non-mutable write

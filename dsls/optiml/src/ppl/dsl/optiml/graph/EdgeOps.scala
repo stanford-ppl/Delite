@@ -10,97 +10,127 @@ import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
 
-trait MessageEdgeOps extends Variables {
+trait EdgeOps extends Variables {
   this: OptiML =>
 
-  object MessageEdge {
-    def apply(g: Rep[Graph[MessageVertex,MessageEdge]], in: Rep[MessageData], out: Rep[MessageData], a: Rep[MessageVertex], b: Rep[MessageVertex]) = message_edge_obj_new(g,in,out,a,b)
+  object Edge {
+    def apply(g: Rep[Graph], in: Rep[MessageData], out: Rep[MessageData], a: Rep[Vertex], b: Rep[Vertex]) = edge_obj_new(g,in,out,a,b)
   }
 
-  implicit def repMessageEdgeToMessageEdgeOps(e: Rep[MessageEdge]) = new messageEdgeOpsCls(e)
+  implicit def repEdgeToEdgeOps(e: Rep[Edge]) = new EdgeOpsCls(e)
 
-  class messageEdgeOpsCls(e: Rep[MessageEdge]) {
-    def in(v: Rep[MessageVertex]) = message_edge_in(e,v)
-    def out(v: Rep[MessageVertex]) = message_edge_out(e,v)
-    def target(source: Rep[MessageVertex]) = message_edge_target(e,source)
+  class EdgeOpsCls(e: Rep[Edge]) {
+    def graph: Rep[Graph] = edge_get_graph(e)
+    def inData: Rep[MessageData] = edge_get_indata(e) 
+    def outData: Rep[MessageData] = edge_get_outdata(e)
+    def v1: Rep[Vertex] = edge_get_v1(e)
+    def v2: Rep[Vertex] = edge_get_v2(e)
+     
+    def in(v: Rep[Vertex]) = edge_in(e,v)
+    def out(v: Rep[Vertex]) = edge_out(e,v)
+    def target(source: Rep[Vertex]) = edge_target(e,source)
   }
 
   // object defs
-  def message_edge_obj_new(g: Rep[Graph[MessageVertex,MessageEdge]], in: Rep[MessageData], out: Rep[MessageData], a: Rep[MessageVertex], b: Rep[MessageVertex]): Rep[MessageEdge]
+  def edge_obj_new(g: Rep[Graph], in: Rep[MessageData], out: Rep[MessageData], a: Rep[Vertex], b: Rep[Vertex]): Rep[Edge]
 
   // class defs
-  def message_edge_in(e: Rep[MessageEdge], v: Rep[MessageVertex]): Rep[MessageData]
-  def message_edge_out(e: Rep[MessageEdge], v: Rep[MessageVertex]): Rep[MessageData]
-  def message_edge_target(e: Rep[MessageEdge], v: Rep[MessageVertex]): Rep[MessageVertex]
-
+  def edge_get_graph(e: Rep[Edge]): Rep[Graph] 
+  def edge_get_indata(e: Rep[Edge]): Rep[MessageData] 
+  def edge_get_outdata(e: Rep[Edge]): Rep[MessageData] 
+  def edge_get_v1(e: Rep[Edge]): Rep[Vertex] 
+  def edge_get_v2(e: Rep[Edge]): Rep[Vertex] 
+  
+  def edge_in(e: Rep[Edge], v: Rep[Vertex]): Rep[MessageData]
+  def edge_out(e: Rep[Edge], v: Rep[Vertex]): Rep[MessageData]
+  def edge_target(e: Rep[Edge], v: Rep[Vertex]): Rep[Vertex]
 }
 
-trait MessageEdgeOpsExp extends MessageEdgeOps with EffectExp {
+trait EdgeOpsExp extends EdgeOps with EffectExp {
 
   this: OptiMLExp =>
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
 
-  case class MessageEdgeObjectNew(g: Exp[Graph[MessageVertex,MessageEdge]], in: Exp[MessageData], out: Exp[MessageData], a: Exp[MessageVertex], b: Exp[MessageVertex])
-    extends Def[MessageEdge] {
-    //val mE = manifest[MessageEdgeImpl]
+  case class EdgeObjectNew(g: Exp[Graph], in: Exp[MessageData], out: Exp[MessageData], a: Exp[Vertex], b: Exp[Vertex])
+    extends Def[Edge] {
+    //val mE = manifest[EdgeImpl]
   }
-  case class MessageEdgeIn(e: Exp[MessageEdge], v: Exp[MessageVertex]) extends Def[MessageData]
-  case class MessageEdgeOut(e: Exp[MessageEdge], v: Exp[MessageVertex]) extends Def[MessageData]
-  case class MessageEdgeTarget(e: Exp[MessageEdge], v: Exp[MessageVertex]) extends Def[MessageVertex]
+  
+  case class EdgeGetGraph(e: Exp[Edge]) extends Def[Graph]
+  case class EdgeGetInData(e: Exp[Edge]) extends Def[MessageData]
+  case class EdgeGetOutData(e: Exp[Edge]) extends Def[MessageData]
+  case class EdgeGetV1(e: Exp[Edge]) extends Def[Vertex]
+  case class EdgeGetV2(e: Exp[Edge]) extends Def[Vertex]
+  
+  
+  //////////////////////////////////////////////////
+  // implemented via kernel embedding
+  
+  case class EdgeIn(e: Exp[Edge], v: Exp[Vertex]) extends DeliteOpSingleTask(reifyEffectsHere(edge_in_impl(e,v)))
+  case class EdgeOut(e: Exp[Edge], v: Exp[Vertex]) extends DeliteOpSingleTask(reifyEffectsHere(edge_out_impl(e,v)))
+  case class EdgeTarget(e: Exp[Edge], v: Exp[Vertex]) extends DeliteOpSingleTask(reifyEffectsHere(edge_target_impl(e,v)))
 
 
   /////////////////////
   // object interface
 
-  def message_edge_obj_new(g: Exp[Graph[MessageVertex,MessageEdge]], in: Exp[MessageData], out: Exp[MessageData], a: Exp[MessageVertex], b: Exp[MessageVertex]) = reflectEffect(MessageEdgeObjectNew(g,in,out,a,b))
+  def edge_obj_new(g: Exp[Graph], in: Exp[MessageData], out: Exp[MessageData], a: Exp[Vertex], b: Exp[Vertex]) = reflectEffect(EdgeObjectNew(g,in,out,a,b))
 
   /////////////////////
   // class interface
-
-  def message_edge_in(e: Exp[MessageEdge], v: Exp[MessageVertex]) = reflectPure(MessageEdgeIn(e,v))
-  def message_edge_out(e: Exp[MessageEdge], v: Exp[MessageVertex]) = reflectPure(MessageEdgeOut(e,v))
-  def message_edge_target(e: Exp[MessageEdge], v: Exp[MessageVertex]) = reflectPure(MessageEdgeTarget(e,v))
+  
+  def edge_get_graph(e: Exp[Edge]) = reflectPure(EdgeGetGraph(e))
+  def edge_get_indata(e: Exp[Edge]) = reflectPure(EdgeGetInData(e))
+  def edge_get_outdata(e: Exp[Edge]) = reflectPure(EdgeGetOutData(e))
+  def edge_get_v1(e: Exp[Edge]) = reflectPure(EdgeGetV1(e))
+  def edge_get_v2(e: Exp[Edge]) = reflectPure(EdgeGetV2(e))
+  
+  def edge_in(e: Exp[Edge], v: Exp[Vertex]) = reflectPure(EdgeIn(e,v))
+  def edge_out(e: Exp[Edge], v: Exp[Vertex]) = reflectPure(EdgeOut(e,v))
+  def edge_target(e: Exp[Edge], v: Exp[Vertex]) = reflectPure(EdgeTarget(e,v))
 }
 
 
-trait BaseGenMessageEdgeOps extends GenericNestedCodegen {
-  val IR: MessageEdgeOpsExp
+trait BaseGenEdgeOps extends GenericNestedCodegen {
+  val IR: EdgeOpsExp
   import IR._
 
 }
 
-trait ScalaGenMessageEdgeOps extends BaseGenMessageEdgeOps with ScalaGenBase {
-  val IR: MessageEdgeOpsExp
+trait ScalaGenEdgeOps extends BaseGenEdgeOps with ScalaGenBase {
+  val IR: EdgeOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case e@MessageEdgeObjectNew(g,in,out,a,b) => emitValDef(sym, "new generated.scala.MessageEdgeImpl(" + quote(g) + "," + quote(in) + "," + quote(out) + "," + quote(a) + "," + quote(b) + ")")
-      case MessageEdgeIn(e,v) => emitValDef(sym, quote(e) + ".in(" + quote(v) + ")")
-      case MessageEdgeOut(e,v) => emitValDef(sym, quote(e) + ".out(" + quote(v) + ")")
-      case MessageEdgeTarget(e,v) => emitValDef(sym, quote(e) + ".target(" + quote(v) + ")")
+      case e@EdgeObjectNew(g,in,out,a,b) => emitValDef(sym, "new generated.scala.Edge(" + quote(g) + "," + quote(in) + "," + quote(out) + "," + quote(a) + "," + quote(b) + ")")
+      case EdgeGetGraph(e) => emitValDef(sym, quote(e) + "._graph")
+      case EdgeGetInData(e) => emitValDef(sym, quote(e) + "._inData")
+      case EdgeGetOutData(e) => emitValDef(sym, quote(e) + "._outData")
+      case EdgeGetV1(e) => emitValDef(sym, quote(e) + "._v1")
+      case EdgeGetV2(e) => emitValDef(sym, quote(e) + "._v2")
       case _ => super.emitNode(sym, rhs)
     }
   }
 }
 
 
-trait CudaGenMessageEdgeOps extends BaseGenMessageEdgeOps with CudaGenBase with CudaGenDataStruct {
-  val IR: MessageEdgeOpsExp
+trait CudaGenEdgeOps extends BaseGenEdgeOps with CudaGenBase with CudaGenDataStruct {
+  val IR: EdgeOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
-trait CGenMessageEdgeOps extends BaseGenMessageEdgeOps with CGenBase {
-  val IR: MessageEdgeOpsExp
+trait CGenEdgeOps extends BaseGenEdgeOps with CGenBase {
+  val IR: EdgeOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }

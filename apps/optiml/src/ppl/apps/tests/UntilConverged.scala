@@ -64,8 +64,8 @@ trait UntilConverged extends OptiMLApplication {
     println("Update functions ran: " + count)
   }
 
-  def constructGraph(rows: Rep[Int], cols: Rep[Int], numRings: Rep[Int]): Rep[Graph[MessageVertex, MessageEdge]] = {
-    val g = Graph[MessageVertex, MessageEdge]()
+  def constructGraph(rows: Rep[Int], cols: Rep[Int], numRings: Rep[Int]): Rep[Graph] = {
+    val g = Graph()
 
     // Set vertex potential based on image
     var i = 0
@@ -75,7 +75,7 @@ trait UntilConverged extends OptiMLApplication {
       j = 0
       while (j < cols) {
         val data = DenoiseVertexData(1, Vector.zeros(numRings) map {_ + 1.0 }, Vector.zeros(numRings))
-        val vertex = MessageVertex(g, data)
+        val vertex = Vertex(g, data)
 
         g.addVertex(vertex)
         
