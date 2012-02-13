@@ -101,7 +101,6 @@ object Delite {
         println("Beginning Execution Run " + i)
         PerformanceTimer.start("all", false)
         executor.run(executable)
-        println("awaiting EOP")
         EOP_Global.await //await the end of the application program
         PerformanceTimer.stop("all", false)
         PerformanceTimer.print("all")
