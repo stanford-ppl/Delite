@@ -56,10 +56,6 @@ object OptiML {
 }
 
 
-
-
-
-
 /**
  * These are the portions of Scala imported into OptiML's scope.
  */
@@ -93,15 +89,14 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
   with VectorOps with OptiMLDenseVectorOps with OptiMLVectorViewOps with OptiMLRangeVectorOps
   with MatrixOps with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops 
   with StreamOps with StreamRowOps
-  with GraphOps with VerticesOps with EdgeOps with VertexOps with MessageEdgeOps with MessageVertexOps with VSetOps
+  with GraphOps with EdgeOps with VertexOps with VSetOps
   with TrainingSetOps with ImageOps with GrayscaleImageOps {
 
   this: OptiMLApplication =>
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities with DeliteCollectionOps with RangeOps with IOOps with SeqOps with SetOps
-  with ListOps with HashMapOps with IterableOps {
+trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities with GraphCompilerOps with DeliteCollectionOps {
 
   this: OptiMLApplication with OptiMLExp =>
 }
@@ -116,9 +111,10 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
   with VectorOpsExpOpt with MatrixOpsExpOpt with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp 
   with StreamOpsExpOpt with StreamRowOpsExpOpt
   with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
+  with GraphOpsExp with EdgeOpsExp with VertexOpsExp with VSetOpsExp
   with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard
   with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
-  with GraphOpsExp with VerticesOpsExp with EdgeOpsExp with VertexOpsExp with MessageEdgeOpsExp with MessageVertexOpsExp with VSetOpsExp
+  with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard
   with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?
@@ -197,15 +193,15 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
   with ScalaGenApplicationOps with ScalaGenLBPOps with ScalaGenLanguageOps 
   with ScalaGenVectorOps with ScalaGenMatrixOps with ScalaGenIndexVectorOps with ScalaGenIndexVectorDenseOps with ScalaGenIndexVector2Ops 
   with ScalaGenStreamOps with ScalaGenStreamRowOps
-  with ScalaGenGraphOps with ScalaGenVerticesOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenMessageEdgeOps with ScalaGenMessageVertexOps with ScalaGenVSetOps
+  with ScalaGenGraphOps with ScalaGenEdgeOps with ScalaGenVertexOps with ScalaGenVSetOps
   with ScalaGenTrainingSetOps with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
   with ScalaGenImageOps with ScalaGenGrayscaleImageOps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
   val IR: DeliteApplication with OptiMLExp
 
-  override val mlspecialize = Set(/*"LabelsImpl", "ImageImpl", "UnsupervisedTrainingSet",*/ "Stream", "StreamRow")
-  //override val mlspecialize2 = Set(/*"SupervisedTrainingSet"*/)
+  override val mlspecialize = Set(/*"LabelsImpl",*/ "Image", "UnsupervisedTrainingSet", "Stream", "StreamRow")
+  override val mlspecialize2 = Set("SupervisedTrainingSet")
 
   override def genSpec2(f: File, dsOut: String) {
     for (s1 <- List("Double","Int","Float","Long","Boolean")) {
@@ -223,7 +219,7 @@ trait OptiMLCodeGenScala extends OptiLACodeGenScala with OptiMLCodeGenBase with 
   override def remap[A](m: Manifest[A]): String = {
     val mGI = manifest[GrayscaleImage]
     m match {
-      case `mGI` => remap(manifest[DenseMatrix[Int]])
+      case `mGI` => remap(manifest[Image[Int]])
      // AKS TODO: remap Image[T] to DenseMatrix[T]
       case _ => super.remap(m)
     }

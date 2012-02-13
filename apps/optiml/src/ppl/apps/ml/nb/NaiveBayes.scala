@@ -41,7 +41,7 @@ trait NaiveBayes extends OptiMLApplication {
   def train(ts: Rep[SupervisedTrainingSet[Double,Double]]) : (Rep[DenseVector[Double]], Rep[DenseVector[Double]], Rep[Double]) = {
     val numTrainDocs = ts.numSamples 
     val numTokens = ts.numFeatures 
-//    val tsTrans = ts.t
+    val tsTrans = ts.t
 //    println("training set: ")
 //    ts.pprint
 //    println("training set transposed: ")
@@ -59,14 +59,14 @@ trait NaiveBayes extends OptiMLApplication {
 //    val phi_y0 = Vector.zeros(numTokens).mutable
     
     val phi_y1 = (0::numTokens) { j =>
-      val spamwordcount   = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) == 1 } { i => ts.t(j,i) }
+      val spamwordcount   = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) == 1 } { i => tsTrans(j,i) }
       val spam_totalwords = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) == 1 } { i => words_per_email(i) }
       
       (spamwordcount + 1) / (spam_totalwords + numTokens)
     }
     
     val phi_y0 = (0::numTokens) { j => 
-      val nonspamwordcount   = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) != 1 } { i => ts.t(j,i) }
+      val nonspamwordcount   = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) != 1 } { i => tsTrans(j,i) }
       val nonspam_totalwords = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) != 1 } { i => words_per_email(i) }
 
       (nonspamwordcount + 1) / (nonspam_totalwords + numTokens)

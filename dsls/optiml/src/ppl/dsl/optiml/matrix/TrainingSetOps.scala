@@ -100,8 +100,8 @@ trait ScalaGenTrainingSetOps extends ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case t@SupervisedTrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new generated.scala.SupervisedTrainingSet[" + remap(t.mA) + "," + remap(t.mB) + "](" + quote(xs) + "," + quote(labels) + ")")
-    case t@UnsupervisedTrainingSetObjectFromMat(xs) => emitValDef(sym, "new generated.scala.UnsupervisedTrainingSet[" + remap(t.mA) + "](" + quote(xs) + ")")
+    case t@SupervisedTrainingSetObjectFromMat(xs, labels) => emitValDef(sym, "new " + remap("generated.scala.SupervisedTrainingSet[" + remap(t.mA) + "," + remap(t.mB) + "]") + "(" + quote(xs) + "," + quote(labels) + ")")
+    case t@UnsupervisedTrainingSetObjectFromMat(xs) => emitValDef(sym, "new " + remap("generated.scala.UnsupervisedTrainingSet[" + remap(t.mA) + "]") + "(" + quote(xs) + ")")
     case TrainingSetGetData(x) => emitValDef(sym, quote(x) + "._data")
     case SupervisedTrainingSetGetLabels(x) => emitValDef(sym, quote(x) + "._labels")
     case _ => super.emitNode(sym, rhs)
