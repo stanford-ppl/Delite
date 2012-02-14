@@ -1,6 +1,6 @@
 package ppl.dsl.optila.datastruct.scala
 
-class DenseMatrix[T:Manifest](nRows: Int, nCols: Int) { //extends Matrix[T] {  
+class DenseMatrix[@specialized T: Manifest](nRows: Int, nCols: Int) { //extends Matrix[T] {
   var _numRows = nRows
   var _numCols = nCols
   var _data: Array[T] = new Array[T](nRows*nCols)

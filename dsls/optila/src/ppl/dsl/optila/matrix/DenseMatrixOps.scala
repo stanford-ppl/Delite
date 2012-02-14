@@ -541,159 +541,13 @@ trait CudaGenDenseMatrixOps extends CudaGenBase with CudaGenDataStruct {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-
     case DenseMatrixObjectNew(numRows,numCols) => stream.println("%s *%s_ptr = new %s(%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
-
-	  /* The ops that call through to the underlying data structure */
-    //case DenseMatrixDCApply(x,i) =>
-    //  emitValDef(sym, "%s.dcApply(%s)".format(quote(x),quote(i)))
-    //case DenseMatrixApply(x,i,j) =>
-    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
-    case DenseMatrixUpdate(x,i,j,y)  =>
-      stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
-    case DenseMatrixNumRows(x)  =>
-      emitValDef(sym, quote(x) + ".numRows")
-    case DenseMatrixNumCols(x)  =>
-      emitValDef(sym, quote(x) + ".numCols")
-
-    /* Specialized CUDA code generations for DeliteOpSingleTasks */
-    /*
-    case DenseMatrixUpdateRow(x, row, y) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->length".format(quote(y.ops.elem)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(y.ops.elem)))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(%s,%s,%s.apply(%s));".format(quote(x),quote(row),currDimStr,quote(y.ops.elem),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      currDim -= 1
-    */
-    
-	  /*
-    case DenseMatrixObjectDiag(w, vals) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s * %s".format(quote(w),quote(w)))
-      stream.println(addTab()+"if( %s < %s*%s ) {".format(currDimStr,quote(w),quote(w)))
-      tabWidth += 1
-      stream.println(addTab()+"int i = %s / %s;".format(currDimStr,quote(w)))
-      stream.println(addTab()+"int j = " + currDimStr + " % "  + quote(w) + ";")
-      stream.println(addTab()+"%s.update(i,j,0);".format(quote(sym)))
-      stream.println(addTab()+"if(i == j) {")
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(i, j, %s.apply(i));".format(quote(sym),quote(vals)))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitDenseMatrixAlloc(sym,"%s".format(quote(w)),"%s".format(quote(w)),false)
-      currDim -= 1
-*/
-    /*
-    case DenseMatrixTranspose(x) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->size()".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
-      stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
-      stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitDenseMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)),false)
-      currDim -= 1
-
-    case DenseMatrixSumCol(x) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->numCols".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"%s reducVal = 0;".format(remap(x.Type.typeArguments(0))))
-      stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"reducVal += %s.apply(i,%s);".format(quote(x),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      stream.println(addTab()+"%s.update(%s,reducVal);".format(quote(sym),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false)
-      currDim -= 1
-
-    /*
-    case m@DenseMatrixSigmoidF(x) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->size()".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-      val (sigmoidFunc,freeVars) = emitDevFunc(m.func,List(m.v))
-      stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
-      stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
-      if(freeVars.length == 0)
-        stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)));".format(quote(sym),sigmoidFunc,quote(x)))
-      else
-        stream.println(addTab()+"%s.update(i,j,%s(%s.apply(i,j)),%s);".format(quote(sym),sigmoidFunc,quote(x),freeVars.map(quote).mkString(",")))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitDenseMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)),false)
-      currDim -= 1
-  
-	  case m@DenseMatrixSigmoidFBLAS(x) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->size()".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-	  stream.println(addTab()+"float %s_result = 1.0f/(1.0f + exp(-1*%s.dcApply(%s)));".format(quote(sym),quote(x),currDimStr)) 
-      stream.println(addTab()+"%s.dcUpdate(%s,%s_result);".format(quote(sym),currDimStr,quote(sym)))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitDenseMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(x)),false)
-      currDim -= 1
-  */
-  /*
-	case DenseMatrixPlusEquals(x,y) =>
-		throw new GenerationFailedException("CudaGen: No dimension specified for this kernel.")
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->numCols".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(i,%s,%s.apply(i,%s)+%s.apply(i,%s));".format(quote(x),currDimStr,quote(x),currDimStr,quote(y),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      currDim -= 1
-    
-    case DenseMatrixPlusEquals(x,y) if(useLocalVar) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength(quote(x)+"->size()")
-      val varX = if(hasLocalVar(x,currDimStr)) getLocalVar(x,currDimStr)
-                 else "NOT FOUND X"
-      val varY = if(hasLocalVar(y,currDimStr)) getLocalVar(y,currDimStr)
-                 else "NOT FOUND Y"
-      stream.println(addTab()+"%s = %s + %s;".format(varX,varX,varY))
-      currDim -= 1
-	*/
-  /*
-    case DenseMatrixGetRow(x,i) =>
-      if(kernelSymbol != sym) {
-        //stream.println(addTab()+"%s %s;".format(remap(sym.Type),quote(sym)))
-        stream.println(addTab()+"%s.length = %s.numCols;".format(quote(sym),quote(x)))
-        stream.println(addTab()+"%s.isRow = true;".format(quote(sym)))
-        stream.println(addTab()+"%s.data = %s.data+%s*%s.numCols;".format(quote(sym),quote(x),quote(i),quote(x)))
-        emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false,"%s->data".format(quote(x)))
-      }
-  */
-    */
+    case DenseMatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
+    case DenseMatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
+    case DenseMatrixRawData(x) => emitValDef(sym, quote(getBlockResult(x)) + ".getdata()")
+    case DenseMatrixSetNumRows(x,v) => stream.println(quote(x) + ".numRows = " + quote(v) + ";")
+    case DenseMatrixSetNumCols(x,v) => stream.println(quote(x) + ".numCols = " + quote(v) + ";")
+    case DenseMatrixSetRawData(x,data) => stream.println(quote(x) + ".setdata(" + quote(data) + ");")
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -703,73 +557,6 @@ trait OpenCLGenDenseMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-   
-    case DenseMatrixObjectNew(numRows,numCols) =>
-      stream.println(addTab()+"%s *devPtr;".format(remap(sym.Type.typeArguments(0))))
-      stream.println(addTab()+"DeliteCudaMalloc((void**)&devPtr,%s*%s*sizeof(%s));".format(quote(numRows),quote(numCols),remap(sym.Type.typeArguments(0))))
-      stream.println("%s *%s_ptr = new %s(%s,%s,devPtr);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
-      //stream.println("%s.numRows = %s;".format(quote(sym),quote(numRows)))
-      //stream.println("%s.numCols = %s;".format(quote(sym),quote(numCols)))
-      //stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
-   /* 
-	  /* The ops that call through to the underlying data structure */
-    //case DenseMatrixDCApply(x,i) =>
-    //  emitValDef(sym, "%s.dcApply(%s)".format(quote(x),quote(i)))
-    //case DenseMatrixApply(x,i,j) =>
-    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
-    */
-    case DenseMatrixUpdate(x,i,j,y)  =>
-      stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
-    case DenseMatrixNumRows(x)  =>
-      emitValDef(sym, quote(x) + ".numRows")
-    case DenseMatrixNumCols(x)  =>
-      emitValDef(sym, quote(x) + ".numCols")
-
-    /* Specialized CUDA code generations for DeliteOpSingleTasks */
-    /*
-    case DenseMatrixUpdateRow(x, row, y) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->length".format(quote(y.ops.elem)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(y.ops.elem)))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(%s,%s,%s.apply(%s));".format(quote(x),quote(row),currDimStr,quote(y.ops.elem),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      currDim -= 1
-
-    case DenseMatrixTranspose(x) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->size()".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
-      stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
-      stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitDenseMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)),false)
-      currDim -= 1
-
-    case DenseMatrixSumCol(x) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->numCols".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"%s reducVal = 0;".format(remap(x.Type.typeArguments(0))))
-      stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"reducVal += %s.apply(i,%s);".format(quote(x),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      stream.println(addTab()+"%s.update(%s,reducVal);".format(quote(sym),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false)
-      currDim -= 1
-    */
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -779,35 +566,6 @@ trait CGenDenseMatrixOps extends CGenBase {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    
-    case DenseMatrixObjectNew(numRows,numCols) =>
-      stream.println("%s *%s_data = malloc(sizeof(%s)*%s*%s);".format(remap(sym.Type.typeArguments(0)),quote(sym),remap(sym.Type.typeArguments(0)),quote(numRows),quote(numCols)))
-      stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
-      stream.println("%s.numRows = %s;".format(quote(sym),quote(numRows)))
-      stream.println("%s.numCols = %s;".format(quote(sym),quote(numCols)))
-      stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
-    /*
-    case DenseMatrixGetRow(x,i) =>
-      stream.println("Vector<%s> %s;".format(remap(sym.Type.typeArguments(0)),quote(sym)))
-      stream.println("%s.len = %s.numCols;".format(quote(sym),quote(x)))
-      stream.println("%s.isRow = true;".format(quote(sym)))
-      stream.println("%s.data = %s.data+%s.numCols*%s;".format(quote(sym),quote(x),quote(x),quote(i)))
-    //case DenseMatrixDCApply(x,i) =>
-    //  emitValDef(sym, "%s.apply(%s)".format(quote(x),quote(i)))
-    //case DenseMatrixApply(x,i,j) =>
-    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
-    */
-    case DenseMatrixUpdate(x,i,j,y)  =>
-      stream.println("%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
-    case DenseMatrixNumRows(x)  =>
-      emitValDef(sym, quote(x) + ".numRows")
-    case DenseMatrixNumCols(x)  =>
-      emitValDef(sym, quote(x) + ".numCols")
-    case DenseMatrixInsertRow(x, pos, y)  =>
-      stream.println("%s.data = (%s *)realloc(%s.data,sizeof(%s)*(%s.numRows+1)*%s.numCols);".format(quote(x),remap(x.Type.typeArguments(0)),quote(x),remap(x.Type.typeArguments(0)),quote(x),quote(x)))
-      stream.println("memcpy(%s.data+%s*%s.numCols,%s.data,sizeof(%s)*%s.length);".format(quote(x),quote(pos),quote(x),quote(y),remap(x.Type.typeArguments(0)),quote(y)))
-      stream.println("%s.numRows += 1;".format(quote(x)))
-      stream.println("%s %s = %s;".format(remap(sym.Type),quote(sym),quote(x)))
     case _ => super.emitNode(sym, rhs)
   }
 }
