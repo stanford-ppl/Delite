@@ -94,8 +94,11 @@ trait DenseMatrixOps extends Variables {
     
     // overrides
     def *(y: Rep[DenseVector[A]])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext): Rep[DenseVector[A]] = densematrix_times_vector(x,y)
-  }
+    override def sigmoid(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext): Rep[DenseMatrix[Double]] = densematrix_sigmoid(x)
+    override def sigmoidf(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext): Rep[DenseMatrix[Float]] = densematrix_sigmoidf(x)
 
+  }
+  
   // object defs
   //def symmatrix_obj_new[A:Manifest](n: Rep[Int]): Rep[SymmetricMatrix[A]]
   def densematrix_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[A]]
@@ -380,12 +383,12 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   def densematrix_inverse[A:Manifest](x: Exp[DenseMatrix[A]])(implicit conv: Exp[A] => Exp[Double], ctx: SourceContext) = reflectPure(DenseMatrixInverse(x))
   
   def densematrix_sigmoid[A:Manifest](x: Exp[DenseMatrix[A]])(implicit conv: Exp[A] => Exp[Double], ctx: SourceContext) = {
-    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(DenseMatrixSigmoidVectorized(x))    
-    reflectPure(MatrixSigmoid[A,DenseMatrix[Double]](x))
+    if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(DenseMatrixSigmoidVectorized(x.asInstanceOf[Exp[DenseMatrix[Double]]]))    
+    else reflectPure(MatrixSigmoid[A,DenseMatrix[Double]](x))
   }
   def densematrix_sigmoidf[A:Manifest](x: Exp[DenseMatrix[A]])(implicit conv: Exp[A] => Exp[Double], ctx: SourceContext) = {
-    if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(DenseMatrixSigmoidVectorized(x))    
-    reflectPure(MatrixSigmoidF[A,DenseMatrix[Float]](x))
+    if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(DenseMatrixSigmoidVectorized(x.asInstanceOf[Exp[DenseMatrix[Float]]]))    
+    else reflectPure(MatrixSigmoidF[A,DenseMatrix[Float]](x))
   }
   
   def densematrix_maprows[A:Manifest,B:Manifest](x: Exp[DenseMatrix[A]], f: Exp[VectorView[A]] => Exp[DenseVector[B]])(implicit ctx: SourceContext) = {
