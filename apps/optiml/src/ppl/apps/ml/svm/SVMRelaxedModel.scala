@@ -34,9 +34,11 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
   /////////////
   // training
 
-  def train(X: Rep[TrainingSet[Double,Double]], Y: Rep[DenseVector[Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
+  def train(ts: Rep[SupervisedTrainingSet[Double,Double]], Y: Rep[DenseVector[Double]], C: Rep[Double], tol: Rep[Double], max_passes: Rep[Int]) = {
     println("Training SVM using the SMO algorithm")
-
+    
+    val X = ts.data
+    
     // intermediate training info
     alphas = Vector.zeros(X.numRows).t // col vector
     b = 0.0
@@ -150,9 +152,9 @@ trait SVMRelaxedModels { this: OptiMLApplication =>
     print("\n")
   }
 
-  def computeWeights(X: Rep[TrainingSet[Double,Double]], Y: Rep[DenseVector[Double]]){
+  def computeWeights(X: Rep[SupervisedTrainingSet[Double,Double]], Y: Rep[DenseVector[Double]]){
     // compute the weights (assuming a linear kernel)
-    weights = sum(0, X.numRows) { i=>
+    weights = sum(0, X.numSamples) { i=>
       X(i)*alphas(i)*Y(i)
     }
   }

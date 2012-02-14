@@ -22,7 +22,7 @@ trait StreamRowOpsExp extends StreamRowOps with BaseExp { this: OptiMLExp =>
   // implemented via method on real data structure
   case class StreamRowIndex[A:Manifest](x: Exp[StreamRow[A]]) extends Def[Int]
 
-  def streamrow_index[A:Manifest](x: Exp[StreamRow[A]])(implicit ctx: SourceContext) = reflectPure(StreamRowIndex(x))
+  def streamrow_index[A:Manifest](x: Exp[StreamRow[A]])(implicit ctx: SourceContext): Rep[Int] 
 }
 
 trait StreamRowOpsExpOpt extends StreamRowOpsExp with VectorViewOpsExp { this: OptiMLExp =>
@@ -43,7 +43,7 @@ trait StreamRowOpsExpOpt extends StreamRowOpsExp with VectorViewOpsExp { this: O
     case Def(StreamChunkRow(Def(/*Reflect(*/StreamObjectNew(numRows,numCols,chunkSize,func,isPure)/*,_,_)*/), i, offset)) => offset*chunkSize + i
     //case Def(StreamChunkRow(Def(StreamObjectNew(numRows,numCols,chunkSize,func,isPure)), i, offset)) => offset*chunkSize + i
     case Def(StreamChunkRowFusable(Def(/*Reflect(*/StreamObjectNew(numRows,numCols,chunkSize,func,isPure)/*,_,_)*/), i, offset)) => offset*chunkSize + i
-    case _ => super.streamrow_index(x)
+    case _ => err("internal error: streamrow_index should have been overridden") //super.streamrow_index(x)
   }
 }
 

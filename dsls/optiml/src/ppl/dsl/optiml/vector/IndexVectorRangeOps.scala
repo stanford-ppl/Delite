@@ -21,10 +21,10 @@ trait IndexVectorRangeOps extends Base with OverloadHack { this: OptiML =>
   // manifest[A] match {
   //     case Manifest.Int => indexRangeVecBuilder
   //   }  
-  implicit def indexRangeVecBuilder = new VectorBuilder[Int,IndexVectorRange] {
-    def alloc(length: Rep[Int], isRow: Rep[Boolean]) = (unit(0)::length)
-    def toIntf(x: Rep[IndexVectorRange]): Interface[IndexVector] = indexVecRangeToInterface(x)
-  }  
+  // implicit def indexRangeVecBuilder = new VectorBuilder[Int,IndexVectorRange] {
+  //   def alloc(length: Rep[Int], isRow: Rep[Boolean]) = (unit(0)::length)
+  //   def toIntf(x: Rep[IndexVectorRange]): Interface[IndexVector] = indexVecRangeToInterface(x)
+  // }  
   
   class IndexVecRangeOpsCls(val elem: Rep[IndexVectorRange]) extends IndexVecOpsCls {
     type Self = IndexVectorRange
@@ -64,7 +64,7 @@ trait IndexVectorRangeOpsExp extends IndexVectorRangeOps with DeliteCollectionOp
     case Def(IndexVectorRangeNew(s,e)) => s + n
     case Def(v@Reflect(IndexVectorRangeNew(s,e), u, es)) /*if context.contains(v)*/ => s + n
   }  
-  
+    
   /////////////////////
   // delite collection
   

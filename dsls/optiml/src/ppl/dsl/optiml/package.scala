@@ -9,8 +9,8 @@ package object optiml {
   type Vector[T] = optila.Vector[T]
   type DenseVector[T] = optila.DenseVector[T]
   //type SparseVector[T] = optila.SparseVector[T]
-  type RowVector[T] = optila.RowVector[T]
-  type ColVector[T] = optila.ColVector[T]
+  type VectorRow[T] = optila.VectorRow[T]
+  type VectorCol[T] = optila.VectorCol[T]
   //type ZeroVector[T] = optila.ZeroVector[T]
   //type EmptyVector[T] = optila.EmptyVector[T]
   type RangeVector = optila.RangeVector

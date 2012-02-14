@@ -164,8 +164,8 @@ trait ScalaGenImageOps extends ScalaGenBase {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case m@ImageObjectNew(numRows, numCols) => emitValDef(sym, "new generated.scala.Image[" + remap(m.mA) + "](" + quote(numRows) + "," + quote(numCols) + ")")
-    case m@ImageObjectFromMat(x) => emitValDef(sym, "new generated.scala.Image[" + remap(m.mA) + "](" + quote(x) + ")")
+    case m@ImageObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap("generated.scala.Image[" + remap(m.mA) + "]") + "(" + quote(numRows) + "," + quote(numCols) + ")")
+    case m@ImageObjectFromMat(x) => emitValDef(sym, "new " + remap("generated.scala.Image[" + remap(m.mA) + "]") + "(" + quote(x) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 }

@@ -48,6 +48,15 @@ public:
         data = da->data;
         length = _length;
     }
+
+    __device__ DeliteArray<T> getdata(void) {
+      DeliteArray<T> da(length, data);
+      return da;
+    }
+
+    __device__ void setdata(DeliteArray<T> da) {
+      data = da.data;
+    }
     
 };
 

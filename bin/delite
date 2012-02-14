@@ -56,25 +56,29 @@ def run(deg, params, opts):
     os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
 
 
-    java_opts = java_opts + "-Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.gpus=" + opts.num_gpus + " -Ddelite.runs=" + opts.num_runs + " -Dstats.dump.component=app"
+    java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.gpus=" + opts.num_gpus + " -Ddelite.runs=" + opts.num_runs
 
-    os.putenv("JAVA_OPTS", java_opts)
+    #add classpaths
+    cp = " -cp "
+    cp = cp + delitecommon.DELITE_HOME + "/runtime/target/" + delitecommon.scala_virt_version + "/classes" + os.pathsep
+    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep
+    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-compiler.jar"
+
+    java_opts = java_opts + cp
+    #os.putenv("JAVA_OPTS", java_opts)
 
     #MKL ENV
     os.putenv("LD_PRELOAD", delitecommon.JAVA_HOME + "/jre/lib/amd64/libjsig.so")
     os.putenv("OMP_NUM_THREADS", str(opts.num_threads))
     
-    #emit other envs
-    os.putenv('DELITE_HOME', delitecommon.DELITE_HOME)
-    os.putenv('JAVA_HOME', delitecommon.JAVA_HOME)
-    os.putenv('SCALA_VIRT_HOME', delitecommon.SCALA_VIRT_HOME)
-
     if opts.verbose:
         delitecommon.printEnv()
 
     print "== executing application: " + deg + " " + ' '.join(params)
-    print "== with options: " + java_opts + "\n"
-    ecode = os.system(delitecommon.DELITE_HOME + "/bin/exec " + deg + " " + ' '.join(params))
+    print "== with options: " + java_opts + "\n" 
+    java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " ppl.delite.runtime.Delite " + deg + " " + ' '.join(params)
+    #print java_cmd
+    ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite execution failed")
 

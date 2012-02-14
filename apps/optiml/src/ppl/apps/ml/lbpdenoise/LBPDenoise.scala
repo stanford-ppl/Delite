@@ -92,7 +92,7 @@ trait LBPDenoise extends OptiMLApplication {
 
         // Multiply belief by messages
         for (e <- v.edges) {  //TODO TR: non-mutable write
-          val in = e.AsInstanceOf[MessageEdge].in(v).AsInstanceOf[DenoiseEdgeData]  
+          val in = e.AsInstanceOf[Edge].in(v).AsInstanceOf[DenoiseEdgeData]  
           unaryFactorTimesM(belief, in.message)  //TODO TR: non-mutable write
           
          /* if(count % 100000 == 0) {
@@ -114,8 +114,8 @@ trait LBPDenoise extends OptiMLApplication {
 
         // Send outbound messages
         for (e <- v.edges) { //TODO TR: non-mutable write (within)
-          val in = e.AsInstanceOf[MessageEdge].in(v).AsInstanceOf[DenoiseEdgeData]
-          val out = e.AsInstanceOf[MessageEdge].out(v).AsInstanceOf[DenoiseEdgeData]
+          val in = e.AsInstanceOf[Edge].in(v).AsInstanceOf[DenoiseEdgeData]
+          val out = e.AsInstanceOf[Edge].out(v).AsInstanceOf[DenoiseEdgeData]
        
           val cavity = vdata.belief.mutable
           
@@ -184,7 +184,7 @@ trait LBPDenoise extends OptiMLApplication {
          
           // Enqueue update function on target vertex if residual is greater than bound
           if (residual > bound) {
-            v.addTask(e.AsInstanceOf[MessageEdge].target(v)) //TODO TR: non-mutable write
+            v.addTask(e.AsInstanceOf[Edge].target(v)) //TODO TR: non-mutable write
           }
         }
       count += 1 
@@ -201,12 +201,12 @@ trait LBPDenoise extends OptiMLApplication {
     println("Update functions ran: " + count)
   }
 
-  def constructGraph(img: Rep[DenseMatrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Rep[Graph[MessageVertex, MessageEdge]] = {
-    val g = Graph[MessageVertex, MessageEdge]()
+  def constructGraph(img: Rep[DenseMatrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Rep[Graph] = {
+    val g = Graph()
 
     val sigmaSq = sigma * sigma
 
-    val vertices = DenseMatrix[MessageVertex](img.numRows, img.numCols)
+    val vertices = DenseMatrix[Vertex](img.numRows, img.numCols)
 
     // Set vertex potential based on image
     var i = 0
@@ -229,7 +229,7 @@ trait LBPDenoise extends OptiMLApplication {
         unaryFactorNormalizeM(potential)
 
         val data = DenoiseVertexData(pixelId, unaryFactorUniform(numRings), potential)
-        val vertex = MessageVertex(g, data)
+        val vertex = Vertex(g, data)
 
         vertices(i,j) = vertex //TODO TR: non-mutable write (use matrix update?)        
         g.addVertex(vertex)
@@ -252,7 +252,7 @@ trait LBPDenoise extends OptiMLApplication {
           val edgeData2 = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
         
           val tmp = vertices(i)
-          val edgeRight = MessageEdge(g, edgeData, edgeData2, tmp(j), tmp(j+1))
+          val edgeRight = Edge(g, edgeData, edgeData2, tmp(j), tmp(j+1))
           g.addEdge(edgeRight, tmp(j), tmp(j+1))
         }
 
@@ -261,7 +261,7 @@ trait LBPDenoise extends OptiMLApplication {
           val edgeData2 = DenoiseEdgeData(unaryFactorUniform(numRings), unaryFactorUniform(numRings))
           val tmp1 = vertices(i)
           val tmp2 = vertices(i+1)
-          val edgeDown = MessageEdge(g, edgeData, edgeData2, tmp1(j), tmp2(j))
+          val edgeDown = Edge(g, edgeData, edgeData2, tmp1(j), tmp2(j))
           g.addEdge(edgeDown, tmp1(j), tmp2(j))
         }
         j += 1
@@ -461,4 +461,18 @@ trait LBPDenoise extends OptiMLApplication {
 
     (uf.exp * indices.toDouble).sum / uf.exp.sum
   }
+  
+  // def printBeliefs(v: Rep[DenseVector[Vertex]): Rep[Unit] = {
+  //   for(i <- 0 until v.length) {
+  //     val data = v(i).data.AsInstanceOf[DenoiseVertexData] 
+  //     print(data.id + " [ ") //" " + System.identityHashCode(data.belief) + " [")
+  //     
+  //     for(j <- 0 until data.belief.length) {
+  //       print(" " + data.belief.data(j))
+  //     }
+  //     
+  //     println("]")
+  //   }
+  // }
+  
 }

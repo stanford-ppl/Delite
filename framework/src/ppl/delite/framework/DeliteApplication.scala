@@ -48,7 +48,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
   
   final def main(args: Array[String]) {
-    println("Delite Application Being Staged:[" + this.getClass.getSimpleName + "]")
+    println("Delite Application Being Staged:[" + this.getClass.getName + "]")
 
     println("******Generating the program******")
 
@@ -111,7 +111,7 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
 
 
   final def execute(args: Array[String]) {
-    println("Delite Application Being Executed:[" + this.getClass.getSimpleName + "]")
+    println("Delite Application Being Executed:[" + this.getClass.getName + "]")
 
     println("******Executing the program*********")
     globalDefs = List()

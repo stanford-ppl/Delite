@@ -2,7 +2,7 @@ package ppl.dsl.optiml.datastruct.scala
 
 import ppl.dsl.optila.datastruct.scala._
 
-class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: Int, val func: (Int,Int) => T, val isPure: Boolean) extends Stream[T] {
+class Stream[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: Int, val func: (Int,Int) => T, val isPure: Boolean) { //extends Stream[T] {
     val bufRows = math.min(numRows, chunkSize)
     val size = numCols*bufRows
     protected var _data: Array[T] =  try { new Array[T](size) }
@@ -26,7 +26,7 @@ class StreamImpl[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: 
 
     def chunkRow(idx: Int, offset: Int) = {
       //vview(idx*numCols, 1, numCols, true)
-      new StreamRowImpl[T](idx, offset, this, _data)
+      new StreamRow[T](idx, offset, this, _data)
     }
 
     def rawElem(idx: Int): T = {

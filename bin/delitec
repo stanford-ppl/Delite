@@ -12,8 +12,7 @@ from time import localtime, strftime
 import delitecommon
 
 LMS_HOME = os.getenv("LMS_HOME")
-#lms_version = "lms_2.10.0-virtualized-SNAPSHOT"
-lms_version = "lms"
+lms_version = "lms_2.10.0-M1-virtualized"
 
 def err(s):
     exit("error: " + s)
@@ -59,7 +58,7 @@ def stage(runner, opts):
     java_opts = os.getenv("JAVA_OPTS", "")
 
     build_dir = opts.build_dir + "/generated/"
-    java_opts = java_opts + " -Ddelite.home.dir=" + delitecommon.DELITE_HOME + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + runner + ".deg"
+    java_opts = java_opts + " -server" + " -Ddelite.home.dir=" + delitecommon.DELITE_HOME + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + runner + ".deg"
     if opts.no_blas == False:
         java_opts = java_opts + " -Ddelite.extern.blas"
     if opts.gpu == True:
@@ -67,24 +66,50 @@ def stage(runner, opts):
     if opts.no_fusion == True:
         java_opts = java_opts + " -Ddelite.enable.fusion=false"
     java_opts = java_opts + " -Dnested.variants.level=0"
+    
+    scala_virt_version = delitecommon.scala_virt_version
+    DELITE_HOME = delitecommon.DELITE_HOME
+    SCALA_VIRT_HOME = delitecommon.SCALA_VIRT_HOME
+    
+    #add classpaths for Delite
+    cp = " -cp "
+    cp = cp + LMS_HOME + "/*" + os.pathsep
+    cp = cp + DELITE_HOME + "/framework/target/" + scala_virt_version + "/classes" + os.pathsep
+    
+    #OptiLA cp
+    cp = cp + DELITE_HOME + "/dsls/optila/target/" + scala_virt_version + "/classes" + os.pathsep
+    cp = cp + DELITE_HOME + "/apps/optila/target/" + scala_virt_version + "/classes" + os.pathsep
 
-    os.putenv("JAVA_OPTS", java_opts)
+    #OptiML cp
+    cp = cp + DELITE_HOME + "/dsls/optiml/target/" + scala_virt_version + "/classes" + os.pathsep
+    cp = cp + DELITE_HOME + "/apps/optiml/target/" + scala_virt_version + "/classes" + os.pathsep
+
+    #OptiQL cp
+    cp = cp + DELITE_HOME + "/dsls/optiql/target/" + scala_virt_version + "/classes" + os.pathsep
+    cp = cp + DELITE_HOME + "/apps/optiql/target/" + scala_virt_version + "/classes" + os.pathsep
+
+    #test cp
+    cp = cp + DELITE_HOME + "/tests/target/" + scala_virt_version + "/classes" + os.pathsep
+    cp = cp + DELITE_HOME + "/target/" + scala_virt_version + "/test-classes" + os.pathsep
+
+    #scala-virt cp
+    cp = cp + SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep
+    cp = cp + SCALA_VIRT_HOME + "/scala-compiler.jar"
+
+    java_opts = java_opts + cp
+    #os.putenv("JAVA_OPTS", java_opts)
 
     #MKL ENV
     os.putenv("LD_PRELOAD", delitecommon.JAVA_HOME + "/jre/lib/amd64/libjsig.so")
     
-    #emit other envs
-    os.putenv('LMS_HOME', LMS_HOME)
-    os.putenv('DELITE_HOME', delitecommon.DELITE_HOME)
-    os.putenv('JAVA_HOME', delitecommon.JAVA_HOME)
-    os.putenv('SCALA_VIRT_HOME', delitecommon.SCALA_VIRT_HOME)
-
     if opts.verbose:
        delitecommon.printEnv()
        print("LMS_HOME = " + LMS_HOME)
 
     print "==  Generating DEG file with options: " + str(opts)
-    ecode = os.system(delitecommon.DELITE_HOME + "/bin/gen " + runner)
+    java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " " + runner
+    #print exec
+    ecode = os.system(java_cmd)
     if ecode != 0:
         err("Delite compilation failed")
 

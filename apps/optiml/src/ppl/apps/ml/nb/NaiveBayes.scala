@@ -20,11 +20,12 @@ trait NaiveBayes extends OptiMLApplication {
     val testFile = args(1)
 
     // Train Model
-    val (trainingSet,trainingLabels) = readTokenMatrix(trainingFile)
+    val (trainData,trainLabels) = readTokenMatrix(trainingFile)
+    val trainingSet = SupervisedTrainingSet(trainData,trainLabels)
     //val start_train = System.currentTimeMillis()
-    println("Training model on " + trainingSet.numRows/*numSamples*/ + " documents.")
+    println("Training model on " + trainingSet.numSamples + " documents.")
     tic()
-    val (phi_y1, phi_y0, phi_y) = train(trainingSet, trainingLabels)//train(trainingSet)
+    val (phi_y1, phi_y0, phi_y) = train(trainingSet)
     toc(phi_y1,phi_y0)
 
     // test
@@ -37,10 +38,9 @@ trait NaiveBayes extends OptiMLApplication {
     //PerformanceTimer.save("NaiveBayes")
   }
 
-  //def train(ts: Rep[TrainingSet[Double,Double]]) : (Rep[DenseVector[Double]], Rep[DenseVector[Double]], Rep[Double]) = {
-  def train(ts: Rep[DenseMatrix[Double]], labels: Rep[DenseVector[Double]]): (Rep[DenseVector[Double]], Rep[DenseVector[Double]], Rep[Double]) = {
-    val numTrainDocs = ts.numRows //ts.numSamples
-    val numTokens = ts.numCols //ts.numFeatures
+  def train(ts: Rep[SupervisedTrainingSet[Double,Double]]) : (Rep[DenseVector[Double]], Rep[DenseVector[Double]], Rep[Double]) = {
+    val numTrainDocs = ts.numSamples 
+    val numTokens = ts.numFeatures 
     val tsTrans = ts.t
 //    println("training set: ")
 //    ts.pprint
@@ -53,21 +53,21 @@ trait NaiveBayes extends OptiMLApplication {
 
     val words_per_email = (0::numTrainDocs){ i => ts(i).sum }
 
-    val spamcount = labels.sum //ts.labels.sum
+    val spamcount = ts.labels.sum
 
 //    val phi_y1 = Vector.zeros(numTokens).mutable
 //    val phi_y0 = Vector.zeros(numTokens).mutable
     
     val phi_y1 = (0::numTokens) { j =>
-      val spamwordcount   = sumIf[Double,Double](0, numTrainDocs) { /*ts.*/labels(_) == 1 } { i => /*ts.t*/tsTrans(j,i) }
-      val spam_totalwords = sumIf[Double,Double](0, numTrainDocs) { /*ts.*/labels(_) == 1 } { i => words_per_email(i) }
+      val spamwordcount   = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) == 1 } { i => tsTrans(j,i) }
+      val spam_totalwords = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) == 1 } { i => words_per_email(i) }
       
       (spamwordcount + 1) / (spam_totalwords + numTokens)
     }
     
     val phi_y0 = (0::numTokens) { j => 
-      val nonspamwordcount   = sumIf[Double,Double](0, numTrainDocs) { /*ts.*/labels(_) != 1 } { i => /*ts.t*/tsTrans(j,i) }
-      val nonspam_totalwords = sumIf[Double,Double](0, numTrainDocs) { /*ts.*/labels(_) != 1 } { i => words_per_email(i) }
+      val nonspamwordcount   = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) != 1 } { i => tsTrans(j,i) }
+      val nonspam_totalwords = sumIf[Double,Double](0, numTrainDocs) { ts.labels(_) != 1 } { i => words_per_email(i) }
 
       (nonspamwordcount + 1) / (nonspam_totalwords + numTokens)
     }

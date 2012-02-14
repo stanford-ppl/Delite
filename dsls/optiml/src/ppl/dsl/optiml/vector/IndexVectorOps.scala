@@ -120,10 +120,11 @@ trait ScalaGenIndexVectorOps extends ScalaGenBase {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case v@IndexVectorRangeNew(start, end) =>
-      emitValDef(sym, "new generated.scala.IndexVectorRangeImpl(" + quote(start) +  "," + quote(end) + ")")
+    // should not be required -- pattern matches in IndexVectorRangeOps.scala should always take precedence
+    // case v@IndexVectorRangeNew(start, end) =>
+    //   emitValDef(sym, "new generated.scala.IndexVectorRange(" + quote(start) +  "," + quote(end) + ")")
     case v@IndexVectorDenseNew(len) =>
-      emitValDef(sym, "new generated.scala.IndexVectorDenseImpl(" + quote(len) + ")")
+      emitValDef(sym, "new generated.scala.IndexVectorDense(" + quote(len) + ")")
 
     case _ => super.emitNode(sym, rhs)
   }

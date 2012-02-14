@@ -11,6 +11,7 @@ package ppl.dsl.optila.datastruct.scala
  *
  */
 
+/*
 //class RangeDenseVector(val start: Int, val end: Int, val stride: Int, __isRow: Boolean) extends RangeVector {
 class RangeVector(val start: Int, val end: Int, val stride: Int, __isRow: Boolean) { //extends Vector[Int] {
 
@@ -75,3 +76,4 @@ class RangeVector(val start: Int, val end: Int, val stride: Int, __isRow: Boolea
   //   throw new UnsupportedOperationException("toList is not implemented on RangeDenseVector yet")
   // }
 }
+*/

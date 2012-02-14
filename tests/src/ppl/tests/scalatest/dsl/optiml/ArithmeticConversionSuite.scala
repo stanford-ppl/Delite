@@ -36,10 +36,10 @@ trait PrimitiveConversions extends DeliteTestModule with OptiMLApplication {
     val lit1 = 1.0 + dbl
     val lit2 = 1.0 + int
     val lit3 = 1.0 + flt
-    val lit4 = 1 + dbl
+    val lit4 = unit(1) /*TR FIXME*/ + dbl
     val lit5 = 1 + int
     val lit6 = 1 + flt
-    val lit7 = 1f + dbl
+    val lit7 = unit(1f) /*TR FIXME*/ + dbl
     val lit8 = 1f + int
     val lit9 = 1f + flt
     val lit10 = dbl + 1.0

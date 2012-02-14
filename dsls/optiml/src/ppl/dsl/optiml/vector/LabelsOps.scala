@@ -9,6 +9,7 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import ppl.dsl.optiml._
 import scala.reflect.SourceContext
 
+/*
 trait LabelsOps extends Base with OverloadHack {
   this: OptiML =>
 
@@ -61,3 +62,4 @@ trait ScalaGenLabelsOps extends ScalaGenBase {
     case _ => super.emitNode(sym, rhs)
   }
 }
+*/

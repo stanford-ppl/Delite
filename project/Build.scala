@@ -2,19 +2,20 @@ import sbt._
 import Keys._
 
 object DeliteBuild extends Build {
-  //val virtualization_lms_core = "EPFL" % "lms_2.10" % "0.1" % "2.10.0-virtualized-SNAPSHOT" 
-  val virtualization_lms_core = "EPFL" % "lms" % "0.1" 
+  val virtualization_lms_core = "EPFL" % "lms_2.10.0-M1-virtualized" % "0.1"
   
   // FIXME: custom-built scalatest
   val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
   val scalatest = "org.scalatest" % "scalatest_2.10.0-virtualized-SNAPSHOT" % "1.6.1-SNAPSHOT" //% "test"
 
-  val virtScala = "2.10.0-virtualized-SNAPSHOT"
-  val virtBuildSettings = Defaults.defaultSettings ++ Seq(
-    scalaSource in Compile <<= baseDirectory(_ / "src"),
+  val virtScala = "2.10.0-M1-virtualized"//"2.10.0-virtualized-SNAPSHOT"
+  val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
     resolvers += ScalaToolsSnapshots, 
+    organization := "stanford-ppl",
     resolvers += dropboxScalaTestRepo,
     scalaVersion := virtScala,
+    scalaBinaryVersion := virtScala,
+    publishArtifact in (Compile, packageDoc) := false,
     libraryDependencies += virtualization_lms_core,
     // needed for scala.tools, which is apparently not included in sbt's built in version
     libraryDependencies += "org.scala-lang" % "scala-library" % virtScala,
@@ -22,8 +23,13 @@ object DeliteBuild extends Build {
     // used in delitec to access jars
     retrieveManaged := true,
     scalacOptions += "-Yno-generic-signatures",
-    scalacOptions += "-Yvirtualize" 
+    scalacOptions += "-Yvirtualize"
   )
+
+  val virtBuildSettings = virtBuildSettingsBase ++ Seq(
+    scalaSource in Compile <<= baseDirectory(_ / "src")
+  )
+
 
   /*
   val vanillaScala = "2.9.1"
@@ -50,7 +56,7 @@ object DeliteBuild extends Build {
   // useless base directory is to avoid compiling leftover .scala files in the project root directory
   lazy val _delite = Project("delite", file("project/boot")) aggregate(framework, dsls, runtime, apps, tests)
 
-  lazy val framework = Project("framework", file("framework"), settings = virtBuildSettings)
+  lazy val framework = Project("framework", file("framework"), settings = virtBuildSettings) dependsOn(runtime) // dependency to runtime because of Scopes
 
   lazy val dsls = Project("dsls", file("dsls"), settings = virtBuildSettings) aggregate(optila, optiml, optiql) 
   lazy val optila = Project("optila", file("dsls/optila"), settings = virtBuildSettings) dependsOn(framework)
@@ -64,10 +70,13 @@ object DeliteBuild extends Build {
 
   lazy val runtime = Project("runtime", file("runtime"), settings = virtBuildSettings)
 
-  lazy val tests = Project("tests", file("tests"), settings = virtBuildSettings ++ Seq(
-    scalaSource in Test := file("tests/src/ppl/tests/scalatest"),
+  lazy val tests = Project("tests", file("tests"), settings = virtBuildSettingsBase ++ Seq(
+    scalaSource := file("tests/main-src"),
+    scalaSource in Test := file("tests/src"),
     libraryDependencies += scalatest,
     parallelExecution in Test := false
     // don't appear to be able to depend on a different scala version simultaneously, so just using scala-virtualized for everything
-  )) dependsOn(framework % "test->compile;compile->compile", optiml % "test->compile;compile->compile", optiql % "test", optimlApps % "test->compile;compile->compile", runtime % "test->compile;compile->compile")
+  )) dependsOn(framework, runtime, optiml, optimlApps, runtime)
+  
+  //dependsOn(framework % "test->compile;compile->compile", optiml % "test->compile;compile->compile", optiql % "test", optimlApps % "test->compile;compile->compile", runtime % "test->compile;compile->compile")
 }
