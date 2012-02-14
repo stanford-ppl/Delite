@@ -15,6 +15,19 @@ public:
         DeliteCudaMalloc((void**)&data,length*sizeof(T));
     }
 
+    __host__ __device__ DeliteArray(int _length, T *_data) {
+        length = _length;
+        data = _data;
+    }
+
+    __host__ __device__ T apply(int idx) {
+        return data[idx];
+    }
+
+    __host__ __device__ void update(int idx, T value) {
+        data[idx] = value;
+    }
+
     // DeliteCoolection
     __host__ __device__ int size() {
         return length;

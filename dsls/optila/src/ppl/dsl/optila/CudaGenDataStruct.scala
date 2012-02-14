@@ -16,20 +16,17 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   val MatrixImplCls = "jclass MatrixImplCls = env->FindClass(\"generated/scala/MatrixImpl\");\n"
 
-  /**
-   * Transfer functions for DensVector types
-   */
   def densevectorCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeArg = sym.Type.typeArguments.head
     val numBytesStr = "%s->length * sizeof(%s)".format(quote(sym),remap(typeArg))
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"length\",\"()I\");\n")
-    out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"isRow\",\"()Z\");\n")
+    out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"_length\",\"()I\");\n")
+    out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"_isRow\",\"()Z\");\n")
     out.append("\t%s *%s = new %s(env->CallIntMethod(obj,mid_length),env->CallBooleanMethod(obj,mid_isRow));\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
 
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"_data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
     out.append("\tj%sArray data = (j%sArray)(env->CallObjectMethod(obj,mid_data));\n".format(remap(typeArg),remap(typeArg)))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(remap(typeArg),remap(typeArg)))
 
@@ -67,19 +64,19 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def matrixCopyInputHtoD(sym: Sym[Any]): String = {
+  def densematrixCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeArg = sym.Type.typeArguments.head
     val numBytesStr = "%s->numRows * %s->numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(typeArg))
 
     // Get class, method ID and set the fields other than data
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\tjmethodID mid_numRows = env->GetMethodID(cls,\"numRows\",\"()I\");\n")
-    out.append("\tjmethodID mid_numCols = env->GetMethodID(cls,\"numCols\",\"()I\");\n")
+    out.append("\tjmethodID mid_numRows = env->GetMethodID(cls,\"_numRows\",\"()I\");\n")
+    out.append("\tjmethodID mid_numCols = env->GetMethodID(cls,\"_numCols\",\"()I\");\n")
     out.append("\t%s *%s = new %s(env->CallIntMethod(obj,mid_numRows),env->CallIntMethod(obj,mid_numCols));\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
 
     // Get data(array) from scala data structure
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"_data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
     out.append("\tj%sArray data = (j%sArray)(env->CallObjectMethod(obj,mid_data));\n".format(remap(typeArg),remap(typeArg)))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(remap(typeArg),remap(typeArg)))
 
@@ -100,6 +97,26 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   }
 
+  def delitearrayCopyInputHtoD(sym: Sym[Any]): String = {
+    val out = new StringBuilder
+    val typeArg = sym.Type.typeArguments.head
+    val numBytesStr = "length * sizeof(%s)".format(quote(sym),remap(typeArg))
+
+    out.append("\tint length = env->GetArrayLength((j%sArray)obj);\n".format(remap(typeArg)))
+    out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical((j%sArray)obj,0);\n".format(remap(typeArg),remap(typeArg),remap(typeArg)))
+    out.append("\t%s *%s = new %s(length);\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+
+    out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
+    out.append("\tDeliteCudaMallocHost((void**)&hostPtr,%s);\n".format(numBytesStr))
+
+    out.append("\tmemcpy(hostPtr, dataPtr, %s);\n".format(numBytesStr))
+    out.append("\tDeliteCudaMemcpyHtoDAsync(%s->data, hostPtr, %s);\n".format(quote(sym),numBytesStr))
+
+    out.append("\tenv->ReleasePrimitiveArrayCritical((j%sArray)obj, dataPtr, 0);\n".format(remap(typeArg)))
+    out.append("\treturn %s;\n".format(quote(sym)))
+    out.toString
+  }
+
   def densevectorCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeArg = sym.Type.typeArguments.head
@@ -115,7 +132,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMallocHost((void**)&hostPtr,%s);\n".format(numBytesStr))
 
     // Get data(array) of scala data structure
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"_data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
     out.append("\tj%sArray data = (j%sArray)(env->CallObjectMethod(obj,mid_data));\n".format(remap(typeArg),remap(typeArg)))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(remap(typeArg),remap(typeArg)))
 
@@ -131,13 +148,13 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  def matrixCopyOutputDtoH(sym: Sym[Any]): String = {
+  def densematrixCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeArg = sym.Type.typeArguments.head
     val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(typeArg))
 
     // Allocate Scala object for the destination
-    out.append("\tjclass cls = env->FindClass(\"generated/scala/%sMatrixImpl\");\n".format(typeArg.toString))
+    out.append("\tjclass cls = env->FindClass(\"generated/scala/%sDenseMatrix\");\n".format(typeArg.toString))
     out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(II)V\");\n")
     out.append("\tjobject obj = env->NewObject(cls,mid,%s.numRows,%s.numCols);\n".format(quote(sym),quote(sym)))
 
@@ -146,7 +163,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tDeliteCudaMallocHost((void**)&hostPtr,%s);\n".format(numBytesStr))
 
     // Get data(array) of scala data structure
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"_data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
     out.append("\tj%sArray data = (j%sArray)(env->CallObjectMethod(obj,mid_data));\n".format(remap(typeArg),remap(typeArg)))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(remap(typeArg),remap(typeArg)))
 
@@ -166,13 +183,13 @@ trait CudaGenDataStruct extends CudaCodegen {
    * transfer functions up to this point are verified
    */
 
-  def matrixCopyMutableInputDtoH(sym: Sym[Any]): String = {
+  def densematrixCopyMutableInputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeArg = sym.Type.typeArguments.head
     val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(typeArg))
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"_data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
     out.append("\tj%sArray data = (j%sArray)(env->CallObjectMethod(obj,mid_data));\n".format(remap(typeArg),remap(typeArg)))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(remap(typeArg),remap(typeArg)))
     out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
@@ -193,7 +210,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     val numBytesStr = "%s.length * sizeof(%s)".format(quote(sym),remap(typeArg))
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"_data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
     out.append("\tj%sArray data = (j%sArray)(env->CallObjectMethod(obj,mid_data));\n".format(remap(typeArg),remap(typeArg)))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(remap(typeArg),remap(typeArg)))
     out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
@@ -206,6 +223,10 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tenv->DeleteLocalRef(cls);\n")
 
     out.toString
+  }
+
+  def delitearrayCopyMutableInputDtoH(sym: Sym[Any]): String = {
+    "//TODO: Implement this!\n"
   }
 
   // Dummy methods temporarily just for the compilation

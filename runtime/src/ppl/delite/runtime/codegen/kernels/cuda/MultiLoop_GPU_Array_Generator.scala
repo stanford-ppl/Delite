@@ -84,11 +84,12 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   private def writeFileHeader(out: StringBuilder, op: OP_MultiLoop) {
     out.append("#include <cuda.h>\n")
-    out.append("#include <cudpp.h>\n")
+    //out.append("#include <cudpp.h>\n")
+    out.append("#include <thrust/scan.h>\n")
     out.append("#include \"helperFuncs.h\"\n")
     out.append("#include \"" + op.id + ".cu\"\n")
     out.append("extern cudaStream_t kernelStream;\n")
-    out.append("extern CUDPPHandle cudppHandle;\n")
+    //out.append("extern CUDPPHandle cudppHandle;\n")
   }
 
   private def writeLauncherHeader(out: StringBuilder, op: OP_MultiLoop) {
@@ -384,17 +385,11 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   private def writeScanKernel(out: StringBuilder, op: OP_MultiLoop) {
     //exclusive scan
-    out.append("CUDPPConfiguration config;\n")
-    out.append("config.algorithm = CUDPP_SCAN;\n")
-    out.append("config.op = CUDPP_ADD;\n")
-    out.append("config.datatype = CUDPP_UINT;\n")
-    out.append("config.options = CUDPP_OPTION_FORWARD | CUDPP_OPTION_EXCLUSIVE;\n")
-    out.append("CUDPPHandle plan;\n")
-    out.append("cudppPlan(cudppHandle, &plan, config, " + op.size + ", 1, 0);\n")
     for ((odata,osym) <- conditionList(op)) {
-      out.append("cudppScan(plan, " + "scanmap_" + osym + ", bitmap_" + osym + ", " + op.size + ");\n")
+      out.append("thrust::device_ptr<unsigned int> bitmap_" + osym + "_thrust(bitmap_" + osym + ");\n")
+      out.append("thrust::device_ptr<unsigned int> scanmap_" + osym + "_thrust(scanmap_" + osym + ");\n")
+      out.append("thrust::exclusive_scan(bitmap_" + osym + "_thrust, bitmap_" + osym + "_thrust+" + op.size + ", scanmap_" + osym + "_thrust);\n")
     }
-    out.append("cudppDestroyPlan(plan);\n")
   }
 
   // Allocate & Register temporary memory for filter and reduction operations

@@ -5,11 +5,5 @@
   <prefix> -I </prefix>
   <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include </path> <!-- required for JNI -->
   <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include/linux </path>
-  <path> /home/kjbrown/cudpp_src_2.0/include </path> <!-- cudpp is a required library -->
 </headers>
-<libs>
-  <prefix> -L </prefix>
-  <path> /home/kjbrown/cudpp_src_2.0/lib </path>
-  <library> -lcudpp </library>
-</libs>
 </DeliteExternalLib>
