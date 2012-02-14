@@ -603,10 +603,10 @@ trait CudaGenDenseVectorOps extends BaseGenDenseVectorOps with CudaGenFat with C
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case DenseVectorNew(length, isRow) => stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(length),quote(isRow)))
-    case DenseVectorApply(x, n) =>
-      emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
-    case DenseVectorUpdate(x,n,y) =>
-      stream.println(addTab() + "%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
+    //case DenseVectorApply(x, n) =>
+    //  emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
+    //case DenseVectorUpdate(x,n,y) =>
+    //  stream.println(addTab() + "%s.update(%s,%s);".format(quote(x),quote(n),quote(y)))
     case DenseVectorLength(x)    =>
       emitValDef(sym, quote(x) + ".length")
     case DenseVectorIsRow(x)     =>

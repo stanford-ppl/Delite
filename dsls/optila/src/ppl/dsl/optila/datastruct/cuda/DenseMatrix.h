@@ -1,20 +1,21 @@
-#ifndef _MATRIXIMPL_H_
-#define _MATRIXIMPL_H_
+#ifndef _DENSEMATRIX_H_
+#define _DENSEMATRIX_H_
 
 #include "DeliteCuda.h"
+#include "DeliteArray.h"
 #include "VectorViewImpl.h"
 
 template <class T>
-class Matrix {
+class DenseMatrix {
 public:
     T *data;
 	int numRows;
 	int numCols;
 	
 	// Constructors
-	__host__ __device__ Matrix() {}
+	__host__ __device__ DenseMatrix() {}
 
-	__host__ __device__ Matrix(int _numRows, int _numCols) {
+	__host__ __device__ DenseMatrix(int _numRows, int _numCols) {
         numRows = _numRows;
         numCols = _numCols;
         DeliteCudaMalloc((void**)&data,numRows*numCols*sizeof(T));
@@ -48,6 +49,15 @@ public:
     __host__  __device__ VectorView<T> getRow(int row) {
       VectorView<T> v(numCols,true,data,row*numCols,1);
       return v;
+    }
+
+    __device__ DeliteArray<T> getdata(void) {
+      DeliteArray<T> da(numRows*numCols, data);
+      return da;
+    }
+
+    __device__ void setdata(DeliteArray<T> da) {
+      data = da.data;
     }
 
 };

@@ -1187,68 +1187,6 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-
-    // case MatrixObjectNew(numRows,numCols) => stream.println("%s *%s_ptr = new %s(%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
-    // case MatrixGetRow(x,i) => emitValDef(sym, quote(x) + ".getRow(" + quote(i) + ")")
-
-	  /* The ops that call through to the underlying data structure */
-    //case MatrixDCApply(x,i) =>
-    //  emitValDef(sym, "%s.dcApply(%s)".format(quote(x),quote(i)))
-    //case MatrixApply(x,i,j) =>
-    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
-    // case MatrixUpdate(x,i,j,y)  =>
-    //   stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
-    // case MatrixNumRows(x)  =>
-    //   emitValDef(sym, quote(x) + ".numRows")
-    // case MatrixNumCols(x)  =>
-    //   emitValDef(sym, quote(x) + ".numCols")
-
-    /* Specialized CUDA code generations for DeliteOpSingleTasks */
-
-      /*
-    case MatrixUpdateRow(x, row, y) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->length".format(quote(y.ops.elem)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(y.ops.elem)))
-      tabWidth += 1
-      stream.println(addTab()+"%s.update(%s,%s,%s.apply(%s));".format(quote(x),quote(row),currDimStr,quote(y.ops.elem),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      currDim -= 1
-
-    case MatrixTranspose(x) =>
-      //currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->size()".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
-      stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
-      stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)),false)
-      //currDim -= 1
-
-    case MatrixSumCol(x) =>
-      //currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength("%s->numCols".format(quote(x)))
-      stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"%s reducVal = 0;".format(remap(x.Type.typeArguments(0))))
-      stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
-      tabWidth += 1
-      stream.println(addTab()+"reducVal += %s.apply(i,%s);".format(quote(x),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      stream.println(addTab()+"%s.update(%s,reducVal);".format(quote(sym),currDimStr))
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false)
-      //currDim -= 1
-     */
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -1258,72 +1196,6 @@ trait OpenCLGenMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-   
-    // case MatrixObjectNew(numRows,numCols) =>
-    //   stream.println(addTab()+"%s *devPtr;".format(remap(sym.Type.typeArguments(0))))
-    //   stream.println(addTab()+"DeliteCudaMalloc((void**)&devPtr,%s*%s*sizeof(%s));".format(quote(numRows),quote(numCols),remap(sym.Type.typeArguments(0))))
-    //   stream.println("%s *%s_ptr = new %s(%s,%s,devPtr);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
-      //stream.println("%s.numRows = %s;".format(quote(sym),quote(numRows)))
-      //stream.println("%s.numCols = %s;".format(quote(sym),quote(numCols)))
-      //stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
-    
-	  /* The ops that call through to the underlying data structure */
-    //case MatrixDCApply(x,i) =>
-    //  emitValDef(sym, "%s.dcApply(%s)".format(quote(x),quote(i)))
-    //case MatrixApply(x,i,j) =>
-    //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
-    // case MatrixUpdate(x,i,j,y)  =>
-    //   stream.println(addTab() + "%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
-    // case MatrixNumRows(x)  =>
-    //   emitValDef(sym, quote(x) + ".numRows")
-    // case MatrixNumCols(x)  =>
-    //   emitValDef(sym, quote(x) + ".numCols")
-
-      /*
-    /* Specialized CUDA code generations for DeliteOpSingleTasks */
-    // case MatrixUpdateRow(x, row, y) =>
-    //   //currDim += 1
-    //   val currDimStr = getCurrDimStr()
-    //   setCurrDimLength("%s->length".format(quote(y.ops.elem)))
-    //   stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(y.ops.elem)))
-    //   tabWidth += 1
-    //   stream.println(addTab()+"%s.update(%s,%s,%s.apply(%s));".format(quote(x),quote(row),currDimStr,quote(y.ops.elem),currDimStr))
-    //   tabWidth -= 1
-    //   stream.println(addTab()+"}")
-    //   //currDim -= 1
-    // 
-    // case MatrixTranspose(x) =>
-    //   //currDim += 1
-    //   val currDimStr = getCurrDimStr()
-    //   setCurrDimLength("%s->size()".format(quote(x)))
-    //   stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(x)))
-    //   tabWidth += 1
-    //   stream.println(addTab()+"int i = %s / %s.numCols;".format(currDimStr,quote(x)))
-    //   stream.println(addTab()+"int j = " + currDimStr + " % " + "%s.numCols;".format(quote(x)))
-    //   stream.println(addTab()+"%s.update(j, i, %s.apply(i,j));".format(quote(sym),quote(x)))
-    //   tabWidth -= 1
-    //   stream.println(addTab()+"}")
-    //   emitMatrixAlloc(sym,"%s.numCols".format(quote(x)),"%s.numRows".format(quote(x)),false)
-    //   //currDim -= 1
-    // 
-    // case MatrixSumCol(x) =>
-    //   //currDim += 1
-    //   val currDimStr = getCurrDimStr()
-    //   setCurrDimLength("%s->numCols".format(quote(x)))
-    //   stream.println(addTab()+"if( %s < %s.numCols ) {".format(currDimStr,quote(x)))
-    //   tabWidth += 1
-    //   stream.println(addTab()+"%s reducVal = 0;".format(remap(x.Type.typeArguments(0))))
-    //   stream.println(addTab()+"for(int i=0; i<%s.numRows; i++) {".format(quote(x)))
-    //   tabWidth += 1
-    //   stream.println(addTab()+"reducVal += %s.apply(i,%s);".format(quote(x),currDimStr))
-    //   tabWidth -= 1
-    //   stream.println(addTab()+"}")
-    //   stream.println(addTab()+"%s.update(%s,reducVal);".format(quote(sym),currDimStr))
-    //   tabWidth -= 1
-    //   stream.println(addTab()+"}")
-    //   emitVectorAlloc(sym,"%s.numCols".format(quote(x)),"true",false)
-    //   //currDim -= 1
-    // */
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -1333,33 +1205,6 @@ trait CGenMatrixOps extends CGenBase {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-
-    // case MatrixObjectNew(numRows,numCols) =>
-    //   stream.println("%s *%s_data = malloc(sizeof(%s)*%s*%s);".format(remap(sym.Type.typeArguments(0)),quote(sym),remap(sym.Type.typeArguments(0)),quote(numRows),quote(numCols)))
-    //   stream.println("%s %s;".format(remap(sym.Type),quote(sym)))
-    //   stream.println("%s.numRows = %s;".format(quote(sym),quote(numRows)))
-    //   stream.println("%s.numCols = %s;".format(quote(sym),quote(numCols)))
-    //   stream.println("%s.data = %s_data;".format(quote(sym),quote(sym)))
-    // case MatrixGetRow(x,i) =>
-    //   stream.println("Vector<%s> %s;".format(remap(sym.Type.typeArguments(0)),quote(sym)))
-    //   stream.println("%s.len = %s.numCols;".format(quote(sym),quote(x)))
-    //   stream.println("%s.isRow = true;".format(quote(sym)))
-    //   stream.println("%s.data = %s.data+%s.numCols*%s;".format(quote(sym),quote(x),quote(x),quote(i)))
-    // //case MatrixDCApply(x,i) =>
-    // //  emitValDef(sym, "%s.apply(%s)".format(quote(x),quote(i)))
-    // //case MatrixApply(x,i,j) =>
-    // //  emitValDef(sym, "%s.apply(%s,%s)".format(quote(x),quote(i),quote(j)))
-    // case MatrixUpdate(x,i,j,y)  =>
-    //   stream.println("%s.update(%s,%s,%s);".format(quote(x),quote(i),quote(j),quote(y)))
-    // case MatrixNumRows(x)  =>
-    //   emitValDef(sym, quote(x) + ".numRows")
-    // case MatrixNumCols(x)  =>
-    //   emitValDef(sym, quote(x) + ".numCols")
-    // case MatrixInsertRow(x, pos, y)  =>
-    //   stream.println("%s.data = (%s *)realloc(%s.data,sizeof(%s)*(%s.numRows+1)*%s.numCols);".format(quote(x),remap(x.Type.typeArguments(0)),quote(x),remap(x.Type.typeArguments(0)),quote(x),quote(x)))
-    //   stream.println("memcpy(%s.data+%s*%s.numCols,%s.data,sizeof(%s)*%s.length);".format(quote(x),quote(pos),quote(x),quote(y),remap(x.Type.typeArguments(0)),quote(y)))
-    //   stream.println("%s.numRows += 1;".format(quote(x)))
-    //   stream.println("%s %s = %s;".format(remap(sym.Type),quote(sym),quote(x)))
     case _ => super.emitNode(sym, rhs)
   }
 }
