@@ -29,7 +29,7 @@ trait DenseVector[T] extends Vector[T]
 
 // Range and View should never dispatch to Dense ops, because the Dense implementation of abstract vector methods is incorrect for them
 trait RangeVector extends Vector[Int] with VectorRow[Int]
-trait VectorView[T] extends Vector[T] //DenseVector[T] //extends DenseVector[T]
+trait VectorView[T] extends Vector[T] //DenseVector[T] 
 
 // these do not add any functionality, but are used for type-checking
 // the mix-ins define their possible static dispatch receivers

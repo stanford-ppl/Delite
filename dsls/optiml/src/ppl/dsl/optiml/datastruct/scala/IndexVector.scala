@@ -18,7 +18,7 @@ import ppl.dsl.optila.datastruct.scala._
  *
  */
 
-class IndexVectorDense(__length: Int) { //extends DenseVector[Int](__length, true) with IndexVectorDense
+class IndexVectorDense(__length: Int) { 
   var _length = __length
   var _isRow = true
   var _data: Array[Int] = new Array[Int](_length)
@@ -38,22 +38,24 @@ class IndexVectorDense(__length: Int) { //extends DenseVector[Int](__length, tru
   }    
 }
 
-class IndexVectorRange(__start: Int, __end: Int) { //extends RangeVector(_start, _end, 1, true) with IndexVectorRange
+class IndexVectorRange(__start: Int, __end: Int) { 
   var _start = __start
   var _end = __end
   var _stride = 1
   var _isRow = true
+  
+  def unsafeSetData(xs: Array[Int], len: Int) {
+    throw new IllegalArgumentException("RangeVector cannot be updated")
+  }
     
-  // val length = (end-start + stride - 1) / stride
-  // def isRow = _isRow
-  // 
-  // def apply(n: Int) : Int = {
-  //   start + n*stride
-  // }
-
-  //def Clone = { val v = new DenseVector[Int](0, isRow); v.insertAll(0, this); v }
-
-  // def unsafeSetData(xs: Array[Int], len: Int) {
-  //   throw new IllegalArgumentException("RangeVector cannot be updated")
-  // }
+  def Clone = { 
+    val len = _end - _start
+    val v = new DenseVector[Int](len, _isRow)
+    var i = 0
+    while (i < len) {
+      v._data(i) = _start + i
+      i += 1
+    }
+    v
+  }  
 }

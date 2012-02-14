@@ -118,16 +118,16 @@ trait CudaGenGrayscaleImageOps extends CudaGenBase with CudaGenDataStruct {
   val IR: GrayscaleImageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 trait CGenGrayscaleImageOps extends CGenBase {
   val IR: GrayscaleImageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
