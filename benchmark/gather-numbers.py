@@ -158,7 +158,7 @@ def launchApps(options):
             opts = opts + " --gpu"
         if options['fusion'] == False:
             opts = opts + " --nf"
-        opts = opts + " " + java_opts
+        opts = opts
         #os.putenv("JAVA_OPTS", opts)
         
         stage_cmd = props['delite.home'] + "/bin/delitec " + opts + " " + classes[app]
