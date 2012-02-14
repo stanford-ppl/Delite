@@ -16,14 +16,14 @@ import ppl.dsl.optila.datastruct.scala._
 
 // TODO: we auto-generate everything else, but can't handle getters and setters yet
 
-trait DenoiseVertexData extends MessageData {
+trait DenoiseVertexData {
   def potential: DenseVector[Double]
   def belief: DenseVector[Double]
   def setBelief(b: DenseVector[Double])
   def id: Int
 }
 
-trait DenoiseEdgeData extends MessageData {
+trait DenoiseEdgeData {
   def message: DenseVector[Double]
   def setMessage(m: DenseVector[Double])
   def oldMessage: DenseVector[Double]

@@ -1,7 +1,7 @@
 package ppl.dsl.optiml
 
 trait LanguageImplOps { this: OptiML =>
-  def optiml_untilconverged_impl(g: Rep[Graph], block: Rep[Vertex] => Rep[Unit]): Rep[Unit]
+  def optiml_untilconverged_impl[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], block: Rep[Vertex[VD,ED]] => Rep[Unit]): Rep[Unit]
   def optiml_untilconverged_impl[A:Manifest:Cloneable](
      x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
      block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double]): Rep[A]  
@@ -10,12 +10,12 @@ trait LanguageImplOps { this: OptiML =>
 trait LanguageImplOpsStandard extends LanguageImplOps {
   this: OptiMLCompiler with OptiMLLift =>
   
-  def optiml_untilconverged_impl(g: Rep[Graph], block: Rep[Vertex] => Rep[Unit]) = {
+  def optiml_untilconverged_impl[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], block: Rep[Vertex[VD,ED]] => Rep[Unit]) = {
     val vertices = g.vertices
 
     val tasks = vertices.Clone
     //val tasks = repCloneableToCloneableOps(vertices)(vectorCloneable[V],manifest[Vertices[V]]).Clone
-    val seen = Set[Vertex]()
+    val seen = Set[Vertex[VD,ED]]()
     
     while(tasks.length > 0) {
       tasks.foreach(block)
@@ -26,7 +26,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
         val vtasks = vertices(i).tasks
         totalTasks += vtasks.length
         for(j <- 0 until vtasks.length) {
-          val task = vtasks(j).AsInstanceOf[Vertex]
+          val task = vtasks(j).AsInstanceOf[Vertex[VD,ED]]
           if(!seen.contains(task)) {
             tasks += task
             seen.add(task)

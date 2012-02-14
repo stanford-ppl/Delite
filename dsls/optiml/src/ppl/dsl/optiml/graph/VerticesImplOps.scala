@@ -7,7 +7,7 @@ import ppl.dsl.optiml._
 trait VerticesImplOps { 
   this: OptiML =>
   
-  def vertices_tolist_impl(v: Rep[DenseVector[Vertex]]): Rep[List[Vertex]]
+  def vertices_tolist_impl[VD:Manifest,ED:Manifest](v: Rep[DenseVector[Vertex[VD,ED]]]): Rep[List[Vertex[VD,ED]]]
 }
 
 trait VerticesImplOpsStandard extends VerticesImplOps {
@@ -17,7 +17,7 @@ trait VerticesImplOpsStandard extends VerticesImplOps {
   //////////////////////////
   // kernel implementations
 
-  def vertices_tolist_impl(v: Rep[DenseVector[Vertex]]) = {
+  def vertices_tolist_impl[VD:Manifest,ED:Manifest](v: Rep[DenseVector[Vertex[VD,ED]]]) = {
     val data = densevector_raw_data(v)
     list_fromseq(data.toSeq)
   }

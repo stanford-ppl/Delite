@@ -9,8 +9,8 @@ import scala.reflect.SourceContext
  * This file should be auto-generated!
  */
 
-trait DenoiseVertexData extends MessageData
-trait DenoiseEdgeData extends MessageData
+trait DenoiseVertexData //extends MessageData
+trait DenoiseEdgeData //extends MessageData
 
 trait LBPOps extends DenoiseVertexDataOps with DenoiseEdgeDataOps
 trait LBPOpsExp extends DenoiseVertexDataOpsExp with DenoiseEdgeDataOpsExp

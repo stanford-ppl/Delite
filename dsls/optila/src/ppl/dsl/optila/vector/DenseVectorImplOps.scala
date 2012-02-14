@@ -59,7 +59,7 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
     for (i <- 0 until xs.length) {
       v(i) = xs(i)
     }
-    v //.unsafeImmutable
+    v.unsafeImmutable
   }
 
   def densevector_obj_ones_impl(length: Rep[Int]) = DenseVector[Double](length, true) mmap { e => 1. } 

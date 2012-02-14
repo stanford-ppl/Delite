@@ -102,12 +102,12 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
   def optiml_untilconverged[A:Manifest:Cloneable](x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
                                                   block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double])(implicit ctx: SourceContext): Rep[A]
 
-  def untilconverged(g: Rep[Graph])
-                    (block: Rep[Vertex] => Rep[Unit])
+  def untilconverged[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]])
+                    (block: Rep[Vertex[VD,ED]] => Rep[Unit])
                     (implicit ctx: SourceContext): Rep[Unit]
     = optiml_untilconverged(g, block)
 
-  def optiml_untilconverged(g: Rep[Graph], block: Rep[Vertex] => Rep[Unit])(implicit ctx: SourceContext) : Rep[Unit]
+  def optiml_untilconverged[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], block: Rep[Vertex[VD,ED]] => Rep[Unit])(implicit ctx: SourceContext) : Rep[Unit]
 
 
   /**
@@ -400,10 +400,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
   // for now, just unroll the implementation
   // we need a concept of a composite op to do this without unrolling, so that we can have a different result type than the while
-  def optiml_untilconverged(g: Rep[Graph], block: Rep[Vertex] => Rep[Unit])(implicit ctx: SourceContext) = {
+  def optiml_untilconverged[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], block: Rep[Vertex[VD,ED]] => Rep[Unit])(implicit ctx: SourceContext) = {
     val vertices = g.vertices
-    val tasks : Rep[DenseVector[Vertex]] = vertices.mutable
-    val seen = Set[Vertex]()
+    val tasks : Rep[DenseVector[Vertex[VD,ED]]] = vertices.mutable
+    val seen = Set[Vertex[VD,ED]]()
     
     while(tasks.length > unit(0)) {
       //tasks.mforeach(block)
@@ -415,7 +415,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
         val vtasks = vertices(i).tasks
         //totalTasks += vtasks.length
         for(j <- unit(0) until vtasks.length) {
-          val task = vtasks(j).AsInstanceOf[Vertex]
+          val task = vtasks(j).AsInstanceOf[Vertex[VD,ED]]
           if(!seen.contains(task)) {
             tasks += task   //TODO TR: non-mutable write (use mclone)
             seen.add(task)   //TODO TR: non-mutable write

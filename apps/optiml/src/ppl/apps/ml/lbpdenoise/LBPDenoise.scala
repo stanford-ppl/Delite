@@ -92,7 +92,7 @@ trait LBPDenoise extends OptiMLApplication {
 
         // Multiply belief by messages
         for (e <- v.edges) {  //TODO TR: non-mutable write
-          val in = e.AsInstanceOf[Edge].in(v).AsInstanceOf[DenoiseEdgeData]  
+          val in = e.AsInstanceOf[Edge[DenoiseVertexData,DenoiseEdgeData]].in(v)
           unaryFactorTimesM(belief, in.message)  //TODO TR: non-mutable write
           
          /* if(count % 100000 == 0) {
@@ -114,8 +114,8 @@ trait LBPDenoise extends OptiMLApplication {
 
         // Send outbound messages
         for (e <- v.edges) { //TODO TR: non-mutable write (within)
-          val in = e.AsInstanceOf[Edge].in(v).AsInstanceOf[DenoiseEdgeData]
-          val out = e.AsInstanceOf[Edge].out(v).AsInstanceOf[DenoiseEdgeData]
+          val in = e.AsInstanceOf[Edge[DenoiseVertexData,DenoiseEdgeData]].in(v)
+          val out = e.AsInstanceOf[Edge[DenoiseVertexData,DenoiseEdgeData]].out(v)
        
           val cavity = vdata.belief.mutable
           
@@ -184,7 +184,7 @@ trait LBPDenoise extends OptiMLApplication {
          
           // Enqueue update function on target vertex if residual is greater than bound
           if (residual > bound) {
-            v.addTask(e.AsInstanceOf[Edge].target(v)) //TODO TR: non-mutable write
+            v.addTask(e.AsInstanceOf[Edge[DenoiseVertexData,DenoiseEdgeData]].target(v)) //TODO TR: non-mutable write
           }
         }
       count += 1 
@@ -201,12 +201,12 @@ trait LBPDenoise extends OptiMLApplication {
     println("Update functions ran: " + count)
   }
 
-  def constructGraph(img: Rep[DenseMatrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Rep[Graph] = {
-    val g = Graph()
+  def constructGraph(img: Rep[DenseMatrix[Double]], numRings: Rep[Int], sigma: Rep[Double]): Rep[Graph[DenoiseVertexData,DenoiseEdgeData]] = {
+    val g = Graph[DenoiseVertexData,DenoiseEdgeData]()
 
     val sigmaSq = sigma * sigma
 
-    val vertices = DenseMatrix[Vertex](img.numRows, img.numCols)
+    val vertices = DenseMatrix[Vertex[DenoiseVertexData,DenoiseEdgeData]](img.numRows, img.numCols)
 
     // Set vertex potential based on image
     var i = 0

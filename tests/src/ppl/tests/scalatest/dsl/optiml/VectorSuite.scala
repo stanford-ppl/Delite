@@ -231,7 +231,7 @@ trait Find extends DeliteTestModule with OptiMLApplication {
   def main() = {
 
     val v = Vector(1,2,3,5,5,5,7,8,9,10)
-    val i = v.find { _ == 5 }
+    val i: Rep[DenseVector[Int]] = v.find { _ == 5 }
     collect(i == Vector(3,4,5))
     mkReport
   }

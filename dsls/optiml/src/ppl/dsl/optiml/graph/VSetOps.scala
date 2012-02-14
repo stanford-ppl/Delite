@@ -9,15 +9,16 @@ import ppl.delite.framework.DeliteApplication
 import ppl.dsl.optiml._
 
 trait VSetOps extends Variables {
-  def vset_vertices(s: Rep[Set[Vertex]]) : Rep[DenseVector[Vertex]]
+  def vset_vertices[VD:Manifest,ED:Manifest](s: Rep[Set[Vertex[VD,ED]]]) : Rep[DenseVector[Vertex[VD,ED]]]
 }
 
 trait VSetOpsExp extends VSetOps with EffectExp {
-  case class VSetVertices(s: Exp[Set[Vertex]]) extends Def[DenseVector[Vertex]] {
-    val mV = manifest[Vertex]
+  case class VSetVertices[VD:Manifest,ED:Manifest](s: Exp[Set[Vertex[VD,ED]]]) extends Def[DenseVector[Vertex[VD,ED]]] {
+    val mVD = manifest[VD]
+    val mED = manifest[ED]
   }
 
-  def vset_vertices(s: Exp[Set[Vertex]]) = reflectMutable(VSetVertices(s))
+  def vset_vertices[VD:Manifest,ED:Manifest](s: Exp[Set[Vertex[VD,ED]]]) = reflectMutable(VSetVertices(s))
 }
 
 trait BaseGenVSetOps extends GenericNestedCodegen {
@@ -34,7 +35,7 @@ trait ScalaGenVSetOps extends BaseGenVSetOps with ScalaGenEffect {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case o@VSetVertices(s) => emitValDef(sym, "new generated.scala.DenseVector[Vertex](" + quote(s) + ".toArray)")
+    case o@VSetVertices(s) => emitValDef(sym, "new generated.scala.DenseVector[Vertex[" + remap(o.mVD) + "," + remap(o.mED) + "]](" + quote(s) + ".toArray)")
     case _ => super.emitNode(sym, rhs)
   }
 }

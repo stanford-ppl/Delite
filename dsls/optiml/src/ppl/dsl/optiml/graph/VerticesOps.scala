@@ -22,26 +22,26 @@ trait VerticesOps extends Variables {
   //   def apply(len: Rep[Int]) = vertices_obj_new(len)
   // }
 
-  implicit def repToVerticesOps(x: Rep[DenseVector[Vertex]]) = new VerticesOpsCls(x)
+  implicit def repToVerticesOps[VD:Manifest,ED:Manifest](x: Rep[DenseVector[Vertex[VD,ED]]]) = new VerticesOpsCls(x)
 
-  class VerticesOpsCls(x: Rep[DenseVector[Vertex]]) {
+  class VerticesOpsCls[VD:Manifest,ED:Manifest](x: Rep[DenseVector[Vertex[VD,ED]]]) {
     // def apply(n: Rep[Int]) = vertices_apply(x, n)
-    def foreach(block: Rep[Vertex] => Rep[Unit]) = vertices_foreach(x, block)
-    // def mforeach(block: Rep[Vertex] => Rep[Unit]) = vertices_foreach(x, block)
+    def foreach(block: Rep[Vertex[VD,ED]] => Rep[Unit]) = vertices_foreach(x, block)
+    // def mforeach(block: Rep[Vertex[VD,ED]] => Rep[Unit]) = vertices_foreach(x, block)
     // def Clone() = vertices_clone(x) 
     // def mutable() = vertices_mutable_clone(x)
     // def printBeliefs() = vertices_pbeliefs(x)
     def toList() = vertices_tolist(x)
   }
 
-  // def vertices_obj_new(len: Rep[Int]): Rep[DenseVector[Vertex]]
-  // def vertices_apply(x: Rep[DenseVector[Vertex]], n: Rep[Int]): Rep[Vertex]
-  def vertices_foreach(x: Rep[DenseVector[Vertex]], block: Rep[Vertex] => Rep[Unit]): Rep[Unit]
-  // def vertices_mforeach(x: Rep[DenseVector[Vertex]], block: Rep[Vertex] => Rep[Unit]): Rep[Unit]
-  // def vertices_clone(x: Rep[DenseVector[Vertex]]): Rep[DenseVector[Vertex]]
-  // def vertices_mutable_clone(x: Rep[DenseVector[Vertex]]): Rep[DenseVector[Vertex]]
-  // def vertices_pbeliefs(x: Rep[DenseVector[Vertex]]): Rep[Unit]
-  def vertices_tolist(x: Rep[DenseVector[Vertex]]): Rep[List[Vertex]]
+  // def vertices_obj_new(len: Rep[Int]): Rep[DenseVector[Vertex[VD,ED]]]]
+  // def vertices_apply(x: Rep[DenseVector[Vertex[VD,ED]]]], n: Rep[Int]): Rep[Vertex[VD,ED]]
+  def vertices_foreach[VD:Manifest,ED:Manifest](x: Rep[DenseVector[Vertex[VD,ED]]], block: Rep[Vertex[VD,ED]] => Rep[Unit]): Rep[Unit]
+  // def vertices_mforeach(x: Rep[DenseVector[Vertex[VD,ED]]]], block: Rep[Vertex[VD,ED]] => Rep[Unit]): Rep[Unit]
+  // def vertices_clone(x: Rep[DenseVector[Vertex[VD,ED]]]]): Rep[DenseVector[Vertex[VD,ED]]]]
+  // def vertices_mutable_clone(x: Rep[DenseVector[Vertex[VD,ED]]]]): Rep[DenseVector[Vertex[VD,ED]]]]
+  // def vertices_pbeliefs(x: Rep[DenseVector[Vertex[VD,ED]]]]): Rep[Unit]
+  def vertices_tolist[VD:Manifest,ED:Manifest](x: Rep[DenseVector[Vertex[VD,ED]]]): Rep[List[Vertex[VD,ED]]]
 }
 
 trait VerticesOpsExp extends VerticesOps with VariablesExp {
@@ -51,36 +51,36 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
   //   extends Def[DenseVector[Vertex]] {
   //   val mV = manifest[V]
   // }  
-  // case class VerticesClone(x: Exp[DenseVector[Vertex]]) extends Def[DenseVector[Vertex]]
-  // case class VerticesPBeliefs(x: Exp[DenseVector[Vertex]]) extends Def[Unit]
-  // case class VerticesToList(x: Exp[DenseVector[Vertex]]) extends Def[List[Vertex]]  
+  // case class VerticesClone(x: Exp[DenseVector[Vertex[VD,ED]]]) extends Def[DenseVector[Vertex]]
+  // case class VerticesPBeliefs(x: Exp[DenseVector[Vertex[VD,ED]]]) extends Def[Unit]
+  // case class VerticesToList(x: Exp[DenseVector[Vertex[VD,ED]]]) extends Def[List[Vertex]]  
   
-  case class VerticesToList(x: Exp[DenseVector[Vertex]]) extends DeliteOpSingleTask(reifyEffectsHere(vertices_tolist_impl(x)))
+  case class VerticesToList[VD:Manifest,ED:Manifest](x: Exp[DenseVector[Vertex[VD,ED]]]) extends DeliteOpSingleTask(reifyEffectsHere(vertices_tolist_impl(x)))
   
-  case class VerticesForeach[V <:Vertex:Manifest](in: Exp[DenseVector[Vertex]], v: Sym[Vertex], func: Exp[Unit])
-    extends DeliteOpForeachBounded[Vertex,Vertex,DenseVector] {
+  case class VerticesForeach[VD:Manifest,ED:Manifest](in: Exp[DenseVector[Vertex[VD,ED]]], v: Sym[Vertex[VD,ED]], func: Exp[Unit])
+    extends DeliteOpForeachBounded[Vertex[VD,ED],Vertex[VD,ED],DenseVector] {
 
     val i = fresh[Int]
     val sync = reifyEffects(in(i).neighborsSelf.toList)
   }  
-  //case class VerticesApply(x: Exp[DenseVector[Vertex]], n: Exp[Int]) extends Def[Vertex]
+  //case class VerticesApply(x: Exp[DenseVector[Vertex[VD,ED]]], n: Exp[Int]) extends Def[Vertex]
 
   //def vertices_obj_new(len: Exp[Int]) = reflectMutable(VerticesObjNew[V](len))  
-  //def vertices_apply(x: Exp[DenseVector[Vertex]], n: Exp[Int]) = /*reflectMutable(*/VerticesApply(x,n)/*)*/
-  def vertices_foreach(x: Exp[DenseVector[Vertex]], block: Exp[Vertex] => Exp[Unit]) = {
-    val v = fresh[Vertex]
+  //def vertices_apply(x: Exp[DenseVector[Vertex[VD,ED]]], n: Exp[Int]) = /*reflectMutable(*/VerticesApply(x,n)/*)*/
+  def vertices_foreach[VD:Manifest,ED:Manifest](x: Exp[DenseVector[Vertex[VD,ED]]], block: Exp[Vertex[VD,ED]] => Exp[Unit]) = {
+    val v = fresh[Vertex[VD,ED]]
     val func = reifyEffects(block(v))
     reflectEffect(VerticesForeach(x,v,func), summarizeEffects(func).star)
   }  
-  // def vertices_mforeach(x: Exp[DenseVector[Vertex]], block: Exp[Vertex] => Exp[Unit]) = {
+  // def vertices_mforeach(x: Exp[DenseVector[Vertex[VD,ED]]], block: Exp[Vertex] => Exp[Unit]) = {
   //   val v = fresh[V]
   //   val func = reifyEffects(block(v))
   //   reflectWrite(x)(VerticesForeach(x, v, func))
   // }  
-  // def vertices_mutable_clone(x: Exp[DenseVector[Vertex]]) = reflectMutable(VerticesClone(x))
-  // def vertices_clone(x: Exp[DenseVector[Vertex]]) = reflectPure(VerticesClone(x))
-  // def vertices_pbeliefs(x: Exp[DenseVector[Vertex]]) = reflectEffect(VerticesPBeliefs(x))
-  def vertices_tolist(x: Exp[DenseVector[Vertex]]) = reflectPure(VerticesToList(x))
+  // def vertices_mutable_clone(x: Exp[DenseVector[Vertex[VD,ED]]]) = reflectMutable(VerticesClone(x))
+  // def vertices_clone(x: Exp[DenseVector[Vertex[VD,ED]]]) = reflectPure(VerticesClone(x))
+  // def vertices_pbeliefs(x: Exp[DenseVector[Vertex[VD,ED]]]) = reflectEffect(VerticesPBeliefs(x))
+  def vertices_tolist[VD:Manifest,ED:Manifest](x: Exp[DenseVector[Vertex[VD,ED]]]) = reflectPure(VerticesToList(x))
 }
 
 trait BaseGenVerticesOps extends GenericNestedCodegen {

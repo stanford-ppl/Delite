@@ -64,8 +64,8 @@ trait UntilConverged extends OptiMLApplication {
     println("Update functions ran: " + count)
   }
 
-  def constructGraph(rows: Rep[Int], cols: Rep[Int], numRings: Rep[Int]): Rep[Graph] = {
-    val g = Graph()
+  def constructGraph(rows: Rep[Int], cols: Rep[Int], numRings: Rep[Int]): Rep[Graph[DenoiseVertexData,DenoiseEdgeData]] = {
+    val g = Graph[DenoiseVertexData,DenoiseEdgeData]()
 
     // Set vertex potential based on image
     var i = 0

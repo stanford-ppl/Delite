@@ -31,11 +31,10 @@ trait GrayscaleImage extends Image[Int]
  *  Graph
  */
 
-trait Graph
-trait Vertex 
-trait Edge 
-trait MessageData
-
+trait Graph[VD,ED]
+trait Vertex[VD,ED] 
+trait Edge[VD,ED] 
+//trait MessageData
 // trait Vertices[V <: Vertex] extends DenseVector[V]
 // trait Edges[E <: Edge] extends DenseVector[E]
 

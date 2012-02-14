@@ -5,9 +5,9 @@ import scala.virtualization.lms.common.{BaseExp, Base}
 import ppl.dsl.optiml._
 
 trait EdgeImplOps { this: OptiML =>
-  def edge_in_impl(e: Rep[Edge], v: Rep[Vertex]): Rep[MessageData]
-  def edge_out_impl(e: Rep[Edge], v: Rep[Vertex]): Rep[MessageData]
-  def edge_target_impl(e: Rep[Edge], v: Rep[Vertex]): Rep[Vertex]  
+  def edge_in_impl[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]], v: Rep[Vertex[VD,ED]]): Rep[ED]
+  def edge_out_impl[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]], v: Rep[Vertex[VD,ED]]): Rep[ED]
+  def edge_target_impl[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]], v: Rep[Vertex[VD,ED]]): Rep[Vertex[VD,ED]]  
 }
 
 trait EdgeImplOpsStandard extends EdgeImplOps {
@@ -16,7 +16,7 @@ trait EdgeImplOpsStandard extends EdgeImplOps {
   //////////////////////////
   // kernel implementations
   
-  def edge_in_impl(e: Rep[Edge], v: Rep[Vertex]) = if (v == e.v1) e.inData else e.outData
-  def edge_out_impl(e: Rep[Edge], v: Rep[Vertex]) = if(v == e.v1) e.outData else e.inData
-  def edge_target_impl(e: Rep[Edge], source: Rep[Vertex]) = if (source == e.v1) e.v2 else e.v1
+  def edge_in_impl[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]], v: Rep[Vertex[VD,ED]]) = if (v == e.v1) e.inData else e.outData
+  def edge_out_impl[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]], v: Rep[Vertex[VD,ED]]) = if(v == e.v1) e.outData else e.inData
+  def edge_target_impl[VD:Manifest,ED:Manifest](e: Rep[Edge[VD,ED]], source: Rep[Vertex[VD,ED]]) = if (source == e.v1) e.v2 else e.v1
 }
