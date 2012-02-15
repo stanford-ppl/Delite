@@ -38,11 +38,11 @@ trait CudaGenExternalBase extends GenericGenExternal with CudaGenBase {
     stream.println(e.funcName + "(" + (args mkString ",") + ");")    
   }
   
-  def emitInterfaceAndMethod(lib: ExternalLibrary, funcName: String, args: List[String], body: String) = {
+  def emitInterfaceAndMethod(lib: ExternalLibrary, funcName: String, args: List[String], global: String, body: String) = {
     val funcSignature = "void " + funcName + "(" + (args mkString ",") + ")"
     super.emitInterfaceAndMethod(lib, funcName,
       funcSignature + ";",
-      funcSignature + body
+      global + "\n" + funcSignature + body
     )
   }
      

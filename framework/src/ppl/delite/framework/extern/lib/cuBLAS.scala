@@ -22,5 +22,6 @@ object cuBLAS extends ExternalLibrary {
 #include <stdio.h>
 #include <limits>
 #include <cuda_runtime.h>
+#include <thrust/transform.h>
 """ + configHeader.map(h => "#include \"" + h + "\"\n").mkString("")
 }

@@ -84,12 +84,10 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   private def writeFileHeader(out: StringBuilder, op: OP_MultiLoop) {
     out.append("#include <cuda.h>\n")
-    //out.append("#include <cudpp.h>\n")
     out.append("#include <thrust/scan.h>\n")
     out.append("#include \"helperFuncs.h\"\n")
     out.append("#include \"" + op.id + ".cu\"\n")
     out.append("extern cudaStream_t kernelStream;\n")
-    //out.append("extern CUDPPHandle cudppHandle;\n")
   }
 
   private def writeLauncherHeader(out: StringBuilder, op: OP_MultiLoop) {
