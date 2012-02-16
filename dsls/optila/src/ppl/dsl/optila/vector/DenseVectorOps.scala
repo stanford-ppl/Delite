@@ -19,7 +19,7 @@ trait DenseVectorOps extends Variables {
   implicit def varToDenseVecOps[A:Manifest](x: Var[DenseVector[A]]) = new DenseVecOpsCls(readVar(x))
   implicit def denseVecToInterface[A:Manifest](lhs: Rep[DenseVector[A]]) = new VInterface[A](new DenseVecOpsCls[A](lhs))
 
-  implicit def denseVectorBuilder[A:Manifest] = new VectorBuilder[A,DenseVector[A]] {
+  implicit def denseVectorBuilder[A:Manifest](implicit ctx: SourceContext) = new VectorBuilder[A,DenseVector[A]] {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = {
       Vector.dense[A](length, isRow)
     }
@@ -27,24 +27,24 @@ trait DenseVectorOps extends Variables {
   }  
 
   object DenseVector {
-    def apply[A:Manifest](len: Int, isRow: Boolean) = densevector_obj_new(unit(len), unit(isRow)) // needed to resolve ambiguities
-    def apply[A](len: Rep[Int], isRow: Rep[Boolean])(implicit mA: Manifest[A], o: Overloaded1) = densevector_obj_new(len, isRow)
-    def apply[A](xs: Rep[A]*)(implicit mA: Manifest[A], o: Overloaded2) = {
+    def apply[A:Manifest](len: Int, isRow: Boolean)(implicit ctx: SourceContext) = densevector_obj_new(unit(len), unit(isRow)) // needed to resolve ambiguities
+    def apply[A](len: Rep[Int], isRow: Rep[Boolean])(implicit mA: Manifest[A], o: Overloaded1, ctx: SourceContext) = densevector_obj_new(len, isRow)
+    def apply[A](xs: Rep[A]*)(implicit mA: Manifest[A], o: Overloaded2, ctx: SourceContext) = {
       val out = densevector_obj_new[A](unit(0),unit(true))
       // interpreted (not lifted)
       xs.foreach { out += _ }
       out.unsafeImmutable // return immutable object
     }
     
-    def ones(len: Rep[Int]) = densevector_obj_ones(len)
-    def onesf(len: Rep[Int]) = densevector_obj_onesf(len)
-    def zeros(len: Rep[Int]) = densevector_obj_zeros(len)
-    def zerosf(len: Rep[Int]) = densevector_obj_zerosf(len)
-    def rand(len: Rep[Int]) = densevector_obj_rand(len)
-    def randf(len: Rep[Int]) = densevector_obj_randf(len)
-    def uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean] = unit(true)) =
+    def ones(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_ones(len)
+    def onesf(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_onesf(len)
+    def zeros(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_zeros(len)
+    def zerosf(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_zerosf(len)
+    def rand(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_rand(len)
+    def randf(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_randf(len)
+    def uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean] = unit(true))(implicit ctx: SourceContext) =
       densevector_obj_uniform(start, step_size, end, isRow)    
-    def flatten[A:Manifest](pieces: Rep[DenseVector[DenseVector[A]]]) = densevector_obj_flatten(pieces)
+    def flatten[A:Manifest](pieces: Rep[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext) = densevector_obj_flatten(pieces)
   }
 
   class DenseVecOpsCls[A:Manifest](val elem: Rep[DenseVector[A]]) extends VecOpsCls[A] {
@@ -56,8 +56,8 @@ trait DenseVectorOps extends Variables {
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
     def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
-    def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
-    def matBuilder[B:Manifest]: MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]    
+    def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
+    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]    
     def mV[B:Manifest] = manifest[DenseVector[B]] 
     def mM[B:Manifest] = manifest[DenseMatrix[B]] 
     def mA: Manifest[A] = manifest[A]        
@@ -108,16 +108,16 @@ trait DenseVectorOps extends Variables {
   }
 
   // object defs
-  def densevector_obj_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVector[A]]
-  def densevector_obj_fromseq[A:Manifest](xs: Rep[Seq[A]]): Rep[DenseVector[A]]
-  def densevector_obj_ones(len: Rep[Int]): Rep[DenseVector[Double]]
-  def densevector_obj_onesf(len: Rep[Int]): Rep[DenseVector[Float]]
-  def densevector_obj_zeros(len: Rep[Int]): Rep[DenseVector[Double]]
-  def densevector_obj_zerosf(len: Rep[Int]): Rep[DenseVector[Float]]
-  def densevector_obj_rand(len: Rep[Int]): Rep[DenseVector[Double]]
-  def densevector_obj_randf(len: Rep[Int]): Rep[DenseVector[Float]]
-  def densevector_obj_uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean]): Rep[DenseVector[Double]]
-  def densevector_obj_flatten[A:Manifest](pieces: Rep[DenseVector[DenseVector[A]]]): Rep[DenseVector[A]]  
+  def densevector_obj_new[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[DenseVector[A]]
+  def densevector_obj_fromseq[A:Manifest](xs: Rep[Seq[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]]
+  def densevector_obj_ones(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+  def densevector_obj_onesf(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Float]]
+  def densevector_obj_zeros(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+  def densevector_obj_zerosf(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Float]]
+  def densevector_obj_rand(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+  def densevector_obj_randf(len: Rep[Int])(implicit ctx: SourceContext): Rep[DenseVector[Float]]
+  def densevector_obj_uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+  def densevector_obj_flatten[A:Manifest](pieces: Rep[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext): Rep[DenseVector[A]]  
   
   // class defs
   def densevector_length[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Int]
@@ -139,13 +139,13 @@ trait DenseVectorOps extends Variables {
   def densevector_groupby[A:Manifest,K:Manifest](x: Rep[DenseVector[A]], pred: Rep[A] => Rep[K])(implicit ctx: SourceContext): Rep[DenseVector[DenseVector[A]]]         
   
   // other defs
-  def densevector_empty_double: Rep[DenseVector[Double]]
-  def densevector_empty_float: Rep[DenseVector[Float]]
-  def densevector_empty_int: Rep[DenseVector[Int]]
-  def densevector_empty[A:Manifest]: Rep[DenseVector[A]]
-  def densevector_zero_double(length: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVector[Double]]
-  def densevector_zero_float(length: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVector[Float]]
-  def densevector_zero_int(length: Rep[Int], isRow: Rep[Boolean]): Rep[DenseVector[Int]]  
+  def densevector_empty_double(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+  def densevector_empty_float(implicit ctx: SourceContext): Rep[DenseVector[Float]]
+  def densevector_empty_int(implicit ctx: SourceContext): Rep[DenseVector[Int]]
+  def densevector_empty[A:Manifest](implicit ctx: SourceContext): Rep[DenseVector[A]]
+  def densevector_zero_double(length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[DenseVector[Double]]
+  def densevector_zero_float(length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[DenseVector[Float]]
+  def densevector_zero_int(length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[DenseVector[Int]]  
 }
 
 trait DenseVectorCompilerOps extends DenseVectorOps {
@@ -315,16 +315,16 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
   /////////////////////
   // object interface
 
-  def densevector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(DenseVectorNew[A](len, isRow)) //XXX
-  def densevector_obj_fromseq[A:Manifest](xs: Exp[Seq[A]]) = reflectPure(DenseVectorObjectFromSeq(xs)) //XXX
-  def densevector_obj_ones(len: Exp[Int]) = reflectPure(DenseVectorObjectOnes(len))
-  def densevector_obj_onesf(len: Exp[Int]) = reflectPure(DenseVectorObjectOnesF(len))
-  def densevector_obj_zeros(len: Exp[Int]) = densevector_zero_double(len,unit(true)) //reflectPure(DenseVectorObjectZeros(len))
-  def densevector_obj_zerosf(len: Exp[Int]) = densevector_zero_float(len,unit(true))//reflectPure(DenseVectorObjectZerosF(len))
-  def densevector_obj_rand(len: Exp[Int]) = reflectPure(DenseVectorObjectRand(len))
-  def densevector_obj_randf(len: Exp[Int]) = reflectPure(DenseVectorObjectRandF(len))
-  def densevector_obj_uniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean]) = reflectPure(DenseVectorObjectUniform(start, step_size, end, isRow))
-  def densevector_obj_flatten[A:Manifest](pieces: Exp[DenseVector[DenseVector[A]]]) = reflectPure(DenseVectorObjectFlatten(pieces))  
+  def densevector_obj_new[A:Manifest](len: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectMutable(DenseVectorNew[A](len, isRow)) //XXX
+  def densevector_obj_fromseq[A:Manifest](xs: Exp[Seq[A]])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectFromSeq(xs)) //XXX
+  def densevector_obj_ones(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectOnes(len))
+  def densevector_obj_onesf(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectOnesF(len))
+  def densevector_obj_zeros(len: Exp[Int])(implicit ctx: SourceContext) = densevector_zero_double(len,unit(true)) //reflectPure(DenseVectorObjectZeros(len))
+  def densevector_obj_zerosf(len: Exp[Int])(implicit ctx: SourceContext) = densevector_zero_float(len,unit(true))//reflectPure(DenseVectorObjectZerosF(len))
+  def densevector_obj_rand(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectRand(len))
+  def densevector_obj_randf(len: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectRandF(len))
+  def densevector_obj_uniform(start: Exp[Double], step_size: Exp[Double], end: Exp[Double], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectUniform(start, step_size, end, isRow))
+  def densevector_obj_flatten[A:Manifest](pieces: Exp[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext) = reflectPure(DenseVectorObjectFlatten(pieces))  
 
   /////////////////////
   // class interface
@@ -363,13 +363,13 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
   ///////////
   // other
   
-  def densevector_empty_double = DenseVectorEmptyDouble()
-  def densevector_empty_float = DenseVectorEmptyFloat()
-  def densevector_empty_int = DenseVectorEmptyInt()
-  def densevector_empty[A:Manifest] = DenseVectorEmpty[A]()
-  def densevector_zero_double(length: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(DenseVectorZeroDouble(length, isRow))
-  def densevector_zero_float(length: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(DenseVectorZeroFloat(length, isRow))
-  def densevector_zero_int(length: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(DenseVectorZeroInt(length, isRow))
+  def densevector_empty_double(implicit ctx: SourceContext) = DenseVectorEmptyDouble()
+  def densevector_empty_float(implicit ctx: SourceContext) = DenseVectorEmptyFloat()
+  def densevector_empty_int(implicit ctx: SourceContext) = DenseVectorEmptyInt()
+  def densevector_empty[A:Manifest](implicit ctx: SourceContext) = DenseVectorEmpty[A]()
+  def densevector_zero_double(length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectMutable(DenseVectorZeroDouble(length, isRow))
+  def densevector_zero_float(length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectMutable(DenseVectorZeroFloat(length, isRow))
+  def densevector_zero_int(length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectMutable(DenseVectorZeroInt(length, isRow))
   
   
   //////////////
@@ -672,7 +672,6 @@ trait CudaGenDenseVectorOps extends BaseGenDenseVectorOps with CudaGenFat with C
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case DenseVectorNew(length, isRow) => stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(length),quote(isRow)))
     case DenseVectorApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case DenseVectorUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");")
     case DenseVectorLength(x) => emitValDef(sym, quote(x) + ".length")
@@ -682,108 +681,15 @@ trait CudaGenDenseVectorOps extends BaseGenDenseVectorOps with CudaGenFat with C
     case DenseVectorSetIsRow(x,v) => stream.println(quote(x) + ".isRow = " + quote(v) + ";")
     case DenseVectorSetRawData(x,v) => stream.println(quote(x) + ".setdata(" + quote(v) + ");")
 
-	//case DenseVectorPlusEquals(x,y) =>
-	//	throw new GenerationFailedException("CudaGen: No dimension specified for this kernel.")
-
-    // case DenseVectorRepmat(x,i,j) =>
-    //   currDim += 1
-    //   val currDimStr = getCurrDimStr()
-    //   setCurrDimLength("%s->length * %s * %s".format(quote(x),quote(i),quote(j)))
-    //   stream.println(addTab()+"if( %s < %s.size() ) {".format(currDimStr,quote(sym)))
-    //   tabWidth += 1
-    //   stream.println(addTab()+"int i = %s / (%s.length * %s);".format(currDimStr,quote(x),quote(j)))
-    //   stream.println(addTab()+"int j = " + currDimStr + " % " + "(%s.length * %s);".format(quote(x),quote(j)))
-    //   stream.println(addTab()+"%s.update(i,j,%s.apply(%s));".format(quote(sym),quote(x),"j%"+quote(x)+".length"))
-    //   tabWidth -= 1
-    //   stream.println(addTab()+"}")
-    //   emitMatrixAlloc(sym,"%s".format(quote(i)),"%s.length*%s".format(quote(x),quote(j)),false)
-    //   currDim -= 1
+    case DenseVectorNew(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(length),quote(isRow)))
+    case DenseVectorZeroDouble(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(length),quote(isRow)))
+    case DenseVectorZeroFloat(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(length),quote(isRow)))
+    case DenseVectorZeroInt(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(length),quote(isRow)))
+    case DenseVectorEmptyDouble() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    case DenseVectorEmptyFloat() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    case DenseVectorEmptyInt() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    case DenseVectorEmpty() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.Type),quote(sym),remap(sym.Type)))
     
-    /*    
-    case DenseVectorOuter(x,y) =>
-      currDim += 1
-      val currDimStr = getCurrDimStr()
-      setCurrDimLength(quote(x)+"->length")
-      stream.println(addTab()+"if( %s < %s ) {".format(currDimStr,quote(x)+".size()"))
-      tabWidth += 1
-      stream.println(addTab()+"for(int i=0; i<%s.length; i++) {".format(quote(x))); tabWidth += 1
-      stream.println(addTab()+"%s.update(%s, %s, %s.apply(%s)*%s.apply(%s));".format(quote(sym),"i",currDimStr,quote(x),"i",quote(y),currDimStr))
-      tabWidth -= 1; stream.println(addTab()+"}")
-      tabWidth -= 1
-      stream.println(addTab()+"}")
-      emitMatrixAlloc(sym,"%s.length".format(quote(x)),"%s.length".format(quote(x)),false)
-      currDim -= 1
-    */
-
-    /* Test for using local variables */
-    // case DenseVectorMinus(x,y) if(useLocalVar) =>
-    //   currDim += 1
-    //   val currDimStr = getCurrDimStr()
-    //   setCurrDimLength(quote(x)+"->length")
-    //   val outLocalVar = getNewLocalVar()
-    //   val outIndex = if(indexMap.contains(sym)) indexMap.get(sym).get else currDimStr+"%"+quote(sym)+".size()"
-    //   val inIndex = outIndex.replace(quote(sym),quote(x))
-    //   //TODO: Check whether inputs are all from kernel inputs (otherwise, the recalculations need to percolate up
-    //   stream.println(addTab()+"%s %s = %s.apply(%s) - %s.apply(%s);".format(remap(sym.Type.typeArguments(0)),outLocalVar,quote(x),inIndex,quote(y),inIndex))
-    //   saveLocalVar(sym,outIndex,outLocalVar)
-    //   currDim -= 1
-    //   emitVectorAlloc(sym,"%s.length".format(quote(x)),"true",false)
-
-    // case DenseVectorTrans(x) if(useLocalVar) =>
-    //       currDim += 1
-    //       val currDimStr = getCurrDimStr()
-    //       setCurrDimLength(quote(x)+"->length")
-    //       val outLocalVar = getNewLocalVar()
-    //       val outIndex = if(indexMap.contains(sym)) indexMap.get(sym).get else currDimStr+"%"+quote(sym)+".size()"
-    //       val inIndex = outIndex.replace(quote(sym),quote(x))
-    //       if(hasLocalVar(x,inIndex)) {
-    //         val inLocalVar = getLocalVar(x,inIndex)
-    //         stream.println(addTab()+"%s %s = %s;".format(remap(sym.Type.typeArguments(0)),outLocalVar,inLocalVar))
-    //       }
-    //       else {
-    //         val tp=findDefinition(x.asInstanceOf[Sym[_]]).get
-    //         currDim -= 1
-    //         indexMap.put(x,inIndex)
-    //         emitNode(tp.sym,tp.rhs)
-    //         indexMap.remove(x)
-    //         currDim += 1
-    //         val inLocalVar = getLocalVar(x,inIndex)
-    //         stream.println(addTab()+"%s %s = %s;".format(remap(sym.Type.typeArguments(0)),outLocalVar,inLocalVar))
-    //       }
-    //       saveLocalVar(sym,outIndex,outLocalVar)
-    //       currDim -= 1
-    //       emitVectorAlloc(sym,"%s.length".format(quote(x)),"true",false)
-    
-    // case DenseVectorOuter(x,y) if(useLocalVar) =>
-    //   currDim += 1
-    //   val currDimStr = getCurrDimStr()
-    //   setCurrDimLength(quote(x)+"->length*"+quote(x)+"->length")
-    //   val outLocalVar = getNewLocalVar()
-    //   val varX = if(hasLocalVar(x,currDimStr+"/"+quote(x)+".size()")) getLocalVar(x,currDimStr+"/"+quote(x)+".size()")
-    //              else {
-    //                val tp=findDefinition(x.asInstanceOf[Sym[_]]).get
-    //                indexMap.put(x,currDimStr+"/"+quote(x)+".size()")
-    //                currDim -= 1
-    //                emitNode(tp.sym,tp.rhs)
-    //                currDim += 1
-    //                indexMap.remove(x)
-    //                getLocalVar(x,currDimStr+"/"+quote(x)+".size()")
-    //              }
-    //   val varY = if(hasLocalVar(y,currDimStr+"%"+quote(y)+".size()")) getLocalVar(y,currDimStr+"%"+quote(y)+".size()")
-    //              else {
-    //                val tp=findDefinition(y.asInstanceOf[Sym[_]]).get
-    //                indexMap.put(y,currDimStr+"%"+quote(y)+".size()")
-    //                currDim -= 1
-    //                emitNode(tp.sym,tp.rhs)
-    //                currDim += 1
-    //                indexMap.remove(y)
-    //                getLocalVar(y,currDimStr+"%"+quote(y)+".size()")
-    //              }
-    //   stream.println(addTab()+"%s %s = %s * %s;".format(remap(sym.Type.typeArguments(0)),outLocalVar,varX,varY))
-    //   saveLocalVar(sym,currDimStr,outLocalVar)
-    //   currDim -= 1
-    //   emitMatrixAlloc(sym,"%s.length".format(quote(x)),"%s.length".format(quote(x)),false)
-
     case _ => super.emitNode(sym, rhs)
   }
 }

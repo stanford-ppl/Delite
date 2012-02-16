@@ -22,33 +22,33 @@ trait VectorOps extends Variables {
   //   }
   
   object Vector {
-    def apply[A:Manifest](len: Int, isRow: Boolean) = densevector_obj_new(unit(len), unit(isRow)) // needed to resolve ambiguities
-    def apply[A](len: Rep[Int], isRow: Rep[Boolean])(implicit mA: Manifest[A], o: Overloaded1) = densevector_obj_new(len, isRow)
-    def apply[A:Manifest](xs: A*) = {
+    def apply[A:Manifest](len: Int, isRow: Boolean)(implicit ctx: SourceContext) = densevector_obj_new(unit(len), unit(isRow)) // needed to resolve ambiguities
+    def apply[A](len: Rep[Int], isRow: Rep[Boolean])(implicit mA: Manifest[A], o: Overloaded1, ctx: SourceContext) = densevector_obj_new(len, isRow)
+    def apply[A:Manifest](xs: A*)(implicit ctx: SourceContext) = {
       val out = densevector_obj_new[A](unit(0),unit(true))
       // interpreted (not lifted)
       xs.foreach { out += unit(_) }
       out.unsafeImmutable
     }
-    def apply[A](xs: Rep[A]*)(implicit mA: Manifest[A], o: Overloaded2) = {
+    def apply[A](xs: Rep[A]*)(implicit mA: Manifest[A], o: Overloaded2, ctx: SourceContext) = {
       val out = densevector_obj_new[A](unit(0),unit(true))
       // interpreted (not lifted)
       xs.foreach { out += _ }
       out.unsafeImmutable // return immutable object
     }
 
-    def dense[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) = densevector_obj_new(len, isRow)
+    def dense[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = densevector_obj_new(len, isRow)
     //def sparse[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) = sparsevector_obj_new(len, isRow)
         
-    def ones(len: Rep[Int]) = DenseVector.ones(len)
-    def onesf(len: Rep[Int]) = DenseVector.onesf(len)
-    def zeros(len: Rep[Int]) = DenseVector.zeros(len)
-    def zerosf(len: Rep[Int]) = DenseVector.zerosf(len)
-    def rand(len: Rep[Int]) = DenseVector.rand(len)
-    def randf(len: Rep[Int]) = DenseVector.randf(len)
-    def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = unit(1), isRow: Rep[Boolean] = unit(true)) =
+    def ones(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.ones(len)
+    def onesf(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.onesf(len)
+    def zeros(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.zeros(len)
+    def zerosf(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.zerosf(len)
+    def rand(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.rand(len)
+    def randf(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.randf(len)
+    def range(start: Rep[Int], end: Rep[Int], stride: Rep[Int] = unit(1), isRow: Rep[Boolean] = unit(true))(implicit ctx: SourceContext) =
       vector_obj_range(start, end, stride, isRow)
-    def uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean] = unit(true)) =
+    def uniform(start: Rep[Double], step_size: Rep[Double], end: Rep[Double], isRow: Rep[Boolean] = unit(true))(implicit ctx: SourceContext) =
       DenseVector.uniform(start, step_size, end, isRow)
   }
 
@@ -71,10 +71,10 @@ trait VectorOps extends Variables {
     implicit def mV[B:Manifest]: Manifest[V[B]]         
     implicit def toOps[B:Manifest](x: Rep[V[B]]): VecOpsCls[B]
     implicit def toIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]]        
-    implicit def builder[B:Manifest]: VectorBuilder[B,V[B]]    
+    implicit def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]]    
     implicit def mM[B:Manifest]: Manifest[M[B]]         
     implicit def matToIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]]        
-    implicit def matBuilder[B:Manifest]: MatrixBuilder[B,M[B]]    
+    implicit def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]]    
     
     type VA = V[A] // temporary for easy compatibility with old stuff
     type MA = M[A]

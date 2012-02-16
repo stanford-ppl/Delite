@@ -21,6 +21,13 @@ public:
         DeliteCudaMalloc((void**)&data,length*sizeof(T));
     }
 
+    // Reset the value to given value
+    __host__ DenseVector(int _length, bool _isRow, T value) {
+        length = _length;
+        isRow = _isRow;
+        DeliteCudaMalloc((void**)&data,length*sizeof(T));
+    }
+
     // Accessor Functions
     __host__ __device__ T apply(int idx) {
         return data[idx];

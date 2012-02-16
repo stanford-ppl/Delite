@@ -44,10 +44,10 @@ trait ImageOps extends Variables {
     def wrap(x: Rep[Image[A]]): Interface[Matrix[A]] = imageToInterface(x)
     def toOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B] = repToImageOps[B](x)
     def toIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]] = imageToInterface[B](x)        
-    def builder[B:Manifest]: MatrixBuilder[B,M[B]] = imageBuilder[B]            
+    def builder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]] = imageBuilder[B]            
     def mV[B:Manifest]: Manifest[V[B]] = manifest[DenseVector[B]]
     def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)        
-    def vecBuilder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]
+    def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]
 
     // image ops
     def downsample(rowFactor: Rep[Int], colFactor: Rep[Int])(block: Rep[DenseMatrix[A]] => Rep[A])(implicit ctx: SourceContext) = image_downsample(x,rowFactor, colFactor, block)
