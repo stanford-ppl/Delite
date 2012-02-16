@@ -9,4 +9,6 @@ package ppl.delite.runtime.graph.ops
  * Stanford University
  */
 
-abstract class OP_Executable extends DeliteOP
+abstract class OP_Executable extends DeliteOP {
+  def opName: String = id
+}

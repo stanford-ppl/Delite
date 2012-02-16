@@ -41,6 +41,8 @@ object Config {
   val printSources: Boolean = getProperty("delite.debug.print.sources", "false") != "false"
 
 
+  var degFilename = System.getProperty("delite.deg.filename", "out.deg")
+  
   /**
    * DEG specific, set after its parsed
    * TODO: handle this more rigorously
