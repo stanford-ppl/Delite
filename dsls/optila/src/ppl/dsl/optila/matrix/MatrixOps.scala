@@ -33,26 +33,26 @@ trait MatrixOps extends Variables {
   //   }
   
   object Matrix {
-    def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_new(numRows, numCols)
-    def apply[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]]): Rep[DenseMatrix[A]] = densematrix_obj_fromvec(xs)
-    def apply[A](xs: Rep[DenseVector[VectorView[A]]])(implicit mA: Manifest[A], o: Overloaded1): Rep[Matrix[A]] = densematrix_obj_fromvec(xs.asInstanceOf[Rep[DenseVector[DenseVector[A]]]])
-    def apply[A:Manifest](xs: Rep[DenseVector[A]]*): Rep[DenseMatrix[A]] = DenseMatrix(DenseVector(xs: _*))
+    def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_new(numRows, numCols)
+    def apply[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext): Rep[DenseMatrix[A]] = densematrix_obj_fromvec(xs)
+    def apply[A](xs: Rep[DenseVector[VectorView[A]]])(implicit mA: Manifest[A], o: Overloaded1, ctx: SourceContext): Rep[Matrix[A]] = densematrix_obj_fromvec(xs.asInstanceOf[Rep[DenseVector[DenseVector[A]]]])
+    def apply[A:Manifest](xs: Rep[DenseVector[A]]*)(implicit ctx: SourceContext): Rep[DenseMatrix[A]] = DenseMatrix(DenseVector(xs: _*))
 
-    def dense[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_new(numRows, numCols)
+    def dense[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_new(numRows, numCols)
     //def sparse[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) = sparsematrix_obj_new(numRows, numCols)   
     
-    def diag[A:Manifest](w: Rep[Int], vals: Interface[Vector[A]]) = DenseMatrix.diag[A](w,vals)
-    def identity(w: Rep[Int]) = DenseMatrix.identity(w)
-    def zeros(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix.zeros(numRows,numCols)
-    def zerosf(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix.zerosf(numRows,numCols)
-    def mzerosf(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix.mzerosf(numRows,numCols)
-    def ones(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix.ones(numRows,numCols)
-    def onesf(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix.onesf(numRows,numCols)
-    def rand(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix.rand(numRows,numCols)
-    def randf(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix.randf(numRows,numCols)
-    def randn(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix.randn(numRows,numCols)
-    def randnf(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix.randnf(numRows,numCols)
-    def mrandnf(numRows: Rep[Int], numCols: Rep[Int]) = DenseMatrix.mrandnf(numRows,numCols)
+    def diag[A:Manifest](w: Rep[Int], vals: Interface[Vector[A]])(implicit ctx: SourceContext) = DenseMatrix.diag[A](w,vals)
+    def identity(w: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.identity(w)
+    def zeros(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.zeros(numRows,numCols)
+    def zerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.zerosf(numRows,numCols)
+    def mzerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.mzerosf(numRows,numCols)
+    def ones(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.ones(numRows,numCols)
+    def onesf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.onesf(numRows,numCols)
+    def rand(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.rand(numRows,numCols)
+    def randf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.randf(numRows,numCols)
+    def randn(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.randn(numRows,numCols)
+    def randnf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.randnf(numRows,numCols)
+    def mrandnf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = DenseMatrix.mrandnf(numRows,numCols)
   }
 
   trait MatOpsCls[A] extends DCInterfaceOps[Matrix[A],A] {    
@@ -65,10 +65,10 @@ trait MatrixOps extends Variables {
     implicit def mM[B:Manifest]: Manifest[M[B]] 
     implicit def toOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B]
     implicit def toIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]]        
-    implicit def builder[B:Manifest]: MatrixBuilder[B,M[B]]        
+    implicit def builder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]]        
     implicit def mV[B:Manifest]: Manifest[V[B]]           
     implicit def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]]            
-    implicit def vecBuilder[B:Manifest]: VectorBuilder[B,V[B]]    
+    implicit def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]]    
         
     type Self <: Matrix[A]
     implicit def wrap(x: Rep[Self]): Interface[Matrix[A]]

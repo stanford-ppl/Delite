@@ -24,7 +24,7 @@ trait DenseMatrixOps extends Variables {
   implicit def denseMatToInterface[A:Manifest](lhs: Rep[DenseMatrix[A]]) = new MInterface[A](new DenseMatOpsCls[A](lhs))
   implicit def denseMatVarToInterface[A:Manifest](lhs: Var[DenseMatrix[A]]) = new MInterface[A](new DenseMatOpsCls[A](readVar(lhs)))
   
-  implicit def denseMatrixBuilder[A:Manifest] = new MatrixBuilder[A,DenseMatrix[A]] {
+  implicit def denseMatrixBuilder[A:Manifest](implicit ctx: SourceContext) = new MatrixBuilder[A,DenseMatrix[A]] {
     def alloc(numRows: Rep[Int], numCols: Rep[Int]) = {
       Matrix.dense[A](numRows, numCols)
     }
@@ -32,23 +32,23 @@ trait DenseMatrixOps extends Variables {
   }  
 
   object DenseMatrix {
-    def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_new(numRows, numCols)
-    def apply[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]]): Rep[DenseMatrix[A]] = densematrix_obj_fromvec(xs)
+    def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_new(numRows, numCols)
+    def apply[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext): Rep[DenseMatrix[A]] = densematrix_obj_fromvec(xs)
     //def apply[A:Manifest](xs: Rep[DenseVector[VectorView[A]]])(implicit o: Overloaded1): Rep[DenseMatrix[A]] = densematrix_obj_fromvec(xs.asInstanceOf[Rep[DenseVector[DenseVector[A]]]])  // AKS TODO
-    def apply[A:Manifest](xs: Rep[DenseVector[A]]*): Rep[DenseMatrix[A]] = DenseMatrix(DenseVector(xs: _*))
+    def apply[A:Manifest](xs: Rep[DenseVector[A]]*)(implicit ctx: SourceContext): Rep[DenseMatrix[A]] = DenseMatrix(DenseVector(xs: _*))
 
-    def diag[A:Manifest](w: Rep[Int], vals: Interface[Vector[A]]) = densematrix_obj_diag(w, vals)
-    def identity(w: Rep[Int]) = densematrix_obj_identity(w)
-    def zeros(numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_zeros(numRows, numCols)
-    def zerosf(numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_zerosf(numRows, numCols)
-    def mzerosf(numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_mzerosf(numRows, numCols)
-    def ones(numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_ones(numRows, numCols)
-    def onesf(numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_onesf(numRows, numCols)
-    def rand(numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_rand(numRows, numCols)
-    def randf(numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_randf(numRows, numCols)
-    def randn(numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_randn(numRows, numCols)
-    def randnf(numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_randnf(numRows, numCols)
-    def mrandnf(numRows: Rep[Int], numCols: Rep[Int]) = densematrix_obj_mrandnf(numRows, numCols)
+    def diag[A:Manifest](w: Rep[Int], vals: Interface[Vector[A]])(implicit ctx: SourceContext) = densematrix_obj_diag(w, vals)
+    def identity(w: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_identity(w)
+    def zeros(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_zeros(numRows, numCols)
+    def zerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_zerosf(numRows, numCols)
+    def mzerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_mzerosf(numRows, numCols)
+    def ones(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_ones(numRows, numCols)
+    def onesf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_onesf(numRows, numCols)
+    def rand(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_rand(numRows, numCols)
+    def randf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_randf(numRows, numCols)
+    def randn(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_randn(numRows, numCols)
+    def randnf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_randnf(numRows, numCols)
+    def mrandnf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_mrandnf(numRows, numCols)
   }
 
   class DenseMatOpsCls[A:Manifest](val elem: Rep[DenseMatrix[A]]) extends MatOpsCls[A] {
@@ -61,10 +61,10 @@ trait DenseMatrixOps extends Variables {
     def wrap(x: Rep[DenseMatrix[A]]): Interface[Matrix[A]] = denseMatToInterface(x)
     def toOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B] = repToDenseMatOps[B](x)
     def toIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]] = denseMatToInterface[B](x)        
-    def builder[B:Manifest]: MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]            
+    def builder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]            
     def mV[B:Manifest]: Manifest[V[B]] = manifest[DenseVector[B]]
     def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)        
-    def vecBuilder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]
+    def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]
     
     // delite collection
     def dcSize(implicit ctx: SourceContext): Rep[Int] = x.size
@@ -101,21 +101,21 @@ trait DenseMatrixOps extends Variables {
   
   // object defs
   //def symmatrix_obj_new[A:Manifest](n: Rep[Int]): Rep[SymmetricMatrix[A]]
-  def densematrix_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[A]]
-  def densematrix_obj_fromseq[A:Manifest](xs: Seq[Interface[Vector[A]]]): Rep[DenseMatrix[A]]
-  def densematrix_obj_fromvec[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]]): Rep[DenseMatrix[A]]
-  def densematrix_obj_diag[A:Manifest](w: Rep[Int], vals: Interface[Vector[A]]): Rep[DenseMatrix[A]]
-  def densematrix_obj_identity(w: Rep[Int]): Rep[DenseMatrix[Double]]
-  def densematrix_obj_zeros(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Double]]
-  def densematrix_obj_zerosf(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Float]]
-  def densematrix_obj_mzerosf(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Float]]
-  def densematrix_obj_ones(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Double]]
-  def densematrix_obj_onesf(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Float]]
-  def densematrix_obj_rand(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Double]]
-  def densematrix_obj_randf(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Float]]
-  def densematrix_obj_randn(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Double]]
-  def densematrix_obj_randnf(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Float]]
-  def densematrix_obj_mrandnf(numRows: Rep[Int], numCols: Rep[Int]): Rep[DenseMatrix[Float]]
+  def densematrix_obj_new[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[A]]
+  def densematrix_obj_fromseq[A:Manifest](xs: Seq[Interface[Vector[A]]])(implicit ctx: SourceContext): Rep[DenseMatrix[A]]
+  def densematrix_obj_fromvec[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext): Rep[DenseMatrix[A]]
+  def densematrix_obj_diag[A:Manifest](w: Rep[Int], vals: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[DenseMatrix[A]]
+  def densematrix_obj_identity(w: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Double]]
+  def densematrix_obj_zeros(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Double]]
+  def densematrix_obj_zerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Float]]
+  def densematrix_obj_mzerosf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Float]]
+  def densematrix_obj_ones(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Double]]
+  def densematrix_obj_onesf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Float]]
+  def densematrix_obj_rand(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Double]]
+  def densematrix_obj_randf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Float]]
+  def densematrix_obj_randn(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Double]]
+  def densematrix_obj_randnf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Float]]
+  def densematrix_obj_mrandnf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[Float]]
   
   
   // class defs
@@ -345,21 +345,21 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   // object interface
 
   //def symdensematrix_obj_new[A:Manifest](n: Exp[Int]) = reflectMutable(SymmetricDenseMatrixObjectNew[A](n))
-  def densematrix_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int]) = reflectMutable(DenseMatrixObjectNew[A](numRows, numCols)) //XXX
-  def densematrix_obj_fromseq[A:Manifest](xs: Seq[Interface[Vector[A]]]) = reflectPure(DenseMatrixObjectFromSeq(xs)) //XXX
-  def densematrix_obj_fromvec[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]]) = reflectPure(DenseMatrixObjectFromVec(xs))
-  def densematrix_obj_diag[A:Manifest](w: Exp[Int], vals: Interface[Vector[A]]) = reflectPure(DenseMatrixObjectDiag(w, vals))
-  def densematrix_obj_identity(w: Exp[Int]) = reflectPure(DenseMatrixObjectIdentity(w))
-  def densematrix_obj_zeros(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(DenseMatrixObjectNew[Double](numRows, numCols))//DenseMatrixObjectZeros(numRows, numCols))
-  def densematrix_obj_zerosf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(DenseMatrixObjectNew[Float](numRows, numCols))//DenseMatrixObjectZerosF(numRows, numCols))
-  def densematrix_obj_mzerosf(numRows: Exp[Int], numCols: Exp[Int]) = reflectMutable(DenseMatrixObjectNew[Float](numRows, numCols))//reflectPure(DenseMatrixObjectZerosF(numRows, numCols))
-  def densematrix_obj_ones(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(DenseMatrixObjectOnes(numRows, numCols))
-  def densematrix_obj_onesf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(DenseMatrixObjectOnesF(numRows, numCols))
-  def densematrix_obj_rand(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(DenseMatrixObjectRand(numRows, numCols))
-  def densematrix_obj_randf(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(DenseMatrixObjectRandF(numRows, numCols))
-  def densematrix_obj_randn(numRows: Exp[Int], numCols: Exp[Int]) = reflectPure(DenseMatrixObjectRandn(numRows, numCols))
-  def densematrix_obj_randnf(numRows: Rep[Int], numCols: Rep[Int]) = reflectPure(DenseMatrixObjectRandnF(numRows, numCols))
-  def densematrix_obj_mrandnf(numRows: Rep[Int], numCols: Rep[Int]) = reflectMutable(DenseMatrixObjectRandnF(numRows, numCols)) //TR was reflectPure (why?)
+  def densematrix_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(DenseMatrixObjectNew[A](numRows, numCols)) //XXX
+  def densematrix_obj_fromseq[A:Manifest](xs: Seq[Interface[Vector[A]]])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectFromSeq(xs)) //XXX
+  def densematrix_obj_fromvec[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectFromVec(xs))
+  def densematrix_obj_diag[A:Manifest](w: Exp[Int], vals: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectDiag(w, vals))
+  def densematrix_obj_identity(w: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectIdentity(w))
+  def densematrix_obj_zeros(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectNew[Double](numRows, numCols))//DenseMatrixObjectZeros(numRows, numCols))
+  def densematrix_obj_zerosf(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectNew[Float](numRows, numCols))//DenseMatrixObjectZerosF(numRows, numCols))
+  def densematrix_obj_mzerosf(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(DenseMatrixObjectNew[Float](numRows, numCols))//reflectPure(DenseMatrixObjectZerosF(numRows, numCols))
+  def densematrix_obj_ones(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectOnes(numRows, numCols))
+  def densematrix_obj_onesf(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectOnesF(numRows, numCols))
+  def densematrix_obj_rand(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectRand(numRows, numCols))
+  def densematrix_obj_randf(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectRandF(numRows, numCols))
+  def densematrix_obj_randn(numRows: Exp[Int], numCols: Exp[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectRandn(numRows, numCols))
+  def densematrix_obj_randnf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = reflectPure(DenseMatrixObjectRandnF(numRows, numCols))
+  def densematrix_obj_mrandnf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = reflectMutable(DenseMatrixObjectRandnF(numRows, numCols)) //TR was reflectPure (why?)
 
 
   ///////////////////
@@ -586,7 +586,7 @@ trait CudaGenDenseMatrixOps extends CudaGenBase with CudaGenDataStruct {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case DenseMatrixObjectNew(numRows,numCols) => stream.println("%s *%s_ptr = new %s(%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
+    case DenseMatrixObjectNew(numRows,numCols) => checkGPUAlloc(sym); stream.println("%s *%s_ptr = new %s(%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
     case DenseMatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case DenseMatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
     case DenseMatrixRawApply(x,i) => emitValDef(sym, quote(x) + ".dcApply(" + quote(i) + ")")
