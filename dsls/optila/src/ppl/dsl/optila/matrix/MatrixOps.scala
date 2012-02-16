@@ -427,9 +427,6 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   case class MatrixEquals[A:Manifest](x: Interface[Matrix[A]], y: Interface[Matrix[A]])
     extends DeliteOpSingleWithManifest[A,Boolean](reifyEffectsHere(matrix_equals_impl(x,y)))
 
-  case class MatrixTranspose[A:Manifest,MA:Manifest](x: Interface[Matrix[A]])(implicit val b: MatrixBuilder[A,MA])
-    extends DeliteOpSingleWithManifest[A,MA](reifyEffectsHere(matrix_transpose_impl[A,MA](x))) 
-
   case class MatrixPPrint[A:Manifest](x: Interface[Matrix[A]])
     extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(matrix_pprint_impl[A](x)))
 
@@ -461,12 +458,6 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
 
   case class MatrixFilterRows[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], pred: Exp[VectorView[A]] => Exp[Boolean])(implicit val b: MatrixBuilder[A,MA])
     extends DeliteOpSingleWithManifest[A,MA](reifyEffectsHere(matrix_filterrows_impl[A,MA](x,pred)))  
-
-  case class MatrixSumCol[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]])(implicit val b: VectorBuilder[A,VA]) 
-    extends DeliteOpSingleWithManifest[A,VA](reifyEffects(matrix_sumcol_impl[A,VA](x))) {
-  
-    val a = implicitly[Arith[A]]
-  }
 
   case class MatrixGroupRowsBy[A:Manifest,K:Manifest,MA:Manifest](x: Interface[Matrix[A]], pred: Exp[VectorView[A]] => Exp[K])(implicit val b: MatrixBuilder[A,MA])
     extends DeliteOpSingleWithManifest[A,DenseVector[MA]](reifyEffects(matrix_grouprowsby_impl[A,K,MA](x,pred))) {
@@ -513,6 +504,12 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     // def func = e => (1.0/(1.0+exp(conv(e)*(-1)))).AsInstanceOf[Float]
   // }  
   
+  case class MatrixTranspose[A:Manifest,MA:Manifest](x: Interface[Matrix[A]])(implicit val b: MatrixBuilder[A,MA])
+    extends DeliteOpSingleWithManifest[A,MA](reifyEffectsHere(matrix_transpose_impl[A,MA](x))) {
+      
+    val mMA = manifest[MA]
+  }
+        
   
   ////////////////////////////////
   // implemented via delite ops
@@ -744,7 +741,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
 
     def alloc = b.alloc(x.numRows, unit(false))
     val in = (unit(0)::x.numRows)
-    val size = x.numRows
+    val size = copyTransformedOrElse(_.size)(x.numRows)
     def func = i => x(i).sum
     
     val mA = manifest[A]
@@ -752,23 +749,18 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     val mVA = manifest[VA]
   } 
 
-/*
-  case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]])
-    extends DeliteOpMap[Vector[A],A,Vector] {
+  case class MatrixSumCol[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]])(implicit val b: VectorBuilder[A,VA])
+    extends DeliteOpMap[Int,A,VA] {
 
-    val alloc = reifyEffects(Vector[A](x.numCols, true))
-    val in = reifyEffects {
-      val tcoll = Vector[Vector[A]](x.numCols, true)
-      for (i <- 0 until x.numCols){
-        tcoll(i) = x.getCol(i)
-      }
-      tcoll
-    }
-
-    val v = fresh[Vector[A]]
-    val func = v.sum
-  }
-*/
+    def alloc = b.alloc(x.numCols, unit(true))
+    val in = (unit(0)::x.numCols)
+    val size = copyTransformedOrElse(_.size)(x.numCols)
+    def func = i => x.getCol(i).sum
+    
+    val mA = manifest[A]
+    val a = implicitly[Arith[A]]
+    val mVA = manifest[VA]
+  } 
 
 /*
  case class MatrixUnaryMinus[A:Manifest:Arith](in: Exp[Matrix[A]])
@@ -809,7 +801,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpReduce[A] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    val size = intf.dcSize
+    val size = copyTransformedOrElse(_.size)(intf.dcSize)
     val zero = implicitly[HasMinMax[A]].minValue
     def func = (a,b) => if (a > b) a else b
     
@@ -822,7 +814,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[A,B,MB] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    val size = intf.dcSize
+    val size = copyTransformedOrElse(_.size)(intf.dcSize)
     def alloc = b.alloc(intf.numRows, intf.numCols)    
     
     val mA = manifest[A]
@@ -849,7 +841,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   case class MatrixForeachRow[A:Manifest](x: Interface[Matrix[A]], block: Exp[VectorView[A]] => Exp[Unit])
     extends DeliteOpIndexedLoop {
 
-    val size = x.numRows
+    val size = copyTransformedOrElse(_.size)(x.numRows)
     def func = i => block(x(i))
     
     val mA = manifest[A]
@@ -860,7 +852,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
 
     def alloc = b.alloc(x.numRows, isRow)
     val in = (unit(0)::x.numRows)
-    val size = x.numRows
+    val size = copyTransformedOrElse(_.size)(x.numRows)
     def func = i => rowFunc(x(i))   
     
     val mA = manifest[A]
@@ -872,7 +864,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpForeach[A] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    val size = intf.dcSize
+    val size = copyTransformedOrElse(_.size)(intf.dcSize)
     def sync = n => List()
     
     val mA = manifest[A]
@@ -931,6 +923,19 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     
     val mA = manifest[A]
   } 
+
+  // AKS TODO: this is causing unfortunate effect errors in linreg and RBM
+  // case class MatrixTranspose[A:Manifest,MA:Manifest](x: Interface[Matrix[A]])(implicit val b: MatrixBuilder[A,MA])
+  //   extends DeliteOpMap[Int,A,MA] {
+  //     
+  //   val in = (unit(0)::x.dcSize)
+  //   def alloc = b.alloc(x.numCols, x.numRows)
+  //   val size = copyTransformedOrElse(_.size)(x.dcSize)
+  //   def func = i => x(i%x.numRows,i/x.numRows)
+  // 
+  //   val mA = manifest[A]
+  //   val mMA = manifest[MA]
+  // }
 
 
   /////////////////////
@@ -1059,12 +1064,12 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     case e@MatrixSliceRows(x,s,end) => reflectPure(new {override val original = Some(f,e) } with MatrixSliceRows(f(x),f(s),f(end))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixClone(x) => reflectPure(new {override val original = Some(f,e) } with MatrixClone(f(x))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixEquals(x,y) => reflectPure(new {override val original = Some(f,e) } with MatrixEquals(f(x),f(y))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@MatrixTranspose(x) => reflectPure(new {override val original = Some(f,e) } with MatrixTranspose(f(x))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@MatrixTranspose(x) => reflectPure(new {override val original = Some(f,e) } with MatrixTranspose(f(x))(e.mA,e.mMA,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixRepmat(x,i,j) => reflectPure(new {override val original = Some(f,e) } with MatrixRepmat(f(x),f(i),f(j))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixMinRow(x) => reflectPure(new {override val original = Some(f,e) } with MatrixMinRow(f(x))(e.mA,e.o,e.p,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixMaxRow(x) => reflectPure(new {override val original = Some(f,e) } with MatrixMaxRow(f(x))(e.mA,e.o,e.p,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixFilterRows(x,pred) => reflectPure(new {override val original = Some(f,e) } with MatrixFilterRows(f(x),f(pred))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@MatrixSumCol(x) => reflectPure(new {override val original = Some(f,e) } with MatrixSumCol(f(x))(e.mA,e.a,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@MatrixSumCol(x) => reflectPure(new {override val original = Some(f,e) } with MatrixSumCol(f(x))(e.mA,e.a,e.mVA,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixGroupRowsBy(x,pred) => reflectPure(new {override val original = Some(f,e) } with MatrixGroupRowsBy(f(x),f(pred))(e.mA,e.mK,e.mMA,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixTimesVector(x,y) => reflectPure(new {override val original = Some(f,e) } with MatrixTimesVector(f(x),f(y))(e.mA,e.a,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@MatrixSigmoid(x) => reflectPure(new {override val original = Some(f,e) } with MatrixSigmoid(f(x))(e.mA,e.mR,e.conv,e.b))(mtype(manifest[A]),implicitly[SourceContext])
@@ -1103,12 +1108,12 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     case Reflect(e@MatrixSliceRows(x,s,end), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixSliceRows(f(x),f(s),f(end))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixClone(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixClone(f(x))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixEquals(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixEquals(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@MatrixTranspose(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixTranspose(f(x))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@MatrixTranspose(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixTranspose(f(x))(e.mA,e.mMA,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixRepmat(x,i,j), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixRepmat(f(x),f(i),f(j))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixMinRow(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixMinRow(f(x))(e.mA,e.o,e.p,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixMaxRow(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixMaxRow(f(x))(e.mA,e.o,e.p,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixFilterRows(x,pred), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixFilterRows(f(x),f(pred))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@MatrixSumCol(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixSumCol(f(x))(e.mA,e.a,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@MatrixSumCol(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixSumCol(f(x))(e.mA,e.a,e.mVA,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixGroupRowsBy(x,pred), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixGroupRowsBy(f(x),f(pred))(e.mA,e.mK,e.mMA,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixTimesVector(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixTimesVector(f(x),f(y))(e.mA,e.a,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@MatrixSigmoid(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixSigmoid(f(x))(e.mA,e.mR,e.conv,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))

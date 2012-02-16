@@ -8,7 +8,7 @@ import scala.virtualization.lms.internal.{GenericFatCodegen}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
-import ppl.dsl.optila.{Vector, DenseVector, VectorView}
+import ppl.dsl.optila.{Vector, DenseVector, VectorView, Matrix, DenseMatrix}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
 trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
@@ -29,14 +29,18 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def mA = manifest[A]
     //def mVA = manifest[VectorView]
     
-    type V[X] = DenseVector[X]       
+    type V[X] = DenseVector[X]
+    type M[X] = DenseMatrix[X]
     type Self = VectorView[A]
     def wrap(x: Rep[VectorView[A]]) = vectorViewToInterface(x)
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
-    def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
-    def mV[B:Manifest] = manifest[DenseVector[B]] 
-          
+    def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
+    def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]
+    def matBuilder[B:Manifest]: MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]
+    def mV[B:Manifest] = manifest[DenseVector[B]]
+    def mM[B:Manifest] = manifest[DenseMatrix[B]]
+
     // VectorOps
     def length(implicit ctx: SourceContext) = vectorview_length(elem)
     def isRow(implicit ctx: SourceContext) = vectorview_isrow(elem)
@@ -82,13 +86,11 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
 }
 
 trait VectorViewOpsExp extends VectorViewOps with DeliteCollectionOpsExp { this: OptiLAExp =>
-  case class VectorViewNew[A:Manifest](x: Exp[Array[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends Def[VectorView[A]] {
-    val m = manifest[A]
-  }
-  case class VectorViewLength[A:Manifest](x: Exp[VectorView[A]]) extends Def[Int]
-  case class VectorViewIsRow[A:Manifest](x: Exp[VectorView[A]]) extends Def[Boolean]
-  case class VectorViewApply[A:Manifest](x: Exp[VectorView[A]], n: Exp[Int]) extends Def[A]  
-  case class VectorViewUpdate[A:Manifest](x: Exp[VectorView[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
+  case class VectorViewNew[A:Manifest](x: Exp[Array[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) extends DefWithManifest[A,VectorView[A]]
+  case class VectorViewLength[A:Manifest](x: Exp[VectorView[A]]) extends DefWithManifest[A,Int]
+  case class VectorViewIsRow[A:Manifest](x: Exp[VectorView[A]]) extends DefWithManifest[A,Boolean]
+  case class VectorViewApply[A:Manifest](x: Exp[VectorView[A]], n: Exp[Int]) extends DefWithManifest[A,A]  
+  case class VectorViewUpdate[A:Manifest](x: Exp[VectorView[A]], n: Exp[Int], y: Exp[A]) extends DefWithManifest[A,Unit]
   
   def vectorview_obj_new[A:Manifest](x: Exp[Array[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean]) = VectorViewNew(x,start,stride,length,isRow)
   def vectorview_length[A:Manifest](x: Exp[VectorView[A]])(implicit ctx: SourceContext): Exp[Int] = VectorViewLength(x)
@@ -101,7 +103,16 @@ trait VectorViewOpsExp extends VectorViewOps with DeliteCollectionOpsExp { this:
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case Reflect(e@VectorViewApply(x,n), u, es) => reflectMirrored(Reflect(VectorViewApply(f(x),f(n))(mtype(manifest[A])), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case e@VectorViewNew(x,s,str,l,r) => reflectPure(VectorViewNew(f(x),f(s),f(str),f(l),f(r))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@VectorViewLength(x) => reflectPure(VectorViewLength(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@VectorViewIsRow(x) => reflectPure(VectorViewIsRow(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@VectorViewApply(x,n) => reflectPure(VectorViewApply(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+        
+    case Reflect(e@VectorViewNew(x,s,str,l,r), u, es) => reflectMirrored(Reflect(VectorViewNew(f(x),f(s),f(str),f(l),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorViewLength(x), u, es) => reflectMirrored(Reflect(VectorViewLength(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorViewIsRow(x), u, es) => reflectMirrored(Reflect(VectorViewIsRow(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorViewApply(x,n), u, es) => reflectMirrored(Reflect(VectorViewApply(f(x),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorViewUpdate(x,n,y), u, es) => reflectMirrored(Reflect(VectorViewUpdate(f(x),f(n),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??  
 }
@@ -162,7 +173,7 @@ trait ScalaGenVectorViewOps extends BaseGenVectorViewOps with ScalaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case v@VectorViewNew(x,start,stride,length,isRow) => emitValDef(sym, "new VectorView[" + remap(v.m) + "](" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
+    case v@VectorViewNew(x,start,stride,length,isRow) => emitValDef(sym, "new VectorView[" + remap(v.mA) + "](" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
     case VectorViewApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
     case VectorViewUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
     case VectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")
@@ -177,6 +188,8 @@ trait CudaGenVectorViewOps extends BaseGenVectorViewOps with CudaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
+    //TODO: Allow this to only kernels (not helper functions)
+    case VectorViewNew(x,start,stride,length,isRow) => stream.println(remap(sym.Type) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
     case VectorViewApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case VectorViewUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");\n")
     case VectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")

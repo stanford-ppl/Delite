@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.vector
 
-import ppl.dsl.optiml.{DenseVector,Vector, IndexVector, IndexVectorRange, IndexVectorDense, Matrix}
+import ppl.dsl.optiml.{DenseVector,Vector, IndexVector, IndexVectorRange, IndexVectorDense, Matrix, DenseMatrix}
 import ppl.dsl.optiml.{OptiMLExp, OptiML}
 import ppl.delite.framework.DeliteApplication
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
@@ -18,13 +18,17 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
   trait IndexVecOpsCls extends VecOpsCls[Int] with InterfaceOps[IndexVector] {
     //implicit def toOps(x: Rep[VA]): IndexVecOpsCls
     //implicit def toIntf(x: Rep[VA]): Interface[IndexVector]    
-    type V[X] = DenseVector[X] // conversion operations on IndexVectors will return a DenseVector    
+    type V[X] = DenseVector[X] // conversion operations on IndexVectors will return a DenseVector
+    type M[X] = DenseMatrix[X]
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
+    def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
     def wrap(x: Rep[Self]): Interface[IndexVector]
     def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
-    def mV[B:Manifest] = manifest[DenseVector[B]] 
-    def mA = manifest[Int]    
+    def matBuilder[B:Manifest]: MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]
+    def mV[B:Manifest] = manifest[DenseVector[B]]
+    def mM[B:Manifest] = manifest[DenseMatrix[B]]
+    def mA = manifest[Int]
     
     // VectorOps generic - math on an IndexVector turns it into a DenseVector (is this the right thing to do?)
     type VPLUSR = DenseVector[Int]

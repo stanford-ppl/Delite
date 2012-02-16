@@ -347,15 +347,18 @@ trait ArithOps extends Variables with OverloadHack {
 trait ArithOpsExp extends ArithOps with VariablesExp {
   this: OptiLAExp =>
 
-  case class ArithPlus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
-  case class ArithPlusEquals[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[Unit]
-  case class ArithMinus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
-  case class ArithTimes[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
-  case class ArithFractionalDivide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]) extends Def[T]
-  case class ArithAbs[T:Manifest:Numeric](lhs: Exp[T]) extends Def[T] {
-    val m = manifest[T]
+  abstract class NumericDef[A:Manifest:Numeric,R:Manifest] extends DefWithManifest[A,R] {
+    val n = implicitly[Numeric[A]]
   }
-  case class ArithExp[T:Manifest:Numeric](lhs: Exp[T]) extends Def[Double]
+  case class ArithPlus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends NumericDef[T,T]
+  case class ArithPlusEquals[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends NumericDef[T,Unit]
+  case class ArithMinus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends NumericDef[T,T]
+  case class ArithTimes[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T]) extends NumericDef[T,T]
+  case class ArithFractionalDivide[T:Manifest:Fractional](lhs: Exp[T], rhs: Exp[T]) extends DefWithManifest[T,T]{
+    val f = implicitly[Fractional[T]]
+  }
+  case class ArithAbs[T:Manifest:Numeric](lhs: Exp[T]) extends NumericDef[T,T]
+  case class ArithExp[T:Manifest:Numeric](lhs: Exp[T]) extends NumericDef[T,Double]
 
   def arith_plus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T])(implicit ctx: SourceContext): Exp[T] = reflectPure(ArithPlus(lhs, rhs))
   def arith_minus[T:Manifest:Numeric](lhs: Exp[T], rhs: Exp[T])(implicit ctx: SourceContext): Exp[T] = reflectPure(ArithMinus(lhs, rhs))
@@ -364,17 +367,16 @@ trait ArithOpsExp extends ArithOps with VariablesExp {
   def arith_abs[T:Manifest:Numeric](lhs: Exp[T])(implicit ctx: SourceContext) = reflectPure(ArithAbs(lhs))
   def arith_exp[T:Manifest:Numeric](lhs: Exp[T])(implicit ctx: SourceContext) = reflectPure(ArithExp(lhs))
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = {
-    implicit var a: Fractional[A] = null // hack!! need to store it in Def instances??
-    e match {
-      case ArithPlus(lhs,rhs) => arith_plus(f(lhs), f(rhs))
-      case ArithMinus(lhs,rhs) => arith_minus(f(lhs), f(rhs))
-      case ArithTimes(lhs,rhs) => arith_times(f(lhs), f(rhs))
-      case ArithFractionalDivide(lhs,rhs) => arith_fractional_divide(f(lhs), f(rhs))
-      case ArithAbs(lhs) => arith_abs(f(lhs))
-      case _ => super.mirror(e,f)
-    }
-  }
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@ArithPlus(lhs,rhs) => reflectPure(ArithPlus(f(lhs),f(rhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithMinus(lhs,rhs) => reflectPure(ArithMinus(f(lhs),f(rhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithTimes(lhs,rhs) => reflectPure(ArithTimes(f(lhs),f(rhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithFractionalDivide(lhs,rhs) => reflectPure(ArithFractionalDivide(f(lhs),f(rhs))(e.mA,e.f))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithAbs(lhs) => reflectPure(ArithAbs(f(lhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@ArithExp(lhs) => reflectPure(ArithExp(f(lhs))(e.mA,e.n))(mtype(manifest[A]),implicitly[SourceContext])
+    case _ => super.mirror(e,f)
+  }).asInstanceOf[Exp[A]] 
+  
 }
 
 trait ArithOpsExpOpt extends ArithOpsExp {

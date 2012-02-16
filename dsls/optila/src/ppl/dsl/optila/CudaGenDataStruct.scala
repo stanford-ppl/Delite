@@ -100,7 +100,7 @@ trait CudaGenDataStruct extends CudaCodegen {
   def delitearrayCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
     val typeArg = sym.Type.typeArguments.head
-    val numBytesStr = "length * sizeof(%s)".format(quote(sym),remap(typeArg))
+    val numBytesStr = "length * sizeof(%s)".format(remap(typeArg))
 
     out.append("\tint length = env->GetArrayLength((j%sArray)obj);\n".format(remap(typeArg)))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical((j%sArray)obj,0);\n".format(remap(typeArg),remap(typeArg),remap(typeArg)))
@@ -226,7 +226,18 @@ trait CudaGenDataStruct extends CudaCodegen {
   }
 
   def delitearrayCopyMutableInputDtoH(sym: Sym[Any]): String = {
-    "//TODO: Implement this!\n"
+    val out = new StringBuilder
+    val typeArg = sym.Type.typeArguments.head
+    val numBytesStr = "length * sizeof(%s)".format(remap(typeArg))
+
+    out.append("\tint length = %s.length;\n".format(quote(sym)))
+    out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical((j%sArray)obj,0);\n".format(remap(typeArg),remap(typeArg),remap(typeArg)))
+    out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
+    out.append("\tDeliteCudaMallocHost((void**)&hostPtr,%s);\n".format(numBytesStr))
+    out.append("\tDeliteCudaMemcpyDtoHAsync(hostPtr, %s.data, %s);\n".format(quote(sym),numBytesStr))
+    out.append("\tmemcpy(dataPtr, hostPtr, %s);\n".format(numBytesStr))
+    out.append("\tenv->ReleasePrimitiveArrayCritical((j%sArray)obj, dataPtr, 0);\n".format(remap(typeArg)))
+    out.toString
   }
 
   // Dummy methods temporarily just for the compilation
