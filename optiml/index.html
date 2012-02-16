@@ -1,0 +1,68 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>OptiML &mdash; Welcome</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/' title="OptiML">OptiML</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href='http://stanford-ppl.github.com/Delite/getting_started.html'>Getting Started</a></li>
+              <!--<li><a href="faq.html">FAQ</a></li>-->
+              <!--<li><a href="examples.html">Examples</a></li>-->
+              <li><a href="http://groups.google.com/group/optiml">Mailing List</a></li>
+              <li><a href="downloads/optiml-spec-0.1.pdf">Language Specification</a></li>
+              <li><a href='http://stanford-ppl.github.com/Delite/index.html'>Delite</a></li>
+            </ol>
+          </li>
+        </ol>
+      </div>
+      <div id='content'>
+        <h1 id='title_welcome'>Welcome</h1>
+        <p> 
+        OptiML is an embedded domain-specific language for machine learning.
+        OptiML is developed as a research project from Stanford University's Pervasive
+        Parallelism Laboratory (PPL).  
+        </p><p>
+        OptiML is currently targeted at machine learning
+        researchers and algorithm developers; it aims to provide a productive, high
+        performance, MATLAB-like environment for linear algebra supplemented with
+        machine learning specific abstractions. Our primary goal is to allow machine
+        learning practitioners to write code in a highly declarative manner and still
+        achieve high performance on a variety of underlying parallel, heterogeneous
+        devices. The same OptiML program should run well and scale on a CMP (chip
+        multi-processor), a GPU, a combination of CMPs and GPUs, clusters of CMPs and
+        GPUs, and eventually even FPGAs and other specialized accelerators. 
+        </p><p>
+        In particular, OptiML is designed to allow statistical inference algorithms
+        expressible by the Statistical Query Model to be both easy to express and
+        very fast to execute. These algorithms can be expressed in a summation form,
+        and can be parallelized using fine-grained map-reduce operations. OptiML
+        employs aggressive optimizations to reduce unnecessary memory allocations and
+        fuse operations together to make these as fast as possible. OptiML also
+        attempts to specialize implementations to particular hardware devices as much
+        as possible to achieve the best performance.
+        </p>
+<h2 id="news">News</h2>
+<ul>
+	<li><em>2012 Feb 16</em> OptiML alpha 0.1 released</li>
+</ul>
+      </div>
+    </div>
+  </body>
+</html>
