@@ -1,13 +1,13 @@
 <html>
   <head>
     <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
-    <title>Delite &mdash; Getting started</title>
+    <title>OptiML &mdash; Getting started</title>
     <style type='text/css'>
-      @import 'css/default.css';
-      @import 'css/syntax.css';
+      @import '../css/default.css';
+      @import '../css/syntax.css';
     </style>
     <style media='print' type='text/css'>
-      @import 'css/print.css';
+      @import '../css/print.css';
     </style>
     <meta content='Delite documentation' name='subject'>
     <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
@@ -15,7 +15,7 @@
   <body>
     <div id='outer'>
       <div id='header'>
-        <div class='home'><a href='http://stanford-ppl.github.com/Delite/' title="Delite">Delite</a></div>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/optiml/' title="OptiML">OptiML</a></div>
       </div>
       <div id='menu'>
         <ol>
@@ -23,24 +23,15 @@
             <ol>
               <li><a href='index.html'>Welcome</a></li>
               <li><a href='getting_started.html'>Getting Started</a></li>
-              <li><a href="dsl_example.html">My First DSL</a></li>
-              <!--<li><a href="performance.html">Performance</a></li>
-              <li><a href="tests.html">Tests</a></li>
-              <-->
-              <li><a href="troubleshooting.html">Troubleshooting</a></li>
-              <li><a href="publications.html">Publications</a></li>
+              <!--<li><a href="faq.html">FAQ</a></li>-->
+              <!--<li><a href="examples.html">Examples</a></li>-->
+              <li><a href="debugging.html">Debugging</a></li>
+              <li><a href="getting_started_native.html">Native Libraries and CUDA</a></li>
+              <li><a href="http://groups.google.com/group/optiml">Mailing List</a></li>
+              <li><a href="downloads/optiml-spec-0.1.pdf">Language Specification</a></li>
+              <li><a href='http://stanford-ppl.github.com/Delite/index.html'>Delite</a></li>
             </ol>
-          </li>
-          <li>Getting it
-            <ol>
-            <!--
-              <li><a href='releases.html'>Releases</a></li>
-              <li><a href='snapshots.html'>Snapshots</a></li>
-            -->
-              <li><a href='source.html'>Source</a></li>
-              <li><a href='license.html'>License</a></li>
-            </ol>
-          </li>
+          </li> 
           <!--
           <li>Reference
             <ol>
@@ -158,14 +149,10 @@ hello world
 </code></pre></div>
       </p>
       <p>
-      Congratulations! You just ran your first Delite application. Take some time to look at the generated DEG file, and the generated
+      Congratulations! You just ran your first OptiML application. Take some time to look at the generated DEG file, and the generated
       kernels inside generated/ to see what went on behind the scenes.</p>
 
 	  <p> Delite is capable of using CUDA to execute applications on the GPU as well as BLAS to accelerate certain matrix operations on the CPU.  These features require some additional setup in order to work with your environment. <a href="getting_started_native.html"> Click here for instructions.</a> </p>
-	  
-	  <p>When you think you're ready to really dive in, move on
-      to <a href="dsl_example.html">building your own DSL</a>.
-      </p>
       </div>
       <div id='footer'>Copyright &copy; 2011</div>
     </div>

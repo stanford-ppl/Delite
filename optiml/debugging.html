@@ -1,0 +1,70 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>OptiML &mdash; Debugging</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/' title="OptiML">OptiML</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href='http://stanford-ppl.github.com/Delite/getting_started.html'>Getting Started</a></li>
+              <!--<li><a href="faq.html">FAQ</a></li>-->
+              <!--<li><a href="examples.html">Examples</a></li>-->
+              <li><a href="debugging.html">Debugging</a></li>
+              <li><a href="http://stanford-ppl.github.com/Delite/getting_started_native.html">Native Libraries and CUDA</a></li>
+              <li><a href="http://groups.google.com/group/optiml">Mailing List</a></li>
+              <li><a href="downloads/optiml-spec-0.1.pdf">Language Specification</a></li>
+              <li><a href='http://stanford-ppl.github.com/Delite/index.html'>Delite</a></li>
+            </ol>
+          </li>
+        </ol>
+      </div>
+      <div id='content'>
+        <h1 id='title_debugging'>Debugging</h1>
+        <h2>Usage</h2>
+        <p>
+        Using the Delite profiler involves three steps. In the first step, the Delite application is instrumented with calls to the profiler. In the second step, profiling data is generated and output to a JavaScript file. In the third step, the profiling data is converted to a web-based visualization which allows exploring the profiling information interactively.
+        </p>
+        <h3>Step 1: Instrumentation</h3>
+        <p>
+        When staging the Delite application, enable instrumentation by setting the delite.enable.profiler system property to true. After staging the application, the Delite compiler generates a JSON file myapp-symbols.json if the name of the generated DEG file is myapp.deg. This JSON file contains the source information of all symbols of the application.</p>
+        <p>
+        Example (GDA):
+        <div class="highlight"><pre><code class="bash">delitec --profile ppl.apps.ml.gda.GDARunner</code></pre></div>
+        </p><p>
+        <h3>Step 2: Collecting Profiling Data</h3>
+        <p>
+        Run the Delite application with the --profile flag.
+        This generates a JavaScript file (<stats.output.dir>/profileData.js) with the collected profile data.
+        </p><p>
+        Example (GDA):
+        <div class="highlight" style="overflow: scroll"><pre><code class="bash">delite --profile ppl.apps.ml.gda.GDARunner benchmark/data/ml/gda/q1x.dat benchmark/data/ml/gda/q1y.dat</code></pre></div>
+        </p><p>
+        <h3>Step 3: Generating a Web-based Visualization</h3>
+        </p><p>
+        This generates a static HTML page ([stats.output.filename]) visualizing the collected profiling information. The generated html page will by default be in <code>$PWD/profile</code>.
+        </p><p>
+        Example (GDA):
+        <div class="highlight"><pre><code class="bash">delitep ppl.apps.ml.gda.GDARunner</code></pre></div>
+        <!--<div class="highlight" style="overflow: scroll"><pre><code class="bash">java -Dstats.output.dir=profile -Dstats.output.filename=profile-gda.html -Ddelite.deg.filename=gda.deg -cp runtime/target/scala-2.10.0-M1-virtualized/classes:$SCALA_HOME/lib/scala-library.jar:$SCALA_HOME/lib/scala-compiler.jar ppl.delite.runtime.profiler.Profiler</code></pre></div>-->
+        </p>
+      </div>
+      <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>
