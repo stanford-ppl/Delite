@@ -141,8 +141,9 @@ trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsE
     }
   }
   
-  abstract class DefWithManifest[A:Manifest,R] extends Def[R] {
-    val m = manifest[A]
+  abstract class DefWithManifest[A:Manifest,R:Manifest] extends Def[R] {
+    val mA = manifest[A]
+    val mR = manifest[R]
   }  
 }
 

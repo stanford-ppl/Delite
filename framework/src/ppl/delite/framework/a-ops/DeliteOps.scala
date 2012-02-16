@@ -73,8 +73,9 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     final lazy val block: Exp[A] = copyTransformedOrElse(_.block)(block0)
   }
   
-  class DeliteOpSingleWithManifest[A:Manifest,R](block0: => Exp[R], requireInputs: Boolean = false) extends DeliteOpSingleTask[R](block0,requireInputs) {
-    val m = manifest[A]
+  class DeliteOpSingleWithManifest[A:Manifest,R:Manifest](block0: => Exp[R], requireInputs: Boolean = false) extends DeliteOpSingleTask[R](block0,requireInputs) {
+    val mA = manifest[A]
+    val mR = manifest[R]
   }
 
   /**

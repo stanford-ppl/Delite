@@ -41,7 +41,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
      * MatrixTimesVector 
      */
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
-      val tp = e.m.toString
+      val tp = e.mA.toString
       val func = tp match {
         case "Double" => "cblas_dgemv"
         case "Float" => "cblas_sgemv"
@@ -71,7 +71,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
      * MatrixMultiply 
      */
     case e@DenseMatrixMultiplyBLAS(x,y) =>
-      val tp = e.m.toString
+      val tp = e.mA.toString
       val func = tp match {
         case "Double" => "cblas_dgemm"
         case "Float" => "cblas_sgemm"
@@ -98,7 +98,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
      * MatrixSigmoid 
      */
     case e@DenseMatrixSigmoidVectorized(in) =>
-      val tp = e.m.toString
+      val tp = e.mA.toString
       val func = tp match {
         case "Double" => "exp"
         case "Float" => "expf"

@@ -39,7 +39,7 @@ trait OptiLAOpenCLGenExternal extends OpenCLGenExternalBase with OpenCLGenDataSt
   override def emitExternalLib(rhs: Def[Any]): Unit = rhs match {
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val lib = clBLAS
-      val tp = e.m.typeArguments.head.toString.toLowerCase
+      val tp = e.mA.typeArguments.head.toString.toLowerCase
       val func = tp match {
         case "double" => "clblasDgemv"
         case "float" => "clblasSgemv"
@@ -52,7 +52,7 @@ trait OptiLAOpenCLGenExternal extends OpenCLGenExternalBase with OpenCLGenDataSt
 
    case e@DenseMatrixMultiplyBLAS(x,y) =>
       val lib = clBLAS
-      val tp = e.m.typeArguments.head.toString.toLowerCase
+      val tp = e.mA.typeArguments.head.toString.toLowerCase
       val func = tp match {
         case "double" => "clblasDgemm"
         case "float" => "clblasSgemm"
