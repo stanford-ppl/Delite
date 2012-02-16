@@ -102,7 +102,7 @@ object PerformanceTimer
               // replace previous MTs
               stats += (master -> (timing :: mergedMT :: previousTimings.drop(numToMerge)))
               
-              println("successfully merged multitimings")
+              //println("successfully merged multitimings")
             }
           }
         } else {
@@ -131,7 +131,7 @@ object PerformanceTimer
   }
 
   def start(component: String, printMessage: Boolean = true): Unit = {
-    println("thread " + Thread.currentThread().getName() + " executing component " + component)
+    //println("thread " + Thread.currentThread().getName() + " executing component " + component)
     start(component, "main", printMessage)
   }
   

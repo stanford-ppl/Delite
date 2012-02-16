@@ -115,7 +115,7 @@ object Delite {
 	    System.gc()
       }
 
-      println("Done Executing " + numTimes + " Runs")
+      //println("Done Executing " + numTimes + " Runs")
       
       if(Config.dumpStats)
         PerformanceTimer.dumpStats()

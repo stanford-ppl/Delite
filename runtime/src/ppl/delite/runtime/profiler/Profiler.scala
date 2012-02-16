@@ -179,9 +179,9 @@ var parallelTasks = [[1, 4, 6], [2, 3, 5]];
     // for skipping input
     val globalAppStartNanos = stats.get("app") match {
       case Some(appStats) =>
-      	println("found stats for app")
+      	//println("found stats for app")
         val appStart = appStats(0).startTime
-        println("app start nanos: "+appStart)
+        //println("app start nanos: "+appStart)
       	appStart
       case None =>
         globalStartNanos        
