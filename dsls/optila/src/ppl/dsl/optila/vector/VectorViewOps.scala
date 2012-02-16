@@ -8,7 +8,7 @@ import scala.virtualization.lms.internal.{GenericFatCodegen}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
-import ppl.dsl.optila.{Vector, DenseVector, VectorView}
+import ppl.dsl.optila.{Vector, DenseVector, VectorView, Matrix, DenseMatrix}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
 trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
@@ -29,14 +29,18 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def mA = manifest[A]
     //def mVA = manifest[VectorView]
     
-    type V[X] = DenseVector[X]       
+    type V[X] = DenseVector[X]
+    type M[X] = DenseMatrix[X]
     type Self = VectorView[A]
     def wrap(x: Rep[VectorView[A]]) = vectorViewToInterface(x)
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
-    def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
-    def mV[B:Manifest] = manifest[DenseVector[B]] 
-          
+    def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
+    def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]
+    def matBuilder[B:Manifest]: MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]
+    def mV[B:Manifest] = manifest[DenseVector[B]]
+    def mM[B:Manifest] = manifest[DenseMatrix[B]]
+
     // VectorOps
     def length(implicit ctx: SourceContext) = vectorview_length(elem)
     def isRow(implicit ctx: SourceContext) = vectorview_isrow(elem)
@@ -177,6 +181,8 @@ trait CudaGenVectorViewOps extends BaseGenVectorViewOps with CudaGenFat {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
+    //TODO: Allow this to only kernels (not helper functions)
+    case VectorViewNew(x,start,stride,length,isRow) => stream.println(remap(sym.Type) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
     case VectorViewApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case VectorViewUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");\n")
     case VectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")

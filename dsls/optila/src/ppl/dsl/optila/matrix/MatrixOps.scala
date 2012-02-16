@@ -437,12 +437,6 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   case class MatrixEquals[A:Manifest](x: Interface[Matrix[A]], y: Interface[Matrix[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_equals_impl(x,y)))
 
-  case class MatrixTranspose[A:Manifest,MA:Manifest](x: Interface[Matrix[A]])(implicit val b: MatrixBuilder[A,MA])
-    extends DeliteOpSingleTask(reifyEffectsHere(matrix_transpose_impl[A,MA](x))) {
-    val m = manifest[A]
-    val mMA = manifest[MA]
-  }
-
   case class MatrixPPrint[A:Manifest](x: Interface[Matrix[A]])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_pprint_impl[A](x)))
 
@@ -466,9 +460,6 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
 
   case class MatrixFilterRows[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], pred: Exp[VectorView[A]] => Exp[Boolean])(implicit b: MatrixBuilder[A,MA])
     extends DeliteOpSingleTask(reifyEffectsHere(matrix_filterrows_impl[A,MA](x,pred)))  
-
-  case class MatrixSumCol[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]])(implicit b: VectorBuilder[A,VA]) 
-    extends DeliteOpSingleTask(reifyEffects(matrix_sumcol_impl[A,VA](x)))
 
   case class MatrixGroupRowsBy[A:Manifest,K:Manifest,MA:Manifest](x: Interface[Matrix[A]], pred: Exp[VectorView[A]] => Exp[K])(implicit b: MatrixBuilder[A,MA])
     extends DeliteOpSingleTask(reifyEffects(matrix_grouprowsby_impl[A,K,MA](x,pred)))
@@ -752,23 +743,14 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     def func = i => x(i).sum
   } 
 
-/*
-  case class MatrixSumCol[A:Manifest:Arith](x: Exp[Matrix[A]])
-    extends DeliteOpMap[Vector[A],A,Vector] {
+  case class MatrixSumCol[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]])(implicit b: VectorBuilder[A,VA])
+    extends DeliteOpMap[Int,A,VA] {
 
-    val alloc = reifyEffects(Vector[A](x.numCols, true))
-    val in = reifyEffects {
-      val tcoll = Vector[Vector[A]](x.numCols, true)
-      for (i <- 0 until x.numCols){
-        tcoll(i) = x.getCol(i)
-      }
-      tcoll
-    }
-
-    val v = fresh[Vector[A]]
-    val func = v.sum
-  }
-*/
+    def alloc = b.alloc(x.numCols, unit(true))
+    val in = (unit(0)::x.numCols)
+    val size = x.numCols
+    def func = i => x.getCol(i).sum
+  } 
 
 /*
  case class MatrixUnaryMinus[A:Manifest:Arith](in: Exp[Matrix[A]])
@@ -911,6 +893,18 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     
     def m = manifest[A]
   } 
+
+  case class MatrixTranspose[A:Manifest,MA:Manifest](x: Interface[Matrix[A]])(implicit val b: MatrixBuilder[A,MA])
+    extends DeliteOpMap[Int,A,MA] {
+      
+    def alloc = b.alloc(x.numCols, x.numRows)
+    val in = (unit(0)::x.numCols*x.numRows)
+    val size = x.numCols*x.numRows
+    def func = i => x(i%x.numRows,i/x.numRows)
+
+    val m = manifest[A]
+    val mMA = manifest[MA]
+  }
 
 
   /////////////////////

@@ -1,6 +1,6 @@
 package ppl.dsl.optila.vector
 
-import ppl.dsl.optila.{Vector, DenseVector, RangeVector}
+import ppl.dsl.optila.{Vector, DenseVector, RangeVector, Matrix, DenseMatrix}
 import ppl.dsl.optila.{OptiLAExp, OptiLA, OptiLACompiler}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastruct.scala.DeliteCollection
@@ -29,14 +29,18 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
     def mA = manifest[Int]
     //def mVA = manifest[RangeVector]
     
-    type V[X] = DenseVector[X]       
+    type V[X] = DenseVector[X]
+    type M[X] = DenseMatrix[X]
     type Self = RangeVector 
     def wrap(x: Rep[RangeVector]) = rangeToInterface(x)
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
-    def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
-    def mV[B:Manifest] = manifest[DenseVector[B]] 
-          
+    def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
+    def builder[B:Manifest]: VectorBuilder[B,V[B]] = denseVectorBuilder[B]
+    def matBuilder[B:Manifest]: MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]
+    def mV[B:Manifest] = manifest[DenseVector[B]]
+    def mM[B:Manifest] = manifest[DenseMatrix[B]]
+
     // VectorOps
     def length(implicit ctx: SourceContext) = rangevector_length(elem)
     def isRow(implicit ctx: SourceContext) = rangevector_isrow(elem)

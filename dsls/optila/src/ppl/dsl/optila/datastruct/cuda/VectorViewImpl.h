@@ -2,6 +2,7 @@
 #define _VECTORVIEWIMPL_H_
 
 #include "DeliteCuda.h"
+#include "DeliteArray.h"
 
 template <class T>
 class VectorView {
@@ -21,10 +22,10 @@ public:
         stride = 1;
     }
 
-    __host__ __device__ VectorView(int _length, bool _isRow, T *_data, int _start, int _stride) {
+    __host__ __device__ VectorView(DeliteArray<T> _da, int _start, int _stride, int _length, bool _isRow) {
         length = _length;
         isRow = _isRow;
-        data = _data;
+        data = _da.data;
         start = _start;
         stride = _stride;
     }

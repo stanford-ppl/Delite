@@ -67,13 +67,18 @@ trait VectorOps extends Variables {
     // implicit def builder: VectorBuilder[A,VA]        
     
     type V[X] // generic return type, unless overloaded for the op as below (TODO: use type classes to clean this up!)
+    type M[X] 
     implicit def mV[B:Manifest]: Manifest[V[B]]         
     implicit def toOps[B:Manifest](x: Rep[V[B]]): VecOpsCls[B]
     implicit def toIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]]        
     implicit def builder[B:Manifest]: VectorBuilder[B,V[B]]    
+    implicit def mM[B:Manifest]: Manifest[M[B]]         
+    implicit def matToIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]]        
+    implicit def matBuilder[B:Manifest]: MatrixBuilder[B,M[B]]    
     
     type VA = V[A] // temporary for easy compatibility with old stuff
-    
+    type MA = M[A]
+
     type Self <: Vector[A]
     implicit def wrap(x: Rep[Self]): Interface[Vector[A]]
     val elem: Rep[Self] 
@@ -111,7 +116,7 @@ trait VectorOps extends Variables {
     def Clone()(implicit ctx: SourceContext): Rep[VA] = vector_clone[A,VA](x) 
     def mutable()(implicit ctx: SourceContext): Rep[VA] = vector_mutable_clone[A,VA](x)
     def pprint()(implicit ctx: SourceContext): Rep[Unit] = vector_pprint(x)
-    def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[A]] = vector_repmat(x,i,j)
+    def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext): Rep[MA] = vector_repmat[A,MA](x,i,j)
     def mkString(sep: Rep[String] = unit(""))(implicit ctx: SourceContext): Rep[String] = vector_mkstring(x, sep)      
     
     // data operations
@@ -314,7 +319,7 @@ trait VectorOps extends Variables {
     def Clone()(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.Clone)
     def mutable()(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.mutable)
     def pprint()(implicit ctx: SourceContext) = intf.ops.pprint
-    def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = intf.ops.replicate(i,j)
+    def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.replicate(i,j))
     def mkString(sep: Rep[String] = unit(""))(implicit ctx: SourceContext) = intf.ops.mkString(sep)
     
     def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.update(n,y)
@@ -399,7 +404,7 @@ trait VectorOps extends Variables {
   def vector_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
   def vector_mutable_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
   def vector_pprint[A:Manifest](x: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit]
-  def vector_repmat[A:Manifest](x: Interface[Vector[A]], i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext): Rep[DenseMatrix[A]]
+  def vector_repmat[A:Manifest,MA:Manifest](x: Interface[Vector[A]], i: Rep[Int], j: Rep[Int])(implicit b: MatrixBuilder[A,MA], ctx: SourceContext): Rep[MA]
   def vector_mkstring[A:Manifest](x: Interface[Vector[A]], sep: Rep[String])(implicit ctx: SourceContext): Rep[String]  
   
   def vector_concatenate[A:Manifest,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
@@ -487,9 +492,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   case class VectorPPrint[A](x: Interface[Vector[A]])(block: Exp[Unit]) // stupid limitation...
     extends DeliteOpSingleTask(block)
     // reifyEffects(densevector_pprint_impl[A](x))
-
-  case class VectorRepmat[A:Manifest](x: Interface[Vector[A]], i: Exp[Int], j: Exp[Int])
-    extends DeliteOpSingleTask(reifyEffectsHere(vector_repmat_impl[A](x,i,j)))
 
   case class VectorMkString[A:Manifest](x: Interface[Vector[A]], sep: Exp[String])
     extends DeliteOpSingleTask(reifyEffectsHere(vector_mkstring_impl[A](x, sep)))
@@ -947,6 +949,18 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     def m = manifest[A]
   }
   
+  case class VectorRepmat[A:Manifest,MA:Manifest](x: Interface[Vector[A]], i: Exp[Int], j: Exp[Int])(implicit val b: MatrixBuilder[A,MA])
+    extends DeliteOpMap[Int,A,MA] {
+
+    def alloc = b.alloc(i, x.length*j)
+    val in = (unit(0)::x.length*i*j)
+    val size = x.length*i*j
+    def func = i => x(i%x.length)
+
+    def mA = manifest[A]
+    def mMA = manifest[MA]
+  }
+
   /*
   case class VectorFlatMap[A:Manifest,B:Manifest,VB:Manifest](in: Interface[Vector[A]], map: Exp[A] => Exp[VB])(implicit b: VectorBuilder[B,VB])
     extends DeliteOpMapReduce2[A,VB] {
@@ -1012,7 +1026,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   def vector_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorClone[A,VA](x))
   def vector_mutable_clone[A:Manifest,VA:Manifest](x: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectMutable(VectorClone[A,VA](x))
   def vector_pprint[A:Manifest](x: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectEffect(VectorPPrint(x)(reifyEffectsHere(vector_pprint_impl[A](x))))  
-  def vector_repmat[A:Manifest](x: Interface[Vector[A]], i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = reflectPure(VectorRepmat(x,i,j))
+  def vector_repmat[A:Manifest,MA:Manifest](x: Interface[Vector[A]], i: Rep[Int], j: Rep[Int])(implicit b: MatrixBuilder[A,MA], ctx: SourceContext) = reflectPure(VectorRepmat[A,MA](x,i,j))
   def vector_mkstring[A:Manifest](x: Interface[Vector[A]], sep: Rep[String])(implicit ctx: SourceContext) = reflectPure(VectorMkString(x,sep))
   
   def vector_concatenate[A:Manifest,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorConcatenate[A,VA](x,y))
@@ -1097,7 +1111,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     case e@VectorCount(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorCount(f(x),f(p))(e.m))(mtype(manifest[A]),implicitly[SourceContext])
     case e@VectorMinIndex(x) => reflectPure(new { override val original = Some(f,e) } with VectorMinIndex(f(x))(e.m,e.o,e.p))(mtype(manifest[A]),implicitly[SourceContext])
     case e@VectorMap(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorMap(f(x),f(p))(e.mA,e.mB,e.mVB,e.b))(mtype(manifest[A]),implicitly[SourceContext])
-    
+
     case Reflect(e@VectorOuter(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorOuter(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorTimesScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorTimesScalar(f(x),f(y))(e.m, e.a, e.mVA, e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorDivideScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorDivideScalar(f(x),f(y))(e.m, e.a, e.mVA, e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -1107,7 +1121,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     case Reflect(e@VectorPlusEquals(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorPlusEquals(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorMutableMap(x,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorMutableMap(f(x),f(g))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorPPrint(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorPPrint(f(x))(f(e.block)), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    
+
     // allocations
     case Reflect(e@VectorObjectRange(s,o,d,r), u, es) => reflectMirrored(Reflect(VectorObjectRange(f(s),f(o),f(d),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
