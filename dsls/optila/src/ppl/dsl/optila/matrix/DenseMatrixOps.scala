@@ -589,6 +589,8 @@ trait CudaGenDenseMatrixOps extends CudaGenBase with CudaGenDataStruct {
     case DenseMatrixObjectNew(numRows,numCols) => stream.println("%s *%s_ptr = new %s(%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(numRows),quote(numCols)))
     case DenseMatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
     case DenseMatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
+    case DenseMatrixRawApply(x,i) => emitValDef(sym, quote(x) + ".dcApply(" + quote(i) + ")")
+    case DenseMatrixRawUpdate(x,i,y) => stream.println(quote(x) + ".dcUpdate(" + quote(i) + "," + quote(y) + ");")
     case DenseMatrixRawData(x) => emitValDef(sym, quote(getBlockResult(x)) + ".getdata()")
     case DenseMatrixSetNumRows(x,v) => stream.println(quote(x) + ".numRows = " + quote(v) + ";")
     case DenseMatrixSetNumCols(x,v) => stream.println(quote(x) + ".numCols = " + quote(v) + ";")
