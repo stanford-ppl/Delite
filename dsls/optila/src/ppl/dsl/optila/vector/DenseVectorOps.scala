@@ -363,13 +363,13 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
   ///////////
   // other
   
-  def densevector_empty_double = DenseVectorEmptyDouble()
-  def densevector_empty_float = DenseVectorEmptyFloat()
-  def densevector_empty_int = DenseVectorEmptyInt()
-  def densevector_empty[A:Manifest] = DenseVectorEmpty[A]()
-  def densevector_zero_double(length: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(DenseVectorZeroDouble(length, isRow))
-  def densevector_zero_float(length: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(DenseVectorZeroFloat(length, isRow))
-  def densevector_zero_int(length: Exp[Int], isRow: Exp[Boolean]) = reflectMutable(DenseVectorZeroInt(length, isRow))
+  def densevector_empty_double = reflectPure(DenseVectorEmptyDouble())
+  def densevector_empty_float = reflectPure(DenseVectorEmptyFloat())
+  def densevector_empty_int = reflectPure(DenseVectorEmptyInt())
+  def densevector_empty[A:Manifest] = reflectPure(DenseVectorEmpty[A]())
+  def densevector_zero_double(length: Exp[Int], isRow: Exp[Boolean]) = reflectPure(DenseVectorZeroDouble(length, isRow))
+  def densevector_zero_float(length: Exp[Int], isRow: Exp[Boolean]) = reflectPure(DenseVectorZeroFloat(length, isRow))
+  def densevector_zero_int(length: Exp[Int], isRow: Exp[Boolean]) = reflectPure(DenseVectorZeroInt(length, isRow))
   
   
   //////////////
@@ -380,6 +380,9 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
     case DenseVectorEmptyFloat() => reflectPure(DenseVectorEmptyFloat())(mtype(manifest[A]),implicitly[SourceContext])
     case DenseVectorEmptyInt() => reflectPure(DenseVectorEmptyInt())(mtype(manifest[A]),implicitly[SourceContext])
     case e@DenseVectorEmpty() => reflectPure(DenseVectorEmpty()(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case DenseVectorZeroDouble(l,r) => reflectPure(DenseVectorZeroDouble(f(l),f(r)))(mtype(manifest[A]),implicitly[SourceContext])
+    case DenseVectorZeroFloat(l,r) => reflectPure(DenseVectorZeroFloat(f(l),f(r)))(mtype(manifest[A]),implicitly[SourceContext])
+    case DenseVectorZeroInt(l,r) => reflectPure(DenseVectorZeroInt(f(l),f(r)))(mtype(manifest[A]),implicitly[SourceContext])        
     case e@DenseVectorLength(x) => reflectPure(DenseVectorLength(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DenseVectorIsRow(x) => reflectPure(DenseVectorIsRow(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@DenseVectorRawData(x) => reflectPure(DenseVectorRawData(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])

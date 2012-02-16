@@ -108,7 +108,7 @@ trait MatrixOps extends Variables {
 
     // accessors
     def apply(i: Rep[Int])(implicit ctx: SourceContext): Rep[VectorView[A]] = getRow(i)
-    def size(implicit ctx: SourceContext): Rep[Int] = numRows*numCols
+    def size(implicit ctx: SourceContext): Rep[Int] = matrix_size(x)
     def getRow(row: Rep[Int])(implicit ctx: SourceContext): Rep[VectorView[A]] = matrix_getrow(x,row)
     def getCol(col: Rep[Int])(implicit ctx: SourceContext): Rep[VectorView[A]] = matrix_getcol(x,col)
     def slice(startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int])(implicit ctx: SourceContext): Rep[MA] = matrix_slice[A,MA](x,startRow,endRow,startCol,endCol)
@@ -328,6 +328,7 @@ trait MatrixOps extends Variables {
     
   // class defs
   //def matrix_vview[A:Manifest](x: Interface[Matrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[VectorView[A]]
+  def matrix_size[A:Manifest](x: Interface[Matrix[A]])(implicit ctx: SourceContext): Rep[Int]
   def matrix_getrow[A:Manifest](x: Interface[Matrix[A]], i: Rep[Int])(implicit ctx: SourceContext): Rep[VectorView[A]]
   def matrix_getcol[A:Manifest](x: Interface[Matrix[A]], j: Rep[Int])(implicit ctx: SourceContext): Rep[VectorView[A]]
   def matrix_slice[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int])(implicit b: MatrixBuilder[A,MA], ctx: SourceContext): Rep[MA]
@@ -509,6 +510,13 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
       
     val mMA = manifest[MA]
   }
+  
+  // case class MatrixSumCol[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]])(implicit val b: VectorBuilder[A,VA])
+  //   extends DeliteOpSingleTaskWithManifest[A,VA](reifyEffectsHere(matrix_sumcol_impl[A,VA](x))) {
+  //     
+  //   val a = implicitly[Arith[A]]
+  //   val mVA = manifest[VA]
+  // }
         
   
   ////////////////////////////////
@@ -518,7 +526,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     val intf: Interface[Matrix[A]]    
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]    
     def alloc = b.alloc(intf.numRows, intf.numCols)
-    val size = copyTransformedOrElse(_.size)(intf.dcSize)
+    val size = copyTransformedOrElse(_.size)(intf.size)
     
     val mA = manifest[A]
     val a = implicitly[Arith[A]]
@@ -531,7 +539,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     val inA = intfA.ops.elem.asInstanceOf[Exp[Matrix[A]]]
     val inB = intfB.ops.elem.asInstanceOf[Exp[Matrix[A]]]    
     def alloc = b.alloc(intfA.numRows, intfA.numCols)
-    val size = copyTransformedOrElse(_.size)(intfA.dcSize)
+    val size = copyTransformedOrElse(_.size)(intfA.size)
     
     val mA = manifest[A]
     val a = implicitly[Arith[A]]
@@ -540,7 +548,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   
   abstract class MatrixArithmeticIndexedLoop[A:Manifest:Arith] extends DeliteOpIndexedLoop {
     val intf: Interface[Matrix[A]]    
-    val size = copyTransformedOrElse(_.size)(intf.dcSize)
+    val size = copyTransformedOrElse(_.size)(intf.size)
     
     val mA = manifest[A]
     val a = implicitly[Arith[A]]
@@ -549,7 +557,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   abstract class MatrixArithmeticReduce[A:Manifest:Arith] extends DeliteOpReduce[A] {
     val intf: Interface[Matrix[A]]    
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]    
-    val size = copyTransformedOrElse(_.size)(intf.dcSize)
+    val size = copyTransformedOrElse(_.size)(intf.size)
     
     val mA = manifest[A]
     val a = implicitly[Arith[A]]
@@ -740,7 +748,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[Int,A,VA] {
 
     def alloc = b.alloc(x.numRows, unit(false))
-    val in = (unit(0)::x.numRows)
+    val in = copyTransformedOrElse(_.in)(unit(0)::x.numRows)
     val size = copyTransformedOrElse(_.size)(x.numRows)
     def func = i => x(i).sum
     
@@ -751,9 +759,9 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
 
   case class MatrixSumCol[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]])(implicit val b: VectorBuilder[A,VA])
     extends DeliteOpMap[Int,A,VA] {
-
+  
     def alloc = b.alloc(x.numCols, unit(true))
-    val in = (unit(0)::x.numCols)
+    val in = copyTransformedOrElse(_.in)(unit(0)::x.numCols)
     val size = copyTransformedOrElse(_.size)(x.numCols)
     def func = i => x.getCol(i).sum
     
@@ -788,7 +796,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpReduce[A] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    val size = copyTransformedOrElse(_.size)(intf.dcSize)
+    val size = copyTransformedOrElse(_.size)(intf.size)
     val zero = implicitly[HasMinMax[A]].maxValue
     def func = (a,b) => if (a < b) a else b
     
@@ -801,7 +809,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpReduce[A] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    val size = copyTransformedOrElse(_.size)(intf.dcSize)
+    val size = copyTransformedOrElse(_.size)(intf.size)
     val zero = implicitly[HasMinMax[A]].minValue
     def func = (a,b) => if (a > b) a else b
     
@@ -814,7 +822,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[A,B,MB] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    val size = copyTransformedOrElse(_.size)(intf.dcSize)
+    val size = copyTransformedOrElse(_.size)(intf.size)
     def alloc = b.alloc(intf.numRows, intf.numCols)    
     
     val mA = manifest[A]
@@ -825,7 +833,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   case class MatrixMutableMap[A:Manifest](intf: Interface[Matrix[A]], block: Exp[A] => Exp[A])
     extends DeliteOpIndexedLoop {
 
-    val size = copyTransformedOrElse(_.size)(intf.dcSize)
+    val size = copyTransformedOrElse(_.size)(intf.size)
     def func = i => intf.dcUpdate(i, block(intf.dcApply(i)))
     
     val mA = manifest[A]
@@ -851,7 +859,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[Int,B,VB] {
 
     def alloc = b.alloc(x.numRows, isRow)
-    val in = (unit(0)::x.numRows)
+    val in = copyTransformedOrElse(_.in)(unit(0)::x.numRows)
     val size = copyTransformedOrElse(_.size)(x.numRows)
     def func = i => rowFunc(x(i))   
     
@@ -864,7 +872,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpForeach[A] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    val size = copyTransformedOrElse(_.size)(intf.dcSize)
+    val size = copyTransformedOrElse(_.size)(intf.size)
     def sync = n => List()
     
     val mA = manifest[A]
@@ -886,7 +894,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     val inA = intfA.ops.elem.asInstanceOf[Exp[Matrix[A]]]
     val inB = intfA.ops.elem.asInstanceOf[Exp[Matrix[B]]]
     def alloc = b.alloc(intfA.numRows, intfA.numCols)
-    val size = copyTransformedOrElse(_.size)(intfA.dcSize)
+    val size = copyTransformedOrElse(_.size)(intfA.size)
     
     val mA = manifest[A]
     val mB = manifest[B]
@@ -916,7 +924,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpFilterReduce[A,Int] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    val size = copyTransformedOrElse(_.size)(intf.dcSize)
+    val size = copyTransformedOrElse(_.size)(intf.size)
     val zero = unit(0)
     def func = e => unit(1)
     def reduce = (a,b) => a + b   
@@ -924,19 +932,18 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     val mA = manifest[A]
   } 
 
-  // AKS TODO: this is causing unfortunate effect errors in linreg and RBM
+  // AKS TODO: this seems to be causing a violated ordering of effect error in LinReg
   // case class MatrixTranspose[A:Manifest,MA:Manifest](x: Interface[Matrix[A]])(implicit val b: MatrixBuilder[A,MA])
   //   extends DeliteOpMap[Int,A,MA] {
   //     
-  //   val in = (unit(0)::x.dcSize)
+  //   val in = copyTransformedOrElse(_.in)(unit(0)::size)
   //   def alloc = b.alloc(x.numCols, x.numRows)
-  //   val size = copyTransformedOrElse(_.size)(x.dcSize)
+  //   val size = copyTransformedOrElse(_.size)(x.size)
   //   def func = i => x(i%x.numRows,i/x.numRows)
   // 
   //   val mA = manifest[A]
   //   val mMA = manifest[MA]
   // }
-
 
   /////////////////////
   // delite collection
@@ -963,6 +970,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   ///////////////////
   // class interface
 
+  def matrix_size[A:Manifest](x: Interface[Matrix[A]])(implicit ctx: SourceContext) = x.numRows*x.numCols
   //def matrix_vview[A:Manifest](x: Interface[Matrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(MatrixVView(x, start, stride, length, isRow))
   def matrix_getrow[A:Manifest](x: Interface[Matrix[A]], i: Exp[Int])(implicit ctx: SourceContext) = reflectPure(MatrixGetRow[A](x,i))
   def matrix_getcol[A:Manifest](x: Interface[Matrix[A]], i: Exp[Int])(implicit ctx: SourceContext) = reflectPure(MatrixGetCol[A](x,i))
