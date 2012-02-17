@@ -1,0 +1,154 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>Delite &mdash; FAQ</title>
+    <style type='text/css'>
+      @import 'css/default.css';
+      @import 'css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import 'css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='http://stanford-ppl.github.com/Delite/' title="Delite">Delite</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Welcome</a></li>
+              <li><a href="dsl_example.html">My First DSL</a></li>
+              <li><a href="faq.html">FAQ</a></li>
+              <!--
+              <li><a href="performance.html">Performance</a></li>
+              <li><a href="tests.html">Tests</a></li>
+              -->              
+              <li><a href="troubleshooting.html">Troubleshooting</a></li>
+              <li><a href="publications.html">Publications</a></li>
+            </ol>
+          </li>
+          <li>Getting it
+            <ol>
+            <!--
+              <li><a href='releases.html'>Releases</a></li>
+              <li><a href='snapshots.html'>Snapshots</a></li>
+            -->
+              <li><a href='source.html'>Source</a></li>
+              <li><a href='license.html'>License</a></li>
+            </ol>
+          </li>
+          <li>DSLs
+            <ol>
+              <li><a href='optiml/index.html'>OptiML</a></li>
+            </ol>
+          </li> 
+          <!--
+          <li>Reference
+            <ol>
+              <li><a href='api/0.3/index.html'>ScalaDoc API</a></li>
+              <li>&nbsp;</li>
+              <li><a href='sponsors.html'>Sponsors</a></li>
+              <li class="logo"><a href="http://ppl.stanford.edu"><img width="110" alt="Stanford Pervasive Parallelism Lab" src='images/ppl_logo_small.png'></a></li>
+            </ol>
+          </li>
+          -->
+        </ol>
+      </div>
+      <div id='content'> 
+        <h1 id='title_faq'>FAQ</h1>
+        <ol>
+          <li><a href="#irval">What is the line <code>{ val IR: SimpleVectorScalaOpsPkgExp }</code> in code generator traits for?</a></li>
+          <li><a href="#selftype">What does <code>{ this: SimpleVectorApplication => }</code> mean?</a></li>
+          <li><a href="#syms">What are the methods <code>syms</code> and <code>boundSyms</code> for?</a></li>
+          <li><a href="#effects">What are <code>reifyEffect(..)</code> and <code>reflectEffect(..)</code> for?</a></li>
+          <li><a href="#mirror">What are the <code>copyTransformedOrElse</code> and <code>mirror</code> methods for?</a></li>
+        </ol>
+        <p></p><div id='footer'></div><p></p>
+        <div id='irval'>
+        <h3>What is the line <code>{ val IR: SimpleVectorScalaOpsPkgExp }</code> in code generator traits for?</h3>
+<p>This line declares an abstract value IR of type SimpleVectorScalaOpsPkgExp. It is instantiated in the getCodeGenPkg method to be the value of the DeliteApplication instance that mixes together all of the DSL traits - in this way, the IR definitions are injected into the code generator traits so that they can be referenced without being the same object. Another way of thinking about this is that when all of the traits are finally mixed in, we have two "super" objects. One contains all of the application and IR definitions (DeliteApplication, *Lift, *Ops, *OpsExp, *ImplOps traits), and one contains all the code generators (*CodeGenPkg, *CodeGen{Target}). The IR object defines a method getCodeGenPkg that returns an instance of the code generator object, and the code generator object contains a reference to the IR object via the IR val.
+       </p> <p>
+The benefit of keeping code generators in a separate object from the IR is that we can associate multiple generator objects with a single IR object instance and let each generator operate independently. </p>
+        </p>
+        </div>
+
+      <div id='selftype'>
+         <h3> What does <code>{ this: SimpleVectorApplication => }</code> mean?</h3>
+<p>This declaration is called a <code>self-type</code> declaration in Scala. It means that this trait must eventually be mixed in with a trait of type <code>SimpleVectorApplication</code> when it is instantiated (and therefore declarations from <code>SimpleVectorApplication</code> can be used in this scope). The compiler will check that all traits that extend this one have the same <code>self-type</code> declaration, and that any instantiations of this trait do indeed mix-in <code>SimpleVectorApplication</code>. Note that this is different from inheriting from <code>SimpleVectorApplication</code>; in particular, there is no subtyping relationship between a trait with a <code>self-type</code> declaration and the trait named in the declaration.
+      </p>
+      </div>
+
+      <div id ='syms'>
+      <h3> What are the methods <code>syms</code> and <code>boundSyms</code> for?</h3>
+<p><code>syms</code> and <code>boundSyms</code> are methods used to communicate dependency information about ops to the framework. In most cases (when using Delite ops), you don't need to define <code>syms</code> and <code>boundSyms</code>, because we define them for you in DeliteOps.scala. The idea is that <code>syms</code> represents true input dependencies to an op, while <code>boundSyms</code> represents symbols that are bound (created) within the scope of an op and other symbols that should not be hoisted out of the op.
+</p><p>
+For example, consider the <code>RangeForeach</code> op (<code>for (i -&gt; 0 until 100) </code>):
+</p><p>
+<div class="highlight"><pre><code class="scala"><span class="k">case class</span> <span class="nc">RangeForeach</span>(start: <span class="kt">Exp[Int]</span>, end: <span class="kt">Exp[Int]</span>, i: <span class="kt">Sym[Int]</span>, body: <span class="kt">Exp[Unit]</span>) 
+  <span class="k">extends</span> <span class="nc">Def[Unit]</span>
+
+  <span class="k">override def</span> syms(e: <span class="kt">Any</span>): <span class="kt">List[Sym[Any]]</span> = e <span class="k">match</span> {
+    <span class="k">case</span> RangeForeach(start, end, i, body) =&gt; syms(start):::syms(end):::syms(body)
+    <span class="k">case</span> _ =&gt; <span class="k">super</span>.syms(e)
+  }
+
+  <span class="k">override def</span> boundSyms(e: <span class="kt">Any</span>): <span class="kt">List[Sym[Any]]</span> = e <span class="k">match</span> {
+    <span class="k">case</span> RangeForeach(start, end, i, y) =&gt; i :: effectSyms(y)
+    <span class="k">case</span> _ =&gt; <span class="k">super</span>.boundSyms(e)
+  }
+</code></pre></div>
+</p><p>
+What we are saying here is that i is a bound symbol; it is created inside the RangeForeach op, and therefore is not a dependency *to* the RangeForeach op (its definition does not need to have been emitted before we emit RangeForeach). Thus, i is left out of the <code>syms</code> definition, and included in the <code>boundSyms</code> definition. We also say that any effectful statements inside the RangeForeach body are bound to the body - we don't want to allow these to be hoisted out because that would be unsafe.
+      </p>
+      </div>
+
+      <div id ='effects'>
+      <p>
+      <h3>What are <code>reifyEffect(..)</code> and <code>reflectEffect(..)</code> for?</h3>
+<p>At a high level, ReflectXXX and ReifyXXX are used to convert control dependencies into data dependencies. We always keep a context of effects in the current scope in the order they have happened (as denoted by a <code>reflectEffect(..)</code> or <code>reflectWrite(...)</code> call). ReifyXXX then aggregates all of the effects in a given scope by creating an IR node that contains the list of effects that happened in the argument to the ReifyXXX method. When we schedule the program, a <code>Reify</code> node will depend on all of the effects in its list, forcing them to be emitted before the result of the <code>Reify</code>. It may be a little easier to understand with an example:
+</p><p>
+<div class="highlight"><pre><code class="scala"><span class="k">val</span> block = {
+  println("hello world")
+
+  <span class="k">while</span> ( i &lt; 100 ) {
+      println(i)
+      i += 1
+  }
+}
+</code></pre></div>
+</p><p>
+There are two scopes inside 'block', each with different effects. The effects at the outer scope are "println('hello world')" and "while (...)". The effect in the inner scope in "println(i)". Reflect and Reify capture this as follows:
+</p><p>
+<div class="highlight"><pre><code class="scala"><span class="k">override def</span> __whileDo(cond: =&gt; <span class="kt">Exp[Boolean]</span>, body: =&gt; <span class="kt">Rep[Unit]</span>) {
+    <span class="k">val</span> c = reifyEffects(cond)
+    <span class="k">val</span> a = reifyEffects(body)
+    <span class="k">val</span> ce = summarizeEffects(c)
+    <span class="k">val</span> ae = summarizeEffects(a)
+    reflectEffect(While(c, a), ce andThen ((ae andThen ce).star))
+  }
+</code></pre></div>
+</p><p>
+This means that when we create a While node, we first symbolically evaluate each function parameter and keep track of what effects happened (using Reify). Then, we say that the While itself is effectful, and the type of effect it has depends on the effects that its parameters had. In the end, we will end up with a representation that looks roughly like this:
+</p><p>
+<code>Reify((), List(Reflect(Println(..)), Reflect(While(LTE(i,100), Reify(Reflect(Println(i))))))</code>
+</p><p>
+which means that the result of 'block' was Unit <code>()</code>, but 'block' also had two effects. The representation of the While effect is a pure condition and an effectful body. The effects in the body are encapsulated in the inner <code>Reify</code> node.
+      </p>
+      </div>
+      <div id ='mirror'>
+      <p>
+      <h3>What are the <code>copyTransformedOrElse</code> and <code>mirror</code> methods for?</h3>
+<p><code>copyTransformedOrElse</code> is used in the fusion algorithm and works along with the method <code>mirror</code>. The idea is that that fusion has to rewrite the IR to modify where inputs and outputs go when nodes are fused together. <code>mirror</code> tells the framework how to create a new instance of a given IR node with some transformed parameters. <code>copyTransformedOrElse</code> allows <code>mirror</code> to use a previous symbol if it already exists instead of creating a new symbol everytime and having to maintain relations between all these fresh symbols. For example, let's say I have a VectorPlus node. It has a size symbol. If I mirror this node with different inputs (in order to create a fused version of it and something else), I want to reuse my original size symbol instead of creating a new one and trying to remember that the new size symbol is actually exactly the same as the old one. That's what <code>copyTransformedOrElse</code> does.
+</p><p>
+We know that <code>copyTransformed</code> and <code>mirror</code> are not particular user friendly, and we would like to hide this from the DSL developer completely. We are also working on developing a more robust analysis and transformation API that abstracts the details of rewriting the IR like this. Hopefully, as these come together, this situation will dramatically improve. 
+</p>
+      <p></p>
+      <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>
