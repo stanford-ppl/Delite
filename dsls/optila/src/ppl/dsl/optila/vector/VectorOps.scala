@@ -127,6 +127,17 @@ trait VectorOps extends Variables {
     // TODO: should these be moved to another interface, e.g. MutableVecInterface? how do we deal with immutable vectors that
     // don't implement these (e.g. RangeVector). Instead of Interface, would clients require a MutableInterface[...]? (yet another type constructor... :( )
     def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
+    def :+(y: Rep[A])(implicit ctx: SourceContext): Rep[VA] = {
+      val out = mutable()
+      out += y
+      out.unsafeImmutable
+      // val out = builder[A].alloc(length+1, isRow)
+      // for (i <- 0 until out.length) {
+      //   out(i) = apply(i)
+      // }
+      // out(length) = y
+      // out
+    }
     def +=(y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] = insert(length,y)
     def ++(y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[VA] = vector_concatenate[A,VA](x,y)    
     def ++=(y: Rep[VA])(implicit ctx: SourceContext) = insertAll(length,y)
@@ -326,6 +337,7 @@ trait VectorOps extends Variables {
     
     def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.update(n,y)
     def +=(y: Rep[A])(implicit ctx: SourceContext) = intf.ops.+=(y)    
+    def :+(y: Rep[A])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.:+(y))
     def ++(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.++(y))
     //def ++=(y: Rep[intf.ops.V[A]]) = intf.ops.++=(y)
     //def copyFrom(pos: Rep[Int], y: Rep[intf.ops.V[A]]) = intf.ops.copyFrom(pos,y)
@@ -1099,7 +1111,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   def vector_mmap[A:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[A])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorMutableMap(x,f)) // TODO: effect if func effectful!
   def vector_foreach[A:Manifest](x: Interface[Vector[A]], block: Exp[A] => Exp[Unit])(implicit ctx: SourceContext) = {
     val vf = VectorForeach(x, block) //reflectEffect(VectorForeach(x, block)) 
-    reflectEffect(vf, summarizeEffects(vf.body.asInstanceOf[DeliteForeachElem[A]].func).star)
+    reflectEffect(vf, summarizeEffects(vf.body.asInstanceOf[DeliteForeachElem[A]].func).star andAlso Simple())
   }
   def vector_zipwith[A:Manifest,B:Manifest,R:Manifest,VR:Manifest](x: Interface[Vector[A]], y: Interface[Vector[B]], f: (Exp[A],Exp[B]) => Exp[R])(implicit b: VectorBuilder[R,VR], ctx: SourceContext) = {
     reflectPure(VectorZipWith[A,B,R,VR](x,y,f))

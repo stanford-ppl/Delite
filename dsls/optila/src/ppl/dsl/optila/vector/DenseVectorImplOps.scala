@@ -189,7 +189,10 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   }
   
   def densevector_sort_impl[A:Manifest:Ordering](v: Rep[DenseVector[A]]): Rep[DenseVector[A]] = {
-    val data = densevector_raw_data(v)
+    // inefficent! 3 copies
+    val trimmedV = v.mutable()
+    trimmedV.trim()
+    val data = densevector_raw_data(trimmedV).sort    
     val out = DenseVector[A](0, v.isRow)
     densevector_set_length(out, v.length)
     densevector_set_raw_data(out, data.sort)
@@ -397,9 +400,10 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
     while (i < x.length) {
       val key = pred(x(i))      
       if (!(groups contains key)) {
-        groups(key) = DenseVector[A](0,x.isRow)        
+        groups(key) = DenseVector[A](0,x.isRow).unsafeImmutable        
       }
-      groups(key) += x(i)
+      //groups(key) += x(i)
+      groups(key) = groups(key) :+ x(i) // inefficient, but have to follow nested mutable rule
       i += 1
     }
 

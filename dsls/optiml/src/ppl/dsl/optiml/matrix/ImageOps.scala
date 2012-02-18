@@ -85,7 +85,7 @@ trait ImageOps extends Variables {
     def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = Image(densematrix_multiply(x,y))
     def inv(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = Image(densematrix_inverse(x))    
     def mapRows[B:Manifest](f: Rep[VectorView[A]] => Rep[DenseVector[B]])(implicit ctx: SourceContext) = Image(densematrix_maprows(x,f))
-    def reduceRows(f: (Rep[VectorView[A]],Rep[VectorView[A]]) => Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]] = densematrix_reducerows(x,f)    
+    def reduceRows(f: (Rep[DenseVector[A]],Rep[VectorView[A]]) => Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]] = densematrix_reducerows(x,f)    
   }
   
   // object defs
