@@ -514,11 +514,11 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     // def func = e => (1.0/(1.0+exp(conv(e)*(-1)))).AsInstanceOf[Float]
   // }  
   
-  case class MatrixTranspose[A:Manifest,MA:Manifest](x: Interface[Matrix[A]])(implicit val b: MatrixBuilder[A,MA])
-    extends DeliteOpSingleWithManifest[A,MA](reifyEffectsHere(matrix_transpose_impl[A,MA](x))) {
-      
-    val mMA = manifest[MA]
-  }
+  // case class MatrixTranspose[A:Manifest,MA:Manifest](x: Interface[Matrix[A]])(implicit val b: MatrixBuilder[A,MA])
+  //   extends DeliteOpSingleWithManifest[A,MA](reifyEffectsHere(matrix_transpose_impl[A,MA](x))) {
+  //     
+  //   val mMA = manifest[MA]
+  // }
   
   // case class MatrixSumCol[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]])(implicit val b: VectorBuilder[A,VA])
   //   extends DeliteOpSingleTaskWithManifest[A,VA](reifyEffectsHere(matrix_sumcol_impl[A,VA](x))) {
@@ -941,18 +941,17 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     val mA = manifest[A]
   } 
 
-  // AKS TODO: this seems to be causing a violated ordering of effect error in LinReg
-  // case class MatrixTranspose[A:Manifest,MA:Manifest](x: Interface[Matrix[A]])(implicit val b: MatrixBuilder[A,MA])
-  //   extends DeliteOpMap[Int,A,MA] {
-  //     
-  //   val in = copyTransformedOrElse(_.in)(unit(0)::size)
-  //   def alloc = b.alloc(x.numCols, x.numRows)
-  //   val size = copyTransformedOrElse(_.size)(x.size)
-  //   def func = i => x(i%x.numRows,i/x.numRows)
-  // 
-  //   val mA = manifest[A]
-  //   val mMA = manifest[MA]
-  // }
+  case class MatrixTranspose[A:Manifest,MA:Manifest](x: Interface[Matrix[A]])(implicit val b: MatrixBuilder[A,MA])
+    extends DeliteOpMap[Int,A,MA] {
+      
+    val in = copyTransformedOrElse(_.in)(unit(0)::size)
+    def alloc = b.alloc(x.numCols, x.numRows)
+    val size = copyTransformedOrElse(_.size)(x.size)
+    def func = i => x(i%x.numRows,i/x.numRows)
+  
+    val mA = manifest[A]
+    val mMA = manifest[MA]
+  }
 
   /////////////////////
   // delite collection
