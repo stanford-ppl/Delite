@@ -200,6 +200,15 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
     case _ => super.array_apply(a,i)
   }
   
+
+  // NOTE: We should think about structs with properties/data common to all the fields.
+  // 1) A soa-transformed array is a Struct of arrays that all have the same length. So what
+  // is 'the length' of the transformed array? Currently we forward to field #0, which works
+  // but is not ideal (holds on to that field even if not used otherwise, complicates 
+  // matching on length node).
+  // 2) An Option[Struct] value, represented as a Struct, is set or empty for all the fields
+  // together, not individually. What is the result of .isEmpty on the transformed value?
+
   override def array_length[A:Manifest](a: Rep[Array[A]]): Rep[Int] = a match {
     case Def(SimpleLoop(size,v,body)) => body match {
       case b: DeliteCollectElem[_,_] if b.cond == Nil => size
