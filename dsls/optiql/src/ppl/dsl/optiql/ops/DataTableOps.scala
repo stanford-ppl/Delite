@@ -23,7 +23,7 @@ trait DataTableOps extends Base {
 
 
   def infix_size[T:Manifest](t:Rep[DataTable[T]]): Rep[Int] = dataTableSize(t)
-  def infix_printAsTable[T:Manifest](t: Rep[DataTable[T]]): Rep[Unit] = dataTablePrintAsTable(t)
+  def infix_printAsTable[T:Manifest](t: Rep[DataTable[T]], max_rows: Rep[Int] = unit(100)): Rep[Unit] = dataTablePrintAsTable(t, max_rows)
 
 
 
@@ -34,7 +34,7 @@ trait DataTableOps extends Base {
   def dataTableObjectApply[T:Manifest](initSize: Rep[Int]): Rep[DataTable[T]]
   def dataTableObjectApply[T:Manifest](data: Rep[Array[T]], initSize: Rep[Int]): Rep[DataTable[T]]
   def dataTableSize[T:Manifest](t: Rep[DataTable[T]]): Rep[Int]
-  def dataTablePrintAsTable[T:Manifest](t: Rep[DataTable[T]]): Rep[Unit]
+  def dataTablePrintAsTable[T:Manifest](t: Rep[DataTable[T]], max_rows: Rep[Int]): Rep[Unit]
 
 }
 
@@ -43,7 +43,7 @@ trait DataTableOpsExp extends DataTableOps with BaseFatExp { this: DataTableOpsE
   case class DataTableApply[T:Manifest](t: Rep[DataTable[T]], i: Rep[Int]) extends Def[T]
   case class DataTableObjectApply[T:Manifest](mnfst: Manifest[DataTable[T]], initSize: Rep[Int]) extends Def[DataTable[T]]
   case class DataTableSize[T](t: Rep[DataTable[T]]) extends Def[Int]
-  case class DataTablePrintAsTable[T](t: Rep[DataTable[T]]) extends Def[Unit]
+  case class DataTablePrintAsTable[T](t: Rep[DataTable[T]], max_rows: Rep[Int]) extends Def[Unit]
 
   def dataTableSize[T:Manifest](t: Exp[DataTable[T]]): Exp[Int] = field[Int](t, "size")
   def dataTableArray[T:Manifest](t: Exp[DataTable[T]]): Exp[Array[T]] = field[Array[T]](t, "data")
@@ -63,11 +63,11 @@ trait DataTableOpsExp extends DataTableOps with BaseFatExp { this: DataTableOpsE
   //def dataTableObjectApply[T:Manifest](): Exp[DataTable[T]] = reflectEffect(DataTableObjectApply[T](manifest[DataTable[T]], unit(0)))
   //def dataTableObjectApply[T:Manifest](initSize: Exp[Int]): Exp[DataTable[T]] = reflectEffect(DataTableObjectApply[T](manifest[DataTable[T]], initSize))
   //def dataTableSize[T:Manifest](t: Exp[DataTable[T]]): Exp[Int] = DataTableSize(t)
-  def dataTablePrintAsTable[T:Manifest](t: Exp[DataTable[T]]): Exp[Unit] = reflectEffect(DataTablePrintAsTable(t))
+  def dataTablePrintAsTable[T:Manifest](t: Exp[DataTable[T]], max_rows: Rep[Int]): Exp[Unit] = reflectEffect(DataTablePrintAsTable(t, max_rows))
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case DataTableApply(t,i) => dataTableApply(f(t), f(i))
-    case Reflect(DataTablePrintAsTable(x), u, es) => reflectMirrored(Reflect(DataTablePrintAsTable(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(DataTablePrintAsTable(x,m), u, es) => reflectMirrored(Reflect(DataTablePrintAsTable(f(x),f(m)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]
 
@@ -89,7 +89,7 @@ trait ScalaGenDataTableOps extends ScalaGenFat {
     case DataTableApply(t, i) => emitValDef(sym, quote(t) + "(" + quote(i) + ")")
     case DataTableObjectApply(mnfst, initSize) => emitValDef(sym, "new " + remap(mnfst) + "(" + quote(initSize) + ")")
     case DataTableSize(t) => emitValDef(sym, quote(t) + ".size")
-    case DataTablePrintAsTable(t) => emitValDef(sym, "generated.scala.container.DataTable.printAsTable("+ quote(t) + ")")
+    case DataTablePrintAsTable(t,max_rows) => emitValDef(sym, "generated.scala.container.DataTable.printAsTable("+ quote(t) + ", " + quote(max_rows) + ")")
     case _ => super.emitNode(sym, rhs)
   }
 

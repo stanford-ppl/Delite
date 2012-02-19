@@ -6,7 +6,7 @@ import ppl.dsl.optiql.datastruct.scala.util.{ReflectionHelper, Date}
 
 object DataTable {
 
-  def printAsTable(m: Map[String,Any]) {
+  def printAsTable(m: Map[String,Any], max_rows: Int = 0) { // FIXME: max_rows not used!
     // Check if Table is empty
     if(m.size == 0) {
       println("=====================================================")

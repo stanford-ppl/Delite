@@ -6,7 +6,7 @@ import ppl.dsl.optiql.datastruct.scala.container.DataTable
 import java.io.File
 
 object TPCHQ1 extends OptiQLApplicationRunner with TPCHQ1Trait
-//object TPCHQ2 extends OptiQLApplicationRunner with TPCHQ2Trait
+object TPCHQ2 extends OptiQLApplicationRunner with TPCHQ2Trait
 
 trait TPCHBaseTrait extends OptiQLApplication {
 
@@ -37,13 +37,13 @@ trait TPCHBaseTrait extends OptiQLApplication {
 
     //load TPCH data
     lineItems = TPCH.loadLineItems(tpchDataPath)
-    //nations = TPCH.loadNations(tpchDataPath)
-    //parts = TPCH.loadParts(tpchDataPath)
-    //partSuppliers = TPCH.loadPartSuppliers(tpchDataPath)
-    //regions = TPCH.loadRegions(tpchDataPath)
-    //suppliers = TPCH.loadSuppliers(tpchDataPath)
+    nations = TPCH.loadNations(tpchDataPath)
+    parts = TPCH.loadParts(tpchDataPath)
+    partSuppliers = TPCH.loadPartSuppliers(tpchDataPath)
+    regions = TPCH.loadRegions(tpchDataPath)
+    suppliers = TPCH.loadSuppliers(tpchDataPath)
     println("Loading Complete")	
-    tic(lineItems)//,nations, parts, partSuppliers, regions, suppliers)
+    tic(lineItems,nations, parts, partSuppliers, regions, suppliers)
     query()
   }
 
@@ -70,7 +70,6 @@ trait TPCHQ1Trait extends TPCHBaseTrait {
   }    
 }
 
-/*
 trait TPCHQ2Trait extends TPCHBaseTrait {
   val queryName = "Q2"  
   
@@ -124,9 +123,8 @@ trait TPCHQ2Trait extends TPCHBaseTrait {
          val ps_supplycost = jj2.ps_supplycost
          val r_name = r.r_name
        }).Where(_.r_name == "EUROPE").Min(_.ps_supplycost); if(pssc != null) pssc.ps_supplycost else -10}
-    ) OrderByDescending(_.s_acctbal) ThenBy(_.n_name) ThenBy(_.s_name) ThenBy(_.p_partkey) End()
+    ) OrderByDescending(_.s_acctbal) ThenBy(_.n_name) ThenBy(_.s_name) ThenBy(_.p_partkey)
     toc(q)
     q.printAsTable(10)
   }    
 }
-*/

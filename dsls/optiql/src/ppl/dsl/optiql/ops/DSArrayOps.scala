@@ -160,8 +160,9 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
             super.simpleLoop(size, v, body)
         }
         
-      // remove identity collect
-      case Block(Def(ArrayApply(xs,`v`))) if b.cond == Nil /*&& array_length(xs) == size*/ => xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
+      // remove identity collect FIXME: length check!!
+      case Block(Def(ArrayApply(xs,`v`))) if b.cond == Nil && !size.isInstanceOf[Const[_]] /*&& array_length(xs) == size*/ => 
+        xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
       case _ => super.simpleLoop(size, v, body)
     }
 
@@ -182,23 +183,27 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
     case _ => super.simpleLoop(size, v, body)
   }
 
+  
+  // write these as: (not so easy, polymorphic function)
+  // def array_apply = distributeStruct(a) ( e => array_apply(e,i) ) getOrElse (super.array_apply(a,i))
+
   override def array_apply[A:Manifest](a: Rep[Array[A]], i: Rep[Int]): Rep[A] = a match {
     case Def(Struct(pre::tag,elems:Map[String,Exp[Array[A]]])) =>
       assert(pre == "Array")
-      def unwrap[A](m:Manifest[Array[A]]): Manifest[A] = m.typeArguments match {
+      def unwrap[A](e:Exp[Array[A]],m:Manifest[Array[A]]): Manifest[A] = m.typeArguments match {
         case a::_ => mtype(a)
         case _ => 
           if (m.erasure.isArray) mtype(Manifest.classType(m.erasure.getComponentType))
-          else { printerr("warning: expect type Array[A] but got "+m); mtype(manifest[Any]) }
+          else { printerr("warning: array_apply expect type Array[A] but got "+m+" for input " + e.toString + "/" + Def.unapply(e).toString); mtype(manifest[Any]) }
       }
-      struct[A](tag, elems.map(p=>(p._1,array_apply(p._2, i)(unwrap(p._2.Type)))))
+      struct[A](tag, elems.map(p=>(p._1,array_apply(p._2, i)(unwrap(p._2,p._2.Type)))))
     case _ => super.array_apply(a,i)
   }
   
   override def array_length[A:Manifest](a: Rep[Array[A]]): Rep[Int] = a match {
     case Def(SimpleLoop(size,v,body)) => body match {
       case b: DeliteCollectElem[_,_] if b.cond == Nil => size
-      case _ => super.array_length(a)
+      case _ => super.array_length(a) // TODO: might want to construct reduce elem with same condition?
     }
     case Def(Struct(pre::tag,elems:Map[String,Exp[Array[A]]])) =>
       assert(pre == "Array")
@@ -208,7 +213,8 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
     case _ => super.array_length(a)
   }
   
-  // api
+
+  // ******** api *********
 
   def arraySelect[A:Manifest](size: Exp[Int])(func: Exp[Int]=>Exp[A]): Exp[Array[A]] = {
     val v = fresh[Int]
@@ -230,6 +236,22 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
       cond = reifyEffects(cond(v))::Nil
     ))
   }
+
+  case class ArrayFlatten[A](data: Exp[Array[Array[A]]]) extends Def[Array[A]]
+  def arrayFlatten[A:Manifest](data: Exp[Array[Array[A]]]): Exp[Array[A]] = data match {
+    case Def(Struct(pre::tag,elems:Map[String,Exp[Array[Array[A]]]])) =>
+      assert(pre == "Array")
+      def unwrap[A](m:Manifest[Array[A]]): Manifest[A] = m.typeArguments match {
+        case a::_ => mtype(a)
+        case _ => 
+          if (m.erasure.isArray) mtype(Manifest.classType(m.erasure.getComponentType))
+          else { printerr("warning: arrayFlatten expect type Array[A] but got "+m+" for input " + data.toString + "/" + elems.toString); mtype(manifest[Any]) }
+      }
+      struct[Array[A]](tag, elems.map(p=>(p._1, arrayFlatten(p._2)(unwrap(unwrap(p._2.Type))))))
+    case _ => ArrayFlatten(data)
+  }
+    
+  // ---- hashing
 
   def arrayDistinct[A:Manifest](size: Exp[Int])(func: Exp[Int]=>Exp[A]): Exp[Array[A]] = {
     val v = fresh[Int]
@@ -257,6 +279,27 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
     ))
   }
 
+  def indexBuild[K:Manifest](size: Exp[Int])(keyFunc: Exp[Int]=>Exp[K]): Exp[Map[K,Int]] = {
+    val v = fresh[Int]
+    //val aV = fresh[Array[A]]
+    simpleLoop(size,v,DeliteHashIndexElem[K,Map[K,Int]](
+      //aV = aV,
+      //alloc = reifyEffects(aV),
+      keyFunc = reifyEffects(keyFunc(v))
+      //valFunc = reifyEffects(valFunc(v))
+      //cond = reifyEffects(cond(v))::Nil
+    ))
+  }
+
+  case class IndexLookup[K](map: Exp[Map[K,Int]], key: Exp[K]) extends Def[Int]
+  
+  def indexLookup[K:Manifest](map: Exp[Map[K,Int]], key: Exp[K]): Exp[Int] = {
+    IndexLookup(map, key)
+  }
+
+
+
+  // ---- reduce
 
   def reducePlain[A:Manifest](size: Exp[Int])(func: Exp[Int]=>Exp[A])(zero: =>Exp[A])(red: (Exp[A],Exp[A])=>Exp[A]): Exp[A] = {
     val v = fresh[Int]
@@ -270,6 +313,33 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
     ))
   }
 
+  def reduceTuple[A:Manifest,B:Manifest](size: Exp[Int])(funcA: Exp[Int]=>Exp[A], funcB: Exp[Int]=>Exp[B])(zeroA: =>Exp[A], zeroB: =>Exp[B])(red: ((Exp[A],Exp[B]),(Exp[A],Exp[B]))=>(Block[A],Block[B])): Exp[A] = {
+    /*lazy val body: Def[R] = copyBodyOrElse(DeliteReduceTupleElem[R,Q](
+      func = /*reifyEffects*/(zip(dc_apply(inA,v), dc_apply(inB,v))), //FIXME: tupled reify
+      zero = this.zero,
+      rVPar = this.rV,
+      rVSeq = this.rV,
+      rFuncPar = /*reifyEffects*/(reduce(rV._1, rV._2)),  //FIXME: tupled reify
+      rFuncSeq = /*reifyEffects*/(reduce(rV._1, rV._2)),  //FIXME: tupled reify
+      stripFirst = (!isPrimitiveType(manifest[R]) || !isPrimitiveType(manifest[R])) && !this.mutable
+    ))*/
+    val v = fresh[Int]
+    val rVPar = ((fresh[A], fresh[B]), (fresh[A], fresh[B]))
+    val rVSeq = ((fresh[A], fresh[B]), (fresh[A], fresh[B]))
+    simpleLoop(size,v,DeliteReduceTupleElem[A,B](
+      func = (reifyEffects(funcA(v)), reifyEffects(funcB(v))),
+      zero = (reifyEffects(zeroA), reifyEffects(zeroB)),
+      rVPar = rVPar,
+      rVSeq = rVSeq,
+      rFuncPar = /*reifyEffects*/(red(rVPar._1, rVPar._2)),  //FIXME: tupled reify
+      rFuncSeq = /*reifyEffects*/(red(rVSeq._1, rVSeq._2)),  //FIXME: tupled reify
+      cond = Nil,
+      stripFirst = false
+    ))
+  }
+
+
+  // ---- sorting
 
   case class ArraySort(len: Exp[Int], v: (Sym[Int],Sym[Int]), comp: Block[Boolean]) extends Def[Array[Int]]
 
@@ -286,6 +356,9 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
     case ArraySort(len, v, comp) => toAtom(ArraySort(f(len),(f(v._1).asInstanceOf[Sym[Int]],f(v._2).asInstanceOf[Sym[Int]]),f(comp)))
+    case IndexLookup(map, key) => toAtom(IndexLookup(f(map),f(key)))
+    case ArrayFlatten(data) => toAtom(ArrayFlatten(f(data)))(mtype(manifest[A]))
+    case Field(o,key,manif) => toAtom(Field(f(o),key,manif))(mtype(manifest[A])) // TODO: shouldn't be here
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
 
@@ -325,6 +398,10 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
       emitValDef(sym, "((" + quote(t) + " & 0xffff0000) >>> 16).toChar")
     case a@Tuple2Access2(t) if a.m == manifest[Char] =>
       emitValDef(sym, "(" + quote(t) + " & 0xffff).toChar")
+    case IndexLookup(map, key) =>
+      emitValDef(sym, quote(map) + ".get(" + quote(key) + ")") // it's a HashMapImpl object, so get instead of apply
+    case ArrayFlatten(data) =>
+      emitValDef(sym, quote(data) + ".flatten")
     case ArraySort(len, (v1,v2), comp) =>
       emitValDef(sym, "{"/*}*/)
       stream.println("val array = new Array[Integer](" + quote(len) + ")")

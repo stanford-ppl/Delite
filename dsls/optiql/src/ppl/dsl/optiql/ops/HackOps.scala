@@ -79,6 +79,86 @@ trait HackOpsExp extends HackOps with FieldAccessOpsExp with EffectExp with Arra
     struct[LineItemTable](List("DataTable"), Map("size" -> get_size(aos), "data" -> data))
   }
 
+  def hackops_obj_loadparts(path: Rep[String]): Rep[PartTable] = {
+    import ppl.dsl.optiql.datastruct.scala.liftables.Part
+
+    val labels = Map(
+      "p_partkey"->manifest[Int],
+      "p_name"->manifest[String],
+      "p_mfgr"->manifest[String],
+      "p_brand"->manifest[String],
+      "p_type"->manifest[String],
+      "p_size"->manifest[Int],
+      "p_container"->manifest[String],
+      "p_retailprice"->manifest[Double],
+      "p_comment"->manifest[String])
+
+    val aos = reflectEffect(HackOpsObjLoadParts(path))
+    val data = soa_convert[Array[Part]](aos, "Part", labels) // should be Array[Part]
+    struct[PartTable](List("DataTable"), Map("size" -> get_size(aos), "data" -> data))
+  }
+
+  def hackops_obj_loadpartsuppliers(path: Rep[String]): Rep[PartSupplierTable] = {
+    import ppl.dsl.optiql.datastruct.scala.liftables.PartSupplier
+
+    val labels = Map(
+      "ps_partkey"->manifest[Int],
+      "ps_suppkey"->manifest[Int],
+      "ps_availqty"->manifest[Int],
+      "ps_supplycost"->manifest[Double],
+      "ps_comment"->manifest[String])
+
+    val aos = reflectEffect(HackOpsObjLoadPartSuppliers(path))
+    val data = soa_convert[Array[PartSupplier]](aos, "PartSupplier", labels) // should be Array[PartSupplier]
+    struct[PartSupplierTable](List("DataTable"), Map("size" -> get_size(aos), "data" -> data))
+  }
+  
+  def hackops_obj_loadsuppliers(path: Rep[String]): Rep[SupplierTable] = {
+    import ppl.dsl.optiql.datastruct.scala.liftables.Supplier
+
+    val labels = Map(
+      "s_suppkey"->manifest[Int],
+      "s_name"->manifest[String],
+      "s_address"->manifest[String],
+      "s_nationkey"->manifest[Int],
+      "s_phone"->manifest[String],
+      "s_acctbal"->manifest[Double],
+      "s_comment"->manifest[String])
+
+    val aos = reflectEffect(HackOpsObjLoadSuppliers(path))
+    val data = soa_convert[Array[Supplier]](aos, "Supplier", labels) // should be Array[Supplier]
+    struct[SupplierTable](List("DataTable"), Map("size" -> get_size(aos), "data" -> data))
+  }
+
+  def hackops_obj_loadnations(path: Rep[String]): Rep[NationTable] = {
+    import ppl.dsl.optiql.datastruct.scala.liftables.Nation
+
+    val labels = Map(
+      "n_nationkey"->manifest[Int],
+      "n_name"->manifest[String],
+      "n_regionkey"->manifest[Int],
+      "n_comment"->manifest[String])
+
+    val aos = reflectEffect(HackOpsObjLoadNations(path))
+    val data = soa_convert[Array[Nation]](aos, "Nation", labels) // should be Array[Nation]
+    struct[NationTable](List("DataTable"), Map("size" -> get_size(aos), "data" -> data))
+  }
+
+  def hackops_obj_loadregions(path: Rep[String]): Rep[RegionTable] = {
+    import ppl.dsl.optiql.datastruct.scala.liftables.Region
+
+    val labels = Map(
+      "r_regionkey"->manifest[Int],
+      "r_name"->manifest[String],
+      "r_comment"->manifest[String])
+
+    val aos = reflectEffect(HackOpsObjLoadRegions(path))
+    val data = soa_convert[Array[Region]](aos, "Region", labels) // should be Array[Region]
+    struct[RegionTable](List("DataTable"), Map("size" -> get_size(aos), "data" -> data))
+  }
+
+
+
   override def array_length[A:Manifest](a: Rep[Array[A]]): Rep[Int] = a match {
     case Def(InputColumn(x,_)) => get_size(x)
     case _ => super.array_length(a)
@@ -115,12 +195,12 @@ trait HackOpsExp extends HackOps with FieldAccessOpsExp with EffectExp with Arra
 
   def hackops_obj_loadcustomers(path: Rep[String]): Rep[CustomerTable] = reflectEffect(HackOpsObjLoadCustomers(path))
   //def hackops_obj_loadlineitems(path: Rep[String]): Rep[LineItemTable] = reflectEffect(HackOpsObjLoadLineItems(path))
-  def hackops_obj_loadnations(path: Rep[String]): Rep[NationTable] = reflectEffect(HackOpsObjLoadNations(path))
+  //def hackops_obj_loadnations(path: Rep[String]): Rep[NationTable] = reflectEffect(HackOpsObjLoadNations(path))
   def hackops_obj_loadorders(path: Rep[String]): Rep[OrderTable] = reflectEffect(HackOpsObjLoadOrders(path))
-  def hackops_obj_loadparts(path: Rep[String]): Rep[PartTable] = reflectEffect(HackOpsObjLoadParts(path))
-  def hackops_obj_loadpartsuppliers(path: Rep[String]): Rep[PartSupplierTable] = reflectEffect(HackOpsObjLoadPartSuppliers(path))
-  def hackops_obj_loadregions(path: Rep[String]): Rep[RegionTable] = reflectEffect(HackOpsObjLoadRegions(path))
-  def hackops_obj_loadsuppliers(path: Rep[String]): Rep[SupplierTable] = reflectEffect(HackOpsObjLoadSuppliers(path))
+  //def hackops_obj_loadparts(path: Rep[String]): Rep[PartTable] = reflectEffect(HackOpsObjLoadParts(path))
+  //def hackops_obj_loadpartsuppliers(path: Rep[String]): Rep[PartSupplierTable] = reflectEffect(HackOpsObjLoadPartSuppliers(path))
+  //def hackops_obj_loadregions(path: Rep[String]): Rep[RegionTable] = reflectEffect(HackOpsObjLoadRegions(path))
+  //def hackops_obj_loadsuppliers(path: Rep[String]): Rep[SupplierTable] = reflectEffect(HackOpsObjLoadSuppliers(path))
   
   
 
@@ -133,6 +213,11 @@ trait ScalaGenHackOps extends ScalaGenEffect {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case HackOpsObjLoadCustomers(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadCustomers(" + quote(path) + ")")
     case HackOpsObjLoadLineItems(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadLineItems(" + quote(path) + ")")
+    case HackOpsObjLoadParts(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadParts(" + quote(path) + ")")
+    case HackOpsObjLoadPartSuppliers(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadPartSuppliers(" + quote(path) + ")")
+    case HackOpsObjLoadSuppliers(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadSuppliers(" + quote(path) + ")")
+    case HackOpsObjLoadNations(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadNations(" + quote(path) + ")")
+    case HackOpsObjLoadRegions(path) => emitValDef(sym, "generated.scala.tpch.TPCHData.loadRegions(" + quote(path) + ")")
     case InputColumn(x,id) => emitValDef(sym, quote(x) + ".map(_."+id+").toArray // TODO: store as columns during read")
     case InputSize(x) => emitValDef(sym, quote(x) + ".size")
     case _ => super.emitNode(sym, rhs)

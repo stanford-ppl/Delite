@@ -28,6 +28,24 @@ trait QueryableOps extends Base {
     def Average(avgSelector: Rep[TSource] => Rep[Double]) = queryable_average(s, avgSelector)
     def Count() = queryable_count(s)
     def OrderBy[TKey:Ordering:Manifest](keySelector: Rep[TSource] => Rep[TKey]) = queryable_orderby(s, keySelector)
+    def OrderByDescending[TKey:Ordering:Manifest](keySelector: Rep[TSource] => Rep[TKey]) = queryable_orderbydescending(s, keySelector)
+    def Min(minSelector: Rep[TSource] => Rep[Double]) = queryable_min(s, minSelector)
+    def MinIndex(minSelector: Rep[TSource] => Rep[Double]) = queryable_min_index(s, minSelector)
+    def Join[TSecond:Manifest](second: Rep[DataTable[TSecond]]) = new JoinableOps(s, second)
+  }
+
+  class JoinableOps[TFirst:Manifest, TSecond:Manifest](first: Rep[DataTable[TFirst]], second: Rep[DataTable[TSecond]]) {
+    def Where(predicate: Rep[TSecond] => Rep[Boolean]) = new JoinableOps(first, second.Where(predicate))
+    def WhereEq[TKey2:Manifest](firstKeySelector: Rep[TFirst] => Rep[TKey2],secondKeySelector: Rep[TSecond] => Rep[TKey2]) = new Joinable2(first, firstKeySelector, second, secondKeySelector)
+  }
+
+  class Joinable2[TFirst:Manifest, TSecond:Manifest, TKey2:Manifest](
+    val first: Rep[DataTable[TFirst]],
+    val firstKeySelector: Rep[TFirst] => Rep[TKey2],
+    val second: Rep[DataTable[TSecond]],
+    val secondKeySelector: Rep[TSecond] => Rep[TKey2] 
+  ) {
+    def Select[TResult:Manifest](resultSelector: (Rep[TFirst], Rep[TSecond]) => Rep[TResult]) = queryable_join2(first, firstKeySelector, second, secondKeySelector, resultSelector)
   }
   
   class OQOpsCls[TSource:Manifest](oq: Rep[OrderedQueryable[TSource]]) {
@@ -41,14 +59,19 @@ trait QueryableOps extends Base {
   def queryable_groupby[TSource:Manifest, TKey:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[DataTable[Grouping[TKey, TSource]]]
   def queryable_select[TSource:Manifest, TResult:Manifest](s: Rep[DataTable[TSource]], resultSelector: Rep[TSource] => Rep[TResult]): Rep[DataTable[TResult]]
   def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]): Rep[Double]
+  def queryable_min[TSource:Manifest](s: Rep[DataTable[TSource]], minSelector: Rep[TSource] => Rep[Double]): Rep[TSource]
+  def queryable_min_index[TSource:Manifest](s: Rep[DataTable[TSource]], minSelector: Rep[TSource] => Rep[Double]): Rep[Int]
   def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]): Rep[Double]
   def queryable_count[TSource:Manifest](s: Rep[DataTable[TSource]]): Rep[Int]  
   def queryable_orderby[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[OrderedQueryable[TSource]]
+  def queryable_orderbydescending[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[OrderedQueryable[TSource]]
   def queryable_thenby[TSource:Manifest, TKey:Ordering:Manifest](oq: Rep[OrderedQueryable[TSource]], keySelector: Rep[TSource] => Rep[TKey]): Rep[OrderedQueryable[TSource]]
   
   def queryable_grouping_toDatatable[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[DataTable[TSource]]
   def queryable_grouping_key[TKey:Manifest, TSource:Manifest](g: Rep[Grouping[TKey, TSource]]): Rep[TKey]
   
+  def queryable_join2[TFirst:Manifest, TSecond:Manifest, TKey2:Manifest, TResult:Manifest](first: Rep[DataTable[TFirst]], firstKeySelector: Rep[TFirst] => Rep[TKey2], 
+    second: Rep[DataTable[TSecond]], secondKeySelector: Rep[TSecond] => Rep[TKey2], resultSelector: (Rep[TFirst], Rep[TSecond]) => Rep[TResult]):Rep[DataTable[TResult]]
   
 }
 
@@ -110,12 +133,57 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
       grouping_apply(keyData(i), DataTable(valData(i), valData(i).length)))
     DataTable(data, data.length)
   }
+
+  def queryable_join2[TFirst:Manifest, TSecond:Manifest, TKey2:Manifest, TResult:Manifest](first: Rep[DataTable[TFirst]], firstKeySelector: Rep[TFirst] => Rep[TKey2], 
+    second: Rep[DataTable[TSecond]], secondKeySelector: Rep[TSecond] => Rep[TKey2], resultSelector: (Rep[TFirst], Rep[TSecond]) => Rep[TResult]):Rep[DataTable[TResult]] = {
+
+    /* first firstKeySelector second secondKeySelector resultSelector */
+    
+    val firstMap = indexBuild(first.size)(i => firstKeySelector(first(i)))
+    val firstGrouped = arrayGroup(first.size)(i => firstKeySelector(first(i)))(i => first(i))
+    
+    val empty = arraySelect(0)(i => first(i))
+    
+    val dataNested = arraySelect(second.size) { j => 
+      val secondItem = second(j)
+      val key = secondKeySelector(secondItem)
+      val firstIdx = indexLookup(firstMap,key)
+      val firstItems = if (firstIdx >= 0) firstGrouped(firstIdx) else empty
+      arraySelect(firstItems.length)(i => resultSelector(firstItems(i), secondItem))
+    }
+    
+    val data = arrayFlatten(dataNested)
+    DataTable(data, data.length)    
+    
+    /*
+    val firstMap = first.groupBy(firstKeySelector)
+    second flatMap { x2 => firstMap(secondKeySelector(x2)) map { x1 => resultSelector(x1,x2) } }
+    */
+  }
+
+
   def queryable_sum[TSource:Manifest](s: Rep[DataTable[TSource]], sumSelector: Rep[TSource] => Rep[Double]) = {
     /*val sym = fresh[TSource]
     val value = reifyEffects(sumSelector(sym))
     HackQueryableSum(s,sym,value)*/
     val res = reducePlain(s.size)(i => sumSelector(s(i)))(0)(_ + _)
     res
+  }
+
+  def queryable_min_index[TSource:Manifest](s: Rep[DataTable[TSource]], minSelector: Rep[TSource] => Rep[Double]) = {
+    reduceTuple(s.size)(i => i, i => minSelector(s(i)))(unit(-1), unit(scala.Double.MaxValue)) { 
+      case ((i0,v0),(i1,v1)) => 
+        (reifyEffects { if (v0 <= v1) i0 else i1 }, 
+         reifyEffects { if (v0 <= v1) v1 else v1 })
+    }
+  }
+  
+  def queryable_min[TSource:Manifest](s: Rep[DataTable[TSource]], minSelector: Rep[TSource] => Rep[Double]) = {
+    // first compute min index, then get item at index
+    val minIdx = queryable_min_index(s,minSelector)
+    // the conditional below forces Map creation.
+    // TODO: refactor to return Option and implement soa transform for option values.
+    if (minIdx >= 0) s(minIdx) else null  // <--- should have struct(k -> null)  for all k in null
   }
 
   def queryable_average[TSource:Manifest](s: Rep[DataTable[TSource]], avgSelector: Rep[TSource] => Rep[Double]) = 
@@ -129,6 +197,15 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   
   def queryable_orderby[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]) = {
     val permutation = arraySort(s.size)((i,j) => keySelector(s(i)) <= keySelector(s(j)))    
+    val data = arraySelect(s.size)(i => s(permutation(i)))
+    val sel: (Rep[Int],Rep[Int]) => Rep[Int] = (i,j) => queryable_compare(i,j,s,keySelector)
+    val table = DataTable(data, data.length)
+    Console.println("NewOrderedQueryable type " + table.Type)
+    toAtom(NewOrderedQueryable(table, s, sel))(mtype(table.Type))
+  }
+  def queryable_orderbydescending[TSource:Manifest, TKey:Ordering:Manifest](s: Rep[DataTable[TSource]], keySelector: Rep[TSource] => Rep[TKey]) = {
+    // TODO: copy pasted from above --> refactor
+    val permutation = arraySort(s.size)((i,j) => keySelector(s(i)) >= keySelector(s(j)))
     val data = arraySelect(s.size)(i => s(permutation(i)))
     val sel: (Rep[Int],Rep[Int]) => Rep[Int] = (i,j) => queryable_compare(i,j,s,keySelector)
     val table = DataTable(data, data.length)

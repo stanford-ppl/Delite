@@ -17,7 +17,7 @@ import ppl.delite.framework.codegen.{Utils, Target}
 /**
  * These are the lifted scala constructs that only operate on the Rep world. These are usually safe to mix in
  */
-trait OptiQLScalaOpsPkg extends Base with MiscOps with OrderingOps with PrimitiveOps with TupleOps with NumericOps with ArrayOps with IfThenElse with Equal
+trait OptiQLScalaOpsPkg extends Base with MiscOps with OrderingOps with PrimitiveOps with StringOps with TupleOps with NumericOps with ArrayOps with IfThenElse with Equal
 
 /**
  * This trait adds the Ops that are specific to OptiQL
@@ -38,7 +38,7 @@ trait OptiQLLift extends LiftString {
  * Scala IR nodes
  */
 trait OptiQLScalaOpsPkgExp extends OptiQLScalaOpsPkg with MiscOpsExp with IOOpsExp with SeqOpsExp with OrderingOpsExp with BooleanOpsExp with EqualExp
-  with PrimitiveOpsExp with TupleOpsExp with NumericOpsExp with ArrayOpsExp with IfThenElseExp with StructFatExpOptCommon with CastingOpsExp with ResultOps
+  with PrimitiveOpsExp with StringOpsExp with TupleOpsExp with NumericOpsExp with ArrayOpsExp with IfThenElseExp with StructFatExpOptCommon with CastingOpsExp with ResultOps
 
 /**
  * Ops available only to the compiler, and not our applications
@@ -68,7 +68,7 @@ trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp with HackOpsExp
  * Codegen traits
  */
 trait OptiQLScalaCodeGenPkg extends ScalaGenMiscOps with ScalaGenIOOps with ScalaGenSeqOps with ScalaGenOrderingOps with ScalaGenBooleanOps with ScalaGenEqual
-  with ScalaGenPrimitiveOps with ScalaGenTupleOps with ScalaGenNumericOps with ScalaGenArrayOps with ScalaGenIfThenElseFat with ScalaGenImplicitOps with ScalaGenCastingOps with ScalaGenFatStruct {
+  with ScalaGenPrimitiveOps with ScalaGenStringOps with ScalaGenTupleOps with ScalaGenNumericOps with ScalaGenArrayOps with ScalaGenIfThenElseFat with ScalaGenImplicitOps with ScalaGenCastingOps with ScalaGenFatStruct {
   val IR: OptiQLScalaOpsPkgExp
 }
 
@@ -116,11 +116,12 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg wi
 
   override def remap[A](m: Manifest[A]): String = {    
     m match {
-      case m if m.toString.startsWith("ppl.dsl.optiql.datastruct.scala.container.DataTable") => "generated.scala.container.DataTable[" + remap(m.typeArguments(0)) + "]"     
-      case m if m.erasure.isArray => {
+      case m if m.toString.startsWith("ppl.dsl.optiql.datastruct.scala.container.DataTable") => "generated.scala.container.DataTable[" + remap(m.typeArguments(0)) + "]"
+      case m if m.toString.startsWith("scala.collection.immutable.Map") // HACK-ish, maybe use a DSL type instead
+        && remap(m.typeArguments(0)) == "Int" => "generated.scala.container.HashMapImpl[" + remap(m.typeArguments(0)) + "]"
+      case m if m.erasure.isArray =>
         println("MAPPING ARRAY TYPE TO : " + remap(Manifest.classType(m.erasure.getComponentType)))
         "Array[" + remap(Manifest.classType(m.erasure.getComponentType)) + "]"
-      }
       case m if m.toString == "scala.Tuple2" => "Int" //HACK
       case m if m.toString == "scala.Tuple2[Char, Char]" => "Int"
       case m if m.toString == "double" => "Double"
