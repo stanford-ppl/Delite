@@ -10,3 +10,4 @@ lbpdenoiseraw|$data/ml/lbpdenoise/noisy200x200.raw
 tpchsf1|/home/hchafi/projects/tpch/SF1
 tpchsf3|/home/hchafi/projects/tpch/SF3
 tpchsf5|/home/hchafi/projects/tpch/SF5
+graph_test|

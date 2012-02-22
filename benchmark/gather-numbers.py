@@ -158,7 +158,7 @@ def launchApps(options):
         
         java_opts = os.getenv("JAVA_OPTS", "")
         build_dir = props["delite.home"] + "/generated/"
-        opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + app + ".deg"
+        opts = " -Ddelite.home.dir=" + props["delite.home"] + " -Ddelite.build.dir=" + build_dir + " -Ddelite.deg.filename=" + app + ".deg -Dlms.verbosity=3"
         if options['blas'] == True:
             opts = opts + " -Dblas.enabled"
         if options['run']['gpu'] == True:
@@ -205,7 +205,7 @@ def launchApps(options):
                 
                 opts = "-Ddelite.home=" + props['delite.home'] + " -Ddelite.threads=" + str(numThreads) + " -Ddelite.runs=" + options['runs'] + " -Dstats.dump -Dstats.dump.component=app -Dstats.dump.overwrite -Dstats.output.dir=" + stats_dir + " -Dstats.output.filename=" + app + "-smp-" +str(numThreads) + ".times " + java_opts
                 os.putenv("JAVA_OPTS", opts)
-                
+                #print "Executing APP"
                 print "== executing application: " + app + " " + params[app],
                 print "== with options: " + opts + "\n"
                 ecode = os.system(props['delite.home'] + "/bin/exec " + app + ".deg " + params[app])
@@ -266,8 +266,10 @@ def loadParams(options):
 		
     if not 'datasets' in options:
       f = open(props['delite.home'] + '/benchmark/config/datasets.' + hostname + "." + options['input-size'], 'r')
+      #print " " + props['delite.home'] + '/benchmark/config/datasets.' + hostname + "." + options['input-size']
     else:
       f = open(options['datasets'], 'r')
+      #print " " + options['datasets']
     for line in f:
         settings = line.split('|')
         app = settings.pop(0)

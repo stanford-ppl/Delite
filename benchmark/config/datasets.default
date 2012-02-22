@@ -35,3 +35,4 @@ svmrelaxed90|$data/ml/svm/MATRIX.TRAIN.800|$data/ml/svm/MATRIX.TEST|output|10
 svmrelaxed100|$data/ml/svm/MATRIX.TRAIN.800|$data/ml/svm/MATRIX.TEST|output|10
 tpchsf1|$data/query/tpch/SF1
 tpchsf5|$data/query/tpch/SF5
+graph_test|
