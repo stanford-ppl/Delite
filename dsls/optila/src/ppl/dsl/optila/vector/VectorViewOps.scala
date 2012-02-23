@@ -4,7 +4,7 @@ import java.io.PrintWriter
 import scala.reflect.{Manifest, SourceContext}
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase, ScalaGenFat, CudaGenBase, CudaGenFat}
 import scala.virtualization.lms.util.OverloadHack
-import scala.virtualization.lms.internal.{GenericFatCodegen}
+import scala.virtualization.lms.internal.{GenericFatCodegen,GenerationFailedException}
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
@@ -189,7 +189,10 @@ trait CudaGenVectorViewOps extends BaseGenVectorViewOps with CudaGenFat {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
     //TODO: Allow this to only kernels (not helper functions)
-    case VectorViewNew(x,start,stride,length,isRow) => stream.println(remap(sym.Type) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
+    case VectorViewNew(x,start,stride,length,isRow) => {
+      if(!processingHelperFunc) stream.println(remap(sym.Type) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
+      else throw new GenerationFailedException("CudaGen: VectorViewNew cannot be used in helper functions.")
+    }
     case VectorViewApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case VectorViewUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");\n")
     case VectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")

@@ -109,7 +109,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
           //write a copy function for objects
           if (inData != null) { //only perform a copy for object types
             addInputCopy = true
-            writeInputCopy(input, sym, inData.func, inData.resultType, out)
+            writeInputCopy(input, sym, inData.func, inData.resultType, out, true)
           }
           else if (isPrimitiveType(input.outputType(sym)))
             writeInputCast(input, sym, out) //if primitive type, simply cast to transform from "c" type into "g" type
@@ -121,7 +121,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         else if (needsUpdate(op, input, sym)) { //input exists on device but data is old
           //write a new copy function (input must be an object)
           addInputCopy = true
-          writeInputCopy(input, sym, inData.func, inData.resultType, out)
+          writeInputCopy(input, sym, inData.func, inData.resultType, out, false)
         }
       }
       if (addInputCopy) { //if a h2d data transfer occurred
@@ -365,10 +365,12 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("\"));\n")
   }
 
-  protected def writeInputCopy(op: DeliteOP, sym: String, function: String, opType: String, out: StringBuilder) {
+  protected def writeInputCopy(op: DeliteOP, sym: String, function: String, opType: String, out: StringBuilder, firstAlloc: Boolean) {
     //copy data from CPU to GPU
-    out.append(opType)
-    out.append("* ")
+    if(firstAlloc) {
+      out.append(opType)
+      out.append("* ")
+    }
     out.append(getSymGPU(sym))
     out.append(" = ")
     out.append(function)
