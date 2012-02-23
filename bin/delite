@@ -18,6 +18,7 @@ def main():
     parser.add_option("-t", "--threads", dest="num_threads", default="1", help="num execution threads e.g. 4")
     parser.add_option("-g", "--gpu", action="store_const", const="1", dest="num_gpus", default="0", help="enable gpu execution")
     parser.add_option("-r", "--runs", dest="num_runs", default="1", type="string", help="the number of times the runtime will execute the applications")
+    parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
 
     (opts, args) = parser.parse_args()
     if len(args) < 1:
@@ -55,8 +56,10 @@ def run(deg, params, opts):
     ld_library_path.append(build_dir+"/libraries")
     os.putenv("LD_LIBRARY_PATH", ":".join(ld_library_path))
 
-
     java_opts = java_opts + " -Ddelite.home=" + delitecommon.DELITE_HOME + " -Ddelite.threads=" + str(opts.num_threads) + " -Ddelite.gpus=" + opts.num_gpus + " -Ddelite.runs=" + opts.num_runs
+    
+    if opts.profile == True:
+        java_opts = java_opts + " -Dstats.output.dir=profile -Dstats.dump.component=prof -Ddelite.debug.profile=true"
 
     #add classpaths
     cp = " -cp "

@@ -33,6 +33,7 @@ trait DenseMatrixImplOps { this: OptiLA =>
     
   def densematrix_inverse_impl[A:Manifest](m: Rep[DenseMatrix[A]])(implicit conv: Rep[A] => Rep[Double]): Rep[DenseMatrix[Double]]
   def densematrix_multiply_impl[A:Manifest:Arith](x: Rep[DenseMatrix[A]], y: Rep[DenseMatrix[A]]): Rep[DenseMatrix[A]]
+  def densematrix_reducerows_impl[A:Manifest](x: Rep[DenseMatrix[A]], func: (Rep[DenseVector[A]], Rep[VectorView[A]]) => Rep[DenseVector[A]]): Rep[DenseVector[A]]
 }
 
 trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
@@ -343,9 +344,10 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     while (i < x.numRows) {
       val key = pred(x(i))      
       if (!(groups contains key)) {
-        groups(key) = DenseMatrix[A](0,0)        
+        groups(key) = DenseMatrix[A](0,x.numCols).unsafeImmutable        
       }
-      groups(key) += x(i).Clone // AKS TODO: should not need clone
+      //groups(key) += x(i).Clone // AKS TODO: should not need clone
+      groups(key) = groups(key) :+ x(i) // inefficient, but have to follow nested mutable rule
       i += 1
     }
   
@@ -354,6 +356,14 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
       out += m.unsafeImmutable       
     }    
     out.unsafeImmutable
+  }
+  
+  def densematrix_reducerows_impl[A:Manifest](x: Rep[DenseMatrix[A]], func: (Rep[DenseVector[A]], Rep[VectorView[A]]) => Rep[DenseVector[A]]): Rep[DenseVector[A]] = {
+    var acc = ZeroVector[A](x.numCols)
+    for (i <- 0 until x.numRows) {
+      acc = func(acc, x(i))
+    }
+    acc
   }
     
 }

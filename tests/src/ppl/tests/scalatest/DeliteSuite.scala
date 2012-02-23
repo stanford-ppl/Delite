@@ -83,7 +83,9 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     val fis = new FileInputStream(name)
     fis.read(buf)
     fis.close()
-    new String(buf)
+    val out = new String(buf)
+    if (verbose) println(out)    
+    out 
   }
   
   private def execTestExternal(args: Array[String]) = {

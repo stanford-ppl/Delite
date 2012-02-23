@@ -5,7 +5,7 @@ import executor._
 import graph.ops.{EOP_Global, Arguments}
 import graph.targets.Targets
 import graph.{TestGraph, DeliteTaskGraph}
-import profiler.PerformanceTimer
+import profiler.{PerformanceTimer, Profiler}
 import scheduler._
 import tools.nsc.io._
 
@@ -89,6 +89,9 @@ object Delite {
       //load kernels & data structures
       loadSources(graph)
 
+      //initialize profiler
+      Profiler.init(sourceInfo, graph)
+      
       //schedule
       scheduler.schedule(graph)
 
@@ -99,18 +102,20 @@ object Delite {
       val numTimes = Config.numRuns
       for (i <- 1 to numTimes) {
         println("Beginning Execution Run " + i)
+        val globalStart = System.currentTimeMillis
+        val globalStartNanos = System.nanoTime()
         PerformanceTimer.start("all", false)
         executor.run(executable)
         EOP_Global.await //await the end of the application program
         PerformanceTimer.stop("all", false)
-        PerformanceTimer.print("all")
+        PerformanceTimer.print("all", globalStart, globalStartNanos)
         // check if we are timing another component
         if(Config.dumpStatsComponent != "all")
-          PerformanceTimer.print(Config.dumpStatsComponent)
-        System.gc()
+          PerformanceTimer.print(Config.dumpStatsComponent, globalStart, globalStartNanos)
+	    System.gc()
       }
 
-      println("Done Executing " + numTimes + " Runs")
+      //println("Done Executing " + numTimes + " Runs")
       
       if(Config.dumpStats)
         PerformanceTimer.dumpStats()
@@ -148,4 +153,7 @@ object Delite {
     mainThread.interrupt()
   }
 
+  // maps op ids to the op's source info (fileName, line, opName)
+  // used in the profiler
+  var sourceInfo: Map[String, (String, Int, String)] = Map()
 }

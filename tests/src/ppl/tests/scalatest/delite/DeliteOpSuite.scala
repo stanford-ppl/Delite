@@ -183,7 +183,7 @@ object DeliteNestedForeachRunner extends DeliteTestRunner with OptiMLApplication
 trait DeliteNestedForeach extends DeliteTestModule with OptiMLApplication {
   def main() = {
 
-    val res = Vector[Double](1,true) map { e =>
+    Vector[Double](1,true) foreach { e =>
       val v = Vector.range(0, 10)
       for (e <- v) {
         if ((e > 0) && (e < v.length-1)) {

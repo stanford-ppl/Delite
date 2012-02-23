@@ -27,6 +27,7 @@ def main():
     parser.add_option("--nb", dest="no_blas", action="store_true", default=False, help="disable blas calls")
     parser.add_option("--nf", dest="no_fusion", action="store_true", default=False, help="disables op fusion")
     parser.add_option("--gpu", dest="gpu", action="store_true", default=False, help="enables gpu generation")
+    parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
     parser.add_option("--debug", dest="debug", action="store_true", default=False, help="enables verbose compiler output")
     parser.add_option("--Xdebug", dest="xdebug", action="store_true", default=False, help="enables LMS debug output; for compiler writers only")
     parser.add_option("-d", "--dest", action="store", dest="build_dir", default=os.getenv("PWD"), help="output location for generated files")
@@ -67,6 +68,8 @@ def stage(runner, opts):
         java_opts = java_opts + " -Ddelite.generate.cuda"
     if opts.no_fusion == True:
         java_opts = java_opts + " -Ddelite.enable.fusion=false"
+    if opts.profile == True:
+        java_opts = java_opts + " -Ddelite.enable.profiler=true"
     if opts.debug == True:
         java_opts = java_opts + " -Ddelite.debug"
     if opts.xdebug == True:

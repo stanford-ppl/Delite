@@ -12,6 +12,7 @@ trait MatrixImplOps { this: OptiLA =>
   def matrix_clone_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]])(implicit b: MatrixBuilder[A,MA]): Rep[MA]  
   def matrix_slice_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int])(implicit b: MatrixBuilder[A,MA]): Rep[MA]
   def matrix_slicerows_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], start: Rep[Int], end: Rep[Int])(implicit b: MatrixBuilder[A,MA]): Rep[MA]
+  def matrix_addrow_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], row: Interface[Vector[A]])(implicit b: MatrixBuilder[A,MA]): Rep[MA]  
   def matrix_updaterow_impl[A:Manifest](m: Interface[Matrix[A]], row: Rep[Int], y: Interface[Vector[A]]): Rep[Unit]
   def matrix_equals_impl[A:Manifest](x: Interface[Matrix[A]], y: Interface[Matrix[A]]): Rep[Boolean]
   def matrix_transpose_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]])(implicit b: MatrixBuilder[A,MA]): Rep[MA]
@@ -42,7 +43,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   //   val offset = i*x.numCols+j
   //   dc_apply(x,offset)
   // }
-
+  
   def matrix_getrow_impl[A:Manifest](m: Interface[Matrix[A]], row: Rep[Int]) = m.vview(row*m.numCols, 1, m.numCols, true)
   def matrix_getcol_impl[A:Manifest](m: Interface[Matrix[A]], col: Rep[Int]) = m.vview(col, m.numCols, m.numRows, false)
     
@@ -94,6 +95,21 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     }
     resultOut.unsafeImmutable
   }
+  
+  def matrix_addrow_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], y: Interface[Vector[A]])(implicit b: MatrixBuilder[A,MA]): Rep[MA] = {
+    // val out = m.mutable()
+    // out += y
+    // out.unsafeImmutable
+    val resultOut = b.alloc(m.numRows+1,m.numCols)
+    val result = b.toIntf(resultOut)
+    for (i <- 0 until m.size) {
+      result.dcUpdate(i, m.dcApply(i))
+    }
+    for (j <- 0 until y.length) {
+      result(m.numRows,j) = y(j)
+    }
+    resultOut.unsafeImmutable    
+  }  
     
   def matrix_updaterow_impl[A:Manifest](m: Interface[Matrix[A]], row: Rep[Int], y: Interface[Vector[A]]) = {
     //chkEquals(x.length, numCols)
@@ -368,9 +384,10 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     while (i < x.numRows) {
       val key = pred(x(i))      
       if (!(groups contains key)) {
-        groups(key) = b.alloc(0,0)
+        groups(key) = b.alloc(0,x.numCols).unsafeImmutable
       }
-      b.toIntf(groups(key)) += x(i).Clone // AKS TODO: should not need clone
+      //b.toIntf(groups(key)) += x(i).Clone // AKS TODO: should not need clone
+      groups(key) = (b.toIntf(groups(key)) :+ x(i)).ops.elem.asInstanceOf[Rep[MA]] // inefficient, but have to follow nested mutable rule      
       i += 1
     }
   

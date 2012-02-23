@@ -90,7 +90,7 @@ trait DenseMatrixOps extends Variables {
     def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = densematrix_multiply(x,y)
     def inv(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = densematrix_inverse(x)    
     def mapRows[B:Manifest](f: Rep[VectorView[A]] => Rep[DenseVector[B]])(implicit ctx: SourceContext) = densematrix_maprows(x,f)
-    def reduceRows(f: (Rep[VectorView[A]],Rep[VectorView[A]]) => Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]] = densematrix_reducerows(x,f)
+    def reduceRows(f: (Rep[DenseVector[A]],Rep[VectorView[A]]) => Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]] = densematrix_reducerows(x,f)
     
     // overrides
     def *(y: Rep[DenseVector[A]])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext): Rep[DenseVector[A]] = densematrix_times_vector(x,y)
@@ -138,7 +138,7 @@ trait DenseMatrixOps extends Variables {
   def densematrix_sigmoid[A:Manifest](x: Rep[DenseMatrix[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext): Rep[DenseMatrix[Double]]
   def densematrix_sigmoidf[A:Manifest](x: Rep[DenseMatrix[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext): Rep[DenseMatrix[Float]]
   def densematrix_maprows[A:Manifest,B:Manifest](x: Rep[DenseMatrix[A]], f: Rep[VectorView[A]] => Rep[DenseVector[B]])(implicit ctx: SourceContext): Rep[DenseMatrix[B]] 
-  def densematrix_reducerows[A:Manifest](x: Rep[DenseMatrix[A]], f: (Rep[VectorView[A]],Rep[VectorView[A]]) => Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]]   
+  def densematrix_reducerows[A:Manifest](x: Rep[DenseMatrix[A]], f: (Rep[DenseVector[A]],Rep[VectorView[A]]) => Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]]   
   
   def densematrix_size[A:Manifest](x: Rep[DenseMatrix[A]])(implicit ctx: SourceContext): Rep[Int]
   def densematrix_rawapply[A:Manifest](x: Rep[DenseMatrix[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
@@ -251,6 +251,9 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     
   case class DenseMatrixInverse[A:Manifest](x: Exp[DenseMatrix[A]])(implicit val conv: Exp[A] => Exp[Double])
     extends DeliteOpSingleWithManifest[A,DenseMatrix[Double]](reifyEffectsHere(densematrix_inverse_impl(x))) 
+    
+  case class DenseMatrixReduceRows[A:Manifest](x: Exp[DenseMatrix[A]], func: (Exp[DenseVector[A]], Exp[VectorView[A]]) => Exp[DenseVector[A]])
+    extends DeliteOpSingleWithManifest[A,DenseVector[A]](reifyEffectsHere(densematrix_reducerows_impl(x,func)))
 
   ///////////////////////////////////////////////////////////////////
   // BLAS enabled routines 
@@ -402,9 +405,8 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     reflectWrite(out)(DenseMatrixMapRows(x,f,out))
     out.unsafeImmutable // will this work?
   }  
-  def densematrix_reducerows[A:Manifest](x: Exp[DenseMatrix[A]], f: (Exp[VectorView[A]],Exp[VectorView[A]]) => Exp[DenseVector[A]])(implicit ctx: SourceContext) = {
-    //reflectPure(DenseMatrixReduceRows(x, f))
-    throw new UnsupportedOperationException("temporarily removed until new DeliteOpReduce[A,R] is supported")  // TODO AKS
+  def densematrix_reducerows[A:Manifest](x: Exp[DenseMatrix[A]], f: (Exp[DenseVector[A]],Exp[VectorView[A]]) => Exp[DenseVector[A]])(implicit ctx: SourceContext) = {
+    reflectPure(DenseMatrixReduceRows(x, f))
   }
   
 
