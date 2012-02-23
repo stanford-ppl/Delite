@@ -3,8 +3,8 @@ package ppl.delite.framework.ops
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Base, ScalaGenFat, CudaGenEffect, OpenCLGenEffect}
-import scala.virtualization.lms.internal.{GenericFatCodegen}
 import scala.reflect.SourceContext
+import virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 
 trait DeliteCollectionOps extends Base {
     
@@ -140,9 +140,10 @@ trait CudaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with CudaGen
     rhs match {
       case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".dcSize()")
       case DeliteCollectionApply(x,n) => emitValDef(sym, quote(getBlockResult(x)) + ".dcApply(" + quote(n) + ")")
-      //case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(y) + ")")
       case DeliteCollectionUpdate(x,n,y) => stream.println(quote(getBlockResult(x)) + ".dcUpdate(" + quote(n) + "," + quote(y) + ");")
-      case DeliteCollectionUnsafeSetData(x,d) => stream.println(quote(getBlockResult(x)) + "_ptr->unsafeSetData(" + quote(d) + "," + quote(d) + "->length);")
+      case DeliteCollectionUnsafeSetData(x,d) =>
+        if(processingHelperFunc) stream.println(quote(getBlockResult(x)) + "_ptr->unsafeSetData(" + quote(d) + "," + quote(d) + "->length);")
+        else throw new GenerationFailedException("CudaGen: UnsafeSetData can be done only within helper functions.")
       case _ => super.emitNode(sym, rhs)
     }
   }

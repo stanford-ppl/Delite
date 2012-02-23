@@ -84,6 +84,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   private def writeFileHeader(out: StringBuilder, op: OP_MultiLoop) {
     out.append("#include <cuda.h>\n")
+    out.append("#include <assert.h>\n")
     out.append("#include <thrust/scan.h>\n")
     out.append("#include \"helperFuncs.h\"\n")
     out.append("#include \"" + op.id + ".cu\"\n")
@@ -158,10 +159,13 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
     id match {
       case "Cond" =>
+        out.append("if(" + dimSize +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
         out.append(cudaLaunch(dimSize + ",1,1)"))
-        val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
+        //val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
+        val args = conditionList(op).map(o => "bitmap_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         out.append(args.mkString("(",",",");\n"))
       case "MapReduce" =>
+        out.append("if(" + dimSize +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
         out.append(cudaLaunch(dimSize + ",1,1)"))
         val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ reductionList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         out.append(args.mkString("(",",",");\n"))
@@ -199,7 +203,8 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
     id match {
       case "Cond" =>
-        val params = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => op.outputType(Targets.Cuda, o) + " " + o) ++ conditionList(op).map(o => "unsigned int * bitmap_" + o._2)
+        //val params = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => op.outputType(Targets.Cuda, o) + " " + o) ++ conditionList(op).map(o => "unsigned int * bitmap_" + o._2)
+        val params = conditionList(op).map(o => "unsigned int * bitmap_" + o._2)
         out.append(params.mkString(","))
         if (params.nonEmpty && op.getInputs.nonEmpty) out.append(',')
         writeInputs(out,op,false)

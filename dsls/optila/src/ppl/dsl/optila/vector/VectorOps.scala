@@ -378,7 +378,7 @@ trait VectorOps extends Variables {
     // def groupBy[K:Manifest](pred: Rep[A] => Rep[K]) = intf.ops.toIntf(intf.ops.groupBy(pred))
   }
   
-  def EmptyVector[A](implicit mA: Manifest[A]): Rep[DenseVector[A]] = (mA match {
+  def EmptyVector[A](implicit mA: Manifest[A], ctx: SourceContext): Rep[DenseVector[A]] = (mA match {
     // these don't allocate any memory
     case Manifest.Double => densevector_empty_double
     case Manifest.Float => densevector_empty_float
@@ -387,7 +387,7 @@ trait VectorOps extends Variables {
     case _ => densevector_empty[A]
   }).asInstanceOf[Rep[DenseVector[A]]]
 
-  def ZeroVector[A](length: Rep[Int], isRow: Rep[Boolean] = unit(true))(implicit mA: Manifest[A]): Rep[DenseVector[A]] = (mA match {
+  def ZeroVector[A](length: Rep[Int], isRow: Rep[Boolean] = unit(true))(implicit mA: Manifest[A], ctx: SourceContext): Rep[DenseVector[A]] = (mA match {
     case Manifest.Double => densevector_zero_double(length, isRow)
     case Manifest.Float => densevector_zero_float(length, isRow)
     case Manifest.Int => densevector_zero_int(length, isRow)
@@ -395,7 +395,7 @@ trait VectorOps extends Variables {
   }).asInstanceOf[Rep[DenseVector[A]]]
 
   // object defs
-  def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], isRow: Rep[Boolean]): Rep[RangeVector]
+  def vector_obj_range(start: Rep[Int], end: Rep[Int], stride: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[RangeVector]
 
   // class defs
   def vector_equals[A:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Boolean]
@@ -1037,7 +1037,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   /////////////////////
   // object interface
 
-  def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean]) = reflectPure(VectorObjectRange(start, end, stride, isRow))
+  def vector_obj_range(start: Exp[Int], end: Exp[Int], stride: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(VectorObjectRange(start, end, stride, isRow))
 
 
   /////////////////////

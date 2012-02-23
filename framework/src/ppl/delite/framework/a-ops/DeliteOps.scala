@@ -1712,36 +1712,42 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
           lf.loopFuncOutputType = remap(getBlockResult(elem.func).Type)
 
         case (sym, elem: DeliteReduceElem[_]) =>
-          if(!isPrimitiveType(sym.Type)) throw new GenerationFailedException("CudaGen: DeliteReduceElem with non-primitive types is not supported.")
           val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
           metaData.loopFuncs.put(sym,lf)
           lf.tpe = "REDUCE"
 
-          if(elem.cond.nonEmpty) emitMultiLoopCond(sym, elem.cond, op.v, "cond_"+quote(sym), stream)
-          emitAllocFuncPrimitive(sym)
           lf.loopFuncInputs = emitMultiLoopFunc(elem.func, "collect_"+quote(sym), List(op.v), stream)
-          lf.loopFuncOutputType = remap(getBlockResult(elem.func).Type)
           lf.loopReduceInputs = emitMultiLoopFunc(elem.rFunc, "reduce_"+quote(sym), List(elem.rV._1, elem.rV._2, op.v), stream)
           lf.loopZeroInputs = emitMultiLoopFunc(elem.zero,"zero_"+quote(sym), Nil, stream)
+          if(!isPrimitiveType(sym.Type)) {
+            printDebug(sym, "DeliteReduceElem with non-primitive types is not supported.")
+          } else {
+            emitAllocFuncPrimitive(sym)
+          }
+          lf.loopFuncOutputType = remap(getBlockResult(elem.func).Type)
+          if(elem.cond.nonEmpty) emitMultiLoopCond(sym, elem.cond, op.v, "cond_"+quote(sym), stream)
 
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
-          if(!isPrimitiveType(sym.Type)) throw new GenerationFailedException("CudaGen: DeliteReduceTupleElem with non-primitive types is not supported.")
           val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
           metaData.loopFuncs.put(sym,lf)
           lf.tpe = "REDUCE_TUPLE"
 
-          if(elem.cond.nonEmpty) emitMultiLoopCond(sym, elem.cond, op.v, "cond_"+quote(sym), stream)
-          emitAllocFuncPrimitive(sym)
           lf.loopFuncInputs = emitMultiLoopFunc(elem.func._1, "collect_1_"+quote(sym), List(op.v), stream)
           lf.loopFuncInputs_2 = emitMultiLoopFunc(elem.func._2, "collect_2_"+quote(sym), List(op.v), stream)
-          lf.loopFuncOutputType = remap(getBlockResult(elem.func._1).Type)
-          lf.loopFuncOutputType_2 = remap(getBlockResult(elem.func._2).Type)
           lf.loopReduceInputs = emitMultiLoopFunc(elem.rFuncSeq._1, "reduce_seq_1_"+quote(sym), List(elem.rVSeq._1._1, elem.rVSeq._1._2, elem.rVSeq._2._1, elem.rVSeq._2._2, op.v), stream)
           lf.loopReduceInputs_2 = emitMultiLoopFunc(elem.rFuncSeq._2, "reduce_seq_2_"+quote(sym), List(elem.rVSeq._1._1, elem.rVSeq._1._2, elem.rVSeq._2._1, elem.rVSeq._2._2, op.v), stream)
           lf.loopReduceParInputs = emitMultiLoopFunc(elem.rFuncPar._1, "reduce_par_1_"+quote(sym), List(elem.rVPar._1._1, elem.rVPar._1._2, elem.rVPar._2._1, elem.rVPar._2._2, op.v), stream)
           lf.loopReduceParInputs_2 = emitMultiLoopFunc(elem.rFuncPar._2, "reduce_par_2_"+quote(sym), List(elem.rVPar._1._1, elem.rVPar._1._2, elem.rVPar._2._1, elem.rVPar._2._2, op.v), stream)
           lf.loopZeroInputs = emitMultiLoopFunc(elem.zero._1,"zero_1_"+quote(sym), Nil, stream)
           lf.loopZeroInputs_2 = emitMultiLoopFunc(elem.zero._2,"zero_2_"+quote(sym), Nil, stream)
+          if(!isPrimitiveType(sym.Type)) {
+            printDebug(sym, "DeliteReduceTupleElem with non-primitive types is not supported.")
+          } else {
+            emitAllocFuncPrimitive(sym)
+          }
+          lf.loopFuncOutputType = remap(getBlockResult(elem.func._1).Type)
+          lf.loopFuncOutputType_2 = remap(getBlockResult(elem.func._2).Type)
+          if(elem.cond.nonEmpty) emitMultiLoopCond(sym, elem.cond, op.v, "cond_"+quote(sym), stream)
 
         case _ =>
           throw new GenerationFailedException("CudaGen: Unsupported Elem type!")
