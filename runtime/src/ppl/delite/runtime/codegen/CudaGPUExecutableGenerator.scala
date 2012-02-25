@@ -493,7 +493,8 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     }
 
     def outputFreeable(op: DeliteOP, sym: String) = {
-      !isPrimitiveType(op.outputType(sym))
+      if(op.outputType(sym) == "Unit") false
+      else true
     }
 
     //free temps
@@ -513,7 +514,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     }
 
     //free inputs (?)
-    for ((in,name) <- op.getInputs if(opFreeable(in) && outputFreeable(in, name))) {
+    for ((in,name) <- op.getInputs if(opFreeable(in) && !isPrimitiveType(in.outputType(name)))) {
       val possible = in.getConsumers.filter(c => c.getInputs.contains((in,name)) && c.scheduledResource == op.scheduledResource)
       var free = true
       for (p <- possible) {

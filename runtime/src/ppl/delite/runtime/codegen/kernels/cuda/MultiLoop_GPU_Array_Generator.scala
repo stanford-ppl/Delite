@@ -4,8 +4,11 @@ import ppl.delite.runtime.codegen.{CudaGPUExecutableGenerator, CudaCompile, Cuda
 import tools.nsc.io._
 import ppl.delite.runtime.graph.ops.{OP_Executable, DeliteOP, OP_MultiLoop}
 import ppl.delite.runtime.graph.targets.{OPData, Targets}
+import collection.mutable.ArrayBuffer
 
 object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
+
+  val createdMultiLoopList = new ArrayBuffer[String]()
 
   def executableName = error("MultiLoop is not a stand-alone executable")
 
@@ -51,10 +54,14 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   //TODO: expand to multiple chunks (multiple GPUs)
   def makeChunk(op: OP_MultiLoop): OP_MultiLoop = {
-    val src = makeKernel(op)
-    val header = makeHeader(op)
-    CudaCompile.addHeader(header, kernelName(op))
-    CudaCompile.addSource(src, kernelName(op))
+    updateOP(op)
+    if(!createdMultiLoopList.contains(op.id)) {
+      val src = makeKernel(op)
+      val header = makeHeader(op)
+      CudaCompile.addHeader(header, kernelName(op))
+      CudaCompile.addSource(src, kernelName(op))
+      createdMultiLoopList += op.id
+    }
     op
   }
 
@@ -67,7 +74,6 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   private def makeKernel(op: OP_MultiLoop) = {
     val out = new StringBuilder
-    updateOP(op)
     writeFileHeader(out, op)
     makeKernels(out, op)
     writeKernelLauncher(out, op)

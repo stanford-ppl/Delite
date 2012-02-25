@@ -179,6 +179,25 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
+  def delitearrayCopyOutputDtoH(sym: Sym[Any]): String = {
+    val out = new StringBuilder
+    val typeArg = sym.Type.typeArguments.head
+    val numBytesStr = "%s.length * sizeof(%s)".format(quote(sym),remap(typeArg))
+
+    out.append("\tj%sArray arr = env->New%sArray(%s.length);\n".format(remap(typeArg),remap(typeArg),quote(sym)))
+    out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical((j%sArray)arr,0);\n".format(remap(typeArg),remap(typeArg),remap(typeArg)))
+
+    out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
+    out.append("\tDeliteCudaMallocHost((void**)&hostPtr,%s);\n".format(numBytesStr))
+
+    out.append("\tDeliteCudaMemcpyDtoHAsync(hostPtr, %s->data, %s);\n".format(quote(sym),numBytesStr))
+    out.append("\tmemcpy(dataPtr, hostPtr, %s);\n".format(numBytesStr))
+
+    out.append("\tenv->ReleasePrimitiveArrayCritical((j%sArray)arr, dataPtr, 0);\n".format(remap(typeArg)))
+    out.append("\treturn arr;\n")
+    out.toString
+  }
+
   /*****************************************************************************************
    * transfer functions up to this point are verified
    */
