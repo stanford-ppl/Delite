@@ -453,10 +453,10 @@ object DeliteTaskGraph {
       val value = inputMap.values.head.asInstanceOf[List[Any]]
       val data = metadata.newInput(getOp(sym), sym)
       data.resultType = value.head
-      data.func = value.tail.head
-      data.funcReturn = value.tail.tail.head
+      data.func = "copyInputHtoD_%s_%s".format(newop.id,sym)
+      data.funcReturn = "copyMutableInputDtoH_%s_%s".format(newop.id,sym)
       tgt match {
-        case Targets.OpenCL => data.objFields = value.tail.tail.tail.head.asInstanceOf[Map[String,String]]
+        case Targets.OpenCL => data.objFields = value.tail.head.asInstanceOf[Map[String,String]]
         case _ =>
       }
     }
@@ -479,8 +479,8 @@ object DeliteTaskGraph {
       val value = (temp.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
       val data = metadata.newTemp(key)
       data.resultType = value.head
-      data.func = value.tail.head
-      for (sym <- value.tail.tail.head.asInstanceOf[List[String]].reverse) {
+      data.func = "allocFunc_%s".format(key)
+      for (sym <- value.tail.head.asInstanceOf[List[String]].reverse) {
         data.inputs ::= (getOpLike(sym), sym)
       }
     }
@@ -491,15 +491,15 @@ object DeliteTaskGraph {
       val output = metadata.newOutput(outputMap.keys.head)
       val outList = outputMap.values.head.asInstanceOf[List[Any]]
       output.resultType = outList.head
-      output.func = outList.tail.head
-      for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
+      output.func = "allocFunc_%s".format(outputMap.keys.head)
+      for (sym <- outList.tail.head.asInstanceOf[List[String]].reverse) {
         output.inputs ::= (getOpLike(sym), sym)
       }
       //output copy
-      output.funcReturn = outList.tail.tail.tail.head
+      output.funcReturn = "copyOutputDtoH_%s".format(outputMap.keys.head)
 
       //Added for new GPU execution model
-      val loopConfig = outList.tail.tail.tail.tail
+      val loopConfig = outList.tail.tail
       output.loopType = loopConfig.head
       output.hasCond = java.lang.Boolean.parseBoolean(loopConfig.tail.head)
       output.loopFuncInputs = loopConfig.tail.tail.head.asInstanceOf[List[String]]

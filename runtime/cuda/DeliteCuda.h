@@ -5,13 +5,16 @@
 #include <map>
 #include <queue>
 #include <iostream>
+#include <utility>
 #include <cuda_runtime.h>
 
 using namespace std;
 
+// Second element in pair<void*,bool> indicates that void* points to GPU device memory,
+// so should not call free() on it.
 struct FreeItem {
     cudaEvent_t event;
-    list<void*>* keys;
+    list< pair<void*,bool> >* keys;
 };
 
 extern cudaStream_t h2dStream;

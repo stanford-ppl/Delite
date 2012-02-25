@@ -8,8 +8,6 @@ import collection.mutable.ArrayBuffer
 
 object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
-  val createdMultiLoopList = new ArrayBuffer[String]()
-
   def executableName = error("MultiLoop is not a stand-alone executable")
 
   private def needsReduction(op: OP_MultiLoop): Boolean = {
@@ -55,13 +53,10 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   //TODO: expand to multiple chunks (multiple GPUs)
   def makeChunk(op: OP_MultiLoop): OP_MultiLoop = {
     updateOP(op)
-    if(!createdMultiLoopList.contains(op.id)) {
-      val src = makeKernel(op)
-      val header = makeHeader(op)
-      CudaCompile.addHeader(header, kernelName(op))
-      CudaCompile.addSource(src, kernelName(op))
-      createdMultiLoopList += op.id
-    }
+    val src = makeKernel(op)
+    val header = makeHeader(op)
+    CudaCompile.addHeader(header, kernelName(op))
+    CudaCompile.addSource(src, kernelName(op))
     op
   }
 

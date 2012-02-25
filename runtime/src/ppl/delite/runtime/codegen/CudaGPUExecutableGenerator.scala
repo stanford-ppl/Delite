@@ -477,15 +477,22 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
       out.append(freeItem)
       out.append(";\n")
       out.append(freeItem)
-      out.append(".keys = new list<void*>();\n")
+      out.append(".keys = new list< pair<void*,bool> >();\n")
     }
 
-    def writeFree(sym: String) {
+    def writeFree(sym: String, isPrim: Boolean) {
       if (count == 0) writeFreeInit()
+      out.append("pair<void*,bool> ")
+      out.append(getSymGPU(sym))
+      out.append("_pair(")
+      out.append(getSymGPU(sym))
+      out.append(",")
+      out.append(isPrim) //Do not free this ptr using free() : primitive type pointers points to device memory
+      out.append(");\n")
       out.append(freeItem)
       out.append(".keys->push_back(")
       out.append(getSymGPU(sym))
-      out.append(");\n")
+      out.append("_pair);\n")
     }
 
     def opFreeable(op: DeliteOP) = {
@@ -499,7 +506,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
     //free temps
     for ((temp, name) <- op.getGPUMetadata(target).temps) {
-      writeFree(name)
+      writeFree(name,false)
       count += 1
     }
 
@@ -507,7 +514,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     if (opFreeable(op)) {
       for (name <- op.getOutputs if outputFreeable(op, name)) {
         if (op.getConsumers.filter(c => c.getInputs.contains((op,name)) && c.scheduledResource == op.scheduledResource).size == 0) {
-          writeFree(name)
+          writeFree(name,isPrimitiveType(op.outputType(name)))
           count += 1
         }
       }
@@ -521,7 +528,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         if (!available.contains(p)) free = false
       }
       if (free) {
-        writeFree(name)
+        writeFree(name,false)
         count += 1
       }
     }
