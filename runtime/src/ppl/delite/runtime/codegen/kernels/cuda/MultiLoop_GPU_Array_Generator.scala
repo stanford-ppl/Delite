@@ -240,11 +240,15 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     out.append("}\n") //end if, end kernel
   }
 
+  private def funcNameSuffix(op: OP_MultiLoop, sym: String):String = {
+    op.id + "_" + sym
+  }
+
   private def writeConditionKernel(out: StringBuilder, op: OP_MultiLoop) {
     writeKernelHeader(out, op, "Cond")
     out.append("if (idxX < " + op.size + ") {\n")
     for((odata,osym) <- conditionList(op)) {
-      out.append("bool cond_" + osym + " = dev_cond_" + osym + "(" + (odata.loopCondInputs:+"idxX").mkString(",") + ");\n")
+      out.append("bool cond_" + osym + " = dev_cond_" + funcNameSuffix(op,osym) + "(" + (odata.loopCondInputs:+"idxX").mkString(",") + ");\n")
       out.append("if(cond_" + osym + " == 1) bitmap_" + osym + "[idxX] = 1;\n")
       out.append("else bitmap_" + osym + "[idxX] = 0;\n")
     }
@@ -259,41 +263,41 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
         case "COLLECT" =>
           if (odata.hasCond) out.append("if (idxX<" + op.size + " && bitmap_" + osym + "[idxX]==1) {\n")
           else out.append("if (idxX < " + op.size + ") {\n")
-          out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + osym + "(" + (odata.loopFuncInputs:+"idxX").mkString(",") + ");\n")
-          if(odata.hasCond) out.append(osym + ".dcUpdate(scanmap_" + osym + "[idxX], collect_" + osym + ");\n")
+          out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + funcNameSuffix(op,osym) + "(" + (odata.loopFuncInputs:+"idxX").mkString(",") + ");\n")
+          if(odata.hasCond) out.append(osym + ".dcUpdate(scanmap_" + osym + "[idxX], collect_" + funcNameSuffix(op,osym) + ");\n")
           else out.append(osym + ".dcUpdate(idxX, collect_" + osym + ");\n")
           out.append("}\n")
         case "FOREACH" =>
           out.append("if (idxX < " + op.size + ") {\n")
-          out.append("dev_foreach_" + osym + "(" + odata.loopFuncInputs.mkString("",",",",") + "idxX);\n")
+          out.append("dev_foreach_" + funcNameSuffix(op,osym) + "(" + odata.loopFuncInputs.mkString("",",",",") + "idxX);\n")
           out.append("}\n")
         case "REDUCE" =>
-          if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_" + osym + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
-          else out.append("smem_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_" + osym + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
+          if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+          else out.append("smem_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
           out.append("__syncthreads();\n")
           out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
           out.append("if((idxX%(2*s))==0) { \n")
-          out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + osym + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+          out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
           out.append("}\n")
           out.append("__syncthreads();\n")
           out.append("}\n")
           out.append("if(threadIdx.x==0) temp_" + osym + "[blockIdx.x] = smem_" + osym + "[0];\n")
         case "REDUCE_TUPLE" =>
           if (odata.hasCond) {
-            out.append("smem_1_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_1_" + osym + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") + " : dev_zero_1_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
-            out.append("smem_2_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_2_" + osym + (odata.loopFuncInputs_2:+"idxX").mkString("(",",",")") + " : dev_zero_2_" + osym + odata.loopZeroInputs_2.mkString("(",",",");\n"))
+            out.append("smem_1_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_1_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") + " : dev_zero_1_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+            out.append("smem_2_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_2_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs_2:+"idxX").mkString("(",",",")") + " : dev_zero_2_" + funcNameSuffix(op,osym) + odata.loopZeroInputs_2.mkString("(",",",");\n"))
           }
           else {
-            out.append("smem_1_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_1_" + osym + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") + " : dev_zero_1_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
-            out.append("smem_2_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_2_" + osym + (odata.loopFuncInputs_2:+"idxX").mkString("(",",",")") + " : dev_zero_2_" + osym + odata.loopZeroInputs_2.mkString("(",",",");\n"))
+            out.append("smem_1_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_1_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") + " : dev_zero_1_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+            out.append("smem_2_" + osym + "[threadIdx.x] = (idxX < " + op.size + ") ? dev_collect_2_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs_2:+"idxX").mkString("(",",",")") + " : dev_zero_2_" + funcNameSuffix(op,osym) + odata.loopZeroInputs_2.mkString("(",",",");\n"))
           }
-          out.append("if(idxX<" + op.size + ") smem_1_" + osym + "[threadIdx.x] = dev_reduce_seq_1_" + osym + (odata.loopReduceInputs ++ List("dev_zero_1_"+osym+odata.loopZeroInputs.mkString("(",",",")"),"dev_zero_2_"+osym+odata.loopZeroInputs_2.mkString("(",",",")"),"smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","idxX")).mkString("(",",",");\n"))
-          out.append("if(idxX<" + op.size + ") smem_2_" + osym + "[threadIdx.x] = dev_reduce_seq_2_" + osym + (odata.loopReduceInputs_2 ++ List("dev_zero_1_"+osym+odata.loopZeroInputs.mkString("(",",",")"),"dev_zero_2_"+osym+odata.loopZeroInputs_2.mkString("(",",",")"),"smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","idxX")).mkString("(",",",");\n"))
+          out.append("if(idxX<" + op.size + ") smem_1_" + osym + "[threadIdx.x] = dev_reduce_seq_1_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs ++ List("dev_zero_1_"+funcNameSuffix(op,osym)+odata.loopZeroInputs.mkString("(",",",")"),"dev_zero_2_"+funcNameSuffix(op,osym)+odata.loopZeroInputs_2.mkString("(",",",")"),"smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","idxX")).mkString("(",",",");\n"))
+          out.append("if(idxX<" + op.size + ") smem_2_" + osym + "[threadIdx.x] = dev_reduce_seq_2_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs_2 ++ List("dev_zero_1_"+funcNameSuffix(op,osym)+odata.loopZeroInputs.mkString("(",",",")"),"dev_zero_2_"+funcNameSuffix(op,osym)+odata.loopZeroInputs_2.mkString("(",",",")"),"smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","idxX")).mkString("(",",",");\n"))
           out.append("__syncthreads();\n")
           out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
           out.append("if((idxX%(2*s))==0) { \n")
-          out.append("smem_1_" + osym + "[threadIdx.x] = dev_reduce_par_1_" + osym + (odata.loopReduceParInputs ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
-          out.append("smem_2_" + osym + "[threadIdx.x] = dev_reduce_par_2_" + osym + (odata.loopReduceParInputs_2 ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+          out.append("smem_1_" + osym + "[threadIdx.x] = dev_reduce_par_1_" + funcNameSuffix(op,osym) + (odata.loopReduceParInputs ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+          out.append("smem_2_" + osym + "[threadIdx.x] = dev_reduce_par_2_" + funcNameSuffix(op,osym) + (odata.loopReduceParInputs_2 ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
           out.append("}\n")
           out.append("__syncthreads();\n")
           out.append("}\n")
@@ -310,12 +314,12 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   private def writeReduceKernel(out: StringBuilder, op: OP_MultiLoop) {
     writeKernelHeader(out, op, "Reduce")
     for((odata,osym) <- reductionList(op)) {
-      if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_" + osym + "[idxX] : dev_zero_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
-      else out.append("smem_" + osym + "[threadIdx.x] = (idxX < size) ? temp_" + osym + "[idxX] : dev_zero_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
+      if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+      else out.append("smem_" + osym + "[threadIdx.x] = (idxX < size) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
       out.append("__syncthreads();\n")
       out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
       out.append("if((idxX%(2*s))==0) { \n")
-      out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + osym + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+      out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
       out.append("}\n")
       out.append("__syncthreads();\n")
       out.append("}\n")
@@ -328,18 +332,18 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     writeKernelHeader(out, op, "ReduceTuple")
     for((odata,osym) <- reductionTupleList(op)) {
       if (odata.hasCond) {
-        out.append("smem_1_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_1_" + osym + "[idxX] : dev_zero_1_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
-        out.append("smem_2_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_2_" + osym + "[idxX] : dev_zero_2_" + osym + odata.loopZeroInputs_2.mkString("(",",",");\n"))
+        out.append("smem_1_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_1_" + osym + "[idxX] : dev_zero_1_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+        out.append("smem_2_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_2_" + osym + "[idxX] : dev_zero_2_" + funcNameSuffix(op,osym) + odata.loopZeroInputs_2.mkString("(",",",");\n"))
       }
       else {
-        out.append("smem_1_" + osym + "[threadIdx.x] = (idxX < size) ? temp_1_" + osym + "[idxX] : dev_zero_1_" + osym + odata.loopZeroInputs.mkString("(",",",");\n"))
-        out.append("smem_2_" + osym + "[threadIdx.x] = (idxX < size) ? temp_2_" + osym + "[idxX] : dev_zero_2_" + osym + odata.loopZeroInputs_2.mkString("(",",",");\n"))
+        out.append("smem_1_" + osym + "[threadIdx.x] = (idxX < size) ? temp_1_" + osym + "[idxX] : dev_zero_1_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+        out.append("smem_2_" + osym + "[threadIdx.x] = (idxX < size) ? temp_2_" + osym + "[idxX] : dev_zero_2_" + funcNameSuffix(op,osym) + odata.loopZeroInputs_2.mkString("(",",",");\n"))
       }
       out.append("__syncthreads();\n")
       out.append("for(unsigned int s=1; s<blockDim.x; s*=2) {\n")
       out.append("if((idxX%(2*s))==0) { \n")
-      out.append("smem_1_" + osym + "[threadIdx.x] = dev_reduce_par_1_" + osym + (odata.loopReduceParInputs ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
-      out.append("smem_2_" + osym + "[threadIdx.x] = dev_reduce_par_2_" + osym + (odata.loopReduceParInputs_2 ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+      out.append("smem_1_" + osym + "[threadIdx.x] = dev_reduce_par_1_" + funcNameSuffix(op,osym) + (odata.loopReduceParInputs ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
+      out.append("smem_2_" + osym + "[threadIdx.x] = dev_reduce_par_2_" + funcNameSuffix(op,osym) + (odata.loopReduceParInputs_2 ++ List("smem_1_"+osym+"[threadIdx.x]","smem_2_"+osym+"[threadIdx.x]","smem_1_"+osym+"[threadIdx.x+s]","smem_2_"+osym+"[threadIdx.x+s]","idxX")).mkString("(",",",");\n"))
       out.append("}\n")
       out.append("__syncthreads();\n")
       out.append("}\n")
