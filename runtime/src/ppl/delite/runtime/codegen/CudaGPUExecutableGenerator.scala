@@ -47,6 +47,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
   protected def writeHeader(out: StringBuilder) {
     out.append("#include <jni.h>\n") //jni
     out.append("#include <cuda_runtime.h>\n") //Cuda runtime api
+    out.append("#include \"cublas.h\"\n") //cublas library
     out.append("#include \"DeliteCuda.cu\"\n") //Delite-Cuda interface for DSL
     out.append("#include \"helperFuncs.cu\"\n")
     out.append("#include \"library.h\"\n")
@@ -75,6 +76,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("cudaStreamCreate(&kernelStream);\n")
     out.append("cudaStreamCreate(&h2dStream);\n")
     out.append("cudaStreamCreate(&d2hStream);\n")
+    out.append("cublasSetKernelStream(kernelStream);\n")  // set cublas to use the kernel stream
   }
 
 
