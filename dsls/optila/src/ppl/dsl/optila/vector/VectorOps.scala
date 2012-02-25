@@ -157,7 +157,7 @@ trait VectorOps extends Variables {
     // could overload for a more specific static type, but can't override +(y: Interface[Vector[A]]) in SparseVecOps because the return value Dense is not a subtype of VA
     type VPLUSR
     implicit val mVPLUSR: Manifest[VPLUSR]
-    implicit val vplusBuilder: VectorBuilder[A,VPLUSR]    
+    implicit def vplusBuilder(implicit ctx: SourceContext): VectorBuilder[A,VPLUSR]
     def vplusToIntf(x: Rep[VPLUSR]): Interface[Vector[A]]
     //val plusInfo: OpInfo[A,VPLUSR,Interface[Vector[A]]]    
     //def +(y: Interface[Vector[A]])(implicit a: Arith[A]) = vector_plus[A,VPLUSR](x,y)(manifest[A], implicitly[Arith[A]], plusInfo.mR, plusInfo.b)
@@ -171,7 +171,7 @@ trait VectorOps extends Variables {
     
     type VMINUSR
     implicit val mVMINUSR: Manifest[VMINUSR]
-    implicit val vminusBuilder: VectorBuilder[A,VMINUSR]    
+    implicit def vminusBuilder(implicit ctx: SourceContext): VectorBuilder[A,VMINUSR]
     def vminusToIntf(x: Rep[VMINUSR]): Interface[Vector[A]]
     def -(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = vector_minus[A,VMINUSR](x,y)
     def -[B:Manifest](y: Interface[Vector[B]])(implicit a: Arith[A], c: Rep[B] => Rep[A], ctx: SourceContext) = vector_minus_withconvert[B,A,VMINUSR](y,x)
@@ -183,7 +183,7 @@ trait VectorOps extends Variables {
     
     type VTIMESR
     implicit val mVTIMESR: Manifest[VTIMESR]
-    implicit val vtimesBuilder: VectorBuilder[A,VTIMESR]    
+    implicit def vtimesBuilder(implicit ctx: SourceContext): VectorBuilder[A,VTIMESR]
     def vtimesToIntf(x: Rep[VTIMESR]): Interface[Vector[A]]    
     // TODO: need to extend Arith to support this using CanXX dispatch
     // Rep[DenseVector[Double]] * Rep[RangeVector] (Rep[DenseVector[Double]] * Interface[Vector[Int]])    

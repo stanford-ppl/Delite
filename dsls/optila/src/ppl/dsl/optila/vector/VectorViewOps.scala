@@ -52,17 +52,17 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
     // generic
     type VPLUSR = DenseVector[A]
     val mVPLUSR = manifest[VPLUSR]
-    val vplusBuilder = denseVectorBuilder[A]
+    def vplusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[A]
     def vplusToIntf(x: Rep[VPLUSR]) = denseVecToInterface(x)
     
     type VMINUSR = DenseVector[A]
     val mVMINUSR = manifest[VMINUSR]
-    val vminusBuilder = denseVectorBuilder[A]
+    def vminusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[A]
     def vminusToIntf(x: Rep[VMINUSR]) = denseVecToInterface(x)    
     
     type VTIMESR = DenseVector[A]
     val mVTIMESR = manifest[VTIMESR]
-    val vtimesBuilder = denseVectorBuilder[A]
+    def vtimesBuilder(implicit ctx: SourceContext) = denseVectorBuilder[A]
     def vtimesToIntf(x: Rep[VTIMESR]) = denseVecToInterface(x)        
         
     def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("VectorViews cannot be updated")    
