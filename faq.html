@@ -67,6 +67,7 @@
           <li><a href="#syms">What are the methods <code>syms</code> and <code>boundSyms</code> for?</a></li>
           <li><a href="#effects">What are <code>reifyEffect(..)</code> and <code>reflectEffect(..)</code> for?</a></li>
           <li><a href="#mirror">What are the <code>copyTransformedOrElse</code> and <code>mirror</code> methods for?</a></li>
+          <li><a href="#fusion">How to benefit from loop fusion?</a></li>
         </ol>
         <p></p><div id='footer'></div><p></p>
         <div id='irval'>
@@ -148,7 +149,17 @@ which means that the result of 'block' was Unit <code>()</code>, but 'block' als
 We know that <code>copyTransformed</code> and <code>mirror</code> are not particular user friendly, and we would like to hide this from the DSL developer completely. We are also working on developing a more robust analysis and transformation API that abstracts the details of rewriting the IR like this. Hopefully, as these come together, this situation will dramatically improve. 
 </p>
       <p></p>
-      <div id='footer'>Copyright &copy; 2011</div>
+      <div id='fusion'>
+      <h3>How to benefit from loop fusion?</h3>
+      <p>Delite supports loop fusion through the <code>trait AbstractLoop</code> from the underlying LMS framework. Operations like <code>DeliteOpMap</code>, <code>DeliteOpReduce</code> etc. which are the basic building blocks of parallel DSLs all extend from the <code>AbstractLoop</code> and are candidates for loop fusion.</p>
+      <p>In the optimization phase the framework tries to apply both vertical (output of one loop is iterated in the other loop) and horizontal (loops have the same range over different inputs) fusion. Vertical fusion is applied only if there are no negative dependencies among loops and at most one loop has side-effects.</p>
+      <p>Since loop fusion heavily transforms the code it is the first place where mirroring and effects errors appear. To debug these errors make sure that LMS verbosity level (`lms.verbosity` flag) is set to 1 and that loop fusion is enabled (`delite.enable.fusion` flag). Most common errors that happen are: 
+	<ul>
+		<li>Loops do not fuse - either there is an accidental negative dependency among loops (search for "wtableneg" in logs) or some symbols have unwanted effects.</li>
+		<li>Code is missing after fusion - there is probably a mirroring error. You can check the logs for mirroring warnings which will show which symbol is badly transformed.</li>
+	</ul>
+      </p>
+      <div id='footer'>Copyright &copy; 2012</div>
     </div>
   </body>
 </html>
