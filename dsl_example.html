@@ -103,25 +103,18 @@
         Write ProfileArray.scala inside the directory as follows:
         </p>
         <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling.datastruct.scala</span>
-<span class="k">import</span> <span class="nn">ppl.delite.framework.datastruct.scala.DeliteCollection</span>
 
-<span class="k">class</span> <span class="nc">ProfileArray</span>(<span class="k">val</span> numMeasurements: <span class="kt">Int</span>) <span class="k">extends</span> <span class="nc">DeliteCollection[Double]</span> {  
-   <span class="k">val</span> _data = <span class="k">new</span> <span class="nc">Array[Double]</span>(numMeasurements)
-
-   <span class="c">// these are required for all DeliteCollections</span>
-   <span class="k">def</span> dcSize = _data.length
-   <span class="k">def</span> dcApply(i: <span class="kt">Int</span>) = _data(i)
-   <span class="k">def</span> dcUpdate(i: <span class="kt">Int</span>, x: <span class="kt">Double</span>) { _data(i) = x }   
+<span class="k">class</span> <span class="nc">ProfileArray</span>(<span class="k">val</span> _numMeasurements: <span class="kt">Int</span>) {  
+   <span class="k">val</span> _data = <span class="k">new</span> <span class="nc">Array[Double]</span>(_numMeasurements)
 }
 </code></pre></div>                                            
         <p>
-        A 'DeliteCollection' is simply a flat collection that Delite parallel operations use. We've just defined the only data structure
+        We've just defined the only data structure
         that we'll need for this example. Now we need to implement our DSL methods - but instead of implementing them directly, we want
         to build an intermediate representation. We are going to use the LMS library and Delite to do it. Open up a file called ProfileOps.scala
         inside <code>dsls/profiling/src/example/profiling</code>:      
         </p>
         <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling</span>
-<span class="k">import</span> <span class="nn">example.profiling.datastruct.scala.ProfileArray</span>
 <span class="k">import</span> <span class="nn">scala.virtualization.lms.common.{ScalaGenBase, Base, EffectExp}</span>
 <span class="k">import</span> <span class="nn">java.io.PrintWriter</span>
 
@@ -165,10 +158,11 @@
      Just like before, open up a file called ProfileArrayOps.scala inside <code>dsls/profiling/src/example/profiling</code>:
      </p>
      <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling</span>
-<span class="k">import</span> <span class="nn">example.profiling.datastruct.scala.ProfileArray</span>
+<span class="k">import</span> <span class="nn">reflect.{Manifest, SourceContext}</span>
 <span class="k">import</span> <span class="nn">scala.virtualization.lms.common.{NumericOpsExp, FractionalOpsExp, Base}</span>
 <span class="k">import</span> <span class="nn">scala.virtualization.lms.common.ScalaGenBase</span>
-<span class="k">import</span> <span class="nn">ppl.delite.framework.ops.DeliteOpsExp</span>
+<span class="k">import</span> <span class="nn">ppl.delite.framework.ops.{DeliteCollectionOpsExp,DeliteOpsExp}</span>
+<span class="k">import</span> <span class="nn">ppl.delite.framework.datastruct.scala.DeliteCollection</span>
 <span class="k">import</span> <span class="nn">java.io.PrintWriter</span>
 
 <span class="k">trait</span> <span class="nc">ProfileArrayOps</span> <span class="k">extends</span> <span class="nc">Base</span> {
@@ -187,7 +181,7 @@
 }
 
 <span class="k">trait</span> <span class="nc">ProfileArrayOpsExp</span> <span class="k">extends</span> <span class="nc">ProfileArrayOps</span> <span class="k">with</span> <span class="nc">NumericOpsExp</span>
-  <span class="k">with</span> <span class="nc">FractionalOpsExp</span> <span class="k">with</span> <span class="nc">DeliteOpsExp</span> {
+  <span class="k">with</span> <span class="nc">FractionalOpsExp</span> <span class="k">with</span> <span class="nc">DeliteCollectionOpsExp</span> <span class="k">with</span> <span class="nc">DeliteOpsExp</span> {
 
   <span class="c">// a Delite parallel operation! was it really that easy?</span>
   <span class="k">case class</span> <span class="nc">ReportSum</span>(in: <span class="kt">Exp[ProfileArray]</span>) 
@@ -200,8 +194,38 @@
   <span class="c">// median is a little trickier, let's just be sequential</span>
   <span class="k">case class</span> <span class="nc">ReportMedian</span>(in: <span class="kt">Exp[ProfileArray]</span>) <span class="k">extends</span> <span class="nc">Def[Double]</span>
 
-  <span class="c">// length needs to reference the underlying data structure</span>
+  <span class="c">// length, apply, update need to reference the underlying data structure</span>
   <span class="k">case class</span> <span class="nc">ProfileLength</span>(in: <span class="kt">Exp[ProfileArray]</span>) <span class="k">extends</span> <span class="nc">Def[Int]</span>
+  <span class="k">case class</span> <span class="nc">ProfileApply</span>(in: <span class="kt">Exp[ProfileArray]</span>, n: <span class="kt">Exp[Int]</span>) <span class="k">extends</span> <span class="nc">Def[Double]</span>
+  <span class="k">case class</span> <span class="nc">ProfileUpdate</span>(in: <span class="kt">Exp[ProfileArray]</span>, n: <span class="kt">Exp[Int]</span>, y: <span class="kt">Exp[Double]</span>) 
+    <span class="k">extends</span> <span class="nc">Def[Unit]</span>
+
+  <span class="c">/////////////////////</span>
+  <span class="c">// delite collection</span>
+
+  <span class="k">def</span> isProfileArray[A](x: <span class="kt">Exp[DeliteCollection[A]]</span>) = x.isInstanceOf[<span class="kt">Exp[ProfileArray]</span>]
+  <span class="k">def</span> asProfileArray[A](x: <span class="kt">Exp[DeliteCollection[A]]</span>) = x.asInstanceOf[<span class="kt">Exp[ProfileArray]</span>]
+
+  <span class="k">override def</span> dc_size[A:Manifest](x: <span class="kt">Exp[DeliteCollection[A]]</span>)
+    (<span class="k">implicit</span> ctx: <span class="kt">SourceContext</span>) = {
+
+    <span class="k">if</span> (isProfileArray(x)) asProfileArray(x).length
+    <span class="k">else super</span>.dc_size(x)
+  }
+
+  <span class="k">override def</span> dc_apply[A:Manifest](x: <span class="kt">Exp[DeliteCollection[A]]</span>, n: <span class="kt">Exp[Int]</span>)
+    (<span class="k">implicit</span> ctx: <span class="kt">SourceContext</span>) = {
+
+    <span class="k">if</span> (isProfileArray(x)) (profile_apply(asProfileArray(x),n)).asInstanceOf[<span class="kt">Exp[A]</span>]
+    <span class="k">else super</span>.dc_apply(x,n)
+  }
+
+  <span class="k">override def</span> dc_update[A:Manifest](x: <span class="kt">Exp[DeliteCollection[A]]</span>, n: <span class="kt">Exp[Int]</span>, y: <span class="kt">Exp[A]</span>)
+    (<span class="k">implicit</span> ctx: <span class="kt">SourceContext</span>) = {
+
+    <span class="k">if</span> (isProfileArray(x)) profile_update(asProfileArray(x),n,y.asInstanceOf[<span class="kt">Exp[Double]</span>])
+    <span class="k">else</span> super.dc_update(x,n,y)
+  }
 
   <span class="k">def</span> profile_report(x: <span class="kt">Exp[ProfileArray]</span>, y: <span class="kt">Reporter</span>) = y <span class="k">match</span> {
     <span class="k">case</span> <span class="no">this.average</span> => <span class="nc">ReportSum</span>(x) / x.length   <span class="c">// inline</span>
@@ -209,10 +233,16 @@
     <span class="k">case</span> _ => <span class="k">throw new</span> <span class="nc">IllegalArgumentException</span>(<span class="s">"unknown report type"</span>)
   }
   <span class="k">def</span> profile_length(x: <span class="kt">Exp[ProfileArray]</span>) = <span class="nc">ProfileLength</span>(x)
+  <span class="k">def</span> profile_apply(x: <span class="kt">Exp[ProfileArray]</span>, n: <span class="kt">Exp[Int]</span>): <span class="kt">Exp[Double]</span>
+    = <span class="nc">ProfileApply</span>(x,n)
+  <span class="k">def</span> profile_update(x: <span class="kt">Exp[ProfileArray]</span>, n: <span class="kt">Exp[Int]</span>, y: <span class="kt">Exp[Double]</span>) 
+    = <span class="nc">ProfileUpdate</span>(x,n,y)
 }
 </code></pre></div>
      <p>
-     That's all the IR definition we need! We have just one more piece of the language left to implement:
+     That's all the IR definition we need! The only surprising piece here is the overrides for <code>dc_apply, dc_update, and dc_size</code>. <code>dc</code> here stands
+     for "DeliteCollection". These methods are statically dispatched inside <code>DeliteOps</code>; they tell <code>DeliteOps</code> how to access the underlying data
+     for a particular collection. We have just one more piece of the language left to implement:
      code generators. Luckily, the generators for Profile and ReportMedian are simple, and because
      ReportAverage is a DeliteOp, Delite takes care of that one for us! Let's start with the generator
      for Profile. Open ProfileOps.scala again, and add this snippet to the bottom:
@@ -233,7 +263,7 @@
         emitBlock(body)
         stream.println(<span class="s">"  val end = System.currentTimeMillis()"</span>)
         stream.println(<span class="s">"  val duration = (end - start)/1000f "</span>)
-        stream.println(<span class="s">"  out.dcUpdate(i, duration)"</span>)
+        stream.println(<span class="s">"  out._data(i) = duration"</span>)
         stream.println(<span class="s">"  i += 1"</span>)
         stream.println(<span class="s">"}"</span>)
         stream.println(<span class="s">"out"</span>)
@@ -254,14 +284,17 @@
     rhs <span class="k">match</span> {
       <span class="k">case</span> <span class="nc">ReportMedian</span>(x) =>
         <span class="k">val</span> a = quote(x)
-        <span class="k">val</span> size = a + <span class="s">".dcSize"</span>
+        <span class="k">val</span> size = a + <span class="s">"._numMeasurements"</span>
         stream.println(<span class="s">"val "</span> + quote(sym) + <span class="s">" = {"</span>)
         stream.println(<span class="s">"val d = new Array[Double]("</span>+size+<span class="s">")"</span>)
         stream.println(<span class="s">"System.arraycopy("</span>+a+<span class="s">"._data, 0, d, 0, "</span>+size+<span class="s">")"</span>)
         stream.println(<span class="s">"scala.util.Sorting.quickSort(d)"</span>)
         stream.println(<span class="s">"d(Math.ceil("</span>+size+<span class="s">"/2).asInstanceOf[Int])"</span>)
         stream.println(<span class="s">"}"</span>)
-      <span class="k">case</span> <span class="nc">ProfileLength</span>(x) => emitValDef(sym, quote(x) + <span class="s">".dcSize"</span>)
+      <span class="k">case</span> <span class="nc">ProfileLength</span>(x) => emitValDef(sym, quote(x) + <span class="s">"._numMeasurements"</span>)
+      <span class="k">case</span> <span class="nc">ProfileApply</span>(x,n) => emitValDef(sym, quote(x) + <span class="s">"._data("</span> + quote(n) + <span class="s">")"</span>)
+      <span class="k">case</span> <span class="nc">ProfileUpdate</span>(x,n,y) => 
+         emitValDef(sym, quote(x) + <span class="s">"._data("</span> + quote(n) + <span class="s">") = "</span> + quote(y))
       <span class="k">case</span> _ => <span class="nc">super</span>.emitNode(sym, rhs)
     }
 }
@@ -272,16 +305,19 @@
     can easily import our DSL into scope.
     </p>
     <div class="highlight"><pre><code class="scala"><span class="k">package</span> <span class="nn">example.profiling</span>
-<span class="k">import</span> <span class="nn">example.profiling.datastruct.scala.ProfileArray</span>
 <span class="k">import</span> <span class="nn">scala.virtualization.lms.common._</span>
 <span class="k">import</span> <span class="nn">scala.virtualization.lms.internal._</span>
 <span class="k">import</span> <span class="nn">ppl.delite.framework._</span>
 <span class="k">import</span> <span class="nn">ppl.delite.framework.codegen._</span>
 <span class="k">import</span> <span class="nn">ppl.delite.framework.ops._</span>
+<span class="k">import</span> <span class="nn">ppl.delite.framework.datastruct.scala.DeliteCollection</span>
 <span class="k">import</span> <span class="nn">codegen.delite.overrides._</span>
 <span class="k">import</span> <span class="nn">codegen.scala.TargetScala</span>
 <span class="k">import</span> <span class="nn">java.io.File</span>
-                   
+
+<span class="c">/* Profile DSL front-end types */</span>
+<span class="k">abstract class</span> <span class="kt">ProfileArray</span> <span class="k">extends</span> <span class="kt">DeliteCollection[Double]</span>
+
 <span class="c">/* Application packages */</span>
 <span class="k">trait</span> <span class="nc">ProfileApplicationRunner</span> <span class="k">extends</span> <span class="nc">ProfileApplication</span> 
   <span class="k">with</span> <span class="nc">DeliteApplication</span> <span class="k">with</span> <span class="nc">ProfileExp</span>
@@ -318,8 +354,11 @@
 <span class="k">trait</span> <span class="nc">ProfileCodeGenBase</span> <span class="k">extends</span> <span class="nc">GenericFatCodegen</span> <span class="k">with</span> <span class="nc">codegen.Utils</span> {
   <span class="k">val</span> IR: <span class="kt">DeliteApplication</span> <span class="k">with</span> <span class="kt">ProfileExp</span>
   <span class="k">override def</span> initialDefs = IR.deliteGenerator.availableDefs
-                                        
-  <span class="k">def</span> dsmap(s: <span class="kt">String</span>) = s.replaceAll(<span class="s">"example.profiling.datastruct"</span>, <span class="s">"generated"</span>)
+  
+  <span class="k">def</span> dsmap(s: <span class="kt">String</span>) = {
+    <span class="k">var</span> res = s.replaceAll(<span class="s">"example.profiling.datastruct"</span>, <span class="s">"generated"</span>)
+    res.replaceAll(<span class="s">"example.profiling"</span>, <span class="s">"generated.scala"</span>)
+  }
   
   <span class="k">override def</span> remap[A](m: <span class="kt">Manifest[A]</span>): <span class="kt">String</span> = dsmap(super.remap(m))
   
@@ -345,6 +384,7 @@
     <a href="http://cs442.stanford.edu">our DSL course</a> to learn more about the details. In general,
     we are
     <ol>
+    <li> Defining abstract <i>front-end</i> language types that are independent from our back-end datastructures</li>
     <li> Defining separate packages for abstract operations, IR nodes and code generators </li>
     <li> Declaring which parts of Scala we want to allow DSL applications to use (in this case, everything) </li>
     <li> Telling Delite how to access our code generators </li>
@@ -362,7 +402,7 @@
     <span class="k">val</span> time = 
       profile (100) times {
         for (i <- 0 until 100000) {
-          acc += Math.exp(i)*Math.pow(i,10)*42
+          acc += Math.exp(i)*Math.pow(i,10.0)*42.0
         }
       } report average
     println(<span class="s">"average loop time: "</span> + time)
@@ -371,13 +411,21 @@
 </span></code></pre></div>
     <p>
     Run it the same way we did in the <a href="getting_started.html">getting started guide</a>.
-    You can use 'sbt' with it by adding the following line to project/build/DeliteProject.scala, inside
+    You can use 'sbt' with it by adding the following line to project/Build.scala, inside
     the DSLs class:
     </p>
-    <div class="highlight"><pre><code class="scala"><span class="k">lazy val</span> profiling = project(<span class="s">"profiling"</span>, <span class="s">"Profiling"</span>, <span class="k">new</span> <span class="nc">FlatProject</span>(_), framework)</code></pre></div>
+    <div class="highlight"><pre><code class="scala"><span class="k">lazy val</span> profiling = Project(<span class="s">"profiling"</span>, 
+                              <span class="k">file</span>(<span class="s">"dsls/profiling"</span>), 
+                              <span class="k">settings</span> = virtBuildSettings) 
+                              <span class="k">dependsOn</span>(framework)</code></pre></div>
+    and by updating the <code>dsls</code> project to include <code>profiling<code>:
+    <div class="highlight"><pre><code class="scala"><span class="k">lazy val</span> dsls = Project(<span class="s">"dsls"</span>, 
+                         <span class="k">file</span>(<span class="s">"dsls"</span>), 
+                         <span class="k">settings</span> = virtBuildSettings) 
+                         <span class="k">aggregate</span>(optila,optiml,optiql,profiling)</code></pre></div>
     <p>
-    Note that you can add the profiling DSL to your classpath so that <code>delitec</code> can find it using:
-    <div class="highlight" style="overflow: scroll"><pre><code class="bash">export CLASSPATH=$CLASSPATH:$DELITE/dsls/profiling/target/scala_2.9.x-virtualized-SNAPSHOT/classes/</code></pre></div>
+    Note that you can add the profiling DSL to your classpath so that <code>delitec</code> can find it by opening up the file <code>bin/delitec</code> and adding <span class="s">profiling</span> to the list of DSLs:
+    <div class="highlight"><pre><code class="bash">DSLs = [<span class="s">'optiml'</span>, <span class="s">'optila'</span>, <span class="s">'optiql'</span>, <span class="s">'profiling'</span>]</code></pre></div>
     </p>
     <p>
     Congratulations! You just built your first Delite DSL. Go try it out with some test apps!
