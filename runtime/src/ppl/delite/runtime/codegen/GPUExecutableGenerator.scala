@@ -158,6 +158,16 @@ trait GPUExecutableGenerator {
     out.append("jobject boxedUnit = env->GetStaticObjectField(clsBU, env->GetStaticFieldID(clsBU, \"UNIT\", \"Lscala/runtime/BoxedUnit;\"));\n")
   }
 
+  protected def writeJNIFinalizer(locations: Set[Int], out: StringBuilder) {
+    for (i <- locations) {
+      out.append("env->DeleteLocalRef(cls")
+      out.append(i)
+      out.append(");\n")
+    }
+    out.append("env->DeleteLocalRef(clsBU);\n")
+    out.append("env->DeleteLocalRef(boxedUnit);\n")
+  }
+
   protected def emitCppHeader: String
   protected def emitCppBody(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayBuffer[DeliteOP]): String
 

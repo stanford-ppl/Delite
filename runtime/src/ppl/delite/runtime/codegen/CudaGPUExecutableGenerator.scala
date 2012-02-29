@@ -35,10 +35,13 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
 
     //initialize
     writeGlobalsInitializer(out)
-    writeJNIInitializer(Range.inclusive(0,location).toSet, out)
+    val locations = Range.inclusive(0,location).toSet
+    writeJNIInitializer(locations, out)
 
     //execute
     addKernelCalls(schedule, location, new ArrayBuffer[(DeliteOP,String)], new ArrayBuffer[DeliteOP], syncList, out)
+
+    writeJNIFinalizer(locations, out)
     out.append('}')
     out.append('\n')
 
@@ -85,6 +88,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
   protected def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, available: ArrayBuffer[(DeliteOP,String)], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)(implicit aliases:AliasTable[(DeliteOP,String)]) {
     //available: list of ops with data currently on gpu, have a "g" symbol
     //awaited: list of ops synchronized with but data only resides on cpu, have a "c" symbol
+    val getterList = new ArrayBuffer[String]
     val iter = schedule.iterator
     while (iter.hasNext) {
       val op = iter.next
@@ -103,7 +107,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
         if(!awaited.contains(dep)) { //this dependency does not yet exist for this resource
           awaited += dep
           for (sym <- dep.getOutputs) //TODO: should get and set outputs individually; SMP needs to adopt this strategy as well
-            writeGetter(dep, sym, location, out) //get to synchronize
+            writeGetter(dep, sym, location, getterList, out) //get to synchronize
         }
       }
       //get kernel inputs (dependencies that could require a memory transfer)
@@ -162,6 +166,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
       }
       writeDataFrees(op, out, available)
     }
+    writeGetterFrees(getterList, out)
   }
 
   //TODO: should track if data has already been updated - implement current version for each resource - useful for gpu/cluster
@@ -352,9 +357,10 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append(");\n")
   }
 
-  protected def writeGetter(op: DeliteOP, sym: String, location: Int, out: StringBuilder) {
+  protected def writeGetter(op: DeliteOP, sym: String, location: Int, getterList: ArrayBuffer[String], out: StringBuilder) {
     //get data from CPU
     if (op.outputType(sym) != "Unit") { //skip the variable declaration if return type is "Unit"
+      if (!isPrimitiveType(op.outputType(sym))) getterList += getSymCPU(sym)
       out.append(getJNIType(op.outputType(sym)))
       out.append(' ')
       out.append(getSymCPU(sym))
@@ -373,6 +379,14 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("\",\"()")
     out.append(getJNIOutputType(op.outputType(Targets.Scala,sym)))
     out.append("\"));\n")
+  }
+
+  protected def writeGetterFrees(getterList: ArrayBuffer[String], out: StringBuilder) {
+    for (g <- getterList) {
+      out.append("env->DeleteLocalRef(")
+      out.append(g)
+      out.append(");\n")
+    }
   }
 
   protected def writeInputCopy(op: DeliteOP, sym: String, function: String, opType: String, out: StringBuilder, firstAlloc: Boolean) {
@@ -533,7 +547,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     for ((in,name) <- op.getInputs if(opFreeable(in,name) && outputFreeable(in,name))) {
       var free = true
       if (isPrimitiveType(in.outputType(name)) && (in.scheduledResource!=op.scheduledResource)) free = false
-      for ((i,n) <- aliases.get(in,name); c <- i.getConsumers.filter(c => c.getInputs.map(_._1).contains(i) && c.scheduledResource == op.scheduledResource)) {
+      for ((i,n) <- aliases.get(in,name); c <- i.getConsumers.filter(c => c.getInputs.contains(i,n) && c.scheduledResource == op.scheduledResource)) {
         if (!available.map(_._1).contains(c)) free = false
       }
       if (free) {

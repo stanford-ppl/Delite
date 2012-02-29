@@ -96,6 +96,8 @@ abstract class GPUVariantGenerator(variant: OP_Variant, location: Int, target: T
       out.append(getSymGPU(variant.variantGraph.result._2))
       out.append(";\n")
     }
+
+    writeJNIFinalizer(locations, out)
     out.append("}\n") //end of function
 
     out.toString

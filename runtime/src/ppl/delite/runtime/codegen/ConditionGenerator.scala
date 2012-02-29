@@ -176,7 +176,9 @@ abstract class GPUConditionGenerator(condition: OP_Condition, location: Int, tar
     if (hasOutput) out.append(";\n")
 
     //print end of if and function
-    out.append("}\n}\n")
+    out.append("} // end if\n")
+    writeJNIFinalizer(locations, out)
+    out.append("} // end Cond Function\n")
 
     out.toString
   }

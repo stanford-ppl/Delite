@@ -158,7 +158,10 @@ abstract class GPUWhileGenerator(whileLoop: OP_While, location: Int, target: Tar
     }
 
     //print end of while and function
-    out.append("}\n}\n")
+    out.append("} // end while loop\n")
+    writeJNIFinalizer(locations, out)
+    out.append("} // end While Function\n")
+
     out.toString
   }
 

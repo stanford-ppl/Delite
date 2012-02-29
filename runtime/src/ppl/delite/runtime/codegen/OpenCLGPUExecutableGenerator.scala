@@ -39,10 +39,13 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
 
     //initialize
     writeGlobalsInitializer(out)
-    writeJNIInitializer(Range.inclusive(0,location).toSet, out)
+    val locations = Range.inclusive(0,location).toSet
+    writeJNIInitializer(locations, out)
 
     //execute
     addKernelCalls(schedule, location, new ArrayBuffer[(DeliteOP,String)], new ArrayBuffer[DeliteOP], syncList, out)
+
+    writeJNIFinalizer(locations, out)
     out.append('}')
     out.append('\n')
 
