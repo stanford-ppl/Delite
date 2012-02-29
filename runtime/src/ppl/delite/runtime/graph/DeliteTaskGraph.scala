@@ -138,13 +138,13 @@ object DeliteTaskGraph {
 
     // source context
     val (fileName, line, opName) = getFieldMapOption(op, "sourceContext") match {
-	  case None =>
-		("<unknown file>", 0, id)
+      case None => ("<unknown file>", 0, id)
       case Some(sourceContext) =>
-		(getFieldString(sourceContext, "fileName"), getFieldString(sourceContext, "line").toInt, getFieldString(sourceContext, "opName"))
+        (getFieldString(sourceContext, "fileName"), getFieldString(sourceContext, "line").toInt, getFieldString(sourceContext, "opName"))
     }
+
     // TODO: maybe it would be better to add source info to DeliteOP?
-	Delite.sourceInfo += (id -> (fileName, line, opName))
+    Delite.sourceInfo += (id -> (fileName, line, opName))
 	
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
@@ -301,7 +301,7 @@ object DeliteTaskGraph {
     ifInputs ++= (for ((op,sym) <- Seq(predGraph.result, thenGraph.result, elseGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val ifMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
 
-    val conditionOp = new OP_Condition(id, resultMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue)
+    val conditionOp = new OP_Condition(id, resultMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue, true)
     conditionOp.dependencies = ifDeps
     conditionOp.inputList = ifInputs.toList
     conditionOp.mutableInputs = ifMutableInputs
@@ -311,9 +311,13 @@ object DeliteTaskGraph {
     }
     if (thenValue == "") {
       for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, thenGraph, graph, tgt)
+      val resultMetadata = conditionOp.getGPUMetadata(Targets.Cuda).outputs.filter(o=>o._2==thenGraph.result._2)
+      if (resultMetadata.length == 1) conditionOp.getGPUMetadata(Targets.Cuda).outputs ++= List((resultMetadata(0)._1,id))
     }
     if (elseValue == "") {
       for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, elseGraph, graph, tgt)
+      val resultMetadata = conditionOp.getGPUMetadata(Targets.Cuda).outputs.filter(o=>o._2==elseGraph.result._2)
+      if (resultMetadata.length == 1) conditionOp.getGPUMetadata(Targets.Cuda).outputs ++= List((resultMetadata(0)._1,id))
     }
 
     //add consumer edges
@@ -402,7 +406,7 @@ object DeliteTaskGraph {
 
   // Change Metadata apply method from Target -> specific metadata in DeliteOP
   def extractGPUMetadata(superOp: OP_Nested, innerGraph: DeliteTaskGraph, outerGraph: DeliteTaskGraph, tgt: Targets.Value) {
-    superOp.getGPUMetadata(tgt).outputs = innerGraph.result._1.getGPUMetadata(tgt).outputs
+    superOp.getGPUMetadata(tgt).outputs ++= innerGraph.result._1.getGPUMetadata(tgt).outputs
     for (op <- innerGraph._ops.values; key <- op.getGPUMetadata(tgt).inputs.keys) {
       try {
         val inOp = getOp(key._2)(outerGraph)
@@ -576,6 +580,7 @@ class DeliteTaskGraph {
   def symbols: Set[String] = _ops.keys.toSet
   def ops: Set[DeliteOP] = _ops.values.toSet
   def inputOps: Set[DeliteOP] = _inputs.values.toSet
+  def inputs: Set[(OP_Input,String)] = _inputs.toSet[(String,OP_Input)].map(i=>Pair(i._2,i._1))
 
   def replaceOp(old: DeliteOP, op: DeliteOP) {
     //update ops

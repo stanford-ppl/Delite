@@ -34,7 +34,7 @@ import ppl.delite.runtime.graph.targets.{OS, OPData, Targets}
 
 trait GPUExecutableGenerator {
 
-  protected def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, available: ArrayBuffer[DeliteOP], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)
+  protected def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, available: ArrayBuffer[(DeliteOP,String)], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)(implicit aliases:AliasTable[(DeliteOP,String)])
 
   protected def executableName: String
 
@@ -144,9 +144,8 @@ trait GPUExecutableGenerator {
     case _ => false
   }
 
-  protected def writeJNIInitializer(location: Int, out: StringBuilder) {
-    //TODO: this loop should not assume its location is the last
-    for (i <- 0 to location) {
+  protected def writeJNIInitializer(locations: Set[Int], out: StringBuilder) {
+    for (i <- locations) {
       out.append("jclass cls")
       out.append(i)
       out.append(" = env->FindClass(\"")

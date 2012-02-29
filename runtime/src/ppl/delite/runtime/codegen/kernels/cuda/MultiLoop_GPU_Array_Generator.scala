@@ -264,7 +264,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
           if (odata.hasCond) out.append("if (idxX<" + op.size + " && bitmap_" + osym + "[idxX]==1) {\n")
           else out.append("if (idxX < " + op.size + ") {\n")
           out.append(odata.loopFuncOutputType + " collect_" + osym + " = dev_collect_" + funcNameSuffix(op,osym) + "(" + (odata.loopFuncInputs:+"idxX").mkString(",") + ");\n")
-          if(odata.hasCond) out.append(osym + ".dcUpdate(scanmap_" + osym + "[idxX], collect_" + funcNameSuffix(op,osym) + ");\n")
+          if(odata.hasCond) out.append(osym + ".dcUpdate(scanmap_" + osym + "[idxX], collect_" + osym + ");\n")
           else out.append(osym + ".dcUpdate(idxX, collect_" + osym + ");\n")
           out.append("}\n")
         case "FOREACH" =>
