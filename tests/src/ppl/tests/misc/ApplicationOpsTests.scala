@@ -1,7 +1,8 @@
 package ppl.tests.misc
 
 import ppl.delite.framework.DeliteApplication
-import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication, ApplicationOps}
+import ppl.dsl.optiml.{OptiMLApplicationRunner, OptiMLApplication}
+import ppl.dsl.optiml.application.ApplicationOps
 
 /* Testing application-defined data structures
 *
