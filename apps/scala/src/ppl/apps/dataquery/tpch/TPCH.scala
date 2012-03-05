@@ -122,8 +122,15 @@ trait TPCHQ2Trait extends TPCHBaseTrait {
        }).Join(regions).WhereEq(_.n_regionkey, _.r_regionkey).Select((jj2, r) => new Result {
          val ps_supplycost = jj2.ps_supplycost
          val r_name = r.r_name
-       }).Where(_.r_name == "EUROPE").Min(_.ps_supplycost); if(pssc != null) pssc.ps_supplycost else -10}
-    ) OrderByDescending(_.s_acctbal) ThenBy(_.n_name) ThenBy(_.s_name) ThenBy(_.p_partkey)
+       }).Where(_.r_name == "EUROPE")
+       val minIdx = pssc.MinIndex(_.ps_supplycost)
+       if (minIdx >= 0) pssc(minIdx).ps_supplycost else -10
+              
+       //}).Where(_.r_name == "EUROPE").Min(_.ps_supplycost)
+       // Min will return either a a struct or null right now. This forces Map creation.
+       // TODO: refactor to return Option and soa transform across option.
+       //if(pssc != null) pssc.ps_supplycost else -10
+    }) OrderByDescending(_.s_acctbal) ThenBy(_.n_name) ThenBy(_.s_name) ThenBy(_.p_partkey)
     toc(q)
     q.printAsTable(10)
   }    
