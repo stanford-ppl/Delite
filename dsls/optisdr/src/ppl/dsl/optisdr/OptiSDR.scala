@@ -5,6 +5,8 @@ import ppl.delite.framework.{Config, DeliteApplication}
 
 import ppl.dsl.optisdr.primitive._
 
+trait OptiSDRApplicationRunner extends OptiSDRApplication with DeliteApplication with OptiSDRExp
+
 trait OptiSDRApplication extends OptiSDR with OptiSDRLift {
   var args: Rep[Array[String]]
   def main(): Unit
