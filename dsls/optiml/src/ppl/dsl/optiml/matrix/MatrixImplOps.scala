@@ -38,7 +38,7 @@ trait MatrixImplOps { this: OptiML =>
   def matrix_multiply_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
   def matrix_times_vector_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Vector[A]]): Rep[Vector[A]]
   def matrix_sigmoid_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
-  def matrix_sigmoidf_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]]
+  def matrix_sigmoidf_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Float]): Rep[Matrix[Float]]
   def matrix_sumcol_impl[A:Manifest:Arith](x: Rep[Matrix[A]]): Rep[Vector[A]]
   def matrix_grouprowsby_impl[A:Manifest,K:Manifest](x: Rep[Matrix[A]], pred: Rep[Vector[A]] => Rep[K]): Rep[Vector[Matrix[A]]]
   
@@ -380,7 +380,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     out
   }
 
-  def matrix_sigmoidf_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Float]] = {
+  def matrix_sigmoidf_impl[A](x: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Float]): Rep[Matrix[Float]] = {
 
     val out = x.map(in => (1.0/(1.0+Math.exp(conv(in)*(-1)))).asInstanceOfL[Float])
     out

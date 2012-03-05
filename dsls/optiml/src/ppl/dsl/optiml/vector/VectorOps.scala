@@ -10,7 +10,7 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import ppl.dsl.optiml.{OptiMLExp, OptiMLExpOpt, OptiML}
 
 trait VectorOps extends DSLType with Variables {
   this: OptiML =>
@@ -798,7 +798,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
   def vector_map[A:Manifest,B:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[B]) = reflectPure(VectorMap(x, f)) // TODO: effect if func effectful!
   def vector_mmap[A:Manifest](x: Exp[Vector[A]], f: Exp[A] => Exp[A]) = reflectWrite(x)(VectorMutableMap(x, f)) // TODO: effect if func effectful!
   def vector_foreach[A:Manifest](x: Exp[Vector[A]], block: Exp[A] => Exp[Unit]) = {
-    reflectEffect(VectorForeach(x, block))
+    reflectPure(VectorForeach(x, block)) // no effects on its own
   }
   def vector_zipwith[A:Manifest,B:Manifest,R:Manifest](x: Exp[Vector[A]], y: Exp[Vector[B]], f: (Exp[A],Exp[B]) => Exp[R]) = {
     reflectPure(VectorZipWith(x, y, f))
@@ -856,6 +856,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
     case Reflect(VectorUpdate(l,i,r), u, es) => reflectMirrored(Reflect(VectorUpdate(f(l),f(i),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(VectorInsert(l,i,r), u, es) => reflectMirrored(Reflect(VectorInsert(f(l),f(i),f(r)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     // implemented as DeliteOpSingleTask and DeliteOpLoop
+    case Reflect(e@VectorOuter(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorOuter(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorTimesScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorTimesScalar(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorDivideScalar(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorDivideScalar(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorPlus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorPlus(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -930,7 +931,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp {
 
 // have to extend DeliteCollectionOps to override dc_apply...
 trait VectorOpsExpOpt extends VectorOpsExp with DeliteCollectionOpsExp {
-  this: VectorImplOps with OptiMLExp =>
+  this: VectorImplOps with OptiMLExpOpt =>
 
   override def vector_equals[A:Manifest](x: Exp[Vector[A]], y: Exp[Vector[A]]) = (x, y) match {
     case (a,b) if (a == b) => unit(true) // same symbol

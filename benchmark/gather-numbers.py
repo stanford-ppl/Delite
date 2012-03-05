@@ -41,6 +41,8 @@ def main():
     parser.add_option("--nv", dest="no_variants", action="store_true" , help="disables variant support in the framework")
     parser.add_option("--nb", dest="no_blas", action="store_true", help="disables blas calls in generated code")
     parser.add_option("--nf", dest="no_fusion", action="store_true", help="disables op fusion")
+    parser.add_option("--nc", dest="no_cse", action="store_true", help="disables common subexpression elimination")
+    parser.add_option("--nr", dest="no_rewrites", action="store_true", help="disables dsl rewriting")
     parser.add_option("--home", dest="delite_home", default="_env", help="allows you to specify a different Delite Home than the one that should be specificed in the environment")
     parser.add_option("--stats-dir", dest="stats_dir", default=None, help="allows you to specify a different statistics output directory. environment variables are interpolated")
     parser.add_option("--timestamp", dest="stats_time", action="store_true", help="store statistics under a timestamped directory")
@@ -84,7 +86,8 @@ def loadOptions(opts):
     options['variants'] = not opts.no_variants
     options['blas'] = not opts.no_blas
     options['fusion'] = not opts.no_fusion
-
+    options['cse'] = not opts.no_cse
+    options['rewrites'] = not opts.no_rewrites
     options['keep-going'] = opts.keep_going
     options['input-size'] = opts.input_size
     
@@ -172,9 +175,17 @@ def launchApps(options):
         os.putenv("DELITE_HOME", props['delite.home'])
         os.putenv('LMS_HOME', props['libs.lms.home'])
         os.putenv('SCALA_VIRT_HOME', props['scala.virtualized.home'])
+
+        # kind of hacky and grows exponentially with the number of options, but hey...deadlines
+        appCls = classes[app]
+        if options['cse'] == False:
+          appCls = appCls.strip() + 'NC'
+        if options['rewrites'] == False:
+          appCls = appCls.strip() + 'NR'
+
         print "==  Generating DEG file with options: " + opts
-        print "executing command: " + props['delite.home'] + "/bin/gen " + classes[app] 
-        ecode = os.system(props['delite.home'] + "/bin/gen " + classes[app])
+        print "executing command: " + props['delite.home'] + "/bin/gen " + appCls
+        ecode = os.system(props['delite.home'] + "/bin/gen " + appCls)
         if ecode != 0 and options['keep-going'] == None:
             print "Detected abnormal exit code, exiting"
             exit(-1)

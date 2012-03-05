@@ -51,7 +51,7 @@ trait ArithOps extends Variables with OverloadHack {
 
   // to do Rep[Int] * Float, it should get converted to Rep[Float] * Float
   // TODO: this only works when invoked explicitly (won't kick in itself)
-  implicit def chainRepArithToArithOps[A,B](a: Rep[A])
+  /*implicit*/ def chainRepArithToArithOps[A,B](a: Rep[A])
     (implicit mA: Manifest[A], aA: Arith[A], mB: Manifest[B], aB: Arith[B], c: Rep[A] => Rep[B]) = new ArithOpsCls(c(a))
 
   class ArithOpsCls[T](lhs: Rep[T])(implicit mT: Manifest[T], arith: Arith[T]){

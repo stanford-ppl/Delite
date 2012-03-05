@@ -4,6 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix,TrainingSet,Labels}
 import ppl.delite.framework.DeliteApplication
 
+object NaiveBayesRunnerNCNR extends OptiMLApplicationRunnerBase with OptiMLNoCSE with OptiMLExp with NaiveBayes
+object NaiveBayesRunnerNC extends OptiMLApplicationRunner with OptiMLNoCSE with NaiveBayes
+object NaiveBayesRunnerNR extends OptiMLApplicationRunnerBase with OptiMLExp with NaiveBayes
 object NaiveBayesRunner extends OptiMLApplicationRunner with NaiveBayes
 trait NaiveBayes extends OptiMLApplication {
 

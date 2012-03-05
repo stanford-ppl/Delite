@@ -4,6 +4,9 @@ import ppl.dsl.optiml._
 import ppl.dsl.optiml.datastruct.scala.{Vector,Matrix}
 import ppl.delite.framework.DeliteApplication
 
+object RBMRunnerNCNR extends OptiMLApplicationRunnerBase with OptiMLNoCSE with OptiMLExp with RBM
+object RBMRunnerNC extends OptiMLApplicationRunner with OptiMLNoCSE with RBM
+object RBMRunnerNR extends OptiMLApplicationRunnerBase with OptiMLExp with RBM
 object RBMRunner extends OptiMLApplicationRunner with RBM
 
 trait RBM extends OptiMLApplication {
