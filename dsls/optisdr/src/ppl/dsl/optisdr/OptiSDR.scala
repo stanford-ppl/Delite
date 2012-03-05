@@ -45,9 +45,11 @@ trait OptiSDRLift extends OptiLALift {
  * This the trait that every OptiSDR application must extend.
  */
 trait OptiSDR extends OptiSDRScalaOpsPkg with OptiLA
-  with ComplexOps {
+  with ComplexOps with ComplexIntOps {
 
   this: OptiSDRApplication =>
+  
+  type Real = Double
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
@@ -57,6 +59,6 @@ trait OptiSDRCompiler extends OptiLACompiler with OptiSDR {
 }
 
 trait OptiSDRExp extends OptiLAExp with OptiSDRCompiler with OptiSDRScalaOpsPkgExp
-  with ComplexOpsExp {
+  with ComplexOpsExp with ComplexIntOpsExp {
   this: DeliteApplication with OptiSDRApplication with OptiSDRExp => // can't be OptiSDRApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
 }

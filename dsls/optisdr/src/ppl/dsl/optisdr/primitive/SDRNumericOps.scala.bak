@@ -1,3 +1,18 @@
-package ppl.dsl.optisdr
+package ppl.dsl.optisdr.primitive
 
-import scala.virtualization.lms.common
+import scala.reflect.SourceContext
+import scala.virtualization.lms.common._
+
+import ppl.dsl.optisdr._
+
+trait OptiSDRPrimitiveOps extends Variables {
+  this: OptiSDR =>
+  
+  
+}
+
+trait OptiSDRPrimitiveOpsExp extends OptiSDRPrimitiveOps {
+  this: OptiSDRExp =>
+  
+}
+

@@ -3,9 +3,9 @@ package ppl.dsl.optisdr
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 /* Primitive types */
-trait Integral
+//trait Integral
 trait UInt
-trait Real
+// type Real = Double
 abstract class Complex
 trait ComplexInt
 
