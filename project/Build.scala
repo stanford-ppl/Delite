@@ -58,7 +58,7 @@ object DeliteBuild extends Build {
 
   lazy val framework = Project("framework", file("framework"), settings = virtBuildSettings) dependsOn(runtime) // dependency to runtime because of Scopes
 
-  lazy val dsls = Project("dsls", file("dsls"), settings = virtBuildSettings) aggregate(optila, optiml, optiql) 
+  lazy val dsls = Project("dsls", file("dsls"), settings = virtBuildSettings) aggregate(optila, optiml, optiql, optisdr) 
   lazy val optila = Project("optila", file("dsls/optila"), settings = virtBuildSettings) dependsOn(framework)
   lazy val optiml = Project("optiml", file("dsls/optiml"), settings = virtBuildSettings) dependsOn(optila)
   lazy val optisdr = Project("optisdr", file("dsls/optisdr"), settings = virtBuildSettings) dependsOn(optila)

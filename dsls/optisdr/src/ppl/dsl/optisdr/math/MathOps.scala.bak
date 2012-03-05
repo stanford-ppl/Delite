@@ -1,0 +1,8 @@
+
+class SDRMathOps {
+  object Math {
+    import super.Math._
+    def abs(x: Complex)
+    def cos(x: Complex)
+  }
+}
