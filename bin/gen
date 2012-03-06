@@ -1,4 +1,6 @@
 #!/bin/bash
 
-$JAVA_HOME/bin/java -server $GEN_OPTS -cp $LMS_HOME/target/scala_2.10.0-virtualized-SNAPSHOT/classes:$DELITE_HOME/framework/target/scala_2.10.0-virtualized-SNAPSHOT/classes:$DELITE_HOME/dsls/optiml/target/scala_2.10.0-virtualized-SNAPSHOT/classes:$DELITE_HOME/dsls/optiql/target/scala_2.10.0-virtualized-SNAPSHOT/classes:$DELITE_HOME/apps/scala/target/scala_2.10.0-virtualized-SNAPSHOT/classes:$DELITE_HOME/tests/target/scala_2.10.0-virtualized-SNAPSHOT/classes:$DELITE_HOME/target/scala_2.10.0-virtualized-SNAPSHOT/test-classes/:$SCALA_VIRT_HOME/lib/scala-library.jar:$SCALA_VIRT_HOME/lib/scala-compiler.jar "$@"
+TARGET=target/scala-2.10.0-M1-virtualized/classes
+
+$JAVA_HOME/bin/java -server $GEN_OPTS -cp $LMS_HOME/$TARGET:$DELITE_HOME/framework/$TARGET:$DELITE_HOME/dsls/optiml/$TARGET:$DELITE_HOME/dsls/optiql/$TARGET:$DELITE_HOME/apps/scala/$TARGET:$DELITE_HOME/tests/$TARGET:$SCALA_VIRT_HOME/lib/scala-library.jar:$SCALA_VIRT_HOME/lib/scala-compiler.jar "$@"
 
