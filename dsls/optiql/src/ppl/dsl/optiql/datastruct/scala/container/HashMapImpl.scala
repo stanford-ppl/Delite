@@ -33,8 +33,9 @@ final class HashMapImpl[@specialized K: Manifest](indsz: Int, datasz: Int) {
     var currelem = indices(pos)
     var currhash = indices(pos + 1)
     
+    val mask = indices.length - 1
     while (currelem != -1 && (currhash != hc || keys(currelem) != k)) {
-      pos = (pos + 2) & (relbits0+1)
+      pos = (pos + 2) & mask
       currelem = indices(pos)
       currhash = indices(pos + 1)
     }
@@ -49,8 +50,9 @@ final class HashMapImpl[@specialized K: Manifest](indsz: Int, datasz: Int) {
     var currelem = indices(pos)
     var currhash = indices(pos + 1)
     
+    val mask = indices.length - 1
     while (currelem != -1 && (currhash != hc || keys(currelem) != k)) {
-      pos = (pos + 2) & (relbits0+1)
+      pos = (pos + 2) & mask
       currelem = indices(pos)
       currhash = indices(pos + 1)
     }
@@ -59,6 +61,11 @@ final class HashMapImpl[@specialized K: Manifest](indsz: Int, datasz: Int) {
       val datapos = sz
       indices(pos) = datapos
       indices(pos + 1) = hc
+      if (datapos >= keys.length) {
+        val nkeys = new Array[K](2*keys.length)
+        System.arraycopy(keys, 0, nkeys, 0, keys.length)
+        keys = nkeys
+      }
       keys(datapos) = k
       sz += 1
       
@@ -83,6 +90,7 @@ growth threshold: %d
     val nindices = Array.fill[Int](indices.length * 2)(-1)
     val nkeys = new Array[K](keys.length * 2)
     relbits = Integer.numberOfTrailingZeros(nindices.length / 2)
+    val mask = nindices.length - 1
     
     // copy raw data
     System.arraycopy(keys, 0, nkeys, 0, sz)
@@ -100,7 +108,7 @@ growth threshold: %d
         var currelem = nindices(pos)
         var currhash = nindices(pos + 1)
         while (currelem != -1) {
-          pos = (pos + 2) & (relbits0+1)
+          pos = (pos + 2) & mask
           currelem = nindices(pos)
           currhash = nindices(pos + 1)
         }

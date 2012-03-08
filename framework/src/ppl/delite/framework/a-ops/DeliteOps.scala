@@ -651,9 +651,6 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
 
   var simpleCodegen: Boolean = false// try to generate more readable code
 
-  // TODO: move to lms? TR: will that actually work? it looks pretty unsafe to rebind syms
-  //def rebind(sym: Sym[Any], rhs: Def[Any]) = createDefinition(sym, rhs).rhs
-
   def summarizeBody[A](d: Def[A]) = d match {
     case e: DeliteForeachElem[_] => summarizeEffects(e.func).star
     case e: DeliteCollectElem[_,_] => summarizeEffects(e.func).star
@@ -1141,9 +1138,25 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
           stream.println("// common key "+key+" for "+quotedGroup)
           stream.println("val " + quotedGroup + "_sze = " + prefixSym + quotedGroup + "_hash_pos.size")
           stream.println("val " + quotedGroup + "_idx = " + prefixSym + quotedGroup + "_hash_pos.put(" + quote(getBlockResult(key)) + ")")
-          stream.println("if (" + quotedGroup + "_idx == " + quotedGroup + "_sze) {"/*}*/) // new key
-          stream.println("// TODO: handle buffer resizing!")
-          kps foreach { 
+          stream.println("if (" + quotedGroup + "_idx == " + quotedGroup + "_sze) { // new key"/*}*/)
+          val kps1 = kps.filterNot(_._2.isInstanceOf[DeliteHashIndexElem[_,_]])
+          if (kps1.nonEmpty) {
+            stream.println("if (" + quotedGroup + "_idx >= " + prefixSym + quote(kps1.head._1) + "_hash_data.length) { // resize buffers"/*}*/) // resize first, resize all
+            kps1 foreach {
+              case (sym, elem) => 
+                val data = prefixSym + quote(sym) + "_hash_data"
+                val ndata = quote(sym) + "_hash_data_new"
+                val elemtp = elem match {
+                  case elem: DeliteHashCollectElem[_,_,_] => "scala.collection.mutable.ArrayBuffer[" + remap(getBlockResult(elem.valFunc).Type) + "]"
+                  case elem: DeliteHashReduceElem[_,_,_] => remap(getBlockResult(elem.valFunc).Type)
+                }
+                stream.println("val " + ndata + " = new Array[" + elemtp + "](2*" + data + ".length)")
+                stream.println("System.arraycopy("+ data + ", 0, " + ndata + ", 0, " + data + ".length)")
+                stream.println(data + " = " + ndata)
+            }
+            stream.println(/*{*/"}")          
+          }
+          kps foreach {
             case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
               //stream.println("//TODO hash collect")
               //emitHashCollectElem(op, sym, elem, prefixSym)
