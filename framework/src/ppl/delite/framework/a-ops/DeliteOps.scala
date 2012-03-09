@@ -1043,7 +1043,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     // obsolete!!
     if (elem.cond.nonEmpty)
       stream.print("if (" + elem.cond.map(c=>quote(getBlockResult(c))).mkString(" && ") + ") ")
-    stream.print(prefixSym + quote(sym) + "_hash.getOrElseUpdate(" + quote(getBlockResult(elem.keyFunc)) + ", new scala.collection.mutable.ArrayBuffer) += " + quote(getBlockResult(elem.valFunc)))
+    stream.print(prefixSym + quote(sym) + "_hash.getOrElseUpdate(" + quote(getBlockResult(elem.keyFunc)) + ", new generated.scala.container.BufferImpl) += " + quote(getBlockResult(elem.valFunc)))
     stream.println(" // TODO: optimize") 
   }
 
@@ -1071,7 +1071,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
           //stream.println("//TODO hash collect")
           //stream.println("var " + quote(sym) + "_hash: scala.collection.mutable.HashMap[" + remap(getBlockResult(elem.keyFunc).Type) + ", ArrayBuffer[" + remap(getBlockResult(elem.valFunc).Type) + "]] = new scala.collection.mutable.HashMap // TODO: more efficient buffer handling")
-          stream.println("var " + quote(sym) + "_hash_data: Array[scala.collection.mutable.ArrayBuffer[" + remap(getBlockResult(elem.valFunc).Type) + "]] = new Array(128) // TODO: more efficient buffer handling")
+          stream.println("var " + quote(sym) + "_hash_data: Array[generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).Type) + "]] = new Array(128) // TODO: more efficient buffer handling")
         case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
           stream.println("var " + quote(sym) + "_hash_data: Array[" + remap(getBlockResult(elem.valFunc).Type) + "] = new Array(128)")
           if (elem.rFunc != Block(elem.rV._2)) {
@@ -1096,8 +1096,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         case (sym, elem: DeliteHashCollectElem[_,_,_]) => 
           //stream.println("//TODO hash collect")
           stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
-          //stream.println("var " + quote(sym) + "_hash: scala.collection.mutable.HashMap[" + remap(getBlockResult(elem.keyFunc).Type) + ", scala.collection.mutable.ArrayBuffer[" + remap(getBlockResult(elem.valFunc).Type) + "]] = _")
-          stream.println("var " + quote(sym) + "_hash_data: Array[scala.collection.mutable.ArrayBuffer[" + remap(getBlockResult(elem.valFunc).Type) + "]] = _ // TODO: more efficient buffer handling")
+          //stream.println("var " + quote(sym) + "_hash: scala.collection.mutable.HashMap[" + remap(getBlockResult(elem.keyFunc).Type) + ", generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).Type) + "]] = _")
+          stream.println("var " + quote(sym) + "_hash_data: Array[generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).Type) + "]] = _ // TODO: more efficient buffer handling")
         case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
           stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
           stream.println("var " + quote(sym) + "_hash_data: Array[" + remap(getBlockResult(elem.valFunc).Type) + "] = _")
@@ -1147,7 +1147,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
                 val data = prefixSym + quote(sym) + "_hash_data"
                 val ndata = quote(sym) + "_hash_data_new"
                 val elemtp = elem match {
-                  case elem: DeliteHashCollectElem[_,_,_] => "scala.collection.mutable.ArrayBuffer[" + remap(getBlockResult(elem.valFunc).Type) + "]"
+                  case elem: DeliteHashCollectElem[_,_,_] => "generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.valFunc).Type) + "]"
                   case elem: DeliteHashReduceElem[_,_,_] => remap(getBlockResult(elem.valFunc).Type)
                 }
                 stream.println("val " + ndata + " = new Array[" + elemtp + "](2*" + data + ".length)")
@@ -1161,7 +1161,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
               //stream.println("//TODO hash collect")
               //emitHashCollectElem(op, sym, elem, prefixSym)
               val valString = quote(getBlockResult(elem.valFunc))
-              stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = new scala.collection.mutable.ArrayBuffer")
+              stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) = new generated.scala.container.BufferImpl")
               stream.println(prefixSym + quote(sym) + "_hash_data(" + quotedGroup + "_idx) += " + valString)
             case (sym, elem: DeliteHashReduceElem[_,_,_]) => 
               val valString = quote(getBlockResult(elem.valFunc))
@@ -1382,7 +1382,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
       case (sym, elem: DeliteCollectElem[_,_]) =>
         if (elem.cond.nonEmpty) {
           //stream.println("var " + quote(sym) + "_data: Array[" + remap(getBlockResult(elem.func).Type) + "] = _ // FIXME: buffer handling")
-          stream.println("var " + quote(sym) + "_data: scala.collection.mutable.ArrayBuffer[" + remap(getBlockResult(elem.func).Type) + "] = new scala.collection.mutable.ArrayBuffer // TODO: more efficient buffer handling")
+          stream.println("var " + quote(sym) + "_data: generated.scala.container.BufferImpl[" + remap(getBlockResult(elem.func).Type) + "] = new generated.scala.container.BufferImpl // TODO: more efficient buffer handling")
         } else {
           stream.println("val " + quote(sym) + "_data: Array[" + remap(getBlockResult(elem.func).Type) + "] = new Array(" + quote(op.size) + ")")
         }

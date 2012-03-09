@@ -171,10 +171,13 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp {
   }
 
   def queryable_min_index[TSource:Manifest](s: Rep[DataTable[TSource]], minSelector: Rep[TSource] => Rep[Double]) = {
-    reduceTuple(s.size)(i => i, i => minSelector(s(i)))(unit(-1), unit(scala.Double.MaxValue)) { 
+    /*
+    CAVEAT: must not fuse if s is a filter loop because that will mess with index i !!!
+    */
+    reduceTuple(1 + s.size - 1)(i => i, i => minSelector(s(i)))(unit(-1), unit(scala.Double.MaxValue)) { 
       case ((i0,v0),(i1,v1)) => 
         (reifyEffects { if (v0 <= v1) i0 else i1 }, 
-         reifyEffects { if (v0 <= v1) v1 else v1 })
+         reifyEffects { if (v0 <= v1) v0 else v1 })
     }
   }
   
