@@ -10,7 +10,8 @@ trait UIntOps extends Variables {
     
   // Static methods
   object UInt {
-    def apply(x: Rep[Int])(implicit ctx: SourceContext) = uint_obj_new(x)
+    def apply(x: Int)(implicit ctx: SourceContext) = uint_new(unit(x))
+    def apply(x: Rep[Int])(implicit ctx: SourceContext) = uint_new(x)
   }
   
   // Implicit numeric conversions
@@ -30,7 +31,7 @@ trait UIntOps extends Variables {
   }
   
   // Arith implicit
-  implicit def untArith[T:Arith:Manifest]: Arith[UInt] = new Arith[UInt] {
+  implicit def uintArith[T:Arith:Manifest]: Arith[UInt] = new Arith[UInt] {
     def +=(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).+(b)
     def +(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).+(b)
     def -(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).-(b)
@@ -44,7 +45,7 @@ trait UIntOps extends Variables {
   }
   
   // Constructor
-  def uint_obj_new(x: Rep[Int])(implicit ctx: SourceContext) : Rep[UInt]
+  def uint_new(x: Rep[Int])(implicit ctx: SourceContext) : Rep[UInt]
   
   // Math ops
   def uint_plus(x: Rep[UInt], y: Rep[UInt])(implicit ctx: SourceContext) : Rep[UInt]
@@ -69,7 +70,7 @@ trait UIntOpsExp extends UIntOps {
   case class UIntAbs(x: Exp[UInt]) extends Def[UInt]
   case class UIntExp(x: Exp[UInt]) extends Def[UInt]
   
-  def uint_obj_new(x: Exp[Int])(implicit ctx: SourceContext) = reflectPure(UIntNew(x))
+  def uint_new(x: Exp[Int])(implicit ctx: SourceContext) = reflectPure(UIntNew(x))
   
   // Operations
   def uint_plus(x: Exp[UInt], y: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntPlus(x, y))
@@ -83,24 +84,32 @@ trait UIntOpsExp extends UIntOps {
 
 trait UIntOpsExpOpt extends UIntOpsExp {
   this: OptiSDRExp =>
+  
+  object UIntConst {
+    def unapply(x: Exp[UInt]) : Option[Int] = {
+      x match {
+        case Def(UIntNew(Const(e))) => Some(e)
+      }
+    }
+  }
 
   override def uint_plus(lhs: Exp[UInt], rhs: Exp[UInt])(implicit ctx: SourceContext) : Exp[UInt] = (lhs,rhs) match {
-    case (Def(Def(UIntNew(Const(x)))), Def(Def(UIntNew(Const(y))))) => UInt(unit(implicitly[Numeric[Int]].plus(x,y)))
-    case (Def(Def(UIntNew(Const(0)))), y) => y
-    case (y, Def(UIntNew(Const(0)))) => y
+    case (UIntConst(x), UIntConst(y)) => UInt(x+y)
+    case (UIntConst(0), y) => y
+    case (y, UIntConst(0)) => y
     case _ => super.uint_plus(lhs, rhs)
   }
   
   override def uint_minus(lhs: Exp[UInt], rhs: Exp[UInt])(implicit ctx: SourceContext) : Exp[UInt] = (lhs,rhs) match {
-    case (Def(UIntNew(Const(x))), Def(UIntNew(Const(y)))) => UInt(unit(implicitly[Numeric[Int]].minus(x,y)))
-    case (y, Def(UIntNew(Const(0)))) => y
+    case (UIntConst(x), UIntConst(y)) => UInt(x-y)
+    case (y, UIntConst(0)) => y
     case _ => super.uint_minus(lhs, rhs)
   }
   
   override def uint_times(lhs: Exp[UInt], rhs: Exp[UInt])(implicit ctx: SourceContext) : Exp[UInt] = (lhs,rhs) match {
-    case (Def(UIntNew(Const(x))), Def(UIntNew(Const(y)))) => UInt(unit(implicitly[Numeric[Int]].times(x,y)))
-    case (_, Def(UIntNew(Const(0)))) => rhs
-    case (Def(UIntNew(Const(0))), _) => lhs
+    case (UIntConst(x), UIntConst(y)) => UInt(x*y)
+    case (_, UIntConst(0)) => rhs
+    case (UIntConst(0), _) => lhs
     case _ => super.uint_times(lhs, rhs)
   }
 }

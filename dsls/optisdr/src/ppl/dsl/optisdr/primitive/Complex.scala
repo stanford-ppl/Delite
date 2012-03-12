@@ -10,7 +10,10 @@ trait ComplexOps extends Variables {
   
   // Static methods
   object Complex {
-    def apply(real: Rep[Real], imag: Rep[Real])(implicit ctx: SourceContext) = complex_obj_new(real, imag) 
+    def apply(real: Real, imag: Real)(implicit ctx: SourceContext) = complex_new(unit(real), unit(imag)) 
+    def apply(real: Rep[Real], imag: Real)(implicit ctx: SourceContext) = complex_new(real, unit(imag))
+    def apply(real: Real, imag: Rep[Real])(implicit ctx: SourceContext) = complex_new(unit(real), imag)
+    def apply(real: Rep[Real], imag: Rep[Real])(implicit ctx: SourceContext) = complex_new(real, imag) 
   }
   
   implicit def repToComplexOps(x: Rep[Complex]) = new ComplexOpsCls(x)
@@ -21,9 +24,16 @@ trait ComplexOps extends Variables {
     // def conj
     def real = complex_real(x)
     def imag = complex_imag(x)
+    
+    def +(y: Rep[Complex]) = complex_plus(x,y)
+    def -(y: Rep[Complex]) = complex_minus(x,y)
+    def *(y: Rep[Complex]) = complex_times(x,y)
+    def /(y: Rep[Complex]) = complex_divide(x,y)
+    def abs = complex_abs(x)
+    def exp = complex_exp(x)
   }
   
-  def complex_obj_new(real: Rep[Real], imag: Rep[Real])(implicit ctx: SourceContext) : Rep[Complex]
+  def complex_new(real: Rep[Real], imag: Rep[Real])(implicit ctx: SourceContext) : Rep[Complex]
   
   // Accessors
   def complex_real(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Real]
@@ -35,24 +45,45 @@ trait ComplexOps extends Variables {
   // Operations
   def complex_negate(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
   
+  // Arith implicit
+  implicit def complexArith[T:Arith:Manifest]: Arith[Complex] = new Arith[Complex] {
+    def +=(a: Rep[Complex], b: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a).+(b)
+    def +(a: Rep[Complex], b: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a).+(b)
+    def -(a: Rep[Complex], b: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a).-(b)
+    def *(a: Rep[Complex], b: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a).*(b)
+    def /(a: Rep[Complex], b: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a)./(b)
+    def abs(a: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a).abs
+    def exp(a: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a).exp
+    
+    def empty(implicit ctx: SourceContext) = Complex(unit(0.0), unit(0.0))
+    def zero(a: Rep[Complex])(implicit ctx: SourceContext) = empty
+  }
+  
   // Math operations
+  def complex_plus(x: Rep[Complex], y: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
+  def complex_minus(x: Rep[Complex], y: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
+  def complex_times(x: Rep[Complex], y: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
+  def complex_divide(x: Rep[Complex], y: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
+  def complex_abs(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
+  def complex_exp(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
+  
+  // Extra math operations to handle operations between different types
   //def infix_+(lhs: Rep[Int], rhs: Rep[Complex])(ctx: SourceContext, o: Overloaded1): Rep[Complex]
   //def infix_+(lhs: Rep[Real], rhs: Rep[Complex])(ctx: SourceContext, o: Overloaded2): Rep[Complex]
 /*  def infix_+[M[X] <: Matrix[X]](lhs: Rep[Int], rhs: Rep[M[Float]])(implicit mb: MatrixBuilder[Float,M[Float]], toIntf: Rep[M[Float]] => Interface[Matrix[Float]], m: Manifest[M[Float]], ctx: SourceContext, o: Overloaded20): Rep[M[Float]] = matrix_plus_scalar[Float,M[Float]](toIntf(rhs),repIntToRepFloat(lhs))
   def infix_+[M[X] <: Matrix[X]](lhs: Rep[Float], rhs: Rep[M[Double]])(implicit mb: MatrixBuilder[Double,M[Double]], toIntf: Rep[M[Double]] => Interface[Matrix[Double]], m: Manifest[M[Double]], ctx: SourceContext, o: Overloaded21): Rep[M[Double]] = matrix_plus_scalar[Double,M[Double]](toIntf(rhs),repFloatToRepDouble(lhs))
-  def infix_+[M[X] <: Matrix[X]](lhs: Float, rhs: Rep[M[Int]])(implicit mb: MatrixBuilder[Float,M[Float]], toIntf: Rep[M[Int]] => Interface[Matrix[Int]], m: Manifest[M[Float]], ctx: SourceContext, o: Overloaded22): Rep[M[Float]] = matrix_plus_scalar_withconvert[Int,Float,M[Float]](toIntf(rhs),unit(lhs))
-  def infix_+[M[X] <: Matrix[X]](lhs: Double, rhs: Rep[M[Int]])(implicit mb: MatrixBuilder[Double,M[Double]], toIntf: Rep[M[Int]] => Interface[Matrix[Int]], m: Manifest[M[Double]], ctx: SourceContext, o: Overloaded23): Rep[M[Double]] = matrix_plus_scalar_withconvert[Int,Double,M[Double]](toIntf(rhs),unit(lhs))
-  def infix_+[M[X] <: Matrix[X]](lhs: Double, rhs: Rep[M[Float]])(implicit mb: MatrixBuilder[Double,M[Double]], toIntf: Rep[M[Float]] => Interface[Matrix[Float]], m: Manifest[M[Double]], ctx: SourceContext, o: Overloaded24): Rep[M[Double]] = matrix_plus_scalar_withconvert[Float,Double,M[Double]](toIntf(rhs),unit(lhs)) */
-
+  def infix_+[M[X] <: Matrix[X]](lhs: Float, rhs: Rep[M[Int]])(implicit mb: MatrixBuilder[Float,M[Float]], toIntf: Rep[M[Int]] => Interface[Matrix[Int]], m: Manifest[M[Float]], ctx: SourceContext, o: Overloaded22): Rep[M[Float]] = matrix_plus_scalar_withconvert[Int,Float,M[Float]](toIntf(rhs),complex(lhs))
+  def infix_+[M[X] <: Matrix[X]](lhs: Double, rhs: Rep[M[Int]])(implicit mb: MatrixBuilder[Double,M[Double]], toIntf: Rep[M[Int]] => Interface[Matrix[Int]], m: Manifest[M[Double]], ctx: SourceContext, o: Overloaded23): Rep[M[Double]] = matrix_plus_scalar_withconvert[Int,Double,M[Double]](toIntf(rhs),complex(lhs))
+  def infix_+[M[X] <: Matrix[X]](lhs: Double, rhs: Rep[M[Float]])(implicit mb: MatrixBuilder[Double,M[Double]], toIntf: Rep[M[Float]] => Interface[Matrix[Float]], m: Manifest[M[Double]], ctx: SourceContext, o: Overloaded24): Rep[M[Double]] = matrix_plus_scalar_withconvert[Float,Double,M[Double]](toIntf(rhs),complex(lhs)) */
 }
 
 trait ComplexOpsExp extends ComplexOps {
   this: OptiSDRExp =>
   
   // Object creation
-  case class ComplexObjNew(real: Exp[Real], imag: Exp[Real]) extends Def[Complex]
+  case class ComplexNew(real: Exp[Real], imag: Exp[Real]) extends Def[Complex]
   
-  def complex_obj_new(real: Exp[Real], imag: Exp[Real])(implicit ctx: SourceContext) = reflectPure(ComplexObjNew(real, imag))
+  def complex_new(real: Exp[Real], imag: Exp[Real])(implicit ctx: SourceContext) = reflectPure(ComplexNew(real, imag))
   
   // Accessors
   case class ComplexReal(x: Exp[Complex]) extends Def[Real]
@@ -69,6 +100,39 @@ trait ComplexOpsExp extends ComplexOps {
   //def complex_negate(x: Exp[Complex])(implicit ctx: SourceContext) = complex_obj_new(0.0-x.real, 0.0-x.imag)
   
   // Math operations
+  case class ComplexPlus(x: Exp[Complex], y: Exp[Complex]) extends Def[Complex]
+  case class ComplexMinus(x: Exp[Complex], y: Exp[Complex]) extends Def[Complex]
+  case class ComplexTimes(x: Exp[Complex], y: Exp[Complex]) extends Def[Complex]
+  case class ComplexDivide(x: Exp[Complex], y: Exp[Complex]) extends Def[Complex]
+  case class ComplexAbs(x: Exp[Complex]) extends Def[Complex]
+  case class ComplexExp(x: Exp[Complex]) extends Def[Complex]
+  
+  def complex_plus(x: Exp[Complex], y: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexPlus(x, y))
+  def complex_minus(x: Exp[Complex], y: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexMinus(x, y))
+  def complex_times(x: Exp[Complex], y: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexTimes(x, y))
+  def complex_divide(x: Exp[Complex], y: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexDivide(x, y))
+  def complex_abs(x: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexAbs(x))
+  def complex_exp(x: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexExp(x))
+  
   //def infix_+(lhs: Exp[Int], rhs: Exp[Complex])(ctx: SourceContext, o: Overloaded1) = complex_obj_new(lhs + rhs.real, rhs.imag)
   //def infix_+(lhs: Exp[Real], rhs: Exp[Complex])(ctx: SourceContext, o: Overloaded2) = complex_obj_new(lhs + rhs.real, rhs.imag)
+}
+
+trait ComplexOpsExpOpt extends ComplexOpsExp {
+  this: OptiSDRExp =>
+
+  override def complex_plus(lhs: Exp[Complex], rhs: Exp[Complex])(implicit ctx: SourceContext) : Exp[Complex] = (lhs,rhs) match {
+    case (Def(ComplexNew(Const(xr), Const(xi))), Def(ComplexNew(Const(yr), Const(yi)))) => Complex(xr+yr, xi+yi)
+    case _ => super.complex_plus(lhs, rhs)
+  }
+  
+  override def complex_minus(lhs: Exp[Complex], rhs: Exp[Complex])(implicit ctx: SourceContext) : Exp[Complex] = (lhs,rhs) match {
+    case (Def(ComplexNew(Const(xr), Const(xi))), Def(ComplexNew(Const(yr), Const(yi)))) => Complex(xr-yr, xi-yi)
+    case _ => super.complex_minus(lhs, rhs)
+  }
+  
+  override def complex_times(lhs: Exp[Complex], rhs: Exp[Complex])(implicit ctx: SourceContext) : Exp[Complex] = (lhs,rhs) match {
+    case (Def(ComplexNew(Const(xr), Const(xi))), Def(ComplexNew(Const(yr), Const(yi)))) => Complex(xr*yr-xi*yi,xr*yi+xi*yr)
+    case _ => super.complex_times(lhs, rhs)
+  }
 }

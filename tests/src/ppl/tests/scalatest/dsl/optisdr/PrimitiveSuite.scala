@@ -17,6 +17,7 @@ import ppl.tests.scalatest._
 object ComplexTestRunner extends DeliteTestRunner with OptiSDRApplicationRunner with ComplexTest
 trait ComplexTest extends DeliteTestModule with OptiSDRApplication {
   def main() = {
+    val a = Complex(1, 1)
   }
 }
 
