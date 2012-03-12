@@ -30,14 +30,15 @@ trait ComplexOps extends Variables {
   def complex_imag(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Real]
   
   // Implicit converts to complex
-  implicit def repComplexIntToRepComplex(x: Rep[ComplexInt]): Rep[Complex]
+  //implicit def repComplexIntToRepComplex(x: Rep[ComplexInt]): Rep[Complex]
   
   // Operations
   def complex_negate(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
   
   // Math operations
-/*  def infix_+(lhs: Rep[Int], rhs: Rep[Complex])(ctx: SourceContext, o: Overloaded1): Rep[ComplexInt] = matrix_plus_scalar[Double,M[Double]](toIntf(rhs),repIntToRepDouble(lhs))
-  def infix_+[M[X] <: Matrix[X]](lhs: Rep[Int], rhs: Rep[M[Float]])(implicit mb: MatrixBuilder[Float,M[Float]], toIntf: Rep[M[Float]] => Interface[Matrix[Float]], m: Manifest[M[Float]], ctx: SourceContext, o: Overloaded20): Rep[M[Float]] = matrix_plus_scalar[Float,M[Float]](toIntf(rhs),repIntToRepFloat(lhs))
+  //def infix_+(lhs: Rep[Int], rhs: Rep[Complex])(ctx: SourceContext, o: Overloaded1): Rep[Complex]
+  //def infix_+(lhs: Rep[Real], rhs: Rep[Complex])(ctx: SourceContext, o: Overloaded2): Rep[Complex]
+/*  def infix_+[M[X] <: Matrix[X]](lhs: Rep[Int], rhs: Rep[M[Float]])(implicit mb: MatrixBuilder[Float,M[Float]], toIntf: Rep[M[Float]] => Interface[Matrix[Float]], m: Manifest[M[Float]], ctx: SourceContext, o: Overloaded20): Rep[M[Float]] = matrix_plus_scalar[Float,M[Float]](toIntf(rhs),repIntToRepFloat(lhs))
   def infix_+[M[X] <: Matrix[X]](lhs: Rep[Float], rhs: Rep[M[Double]])(implicit mb: MatrixBuilder[Double,M[Double]], toIntf: Rep[M[Double]] => Interface[Matrix[Double]], m: Manifest[M[Double]], ctx: SourceContext, o: Overloaded21): Rep[M[Double]] = matrix_plus_scalar[Double,M[Double]](toIntf(rhs),repFloatToRepDouble(lhs))
   def infix_+[M[X] <: Matrix[X]](lhs: Float, rhs: Rep[M[Int]])(implicit mb: MatrixBuilder[Float,M[Float]], toIntf: Rep[M[Int]] => Interface[Matrix[Int]], m: Manifest[M[Float]], ctx: SourceContext, o: Overloaded22): Rep[M[Float]] = matrix_plus_scalar_withconvert[Int,Float,M[Float]](toIntf(rhs),unit(lhs))
   def infix_+[M[X] <: Matrix[X]](lhs: Double, rhs: Rep[M[Int]])(implicit mb: MatrixBuilder[Double,M[Double]], toIntf: Rep[M[Int]] => Interface[Matrix[Int]], m: Manifest[M[Double]], ctx: SourceContext, o: Overloaded23): Rep[M[Double]] = matrix_plus_scalar_withconvert[Int,Double,M[Double]](toIntf(rhs),unit(lhs))
@@ -61,9 +62,13 @@ trait ComplexOpsExp extends ComplexOps {
   def complex_imag(x: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexImag(x))
   
   // Implicit convert to complex
-  def repComplexIntToRepComplex(x: Rep[ComplexInt]) = complex_obj_new(x.real, x.imag)
+  //def repComplexIntToRepComplex(x: Rep[ComplexInt]) = complex_obj_new(x.real, x.imag)
   
   // Operations
-  def complex_conj(x: Exp[Complex])(implicit ctx: SourceContext) = complex_obj_new(x.real, 0.0-x.imag)
-  def complex_negate(x: Exp[Complex])(implicit ctx: SourceContext) = complex_obj_new(0.0-x.real, 0.0-x.imag)
+  //def complex_conj(x: Exp[Complex])(implicit ctx: SourceContext) = complex_obj_new(x.real, 0.0-x.imag)
+  //def complex_negate(x: Exp[Complex])(implicit ctx: SourceContext) = complex_obj_new(0.0-x.real, 0.0-x.imag)
+  
+  // Math operations
+  //def infix_+(lhs: Exp[Int], rhs: Exp[Complex])(ctx: SourceContext, o: Overloaded1) = complex_obj_new(lhs + rhs.real, rhs.imag)
+  //def infix_+(lhs: Exp[Real], rhs: Exp[Complex])(ctx: SourceContext, o: Overloaded2) = complex_obj_new(lhs + rhs.real, rhs.imag)
 }

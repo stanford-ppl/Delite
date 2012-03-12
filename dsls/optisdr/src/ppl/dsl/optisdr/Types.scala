@@ -3,11 +3,27 @@ package ppl.dsl.optisdr
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 /* Primitive types */
-//trait Integral
+
+/* Int is built in
+ * Meant to represent Integers of various sizes in the TI generator
+ */
+
+// Unsigned integers of various sizes
 trait UInt
-// type Real = Double
+ 
+/* Real is type aliased to Double in OptiSDR
+ * Meant to represent all kinds of non-integer numbers, including fixed point and floating point
+ * Always signed. There doesn't seem to be a need for unsigned non-integer types
+ */
+
+// Complex non-integer numbers
 abstract class Complex
+
+// Complex integers (is this needed even?)
 trait ComplexInt
 
 /* Bits */
 trait Bits // extends DeliteCollection[Boolean]
+
+// A soft bit is a probabilistic measure of a bit. For example, if a SoftBit was represented
+trait SoftBit
