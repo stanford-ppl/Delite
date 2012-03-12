@@ -105,17 +105,20 @@ abstract class GPUWhileGenerator(whileLoop: OP_While, location: Int, target: Tar
 
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
     val out = new StringBuilder //the output string
-    val inputs = (whileLoop.predicateGraph.inputOps ++ whileLoop.bodyGraph.inputOps)
+    val inputOps = (whileLoop.predicateGraph.inputOps ++ whileLoop.bodyGraph.inputOps)
+    val inputs = (whileLoop.predicateGraph.inputs ++ whileLoop.bodyGraph.inputs)
+    implicit val aliases = new AliasTable[(DeliteOP,String)]
 
     writeFunctionHeader(out)
-    writeJNIInitializer(location, out)
+    val locations = whileLoop.nestedGraphs.flatMap(_.ops.map(_.scheduledResource)).toSet union Set(location)
+    writeJNIInitializer(locations, out)
 
-    val available = new ArrayBuffer[DeliteOP]
+    val available = new ArrayBuffer[(DeliteOP,String)]
     val awaited = new ArrayBuffer[DeliteOP]
     //output predicate
     if (whileLoop.predicateValue == "") {
       available ++= inputs
-      awaited ++= inputs
+      awaited ++= inputOps
       addKernelCalls(whileLoop.predicateGraph.schedule(location), location, available, awaited, syncList, out)
     }
 
@@ -137,7 +140,7 @@ abstract class GPUWhileGenerator(whileLoop: OP_While, location: Int, target: Tar
       available.clear()
       available ++= inputs
       awaited.clear()
-      awaited ++= inputs
+      awaited ++= inputOps
       addKernelCalls(whileLoop.bodyGraph.schedule(location), location, available, awaited, syncList, out)
     }
 
@@ -146,7 +149,7 @@ abstract class GPUWhileGenerator(whileLoop: OP_While, location: Int, target: Tar
       available.clear()
       available ++= inputs
       awaited.clear()
-      awaited ++= inputs
+      awaited ++= inputOps
       out.append("{\n")
       addKernelCalls(whileLoop.predicateGraph.schedule(location), location, available, awaited, new ArrayBuffer[DeliteOP], out) //dummy syncList b/c already added
       out.append("pred = ") //update var
@@ -155,7 +158,10 @@ abstract class GPUWhileGenerator(whileLoop: OP_While, location: Int, target: Tar
     }
 
     //print end of while and function
-    out.append("}\n}\n")
+    out.append("} // end while loop\n")
+    writeJNIFinalizer(locations, out)
+    out.append("} // end While Function\n")
+
     out.toString
   }
 

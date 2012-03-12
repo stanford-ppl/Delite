@@ -83,17 +83,17 @@ trait DenseVectorOps extends Variables {
     // generic arithmetic
     type VPLUSR = DenseVector[A]
     val mVPLUSR = manifest[VPLUSR]
-    val vplusBuilder = builder[A]
+    def vplusBuilder(implicit ctx: SourceContext) = builder[A]
     def vplusToIntf(x: Rep[VPLUSR]) = toIntf(x)
 
     type VMINUSR = DenseVector[A]
     val mVMINUSR = manifest[VMINUSR]
-    val vminusBuilder = builder[A]
+    def vminusBuilder(implicit ctx: SourceContext) = builder[A]
     def vminusToIntf(x: Rep[VMINUSR]) = toIntf(x)    
     
     type VTIMESR = DenseVector[A]
     val mVTIMESR = manifest[VTIMESR]
-    val vtimesBuilder = builder[A]
+    def vtimesBuilder(implicit ctx: SourceContext) = builder[A]
     def vtimesToIntf(x: Rep[VTIMESR]) = toIntf(x)        
     
     def *(y: Rep[DenseMatrix[A]])(implicit a: Arith[A],o: Overloaded2, ctx: SourceContext) = densevector_times_matrix(elem,y)

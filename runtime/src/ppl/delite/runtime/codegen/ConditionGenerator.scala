@@ -105,19 +105,22 @@ abstract class GPUConditionGenerator(condition: OP_Condition, location: Int, tar
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
     val out = new StringBuilder //the output string
     val hasOutput = condition.outputType != "Unit"
-    //assert(hasOutput == false) //TODO: we can relax this by conditionally selecting the proper metadata functions as well
-    val inputs = (condition.predicateGraph.inputOps ++ condition.thenGraph.inputOps ++ condition.elseGraph.inputOps)
+    val inputOps = (condition.predicateGraph.inputOps ++ condition.thenGraph.inputOps ++ condition.elseGraph.inputOps)
+    val inputs = (condition.predicateGraph.inputs ++ condition.thenGraph.inputs ++ condition.elseGraph.inputs)
+    implicit val aliases = new AliasTable[(DeliteOP,String)]
 
     writeFunctionHeader(out)
-    writeJNIInitializer(location, out)
+    val locations = condition.nestedGraphs.flatMap(_.ops.map(_.scheduledResource)).toSet union Set(location)
 
-    val available = new ArrayBuffer[DeliteOP]
+    writeJNIInitializer(locations, out)
+
+    val available = new ArrayBuffer[(DeliteOP,String)]
     val awaited = new ArrayBuffer[DeliteOP]
 
     //output predicate
     if (condition.predicateValue == "") {
       available ++= inputs
-      awaited ++= inputs
+      awaited ++= inputOps
       addKernelCalls(condition.predicateGraph.schedule(location), location, available, awaited, syncList, out)
     }
 
@@ -129,11 +132,14 @@ abstract class GPUConditionGenerator(condition: OP_Condition, location: Int, tar
 
     //output if body
     if (condition.thenValue == "") {
+      if (condition.isReturner && hasOutput) aliases.add(condition.thenGraph.result,Pair(condition,condition.id))
       available.clear()
       available ++= inputs
       awaited.clear()
-      awaited ++= inputs
+      awaited ++= inputOps
       addKernelCalls(condition.thenGraph.schedule(location), location, available, awaited, syncList, out)
+      if (condition.isReturner && hasOutput) aliases.clear
+
       if (hasOutput) {
         out.append("return ")
         out.append(getSymGPU(condition.thenGraph.result._2))
@@ -150,11 +156,14 @@ abstract class GPUConditionGenerator(condition: OP_Condition, location: Int, tar
 
     //output else body
     if (condition.elseValue == "") {
+      if (condition.isReturner && hasOutput) aliases.add(condition.elseGraph.result,Pair(condition,condition.id))
       available.clear()
       available ++= inputs
       awaited.clear()
-      awaited ++= inputs
+      awaited ++= inputOps
       addKernelCalls(condition.elseGraph.schedule(location), location, available, awaited, syncList, out)
+      if (condition.isReturner && hasOutput) aliases.clear
+
       if (hasOutput) {
         out.append("return ")
         out.append(getSymGPU(condition.elseGraph.result._2))
@@ -167,7 +176,9 @@ abstract class GPUConditionGenerator(condition: OP_Condition, location: Int, tar
     if (hasOutput) out.append(";\n")
 
     //print end of if and function
-    out.append("}\n}\n")
+    out.append("} // end if\n")
+    writeJNIFinalizer(locations, out)
+    out.append("} // end Cond Function\n")
 
     out.toString
   }

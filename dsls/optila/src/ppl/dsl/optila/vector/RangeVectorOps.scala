@@ -50,17 +50,17 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
     // generic
     type VPLUSR = DenseVector[Int]
     val mVPLUSR = manifest[VPLUSR]
-    val vplusBuilder = denseVectorBuilder[Int]
+    def vplusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[Int]
     def vplusToIntf(x: Rep[VPLUSR]) = denseVecToInterface(x)
     
     type VMINUSR = DenseVector[Int]
     val mVMINUSR = manifest[VMINUSR]
-    val vminusBuilder = denseVectorBuilder[Int]
+    def vminusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[Int]
     def vminusToIntf(x: Rep[VMINUSR]) = denseVecToInterface(x)    
     
     type VTIMESR = DenseVector[Int]
     val mVTIMESR = manifest[VTIMESR]
-    val vtimesBuilder = denseVectorBuilder[Int]
+    def vtimesBuilder(implicit ctx: SourceContext) = denseVectorBuilder[Int]
     def vtimesToIntf(x: Rep[VTIMESR]) = denseVecToInterface(x)        
         
     // should forward to a RangeVectorOpsExp implementation which throws an OptiLA compiler error instead of using exceptions

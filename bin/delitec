@@ -11,6 +11,7 @@ from time import localtime, strftime
 
 import delitecommon
 
+DSLs = ['optiml','optila','optiql']
 LMS_HOME = os.getenv("LMS_HOME")
 lms_version = "lms_2.10.0-M1-virtualized"
 
@@ -85,17 +86,10 @@ def stage(runner, opts):
     cp = cp + LMS_HOME + "/*" + os.pathsep
     cp = cp + DELITE_HOME + "/framework/target/" + scala_virt_version + "/classes" + os.pathsep
     
-    #OptiLA cp
-    cp = cp + DELITE_HOME + "/dsls/optila/target/" + scala_virt_version + "/classes" + os.pathsep
-    cp = cp + DELITE_HOME + "/apps/optila/target/" + scala_virt_version + "/classes" + os.pathsep
-
-    #OptiML cp
-    cp = cp + DELITE_HOME + "/dsls/optiml/target/" + scala_virt_version + "/classes" + os.pathsep
-    cp = cp + DELITE_HOME + "/apps/optiml/target/" + scala_virt_version + "/classes" + os.pathsep
-
-    #OptiQL cp
-    cp = cp + DELITE_HOME + "/dsls/optiql/target/" + scala_virt_version + "/classes" + os.pathsep
-    cp = cp + DELITE_HOME + "/apps/optiql/target/" + scala_virt_version + "/classes" + os.pathsep
+    #DSL cps
+    for dsl in DSLs:
+      cp = cp + DELITE_HOME + "/dsls/" + dsl + "/target/" + scala_virt_version + "/classes" + os.pathsep
+      cp = cp + DELITE_HOME + "/apps/" + dsl + "/target/" + scala_virt_version + "/classes" + os.pathsep
 
     #test cp
     cp = cp + DELITE_HOME + "/tests/target/" + scala_virt_version + "/classes" + os.pathsep

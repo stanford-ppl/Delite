@@ -32,16 +32,20 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
 
   protected def emitCppBody(schedule: ArrayDeque[DeliteOP], location: Int, syncList: ArrayBuffer[DeliteOP]): String = {
     val out = new StringBuilder //the output string
+    implicit val aliases = new AliasTable[(DeliteOP,String)]
 
     //the JNI method
     writeFunctionHeader(location, out)
 
     //initialize
     writeGlobalsInitializer(out)
-    writeJNIInitializer(location, out)
+    val locations = Range.inclusive(0,location).toSet
+    writeJNIInitializer(locations, out)
 
     //execute
-    addKernelCalls(schedule, location, new ArrayBuffer[DeliteOP], new ArrayBuffer[DeliteOP], syncList, out)
+    addKernelCalls(schedule, location, new ArrayBuffer[(DeliteOP,String)], new ArrayBuffer[DeliteOP], syncList, out)
+
+    writeJNIFinalizer(locations, out)
     out.append('}')
     out.append('\n')
 
@@ -147,14 +151,14 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
 
 
   //TODO: have multiple command queues for separate data transfers
-  protected def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, available: ArrayBuffer[DeliteOP], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder) {
+  protected def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, available: ArrayBuffer[(DeliteOP,String)], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)(implicit aliases:AliasTable[(DeliteOP,String)]) {
     //available: list of ops with data currently on gpu, have a "g" symbol
     //awaited: list of ops synchronized with but data only resides on cpu, have a "c" symbol
     val iter = schedule.iterator
     while (iter.hasNext) {
       val op = iter.next
       //add to available & awaited lists
-      available += op
+      available += Pair(op,op.id)
       awaited += op
 
       if (op.isInstanceOf[OP_Nested]) makeNestedFunction(op, location)
@@ -171,9 +175,9 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
       var addInputCopy = false
       for ((input, sym) <- op.getInputs) { //foreach input
         val inData = op.getGPUMetadata(target).inputs.getOrElse((input, sym), null)
-        if(!available.contains(input)) { //this input does not yet exist on the device
+        if(!available.contains(input,sym)) { //this input does not yet exist on the device
           //add to available list
-          available += input
+          available += Pair(input,sym)
           //write a copy function for objects
           if (inData != null) { //only perform a copy for object types
             addInputCopy = true
@@ -184,7 +188,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
           else {
             //TODO: What is this case??
             assert(op.isInstanceOf[OP_Nested]) //object without copy must be for a nested function call
-            available -= input //this input doesn't actually reside on GPU
+            available -= Pair(input,sym) //this input doesn't actually reside on GPU
           }
         }
         else if (needsUpdate(op, input, sym)) { //input exists on device but data is old
@@ -564,7 +568,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     }
   }
 
-  protected def writeDataFrees(op: DeliteOP, out: StringBuilder, available: ArrayBuffer[DeliteOP]) {
+  protected def writeDataFrees(op: DeliteOP, out: StringBuilder, available: ArrayBuffer[(DeliteOP,String)]) {
     var count = 0
     val freeItem = "freeItem_" + op.id
 
@@ -584,8 +588,8 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
       out.append(");\n")
     }
 
-    def opFreeable(op: DeliteOP) = {
-      op.isInstanceOf[OP_Executable] && available.contains(op)
+    def opFreeable(op: DeliteOP, sym: String) = {
+      op.isInstanceOf[OP_Executable] && available.contains(op,sym)
     }
 
     def outputFreeable(op: DeliteOP, sym: String) = {
@@ -599,7 +603,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     }
 
     //free outputs (?)
-    if (opFreeable(op)) {
+    if (opFreeable(op,op.id)) {
       for (name <- op.getOutputs if outputFreeable(op, name)) {
         if (op.getConsumers.filter(c => c.getInputs.contains((op,name)) && c.scheduledResource == op.scheduledResource).size == 0) {
           writeFree(name)
@@ -609,11 +613,11 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     }
 
     //free inputs (?)
-    for ((in,name) <- op.getInputs if(opFreeable(in) && outputFreeable(in, name))) {
+    for ((in,name) <- op.getInputs if(opFreeable(in,name) && outputFreeable(in, name))) {
       val possible = in.getConsumers.filter(c => c.getInputs.contains((in,name)) && c.scheduledResource == op.scheduledResource)
       var free = true
       for (p <- possible) {
-        if (!available.contains(p)) free = false
+        if (!available.contains(p,p.id)) free = false
       }
       if (free) {
         writeFree(name)

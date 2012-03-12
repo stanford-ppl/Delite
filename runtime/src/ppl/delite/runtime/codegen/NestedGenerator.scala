@@ -71,6 +71,9 @@ abstract class GPUNestedGenerator(nested: OP_Nested, location: Int, target: Targ
   protected def writeFunctionHeader(out: StringBuilder) {
     out.append(nested.outputType(target))
     out.append(' ')
+    // GPU nested block can only return when both condition branches are returned by GPU,
+    // meaning that the return object will be a pointer type
+    if(nested.outputType != "Unit") out.append('*')
     out.append(kernelName)
     out.append('(')
     writeInputs(out)
