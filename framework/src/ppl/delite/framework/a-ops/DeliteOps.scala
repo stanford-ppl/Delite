@@ -1719,7 +1719,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
           lf.loopReduceInputs = emitMultiLoopFunc(elem.rFunc, "reduce_"+funcNameSuffix(sym), List(elem.rV._1, elem.rV._2, op.v), stream)
           lf.loopZeroInputs = emitMultiLoopFunc(elem.zero,"zero_"+funcNameSuffix(sym), Nil, stream)
           if(!isPrimitiveType(sym.Type)) {
-            printDebug(sym, "DeliteReduceElem with non-primitive types is not supported.")
+            //printDebug(sym, "DeliteReduceElem with non-primitive types is not supported.")
           } else {
             emitAllocFuncPrimitive(sym)
           }
@@ -1740,7 +1740,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
           lf.loopZeroInputs = emitMultiLoopFunc(elem.zero._1,"zero_1_"+funcNameSuffix(sym), Nil, stream)
           lf.loopZeroInputs_2 = emitMultiLoopFunc(elem.zero._2,"zero_2_"+funcNameSuffix(sym), Nil, stream)
           if(!isPrimitiveType(sym.Type)) {
-            printDebug(sym, "DeliteReduceTupleElem with non-primitive types is not supported.")
+            //printDebug(sym, "DeliteReduceTupleElem with non-primitive types is not supported.")
           } else {
             emitAllocFuncPrimitive(sym)
           }
