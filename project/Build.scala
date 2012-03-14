@@ -80,8 +80,8 @@ object DeliteBuild extends Build {
   lazy val runtime = Project("runtime", file("runtime"), settings = virtBuildSettings)
 
   lazy val tests = Project("tests", file("tests"), settings = virtBuildSettingsBase ++ Seq(
-    scalaSource := file("tests/main-src"),
-    scalaSource in Test := file("tests/src")
+    scalaSource in Test <<= baseDirectory(_ / "src"),
+    parallelExecution in Test := false
     // don't appear to be able to depend on a different scala version simultaneously, so just using scala-virtualized for everything
   )) dependsOn(framework, runtime, optiml, optimlApps, runtime, deliteTest)
   
