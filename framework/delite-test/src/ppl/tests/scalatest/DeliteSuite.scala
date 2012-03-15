@@ -5,7 +5,8 @@ import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.Config
 import scala.virtualization.lms.common._
 import scala.collection.mutable.{ ArrayBuffer, SynchronizedBuffer }
-import java.io.{File, Console => _, _}
+import java.io.{ File, Console => _, _ }
+import java.io.FileSystem
 
 trait DeliteTestConfig {
   // something arbitrary that we should never see in any test's output
@@ -39,44 +40,55 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
   }
 
   def compileAndTest(app: DeliteTestRunner) {
+    compileAndTest(app, app.getClass.getName.replaceAll("\\$", ""))
+  }
+
+  def compileAndTest(app: DeliteTestRunner, uniqueTestName: String) {
     println("=================================================================================================")
     println("TEST: " + app.toString)
     println("=================================================================================================")
 
     validateParameters()
-    val args = Array("test.deg")
+    val args = Array(uniqueTestName + "-test.deg")
     app.resultBuffer = new ArrayBuffer[Boolean] with SynchronizedBuffer[Boolean]
-    stageTest(app, args(0))
-    val outStr = execTest(app, args)
+    stageTest(app, args(0), uniqueTestName)
+    val outStr = execTest(app, args, uniqueTestName)
     checkTest(app, outStr)
   }
 
-  private def stageTest(app: DeliteTestRunner, degName: String) = {
+  private def stageTest(app: DeliteTestRunner, degName: String, uniqueTestName: String) = {
     println("STAGING...")
     val save = Config.degFilename
+    val buildDir = Config.buildDir
+    val generatedDir = "generated" + java.io.File.separator + uniqueTestName
     try {
-      Config.degFilename = degName      
+      Config.degFilename = degName
+      Config.buildDir = generatedDir
       val screenOrVoid = if (verbose) System.out else new PrintStream(new ByteArrayOutputStream())
       Console.withOut(screenOrVoid) {
         app.main(Array())
         if (verboseDefs) app.globalDefs.foreach { d => //TR print all defs
           println(d)
-          val info = d.sym.sourceInfo.drop(3).takeWhile(_.getMethodName!="main")
-          println(info.map(s=>s.getFileName+":"+s.getLineNumber).distinct.mkString(","))
+          val info = d.sym.sourceInfo.drop(3).takeWhile(_.getMethodName != "main")
+          println(info.map(s => s.getFileName + ":" + s.getLineNumber).distinct.mkString(","))
         }
         //assert(!app.hadErrors) //TR should enable this check at some time ...
       }
-    } finally {
+    } finally { 
+      // concurrent access check 
+      assert(Config.buildDir == generatedDir)
       Config.degFilename = save
-    }      
+      Config.buildDir = buildDir
+    }
   }
 
-  private def execTest(app: DeliteTestRunner, args: Array[String]) = {
+  private def execTest(app: DeliteTestRunner, args: Array[String], uniqueTestName: String) = {
     println("EXECUTING...")
     val name = "test.tmp"
     System.setProperty("delite.threads", threads.toString)
+    System.setProperty("delite.code.cache.home", "generatedCache" + java.io.File.separator + uniqueTestName)
     Console.withOut(new PrintStream(new FileOutputStream(name))) {
-      println("test output for: "+app.toString)
+      println("test output for: " + app.toString)
       ppl.delite.runtime.Delite.embeddedMain(args, app.staticDataMap)
     }
     val buf = new Array[Byte](new File(name).length().toInt)
@@ -84,17 +96,17 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
     fis.read(buf)
     fis.close()
     val out = new String(buf)
-    if (verbose) println(out)    
-    out 
+    if (verbose) println(out)
+    out
   }
-  
+
   private def execTestExternal(args: Array[String]) = {
     println("EXECUTING...")
     //Delite.main(args)
     // need to use a different compiler version to build and run Delite
     var p: Process = null
     val output = new File("test.tmp")
-    try{
+    try {
       val javaProc = javaBin.toString
       val javaArgs = "-server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx16g -Ddelite.threads=" + threads + " -cp " + runtimeClasses + ":" + scalaLibrary + ":" + scalaCompiler
       val cmd = Array(javaProc) ++ javaArgs.split(" ") ++ Array("ppl.delite.runtime.Delite") ++ args
@@ -150,9 +162,9 @@ trait DeliteSuite extends Suite with DeliteTestConfig {
 // the workaround for now is that the dsl under test must include ArrayBuffer in its code gen
 trait DeliteTestRunner extends DeliteTestModule with DeliteApplication
   with MiscOpsExp with SynchronizedArrayBufferOpsExp with StringOpsExp {
- 
+
   var resultBuffer: ArrayBuffer[Boolean] = _
-  
+
   def collector: Rep[ArrayBuffer[Boolean]] = staticData(resultBuffer)
 }
 
@@ -164,27 +176,26 @@ trait DeliteTestModule extends DeliteTestConfig
   def main(): Unit
 
   //var collector: Rep[ArrayBuffer[Boolean]] = null.asInstanceOf[Rep[ArrayBuffer[Boolean]]]
-//  lazy val ctest = ArrayBuffer[Boolean]()
-//
-//  def collect(s: Rep[Boolean]) {
-//    // interpreted if/then/else!
-//    //if (collector == null) collector = ArrayBuffer[Boolean]()
-//    ctest append s
-//  }
-//
-//  def mkReport() {
-//    println(MAGICDELIMETER + (ctest mkString unit(",")) + MAGICDELIMETER)
-//  }
+  //  lazy val ctest = ArrayBuffer[Boolean]()
+  //
+  //  def collect(s: Rep[Boolean]) {
+  //    // interpreted if/then/else!
+  //    //if (collector == null) collector = ArrayBuffer[Boolean]()
+  //    ctest append s
+  //  }
+  //
+  //  def mkReport() {
+  //    println(MAGICDELIMETER + (ctest mkString unit(",")) + MAGICDELIMETER)
+  //  }
 
-  
   def collector: Rep[ArrayBuffer[Boolean]]
-  
+
   def collect(s: Rep[Boolean]) { collector += s }
 
   def mkReport(): Rep[Unit] = {
     println(unit(MAGICDELIMETER) + (collector mkString unit(",")) + unit(MAGICDELIMETER))
   }
-  
+
   /*
   def collect(s: Rep[Boolean])(implicit c: Rep[ArrayBuffer[Boolean]]) { c += s }
 
@@ -192,8 +203,6 @@ trait DeliteTestModule extends DeliteTestConfig
     println(MAGICDELIMETER + (c mkString unit(",")) + MAGICDELIMETER)
   }
   */
-
-
 
   /*
   def main() = {
