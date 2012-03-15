@@ -27,14 +27,16 @@ trait ComplexTest extends DeliteTestModule with OptiSDRApplication {
 object UIntTestRunner extends DeliteTestRunner with OptiSDRApplicationRunner with UIntTest
 trait UIntTest extends DeliteTestModule with OptiSDRApplication {
   def main() = {
-    /* val a = UInt(1)
+    val a = UInt(1)
     val b = UInt(2)
     
-    val c = a * b */
+    val c = a * b
   }
 }
 
 class PrimitiveSuite extends DeliteSuite {
   def testComplexOps() { compileAndTest(ComplexTestRunner) }
+  
+  def testUIntOps() { compileAndTest(UIntTestRunner) }
 }
 

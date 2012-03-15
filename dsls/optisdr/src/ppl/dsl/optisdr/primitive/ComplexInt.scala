@@ -28,9 +28,32 @@ trait ComplexIntOps extends Variables {
   
   // Objects methods
   class ComplexIntOpsCls(x: Rep[ComplexInt]) {
-    // def conj
     def real = complex_int_real(x)
+    def realValue = complex_int_real(x)
     def imag = complex_int_imag(x)
+    
+    def conj = complex_int_conj(x)
+    
+    def +(y: Rep[ComplexInt]) = complex_int_plus(x,y)
+    def -(y: Rep[ComplexInt]) = complex_int_minus(x,y)
+    def *(y: Rep[ComplexInt]) = complex_int_times(x,y)
+    def /(y: Rep[ComplexInt]) = complex_int_divide(x,y)
+    def abs = complex_int_abs(x)
+    def exp = complex_int_exp(x)
+  }
+  
+  // Arith implicit
+  implicit def complexIntArith : Arith[ComplexInt] = new Arith[ComplexInt] {
+    def +=(a: Rep[ComplexInt], b: Rep[ComplexInt])(implicit ctx: SourceContext) = repToComplexIntOps(a).+(b)
+    def +(a: Rep[ComplexInt], b: Rep[ComplexInt])(implicit ctx: SourceContext) = repToComplexIntOps(a).+(b)
+    def -(a: Rep[ComplexInt], b: Rep[ComplexInt])(implicit ctx: SourceContext) = repToComplexIntOps(a).-(b)
+    def *(a: Rep[ComplexInt], b: Rep[ComplexInt])(implicit ctx: SourceContext) = repToComplexIntOps(a).*(b)
+    def /(a: Rep[ComplexInt], b: Rep[ComplexInt])(implicit ctx: SourceContext) = repToComplexIntOps(a)./(b)
+    def abs(a: Rep[ComplexInt])(implicit ctx: SourceContext) = repToComplexIntOps(a).abs
+    def exp(a: Rep[ComplexInt])(implicit ctx: SourceContext) = repToComplexIntOps(a).exp
+    
+    def empty(implicit ctx: SourceContext) = ComplexInt(0, 0)
+    def zero(a: Rep[ComplexInt])(implicit ctx: SourceContext) = empty
   }
   
   def complex_int_new(real: Rep[Int], imag: Rep[Int])(implicit ctx: SourceContext) : Rep[ComplexInt]
@@ -40,6 +63,7 @@ trait ComplexIntOps extends Variables {
   def complex_int_imag(x: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[Int]
   
   // Operations
+  def complex_int_conj(x: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[ComplexInt]
   //def complex_int_negate(x: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[ComplexInt]
   
   // Math ops
@@ -50,6 +74,12 @@ trait ComplexIntOps extends Variables {
   def infix_+[L:Manifest,R:Arith:Manifest,M[X] <: Matrix[X]](lhs: Interface[Matrix[L]], rhs: Rep[M[R]])(implicit c: Rep[L] => Rep[R], mb: MatrixBuilder[R,M[R]], toIntf: Rep[M[R]] => Interface[Matrix[R]], m: Manifest[M[R]], ctx: SourceContext, o: Overloaded17): Rep[M[R]] = matrix_plus_withconvert[L,R,M[R]](lhs,toIntf(rhs))
   def infix_+[L:Manifest,R:Arith:Manifest,M[X] <: Matrix[X]](lhs: Rep[M[L]], rhs: Rep[M[R]])(implicit c: Rep[L] => Rep[R], mb: MatrixBuilder[R,M[R]], toIntfL: Rep[M[L]] => Interface[Matrix[L]], toIntfR: Rep[M[R]] => Interface[Matrix[R]], m: Manifest[M[R]], ctx: SourceContext, o: Overloaded18): Rep[M[R]] = matrix_plus_withconvert[L,R,M[R]](toIntfL(lhs),toIntfR(rhs)) */
   
+  def complex_int_plus(x: Rep[ComplexInt], y: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[ComplexInt]
+  def complex_int_minus(x: Rep[ComplexInt], y: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[ComplexInt]
+  def complex_int_times(x: Rep[ComplexInt], y: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[ComplexInt]
+  def complex_int_divide(x: Rep[ComplexInt], y: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[ComplexInt]
+  def complex_int_abs(x: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[ComplexInt]
+  def complex_int_exp(x: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[ComplexInt]
 }
 
 trait ComplexIntOpsExp extends ComplexIntOps {
@@ -71,5 +101,40 @@ trait ComplexIntOpsExp extends ComplexIntOps {
   case class ComplexIntConj(x: Exp[ComplexInt]) extends Def[ComplexInt]
   
   def complex_int_conj(x: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntConj(x))
+  
+  // Math operations
+  case class ComplexIntPlus(x: Exp[ComplexInt], y: Exp[ComplexInt]) extends Def[ComplexInt]
+  case class ComplexIntMinus(x: Exp[ComplexInt], y: Exp[ComplexInt]) extends Def[ComplexInt]
+  case class ComplexIntTimes(x: Exp[ComplexInt], y: Exp[ComplexInt]) extends Def[ComplexInt]
+  case class ComplexIntDivide(x: Exp[ComplexInt], y: Exp[ComplexInt]) extends Def[ComplexInt]
+  case class ComplexIntAbs(x: Exp[ComplexInt]) extends Def[ComplexInt]
+  case class ComplexIntExp(x: Exp[ComplexInt]) extends Def[ComplexInt]
+  
+  def complex_int_plus(x: Exp[ComplexInt], y: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntPlus(x, y))
+  def complex_int_minus(x: Exp[ComplexInt], y: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntMinus(x, y))
+  def complex_int_times(x: Exp[ComplexInt], y: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntTimes(x, y))
+  def complex_int_divide(x: Exp[ComplexInt], y: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntDivide(x, y))
+  def complex_int_abs(x: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntAbs(x))
+  def complex_int_exp(x: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntExp(x))
+  
   //def complex_int_negate(x: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntNew(0-x.real, 0-x.imag))
+}
+
+trait ComplexIntOpsExpOpt extends ComplexIntOpsExp {
+  this: OptiSDRExp =>
+
+  override def complex_int_plus(lhs: Exp[ComplexInt], rhs: Exp[ComplexInt])(implicit ctx: SourceContext) : Exp[ComplexInt] = (lhs,rhs) match {
+    case (Def(ComplexIntNew(Const(xr), Const(xi))), Def(ComplexIntNew(Const(yr), Const(yi)))) => ComplexInt(xr+yr, xi+yi)
+    case _ => super.complex_int_plus(lhs, rhs)
+  }
+  
+  override def complex_int_minus(lhs: Exp[ComplexInt], rhs: Exp[ComplexInt])(implicit ctx: SourceContext) : Exp[ComplexInt] = (lhs,rhs) match {
+    case (Def(ComplexIntNew(Const(xr), Const(xi))), Def(ComplexIntNew(Const(yr), Const(yi)))) => ComplexInt(xr-yr, xi-yi)
+    case _ => super.complex_int_minus(lhs, rhs)
+  }
+  
+  override def complex_int_times(lhs: Exp[ComplexInt], rhs: Exp[ComplexInt])(implicit ctx: SourceContext) : Exp[ComplexInt] = (lhs,rhs) match {
+    case (Def(ComplexIntNew(Const(xr), Const(xi))), Def(ComplexIntNew(Const(yr), Const(yi)))) => ComplexInt(xr*yr-xi*yi,xr*yi+xi*yr)
+    case _ => super.complex_int_times(lhs, rhs)
+  }
 }

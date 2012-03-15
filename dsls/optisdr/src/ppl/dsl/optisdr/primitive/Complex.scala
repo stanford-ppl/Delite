@@ -57,7 +57,7 @@ trait ComplexOps extends Variables {
     def abs(a: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a).abs
     def exp(a: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a).exp
     
-    def empty(implicit ctx: SourceContext) = Complex(unit(0.0), unit(0.0))
+    def empty(implicit ctx: SourceContext) = Complex(0.0, 0.0)
     def zero(a: Rep[Complex])(implicit ctx: SourceContext) = empty
   }
   
