@@ -28,10 +28,12 @@ trait UIntOps extends Variables {
     def /(y: Rep[UInt]) = uint_divide(x,y)
     def abs = uint_abs(x)
     def exp = uint_exp(x)
+    
+    def intValue = uint_int_value(x)
   }
   
   // Arith implicit
-  implicit def uintArith[T:Arith:Manifest]: Arith[UInt] = new Arith[UInt] {
+  implicit def uintArith : Arith[UInt] = new Arith[UInt] {
     def +=(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).+(b)
     def +(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).+(b)
     def -(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).-(b)
@@ -54,6 +56,9 @@ trait UIntOps extends Variables {
   def uint_divide(x: Rep[UInt], y: Rep[UInt])(implicit ctx: SourceContext) : Rep[UInt]
   def uint_abs(x: Rep[UInt])(implicit ctx: SourceContext) : Rep[UInt]
   def uint_exp(x: Rep[UInt])(implicit ctx: SourceContext) : Rep[UInt]
+  
+  // Conversions
+  def uint_int_value(x: Rep[UInt]) : Rep[Int]
 }
 
 trait UIntOpsExp extends UIntOps {
@@ -61,6 +66,8 @@ trait UIntOpsExp extends UIntOps {
   
   // Object creation
   case class UIntNew(x: Exp[Int]) extends Def[UInt]
+  
+  def uint_new(x: Exp[Int])(implicit ctx: SourceContext) = reflectPure(UIntNew(x))
   
   // Operations
   case class UIntPlus(x: Exp[UInt], y: Exp[UInt]) extends Def[UInt]
@@ -70,15 +77,17 @@ trait UIntOpsExp extends UIntOps {
   case class UIntAbs(x: Exp[UInt]) extends Def[UInt]
   case class UIntExp(x: Exp[UInt]) extends Def[UInt]
   
-  def uint_new(x: Exp[Int])(implicit ctx: SourceContext) = reflectPure(UIntNew(x))
-  
-  // Operations
   def uint_plus(x: Exp[UInt], y: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntPlus(x, y))
   def uint_minus(x: Exp[UInt], y: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntMinus(x, y))
   def uint_times(x: Exp[UInt], y: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntTimes(x, y))
   def uint_divide(x: Exp[UInt], y: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntDivide(x, y))
   def uint_abs(x: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntAbs(x))
   def uint_exp(x: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntExp(x))
+  
+  // Conversions
+  case class UIntIntValue(x: Exp[UInt]) extends Def[Int]
+  
+  def uint_int_value(x: Exp[UInt]) = reflectPure(UIntIntValue(x))
 }
 
 

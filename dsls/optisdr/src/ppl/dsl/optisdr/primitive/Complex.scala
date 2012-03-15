@@ -21,8 +21,9 @@ trait ComplexOps extends Variables {
   
   // Objects methods
   class ComplexOpsCls(x: Rep[Complex]) {
-    // def conj
+    def conj = complex_conj(x)
     def real = complex_real(x)
+    def realValue = complex_real(x)
     def imag = complex_imag(x)
     
     def +(y: Rep[Complex]) = complex_plus(x,y)
@@ -40,13 +41,14 @@ trait ComplexOps extends Variables {
   def complex_imag(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Real]
   
   // Implicit converts to complex
-  //implicit def repComplexIntToRepComplex(x: Rep[ComplexInt]): Rep[Complex]
+  implicit def repComplexIntToRepComplex(x: Rep[ComplexInt]) = complex_new(x.real, x.imag)
   
   // Operations
-  def complex_negate(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
+  def complex_conj(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
+  //def complex_negate(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
   
   // Arith implicit
-  implicit def complexArith[T:Arith:Manifest]: Arith[Complex] = new Arith[Complex] {
+  implicit def complexArith : Arith[Complex] = new Arith[Complex] {
     def +=(a: Rep[Complex], b: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a).+(b)
     def +(a: Rep[Complex], b: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a).+(b)
     def -(a: Rep[Complex], b: Rep[Complex])(implicit ctx: SourceContext) = repToComplexOps(a).-(b)
@@ -75,6 +77,10 @@ trait ComplexOps extends Variables {
   def infix_+[M[X] <: Matrix[X]](lhs: Float, rhs: Rep[M[Int]])(implicit mb: MatrixBuilder[Float,M[Float]], toIntf: Rep[M[Int]] => Interface[Matrix[Int]], m: Manifest[M[Float]], ctx: SourceContext, o: Overloaded22): Rep[M[Float]] = matrix_plus_scalar_withconvert[Int,Float,M[Float]](toIntf(rhs),complex(lhs))
   def infix_+[M[X] <: Matrix[X]](lhs: Double, rhs: Rep[M[Int]])(implicit mb: MatrixBuilder[Double,M[Double]], toIntf: Rep[M[Int]] => Interface[Matrix[Int]], m: Manifest[M[Double]], ctx: SourceContext, o: Overloaded23): Rep[M[Double]] = matrix_plus_scalar_withconvert[Int,Double,M[Double]](toIntf(rhs),complex(lhs))
   def infix_+[M[X] <: Matrix[X]](lhs: Double, rhs: Rep[M[Float]])(implicit mb: MatrixBuilder[Double,M[Double]], toIntf: Rep[M[Float]] => Interface[Matrix[Float]], m: Manifest[M[Double]], ctx: SourceContext, o: Overloaded24): Rep[M[Double]] = matrix_plus_scalar_withconvert[Float,Double,M[Double]](toIntf(rhs),complex(lhs)) */
+  
+  // Conversions
+  def complex_int_value(x: Rep[Complex]) : Rep[Int]
+  def complex_uint_value(x: Rep[Complex]) : Rep[UInt]
 }
 
 trait ComplexOpsExp extends ComplexOps {
@@ -93,10 +99,14 @@ trait ComplexOpsExp extends ComplexOps {
   def complex_imag(x: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexImag(x))
   
   // Implicit convert to complex
-  //def repComplexIntToRepComplex(x: Rep[ComplexInt]) = complex_obj_new(x.real, x.imag)
+  //def repComplexIntToRepComplex(x: Rep[ComplexInt])
   
   // Operations
-  //def complex_conj(x: Exp[Complex])(implicit ctx: SourceContext) = complex_obj_new(x.real, 0.0-x.imag)
+  case class ComplexConj(x: Exp[Complex]) extends Def[Complex]
+  
+  case class ComplexSqNorm(x: Exp[Complex]) extends Def[Real]
+  
+  def complex_conj(x: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexConj(x))
   //def complex_negate(x: Exp[Complex])(implicit ctx: SourceContext) = complex_obj_new(0.0-x.real, 0.0-x.imag)
   
   // Math operations
@@ -116,6 +126,13 @@ trait ComplexOpsExp extends ComplexOps {
   
   //def infix_+(lhs: Exp[Int], rhs: Exp[Complex])(ctx: SourceContext, o: Overloaded1) = complex_obj_new(lhs + rhs.real, rhs.imag)
   //def infix_+(lhs: Exp[Real], rhs: Exp[Complex])(ctx: SourceContext, o: Overloaded2) = complex_obj_new(lhs + rhs.real, rhs.imag)
+  
+  // Conversions
+  case class ComplexIntValue(x: Exp[Complex]) extends Def[Int]
+  case class ComplexUIntValue(x: Exp[Complex]) extends Def[UInt]
+  
+  def complex_int_value(x: Exp[Complex]) = reflectPure(ComplexIntValue(x))
+  def complex_uint_value(x: Exp[Complex]) = reflectPure(ComplexUIntValue(x))
 }
 
 trait ComplexOpsExpOpt extends ComplexOpsExp {

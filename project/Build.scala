@@ -24,6 +24,8 @@ object DeliteBuild extends Build {
     retrieveManaged := true,
     scalacOptions += "-Yno-generic-signatures",
     scalacOptions += "-Yvirtualize"
+    // scalacOptions += "-Xlog-implicits",
+    // scalacOptions += "-explaintypes"
   )
 
   val virtBuildSettings = virtBuildSettingsBase ++ Seq(
@@ -77,7 +79,7 @@ object DeliteBuild extends Build {
     libraryDependencies += scalatest,
     parallelExecution in Test := false
     // don't appear to be able to depend on a different scala version simultaneously, so just using scala-virtualized for everything
-  )) dependsOn(framework, runtime, optiml, optimlApps, runtime)
+  )) dependsOn(framework, runtime, optiml, optisdr, optimlApps, runtime)
   
   //dependsOn(framework % "test->compile;compile->compile", optiml % "test->compile;compile->compile", optiql % "test", optimlApps % "test->compile;compile->compile", runtime % "test->compile;compile->compile")
 }

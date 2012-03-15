@@ -15,7 +15,10 @@ trait ComplexIntOps extends Variables {
   
   // Static methods
   object ComplexInt {
-    def apply(real: Rep[Int], imag: Rep[Int])(implicit ctx: SourceContext) = complex_int_obj_new(real, imag) 
+    def apply(real: Int, imag: Int)(implicit ctx: SourceContext) = complex_int_new(unit(real), unit(imag)) 
+    def apply(real: Rep[Int], imag: Int)(implicit ctx: SourceContext) = complex_int_new(real, unit(imag))
+    def apply(real: Int, imag: Rep[Int])(implicit ctx: SourceContext) = complex_int_new(unit(real), imag)
+    def apply(real: Rep[Int], imag: Rep[Int])(implicit ctx: SourceContext) = complex_int_new(real, imag) 
   }
   
   // Implicit numeric conversions
@@ -30,14 +33,14 @@ trait ComplexIntOps extends Variables {
     def imag = complex_int_imag(x)
   }
   
-  def complex_int_obj_new(real: Rep[Int], imag: Rep[Int])(implicit ctx: SourceContext) : Rep[ComplexInt]
+  def complex_int_new(real: Rep[Int], imag: Rep[Int])(implicit ctx: SourceContext) : Rep[ComplexInt]
   
   // Accessors
   def complex_int_real(x: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[Int]
   def complex_int_imag(x: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[Int]
   
   // Operations
-  def complex_int_negate(x: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[ComplexInt]
+  //def complex_int_negate(x: Rep[ComplexInt])(implicit ctx: SourceContext) : Rep[ComplexInt]
   
   // Math ops
   /* def infix_+[L](lhs: L, rhs: Rep[ComplexInt])(implicit c: L => Rep[ComplexInt], ctx: SourceContext, o: Overloaded13): Rep[ComplexInt] = complex_int_plus(rhs,c(lhs))
@@ -53,18 +56,20 @@ trait ComplexIntOpsExp extends ComplexIntOps {
   this: OptiSDRExp =>
   
   // Object creation
-  case class ComplexIntObjNew(real: Exp[Int], imag: Exp[Int]) extends Def[ComplexInt]
+  case class ComplexIntNew(real: Exp[Int], imag: Exp[Int]) extends Def[ComplexInt]
   
-  def complex_int_obj_new(real: Exp[Int], imag: Exp[Int])(implicit ctx: SourceContext) = reflectPure(ComplexIntObjNew(real, imag))
+  def complex_int_new(real: Exp[Int], imag: Exp[Int])(implicit ctx: SourceContext) = reflectPure(ComplexIntNew(real, imag))
   
   // Accessors
-  case class ComplexIntReal(x: Exp[ComplexInt]) extends Def[Int]
+  case class ComplexIntInt(x: Exp[ComplexInt]) extends Def[Int]
   case class ComplexIntImag(x: Exp[ComplexInt]) extends Def[Int]
   
-  def complex_int_real(x: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntReal(x))
+  def complex_int_real(x: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntInt(x))
   def complex_int_imag(x: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntImag(x))
   
   // Operations
-  def complex_int_conj(x: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntObjNew(x.real, 0-x.imag))
-  def complex_int_negate(x: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntObjNew(0-x.real, 0-x.imag))
+  case class ComplexIntConj(x: Exp[ComplexInt]) extends Def[ComplexInt]
+  
+  def complex_int_conj(x: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntConj(x))
+  //def complex_int_negate(x: Exp[ComplexInt])(implicit ctx: SourceContext) = reflectPure(ComplexIntNew(0-x.real, 0-x.imag))
 }

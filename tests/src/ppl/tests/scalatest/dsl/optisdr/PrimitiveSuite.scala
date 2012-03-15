@@ -18,6 +18,19 @@ object ComplexTestRunner extends DeliteTestRunner with OptiSDRApplicationRunner 
 trait ComplexTest extends DeliteTestModule with OptiSDRApplication {
   def main() = {
     val a = Complex(1, 1)
+    val b = Complex(2, -2)
+    
+    val c = a + b
+  }
+}
+
+object UIntTestRunner extends DeliteTestRunner with OptiSDRApplicationRunner with UIntTest
+trait UIntTest extends DeliteTestModule with OptiSDRApplication {
+  def main() = {
+    /* val a = UInt(1)
+    val b = UInt(2)
+    
+    val c = a * b */
   }
 }
 
