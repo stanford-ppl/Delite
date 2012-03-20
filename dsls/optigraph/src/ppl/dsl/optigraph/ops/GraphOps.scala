@@ -22,6 +22,10 @@ trait GraphOps extends DSLType with Variables {
   object UGraph {
     def apply() = ugraph_new()
   }
+  
+  object RandUniformGraph {
+    def apply(numNodes: Rep[Int], numEdges: Rep[Int], seed: Rep[Long]) = graph_randu(numNodes: Rep[Int], numEdges: Rep[Int], seed: Rep[Long])
+  }
     
   implicit def repGraphToGraphOps(g: Rep[Graph]) = new GraphOpsCls(g)
  
@@ -78,6 +82,8 @@ trait GraphOps extends DSLType with Variables {
   def graph_add_edge(g: Rep[Graph], from: Rep[Node], to: Rep[Node]): Rep[Edge]
   def graph_freeze(g: Rep[Graph]): Rep[Unit]
   def graph_snapshot(g: Rep[Graph]): Rep[Graph]
+  def graph_randu(numNodes: Rep[Int], numEdges: Rep[Int], seed: Rep[Long]): Rep[Graph]
+  def graph_load(fileName: Rep[String]): Rep[Graph]
 }
 
 trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
@@ -98,6 +104,8 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
   case class GraphAddEdge(g: Exp[Graph], from: Rep[Node], to: Rep[Node]) extends Def[Edge]
   case class GraphFreeze(g: Exp[Graph]) extends Def[Unit]
   case class GraphSnapshot(g: Exp[Graph]) extends Def[Graph]
+  case class GraphRandUniform(isDirected: Exp[Boolean], numNodes: Exp[Int], numEdges: Exp[Int], seed: Exp[Long]) extends Def[Graph]
+  case class GraphLoad(fileName: Exp[String]) extends Def[Graph]
   
   //case class GraphInDFS(from: Exp[Node], filter: Option[Exp[Node] => Exp[Boolean]], 
     //  b: Exp[Node] => Exp[Unit], inPost: Option[Exp[Node] => Exp[Unit]]) 
@@ -149,7 +157,13 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
           depth -= 1
           while(depth >= unit(0)) {
             val items = bfsLevels(depth)
-            items.foreach(inRev)
+            bfsVisitedDynVar.withValue(visited) {
+            	// apply the block to each node
+            	pred match {
+            		case None => items.foreach(inRev)
+            		case Some(p) => items.foreach(n => if(p(n)) { inRev(n); unit() } else { unit() })
+            	}
+            }
             depth -= 1
           }}
         case None => // do nothing
@@ -203,6 +217,8 @@ trait GraphOpsExp extends GraphOps with EffectExp with NodeOps {
   def graph_add_edge(g: Exp[Graph], from: Rep[Node], to: Rep[Node]) = reflectWrite(g)(GraphAddEdge(g,from,to))
   def graph_freeze(g: Exp[Graph]) = reflectWrite(g)(GraphFreeze(g))
   def graph_snapshot(g: Exp[Graph]) = reflectPure(GraphSnapshot(g))
+  def graph_randu(numNodes: Exp[Int], numEdges: Exp[Int], seed: Exp[Long]) = reflectPure(GraphRandUniform(unit(true), numNodes, numEdges, seed))
+  def graph_load(fileName: Exp[String]) = reflectPure(GraphLoad(fileName))
   
   // alias/sharing
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
@@ -254,6 +270,8 @@ trait ScalaGenGraphOps extends BaseGenGraphOps with ScalaGenBase {
       case GraphFreeze(g) => emitValDef(sym, quote(g) + ".freeze")
       case GraphSnapshot(g) => emitValDef(sym, quote(g) + ".snapshot")
       case GraphFlip(g) => emitValDef(sym, quote(g) + ".reverse")
+      case GraphRandUniform(isD, n,m,seed) => emitValDef(sym, "Graph.uniformRandomGraph("+ quote(isD) + "," + quote(n) + "," + quote(m) + "," + quote(seed) + ")")
+      case GraphLoad(f) => emitValDef(sym, "Graph.loadGraph("+ quote(f) + ")")
       case _ => super.emitNode(sym, rhs)
     }
   }

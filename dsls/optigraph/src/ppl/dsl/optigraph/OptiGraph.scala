@@ -112,10 +112,13 @@ trait OptiGraphCodeGenBase extends GenericFatCodegen with FuseTransformedForeach
   override def initialDefs = IR.deliteGenerator.availableDefs
 
   def dsmap(line: String) = line
+  def parmap(line: String) = line
   val specialize = Set[String]()
   val specialize2 = Set[String]()
+  val specialize3 = Set[String]()
   def genSpec(f: File, outPath: String) = {}
   def genSpec2(f: File, outPath: String) = {}
+  def genSpec3(f: File, outPath: String) = {}
 
   def getFiles(d: File): Array[File] = {
     d.listFiles flatMap { f => if (f.isDirectory()) getFiles(f) else Array(f) }
@@ -140,10 +143,14 @@ trait OptiGraphCodeGenBase extends GenericFatCodegen with FuseTransformedForeach
         if (specialize2 contains (f.getName.substring(0, f.getName.indexOf(".")))) {
           genSpec2(f, path)
         }
+        if (specialize3 contains (f.getName.substring(0, f.getName.indexOf(".")))) {
+          genSpec3(f, path)
+        }
         val outFile = path + s + f.getName
         val out = new BufferedWriter(new FileWriter(outFile))
         for (line <- scala.io.Source.fromFile(f).getLines) {
-          out.write(dsmap(line) + "\n")
+          var l = dsmap(line) //+ "\n"
+          out.write(parmap(l) + "\n")
         }
         out.close()
       }
@@ -161,8 +168,9 @@ trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCode
   
   val IR: DeliteApplication with OptiGraphExp
 
-  override val specialize = Set[String]()
+  override val specialize = Set[String]("Property", "Reduceable", "Deferrable")
   override val specialize2 = Set[String]()
+  override val specialize3 = Set[String]("GIterable", "GOrder", "GSet", "GSeq")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
@@ -187,10 +195,21 @@ trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCode
     }
     }
   }
+  
+  override def genSpec3(f: File, dsOut: String) {
+    for (s <- List("Node","Edge")) {
+      val outFile = dsOut + s + f.getName
+      val out = new BufferedWriter(new FileWriter(outFile))
+      for (line <- scala.io.Source.fromFile(f).getLines) {
+        out.write(specmap(line, s) + "\n")
+      }
+      out.close()
+    }
+  }
 
   def specmap(line: String, t: String) : String = {
     var res = line.replaceAll("object ", "object " + t)
-    res = res.replaceAll("import ", "import " + t)
+    //res = res.replaceAll("import ", "import " + t)
     res = res.replaceAll("@specialized T: ClassManifest", t)
     res = res.replaceAll("T:Manifest", t)
     res = res.replaceAll("\\bT\\b", t)
@@ -220,7 +239,8 @@ trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCode
     parmap(super.remap(m))
   }
 
-  def parmap(line: String): String = {
+  override def parmap(line: String): String = {
+    //printf(line)
     var res = line
     res = res.replaceAll("EdgeProperty", "Property")
     res = res.replaceAll("NodeProperty", "Property")
@@ -237,6 +257,19 @@ trait OptiGraphCodeGenScala extends OptiGraphCodeGenBase with OptiGraphScalaCode
         }
       }
     }
+    
+    for(tpe1 <- List("Node","Edge")) {
+      for (s <- specialize3) {
+        res = res.replaceAll(s+"\\["+tpe1+"\\]", tpe1+s)
+      }
+    }
+    for (s <- specialize3) {
+      res = res.replaceAll(s+"\\[generated.scala.Node\\]", "Node"+s)
+      res = res.replaceAll(s+"\\[generated.scala.Edge\\]", "Edge"+s)
+      res = res.replaceAll(s+"\\[ppl.dsl.optigraph.Node\\]", "Node"+s)
+      res = res.replaceAll(s+"\\[ppl.dsl.optigraph.Edge\\]", "Edge"+s)
+    }
+    
     dsmap(res)
   }
 

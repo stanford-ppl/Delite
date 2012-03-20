@@ -1,6 +1,8 @@
 package ppl.dsl.optigraph.datastruct.scala
 
 import collection.mutable.{HashMap, Map, MutableList}
+import scala.util.Random
+import java.io._
 
 /**
  * Directed/undirected multi-graph
@@ -115,6 +117,7 @@ class Graph(val isDirected: Boolean)  {
     }
     val sorted = _nodes map {adjMap(_).sortBy{case (e,n) => n.id}}
     nodeOutEdges = sorted map {(l: MutableList[(Edge,Node)]) => new GIterable[Edge]((l map {_._1}).toArray)}
+    // TODO: this needs to be fixed (since out/inNeighbors might have duplicates)
     nodeOutNeighbors = sorted map {(l: MutableList[(Edge,Node)]) => new GIterable[Node]((l map {_._2}).toArray)}
     if(isDirected) {
       val sortedReversed = _nodes map {adjMapReversed(_).sortBy{case (e,n) => n.id}}
@@ -324,5 +327,73 @@ class Graph(val isDirected: Boolean)  {
     }
     
     new GIterable[Edge](downEdges.toArray)
+  }
+}
+
+object Graph {
+  // Random graph generators
+  def uniformRandomGraph(isDirected: Boolean, n: Int, m: Int, seed: Long): Graph = {
+    val rand = new Random(seed); 
+    val G = new Graph(isDirected) 
+    val gNodes = new Array[Node](n)
+    var i = 0
+    while(i < n) {
+      gNodes(i) = G.addNode
+      i += 1
+    }
+    i = 0
+    while(i < m) {
+      val fromId = rand.nextInt(n)
+      val toId = rand.nextInt(n);
+      G.addEdge(gNodes(fromId), gNodes(toId))
+      i += 1
+    }
+    G.snapshot()
+  }
+  
+  def loadGraph(fileName: String): Graph = {
+    val fis = new FileInputStream(fileName)
+    val dis = new DataInputStream(fis)
+    // skip first 12 bytes (assume the node/edge ids are 32-bit)
+    dis.readInt()
+    dis.readInt()
+    dis.readInt()
+    
+    val G = new Graph(true) 
+    // graph size
+    val n = java.lang.Integer.reverseBytes(dis.readInt())
+    val m = java.lang.Integer.reverseBytes(dis.readInt())
+    
+    // graph adjacency
+    val offset = new Array[Int](n+1)
+    val nodeidx = new Array[Int](m)
+    val gNodes = new Array[Node](n)
+    
+    var i = 0
+    while(i < n) {
+      offset(i) = java.lang.Integer.reverseBytes(dis.readInt())
+      gNodes(i) = G.addNode
+      i += 1
+    }
+    offset(n) = java.lang.Integer.reverseBytes(dis.readInt())
+   
+    i = 0
+    while(i < m) {
+      nodeidx(i) = java.lang.Integer.reverseBytes(dis.readInt())
+      i += 1
+    }
+    
+    i = 0
+    while(i < n) {
+      val fromId = i
+      var j = offset(i)
+      while(j < offset(i+1)) {
+        val toId = nodeidx(j)
+    	G.addEdge(gNodes(fromId), gNodes(toId))
+    	j += 1
+      }
+      i += 1
+    }
+    G.snapshot()
   }
 }

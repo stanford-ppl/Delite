@@ -1016,70 +1016,102 @@ trait OptiGraphTests extends OptiGraphApplication {
   def page_rank()//G: Rep[Graph], e: Rep[Double], d: Rep[Double], max_iter: Rep[Int], 
       //PR: Rep[NodeProperty[Double]]) 
   {
-    val G = rand_graph()
-    val e = 0.1
+    //val G = RandUniformGraph(5,5,1997L)
+    val G = graph_load("/home/viq/delite/Delite/test.bin")
+    
+    val e = 0.001
     val d = 0.85
-    val max_iter = 5
+    val max_iter = 6
     val PR = NodeProperty[Double](G)
     
     val diff = Reduceable[Double](0.0)
     var cnt = 0
-    val N = G.NumNodes
-    PR.setAll(1.0/N.asInstanceOf[Rep[Double]])
+    val N = G.NumNodes.asInstanceOf[Rep[Double]]
+    PR.setAll(1.0/N)
 
+    println("G.N " + N)
+    
+    // move to ds
+    val deg = Array[Int](G.NumNodes)
+    for(t <- G.Nodes) {
+      deg(t.Id) = t.OutDegree
+    }
+    
+    tic(G, PR, deg)
+    //var num_abs = 0
+    //var v = 0.0
     var cond = true
+    //val n = G.Node(0)
     while(cond) {     
       diff.setValue(0.0)
       for(t <- G.Nodes) {
-        val Val = ((1.0 - d) / N.asInstanceOf[Rep[Double]]) + d * Sum(t.InNbrs){w => PR(w) / w.OutDegree}
+        val Val: Rep[Double] = ((1.0 - d) / N) + d * Sum(t.InNbrs){
+          w => PR(w) / deg(w.Id)//w.OutDegree
+        }
+        //val Val = v
         PR <= (t,Val)
+        
         diff += Math.abs(Val - PR(t))
+        //num_abs += 1
+        //v += 1.0
       }
-      //diff.reduce()
       PR.assignAll()
       cnt += 1
       cond = (diff.value > e) && (cnt < max_iter)
     }
+    println("count = " + cnt)
+    //println("abs times = " + num_abs)
+    toc()
     
-    for (n <- G.Nodes) {
-      println("n.Id = " + n.Id + " PR = " + PR(n))
-    }
+//    for(t <- G.Nodes) {
+//      println(" PR " + t.Id + " " + PR(t))
+//    }
   }
   
   def conductance() {
-    val G = rand_graph()
+    //val G = rand_graph()
+    val G = RandUniformGraph(100000,800000,1997L)
+    
     val member = NodeProperty[Int](G)
     var i = 0
     for(n <- G.Nodes) {
-      member(n) = i
-      println("Node id = " + n.Id + " member = " + i + " degree = " + n.Degree)
+      member(n) = i % 4
+      //println("Node id = " + n.Id + " member = " + i + " degree = " + n.Degree)
       i += 1
     }
     
-    val num = 4
+    val start_time = wall_time()
+    var C = 0.0
+    var num = 0
+    while (num < 4) {
     
-    val Din = Sum(G.Nodes, (u:Rep[Node]) => member(u) == num){ _.Degree }
-    val Dout = Sum(G.Nodes, (u:Rep[Node]) => member(u) != num){ _.Degree }
-    val Cross = Sum(G.Nodes, (u:Rep[Node]) => member(u) == num){ u =>
+    	val Din = Sum(G.Nodes, (u:Rep[Node]) => member(u) == num){ _.Degree }
+    	val Dout = Sum(G.Nodes, (u:Rep[Node]) => member(u) != num){ _.Degree }
+    	val Cross = Sum(G.Nodes, (u:Rep[Node]) => member(u) == num){ u =>
                    Count(u.Nbrs) {j => member(j) != num}}
-    val m = if (Din < Dout) Din else Dout
-    val retVal = if(m == 0) {
-      if(Cross == 0) 0.0 else MAX_DOUBLE
+    	val m = if (Din < Dout) Din else Dout
+    	val retVal = if(m == 0) {
+    		if(Cross == 0) 0.0 else MAX_DOUBLE
+    	}
+    	else {
+    		Cross.asInstanceOf[Rep[Double]] / m.asInstanceOf[Rep[Double]]
+    	}
+    	C += retVal
+    	num += 1
     }
-    else {
-      Cross.asInstanceOf[Rep[Double]] / m.asInstanceOf[Rep[Double]]
-    }
+    println("TIME_LOOP: " + (wall_time() - start_time))
     
     
-    println("Din = " + Din)
-    println("Dout = " + Dout)
-    println("Retval = " + retVal)
+    //println("Din = " + Din)
+    //println("Dout = " + Dout)
+    //println("Retval = " + retVal)
   }
   
   def SSC() {
     val G = rand_graph()
     val CompID = NodeProperty[Int](G)
     
+    val start_time = wall_time()
     var numC = 0
     val P = NodeOrder()
     CompID.setAll(-1)
@@ -1089,32 +1121,63 @@ trait OptiGraphTests extends OptiGraphApplication {
       { InPost(s => P.PushFront(s)) })
     }
     
-    For/*[Node, GIterable[Node]]*/(P.Items, (s:Rep[Node]) => CompID(s) == -1) { s => 
+    For(P.Items, (s:Rep[Node]) => CompID(s) == -1) { s => 
       InBFS(G^, s, /*(t:Rep[Node]) => CompID(s) == -1,*/ { t => 
         if(CompID(s) == -1) CompID(t) = numC }) 
       numC += 1;
     }
-    
+    println("TIME_LOOP: " + (wall_time() - start_time))
     println("NumC = " + numC)
+  }
+  
+  def BC() {
+    val G = rand_graph()
+    val BC = NodeProperty[Float](G, 0f)
+    
+    for(s <- G.Nodes) {
+    	// define temporary properties
+    	val Sigma = NodeProperty[Float](G); 
+    	val Delta = NodeProperty[Float](G);
+    	Sigma(s) = 1f;
+   
+    	// Traverse graph in BFS-order from s
+    	InBFS(G, s, (v:Rep[Node]) => v!=s, { v =>
+    		// sum over BFS-parents
+    		Sigma(v) = Sum(v.UpNbrs) {w => Sigma(w)};
+    	}, 
+    	InReverse({v => 
+      		// sum over BFS-children
+    		Delta(v) = Sum(v.DownNbrs) { w =>
+    			Sigma(v) / Sigma(w) * (1f + Delta(w))
+    		}
+    		// TODO: this needs to be a reduction op
+    		BC(v) += Delta(v); //accumulate BC
+    	}))
+    }
   }
   
   def main() {
     /* tests */
-    test_graphOps()
-    test_nodeOpsEdgeOps()
-    test_nodeEdgeProps()
-    test_reduceable()
-    test_reductions()
-    test_deferrable()
-    test_filters()
-    test_iterations()
-    test_traversals()
+    //test_graphOps()
+    //test_nodeOpsEdgeOps()
+    //test_nodeEdgeProps()
+    //test_reduceable()
+    //test_reductions()
+    //test_deferrable()
+    //test_filters()
+    //test_iterations()
+    //test_traversals()
     
     /* sample applications */
     //conductance()
-    //page_rank()
+//    var i = 0
+//    while (i < 2) {
+      page_rank()
+//      i += 1
+//    }
     //SSC()
     //basic()
+    //BC()
   }
 }
 

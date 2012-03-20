@@ -1,9 +1,8 @@
 package ppl.dsl.optigraph.datastruct.scala
 
 import collection.mutable.{HashSet, HashMap}
-import ppl.delite.framework.datastruct.scala.DeliteCollection
 
-class GSet[@specialized T: ClassManifest] extends DeliteCollection[T] {
+class GSet[@specialized T: ClassManifest] {
   
   private val data = HashSet[T]()
   private var dataArray: Array[T] = null

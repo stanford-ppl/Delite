@@ -67,9 +67,15 @@ trait LanguageOps extends Base with OverloadHack { this: OptiGraph =>
   //def RandDGraph(numNodes: Rep[Int], numEdges: Rep[Int]): Rep[Graph] = new_rand_graph(numNodes, numEdges)
   //def RandUGraph(numNodes: Rep[Int], numEdges: Rep[Int]): Rep[Graph] = new_rand_graph(numNodes, numEdges)
   
+  def wall_time(): Rep[Double]
+  def tic(deps: Rep[Any]*) = profile_start(deps)
+  def toc(deps: Rep[Any]*) = profile_stop(deps)
+  
+  def profile_start(deps: Seq[Rep[Any]]): Rep[Unit]
+  def profile_stop(deps: Seq[Rep[Any]]): Rep[Unit]
   
   /* I/O */
-  //def readGraph(filename: Rep[String], delim: Rep[String] = unit("\\\\s+")) = GraphInputReader.read(filename, delim)
+  //def loadGraph(filename: Rep[String]) = GraphInputReader.read(filename, delim)
 
   /** Special values */
   
@@ -86,6 +92,15 @@ trait LanguageOps extends Base with OverloadHack { this: OptiGraph =>
 trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   this: OptiGraphExp with LanguageImplOps =>
   
+    case class WallTime() extends Def[Double]  
+    def wall_time() = reflectEffect(WallTime())
+    
+    case class ProfileStart(deps: List[Exp[Any]]) extends Def[Unit]
+    case class ProfileStop(deps: List[Exp[Any]]) extends Def[Unit]
+
+    def profile_start(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStart(deps.toList))
+    def profile_stop(deps: Seq[Exp[Any]]) = reflectEffect(ProfileStop(deps.toList))
+  
 }
 
 trait BaseGenLanguageOps extends GenericFatCodegen {
@@ -100,6 +115,9 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
+      case WallTime() => emitValDef(sym, "System.currentTimeMillis")
+      case ProfileStart(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.start(\"app\", false)")
+      case ProfileStop(deps) => emitValDef(sym, "ppl.delite.runtime.profiler.PerformanceTimer.stop(\"app\", false)")
       case _ => super.emitNode(sym, rhs)
     }
   }

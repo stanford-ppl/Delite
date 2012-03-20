@@ -1,7 +1,5 @@
 package ppl.dsl.optigraph.datastruct.scala
 
-import ppl.delite.framework.datastruct.scala.DeliteCollection
-
 /** 
  * A Property object is used to associate data with graph nodes or edges
  * When the Property object is first created, the data value of each node/edge is set 
