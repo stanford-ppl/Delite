@@ -30,6 +30,12 @@ class Graph(val isDirected: Boolean)  {
   protected var nodeOutNeighbors : Array[GIterable[Node]] = null
   // in neighbors of each node
   protected var nodeInNeighbors : Array[GIterable[Node]] = null
+  
+  // opt
+  protected var offsets: Array[Int] = null
+  protected var r_offsets: Array[Int] = null
+  protected var nbrs: Array[Node] = null
+  protected var r_nbrs: Array[Node] = null
 
   /** Basic graph lookup operations (mutable/immutable graphs) */
   def nodes = {
@@ -214,12 +220,12 @@ class Graph(val isDirected: Boolean)  {
   }
   
   def inNeighbors(n: Node) = {
-    if (!immutable) throw new RuntimeException("Operation avaliable for immutable graphs only")
-    if(isDirected) {
+    //if (!immutable) throw new RuntimeException("Operation avaliable for immutable graphs only")
+    //if(isDirected) {
       nodeInNeighbors(n.id)
-    } else {
-      nodeOutNeighbors(n.id)
-    }
+    //} else {
+      //nodeOutNeighbors(n.id)
+    //}
   }
 
   def outEdges(n: Node) = {
@@ -246,7 +252,7 @@ class Graph(val isDirected: Boolean)  {
   }
   
   def outDegree(n: Node) = {
-    if (!immutable) throw new RuntimeException("Operation avaliable for immutable graphs only")
+    //if (!immutable) throw new RuntimeException("Operation avaliable for immutable graphs only")
     nodeOutEdges(n.id).length
   }
   
@@ -351,7 +357,7 @@ object Graph {
     G.snapshot()
   }
   
-  def loadGraph(fileName: String): Graph = {
+  def loadGraph_(fileName: String): Graph = {
     val fis = new FileInputStream(fileName)
     val dis = new DataInputStream(fis)
     // skip first 12 bytes (assume the node/edge ids are 32-bit)
@@ -365,35 +371,140 @@ object Graph {
     val m = java.lang.Integer.reverseBytes(dis.readInt())
     
     // graph adjacency
-    val offset = new Array[Int](n+1)
-    val nodeidx = new Array[Int](m)
+    G.offsets = new Array[Int](n+1)
+    val nbrs_ids = new Array[Int](m)
     val gNodes = new Array[Node](n)
     
     var i = 0
     while(i < n) {
-      offset(i) = java.lang.Integer.reverseBytes(dis.readInt())
+      G.offsets(i) = java.lang.Integer.reverseBytes(dis.readInt())
       gNodes(i) = G.addNode
       i += 1
     }
-    offset(n) = java.lang.Integer.reverseBytes(dis.readInt())
+    G.offsets(n) = java.lang.Integer.reverseBytes(dis.readInt())
    
     i = 0
     while(i < m) {
-      nodeidx(i) = java.lang.Integer.reverseBytes(dis.readInt())
+      nbrs_ids(i) = java.lang.Integer.reverseBytes(dis.readInt())
       i += 1
     }
     
     i = 0
     while(i < n) {
       val fromId = i
-      var j = offset(i)
-      while(j < offset(i+1)) {
-        val toId = nodeidx(j)
+      var j = G.offsets(i)
+      while(j < G.offsets(i+1)) {
+        val toId = nbrs_ids(j)
     	G.addEdge(gNodes(fromId), gNodes(toId))
     	j += 1
       }
       i += 1
     }
     G.snapshot()
+  }
+  
+   def loadGraph(fileName: String): Graph = {
+    val fis = new FileInputStream(fileName)
+    val dis = new DataInputStream(fis)
+    // skip first 12 bytes (assume the node/edge ids are 32-bit)
+    dis.readInt()
+    dis.readInt()
+    dis.readInt()
+    
+    val G = new Graph(true) 
+    G.immutable = true
+    // graph size
+    val n = java.lang.Integer.reverseBytes(dis.readInt())
+    val m = java.lang.Integer.reverseBytes(dis.readInt())
+    
+    // graph adjacency
+    G._nodes = new Array[Node](n)
+    G._edges = new Array[Edge](m)
+    G.offsets = new Array[Int](n+1)
+    G.nbrs = new Array[Node](m)
+    G.r_offsets = new Array[Int](n+1)
+    G.r_nbrs = new Array[Node](m)
+    
+    var i = 0
+    while(i < n) {
+      G._nodes(i) = new Node(G)
+      G._nodes(i).id = i
+      G.offsets(i) = java.lang.Integer.reverseBytes(dis.readInt())
+      //println(" i " + i + " off " + G.offsets(i))
+      i += 1
+    }
+    G.offsets(n) = java.lang.Integer.reverseBytes(dis.readInt())
+   
+    val nbrs_ids = new Array[Int](m)
+    i = 0
+    while(i < m) {
+      nbrs_ids(i) = java.lang.Integer.reverseBytes(dis.readInt())
+      //println(" i " + i + " nbrs " + nbrs_ids(i))
+      i += 1
+    }
+    
+    i = 0
+    val r_nbrs_pos = new Array[Int](m)
+    while(i < n) {
+      val fromId = i
+      var j = G.offsets(i)
+      while(j < G.offsets(i+1)) {
+        val toId = nbrs_ids(j)
+        G.nbrs(j) = G._nodes(toId)
+    	G._edges(j) = new Edge(G, G._nodes(fromId), G._nodes(toId))
+        G._edges(j).id = j
+        
+        // count how many in-coming edges to this node
+        r_nbrs_pos(j) = G.r_offsets(toId)
+        G.r_offsets(toId) += 1            
+    	j += 1
+      }
+      i += 1
+    }
+    
+    // compute offsets
+    var partial_sum = 0
+    i = 0
+    while(i < n) {
+      val count = G.r_offsets(i)
+      G.r_offsets(i) = partial_sum
+      partial_sum += count
+      i += 1
+    }
+    G.r_offsets(n) = partial_sum
+    
+    // compute reverse neighbors
+    i = 0
+    while(i < n) {
+      val fromId = i
+      var j = G.offsets(i)
+      while(j < G.offsets(i+1)) {
+        val toId = nbrs_ids(j)
+        G.r_nbrs(G.r_offsets(toId) + r_nbrs_pos(j)) = G._nodes(fromId) 
+        //println(" toId " + toId + " j " + j + " off " +G.r_offsets(toId) + " pos " + r_nbrs_pos(j) + " r_nbrs " + G.r_nbrs(G.r_offsets(toId) + r_nbrs_pos(j)))
+    	j += 1
+      }
+      i += 1
+    }
+    
+    
+    G.nodeInNeighbors = new Array[GIterable[Node]](n)
+    G.nodeInEdges = new Array[GIterable[Edge]](n)
+    G.nodeOutNeighbors = new Array[GIterable[Node]](n)
+    G.nodeOutEdges = new Array[GIterable[Edge]](n)
+    
+    i = 0
+    while(i < n) {
+      G.nodeOutNeighbors(i) = new GIterable[Node](G.nbrs, G.offsets(i), G.offsets(i+1)-G.offsets(i))
+      G.nodeInNeighbors(i) = new GIterable[Node](G.r_nbrs, G.r_offsets(i), G.r_offsets(i+1)-G.r_offsets(i))
+      i += 1
+    }
+    
+    i = 0
+    while(i < n) {
+      G.nodeOutEdges(i) = new GIterable[Edge](G._edges, G.offsets(i), G.offsets(i+1)-G.offsets(i))
+      i += 1
+    }
+    G
   }
 }
