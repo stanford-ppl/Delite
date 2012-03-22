@@ -21,6 +21,12 @@ trait ComplexTest extends DeliteTestModule with OptiSDRApplication {
     val b = Complex(2, -2)
     
     val c = a + b
+    
+    val d = a.conj
+    
+    val e = a * d
+    
+    val f = b.real + b.imag
   }
 }
 
