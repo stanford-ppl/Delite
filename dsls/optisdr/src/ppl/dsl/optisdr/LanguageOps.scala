@@ -43,9 +43,9 @@ trait BaseGenLanguageOps extends GenericFatCodegen {
   val IR: LanguageOpsExp
   import IR._
 
-  case class AssertWidth(x: Exp[T], width: Exp[Int]) extends Def[Unit]
+  case class AssertWidth[T:Manifest](x: Exp[T], width: Exp[Int]) extends Def[Unit]
   
-  def assertWidth(x: Rep[T], width: Rep[Int]) = reflectEffect(AssertWidth(x,width))
+  def assertWidth[T:Manifest](x: Rep[T], width: Rep[Int]) = reflectEffect(AssertWidth(x,width))
   
   // Kernel stuff
   // 

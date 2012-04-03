@@ -7,7 +7,9 @@ import ppl.dsl.optila.{OptiLAApplication}
 import ppl.dsl.optila.{OptiLAScalaOpsPkg, OptiLAScalaOpsPkgExp, OptiLA, OptiLAExp, OptiLACompiler, OptiLALift, OptiLAUtilities}
 import ppl.dsl.optila.{OptiLAScalaCodeGenPkg, OptiLACudaCodeGenPkg, OptiLAOpenCLCodeGenPkg, OptiLACCodeGenPkg, OptiLACodeGenBase, OptiLACodeGenScala, OptiLACodeGenCuda, OptiLACodeGenOpenCL, OptiLACodeGenC}
 
+import ppl.dsl.optisdr.capabilities._
 import ppl.dsl.optisdr.primitive._
+import ppl.dsl.optisdr.vector._
 
 trait OptiSDRApplicationRunner extends OptiSDRApplication with DeliteApplication with OptiSDRExp
 
@@ -45,7 +47,9 @@ trait OptiSDRLift extends OptiLALift {
  * This the trait that every OptiSDR application must extend.
  */
 trait OptiSDR extends OptiSDRScalaOpsPkg with OptiLA
-  with ComplexOps with ComplexIntOps with UIntOps with SoftBitOps {
+  with ComplexOps with ComplexIntOps with UIntOps with SoftBitOps
+  with SDRArithOps
+  with SDRVectorOps {
   this: OptiSDRApplication =>
 
   type Real = Double
@@ -53,7 +57,9 @@ trait OptiSDR extends OptiSDRScalaOpsPkg with OptiLA
 }
 
 trait OptiSDRExp extends OptiLAExp with OptiSDRCompiler with OptiSDRScalaOpsPkgExp
-  with ComplexOpsExpOpt with ComplexIntOpsExpOpt with UIntOpsExpOpt with SoftBitOpsExp {
+  with ComplexOpsExpOpt with ComplexIntOpsExpOpt with UIntOpsExpOpt with SoftBitOpsExp
+  with SDRArithOpsExp
+  with SDRVectorOpsExpOpt {
   this: DeliteApplication with OptiSDRApplication with OptiSDRExp => // can't be OptiSDRApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
 }
 

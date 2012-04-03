@@ -21,17 +21,17 @@ trait ComplexOps extends Variables {
   
   // Objects methods
   class ComplexOpsCls(x: Rep[Complex]) {
-    def conj = complex_conj(x)
-    def real = complex_real(x)
-    def realValue = complex_real(x)
-    def imag = complex_imag(x)
+    def conj(implicit ctx: SourceContext) = complex_conj(x)
+    def real(implicit ctx: SourceContext) = complex_real(x)
+    def realValue(implicit ctx: SourceContext) = complex_real(x)
+    def imag(implicit ctx: SourceContext) = complex_imag(x)
     
-    def +(y: Rep[Complex]) = complex_plus(x,y)
-    def -(y: Rep[Complex]) = complex_minus(x,y)
-    def *(y: Rep[Complex]) = complex_times(x,y)
-    def /(y: Rep[Complex]) = complex_divide(x,y)
-    def abs = complex_abs(x)
-    def exp = complex_exp(x)
+    def +(y: Rep[Complex])(implicit ctx: SourceContext) = complex_plus(x,y)
+    def -(y: Rep[Complex])(implicit ctx: SourceContext) = complex_minus(x,y)
+    def *(y: Rep[Complex])(implicit ctx: SourceContext) = complex_times(x,y)
+    def /(y: Rep[Complex])(implicit ctx: SourceContext) = complex_divide(x,y)
+    def abs(implicit ctx: SourceContext) = complex_abs(x)
+    def exp(implicit ctx: SourceContext) = complex_exp(x)
   }
   
   def complex_new(real: Rep[Real], imag: Rep[Real])(implicit ctx: SourceContext) : Rep[Complex]

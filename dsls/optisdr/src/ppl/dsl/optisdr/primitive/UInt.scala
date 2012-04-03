@@ -22,12 +22,12 @@ trait UIntOps extends Variables {
   
   // Objects methods
   class UIntOpsCls(x: Rep[UInt]) {
-    def +(y: Rep[UInt]) = uint_plus(x,y)
-    def -(y: Rep[UInt]) = uint_minus(x,y)
-    def *(y: Rep[UInt]) = uint_times(x,y)
-    def /(y: Rep[UInt]) = uint_divide(x,y)
-    def abs = uint_abs(x)
-    def exp = uint_exp(x)
+    def +(y: Rep[UInt])(implicit ctx: SourceContext) = uint_plus(x,y)
+    def -(y: Rep[UInt])(implicit ctx: SourceContext) = uint_minus(x,y)
+    def *(y: Rep[UInt])(implicit ctx: SourceContext) = uint_times(x,y)
+    def /(y: Rep[UInt])(implicit ctx: SourceContext) = uint_divide(x,y)
+    def abs(implicit ctx: SourceContext) = uint_abs(x)
+    def exp(implicit ctx: SourceContext) = uint_exp(x)
     
     def intValue = uint_int_value(x)
   }

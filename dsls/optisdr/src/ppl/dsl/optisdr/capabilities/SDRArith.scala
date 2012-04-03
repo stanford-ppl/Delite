@@ -5,6 +5,7 @@ import scala.virtualization.lms.common._
 import java.io.PrintWriter
 import scala.virtualization.lms.internal.{CLikeCodegen}
 import ppl.dsl.optisdr._
+import ppl.dsl.optila.DenseVector
 import scala.reflect.SourceContext
 
 /*
@@ -74,7 +75,7 @@ trait SDRArithOps extends Variables with OverloadHack {
     def conj(a: Rep[Tuple3[A,B,C]])(implicit ctx: SourceContext) = Tuple3(a._1.conj, a._2.conj, a._3.conj)
   }
   
-  implicit def tuple4SDRArith[A:Manifest:SDRArith,B:Manifest:SDRArith,C:Manifest:SDRArith,D:Manifest:SDRArith] : SDRArith[Tuple3[A,B,C]] = new SDRArith[Tuple4[A,B,C]] {
+  implicit def tuple4SDRArith[A:Manifest:SDRArith,B:Manifest:SDRArith,C:Manifest:SDRArith,D:Manifest:SDRArith] : SDRArith[Tuple4[A,B,C,D]] = new SDRArith[Tuple4[A,B,C,D]] {
     def conj(a: Rep[Tuple4[A,B,C,D]])(implicit ctx: SourceContext) = Tuple4(a._1.conj, a._2.conj, a._3.conj, a._4.conj)
   }
 }
