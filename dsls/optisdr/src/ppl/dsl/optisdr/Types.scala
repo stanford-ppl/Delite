@@ -27,3 +27,6 @@ trait Bits // extends DeliteCollection[Boolean]
 
 // A soft bit is a probabilistic measure of a bit. For example, if a SoftBit was represented
 trait SoftBit
+
+// To express belongsto Ranges
+class Range[T](lo: T, hi: T)
