@@ -40,9 +40,6 @@ trait ComplexOps extends Variables {
   def complex_real(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Real]
   def complex_imag(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Real]
   
-  // Implicit converts to complex
-  implicit def repComplexIntToRepComplex(x: Rep[ComplexInt]) = complex_new(x.real, x.imag)
-  
   // Operations
   def complex_conj(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
   //def complex_negate(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Complex]
@@ -97,9 +94,6 @@ trait ComplexOpsExp extends ComplexOps {
   
   def complex_real(x: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexReal(x))
   def complex_imag(x: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexImag(x))
-  
-  // Implicit convert to complex
-  //def repComplexIntToRepComplex(x: Rep[ComplexInt])
   
   // Operations
   case class ComplexConj(x: Exp[Complex]) extends Def[Complex]

@@ -59,10 +59,6 @@ trait SDRArithOps extends Variables with OverloadHack {
     def conj(a: Rep[Complex])(implicit ctx: SourceContext) = a.conj
   }
   
-  implicit val complexIntSDRArith : SDRArith[ComplexInt] = new SDRArith[ComplexInt] {
-    def conj(a: Rep[ComplexInt])(implicit ctx: SourceContext) = a.conj
-  }
-  
   implicit def denseVectorSDRArith[T:SDRArith:Manifest]: SDRArith[DenseVector[T]] = new SDRArith[DenseVector[T]] {
     def conj(a: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a).conj
   }
