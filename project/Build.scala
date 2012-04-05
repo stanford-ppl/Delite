@@ -13,7 +13,6 @@ object DeliteBuild extends Build {
   val virtScala = "2.10.0-M1-virtualized" //"2.10.0-virtualized-SNAPSHOT"
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
     resolvers += ScalaToolsSnapshots, 
-    organization := "stanford-ppl",
     resolvers += dropboxScalaTestRepo,
     organization := "stanford-ppl",
     scalaVersion := virtScala,
