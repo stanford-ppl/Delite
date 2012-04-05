@@ -3,3 +3,11 @@ package ppl.dsl.optiml.application
 trait ApplicationOps extends PairwiseRatingOps with SimilarityOps with BiGGDetectionOps with BinarizedGradientPyramidOps with BinarizedGradientTemplateOps with RectOps
 trait ApplicationOpsExp extends PairwiseRatingOpsExp with SimilarityOpsExp with BiGGDetectionOpsExp with BinarizedGradientPyramidOpsExp with BinarizedGradientTemplateOpsExp with RectOpsExp
 trait ScalaGenApplicationOps extends ScalaGenPairwiseRatingOps with ScalaGenSimilarityOps with ScalaGenBiGGDetectionOps with ScalaGenBinarizedGradientPyramidOps with ScalaGenBinarizedGradientTemplateOps with ScalaGenRectOps 
+
+// abstract types for internal application data structures
+trait PairwiseRating
+trait Similarity
+trait BiGGDetection
+trait BinarizedGradientPyramid
+trait BinarizedGradientTemplate
+trait Rect

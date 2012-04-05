@@ -3,18 +3,19 @@ package ppl.delite.framework.codegen.delite
 import generators.{DeliteGenTaskGraph}
 import overrides.{DeliteScalaGenVariables, DeliteCudaGenVariables, DeliteAllOverridesExp}
 import scala.virtualization.lms.internal._
+import scala.virtualization.lms.common.{BaseGenStaticData, StaticDataExp}
 import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 import ppl.delite.framework.extern.DeliteGenExternal
-
+import scala.reflect.SourceContext
 
 /**
  * Notice that this is using Effects by default, also we are mixing in the Delite task graph code generator
  */
-trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.Utils {
-  val IR: Expressions with FatExpressions with Effects
+trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.delite.framework.codegen.Utils {
+  val IR: Expressions with FatExpressions with Effects with StaticDataExp
   import IR._
 
   // these are the target-specific kernel generators (e.g. scala, cuda, etc.)
@@ -60,6 +61,57 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
 
   override def shouldApplyFusion(currentScope: List[TTP])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
 
+  def emitSourceContext(sourceContext: Option[SourceContext], stream: PrintWriter, id: String) {
+    // obtain root parent source context (if any)
+    val parentContext: Option[SourceContext] =
+      if (!sourceContext.isEmpty) {
+        var current = sourceContext.get
+        while (!current.parent.isEmpty)
+          current = current.parent.get
+        Some(current)
+      } else
+    	  sourceContext
+    
+    stream.print("  \"sourceContext\": {\n    ")
+    val (fileName, line, opName) =
+      if (parentContext.isEmpty) ("<unknown file>", 0, id) else {
+        val sc = parentContext.get
+        (sc.fileName, sc.line, sc.methodName)
+      }
+    stream.print("\"fileName\": \"" + fileName + "\",\n    ")
+    stream.print("\"opName\": \"" + opName + "\",\n    ")
+    stream.print("\"line\": \"" + line + "\" }")
+  }
+  
+/*
+{"SymbolMap": [
+  {"symbol": "x8", "sourceContext": {
+    "fileName": "/Users/phaller/git/Delite-rw/apps/scala/src/ppl/apps/ml/gda/GDA.scala",
+    "opName": "length",
+    "line": "16" }
+  }
+  {"symbol": "x9", "sourceContext": {
+    "fileName": "/Users/phaller/git/Delite-rw/apps/scala/src/ppl/apps/ml/gda/GDA.scala",
+    "opName": "count",
+    "line": "18" }
+  }
+] }
+ */
+  def emitSymbolSourceContext(stream: PrintWriter): Unit = {
+    // output header
+    stream.println("{\"SymbolMap\": [")
+    // output map from symbols to SourceContexts
+    var first = true
+    for (TP(sym, _) <- globalDefs) {
+      if (first) { first = false }
+      else stream.print(", ")
+      stream.print("{\"symbol\": \"x" + sym.id + "\",")
+      emitSourceContext(if (sym.sourceContexts.isEmpty) None else Some(sym.sourceContexts.head), stream, "x"+sym.id)
+      stream.println("}")
+    }
+    stream.println("] }")
+  }
+  
   def emitSource[A,B](f: Exp[A] => Exp[B], className: String, stream: PrintWriter)(implicit mA: Manifest[A], mB: Manifest[B]): List[(Sym[Any],Any)] = {
 
     val x = fresh[A]
@@ -67,6 +119,8 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
 
     val sA = mA.toString
     val sB = mB.toString
+
+    val staticData = getFreeDataBlock(y)
 
     printlog("-- emitSource")
     availableDefs.foreach(printlog(_))
@@ -82,8 +136,18 @@ trait DeliteCodegen extends GenericFatCodegen with ppl.delite.framework.codegen.
     //stream.println(quote(getBlockResult(y)))
     stream.println("{\"type\":\"EOP\"}\n]}}")
 
+    if (Config.enableProfiler) {
+      val symbolsFilename =
+        Config.degFilename.substring(0, Config.degFilename.length() - 4) + "-symbols.json"
+      val writer = new FileWriter(symbolsFilename)
+      val printer = new PrintWriter(writer)
+      emitSymbolSourceContext(printer)
+      printer.flush
+      writer.flush
+    }
+    
     stream.flush
-    Nil
+    staticData
   }
 
   /**

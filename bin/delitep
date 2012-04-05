@@ -1,0 +1,53 @@
+#!/usr/bin/env python
+
+from optparse import OptionParser
+import os, sys
+import math
+from socket import gethostname
+from string import *
+from time import localtime, strftime
+
+import delitecommon
+from delitecommon import *
+
+def main():
+    usage = "usage: %prog [options]"
+    parser = OptionParser(usage)
+
+    (opts, args) = parser.parse_args()
+    if len(args) < 1:
+        parser.error("a DEG file is required as an argument")
+
+    delitecommon.initialize()
+    profile(args[0], args[1:len(args)], opts)
+ 
+def profile(deg, params, opts):
+    java_opts = os.getenv("JAVA_OPTS", "")
+
+    if not os.path.isfile(deg):
+      if not (os.path.isfile(deg + ".deg")):
+        err("couldn't find DEG file: " + deg)
+      else:
+        deg = deg + ".deg"
+
+    java_opts = java_opts + "-Dstats.output.dir=profile -Dstats.output.filename=profile-" + deg + ".html -Ddelite.deg.filename=" + deg
+
+    #add classpaths
+    cp = " -cp "
+    cp = cp + delitecommon.DELITE_HOME + "/runtime/target/" + delitecommon.scala_virt_version + "/classes" + os.pathsep
+    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep
+    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-compiler.jar"
+
+    java_opts = java_opts + cp
+    #os.putenv("JAVA_OPTS", java_opts)
+
+    print "== profiling application: " + deg 
+    print "== with options: " + java_opts + "\n" 
+    java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " ppl.delite.runtime.profiler.Profiler " + deg + " " + ' '.join(params)
+    #print java_cmd
+    ecode = os.system(java_cmd)
+    if ecode != 0:
+        err("Delite profiler failed")
+
+if __name__ == "__main__":
+    main()

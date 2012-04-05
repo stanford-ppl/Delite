@@ -1,14 +1,13 @@
 package ppl.dsl.optiml.application
 
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml._
 import java.io.PrintWriter
-import ppl.delite.framework.{DSLType}
 import scala.virtualization.lms.common.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
-trait RectOps extends DSLType with Variables with OverloadHack {
+trait RectOps extends Variables with OverloadHack {
 
   object Rect {
     def apply(x: Rep[Int], y: Rep[Int], width: Rep[Int], height: Rep[Int]) = rect_obj_new(x, y, width, height)

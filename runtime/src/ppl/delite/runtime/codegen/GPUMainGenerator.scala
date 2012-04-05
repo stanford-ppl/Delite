@@ -6,7 +6,7 @@ import ppl.delite.runtime.scheduler.PartialSchedule
 import ppl.delite.runtime.graph.ops.DeliteOP
 
 trait GPUMainGenerator extends GPUExecutableGenerator {
-  val compiler: GPUCompile
+  val compiler: CCompile
   val tgt: Targets.Value
 
   protected def executableName = "Executable"

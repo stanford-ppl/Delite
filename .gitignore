@@ -7,7 +7,7 @@
 *.~
 /local.properties
 delite.properties
-*target
+target/
 *lib_managed
 *src_managed
 project/boot
@@ -19,7 +19,10 @@ data/
 *.deg
 *.debug
 *.pgm
+*.pyc
 benchmark/times
 test-out/*/*-log
 test-out/*/*-skel
 test-out/*/*-src
+dsls/deliszt/lisztlib
+profiler/less

@@ -1,9 +1,0 @@
-<DeliteExternalLib>
-<compiler>/usr/local/cuda/bin/nvcc</compiler>
-<headerDir>
-  <prefix> -I </prefix>
-  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include </path>
-  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include/linux </path>
-</headerDir>
-</DeliteExternalLib>
-

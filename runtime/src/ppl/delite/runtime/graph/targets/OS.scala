@@ -1,31 +1,26 @@
 package ppl.delite.runtime.graph.targets
 
-object OS extends Enumeration {
+object OS {
 
-  val Win = Value("win")
-  val Linux = Value("linux")
-  val Mac = Value("mac")
+  sealed abstract class SupportedOS
+  case object Linux extends SupportedOS
+  case object Windows extends SupportedOS
+  case object Mac extends SupportedOS
 
-  private val osName = System.getProperty("os.name")
-
-  def currentOS:OS.Value = {
-    if (osName.contains("Linux")) OS.Linux
-    else if (osName.contains("Windows")) OS.Win
-    else if (osName.contains("Mac")) OS.Mac
-    else error("OS " + osName + " not currently supported")
+  private val theOS = {
+    val os = System.getProperty("os.name")
+    if (os.contains("Linux")) Linux
+    else if (os.contains("Windows")) Windows
+    else if (os.contains("Mac")) Mac
+    else sys.error("OS " + os + " is not currently supported")
   }
 
-  def libExt:String = currentOS match {
-    case OS.Linux => "so"
-    case OS.Win => "dll"
-    case OS.Mac => "dll"
-    case _ => error("OS " + currentOS + " not currently supported")
+  def currentOS: String = theOS.toString
+
+  def libExt: String = theOS match {
+    case Linux => "so"
+    case Windows => "dll"
+    case Mac => "so"
   }
 
-  def jniMD:String = currentOS match {
-    case OS.Linux => "linux"
-    case OS.Win => "win32"
-    case OS.Mac => "mac"    //TODO: Check if correct
-    case _ => error("OS " + currentOS + " not currently supported")
-  }
 }

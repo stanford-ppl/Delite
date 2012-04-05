@@ -1,6 +1,6 @@
 package ppl.dsl.optiml.stream
 
-import ppl.dsl.optiml.datastruct.scala.{Vector, Matrix, Stream}
+import ppl.dsl.optiml.{Vector, Matrix, Stream}
 import ppl.dsl.optiml.{OptiMLLift, OptiMLCompiler, OptiML}
 
 trait StreamImplOps { this: OptiML =>
@@ -21,7 +21,7 @@ trait StreamImplOpsStandard extends StreamImplOps {
     val chunkSz = chunkSize(x.numCols)
     val remainingRows = x.numRows - offset*chunkSz
     val leftover = if (remainingRows < 0) x.numRows else remainingRows // in case numRows < chunkSize
-    Math.min(chunkSz, leftover).asInstanceOfL[Int]
+    min(chunkSz, leftover).AsInstanceOf[Int]
   }
 
   def stream_init_chunk_impl[A:Manifest](x: Rep[Stream[A]], offset: Rep[Int]) = {

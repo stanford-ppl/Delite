@@ -15,6 +15,7 @@ abstract class DeliteOpMultiLoop[A] {
   def postCombine(__act: A, rhs: A): Unit
   def postProcInit(__act: A): Unit
   def postProcess(__act: A): Unit
+  def finalize(__act: A): Unit
 }
 
 /**
@@ -89,7 +90,7 @@ trait DeliteCollection[@specialized(Boolean, Int, Long, Float, Double) T] {
  * Ref
  */
 
-case class Ref[@specialized(Boolean, Int, Long, Float, Double) T](v: T) {
+class Ref[@specialized(Boolean, Int, Long, Float, Double) T](v: T) {
   private[this] var _v = v
 
   def get = _v

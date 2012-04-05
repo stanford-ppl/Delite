@@ -6,17 +6,17 @@ package ppl.dsl.optiql.user.applications
 
 import ppl.dsl.optiql.datastruct.scala.liftables._
 import java.io.PrintWriter
-import ppl.delite.framework.{DSLType}
 import ppl.delite.framework.datastructures._
 import scala.virtualization.lms.common.ScalaGenFat
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{EffectExp, BaseFatExp, Variables}
+import scala.reflect.SourceContext
 
 //OptiQL Specific Header
 import ppl.dsl.optiql.datastruct.scala.util.Date
 
 
-trait CustomerOps extends DSLType with Variables with OverloadHack {
+trait CustomerOps extends Variables with OverloadHack {
 
   object Customer {
     def apply(c_custkey: Rep[Int], c_name: Rep[String], c_address: Rep[String], c_nationkey: Rep[Int], c_phone: Rep[String], c_acctbal: Rep[Double], c_mktsegment: Rep[String], c_comment: Rep[String]) = customer_obj_new(c_custkey, c_name, c_address, c_nationkey, c_phone, c_acctbal, c_mktsegment, c_comment)
@@ -62,7 +62,7 @@ trait CustomerOpsExp extends CustomerOps with FieldAccessOpsExp with EffectExp w
   def customer_c_mktsegment(__x: Rep[Customer]) = FieldRead[String](__x, "c_mktsegment", "String")
   def customer_c_comment(__x: Rep[Customer]) = FieldRead[String](__x, "c_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -78,7 +78,7 @@ trait ScalaGenCustomerOps extends ScalaGenFat {
   }
 }
 
-trait LineItemOps extends DSLType with Variables with OverloadHack {
+trait LineItemOps extends Variables with OverloadHack {
 
   object LineItem {
     def apply(l_orderkey: Rep[Int], l_partkey: Rep[Int], l_suppkey: Rep[Int], l_linenumber: Rep[Int], l_quantity: Rep[Double], l_extendedprice: Rep[Double], l_discount: Rep[Double], l_tax: Rep[Double], l_returnflag: Rep[Char], l_linestatus: Rep[Char], l_shipdate: Rep[Date], l_commitdate: Rep[Date], l_receiptdate: Rep[Date], l_shipinstruct: Rep[String], l_shipmode: Rep[String], l_comment: Rep[String]) = lineitem_obj_new(l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment)
@@ -148,7 +148,7 @@ trait LineItemOpsExp extends LineItemOps with FieldAccessOpsExp with EffectExp w
   def lineitem_l_shipmode(__x: Rep[LineItem]) = FieldRead[String](__x, "l_shipmode", "String")
   def lineitem_l_comment(__x: Rep[LineItem]) = FieldRead[String](__x, "l_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -164,7 +164,7 @@ trait ScalaGenLineItemOps extends ScalaGenFat {
   }
 }
 
-trait NationOps extends DSLType with Variables with OverloadHack {
+trait NationOps extends Variables with OverloadHack {
 
   object Nation {
     def apply(n_nationkey: Rep[Int], n_name: Rep[String], n_regionkey: Rep[Int], n_comment: Rep[String]) = nation_obj_new(n_nationkey, n_name, n_regionkey, n_comment)
@@ -198,7 +198,7 @@ trait NationOpsExp extends NationOps with FieldAccessOpsExp with EffectExp with 
   def nation_n_regionkey(__x: Rep[Nation]) = FieldRead[Int](__x, "n_regionkey", "Int")
   def nation_n_comment(__x: Rep[Nation]) = FieldRead[String](__x, "n_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -214,7 +214,7 @@ trait ScalaGenNationOps extends ScalaGenFat {
   }
 }
 
-trait OrderOps extends DSLType with Variables with OverloadHack {
+trait OrderOps extends Variables with OverloadHack {
 
   object Order {
     def apply(o_orderkey: Rep[Int], o_custkey: Rep[Int], o_orderstatus: Rep[Char], o_totalprice: Rep[Double], o_orderdate: Rep[Date], o_orderpriority: Rep[String], o_clerk: Rep[String], o_shippriority: Rep[Int], o_comment: Rep[String]) = order_obj_new(o_orderkey, o_custkey, o_orderstatus, o_totalprice, o_orderdate, o_orderpriority, o_clerk, o_shippriority, o_comment)
@@ -263,7 +263,7 @@ trait OrderOpsExp extends OrderOps with FieldAccessOpsExp with EffectExp with Ba
   def order_o_shippriority(__x: Rep[Order]) = FieldRead[Int](__x, "o_shippriority", "Int")
   def order_o_comment(__x: Rep[Order]) = FieldRead[String](__x, "o_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -279,7 +279,7 @@ trait ScalaGenOrderOps extends ScalaGenFat {
   }
 }
 
-trait PartOps extends DSLType with Variables with OverloadHack {
+trait PartOps extends Variables with OverloadHack {
 
   object Part {
     def apply(p_partkey: Rep[Int], p_name: Rep[String], p_mfgr: Rep[String], p_brand: Rep[String], p_type: Rep[String], p_size: Rep[Int], p_container: Rep[String], p_retailprice: Rep[Double], p_comment: Rep[String]) = part_obj_new(p_partkey, p_name, p_mfgr, p_brand, p_type, p_size, p_container, p_retailprice, p_comment)
@@ -328,7 +328,7 @@ trait PartOpsExp extends PartOps with FieldAccessOpsExp with EffectExp with Base
   def part_p_retailprice(__x: Rep[Part]) = FieldRead[Double](__x, "p_retailprice", "Double")
   def part_p_comment(__x: Rep[Part]) = FieldRead[String](__x, "p_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -344,7 +344,7 @@ trait ScalaGenPartOps extends ScalaGenFat {
   }
 }
 
-trait PartSupplierOps extends DSLType with Variables with OverloadHack {
+trait PartSupplierOps extends Variables with OverloadHack {
 
   object PartSupplier {
     def apply(ps_partkey: Rep[Int], ps_suppkey: Rep[Int], ps_availqty: Rep[Int], ps_supplycost: Rep[Double], ps_comment: Rep[String]) = partsupplier_obj_new(ps_partkey, ps_suppkey, ps_availqty, ps_supplycost, ps_comment)
@@ -381,7 +381,7 @@ trait PartSupplierOpsExp extends PartSupplierOps with FieldAccessOpsExp with Eff
   def partsupplier_ps_supplycost(__x: Rep[PartSupplier]) = FieldRead[Double](__x, "ps_supplycost", "Double")
   def partsupplier_ps_comment(__x: Rep[PartSupplier]) = FieldRead[String](__x, "ps_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -397,7 +397,7 @@ trait ScalaGenPartSupplierOps extends ScalaGenFat {
   }
 }
 
-trait RegionOps extends DSLType with Variables with OverloadHack {
+trait RegionOps extends Variables with OverloadHack {
 
   object Region {
     def apply(r_regionkey: Rep[Int], r_name: Rep[String], r_comment: Rep[String]) = region_obj_new(r_regionkey, r_name, r_comment)
@@ -428,7 +428,7 @@ trait RegionOpsExp extends RegionOps with FieldAccessOpsExp with EffectExp with 
   def region_r_name(__x: Rep[Region]) = FieldRead[String](__x, "r_name", "String")
   def region_r_comment(__x: Rep[Region]) = FieldRead[String](__x, "r_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }
@@ -444,7 +444,7 @@ trait ScalaGenRegionOps extends ScalaGenFat {
   }
 }
 
-trait SupplierOps extends DSLType with Variables with OverloadHack {
+trait SupplierOps extends Variables with OverloadHack {
 
   object Supplier {
     def apply(s_suppkey: Rep[Int], s_name: Rep[String], s_address: Rep[String], s_nationkey: Rep[Int], s_phone: Rep[String], s_acctbal: Rep[Double], s_comment: Rep[String]) = supplier_obj_new(s_suppkey, s_name, s_address, s_nationkey, s_phone, s_acctbal, s_comment)
@@ -487,7 +487,7 @@ trait SupplierOpsExp extends SupplierOps with FieldAccessOpsExp with EffectExp w
   def supplier_s_acctbal(__x: Rep[Supplier]) = FieldRead[Double](__x, "s_acctbal", "Double")
   def supplier_s_comment(__x: Rep[Supplier]) = FieldRead[String](__x, "s_comment", "String")
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = e match {
     case _ => super.mirror(e,f)
   }
 }

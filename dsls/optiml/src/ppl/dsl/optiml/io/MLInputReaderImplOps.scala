@@ -2,15 +2,15 @@ package ppl.dsl.optiml.io
 
 import java.io._
 import scala.virtualization.lms.common.Base
-import ppl.dsl.optiml.datastruct.scala._
-import ppl.dsl.optiml.{OptiMLCompiler, OptiMLLift, OptiML}
+import ppl.dsl.optiml._
+import ppl.dsl.optiml.application.BinarizedGradientTemplate
 
 trait MLInputReaderImplOps { this: Base =>
-  def mlinput_read_impl(filename: Rep[String], delim: Rep[String]) : Rep[Matrix[Double]]
-  def mlinput_read_vector_impl(filename : Rep[String]) : Rep[Vector[Double]]
   def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage]
-  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
-  def mlinput_read_template_models_impl(directory: Rep[String]): Rep[Vector[(String, Vector[BinarizedGradientTemplate])]]
+  def mlinput_read_arff_impl[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row]): Rep[DenseVector[Row]]
+  //def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]]
+  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): (Rep[DenseMatrix[Double]],Rep[DenseVector[Double]])
+  def mlinput_read_template_models_impl(directory: Rep[String]): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]]
 }
 
 trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
@@ -19,55 +19,12 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   ///////////////
   // kernels
 
-  def mlinput_read_impl(filename: Rep[String], delim: Rep[String]) = {
-    val xfs = BufferedReader(FileReader(filename))
-    var line = xfs.readLine()
-    line = line.trim()
-    // TODO: weirdness with StringOps, losing a \        
-    var dbls = line.split(delim)
-    //var dbls = line.split("\\\\s+")
-    val x = Matrix[Double](0, dbls.length)
-
-    while (line != null){
-      val v = (0::dbls.length) { i =>
-	      Double.parseDouble(dbls(i))
-      }
-      x += v
-
-      line = xfs.readLine()
-      if (line != null) {
-        line = line.trim()
-        dbls = line.split(delim)
-      }
-    }
-    xfs.close()
-
-    x.unsafeImmutable
-  }
-
-  def mlinput_read_vector_impl(filename: Rep[String]) = {
-    val x = Vector[Double](0, true)
-
-    val xfs = BufferedReader(FileReader(filename))
-    var line = xfs.readLine()
-    while (line != null){
-      line = line.trim()
-      val dbl = Double.parseDouble(line)
-      x += dbl
-
-      line = xfs.readLine()
-    }
-    xfs.close()
-
-    x.unsafeImmutable
-  }
-
   def mlinput_read_grayscale_image_impl(filename: Rep[String]): Rep[GrayscaleImage] = {
     val xfs = BufferedReader(FileReader(filename))
     var line = xfs.readLine()
     line = line.trim()
     var ints = line.split("\\\\s+")
-    val x = Matrix[Int](0, ints.length)
+    val x = DenseMatrix[Int](0, ints.length)
 
     while (line != null) {
       val v = (0::ints.length) { i =>
@@ -87,6 +44,38 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   }
 
 
+  def mlinput_read_arff_impl[Row:Manifest](filename: Rep[String], schemaBldr: Rep[DenseVector[String]] => Rep[Row]): Rep[DenseVector[Row]] = {
+    val xfs = BufferedReader(FileReader(filename))    
+    
+    // skip past the header to the data section
+    // since we are using schemaBldr, we don't care about the attribute types
+    var line = xfs.readLine()
+    while (!line.startsWith("@DATA") && line != null) {
+      line = xfs.readLine()
+    }
+    
+    val out = DenseVector[Row](0, false)
+    
+    if (line != null) {
+      line = xfs.readLine()
+      while (line != null) {
+        line = line.trim()
+        if (!line.startsWith("%")) {
+           val row = line.split(",")
+           val schemaData = DenseVector[String](0, true)         
+           for (e <- row) {
+             schemaData += e
+           }
+           out += schemaBldr(schemaData)
+        }
+        line = xfs.readLine()
+      }
+    }
+    
+    out
+  }
+        
+
  /* the input file is expected to follow the format:
   *  <header>
   *  <num documents> <num tokens>
@@ -95,7 +84,8 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
   *    each line of the doc word matrix begins with class (0 or 1) and ends with -1
   *    the matrix is sparse, so each row has a tuple of (tokenIndex, number of appearances)
   */
-  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]] = {
+  //def mlinput_read_tokenmatrix_impl(filename: Rep[String]): Rep[TrainingSet[Double,Double]] = {
+  def mlinput_read_tokenmatrix_impl(filename: Rep[String]): (Rep[DenseMatrix[Double]], Rep[DenseVector[Double]]) = {
 
     val xs = BufferedReader(FileReader(filename))
 
@@ -113,15 +103,15 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     // tokens
     val tokenlist = xs.readLine()
 
-    val trainCatSeq = Vector[Double](0,true)
-    val trainMatSeq = Vector[Vector[Double]](0, true)
+    val trainCatSeq = DenseVector[Double](0,true)
+    val trainMatSeq = DenseVector[DenseVector[Double]](0, true)
 
     for (m <- 0 until numDocs) {
       line = xs.readLine()
       line = line.trim()
       val nums = line.split("\\\\s+")
 
-      val row = Vector[Double](numTokens,true)
+      val row = DenseVector[Double](numTokens,true)
       var cumsum = unit(0); var j = unit(1)
       // this could be vectorized
       while (j < repArithToArithOps(nums.length) - 1){
@@ -133,23 +123,24 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
       trainMatSeq += row.unsafeImmutable
     }
     val trainCategory = trainCatSeq.t
-    val trainMatrix = Matrix(trainMatSeq)
+    val trainMatrix = DenseMatrix(trainMatSeq)
 
     xs.close()
 
     //return (trainMatrix,tokenlist,trainCategory)
-    TrainingSet[Double,Double](trainMatrix.unsafeImmutable, Labels(trainCategory.unsafeImmutable))
+    (trainMatrix.unsafeImmutable, trainCategory.unsafeImmutable)
+    //TrainingSet[Double,Double](trainMatrix.unsafeImmutable, Labels(trainCategory.unsafeImmutable))
   }
 
-  def mlinput_read_template_models_impl(directory: Rep[String]): Rep[Vector[(String, Vector[BinarizedGradientTemplate])]] = {
-    val templateFiles = Vector[String](0, true)
+  def mlinput_read_template_models_impl(directory: Rep[String]): Rep[DenseVector[(String, DenseVector[BinarizedGradientTemplate])]] = {
+    val templateFiles = DenseVector[String](0, true)
     for (f <- File(directory).getCanonicalFile.listFiles) {
       templateFiles += f.getPath()
     }
 
     templateFiles.map { filename =>
       println("Loading model: " + filename)
-      val templates = Vector[BinarizedGradientTemplate](0, true)
+      val templates = DenseVector[BinarizedGradientTemplate](0, true)
 
       val file = BufferedReader(FileReader(filename))
 
@@ -180,7 +171,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     temp = file.readLine().trim.split(" ")
     if (temp(0) != "Gradients:") error("Illegal data format")
     val gradientsSize = Integer.parseInt(temp(1))
-    val gradients = Vector[Int](gradientsSize,true)
+    val gradients = DenseVector[Int](gradientsSize,true)
     val gradientsString = file.readLine().trim.split(" ")
     var i = unit(0)
     while (i < gradientsSize) {
@@ -202,7 +193,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     temp = file.readLine().trim.split(" ")
     if (temp(0) != "Occlusions:") error("Illegal data format")
     val occlusionsSize = Integer.parseInt(temp(1))
-    val occlusions = Vector[Vector[Int]](0,true)
+    val occlusions = DenseVector[DenseVector[Int]](0,true)
     val occlusionsString = file.readLine().trim.split(" ")
     if (occlusionsSize != 0) error("Occlusions not supported.")
 

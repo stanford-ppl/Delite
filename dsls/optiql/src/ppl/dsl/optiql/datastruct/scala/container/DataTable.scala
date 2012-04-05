@@ -96,7 +96,7 @@ class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.de
 
   //TODO HCXXX: NEED TO REMOVE ALL THIS STUFF OR ADD IT TO DELITE COLLECTION
   def apply(idx: Int): TSource = _data(idx)
-  def cloneL = new DataTable[TSource]
+  def Clone = new DataTable[TSource]
   def insert(pos: Int, x: TSource) {
     _data.insert(pos, x)
   }

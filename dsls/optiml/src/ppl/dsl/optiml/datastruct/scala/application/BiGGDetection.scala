@@ -5,7 +5,7 @@ class BiGGDetection (
   val name: String,
   val score: Float,
   val roi: Rect,
-  val mask: GrayscaleImage,
+  val mask: Image[Int],
   val index: Int,
   val x: Int,
   val y: Int,

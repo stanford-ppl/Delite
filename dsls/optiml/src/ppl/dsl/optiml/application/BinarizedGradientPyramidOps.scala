@@ -1,17 +1,16 @@
 package ppl.dsl.optiml.application
 
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml._
 import java.io.PrintWriter
-import ppl.delite.framework.{DSLType}
 import scala.virtualization.lms.common.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
-trait BinarizedGradientPyramidOps extends DSLType with Variables with OverloadHack {
+trait BinarizedGradientPyramidOps extends Variables with OverloadHack {
 
   object BinarizedGradientPyramid {
-    def apply(pyramid: Rep[Vector[GrayscaleImage]], start_level: Rep[Int], levels: Rep[Int], fixedLevelIndex: Rep[Int]) = binarizedgradientpyramid_obj_new(pyramid, start_level, levels, fixedLevelIndex)
+    def apply(pyramid: Rep[DenseVector[GrayscaleImage]], start_level: Rep[Int], levels: Rep[Int], fixedLevelIndex: Rep[Int]) = binarizedgradientpyramid_obj_new(pyramid, start_level, levels, fixedLevelIndex)
   }
 
   implicit def repBinarizedGradientPyramidToBinarizedGradientPyramidOps(x: Rep[BinarizedGradientPyramid]) = new binarizedgradientpyramidOpsCls(x)
@@ -25,23 +24,23 @@ trait BinarizedGradientPyramidOps extends DSLType with Variables with OverloadHa
   }
 
   //object defs
-  def binarizedgradientpyramid_obj_new(pyramid: Rep[Vector[GrayscaleImage]], start_level: Rep[Int], levels: Rep[Int], fixedLevelIndex: Rep[Int]): Rep[BinarizedGradientPyramid]
+  def binarizedgradientpyramid_obj_new(pyramid: Rep[DenseVector[GrayscaleImage]], start_level: Rep[Int], levels: Rep[Int], fixedLevelIndex: Rep[Int]): Rep[BinarizedGradientPyramid]
 
   //class defs
-  def binarizedgradientpyramid_pyramid(__x: Rep[BinarizedGradientPyramid]): Rep[Vector[GrayscaleImage]]
+  def binarizedgradientpyramid_pyramid(__x: Rep[BinarizedGradientPyramid]): Rep[DenseVector[GrayscaleImage]]
   def binarizedgradientpyramid_start_level(__x: Rep[BinarizedGradientPyramid]): Rep[Int]
   def binarizedgradientpyramid_levels(__x: Rep[BinarizedGradientPyramid]): Rep[Int]
   def binarizedgradientpyramid_fixedLevelIndex(__x: Rep[BinarizedGradientPyramid]): Rep[Int]
 }
 
 trait BinarizedGradientPyramidOpsExp extends BinarizedGradientPyramidOps with EffectExp {
-  case class BinarizedGradientPyramidObjectNew(pyramid: Exp[Vector[GrayscaleImage]], start_level: Exp[Int], levels: Exp[Int], fixedLevelIndex: Exp[Int]) extends Def[BinarizedGradientPyramid]
-  case class BinarizedGradientPyramidPyramid(__x: Exp[BinarizedGradientPyramid]) extends Def[Vector[GrayscaleImage]]
+  case class BinarizedGradientPyramidObjectNew(pyramid: Exp[DenseVector[GrayscaleImage]], start_level: Exp[Int], levels: Exp[Int], fixedLevelIndex: Exp[Int]) extends Def[BinarizedGradientPyramid]
+  case class BinarizedGradientPyramidPyramid(__x: Exp[BinarizedGradientPyramid]) extends Def[DenseVector[GrayscaleImage]]
   case class BinarizedGradientPyramidStart_level(__x: Exp[BinarizedGradientPyramid]) extends Def[Int]
   case class BinarizedGradientPyramidLevels(__x: Exp[BinarizedGradientPyramid]) extends Def[Int]
   case class BinarizedGradientPyramidFixedlevelindex(__x: Exp[BinarizedGradientPyramid]) extends Def[Int]
 
-  def binarizedgradientpyramid_obj_new(pyramid: Exp[Vector[GrayscaleImage]], start_level: Exp[Int], levels: Exp[Int], fixedLevelIndex: Exp[Int]) = reflectEffect(BinarizedGradientPyramidObjectNew(pyramid, start_level, levels, fixedLevelIndex))
+  def binarizedgradientpyramid_obj_new(pyramid: Exp[DenseVector[GrayscaleImage]], start_level: Exp[Int], levels: Exp[Int], fixedLevelIndex: Exp[Int]) = reflectEffect(BinarizedGradientPyramidObjectNew(pyramid, start_level, levels, fixedLevelIndex))
   def binarizedgradientpyramid_pyramid(__x: Rep[BinarizedGradientPyramid]) = BinarizedGradientPyramidPyramid(__x)
   def binarizedgradientpyramid_start_level(__x: Rep[BinarizedGradientPyramid]) = BinarizedGradientPyramidStart_level(__x)
   def binarizedgradientpyramid_levels(__x: Rep[BinarizedGradientPyramid]) = BinarizedGradientPyramidLevels(__x)

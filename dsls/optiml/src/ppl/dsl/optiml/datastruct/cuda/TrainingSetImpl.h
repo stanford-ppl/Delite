@@ -2,7 +2,7 @@
 #define _TRAININGSETIMPL_H_
 
 #include <stdio.h>
-#include "MatrixImpl.h"
+#include "DenseMatrix.h"
 #include "LabelsImpl.h"
 
 template <class T, class L>
@@ -28,7 +28,7 @@ public:
 		//transposed = NULL;
 	}
 
-	__host__ __device__ TrainingSet(Matrix<T> mat, TrainingSet<T,L> *set_t, Labels<L> lab) {
+	__host__ __device__ TrainingSet(DenseMatrix<T> mat, TrainingSet<T,L> *set_t, Labels<L> lab) {
 		data = mat.data;
 		numRows = mat.numRows;
 		numCols = mat.numCols;

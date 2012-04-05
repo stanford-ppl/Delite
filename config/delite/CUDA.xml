@@ -1,0 +1,9 @@
+<DeliteExternalLib>
+<compiler> /usr/local/cuda/bin/nvcc </compiler> <!-- path to nvcc -->
+<arch> 2.0 </arch> <!-- compute capability of gpu -->
+<headers>
+  <prefix> -I </prefix>
+  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include </path> <!-- required for JNI -->
+  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include/linux </path>
+</headers>
+</DeliteExternalLib>

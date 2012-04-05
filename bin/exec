@@ -1,5 +1,0 @@
-#!/bin/bash
-
-
-
-$JAVA_HOME/bin/java -verbose:gc -server -d64 -XX:+UseCompressedOops -XX:+DoEscapeAnalysis -Xmx18g -Xms18g -Xmn12g  -XX:+UseConcMarkSweepGC -XX:+PrintGCDetails -XX:+PrintGCTimeStamps $JAVA_OPTS -cp $DELITE_HOME/runtime/target/scala_2.8.1/classes:$SCALA_HOME/lib/scala-library.jar:$SCALA_HOME/lib/scala-compiler.jar ppl.delite.runtime.Delite "$@"

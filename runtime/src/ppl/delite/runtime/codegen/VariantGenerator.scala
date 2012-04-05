@@ -76,16 +76,18 @@ abstract class GPUVariantGenerator(variant: OP_Variant, location: Int, target: T
   def emitCpp(syncList: ArrayBuffer[DeliteOP]) = {
     val out = new StringBuilder //the output string
     val hasOutput = variant.outputType != "Unit"
-    val inputs = variant.variantGraph.inputOps
-
+    val inputOps = variant.variantGraph.inputOps
+    val inputs = variant.variantGraph.inputs
+    implicit val aliases = new AliasTable[(DeliteOP,String)]
 
     writeFunctionHeader(out)
-    writeJNIInitializer(location, out)
+    val locations = variant.nestedGraphs.flatMap(_.ops.map(_.scheduledResource)).toSet union Set(location)
+    writeJNIInitializer(locations, out)
 
-    val available = new ArrayBuffer[DeliteOP]
+    val available = new ArrayBuffer[(DeliteOP,String)]
     val awaited = new ArrayBuffer[DeliteOP]
     available ++= inputs
-    awaited ++= inputs
+    awaited ++= inputOps
 
     //output body
     addKernelCalls(variant.variantGraph.schedule(location), location, available, awaited, syncList, out)
@@ -94,6 +96,8 @@ abstract class GPUVariantGenerator(variant: OP_Variant, location: Int, target: T
       out.append(getSymGPU(variant.variantGraph.result._2))
       out.append(";\n")
     }
+
+    writeJNIFinalizer(locations, out)
     out.append("}\n") //end of function
 
     out.toString

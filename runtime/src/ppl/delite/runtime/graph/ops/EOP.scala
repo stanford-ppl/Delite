@@ -17,7 +17,7 @@ import ppl.delite.runtime.graph.targets.Targets
  * This OP should always be inserted by the scheduler such that it is the last to run (depends on the "result" node of the task graph
  * Execution of the kernel will shut down the Delite Runtime
  */
-object EOP extends OP_Executable {
+class EOP extends OP_Executable {
 
   /**
    * OP features
@@ -33,6 +33,10 @@ object EOP extends OP_Executable {
 
   def cost = 0
   def size = 0
+
+}
+
+object EOP_Global {
 
   /**
    * EOP implementation
@@ -61,14 +65,13 @@ object EOP extends OP_Executable {
     finally {
       lock.unlock
     }
-  }
-
+  }  
 }
 
 object EOP_Kernel {
 
   def apply() {
-    EOP.signal
+    EOP_Global.signal
   }
 
 }

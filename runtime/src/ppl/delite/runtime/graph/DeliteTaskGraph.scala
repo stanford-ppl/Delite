@@ -4,6 +4,7 @@ import java.io.File
 import _root_.scala.util.parsing.json.JSON
 import ops._
 import targets._
+import ppl.delite.runtime.Delite
 import ppl.delite.runtime.scheduler.PartialSchedule
 import collection.mutable.{HashSet, HashMap}
 
@@ -88,6 +89,16 @@ object DeliteTaskGraph {
     }
   }
 
+  def getFieldMapOption(map: Map[Any, Any], field: String): Option[Map[Any, Any]] = {
+    map.get(field) match {
+      case Some(field) => field match {
+        case map: Map[Any, Any] => Some(map)
+        case err@_ => None
+      }
+      case None => None
+    }
+  }
+  
   def getFieldMap(map: Map[Any, Any], field: String): Map[Any,Any] = {
     map.get(field) match {
       case Some(field) => field match {
@@ -125,6 +136,16 @@ object DeliteTaskGraph {
 
     val resultMap = processOutputTypes(op)
 
+    // source context
+    val (fileName, line, opName) = getFieldMapOption(op, "sourceContext") match {
+      case None => ("<unknown file>", 0, id)
+      case Some(sourceContext) =>
+        (getFieldString(sourceContext, "fileName"), getFieldString(sourceContext, "line").toInt, getFieldString(sourceContext, "opName"))
+    }
+
+    // TODO: maybe it would be better to add source info to DeliteOP?
+    Delite.sourceInfo += (id -> (fileName, line, opName))
+	
     val newop = opType match {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
       case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
@@ -280,7 +301,7 @@ object DeliteTaskGraph {
     ifInputs ++= (for ((op,sym) <- Seq(predGraph.result, thenGraph.result, elseGraph.result); if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym))
     val ifMutableInputs = for (in <- internalOps; (op,sym) <- in.getMutableInputs; if (op.isInstanceOf[OP_Input])) yield (getOp(sym), sym)
 
-    val conditionOp = new OP_Condition(id, resultMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue)
+    val conditionOp = new OP_Condition(id, resultMap, predGraph, predValue, thenGraph, thenValue, elseGraph, elseValue, true)
     conditionOp.dependencies = ifDeps
     conditionOp.inputList = ifInputs.toList
     conditionOp.mutableInputs = ifMutableInputs
@@ -290,9 +311,13 @@ object DeliteTaskGraph {
     }
     if (thenValue == "") {
       for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, thenGraph, graph, tgt)
+      val resultMetadata = conditionOp.getGPUMetadata(Targets.Cuda).outputs.filter(o=>o._2==thenGraph.result._2)
+      if (resultMetadata.length == 1) conditionOp.getGPUMetadata(Targets.Cuda).outputs ++= List((resultMetadata(0)._1,id))
     }
     if (elseValue == "") {
       for (tgt <- Targets.GPU) extractGPUMetadata(conditionOp, elseGraph, graph, tgt)
+      val resultMetadata = conditionOp.getGPUMetadata(Targets.Cuda).outputs.filter(o=>o._2==elseGraph.result._2)
+      if (resultMetadata.length == 1) conditionOp.getGPUMetadata(Targets.Cuda).outputs ++= List((resultMetadata(0)._1,id))
     }
 
     //add consumer edges
@@ -381,7 +406,7 @@ object DeliteTaskGraph {
 
   // Change Metadata apply method from Target -> specific metadata in DeliteOP
   def extractGPUMetadata(superOp: OP_Nested, innerGraph: DeliteTaskGraph, outerGraph: DeliteTaskGraph, tgt: Targets.Value) {
-    superOp.getGPUMetadata(tgt).outputs = innerGraph.result._1.getGPUMetadata(tgt).outputs
+    superOp.getGPUMetadata(tgt).outputs ++= innerGraph.result._1.getGPUMetadata(tgt).outputs
     for (op <- innerGraph._ops.values; key <- op.getGPUMetadata(tgt).inputs.keys) {
       try {
         val inOp = getOp(key._2)(outerGraph)
@@ -411,6 +436,7 @@ object DeliteTaskGraph {
    */
   def processEOPTask(op: Map[Any, Any])(implicit graph: DeliteTaskGraph) {
     val result = graph._result._1
+    val EOP = new EOP
     EOP.addDependency(result) //EOP depends on result of application
     result.addConsumer(EOP)
     graph.registerOp(EOP)
@@ -431,10 +457,10 @@ object DeliteTaskGraph {
       val value = inputMap.values.head.asInstanceOf[List[Any]]
       val data = metadata.newInput(getOp(sym), sym)
       data.resultType = value.head
-      data.func = value.tail.head
-      data.funcReturn = value.tail.tail.head
+      data.func = "copyInputHtoD_%s_%s".format(newop.id,sym)
+      data.funcReturn = "copyMutableInputDtoH_%s_%s".format(newop.id,sym)
       tgt match {
-        case Targets.OpenCL => data.objFields = value.tail.tail.tail.head.asInstanceOf[Map[String,String]]
+        case Targets.OpenCL => data.objFields = value.tail.head.asInstanceOf[Map[String,String]]
         case _ =>
       }
     }
@@ -457,8 +483,8 @@ object DeliteTaskGraph {
       val value = (temp.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
       val data = metadata.newTemp(key)
       data.resultType = value.head
-      data.func = value.tail.head
-      for (sym <- value.tail.tail.head.asInstanceOf[List[String]].reverse) {
+      data.func = "allocFunc_%s".format(key)
+      for (sym <- value.tail.head.asInstanceOf[List[String]].reverse) {
         data.inputs ::= (getOpLike(sym), sym)
       }
     }
@@ -469,18 +495,37 @@ object DeliteTaskGraph {
       val output = metadata.newOutput(outputMap.keys.head)
       val outList = outputMap.values.head.asInstanceOf[List[Any]]
       output.resultType = outList.head
-      output.func = outList.tail.head
-      for (sym <- outList.tail.tail.head.asInstanceOf[List[String]].reverse) {
+      output.func = "allocFunc_%s".format(outputMap.keys.head)
+      for (sym <- outList.tail.head.asInstanceOf[List[String]].reverse) {
         output.inputs ::= (getOpLike(sym), sym)
       }
       //output copy
-      output.funcReturn = outList.tail.tail.tail.head
+      output.funcReturn = "copyOutputDtoH_%s".format(outputMap.keys.head)
+
+      //Added for new GPU execution model
+      val loopConfig = outList.tail.tail
+      output.loopType = loopConfig.head
+      output.hasCond = java.lang.Boolean.parseBoolean(loopConfig.tail.head)
+      output.loopFuncInputs = loopConfig.tail.tail.head.asInstanceOf[List[String]]
+      output.loopFuncInputs_2 = loopConfig.tail.tail.tail.head.asInstanceOf[List[String]]
+      output.loopFuncOutputType = loopConfig.tail.tail.tail.tail.head
+      output.loopFuncOutputType_2 = loopConfig.tail.tail.tail.tail.tail.head
+      output.loopCondInputs = loopConfig.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
+      output.loopReduceInputs = loopConfig.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
+      output.loopReduceInputs_2 = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
+      output.loopReduceParInputs = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
+      output.loopReduceParInputs_2 = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
+      output.loopZeroInputs = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
+      output.loopZeroInputs_2 = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
+
       tgt match {
         case Targets.OpenCL => output.objFields = outList.tail.tail.tail.tail.head.asInstanceOf[Map[String,String]]
         case _ =>
       }
+
     }
 
+    /*
     def fill(field: String) {
       val list = getFieldList(metadataMap, field)
       val data = metadata(field)
@@ -495,6 +540,7 @@ object DeliteTaskGraph {
       fill("gpuDimSizeX") //blocks in grid - x
       fill("gpuDimSizeY") //blocks in grid - y
     }
+    */
 
   }
 
@@ -534,6 +580,7 @@ class DeliteTaskGraph {
   def symbols: Set[String] = _ops.keys.toSet
   def ops: Set[DeliteOP] = _ops.values.toSet
   def inputOps: Set[DeliteOP] = _inputs.values.toSet
+  def inputs: Set[(OP_Input,String)] = _inputs.toSet[(String,OP_Input)].map(i=>Pair(i._2,i._1))
 
   def replaceOp(old: DeliteOP, op: DeliteOP) {
     //update ops

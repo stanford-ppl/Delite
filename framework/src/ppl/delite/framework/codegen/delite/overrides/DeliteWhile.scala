@@ -4,7 +4,9 @@ import ppl.delite.framework.ops.DeliteOpsExp
 import scala.virtualization.lms.common.{WhileExp}
 import scala.virtualization.lms.common.{ScalaGenEffect, CudaGenEffect, OpenCLGenEffect, CGenEffect}
 import scala.virtualization.lms.internal.{GenericNestedCodegen}
+import scala.reflect.SourceContext
 import java.io.PrintWriter
+import scala.reflect.SourceContext
 
 trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
 
@@ -14,7 +16,7 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
 
   case class DeliteWhile(cond: Exp[Boolean], body: Exp[Unit]) extends DeliteOpWhileLoop
 
-  override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit]) {
+  override def __whileDo(cond: => Exp[Boolean], body: => Rep[Unit])(implicit ctx: SourceContext) {
     //val c = reifyEffects(cond)
     //val a = reifyEffects(body)
     // TODO: reflectEffect(new While(c, a) with DeliteOpWhile))
@@ -47,8 +49,8 @@ trait DeliteWhileExp extends WhileExp with DeliteOpsExp {
     case _ => super.symsFreq(e)
   }
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
-    case DeliteWhile(c,b) => reflectPure(DeliteWhile(f(c),f(b)))(mtype(manifest[A]))
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case DeliteWhile(c,b) => reflectPure(DeliteWhile(f(c),f(b)))(mtype(manifest[A]), implicitly[SourceContext])
     case Reflect(DeliteWhile(c,b), u, es) => reflectMirrored(Reflect(DeliteWhile(f(c),f(b)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
@@ -87,22 +89,18 @@ trait DeliteCudaGenWhile extends CudaGenEffect with DeliteBaseGenWhile {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case DeliteWhile(c,b) =>
-            // Get free variables list
-            //val freeVars = getFreeVarBlock(c,Nil)
-
-            // emit function for the condition evaluation
-            val (condFunc,freeVars) = emitDevFunc(c, Nil)
-            val argListStr = freeVars.map(quote(_)).mkString(", ")
-
-            // Emit while loop (only the result variable of condition)
-            stream.print(addTab() + "while (")
-            stream.print("%s(%s)".format(condFunc,argListStr))
-            stream.println(") {")
-            tabWidth += 1
-            emitBlock(b)
-            tabWidth -= 1
-            //stream.println(quote(getBlockResult(b)))   //TODO: Is this needed?
-            stream.println(addTab() + "}")
+          emitBlock(c)
+          stream.println(addTab() + remap(getBlockResult(c).Type) + " " + quote(sym) + "_cond = " + quote(getBlockResult(c)) + ";")
+          stream.print(addTab() + "while (")
+          stream.print(quote(sym) + "_cond")
+          stream.println(") {")
+          tabWidth += 1
+          emitBlock(b)
+          emitBlock(c)
+          stream.println(addTab() + quote(sym) + "_cond = " + quote(getBlockResult(c)) + ";")
+          tabWidth -= 1
+          //stream.println(quote(getBlockResult(b)))   //TODO: Is this needed?
+          stream.println(addTab() + "}")
         case _ => super.emitNode(sym, rhs)
       }
     }
@@ -115,22 +113,18 @@ trait DeliteOpenCLGenWhile extends OpenCLGenEffect with DeliteBaseGenWhile {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
       rhs match {
         case DeliteWhile(c,b) =>
-            // Get free variables list
-            //val freeVars = getFreeVarBlock(c,Nil)
-
-            // emit function for the condition evaluation
-            val (condFunc,freeVars) = emitDevFunc(c, Nil)
-            val argListStr = freeVars.map(quote(_)).mkString(", ")
-
-            // Emit while loop (only the result variable of condition)
-            stream.print(addTab() + "while (")
-            stream.print("%s(%s)".format(condFunc,argListStr))
-            stream.println(") {")
-            tabWidth += 1
-            emitBlock(b)
-            tabWidth -= 1
-            //stream.println(quote(getBlockResult(b)))   //TODO: Is this needed?
-            stream.println(addTab() + "}")
+          emitBlock(c)
+          stream.println(addTab() + remap(getBlockResult(c).Type) + " " + quote(sym) + "_cond = " + quote(getBlockResult(c)) + ";")
+          stream.print(addTab() + "while (")
+          stream.print(quote(sym) + "_cond")
+          stream.println(") {")
+          tabWidth += 1
+          emitBlock(b)
+          emitBlock(c)
+          stream.println(addTab() + quote(sym) + "_cond = " + quote(getBlockResult(c)) + ";")
+          tabWidth -= 1
+          //stream.println(quote(getBlockResult(b)))   //TODO: Is this needed?
+          stream.println(addTab() + "}")
         case _ => super.emitNode(sym, rhs)
       }
     }

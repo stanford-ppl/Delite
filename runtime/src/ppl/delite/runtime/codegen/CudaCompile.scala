@@ -1,10 +1,7 @@
 package ppl.delite.runtime.codegen
 
-import collection.mutable.ArrayBuffer
-import java.io.File
+import xml.XML
 import ppl.delite.runtime.Config
-import tools.nsc.io.{Directory, Path}
-import ppl.delite.runtime.graph.targets.OS
 
 /**
  * Author: Kevin J. Brown
@@ -15,49 +12,19 @@ import ppl.delite.runtime.graph.targets.OS
  * Stanford University
  */
 
-object CudaCompile extends GPUCompile {
+object CudaCompile extends CCompile {
 
-  override def target = "cuda"
+  def target = "cuda"
   override def ext = "cu"
 
-  //TODO: handle more than one runtime object
-  def compile(destination: String, source: String, paths: Array[String]) {
-    Directory(Path(destination)).createDirectory()
-
-    val cmdString = Array[String](
-      "nvcc",
-      "-w", //suppress warnings
-      "-I" + javaHome + sep + ".." + sep + "include" + "," + javaHome + sep + ".." + sep + "include" + sep + OS.jniMD, //jni
-      "-I" + paths.mkString(","),
-      "-I" + deliteHome + sep + "runtime" + sep + "cuda",
-      "-O2", //optimized
-      "-arch", "compute_20",
-      "-code", "sm_20",
-      "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
-      "-L" + deliteLibs) ++ linkGeneratedLibs(deliteLibs) ++ Array[String](
-      "-o", "cudaHost.so", //output name
-      source //input name
-      )
-    //println("cmd is " + cmdString.mkString(","))
-    val process = Runtime.getRuntime.exec(cmdString, null, new File(destination))
-    process.waitFor //wait for compilation to complete
-    checkError(process)
+  lazy val arch = {
+    val body = XML.loadFile(Config.deliteHome + sep + "config" + sep + "delite" + sep + configFile)
+    val arch = (body \\ "arch").text.trim
+    arch.split('.').reduceLeft(_ + _) //remove 'dot' if it exists (e.g., 2.0 => 20)
   }
 
-  def compileInit() {
-    val cmdString = Array[String](
-      "nvcc",
-      "-w", //suppress warnings
-      "-I" + javaHome + sep + ".." + sep + "include" + "," + javaHome + sep + ".." + sep + "include" + sep + OS.jniMD, //jni
-      "-arch", "compute_20",
-      "-code", "sm_20",
-      "-shared", "-Xcompiler", "\'-fPIC\'", //dynamic shared library
-      "-o", Config.deliteHome + sep + "runtime" + sep + "cuda" + sep + "cudaInit.so", //output name
-      Config.deliteHome + sep + "runtime" + sep + "cuda" + sep + "cudaInit.cu"
-      )
-    val process = Runtime.getRuntime.exec(cmdString, null, new File(Config.deliteHome))
-    process.waitFor //wait for compilation to complete
-    checkError(process)
-  }
+  protected def configFile = "CUDA.xml"
+  protected def compileFlags = Array("-w", "-O3", "-lcublas", "-arch", "compute_"+arch, "-code", "sm_"+arch, "-shared", "-Xcompiler", "\'-fPIC\'")
+  protected def outputSwitch = "-o"
 
 }

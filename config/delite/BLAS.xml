@@ -1,0 +1,26 @@
+<DeliteExternalLib>
+<compiler>/opt/intel/composerxe/bin/icc</compiler> <!-- path to C compiler (gcc, icc, etc.) -->
+<headers>
+  <prefix> -I </prefix>
+  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include </path> <!-- required for JNI -->
+  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include/linux </path>
+  <!-- insert path to BLAS include directory here -->
+  <path> /opt/intel/mkl/include </path>
+  <!-- insert name of header file that includes CBLAS functions -->
+  <include> mkl.h </include>
+</headers>
+<libs>
+  <prefix> -L </prefix>
+  <!-- insert path to BLAS libraries here -->
+  <path> /opt/intel/mkl/lib/intel64 </path>
+  <path> /opt/intel/lib/intel64 </path>
+  <!-- insert BLAS libraries here -->
+  <library> -lmkl_intel_lp64 </library>
+  <library> -lmkl_intel_thread </library>
+  <library> -lmkl_core </library>
+  <library> -liomp5 </library>
+  <library> -lmkl_mc3 </library>
+  <library> -lmkl_def </library>
+</libs>
+</DeliteExternalLib>
+

@@ -1,14 +1,13 @@
 package ppl.dsl.optiml.application
 
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml._
 import java.io.PrintWriter
-import ppl.delite.framework.{DSLType}
 import scala.virtualization.lms.common.ScalaGenBase
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common.{EffectExp, Variables}
 
 
-trait SimilarityOps extends DSLType with Variables with OverloadHack {
+trait SimilarityOps extends Variables with OverloadHack {
 
   object Similarity {
     def apply(a: Rep[Int], b: Rep[Int], value: Rep[Double]) = similarity_obj_new(a, b, value)

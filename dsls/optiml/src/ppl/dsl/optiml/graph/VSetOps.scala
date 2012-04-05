@@ -1,35 +1,24 @@
 package ppl.dsl.optiml.graph
 
-/**
- * author: Michael Wu (mikemwu@stanford.edu)
- * last modified: 05/03/2011
- *
- * Pervasive Parallelism Laboratory (PPL)
- * Stanford University
- */
-
-import ppl.dsl.optiml.datastruct.scala._
-import collection.mutable.{Set => MSet}
-
-import ppl.delite.framework.{DeliteApplication, DSLType}
-import reflect.Manifest
-import scala.virtualization.lms.common._
-import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
-
 import java.io.PrintWriter
+import scala.reflect.Manifest
+import scala.collection.mutable.Set
+import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal._
+import ppl.delite.framework.DeliteApplication
+import ppl.dsl.optiml._
 
-trait VSetOps extends DSLType with Variables {
-  def vset_vertices[V<:Vertex:Manifest](s: Rep[MSet[V]]) : Rep[Vertices[V]]
+trait VSetOps extends Variables {
+  def vset_vertices[VD:Manifest,ED:Manifest](s: Rep[Set[Vertex[VD,ED]]]) : Rep[DenseVector[Vertex[VD,ED]]]
 }
 
 trait VSetOpsExp extends VSetOps with EffectExp {
-  case class VSetVertices[V<:Vertex:Manifest](s: Exp[MSet[V]]) extends Def[Vertices[V]] {
-    val mV = manifest[VerticesImpl[V]]
+  case class VSetVertices[VD:Manifest,ED:Manifest](s: Exp[Set[Vertex[VD,ED]]]) extends Def[DenseVector[Vertex[VD,ED]]] {
+    val mVD = manifest[VD]
+    val mED = manifest[ED]
   }
 
-  def vset_vertices[V<:Vertex:Manifest](s: Exp[MSet[V]]) = reflectMutable(VSetVertices(s))
+  def vset_vertices[VD:Manifest,ED:Manifest](s: Exp[Set[Vertex[VD,ED]]]) = reflectMutable(VSetVertices(s))
 }
 
 trait BaseGenVSetOps extends GenericNestedCodegen {
@@ -46,7 +35,7 @@ trait ScalaGenVSetOps extends BaseGenVSetOps with ScalaGenEffect {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case o@VSetVertices(s) => emitValDef(sym, "new " + remap(o.mV) + "(" + quote(s) + ".toArray)")
+    case o@VSetVertices(s) => emitValDef(sym, "new generated.scala.DenseVector[Vertex[" + remap(o.mVD) + "," + remap(o.mED) + "]](" + quote(s) + ".toArray)")
     case _ => super.emitNode(sym, rhs)
   }
 }

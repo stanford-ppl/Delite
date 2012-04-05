@@ -7,74 +7,22 @@ import tools.nsc.io.{Directory, Path}
 import java.io.{File, FileReader, FileWriter}
 import ppl.delite.runtime.graph.targets.OS
 
-object OpenCLCompile extends GPUCompile {
+object OpenCLCompile extends CCompile {
 
   // List of kernel symbols of type OP_External
   // (used to exclude those kernel files from the OpenCL kernel list)
   val externList = ArrayBuffer[String]()
 
-  override def target = "opencl"
+  def target = "opencl"
   override def ext = "cpp"
+
+  protected def configFile = "OpenCL.xml"
+  protected def compileFlags = Array("-w", "-O3", "-shared", "-fPIC", "-lOpenCL")
+  protected def outputSwitch = "-o"
 
   override def compile() {
     super.compile()
     collectKernels()
-  }
-
-  //TODO: handle more than one runtime object
-  def compile(destination: String, source: String, paths: Array[String]) {
-    Directory(Path(destination)).createDirectory()
-
-
-    println("Compiling OpenCL...")
-
-    //TODO: How to set the OpenCL include path in general?
-    assert(Config.clHeaderPath != null,"OpenCL header path is not specified!")
-    assert(Config.clBlasHeaderPath != null,"OpenCL blas header path is not specified!")
-    assert(Config.clBlasLibPath != null,"OpenCL blas library path is not specified!")
-
-    //TODO: fix the include & library path issue
-    //TODO: Can remove the clblas related options (-I,-l,-L) if the library init routines are included in the framework OP_External
-    val cmdString = Array[String](
-      "g++",
-      "-w", //suppress warnings
-      "-I" + Config.clHeaderPath,     // TODO: Remove
-      "-I" + Config.clBlasHeaderPath, // TODO: Remove
-      "-I" + javaHome + sep + ".." + sep + "include",
-      "-I" + javaHome + sep + ".." + sep + "include" + sep + OS.jniMD) ++ //jni
-      paths.map("-I"+_) ++
-      Array[String](
-      "-I" + paths.mkString(" -I"),
-      "-I" + deliteHome + sep + "runtime" + sep + "opencl",
-      "-O2", //optimized
-      "-shared", "-fPIC", //dynamic shared library
-      "-lOpenCL",
-      "-lclblas",                    // TODO: Remove
-      "-L" + Config.clBlasLibPath,   // TODO: Remove
-      "-L" + deliteLibs) ++ linkGeneratedLibs(deliteLibs) ++ Array[String](
-      "-o", "openclHost.so", //output name
-      source //input name
-    )
-    val process = Runtime.getRuntime.exec(cmdString, null, new File(destination))
-    //println("Compilation Command : " + cmdString.mkString(" "))
-
-    process.waitFor //wait for compilation to complete
-    checkError(process)
-  }
-
-  def compileInit() {
-    val cmdString = Array[String](
-      "g++",
-      "-w", //suppress warnings
-      "-I" + javaHome + sep + ".." + sep + "include",
-      "-I" + javaHome + sep + ".." + sep + "include" + sep + OS.jniMD, //jni
-      "-shared", "-fPIC", //dynamic shared library
-      "-o", Config.deliteHome + sep + "runtime" + sep + "opencl" + sep + "openclInit.so", //output name
-      Config.deliteHome + sep + "runtime" + sep + "opencl" + sep + "openclInit.cpp"
-      )
-    val process = Runtime.getRuntime.exec(cmdString, null, new File(Config.deliteHome))
-    process.waitFor //wait for compilation to complete
-    checkError(process)
   }
 
   // Generate the clKernels.cl file to be read by the GPU execution host thread

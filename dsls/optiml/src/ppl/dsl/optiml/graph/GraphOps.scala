@@ -1,141 +1,175 @@
 package ppl.dsl.optiml.graph
 
-import ppl.dsl.optiml.datastruct.CudaGenDataStruct
-import ppl.dsl.optiml.datastruct.scala._
+import ppl.dsl.optiml.CudaGenDataStruct
 import java.io.{PrintWriter}
 
-import ppl.delite.framework.DSLType
 import reflect.Manifest
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericNestedCodegen}
-import ppl.dsl.optiml.{OptiMLExp, OptiML}
+import scala.collection.mutable.HashMap
+import ppl.dsl.optiml._
 
-trait GraphOps extends DSLType with Variables {
+trait GraphOps extends Variables {
   this: OptiML =>
 
   object Graph {
-    def apply[V <: Vertex, E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E]) = graph_obj_new()
+    def apply[VD:Manifest,ED:Manifest]() = graph_obj_new[VD,ED]()
   }
 
-  implicit def repGraphToGraphOps[V <: Vertex, E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) = new graphOpsCls(g)
+  implicit def repGraphToGraphOps[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]) = new GraphOpsCls(g)
 
-  class graphOpsCls[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) {
+  class GraphOpsCls[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]) {
     def vertices = graph_vertices(g)
     def edges = graph_edges(g)
     //def adjacent(a: V, b: V) = graph_adjacent(g,a,b)
-    def neighborsOf(a: Rep[V]) = graph_neighbors_of(g,a)
-    def neighborsSelfOf(a: Rep[V]) = graph_neighbors_self_of(g,a)
-    def edgesOf(a: Rep[V]) = graph_edges_of(g,a)
-    def containsEdge(a: Rep[E]) = graph_contains_edge(g,a)
-    def containsVertex(a: Rep[V]) = graph_contains_vertex(g,a)
-
-    def addVertex(a: Rep[V]) = graph_add_vertex(g,a)
-    def addEdge(e: Rep[E], a: Rep[V], b: Rep[V]) = graph_add_edge(g,e,a,b)
+    def neighborsOf(a: Rep[Vertex[VD,ED]]) = graph_neighbors_of(g,a)
+    def neighborsSelfOf(a: Rep[Vertex[VD,ED]]) = graph_neighbors_self_of(g,a)
+    def edgesOf(a: Rep[Vertex[VD,ED]]) = graph_edges_of(g,a)
+    def containsEdge(a: Rep[Edge[VD,ED]]) = graph_contains_edge(g,a)
+    def containsVertex(a: Rep[Vertex[VD,ED]]) = graph_contains_vertex(g,a)
+    def addVertex(a: Rep[Vertex[VD,ED]]) = graph_add_vertex(g,a)
+    def addEdge(e: Rep[Edge[VD,ED]], a: Rep[Vertex[VD,ED]], b: Rep[Vertex[VD,ED]]) = graph_add_edge(g,e,a,b)
     //def removeEdge(a: V, b: V) = graph_remove_edge(g,a,b)
     def freeze() = graph_freeze(g)
     def frozen = graph_frozen(g)
     def clearTasks(i: Rep[Int]) = graph_cleartasks(g,i)
   }
 
-
   // object defs
-  def graph_obj_new[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Graph[V,E]]
+  def graph_obj_new[VD:Manifest,ED:Manifest](): Rep[Graph[VD,ED]]
 
   // class defs
-  def graph_vertices[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Vertices[V]]
-  def graph_edges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Edges[E]]
-  //def graph_adjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
-  def graph_neighbors_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Vertices[V]]
-  def graph_neighbors_self_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Vertices[V]]
-  def graph_edges_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Edges[E]]
-  def graph_contains_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Edge])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
-  def graph_contains_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
-
-  def graph_add_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
-  def graph_add_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], e: Rep[Edge], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
-  //def graph_remove_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
-  def graph_freeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Unit]
-  def graph_frozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]): Rep[Boolean]
-  
-  def graph_cleartasks[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], i: Rep[Int]): Rep[Unit]
+  def graph_vertices[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[DenseVector[Vertex[VD,ED]]]
+  def graph_edges[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[DenseVector[Edge[VD,ED]]]
+  //def graph_adjacent[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], a: Rep[Vertex[VD,ED]], b: Rep[Vertex[VD,ED]]): Rep[Boolean]
+  def graph_neighbors_of[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], a: Rep[Vertex[VD,ED]]): Rep[DenseVector[Vertex[VD,ED]]]
+  def graph_neighbors_self_of[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], a: Rep[Vertex[VD,ED]]): Rep[DenseVector[Vertex[VD,ED]]]
+  def graph_edges_of[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], a: Rep[Vertex[VD,ED]]): Rep[DenseVector[Edge[VD,ED]]]
+  def graph_contains_edge[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], a: Rep[Edge[VD,ED]]): Rep[Boolean]
+  def graph_contains_vertex[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], a: Rep[Vertex[VD,ED]]): Rep[Boolean]
+  def graph_add_vertex[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], a: Rep[Vertex[VD,ED]]): Rep[Unit]
+  def graph_add_edge[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], e: Rep[Edge[VD,ED]], a: Rep[Vertex[VD,ED]], b: Rep[Vertex[VD,ED]]): Rep[Unit]
+  //def graph_remove_edge[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], a: Rep[Vertex[VD,ED]], b: Rep[Vertex[VD,ED]]): Rep[Unit]
+  def graph_freeze[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[Unit]
+  def graph_frozen[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[Boolean]  
+  def graph_cleartasks[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], i: Rep[Int]): Rep[Unit]
 }
 
-trait GraphOpsExp extends GraphOps with EffectExp {
+trait GraphCompilerOps extends GraphOps {
+  this: OptiML =>
+
+  def graph_get_edgetovertices[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[HashMap[Edge[VD,ED], (Vertex[VD,ED], Vertex[VD,ED])]] 
+  def graph_get_adjacencies[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[HashMap[Vertex[VD,ED], List[(Edge[VD,ED], Vertex[VD,ED])]]]
+  def graph_get_vertexids[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[HashMap[Vertex[VD,ED], Int]]
+  def graph_get_vertices[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[Array[Vertex[VD,ED]]]
+  def graph_get_edges[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[Array[Edge[VD,ED]]]
+  def graph_get_vertexedges[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[Array[DenseVector[Edge[VD,ED]]]]
+  def graph_get_neighbors[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[Array[DenseVector[Vertex[VD,ED]]]]
+  def graph_get_neighborsself[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]]): Rep[Array[DenseVector[Vertex[VD,ED]]]]
+  
+  def graph_set_edgetovertices[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], x: Rep[HashMap[Edge[VD,ED], (Vertex[VD,ED], Vertex[VD,ED])]]): Rep[Unit]
+  def graph_set_adjacencies[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], x: Rep[HashMap[Vertex[VD,ED], List[(Edge[VD,ED], Vertex[VD,ED])]]]): Rep[Unit]
+  def graph_set_vertexids[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], x: Rep[HashMap[Vertex[VD,ED], Int]]): Rep[Unit]
+  def graph_set_vertices[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], x: Rep[Array[Vertex[VD,ED]]]): Rep[Unit]
+  def graph_set_edges[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], x: Rep[Array[Edge[VD,ED]]]): Rep[Unit]
+  def graph_set_vertexedges[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], x: Rep[Array[DenseVector[Edge[VD,ED]]]]): Rep[Unit]
+  def graph_set_neighbors[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], x: Rep[Array[DenseVector[Vertex[VD,ED]]]]): Rep[Unit]
+  def graph_set_neighborsself[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], x: Rep[Array[DenseVector[Vertex[VD,ED]]]]): Rep[Unit]
+  def graph_set_frozen[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], x: Rep[Boolean]): Rep[Unit]
+}
+
+trait GraphOpsExp extends GraphCompilerOps with EffectExp {
   this: OptiMLExp =>
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
 
-  case class GraphObjectNew[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E])
-    extends Def[Graph[V,E]] {
-    val mG = manifest[UndirectedGraphImpl[V,E]]
+  case class GraphObjectNew[VD:Manifest,ED:Manifest]() extends Def[Graph[VD,ED]] {
+    val mVD = manifest[VD]
+    val mED = manifest[ED]
   }
-  case class GraphVertices[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Vertices[V]]
-  case class GraphEdges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Edges[E]]
-  //case class GraphAdjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
-  case class GraphNeighborsOf[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Vertices[V]]
-  case class GraphNeighborsSelfOf[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Vertices[V]]
-  case class GraphEdgesOf[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Edges[E]]
-  case class GraphContainsEdge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Edge])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
-  case class GraphContainsVertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
-
-  case class GraphAddVertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
-  case class GraphAddEdge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], e: Rep[Edge], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
-  //case class GraphRemoveEdge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
-  case class GraphFreeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Unit]
-  case class GraphFrozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E]) extends Def[Boolean]
-    
-  case class GraphClearTasks[V <: Vertex, E <: Edge](g: Rep[Graph[V,E]], i: Exp[Int]) extends Def[Unit]
+  case class GraphGetEdgeToVertices[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends Def[HashMap[Edge[VD,ED], (Vertex[VD,ED], Vertex[VD,ED])]]
+  case class GraphGetAdjacencies[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends Def[HashMap[Vertex[VD,ED], List[(Edge[VD,ED],Vertex[VD,ED])]]] 
+  case class GraphGetVertexIds[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends Def[HashMap[Vertex[VD,ED], Int]]
+  case class GraphGetVertices[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends Def[Array[Vertex[VD,ED]]]
+  case class GraphGetEdges[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends Def[Array[Edge[VD,ED]]]
+  case class GraphGetVertexEdges[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends Def[Array[DenseVector[Edge[VD,ED]]]]
+  case class GraphGetNeighbors[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends Def[Array[DenseVector[Vertex[VD,ED]]]]
+  case class GraphGetNeighborsSelf[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends Def[Array[DenseVector[Vertex[VD,ED]]]]     
+  case class GraphFrozen[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends Def[Boolean]    
+  
+  case class GraphSetEdgeToVertices[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[HashMap[Edge[VD,ED], (Vertex[VD,ED], Vertex[VD,ED])]]) extends Def[Unit]
+  case class GraphSetAdjacencies[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[HashMap[Vertex[VD,ED], List[(Edge[VD,ED], Vertex[VD,ED])]]]) extends Def[Unit]
+  case class GraphSetVertexIds[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[HashMap[Vertex[VD,ED], Int]]) extends Def[Unit]
+  case class GraphSetVertices[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Array[Vertex[VD,ED]]]) extends Def[Unit]
+  case class GraphSetEdges[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Array[Edge[VD,ED]]]) extends Def[Unit]
+  case class GraphSetVertexEdges[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Array[DenseVector[Edge[VD,ED]]]]) extends Def[Unit]
+  case class GraphSetNeighbors[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Array[DenseVector[Vertex[VD,ED]]]]) extends Def[Unit]
+  case class GraphSetNeighborsSelf[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Array[DenseVector[Vertex[VD,ED]]]]) extends Def[Unit]
+  case class GraphSetFrozen[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Boolean]) extends Def[Unit]
 
   /////////////////////////////////////////////////
   // implemented via kernel embedding (sequential)
-
-
-
-  ////////////////////////////////
-  // implemented via delite ops
-
-
-
-
+  
+  case class GraphVertices[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_vertices_impl(g)))
+  case class GraphEdges[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_edges_impl(g)))
+  //case class GraphAdjacent[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]], b: Exp[Vertex[VD,ED]]) extends Def[Boolean]
+  case class GraphNeighborsOf[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_neighborsof_impl(g,a)))
+  case class GraphNeighborsSelfOf[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_neighborsselfof_impl(g,a)))
+  case class GraphEdgesOf[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_edgesof_impl(g,a)))
+  case class GraphContainsEdge[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Edge[VD,ED]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_containsedge_impl(g,a)))
+  case class GraphContainsVertex[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_containsvertex_impl(g,a)))
+  case class GraphAddVertex[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_addvertex_impl(g,a)))
+  case class GraphAddEdge[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], e: Exp[Edge[VD,ED]], a: Exp[Vertex[VD,ED]], b: Exp[Vertex[VD,ED]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_addedge_impl(g,e,a,b)))
+  //case class GraphRemoveEdge[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]], b: Exp[Vertex[VD,ED]]) extends Def[Unit]
+  case class GraphFreeze[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) extends DeliteOpSingleTask(reifyEffectsHere(graph_freeze_impl(g)))
+  case class GraphClearTasks[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], i: Exp[Int]) extends DeliteOpSingleTask(reifyEffectsHere(graph_cleartasks_impl(g,i)))
+  
   /////////////////////
   // object interface
 
-  def graph_obj_new[V <: Vertex,E <: Edge]()(implicit mV: Manifest[V], mE: Manifest[E]) = reflectMutable(GraphObjectNew())
-
+  def graph_obj_new[VD:Manifest,ED:Manifest]() = reflectMutable(GraphObjectNew())
 
   /////////////////////
   // class interface
 
-  def graph_vertices[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectPure(GraphVertices(g))
-  def graph_edges[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectPure(GraphEdges(g))
-  //def graph_adjacent[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-  //  = GraphAdjacent(/*reflectRead*/(g),/*reflectRead*/(a),/*reflectRead*/(b))
-  def graph_neighbors_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectPure(GraphNeighborsOf(g,a))
-  def graph_neighbors_self_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectPure(GraphNeighborsSelfOf(g,a))
-  def graph_edges_of[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectPure(GraphEdgesOf(g,a))
-  def graph_contains_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Edge])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectPure(GraphContainsEdge(g,a))
-  def graph_contains_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectPure(GraphContainsVertex(g,a))
-
-  def graph_add_vertex[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectWrite(g)(GraphAddVertex(g,a))
-  def graph_add_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], e: Rep[Edge], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectWrite(g)(GraphAddEdge(g,e,a,b))
-  //def graph_remove_edge[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]], a: Rep[Vertex], b: Rep[Vertex])(implicit mV: Manifest[V], mE: Manifest[E])
-  //  = reflectWrite(g)(reflectMutation(GraphRemoveEdge(g,a,b))
-  def graph_freeze[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectWrite(g)(GraphFreeze(g))
-  def graph_frozen[V <: Vertex,E <: Edge](g: Rep[Graph[V,E]])(implicit mV: Manifest[V], mE: Manifest[E])
-    = reflectPure(GraphFrozen(g))
-
-  def graph_cleartasks[V <: Vertex, E <: Edge](g: Rep[Graph[V,E]], i: Exp[Int]) = reflectWrite(g)(GraphClearTasks(g,i))
+  def graph_vertices[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectPure(GraphVertices(g))
+  def graph_edges[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectPure(GraphEdges(g))
+  //def graph_adjacent[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]], b: Exp[Vertex[VD,ED]]) = GraphAdjacent(/*reflectRead*/(g),/*reflectRead*/(a),/*reflectRead*/(b))
+  def graph_neighbors_of[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]]) = reflectPure(GraphNeighborsOf(g,a))
+  def graph_neighbors_self_of[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]]) = reflectPure(GraphNeighborsSelfOf(g,a))
+  def graph_edges_of[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]]) = reflectPure(GraphEdgesOf(g,a))
+  def graph_contains_edge[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Edge[VD,ED]]) = reflectPure(GraphContainsEdge(g,a))
+  def graph_contains_vertex[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]]) = reflectPure(GraphContainsVertex(g,a))
+  def graph_add_vertex[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]]) = reflectWrite(g)(GraphAddVertex(g,a))
+  def graph_add_edge[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], e: Exp[Edge[VD,ED]], a: Exp[Vertex[VD,ED]], b: Exp[Vertex[VD,ED]]) = reflectWrite(g)(GraphAddEdge(g,e,a,b))
+  //def graph_remove_edge[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], a: Exp[Vertex[VD,ED]], b: Exp[Vertex[VD,ED]]) = reflectWrite(g)(reflectMutation(GraphRemoveEdge(g,a,b))
+  def graph_freeze[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectWrite(g)(GraphFreeze(g))
+  def graph_frozen[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectPure(GraphFrozen(g))
+  def graph_cleartasks[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], i: Exp[Int]) = reflectWrite(g)(GraphClearTasks(g,i))
+  
+  
+  ///////////////////
+  // internal
+  
+  def graph_get_edgetovertices[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectPure(GraphGetEdgeToVertices(g))
+  def graph_get_adjacencies[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectPure(GraphGetAdjacencies(g))
+  def graph_get_vertexids[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectPure(GraphGetVertexIds(g))
+  def graph_get_vertices[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectPure(GraphGetVertices(g))
+  def graph_get_edges[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectPure(GraphGetEdges(g))
+  def graph_get_vertexedges[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectPure(GraphGetVertexEdges(g))
+  def graph_get_neighbors[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectPure(GraphGetNeighbors(g))
+  def graph_get_neighborsself[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]]) = reflectPure(GraphGetNeighborsSelf(g))
+  
+  def graph_set_edgetovertices[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[HashMap[Edge[VD,ED], (Vertex[VD,ED], Vertex[VD,ED])]]) = reflectWrite(g)(GraphSetEdgeToVertices(g,x))
+  def graph_set_adjacencies[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[HashMap[Vertex[VD,ED], List[(Edge[VD,ED], Vertex[VD,ED])]]]) = reflectWrite(g)(GraphSetAdjacencies(g,x))
+  def graph_set_vertexids[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[HashMap[Vertex[VD,ED], Int]]) = reflectWrite(g)(GraphSetVertexIds(g,x))
+  def graph_set_vertices[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Array[Vertex[VD,ED]]]) = reflectWrite(g)(GraphSetVertices(g,x))
+  def graph_set_edges[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Array[Edge[VD,ED]]]) = reflectWrite(g)(GraphSetEdges(g,x))
+  def graph_set_vertexedges[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Array[DenseVector[Edge[VD,ED]]]]) = reflectWrite(g)(GraphSetVertexEdges(g,x))
+  def graph_set_neighbors[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Array[DenseVector[Vertex[VD,ED]]]]) = reflectWrite(g)(GraphSetNeighbors(g,x))
+  def graph_set_neighborsself[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Array[DenseVector[Vertex[VD,ED]]]]) = reflectWrite(g)(GraphSetNeighborsSelf(g,x))
+  def graph_set_frozen[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], x: Exp[Boolean]) = reflectWrite(g)(GraphSetFrozen(g,x))
 }
 
 
@@ -151,22 +185,26 @@ trait ScalaGenGraphOps extends BaseGenGraphOps with ScalaGenBase {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
     rhs match {
-      case g@GraphObjectNew() => emitValDef(sym, "new " + remap(g.mG) + "()")
-      case GraphVertices(g) => emitValDef(sym, quote(g) + ".vertices")
-      case GraphEdges(g) => emitValDef(sym, quote(g) + ".edges")
-      //case GraphAdjacent(g,a,b) => emitValDef(sym, quote(g) + ".adjacent(" + quote(a) + "," + quote(b) + ")")
-      case GraphNeighborsOf(g,a) => emitValDef(sym, quote(g) + ".neighborsOf(" + quote(a) + ")")
-      case GraphNeighborsSelfOf(g,a) => emitValDef(sym, quote(g) + ".neighborsSelfOf(" + quote(a) + ")")
-      case GraphEdgesOf(g,a) => emitValDef(sym, quote(g) + ".edgesOf(" + quote(a) + ")")
-      case GraphContainsEdge(g,a) => emitValDef(sym, quote(g) + ".containsEdge(" + quote(a) + ")")
-      case GraphContainsVertex(g,a) => emitValDef(sym, quote(g) + ".containsVertex(" + quote(a) + ")")
-
-      case GraphAddVertex(g,a) => emitValDef(sym, quote(g) + ".addVertex(" + quote(a) + ")")
-      case GraphAddEdge(g,e,a,b) => emitValDef(sym, quote(g) + ".addEdge(" + quote(e) + "," + quote(a) + "," + quote(b) + ")")
-      //case GraphRemoveEdge(g,a,b) => emitValDef(sym, quote(g) + ".removeEdge(" + quote(a) + "," + quote(b) + ")")
-      case GraphFreeze(g) => emitValDef(sym, quote(g) + ".freeze()")
-      case GraphFrozen(g) => emitValDef(sym, quote(g) + ".frozen")
-      case GraphClearTasks(g,i) => emitValDef(sym, quote(g) + ".vertices(" + quote(i) + ").clearTasks()")
+      case g@GraphObjectNew() => emitValDef(sym, "new generated.scala.Graph[" + remap(g.mVD) + "," + remap(g.mED) + "]()")
+      case GraphGetEdgeToVertices(g) => emitValDef(sym, quote(g) + "._edgeToVertices")
+      case GraphGetAdjacencies(g) => emitValDef(sym, quote(g) + "._adjacencies")
+      case GraphGetVertexIds(g) => emitValDef(sym, quote(g) + "._vertexIds")
+      case GraphGetVertices(g) => emitValDef(sym, quote(g) + "._vertices")
+      case GraphGetEdges(g) => emitValDef(sym, quote(g) + "._edges")
+      case GraphGetVertexEdges(g) => emitValDef(sym, quote(g) + "._vertexEdges")
+      case GraphGetNeighbors(g) => emitValDef(sym, quote(g) + "._neighbors")
+      case GraphGetNeighborsSelf(g) => emitValDef(sym, quote(g) + "._neighborsSelf")
+      case GraphFrozen(g) => emitValDef(sym, quote(g) + "._frozen")
+      
+      case GraphSetEdgeToVertices(g,x) => emitValDef(sym, quote(g) + "._edgeToVertices = " + quote(x))
+      case GraphSetAdjacencies(g,x) => emitValDef(sym, quote(g) + "._adjacencies = " + quote(x))
+      case GraphSetVertexIds(g,x) => emitValDef(sym, quote(g) + "._vertexIds = " + quote(x))
+      case GraphSetVertices(g,x) => emitValDef(sym, quote(g) + "._vertices = " + quote(x))
+      case GraphSetEdges(g,x) => emitValDef(sym, quote(g) + "._edges = " + quote(x))
+      case GraphSetVertexEdges(g,x) => emitValDef(sym, quote(g) + "._vertexEdges = " + quote(x))
+      case GraphSetNeighbors(g,x) => emitValDef(sym, quote(g) + "._neighbors = " + quote(x))
+      case GraphSetNeighborsSelf(g,x) => emitValDef(sym, quote(g) + "._neighborsSelf = " + quote(x))
+      case GraphSetFrozen(g,x) => emitValDef(sym, quote(g) + "._frozen = " + quote(x))      
       case _ => super.emitNode(sym, rhs)
     }
   }
@@ -177,16 +215,16 @@ trait CudaGenGraphOps extends BaseGenGraphOps with CudaGenBase with CudaGenDataS
   val IR: GraphOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 trait CGenGraphOps extends BaseGenGraphOps with CGenBase {
   val IR: GraphOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }

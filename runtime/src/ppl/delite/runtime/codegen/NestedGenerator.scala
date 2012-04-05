@@ -28,6 +28,7 @@ abstract class NestedGenerator(nested: OP_Nested, location: Int) extends Executa
   override protected def getSync(op: DeliteOP, name: String) = NestedCommon.getSync(baseId, op, name)
 
   protected def writeHeader(location: Int, out: StringBuilder) {
+    out.append("import ppl.delite.runtime.profiler.PerformanceTimer\n")
     out.append("import java.util.concurrent.locks._\n") //locking primitives
     ExecutableGenerator.writePath(nested.nestedGraphs(0).kernelPath, out) //package of scala kernels
     out.append("object ")
@@ -70,6 +71,9 @@ abstract class GPUNestedGenerator(nested: OP_Nested, location: Int, target: Targ
   protected def writeFunctionHeader(out: StringBuilder) {
     out.append(nested.outputType(target))
     out.append(' ')
+    // GPU nested block can only return when both condition branches are returned by GPU,
+    // meaning that the return object will be a pointer type
+    if(nested.outputType != "Unit") out.append('*')
     out.append(kernelName)
     out.append('(')
     writeInputs(out)
