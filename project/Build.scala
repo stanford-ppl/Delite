@@ -13,6 +13,7 @@ object DeliteBuild extends Build {
   val virtScala = "2.10.0-M1-virtualized" //"2.10.0-virtualized-SNAPSHOT"
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
     resolvers += ScalaToolsSnapshots, 
+    organization := "stanford-ppl",
     resolvers += dropboxScalaTestRepo,
     organization := "stanford-ppl",
     scalaVersion := virtScala,
@@ -84,6 +85,5 @@ object DeliteBuild extends Build {
     parallelExecution in Test := false
     // don't appear to be able to depend on a different scala version simultaneously, so just using scala-virtualized for everything
   )) dependsOn(framework, runtime, optiml, optimlApps, runtime, deliteTest)
-  
   //dependsOn(framework % "test->compile;compile->compile", optiml % "test->compile;compile->compile", optiql % "test", optimlApps % "test->compile;compile->compile", runtime % "test->compile;compile->compile")
 }

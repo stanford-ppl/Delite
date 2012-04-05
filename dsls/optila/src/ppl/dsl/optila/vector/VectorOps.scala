@@ -351,17 +351,17 @@ trait VectorOps extends Variables {
     
     // //def +(y: Rep[intf.ops.V[A]])(implicit a: Arith[A]) = intf.ops.toIntf(intf.ops.+(y)) // doesn't work, would need dynamic type of ops
     def +(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vplusToIntf(intf.ops.+(y))    
-    def +(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vplusToIntf(intf.ops.+(y))
+    def +(y: Rep[A])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) = intf.ops.vplusToIntf(intf.ops.+(y))
     def -(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vminusToIntf(intf.ops.-(y))    
-    def -(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vminusToIntf(intf.ops.-(y))
+    def -(y: Rep[A])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) = intf.ops.vminusToIntf(intf.ops.-(y))
     def *(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vtimesToIntf(intf.ops.*(y))    
-    def *(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vtimesToIntf(intf.ops.*(y))  
-    //def *(y: Rep[DenseMatrix[A]])(implicit a: Arith[A],o: Overloaded2) = intf.ops.vtimesToIntf(intf.ops.*(y))
+    def *(y: Rep[A])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) = intf.ops.vtimesToIntf(intf.ops.*(y))  
+    //def *(y: Rep[Matrix[A]])(implicit a: Arith[A],o: Overloaded2) = intf.ops.vtimesToIntf(intf.ops.*(y))
     def **(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.**(y)
     def *:*(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.*:*(y)
     def dot(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.dot(y)
-    def /(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops./(y))    
-    def /(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops./(y))      
+    def /(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops./(y))
+    def /(y: Rep[A])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) = intf.ops.toIntf(intf.ops./(y))
     
     def sum(implicit a: Arith[A], ctx: SourceContext) = intf.ops.sum
     def abs(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops.abs)
