@@ -30,3 +30,5 @@ trait SoftBit
 
 // To express belongsto Ranges
 class Range[T](lo: T, hi: T)
+
+// Stream trait? so that width assert will only apply to them?

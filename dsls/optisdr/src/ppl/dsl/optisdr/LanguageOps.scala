@@ -16,6 +16,8 @@ trait LanguageOps extends Base {
   def create_range[T:Manifest](lo: Rep[T], hi: Rep[T]) : Range[T]
   
   def assertWidth[T:Manifest](x: Rep[T], width: Rep[Int])(implicit ctx: SourceContext) : Rep[Unit]
+  // assert multiple of? assert minimum?
+  
   def belongsto[T:Manifest](x: Rep[T], r: Range[T])(implicit ctx: SourceContext) : Rep[Unit]
   
   // Just syntax sugar!
@@ -54,6 +56,11 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   def assertWidth[T:Manifest](x: Exp[T], width: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(AssertWidth(x,width))
   
+  case class BelongsTo[T:Manifest](x: Exp[T], r: Range[T]) extends Def[Unit]
+  
+  def belongsto[T:Manifest](x: Exp[T], r: Range[T])(implicit ctx: SourceContext) = reflectEffect(BelongsTo(x,r))
+  
+  // Does this only work for integers?
   def create_range[T:Manifest](lo: Exp[T], hi: Exp[T]) : Range[T] = {
 	(lo, hi) match {
 		case (Const(x), Const(y)) => new Range(x, y)
