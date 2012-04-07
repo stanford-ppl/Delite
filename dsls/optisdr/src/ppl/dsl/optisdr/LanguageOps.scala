@@ -15,6 +15,12 @@ trait LanguageOps extends Base {
   
   def create_range[T:Manifest](lo: Rep[T], hi: Rep[T]) : Range[T]
   
+  object Enum {
+	def apply[T:Manifest](xs: Rep[T]*) = create_enum(xs : _*)
+  }
+  
+  def create_enum[T:Manifest](xs: Rep[T]*) : Enum[T]
+  
   def assertWidth[T:Manifest](x: Rep[T], width: Rep[Int])(implicit ctx: SourceContext) : Rep[Unit]
   // assert multiple of? assert minimum?
   
@@ -23,6 +29,9 @@ trait LanguageOps extends Base {
   // Just syntax sugar!
   // What we expect is a block that returns a function. Not sure how to expect a return type of a function with any number of args...
   def kernel(kernel_fn: AnyRef) = kernel_fn
+  
+  // I think we need to wrap kernels that don't take stream args with a function that does a mapping
+  // Perhaps we can make people wrap it themselves with some keyword... wish there was a better way
 }
 
 trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
@@ -66,6 +75,15 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 		case (Const(x), Const(y)) => new Range(x, y)
 		case _ => throw new IllegalArgumentException("Range needs constants!"); null
 	}
+  }
+  
+  // Does this only work for integers?
+  def create_enum[T:Manifest](xs: Exp[T]*) : Enum[T] = {
+	new Enum((xs map { _ match {
+			case (Const(x)) => x
+			case _ => throw new IllegalArgumentException("Enum needs constants!"); null.asInstanceOf[T]
+		} 
+	}) : _*)
   }
   
   // Kernel stuff
