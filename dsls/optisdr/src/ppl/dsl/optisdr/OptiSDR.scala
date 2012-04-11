@@ -49,7 +49,8 @@ trait OptiSDRLift extends OptiLALift {
 trait OptiSDR extends OptiSDRScalaOpsPkg with OptiLA
   with ComplexOps with UIntOps with SoftBitOps
   with SDRArithOps
-  with SDRVectorOps {
+  with SDRVectorOps
+  with LanguageOps {
   this: OptiSDRApplication =>
 
   type Real = Double
@@ -59,7 +60,8 @@ trait OptiSDR extends OptiSDRScalaOpsPkg with OptiLA
 trait OptiSDRExp extends OptiLAExp with OptiSDRCompiler with OptiSDRScalaOpsPkgExp
   with ComplexOpsExpOpt with UIntOpsExpOpt with SoftBitOpsExp
   with SDRArithOpsExp
-  with SDRVectorOpsExpOpt {
+  with SDRVectorOpsExpOpt
+  with LanguageOpsExp {
   this: DeliteApplication with OptiSDRApplication with OptiSDRExp => // can't be OptiSDRApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
 }
 

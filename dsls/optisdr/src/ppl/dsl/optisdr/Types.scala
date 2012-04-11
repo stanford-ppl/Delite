@@ -31,7 +31,7 @@ trait SoftBit
 // To express belongsto Ranges
 class Range[T](lo: T, hi: T)
 
-// To express belongs Enum
-class Enum[T](xs: T*) 
+// To express belongs an enum
+class ParamEnum[T](xs: T*) 
 
 // Stream trait? so that width assert will only apply to them?

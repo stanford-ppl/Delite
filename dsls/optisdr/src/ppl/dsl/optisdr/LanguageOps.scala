@@ -17,17 +17,17 @@ trait LanguageOps extends Base {
   
   def create_range[T:Manifest](lo: Rep[T], hi: Rep[T]) : Range[T]
   
-  object Enum {
+  object ParamEnum {
 	def apply[T:Manifest](xs: Rep[T]*) = create_enum(xs : _*)
   }
   
-  def create_enum[T:Manifest](xs: Rep[T]*) : Enum[T]
+  def create_enum[T:Manifest](xs: Rep[T]*) : ParamEnum[T]
   
   def assertWidth[T:Manifest](x: Rep[T], width: Rep[Int])(implicit ctx: SourceContext) : Rep[Unit]
   // assert multiple of? assert minimum?
   
   def belongsto[T:Manifest](x: Rep[T], r: Range[T])(implicit ctx: SourceContext) : Rep[Unit]
-  def belongsto[T:Manifest](x: Rep[T], r: Enum[T])(implicit ctx: SourceContext) : Rep[Unit]
+  def belongsto[T:Manifest](x: Rep[T], r: ParamEnum[T])(implicit ctx: SourceContext) : Rep[Unit]
   
   // Just syntax sugar!
   // What we expect is a block that returns a function. Not sure how to expect a return type of a function with any number of args...
@@ -71,10 +71,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def assertWidth[T:Manifest](x: Exp[T], width: Exp[Int])(implicit ctx: SourceContext) = reflectEffect(AssertWidth(x,width))
   
   case class BelongsToRange[T:Manifest](x: Exp[T], r: Range[T]) extends Def[Unit]
-  case class BelongsToEnum[T:Manifest](x: Exp[T], r: Enum[T]) extends Def[Unit]
+  case class BelongsToEnum[T:Manifest](x: Exp[T], r: ParamEnum[T]) extends Def[Unit]
   
   def belongsto[T:Manifest](x: Exp[T], r: Range[T])(implicit ctx: SourceContext) = reflectEffect(BelongsToRange(x,r))
-  def belongsto[T:Manifest](x: Exp[T], e: Enum[T])(implicit ctx: SourceContext) = reflectEffect(BelongsToEnum(x,e))
+  def belongsto[T:Manifest](x: Exp[T], e: ParamEnum[T])(implicit ctx: SourceContext) = reflectEffect(BelongsToEnum(x,e))
   
   // Does this only work for integers?
   def create_range[T:Manifest](lo: Exp[T], hi: Exp[T]) : Range[T] = {
@@ -85,8 +85,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   }
   
   // Does this only work for integers?
-  def create_enum[T:Manifest](xs: Exp[T]*) : Enum[T] = {
-	new Enum((xs map { _ match {
+  def create_enum[T:Manifest](xs: Exp[T]*) : ParamEnum[T] = {
+	new ParamEnum((xs map { _ match {
 			case (Const(x)) => x
 			case _ => throw new IllegalArgumentException("Enum needs constants!"); null.asInstanceOf[T]
 		} 
@@ -95,7 +95,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   case class StreamOffset[T:Manifest](x: Exp[T], i: Int) extends Def[T]
   
-  case class StreamOffsets[T:Manifest](x: Exp[T], is: Enum[T]) extends Def[DenseVector[T]]
+  case class StreamOffsets[T:Manifest](x: Exp[T], is: ParamEnum[T]) extends Def[DenseVector[T]]
   
   // Kernel stuff
   // 
