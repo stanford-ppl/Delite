@@ -50,7 +50,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
   this: SimpleVectorExp =>
     
   //implemented via kernel embedding (sequential)
-  case class PPrint[A:Manifest](x: Exp[Vector[A]], print: Exp[Unit])
+  case class PPrint[A:Manifest](x: Exp[Vector[A]], print: Block[Unit])
     extends DeliteOpSingleTask(print)
   
   //implemented via Delite ops
@@ -114,8 +114,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
 
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext): Exp[Int] = ifVector(x)(length(_))(super.dc_size(x))
   override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int])(implicit ctx: SourceContext): Exp[A] = ifVector(x)(apply(_, idx))(super.dc_apply(x, idx))
-  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int], value: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = ifVector(x)(v => reifyEffectsHere(darray_update(v.data, idx, value)))(super.dc_update(x,idx,value))
-  
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int], value: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = ifVector(x)(v => reifyEffectsHere(darray_update(v.data, idx, value)))(super.dc_update(x,idx,value))  
 }
 
 /**

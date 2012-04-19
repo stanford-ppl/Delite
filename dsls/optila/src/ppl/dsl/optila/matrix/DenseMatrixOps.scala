@@ -575,7 +575,7 @@ trait ScalaGenDenseMatrixOps extends ScalaGenBase {
     // case DenseMatrixRemoveCols(x,pos,len) => emitValDef(sym, quote(x) + ".removeCols(" + quote(pos) + "," + quote(len) + ")")
     case DenseMatrixRawApply(x,i) => emitValDef(sym, quote(x) + "._data(" + quote(i) + ")")
     case DenseMatrixRawUpdate(x,i,y) => emitValDef(sym, quote(x) + "._data(" + quote(i) + ") = "  + quote(y))
-    case DenseMatrixRawData(x) => emitValDef(sym, quote(getBlockResult(x)) + "._data")  // getBlockResult necessary?? should it be everywhere?
+    case DenseMatrixRawData(x) => emitValDef(sym, quote(x) + "._data")  // getBlockResult necessary?? should it be everywhere?
     case DenseMatrixSetNumRows(x,v) => emitValDef(sym, quote(x) + "._numRows = " + quote(v))
     case DenseMatrixSetNumCols(x,v) => emitValDef(sym, quote(x) + "._numCols = " + quote(v))
     case DenseMatrixSetRawData(x,data) => emitValDef(sym, quote(x) + "._data = " + quote(data))
@@ -593,7 +593,7 @@ trait CudaGenDenseMatrixOps extends CudaGenBase with CudaGenDataStruct {
     case DenseMatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
     case DenseMatrixRawApply(x,i) => emitValDef(sym, quote(x) + ".dcApply(" + quote(i) + ")")
     case DenseMatrixRawUpdate(x,i,y) => stream.println(quote(x) + ".dcUpdate(" + quote(i) + "," + quote(y) + ");")
-    case DenseMatrixRawData(x) => emitValDef(sym, quote(getBlockResult(x)) + ".getdata()")
+    case DenseMatrixRawData(x) => emitValDef(sym, quote(x) + ".getdata()")
     case DenseMatrixSetNumRows(x,v) => stream.println(quote(x) + ".numRows = " + quote(v) + ";")
     case DenseMatrixSetNumCols(x,v) => stream.println(quote(x) + ".numCols = " + quote(v) + ";")
     case DenseMatrixSetRawData(x,data) => stream.println(quote(x) + ".setdata(" + quote(data) + ");")

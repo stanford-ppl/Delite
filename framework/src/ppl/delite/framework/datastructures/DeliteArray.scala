@@ -56,6 +56,9 @@ trait DeliteArrayOpsExp extends DeliteArrayOps with StructExp with EffectExp {
   def darray_update[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T]) = reflectWrite(da)(DeliteArrayUpdate[T](da,i,x))
   
   def reflectPure[T](x: Def[T])(implicit ctx: SourceContext) = x
+  
+  //def array_length[T:Manifest](da: Exp[Array[T]]) = darray_length(da.asInstanceOf[Exp[DeliteArray[T]]]) // FIXME
+  
 }
 
 trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {

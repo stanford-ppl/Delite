@@ -2,7 +2,7 @@ import sbt._
 import Keys._
 
 object DeliteBuild extends Build {
-  val virtualization_lms_core = "EPFL" % "lms_2.10.0-M1-virtualized" % "0.1"
+  val virtualization_lms_core = "EPFL" % "lms_2.10.0-M1-virtualized" % "0.2"
   
   // FIXME: custom-built scalatest
   val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"

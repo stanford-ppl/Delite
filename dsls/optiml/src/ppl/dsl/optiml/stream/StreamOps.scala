@@ -131,7 +131,7 @@ trait StreamOpsExp extends StreamOps with VariablesExp {
   def stream_obj_new[A:Manifest](numRows: Exp[Int], numCols: Exp[Int], func: (Rep[Int],Rep[Int]) => Rep[A])(implicit ctx: SourceContext) = {
     val y = doLambda2(func)
     val isPure = y match {
-      case Def(Lambda2(a,b,c,Def(Reify(d,u,es)))) => false
+      case Def(Lambda2(a,b,c,Block(Def(Reify(d,u,es))))) => false
       case _ => true
     }
     // Streams are only mutable from an implementation standpoint (they hold underlying state)
@@ -212,7 +212,15 @@ trait StreamOpsExpOpt extends StreamOpsExp {
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, func, isPure)/*,_,_)*/) => numCols
     case _ => super.stream_numcols(x)
   }
-  
+
+  def stream_chunksize[A:Manifest](x: Exp[Stream[A]]) = x match {
+    case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, func, isPure)/*,_,_)*/) => chunkSize
+  }
+
+  def stream_stfunc[A:Manifest](x: Exp[Stream[A]]) = x match {
+    case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))/*,_,_)*/) => stfunc
+  }
+    
 /*
   case class StreamRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]] {
     val size = in.length
@@ -224,14 +232,25 @@ trait StreamOpsExpOpt extends StreamOpsExp {
   }
 */
 
+  /*case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int])
+    extends DeliteOpMap[Int,A,StreamRow[A]] {
 
-  // TODO: do we still need this now that we use the new foreach op above?
-  abstract case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]]
+    val size = stream_numcols(st)
+    val in = 0::size
+    
+    val chunkSize = stream_chunksize(st)
+    val stfunc = stream_stfunc(st)
+    
+    def alloc = VectorNew[A](size, unit(true))//stream_chunk_row(st,row,offset) // FIXME: not supported right now
+    def func = i => stfunc(offset*chunkSize+row,i)
+  }*/
   
   // no unsafeSetData exists for views... so we have to unfortunately do an extra copy to wrap the array result (i.e. safeSetData)
-  def updateViewWithArray[A:Manifest](a: Exp[Array[A]], v: Exp[StreamRow[A]]): Exp[StreamRow[A]] = { vectorview_update_impl(v, a); v }
+  //def updateViewWithArray[A:Manifest](a: Exp[Array[A]], v: Exp[StreamRow[A]]): Exp[StreamRow[A]] = { vectorview_update_impl(v, a); v }
   
-  override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) = st match {
+  abstract case class StreamChunkRowFusable[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]) extends DeliteOpLoop[StreamRow[A]]
+
+  override def stream_init_and_chunk_row[A:Manifest](st: Exp[Stream[A]], row: Exp[Int], offset: Exp[Int]): Exp[StreamRow[A]] = st match {
 
     case Def(/*Reflect(*/StreamObjectNew(numRows, numCols, chunkSize, Def(Lambda2(stfunc,_,_,_)), Const(true))/*,_,_)*/) =>
 /*
@@ -246,12 +265,19 @@ trait StreamOpsExpOpt extends StreamOpsExp {
       //vview(idx*numCols, 1, numCols, true)
       new StreamRowImpl[T](idx, offset, this, _data)
 */
+      
+      printerr("warning: fusable chunked stream rows are currently not supported FIXME")
+      
+      return super.stream_init_and_chunk_row(st,row,offset)
+      
       val r: Def[StreamRow[A]] = new StreamChunkRowFusable(st, row, offset) {
         val size = numCols
         val aV = fresh[Array[A]]
         val body: Def[StreamRow[A]] = new DeliteCollectElem[A,StreamRow[A]](
-          aV = this.aV,
-          alloc = reifyEffects(updateViewWithArray(aV,stream_chunk_row_mutable(st,row,offset))),
+          //aV = this.aV,
+          //alloc = reifyEffects(updateViewWithArray(aV,stream_chunk_row_mutable(st,row,offset))),
+          aV = fresh[Array[A]],
+          alloc = reifyEffects(stream_chunk_row(st,row,offset)), // <--- will ignore the actual data array. stream rows do not have unsafeSetData
           func = reifyEffects(stfunc(offset*chunkSize+row,v))
         )
       }
@@ -259,8 +285,6 @@ trait StreamOpsExpOpt extends StreamOpsExp {
       
     case _ => super.stream_init_and_chunk_row(st,row,offset)
   }
-  
-  
   
 }
 

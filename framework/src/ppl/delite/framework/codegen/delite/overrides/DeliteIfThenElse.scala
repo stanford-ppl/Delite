@@ -12,7 +12,7 @@ trait DeliteIfThenElseExp extends IfThenElseExp with BooleanOpsExp with EqualExp
 
   // there is a lot of code duplication between DeliteIfThenElse and IfThenElse in lms -- do we really need a separate DeliteIfThenElse?
 
-  case class DeliteIfThenElse[T:Manifest](cond: Exp[Boolean], thenp: Exp[T], elsep: Exp[T], flat: Boolean) extends DeliteOpCondition[T]
+  case class DeliteIfThenElse[T:Manifest](cond: Exp[Boolean], thenp: Block[T], elsep: Block[T], flat: Boolean) extends DeliteOpCondition[T]
 
   override def __ifThenElse[T:Manifest](cond: Rep[Boolean], thenp: => Rep[T], elsep: => Rep[T])(implicit ctx: SourceContext) = ifThenElse(cond, thenp, elsep, false)
 
@@ -97,7 +97,7 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
       //val save = deliteKernel
       //deliteKernel = false
       stream.println("val " + quote(sym) + " = {")
-      (a,b) match {
+      (a.res,b.res) match {
         case (Const(()), Const(())) => stream.println("()")
         case (_, Const(())) => generateThenOnly(sym, c, a, !deliteKernel && !simpleCodegen)
         case (Const(()), _) => generateElseOnly(sym, c, b, !deliteKernel && !simpleCodegen)
@@ -109,7 +109,7 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
     case _ => super.emitNode(sym, rhs)
   }
 
-  def generateThenOnly(sym: Sym[Any], c: Exp[Any], thenb: Exp[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
+  def generateThenOnly(sym: Sym[Any], c: Exp[Any], thenb: Block[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
     case true =>  wrapMethod(sym, thenb, "thenb")
                   stream.println("if (" + quote(c) + ") {")
                   stream.println(quote(sym) + "thenb()")
@@ -120,7 +120,7 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
                   stream.println("}")
   }
 
-  def generateElseOnly(sym: Sym[Any], c: Exp[Any], elseb: Exp[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
+  def generateElseOnly(sym: Sym[Any], c: Exp[Any], elseb: Block[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
     case true =>  wrapMethod(sym, elseb, "elseb")
                   stream.println("if (" + quote(c) + ") {}")
                   stream.println("else {")
@@ -133,7 +133,7 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
                   stream.println("}")
   }
 
-  def generateThenElse(sym: Sym[Any], c: Exp[Any], thenb: Exp[Any], elseb: Exp[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
+  def generateThenElse(sym: Sym[Any], c: Exp[Any], thenb: Block[Any], elseb: Block[Any], wrap: Boolean)(implicit stream: PrintWriter) = wrap match {
     case true =>  wrapMethod(sym, thenb, "thenb")
                   wrapMethod(sym, elseb, "elseb")
                   stream.println("if (" + quote(c) + ") {")
@@ -151,7 +151,7 @@ trait DeliteScalaGenIfThenElse extends ScalaGenEffect with DeliteBaseGenIfThenEl
                   stream.println("}")
   }
 
-  def wrapMethod(sym: Sym[Any], block: Exp[Any], postfix: String)(implicit stream: PrintWriter) = {
+  def wrapMethod(sym: Sym[Any], block: Block[Any], postfix: String)(implicit stream: PrintWriter) = {
     stream.println("def " + quote(sym) + postfix + "(): " + remap(getBlockResult(block).Type) + " = {")
     emitBlock(block)
     stream.println(quote(getBlockResult(block)))

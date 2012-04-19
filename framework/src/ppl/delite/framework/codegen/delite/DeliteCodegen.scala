@@ -158,7 +158,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
    * This is all because we allow individual generators to refine their dependencies, which directly impacts
    * the generated schedule. We may want to consider another organization.
    */
-  override def emitFatBlockFocused(currentScope: List[TTP])(result: List[Exp[Any]])(implicit stream: PrintWriter): Unit = {
+  override def emitFatBlockFocused(currentScope: List[TTP])(result: List[Block[Any]])(implicit stream: PrintWriter): Unit = {
     printlog("-- block for "+result)
     currentScope.foreach(printlog(_))
 

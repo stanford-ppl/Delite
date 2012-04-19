@@ -20,17 +20,17 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val args = scala.List("%1$s._data", "%2$s._data", "%3$s._data", "%1$s._numRows", "%1$s._numCols", "0", "1")
-                 .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
+                 .map { _.format(quote(x), quote(y), quote(sym)) }
       emitMethodCall(sym, e, BLAS, args)
       
     case e@DenseMatrixMultiplyBLAS(x,y) =>
       val args = scala.List("%1$s._data", "%2$s._data", "%3$s._data", "%1$s._numRows", "%1$s._numCols", "%2$s._numCols")
-                 .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
+                 .map { _.format(quote(x), quote(y), quote(sym)) }
       emitMethodCall(sym, e, BLAS, args)
     
     case e@DenseMatrixSigmoidVectorized(in) =>
       val args = scala.List("%1$s._data", "%2$s._data", "0", "%1$s._numRows*%1$s._numCols")
-                 .map { _.format(quote(getBlockResult(in)), quote(sym)) }
+                 .map { _.format(quote(in), quote(sym)) }
       emitMethodCall(sym, e, BLAS, args)  
           
     case _ => super.emitNode(sym, rhs)

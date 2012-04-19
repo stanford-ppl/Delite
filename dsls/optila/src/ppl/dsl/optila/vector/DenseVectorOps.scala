@@ -253,8 +253,8 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
     val a = implicitly[Arith[A]]
   }
 
-  case class DenseVectorPPrint[A](x: Exp[DenseVector[A]])(block: Exp[Unit]) // stupid limitation...
-    extends DeliteOpSingleTask(block)
+// case class DenseVectorPPrint[A](x: Exp[DenseVector[A]])(block: Exp[Unit]) // stupid limitation...
+//   extends DeliteOpSingleTask(block)
     // reifyEffects(densevector_pprint_impl[A](x))
 
 //  case class DenseVectorTrans[A:Manifest](x: Exp[DenseVector[A]])

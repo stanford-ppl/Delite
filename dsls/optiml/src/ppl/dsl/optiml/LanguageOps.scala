@@ -244,7 +244,10 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     
     val in = copyTransformedOrElse(_.in)(start::end)
     val size = copyTransformedOrElse(_.size)(end - start)
-    val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable)) // FIXME: zero can be a fresh matrix, mutable calls Clone
+    // AKS TODO: hack!! need to update delite ops to take blocks and fix this.
+    val zero = copyTransformedOrElse(_.zero)(reifyEffects(a.zero(init).mutable).res) // FIXME: zero can be a fresh matrix, mutable calls Clone
+    //val zero = copyTransformedBlockOrElse(_.zero)(reifyEffects(a.zero(init).mutable)) // FIXME: zero can be a fresh matrix, mutable calls cloneL
+    //def zero = a.zero(init).mutable
     def reduce = (a,b) => a += b
     
     def m = manifest[A]
@@ -281,21 +284,21 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
 
     val in = copyTransformedOrElse(_.in)((start::end))
     val size = copyTransformedOrElse(_.size)(end - start)
-    val zero = (copyTransformedOrElse(_.zero._1)(reifyEffects(a.empty)),copyTransformedOrElse(_.zero._2)(unit(-1))) // (zero, -1)
+    //val zero = (copyTransformedOrElse(_.zero._1)(reifyEffects(a.empty)),copyTransformedOrElse(_.zero._2)(unit(-1))) // (zero, -1)
+    val zero = (copyTransformedBlockOrElse(_.zero._1)(reifyEffects(a.empty)),copyTransformedBlockOrElse(_.zero._2)(reifyEffects(unit(-1))))
 
-    /*
-        def func = (v) => (zero._1, reifyEffects(if (co(v)) v else -1))
-        def reduce = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
-                                            if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
-    */
+/*
+    def func = (v) => (zero._1, reifyEffects(if (co(v)) v else -1))
+    def reduce = (a,b) => (reifyEffects(if (b._2 >= 0) { if (a._2 >= 0) a._1 += fu(b._2) else { val bb = fu(b._2); bb.mutable }} else a._1), 
+                                        if (b._2 >= 0) b._2 else a._2 ) // FIXME: will not work in parallel!!!
+*/
     
-    def func = (v) => (zero._1, v) // (zero, v)
-
     // rV = ((mutable(R), mutable(Int)), (R, Int))
     // rVSeq = ((zero, zero_2), (elem.func._1, elem.func._2))
     //         ((zero, init), (zero, index))
     // rvPar = (__act, __act._2), (rhs, rhs._2) 
     //         ((zero, init), (zero, init))
+    def func = (v) => (zero._1, reifyEffects(v)) // will copy block that is zero._1, not just reference result!
     
     // FOR REDUCE SEQ
     // a._1 = accumulator

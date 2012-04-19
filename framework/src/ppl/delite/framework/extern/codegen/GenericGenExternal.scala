@@ -11,7 +11,7 @@ import ppl.delite.framework.extern.lib._
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite._
 
-trait GenericGenExternal extends GenericCodegen {
+trait GenericGenExternal extends GenericNestedCodegen {
   val IR: DeliteOpsExp
   import IR._
 
