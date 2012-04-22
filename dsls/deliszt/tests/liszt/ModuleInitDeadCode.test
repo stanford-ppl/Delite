@@ -1,0 +1,25 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object A {
+    Print("Initializing A")
+    var a = 0;
+}
+
+@lisztcode
+object Unused {
+    Print("Initializing Unused")
+    var unused = 8;
+}
+
+@lisztcode
+object ModuleInitDeadCode {
+    Print("Initializing ModuleInitDeadCode")
+    def main() {
+	 Print(A.a)
+	 return 0;
+	 Print(Unused.unused)
+    }
+}
+

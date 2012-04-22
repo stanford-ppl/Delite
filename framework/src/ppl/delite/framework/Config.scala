@@ -23,6 +23,8 @@ object Config {
   var useBlas = getProperty("delite.extern.blas", "false") != "false"
   var nestedVariantsLevel = getProperty("nested.variants.level", "0").toInt
   var debug = getProperty("delite.debug","false") != "false"
+  var collectStencil = System.getProperty("deliszt.stencil.enabled", "false") == "true"
+  var printGlobals = System.getProperty("delite.print_globals.enabled", "false") == "true"  
 
   //Print generationFailedException info
   val dumpException: Boolean = getProperty("delite.dump.exception", "false") != "false"

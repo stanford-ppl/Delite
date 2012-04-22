@@ -1,0 +1,1625 @@
+1:f0-0 liszt: 0FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.05,0.05)
+1:f1-0 liszt: 1FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.15,0.05)
+1:f2-0 liszt: 2FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.25,0.05)
+1:f3-0 liszt: 3FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.35,0.05)
+1:f4-0 liszt: 4FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.45,0.05)
+1:f5-0 liszt: 5FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.05,0.15)
+1:f6-0 liszt: 6FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.15,0.15)
+1:f7-0 liszt: 7FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.25,0.15)
+1:f8-0 liszt: 8FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.35,0.15)
+1:f9-0 liszt: 9FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.45,0.15)
+1:f10-0 liszt: 10FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.05,0.25)
+1:f11-0 liszt: 11FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.15,0.25)
+1:f12-0 liszt: 12FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.25,0.25)
+1:f13-0 liszt: 13FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.35,0.25)
+1:f14-0 liszt: 14FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.45,0.25)
+1:f15-0 liszt: 15FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.05,0.35)
+1:f16-0 liszt: 16FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.15,0.35)
+1:f17-0 liszt: 17FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.25,0.35)
+1:f18-0 liszt: 18FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.35,0.35)
+1:f19-0 liszt: 19FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.45,0.35)
+1:f20-0 liszt: 20FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.05,0.45)
+1:f21-0 liszt: 21FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.15,0.45)
+1:f22-0 liszt: 22FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.25,0.45)
+1:f23-0 liszt: 23FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.35,0.45)
+1:f24-0 liszt: 24FaceArea: 0.01normal: (-1,0,0)face_centroid(1,0.45,0.45)
+1:f25-0 liszt: 25FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.05,0.45)
+1:f26-0 liszt: 26FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.15,0.45)
+1:f27-0 liszt: 27FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.25,0.45)
+1:f28-0 liszt: 28FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.35,0.45)
+1:f29-0 liszt: 29FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.45,0.45)
+1:f30-0 liszt: 30FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.05,0.35)
+1:f31-0 liszt: 31FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.15,0.35)
+1:f32-0 liszt: 32FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.25,0.35)
+1:f33-0 liszt: 33FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.35,0.35)
+1:f34-0 liszt: 34FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.45,0.35)
+1:f35-0 liszt: 35FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.05,0.25)
+1:f36-0 liszt: 36FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.15,0.25)
+1:f37-0 liszt: 37FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.25,0.25)
+1:f38-0 liszt: 38FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.35,0.25)
+1:f39-0 liszt: 39FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.45,0.25)
+1:f40-0 liszt: 40FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.05,0.15)
+1:f41-0 liszt: 41FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.15,0.15)
+1:f42-0 liszt: 42FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.25,0.15)
+1:f43-0 liszt: 43FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.35,0.15)
+1:f44-0 liszt: 44FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.45,0.15)
+1:f45-0 liszt: 45FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.05,0.05)
+1:f46-0 liszt: 46FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.15,0.05)
+1:f47-0 liszt: 47FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.25,0.05)
+1:f48-0 liszt: 48FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.35,0.05)
+1:f49-0 liszt: 49FaceArea: 0.01normal: (1,0,0)face_centroid(0,0.45,0.05)
+1:f50-0 liszt: 50FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.5,0.05)
+1:f51-0 liszt: 51FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.5,0.05)
+1:f52-0 liszt: 52FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.5,0.05)
+1:f53-0 liszt: 53FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.5,0.05)
+1:f54-0 liszt: 54FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.5,0.05)
+1:f55-0 liszt: 55FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.5,0.05)
+1:f56-0 liszt: 56FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.5,0.05)
+1:f57-0 liszt: 57FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.5,0.05)
+1:f58-0 liszt: 58FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.5,0.05)
+1:f59-0 liszt: 59FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.5,0.05)
+1:f60-0 liszt: 60FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.5,0.15)
+1:f61-0 liszt: 61FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.5,0.15)
+1:f62-0 liszt: 62FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.5,0.15)
+1:f63-0 liszt: 63FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.5,0.15)
+1:f64-0 liszt: 64FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.5,0.15)
+1:f65-0 liszt: 65FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.5,0.15)
+1:f66-0 liszt: 66FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.5,0.15)
+1:f67-0 liszt: 67FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.5,0.15)
+1:f68-0 liszt: 68FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.5,0.15)
+1:f69-0 liszt: 69FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.5,0.15)
+1:f70-0 liszt: 70FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.5,0.25)
+1:f71-0 liszt: 71FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.5,0.25)
+1:f72-0 liszt: 72FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.5,0.25)
+1:f73-0 liszt: 73FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.5,0.25)
+1:f74-0 liszt: 74FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.5,0.25)
+1:f75-0 liszt: 75FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.5,0.25)
+1:f76-0 liszt: 76FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.5,0.25)
+1:f77-0 liszt: 77FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.5,0.25)
+1:f78-0 liszt: 78FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.5,0.25)
+1:f79-0 liszt: 79FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.5,0.25)
+1:f80-0 liszt: 80FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.5,0.35)
+1:f81-0 liszt: 81FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.5,0.35)
+1:f82-0 liszt: 82FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.5,0.35)
+1:f83-0 liszt: 83FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.5,0.35)
+1:f84-0 liszt: 84FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.5,0.35)
+1:f85-0 liszt: 85FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.5,0.35)
+1:f86-0 liszt: 86FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.5,0.35)
+1:f87-0 liszt: 87FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.5,0.35)
+1:f88-0 liszt: 88FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.5,0.35)
+1:f89-0 liszt: 89FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.5,0.35)
+1:f90-0 liszt: 90FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.5,0.45)
+1:f91-0 liszt: 91FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.5,0.45)
+1:f92-0 liszt: 92FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.5,0.45)
+1:f93-0 liszt: 93FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.5,0.45)
+1:f94-0 liszt: 94FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.5,0.45)
+1:f95-0 liszt: 95FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.5,0.45)
+1:f96-0 liszt: 96FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.5,0.45)
+1:f97-0 liszt: 97FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.5,0.45)
+1:f98-0 liszt: 98FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.5,0.45)
+1:f99-0 liszt: 99FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.5,0.45)
+1:f100-0 liszt: 100FaceArea: 0.01normal: (0,1,0)face_centroid(0.95,0,0.45)
+1:f101-0 liszt: 101FaceArea: 0.01normal: (0,1,0)face_centroid(0.85,0,0.45)
+1:f102-0 liszt: 102FaceArea: 0.01normal: (0,1,0)face_centroid(0.75,0,0.45)
+1:f103-0 liszt: 103FaceArea: 0.01normal: (0,1,0)face_centroid(0.65,0,0.45)
+1:f104-0 liszt: 104FaceArea: 0.01normal: (0,1,0)face_centroid(0.55,0,0.45)
+1:f105-0 liszt: 105FaceArea: 0.01normal: (0,1,0)face_centroid(0.45,0,0.45)
+1:f106-0 liszt: 106FaceArea: 0.01normal: (0,1,0)face_centroid(0.35,0,0.45)
+1:f107-0 liszt: 107FaceArea: 0.01normal: (0,1,0)face_centroid(0.25,0,0.45)
+1:f108-0 liszt: 108FaceArea: 0.01normal: (0,1,0)face_centroid(0.15,0,0.45)
+1:f109-0 liszt: 109FaceArea: 0.01normal: (0,1,0)face_centroid(0.05,0,0.45)
+1:f110-0 liszt: 110FaceArea: 0.01normal: (0,1,0)face_centroid(0.95,0,0.35)
+1:f111-0 liszt: 111FaceArea: 0.01normal: (0,1,0)face_centroid(0.85,0,0.35)
+1:f112-0 liszt: 112FaceArea: 0.01normal: (0,1,0)face_centroid(0.75,0,0.35)
+1:f113-0 liszt: 113FaceArea: 0.01normal: (0,1,0)face_centroid(0.65,0,0.35)
+1:f114-0 liszt: 114FaceArea: 0.01normal: (0,1,0)face_centroid(0.55,0,0.35)
+1:f115-0 liszt: 115FaceArea: 0.01normal: (0,1,0)face_centroid(0.45,0,0.35)
+1:f116-0 liszt: 116FaceArea: 0.01normal: (0,1,0)face_centroid(0.35,0,0.35)
+1:f117-0 liszt: 117FaceArea: 0.01normal: (0,1,0)face_centroid(0.25,0,0.35)
+1:f118-0 liszt: 118FaceArea: 0.01normal: (0,1,0)face_centroid(0.15,0,0.35)
+1:f119-0 liszt: 119FaceArea: 0.01normal: (0,1,0)face_centroid(0.05,0,0.35)
+1:f120-0 liszt: 120FaceArea: 0.01normal: (0,1,0)face_centroid(0.95,0,0.25)
+1:f121-0 liszt: 121FaceArea: 0.01normal: (0,1,0)face_centroid(0.85,0,0.25)
+1:f122-0 liszt: 122FaceArea: 0.01normal: (0,1,0)face_centroid(0.75,0,0.25)
+1:f123-0 liszt: 123FaceArea: 0.01normal: (0,1,0)face_centroid(0.65,0,0.25)
+1:f124-0 liszt: 124FaceArea: 0.01normal: (0,1,0)face_centroid(0.55,0,0.25)
+1:f125-0 liszt: 125FaceArea: 0.01normal: (0,1,0)face_centroid(0.45,0,0.25)
+1:f126-0 liszt: 126FaceArea: 0.01normal: (0,1,0)face_centroid(0.35,0,0.25)
+1:f127-0 liszt: 127FaceArea: 0.01normal: (0,1,0)face_centroid(0.25,0,0.25)
+1:f128-0 liszt: 128FaceArea: 0.01normal: (0,1,0)face_centroid(0.15,0,0.25)
+1:f129-0 liszt: 129FaceArea: 0.01normal: (0,1,0)face_centroid(0.05,0,0.25)
+1:f130-0 liszt: 130FaceArea: 0.01normal: (0,1,0)face_centroid(0.95,0,0.15)
+1:f131-0 liszt: 131FaceArea: 0.01normal: (0,1,0)face_centroid(0.85,0,0.15)
+1:f132-0 liszt: 132FaceArea: 0.01normal: (0,1,0)face_centroid(0.75,0,0.15)
+1:f133-0 liszt: 133FaceArea: 0.01normal: (0,1,0)face_centroid(0.65,0,0.15)
+1:f134-0 liszt: 134FaceArea: 0.01normal: (0,1,0)face_centroid(0.55,0,0.15)
+1:f135-0 liszt: 135FaceArea: 0.01normal: (0,1,0)face_centroid(0.45,0,0.15)
+1:f136-0 liszt: 136FaceArea: 0.01normal: (0,1,0)face_centroid(0.35,0,0.15)
+1:f137-0 liszt: 137FaceArea: 0.01normal: (0,1,0)face_centroid(0.25,0,0.15)
+1:f138-0 liszt: 138FaceArea: 0.01normal: (0,1,0)face_centroid(0.15,0,0.15)
+1:f139-0 liszt: 139FaceArea: 0.01normal: (0,1,0)face_centroid(0.05,0,0.15)
+1:f140-0 liszt: 140FaceArea: 0.01normal: (0,1,0)face_centroid(0.95,0,0.05)
+1:f141-0 liszt: 141FaceArea: 0.01normal: (0,1,0)face_centroid(0.85,0,0.05)
+1:f142-0 liszt: 142FaceArea: 0.01normal: (0,1,0)face_centroid(0.75,0,0.05)
+1:f143-0 liszt: 143FaceArea: 0.01normal: (0,1,0)face_centroid(0.65,0,0.05)
+1:f144-0 liszt: 144FaceArea: 0.01normal: (0,1,0)face_centroid(0.55,0,0.05)
+1:f145-0 liszt: 145FaceArea: 0.01normal: (0,1,0)face_centroid(0.45,0,0.05)
+1:f146-0 liszt: 146FaceArea: 0.01normal: (0,1,0)face_centroid(0.35,0,0.05)
+1:f147-0 liszt: 147FaceArea: 0.01normal: (0,1,0)face_centroid(0.25,0,0.05)
+1:f148-0 liszt: 148FaceArea: 0.01normal: (0,1,0)face_centroid(0.15,0,0.05)
+1:f149-0 liszt: 149FaceArea: 0.01normal: (0,1,0)face_centroid(0.05,0,0.05)
+1:f150-0 liszt: 150FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.05,0)
+1:f151-0 liszt: 151FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.05,0)
+1:f152-0 liszt: 152FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.05,0)
+1:f153-0 liszt: 153FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.05,0)
+1:f154-0 liszt: 154FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.05,0)
+1:f155-0 liszt: 155FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.05,0)
+1:f156-0 liszt: 156FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.05,0)
+1:f157-0 liszt: 157FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.05,0)
+1:f158-0 liszt: 158FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.05,0)
+1:f159-0 liszt: 159FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.05,0)
+1:f160-0 liszt: 160FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.15,0)
+1:f161-0 liszt: 161FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.15,0)
+1:f162-0 liszt: 162FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.15,0)
+1:f163-0 liszt: 163FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.15,0)
+1:f164-0 liszt: 164FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.15,0)
+1:f165-0 liszt: 165FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.15,0)
+1:f166-0 liszt: 166FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.15,0)
+1:f167-0 liszt: 167FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.15,0)
+1:f168-0 liszt: 168FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.15,0)
+1:f169-0 liszt: 169FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.15,0)
+1:f170-0 liszt: 170FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.25,0)
+1:f171-0 liszt: 171FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.25,0)
+1:f172-0 liszt: 172FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.25,0)
+1:f173-0 liszt: 173FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.25,0)
+1:f174-0 liszt: 174FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.25,0)
+1:f175-0 liszt: 175FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.25,0)
+1:f176-0 liszt: 176FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.25,0)
+1:f177-0 liszt: 177FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.25,0)
+1:f178-0 liszt: 178FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.25,0)
+1:f179-0 liszt: 179FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.25,0)
+1:f180-0 liszt: 180FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.35,0)
+1:f181-0 liszt: 181FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.35,0)
+1:f182-0 liszt: 182FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.35,0)
+1:f183-0 liszt: 183FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.35,0)
+1:f184-0 liszt: 184FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.35,0)
+1:f185-0 liszt: 185FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.35,0)
+1:f186-0 liszt: 186FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.35,0)
+1:f187-0 liszt: 187FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.35,0)
+1:f188-0 liszt: 188FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.35,0)
+1:f189-0 liszt: 189FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.35,0)
+1:f190-0 liszt: 190FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.45,0)
+1:f191-0 liszt: 191FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.45,0)
+1:f192-0 liszt: 192FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.45,0)
+1:f193-0 liszt: 193FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.45,0)
+1:f194-0 liszt: 194FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.45,0)
+1:f195-0 liszt: 195FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.45,0)
+1:f196-0 liszt: 196FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.45,0)
+1:f197-0 liszt: 197FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.45,0)
+1:f198-0 liszt: 198FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.45,0)
+1:f199-0 liszt: 199FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.45,0)
+1:f200-0 liszt: 200FaceArea: 0.01normal: (0,0,-1)face_centroid(0.95,0.05,0.5)
+1:f201-0 liszt: 201FaceArea: 0.01normal: (0,0,-1)face_centroid(0.95,0.15,0.5)
+1:f202-0 liszt: 202FaceArea: 0.01normal: (0,0,-1)face_centroid(0.95,0.25,0.5)
+1:f203-0 liszt: 203FaceArea: 0.01normal: (0,0,-1)face_centroid(0.95,0.35,0.5)
+1:f204-0 liszt: 204FaceArea: 0.01normal: (0,0,-1)face_centroid(0.95,0.45,0.5)
+1:f205-0 liszt: 205FaceArea: 0.01normal: (0,0,-1)face_centroid(0.85,0.05,0.5)
+1:f206-0 liszt: 206FaceArea: 0.01normal: (0,0,-1)face_centroid(0.85,0.15,0.5)
+1:f207-0 liszt: 207FaceArea: 0.01normal: (0,0,-1)face_centroid(0.85,0.25,0.5)
+1:f208-0 liszt: 208FaceArea: 0.01normal: (0,0,-1)face_centroid(0.85,0.35,0.5)
+1:f209-0 liszt: 209FaceArea: 0.01normal: (0,0,-1)face_centroid(0.85,0.45,0.5)
+1:f210-0 liszt: 210FaceArea: 0.01normal: (0,0,-1)face_centroid(0.75,0.05,0.5)
+1:f211-0 liszt: 211FaceArea: 0.01normal: (0,0,-1)face_centroid(0.75,0.15,0.5)
+1:f212-0 liszt: 212FaceArea: 0.01normal: (0,0,-1)face_centroid(0.75,0.25,0.5)
+1:f213-0 liszt: 213FaceArea: 0.01normal: (0,0,-1)face_centroid(0.75,0.35,0.5)
+1:f214-0 liszt: 214FaceArea: 0.01normal: (0,0,-1)face_centroid(0.75,0.45,0.5)
+1:f215-0 liszt: 215FaceArea: 0.01normal: (0,0,-1)face_centroid(0.65,0.05,0.5)
+1:f216-0 liszt: 216FaceArea: 0.01normal: (0,0,-1)face_centroid(0.65,0.15,0.5)
+1:f217-0 liszt: 217FaceArea: 0.01normal: (0,0,-1)face_centroid(0.65,0.25,0.5)
+1:f218-0 liszt: 218FaceArea: 0.01normal: (0,0,-1)face_centroid(0.65,0.35,0.5)
+1:f219-0 liszt: 219FaceArea: 0.01normal: (0,0,-1)face_centroid(0.65,0.45,0.5)
+1:f220-0 liszt: 220FaceArea: 0.01normal: (0,0,-1)face_centroid(0.55,0.05,0.5)
+1:f221-0 liszt: 221FaceArea: 0.01normal: (0,0,-1)face_centroid(0.55,0.15,0.5)
+1:f222-0 liszt: 222FaceArea: 0.01normal: (0,0,-1)face_centroid(0.55,0.25,0.5)
+1:f223-0 liszt: 223FaceArea: 0.01normal: (0,0,-1)face_centroid(0.55,0.35,0.5)
+1:f224-0 liszt: 224FaceArea: 0.01normal: (0,0,-1)face_centroid(0.55,0.45,0.5)
+1:f225-0 liszt: 225FaceArea: 0.01normal: (0,0,-1)face_centroid(0.45,0.05,0.5)
+1:f226-0 liszt: 226FaceArea: 0.01normal: (0,0,-1)face_centroid(0.45,0.15,0.5)
+1:f227-0 liszt: 227FaceArea: 0.01normal: (0,0,-1)face_centroid(0.45,0.25,0.5)
+1:f228-0 liszt: 228FaceArea: 0.01normal: (0,0,-1)face_centroid(0.45,0.35,0.5)
+1:f229-0 liszt: 229FaceArea: 0.01normal: (0,0,-1)face_centroid(0.45,0.45,0.5)
+1:f230-0 liszt: 230FaceArea: 0.01normal: (0,0,-1)face_centroid(0.35,0.05,0.5)
+1:f231-0 liszt: 231FaceArea: 0.01normal: (0,0,-1)face_centroid(0.35,0.15,0.5)
+1:f232-0 liszt: 232FaceArea: 0.01normal: (0,0,-1)face_centroid(0.35,0.25,0.5)
+1:f233-0 liszt: 233FaceArea: 0.01normal: (0,0,-1)face_centroid(0.35,0.35,0.5)
+1:f234-0 liszt: 234FaceArea: 0.01normal: (0,0,-1)face_centroid(0.35,0.45,0.5)
+1:f235-0 liszt: 235FaceArea: 0.01normal: (0,0,-1)face_centroid(0.25,0.05,0.5)
+1:f236-0 liszt: 236FaceArea: 0.01normal: (0,0,-1)face_centroid(0.25,0.15,0.5)
+1:f237-0 liszt: 237FaceArea: 0.01normal: (0,0,-1)face_centroid(0.25,0.25,0.5)
+1:f238-0 liszt: 238FaceArea: 0.01normal: (0,0,-1)face_centroid(0.25,0.35,0.5)
+1:f239-0 liszt: 239FaceArea: 0.01normal: (0,0,-1)face_centroid(0.25,0.45,0.5)
+1:f240-0 liszt: 240FaceArea: 0.01normal: (0,0,-1)face_centroid(0.15,0.05,0.5)
+1:f241-0 liszt: 241FaceArea: 0.01normal: (0,0,-1)face_centroid(0.15,0.15,0.5)
+1:f242-0 liszt: 242FaceArea: 0.01normal: (0,0,-1)face_centroid(0.15,0.25,0.5)
+1:f243-0 liszt: 243FaceArea: 0.01normal: (0,0,-1)face_centroid(0.15,0.35,0.5)
+1:f244-0 liszt: 244FaceArea: 0.01normal: (0,0,-1)face_centroid(0.15,0.45,0.5)
+1:f245-0 liszt: 245FaceArea: 0.01normal: (0,0,-1)face_centroid(0.05,0.05,0.5)
+1:f246-0 liszt: 246FaceArea: 0.01normal: (0,0,-1)face_centroid(0.05,0.15,0.5)
+1:f247-0 liszt: 247FaceArea: 0.01normal: (0,0,-1)face_centroid(0.05,0.25,0.5)
+1:f248-0 liszt: 248FaceArea: 0.01normal: (0,0,-1)face_centroid(0.05,0.35,0.5)
+1:f249-0 liszt: 249FaceArea: 0.01normal: (0,0,-1)face_centroid(0.05,0.45,0.5)
+1:f250-0 liszt: 250FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.45,0.1)
+1:f251-0 liszt: 251FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.45,0.05)
+1:f252-0 liszt: 252FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.4,0.05)
+1:f253-0 liszt: 253FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.45,0.2)
+1:f254-0 liszt: 254FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.45,0.15)
+1:f255-0 liszt: 255FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.4,0.15)
+1:f256-0 liszt: 256FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.45,0.3)
+1:f257-0 liszt: 257FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.45,0.25)
+1:f258-0 liszt: 258FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.4,0.25)
+1:f259-0 liszt: 259FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.45,0.4)
+1:f260-0 liszt: 260FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.45,0.35)
+1:f261-0 liszt: 261FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.4,0.35)
+1:f262-0 liszt: 262FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.45,0.45)
+1:f263-0 liszt: 263FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.4,0.45)
+1:f264-0 liszt: 264FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.45,0.1)
+1:f265-0 liszt: 265FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.45,0.05)
+1:f266-0 liszt: 266FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.4,0.05)
+1:f267-0 liszt: 267FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.45,0.2)
+1:f268-0 liszt: 268FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.45,0.15)
+1:f269-0 liszt: 269FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.4,0.15)
+1:f270-0 liszt: 270FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.45,0.3)
+1:f271-0 liszt: 271FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.45,0.25)
+1:f272-0 liszt: 272FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.4,0.25)
+1:f273-0 liszt: 273FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.45,0.4)
+1:f274-0 liszt: 274FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.45,0.35)
+1:f275-0 liszt: 275FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.4,0.35)
+1:f276-0 liszt: 276FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.45,0.45)
+1:f277-0 liszt: 277FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.4,0.45)
+1:f278-0 liszt: 278FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.45,0.1)
+1:f279-0 liszt: 279FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.45,0.05)
+1:f280-0 liszt: 280FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.4,0.05)
+1:f281-0 liszt: 281FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.45,0.2)
+1:f282-0 liszt: 282FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.45,0.15)
+1:f283-0 liszt: 283FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.4,0.15)
+1:f284-0 liszt: 284FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.45,0.3)
+1:f285-0 liszt: 285FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.45,0.25)
+1:f286-0 liszt: 286FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.4,0.25)
+1:f287-0 liszt: 287FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.45,0.4)
+1:f288-0 liszt: 288FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.45,0.35)
+1:f289-0 liszt: 289FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.4,0.35)
+1:f290-0 liszt: 290FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.45,0.45)
+1:f291-0 liszt: 291FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.4,0.45)
+1:f292-0 liszt: 292FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.45,0.1)
+1:f293-0 liszt: 293FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.45,0.05)
+1:f294-0 liszt: 294FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.4,0.05)
+1:f295-0 liszt: 295FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.45,0.2)
+1:f296-0 liszt: 296FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.45,0.15)
+1:f297-0 liszt: 297FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.4,0.15)
+1:f298-0 liszt: 298FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.45,0.3)
+1:f299-0 liszt: 299FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.45,0.25)
+1:f300-0 liszt: 300FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.4,0.25)
+1:f301-0 liszt: 301FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.45,0.4)
+1:f302-0 liszt: 302FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.45,0.35)
+1:f303-0 liszt: 303FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.4,0.35)
+1:f304-0 liszt: 304FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.45,0.45)
+1:f305-0 liszt: 305FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.4,0.45)
+1:f306-0 liszt: 306FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.45,0.1)
+1:f307-0 liszt: 307FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.45,0.05)
+1:f308-0 liszt: 308FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.4,0.05)
+1:f309-0 liszt: 309FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.45,0.2)
+1:f310-0 liszt: 310FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.45,0.15)
+1:f311-0 liszt: 311FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.4,0.15)
+1:f312-0 liszt: 312FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.45,0.3)
+1:f313-0 liszt: 313FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.45,0.25)
+1:f314-0 liszt: 314FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.4,0.25)
+1:f315-0 liszt: 315FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.45,0.4)
+1:f316-0 liszt: 316FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.45,0.35)
+1:f317-0 liszt: 317FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.4,0.35)
+1:f318-0 liszt: 318FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.45,0.45)
+1:f319-0 liszt: 319FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.4,0.45)
+1:f320-0 liszt: 320FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.45,0.1)
+1:f321-0 liszt: 321FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.45,0.05)
+1:f322-0 liszt: 322FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.4,0.05)
+1:f323-0 liszt: 323FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.45,0.2)
+1:f324-0 liszt: 324FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.45,0.15)
+1:f325-0 liszt: 325FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.4,0.15)
+1:f326-0 liszt: 326FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.45,0.3)
+1:f327-0 liszt: 327FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.45,0.25)
+1:f328-0 liszt: 328FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.4,0.25)
+1:f329-0 liszt: 329FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.45,0.4)
+1:f330-0 liszt: 330FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.45,0.35)
+1:f331-0 liszt: 331FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.4,0.35)
+1:f332-0 liszt: 332FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.45,0.45)
+1:f333-0 liszt: 333FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.4,0.45)
+1:f334-0 liszt: 334FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.45,0.1)
+1:f335-0 liszt: 335FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.45,0.05)
+1:f336-0 liszt: 336FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.4,0.05)
+1:f337-0 liszt: 337FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.45,0.2)
+1:f338-0 liszt: 338FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.45,0.15)
+1:f339-0 liszt: 339FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.4,0.15)
+1:f340-0 liszt: 340FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.45,0.3)
+1:f341-0 liszt: 341FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.45,0.25)
+1:f342-0 liszt: 342FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.4,0.25)
+1:f343-0 liszt: 343FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.45,0.4)
+1:f344-0 liszt: 344FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.45,0.35)
+1:f345-0 liszt: 345FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.4,0.35)
+1:f346-0 liszt: 346FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.45,0.45)
+1:f347-0 liszt: 347FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.4,0.45)
+1:f348-0 liszt: 348FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.45,0.1)
+1:f349-0 liszt: 349FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.45,0.05)
+1:f350-0 liszt: 350FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.4,0.05)
+1:f351-0 liszt: 351FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.45,0.2)
+1:f352-0 liszt: 352FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.45,0.15)
+1:f353-0 liszt: 353FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.4,0.15)
+1:f354-0 liszt: 354FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.45,0.3)
+1:f355-0 liszt: 355FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.45,0.25)
+1:f356-0 liszt: 356FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.4,0.25)
+1:f357-0 liszt: 357FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.45,0.4)
+1:f358-0 liszt: 358FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.45,0.35)
+1:f359-0 liszt: 359FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.4,0.35)
+1:f360-0 liszt: 360FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.45,0.45)
+1:f361-0 liszt: 361FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.4,0.45)
+1:f362-0 liszt: 362FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.45,0.1)
+1:f363-0 liszt: 363FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.45,0.05)
+1:f364-0 liszt: 364FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.4,0.05)
+1:f365-0 liszt: 365FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.45,0.2)
+1:f366-0 liszt: 366FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.45,0.15)
+1:f367-0 liszt: 367FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.4,0.15)
+1:f368-0 liszt: 368FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.45,0.3)
+1:f369-0 liszt: 369FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.45,0.25)
+1:f370-0 liszt: 370FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.4,0.25)
+1:f371-0 liszt: 371FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.45,0.4)
+1:f372-0 liszt: 372FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.45,0.35)
+1:f373-0 liszt: 373FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.4,0.35)
+1:f374-0 liszt: 374FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.45,0.45)
+1:f375-0 liszt: 375FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.4,0.45)
+1:f376-0 liszt: 376FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.45,0.1)
+1:f377-0 liszt: 377FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.4,0.05)
+1:f378-0 liszt: 378FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.45,0.2)
+1:f379-0 liszt: 379FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.4,0.15)
+1:f380-0 liszt: 380FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.45,0.3)
+1:f381-0 liszt: 381FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.4,0.25)
+1:f382-0 liszt: 382FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.45,0.4)
+1:f383-0 liszt: 383FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.4,0.35)
+1:f384-0 liszt: 384FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.4,0.45)
+1:f385-0 liszt: 385FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.35,0.1)
+1:f386-0 liszt: 386FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.35,0.05)
+1:f387-0 liszt: 387FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.3,0.05)
+1:f388-0 liszt: 388FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.35,0.2)
+1:f389-0 liszt: 389FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.35,0.15)
+1:f390-0 liszt: 390FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.3,0.15)
+1:f391-0 liszt: 391FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.35,0.3)
+1:f392-0 liszt: 392FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.35,0.25)
+1:f393-0 liszt: 393FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.3,0.25)
+1:f394-0 liszt: 394FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.35,0.4)
+1:f395-0 liszt: 395FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.35,0.35)
+1:f396-0 liszt: 396FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.3,0.35)
+1:f397-0 liszt: 397FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.35,0.45)
+1:f398-0 liszt: 398FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.3,0.45)
+1:f399-0 liszt: 399FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.35,0.1)
+1:f400-0 liszt: 400FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.35,0.05)
+1:f401-0 liszt: 401FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.3,0.05)
+1:f402-0 liszt: 402FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.35,0.2)
+1:f403-0 liszt: 403FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.35,0.15)
+1:f404-0 liszt: 404FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.3,0.15)
+1:f405-0 liszt: 405FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.35,0.3)
+1:f406-0 liszt: 406FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.35,0.25)
+1:f407-0 liszt: 407FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.3,0.25)
+1:f408-0 liszt: 408FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.35,0.4)
+1:f409-0 liszt: 409FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.35,0.35)
+1:f410-0 liszt: 410FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.3,0.35)
+1:f411-0 liszt: 411FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.35,0.45)
+1:f412-0 liszt: 412FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.3,0.45)
+1:f413-0 liszt: 413FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.35,0.1)
+1:f414-0 liszt: 414FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.35,0.05)
+1:f415-0 liszt: 415FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.3,0.05)
+1:f416-0 liszt: 416FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.35,0.2)
+1:f417-0 liszt: 417FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.35,0.15)
+1:f418-0 liszt: 418FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.3,0.15)
+1:f419-0 liszt: 419FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.35,0.3)
+1:f420-0 liszt: 420FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.35,0.25)
+1:f421-0 liszt: 421FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.3,0.25)
+1:f422-0 liszt: 422FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.35,0.4)
+1:f423-0 liszt: 423FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.35,0.35)
+1:f424-0 liszt: 424FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.3,0.35)
+1:f425-0 liszt: 425FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.35,0.45)
+1:f426-0 liszt: 426FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.3,0.45)
+1:f427-0 liszt: 427FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.35,0.1)
+1:f428-0 liszt: 428FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.35,0.05)
+1:f429-0 liszt: 429FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.3,0.05)
+1:f430-0 liszt: 430FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.35,0.2)
+1:f431-0 liszt: 431FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.35,0.15)
+1:f432-0 liszt: 432FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.3,0.15)
+1:f433-0 liszt: 433FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.35,0.3)
+1:f434-0 liszt: 434FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.35,0.25)
+1:f435-0 liszt: 435FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.3,0.25)
+1:f436-0 liszt: 436FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.35,0.4)
+1:f437-0 liszt: 437FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.35,0.35)
+1:f438-0 liszt: 438FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.3,0.35)
+1:f439-0 liszt: 439FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.35,0.45)
+1:f440-0 liszt: 440FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.3,0.45)
+1:f441-0 liszt: 441FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.35,0.1)
+1:f442-0 liszt: 442FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.35,0.05)
+1:f443-0 liszt: 443FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.3,0.05)
+1:f444-0 liszt: 444FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.35,0.2)
+1:f445-0 liszt: 445FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.35,0.15)
+1:f446-0 liszt: 446FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.3,0.15)
+1:f447-0 liszt: 447FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.35,0.3)
+1:f448-0 liszt: 448FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.35,0.25)
+1:f449-0 liszt: 449FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.3,0.25)
+1:f450-0 liszt: 450FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.35,0.4)
+1:f451-0 liszt: 451FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.35,0.35)
+1:f452-0 liszt: 452FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.3,0.35)
+1:f453-0 liszt: 453FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.35,0.45)
+1:f454-0 liszt: 454FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.3,0.45)
+1:f455-0 liszt: 455FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.35,0.1)
+1:f456-0 liszt: 456FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.35,0.05)
+1:f457-0 liszt: 457FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.3,0.05)
+1:f458-0 liszt: 458FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.35,0.2)
+1:f459-0 liszt: 459FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.35,0.15)
+1:f460-0 liszt: 460FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.3,0.15)
+1:f461-0 liszt: 461FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.35,0.3)
+1:f462-0 liszt: 462FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.35,0.25)
+1:f463-0 liszt: 463FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.3,0.25)
+1:f464-0 liszt: 464FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.35,0.4)
+1:f465-0 liszt: 465FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.35,0.35)
+1:f466-0 liszt: 466FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.3,0.35)
+1:f467-0 liszt: 467FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.35,0.45)
+1:f468-0 liszt: 468FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.3,0.45)
+1:f469-0 liszt: 469FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.35,0.1)
+1:f470-0 liszt: 470FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.35,0.05)
+1:f471-0 liszt: 471FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.3,0.05)
+1:f472-0 liszt: 472FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.35,0.2)
+1:f473-0 liszt: 473FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.35,0.15)
+1:f474-0 liszt: 474FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.3,0.15)
+1:f475-0 liszt: 475FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.35,0.3)
+1:f476-0 liszt: 476FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.35,0.25)
+1:f477-0 liszt: 477FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.3,0.25)
+1:f478-0 liszt: 478FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.35,0.4)
+1:f479-0 liszt: 479FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.35,0.35)
+1:f480-0 liszt: 480FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.3,0.35)
+1:f481-0 liszt: 481FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.35,0.45)
+1:f482-0 liszt: 482FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.3,0.45)
+1:f483-0 liszt: 483FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.35,0.1)
+1:f484-0 liszt: 484FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.35,0.05)
+1:f485-0 liszt: 485FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.3,0.05)
+1:f486-0 liszt: 486FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.35,0.2)
+1:f487-0 liszt: 487FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.35,0.15)
+1:f488-0 liszt: 488FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.3,0.15)
+1:f489-0 liszt: 489FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.35,0.3)
+1:f490-0 liszt: 490FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.35,0.25)
+1:f491-0 liszt: 491FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.3,0.25)
+1:f492-0 liszt: 492FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.35,0.4)
+1:f493-0 liszt: 493FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.35,0.35)
+1:f494-0 liszt: 494FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.3,0.35)
+1:f495-0 liszt: 495FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.35,0.45)
+1:f496-0 liszt: 496FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.3,0.45)
+1:f497-0 liszt: 497FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.35,0.1)
+1:f498-0 liszt: 498FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.35,0.05)
+1:f499-0 liszt: 499FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.3,0.05)
+1:f500-0 liszt: 500FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.35,0.2)
+1:f501-0 liszt: 501FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.35,0.15)
+1:f502-0 liszt: 502FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.3,0.15)
+1:f503-0 liszt: 503FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.35,0.3)
+1:f504-0 liszt: 504FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.35,0.25)
+1:f505-0 liszt: 505FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.3,0.25)
+1:f506-0 liszt: 506FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.35,0.4)
+1:f507-0 liszt: 507FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.35,0.35)
+1:f508-0 liszt: 508FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.3,0.35)
+1:f509-0 liszt: 509FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.35,0.45)
+1:f510-0 liszt: 510FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.3,0.45)
+1:f511-0 liszt: 511FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.35,0.1)
+1:f512-0 liszt: 512FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.3,0.05)
+1:f513-0 liszt: 513FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.35,0.2)
+1:f514-0 liszt: 514FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.3,0.15)
+1:f515-0 liszt: 515FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.35,0.3)
+1:f516-0 liszt: 516FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.3,0.25)
+1:f517-0 liszt: 517FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.35,0.4)
+1:f518-0 liszt: 518FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.3,0.35)
+1:f519-0 liszt: 519FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.3,0.45)
+1:f520-0 liszt: 520FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.25,0.1)
+1:f521-0 liszt: 521FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.25,0.05)
+1:f522-0 liszt: 522FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.2,0.05)
+1:f523-0 liszt: 523FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.25,0.2)
+1:f524-0 liszt: 524FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.25,0.15)
+1:f525-0 liszt: 525FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.2,0.15)
+1:f526-0 liszt: 526FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.25,0.3)
+1:f527-0 liszt: 527FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.25,0.25)
+1:f528-0 liszt: 528FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.2,0.25)
+1:f529-0 liszt: 529FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.25,0.4)
+1:f530-0 liszt: 530FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.25,0.35)
+1:f531-0 liszt: 531FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.2,0.35)
+1:f532-0 liszt: 532FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.25,0.45)
+1:f533-0 liszt: 533FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.2,0.45)
+1:f534-0 liszt: 534FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.25,0.1)
+1:f535-0 liszt: 535FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.25,0.05)
+1:f536-0 liszt: 536FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.2,0.05)
+1:f537-0 liszt: 537FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.25,0.2)
+1:f538-0 liszt: 538FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.25,0.15)
+1:f539-0 liszt: 539FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.2,0.15)
+1:f540-0 liszt: 540FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.25,0.3)
+1:f541-0 liszt: 541FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.25,0.25)
+1:f542-0 liszt: 542FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.2,0.25)
+1:f543-0 liszt: 543FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.25,0.4)
+1:f544-0 liszt: 544FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.25,0.35)
+1:f545-0 liszt: 545FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.2,0.35)
+1:f546-0 liszt: 546FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.25,0.45)
+1:f547-0 liszt: 547FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.2,0.45)
+1:f548-0 liszt: 548FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.25,0.1)
+1:f549-0 liszt: 549FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.25,0.05)
+1:f550-0 liszt: 550FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.2,0.05)
+1:f551-0 liszt: 551FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.25,0.2)
+1:f552-0 liszt: 552FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.25,0.15)
+1:f553-0 liszt: 553FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.2,0.15)
+1:f554-0 liszt: 554FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.25,0.3)
+1:f555-0 liszt: 555FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.25,0.25)
+1:f556-0 liszt: 556FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.2,0.25)
+1:f557-0 liszt: 557FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.25,0.4)
+1:f558-0 liszt: 558FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.25,0.35)
+1:f559-0 liszt: 559FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.2,0.35)
+1:f560-0 liszt: 560FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.25,0.45)
+1:f561-0 liszt: 561FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.2,0.45)
+1:f562-0 liszt: 562FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.25,0.1)
+1:f563-0 liszt: 563FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.25,0.05)
+1:f564-0 liszt: 564FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.2,0.05)
+1:f565-0 liszt: 565FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.25,0.2)
+1:f566-0 liszt: 566FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.25,0.15)
+1:f567-0 liszt: 567FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.2,0.15)
+1:f568-0 liszt: 568FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.25,0.3)
+1:f569-0 liszt: 569FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.25,0.25)
+1:f570-0 liszt: 570FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.2,0.25)
+1:f571-0 liszt: 571FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.25,0.4)
+1:f572-0 liszt: 572FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.25,0.35)
+1:f573-0 liszt: 573FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.2,0.35)
+1:f574-0 liszt: 574FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.25,0.45)
+1:f575-0 liszt: 575FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.2,0.45)
+1:f576-0 liszt: 576FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.25,0.1)
+1:f577-0 liszt: 577FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.25,0.05)
+1:f578-0 liszt: 578FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.2,0.05)
+1:f579-0 liszt: 579FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.25,0.2)
+1:f580-0 liszt: 580FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.25,0.15)
+1:f581-0 liszt: 581FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.2,0.15)
+1:f582-0 liszt: 582FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.25,0.3)
+1:f583-0 liszt: 583FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.25,0.25)
+1:f584-0 liszt: 584FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.2,0.25)
+1:f585-0 liszt: 585FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.25,0.4)
+1:f586-0 liszt: 586FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.25,0.35)
+1:f587-0 liszt: 587FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.2,0.35)
+1:f588-0 liszt: 588FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.25,0.45)
+1:f589-0 liszt: 589FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.2,0.45)
+1:f590-0 liszt: 590FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.25,0.1)
+1:f591-0 liszt: 591FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.25,0.05)
+1:f592-0 liszt: 592FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.2,0.05)
+1:f593-0 liszt: 593FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.25,0.2)
+1:f594-0 liszt: 594FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.25,0.15)
+1:f595-0 liszt: 595FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.2,0.15)
+1:f596-0 liszt: 596FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.25,0.3)
+1:f597-0 liszt: 597FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.25,0.25)
+1:f598-0 liszt: 598FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.2,0.25)
+1:f599-0 liszt: 599FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.25,0.4)
+1:f600-0 liszt: 600FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.25,0.35)
+1:f601-0 liszt: 601FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.2,0.35)
+1:f602-0 liszt: 602FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.25,0.45)
+1:f603-0 liszt: 603FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.2,0.45)
+1:f604-0 liszt: 604FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.25,0.1)
+1:f605-0 liszt: 605FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.25,0.05)
+1:f606-0 liszt: 606FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.2,0.05)
+1:f607-0 liszt: 607FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.25,0.2)
+1:f608-0 liszt: 608FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.25,0.15)
+1:f609-0 liszt: 609FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.2,0.15)
+1:f610-0 liszt: 610FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.25,0.3)
+1:f611-0 liszt: 611FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.25,0.25)
+1:f612-0 liszt: 612FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.2,0.25)
+1:f613-0 liszt: 613FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.25,0.4)
+1:f614-0 liszt: 614FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.25,0.35)
+1:f615-0 liszt: 615FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.2,0.35)
+1:f616-0 liszt: 616FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.25,0.45)
+1:f617-0 liszt: 617FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.2,0.45)
+1:f618-0 liszt: 618FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.25,0.1)
+1:f619-0 liszt: 619FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.25,0.05)
+1:f620-0 liszt: 620FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.2,0.05)
+1:f621-0 liszt: 621FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.25,0.2)
+1:f622-0 liszt: 622FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.25,0.15)
+1:f623-0 liszt: 623FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.2,0.15)
+1:f624-0 liszt: 624FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.25,0.3)
+1:f625-0 liszt: 625FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.25,0.25)
+1:f626-0 liszt: 626FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.2,0.25)
+1:f627-0 liszt: 627FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.25,0.4)
+1:f628-0 liszt: 628FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.25,0.35)
+1:f629-0 liszt: 629FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.2,0.35)
+1:f630-0 liszt: 630FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.25,0.45)
+1:f631-0 liszt: 631FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.2,0.45)
+1:f632-0 liszt: 632FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.25,0.1)
+1:f633-0 liszt: 633FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.25,0.05)
+1:f634-0 liszt: 634FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.2,0.05)
+1:f635-0 liszt: 635FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.25,0.2)
+1:f636-0 liszt: 636FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.25,0.15)
+1:f637-0 liszt: 637FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.2,0.15)
+1:f638-0 liszt: 638FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.25,0.3)
+1:f639-0 liszt: 639FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.25,0.25)
+1:f640-0 liszt: 640FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.2,0.25)
+1:f641-0 liszt: 641FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.25,0.4)
+1:f642-0 liszt: 642FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.25,0.35)
+1:f643-0 liszt: 643FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.2,0.35)
+1:f644-0 liszt: 644FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.25,0.45)
+1:f645-0 liszt: 645FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.2,0.45)
+1:f646-0 liszt: 646FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.25,0.1)
+1:f647-0 liszt: 647FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.2,0.05)
+1:f648-0 liszt: 648FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.25,0.2)
+1:f649-0 liszt: 649FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.2,0.15)
+1:f650-0 liszt: 650FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.25,0.3)
+1:f651-0 liszt: 651FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.2,0.25)
+1:f652-0 liszt: 652FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.25,0.4)
+1:f653-0 liszt: 653FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.2,0.35)
+1:f654-0 liszt: 654FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.2,0.45)
+1:f655-0 liszt: 655FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.15,0.1)
+1:f656-0 liszt: 656FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.15,0.05)
+1:f657-0 liszt: 657FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.1,0.05)
+1:f658-0 liszt: 658FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.15,0.2)
+1:f659-0 liszt: 659FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.15,0.15)
+1:f660-0 liszt: 660FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.1,0.15)
+1:f661-0 liszt: 661FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.15,0.3)
+1:f662-0 liszt: 662FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.15,0.25)
+1:f663-0 liszt: 663FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.1,0.25)
+1:f664-0 liszt: 664FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.15,0.4)
+1:f665-0 liszt: 665FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.15,0.35)
+1:f666-0 liszt: 666FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.1,0.35)
+1:f667-0 liszt: 667FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.15,0.45)
+1:f668-0 liszt: 668FaceArea: 0.01normal: (0,-1,0)face_centroid(0.95,0.1,0.45)
+1:f669-0 liszt: 669FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.15,0.1)
+1:f670-0 liszt: 670FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.15,0.05)
+1:f671-0 liszt: 671FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.1,0.05)
+1:f672-0 liszt: 672FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.15,0.2)
+1:f673-0 liszt: 673FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.15,0.15)
+1:f674-0 liszt: 674FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.1,0.15)
+1:f675-0 liszt: 675FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.15,0.3)
+1:f676-0 liszt: 676FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.15,0.25)
+1:f677-0 liszt: 677FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.1,0.25)
+1:f678-0 liszt: 678FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.15,0.4)
+1:f679-0 liszt: 679FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.15,0.35)
+1:f680-0 liszt: 680FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.1,0.35)
+1:f681-0 liszt: 681FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.15,0.45)
+1:f682-0 liszt: 682FaceArea: 0.01normal: (0,-1,0)face_centroid(0.85,0.1,0.45)
+1:f683-0 liszt: 683FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.15,0.1)
+1:f684-0 liszt: 684FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.15,0.05)
+1:f685-0 liszt: 685FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.1,0.05)
+1:f686-0 liszt: 686FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.15,0.2)
+1:f687-0 liszt: 687FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.15,0.15)
+1:f688-0 liszt: 688FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.1,0.15)
+1:f689-0 liszt: 689FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.15,0.3)
+1:f690-0 liszt: 690FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.15,0.25)
+1:f691-0 liszt: 691FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.1,0.25)
+1:f692-0 liszt: 692FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.15,0.4)
+1:f693-0 liszt: 693FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.15,0.35)
+1:f694-0 liszt: 694FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.1,0.35)
+1:f695-0 liszt: 695FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.15,0.45)
+1:f696-0 liszt: 696FaceArea: 0.01normal: (0,-1,0)face_centroid(0.75,0.1,0.45)
+1:f697-0 liszt: 697FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.15,0.1)
+1:f698-0 liszt: 698FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.15,0.05)
+1:f699-0 liszt: 699FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.1,0.05)
+1:f700-0 liszt: 700FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.15,0.2)
+1:f701-0 liszt: 701FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.15,0.15)
+1:f702-0 liszt: 702FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.1,0.15)
+1:f703-0 liszt: 703FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.15,0.3)
+1:f704-0 liszt: 704FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.15,0.25)
+1:f705-0 liszt: 705FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.1,0.25)
+1:f706-0 liszt: 706FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.15,0.4)
+1:f707-0 liszt: 707FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.15,0.35)
+1:f708-0 liszt: 708FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.1,0.35)
+1:f709-0 liszt: 709FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.15,0.45)
+1:f710-0 liszt: 710FaceArea: 0.01normal: (0,-1,0)face_centroid(0.65,0.1,0.45)
+1:f711-0 liszt: 711FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.15,0.1)
+1:f712-0 liszt: 712FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.15,0.05)
+1:f713-0 liszt: 713FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.1,0.05)
+1:f714-0 liszt: 714FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.15,0.2)
+1:f715-0 liszt: 715FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.15,0.15)
+1:f716-0 liszt: 716FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.1,0.15)
+1:f717-0 liszt: 717FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.15,0.3)
+1:f718-0 liszt: 718FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.15,0.25)
+1:f719-0 liszt: 719FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.1,0.25)
+1:f720-0 liszt: 720FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.15,0.4)
+1:f721-0 liszt: 721FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.15,0.35)
+1:f722-0 liszt: 722FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.1,0.35)
+1:f723-0 liszt: 723FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.15,0.45)
+1:f724-0 liszt: 724FaceArea: 0.01normal: (0,-1,0)face_centroid(0.55,0.1,0.45)
+1:f725-0 liszt: 725FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.15,0.1)
+1:f726-0 liszt: 726FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.15,0.05)
+1:f727-0 liszt: 727FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.1,0.05)
+1:f728-0 liszt: 728FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.15,0.2)
+1:f729-0 liszt: 729FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.15,0.15)
+1:f730-0 liszt: 730FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.1,0.15)
+1:f731-0 liszt: 731FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.15,0.3)
+1:f732-0 liszt: 732FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.15,0.25)
+1:f733-0 liszt: 733FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.1,0.25)
+1:f734-0 liszt: 734FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.15,0.4)
+1:f735-0 liszt: 735FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.15,0.35)
+1:f736-0 liszt: 736FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.1,0.35)
+1:f737-0 liszt: 737FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.15,0.45)
+1:f738-0 liszt: 738FaceArea: 0.01normal: (0,-1,0)face_centroid(0.45,0.1,0.45)
+1:f739-0 liszt: 739FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.15,0.1)
+1:f740-0 liszt: 740FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.15,0.05)
+1:f741-0 liszt: 741FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.1,0.05)
+1:f742-0 liszt: 742FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.15,0.2)
+1:f743-0 liszt: 743FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.15,0.15)
+1:f744-0 liszt: 744FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.1,0.15)
+1:f745-0 liszt: 745FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.15,0.3)
+1:f746-0 liszt: 746FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.15,0.25)
+1:f747-0 liszt: 747FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.1,0.25)
+1:f748-0 liszt: 748FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.15,0.4)
+1:f749-0 liszt: 749FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.15,0.35)
+1:f750-0 liszt: 750FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.1,0.35)
+1:f751-0 liszt: 751FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.15,0.45)
+1:f752-0 liszt: 752FaceArea: 0.01normal: (0,-1,0)face_centroid(0.35,0.1,0.45)
+1:f753-0 liszt: 753FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.15,0.1)
+1:f754-0 liszt: 754FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.15,0.05)
+1:f755-0 liszt: 755FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.1,0.05)
+1:f756-0 liszt: 756FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.15,0.2)
+1:f757-0 liszt: 757FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.15,0.15)
+1:f758-0 liszt: 758FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.1,0.15)
+1:f759-0 liszt: 759FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.15,0.3)
+1:f760-0 liszt: 760FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.15,0.25)
+1:f761-0 liszt: 761FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.1,0.25)
+1:f762-0 liszt: 762FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.15,0.4)
+1:f763-0 liszt: 763FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.15,0.35)
+1:f764-0 liszt: 764FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.1,0.35)
+1:f765-0 liszt: 765FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.15,0.45)
+1:f766-0 liszt: 766FaceArea: 0.01normal: (0,-1,0)face_centroid(0.25,0.1,0.45)
+1:f767-0 liszt: 767FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.15,0.1)
+1:f768-0 liszt: 768FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.15,0.05)
+1:f769-0 liszt: 769FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.1,0.05)
+1:f770-0 liszt: 770FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.15,0.2)
+1:f771-0 liszt: 771FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.15,0.15)
+1:f772-0 liszt: 772FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.1,0.15)
+1:f773-0 liszt: 773FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.15,0.3)
+1:f774-0 liszt: 774FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.15,0.25)
+1:f775-0 liszt: 775FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.1,0.25)
+1:f776-0 liszt: 776FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.15,0.4)
+1:f777-0 liszt: 777FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.15,0.35)
+1:f778-0 liszt: 778FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.1,0.35)
+1:f779-0 liszt: 779FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.15,0.45)
+1:f780-0 liszt: 780FaceArea: 0.01normal: (0,-1,0)face_centroid(0.15,0.1,0.45)
+1:f781-0 liszt: 781FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.15,0.1)
+1:f782-0 liszt: 782FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.1,0.05)
+1:f783-0 liszt: 783FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.15,0.2)
+1:f784-0 liszt: 784FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.1,0.15)
+1:f785-0 liszt: 785FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.15,0.3)
+1:f786-0 liszt: 786FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.1,0.25)
+1:f787-0 liszt: 787FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.15,0.4)
+1:f788-0 liszt: 788FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.1,0.35)
+1:f789-0 liszt: 789FaceArea: 0.01normal: (0,-1,0)face_centroid(0.05,0.1,0.45)
+1:f790-0 liszt: 790FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.05,0.1)
+1:f791-0 liszt: 791FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.05,0.05)
+1:f792-0 liszt: 792FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.05,0.2)
+1:f793-0 liszt: 793FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.05,0.15)
+1:f794-0 liszt: 794FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.05,0.3)
+1:f795-0 liszt: 795FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.05,0.25)
+1:f796-0 liszt: 796FaceArea: 0.01normal: (0,0,1)face_centroid(0.95,0.05,0.4)
+1:f797-0 liszt: 797FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.05,0.35)
+1:f798-0 liszt: 798FaceArea: 0.01normal: (-1,0,0)face_centroid(0.9,0.05,0.45)
+1:f799-0 liszt: 799FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.05,0.1)
+1:f800-0 liszt: 800FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.05,0.05)
+1:f801-0 liszt: 801FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.05,0.2)
+1:f802-0 liszt: 802FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.05,0.15)
+1:f803-0 liszt: 803FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.05,0.3)
+1:f804-0 liszt: 804FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.05,0.25)
+1:f805-0 liszt: 805FaceArea: 0.01normal: (0,0,1)face_centroid(0.85,0.05,0.4)
+1:f806-0 liszt: 806FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.05,0.35)
+1:f807-0 liszt: 807FaceArea: 0.01normal: (-1,0,0)face_centroid(0.8,0.05,0.45)
+1:f808-0 liszt: 808FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.05,0.1)
+1:f809-0 liszt: 809FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.05,0.05)
+1:f810-0 liszt: 810FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.05,0.2)
+1:f811-0 liszt: 811FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.05,0.15)
+1:f812-0 liszt: 812FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.05,0.3)
+1:f813-0 liszt: 813FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.05,0.25)
+1:f814-0 liszt: 814FaceArea: 0.01normal: (0,0,1)face_centroid(0.75,0.05,0.4)
+1:f815-0 liszt: 815FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.05,0.35)
+1:f816-0 liszt: 816FaceArea: 0.01normal: (-1,0,0)face_centroid(0.7,0.05,0.45)
+1:f817-0 liszt: 817FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.05,0.1)
+1:f818-0 liszt: 818FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.05,0.05)
+1:f819-0 liszt: 819FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.05,0.2)
+1:f820-0 liszt: 820FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.05,0.15)
+1:f821-0 liszt: 821FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.05,0.3)
+1:f822-0 liszt: 822FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.05,0.25)
+1:f823-0 liszt: 823FaceArea: 0.01normal: (0,0,1)face_centroid(0.65,0.05,0.4)
+1:f824-0 liszt: 824FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.05,0.35)
+1:f825-0 liszt: 825FaceArea: 0.01normal: (-1,0,0)face_centroid(0.6,0.05,0.45)
+1:f826-0 liszt: 826FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.05,0.1)
+1:f827-0 liszt: 827FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.05,0.05)
+1:f828-0 liszt: 828FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.05,0.2)
+1:f829-0 liszt: 829FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.05,0.15)
+1:f830-0 liszt: 830FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.05,0.3)
+1:f831-0 liszt: 831FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.05,0.25)
+1:f832-0 liszt: 832FaceArea: 0.01normal: (0,0,1)face_centroid(0.55,0.05,0.4)
+1:f833-0 liszt: 833FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.05,0.35)
+1:f834-0 liszt: 834FaceArea: 0.01normal: (-1,0,0)face_centroid(0.5,0.05,0.45)
+1:f835-0 liszt: 835FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.05,0.1)
+1:f836-0 liszt: 836FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.05,0.05)
+1:f837-0 liszt: 837FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.05,0.2)
+1:f838-0 liszt: 838FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.05,0.15)
+1:f839-0 liszt: 839FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.05,0.3)
+1:f840-0 liszt: 840FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.05,0.25)
+1:f841-0 liszt: 841FaceArea: 0.01normal: (0,0,1)face_centroid(0.45,0.05,0.4)
+1:f842-0 liszt: 842FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.05,0.35)
+1:f843-0 liszt: 843FaceArea: 0.01normal: (-1,0,0)face_centroid(0.4,0.05,0.45)
+1:f844-0 liszt: 844FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.05,0.1)
+1:f845-0 liszt: 845FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.05,0.05)
+1:f846-0 liszt: 846FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.05,0.2)
+1:f847-0 liszt: 847FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.05,0.15)
+1:f848-0 liszt: 848FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.05,0.3)
+1:f849-0 liszt: 849FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.05,0.25)
+1:f850-0 liszt: 850FaceArea: 0.01normal: (0,0,1)face_centroid(0.35,0.05,0.4)
+1:f851-0 liszt: 851FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.05,0.35)
+1:f852-0 liszt: 852FaceArea: 0.01normal: (-1,0,0)face_centroid(0.3,0.05,0.45)
+1:f853-0 liszt: 853FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.05,0.1)
+1:f854-0 liszt: 854FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.05,0.05)
+1:f855-0 liszt: 855FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.05,0.2)
+1:f856-0 liszt: 856FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.05,0.15)
+1:f857-0 liszt: 857FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.05,0.3)
+1:f858-0 liszt: 858FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.05,0.25)
+1:f859-0 liszt: 859FaceArea: 0.01normal: (0,0,1)face_centroid(0.25,0.05,0.4)
+1:f860-0 liszt: 860FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.05,0.35)
+1:f861-0 liszt: 861FaceArea: 0.01normal: (-1,0,0)face_centroid(0.2,0.05,0.45)
+1:f862-0 liszt: 862FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.05,0.1)
+1:f863-0 liszt: 863FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.05,0.05)
+1:f864-0 liszt: 864FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.05,0.2)
+1:f865-0 liszt: 865FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.05,0.15)
+1:f866-0 liszt: 866FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.05,0.3)
+1:f867-0 liszt: 867FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.05,0.25)
+1:f868-0 liszt: 868FaceArea: 0.01normal: (0,0,1)face_centroid(0.15,0.05,0.4)
+1:f869-0 liszt: 869FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.05,0.35)
+1:f870-0 liszt: 870FaceArea: 0.01normal: (-1,0,0)face_centroid(0.1,0.05,0.45)
+1:f871-0 liszt: 871FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.05,0.1)
+1:f872-0 liszt: 872FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.05,0.2)
+1:f873-0 liszt: 873FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.05,0.3)
+1:f874-0 liszt: 874FaceArea: 0.01normal: (0,0,1)face_centroid(0.05,0.05,0.4)
+3:c1-0 liszt: c: 1 0.001 (0.95,0.45,0.05)
+3:c2-0 liszt: c: 2 0.001 (0.95,0.45,0.15)
+3:c3-0 liszt: c: 3 0.001 (0.95,0.45,0.25)
+3:c4-0 liszt: c: 4 0.001 (0.95,0.45,0.35)
+3:c5-0 liszt: c: 5 0.001 (0.95,0.45,0.45)
+3:c6-0 liszt: c: 6 0.000999999 (0.85,0.45,0.05)
+3:c7-0 liszt: c: 7 0.000999999 (0.85,0.45,0.15)
+3:c8-0 liszt: c: 8 0.001 (0.85,0.45,0.25)
+3:c9-0 liszt: c: 9 0.000999999 (0.85,0.45,0.35)
+3:c10-0 liszt: c: 10 0.000999999 (0.85,0.45,0.45)
+3:c11-0 liszt: c: 11 0.001 (0.75,0.45,0.05)
+3:c12-0 liszt: c: 12 0.001 (0.75,0.45,0.15)
+3:c13-0 liszt: c: 13 0.001 (0.75,0.45,0.25)
+3:c14-0 liszt: c: 14 0.001 (0.75,0.45,0.35)
+3:c15-0 liszt: c: 15 0.001 (0.75,0.45,0.45)
+3:c16-0 liszt: c: 16 0.000999999 (0.65,0.45,0.05)
+3:c17-0 liszt: c: 17 0.001 (0.65,0.45,0.15)
+3:c18-0 liszt: c: 18 0.000999999 (0.65,0.45,0.25)
+3:c19-0 liszt: c: 19 0.000999999 (0.65,0.45,0.35)
+3:c20-0 liszt: c: 20 0.000999999 (0.65,0.45,0.45)
+3:c21-0 liszt: c: 21 0.001 (0.55,0.45,0.05)
+3:c22-0 liszt: c: 22 0.001 (0.55,0.45,0.15)
+3:c23-0 liszt: c: 23 0.001 (0.55,0.45,0.25)
+3:c24-0 liszt: c: 24 0.001 (0.55,0.45,0.35)
+3:c25-0 liszt: c: 25 0.001 (0.55,0.45,0.45)
+3:c26-0 liszt: c: 26 0.001 (0.45,0.45,0.05)
+3:c27-0 liszt: c: 27 0.001 (0.45,0.45,0.15)
+3:c28-0 liszt: c: 28 0.001 (0.45,0.45,0.25)
+3:c29-0 liszt: c: 29 0.001 (0.45,0.45,0.35)
+3:c30-0 liszt: c: 30 0.001 (0.45,0.45,0.45)
+3:c31-0 liszt: c: 31 0.001 (0.35,0.45,0.05)
+3:c32-0 liszt: c: 32 0.001 (0.35,0.45,0.15)
+3:c33-0 liszt: c: 33 0.001 (0.35,0.45,0.25)
+3:c34-0 liszt: c: 34 0.001 (0.35,0.45,0.35)
+3:c35-0 liszt: c: 35 0.001 (0.35,0.45,0.45)
+3:c36-0 liszt: c: 36 0.001 (0.25,0.45,0.05)
+3:c37-0 liszt: c: 37 0.001 (0.25,0.45,0.15)
+3:c38-0 liszt: c: 38 0.001 (0.25,0.45,0.25)
+3:c39-0 liszt: c: 39 0.001 (0.25,0.45,0.35)
+3:c40-0 liszt: c: 40 0.001 (0.25,0.45,0.45)
+3:c41-0 liszt: c: 41 0.001 (0.15,0.45,0.05)
+3:c42-0 liszt: c: 42 0.001 (0.15,0.45,0.15)
+3:c43-0 liszt: c: 43 0.001 (0.15,0.45,0.25)
+3:c44-0 liszt: c: 44 0.001 (0.15,0.45,0.35)
+3:c45-0 liszt: c: 45 0.001 (0.15,0.45,0.45)
+3:c46-0 liszt: c: 46 0.001 (0.05,0.45,0.05)
+3:c47-0 liszt: c: 47 0.001 (0.05,0.45,0.15)
+3:c48-0 liszt: c: 48 0.001 (0.05,0.45,0.25)
+3:c49-0 liszt: c: 49 0.001 (0.05,0.45,0.35)
+3:c50-0 liszt: c: 50 0.001 (0.05,0.45,0.45)
+3:c51-0 liszt: c: 51 0.001 (0.95,0.35,0.05)
+3:c52-0 liszt: c: 52 0.001 (0.95,0.35,0.15)
+3:c53-0 liszt: c: 53 0.001 (0.95,0.35,0.25)
+3:c54-0 liszt: c: 54 0.001 (0.95,0.35,0.35)
+3:c55-0 liszt: c: 55 0.001 (0.95,0.35,0.45)
+3:c56-0 liszt: c: 56 0.001 (0.85,0.35,0.05)
+3:c57-0 liszt: c: 57 0.001 (0.85,0.35,0.15)
+3:c58-0 liszt: c: 58 0.001 (0.85,0.35,0.25)
+3:c59-0 liszt: c: 59 0.000999999 (0.85,0.35,0.35)
+3:c60-0 liszt: c: 60 0.000999999 (0.85,0.35,0.45)
+3:c61-0 liszt: c: 61 0.001 (0.75,0.35,0.05)
+3:c62-0 liszt: c: 62 0.001 (0.75,0.35,0.15)
+3:c63-0 liszt: c: 63 0.001 (0.75,0.35,0.25)
+3:c64-0 liszt: c: 64 0.001 (0.75,0.35,0.35)
+3:c65-0 liszt: c: 65 0.001 (0.75,0.35,0.45)
+3:c66-0 liszt: c: 66 0.000999999 (0.65,0.35,0.05)
+3:c67-0 liszt: c: 67 0.001 (0.65,0.35,0.15)
+3:c68-0 liszt: c: 68 0.000999999 (0.65,0.35,0.25)
+3:c69-0 liszt: c: 69 0.000999999 (0.65,0.35,0.35)
+3:c70-0 liszt: c: 70 0.000999999 (0.65,0.35,0.45)
+3:c71-0 liszt: c: 71 0.001 (0.55,0.35,0.05)
+3:c72-0 liszt: c: 72 0.001 (0.55,0.35,0.15)
+3:c73-0 liszt: c: 73 0.001 (0.55,0.35,0.25)
+3:c74-0 liszt: c: 74 0.001 (0.55,0.35,0.35)
+3:c75-0 liszt: c: 75 0.001 (0.55,0.35,0.45)
+3:c76-0 liszt: c: 76 0.001 (0.45,0.35,0.05)
+3:c77-0 liszt: c: 77 0.001 (0.45,0.35,0.15)
+3:c78-0 liszt: c: 78 0.001 (0.45,0.35,0.25)
+3:c79-0 liszt: c: 79 0.001 (0.45,0.35,0.35)
+3:c80-0 liszt: c: 80 0.001 (0.45,0.35,0.45)
+3:c81-0 liszt: c: 81 0.001 (0.35,0.35,0.05)
+3:c82-0 liszt: c: 82 0.001 (0.35,0.35,0.15)
+3:c83-0 liszt: c: 83 0.001 (0.35,0.35,0.25)
+3:c84-0 liszt: c: 84 0.001 (0.35,0.35,0.35)
+3:c85-0 liszt: c: 85 0.001 (0.35,0.35,0.45)
+3:c86-0 liszt: c: 86 0.001 (0.25,0.35,0.05)
+3:c87-0 liszt: c: 87 0.001 (0.25,0.35,0.15)
+3:c88-0 liszt: c: 88 0.001 (0.25,0.35,0.25)
+3:c89-0 liszt: c: 89 0.001 (0.25,0.35,0.35)
+3:c90-0 liszt: c: 90 0.001 (0.25,0.35,0.45)
+3:c91-0 liszt: c: 91 0.001 (0.15,0.35,0.05)
+3:c92-0 liszt: c: 92 0.001 (0.15,0.35,0.15)
+3:c93-0 liszt: c: 93 0.001 (0.15,0.35,0.25)
+3:c94-0 liszt: c: 94 0.001 (0.15,0.35,0.35)
+3:c95-0 liszt: c: 95 0.001 (0.15,0.35,0.45)
+3:c96-0 liszt: c: 96 0.001 (0.05,0.35,0.05)
+3:c97-0 liszt: c: 97 0.001 (0.05,0.35,0.15)
+3:c98-0 liszt: c: 98 0.001 (0.05,0.35,0.25)
+3:c99-0 liszt: c: 99 0.001 (0.05,0.35,0.35)
+3:c100-0 liszt: c: 100 0.001 (0.05,0.35,0.45)
+3:c101-0 liszt: c: 101 0.001 (0.95,0.25,0.05)
+3:c102-0 liszt: c: 102 0.001 (0.95,0.25,0.15)
+3:c103-0 liszt: c: 103 0.001 (0.95,0.25,0.25)
+3:c104-0 liszt: c: 104 0.001 (0.95,0.25,0.35)
+3:c105-0 liszt: c: 105 0.001 (0.95,0.25,0.45)
+3:c106-0 liszt: c: 106 0.000999999 (0.85,0.25,0.05)
+3:c107-0 liszt: c: 107 0.000999999 (0.85,0.25,0.15)
+3:c108-0 liszt: c: 108 0.000999999 (0.85,0.25,0.25)
+3:c109-0 liszt: c: 109 0.001 (0.85,0.25,0.35)
+3:c110-0 liszt: c: 110 0.001 (0.85,0.25,0.45)
+3:c111-0 liszt: c: 111 0.001 (0.75,0.25,0.05)
+3:c112-0 liszt: c: 112 0.001 (0.75,0.25,0.15)
+3:c113-0 liszt: c: 113 0.001 (0.75,0.25,0.25)
+3:c114-0 liszt: c: 114 0.001 (0.75,0.25,0.35)
+3:c115-0 liszt: c: 115 0.001 (0.75,0.25,0.45)
+3:c116-0 liszt: c: 116 0.001 (0.65,0.25,0.05)
+3:c117-0 liszt: c: 117 0.001 (0.65,0.25,0.15)
+3:c118-0 liszt: c: 118 0.001 (0.65,0.25,0.25)
+3:c119-0 liszt: c: 119 0.001 (0.65,0.25,0.35)
+3:c120-0 liszt: c: 120 0.001 (0.65,0.25,0.45)
+3:c121-0 liszt: c: 121 0.001 (0.55,0.25,0.05)
+3:c122-0 liszt: c: 122 0.001 (0.55,0.25,0.15)
+3:c123-0 liszt: c: 123 0.001 (0.55,0.25,0.25)
+3:c124-0 liszt: c: 124 0.001 (0.55,0.25,0.35)
+3:c125-0 liszt: c: 125 0.001 (0.55,0.25,0.45)
+3:c126-0 liszt: c: 126 0.001 (0.45,0.25,0.05)
+3:c127-0 liszt: c: 127 0.001 (0.45,0.25,0.15)
+3:c128-0 liszt: c: 128 0.001 (0.45,0.25,0.25)
+3:c129-0 liszt: c: 129 0.001 (0.45,0.25,0.35)
+3:c130-0 liszt: c: 130 0.001 (0.45,0.25,0.45)
+3:c131-0 liszt: c: 131 0.001 (0.35,0.25,0.05)
+3:c132-0 liszt: c: 132 0.001 (0.35,0.25,0.15)
+3:c133-0 liszt: c: 133 0.001 (0.35,0.25,0.25)
+3:c134-0 liszt: c: 134 0.001 (0.35,0.25,0.35)
+3:c135-0 liszt: c: 135 0.001 (0.35,0.25,0.45)
+3:c136-0 liszt: c: 136 0.001 (0.25,0.25,0.05)
+3:c137-0 liszt: c: 137 0.001 (0.25,0.25,0.15)
+3:c138-0 liszt: c: 138 0.001 (0.25,0.25,0.25)
+3:c139-0 liszt: c: 139 0.001 (0.25,0.25,0.35)
+3:c140-0 liszt: c: 140 0.001 (0.25,0.25,0.45)
+3:c141-0 liszt: c: 141 0.001 (0.15,0.25,0.05)
+3:c142-0 liszt: c: 142 0.001 (0.15,0.25,0.15)
+3:c143-0 liszt: c: 143 0.001 (0.15,0.25,0.25)
+3:c144-0 liszt: c: 144 0.001 (0.15,0.25,0.35)
+3:c145-0 liszt: c: 145 0.001 (0.15,0.25,0.45)
+3:c146-0 liszt: c: 146 0.001 (0.05,0.25,0.05)
+3:c147-0 liszt: c: 147 0.001 (0.05,0.25,0.15)
+3:c148-0 liszt: c: 148 0.001 (0.05,0.25,0.25)
+3:c149-0 liszt: c: 149 0.001 (0.05,0.25,0.35)
+3:c150-0 liszt: c: 150 0.001 (0.05,0.25,0.45)
+3:c151-0 liszt: c: 151 0.001 (0.95,0.15,0.05)
+3:c152-0 liszt: c: 152 0.001 (0.95,0.15,0.15)
+3:c153-0 liszt: c: 153 0.001 (0.95,0.15,0.25)
+3:c154-0 liszt: c: 154 0.001 (0.95,0.15,0.35)
+3:c155-0 liszt: c: 155 0.001 (0.95,0.15,0.45)
+3:c156-0 liszt: c: 156 0.001 (0.85,0.15,0.05)
+3:c157-0 liszt: c: 157 0.000999999 (0.85,0.15,0.15)
+3:c158-0 liszt: c: 158 0.001 (0.85,0.15,0.25)
+3:c159-0 liszt: c: 159 0.000999999 (0.85,0.15,0.35)
+3:c160-0 liszt: c: 160 0.000999999 (0.85,0.15,0.45)
+3:c161-0 liszt: c: 161 0.001 (0.75,0.15,0.05)
+3:c162-0 liszt: c: 162 0.001 (0.75,0.15,0.15)
+3:c163-0 liszt: c: 163 0.001 (0.75,0.15,0.25)
+3:c164-0 liszt: c: 164 0.001 (0.75,0.15,0.35)
+3:c165-0 liszt: c: 165 0.001 (0.75,0.15,0.45)
+3:c166-0 liszt: c: 166 0.000999999 (0.65,0.15,0.05)
+3:c167-0 liszt: c: 167 0.001 (0.65,0.15,0.15)
+3:c168-0 liszt: c: 168 0.000999999 (0.65,0.15,0.25)
+3:c169-0 liszt: c: 169 0.000999999 (0.65,0.15,0.35)
+3:c170-0 liszt: c: 170 0.000999999 (0.65,0.15,0.45)
+3:c171-0 liszt: c: 171 0.001 (0.55,0.15,0.05)
+3:c172-0 liszt: c: 172 0.001 (0.55,0.15,0.15)
+3:c173-0 liszt: c: 173 0.001 (0.55,0.15,0.25)
+3:c174-0 liszt: c: 174 0.001 (0.55,0.15,0.35)
+3:c175-0 liszt: c: 175 0.001 (0.55,0.15,0.45)
+3:c176-0 liszt: c: 176 0.001 (0.45,0.15,0.05)
+3:c177-0 liszt: c: 177 0.001 (0.45,0.15,0.15)
+3:c178-0 liszt: c: 178 0.001 (0.45,0.15,0.25)
+3:c179-0 liszt: c: 179 0.001 (0.45,0.15,0.35)
+3:c180-0 liszt: c: 180 0.001 (0.45,0.15,0.45)
+3:c181-0 liszt: c: 181 0.001 (0.35,0.15,0.05)
+3:c182-0 liszt: c: 182 0.001 (0.35,0.15,0.15)
+3:c183-0 liszt: c: 183 0.001 (0.35,0.15,0.25)
+3:c184-0 liszt: c: 184 0.001 (0.35,0.15,0.35)
+3:c185-0 liszt: c: 185 0.001 (0.35,0.15,0.45)
+3:c186-0 liszt: c: 186 0.001 (0.25,0.15,0.05)
+3:c187-0 liszt: c: 187 0.001 (0.25,0.15,0.15)
+3:c188-0 liszt: c: 188 0.001 (0.25,0.15,0.25)
+3:c189-0 liszt: c: 189 0.001 (0.25,0.15,0.35)
+3:c190-0 liszt: c: 190 0.001 (0.25,0.15,0.45)
+3:c191-0 liszt: c: 191 0.001 (0.15,0.15,0.05)
+3:c192-0 liszt: c: 192 0.001 (0.15,0.15,0.15)
+3:c193-0 liszt: c: 193 0.001 (0.15,0.15,0.25)
+3:c194-0 liszt: c: 194 0.001 (0.15,0.15,0.35)
+3:c195-0 liszt: c: 195 0.001 (0.15,0.15,0.45)
+3:c196-0 liszt: c: 196 0.001 (0.05,0.15,0.05)
+3:c197-0 liszt: c: 197 0.001 (0.05,0.15,0.15)
+3:c198-0 liszt: c: 198 0.001 (0.05,0.15,0.25)
+3:c199-0 liszt: c: 199 0.001 (0.05,0.15,0.35)
+3:c200-0 liszt: c: 200 0.001 (0.05,0.15,0.45)
+3:c201-0 liszt: c: 201 0.001 (0.95,0.05,0.05)
+3:c202-0 liszt: c: 202 0.001 (0.95,0.05,0.15)
+3:c203-0 liszt: c: 203 0.001 (0.95,0.05,0.25)
+3:c204-0 liszt: c: 204 0.001 (0.95,0.05,0.35)
+3:c205-0 liszt: c: 205 0.001 (0.95,0.05,0.45)
+3:c206-0 liszt: c: 206 0.001 (0.85,0.05,0.05)
+3:c207-0 liszt: c: 207 0.001 (0.85,0.05,0.15)
+3:c208-0 liszt: c: 208 0.000999999 (0.85,0.05,0.25)
+3:c209-0 liszt: c: 209 0.000999999 (0.85,0.05,0.35)
+3:c210-0 liszt: c: 210 0.000999999 (0.85,0.05,0.45)
+3:c211-0 liszt: c: 211 0.001 (0.75,0.05,0.05)
+3:c212-0 liszt: c: 212 0.001 (0.75,0.05,0.15)
+3:c213-0 liszt: c: 213 0.001 (0.75,0.05,0.25)
+3:c214-0 liszt: c: 214 0.001 (0.75,0.05,0.35)
+3:c215-0 liszt: c: 215 0.001 (0.75,0.05,0.45)
+3:c216-0 liszt: c: 216 0.001 (0.65,0.05,0.05)
+3:c217-0 liszt: c: 217 0.000999999 (0.65,0.05,0.15)
+3:c218-0 liszt: c: 218 0.000999999 (0.65,0.05,0.25)
+3:c219-0 liszt: c: 219 0.000999999 (0.65,0.05,0.35)
+3:c220-0 liszt: c: 220 0.000999999 (0.65,0.05,0.45)
+3:c221-0 liszt: c: 221 0.001 (0.55,0.05,0.05)
+3:c222-0 liszt: c: 222 0.001 (0.55,0.05,0.15)
+3:c223-0 liszt: c: 223 0.001 (0.55,0.05,0.25)
+3:c224-0 liszt: c: 224 0.001 (0.55,0.05,0.35)
+3:c225-0 liszt: c: 225 0.001 (0.55,0.05,0.45)
+3:c226-0 liszt: c: 226 0.001 (0.45,0.05,0.05)
+3:c227-0 liszt: c: 227 0.001 (0.45,0.05,0.15)
+3:c228-0 liszt: c: 228 0.001 (0.45,0.05,0.25)
+3:c229-0 liszt: c: 229 0.001 (0.45,0.05,0.35)
+3:c230-0 liszt: c: 230 0.001 (0.45,0.05,0.45)
+3:c231-0 liszt: c: 231 0.001 (0.35,0.05,0.05)
+3:c232-0 liszt: c: 232 0.001 (0.35,0.05,0.15)
+3:c233-0 liszt: c: 233 0.001 (0.35,0.05,0.25)
+3:c234-0 liszt: c: 234 0.001 (0.35,0.05,0.35)
+3:c235-0 liszt: c: 235 0.001 (0.35,0.05,0.45)
+3:c236-0 liszt: c: 236 0.001 (0.25,0.05,0.05)
+3:c237-0 liszt: c: 237 0.001 (0.25,0.05,0.15)
+3:c238-0 liszt: c: 238 0.001 (0.25,0.05,0.25)
+3:c239-0 liszt: c: 239 0.001 (0.25,0.05,0.35)
+3:c240-0 liszt: c: 240 0.001 (0.25,0.05,0.45)
+3:c241-0 liszt: c: 241 0.001 (0.15,0.05,0.05)
+3:c242-0 liszt: c: 242 0.001 (0.15,0.05,0.15)
+3:c243-0 liszt: c: 243 0.001 (0.15,0.05,0.25)
+3:c244-0 liszt: c: 244 0.001 (0.15,0.05,0.35)
+3:c245-0 liszt: c: 245 0.001 (0.15,0.05,0.45)
+3:c246-0 liszt: c: 246 0.001 (0.05,0.05,0.05)
+3:c247-0 liszt: c: 247 0.001 (0.05,0.05,0.15)
+3:c248-0 liszt: c: 248 0.001 (0.05,0.05,0.25)
+3:c249-0 liszt: c: 249 0.001 (0.05,0.05,0.35)
+3:c250-0 liszt: c: 250 0.001 (0.05,0.05,0.45)
+6:c1-0 liszt: before cell number: 1 -> phi value: 0.0551298
+6:c2-0 liszt: before cell number: 2 -> phi value: 0.0559629
+6:c3-0 liszt: before cell number: 3 -> phi value: 0.0562434
+6:c4-0 liszt: before cell number: 4 -> phi value: 0.0559629
+6:c5-0 liszt: before cell number: 5 -> phi value: 0.0551298
+6:c6-0 liszt: before cell number: 6 -> phi value: 0.0573797
+6:c7-0 liszt: before cell number: 7 -> phi value: 0.0582468
+6:c8-0 liszt: before cell number: 8 -> phi value: 0.0585388
+6:c9-0 liszt: before cell number: 9 -> phi value: 0.0582468
+6:c10-0 liszt: before cell number: 10 -> phi value: 0.0573797
+6:c11-0 liszt: before cell number: 11 -> phi value: 0.0591271
+6:c12-0 liszt: before cell number: 12 -> phi value: 0.0600207
+6:c13-0 liszt: before cell number: 13 -> phi value: 0.0603216
+6:c14-0 liszt: before cell number: 14 -> phi value: 0.0600207
+6:c15-0 liszt: before cell number: 15 -> phi value: 0.0591271
+6:c16-0 liszt: before cell number: 16 -> phi value: 0.0603216
+6:c17-0 liszt: before cell number: 17 -> phi value: 0.0612332
+6:c18-0 liszt: before cell number: 18 -> phi value: 0.0615401
+6:c19-0 liszt: before cell number: 19 -> phi value: 0.0612332
+6:c20-0 liszt: before cell number: 20 -> phi value: 0.0603216
+6:c21-0 liszt: before cell number: 21 -> phi value: 0.0609278
+6:c22-0 liszt: before cell number: 22 -> phi value: 0.0618486
+6:c23-0 liszt: before cell number: 23 -> phi value: 0.0621586
+6:c24-0 liszt: before cell number: 24 -> phi value: 0.0618486
+6:c25-0 liszt: before cell number: 25 -> phi value: 0.0609278
+6:c26-0 liszt: before cell number: 26 -> phi value: 0.0609278
+6:c27-0 liszt: before cell number: 27 -> phi value: 0.0618486
+6:c28-0 liszt: before cell number: 28 -> phi value: 0.0621586
+6:c29-0 liszt: before cell number: 29 -> phi value: 0.0618486
+6:c30-0 liszt: before cell number: 30 -> phi value: 0.0609278
+6:c31-0 liszt: before cell number: 31 -> phi value: 0.0603216
+6:c32-0 liszt: before cell number: 32 -> phi value: 0.0612332
+6:c33-0 liszt: before cell number: 33 -> phi value: 0.0615401
+6:c34-0 liszt: before cell number: 34 -> phi value: 0.0612332
+6:c35-0 liszt: before cell number: 35 -> phi value: 0.0603216
+6:c36-0 liszt: before cell number: 36 -> phi value: 0.0591271
+6:c37-0 liszt: before cell number: 37 -> phi value: 0.0600207
+6:c38-0 liszt: before cell number: 38 -> phi value: 0.0603216
+6:c39-0 liszt: before cell number: 39 -> phi value: 0.0600207
+6:c40-0 liszt: before cell number: 40 -> phi value: 0.0591271
+6:c41-0 liszt: before cell number: 41 -> phi value: 0.0573797
+6:c42-0 liszt: before cell number: 42 -> phi value: 0.0582468
+6:c43-0 liszt: before cell number: 43 -> phi value: 0.0585388
+6:c44-0 liszt: before cell number: 44 -> phi value: 0.0582468
+6:c45-0 liszt: before cell number: 45 -> phi value: 0.0573797
+6:c46-0 liszt: before cell number: 46 -> phi value: 0.0551298
+6:c47-0 liszt: before cell number: 47 -> phi value: 0.0559629
+6:c48-0 liszt: before cell number: 48 -> phi value: 0.0562435
+6:c49-0 liszt: before cell number: 49 -> phi value: 0.0559629
+6:c50-0 liszt: before cell number: 50 -> phi value: 0.0551298
+6:c51-0 liszt: before cell number: 51 -> phi value: 0.0559629
+6:c52-0 liszt: before cell number: 52 -> phi value: 0.0568087
+6:c53-0 liszt: before cell number: 53 -> phi value: 0.0570935
+6:c54-0 liszt: before cell number: 54 -> phi value: 0.0568087
+6:c55-0 liszt: before cell number: 55 -> phi value: 0.0559629
+6:c56-0 liszt: before cell number: 56 -> phi value: 0.0582468
+6:c57-0 liszt: before cell number: 57 -> phi value: 0.0591271
+6:c58-0 liszt: before cell number: 58 -> phi value: 0.0594235
+6:c59-0 liszt: before cell number: 59 -> phi value: 0.0591271
+6:c60-0 liszt: before cell number: 60 -> phi value: 0.0582468
+6:c61-0 liszt: before cell number: 61 -> phi value: 0.0600207
+6:c62-0 liszt: before cell number: 62 -> phi value: 0.0609278
+6:c63-0 liszt: before cell number: 63 -> phi value: 0.0612332
+6:c64-0 liszt: before cell number: 64 -> phi value: 0.0609278
+6:c65-0 liszt: before cell number: 65 -> phi value: 0.0600207
+6:c66-0 liszt: before cell number: 66 -> phi value: 0.0612332
+6:c67-0 liszt: before cell number: 67 -> phi value: 0.0621586
+6:c68-0 liszt: before cell number: 68 -> phi value: 0.0624702
+6:c69-0 liszt: before cell number: 69 -> phi value: 0.0621586
+6:c70-0 liszt: before cell number: 70 -> phi value: 0.0612332
+6:c71-0 liszt: before cell number: 71 -> phi value: 0.0618486
+6:c72-0 liszt: before cell number: 72 -> phi value: 0.0627833
+6:c73-0 liszt: before cell number: 73 -> phi value: 0.063098
+6:c74-0 liszt: before cell number: 74 -> phi value: 0.0627833
+6:c75-0 liszt: before cell number: 75 -> phi value: 0.0618486
+6:c76-0 liszt: before cell number: 76 -> phi value: 0.0618486
+6:c77-0 liszt: before cell number: 77 -> phi value: 0.0627833
+6:c78-0 liszt: before cell number: 78 -> phi value: 0.063098
+6:c79-0 liszt: before cell number: 79 -> phi value: 0.0627833
+6:c80-0 liszt: before cell number: 80 -> phi value: 0.0618486
+6:c81-0 liszt: before cell number: 81 -> phi value: 0.0612332
+6:c82-0 liszt: before cell number: 82 -> phi value: 0.0621586
+6:c83-0 liszt: before cell number: 83 -> phi value: 0.0624702
+6:c84-0 liszt: before cell number: 84 -> phi value: 0.0621586
+6:c85-0 liszt: before cell number: 85 -> phi value: 0.0612332
+6:c86-0 liszt: before cell number: 86 -> phi value: 0.0600207
+6:c87-0 liszt: before cell number: 87 -> phi value: 0.0609278
+6:c88-0 liszt: before cell number: 88 -> phi value: 0.0612332
+6:c89-0 liszt: before cell number: 89 -> phi value: 0.0609278
+6:c90-0 liszt: before cell number: 90 -> phi value: 0.0600207
+6:c91-0 liszt: before cell number: 91 -> phi value: 0.0582468
+6:c92-0 liszt: before cell number: 92 -> phi value: 0.0591271
+6:c93-0 liszt: before cell number: 93 -> phi value: 0.0594235
+6:c94-0 liszt: before cell number: 94 -> phi value: 0.0591271
+6:c95-0 liszt: before cell number: 95 -> phi value: 0.0582468
+6:c96-0 liszt: before cell number: 96 -> phi value: 0.0559629
+6:c97-0 liszt: before cell number: 97 -> phi value: 0.0568087
+6:c98-0 liszt: before cell number: 98 -> phi value: 0.0570935
+6:c99-0 liszt: before cell number: 99 -> phi value: 0.0568087
+6:c100-0 liszt: before cell number: 100 -> phi value: 0.0559629
+6:c101-0 liszt: before cell number: 101 -> phi value: 0.0562435
+6:c102-0 liszt: before cell number: 102 -> phi value: 0.0570935
+6:c103-0 liszt: before cell number: 103 -> phi value: 0.0573797
+6:c104-0 liszt: before cell number: 104 -> phi value: 0.0570935
+6:c105-0 liszt: before cell number: 105 -> phi value: 0.0562435
+6:c106-0 liszt: before cell number: 106 -> phi value: 0.0585388
+6:c107-0 liszt: before cell number: 107 -> phi value: 0.0594235
+6:c108-0 liszt: before cell number: 108 -> phi value: 0.0597214
+6:c109-0 liszt: before cell number: 109 -> phi value: 0.0594235
+6:c110-0 liszt: before cell number: 110 -> phi value: 0.0585388
+6:c111-0 liszt: before cell number: 111 -> phi value: 0.0603216
+6:c112-0 liszt: before cell number: 112 -> phi value: 0.0612332
+6:c113-0 liszt: before cell number: 113 -> phi value: 0.0615401
+6:c114-0 liszt: before cell number: 114 -> phi value: 0.0612332
+6:c115-0 liszt: before cell number: 115 -> phi value: 0.0603216
+6:c116-0 liszt: before cell number: 116 -> phi value: 0.0615401
+6:c117-0 liszt: before cell number: 117 -> phi value: 0.0624702
+6:c118-0 liszt: before cell number: 118 -> phi value: 0.0627833
+6:c119-0 liszt: before cell number: 119 -> phi value: 0.0624702
+6:c120-0 liszt: before cell number: 120 -> phi value: 0.0615401
+6:c121-0 liszt: before cell number: 121 -> phi value: 0.0621586
+6:c122-0 liszt: before cell number: 122 -> phi value: 0.063098
+6:c123-0 liszt: before cell number: 123 -> phi value: 0.0634143
+6:c124-0 liszt: before cell number: 124 -> phi value: 0.063098
+6:c125-0 liszt: before cell number: 125 -> phi value: 0.0621586
+6:c126-0 liszt: before cell number: 126 -> phi value: 0.0621586
+6:c127-0 liszt: before cell number: 127 -> phi value: 0.063098
+6:c128-0 liszt: before cell number: 128 -> phi value: 0.0634143
+6:c129-0 liszt: before cell number: 129 -> phi value: 0.063098
+6:c130-0 liszt: before cell number: 130 -> phi value: 0.0621586
+6:c131-0 liszt: before cell number: 131 -> phi value: 0.0615401
+6:c132-0 liszt: before cell number: 132 -> phi value: 0.0624702
+6:c133-0 liszt: before cell number: 133 -> phi value: 0.0627833
+6:c134-0 liszt: before cell number: 134 -> phi value: 0.0624702
+6:c135-0 liszt: before cell number: 135 -> phi value: 0.0615401
+6:c136-0 liszt: before cell number: 136 -> phi value: 0.0603216
+6:c137-0 liszt: before cell number: 137 -> phi value: 0.0612332
+6:c138-0 liszt: before cell number: 138 -> phi value: 0.0615401
+6:c139-0 liszt: before cell number: 139 -> phi value: 0.0612332
+6:c140-0 liszt: before cell number: 140 -> phi value: 0.0603216
+6:c141-0 liszt: before cell number: 141 -> phi value: 0.0585388
+6:c142-0 liszt: before cell number: 142 -> phi value: 0.0594235
+6:c143-0 liszt: before cell number: 143 -> phi value: 0.0597214
+6:c144-0 liszt: before cell number: 144 -> phi value: 0.0594235
+6:c145-0 liszt: before cell number: 145 -> phi value: 0.0585388
+6:c146-0 liszt: before cell number: 146 -> phi value: 0.0562435
+6:c147-0 liszt: before cell number: 147 -> phi value: 0.0570935
+6:c148-0 liszt: before cell number: 148 -> phi value: 0.0573797
+6:c149-0 liszt: before cell number: 149 -> phi value: 0.0570935
+6:c150-0 liszt: before cell number: 150 -> phi value: 0.0562435
+6:c151-0 liszt: before cell number: 151 -> phi value: 0.0559629
+6:c152-0 liszt: before cell number: 152 -> phi value: 0.0568087
+6:c153-0 liszt: before cell number: 153 -> phi value: 0.0570935
+6:c154-0 liszt: before cell number: 154 -> phi value: 0.0568087
+6:c155-0 liszt: before cell number: 155 -> phi value: 0.0559629
+6:c156-0 liszt: before cell number: 156 -> phi value: 0.0582468
+6:c157-0 liszt: before cell number: 157 -> phi value: 0.0591271
+6:c158-0 liszt: before cell number: 158 -> phi value: 0.0594235
+6:c159-0 liszt: before cell number: 159 -> phi value: 0.0591271
+6:c160-0 liszt: before cell number: 160 -> phi value: 0.0582468
+6:c161-0 liszt: before cell number: 161 -> phi value: 0.0600207
+6:c162-0 liszt: before cell number: 162 -> phi value: 0.0609278
+6:c163-0 liszt: before cell number: 163 -> phi value: 0.0612332
+6:c164-0 liszt: before cell number: 164 -> phi value: 0.0609278
+6:c165-0 liszt: before cell number: 165 -> phi value: 0.0600207
+6:c166-0 liszt: before cell number: 166 -> phi value: 0.0612332
+6:c167-0 liszt: before cell number: 167 -> phi value: 0.0621586
+6:c168-0 liszt: before cell number: 168 -> phi value: 0.0624702
+6:c169-0 liszt: before cell number: 169 -> phi value: 0.0621586
+6:c170-0 liszt: before cell number: 170 -> phi value: 0.0612332
+6:c171-0 liszt: before cell number: 171 -> phi value: 0.0618486
+6:c172-0 liszt: before cell number: 172 -> phi value: 0.0627833
+6:c173-0 liszt: before cell number: 173 -> phi value: 0.063098
+6:c174-0 liszt: before cell number: 174 -> phi value: 0.0627833
+6:c175-0 liszt: before cell number: 175 -> phi value: 0.0618486
+6:c176-0 liszt: before cell number: 176 -> phi value: 0.0618486
+6:c177-0 liszt: before cell number: 177 -> phi value: 0.0627833
+6:c178-0 liszt: before cell number: 178 -> phi value: 0.063098
+6:c179-0 liszt: before cell number: 179 -> phi value: 0.0627833
+6:c180-0 liszt: before cell number: 180 -> phi value: 0.0618486
+6:c181-0 liszt: before cell number: 181 -> phi value: 0.0612332
+6:c182-0 liszt: before cell number: 182 -> phi value: 0.0621586
+6:c183-0 liszt: before cell number: 183 -> phi value: 0.0624702
+6:c184-0 liszt: before cell number: 184 -> phi value: 0.0621586
+6:c185-0 liszt: before cell number: 185 -> phi value: 0.0612332
+6:c186-0 liszt: before cell number: 186 -> phi value: 0.0600207
+6:c187-0 liszt: before cell number: 187 -> phi value: 0.0609278
+6:c188-0 liszt: before cell number: 188 -> phi value: 0.0612332
+6:c189-0 liszt: before cell number: 189 -> phi value: 0.0609278
+6:c190-0 liszt: before cell number: 190 -> phi value: 0.0600207
+6:c191-0 liszt: before cell number: 191 -> phi value: 0.0582468
+6:c192-0 liszt: before cell number: 192 -> phi value: 0.0591271
+6:c193-0 liszt: before cell number: 193 -> phi value: 0.0594235
+6:c194-0 liszt: before cell number: 194 -> phi value: 0.0591271
+6:c195-0 liszt: before cell number: 195 -> phi value: 0.0582468
+6:c196-0 liszt: before cell number: 196 -> phi value: 0.0559629
+6:c197-0 liszt: before cell number: 197 -> phi value: 0.0568087
+6:c198-0 liszt: before cell number: 198 -> phi value: 0.0570935
+6:c199-0 liszt: before cell number: 199 -> phi value: 0.0568087
+6:c200-0 liszt: before cell number: 200 -> phi value: 0.0559629
+6:c201-0 liszt: before cell number: 201 -> phi value: 0.0551298
+6:c202-0 liszt: before cell number: 202 -> phi value: 0.0559629
+6:c203-0 liszt: before cell number: 203 -> phi value: 0.0562435
+6:c204-0 liszt: before cell number: 204 -> phi value: 0.0559629
+6:c205-0 liszt: before cell number: 205 -> phi value: 0.0551298
+6:c206-0 liszt: before cell number: 206 -> phi value: 0.0573797
+6:c207-0 liszt: before cell number: 207 -> phi value: 0.0582468
+6:c208-0 liszt: before cell number: 208 -> phi value: 0.0585388
+6:c209-0 liszt: before cell number: 209 -> phi value: 0.0582468
+6:c210-0 liszt: before cell number: 210 -> phi value: 0.0573797
+6:c211-0 liszt: before cell number: 211 -> phi value: 0.0591271
+6:c212-0 liszt: before cell number: 212 -> phi value: 0.0600207
+6:c213-0 liszt: before cell number: 213 -> phi value: 0.0603216
+6:c214-0 liszt: before cell number: 214 -> phi value: 0.0600207
+6:c215-0 liszt: before cell number: 215 -> phi value: 0.0591271
+6:c216-0 liszt: before cell number: 216 -> phi value: 0.0603216
+6:c217-0 liszt: before cell number: 217 -> phi value: 0.0612332
+6:c218-0 liszt: before cell number: 218 -> phi value: 0.0615401
+6:c219-0 liszt: before cell number: 219 -> phi value: 0.0612332
+6:c220-0 liszt: before cell number: 220 -> phi value: 0.0603216
+6:c221-0 liszt: before cell number: 221 -> phi value: 0.0609278
+6:c222-0 liszt: before cell number: 222 -> phi value: 0.0618486
+6:c223-0 liszt: before cell number: 223 -> phi value: 0.0621586
+6:c224-0 liszt: before cell number: 224 -> phi value: 0.0618486
+6:c225-0 liszt: before cell number: 225 -> phi value: 0.0609278
+6:c226-0 liszt: before cell number: 226 -> phi value: 0.0609278
+6:c227-0 liszt: before cell number: 227 -> phi value: 0.0618486
+6:c228-0 liszt: before cell number: 228 -> phi value: 0.0621586
+6:c229-0 liszt: before cell number: 229 -> phi value: 0.0618486
+6:c230-0 liszt: before cell number: 230 -> phi value: 0.0609278
+6:c231-0 liszt: before cell number: 231 -> phi value: 0.0603216
+6:c232-0 liszt: before cell number: 232 -> phi value: 0.0612332
+6:c233-0 liszt: before cell number: 233 -> phi value: 0.0615401
+6:c234-0 liszt: before cell number: 234 -> phi value: 0.0612332
+6:c235-0 liszt: before cell number: 235 -> phi value: 0.0603216
+6:c236-0 liszt: before cell number: 236 -> phi value: 0.0591271
+6:c237-0 liszt: before cell number: 237 -> phi value: 0.0600207
+6:c238-0 liszt: before cell number: 238 -> phi value: 0.0603216
+6:c239-0 liszt: before cell number: 239 -> phi value: 0.0600207
+6:c240-0 liszt: before cell number: 240 -> phi value: 0.0591271
+6:c241-0 liszt: before cell number: 241 -> phi value: 0.0573796
+6:c242-0 liszt: before cell number: 242 -> phi value: 0.0582468
+6:c243-0 liszt: before cell number: 243 -> phi value: 0.0585388
+6:c244-0 liszt: before cell number: 244 -> phi value: 0.0582468
+6:c245-0 liszt: before cell number: 245 -> phi value: 0.0573797
+6:c246-0 liszt: before cell number: 246 -> phi value: 0.0551298
+6:c247-0 liszt: before cell number: 247 -> phi value: 0.0559629
+6:c248-0 liszt: before cell number: 248 -> phi value: 0.0562435
+6:c249-0 liszt: before cell number: 249 -> phi value: 0.0559629
+6:c250-0 liszt: before cell number: 250 -> phi value: 0.0551298
+811:c1-0 liszt: cell number: 1 -> phi value: 1.35779
+811:c2-0 liszt: cell number: 2 -> phi value: 1.35779
+811:c3-0 liszt: cell number: 3 -> phi value: 1.35779
+811:c4-0 liszt: cell number: 4 -> phi value: 1.35779
+811:c5-0 liszt: cell number: 5 -> phi value: 1.35779
+811:c6-0 liszt: cell number: 6 -> phi value: 2.5229
+811:c7-0 liszt: cell number: 7 -> phi value: 2.5229
+811:c8-0 liszt: cell number: 8 -> phi value: 2.5229
+811:c9-0 liszt: cell number: 9 -> phi value: 2.5229
+811:c10-0 liszt: cell number: 10 -> phi value: 2.5229
+811:c11-0 liszt: cell number: 11 -> phi value: 3.09413
+811:c12-0 liszt: cell number: 12 -> phi value: 3.09413
+811:c13-0 liszt: cell number: 13 -> phi value: 3.09413
+811:c14-0 liszt: cell number: 14 -> phi value: 3.09413
+811:c15-0 liszt: cell number: 15 -> phi value: 3.09413
+811:c16-0 liszt: cell number: 16 -> phi value: 2.64062
+811:c17-0 liszt: cell number: 17 -> phi value: 2.64062
+811:c18-0 liszt: cell number: 18 -> phi value: 2.64062
+811:c19-0 liszt: cell number: 19 -> phi value: 2.64062
+811:c20-0 liszt: cell number: 20 -> phi value: 2.64062
+811:c21-0 liszt: cell number: 21 -> phi value: 0.994887
+811:c22-0 liszt: cell number: 22 -> phi value: 0.994886
+811:c23-0 liszt: cell number: 23 -> phi value: 0.994888
+811:c24-0 liszt: cell number: 24 -> phi value: 0.994887
+811:c25-0 liszt: cell number: 25 -> phi value: 0.994888
+811:c26-0 liszt: cell number: 26 -> phi value: -1.59468
+811:c27-0 liszt: cell number: 27 -> phi value: -1.59469
+811:c28-0 liszt: cell number: 28 -> phi value: -1.59468
+811:c29-0 liszt: cell number: 29 -> phi value: -1.59469
+811:c30-0 liszt: cell number: 30 -> phi value: -1.59468
+811:c31-0 liszt: cell number: 31 -> phi value: -4.42337
+811:c32-0 liszt: cell number: 32 -> phi value: -4.42337
+811:c33-0 liszt: cell number: 33 -> phi value: -4.42337
+811:c34-0 liszt: cell number: 34 -> phi value: -4.42337
+811:c35-0 liszt: cell number: 35 -> phi value: -4.42337
+811:c36-0 liszt: cell number: 36 -> phi value: -6.45556
+811:c37-0 liszt: cell number: 37 -> phi value: -6.45555
+811:c38-0 liszt: cell number: 38 -> phi value: -6.45555
+811:c39-0 liszt: cell number: 39 -> phi value: -6.45555
+811:c40-0 liszt: cell number: 40 -> phi value: -6.45555
+811:c41-0 liszt: cell number: 41 -> phi value: -6.6225
+811:c42-0 liszt: cell number: 42 -> phi value: -6.6225
+811:c43-0 liszt: cell number: 43 -> phi value: -6.6225
+811:c44-0 liszt: cell number: 44 -> phi value: -6.6225
+811:c45-0 liszt: cell number: 45 -> phi value: -6.6225
+811:c46-0 liszt: cell number: 46 -> phi value: -4.23291
+811:c47-0 liszt: cell number: 47 -> phi value: -4.23291
+811:c48-0 liszt: cell number: 48 -> phi value: -4.23291
+811:c49-0 liszt: cell number: 49 -> phi value: -4.23291
+811:c50-0 liszt: cell number: 50 -> phi value: -4.23291
+811:c51-0 liszt: cell number: 51 -> phi value: 1.35779
+811:c52-0 liszt: cell number: 52 -> phi value: 1.35779
+811:c53-0 liszt: cell number: 53 -> phi value: 1.35779
+811:c54-0 liszt: cell number: 54 -> phi value: 1.35779
+811:c55-0 liszt: cell number: 55 -> phi value: 1.35779
+811:c56-0 liszt: cell number: 56 -> phi value: 2.5229
+811:c57-0 liszt: cell number: 57 -> phi value: 2.5229
+811:c58-0 liszt: cell number: 58 -> phi value: 2.5229
+811:c59-0 liszt: cell number: 59 -> phi value: 2.5229
+811:c60-0 liszt: cell number: 60 -> phi value: 2.5229
+811:c61-0 liszt: cell number: 61 -> phi value: 3.09413
+811:c62-0 liszt: cell number: 62 -> phi value: 3.09413
+811:c63-0 liszt: cell number: 63 -> phi value: 3.09413
+811:c64-0 liszt: cell number: 64 -> phi value: 3.09413
+811:c65-0 liszt: cell number: 65 -> phi value: 3.09413
+811:c66-0 liszt: cell number: 66 -> phi value: 2.64062
+811:c67-0 liszt: cell number: 67 -> phi value: 2.64062
+811:c68-0 liszt: cell number: 68 -> phi value: 2.64062
+811:c69-0 liszt: cell number: 69 -> phi value: 2.64062
+811:c70-0 liszt: cell number: 70 -> phi value: 2.64062
+811:c71-0 liszt: cell number: 71 -> phi value: 0.994887
+811:c72-0 liszt: cell number: 72 -> phi value: 0.994889
+811:c73-0 liszt: cell number: 73 -> phi value: 0.994889
+811:c74-0 liszt: cell number: 74 -> phi value: 0.994888
+811:c75-0 liszt: cell number: 75 -> phi value: 0.994889
+811:c76-0 liszt: cell number: 76 -> phi value: -1.59469
+811:c77-0 liszt: cell number: 77 -> phi value: -1.59468
+811:c78-0 liszt: cell number: 78 -> phi value: -1.59468
+811:c79-0 liszt: cell number: 79 -> phi value: -1.59468
+811:c80-0 liszt: cell number: 80 -> phi value: -1.59468
+811:c81-0 liszt: cell number: 81 -> phi value: -4.42337
+811:c82-0 liszt: cell number: 82 -> phi value: -4.42337
+811:c83-0 liszt: cell number: 83 -> phi value: -4.42337
+811:c84-0 liszt: cell number: 84 -> phi value: -4.42337
+811:c85-0 liszt: cell number: 85 -> phi value: -4.42337
+811:c86-0 liszt: cell number: 86 -> phi value: -6.45555
+811:c87-0 liszt: cell number: 87 -> phi value: -6.45555
+811:c88-0 liszt: cell number: 88 -> phi value: -6.45555
+811:c89-0 liszt: cell number: 89 -> phi value: -6.45555
+811:c90-0 liszt: cell number: 90 -> phi value: -6.45555
+811:c91-0 liszt: cell number: 91 -> phi value: -6.6225
+811:c92-0 liszt: cell number: 92 -> phi value: -6.6225
+811:c93-0 liszt: cell number: 93 -> phi value: -6.6225
+811:c94-0 liszt: cell number: 94 -> phi value: -6.6225
+811:c95-0 liszt: cell number: 95 -> phi value: -6.6225
+811:c96-0 liszt: cell number: 96 -> phi value: -4.23291
+811:c97-0 liszt: cell number: 97 -> phi value: -4.23291
+811:c98-0 liszt: cell number: 98 -> phi value: -4.23291
+811:c99-0 liszt: cell number: 99 -> phi value: -4.23291
+811:c100-0 liszt: cell number: 100 -> phi value: -4.23291
+811:c101-0 liszt: cell number: 101 -> phi value: 1.35779
+811:c102-0 liszt: cell number: 102 -> phi value: 1.3578
+811:c103-0 liszt: cell number: 103 -> phi value: 1.3578
+811:c104-0 liszt: cell number: 104 -> phi value: 1.35779
+811:c105-0 liszt: cell number: 105 -> phi value: 1.35779
+811:c106-0 liszt: cell number: 106 -> phi value: 2.5229
+811:c107-0 liszt: cell number: 107 -> phi value: 2.5229
+811:c108-0 liszt: cell number: 108 -> phi value: 2.5229
+811:c109-0 liszt: cell number: 109 -> phi value: 2.5229
+811:c110-0 liszt: cell number: 110 -> phi value: 2.5229
+811:c111-0 liszt: cell number: 111 -> phi value: 3.09413
+811:c112-0 liszt: cell number: 112 -> phi value: 3.09413
+811:c113-0 liszt: cell number: 113 -> phi value: 3.09413
+811:c114-0 liszt: cell number: 114 -> phi value: 3.09413
+811:c115-0 liszt: cell number: 115 -> phi value: 3.09413
+811:c116-0 liszt: cell number: 116 -> phi value: 2.64062
+811:c117-0 liszt: cell number: 117 -> phi value: 2.64062
+811:c118-0 liszt: cell number: 118 -> phi value: 2.64062
+811:c119-0 liszt: cell number: 119 -> phi value: 2.64062
+811:c120-0 liszt: cell number: 120 -> phi value: 2.64062
+811:c121-0 liszt: cell number: 121 -> phi value: 0.994886
+811:c122-0 liszt: cell number: 122 -> phi value: 0.994887
+811:c123-0 liszt: cell number: 123 -> phi value: 0.994886
+811:c124-0 liszt: cell number: 124 -> phi value: 0.994888
+811:c125-0 liszt: cell number: 125 -> phi value: 0.994887
+811:c126-0 liszt: cell number: 126 -> phi value: -1.59469
+811:c127-0 liszt: cell number: 127 -> phi value: -1.59469
+811:c128-0 liszt: cell number: 128 -> phi value: -1.59469
+811:c129-0 liszt: cell number: 129 -> phi value: -1.59468
+811:c130-0 liszt: cell number: 130 -> phi value: -1.59468
+811:c131-0 liszt: cell number: 131 -> phi value: -4.42337
+811:c132-0 liszt: cell number: 132 -> phi value: -4.42337
+811:c133-0 liszt: cell number: 133 -> phi value: -4.42337
+811:c134-0 liszt: cell number: 134 -> phi value: -4.42337
+811:c135-0 liszt: cell number: 135 -> phi value: -4.42337
+811:c136-0 liszt: cell number: 136 -> phi value: -6.45556
+811:c137-0 liszt: cell number: 137 -> phi value: -6.45555
+811:c138-0 liszt: cell number: 138 -> phi value: -6.45556
+811:c139-0 liszt: cell number: 139 -> phi value: -6.45556
+811:c140-0 liszt: cell number: 140 -> phi value: -6.45556
+811:c141-0 liszt: cell number: 141 -> phi value: -6.6225
+811:c142-0 liszt: cell number: 142 -> phi value: -6.6225
+811:c143-0 liszt: cell number: 143 -> phi value: -6.6225
+811:c144-0 liszt: cell number: 144 -> phi value: -6.6225
+811:c145-0 liszt: cell number: 145 -> phi value: -6.6225
+811:c146-0 liszt: cell number: 146 -> phi value: -4.23291
+811:c147-0 liszt: cell number: 147 -> phi value: -4.23291
+811:c148-0 liszt: cell number: 148 -> phi value: -4.23291
+811:c149-0 liszt: cell number: 149 -> phi value: -4.23291
+811:c150-0 liszt: cell number: 150 -> phi value: -4.23291
+811:c151-0 liszt: cell number: 151 -> phi value: 1.35779
+811:c152-0 liszt: cell number: 152 -> phi value: 1.35779
+811:c153-0 liszt: cell number: 153 -> phi value: 1.3578
+811:c154-0 liszt: cell number: 154 -> phi value: 1.3578
+811:c155-0 liszt: cell number: 155 -> phi value: 1.35779
+811:c156-0 liszt: cell number: 156 -> phi value: 2.5229
+811:c157-0 liszt: cell number: 157 -> phi value: 2.5229
+811:c158-0 liszt: cell number: 158 -> phi value: 2.5229
+811:c159-0 liszt: cell number: 159 -> phi value: 2.5229
+811:c160-0 liszt: cell number: 160 -> phi value: 2.5229
+811:c161-0 liszt: cell number: 161 -> phi value: 3.09413
+811:c162-0 liszt: cell number: 162 -> phi value: 3.09413
+811:c163-0 liszt: cell number: 163 -> phi value: 3.09413
+811:c164-0 liszt: cell number: 164 -> phi value: 3.09413
+811:c165-0 liszt: cell number: 165 -> phi value: 3.09413
+811:c166-0 liszt: cell number: 166 -> phi value: 2.64062
+811:c167-0 liszt: cell number: 167 -> phi value: 2.64062
+811:c168-0 liszt: cell number: 168 -> phi value: 2.64062
+811:c169-0 liszt: cell number: 169 -> phi value: 2.64062
+811:c170-0 liszt: cell number: 170 -> phi value: 2.64062
+811:c171-0 liszt: cell number: 171 -> phi value: 0.994888
+811:c172-0 liszt: cell number: 172 -> phi value: 0.994887
+811:c173-0 liszt: cell number: 173 -> phi value: 0.994887
+811:c174-0 liszt: cell number: 174 -> phi value: 0.994887
+811:c175-0 liszt: cell number: 175 -> phi value: 0.994887
+811:c176-0 liszt: cell number: 176 -> phi value: -1.59468
+811:c177-0 liszt: cell number: 177 -> phi value: -1.59469
+811:c178-0 liszt: cell number: 178 -> phi value: -1.59469
+811:c179-0 liszt: cell number: 179 -> phi value: -1.59469
+811:c180-0 liszt: cell number: 180 -> phi value: -1.59469
+811:c181-0 liszt: cell number: 181 -> phi value: -4.42337
+811:c182-0 liszt: cell number: 182 -> phi value: -4.42337
+811:c183-0 liszt: cell number: 183 -> phi value: -4.42337
+811:c184-0 liszt: cell number: 184 -> phi value: -4.42337
+811:c185-0 liszt: cell number: 185 -> phi value: -4.42337
+811:c186-0 liszt: cell number: 186 -> phi value: -6.45555
+811:c187-0 liszt: cell number: 187 -> phi value: -6.45555
+811:c188-0 liszt: cell number: 188 -> phi value: -6.45555
+811:c189-0 liszt: cell number: 189 -> phi value: -6.45556
+811:c190-0 liszt: cell number: 190 -> phi value: -6.45556
+811:c191-0 liszt: cell number: 191 -> phi value: -6.6225
+811:c192-0 liszt: cell number: 192 -> phi value: -6.6225
+811:c193-0 liszt: cell number: 193 -> phi value: -6.6225
+811:c194-0 liszt: cell number: 194 -> phi value: -6.6225
+811:c195-0 liszt: cell number: 195 -> phi value: -6.6225
+811:c196-0 liszt: cell number: 196 -> phi value: -4.23291
+811:c197-0 liszt: cell number: 197 -> phi value: -4.23291
+811:c198-0 liszt: cell number: 198 -> phi value: -4.23291
+811:c199-0 liszt: cell number: 199 -> phi value: -4.23291
+811:c200-0 liszt: cell number: 200 -> phi value: -4.23291
+811:c201-0 liszt: cell number: 201 -> phi value: 1.35779
+811:c202-0 liszt: cell number: 202 -> phi value: 1.35779
+811:c203-0 liszt: cell number: 203 -> phi value: 1.35779
+811:c204-0 liszt: cell number: 204 -> phi value: 1.35779
+811:c205-0 liszt: cell number: 205 -> phi value: 1.35779
+811:c206-0 liszt: cell number: 206 -> phi value: 2.5229
+811:c207-0 liszt: cell number: 207 -> phi value: 2.5229
+811:c208-0 liszt: cell number: 208 -> phi value: 2.5229
+811:c209-0 liszt: cell number: 209 -> phi value: 2.5229
+811:c210-0 liszt: cell number: 210 -> phi value: 2.5229
+811:c211-0 liszt: cell number: 211 -> phi value: 3.09413
+811:c212-0 liszt: cell number: 212 -> phi value: 3.09413
+811:c213-0 liszt: cell number: 213 -> phi value: 3.09413
+811:c214-0 liszt: cell number: 214 -> phi value: 3.09413
+811:c215-0 liszt: cell number: 215 -> phi value: 3.09413
+811:c216-0 liszt: cell number: 216 -> phi value: 2.64062
+811:c217-0 liszt: cell number: 217 -> phi value: 2.64062
+811:c218-0 liszt: cell number: 218 -> phi value: 2.64062
+811:c219-0 liszt: cell number: 219 -> phi value: 2.64062
+811:c220-0 liszt: cell number: 220 -> phi value: 2.64062
+811:c221-0 liszt: cell number: 221 -> phi value: 0.994887
+811:c222-0 liszt: cell number: 222 -> phi value: 0.994888
+811:c223-0 liszt: cell number: 223 -> phi value: 0.994886
+811:c224-0 liszt: cell number: 224 -> phi value: 0.994887
+811:c225-0 liszt: cell number: 225 -> phi value: 0.994888
+811:c226-0 liszt: cell number: 226 -> phi value: -1.59469
+811:c227-0 liszt: cell number: 227 -> phi value: -1.59468
+811:c228-0 liszt: cell number: 228 -> phi value: -1.59469
+811:c229-0 liszt: cell number: 229 -> phi value: -1.59469
+811:c230-0 liszt: cell number: 230 -> phi value: -1.59468
+811:c231-0 liszt: cell number: 231 -> phi value: -4.42337
+811:c232-0 liszt: cell number: 232 -> phi value: -4.42337
+811:c233-0 liszt: cell number: 233 -> phi value: -4.42337
+811:c234-0 liszt: cell number: 234 -> phi value: -4.42337
+811:c235-0 liszt: cell number: 235 -> phi value: -4.42337
+811:c236-0 liszt: cell number: 236 -> phi value: -6.45555
+811:c237-0 liszt: cell number: 237 -> phi value: -6.45555
+811:c238-0 liszt: cell number: 238 -> phi value: -6.45556
+811:c239-0 liszt: cell number: 239 -> phi value: -6.45556
+811:c240-0 liszt: cell number: 240 -> phi value: -6.45556
+811:c241-0 liszt: cell number: 241 -> phi value: -6.6225
+811:c242-0 liszt: cell number: 242 -> phi value: -6.6225
+811:c243-0 liszt: cell number: 243 -> phi value: -6.6225
+811:c244-0 liszt: cell number: 244 -> phi value: -6.6225
+811:c245-0 liszt: cell number: 245 -> phi value: -6.6225
+811:c246-0 liszt: cell number: 246 -> phi value: -4.23291
+811:c247-0 liszt: cell number: 247 -> phi value: -4.23291
+811:c248-0 liszt: cell number: 248 -> phi value: -4.23291
+811:c249-0 liszt: cell number: 249 -> phi value: -4.23291
+811:c250-0 liszt: cell number: 250 -> phi value: -4.23291

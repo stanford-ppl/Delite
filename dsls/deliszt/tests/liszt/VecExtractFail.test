@@ -1,0 +1,10 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object VecExtractFail {
+    def main() {
+	Print(Vec(1).y)
+    }
+}

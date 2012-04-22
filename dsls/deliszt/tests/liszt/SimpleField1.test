@@ -1,0 +1,15 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object SimpleField1 {
+	val ones = FieldWithConst[Cell, Int](1)
+	def main() {
+		for (c <- cells(mesh))
+			Print(ones(c), " ")
+	}
+}
+
+
+

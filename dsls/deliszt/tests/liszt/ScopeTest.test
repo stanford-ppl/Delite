@@ -1,0 +1,25 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object ScopeTest {
+	val one = 1;
+	val f = FieldWithConst[Cell,Int](1);
+	def main() {
+		val two = 2;
+		for (c <- cells(mesh)) {
+			val three = 3;
+			f(c) = one + two + three;
+		}
+		for (c <- cells(mesh)) {
+			val three = 333;
+			Print(f(c))
+		}
+	}
+	
+
+}
+
+
+

@@ -11,7 +11,7 @@ from time import localtime, strftime
 
 import delitecommon
 
-DSLs = ['optiml','optila','optiql']
+DSLs = ['optiml','optila','optiql','deliszt']
 LMS_HOME = os.getenv("LMS_HOME")
 lms_version = "lms_2.10.0-M1-virtualized"
 
@@ -22,7 +22,7 @@ def warn(s):
     print("warn: " + s)
 
 def main():
-    usage = "usage: %prog <application runner> [options]"
+    usage = "usage: %prog <application runner> [staging args] [options]"
     parser = OptionParser(usage)
     parser.add_option("-v", "--verbose", action="store_true", default=False, dest="verbose")
     parser.add_option("--nb", dest="no_blas", action="store_true", default=False, help="disable blas calls")
@@ -34,12 +34,12 @@ def main():
     parser.add_option("-d", "--dest", action="store", dest="build_dir", default=os.getenv("PWD"), help="output location for generated files")
 
     (opts, args) = parser.parse_args()
-    if len(args) != 1:
-        parser.error("only a single application file should be passed to delitec as an argument")
+    if len(args) < 1:
+        parser.error("an application file must be passed to delitec as an argument")
     
     delitecommon.initialize()
     checkLMSEnv()
-    stage(args[0], opts)
+    stage(args[0], args[1:len(args)], opts)
  
 def checkLMSEnv():
     global LMS_HOME
@@ -58,7 +58,7 @@ def checkLMSEnv():
               err("couldn't find the LMS library at: " + lms_home + ". Please set the LMS_HOME environment variable or libs.lms.home entry in delite.properties manually.")
           LMS_HOME = lms_home
 
-def stage(runner, opts):
+def stage(runner, params, opts):
     java_opts = os.getenv("JAVA_OPTS", "")
 
     build_dir = opts.build_dir + "/generated/"
@@ -110,7 +110,7 @@ def stage(runner, opts):
        print("LMS_HOME = " + LMS_HOME)
 
     print "==  Generating DEG file with options: " + str(opts)
-    java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " " + runner
+    java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " " + runner + " " + ' '.join(params)
     #print exec
     ecode = os.system(java_cmd)
     if ecode != 0:

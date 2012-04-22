@@ -1,0 +1,22 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object Modules {
+	def bar() {
+		Print("bar")
+	}
+	def main() {
+		B.c = 6
+		B.foo()
+	}
+}
+
+@lisztcode
+object B {
+	var c = 5
+	def foo() {
+		Print("foo")
+		Modules.bar()
+	}
+}

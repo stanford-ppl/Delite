@@ -1,0 +1,7 @@
+import Liszt.Language._
+
+@lisztcode 
+object Empty {
+	def main() {
+	}
+}

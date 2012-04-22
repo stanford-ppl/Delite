@@ -1,0 +1,38 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+//designed to test top-level boundary iteration only
+//does not test reductions, etc.
+@lisztcode
+object Boundary2 {
+    val inlet = BoundarySet[Face]("inlet") 
+    val outlet = BoundarySet[Face]("outlet") 
+    val farField = BoundarySet[Face]("far_field") 
+    val fluid = BoundarySet[Cell]("fluid") 
+    val defaultInterior = BoundarySet[Face]("default-interior") 
+    val interior = BoundarySet[Face]("type:interior") 
+    val bound1 = BoundarySet[Face]("bound1") 
+    val bound2 = BoundarySet[Face]("bound2") 
+    val bound3 = BoundarySet[Face]("bound3") 
+    val bound4 = BoundarySet[Cell]("bound4") 
+    val bound5 = BoundarySet[Face]("bound5") 
+    val bound6 = BoundarySet[Vertex]("bound6") 
+    val bound7 = BoundarySet[Edge]("bound7") 
+    val empty = BoundarySet[Vertex]("empty")
+    def main() {
+        for ( f <- inlet ) Print("inlet",f)
+        for ( f <- outlet ) Print("outlet",f)
+        for ( f <- farField ) Print("farField",f)
+        for ( f <- defaultInterior ) Print("defaultInterior",f)
+        for ( f <- interior ) Print("interior",f)
+        for ( f <- bound1 ) Print("bound1",f)
+        for ( f <- bound2 ) Print("bound2",f)
+        for ( f <- bound3 ) Print("bound3",f)
+        for ( c <- bound4 ) Print("bound4",c)
+        for ( c <- bound5 ) Print("bound5",c) 
+        for ( v <- bound6 ) Print("bound6",v)
+        for ( e <- bound7 ) Print("bound7",e)
+        for ( c <- fluid ) Print("fluid",c)
+        for ( c <- fluid ) Print("fluid",c)
+        for ( v <- empty ) Print("empty",v)
+    }
+}

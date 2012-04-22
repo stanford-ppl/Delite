@@ -1,10 +1,12 @@
 package ppl.delite.framework
 
 import java.io.{FileWriter, File, PrintWriter}
+import scala.collection.mutable.{Map => MMap}
 import scala.tools.nsc.io._
 import scala.virtualization.lms.common.{BaseExp, Base}
 import scala.virtualization.lms.internal.{GenericFatCodegen, ScalaCompile, GenericCodegen, ScalaCodegen}
 
+import analysis.{MockStream, TraversalAnalysis}
 import codegen.c.TargetC
 import codegen.cuda.TargetCuda
 import codegen.delite.{DeliteCodeGenPkg, DeliteCodegen, TargetDelite}
@@ -41,7 +43,12 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
   // generators created by getCodeGenPkg will use the 'current' scope of the deliteGenerator as global scope
   val deliteGenerator = new DeliteCodeGenPkg { val IR : DeliteApplication.this.type = DeliteApplication.this;
                                                val generators = DeliteApplication.this.generators }
-                                               
+
+  lazy val analyses: List[TraversalAnalysis{ val IR: DeliteApplication.this.type }] = List()
+  
+  // Store and retrieve
+  val analysisResults = MMap[String,Any]()
+
   var args: Rep[Array[String]] = _
 
   var staticDataMap: Map[String,_] = _
@@ -70,27 +77,52 @@ trait DeliteApplication extends DeliteOpsExp with ScalaCompile {
       writer.write("kernels:datastructures\n")
       writer.close()
     }
-
+    
+    //System.out.println("Running analysis")
+    
+    // Run any analyses defined
+    for(a <- analyses) {
+      val baseDir = Config.buildDir + File.separator + a.toString + File.separator
+      a.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults)
+      a.traverse(liftedMain) match {
+        case Some(result) => { analysisResults(a.className) = result }
+        case _ =>
+      }
+    }
+    reset
+    
+    //System.out.println("Staging application")
+    
     deliteGenerator.emitDataStructures(Config.buildDir + File.separator)
 
     for (g <- generators) {
-      val baseDir = Config.buildDir + File.separator + g.toString + File.separator
+      //TODO: Remove c generator specialization
+      val baseDir = Config.buildDir + File.separator + (if(g.toString=="c") "cuda" else g.toString) + File.separator // HACK! TODO: HJ, fix
       writeModules(baseDir)
       g.emitDataStructures(baseDir + "datastructures" + File.separator)
-      g.initializeGenerator(baseDir + "kernels" + File.separator)
+      g.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults)
     }
 
     if (Config.debug) {
       if (Config.degFilename.endsWith(".deg")) {
         val streamScala = new PrintWriter(new FileWriter(Config.degFilename.replace(".deg",".scala")))
+        val baseDir = Config.buildDir + File.separator + codegen.toString + File.separator
+        codegen.initializeGenerator(baseDir + "kernels" + File.separator, args, analysisResults) // whole scala application (for testing)
         codegen.emitSource(liftedMain, "Application", streamScala) // whole scala application (for testing)
         // TODO: dot output
         reset
       }
     }
-    deliteGenerator.initializeGenerator(Config.buildDir)
+    deliteGenerator.initializeGenerator(Config.buildDir, args, analysisResults)
     val sd = deliteGenerator.emitSource(liftedMain, "Application", stream)    
     deliteGenerator.finalizeGenerator()
+
+    if(Config.printGlobals) {
+      println("Global definitions")
+      for(globalDef <- globalDefs) {
+        println(globalDef)
+      }
+    }
 
     generators foreach { _.finalizeGenerator()}
     

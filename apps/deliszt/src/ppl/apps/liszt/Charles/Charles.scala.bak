@@ -1,0 +1,245 @@
+import Liszt.Language._
+import ppl.dsl.deliszt.datastruct.scala.MetaInteger._
+
+@lisztcode
+object Constants {
+	val iterations = 10
+}
+
+@lisztcode
+object IC {
+	//simulation properties:
+	val cfl          = 0.5f
+	var dt           = 0.5f
+	val force_x      = 1.0f
+	//gas properties:
+	val gamma        = 1.4f
+	val p_ref        = 7100.0f
+	val rho_ref      = 1.0f
+	val T_ref        = 1.0f
+	val R_gas        = 0.0f
+	val mu_ref       = 0.00253165f
+	val mu_power_law = 0.0f
+	val Pr_lam       = 0.7f
+	//output
+	val check_interval = 10
+}
+
+@lisztcode
+object ChannelCf4 {
+	
+	var wtime = wall_time();
+
+	var dt = 0.0f;
+	var time = 0.0f; //simulation time
+	var step = 0;
+	
+	val rho  = FieldWithConst[Cell, Float](0.f)
+	val rhou = FieldWithConst[Cell, Float3](LisztConstants.float3_zero)
+	val rhoE = FieldWithConst[Cell, Float](0.f)
+	
+	val mu_lam = FieldWithConst[Cell, Float](0.f)
+	val cp     = FieldWithConst[Cell, Float](0.f)
+	val k_lam  = FieldWithConst[Cell, Float](0.f)
+	
+	val u = FieldWithConst[Cell, Float3](LisztConstants.float3_zero)
+	val p = FieldWithConst[Cell, Float](0.f)
+	val T = FieldWithConst[Cell, Float](0.f)
+	
+	val dil = FieldWithConst[Cell, Float](0.f)
+	
+	val mu_sgs = FieldWithConst[Cell, Float](0.f)
+	val k_sgs  = FieldWithConst[Cell, Float](0.f)
+	
+	val fa_alpha = FieldWithConst[Face, Float](0.f)
+	
+	Print("LISZT HOOK: CONSTRUCT")
+	Print("Gas properties: ")
+	Print("  gamma        : ", IC.gamma       )
+	Print("  p_ref        : ", IC.p_ref       )
+	Print("  rho_ref      : ", IC.rho_ref     )
+	Print("  T_ref        : ", IC.T_ref       )
+	Print("  R_gas        : ", IC.R_gas       )
+	Print("  mu_ref       : ", IC.mu_ref      )
+	Print("  mu_power_law : ", IC.mu_power_law)
+	Print("  Pr_lam       : ", IC.Pr_lam      )
+
+	def turbChannelIC() {
+		for (c <- cells(mesh)) {
+			val center = LisztMeshGeometry.x_cv(c)
+			
+			var rhou_me = Vec(IC.rho_ref*1.5f*(1.0f + center.y*center.y)*(1.0f - center.y*center.y), 0.f, 0.f);
+			val eps = 0.05f*rhou_me.x
+			//rhou_me += Vec(eps*(2.0f*rand()/RAND_MAX - 1.0f),eps*(2.0f*rand()/RAND_MAX - 1.0f),eps*(2.0f*rand()/RAND_MAX - 1.0f))
+			rhou_me += Vec(eps,eps,eps)
+			
+			rho(c) = IC.rho_ref
+			rhou(c) = rhou_me
+			rhoE(c) = IC.p_ref/(IC.gamma - 1.0f) + 0.5f*(dot(rhou_me, rhou_me))/IC.rho_ref
+		}
+	}
+
+	def init() {
+		Print("LISZT HOOK: INIT")
+		LisztMeshGeometry.calcGeometry();
+		
+		initialHook();
+		updateConservativeData();
+		updatePrimitiveData(time);
+		initProbes();
+		
+	}
+		
+	def initialHook() {
+		Print("ChannelCf4: initialHook()");
+		turbChannelIC();
+	}
+	
+	
+	def updatePrimitiveData(t : Float) {
+		Print("updatePrimitiveData(t : Float): IMPLEMENT ME")
+	}
+	
+	//BEGIN things not needed in the Liszt runtime.
+	def updateConservativeData() { }
+	def initProbes() { }
+	def updateStats() { }
+	//END things not needed in the Liszt version.
+	
+	//data req'd by the RK solver
+	val drho0  = FieldWithConst[Cell, Float](0.f);
+	val drhou0 = FieldWithConst[Cell, Float3](LisztConstants.float3_zero);
+	val drhoE0 = FieldWithConst[Cell, Float](0.f);
+	val drho1  = FieldWithConst[Cell, Float](0.f);
+	val drhou1 = FieldWithConst[Cell, Float3](LisztConstants.float3_zero);
+	val drhoE1 = FieldWithConst[Cell, Float](0.f);
+	val drho2  = FieldWithConst[Cell, Float](0.f);
+	val drhou2 = FieldWithConst[Cell, Float3](LisztConstants.float3_zero);
+	val drhoE2 = FieldWithConst[Cell, Float](0.f);
+	
+	def run() {
+		Print("LISZT HOOK: RUN")
+		
+		
+		doChecks();
+		var done = doneSolver();
+		while (done != true) {
+			
+			step+=1;
+			calcDt();
+			time += dt;
+			
+			if ((IC.check_interval > 0)&&(step % IC.check_interval == 0)) {
+				Print("----------------------------------------------------------")
+				Print(" starting step: ", step, " time: ", time, " dt: ", dt);
+				Print("----------------------------------------------------------")
+			}
+			
+			calcSgsStuff(step%IC.check_interval == 0);
+			// ------------
+			// rk step 1...
+			// ------------			
+			calcRhs();
+			for (c <- cells(mesh)) {
+				
+			}
+			updatePrimitiveData(time);
+			// ------------
+			// rk step 2...
+			// ------------			
+			calcRhs();
+			for (c <- cells(mesh)) {
+				val tmp = dt/LisztMeshGeometry.cv_volume(c)
+				drho0(c)  *= tmp;
+				drhou0(c) *= Vec(tmp,tmp,tmp);
+				drhoE0(c) *= tmp;
+			}
+			updatePrimitiveData(time-0.5f*dt);
+			// ------------
+			// rk step 3...
+			// ------------
+			calcRhs();
+			for (c <- cells(mesh)) {
+				
+			}
+			updatePrimitiveData(time);
+			
+			if(step%IC.check_interval == 0) {
+				doChecks();
+				done = doneSolver();
+			}
+			
+		}
+		
+	}
+	
+	
+	def calcDt() {
+		Print("calcDt(): IMPLEMENT ME")
+	}
+	
+	def calcSgsStuff(b : Boolean) {
+		Print("calcSgsStuff(): IMPLEMENT ME")
+	}
+	
+	def doneSolver() : Boolean = {
+		((Constants.iterations >= 0)&&(step >= Constants.iterations))
+	}
+	
+	def doChecks() {
+		var rhoMin = MAX_FLOAT()
+		var rhoMax = -MIN_FLOAT()
+		var rhouMin = Vec(MAX_FLOAT(),MAX_FLOAT(),MAX_FLOAT())
+		var rhouMax = Vec(-MIN_FLOAT(),-MIN_FLOAT(),-MIN_FLOAT())
+		var rhoEMin = MAX_FLOAT()
+		var rhoEMax = -MIN_FLOAT()
+		for (c <- cells(mesh)) {
+			rhoMin = rhoMin.min(rho(c))
+			rhoMax = rhoMax.max(rho(c))
+			rhouMin = rhouMin.min(rhou(c))
+			rhouMax = rhouMax.max(rhou(c))
+			rhoEMin = rhoEMin.min(rhoE(c))
+			rhoEMax = rhoEMax.max(rhoE(c))
+		}
+		
+		Print("dumpScalarRange: RHO, ",rhoMin,":",rhoMax)
+		Print("dumpVectorRange: RHOU, 0: ",rhouMin.x,":",rhouMax.x," 1: ",rhouMin.y,":",rhouMax.y," 2: ",rhouMin.z,":",rhouMax.z)
+		Print("dumpScalarRange: RHOE, ",rhoEMin,":",rhoEMax)
+		
+		calcDilation();
+		
+		var dilMin = MAX_FLOAT()
+		var dilMax = -MIN_FLOAT()
+		for (c <- cells(mesh)) {
+			dilMin = dilMin.min(dil(c))
+			dilMax = dilMax.max(dil(c))
+		}
+		Print("dumpScalarRange: DIL, ",dilMin,":",dilMax)
+		
+		updateStats();
+		
+		val wtime0 = wtime
+		wtime = wall_time();
+		Print(" > time since last check[s]: ", wtime - wtime0)
+	}
+	
+	def calcRhs() {
+		Print("calcRhs(): IMPLEMENT ME!")
+	}
+	
+	def calcDilation() {
+		Print("calcDilation(): IMPLEMENT ME!")
+	}
+	
+}
+
+@lisztcode
+object Charles {
+	def main() {
+
+		ChannelCf4.init()
+
+		ChannelCf4.run()		
+		
+	}
+}
