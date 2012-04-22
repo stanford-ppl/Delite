@@ -66,6 +66,8 @@ class Vec3FieldImpl(val numVec:Int, val data: Array[Double]) extends Field[Vec[D
     data(offset+elem) = v
   }
   
+  def unsafeSetData(xs: Array[Double], len: Int) = throw new UnsupportedOperationException()
+  
   def size = numVec
 
   def fill(v: Vec[Double]) {

@@ -24,7 +24,7 @@ def warn(s):
 def main():
     usage = "usage: %prog <application runner> [staging args] [options]"
     parser = OptionParser(usage)
-    parser.add_option("-v", "--verbose", action="store_true", default=False, dest="verbose")
+    parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False, help="print delitec environment settings")
     parser.add_option("--nb", dest="no_blas", action="store_true", default=False, help="disable blas calls")
     parser.add_option("--nf", dest="no_fusion", action="store_true", default=False, help="disables op fusion")
     parser.add_option("--gpu", dest="gpu", action="store_true", default=False, help="enables gpu generation")

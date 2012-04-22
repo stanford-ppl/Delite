@@ -20,6 +20,16 @@ class Vec3Impl[@specialized T: ClassManifest](var v0: T, var v1: T, var v2: T) e
     /*unsafe.UnsafeAccessor.unsafe.putT(this, 16 + n*UNSAFE_SIZE, v)*/
   }
   
+  /**
+   * These are temporarily needed because they are hard-coded into DeliteOp code gen. 
+   */    
+  def unsafeSetData(xs: Array[T], len: Int) {
+    if (len < 3) throw new RuntimeException("code gen error: unsafeSetData to vec3 with array length less than 3")
+    v0 = xs(0)
+    v1 = xs(1)
+    v2 = xs(2)
+  }
+  
   def cloneL = {
     new Vec3Impl[T](v0, v1, v2)
   }
