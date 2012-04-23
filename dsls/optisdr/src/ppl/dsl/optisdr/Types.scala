@@ -1,6 +1,7 @@
 package ppl.dsl.optisdr
 
 import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.dsl.optila.Vector
 
 /* Primitive types */
 
@@ -35,3 +36,4 @@ class Range[T](lo: T, hi: T)
 class ParamEnum[T](xs: T*) 
 
 // Stream trait? so that width assert will only apply to them?
+// trait Stream[T] extends Vector[T]
