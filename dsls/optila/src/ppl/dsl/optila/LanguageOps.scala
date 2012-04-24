@@ -91,6 +91,8 @@ trait LanguageOps extends Base { this: OptiLA =>
   /**
    * min
    */
+  def min[A:Manifest:Ordering:HasMinMax,V[X] <: Vector[X]](vals: Rep[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], ctx: SourceContext) = toIntf(vals).min
+  def min[A:Manifest:Ordering:HasMinMax,M[X] <: Matrix[X]](vals: Rep[M[A]])(implicit toIntf: Rep[M[A]] => Interface[Matrix[A]], ctx: SourceContext, o: Overloaded1) = toIntf(vals).min  
   def min[A:Manifest:Ordering:HasMinMax](vals: Interface[Vector[A]])(implicit ctx: SourceContext) = vals.min
   def min[A:Manifest:Ordering:HasMinMax](vals: Interface[Matrix[A]])(implicit ctx: SourceContext, o: Overloaded1) = vals.min
   //def min[A:Manifest:Ordering:HasMinMax](vals: A*) = repVecToVecOps(Vector(vals: _*)).min
@@ -99,25 +101,58 @@ trait LanguageOps extends Base { this: OptiLA =>
   /**
    * max
    */
+  def max[A:Manifest:Ordering:HasMinMax,V[X] <: Vector[X]](vals: Rep[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], ctx: SourceContext) = toIntf(vals).max
+  def max[A:Manifest:Ordering:HasMinMax,M[X] <: Matrix[X]](vals: Rep[M[A]])(implicit toIntf: Rep[M[A]] => Interface[Matrix[A]], ctx: SourceContext, o: Overloaded1) = toIntf(vals).max    
   def max[A:Manifest:Ordering:HasMinMax](vals: Interface[Vector[A]])(implicit ctx: SourceContext) = vals.max
   def max[A:Manifest:Ordering:HasMinMax](vals: Interface[Matrix[A]])(implicit ctx: SourceContext, o: Overloaded1) = vals.max
   //def max[A:Manifest:Ordering:HasMinMax](vals: A*) = repVecToVecOps(Vector(vals: _*)).max
   def max[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*)(implicit ctx: SourceContext) = repToDenseVecOps(DenseVector(vals: _*)).max
 
-
+  /**
+   * median
+   */   
+  def median[A:Manifest:Ordering:HasMinMax,V[X] <: Vector[X]](vals: Rep[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], ctx: SourceContext) = toIntf(vals).median
+  def median[A:Manifest:Ordering:HasMinMax](vals: Interface[Vector[A]])(implicit ctx: SourceContext) = vals.median
+  def median[A:Manifest:Ordering:HasMinMax](vals: Rep[A]*)(implicit ctx: SourceContext) = repToDenseVecOps(DenseVector(vals: _*)).median  
+  
   /**
    * mean
-   * TODO: implement this in vector/matrix
-   */
-
-
+   */   
+  def mean[A:Manifest:Arith,V[X] <: Vector[X]](vals: Rep[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], conv: Rep[A] => Rep[Double], ctx: SourceContext) = optila_vector_mean(toIntf(vals))
+  def mean[A:Manifest:Arith,M[X] <: Matrix[X]](vals: Rep[M[A]])(implicit toIntf: Rep[M[A]] => Interface[Matrix[A]], conv: Rep[A] => Rep[Double], ctx: SourceContext, o: Overloaded1) = optila_matrix_mean(toIntf(vals))
+  def mean[A:Manifest:Arith](vals: Interface[Vector[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = optila_vector_mean(vals)
+  def mean[A:Manifest:Arith](vals: Interface[Matrix[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext, o: Overloaded1) = optila_matrix_mean(vals)
+  def mean[A:Manifest:Arith](vals: Rep[A]*)(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = optila_vector_mean(denseVecToInterface(DenseVector(vals: _*)))
+  
+  // explicit to resolve method call ambiguities above
+  def optila_vector_mean[A:Manifest:Arith](vals: Interface[Vector[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = conv(vals.sum) / vals.length
+  def optila_matrix_mean[A:Manifest:Arith](vals: Interface[Matrix[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext, o: Overloaded2) = conv(vals.sum) / vals.size
+  
   /**
    * abs
    */
-  // TODO: sbt fails without the explicit invocation of arithToArithOps, but IDEA compiles. wtf?
   def abs[A:Manifest:Arith](elem: Rep[A])(implicit ctx: SourceContext) = repArithToArithOps(elem).abs
-  //def abs[A](vals: Rep[Vector[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded1) = vals.abs
-  //def abs[A](vals: Rep[Matrix[A]])(implicit mA: Manifest[A], a: Arith[A], o: Overloaded2) = vals.abs
+  def abs[A:Manifest:Arith](vals: Interface[Vector[A]])(implicit ctx: SourceContext, o: Overloaded1) = vals.abs
+  def abs[A:Manifest:Arith](vals: Interface[Matrix[A]])(implicit ctx: SourceContext, o: Overloaded2) = vals.abs
+  
+  /**
+   * log
+   */
+  def log[A:Manifest](vals: Interface[Vector[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext, o: Overloaded1) = vals.map(e=>optila_scalar_log(conv(e)))
+  def log[A:Manifest](vals: Interface[Matrix[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext, o: Overloaded2) = vals.map(e=>optila_scalar_log(conv(e)))
+  
+  // library calls should preserve the return type, not box to interface
+  def log[A:Manifest,V[X] <: Vector[X]](vals: Rep[V[A]])(implicit conv: Rep[A] => Rep[Double], toOps: Rep[V[A]] => VecOpsCls[A], ctx: SourceContext, o: Overloaded1) = toOps(vals).map(e=>optila_scalar_log(conv(e))).asInstanceOf[Rep[V[Double]]] // not ideal
+  def log[A:Manifest,M[X] <: Matrix[X]](vals: Rep[M[A]])(implicit conv: Rep[A] => Rep[Double], toOps: Rep[M[A]] => MatOpsCls[A], ctx: SourceContext, o: Overloaded2) = toOps(vals).map(e=>optila_scalar_log(conv(e))).asInstanceOf[Rep[M[Double]]] // not ideal
+  
+  /**
+   * exp
+   */
+  def exp[A:Manifest:Arith](vals: Interface[Vector[A]])(implicit ctx: SourceContext, o: Overloaded1) = vals.exp
+  def exp[A:Manifest:Arith](vals: Interface[Matrix[A]])(implicit ctx: SourceContext, o: Overloaded2) = vals.exp
+  
+  def exp[A:Manifest:Arith,V[X] <: Vector[X]](vals: Rep[V[A]])(implicit toOps: Rep[V[A]] => VecOpsCls[A], ctx: SourceContext, o: Overloaded1) = toOps(vals).exp.asInstanceOf[Rep[V[A]]] // not ideal
+  def exp[A:Manifest:Arith,M[X] <: Matrix[X]](vals: Rep[M[A]])(implicit toOps: Rep[M[A]] => MatOpsCls[A], ctx: SourceContext, o: Overloaded2) = toOps(vals).exp.asInstanceOf[Rep[M[A]]] // not ideal
 
   /**
    * aliases for other scala.math._ operations supported by optila
@@ -126,7 +161,7 @@ trait LanguageOps extends Base { this: OptiLA =>
   def ceil(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double] 
   def floor(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def exp(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
-  def log(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def log(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double] = optila_scalar_log(x)
   def sin(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def cos(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def acos(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
@@ -135,6 +170,9 @@ trait LanguageOps extends Base { this: OptiLA =>
   def pow(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def Pi(implicit ctx: SourceContext): Rep[Double]
   def E(implicit ctx: SourceContext): Rep[Double]
+  
+  // explicit to resolve method call ambiguities above
+  def optila_scalar_log(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   
   /**
    * distance
@@ -270,7 +308,6 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def ceil(x: Rep[Double])(implicit ctx: SourceContext) = Math.ceil(x)
   def floor(x: Rep[Double])(implicit ctx: SourceContext) = Math.floor(x)
   def exp(x: Rep[Double])(implicit ctx: SourceContext) = Math.exp(x)
-  def log(x: Rep[Double])(implicit ctx: SourceContext) = Math.log(x)
   def sin(x: Rep[Double])(implicit ctx: SourceContext) = Math.sin(x)
   def cos(x: Rep[Double])(implicit ctx: SourceContext) = Math.cos(x)
   def acos(x: Rep[Double])(implicit ctx: SourceContext) = Math.acos(x)
@@ -279,6 +316,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def pow(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext) = Math.pow(x,y)
   def Pi(implicit ctx: SourceContext) = Math.Pi
   def E(implicit ctx: SourceContext) = Math.E
+  
+  def optila_scalar_log(x: Rep[Double])(implicit ctx: SourceContext) = Math.log(x)
   
   /**
    *  dist

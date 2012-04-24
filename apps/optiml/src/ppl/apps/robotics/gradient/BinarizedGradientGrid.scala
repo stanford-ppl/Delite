@@ -206,7 +206,7 @@ if (crt_template.match_list.length < 0) println("dummy")
       val bottom = if (a.y + a.height < b.y + b.height) a.y + a.height else b.y + b.height
       val height = bottom - top
       // TODO: why won't this work implicitly?
-      arithToArithOps(2.0f) * height * width / (total_area + 0.000001f) //Return the fraction of intersection
+      2.0f * height * width / (total_area + 0.000001f) //Return the fraction of intersection
       // TODO: can't get this one to kick in either :(
       //chainRepArithToArithOps[Int,Float](height * width) * 2.0f / (total_area + 0.000001f) //Return the fraction of intersection
     } else {
