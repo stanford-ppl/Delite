@@ -68,10 +68,12 @@ def run(deg, params, opts):
     cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-compiler.jar" + os.pathsep
     # lms math ops generated apache math for performance
     cp = cp + delitecommon.DELITE_HOME + "/lib_managed/jars/org.apache.commons/commons-math/commons-math-2.2.jar" + os.pathsep 
+    
     # needed by deliszt
-    cp = cp + delitecommon.DELITE_HOME + "/unsafe_classes/unsafe.jar"
+    bootcp = " -Xbootclasspath/a:"
+    bootcp = bootcp + delitecommon.DELITE_HOME + "/unsafe_classes/unsafe.jar"
 
-    java_opts = java_opts + cp
+    java_opts = java_opts + cp + bootcp
     #os.putenv("JAVA_OPTS", java_opts)
 
     #MKL ENV

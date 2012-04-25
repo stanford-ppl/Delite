@@ -18,7 +18,7 @@ object MatImpl {
   }
 }
  
-class MatImpl[@specialized T: ClassManifest](val numRows : Int, val numCols : Int, val data : Array[T]) extends Mat[T] with Copyable {
+class MatImpl[@specialized T: ClassManifest](val numRows : Int, val numCols : Int, var data : Array[T]) extends Mat[T] with Copyable {
   def this(numRows : Int, numCols : Int) = this(numRows, numCols, new Array[T](numRows * numCols))
 
   def apply(r: Int, c: Int) = data(r*numRows+c)
@@ -37,6 +37,13 @@ class MatImpl[@specialized T: ClassManifest](val numRows : Int, val numCols : In
   def dcApply(idx: Int) = data(idx)
   def dcUpdate(idx: Int, x: T) = {
     data(idx) = x
+  }
+  
+  /**
+   * These are temporarily needed because they are hard-coded into DeliteOp code gen. 
+   */    
+  def unsafeSetData(xs: Array[T], len: Int) {
+    data = xs
   }
   
   def cloneL = {

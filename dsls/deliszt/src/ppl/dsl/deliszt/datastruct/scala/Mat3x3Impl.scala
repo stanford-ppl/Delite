@@ -30,6 +30,24 @@ class Mat3x3Impl[@specialized T: ClassManifest](var v00:T, var v01:T, var v02:T,
     /*unsafe.UnsafeAccessor.unsafe.putT(this, 16 + idx*UNSAFE_SIZE, x)*/
   }
   
+  /**
+   * These are temporarily needed because they are hard-coded into DeliteOp code gen. 
+   */    
+  def unsafeSetData(xs: Array[T], len: Int) {
+    if (len < 9) throw new RuntimeException("code gen error: unsafeSetData to mat3 with array length less than 9")
+    
+    // row-major
+    v00 = xs(0)
+    v01 = xs(1)
+    v02 = xs(2)
+    v10 = xs(3)
+    v11 = xs(4)
+    v12 = xs(5)
+    v20 = xs(6)
+    v21 = xs(7)
+    v22 = xs(8)
+  }
+  
   def cloneL = {
     new Mat3x3Impl[T](v00, v01, v02, v10, v11, v12, v20, v21, v22)
   }

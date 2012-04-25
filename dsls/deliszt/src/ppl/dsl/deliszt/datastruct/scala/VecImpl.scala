@@ -22,7 +22,7 @@ object VecImpl {
   }
 }
 
-class VecImpl[@specialized T: ClassManifest](val data : Array[T]) extends Vec[T] with Copyable {
+class VecImpl[@specialized T: ClassManifest](var data : Array[T]) extends Vec[T] with Copyable {
   def this(size : Int) = this(new Array[T](size))
   
   override def size = data.length
@@ -30,6 +30,13 @@ class VecImpl[@specialized T: ClassManifest](val data : Array[T]) extends Vec[T]
   def apply(n : Int) = data(n)
   def update(n : Int, v : T) = {
     data(n) = v
+  }
+  
+  /**
+   * These are temporarily needed because they are hard-coded into DeliteOp code gen. 
+   */    
+  def unsafeSetData(xs: Array[T], len: Int) {
+    data = xs
   }
   
   def cloneL = {

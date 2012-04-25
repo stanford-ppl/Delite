@@ -14,19 +14,14 @@ DELITE_HOME = os.getenv("DELITE_HOME")
 apps_default = ['gda', 'nb', 'linreg', 'kmeans', 'rbm', 'svm']#, 'lbp']
 delite_threads_default = [1, 2, 4, 8]
 
-
 #delite_gpus = [ 1, 2 ]
 #matlab_apps = []
 #c_apps = []
-
-
-
 
 params = {}
 classes = {}
 props = {}
 options = {}
-
 
 def main():
     usage = "usage: %prog [options]"
@@ -54,7 +49,6 @@ def main():
     if len(args) != 0:
         parser.error("incorrect number of arguments")
     
-
     loadOptions(opts)
     loadProps(options)
     loadParams(options)
@@ -256,8 +250,10 @@ def loadParams(options):
 		
     if not 'datasets' in options:
       f = open(props['delite.home'] + '/benchmark/config/datasets.' + hostname + "." + options['input-size'], 'r')
+      #print " " + props['delite.home'] + '/benchmark/config/datasets.' + hostname + "." + options['input-size']
     else:
       f = open(options['datasets'], 'r')
+      #print " " + options['datasets']
     for line in f:
         settings = line.strip().split('|')
         app = settings.pop(0)
