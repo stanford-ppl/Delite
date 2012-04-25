@@ -24,6 +24,13 @@ trait BitArithInternal[Rep[X],T] {
   def &(a: Rep[T], b: Rep[T])(implicit ctx: SourceContext) : Rep[T]
   def |(a: Rep[T], b: Rep[T])(implicit ctx: SourceContext) : Rep[T]
   def ^(a: Rep[T], b: Rep[T])(implicit ctx: SourceContext) : Rep[T]
+  
+  // The double </> operators have the notion that for bitstreams, bits will carry over
+  // Should I make it ... Rep[IntLike]?
+  def <<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) : Rep[T]
+  def <<<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) : Rep[T]
+  def >>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) : Rep[T]
+  def >>>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) : Rep[T]
 }
 
 trait BitArithOps extends Variables with OverloadHack {
@@ -43,6 +50,11 @@ trait BitArithOps extends Variables with OverloadHack {
     def &(a: Rep[T], b: Rep[T])(implicit ctx: SourceContext) = arith.&(a, b)
     def |(a: Rep[T], b: Rep[T])(implicit ctx: SourceContext) = arith.|(a, b)
     def ^(a: Rep[T], b: Rep[T])(implicit ctx: SourceContext) = arith.^(a, b)
+    
+    def <<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = arith.<<(a,b)
+    def <<<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = arith.<<(a,b)
+    def >>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = arith.>>(a,b)
+    def >>>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = arith.>>>(a,b)
   }
   
   implicit val intBitArith : BitArith[Int] = new BitArith[Int] {
@@ -50,6 +62,11 @@ trait BitArithOps extends Variables with OverloadHack {
     def &(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a & b
     def |(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a | b
     def ^(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a ^ b
+    
+    def <<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a << b
+    def <<<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a << b
+    def >>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a >> b
+    def >>>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a >>> b
   }
   
   implicit val uintBitArith : BitArith[UInt] = new BitArith[UInt] {
@@ -57,13 +74,23 @@ trait BitArithOps extends Variables with OverloadHack {
     def &(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = a & b
     def |(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = a | b
     def ^(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = a ^ b
+		
+    def <<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a << b
+    def <<<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a << b
+    def >>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a >> b
+    def >>>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a >>> b
   }
   
   implicit def denseVectorBitArith[T:BitArith:Manifest]: BitArith[DenseVector[T]] = new BitArith[DenseVector[T]] {
     def unary_~(a: Rep[DenseVector[T]])(implicit ctx: SourceContext) = ~repToSDRVectorOps(a)
-    def &(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) & repToSDRVectorOps(a)
-    def |(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) | repToSDRVectorOps(a)
-    def ^(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) ^ repToSDRVectorOps(a)
+    def &(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) & a
+    def |(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) | a
+    def ^(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) ^ a
+    
+    def <<(a: Rep[DenseVector[T]], b: Rep[Int])(implicit ctx: SourceContext) = repToSDRVectorOps(a) << b
+    def <<<(a: Rep[DenseVector[T]], b: Rep[Int])(implicit ctx: SourceContext) = repToSDRVectorOps(a) << b
+    def >>(a: Rep[DenseVector[T]], b: Rep[Int])(implicit ctx: SourceContext) = repToSDRVectorOps(a) >> b
+    def >>>(a: Rep[DenseVector[T]], b: Rep[Int])(implicit ctx: SourceContext) = repToSDRVectorOps(a) >>> b
   }
   
   implicit def tuple2BitArith[A:Manifest:BitArith,B:Manifest:BitArith] : BitArith[Tuple2[A,B]] = new BitArith[Tuple2[A,B]] {
@@ -71,6 +98,11 @@ trait BitArithOps extends Variables with OverloadHack {
     def &(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]])(implicit ctx: SourceContext) = Tuple2(a._1 & b._1, a._2 & b._2)
     def |(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]])(implicit ctx: SourceContext) = Tuple2(a._1 | b._1, a._2 | b._2)
     def ^(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]])(implicit ctx: SourceContext) = Tuple2(a._1 ^ b._1, a._2 ^ b._2)
+    
+    def <<(a: Rep[Tuple2[A,B]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple2(a._1 << b, a._2 << b)
+    def <<<(a: Rep[Tuple2[A,B]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple2(a._1 << b, a._2 << b)
+    def >>(a: Rep[Tuple2[A,B]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple2(a._1 >> b, a._2 >> b)
+    def >>>(a: Rep[Tuple2[A,B]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple2(a._1 >>> b, a._2 >>> b)
   }
   
   implicit def tuple3BitArith[A:Manifest:BitArith,B:Manifest:BitArith,C:Manifest:BitArith] : BitArith[Tuple3[A,B,C]] = new BitArith[Tuple3[A,B,C]] {
@@ -78,6 +110,11 @@ trait BitArithOps extends Variables with OverloadHack {
     def &(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]])(implicit ctx: SourceContext) = Tuple3(a._1 & b._1, a._2 & b._2, a._3 & b._3)
     def |(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]])(implicit ctx: SourceContext) = Tuple3(a._1 | b._1, a._2 | b._2, a._3 | b._3)
     def ^(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]])(implicit ctx: SourceContext) = Tuple3(a._1 ^ b._1, a._2 ^ b._2, a._3 ^ b._3)
+    
+    def <<(a: Rep[Tuple3[A,B,C]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple3(a._1 << b, a._2 << b, a._3 << b)
+    def <<<(a: Rep[Tuple3[A,B,C]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple3(a._1 << b, a._2 << b, a._3 << b)
+    def >>(a: Rep[Tuple3[A,B,C]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple3(a._1 >> b, a._2 >> b, a._3 >> b)
+    def >>>(a: Rep[Tuple3[A,B,C]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple3(a._1 >>> b, a._2 >>> b, a._3 >>> b)
   }
   
   implicit def tuple4BitArith[A:Manifest:BitArith,B:Manifest:BitArith,C:Manifest:BitArith,D:Manifest:BitArith] : BitArith[Tuple4[A,B,C,D]] = new BitArith[Tuple4[A,B,C,D]] {

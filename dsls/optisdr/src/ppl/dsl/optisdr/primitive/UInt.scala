@@ -33,6 +33,11 @@ trait UIntOps extends Variables {
     def abs(implicit ctx: SourceContext) = uint_abs(x)
     def exp(implicit ctx: SourceContext) = uint_exp(x)
     
+    def <<(b: Rep[Int])(implicit ctx: SourceContext) = uint_lshift(a, b)
+    def <<<(b: Rep[Int])(implicit ctx: SourceContext) = uint_lshift(a, b)
+    def >>(b: Rep[Int])(implicit ctx: SourceContext) = uint_rshift(a, b)
+    def >>>(b: Rep[Int])(implicit ctx: SourceContext) = uint_rashift(a, b)
+    
     def intValue = uint_int_value(x)
   }
   
@@ -65,6 +70,10 @@ trait UIntOps extends Variables {
   def uint_binaryor(x: Rep[UInt], y: Rep[UInt])(implicit ctx: SourceContext) : Rep[UInt]
   def uint_binaryxor(x: Rep[UInt], y: Rep[UInt])(implicit ctx: SourceContext) : Rep[UInt]
   
+  def uint_lshift(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) : Rep[UInt]
+  def uint_rshift(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) : Rep[UInt]
+  def uint_rashift(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) : Rep[UInt]
+  
   def uint_abs(x: Rep[UInt])(implicit ctx: SourceContext) : Rep[UInt]
   def uint_exp(x: Rep[UInt])(implicit ctx: SourceContext) : Rep[UInt]
   
@@ -91,6 +100,10 @@ trait UIntOpsExp extends UIntOps {
   case class UIntBinaryOr(x: Exp[UInt], y: Exp[UInt]) extends Def[UInt]
   case class UIntBinaryXor(x: Exp[UInt], y: Exp[UInt]) extends Def[UInt]
   
+  case class UIntLShift(a: Exp[Int], b: Rep[Int]) extends Def[UInt]
+  case class UIntRShift(a: Exp[Int], b: Rep[Int]) extends Def[UInt]
+  case class UIntRAShift(a: Exp[Int], b: Rep[Int]) extends Def[UInt]
+  
   case class UIntAbs(x: Exp[UInt]) extends Def[UInt]
   case class UIntExp(x: Exp[UInt]) extends Def[UInt]
   
@@ -104,11 +117,15 @@ trait UIntOpsExp extends UIntOps {
   def uint_binaryor(x: Exp[UInt], y: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntBinaryOr(x, y))
   def uint_binaryxor(x: Exp[UInt], y: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntBinaryXor(x, y))
   
+  def uint_lshift(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) = reflectPure(UIntLShift(a,b))
+  def uint_rshift(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) = reflectPure(UIntRShift(a,b))
+  def uint_rashift(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) = reflectPure(UIntRAShift(a,b))
+  
   def uint_abs(x: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntAbs(x))
   def uint_exp(x: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntExp(x))
   
   // Conversions
-  case class UIntIntValue(x: Exp[UInt]) extends Def[Int]
+  case class UIntIntValue(x: Exp[UInt]) extends Def[UInt]
   
   def uint_int_value(x: Exp[UInt]) = reflectPure(UIntIntValue(x))
 }
