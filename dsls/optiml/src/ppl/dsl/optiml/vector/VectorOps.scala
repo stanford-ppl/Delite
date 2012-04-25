@@ -11,25 +11,42 @@ import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatC
 import ppl.dsl.optiml._
 import scala.reflect.SourceContext
 
-trait OptiMLDenseVectorOps extends VectorOps with ppl.dsl.optila.vector.DenseVectorOps {
+trait OptiMLDenseVectorOpsLowPriority extends ppl.dsl.optila.vector.DenseVectorOps {
+  this: OptiML =>
+  
+  implicit def denseToVecOverrides[A:Manifest](x: Rep[DenseVector[A]]) = new OptiMLDenseVecOpsOverrides(x)
+}
+trait OptiMLDenseVectorOps extends OptiMLDenseVectorOpsLowPriority {
   this: OptiML =>
   
   //implicit def repToOptiMLVecOverrides[A:Manifest](x: Rep[A])(implicit toIntf: Rep[A] => Interface[Vector[A]]) = new OptiMLVecOpsOverrides(x)
   
   // overrides for OptiLA types - we have to override each OptiLA type conversion, otherwise the implicit priorities tie :(
-  implicit def denseToVecOverrides[A:Manifest](x: Rep[DenseVector[A]]) = new OptiMLVecOpsOverrides(x)  
+  implicit def denseToVecOverrides2[A:Manifest](x: Rep[DenseVector[A]]) = new OptiMLVecOpsOverridesAlternate(x)
 }
 
-trait OptiMLVectorViewOps extends VectorOps with ppl.dsl.optila.vector.VectorViewOps {
+
+trait OptiMLVectorViewOpsLowPriority extends ppl.dsl.optila.vector.VectorViewOps {
   this: OptiML =>
   
-  implicit def viewToVecOverrides[A:Manifest](x: Rep[VectorView[A]]) = new OptiMLVecOpsOverrides(x)  
+  implicit def viewToVecOverrides[A:Manifest](x: Rep[VectorView[A]]) = new OptiMLVecViewOpsOverrides(x)  
+}
+trait OptiMLVectorViewOps extends OptiMLVectorViewOpsLowPriority{
+  this: OptiML =>
+    
+  implicit def viewToVecOverrides2[A:Manifest](x: Rep[VectorView[A]]) = new OptiMLVecOpsOverridesAlternate(x)
 }
 
-trait OptiMLRangeVectorOps extends VectorOps with ppl.dsl.optila.vector.RangeVectorOps {
+
+trait OptiMLRangeVectorOpsLowPriority extends ppl.dsl.optila.vector.RangeVectorOps {
   this: OptiML =>
   
-  implicit def rangeToVecOverrides(x: Rep[RangeVector]) = new OptiMLVecOpsOverrides(x)  
+  implicit def rangeToVecOverrides(x: Rep[RangeVector]) = new OptiMLRangeVecOpsOverrides(x)  
+}
+trait OptiMLRangeVectorOps extends OptiMLRangeVectorOpsLowPriority  {
+  this: OptiML =>
+  
+  implicit def rangeToVecOverrides2(x: Rep[RangeVector]) = new OptiMLVecOpsOverridesAlternate(x)
 }
 
 trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
@@ -55,14 +72,24 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   //   override def vfindToIntf(x: Rep[VFINDR]) = indexVecDenseToInterface(x)
   //   //override def find(pred: Rep[A] => Rep[Boolean]) = vector_find_override(x,pred)
   // }
-  
-  class OptiMLVecOpsOverrides[A:Manifest](x: Interface[Vector[A]]) {
+
+  trait OptiMLVecOpsOverrides[A] extends VecOpsCls[A] {
+    def apply(indices: Interface[IndexVector])(implicit ctx: SourceContext) = vector_apply_indices[A,VA](x, indices)    
+    def apply(indices: Rep[Int]*)(implicit ctx: SourceContext) = vector_apply_indices[A,VA](x, IndexVector(indices: _*))
     def update(i: Interface[IndexVector], y: Rep[A])(implicit o: Overloaded1, ctx: SourceContext) = vector_update_indices(x,i,y)    
-    def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = x.update(n, y) // ?
+    //override def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = x.update(n, y) // ?    
+  }
+  
+  class OptiMLVecOpsOverridesAlternate[A:Manifest](x: Interface[Vector[A]]) {
     def find(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = vector_find_override(x, pred)
   }
+  
+  class OptiMLDenseVecOpsOverrides[A:Manifest](x: Rep[DenseVector[A]]) extends DenseVecOpsCls(x) with OptiMLVecOpsOverrides[A] 
+  class OptiMLVecViewOpsOverrides[A:Manifest](x: Rep[VectorView[A]]) extends VectorViewOpsCls(x) with OptiMLVecOpsOverrides[A] 
+  class OptiMLRangeVecOpsOverrides(x: Rep[RangeVector]) extends RangeVecOpsCls(x) with OptiMLVecOpsOverrides[Int] 
 
   // class defs
+  def vector_apply_indices[A:Manifest,VA:Manifest](x: Interface[Vector[A]], indices: Interface[IndexVector])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]  
   def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
   def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[IndexVectorDense]
 }
@@ -78,6 +105,9 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
     
   ////////////////////////////////
   // implemented via delite ops
+  
+  case class VectorApplyIndices[A:Manifest,VA:Manifest](x: Interface[Vector[A]], indices: Interface[IndexVector])(implicit val b: VectorBuilder[A,VA])
+    extends DeliteOpSingleWithManifest[A,VA](reifyEffectsHere(vector_apply_indices_impl[A,VA](x,indices)))       
   
   case class VectorUpdateIndices[A:Manifest](x: Interface[Vector[A]], intf: Interface[IndexVector], y: Exp[A])
     extends DeliteOpForeach[Int] {
@@ -120,6 +150,7 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   /////////////////////
   // class interface
 
+  def vector_apply_indices[A:Manifest,VA:Manifest](x: Interface[Vector[A]], indices: Interface[IndexVector])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorApplyIndices[A,VA](x,indices))
   def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorUpdateIndices(x,i,y))
   def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(VectorFindOverride(x, pred))
 
@@ -127,6 +158,8 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@VectorApplyIndices(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorApplyIndices(f(x),f(y))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])    
+    case Reflect(e@VectorApplyIndices(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorApplyIndices(f(x),f(y))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@VectorUpdateIndices(x,i,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorUpdateIndices(f(x),f(i),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??

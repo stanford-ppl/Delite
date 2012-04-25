@@ -97,10 +97,10 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
   with MLInputReaderOps with MLOutputWriterOps
   with CanSumOps
   with VectorOps with OptiMLDenseVectorOps with OptiMLVectorViewOps with OptiMLRangeVectorOps
-  with MatrixOps with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops 
+  with MatrixOps with OptiMLDenseMatrixOps with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops 
   with StreamOps with StreamRowOps
   with GraphOps with EdgeOps with VertexOps with VSetOps
-  with TrainingSetOps with ImageOps with GrayscaleImageOps {
+  with TrainingSetOps with ImageOps with ImageOpsExtension with GrayscaleImageOps {
 
   this: OptiMLApplication =>
 }
@@ -122,7 +122,7 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
   with StreamOpsExpOpt with StreamRowOpsExpOpt
   with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with GraphOpsExp with EdgeOpsExp with VertexOpsExp with VSetOpsExp
-  with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard
+  with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard with MatrixImplOpsStandard
   with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
   with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard
   with DeliteAllOverridesExp {

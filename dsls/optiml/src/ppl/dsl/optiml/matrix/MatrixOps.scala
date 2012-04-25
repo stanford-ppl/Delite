@@ -14,13 +14,75 @@ import ppl.delite.framework.Config
 import ppl.dsl.optiml._
 import ppl.delite.framework.extern.lib._
 
+trait OptiMLDenseMatrixOps extends ppl.dsl.optila.matrix.DenseMatrixOps {
+  this: OptiML =>
+  
+  implicit def denseToMatOverrides[A:Manifest](x: Rep[DenseMatrix[A]]) = new OptiMLDenseMatOpsOverrides(x)  
+}
+
+trait ImageOpsExtension extends ImageOps {
+  this: OptiML =>
+  
+  implicit def imageToMatOverrides[A:Manifest](x: Rep[Image[A]]) = new OptiMLImageOpsOverrides(x)  
+}
+
 trait MatrixOps extends ppl.dsl.optila.matrix.MatrixOps  {
   this: OptiML =>
 
+  trait OptiMLMatOpsOverrides[A] extends MatOpsCls[A] {
+    def apply(rowIndices: Interface[IndexVector])(implicit ctx: SourceContext) = matrix_apply_row_indices[A,MA](x, rowIndices)
+    def apply(rowIndices: Interface[IndexVector], colIndices: IndexWildcard)(implicit ctx: SourceContext) = matrix_apply_row_indices[A,MA](x, rowIndices)
+    def apply(rowIndices: IndexWildcard, colIndices: Interface[IndexVector])(implicit ctx: SourceContext) = matrix_apply_col_indices[A,MA](x, colIndices)
+    def apply(rowIndices: Interface[IndexVector], colIndices: Interface[IndexVector])(implicit ctx: SourceContext) = matrix_apply_block_indices[A,MA](x, rowIndices, colIndices)    
+  }
+  
+  class OptiMLDenseMatOpsOverrides[A:Manifest](x: Rep[DenseMatrix[A]]) extends DenseMatOpsCls(x) with OptiMLMatOpsOverrides[A] 
+  class OptiMLImageOpsOverrides[A:Manifest](x: Rep[Image[A]]) extends ImageOpsCls(x) with OptiMLMatOpsOverrides[A] 
+
+  // class defs
+  def matrix_apply_row_indices[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], rowIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,MA], ctx: SourceContext): Rep[MA] 
+  def matrix_apply_col_indices[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], colIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,MA], ctx: SourceContext): Rep[MA]   
+  def matrix_apply_block_indices[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], rowIndices: Interface[IndexVector], colIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,MA], ctx: SourceContext): Rep[MA]  
 }
 
 trait MatrixOpsExp extends ppl.dsl.optila.matrix.MatrixOpsExp with MatrixOps with VariablesExp {
   this: OptiMLExp  =>
+ 
+  ////////////////////////////////
+  // implemented via delite ops
+
+  case class MatrixApplyRowIndices[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], rowIndices: Interface[IndexVector])(implicit val b: MatrixBuilder[A,MA])
+    extends DeliteOpSingleWithManifest[A,MA](reifyEffectsHere(matrix_apply_row_indices_impl[A,MA](x,rowIndices)))       
+  
+  case class MatrixApplyColIndices[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], colIndices: Interface[IndexVector])(implicit val b: MatrixBuilder[A,MA])
+    extends DeliteOpSingleWithManifest[A,MA](reifyEffectsHere(matrix_apply_col_indices_impl[A,MA](x,colIndices)))       
+
+  case class MatrixApplyBlockIndices[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], rowIndices: Interface[IndexVector], colIndices: Interface[IndexVector])(implicit val b: MatrixBuilder[A,MA])
+    extends DeliteOpSingleWithManifest[A,MA](reifyEffectsHere(matrix_apply_block_indices_impl[A,MA](x,rowIndices,colIndices)))       
+  
+  /////////////////////
+  // class interface
+
+  def matrix_apply_row_indices[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], rowIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,MA], ctx: SourceContext)
+    = reflectPure(MatrixApplyRowIndices[A,MA](x,rowIndices))
+  def matrix_apply_col_indices[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], colIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,MA], ctx: SourceContext)
+    = reflectPure(MatrixApplyColIndices[A,MA](x,colIndices))
+  def matrix_apply_block_indices[A:Manifest,MA:Manifest](x: Interface[Matrix[A]], rowIndices: Interface[IndexVector], colIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,MA], ctx: SourceContext)
+    = reflectPure(MatrixApplyBlockIndices[A,MA](x,rowIndices,colIndices))
+
+  //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@MatrixApplyRowIndices(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixApplyRowIndices(f(x),f(y))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])  
+    case e@MatrixApplyColIndices(x,y) => reflectPure(new { override val original = Some(f,e) } with MatrixApplyColIndices(f(x),f(y))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])      
+    case e@MatrixApplyBlockIndices(x,r,c) => reflectPure(new { override val original = Some(f,e) } with MatrixApplyBlockIndices(f(x),f(r),f(c))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])        
+    case Reflect(e@MatrixApplyRowIndices(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixApplyRowIndices(f(x),f(y))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@MatrixApplyColIndices(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixApplyColIndices(f(x),f(y))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))    
+    case Reflect(e@MatrixApplyBlockIndices(x,r,c), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with MatrixApplyBlockIndices(f(x),f(r),f(c))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))        
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
+
   
 }
 
@@ -40,7 +102,6 @@ trait MatrixOpsExpOpt extends ppl.dsl.optila.matrix.MatrixOpsExpOpt with MatrixO
   //   //case Def(TrainingSetObjectFromMat(x,y)) => matrix_numcols(x) // TODO: move to TrainingSetOpsExpOpt ?
   //   case _ => super.matrix_numcols(x)
   // }
-
 }
 
 

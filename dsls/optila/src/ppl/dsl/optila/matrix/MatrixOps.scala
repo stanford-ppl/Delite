@@ -32,6 +32,8 @@ trait MatrixOps extends Variables {
   //     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = Vector.sparse[A](length, isRow)
   //   }
   
+  //implicit def matToString[A, M[X] <: Matrix[X]](x: M[A])(implicit toOps: M[A] => MatOpsCls[A]) = toOps(x).mkString(" ")
+  
   object Matrix {
     def apply[A:Manifest](numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_new(numRows, numCols)
     def apply[A:Manifest](xs: Rep[DenseVector[DenseVector[A]]])(implicit ctx: SourceContext): Rep[DenseMatrix[A]] = densematrix_obj_fromvec(xs)

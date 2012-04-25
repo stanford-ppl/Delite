@@ -11,8 +11,14 @@ import java.io.PrintWriter
 trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
   
   object IndexVector {
-    def apply(len: Rep[Int])(implicit ctx: SourceContext) = indexvector_obj_new(len)
+    def apply(len: Rep[Int], isRow: Rep[Boolean] = unit(true))(implicit ctx: SourceContext) = indexvector_obj_new(len)
     def apply(xs: Interface[Vector[Int]])(implicit o: Overloaded1, ctx: SourceContext) = indexvector_obj_fromvec(xs)
+    def apply(xs: Rep[Int]*)(implicit o: Overloaded2, ctx: SourceContext) = {
+      val out = indexvector_obj_new(unit(0))
+      // interpreted (not lifted)
+      xs.foreach { out += _ }
+      out.unsafeImmutable // return immutable object
+    }    
   }
 
   trait IndexVecOpsCls extends VecOpsCls[Int] with InterfaceOps[IndexVector] {

@@ -13,15 +13,15 @@ import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
 trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
 
-  implicit def repToVectorViewVecOps[A:Manifest](x: Rep[VectorView[A]]) = new VectorViewVecOpsCls(x)
-  implicit def varToVectorViewVecOps[A:Manifest](x: Var[VectorView[A]]) = new VectorViewVecOpsCls(readVar(x))
-  implicit def vectorViewToInterface[A:Manifest](lhs: Rep[VectorView[A]]) = new VInterface(new VectorViewVecOpsCls(lhs))
+  implicit def repToVectorViewOps[A:Manifest](x: Rep[VectorView[A]]) = new VectorViewOpsCls(x)
+  implicit def varToVectorViewOps[A:Manifest](x: Var[VectorView[A]]) = new VectorViewOpsCls(readVar(x))
+  implicit def vectorViewToInterface[A:Manifest](lhs: Rep[VectorView[A]]) = new VInterface(new VectorViewOpsCls(lhs))
     
   object VectorView {
     def apply[A:Manifest](x: Rep[Array[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]) = vectorview_obj_new(x,start,stride,length,isRow)
   }
   
-  class VectorViewVecOpsCls[A:Manifest](val elem: Rep[VectorView[A]]) extends VecOpsCls[A] {
+  class VectorViewOpsCls[A:Manifest](val elem: Rep[VectorView[A]]) extends VecOpsCls[A] {
     // type VA = VectorView
     // def toOps(x: Rep[VectorView[A]]) = repToVectorViewVecOps(x)
     // def toIntf(x: Rep[VectorView[A]]) = vectorViewToInterface(x)

@@ -21,11 +21,11 @@ trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
   //   def toIntf(x: Rep[IndexVectorDense]): Interface[IndexVector] = indexVecDenseToInterface(x)
   // }  
   
-  // would like to have multiple inheritance here and inherit dense vector ops, but a
-  // Rep[IndexVectorDense] and Rep[DenseVector] have no relation
-  
-  // for now, just duplicating the relevant implementations from DenseVectorOps :(
-  
+  // copying the interface from DenseVectorOps instead of inheriting so that we preserve the IndexVector type
+  // in generic operations (i.e. the type alias declarations).
+  //
+  // however, the actual definitions in IndexVecOpsCls just use DenseVector's definitions anyways, so is there
+  // any point to having Self = IndexVectorDense here?
   class IndexVecDenseOpsCls(val elem: Rep[IndexVectorDense]) extends IndexVecOpsCls {    
     type Self = IndexVectorDense    
     def wrap(x: Rep[IndexVectorDense]) = indexVecDenseToInterface(x)
@@ -34,29 +34,41 @@ trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
     def length(implicit ctx: SourceContext) = indexvectordense_length(elem)
     def apply(n: Rep[Int])(implicit ctx: SourceContext) = indexvectordense_apply(elem,n)
     
-    def isRow(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd") 
-    def sort(implicit o: Ordering[Int], ctx: SourceContext) = throw new UnsupportedOperationException("tbd")     
-    def t(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd") 
-    def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")    
-    def update(n: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = throw new UnsupportedOperationException("tbd")
-    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
-    def insert(pos: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
-    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
-    def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
-    def trim()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
-    def clear()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")        
+    def isRow(implicit ctx: SourceContext) = densevector_isrow(elem)
+    def sort(implicit o: Ordering[Int], ctx: SourceContext) = indexvectordense_new_unsafe(densevector_sort(elem))
+    def t(implicit ctx: SourceContext) = indexvectordense_new_unsafe(densevector_trans(elem))
+    def mt()(implicit ctx: SourceContext) = {densevector_mutable_trans(elem); elem}
+    def update(n: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = densevector_update(elem,n,y)
+    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = densevector_copyfrom(elem,pos,y)
+    def insert(pos: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext) = densevector_insert(elem,pos,y)
+    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = densevector_insertall(elem,pos,y)
+    def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densevector_removeall(elem,pos,len)
+    def trim()(implicit ctx: SourceContext) = densevector_trim(elem)
+    def clear()(implicit ctx: SourceContext) = densevector_clear(elem)
   }   
   
   def indexvectordense_length(x: Rep[IndexVectorDense])(implicit ctx: SourceContext): Rep[Int]
   def indexvectordense_apply(x: Rep[IndexVectorDense], n: Rep[Int])(implicit ctx: SourceContext): Rep[Int]
+  
+  // internal
+  def indexvectordense_new_unsafe(x: Rep[DenseVector[Int]])(implicit ctx: SourceContext): Rep[IndexVectorDense]  
 }
 
 trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOpsExp with VariablesExp with BaseFatExp { this: OptiMLExp => 
   case class IndexVectorDenseLength(x: Exp[IndexVectorDense]) extends Def[Int]
   case class IndexVectorDenseApply(x: Exp[IndexVectorDense], n: Exp[Int]) extends Def[Int]
+  //case class IndexVectorDenseNewUnsafe(x: Exp[DenseVector]) extends Def[IndexVectorDense]
     
   def indexvectordense_length(x: Exp[IndexVectorDense])(implicit ctx: SourceContext) = reflectPure(IndexVectorDenseLength(x))
-  def indexvectordense_apply(x: Exp[IndexVectorDense], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(IndexVectorDenseApply(x,n))
+  def indexvectordense_apply(x: Exp[IndexVectorDense], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(IndexVectorDenseApply(x,n))  
+  def indexvectordense_new_unsafe(x: Exp[DenseVector[Int]])(implicit ctx: SourceContext) = {
+    val a = indexvector_obj_new(unit(0))
+    densevector_set_raw_data(a,densevector_raw_data(x))
+    densevector_set_length(a,densevector_length(x))
+    densevector_set_isrow(a,densevector_isrow(x))
+    a.unsafeImmutable    
+    //reflectPure(IndexVectorNewUnsafe(x))
+  }
     
   /////////////////////
   // delite collection
@@ -104,8 +116,16 @@ trait ScalaGenIndexVectorDenseOps extends ScalaGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case IndexVectorDenseLength(x) => emitValDef(sym, quote(x) + ".length")
-    case IndexVectorDenseApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
+    case IndexVectorDenseLength(x) => emitValDef(sym, quote(x) + "._length")
+    case IndexVectorDenseApply(x,n) => emitValDef(sym, quote(x) + "._data(" + quote(n) + ")")
+    // case IndexVectorDenseNewUnsafe(x) => 
+    //   stream.println("val " + quote(sym) + " = {")
+    //   stream.println("val res = new generated.scala.IndexVectorDense(0)")
+    //   stream.println("res._data = " + quote(x) + "._data")
+    //   stream.println("res._length = " + quote(x) + "._length")
+    //   stream.println("res._isRow = " + quote(x) + "._isRow")
+    //   stream.println("res")
+    //   stream.println("}")
     case _ => super.emitNode(sym, rhs)
   }
 }

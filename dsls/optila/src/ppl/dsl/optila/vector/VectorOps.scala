@@ -21,6 +21,10 @@ trait VectorOps extends Variables {
   //     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = Vector.sparse[A](length, isRow)
   //   }
   
+  implicit def vecToString[A, V[X] <: Vector[X]](x: Rep[V[A]])(implicit toOps: Rep[V[A]] => VecOpsCls[A]): Rep[String] = "[ " + toOps(x).mkString(unit(" ")) + "]"
+  def infix_+[A, V[X] <: Vector[X]](lhs: String, rhs: Rep[V[A]])(implicit toOps: Rep[V[A]] => VecOpsCls[A]) = string_plus(unit(lhs), vecToString[A,V](rhs))
+  def infix_+[A, V[X] <: Vector[X]](lhs: Rep[String], rhs: Rep[V[A]])(implicit toOps: Rep[V[A]] => VecOpsCls[A]) = string_plus(lhs, vecToString[A,V](rhs))
+  
   object Vector {
     def apply[A:Manifest](len: Int, isRow: Boolean)(implicit ctx: SourceContext) = densevector_obj_new(unit(len), unit(isRow)) // needed to resolve ambiguities
     def apply[A](len: Rep[Int], isRow: Rep[Boolean])(implicit mA: Manifest[A], o: Overloaded1, ctx: SourceContext) = densevector_obj_new(len, isRow)
@@ -490,7 +494,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
 
   /////////////////////////////////////////////////
   // implemented via kernel embedding (sequential)
-
+  
   case class VectorEquals[A:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])
     extends DeliteOpSingleWithManifest[A,Boolean](reifyEffectsHere(vector_equals_impl(x,y)))
   
