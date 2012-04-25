@@ -55,9 +55,9 @@ trait SDRVectorOps extends Variables {
   def sdrvector_binaryor[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
   def sdrvector_binaryxor[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
   
-  def sdrvector_lshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[A]
-  def sdrvector_rshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[A]
-  def sdrvector_rashift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[A]
+  def sdrvector_lshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
+  def sdrvector_rshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
+  def sdrvector_rashift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
 }
 
 trait SDRVectorOpsExp extends SDRVectorOps {
@@ -71,14 +71,14 @@ trait SDRVectorOpsExp extends SDRVectorOps {
   case class SDRVectorCorrelation[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[A]
   case class SDRVectorAutoCorrelation[A:Manifest:Arith:SDRArith](x: Exp[DenseVector[A]]) extends Def[A]
   
-  case class SDRVectorBinaryNot[A:Manifest:BitArith](x: Exp[DenseVector[A]]) extends Def[A]
-  case class SDRVectorBinaryAnd[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[A]
-  case class SDRVectorBinaryOr[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[A]
-  case class SDRVectorBinaryXor[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[A]
+  case class SDRVectorBinaryNot[A:Manifest:BitArith](x: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
+  case class SDRVectorBinaryAnd[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
+  case class SDRVectorBinaryOr[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
+  case class SDRVectorBinaryXor[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
   
-  case class SDRVectorLShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[A]
-  case class SDRVectorRShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[A]
-  case class SDRVectorRAShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[A]
+  case class SDRVectorLShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
+  case class SDRVectorRShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
+  case class SDRVectorRAShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
   
   def sdrvector_conj[A:Manifest:SDRArith](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorConj(x))
   def sdrvector_convolve[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorConvolve(x,y))
