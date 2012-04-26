@@ -52,5 +52,12 @@ trait HelloWorld extends OptiMLApplication {
     val mSlice5 = m(IndexVector(3,1,2),IndexVector(4,0,6))
     println("mSlice5: ")
     mSlice5.pprint
+    
+    println("--- testing pattern matching")
+    val a = Vector(1,2,3)
+    val b = Vector(3,4,5)
+    val c = Vector(6,7,8)
+    val pattern = a*b + a*c
+    pattern.pprint
   }
 }

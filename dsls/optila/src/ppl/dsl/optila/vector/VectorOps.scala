@@ -262,7 +262,8 @@ trait VectorOps extends Variables {
   def infix_+[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: R)(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded4): Rep[V[R]] = vector_plus_scalar_withconvert[L,R,V[R]](toIntf(lhs),unit(rhs))
   def infix_+[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Interface[Vector[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded5): Rep[V[R]] = vector_plus_withconvert[L,R,V[R]](lhs,toIntf(rhs))
   def infix_+[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntfL: Rep[V[L]] => Interface[Vector[L]], toIntfR: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded6): Rep[V[R]] = vector_plus_withconvert[L,R,V[R]](toIntfL(lhs),toIntfR(rhs))
-  
+  // this one is just used to preserve the non-convert node for pattern matching - the infix methods take precedence over the implicit conversions
+  def infix_+[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded13): Rep[V[L]] = vector_plus[L,V[L]](toIntf(lhs),toIntf(rhs))  
   // special cases to fill holes
   def infix_+[V[X] <: Vector[X]](lhs: Rep[Int], rhs: Rep[V[Double]])(implicit vb: VectorBuilder[Double,V[Double]], toIntf: Rep[V[Double]] => Interface[Vector[Double]], m: Manifest[V[Double]], ctx: SourceContext, o: Overloaded7): Rep[V[Double]] = vector_plus_scalar[Double,V[Double]](toIntf(rhs),repIntToRepDouble(lhs))
   def infix_+[V[X] <: Vector[X]](lhs: Rep[Int], rhs: Rep[V[Float]])(implicit vb: VectorBuilder[Float,V[Float]], toIntf: Rep[V[Float]] => Interface[Vector[Float]], m: Manifest[V[Float]], ctx: SourceContext, o: Overloaded8): Rep[V[Float]] = vector_plus_scalar[Float,V[Float]](toIntf(rhs),repIntToRepFloat(lhs))
@@ -275,13 +276,15 @@ trait VectorOps extends Variables {
   def infix_-[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: R)(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded2): Rep[V[R]] = vector_minus_scalar_withconvert[L,R,V[R]](toIntf(lhs),unit(rhs))
   def infix_-[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Interface[Vector[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded3): Rep[V[R]] = vector_minus_withconvert[L,R,V[R]](lhs,toIntf(rhs))
   def infix_-[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntfL: Rep[V[L]] => Interface[Vector[L]], toIntfR: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded4): Rep[V[R]] = vector_minus_withconvert[L,R,V[R]](toIntfL(lhs),toIntfR(rhs))
-
+  def infix_-[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded14): Rep[V[L]] = vector_minus[L,V[L]](toIntf(lhs),toIntf(rhs))
+  
   def infix_*[L,R:Arith:Manifest,V[X] <: Vector[X]](lhs: L, rhs: Rep[V[R]])(implicit c: L => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded1): Rep[V[R]] = vector_times_scalar[R,V[R]](toIntf(rhs),c(lhs))
   def infix_*[L:Arith:Manifest,R:Manifest,V[X] <: Vector[X]](lhs: Rep[L], rhs: Rep[V[R]])(implicit c: Rep[R] => Rep[L], vb: VectorBuilder[L,V[L]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded2): Rep[V[L]] = vector_times_scalar_withconvert[R,L,V[L]](toIntf(rhs),lhs)
   def infix_*[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[R])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded3): Rep[V[R]] = vector_times_scalar_withconvert[L,R,V[R]](toIntf(lhs),rhs)
   def infix_*[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: R)(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded4): Rep[V[R]] = vector_times_scalar_withconvert[L,R,V[R]](toIntf(lhs),unit(rhs))
   def infix_*[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Interface[Vector[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded5): Rep[V[R]] = vector_times_withconvert[L,R,V[R]](lhs,toIntf(rhs))
   def infix_*[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntfL: Rep[V[L]] => Interface[Vector[L]], toIntfR: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded6): Rep[V[R]] = vector_times_withconvert[L,R,V[R]](toIntfL(lhs),toIntfR(rhs))
+  def infix_*[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded15): Rep[V[L]] = vector_times[L,V[L]](toIntf(lhs),toIntf(rhs))
   def infix_*[V[X] <: Vector[X]](lhs: Rep[Int], rhs: Rep[V[Double]])(implicit vb: VectorBuilder[Double,V[Double]], toIntf: Rep[V[Double]] => Interface[Vector[Double]], m: Manifest[V[Double]], ctx: SourceContext, o: Overloaded7): Rep[V[Double]] = vector_times_scalar[Double,V[Double]](toIntf(rhs),repIntToRepDouble(lhs))
   def infix_*[V[X] <: Vector[X]](lhs: Rep[Int], rhs: Rep[V[Float]])(implicit vb: VectorBuilder[Float,V[Float]], toIntf: Rep[V[Float]] => Interface[Vector[Float]], m: Manifest[V[Float]], ctx: SourceContext, o: Overloaded8): Rep[V[Float]] = vector_times_scalar[Float,V[Float]](toIntf(rhs),repIntToRepFloat(lhs))
   def infix_*[V[X] <: Vector[X]](lhs: Rep[Float], rhs: Rep[V[Double]])(implicit vb: VectorBuilder[Double,V[Double]], toIntf: Rep[V[Double]] => Interface[Vector[Double]], m: Manifest[V[Double]], ctx: SourceContext, o: Overloaded9): Rep[V[Double]] = vector_times_scalar[Double,V[Double]](toIntf(rhs),repFloatToRepDouble(lhs))
@@ -293,7 +296,7 @@ trait VectorOps extends Variables {
   def infix_/[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: R)(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded2): Rep[V[R]] = vector_divide_scalar_withconvert[L,R,V[R]](toIntf(lhs),unit(rhs))
   def infix_/[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Interface[Vector[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded3): Rep[V[R]] = vector_divide_withconvert[L,R,V[R]](lhs,toIntf(rhs))
   def infix_/[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntfL: Rep[V[L]] => Interface[Vector[L]], toIntfR: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded4): Rep[V[R]] = vector_divide_withconvert[L,R,V[R]](toIntfL(lhs),toIntfR(rhs))
-  
+  def infix_/[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded16): Rep[V[L]] = vector_divide[L,V[L]](toIntf(lhs),toIntf(rhs))
   
   /**
    * Interface[Vector] 
@@ -1294,31 +1297,61 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
 
 trait VectorOpsExpOpt extends VectorOpsExp { this: OptiLAExp =>
 
-  // TODO aks: debug pattern matching with interfaces
-  /*
-  override def vector_plus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit bldr: VectorBuilder[A,VA]) = (x.ops.elem, y.ops.elem) match {
-    // (TB + TD) == T(B + D)
-    case (Def(t1@VectorTimes(a, b)), Def(t2@VectorTimes(c, d))) if (a == c) => vector_times[A,VA](x.ops.toIntf(a), vector_plus[A,VA](x.ops.wrap(b),y.ops.wrap(d)))
-    // ...
-    case _ => super.vector_plus(x, y)
-  }
+  // a bit unfortunate
+  def icast[A](x: Interface[Vector[Any]]) = x.asInstanceOf[Interface[Vector[A]]]
   
-  override def vector_plusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = (x, y) match {
-    // remove runtime check on zero vector being same length as argument
-    case (a, Def(VectorObjectZeros(len))) => ()
-    //case (Def(VectorObjectZeros(len)), b) => b  // this is unsafe because we lose the effectful operation (e.g. accumulation)
-    case _ => super.vector_plusequals(x,y)
-  }
-
-  override def vector_times[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = (x, y) match {
-    case _ => super.vector_times(x, y)
-  }
-  */
   override def vector_equals[A:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit ctx: SourceContext) = (x.ops.elem, y.ops.elem) match {
     case (a,b) if (a == b) => unit(true) // same symbol
     case _ => super.vector_equals(x,y)
   }
+
+  // two ways of unpacking interfaces for pattern matching  
+  // 1)
+  override def vector_plus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit bldr: VectorBuilder[A,VA], ctx: SourceContext) = (x.ops.elem, y.ops.elem) match {
+    // (TB + TD) == T(B + D)
+    case (Def(VectorTimes(a, b)), Def(VectorTimes(c, d))) if (a.ops.elem == c.ops.elem) => vector_times[A,VA](icast[A](a), icast[A](b)+icast[A](d))
+    // ...
+    case _ => 
+      super.vector_plus[A,VA](x, y)
+  }  
   
+  // 2)
+  // override def vector_plus[A:Manifest:Arith,VA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit bldr: VectorBuilder[A,VA], ctx: SourceContext) = (x,y) match {
+  //   // (TB + TD) == T(B + D)
+  //   case (Interface(Def(VectorTimes(ai@Interface(a), bi@Interface(b)))), Interface(Def(VectorTimes(ci@Interface(c), di@Interface(d))))) if (a == c) => 
+  //     vector_times[A,VA](icast[A](ai), icast[A](bi)+icast[A](di))
+  //   // ...
+  //   case _ => super.vector_plus[A,VA](x, y)
+  // }  
+  
+  // override def vector_plusequals[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = (x.ops.elem, y.ops.elem) match {
+  //   // remove runtime check on zero vector being same length as argument
+  //   case (a, Def(DenseVectorObjectZeros(len))) => ()
+  //   //case (Def(VectorObjectZeros(len)), b) => b  // this is unsafe because we lose the effectful operation (e.g. accumulation)
+  //   case _ => super.vector_plusequals(x,y)
+  // }
+
+  // override def vector_times[A:Manifest:Arith](x: Interface[Vector[A]], y: Interface[Vector[A]]) = (x, y) match {
+  //   case _ => super.vector_times(x, y)
+  // }
+  
+  // override def vector_mutable_clone[A:Manifest](x: Interface[Vector[A]]) = x match {
+  //     // these are unsafe in general.. we can only short-circuit the clone if we know the allocation is dead
+  //     // except for the .mutable call
+  //     // e.g., val x = DenseVector(10, true)
+  //     //       val y = x.mutable // should clone!
+  //     //       val z = x + 5
+  //     // val x = DenseVector(10, true).mutable // should not clone!
+  //     case Def(d@DenseVectorNew(len, isRow)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
+  //     case Def(d@DenseVectorObjectFromSeq(xs)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])   
+  //     case Def(d@DenseVectorObjectZeros(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
+  //     case Def(d@DenseVectorObjectZerosF(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
+  //     //case Def(d@DenseVectorObjectOnes(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]]) <--- actually a problem in testSumIf!
+  //     //case Def(d@DenseVectorObjectOnesF(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
+  //     case Def(d@DenseVectorObjectRand(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
+  //     case Def(d@DenseVectorObjectRandF(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
+  //     case _ => super.densevector_mutable_clone(x)
+  //   }  
 }
 
 trait BaseGenVectorOps extends GenericFatCodegen {

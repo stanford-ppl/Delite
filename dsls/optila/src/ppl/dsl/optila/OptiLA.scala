@@ -119,7 +119,7 @@ trait OptiLACompiler extends OptiLA with OptiLAUtilities with DenseVectorCompile
  */
 trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
   with LanguageOpsExp with ArithOpsExpOpt 
-  with VectorOpsExp with DenseVectorOpsExpOpt with RangeVectorOpsExp with VectorViewOpsExpOpt //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
+  with VectorOpsExpOpt with DenseVectorOpsExpOpt with RangeVectorOpsExp with VectorViewOpsExpOpt //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with MatrixOpsExpOpt with DenseMatrixOpsExpOpt
   with LAInputReaderOpsExp with LAOutputWriterOpsExp
   with ExceptionOpsExp

@@ -492,47 +492,6 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
 trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp {
   this: DenseVectorImplOps with OptiLAExp =>
 
-  // override def densevector_equals[A:Manifest](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = (x, y) match {
-  //   case (a,b) if (a == b) => unit(true) // same symbol
-  //   case _ => super.densevector_equals(x,y)
-  // }
-
-  // override def densevector_plus[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) = (x, y) match {
-  //   // (TB + TD) == T(B + D)
-  //   case (Def(DenseVectorTimes(a, b)), Def(DenseVectorTimes(c, d))) if (a == c) => densevector_times[A](a.asInstanceOf[Exp[DenseVector[A]]], densevector_plus[A](b.asInstanceOf[Exp[DenseVector[A]]],d.asInstanceOf[Exp[DenseVector[A]]]))
-  //   // ...
-  //   case _ => super.densevector_plus(x, y)
-  // }
-  // 
-  // override def densevector_plusequals[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) = (x, y) match {
-  //   // remove runtime check on zero densevector being same length as argument
-  //   case (a, Def(DenseVectorObjectZeros(len))) => ()
-  //   //case (Def(DenseVectorObjectZeros(len)), b) => b  // this is unsafe because we lose the effectful operation (e.g. accumulation)
-  //   case _ => super.densevector_plusequals(x,y)
-  // }
-  // 
-  // override def densevector_times[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) = (x, y) match {
-  //   case _ => super.densevector_times(x, y)
-  // }
-
-  // override def densevector_mutable_clone[A:Manifest](x: Exp[DenseVector[A]]) = x match {
-  //     // these are unsafe in general.. we can only short-circuit the clone if we know the allocation is dead
-  //     // except for the .mutable call
-  //     // e.g., val x = DenseVector(10, true)
-  //     //       val y = x.mutable // should clone!
-  //     //       val z = x + 5
-  //     // val x = DenseVector(10, true).mutable // should not clone!
-  //     case Def(d@DenseVectorNew(len, isRow)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
-  //     case Def(d@DenseVectorObjectFromSeq(xs)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])   
-  //     case Def(d@DenseVectorObjectZeros(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
-  //     case Def(d@DenseVectorObjectZerosF(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
-  //     //case Def(d@DenseVectorObjectOnes(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]]) <--- actually a problem in testSumIf!
-  //     //case Def(d@DenseVectorObjectOnesF(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
-  //     case Def(d@DenseVectorObjectRand(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
-  //     case Def(d@DenseVectorObjectRandF(len)) => reflectMutable(d.asInstanceOf[Def[DenseVector[A]]])
-  //     case _ => super.densevector_mutable_clone(x)
-  //   }
-
   override def densevector_length[A:Manifest](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = x match {
     /* these are essential for fusing:    */
 //    case Def(Reflect(e @ DenseVectorTimes(_,_), _,_)) => e.asInstanceOf[DeliteOpDenseVectorLoop[A]].size // FIXME: in general this is unsafe, but hey...
@@ -572,12 +531,11 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
   }
 
   override def densevector_isrow[A:Manifest](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = x match {
-    //case Def(e: DenseVectorArithmeticMap[A]) => e.in.asInstanceOf[Exp[DenseVector[A]]].isRow 
-    //case Def(e: DenseVectorArithmeticZipWith[A]) => e.inA.asInstanceOf[Exp[DenseVector[A]]].isRow 
+    case Def(e: VectorArithmeticMap[A,_]) => e.intf.isRow 
+    case Def(e: VectorArithmeticZipWith[A,_]) => e.intfA.isRow 
     //case Def(e: DeliteOpDenseVectorLoop[A]) => e.isRow
     //case Def(e: DenseVectorDeliteOp[A] => e.isRow)
-    //case Def(Reflect(DenseVectorObjectZeros(l,r), _)) => r
-    //case Def(DenseVectorClone(a)) => densevector_isrow(a)
+    case Def(VectorClone(a)) => a.isRow
     case Def(DenseVectorEmptyDouble()) => Const(true)
     case Def(DenseVectorEmptyFloat()) => Const(true)
     case Def(DenseVectorEmptyInt()) => Const(true)
@@ -585,6 +543,7 @@ trait DenseVectorOpsExpOpt extends DenseVectorOpsExp with DeliteCollectionOpsExp
     case Def(DenseVectorZeroDouble(l,r)) => r
     case Def(DenseVectorZeroFloat(l,r)) => r
     case Def(DenseVectorZeroInt(l,r)) => r
+    //case Def(Reflect(DenseVectorObjectZeros(l,r), _)) => r    
     //case Def(DenseVectorObjectRange(s,e,d,r)) => r
     case _ => super.densevector_isrow(x)
   }
