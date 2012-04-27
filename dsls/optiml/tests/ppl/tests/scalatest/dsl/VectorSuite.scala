@@ -53,6 +53,14 @@ trait VectorAccessors extends DeliteTestModule with OptiMLApplication {
       collect(allExceptTen(i) == v(i+10))
       i += 1
     }
+    
+    val v2 = Vector(1,2,3,4,5)
+    val vSlice = v2(0::2)
+    collect(vSlice == Vector(1,2))
+    val vSlice2 = v2(3::5)
+    collect(vSlice2 == Vector(4,5))
+    val vSlice3 = v2(4,2,0)
+    collect(vSlice3 == Vector(5,3,1))    
 
     mkReport
   }
@@ -69,6 +77,13 @@ trait VectorOperators extends DeliteTestModule with OptiMLApplication {
     //val vc = v.clone
     //collect(vc.cmp(v) == true)
 
+    val v2 = Vector(1,2,3,4,5)
+    collect(median(v2) == 3)
+    collect(mean(v2) == 3)
+    collect(max(v2) == 5)
+    collect(min(v2) == 1)
+    collect(mean(3,6,2,5) == 4.0)
+    
     mkReport
   }
 }

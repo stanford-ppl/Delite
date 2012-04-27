@@ -55,6 +55,18 @@ trait MatrixAccessors extends DeliteTestModule with OptiMLApplication {
       i += 1
     }
 
+    val m2 = (0::10,0::10) { (i,j) => i+j }
+    val mSlice = m2(0::2,4::5)
+    collect(mSlice == Matrix(Vector(4,5)).t)
+    val mSlice2 = m2(3::4)  
+    collect(mSlice2 == Matrix(Vector(3,4,5,6,7,8,9,10,11,12)))
+    val mSlice3 = m2(*,0::2)
+    collect(mSlice3 == Matrix(Vector(0,1,2,3,4,5,6,7,8,9),Vector(1,2,3,4,5,6,7,8,9,10)).t)
+    val mSlice4 = m2(1::4,*)  
+    collect(mSlice4 == Matrix(Vector(1,2,3,4,5,6,7,8,9,10),Vector(2,3,4,5,6,7,8,9,10,11),Vector(3,4,5,6,7,8,9,10,11,12)))
+    val mSlice5 = m2(IndexVector(3,1,2),IndexVector(4,0,6))
+    collect(mSlice5 == Matrix(Vector(7,3,9),Vector(5,1,7),Vector(6,2,8)))
+    
     mkReport
   }
 }
@@ -67,6 +79,11 @@ trait MatrixOperators extends DeliteTestModule with OptiMLApplication {
     collect(m_rand(0,0) != m_rand(1,0))
     collect(m_rand(0,0) != m_rand(1,1))
 
+    val m = Matrix(Vector(1,2,3,4,5),Vector(1,2,3,4,5))
+    collect(mean(m) == 3)
+    collect(max(m) == 5)
+    collect(min(m) == 1)
+    
     mkReport
   }
 }
