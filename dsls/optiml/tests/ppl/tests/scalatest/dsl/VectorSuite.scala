@@ -193,16 +193,6 @@ trait Loop extends DeliteTestModule with OptiMLApplication {
   }
 }
 
-object ConversionsRunner extends DeliteTestRunner with OptiMLApplicationRunner with Conversions
-trait Conversions extends DeliteTestModule with OptiMLApplication {
-  def main() = {
-
-    // TODO: test int*double, double*int, vec[int]*vec[double], vec[double]*vec[int]
-    collect(true)
-    mkReport
-  }
-}
-
 object CountRunner extends DeliteTestRunner with OptiMLApplicationRunner with Count
 trait Count extends DeliteTestModule with OptiMLApplication {
   def main() = {

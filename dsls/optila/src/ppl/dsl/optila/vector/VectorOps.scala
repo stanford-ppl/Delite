@@ -17,9 +17,6 @@ trait VectorOps extends Variables {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]): Rep[To]
     def toIntf(x: Rep[To]): Interface[Vector[Elem]]
   }  
-  // def sparseVectorBuilder[A:Manifest] = new VectorBuilder[A,SparseVector[A]] {
-  //     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = Vector.sparse[A](length, isRow)
-  //   }
   
   implicit def vecToString[A, V[X] <: Vector[X]](x: Rep[V[A]])(implicit toOps: Rep[V[A]] => VecOpsCls[A]): Rep[String] = "[ " + toOps(x).mkString(unit(" ")) + "]"
   def infix_+[A, V[X] <: Vector[X]](lhs: String, rhs: Rep[V[A]])(implicit toOps: Rep[V[A]] => VecOpsCls[A]) = string_plus(unit(lhs), vecToString[A,V](rhs))
@@ -42,7 +39,7 @@ trait VectorOps extends Variables {
     }
 
     def dense[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = densevector_obj_new(len, isRow)
-    //def sparse[A:Manifest](len: Rep[Int], isRow: Rep[Boolean]) = sparsevector_obj_new(len, isRow)
+    def sparse[A:Manifest](len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = sparsevector_obj_new(len, isRow)
         
     def ones(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.ones(len)
     def onesf(len: Rep[Int])(implicit ctx: SourceContext) = DenseVector.onesf(len)
@@ -61,7 +58,7 @@ trait VectorOps extends Variables {
   //     def toIntf(x: Rep[That]): Interface[Intf]    
   //     def builder: VectorBuilder[A,That]
   //   }
-    
+  
   trait VecOpsCls[A] extends DCInterfaceOps[Vector[A],A] {
     // type VA // self type    
     implicit def mA: Manifest[A] 
@@ -72,17 +69,18 @@ trait VectorOps extends Variables {
     
     type V[X] // generic return type, unless overloaded for the op as below (TODO: use type classes to clean this up!)
     type M[X] 
+    
     implicit def mV[B:Manifest]: Manifest[V[B]]         
     implicit def toOps[B:Manifest](x: Rep[V[B]]): VecOpsCls[B]
     implicit def toIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]]        
     implicit def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]]    
     implicit def mM[B:Manifest]: Manifest[M[B]]         
     implicit def matToIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]]        
-    implicit def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]]    
+    implicit def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]]        
     
     type VA = V[A] // temporary for easy compatibility with old stuff
     type MA = M[A]
-
+    
     type Self <: Vector[A]
     implicit def wrap(x: Rep[Self]): Interface[Vector[A]]
     val elem: Rep[Self] 
@@ -241,9 +239,9 @@ trait VectorOps extends Variables {
     //def find(pred: Rep[A] => Rep[Boolean]): Rep[VFINDR] = vector_find[A,VFINDR](x,pred)
     def find(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[V[Int]] = vector_find[A,V[Int]](x,pred)    
     def count(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[Int] = vector_count(x, pred)
-    // def flatMap[B:Manifest](f: Rep[A] => Rep[V[B]]): Rep[V[B]] = vector_flatmap[A,B,V[B]](x,f)
-    // def partition(pred: Rep[A] => Rep[Boolean]): (Rep[VA], Rep[VA])  = vector_partition[A,VA](x,pred)
-    // def groupBy[K:Manifest](pred: Rep[A] => Rep[K]): Rep[V[VA]] = vector_groupby[A,K,VA,V[VA]](x,pred)                        
+    def flatMap[B:Manifest](f: Rep[A] => Rep[V[B]])(implicit ctx: SourceContext): Rep[V[B]] = vector_flatmap[A,B,V[B]](x,f)
+    def partition(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): (Rep[VA], Rep[VA])  = vector_partition[A,VA](x,pred)
+    def groupBy[K:Manifest](pred: Rep[A] => Rep[K])(implicit ctx: SourceContext): Rep[DenseVector[VA]] = vector_groupby[A,K,VA](x,pred)                        
   }
   
   def __equal[A:Manifest,V[X] <: Vector[X]](a: Rep[V[A]], b: Rep[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], mA: Manifest[V[A]], ctx: SourceContext, o: Overloaded1): Rep[Boolean] = vector_equals(a,b)
@@ -263,7 +261,9 @@ trait VectorOps extends Variables {
   def infix_+[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Interface[Vector[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded5): Rep[V[R]] = vector_plus_withconvert[L,R,V[R]](lhs,toIntf(rhs))
   def infix_+[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntfL: Rep[V[L]] => Interface[Vector[L]], toIntfR: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded6): Rep[V[R]] = vector_plus_withconvert[L,R,V[R]](toIntfL(lhs),toIntfR(rhs))
   // this one is just used to preserve the non-convert node for pattern matching - the infix methods take precedence over the implicit conversions
-  def infix_+[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded13): Rep[V[L]] = vector_plus[L,V[L]](toIntf(lhs),toIntf(rhs))  
+  // unfortunately, causes the ArithmeticConversions test to fail some cases (probably by making the previous infix_+ ambiguous.) One option would be
+  // to change the pattern match to match on VectorPlusWithConvert nodes instead of VectorPlus.
+  //def infix_+[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded13): Rep[V[L]] = vector_plus[L,V[L]](toIntf(lhs),toIntf(rhs))  
   // special cases to fill holes
   def infix_+[V[X] <: Vector[X]](lhs: Rep[Int], rhs: Rep[V[Double]])(implicit vb: VectorBuilder[Double,V[Double]], toIntf: Rep[V[Double]] => Interface[Vector[Double]], m: Manifest[V[Double]], ctx: SourceContext, o: Overloaded7): Rep[V[Double]] = vector_plus_scalar[Double,V[Double]](toIntf(rhs),repIntToRepDouble(lhs))
   def infix_+[V[X] <: Vector[X]](lhs: Rep[Int], rhs: Rep[V[Float]])(implicit vb: VectorBuilder[Float,V[Float]], toIntf: Rep[V[Float]] => Interface[Vector[Float]], m: Manifest[V[Float]], ctx: SourceContext, o: Overloaded8): Rep[V[Float]] = vector_plus_scalar[Float,V[Float]](toIntf(rhs),repIntToRepFloat(lhs))
@@ -276,7 +276,7 @@ trait VectorOps extends Variables {
   def infix_-[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: R)(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded2): Rep[V[R]] = vector_minus_scalar_withconvert[L,R,V[R]](toIntf(lhs),unit(rhs))
   def infix_-[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Interface[Vector[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded3): Rep[V[R]] = vector_minus_withconvert[L,R,V[R]](lhs,toIntf(rhs))
   def infix_-[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntfL: Rep[V[L]] => Interface[Vector[L]], toIntfR: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded4): Rep[V[R]] = vector_minus_withconvert[L,R,V[R]](toIntfL(lhs),toIntfR(rhs))
-  def infix_-[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded14): Rep[V[L]] = vector_minus[L,V[L]](toIntf(lhs),toIntf(rhs))
+  //def infix_-[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded14): Rep[V[L]] = vector_minus[L,V[L]](toIntf(lhs),toIntf(rhs))
   
   def infix_*[L,R:Arith:Manifest,V[X] <: Vector[X]](lhs: L, rhs: Rep[V[R]])(implicit c: L => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded1): Rep[V[R]] = vector_times_scalar[R,V[R]](toIntf(rhs),c(lhs))
   def infix_*[L:Arith:Manifest,R:Manifest,V[X] <: Vector[X]](lhs: Rep[L], rhs: Rep[V[R]])(implicit c: Rep[R] => Rep[L], vb: VectorBuilder[L,V[L]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded2): Rep[V[L]] = vector_times_scalar_withconvert[R,L,V[L]](toIntf(rhs),lhs)
@@ -284,7 +284,7 @@ trait VectorOps extends Variables {
   def infix_*[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: R)(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded4): Rep[V[R]] = vector_times_scalar_withconvert[L,R,V[R]](toIntf(lhs),unit(rhs))
   def infix_*[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Interface[Vector[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded5): Rep[V[R]] = vector_times_withconvert[L,R,V[R]](lhs,toIntf(rhs))
   def infix_*[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntfL: Rep[V[L]] => Interface[Vector[L]], toIntfR: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded6): Rep[V[R]] = vector_times_withconvert[L,R,V[R]](toIntfL(lhs),toIntfR(rhs))
-  def infix_*[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded15): Rep[V[L]] = vector_times[L,V[L]](toIntf(lhs),toIntf(rhs))
+  //def infix_*[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded15): Rep[V[L]] = vector_times[L,V[L]](toIntf(lhs),toIntf(rhs))
   def infix_*[V[X] <: Vector[X]](lhs: Rep[Int], rhs: Rep[V[Double]])(implicit vb: VectorBuilder[Double,V[Double]], toIntf: Rep[V[Double]] => Interface[Vector[Double]], m: Manifest[V[Double]], ctx: SourceContext, o: Overloaded7): Rep[V[Double]] = vector_times_scalar[Double,V[Double]](toIntf(rhs),repIntToRepDouble(lhs))
   def infix_*[V[X] <: Vector[X]](lhs: Rep[Int], rhs: Rep[V[Float]])(implicit vb: VectorBuilder[Float,V[Float]], toIntf: Rep[V[Float]] => Interface[Vector[Float]], m: Manifest[V[Float]], ctx: SourceContext, o: Overloaded8): Rep[V[Float]] = vector_times_scalar[Float,V[Float]](toIntf(rhs),repIntToRepFloat(lhs))
   def infix_*[V[X] <: Vector[X]](lhs: Rep[Float], rhs: Rep[V[Double]])(implicit vb: VectorBuilder[Double,V[Double]], toIntf: Rep[V[Double]] => Interface[Vector[Double]], m: Manifest[V[Double]], ctx: SourceContext, o: Overloaded9): Rep[V[Double]] = vector_times_scalar[Double,V[Double]](toIntf(rhs),repFloatToRepDouble(lhs))
@@ -296,7 +296,7 @@ trait VectorOps extends Variables {
   def infix_/[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: R)(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded2): Rep[V[R]] = vector_divide_scalar_withconvert[L,R,V[R]](toIntf(lhs),unit(rhs))
   def infix_/[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Interface[Vector[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntf: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded3): Rep[V[R]] = vector_divide_withconvert[L,R,V[R]](lhs,toIntf(rhs))
   def infix_/[L:Manifest,R:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[R]])(implicit c: Rep[L] => Rep[R], vb: VectorBuilder[R,V[R]], toIntfL: Rep[V[L]] => Interface[Vector[L]], toIntfR: Rep[V[R]] => Interface[Vector[R]], m: Manifest[V[R]], ctx: SourceContext, o: Overloaded4): Rep[V[R]] = vector_divide_withconvert[L,R,V[R]](toIntfL(lhs),toIntfR(rhs))
-  def infix_/[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded16): Rep[V[L]] = vector_divide[L,V[L]](toIntf(lhs),toIntf(rhs))
+  //def infix_/[L:Arith:Manifest,V[X] <: Vector[X]](lhs: Rep[V[L]], rhs: Rep[V[L]])(implicit vb: VectorBuilder[L,V[L]], toIntf: Rep[V[L]] => Interface[Vector[L]], m: Manifest[V[L]], ctx: SourceContext, o: Overloaded16): Rep[V[L]] = vector_divide[L,V[L]](toIntf(lhs),toIntf(rhs))
   
   /**
    * Interface[Vector] 
@@ -393,9 +393,9 @@ trait VectorOps extends Variables {
     //def find(pred: Rep[A] => Rep[Boolean]) = intf.ops.vfindToIntf(intf.ops.find(pred))
     def find(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.find(pred))
     def count(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.count(pred)
-    // def flatMap[B:Manifest](f: Rep[A] => Rep[V[B]]) = intf.ops.toIntf(intf.ops.flatMap(f))
-    // def partition(pred: Rep[A] => Rep[Boolean]) = { val a = intf.ops.partition(pred); (intf.ops.toIntf(a._1), intf.ops.toIntf(a._2)) }
-    // def groupBy[K:Manifest](pred: Rep[A] => Rep[K]) = intf.ops.toIntf(intf.ops.groupBy(pred))
+    //def flatMap[B:Manifest](f: Rep[A] => Rep[V[B]])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.flatMap[B](f))
+    def partition(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = { val a = intf.ops.partition(pred); (intf.ops.toIntf(a._1), intf.ops.toIntf(a._2)) }
+    def groupBy[K:Manifest](pred: Rep[A] => Rep[K])(implicit ctx: SourceContext) = denseVecToInterface(intf.ops.groupBy(pred))(intf.ops.mV[A])
   }
   
   def EmptyVector[A](implicit mA: Manifest[A], ctx: SourceContext): Rep[DenseVector[A]] = (mA match {
@@ -480,9 +480,9 @@ trait VectorOps extends Variables {
   def vector_filter[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
   def vector_find[A:Manifest,VFINDR:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[Int,VFINDR], ctx: SourceContext): Rep[VFINDR]
   def vector_count[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[Int]
-  //def vector_flatmap[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Rep[A] => Rep[Vector[B]])(implicit b: VectorBuilder[B,VB]): Rep[VB]
-  //def vector_partition[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]): (Rep[VA], Rep[VA])
-  //def vector_groupby[A:Manifest,K:Manifest,VA:Manifest,VVA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[K])(implicit b: VectorBuilder[VA,VVA]): Rep[VVA]             
+  def vector_flatmap[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Rep[A] => Rep[VB])(implicit b: VectorBuilder[B,VB], ctx: SourceContext): Rep[VB]
+  def vector_partition[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): (Rep[VA], Rep[VA])
+  def vector_groupby[A:Manifest,K:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[K])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[DenseVector[VA]]             
 }
 
 trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesExp with BaseFatExp {
@@ -536,6 +536,21 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   case class VectorMedian[A:Manifest:Ordering](x: Interface[Vector[A]])
     extends DeliteOpSingleWithManifest[A,A](reifyEffectsHere(vector_median_impl[A](x))) {
       val o = implicitly[Ordering[A]]
+  }
+
+  case class VectorPartition[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit val b: VectorBuilder[A,VA])
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_partition_impl[A,VA](x, pred))) {
+
+    val mA = manifest[A]
+    val mVA = manifest[VA]
+  }
+
+  case class VectorGroupBy[A:Manifest,K:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[K])(implicit val b: VectorBuilder[A,VA])
+    extends DeliteOpSingleTask(reifyEffectsHere(vector_groupby_impl[A,K,VA](x,pred))) {
+
+    val mA = manifest[A]
+    val mVA = manifest[VA]
+    val mK = manifest[K]
   }
 
   // case class VectorRepmat[A:Manifest](x: Interface[Vector[A]], i: Exp[Int], j: Exp[Int])
@@ -1021,15 +1036,19 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     val a = implicitly[Arith[A]]
   }
   */
-  /*
-  case class VectorFlatMap[A:Manifest,B:Manifest,VB:Manifest](in: Interface[Vector[A]], map: Exp[A] => Exp[VB])(implicit b: VectorBuilder[B,VB])
-    extends DeliteOpMapReduce2[A,VB] {
+  
+  case class VectorFlatMap[A:Manifest,B:Manifest,VB:Manifest](intf: Interface[Vector[A]], map: Exp[A] => Exp[VB])(implicit val b: VectorBuilder[B,VB])
+    extends DeliteOpMapReduce[A,VB] {
 
-    val size = in.length
-    val zero = EmptyVector[B]
-    def reduce = (a,b) => a ++ b
-  }
-  */
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
+    val size = copyTransformedOrElse(_.size)(intf.length)
+    val zero = b.alloc(unit(0), intf.isRow)
+    def reduce = (l,r) => (b.toIntf(l) ++ b.toIntf(r)).ops.elem.asInstanceOf[Exp[VB]]
+
+    val mA = manifest[A]
+    val mB = manifest[B]
+    val mVB = manifest[VB]
+  }  
   
   /////////////////////
   // delite collection
@@ -1147,9 +1166,9 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   def vector_filter[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorFilter[A,VA](x, pred))
   def vector_find[A:Manifest,VFINDR:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[Int,VFINDR], ctx: SourceContext) = reflectPure(VectorFind[A,VFINDR](x, pred))
   def vector_count[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(VectorCount(x, pred))
-  //def vector_flatmap[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[Vector[B]])(implicit b: VectorBuilder[B,VB]) = reflectPure(VectorFlatMap(x, f))
-  //def vector_partition[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean]) = t2(reflectPure(VectorPartition(x, pred)))
-  //def vector_groupby[A:Manifest,K:Manifest,VA:Manifest,VVA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[K])(implicit b: VectorBuilder[VA,VVA]) = reflectPure(VectorGroupBy(x, pred))
+  def vector_flatmap[A:Manifest,B:Manifest,VB:Manifest](x: Interface[Vector[A]], f: Exp[A] => Exp[VB])(implicit b: VectorBuilder[B,VB], ctx: SourceContext) = reflectPure(VectorFlatMap[A,B,VB](x, f))
+  def vector_partition[A:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = t2(reflectPure(VectorPartition[A,VA](x, pred)))
+  def vector_groupby[A:Manifest,K:Manifest,VA:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[K])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorGroupBy[A,K,VA](x, pred))
   
 
   //////////////
@@ -1202,6 +1221,9 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     case e@VectorFilter(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorFilter(f(x),f(p))(e.mA, e.mVA, e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@VectorFind(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorFind(f(x),f(p))(e.mA, e.mVA, e.b))(mtype(manifest[A]),implicitly[SourceContext])
     case e@VectorCount(x,p) => reflectPure(new { override val original = Some(f,e) } with VectorCount(f(x),f(p))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@VectorPartition(x,pred) => reflectPure(new { override val original = Some(f,e) } with VectorPartition(f(x),f(pred))(e.mA,e.mVA,e.b))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@VectorGroupBy(x,pred) => reflectPure(new { override val original = Some(f,e) } with VectorGroupBy(f(x),f(pred))(e.mA,e.mVA,e.mK,e.b))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@VectorFlatMap(x,m) => reflectPure(new { override val original = Some(f,e) } with VectorFlatMap(f(x),f(m))(e.mA,e.mB,e.mVB,e.b))(mtype(manifest[A]),implicitly[SourceContext])            
     
     // reflected
     case Reflect(e@VectorEquals(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorEquals(f(x),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -1255,6 +1277,9 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     case Reflect(e@VectorFilter(x,p), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorFilter(f(x),f(p))(e.mA,e.mVA,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorFind(x,p), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorFind(f(x),f(p))(e.mA,e.mVA,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorCount(x,p), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorCount(f(x),f(p))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorPartition(x,pred), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorPartition(f(x),f(pred))(e.mA,e.mVA,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorGroupBy(x,pred), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorGroupBy(f(x),f(pred))(e.mA,e.mVA,e.mK,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@VectorFlatMap(x,m), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorFlatMap(f(x),f(m))(e.mA,e.mB,e.mVB,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@VectorMutableMap(x,g), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorMutableMap(f(x),f(g))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorMutableZipWith(x,y,func), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorMutableZipWith(f(x),f(y),f(func))(e.mA,e.mB), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@VectorPPrint(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorPPrint(f(x))(f(e.block)), mapOver(f,u), f(es)))(mtype(manifest[A]))

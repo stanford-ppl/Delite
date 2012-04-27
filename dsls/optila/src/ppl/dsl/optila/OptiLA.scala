@@ -99,7 +99,7 @@ trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
  */
 trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps
   with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
-  with VectorOps with DenseVectorOps with RangeVectorOps with VectorViewOps //with MatrixRowOps with MatrixColOps
+  with VectorOps with DenseVectorOps with SparseVectorOps with RangeVectorOps with VectorViewOps //with MatrixRowOps with MatrixColOps
   with MatrixOps with DenseMatrixOps
   with LAInputReaderOps with LAOutputWriterOps {
 
@@ -107,8 +107,8 @@ trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait OptiLACompiler extends OptiLA with OptiLAUtilities with DenseVectorCompilerOps with DenseMatrixCompilerOps with MathOps with RangeOps with IOOps with SeqOps with SetOps
-  with ListOps with HashMapOps with IterableOps with ArrayBufferOps with ExceptionOps {
+trait OptiLACompiler extends OptiLA with OptiLAUtilities with DenseVectorCompilerOps with SparseVectorCompilerOps with DenseMatrixCompilerOps 
+  with MathOps with RangeOps with IOOps with SeqOps with SetOps with ListOps with HashMapOps with IterableOps with ArrayBufferOps with ExceptionOps {
     
   this: OptiLAApplication with OptiLAExp =>
 }
@@ -119,12 +119,13 @@ trait OptiLACompiler extends OptiLA with OptiLAUtilities with DenseVectorCompile
  */
 trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
   with LanguageOpsExp with ArithOpsExpOpt 
-  with VectorOpsExpOpt with DenseVectorOpsExpOpt with RangeVectorOpsExp with VectorViewOpsExpOpt //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
+  with VectorOpsExpOpt with DenseVectorOpsExpOpt with SparseVectorOpsExp with RangeVectorOpsExp with VectorViewOpsExpOpt  //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with MatrixOpsExpOpt with DenseMatrixOpsExpOpt
   with LAInputReaderOpsExp with LAOutputWriterOpsExp
   with ExceptionOpsExp
   with LanguageImplOpsStandard
-  with VectorImplOpsStandard with DenseVectorImplOpsStandard with VectorViewImplOpsStandard with MatrixImplOpsStandard with DenseMatrixImplOpsStandard
+  with VectorImplOpsStandard with DenseVectorImplOpsStandard with SparseVectorImplOpsStandard with VectorViewImplOpsStandard
+  with MatrixImplOpsStandard with DenseMatrixImplOpsStandard
   with LAInputReaderImplOpsStandard with LAOutputWriterImplOpsStandard
   with DeliteAllOverridesExp {
 

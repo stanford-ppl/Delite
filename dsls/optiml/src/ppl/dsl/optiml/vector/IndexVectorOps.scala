@@ -54,9 +54,6 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
         
     def apply[A:Manifest](block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[V[A]] = indexvector_construct(wrap(x), block)    
     def *(y: Rep[Matrix[Int]])(implicit a: Arith[Int], o: Overloaded2, ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
-    def flatMap[B:Manifest](f: Rep[Int] => Rep[DenseVector[B]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
-    def partition(pred: Rep[Int] => Rep[Boolean])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
-    def groupBy[K:Manifest](pred: Rep[Int] => Rep[K])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")    
   }
     
   class IVInterface(override val ops: IndexVecOpsCls) extends VInterface[Int](ops) with Interface[IndexVector]  
