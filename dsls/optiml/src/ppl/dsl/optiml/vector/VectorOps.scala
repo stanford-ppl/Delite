@@ -76,7 +76,8 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   trait OptiMLVecOpsOverrides[A] extends VecOpsCls[A] {
     def apply(indices: Interface[IndexVector])(implicit ctx: SourceContext) = vector_apply_indices[A,VA](x, indices)    
     def apply(indices: Rep[Int]*)(implicit ctx: SourceContext) = vector_apply_indices[A,VA](x, IndexVector(indices: _*))
-    def update(i: Interface[IndexVector], y: Rep[A])(implicit o: Overloaded1, ctx: SourceContext) = vector_update_indices(x,i,y)    
+    def update(i: Interface[IndexVector], y: Rep[A])(implicit o: Overloaded1, ctx: SourceContext) = vector_update_indices(x,i,y)
+    //def update(i: Interface[IndexVector], y: Var[A])(implicit o: Overloaded2, ctx: SourceContext) = vector_update_indices(x,i,readVar(y))        
     //override def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = x.update(n, y) // ?    
   }
   
@@ -122,7 +123,7 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
     extends DeliteOpFilter[A,Int,IndexVectorDense] {
       
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
-    def alloc = IndexVector(unit(0))
+    def alloc = IndexVector(unit(0),unit(true))
     def func = e => v // should we make available and use a helper function like index(e)?
     val size = intf.length
 

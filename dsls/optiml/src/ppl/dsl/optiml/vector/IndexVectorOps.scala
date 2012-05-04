@@ -11,10 +11,10 @@ import java.io.PrintWriter
 trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
   
   object IndexVector {
-    def apply(len: Rep[Int], isRow: Rep[Boolean] = unit(true))(implicit ctx: SourceContext) = indexvector_obj_new(len)
+    def apply(len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = indexvector_obj_new(len, isRow)
     def apply(xs: Interface[Vector[Int]])(implicit o: Overloaded1, ctx: SourceContext) = indexvector_obj_fromvec(xs)
     def apply(xs: Rep[Int]*)(implicit o: Overloaded2, ctx: SourceContext) = {
-      val out = indexvector_obj_new(unit(0))
+      val out = indexvector_obj_new(unit(0), unit(true))
       // interpreted (not lifted)
       xs.foreach { out += _ }
       out.unsafeImmutable // return immutable object
@@ -23,7 +23,7 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
 
   trait IndexVecOpsCls extends VecOpsCls[Int] with InterfaceOps[IndexVector] {
     //implicit def toOps(x: Rep[VA]): IndexVecOpsCls
-    //implicit def toIntf(x: Rep[VA]): Interface[IndexVector]    
+    //implicit def toIntf(x: Rep[VA]): Interface[IndexVector]        
     type V[X] = DenseVector[X] // conversion operations on IndexVectors will return a DenseVector
     type M[X] = DenseMatrix[X]
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
@@ -36,21 +36,21 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
     def mM[B:Manifest] = manifest[DenseMatrix[B]]
     def mA = manifest[Int]
     
-    // VectorOps generic - math on an IndexVector turns it into a DenseVector (is this the right thing to do?)
-    type VPLUSR = DenseVector[Int]
+    // VectorOps generic - math on an IndexVector turns it into a IndexVectorDense
+    type VPLUSR = IndexVectorDense
     val mVPLUSR = manifest[VPLUSR]
-    def vplusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[Int]
-    def vplusToIntf(x: Rep[VPLUSR]) = denseVecToInterface(x)
+    def vplusBuilder(implicit ctx: SourceContext) = indexVecDenseBuilder
+    def vplusToIntf(x: Rep[VPLUSR]) = indexVecDenseToInterface(x)
     
-    type VMINUSR = DenseVector[Int]
+    type VMINUSR = IndexVectorDense
     val mVMINUSR = manifest[VMINUSR]
-    def vminusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[Int]
-    def vminusToIntf(x: Rep[VMINUSR]) = denseVecToInterface(x)    
+    def vminusBuilder(implicit ctx: SourceContext) = indexVecDenseBuilder
+    def vminusToIntf(x: Rep[VMINUSR]) = indexVecDenseToInterface(x)
     
-    type VTIMESR = DenseVector[Int]
+    type VTIMESR = IndexVectorDense
     val mVTIMESR = manifest[VTIMESR]
-    def vtimesBuilder(implicit ctx: SourceContext) = denseVectorBuilder[Int]
-    def vtimesToIntf(x: Rep[VTIMESR]) = denseVecToInterface(x)            
+    def vtimesBuilder(implicit ctx: SourceContext) = indexVecDenseBuilder
+    def vtimesToIntf(x: Rep[VTIMESR]) = indexVecDenseToInterface(x)
         
     def apply[A:Manifest](block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[V[A]] = indexvector_construct(wrap(x), block)    
     def *(y: Rep[Matrix[Int]])(implicit a: Arith[Int], o: Overloaded2, ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
@@ -61,14 +61,11 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
   
   class InterfaceIndexVecOpsCls(override val intf: IVInterface) extends InterfaceVecOpsCls[Int](intf) {
     def apply[A:Manifest](block: Rep[Int] => Rep[A])(implicit ctx: SourceContext) = intf.ops.apply(block)    
-    
-    // this is unfortunately required to get the static return type right... TODO: any solution?
-    override def slice(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.slice(start,end))
   }
   
   // impl defs
   def indexvector_range(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext): Rep[IndexVectorRange]
-  def indexvector_obj_new(len: Rep[Int])(implicit ctx: SourceContext): Rep[IndexVectorDense]
+  def indexvector_obj_new(len: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[IndexVectorDense]
   def indexvector_obj_fromvec(xs: Interface[Vector[Int]])(implicit ctx: SourceContext): Rep[IndexVectorDense]
 
   // class defs
@@ -81,7 +78,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   // implemented via method on real data structure
 
   case class IndexVectorRangeNew(start: Exp[Int], end: Exp[Int]) extends Def[IndexVectorRange]
-  case class IndexVectorDenseNew(len: Exp[Int]) extends Def[IndexVectorDense]
+  case class IndexVectorDenseNew(len: Exp[Int], isRow: Exp[Boolean]) extends Def[IndexVectorDense]
 
   ////////////////////////////////
   // implemented via delite ops
@@ -101,7 +98,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
   
   // impl defs
   def indexvector_range(start: Exp[Int], end: Exp[Int])(implicit ctx: SourceContext) = reflectPure(IndexVectorRangeNew(start, end))
-  def indexvector_obj_new(len: Exp[Int])(implicit ctx: SourceContext) = reflectMutable(IndexVectorDenseNew(len))
+  def indexvector_obj_new(len: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectMutable(IndexVectorDenseNew(len, isRow))
   def indexvector_obj_fromvec(xs: Interface[Vector[Int]])(implicit ctx: SourceContext) = reflectPure(IndexVectorObjectFromVec(xs))
 
   // class defs
@@ -130,8 +127,8 @@ trait ScalaGenIndexVectorOps extends ScalaGenBase {
     // should not be required -- pattern matches in IndexVectorRangeOps.scala should always take precedence
     // case v@IndexVectorRangeNew(start, end) =>
     //   emitValDef(sym, "new generated.scala.IndexVectorRange(" + quote(start) +  "," + quote(end) + ")")
-    case v@IndexVectorDenseNew(len) =>
-      emitValDef(sym, "new generated.scala.IndexVectorDense(" + quote(len) + ")")
+    case v@IndexVectorDenseNew(len, isRow) =>
+      emitValDef(sym, "new generated.scala.IndexVectorDense(" + quote(len) + ", " + quote(isRow) + ")")
 
     case _ => super.emitNode(sym, rhs)
   }

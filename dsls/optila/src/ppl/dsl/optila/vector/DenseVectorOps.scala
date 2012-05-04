@@ -18,6 +18,7 @@ trait DenseVectorOps extends Variables {
   implicit def repToDenseVecOps[A:Manifest](x: Rep[DenseVector[A]]) = new DenseVecOpsCls(x)
   implicit def varToDenseVecOps[A:Manifest](x: Var[DenseVector[A]]) = new DenseVecOpsCls(readVar(x))
   implicit def denseVecToInterface[A:Manifest](lhs: Rep[DenseVector[A]]) = new VInterface[A](new DenseVecOpsCls[A](lhs))
+  implicit def denseVecVarToInterface[A:Manifest](lhs: Var[DenseVector[A]]) = new VInterface[A](new DenseVecOpsCls[A](readVar(lhs)))
 
   implicit def denseVectorBuilder[A:Manifest](implicit ctx: SourceContext) = new VectorBuilder[A,DenseVector[A]] {
     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = {
@@ -35,6 +36,7 @@ trait DenseVectorOps extends Variables {
       xs.foreach { out += _ }
       out.unsafeImmutable // return immutable object
     }
+    def fromSeq[A:Manifest](xs: Rep[Seq[A]])(implicit o: Overloaded3, ctx: SourceContext) = densevector_obj_fromseq(xs)
     
     def ones(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_ones(len)
     def onesf(len: Rep[Int])(implicit ctx: SourceContext) = densevector_obj_onesf(len)
@@ -51,7 +53,12 @@ trait DenseVectorOps extends Variables {
     type V[X] = DenseVector[X]        
     type M[X] = DenseMatrix[X]        
     type Self = DenseVector[A]
+    type VA = Self
     
+    def vaToOps(x: Rep[VA]) = toOps[A](x)
+    def vaToIntf(x: Rep[VA]) = toIntf[A](x)
+    def vaBuilder(implicit ctx: SourceContext) = builder[A]      
+    def mVA = manifest[VA]
     def wrap(x: Rep[DenseVector[A]]) = denseVecToInterface(x)
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)

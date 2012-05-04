@@ -16,19 +16,21 @@ trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
   implicit def varToIndexVecDenseOps(x: Var[IndexVectorDense]) = new IndexVecDenseOpsCls(readVar(x))
   implicit def indexVecDenseToInterface(lhs: Rep[IndexVectorDense]) = new IVInterface(new IndexVecDenseOpsCls(lhs))
   
-  // implicit def indexVecDenseBuilder = new VectorBuilder[Int,IndexVectorDense] {
-  //   def alloc(length: Rep[Int], isRow: Rep[Boolean]) = IndexVector(length)
-  //   def toIntf(x: Rep[IndexVectorDense]): Interface[IndexVector] = indexVecDenseToInterface(x)
-  // }  
+  implicit def indexVecDenseBuilder(implicit ctx: SourceContext) = new VectorBuilder[Int,IndexVectorDense] {
+    def alloc(length: Rep[Int], isRow: Rep[Boolean]) = IndexVector(length, isRow)
+    def toIntf(x: Rep[IndexVectorDense]): Interface[IndexVector] = indexVecDenseToInterface(x)
+  }  
   
   // copying the interface from DenseVectorOps instead of inheriting so that we preserve the IndexVector type
   // in generic operations (i.e. the type alias declarations).
-  //
-  // however, the actual definitions in IndexVecOpsCls just use DenseVector's definitions anyways, so is there
-  // any point to having Self = IndexVectorDense here?
   class IndexVecDenseOpsCls(val elem: Rep[IndexVectorDense]) extends IndexVecOpsCls {    
     type Self = IndexVectorDense    
+    type VA = Self    
     def wrap(x: Rep[IndexVectorDense]) = indexVecDenseToInterface(x)
+    def vaToOps(x: Rep[VA]) = repToIndexVecDenseOps(x)
+    def vaToIntf(x: Rep[VA]) = indexVecDenseToInterface(x)
+    def vaBuilder(implicit ctx: SourceContext) = indexVecDenseBuilder
+    def mVA = manifest[VA]    
           
     // VectorOps
     def length(implicit ctx: SourceContext) = indexvectordense_length(elem)
@@ -39,9 +41,9 @@ trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
     def t(implicit ctx: SourceContext) = indexvectordense_new_unsafe(densevector_trans(elem))
     def mt()(implicit ctx: SourceContext) = {densevector_mutable_trans(elem); elem}
     def update(n: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = densevector_update(elem,n,y)
-    def copyFrom(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = densevector_copyfrom(elem,pos,y)
+    def copyFrom(pos: Rep[Int], y: Rep[IndexVectorDense])(implicit ctx: SourceContext) = densevector_copyfrom(elem,pos,y)
     def insert(pos: Rep[Int], y: Rep[Int])(implicit ctx: SourceContext) = densevector_insert(elem,pos,y)
-    def insertAll(pos: Rep[Int], y: Rep[DenseVector[Int]])(implicit ctx: SourceContext) = densevector_insertall(elem,pos,y)
+    def insertAll(pos: Rep[Int], y: Rep[IndexVectorDense])(implicit ctx: SourceContext) = densevector_insertall(elem,pos,y)
     def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densevector_removeall(elem,pos,len)
     def trim()(implicit ctx: SourceContext) = densevector_trim(elem)
     def clear()(implicit ctx: SourceContext) = densevector_clear(elem)
@@ -57,17 +59,17 @@ trait IndexVectorDenseOps extends Base with OverloadHack { this: OptiML =>
 trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOpsExp with VariablesExp with BaseFatExp { this: OptiMLExp => 
   case class IndexVectorDenseLength(x: Exp[IndexVectorDense]) extends Def[Int]
   case class IndexVectorDenseApply(x: Exp[IndexVectorDense], n: Exp[Int]) extends Def[Int]
-  //case class IndexVectorDenseNewUnsafe(x: Exp[DenseVector]) extends Def[IndexVectorDense]
+  //case class IndexVectorDenseNewUnsafe(x: Exp[DenseVector[Int]]) extends Def[IndexVectorDense]
     
   def indexvectordense_length(x: Exp[IndexVectorDense])(implicit ctx: SourceContext) = reflectPure(IndexVectorDenseLength(x))
   def indexvectordense_apply(x: Exp[IndexVectorDense], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(IndexVectorDenseApply(x,n))  
   def indexvectordense_new_unsafe(x: Exp[DenseVector[Int]])(implicit ctx: SourceContext) = {
-    val a = indexvector_obj_new(unit(0))
+    val a = indexvector_obj_new(unit(0), unit(true))
     densevector_set_raw_data(a,densevector_raw_data(x))
     densevector_set_length(a,densevector_length(x))
     densevector_set_isrow(a,densevector_isrow(x))
     a.unsafeImmutable    
-    //reflectPure(IndexVectorNewUnsafe(x))
+    //reflectPure(IndexVectorDenseNewUnsafe(x))
   }
     
   /////////////////////
@@ -95,8 +97,8 @@ trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOp
 trait IndexVectorDenseOpsExpOpt extends IndexVectorDenseOpsExp { this: OptiMLExp => 
   
   override def indexvectordense_length(x: Rep[IndexVectorDense])(implicit ctx: SourceContext) = x match {
-    case Def(IndexVectorDenseNew(l)) => l
-    case Def(v@Reflect(IndexVectorDenseNew(l), u, es)) if context.contains(v) => l
+    case Def(IndexVectorDenseNew(l,r)) => l
+    case Def(v@Reflect(IndexVectorDenseNew(l,r), u, es)) if context.contains(v) => l
     case Def(IndexVectorObjectFromVec(xs)) => xs.length
     case Def(v@Reflect(IndexVectorObjectFromVec(xs), u, es)) if context.contains(v) => xs.length
     case _ => super.indexvectordense_length(x)

@@ -47,13 +47,15 @@ trait LanguageOps extends Base { this: OptiLA =>
 
   def random(max: Rep[Int])(implicit ctx: SourceContext): Rep[Int] = optila_rand_int_max(max)
 
+  def random[A:Manifest](elems: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A] = optila_rand_elem(elems)
+  
   def randomGaussian(implicit ctx: SourceContext) = optila_rand_gaussian
 
   def reseed(implicit ctx: SourceContext) {
     // reseeds for all threads
     optila_reseed()
   }
-  
+     
   def identityHashCode(x:Rep[Any])(implicit ctx: SourceContext): Rep[Int]
 
   def optila_internal_rand_double(): Rep[Double]
@@ -69,7 +71,8 @@ trait LanguageOps extends Base { this: OptiLA =>
   def optila_rand_long()(implicit ctx: SourceContext): Rep[Long]
   def optila_rand_boolean()(implicit ctx: SourceContext): Rep[Boolean]
   def optila_rand_gaussian()(implicit ctx: SourceContext): Rep[Double]
-
+  def optila_rand_elem[A:Manifest](elems: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[A]
+  
   def optila_reseed()(implicit ctx: SourceContext): Rep[Unit]
 
   /**
@@ -157,6 +160,8 @@ trait LanguageOps extends Base { this: OptiLA =>
   /**
    * aliases for other scala.math._ operations supported by optila
    */
+  def INF = Double.PositiveInfinity  
+  def nINF = Double.NegativeInfinity   
   def sqrt(e: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def ceil(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double] 
   def floor(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
@@ -276,8 +281,8 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class RandIntMax(max: Exp[Int]) extends Def[Int]
   case class RandLong() extends Def[Long]
   case class RandBoolean() extends Def[Boolean]
-
   case class RandGaussian() extends Def[Double]
+  case class RandElem[A:Manifest](v: Interface[Vector[A]]) extends DeliteOpSingleWithManifest[A,A](reifyEffects(optila_randelem_impl(v))) 
 
   case class RandReseed() extends Def[Unit]
   
@@ -296,6 +301,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   def optila_rand_long()(implicit ctx: SourceContext) = reflectEffect(RandLong())
   def optila_rand_boolean()(implicit ctx: SourceContext) = reflectEffect(RandBoolean())
   def optila_rand_gaussian()(implicit ctx: SourceContext) = reflectEffect(RandGaussian())
+  def optila_rand_elem[A:Manifest](elems: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectEffect(RandElem(elems))
 
   def optila_reseed()(implicit ctx: SourceContext) = reflectEffect(RandReseed())
   

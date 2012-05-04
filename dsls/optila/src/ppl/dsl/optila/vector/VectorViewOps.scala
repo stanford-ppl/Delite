@@ -21,17 +21,17 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def apply[A:Manifest](x: Rep[Array[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]) = vectorview_obj_new(x,start,stride,length,isRow)
   }
   
-  class VectorViewOpsCls[A:Manifest](val elem: Rep[VectorView[A]]) extends VecOpsCls[A] {
-    // type VA = VectorView
-    // def toOps(x: Rep[VectorView[A]]) = repToVectorViewVecOps(x)
-    // def toIntf(x: Rep[VectorView[A]]) = vectorViewToInterface(x)
-    // def builder: VectorBuilder[Int,VectorView] = vectorViewVectorBuilder
-    def mA = manifest[A]
-    //def mVA = manifest[VectorView]
-    
+  class VectorViewOpsCls[A:Manifest](val elem: Rep[VectorView[A]]) extends VecOpsCls[A] {    
     type V[X] = DenseVector[X]
     type M[X] = DenseMatrix[X]
     type Self = VectorView[A]
+    type VA = DenseVector[A]
+    
+    def mA = manifest[A]
+    def mVA = manifest[VA]    
+    def vaToOps(x: Rep[DenseVector[A]]) = toOps[A](x)
+    def vaToIntf(x: Rep[DenseVector[A]]) = toIntf[A](x)
+    def vaBuilder(implicit ctx: SourceContext) = builder[A]
     def wrap(x: Rep[VectorView[A]]) = vectorViewToInterface(x)
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)

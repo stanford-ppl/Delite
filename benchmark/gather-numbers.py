@@ -161,14 +161,13 @@ def launchApps(options):
         if options['fusion'] == False:
             opts = opts + " --nf"
         if options['stencil'] == True:
-            opts = opts + " -Dliszt.stencil.enabled=true"
+            java_opts = java_opts + " -Dliszt.stencil.enabled=true"
         if options['print_globals'] == True:
-            opts = opts + " -Ddelite.print_globals.enabled=true"
-        opts = opts
-        #os.putenv("JAVA_OPTS", opts)
+            java_opts = java_opts + " -Ddelite.print_globals.enabled=true"
+        os.putenv("JAVA_OPTS", java_opts)
         
         stage_cmd = props['delite.home'] + "/bin/delitec " + opts + " " + classes[app]
-        #print stage_cmd
+        print stage_cmd
         ecode = os.system(stage_cmd)
         if ecode != 0 and options['keep-going'] == None:
             print "Detected abnormal exit code, exiting"
@@ -190,7 +189,7 @@ def launchApps(options):
                 opts = opts + " -r " + options['runs']
                 
                 run_cmd = props['delite.home'] + "/bin/delite " + opts + " " + classes[app] + " " + params[app]
-                #print run_cmd
+                print run_cmd
                 ecode = os.system(run_cmd)
                 if ecode != 0 and options['keep-going'] == None:
                     print "Detected abnormal exit code, exiting"
@@ -265,10 +264,10 @@ def loadParams(options):
     f.close()
  
 def expand(param):
-    if (param[0] == '$'):
-        return props['apps.data'] + "/" +  param[1:len(param)]
-    else:
-        return param   
+    if len(param) > 0:
+      if (param[0] == '$'):
+          return props['apps.data'] + "/" +  param[1:len(param)]
+    return param   
     
 
 if __name__ == "__main__":

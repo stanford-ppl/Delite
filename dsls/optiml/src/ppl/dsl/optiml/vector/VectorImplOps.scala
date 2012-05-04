@@ -26,7 +26,7 @@ trait VectorImplOpsStandard extends VectorImplOps {
   }
   
   def vector_find_override_impl[A:Manifest](v: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean]) = {
-    val indices = IndexVector(0)
+    val indices = IndexVector(0, true)
     for (i <- 0 until v.length) {
       if (pred(v(i))) indices += i
     }

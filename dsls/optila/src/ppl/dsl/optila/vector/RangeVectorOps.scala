@@ -31,7 +31,12 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
     
     type V[X] = DenseVector[X]
     type M[X] = DenseMatrix[X]
+    type VA = DenseVector[Int]
     type Self = RangeVector 
+    def vaToOps(x: Rep[VA]) = toOps[Int](x)
+    def vaToIntf(x: Rep[VA]) = toIntf[Int](x)
+    def vaBuilder(implicit ctx: SourceContext) = builder[Int]      
+    def mVA = manifest[VA]
     def wrap(x: Rep[RangeVector]) = rangeToInterface(x)
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)

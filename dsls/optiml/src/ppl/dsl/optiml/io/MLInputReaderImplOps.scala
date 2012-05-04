@@ -182,7 +182,7 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     temp = file.readLine().trim.split(" ")
     if (temp(0) != "Match_list:") error("Illegal data format")
     val matchListSize = Integer.parseInt(temp(1))
-    val matchList = IndexVector(0)
+    val matchList = IndexVector(0,true)
     val matchListString = file.readLine().trim.split(" ")
     i = 0
     while (i < matchListSize) {

@@ -36,7 +36,12 @@ trait SparseVectorOps extends Variables {
     type V[X] = SparseVector[X]        
     type M[X] = SparseMatrix[X]        
     type Self = SparseVector[A]
+    type VA = Self
     
+    def vaToOps(x: Rep[VA]) = toOps[A](x)
+    def vaToIntf(x: Rep[VA]) = toIntf[A](x)
+    def vaBuilder(implicit ctx: SourceContext) = builder[A]      
+    def mVA = manifest[VA]
     def wrap(x: Rep[SparseVector[A]]) = sparseVecToInterface(x)
     def toOps[B:Manifest](x: Rep[SparseVector[B]]) = repToSparseVecOps(x)
     def toIntf[B:Manifest](x: Rep[SparseVector[B]]): Interface[Vector[B]] = sparseVecToInterface(x)

@@ -60,32 +60,37 @@ trait VectorOps extends Variables {
   //   }
   
   trait VecOpsCls[A] extends DCInterfaceOps[Vector[A],A] {
-    // type VA // self type    
-    implicit def mA: Manifest[A] 
-    // implicit def mVA: Manifest[VA]        
-    // implicit def toOps(x: Rep[VA]): VecOpsCls[A]
-    // implicit def toIntf(x: Rep[VA]): Interface[Vector[A]]        
-    // implicit def builder: VectorBuilder[A,VA]        
-    
-    type V[X] // generic return type, unless overloaded for the op as below (TODO: use type classes to clean this up!)
-    type M[X] 
-    
-    implicit def mV[B:Manifest]: Manifest[V[B]]         
-    implicit def toOps[B:Manifest](x: Rep[V[B]]): VecOpsCls[B]
-    implicit def toIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]]        
-    implicit def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]]    
-    implicit def mM[B:Manifest]: Manifest[M[B]]         
-    implicit def matToIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]]        
-    implicit def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]]        
-    
-    type VA = V[A] // temporary for easy compatibility with old stuff
-    type MA = M[A]
-    
+    // interface
     type Self <: Vector[A]
     implicit def wrap(x: Rep[Self]): Interface[Vector[A]]
     val elem: Rep[Self] 
     val x = elem
     
+    // generic return types, unless overlaoded for the op below
+    // VA might be different than V[A], e.g. in IndexVectorDenseOps
+    type V[X] 
+    type M[X] 
+    type VA       
+    type MA = M[A]
+        
+    // all of these definitions are used to flexibly build generic return types.
+    // there has got to be a way to wrap this up better and be more concise here.    
+    implicit def mA: Manifest[A]     
+    
+    implicit def mV[B:Manifest]: Manifest[V[B]]         
+    implicit def toOps[B:Manifest](x: Rep[V[B]]): VecOpsCls[B]
+    implicit def toIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]]        
+    implicit def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]]    
+    
+    implicit def mVA: Manifest[VA]    
+    implicit def vaToOps(x: Rep[VA]): VecOpsCls[A]
+    implicit def vaToIntf(x: Rep[VA]): Interface[Vector[A]]
+    implicit def vaBuilder(implicit ctx: SourceContext): VectorBuilder[A,VA]
+    
+    implicit def mM[B:Manifest]: Manifest[M[B]]         
+    implicit def matToIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]]        
+    implicit def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]]                
+        
     // DeliteCollection
     def dcSize(implicit ctx: SourceContext) = length
     def dcApply(n: Rep[Int])(implicit ctx: SourceContext): Rep[A] = apply(n)
@@ -328,16 +333,16 @@ trait VectorOps extends Variables {
     def first(implicit ctx: SourceContext) = intf.ops.first
     def last(implicit ctx: SourceContext) = intf.ops.last
     def indices(implicit ctx: SourceContext) = intf.ops.indices
-    def drop(count: Rep[Int])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.drop(count))
-    def take(count: Rep[Int])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.take(count))
-    def slice(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.slice(start,end))
+    def drop(count: Rep[Int])(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.drop(count))
+    def take(count: Rep[Int])(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.take(count))
+    def slice(start: Rep[Int], end: Rep[Int])(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.slice(start,end))
     def contains(y: Rep[A])(implicit ctx: SourceContext): Rep[Boolean] = intf.ops.contains(y)
-    def distinct(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.distinct)    
+    def distinct(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.distinct)    
     
-    def t(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.t)
-    def mt()(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.mt)
-    def Clone()(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.Clone)
-    def mutable()(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.mutable)
+    def t(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.t)
+    def mt()(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.mt)
+    def Clone()(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.Clone)
+    def mutable()(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.mutable)
     def pprint()(implicit ctx: SourceContext) = intf.ops.pprint
     //def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = intf.ops.matToIntf(intf.ops.replicate(i,j))
     def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = intf.ops.replicate(i,j)
@@ -345,8 +350,8 @@ trait VectorOps extends Variables {
     
     def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.update(n,y)
     def +=(y: Rep[A])(implicit ctx: SourceContext) = intf.ops.+=(y)    
-    def :+(y: Rep[A])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.:+(y))
-    def ++(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.++(y))
+    def :+(y: Rep[A])(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.:+(y))
+    def ++(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.++(y))
     //def ++=(y: Rep[intf.ops.V[A]]) = intf.ops.++=(y)
     //def copyFrom(pos: Rep[Int], y: Rep[intf.ops.V[A]]) = intf.ops.copyFrom(pos,y)
     def insert(pos: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.insert(pos,y)
@@ -367,14 +372,14 @@ trait VectorOps extends Variables {
     def **(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.**(y)
     def *:*(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.*:*(y)
     def dot(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.dot(y)
-    def /(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops./(y))
-    def /(y: Rep[A])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) = intf.ops.toIntf(intf.ops./(y))
+    def /(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vaToIntf(intf.ops./(y))
+    def /(y: Rep[A])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) = intf.ops.vaToIntf(intf.ops./(y))
     
     def sum(implicit a: Arith[A], ctx: SourceContext) = intf.ops.sum
-    def abs(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops.abs)
-    def exp(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops.exp)        
+    def abs(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.abs)
+    def exp(implicit a: Arith[A], ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.exp)        
     
-    def sort(implicit o: Ordering[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops.sort)
+    def sort(implicit o: Ordering[A], ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.sort)
     def min(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = intf.ops.min
     def minIndex(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = intf.ops.minIndex
     def max(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = intf.ops.max
@@ -389,13 +394,13 @@ trait VectorOps extends Variables {
     def zip[B:Manifest,R:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[R])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.zip(y)(f))
     def mzip[B:Manifest](y: Interface[Vector[B]])(f: (Rep[A],Rep[B]) => Rep[A])(implicit ctx: SourceContext) = intf.ops.wrap(intf.ops.mzip(y)(f))
     def reduce(f: (Rep[A],Rep[A]) => Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.reduce(f)
-    def filter(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.filter(pred))
+    def filter(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.vaToIntf(intf.ops.filter(pred))
     //def find(pred: Rep[A] => Rep[Boolean]) = intf.ops.vfindToIntf(intf.ops.find(pred))
     def find(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.find(pred))
     def count(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = intf.ops.count(pred)
     //def flatMap[B:Manifest](f: Rep[A] => Rep[V[B]])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.flatMap[B](f))
-    def partition(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = { val a = intf.ops.partition(pred); (intf.ops.toIntf(a._1), intf.ops.toIntf(a._2)) }
-    def groupBy[K:Manifest](pred: Rep[A] => Rep[K])(implicit ctx: SourceContext) = denseVecToInterface(intf.ops.groupBy(pred))(intf.ops.mV[A])
+    def partition(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = { val a = intf.ops.partition(pred); (intf.ops.vaToIntf(a._1), intf.ops.vaToIntf(a._2)) }
+    def groupBy[K:Manifest](pred: Rep[A] => Rep[K])(implicit ctx: SourceContext) = denseVecToInterface(intf.ops.groupBy(pred))(intf.ops.mVA)
   }
   
   def EmptyVector[A](implicit mA: Manifest[A], ctx: SourceContext): Rep[DenseVector[A]] = (mA match {
@@ -1074,8 +1079,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     else if (isRange(x)) (asRange(x).apply(n)).asInstanceOf[Exp[A]]
     else if (isView(x)) asView(x).apply(n)
     else {
-      Predef.println("couldn't find dc_apply for " + x.Type.toString)
-      Predef.println("isView: " + isView(x))
+      printlog("couldn't find dc_apply for " + x.toString + ", type: " + x.Type.toString)
       super.dc_apply(x,n)    
     }
   }

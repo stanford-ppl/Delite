@@ -10,6 +10,7 @@ trait LanguageImplOps { this: OptiLA =>
 
   def optila_randsample_matrix_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,MA]): Rep[MA]
   def optila_randsample_vector_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def optila_randelem_impl[A:Manifest](v: Interface[Vector[A]]): Rep[A]
 }
 
 trait LanguageImplOpsStandard extends LanguageImplOps {
@@ -117,4 +118,9 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     }
   }
   */
+  
+  def optila_randelem_impl[A:Manifest](v: Interface[Vector[A]]): Rep[A] = {
+    val n = random(v.length-1)
+    v(n)
+  }
 }
