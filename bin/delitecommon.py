@@ -8,7 +8,7 @@ DELITE_HOME = os.getenv("DELITE_HOME")
 JAVA_HOME = os.getenv("JAVA_HOME")
 SCALA_VIRT_HOME = os.getenv("SCALA_VIRT_HOME")
 
-scala_virt_version = "scala-2.10.0-M1-virtualized"
+scala_virt_version = "scala-2.10"
 props = {}
 
 def err(s):
