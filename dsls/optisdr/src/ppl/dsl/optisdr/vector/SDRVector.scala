@@ -28,6 +28,9 @@ trait SDRVectorOps extends Variables {
     def <<<(y: Rep[Int])(implicit ctx: SourceContext) = sdrvector_lshift(x, y)
     def >>(y: Rep[Int])(implicit ctx: SourceContext) = sdrvector_rshift(x, y)
     def >>>(y: Rep[Int])(implicit ctx: SourceContext) = sdrvector_rashift(x, y)
+    
+    def !<<(y: Rep[Int])(implicit ctx: SourceContext) = sdrvector_lvshift(x, y)
+    def !>>(y: Rep[Int])(implicit ctx: SourceContext) = sdrvector_rvshift(x, y)
   }
   
   // infix convolve
@@ -60,6 +63,9 @@ trait SDRVectorOps extends Variables {
   def sdrvector_lshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
   def sdrvector_rshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
   def sdrvector_rashift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
+  
+  def sdrvector_lvshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
+  def sdrvector_rvshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
 }
 
 trait SDRVectorOpsExp extends SDRVectorOps {
@@ -102,7 +108,7 @@ trait SDRVectorOpsExp extends SDRVectorOps {
   }
   
   case class SDRVectorBinaryAnd[A:Manifest:BitArith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]])
-    extends DeliteOpMap[A,A,DenseVector[A]] {
+    extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
 
     def alloc = DenseVector[A](in.length, !in.isRow)
@@ -112,7 +118,7 @@ trait SDRVectorOpsExp extends SDRVectorOps {
   }
   
   case class SDRVectorBinaryOr[A:Manifest:BitArith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]])
-      extends DeliteOpMap[A,A,DenseVector[A]] {
+      extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
 
     def alloc = DenseVector[A](in.length, !in.isRow)
@@ -122,7 +128,7 @@ trait SDRVectorOpsExp extends SDRVectorOps {
   }
   
   case class SDRVectorBinaryXor[A:Manifest:BitArith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]])
-      extends DeliteOpMap[A,A,DenseVector[A]] {
+      extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
 
     def alloc = DenseVector[A](in.length, !in.isRow)
@@ -131,9 +137,39 @@ trait SDRVectorOpsExp extends SDRVectorOps {
     val mA = manifest[A]
   }
   
-  case class SDRVectorLShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
-  case class SDRVectorRShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
-  case class SDRVectorRAShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
+  case class SDRVectorLShift[A:Manifest:BitArith](in: Exp[DenseVector[A]], y: Exp[Int])
+      extends DeliteOpMap[A,A,DenseVector[A]] {
+    val size = copyTransformedOrElse(_.size)(in.length)
+
+    def alloc = DenseVector[A](in.length, !in.isRow)
+    def func = e => implicitly[BitArith[A]].<<(e, y)
+
+    val mA = manifest[A]
+  }
+  
+  case class SDRVectorRShift[A:Manifest:BitArith](in: Exp[DenseVector[A]], y: Exp[Int])
+      extends DeliteOpMap[A,A,DenseVector[A]] {
+    val size = copyTransformedOrElse(_.size)(in.length)
+
+    def alloc = DenseVector[A](in.length, !in.isRow)
+    def func = e => implicitly[BitArith[A]].>>(e, y)
+
+    val mA = manifest[A]
+  }
+  
+  case class SDRVectorRAShift[A:Manifest:BitArith](in: Exp[DenseVector[A]], y: Exp[Int])
+      extends DeliteOpMap[A,A,DenseVector[A]] {
+    val size = copyTransformedOrElse(_.size)(in.length)
+
+    def alloc = DenseVector[A](in.length, !in.isRow)
+    def func = e => implicitly[BitArith[A]].>>>(e, y)
+
+    val mA = manifest[A]
+  }
+  
+  // Only these shifts cross element boundaries. Based on element size, access previous and next... not sure how to do this..
+  case class SDRVectorLVShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
+  case class SDRVectorLRShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
   
   def sdrvector_conj[A:Manifest:SDRArith](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorConj(x))
   def sdrvector_convolve[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorConvolve(x,y))
