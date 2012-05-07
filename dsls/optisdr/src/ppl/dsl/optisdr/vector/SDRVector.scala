@@ -187,8 +187,33 @@ trait SDRVectorOpsExp extends SDRVectorOps {
   def sdrvector_lshift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRVectorLShift(x,y))
   def sdrvector_rshift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRVectorRShift(x,y))
   def sdrvector_rashift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRVectorRAShift(x,y))
+  
+  def sdrvector_lvshift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRVectorLVShift(x,y))
+  def sdrvector_rvshift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRVectorRVShift(x,y))
 }
 
 trait SDRVectorOpsExpOpt extends SDRVectorOpsExp {
   this: OptiSDRExp =>
+}
+
+trait BaseGenSDRVectorOps extends GenericFatCodegen {
+  val IR: SDRVectorOpsExp
+  import IR._
+  
+  override def unapplySimpleIndex(e: Def[Any]) = e match {
+    // What is this for???
+  }  
+}
+
+trait ScalaGenSDRVectorOps extends BaseGenSDRVectorOps with ScalaGenFat {
+  val IR: SDRVectorOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    // these are the ops that call through to the underlying real data structure
+    
+    // case v@DenseVectorEmpty() => emitValDef(sym, "new " + remap("generated.scala.DenseVector[" + remap(v.mA) + "]")+"(0,true)")
+    
+    case _ => super.emitNode(sym, rhs)
+  }
 }

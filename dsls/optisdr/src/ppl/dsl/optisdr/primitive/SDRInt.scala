@@ -36,7 +36,28 @@ trait SDRIntOpsExp extends SDRIntOps {
   def sdrint_rashift(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = reflectPure(SDRIntRAShift(a,b))
 }
 
-
 trait SDRIntOpsExpOpt extends SDRIntOpsExp {
   this: OptiSDRExp =>
+}
+
+trait BaseGenSDRIntOps extends GenericFatCodegen {
+  val IR: SDRIntOpsExp
+  import IR._
+  
+  override def unapplySimpleIndex(e: Def[Any]) = e match {
+    // What is this for???
+  }  
+}
+
+trait ScalaGenSDRIntOps extends BaseGenSDRIntOps with ScalaGenFat {
+  val IR: SDRIntOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case SDRIntLShift(lhs,rhs) => emitValDef(sym, quote(lhs) + " >> " + quote(rhs))
+    case SDRIntRShift(lhs,rhs) => emitValDef(sym, quote(lhs) + " << " + quote(rhs))
+    case SDRIntRAShift(lhs,rhs) => emitValDef(sym, quote(lhs) + " <<< " + quote(rhs))
+    
+    case _ => super.emitNode(sym, rhs)
+  }
 }

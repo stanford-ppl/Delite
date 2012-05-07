@@ -43,13 +43,13 @@ trait UIntOps extends Variables {
   
   // Arith implicit
   implicit def uintArith : Arith[UInt] = new Arith[UInt] {
-    def +=(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).+(b)
-    def +(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).+(b)
-    def -(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).-(b)
-    def *(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).*(b)
-    def /(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a)./(b)
-    def abs(a: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).abs
-    def exp(a: Rep[UInt])(implicit ctx: SourceContext) = repToUIntOps(a).exp
+    def +=(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = uint_plus(a,b)
+    def +(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = uint_plus(a,b)
+    def -(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = uint_minus(a,b)
+    def *(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = uint_times(a,b)
+    def /(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = uint_divide(a,b)
+    def abs(a: Rep[UInt])(implicit ctx: SourceContext) = uint_abs(a)
+    def exp(a: Rep[UInt])(implicit ctx: SourceContext) = uint_exp(a)
     
     def empty(implicit ctx: SourceContext) = UInt(unit(0))
     def zero(a: Rep[UInt])(implicit ctx: SourceContext) = empty
@@ -160,5 +160,42 @@ trait UIntOpsExpOpt extends UIntOpsExp {
     case (_, UIntConst(0)) => rhs
     case (UIntConst(0), _) => lhs
     case _ => super.uint_times(lhs, rhs)
+  }
+}
+
+trait BaseGenUIntOps extends GenericFatCodegen {
+  val IR: UIntOpsExp
+  import IR._
+  
+  override def unapplySimpleIndex(e: Def[Any]) = e match {
+    // What is this for???
+  }  
+}
+
+trait ScalaGenUIntOps extends BaseGenUIntOps with ScalaGenFat {
+  val IR: UIntOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    // these are the ops that call through to the underlying real data structure
+
+    case UIntPlus(lhs,rhs) => emitValDef(sym, quote(lhs) + " + " + quote(rhs))
+    case UIntMinus(lhs,rhs) => emitValDef(sym, quote(lhs) + " - " + quote(rhs))
+    case UIntTimes(lhs,rhs) => emitValDef(sym, quote(lhs) + " * " + quote(rhs))
+    case UIntDivide(lhs,rhs) => emitValDef(sym, quote(lhs) + " / " + quote(rhs))
+    
+    case UIntAbs(e) => emitValDef(sym, quote(e))
+    case UIntExp(e) => emitValDef(sym, "exp(" + quote(e) + ")")
+    
+    case UIntBinaryNot(lhs) => emitValDef(sym, "~" + quote(lhs))
+    case UIntBinaryAnd(lhs,rhs) => emitValDef(sym, quote(lhs) + " & " + quote(rhs))
+    case UIntBinaryOr(lhs,rhs) => emitValDef(sym, quote(lhs) + " | " + quote(rhs))
+    case UIntBinaryXor(lhs,rhs) => emitValDef(sym, quote(lhs) + " ^ " + quote(rhs))
+    
+    case UIntLShift(lhs,rhs) => emitValDef(sym, quote(lhs) + " >> " + quote(rhs))
+    case UIntRShift(lhs,rhs) => emitValDef(sym, quote(lhs) + " << " + quote(rhs))
+    case UIntRAShift(lhs,rhs) => emitValDef(sym, quote(lhs) + " <<< " + quote(rhs))
+    
+    case _ => super.emitNode(sym, rhs)
   }
 }
