@@ -34,7 +34,6 @@ trait SDRVectorOps extends Variables {
   // infix fir
   // infix iir
   // infix correlation
-  // lms
   // infix fft, ifft
   
   // sum squares (just capture the pattern?)
@@ -45,7 +44,10 @@ trait SDRVectorOps extends Variables {
   def sdrvector_conj[A:Manifest:SDRArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
   def sdrvector_convolve[A:Manifest:Arith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
   def sdrvector_fft[A:Manifest:Arith:SDRArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
+  
+  // Square and add
   def sdrvector_lms[A:Manifest:Arith:SDRArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
+  
   def sdrvector_block_exp[A:Manifest:Arith:SDRArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
   def sdrvector_correlation[A:Manifest:Arith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
   def sdrvector_auto_correlation[A:Manifest:Arith:SDRArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
@@ -63,18 +65,71 @@ trait SDRVectorOps extends Variables {
 trait SDRVectorOpsExp extends SDRVectorOps {
   this: OptiSDRExp =>
   
-  case class SDRVectorConj[A:Manifest:SDRArith](x: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
+  case class SDRVectorConj[A:Manifest:SDRArith](x: Exp[DenseVector[A]])
+    extends DeliteOpMap[A,A,DenseVector[A]] {
+    val size = copyTransformedOrElse(_.size)(in.length)
+
+    def alloc = DenseVector[A](in.length, !in.isRow)
+    def func = e => implicitly[SDRArith[A]].conj(e)
+
+    val mA = manifest[A]
+  }
+  
   case class SDRVectorConvolve[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
   case class SDRVectorFFT[A:Manifest:Arith:SDRArith](x: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
-  case class SDRVectorLMS[A:Manifest:Arith:SDRArith](x: Exp[DenseVector[A]]) extends Def[A]
+  
+  case class SDRVectorLMS[A:Manifest:Arith:SDRArith](in: Exp[DenseVector[A]]) extends DeliteOpMapReduce[A,DenseVector[A]] 
+    val size = copyTransformedOrElse(_.size)(in.length)
+    val zero = implicitly[Arith[A]].zero
+    def map = e => e*e
+    def reduce = (a,b) => a + b
+    
+    val mA = manifest[A]
+  }
+  
   case class SDRVectorBlockExponent[A:Manifest:Arith](x: Exp[DenseVector[A]]) extends Def[A]
   case class SDRVectorCorrelation[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[A]
   case class SDRVectorAutoCorrelation[A:Manifest:Arith:SDRArith](x: Exp[DenseVector[A]]) extends Def[A]
   
-  case class SDRVectorBinaryNot[A:Manifest:BitArith](x: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
-  case class SDRVectorBinaryAnd[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
-  case class SDRVectorBinaryOr[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
-  case class SDRVectorBinaryXor[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
+  case class SDRVectorBinaryNot[A:Manifest:BitArith](in: Exp[DenseVector[A]])
+    extends DeliteOpMap[A,A,DenseVector[A]] {
+    val size = copyTransformedOrElse(_.size)(in.length)
+
+    def alloc = DenseVector[A](in.length, !in.isRow)
+    def func = e => implicitly[BitArith[A]].unary_~(e)
+
+    val mA = manifest[A]
+  }
+  
+  case class SDRVectorBinaryAnd[A:Manifest:BitArith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]])
+    extends DeliteOpMap[A,A,DenseVector[A]] {
+    val size = copyTransformedOrElse(_.size)(in.length)
+
+    def alloc = DenseVector[A](in.length, !in.isRow)
+    def func = (a,b) => implicitly[BitArith[A]].&(a,b)
+
+    val mA = manifest[A]
+  }
+  
+  case class SDRVectorBinaryOr[A:Manifest:BitArith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]])
+      extends DeliteOpMap[A,A,DenseVector[A]] {
+    val size = copyTransformedOrElse(_.size)(in.length)
+
+    def alloc = DenseVector[A](in.length, !in.isRow)
+    def func = (a,b) => implicitly[BitArith[A]].|(a,b)
+
+    val mA = manifest[A]
+  }
+  
+  case class SDRVectorBinaryXor[A:Manifest:BitArith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]])
+      extends DeliteOpMap[A,A,DenseVector[A]] {
+    val size = copyTransformedOrElse(_.size)(in.length)
+
+    def alloc = DenseVector[A](in.length, !in.isRow)
+    def func = (a,b) => implicitly[BitArith[A]].^(a,b)
+
+    val mA = manifest[A]
+  }
   
   case class SDRVectorLShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
   case class SDRVectorRShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
