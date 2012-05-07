@@ -147,3 +147,32 @@ trait ComplexOpsExpOpt extends ComplexOpsExp {
     case _ => super.complex_times(lhs, rhs)
   }
 }
+
+trait BaseGenComplexOps extends GenericFatCodegen {
+  val IR: ComplexOpsExp
+  import IR._
+  
+  override def unapplySimpleIndex(e: Def[Any]) = e match {
+    // What is this for???
+  }  
+}
+
+trait ScalaGenComplexOps extends BaseGenComplexOps with ScalaGenFat {
+  val IR: ComplexOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    // these are the ops that call through to the underlying real data structure
+
+    case ComplexPlus(lhs,rhs) => emitValDef(sym, "Complex(" + quote(lhs) + ".real + " + quote(rhs) + ".real," + quote(lhs) + ".imag + " + quote(rhs) + ".imag)")
+    case ComplexMinus(lhs,rhs) => emitValDef(sym, "Complex(" + quote(lhs) + ".real - " + quote(rhs) + ".real," + quote(lhs) + ".imag - " + quote(rhs) + ".imag)")
+    case ComplexTimes(lhs,rhs) => emitValDef(sym, "Complex(" + quote(lhs) + ".real * " + quote(rhs) + ".real - " + quote(lhs) + ".imag * " + quote(rhs) + ".imag," + quote(lhs) + ".real * " + quote(rhs) + ".imag + " + quote(lhs) + ".imag * " + quote(rhs) + ".real)")
+    case ComplexDivide(lhs,rhs) => emitValDef(sym, "{val d = " + quote(rhs) + ".real * " + quote(rhs) + ".real + " + quote(rhs) + ".imag * " + quote(rhs) + ".imag;" \
+      + "Complex((" + quote(lhs) + ".real * " + quote(rhs) + ".real + " + quote(lhs) + ".imag * " + quote(rhs) + ".imag)/d,(" + quote(rhs) + ".real * " + quote(lhs) + ".imag - " + quote(lhs) + ".imag * " + quote(rhs) + ".real)/d)")
+    
+    case ComplexAbs(e) => emitValDef(sym, "Math.sqrt(" + quote(e) + ".real * " + quote(e) + ".real + " + quote(e) + ".imag * " + quote(e) + ".imag)")
+    case ComplexExp(e) => emitValDef(sym, "{val c = exp(" + quote(e) + ".real);Complex(Math.cos(" + quote(e) + ".real), Math.sin(" + quote(e) + ".imag))")
+    
+    case _ => super.emitNode(sym, rhs)
+  }
+}
