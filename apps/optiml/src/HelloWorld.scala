@@ -7,7 +7,9 @@ trait HelloWorld extends OptiMLApplication {
     
     //println("hello world")
     
-    val v = SparseVector[Double](1000,true)
+    val v = SparseVector[Double](100,true)
+    v(5) = 10
+    v(75) = 20
     v.pprint
     
     // val vl = log(v)

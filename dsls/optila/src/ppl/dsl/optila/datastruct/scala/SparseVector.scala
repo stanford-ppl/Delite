@@ -1,7 +1,5 @@
 package ppl.dsl.optila.datastruct.scala
 
-import scala.collection.mutable.HashMap
-
 /**
  * This is the actual class that gets instantiated in the generated code. Ops corresponding to public operations
  * here must have CodeGen methods defined by the DSL on them.
@@ -13,7 +11,9 @@ import scala.collection.mutable.HashMap
 class SparseVector[@specialized T: Manifest](__length: Int, __isRow: Boolean) { 
   var _length = __length
   var _isRow = __isRow
-  var _data: HashMap[Int,T] = new HashMap[Int,T]
+  var _data = new Array[T](0)
+  var _indices = new Array[Int](0)
+  var _nnz = 0
 
   /**
    * These are temporarily needed because they are hard-coded into DeliteOp code gen. 
@@ -23,6 +23,8 @@ class SparseVector[@specialized T: Manifest](__length: Int, __isRow: Boolean) {
   def Clone = { 
     val v = new SparseVector[T](_length, _isRow);
     v._data = _data.clone
+    v._indices = _indices.clone
+    v._nnz = _nnz
     v
   }  
 }

@@ -249,10 +249,13 @@ trait VectorOps extends Variables {
     def groupBy[K:Manifest](pred: Rep[A] => Rep[K])(implicit ctx: SourceContext): Rep[DenseVector[VA]] = vector_groupby[A,K,VA](x,pred)                        
   }
   
-  def __equal[A:Manifest,V[X] <: Vector[X]](a: Rep[V[A]], b: Rep[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], mA: Manifest[V[A]], ctx: SourceContext, o: Overloaded1): Rep[Boolean] = vector_equals(a,b)
-  def __equal[A:Manifest,V[X] <: Vector[X]](a: Rep[V[A]], b: Var[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], mA: Manifest[V[A]], ctx: SourceContext, o: Overloaded2): Rep[Boolean] = vector_equals(a,readVar(b))
-  def __equal[A:Manifest,V[X] <: Vector[X]](a: Var[V[A]], b: Rep[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], mA: Manifest[V[A]], ctx: SourceContext, o: Overloaded3): Rep[Boolean] = vector_equals(readVar(a),b)
-  def __equal[A:Manifest,V[X] <: Vector[X]](a: Var[V[A]], b: Var[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], mA: Manifest[V[A]], ctx: SourceContext, o: Overloaded4): Rep[Boolean] = vector_equals(readVar(a),readVar(b))
+  def __equal[A:Manifest,VL[X] <: Vector[X],VR[X] <: Vector[X]](a: Rep[VL[A]], b: Rep[VR[A]])(implicit toIntfL: Rep[VL[A]] => Interface[Vector[A]], toIntfR: Rep[VR[A]] => Interface[Vector[A]], mVL: Manifest[VL[A]], mVR: Manifest[VR[A]], ctx: SourceContext, o: Overloaded1): Rep[Boolean] = vector_equals(a,b)
+  def __equal[A:Manifest,VL[X] <: Vector[X],VR[X] <: Vector[X]](a: Rep[VL[A]], b: Var[VR[A]])(implicit toIntfL: Rep[VL[A]] => Interface[Vector[A]], toIntfR: Rep[VR[A]] => Interface[Vector[A]], mVL: Manifest[VL[A]], mVR: Manifest[VR[A]], ctx: SourceContext, o: Overloaded2): Rep[Boolean] = vector_equals(a,readVar(b))
+  def __equal[A:Manifest,VL[X] <: Vector[X],VR[X] <: Vector[X]](a: Var[VL[A]], b: Rep[VR[A]])(implicit toIntfL: Rep[VL[A]] => Interface[Vector[A]], toIntfR: Rep[VR[A]] => Interface[Vector[A]], mVL: Manifest[VL[A]], mVR: Manifest[VR[A]], ctx: SourceContext, o: Overloaded3): Rep[Boolean] = vector_equals(readVar(a),b)
+  def __equal[A:Manifest,VL[X] <: Vector[X],VR[X] <: Vector[X]](a: Var[VL[A]], b: Var[VR[A]])(implicit toIntfL: Rep[VL[A]] => Interface[Vector[A]], toIntfR: Rep[VR[A]] => Interface[Vector[A]], mVL: Manifest[VL[A]], mVR: Manifest[VR[A]], ctx: SourceContext, o: Overloaded4): Rep[Boolean] = vector_equals(readVar(a),readVar(b))
+  // def __equal[A:Manifest,V[X] <: Vector[X]](a: Rep[V[A]], b: Interface[Vector[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], mA: Manifest[V[A]], ctx: SourceContext, o: Overloaded5): Rep[Boolean] = vector_equals(a,b)
+  // def __equal[A:Manifest,V[X] <: Vector[X]](a: Interface[Vector[A]], b: Rep[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], mA: Manifest[V[A]], ctx: SourceContext, o: Overloaded6): Rep[Boolean] = vector_equals(a,b)
+  
   
   /**
    * Binary math operations on Vectors with unit conversions (precision widening). 

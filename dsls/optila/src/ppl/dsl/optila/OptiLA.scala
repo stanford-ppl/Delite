@@ -214,7 +214,8 @@ trait OptiLACodeGenBase extends GenericFatCodegen {
 }
 
 trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal with ScalaGenDeliteOps
-  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps  
+  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenSparseVectorOps
+  with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps  
   //with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
   with ScalaGenExceptionOps
   with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
@@ -222,7 +223,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
   
   val IR: DeliteApplication with OptiLAExp
 
-  override val specialize = Set("DenseVector", "DenseMatrix"/*, "SparseVector", "VectorView"*/)
+  override val specialize = Set("DenseVector", "DenseMatrix", "SparseVector"/*, "VectorView"*/)
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
