@@ -270,18 +270,18 @@ trait StreamOpsExpOpt extends StreamOpsExp {
       
       return super.stream_init_and_chunk_row(st,row,offset)
       
-      val r: Def[StreamRow[A]] = new StreamChunkRowFusable(st, row, offset) {
-        val size = numCols
-        val aV = fresh[Array[A]]
-        val body: Def[StreamRow[A]] = new DeliteCollectElem[A,StreamRow[A]](
-          //aV = this.aV,
-          //alloc = reifyEffects(updateViewWithArray(aV,stream_chunk_row_mutable(st,row,offset))),
-          aV = fresh[Array[A]],
-          alloc = reifyEffects(stream_chunk_row(st,row,offset)), // <--- will ignore the actual data array. stream rows do not have unsafeSetData
-          func = reifyEffects(stfunc(offset*chunkSize+row,v))
-        )
-      }
-      r
+      // val r: Def[StreamRow[A]] = new StreamChunkRowFusable(st, row, offset) {
+      //   val size = numCols
+      //   val aV = fresh[Array[A]]
+      //   val body: Def[StreamRow[A]] = new DeliteCollectElem[A,StreamRow[A]](
+      //     //aV = this.aV,
+      //     //alloc = reifyEffects(updateViewWithArray(aV,stream_chunk_row_mutable(st,row,offset))),
+      //     aV = fresh[Array[A]],
+      //     alloc = reifyEffects(stream_chunk_row(st,row,offset)), // <--- will ignore the actual data array. stream rows do not have unsafeSetData
+      //     func = reifyEffects(stfunc(offset*chunkSize+row,v))
+      //   )
+      // }
+      // r
       
     case _ => super.stream_init_and_chunk_row(st,row,offset)
   }

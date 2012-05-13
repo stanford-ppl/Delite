@@ -461,25 +461,25 @@ trait MatOpsExpOpt extends MatOpsExp {
         
         // could also rewrite the vec3 delite op operations to return VecNew nodes instead..        
         case Def(m: DeliteOpMap[A,A,_]) => m.body match {
-          case ce: DeliteCollectElem[_,_] => ce.alloc match {
+          case ce: DeliteCollectElem[_,_] => ce.allocN match {
             case Def(Vec3New(a,b,c)) => 
               buf ++= (0 to 2) map { i => reifyEffects(m.func(dc_apply(m.in.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
             case Def(Reflect(Vec3New(a,b,c), u, es))  =>
               buf ++= (0 to 2) map { i => reifyEffects(m.func(dc_apply(m.in.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
             case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)), _,_)) => 
               buf ++= (0 to 2) map { i => reifyEffects(m.func(dc_apply(m.in.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
-            case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.alloc.Type.toString)
-                      printdbg(" XXXXXXXXXXXXXXXXXXXXXXX def is: " + findDefinition(ce.alloc.res.asInstanceOf[Sym[Any]]).toString)
+            case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.allocN.Type.toString)
+                      printdbg(" XXXXXXXXXXXXXXXXXXXXXXX def is: " + findDefinition(ce.allocN.res.asInstanceOf[Sym[Any]]).toString)
            }
         }        
         case Def(z: DeliteOpZipWith[A,A,_,_]) => z.body match {
-          case ce: DeliteCollectElem[_,_] => ce.alloc match {
+          case ce: DeliteCollectElem[_,_] => ce.allocN match {
             case Def(Vec3New(a,b,c)) =>
               buf ++= (0 to 2) map { i => reifyEffects(z.func(dc_apply(z.inA.asInstanceOf[Exp[DeliteCollection[A]]],unit(i)),dc_apply(z.inB.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
             case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)), _, _)) =>
               buf ++= (0 to 2) map { i => reifyEffects(z.func(dc_apply(z.inA.asInstanceOf[Exp[DeliteCollection[A]]],unit(i)),dc_apply(z.inB.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
-           case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.alloc.Type.toString)
-                     printdbg(" XXXXXXXXXXXXXXXXXXXXXXX def is: " + findDefinition(ce.alloc.res.asInstanceOf[Sym[Any]]).toString)
+           case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.allocN.Type.toString)
+                     printdbg(" XXXXXXXXXXXXXXXXXXXXXXX def is: " + findDefinition(ce.allocN.res.asInstanceOf[Sym[Any]]).toString)
 	  }
         }            
         // case Def(e: DeliteOpLoop[_]) => e.body match {

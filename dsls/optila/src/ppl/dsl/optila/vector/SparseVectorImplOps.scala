@@ -42,6 +42,7 @@ trait SparseVectorImplOps { this: OptiLA =>
   
   def sparsevector_apply_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int]): Rep[A]
   def sparsevector_update_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit]
+  def sparsevector_append_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit]
   def sparsevector_insert_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit]
   def sparsevector_insertall_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], xs: Rep[SparseVector[A]]): Rep[Unit]
   def sparsevector_copyfrom_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], xs: Rep[SparseVector[A]]): Rep[Unit]  
@@ -119,22 +120,31 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
      
   // what is this method called in the delite collection interface? is the signature correct?
   // dc_scanupdate(x: DeliteCollection[A], chunkOffset: Int, elemOffset: Int, pos: Int, x: A)
-  // def sparsevector_scanupdate_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], chunkOffset: Rep[Int], elemOffset: Rep[Int], x: Rep[A]): Rep[Unit] = {
+  // TODO aks: how does DeliteOps get logicalPos in the scan phase???
+  // def sparsevector_rawupdate_impl[A:Manifest](v: Rep[SparseVector[A]], physPos: Rep[Int], logicalPos: Rep[Int], x: Rep[A]): Rep[Unit] = {    
   //   val i = sparsevector_raw_indices(v)    
   //   val d = sparsevector_daw_data(v)
-  //   if (x != defaultValue[A]) {
-  //     array_unsafe_update(i,chunkOffset+elemOffset) = pos
-  //     array_unsafe_update(d,chunkOffset+elemOffset) = x
-  //   }
+  //   array_unsafe_update(i,physPos) = logicalPos
+  //   array_unsafe_update(d,physPos) = x
   // }
   
   /* 
    * Grows the logical SparseVector
    */
+   
+  // don't need to compute offset if we are appending.
+  // the guarantee is that pos > all existing indices in the sparse vector.   
+  def sparsevector_append_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
+    sparsevector_insert_at_off(v, v.length, pos, x)
+  }
+   
   def sparsevector_insert_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
     val offRaw = sparsevector_find_offset(v, pos)
-    val off = if (offRaw > -1) offRaw else ~offRaw
-    
+    val off = if (offRaw > -1) offRaw else ~offRaw    
+    sparsevector_insert_at_off(v, off, pos, x)
+  }
+  
+  protected def sparsevector_insert_at_off[A:Manifest](v: Rep[SparseVector[A]], off: Rep[Int], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
     sparsevector_insertspace(v, off, 1)
     val data = sparsevector_raw_data(v)
     val indices = sparsevector_raw_indices(v)    
@@ -144,7 +154,7 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
       array_unsafe_update(indices, i, indices(i) + 1)
     }
     
-    sparsevector_set_length(v, v.length + 1)
+    sparsevector_set_length(v, v.length + 1)    
   }
 
   def sparsevector_insertall_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], xs: Rep[SparseVector[A]]): Rep[Unit] = {

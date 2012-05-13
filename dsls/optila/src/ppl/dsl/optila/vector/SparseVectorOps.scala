@@ -62,6 +62,7 @@ trait SparseVectorOps extends Variables {
     def mt()(implicit ctx: SourceContext) = {sparsevector_mutable_trans(elem); elem}
     
     // data operations
+    override def +=(y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] = sparsevector_append(elem,length,y)
     def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = sparsevector_update(elem,n,y)
     def copyFrom(pos: Rep[Int], y: Rep[SparseVector[A]])(implicit ctx: SourceContext) = sparsevector_copyfrom(elem,pos,y)
     def insert(pos: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = sparsevector_insert(elem,pos,y)
@@ -105,6 +106,7 @@ trait SparseVectorOps extends Variables {
   def sparsevector_mutable_trans[A:Manifest](x: Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[Unit]
   def sparsevector_update[A:Manifest](x: Rep[SparseVector[A]], n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
   def sparsevector_copyfrom[A:Manifest](x: Rep[SparseVector[A]], pos: Rep[Int], y: Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def sparsevector_append[A:Manifest](x: Rep[SparseVector[A]], pos: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
   def sparsevector_insert[A:Manifest](x: Rep[SparseVector[A]], pos: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
   def sparsevector_insertall[A:Manifest](x: Rep[SparseVector[A]], pos: Rep[Int], y: Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[Unit]
   def sparsevector_removeall[A:Manifest](x: Rep[SparseVector[A]], pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
@@ -138,7 +140,7 @@ trait SparseVectorCompilerOps extends SparseVectorOps {
 trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatExp {
 
   this: SparseVectorImplOps with OptiLAExp =>
-      
+
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
   
@@ -170,7 +172,10 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
     
   case class SparseVectorCopyFrom[A:Manifest](x: Exp[SparseVector[A]], pos: Exp[Int], y: Exp[SparseVector[A]])
     extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(sparsevector_copyfrom_impl(x,pos,y)))
-    
+
+  case class SparseVectorAppend[A:Manifest](x: Exp[SparseVector[A]], pos: Exp[Int], y: Exp[A]) 
+    extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(sparsevector_append_impl(x,pos,y)))
+  
   case class SparseVectorInsert[A:Manifest](x: Exp[SparseVector[A]], pos: Exp[Int], y: Exp[A]) 
     extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(sparsevector_insert_impl(x,pos,y)))
     
@@ -230,6 +235,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
   def sparsevector_mutable_trans[A:Manifest](x: Exp[SparseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorMutableTrans(x))
   def sparsevector_update[A:Manifest](x: Exp[SparseVector[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorUpdate(x, n, y))
   def sparsevector_copyfrom[A:Manifest](x: Exp[SparseVector[A]], pos: Exp[Int], y: Exp[SparseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorCopyFrom(x, pos, y))
+  def sparsevector_append[A:Manifest](x: Exp[SparseVector[A]], pos: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorAppend(x, pos, y))
   def sparsevector_insert[A:Manifest](x: Exp[SparseVector[A]], pos: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorInsert(x, pos, y))
   def sparsevector_insertall[A:Manifest](x: Exp[SparseVector[A]], pos: Exp[Int], y: Exp[SparseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorInsertAll(x, pos, y))
   def sparsevector_removeall[A:Manifest](x: Exp[SparseVector[A]], pos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorRemoveAll(x, pos, len))
@@ -283,6 +289,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
     case Reflect(e@SparseVectorTimesMatrix(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorTimesMatrix(f(x),f(y))(e.mA,e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseVectorTrans(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorTrans(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseVectorCopyFrom(x,pos,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorCopyFrom(f(x),f(pos),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SparseVectorAppend(x,pos,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorAppend(f(x),f(pos),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseVectorInsert(x,pos,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorInsert(f(x),f(pos),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseVectorInsertAll(x,pos,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorInsertAll(f(x),f(pos),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseVectorRemoveAll(x,pos,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorRemoveAll(f(x),f(pos),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -301,6 +308,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     case SparseVectorApply(a,i) => Nil
     case SparseVectorUpdate(a,i,x) => Nil           // syms(a) <-- any use to return a?
+    case SparseVectorAppend(a,i,x) => Nil           // syms(a) <-- any use to return a?
     case SparseVectorInsert(a,i,x) => Nil           // syms(a) <-- any use to return a?
     case SparseVectorInsertAll(a,i,x) => Nil        // syms(a) <-- any use to return a?
     case _ => super.aliasSyms(e)
@@ -309,6 +317,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
   override def containSyms(e: Any): List[Sym[Any]] = e match {
     case SparseVectorApply(a,i) => Nil
     case SparseVectorUpdate(a,i,x) => syms(x)
+    case SparseVectorAppend(a,i,x) => syms(x)
     case SparseVectorInsert(a,i,x) => syms(x)
     case SparseVectorInsertAll(a,i,x) => Nil
     case _ => super.containSyms(e)
@@ -317,6 +326,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
   override def extractSyms(e: Any): List[Sym[Any]] = e match {
     case SparseVectorApply(a,i) => syms(a)
     case SparseVectorUpdate(a,i,x) => Nil
+    case SparseVectorAppend(a,i,x) => Nil
     case SparseVectorInsert(a,i,x) => Nil
     case SparseVectorInsertAll(a,i,x) => Nil
     case _ => super.extractSyms(e)
@@ -325,6 +335,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
   override def copySyms(e: Any): List[Sym[Any]] = e match {
     case SparseVectorApply(a,i) => Nil
     case SparseVectorUpdate(a,i,x) => syms(a)
+    case SparseVectorAppend(a,i,x) => syms(a)
     case SparseVectorInsert(a,i,x) => syms(a)
     case SparseVectorInsertAll(a,i,x) => syms(a) ++ syms(x)
     case _ => super.copySyms(e)
