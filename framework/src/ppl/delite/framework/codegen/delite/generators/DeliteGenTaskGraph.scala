@@ -69,7 +69,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 //      }}
       //println(used)
       //focusFatBlock(used) { freeInScope(bound, used) } filter { case Def(r@Reflect(x,u,es)) => used contains r; case _ => true } // distinct
-      focusFatBlock(used) { freeInScope(bound, used) } // distinct
+      focusFatBlock(used.map(Block(_))) { freeInScope(bound, used) } // distinct
       //syms(rhs).flatMap(s => focusBlock(s) { freeInScope(boundSyms(rhs), s) } ).distinct
     }
 
@@ -99,6 +99,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         deliteKernel = rhs match {
 //          case op:DeliteFatOp => true
           case op:AbstractFatLoop => true
+          case op:AbstractFatIfThenElse => true
           case ThinDef(op:DeliteOp[_]) => true
           case _ => false
         }
@@ -122,6 +123,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
           case ("scala", op: AbstractFatLoop) =>
             hasOutputSlotTypes = true
             "generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
+          case ("scala", op: AbstractFatIfThenElse) =>
+            //hasOutputSlotTypes = true
+            //"generated.scala.DeliteOpMultiLoop[" + "activation_"+kernelName + "]"
+            //TODO: support fat if
+            assert(sym.length == 1, "TODO: support fat if")
+            gen.remap(sym.head.Type)
           case ("scala", ThinDef(z)) => z match {
             case op: AbstractLoop[_] => 
               hasOutputSlotTypes = true
@@ -133,6 +140,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
           case ("cuda", op: AbstractFatLoop) =>
             hasOutputSlotTypes = true
             "void"
+          case ("cuda", op: AbstractFatIfThenElse) =>
+            //hasOutputSlotTypes = true
+            assert(sym.length == 1, "TODO: support fat if")
+            "void"
           case ("cuda", ThinDef(z)) => z match {
             case op: AbstractLoop[_] =>
               hasOutputSlotTypes = true
@@ -141,6 +152,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
           }
           case ("opencl", op: AbstractFatLoop) =>
             hasOutputSlotTypes = true
+            "void"
+          case ("opencl", op: AbstractFatIfThenElse) =>
+            //hasOutputSlotTypes = true
+            assert(sym.length == 1, "TODO: support fat if")
             "void"
           case ("opencl", ThinDef(z)) => z match {
             case op: AbstractLoop[_] =>
@@ -223,6 +238,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     // effectful operations inside kernel
     val defs = rhs match {
       case op:AbstractFatLoop => op.body
+      case op:AbstractFatIfThenElse => (op.thenp zip op.elsep) map (p => IfThenElse(op.cond,p._1,p._2))
       case ThinDef(d) => List(d)
     }
     val kernelContext = getEffectsBlock(defs)
@@ -256,19 +272,21 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     val optContext = sym.find(!_.sourceContexts.isEmpty).map(_.sourceContexts.head)
     // emit task graph node
     rhs match {
-      case op: AbstractFatLoop =>
+      case op: AbstractFatLoop => 
         emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, op.body.exists (loopBodyNeedsCombine _), op.body.exists (loopBodyNeedsPostProcess _), optContext)
-      case ThinDef(z) =>
-        z match {
-          case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext)
-          case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-          case c:DeliteOpCondition[_] => emitIfThenElse(c.cond, c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-          case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-          case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, optContext)
-          case f:DeliteOpForeach2[_,_] => emitForeach(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-          case f:DeliteOpForeachBounded[_,_,_] => emitForeach(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
-          case _ => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, if (outputs(0).sourceContexts.isEmpty) None else Some(outputs(0).sourceContexts.head)) // things that are not specified as DeliteOPs, emit as SingleTask nodes
-        }
+      case op: AbstractFatIfThenElse => 
+        assert(sym.length == 1, "TODO: implement fat if then else")
+        emitIfThenElse(Block(op.cond), op.thenp.head, op.elsep.head, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+      case ThinDef(z) => z match {
+        case op:AbstractLoop[_] => emitMultiLoop(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, op.size, loopBodyNeedsCombine(op.body), loopBodyNeedsPostProcess(op.body), optContext)
+        case e:DeliteOpExternal[_] => emitExternal(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+        case c:DeliteOpCondition[_] => emitIfThenElse(Block(c.cond), c.thenp, c.elsep, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+        case w:DeliteOpWhileLoop => emitWhileLoop(w.cond, w.body, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+        case s:DeliteOpSingleTask[_] => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, optContext)
+        case f:DeliteOpForeach2[_,_] => emitForeach(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+        case f:DeliteOpForeachBounded[_,_,_] => emitForeach(z, kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps)
+        case _ => emitSingleTask(kernelName, outputs, inputs, inMutating, inControlDeps, antiDeps, optContext) // things that are not specified as DeliteOPs, emit as SingleTask nodes
+      }
     }
 
     // whole program gen (for testing)
@@ -319,7 +337,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     stream.println("},")
   }
 
-  def emitIfThenElse(cond: Exp[Boolean], thenp: Exp[Any], elsep: Exp[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitIfThenElse(cond: Block[Boolean], thenp: Block[Any], elsep: Block[Any], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.print("{\"type\":\"Conditional\",")
     stream.println("  \"outputId\" : \"" + id + "\",")
@@ -347,7 +365,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     stream.println("},")
   }
 
-  def emitWhileLoop(cond: Exp[Boolean], body: Exp[Unit], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
+  def emitWhileLoop(cond: Block[Boolean], body: Block[Unit], id: String, outputs: List[Exp[Any]], inputs: List[Exp[Any]], mutableInputs: List[Exp[Any]], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]])
         (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], outputSlotTypes: HashMap[String, ListBuffer[(String, String)]], metadata: ArrayBuffer[Pair[String,String]]) = {
     stream.println("{\"type\":\"WhileLoop\",")
     stream.println("  \"outputId\" : \"" + id + "\",")
@@ -418,7 +436,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
 
     // post
     emitEOG()
-    emitOutput(getBlockResult(rhs.asInstanceOf[Variant].variant))
+    emitOutput(getBlockResult(Block(rhs.asInstanceOf[Variant].variant))) // FIXME: block?
     stream.println("}")
     kernelInputDeps = saveInputDeps
     kernelMutatingDeps = saveMutatingDeps
@@ -432,9 +450,9 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     // manually lift alloc out of the variant loop. TODO: this should not be required, see comment in DeliteOps.scala
     // we should be able to remove this when we merge with opfusing
     //val save = scope
-    emitBlock(vw.alloc)
+    emitBlock(Block(vw.alloc)) //FIXME: block?
     //scope = appendScope()
-    emitBlock(vw.variant)
+    emitBlock(Block(vw.variant)) //FIXME: block?
     //scope = save
   }
 
@@ -442,22 +460,22 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     (implicit stream: PrintWriter, supportedTgt: ListBuffer[String], returnTypes: ListBuffer[Pair[String, String]], metadata: ArrayBuffer[Pair[String,String]]) {
 
     //val save = scope
-    emitBlock(vw.Index)
-    emitBlock(vw.Acc)
+    emitBlock(Block(vw.Index)) //FIXME: block?
+    emitBlock(Block(vw.Acc)) //FIXME: block?
     //scope = appendScope()
 
-    def emitSubGraphOp(block: Exp[Any], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]]) {
+    def emitSubGraphOp(block: Block[Any], controlDeps: List[Exp[Any]], antiDeps: List[Exp[Any]]) {
       stream.print("{\"type\":\"SubGraph\", ")
-      val resultId = if (quote(getBlockResult(block)) == "()") quote(block) else quote(getBlockResult(block)) //TODO: :(
+      val resultId = if (quote(getBlockResult(block)) == "()") quote(block.res) else quote(getBlockResult(block)) //TODO: :(
       stream.print("\"outputId\":\"" + resultId + "\",\n")
       emitDepsCommon(controlDeps, antiDeps)
       emitSubGraph("", block)
-      emitOutput(block)
+      emitOutput(block.res)
       stream.println("},")
     }
 
-    emitSubGraphOp(vw.init, Nil, Nil)
-    emitSubGraphOp(vw.variant, List(vw.init), Nil)
+    emitSubGraphOp(Block(vw.init), Nil, Nil) //FIXME: block?
+    emitSubGraphOp(Block(vw.variant), List(vw.init), Nil) //FIXME: block?
     //scope = save
   }
 
@@ -465,7 +483,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
                          stream.println("  \"" + prefix + "Value\": \"" + quote(x) + "\"")
     case s:Sym[Any] =>   stream.println("  \"" + prefix + "Type\": \"symbol\",")
-                         stream.println("  \"" + prefix + "Value\": \"" + quote(getBlockResult(x)) + "\"")    
+                         stream.println("  \"" + prefix + "Value\": \"" + quote(getBlockResult(Block(x))) + "\"") // x might be a Reify
   }
   
   def emitOutput(x: Exp[Any])(implicit stream: PrintWriter) = emitConstOrSym(x, "output")
@@ -474,10 +492,10 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
     stream.print("{\"type\":\"EOG\"}\n],\n")
   }
 
-  def emitSubGraph(prefix: String, e: Exp[Any])(implicit stream: PrintWriter) = e match {
-    case c:Const[Any] => stream.println("  \"" + prefix + "Type\": \"const\",")
-                         stream.println("  \"" + prefix + "Value\": \"" + quote(e) + "\",")
-    case s:Sym[Any] =>  stream.println("  \"" + prefix + "Type\": \"symbol\",")
+  def emitSubGraph(prefix: String, e: Block[Any])(implicit stream: PrintWriter) = e match {
+    case Block(c:Const[Any]) => stream.println("  \"" + prefix + "Type\": \"const\",")
+                         stream.println("  \"" + prefix + "Value\": \"" + quote(c) + "\",")
+    case Block(s:Sym[Any]) =>  stream.println("  \"" + prefix + "Type\": \"symbol\",")
                         stream.println("  \"" + prefix + "Ops\": [")
                         val saveMutatingDeps = kernelMutatingDeps
                         val saveInputDeps = kernelInputDeps

@@ -8,14 +8,14 @@ trait ResultOps extends Base {
   
   class Result extends Struct[Rep]
       
-  def __new[T:Manifest](fields: (String, Boolean, Rep[T] => Rep[_])*): Rep[T] = newResult[T](fields)
+  def __new[T<:Struct[Rep]:Manifest](fields: (String, Boolean, Rep[T] => Rep[_])*): Rep[T] = newResult[T](fields)
     
   def newResult[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T]
   
   implicit def RepToResultOps(r: Rep[Result]) = new ResultOpsCls(r)
   
   class ResultOpsCls(r: Rep[Result]) {
-    def selectDynamic[T](n: String): Rep[T] = resultFieldAccess(r,n)
+    def selectDynamic[T:Manifest](n: String): Rep[T] = resultFieldAccess[T](r,n)
   }
   
   def resultFieldAccess[T:Manifest](r: Rep[Result], field: String): Rep[T]
@@ -30,20 +30,24 @@ trait ResultOps extends Base {
   
 }
 
-trait ResultOpsExp extends ResultOps with BaseExp {
+trait ResultOpsExp extends ResultOps with BaseExp with StructExp {
     
-  case class CreateResult[T](fields: Seq[(String,Rep[_])]) extends Def[T]
+  case class CreateResult[T](fields: Seq[(String, Rep[_])]) extends Def[T]
   case class ResultFieldAccess[T](res: Rep[Result], field: String) extends Def[T]
     
   def newResult[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T] = {
     val x: Sym[T] = fresh[T]
     val flatFields: Seq[(String, Rep[_])] = fields map {case (n, _, rhs) => (n, rhs(x))}
-    val nDef: Def[T] = CreateResult(flatFields)
+    val nDef: Def[T] = SimpleStruct[T](List("Result"), flatFields.toMap)// CreateResult(flatFields)
     createDefinition(x, nDef)
     return x
   }
   
-  def resultFieldAccess[T:Manifest](r: Rep[Result], field: String): Rep[T] = ResultFieldAccess[T](r,field)
+  def resultFieldAccess[T:Manifest](r: Rep[Result], f: String): Rep[T] = {
+    println("+++result field access " + r + " -> " + f + " / " + manifest[T])
+    
+    field[T](r,f)//ResultFieldAccess[T](r,f)
+  }
     
     
   override def syms(e: Any): List[Sym[Any]] = e match { 

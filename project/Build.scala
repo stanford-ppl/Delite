@@ -23,10 +23,6 @@ object DeliteBuild extends Build {
     libraryDependencies += "org.scala-lang" % "scala-library" % virtScala,
     libraryDependencies += "org.scala-lang" % "scala-compiler" % virtScala,
     libraryDependencies += scalatest,
-    // used in delitec to access jars
-    retrieveManaged := true,
-    scalacOptions += "-Yno-generic-signatures",
-    scalacOptions += "-Yvirtualize"
   )
 
   val virtBuildSettings = virtBuildSettingsBase ++ Seq(

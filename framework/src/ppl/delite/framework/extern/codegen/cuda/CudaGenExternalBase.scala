@@ -12,7 +12,7 @@ import ppl.delite.framework.extern.codegen.GenericGenExternal
 import ppl.delite.framework.ops._
 import ppl.delite.framework.codegen.delite._
 
-trait CudaGenExternalBase extends GenericGenExternal with CudaGenBase {
+trait CudaGenExternalBase extends GenericGenExternal with CudaGenEffect {
   val IR: DeliteOpsExp
   import IR._
 

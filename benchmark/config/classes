@@ -15,8 +15,11 @@ vforeach|ppl.apps.tests.VerticesForeachRunner
 untilc|ppl.apps.tests.UntilConvergedRunner
 while|ppl.tests.microbenchmarks.WhileLoopsBenchmarkRunner
 multiloop|ppl.tests.microbenchmarks.MultiLoopsBenchmarkRunner
-tpchsf1|ppl.apps.dataquery.tpch.TPCHRunner
-tpchsf3|ppl.apps.dataquery.tpch.TPCHRunner
-tpchsf5|ppl.apps.dataquery.tpch.TPCHRunner
+tpchsf1|ppl.apps.dataquery.tpch.TPCHQ1
+tpchsf3|ppl.apps.dataquery.tpch.TPCHQ1
+tpchsf5|ppl.apps.dataquery.tpch.TPCHQ1
+tpchq2sf1|ppl.apps.dataquery.tpch.TPCHQ2
+tpchq2sf3|ppl.apps.dataquery.tpch.TPCHQ2
+tpchq2sf5|ppl.apps.dataquery.tpch.TPCHQ2
 cf|ppl.apps.ml.cf.TopNRunner
 interop|ppl.apps.interop.CustomerPricingRunner

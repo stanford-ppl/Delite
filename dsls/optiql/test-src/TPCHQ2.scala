@@ -1,80 +1,94 @@
 package ppl.apps.dataquery.tpch
 
 import ppl.dsl.optiql.{OptiQLApplication, OptiQLApplicationRunner}
-import ppl.dsl.optiql.datastruct.scala.tpch._
-import ppl.dsl.optiql.datastruct.scala.container.DataTable
 import java.io.File
 
-object TPCHQ1 extends OptiQLApplicationRunner with TPCHQ1Trait
-object TPCHQ2 extends OptiQLApplicationRunner with TPCHQ2Trait
+object TPCHQ2Runner extends OptiQLApplicationRunner with TPCHQ2
 
-trait TPCHBaseTrait extends OptiQLApplication {
+trait TPCHQ2 extends OptiQLApplication {
 
-  val queryName: String
-  
-  //var customers: Rep[CustomerTable] = _
-  var lineItems: Rep[LineItemTable] = _
-  //var orders: Rep[OrderTable] = _
-  var nations: Rep[NationTable] = _
-  var parts: Rep[PartTable] = _
-  var partSuppliers: Rep[PartSupplierTable] = _
-  var regions: Rep[RegionTable] = _
-  var suppliers: Rep[SupplierTable] = _
+  val s = File.separator
 
-    
   def printUsage = {
     println("Usage: TPCH <input tpch directory>")
     exit(-1)
   }
   
-  def query(): Rep[_]
   
+  val debug = true
+
   def main() = {
-    println("TPCH style benchmarking " + queryName )
+  
+  
+    println("TPCH Q2 style benchmarking")
     if (args.length < 1) printUsage
     
-    val tpchDataPath = args(0) 
-
+    val tpchDataPath = args(0)
+    
     //load TPCH data
-    lineItems = TPCH.loadLineItems(tpchDataPath)
-    nations = TPCH.loadNations(tpchDataPath)
-    parts = TPCH.loadParts(tpchDataPath)
-    partSuppliers = TPCH.loadPartSuppliers(tpchDataPath)
-    regions = TPCH.loadRegions(tpchDataPath)
-    suppliers = TPCH.loadSuppliers(tpchDataPath)
-    println("Loading Complete")	
-    tic(lineItems,nations, parts, partSuppliers, regions, suppliers)
-    query()
-  }
+    val parts = TPCH.loadParts(tpchDataPath)
+    val partSuppliers = TPCH.loadPartSuppliers(tpchDataPath)
+    val suppliers = TPCH.loadSuppliers(tpchDataPath)
+    val nations = TPCH.loadNations(tpchDataPath)
+    val regions = TPCH.loadRegions(tpchDataPath)
+    println("Loading Complete")
+	  tic(parts.size,suppliers.size)
+    
+    /*nations.Select(n => new Result {
+      val n_name = n.n_name
+      val n_regionkey = n.n_regionkey
+    }).printAsTable
 
-}
+    regions.Select(r => new Result {
+      val r_regionkey = r.r_regionkey
+      val r_name = r.r_name
+    }).printAsTable*/
+    
+    println("A")
+    /*val res = nations.Join(regions).WhereEq(_.n_regionkey, _.r_regionkey).Select((n,r) => new Result {
+      val n_name = n.n_name
+      val n_regionkey = n.n_regionkey
+      val r_regionkey = r.r_regionkey
+      val r_name = r.r_name
+    })*/
 
-//val res = lineItems Select(e => new Result { val l_shipdate = e.l_shipdate  }) Where(_.l_shipdate <= Date("1998-12-01"))
-trait TPCHQ1Trait extends TPCHBaseTrait {
-  val queryName = "Q1"  
-  def query() = {           
-    val q = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
-      val returnFlag = g.key._1
-      val lineStatus = g.key._2
-      val sumQty = g.Sum(_.l_quantity)
-      val sumBasePrice = g.Sum(_.l_extendedprice)
-      val sumDiscountedPrice = g.Sum(l => l.l_extendedprice * (1.0d - l.l_discount))
-      val sumCharge = g.Sum(l=> l.l_extendedprice * (1.0d - l.l_discount) * (1.0d + l.l_tax))
-      val avgQty = g.Average(_.l_quantity)
-      val avgPrice = g.Average(_.l_extendedprice)
-      val avgDiscount = g.Average(_.l_discount)
-      val countOrder = g.Count            
-    }) OrderBy(_.returnFlag) ThenBy(_.lineStatus)
-    toc(q)
-    q.printAsTable()
-  }    
-}
+    // p_type x13, p_partkey x19, p_comment x11, p_mfgr x15  <--- comment columns is used to obtain length of result
+    // x92 += x19
+    // x76 += x11
+    // x84 += x15
+    
+    /*
+    val res0 = parts.Where(_.p_type.endsWith("BRASS")).Join(partSuppliers).WhereEq(_.p_partkey, _.ps_partkey).Select((p, ps) => new  Result {
+      val p_partkey = p.p_partkey
+      val p_mfgr = p.p_mfgr
+      val ps_suppkey = ps.ps_suppkey
+    }).Join(suppliers).WhereEq(_.ps_suppkey,_.s_suppkey).Select((j, s) => new Result {
+      val p_partkey = j.p_partkey
+      val p_mfgr = j.p_mfgr
+      val s_nationkey = s.s_nationkey
+    }).Join(nations).WhereEq(_.s_nationkey, _.n_nationkey).Select((j, n) => new Result {
+      val p_partkey = j.p_partkey
+      val p_mfgr = j.p_mfgr
+      val n_regionkey = n.n_regionkey
+    })
+    
+    val res1 = res0.Join(regions).WhereEq(_.n_regionkey, _.r_regionkey).Select((j, r) => new Result {
+      val p_partkey = j.p_partkey
+      val p_mfgr = j.p_mfgr   //<--- BREAKS!!  WHY ???
+      val r_name = r.r_name
+    })
 
-trait TPCHQ2Trait extends TPCHBaseTrait {
-  val queryName = "Q2"  
-  
-  def query() = {
-    val q = parts.Where(p => {val res:Rep[Boolean] = p.p_size == 15; res}).Where(_.p_type.endsWith("BRASS")).Join(partSuppliers).WhereEq(_.p_partkey, _.ps_partkey).Select((p, ps) => new  Result {
+    val res = res1*/
+    
+
+
+
+
+
+    //FIXME: effect order violation
+    //TODO: soa for tuple reduce
+
+    val res = parts.Where(_.p_type.endsWith("BRASS")).Join(partSuppliers).WhereEq(_.p_partkey, _.ps_partkey).Select((p, ps) => new  Result {
       val p_partkey = p.p_partkey
       val p_mfgr = p.p_mfgr
       val ps_suppkey = ps.ps_suppkey
@@ -131,7 +145,17 @@ trait TPCHQ2Trait extends TPCHBaseTrait {
        // TODO: refactor to return Option and soa transform across option.
        //if(pssc != null) pssc.ps_supplycost else -10
     }) OrderByDescending(_.s_acctbal) ThenBy(_.n_name) ThenBy(_.s_name) ThenBy(_.p_partkey)
-    toc(q)
-    q.printAsTable(10)
-  }    
+
+    println("B1")
+    toc(res)
+    println(res)
+    res.printAsTable(10)
+
+    println("C")
+	
+  }
+  
+  
+  
+
 }

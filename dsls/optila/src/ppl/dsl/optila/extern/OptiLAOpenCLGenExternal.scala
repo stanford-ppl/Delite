@@ -22,16 +22,16 @@ trait OptiLAOpenCLGenExternal extends OpenCLGenExternalBase with OpenCLGenDataSt
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val lib = clBLAS
       val args = scala.List("'t'", "%1$s.numCols", "%1$s.numRows", "%1$s.data", "%2$s.data", "%3$s.data")
-                 .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
+                 .map { _.format(quote(x), quote(y), quote(sym)) }
       emitMethodCall(e, lib, args)
-      emitVectorAlloc(sym,"%s.numRows".format(quote(getBlockResult(x))),"false",false)
+      emitVectorAlloc(sym,"%s.numRows".format(quote(x)),"false",false)
 
     case e@DenseMatrixMultiplyBLAS(x,y) =>
       val lib = clBLAS
       val args = scala.List("'n'", "'n'", "%2$s.numCols", "%1$s.numRows", "%2$s.numRows", "1.0", "%2$s.data", "%2$s.numCols", "%1$s.data", "%1$s.numCols", "0.0", "%3$s.data", "%3$s.numCols")
-                 .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
+                 .map { _.format(quote(x), quote(y), quote(sym)) }
       emitMethodCall(e, lib, args)
-      emitMatrixAlloc(sym,"%s.numRows".format(quote(getBlockResult(x))),"%s.numCols".format(quote(getBlockResult(y))),false)
+      emitMatrixAlloc(sym,"%s.numRows".format(quote(x)),"%s.numCols".format(quote(y)),false)
 
     case _ => super.emitNode(sym, rhs)
   }

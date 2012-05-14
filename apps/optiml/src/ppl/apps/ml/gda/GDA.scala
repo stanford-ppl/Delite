@@ -3,6 +3,9 @@ package ppl.apps.ml.gda
 import ppl.dsl.optiml._
 import ppl.delite.framework.DeliteApplication
 
+object GDARunnerNCNR extends OptiMLApplicationRunnerBase with OptiMLNoCSE with OptiMLExp with GDA
+object GDARunnerNC extends OptiMLApplicationRunner with OptiMLNoCSE with GDA
+object GDARunnerNR extends OptiMLApplicationRunnerBase with OptiMLExp with GDA
 object GDARunner extends OptiMLApplicationRunner with GDA
 
 trait GDA extends OptiMLApplication {
