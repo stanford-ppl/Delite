@@ -14,8 +14,19 @@ object FakeStreamVectorImpl {
   }
 }
 
-class FakeStreamVectorImpl[@specialized T: Manifest](var _data : Array[T]) extends DenseVector[T](_data.length, false) {
+class FakeStreamVectorImpl[@specialized T: Manifest](var _data : Array[T]) {
   def this(size : Int) = this(new Array[T](size))
+  
+  var _length = _data.length
+  var _isRow = true
+
+  /**
+   * These are temporarily needed because they are hard-coded into DeliteOp code gen. 
+   */    
+  def unsafeSetData(xs: Array[T], len: Int) {
+    _data = xs
+    _length = len
+  }
   
   def Clone = new FakeStreamVectorImpl[T](_data)
   

@@ -45,7 +45,7 @@ trait OptiSDRScalaCodeGenPkg extends OptiLAScalaCodeGenPkg
  * This the trait that every OptiSDR application must extend.
  */
 trait OptiSDR extends OptiSDRScalaOpsPkg with OptiLA
-  with ComplexOps with UIntOps with SoftBitOps
+  with ComplexOps with UIntOps with SDRIntOps with SoftBitOps
   with BitArithOps
   with SDRArithOps
   with SDRVectorOps
@@ -64,7 +64,7 @@ trait OptiSDRCompiler extends OptiLACompiler with OptiSDR {
 }
 
 trait OptiSDRExp extends OptiLAExp with OptiSDRCompiler with OptiSDRScalaOpsPkgExp
-  with ComplexOpsExpOpt with UIntOpsExpOpt with SoftBitOpsExp
+  with ComplexOpsExpOpt with UIntOpsExpOpt with SDRIntOpsExpOpt with SoftBitOpsExp
   with BitArithOpsExp
   with SDRArithOpsExp
   with SDRVectorOpsExpOpt
@@ -72,7 +72,7 @@ trait OptiSDRExp extends OptiLAExp with OptiSDRCompiler with OptiSDRScalaOpsPkgE
   with LanguageOpsExp {
   this: DeliteApplication with OptiSDRApplication with OptiSDRExp => // can't be OptiSDRApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
   
-  def getCodeGenPkg(t: Target{val IR: OptiSDRExp.this.type}) : GenericFatCodegen{val IR: OptiSDRExp.this.type} = {
+  override def getCodeGenPkg(t: Target{val IR: OptiSDRExp.this.type}) : GenericFatCodegen{val IR: OptiSDRExp.this.type} = {
     t match {
       case _:TargetScala => new OptiSDRCodeGenScala{val IR: OptiSDRExp.this.type = OptiSDRExp.this}
       case _ => err("optisdr does not support this target")
@@ -87,8 +87,8 @@ trait OptiSDRCodeGenBase extends OptiLACodeGenBase {
   val IR: DeliteApplication with OptiSDRExp
   override def initialDefs = IR.deliteGenerator.availableDefs
 
-  val specialize = Set[String]()
-  val specialize2 = Set[String]()
+  override val specialize = Set[String]()
+  override val specialize2 = Set[String]()
   
   def emitDataStructures(dsRoot: String, dest: String) {
     val s = File.separator

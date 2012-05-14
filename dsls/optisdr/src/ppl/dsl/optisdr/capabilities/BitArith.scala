@@ -10,6 +10,7 @@ import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{CLikeCodegen}
 
 import ppl.dsl.optisdr._
+import ppl.dsl.optisdr.primitive._
 import ppl.dsl.optila.DenseVector
 
 /*
@@ -38,7 +39,7 @@ trait BitArithInternal[Rep[X],T] {
 }
 
 trait BitArithOps extends Variables with OverloadHack {
-  this: OptiSDR =>
+  this: OptiSDR with SDRIntOps =>
   
   type BitArith[X] = BitArithInternal[Rep,X]
 
@@ -130,5 +131,5 @@ trait BitArithOps extends Variables with OverloadHack {
 }
 
 trait BitArithOpsExp extends BitArithOps with VariablesExp {
-  this: OptiSDRExp => 
+  this: OptiSDRExp with SDRIntOpsExp => 
 }

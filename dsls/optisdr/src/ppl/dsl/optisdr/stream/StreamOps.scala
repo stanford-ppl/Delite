@@ -19,6 +19,8 @@ trait SDRStreamOps extends Variables {
   class SDRStreamOpsCls[A:Manifest](val x: Rep[Stream[A]]) { 
     def <<(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = stream_lshift(x, y)
     def >>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = stream_rshift(x, y)
+    
+    // DON'T USE CLONE, WILL BREAK
   }
   
   def stream_lshift[A:Manifest:BitArith](x: Rep[Stream[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[Stream[A]]
