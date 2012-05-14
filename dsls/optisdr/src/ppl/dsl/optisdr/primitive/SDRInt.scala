@@ -1,7 +1,11 @@
 package ppl.dsl.optisdr.primitive
 
+import java.io.{PrintWriter}
+
+import scala.reflect.Manifest
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
 
 import ppl.dsl.optisdr._
 
@@ -9,14 +13,14 @@ trait SDRIntOps extends Variables {
   this: OptiSDR =>
   
   implicit def repToSDRIntOps(x: Rep[Int]) = new SDRIntOpsCls(x)
-  implicit def varToSDRIntOps(x: Var[SDRInt]) = new SDRIntOpsCls(readVar(x))
+  implicit def varToSDRIntOps(x: Var[Int]) = new SDRIntOpsCls(readVar(x))
   
   // Objects methods
   class SDRIntOpsCls(x: Rep[Int]) {
-    def <<(b: Rep[Int])(implicit ctx: SourceContext) = sdrint_lshift(a, b)
-    def <<<(b: Rep[Int])(implicit ctx: SourceContext) = sdrint_lshift(a, b)
-    def >>(b: Rep[Int])(implicit ctx: SourceContext) = sdrint_rshift(a, b)
-    def >>>(b: Rep[Int])(implicit ctx: SourceContext) = sdrint_rashift(a, b)
+    def <<(y: Rep[Int])(implicit ctx: SourceContext) = sdrint_lshift(x, y)
+    def <<<(y: Rep[Int])(implicit ctx: SourceContext) = sdrint_lshift(x, y)
+    def >>(y: Rep[Int])(implicit ctx: SourceContext) = sdrint_rshift(x, y)
+    def >>>(y: Rep[Int])(implicit ctx: SourceContext) = sdrint_rashift(x, y)
   }
 
   def sdrint_lshift(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) : Rep[Int]
@@ -24,7 +28,7 @@ trait SDRIntOps extends Variables {
   def sdrint_rashift(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) : Rep[Int]
 }
 
-trait SDRIntOpsExp extends SDRIntOps {
+trait SDRIntOpsExp extends SDRIntOps with VariablesExp with BaseFatExp {
   this: OptiSDRExp =>
 
   case class SDRIntLShift(a: Exp[Int], b: Rep[Int]) extends Def[Int]
@@ -46,6 +50,7 @@ trait BaseGenSDRIntOps extends GenericFatCodegen {
   
   override def unapplySimpleIndex(e: Def[Any]) = e match {
     // What is this for???
+    case _ => super.unapplySimpleIndex(e)
   }  
 }
 

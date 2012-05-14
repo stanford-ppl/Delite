@@ -1,12 +1,16 @@
 package ppl.dsl.optisdr.capabilities
 
+import java.io.PrintWriter
+
+import scala.reflect.SourceContext
+
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.common._
-import java.io.PrintWriter
+
 import scala.virtualization.lms.internal.{CLikeCodegen}
+
 import ppl.dsl.optisdr._
 import ppl.dsl.optila.DenseVector
-import scala.reflect.SourceContext
 
 /*
  * Bit math operations for supported types. This should be all integer types as well as Bit types. Not sure we should support floats
@@ -63,10 +67,10 @@ trait BitArithOps extends Variables with OverloadHack {
     def |(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a | b
     def ^(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a ^ b
     
-    def <<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a << b
-    def <<<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a << b
-    def >>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a >> b
-    def >>>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a >>> b
+    def <<(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a << b
+    def <<<(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a << b
+    def >>(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a >> b
+    def >>>(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a >>> b
   }
   
   implicit val uintBitArith : BitArith[UInt] = new BitArith[UInt] {
@@ -75,17 +79,17 @@ trait BitArithOps extends Variables with OverloadHack {
     def |(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = a | b
     def ^(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = a ^ b
 		
-    def <<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a << b
-    def <<<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a << b
-    def >>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a >> b
-    def >>>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) = a >>> b
+    def <<(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) = a << b
+    def <<<(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) = a << b
+    def >>(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) = a >> b
+    def >>>(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) = a >>> b
   }
   
   implicit def denseVectorBitArith[T:BitArith:Manifest]: BitArith[DenseVector[T]] = new BitArith[DenseVector[T]] {
     def unary_~(a: Rep[DenseVector[T]])(implicit ctx: SourceContext) = ~repToSDRVectorOps(a)
-    def &(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) & a
-    def |(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) | a
-    def ^(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) ^ a
+    def &(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) & b
+    def |(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) | b
+    def ^(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) ^ b
     
     def <<(a: Rep[DenseVector[T]], b: Rep[Int])(implicit ctx: SourceContext) = repToSDRVectorOps(a) << b
     def <<<(a: Rep[DenseVector[T]], b: Rep[Int])(implicit ctx: SourceContext) = repToSDRVectorOps(a) << b
@@ -93,7 +97,7 @@ trait BitArithOps extends Variables with OverloadHack {
     def >>>(a: Rep[DenseVector[T]], b: Rep[Int])(implicit ctx: SourceContext) = repToSDRVectorOps(a) >>> b
   }
   
-  implicit def tuple2BitArith[A:Manifest:BitArith,B:Manifest:BitArith] : BitArith[Tuple2[A,B]] = new BitArith[Tuple2[A,B]] {
+  /* implicit def tuple2BitArith[A:Manifest:BitArith,B:Manifest:BitArith] : BitArith[Tuple2[A,B]] = new BitArith[Tuple2[A,B]] {
     def unary_~(a: Rep[Tuple2[A,B]])(implicit ctx: SourceContext) = Tuple2(~a._1, ~a._2)
     def &(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]])(implicit ctx: SourceContext) = Tuple2(a._1 & b._1, a._2 & b._2)
     def |(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]])(implicit ctx: SourceContext) = Tuple2(a._1 | b._1, a._2 | b._2)
@@ -122,7 +126,7 @@ trait BitArithOps extends Variables with OverloadHack {
     def &(a: Rep[Tuple4[A,B,C]], b: Rep[Tuple4[A,B,C]])(implicit ctx: SourceContext) = Tuple4(a._1 & b._1, a._2 & b._2, a._3 & b._3, a._4 & b._4)
     def |(a: Rep[Tuple4[A,B,C]], b: Rep[Tuple4[A,B,C]])(implicit ctx: SourceContext) = Tuple4(a._1 | b._1, a._2 | b._2, a._3 | b._3, a._4 | b._4)
     def ^(a: Rep[Tuple4[A,B,C]], b: Rep[Tuple4[A,B,C]])(implicit ctx: SourceContext) = Tuple4(a._1 ^ b._1, a._2 ^ b._2, a._3 ^ b._3, a._4 ^ b._4)
-  }
+  } */
 }
 
 trait BitArithOpsExp extends BitArithOps with VariablesExp {

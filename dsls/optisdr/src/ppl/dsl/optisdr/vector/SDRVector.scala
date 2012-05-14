@@ -1,7 +1,10 @@
 package ppl.dsl.optisdr.vector
 
+import java.io._
+
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 
 import ppl.dsl.optila.DenseVector
 
@@ -19,18 +22,18 @@ trait SDRVectorOps extends Variables {
     def conj(implicit sa: SDRArith[A], ctx: SourceContext) = sdrvector_conj(x)
     // def block exponent
     
-    def unary_~()(implicit ctx: SourceContext) = sdrvector_binarynot(x)
-    def &(y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = sdrvector_binaryand(x,y)
-    def |(y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = sdrvector_binaryor(x,y)
-    def ^(y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = sdrvector_binaryxor(x,y)
+    def unary_~()(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_binarynot(x)
+    def &(y: Rep[DenseVector[A]])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_binaryand(x,y)
+    def |(y: Rep[DenseVector[A]])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_binaryor(x,y)
+    def ^(y: Rep[DenseVector[A]])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_binaryxor(x,y)
     
-    def <<(y: Rep[Int])(implicit ctx: SourceContext) = sdrvector_lshift(x, y)
-    def <<<(y: Rep[Int])(implicit ctx: SourceContext) = sdrvector_lshift(x, y)
-    def >>(y: Rep[Int])(implicit ctx: SourceContext) = sdrvector_rshift(x, y)
-    def >>>(y: Rep[Int])(implicit ctx: SourceContext) = sdrvector_rashift(x, y)
+    def <<(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_lshift(x, y)
+    def <<<(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_lshift(x, y)
+    def >>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_rshift(x, y)
+    def >>>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_rashift(x, y)
     
-    def !<<(y: Rep[Int])(implicit ctx: SourceContext) = sdrvector_lvshift(x, y)
-    def !>>(y: Rep[Int])(implicit ctx: SourceContext) = sdrvector_rvshift(x, y)
+    def !<<(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_lvshift(x, y)
+    def !>>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_rvshift(x, y)
   }
   
   // infix convolve
@@ -55,10 +58,10 @@ trait SDRVectorOps extends Variables {
   def sdrvector_correlation[A:Manifest:Arith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
   def sdrvector_auto_correlation[A:Manifest:Arith:SDRArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
   
-  def sdrvector_binarynot[A:Manifest:BitArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
-  def sdrvector_binaryand[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
-  def sdrvector_binaryor[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
-  def sdrvector_binaryxor[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
+  def sdrvector_binarynot[A:Manifest:BitArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
+  def sdrvector_binaryand[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
+  def sdrvector_binaryor[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
+  def sdrvector_binaryxor[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
   
   def sdrvector_lshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
   def sdrvector_rshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
@@ -68,10 +71,10 @@ trait SDRVectorOps extends Variables {
   def sdrvector_rvshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
 }
 
-trait SDRVectorOpsExp extends SDRVectorOps {
+trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
   this: OptiSDRExp =>
   
-  case class SDRVectorConj[A:Manifest:SDRArith](x: Exp[DenseVector[A]])
+  case class SDRVectorConj[A:Manifest:SDRArith](in: Exp[DenseVector[A]])
     extends DeliteOpMap[A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
 
@@ -84,9 +87,9 @@ trait SDRVectorOpsExp extends SDRVectorOps {
   case class SDRVectorConvolve[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
   case class SDRVectorFFT[A:Manifest:Arith:SDRArith](x: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
   
-  case class SDRVectorLMS[A:Manifest:Arith:SDRArith](in: Exp[DenseVector[A]]) extends DeliteOpMapReduce[A,DenseVector[A]] 
+  case class SDRVectorLMS[A:Manifest:Arith:SDRArith](in: Exp[DenseVector[A]]) extends DeliteOpMapReduce[A,A] {
     val size = copyTransformedOrElse(_.size)(in.length)
-    val zero = implicitly[Arith[A]].zero
+    val zero = implicitly[Arith[A]].empty
     def map = e => e*e
     def reduce = (a,b) => a + b
     
@@ -109,9 +112,9 @@ trait SDRVectorOpsExp extends SDRVectorOps {
   
   case class SDRVectorBinaryAnd[A:Manifest:BitArith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]])
     extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
-    val size = copyTransformedOrElse(_.size)(in.length)
+    val size = copyTransformedOrElse(_.size)(inA.length)
 
-    def alloc = DenseVector[A](in.length, !in.isRow)
+    def alloc = DenseVector[A](inA.length, !inA.isRow)
     def func = (a,b) => implicitly[BitArith[A]].&(a,b)
 
     val mA = manifest[A]
@@ -119,9 +122,9 @@ trait SDRVectorOpsExp extends SDRVectorOps {
   
   case class SDRVectorBinaryOr[A:Manifest:BitArith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]])
       extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
-    val size = copyTransformedOrElse(_.size)(in.length)
+    val size = copyTransformedOrElse(_.size)(inA.length)
 
-    def alloc = DenseVector[A](in.length, !in.isRow)
+    def alloc = DenseVector[A](inA.length, !inA.isRow)
     def func = (a,b) => implicitly[BitArith[A]].|(a,b)
 
     val mA = manifest[A]
@@ -129,9 +132,9 @@ trait SDRVectorOpsExp extends SDRVectorOps {
   
   case class SDRVectorBinaryXor[A:Manifest:BitArith](inA: Exp[DenseVector[A]], inB: Exp[DenseVector[A]])
       extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
-    val size = copyTransformedOrElse(_.size)(in.length)
+    val size = copyTransformedOrElse(_.size)(inA.length)
 
-    def alloc = DenseVector[A](in.length, !in.isRow)
+    def alloc = DenseVector[A](inA.length, !inA.isRow)
     def func = (a,b) => implicitly[BitArith[A]].^(a,b)
 
     val mA = manifest[A]
@@ -169,7 +172,7 @@ trait SDRVectorOpsExp extends SDRVectorOps {
   
   // Only these shifts cross element boundaries. Based on element size, access previous and next... not sure how to do this..
   case class SDRVectorLVShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
-  case class SDRVectorLRShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
+  case class SDRVectorRVShift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int]) extends Def[DenseVector[A]]
   
   def sdrvector_conj[A:Manifest:SDRArith](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorConj(x))
   def sdrvector_convolve[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorConvolve(x,y))
@@ -202,6 +205,7 @@ trait BaseGenSDRVectorOps extends GenericFatCodegen {
   
   override def unapplySimpleIndex(e: Def[Any]) = e match {
     // What is this for???
+    case _ => super.unapplySimpleIndex(e)
   }  
 }
 

@@ -1,7 +1,11 @@
 package ppl.dsl.optisdr.primitive
 
+import java.io.{PrintWriter}
+
+import scala.reflect.Manifest
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
 
 import ppl.dsl.optisdr._
 
@@ -80,7 +84,7 @@ trait ComplexOps extends Variables {
   def complex_uint_value(x: Rep[Complex]) : Rep[UInt]
 }
 
-trait ComplexOpsExp extends ComplexOps {
+trait ComplexOpsExp extends ComplexOps with VariablesExp with BaseFatExp {
   this: OptiSDRExp =>
   
   // Object creation
@@ -154,6 +158,7 @@ trait BaseGenComplexOps extends GenericFatCodegen {
   
   override def unapplySimpleIndex(e: Def[Any]) = e match {
     // What is this for???
+    case _ => super.unapplySimpleIndex(e)
   }  
 }
 
@@ -167,8 +172,8 @@ trait ScalaGenComplexOps extends BaseGenComplexOps with ScalaGenFat {
     case ComplexPlus(lhs,rhs) => emitValDef(sym, "Complex(" + quote(lhs) + ".real + " + quote(rhs) + ".real," + quote(lhs) + ".imag + " + quote(rhs) + ".imag)")
     case ComplexMinus(lhs,rhs) => emitValDef(sym, "Complex(" + quote(lhs) + ".real - " + quote(rhs) + ".real," + quote(lhs) + ".imag - " + quote(rhs) + ".imag)")
     case ComplexTimes(lhs,rhs) => emitValDef(sym, "Complex(" + quote(lhs) + ".real * " + quote(rhs) + ".real - " + quote(lhs) + ".imag * " + quote(rhs) + ".imag," + quote(lhs) + ".real * " + quote(rhs) + ".imag + " + quote(lhs) + ".imag * " + quote(rhs) + ".real)")
-    case ComplexDivide(lhs,rhs) => emitValDef(sym, "{val d = " + quote(rhs) + ".real * " + quote(rhs) + ".real + " + quote(rhs) + ".imag * " + quote(rhs) + ".imag;" \
-      + "Complex((" + quote(lhs) + ".real * " + quote(rhs) + ".real + " + quote(lhs) + ".imag * " + quote(rhs) + ".imag)/d,(" + quote(rhs) + ".real * " + quote(lhs) + ".imag - " + quote(lhs) + ".imag * " + quote(rhs) + ".real)/d)")
+    case ComplexDivide(lhs,rhs) => emitValDef(sym, "{val d = " + quote(rhs) + ".real * " + quote(rhs) + ".real + " + quote(rhs) + ".imag * " + quote(rhs) + ".imag;" +
+      "Complex((" + quote(lhs) + ".real * " + quote(rhs) + ".real + " + quote(lhs) + ".imag * " + quote(rhs) + ".imag)/d,(" + quote(rhs) + ".real * " + quote(lhs) + ".imag - " + quote(lhs) + ".imag * " + quote(rhs) + ".real)/d)")
     
     case ComplexAbs(e) => emitValDef(sym, "Math.sqrt(" + quote(e) + ".real * " + quote(e) + ".real + " + quote(e) + ".imag * " + quote(e) + ".imag)")
     case ComplexExp(e) => emitValDef(sym, "{val c = exp(" + quote(e) + ".real);Complex(Math.cos(" + quote(e) + ".real), Math.sin(" + quote(e) + ".imag))")

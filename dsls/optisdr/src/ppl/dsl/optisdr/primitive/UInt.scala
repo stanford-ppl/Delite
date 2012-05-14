@@ -1,7 +1,11 @@
 package ppl.dsl.optisdr.primitive
 
+import java.io.{PrintWriter}
+
+import scala.reflect.Manifest
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
+import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
 
 import ppl.dsl.optisdr._
 
@@ -33,10 +37,10 @@ trait UIntOps extends Variables {
     def abs(implicit ctx: SourceContext) = uint_abs(x)
     def exp(implicit ctx: SourceContext) = uint_exp(x)
     
-    def <<(b: Rep[Int])(implicit ctx: SourceContext) = uint_lshift(a, b)
-    def <<<(b: Rep[Int])(implicit ctx: SourceContext) = uint_lshift(a, b)
-    def >>(b: Rep[Int])(implicit ctx: SourceContext) = uint_rshift(a, b)
-    def >>>(b: Rep[Int])(implicit ctx: SourceContext) = uint_rashift(a, b)
+    def <<(y: Rep[Int])(implicit ctx: SourceContext) = uint_lshift(x, y)
+    def <<<(y: Rep[Int])(implicit ctx: SourceContext) = uint_lshift(x, y)
+    def >>(y: Rep[Int])(implicit ctx: SourceContext) = uint_rshift(x, y)
+    def >>>(y: Rep[Int])(implicit ctx: SourceContext) = uint_rashift(x, y)
     
     def intValue = uint_int_value(x)
   }
@@ -81,7 +85,7 @@ trait UIntOps extends Variables {
   def uint_int_value(x: Rep[UInt]) : Rep[Int]
 }
 
-trait UIntOpsExp extends UIntOps {
+trait UIntOpsExp extends UIntOps with VariablesExp with BaseFatExp {
   this: OptiSDRExp =>
   
   // Object creation
@@ -100,9 +104,9 @@ trait UIntOpsExp extends UIntOps {
   case class UIntBinaryOr(x: Exp[UInt], y: Exp[UInt]) extends Def[UInt]
   case class UIntBinaryXor(x: Exp[UInt], y: Exp[UInt]) extends Def[UInt]
   
-  case class UIntLShift(a: Exp[Int], b: Rep[Int]) extends Def[UInt]
-  case class UIntRShift(a: Exp[Int], b: Rep[Int]) extends Def[UInt]
-  case class UIntRAShift(a: Exp[Int], b: Rep[Int]) extends Def[UInt]
+  case class UIntLShift(a: Exp[UInt], b: Rep[Int]) extends Def[UInt]
+  case class UIntRShift(a: Exp[UInt], b: Rep[Int]) extends Def[UInt]
+  case class UIntRAShift(a: Exp[UInt], b: Rep[Int]) extends Def[UInt]
   
   case class UIntAbs(x: Exp[UInt]) extends Def[UInt]
   case class UIntExp(x: Exp[UInt]) extends Def[UInt]
@@ -125,7 +129,7 @@ trait UIntOpsExp extends UIntOps {
   def uint_exp(x: Exp[UInt])(implicit ctx: SourceContext) = reflectPure(UIntExp(x))
   
   // Conversions
-  case class UIntIntValue(x: Exp[UInt]) extends Def[UInt]
+  case class UIntIntValue(x: Exp[UInt]) extends Def[Int]
   
   def uint_int_value(x: Exp[UInt]) = reflectPure(UIntIntValue(x))
 }
@@ -169,6 +173,7 @@ trait BaseGenUIntOps extends GenericFatCodegen {
   
   override def unapplySimpleIndex(e: Def[Any]) = e match {
     // What is this for???
+    case _ => super.unapplySimpleIndex(e)
   }  
 }
 
