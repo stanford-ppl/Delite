@@ -3,6 +3,7 @@ package ppl.dsl.optiql.datastruct.scala.container
 import collection.mutable.ArrayBuffer
 import collection.mutable.{ArrayBuffer, HashMap, Buffer}
 import ppl.dsl.optiql.datastruct.scala.util.{ReflectionHelper, Date}
+import ppl.delite.framework.ops.DeliteCollection
 
 object DataTable {
 
@@ -192,7 +193,7 @@ class UnsafeArrayBuffer[T] extends ArrayBuffer[T] {
   }
 }
 
-class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with ppl.delite.framework.datastruct.scala.DeliteCollection[TSource] {
+class DataTable[TSource](initialSize: Int) extends Iterable[TSource] with DeliteCollection[TSource] {
   import DataTable._
 
   println("initialSize : " + initialSize)

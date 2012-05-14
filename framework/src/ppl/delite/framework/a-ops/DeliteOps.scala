@@ -5,14 +5,14 @@ import java.io.{FileWriter, File, PrintWriter}
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericCodegen, GenericFatCodegen, GenerationFailedException}
-import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.Config
+import ppl.delite.framework.datastructures._
 import ppl.delite.framework.extern.lib._
 
 //trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp {
 trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with LoopsFatExp with IfThenElseFatExp
     with VariantsOpsExp with DeliteCollectionOpsExp
-    with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with ArrayOpsExp with StaticDataExp {  
+    with OrderingOpsExp with CastingOpsExp with ImplicitOpsExp with WhileExp with DeliteArrayFatExp with StaticDataExp {
   
 
 /*
@@ -112,7 +112,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   ) extends Def[Unit]
   
   case class DeliteCollectElem[A, CA/* <: DeliteCollection[A]*/]( // require to be collection subclass or not? DeliteArray isn't...
-    aV: Sym[Array[A]], //TODO: array and length!
+    aV: Sym[DeliteArray[A]], //TODO: array and length!
     alloc: Block[CA],
     func: Block[A],
     cond: List[Block[Boolean]] = Nil
@@ -147,7 +147,7 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   }
 
   case class DeliteHashCollectElem[A,B,CB](
-    //aV: Sym[Array[A]], //TODO: array and length!
+    //aV: Sym[DeliteArray[A]], //TODO: array and length!
     //alloc: Block[CA],
     keyFunc: Block[A],
     valFunc: Block[B],
@@ -249,10 +249,10 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
      type OpType <: DeliteOpMapLike[A,CA]
 
      def alloc: Exp[CA]
-     def allocWithArray: Exp[Array[A]] => Exp[CA] = { data => val res = alloc; dc_unsafeSetData(res.asInstanceOf[Exp[DeliteCollection[A]]], data); res }
+     def allocWithArray: Exp[DeliteArray[A]] => Exp[CA] = { data => val res = alloc; dc_unsafeSetData(res.asInstanceOf[Exp[DeliteCollection[A]]], data); res }
      
      //final lazy val allocVal: Exp[CA] = copyTransformedOrElse(_.allocVal)(reifyEffects(alloc))
-     final lazy val aV: Sym[Array[A]] = copyTransformedOrElse(_.aV)(fresh[Array[A]]).asInstanceOf[Sym[Array[A]]]
+     final lazy val aV: Sym[DeliteArray[A]] = copyTransformedOrElse(_.aV)(fresh[DeliteArray[A]]).asInstanceOf[Sym[DeliteArray[A]]]
    }
 
   /**
@@ -745,14 +745,14 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
     d match {
       case e: DeliteCollectElem[a,ca] => 
         DeliteCollectElem[a,ca](
-          aV = f(e.aV).asInstanceOf[Sym[Array[a]]],
+          aV = f(e.aV).asInstanceOf[Sym[DeliteArray[a]]],
           alloc = f(e.alloc),
           func = f(e.func),
           cond = e.cond.map(f(_))//f(e.cond)
         ).asInstanceOf[Def[A]]
       case e: DeliteHashCollectElem[a,b,cb] => 
         DeliteHashCollectElem[a,b,cb](
-          //aV = f(e.aV).asInstanceOf[Sym[Array[a]]],
+          //aV = f(e.aV).asInstanceOf[Sym[DeliteArray[a]]],
           //alloc = f(e.alloc),
           keyFunc = f(e.keyFunc),
           valFunc = f(e.valFunc),

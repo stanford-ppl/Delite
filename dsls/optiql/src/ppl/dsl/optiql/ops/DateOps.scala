@@ -1,11 +1,12 @@
 package ppl.dsl.optiql.ops
 
-import ppl.dsl.optiql.datastruct.scala.util.Date
 import java.io.PrintWriter
 import scala.virtualization.lms.common.{ScalaGenBase, ScalaGenEffect, BaseExp, Base}
-import scala.reflect.SourceContext
+import ppl.dsl.optiql.{OptiQLExp, OptiQL}
+import reflect.SourceContext
 
-trait DateOps extends Base {
+
+trait DateOps extends Base { this: OptiQL =>
 
   //inject interface
   implicit def dateRepToDateRepOps(d: Rep[Date]) = new DateRepOps(d)
@@ -23,14 +24,14 @@ trait DateOps extends Base {
 
 }
 
-trait DateOpsExp extends DateOps with BaseExp {
+trait DateOpsExp extends DateOps with BaseExp { this: OptiQLExp =>
 
   //IR nodes
   case class DateObjectApply[T:Manifest](str: Rep[String]) extends Def[Date]
   case class DateLessThan[T:Manifest](ld: Rep[Date], rd: Rep[Date]) extends Def[Boolean]
 
   //Interface implementation
-  def dateObjectApply(str: Rep[String]) = DateObjectApply(str)
+  def dateObjectApply(str: Rep[String]) = DateObjectApply(str) //TODO: lift date parsing and represent with one Int
   def dateLessThan(ld: Rep[Date], rd: Rep[Date]) = DateLessThan(ld, rd)
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
@@ -40,7 +41,7 @@ trait DateOpsExp extends DateOps with BaseExp {
 }
 
 trait ScalaGenDateOps extends ScalaGenBase {
-  val IR: DateOpsExp
+  val IR: DateOpsExp with OptiQLExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
