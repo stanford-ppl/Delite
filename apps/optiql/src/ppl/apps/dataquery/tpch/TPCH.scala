@@ -42,7 +42,8 @@ trait TPCHBaseTrait extends OptiQLApplication with Types {
     //regions = TableInputReader(tpchDataPath, Region())
     //suppliers = TableInputReader(tpchDataPath, Supplier())
     println("Loading Complete")	
-    tic(customers, lineItems, orders, nations, parts, partSuppliers, regions, suppliers)
+    //TODO: don't really want to to tic on the whole struct... what's the proper solution?
+    tic(customers, lineItems(0).l_returnflag, orders, nations, parts, partSuppliers, regions, suppliers)
     query()
   }
 

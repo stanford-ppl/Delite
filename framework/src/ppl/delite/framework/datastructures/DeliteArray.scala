@@ -134,6 +134,16 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {
     case _ => super.darray_new(length)
   }
 
+  //HACK: to repackage struct returned from single task
+  private def darrayManifest(arg: Manifest[_]) = new Manifest[DeliteArray[_]] {
+    val erasure = classOf[DeliteArray[_]]
+    override val typeArguments = List(arg)
+  }
+
+  def deliteArrayPure[T:Manifest](da: Exp[DeliteArray[T]], elems: List[(String,Manifest[_])])(implicit ctx: SourceContext): Exp[DeliteArray[T]] = {
+    struct[DeliteArray[T]](elems.map(e=>(e._1, field[DeliteArray[_]](da.asInstanceOf[Rep[Record]],e._1)(darrayManifest(e._2),ctx))):_*)
+  }
+
 }
 
 trait DeliteArrayFatExp extends DeliteArrayOpsExpOpt with StructFatExpOptCommon {
@@ -141,7 +151,7 @@ trait DeliteArrayFatExp extends DeliteArrayOpsExpOpt with StructFatExpOptCommon 
 }
 
 trait ScalaGenDeliteArrayOps extends ScalaGenFat {
-  val IR: DeliteArrayFatExp
+  val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
@@ -172,7 +182,8 @@ trait ScalaGenDeliteArrayOps extends ScalaGenFat {
   }
 
   override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
-    case DeliteArrayLength(da) => Some(da)
+    //case DeliteArrayLength(da) => Some(da)
+    case DeliteArrayLength(a @ Def(Loop(_,_,_:DeliteCollectElem[_,_]))) => Some(a) // exclude hash collect (?)
     case _ => super.unapplySimpleDomain(e)
   }
 

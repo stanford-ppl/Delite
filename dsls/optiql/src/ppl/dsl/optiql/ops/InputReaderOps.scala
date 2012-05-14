@@ -17,14 +17,19 @@ trait InputReaderOps { this: OptiQL =>
 
 trait InputReaderOpsExp extends InputReaderOps { this: OptiQLExp with InputReaderImplOps =>
 
-  case class OptiQLTableInputReader[T:Manifest](readBlock: Block[DataTable[T]]) extends DeliteOpSingleTask(readBlock)
+  case class OptiQLTableInputReader[T:Manifest](readBlock: Block[DeliteArray[T]]) extends DeliteOpSingleTask(readBlock)
 
-  def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]) = reflectEffect(OptiQLTableInputReader(reifyEffectsHere(optiql_table_input_reader_impl(path,shape,separator))))
+  //TODO: using SingleTask to encapsulate effects, but needs to be fat to return field syms
+  def optiql_table_input_reader[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]) = {
+    val wrappedData = toAtom(OptiQLTableInputReader(reifyEffectsHere(optiql_table_input_reader_impl(path,shape,separator))))
+    val data = deliteArrayPure(wrappedData, manifest[T].asInstanceOf[RefinedManifest[T]].fields)
+    DataTable(data, data.length)
+  }
 
 }
 
 trait InputReaderImplOps { this: OptiQL =>
-  def optiql_table_input_reader_impl[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[DataTable[T]]
+  def optiql_table_input_reader_impl[T<:Record:Manifest](path: Rep[String], shape: Rep[T], separator: Rep[String]): Rep[DeliteArray[T]]
 }
 
 trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLCompiler with OptiQLLift =>
@@ -38,8 +43,7 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLCompil
       record = input.readLine()
     }
     input.close()
-    val data = table.result
-    DataTable(data, data.length)
+    table.result
   }
 
   private def addRecord[T<:Record:Manifest](table: Rep[DeliteArrayBuilder[T]], record: Rep[Array[String]], shape: Rep[T]) {

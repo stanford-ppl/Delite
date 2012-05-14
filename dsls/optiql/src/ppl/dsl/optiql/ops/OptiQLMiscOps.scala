@@ -3,6 +3,7 @@ package ppl.dsl.optiql.ops
 import scala.virtualization.lms.common.{ScalaGenEffect, EffectExp, Base}
 import java.io.PrintWriter
 import ppl.dsl.optiql.{OptiQLExp,OptiQL}
+import reflect.SourceContext
 
 trait OptiQLMiscOps extends Base {  this : OptiQL =>
 
@@ -22,7 +23,7 @@ trait OptiQLMiscOpsExp extends OptiQLMiscOps with EffectExp { this : OptiQLExp =
   def optiql_profile_start(deps: Seq[Rep[Any]]): Rep[Unit] = reflectEffect(OptiQLProfileStart(Seq(deps: _*)))
   def optiql_profile_stop(deps: Seq[Rep[Any]]): Rep[Unit] =  reflectEffect(OptiQLProfileStop(Seq(deps: _*)))
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case Reflect(OptiQLProfileStop(x), u, es) => reflectMirrored(Reflect(OptiQLProfileStop(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e,f)
   }).asInstanceOf[Exp[A]]

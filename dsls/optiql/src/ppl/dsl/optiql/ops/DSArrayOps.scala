@@ -7,7 +7,7 @@ import ppl.dsl.optiql.OptiQLExp
 import ppl.delite.framework.datastructures.FieldAccessOpsExp
 import scala.reflect.SourceContext
 
-trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with LoopsFatExp with IfThenElseFatExp { this: OptiQLExp =>
+trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with IfThenElseFatExp { this: OptiQLExp =>
 
   //object ToReduceElem {
   //  def unapply[T](x: Def)
@@ -21,7 +21,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
 
   object HashAccess0 {
     def unapply[T](e: Exp[T]): Option[(Exp[Int], Sym[Int], Block[_], Block[T], Exp[Int])] = e match {
-      case Def(ArrayApply(
+      case Def(DeliteArrayApply(
           Def(SimpleLoop(origSize, grpV, grpBody: DeliteHashCollectElem[aa,`T`,_])), idx1)) =>
         Some((origSize, grpV, grpBody.keyFunc, grpBody.valFunc, idx1))
       case _ => None
@@ -30,7 +30,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
 
   object HashAccess {
     def unapply[T](e: Exp[T]): Option[(Exp[Int], Sym[Int], Block[_], Block[T], Exp[Int], Exp[Int])] = e match {
-      case Def(ArrayApply(Def(ArrayApply(
+      case Def(DeliteArrayApply(Def(DeliteArrayApply(
           Def(SimpleLoop(origSize, grpV, grpBody: DeliteHashCollectElem[aa,`T`,_])), idx1)), idx2)) =>
         Some((origSize, grpV, grpBody.keyFunc, grpBody.valFunc, idx1, idx2))
 
@@ -66,7 +66,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
   
   /*object HashReduction {
     def unapply[T](e: Exp[T]) = e match {
-      case Def(SimpleLoop(nestedSize /*Def(ArrayLength(input))*/, redV, redBody: DeliteReduceElem[cc])) =>
+      case Def(SimpleLoop(nestedSize /*Def(DeliteArrayLength(input))*/, redV, redBody: DeliteReduceElem[cc])) =>
         Console.println("******* investigating nested collect reduce " + redBody)
         Console.println("size " + nestedSize + "=" + (nestedSize match {case Def(x) => x}))
         redBody.func match {
@@ -79,7 +79,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
             Some(origSize, grpV, keyFun, valFunc, redBody.zero, redBody.rV, redBody.rFunc)
           case _ => None
         }
-      case Def(ArrayLength(DefHashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2))) =>
+      case Def(DeliteArrayLength(DefHashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2))) =>
         Some(origSize, grpV, keyFun)
       case _ => None
     }
@@ -120,7 +120,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
             super.simpleLoop(size, v, body)
         }
       // hash collect with average -- TODO: generalize??
-      case Block(Def(ArrayLength(HashAccess0(origSize, grpV, keyFunc, valFunc, idx1)))) =>
+      case Block(Def(DeliteArrayLength(HashAccess0(origSize, grpV, keyFunc, valFunc, idx1)))) =>
         Console.println("******* TADAAA!!! (count)")
         assert(idx1 == v, "TODO: case not handled" + idx1 + " " + v)
         val rV = (fresh[Int],fresh[Int])
@@ -129,8 +129,8 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
           zero = Block(Const(0)), rV = rV, rFunc = reifyEffects(numeric_plus(rV._1,rV._2))))
         
       // hash collect with average -- TODO: generalize??
-      case Block(Def(d@NumericDivide(Def(SimpleLoop(nestedSize1 /*Def(ArrayLength(input))*/, redV1, redBody1: DeliteReduceElem[cc1])), 
-                                   Def(SimpleLoop(nestedSize2 /*Def(ArrayLength(input))*/, redV2, redBody2: DeliteReduceElem[cc2])) ))) =>
+      case Block(Def(d@NumericDivide(Def(SimpleLoop(nestedSize1 /*Def(DeliteArrayLength(input))*/, redV1, redBody1: DeliteReduceElem[cc1])),
+                                   Def(SimpleLoop(nestedSize2 /*Def(DeliteArrayLength(input))*/, redV2, redBody2: DeliteReduceElem[cc2])) ))) =>
         // sz is not guaranteed to match ....
         Console.println("******* investigating nested collect reduce / reduce " + redBody1 + "," + redBody2)
 
@@ -164,7 +164,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
         }
         
       // remove identity collect FIXME: length check!!
-      case Block(Def(ArrayApply(xs,`v`))) if b.cond == Nil && !size.isInstanceOf[Const[_]] /*&& array_length(xs) == size*/ => 
+      case Block(Def(DeliteArrayApply(xs,`v`))) if b.cond == Nil && !size.isInstanceOf[Const[_]] /*&& darray_length(xs) == size*/ =>
         xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
       case _ => super.simpleLoop(size, v, body)
     }
@@ -180,7 +180,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
 
         struct[A]("Array"::"Array"::tag, elems.map(p=>(p._1, copyLoop(Block(p._2))(p._2.Type))))
 
-      //TODO!!case Block(Def(ArrayApply(xs,v))) if b.cond == Nil && array_length(xs) == size => xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
+      //TODO!!case Block(Def(DeliteArrayApply(xs,v))) if b.cond == Nil && darray_length(xs) == size => xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
       case _ => super.simpleLoop(size, v, body)
     }
     case _ => super.simpleLoop(size, v, body)
@@ -249,7 +249,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
     ))
   }
 
-  case class ArrayFlatten[A](data: Exp[DeliteArray[DeliteArray[A]]]) extends Def[DeliteArray[A]]
+  case class DArrayFlatten[A](data: Exp[DeliteArray[DeliteArray[A]]]) extends Def[DeliteArray[A]]
   def arrayFlatten[A:Manifest](data: Exp[DeliteArray[DeliteArray[A]]]): Exp[DeliteArray[A]] = data match {
     case Def(Struct(pre::tag,elems:Map[String,Exp[DeliteArray[DeliteArray[A]]]])) =>
       assert(pre == "Array")
@@ -260,7 +260,7 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
           else { printerr("warning: arrayFlatten expect type Array[A] but got "+m+" for input " + data.toString + "/" + elems.toString); mtype(manifest[Any]) }
       }
       struct[DeliteArray[A]](tag, elems.map(p=>(p._1, arrayFlatten(p._2)(unwrap(unwrap(p._2.Type))))))
-    case _ => ArrayFlatten(data)
+    case _ => DArrayFlatten(data)
   }
     
   // ---- hashing
@@ -366,10 +366,10 @@ trait DSArrayOpsExp extends BaseFatExp with ArrayOpsExp with TupleOpsExp with Lo
   }
 
 
-  override def mirror[A:Manifest](e: Def[A], f: Transformer): Exp[A] = (e match {
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case DArraySort(len, v, comp) => toAtom(DArraySort(f(len),(f(v._1).asInstanceOf[Sym[Int]],f(v._2).asInstanceOf[Sym[Int]]),f(comp)))
     case IndexLookup(map, key) => toAtom(IndexLookup(f(map),f(key)))
-    case ArrayFlatten(data) => toAtom(ArrayFlatten(f(data)))(mtype(manifest[A]),ctx)
+    case DArrayFlatten(data) => toAtom(DArrayFlatten(f(data)))(mtype(manifest[A]),ctx)
     //case Field(o,key,manif) => toAtom(Field(f(o),key,manif))(mtype(manifest[A])) // TODO: shouldn't be here
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]]
@@ -393,14 +393,14 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
   val IR: DSArrayOpsExp with OptiQLExp
   import IR._  
 
-  override def unapplySimpleIndex(e: Def[Any]) = e match {
+  /* override def unapplySimpleIndex(e: Def[Any]) = e match {
     case ArrayApply(a, i) => Some((a,i))
     case _ => super.unapplySimpleIndex(e)
   }
   override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
     case ArrayLength(a @ Def(SimpleLoop(_,_,_:DeliteCollectElem[_,_]))) => Some(a) // exclude hash collect (?)
     case _ => super.unapplySimpleDomain(e)
-  }
+  } */
   
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
@@ -412,7 +412,7 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
       emitValDef(sym, "(" + quote(t) + " & 0xffff).toChar")
     case IndexLookup(map, key) =>
       emitValDef(sym, quote(map) + ".get(" + quote(key) + ")") // it's a HashMapImpl object, so get instead of apply
-    case ArrayFlatten(data) =>
+    case DArrayFlatten(data) =>
       emitValDef(sym, quote(data) + ".flatten")
     case DArraySort(len, (v1,v2), comp) =>
       emitValDef(sym, "{"/*}*/)
