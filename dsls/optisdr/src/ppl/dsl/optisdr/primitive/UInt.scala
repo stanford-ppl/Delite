@@ -30,6 +30,7 @@ trait UIntOps extends Variables {
     def -(y: Rep[UInt])(implicit ctx: SourceContext) = uint_minus(x,y)
     def *(y: Rep[UInt])(implicit ctx: SourceContext) = uint_times(x,y)
     def /(y: Rep[UInt])(implicit ctx: SourceContext) = uint_divide(x,y)
+
     def unary_~()(implicit ctx: SourceContext) = uint_binarynot(x)
     def &(y: Rep[UInt])(implicit ctx: SourceContext) = uint_binaryand(x,y)
     def |(y: Rep[UInt])(implicit ctx: SourceContext) = uint_binaryor(x,y)
@@ -38,7 +39,6 @@ trait UIntOps extends Variables {
     def exp(implicit ctx: SourceContext) = uint_exp(x)
     
     def <<(y: Rep[Int])(implicit ctx: SourceContext) = uint_lshift(x, y)
-    def <<<(y: Rep[Int])(implicit ctx: SourceContext) = uint_lshift(x, y)
     def >>(y: Rep[Int])(implicit ctx: SourceContext) = uint_rshift(x, y)
     def >>>(y: Rep[Int])(implicit ctx: SourceContext) = uint_rashift(x, y)
     

@@ -36,4 +36,4 @@ class Range[T](lo: T, hi: T)
 class ParamEnum[T](xs: T*) 
 
 // Stream trait? so that width assert will only apply to them?
-trait Stream[T] extends DenseVector[T]
+trait Stream[T] extends DeliteCollection[T]

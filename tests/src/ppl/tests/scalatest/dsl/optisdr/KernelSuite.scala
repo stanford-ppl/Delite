@@ -17,24 +17,24 @@ import ppl.tests.scalatest._
 trait SimpleKernel {
   this: OptiSDRApplication =>
   
-  val simpleKernel = kernel () => {
+  val simpleKernel = kernel => {
     def run(a: Stream[Int], b: Stream[Int]) {
       a + b
     }
   }
 }
  
-object SimpleKernelRunner extends DeliteTestRunner with OptiSDRApplicationRunner with SimpleKernelApp
+object SimpleKernelTestRunner extends DeliteTestRunner with OptiSDRApplicationRunner with SimpleKernelApp
 trait SimpleKernelApp extends DeliteTestModule with OptiSDRApplication with SimpleKernel {
   def main() = {
     val a = FakeStreamVector(1, 2, 3)
     val b = FakeStreamVector(3, 2, 4)
     
-    val c = {simpleKernel()}(a, b)
+    val c = (simpleKernel())(a, b)
   }
 }
 
-class PrimitiveSuite extends DeliteSuite {
+class KernelSuite extends DeliteSuite {
   def testSimpleKernel() { compileAndTest(SimpleKernelTestRunner) }
 }
 

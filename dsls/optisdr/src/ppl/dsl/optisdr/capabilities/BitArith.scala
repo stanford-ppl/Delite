@@ -33,7 +33,6 @@ trait BitArithInternal[Rep[X],T] {
   // The double </> operators have the notion that for bitstreams, bits will carry over
   // Should I make it ... Rep[IntLike]?
   def <<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) : Rep[T]
-  def <<<(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) : Rep[T]
   def >>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) : Rep[T]
   def >>>(a: Rep[T], b: Rep[Int])(implicit ctx: SourceContext) : Rep[T]
 }
@@ -57,7 +56,6 @@ trait BitArithOps extends Variables with OverloadHack {
     def ^(rhs: Rep[T])(implicit ctx: SourceContext) = arith.^(lhs,rhs)
     
     def <<(rhs: Rep[Int])(implicit ctx: SourceContext) = arith.<<(lhs,rhs)
-    def <<<(rhs: Rep[Int])(implicit ctx: SourceContext) = arith.<<(lhs,rhs)
     def >>(rhs: Rep[Int])(implicit ctx: SourceContext) = arith.>>(lhs,rhs)
     def >>>(rhs: Rep[Int])(implicit ctx: SourceContext) = arith.>>>(lhs,rhs)
   }
@@ -69,7 +67,6 @@ trait BitArithOps extends Variables with OverloadHack {
     def ^(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a ^ b
     
     def <<(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a << b
-    def <<<(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a << b
     def >>(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a >> b
     def >>>(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = a >>> b
   }
@@ -81,7 +78,6 @@ trait BitArithOps extends Variables with OverloadHack {
     def ^(a: Rep[UInt], b: Rep[UInt])(implicit ctx: SourceContext) = a ^ b
 		
     def <<(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) = a << b
-    def <<<(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) = a << b
     def >>(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) = a >> b
     def >>>(a: Rep[UInt], b: Rep[Int])(implicit ctx: SourceContext) = a >>> b
   }
@@ -93,7 +89,6 @@ trait BitArithOps extends Variables with OverloadHack {
     def ^(a: Rep[DenseVector[T]], b: Rep[DenseVector[T]])(implicit ctx: SourceContext) = repToSDRVectorOps(a) ^ b
     
     def <<(a: Rep[DenseVector[T]], b: Rep[Int])(implicit ctx: SourceContext) = repToSDRVectorOps(a) << b
-    def <<<(a: Rep[DenseVector[T]], b: Rep[Int])(implicit ctx: SourceContext) = repToSDRVectorOps(a) << b
     def >>(a: Rep[DenseVector[T]], b: Rep[Int])(implicit ctx: SourceContext) = repToSDRVectorOps(a) >> b
     def >>>(a: Rep[DenseVector[T]], b: Rep[Int])(implicit ctx: SourceContext) = repToSDRVectorOps(a) >>> b
   }
@@ -105,7 +100,6 @@ trait BitArithOps extends Variables with OverloadHack {
     def ^(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]])(implicit ctx: SourceContext) = Tuple2(a._1 ^ b._1, a._2 ^ b._2)
     
     def <<(a: Rep[Tuple2[A,B]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple2(a._1 << b, a._2 << b)
-    def <<<(a: Rep[Tuple2[A,B]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple2(a._1 << b, a._2 << b)
     def >>(a: Rep[Tuple2[A,B]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple2(a._1 >> b, a._2 >> b)
     def >>>(a: Rep[Tuple2[A,B]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple2(a._1 >>> b, a._2 >>> b)
   }
@@ -117,7 +111,6 @@ trait BitArithOps extends Variables with OverloadHack {
     def ^(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]])(implicit ctx: SourceContext) = Tuple3(a._1 ^ b._1, a._2 ^ b._2, a._3 ^ b._3)
     
     def <<(a: Rep[Tuple3[A,B,C]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple3(a._1 << b, a._2 << b, a._3 << b)
-    def <<<(a: Rep[Tuple3[A,B,C]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple3(a._1 << b, a._2 << b, a._3 << b)
     def >>(a: Rep[Tuple3[A,B,C]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple3(a._1 >> b, a._2 >> b, a._3 >> b)
     def >>>(a: Rep[Tuple3[A,B,C]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple3(a._1 >>> b, a._2 >>> b, a._3 >>> b)
   }
@@ -129,7 +122,6 @@ trait BitArithOps extends Variables with OverloadHack {
     def ^(a: Rep[Tuple4[A,B,C,D]], b: Rep[Tuple4[A,B,C,D]])(implicit ctx: SourceContext) = Tuple4(a._1 ^ b._1, a._2 ^ b._2, a._3 ^ b._3, a._4 ^ b._4)
     
     def <<(a: Rep[Tuple4[A,B,C,D]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple4(a._1 << b, a._2 << b, a._3 << b, a._4 << b)
-    def <<<(a: Rep[Tuple4[A,B,C,D]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple4(a._1 << b, a._2 << b, a._3 << b, a._4 << b)
     def >>(a: Rep[Tuple4[A,B,C,D]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple4(a._1 >> b, a._2 >> b, a._3 >> b, a._4 >> b)
     def >>>(a: Rep[Tuple4[A,B,C,D]], b: Rep[Int])(implicit ctx: SourceContext) = Tuple4(a._1 >>> b, a._2 >>> b, a._3 >>> b, a._4 >>> b)
   }

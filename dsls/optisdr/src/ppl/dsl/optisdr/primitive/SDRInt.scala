@@ -18,7 +18,6 @@ trait SDRIntOps extends Variables {
   // Objects methods
   class SDRIntOpsCls(x: Rep[Int]) {
     def <<(y: Rep[Int])(implicit ctx: SourceContext) = sdrint_lshift(x, y)
-    def <<<(y: Rep[Int])(implicit ctx: SourceContext) = sdrint_lshift(x, y)
     def >>(y: Rep[Int])(implicit ctx: SourceContext) = sdrint_rshift(x, y)
     def >>>(y: Rep[Int])(implicit ctx: SourceContext) = sdrint_rashift(x, y)
   }
