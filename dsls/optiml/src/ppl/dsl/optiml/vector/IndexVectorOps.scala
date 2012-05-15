@@ -92,7 +92,7 @@ trait IndexVectorOpsExp extends IndexVectorOps with EffectExp { this: OptiMLExp 
 
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[Int]]]
     val size = copyTransformedOrElse(_.size)(intf.length)    
-    def alloc = DenseVector[B](intf.length, intf.isRow)
+    override def alloc = DenseVector[B](intf.length, intf.isRow)
     def m = manifest[B]
   }
   

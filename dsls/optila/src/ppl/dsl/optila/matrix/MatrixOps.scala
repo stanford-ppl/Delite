@@ -19,7 +19,6 @@ import ppl.dsl.optila._
 trait MatrixOps extends Variables {
   this: OptiLA =>
 
-
   // object SymmetricMatrix {
   //     def apply[A:Manifest](n: Rep[Int]) = symmatrix_obj_new(n)
   //   }
@@ -28,9 +27,6 @@ trait MatrixOps extends Variables {
     def alloc(numRows: Rep[Int], numCols: Rep[Int]): Rep[To]
     def toIntf(x: Rep[To]): Interface[Matrix[Elem]]
   }  
-  // def sparseVectorBuilder[A:Manifest] = new VectorBuilder[A,SparseVector[A]] {
-  //     def alloc(length: Rep[Int], isRow: Rep[Boolean]) = Vector.sparse[A](length, isRow)
-  //   }
   
   //implicit def matToString[A, M[X] <: Matrix[X]](x: M[A])(implicit toOps: M[A] => MatOpsCls[A]) = toOps(x).mkString(" ")
   
@@ -502,7 +498,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpSingleWithManifest[A,MD](reifyEffectsHere(matrix_sigmoid_impl[A,MD](in))) 
     // extends DeliteOpMap[A,Double,MD] {
     // 
-    //     def alloc = b.alloc(in.numRows, in.numCols)
+    //     override def alloc = b.alloc(in.numRows, in.numCols)
     //     val size = in.numRows*in.numCols
     //     def func = e => (1.0/(1.0+exp(conv(e)*(-1))))
   // }  
@@ -511,7 +507,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpSingleWithManifest[A,MF](reifyEffectsHere(matrix_sigmoidf_impl[A,MF](in))) 
     // extends DeliteOpMap[A,Float,MF] {
     // 
-    // def alloc = b.alloc(in.numRows, in.numCols)
+    // override def alloc = b.alloc(in.numRows, in.numCols)
     // val size = in.numRows*in.numCols
     // def func = e => (1.0/(1.0+exp(conv(e)*(-1)))).AsInstanceOf[Float]
   // }  
@@ -536,7 +532,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   abstract class MatrixArithmeticMap[A:Manifest:Arith,MA<:Matrix[A]:Manifest](implicit val b: MatrixBuilder[A,MA]) extends DeliteOpMap[A,A,MA] {
     val intf: Interface[Matrix[A]]    
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]    
-    def alloc = b.alloc(intf.numRows, intf.numCols)
+    override def alloc = b.alloc(intf.numRows, intf.numCols)
     val size = copyTransformedOrElse(_.size)(intf.size)
     
     val mA = manifest[A]
@@ -549,7 +545,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     val intfB: Interface[Matrix[A]]
     val inA = intfA.ops.elem.asInstanceOf[Exp[Matrix[A]]]
     val inB = intfB.ops.elem.asInstanceOf[Exp[Matrix[A]]]    
-    def alloc = b.alloc(intfA.numRows, intfA.numCols)
+    override def alloc = b.alloc(intfA.numRows, intfA.numCols)
     val size = copyTransformedOrElse(_.size)(intfA.size)
     
     val mA = manifest[A]
@@ -591,7 +587,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     
     val inA = intfA.ops.elem.asInstanceOf[Exp[Matrix[A]]]
     val inB = intfB.ops.elem.asInstanceOf[Exp[Matrix[B]]]  
-    def alloc = b.alloc(intfA.numRows, intfA.numCols)
+    override def alloc = b.alloc(intfA.numRows, intfA.numCols)
     val size = copyTransformedOrElse(_.size)(intfA.size)  
     def func = (a,b) => conv(a) + b
     
@@ -605,7 +601,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[A,B,MB] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    def alloc = b.alloc(intf.numRows, intf.numCols)
+    override def alloc = b.alloc(intf.numRows, intf.numCols)
     val size = copyTransformedOrElse(_.size)(intf.size)  
     def func = e => conv(e) + y
     
@@ -638,7 +634,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     
     val inA = intfA.ops.elem.asInstanceOf[Exp[Matrix[A]]]
     val inB = intfB.ops.elem.asInstanceOf[Exp[Matrix[B]]]    
-    def alloc = b.alloc(intfA.numRows, intfA.numCols)
+    override def alloc = b.alloc(intfA.numRows, intfA.numCols)
     val size = copyTransformedOrElse(_.size)(intfA.size)
     def func = (a,b) => conv(a) - b
     
@@ -652,7 +648,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[A,B,MB] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    def alloc = b.alloc(intf.numRows, intf.numCols)
+    override def alloc = b.alloc(intf.numRows, intf.numCols)
     val size = copyTransformedOrElse(_.size)(intf.size)
     def func = e => conv(e) - y
     
@@ -680,7 +676,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     
     val inA = intfA.ops.elem.asInstanceOf[Exp[Matrix[A]]]
     val inB = intfB.ops.elem.asInstanceOf[Exp[Matrix[B]]]    
-    def alloc = b.alloc(intfA.numRows, intfA.numCols)
+    override def alloc = b.alloc(intfA.numRows, intfA.numCols)
     val size = copyTransformedOrElse(_.size)(intfA.size)  
     def func = (a,b) => conv(a) * b
     
@@ -694,7 +690,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[A,B,MB] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    def alloc = b.alloc(intf.numRows, intf.numCols)
+    override def alloc = b.alloc(intf.numRows, intf.numCols)
     val size = copyTransformedOrElse(_.size)(intf.size)
     def func = e => conv(e) * y
     
@@ -721,7 +717,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     
     val inA = intfA.ops.elem.asInstanceOf[Exp[Matrix[A]]]
     val inB = intfB.ops.elem.asInstanceOf[Exp[Matrix[B]]]  
-    def alloc = b.alloc(intfA.numRows, intfA.numCols)
+    override def alloc = b.alloc(intfA.numRows, intfA.numCols)
     val size = copyTransformedOrElse(_.size)(intfA.size)
     def func = (a,b) => conv(a) / b
     
@@ -735,7 +731,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[A,B,MB] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    def alloc = b.alloc(intf.numRows, intf.numCols)
+    override def alloc = b.alloc(intf.numRows, intf.numCols)
     val size = copyTransformedOrElse(_.size)(intf.size)  
     def func = e => conv(e) / y
     
@@ -758,7 +754,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   case class MatrixSumRow[A:Manifest:Arith,VA<:Vector[A]:Manifest](x: Interface[Matrix[A]])(implicit val b: VectorBuilder[A,VA])
     extends DeliteOpMap[Int,A,VA] {
 
-    def alloc = b.alloc(x.numRows, unit(false))
+    override def alloc = b.alloc(x.numRows, unit(false))
     val in = copyTransformedOrElse(_.in)(unit(0)::x.numRows)
     val size = copyTransformedOrElse(_.size)(x.numRows)
     def func = i => x(i).sum
@@ -771,7 +767,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   case class MatrixSumCol[A:Manifest:Arith,VA<:Vector[A]:Manifest](x: Interface[Matrix[A]])(implicit val b: VectorBuilder[A,VA])
     extends DeliteOpMap[Int,A,VA] {
   
-    def alloc = b.alloc(x.numCols, unit(true))
+    override def alloc = b.alloc(x.numCols, unit(true))
     val in = copyTransformedOrElse(_.in)(unit(0)::x.numCols)
     val size = copyTransformedOrElse(_.size)(x.numCols)
     def func = i => x.getCol(i).sum
@@ -834,7 +830,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
 
     val in = intf.ops.elem.asInstanceOf[Exp[Matrix[A]]]
     val size = copyTransformedOrElse(_.size)(intf.size)
-    def alloc = b.alloc(intf.numRows, intf.numCols)    
+    override def alloc = b.alloc(intf.numRows, intf.numCols)    
     
     val mA = manifest[A]
     val mB = manifest[B]
@@ -869,7 +865,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
   case class MatrixMapRowsToVec[A:Manifest,B:Manifest,VB<:Vector[B]:Manifest](x: Interface[Matrix[A]], rowFunc: Exp[VectorView[A]] => Exp[B], isRow: Exp[Boolean])(implicit val b: VectorBuilder[B,VB])
     extends DeliteOpMap[Int,B,VB] {
 
-    def alloc = b.alloc(x.numRows, isRow)
+    override def alloc = b.alloc(x.numRows, isRow)
     val in = copyTransformedOrElse(_.in)(unit(0)::x.numRows)
     val size = copyTransformedOrElse(_.size)(x.numRows)
     def func = i => rowFunc(x(i))   
@@ -904,7 +900,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
 
     val inA = intfA.ops.elem.asInstanceOf[Exp[Matrix[A]]]
     val inB = intfA.ops.elem.asInstanceOf[Exp[Matrix[B]]]
-    def alloc = b.alloc(intfA.numRows, intfA.numCols)
+    override def alloc = b.alloc(intfA.numRows, intfA.numCols)
     val size = copyTransformedOrElse(_.size)(intfA.size)
     
     val mA = manifest[A]
@@ -947,7 +943,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[Int,A,MA] {
       
     val in = copyTransformedOrElse(_.in)(unit(0)::size)
-    def alloc = b.alloc(x.numCols, x.numRows)
+    override def alloc = b.alloc(x.numCols, x.numRows)
     val size = copyTransformedOrElse(_.size)(x.size)
     def func = i => x(i%x.numRows,i/x.numRows)
   
@@ -976,11 +972,6 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     else super.dc_update(x,n,y)        
   }
 
-  override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isDenseMat(x)) err("dc_append is not supported for DenseMatrix")
-    else super.dc_append(x,i,y)        
-  }
-  
   override def dc_parallelization[A:Manifest](x: Exp[DeliteCollection[A]], hasConditions: Boolean)(implicit ctx: SourceContext) = {
     if (isDenseMat(x)) ParFlat // parallel filter not supported with matrices yet. how will this work with sparse matrices?
     else super.dc_parallelization(x, hasConditions)

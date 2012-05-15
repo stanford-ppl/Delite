@@ -200,7 +200,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   case class VecMap[N<:IntM:Manifest:MVal,A:Manifest,B:Manifest](in: Exp[Vec[N,A]], func: Exp[A] => Exp[B])
     extends DeliteOpMap[A,B,Vec[N,B]] {
 
-    def alloc = Vec[N,B](in.size)
+    override def alloc = Vec[N,B](in.size)
     val size = in.size
     
     def n = manifest[N]
@@ -209,7 +209,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   }
   
   abstract class VecArithmeticMap[N<:IntM:Manifest:MVal,A:Manifest:Arith](in: Exp[Vec[N,A]]) extends DeliteOpMap[A,A,Vec[N,A]] {
-    def alloc = Vec[N,A](in.size)
+    override def alloc = Vec[N,A](in.size)
     val size = in.size
     
     def n = manifest[N]
@@ -219,7 +219,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   }
   
   abstract class VecArithmeticZipWith[N<:IntM:Manifest:MVal,A:Manifest:Arith](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]]) extends DeliteOpZipWith[A,A,A,Vec[N,A]] {
-    def alloc = Vec[N,A](inA.size)
+    override def alloc = Vec[N,A](inA.size)
     val size = inA.size
     
     def n = manifest[N]
@@ -229,7 +229,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   }
 
   abstract class VecOrderingZipWith[N<:IntM:Manifest:MVal,A:Manifest:Ordering](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]]) extends DeliteOpZipWith[A,A,A,Vec[N,A]] {
-    def alloc = Vec[N,A](inA.size)
+    override def alloc = Vec[N,A](inA.size)
     val size = inA.size
     
     def n = manifest[N]

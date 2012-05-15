@@ -22,11 +22,11 @@ trait HelloWorld extends OptiMLApplication {
     // for (i <- 0::1) {
       // val t1 = v map { e => if (e != 0.0) 32. else 0.0 }
       // t1.pprint
-      val t1: Rep[DenseVector[Double]] = d*v
+      val t1: Rep[SparseVector[Double]] = d*v
       val t2: Rep[SparseVector[Double]] = v*d
       
       println("t1 length: " + t1.length)
-      // println("t1 number of nnz: " + t1.nnz)
+      println("t1 number of nnz: " + t1.nnz)
       println("t1: ")
       t1.pprint
       println("t2 number of nnz: " + t2.nnz)

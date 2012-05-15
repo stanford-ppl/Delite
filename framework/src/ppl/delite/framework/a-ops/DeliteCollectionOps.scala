@@ -47,17 +47,17 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with ExceptionOpsExp wi
     def mA = manifest[A]
   }
   case class DeliteCollectionUpdate[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A]) extends Def[Unit]
-  case class DeliteCollectionAppend[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A]) extends Def[Boolean]
+  case class DeliteCollectionAppend[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A]) extends Def[Unit]
   case class DeliteCollectionUnsafeSetData[A:Manifest](x: Exp[DeliteCollection[A]], d: Exp[Array[A]]) extends Def[Unit] { // legacy...
     def m = manifest[A]
   }
 
   /**
-   * Default delite collection op implements should use DeliteArray apply, update, size, and append
+   * Default delite collection op implementations
+   * TODO: provide implementations for DeliteArray
    */
     
-  // TODO: rename to dc_physical_size?
-  // dc_size is currently unused. do we need it?
+  // dc_size is currently unused. do we need it? if we keep it, should it be renamed to dc_physical_size?
   def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x match { // TODO: move to Opt trait ?
     case Def(e: DeliteOpMap[_,_,_]) => e.size
     case Def(e: DeliteOpZipWith[_,_,_,_]) => e.size
@@ -67,10 +67,6 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with ExceptionOpsExp wi
       /*throw new RuntimeException*/printlog("warning: no static implementation found for dc_size on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get)
       reflectPure(DeliteCollectionSize(x))
   }
-  def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
-    /*throw new RuntimeException*/printlog("warning: no static implementation found for dc_set_logical_size on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get + " --- x.Type is " + x.Type)
-    //reflectPure(DeliteCollectionSetPhysicalSize(x,y))    
-  }
   def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext): Exp[A] = {
     /*throw new RuntimeException*/printlog("warning: no static implementation found for dc_apply on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get + " --- x.Type is " + x.Type)
     reflectPure(DeliteCollectionApply(x,n))
@@ -79,23 +75,28 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with ExceptionOpsExp wi
     /*throw new RuntimeException*/printlog("warning: no static implementation found for dc_update on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get)
     reflectWrite(x)(DeliteCollectionUpdate(x,n,y))
   }
-  /* returns true if the element was accepted and actually appended, false otherwise */
-  def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext): Exp[Boolean] = {
-    /*throw new RuntimeException*/printlog("warning: no static implementation found for dc_append on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get)
-    reflectWrite(x)(DeliteCollectionAppend(x,i,y))
-  }  
-  def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
-    printlog("warning: no static implementation found for dc_alloc on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get)
-    fatal(unit("dc_alloc called without any implementation"))
-  }  
-  def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
-    /*throw new RuntimeException*/printlog("warning: no static implementation found for dc_copy on " + findDefinition(src.asInstanceOf[Sym[DeliteCollection[A]]]).get)
-  }    
   def dc_parallelization[A:Manifest](x: Exp[DeliteCollection[A]], hasConditions: Boolean)(implicit ctx: SourceContext) = {
     if (hasConditions) ParBuffer else ParFlat // default
   }
-  def dc_unsafeSetData[A:Manifest](x: Exp[DeliteCollection[A]], d: Exp[Array[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DeliteCollectionUnsafeSetData(x,d)) // legacy...
-
+  
+  // -- ParBuffer methods
+   
+  def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
+    //reflectPure(DeliteCollectionSetLogicalSize(x,y))    
+    fatal(unit("dc_set_logical_size called without any implementation on " + x))    
+  }  
+  /* returns true if the element was accepted and actually appended, false otherwise */
+  def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext): Exp[Boolean] = {
+    // reflectWrite(x)(DeliteCollectionAppend(x,i,y))
+    // unit(true)
+    fatal(unit("dc_append called without any implementation on " + x))    
+  }  
+  def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
+    fatal(unit("dc_alloc called without any implementation on " + x))
+  }  
+  def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
+    fatal(unit("dc_copy called without any implementation on " + src))
+  }    
 
   //////////////
   // mirroring

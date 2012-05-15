@@ -123,7 +123,7 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
     extends DeliteOpFilter[A,Int,IndexVectorDense] {
       
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
-    def alloc = IndexVector(unit(0),unit(true))
+    override def alloc(size: Exp[Int]) = IndexVector(size,unit(true))
     def func = e => v // should we make available and use a helper function like index(e)?
     val size = intf.length
 

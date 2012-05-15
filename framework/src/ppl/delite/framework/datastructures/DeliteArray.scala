@@ -1,12 +1,23 @@
 package ppl.delite.framework.datastructures
 
-import ppl.delite.framework.ops.DeliteOpsExp
-import scala.virtualization.lms.common.{Base, EffectExp, StructExp, StructExpOptCommon, StructFatExpOptCommon, ScalaGenEffect}
 import java.io.PrintWriter
 import scala.reflect.SourceContext
+import scala.virtualization.lms.common.{Base, EffectExp, StructExp, StructExpOptCommon, StructFatExpOptCommon, ScalaGenEffect}
+import ppl.delite.framework.ops.DeliteOpsExp
+import ppl.delite.framework.datastruct.scala.DeliteCollection
 
-class DeliteArray[T] // TBD: extends DeliteCollection or not?
+trait DeliteArray[T] extends DeliteCollection[T] 
 
+/**
+ * A DeliteArray is a struct containing a data array and a length scalar variable that acts
+ * like an ArrayBuffer.
+ * 
+ * It can be used by DSLs as a generic, growable data structure that implements the DeliteCollection
+ * interface.
+ * 
+ * TODO: DeliteArray should be converted to using a programmatic struct before enabling the buffering
+ * functionality and integrating with other DSLs.
+ */
 trait DeliteArrayOps extends Base {
     
   object DeliteArray {
@@ -31,7 +42,7 @@ trait DeliteArrayOps extends Base {
 }
 
 trait DeliteArrayOpsExp extends DeliteArrayOps with StructExp with EffectExp {
-  this: DeliteOpsExp =>
+  this: DeliteArrayImplOps with DeliteOpsExp =>
   
   case class DeliteArrayNew[T:Manifest](length: Exp[Int]) extends Def[DeliteArray[T]]
   /* TODO: re-enable
@@ -45,8 +56,21 @@ trait DeliteArrayOpsExp extends DeliteArrayOps with StructExp with EffectExp {
   */
   
   case class DeliteArrayLength[T:Manifest](da: Exp[DeliteArray[T]]) extends Def[Int]
-  case class DeliteArrayApply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int]) extends Def[T]
-  case class DeliteArrayUpdate[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T]) extends Def[Unit]
+  case class DeliteArrayApply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int]) extends Def[T] {
+    val mT = manifest[T]
+  }
+  case class DeliteArrayUpdate[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T]) extends Def[Unit] {
+    val mT = manifest[T]
+  }
+  // case class DeliteArrayCopyFrom[A:Manifest](x: Exp[DeliteArray[A]], pos: Exp[Int], y: Exp[DeliteArray[A]])
+  //   extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(delitearray_copyfrom_impl(x,pos,y)))    
+  // case class DeliteArrayInsert[A:Manifest](x: Exp[DeliteArray[A]], pos: Exp[Int], y: Exp[A]) 
+  //   extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(delitearray_insert_impl(x,pos,y)))    
+  // case class DeliteArrayInsertAll[A:Manifest](x: Exp[DeliteArray[A]], pos: Exp[Int], y: Exp[DeliteArray[A]])
+  //   extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(delitearray_insertall_impl(x,pos,y)))    
+  // case class DeliteArrayRemoveAll[A:Manifest](x: Exp[DeliteArray[A]], pos: Exp[Int], len: Exp[Int])
+  //   extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(delitearray_removeall_impl(x,pos,len)))
+  case class DeliteArrayCopy[T:Manifest](src: Exp[DeliteArray[T]], srcPos: Exp[Int], dest: Exp[DeliteArray[T]], destPos: Exp[Int], len: Exp[Int]) extends Def[Unit]
   
   def darray_new[T:Manifest](length: Exp[Int]) = reflectMutable(DeliteArrayNew[T](length))
   //def darray_fromFunction[T:Manifest](length: Exp[Int], f: Exp[Int] => Exp[T]) = reflectPure(DeliteArrayFromFunction(length,f))
@@ -55,14 +79,28 @@ trait DeliteArrayOpsExp extends DeliteArrayOps with StructExp with EffectExp {
   def darray_apply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int]) = reflectPure(DeliteArrayApply[T](da,i))
   def darray_update[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T]) = reflectWrite(da)(DeliteArrayUpdate[T](da,i,x))
   
-  def reflectPure[T](x: Def[T])(implicit ctx: SourceContext) = x
+  // for these operations, the representation of DeliteArray needs to be a struct (hopefully unwrapped) with data and length fields
+  // def darray_copyfrom[A:Manifest](x: Exp[DeliteArray[A]], pos: Exp[Int], y: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DeliteArrayCopyFrom(x, pos, y))
+  // def darray_insert[A:Manifest](x: Exp[DeliteArray[A]], pos: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x)(DeliteArrayInsert(x, pos, y))
+  // def darray_insertall[A:Manifest](x: Exp[DeliteArray[A]], pos: Exp[Int], y: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DeliteArrayInsertAll(x, pos, y))
+  // def darray_removeall[A:Manifest](x: Exp[DeliteArray[A]], pos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(DeliteArrayRemoveAll(x, pos, len))  
+  def darray_copy[T:Manifest](src: Exp[DeliteArray[T]], srcPos: Exp[Int], dest: Exp[DeliteArray[T]], destPos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(dest)(DeliteArrayCopy(src,srcPos,dest,destPos,len))  
+
+  /////////////
+  // internal
+  
+  def darray_unsafe_update[T:Manifest](x: Rep[DeliteArray[T]], n: Rep[Int], y: Rep[T])(implicit ctx: SourceContext) = DeliteArrayUpdate(x,n,y)
+  def darray_unsafe_copy[T:Manifest](src: Exp[DeliteArray[T]], srcPos: Exp[Int], dest: Exp[DeliteArray[T]], destPos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) = DeliteArrayCopy(src,srcPos,dest,destPos,len)
+
+    
+  //def reflectPure[T](x: Def[T])(implicit ctx: SourceContext) = x
   
   //def array_length[T:Manifest](da: Exp[Array[T]]) = darray_length(da.asInstanceOf[Exp[DeliteArray[T]]]) // FIXME
   
 }
 
 trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {
-  this: DeliteOpsExp =>
+  this: DeliteArrayImplOps with DeliteOpsExp =>
   
   override def field[T:Manifest](struct: Rep[Any], index: String)(implicit ctx: SourceContext): Rep[T] = struct match {
     //case Def(m: DeliteOpMapLike[_,_]) =>
@@ -99,7 +137,7 @@ trait DeliteArrayOpsExpOpt extends DeliteArrayOpsExp with StructExpOptCommon {
 }
 
 trait DeliteArrayFatExp extends DeliteArrayOpsExpOpt with StructFatExpOptCommon {
-  this: DeliteOpsExp =>
+  this: DeliteArrayImplOps with DeliteOpsExp =>
 }
 
 trait ScalaGenDeliteArrayOps extends ScalaGenEffect {
@@ -115,6 +153,8 @@ trait ScalaGenDeliteArrayOps extends ScalaGenEffect {
       emitValDef(sym, quote(da) + "(" + quote(idx) + ")")
     case DeliteArrayUpdate(da, idx, x) =>
       emitValDef(sym, quote(da) + "(" + quote(idx) + ") = " + quote(x))
+    case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
+      emitValDef(sym, "System.arraycopy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
     case _ => super.emitNode(sym, rhs)
   }
   

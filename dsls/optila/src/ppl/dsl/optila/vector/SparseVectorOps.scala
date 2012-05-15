@@ -169,7 +169,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
   case class SparseVectorUpdate[A:Manifest](x: Exp[SparseVector[A]], n: Exp[Int], y: Exp[A]) 
   //    extends DefWithManifest[A,Unit]
     extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(sparsevector_update_impl(x,n,y)))
-    
+  
   case class SparseVectorCopyFrom[A:Manifest](x: Exp[SparseVector[A]], pos: Exp[Int], y: Exp[SparseVector[A]])
     extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(sparsevector_copyfrom_impl(x,pos,y)))
 
@@ -213,7 +213,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
     extends DeliteOpMap[A,A,SparseVector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
 
-    def alloc = SparseVector[A](in.length, !in.isRow)
+    override def alloc = SparseVector[A](in.length, !in.isRow)
     def func = e => e 
 
     val mA = manifest[A]
@@ -265,9 +265,9 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
     case e@SparseVectorRawData(x) => reflectPure(SparseVectorRawData(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SparseVectorRawIndices(x) => reflectPure(SparseVectorRawIndices(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SparseVectorNnz(x) => reflectPure(SparseVectorNnz(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-    case e@SparseVectorApply(x,n) => reflectPure(SparseVectorApply(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
-    
+        
     // delite ops
+    case e@SparseVectorApply(x,n) => reflectPure(new { override val original = Some(f,e) } with SparseVectorApply(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SparseVectorSort(x) => reflectPure(new { override val original = Some(f,e) } with SparseVectorSort(f(x))(e.mA,e.o))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SparseVectorTimesMatrix(x,y) => reflectPure(new { override val original = Some(f,e) } with SparseVectorTimesMatrix(f(x),f(y))(e.mA,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SparseVectorTrans(x) => reflectPure(new { override val original = Some(f,e) } with SparseVectorTrans(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
@@ -283,8 +283,8 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
     case Reflect(e@SparseVectorRawData(x), u, es) => reflectMirrored(Reflect(SparseVectorRawData(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseVectorRawIndices(x), u, es) => reflectMirrored(Reflect(SparseVectorRawIndices(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseVectorNnz(x), u, es) => reflectMirrored(Reflect(SparseVectorNnz(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@SparseVectorApply(x,n), u, es) => reflectMirrored(Reflect(SparseVectorApply(f(x),f(n))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
-    case Reflect(e@SparseVectorUpdate(x,n,y), u, es) => reflectMirrored(Reflect(SparseVectorUpdate(f(x),f(n),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SparseVectorApply(x,n), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorApply(f(x),f(n))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SparseVectorUpdate(x,n,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorUpdate(f(x),f(n),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseVectorSort(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorSort(f(x))(e.mA,e.o), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseVectorTimesMatrix(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorTimesMatrix(f(x),f(y))(e.mA,e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseVectorTrans(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseVectorTrans(f(x))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))

@@ -239,7 +239,7 @@ trait MatOpsExp extends MatOps with VariablesExp with DeliteCollectionOpsExp {
   ////////////////////////////////
   // implemented via delite ops 
   abstract class MatArithmeticMap[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](in:Exp[Mat[R,C,A]]) extends DeliteOpMap[A,A,Mat[R,C,A]] {
-    def alloc = Mat[R,C,A](in.numRows, in.numCols)
+    override def alloc = Mat[R,C,A](in.numRows, in.numCols)
     val size = in.numRows * in.numCols
 
     val r = manifest[R]
@@ -251,7 +251,7 @@ trait MatOpsExp extends MatOps with VariablesExp with DeliteCollectionOpsExp {
   }
 
   abstract class MatArithmeticZipWith[R<:IntM:Manifest:MVal,C<:IntM:Manifest:MVal,A:Manifest:Arith](inA:Exp[Mat[R,C,A]],inB:Exp[Mat[R,C,A]]) extends DeliteOpZipWith[A,A,A,Mat[R,C,A]] {
-    def alloc = Mat[R,C,A](inA.numRows, inA.numCols)
+    override def alloc = Mat[R,C,A](inA.numRows, inA.numCols)
     val size = inA.numRows * inA.numCols
 
     val r = manifest[R]

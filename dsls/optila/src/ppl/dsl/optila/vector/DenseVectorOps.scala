@@ -98,10 +98,10 @@ trait DenseVectorOps extends Variables {
     def vminusBuilder(implicit ctx: SourceContext) = builder[A]
     def vminusToIntf(x: Rep[VMINUSR]) = toIntf(x)    
     
-    type VTIMESR = DenseVector[A]
+    type VTIMESR = SparseVector[A]
     val mVTIMESR = manifest[VTIMESR]
-    def vtimesBuilder(implicit ctx: SourceContext) = builder[A]
-    def vtimesToIntf(x: Rep[VTIMESR]) = toIntf(x)        
+    def vtimesBuilder(implicit ctx: SourceContext) = sparseVectorBuilder[A]
+    def vtimesToIntf(x: Rep[VTIMESR]) = sparseVecToInterface(x)        
     
     def *(y: Rep[DenseMatrix[A]])(implicit a: Arith[A],o: Overloaded2, ctx: SourceContext) = densevector_times_matrix(elem,y)
     
@@ -260,7 +260,7 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
     extends DeliteOpMap[A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
 
-    def alloc = DenseVector[A](in.length, !in.isRow)
+    override def alloc = DenseVector[A](in.length, !in.isRow)
     def func = e => e 
 
     val mA = manifest[A]

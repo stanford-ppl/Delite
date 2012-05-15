@@ -181,7 +181,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   case class AggregateIf[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], func: Exp[Int] => Exp[A])
     extends DeliteOpFilter[Int,A,DenseVector[A]] {
   
-    def alloc = DenseVector[A](unit(0), unit(true))      
+    override def alloc = DenseVector[A](unit(0), unit(true))      
     val in = copyTransformedOrElse(_.in)(unit(0)::end-start)
     val size = copyTransformedOrElse(_.size)(end-start)
     
@@ -197,7 +197,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     extends DeliteOpMap[Int,A,DenseVector[A]] {
   
     val flatSize = rows.length*cols.length        
-    def alloc = DenseVector[A](flatSize, unit(true))      
+    override def alloc = DenseVector[A](flatSize, unit(true))      
     def func = i => func2(i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))    
     val in = copyTransformedOrElse(_.in)(unit(0)::flatSize)
     val size = copyTransformedOrElse(_.size)(flatSize)
@@ -217,7 +217,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     extends DeliteOpFilter[Int,A,DenseVector[A]] {
   
     val flatSize = rows.length*cols.length    
-    def alloc = DenseVector[A](unit(0), unit(true))      
+    override def alloc(size: Exp[Int]) = DenseVector[A](size, unit(true))      
     def cond = i => cond2(i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))
     def func = i => func2(i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))    
     val in = copyTransformedOrElse(_.in)(unit(0)::flatSize)

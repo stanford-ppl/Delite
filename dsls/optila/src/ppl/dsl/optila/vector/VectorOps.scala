@@ -573,7 +573,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   abstract class VectorArithmeticMap[A:Manifest:Arith,VA<:Vector[A]:Manifest](implicit val b: VectorBuilder[A,VA]) extends DeliteOpMap[A,A,VA] {
     val intf: Interface[Vector[A]]
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]    
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intf.isRow)
     val size = copyTransformedOrElse(_.size)(intf.length)
     
@@ -587,7 +586,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     val intfB: Interface[Vector[A]]
     val inA = intfA.ops.elem.asInstanceOf[Exp[Vector[A]]]
     val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[A]]]    
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intfA.isRow)
     val size = copyTransformedOrElse(_.size)(intfA.length)
 
@@ -624,7 +622,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     
     val inA = intfA.ops.elem.asInstanceOf[Exp[Vector[A]]]
     val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[B]]]    
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intfA.isRow)
     val size = copyTransformedOrElse(_.size)(intfA.length)
     def func = (a,b) => conv(a) + b
@@ -645,7 +642,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[A,B,VB] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intf.isRow)
     val size = copyTransformedOrElse(_.size)(intf.length)  
     def func = e => conv(e) + y
@@ -679,7 +675,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     
     val inA = intfA.ops.elem.asInstanceOf[Exp[Vector[A]]]
     val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[B]]]    
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intfA.isRow)
     val size = copyTransformedOrElse(_.size)(intfA.length)  
     def func = (a,b) => conv(a) - b
@@ -700,7 +695,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[A,B,VB] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intf.isRow)
     val size = copyTransformedOrElse(_.size)(intf.length)  
     def func = e => conv(e) - y
@@ -734,7 +728,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     
     val inA = intfA.ops.elem.asInstanceOf[Exp[Vector[A]]]
     val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[B]]]    
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intfA.isRow)
     val size = copyTransformedOrElse(_.size)(intfA.length)  
     def func = (a,b) => conv(a) * b
@@ -755,7 +748,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[A,B,VB] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intf.isRow)
     val size = copyTransformedOrElse(_.size)(intf.length)  
     def func = e => conv(e) * y
@@ -804,7 +796,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     
     val inA = intfA.ops.elem.asInstanceOf[Exp[Vector[A]]]
     val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[B]]]    
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intfA.isRow)
     val size = copyTransformedOrElse(_.size)(intfA.length)  
     def func = (a,b) => conv(a) / b
@@ -825,7 +816,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpMap[A,B,VB] {
     
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intf.isRow)
     val size = copyTransformedOrElse(_.size)(intf.length)
     def func = e => conv(e) / y
@@ -928,7 +918,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
 
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
     val size = copyTransformedOrElse(_.size)(intf.length)
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intf.isRow)
 
     val mA = manifest[A]
@@ -961,7 +950,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
 
     val inA = intfA.ops.elem.asInstanceOf[Exp[Vector[A]]]  
     val inB = intfB.ops.elem.asInstanceOf[Exp[Vector[B]]]  
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intfA.isRow)
     val size = copyTransformedOrElse(_.size)(intfA.length)
     
@@ -998,7 +986,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpFilter[A,A,VA] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, intf.isRow)
     def func = e => e 
     val size = copyTransformedOrElse(_.size)(intf.length)
@@ -1011,7 +998,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpFilter[A,Int,VFINDR] {
 
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]  
-    def alloc = throw new UnsupportedOperationException("refactoring, should not have been called!")
     override def alloc(len: Exp[Int]) = b.alloc(len, unit(true))
     def func = e => v // should we make available and use a helper function like index(e)?
     val size = copyTransformedOrElse(_.size)(intf.length)
@@ -1036,7 +1022,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   // case class VectorRepmat[A:Manifest,MA:Manifest](x: Interface[Vector[A]], i: Exp[Int], j: Exp[Int])(implicit val b: MatrixBuilder[A,MA])
   //   extends DeliteOpMap[Int,A,MA] {
   // 
-  //   def alloc = b.alloc(i, x.length*j)
+  //   override def alloc = b.alloc(i, x.length*j)
   //   val in = copyTransformedOrElse(_.in)(unit(0)::size)
   //   val size = copyTransformedOrElse(_.size)(x.length*i*j)
   //   def func = i => x(i%x.length)
@@ -1049,7 +1035,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   case class VectorOuter[A:Manifest:Arith,MA:Manifest](x: Interface[Vector[A]], y: Interface[Vector[A]])(implicit val b: MatrixBuilder[A,MA])
     extends DeliteOpMap[Int,A,MA] {
 
-    def alloc = b.alloc(x.length, y.length)
+    override def alloc = b.alloc(x.length, y.length)
     val in = copyTransformedOrElse(_.in)(unit(0)::size)
     val size = copyTransformedOrElse(_.size)(x.length*y.length)
     def func = i => x(i/y.length) * y(i%y.length)
@@ -1098,8 +1084,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
     if (isDenseVec(x)) densevector_set_length(asDenseVec(x), y)
     else if (isSparseVec(x)) sparsevector_set_length(asSparseVec(x), y)
-    else if (isRange(x)) err("dc_set_logical_size should not be called on RangeVector")
-    else if (isView(x)) err("dc_set_logical_size should not be called on VectorView")
     else super.dc_set_logical_size(x,y)        
   }
   
@@ -1118,7 +1102,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     if (isDenseVec(x)) asDenseVec(x).update(n,y)
     else if (isSparseVec(x)) asSparseVec(x).update(n,y)
     else if (isRange(x)) err("dc_update should not be called on RangeVector")
-    else if (isView(x)) err("dc_update should not be called on VectorView")
     else super.dc_update(x,n,y)        
   }
   
@@ -1129,7 +1112,6 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
       else unit(false)
     }      
     else if (isRange(x)) err("dc_append should not be called on RangeVector")
-    else if (isView(x)) err("dc_append should not be called on VectorView")
     else super.dc_append(x,i,y)        
   }  
   
