@@ -84,9 +84,9 @@ trait ScalaGenDeliteArrayBuilderOps extends ScalaGenEffect {
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case DeliteArrayBuilderNew(initSize) =>
-      emitValDef(sym, "new java.util.ArrayList[" + remap(sym.Type.typeArguments(0)) + "](" + quote(initSize) + ")")
+      emitValDef(sym, "new scala.collection.mutable.ArrayBuffer[" + remap(sym.Type.typeArguments(0)) + "](" + quote(initSize) + ")")
     case DeliteArrayBuilderPlusEquals(b, elem) =>
-      emitValDef(sym, quote(b) + ".add(" + quote(elem)+ ")")
+      emitValDef(sym, quote(b) + " += " + quote(elem))
     case DeliteArrayBuilderResult(b) =>
       emitValDef(sym, quote(b) + ".toArray")
     case _ => super.emitNode(sym, rhs)

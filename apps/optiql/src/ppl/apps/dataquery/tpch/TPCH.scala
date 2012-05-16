@@ -32,37 +32,27 @@ trait TPCHBaseTrait extends OptiQLApplication with Types {
     
     val tpchDataPath = args(0) 
 
-    //load TPCH data //TODO: only load tables each query requires
-    //customers = TableInputReader(tpchDataPath, Customer())
-    lineItems = TableInputReader(tpchDataPath, LineItem())
-    //orders = TableInputReader(tpchDataPath, Order())
-    //nations = TableInputReader(tpchDataPath, Nation())
-    //parts = TableInputReader(tpchDataPath, Part())
-    //partSuppliers = TableInputReader(tpchDataPath, PartSupplier())
-    //regions = TableInputReader(tpchDataPath, Region())
-    //suppliers = TableInputReader(tpchDataPath, Supplier())
+    //load TPCH data
+    customers = TableInputReader(tpchDataPath+"/customer.tbl", Customer())
+    lineItems = TableInputReader(tpchDataPath+"/lineitem.tbl", LineItem())
+    orders = TableInputReader(tpchDataPath+"/orders.tbl", Order())
+    nations = TableInputReader(tpchDataPath+"/nation.tbl", Nation())
+    parts = TableInputReader(tpchDataPath+"/part.tbl", Part())
+    partSuppliers = TableInputReader(tpchDataPath+"/partsupp.tbl", PartSupplier())
+    regions = TableInputReader(tpchDataPath+"/region.tbl", Region())
+    suppliers = TableInputReader(tpchDataPath+"/supplier.tbl", Supplier())
     println("Loading Complete")	
-    //TODO: don't really want to to tic on the whole struct... what's the proper solution?
-    tic(customers, lineItems(0).l_returnflag, orders, nations, parts, partSuppliers, regions, suppliers)
+    //tic(customers, lineItems, orders, nations, parts, partSuppliers, regions, suppliers)
+    //TODO: by tic'ing on all input we force a bunch of loading that is otherwise dead... what's the proper solution? soft dependencies?
     query()
   }
 
 }
 
-object TPCHQ0 extends OptiQLApplicationRunner with TPCHQ0Trait
-trait TPCHQ0Trait extends TPCHBaseTrait {
-  val queryName = "Q0"
-  def query() = {
-    val q = lineItems
-    toc(q)
-    q.printAsTable(10)
-  }
-}
-
-//val res = lineItems Select(e => new Result { val l_shipdate = e.l_shipdate  }) Where(_.l_shipdate <= Date("1998-12-01"))
 trait TPCHQ1Trait extends TPCHBaseTrait {
   val queryName = "Q1"  
   def query() = {           
+    tic(lineItems.size)
     val q = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
       val returnFlag = g.key._1
       val lineStatus = g.key._2
@@ -84,6 +74,7 @@ trait TPCHQ2Trait extends TPCHBaseTrait {
   val queryName = "Q2"  
   
   def query() = {
+    tic(parts.size)
     val q = parts.Where(p => {val res:Rep[Boolean] = p.p_size == 15; res}).Where(_.p_type.endsWith("BRASS")).Join(partSuppliers).WhereEq(_.p_partkey, _.ps_partkey).Select((p, ps) => new  Result {
       val p_partkey = p.p_partkey
       val p_mfgr = p.p_mfgr

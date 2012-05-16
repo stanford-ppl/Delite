@@ -8,11 +8,6 @@ trait Types { this: OptiQL =>
 
   abstract class Grouping[K,V] extends Record with DeliteCollection[V]
 
-  abstract class Date extends Record
-  /* type Date = Record {
-    val year: Int
-    val month: Int
-    val day: Int
-  } */
+  abstract class Date
 
 }

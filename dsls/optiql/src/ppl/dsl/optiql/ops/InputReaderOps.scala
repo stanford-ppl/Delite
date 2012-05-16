@@ -37,10 +37,13 @@ trait InputReaderImplOpsStandard extends InputReaderImplOps { this: OptiQLCompil
     val input = BufferedReader(FileReader(path))
     val table = DeliteArrayBuilder[T]()
     var record = input.readLine()
+    var i = 0
     while (record != unit(null)) {
       val fields = record.split("\\\\Q" + separator + "\\\\E")
       addRecord(table, fields, shape)
       record = input.readLine()
+      i += 1
+      if (i % 1000000 == 0) println("processed " + i/1000000 + " million records")
     }
     input.close()
     table.result
