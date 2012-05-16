@@ -13,6 +13,7 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.Config
 import ppl.delite.framework.extern.lib._
+import ppl.delite.framework.Util._
 
 import ppl.dsl.optila._
 

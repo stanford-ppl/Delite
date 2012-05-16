@@ -9,6 +9,7 @@ import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatC
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.datastructures.DeliteArray
 import ppl.dsl.optila._
 
 trait SparseVectorOps extends Variables {
@@ -91,6 +92,9 @@ trait SparseVectorOps extends Variables {
     
     // ordering operations
     def sort(implicit o: Ordering[A], ctx: SourceContext) = sparsevector_sort(elem)    
+    
+    // bulk operations    
+    def mapNZ[B:Manifest](f: Rep[A] => Rep[B])(implicit ctx: SourceContext): Rep[SparseVector[B]] = sparsevector_mapnz[A,B](x,f)
   }
 
   // object defs
@@ -114,15 +118,16 @@ trait SparseVectorOps extends Variables {
   def sparsevector_clear[A:Manifest](x: Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[Unit]
   def sparsevector_times_matrix[A:Manifest:Arith](x: Rep[SparseVector[A]], y: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[SparseVector[A]]
   def sparsevector_sort[A:Manifest:Ordering](x: Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[SparseVector[A]]
+  def sparsevector_mapnz[A:Manifest,B:Manifest](x: Rep[SparseVector[A]], f: Rep[A] => Rep[B]): Rep[SparseVector[B]]
 }
 
 trait SparseVectorCompilerOps extends SparseVectorOps {
   this: OptiLACompiler =>
   
-  def sparsevector_raw_data[A:Manifest](x: Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[Array[A]]
-  def sparsevector_raw_indices[A:Manifest](x: Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[Array[Int]]  
-  def sparsevector_set_raw_data[A:Manifest](x: Rep[SparseVector[A]], data: Rep[Array[A]])(implicit ctx: SourceContext): Rep[Unit]
-  def sparsevector_set_raw_indices[A:Manifest](x: Rep[SparseVector[A]], indices: Rep[Array[Int]])(implicit ctx: SourceContext): Rep[Unit]
+  def sparsevector_raw_data[A:Manifest](x: Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[DeliteArray[A]]
+  def sparsevector_raw_indices[A:Manifest](x: Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[DeliteArray[Int]]  
+  def sparsevector_set_raw_data[A:Manifest](x: Rep[SparseVector[A]], data: Rep[DeliteArray[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def sparsevector_set_raw_indices[A:Manifest](x: Rep[SparseVector[A]], indices: Rep[DeliteArray[Int]])(implicit ctx: SourceContext): Rep[Unit]
   def sparsevector_set_length[A:Manifest](x: Rep[SparseVector[A]], newVal: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
   def sparsevector_set_isrow[A:Manifest](x: Rep[SparseVector[A]], newVal: Rep[Boolean])(implicit ctx: SourceContext): Rep[Unit]
   def sparsevector_set_nnz[A:Manifest](x: Rep[SparseVector[A]], newVal: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
@@ -147,13 +152,13 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
   case class SparseVectorNew[A:Manifest](len: Exp[Int], isRow: Exp[Boolean]) extends DefWithManifest[A,SparseVector[A]] 
   case class SparseVectorLength[A:Manifest](x: Exp[SparseVector[A]]) extends DefWithManifest[A,Int]
   case class SparseVectorIsRow[A:Manifest](x: Exp[SparseVector[A]]) extends DefWithManifest[A,Boolean]
-  case class SparseVectorRawData[A:Manifest](x: Exp[SparseVector[A]]) extends DefWithManifest[A,Array[A]]
-  case class SparseVectorRawIndices[A:Manifest](x: Exp[SparseVector[A]]) extends DefWithManifest[A,Array[Int]]
+  case class SparseVectorRawData[A:Manifest](x: Exp[SparseVector[A]]) extends DefWithManifest[A,DeliteArray[A]]
+  case class SparseVectorRawIndices[A:Manifest](x: Exp[SparseVector[A]]) extends DefWithManifest[A,DeliteArray[Int]]
   case class SparseVectorNnz[A:Manifest](x: Exp[SparseVector[A]]) extends DefWithManifest[A,Int]
   case class SparseVectorSetLength[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Int]) extends DefWithManifest[A,Unit]
   case class SparseVectorSetIsRow[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Boolean]) extends DefWithManifest[A,Unit]
-  case class SparseVectorSetRawData[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Array[A]]) extends DefWithManifest[A,Unit]
-  case class SparseVectorSetRawIndices[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Array[Int]]) extends DefWithManifest[A,Unit]
+  case class SparseVectorSetRawData[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[DeliteArray[A]]) extends DefWithManifest[A,Unit]
+  case class SparseVectorSetRawIndices[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[DeliteArray[Int]]) extends DefWithManifest[A,Unit]
   case class SparseVectorSetNnz[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Int]) extends DefWithManifest[A,Unit]
     
   /////////////////////////////////////////////////
@@ -218,7 +223,7 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
 
     val mA = manifest[A]
   }
-
+  
   /////////////////////
   // object interface
 
@@ -243,6 +248,17 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
   def sparsevector_clear[A:Manifest](x: Exp[SparseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorClear(x))
   def sparsevector_times_matrix[A:Manifest:Arith](x: Exp[SparseVector[A]], y: Exp[SparseMatrix[A]])(implicit ctx: SourceContext) = reflectPure(SparseVectorTimesMatrix(x,y))
   def sparsevector_sort[A:Manifest:Ordering](x: Exp[SparseVector[A]])(implicit ctx: SourceContext) = reflectPure(SparseVectorSort(x))
+  def sparsevector_mapnz[A:Manifest,B:Manifest](x: Exp[SparseVector[A]], f: Exp[A] => Exp[B]) = {
+    // example specialized sparse op: operates directly on the underlying value array (could be represented as a lowering)
+    val out = SparseVector[B](x.length, x.isRow)
+    sparsevector_set_raw_data(out, sparsevector_raw_data(x).map(f))
+    x match {
+      case Def(Reflect(_, u, _)) if mustMutable(u) => sparsevector_set_raw_indices(out, sparsevector_raw_indices(x).Clone)
+      case _ => sparsevector_set_raw_indices(out, sparsevector_raw_indices(x))  
+    }    
+    sparsevector_set_nnz(out, x.nnz)
+    out.unsafeImmutable
+  }
   
   /////////////
   // internal
@@ -250,8 +266,8 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
   def sparsevector_raw_data[A:Manifest](x: Exp[SparseVector[A]])(implicit ctx: SourceContext) = reflectPure(SparseVectorRawData(x))
   def sparsevector_raw_indices[A:Manifest](x: Exp[SparseVector[A]])(implicit ctx: SourceContext) = reflectPure(SparseVectorRawIndices(x))
   def sparsevector_nnz[A:Manifest](x: Exp[SparseVector[A]])(implicit ctx: SourceContext) = reflectPure(SparseVectorNnz(x))
-  def sparsevector_set_raw_data[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Array[A]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorSetRawData(x, newVal))
-  def sparsevector_set_raw_indices[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Array[Int]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorSetRawIndices(x, newVal))
+  def sparsevector_set_raw_data[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorSetRawData(x, newVal))
+  def sparsevector_set_raw_indices[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[DeliteArray[Int]])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorSetRawIndices(x, newVal))
   def sparsevector_set_nnz[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorSetNnz(x, newVal))
   def sparsevector_set_length[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorSetLength(x, newVal))
   def sparsevector_set_isrow[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Boolean])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorSetIsRow(x, newVal))      

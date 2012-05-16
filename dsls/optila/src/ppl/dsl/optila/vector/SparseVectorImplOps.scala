@@ -107,13 +107,13 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
   
   def sparsevector_update_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {    
     val offRaw = sparsevector_find_offset(v, pos)
-    if (offRaw > -1) array_unsafe_update(sparsevector_raw_data(v), offRaw, x)
+    if (offRaw > -1) darray_unsafe_update(sparsevector_raw_data(v), offRaw, x)
     else {
       if (x != defaultValue[A]) {
         val off = ~offRaw
         sparsevector_insertspace(v, off, 1)
-        array_unsafe_update(sparsevector_raw_indices(v), off, pos)
-        array_unsafe_update(sparsevector_raw_data(v), off, x)        
+        darray_unsafe_update(sparsevector_raw_indices(v), off, pos)
+        darray_unsafe_update(sparsevector_raw_data(v), off, x)        
       }
     }    
   }
@@ -148,10 +148,10 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
     sparsevector_insertspace(v, off, 1)
     val data = sparsevector_raw_data(v)
     val indices = sparsevector_raw_indices(v)    
-    array_unsafe_update(indices, off, pos)
-    array_unsafe_update(data, off, x)
+    darray_unsafe_update(indices, off, pos)
+    darray_unsafe_update(data, off, x)
     for (i <- off+1 until v.nnz) {
-      array_unsafe_update(indices, i, indices(i) + 1)
+      darray_unsafe_update(indices, i, indices(i) + 1)
     }
     
     sparsevector_set_length(v, v.length + 1)    
@@ -165,12 +165,12 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
     val data = sparsevector_raw_data(v)
     val indices = sparsevector_raw_indices(v)    
     for (i <- 0 until xs.nnz) {
-      array_unsafe_update(indices, i+off, sparsevector_raw_indices(xs).apply(i)+pos)
-      array_unsafe_update(data, i+off, sparsevector_raw_data(xs).apply(i))
+      darray_unsafe_update(indices, i+off, sparsevector_raw_indices(xs).apply(i)+pos)
+      darray_unsafe_update(data, i+off, sparsevector_raw_data(xs).apply(i))
     }    
     
     for (i <- off+xs.nnz until v.nnz) {
-      array_unsafe_update(indices, i, indices(i) + xs.length)
+      darray_unsafe_update(indices, i, indices(i) + xs.length)
     }
     
     sparsevector_set_length(v, v.length + xs.length)
@@ -206,8 +206,8 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
     val endRaw = sparsevector_find_offset(v, pos+len)
     val end = if (endRaw > -1) endRaw else ~endRaw
     val remaining = v.nnz - end 
-    array_unsafe_copy(data, end, data, start, remaining)
-    array_unsafe_copy(indices, end, indices, start, remaining)
+    darray_unsafe_copy(data, end, data, start, remaining)
+    darray_unsafe_copy(indices, end, indices, start, remaining)
     sparsevector_set_length(v, v.length - len)
     sparsevector_set_nnz(v, start+remaining)
   }
@@ -215,8 +215,8 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
   def sparsevector_clear_impl[A:Manifest](v: Rep[SparseVector[A]]): Rep[Unit] = {
     sparsevector_set_length(v, 0)
     sparsevector_set_nnz(v, 0)
-    sparsevector_set_raw_data(v, (NewArray[A](0)).unsafeImmutable)
-    sparsevector_set_raw_indices(v, (NewArray[Int](0)).unsafeImmutable)
+    sparsevector_set_raw_data(v, (DeliteArray[A](0)).unsafeImmutable)
+    sparsevector_set_raw_indices(v, (DeliteArray[Int](0)).unsafeImmutable)
   }
   
   /*
@@ -227,8 +227,8 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
     sparsevector_ensureextra(v,len)
     val data = sparsevector_raw_data(v)
     val indices = sparsevector_raw_indices(v)
-    array_unsafe_copy(data, pos, data, pos + len, v.nnz - pos)
-    array_unsafe_copy(indices, pos, indices, pos + len, v.nnz - pos)
+    darray_unsafe_copy(data, pos, data, pos + len, v.nnz - pos)
+    darray_unsafe_copy(indices, pos, indices, pos + len, v.nnz - pos)
     sparsevector_set_nnz(v, v.nnz + len)
   }
 
@@ -244,10 +244,10 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
     val indices = sparsevector_raw_indices(v)
     var n = Math.max(4, data.length * 2)
     while (n < minLen) n = n*2
-    val newData = NewArray[A](n)
-    val newIndices = NewArray[Int](n)
-    array_unsafe_copy(data, 0, newData, 0, v.nnz)
-    array_unsafe_copy(indices, 0, newIndices, 0, v.nnz)
+    val newData = DeliteArray[A](n)
+    val newIndices = DeliteArray[Int](n)
+    darray_unsafe_copy(data, 0, newData, 0, v.nnz)
+    darray_unsafe_copy(indices, 0, newIndices, 0, v.nnz)
     sparsevector_set_raw_data(v, newData.unsafeImmutable)
     sparsevector_set_raw_indices(v, newIndices.unsafeImmutable)
   }
@@ -256,10 +256,10 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
     val data = sparsevector_raw_data(v)
     val indices = sparsevector_raw_indices(v)
     if (v.nnz < data.length) {
-      val outData = NewArray[A](v.nnz)
-      val outIndices = NewArray[Int](v.nnz)
-      array_unsafe_copy(data, 0, outData, 0, v.nnz)
-      array_unsafe_copy(indices, 0, outIndices, 0, v.nnz)
+      val outData = DeliteArray[A](v.nnz)
+      val outIndices = DeliteArray[Int](v.nnz)
+      darray_unsafe_copy(data, 0, outData, 0, v.nnz)
+      darray_unsafe_copy(indices, 0, outIndices, 0, v.nnz)
       sparsevector_set_raw_data(v, outData.unsafeImmutable)
       sparsevector_set_raw_indices(v, outIndices.unsafeImmutable)
     }    

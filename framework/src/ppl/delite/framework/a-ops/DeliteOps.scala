@@ -30,6 +30,14 @@ trait DeliteOpsExp extends BaseFatExp with EffectExp with VariablesExp with Loop
   object ParFlat extends DeliteParallelStrategy
   object ParBuffer extends DeliteParallelStrategy
   
+  /*
+   * Useful for mirroring
+   */
+  abstract class DefWithManifest[A:Manifest,R:Manifest] extends Def[R] {
+    val mA = manifest[A]
+    val mR = manifest[R]
+  }  
+  
   /**
    * The base type of the DeliteOp hierarchy.
    */

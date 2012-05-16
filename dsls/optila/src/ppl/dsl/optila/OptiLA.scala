@@ -5,6 +5,7 @@ import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
 import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
+import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
@@ -97,7 +98,7 @@ trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
 /**
  * This the trait that every OptiLA application must extend.
  */
-trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps
+trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps with DeliteArrayOps
   with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
   with VectorOps with DenseVectorOps with SparseVectorOps with RangeVectorOps with VectorViewOps //with MatrixRowOps with MatrixColOps
   with MatrixOps with DenseMatrixOps
@@ -107,7 +108,7 @@ trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait OptiLACompiler extends OptiLA with OptiLAUtilities with DenseVectorCompilerOps with SparseVectorCompilerOps with DenseMatrixCompilerOps 
+trait OptiLACompiler extends OptiLA with OptiLAUtilities with DeliteArrayCompilerOps with DenseVectorCompilerOps with SparseVectorCompilerOps with DenseMatrixCompilerOps 
   with MathOps with RangeOps with IOOps with SeqOps with SetOps with ListOps with HashMapOps with IterableOps with ArrayBufferOps with ExceptionOps {
     
   this: OptiLAApplication with OptiLAExp =>
@@ -117,8 +118,8 @@ trait OptiLACompiler extends OptiLA with OptiLAUtilities with DenseVectorCompile
 /**
  * These are the corresponding IR nodes for OptiLA.
  */
-trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
-  with LanguageOpsExp with ArithOpsExpOpt 
+trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with DeliteArrayOpsExp with VariantsOpsExp 
+  with LanguageOpsExp with ArithOpsExpOpt with CloneableOpsExp
   with VectorOpsExpOpt with DenseVectorOpsExpOpt with SparseVectorOpsExp with RangeVectorOpsExp with VectorViewOpsExpOpt  //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
   with MatrixOpsExpOpt with DenseMatrixOpsExpOpt
   with LAInputReaderOpsExp with LAOutputWriterOpsExp
@@ -140,22 +141,10 @@ trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsE
       case _:TargetC => new OptiLACodeGenC{val IR: OptiLAExp.this.type = OptiLAExp.this}
       case _ => err("optila does not support this target")
     }
-  }
-  
-  abstract class DefWithManifest[A:Manifest,R:Manifest] extends Def[R] {
-    val mA = manifest[A]
-    val mR = manifest[R]
   }  
 }
 
-trait OptiLAUtilities {
-  // better way to do this? manifest <:< comparisons seem to fail
-  def isSubtype(x: java.lang.Class[_], cls: java.lang.Class[_]): Boolean = {
-    if ((x == cls) || x.getInterfaces().contains(cls)) true
-    else if (x.getSuperclass() == null) false
-    else isSubtype(x.getSuperclass(), cls)
-  }    
-  
+trait OptiLAUtilities {  
   def err(s: String)(implicit ctx: SourceContext) = {
     println("[optila error]: " + s)
     println("  at " + (ctx.fileName.split("/").last + ":" + ctx.line).mkString("//").mkString(";"))
@@ -213,7 +202,7 @@ trait OptiLACodeGenBase extends GenericFatCodegen {
   }
 }
 
-trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal with ScalaGenDeliteOps
+trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal with ScalaGenDeliteOps with ScalaGenDeliteArrayOps
   with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenSparseVectorOps
   with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps  
   //with ScalaGenMatrixRowOps with ScalaGenMatrixColOps

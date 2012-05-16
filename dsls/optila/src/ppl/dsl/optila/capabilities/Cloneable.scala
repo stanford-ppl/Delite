@@ -1,7 +1,8 @@
 package ppl.dsl.optila.capabilities
 
-import scala.virtualization.lms.common.{Variables, Base}
+import scala.virtualization.lms.common.{Variables, Base, BaseFatExp}
 import scala.reflect.SourceContext
+import ppl.delite.framework.datastructures.DeliteArray
 import ppl.dsl.optila.{DenseVector,Matrix}
 import ppl.dsl.optila.{OptiLAExp, OptiLA}
 
@@ -44,7 +45,7 @@ trait CloneableOps extends Variables {
     def Clone(lhs: Rep[MA])(implicit ctx: SourceContext) = lhs.Clone().asInstanceOf[Rep[MA]]
     def mutable(lhs: Rep[MA])(implicit ctx: SourceContext) = lhs.mutable().asInstanceOf[Rep[MA]]
   }
-  
+    
   implicit def tuple2Cloneable[A:Manifest:Cloneable,B:Manifest:Cloneable]: Cloneable[Tuple2[A,B]] =
     new Cloneable[Tuple2[A,B]] {
       def Clone(lhs: Rep[Tuple2[A,B]])(implicit ctx: SourceContext) = Tuple2(lhs._1.Clone, lhs._2.Clone)
@@ -67,5 +68,22 @@ trait CloneableOps extends Variables {
     def Clone(lhs: Rep[T])(implicit ctx: SourceContext) = lhs
     def mutable(lhs: Rep[T])(implicit ctx: SourceContext) = lhs // TODO: 5.mutable?
   }  
+}
+
+trait CloneableOpsExp extends CloneableOps with BaseFatExp {
+  this: OptiLAExp =>
+  
+  implicit def darrayCloneable[A:Manifest]: Cloneable[DeliteArray[A]] = new Cloneable[DeliteArray[A]] {
+    def Clone(lhs: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = {
+      val out = DeliteArray[A](lhs.length)
+      darray_copy(lhs, unit(0), out, unit(0), lhs.length)
+      out.unsafeImmutable
+    }
+    def mutable(lhs: Exp[DeliteArray[A]])(implicit ctx: SourceContext) = {
+      val out = DeliteArray[A](lhs.length)
+      darray_copy(lhs, unit(0), out, unit(0), lhs.length)
+      out      
+    }
+  }
 }
 

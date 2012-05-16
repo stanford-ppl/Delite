@@ -8,6 +8,8 @@ import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatC
 import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.Util._
 import ppl.dsl.optila._
 
 trait VectorOps extends Variables {
@@ -1122,8 +1124,8 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     }
     else if (isSparseVec(x)) {
       val out = SparseVector[A](unit(0), asSparseVec(x).isRow)
-      sparsevector_set_raw_indices(out, NewArray[Int](size).unsafeImmutable)
-      sparsevector_set_raw_data(out, NewArray[A](size).unsafeImmutable)      
+      sparsevector_set_raw_indices(out, DeliteArray[Int](size).unsafeImmutable)
+      sparsevector_set_raw_data(out, DeliteArray[A](size).unsafeImmutable)      
       sparsevector_set_nnz(out, size)
       out.asInstanceOf[Exp[CA]]
     }
@@ -1135,8 +1137,8 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
       array_unsafe_copy(densevector_raw_data(asDenseVec(src)), srcPos, densevector_raw_data(asDenseVec(dst)), dstPos, size)
     }
     else if (isSparseVec(src) && isSparseVec(dst)) {
-      array_unsafe_copy(sparsevector_raw_indices(asSparseVec(src)), srcPos, sparsevector_raw_indices(asSparseVec(dst)), dstPos, size)
-      array_unsafe_copy(sparsevector_raw_data(asSparseVec(src)), srcPos, sparsevector_raw_data(asSparseVec(dst)), dstPos, size)
+      darray_unsafe_copy(sparsevector_raw_indices(asSparseVec(src)), srcPos, sparsevector_raw_indices(asSparseVec(dst)), dstPos, size)
+      darray_unsafe_copy(sparsevector_raw_data(asSparseVec(src)), srcPos, sparsevector_raw_data(asSparseVec(dst)), dstPos, size)
     }
     else super.dc_copy(src,srcPos,dst,dstPos,size)
   }      

@@ -3,6 +3,7 @@ package ppl.delite.framework.datastructures
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
 
+// TODO: rename to DeliteArrayBufferImplOps?
 trait DeliteArrayImplOps { this: DeliteArrayOps =>
   // def delitearray_apply_impl[A:Manifest](v: Rep[DeliteArray[A]], pos: Rep[Int]): Rep[A]
   // def delitearray_update_impl[A:Manifest](v: Rep[DeliteArray[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit]
