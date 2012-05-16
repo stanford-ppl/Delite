@@ -1,0 +1,55 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>OptiCVX &mdash; Overview</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='index.html' title="OptiCVX">OptiCVX</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Overview</a></li>
+              <li><a href='example.html'>Example</a></li>
+              <li><a href='../index.html'>Delite</a></li>
+            </ol>
+          </li>
+        </ol>
+      </div>
+      <div id='content'>
+        <h1 id='title_overview'>Overview</h1>
+        <p> 
+          OptiCVX is a domain-specific language for convex optimization.
+          OptiCVX is developed as a research project from Stanford University's
+          <a href="http://ppl.stanford.edu/main/">Pervasive Parallelism Laboratory (PPL)</a>.
+        </p>
+        <p>
+          OptiCVX is designed on top of the Delite framework with many of the same principles
+          as are used in OptiML.  It allows for modeling convex programs using the same
+          philosophy as CVX, diciplined convex programming.  OptiCVX transforms the DSL
+          program into a conic optimization program using convex program rewriting rules,
+          solves the program using a (optionally) parallel solver, and outputs the result
+          so that it can be used by the DSL program. This differs from the behavior of CVX
+          in that the verification of convexity and the conversion into a conic problem
+          are done only once, as staging time (similar to compile time).
+        </p>
+        <p>
+          OptiCVX is currently in early development.
+        </p>
+      </div>
+      <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>

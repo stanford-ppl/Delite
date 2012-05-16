@@ -1,0 +1,219 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>OptiCVX &mdash; Example</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='index.html' title="OptiCVX">OptiCVX</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Overview</a></li>
+              <li><a href='example.html'>Example</a></li>
+              <li><a href='../index.html'>Delite</a></li>
+            </ol>
+          </li>
+        </ol>
+      </div>
+      <div id='content'>
+        <h1 id='title_example'>Example</h1>
+        <p>
+          This is an illustrative example of a OptiCVX program.
+          To run this code, create a file named 'HelloCVX.scala' <code>apps/opticvx/src</code>
+          and then compile it using an analogous procedure to that used for OptiML.
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+<b>import</b> ppl.<span style='color:#644a9b;'>dsl</span>.<span style='color:#644a9b;'>opticvx</span>.<span style='color:#644a9b;'>_</span>
+<b>import</b> scala.<span style='color:#644a9b;'>util</span>.<span style='color:#644a9b;'>Random</span>
+<b>object</b> HelloCVXRunner <b>extends</b> OptiCVXApplicationRunner <b>with</b> HelloCVX
+
+<b>trait</b> HelloCVX <b>extends</b> OptiCVXApplication {
+  <b>def</b> <span style='color:#644a9b;'>main</span>() = {
+    <b>val</b> x = <span style='color:#644a9b;'>variable</span>()
+    <b>val</b> y = <span style='color:#644a9b;'>variable</span>()
+    <b>val</b> z = <span style='color:#644a9b;'>variable</span>()
+    <span style='color:#644a9b;'>min</span>(<span style='color:#644a9b;'>min</span>(x,y),z) &lt;= <span style='color:#b08000;'>5</span>
+    <span style='color:#644a9b;'>max</span>(<span style='color:#644a9b;'>max</span>(x,y),z) &gt;= <span style='color:#b08000;'>0</span>
+    <b>val</b> J = <span style='color:#644a9b;'>inv</span>(x) + <span style='color:#644a9b;'>max</span>(y,z)
+    <span style='color:#644a9b;'>minimize</span> (J) <span style='color:#644a9b;'>over</span> (x,y,z)
+    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;x = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(x))
+    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;y = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(y))
+    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;z = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(z))
+    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;J = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(J))
+  }
+  
+  <b>val</b> max = <span style='color:#644a9b;'>cvxfun</span> (convex) <span style='color:#644a9b;'>arguments</span> (increasing, increasing) <span style='color:#644a9b;'>body</span> ((x,y) =&gt; {
+    <b>val</b> t = <span style='color:#644a9b;'>variable</span>()
+    t &gt;= x
+    t &gt;= y
+    <span style='color:#644a9b;'>minimize</span> (t) <span style='color:#644a9b;'>over</span> (t)
+    t
+  })
+
+  <b>val</b> min = <span style='color:#644a9b;'>cvxfun</span> (concave) <span style='color:#644a9b;'>arguments</span> (increasing, increasing) <span style='color:#644a9b;'>body</span> ((x,y) =&gt; {
+    <b>val</b> t = <span style='color:#644a9b;'>variable</span>()
+    t &lt;= x
+    t &lt;= y
+    <span style='color:#644a9b;'>minimize</span> (-t) <span style='color:#644a9b;'>over</span> (t)
+    t
+  })
+
+  <b>val</b> inv = <span style='color:#644a9b;'>cvxfun</span> (convex) <span style='color:#644a9b;'>arguments</span> (decreasing) <span style='color:#644a9b;'>body</span> ((x) =&gt; {
+    <b>val</b> v = <span style='color:#644a9b;'>variable</span>(<span style='color:#644a9b;'>vector</span>(<span style='color:#b08000;'>2</span>))
+    <b>val</b> z = <span style='color:#644a9b;'>variable</span>()
+    <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>0</span>) == <span style='color:#644a9b;'>inputscalar</span>(<span style='color:#b08000;'>1.0</span>)
+    <b>val</b> J = z - <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>1</span>)
+    x == z + <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>1</span>)
+    <span style='color:#644a9b;'>constrain_secondordercone</span>(v,z)
+    <span style='color:#644a9b;'>minimize</span> (J) <span style='color:#644a9b;'>over</span> (v, z)
+    J
+  })
+}</pre>
+        </code></div>
+        <p>
+          We analyze this program from top to bottom to illustrate the features of the DSL.
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+<b>import</b> ppl.<span style='color:#644a9b;'>dsl</span>.<span style='color:#644a9b;'>opticvx</span>.<span style='color:#644a9b;'>_</span>
+<b>import</b> scala.<span style='color:#644a9b;'>util</span>.<span style='color:#644a9b;'>Random</span>
+<b>object</b> HelloCVXRunner <b>extends</b> OptiCVXApplicationRunner <b>with</b> HelloCVX
+
+<b>trait</b> HelloCVX <b>extends</b> OptiCVXApplication {
+</pre>
+        </code></div>
+        <p>
+          This code is mostly boilerplate, and is needed to setup the application.  First, we
+          import the DSL code.  Then, we create an OptiCVXApplicationRunner object and an
+          OptiCVXApplication trait.  This is an idiom commonly used in Delite code.
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+    <b>val</b> x = <span style='color:#644a9b;'>variable</span>()
+    <b>val</b> y = <span style='color:#644a9b;'>variable</span>()
+    <b>val</b> z = <span style='color:#644a9b;'>variable</span>()
+</pre>
+        </code></div>
+        <p>
+          This is where we create the variables used in the problem.  In this case, we have
+          three free variables, <code>x</code>, <code>y</code>, and <code>z</code>.  Each
+          variable is created as a scala <code>val</code> (this may be confusing to Scala
+          developers, since <code>var</code> is typically used for variables in Scala),
+          using the <code>variable()</code> function.
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+    <span style='color:#644a9b;'>min</span>(<span style='color:#644a9b;'>min</span>(x,y),z) &lt;= <span style='color:#b08000;'>5</span>
+    <span style='color:#644a9b;'>max</span>(<span style='color:#644a9b;'>max</span>(x,y),z) &gt;= <span style='color:#b08000;'>0</span>
+</pre>
+        </code></div>
+        <p>
+          Here, we declare the constraints used in this problem.  We constrain that all of these
+          variables are between zero and five.  Note that the <code>&lt;=</code> and <code>&gt;=</code>
+          functions, which are normally used to do boolean tests, are here used to indicate
+          constraints in a declarative manner.  We also notice the functions <code>max</code> and
+          <code>min</code>, which can be invoked with OptiCVX expressions as arguments.
+        </p>
+        <p>
+          OptiCVX enforces the diciplened convex programming rules here, so any expression
+          appearing on the left of a <code>&lt;=</code> must be convex, and any expression
+          appearing on the right must be concave.  OptiCVX keeps track of the vexity of all
+          expressions at staging time, so there is no walk-time overhead incurred by
+          DCP safety-checking.
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+    <b>val</b> J = <span style='color:#644a9b;'>inv</span>(x) + <span style='color:#644a9b;'>max</span>(y,z)
+    <span style='color:#644a9b;'>minimize</span> (J) <span style='color:#644a9b;'>over</span> (x,y,z)
+</pre>
+        </code></div>
+        <p>
+          The first line here creates the objective as an expression in the variables.  
+          The second line actually performs the minimization by calling the solver.  We
+          note that, as above, vexity rules are checked, so we can only minimize a convex
+          expression.  We also note that, in a <code>minimize</code> statement, we must
+          list the variables over which we are minimizing.  This binds those variables
+          to that minimization expression.  Note that creating the variable <code>J</code>
+          was done purely for convenience; we could have put the full expression inside
+          the minimize statement.
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;x = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(x))
+    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;y = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(y))
+    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;z = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(z))
+    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;J = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(J))
+</pre>
+        </code></div>
+        <p>
+          This code demonstrates how the results of the minimization can be used by the DSL
+          program.  Calling the <code>resolve(...)</code> function converts an OptiCVX expression
+          into a normal <code>double</code> type.  It is only valid to invoke
+          <code>resolve(...)</code> after the solver has run and once all variables
+          used in the expression are bound; doing so before will result in a staging-time
+          error.
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+  <b>val</b> max = <span style='color:#644a9b;'>cvxfun</span> (convex) <span style='color:#644a9b;'>arguments</span> (increasing, increasing) <span style='color:#644a9b;'>body</span> ((x,y) =&gt; {
+    <b>val</b> t = <span style='color:#644a9b;'>variable</span>()
+    t &gt;= x
+    t &gt;= y
+    <span style='color:#644a9b;'>minimize</span> (t) <span style='color:#644a9b;'>over</span> (t)
+    t
+  })
+</pre>
+        </code></div>
+        <p>
+          This code demonstrate's OptiCVX's facility to allow the user to program his/her
+          own convex functions as partial optimization problems using the given CVX
+          primitives.  This allows a wide range of expressivity in describing functions.
+        </p>
+        <p>
+          The <code>cvxfun</code> statement allows us to specify the vexity of the function,
+          and the monotonicity of each of its arguments.  This information is necessary to
+          perform DCP validation.  The body of the function simply consists of a lambda
+          function (the arguments of which are CVX expressions), that contains one or
+          more optimization functions and returns the desired result.
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+  <b>val</b> inv = <span style='color:#644a9b;'>cvxfun</span> (convex) <span style='color:#644a9b;'>arguments</span> (decreasing) <span style='color:#644a9b;'>body</span> ((x) =&gt; {
+    <b>val</b> v = <span style='color:#644a9b;'>variable</span>(<span style='color:#644a9b;'>vector</span>(<span style='color:#b08000;'>2</span>))
+    <b>val</b> z = <span style='color:#644a9b;'>variable</span>()
+    <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>0</span>) == <span style='color:#644a9b;'>inputscalar</span>(<span style='color:#b08000;'>1.0</span>)
+    <b>val</b> J = z - <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>1</span>)
+    x == z + <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>1</span>)
+    <span style='color:#644a9b;'>constrain_secondordercone</span>(v,z)
+    <span style='color:#644a9b;'>minimize</span> (J) <span style='color:#644a9b;'>over</span> (v, z)
+    J
+  })
+</pre>
+        </code></div>
+        <p>
+          Here we see another example of a user-defined function.  This one is based off
+          of second-order-cone programming, instead of linear programming.  It uses the
+          <cone>variable(vector(...))</cone> idiom to create a vector-valued variable, and
+          the <cone>constrain_second_order_cone(...)</cone> primitive to constrain the
+          variables.  A similar process can be used with <cone>variable(smatrix(...))</cone>
+          and <cone>constrain_semidefinite(...)</cone> to do semidefinite programming (SDP).
+        </p>
+      </div>
+      <div id='footer'>Copyright &copy; 2011</div>
+    </div>
+  </body>
+</html>
