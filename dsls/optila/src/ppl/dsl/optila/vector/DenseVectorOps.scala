@@ -98,12 +98,14 @@ trait DenseVectorOps extends Variables {
     def vminusBuilder(implicit ctx: SourceContext) = builder[A]
     def vminusToIntf(x: Rep[VMINUSR]) = toIntf(x)    
     
-    type VTIMESR = SparseVector[A]
+    type VTIMESR = DenseVector[A]
     val mVTIMESR = manifest[VTIMESR]
-    def vtimesBuilder(implicit ctx: SourceContext) = sparseVectorBuilder[A]
-    def vtimesToIntf(x: Rep[VTIMESR]) = sparseVecToInterface(x)        
+    def vtimesBuilder(implicit ctx: SourceContext) = builder[A]
+    def vtimesToIntf(x: Rep[VTIMESR]) = toIntf(x)    
     
-    def *(y: Rep[DenseMatrix[A]])(implicit a: Arith[A],o: Overloaded2, ctx: SourceContext) = densevector_times_matrix(elem,y)
+    def *(y: Rep[SparseVector[A]])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) 
+      = vector_times[A,SparseVector[A]](toIntf(elem),sparseVecToInterface(y))(manifest[A],implicitly[Arith[A]],manifest[SparseVector[A]],sparseVectorBuilder[A],ctx)            
+    def *(y: Rep[DenseMatrix[A]])(implicit a: Arith[A], o: Overloaded3, ctx: SourceContext) = densevector_times_matrix(elem,y)
     
     // ordering operations
     def sort(implicit o: Ordering[A], ctx: SourceContext) = densevector_sort(elem)    
