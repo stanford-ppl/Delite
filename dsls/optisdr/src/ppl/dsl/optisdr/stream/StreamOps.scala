@@ -111,21 +111,15 @@ trait SDRStreamOps extends Variables {
 trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp with DeliteCollectionOpsExp {
   this: OptiSDRExp =>
   
-  case class FSVObjNew[A:Manifest](xs: Exp[A]*) extends Def[Stream[A]] {
-    def a = manifest[A]
-  }
+  case class FSVObjNew[A:Manifest](xs: Exp[A]*) extends DefWithManifest[A,Stream[A]]
   
-  case class FSVObjOfLength[A:Manifest](length: Rep[Int]) extends Def[Stream[A]] {
-    def a = manifest[A]
-  }
+  case class FSVObjOfLength[A:Manifest](length: Rep[Int]) extends DefWithManifest[A,Stream[A]]
   
   case class FSVLength[A:Manifest](x: Exp[Stream[A]]) extends DefWithManifest[A,Int]
   
-  case class FSVApply[A:Manifest](x: Exp[Stream[A]], n: Exp[Int]) 
-      extends DefWithManifest[A,A]
+  case class FSVApply[A:Manifest](x: Exp[Stream[A]], n: Exp[Int]) extends DefWithManifest[A,A]
     
-  case class FSVUpdate[A:Manifest](x: Exp[Stream[A]], n: Exp[Int], y: Exp[A]) 
-      extends DefWithManifest[A,Unit]
+  case class FSVUpdate[A:Manifest](x: Exp[Stream[A]], n: Exp[Int], y: Exp[A]) extends DefWithManifest[A,Unit]
   
   def stream_length[A:Manifest](x: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(FSVLength(x))
   def stream_apply[A:Manifest](x: Exp[Stream[A]], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(FSVApply(x, n))
@@ -327,6 +321,44 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp wit
     if (isStream(x)) asStream(x).update(n,y)
     else super.dc_update(x,n,y)        
   }
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@FSVLength(x) => reflectPure(FSVLength(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@FSVApply(x,n) => reflectPure(FSVApply(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    
+    case e@SDRStreamPlus(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamPlus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SDRStreamMinus(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamMinus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SDRStreamTimes(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamTimes(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SDRStreamDivide(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamDivide(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    
+    case e@SDRStreamAbs(x) => reflectPure(new { override val original = Some(f,e) } with SDRStreamAbs(f(x))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SDRStreamExp(x) => reflectPure(new { override val original = Some(f,e) } with SDRStreamExp(f(x))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    
+    case e@SDRStreamBinaryNot(x) => reflectPure(new { override val original = Some(f,e) } with SDRStreamBinaryNot(f(x))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SDRStreamBinaryAnd(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamBinaryAnd(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SDRStreamBinaryOr(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamBinaryOr(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SDRStreamBinaryXor(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamBinaryXor(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    
+    case Reflect(e@FSVObjNew(xs @ _*), u, es) => reflectMirrored(Reflect(FSVObjNew(f(xs) : _*)(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FSVObjOfLength(l), u, es) => reflectMirrored(Reflect(FSVObjOfLength(f(l))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FSVLength(x), u, es) => reflectMirrored(Reflect(FSVLength(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FSVApply(x,n), u, es) => reflectMirrored(Reflect(FSVApply(f(x),f(n))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@FSVUpdate(x,n,y), u, es) => reflectMirrored(Reflect(FSVUpdate(f(x),f(n),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    
+    case Reflect(e@SDRStreamPlus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SDRStreamPlus(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SDRStreamMinus(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SDRStreamMinus(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SDRStreamTimes(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SDRStreamTimes(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SDRStreamDivide(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SDRStreamDivide(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SDRStreamAbs(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SDRStreamAbs(f(x))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SDRStreamExp(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SDRStreamExp(f(x))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    
+    case Reflect(e@SDRStreamBinaryNot(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SDRStreamBinaryNot(f(x))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SDRStreamBinaryAnd(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SDRStreamBinaryAnd(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SDRStreamBinaryOr(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SDRStreamBinaryOr(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SDRStreamBinaryXor(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SDRStreamBinaryXor(f(x),f(y))(e.m, e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 trait SDRStreamOpsExpOpt extends SDRStreamOpsExp {
@@ -348,8 +380,8 @@ trait ScalaGenStreamOps extends BaseGenStreamOps with ScalaGenFat {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case v@FSVObjNew(xs @ _*) => emitValDef(sym, remap("generated.scala.FakeStreamVector[" + remap(v.a) + "]")+"(" + xs.map(quote).reduceLeft(_+","+_) + ")")        
-    case v@FSVObjOfLength(length) => emitValDef(sym, remap("generated.scala.FakeStreamVector.ofLength[" + remap(v.a) + "]")+"(" + quote(length) + ")")
+    case v@FSVObjNew(xs @ _*) => emitValDef(sym, remap("generated.scala.FakeStreamVector[" + remap(v.mA) + "]")+"(" + xs.map(quote).reduceLeft(_+","+_) + ")")        
+    case v@FSVObjOfLength(length) => emitValDef(sym, remap("generated.scala.FakeStreamVector.ofLength[" + remap(v.mA) + "]")+"(" + quote(length) + ")")
     case FSVLength(x) => emitValDef(sym, quote(x) + "._length")
     case FSVApply(x,n) => emitValDef(sym, quote(x) + "._data(" + quote(n) + ")")
     case FSVUpdate(x,n,y) => emitValDef(sym, quote(x) + "._data(" + quote(n) + ") = " + quote(y))

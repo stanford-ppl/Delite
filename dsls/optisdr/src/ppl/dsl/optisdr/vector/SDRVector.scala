@@ -49,7 +49,8 @@ trait SDRVectorOps extends Variables {
   
   def sdrvector_conj[A:Manifest:SDRArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
   def sdrvector_convolve[A:Manifest:Arith](x: Rep[DenseVector[A]], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
-  def sdrvector_fft[A:Manifest:Arith:SDRArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
+  def sdrvector_fft[A:Manifest:Arith:SDRArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[Complex]]
+  def sdrvector_ifft[A:Manifest:Arith:SDRArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[DenseVector[Complex]]
   
   // Square and add
   def sdrvector_lms[A:Manifest:Arith:SDRArith](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) : Rep[A]
@@ -85,7 +86,7 @@ trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
   }
   
   case class SDRVectorConvolve[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
-  case class SDRVectorFFT[A:Manifest:Arith:SDRArith](x: Exp[DenseVector[A]]) extends Def[DenseVector[A]]
+  case class SDRVectorFFT[A:Manifest:Arith:SDRArith](x: Exp[DenseVector[A]]) extends Def[DenseVector[Complex]]
   
   case class SDRVectorLMS[A:Manifest:Arith:SDRArith](in: Exp[DenseVector[A]]) extends DeliteOpMapReduce[A,A] {
     val size = copyTransformedOrElse(_.size)(in.length)
@@ -176,7 +177,11 @@ trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
   
   def sdrvector_conj[A:Manifest:SDRArith](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorConj(x))
   def sdrvector_convolve[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorConvolve(x,y))
+  
   def sdrvector_fft[A:Manifest:Arith:SDRArith](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorFFT(x))
+  // Wrong but they are related. IFFT is conj(FFT(conj(x))) / scaling
+  def sdrvector_ifft[A:Manifest:Arith:SDRArith](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorFFT(x))
+  
   def sdrvector_lms[A:Manifest:Arith:SDRArith](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorLMS(x))
   def sdrvector_block_exp[A:Manifest:Arith:SDRArith](x: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorBlockExponent(x))
   def sdrvector_correlation[A:Manifest:Arith](x: Exp[DenseVector[A]], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectPure(SDRVectorCorrelation(x,y))

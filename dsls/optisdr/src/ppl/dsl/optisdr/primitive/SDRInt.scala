@@ -37,6 +37,11 @@ trait SDRIntOpsExp extends SDRIntOps with VariablesExp with BaseFatExp {
   def sdrint_lshift(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = reflectPure(SDRIntLShift(a,b))
   def sdrint_rshift(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = reflectPure(SDRIntRShift(a,b))
   def sdrint_rashift(a: Rep[Int], b: Rep[Int])(implicit ctx: SourceContext) = reflectPure(SDRIntRAShift(a,b))
+  
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
 }
 
 trait SDRIntOpsExpOpt extends SDRIntOpsExp {
