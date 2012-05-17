@@ -1,0 +1,243 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>OptiCVX &mdash; How it Works</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import '../css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='index.html' title="OptiCVX">OptiCVX</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Overview</a></li>
+              <li><a href='example.html'>Example</a></li>
+              <li><a href='how_it_works.html'>How it Works</a></li>
+              <li><a href='../index.html'>Delite</a></li>
+            </ol>
+          </li>
+        </ol>
+      </div>
+      <div id='content'>
+        <h1 id='title_overview'>How it Works</h1>
+        <p>
+          Compilation and execution of a Delite program occurs in three separate stages:
+        </p>
+        <p>
+        <ul>
+          <li>Compile-time (done by <code>build-cvx</code> script)</li>
+          <ul>
+            <li>check program syntax and compile Scala sources</li>
+            <li>produce executable code that is run at staging-time</li>
+          </ul>
+          <li>Staging-time (done by <code>delitec</code> script)</li>
+          <ul>
+            <li>convert DSL program into an abstract-syntax tree</li>
+            <li>generate code in the target language (usually Scala)</li>
+          </ul>
+          <li>Walk-time (done by <code>delite</code> script)</li>
+          <ul>
+            <li>compile the generated code (using a standard compiler for that language)</li>
+            <li>run the code</li>
+          </ul>
+        </ul>
+        </p>
+        <p>
+          For any given program, all of the steps before running the code may only be done
+          once (so one may think of them as analogous to "compiling" in other languages).
+          OptiCVX does as much processing as possible at staging-time, in order to improve
+          performance.  In particular, it does the following:
+        </p>
+        <p>
+        <ul>
+          <li>Verify diciplined convex programming (DCP) rules are followed</li>
+          <li>Convert the user program into one or more standard-form conic programs using
+            rewriting rules</li>
+          <li>Emit code for a solver that will operate on this conic program, given the user's
+            input data known at runtime</li>
+          <li>Emit code to send data to and from the solver, and to connect it to the rest of
+            the program</li>
+        </ul>
+        </p>
+        <p>
+          We will look at how the DSL accomplishes each of these tasks below.
+        </p>
+        <h2>DCP Rule Verification</h2>
+        <p>
+          OptiCVX formalizes DCP rules using a datatype called a "signum".  Simply put,
+          a signum (an element of the set of signums) formalizes the notion of the sign
+          of an expression.  (We can also think of it as the set of cones on the real
+          numbers.) There are only four possible signums: "zero", "positive", "negative",
+          and "all".  The seemingly-disparate value "all" is used to denote a situation
+          where any sign is possible.  Note also that the "positive" and "negative" signums
+          both admit the possibility of a zero-valued expression. (Strictly, they should be
+          called "nonnegative" and "nonpositive", but this would be tiresome).
+        </p>
+        <p>
+          Signum objects naturally admit a notion of binary addition, multiplication, and
+          negation (although negation does not produce the additive inverse, as the signum
+          set is not a ring).  Furthermore, it naturally admits an ordering which formalizes
+          the notion of "is a" on this set; e.g. zero &lt; positive because any zero-valued
+          expression must also be nonnegative.
+        </p>
+        <p>
+          We associate signums with vexities in the following way:
+          <ul>
+            <li>Zero with an affine expression</li>
+            <li>Positive with a convex expression</li>
+            <li>Negative with a concave expression</li>
+            <li>Any with no known vexity information</li>
+          </ul>
+        </p>
+        <p>
+          Similarly, we associate signums with monotonicities in the following way:
+          <ul>
+            <li>Zero with a constant function</li>
+            <li>Positive with a nondecreasing function</li>
+            <li>Negative with a nonincreasing function</li>
+            <li>Any with no known monotonicity information</li>
+          </ul>
+        </p>
+        <p>
+          We also assign a signum value to constant scalars, as follows:
+          <ul>
+            <li>Zero with a scalar known to be zero</li>
+            <li>Positive with a scalar known to be nonnegative</li>
+            <li>Negative with a scalar known to be nonpositive</li>
+            <li>Any with a scalar with no known sign information</li>
+          </ul>
+        </p>
+        <p>
+          Using this framework, we can formalize the rules that we want to enforce.
+          Letting <code>A</code> and <code>B</code> be expressions, <code>c</code>
+          be a constant scalar, <code>f</code> be some function, <code>V(...)</code>
+          denote the vexity (as a signum), <code>Mx(...)</code> denote the monotonicity
+          of the function in the x-th argument (as a signum), and <code>S(...)</code> denote
+          the sign (as a signum), then the DCP rules become simply:
+          <code>
+          <ul>
+            <li>V(A+B) := V(A) + V(B)</li>
+            <li>V(-A) := -V(A)</li>
+            <li>V(c*A) := S(c)*V(A)</li>
+            <li>V(f(A1,A2,...,An)) := V(f) + M1(f)*V(A1) + M2(f)*V(A2) + ... + Mn(f)*V(An)</li>
+          </ul>
+          </code>
+        </p>
+        <p>
+          As a base case, we let all variables declared by the user be considered affine.
+          This process allows us to recursively assign a vexity to all of the expressions
+          used in the DSL.  To do verification, we require the following:
+          <ul>
+            <li>Any expression to the left of a "&lt;=" must be convex, and any expression
+            to the right must be concave</li>
+            <li>Any expression being constrained to lie inside any higher-dimensional
+            convex cone must be affine</li>
+            <li>Any expression being minimized must be convex, and any expression being
+            maximized must be concave</li>
+          </ul>
+        </p>
+        <p>
+          We note here that any non-scalar expression will always have vexity affine, since
+          it is impossible for a vector-shaped expression to be convex or concave.  We
+          could potentially extend this system to handle higher-dimensional analogues to
+          convexity (starting by defining a higher-dimensional signum type that corresponds
+          to the set of cones in a particular dimension), but since the DCP rules used
+          in CVX do not do this, it has not yet been investigated.
+        </p>
+        <h2>Conversion to Standard Form</h2>
+        <p>
+          Conversion to standard form is actually very straightforward.  The DSL provides five basic
+          statements that can be used to describe problems.  These are:
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+constrain_zero(...)
+constrain_nonnegative(...)
+constrain_secondordercone(...)
+constrain_semidefinite(...)
+minimize (...) over (...)
+</pre>
+        </code></div>
+        <p>
+          Other operations, such as the == and &lt;= constraints, are implemented as syntactic
+          sugar on top of these fundamental operations.  Now, to convert a problem to standard
+          form, we basically do the following: whenever we encounter a constraint, we push
+          that constrain onto a list of constraints for each of the variables that is effected
+          by that constraint.  Then, when a minimization statement is encountered, we gather
+          all the constraints that act on the variables being minimized over and produce
+          their Cartesian product to create a problem of the form:
+        </p>
+        <div class="highlight"><code class="pseudocode">
+<pre>
+minimize c<sup>T</sup>*x
+  over x &isin; R<sup>n</sup>
+  subject to
+    A*x + b = 0
+    F*x + g &isin; K
+  for some matrices A and F, vectors b, c, and g, and symmetric cone K.
+</pre>
+        </code></div>
+        <p>
+          Of course, since this is staging time, the matrices and vectors are not known.
+          Indeed, even their size can vary.  What the DSL generates is an abstract syntax
+          tree that can later be compiled to perform matrix-vector multiplications.  This
+          can be thought of as akin to a sparse matrix.  The symmetric cone <code>K</code>
+          is just a product of some number of simplex, second-order, and semidefinite
+          cones (although the sizes of these cones are not known at staging-time, the
+          number of cones is known).
+        </p>
+        <p>
+          In order to deal with functions, the DSL basically just runs the body of the
+          function, accumulating all variable declarations, constraints, and minimizations.
+          It then adds these to the main problem.  Thus, all OptiCVX function invokations are
+          effectively inlined.
+        </p>
+        <p>
+          OptiCVX recognizes when a minimization statement is only a partial minimization,
+          and does not instantiate a solver if this is the case.  It will only create
+          a solver, and allow variable resolution, if no variable bound by the optimization
+          statement is connected by a constraint to any unbound variable.  This allows
+          multiple different optimization problems to be run in the same program.
+        </p>
+        <h2>Emitting Code</h2>
+        <p>
+          For each problem above, OptiCVX currently emits an ADMM solver.  The solver uses
+          the LSQR algorithm for computing the ADMM step that requires projection onto the
+          affine constraint.  Both of these algorithms only require information about the
+          matrices in the form of a method for matrix-vector multiplication, so they work
+          well with our abstract-syntax-tree matrix representation.  The solver runs at
+          the time at which the minimization statement occurs.
+        </p>
+        <p>
+          The emitted code currently consists of hard-coded Scala vector operations.  I
+          plan to soon modify it to express the vector operations as Delite ops, so that
+          I can leverage the parallel nature of Delite.
+        </p>
+        <p>
+          The results of the solver run are read out by using a <code>resolve(...)</code>
+          statement.  It is a staging-time error to try to call <code>resolve</code> before
+          a solver has run.  Presently, there is no way to access dual variables or
+          determine whether the problem is feasible, but I plan to add these features.
+        </p>
+        <p>
+          Unfortunately, the code output by the stager is typically quite long and
+          uninstructive, as it consists mostly of inlined <code>for</code> loops for
+          all of the vector operations.  Therefore, I have not here included an example
+          of code emitted by the stager.
+        </p>
+      </div>
+      <div id='footer'>Copyright &copy; 2012</div>
+    </div>
+  </body>
+</html>
