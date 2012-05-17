@@ -9,6 +9,9 @@ import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 
+import ppl.delite.framework.ops.DeliteCollectionOpsExp
+import ppl.delite.framework.datastruct.scala.DeliteCollection
+
 import ppl.dsl.optisdr._
 
 trait SDRStreamOps extends Variables {
@@ -19,35 +22,40 @@ trait SDRStreamOps extends Variables {
   implicit def varToSDRStreamOps[A:Manifest](x: Var[Stream[A]]) = new SDRStreamOpsCls(readVar(x))
   
   // Objects methods
-  class SDRStreamOpsCls[A:Manifest](val x: Rep[Stream[A]]) {
+  class SDRStreamOpsCls[A:Manifest](val elem: Rep[Stream[A]]) {
     type V[X] = Stream[X]
     type VA = V[A] // temporary for easy compatibility with old stuff
     type Self = Stream[A]
    
-    def length()(implicit ctx: SourceContext) = stream_length(x)
+    def length()(implicit ctx: SourceContext) = stream_length(elem)
    
     // data operations
-    def apply(n: Rep[Int])(implicit ctx: SourceContext) = stream_apply(x, n)
-    def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = stream_update(x,n,y)
+    def apply(n: Rep[Int])(implicit ctx: SourceContext) = stream_apply(elem, n)
+    def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = stream_update(elem,n,y)
+    
+    // DeliteCollection
+    /* def dcSize(implicit ctx: SourceContext) = length
+    def dcApply(n: Rep[Int])(implicit ctx: SourceContext): Rep[A] = apply(n)
+    def dcUpdate(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = update(n,y) */
 
-    def +(y: Rep[Self])(implicit a: Arith[A], ctx: SourceContext) = stream_plus(x,y)
-    def -(y: Rep[Self])(implicit a: Arith[A], ctx: SourceContext) = stream_minus(x,y)
-    def *(y: Rep[Self])(implicit a: Arith[A], ctx: SourceContext) = stream_times(x,y)
-    def /(y: Rep[Self])(implicit a: Arith[A], ctx: SourceContext) = stream_divide(x,y)
+    def +(y: Rep[Self])(implicit a: Arith[A], ctx: SourceContext) = stream_plus(elem,y)
+    def -(y: Rep[Self])(implicit a: Arith[A], ctx: SourceContext) = stream_minus(elem,y)
+    def *(y: Rep[Self])(implicit a: Arith[A], ctx: SourceContext) = stream_times(elem,y)
+    def /(y: Rep[Self])(implicit a: Arith[A], ctx: SourceContext) = stream_divide(elem,y)
     
-    def abs(implicit a: Arith[A], ctx: SourceContext) = stream_abs(x)
-    def exp(implicit a: Arith[A], ctx: SourceContext) = stream_exp(x)
+    def abs(implicit a: Arith[A], ctx: SourceContext) = stream_abs(elem)
+    def exp(implicit a: Arith[A], ctx: SourceContext) = stream_exp(elem)
     
-    def conj(implicit a: SDRArith[A], ctx: SourceContext) = stream_conj(x)
+    def conj(implicit a: SDRArith[A], ctx: SourceContext) = stream_conj(elem)
     
-    def unary_~()(implicit ba: BitArith[A], ctx: SourceContext) = stream_binarynot(x)
-    def &(y: Rep[Stream[A]])(implicit ba: BitArith[A], ctx: SourceContext) = stream_binaryand(x,y)
-    def |(y: Rep[Stream[A]])(implicit ba: BitArith[A], ctx: SourceContext) = stream_binaryor(x,y)
-    def ^(y: Rep[Stream[A]])(implicit ba: BitArith[A], ctx: SourceContext) = stream_binaryxor(x,y)
+    def unary_~()(implicit ba: BitArith[A], ctx: SourceContext) = stream_binarynot(elem)
+    def &(y: Rep[Stream[A]])(implicit ba: BitArith[A], ctx: SourceContext) = stream_binaryand(elem,y)
+    def |(y: Rep[Stream[A]])(implicit ba: BitArith[A], ctx: SourceContext) = stream_binaryor(elem,y)
+    def ^(y: Rep[Stream[A]])(implicit ba: BitArith[A], ctx: SourceContext) = stream_binaryxor(elem,y)
     
-    def <<(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = stream_lshift(x, y)
-    def >>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = stream_rshift(x, y)
-    def >>>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = stream_rashift(x, y)
+    def <<(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = stream_lshift(elem, y)
+    def >>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = stream_rshift(elem, y)
+    def >>>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = stream_rashift(elem, y)
     
     // DON'T USE CLONE, WILL BREAK
   }
@@ -100,7 +108,7 @@ trait SDRStreamOps extends Variables {
   def fsv_obj_oflength[A:Manifest](length: Rep[Int]): Rep[Stream[A]]
 }
 
-trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp {
+trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp with DeliteCollectionOpsExp {
   this: OptiSDRExp =>
   
   case class FSVObjNew[A:Manifest](xs: Exp[A]*) extends Def[Stream[A]] {
@@ -301,6 +309,24 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp {
   def stream_lshift[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRStreamLShift(x,y))
   def stream_rshift[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRStreamRShift(x,y))
   def stream_rashift[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRStreamRAShift(x,y))
+  
+  def isStream[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[Stream[A]])  
+  def asStream[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[Stream[A]]]
+  
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
+    if (isStream(x)) asStream(x).length
+    else super.dc_size(x)
+  }
+  
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
+    if (isStream(x)) asStream(x).apply(n)
+    else super.dc_apply(x,n)    
+  }
+  
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isStream(x)) asStream(x).update(n,y)
+    else super.dc_update(x,n,y)        
+  }
 }
 
 trait SDRStreamOpsExpOpt extends SDRStreamOpsExp {
