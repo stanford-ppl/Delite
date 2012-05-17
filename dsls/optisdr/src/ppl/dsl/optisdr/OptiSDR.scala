@@ -45,7 +45,7 @@ trait OptiSDRScalaCodeGenPkg extends OptiLAScalaCodeGenPkg
  * This the trait that every OptiSDR application must extend.
  */
 trait OptiSDR extends OptiSDRScalaOpsPkg with OptiLA
-  with ComplexOps with UIntOps with SDRIntOps with SoftBitOps
+  with ComplexOps with UIntOps with SDRIntOps with SoftBitOps with ByteOps
   with BitArithOps
   with SDRArithOps
   with SDRVectorOps
@@ -64,7 +64,7 @@ trait OptiSDRCompiler extends OptiLACompiler with OptiSDR {
 }
 
 trait OptiSDRExp extends OptiLAExp with OptiSDRCompiler with OptiSDRScalaOpsPkgExp
-  with ComplexOpsExpOpt with UIntOpsExpOpt with SDRIntOpsExpOpt with SoftBitOpsExp
+  with ComplexOpsExpOpt with UIntOpsExpOpt with SDRIntOpsExpOpt with SoftBitOpsExp with ByteOpsExpOpt
   with BitArithOpsExp
   with SDRArithOpsExp
   with SDRVectorOpsExpOpt
@@ -126,7 +126,9 @@ trait OptiSDRCodeGenBase extends OptiLACodeGenBase {
   }
 }
 
-trait OptiSDRCodeGenScala extends OptiLACodeGenScala with OptiSDRCodeGenBase with OptiSDRScalaCodeGenPkg /* with OptiSDRScalaGenExternal */ {
+trait OptiSDRCodeGenScala extends OptiLACodeGenScala with OptiSDRCodeGenBase with OptiSDRScalaCodeGenPkg /* with OptiSDRScalaGenExternal */
+  with ScalaGenComplexOps with ScalaGenSDRIntOps with ScalaGenUIntOps with ScalaGenByteOps
+  with ScalaGenSDRVectorOps with ScalaGenStreamOps {
   val IR: DeliteApplication with OptiSDRExp
 
   // override val specialize = Set("DenseVector", "DenseMatrix"/*, "VectorView"*/)
