@@ -32,6 +32,10 @@ trait SimpleKernelApp extends DeliteTestModule with OptiSDRApplication with Simp
     
     val c = simpleKernel()(a, b)
     
+    collect(c(0) == 4)
+    collect(c(1) == 4)
+    collect(c(2) == 7)
+    
     mkReport
   }
 }
