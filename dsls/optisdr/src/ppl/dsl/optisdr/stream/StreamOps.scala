@@ -52,6 +52,19 @@ trait SDRStreamOps extends Variables {
     // DON'T USE CLONE, WILL BREAK
   }
   
+  implicit def streamArith[T:Arith:Manifest] : Arith[Stream[T]] = new Arith[Stream[T]] {
+    def +=(a: Rep[Stream[T]], b: Rep[Stream[T]])(implicit ctx: SourceContext) = repToSDRStreamOps(a) + b
+    def +(a: Rep[Stream[T]], b: Rep[Stream[T]])(implicit ctx: SourceContext) = repToSDRStreamOps(a) + b
+    def -(a: Rep[Stream[T]], b: Rep[Stream[T]])(implicit ctx: SourceContext) = repToSDRStreamOps(a) - b
+    def *(a: Rep[Stream[T]], b: Rep[Stream[T]])(implicit ctx: SourceContext) = repToSDRStreamOps(a) * b
+    def /(a: Rep[Stream[T]], b: Rep[Stream[T]])(implicit ctx: SourceContext) = repToSDRStreamOps(a) / b 
+    def abs(a: Rep[Stream[T]])(implicit ctx: SourceContext) = repToSDRStreamOps(a).abs
+    def exp(a: Rep[Stream[T]])(implicit ctx: SourceContext) = repToSDRStreamOps(a).exp
+    
+    def empty(implicit ctx: SourceContext) = FakeStreamVector.ofLength(unit(0))
+    def zero(a: Rep[Stream[T]])(implicit ctx: SourceContext) = empty
+  }
+  
   // Arith
   def stream_plus[A:Manifest:Arith](x: Rep[Stream[A]], y: Rep[Stream[A]])(implicit ctx: SourceContext) : Rep[Stream[A]]
   def stream_minus[A:Manifest:Arith](x: Rep[Stream[A]], y: Rep[Stream[A]])(implicit ctx: SourceContext) : Rep[Stream[A]]
@@ -80,7 +93,6 @@ trait SDRStreamOps extends Variables {
   }
   
   def stream_length[A:Manifest](x: Rep[Stream[A]])(implicit ctx: SourceContext): Rep[Int]
-  def stream_isrow[A:Manifest](x: Rep[Stream[A]])(implicit ctx: SourceContext): Rep[Boolean]
   def stream_apply[A:Manifest](x: Rep[Stream[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]  
   def stream_update[A:Manifest](x: Rep[Stream[A]], n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]  
   
@@ -108,7 +120,6 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp {
       extends DefWithManifest[A,Unit]
   
   def stream_length[A:Manifest](x: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(FSVLength(x))
-  
   def stream_apply[A:Manifest](x: Exp[Stream[A]], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(FSVApply(x, n))
   def stream_update[A:Manifest](x: Exp[Stream[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x)(FSVUpdate(x, n, y))
   
@@ -228,25 +239,25 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp {
   
   // Bit math
   
-  case class SDRStreamBitwiseNegate[A:Manifest:BitArith](in: Exp[Stream[A]])
+  case class SDRStreamBinaryNot[A:Manifest:BitArith](in: Exp[Stream[A]])
     extends SDRStreamBitArithmeticMap[A](in) {
 
     def func = e => ~e
   }
   
-  case class SDRStreamBitwiseAnd[A:Manifest:BitArith](inA: Exp[Stream[A]], inB: Exp[Stream[A]])
+  case class SDRStreamBinaryAnd[A:Manifest:BitArith](inA: Exp[Stream[A]], inB: Exp[Stream[A]])
     extends SDRStreamBitArithmeticZipWith[A](inA, inB) {
 
     def func = (a,b) => a & b
   }
   
-  case class SDRStreamBitwiseOr[A:Manifest:BitArith](inA: Exp[Stream[A]], inB: Exp[Stream[A]])
+  case class SDRStreamBinaryOr[A:Manifest:BitArith](inA: Exp[Stream[A]], inB: Exp[Stream[A]])
     extends SDRStreamBitArithmeticZipWith[A](inA, inB) {
 
     def func = (a,b) => a | b
   }
   
-  case class SDRStreamBitwiseXor[A:Manifest:BitArith](inA: Exp[Stream[A]], inB: Exp[Stream[A]])
+  case class SDRStreamBinaryXor[A:Manifest:BitArith](inA: Exp[Stream[A]], inB: Exp[Stream[A]])
     extends SDRStreamBitArithmeticZipWith[A](inA, inB) {
 
     def func = (a,b) => a ^ b
@@ -271,25 +282,25 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp {
   }
   
   // Arith
-  def stream_plus[A:Manifest:Arith](x: Exp[Stream[A]], y: Exp[Stream[A]]) = reflectPure(SDRStreamPlus(x,y))
-  def stream_minus[A:Manifest:Arith](x: Exp[Stream[A]], y: Exp[Stream[A]]) = reflectPure(SDRStreamMinus(x,y))
-  def stream_times[A:Manifest:Arith](x: Exp[Stream[A]], y: Exp[Stream[A]]) = reflectPure(SDRStreamTimes(x,y))
-  def stream_divide[A:Manifest:Arith](x: Exp[Stream[A]], y: Exp[Stream[A]]) = reflectPure(SDRStreamDivide(x,y))
-  def stream_abs[A:Manifest:Arith](x: Exp[Stream[A]]) = reflectPure(SDRStreamAbs(x))
-  def stream_exp[A:Manifest:Arith](x: Exp[Stream[A]]) = reflectPure(SDRStreamExp(x))
+  def stream_plus[A:Manifest:Arith](x: Exp[Stream[A]], y: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(SDRStreamPlus(x,y))
+  def stream_minus[A:Manifest:Arith](x: Exp[Stream[A]], y: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(SDRStreamMinus(x,y))
+  def stream_times[A:Manifest:Arith](x: Exp[Stream[A]], y: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(SDRStreamTimes(x,y))
+  def stream_divide[A:Manifest:Arith](x: Exp[Stream[A]], y: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(SDRStreamDivide(x,y))
+  def stream_abs[A:Manifest:Arith](x: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(SDRStreamAbs(x))
+  def stream_exp[A:Manifest:Arith](x: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(SDRStreamExp(x))
   
   // SDRArith
-  def stream_conj[A:Manifest:SDRArith](x: Exp[Stream[A]]) = reflectPure(SDRStreamConj(x))
+  def stream_conj[A:Manifest:SDRArith](x: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(SDRStreamConj(x))
   
   // Bit arith
-  def stream_bitwisenegate[A:Manifest:BitArith](x: Exp[Stream[A]]) = reflectPure(SDRStreamBitwiseNegate(x))
-  def stream_bitwiseand[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Stream[A]]) = reflectPure(SDRStreamBitwiseAnd(x,y))
-  def stream_bitwiseor[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Stream[A]]) = reflectPure(SDRStreamBitwiseOr(x,y))
-  def stream_bitwisexor[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Stream[A]]) = reflectPure(SDRStreamBitwiseXor(x,y))
+  def stream_binarynot[A:Manifest:BitArith](x: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(SDRStreamBinaryNot(x))
+  def stream_binaryand[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(SDRStreamBinaryAnd(x,y))
+  def stream_binaryor[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(SDRStreamBinaryOr(x,y))
+  def stream_binaryxor[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Stream[A]])(implicit ctx: SourceContext) = reflectPure(SDRStreamBinaryXor(x,y))
   
-  def stream_lshift[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Int]) = reflectPure(SDRStreamLShift(x,y))
-  def stream_rshift[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Int]) = reflectPure(SDRStreamRShift(x,y))
-  def stream_rashift[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Int]) = reflectPure(SDRStreamRAShift(x,y))
+  def stream_lshift[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRStreamLShift(x,y))
+  def stream_rshift[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRStreamRShift(x,y))
+  def stream_rashift[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRStreamRAShift(x,y))
 }
 
 trait SDRStreamOpsExpOpt extends SDRStreamOpsExp {

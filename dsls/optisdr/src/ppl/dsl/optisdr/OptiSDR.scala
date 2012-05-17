@@ -52,7 +52,7 @@ trait OptiSDR extends OptiSDRScalaOpsPkg with OptiLA
   with SDRStreamOps
   with LanguageOps {
   this: OptiSDRApplication =>
-
+  
   type Real = Double
   // Int is already a defined type
 }

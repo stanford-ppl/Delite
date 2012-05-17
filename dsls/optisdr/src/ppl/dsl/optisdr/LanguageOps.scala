@@ -31,7 +31,7 @@ trait LanguageOps extends Base {
   
   // Just syntax sugar!
   // What we expect is a block that returns a function. Not sure how to expect a return type of a function with any number of args...
-  def kernel(kernel_fn: AnyRef) = kernel_fn
+  def kernel[T](kernel_fn: T) = kernel_fn
   
   // I think we need to wrap kernels that don't take stream args with a function that does a mapping
   // Perhaps we can make people wrap it themselves with some keyword... wish there was a better way

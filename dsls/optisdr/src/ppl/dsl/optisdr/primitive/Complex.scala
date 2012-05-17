@@ -80,8 +80,8 @@ trait ComplexOps extends Variables {
   def infix_+[M[X] <: Matrix[X]](lhs: Double, rhs: Rep[M[Float]])(implicit mb: MatrixBuilder[Double,M[Double]], toIntf: Rep[M[Float]] => Interface[Matrix[Float]], m: Manifest[M[Double]], ctx: SourceContext, o: Overloaded24): Rep[M[Double]] = matrix_plus_scalar_withconvert[Float,Double,M[Double]](toIntf(rhs),complex(lhs)) */
   
   // Conversions
-  def complex_int_value(x: Rep[Complex]) : Rep[Int]
-  def complex_uint_value(x: Rep[Complex]) : Rep[UInt]
+  def complex_int_value(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[Int]
+  def complex_uint_value(x: Rep[Complex])(implicit ctx: SourceContext) : Rep[UInt]
 }
 
 trait ComplexOpsExp extends ComplexOps with VariablesExp with BaseFatExp {
@@ -129,8 +129,8 @@ trait ComplexOpsExp extends ComplexOps with VariablesExp with BaseFatExp {
   case class ComplexIntValue(x: Exp[Complex]) extends Def[Int]
   case class ComplexUIntValue(x: Exp[Complex]) extends Def[UInt]
   
-  def complex_int_value(x: Exp[Complex]) = reflectPure(ComplexIntValue(x))
-  def complex_uint_value(x: Exp[Complex]) = reflectPure(ComplexUIntValue(x))
+  def complex_int_value(x: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexIntValue(x))
+  def complex_uint_value(x: Exp[Complex])(implicit ctx: SourceContext) = reflectPure(ComplexUIntValue(x))
 }
 
 trait ComplexOpsExpOpt extends ComplexOpsExp {
