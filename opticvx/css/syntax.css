@@ -1,0 +1,9 @@
+/* Adapted from the base syntax CSS used by Delite */
+.highlight .hll { background-color: #ffffcc }
+.highlight  { background: #eeeedd }
+.highlight .c { color: #408080; font-style: italic } /* Comment */
+.highlight .f { color:#644a9b; } /* Function */
+.highlight .k { font-weight: bold } /* Keyword */
+.highlight .n { color:#b08000; } /* Numeric constant */
+.highlight .s { color:#bf0303; } /* String constant */
+.highlight .i { color:#800000; font-style: italic } /* Input parameter */

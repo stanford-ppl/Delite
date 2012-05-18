@@ -4,7 +4,7 @@
     <title>OptiCVX &mdash; Example</title>
     <style type='text/css'>
       @import '../css/default.css';
-      @import '../css/syntax.css';
+      @import 'css/syntax.css';
     </style>
     <style media='print' type='text/css'>
       @import '../css/print.css';
@@ -24,6 +24,7 @@
               <li><a href='index.html'>Overview</a></li>
               <li><a href='example.html'>Example</a></li>
               <li><a href='how_it_works.html'>How it Works</a></li>
+              <li><a href='reference.html'>Reference</a></li>
               <li><a href='../index.html'>Delite</a></li>
             </ol>
           </li>
@@ -38,49 +39,49 @@
         </p>
         <div class="highlight"><code class="scala">
 <pre>
-<b>import</b> ppl.<span style='color:#644a9b;'>dsl</span>.<span style='color:#644a9b;'>opticvx</span>.<span style='color:#644a9b;'>_</span>
-<b>import</b> scala.<span style='color:#644a9b;'>util</span>.<span style='color:#644a9b;'>Random</span>
-<b>object</b> HelloCVXRunner <b>extends</b> OptiCVXApplicationRunner <b>with</b> HelloCVX
+<span class="k">import</span> ppl.<span class="f">dsl</span>.<span class="f">opticvx</span>.<span class="f">_</span>
+<span class="k">import</span> scala.<span class="f">util</span>.<span class="f">Random</span>
+<span class="k">object</span> HelloCVXRunner <span class="k">extends</span> OptiCVXApplicationRunner <span class="k">with</span> HelloCVX
 
-<b>trait</b> HelloCVX <b>extends</b> OptiCVXApplication {
-  <b>def</b> <span style='color:#644a9b;'>main</span>() = {
-    <b>val</b> x = <span style='color:#644a9b;'>variable</span>()
-    <b>val</b> y = <span style='color:#644a9b;'>variable</span>()
-    <b>val</b> z = <span style='color:#644a9b;'>variable</span>()
-    <span style='color:#644a9b;'>min</span>(<span style='color:#644a9b;'>min</span>(x,y),z) &lt;= <span style='color:#b08000;'>5</span>
-    <span style='color:#644a9b;'>max</span>(<span style='color:#644a9b;'>max</span>(x,y),z) &gt;= <span style='color:#b08000;'>0</span>
-    <b>val</b> J = <span style='color:#644a9b;'>inv</span>(x) + <span style='color:#644a9b;'>max</span>(y,z)
-    <span style='color:#644a9b;'>minimize</span> (J) <span style='color:#644a9b;'>over</span> (x,y,z)
-    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;x = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(x))
-    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;y = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(y))
-    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;z = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(z))
-    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;J = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(J))
+<span class="k">trait</span> HelloCVX <span class="k">extends</span> OptiCVXApplication {
+  <span class="k">def</span> <span class="f">main</span>() = {
+    <span class="k">val</span> x = <span class="f">variable</span>()
+    <span class="k">val</span> y = <span class="f">variable</span>()
+    <span class="k">val</span> z = <span class="f">variable</span>()
+    <span class="f">min</span>(<span class="f">min</span>(x,y),z) &lt;= <span class="n">5</span>
+    <span class="f">max</span>(<span class="f">max</span>(x,y),z) &gt;= <span class="n">0</span>
+    <span class="k">val</span> J = <span class="f">inv</span>(x) + <span class="f">max</span>(y,z)
+    <span class="f">minimize</span> (J) <span class="f">over</span> (x,y,z)
+    <span class="f">println</span>(<span class="s">&quot;x = &quot;</span> + <span class="f">resolve</span>(x))
+    <span class="f">println</span>(<span class="s">&quot;y = &quot;</span> + <span class="f">resolve</span>(y))
+    <span class="f">println</span>(<span class="s">&quot;z = &quot;</span> + <span class="f">resolve</span>(z))
+    <span class="f">println</span>(<span class="s">&quot;J = &quot;</span> + <span class="f">resolve</span>(J))
   }
   
-  <b>val</b> max = <span style='color:#644a9b;'>cvxfun</span> (convex) <span style='color:#644a9b;'>arguments</span> (increasing, increasing) <span style='color:#644a9b;'>body</span> ((x,y) =&gt; {
-    <b>val</b> t = <span style='color:#644a9b;'>variable</span>()
+  <span class="k">val</span> max = <span class="f">cvxfun</span> (convex) <span class="f">arguments</span> (increasing, increasing) <span class="f">body</span> ((x,y) =&gt; {
+    <span class="k">val</span> t = <span class="f">variable</span>()
     t &gt;= x
     t &gt;= y
-    <span style='color:#644a9b;'>minimize</span> (t) <span style='color:#644a9b;'>over</span> (t)
+    <span class="f">minimize</span> (t) <span class="f">over</span> (t)
     t
   })
 
-  <b>val</b> min = <span style='color:#644a9b;'>cvxfun</span> (concave) <span style='color:#644a9b;'>arguments</span> (increasing, increasing) <span style='color:#644a9b;'>body</span> ((x,y) =&gt; {
-    <b>val</b> t = <span style='color:#644a9b;'>variable</span>()
+  <span class="k">val</span> min = <span class="f">cvxfun</span> (concave) <span class="f">arguments</span> (increasing, increasing) <span class="f">body</span> ((x,y) =&gt; {
+    <span class="k">val</span> t = <span class="f">variable</span>()
     t &lt;= x
     t &lt;= y
-    <span style='color:#644a9b;'>minimize</span> (-t) <span style='color:#644a9b;'>over</span> (t)
+    <span class="f">minimize</span> (-t) <span class="f">over</span> (t)
     t
   })
 
-  <b>val</b> inv = <span style='color:#644a9b;'>cvxfun</span> (convex) <span style='color:#644a9b;'>arguments</span> (decreasing) <span style='color:#644a9b;'>body</span> ((x) =&gt; {
-    <b>val</b> v = <span style='color:#644a9b;'>variable</span>(<span style='color:#644a9b;'>vector</span>(<span style='color:#b08000;'>2</span>))
-    <b>val</b> z = <span style='color:#644a9b;'>variable</span>()
-    <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>0</span>) == <span style='color:#644a9b;'>inputscalar</span>(<span style='color:#b08000;'>1.0</span>)
-    <b>val</b> J = z - <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>1</span>)
-    x == z + <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>1</span>)
-    <span style='color:#644a9b;'>constrain_secondordercone</span>(v,z)
-    <span style='color:#644a9b;'>minimize</span> (J) <span style='color:#644a9b;'>over</span> (v, z)
+  <span class="k">val</span> inv = <span class="f">cvxfun</span> (convex) <span class="f">arguments</span> (decreasing) <span class="f">body</span> ((x) =&gt; {
+    <span class="k">val</span> v = <span class="f">variable</span>(<span class="f">vector</span>(<span class="n">2</span>))
+    <span class="k">val</span> z = <span class="f">variable</span>()
+    <span class="f">v</span>(<span class="n">0</span>) == <span class="f">inputscalar</span>(<span class="n">1.0</span>)
+    <span class="k">val</span> J = z - <span class="f">v</span>(<span class="n">1</span>)
+    x == z + <span class="f">v</span>(<span class="n">1</span>)
+    <span class="f">constrain_secondordercone</span>(v,z)
+    <span class="f">minimize</span> (J) <span class="f">over</span> (v, z)
     J
   })
 }</pre>
@@ -90,11 +91,11 @@
         </p>
         <div class="highlight"><code class="scala">
 <pre>
-<b>import</b> ppl.<span style='color:#644a9b;'>dsl</span>.<span style='color:#644a9b;'>opticvx</span>.<span style='color:#644a9b;'>_</span>
-<b>import</b> scala.<span style='color:#644a9b;'>util</span>.<span style='color:#644a9b;'>Random</span>
-<b>object</b> HelloCVXRunner <b>extends</b> OptiCVXApplicationRunner <b>with</b> HelloCVX
+<span class="k">import</span> ppl.<span class="f">dsl</span>.<span class="f">opticvx</span>.<span class="f">_</span>
+<span class="k">import</span> scala.<span class="f">util</span>.<span class="f">Random</span>
+<span class="k">object</span> HelloCVXRunner <span class="k">extends</span> OptiCVXApplicationRunner <span class="k">with</span> HelloCVX
 
-<b>trait</b> HelloCVX <b>extends</b> OptiCVXApplication {
+<span class="k">trait</span> HelloCVX <span class="k">extends</span> OptiCVXApplication {
 </pre>
         </code></div>
         <p>
@@ -104,9 +105,9 @@
         </p>
         <div class="highlight"><code class="scala">
 <pre>
-    <b>val</b> x = <span style='color:#644a9b;'>variable</span>()
-    <b>val</b> y = <span style='color:#644a9b;'>variable</span>()
-    <b>val</b> z = <span style='color:#644a9b;'>variable</span>()
+    <span class="k">val</span> x = <span class="f">variable</span>()
+    <span class="k">val</span> y = <span class="f">variable</span>()
+    <span class="k">val</span> z = <span class="f">variable</span>()
 </pre>
         </code></div>
         <p>
@@ -118,8 +119,8 @@
         </p>
         <div class="highlight"><code class="scala">
 <pre>
-    <span style='color:#644a9b;'>min</span>(<span style='color:#644a9b;'>min</span>(x,y),z) &lt;= <span style='color:#b08000;'>5</span>
-    <span style='color:#644a9b;'>max</span>(<span style='color:#644a9b;'>max</span>(x,y),z) &gt;= <span style='color:#b08000;'>0</span>
+    <span class="f">min</span>(<span class="f">min</span>(x,y),z) &lt;= <span class="n">5</span>
+    <span class="f">max</span>(<span class="f">max</span>(x,y),z) &gt;= <span class="n">0</span>
 </pre>
         </code></div>
         <p>
@@ -138,8 +139,8 @@
         </p>
         <div class="highlight"><code class="scala">
 <pre>
-    <b>val</b> J = <span style='color:#644a9b;'>inv</span>(x) + <span style='color:#644a9b;'>max</span>(y,z)
-    <span style='color:#644a9b;'>minimize</span> (J) <span style='color:#644a9b;'>over</span> (x,y,z)
+    <span class="k">val</span> J = <span class="f">inv</span>(x) + <span class="f">max</span>(y,z)
+    <span class="f">minimize</span> (J) <span class="f">over</span> (x,y,z)
 </pre>
         </code></div>
         <p>
@@ -154,10 +155,10 @@
         </p>
         <div class="highlight"><code class="scala">
 <pre>
-    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;x = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(x))
-    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;y = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(y))
-    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;z = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(z))
-    <span style='color:#644a9b;'>println</span>(<span style='color:#bf0303;'>&quot;J = &quot;</span> + <span style='color:#644a9b;'>resolve</span>(J))
+    <span class="f">println</span>(<span class="s">&quot;x = &quot;</span> + <span class="f">resolve</span>(x))
+    <span class="f">println</span>(<span class="s">&quot;y = &quot;</span> + <span class="f">resolve</span>(y))
+    <span class="f">println</span>(<span class="s">&quot;z = &quot;</span> + <span class="f">resolve</span>(z))
+    <span class="f">println</span>(<span class="s">&quot;J = &quot;</span> + <span class="f">resolve</span>(J))
 </pre>
         </code></div>
         <p>
@@ -170,11 +171,11 @@
         </p>
         <div class="highlight"><code class="scala">
 <pre>
-  <b>val</b> max = <span style='color:#644a9b;'>cvxfun</span> (convex) <span style='color:#644a9b;'>arguments</span> (increasing, increasing) <span style='color:#644a9b;'>body</span> ((x,y) =&gt; {
-    <b>val</b> t = <span style='color:#644a9b;'>variable</span>()
+  <span class="k">val</span> max = <span class="f">cvxfun</span> (convex) <span class="f">arguments</span> (increasing, increasing) <span class="f">body</span> ((x,y) =&gt; {
+    <span class="k">val</span> t = <span class="f">variable</span>()
     t &gt;= x
     t &gt;= y
-    <span style='color:#644a9b;'>minimize</span> (t) <span style='color:#644a9b;'>over</span> (t)
+    <span class="f">minimize</span> (t) <span class="f">over</span> (t)
     t
   })
 </pre>
@@ -193,14 +194,14 @@
         </p>
         <div class="highlight"><code class="scala">
 <pre>
-  <b>val</b> inv = <span style='color:#644a9b;'>cvxfun</span> (convex) <span style='color:#644a9b;'>arguments</span> (decreasing) <span style='color:#644a9b;'>body</span> ((x) =&gt; {
-    <b>val</b> v = <span style='color:#644a9b;'>variable</span>(<span style='color:#644a9b;'>vector</span>(<span style='color:#b08000;'>2</span>))
-    <b>val</b> z = <span style='color:#644a9b;'>variable</span>()
-    <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>0</span>) == <span style='color:#644a9b;'>inputscalar</span>(<span style='color:#b08000;'>1.0</span>)
-    <b>val</b> J = z - <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>1</span>)
-    x == z + <span style='color:#644a9b;'>v</span>(<span style='color:#b08000;'>1</span>)
-    <span style='color:#644a9b;'>constrain_secondordercone</span>(v,z)
-    <span style='color:#644a9b;'>minimize</span> (J) <span style='color:#644a9b;'>over</span> (v, z)
+  <span class="k">val</span> inv = <span class="f">cvxfun</span> (convex) <span class="f">arguments</span> (decreasing) <span class="f">body</span> ((x) =&gt; {
+    <span class="k">val</span> v = <span class="f">variable</span>(<span class="f">vector</span>(<span class="n">2</span>))
+    <span class="k">val</span> z = <span class="f">variable</span>()
+    <span class="f">v</span>(<span class="n">0</span>) == <span class="f">inputscalar</span>(<span class="n">1.0</span>)
+    <span class="k">val</span> J = z - <span class="f">v</span>(<span class="n">1</span>)
+    x == z + <span class="f">v</span>(<span class="n">1</span>)
+    <span class="f">constrain_secondordercone</span>(v,z)
+    <span class="f">minimize</span> (J) <span class="f">over</span> (v, z)
     J
   })
 </pre>

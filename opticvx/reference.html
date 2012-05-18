@@ -1,0 +1,221 @@
+<html>
+  <head>
+    <meta content='text/html;charset=UTF-8' http-equiv='Content-Type'>
+    <title>OptiCVX &mdash; Reference</title>
+    <style type='text/css'>
+      @import '../css/default.css';
+      @import 'css/syntax.css';
+    </style>
+    <style media='print' type='text/css'>
+      @import '../css/print.css';
+    </style>
+    <meta content='Delite documentation' name='subject'>
+    <!-- <link href='images/favicon.png' rel='shortcut icon'> -->
+  </head>
+  <body>
+    <div id='outer'>
+      <div id='header'>
+        <div class='home'><a href='index.html' title="OptiCVX">OptiCVX</a></div>
+      </div>
+      <div id='menu'>
+        <ol>
+          <li>Start Here
+            <ol>
+              <li><a href='index.html'>Overview</a></li>
+              <li><a href='example.html'>Example</a></li>
+              <li><a href='how_it_works.html'>How it Works</a></li>
+              <li><a href='reference.html'>Reference</a></li>
+              <li><a href='../index.html'>Delite</a></li>
+            </ol>
+          </li>
+        </ol>
+      </div>
+      <div id='content'>
+        <h1 id='title_overview'>Reference</h1>
+        <p> 
+          Table of Contents
+          <ul>
+            <li><a href="#variables">Operations for declaring and sizing variables</a></li>
+            <li><a href="#expressions">Operations on expressions</a></li>
+            <li><a href="#constraints">Operations for declaring constraints</a></li>
+            <li><a href="#optimization">Operations for optimization</a></li>
+            <li><a href="#functions">Operations for creating custom functions</a></li>
+            <li><a href="#dcp">Operations for analyzing DCP structure</a></li>
+          </ul>
+        </p>
+        <h2><a name="variables">Operations for declaring and sizing variables</a></h2>
+        <p>Variables are created with one of the following idioms:</p>
+        <div class="highlight"><code class="scala">
+<pre>
+<span class="c">//instantiate a scalar variable</span>
+<span class="k">val</span> <span class="i">x</span> = <span class="f">variable</span>()
+<span class="k">val</span> <span class="i">x</span> = <span class="f">variable</span>(<span class="f">scalar</span>())
+<span class="c">//instantiate a vector variable of the given length</span>
+<span class="k">val</span> <span class="i">x</span> = <span class="f">variable</span>(<span class="f">vector</span>(<span class="i">length</span>))
+<span class="c">//instantiates a symmetric matrix variable of the given size</span>
+<span class="k">val</span> <span class="i">x</span> = <span class="f">variable</span>(<span class="f">smatrix</span>(<span class="i">size</span>))
+<span class="c">//instantiates a variable with the same shape as variable y</span>
+<span class="k">val</span> <span class="i">x</span> = <span class="f">variable</span>(<span class="f">shapeof</span>(<span class="i">y</span>)) 
+</pre>
+        </code></div>
+        <p>
+          Note the use of the <code>val</code> keyword instead of the <code>var</code> keyword, and
+          the lack of a type annotation.
+          Using <code>var</code> may result in unexpected behavior.
+          Here, <code>length</code> and <code>size</code> must both be integer-valued (although they
+          need not be compile-time constants), while <code>y</code> must be the name of an already-declared
+          variable.
+        </p>
+        <p>
+          All variables are also OptiCVX expressions, and are assigned a vexity of "affine".
+        </p>
+        <h2><a name="expressions">Operations on expressions</a></h2>
+        <p>
+          In addition to variable expressions as described above, expressions can also be created from
+          scalar constants.  To use a double-typed scalar as an expression in OptiCVX code, simply include
+          it in the code where you want the expression to be used.  If the scalar is a compile-time
+          constant, then its sign will be determined and used for DCP validation.  If the value is known
+          only at runtime, this can't be done, so it needs to be annotated with its sign using either the
+          <code>positive</code> or <code>negative</code> function, as illustrated below:
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+<span class="c">//if f is some double-typed variable:</span>
+<span class="f">positive</span>(f)*max(x,y) <span class="c">//result is still convex</span>
+<span class="f">negative</span>(f)*max(x,y) <span class="c">//result is now concave</span>
+</pre>
+        </code></div>
+        <p>
+          The <code>positive</code> and <code>negative</code> functions check the sign of their arguments
+          at runtime and will emit a warning if the sign is not what was expected, since this indicates
+          a runtime DCP error.
+        </p>
+        <p>
+          Expressions can be combined into new expressions using any of the following
+          mathematical operators:
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+<span class="c">//sum or difference of two expressions A and B</span>
+<span class="i">A</span> + <span class="i">B</span>
+<span class="i">A</span> - <span class="i">B</span>
+<span class="c">//negation of an expression A</span>
+-<span class="i">A</span>
+<span class="c">//product of an expression A with a scalar constant c</span>
+<span class="i">c</span> * <span class="i">A</span>
+<span class="i">A</span> * <span class="i">c</span>
+<span class="c">//indexing of a vector at index i or a matrix at index (i,j)</span>
+<span class="i">A</span>(<span class="i">i</span>)
+<span class="i">A</span>(<span class="i">i</span>,<span class="i">j</span>)
+</pre>
+        </code></div>
+        <p>
+          These operations assign vexity as specified in the DCP rules.  In particular, for an
+          expression to be indexed it must be affine, and the result of the indexing will be 
+          a scalar affine expression.
+        </p>
+        <h2><a name="constraints">Operations for declaring constraints</a></h2>
+        <p>
+          OptiCVX supports constraints created by the following functions and operators:
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+<span class="c">//affine constraints</span>
+<span class="f">constrain_zero</span>(<span class="i">A</span>)
+<span class="i">A</span> == <span class="i">B</span>
+<span class="c">//inequality constraints (linear programming)</span>
+<span class="f">constrain_nonnegative</span>(<span class="i">A</span>)
+<span class="i">A</span> &lt;= <span class="i">B</span>
+<span class="i">A</span> &gt;= <span class="i">B</span>
+<span class="c">//second-order cone constraint: norm(A: vector) &lt;= B: scalar</span>
+<span class="f">constrain_secondordercone</span>(<span class="i">A</span>,<span class="i">B</span>)
+<span class="c">//semidefinitness constraint (for smatrix-shaped A)</span>
+<span class="f">constrain_semidefinite</span>(<span class="i">A</span>)
+</pre>
+        </code></div>
+        <p>
+          Affine and conic constraints require their arguments to be affine.  Inequality constraints
+          require their arguments to have appropriate vexity to satisfy the DCP requirements.
+        </p>
+        <h2><a name="optimization">Operations for optimization</a></h2>
+        <p>
+          OptiCVX supports the following optimization expressions:
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+<span class="c">//minimization and maximization of expression E over variables Vi</span>
+<span class="f">minimize</span>(<span class="i">E</span>) <span class="f">over</span> (<span class="i">V1</span>,<span class="i">V2</span>,...,<span class="i">Vn</span>)
+<span class="f">maximize</span>(<span class="i">E</span>) <span class="f">over</span> (<span class="i">V1</span>,<span class="i">V2</span>,...,<span class="i">Vn</span>)
+<span class="c">//recover the value of a (scalar-shaped) expression X after the solver has run</span>
+<span class="f">resolve</span>(<span class="i">X</span>)
+</pre>
+        </code></div>
+        <p>
+          Minimization expressions require convex arguments and maximization expressions require concave arguments.
+          It is an error to try to resolve an expression when some of its dependant variables have not yet been
+          bound to a solver.
+        </p>
+        <h2><a name="functions">Operations for creating custom functions</a></h2>
+        <p>
+          OptiCVX supports the creation of arbitrary convex functions by the user, provided those functions can
+          be expressed as partial optimization functions over the provided conic primitives (positive simplex,
+          second-order cone, and semidefinite-cone).  The syntax for doing so is illustrated below:
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+<span class="c">//create a custom function foo with n arguments</span>
+<span class="k">val</span> <span class="i">foo</span> = <span class="f">cvxfun</span> (<span class="i">v</span>) <span class="f">arguments</span> (<span class="i">m1</span>,<span class="i">m2</span>,...,<span class="i">mn</span>) <span class="f">body</span> ((<span class="i">x1</span>,<span class="i">x2</span>,...,<span class="i">xn</span>) => {
+  <span class="i">...</span>
+  <span class="i">body of function</span>
+  <span class="i">...</span>
+})
+<span class="c">//where v represents the vexity of the function, and can take on the values</span>
+affine
+convex
+concave
+novexity
+<span class="c">//and mi represents the monotonicity of the i-th argument, and can take on the values</span>
+constant
+nondecreasing
+nonincreasing
+nomonotonicity
+</pre>
+        </code></div>
+        <p>
+          The body of the function must be a function of the arguments <code>xi</code>, and should typically be
+          a partial optimization operation.  See the example code for an example of this.
+        </p>
+        <p>
+          Once we have defined the function, we can invoke it as follows:
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+<span class="c">//invoke function foo just as we would a normal function</span>
+<span class="f">foo</span>(<span class="i">x1</span>,<span class="i">x2</span>,...,<span class="i">xn</span>)
+</pre>
+        </code></div>
+        <p>
+          The result is an OptiCVX expression with vexity as defined in the DCP ruleset.
+        </p>
+        <h2><a name="dcp">Operations for analyzing DCP structure</a></h2>
+        <p>
+          OptiCVX contains one operator that allows the user to analyze the structure of the convex
+          program that he/she is writing.  The <code>introspect</code> operator will print a diagnostic
+          message at staging-time that specifies the vexity of the expression.  It is used as follows:
+        </p>
+        <div class="highlight"><code class="scala">
+<pre>
+<span class="c">//print a diagnostic message about the vexity of expression A</span>
+<span class="f">introspect</span>(<span class="i">A</span>)
+<span class="f">introspect</span>(<span class="i">A</span>,<span class="s">&quot;name&quot;</span>)
+</pre>
+        </code></div>
+        <p>
+          The second form here will tag the printed vexity expression with the given name, which must be a
+          string constant.
+        </p>
+      </div>
+      <div id='footer'>Copyright &copy; 2012</div>
+    </div>
+  </body>
+</html>
