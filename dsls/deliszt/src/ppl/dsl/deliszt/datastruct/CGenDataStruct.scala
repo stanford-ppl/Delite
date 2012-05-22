@@ -12,11 +12,11 @@ trait CGenDataStruct extends CCodegen {
 
   def refCopyInputHtoD(sym: Sym[Any]): String = { 
     val out = new StringBuilder
-    val typeStr = remap(sym.Type.typeArguments(0))
+    val typeStr = remap(sym.tp.typeArguments(0))
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\t%s %s;\n".format(typeStr,quote(sym),remap(sym.Type)))
-    out.append("\tjmethodID mid_get = env->GetMethodID(cls,\"get$mc%s$sp\",\"()%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0)),JNITypeDescriptor(sym.Type.typeArguments(0))))
+    out.append("\t%s %s;\n".format(typeStr,quote(sym),remap(sym.tp)))
+    out.append("\tjmethodID mid_get = env->GetMethodID(cls,\"get$mc%s$sp\",\"()%s\");\n".format(JNITypeDescriptor(sym.tp.typeArguments(0)),JNITypeDescriptor(sym.tp.typeArguments(0))))
     typeStr match {
       case "int" => out.append("\t%s = env->CallIntMethod(obj,mid_get);\n".format(quote(sym)))
       case "long" => out.append("\t%s = env->CallLongMethod(obj,mid_get);\n".format(quote(sym)))

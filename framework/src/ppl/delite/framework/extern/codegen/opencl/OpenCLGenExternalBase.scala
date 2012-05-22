@@ -33,7 +33,7 @@ trait OpenCLGenExternalBase extends GenericGenExternal with OpenCLGenBase {
     super.emitHeader(lib)
   }
 
-  def emitMethodCall(e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String])(implicit stream: PrintWriter) = {
+  def emitMethodCall(e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String]) = {
     stream.println(e.funcName + "(" + (args mkString ",") + ");")    
   }
   

@@ -18,13 +18,13 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   def densevectorCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = sym.Type.typeArguments.head
+    val typeArg = sym.tp.typeArguments.head
     val numBytesStr = "%s->length * sizeof(%s)".format(quote(sym),remap(typeArg))
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"_length\",\"()I\");\n")
     out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"_isRow\",\"()Z\");\n")
-    out.append("\t%s *%s = new %s(env->CallIntMethod(obj,mid_length),env->CallBooleanMethod(obj,mid_isRow));\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s(env->CallIntMethod(obj,mid_length),env->CallBooleanMethod(obj,mid_isRow));\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
 
     out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"_data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
     out.append("\tj%sArray data = (j%sArray)(env->CallObjectMethod(obj,mid_data));\n".format(remap(typeArg),remap(typeArg)))
@@ -53,7 +53,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjmethodID mid_stride = env->GetMethodID(cls,\"stride\",\"()I\");\n")
     out.append("\tjmethodID mid_end = env->GetMethodID(cls,\"end\",\"()I\");\n")
 
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t%s->isRow = env->CallBooleanMethod(obj,mid_isRow);\n".format(quote(sym)))
     out.append("\t%s->start = env->CallIntMethod(obj,mid_start);\n".format(quote(sym)))
     out.append("\t%s->stride = env->CallIntMethod(obj,mid_stride);\n".format(quote(sym)))
@@ -66,14 +66,14 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   def densematrixCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = sym.Type.typeArguments.head
+    val typeArg = sym.tp.typeArguments.head
     val numBytesStr = "%s->numRows * %s->numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(typeArg))
 
     // Get class, method ID and set the fields other than data
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_numRows = env->GetMethodID(cls,\"_numRows\",\"()I\");\n")
     out.append("\tjmethodID mid_numCols = env->GetMethodID(cls,\"_numCols\",\"()I\");\n")
-    out.append("\t%s *%s = new %s(env->CallIntMethod(obj,mid_numRows),env->CallIntMethod(obj,mid_numCols));\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s(env->CallIntMethod(obj,mid_numRows),env->CallIntMethod(obj,mid_numCols));\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
 
     // Get data(array) from scala data structure
     out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"_data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
@@ -99,12 +99,12 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   def delitearrayCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = sym.Type.typeArguments.head
+    val typeArg = sym.tp.typeArguments.head
     val numBytesStr = "length * sizeof(%s)".format(remap(typeArg))
 
     out.append("\tint length = env->GetArrayLength((j%sArray)obj);\n".format(remap(typeArg)))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical((j%sArray)obj,0);\n".format(remap(typeArg),remap(typeArg),remap(typeArg)))
-    out.append("\t%s *%s = new %s(length);\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s(length);\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
 
     out.append("\t%s *hostPtr;\n".format(remap(typeArg)))
     out.append("\tDeliteCudaMallocHost((void**)&hostPtr,%s);\n".format(numBytesStr))
@@ -119,7 +119,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   def densevectorCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = sym.Type.typeArguments.head
+    val typeArg = sym.tp.typeArguments.head
     val numBytesStr = "%s.length * sizeof(%s)".format(quote(sym),remap(typeArg))
 
     // Allocate Scala object for the destination
@@ -150,7 +150,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   def densematrixCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = sym.Type.typeArguments.head
+    val typeArg = sym.tp.typeArguments.head
     val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(typeArg))
 
     // Allocate Scala object for the destination
@@ -181,7 +181,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   def delitearrayCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = sym.Type.typeArguments.head
+    val typeArg = sym.tp.typeArguments.head
     val numBytesStr = "%s.length * sizeof(%s)".format(quote(sym),remap(typeArg))
 
     out.append("\tj%sArray arr = env->New%sArray(%s.length);\n".format(remap(typeArg),remap(typeArg),quote(sym)))
@@ -204,7 +204,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   def densematrixCopyMutableInputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = sym.Type.typeArguments.head
+    val typeArg = sym.tp.typeArguments.head
     val numBytesStr = "%s.numRows * %s.numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(typeArg))
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
@@ -225,7 +225,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   def densevectorCopyMutableInputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = sym.Type.typeArguments.head
+    val typeArg = sym.tp.typeArguments.head
     val numBytesStr = "%s.length * sizeof(%s)".format(quote(sym),remap(typeArg))
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
@@ -246,7 +246,7 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   def delitearrayCopyMutableInputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = sym.Type.typeArguments.head
+    val typeArg = sym.tp.typeArguments.head
     val numBytesStr = "length * sizeof(%s)".format(remap(typeArg))
 
     out.append("\tint length = %s.length;\n".format(quote(sym)))
@@ -280,14 +280,14 @@ trait CudaGenDataStruct extends CudaCodegen {
     val out = new StringBuilder
     val args = (getKernelOutputs ::: getKernelInputs ::: getKernelTemps) filterNot (_==newSym)
 
-    out.append("\t%s *%s = new %s(%s,%s);\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type),length,isRow))
+    out.append("\t%s *%s = new %s(%s,%s);\n".format(remap(newSym.tp),quote(newSym),remap(newSym.tp),length,isRow))
 
     /*
     // Check if new allocation is needed
     if(data==null) {
-      out.append("\t%s *devPtr;\n".format(remap(newSym.Type.typeArguments(0))))
-      out.append("\tDeliteCudaMalloc((void**)%s,%s*sizeof(%s));\n".format("&devPtr",length,remap(newSym.Type.typeArguments(0))))
-      if(reset) out.append("\tDeliteCudaMemset(devPtr,0,%s*sizeof(%s));\n".format(length,remap(newSym.Type.typeArguments(0))))
+      out.append("\t%s *devPtr;\n".format(remap(newSym.tp.typeArguments(0))))
+      out.append("\tDeliteCudaMalloc((void**)%s,%s*sizeof(%s));\n".format("&devPtr",length,remap(newSym.tp.typeArguments(0))))
+      if(reset) out.append("\tDeliteCudaMemset(devPtr,0,%s*sizeof(%s));\n".format(length,remap(newSym.tp.typeArguments(0))))
       out.append("\t%s->length = %s;\n".format(quote(newSym),length))
       out.append("\t%s->isRow = %s;\n".format(quote(newSym),isRow))
       out.append("\t%s->data = devPtr;\n".format(quote(newSym)))
@@ -328,14 +328,14 @@ trait CudaGenDataStruct extends CudaCodegen {
     val out = new StringBuilder
     val args = (getKernelOutputs ::: getKernelInputs ::: getKernelTemps) filterNot (_==newSym)
 
-    out.append("\t%s *%s = new %s(%s,%s);\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type),numRows,numCols))
+    out.append("\t%s *%s = new %s(%s,%s);\n".format(remap(newSym.tp),quote(newSym),remap(newSym.tp),numRows,numCols))
 
     /*
     // Check if new allocation is needed
     if(data==null) {
-      out.append("\t%s *devPtr;\n".format(remap(newSym.Type.typeArguments(0))))
-      out.append("\tDeliteCudaMalloc((void**)%s,%s*%s*sizeof(%s));\n".format("&devPtr",numRows,numCols,remap(newSym.Type.typeArguments(0))))
-      if(reset) out.append("\tDeliteCudaMemset(devPtr,0,%s*%s*sizeof(%s));\n".format(numRows,numCols,remap(newSym.Type.typeArguments(0))))
+      out.append("\t%s *devPtr;\n".format(remap(newSym.tp.typeArguments(0))))
+      out.append("\tDeliteCudaMalloc((void**)%s,%s*%s*sizeof(%s));\n".format("&devPtr",numRows,numCols,remap(newSym.tp.typeArguments(0))))
+      if(reset) out.append("\tDeliteCudaMemset(devPtr,0,%s*%s*sizeof(%s));\n".format(numRows,numCols,remap(newSym.tp.typeArguments(0))))
       out.append("\t%s->numRows = %s;\n".format(quote(newSym),numRows))
       out.append("\t%s->numCols = %s;\n".format(quote(newSym),numCols))
       out.append("\t%s->data = devPtr;\n".format(quote(newSym)))
@@ -358,12 +358,12 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   def vectorClone(sym: Sym[Any], src: Sym[Any]) : String = {
     val out = new StringBuilder
-    val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
+    val typeArg = if(sym.tp.typeArguments.length==0) manifest[Int] else sym.tp.typeArguments(0)
     val typeStr = remap(typeArg)
     val numBytesStr = "%s_ptr->length * sizeof(%s)".format(quote(src),remap(typeArg))
 
     out.append("//calling vectorClone\n")
-    out.append("%s *%s_ptr = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("%s *%s_ptr = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("%s_ptr->length = %s_ptr->length;\n".format(quote(sym),quote(src)))
     out.append("%s_ptr->isRow = %s_ptr->isRow;\n".format(quote(sym),quote(src)))
     out.append("%s *devPtr;\n".format(typeStr))
@@ -376,12 +376,12 @@ trait CudaGenDataStruct extends CudaCodegen {
 
   def matrixClone(sym: Sym[Any], src: Sym[Any]) : String = {
     val out = new StringBuilder
-    val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
+    val typeArg = if(sym.tp.typeArguments.length==0) manifest[Int] else sym.tp.typeArguments(0)
     val typeStr = remap(typeArg)
     val numBytesStr = "%s_ptr->numRows * %s_ptr->numCols * sizeof(%s)".format(quote(src),quote(src),remap(typeArg))
 
     out.append("//calling matrixClone\n")
-    out.append("%s *%s_ptr = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("%s *%s_ptr = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("%s_ptr->numRows = %s_ptr->numRows;\n".format(quote(sym),quote(src)))
     out.append("%s_ptr->numCols = %s_ptr->numCols;\n".format(quote(sym),quote(src)))
     out.append("%s *devPtr;\n".format(typeStr))

@@ -118,7 +118,7 @@ trait ScalaGenNodeOps extends BaseGenNodeOps with ScalaGenBase {
   val IR: NodeOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case NodeOutNeighbors(n) => emitValDef(sym, quote(n) + ".outNeighbors")
       case NodeInNeighbors(n) => emitValDef(sym, quote(n) + ".inNeighbors")

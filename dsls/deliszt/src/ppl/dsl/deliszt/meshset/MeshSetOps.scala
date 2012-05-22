@@ -147,7 +147,7 @@ trait ScalaGenMeshSetOps extends ScalaGenFat {
   val IR: MeshSetOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case f@NestedMeshSetForeach(m,crs,i,body) => {
         stream.println("val " + quote(sym) + " = { // Begin nested foreach " + sym.id)
@@ -193,7 +193,7 @@ trait CudaGenMeshSetOps extends CudaGenFat {
   val IR: MeshSetOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -202,7 +202,7 @@ trait CGenMeshSetOps extends CGenFat {
   val IR: MeshSetOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

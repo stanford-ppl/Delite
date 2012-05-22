@@ -294,7 +294,7 @@ trait ScalaGenStreamOps extends ScalaGenBase {
   val IR: StreamOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case m@StreamObjectNew(numRows, numCols, chunkSize, func, isPure) =>
       emitValDef(sym, "new " + remap("generated.scala.Stream[" + remap(m.mA) + "]")+"(" + quote(numRows) + "," + quote(numCols) + "," + quote(chunkSize) + ","
                       + quote(func) + "," + quote(isPure) + ")")
@@ -312,7 +312,7 @@ trait CudaGenStreamOps extends CudaGenBase with CudaGenDataStruct {
   val IR: StreamOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -321,7 +321,7 @@ trait CGenStreamOps extends CGenBase {
   val IR: StreamOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

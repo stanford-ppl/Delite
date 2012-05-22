@@ -34,7 +34,7 @@ trait ScalaGenVSetOps extends BaseGenVSetOps with ScalaGenEffect {
   val IR: VSetOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case o@VSetVertices(s) => emitValDef(sym, "new generated.scala.DenseVector[Vertex[" + remap(o.mVD) + "," + remap(o.mED) + "]](" + quote(s) + ".toArray)")
     case _ => super.emitNode(sym, rhs)
   }
@@ -44,7 +44,7 @@ trait CLikeGenVSetOps extends BaseGenVSetOps with CLikeCodegen {
   val IR: VSetOpsExp
   import IR._
 
-/*  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+/*  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   } */
 }

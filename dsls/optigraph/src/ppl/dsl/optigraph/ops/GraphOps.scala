@@ -254,7 +254,7 @@ trait ScalaGenGraphOps extends BaseGenGraphOps with ScalaGenBase {
   val IR: GraphOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case g@DGraphObjectNew() => emitValDef(sym, "new Graph(true)")
       case g@UGraphObjectNew() => emitValDef(sym, "new Graph(false)")

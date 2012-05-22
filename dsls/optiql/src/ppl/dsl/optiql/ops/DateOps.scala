@@ -43,7 +43,7 @@ trait ScalaGenDateOps extends ScalaGenBase {
   val IR: DateOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case DateObjectApply(str: Exp[String]) => emitValDef(sym, "generated.scala.util.Date(" + quote(str) + ")" )
     case DateLessThan(ls: Exp[Date], rd: Exp[Date]) => emitValDef(sym, quote(ls) + " <= " + quote(rd))
     case _ => super.emitNode(sym, rhs)

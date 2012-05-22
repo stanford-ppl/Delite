@@ -20,7 +20,7 @@ trait ScalaGenFieldAccessOps extends ScalaGenFat {
   val IR: FieldAccessOpsExp with Effects
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case FieldRead(o,f,_) => emitValDef(sym, quote(o) + "." + f)
     case _ => super.emitNode(sym, rhs)
   }

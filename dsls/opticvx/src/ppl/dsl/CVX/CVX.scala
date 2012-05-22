@@ -230,7 +230,7 @@ trait CVXCodeGenScala extends CVXCodeGenBase
 //     case _ => super.isObjectType(m)
 //   }
 // 
-//   override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
+//   override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
 //     case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => labelsCopyInputHtoD(sym)
 //     case "RangeVector" => rangeVectorCopyInputHtoD(sym)
 //     case "IndexVector" => indexVectorCopyInputHtoD(sym)
@@ -238,11 +238,11 @@ trait CVXCodeGenScala extends CVXCodeGenBase
 //     case _ => super.copyInputHtoD(sym)
 //   }
 // 
-//   override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+//   override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
 //     case _ => super.copyOutputDtoH(sym)
 //   }
 // 
-//   override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+//   override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
 //     case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => labelsCopyMutableInputDtoH(sym)
 //     case "RangeVector" => rangeVectorCopyMutableInputDtoH(sym)
 //     case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
@@ -251,19 +251,19 @@ trait CVXCodeGenScala extends CVXCodeGenBase
 //   }
 // 
 //   /*
-//   override def allocOutput(newSym: Sym[_], sym: Sym[_], reset: Boolean = false) : Unit = remap(newSym.Type) match {
+//   override def allocOutput(newSym: Sym[_], sym: Sym[_], reset: Boolean = false) : Unit = remap(newSym.tp) match {
 //     case _ => super.allocOutput(newSym,sym,reset)
 //   }
 //   */
 // 
 //   /*
-//   override def allocReference(newSym: Sym[Any], sym: Sym[Any]) : Unit = remap(newSym.Type) match {
+//   override def allocReference(newSym: Sym[Any], sym: Sym[Any]) : Unit = remap(newSym.tp) match {
 //     case "Labels<int>" | "Labels<long>" | "Labels<float>" | "Labels<double>" | "Labels<bool>" => emitVectorAllocRef(newSym,sym)
 //     case _ => super.allocReference(newSym,sym)
 //   }
 //    */
 // 
-//   override def positionMultDimInputs(sym: Sym[Any]) : String = remap(sym.Type) match {
+//   override def positionMultDimInputs(sym: Sym[Any]) : String = remap(sym.tp) match {
 //     case _ => super.positionMultDimInputs(sym)
 //   }
 // 

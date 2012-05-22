@@ -572,7 +572,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
     if (isVec3(x)) unit(3)
     else {
-      printdbg("couldn't find dc_size for " + x.Type.toString)
+      printdbg("couldn't find dc_size for " + x.tp.toString)
       super.dc_size(x)
     }
   }
@@ -607,7 +607,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
       case _ => super.dc_apply(x,n)  
     }
     case _ =>
-      printdbg("couldn't find dc_apply for " + x.Type.toString)
+      printdbg("couldn't find dc_apply for " + x.tp.toString)
       printdbg("*** Def was: " + findDefinition(x.asInstanceOf[Sym[Any]]).get.toString)
       super.dc_apply(x,n)    
   }
@@ -648,7 +648,7 @@ trait ScalaGenVecOps extends BaseGenVecOps with ScalaGenFat {
   val vecImplPath = "ppl.dsl.deliszt.datastruct.scala.VecImpl"
   val vec3ImplPath = "ppl.dsl.deliszt.datastruct.scala.Vec3Impl"
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case v@VecObjNew(xs @ _*) => {
          //if(xs.length == 3) {
@@ -686,10 +686,10 @@ trait CudaGenVecOps extends BaseGenVecOps with CudaGenFat {
   val IR: VecOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case v@VecObjNew(xs @ _*) if(!isHostAlloc) => emitValDef(sym, remap(sym.Type) + "()");
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case v@VecObjNew(xs @ _*) if(!isHostAlloc) => emitValDef(sym, remap(sym.tp) + "()");
                                                  xs.zipWithIndex.foreach(elem => stream.println("%s.data[%s] = %s;".format(quote(sym),elem._2,quote(elem._1))))
-    case v@Vec3New(a,b,c) if(!isHostAlloc) => emitValDef(sym, remap(sym.Type) + "()");
+    case v@Vec3New(a,b,c) if(!isHostAlloc) => emitValDef(sym, remap(sym.tp) + "()");
                                               List(a,b,c).zipWithIndex.foreach(elem => stream.println("%s.data[%s] = %s;".format(quote(sym),elem._2,quote(elem._1))))
     case v@VecObjNNew(i) if(!isHostAlloc) => emitValDef(sym, "Vec<"+remap(v.a) + "," + quote(i) + ">()")
     // these are the ops that call through to the underlying real data structure
@@ -705,7 +705,7 @@ trait CGenVecOps extends BaseGenVecOps with CGenFat {
   val IR: VecOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

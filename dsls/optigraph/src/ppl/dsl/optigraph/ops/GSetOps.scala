@@ -102,7 +102,7 @@ trait ScalaGenGSetOps extends BaseGenGSetOps with ScalaGenFat {
   val IR: GSetOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case s@GSetObjectNew() => emitValDef(sym, "new " + remap(s.mGS) +"")
       case GSetItems(s) => emitValDef(sym, quote(s) + ".items")

@@ -118,7 +118,7 @@ trait ScalaGenGSeqOps extends BaseGenGSeqOps with ScalaGenFat {
   val IR: GSeqOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case s@GSeqObjectNew() => emitValDef(sym, "new " + remap(s.mGS) +"")
       case GSeqItems(o) => emitValDef(sym, quote(o) + ".items")

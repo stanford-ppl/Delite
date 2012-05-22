@@ -130,7 +130,7 @@ trait ScalaGenQueryableOps extends ScalaGenFat {
   val IR: QueryableOpsExp with OptiQLExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case HackQueryableGroupBy(s, v, k) =>  {
       stream.println("val " + quote(sym) + " =  " + quote(s) + ".GroupBy( " + quote(v) + " => {")   
       emitBlock(k)   

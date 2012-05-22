@@ -42,7 +42,7 @@ trait ScalaGenMeshPrivateOps extends ScalaGenBase {
   val IR: MeshPrivateOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case ms@MeshSetNew() => emitValDef(sym, "generated.scala.Mesh.meshSet[" + remap(ms.moM) + "]")
       case lf@LabelFieldPrivateNew() => emitValDef(sym, "generated.scala.label[" + remap(lf.moM) + "," + remap(lf.vtM) + "]")
@@ -56,7 +56,7 @@ trait CudaGenMeshPrivateOps extends CudaGenBase {
   val IR: MeshPrivateOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -65,7 +65,7 @@ trait CGenMeshPrivateOps extends CGenBase {
   val IR: MeshPrivateOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

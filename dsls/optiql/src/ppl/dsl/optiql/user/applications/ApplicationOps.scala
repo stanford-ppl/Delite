@@ -71,7 +71,7 @@ trait ScalaGenCustomerOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case CustomerObjectNew(c_custkey, c_name, c_address, c_nationkey, c_phone, c_acctbal, c_mktsegment, c_comment) => emitValDef(sym, "new " + remap(manifest[Customer]) + "(" + quote(c_custkey)  + "," + quote(c_name)  + "," + quote(c_address)  + "," + quote(c_nationkey)  + "," + quote(c_phone)  + "," + quote(c_acctbal)  + "," + quote(c_mktsegment)  + "," + quote(c_comment)  + ")")
     case _ => super.emitNode(sym, rhs)
@@ -157,7 +157,7 @@ trait ScalaGenLineItemOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case LineItemObjectNew(l_orderkey, l_partkey, l_suppkey, l_linenumber, l_quantity, l_extendedprice, l_discount, l_tax, l_returnflag, l_linestatus, l_shipdate, l_commitdate, l_receiptdate, l_shipinstruct, l_shipmode, l_comment) => emitValDef(sym, "new " + remap(manifest[LineItem]) + "(" + quote(l_orderkey)  + "," + quote(l_partkey)  + "," + quote(l_suppkey)  + "," + quote(l_linenumber)  + "," + quote(l_quantity)  + "," + quote(l_extendedprice)  + "," + quote(l_discount)  + "," + quote(l_tax)  + "," + quote(l_returnflag)  + "," + quote(l_linestatus)  + "," + quote(l_shipdate)  + "," + quote(l_commitdate)  + "," + quote(l_receiptdate)  + "," + quote(l_shipinstruct)  + "," + quote(l_shipmode)  + "," + quote(l_comment)  + ")")
     case _ => super.emitNode(sym, rhs)
@@ -207,7 +207,7 @@ trait ScalaGenNationOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case NationObjectNew(n_nationkey, n_name, n_regionkey, n_comment) => emitValDef(sym, "new " + remap(manifest[Nation]) + "(" + quote(n_nationkey)  + "," + quote(n_name)  + "," + quote(n_regionkey)  + "," + quote(n_comment)  + ")")
     case _ => super.emitNode(sym, rhs)
@@ -272,7 +272,7 @@ trait ScalaGenOrderOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case OrderObjectNew(o_orderkey, o_custkey, o_orderstatus, o_totalprice, o_orderdate, o_orderpriority, o_clerk, o_shippriority, o_comment) => emitValDef(sym, "new " + remap(manifest[Order]) + "(" + quote(o_orderkey)  + "," + quote(o_custkey)  + "," + quote(o_orderstatus)  + "," + quote(o_totalprice)  + "," + quote(o_orderdate)  + "," + quote(o_orderpriority)  + "," + quote(o_clerk)  + "," + quote(o_shippriority)  + "," + quote(o_comment)  + ")")
     case _ => super.emitNode(sym, rhs)
@@ -337,7 +337,7 @@ trait ScalaGenPartOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case PartObjectNew(p_partkey, p_name, p_mfgr, p_brand, p_type, p_size, p_container, p_retailprice, p_comment) => emitValDef(sym, "new " + remap(manifest[Part]) + "(" + quote(p_partkey)  + "," + quote(p_name)  + "," + quote(p_mfgr)  + "," + quote(p_brand)  + "," + quote(p_type)  + "," + quote(p_size)  + "," + quote(p_container)  + "," + quote(p_retailprice)  + "," + quote(p_comment)  + ")")
     case _ => super.emitNode(sym, rhs)
@@ -390,7 +390,7 @@ trait ScalaGenPartSupplierOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case PartSupplierObjectNew(ps_partkey, ps_suppkey, ps_availqty, ps_supplycost, ps_comment) => emitValDef(sym, "new " + remap(manifest[PartSupplier]) + "(" + quote(ps_partkey)  + "," + quote(ps_suppkey)  + "," + quote(ps_availqty)  + "," + quote(ps_supplycost)  + "," + quote(ps_comment)  + ")")
     case _ => super.emitNode(sym, rhs)
@@ -437,7 +437,7 @@ trait ScalaGenRegionOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case RegionObjectNew(r_regionkey, r_name, r_comment) => emitValDef(sym, "new " + remap(manifest[Region]) + "(" + quote(r_regionkey)  + "," + quote(r_name)  + "," + quote(r_comment)  + ")")
     case _ => super.emitNode(sym, rhs)
@@ -496,7 +496,7 @@ trait ScalaGenSupplierOps extends ScalaGenFat {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case SupplierObjectNew(s_suppkey, s_name, s_address, s_nationkey, s_phone, s_acctbal, s_comment) => emitValDef(sym, "new " + remap(manifest[Supplier]) + "(" + quote(s_suppkey)  + "," + quote(s_name)  + "," + quote(s_address)  + "," + quote(s_nationkey)  + "," + quote(s_phone)  + "," + quote(s_acctbal)  + "," + quote(s_comment)  + ")")
     case _ => super.emitNode(sym, rhs)

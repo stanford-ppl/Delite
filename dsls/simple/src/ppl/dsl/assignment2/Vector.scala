@@ -109,7 +109,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
   def vectorPrint[A:Manifest](x: Exp[Vector[A]]) = reflectEffect(PPrint(x, reifyEffectsHere(pprint_impl(x))))
 
   private def ifVector[A:Manifest, R](x: Exp[DeliteCollection[A]])(then: Exp[Vector[A]] => R)(orElse: => R): R = {
-    if (x.Type.erasure == classOf[Vector[A]]) then(x.asInstanceOf[Exp[Vector[A]]]) else orElse
+    if (x.tp.erasure == classOf[Vector[A]]) then(x.asInstanceOf[Exp[Vector[A]]]) else orElse
   }
 
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext): Exp[Int] = ifVector(x)(length(_))(super.dc_size(x))

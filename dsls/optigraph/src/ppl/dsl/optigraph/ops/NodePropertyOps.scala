@@ -129,7 +129,7 @@ trait ScalaGenNodePropertyOps extends BaseGenNodePropertyOps with ScalaGenFat {
   val IR: NodePropertyOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case np@NodePropObjectNew(g, size) => emitValDef(sym, "new " + remap(np.mNP) +"(" + quote(g) + "," + quote(size) + ")")
       //case NodePropApply(np,n) => emitValDef(sym, quote(np) + "(" + quote(n) + ")")

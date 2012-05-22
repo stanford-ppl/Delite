@@ -64,7 +64,7 @@ trait ScalaGenDataTableOps extends ScalaGenFat {
   val IR: DataTableOpsExp with OptiQLExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case DataTableApply(t, i) => emitValDef(sym, quote(t) + "(" + quote(i) + ")")
     case DataTableObjectApply(mnfst, initSize) => emitValDef(sym, "new " + remap(mnfst) + "(" + quote(initSize) + ")")
     case DataTableSize(t) => emitValDef(sym, quote(t) + ".size")

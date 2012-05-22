@@ -71,7 +71,7 @@ trait ScalaGenDeferrableOps extends BaseGenDeferrableOps with ScalaGenBase {
   val IR: DeferrableOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case d@DefObjectNew(init) => emitValDef(sym, "new " + remap(d.mD) + "(" + quote(init) +")")
       case DefAssign(d) => emitValDef(sym, quote(d) + ".assign")

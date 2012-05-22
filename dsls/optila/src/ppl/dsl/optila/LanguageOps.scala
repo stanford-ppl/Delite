@@ -387,7 +387,7 @@ trait ScalaGenLanguageOps extends ScalaGenEffect with BaseGenLanguageOps {
   val IR: LanguageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     // TODO: need fully qualified package name to Global? should remove the dependency on the package name.
     rhs match {
       case InternalRandDouble() => emitValDef(sym, "generated.scala.Global.intRandRef.nextDouble()")
@@ -417,7 +417,7 @@ trait CudaGenLanguageOps extends CudaGenBase with BaseGenLanguageOps {
   val IR: LanguageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
       rhs match {
         case _ => super.emitNode(sym, rhs)
      }

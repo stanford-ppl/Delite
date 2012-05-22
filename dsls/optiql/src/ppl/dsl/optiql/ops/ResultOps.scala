@@ -71,7 +71,7 @@ trait ScalaGenResultOps extends ScalaGenBase {
     val IR:ResultOpsExp
     import IR._
 
-    override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
         case CreateResult(fields) => emitValDef(sym, "new {\n" + fields.map{case (n,rhs) => "\tval " + n + " = " + quote(rhs)}.reduceLeft[String]{(acc, n) => acc + "\n" + n} + "\n}")
         case ResultFieldAccess(res, field) => emitValDef(sym, quote(res) + "." + field + " //field access")
         case _ => super.emitNode(sym,rhs)

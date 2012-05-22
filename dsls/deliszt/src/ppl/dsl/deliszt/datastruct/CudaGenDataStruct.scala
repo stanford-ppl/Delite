@@ -41,7 +41,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_size = env->GetMethodID(cls,\"size\",\"()I\");\n")
 
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t%s->size = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_size)"))
     out.append("\t%s->dir = 1;\n".format(quote(sym)))
 
@@ -91,7 +91,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_size = env->GetMethodID(cls,\"size\",\"()I\");\n")
 
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t%s->size = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_size)"))
 
     out.append("\t%s *hostPtr;\n".format(typeStr))
@@ -167,7 +167,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_size = env->GetMethodID(cls,\"size\",\"()I\");\n")
 
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t%s->size = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_size)"))
 
     out.append("\t%s *hostPtr;\n".format(typeStr))
@@ -274,7 +274,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_size = env->GetMethodID(cls,\"size\",\"()I\");\n")
 
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t%s->size = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_size)"))
 
     out.append("\t%s *hostPtr;\n".format(typeStr))
@@ -369,7 +369,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     val out = new StringBuilder
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
 
     //Copy Int fields
     for (name <- List("nvertices","nedges","nfaces","ncells")) {
@@ -441,7 +441,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     val typeStr = remap(argType)
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
 
     out.append("\tjclass VecImplCls = env->FindClass(\"generated/scala/VecImpl\");\n")
     out.append("\tjclass VecImplCls_spec = env->FindClass(\"generated/scala/%sVecImpl\");\n".format(argType.toString))
@@ -487,7 +487,7 @@ trait CudaGenDataStruct extends CudaCodegen {
     val size = row * col
 
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
 
     out.append("\tjclass MatImplCls = env->FindClass(\"generated/scala/MatImpl\");\n")
     out.append("\tjclass MatImplCls_spec = env->FindClass(\"generated/scala/%sMatImpl\");\n".format(argType.toString))

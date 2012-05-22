@@ -29,7 +29,7 @@ trait ScalaGenGraphInputReaderOps extends ScalaGenBase {
   val IR: GraphInputReaderOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case GraphInputRead(filename, delim) => emitValDef(sym, base + "GraphReaderImpl.read(" + quote(filename) + "," + quote(delim) + ")")
     case _ => super.emitNode(sym, rhs)
   }

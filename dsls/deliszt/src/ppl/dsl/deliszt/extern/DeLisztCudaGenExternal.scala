@@ -11,7 +11,7 @@ trait DeLisztCudaGenExternal extends CudaGenExternalBase with CudaGenDataStruct 
   val IR: DeLisztExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
     

@@ -7,7 +7,7 @@ trait DeliteGenScalaVariables extends ScalaGenEffect {
   val IR: VariablesExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case ReadVar(Variable(a)) => emitValDef(sym, quote(a) + ".get")
     case NewVar(init) => emitValDef(sym, "generated.scala.Ref(" + quote(init) + ")")
     case Assign(Variable(a), b) => stream.println(quote(a) + ".set(" + quote(b) + ")")

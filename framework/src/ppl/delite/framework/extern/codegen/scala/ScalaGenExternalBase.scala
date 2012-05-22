@@ -31,7 +31,7 @@ System.load("%s")
   /////////////////
   // implementation
     
-  def emitMethodCall(sym: Sym[Any], e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String])(implicit stream: PrintWriter) = {
+  def emitMethodCall(sym: Sym[Any], e: DeliteOpExternal[_], lib: ExternalLibrary, args: List[String]) = {
     stream.println("val " + quote(sym) + " = {")
     emitBlock(e.allocVal) 
     stream.println(quote(getBlockResult(e.allocVal)))

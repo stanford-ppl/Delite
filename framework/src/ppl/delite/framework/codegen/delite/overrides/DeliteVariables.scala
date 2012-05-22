@@ -9,7 +9,7 @@ trait DeliteScalaGenVariables extends ScalaGenEffect {
   val IR: VariablesExp with DeliteOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     val symIsResult = !deliteResult.isEmpty && (deliteResult.get contains sym)
     var gen = false
     if (symIsResult) {
@@ -38,7 +38,7 @@ trait DeliteCLikeGenVariables extends CLikeCodegen {
   val IR: VariablesExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = super.emitNode(sym, rhs)
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = super.emitNode(sym, rhs)
 
 }
 
@@ -50,7 +50,7 @@ trait DeliteCGenVariables extends CGenEffect with DeliteCLikeGenVariables {
   val IR: VariablesExp with DeliteOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     val symIsResult = !deliteResult.isEmpty && (deliteResult.get contains sym)
     var gen = false
     if (symIsResult) {

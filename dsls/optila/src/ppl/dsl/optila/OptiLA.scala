@@ -325,7 +325,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
     case _ => super.isObjectType(m)
   }
 
-  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" | "DenseVector<bool>" => densevectorCopyInputHtoD(sym)
     case "RangeVector" => rangevectorCopyInputHtoD(sym)
     case "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" | "DenseMatrix<bool>" => densematrixCopyInputHtoD(sym)
@@ -333,7 +333,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
     case _ => super.copyInputHtoD(sym)
   }
 
-  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" | "DenseVector<bool>" => densevectorCopyOutputDtoH(sym)
     case "RangeVector" => "assert(false); //RangeVector cannot be an output of a GPU kernel!\n"
     case "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" | "DenseMatrix<bool>" => densematrixCopyOutputDtoH(sym)
@@ -341,7 +341,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
     case _ => super.copyOutputDtoH(sym)
   }
 
-  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "DenseVector<int>" | "DenseVector<long>" | "DenseVector<float>" | "DenseVector<double>" | "DenseVector<bool>" => densevectorCopyMutableInputDtoH(sym)
     case "RangeVector" => "assert(false); //RangeVector cannot be mutated within a GPU kernel!\n"
     case "DenseMatrix<int>" | "DenseMatrix<long>" | "DenseMatrix<float>" | "DenseMatrix<double>" | "DenseMatrix<bool>" => densematrixCopyMutableInputDtoH(sym)
@@ -398,14 +398,14 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
     case _ => super.remap(m)
   }
 
-  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "IntMatrix" | "LongMatrix" | "FloatMatrix" | "DoubleMatrix" | "BooleanMatrix" => matrixCopyInputHtoD(sym)
     case "IntVector" | "LongVector" | "FloatVector" | "DoubleVector" | "BooleanVector" => vectorCopyInputHtoD(sym)
     case "RangeVector" => rangeVectorCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
-  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "IntMatrix" | "LongMatrix" | "FloatMatrix" | "DoubleMatrix" | "BooleanMatrix" => matrixCopyOutputDtoH(sym)
     case "IntVector" | "LongVector" | "FloatVector" | "DoubleVector" | "BooleanVector" => vectorCopyOutputDtoH(sym)
     //TODO: Not going to implement below?
@@ -416,7 +416,7 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
     case _ => super.copyOutputDtoH(sym)
   }
 
-  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "IntMatrix" | "LongMatrix" | "FloatMatrix" | "DoubleMatrix" | "BooleanMatrix" => matrixCopyMutableInputDtoH(sym)
     case "IntVector" | "LongVector" | "FloatVector" | "DoubleVector" | "BooleanVector" => vectorCopyMutableInputDtoH(sym)
     case "RangeVector" => rangeVectorCopyMutableInputHtoD(sym)
@@ -424,29 +424,29 @@ trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg 
   }
 
   /*
-  override def disAssembleObject[A](sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def disAssembleObject[A](sym: Sym[Any]) : String = remap(sym.tp) match {
     case "IntMatrix" | "LongMatrix" | "FloatMatrix" | "DoubleMatrix" | "BooleanMatrix" =>
-      "int %s_numRows, int %s_numCols, __global %s *%s_data".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)),quote(sym))
+      "int %s_numRows, int %s_numCols, __global %s *%s_data".format(quote(sym),quote(sym),remap(sym.tp.typeArguments(0)),quote(sym))
     case "IntVector" | "LongVector" | "FloatVector" | "DoubleVector" | "BooleanVector" =>
-      "char %s_isRow, int %s_length, __global %s *%s_data".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)),quote(sym))
+      "char %s_isRow, int %s_length, __global %s *%s_data".format(quote(sym),quote(sym),remap(sym.tp.typeArguments(0)),quote(sym))
     case _ => super.disAssembleObject(sym)
   }
 
-  override def reAssembleObject[A](sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def reAssembleObject[A](sym: Sym[Any]) : String = remap(sym.tp) match {
     case "IntMatrix" | "LongMatrix" | "FloatMatrix" | "DoubleMatrix" | "BooleanMatrix" =>
-      "\t%s %s; %s.numRows = %s_numRows; %s.numCols = %s_numCols; %s.data = %s_data".format(remap(sym.Type),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym))
+      "\t%s %s; %s.numRows = %s_numRows; %s.numCols = %s_numCols; %s.data = %s_data".format(remap(sym.tp),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym))
     case "IntVector" | "LongVector" | "FloatVector" | "DoubleVector" | "BooleanVector" =>
-      "\t%s %s; %s.isRow = %s_isRow; %s.length = %s_length; %s.data = %s_data;".format(remap(sym.Type),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym))
+      "\t%s %s; %s.isRow = %s_isRow; %s.length = %s_length; %s.data = %s_data;".format(remap(sym.tp),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym))
     case _ => super.disAssembleObject(sym)
   }
   */
 
-  override def unpackObject[A](sym: Sym[Any]) : Map[String,Manifest[_]] = remap(sym.Type) match {
+  override def unpackObject[A](sym: Sym[Any]) : Map[String,Manifest[_]] = remap(sym.tp) match {
     case "IntMatrix" | "LongMatrix" | "FloatMatrix" | "DoubleMatrix" | "BooleanMatrix" =>
-      val dataArrayType = sym.Type.typeArguments(0)
+      val dataArrayType = sym.tp.typeArguments(0)
       Map("numRows"->Manifest.Int, "numCols"->Manifest.Int, "data"->dataArrayType.arrayManifest)
     case "IntVector" | "LongVector" | "FloatVector" | "DoubleVector" | "BooleanVector" =>
-      val dataArrayType = sym.Type.typeArguments(0)
+      val dataArrayType = sym.tp.typeArguments(0)
       Map("isRow"->Manifest.Boolean, "length"->Manifest.Int, "data"->dataArrayType.arrayManifest)
     case "RangeVector" =>
       Map("isRow"->Manifest.Boolean, "start"->Manifest.Int, "stride"->Manifest.Int, "end"->Manifest.Int)

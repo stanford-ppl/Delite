@@ -67,7 +67,7 @@ trait ScalaGenRecordOps extends ScalaGenBase {
     val IR:RecordOpsExp
     import IR._
 
-    override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
         case CreateRecord(fields) => emitValDef(sym, "new {\n" + fields.map{case (n,rhs) => "\tval " + n + " = " + quote(rhs)}.reduceLeft[String]{(acc, n) => acc + "\n" + n} + "\n}")
         case RecordFieldAccess(res, field) => emitValDef(sym, quote(res) + "." + field + " //field access")
         case _ => super.emitNode(sym,rhs)

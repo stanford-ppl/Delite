@@ -58,7 +58,7 @@ trait DeliteCollectionOpsExp extends DeliteCollectionOps with BaseFatExp with Ef
     //case Def(Reflect(e: DeliteOpZipWith[_,_,_,_], _,_)) => e.size // reasonable?
     case _ => /*throw new RuntimeException*/printlog("warning: no static implementation found for dc_size on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get); reflectPure(DeliteCollectionSize(x))
   }
-  def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext): Exp[A] = {/*throw new RuntimeException*/printlog("warning: no static implementation found for dc_apply on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get + " --- x.Type is " + x.Type); reflectPure(DeliteCollectionApply(x,n))}
+  def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext): Exp[A] = {/*throw new RuntimeException*/printlog("warning: no static implementation found for dc_apply on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get + " --- x.tp is " + x.tp); reflectPure(DeliteCollectionApply(x,n))}
   def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = {/*throw new RuntimeException*/printlog("warning: no static implementation found for dc_update on " + findDefinition(x.asInstanceOf[Sym[DeliteCollection[A]]]).get); reflectWrite(x)(DeliteCollectionUpdate(x,n,y))}
 
   def dc_unsafeSetData[A:Manifest](x: Exp[DeliteCollection[A]], d: Exp[Array[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DeliteCollectionUnsafeSetData(x,d)) // legacy...
@@ -120,7 +120,7 @@ trait ScalaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with ScalaG
   val IR: DeliteCollectionOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".dcSize")
       case DeliteCollectionApply(x,n) => emitValDef(sym, quote(x) + ".dcApply(" + quote(n) + ")")
@@ -136,7 +136,7 @@ trait CudaGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with CudaGen
   val IR: DeliteCollectionOpsExp
   import IR._
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case DeliteCollectionSize(x) => emitValDef(sym, quote(x) + ".dcSize()")
       case DeliteCollectionApply(x,n) => emitValDef(sym, quote(x) + ".dcApply(" + quote(n) + ")")
@@ -153,12 +153,12 @@ trait OpenCLGenDeliteCollectionOps extends BaseGenDeliteCollectionOps with OpenC
   val IR: DeliteCollectionOpsExp
   import IR._
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
-      case DeliteCollectionSize(x) => emitValDef(sym, "%s_size(%s)".format(remap(x.Type),quote(x)))
-      case DeliteCollectionApply(x,n) => emitValDef(sym, "%s_dcApply(%s,%s)".format(remap(x.Type), quote(x), quote(n)))
-      //case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, "%s_dcUpdate(%s,%s,%s)".format(remap(x.Type),quote(x),quote(n),quote(y)))
-      case DeliteCollectionUpdate(x,n,y) => stream.println("%s_dcUpdate(%s,%s,%s);".format(remap(x.Type),quote(x),quote(n),quote(y)))
+      case DeliteCollectionSize(x) => emitValDef(sym, "%s_size(%s)".format(remap(x.tp),quote(x)))
+      case DeliteCollectionApply(x,n) => emitValDef(sym, "%s_dcApply(%s,%s)".format(remap(x.tp), quote(x), quote(n)))
+      //case DeliteCollectionUpdate(x,n,y) => emitValDef(sym, "%s_dcUpdate(%s,%s,%s)".format(remap(x.tp),quote(x),quote(n),quote(y)))
+      case DeliteCollectionUpdate(x,n,y) => stream.println("%s_dcUpdate(%s,%s,%s);".format(remap(x.tp),quote(x),quote(n),quote(y)))
       case DeliteCollectionUnsafeSetData(x,d) => emitValDef(sym, quote(x) + ".unsafeSetData(" + quote(d) + "," + quote(d) + " ->length);")
       case _ => super.emitNode(sym, rhs)
     }

@@ -177,7 +177,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   def moValue(x: Exp[Any]) = value[MultipleMeshObj](x)
   
-  def maybeValue(x: Def[Any])(implicit stream: PrintWriter) : Option[Any] = {
+  def maybeValue(x: Def[Any]) : Option[Any] = {
     val o = x match {
       // or could also lookup the exp
       case DeLisztBoundarySetCells(name) => Mesh.boundarySetCells(value[String](name))
@@ -432,7 +432,7 @@ trait DeLisztCodeGenAnalysis extends TraversalAnalysis {
   
   var level = 0
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     // printlog("EMITTING NODE " + sym.id)
     // printlog(rhs)
     

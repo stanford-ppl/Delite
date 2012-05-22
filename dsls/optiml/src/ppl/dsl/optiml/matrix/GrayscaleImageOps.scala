@@ -105,7 +105,7 @@ trait ScalaGenGrayscaleImageOps extends ScalaGenBase {
   val IR: GrayscaleImageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // case GrayscaleImageObjectNew(numRows, numCols) => emitValDef(sym, "new generated.scala.GrayscaleImageImpl(" + quote(numRows) + "," + quote(numCols) + ")")
     // case GrayscaleImageObjectFromMat(m) => emitValDef(sym, "new generated.scala.GrayscaleImageImpl(" + quote(m) + ")")
     case GrayscaleImageObjectNew(numRows, numCols) => emitValDef(sym, "new generated.scala.Image[Int](" + quote(numRows) + "," + quote(numCols) + ")")
@@ -118,7 +118,7 @@ trait CudaGenGrayscaleImageOps extends CudaGenBase with CudaGenDataStruct {
   val IR: GrayscaleImageOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }
@@ -127,7 +127,7 @@ trait CGenGrayscaleImageOps extends CGenBase {
   val IR: GrayscaleImageOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }

@@ -304,7 +304,7 @@ trait ScalaGenFieldOps extends ScalaGenBase {
   val labelImplPath = "ppl.dsl.deliszt.datastruct.scala.LabelFieldImpl"
   val vec3FieldImplPath = "ppl.dsl.deliszt.datastruct.scala.Vec3FieldImpl"
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       // these are the ops that call through to the underlying real data structure
       case FieldApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
@@ -369,7 +369,7 @@ trait CudaGenFieldOps extends CudaGenBase {
   val IR: FieldOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case FieldApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case FieldRawApply(x,n,off) => emitValDef(sym, quote(x) + ".raw_apply(" + quote(n) + "," + quote(off) + ")")
     case FieldUpdate(x,n,v) => stream.println(addTab() + quote(x) + ".update(" + quote(n) + "," + quote(v) + ");")
@@ -387,7 +387,7 @@ trait CGenFieldOps extends CGenBase {
   val IR: FieldOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

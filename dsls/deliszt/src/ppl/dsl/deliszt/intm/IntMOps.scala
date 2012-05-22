@@ -63,7 +63,7 @@ trait ScalaGenIntMOps extends ScalaGenBase {
   val IR: IntMOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
     //case m@IntMObject() => emitValDef(sym, "generated.scala.MetaInteger._" + m.depth)
     case _ => super.emitNode(sym, rhs)
@@ -74,7 +74,7 @@ trait CudaGenIntMOps extends CudaGenBase {
   val IR: IntMOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -83,7 +83,7 @@ trait CGenIntMOps extends CGenBase {
   val IR: IntMOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

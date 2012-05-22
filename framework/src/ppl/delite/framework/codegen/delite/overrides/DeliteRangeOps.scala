@@ -50,7 +50,7 @@ trait DeliteBaseGenRangeOps extends GenericNestedCodegen {
 trait DeliteScalaGenRange extends ScalaGenEffect with DeliteBaseGenRangeOps {
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case DeliteRangeForEach(start, end, i, body) => {
       val save = deliteKernel
       deliteKernel = false
@@ -70,7 +70,7 @@ trait DeliteScalaGenRange extends ScalaGenEffect with DeliteBaseGenRangeOps {
 trait DeliteCudaGenRange extends CudaGenEffect with DeliteBaseGenRangeOps {
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // TODO: What if the range is not continuous integer set?
     case DeliteRangeForEach(start, end, i, body) => {
       stream.println(addTab()+"for(int %s=%s; %s < %s; %s++) {".format(quote(i),quote(start),quote(i),quote(end),quote(i)))
@@ -86,7 +86,7 @@ trait DeliteCudaGenRange extends CudaGenEffect with DeliteBaseGenRangeOps {
 trait DeliteOpenCLGenRange extends OpenCLGenEffect with DeliteBaseGenRangeOps {
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // TODO: What if the range is not continuous integer set?
     case DeliteRangeForEach(start, end, i, body) => {
       stream.println(addTab()+"for(int %s=%s; %s < %s; %s++) {".format(quote(i),quote(start),quote(i),quote(end),quote(i)))
@@ -102,7 +102,7 @@ trait DeliteOpenCLGenRange extends OpenCLGenEffect with DeliteBaseGenRangeOps {
 trait DeliteCGenRange extends CGenEffect with DeliteBaseGenRangeOps {
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case DeliteRangeForEach(start, end, i, body) =>
       stream.println("for(int %s=%s; %s < %s; %s++) {".format(quote(i),quote(start),quote(i),quote(end),quote(i)))
       emitBlock(body)

@@ -28,7 +28,7 @@ trait ScalaGenMatColOps extends ScalaGenBase {
   val IR: MatColOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case MatColIndex(x)   => emitValDef(sym, quote(x) + ".index")
     case _ => super.emitNode(sym, rhs)

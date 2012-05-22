@@ -114,7 +114,7 @@ trait ScalaGenEdgeOps extends BaseGenEdgeOps with ScalaGenBase {
   val IR: EdgeOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case e@EdgeObjectNew(g,in,out,a,b) => emitValDef(sym, "new generated.scala.Edge[" + remap(e.mVD) + "," + remap(e.mED) + "](" + quote(g) + "," + quote(in) + "," + quote(out) + "," + quote(a) + "," + quote(b) + ")")
       case EdgeGetGraph(e) => emitValDef(sym, quote(e) + "._graph")
@@ -132,7 +132,7 @@ trait CudaGenEdgeOps extends BaseGenEdgeOps with CudaGenBase with CudaGenDataStr
   val IR: EdgeOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }
@@ -141,7 +141,7 @@ trait CGenEdgeOps extends BaseGenEdgeOps with CGenBase {
   val IR: EdgeOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }

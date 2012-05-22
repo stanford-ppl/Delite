@@ -1027,13 +1027,13 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
   /////////////////////
   // delite collection
     
-  def isDenseVec[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[DenseVector[A]])  
+  def isDenseVec[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[DenseVector[A]])
   def asDenseVec[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[DenseVector[A]]]
   
-  def isRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[RangeVector])  
+  def isRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[RangeVector])
   def asRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[RangeVector]]
   
-  def isView[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[VectorView[A]])
+  def isView[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[VectorView[A]])
   def asView[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[VectorView[A]]]  
   
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
@@ -1048,7 +1048,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     else if (isRange(x)) (asRange(x).apply(n)).asInstanceOf[Exp[A]]
     else if (isView(x)) asView(x).apply(n)
     else {
-      Predef.println("couldn't find dc_apply for " + x.Type.toString)
+      Predef.println("couldn't find dc_apply for " + x.tp.toString)
       Predef.println("isView: " + isView(x))
       super.dc_apply(x,n)    
     }
@@ -1327,7 +1327,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
   val IR: VectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
 //     case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new generated.scala.RangeVectorImpl(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
     case VectorObjectRange(start, end, stride, isRow) => emitValDef(sym, "new generated.scala.RangeVector(" + quote(start) + "," + quote(end) + "," + quote(stride) + "," + quote(isRow) + ")")
@@ -1340,8 +1340,8 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
   val IR: VectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case VectorObjectRange(start, end, stride, isRow) => stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,%s,%s);".format(remap(sym.Type),quote(sym),remap(sym.Type),quote(start),quote(end),quote(stride),quote(isRow)))
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case VectorObjectRange(start, end, stride, isRow) => stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,%s,%s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(start),quote(end),quote(stride),quote(isRow)))
 
     /* Specialized CUDA code generations for DeliteOpSingleTasks */
     /*
@@ -1366,7 +1366,7 @@ trait OpenCLGenVectorOps extends BaseGenVectorOps with OpenCLGenFat with OpenCLG
   val IR: VectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -1375,7 +1375,7 @@ trait CGenVectorOps extends BaseGenVectorOps with CGenFat {
   val IR: VectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case _ => super.emitNode(sym, rhs)
   }
 }

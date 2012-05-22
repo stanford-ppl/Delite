@@ -34,7 +34,7 @@ trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
 	out.append("\tjclass rangeCls = env->FindClass(\"generated/scala/IndexVectorRangeImpl\");\n");
 	out.append("\tjboolean isRangeCls = env->IsInstanceOf(obj,rangeCls);\n");
 
-    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
     out.append("\t\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
 
@@ -84,15 +84,15 @@ trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
 
   def trainingSetCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeStr = remap(sym.Type.typeArguments(0))
-    val numBytesStr = "%s->numRows * %s->numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.Type.typeArguments(0)))
+    val typeStr = remap(sym.tp.typeArguments(0))
+    val numBytesStr = "%s->numRows * %s->numCols * sizeof(%s)".format(quote(sym),quote(sym),remap(sym.tp.typeArguments(0)))
 
     // Copy TrainingSet numRows, numCols, data
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\tjclass cls = env->GetObjectClass(obj);\n")
     out.append("\tjmethodID mid_numRows = env->GetMethodID(cls,\"numRows\",\"()I\");\n")
     out.append("\tjmethodID mid_numCols = env->GetMethodID(cls,\"numCols\",\"()I\");\n")
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0))))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.tp.typeArguments(0))))
     out.append("\t%s->numRows = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_numRows)"))
     out.append("\t%s->numCols = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_numCols)"))
     out.append("\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
@@ -109,18 +109,18 @@ trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
 
     // Get object fields (labels / transposed)
     out.append("\tjmethodID fid_labels = env->GetMethodID(cls,\"labels\",\"()Lgenerated/scala/Labels;\");\n")
-    out.append("\tjfieldID fid_transposed = env->GetFieldID(cls,\"transposed\",\"Lgenerated/scala/%s%sTrainingSetImpl;\");\n".format(sym.Type.typeArguments(0).toString,sym.Type.typeArguments(1).toString))
+    out.append("\tjfieldID fid_transposed = env->GetFieldID(cls,\"transposed\",\"Lgenerated/scala/%s%sTrainingSetImpl;\");\n".format(sym.tp.typeArguments(0).toString,sym.tp.typeArguments(1).toString))
     out.append("\tjobject obj_labels = env->CallObjectMethod(obj,fid_labels);\n")
     out.append("\tjobject obj_transposed = env->GetObjectField(obj,fid_transposed);\n")
 
     // Copy Labels 
-    val typeStr_labels = remap(sym.Type.typeArguments(1))
+    val typeStr_labels = remap(sym.tp.typeArguments(1))
     val numBytesStr_labels = "labels.length * sizeof(%s)".format(typeStr_labels)
     out.append("\tLabels<%s> labels;\n".format(typeStr_labels))
     out.append("\tlabels.length = %s->numRows;\n".format(quote(sym)))
     out.append("\tlabels.isRow = false;\n")
     out.append("\tjclass cls_labels = env->GetObjectClass(obj_labels);\n")
-    out.append("\tjmethodID mid_data_labels = env->GetMethodID(cls_labels,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(1))))
+    out.append("\tjmethodID mid_data_labels = env->GetMethodID(cls_labels,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.tp.typeArguments(1))))
     out.append("\tj%sArray data_labels = (j%sArray)(%s);\n".format(typeStr_labels,typeStr_labels,"env->CallObjectMethod(obj_labels,mid_data_labels)"))
     out.append("\tj%s *dataPtr_labels = (j%s *)env->GetPrimitiveArrayCritical(data_labels,0);\n".format(typeStr_labels,typeStr_labels))
     out.append("\t%s *hostPtr_labels;\n".format(typeStr_labels))
@@ -135,28 +135,28 @@ trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
     //out.append("\tDeliteCudaMalloc((void**)%s,sizeof(Labels<%s>));\n".format("&labels",typeStr_labels))
 
     // Copy Transposed 
-    out.append("\t%s transposed;\n".format(remap(sym.Type)))
+    out.append("\t%s transposed;\n".format(remap(sym.tp)))
     out.append("\ttransposed.numRows = %s->numCols;\n".format(quote(sym)))
     out.append("\ttransposed.numCols = %s->numRows;\n".format(quote(sym)))
     out.append("\ttransposed.labels = labels;\n")
     
 	out.append("\tjclass cls_transposed = env->GetObjectClass(obj_transposed);\n")
-    out.append("\tjmethodID mid_data_transposed = env->GetMethodID(cls_transposed,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0))))
+    out.append("\tjmethodID mid_data_transposed = env->GetMethodID(cls_transposed,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.tp.typeArguments(0))))
     out.append("\tj%sArray data_transposed = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj_transposed,mid_data_transposed)"))
     out.append("\tj%s *dataPtr_transposed = (j%s *)env->GetPrimitiveArrayCritical(data_transposed,0);\n".format(typeStr,typeStr))
     
     out.append("\t%s *devPtr_transposed;\n".format(typeStr))
-    out.append("\tDeliteCudaMalloc((void**)%s,%s+sizeof(%s));\n".format("&devPtr_transposed",numBytesStr,remap(sym.Type)))
+    out.append("\tDeliteCudaMalloc((void**)%s,%s+sizeof(%s));\n".format("&devPtr_transposed",numBytesStr,remap(sym.tp)))
 	out.append("\ttransposed.data = devPtr_transposed;\n")
     out.append("\t%s *hostPtr_transposed;\n".format(typeStr))
-    out.append("\tDeliteCudaMallocHost((void**)%s,%s+sizeof(%s));\n".format("&hostPtr_transposed",numBytesStr,remap(sym.Type)))
+    out.append("\tDeliteCudaMallocHost((void**)%s,%s+sizeof(%s));\n".format("&hostPtr_transposed",numBytesStr,remap(sym.tp)))
     out.append("\t%s *hostPtr_transposed_cls = hostPtr_transposed + %s->size();\n".format(typeStr,quote(sym)))
     out.append("\tmemcpy(%s, %s, %s);\n".format("hostPtr_transposed","dataPtr_transposed",numBytesStr))
-    out.append("\tmemcpy(%s, %s, sizeof(%s));\n".format("hostPtr_transposed_cls","&transposed",remap(sym.Type)))
-    out.append("\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s+sizeof(%s));\n".format("devPtr_transposed","hostPtr_transposed",numBytesStr,remap(sym.Type)))
+    out.append("\tmemcpy(%s, %s, sizeof(%s));\n".format("hostPtr_transposed_cls","&transposed",remap(sym.tp)))
+    out.append("\tDeliteCudaMemcpyHtoDAsync(%s, %s, %s+sizeof(%s));\n".format("devPtr_transposed","hostPtr_transposed",numBytesStr,remap(sym.tp)))
     out.append("\tenv->ReleasePrimitiveArrayCritical(data_transposed, dataPtr_transposed, 0);\n")
     out.append("\tenv->DeleteLocalRef(data_transposed);\n")
-    out.append("\t%s->transposed = (%s *)(devPtr_transposed + %s->size());\n".format(quote(sym),remap(sym.Type),quote(sym)))
+    out.append("\t%s->transposed = (%s *)(devPtr_transposed + %s->size());\n".format(quote(sym),remap(sym.tp),quote(sym)))
 
     out.append("\tenv->DeleteLocalRef(cls_labels);\n")
     out.append("\tenv->DeleteLocalRef(cls_transposed);\n")

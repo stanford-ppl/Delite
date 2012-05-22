@@ -53,13 +53,13 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   }
 
   // TODO: move to some other place? --> get rid of duplicate in embedded generators!
-  override def fatten(e: TP[Any]): TTP = ifGenAgree(_.fatten(e))
+  override def fatten(e: Stm): Stm = ifGenAgree(_.fatten(e))
 
   // fusion stuff...
   override def unapplySimpleIndex(e: Def[Any]) = ifGenAgree(_.unapplySimpleIndex(e))
   override def unapplySimpleCollect(e: Def[Any]) = ifGenAgree(_.unapplySimpleCollect(e))
 
-  override def shouldApplyFusion(currentScope: List[TTP])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
+  override def shouldApplyFusion(currentScope: List[Stm])(result: List[Exp[Any]]) = ifGenAgree(_.shouldApplyFusion(currentScope)(result))
 
   def emitSourceContext(sourceContext: Option[SourceContext], stream: PrintWriter, id: String) {
     // obtain root parent source context (if any)
@@ -132,7 +132,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
                    "\"ops\": [")
 
     stream.println("{\"type\" : \"Arguments\" , \"kernelId\" : \"x0\"},")
-    emitBlock(y)(stream)
+    withStream(stream)(emitBlock(y))
     //stream.println(quote(getBlockResult(y)))
     stream.println("{\"type\":\"EOP\"}\n]}}")
 
@@ -150,6 +150,14 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     staticData
   }
 
+  def emitAnyNode(syms: List[Sym[Any]], rhs: Any) = rhs match {
+    case d: Def[_] =>
+      assert(syms.length == 1)
+      emitNode(syms(0), d)
+    case fd: FatDef =>
+      emitFatNode(syms, fd)
+  }
+
   /**
    * DeliteCodegen expects there to be a single schedule across all generators, so a single task graph
    * can be generated. This implies that every generator object must compute internal dependencies (syms)
@@ -158,76 +166,43 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
    * This is all because we allow individual generators to refine their dependencies, which directly impacts
    * the generated schedule. We may want to consider another organization.
    */
-  override def emitFatBlockFocused(currentScope: List[TTP])(result: List[Block[Any]])(implicit stream: PrintWriter): Unit = {
-    printlog("-- block for "+result)
-    currentScope.foreach(printlog(_))
+  override def traverseBlockFocused[A](block: Block[A]): Unit = {
+    printlog("-- block for " + block)
+    innerScope.foreach(printlog(_))
 
-/*
-    println("-- shallow schedule for "+result)
-    shallow = true
-    val e2 = getFatSchedule(currentScope)(result) // shallow list of deps (exclude stuff only needed by nested blocks)
-    shallow = false
-    e2.foreach(println)
-    println("-- bound for "+result)
-    val e1 = currentScope
-    val bound = e1.flatMap(z => boundSyms(z.rhs))
-    bound.foreach(println)
-    
-    println("-- dependent for "+result)
-    bound.foreach { st =>
-      val res = getFatDependentStuff0(currentScope)(st)
-      println("--- dep on " + st)
-      res.foreach(println)
-    }
-*/
-    focusExactScopeFat(currentScope)(result) { levelScope => 
-      printlog("-- level for "+result)
+    focusExactScope(block) { levelScope =>
+      printlog("-- level for " + block)
       levelScope.foreach(printlog(_))
-      printlog("-- exact for "+result)
+      printlog("-- exact for " + block)
       availableDefs.foreach(printlog(_))
 
-/*
-      val effects = result match {
-        case Def(Reify(x, effects0)) =>
-          println("*** effects0: " + effects0)
-          
-          levelScope.filter(fb => fb.lhs.exists(effects0 contains _)) // all e whose lhs contains an effect
-        case _ => Nil
-      }
-
-      //println("*** effects1: " + effects.flatMap(_.lhs))
-      //val effectsN = levelScope.collect { case TTP(List(s), ThinDef(Reflect(_, es))) => s } // TODO: Mutation!!
-      //println("*** effectsN: " + effectsN)
-      
-      // TODO: do we need to override this method? effectsN can be taken from
-      // the reflect nodes during emitFatNode in DeliteGenTaskGraph
-*/      
-      
       val localEmittedNodes = new ListBuffer[Sym[Any]]
       val controlNodes = new ListBuffer[Sym[Any]]
 
       controlDeps = Nil
 
-      for (TTP(syms, rhs) <- levelScope) {
+      for (stm <- levelScope) {
         // we only care about effects that are scheduled to be generated before us, i.e.
         // if e4: (n1, n2, e1, e2, n3), at n1 and n2 we want controlDeps to be Nil, but at
         // n3 we want controlDeps to contain e1 and e2
         //controlDeps = levelScope.takeWhile(_.lhs != syms) filter { effects contains _ } flatMap { _.lhs }
         //controlDeps = Nil // within emitFatNode below iff it is a reflect/reify node <-- wrong code in runtime
+        val syms = stm.lhs
+        val rhs = stm.rhs
+
         rhs match {
           // TODO: fat loops with embedded reflects??
-          case ThinDef(Reflect(_,_,_)) => controlNodes ++= syms
-          case ThinDef(Reify(_,_,_)) =>
+          case Reflect(_,_,_) => controlNodes ++= syms
+          case Reify(_,_,_) =>
           case _ => localEmittedNodes ++= syms
         }
-        emitFatNode(syms, rhs)
+        emitAnyNode(syms,rhs)
         controlDeps = controlNodes.toList // need to do it that way... TODO: set only if changed
       }
-      
+
       emittedNodes = localEmittedNodes.result // = levelScope.flatMap(_.syms) ??
     }
   }
-
 
 
  /**
@@ -259,13 +234,13 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
   }
 
 
-  def emitValDef(sym: Sym[Any], rhs: String)(implicit stream: PrintWriter): Unit = {
+  def emitValDef(sym: Sym[Any], rhs: String): Unit = {
     stream.println("val " + quote(sym) + " = " + rhs)
   }
-  def emitVarDef(sym: Sym[Any], rhs: String)(implicit stream: PrintWriter): Unit = {
+  def emitVarDef(sym: Sym[Any], rhs: String): Unit = {
     stream.println("var " + quote(sym) + " = " + rhs)
   }
-  def emitAssignment(lhs: String, rhs: String)(implicit stream: PrintWriter): Unit = {
+  def emitAssignment(lhs: String, rhs: String): Unit = {
     stream.println(lhs + " = " + rhs)
   }
 

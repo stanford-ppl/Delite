@@ -106,9 +106,9 @@ trait ScalaGenDeliteArrayOps extends ScalaGenEffect {
   val IR: DeliteArrayOpsExp
   import IR._
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case DeliteArrayNew(length) =>
-      emitValDef(sym, "new Array[" + sym.Type.typeArguments(0).toString + "](" + quote(length) + ")")
+      emitValDef(sym, "new Array[" + sym.tp.typeArguments(0).toString + "](" + quote(length) + ")")
     case DeliteArrayLength(da) =>
       emitValDef(sym, quote(da) + ".length")
     case DeliteArrayApply(da, idx) =>

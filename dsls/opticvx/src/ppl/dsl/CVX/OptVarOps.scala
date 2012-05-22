@@ -39,7 +39,7 @@ trait ScalaGenOptVarOps extends ScalaGenBase {
   val IR: OptVarOpsExp // with OptVarCompilerOpsExp
   import IR._
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     //these are the ops that call through to the underlying real data structure
     case x@OptVarNew(length) => emitValDef(sym, "println(\"new variable!\")")
     case _ => super.emitNode(sym, rhs)

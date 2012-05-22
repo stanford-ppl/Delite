@@ -15,8 +15,8 @@ trait DeliteGenExternal extends DeliteCodegen {
 
   val generatedOps = HashSet[String]()
 
-  override def emitFatNode(sym: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter): Unit = rhs match {
-    case ThinDef(e:DeliteOpExternal[_]) if !generatedOps.contains(e.funcName) => 
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]): Unit = rhs match {
+    case e:DeliteOpExternal[_] if !generatedOps.contains(e.funcName) =>
       var foundTarget = false
       for (g <- generators) {
         try{
@@ -30,9 +30,9 @@ trait DeliteGenExternal extends DeliteCodegen {
       if (!foundTarget) throw new GenerationFailedException("No generator could be found for external lib: " + e)
 
       generatedOps += e.funcName
-      super.emitFatNode(sym, rhs) // pass on to DeliteGenTaskGraph
+      super.emitNode(sym, rhs) // pass on to DeliteGenTaskGraph
       
-    case _ => super.emitFatNode(sym, rhs)
+    case _ => super.emitNode(sym, rhs)
   }
   
 }

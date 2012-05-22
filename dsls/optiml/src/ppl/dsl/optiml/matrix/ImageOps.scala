@@ -163,7 +163,7 @@ trait ScalaGenImageOps extends ScalaGenBase {
   val IR: ImageOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case m@ImageObjectNew(numRows, numCols) => emitValDef(sym, "new " + remap("generated.scala.Image[" + remap(m.mA) + "]") + "(" + quote(numRows) + "," + quote(numCols) + ")")
     case m@ImageObjectFromMat(x) => emitValDef(sym, "new " + remap("generated.scala.Image[" + remap(m.mA) + "]") + "(" + quote(x) + ")")
     case _ => super.emitNode(sym, rhs)
@@ -174,7 +174,7 @@ trait CudaGenImageOps extends CudaGenBase with CudaGenDataStruct {
   val IR: ImageOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }
@@ -183,7 +183,7 @@ trait CGenImageOps extends CGenBase {
   val IR: ImageOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }

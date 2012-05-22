@@ -183,7 +183,7 @@ trait ScalaGenGraphOps extends BaseGenGraphOps with ScalaGenBase {
   val IR: GraphOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case g@GraphObjectNew() => emitValDef(sym, "new generated.scala.Graph[" + remap(g.mVD) + "," + remap(g.mED) + "]()")
       case GraphGetEdgeToVertices(g) => emitValDef(sym, quote(g) + "._edgeToVertices")
@@ -215,7 +215,7 @@ trait CudaGenGraphOps extends BaseGenGraphOps with CudaGenBase with CudaGenDataS
   val IR: GraphOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }
@@ -224,7 +224,7 @@ trait CGenGraphOps extends BaseGenGraphOps with CGenBase {
   val IR: GraphOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }

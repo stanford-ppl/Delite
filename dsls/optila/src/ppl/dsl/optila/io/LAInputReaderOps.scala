@@ -35,7 +35,7 @@ trait LAInputReaderOpsExp extends LAInputReaderOps with BaseFatExp { this: LAInp
 //  val IR: LAInputReaderOpsExp
 //  import IR._
 //
-//  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+//  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
 //    case LAInputRead(filename) => emitValDef(sym, base + ".read(" + quote(filename) + ")")
 //    case LAInputReadVector(filename) => emitValDef(sym, base + ".readVector(" + quote(filename) + ")")
 //    case _ => super.emitNode(sym, rhs)

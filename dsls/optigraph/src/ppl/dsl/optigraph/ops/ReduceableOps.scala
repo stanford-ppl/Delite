@@ -186,7 +186,7 @@ trait ScalaGenReduceableOps extends BaseGenReduceableOps with ScalaGenBase {
   val IR: ReduceableOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case r@RedObjectNew(init) => emitValDef(sym, "new " + remap(r.mR) + "(" + quote(init) +")")
       case RedSetValue(r,x) => emitValDef(sym, quote(r) + ".setValue("+ quote(x) + ")")

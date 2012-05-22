@@ -66,7 +66,7 @@ trait DeliteBaseGenWhile extends GenericNestedCodegen {
 trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case DeliteWhile(c,b) =>
       //val save = deliteKernel
       //deliteKernel = false
@@ -86,11 +86,11 @@ trait DeliteScalaGenWhile extends ScalaGenEffect with DeliteBaseGenWhile {
 trait DeliteCudaGenWhile extends CudaGenEffect with DeliteBaseGenWhile {
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
       rhs match {
         case DeliteWhile(c,b) =>
           emitBlock(c)
-          stream.println(addTab() + remap(getBlockResult(c).Type) + " " + quote(sym) + "_cond = " + quote(getBlockResult(c)) + ";")
+          stream.println(addTab() + remap(getBlockResult(c).tp) + " " + quote(sym) + "_cond = " + quote(getBlockResult(c)) + ";")
           stream.print(addTab() + "while (")
           stream.print(quote(sym) + "_cond")
           stream.println(") {")
@@ -110,11 +110,11 @@ trait DeliteCudaGenWhile extends CudaGenEffect with DeliteBaseGenWhile {
 trait DeliteOpenCLGenWhile extends OpenCLGenEffect with DeliteBaseGenWhile {
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
       rhs match {
         case DeliteWhile(c,b) =>
           emitBlock(c)
-          stream.println(addTab() + remap(getBlockResult(c).Type) + " " + quote(sym) + "_cond = " + quote(getBlockResult(c)) + ";")
+          stream.println(addTab() + remap(getBlockResult(c).tp) + " " + quote(sym) + "_cond = " + quote(getBlockResult(c)) + ";")
           stream.print(addTab() + "while (")
           stream.print(quote(sym) + "_cond")
           stream.println(") {")
@@ -133,7 +133,7 @@ trait DeliteOpenCLGenWhile extends OpenCLGenEffect with DeliteBaseGenWhile {
 trait DeliteCGenWhile extends CGenEffect with DeliteBaseGenWhile {
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case DeliteWhile(c,b) =>
         // calculate condition

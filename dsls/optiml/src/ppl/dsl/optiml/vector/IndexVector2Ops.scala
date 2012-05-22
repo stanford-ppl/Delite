@@ -206,7 +206,7 @@ trait ScalaGenIndexVector2Ops extends ScalaGenBase {
   val IR: IndexVector2OpsExp
   import IR._
 
-  //override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // case IndexVector2New(rowInd, colInd) =>
     //   emitValDef(sym, "new generated.scala.IndexVector2Impl(" + quote(rowInd) +  "," + quote(colInd) + ")")
     // case IndexVector2Wildcard() => emitValDef(sym, "generated.scala.IndexVectorWCImpl")

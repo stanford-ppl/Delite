@@ -411,46 +411,46 @@ trait DeLisztCodeGenCuda extends DeLisztCodeGenBase with DeLisztCudaCodeGenPkg w
     case _ => super.isObjectType(m)
   }
 
-  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "Cell" | "Face" | "Vertex" | "Edge" => "//copy\n"
-    case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => MeshSetCopyInputHtoD(sym, sym.Type.typeArguments(0))
-    case "BoundarySet<Cell>" | "BoundarySet<Face>" | "BoundarySet<Edge>" | "BoundarySet<Vertex>" => MeshSetCopyInputHtoD(sym, sym.Type.typeArguments(0))
-    case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" | "Field<double>" => FieldCopyInputHtoD(sym, sym.Type.typeArguments(1))
-    case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" | "Vec<double,3>" => VecCopyInputHtoD(sym, sym.Type.typeArguments(1), 3)
-    case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" | "Vec<double,4>" => VecCopyInputHtoD(sym, sym.Type.typeArguments(1), 4)
-    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" | "Mat<double,3,3>" => MatCopyInputHtoD(sym, sym.Type.typeArguments(2), 3, 3)
-    case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" | "VecField<double,3>" => VecFieldCopyInputHtoD(sym, sym.Type.typeArguments(1).typeArguments(1), 3)
-    case "MatField<int,3,3>" | "MatField<long,3,3>" | "MatField<float,3,3>" | "MatField<bool,3,3>" | "MatField<double,3,3>" => MatFieldCopyInputHtoD(sym, sym.Type.typeArguments(1).typeArguments(2), 3, 3)
+    case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => MeshSetCopyInputHtoD(sym, sym.tp.typeArguments(0))
+    case "BoundarySet<Cell>" | "BoundarySet<Face>" | "BoundarySet<Edge>" | "BoundarySet<Vertex>" => MeshSetCopyInputHtoD(sym, sym.tp.typeArguments(0))
+    case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" | "Field<double>" => FieldCopyInputHtoD(sym, sym.tp.typeArguments(1))
+    case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" | "Vec<double,3>" => VecCopyInputHtoD(sym, sym.tp.typeArguments(1), 3)
+    case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" | "Vec<double,4>" => VecCopyInputHtoD(sym, sym.tp.typeArguments(1), 4)
+    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" | "Mat<double,3,3>" => MatCopyInputHtoD(sym, sym.tp.typeArguments(2), 3, 3)
+    case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" | "VecField<double,3>" => VecFieldCopyInputHtoD(sym, sym.tp.typeArguments(1).typeArguments(1), 3)
+    case "MatField<int,3,3>" | "MatField<long,3,3>" | "MatField<float,3,3>" | "MatField<bool,3,3>" | "MatField<double,3,3>" => MatFieldCopyInputHtoD(sym, sym.tp.typeArguments(1).typeArguments(2), 3, 3)
     case "Mesh" => MeshCopyInputHtoD(sym)
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => "return new CudaArrayList<int>();\n" //TODO: Remove this
     case _ => super.copyInputHtoD(sym)
   }
 
-  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "Cell" | "Face" | "Vertex" | "Edge" => "//copy\n"
-    case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => MeshSetCopyOutputDtoH(sym, sym.Type.typeArguments(0))
-    case "BoundarySet<Cell>" | "BoundarySet<Face>" | "BoundarySet<Edge>" | "BoundarySet<Vertex>" => MeshSetCopyOutputDtoH(sym, sym.Type.typeArguments(0))
-    case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" | "Field<double>" => FieldCopyOutputDtoH(sym, sym.Type.typeArguments(1))
-    case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" | "Vec<double,3>" => VecCopyOutputDtoH(sym, sym.Type.typeArguments(1))
-    case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" | "Vec<double,4>" => VecCopyOutputDtoH(sym, sym.Type.typeArguments(1))
-    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" | "Mat<double,3,3>" => MatCopyOutputDtoH(sym, sym.Type.typeArguments(2))
-    case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" | "VecField<double,3>" => VecFieldCopyOutputDtoH(sym, sym.Type.typeArguments(1).typeArguments(1), 3)
-    case "MatField<int,3>" | "MatField<long,3>" | "MatField<float,3>" | "MatField<bool,3>" | "MatField<double,3>" => MatFieldCopyOutputDtoH(sym, sym.Type.typeArguments(1).typeArguments(2), 3, 3)
+    case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => MeshSetCopyOutputDtoH(sym, sym.tp.typeArguments(0))
+    case "BoundarySet<Cell>" | "BoundarySet<Face>" | "BoundarySet<Edge>" | "BoundarySet<Vertex>" => MeshSetCopyOutputDtoH(sym, sym.tp.typeArguments(0))
+    case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" | "Field<double>" => FieldCopyOutputDtoH(sym, sym.tp.typeArguments(1))
+    case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" | "Vec<double,3>" => VecCopyOutputDtoH(sym, sym.tp.typeArguments(1))
+    case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" | "Vec<double,4>" => VecCopyOutputDtoH(sym, sym.tp.typeArguments(1))
+    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" | "Mat<double,3,3>" => MatCopyOutputDtoH(sym, sym.tp.typeArguments(2))
+    case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" | "VecField<double,3>" => VecFieldCopyOutputDtoH(sym, sym.tp.typeArguments(1).typeArguments(1), 3)
+    case "MatField<int,3>" | "MatField<long,3>" | "MatField<float,3>" | "MatField<bool,3>" | "MatField<double,3>" => MatFieldCopyOutputDtoH(sym, sym.tp.typeArguments(1).typeArguments(2), 3, 3)
     case "Mesh" => MeshCopyOutputDtoH(sym)
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => "//copy\n" //TODO: Remove this
     case _ => super.copyOutputDtoH(sym)
   }
 
-  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "Cell" | "Face" | "Vertex" | "Edge" => "//copy\n"
-    case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => MeshSetCopyMutableInputDtoH(sym, sym.Type.typeArguments(0))
-    case "BoundarySet<Cell>" | "BoundarySet<Face>" | "BoundarySet<Edge>" | "BoundarySet<Vertex>" => MeshSetCopyMutableInputDtoH(sym, sym.Type.typeArguments(0))
-    case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" | "Field<double>" => FieldCopyMutableInputDtoH(sym, sym.Type.typeArguments(1))
-    case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" | "Vec<double,3>" => VecCopyMutableInputDtoH(sym, sym.Type.typeArguments(1))
-    case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" | "Vec<double,4>" => VecCopyMutableInputDtoH(sym, sym.Type.typeArguments(1))
-    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" | "Mat<double,3,3>" => MatCopyMutableInputDtoH(sym, sym.Type.typeArguments(2))
-    case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" | "VecField<double,3>" => VecFieldCopyMutableInputDtoH(sym, sym.Type.typeArguments(1).typeArguments(1), 3)
-    case "MatField<int,3,3>" | "MatField<long,3,3>" | "MatField<float,3,3>" | "MatField<bool,3,3>" | "MatField<double,3,3>" => MatFieldCopyMutableInputDtoH(sym, sym.Type.typeArguments(1).typeArguments(2), 3, 3)
+    case "MeshSet<Cell>" | "MeshSet<Face>" | "MeshSet<Edge>" | "MeshSet<Vertex>" => MeshSetCopyMutableInputDtoH(sym, sym.tp.typeArguments(0))
+    case "BoundarySet<Cell>" | "BoundarySet<Face>" | "BoundarySet<Edge>" | "BoundarySet<Vertex>" => MeshSetCopyMutableInputDtoH(sym, sym.tp.typeArguments(0))
+    case "Field<int>" | "Field<long>" | "Field<float>" | "Field<bool>" | "Field<double>" => FieldCopyMutableInputDtoH(sym, sym.tp.typeArguments(1))
+    case "Vec<int,3>" | "Vec<long,3>" | "Vec<float,3>" | "Vec<bool,3>" | "Vec<double,3>" => VecCopyMutableInputDtoH(sym, sym.tp.typeArguments(1))
+    case "Vec<int,4>" | "Vec<long,4>" | "Vec<float,4>" | "Vec<bool,4>" | "Vec<double,4>" => VecCopyMutableInputDtoH(sym, sym.tp.typeArguments(1))
+    case "Mat<int,3,3>" | "Mat<long,3,3>" | "Mat<float,3,3>" | "Mat<bool,3,3>" | "Mat<double,3,3>" => MatCopyMutableInputDtoH(sym, sym.tp.typeArguments(2))
+    case "VecField<int,3>" | "VecField<long,3>" | "VecField<float,3>" | "VecField<bool,3>" | "VecField<double,3>" => VecFieldCopyMutableInputDtoH(sym, sym.tp.typeArguments(1).typeArguments(1), 3)
+    case "MatField<int,3,3>" | "MatField<long,3,3>" | "MatField<float,3,3>" | "MatField<bool,3,3>" | "MatField<double,3,3>" => MatFieldCopyMutableInputDtoH(sym, sym.tp.typeArguments(1).typeArguments(2), 3, 3)
     case "Mesh" => MeshCopyMutableInputDtoH(sym)
     case "CudaArrayList<Cell>" | "CudaArrayList<Face>" | "CudaArrayList<Edge>" | "CudaArrayList<Vertex>" => "//copy\n" //TODO: Remove this
     case _ => super.copyMutableInputDtoH(sym)
@@ -484,17 +484,17 @@ trait DeLisztCodeGenC extends DeLisztCodeGenBase with DeLisztCCodeGenPkg with CG
     else super.isObjectType(m)
   }
   
-  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "int" | "long" | "float" | "double" | "bool" => refCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
-  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyOutputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "int" | "long" | "float" | "double" | "bool" => refCopyOutputDtoH(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
-  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.Type) match {
+  override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "int" | "long" | "float" | "double" | "bool" => refCopyMutableInputDtoH(sym)
     case _ => super.copyInputHtoD(sym)
   }

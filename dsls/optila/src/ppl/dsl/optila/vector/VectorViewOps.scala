@@ -171,7 +171,7 @@ trait ScalaGenVectorViewOps extends BaseGenVectorViewOps with ScalaGenFat {
   val IR: VectorViewOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case v@VectorViewNew(x,start,stride,length,isRow) => emitValDef(sym, "new VectorView[" + remap(v.mA) + "](" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ")")
     case VectorViewApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
@@ -186,11 +186,11 @@ trait CudaGenVectorViewOps extends BaseGenVectorViewOps with CudaGenFat {
   val IR: VectorViewOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
     //TODO: Allow this to only kernels (not helper functions)
     case VectorViewNew(x,start,stride,length,isRow) => {
-      if(!processingHelperFunc) stream.println(remap(sym.Type) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
+      if(!processingHelperFunc) stream.println(remap(sym.tp) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
       else throw new GenerationFailedException("CudaGen: VectorViewNew cannot be used in helper functions.")
     }
     case VectorViewApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")

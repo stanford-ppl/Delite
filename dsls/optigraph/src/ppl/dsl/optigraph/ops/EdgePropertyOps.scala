@@ -124,7 +124,7 @@ trait ScalaGenEdgePropertyOps extends BaseGenEdgePropertyOps with ScalaGenFat {
   val IR: EdgePropertyOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case ep@EdgePropObjectNew(g, size) => emitValDef(sym, "new " + remap(ep.mP) +"(" + quote(g) + "," + quote(size) + ")")
       case EdgePropDefer(ep, idx, x) => emitValDef(sym, quote(ep) + ".defer(" + quote(idx) + ", " + quote(x) + ")")

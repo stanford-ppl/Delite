@@ -18,7 +18,7 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
 
   def vectorCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
+    val typeArg = if(sym.tp.typeArguments.length==0) manifest[Int] else sym.tp.typeArguments(0)
     val typeStr = remap(typeArg)
     val numBytesStr = "%s->dcSize() * sizeof(%s)".format(quote(sym),remap(typeArg))
 
@@ -27,7 +27,7 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
     out.append("\tjmethodID mid_length = env->GetMethodID(cls,\"length\",\"()I\");\n")
     out.append("\tjmethodID mid_isRow = env->GetMethodID(cls,\"isRow\",\"()Z\");\n")
     
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
     out.append("\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
     out.append("\t%s->data = DeliteOpenCLMalloc(%s);\n".format(quote(sym),numBytesStr))
@@ -62,7 +62,7 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
 
   def matrixCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
+    val typeArg = if(sym.tp.typeArguments.length==0) manifest[Int] else sym.tp.typeArguments(0)
     val typeStr = remap(typeArg)
     val numBytesStr = "%s->dcSize() * sizeof(%s)".format(quote(sym),remap(typeArg))
 
@@ -72,7 +72,7 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
     out.append("\tjmethodID mid_numCols = env->GetMethodID(cls,\"numCols\",\"()I\");\n")
 
 	  // If this is not RangeVector   // TODO: Manage rangevector
-    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t\t%s->numRows = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_numRows)"))
     out.append("\t\t%s->numCols = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_numCols)"))
     out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
@@ -99,7 +99,7 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
     out.append("\tjmethodID mid_stride = env->GetMethodID(cls,\"stride\",\"()I\");\n")
     out.append("\tjmethodID mid_end = env->GetMethodID(cls,\"end\",\"()I\");\n")
 
-    out.append("\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
     out.append("\t%s->start = env->CallIntMethod(obj,mid_start);\n".format(quote(sym)))
     out.append("\t%s->stride = env->CallIntMethod(obj,mid_stride);\n".format(quote(sym)))
@@ -117,11 +117,11 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
 
   def vectorCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeStr = remap(sym.Type.typeArguments(0))
-    val numBytesStr = "%s.dcSize() * sizeof(%s)".format(quote(sym),remap(sym.Type.typeArguments(0)))
+    val typeStr = remap(sym.tp.typeArguments(0))
+    val numBytesStr = "%s.dcSize() * sizeof(%s)".format(quote(sym),remap(sym.tp.typeArguments(0)))
 
     // Allocate Scala object for the destination
-    out.append("\tjclass cls = env->FindClass(\"generated/scala/%sVectorImpl\");\n".format(sym.Type.typeArguments(0)))
+    out.append("\tjclass cls = env->FindClass(\"generated/scala/%sVectorImpl\");\n".format(sym.tp.typeArguments(0)))
     out.append("\tif(cls==NULL) std::cout << \"class NOT found\" << std::endl;\n")
     out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(IZ)V\");\n")
     out.append("\tif(mid==NULL) std::cout << \"constructor NOT found\" << std::endl;\n")
@@ -129,7 +129,7 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
     out.append("\tif(obj==NULL) std::cout << \"new object NOT created\" << std::endl;\n")
 
     // Get data(array) of scala data structure
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0))))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.tp.typeArguments(0))))
     out.append("\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
     out.append("\tDeliteOpenCLMemcpyDtoHAsync(dataPtr, %s.data, %s);\n".format(quote(sym),numBytesStr))
@@ -145,11 +145,11 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
 
   def matrixCopyOutputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeStr = remap(sym.Type.typeArguments(0))
-    val numBytesStr = "%s.dcSize() * sizeof(%s)".format(quote(sym),remap(sym.Type.typeArguments(0)))
+    val typeStr = remap(sym.tp.typeArguments(0))
+    val numBytesStr = "%s.dcSize() * sizeof(%s)".format(quote(sym),remap(sym.tp.typeArguments(0)))
 
     // Allocate Scala object for the destination
-    out.append("\tjclass cls = env->FindClass(\"generated/scala/%sMatrixImpl\");\n".format(sym.Type.typeArguments(0)))
+    out.append("\tjclass cls = env->FindClass(\"generated/scala/%sMatrixImpl\");\n".format(sym.tp.typeArguments(0)))
     out.append("\tif(cls==NULL) std::cout << \"class NOT found\" << std::endl;\n")
     out.append("\tjmethodID mid = env->GetMethodID(cls,\"<init>\",\"(II)V\");\n")
     out.append("\tif(mid==NULL) std::cout << \"constructor NOT found\" << std::endl;\n")
@@ -157,7 +157,7 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
     out.append("\tif(obj==NULL) std::cout << \"new object NOT created\" << std::endl;\n")
 
     // Get data(array) of scala data structure
-    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.Type.typeArguments(0))))
+    out.append("\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(sym.tp.typeArguments(0))))
     out.append("\tj%sArray data = (j%sArray)(%s);\n".format(typeStr,typeStr,"env->CallObjectMethod(obj,mid_data)"))
     out.append("\tj%s *dataPtr = (j%s *)env->GetPrimitiveArrayCritical(data,0);\n".format(typeStr,typeStr))
     out.append("\tDeliteOpenCLMemcpyDtoHAsync(dataPtr, %s.data, %s);\n".format(quote(sym),numBytesStr))
@@ -177,7 +177,7 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
   
   def vectorCopyMutableInputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
+    val typeArg = if(sym.tp.typeArguments.length==0) manifest[Int] else sym.tp.typeArguments(0)
     val typeStr = remap(typeArg)
     val numBytesStr = "%s.dcSize() * sizeof(%s)".format(quote(sym),remap(typeArg))
 
@@ -195,7 +195,7 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
 
   def matrixCopyMutableInputDtoH(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
+    val typeArg = if(sym.tp.typeArguments.length==0) manifest[Int] else sym.tp.typeArguments(0)
     val typeStr = remap(typeArg)
     val numBytesStr = "%s.dcSize() * sizeof(%s)".format(quote(sym),remap(typeArg))
 
@@ -230,14 +230,14 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
 
     val args = (getKernelOutputs ::: getKernelInputs ::: getKernelTemps) filterNot (_==newSym)
 
-    out.append("\t%s *%s = new %s();\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(newSym.tp),quote(newSym),remap(newSym.tp)))
 
     //val mult = if(currDim==2) xDimList(0) else "1"
     //if(currDim==2) multDimInputs += newSym
 
     // Check if new allocation is needed
     if(data==null) {
-      out.append("\t%s->data = DeliteOpenCLMalloc(%s*sizeof(%s));\n".format(quote(newSym),length,remap(newSym.Type.typeArguments(0))))
+      out.append("\t%s->data = DeliteOpenCLMalloc(%s*sizeof(%s));\n".format(quote(newSym),length,remap(newSym.tp.typeArguments(0))))
       if(reset) assert(false)
       out.append("\t%s->length = %s;\n".format(quote(newSym),length))
       out.append("\t%s->isRow = %s;\n".format(quote(newSym),isRow))
@@ -267,11 +267,11 @@ trait OpenCLGenDataStruct extends OpenCLCodegen {
     val out = new StringBuilder
     val args = (getKernelOutputs ::: getKernelInputs ::: getKernelTemps) filterNot (_==newSym)
 
-    out.append("\t%s *%s = new %s();\n".format(remap(newSym.Type),quote(newSym),remap(newSym.Type)))
+    out.append("\t%s *%s = new %s();\n".format(remap(newSym.tp),quote(newSym),remap(newSym.tp)))
 
     // Check if new allocation is needed
     if(data==null) {
-      out.append("\t%s->data = DeliteOpenCLMalloc(%s*%s*sizeof(%s));\n".format(quote(newSym),numRows,numCols,remap(newSym.Type.typeArguments(0))))
+      out.append("\t%s->data = DeliteOpenCLMalloc(%s*%s*sizeof(%s));\n".format(quote(newSym),numRows,numCols,remap(newSym.tp.typeArguments(0))))
       if(reset) assert(false)
       out.append("\t%s->numRows = %s;\n".format(quote(newSym),numRows))
       out.append("\t%s->numCols = %s;\n".format(quote(newSym),numCols))

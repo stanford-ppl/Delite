@@ -117,7 +117,7 @@ trait ScalaGenGOrderOps extends BaseGenGOrderOps with ScalaGenFat {
   val IR: GOrderOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case o@GOrderObjectNew() => emitValDef(sym, "new " + remap(o.mGO) +"")
       case GOrderItems(o) => emitValDef(sym, quote(o) + ".items")

@@ -52,7 +52,7 @@ trait ScalaGenEdgeOps extends BaseGenEdgeOps with ScalaGenBase {
   val IR: EdgeOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case EdgeFrom(e) => emitValDef(sym, quote(e) + ".from")
       case EdgeTo(e) => emitValDef(sym, quote(e) + ".to")

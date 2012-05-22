@@ -68,7 +68,7 @@ trait IndexVectorRangeOpsExp extends IndexVectorRangeOps with DeliteCollectionOp
   /////////////////////
   // delite collection
   
-  def isIndexRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.Type.erasure == classOf[IndexVectorRange]  
+  def isIndexRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.tp.erasure == classOf[IndexVectorRange]
   def asIndexRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[IndexVectorRange]]
     
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 

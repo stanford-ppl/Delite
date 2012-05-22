@@ -440,7 +440,7 @@ trait ScalaGenGIterableOps extends BaseGenGIterableOps with ScalaGenFat {
   val IR: GIterableOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case it@GIterableNewEmpty() => emitValDef(sym, "new " + remap(it.mGIt) +"()")
       case GIterableToList(iter) => emitValDef(sym, quote(iter) + ".toList")

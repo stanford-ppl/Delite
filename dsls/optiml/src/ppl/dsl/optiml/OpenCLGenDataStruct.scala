@@ -33,13 +33,13 @@ trait OpenCLGenDataStruct extends ppl.dsl.optila.OpenCLGenDataStruct {
 	  out.append("\tjclass rangeCls = env->FindClass(\"generated/scala/IndexVectorRangeImpl\");\n");
 	  out.append("\tjboolean isRangeCls = env->IsInstanceOf(obj,rangeCls);\n");
 
-    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
     out.append("\t\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
 	
 	  // If this is not RangeVector
 	  out.append("\tif(isRangeCls == false) {\n")
-    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
     out.append("\t\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
     out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
@@ -74,7 +74,7 @@ trait OpenCLGenDataStruct extends ppl.dsl.optila.OpenCLGenDataStruct {
 
   def trainingSetCopyInputHtoD(sym: Sym[Any]): String = {
     val out = new StringBuilder
-    val typeArg = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(0)
+    val typeArg = if(sym.tp.typeArguments.length==0) manifest[Int] else sym.tp.typeArguments(0)
     val typeStr = remap(typeArg)
     val numBytesStr = "%s->dcSize() * sizeof(%s)".format(quote(sym),remap(typeArg))
 
@@ -84,7 +84,7 @@ trait OpenCLGenDataStruct extends ppl.dsl.optila.OpenCLGenDataStruct {
     out.append("\tjmethodID mid_numCols = env->GetMethodID(cls,\"numCols\",\"()I\");\n")
 
 	  // If this is not RangeVector   // TODO: Manage rangevector
-    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    out.append("\t\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     out.append("\t\t%s->numRows = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_numRows)"))
     out.append("\t\t%s->numCols = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_numCols)"))
     out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))
@@ -98,13 +98,13 @@ trait OpenCLGenDataStruct extends ppl.dsl.optila.OpenCLGenDataStruct {
     out.append("\t\tenv->DeleteLocalRef(data);\n")
 
     //TODO: Copy labels
-    val typeArg2 = if(sym.Type.typeArguments.length==0) manifest[Int] else sym.Type.typeArguments(1)
+    val typeArg2 = if(sym.tp.typeArguments.length==0) manifest[Int] else sym.tp.typeArguments(1)
     val typeStr2 = remap(typeArg2)
     val numBytesStr2 = "%s->numCols * sizeof(%s)".format(quote(sym),remap(typeArg))
 
     // Get class, method ID
 	  // If this is not RangeVector   // TODO: Manage rangevector
-    //out.append("\t\t%s *%s = new %s();\n".format(remap(sym.Type),quote(sym),remap(sym.Type)))
+    //out.append("\t\t%s *%s = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
     //out.append("\t\t%s->length = %s;\n".format(quote(sym),"env->CallIntMethod(obj,mid_length)"))
     //out.append("\t\t%s->isRow = %s;\n".format(quote(sym),"env->CallBooleanMethod(obj,mid_isRow)"))
     //out.append("\t\tjmethodID mid_data = env->GetMethodID(cls,\"data\",\"()[%s\");\n".format(JNITypeDescriptor(typeArg)))

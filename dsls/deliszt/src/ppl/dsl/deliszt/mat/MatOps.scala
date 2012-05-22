@@ -468,7 +468,7 @@ trait MatOpsExpOpt extends MatOpsExp {
               buf ++= (0 to 2) map { i => reifyEffects(m.func(dc_apply(m.in.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
             case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)), _,_)) => 
               buf ++= (0 to 2) map { i => reifyEffects(m.func(dc_apply(m.in.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
-            case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.alloc.Type.toString)
+            case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.alloc.tp.toString)
                       printdbg(" XXXXXXXXXXXXXXXXXXXXXXX def is: " + findDefinition(ce.alloc.res.asInstanceOf[Sym[Any]]).toString)
            }
         }        
@@ -478,7 +478,7 @@ trait MatOpsExpOpt extends MatOpsExp {
               buf ++= (0 to 2) map { i => reifyEffects(z.func(dc_apply(z.inA.asInstanceOf[Exp[DeliteCollection[A]]],unit(i)),dc_apply(z.inB.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
             case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)), _, _)) =>
               buf ++= (0 to 2) map { i => reifyEffects(z.func(dc_apply(z.inA.asInstanceOf[Exp[DeliteCollection[A]]],unit(i)),dc_apply(z.inB.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
-           case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.alloc.Type.toString)
+           case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.alloc.tp.toString)
                      printdbg(" XXXXXXXXXXXXXXXXXXXXXXX def is: " + findDefinition(ce.alloc.res.asInstanceOf[Sym[Any]]).toString)
 	  }
         }            
@@ -487,7 +487,7 @@ trait MatOpsExpOpt extends MatOpsExp {
         //             case Def(Vec3New(a,b,c)) => buf += a.asInstanceOf[Exp[A]]; buf += b.asInstanceOf[Exp[A]]; buf += c.asInstanceOf[Exp[A]]            
         //           }
         //         }
-        case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + e.Type.toString)
+        case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + e.tp.toString)
                   printdbg(" XXXXXXXXXXXXXXXXXXXXXXX def is: " + findDefinition(e.asInstanceOf[Sym[Any]]).toString)
       }}
       //if (buf.length == 0) return reflectMutable(MatObjNew[R,C,A](vs:_*))//.unsafeImmutable 
@@ -547,9 +547,9 @@ trait CudaGenMatOps extends CudaGenBase {
 
   override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
-    case m@MatObjNew(vs @ _*) if(!isHostAlloc) => emitValDef(sym, remap(sym.Type) + "()")
+    case m@MatObjNew(vs @ _*) if(!isHostAlloc) => emitValDef(sym, remap(sym.tp) + "()")
                                                  vs.zipWithIndex.foreach(elem => stream.println("%s.vectorUpdate(%s, %s);".format(quote(sym),elem._2,quote(elem._1))))
-    case m@Mat3New(xs) if(!isHostAlloc) => emitValDef(sym, remap(sym.Type) + "()")
+    case m@Mat3New(xs) if(!isHostAlloc) => emitValDef(sym, remap(sym.tp) + "()")
                                                  xs.zipWithIndex.foreach(elem => stream.println("%s.dcUpdate(%s, %s);".format(quote(sym),elem._2,quote(elem._1))))
     case m@MatObjNNew(numRows,numCols) if(!isHostAlloc) => emitValDef(sym, "Mat<" + remap(m.a) + "," + quote(numRows) + "," + quote(numCols) + ">()")
     case MatDCApply(x,i) => emitValDef(sym,quote(x) + ".dcApply(" + quote(i) + ")")

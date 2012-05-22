@@ -123,7 +123,7 @@ trait ScalaGenIndexVectorOps extends ScalaGenBase {
   val IR: IndexVectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     // should not be required -- pattern matches in IndexVectorRangeOps.scala should always take precedence
     // case v@IndexVectorRangeNew(start, end) =>
     //   emitValDef(sym, "new generated.scala.IndexVectorRange(" + quote(start) +  "," + quote(end) + ")")

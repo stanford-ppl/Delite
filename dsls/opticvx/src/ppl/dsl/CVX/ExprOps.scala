@@ -72,8 +72,8 @@ trait ExprOpsExp extends ExprOps with BaseExp with EffectExp {
     
     // of course, can do compiler optimizations here
     def apply_binary_op[A<:Expr:Manifest, B<:Expr:Manifest](T1:FuncAttribute, T2:ArgAttribute, T3:ArgAttribute)(op: String, x: Exp[A], y: Exp[B]) = {
-      val vex1 = vexity(T1, T2, x.Type)
-      val vex2 = vexity(T1, T3, y.Type)
+      val vex1 = vexity(T1, T2, x.tp)
+      val vex2 = vexity(T1, T3, y.tp)
       
       println("func attribute: %s, %s; result: %s,%s".format(T1, T2,vex1,vex2))
       
@@ -107,7 +107,7 @@ trait ScalaGenExprOps extends ScalaGenBase {
   val IR: ExprOpsExp // with OptVarCompilerOpsExp
   import IR._
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case AffineBinaryOp(op, x,y) => emitValDef(sym, "println(\"op: " + op + " results in affine expr!\")")
     case ConvexBinaryOp(op, x,y) => emitValDef(sym, "println(\"op: " + op + " results in convex expr!\")")
     case ConcaveBinaryOp(op, x,y) => emitValDef(sym, "println(\"op: " + op + " results in concave expr!\")")

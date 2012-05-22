@@ -18,7 +18,7 @@ trait OptiLAOpenCLGenExternal extends OpenCLGenExternalBase with OpenCLGenDataSt
   val IR: OptiLAExp
   import IR._
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val lib = clBLAS
       val args = scala.List("'t'", "%1$s.numCols", "%1$s.numRows", "%1$s.data", "%2$s.data", "%3$s.data")

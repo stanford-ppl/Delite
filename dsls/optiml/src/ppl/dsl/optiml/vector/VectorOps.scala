@@ -214,7 +214,7 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
   val IR: VectorOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //     // these are the ops that call through to the underlying real data structure
   //     case _ => super.emitNode(sym, rhs)
   //   }
@@ -225,7 +225,7 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
   val IR: VectorOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   // 
   //     case _ => super.emitNode(sym, rhs)
   //   }
@@ -235,7 +235,7 @@ trait OpenCLGenVectorOps extends BaseGenVectorOps with OpenCLGenFat with OpenCLG
   val IR: VectorOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //
   //     case _ => super.emitNode(sym, rhs)
   //   }
@@ -245,7 +245,7 @@ trait CGenVectorOps extends BaseGenVectorOps with CGenFat {
   val IR: VectorOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }

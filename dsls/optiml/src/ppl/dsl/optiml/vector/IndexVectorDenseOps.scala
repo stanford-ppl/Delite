@@ -61,7 +61,7 @@ trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOp
   /////////////////////
   // delite collection
   
-  def isIndexDense[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.Type.erasure == classOf[IndexVectorDense]  
+  def isIndexDense[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.tp.erasure == classOf[IndexVectorDense]
   def asIndexDense[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[IndexVectorDense]]
     
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
@@ -103,7 +103,7 @@ trait ScalaGenIndexVectorDenseOps extends ScalaGenFat {
   val IR: IndexVectorDenseOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case IndexVectorDenseLength(x) => emitValDef(sym, quote(x) + ".length")
     case IndexVectorDenseApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
     case _ => super.emitNode(sym, rhs)

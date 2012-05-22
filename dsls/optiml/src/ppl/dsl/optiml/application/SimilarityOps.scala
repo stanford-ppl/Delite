@@ -47,7 +47,7 @@ trait ScalaGenSimilarityOps extends ScalaGenBase {
   val IR: ApplicationOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   // these are the ops that call through to the underlying real data structure
     case SimilarityObjectNew(a, b, value) => emitValDef(sym, "new " + remap(manifest[Similarity]) + "(" + quote(a)  + "," + quote(b)  + "," + quote(value)  + ")")
     case SimilarityA(x) =>  emitValDef(sym, quote(x) + ".a")

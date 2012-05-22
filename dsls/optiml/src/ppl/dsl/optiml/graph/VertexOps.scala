@@ -101,7 +101,7 @@ trait ScalaGenVertexOps extends BaseGenVertexOps with ScalaGenBase {
   val IR: VertexOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
     rhs match {
       case v@VertexNew(g,d) => emitValDef(sym, "new generated.scala.Vertex[" + remap(v.mVD) + "," + remap(v.mED) + "](" + quote(g) + "," + quote(d) + ")")
       case VertexGetData(v) => emitValDef(sym, quote(v) + "._data")
@@ -117,7 +117,7 @@ trait CudaGenVertexOps extends BaseGenVertexOps with CudaGenBase with CudaGenDat
   val IR: VertexOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }
@@ -126,7 +126,7 @@ trait CGenVertexOps extends BaseGenVertexOps with CGenBase {
   val IR: VertexOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }

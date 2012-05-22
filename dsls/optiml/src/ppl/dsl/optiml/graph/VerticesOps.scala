@@ -51,7 +51,7 @@ trait ScalaGenVerticesOps extends BaseGenVerticesOps with ScalaGenBase {
   val IR: VerticesOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = {
   //   rhs match {
   //     case _ => super.emitNode(sym, rhs)
   //   }
@@ -63,7 +63,7 @@ trait CudaGenVerticesOps extends BaseGenVerticesOps with CudaGenBase with CudaGe
   val IR: VerticesOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }
@@ -72,7 +72,7 @@ trait CGenVerticesOps extends BaseGenVerticesOps with CGenBase {
   val IR: VerticesOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
   //   case _ => super.emitNode(sym, rhs)
   // }
 }
