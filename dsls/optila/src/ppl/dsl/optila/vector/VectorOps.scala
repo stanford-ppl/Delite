@@ -20,7 +20,7 @@ trait VectorOps extends Variables {
     def toIntf(x: Rep[To]): Interface[Vector[Elem]]
   }  
   
-  implicit def vecToString[A, V[X] <: Vector[X]](x: Rep[V[A]])(implicit toOps: Rep[V[A]] => VecOpsCls[A]): Rep[String] = "[ " + toOps(x).mkString(unit(" ")) + "]"
+  implicit def vecToString[A, V[X] <: Vector[X]](x: Rep[V[A]])(implicit toOps: Rep[V[A]] => VecOpsCls[A]): Rep[String] = "[ " + toOps(x).mkString(unit(" ")) + " ]"
   def infix_+[A, V[X] <: Vector[X]](lhs: String, rhs: Rep[V[A]])(implicit toOps: Rep[V[A]] => VecOpsCls[A]) = string_plus(unit(lhs), vecToString[A,V](rhs))
   def infix_+[A, V[X] <: Vector[X]](lhs: Rep[String], rhs: Rep[V[A]])(implicit toOps: Rep[V[A]] => VecOpsCls[A]) = string_plus(lhs, vecToString[A,V](rhs))
   
@@ -72,6 +72,7 @@ trait VectorOps extends Variables {
     // VA might be different than V[A], e.g. in IndexVectorDenseOps
     type V[X] <: Vector[X]
     type M[X] <: Matrix[X]
+    type I[X] <: MatrixBuildable[X]
     type VA <: Vector[A]       
     type MA = M[A]
         
@@ -91,7 +92,7 @@ trait VectorOps extends Variables {
     
     implicit def mM[B:Manifest]: Manifest[M[B]]         
     implicit def matToIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]]        
-    implicit def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]]                
+    implicit def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]]                
         
     // DeliteCollection
     def dcSize(implicit ctx: SourceContext) = length
@@ -1123,9 +1124,11 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
       out.asInstanceOf[Exp[CA]]
     }
     else if (isSparseVec(x)) {
-      val out = SparseVector[A](unit(0), asSparseVec(x).isRow)
+      val v = asSparseVec(x)
+      val out = SparseVector[A](unit(0), v.isRow)
       sparsevector_set_raw_indices(out, DeliteArray[Int](size).unsafeImmutable)
       sparsevector_set_raw_data(out, DeliteArray[A](size).unsafeImmutable)      
+      sparsevector_set_length(out, v.length)
       sparsevector_set_nnz(out, size)
       out.asInstanceOf[Exp[CA]]
     }

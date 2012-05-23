@@ -14,13 +14,19 @@ trait ImageOps extends Variables {
 
   implicit def repToImageOps[A:Manifest](x: Rep[Image[A]]) = new ImageOpsCls(x)
   implicit def varToImageOps[A:Manifest](x: Var[Image[A]]) = new ImageOpsCls(readVar(x))
+  implicit def repToImageBuildableOps[A:Manifest](x: Rep[Image[A]]) = new ImageBuildableOpsCls(x)
+  implicit def varToImageBuildableOps[A:Manifest](x: Var[Image[A]]) = new ImageBuildableOpsCls(readVar(x))    
   implicit def imageToInterface[A:Manifest](lhs: Rep[Image[A]]) = new MInterface[A](new ImageOpsCls[A](lhs))
-  implicit def imageVarToInterface[A:Manifest](lhs: Var[Image[A]]) = new MInterface[A](new ImageOpsCls[A](readVar(lhs)))
+  implicit def imageVarToInterface[A:Manifest](lhs: Var[Image[A]]) = new MInterface[A](new ImageOpsCls[A](readVar(lhs)))  
+  implicit def imageToBuildableInterface[A:Manifest](lhs: Rep[Image[A]]) = new MBuildableInterface[A](new ImageBuildableOpsCls[A](lhs))
+  implicit def imageVarToBuildableInterface[A:Manifest](lhs: Var[Image[A]]) = new MBuildableInterface[A](new ImageBuildableOpsCls[A](readVar(lhs)))  
   
-  implicit def imageBuilder[A:Manifest] = new MatrixBuilder[A,Image[A]] {
+  implicit def imageBuilder[A:Manifest] = new MatrixBuilder[A,Image[A],Image[A]] {
     def alloc(numRows: Rep[Int], numCols: Rep[Int]) = {
       Image[A](numRows, numCols)
     }
+    def toBuildableIntf(x: Rep[Image[A]]): Interface[MatrixBuildable[A]] = imageToBuildableInterface(x)
+    def finalizer(x: Rep[Image[A]]) = x.unsafeImmutable    
     def toIntf(x: Rep[Image[A]]): Interface[Matrix[A]] = imageToInterface(x)
   }  
 
@@ -29,6 +35,28 @@ trait ImageOps extends Variables {
     def apply[A:Manifest](x: Rep[DenseMatrix[A]])(implicit ctx: SourceContext) = image_obj_frommat(x)
   }
 
+  class ImageBuildableOpsCls[A:Manifest](val elem: Rep[Image[A]]) extends MatBuildableOpsCls[A] {
+    type Self = Image[A]
+    def wrap(x: Rep[Image[A]]): Interface[MatrixBuildable[A]] = denseMatToBuildableInterface(x)
+    type M[X] = Image[X]
+    type V[X] = DenseVector[X]    
+    def mA: Manifest[A] = manifest[A]
+    def toIntf[B:Manifest](x: Rep[M[B]]) = denseMatToBuildableInterface(x)
+    def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)        
+      
+    // FIXME: see MatrixBuildableOps.scala
+    protected def _numRows(implicit ctx: SourceContext) = densematrix_numrows(x)
+    protected def _numCols(implicit ctx: SourceContext) = densematrix_numcols(x)
+        
+    def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = densematrix_update(x,i,j,y)
+    def insertRow(pos: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = densematrix_insertrow(x,pos,y)
+    def insertAllRows(pos: Rep[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext) = densematrix_insertallrows(x,pos,y)
+    def insertCol(pos: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = densematrix_insertcol(x,pos,y)
+    def insertAllCols(pos: Rep[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext) = densematrix_insertallcols(x,pos,y)
+    def removeRows(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removerows(x,pos,len)
+    def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removecols(x,pos,len)
+  }
+  
   /**
    * By extending DenseMatOpsCls, we preserve the Image[A] return type. We could also choose to simply add methods onto DenseMatrix 
    * in a similar fashion to GrayscaleImageOps to ImageOps, but we would lose our image-ness whenever a bulk operator is used (just
@@ -36,15 +64,17 @@ trait ImageOps extends Variables {
    */
   class ImageOpsCls[A:Manifest](val elem: Rep[Image[A]]) extends MatOpsCls[A] {
     type M[X] = Image[X]
+    type I[X] = Image[X]
     type V[X] = DenseVector[X]
     type Self = Image[A]
 
     def mA: Manifest[A] = manifest[A]
     def mM[B:Manifest]: Manifest[M[B]] = manifest[Image[B]]    
+    def mI[B:Manifest]: Manifest[I[B]] = mM[B]
     def wrap(x: Rep[Image[A]]): Interface[Matrix[A]] = imageToInterface(x)
     def toOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B] = repToImageOps[B](x)
     def toIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]] = imageToInterface[B](x)        
-    def builder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]] = imageBuilder[B]            
+    def builder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = imageBuilder[B]            
     def mV[B:Manifest]: Manifest[V[B]] = manifest[DenseVector[B]]
     def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)        
     def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]
@@ -71,15 +101,6 @@ trait ImageOps extends Variables {
     def numRows(implicit ctx: SourceContext) = densematrix_numrows(x)
     def numCols(implicit ctx: SourceContext) = densematrix_numcols(x)
     def vview(start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = densematrix_vview(x,start,stride,length,isRow)
-
-    // data operations
-    def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = densematrix_update(x,i,j,y)
-    def insertRow(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = densematrix_insertrow(x,pos,y)
-    def insertAllRows(pos: Rep[Int], y: Rep[MA])(implicit ctx: SourceContext) = densematrix_insertallrows(x,pos,y)
-    def insertCol(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = densematrix_insertcol(x,pos,y)
-    def insertAllCols(pos: Rep[Int], y: Rep[MA])(implicit ctx: SourceContext) = densematrix_insertallcols(x,pos,y)
-    def removeRows(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removerows(x,pos,len)
-    def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removecols(x,pos,len)
 
     // not supported by interface right now
     def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = Image(densematrix_multiply(x,y))

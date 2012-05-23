@@ -8,6 +8,8 @@ import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 trait DeliteCollectionOps extends Base {
     
+  // AKS: Is DCInterfaceOps still useful for anything? Are they meant to guarantee that dc_* static call will succeed?
+  // should this be split into read and write interfaces?
   trait DCInterfaceOps[+T,A] extends InterfaceOps[T] {
     def dcSize(implicit ctx: SourceContext): Rep[Int] 
     def dcApply(n: Rep[Int])(implicit ctx: SourceContext): Rep[A] 

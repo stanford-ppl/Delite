@@ -27,10 +27,8 @@ trait MLInputReaderImplOpsStandard extends MLInputReaderImplOps {
     val x = DenseMatrix[Int](0, ints.length)
 
     while (line != null) {
-      val v = (0::ints.length) { i =>
-        Integer.parseInt(ints(i))
-      }
-      x += v.unsafeImmutable
+      val v = (0::ints.length) { i => Integer.parseInt(ints(i)) }
+      repToDenseMatBuildableOps(x) += v.unsafeImmutable  // AKS FIXME: why is this ambiguous?
 
       line = xfs.readLine()
       if (line != null) {

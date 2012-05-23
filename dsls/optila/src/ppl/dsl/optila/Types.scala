@@ -47,7 +47,9 @@ trait SparseColVector[T] extends SparseVector[T] with ColVector[T]
  */
  
 abstract class Matrix[T] extends DeliteCollection[T]
-trait DenseMatrix[T] extends Matrix[T]
+trait MatrixBuildable[T] extends DeliteCollection[T]
+trait DenseMatrix[T] extends Matrix[T] with MatrixBuildable[T]
 trait Image[T] extends DenseMatrix[T]
-trait SparseMatrix[T] extends Matrix[T]
+trait SparseMatrix[T] extends Matrix[T]                   // used for sparse matrix operations
+trait SparseMatrixBuildable[T] extends MatrixBuildable[T] // used for sparse matrix construction
 //trait SymmetricMatrix[T] extends DenseMatrix[T]

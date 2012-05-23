@@ -19,7 +19,9 @@ package object optiml {
   //type MatrixCol[T] = optila.MatrixCol[T]
 
   type Matrix[T] = optila.Matrix[T]
+  type MatrixBuildable[T] = optila.MatrixBuildable[T]
   type DenseMatrix[T] = optila.DenseMatrix[T]
   type SparseMatrix[T] = optila.SparseMatrix[T]
+  type SparseMatrixBuildable[T] = optila.SparseMatrixBuildable[T]
   //type SymmetricMatrix[T] = optila.SymmetricMatrix[T]
 }

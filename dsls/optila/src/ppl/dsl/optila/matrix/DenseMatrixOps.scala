@@ -22,14 +22,20 @@ trait DenseMatrixOps extends Variables {
 
   implicit def repToDenseMatOps[A:Manifest](x: Rep[DenseMatrix[A]]) = new DenseMatOpsCls(x)
   implicit def varToDenseMatOps[A:Manifest](x: Var[DenseMatrix[A]]) = new DenseMatOpsCls(readVar(x))  
+  implicit def repToDenseMatBuildableOps[A:Manifest](x: Rep[DenseMatrix[A]]) = new DenseMatBuildableOpsCls(x)
+  implicit def varToDenseMatBuildableOps[A:Manifest](x: Var[DenseMatrix[A]]) = new DenseMatBuildableOpsCls(readVar(x))    
   implicit def denseMatToInterface[A:Manifest](lhs: Rep[DenseMatrix[A]]) = new MInterface[A](new DenseMatOpsCls[A](lhs))
   implicit def denseMatVarToInterface[A:Manifest](lhs: Var[DenseMatrix[A]]) = new MInterface[A](new DenseMatOpsCls[A](readVar(lhs)))
+  implicit def denseMatToBuildableInterface[A:Manifest](lhs: Rep[DenseMatrix[A]]) = new MBuildableInterface[A](new DenseMatBuildableOpsCls[A](lhs))
+  implicit def denseMatVarToBuildableInterface[A:Manifest](lhs: Var[DenseMatrix[A]]) = new MBuildableInterface[A](new DenseMatBuildableOpsCls[A](readVar(lhs)))
   
-  implicit def denseMatrixBuilder[A:Manifest](implicit ctx: SourceContext) = new MatrixBuilder[A,DenseMatrix[A]] {
+  implicit def denseMatrixBuilder[A:Manifest](implicit ctx: SourceContext) = new MatrixBuilder[A,DenseMatrix[A],DenseMatrix[A]] {
     def alloc(numRows: Rep[Int], numCols: Rep[Int]) = {
       Matrix.dense[A](numRows, numCols)
     }
-    def toIntf(x: Rep[DenseMatrix[A]]): Interface[Matrix[A]] = denseMatToInterface(x)
+    def toBuildableIntf(x: Rep[DenseMatrix[A]]): Interface[MatrixBuildable[A]] = denseMatToBuildableInterface(x)
+    def finalizer(x: Rep[DenseMatrix[A]]) = x.unsafeImmutable
+    def toIntf(x: Rep[DenseMatrix[A]]): Interface[Matrix[A]] = denseMatToInterface(x)    
   }  
 
   object DenseMatrix {
@@ -52,17 +58,40 @@ trait DenseMatrixOps extends Variables {
     def mrandnf(numRows: Rep[Int], numCols: Rep[Int])(implicit ctx: SourceContext) = densematrix_obj_mrandnf(numRows, numCols)
   }
 
+  class DenseMatBuildableOpsCls[A:Manifest](val elem: Rep[DenseMatrix[A]]) extends MatBuildableOpsCls[A] {
+    type Self = DenseMatrix[A]
+    def wrap(x: Rep[DenseMatrix[A]]): Interface[MatrixBuildable[A]] = denseMatToBuildableInterface(x)
+    type M[X] = DenseMatrix[X]
+    type V[X] = DenseVector[X]    
+    def mA: Manifest[A] = manifest[A]
+    def toIntf[B:Manifest](x: Rep[M[B]]) = denseMatToBuildableInterface(x)
+    def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)        
+      
+    // FIXME: see MatrixBuildableOps.scala
+    protected def _numRows(implicit ctx: SourceContext) = densematrix_numrows(x)
+    protected def _numCols(implicit ctx: SourceContext) = densematrix_numcols(x)
+        
+    def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = densematrix_update(x,i,j,y)
+    def insertRow(pos: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = densematrix_insertrow(x,pos,y)
+    def insertAllRows(pos: Rep[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext) = densematrix_insertallrows(x,pos,y)
+    def insertCol(pos: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = densematrix_insertcol(x,pos,y)
+    def insertAllCols(pos: Rep[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext) = densematrix_insertallcols(x,pos,y)
+    def removeRows(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removerows(x,pos,len)
+    def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removecols(x,pos,len)
+  }
+  
   class DenseMatOpsCls[A:Manifest](val elem: Rep[DenseMatrix[A]]) extends MatOpsCls[A] {
     type M[X] = DenseMatrix[X]
     type V[X] = DenseVector[X]
+    type I[X] = DenseMatrix[X]
     type Self = DenseMatrix[A]
-
     def mA: Manifest[A] = manifest[A]
     def mM[B:Manifest]: Manifest[M[B]] = manifest[DenseMatrix[B]]    
+    def mI[B:Manifest]: Manifest[I[B]] = mM[B]
     def wrap(x: Rep[DenseMatrix[A]]): Interface[Matrix[A]] = denseMatToInterface(x)
     def toOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B] = repToDenseMatOps[B](x)
     def toIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]] = denseMatToInterface[B](x)        
-    def builder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]            
+    def builder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = denseMatrixBuilder[B]            
     def mV[B:Manifest]: Manifest[V[B]] = manifest[DenseVector[B]]
     def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)        
     def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]
@@ -79,13 +108,13 @@ trait DenseMatrixOps extends Variables {
     def vview(start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = densematrix_vview(x,start,stride,length,isRow)
     
     // data operations
-    def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = densematrix_update(x,i,j,y)
-    def insertRow(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = densematrix_insertrow(x,pos,y)
-    def insertAllRows(pos: Rep[Int], y: Rep[DenseMatrix[A]])(implicit ctx: SourceContext) = densematrix_insertallrows(x,pos,y)
-    def insertCol(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = densematrix_insertcol(x,pos,y)
-    def insertAllCols(pos: Rep[Int], y: Rep[DenseMatrix[A]])(implicit ctx: SourceContext) = densematrix_insertallcols(x,pos,y)
-    def removeRows(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removerows(x,pos,len)
-    def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removecols(x,pos,len)
+    // def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = densematrix_update(x,i,j,y)
+    // def insertRow(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = densematrix_insertrow(x,pos,y)
+    // def insertAllRows(pos: Rep[Int], y: Rep[DenseMatrix[A]])(implicit ctx: SourceContext) = densematrix_insertallrows(x,pos,y)
+    // def insertCol(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = densematrix_insertcol(x,pos,y)
+    // def insertAllCols(pos: Rep[Int], y: Rep[DenseMatrix[A]])(implicit ctx: SourceContext) = densematrix_insertallcols(x,pos,y)
+    // def removeRows(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removerows(x,pos,len)
+    // def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removecols(x,pos,len)
     
     // not supported by interface right now
     def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = densematrix_multiply(x,y)
@@ -126,10 +155,10 @@ trait DenseMatrixOps extends Variables {
   def densematrix_vview[A:Manifest](x: Rep[DenseMatrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[VectorView[A]] 
 
   def densematrix_update[A:Manifest](x: Rep[DenseMatrix[A]], i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
-  def densematrix_insertrow[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Unit]
-  def densematrix_insertallrows[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseMatrix[A]])(implicit ctx: SourceContext): Rep[Unit]
-  def densematrix_insertcol[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[Unit]
-  def densematrix_insertallcols[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseMatrix[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def densematrix_insertrow[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def densematrix_insertallrows[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def densematrix_insertcol[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit]
+  def densematrix_insertallcols[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext): Rep[Unit]
   def densematrix_removerows[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
   def densematrix_removecols[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
   
@@ -225,16 +254,16 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
     extends DefWithManifest[A,Unit]
     //extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(densematrix_rawupdate_impl(x,i,y)))
 
-  case class DenseMatrixInsertRow[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Exp[DenseVector[A]]) 
+  case class DenseMatrixInsertRow[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Interface[Vector[A]]) 
     extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(densematrix_insertrow_impl(x,pos,y)))
     
-  case class DenseMatrixInsertAllRows[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Exp[DenseMatrix[A]]) 
+  case class DenseMatrixInsertAllRows[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Interface[Matrix[A]]) 
     extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(densematrix_insertallrows_impl(x,pos,y)))
     
-  case class DenseMatrixInsertCol[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Exp[DenseVector[A]]) 
+  case class DenseMatrixInsertCol[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Interface[Vector[A]]) 
     extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(densematrix_insertcol_impl(x,pos,y)))
     
-  case class DenseMatrixInsertAllCols[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Exp[DenseMatrix[A]]) 
+  case class DenseMatrixInsertAllCols[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Interface[Matrix[A]]) 
     extends DeliteOpSingleWithManifest[A,Unit](reifyEffectsHere(densematrix_insertallcols_impl(x,pos,y)))
     
   case class DenseMatrixRemoveRows[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], len: Exp[Int])
@@ -375,10 +404,10 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   def densematrix_vview[A:Manifest](x: Exp[DenseMatrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DenseMatrixVView(x,start,stride,length,isRow))
 
   def densematrix_update[A:Manifest](x: Exp[DenseMatrix[A]], i: Exp[Int], j: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixUpdate[A](x,i,j,y))
-  def densematrix_insertrow[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixInsertRow(x,pos,y))
-  def densematrix_insertallrows[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixInsertAllRows(x,pos,y))
-  def densematrix_insertcol[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Exp[DenseVector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixInsertCol(x,pos,y))
-  def densematrix_insertallcols[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixInsertAllCols(x,pos,y))
+  def densematrix_insertrow[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixInsertRow(x,pos,y))
+  def densematrix_insertallrows[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixInsertAllRows(x,pos,y))
+  def densematrix_insertcol[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixInsertCol(x,pos,y))
+  def densematrix_insertallcols[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixInsertAllCols(x,pos,y))
   def densematrix_removerows[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixRemoveRows(x,pos,len))
   def densematrix_removecols[A:Manifest](x: Exp[DenseMatrix[A]], pos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(DenseMatrixRemoveCols(x,pos,len))
   def densematrix_multiply[A:Manifest:Arith](x: Exp[DenseMatrix[A]], y: Exp[DenseMatrix[A]])(implicit ctx: SourceContext) = {
@@ -394,11 +423,11 @@ trait DenseMatrixOpsExp extends DenseMatrixCompilerOps with DeliteCollectionOpsE
   
   def densematrix_sigmoid[A:Manifest](x: Exp[DenseMatrix[A]])(implicit conv: Exp[A] => Exp[Double], ctx: SourceContext) = {
     if (Config.useBlas && manifest[A] == manifest[Double]) reflectPure(DenseMatrixSigmoidVectorized(x.asInstanceOf[Exp[DenseMatrix[Double]]]))    
-    else reflectPure(MatrixSigmoid[A,DenseMatrix[Double]](x))
+    else reflectPure(MatrixSigmoid[A,DenseMatrix[Double],DenseMatrix[Double]](x))
   }
   def densematrix_sigmoidf[A:Manifest](x: Exp[DenseMatrix[A]])(implicit conv: Exp[A] => Exp[Double], ctx: SourceContext) = {
     if (Config.useBlas && manifest[A] == manifest[Float]) reflectPure(DenseMatrixSigmoidVectorized(x.asInstanceOf[Exp[DenseMatrix[Float]]]))    
-    else reflectPure(MatrixSigmoidF[A,DenseMatrix[Float]](x))
+    else reflectPure(MatrixSigmoidF[A,DenseMatrix[Float],DenseMatrix[Float]](x))
   }
   
   def densematrix_maprows[A:Manifest,B:Manifest](x: Exp[DenseMatrix[A]], f: Exp[VectorView[A]] => Exp[DenseVector[B]])(implicit ctx: SourceContext) = {
@@ -619,3 +648,4 @@ trait CGenDenseMatrixOps extends CGenBase {
     case _ => super.emitNode(sym, rhs)
   }
 }
+ 

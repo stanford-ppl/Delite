@@ -26,12 +26,13 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
     //implicit def toIntf(x: Rep[VA]): Interface[IndexVector]        
     type V[X] = DenseVector[X] // conversion operations on IndexVectors will return a DenseVector
     type M[X] = DenseMatrix[X]
+    type I[X] = DenseMatrix[X]
     def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
     def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
     def wrap(x: Rep[Self]): Interface[IndexVector]
     def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
-    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]
+    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = denseMatrixBuilder[B]
     def mV[B:Manifest] = manifest[DenseVector[B]]
     def mM[B:Manifest] = manifest[DenseMatrix[B]]
     def mA = manifest[Int]

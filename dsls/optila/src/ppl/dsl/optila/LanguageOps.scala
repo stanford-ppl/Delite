@@ -173,6 +173,8 @@ trait LanguageOps extends Base { this: OptiLA =>
   def atan(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def atan2(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   def pow(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
+  def max[A:Manifest:Numeric](x: Rep[A], y: Rep[A])(implicit ctx: SourceContext): Rep[A]
+  def min[A:Manifest:Numeric](x: Rep[A], y: Rep[A])(implicit ctx: SourceContext): Rep[A]
   def Pi(implicit ctx: SourceContext): Rep[Double]
   def E(implicit ctx: SourceContext): Rep[Double]
   
@@ -223,9 +225,9 @@ trait LanguageOps extends Base { this: OptiLA =>
   object RANDOM extends SampleMethod
 
   // sampling of input to reduce data size
-  def sample[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean] = unit(true), method: SampleMethod = RANDOM)(implicit b: MatrixBuilder[A,MA], ctx: SourceContext): Rep[MA] = {
+  def sample[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean] = unit(true), method: SampleMethod = RANDOM)(implicit b: MatrixBuilder[A,I,MA], ctx: SourceContext): Rep[MA] = {
     method match {
-      case RANDOM => optila_randsample_matrix[A,MA](m, numSamples, sampleRows)
+      case RANDOM => optila_randsample_matrix[A,I,MA](m, numSamples, sampleRows)
       case _ => throw new UnsupportedOperationException("unknown sampling type selected")
     }
   }
@@ -241,7 +243,7 @@ trait LanguageOps extends Base { this: OptiLA =>
     }
   }
 
-  def optila_randsample_matrix[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,MA], ctx: SourceContext): Rep[MA]
+  def optila_randsample_matrix[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,I,MA], ctx: SourceContext): Rep[MA]
   def optila_randsample_vector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]
   
  
@@ -310,16 +312,18 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   /**
    * aliases for scala.math._ operations supported by optila
    */
-  def sqrt(e: Rep[Double])(implicit ctx: SourceContext) = Math.sqrt(e)   
-  def ceil(x: Rep[Double])(implicit ctx: SourceContext) = Math.ceil(x)
-  def floor(x: Rep[Double])(implicit ctx: SourceContext) = Math.floor(x)
-  def exp(x: Rep[Double])(implicit ctx: SourceContext) = Math.exp(x)
-  def sin(x: Rep[Double])(implicit ctx: SourceContext) = Math.sin(x)
-  def cos(x: Rep[Double])(implicit ctx: SourceContext) = Math.cos(x)
-  def acos(x: Rep[Double])(implicit ctx: SourceContext) = Math.acos(x)
-  def atan(x: Rep[Double])(implicit ctx: SourceContext) = Math.atan(x)
-  def atan2(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext) = Math.atan2(x,y)
-  def pow(x: Rep[Double], y: Rep[Double])(implicit ctx: SourceContext) = Math.pow(x,y)
+  def sqrt(e: Exp[Double])(implicit ctx: SourceContext) = Math.sqrt(e)   
+  def ceil(x: Exp[Double])(implicit ctx: SourceContext) = Math.ceil(x)
+  def floor(x: Exp[Double])(implicit ctx: SourceContext) = Math.floor(x)
+  def exp(x: Exp[Double])(implicit ctx: SourceContext) = Math.exp(x)
+  def sin(x: Exp[Double])(implicit ctx: SourceContext) = Math.sin(x)
+  def cos(x: Exp[Double])(implicit ctx: SourceContext) = Math.cos(x)
+  def acos(x: Exp[Double])(implicit ctx: SourceContext) = Math.acos(x)
+  def atan(x: Exp[Double])(implicit ctx: SourceContext) = Math.atan(x)
+  def atan2(x: Exp[Double], y: Exp[Double])(implicit ctx: SourceContext) = Math.atan2(x,y)
+  def pow(x: Exp[Double], y: Exp[Double])(implicit ctx: SourceContext) = Math.pow(x,y)
+  def max[A:Manifest:Numeric](x: Exp[A], y: Exp[A])(implicit ctx: SourceContext) = Math.max(x,y)
+  def min[A:Manifest:Numeric](x: Exp[A], y: Exp[A])(implicit ctx: SourceContext) = Math.min(x,y)
   def Pi(implicit ctx: SourceContext) = Math.Pi
   def E(implicit ctx: SourceContext) = Math.E
   
@@ -381,14 +385,14 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
    * Sampling
    */
   
-  case class RandSampleMatrix[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean])(implicit b: MatrixBuilder[A,MA])
-    extends DeliteOpSingleTask[MA](reifyEffects(optila_randsample_matrix_impl[A,MA](m, numSamples, sampleRows)))
+  case class RandSampleMatrix[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean])(implicit b: MatrixBuilder[A,I,MA])
+    extends DeliteOpSingleTask[MA](reifyEffects(optila_randsample_matrix_impl[A,I,MA](m, numSamples, sampleRows)))
 
   case class RandSampleVector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Exp[Int])(implicit b: VectorBuilder[A,VA])
     extends DeliteOpSingleTask[VA](reifyEffects(optila_randsample_vector_impl[A,VA](v, numSamples)))
   
-  def optila_randsample_matrix[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean])(implicit b: MatrixBuilder[A,MA], ctx: SourceContext) = {
-    reflectPure(RandSampleMatrix[A,MA](m, numSamples, sampleRows))
+  def optila_randsample_matrix[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Exp[Int], sampleRows: Exp[Boolean])(implicit b: MatrixBuilder[A,I,MA], ctx: SourceContext) = {
+    reflectPure(RandSampleMatrix[A,I,MA](m, numSamples, sampleRows))
   }
 
   def optila_randsample_vector[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Exp[Int])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = {

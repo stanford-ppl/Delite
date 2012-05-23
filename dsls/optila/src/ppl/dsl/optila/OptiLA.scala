@@ -101,16 +101,25 @@ trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
 trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps with DeliteArrayOps
   with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
   with VectorOps with DenseVectorOps with SparseVectorOps with RangeVectorOps with VectorViewOps //with MatrixRowOps with MatrixColOps
-  with MatrixOps with DenseMatrixOps
+  with MatrixOps with MatrixBuildableOps with DenseMatrixOps with SparseMatrixOps with SparseMatrixBuildableOps
   with LAInputReaderOps with LAOutputWriterOps {
 
   this: OptiLAApplication =>
 }
 
-// these ops are only available to the compiler (they are restricted from application use)
-trait OptiLACompiler extends OptiLA with OptiLAUtilities with DeliteArrayCompilerOps with DenseVectorCompilerOps with SparseVectorCompilerOps with DenseMatrixCompilerOps 
-  with MathOps with RangeOps with IOOps with SeqOps with SetOps with ListOps with HashMapOps with IterableOps with ArrayBufferOps with ExceptionOps {
-    
+trait OptiLACompiler extends OptiLA with OptiLAUtilities 
+  // -- ops only available to the compiler (they are restricted from application use)
+  with DeliteArrayCompilerOps 
+  with DenseVectorCompilerOps with SparseVectorCompilerOps with DenseMatrixCompilerOps with SparseMatrixCompilerOps with SparseMatrixBuildableCompilerOps
+  with MathOps with RangeOps with IOOps with SeqOps with SetOps with ListOps with HashMapOps with IterableOps with ArrayBufferOps with ExceptionOps 
+  // --  kernel implementations
+  with LanguageImplOpsStandard
+  with VectorImplOpsStandard with DenseVectorImplOpsStandard with SparseVectorImplOpsStandard with VectorViewImplOpsStandard
+  with MatrixImplOpsStandard with DenseMatrixImplOpsStandard with SparseMatrixImplOps with SparseMatrixBuildableImplOps
+  with LAInputReaderImplOpsStandard with LAOutputWriterImplOpsStandard
+  // -- designates the choice of sparse matrix formats for SparseMatrix and SparseMatrixBuildable respectively
+  with SparseMatrixCSRCompilerOps with SparseMatrixCSRImplOps with SparseMatrixCOOCompilerOps with SparseMatrixCOOImplOps {
+  
   this: OptiLAApplication with OptiLAExp =>
 }
 
@@ -121,13 +130,11 @@ trait OptiLACompiler extends OptiLA with OptiLAUtilities with DeliteArrayCompile
 trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with DeliteArrayOpsExp with VariantsOpsExp 
   with LanguageOpsExp with ArithOpsExpOpt with CloneableOpsExp
   with VectorOpsExpOpt with DenseVectorOpsExpOpt with SparseVectorOpsExp with RangeVectorOpsExp with VectorViewOpsExpOpt  //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
-  with MatrixOpsExpOpt with DenseMatrixOpsExpOpt
+  with MatrixOpsExpOpt with DenseMatrixOpsExpOpt with SparseMatrixOpsExp with SparseMatrixBuildableOpsExp
   with LAInputReaderOpsExp with LAOutputWriterOpsExp
   with ExceptionOpsExp
-  with LanguageImplOpsStandard
-  with VectorImplOpsStandard with DenseVectorImplOpsStandard with SparseVectorImplOpsStandard with VectorViewImplOpsStandard
-  with MatrixImplOpsStandard with DenseMatrixImplOpsStandard
-  with LAInputReaderImplOpsStandard with LAOutputWriterImplOpsStandard
+  // -- choice of sparse matrix repr
+  with SparseMatrixCSROpsExp with SparseMatrixCOOOpsExp  
   with DeliteAllOverridesExp {
 
   // this: OptiLAApplicationRunner => why doesn't this work?
@@ -202,17 +209,20 @@ trait OptiLACodeGenBase extends GenericFatCodegen {
   }
 }
 
-trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal with ScalaGenDeliteOps with ScalaGenDeliteArrayOps
+trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal 
+  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteArrayOps
   with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenSparseVectorOps
-  with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps  
+  with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps with ScalaGenSparseMatrixOps with ScalaGenSparseMatrixBuildableOps  
   //with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
   with ScalaGenExceptionOps
-  with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
+  with ScalaGenVariantsOps
+  // -- choice of sparse matrix repr
+  with ScalaGenSparseMatrixCSROps with ScalaGenSparseMatrixCOOOps 
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
   val IR: DeliteApplication with OptiLAExp
 
-  override val specialize = Set("DenseVector", "DenseMatrix", "SparseVector"/*, "VectorView"*/)
+  override val specialize = Set("DenseVector", "DenseMatrix", "SparseVector", "SparseMatrix"/*, "VectorView"*/)
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {

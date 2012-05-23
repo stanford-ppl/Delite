@@ -1,9 +1,8 @@
 package ppl.dsl.optila.matrix
 
-import ppl.dsl.optila.{DenseVector,Vector,VectorView,DenseMatrix}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
-import ppl.dsl.optila.{OptiLAExp, OptiLACompiler, OptiLALift, OptiLA}
+import ppl.dsl.optila._
 
 trait DenseMatrixImplOps { this: OptiLA =>
   def densematrix_obj_fromseq_impl[A:Manifest](xs: Seq[Interface[Vector[A]]]): Rep[DenseMatrix[A]]
@@ -24,10 +23,10 @@ trait DenseMatrixImplOps { this: OptiLA =>
   def densematrix_update_impl[A:Manifest](x: Rep[DenseMatrix[A]], row: Rep[Int], col: Rep[Int], y: Rep[A]): Rep[Unit]
   def densematrix_rawapply_impl[A:Manifest](x: Rep[DenseMatrix[A]], idx: Rep[Int]): Rep[A]
   def densematrix_rawupdate_impl[A:Manifest](x: Rep[DenseMatrix[A]], idx: Rep[Int], y: Rep[A]): Rep[Unit]
-  def densematrix_insertrow_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit]
-  def densematrix_insertallrows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseMatrix[A]]): Rep[Unit]
-  def densematrix_insertcol_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit]
-  def densematrix_insertallcols_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseMatrix[A]]): Rep[Unit]
+  def densematrix_insertrow_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit]
+  def densematrix_insertallrows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Matrix[A]]): Rep[Unit]
+  def densematrix_insertcol_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit]
+  def densematrix_insertallcols_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Matrix[A]]): Rep[Unit]
   def densematrix_removerows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit]
   def densematrix_removecols_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], len: Rep[Int]): Rep[Unit]
     
@@ -131,7 +130,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     array_unsafe_update(d,idx,y) //d(idx) = y
   }
   
-  def densematrix_insertrow_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit] = {
+  def densematrix_insertrow_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit] = {
     //chkEquals(y._length, _numCols)
     val idx = pos*x.numCols
     if (x.size == 0) densematrix_set_numcols(x, y.length)
@@ -143,7 +142,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     densematrix_set_numrows(x, x.numRows+1)
   }
 
-  def densematrix_insertallrows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], xs: Rep[DenseMatrix[A]]): Rep[Unit] = {
+  def densematrix_insertallrows_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], xs: Interface[Matrix[A]]): Rep[Unit] = {
     //chkEquals(xs._numCols, _numCols)
     val idx = pos*x.numCols
     if (x.size == 0) densematrix_set_numcols(x, xs.numCols)
@@ -156,7 +155,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     densematrix_set_numrows(x, x.numRows+xs.numRows)
   }
 
-  def densematrix_insertcol_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Rep[DenseVector[A]]): Rep[Unit] = {
+  def densematrix_insertcol_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit] = {
     //chkEquals(y._length, _numRows)
     val newCols = x.numCols+1
     if (x.size == 0) densematrix_set_numrows(x, y.length)    
@@ -177,7 +176,7 @@ trait DenseMatrixImplOpsStandard extends DenseMatrixImplOps {
     densematrix_set_numcols(x, newCols)
   }
 
-  def densematrix_insertallcols_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], xs: Rep[DenseMatrix[A]]): Rep[Unit] = {
+  def densematrix_insertallcols_impl[A:Manifest](x: Rep[DenseMatrix[A]], pos: Rep[Int], xs: Interface[Matrix[A]]): Rep[Unit] = {
     //m.chkEquals(xs._numRows, _numRows)
     val newCols = x.numCols+xs.numCols
     if (x.size == 0) densematrix_set_numrows(x, xs.numRows)

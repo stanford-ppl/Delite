@@ -8,7 +8,7 @@ trait LanguageImplOps { this: OptiLA =>
   def optila_matrixdistance_euc_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]): Rep[A]
   def optila_matrixdistance_square_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]): Rep[A]
 
-  def optila_randsample_matrix_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,MA]): Rep[MA]
+  def optila_randsample_matrix_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA]
   def optila_randsample_vector_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA]
   def optila_randelem_impl[A:Manifest](v: Interface[Vector[A]]): Rep[A]
 }
@@ -55,14 +55,14 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   }
 
   // TODO: refactor to call sampleCollection
-  def optila_randsample_matrix_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,MA]): Rep[MA] = {
+  def optila_randsample_matrix_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA] = {
     val length = if (sampleRows) m.numRows else m.numCols
     val newRows = if (sampleRows) numSamples else m.numRows
     val newCols = if (sampleRows) m.numCols else numSamples
 
     val sampledOut = if(sampleRows) b.alloc(0, newCols)
                   else b.alloc(0,newRows) // transposed for efficiency
-    val sampled = b.toIntf(sampledOut)
+    val sampled = b.toBuildableIntf(sampledOut)
 
     val candidates = (0::length).mutable
 
@@ -80,7 +80,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
       candidates(i) = t
     }
 
-    if (sampleRows) sampledOut.unsafeImmutable else sampled.t.ops.elem.asInstanceOf[Rep[MA]]
+    if (sampleRows) b.finalizer(sampledOut) else b.toIntf(b.finalizer(sampledOut)).t.ops.elem.asInstanceOf[Rep[MA]]
   }
 
   def optila_randsample_vector_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]) = {

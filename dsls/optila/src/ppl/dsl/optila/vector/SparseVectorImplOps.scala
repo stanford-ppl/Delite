@@ -2,6 +2,7 @@ package ppl.dsl.optila.vector
 
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
+import ppl.delite.framework.datastructures.DeliteArray
 import ppl.dsl.optila.{DenseVector, DenseMatrix, SparseVector, SparseMatrix}
 import ppl.dsl.optila.{OptiLALift, OptiLACompiler, OptiLA}
 
@@ -68,35 +69,38 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
   def sparsevector_mutabletrans_impl[A:Manifest](v: Rep[SparseVector[A]]): Rep[Unit] = {
     sparsevector_set_isrow(v,!v.isRow)
   }
-      
-  protected def sparsevector_find_offset[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int]): Rep[Int] = {
-    val indices = sparsevector_raw_indices(v)  
-    
+  
+  def bsearch(a: Rep[DeliteArray[Int]], _start: Rep[Int], _end: Rep[Int], pos: Rep[Int]): Rep[Int] = {
     // binary search index for pos
-    var start = 0
-    var end = v.nnz - 1
+    var start = _start
+    var end = _end
     var mid = (start+end)/2
     var found = false    
     while (!found && (start <= end)) {
       mid = (start+end)/2
-      if (pos > indices(mid)) {        
+      if (pos > a(mid)) {        
         start = mid + 1
       }
-      else if (pos < indices(mid)) {
+      else if (pos < a(mid)) {
         end = mid - 1
       }
       else {
         found = true
       }
     }
-    
+
     if (found) mid 
     else {
       // maps to a reversible negative number representing the index to insert at if not found
-      if (indices.length == 0) ~0 
-      else if (pos > indices(mid)) ~(mid+1) 
+      if (_end < _start) ~(_start) 
+      else if (pos > a(mid)) ~(mid+1) 
       else ~mid 
-    }     
+    }
+  } 
+     
+  protected def sparsevector_find_offset[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int]): Rep[Int] = {
+    val indices = sparsevector_raw_indices(v)  
+    bsearch(indices, 0, v.nnz-1, pos)
   }
   
   def sparsevector_apply_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int]): Rep[A] = {

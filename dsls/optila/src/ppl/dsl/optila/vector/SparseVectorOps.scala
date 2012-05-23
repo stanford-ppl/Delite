@@ -34,7 +34,8 @@ trait SparseVectorOps extends Variables {
   
   class SparseVecOpsCls[A:Manifest](val elem: Rep[SparseVector[A]]) extends VecOpsCls[A] {
     type V[X] = SparseVector[X]        
-    type M[X] = SparseMatrix[X]        
+    type M[X] = SparseMatrix[X]       
+    type I[X] = SparseMatrixBuildable[X] 
     type Self = SparseVector[A]
     type VA = Self
     
@@ -45,9 +46,9 @@ trait SparseVectorOps extends Variables {
     def wrap(x: Rep[SparseVector[A]]) = sparseVecToInterface(x)
     def toOps[B:Manifest](x: Rep[SparseVector[B]]) = repToSparseVecOps(x)
     def toIntf[B:Manifest](x: Rep[SparseVector[B]]): Interface[Vector[B]] = sparseVecToInterface(x)
-    def matToIntf[B:Manifest](x: Rep[SparseMatrix[B]]): Interface[Matrix[B]] = throw new UnsupportedOperationException("tbd") //sparseMatToInterface(x)  
+    def matToIntf[B:Manifest](x: Rep[SparseMatrix[B]]): Interface[Matrix[B]] = sparseMatToInterface(x)
     def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = sparseVectorBuilder[B]    
-    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]] = throw new UnsupportedOperationException("tbd") //sparseMatrixBuilder[B] 
+    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = sparseMatrixBuilder[B] 
     def mV[B:Manifest] = manifest[SparseVector[B]] 
     def mM[B:Manifest] = manifest[SparseMatrix[B]] 
     def mA: Manifest[A] = manifest[A]        

@@ -51,7 +51,8 @@ trait DenseVectorOps extends Variables {
 
   class DenseVecOpsCls[A:Manifest](val elem: Rep[DenseVector[A]]) extends VecOpsCls[A] {
     type V[X] = DenseVector[X]        
-    type M[X] = DenseMatrix[X]        
+    type M[X] = DenseMatrix[X]   
+    type I[X] = DenseMatrix[X]     
     type Self = DenseVector[A]
     type VA = Self
     
@@ -64,7 +65,7 @@ trait DenseVectorOps extends Variables {
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
     def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
     def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
-    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]    
+    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = denseMatrixBuilder[B]    
     def mV[B:Manifest] = manifest[DenseVector[B]] 
     def mM[B:Manifest] = manifest[DenseMatrix[B]] 
     def mA: Manifest[A] = manifest[A]        

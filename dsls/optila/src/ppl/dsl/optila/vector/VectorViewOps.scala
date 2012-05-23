@@ -24,6 +24,7 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
   class VectorViewOpsCls[A:Manifest](val elem: Rep[VectorView[A]]) extends VecOpsCls[A] {    
     type V[X] = DenseVector[X]
     type M[X] = DenseMatrix[X]
+    type I[X] = DenseMatrix[X]
     type Self = VectorView[A]
     type VA = DenseVector[A]
     
@@ -37,7 +38,7 @@ trait VectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
     def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
     def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]
-    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]
+    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = denseMatrixBuilder[B]
     def mV[B:Manifest] = manifest[DenseVector[B]]
     def mM[B:Manifest] = manifest[DenseMatrix[B]]
 

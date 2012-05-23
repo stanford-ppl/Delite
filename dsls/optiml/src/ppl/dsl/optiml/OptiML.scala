@@ -106,7 +106,10 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities with GraphCompilerOps with DeliteCollectionOps {
+trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities with GraphCompilerOps with DeliteCollectionOps 
+  with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard with MatrixImplOpsStandard
+  with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
+  with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard {
 
   this: OptiMLApplication with OptiMLExp =>
 }
@@ -122,9 +125,6 @@ trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp 
   with StreamOpsExpOpt with StreamRowOpsExpOpt
   with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with GraphOpsExp with EdgeOpsExp with VertexOpsExp with VSetOpsExp
-  with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard with MatrixImplOpsStandard
-  with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
-  with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard
   with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?

@@ -2,7 +2,7 @@ package ppl.delite.framework.datastructures
 
 import java.io.PrintWriter
 import scala.reflect.SourceContext
-import scala.virtualization.lms.common.{Base, EffectExp, StructExp, StructExpOptCommon, StructFatExpOptCommon, ScalaGenEffect}
+import scala.virtualization.lms.common._
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.Util._
@@ -10,8 +10,8 @@ import ppl.delite.framework.Util._
 trait DeliteArray[T] extends DeliteCollection[T] 
 // TODO: DeliteArrayBuffer[T] extends DeliteCollection[T] ? // Struct{Int,DeliteArray[T]}
 
-trait DeliteArrayOps extends Base {
-    
+trait DeliteArrayOps extends StringOps {
+  
   object DeliteArray {
     def apply[T:Manifest](length: Rep[Int]) = darray_new(length)
     //def apply[T:Manifest](length: Rep[Int])(f: Rep[Int] => Rep[T]) = darray_fromFunction(length, f)
@@ -24,8 +24,12 @@ trait DeliteArrayOps extends Base {
     def apply(i: Rep[Int]): Rep[T] = darray_apply(da,i)
     def update(i: Rep[Int], x: Rep[T]): Rep[Unit] = darray_update(da,i,x)
     def map[B:Manifest](f: Rep[T] => Rep[B]) = darray_map(da,f)
+    def mkString(del: Rep[String]) = darray_mkstring(da,del)
   }
     
+  implicit def darrayToString[A:Manifest](x: Rep[DeliteArray[A]]): Rep[String] = "[ " + repDArrayToDArrayOps(x).mkString(unit(" ")) + " ]"
+  def infix_+[A:Manifest](lhs: String, rhs: Rep[DeliteArray[A]]) = string_plus(unit(lhs), darrayToString[A](rhs))
+  
   def darray_new[T:Manifest](length: Rep[Int]): Rep[DeliteArray[T]]
   //def darray_fromFunction[T:Manifest](length: Rep[Int], f: Rep[Int] => Rep[T]): Rep[DeliteArray[T]]
   def darray_length[T:Manifest](da: Rep[DeliteArray[T]]): Rep[Int]
@@ -33,6 +37,7 @@ trait DeliteArrayOps extends Base {
   def darray_update[T:Manifest](da: Rep[DeliteArray[T]], i: Rep[Int], x: Rep[T]): Rep[Unit]
   def darray_copy[T:Manifest](src: Rep[DeliteArray[T]], srcPos: Rep[Int], dest: Rep[DeliteArray[T]], destPos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
   def darray_map[A:Manifest,B:Manifest](a: Rep[DeliteArray[A]], f: Rep[A] => Rep[B]): Rep[DeliteArray[B]]    
+  def darray_mkstring[A:Manifest](a: Rep[DeliteArray[A]], del: Rep[String]): Rep[String]
 }
 
 trait DeliteArrayCompilerOps extends DeliteArrayOps {
@@ -59,6 +64,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteCollectionOpsE
   case class DeliteArrayApply[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int]) extends DefWithManifest[T,T]
   case class DeliteArrayUpdate[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T]) extends DefWithManifest[T,Unit]
   case class DeliteArrayCopy[T:Manifest](src: Exp[DeliteArray[T]], srcPos: Exp[Int], dest: Exp[DeliteArray[T]], destPos: Exp[Int], len: Exp[Int]) extends DefWithManifest[T,Unit]
+  case class DeliteArrayMkString[T:Manifest](da: Exp[DeliteArray[T]], del: Exp[String]) extends DefWithManifest[T,String]
   
   //////////////////
   // delite ops
@@ -112,6 +118,7 @@ trait DeliteArrayOpsExp extends DeliteArrayCompilerOps with DeliteCollectionOpsE
   def darray_update[T:Manifest](da: Exp[DeliteArray[T]], i: Exp[Int], x: Exp[T]) = reflectWrite(da)(DeliteArrayUpdate[T](da,i,x))  
   def darray_copy[T:Manifest](src: Exp[DeliteArray[T]], srcPos: Exp[Int], dest: Exp[DeliteArray[T]], destPos: Exp[Int], len: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(dest)(DeliteArrayCopy(src,srcPos,dest,destPos,len))  
   def darray_map[A:Manifest,B:Manifest](a: Exp[DeliteArray[A]], f: Exp[A] => Exp[B]) = reflectPure(DeliteArrayMap(a,f))   
+  def darray_mkstring[A:Manifest](a: Exp[DeliteArray[A]], del: Exp[String]) = reflectPure(DeliteArrayMkString(a,del))
   
   /////////////
   // internal
@@ -218,6 +225,8 @@ trait ScalaGenDeliteArrayOps extends ScalaGenEffect {
       emitValDef(sym, quote(da) + "(" + quote(idx) + ") = " + quote(x))
     case DeliteArrayCopy(src,srcPos,dest,destPos,len) =>
       emitValDef(sym, "System.arraycopy(" + quote(src) + "," + quote(srcPos) + "," + quote(dest) + "," + quote(destPos) + "," + quote(len) + ")")
+    case DeliteArrayMkString(da,x) =>
+      emitValDef(sym, quote(da) + ".mkString(" + quote(x) + ")")
     case _ => super.emitNode(sym, rhs)
   }
   

@@ -348,6 +348,20 @@ trait ArithOps extends Variables with OverloadHack {
     //def unary_-(a: Rep[Int]) = -a
   }
   
+  implicit val longArith : Arith[Long] = new Arith[Long] {
+    def +=(a: Rep[Long], b: Rep[Long])(implicit ctx: SourceContext) = arith_plus(a,b)
+    def +(a: Rep[Long], b: Rep[Long])(implicit ctx: SourceContext) = arith_plus(a,b)
+    def -(a: Rep[Long], b: Rep[Long])(implicit ctx: SourceContext) = arith_minus(a,b)
+    def *(a: Rep[Long], b: Rep[Long])(implicit ctx: SourceContext) = arith_times(a,b)
+    def /(a: Rep[Long], b: Rep[Long])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
+    def abs(a: Rep[Long])(implicit ctx: SourceContext) = arith_abs(a)
+    def exp(a: Rep[Long])(implicit ctx: SourceContext) = arith_exp(a).AsInstanceOf[Long]
+    def empty(implicit ctx: SourceContext) = unit(0L)
+    def zero(a: Rep[Long])(implicit ctx: SourceContext) = empty
+    //def unary_-(a: Rep[Long]) = -a
+  }
+  
+  
   def arith_plus[T:Manifest:Numeric](lhs: Rep[T], rhs: Rep[T])(implicit ctx: SourceContext): Rep[T]
   def arith_minus[T:Manifest:Numeric](lhs: Rep[T], rhs: Rep[T])(implicit ctx: SourceContext): Rep[T]
   def arith_times[T:Manifest:Numeric](lhs: Rep[T], rhs: Rep[T])(implicit ctx: SourceContext): Rep[T]
