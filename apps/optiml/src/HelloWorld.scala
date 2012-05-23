@@ -8,6 +8,18 @@ trait HelloWorld extends OptiMLApplication {
     //println("hello world")
     
     // sparse matrix testing
+    
+    // inserting/removing rows/cols
+    // val mb = Matrix.sparse[Int](10,10)
+    // mb.insertCol(5,DenseVector(1,2,3,4,5,6,7,8,9,10))
+    // mb.insertCol(10,DenseVector(0,0,0,0,25,0,0,0,0,0))
+    // mb.removeCols(2,2)
+    // val m = mb.finish
+    // println("m numRows: " + m.numRows)
+    // println("m numCols: " + m.numCols)
+    // println("m nnz: " + m.nnz)    
+    // m.pprint
+     
     val mb = Matrix.sparse[Double](1000,1000)
     mb(10,100) = 5
     mb(9,100) = 1
@@ -21,33 +33,28 @@ trait HelloWorld extends OptiMLApplication {
     println("m numRows: " + m.numRows)
     println("m numCols: " + m.numCols)
     println("m nnz: " + m.nnz)
-    println("m(10,10) = (should be 0): " + m(10,10))
-    println("m(0,100) = (should be 0): " + m(0,100))
-    println("m(9,100) = (should be 1): " + m(9,100))
-    println("m(9,722) = (should be 722): " + m(9,722))
-    println("m(9,331) = (should be 331): " + m(9,331))
-    println("m(9,500) = (should be 0): " + m(9,500))
-    println("m(10,772) = (should be 0): " + m(10,772))
-    println("m(10,100) = (should be 5): " + m(10,100))
-    println("m(11,101) = (should be 2): " + m(11,101))
-    println("m(200,17) = (should be 3): " + m(200,17))
-    println("m(573,71) = (should be 15): " + m(573,71))
-    println("m(500,500) = (should be 0): " + m(500,500))
-    println("m(10,101) = (should be 0): " + m(10,101))
-    println("m(200,71) = (should be 0): " + m(200,71))    
     
     val t1 = m map { e => if (e != 0.0) 99. else 0.0 }
     println("t1.numRows: " + t1.numRows)
     println("t1.numCols: " + t1.numCols)
     println("t1 nnz: " + t1.nnz)    
 
-    // TODO: test sparse matrix nested operations (inline kernel gen)
-  
-  
-  
-  
-  
-  
+    println("t1(9,722) = (should be 99): " + t1(9,722))
+    println("t1(573,71) = (should be 99): " + t1(573,71))
+    println("t1(500,500) = (should be 0): " + t1(500,500))    
+    
+    // inline kernel gen
+    for (i <- 0::1) {
+      val t2 = m map { e => if (e != 0.0) 101. else 0.0 }
+      println("t2.numRows: " + t2.numRows)
+      println("t2.numCols: " + t2.numCols)
+      println("t2 nnz: " + t2.nnz)    
+      
+      println("t2(9,722) = (should be 101): " + t2(9,722))
+      println("t2(573,71) = (should be 101): " + t2(573,71))
+      println("t2(500,500) = (should be 0): " + t2(500,500))          
+    }      
+    
     /*
     // sparse vector testing
     val d = Vector.ones(100) //DenseVector[Double](100,true)

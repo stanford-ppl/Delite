@@ -99,13 +99,6 @@ trait MatrixOps extends Variables {
     def numRows(implicit ctx: SourceContext): Rep[Int]
     def numCols(implicit ctx: SourceContext): Rep[Int]
     def apply(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext): Rep[A]     
-    // def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
-    // def insertRow(pos: Rep[Int], y: Rep[VA])(implicit ctx: SourceContext): Rep[Unit]
-    // def insertAllRows(pos: Rep[Int], y: Rep[MA])(implicit ctx: SourceContext): Rep[Unit]
-    // def insertCol(pos: Rep[Int], y: Rep[VA])(implicit ctx: SourceContext): Rep[Unit]
-    // def insertAllCols(pos: Rep[Int], y: Rep[MA])(implicit ctx: SourceContext): Rep[Unit]    
-    // def removeRows(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
-    // def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]
     def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] // = matrix_multiply(x,y)
     def inv(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext): Rep[M[Double]] // = matrix_inverse(x)
     def mapRows[B:Manifest](f: Rep[VectorView[A]] => Rep[V[B]])(implicit ctx: SourceContext): Rep[M[B]] //= matrix_maprows[A,B,V[B],M[B]](x,f)
@@ -137,13 +130,7 @@ trait MatrixOps extends Variables {
     def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext): Rep[MA] = matrix_repmat[A,IA,MA](x,i,j)
 
     // data operations
-    // def update(i: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit] = updateRow(i, y)
-    // def updateRow(row: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit] = matrix_updaterow(x,row,y)
     def :+(y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[MA] = matrix_addrow[A,IA,MA](x,y)    
-    // def +=(y: Rep[VA])(implicit ctx: SourceContext): Rep[Unit] = insertRow(numRows,y)
-    // def ++=(y: Rep[MA])(implicit ctx: SourceContext): Rep[Unit] = insertAllRows(numRows,y)
-    // def removeRow(pos: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = removeRows(pos, unit(1))
-    // def removeCol(pos: Rep[Int])(implicit ctx: SourceContext): Rep[Unit] = removeCols(pos, unit(1))
 
     // arithmetic operations
     def +(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = matrix_plus[A,IA,MA](x,y)
@@ -276,24 +263,6 @@ trait MatrixOps extends Variables {
     def replicate(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.replicate(i,j))
     def :+(y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.toIntf(intf.ops.:+(y))
     
-    // def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.update(i,j,y)
-    // def update(i: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.update(i,y)
-    // def updateRow(row: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.updateRow(row,y)
-    // // TODO: we should be able to do these operations with arbitrary interfaces
-    // def +=(y: Interface[Vector[A]])(implicit ctx: SourceContext) = {
-    //   if (y.asInstanceOf[VInterface[Any]].ops.mV[A] != intf.ops.mV[A]) error(unit("matrix interface += called with illegal argument"))
-    //   else intf.ops.+=(y.ops.elem.asInstanceOf[Rep[intf.ops.V[A]]])
-    // }
-    // // def ++=(y: Interface[Matrix[A]])(implicit ctx: SourceContext) = intf.ops.++=(y)
-    // // def insertRow(pos: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.insertRow(pos,y)
-    // // def insertAllRows(pos: Rep[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext) = intf.ops.insertAllRows(pos,y)
-    // // def insertCol(pos: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext) = intf.ops.insertCol(pos,y)
-    // // def insertAllCols(pos: Rep[Int], y: Interface[Matrix[A]])(implicit ctx: SourceContext) = intf.ops.insertAllCols(pos,y)
-    // def removeRow(pos: Rep[Int])(implicit ctx: SourceContext) = intf.ops.removeRow(pos)
-    // def removeRows(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = intf.ops.removeRows(pos,len)
-    // def removeCol(pos: Rep[Int])(implicit ctx: SourceContext) = intf.ops.removeCol(pos)
-    // def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = intf.ops.removeCols(pos,len)
-
     def +(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops.+(y))    
     def +(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops.+(y))    
     def -(y: Interface[Matrix[A]])(implicit a: Arith[A], ctx: SourceContext) = intf.ops.toIntf(intf.ops.-(y))    

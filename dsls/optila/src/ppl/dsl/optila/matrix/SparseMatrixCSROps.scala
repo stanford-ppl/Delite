@@ -93,7 +93,7 @@ trait ScalaGenSparseMatrixCSROps extends ScalaGenBase {
   }
   
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "SparseMatrix" => "generated.scala.SparseMatrixCSR[" + remap(m.typeArguments(0)) + "]"
+    case "SparseMatrix" => remap("generated.scala.SparseMatrixCSR[" + remap(m.typeArguments(0)) + "]")
     case _ => super.remap(m)
   }  
 }

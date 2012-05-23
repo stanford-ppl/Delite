@@ -1219,10 +1219,11 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
       case (sym, elem: DeliteCollectElem[_,_,_]) => elem.par match {
         case ParBuffer => 
           stream.println("val " + quote(sym) + "_buf = {")      
+          emitValDef(elem.sV, "0")
         case ParFlat => 
           stream.println("val " + quote(sym) + "_data = {")      
+          emitValDef(elem.sV, quote(op.size))
         }
-        if (elem.cond.nonEmpty) emitValDef(elem.sV, "0") else emitValDef(elem.sV, quote(op.size))
         emitBlock(elem.allocN)
         stream.println(quote(getBlockResult(elem.allocN)))        
         stream.println("}")        
@@ -1301,10 +1302,11 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         // might be different than the physically appended size for some representations
         if (elem.par == ParBuffer) {      
           emitValDef(elem.allocVal, quote(sym) + "_buf")     
-          if (elem.cond.nonEmpty) {
-            emitValDef(elem.sV, quote(sym) + "_conditionals")            
-            emitBlock(elem.buf.setSize)            
-          }
+          if (elem.cond.nonEmpty) 
+            emitValDef(elem.sV, quote(sym) + "_conditionals")
+          else
+            emitValDef(elem.sV, quote(op.size))
+          emitBlock(elem.buf.setSize)            
         }
         else {
           emitValDef(elem.allocVal, quote(sym) + "_data")
@@ -1315,39 +1317,6 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
       case (sym, elem: DeliteReduceElem[_]) =>
       case (sym, elem: DeliteReduceTupleElem[_,_]) =>
     }
-  }
-
-  def emitAbstractFatLoopKernelExtra(op: AbstractFatLoop, symList: List[Sym[Any]])(implicit stream: PrintWriter): Unit = {
-    val kernelName = symList.map(quote).mkString("")        
-    stream.println("final class activation_" + kernelName + " {"/*}*/)
-    stream.println("var left_act: activation_" + kernelName + " = _") // XX need to link frames
-    (symList zip op.body) foreach {
-      case (sym, elem: DeliteCollectElem[_,_,_]) => 
-        stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
-        stream.println("var " + quote(sym) + "_data: " + remap(elem.allocVal.Type) + " = _")
-        if (elem.par == ParBuffer) {
-          stream.println("var " + quote(sym) + "_buf: " + remap(elem.allocVal.Type) + " = _")
-          stream.println("var " + quote(sym) + "_size = 0")
-          stream.println("var " + quote(sym) + "_offset = 0")
-          if (elem.cond.nonEmpty)
-            stream.println("var " + quote(sym) + "_conditionals= 0")
-          stream.println("def " + quote(sym) + "_data_set(xs: " + remap(elem.allocVal.Type) + "): Unit = {"/*}*/)
-          stream.println(quote(sym) + "_data = xs")
-          stream.println("if (left_act ne null) left_act." + quote(sym) + "_data_set(xs)") // XX linked frame             
-          stream.println("}")                              
-        }
-      case (sym, elem: DeliteForeachElem[_]) =>
-        stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
-      case (sym, elem: DeliteReduceElem[_]) =>
-        stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
-        stream.println("var " + quote(sym) + "_zero: " + remap(sym.Type) + " = _")
-      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
-        stream.println("var " + quote(sym) + "  : " + remap(sym.Type) + " = _")
-        stream.println("var " + quote(sym) + "_2: " + remap(elem.func._2.Type) + " = _")
-        stream.println("var " + quote(sym) + "_zero  : " + remap(sym.Type) + " = _")
-        stream.println("var " + quote(sym) + "_zero_2" + ": " + remap(elem.func._2.Type) + " = _")
-    }
-    stream.println(/*{*/"}")
   }
 
   def emitKernelAbstractFatLoop(op: AbstractFatLoop, symList: List[Sym[Any]])(implicit stream: PrintWriter) {
@@ -1433,7 +1402,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         case (sym, elem: DeliteCollectElem[_,_,_]) => elem.par match {
           case ParBuffer =>
             stream.println("__act2." + quote(sym) + "_buf = {")
-            if (elem.cond.nonEmpty) emitValDef(elem.sV, "0") else emitValDef(elem.sV, quote(op.size))
+            emitValDef(elem.sV, "0")
             emitBlock(elem.allocN)
             stream.println(quote(getBlockResult(elem.allocN)))                  
             stream.println("}")                                
@@ -1575,15 +1544,15 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     stream.println("def finalize(__act: " + actType + "): Unit = {"/*}*/)
     (symList zip op.body) foreach {
       case (sym, elem: DeliteCollectElem[_,_,_]) =>
+        emitValDef(elem.allocVal, "__act." + quote(sym) + "_data")                    
         if (elem.par == ParBuffer) {          
-          emitValDef(elem.allocVal, "__act." + quote(sym) + "_data")                    
           if (elem.cond.nonEmpty) {
             emitValDef(elem.sV, "__act." + quote(sym) + "_conditionals")
-            emitBlock(elem.buf.setSize)            
+          }
+          else {
+            emitValDef(elem.sV, quote(op.size))
           }          
-        }
-        else {
-          emitValDef(elem.allocVal, "__act." + quote(sym) + "_data")                    
+          emitBlock(elem.buf.setSize)
         }        
         emitBlock(elem.finalizer)
         stream.println("__act." + quote(sym) + " = " + quote(getBlockResult(elem.finalizer)))
@@ -1598,14 +1567,39 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
     //deliteKernel = true
   }
   
-
-  override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
-    case op: AbstractFatLoop =>
-      if (!deliteKernel) emitInlineAbstractFatLoop(op, symList)
-      else emitKernelAbstractFatLoop(op, symList)
-    case _ => super.emitFatNode(symList, rhs)
+  def emitAbstractFatLoopKernelExtra(op: AbstractFatLoop, symList: List[Sym[Any]])(implicit stream: PrintWriter): Unit = {
+    val kernelName = symList.map(quote).mkString("")        
+    stream.println("final class activation_" + kernelName + " {"/*}*/)
+    stream.println("var left_act: activation_" + kernelName + " = _") // XX need to link frames
+    (symList zip op.body) foreach {
+      case (sym, elem: DeliteCollectElem[_,_,_]) => 
+        stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
+        stream.println("var " + quote(sym) + "_data: " + remap(elem.allocVal.Type) + " = _")
+        if (elem.par == ParBuffer) {
+          stream.println("var " + quote(sym) + "_buf: " + remap(elem.allocVal.Type) + " = _")
+          stream.println("var " + quote(sym) + "_size = 0")
+          stream.println("var " + quote(sym) + "_offset = 0")
+          if (elem.cond.nonEmpty)
+            stream.println("var " + quote(sym) + "_conditionals= 0")
+          stream.println("def " + quote(sym) + "_data_set(xs: " + remap(elem.allocVal.Type) + "): Unit = {"/*}*/)
+          stream.println(quote(sym) + "_data = xs")
+          stream.println("if (left_act ne null) left_act." + quote(sym) + "_data_set(xs)") // XX linked frame             
+          stream.println("}")                              
+        }
+      case (sym, elem: DeliteForeachElem[_]) =>
+        stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
+      case (sym, elem: DeliteReduceElem[_]) =>
+        stream.println("var " + quote(sym) + ": " + remap(sym.Type) + " = _")
+        stream.println("var " + quote(sym) + "_zero: " + remap(sym.Type) + " = _")
+      case (sym, elem: DeliteReduceTupleElem[_,_]) =>
+        stream.println("var " + quote(sym) + "  : " + remap(sym.Type) + " = _")
+        stream.println("var " + quote(sym) + "_2: " + remap(elem.func._2.Type) + " = _")
+        stream.println("var " + quote(sym) + "_zero  : " + remap(sym.Type) + " = _")
+        stream.println("var " + quote(sym) + "_zero_2" + ": " + remap(elem.func._2.Type) + " = _")
+    }
+    stream.println(/*{*/"}")
   }
-
+  
   override def emitFatNodeKernelExtra(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter): Unit = rhs match {
     case op: AbstractFatLoop =>
       stream.println("//activation record for fat loop")
@@ -1617,6 +1611,13 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
       super.emitFatNodeKernelExtra(symList, rhs)
   }
 
+  override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
+    case op: AbstractFatLoop =>
+      if (!deliteKernel) emitInlineAbstractFatLoop(op, symList)
+      else emitKernelAbstractFatLoop(op, symList)
+    case _ => super.emitFatNode(symList, rhs)
+  }
+  
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case s:DeliteOpSingleTask[_] => {
       //printlog("EMIT single "+s)

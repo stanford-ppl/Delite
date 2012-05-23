@@ -30,14 +30,17 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
     // can we do a faster scan to tell us if we can skip this step (i.e. there are no dups)?
     var i = 0
     while (i < m.nnz) {
-      val key = (rowIndices(i).toLong << 32) + colIndices(i).toLong
-      elems(key) = data(i)
+      if (rowIndices(i) >= 0) {  // removed elements are represented by a negative index
+        val key = (rowIndices(i).toLong << 32) + colIndices(i).toLong
+        elems(key) = data(i)
+      }
       i += 1
     }
 
     val indices = elems.keys.toArray.sort // can we avoid the toArray?
     val dataOut = DeliteArray[A](indices.length)
     val colIndicesOut = DeliteArray[Int](indices.length)
+    val rowPtrOut = DeliteArray[Int](m.numRows+1)    
     
     // write to output in sorted order without duplicates
     // left-to-right, top-to-bottom
@@ -46,18 +49,13 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
       val colIdx = (indices(i) & unit(0x00000000ffffffffL)).toInt
       darray_unsafe_update(colIndicesOut, i, colIdx)
       darray_unsafe_update(dataOut, i, elems(indices(i)))      
+      
+      val rowIdx = (indices(i) >>> 32).toInt
+      darray_unsafe_update(rowPtrOut, rowIdx+1, rowPtrOut(rowIdx+1)+1)
       i += 1
     }
             
-    // update rowPtr    
-    val rowPtrOut = DeliteArray[Int](m.numRows+1)    
-    darray_unsafe_update(rowPtrOut, m.numRows, m.nnz)    
-    i = 0
-    while (i < m.nnz) {
-      val idx = rowIndices(i)+1
-      darray_unsafe_update(rowPtrOut, idx, rowPtrOut(idx)+1)
-      i += 1
-    }
+    // finalize rowPtr    
     i = 0
     var acc = 0
     while (i < m.numRows) {
@@ -65,8 +63,10 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
       darray_unsafe_update(rowPtrOut, i, acc)
       i += 1
     }
+    darray_unsafe_update(rowPtrOut, m.numRows, indices.length)        
     
     // -- debug
+    // println("indices.length: " + indices.length)
     // println("input to coo->csr: ")
     // println("data: " + data)
     // println("colIndices: " + colIndices)
@@ -89,7 +89,7 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
     val rowIndices = sparsematrix_coo_raw_rowindices(m)
     val colIndices = sparsematrix_coo_raw_colindices(m)
     
-    // linear scan
+    // linear scan, prefer elements further to the right in the case of duplicates
     var i = 0
     var foundAtIndex = -1
     while (i < m.nnz) {
@@ -117,42 +117,110 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
      // FIXME: if this updated an existing value, nnz is wrong...
      // without scanning, we won't know whether or not nnz should be incremented
      // one (perhaps bad) option: don't expose nnz in SparseMatrixBuildable interface
-    sparsematrix_buildable_append_impl(m,i,j,y)  
+    sparsematrix_buildable_append_impl(m,i,j,y,true)  
   }
   
-  def sparsematrix_buildable_append_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], i: Rep[Int], j: Rep[Int], y: Rep[A]): Rep[Unit] = {
-    val data = sparsematrix_coo_raw_data(m)
-    val rowIndices = sparsematrix_coo_raw_rowindices(m)
-    val colIndices = sparsematrix_coo_raw_colindices(m)
-    sparsematrix_coo_ensureextra(m, 1)    
-    darray_unsafe_update(data, m.nnz, y)
-    darray_unsafe_update(rowIndices, m.nnz, i)
-    darray_unsafe_update(colIndices, m.nnz, j)
-    sparsematrix_buildable_set_nnz(m, m.nnz+1) 
+  def sparsematrix_buildable_append_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], i: Rep[Int], j: Rep[Int], y: Rep[A], alwaysWrite: Boolean = false): Rep[Unit] = {
+    val shouldAppend = if (alwaysWrite) unit(true) else (y != defaultValue[A])  // conditional evaluated at staging time
+    if (shouldAppend) {
+      val data = sparsematrix_coo_raw_data(m)
+      val rowIndices = sparsematrix_coo_raw_rowindices(m)
+      val colIndices = sparsematrix_coo_raw_colindices(m)
+      sparsematrix_coo_ensureextra(m, 1)    
+      darray_unsafe_update(data, m.nnz, y)
+      darray_unsafe_update(rowIndices, m.nnz, i)
+      darray_unsafe_update(colIndices, m.nnz, j)
+      sparsematrix_buildable_set_nnz(m, m.nnz+1) 
+    }
   }
 
+  /* 
+   * Note: we could have faster versions of the following methods if we specialize
+   * them for inserting/removing sparse vectors/matrices explicitly.
+   */
+  
   def sparsematrix_buildable_insertrow_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit] = {
-    throw new UnsupportedOperationException("tbd")
+    val rowIndices = sparsematrix_coo_raw_rowindices(m)    
+    for (i <- 0 until m.nnz) {
+      if (rowIndices(i) >= pos)
+        darray_unsafe_update(rowIndices, i, rowIndices(i)+1)
+    }    
+    for (j <- 0 until y.length) {
+      sparsematrix_buildable_append_impl(m, pos, j, y(j))
+    }            
+    sparsematrix_buildable_set_numrows(m, m.numRows+1)
   }
 
   def sparsematrix_buildable_insertallrows_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], pos: Rep[Int], xs: Interface[Matrix[A]]): Rep[Unit] = {
-    throw new UnsupportedOperationException("tbd")
+    val rowIndices = sparsematrix_coo_raw_rowindices(m)    
+    for (i <- 0 until m.nnz) {
+      if (rowIndices(i) >= pos)
+        darray_unsafe_update(rowIndices, i, rowIndices(i)+xs.numRows)
+    }    
+    for (i <- 0 until xs.numRows) {
+      for (j <- 0 until xs.numCols) {
+        sparsematrix_buildable_append_impl(m, pos+i, j, xs(i,j))
+      }
+    }                
+    sparsematrix_buildable_set_numrows(m, m.numRows+xs.numRows)
   }
 
-  def sparsematrix_buildable_insertcol_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit] = {
-    throw new UnsupportedOperationException("tbd")
+  def sparsematrix_buildable_insertcol_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit] = {    
+    val colIndices = sparsematrix_coo_raw_colindices(m)    
+    for (i <- 0 until m.nnz) {
+      if (colIndices(i) >= pos)
+        darray_unsafe_update(colIndices, i, colIndices(i)+1)
+    }    
+    for (i <- 0 until y.length) {
+      sparsematrix_buildable_append_impl(m, i, pos, y(i))
+    }    
+    sparsematrix_buildable_set_numcols(m, m.numCols+1)
   }
 
   def sparsematrix_buildable_insertallcols_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], pos: Rep[Int], xs: Interface[Matrix[A]]): Rep[Unit] = {
-    throw new UnsupportedOperationException("tbd")
+    val colIndices = sparsematrix_coo_raw_colindices(m)    
+    for (i <- 0 until m.nnz) {
+      if (colIndices(i) >= pos)
+        darray_unsafe_update(colIndices, i, colIndices(i)+xs.numCols)
+    }    
+    for (i <- 0 until xs.numRows) {
+      for (j <- 0 until xs.numCols) {
+        sparsematrix_buildable_append_impl(m, i, pos+j, xs(i,j))
+      }
+    }                
+    sparsematrix_buildable_set_numcols(m, m.numCols+xs.numCols)    
   }
 
   def sparsematrix_buildable_removerows_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], pos: Rep[Int], num: Rep[Int]): Rep[Unit] = {
-    throw new UnsupportedOperationException("tbd")
+    // FIXME: this will also leave nnz in a bad state
+    val rowIndices = sparsematrix_coo_raw_rowindices(m)    
+    for (i <- 0 until m.nnz) {
+      if (rowIndices(i) >= pos && rowIndices(i) < pos+num) {  
+        // remove by setting it to invalid
+        darray_unsafe_update(rowIndices, i, -1) 
+        darray_unsafe_update(sparsematrix_coo_raw_colindices(m), i, -1) 
+        // darray_unsafe_update(sparsematrix_coo_raw_data(m), i, defaultValue[A]) 
+      }
+      else if (rowIndices(i) >= pos+num)
+        darray_unsafe_update(rowIndices, i, rowIndices(i)-num)
+    }        
+    sparsematrix_buildable_set_numrows(m, m.numRows-num)
   }
 
   def sparsematrix_buildable_removecols_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], pos: Rep[Int], num: Rep[Int]): Rep[Unit] = {
-    throw new UnsupportedOperationException("tbd")
+    // FIXME: this will also leave nnz in a bad state
+    val colIndices = sparsematrix_coo_raw_colindices(m)    
+    for (i <- 0 until m.nnz) {
+      if (colIndices(i) >= pos && colIndices(i) < pos+num) {
+        // remove by setting it to invalid
+        darray_unsafe_update(colIndices, i, -1) 
+        darray_unsafe_update(sparsematrix_coo_raw_rowindices(m), i, -1) 
+        // darray_unsafe_update(sparsematrix_coo_raw_data(m), i, defaultValue[A]) 
+      }
+      else if (colIndices(i) >= pos+num)
+        darray_unsafe_update(colIndices, i, colIndices(i)-num)
+    }        
+    sparsematrix_buildable_set_numcols(m, m.numCols-num)    
   }
 
   protected def sparsematrix_coo_ensureextra[A:Manifest](m: Rep[SparseMatrixBuildable[A]], extra: Rep[Int]): Rep[Unit] = {

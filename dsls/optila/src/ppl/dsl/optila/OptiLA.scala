@@ -222,7 +222,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
   
   val IR: DeliteApplication with OptiLAExp
 
-  override val specialize = Set("DenseVector", "DenseMatrix", "SparseVector", "SparseMatrix"/*, "VectorView"*/)
+  override val specialize = Set("DenseVector", "DenseMatrix", "SparseVector", "SparseMatrixCSR", "SparseMatrixCOO"/*, "VectorView"*/)
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {

@@ -60,14 +60,8 @@ trait MatrixBuildableOps extends Variables {
     def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext): Rep[Unit]    
     
     // data operations
-    // these should probably go to MatrixOps --> this is not a mutable interface, but a buildable interface (good for appends), 
-    // and these operations will be very slow with COO. With DOK, they might be better. On the other hand, they are also very slow for CSR.
-    // 
-    // how do we handle all the ops in MatrixImplOps that construct a Matrix by allocating and then updating? (more efficient for dense)
-    // These tend to be slicing and replicate operators -- perhaps these should be specialized by default.
     def update(i: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit] = updateRow(i, y)
     def updateRow(row: Rep[Int], y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit] = matrix_updaterow(x,row,y)
-    // --
     def +=(y: Rep[VA])(implicit ctx: SourceContext): Rep[Unit] = this.+=(vecToIntf(y))
     def +=(y: Interface[Vector[A]])(implicit ctx: SourceContext): Rep[Unit] = insertRow(_numRows,y)
     def ++=(y: Interface[Matrix[A]])(implicit ctx: SourceContext): Rep[Unit] = insertAllRows(_numRows,y)

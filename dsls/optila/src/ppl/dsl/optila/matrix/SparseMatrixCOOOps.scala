@@ -73,6 +73,12 @@ trait SparseMatrixCOOOpsExp extends SparseMatrixCOOCompilerOps with DeliteCollec
   /////////////////////
   // delite collection
   
+  override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
+    if (isSparseMatBuildable(x)) Const(()) // allocN(0) for sparse matrices allocates the correct logical size,
+                                           // and matrix conditional ops are currently not supported
+    else super.dc_set_logical_size(x,y)        
+  }
+  
   override def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
     if (isSparseMatBuildable(x)) {
       val m = asSparseMatBuildable(x)
@@ -141,7 +147,7 @@ trait ScalaGenSparseMatrixCOOOps extends ScalaGenBase {
   }
   
   override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
-    case "SparseMatrixBuildable" => "generated.scala.SparseMatrixCOO[" + remap(m.typeArguments(0)) + "]"
+    case "SparseMatrixBuildable" => remap("generated.scala.SparseMatrixCOO[" + remap(m.typeArguments(0)) + "]")
     case _ => super.remap(m)
   }  
 }

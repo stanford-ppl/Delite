@@ -106,16 +106,7 @@ trait DenseMatrixOps extends Variables {
     def numRows(implicit ctx: SourceContext) = densematrix_numrows(x)
     def numCols(implicit ctx: SourceContext) = densematrix_numcols(x)
     def vview(start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = densematrix_vview(x,start,stride,length,isRow)
-    
-    // data operations
-    // def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = densematrix_update(x,i,j,y)
-    // def insertRow(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = densematrix_insertrow(x,pos,y)
-    // def insertAllRows(pos: Rep[Int], y: Rep[DenseMatrix[A]])(implicit ctx: SourceContext) = densematrix_insertallrows(x,pos,y)
-    // def insertCol(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = densematrix_insertcol(x,pos,y)
-    // def insertAllCols(pos: Rep[Int], y: Rep[DenseMatrix[A]])(implicit ctx: SourceContext) = densematrix_insertallcols(x,pos,y)
-    // def removeRows(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removerows(x,pos,len)
-    // def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densematrix_removecols(x,pos,len)
-    
+        
     // not supported by interface right now
     def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = densematrix_multiply(x,y)
     def inv(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = densematrix_inverse(x)    

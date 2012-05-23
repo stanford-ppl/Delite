@@ -18,6 +18,69 @@ import ppl.delite.framework.Util._
 
 import ppl.dsl.optila._
 
+/*
+ * Sparse matrix ops design notes
+ * =================================
+ * 
+ * Currently, if a sparse matrix op is not specialized, it falls back to generic Matrix ops, which
+ * are inefficient for sparse structures because they operate on the logical matrices instead of just
+ * the non-zero values. If a parallel op falls back to the generic matrix ops, it is implemented to
+ * read from CSR matrices (input is a SparseMatrix) and write to COO matrices (intermediate output is
+ * a SparseMatrixBuildable) before finally being converted back to a CSR at the end of the op.
+ * 
+ * For efficient sparse performance, we will want to specialize ops on sparse structures. The most
+ * straightforward way is to override the ops in SparseMatrixOps on a case-by-case basis (and possibly
+ * with different overrides for different arguments, e.g. sparse-sparse, sparse-dense, etc.). 
+ * The following idea describes a method for doing that at the Delite op level, to retain some genericity:
+ * 
+ * ==================================
+ * 
+ * Specialization via Transformation  
+ * 
+ * Is it possible to go from
+ *  val t1 = m map { e => foo(e) }
+ * 
+ * to:
+ *  val x1 = foo(0)
+ *  val x2 = m.mapNZWithDefault(e => foo(e), foo(0)) // can do different things if foo(0) == 0 or not
+ * 
+ * not by construction, but strictly by analyzing/optimizing the original map operation? in other words, can we handle this at the delite op level?
+ * 
+ * Using ForwardTransformers:
+ * 
+ * let's say we look at a DeliteOpMap(intf, f), where intf: Interface[Matrix[A]]. we can dispatch on intf.mM[A] to see if it's a manifest for a SparseMatrix[A].
+ *  if it is, we can transform it as above!
+ * 
+ * same thing with Zip:
+ * (do different things if just one of the inputs is sparse)
+ * DeliteOpZipWith(intfA, intfB, f) if intfA == SparseVector && intfB == SparseVector => 
+ *  test the zip function - this is essentially recovering the operator info!: (how would we get nonzero values to test with? nonDefaultValue[A]? sound?)
+ *    zip(a,0) && zip(0,b) = 0 => apply zip function only on intersection(nz(a),nz(b))
+ *    zip(a,0) = 0 => apply zip function only on nz(b)
+ *    zip(0,b) = 0 => apply zip function only on nz(a)
+ *    zip(0,0) = 0 => apply zip function only on union(nz(a),nz(b))
+ *  if testing the zip function is infeasible, can we pass the operator info along with the zip in a context parameter? e.g. + is a zip(bothArgsMustBeZero) kind of thing
+ *      
+ * SparseMatrix should:
+ *   1) use the transformation trick to lower generic maps and zips to their more efficient version if they're sparse [thus, reusing interface!]
+ *   2) add a finalize method to MatrixBuilder: 
+ *      - alloc constructs the output as a COO 
+ *      - finalize transforms it and returns it as an immutable CSR (as discussed above)
+ *      - zips only occur on CSRs!
+ *      use the type system to force finalize to be called. have alloc return a Rep[NeedToBeFinalized], and finalize return a Rep[MB]
+ * 
+ * if we do the transformations right, there should be no fallback case! (so the collectelem interface really didn't need to change after all!)
+ * thus, all mutable ops in SparseMatrix can just throw an exception; we can explicitly construct COO in our sparse constructors, and everything would stay CSR after that
+ *    - this is actually nice because it guarantees the high performance transformation happened. any case where it couldn't?
+ *    - theoretically dc ops for sparsevector/sparsematrix could all throw "should have been transformed" runtime exceptions
+ *    ??? there is a lot of stuff in vector/matrix impl that relies on mutability, particular alloc -> update to implement sequential ops. that stuff would all be broken.
+ *      - this stuff would be "ok", not great, if it was allocated as COO and "somehow" auto-converted to CSR upon return. override unsafeImmutable to convert return?
+ *      - the actual operations would still be quite slow unless they were overridden directly inside sparse vector/matrix, because we can't auto-specialize them
+ * 
+ * Note that this may interfere with fusion, since in the lowering process the optimized op will have write effects to set data fields. But surely we can fix fusion to handle this.
+ * 
+ */
+
 trait SparseMatrixOps extends Variables {
   this: OptiLA =>
   
@@ -54,17 +117,7 @@ trait SparseMatrixOps extends Variables {
     def numCols(implicit ctx: SourceContext) = sparsematrix_numcols(x)
     def nnz(implicit ctx: SourceContext) = sparsematrix_nnz(elem)
     def vview(start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = sparsematrix_vview(x,start,stride,length,isRow)
-    
-    // data operations
-    // delite ops that use the fallback read from CSR matrices and write to COO matrices
-    // def update(i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = err("SparseMatrix is immutable")
-    // def insertRow(pos: Rep[Int], y: Rep[SparseVector[A]])(implicit ctx: SourceContext) = err("SparseMatrix is immutable")
-    // def insertAllRows(pos: Rep[Int], y: Rep[SparseMatrix[A]])(implicit ctx: SourceContext) = err("SparseMatrix is immutable")
-    // def insertCol(pos: Rep[Int], y: Rep[SparseVector[A]])(implicit ctx: SourceContext) = err("SparseMatrix is immutable")
-    // def insertAllCols(pos: Rep[Int], y: Rep[SparseMatrix[A]])(implicit ctx: SourceContext) = err("SparseMatrix is immutable")
-    // def removeRows(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = err("SparseMatrix is immutable")
-    // def removeCols(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = err("SparseMatrix is immutable")
-    
+        
     // not supported by interface right now
     def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = sparsematrix_multiply(x,y)
     def inv(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = sparsematrix_inverse(x)    
@@ -305,7 +358,6 @@ trait SparseMatrixOpsExpOpt extends SparseMatrixOpsExp {
   //   case _ => super.sparsematrix_equals(x,y)
   // }
 
-  // Def(SparseMatrixFinalize(SparseMatrixObjectNew(....)))
   // override def sparsematrix_numrows[A:Manifest](x: Exp[SparseMatrix[A]])(implicit ctx: SourceContext) = x match {
   //   case Def(s@Reflect(SparseMatrixObjectNew(rows,cols), u, es)) if context.contains(s) => rows // only if not modified! // TODO: check writes
   //   case Def(SparseMatrixObjectNew(rows,cols)) => rows
