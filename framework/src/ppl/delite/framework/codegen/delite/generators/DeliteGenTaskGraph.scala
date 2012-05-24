@@ -34,7 +34,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = emitAnyNode(List(sym), rhs)
   override def emitFatNode(sym: List[Sym[Any]], rhs: FatDef) = emitAnyNode(sym, rhs)
 
-  override def emitAnyNode(sym: List[Sym[Any]], rhs: Any): Unit = {
+  private def emitAnyNode(sym: List[Sym[Any]], rhs: Any): Unit = {
     assert(generators.length >= 1)
 
     printlog("DeliteGenTaskGraph.emitNode "+sym+"="+rhs)
@@ -106,11 +106,11 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
           case _ => false
         }
 
-        def genEmitNode(gen: Generator, sym: List[Sym[Any]], rhs: Any)(stream: PrintWriter) = rhs match {
-          case fd: FatDef => withStream(stream)(gen.emitFatNode(sym, fd))
+        def genEmitNode(gen: Generator)(sym: List[Sym[Any]], rhs: Any)(genStream: PrintWriter) = rhs match {
+          case fd: FatDef => gen.withStream(genStream)(gen.emitFatNode(sym, fd))
           case d: Def[Any] => {
             assert(sym.length == 1)
-            withStream(stream)(gen.emitNode(sym(0), d))
+            gen.withStream(genStream)(gen.emitNode(sym(0), d))
           }
         }
 
@@ -118,7 +118,7 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         gen.kernelInit(sym, inVals, inVars, resultIsVar)
 
         // emit kernel to bodyStream //TODO: must kernel body be emitted before kernel header?
-        genEmitNode(gen, sym, rhs)(bodyStream)
+        genEmitNode(gen)(sym, rhs)(bodyStream)
         bodyStream.flush
 
         var hasOutputSlotTypes = false
@@ -167,12 +167,12 @@ trait DeliteGenTaskGraph extends DeliteCodegen with LoopFusionOpt {
         assert(hasOutputSlotTypes || sym.length == 1)
 
         // emit kernel
-        withStream(kstream)(gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar, external))
+        gen.withStream(kstream)(gen.emitKernelHeader(sym, inVals, inVars, resultType, resultIsVar, external))
         kstream.println(bodyString.toString)
-        withStream(kstream)(gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar, external))
+        gen.withStream(kstream)(gen.emitKernelFooter(sym, inVals, inVars, resultType, resultIsVar, external))
         
         if (hasOutputSlotTypes)
-          withStream(kstream)(gen.emitFatNodeKernelExtra(sym, rhs.asInstanceOf[FatDef])) // activation record class declaration
+          gen.withStream(kstream)(gen.emitFatNodeKernelExtra(sym, rhs.asInstanceOf[FatDef])) // activation record class declaration
 
         // record that this kernel was successfully generated
         supportedTargets += gen.toString

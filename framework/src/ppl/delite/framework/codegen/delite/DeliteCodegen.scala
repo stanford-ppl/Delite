@@ -150,13 +150,6 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
     staticData
   }
 
-  def emitAnyNode(syms: List[Sym[Any]], rhs: Any) = rhs match {
-    case d: Def[_] =>
-      assert(syms.length == 1)
-      emitNode(syms(0), d)
-    case fd: FatDef =>
-      emitFatNode(syms, fd)
-  }
 
   /**
    * DeliteCodegen expects there to be a single schedule across all generators, so a single task graph
@@ -196,6 +189,15 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
           case Reify(_,_,_) =>
           case _ => localEmittedNodes ++= syms
         }
+
+        def emitAnyNode(syms: List[Sym[Any]], rhs: Any) = rhs match { //should this be part of the API or always hidden (with only emitNode and emitFatNode public)
+          case d: Def[_] => 
+            assert(syms.length == 1)
+            emitNode(syms(0), d)
+          case fd: FatDef =>
+            emitFatNode(syms, fd)
+        }
+
         emitAnyNode(syms,rhs)
         controlDeps = controlNodes.toList // need to do it that way... TODO: set only if changed
       }
