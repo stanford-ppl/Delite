@@ -21,9 +21,15 @@ trait MeshSetOps extends Variables {
    */
   class meshSetOpsCls[MO<:MeshObj:Manifest](x: Rep[MeshSet[MO]]) {
     def foreach(block: Rep[MO] => Rep[Unit]) = meshset_foreach(x, block)
+    def size(implicit ctx: SourceContext) = meshset_size(x)
+    def apply(n: Rep[Int])(implicit ctx: SourceContext) = meshset_apply(x,n)
+    def update(n: Rep[Int], y: Rep[MO])(implicit ctx: SourceContext) = meshset_update(x,n,y)    
   }
 
   def meshset_foreach[MO<:MeshObj:Manifest](x: Rep[MeshSet[MO]], block: Rep[MO] => Rep[Unit]) : Rep[Unit]
+  def meshset_size[MO<:MeshObj:Manifest](x: Rep[MeshSet[MO]])(implicit ctx: SourceContext): Rep[Int]
+  def meshset_apply[MO<:MeshObj:Manifest](x: Rep[MeshSet[MO]], n: Rep[Int])(implicit ctx: SourceContext): Rep[MO]
+  def meshset_update[MO<:MeshObj:Manifest](x: Rep[MeshSet[MO]], n: Rep[Int], y: Rep[MO])(implicit ctx: SourceContext): Rep[Unit]  
 }
 
 trait MeshSetOpsExp extends MeshSetOps with VariablesExp with BaseFatExp {
@@ -125,6 +131,10 @@ trait MeshSetOpsExp extends MeshSetOps with VariablesExp with BaseFatExp {
       case _ => reflectEffect(t, summarizeEffects(t.body.asInstanceOf[DeliteForeachElem[MO]].func).star)
     }
   }
+  
+  def meshset_size[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]])(implicit ctx: SourceContext) = dc_size(x)
+  def meshset_apply[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]], n: Exp[Int])(implicit ctx: SourceContext) = dc_apply(x,n)
+  def meshset_update[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]], n: Exp[Int], y: Exp[MO])(implicit ctx: SourceContext) = dc_update(x,n,y)
   
   def nms_foreach[MO<:MeshObj:Manifest](x: Exp[MeshSet[MO]], crs: Exp[CRS], e: Exp[Int], block: Exp[MO] => Exp[Unit]) : Exp[Unit] = {
     val t = NestedMeshSetForeach(x, crs, e, block)
