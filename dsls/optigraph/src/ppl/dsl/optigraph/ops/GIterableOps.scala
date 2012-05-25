@@ -383,7 +383,7 @@ trait GIterableOpsExp extends GIterableOps with VariablesExp with BaseFatExp {
     		deps :+= key
     	    //val zd = Reflect(RedSetOutput(key, mapRedVarToOut(key)._1,  mapRedVarToOut(key)._2, c), Global(), deps)
     	    val zd = Reflect(RedSetOutput(key, mapRedVarToOut(key)._1,  mapRedVarToOut(key)._2, c), Global(), deps)
-    	    internalReflect(z, zd)
+    	    createReflectDefinition(z, zd)
     	} )
 
     	// TODO: fix dependencies when other effects follow reductions in the block
@@ -455,9 +455,10 @@ trait FuseTransformedForeach extends GenericFatCodegen with SimplifyTransform {
   val IR: GIterableOpsExp with LoopsFatExp with IfThenElseFatExp with ReduceableOpsExp
   import IR._ 
   
+  /* //FIXME
   override def buildScheduleForResult(start: Exp[Any]): List[TP[Any]] = {
-    def deps(st: List[Sym[Any]]): List[TP[Any]] =
-      availableDefs.filter(st contains _.sym)
+    def deps(st: List[Sym[Any]]): List[Stm] =
+      availableDefs.filter(s => st contains infix_lhs(s)(0)) 
       //syms(e).flatMap(d => findDefinition(d).toList)
 
     val st = start match {
@@ -467,7 +468,7 @@ trait FuseTransformedForeach extends GenericFatCodegen with SimplifyTransform {
       case _ => deps(syms(start))
     }
     
-    GraphUtil.stronglyConnectedComponents[TP[Any]](st, t => {
+    GraphUtil.stronglyConnectedComponents[Stm](st, t => {
       t.rhs match {
         case Reflect(RedSetOutput(r, out, red, dep),_,_) => {
         	deps(syms(r)) }
@@ -497,10 +498,11 @@ trait FuseTransformedForeach extends GenericFatCodegen with SimplifyTransform {
     xx.flatten.reverse
   }
   
-  override def fatten(e: TP[Any]): TTP = e.rhs match {
-    case Reflect(ConstructFatLoop(size, v, body, symList), _, _) => TTP(symList:::List(e.sym), SimpleFatLoop(size, v, body))
+  override def fatten(e: Stm): Stm = e.rhs match {
+    case Reflect(ConstructFatLoop(size, v, body, symList), _, _) => TTP(symList:::infix_lhs(e), List(infix_rhs(e).asInstanceOf[Def[Any]]), SimpleFatLoop(size, v, body))
     case _ => super.fatten(e)
   }
+  */
   
   // old
   

@@ -509,7 +509,7 @@ trait ScalaGenMatOps extends ScalaGenBase {
   val matImplPath = "ppl.dsl.deliszt.datastruct.scala.MatImpl"  
   val mat3x3ImplPath = "ppl.dsl.deliszt.datastruct.scala.Mat3x3Impl"
 
-  override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
+  override def emitNode(sym:Sym[Any],rhs:Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case m@MatObjNew(vs @ _*) => emitValDef(sym, remap(matImplPath, "", m.a) + "(" + vs.map(quote).reduceLeft(_+","+_) + ")")
     case m@Mat3New(xs) => emitValDef(sym, " new " + remap(mat3x3ImplPath, "", m.a) + "(" + xs.map(quote).mkString(",") + ")")
@@ -545,7 +545,7 @@ trait CudaGenMatOps extends CudaGenBase {
 
   import IR._
 
-  override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
+  override def emitNode(sym:Sym[Any],rhs:Def[Any]) = rhs match {
     // these are the ops that call through to the underlying real data structure
     case m@MatObjNew(vs @ _*) if(!isHostAlloc) => emitValDef(sym, remap(sym.tp) + "()")
                                                  vs.zipWithIndex.foreach(elem => stream.println("%s.vectorUpdate(%s, %s);".format(quote(sym),elem._2,quote(elem._1))))
@@ -573,7 +573,7 @@ trait CGenMatOps extends CGenBase {
 
   import IR._
 
-  override def emitNode(sym:Sym[Any],rhs:Def[Any])(implicit stream:PrintWriter) = rhs match {
+  override def emitNode(sym:Sym[Any],rhs:Def[Any]) = rhs match {
     case _ => super.emitNode(sym,rhs)
   }
 }
