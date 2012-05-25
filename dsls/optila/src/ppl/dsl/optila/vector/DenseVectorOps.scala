@@ -1,15 +1,15 @@
 package ppl.dsl.optila.vector
 
-import ppl.dsl.optila.CudaGenDataStruct
 import java.io.{PrintWriter}
-
-import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
-import ppl.delite.framework.datastruct.scala.DeliteCollection
 import scala.reflect.Manifest
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
+
+import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
+import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.Util._
 import ppl.dsl.optila._
 
 trait DenseVectorOps extends Variables {
@@ -159,7 +159,7 @@ trait DenseVectorCompilerOps extends DenseVectorOps {
   def densevector_set_isrow[A:Manifest](x: Rep[DenseVector[A]], newVal: Rep[Boolean])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp {
+trait DenseVectorOpsExp extends DenseVectorOps with DeliteCollectionOpsExp {
 
   this: DenseVectorImplOps with OptiLAExp =>
 
@@ -321,6 +321,52 @@ trait DenseVectorOpsExp extends DenseVectorOps with VariablesExp with BaseFatExp
   def densevector_zero_int(length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(DenseVectorZeroInt(length, isRow))
   
   
+  // /////////////////////
+  // delite collection
+  
+  def isDenseVec[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[DenseVector[A]])  
+  def asDenseVec[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[DenseVector[A]]]
+    
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
+    if (isDenseVec(x)) asDenseVec(x).length
+    else super.dc_size(x)
+  }
+  
+  override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
+    if (isDenseVec(x)) densevector_set_length(asDenseVec(x), y)
+    else super.dc_set_logical_size(x,y)        
+  }
+  
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
+    if (isDenseVec(x)) asDenseVec(x).apply(n)
+    else super.dc_apply(x,n)    
+  }
+  
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isDenseVec(x)) asDenseVec(x).update(n,y)
+    else super.dc_update(x,n,y)        
+  }
+  
+  override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isDenseVec(x)) { asDenseVec(x) += y; unit(true) }
+    else super.dc_append(x,i,y)        
+  }  
+  
+  override def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
+    if (isDenseVec(x)) {
+      val out = DenseVector[A](size, asDenseVec(x).isRow)
+      out.asInstanceOf[Exp[CA]]
+    }
+    else super.dc_alloc[A,CA](x,size)
+  }  
+  
+  override def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
+    if (isDenseVec(src) && isDenseVec(dst)) {
+      array_unsafe_copy(densevector_raw_data(asDenseVec(src)), srcPos, densevector_raw_data(asDenseVec(dst)), dstPos, size)
+    }
+    else super.dc_copy(src,srcPos,dst,dstPos,size)
+  }      
+    
   //////////////
   // mirroring
 

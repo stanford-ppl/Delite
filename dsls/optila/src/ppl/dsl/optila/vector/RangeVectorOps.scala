@@ -1,14 +1,16 @@
 package ppl.dsl.optila.vector
 
-import ppl.dsl.optila.{Vector, DenseVector, RangeVector, Matrix, DenseMatrix}
-import ppl.dsl.optila.{OptiLAExp, OptiLA, OptiLACompiler}
-import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.datastruct.scala.DeliteCollection
-import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import scala.virtualization.lms.util.OverloadHack
 import scala.reflect.SourceContext
 import java.io.PrintWriter
+
+import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
+import ppl.delite.framework.Util._
+
+import ppl.dsl.optila._
 
 trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
 
@@ -109,10 +111,31 @@ trait RangeVectorOpsExp extends RangeVectorOps with DeliteCollectionOpsExp { thi
     case _ => None
   }
   
+  /////////////////////
+  // delite collection
+    
+  def isRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[RangeVector])  
+  def asRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[RangeVector]]
+  
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
+    if (isRange(x)) asRange(x).length
+    else super.dc_size(x)
+  }
+    
   override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
-    rangevector_optimize_apply(x,n) getOrElse super.dc_apply(x,n)
+    if (isRange(x)) rangevector_optimize_apply(asRange(x),n).getOrElse(super.dc_apply(x,n)).asInstanceOf[Exp[A]]
+    else super.dc_apply(x,n)    
   }
   
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isRange(x)) err("dc_update should not be called on RangeVector")
+    else super.dc_update(x,n,y)        
+  }
+  
+  override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isRange(x)) err("dc_append should not be called on RangeVector")
+    else super.dc_append(x,i,y)        
+  }    
   
 }
   

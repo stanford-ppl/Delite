@@ -6,8 +6,8 @@ import ppl.dsl.optila._
 
 trait MatrixImplOps { this: OptiLA =>
   //def matrix_apply_impl[A:Manifest](x: Rep[Matrix[A]], i: Rep[Int], j: Rep[Int]): Rep[A]
-  def matrix_getrow_impl[A:Manifest](m: Interface[Matrix[A]], row: Rep[Int]): Rep[VectorView[A]]
-  def matrix_getcol_impl[A:Manifest](m: Interface[Matrix[A]], col: Rep[Int]): Rep[VectorView[A]]
+  // def matrix_getrow_impl[A:Manifest](m: Interface[Matrix[A]], row: Rep[Int]): Rep[DenseVectorView[A]]
+  // def matrix_getcol_impl[A:Manifest](m: Interface[Matrix[A]], col: Rep[Int]): Rep[DenseVectorView[A]]
   def matrix_clone_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA]  
   def matrix_slice_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA]
   def matrix_slicerows_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], start: Rep[Int], end: Rep[Int])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA]
@@ -20,15 +20,15 @@ trait MatrixImplOps { this: OptiLA =>
   //def matrix_inverse_impl[A](m: Rep[Matrix[A]])(implicit mA: Manifest[A], conv: Rep[A] => Rep[Double]): Rep[Matrix[Double]]
   def matrix_minrow_impl[A:Manifest:Ordering:HasMinMax,VA:Manifest](m: Interface[Matrix[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
   def matrix_maxrow_impl[A:Manifest:Ordering:HasMinMax,VA:Manifest](m: Interface[Matrix[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  //def matrix_maprows_impl[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Vector[B]]): Rep[Matrix[B]]
-  //def matrix_foreachrow_impl[A:Manifest](m: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Unit]): Rep[Unit]
-  def matrix_filterrows_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], pred: Rep[VectorView[A]] => Rep[Boolean])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA]
-  //def matrix_multiply_impl[A:Manifest:Arith](x: Rep[Matrix[A]], y: Rep[Matrix[A]]): Rep[Matrix[A]]
+  def matrix_filterrows_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], pred: Interface[Vector[A]] => Rep[Boolean])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA]
+  def matrix_maprows_sequential_impl[A:Manifest,B:Manifest,I:Manifest,MB:Manifest](m: Interface[Matrix[A]], block: Interface[Vector[A]] => Interface[Vector[B]])(implicit b: MatrixBuilder[B,I,MB]): Rep[MB]
+  def matrix_multiply_impl[A:Manifest:Arith,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], y: Interface[Matrix[A]])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA] 
   def matrix_times_vector_impl[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
   def matrix_sigmoid_impl[A:Manifest,I:Manifest,MD:Manifest](x: Interface[Matrix[A]])(implicit b: MatrixBuilder[Double,I,MD], conv: Rep[A] => Rep[Double]): Rep[MD]
   def matrix_sigmoidf_impl[A:Manifest,I:Manifest,MF:Manifest](x: Interface[Matrix[A]])(implicit b: MatrixBuilder[Float,I,MF], conv: Rep[A] => Rep[Double]): Rep[MF]
   def matrix_sumcol_impl[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def matrix_grouprowsby_impl[A:Manifest,K:Manifest,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], pred: Rep[VectorView[A]] => Rep[K])(implicit b: MatrixBuilder[A,I,MA]): Rep[DenseVector[MA]] 
+  def matrix_grouprowsby_impl[A:Manifest,K:Manifest,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], pred: Interface[Vector[A]] => Rep[K])(implicit b: MatrixBuilder[A,I,MA]): Rep[DenseVector[MA]] 
+  def matrix_reducerows_impl[A:Manifest,VA<:Vector[A]:Manifest](x: Interface[Matrix[A]], f: (Rep[VA],Interface[Vector[A]]) => Rep[VA])(implicit b: VectorBuilder[A,VA]): Rep[VA]
 }
 
 trait MatrixImplOpsStandard extends MatrixImplOps {
@@ -42,8 +42,8 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   //   dc_apply(x,offset)
   // }
   
-  def matrix_getrow_impl[A:Manifest](m: Interface[Matrix[A]], row: Rep[Int]) = m.vview(row*m.numCols, 1, m.numCols, true)
-  def matrix_getcol_impl[A:Manifest](m: Interface[Matrix[A]], col: Rep[Int]) = m.vview(col, m.numCols, m.numRows, false)
+  // def matrix_getrow_impl[A:Manifest](m: Interface[Matrix[A]], row: Rep[Int]) = m.vview(row*m.numCols, 1, m.numCols, true)
+  // def matrix_getcol_impl[A:Manifest](m: Interface[Matrix[A]], col: Rep[Int]) = m.vview(col, m.numCols, m.numRows, false)
     
   def matrix_slice_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], startRow: Rep[Int], endRow: Rep[Int], startCol: Rep[Int], endCol: Rep[Int])(implicit b: MatrixBuilder[A,I,MA]) = {
     //m.chkRange(beginrow, endrow)
@@ -95,15 +95,10 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   }
   
   def matrix_addrow_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], y: Interface[Vector[A]])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA] = {
-    // val out = m.mutable()
-    // out += y
-    // out.unsafeImmutable
-    val resultOut = b.alloc(m.numRows+1,m.numCols)
+    val resultOut = b.alloc(0,m.numCols)
     val result = b.toBuildableIntf(resultOut)
     result ++= m
-    for (j <- 0 until y.length) {
-      result(m.numRows,j) = y(j)
-    }
+    result += y
     b.finalizer(resultOut)
   }  
     
@@ -202,27 +197,8 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
 //    m(idx).clone
   }
 
-//  def matrix_maprows_impl[A:Manifest,B:Manifest](m: Rep[Matrix[A]], f: Rep[Vector[A]] => Rep[Vector[B]]) = {
-//    val first = f(m.getRow(0))
-//    val out = Matrix[B](m.numRows, first.length)
-//    out.updateRow(0, first)
-//
-//    // this should be task parallel with deg control flow - except the reflectEffect orderings of updateRow will cause
-//    // false serialization
-//    for (i <- 1 until m.numRows){
-//      out.updateRow(i, f(m.getRow(i)))
-//    }
-//    out
-//  }
-
-//  def matrix_foreachrow_impl[A:Manifest](m: Rep[Matrix[A]], f: Rep[MatrixRow[A]] => Rep[Unit]) = {
-//    for (i <- 0 until m.numRows){
-//      f(m.getRow(i))
-//    }
-//  }
-
-  def matrix_filterrows_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], pred: Rep[VectorView[A]] => Rep[Boolean])(implicit b: MatrixBuilder[A,I,MA]) = {
-    val resultOut = b.alloc(0,0)
+  def matrix_filterrows_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], pred: Interface[Vector[A]] => Rep[Boolean])(implicit b: MatrixBuilder[A,I,MA]) = {
+    val resultOut = b.alloc(0,m.numCols)
     val result = b.toBuildableIntf(resultOut)
     for (i <- 0 until m.numRows){
       val vv = m.getRow(i)
@@ -232,6 +208,15 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     b.finalizer(resultOut)
   }
 
+  def matrix_maprows_sequential_impl[A:Manifest,B:Manifest,I:Manifest,MB:Manifest](m: Interface[Matrix[A]], block: Interface[Vector[A]] => Interface[Vector[B]])(implicit b: MatrixBuilder[B,I,MB]) = {
+    val resultOut = b.alloc(m.numRows,m.numCols)
+    val result = b.toBuildableIntf(resultOut)
+    for (i <- 0 until m.numRows){
+      result(i) = block(m(i))
+    }
+    b.finalizer(resultOut)
+  }
+  
   def matrix_times_vector_impl[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA] = {
 //  (0::x.numRows).t { rowIdx =>
 //    x.getRow(rowIdx) *:* y
@@ -244,6 +229,27 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     }
     resultOut.unsafeImmutable
   }
+  
+  def matrix_multiply_impl[A:Manifest:Arith,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], y: Interface[Matrix[A]])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA] = {
+    val yTrans = y.t
+    val resultOut = b.alloc(x.numRows, y.numCols)
+    val result = b.toBuildableIntf(resultOut)
+    for (rowIdx <- 0 until x.numRows) {
+      var i = 0
+      while (i < y.numCols) {
+        var j = 1
+        var acc = x(rowIdx, 0) * yTrans(i, 0)
+        while (j < yTrans.numCols) {
+          acc += x(rowIdx, j) * yTrans(i, j)
+          j += 1
+        }
+        result(rowIdx, i) = acc
+        i += 1
+      }
+    }
+    b.finalizer(resultOut)
+  }
+  
 
   // TODO AKS: why are we using single task for sigmoids now?
   def matrix_sigmoid_impl[A:Manifest,I:Manifest,MD:Manifest](x: Interface[Matrix[A]])(implicit b: MatrixBuilder[Double,I,MD], conv: Rep[A] => Rep[Double]): Rep[MD] = {
@@ -286,7 +292,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
   }
 
   // AKS FIXME: this should use DeliteOpGroupBy
-  def matrix_grouprowsby_impl[A:Manifest,K:Manifest,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], pred: Rep[VectorView[A]] => Rep[K])(implicit b: MatrixBuilder[A,I,MA]): Rep[DenseVector[MA]] = {
+  def matrix_grouprowsby_impl[A:Manifest,K:Manifest,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], pred: Interface[Vector[A]] => Rep[K])(implicit b: MatrixBuilder[A,I,MA]): Rep[DenseVector[MA]] = {
     val groups = HashMap[K,MA]()
     
     var i = 0
@@ -306,4 +312,12 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     }    
     out.unsafeImmutable
   } 
+  
+  def matrix_reducerows_impl[A:Manifest,VA<:Vector[A]:Manifest](x: Interface[Matrix[A]], f: (Rep[VA],Interface[Vector[A]]) => Rep[VA])(implicit b: VectorBuilder[A,VA]): Rep[VA] = {
+    var acc = b.alloc(x.numCols,true).unsafeImmutable
+    for (i <- 0 until x.numRows) {
+      acc = f(acc, x(i))
+    }
+    acc.unsafeImmutable
+  }  
 }

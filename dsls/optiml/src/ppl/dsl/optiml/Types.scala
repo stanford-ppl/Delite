@@ -11,7 +11,7 @@ package ppl.dsl.optiml
 /**
  * Vector 
  */
-trait StreamRow[T] extends VectorView[T]
+trait StreamRow[T] extends DenseVectorView[T]
 trait IndexVector extends Vector[Int] with RowVector[Int]
 trait IndexVectorRange extends IndexVector with RangeVector
 trait IndexVectorDense extends IndexVector with DenseVector[Int]

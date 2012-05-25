@@ -131,11 +131,7 @@ trait VectorOps extends Variables {
     def mkString(sep: Rep[String] = unit(""))(implicit ctx: SourceContext): Rep[String] = vector_mkstring(x, sep)      
     
     // data operations
-    // most of these these can't operate on Interfaces because they happen at runtime right now...
-    // (would need to use a more generic setter field, but Struct should make this obsolete anyways)    
-    
-    // TODO: should these be moved to another interface, e.g. MutableVecInterface? how do we deal with immutable vectors that
-    // don't implement these (e.g. RangeVector). Instead of Interface, would clients require a MutableInterface[...]? (yet another type constructor... :( )
+    // TODO: these should probably be moved to another interface (MutableVector), analogously to MatrixBuildable. 
     def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
     def :+(y: Rep[A])(implicit ctx: SourceContext): Rep[VA] = {
       val out = mutable()
@@ -176,7 +172,7 @@ trait VectorOps extends Variables {
     def +(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext): Rep[VA] = vector_plus[A,VA](x,y) // needed for Arith        
     def +(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext, o: Overloaded1) = vector_plus_scalar[A,VPLUSR](x,y) 
     def +=(y: Interface[Vector[A]])(implicit a: Arith[A], ctx: SourceContext) = { vector_plusequals[A](x,y); elem }
-    def +=(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext) = { vector_plusequals[A](x,y); elem }
+    def +=(y: Rep[VA])(implicit a: Arith[A], ctx: SourceContext, o: Overloaded1) = { vector_plusequals[A](x,y); elem }
     def :+=(y: Rep[A])(implicit a: Arith[A], ctx: SourceContext, o: Overloaded1) = vector_plusequals_scalar[A](x,y) 
     
     type VMINUSR <: Vector[A]
@@ -256,8 +252,9 @@ trait VectorOps extends Variables {
   def __equal[A:Manifest,VL[X] <: Vector[X],VR[X] <: Vector[X]](a: Rep[VL[A]], b: Var[VR[A]])(implicit toIntfL: Rep[VL[A]] => Interface[Vector[A]], toIntfR: Rep[VR[A]] => Interface[Vector[A]], mVL: Manifest[VL[A]], mVR: Manifest[VR[A]], ctx: SourceContext, o: Overloaded2): Rep[Boolean] = vector_equals(a,readVar(b))
   def __equal[A:Manifest,VL[X] <: Vector[X],VR[X] <: Vector[X]](a: Var[VL[A]], b: Rep[VR[A]])(implicit toIntfL: Rep[VL[A]] => Interface[Vector[A]], toIntfR: Rep[VR[A]] => Interface[Vector[A]], mVL: Manifest[VL[A]], mVR: Manifest[VR[A]], ctx: SourceContext, o: Overloaded3): Rep[Boolean] = vector_equals(readVar(a),b)
   def __equal[A:Manifest,VL[X] <: Vector[X],VR[X] <: Vector[X]](a: Var[VL[A]], b: Var[VR[A]])(implicit toIntfL: Rep[VL[A]] => Interface[Vector[A]], toIntfR: Rep[VR[A]] => Interface[Vector[A]], mVL: Manifest[VL[A]], mVR: Manifest[VR[A]], ctx: SourceContext, o: Overloaded4): Rep[Boolean] = vector_equals(readVar(a),readVar(b))
-  // def __equal[A:Manifest,V[X] <: Vector[X]](a: Rep[V[A]], b: Interface[Vector[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], mA: Manifest[V[A]], ctx: SourceContext, o: Overloaded5): Rep[Boolean] = vector_equals(a,b)
-  // def __equal[A:Manifest,V[X] <: Vector[X]](a: Interface[Vector[A]], b: Rep[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], mA: Manifest[V[A]], ctx: SourceContext, o: Overloaded6): Rep[Boolean] = vector_equals(a,b)
+  def __equal[A:Manifest,V[X] <: Vector[X]](a: Rep[V[A]], b: Interface[Vector[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], mA: Manifest[V[A]], ctx: SourceContext, o: Overloaded5): Rep[Boolean] = vector_equals(a,b)
+  def __equal[A:Manifest,V[X] <: Vector[X]](a: Interface[Vector[A]], b: Rep[V[A]])(implicit toIntf: Rep[V[A]] => Interface[Vector[A]], mA: Manifest[V[A]], ctx: SourceContext, o: Overloaded6): Rep[Boolean] = vector_equals(a,b)
+  def __equal[A:Manifest](a: Interface[Vector[A]], b: Interface[Vector[A]])(implicit ctx: SourceContext, o: Overloaded7): Rep[Boolean] = vector_equals(a,b)
   
   
   /**
@@ -496,7 +493,7 @@ trait VectorOps extends Variables {
   def vector_groupby[A:Manifest,K:Manifest,VA<:Vector[A]:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[K])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[DenseVector[VA]]             
 }
 
-trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesExp with BaseFatExp {
+trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp {
 
   this: VectorImplOps with OptiLAExp =>
 
@@ -1061,96 +1058,7 @@ trait VectorOpsExp extends VectorOps with DeliteCollectionOpsExp with VariablesE
     val mB = manifest[B]
     val mVB = manifest[VB]
   }  
-  
-  /////////////////////
-  // delite collection
     
-  def isDenseVec[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[DenseVector[A]])  
-  def asDenseVec[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[DenseVector[A]]]
-  
-  def isSparseVec[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[SparseVector[A]])  
-  def asSparseVec[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[SparseVector[A]]]
-  
-  def isRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[RangeVector])  
-  def asRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[RangeVector]]
-  
-  def isView[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[VectorView[A]])
-  def asView[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[VectorView[A]]]  
-  
-  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
-    if (isDenseVec(x)) asDenseVec(x).length
-    else if (isRange(x)) asRange(x).length
-    else if (isView(x)) asView(x).length
-    else super.dc_size(x)
-  }
-  
-  override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
-    if (isDenseVec(x)) densevector_set_length(asDenseVec(x), y)
-    else if (isSparseVec(x)) sparsevector_set_length(asSparseVec(x), y)
-    else super.dc_set_logical_size(x,y)        
-  }
-  
-  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
-    if (isDenseVec(x)) asDenseVec(x).apply(n)
-    else if (isSparseVec(x)) asSparseVec(x).apply(n)
-    else if (isRange(x)) (asRange(x).apply(n)).asInstanceOf[Exp[A]]
-    else if (isView(x)) asView(x).apply(n)
-    else {
-      printlog("couldn't find dc_apply for " + x.toString + ", type: " + x.Type.toString)
-      super.dc_apply(x,n)    
-    }
-  }
-  
-  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isDenseVec(x)) asDenseVec(x).update(n,y)
-    else if (isSparseVec(x)) asSparseVec(x).update(n,y)
-    else if (isRange(x)) err("dc_update should not be called on RangeVector")
-    else super.dc_update(x,n,y)        
-  }
-  
-  override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
-    if (isDenseVec(x)) { asDenseVec(x) += y; unit(true) }
-    else if (isSparseVec(x)) {
-      if (y != defaultValue[A]) { sparsevector_append(asSparseVec(x),i,y); unit(true) }
-      else unit(false)
-    }      
-    else if (isRange(x)) err("dc_append should not be called on RangeVector")
-    else super.dc_append(x,i,y)        
-  }  
-  
-  override def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
-    if (isDenseVec(x)) {
-      val out = DenseVector[A](size, asDenseVec(x).isRow)
-      out.asInstanceOf[Exp[CA]]
-    }
-    else if (isSparseVec(x)) {
-      val v = asSparseVec(x)
-      val out = SparseVector[A](unit(0), v.isRow)
-      sparsevector_set_raw_indices(out, DeliteArray[Int](size).unsafeImmutable)
-      sparsevector_set_raw_data(out, DeliteArray[A](size).unsafeImmutable)      
-      sparsevector_set_length(out, v.length)
-      sparsevector_set_nnz(out, size)
-      out.asInstanceOf[Exp[CA]]
-    }
-    else super.dc_alloc[A,CA](x,size)
-  }  
-  
-  override def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
-    if (isDenseVec(src) && isDenseVec(dst)) {
-      array_unsafe_copy(densevector_raw_data(asDenseVec(src)), srcPos, densevector_raw_data(asDenseVec(dst)), dstPos, size)
-    }
-    else if (isSparseVec(src) && isSparseVec(dst)) {
-      darray_unsafe_copy(sparsevector_raw_indices(asSparseVec(src)), srcPos, sparsevector_raw_indices(asSparseVec(dst)), dstPos, size)
-      darray_unsafe_copy(sparsevector_raw_data(asSparseVec(src)), srcPos, sparsevector_raw_data(asSparseVec(dst)), dstPos, size)
-    }
-    else super.dc_copy(src,srcPos,dst,dstPos,size)
-  }      
-  
-  override def dc_parallelization[A:Manifest](x: Exp[DeliteCollection[A]], hasConditions: Boolean)(implicit ctx: SourceContext) = {
-    if (isSparseVec(x)) ParBuffer
-    else super.dc_parallelization(x, hasConditions)
-  }
-  
   /////////////////////
   // object interface
 

@@ -1,6 +1,6 @@
 package ppl.dsl.optila.datastruct.scala
 
-class VectorView[T:Manifest](x: Array[T], val start: Int, val stride: Int, val length: Int, __isRow: Boolean) { 
+class DenseVectorView[T:Manifest](x: Array[T], val _start: Int, val _stride: Int, val length: Int, __isRow: Boolean) { 
 
   protected var _data: Array[T] = x
   protected var _isRow = __isRow
@@ -8,7 +8,7 @@ class VectorView[T:Manifest](x: Array[T], val start: Int, val stride: Int, val l
   def isRow = _isRow
   def data = _data
 
-  private def idx(n: Int) = start + n*stride
+  private def idx(n: Int) = _start + n*_stride
 
   def apply(n: Int) : T = {
     _data(idx(n))

@@ -6,7 +6,7 @@ import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatCodegen}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 
-trait DeliteCollectionOps extends Base {
+trait DeliteCollectionOps extends Variables {
     
   // AKS: Is DCInterfaceOps still useful for anything? Are they meant to guarantee that dc_* static call will succeed?
   // should this be split into read and write interfaces?
@@ -30,20 +30,20 @@ trait DeliteCollectionOps extends Base {
   }
   
   // TODO -- AKS OLD: remove after refactor is complete
-  implicit def dcToDcOps[A:Manifest](x: Rep[DeliteCollection[A]]) = new deliteCollectionOpsCls(x)
-  
-  class deliteCollectionOpsCls[A:Manifest](x: Rep[DeliteCollection[A]]) {
-    def size(implicit ctx: SourceContext) = dc_size(x)
-    def apply(n: Rep[Int])(implicit ctx: SourceContext) = dc_apply(x,n)
-    def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = dc_update(x,n,y)
-  }
+  // implicit def dcToDcOps[A:Manifest](x: Rep[DeliteCollection[A]]) = new deliteCollectionOpsCls(x)
+  // 
+  // class deliteCollectionOpsCls[A:Manifest](x: Rep[DeliteCollection[A]]) {
+  //   def size(implicit ctx: SourceContext) = dc_size(x)
+  //   def apply(n: Rep[Int])(implicit ctx: SourceContext) = dc_apply(x,n)
+  //   def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = dc_update(x,n,y)
+  // }
   
   def dc_size[A:Manifest](x: Rep[DeliteCollection[A]])(implicit ctx: SourceContext): Rep[Int]
   def dc_apply[A:Manifest](x: Rep[DeliteCollection[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
   def dc_update[A:Manifest](x: Rep[DeliteCollection[A]], n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
 }
 
-trait DeliteCollectionOpsExp extends DeliteCollectionOps with ExceptionOpsExp with BaseFatExp with EffectExp { this: DeliteOpsExp =>
+trait DeliteCollectionOpsExp extends DeliteCollectionOps with VariablesExp with ExceptionOpsExp with BaseFatExp with EffectExp { this: DeliteOpsExp =>
   case class DeliteCollectionSize[A:Manifest](x: Exp[DeliteCollection[A]]) extends Def[Int]
   case class DeliteCollectionApply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int]) extends Def[A] {
     def mA = manifest[A]

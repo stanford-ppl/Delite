@@ -92,6 +92,7 @@ trait SparseMatrixOps extends Variables {
   class SparseMatOpsCls[A:Manifest](val elem: Rep[SparseMatrix[A]]) extends MatOpsCls[A] {
     type M[X] = SparseMatrix[X]
     type V[X] = SparseVector[X]
+    type View[X] = SparseVectorView[X]
     type I[X] = SparseMatrixBuildable[X]
     type Self = SparseMatrix[A]
 
@@ -105,9 +106,9 @@ trait SparseMatrixOps extends Variables {
     def mV[B:Manifest]: Manifest[V[B]] = manifest[SparseVector[B]]
     def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = sparseVecToInterface[B](x)        
     def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = sparseVectorBuilder[B]
+    def viewToIntf[B:Manifest](x: Rep[View[B]]) = sparseViewToInterface(x)
     
     // delite collection
-    def dcSize(implicit ctx: SourceContext): Rep[Int] = x.size
     def dcApply(n: Rep[Int])(implicit ctx: SourceContext): Rep[A] = sparsematrix_apply(x,n/x.numCols,n%x.numCols)
     def dcUpdate(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] = sparsematrix_update(x,n/x.numCols,n%x.numCols,y)
     
@@ -119,13 +120,8 @@ trait SparseMatrixOps extends Variables {
     def vview(start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = sparsematrix_vview(x,start,stride,length,isRow)
         
     // not supported by interface right now
-    def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = sparsematrix_multiply(x,y)
-    def inv(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = sparsematrix_inverse(x)    
-    def mapRows[B:Manifest](f: Rep[VectorView[A]] => Rep[SparseVector[B]])(implicit ctx: SourceContext) = sparsematrix_maprows(x,f)
-    def reduceRows(f: (Rep[SparseVector[A]],Rep[VectorView[A]]) => Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[SparseVector[A]] = sparsematrix_reducerows(x,f)
-    
-    // overrides
-    def *(y: Rep[SparseVector[A]])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext): Rep[SparseVector[A]] = sparsematrix_times_vector(x,y)
+    // def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = sparsematrix_multiply(x,y)
+    def inv(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = sparsematrix_inverse(x)        
   }
   
   // class defs
@@ -134,15 +130,10 @@ trait SparseMatrixOps extends Variables {
   def sparsematrix_numrows[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[Int]
   def sparsematrix_numcols[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[Int]
   def sparsematrix_nnz[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[Int]
-  def sparsematrix_vview[A:Manifest](x: Rep[SparseMatrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[VectorView[A]] 
+  def sparsematrix_vview[A:Manifest](x: Rep[SparseMatrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[SparseVectorView[A]] 
 
-  def sparsematrix_multiply[A:Manifest:Arith](x: Rep[SparseMatrix[A]], y: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[SparseMatrix[A]]
-  def sparsematrix_times_vector[A:Manifest:Arith](x: Rep[SparseMatrix[A]], y: Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[SparseVector[A]]
+  // def sparsematrix_multiply[A:Manifest:Arith](x: Rep[SparseMatrix[A]], y: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[SparseMatrix[A]]
   def sparsematrix_inverse[A:Manifest](x: Rep[SparseMatrix[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext): Rep[SparseMatrix[Double]]  
-  def sparsematrix_maprows[A:Manifest,B:Manifest](x: Rep[SparseMatrix[A]], f: Rep[VectorView[A]] => Rep[SparseVector[B]])(implicit ctx: SourceContext): Rep[SparseMatrix[B]] 
-  def sparsematrix_reducerows[A:Manifest](x: Rep[SparseMatrix[A]], f: (Rep[SparseVector[A]],Rep[VectorView[A]]) => Rep[SparseVector[A]])(implicit ctx: SourceContext): Rep[SparseVector[A]]   
-  
-  def sparsematrix_size[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[Int]
 }
 
 trait SparseMatrixCompilerOps extends SparseMatrixOps {
@@ -170,7 +161,7 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
   // implemented via kernel embedding
 
   case class SparseMatrixVView[A:Manifest](x: Exp[SparseMatrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean])
-    extends DeliteOpSingleWithManifest[A,VectorView[A]](reifyEffectsHere(sparsematrix_vview_impl(x, start, stride, length, isRow)))
+    extends DeliteOpSingleWithManifest[A,SparseVectorView[A]](reifyEffectsHere(sparsematrix_vview_impl(x, start, stride, length, isRow)))
 
   case class SparseMatrixApply[A:Manifest](x: Exp[SparseMatrix[A]], i: Exp[Int], j: Exp[Int])
     extends DeliteOpSingleWithManifest[A,A](reifyEffectsHere(sparsematrix_apply_impl(x, i, j)))
@@ -185,44 +176,10 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
   // case class SparseMatrixInverse[A:Manifest](x: Exp[SparseMatrix[A]])(implicit val conv: Exp[A] => Exp[Double])
   //   extends DeliteOpSingleWithManifest[A,SparseMatrix[Double]](reifyEffectsHere(sparsematrix_inverse_impl(x))) 
   //   
-  // case class SparseMatrixReduceRows[A:Manifest](x: Exp[SparseMatrix[A]], func: (Exp[SparseVector[A]], Exp[VectorView[A]]) => Exp[SparseVector[A]])
-  //   extends DeliteOpSingleWithManifest[A,SparseVector[A]](reifyEffectsHere(sparsematrix_reducerows_impl(x,func)))
-  // 
   // case class SparseMatrixMultiply[A:Manifest:Arith](x: Exp[SparseMatrix[A]], y: Exp[SparseMatrix[A]])
   //   extends DeliteOpSingleWithManifest[A,SparseMatrix[A]](reifyEffectsHere(sparsematrix_multiply_impl(x,y))) {
   //   
   //   val a = implicitly[Arith[A]]
-  // }
-
-  ////////////////////////////////
-  // implemented via delite ops
-  
-  // case class SparseMatrixMapRows[A:Manifest,B:Manifest](x: Exp[SparseMatrix[A]], block: Exp[VectorView[A]] => Exp[SparseVector[B]], out: Exp[SparseMatrix[B]])
-  //   extends DeliteOpIndexedLoop {
-  // 
-  //   val size = copyTransformedOrElse(_.size)(x.numRows)
-  //   def func = i => { out(i) = block(x(i)) } // updateRow should be fused with function application
-  //   
-  //   val mA = manifest[A]
-  //   val mB = manifest[B]
-  // }
-
-  // More efficient (though slightly uglier) to express this as a loop directly. 
-  // TODO: nicer DeliteOpLoop templates? e.g. DeliteOpReductionLoop, ...
-  // case class SparseMatrixReduceRows[A:Manifest](x: Exp[SparseMatrix[A]], func: (Exp[VectorView[A]], Exp[SparseVector[A]]) => Exp[SparseVector[A]])
-  //   extends DeliteOpReduceLike[VectorView[A],SparseVector[A]] {
-  // 
-  //   val size = x.numRows
-  //   val zero = EmptyVector[A]
-  //   
-  //   lazy val body: Def[SparseVector[A]] = copyBodyOrElse(DeliteReduceElem[SparseVector[A]](
-  //     func = reifyEffects(x(v)),
-  //     Nil,
-  //     zero = this.zero,
-  //     rV = this.rV,
-  //     rFunc = reifyEffects(this.func(rV._1, rV._2)),
-  //     true
-  //   ))
   // }
   
   ///////////////////
@@ -235,34 +192,18 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
   def sparsematrix_nnz[A:Manifest](x: Exp[SparseMatrix[A]])(implicit ctx: SourceContext) = reflectPure(SparseMatrixNNZ(x))
   def sparsematrix_vview[A:Manifest](x: Exp[SparseMatrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(SparseMatrixVView(x,start,stride,length,isRow))
 
-  def sparsematrix_multiply[A:Manifest:Arith](x: Exp[SparseMatrix[A]], y: Exp[SparseMatrix[A]])(implicit ctx: SourceContext) = {
-    throw new UnsupportedOperationException("tbd")
-    //reflectPure(SparseMatrixMultiply(x,y))
-  }
-  def sparsematrix_times_vector[A:Manifest:Arith](x: Exp[SparseMatrix[A]], y: Exp[SparseVector[A]])(implicit ctx: SourceContext) = {
-    throw new UnsupportedOperationException("tbd")
-    //reflectPure(MatrixTimesVector[A,SparseVector[A]](x,y))
-  }    
+  // def sparsematrix_multiply[A:Manifest:Arith](x: Exp[SparseMatrix[A]], y: Exp[SparseMatrix[A]])(implicit ctx: SourceContext) = {
+  //   throw new UnsupportedOperationException("tbd")
+  //   //reflectPure(SparseMatrixMultiply(x,y))
+  // }
   def sparsematrix_inverse[A:Manifest](x: Exp[SparseMatrix[A]])(implicit conv: Exp[A] => Exp[Double], ctx: SourceContext) = {
     throw new UnsupportedOperationException("tbd")
     //reflectPure(SparseMatrixInverse(x))
-  }
-  def sparsematrix_maprows[A:Manifest,B:Manifest](x: Exp[SparseMatrix[A]], f: Exp[VectorView[A]] => Exp[SparseVector[B]])(implicit ctx: SourceContext) = {
-    throw new UnsupportedOperationException("tbd")
-    // val out = Matrix.sparse[B](x.numRows, x.numCols)
-    // reflectWrite(out)(SparseMatrixMapRows(x,f,out))
-    // out.unsafeImmutable 
   }  
-  def sparsematrix_reducerows[A:Manifest](x: Exp[SparseMatrix[A]], f: (Exp[SparseVector[A]],Exp[VectorView[A]]) => Exp[SparseVector[A]])(implicit ctx: SourceContext) = {
-    throw new UnsupportedOperationException("tbd")
-    //reflectPure(SparseMatrixReduceRows(x, f))
-  }
-  
 
   //////////////////
   // internal
 
-  def sparsematrix_size[A:Manifest](x: Exp[SparseMatrix[A]])(implicit ctx: SourceContext) = x.numRows * x.numCols
   def sparsematrix_set_numrows[A:Manifest](x: Exp[SparseMatrix[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(SparseMatrixSetNumRows(x,newVal))
   def sparsematrix_set_numcols[A:Manifest](x: Exp[SparseMatrix[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(SparseMatrixSetNumCols(x,newVal))  
   def sparsematrix_set_nnz[A:Manifest](x: Exp[SparseMatrix[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(SparseMatrixSetNNZ(x,newVal))
@@ -271,11 +212,11 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
   /////////////////////
   // delite collection
   
-  def isSparseMat[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[SparseMatrix[A]])  
-  def asSparseMat[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[SparseMatrix[A]]]
+  def isSparseMat[A](x: Exp[Any])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[SparseMatrix[A]])  
+  def asSparseMat[A](x: Exp[Any])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[SparseMatrix[A]]]
   
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
-    if (isSparseMat(x)) sparsematrix_size(asSparseMat(x))
+    if (isSparseMat(x)) asSparseMat(x).size
     else super.dc_size(x)
   }
   
@@ -297,7 +238,6 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
     case e@SparseMatrixApply(x,i,j) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixApply(f(x),f(i),f(j))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     // case e@SparseMatrixInverse(x) => reflectPure(new {override val original = Some(f,e) } with SparseMatrixInverse(f(x))(e.mA,e.conv))(mtype(manifest[A]),implicitly[SourceContext])      
     // case e@SparseMatrixMultiply(x,y) => reflectPure(new {override val original = Some(f,e) } with SparseMatrixMultiply(f(x),f(y))(e.mA,e.a))(mtype(manifest[A]),implicitly[SourceContext])
-    // case e@SparseMatrixMapRows(x,g,y) => reflectPure(new { override val original = Some(f,e) } with SparseMatrixMapRows(f(x),f(g),f(y))(e.mA,e.mB))(mtype(manifest[A]),implicitly[SourceContext])
     //case e@SparseMatrixTimesVector(x,y) => reflectPure(new {override val original = Some(f,e) } with SparseMatrixTimesVector(f(x),f(y))(e.m,e.a))(mtype(manifest[A]),implicitly[SourceContext])
     
     // reflected
@@ -311,7 +251,6 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
     case Reflect(e@SparseMatrixApply(x,i,j), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixApply(f(x),f(i),f(j))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))      
     // case Reflect(e@SparseMatrixInverse(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixInverse(f(x))(e.mA,e.conv), mapOver(f,u), f(es)))(mtype(manifest[A]))          
     // case Reflect(e@SparseMatrixMultiply(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixMultiply(f(x),f(y))(e.mA,e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))         
-    // case Reflect(e@SparseMatrixMapRows(x,g,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixMapRows(f(x),f(g),f(y))(e.mA,e.mB), mapOver(f,u), f(es)))(mtype(manifest[A]))              
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
   
@@ -320,7 +259,7 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
   // aliases and sharing
 
   // TODO: precise sharing info for other IR types (default is conservative)
-
+  /*
   override def aliasSyms(e: Any): List[Sym[Any]] = e match {
     // case SparseMatrixMultiply(a,b) => Nil
     //case SparseMatrixTimesVector(a,v) => Nil
@@ -344,6 +283,7 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
     //case SparseMatrixTimesVector(a,v) => Nil
     case _ => super.copySyms(e)
   } 
+  */
 }
 
 /**
@@ -368,14 +308,7 @@ trait SparseMatrixOpsExpOpt extends SparseMatrixOpsExp {
   //   case Def(s@Reflect(SparseMatrixObjectNew(rows,cols), u, es)) if context.contains(s) => cols // only if not modified! // TODO: check writes
   //   case Def(SparseMatrixObjectNew(rows,cols)) => cols
   //   case _ => super.sparsematrix_numcols(x)
-  // }
-
-  override def sparsematrix_size[A:Manifest](x: Exp[SparseMatrix[A]])(implicit ctx: SourceContext) = x match {
-    case Def(e: DeliteOpMap[_,_,_]) => e.size
-    case Def(e: DeliteOpZipWith[_,_,_,_]) => e.size
-    case _ => super.sparsematrix_size(x)
-  }
-  
+  // }  
 }
 
 
@@ -399,25 +332,25 @@ trait CudaGenSparseMatrixOps extends CudaGenBase with CudaGenDataStruct {
   val IR: SparseMatrixOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 trait OpenCLGenSparseMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
   val IR: SparseMatrixOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 trait CGenSparseMatrixOps extends CGenBase {
   val IR: SparseMatrixOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }

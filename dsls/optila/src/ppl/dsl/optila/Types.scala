@@ -29,12 +29,13 @@ trait SparseVector[T] extends Vector[T]
 
 // Range and View should never dispatch to Dense ops, because the Dense implementation of abstract vector methods is incorrect for them
 trait RangeVector extends Vector[Int] with RowVector[Int]
-trait VectorView[T] extends Vector[T] 
+trait DenseVectorView[T] extends Vector[T] 
+trait SparseVectorView[T] extends Vector[T]
 
 // these do not add any functionality, but are used for type-checking
 // the mix-ins define their possible static dispatch receivers
 // the issue if we still use subtyping to do some of the dispatch is that
-// return types are not preserved; MatrixRow + 5 => VectorView[T]
+// return types are not preserved; MatrixRow + 5 => DenseVectorView[T]
 trait RowVector[T]
 trait ColVector[T]
 trait DenseRowVector[T] extends DenseVector[T] with RowVector[T]

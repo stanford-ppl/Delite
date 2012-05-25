@@ -26,15 +26,25 @@ trait OptiMLDenseVectorOps extends OptiMLDenseVectorOpsLowPriority {
 }
 
 
-trait OptiMLVectorViewOpsLowPriority extends ppl.dsl.optila.vector.VectorViewOps {
+trait OptiMLDenseVectorViewOpsLowPriority extends ppl.dsl.optila.vector.DenseVectorViewOps {
   this: OptiML =>
   
-  implicit def viewToVecOverrides[A:Manifest](x: Rep[VectorView[A]]) = new OptiMLVecViewOpsOverrides(x)  
+  implicit def denseViewToVecOverrides[A:Manifest](x: Rep[DenseVectorView[A]]) = new OptiMLDenseVecViewOpsOverrides(x)  
 }
-trait OptiMLVectorViewOps extends OptiMLVectorViewOpsLowPriority{
+trait OptiMLDenseVectorViewOps extends OptiMLDenseVectorViewOpsLowPriority {
   this: OptiML =>
     
-  implicit def viewToVecOverrides2[A:Manifest](x: Rep[VectorView[A]]) = new OptiMLVecOpsOverridesAlternate(x)
+  implicit def denseViewToVecOverrides2[A:Manifest](x: Rep[DenseVectorView[A]]) = new OptiMLVecOpsOverridesAlternate(x)
+}
+trait OptiMLSparseVectorViewOpsLowPriority extends ppl.dsl.optila.vector.SparseVectorViewOps {
+  this: OptiML =>
+  
+  implicit def sparseViewToVecOverrides[A:Manifest](x: Rep[SparseVectorView[A]]) = new OptiMLSparseVecViewOpsOverrides(x)  
+}
+trait OptiMLSparseVectorViewOps extends OptiMLSparseVectorViewOpsLowPriority {
+  this: OptiML =>
+    
+  implicit def sparseViewToVecOverrides2[A:Manifest](x: Rep[SparseVectorView[A]]) = new OptiMLVecOpsOverridesAlternate(x)
 }
 
 
@@ -43,7 +53,7 @@ trait OptiMLRangeVectorOpsLowPriority extends ppl.dsl.optila.vector.RangeVectorO
   
   implicit def rangeToVecOverrides(x: Rep[RangeVector]) = new OptiMLRangeVecOpsOverrides(x)  
 }
-trait OptiMLRangeVectorOps extends OptiMLRangeVectorOpsLowPriority  {
+trait OptiMLRangeVectorOps extends OptiMLRangeVectorOpsLowPriority {
   this: OptiML =>
   
   implicit def rangeToVecOverrides2(x: Rep[RangeVector]) = new OptiMLVecOpsOverridesAlternate(x)
@@ -86,7 +96,8 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   }
   
   class OptiMLDenseVecOpsOverrides[A:Manifest](x: Rep[DenseVector[A]]) extends DenseVecOpsCls(x) with OptiMLVecOpsOverrides[A] 
-  class OptiMLVecViewOpsOverrides[A:Manifest](x: Rep[VectorView[A]]) extends VectorViewOpsCls(x) with OptiMLVecOpsOverrides[A] 
+  class OptiMLDenseVecViewOpsOverrides[A:Manifest](x: Rep[DenseVectorView[A]]) extends DenseVectorViewOpsCls(x) with OptiMLVecOpsOverrides[A] 
+  class OptiMLSparseVecViewOpsOverrides[A:Manifest](x: Rep[SparseVectorView[A]]) extends SparseVectorViewOpsCls(x) with OptiMLVecOpsOverrides[A] 
   class OptiMLRangeVecOpsOverrides(x: Rep[RangeVector]) extends RangeVecOpsCls(x) with OptiMLVecOpsOverrides[Int] 
 
   // class defs

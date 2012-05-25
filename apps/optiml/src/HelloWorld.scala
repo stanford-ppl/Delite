@@ -7,8 +7,29 @@ trait HelloWorld extends OptiMLApplication {
     
     //println("hello world")
     
-    // sparse matrix testing
+    // matrix bulk operations with changed views
+    //val m = Matrix.zeros(10,10)
+    val m = Matrix.sparse[Double](10,10).finish
+    val t1 = m mapRows { row => row + 1 }
+    t1.pprint
     
+    val v = t1 reduceRows { (a,b) => a*b }
+    v.pprint
+    
+    // foreachRow
+    t1 foreachRow { row => println("fr--"); row.pprint }
+    
+    // filterRows
+    val t2 = t1 :+ Vector(5.,5.,5.,5.,5.,5.,5.,5.,5.,5.) 
+    println("t2 before filter: ")
+    t2.pprint
+    val t3 = t2 filterRows { row => row == Vector(5.,5.,5.,5.,5.,5.,5.,5.,5.,5.) } 
+    //val t3 = t2 filterRows { row => row(0) == 5 } 
+    println("t2 after filter: ")
+    t3.pprint
+    
+    // sparse matrix testing
+    /*
     // inserting/removing rows/cols
     // val mb = Matrix.sparse[Int](10,10)
     // mb.insertCol(5,DenseVector(1,2,3,4,5,6,7,8,9,10))
@@ -54,6 +75,7 @@ trait HelloWorld extends OptiMLApplication {
       println("t2(573,71) = (should be 101): " + t2(573,71))
       println("t2(500,500) = (should be 0): " + t2(500,500))          
     }      
+    */
     
     /*
     // sparse vector testing
@@ -91,16 +113,16 @@ trait HelloWorld extends OptiMLApplication {
     t3.pprint
     
          
-    // for (i <- 0::1) {
-    //   val t1 = v map { e => 32. }
-    //   t1.pprint
-    // }    
+    for (i <- 0::1) {
+      val t1 = v map { e => 32. }
+      t1.pprint
+    }    
     
     // val d = DenseVector[Double](10,true)
-    // for (i <- 0::1) {
-    //   val t1 = d map { e => 64. }
-    //   t1.pprint
-    // }
+    for (i <- 0::1) {
+      val t1 = d map { e => 64. }
+      t1.pprint
+    }
     */
     
     // val vl = log(v)

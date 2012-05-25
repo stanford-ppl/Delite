@@ -96,7 +96,7 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
   with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOps should be auto-generated with ApplicationOps
   with MLInputReaderOps with MLOutputWriterOps
   with CanSumOps
-  with VectorOps with OptiMLDenseVectorOps with OptiMLVectorViewOps with OptiMLRangeVectorOps
+  with VectorOps with OptiMLDenseVectorOps with OptiMLDenseVectorViewOps with OptiMLRangeVectorOps
   with MatrixOps with OptiMLDenseMatrixOps with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops 
   with StreamOps with StreamRowOps
   with GraphOps with EdgeOps with VertexOps with VSetOps

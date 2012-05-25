@@ -14,9 +14,8 @@ trait SparseMatrixCSRImplOps extends SparseMatrixImplOps {
   ///////////////
   // kernels
   
-  def sparsematrix_vview_impl[A:Manifest](x: Rep[SparseMatrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[VectorView[A]] = {
-    throw new UnsupportedOperationException("tbd")
-    //VectorView[A](sparsematrix_raw_data(x), start, stride, length, isRow)
+  def sparsematrix_vview_impl[A:Manifest](x: Rep[SparseMatrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]): Rep[SparseVectorView[A]] = {
+    SparseVectorView[A](x, start, stride, length, isRow)
   }
   
   protected def sparsematrix_csr_find_offset[A:Manifest](m: Rep[SparseMatrix[A]], row: Rep[Int], col: Rep[Int]): Rep[Int] = {
@@ -81,28 +80,7 @@ trait SparseMatrixCSRImplOps extends SparseMatrixImplOps {
     sparsematrix_set_nnz(m, m.nnz + len)
   }
 
-  /*
-  def sparsematrix_multiply_impl[A:Manifest:Arith](x: Rep[SparseMatrix[A]], y: Rep[SparseMatrix[A]]): Rep[SparseMatrix[A]] = {
-
-    val yTrans = y.t
-    val out = SparseMatrix[A](x.numRows, y.numCols)
-
-    for (rowIdx <- 0 until x.numRows) {
-      var i = unit(0)
-      while (i < out.numCols) {
-        var j = unit(1)
-        var acc = x(rowIdx, 0) * yTrans(i, 0)
-        while (j < yTrans.numCols) {
-          acc += x(rowIdx, j) * yTrans(i, j)
-          j += 1
-        }
-        out(rowIdx, i) = acc
-        i += 1
-      }
-    }
-    out.unsafeImmutable
-  }
-  
+  /*  
   // TODO: try/catch, case, in embedded implementation? we need to lift these still.
   def sparsematrix_inverse_impl[A:Manifest](m: Rep[SparseMatrix[A]])(implicit conv: Rep[A] => Rep[Double]): Rep[SparseMatrix[Double]] = {
     //m.chkEquals(m.numCols, m.numRows)
@@ -167,14 +145,6 @@ trait SparseMatrixCSRImplOps extends SparseMatrixImplOps {
     }
 
     currentMat
-  }
-  
-  def sparsematrix_reducerows_impl[A:Manifest](x: Rep[SparseMatrix[A]], func: (Rep[SparseVector[A]], Rep[VectorView[A]]) => Rep[SparseVector[A]]): Rep[SparseVector[A]] = {
-    var acc = ZeroVector[A](x.numCols)
-    for (i <- 0 until x.numRows) {
-      acc = func(acc, x(i))
-    }
-    acc
   }
   */
 }

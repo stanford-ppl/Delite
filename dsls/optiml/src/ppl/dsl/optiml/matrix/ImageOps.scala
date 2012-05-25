@@ -39,7 +39,7 @@ trait ImageOps extends Variables {
     type Self = Image[A]
     def wrap(x: Rep[Image[A]]): Interface[MatrixBuildable[A]] = denseMatToBuildableInterface(x)
     type M[X] = Image[X]
-    type V[X] = DenseVector[X]    
+    type V[X] = DenseVector[X]  
     def mA: Manifest[A] = manifest[A]
     def toIntf[B:Manifest](x: Rep[M[B]]) = denseMatToBuildableInterface(x)
     def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)        
@@ -66,6 +66,7 @@ trait ImageOps extends Variables {
     type M[X] = Image[X]
     type I[X] = Image[X]
     type V[X] = DenseVector[X]
+    type View[X] = DenseVectorView[X]      
     type Self = Image[A]
 
     def mA: Manifest[A] = manifest[A]
@@ -78,6 +79,7 @@ trait ImageOps extends Variables {
     def mV[B:Manifest]: Manifest[V[B]] = manifest[DenseVector[B]]
     def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)        
     def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]
+    def viewToIntf[B:Manifest](x: Rep[View[B]]) = denseViewToInterface(x)
 
     // image ops
     def downsample(rowFactor: Rep[Int], colFactor: Rep[Int])(block: Rep[DenseMatrix[A]] => Rep[A])(implicit ctx: SourceContext) = image_downsample(x,rowFactor, colFactor, block)
@@ -92,7 +94,6 @@ trait ImageOps extends Variables {
     //       extending DenseMatOpsCls doesn't work with the type aliases.
           
     // delite collection
-    def dcSize(implicit ctx: SourceContext): Rep[Int] = densematrix_size(x)
     def dcApply(n: Rep[Int])(implicit ctx: SourceContext): Rep[A] = densematrix_rawapply(x,n)
     def dcUpdate(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit] = densematrix_rawupdate(x,n,y)
 
@@ -103,10 +104,8 @@ trait ImageOps extends Variables {
     def vview(start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = densematrix_vview(x,start,stride,length,isRow)
 
     // not supported by interface right now
-    def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = Image(densematrix_multiply(x,y))
+    // def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = Image(densematrix_multiply(x,y))
     def inv(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = Image(densematrix_inverse(x))    
-    def mapRows[B:Manifest](f: Rep[VectorView[A]] => Rep[DenseVector[B]])(implicit ctx: SourceContext) = Image(densematrix_maprows(x,f))
-    def reduceRows(f: (Rep[DenseVector[A]],Rep[VectorView[A]]) => Rep[DenseVector[A]])(implicit ctx: SourceContext): Rep[DenseVector[A]] = densematrix_reducerows(x,f)    
   }
   
   // object defs

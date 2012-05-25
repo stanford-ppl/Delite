@@ -117,19 +117,17 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
      // FIXME: if this updated an existing value, nnz is wrong...
      // without scanning, we won't know whether or not nnz should be incremented
      // one (perhaps bad) option: don't expose nnz in SparseMatrixBuildable interface
+     // another option: rename nnz to internalSize, and implement nnz to do a scan when called (has to deal with dupes)
     sparsematrix_buildable_append_impl(m,i,j,y,true)  
   }
   
   def sparsematrix_buildable_append_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], i: Rep[Int], j: Rep[Int], y: Rep[A], alwaysWrite: Boolean = false): Rep[Unit] = {
     val shouldAppend = if (alwaysWrite) unit(true) else (y != defaultValue[A])  // conditional evaluated at staging time
     if (shouldAppend) {
-      val data = sparsematrix_coo_raw_data(m)
-      val rowIndices = sparsematrix_coo_raw_rowindices(m)
-      val colIndices = sparsematrix_coo_raw_colindices(m)
       sparsematrix_coo_ensureextra(m, 1)    
-      darray_unsafe_update(data, m.nnz, y)
-      darray_unsafe_update(rowIndices, m.nnz, i)
-      darray_unsafe_update(colIndices, m.nnz, j)
+      darray_unsafe_update(sparsematrix_coo_raw_data(m), m.nnz, y)
+      darray_unsafe_update(sparsematrix_coo_raw_rowindices(m), m.nnz, i)
+      darray_unsafe_update(sparsematrix_coo_raw_colindices(m), m.nnz, j)
       sparsematrix_buildable_set_nnz(m, m.nnz+1) 
     }
   }
@@ -140,7 +138,8 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
    */
   
   def sparsematrix_buildable_insertrow_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit] = {
-    val rowIndices = sparsematrix_coo_raw_rowindices(m)    
+    if (m.size == 0) sparsematrix_buildable_set_numcols(m, y.length)
+    val rowIndices = sparsematrix_coo_raw_rowindices(m)        
     for (i <- 0 until m.nnz) {
       if (rowIndices(i) >= pos)
         darray_unsafe_update(rowIndices, i, rowIndices(i)+1)
@@ -148,10 +147,11 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
     for (j <- 0 until y.length) {
       sparsematrix_buildable_append_impl(m, pos, j, y(j))
     }            
-    sparsematrix_buildable_set_numrows(m, m.numRows+1)
+    sparsematrix_buildable_set_numrows(m, m.numRows+1)    
   }
 
   def sparsematrix_buildable_insertallrows_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], pos: Rep[Int], xs: Interface[Matrix[A]]): Rep[Unit] = {
+    if (m.size == 0) sparsematrix_buildable_set_numcols(m, xs.numCols)
     val rowIndices = sparsematrix_coo_raw_rowindices(m)    
     for (i <- 0 until m.nnz) {
       if (rowIndices(i) >= pos)
@@ -166,6 +166,7 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
   }
 
   def sparsematrix_buildable_insertcol_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], pos: Rep[Int], y: Interface[Vector[A]]): Rep[Unit] = {    
+    if (m.size == 0) sparsematrix_buildable_set_numrows(m, y.length)
     val colIndices = sparsematrix_coo_raw_colindices(m)    
     for (i <- 0 until m.nnz) {
       if (colIndices(i) >= pos)
@@ -178,6 +179,7 @@ trait SparseMatrixCOOImplOps extends SparseMatrixBuildableImplOps {
   }
 
   def sparsematrix_buildable_insertallcols_impl[A:Manifest](m: Rep[SparseMatrixBuildable[A]], pos: Rep[Int], xs: Interface[Matrix[A]]): Rep[Unit] = {
+    if (m.size == 0) sparsematrix_buildable_set_numrows(m, xs.numRows)
     val colIndices = sparsematrix_coo_raw_colindices(m)    
     for (i <- 0 until m.nnz) {
       if (colIndices(i) >= pos)

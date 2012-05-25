@@ -56,7 +56,8 @@ trait SparseMatrixBuildableOps extends Variables {
     // accessors
     def nnz(implicit ctx: SourceContext) = sparsematrix_buildable_nnz(elem)
     def numRows(implicit ctx: SourceContext) = sparsematrix_buildable_numrows(x)
-    def numCols(implicit ctx: SourceContext) = sparsematrix_buildable_numcols(x)    
+    def numCols(implicit ctx: SourceContext) = sparsematrix_buildable_numcols(x)
+    def size(implicit ctx: SourceContext) = sparsematrix_buildable_size(x)    
     // def apply(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = sparsematrix_buildable_apply(x,i,j)        
     
     // FIXME: see MatrixBuildableOps.scala
@@ -244,9 +245,6 @@ trait SparseMatrixBuildableOpsExp extends SparseMatrixBuildableCompilerOps with 
     case Reflect(e@SparseMatrixBuildableSetNumCols(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixBuildableSetNumCols(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))  
     case Reflect(e@SparseMatrixBuildableSetNNZ(x,v), u, es) => reflectMirrored(Reflect(SparseMatrixBuildableSetNNZ(f(x),f(v))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))  
     case Reflect(e@SparseMatrixBuildableApply(x,i,j), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixBuildableApply(f(x),f(i),f(j))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))      
-    // case Reflect(e@SparseMatrixBuildableInverse(x), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixBuildableInverse(f(x))(e.mA,e.conv), mapOver(f,u), f(es)))(mtype(manifest[A]))          
-    // case Reflect(e@SparseMatrixBuildableMultiply(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixBuildableMultiply(f(x),f(y))(e.mA,e.a), mapOver(f,u), f(es)))(mtype(manifest[A]))         
-    // case Reflect(e@SparseMatrixBuildableMapRows(x,g,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixBuildableMapRows(f(x),f(g),f(y))(e.mA,e.mB), mapOver(f,u), f(es)))(mtype(manifest[A]))              
     case Reflect(e@SparseMatrixBuildableUpdate(x,i,j,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixBuildableUpdate(f(x),f(i),f(j),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseMatrixBuildableAppend(x,i,j,r), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixBuildableAppend(f(x),f(i),f(j),f(r))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@SparseMatrixBuildableInsertRow(x,pos,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with SparseMatrixBuildableInsertRow(f(x),f(pos),f(y))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))              
@@ -281,25 +279,25 @@ trait CudaGenSparseMatrixBuildableOps extends CudaGenBase with CudaGenDataStruct
   val IR: SparseMatrixBuildableOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 trait OpenCLGenSparseMatrixBuildableOps extends OpenCLGenBase with OpenCLGenDataStruct {
   val IR: SparseMatrixBuildableOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 trait CGenSparseMatrixBuildableOps extends CGenBase {
   val IR: SparseMatrixBuildableOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }

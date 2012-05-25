@@ -102,25 +102,25 @@ trait CudaGenSparseMatrixCSROps extends CudaGenBase with CudaGenDataStruct {
   val IR: SparseMatrixCSROpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 trait OpenCLGenSparseMatrixCSROps extends OpenCLGenBase with OpenCLGenDataStruct {
   val IR: SparseMatrixCSROpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 trait CGenSparseMatrixCSROps extends CGenBase {
   val IR: SparseMatrixCSROpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }

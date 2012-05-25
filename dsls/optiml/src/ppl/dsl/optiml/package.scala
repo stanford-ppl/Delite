@@ -14,7 +14,8 @@ package object optiml {
   //type ZeroVector[T] = optila.ZeroVector[T]
   //type EmptyVector[T] = optila.EmptyVector[T]
   type RangeVector = optila.RangeVector
-  type VectorView[T] = optila.VectorView[T]
+  type DenseVectorView[T] = optila.DenseVectorView[T]
+  type SparseVectorView[T] = optila.SparseVectorView[T]
   //type MatrixRow[T] = optila.MatrixRow[T]
   //type MatrixCol[T] = optila.MatrixCol[T]
 

@@ -10,6 +10,7 @@ import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.datastructures.DeliteArray
+import ppl.delite.framework.Util._
 import ppl.dsl.optila._
 
 trait SparseVectorOps extends Variables {
@@ -143,7 +144,7 @@ trait SparseVectorCompilerOps extends SparseVectorOps {
   }  
 }
 
-trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatExp {
+trait SparseVectorOpsExp extends SparseVectorOps with DeliteCollectionOpsExp {
 
   this: SparseVectorImplOps with OptiLAExp =>
 
@@ -272,6 +273,66 @@ trait SparseVectorOpsExp extends SparseVectorOps with VariablesExp with BaseFatE
   def sparsevector_set_nnz[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorSetNnz(x, newVal))
   def sparsevector_set_length[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Int])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorSetLength(x, newVal))
   def sparsevector_set_isrow[A:Manifest](x: Exp[SparseVector[A]], newVal: Exp[Boolean])(implicit ctx: SourceContext) = reflectWrite(x)(SparseVectorSetIsRow(x, newVal))      
+    
+  /////////////////////
+  // delite collection
+    
+  def isSparseVec[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[SparseVector[A]])  
+  def asSparseVec[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[SparseVector[A]]]
+  
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
+    if (isSparseVec(x)) asSparseVec(x).length
+    else super.dc_size(x)
+  }
+  
+  override def dc_set_logical_size[A:Manifest](x: Exp[DeliteCollection[A]], y: Exp[Int])(implicit ctx: SourceContext) = {
+    if (isSparseVec(x)) sparsevector_set_length(asSparseVec(x), y)
+    else super.dc_set_logical_size(x,y)        
+  }
+  
+  override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
+    if (isSparseVec(x)) asSparseVec(x).apply(n)
+    else super.dc_apply(x,n)    
+  }
+  
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isSparseVec(x)) asSparseVec(x).update(n,y)
+    else super.dc_update(x,n,y)        
+  }
+  
+  override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isSparseVec(x)) {
+      if (y != defaultValue[A]) { sparsevector_append(asSparseVec(x),i,y); unit(true) }
+      else unit(false)
+    }      
+    else super.dc_append(x,i,y)        
+  }  
+  
+  override def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
+    if (isSparseVec(x)) {
+      val v = asSparseVec(x)
+      val out = SparseVector[A](unit(0), v.isRow)
+      sparsevector_set_raw_indices(out, DeliteArray[Int](size).unsafeImmutable)
+      sparsevector_set_raw_data(out, DeliteArray[A](size).unsafeImmutable)      
+      sparsevector_set_length(out, v.length)
+      sparsevector_set_nnz(out, size)
+      out.asInstanceOf[Exp[CA]]
+    }
+    else super.dc_alloc[A,CA](x,size)
+  }  
+  
+  override def dc_copy[A:Manifest](src: Exp[DeliteCollection[A]], srcPos: Exp[Int], dst: Exp[DeliteCollection[A]], dstPos: Exp[Int], size: Exp[Int])(implicit ctx: SourceContext): Exp[Unit] = {
+    if (isSparseVec(src) && isSparseVec(dst)) {
+      darray_unsafe_copy(sparsevector_raw_indices(asSparseVec(src)), srcPos, sparsevector_raw_indices(asSparseVec(dst)), dstPos, size)
+      darray_unsafe_copy(sparsevector_raw_data(asSparseVec(src)), srcPos, sparsevector_raw_data(asSparseVec(dst)), dstPos, size)
+    }
+    else super.dc_copy(src,srcPos,dst,dstPos,size)
+  }      
+  
+  override def dc_parallelization[A:Manifest](x: Exp[DeliteCollection[A]], hasConditions: Boolean)(implicit ctx: SourceContext) = {
+    if (isSparseVec(x)) ParBuffer
+    else super.dc_parallelization(x, hasConditions)
+  }
   
   //////////////
   // mirroring
@@ -441,26 +502,26 @@ trait CudaGenSparseVectorOps extends BaseGenSparseVectorOps with CudaGenFat with
   val IR: SparseVectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 trait OpenCLGenSparseVectorOps extends BaseGenSparseVectorOps with OpenCLGenFat with OpenCLGenDataStruct {
   val IR: SparseVectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {	
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {  
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 
 trait CGenSparseVectorOps extends BaseGenSparseVectorOps with CGenFat {
   val IR: SparseVectorOpsExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case _ => super.emitNode(sym, rhs)
-  }
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
 }
 

@@ -6,7 +6,7 @@ trait Downsampling {
   this: OptiMLApplication =>
 
   def downsample(data: Rep[UnsupervisedTrainingSet[Double]], arcsinhCofactor: Rep[Double], scale: Rep[Double],
-                 usedMarkers: Rep[DenseVector[Int]], isNormalize: Rep[Boolean], normalizeWeight: Rep[Double]): Rep[Vector[Int]] = {
+                 usedMarkers: Rep[DenseVector[Int]], isNormalize: Rep[Boolean], normalizeWeight: Rep[Double]): Rep[DenseVector[Int]] = {
 
 
     println("   Input matrix size: " + data.numSamples + "*" + data.numFeatures)
@@ -45,7 +45,7 @@ trait Downsampling {
     4.4593519740000005
   }
 
-  private def countNeighbors(data: Rep[UnsupervisedTrainingSet[Double]], kernelWidth: Rep[Double], apprxWidth: Rep[Double]): Rep[Vector[Int]] = {
+  private def countNeighbors(data: Rep[UnsupervisedTrainingSet[Double]], kernelWidth: Rep[Double], apprxWidth: Rep[Double]): Rep[DenseVector[Int]] = {
 
     println("   finding local density for each cell ...")
 
