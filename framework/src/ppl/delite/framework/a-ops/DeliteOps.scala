@@ -2147,6 +2147,22 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
           lf.loopFuncOutputType_2 = remap(getBlockResult(elem.func._2).Type)
           if(elem.cond.nonEmpty) emitMultiLoopCond(sym, elem.cond, op.v, "cond_"+funcNameSuffix(sym), stream)
 
+        //TODO: Factor out the same key functions and indicate in DEG
+        case (sym, elem: DeliteHashReduceElem[_,_,_]) =>
+          val lf = metaData.loopFuncs.getOrElse(sym,new LoopFunc)
+          metaData.loopFuncs.put(sym,lf)
+          lf.tpe = "HASH_REDUCE"
+
+          lf.loopFuncInputs = emitMultiLoopFunc(elem.valFunc, "valFunc_"+funcNameSuffix(sym), List(op.v), stream)
+          lf.loopFuncInputs_2 = emitMultiLoopFunc(elem.keyFunc, "keyFunc_"+funcNameSuffix(sym), List(op.v), stream)
+          lf.loopReduceInputs = emitMultiLoopFunc(elem.rFunc, "reduce_"+funcNameSuffix(sym), List(elem.rV._1, elem.rV._2, op.v), stream)
+          lf.loopZeroInputs = emitMultiLoopFunc(elem.zero,"zero_"+funcNameSuffix(sym), Nil, stream)
+          
+          if(elem.cond.nonEmpty) emitMultiLoopCond(sym, elem.cond, op.v, "cond_"+funcNameSuffix(sym), stream)
+          emitAllocFunc(sym,null,sym,op.size)
+          lf.loopFuncOutputType = remap(getBlockResult(elem.valFunc).Type)
+          lf.loopFuncOutputType_2 = remap(getBlockResult(elem.keyFunc).Type)
+
         case _ =>
           throw new GenerationFailedException("CudaGen: Unsupported Elem type!")
     }

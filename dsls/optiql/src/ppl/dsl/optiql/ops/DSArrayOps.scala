@@ -1,7 +1,7 @@
 package ppl.dsl.optiql.ops
 
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{Base, ScalaGenFat, BaseFatExp, LoopsFatExp, IfThenElseFatExp, TupleOpsExp, ArrayOpsExp, LoopFusionOpt}
+import scala.virtualization.lms.common.{Base, ScalaGenFat, CudaGenFat, BaseFatExp, LoopsFatExp, IfThenElseFatExp, TupleOpsExp, ArrayOpsExp, LoopFusionOpt}
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.dsl.optiql.OptiQLExp
 import ppl.delite.framework.datastructures.FieldAccessOpsExp
@@ -275,7 +275,7 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
       valFunc = reifyEffects(func(v)),
       zero = reifyEffects(unit(null).AsInstanceOf[A]),
       rV = rV,
-      rFunc = reifyEffects(rV._2)
+      rFunc = reifyEffects(rV._1)
     ))
   }
   
@@ -404,6 +404,12 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
   
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case e@ETuple2(a, b) if e.m1 == manifest[Boolean] && e.m2 == manifest[Boolean] =>
+      emitValDef(sym, "((if("+ quote(a) + ") 1 else 0) << 1) + " + "(if("+ quote(b) + ") 1 else 0)")
+    case a@Tuple2Access1(t) if a.m == manifest[Boolean] =>
+      emitValDef(sym, "((" + quote(t) + " & 0xfffffffe) >>> 1) == 1")
+    case a@Tuple2Access2(t) if a.m == manifest[Boolean] =>
+      emitValDef(sym, "(" + quote(t) + " & 0x00000001) == 1")
     case e@ETuple2(a, b) if e.m1 == manifest[Char] && e.m2 == manifest[Char] =>
       emitValDef(sym, "("+ quote(a) + ".toInt << 16) + " + quote(b)) 
     case a@Tuple2Access1(t) if a.m == manifest[Char] =>
@@ -428,6 +434,28 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
       stream.println(/*{*/"}")
     case _ => super.emitNode(sym, rhs)
   }
-  
-  
+}
+
+
+trait CudaGenDSArrayOps extends CudaGenFat with LoopFusionOpt {
+  val IR: DSArrayOpsExp with OptiQLExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case e@ETuple2(a, b) if e.m1 == manifest[Boolean] && e.m2 == manifest[Boolean] =>
+      emitValDef(sym, "((unsigned int)" + quote(a) + " << 1) + " + quote(b))
+    case a@Tuple2Access1(t) if a.m == manifest[Boolean] =>
+      emitValDef(sym, "((unsigned char)(" + quote(t) + " & 0xfffffffe)) >> 1")
+    case a@Tuple2Access2(t) if a.m == manifest[Boolean] =>
+      emitValDef(sym, "(unsigned char)(" + quote(t) + " & 0x0001)")
+    case e@ETuple2(a, b) if e.m1 == manifest[Char] && e.m2 == manifest[Char] =>
+      emitValDef(sym, "((unsigned int)" + quote(a) + " << 16) + " + quote(b))
+    case a@Tuple2Access1(t) if a.m == manifest[Char] =>
+      emitValDef(sym, "((unsigned short)(" + quote(t) + " & 0xffff0000)) >> 16")
+    case a@Tuple2Access2(t) if a.m == manifest[Char] =>
+      emitValDef(sym, "(unsigned short)(" + quote(t) + " & 0xffff)")
+    case _ => super.emitNode(sym, rhs)
+  }
+
+
 }

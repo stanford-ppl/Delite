@@ -7,6 +7,7 @@ import scala.virtualization.lms.common._
 import ppl.delite.framework.ops._
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.delite.framework.codegen.scala.TargetScala
+import ppl.delite.framework.codegen.cuda.TargetCuda
 import ppl.delite.framework.{Config, DeliteApplication}
 import java.io.{FileWriter, BufferedWriter, File}
 import ppl.delite.framework.codegen.{Utils, Target}
@@ -58,6 +59,7 @@ trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp /*with HackOpsE
   def getCodeGenPkg(t: Target{val IR: OptiQLExp.this.type}) : GenericFatCodegen{val IR: OptiQLExp.this.type} = {
     t match {
       case _:TargetScala => new OptiQLCodeGenScala{val IR: OptiQLExp.this.type = OptiQLExp.this}
+      case _:TargetCuda => new OptiQLCodeGenCuda{val IR: OptiQLExp.this.type = OptiQLExp.this}
       case _ => throw new RuntimeException("OptiQL does not support this target")
     }
   }
@@ -69,6 +71,11 @@ trait OptiQLExp extends OptiQLCompiler with OptiQLScalaOpsPkgExp /*with HackOpsE
  */
 trait OptiQLScalaCodeGenPkg extends ScalaGenMiscOps with ScalaGenIOOps with ScalaGenSeqOps with ScalaGenOrderingOps with ScalaGenBooleanOps with ScalaGenEqual with ScalaGenVariables
   with ScalaGenPrimitiveOps with ScalaGenObjectOps with ScalaGenStringOps with ScalaGenTupleOps with ScalaGenNumericOps with ScalaGenArrayOps with ScalaGenIfThenElseFat with ScalaGenImplicitOps with ScalaGenCastingOps with ScalaGenFatStruct {
+  val IR: OptiQLScalaOpsPkgExp
+}
+
+trait OptiQLCudaCodeGenPkg extends CudaGenMiscOps with CudaGenIOOps with CudaGenSeqOps with CudaGenOrderingOps with CudaGenBooleanOps with CudaGenEqual with CudaGenVariables
+  with CudaGenPrimitiveOps with CudaGenObjectOps with CudaGenStringOps /*with CudaGenTupleOps*/ with CudaGenNumericOps with CudaGenArrayOps with CudaGenIfThenElseFat with CudaGenImplicitOps with CudaGenCastingOps with CudaGenFatStruct {
   val IR: OptiQLScalaOpsPkgExp
 }
 
@@ -125,6 +132,7 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg /*
       //  "Array[" + remap(Manifest.classType(m.erasure.getComponentType)) + "]"
       case m if m.toString == "scala.Tuple2" => "Int" //HACK
       case m if m.toString == "scala.Tuple2[Char, Char]" => "Int"
+      case m if m.toString == "scala.Tuple2[Boolean, Boolean]" => "Int"
       //case m if m.toString == "double" => "Double"
       //case m if m.toString == "float" => "Float"
       //case m if m.toString == "char" => "Char"
@@ -140,6 +148,29 @@ trait OptiQLCodeGenScala extends OptiQLCodeGenBase with OptiQLScalaCodeGenPkg /*
     res = res.replaceAll("ppl.delite.framework.datastruct", "generated")
     res
   }
+}
+
+trait OptiQLCodeGenCuda extends OptiQLCodeGenBase with OptiQLCudaCodeGenPkg /*with CudaGenHackOps*/
+  /*with CudaGenDataTableOps with CudaGenDateOps with CudaGenQueryableOps with CudaGenOptiQLMiscOps
+  with CudaGenResultOps */ /*with CudaGenApplicationOps*/ with CudaGenDeliteCollectionOps
+  with CudaGenDeliteOps with CudaGenDeliteArrayOps /*with CudaGenDeliteArrayBuilderOps*/ with CudaGenDSArrayOps with DeliteCudaGenAllOverrides {
+  val IR: DeliteApplication with OptiQLExp
+
+  override def remap[A](m: Manifest[A]): String = {
+    m match {
+      case m if m.erasure.getSimpleName == "Date" => "int"
+      case m if m.toString == "scala.Tuple2" => "int" //HACK
+      case m if m.toString == "scala.Tuple2[Char, Char]" => "int"
+      case m if m.toString == "scala.Tuple2[Boolean, Boolean]" => "int"
+      case _ => super.remap(m)
+    }
+  }
+
+	override def getDSLHeaders: String = {
+    val out = new StringBuilder
+    out.toString
+	}
+
 }
 
 /**

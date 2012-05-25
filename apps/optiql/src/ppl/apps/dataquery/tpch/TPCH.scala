@@ -53,7 +53,9 @@ trait TPCHQ1Trait extends TPCHBaseTrait {
   val queryName = "Q1"  
   def query() = {           
     tic(lineItems.size)
-    val q = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
+    //TODO: Get rid of this hack with general GPU hashreduce
+    //val q = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
+    val q = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag=='A',l.l_linestatus=='O')) Select(g => new Result {
       val returnFlag = g.key._1
       val lineStatus = g.key._2
       val sumQty = g.Sum(_.l_quantity)

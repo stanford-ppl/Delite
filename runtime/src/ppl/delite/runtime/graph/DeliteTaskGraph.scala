@@ -465,30 +465,6 @@ object DeliteTaskGraph {
       }
     }
 
-    val tempSyms = new HashMap[String,DeliteOP]
-    for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) {
-      val key = (temp.asInstanceOf[Map[String,Any]].keys.head)
-      val tempOp = new OP_Single(key, null, null)
-      tempSyms(key) = tempOp
-      metadata.tempOps ::= tempOp
-    }
-
-    def getOpLike(sym: String) = {
-      try getOp(sym)
-      catch { case _ => tempSyms(sym) }
-    }
-
-    for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) { //temporaries list
-      val key = (temp.asInstanceOf[Map[String,Any]].keys.head)
-      val value = (temp.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
-      val data = metadata.newTemp(key)
-      data.resultType = value.head
-      data.func = "allocFunc_%s".format(key)
-      for (sym <- value.tail.head.asInstanceOf[List[String]].reverse) {
-        data.inputs ::= (getOpLike(sym), sym)
-      }
-    }
-
     //output allocation
     for (out <- getFieldList(metadataMap, "gpuOutputs").reverse) {
       val outputMap = out.asInstanceOf[Map[Any,Any]]
@@ -497,7 +473,7 @@ object DeliteTaskGraph {
       output.resultType = outList.head
       output.func = "allocFunc_%s".format(outputMap.keys.head)
       for (sym <- outList.tail.head.asInstanceOf[List[String]].reverse) {
-        output.inputs ::= (getOpLike(sym), sym)
+        output.inputs ::= (getOp(sym), sym)
       }
       //output copy
       output.funcReturn = "copyOutputDtoH_%s".format(outputMap.keys.head)
@@ -524,23 +500,6 @@ object DeliteTaskGraph {
       }
 
     }
-
-    /*
-    def fill(field: String) {
-      val list = getFieldList(metadataMap, field)
-      val data = metadata(field)
-      data.func = list.head
-      for (sym <- list.tail.head.asInstanceOf[List[String]].reverse) data.inputs ::= (getOpLike(sym), sym)
-    }
-
-    if (!newop.isInstanceOf[OP_External]){
-      fill("gpuBlockSizeX") //threads/block - x
-      fill("gpuBlockSizeY") //threads/block - y
-      fill("gpuBlockSizeZ") //threads/block - z
-      fill("gpuDimSizeX") //blocks in grid - x
-      fill("gpuDimSizeY") //blocks in grid - y
-    }
-    */
 
   }
 
