@@ -62,7 +62,7 @@
         </p>
         <p>
         <ul>
-          <li>Verify diciplined convex programming (DCP) rules are followed</li>
+          <li>Verify disciplined convex programming (DCP) rules are followed</li>
           <li>Convert the user program into one or more standard-form conic programs using
             rewriting rules</li>
           <li>Emit code for a solver that will operate on this conic program, given the user's
@@ -163,11 +163,11 @@
         </p>
         <div class="highlight"><code class="scala">
 <pre>
-constrain_zero(...)
-constrain_nonnegative(...)
-constrain_secondordercone(...)
-constrain_semidefinite(...)
-minimize (...) over (...)
+<span class="f">constrain_zero</span>(...)
+<span class="f">constrain_nonnegative</span>(...)
+<span class="f">constrain_secondordercone</span>(...)
+<span class="f">constrain_semidefinite</span>(...)
+<span class="f">minimize</span> (...) <span class="f">over</span> (...)
 </pre>
         </code></div>
         <p>
@@ -179,14 +179,14 @@ minimize (...) over (...)
           all the constraints that act on the variables being minimized over and produce
           their Cartesian product to create a problem of the form:
         </p>
-        <div class="highlight"><code class="pseudocode">
+        <div class="highlightmath"><code class="pseudocode">
 <pre>
-minimize c<sup>T</sup>*x
-  over x &isin; R<sup>n</sup>
-  subject to
+<span class="k">minimize</span> c<sup>T</sup>*x
+  <span class="k">over</span> x &isin; R<sup>n</sup>
+  <span class="k">subject to</span>
     A*x + b = 0
     F*x + g &isin; K
-  for some matrices A and F, vectors b, c, and g, and symmetric cone K.
+  <span class="c">for some matrices A and F, vectors b, c, and g, and symmetric cone K.</span>
 </pre>
         </code></div>
         <p>
@@ -201,7 +201,7 @@ minimize c<sup>T</sup>*x
         <p>
           In order to deal with functions, the DSL basically just runs the body of the
           function, accumulating all variable declarations, constraints, and minimizations.
-          It then adds these to the main problem.  Thus, all OptiCVX function invokations are
+          It then adds these to the main problem.  Thus, all OptiCVX function invocations are
           effectively inlined.
         </p>
         <p>
@@ -221,9 +221,14 @@ minimize c<sup>T</sup>*x
           the time at which the minimization statement occurs.
         </p>
         <p>
-          The emitted code currently consists of hard-coded Scala vector operations.  I
-          plan to soon modify it to express the vector operations as Delite ops, so that
-          I can leverage the parallel nature of Delite.
+          The emitted code is based entirely off of the dense vector operations of the
+          linear-algebra DSL, OptiLA.  OptiLA's dense vector operations are a thin wrapper
+          around Delite ops, and allow for code reuse for many functions, such as vector
+          addition, that must be used across many DSLs.  In addition to OptiLA, OptiCVX
+          also uses the looping IR nodes included in LMS to enable the iteration of the
+          solver.  Since this encompasses the entirety of the operations performed by
+          the DSL, OptiCVX does not itself emit any target code.  This theoretically allows
+          it to be easily retargeted at any platform supported by OptiLA's generators.
         </p>
         <p>
           The results of the solver run are read out by using a <code>resolve(...)</code>
