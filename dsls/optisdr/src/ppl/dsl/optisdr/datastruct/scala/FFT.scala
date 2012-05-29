@@ -34,7 +34,7 @@ object FFT {
     doublesToComplexVector(doubleArray)
   }
   
-  def complexInverse(cpxVector: DenseVector[Complex], scale: Boolean = false) = {
+  def complexInverse(cpxVector: DenseVector[Complex], scale: Boolean = true) = {
     val doubleArray = complexToDoubles(cpxVector._data)
   
     val doubleFFT = new DoubleFFT_1D(cpxVector._length)
@@ -60,7 +60,7 @@ object FFT {
     doublesToComplexVector(paddedArray)
   }
   
-  def realInverse(realVector: DenseVector[Double], scale: Boolean = false) = {
+  def realInverse(realVector: DenseVector[Double], scale: Boolean = true) = {
     val paddedArray = padRealArray(realVector._data)
   
     val doubleFFT = new DoubleFFT_1D(realVector._length)

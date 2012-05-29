@@ -169,6 +169,7 @@ trait ScalaGenComplexOps extends BaseGenComplexOps with ScalaGenFat {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     // these are the ops that call through to the underlying real data structure
 
+    case ComplexNew(real,imag) => emitValDef(sym, "Complex(" + quote(real) + "," + quote(imag) + ")")
     case ComplexPlus(lhs,rhs) => emitValDef(sym, "Complex(" + quote(lhs) + ".real + " + quote(rhs) + ".real," + quote(lhs) + ".imag + " + quote(rhs) + ".imag)")
     case ComplexMinus(lhs,rhs) => emitValDef(sym, "Complex(" + quote(lhs) + ".real - " + quote(rhs) + ".real," + quote(lhs) + ".imag - " + quote(rhs) + ".imag)")
     case ComplexTimes(lhs,rhs) => emitValDef(sym, "Complex(" + quote(lhs) + ".real * " + quote(rhs) + ".real - " + quote(lhs) + ".imag * " + quote(rhs) + ".imag," + quote(lhs) + ".real * " + quote(rhs) + ".imag + " + quote(lhs) + ".imag * " + quote(rhs) + ".real)")

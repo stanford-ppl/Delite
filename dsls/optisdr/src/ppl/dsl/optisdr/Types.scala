@@ -37,3 +37,4 @@ class ParamEnum[T](xs: T*)
 
 // Stream trait? so that width assert will only apply to them?
 trait Stream[T] extends DeliteCollection[T]
+trait CyclicStream[T] extends Stream[T]

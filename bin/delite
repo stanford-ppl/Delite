@@ -65,7 +65,8 @@ def run(deg, params, opts):
     cp = " -cp "
     cp = cp + delitecommon.DELITE_HOME + "/runtime/target/" + delitecommon.scala_virt_version + "/classes" + os.pathsep
     cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep
-    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-compiler.jar"
+    cp = cp + delitecommon.SCALA_VIRT_HOME + "/scala-compiler.jar" + os.pathsep
+    cp = cp + delitecommon.DELITE_HOME + "/dsls/optisdr/lib/jtransforms-2.4.jar"
 
     java_opts = java_opts + cp
     #os.putenv("JAVA_OPTS", java_opts)

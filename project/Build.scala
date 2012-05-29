@@ -7,7 +7,7 @@ object DeliteBuild extends Build {
   // FIXME: custom-built scalatest
   val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
   val scalatest = "org.scalatest" % "scalatest_2.10.0-virtualized-SNAPSHOT" % "1.6.1-SNAPSHOT" //% "test"
-
+  
   val virtScala = "2.10.0-M1-virtualized"//"2.10.0-virtualized-SNAPSHOT"
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
     resolvers += ScalaToolsSnapshots, 
@@ -25,7 +25,12 @@ object DeliteBuild extends Build {
     scalacOptions += "-Yno-generic-signatures",
     scalacOptions += "-Yvirtualize"
     // scalacOptions += "-Xlog-implicits",
-    // scalacOptions += "-explaintypes"
+    // scalacOptions += "-explaintypes",
+    /*unmanagedJars in Compile <++= baseDirectory map { base =>
+      val baseDirectories = (base / "lib")
+      val customJars = (baseDirectories ** "*.jar")
+      customJars.classpath
+    }*/
   )
 
   val virtBuildSettings = virtBuildSettingsBase ++ Seq(
@@ -63,6 +68,7 @@ object DeliteBuild extends Build {
   lazy val dsls = Project("dsls", file("dsls"), settings = virtBuildSettings) aggregate(optila, optiml, optiql, optisdr) 
   lazy val optila = Project("optila", file("dsls/optila"), settings = virtBuildSettings) dependsOn(framework)
   lazy val optiml = Project("optiml", file("dsls/optiml"), settings = virtBuildSettings) dependsOn(optila)
+  
   lazy val optisdr = Project("optisdr", file("dsls/optisdr"), settings = virtBuildSettings) dependsOn(optila)
   lazy val optiql = Project("optiql", file("dsls/optiql"), settings = virtBuildSettings) dependsOn(framework)
 

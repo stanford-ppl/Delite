@@ -17,7 +17,23 @@ import ppl.tests.scalatest._
 object VectorTestRunner extends DeliteTestRunner with OptiSDRApplicationRunner with VectorApp
 trait VectorApp extends DeliteTestModule with OptiSDRApplication {
   def main() = {
-    // FFT
+    val a = Vector(Complex(1, 1), Complex(-0.5, 0), Complex(0.2, 0.4), Complex(1, 0))
+    val b = FFT_1D(a)
+    println("Complex FFT")
+    b.pprint
+    
+    val a_1 = IFFT_1D(b)
+    println("Complex IFFT")
+    a_1.pprint
+    
+    val c = Vector[Real](1.0, 0.2, -3, 0)
+    val d = FFT_1D(c)
+    println("Real FFT")
+    d.pprint
+    
+    val c_1 = IFFT_1D(d)
+    println("Real IFFT")
+    c_1.pprint
   
     collect(true)
     

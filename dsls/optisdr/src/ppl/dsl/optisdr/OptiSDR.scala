@@ -50,6 +50,7 @@ trait OptiSDR extends OptiSDRScalaOpsPkg with OptiLA
   with SDRArithOps
   with SDRVectorOps
   with SDRStreamOps
+  with CyclicStreamOps
   with LanguageOps {
   this: OptiSDRApplication =>
   
@@ -69,6 +70,7 @@ trait OptiSDRExp extends OptiLAExp with OptiSDRCompiler with OptiSDRScalaOpsPkgE
   with SDRArithOpsExp
   with SDRVectorOpsExpOpt
   with SDRStreamOpsExpOpt
+  with CyclicStreamOpsExpOpt
   with LanguageOpsExp {
   this: DeliteApplication with OptiSDRApplication with OptiSDRExp => // can't be OptiSDRApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
   
@@ -128,7 +130,7 @@ trait OptiSDRCodeGenBase extends OptiLACodeGenBase {
 
 trait OptiSDRCodeGenScala extends OptiLACodeGenScala with OptiSDRCodeGenBase with OptiSDRScalaCodeGenPkg /* with OptiSDRScalaGenExternal */
   with ScalaGenComplexOps with ScalaGenSDRIntOps with ScalaGenUIntOps with ScalaGenByteOps
-  with ScalaGenSDRVectorOps with ScalaGenStreamOps {
+  with ScalaGenSDRVectorOps with ScalaGenStreamOps with ScalaGenCyclicStreamOps {
   val IR: DeliteApplication with OptiSDRExp
 
   // override val specialize = Set("DenseVector", "DenseMatrix"/*, "VectorView"*/)
