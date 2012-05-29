@@ -13,6 +13,7 @@ import ppl.delite.framework.ops.DeliteCollectionOpsExp
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 
 import ppl.dsl.optisdr._
+import ppl.dsl.optila.DenseVector
 
 trait SDRStreamOps extends Variables {
   this: OptiSDR =>
@@ -57,6 +58,8 @@ trait SDRStreamOps extends Variables {
     def >>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = stream_rshift(elem, y)
     def >>>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = stream_rashift(elem, y)
     
+    def drop(n: Rep[Int])(implicit ctx: SourceContext) = stream_drop(elem, n)
+    def grouped(n: Rep[Int])(implicit ctx: SourceContext) = stream_grouped(elem, n)
     // DON'T USE CLONE, WILL BREAK
   }
   
@@ -94,6 +97,10 @@ trait SDRStreamOps extends Variables {
   def stream_lshift[A:Manifest:BitArith](a: Rep[Stream[A]], b: Rep[Int])(implicit ctx: SourceContext) : Rep[Stream[A]]
   def stream_rshift[A:Manifest:BitArith](a: Rep[Stream[A]], b: Rep[Int])(implicit ctx: SourceContext) : Rep[Stream[A]]
   def stream_rashift[A:Manifest:BitArith](a: Rep[Stream[A]], b: Rep[Int])(implicit ctx: SourceContext) : Rep[Stream[A]]
+  
+  // Stream ops
+  def stream_drop[A:Manifest](x: Rep[Stream[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[Stream[A]]
+  def stream_grouped[A:Manifest](x: Rep[Stream[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[Stream[DenseVector[A]]]
   
   object FakeStreamVector {
     def apply[A:Manifest](xs: Rep[A]*) = fsv_obj_new(xs : _*)
@@ -304,6 +311,14 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp wit
   def stream_rshift[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRStreamRShift(x,y))
   def stream_rashift[A:Manifest:BitArith](x: Exp[Stream[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRStreamRAShift(x,y))
   
+  // Stream ops
+  case class SDRStreamDrop[A:Manifest](x: Exp[Stream[A]], n: Exp[Int]) extends DefWithManifest[A,Stream[A]]
+  case class SDRStreamGrouped[A:Manifest](x: Exp[Stream[A]], n: Exp[Int]) extends DefWithManifest[A,Stream[DenseVector[A]]]
+  
+  // def stream_drop[A:Manifest](x: Rep[Stream[A]], n: Rep[Int])(implicit ctx: SourceContext) = { stream_new(x.data, x.offset + n) }
+  def stream_drop[A:Manifest](x: Exp[Stream[A]], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRStreamDrop(x,n))
+  def stream_grouped[A:Manifest](x: Exp[Stream[A]], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRStreamGrouped(x,n))
+  
   def isStream[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.Type.erasure,classOf[Stream[A]])  
   def asStream[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[Stream[A]]]
   
@@ -319,12 +334,15 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp wit
   
   override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
     if (isStream(x)) asStream(x).update(n,y)
-    else super.dc_update(x,n,y)        
+    else super.dc_update(x,n,y)
   }
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@FSVLength(x) => reflectPure(FSVLength(f(x))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     case e@FSVApply(x,n) => reflectPure(FSVApply(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    
+    case e@SDRStreamDrop(x,n) => reflectPure(SDRStreamDrop(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@SDRStreamGrouped(x,n) => reflectPure(SDRStreamGrouped(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
     
     case e@SDRStreamPlus(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamPlus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SDRStreamMinus(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamMinus(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
@@ -338,6 +356,9 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp wit
     case e@SDRStreamBinaryAnd(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamBinaryAnd(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SDRStreamBinaryOr(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamBinaryOr(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
     case e@SDRStreamBinaryXor(x,y) => reflectPure(new { override val original = Some(f,e) } with SDRStreamBinaryXor(f(x),f(y))(e.m, e.a))(mtype(manifest[A]),implicitly[SourceContext])
+    
+    case Reflect(e@SDRStreamDrop(x,n), u, es) => reflectMirrored(Reflect(SDRStreamDrop(f(x),f(n))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@SDRStreamGrouped(x,n), u, es) => reflectMirrored(Reflect(SDRStreamGrouped(f(x),f(n))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     
     case Reflect(e@FSVObjNew(xs @ _*), u, es) => reflectMirrored(Reflect(FSVObjNew(f(xs) : _*)(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case Reflect(e@FSVObjOfLength(l), u, es) => reflectMirrored(Reflect(FSVObjOfLength(f(l))(e.mA), mapOver(f,u), f(es)))(mtype(manifest[A]))
@@ -382,9 +403,12 @@ trait ScalaGenStreamOps extends BaseGenStreamOps with ScalaGenFat {
   override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case v@FSVObjNew(xs @ _*) => emitValDef(sym, remap("generated.scala.FakeStreamVector[" + remap(v.mA) + "]")+"(" + xs.map(quote).reduceLeft(_+","+_) + ")")        
     case v@FSVObjOfLength(length) => emitValDef(sym, remap("generated.scala.FakeStreamVector.ofLength[" + remap(v.mA) + "]")+"(" + quote(length) + ")")
-    case FSVLength(x) => emitValDef(sym, quote(x) + "._length")
-    case FSVApply(x,n) => emitValDef(sym, quote(x) + "._data(" + quote(n) + ")")
-    case FSVUpdate(x,n,y) => emitValDef(sym, quote(x) + "._data(" + quote(n) + ") = " + quote(y))
+    case FSVLength(x) => emitValDef(sym, quote(x) + ".length")
+    case FSVApply(x,n) => emitValDef(sym, quote(x) + "(" + quote(n) + ")")
+    case FSVUpdate(x,n,y) => emitValDef(sym, quote(x) + "(" + quote(n) + ") = " + quote(y))
+    
+    case SDRStreamDrop(x,n) => emitValDef(sym, quote(x) + ".drop(" + quote(n) + ")")
+    case SDRStreamGrouped(x,n) => emitValDef(sym, quote(x) + ".grouped(" + quote(n) + ")")
     
     case _ => super.emitNode(sym, rhs)
   }

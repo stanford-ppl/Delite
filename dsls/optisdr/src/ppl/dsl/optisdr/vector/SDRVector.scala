@@ -36,6 +36,8 @@ trait SDRVectorOps extends Variables {
     def !<<(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_lvshift(x, y)
     def !>>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_rvshift(x, y)
     
+    def drop(n: Rep[Int])(implicit ctx: SourceContext) = sdrvector_drop(x, n)
+    
     def cycle()(implicit ctx: SourceContext) = cyclicstream_new(x, unit(0))
     def cycle(offset: Rep[Int])(implicit ctx: SourceContext) = cyclicstream_new(x, offset)
   }
@@ -80,6 +82,9 @@ trait SDRVectorOps extends Variables {
   
   def sdrvector_lvshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
   def sdrvector_rvshift[A:Manifest:BitArith](x: Rep[DenseVector[A]], y: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
+  
+  // Vector ops
+  def sdrvector_drop[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int])(implicit ctx: SourceContext) : Rep[DenseVector[A]]
 }
 
 trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
@@ -213,6 +218,22 @@ trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
   
   def sdrvector_lvshift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRVectorLVShift(x,y))
   def sdrvector_rvshift[A:Manifest:BitArith](x: Exp[DenseVector[A]], y: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRVectorRVShift(x,y))
+  
+  // Vector ops
+  def sdrvector_drop[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(SDRVectorDrop(x,n))
+  
+  case class SDRVectorDrop[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int])
+    extends DeliteOpSingleWithManifest[A,DenseVector[A]](reifyEffectsHere(sdrvector_drop(x, n)))
+  
+  def sdrvector_drop_impl[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int]) = {
+    val v = DenseVector[A](x.length - n, unit(true))
+    
+    for (i <- n until x.length) {
+      v(i-n) = x(i)
+    }
+    
+    v.unsafeImmutable
+  }
 }
 
 trait SDRVectorOpsExpOpt extends SDRVectorOpsExp {

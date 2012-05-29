@@ -8,10 +8,11 @@ package ppl.dsl.optila.datastruct.scala
  * in the generated code.
  */
 
-class DenseVector[@specialized T: Manifest](__length: Int, __isRow: Boolean) { 
-  var _length = __length
+class DenseVector[@specialized T: Manifest](var _data: Array[T], __isRow: Boolean) { 
+  def this(__length: Int, __isRow: Boolean) = this(new Array[T](__length), __isRow)
+
+  var _length = _data.length
   var _isRow = __isRow
-  var _data: Array[T] = new Array[T](_length)
 
   /**
    * These are temporarily needed because they are hard-coded into DeliteOp code gen. 

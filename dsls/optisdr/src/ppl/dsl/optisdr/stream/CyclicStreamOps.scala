@@ -18,30 +18,8 @@ import ppl.dsl.optila.DenseVector
 trait CyclicStreamOps extends Variables {
   this: OptiSDR =>
   
-  // Convert from Rep[Stream[A]] to our Stream ops
-  implicit def repToCyclicStreamOps[A:Manifest](x: Rep[CyclicStream[A]]) = new CyclicStreamOpsCls(x)
-  implicit def varToCyclicStreamOps[A:Manifest](x: Var[CyclicStream[A]]) = new CyclicStreamOpsCls(readVar(x))
-  
-  // Objects methods
-  class CyclicStreamOpsCls[A:Manifest](val elem: Rep[CyclicStream[A]]) {
-    type V[X] = Stream[X]
-    type VA = V[A] // temporary for easy compatibility with old stuff
-    type Self = Stream[A]
-   
-    // data operations
-    def apply(n: Rep[Int])(implicit ctx: SourceContext) = cyclicstream_apply(elem, n)
-//    def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = stream_update(elem,n,y)
-
-    def drop(n: Rep[Int])(implicit ctx: SourceContext) = cyclicstream_drop(elem, n)
-    
-    def data()(implicit ctx: SourceContext) = cyclicstream_data(elem)
-    def offset()(implicit ctx: SourceContext) = cyclicstream_offset(elem)
-  }
-  
   def cyclicstream_new[A:Manifest](x: Rep[Array[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[CyclicStream[A]]
   def cyclicstream_new[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int])(implicit ctx: SourceContext, o: Overloaded1): Rep[CyclicStream[A]]
-  
-  def cyclicstream_drop[A:Manifest](x: Rep[CyclicStream[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[CyclicStream[A]]
   
   def cyclicstream_apply[A:Manifest](x: Rep[Stream[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
   
@@ -57,10 +35,6 @@ trait CyclicStreamOpsExp extends CyclicStreamOps with VariablesExp with BaseFatE
   
   def cyclicstream_new[A:Manifest](x: Exp[Array[A]], n: Exp[Int])(implicit ctx: SourceContext) = reflectPure(CyclicStreamNew(x, n))
   def cyclicstream_new[A:Manifest](x: Exp[DenseVector[A]], n: Exp[Int])(implicit ctx: SourceContext, o: Overloaded1) = reflectPure(CyclicStreamNewWithVector(x, n))
-  
-  def cyclicstream_drop[A:Manifest](x: Rep[CyclicStream[A]], n: Rep[Int])(implicit ctx: SourceContext) = {
-    cyclicstream_new(x.data, x.offset + n)
-  }
   
   case class CyclicStreamApply[A:Manifest](x: Exp[CyclicStream[A]], n: Exp[Int]) extends DefWithManifest[A,A]
   
@@ -111,7 +85,7 @@ trait ScalaGenCyclicStreamOps extends BaseGenCyclicStreamOps with ScalaGenFat {
     case c@CyclicStreamNewWithVector(x,n) => emitValDef(sym, remap("generated.scala.CyclicStream[" + remap(c.mA) + "]")+"(" + quote(x) + "._data," + quote(n) + ")")
     
     case CyclicStreamApply(x, n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
-    case CyclicStreamData(x) => emitValDef(sym, quote(x) + "._data")
+    case CyclicStreamData(x) => emitValDef(sym, quote(x) + ".data")
     case CyclicStreamOffset(x) => emitValDef(sym, quote(x) + ".offset")
     
     case _ => super.emitNode(sym, rhs)
