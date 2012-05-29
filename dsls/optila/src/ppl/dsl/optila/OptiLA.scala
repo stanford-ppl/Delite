@@ -18,7 +18,7 @@ import ppl.dsl.optila.vector._
 import ppl.dsl.optila.matrix._
 import ppl.dsl.optila.capabilities._
 import ppl.dsl.optila.io._
-
+import ppl.dsl.optila.generic.GenericDefs
 
 /**
  * These separate OptiLA applications from the Exp world.
@@ -99,7 +99,7 @@ trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
  * This the trait that every OptiLA application must extend.
  */
 trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps with DeliteArrayOps
-  with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
+  with GenericDefs with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
   with VectorOps with DenseVectorOps with SparseVectorOps with RangeVectorOps with DenseVectorViewOps with SparseVectorViewOps //with MatrixRowOps with MatrixColOps
   with MatrixOps with MatrixBuildableOps with DenseMatrixOps with SparseMatrixOps with SparseMatrixBuildableOps
   with LAInputReaderOps with LAOutputWriterOps {

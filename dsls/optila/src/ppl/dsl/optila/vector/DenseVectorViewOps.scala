@@ -9,8 +9,7 @@ import ppl.delite.framework.DeliteApplication
 import ppl.delite.framework.datastruct.scala.DeliteCollection
 import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import ppl.delite.framework.Util._
-import ppl.dsl.optila.{Vector, DenseVector, DenseVectorView, Matrix, DenseMatrix}
-import ppl.dsl.optila.{OptiLAExp, OptiLA}
+import ppl.dsl.optila._
 
 trait DenseVectorViewOps extends Base with OverloadHack { this: OptiLA =>
 
@@ -22,26 +21,28 @@ trait DenseVectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def apply[A:Manifest](x: Rep[Array[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]) = dense_vectorview_obj_new(x,start,stride,length,isRow)
   }
   
-  class DenseVectorViewOpsCls[A:Manifest](val elem: Rep[DenseVectorView[A]]) extends VecOpsCls[A] {    
-    type V[X] = DenseVector[X]
-    type M[X] = DenseMatrix[X]
-    type I[X] = DenseMatrix[X]
+  class DenseVectorViewOpsCls[A:Manifest](val elem: Rep[DenseVectorView[A]]) extends VecOpsCls[A] {
     type Self = DenseVectorView[A]
     type VA = DenseVector[A]
     
     def mA = manifest[A]
-    def mVA = manifest[VA]    
-    def vaToOps(x: Rep[DenseVector[A]]) = toOps[A](x)
-    def vaToIntf(x: Rep[DenseVector[A]]) = toIntf[A](x)
-    def vaBuilder(implicit ctx: SourceContext) = builder[A]
+    def mVA = mV[A]
+    def vaToOps(x: Rep[VA]) = vecToOps[A](x)
+    def vaToIntf(x: Rep[VA]) = vecToIntf[A](x)
+    def vaBuilder(implicit ctx: SourceContext) = vecBuilder[A]          
     def wrap(x: Rep[DenseVectorView[A]]) = denseViewToInterface(x)
-    def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
-    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
+    // -- without generic defs
+    type V[X] = DenseVector[X]
+    type M[X] = DenseMatrix[X]
+    type I[X] = DenseMatrix[X]    
+    def vecToOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
+    def vecToIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
     def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
-    def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]
+    def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]
     def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = denseMatrixBuilder[B]
     def mV[B:Manifest] = manifest[DenseVector[B]]
     def mM[B:Manifest] = manifest[DenseMatrix[B]]
+    // -- end without generic defs
 
     // VectorOps
     def length(implicit ctx: SourceContext) = dense_vectorview_length(elem)
@@ -55,21 +56,11 @@ trait DenseVectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def start(implicit ctx: SourceContext) = dense_vectorview_start(elem)
     def stride(implicit ctx: SourceContext) = dense_vectorview_stride(elem)    
     
-    // generic
-    type VPLUSR = DenseVector[A]
-    val mVPLUSR = manifest[VPLUSR]
-    def vplusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[A]
-    def vplusToIntf(x: Rep[VPLUSR]) = denseVecToInterface(x)
-    
-    type VMINUSR = DenseVector[A]
-    val mVMINUSR = manifest[VMINUSR]
-    def vminusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[A]
-    def vminusToIntf(x: Rep[VMINUSR]) = denseVecToInterface(x)    
-    
-    type VTIMESR = DenseVector[A]
-    val mVTIMESR = manifest[VTIMESR]
-    def vtimesBuilder(implicit ctx: SourceContext) = denseVectorBuilder[A]
-    def vtimesToIntf(x: Rep[VTIMESR]) = denseVecToInterface(x)        
+    // specializations
+    def *(y: Rep[SparseVector[A]])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) 
+      = vector_times[A,SparseVector[A]](wrap(elem),sparseVecToInterface(y))(manifest[A],implicitly[Arith[A]],manifest[SparseVector[A]],sparseVectorBuilder[A],ctx)            
+    def *(y: Rep[SparseVectorView[A]])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) 
+      = vector_times[A,SparseVector[A]](wrap(elem),sparseViewToInterface(y))(manifest[A],implicitly[Arith[A]],manifest[SparseVector[A]],sparseVectorBuilder[A],ctx)                
         
     def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("DenseVectorViews cannot be updated")    
     def copyFrom(pos: Rep[Int], y: Rep[DenseVector[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("DenseVectorViews cannot be updated")

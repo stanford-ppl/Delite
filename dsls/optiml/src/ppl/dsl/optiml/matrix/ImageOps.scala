@@ -73,9 +73,9 @@ trait ImageOps extends Variables {
     def mM[B:Manifest]: Manifest[M[B]] = manifest[Image[B]]    
     def mI[B:Manifest]: Manifest[I[B]] = mM[B]
     def wrap(x: Rep[Image[A]]): Interface[Matrix[A]] = imageToInterface(x)
-    def toOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B] = repToImageOps[B](x)
-    def toIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]] = imageToInterface[B](x)        
-    def builder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = imageBuilder[B]            
+    def matToOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B] = repToImageOps[B](x)
+    def matToIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]] = imageToInterface[B](x)        
+    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = imageBuilder[B]            
     def mV[B:Manifest]: Manifest[V[B]] = manifest[DenseVector[B]]
     def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = denseVecToInterface[B](x)        
     def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]

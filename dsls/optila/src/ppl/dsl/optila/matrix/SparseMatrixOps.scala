@@ -89,20 +89,19 @@ trait SparseMatrixOps extends Variables {
   implicit def sparseMatToInterface[A:Manifest](lhs: Rep[SparseMatrix[A]]) = new MInterface[A](new SparseMatOpsCls[A](lhs))
   implicit def sparseMatVarToInterface[A:Manifest](lhs: Var[SparseMatrix[A]]) = new MInterface[A](new SparseMatOpsCls[A](readVar(lhs)))
   
-  class SparseMatOpsCls[A:Manifest](val elem: Rep[SparseMatrix[A]]) extends MatOpsCls[A] {
+  class SparseMatOpsCls[A:Manifest](val elem: Rep[SparseMatrix[A]]) extends MatOpsCls[A] { 
     type M[X] = SparseMatrix[X]
     type V[X] = SparseVector[X]
     type View[X] = SparseVectorView[X]
     type I[X] = SparseMatrixBuildable[X]
     type Self = SparseMatrix[A]
-
+    def wrap(x: Rep[SparseMatrix[A]]): Interface[Matrix[A]] = sparseMatToInterface(x)        
     def mA: Manifest[A] = manifest[A]
     def mM[B:Manifest]: Manifest[M[B]] = manifest[SparseMatrix[B]]    
-    def mI[B:Manifest]: Manifest[I[B]] = manifest[SparseMatrixBuildable[B]]
-    def wrap(x: Rep[SparseMatrix[A]]): Interface[Matrix[A]] = sparseMatToInterface(x)
-    def toOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B] = repToSparseMatOps[B](x)
-    def toIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]] = sparseMatToInterface[B](x)        
-    def builder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = sparseMatrixBuilder[B]            
+    def mI[B:Manifest]: Manifest[I[B]] = manifest[SparseMatrixBuildable[B]]    
+    def matToOps[B:Manifest](x: Rep[M[B]]): MatOpsCls[B] = repToSparseMatOps[B](x)
+    def matToIntf[B:Manifest](x: Rep[M[B]]): Interface[Matrix[B]] = sparseMatToInterface[B](x)        
+    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = sparseMatrixBuilder[B]            
     def mV[B:Manifest]: Manifest[V[B]] = manifest[SparseVector[B]]
     def vecToIntf[B:Manifest](x: Rep[V[B]]): Interface[Vector[B]] = sparseVecToInterface[B](x)        
     def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = sparseVectorBuilder[B]

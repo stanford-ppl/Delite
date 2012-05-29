@@ -21,26 +21,28 @@ trait SparseVectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def apply[A:Manifest](x: Rep[SparseMatrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean]) = sparse_vectorview_obj_new(x,start,stride,length,isRow)
   }
   
-  class SparseVectorViewOpsCls[A:Manifest](val elem: Rep[SparseVectorView[A]]) extends VecOpsCls[A] {    
-    type V[X] = SparseVector[X]
-    type M[X] = SparseMatrix[X]
-    type I[X] = SparseMatrixBuildable[X]
+  class SparseVectorViewOpsCls[A:Manifest](val elem: Rep[SparseVectorView[A]]) extends VecOpsCls[A] {
     type Self = SparseVectorView[A]
     type VA = SparseVector[A]
     
     def mA = manifest[A]
-    def mVA = manifest[VA]    
-    def vaToOps(x: Rep[SparseVector[A]]) = toOps[A](x)
-    def vaToIntf(x: Rep[SparseVector[A]]) = toIntf[A](x)
-    def vaBuilder(implicit ctx: SourceContext) = builder[A]
+    def mVA = mV[A]
     def wrap(x: Rep[SparseVectorView[A]]) = sparseViewToInterface(x)
-    def toOps[B:Manifest](x: Rep[SparseVector[B]]) = repToSparseVecOps(x)
-    def toIntf[B:Manifest](x: Rep[SparseVector[B]]): Interface[Vector[B]] = sparseVecToInterface(x)
+    def vaToOps(x: Rep[VA]) = vecToOps[A](x)
+    def vaToIntf(x: Rep[VA]) = vecToIntf[A](x)
+    def vaBuilder(implicit ctx: SourceContext) = vecBuilder[A]      
+    // -- without generic defs
+    type V[X] = SparseVector[X]
+    type M[X] = SparseMatrix[X]
+    type I[X] = SparseMatrixBuildable[X]    
+    def vecToOps[B:Manifest](x: Rep[SparseVector[B]]) = repToSparseVecOps(x)
+    def vecToIntf[B:Manifest](x: Rep[SparseVector[B]]): Interface[Vector[B]] = sparseVecToInterface(x)
     def matToIntf[B:Manifest](x: Rep[SparseMatrix[B]]): Interface[Matrix[B]] = sparseMatToInterface(x)
-    def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = sparseVectorBuilder[B]
+    def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = sparseVectorBuilder[B]
     def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = sparseMatrixBuilder[B]
     def mV[B:Manifest] = manifest[SparseVector[B]]
     def mM[B:Manifest] = manifest[SparseMatrix[B]]
+    // -- end without generic defs
     
     // VectorOps
     def length(implicit ctx: SourceContext) = sparse_vectorview_length(elem)
@@ -53,22 +55,6 @@ trait SparseVectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def start(implicit ctx: SourceContext) = sparse_vectorview_start(elem)
     def stride(implicit ctx: SourceContext) = sparse_vectorview_stride(elem)    
     
-    // generic
-    type VPLUSR = DenseVector[A]
-    val mVPLUSR = manifest[VPLUSR]
-    def vplusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[A]
-    def vplusToIntf(x: Rep[VPLUSR]) = denseVecToInterface(x)
-    
-    type VMINUSR = DenseVector[A]
-    val mVMINUSR = manifest[VMINUSR]
-    def vminusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[A]
-    def vminusToIntf(x: Rep[VMINUSR]) = denseVecToInterface(x)    
-    
-    type VTIMESR = SparseVector[A]
-    val mVTIMESR = manifest[VTIMESR]
-    def vtimesBuilder(implicit ctx: SourceContext) = sparseVectorBuilder[A]
-    def vtimesToIntf(x: Rep[VTIMESR]) = sparseVecToInterface(x)        
-
     def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("SparseVectorViews cannot be updated")        
     def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("SparseVectorViews cannot be updated")    
     def copyFrom(pos: Rep[Int], y: Rep[SparseVector[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("SparseVectorViews cannot be updated")
@@ -76,7 +62,11 @@ trait SparseVectorViewOps extends Base with OverloadHack { this: OptiLA =>
     def insertAll(pos: Rep[Int], y: Rep[SparseVector[A]])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("SparseVectorViews cannot be updated")
     def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = throw new UnsupportedOperationException("SparseVectorViews cannot be updated")
     def trim()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("SparseVectorViews cannot be updated")
-    def clear()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("SparseVectorViews cannot be updated")        
+    def clear()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("SparseVectorViews cannot be updated")  
+    
+    // specializations
+    def +(y: Rep[DenseVector[A]])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) 
+      = vector_plus[A,DenseVector[A]](wrap(elem),denseVecToInterface(y))(manifest[A],implicitly[Arith[A]],manifest[DenseVector[A]],denseVectorBuilder[A],ctx)                          
   } 
   
   // implemented by mixed in trait for a particular kind of SparseMatrix  

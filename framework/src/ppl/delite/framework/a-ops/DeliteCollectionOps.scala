@@ -29,15 +29,6 @@ trait DeliteCollectionOps extends Variables {
     def dcUpdate(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = intf.ops.dcUpdate(n,y)
   }
   
-  // TODO -- AKS OLD: remove after refactor is complete
-  // implicit def dcToDcOps[A:Manifest](x: Rep[DeliteCollection[A]]) = new deliteCollectionOpsCls(x)
-  // 
-  // class deliteCollectionOpsCls[A:Manifest](x: Rep[DeliteCollection[A]]) {
-  //   def size(implicit ctx: SourceContext) = dc_size(x)
-  //   def apply(n: Rep[Int])(implicit ctx: SourceContext) = dc_apply(x,n)
-  //   def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = dc_update(x,n,y)
-  // }
-  
   def dc_size[A:Manifest](x: Rep[DeliteCollection[A]])(implicit ctx: SourceContext): Rep[Int]
   def dc_apply[A:Manifest](x: Rep[DeliteCollection[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
   def dc_update[A:Manifest](x: Rep[DeliteCollection[A]], n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]

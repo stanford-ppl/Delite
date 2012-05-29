@@ -33,25 +33,27 @@ trait SparseVectorOps extends Variables {
     def flatten[A:Manifest](pieces: Rep[SparseVector[SparseVector[A]]])(implicit ctx: SourceContext) = sparsevector_obj_flatten(pieces)
   }
   
-  class SparseVecOpsCls[A:Manifest](val elem: Rep[SparseVector[A]]) extends VecOpsCls[A] {
-    type V[X] = SparseVector[X]        
-    type M[X] = SparseMatrix[X]       
-    type I[X] = SparseMatrixBuildable[X] 
+  class SparseVecOpsCls[A:Manifest](val elem: Rep[SparseVector[A]]) extends VecOpsCls[A] { 
     type Self = SparseVector[A]
     type VA = Self
     
-    def vaToOps(x: Rep[VA]) = toOps[A](x)
-    def vaToIntf(x: Rep[VA]) = toIntf[A](x)
-    def vaBuilder(implicit ctx: SourceContext) = builder[A]      
-    def mVA = manifest[VA]
     def wrap(x: Rep[SparseVector[A]]) = sparseVecToInterface(x)
-    def toOps[B:Manifest](x: Rep[SparseVector[B]]) = repToSparseVecOps(x)
-    def toIntf[B:Manifest](x: Rep[SparseVector[B]]): Interface[Vector[B]] = sparseVecToInterface(x)
+    def vaToOps(x: Rep[VA]) = vecToOps[A](x)
+    def vaToIntf(x: Rep[VA]) = vecToIntf[A](x)
+    def vaBuilder(implicit ctx: SourceContext) = vecBuilder[A]      
+    def mVA = mV[A]
+    // -- without generic defs
+    type V[X] = SparseVector[X]        
+    type M[X] = SparseMatrix[X]       
+    type I[X] = SparseMatrixBuildable[X]     
+    def vecToOps[B:Manifest](x: Rep[SparseVector[B]]) = repToSparseVecOps(x)
+    def vecToIntf[B:Manifest](x: Rep[SparseVector[B]]): Interface[Vector[B]] = sparseVecToInterface(x)
     def matToIntf[B:Manifest](x: Rep[SparseMatrix[B]]): Interface[Matrix[B]] = sparseMatToInterface(x)
-    def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = sparseVectorBuilder[B]    
+    def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = sparseVectorBuilder[B]    
     def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = sparseMatrixBuilder[B] 
     def mV[B:Manifest] = manifest[SparseVector[B]] 
     def mM[B:Manifest] = manifest[SparseMatrix[B]] 
+    // -- end without generic defs
     def mA: Manifest[A] = manifest[A]        
     
     // accessors
@@ -73,23 +75,10 @@ trait SparseVectorOps extends Variables {
     def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = sparsevector_removeall(elem,pos,len)
     def trim()(implicit ctx: SourceContext) = sparsevector_trim(elem)
     def clear()(implicit ctx: SourceContext) = sparsevector_clear(elem)
-        
-    // generic arithmetic
-    type VPLUSR = DenseVector[A]
-    val mVPLUSR = manifest[VPLUSR]
-    def vplusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[A]
-    def vplusToIntf(x: Rep[VPLUSR]) = denseVecToInterface(x)
-
-    type VMINUSR = DenseVector[A]
-    val mVMINUSR = manifest[VMINUSR]
-    def vminusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[A]
-    def vminusToIntf(x: Rep[VMINUSR]) = denseVecToInterface(x)    
-    
-    type VTIMESR = SparseVector[A]
-    val mVTIMESR = manifest[VTIMESR]
-    def vtimesBuilder(implicit ctx: SourceContext) = builder[A]
-    def vtimesToIntf(x: Rep[VTIMESR]) = toIntf(x)        
-    
+            
+    // specializations
+    def +(y: Rep[DenseVector[A]])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) 
+      = vector_plus[A,DenseVector[A]](sparseVecToInterface(elem),denseVecToInterface(y))(manifest[A],implicitly[Arith[A]],manifest[DenseVector[A]],denseVectorBuilder[A],ctx)                
     def *(y: Rep[SparseMatrix[A]])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) = sparsevector_times_matrix(elem,y)
     
     // ordering operations

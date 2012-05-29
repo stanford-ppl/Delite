@@ -27,34 +27,18 @@ trait IndexVectorOps extends Base with OverloadHack { this: OptiML =>
     type V[X] = DenseVector[X] // conversion operations on IndexVectors will return a DenseVector
     type M[X] = DenseMatrix[X]
     type I[X] = DenseMatrix[X]
-    def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
-    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
+    def wrap(x: Rep[Self]): Interface[IndexVector]    
+    def vecToOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
+    def vecToIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
+    def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]        
     def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
-    def wrap(x: Rep[Self]): Interface[IndexVector]
-    def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
     def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = denseMatrixBuilder[B]
     def mV[B:Manifest] = manifest[DenseVector[B]]
     def mM[B:Manifest] = manifest[DenseMatrix[B]]
     def mA = manifest[Int]
-    
-    // VectorOps generic - math on an IndexVector turns it into a IndexVectorDense
-    type VPLUSR = IndexVectorDense
-    val mVPLUSR = manifest[VPLUSR]
-    def vplusBuilder(implicit ctx: SourceContext) = indexVecDenseBuilder
-    def vplusToIntf(x: Rep[VPLUSR]) = indexVecDenseToInterface(x)
-    
-    type VMINUSR = IndexVectorDense
-    val mVMINUSR = manifest[VMINUSR]
-    def vminusBuilder(implicit ctx: SourceContext) = indexVecDenseBuilder
-    def vminusToIntf(x: Rep[VMINUSR]) = indexVecDenseToInterface(x)
-    
-    type VTIMESR = IndexVectorDense
-    val mVTIMESR = manifest[VTIMESR]
-    def vtimesBuilder(implicit ctx: SourceContext) = indexVecDenseBuilder
-    def vtimesToIntf(x: Rep[VTIMESR]) = indexVecDenseToInterface(x)
-        
+            
     def apply[A:Manifest](block: Rep[Int] => Rep[A])(implicit ctx: SourceContext): Rep[V[A]] = indexvector_construct(wrap(x), block)    
-    def *(y: Rep[Matrix[Int]])(implicit a: Arith[Int], o: Overloaded2, ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
+    //def *(y: Rep[Matrix[Int]])(implicit a: Arith[Int], o: Overloaded2, ctx: SourceContext) = throw new UnsupportedOperationException("tbd")
   }
     
   class IVInterface(override val ops: IndexVecOpsCls) extends VInterface[Int](ops) with Interface[IndexVector]  

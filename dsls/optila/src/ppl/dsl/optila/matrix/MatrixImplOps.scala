@@ -24,8 +24,6 @@ trait MatrixImplOps { this: OptiLA =>
   def matrix_maprows_sequential_impl[A:Manifest,B:Manifest,I:Manifest,MB:Manifest](m: Interface[Matrix[A]], block: Interface[Vector[A]] => Interface[Vector[B]])(implicit b: MatrixBuilder[B,I,MB]): Rep[MB]
   def matrix_multiply_impl[A:Manifest:Arith,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], y: Interface[Matrix[A]])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA] 
   def matrix_times_vector_impl[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]], y: Interface[Vector[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
-  def matrix_sigmoid_impl[A:Manifest,I:Manifest,MD:Manifest](x: Interface[Matrix[A]])(implicit b: MatrixBuilder[Double,I,MD], conv: Rep[A] => Rep[Double]): Rep[MD]
-  def matrix_sigmoidf_impl[A:Manifest,I:Manifest,MF:Manifest](x: Interface[Matrix[A]])(implicit b: MatrixBuilder[Float,I,MF], conv: Rep[A] => Rep[Double]): Rep[MF]
   def matrix_sumcol_impl[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA]
   def matrix_grouprowsby_impl[A:Manifest,K:Manifest,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], pred: Interface[Vector[A]] => Rep[K])(implicit b: MatrixBuilder[A,I,MA]): Rep[DenseVector[MA]] 
   def matrix_reducerows_impl[A:Manifest,VA<:Vector[A]:Manifest](x: Interface[Matrix[A]], f: (Rep[VA],Interface[Vector[A]]) => Rep[VA])(implicit b: VectorBuilder[A,VA]): Rep[VA]
@@ -249,39 +247,7 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     }
     b.finalizer(resultOut)
   }
-  
-
-  // TODO AKS: why are we using single task for sigmoids now?
-  def matrix_sigmoid_impl[A:Manifest,I:Manifest,MD:Manifest](x: Interface[Matrix[A]])(implicit b: MatrixBuilder[Double,I,MD], conv: Rep[A] => Rep[Double]): Rep[MD] = {
-    val resultOut = b.alloc(x.numRows,x.numCols)
-    val result = b.toBuildableIntf(resultOut)
-    var i = 0
-    while (i < x.numRows) {
-      var j = 0
-      while (j < x.numCols) {
-        result(i,j) = (1.0/(1.0+exp(conv(x(i,j))*(-1))))
-        j += 1
-      }
-      i += 1
-    }
-    b.finalizer(resultOut)
-  }
-
-  def matrix_sigmoidf_impl[A:Manifest,I:Manifest,MF:Manifest](x: Interface[Matrix[A]])(implicit b:MatrixBuilder[Float,I,MF], conv: Rep[A] => Rep[Double]): Rep[MF] = {
-    val resultOut = b.alloc(x.numRows,x.numCols)
-    val result = b.toBuildableIntf(resultOut)
-    var i = 0
-    while (i < x.numRows) {
-      var j = 0
-      while (j < x.numCols) {
-        result(i,j) = (1.0/(1.0+exp(conv(x(i,j))*(-1)))).AsInstanceOf[Float]
-        j += 1
-      }
-      i += 1
-    }
-    b.finalizer(resultOut)
-  }
-  
+    
   def matrix_sumcol_impl[A:Manifest:Arith,VA:Manifest](x: Interface[Matrix[A]])(implicit b: VectorBuilder[A,VA]): Rep[VA] = {
     val resultOut = b.alloc(x.numCols,true)
     val result = b.toIntf(resultOut)

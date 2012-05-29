@@ -8,6 +8,7 @@ trait HelloWorld extends OptiMLApplication {
     //println("hello world")
     
     // matrix bulk operations with changed views
+    /*
     //val m = Matrix.zeros(10,10)
     val m = Matrix.sparse[Double](10,10).finish
     val t1 = m mapRows { row => row + 1 }
@@ -27,6 +28,7 @@ trait HelloWorld extends OptiMLApplication {
     //val t3 = t2 filterRows { row => row(0) == 5 } 
     println("t2 after filter: ")
     t3.pprint
+    */
     
     // sparse matrix testing
     /*
@@ -77,7 +79,6 @@ trait HelloWorld extends OptiMLApplication {
     }      
     */
     
-    /*
     // sparse vector testing
     val d = Vector.ones(100) //DenseVector[Double](100,true)
     val v = SparseVector[Double](100,true)
@@ -123,7 +124,6 @@ trait HelloWorld extends OptiMLApplication {
       val t1 = d map { e => 64. }
       t1.pprint
     }
-    */
     
     // val vl = log(v)
     // vl.pprint

@@ -50,24 +50,30 @@ trait DenseVectorOps extends Variables {
   }
 
   class DenseVecOpsCls[A:Manifest](val elem: Rep[DenseVector[A]]) extends VecOpsCls[A] {
-    type V[X] = DenseVector[X]        
-    type M[X] = DenseMatrix[X]   
-    type I[X] = DenseMatrix[X]     
     type Self = DenseVector[A]
     type VA = Self
     
-    def vaToOps(x: Rep[VA]) = toOps[A](x)
-    def vaToIntf(x: Rep[VA]) = toIntf[A](x)
-    def vaBuilder(implicit ctx: SourceContext) = builder[A]      
-    def mVA = manifest[VA]
     def wrap(x: Rep[DenseVector[A]]) = denseVecToInterface(x)
-    def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
-    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
+    def vaToOps(x: Rep[VA]) = vecToOps[A](x) //repToDenseVecOps[A](x)
+    def vaToIntf(x: Rep[VA]) = vecToIntf[A](x) //denseVecToInterface[A](x)
+    def vaBuilder(implicit ctx: SourceContext) = vecBuilder[A] //denseVectorBuilder[A]      
+    def mVA = mV[A]
+    
+    // -- without generic defs
+    
+    /* attempts at refactoring these definitions into an encapsulated trait
+     * have not worked out very well -- see GenericDefs.scala */    
+    type V[X] = DenseVector[X]        
+    type M[X] = DenseMatrix[X]   
+    type I[X] = DenseMatrix[X]         
+    def vecToOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
+    def vecToIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
     def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
-    def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
+    def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]    
     def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = denseMatrixBuilder[B]    
     def mV[B:Manifest] = manifest[DenseVector[B]] 
     def mM[B:Manifest] = manifest[DenseMatrix[B]] 
+    // -- end without generic defs
     def mA: Manifest[A] = manifest[A]        
     
     // accessors
@@ -87,25 +93,16 @@ trait DenseVectorOps extends Variables {
     def removeAll(pos: Rep[Int], len: Rep[Int])(implicit ctx: SourceContext) = densevector_removeall(elem,pos,len)
     def trim()(implicit ctx: SourceContext) = densevector_trim(elem)
     def clear()(implicit ctx: SourceContext) = densevector_clear(elem)
-        
-    // generic arithmetic
-    type VPLUSR = DenseVector[A]
-    val mVPLUSR = manifest[VPLUSR]
-    def vplusBuilder(implicit ctx: SourceContext) = builder[A]
-    def vplusToIntf(x: Rep[VPLUSR]) = toIntf(x)
-
-    type VMINUSR = DenseVector[A]
-    val mVMINUSR = manifest[VMINUSR]
-    def vminusBuilder(implicit ctx: SourceContext) = builder[A]
-    def vminusToIntf(x: Rep[VMINUSR]) = toIntf(x)    
     
-    type VTIMESR = DenseVector[A]
-    val mVTIMESR = manifest[VTIMESR]
-    def vtimesBuilder(implicit ctx: SourceContext) = builder[A]
-    def vtimesToIntf(x: Rep[VTIMESR]) = toIntf(x)    
-    
-    def *(y: Rep[SparseVector[A]])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) 
-      = vector_times[A,SparseVector[A]](toIntf(elem),sparseVecToInterface(y))(manifest[A],implicitly[Arith[A]],manifest[SparseVector[A]],sparseVectorBuilder[A],ctx)            
+    /**
+     * there is some redundancy in the specializations for DenseVector/DenseVectorView and SparseVector/SparseVectorView
+     * due to the fact that they have no inheritance relation. can we factor this out somehow?
+     */
+    // specializations
+    def *(y: Rep[SparseVector[A]])(implicit a: Arith[A], o: Overloaded1, ctx: SourceContext) 
+      = vector_times[A,SparseVector[A]](denseVecToInterface(elem),sparseVecToInterface(y))(manifest[A],implicitly[Arith[A]],manifest[SparseVector[A]],sparseVectorBuilder[A],ctx)            
+    def *(y: Rep[SparseVectorView[A]])(implicit a: Arith[A], o: Overloaded2, ctx: SourceContext) 
+      = vector_times[A,SparseVector[A]](denseVecToInterface(elem),sparseViewToInterface(y))(manifest[A],implicitly[Arith[A]],manifest[SparseVector[A]],sparseVectorBuilder[A],ctx)                
     def *(y: Rep[DenseMatrix[A]])(implicit a: Arith[A], o: Overloaded3, ctx: SourceContext) = densevector_times_matrix(elem,y)
     
     // ordering operations
