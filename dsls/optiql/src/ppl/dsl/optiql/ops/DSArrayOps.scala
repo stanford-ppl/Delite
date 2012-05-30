@@ -20,44 +20,44 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
   def ctx(implicit pos: SourceContext) = pos
 
   object HashAccess0 {
-    def unapply[T](e: Exp[T]): Option[(Exp[Int], Sym[Int], Block[_], Block[T], Exp[Int])] = e match {
+    def unapply[T](e: Exp[T]): Option[(Exp[Int], Sym[Int], Block[_], Block[T], Exp[Int], List[Block[Boolean]])] = e match {
       case Def(DeliteArrayApply(
           Def(SimpleLoop(origSize, grpV, grpBody: DeliteHashCollectElem[aa,`T`,_])), idx1)) =>
-        Some((origSize, grpV, grpBody.keyFunc, grpBody.valFunc, idx1))
+        Some((origSize, grpV, grpBody.keyFunc, grpBody.valFunc, idx1, grpBody.cond))
       case _ => None
     }
   }
 
   object HashAccess {
-    def unapply[T](e: Exp[T]): Option[(Exp[Int], Sym[Int], Block[_], Block[T], Exp[Int], Exp[Int])] = e match {
+    def unapply[T](e: Exp[T]): Option[(Exp[Int], Sym[Int], Block[_], Block[T], Exp[Int], Exp[Int], List[Block[Boolean]])] = e match {
       case Def(DeliteArrayApply(Def(DeliteArrayApply(
           Def(SimpleLoop(origSize, grpV, grpBody: DeliteHashCollectElem[aa,`T`,_])), idx1)), idx2)) =>
-        Some((origSize, grpV, grpBody.keyFunc, grpBody.valFunc, idx1, idx2))
+        Some((origSize, grpV, grpBody.keyFunc, grpBody.valFunc, idx1, idx2, grpBody.cond))
 
 
-      case Def(n@NumericPlus(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2), 
-                             HashAccess(origSize2, grpV2, keyFunc2, valFunc2, idx12, idx22))) =>
-        Some((origSize, grpV, keyFunc, Block(numeric_plus(valFunc.res,valFunc2.res)(n.aev,n.mev,ctx)), idx1, idx2))
-      case Def(n@NumericPlus(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2), y)) =>
-        Some((origSize, grpV, keyFunc, Block(numeric_plus(valFunc.res,y)(n.aev,n.mev,ctx)), idx1, idx2))
-      case Def(n@NumericPlus(y, HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2))) =>
-        Some((origSize, grpV, keyFunc, Block(numeric_plus(y, valFunc.res)(n.aev,n.mev,ctx)), idx1, idx2))
+      case Def(n@NumericPlus(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2, cond1), 
+                             HashAccess(origSize2, grpV2, keyFunc2, valFunc2, idx12, idx22, cond2))) =>
+        Some((origSize, grpV, keyFunc, Block(numeric_plus(valFunc.res,valFunc2.res)(n.aev,n.mev,ctx)), idx1, idx2, cond1))
+      case Def(n@NumericPlus(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2, cond), y)) =>
+        Some((origSize, grpV, keyFunc, Block(numeric_plus(valFunc.res,y)(n.aev,n.mev,ctx)), idx1, idx2, cond))
+      case Def(n@NumericPlus(y, HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2, cond))) =>
+        Some((origSize, grpV, keyFunc, Block(numeric_plus(y, valFunc.res)(n.aev,n.mev,ctx)), idx1, idx2, cond))
 
-      case Def(n@NumericMinus(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2), 
-                             HashAccess(origSize2, grpV2, keyFunc2, valFunc2, idx12, idx22))) =>
-        Some((origSize, grpV, keyFunc, Block(numeric_minus(valFunc.res,valFunc2.res)(n.aev,n.mev,ctx)), idx1, idx2))
-      case Def(n@NumericMinus(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2), y)) =>
-        Some((origSize, grpV, keyFunc, Block(numeric_minus(valFunc.res,y)(n.aev,n.mev,ctx)), idx1, idx2))
-      case Def(n@NumericMinus(y, HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2))) =>
-        Some((origSize, grpV, keyFunc, Block(numeric_minus(y, valFunc.res)(n.aev,n.mev,ctx)), idx1, idx2))
+      case Def(n@NumericMinus(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2, cond1), 
+                             HashAccess(origSize2, grpV2, keyFunc2, valFunc2, idx12, idx22, cond2))) =>
+        Some((origSize, grpV, keyFunc, Block(numeric_minus(valFunc.res,valFunc2.res)(n.aev,n.mev,ctx)), idx1, idx2, cond1))
+      case Def(n@NumericMinus(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2, cond), y)) =>
+        Some((origSize, grpV, keyFunc, Block(numeric_minus(valFunc.res,y)(n.aev,n.mev,ctx)), idx1, idx2, cond))
+      case Def(n@NumericMinus(y, HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2, cond))) =>
+        Some((origSize, grpV, keyFunc, Block(numeric_minus(y, valFunc.res)(n.aev,n.mev,ctx)), idx1, idx2, cond))
 
-      case Def(n@NumericTimes(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2), 
-                             HashAccess(origSize2, grpV2, keyFunc2, valFunc2, idx12, idx22))) =>
-        Some((origSize, grpV, keyFunc, Block(numeric_times(valFunc.res,valFunc2.res)(n.aev,n.mev,ctx)), idx1, idx2))
-      case Def(n@NumericTimes(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2), y)) =>
-        Some((origSize, grpV, keyFunc, Block(numeric_times(valFunc.res,y)(n.aev,n.mev,ctx)), idx1, idx2))
-      case Def(n@NumericTimes(y, HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2))) =>
-        Some((origSize, grpV, keyFunc, Block(numeric_times(y, valFunc.res)(n.aev,n.mev,ctx)), idx1, idx2))
+      case Def(n@NumericTimes(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2, cond1), 
+                             HashAccess(origSize2, grpV2, keyFunc2, valFunc2, idx12, idx22, cond2))) =>
+        Some((origSize, grpV, keyFunc, Block(numeric_times(valFunc.res,valFunc2.res)(n.aev,n.mev,ctx)), idx1, idx2, cond1))
+      case Def(n@NumericTimes(HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2, cond), y)) =>
+        Some((origSize, grpV, keyFunc, Block(numeric_times(valFunc.res,y)(n.aev,n.mev,ctx)), idx1, idx2, cond))
+      case Def(n@NumericTimes(y, HashAccess(origSize, grpV, keyFunc, valFunc, idx1, idx2, cond))) =>
+        Some((origSize, grpV, keyFunc, Block(numeric_times(y, valFunc.res)(n.aev,n.mev,ctx)), idx1, idx2, cond))
 
       case _ => None
     }
@@ -102,54 +102,54 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
       // collect(reduce(hashCollect)) --> hashReduce
       case Block(Def(SimpleLoop(nestedSize /*Def(ArrayLength(input))*/, redV, redBody: DeliteReduceElem[cc]))) =>
         // sz is not guaranteed to match ....
-        Console.println("******* investigating nested collect reduce " + redBody)
-        Console.println("size " + nestedSize + "=" + (nestedSize match {case Def(x) => x}))
+        //Console.println("******* investigating nested collect reduce " + redBody)
+        //Console.println("size " + nestedSize + "=" + (nestedSize match {case Def(x) => x}))
         //recurseGroupReduce(redBody.func.res, v, redV, redBody)
         redBody.func match {
-          case Block(HashAccess(origSize, grpV, keyFunc:Block[aa], valFunc, idx1, idx2)) =>
-            Console.println("******* TADAAA!!! ")
-            Console.println(""+idx1 + " " + v)
-            Console.println(""+idx2 + " " + redV)
+          case Block(HashAccess(origSize, grpV, keyFunc:Block[aa], valFunc, idx1, idx2, hashCond)) =>
+            //Console.println("******* TADAAA!!! ")
+            //Console.println(""+idx1 + " " + v)
+            //Console.println(""+idx2 + " " + redV)
             assert(idx1 == v, "TODO: case not handled" + idx1 + " " + grpV)
             assert(idx2 == redV, "TODO: case not handled")
             
             simpleLoop(origSize, grpV, DeliteHashReduceElem(
-              keyFunc = keyFunc, valFunc = valFunc, 
+              keyFunc = keyFunc, valFunc = valFunc, cond = redBody.cond ++ hashCond,
               zero = redBody.zero, rV = redBody.rV, rFunc = redBody.rFunc))
           case _ =>
             super.simpleLoop(size, v, body)
         }
       // hash collect with average -- TODO: generalize??
-      case Block(Def(DeliteArrayLength(HashAccess0(origSize, grpV, keyFunc, valFunc, idx1)))) =>
-        Console.println("******* TADAAA!!! (count)")
+      case Block(Def(DeliteArrayLength(HashAccess0(origSize, grpV, keyFunc, valFunc, idx1, hashCond)))) =>
+        //Console.println("******* TADAAA!!! (count)")
         assert(idx1 == v, "TODO: case not handled" + idx1 + " " + v)
         val rV = (fresh[Int],fresh[Int])
         simpleLoop(origSize, grpV, DeliteHashReduceElem(
-          keyFunc = keyFunc, valFunc = Block(Const(1)), 
+          keyFunc = keyFunc, valFunc = Block(Const(1)), cond = hashCond, 
           zero = Block(Const(0)), rV = rV, rFunc = reifyEffects(numeric_plus(rV._1,rV._2))))
         
       // hash collect with average -- TODO: generalize??
       case Block(Def(d@NumericDivide(Def(SimpleLoop(nestedSize1 /*Def(DeliteArrayLength(input))*/, redV1, redBody1: DeliteReduceElem[cc1])),
                                    Def(SimpleLoop(nestedSize2 /*Def(DeliteArrayLength(input))*/, redV2, redBody2: DeliteReduceElem[cc2])) ))) =>
         // sz is not guaranteed to match ....
-        Console.println("******* investigating nested collect reduce / reduce " + redBody1 + "," + redBody2)
+        //Console.println("******* investigating nested collect reduce / reduce " + redBody1 + "," + redBody2)
 
         // FIXME: code duplication is bad. extract common functionality.
 
         (redBody1.func, redBody2.func) match {
-          case (Block(HashAccess(origSize, grpV, keyFunc, valFunc1, idxA1, idxB1)),
+          case (Block(HashAccess(origSize, grpV, keyFunc, valFunc1, idxA1, idxB1, hashCond)),
             valFunc2 @ Block(Const(_))) =>
 
-           Console.println("******* TADAAA!!! (average)")
+           //Console.println("******* TADAAA!!! (average)")
            assert(idxA1 == v, "TODO: case not handled")
            assert(idxB1 == redV1, "TODO: case not handled")
 
            val l1 = simpleLoop[A](origSize, grpV, DeliteHashReduceElem(
-             keyFunc = keyFunc, valFunc = valFunc1, 
+             keyFunc = keyFunc, valFunc = valFunc1, cond = hashCond ++ redBody1.cond,
              zero = redBody1.zero, rV = redBody1.rV, rFunc = redBody1.rFunc))
 
            val l2 = simpleLoop[A](origSize, grpV, DeliteHashReduceElem(
-             keyFunc = keyFunc, valFunc = valFunc2, 
+             keyFunc = keyFunc, valFunc = valFunc2, hashCond ++ redBody2.cond,
              zero = redBody2.zero, rV = redBody2.rV, rFunc = redBody2.rFunc))
 
            arraySelect[cc1](size) { i => 
@@ -170,7 +170,7 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
     }
 
     case b: DeliteHashCollectElem[k,A,DeliteArray[DeliteArray[A]]] => b.valFunc match { // unchecked!
-      // split hashcollect of struct values
+      // split hashcollectgit  of struct values
       case Block(Def(Struct(tag, elems))) => 
         //assert(b.alloc == Block(b.aV), "TODO: only works on simple arrays for now")
         def copyLoop[B:Manifest](valFunc: Block[B]): Exp[DeliteArray[DeliteArray[B]]] = {
@@ -183,6 +183,24 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
       //TODO!!case Block(Def(DeliteArrayApply(xs,v))) if b.cond == Nil && darray_length(xs) == size => xs.asInstanceOf[Exp[A]] // eta-reduce! <--- should live elsewhere, not specific to struct
       case _ => super.simpleLoop(size, v, body)
     }
+
+    //fuse filter-hashReduce
+    //TODO: why doesn't LMS fusing handle this?
+    /*case b: DeliteHashReduceElem[k,A,DeliteArray[A]] => 
+      b.valFunc match {
+      case Block(Def(DeliteArrayApply(Def(SimpleLoop(sizeFull, vFull, bd: DeliteCollectElem[A, DeliteArray[A]])),`v`))) => 
+        bd.func match {
+        case Block(Def(DeliteArrayApply(da, vi))) if (vFull == vi) => //identity function, can eliminate
+          Console.println("******* TADAAA!!! (filter)")
+          val valFunc = reifyEffects(darray_apply(da, vFull))
+          val keyFunc = reifyEffects(unit(0)) //TODO!!!
+          simpleLoop(sizeFull, vFull, DeliteHashReduceElem(keyFunc, valFunc, b.cond ++ bd.cond, b.zero, b.rV, b.rFunc)) //fuse
+
+        case _ => super.simpleLoop(size, v, body)
+      }
+      case _ => super.simpleLoop(size, v, body)
+    }*/
+
     case _ => super.simpleLoop(size, v, body)
   }
 
@@ -265,7 +283,7 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
     
   // ---- hashing
 
-  def arrayDistinct[A:Manifest](size: Exp[Int])(func: Exp[Int]=>Exp[A]): Exp[DeliteArray[A]] = {
+  def arrayDistinct[A:Manifest](size: Exp[Int])(func: Exp[Int]=>Exp[A], condFunc: List[Exp[Int] => Exp[Boolean]] = Nil): Exp[DeliteArray[A]] = {
     val v = fresh[Int]
     val rV = (fresh[A], fresh[A])
     simpleLoop(size,v,DeliteHashReduceElem[A,A, DeliteArray[A]](
@@ -275,19 +293,20 @@ trait DSArrayOpsExp extends BaseFatExp with TupleOpsExp with LoopsFatExp with If
       valFunc = reifyEffects(func(v)),
       zero = reifyEffects(unit(null).AsInstanceOf[A]),
       rV = rV,
-      rFunc = reifyEffects(rV._1)
+      rFunc = reifyEffects(rV._1),
+      cond = condFunc.map(c => reifyEffects(c(v)))
     ))
   }
   
-  def arrayGroup[K:Manifest,V:Manifest](size: Exp[Int])(keyFunc: Exp[Int]=>Exp[K])(valFunc: Exp[Int]=>Exp[V]): Exp[DeliteArray[DeliteArray[V]]] = {
+  def arrayGroup[K:Manifest,V:Manifest](size: Exp[Int])(keyFunc: Exp[Int]=>Exp[K])(valFunc: Exp[Int]=>Exp[V], condFunc: List[Exp[Int] => Exp[Boolean]] = Nil): Exp[DeliteArray[DeliteArray[V]]] = {
     val v = fresh[Int]
     //val aV = fresh[DeliteArray[A]]
     simpleLoop(size,v,DeliteHashCollectElem[K,V, DeliteArray[DeliteArray[V]]](
       //aV = aV,
       //alloc = reifyEffects(aV),
       keyFunc = reifyEffects(keyFunc(v)),
-      valFunc = reifyEffects(valFunc(v))
-      //cond = reifyEffects(cond(v))::Nil
+      valFunc = reifyEffects(valFunc(v)),
+      cond = condFunc.map(c => reifyEffects(c(v)))
     ))
   }
 

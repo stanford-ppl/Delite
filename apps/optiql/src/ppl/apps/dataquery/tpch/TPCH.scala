@@ -41,7 +41,7 @@ trait TPCHBaseTrait extends OptiQLApplication with Types {
     partSuppliers = TableInputReader(tpchDataPath+"/partsupp.tbl", PartSupplier())
     regions = TableInputReader(tpchDataPath+"/region.tbl", Region())
     suppliers = TableInputReader(tpchDataPath+"/supplier.tbl", Supplier())
-    println("Loading Complete")	
+    //println("Loading Complete") //TODO: this is lifted above the loads	
     //tic(customers, lineItems, orders, nations, parts, partSuppliers, regions, suppliers)
     //TODO: by tic'ing on all input we force a bunch of loading that is otherwise dead... what's the proper solution? soft dependencies?
     query()
@@ -54,8 +54,8 @@ trait TPCHQ1Trait extends TPCHBaseTrait {
   def query() = {           
     tic(lineItems.size)
     //TODO: Get rid of this hack with general GPU hashreduce
-    //val q = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
-    val q = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag=='A',l.l_linestatus=='O')) Select(g => new Result {
+    val q = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag,l.l_linestatus)) Select(g => new Result {
+    //val q = lineItems Where(_.l_shipdate <= Date("1998-12-01")) GroupBy(l => (l.l_returnflag=='A',l.l_linestatus=='O')) Select(g => new Result {
       val returnFlag = g.key._1
       val lineStatus = g.key._2
       val sumQty = g.Sum(_.l_quantity)

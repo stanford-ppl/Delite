@@ -94,6 +94,7 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp { this: OptiQLExp wit
   }
   
   //these are hacked up for now untill we have proper Delite support
+  case class QueryableWhereMarker[TSource: Manifest](in: Exp[DataTable[TSource]], cond: Exp[TSource] => Exp[Boolean]) extends Def[DataTable[TSource]]
   //case class HackQueryableGroupBy[TSource:Manifest, TKey:Manifest](s: Exp[DataTable[TSource]], v:Sym[TSource], key: Block[TKey]) extends Def[DataTable[Grouping[TKey, TSource]]]
   //case class HackQueryableSum[TSource:Manifest](s:Exp[DataTable[TSource]], sym: Sym[TSource], value: Block[Double]) extends Def[Double]
   
@@ -118,16 +119,22 @@ trait QueryableOpsExp extends QueryableOps with BaseFatExp { this: OptiQLExp wit
   
   def queryable_where[TSource:Manifest](s: Exp[DataTable[TSource]], predicate: Exp[TSource] => Exp[Boolean]) = {
     //QueryableWhere(s, predicate)
-    val data = arrayWhere(s.size)(i => predicate(s(i)))(i => s(i))
-    DataTable(data, data.length)
+    //val data = arrayWhere(s.size)(i => predicate(s(i)))(i => s(i))
+    //DataTable(data, data.length)
+    QueryableWhereMarker(s, predicate)
   }
   
-  def queryable_groupby[TSource:Manifest, TKey:Manifest](s: Exp[DataTable[TSource]], keySelector: Exp[TSource] => Exp[TKey]) = {
-    /*val v = fresh[TSource]
-    val key = reifyEffects(keySelector(v))
-    HackQueryableGroupBy(s, v, key)*/
-    val keyData = arrayDistinct(s.size)(i => keySelector(s(i)))
-    val valData = arrayGroup(s.size)(i => keySelector(s(i)))(i => s(i))
+  //TODO: this a very shoddy way of fusing filters... why doesn't LMS fusing work here?
+  def queryable_groupby[TSource:Manifest, TKey:Manifest](s0: Exp[DataTable[TSource]], keySelector: Exp[TSource] => Exp[TKey]) = {
+    val (s, cond) = s0 match {
+      case Def(QueryableWhereMarker(s1, predicate)) => 
+        val cond = (i: Exp[Int]) => predicate(s1(i))
+        (s1, List(cond))
+      case _ => (s0, Nil)
+    }
+
+    val keyData = arrayDistinct(s.size)(i => keySelector(s(i)), cond)
+    val valData = arrayGroup(s.size)(i => keySelector(s(i)))(i => s(i), cond)
     val data = arraySelect(keyData.length)(i => 
       grouping_apply(keyData(i), DataTable(valData(i), valData(i).length)))
     DataTable(data, data.length)
