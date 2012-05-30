@@ -6,6 +6,12 @@ import ppl.delite.runtime.graph.ops.{OP_Executable, DeliteOP, OP_MultiLoop}
 import ppl.delite.runtime.graph.targets.{OPData, Targets}
 import collection.mutable.ArrayBuffer
 
+// TODO: Optimizations
+// 1. For Reduce/TupleReduce/HashReduce, remove unnecessary scan operation (only used for Collection type).
+//   For those cases the condition kernel does not have to be called separately: Just do in place with HashReduce.
+//   This will remove the memory allocations for bitmap and related memory accesses.
+// 2. Combine all condition checks and reduction templates for each symbol into a single one within a MultiLoop kernel.
+
 object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   def executableName = error("MultiLoop is not a stand-alone executable")
@@ -381,8 +387,8 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     for((odata,osym) <- hashReductionList(op)) {
       out.append("int groupIdx_" + osym + " = (chunkIdx<" + op.size + ") ? dev_keyFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs_2:+"chunkIdx").mkString("(",",",")") +  ": -1;\n")
       if (odata.hasCond) {
-        assert(false, "Hash Reduce with condition not supported yet")
-        //out.append("smem_" + osym + "[threadIdx.x] = ((idxX<" + op.size + ") && (bitmap_" + osym + "[idxX]==1)) ? dev_collect_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"idxX").mkString("(",",",")") +  ": dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+        out.append("smem_" + osym + "[threadIdx.x] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+        out.append("if(groupIdx_" + osym + "==chunkOffset && bitmap_" + osym + "[chunkIdx]==1) smem_" + osym + "[threadIdx.x] = dev_valFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"chunkIdx").mkString("(",",",");\n"))
       }
       else {
         out.append("smem_" + osym + "[threadIdx.x] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
@@ -402,8 +408,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     writeKernelHeader(out, op, "HashReduce2")
     for((odata,osym) <- hashReductionList(op)) {
       if (odata.hasCond) {
-        assert(false, "Hash Reduce with condition not supported yet")
-        //out.append("smem_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+        out.append("smem_" + osym + "[threadIdx.x] = ((chunkIdx<size) && (bitmap_" + osym + "[chunkIdx]==1)) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
       }
       else {
         out.append("smem_" + osym + "[threadIdx.x] = (chunkIdx < size) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))

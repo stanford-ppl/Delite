@@ -53,6 +53,7 @@ trait CudaGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("#include <cuda_runtime.h>\n") //Cuda runtime api
     out.append("#include \"cublas.h\"\n") //cublas library
     out.append("#include \"DeliteCuda.cu\"\n") //Delite-Cuda interface for DSL
+    out.append("#include \"cudaProfiler.cu\"\n")
     out.append("#include \"helperFuncs.cu\"\n")
     //out.append("#include \"library.h\"\n")
     out.append(CudaCompile.headers.map(s => "#include \"" + s + "\"\n").mkString(""))
