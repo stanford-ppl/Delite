@@ -151,8 +151,8 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   }
 
   private def writeKernelCall(out: StringBuilder, op: OP_MultiLoop, id: String) {
-    def dimSize = if(id=="HashReduce1" || id=="HashReduce2") "1 +((" + op.size + "-1)/" + blockSize + ")"
-                  else "1 +((" + op.size + "-1)/(" + blockSize + "/MAX_GROUP))"
+    def dimSize(size: String) = if(id=="HashReduce1" || id=="HashReduce2") "1 +((" + size + "-1)/(" + blockSize + "/MAX_GROUP))"
+                  else "1 +((" + size + "-1)/" + blockSize + ")"
     def blockSize = if(id=="HashReduce1" || id=="HashReduce2") "512" else "1024"
     def deref(op: DeliteOP, tp: String) = if (isPrimitiveType(op.outputType(tp))) "" else "*"
     def cudaLaunch(dimConfig: String): String = {
@@ -174,23 +174,23 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
     id match {
       case "Cond" =>
-        out.append("if(" + dimSize +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
-        out.append(cudaLaunch(dimSize + ",1,1)"))
+        out.append("if(" + dimSize(op.size) +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
+        out.append(cudaLaunch(dimSize(op.size) + ",1,1)"))
         //val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         val args = conditionList(op).map(o => "bitmap_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         out.append(args.mkString("(",",",");\n"))
       case "MapReduce" | "HashReduce1"=>
-        out.append("if(" + dimSize +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
-        out.append(cudaLaunch(dimSize + ",1,1)"))
+        out.append("if(" + dimSize(op.size) +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
+        out.append(cudaLaunch(dimSize(op.size) + ",1,1)"))
         val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => "**" + o._2) ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ (reductionList(op)++hashReductionList(op)).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         out.append(args.mkString("(",",",");\n"))
       case "Reduce" | "ReduceTuple" | "HashReduce2" =>
-        out.append("int num_blocks_" + id + " = " + dimSize + ";\n")
+        out.append("int num_blocks_" + id + " = " + dimSize(op.size) + ";\n")
         out.append("while(num_blocks_" + id + " != 1) {\n")
-        out.append(cudaLaunch("1+(num_blocks_" + id + "-1)/"+blockSize+",1,1)"))
+        out.append(cudaLaunch(""+dimSize("num_blocks_"+id)+",1,1)"))
         val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => "**" + o._2) ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ (reductionList(op)++hashReductionList(op)).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else "")) ++ List("num_blocks_"+id)
         out.append(args.mkString("(",",",");\n"))
-        out.append("num_blocks_" + id + " = 1 + (num_blocks_" + id + "-1)/" + blockSize+";\n")
+        out.append("num_blocks_" + id + " = " + dimSize("num_blocks_"+id) + ";\n")
         for((odata,osym) <- reductionList(op)++hashReductionList(op)) {
           out.append(odata.loopFuncOutputType + " *temp_" + osym + "_t = temp_" + osym + ";\n")
           out.append("temp_" + osym + " = temp_" + osym + "_2;\n")
@@ -406,7 +406,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
         //out.append("smem_" + osym + "[threadIdx.x] = ((idxX<size) && (bitmap_" + osym + "[idxX]==1)) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
       }
       else {
-        out.append("smem_" + osym + "[threadIdx.x] = (chunkIdx < " + op.size + ") ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+        out.append("smem_" + osym + "[threadIdx.x] = (chunkIdx < size) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
       }
       out.append("__syncthreads();\n")
       out.append("for(unsigned int s=1; s<blockDim.x/MAX_GROUP; s*=2) {\n")
@@ -507,9 +507,9 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     }
     for ((odata,osym) <- hashReductionList(op)) {
       out.append(odata.loopFuncOutputType + " *temp_" + osym + ";\n")
-      out.append("DeliteCudaMalloc((void**)&temp_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType + ")*MAX_GROUP);\n")
+      out.append("DeliteCudaMalloc((void**)&temp_" + osym + ", (1+(" + op.size + "-1)/(512/MAX_GROUP))*sizeof(" + odata.loopFuncOutputType + ")*MAX_GROUP);\n")
       out.append(odata.loopFuncOutputType + " *temp_" + osym + "_2;\n")
-      out.append("DeliteCudaMalloc((void**)&temp_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType + ")*MAX_GROUP);\n")
+      out.append("DeliteCudaMalloc((void**)&temp_" + osym + "_2, (1+(" + op.size + "-1)/(512/MAX_GROUP))*sizeof(" + odata.loopFuncOutputType + ")*MAX_GROUP);\n")
     }
   }
 
