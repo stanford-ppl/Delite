@@ -4,7 +4,7 @@ import java.io._
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
-import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
+import ppl.delite.framework.{Config, ExpressionsOpt, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
@@ -57,7 +57,7 @@ trait OptiLAScalaOpsPkg extends Base
   // only included because of args. TODO: investigate passing args as a vector
   with ArrayOps with ExceptionOps
 
-trait OptiLAScalaOpsPkgExp extends OptiLAScalaOpsPkg with DSLOpsExp
+trait OptiLAScalaOpsPkgExp extends OptiLAScalaOpsPkg with ExpressionsOpt with DSLOpsExp
   with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
   with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
   with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
