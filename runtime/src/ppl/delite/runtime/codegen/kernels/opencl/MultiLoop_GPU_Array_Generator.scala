@@ -46,7 +46,7 @@ object MultiLoop_GPU_Array_Generator extends OpenCLGPUExecutableGenerator {
     op.getGPUMetadata(Targets.OpenCL).outputs.filter(o => o._1.loopType=="HASH_REDUCE")
   }
   private def conditionList(op: OP_MultiLoop): List[(OPData,String)] = {
-    op.getGPUMetadata(Targets.OpenCL).outputs.filter(o => o._1.hasCond)
+    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond && o._1.loopType=="COLLECT")
   }
 
   private def needDeref(op:OP_MultiLoop, in: DeliteOP, sym:String): Boolean = {
@@ -442,29 +442,35 @@ object MultiLoop_GPU_Array_Generator extends OpenCLGPUExecutableGenerator {
     writeKernelHeader(out, op, "HashReduce1")
     for((odata,osym) <- hashReductionList(op)) {
       out.append("int groupIdx_" + osym + " = (chunkIdx<" + op.size + ") ? dev_keyFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs_2:+"chunkIdx").mkString("(",",",")") +  ": -1;\n")
-      if (odata.hasCond) {
-        out.append("smem_" + osym + "[local_idxX] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
-        out.append("if(groupIdx_" + osym + "==chunkOffset && bitmap_" + osym + "[chunkIdx]==1) smem_" + osym + "[local_idxX] = dev_valFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"chunkIdx").mkString("(",",",");\n"))
-      }
-      else {
-        out.append("smem_" + osym + "[local_idxX] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
-        out.append("if(groupIdx_" + osym + "==chunkOffset) smem_" + osym + "[local_idxX] = dev_valFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"chunkIdx").mkString("(",",",");\n"))
-      }
-      out.append("barrier(CLK_LOCAL_MEM_FENCE);\n")
-      out.append("for(unsigned int s=1; s<group_sizeX/MAX_GROUP; s*=2) {\n")
-      out.append("if((chunkIdx%(2*s))==0) { \n")
-      out.append("smem_" + osym + "[local_idxX] = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("smem_"+osym+"[local_idxX]","smem_"+osym+"[local_idxX+s*MAX_GROUP]","chunkIdx")).mkString("(",",",");\n"))
-      out.append("}\n")
-      out.append("barrier(CLK_LOCAL_MEM_FENCE);\n")
-      out.append("}\n")
-      out.append("if(local_idxX / MAX_GROUP == 0) temp_" + osym + "[group_idxX*MAX_GROUP+local_idxX] = smem_" + osym + "[local_idxX];\n")
     }
+    for((odata,osym) <- hashReductionList(op)) {
+      if (odata.hasCond) out.append("smem_" + osym + "[local_idxX] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+      else out.append("smem_" + osym + "[local_idxX] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+    }
+    for((odata,osym) <- hashReductionList(op)) {
+      if (odata.hasCond) out.append("if(groupIdx_" + osym + "==chunkOffset && dev_cond_" + funcNameSuffix(op,osym) + "(" + (odata.loopCondInputs:+"chunkIdx").mkString(",") + ")) smem_" + osym + "[local_idxX] = dev_valFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"chunkIdx").mkString("(",",",");\n"))
+      else out.append("if(groupIdx_" + osym + "==chunkOffset) smem_" + osym + "[local_idxX] = dev_valFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"chunkIdx").mkString("(",",",");\n"))
+    }
+    out.append("barrier(CLK_LOCAL_MEM_FENCE);\n")
+    out.append("for(unsigned int s=1; s<group_sizeX/MAX_GROUP; s*=2) {\n")
+    out.append("if((chunkIdx%(2*s))==0) { \n")
+    for((odata,osym) <- hashReductionList(op)) {
+      out.append("smem_" + osym + "[local_idxX] = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("smem_"+osym+"[local_idxX]","smem_"+osym+"[local_idxX+s*MAX_GROUP]","chunkIdx")).mkString("(",",",");\n"))
+    }
+    out.append("}\n")
+    out.append("barrier(CLK_LOCAL_MEM_FENCE);\n")
+    out.append("}\n")
+    out.append("if(local_idxX / MAX_GROUP == 0) { \n")
+    for((odata,osym) <- hashReductionList(op)) {
+      out.append("temp_" + osym + "[group_idxX*MAX_GROUP+local_idxX] = smem_" + osym + "[local_idxX];\n")
+    }
+    out.append("}\n")
     writeKernelFooter(out)
 
     writeKernelHeader(out, op, "HashReduce2")
     for((odata,osym) <- hashReductionList(op)) {
       if (odata.hasCond) {
-        out.append("smem_" + osym + "[local_idxX] = ((chunkIdx<size) && (bitmap_" + osym + "[chunkIdx]==1)) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+        out.append("smem_" + osym + "[local_idxX] = ((chunkIdx<size) && dev_cond_" + funcNameSuffix(op,osym) + "(" + (odata.loopCondInputs:+"chunkIdx").mkString(",") + ")) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
       }
       else {
         out.append("smem_" + osym + "[local_idxX] = (chunkIdx < size) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))

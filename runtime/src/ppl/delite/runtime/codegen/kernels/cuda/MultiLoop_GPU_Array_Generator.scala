@@ -42,8 +42,9 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   private def hashReductionList(op: OP_MultiLoop): List[(OPData,String)] = {
     op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.loopType=="HASH_REDUCE")
   }
+  // Separate condition kernel only needed for COLLECT with condition (i.e., need scan phase later)
   private def conditionList(op: OP_MultiLoop): List[(OPData,String)] = {
-    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond)
+    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond && o._1.loopType=="COLLECT")
   }
 
   private def needDeref(op:OP_MultiLoop, in: DeliteOP, sym:String): Boolean = {
@@ -182,11 +183,10 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
       case "Cond" =>
         out.append("if(" + dimSize(op.size) +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
         out.append(cudaLaunch(dimSize(op.size) + ",1,1)"))
-        //val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         val args = conditionList(op).map(o => "bitmap_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         out.append(args.mkString("(",",",");\n"))
       case "MapReduce" | "HashReduce1"=>
-        out.append("if(" + dimSize(op.size) +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
+        //out.append("if(" + dimSize(op.size) +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
         out.append(cudaLaunch(dimSize(op.size) + ",1,1)"))
         val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => "**" + o._2) ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ (reductionList(op)++hashReductionList(op)).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         out.append(args.mkString("(",",",");\n"))
@@ -224,7 +224,6 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
     id match {
       case "Cond" =>
-        //val params = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => op.outputType(Targets.Cuda, o) + " " + o) ++ conditionList(op).map(o => "unsigned int * bitmap_" + o._2)
         val params = conditionList(op).map(o => "unsigned int * bitmap_" + o._2)
         out.append(params.mkString(","))
         if (params.nonEmpty && op.getInputs.nonEmpty) out.append(',')
@@ -382,33 +381,41 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     writeKernelFooter(out)
   }
 
+  //TODO: If the framework tells that all the output symbols share the same keyFunc and condFunc, 
+  //      then below can be more optimized by removing the redundant computations and if-else statements 
   private def writeHashReduceKernel(out: StringBuilder, op: OP_MultiLoop) {
     writeKernelHeader(out, op, "HashReduce1")
     for((odata,osym) <- hashReductionList(op)) {
       out.append("int groupIdx_" + osym + " = (chunkIdx<" + op.size + ") ? dev_keyFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs_2:+"chunkIdx").mkString("(",",",")") +  ": -1;\n")
-      if (odata.hasCond) {
-        out.append("smem_" + osym + "[threadIdx.x] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
-        out.append("if(groupIdx_" + osym + "==chunkOffset && bitmap_" + osym + "[chunkIdx]==1) smem_" + osym + "[threadIdx.x] = dev_valFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"chunkIdx").mkString("(",",",");\n"))
-      }
-      else {
-        out.append("smem_" + osym + "[threadIdx.x] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
-        out.append("if(groupIdx_" + osym + "==chunkOffset) smem_" + osym + "[threadIdx.x] = dev_valFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"chunkIdx").mkString("(",",",");\n"))
-      }
-      out.append("__syncthreads();\n")
-      out.append("for(unsigned int s=1; s<blockDim.x/MAX_GROUP; s*=2) {\n")
-      out.append("if((chunkIdx%(2*s))==0) { \n")
-      out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+s*MAX_GROUP]","chunkIdx")).mkString("(",",",");\n"))
-      out.append("}\n")
-      out.append("__syncthreads();\n")
-      out.append("}\n")
-      out.append("if(threadIdx.x / MAX_GROUP == 0) temp_" + osym + "[blockIdx.x*MAX_GROUP+threadIdx.x] = smem_" + osym + "[threadIdx.x];\n")
     }
+    for((odata,osym) <- hashReductionList(op)) {
+      if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+      else out.append("smem_" + osym + "[threadIdx.x] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+    }
+    for((odata,osym) <- hashReductionList(op)) {
+      if (odata.hasCond) out.append("if(groupIdx_" + osym + "==chunkOffset && dev_cond_" + funcNameSuffix(op,osym) + "(" + (odata.loopCondInputs:+"chunkIdx").mkString(",") + ")) smem_" + osym + "[threadIdx.x] = dev_valFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"chunkIdx").mkString("(",",",");\n"))
+      else out.append("if(groupIdx_" + osym + "==chunkOffset) smem_" + osym + "[threadIdx.x] = dev_valFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"chunkIdx").mkString("(",",",");\n"))
+    }
+    out.append("__syncthreads();\n")
+    out.append("for(unsigned int s=1; s<blockDim.x/MAX_GROUP; s*=2) {\n")
+    out.append("if((chunkIdx%(2*s))==0) { \n")
+    for((odata,osym) <- hashReductionList(op)) {
+      out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+s*MAX_GROUP]","chunkIdx")).mkString("(",",",");\n"))
+    }
+    out.append("}\n")
+    out.append("__syncthreads();\n")
+    out.append("}\n")
+    out.append("if(threadIdx.x / MAX_GROUP == 0) {\n")
+    for((odata,osym) <- hashReductionList(op)) {
+      out.append("temp_" + osym + "[blockIdx.x*MAX_GROUP+threadIdx.x] = smem_" + osym + "[threadIdx.x];\n")
+    }
+    out.append("}\n")
     writeKernelFooter(out)
 
     writeKernelHeader(out, op, "HashReduce2")
     for((odata,osym) <- hashReductionList(op)) {
       if (odata.hasCond) {
-        out.append("smem_" + osym + "[threadIdx.x] = ((chunkIdx<size) && (bitmap_" + osym + "[chunkIdx]==1)) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+        out.append("smem_" + osym + "[threadIdx.x] = ((chunkIdx<size) && dev_cond_" + funcNameSuffix(op,osym) + "(" + (odata.loopCondInputs:+"chunkIdx").mkString(",") + ")) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
       }
       else {
         out.append("smem_" + osym + "[threadIdx.x] = (chunkIdx < size) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
