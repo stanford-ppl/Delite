@@ -31,7 +31,7 @@ trait HelloWorld extends OptiMLApplication {
     */
     
     // sparse matrix testing
-    /*
+    
     // inserting/removing rows/cols
     // val mb = Matrix.sparse[Int](10,10)
     // mb.insertCol(5,DenseVector(1,2,3,4,5,6,7,8,9,10))
@@ -77,8 +77,9 @@ trait HelloWorld extends OptiMLApplication {
       println("t2(573,71) = (should be 101): " + t2(573,71))
       println("t2(500,500) = (should be 0): " + t2(500,500))          
     }      
-    */
     
+    
+    /*
     // sparse vector testing
     val d = Vector.ones(100) //DenseVector[Double](100,true)
     val v = SparseVector[Double](100,true)
@@ -124,6 +125,7 @@ trait HelloWorld extends OptiMLApplication {
       val t1 = d map { e => 64. }
       t1.pprint
     }
+    */
     
     // val vl = log(v)
     // vl.pprint

@@ -128,7 +128,8 @@ trait SparseVectorCompilerOps extends SparseVectorOps {
    defaultValue method for that type (inside *ApplicationRunner currently)
   */
   def defaultValue[A:Manifest] = {
-    if (manifest[A] <:< manifest[AnyVal]) unit(0.asInstanceOf[A]) // a bit of a 'loose' approximation
+    if (manifest[A] == manifest[Boolean]) unit(false.asInstanceOf[A])
+    else if (manifest[A] <:< manifest[AnyVal]) unit(0.asInstanceOf[A]) // a bit of a 'loose' approximation
     else err("no default value found for type: " + manifest[A])
   }  
 }

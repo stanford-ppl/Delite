@@ -119,7 +119,7 @@ trait SparseMatrixOps extends Variables {
     def vview(start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = sparsematrix_vview(x,start,stride,length,isRow)
         
     // not supported by interface right now
-    // def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = sparsematrix_multiply(x,y)
+    def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = sparsematrix_multiply(x,y)
     def inv(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext) = sparsematrix_inverse(x)        
   }
   
@@ -131,7 +131,7 @@ trait SparseMatrixOps extends Variables {
   def sparsematrix_nnz[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[Int]
   def sparsematrix_vview[A:Manifest](x: Rep[SparseMatrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[SparseVectorView[A]] 
 
-  // def sparsematrix_multiply[A:Manifest:Arith](x: Rep[SparseMatrix[A]], y: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[SparseMatrix[A]]
+  def sparsematrix_multiply[A:Manifest:Arith](x: Rep[SparseMatrix[A]], y: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[SparseMatrix[A]]
   def sparsematrix_inverse[A:Manifest](x: Rep[SparseMatrix[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext): Rep[SparseMatrix[Double]]  
 }
 
@@ -191,10 +191,10 @@ trait SparseMatrixOpsExp extends SparseMatrixCompilerOps with DeliteCollectionOp
   def sparsematrix_nnz[A:Manifest](x: Exp[SparseMatrix[A]])(implicit ctx: SourceContext) = reflectPure(SparseMatrixNNZ(x))
   def sparsematrix_vview[A:Manifest](x: Exp[SparseMatrix[A]], start: Exp[Int], stride: Exp[Int], length: Exp[Int], isRow: Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(SparseMatrixVView(x,start,stride,length,isRow))
 
-  // def sparsematrix_multiply[A:Manifest:Arith](x: Exp[SparseMatrix[A]], y: Exp[SparseMatrix[A]])(implicit ctx: SourceContext) = {
-  //   throw new UnsupportedOperationException("tbd")
-  //   //reflectPure(SparseMatrixMultiply(x,y))
-  // }
+  def sparsematrix_multiply[A:Manifest:Arith](x: Exp[SparseMatrix[A]], y: Exp[SparseMatrix[A]])(implicit ctx: SourceContext) = {
+    throw new UnsupportedOperationException("tbd")
+    //reflectPure(SparseMatrixMultiply(x,y))
+  }
   def sparsematrix_inverse[A:Manifest](x: Exp[SparseMatrix[A]])(implicit conv: Exp[A] => Exp[Double], ctx: SourceContext) = {
     throw new UnsupportedOperationException("tbd")
     //reflectPure(SparseMatrixInverse(x))

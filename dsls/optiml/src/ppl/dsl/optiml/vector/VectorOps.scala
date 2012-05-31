@@ -24,6 +24,16 @@ trait OptiMLDenseVectorOps extends OptiMLDenseVectorOpsLowPriority {
   // overrides for OptiLA types - we have to override each OptiLA type conversion, otherwise the implicit priorities tie :(
   implicit def denseToVecOverrides2[A:Manifest](x: Rep[DenseVector[A]]) = new OptiMLVecOpsOverridesAlternate(x)
 }
+trait OptiMLSparseVectorOpsLowPriority extends ppl.dsl.optila.vector.SparseVectorOps {
+  this: OptiML =>
+  
+  implicit def sparseToVecOverrides[A:Manifest](x: Rep[SparseVector[A]]) = new OptiMLSparseVecOpsOverrides(x)
+}
+trait OptiMLSparseVectorOps extends OptiMLSparseVectorOpsLowPriority {
+  this: OptiML =>
+  
+  implicit def sparseToVecOverrides2[A:Manifest](x: Rep[SparseVector[A]]) = new OptiMLVecOpsOverridesAlternate(x)
+}
 
 
 trait OptiMLDenseVectorViewOpsLowPriority extends ppl.dsl.optila.vector.DenseVectorViewOps {
@@ -96,6 +106,7 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   }
   
   class OptiMLDenseVecOpsOverrides[A:Manifest](x: Rep[DenseVector[A]]) extends DenseVecOpsCls(x) with OptiMLVecOpsOverrides[A] 
+  class OptiMLSparseVecOpsOverrides[A:Manifest](x: Rep[SparseVector[A]]) extends SparseVecOpsCls(x) with OptiMLVecOpsOverrides[A] 
   class OptiMLDenseVecViewOpsOverrides[A:Manifest](x: Rep[DenseVectorView[A]]) extends DenseVectorViewOpsCls(x) with OptiMLVecOpsOverrides[A] 
   class OptiMLSparseVecViewOpsOverrides[A:Manifest](x: Rep[SparseVectorView[A]]) extends SparseVectorViewOpsCls(x) with OptiMLVecOpsOverrides[A] 
   class OptiMLRangeVecOpsOverrides(x: Rep[RangeVector]) extends RangeVecOpsCls(x) with OptiMLVecOpsOverrides[Int] 

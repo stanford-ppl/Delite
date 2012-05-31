@@ -915,7 +915,7 @@ trait MatrixOpsExp extends MatrixOps with DeliteCollectionOpsExp with VariablesE
     extends DeliteOpZipWithI[A,B,R,I,MR] {
 
     val inA = intfA.ops.elem.asInstanceOf[Exp[Matrix[A]]]
-    val inB = intfA.ops.elem.asInstanceOf[Exp[Matrix[B]]]
+    val inB = intfB.ops.elem.asInstanceOf[Exp[Matrix[B]]]
     override def alloc = b.alloc(intfA.numRows, intfA.numCols)
     def finalizer(x: Exp[I]) = b.finalizer(x)
     val size = copyTransformedOrElse(_.size)(intfA.size)

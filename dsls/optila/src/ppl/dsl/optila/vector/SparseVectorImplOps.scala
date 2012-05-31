@@ -139,7 +139,7 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
   // don't need to compute offset if we are appending.
   // the guarantee is that pos > all existing indices in the sparse vector.   
   def sparsevector_append_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
-    sparsevector_insert_at_off(v, v.length, pos, x)
+    sparsevector_insert_at_off(v, v.nnz, pos, x)
   }
    
   def sparsevector_insert_impl[A:Manifest](v: Rep[SparseVector[A]], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
@@ -149,7 +149,7 @@ trait SparseVectorImplOpsStandard extends SparseVectorImplOps {
   }
   
   protected def sparsevector_insert_at_off[A:Manifest](v: Rep[SparseVector[A]], off: Rep[Int], pos: Rep[Int], x: Rep[A]): Rep[Unit] = {
-    sparsevector_insertspace(v, off, 1)
+    sparsevector_insertspace(v, off, 1) 
     val data = sparsevector_raw_data(v)
     val indices = sparsevector_raw_indices(v)    
     darray_unsafe_update(indices, off, pos)

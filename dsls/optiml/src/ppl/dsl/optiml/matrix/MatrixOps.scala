@@ -18,6 +18,12 @@ trait OptiMLDenseMatrixOps extends ppl.dsl.optila.matrix.DenseMatrixOps {
   implicit def denseToMatOverrides[A:Manifest](x: Rep[DenseMatrix[A]]) = new OptiMLDenseMatOpsOverrides(x)  
 }
 
+trait OptiMLSparseMatrixOps extends ppl.dsl.optila.matrix.SparseMatrixOps {
+  this: OptiML =>
+  
+  implicit def sparseToMatOverrides[A:Manifest](x: Rep[SparseMatrix[A]]) = new OptiMLSparseMatOpsOverrides(x)  
+}
+
 trait ImageOpsExtension extends ImageOps {
   this: OptiML =>
   
@@ -35,6 +41,7 @@ trait MatrixOps extends ppl.dsl.optila.matrix.MatrixOps  {
   }
   
   class OptiMLDenseMatOpsOverrides[A:Manifest](x: Rep[DenseMatrix[A]]) extends DenseMatOpsCls(x) with OptiMLMatOpsOverrides[A] 
+  class OptiMLSparseMatOpsOverrides[A:Manifest](x: Rep[SparseMatrix[A]]) extends SparseMatOpsCls(x) with OptiMLMatOpsOverrides[A] 
   class OptiMLImageOpsOverrides[A:Manifest](x: Rep[Image[A]]) extends ImageOpsCls(x) with OptiMLMatOpsOverrides[A] 
 
   // class defs

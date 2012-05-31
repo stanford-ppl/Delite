@@ -92,6 +92,14 @@ trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOp
     if (isIndexDense(x)) asIndexDense(x).update(n,y.asInstanceOf[Exp[Int]])
     else super.dc_update(x,n,y)        
   }  
+  
+  override def dc_alloc[A:Manifest,CA<:DeliteCollection[A]:Manifest](x: Exp[CA], size: Exp[Int])(implicit ctx: SourceContext): Exp[CA] = {
+    if (isIndexDense(x)) {
+      val out = IndexVector(size, asIndexDense(x).isRow)
+      out.asInstanceOf[Exp[CA]]
+    }
+    else super.dc_alloc[A,CA](x,size)
+  }    
 }
 
 trait IndexVectorDenseOpsExpOpt extends IndexVectorDenseOpsExp { this: OptiMLExp => 
