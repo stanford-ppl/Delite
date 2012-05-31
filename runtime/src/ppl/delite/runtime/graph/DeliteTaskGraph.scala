@@ -459,10 +459,10 @@ object DeliteTaskGraph {
       data.resultType = value.head
       data.func = "copyInputHtoD_%s_%s".format(newop.id,sym)
       data.funcReturn = "copyMutableInputDtoH_%s_%s".format(newop.id,sym)
-      tgt match {
-        case Targets.OpenCL => data.objFields = value.tail.head.asInstanceOf[Map[String,String]]
-        case _ =>
-      }
+      //tgt match {
+      //  case Targets.OpenCL => data.objFields = value.tail.head.asInstanceOf[Map[String,String]]
+      //  case _ =>
+      //}
     }
 
     //output allocation
@@ -494,10 +494,10 @@ object DeliteTaskGraph {
       output.loopZeroInputs = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
       output.loopZeroInputs_2 = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
 
-      tgt match {
-        case Targets.OpenCL => output.objFields = outList.tail.tail.tail.tail.head.asInstanceOf[Map[String,String]]
-        case _ =>
-      }
+      //tgt match {
+      //  case Targets.OpenCL => output.objFields = outList.tail.tail.tail.tail.head.asInstanceOf[Map[String,String]]
+      //  case _ =>
+      //}
 
     }
 

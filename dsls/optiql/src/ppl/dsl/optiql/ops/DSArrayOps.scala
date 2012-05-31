@@ -1,7 +1,7 @@
 package ppl.dsl.optiql.ops
 
 import java.io.PrintWriter
-import scala.virtualization.lms.common.{Base, ScalaGenFat, CudaGenFat, BaseFatExp, LoopsFatExp, IfThenElseFatExp, TupleOpsExp, ArrayOpsExp, LoopFusionOpt}
+import scala.virtualization.lms.common.{Base, ScalaGenFat, CLikeGenBase, CudaGenFat, OpenCLGenFat, BaseFatExp, LoopsFatExp, IfThenElseFatExp, TupleOpsExp, ArrayOpsExp, LoopFusionOpt}
 import scala.virtualization.lms.internal.GenericFatCodegen
 import ppl.dsl.optiql.OptiQLExp
 import ppl.delite.framework.datastructures.FieldAccessOpsExp
@@ -456,7 +456,7 @@ trait ScalaGenDSArrayOps extends ScalaGenFat with LoopFusionOpt {
 }
 
 
-trait CudaGenDSArrayOps extends CudaGenFat with LoopFusionOpt {
+trait CLikeGenDSArrayOps extends CLikeGenBase with LoopFusionOpt {
   val IR: DSArrayOpsExp with OptiQLExp
   import IR._
 
@@ -475,6 +475,8 @@ trait CudaGenDSArrayOps extends CudaGenFat with LoopFusionOpt {
       emitValDef(sym, "(unsigned short)(" + quote(t) + " & 0xffff)")
     case _ => super.emitNode(sym, rhs)
   }
-
-
 }
+
+trait CudaGenDSArrayOps extends CudaGenFat with CLikeGenDSArrayOps 
+trait OpenCLGenDSArrayOps extends OpenCLGenFat with CLikeGenDSArrayOps
+

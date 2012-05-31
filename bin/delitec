@@ -66,7 +66,7 @@ def stage(runner, opts):
     if opts.no_blas == False:
         java_opts = java_opts + " -Ddelite.extern.blas"
     if opts.gpu == True:
-        java_opts = java_opts + " -Ddelite.generate.cuda"
+        java_opts = java_opts + " -Ddelite.generate.cuda -Ddelite.generate.opencl"
     if opts.no_fusion == True:
         java_opts = java_opts + " -Ddelite.enable.fusion=false"
     if opts.profile == True:

@@ -1,7 +1,6 @@
 package ppl.delite.runtime.codegen
 
 import java.util.ArrayDeque
-import kernels.cuda.MultiLoop_GPU_Array_Generator
 import ppl.delite.runtime.graph.ops._
 import collection.mutable.ArrayBuffer
 import ppl.delite.runtime.graph.targets.{OPData, Targets}

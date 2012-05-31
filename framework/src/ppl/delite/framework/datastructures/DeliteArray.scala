@@ -190,6 +190,7 @@ trait ScalaGenDeliteArrayOps extends ScalaGenFat {
 
 }
 
+
 trait CudaGenDeliteArrayOps extends CudaGenFat {
   val IR: DeliteArrayFatExp with DeliteOpsExp
   import IR._
@@ -234,5 +235,50 @@ trait CudaGenDeliteArrayOps extends CudaGenFat {
     case DeliteArrayLength(a @ Def(Loop(_,_,_:DeliteCollectElem[_,_]))) => Some(a) // exclude hash collect (?)
     case _ => super.unapplySimpleDomain(e)
   }
+}
 
+trait OpenCLGenDeliteArrayOps extends OpenCLGenFat {
+  val IR: DeliteArrayFatExp with DeliteOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    //case DeliteArrayNew(length) =>
+    //  emitValDef(sym, "new Array[" + remap(sym.Type.typeArguments(0)) + "](" + quote(length) + ")")
+    case DeliteArrayLength(da) =>
+      emitValDef(sym, remap(da.Type) + "_size(" + quote(da) + ")")
+    case DeliteArrayApply(da, idx) =>
+      emitValDef(sym, remap(da.Type) + "_apply(" + quote(da) + "," + quote(idx) + ")")
+    case DeliteArrayUpdate(da, idx, x) =>
+      emitValDef(sym, remap(da.Type) + "_update(" + quote(da) + "," + quote(idx) + "," + quote(x) + ")")
+    case _ => super.emitNode(sym, rhs)
+  }
+
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteArray" => m.typeArguments(0) match {
+      case s if s <:< manifest[Record] =>
+        throw new GenerationFailedException("OpenCLGen: Struct generation not possible")
+      case arg => "DeliteArray_" + remap(arg)
+    }
+    case _ => super.remap(m)
+  }
+
+  override def isObjectType[A](m: Manifest[A]) : Boolean = m.erasure.getSimpleName match {
+      case "DeliteArray" => m.typeArguments(0) match {
+        case s if s <:< manifest[Record] => false
+        case arg => true //if isPrimitiveType(arg) => true //Currently only allow primitive type arrays
+      }
+      case _ => super.isObjectType(m)
+  }
+
+  //TODO: Common to scalagen
+  override def unapplySimpleIndex(e: Def[Any]): Option[(Exp[Any], Exp[Int])] = e match {
+    case DeliteArrayApply(da, idx) => Some((da,idx))
+    case _ => super.unapplySimpleIndex(e)
+  }
+
+  override def unapplySimpleDomain(e: Def[Int]): Option[Exp[Any]] = e match {
+    //case DeliteArrayLength(da) => Some(da)
+    case DeliteArrayLength(a @ Def(Loop(_,_,_:DeliteCollectElem[_,_]))) => Some(a) // exclude hash collect (?)
+    case _ => super.unapplySimpleDomain(e)
+  }
 }

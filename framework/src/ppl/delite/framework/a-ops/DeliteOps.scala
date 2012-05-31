@@ -1965,7 +1965,8 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
   
 }
 
-trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
+trait GPUGenDeliteOps extends GPUGenLoopsFat with BaseGenDeliteOps {
+
   import IR._
 
   override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
@@ -1981,7 +1982,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
       case elem: DeliteForeachElem[_] => List(elem.func) 
       case elem: DeliteReduceElem[_] => elem.func :: elem.cond
       case elem: DeliteReduceTupleElem[_,_] => elem.func._1 :: elem.func._2 :: elem.cond
-      case _ => throw new GenerationFailedException("CudaGen: Unsupported Elem Type!")
+      case _ => throw new GenerationFailedException("GPUGen: Unsupported Elem Type!")
     }
     emitFatBlock(elemFuncs)
   }
@@ -2046,7 +2047,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
       //TODO: Check if primitive type operations
       case (sym, elem: DeliteCollectElem[_,_]) =>
         emitBlock(elem.alloc) //This will generate alloc failure exception
-        throw new GenerationFailedException("CudaGen: Inlined DeliteCollectElem is not supported yet due to memory allocations.\n" + quotePos(sym))
+        throw new GenerationFailedException("GPUGen: Inlined DeliteCollectElem is not supported yet due to memory allocations.\n" + quotePos(sym))
       case (sym, elem: DeliteReduceElem[_]) =>
         emitBlock(elem.zero)
         stream.println("%s %s = %s;".format(remap(elem.zero.Type),quote(sym),quote(getBlockResult(elem.zero))))
@@ -2055,7 +2056,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         stream.println("%s %s = %s;".format(remap(elem.zero._1.Type),quote(sym),quote(getBlockResult(elem.zero._1))))
         stream.println("%s %s_2 = %s;".format(remap(elem.zero._2.Type),quote(sym),quote(getBlockResult(elem.zero._2))))
       case _ =>
-        throw new GenerationFailedException("CudaGen: Unsupported Elem Type!")
+        throw new GenerationFailedException("GPUGen: Unsupported Elem Type!")
     }
     stream.println("int " + quote(op.v) + " = 0;")
     stream.println("while (" + quote(op.v) + " < " + quote(op.size) + ") {  // begin fat loop " + symList.map(quote).mkString(","))
@@ -2071,7 +2072,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         emitReduceTupleElem(op, sym, elem)
         stream.println("//end emitReduceTupleElem")
       case _ =>
-        throw new GenerationFailedException("CudaGen: Unsupported Elem Type!")
+        throw new GenerationFailedException("GPUGen: Unsupported Elem Type!")
     }
     stream.println(quote(op.v) + " += 1;")
     stream.println(/*{*/"} // end fat loop " + symList.map(quote).mkString(","))
@@ -2164,7 +2165,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
           lf.loopFuncOutputType_2 = remap(getBlockResult(elem.keyFunc).Type)
 
         case _ =>
-          throw new GenerationFailedException("CudaGen: Unsupported Elem type!")
+          throw new GenerationFailedException("GPUGen: Unsupported Elem type!")
     }
     tabWidth -= 1
     isGPUable = true
@@ -2178,7 +2179,7 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
         if(!isVoidType(sym.Type)) stream.println(addTab() + "%s %s = %s;".format(remap(sym.Type),quote(sym),quote(getBlockResult(b))))
       }
       else {
-    	  throw new GenerationFailedException("CudaGen: DeliteOpSingleTask is not GPUable")
+    	  throw new GenerationFailedException("GPUGen: DeliteOpSingleTask is not GPUable")
       }
     }
     
@@ -2192,37 +2193,8 @@ trait CudaGenDeliteOps extends CudaGenLoopsFat with BaseGenDeliteOps {
 
 }
 
-trait OpenCLGenDeliteOps extends OpenCLGenEffect with BaseGenDeliteOps {
-  import IR._
+trait CudaGenDeliteOps extends CudaGenLoopsFat with GPUGenDeliteOps
 
-  override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
-    case op: AbstractFatLoop =>
-      throw new GenerationFailedException("TODO: implement emitFatNode in OpenCLGenDeliteOps")
-    case _ => super.emitFatNode(symList, rhs)
-  }
+trait OpenCLGenDeliteOps extends OpenCLGenLoopsFat with GPUGenDeliteOps
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case s:DeliteOpSingleTask[_] =>
-      emitBlock(s.block)
-      emitValDef(sym,quote(getBlockResult(s.block)))
-    case _ => super.emitNode(sym,rhs)
-  }
-
-}
-
-trait CGenDeliteOps extends CGenEffect with BaseGenDeliteOps {
-  import IR._
-
-  override def emitFatNode(symList: List[Sym[Any]], rhs: FatDef)(implicit stream: PrintWriter) = rhs match {
-    case op: AbstractFatLoop =>
-      throw new GenerationFailedException("TODO: implement emitFatNode in CGenDeliteOps")
-    case _ => super.emitFatNode(symList, rhs)
-  }
-
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-    case s:DeliteOpSingleTask[_] =>
-      emitBlock(s.block)
-      emitValDef(sym,quote(getBlockResult(s.block)))
-    case _ => super.emitNode(sym,rhs)
-  }
-}
+trait CGenDeliteOps extends CGenEffect with BaseGenDeliteOps
