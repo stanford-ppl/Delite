@@ -115,8 +115,8 @@ trait SparseMatrixOps extends Variables {
     def apply(i: Rep[Int], j: Rep[Int])(implicit ctx: SourceContext) = sparsematrix_apply(x,i,j)
     def numRows(implicit ctx: SourceContext) = sparsematrix_numrows(x)
     def numCols(implicit ctx: SourceContext) = sparsematrix_numcols(x)
-    def nnz(implicit ctx: SourceContext) = sparsematrix_nnz(elem)
     def vview(start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext) = sparsematrix_vview(x,start,stride,length,isRow)
+    def nnz(implicit ctx: SourceContext) = sparsematrix_nnz(elem)
         
     // not supported by interface right now
     def *(y: Rep[MA])(implicit a: Arith[A], ctx: SourceContext): Rep[MA] = sparsematrix_multiply(x,y)
@@ -128,9 +128,9 @@ trait SparseMatrixOps extends Variables {
   def sparsematrix_update[A:Manifest](x: Rep[SparseMatrix[A]], i: Rep[Int], j: Rep[Int], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
   def sparsematrix_numrows[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[Int]
   def sparsematrix_numcols[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[Int]
-  def sparsematrix_nnz[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[Int]
   def sparsematrix_vview[A:Manifest](x: Rep[SparseMatrix[A]], start: Rep[Int], stride: Rep[Int], length: Rep[Int], isRow: Rep[Boolean])(implicit ctx: SourceContext): Rep[SparseVectorView[A]] 
-
+  def sparsematrix_nnz[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[Int]
+  
   def sparsematrix_multiply[A:Manifest:Arith](x: Rep[SparseMatrix[A]], y: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[SparseMatrix[A]]
   def sparsematrix_inverse[A:Manifest](x: Rep[SparseMatrix[A]])(implicit conv: Rep[A] => Rep[Double], ctx: SourceContext): Rep[SparseMatrix[Double]]  
 }

@@ -1,14 +1,14 @@
 package ppl.dsl.optiml.matrix
 
-import ppl.dsl.optiml.{Vector,Matrix,IndexVector}
 import scala.virtualization.lms.common.ScalaOpsPkg
 import scala.virtualization.lms.common.{BaseExp, Base}
-import ppl.dsl.optiml.{OptiMLLift, OptiMLCompiler, OptiML}
+import ppl.dsl.optiml._
 
 trait MatrixImplOps { this: OptiML =>
   def matrix_apply_row_indices_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], rowIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA]
   def matrix_apply_col_indices_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], colIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA]
   def matrix_apply_block_indices_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], rowIndices: Interface[IndexVector], colIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA]
+  def sparsematrix_csr_nz_row_indices_impl[A:Manifest](x: Rep[SparseMatrix[A]]): Rep[IndexVectorDense]
 }
 
 trait MatrixImplOpsStandard extends MatrixImplOps {
@@ -49,4 +49,21 @@ trait MatrixImplOpsStandard extends MatrixImplOps {
     }
     b.finalizer(resultOut)
   }  
+  
+  // FIXME: this implicitly assumes CSR, breaking the abstraction in OptiLA
+  def sparsematrix_csr_nz_row_indices_impl[A:Manifest](x: Rep[SparseMatrix[A]]) = {
+    val out = IndexVector(0,true)
+    val rowPtr = sparsematrix_csr_raw_rowptr(x)
+    var i = 0
+    var lastRowOff = 0
+    while (i < rowPtr.length - 1) {
+      val rowOff = rowPtr(i)
+      if (rowOff != lastRowOff) {
+        out += i-1
+      }
+      lastRowOff = rowOff
+      i += 1
+    }  
+    out.unsafeImmutable
+  }
 }

@@ -173,14 +173,13 @@ trait DenseVectorImplOpsStandard extends DenseVectorImplOps {
   }
   
   def densevector_sort_impl[A:Manifest:Ordering](v: Rep[DenseVector[A]]): Rep[DenseVector[A]] = {
-    // inefficent! 3 copies
-    val trimmedV = v.mutable()
-    trimmedV.trim()
-    val data = densevector_raw_data(trimmedV).sort    
-    val out = DenseVector[A](0, v.isRow)
-    densevector_set_length(out, v.length)
-    densevector_set_raw_data(out, data.sort)
-    out.unsafeImmutable
+    // inefficient! 2 copies (one to do the trim)
+    // should be able to provide an index range to array sort
+    val out = v.mutable()
+    out.trim()
+    val data = densevector_raw_data(out).sort    
+    densevector_set_raw_data(out, data)
+    out
   }
   
   def densevector_times_matrix_impl[A:Manifest:Arith](v: Rep[DenseVector[A]], m: Rep[DenseMatrix[A]]) = {

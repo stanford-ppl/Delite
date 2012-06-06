@@ -19,7 +19,20 @@ import scala.virtualization.lms.common._
 
 // subclassing LanguageOps prioritizes the implicits in our LanguageOps over OptiLAs for OptiML programs
 trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML => 
-
+  
+  /**
+   * shapes
+   * 
+   * returns index vectors representing the indices of the particular shaped matrix
+   */
+      
+  // def square(n: Rep[Int]) = ((unit(0)::n),(unit(0)::n))
+  
+  def utriangle(n: Rep[Int], includeDiagonal: Rep[Boolean] = unit(true)) = IndexVectorTriangular(n,includeDiagonal)
+  
+  //def triangular(n: Rep[Int], includeDiagonal: Rep[Boolean] = unit(false)) = optiml_triangular(n,includeDiagonal)  
+  // def optiml_triangular[A:Manifest](n: Rep[Int], includeDiagonal: Rep[Boolean])(implicit ctx: SourceContext): Interface[IndexVector2]
+    
   /**
    * aggregate
    */
@@ -37,10 +50,15 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
                            (block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]] = {
     optiml_aggregate2d(rows, cols, block)
   }
-  
+    
   def aggregateIf[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector])
                              (cond: (Rep[Int], Rep[Int]) => Rep[Boolean])(block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext) = {
     optiml_aggregate2dif(rows, cols, cond, block)
+  }
+  
+  def aggregate[A:Manifest](idx: Interface[IndexVector2])
+                           (block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]] = {
+    optiml_aggregate2d_flat(idx, block)
   }
   
 
@@ -49,7 +67,9 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
                                      block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]]
   def optiml_aggregate2dif[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
                                        cond: (Rep[Int], Rep[Int]) => Rep[Boolean], block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]]
-                                    
+  def optiml_aggregate2d_flat[A:Manifest](idx: Interface[IndexVector2],
+                                          block: (Rep[Int], Rep[Int]) => Rep[A])(implicit ctx: SourceContext): Rep[DenseVector[A]]                                       
+
   // TODO: for some reason, the implicit ops conversions aren't kicking in for sum/min/max
   /**
    * sum
@@ -175,9 +195,21 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   this: OptiMLExp with LanguageImplOps =>
 
   /**
+   * Shapes
+   */
+  
+  // case class Triangular[A:Manifest](n: Exp[Int], d: Exp[Boolean])
+  //   extends DeliteOpSingleTask[(IndexVectorDense,IndexVectorDense)](reifyEffects(optiml_triangular_impl(n,d)))
+  // 
+  // def optiml_triangular[A:Manifest](n: Rep[Int], d: Rep[Boolean])(implicit ctx: SourceContext) = {
+  //   val out = t2(Triangular(n,d))
+  //   IndexVector2Tup(out._1,out._2)
+  // }
+  
+  /**
    * Aggregate
    */
-
+     
   case class AggregateIf[A:Manifest](start: Exp[Int], end: Exp[Int], cond: Exp[Int] => Exp[Boolean], func: Exp[Int] => Exp[A])
     extends DeliteOpFilter[Int,A,DenseVector[A]] {
   
@@ -198,7 +230,7 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
     val flatSize = rows.length*cols.length        
     override def alloc = DenseVector[A](flatSize, unit(true))      
-    def func = i => func2(i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))    
+    def func = i => func2(rows(i/cols.length), cols(i%cols.length)) // i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))    
     val in = copyTransformedOrElse(_.in)(unit(0)::flatSize)
     val size = copyTransformedOrElse(_.size)(flatSize)
     
@@ -211,15 +243,14 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     reflectPure(Aggregate2d(rows, cols, block))
   }
 
-  
   case class Aggregate2dIf[A:Manifest](rows: Interface[IndexVector], cols: Interface[IndexVector],
                                        cond2: (Exp[Int],Exp[Int]) => Exp[Boolean], func2: (Exp[Int], Exp[Int]) => Exp[A])
     extends DeliteOpFilter[Int,A,DenseVector[A]] {
   
     val flatSize = rows.length*cols.length    
     override def alloc(size: Exp[Int]) = DenseVector[A](size, unit(true))      
-    def cond = i => cond2(i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))
-    def func = i => func2(i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))    
+    def cond = i => cond2(rows(i/cols.length), cols(i%cols.length))  //cond2(i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))
+    def func = i => func2(rows(i/cols.length), cols(i%cols.length))  // func2(i/cols.length + rows(unit(0)), i%cols.length + cols(unit(0)))    
     val in = copyTransformedOrElse(_.in)(unit(0)::flatSize)
     val size = copyTransformedOrElse(_.size)(flatSize)
     
@@ -232,6 +263,22 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     reflectPure(Aggregate2dIf(rows, cols, cond, block))
   }
 
+  case class Aggregate2dFlat[A:Manifest](intf: Interface[IndexVector2], func2: (Exp[Int],Exp[Int]) => Exp[A])
+    extends DeliteOpMap[(Int,Int),A,DenseVector[A]] {
+
+    val in = intf.ops.elem.asInstanceOf[Exp[Vector[(Int,Int)]]]
+    override def alloc = DenseVector[A](intf.length, unit(true))      
+    def func = i => func2(i._1,i._2)
+    val size = copyTransformedOrElse(_.size)(intf.length)
+
+    def m = manifest[A]
+  }
+ 
+  def optiml_aggregate2d_flat[A:Manifest](in: Interface[IndexVector2],
+                                   block: (Exp[Int], Exp[Int]) => Exp[A])(implicit ctx: SourceContext) = {
+
+    reflectPure(Aggregate2dFlat(in, block))
+  }
                                        
   /**
    * Sum

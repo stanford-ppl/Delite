@@ -11,7 +11,7 @@ trait RecordOps extends Base {
     
   def newRecord[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T]
   
-  implicit def RepToRecordOps(r: Rep[Record]) = new RecordOpsCls(r)
+  implicit def repToRecordOps(r: Rep[Record]) = new RecordOpsCls(r)
   
   class RecordOpsCls(r: Rep[Record]) {
     def selectDynamic[T:Manifest](n: String): Rep[T] = recordFieldAccess[T](r,n)

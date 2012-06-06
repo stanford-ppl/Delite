@@ -98,14 +98,16 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
     def apply(indices: Rep[Int]*)(implicit ctx: SourceContext) = vector_apply_indices[A,VA](x, IndexVector(indices: _*))
     def update(i: Interface[IndexVector], y: Rep[A])(implicit o: Overloaded1, ctx: SourceContext) = vector_update_indices(x,i,y)
     //def update(i: Interface[IndexVector], y: Var[A])(implicit o: Overloaded2, ctx: SourceContext) = vector_update_indices(x,i,readVar(y))        
-    //override def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = x.update(n, y) // ?    
+    //override def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = x.update(n, y) // ?        
   }
   
   class OptiMLVecOpsOverridesAlternate[A:Manifest](x: Interface[Vector[A]]) {
     def find(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = vector_find_override(x, pred)
   }
   
-  class OptiMLDenseVecOpsOverrides[A:Manifest](x: Rep[DenseVector[A]]) extends DenseVecOpsCls(x) with OptiMLVecOpsOverrides[A] 
+  class OptiMLDenseVecOpsOverrides[A:Manifest](x: Rep[DenseVector[A]]) extends DenseVecOpsCls(x) with OptiMLVecOpsOverrides[A] {
+    def sortWithIndex(implicit o: Ordering[A], ctx: SourceContext): (Rep[DenseVector[A]], Rep[IndexVectorDense]) = densevector_sortwithindex(x)
+  }
   class OptiMLSparseVecOpsOverrides[A:Manifest](x: Rep[SparseVector[A]]) extends SparseVecOpsCls(x) with OptiMLVecOpsOverrides[A] 
   class OptiMLDenseVecViewOpsOverrides[A:Manifest](x: Rep[DenseVectorView[A]]) extends DenseVectorViewOpsCls(x) with OptiMLVecOpsOverrides[A] 
   class OptiMLSparseVecViewOpsOverrides[A:Manifest](x: Rep[SparseVectorView[A]]) extends SparseVectorViewOpsCls(x) with OptiMLVecOpsOverrides[A] 
@@ -115,6 +117,11 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   def vector_apply_indices[A:Manifest,VA:Manifest](x: Interface[Vector[A]], indices: Interface[IndexVector])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]  
   def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
   def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[IndexVectorDense]
+  def densevector_sortwithindex[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): (Rep[DenseVector[A]], Rep[IndexVectorDense])
+  
+  // internal   
+  // this is here and not in ArrayOps because it is not a typical member of Scala's array
+  def array_sortwithindex[A:Manifest](x: Rep[Array[A]])(implicit ctx: SourceContext): (Rep[Array[A]], Rep[Array[Int]])
 }
 
 trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps with VariablesExp with BaseFatExp {
@@ -151,6 +158,14 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
 
     def m = manifest[A]  
   }
+  
+  case class ArraySortWithIndex[T:Manifest](x: Exp[Array[T]]) extends Def[(Array[T],Array[Int])] {
+    val m = manifest[T]
+  }  
+  
+  case class DenseVectorSortWithIndex[A:Manifest](x: Rep[DenseVector[A]])
+    extends DeliteOpSingleWithManifest[A,(DenseVector[A],IndexVectorDense)](reifyEffectsHere(densevector_sortwithindex_impl[A](x)))         
+    //extends DeliteOpSingleWithManifest[A,Record{val v: DenseVector[A]; val i: IndexVectorDense}](reifyEffectsHere(densevector_sortwithindex_impl[A](x)))         
 
   /////////////////////
   // object interface
@@ -176,6 +191,8 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   def vector_apply_indices[A:Manifest,VA:Manifest](x: Interface[Vector[A]], indices: Interface[IndexVector])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorApplyIndices[A,VA](x,indices))
   def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorUpdateIndices(x,i,y))
   def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(VectorFindOverride(x, pred))
+  def array_sortwithindex[A:Manifest](x: Rep[Array[A]])(implicit ctx: SourceContext) = t2(reflectPure(ArraySortWithIndex(x)))
+  def densevector_sortwithindex[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) = t2(reflectPure(DenseVectorSortWithIndex(x)))
 
   //////////////
   // mirroring
@@ -270,10 +287,22 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
   val IR: VectorOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
-  //     // these are the ops that call through to the underlying real data structure
-  //     case _ => super.emitNode(sym, rhs)
-  //   }
+  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+    case a@ArraySortWithIndex(x) => 
+      stream.println("val " + quote(sym) + " = {")
+      stream.println("val in = " + quote(x))
+      stream.println("val indices = (0 until in.length).toArray.sortWith((a,b) => in(a) < in(b))")
+      stream.println("val data = new Array[" + remap(a.m) + "](in.length)")      
+      stream.println("var i = 0")
+      stream.println("while (i < in.length) {")
+      stream.println("data(i) = in(indices(i))")
+      stream.println("i += 1")
+      stream.println("}")
+      stream.println("(data,indices)")
+      stream.println("}")    
+    
+    case _ => super.emitNode(sym, rhs)
+  }
 }
 
 

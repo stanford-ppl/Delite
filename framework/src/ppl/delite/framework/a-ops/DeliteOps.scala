@@ -1228,7 +1228,7 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
         stream.println(quote(getBlockResult(elem.allocN)))        
         stream.println("}")        
         stream.println("var " + quote(sym) + "_size = 0")
-        if (elem.cond.nonEmpty) println("var " + quote(sym) + "_conditionals = 0")
+        if (elem.cond.nonEmpty) stream.println("var " + quote(sym) + "_conditionals = 0")
       case (sym, elem: DeliteForeachElem[_]) => 
         stream.println("var " + quotearg(sym) + " = ()") // must be type Unit
       case (sym, elem: DeliteReduceElem[_]) =>
@@ -1409,16 +1409,22 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
           case ParFlat =>
             stream.println("__act2." + quote(sym) + "_data = __act." + quote(sym) + "_data")
           }
+          stream.println("if (" + quote(op.size) + " > 0) {")
           emitCollectElem(op, sym, elem, "__act2.")
+          stream.println("}")
         case (sym, elem: DeliteForeachElem[_]) => 
           stream.println("__act2." + quote(sym) + " = {"/*}*/)
+          stream.println("if (" + quote(op.size) + " > 0) {")
           emitForeachElem(op, sym, elem)
+          stream.println("}")
           stream.println(/*{*/"}")               
         case (sym, elem: DeliteReduceElem[_]) =>
           if (elem.stripFirst) {
             stream.println("__act2." + quote(sym) + "_zero = " + "__act." + quote(sym) + "_zero") // do we need zero here? yes, for comparing against...
             stream.println("__act2." + quote(sym) + " = {"/*}*/)
+            stream.println("if (" + quote(op.size) + " > 0) {")
             emitFirstReduceElem(op, sym, elem, "__act2.")
+            stream.println("} else __act2." + quote(sym) + "_zero")
             stream.println(/*{*/"}")
           } else { 
             stream.println("__act2." + quote(sym) + "_zero = " + "__act." + quote(sym) + "_zero")
@@ -1427,7 +1433,9 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
             } else {
               stream.println("__act2." + quote(sym) + " = " + "__act2." + quote(sym) + "_zero.Clone") // separate zero buffer
             }
+            stream.println("if (" + quote(op.size) + " > 0) {")
             emitReduceElem(op, sym, elem, "__act2.")
+            stream.println("}")
           }
         case (sym, elem: DeliteReduceTupleElem[_,_]) =>
           // no strip first here ... stream.println("assert(false, \"TODO: tuple reduce\")")
@@ -1435,11 +1443,15 @@ trait ScalaGenDeliteOps extends ScalaGenLoopsFat with ScalaGenStaticDataDelite w
           stream.println("__act2." + quote(sym) + "_zero_2 = " + "__act." + quote(sym) + "_zero_2")
           stream.println("__act2." + quote(sym) + "   = " + "__act2." + quote(sym) + "_zero  ")
           stream.println("__act2." + quote(sym) + "_2 = " + "__act2." + quote(sym) + "_zero_2")
+          stream.println("if (" + quote(op.size) + " > 0) {")
           emitReduceTupleElem(op, sym, elem, "__act2.")
+          stream.println("}")
       }
       stream.println("__act2")
     } else {
+      stream.println("if (" + quote(op.size) + " > 0) {")
       stream.println("process(__act, " + quote(op.v) + ")")
+      stream.println("}")
       stream.println("__act")
     }
     stream.println(/*{*/"}")

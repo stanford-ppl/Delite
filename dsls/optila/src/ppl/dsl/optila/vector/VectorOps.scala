@@ -219,7 +219,7 @@ trait VectorOps extends Variables {
     def abs(implicit a: Arith[A], ctx: SourceContext) = vector_abs[A,VA](x)
     def exp(implicit a: Arith[A], ctx: SourceContext) = vector_exp[A,VA](x)    
     
-    def sort(implicit o: Ordering[A], ctx: SourceContext): Rep[VA]
+    def sort(implicit o: Ordering[A], ctx: SourceContext): Rep[VA]    
     def min(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = vector_min(x)
     def minIndex(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = vector_minindex(x)
     def max(implicit o: Ordering[A], mx: HasMinMax[A], ctx: SourceContext) = vector_max(x)

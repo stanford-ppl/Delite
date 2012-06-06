@@ -16,6 +16,9 @@ trait IndexVector extends Vector[Int] with RowVector[Int]
 trait IndexVectorRange extends IndexVector with RangeVector
 trait IndexVectorDense extends IndexVector with DenseVector[Int]
 
+trait IndexVector2 extends Vector[(Int,Int)]
+trait IndexVectorTriangular extends IndexVector2
+
 /**
  *  Matrix
  */

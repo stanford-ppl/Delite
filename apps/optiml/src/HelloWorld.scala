@@ -7,6 +7,12 @@ trait HelloWorld extends OptiMLApplication {
     
     //println("hello world")
     
+    val tri1 = utriangle(4)
+    tri1.pprint
+    
+    val tri2 = utriangle(4,false)
+    tri2.pprint
+    
     // matrix bulk operations with changed views
     /*
     //val m = Matrix.zeros(10,10)
@@ -30,6 +36,7 @@ trait HelloWorld extends OptiMLApplication {
     t3.pprint
     */
     
+    /*
     // sparse matrix testing
     
     // inserting/removing rows/cols
@@ -77,7 +84,7 @@ trait HelloWorld extends OptiMLApplication {
       println("t2(573,71) = (should be 101): " + t2(573,71))
       println("t2(500,500) = (should be 0): " + t2(500,500))          
     }      
-    
+    */
     
     /*
     // sparse vector testing

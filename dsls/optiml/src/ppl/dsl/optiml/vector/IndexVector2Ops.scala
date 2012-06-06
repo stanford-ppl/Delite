@@ -8,6 +8,31 @@ import ppl.dsl.optiml._
 
 trait IndexVector2Ops extends Base { this: OptiML =>
 
+  /**
+   * Interface for different kinds of IndexVector2
+   */  
+  class IV2Interface(override val ops: IndexVec2OpsCls) extends VInterface[(Int,Int)](ops) with Interface[IndexVector2]     
+  
+  trait IndexVec2OpsCls extends VecOpsCls[(Int,Int)] with InterfaceOps[IndexVector2] {
+    type V[X] = DenseVector[X] 
+    type M[X] = DenseMatrix[X]
+    type I[X] = DenseMatrix[X]
+    def wrap(x: Rep[Self]): Interface[IndexVector2]    
+    def vecToOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
+    def vecToIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
+    def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]        
+    def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
+    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = denseMatrixBuilder[B]
+    def mV[B:Manifest] = manifest[DenseVector[B]]
+    def mM[B:Manifest] = manifest[DenseMatrix[B]]
+    def mA = manifest[(Int,Int)]            
+  }
+  
+  
+  /**
+   * matrix constructor syntax
+   */
+        
   // chained implicits from LanguageOps
   implicit def tuple2ToIndexVectorOpsWC[A <% Interface[IndexVector]](tup: (A, IndexWildcard))
       = indexvector2_new_wc(tup._1, tup._2)
@@ -28,7 +53,7 @@ trait IndexVector2Ops extends Base { this: OptiML =>
   //   }
 
   
-  case class IndexVector2(rowInd: Interface[IndexVector], colInd: Interface[IndexVector]) {
+  case class IndexVector2Tup(rowInd: Interface[IndexVector], colInd: Interface[IndexVector]) {
     def apply[A:Manifest](block: Rep[Int] => Interface[Vector[A]]) = indexvector2_construct_vectors(rowInd, colInd, block)
     def apply[A:Manifest](block: (Rep[Int],Rep[Int]) => Rep[A]) = indexvector2_construct(rowInd, colInd, block)    
   }
@@ -40,7 +65,7 @@ trait IndexVector2Ops extends Base { this: OptiML =>
   
   // impl defs
   //def indexvector2_new(rowInd: Interface[IndexVector], colInd: Interface[IndexVector]): Rep[IndexVector2]
-  def indexvector2_new(rowInd: Interface[IndexVector], colInd: Interface[IndexVector]) = new IndexVector2(rowInd, colInd)
+  def indexvector2_new(rowInd: Interface[IndexVector], colInd: Interface[IndexVector]) = new IndexVector2Tup(rowInd, colInd)
   def indexvector2_new_wc(rowInd: Interface[IndexVector], colInd: IndexWildcard) = new IndexVector2WC(rowInd, colInd)
 //  def indexvector2_wildcard(): Interface[IndexVector] = wcToInterface()
 //  def indexvector2_isWildcard(x: Interface[IndexVector]): Rep[Boolean]

@@ -41,13 +41,19 @@ trait MatrixOps extends ppl.dsl.optila.matrix.MatrixOps  {
   }
   
   class OptiMLDenseMatOpsOverrides[A:Manifest](x: Rep[DenseMatrix[A]]) extends DenseMatOpsCls(x) with OptiMLMatOpsOverrides[A] 
-  class OptiMLSparseMatOpsOverrides[A:Manifest](x: Rep[SparseMatrix[A]]) extends SparseMatOpsCls(x) with OptiMLMatOpsOverrides[A] 
+  class OptiMLSparseMatOpsOverrides[A:Manifest](x: Rep[SparseMatrix[A]]) extends SparseMatOpsCls(x) with OptiMLMatOpsOverrides[A] {
+    // the SourceContext implicit is ambiguous with the possible following apply (Vector constructor) call
+    //def nzRowIndices(implicit ctx: SourceContext) = sparsematrix_nz_row_indices(x)
+    def nzRowIndices = sparsematrix_nz_row_indices(x)
+  }
   class OptiMLImageOpsOverrides[A:Manifest](x: Rep[Image[A]]) extends ImageOpsCls(x) with OptiMLMatOpsOverrides[A] 
 
   // class defs
   def matrix_apply_row_indices[A:Manifest,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], rowIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,I,MA], ctx: SourceContext): Rep[MA] 
   def matrix_apply_col_indices[A:Manifest,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], colIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,I,MA], ctx: SourceContext): Rep[MA]   
   def matrix_apply_block_indices[A:Manifest,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], rowIndices: Interface[IndexVector], colIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,I,MA], ctx: SourceContext): Rep[MA]  
+  
+  def sparsematrix_nz_row_indices[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext): Rep[IndexVectorDense]
 }
 
 trait MatrixOpsExp extends ppl.dsl.optila.matrix.MatrixOpsExp with MatrixOps with VariablesExp {
@@ -64,6 +70,8 @@ trait MatrixOpsExp extends ppl.dsl.optila.matrix.MatrixOpsExp with MatrixOps wit
 
   case class MatrixApplyBlockIndices[A:Manifest,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], rowIndices: Interface[IndexVector], colIndices: Interface[IndexVector])(implicit val b: MatrixBuilder[A,I,MA])
     extends DeliteOpSingleWithManifest2[A,I,MA](reifyEffectsHere(matrix_apply_block_indices_impl[A,I,MA](x,rowIndices,colIndices)))       
+    
+  case class SparseMatrixNZRowIndices[A:Manifest](x: Rep[SparseMatrix[A]]) extends DeliteOpSingleWithManifest[A,IndexVectorDense](reifyEffectsHere(sparsematrix_csr_nz_row_indices_impl(x)))
   
   /////////////////////
   // class interface
@@ -75,6 +83,8 @@ trait MatrixOpsExp extends ppl.dsl.optila.matrix.MatrixOpsExp with MatrixOps wit
   def matrix_apply_block_indices[A:Manifest,I:Manifest,MA:Manifest](x: Interface[Matrix[A]], rowIndices: Interface[IndexVector], colIndices: Interface[IndexVector])(implicit b: MatrixBuilder[A,I,MA], ctx: SourceContext)
     = reflectPure(MatrixApplyBlockIndices[A,I,MA](x,rowIndices,colIndices))
 
+  def sparsematrix_nz_row_indices[A:Manifest](x: Rep[SparseMatrix[A]])(implicit ctx: SourceContext) = reflectPure(SparseMatrixNZRowIndices(x))
+  
   //////////////
   // mirroring
 
