@@ -21,26 +21,111 @@ package ppl.apps.minimsmbuilder
  * 
  */
 
+import reflect.{Manifest, SourceContext}
 import ppl.dsl.optiml._
 
 object MiniMSMApplicationRunner extends OptiMLApplicationRunner with Clarans 
   
-trait Clarans extends OptiMLApplication with TheoData {
+trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
   lazy val verbose = true
   
-  def vprint(s: Rep[String]) = if (verbose) println(s)
+  def vprint(s: Rep[String]) = if (verbose) print(s)
+  
+  /**
+   * Compute the rigid-body aligned RMSD between two sets of vectors
+   * x and y should be NAtoms x 3 two-dimensional arrays
+   */
+  def rmsd(x: Interface[Vector[XYZ]], y: Interface[Vector[XYZ]]): Rep[Float] = {
+    val N = x.length
+    
+    val xCentered = x - sum(x)/x.length
+    val yCentered = y - sum(y)/y.length
+    
+    // compute the inner products of the individual structures
+    val sx = square(xCentered).sum
+    val gx = sx.x + sx.y + sx.z
+    val sy = square(yCentered).sum
+    val gy = sy.x + sy.y + sy.z
+    
+    // compute the inner product matrix 
+    // FIXME: numpy simply reinterprets the input 2d vector as matrix. 
+    // the c++ computes the matrix product in a vectorized fashion.
+    val mX = (0::3, 0::x.length) { (i,j) => if (i == 0) xCentered(j).x else if (i == 1) xCentered(j).y else xCentered(j).z } // inline transpose
+    val mY = (0::x.length, 0::3) { (i,j) => if (j == 0) yCentered(i).x else if (j == 1) yCentered(i).y else yCentered(i).z }
+    //val mY = Matrix(y.map(e => DenseVector(e.x,e.y,e.z)))
+    val M = mX * mY
+        
+    // form the 4x4 symmetric Key matrix K
+    val K = DenseMatrix[Float](4,4)
+    K(0,0) = M(0,0) + M(1,1) + M(2,2)
+    K(0,1) = M(1,2)-M(2,1)
+    K(0,2) = M(2,0)-M(0,2)
+    K(0,3) = M(0,1)-M(1,0)
+    K(1,1) = M(0,0)-M(1,1)-M(2,2)
+    K(1,2) = M(0,1)+M(1,0)    
+    K(1,3) = M(2,0)+M(0,2)
+    K(2,2) = -1f*M(0,0)+M(1,1)-M(2,2)
+    K(2,3) = M(1,2)+M(2,1)  
+    K(3,3) = -1f*M(0,0) - M(1,1) + M(2,2)   
+    
+    // coefficients of the characteristic polynomial
+    val c2 = -2f*square(M).sum
+    val c1 = -8f*det(M)
+    
+    // 4x4 determinant of the K matrix
+    val c0 = det(K)
+
+    // println("c0: " + c0)
+    // println("c1: " + c1)
+    // println("c2: " + c2)
+    
+    // iterate newton descent        
+    val linit = (gx + gy) / 2.0
+    // val lambda = 
+    //   untilconverged(linit, (cur: Rep[Double]) => abs(.000001*cur), 50, false) { lambda =>
+    //     val l2 = lambda*lambda
+    //     val b = (l2 + c2)*lambda
+    //     val a = b + c1
+    //     lambda - (a * lambda + c0) / (2.0*lambda*l2 + b + a)
+    //   }
+    
+    // direct solve
+    val lambda = directSolve(linit, c0, c1, c2) 
+    
+    // println("lambda: " + lambda)
+    val rmsd2 = (gx + gy - 2.0 * lambda) / N
+    if (rmsd2 > 0) sqrt(rmsd2).floatValue else 0f
+  }
   
   /*
    * Calculate a vector of distances from the ith frame of Theo1 to all the frames
    * of Theo2.
-   */
-  def oneToAll(x: Rep[Theo], y: Rep[Theo], i: Rep[Int]): Rep[DenseVector[Float]] = {
-
-    fatal("oneToAll is TBD")
-    DenseVector(0f)
-    
+   */  
+  def oneToAll(theo1: Rep[Theo], theo2: Rep[Theo], i: Rep[Int]): Rep[DenseVector[Float]] = {
     // -- BEGIN PERFORMANCE CRITICAL SECTION -- 
+    
+    (0::len(theo2)) { k =>
+      val a = theo1.XYZData
+      val b = theo2.XYZData
+      rmsd(a(i),b(k))
+      // rmsd(theo1.numAtoms, theo1.numAtomsWithPadding, a(i), b(k), theo2.G, theo2.G(i)))
+    }
+    
     // STEP 1: simply call the c lib
+
+    // nrealatoms = Theo1.NumAtoms,
+    // npaddedatoms = Theo1.NumAtomsWithPadding,
+    // rowstride = Theo1.NumAtomsWithPadding,
+    // AData = ary_coorda = Theo2.XYZData,
+    // BData = ary_coordb = Theo1.XYZData(i)
+    // GAData = ary_GA = Theo2.G
+    // G_y = Theo2.G(i)
+     
+    // for (int i = 0; i < arrayADims[0]; i++) 
+    //      {
+    //             float msd = ls_rmsd2_aligned_T_g(nrealatoms,npaddedatoms,rowstride,(AData+i*truestride),BData,GAData[i],G_y);
+    //        Distances[i] = sqrtf(msd);
+    //      }
     
     // return rmsdcalc.getMultipleRMSDs_aligned_T_g(
     //        Theo1.NumAtoms, Theo1.NumAtomsWithPadding,
@@ -71,11 +156,11 @@ trait Clarans extends OptiMLApplication with TheoData {
     
     var i = 0
     while (i < k) {
-      vprint("Finding Generator " + i)
+      vprint("Finding Generator " + i + "\\n")
       centerIndices += newCenter
       val distanceToNewCenter = oneToAll(theo,theo,newCenter)
       val updatedIndices = (0::numOfConformations) filter { i => distanceToNewCenter(i) < distanceList(i) }
-      for (ui <- updatedIndices) distanceList(ui) = distanceToNewCenter(ui)
+      for (ui <- updatedIndices) distanceList(ui) = distanceToNewCenter(ui) // AKS TODO: indexvector update with indexvector values
       assignments(updatedIndices) = newCenter
       
       // pick the data point that's currently worst assigned as our new center
@@ -113,7 +198,7 @@ trait Clarans extends OptiMLApplication with TheoData {
       }
       else fatal("unsupported medoidsMethod")
     }
-      
+  
     if (initialAssignments.length != numFrames) fatal("Initial assignments is not the same length as ptraj")
     if (initialDistance.length != numFrames) fatal("Initial distance is not the same length as ptraj")
     if (initialMedoids.length != k) fatal("Initial medoids not the same length as k")
@@ -128,7 +213,7 @@ trait Clarans extends OptiMLApplication with TheoData {
     var optimalDistances = initialDistance
     
     for (i <- 0::numLocalMinima) {
-      vprint(i + " of " + numLocalMinima + " local minima")
+      vprint(i + " of " + numLocalMinima + " local minima\\n")
       
       // the canonical clarans approach is to initialize the medoids that you
       // start from randomly, but instead we use the kcenters medoids
@@ -150,7 +235,7 @@ trait Clarans extends OptiMLApplication with TheoData {
             random(numFrames)
           }
           else {
-            random(assignments.filter(_ == medoids(medoidI)))
+            random(assignments.find(_ == medoids(medoidI)))
           }
         
         val newMedoids = medoids.mutable
@@ -160,15 +245,21 @@ trait Clarans extends OptiMLApplication with TheoData {
         val newDistances = distanceToCurrent.mutable
         val newAssignments = assignments.mutable
         
-        vprint("  swapping " + oldMedoid + " for " + trialMedoid)
+        vprint("  swapping " + oldMedoid + " for " + trialMedoid + "... ")
         
         val distanceToTrial = oneToAll(ptraj, ptraj, trialMedoid)
         val assignedToTrial = (0::distanceToTrial.length) filter { i => distanceToTrial(i) < distanceToCurrent(i) }
+        // println("assignedToTrial:")
+        // assignedToTrial.pprint
         newAssignments(assignedToTrial) = trialMedoid
         for (ui <- assignedToTrial) newDistances(ui) = distanceToTrial(ui)
+        // println("newDistances:")
+        // newDistances.pprint
         
-        val ambiguousCandidates = newAssignments.filter(_ == oldMedoid)
-        val ambiguous = (0::ambiguousCandidates.length) filter { i => distanceToTrial(i) >= distanceToCurrent(i) }
+        //val ambiguousCandidates = newAssignments.find(_ == oldMedoid)
+        val ambiguous = (0::newAssignments.length) filter { i => newAssignments(i) == oldMedoid && distanceToTrial(i) >= distanceToCurrent(i) }
+        // println("ambiguous:")
+        // ambiguous.pprint
         for (l <- ambiguous) {
           val d = oneToAll(ptraj, pMedoids, l)
           val argmin = d.minIndex
@@ -178,7 +269,7 @@ trait Clarans extends OptiMLApplication with TheoData {
         
         val newCost = sum(newDistances)
         if (newCost < currentCost) {
-          vprint("Accept")
+          vprint("Accept\\n")
           medoids = newMedoids.unsafeImmutable
           assignments = newAssignments.unsafeImmutable
           distanceToCurrent = newDistances.unsafeImmutable
@@ -186,7 +277,7 @@ trait Clarans extends OptiMLApplication with TheoData {
           j = 0
         }
         else {
-          vprint("Reject")
+          vprint("Reject\\n")
           j += 1
         }
       }
@@ -210,20 +301,61 @@ trait Clarans extends OptiMLApplication with TheoData {
   // -- entry point
   def main() = {    
     if (args.length < 1) printUsage()
+    val pathToTheoData = args(0).trim()
     
+    if (args.length > 1) {
+      if (args(1) == "+perf") {
+        // test rmsd performance
+        println("-- testing RMSD performance")
+        //val frame = Vector[XYZ](10,true).map(e => ((randomGaussian.floatValue,randomGaussian.floatValue,randomGaussian.floatValue)))
+        //val traj = Matrix[XYZ](50000,10).mapRows(e => Vector[XYZ](10,true).map(e=>((randomGaussian.floatValue,randomGaussian.floatValue,randomGaussian.floatValue))))
+        val frame = readVector[XYZ](pathToTheoData + "_benchmark_frame.dat", v => ((v(0).toFloat,v(1).toFloat,v(2).toFloat)), ",")
+        val traj = readMatrix[XYZ](pathToTheoData + "_benchmark_traj.dat", line => lineToXYZ(line))
+        // println("frame(0): ")
+        // println(frame(0).x + "," + frame(0).y + "," + frame(0).z)
+        // println("traj(0,0): ")
+        // println(traj(0,0).x + "," + traj(0,0).y + "," + traj(0,0).z)      
+        tic()
+        val out = (0::traj.numRows) { i =>
+          rmsd(frame, traj(i))
+        }
+        toc(out)      
+        println("-- test finished")
+        println("out.length: " + out.length)
+        out(0::10).pprint
+      }
+    }
+    else {
+      
     // option 1: load Theo data from the trajectory data created from the Python script
     // val theoData = theo(args(0))
     
-    // option 2: read Theo data created from the Python script (filenames by convention)
-    val pathToTheoData = args(0)
+    // option 2: read Theo data created from the Python script (filenames by convention)    
     val nAtoms = readVector(pathToTheoData + "_numAtoms.dat")
     val theoData = new Record {
-      val XYZData = readVector[XYZ](pathToTheoData + "_xyz.dat", lineToXYZ)
-      val G = readMatrix[Float](pathToTheoData + " _G.dat", str => str.toFloat)
+      val XYZData = readMatrix[XYZ](pathToTheoData + "_xyz.dat", line => lineToXYZ(line))
+      val G = readVector[Float](pathToTheoData + "_G.dat", l => l(0).toFloat)
       val numAtoms = nAtoms(0).AsInstanceOf[Int]
       val numAtomsWithPadding = nAtoms(1).AsInstanceOf[Int]      
     }
-        
+    
+    /*
+     * input testing
+     */     
+    /*
+    println("theoData -- ")
+    println("numAtoms: " + theoData.numAtoms)
+    println("numAtomsWithPadding: " + theoData.numAtomsWithPadding)
+    println("G.length: " + theoData.G.length)
+    // -- problem with applyDynamic
+    val G = theoData.G
+    println("G(0): " + G(0))
+    val XYZData = theoData.XYZData
+    println("XYZData dims: " + theoData.XYZData.numRows + " x " + theoData.XYZData.numCols)
+    println("XYZData(0,0): " + XYZData(0,0).x + "," + XYZData(0,0).y + "," + XYZData(0,0).z)
+    exit(0)    
+    */
+    
     /*
      * run clarans clustering
      *
@@ -234,11 +366,15 @@ trait Clarans extends OptiMLApplication with TheoData {
      * Also, as you scale to bigger num_local_minima and max_neighbors, the percentage
      * of the execution time spent in the C extension code goes up.
      */    
+    tic()
     val numClusters = 100
     val centers = clarans(theoData, numClusters, 5, 5)
+    toc(centers)
     
     println("found " + numClusters + " centers with kcenters")
     centers.pprint
+    
+    }
   }
   
 }

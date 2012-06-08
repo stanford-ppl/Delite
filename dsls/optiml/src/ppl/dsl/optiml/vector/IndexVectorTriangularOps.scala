@@ -63,7 +63,8 @@ trait IndexVectorTriangularOpsExp extends IndexVectorTriangularOps with DeliteCo
     val end = if (d) x else x - 1
     triangle_size(end)
   } 
-  
+
+  // http://stackoverflow.com/a/244550  
   // O(1), but with non-trivial overhead. We should compare against the explicitly stored version.
   def utriangle_apply(sz: Rep[Int], d: Rep[Boolean], n: Rep[Int], up: Rep[Boolean]) = {
     if (up == unit(false)) fatal(unit("lower triangular matrix is not implemented yet"))

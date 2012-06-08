@@ -149,7 +149,8 @@ trait ArithOps extends Variables with OverloadHack {
   def infix_/(lhs: Rep[Float], rhs: Rep[Int])(implicit o: Overloaded10, ctx: SourceContext): Rep[Float] = implicitly[Arith[Float]]./(lhs, repIntToRepFloat(rhs))
   def infix_/(lhs: Rep[Double], rhs: Rep[Int])(implicit o: Overloaded11, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(lhs, repIntToRepDouble(rhs))
   def infix_/(lhs: Rep[Double], rhs: Rep[Float])(implicit o: Overloaded12, ctx: SourceContext): Rep[Double] = implicitly[Arith[Double]]./(lhs, repFloatToRepDouble(rhs))
-       
+  
+         
   /**
    * Vector
    */
@@ -209,7 +210,7 @@ trait ArithOps extends Variables with OverloadHack {
   /**
    *  Tuple
    */
-
+  
   implicit def tuple2Arith[A:Manifest:Arith,B:Manifest:Arith] : Arith[Tuple2[A,B]] =
     new Arith[Tuple2[A,B]] {
       def +=(a: Rep[Tuple2[A,B]], b: Rep[Tuple2[A,B]])(implicit ctx: SourceContext) =
@@ -240,7 +241,7 @@ trait ArithOps extends Variables with OverloadHack {
         Tuple2(a._1.zero, a._2.zero)
     }
   
-  implicit def tuple3Arith[A:Manifest:Arith,B:Manifest:Arith,C:Manifest:Arith,D:Manifest:Arith] : Arith[Tuple3[A,B,C]] =
+  implicit def tuple3Arith[A:Manifest:Arith,B:Manifest:Arith,C:Manifest:Arith] : Arith[Tuple3[A,B,C]] =
     new Arith[Tuple3[A,B,C]] {
       def +=(a: Rep[Tuple3[A,B,C]], b: Rep[Tuple3[A,B,C]])(implicit ctx: SourceContext) =
         Tuple3(a._1 += b._1, a._2 += b._2, a._3 += b._3)
@@ -301,6 +302,49 @@ trait ArithOps extends Variables with OverloadHack {
         Tuple4(a._1.zero, a._2.zero, a._3.zero, a._4.zero)    
     }
 
+  /**
+   * Tuple-scalar math
+   * 
+   * This unfortunately large number of declarations is used to resolve overload ambiguities with previous arith declarations.
+   */     
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded13): Rep[Tuple2[A,A]] = ((a._1+b,a._2))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple2[A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded14): Rep[Tuple2[A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded13): Rep[Tuple2[A,A]] = ((a._1-b,a._2-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded13): Rep[Tuple2[A,A]] = ((a._1*b,a._2*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple2[A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded14): Rep[Tuple2[A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded13): Rep[Tuple2[A,A]] = ((a._1/b,a._2/b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded15): Rep[Tuple2[A,A]] = ((a._1+b,a._2))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple2[A,A]])(implicit conv: B => Rep[A], o: Overloaded16): Rep[Tuple2[A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded15): Rep[Tuple2[A,A]] = ((a._1-b,a._2-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded15): Rep[Tuple2[A,A]] = ((a._1*b,a._2*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple2[A,A]])(implicit conv: B => Rep[A], o: Overloaded16): Rep[Tuple2[A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple2[A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded15): Rep[Tuple2[A,A]] = ((a._1/b,a._2/b))   
+   
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded17): Rep[Tuple3[A,A,A]] = ((a._1+b,a._2+b,a._3+b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple3[A,A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded18): Rep[Tuple3[A,A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded17): Rep[Tuple3[A,A,A]] = ((a._1-b,a._2-b,a._3-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded17): Rep[Tuple3[A,A,A]] = ((a._1*b,a._2*b,a._3*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple3[A,A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded18): Rep[Tuple3[A,A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded17): Rep[Tuple3[A,A,A]] = ((a._1/b,a._2/b,a._3/b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded19): Rep[Tuple3[A,A,A]] = ((a._1+b,a._2+b,a._3+b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple3[A,A,A]])(implicit conv: B => Rep[A], o: Overloaded20): Rep[Tuple3[A,A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded19): Rep[Tuple3[A,A,A]] = ((a._1-b,a._2-b,a._3-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded19): Rep[Tuple3[A,A,A]] = ((a._1*b,a._2*b,a._3*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple3[A,A,A]])(implicit conv: B => Rep[A], o: Overloaded20): Rep[Tuple3[A,A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple3[A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded19): Rep[Tuple3[A,A,A]] = ((a._1/b,a._2/b,a._3/b))
+      
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded21): Rep[Tuple4[A,A,A,A]] = ((a._1+b,a._2+b,a._3+b,a._4+b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple4[A,A,A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded22): Rep[Tuple4[A,A,A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded21): Rep[Tuple4[A,A,A,A]] = ((a._1-b,a._2-b,a._3-b,a._4-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded21): Rep[Tuple4[A,A,A,A]] = ((a._1*b,a._2*b,a._3*b,a._4*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[B], b: Rep[Tuple4[A,A,A,A]])(implicit conv: Rep[B] => Rep[A], o: Overloaded22): Rep[Tuple4[A,A,A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: Rep[B])(implicit conv: Rep[B] => Rep[A], o: Overloaded21): Rep[Tuple4[A,A,A,A]] = ((a._1/b,a._2/b,a._3/b,a._4/b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded23): Rep[Tuple4[A,A,A,A]] = ((a._1+b,a._2+b,a._3+b,a._4+b))
+   def infix_+[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple4[A,A,A,A]])(implicit conv: B => Rep[A], o: Overloaded24): Rep[Tuple4[A,A,A,A]] = infix_+(b,a)
+   def infix_-[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded23): Rep[Tuple4[A,A,A,A]] = ((a._1-b,a._2-b,a._3-b,a._4-b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded23): Rep[Tuple4[A,A,A,A]] = ((a._1*b,a._2*b,a._3*b,a._4*b))
+   def infix_*[A:Manifest:Arith,B:Manifest](a: B, b: Rep[Tuple4[A,A,A,A]])(implicit conv: B => Rep[A], o: Overloaded24): Rep[Tuple4[A,A,A,A]] = infix_*(b,a)
+   def infix_/[A:Manifest:Arith,B:Manifest](a: Rep[Tuple4[A,A,A,A]], b: B)(implicit conv: B => Rep[A], o: Overloaded23): Rep[Tuple4[A,A,A,A]] = ((a._1/b,a._2/b,a._3/b,a._4/b))   
 
   /**
    * Primitives

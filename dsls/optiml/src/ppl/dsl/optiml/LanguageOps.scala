@@ -116,11 +116,19 @@ trait LanguageOps extends ppl.dsl.optila.LanguageOps { this: OptiML =>
                         clone_prev_val: Rep[Boolean] = unit(false))
                         (block: Rep[A] => Rep[A])
                         (implicit diff: (Rep[A],Rep[A]) => Rep[Double], mA: Manifest[A], c: Cloneable[A], ctx: SourceContext): Rep[A]
+    = optiml_untilconverged(x, (a: Rep[A]) => thresh, max_iter, clone_prev_val, block, diff)
+
+  def untilconverged[A](x: Rep[A],
+                        thresh: Rep[A] => Rep[Double],
+                        max_iter: Rep[Int],
+                        clone_prev_val: Rep[Boolean])
+                        (block: Rep[A] => Rep[A])
+                        (implicit diff: (Rep[A],Rep[A]) => Rep[Double], mA: Manifest[A], c: Cloneable[A], ctx: SourceContext): Rep[A]
     = optiml_untilconverged(x, thresh, max_iter, clone_prev_val, block, diff)
-
-
-  def optiml_untilconverged[A:Manifest:Cloneable](x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
+    
+  def optiml_untilconverged[A:Manifest:Cloneable](x: Rep[A], thresh: Rep[A] => Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
                                                   block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double])(implicit ctx: SourceContext): Rep[A]
+
 
   def untilconverged[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]])
                     (block: Rep[Vertex[VD,ED]] => Rep[Unit])
@@ -482,14 +490,14 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
     }
   }
 
-  def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
+  def optiml_untilconverged[A:Manifest:Cloneable](x: Exp[A], thresh: Exp[A] => Exp[Double], max_iter: Exp[Int], clone_prev_val: Exp[Boolean],
                                                   block: Exp[A] => Exp[A], diff: (Exp[A],Exp[A]) => Exp[Double])(implicit ctx: SourceContext) = {
 
     var delta = var_new(unit(scala.Double.MaxValue))
     var cur = var_new(x)
     var iter = var_new(unit(0))
 
-    while ((abs(delta) > thresh) && (iter < max_iter)){
+    while ((abs(delta) > thresh(cur)) && (iter < max_iter)){
       val prev = if (clone_prev_val)
         cur.Clone()
       else

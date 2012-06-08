@@ -21,25 +21,26 @@ package ppl.apps.minimsmbuilder
  * 
  */
 
+import reflect.{Manifest, SourceContext}
 import ppl.dsl.optiml._
 
 trait TheoData extends OptiMLApplication {
 
-  type XYZ = Record{val x: Float
-                    val y: Float
-                    val z: Float}  
-                    
-  def lineToXYZ(line: Rep[DenseVector[String]]) = new Record {
-    val x = line(0).toFloat
-    val y = line(1).toFloat
-    val z = line(2).toFloat
+  type XYZ = Tuple3[Float,Float,Float]
+      
+  /**
+   * parser for reading xyz elements from file
+   */
+  def lineToXYZ(line: Rep[String]) = {
+    val data = line.split(",")
+    ((data(0).toFloat, data(1).toFloat, data(2).toFloat))
   }
   
-  type Theo = Record{val XYZData            : DenseVector[XYZ] 
-                     val G                  : DenseMatrix[Float]
-                     val numAtoms           : Int
-                     val numAtomsWithPadding: Int}
-                     
+  /* syntactic sugar */
+  def infix_x(a: Rep[XYZ]) = a._1
+  def infix_y(a: Rep[XYZ]) = a._2
+  def infix_z(a: Rep[XYZ]) = a._3
+                           
   /* 
    Stores temporary data required during Theobald RMSD calculation.
 
@@ -47,6 +48,12 @@ trait TheoData extends OptiMLApplication {
      Storing temporary data allows us to avoid re-calculating the G-Values
      repeatedly. Also avoids re-centering the coordinates. 
   */                     
+  
+  type Theo = Record{val XYZData            : DenseMatrix[XYZ] 
+                     val G                  : DenseVector[Float]
+                     val numAtoms           : Int
+                     val numAtomsWithPadding: Int}
+  
   /*
   def theo(pathToXYZ: Rep[String], numAtoms: Option[Rep[Int]] = None, G: Option[Rep[DenseMatrix[Float]]] = None) = {
     val v = readVector[XYZ](pathToXYZ, lineToXYZ)
@@ -76,9 +83,9 @@ trait TheoData extends OptiMLApplication {
   /*
   def set(x: Rep[Theo], index: Rep[IndexVector], value: Rep[Theo]): Rep[Theo] = new Record {
     x.XYZData(index) = value.XYZData
-    x.G(index) = value.G // TODO matrix slice updating
+    x.G(index) = value.G 
   }
   */
-  def len(x: Rep[Theo]) = x.XYZData.length
+  def len(x: Rep[Theo]) = x.XYZData.numRows
        
 }

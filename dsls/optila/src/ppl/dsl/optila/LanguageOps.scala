@@ -88,8 +88,8 @@ trait LanguageOps extends Base { this: OptiLA =>
   /**
    * sum
    */
-  def sum[A:Manifest:Arith:Cloneable](vals: Interface[Vector[A]])(implicit ctx: SourceContext) = vals.sum
-  def sum[A:Manifest:Arith:Cloneable](vals: Interface[Matrix[A]])(implicit ctx: SourceContext, o: Overloaded1) = vals.sum
+  def sum[A:Manifest:Arith](vals: Interface[Vector[A]])(implicit ctx: SourceContext) = vals.sum
+  def sum[A:Manifest:Arith](vals: Interface[Matrix[A]])(implicit ctx: SourceContext, o: Overloaded1) = vals.sum
     
   /**
    * min
@@ -158,6 +158,15 @@ trait LanguageOps extends Base { this: OptiLA =>
   def exp[A:Manifest:Arith,M[X] <: Matrix[X]](vals: Rep[M[A]])(implicit toOps: Rep[M[A]] => MatOpsCls[A], ctx: SourceContext, o: Overloaded2) = toOps(vals).exp.asInstanceOf[Rep[M[A]]] // not ideal
 
   /**
+   * square
+   */
+   def square[A:Manifest:Arith](vals: Interface[Vector[A]])(implicit ctx: SourceContext, o: Overloaded1) = vals.map(e=>e*e)
+   def square[A:Manifest:Arith](vals: Interface[Matrix[A]])(implicit ctx: SourceContext, o: Overloaded2) = vals.map(e=>e*e)
+
+   def square[A:Manifest:Arith,V[X] <: Vector[X]](vals: Rep[V[A]])(implicit toOps: Rep[V[A]] => VecOpsCls[A], ctx: SourceContext, o: Overloaded1) = toOps(vals).map(e=>e*e).asInstanceOf[Rep[V[A]]] // not ideal
+   def square[A:Manifest:Arith,M[X] <: Matrix[X]](vals: Rep[M[A]])(implicit toOps: Rep[M[A]] => MatOpsCls[A], ctx: SourceContext, o: Overloaded2) = toOps(vals).map(e=>e*e).asInstanceOf[Rep[M[A]]] // not ideal
+  
+  /**
    * aliases for other scala.math._ operations supported by optila
    */
   def INF = Double.PositiveInfinity  
@@ -182,6 +191,13 @@ trait LanguageOps extends Base { this: OptiLA =>
   def optila_scalar_log(x: Rep[Double])(implicit ctx: SourceContext): Rep[Double]
   
   /**
+   * misc. linear algebra
+   */
+  def det[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) = optila_determinant(x)
+  
+  def optila_determinant[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]): Rep[A]  
+  
+  /**
    * distance
    */
   class DistanceMetric
@@ -189,6 +205,7 @@ trait LanguageOps extends Base { this: OptiLA =>
   object EUC extends DistanceMetric
   object SQUARE extends DistanceMetric
 
+  implicit val scalarDiff: (Rep[Double], Rep[Double]) => Rep[Double] = (a,b) => abs(a-b)
   implicit val vecDiff: (Rep[DenseVector[Double]], Rep[DenseVector[Double]]) => Rep[Double] = (v1,v2) => dist(v1,v2)
   implicit val matDiff: (Rep[DenseMatrix[Double]], Rep[DenseMatrix[Double]]) => Rep[Double] = (m1,m2) => dist(m1,m2)
 
@@ -329,6 +346,22 @@ trait LanguageOpsExp extends LanguageOps with BaseFatExp with EffectExp {
   
   def optila_scalar_log(x: Rep[Double])(implicit ctx: SourceContext) = Math.log(x)
   
+  /**
+   * misc. linear algebra
+   */
+  
+  case class MatrixDeterminant22[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) extends DeliteOpSingleTask[A](reifyEffects(optila_matrix_determinant22_impl(x)))
+  case class MatrixDeterminant33[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) extends DeliteOpSingleTask[A](reifyEffects(optila_matrix_determinant33_impl(x)))
+  case class MatrixDeterminant44[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) extends DeliteOpSingleTask[A](reifyEffects(optila_matrix_determinant44_impl(x)))
+  case class MatrixDeterminant[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) extends DeliteOpSingleTask[A](reifyEffects(optila_matrix_determinant_impl(x)))
+  
+  def optila_determinant[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]) = x.ops.elem.asInstanceOf[Rep[Matrix[A]]] match {
+    case Def(s@Reflect(DenseMatrixObjectNew(Const(a),Const(b)), u, es)) if context.contains(s) && (a == 2) && (b == 2) => reflectPure(MatrixDeterminant22(x))
+    case Def(s@Reflect(DenseMatrixObjectNew(Const(a),Const(b)), u, es)) if context.contains(s) && (a == 3) && (b == 3) => reflectPure(MatrixDeterminant33(x))
+    case Def(s@Reflect(DenseMatrixObjectNew(Const(a),Const(b)), u, es)) if context.contains(s) && (a == 4) && (b == 4) => reflectPure(MatrixDeterminant44(x))
+    case _ => reflectPure(MatrixDeterminant(x))
+  }
+     
   /**
    *  dist
    */
