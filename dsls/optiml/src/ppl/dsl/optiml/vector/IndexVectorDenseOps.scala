@@ -99,7 +99,21 @@ trait IndexVectorDenseOpsExp extends IndexVectorDenseOps with DeliteCollectionOp
       out.asInstanceOf[Exp[CA]]
     }
     else super.dc_alloc[A,CA](x,size)
-  }    
+  }
+  
+  //////////////
+  // mirroring
+
+  override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@IndexVectorDenseLength(x) => reflectPure(IndexVectorDenseLength(f(x)))(mtype(manifest[A]),implicitly[SourceContext])
+    case e@IndexVectorDenseApply(x,n) => reflectPure(IndexVectorDenseApply(f(x),f(n)))(mtype(manifest[A]),implicitly[SourceContext])
+    
+    // delite ops
+    case Reflect(e@IndexVectorDenseLength(x), u, es) => reflectMirrored(Reflect(IndexVectorDenseLength(f(x)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@IndexVectorDenseApply(x,n), u, es) => reflectMirrored(Reflect(IndexVectorDenseApply(f(x),f(n)), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case _ => super.mirror(e, f)
+  }).asInstanceOf[Exp[A]] // why??
+  
 }
 
 trait IndexVectorDenseOpsExpOpt extends IndexVectorDenseOpsExp { this: OptiMLExp => 

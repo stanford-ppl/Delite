@@ -132,6 +132,8 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
     val size = rowInd.length
     def sync = i => List()
     def func = i => out(i) = colInd map { j => block(i,j) } // updateRow should be fused with function application
+     
+    def m = manifest[A]
   } 
   
   // impl defs
@@ -222,7 +224,8 @@ trait IndexVector2OpsExp extends IndexVector2Ops with EffectExp { this: OptiMLEx
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
-    case Reflect(e@IndexVector2ConstructRows(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows(f(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@IndexVector2Construct(r,c,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2Construct(f(r),f(c),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))
+    case Reflect(e@IndexVector2ConstructRows(in,g,out), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with IndexVector2ConstructRows(f(in),f(g),f(out))(e.m), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
 }

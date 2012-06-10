@@ -34,27 +34,17 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
   /**
    * Compute the rigid-body aligned RMSD between two sets of vectors
    * x and y should be NAtoms x 3 two-dimensional arrays
-   */
-  def rmsd(x: Interface[Vector[XYZ]], y: Interface[Vector[XYZ]]): Rep[Float] = {
-    val N = x.length
-    
-    val xCentered = x - sum(x)/x.length
-    val yCentered = y - sum(y)/y.length
-    
-    // compute the inner products of the individual structures
-    val sx = square(xCentered).sum
-    val gx = sx.x + sx.y + sx.z
-    val sy = square(yCentered).sum
-    val gy = sy.x + sy.y + sy.z
-    
+   */  
+  def rmsd_centered(realLen: Rep[Int], xCentered: Interface[Vector[XYZ]], yCentered: Interface[Vector[XYZ]], gx: Rep[Float], gy: Rep[Float]) = {
     // compute the inner product matrix 
     // FIXME: numpy simply reinterprets the input 2d vector as matrix. 
     // the c++ computes the matrix product in a vectorized fashion.
-    val mX = (0::3, 0::x.length) { (i,j) => if (i == 0) xCentered(j).x else if (i == 1) xCentered(j).y else xCentered(j).z } // inline transpose
-    val mY = (0::x.length, 0::3) { (i,j) => if (j == 0) yCentered(i).x else if (j == 1) yCentered(i).y else yCentered(i).z }
+    // println("+++STAGING MARKER: entering perf critical")
+    val mX = (0::3, 0::realLen) { (i,j) => if (i == 0) xCentered(j).x else if (i == 1) xCentered(j).y else xCentered(j).z } // inline transpose
+    val mY = (0::realLen, 0::3) { (i,j) => if (j == 0) yCentered(i).x else if (j == 1) yCentered(i).y else yCentered(i).z }
     //val mY = Matrix(y.map(e => DenseVector(e.x,e.y,e.z)))
     val M = mX * mY
-        
+
     // form the 4x4 symmetric Key matrix K
     val K = DenseMatrix[Float](4,4)
     K(0,0) = M(0,0) + M(1,1) + M(2,2)
@@ -68,33 +58,67 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     K(2,3) = M(1,2)+M(2,1)  
     K(3,3) = -1f*M(0,0) - M(1,1) + M(2,2)   
     
+    // -- performance testing impact of not allocating the K matrix (appears pretty negligible)
+    // could potentially rewrite the applies to go to the underlying allocation 
+    // val k00 = M(0,0) + M(1,1) + M(2,2)
+    // val k01 = M(1,2)-M(2,1)
+    // val k02 = M(2,0)-M(0,2)
+    // val k03 = M(0,1)-M(1,0)
+    // val k11 = M(0,0)-M(1,1)-M(2,2)
+    // val k12 = M(0,1)+M(1,0)    
+    // val k13 = M(2,0)+M(0,2)
+    // val k22 = -1f*M(0,0)+M(1,1)-M(2,2)
+    // val k23 = M(1,2)+M(2,1)  
+    // val k33 = -1f*M(0,0) - M(1,1) + M(2,2)   
+    
+    
     // coefficients of the characteristic polynomial
     val c2 = -2f*square(M).sum
     val c1 = -8f*det(M)
-    
+
     // 4x4 determinant of the K matrix
     val c0 = det(K)
-
+    // val c0 =  k01*k01*k23*k23   - k22*k33*k01*k01   + 2*k33*k01*k02*k12 -
+    //           2*k01*k02*k13*k23 - 2*k01*k03*k12*k23 + 2*k22*k01*k03*k13 +
+    //           k02*k02*k13*k13   - k11*k33*k02*k02   - 2*k02*k03*k12*k13 + 
+    //           2*k11*k02*k03*k23 + k03*k03*k12*k12   - k11*k22*k03*k03 -
+    //           k00*k33*k12*k12   + 2*k00*k12*k13*k23 - k00*k22*k13*k13 -
+    //           k00*k11*k23*k23   + k00*k11*k22*k33;
+    
     // println("c0: " + c0)
     // println("c1: " + c1)
     // println("c2: " + c2)
-    
+
     // iterate newton descent        
     val linit = (gx + gy) / 2.0
-    // val lambda = 
-    //   untilconverged(linit, (cur: Rep[Double]) => abs(.000001*cur), 50, false) { lambda =>
-    //     val l2 = lambda*lambda
-    //     val b = (l2 + c2)*lambda
-    //     val a = b + c1
-    //     lambda - (a * lambda + c0) / (2.0*lambda*l2 + b + a)
-    //   }
-    
+    val lambda = 
+      untilconverged(linit, (cur: Rep[Double]) => abs(.000001*cur), 50, false) { lambda =>
+        val l2 = lambda*lambda
+        val b = (l2 + c2)*lambda
+        val a = b + c1
+        lambda - (a * lambda + c0) / (2.0*lambda*l2 + b + a)
+      }
+
     // direct solve
-    val lambda = directSolve(linit, c0, c1, c2) 
-    
+    // val lambda = directSolve(linit, c0, c1, c2) 
+
     // println("lambda: " + lambda)
-    val rmsd2 = (gx + gy - 2.0 * lambda) / N
+    val rmsd2 = (gx + gy - 2.0 * lambda) / realLen
+    // println("+++STAGING MARKER: leaving perf critical")
     if (rmsd2 > 0) sqrt(rmsd2).floatValue else 0f
+  }
+  
+  def rmsd(x: Interface[Vector[XYZ]], y: Interface[Vector[XYZ]]): Rep[Float] = {
+    val xCentered = x - sum(x)/x.length
+    val yCentered = y - sum(y)/y.length
+    
+    // compute the inner products of the individual structures
+    val sx = square(xCentered).sum
+    val gx = sx.x + sx.y + sx.z
+    val sy = square(yCentered).sum
+    val gy = sy.x + sy.y + sy.z
+    
+    rmsd_centered(x.length, xCentered, yCentered, gx, gy)
   }
   
   /*
@@ -103,12 +127,14 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
    */  
   def oneToAll(theo1: Rep[Theo], theo2: Rep[Theo], i: Rep[Int]): Rep[DenseVector[Float]] = {
     // -- BEGIN PERFORMANCE CRITICAL SECTION -- 
-    
+    val a = theo1.XYZData
+    val b = theo2.XYZData
+    val ga = theo1.G
+    val gb = theo2.G
     (0::len(theo2)) { k =>
-      val a = theo1.XYZData
-      val b = theo2.XYZData
-      rmsd(a(i),b(k))
-      // rmsd(theo1.numAtoms, theo1.numAtomsWithPadding, a(i), b(k), theo2.G, theo2.G(i)))
+      // rmsd(a(i),b(k))
+      rmsd_centered(theo1.numAtoms,a(i),b(k),ga(i),gb(k))
+      // rmsd(theo1.numAtoms, theo1.numAtomsWithPadding, a(i), b(k), theo2.G(i), theo2.G(k)))
     }
     
     // STEP 1: simply call the c lib
@@ -119,7 +145,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
     // AData = ary_coorda = Theo2.XYZData,
     // BData = ary_coordb = Theo1.XYZData(i)
     // GAData = ary_GA = Theo2.G
-    // G_y = Theo2.G(i)
+    // G_y = Theo1.G(i)
      
     // for (int i = 0; i < arrayADims[0]; i++) 
     //      {
@@ -248,6 +274,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         vprint("  swapping " + oldMedoid + " for " + trialMedoid + "... ")
         
         val distanceToTrial = oneToAll(ptraj, ptraj, trialMedoid)
+        vprint(" ++ ")
         val assignedToTrial = (0::distanceToTrial.length) filter { i => distanceToTrial(i) < distanceToCurrent(i) }
         // println("assignedToTrial:")
         // assignedToTrial.pprint
@@ -260,6 +287,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         val ambiguous = (0::newAssignments.length) filter { i => newAssignments(i) == oldMedoid && distanceToTrial(i) >= distanceToCurrent(i) }
         // println("ambiguous:")
         // ambiguous.pprint
+        vprint(" ** ")
         for (l <- ambiguous) {
           val d = oneToAll(ptraj, pMedoids, l)
           val argmin = d.minIndex
@@ -268,6 +296,7 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         }
         
         val newCost = sum(newDistances)
+        vprint(" -- ")
         if (newCost < currentCost) {
           vprint("Accept\\n")
           medoids = newMedoids.unsafeImmutable
@@ -323,6 +352,35 @@ trait Clarans extends OptiMLApplication with TheoData with DirectSolver {
         println("-- test finished")
         println("out.length: " + out.length)
         out(0::10).pprint
+      }
+      else if (args(1) == "+perftheo") {
+        println("-- testing RMSD performance with theo values")
+        val frameNumAtoms = readVector(pathToTheoData + "_benchmark_frames_theo_numAtoms.dat")
+        val frameTheoData = new Record {
+          val XYZData = readMatrix[XYZ](pathToTheoData + "_benchmark_frames_theo_xyz.dat", line => lineToXYZ(line))
+          val G = readVector[Float](pathToTheoData + "_benchmark_frames_theo_G.dat", l => l(0).toFloat)
+          val numAtoms = frameNumAtoms(0).AsInstanceOf[Int]
+          val numAtomsWithPadding = frameNumAtoms(1).AsInstanceOf[Int]      
+        }
+        val trajNumAtoms = readVector(pathToTheoData + "_benchmark_traj_theo_numAtoms.dat")
+        val trajTheoData = new Record {
+          val XYZData = readMatrix[XYZ](pathToTheoData + "_benchmark_traj_theo_xyz.dat", line => lineToXYZ(line))
+          val G = readVector[Float](pathToTheoData + "_benchmark_traj_theo_G.dat", l => l(0).toFloat)
+          val numAtoms = trajNumAtoms(0).AsInstanceOf[Int]
+          val numAtomsWithPadding = trajNumAtoms(1).AsInstanceOf[Int]      
+        }        
+        val a = frameTheoData.XYZData
+        val b = trajTheoData.XYZData    
+        val ga = frameTheoData.G
+        val gb = trajTheoData.G              
+        tic()
+        val out = (0::b.numRows) { i =>
+          rmsd_centered(frameTheoData.numAtoms, a(0), b(i), ga(0), gb(i))
+        }
+        toc(out)      
+        println("-- test finished")
+        println("out.length: " + out.length)
+        out(0::10).pprint                
       }
     }
     else {
