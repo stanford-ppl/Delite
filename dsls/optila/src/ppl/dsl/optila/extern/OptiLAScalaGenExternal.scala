@@ -17,7 +17,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
   val IR: OptiLAExp
   import IR._
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitExternalNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val args = scala.List("%1$s._data", "%2$s._data", "%3$s._data", "%1$s._numRows", "%1$s._numCols", "0", "1")
                  .map { _.format(quote(x), quote(y), quote(sym)) }
@@ -33,7 +33,7 @@ trait OptiLAScalaGenExternal extends ScalaGenExternalBase {
                  .map { _.format(quote(in), quote(sym)) }
       emitMethodCall(sym, e, BLAS, args)  
           
-    case _ => super.emitNode(sym, rhs)
+    case _ => super.emitExternalNode(sym,rhs)
   }
     
   override def emitExternalLib(rhs: Def[Any]): Unit = rhs match {
