@@ -4,7 +4,7 @@ import java.io._
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
-import ppl.delite.framework.{Config, ExpressionsOpt, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
+import ppl.delite.framework.{Config, ExpressionsOpt, SchedulingOpt, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
 import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
@@ -57,7 +57,7 @@ trait OptiLAScalaOpsPkg extends Base
   // only included because of args. TODO: investigate passing args as a vector
   with ArrayOps with ExceptionOps
 
-trait OptiLAScalaOpsPkgExp extends OptiLAScalaOpsPkg with ExpressionsOpt with DSLOpsExp
+trait OptiLAScalaOpsPkgExp extends OptiLAScalaOpsPkg with DSLOpsExp
   with EqualExp with IfThenElseExp with VariablesExp with WhileExp with FunctionsExp
   with ImplicitOpsExp with OrderingOpsExp with StringOpsExp with RangeOpsExp with IOOpsExp
   with ArrayOpsExp with BooleanOpsExp with PrimitiveOpsExp with MiscOpsExp with TupleOpsExp
@@ -135,7 +135,7 @@ trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsE
   with ExceptionOpsExp
   // -- choice of sparse matrix repr
   with SparseMatrixCSROpsExp with SparseMatrixCOOOpsExp with SparseVectorViewCSROpsExp
-  with DeliteAllOverridesExp {
+  with ExpressionsOpt with DeliteAllOverridesExp {
 
   // this: OptiLAApplicationRunner => why doesn't this work?
   this: DeliteApplication with OptiLAApplication with OptiLAExp => // can't be OptiLAApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
@@ -164,7 +164,7 @@ trait OptiLAUtilities {
 /**
  * OptiLA code generators
  */
-trait OptiLACodeGenBase extends GenericFatCodegen {
+trait OptiLACodeGenBase extends GenericFatCodegen with SchedulingOpt {
 
   val IR: DeliteApplication with OptiLAExp
   override def initialDefs = IR.deliteGenerator.availableDefs

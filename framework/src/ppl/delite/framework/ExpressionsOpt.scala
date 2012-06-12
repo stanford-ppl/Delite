@@ -3,6 +3,7 @@ package ppl.delite.framework
 import java.util.IdentityHashMap
 import scala.virtualization.lms.internal.Expressions
 
+/*
 /**
  * Optimizes dependency calculations in LMS by caching sym results.
  * Currently, the cache is never cleared. Should it be?
@@ -54,3 +55,4 @@ trait ExpressionsOpt extends Expressions {
     case _ => super.symsFreq(e)
   }
 }
+*/
