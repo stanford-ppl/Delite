@@ -14,6 +14,7 @@ import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.dsl.optila.{OptiLAApplication}
 import ppl.dsl.optila.{OptiLAScalaOpsPkg, OptiLAScalaOpsPkgExp, OptiLA, OptiLAExp, OptiLACompiler, OptiLALift, OptiLAUtilities}
 import ppl.dsl.optila.{OptiLAScalaCodeGenPkg, OptiLACudaCodeGenPkg, OptiLAOpenCLCodeGenPkg, OptiLACCodeGenPkg, OptiLACodeGenBase, OptiLACodeGenScala, OptiLACodeGenCuda, OptiLACodeGenOpenCL, OptiLACodeGenC}
+import ppl.dsl.optila.DenseVector
 
 import ppl.dsl.optisdr.capabilities._
 import ppl.dsl.optisdr.primitive._
@@ -55,6 +56,8 @@ trait OptiSDR extends OptiSDRScalaOpsPkg with OptiLA
   this: OptiSDRApplication =>
   
   type Real = Double
+  type Vector[A] = ppl.dsl.optila.DenseVector[A]
+  type DenseVector[A] = ppl.dsl.optila.DenseVector[A]
   // Int is already a defined type
 }
   

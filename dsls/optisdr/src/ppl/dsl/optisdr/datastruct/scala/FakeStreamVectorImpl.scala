@@ -1,5 +1,7 @@
 package ppl.dsl.optisdr.datastruct.scala
 
+import ppl.dsl.optila.datastruct.scala.DenseVector
+
 object FakeStreamVector {
   def ofLength[T:Manifest](length: Int) = {
     new FakeStreamVectorImpl[T](length)
@@ -7,6 +9,10 @@ object FakeStreamVector {
   
   def withData[T:Manifest](data: Array[T]) = {
     new FakeStreamVectorImpl[T](data)
+  }
+  
+  def fromVector[T:Manifest](v: DenseVector[T]) = {
+    new FakeStreamVectorImpl[T](v._data)
   }
   
   def apply[T:Manifest](xs: T*) = {

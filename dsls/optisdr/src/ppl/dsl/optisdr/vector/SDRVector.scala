@@ -9,10 +9,10 @@ import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatC
 import ppl.dsl.optila.DenseVector
 
 import ppl.dsl.optisdr._
-import ppl.dsl.optisdr.stream.CyclicStreamOps
+import ppl.dsl.optisdr.stream._
 
 trait SDRVectorOps extends Variables {
-  this: OptiSDR with CyclicStreamOps =>
+  this: OptiSDR with CyclicStreamOps with SDRStreamOps =>
   
   // Convert from Rep[Vector] to our Vector ops
   implicit def repToSDRVectorOps[A:Manifest](x: Rep[DenseVector[A]]) = new SDRVectorOpsCls(x)
@@ -22,6 +22,7 @@ trait SDRVectorOps extends Variables {
   class SDRVectorOpsCls[A:Manifest](val x: Rep[DenseVector[A]]) {
     def conj(implicit sa: SDRArith[A], ctx: SourceContext) = sdrvector_conj(x)
     // def block exponent
+    def drop1(n: Rep[Int])(implicit ctx: SourceContext) = sdrvector_drop(x, n)
     
     def unary_~()(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_binarynot(x)
     def &(y: Rep[DenseVector[A]])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_binaryand(x,y)
@@ -36,10 +37,9 @@ trait SDRVectorOps extends Variables {
     def !<<(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_lvshift(x, y)
     def !>>(y: Rep[Int])(implicit ba: BitArith[A], ctx: SourceContext) = sdrvector_rvshift(x, y)
     
-    def drop(n: Rep[Int])(implicit ctx: SourceContext) = sdrvector_drop(x, n)
-    
     def cycle()(implicit ctx: SourceContext) = cyclicstream_new(x, unit(0))
     def cycle(offset: Rep[Int])(implicit ctx: SourceContext) = cyclicstream_new(x, offset)
+    def toStream()(implicit ctx: SourceContext) = fsv_obj_from_vector(x)
   }
   
   // infix convolve
