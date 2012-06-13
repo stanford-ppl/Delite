@@ -6,7 +6,7 @@ trait Downsampling {
   this: OptiMLApplication =>
 
   def downsample(data: Rep[UnsupervisedTrainingSet[Double]], arcsinhCofactor: Rep[Double], scale: Rep[Double],
-                 usedMarkers: Rep[DenseVector[Int]], isNormalize: Rep[Boolean], normalizeWeight: Rep[Double]): Rep[Vector[Int]] = {
+                 usedMarkers: Rep[DenseVector[Int]], isNormalize: Rep[Boolean], normalizeWeight: Rep[Double]): Rep[DenseVector[Int]] = {
 
 
     println("   Input matrix size: " + data.numSamples + "*" + data.numFeatures)
@@ -45,7 +45,7 @@ trait Downsampling {
     4.4593519740000005
   }
 
-  private def countNeighbors(data: Rep[UnsupervisedTrainingSet[Double]], kernelWidth: Rep[Double], apprxWidth: Rep[Double]): Rep[Vector[Int]] = {
+  private def countNeighbors(data: Rep[UnsupervisedTrainingSet[Double]], kernelWidth: Rep[Double], apprxWidth: Rep[Double]): Rep[DenseVector[Int]] = {
 
     println("   finding local density for each cell ...")
 
@@ -58,7 +58,7 @@ trait Downsampling {
     for (row <- distances.rows) {
       if(row.index%1000 == 0) println("  (streaming) # processed node = " + row.index)
       if(densities(row.index) == 0) {
-        val neighbors = viewToVecOverrides(row) find { _ < apprxWidth }
+        val neighbors = row find { _ < apprxWidth }
         densities(neighbors) = row count { _ < kernelWidth }
       }
     }

@@ -1,14 +1,16 @@
 package ppl.dsl.optila.vector
 
-import ppl.dsl.optila.{Vector, DenseVector, RangeVector, Matrix, DenseMatrix}
-import ppl.dsl.optila.{OptiLAExp, OptiLA, OptiLACompiler}
-import ppl.delite.framework.DeliteApplication
-import ppl.delite.framework.datastruct.scala.DeliteCollection
-import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
 import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase}
 import scala.virtualization.lms.util.OverloadHack
 import scala.reflect.SourceContext
 import java.io.PrintWriter
+
+import ppl.delite.framework.DeliteApplication
+import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.ops.{DeliteOpsExp, DeliteCollectionOpsExp}
+import ppl.delite.framework.Util._
+
+import ppl.dsl.optila._
 
 trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
 
@@ -21,25 +23,26 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
     def toIntf(x: Rep[RangeVector]): Interface[Vector[Int]] = rangeToInterface(x)
   }  
   
-  class RangeVecOpsCls(val elem: Rep[RangeVector]) extends VecOpsCls[Int] {
-    // type VA = RangeVector
-    // def toOps(x: Rep[RangeVector]) = repToRangeVecOps(x)
-    // def toIntf(x: Rep[RangeVector]) = rangeToInterface(x)
-    // def builder: VectorBuilder[Int,RangeVector] = rangeVectorBuilder
-    def mA = manifest[Int]
-    //def mVA = manifest[RangeVector]
-    
+  class RangeVecOpsCls(val elem: Rep[RangeVector]) extends VecOpsCls[Int] {    
     type V[X] = DenseVector[X]
     type M[X] = DenseMatrix[X]
+    type I[X] = DenseMatrix[X]
+    type VA = DenseVector[Int]
     type Self = RangeVector 
-    def wrap(x: Rep[RangeVector]) = rangeToInterface(x)
-    def toOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
-    def toIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
-    def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
-    def builder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]
-    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,M[B]] = denseMatrixBuilder[B]
+    
+    def mA = manifest[Int]    
+    def mVA = manifest[VA]    
     def mV[B:Manifest] = manifest[DenseVector[B]]
-    def mM[B:Manifest] = manifest[DenseMatrix[B]]
+    def mM[B:Manifest] = manifest[DenseMatrix[B]]    
+    def wrap(x: Rep[RangeVector]) = rangeToInterface(x)    
+    def vaToOps(x: Rep[VA]) = vecToOps[Int](x)
+    def vaToIntf(x: Rep[VA]) = vecToIntf[Int](x)
+    def vaBuilder(implicit ctx: SourceContext) = vecBuilder[Int]      
+    def vecToOps[B:Manifest](x: Rep[DenseVector[B]]) = repToDenseVecOps(x)
+    def vecToIntf[B:Manifest](x: Rep[DenseVector[B]]): Interface[Vector[B]] = denseVecToInterface(x)
+    def matToIntf[B:Manifest](x: Rep[DenseMatrix[B]]): Interface[Matrix[B]] = denseMatToInterface(x)
+    def vecBuilder[B:Manifest](implicit ctx: SourceContext): VectorBuilder[B,V[B]] = denseVectorBuilder[B]
+    def matBuilder[B:Manifest](implicit ctx: SourceContext): MatrixBuilder[B,I[B],M[B]] = denseMatrixBuilder[B]
 
     // VectorOps
     def length(implicit ctx: SourceContext) = rangevector_length(elem)
@@ -47,22 +50,6 @@ trait RangeVectorOps extends Base with OverloadHack { this: OptiLA =>
     def apply(n: Rep[Int])(implicit ctx: SourceContext) = rangevector_apply(elem,n)
     def sort(implicit o: Ordering[Int], ctx: SourceContext) = elem.Clone    
     
-    // generic
-    type VPLUSR = DenseVector[Int]
-    val mVPLUSR = manifest[VPLUSR]
-    def vplusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[Int]
-    def vplusToIntf(x: Rep[VPLUSR]) = denseVecToInterface(x)
-    
-    type VMINUSR = DenseVector[Int]
-    val mVMINUSR = manifest[VMINUSR]
-    def vminusBuilder(implicit ctx: SourceContext) = denseVectorBuilder[Int]
-    def vminusToIntf(x: Rep[VMINUSR]) = denseVecToInterface(x)    
-    
-    type VTIMESR = DenseVector[Int]
-    val mVTIMESR = manifest[VTIMESR]
-    def vtimesBuilder(implicit ctx: SourceContext) = denseVectorBuilder[Int]
-    def vtimesToIntf(x: Rep[VTIMESR]) = denseVecToInterface(x)        
-        
     // should forward to a RangeVectorOpsExp implementation which throws an OptiLA compiler error instead of using exceptions
     def t(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be transposed") // TODO    
     def mt()(implicit ctx: SourceContext) = throw new UnsupportedOperationException("RangeVectors cannot be updated")    
@@ -103,10 +90,31 @@ trait RangeVectorOpsExp extends RangeVectorOps with DeliteCollectionOpsExp { thi
     case _ => None
   }
   
+  /////////////////////
+  // delite collection
+    
+  def isRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = isSubtype(x.tp.erasure,classOf[RangeVector])  
+  def asRange[A](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = x.asInstanceOf[Exp[RangeVector]]
+  
+  override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext) = { 
+    if (isRange(x)) asRange(x).length
+    else super.dc_size(x)
+  }
+    
   override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int])(implicit ctx: SourceContext) = {
-    rangevector_optimize_apply(x,n) getOrElse super.dc_apply(x,n)
+    if (isRange(x)) rangevector_optimize_apply(asRange(x),n).getOrElse(super.dc_apply(x,n)).asInstanceOf[Exp[A]]
+    else super.dc_apply(x,n)    
   }
   
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], n: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isRange(x)) err("dc_update should not be called on RangeVector")
+    else super.dc_update(x,n,y)        
+  }
+  
+  override def dc_append[A:Manifest](x: Exp[DeliteCollection[A]], i: Exp[Int], y: Exp[A])(implicit ctx: SourceContext) = {
+    if (isRange(x)) err("dc_append should not be called on RangeVector")
+    else super.dc_append(x,i,y)        
+  }    
   
 }
   

@@ -8,8 +8,14 @@ trait LanguageImplOps { this: OptiLA =>
   def optila_matrixdistance_euc_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]): Rep[A]
   def optila_matrixdistance_square_impl[A:Manifest:Arith](m1: Interface[Matrix[A]], m2: Interface[Matrix[A]]): Rep[A]
 
-  def optila_randsample_matrix_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,MA]): Rep[MA]
+  def optila_randsample_matrix_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA]
   def optila_randsample_vector_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]): Rep[VA]
+  def optila_randelem_impl[A:Manifest](v: Interface[Vector[A]]): Rep[A]
+  
+  def optila_matrix_determinant22_impl[A:Manifest:Arith](x: Interface[Matrix[A]]): Rep[A]
+  def optila_matrix_determinant33_impl[A:Manifest:Arith](x: Interface[Matrix[A]]): Rep[A]
+  def optila_matrix_determinant44_impl[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]): Rep[A]
+  def optila_matrix_determinant_impl[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]): Rep[A]
 }
 
 trait LanguageImplOpsStandard extends LanguageImplOps {
@@ -54,14 +60,14 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
   }
 
   // TODO: refactor to call sampleCollection
-  def optila_randsample_matrix_impl[A:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,MA]): Rep[MA] = {
+  def optila_randsample_matrix_impl[A:Manifest,I:Manifest,MA:Manifest](m: Interface[Matrix[A]], numSamples: Rep[Int], sampleRows: Rep[Boolean])(implicit b: MatrixBuilder[A,I,MA]): Rep[MA] = {
     val length = if (sampleRows) m.numRows else m.numCols
     val newRows = if (sampleRows) numSamples else m.numRows
     val newCols = if (sampleRows) m.numCols else numSamples
 
     val sampledOut = if(sampleRows) b.alloc(0, newCols)
                   else b.alloc(0,newRows) // transposed for efficiency
-    val sampled = b.toIntf(sampledOut)
+    val sampled = b.toBuildableIntf(sampledOut)
 
     val candidates = (0::length).mutable
 
@@ -79,7 +85,7 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
       candidates(i) = t
     }
 
-    if (sampleRows) sampledOut.unsafeImmutable else sampled.t.ops.elem.asInstanceOf[Rep[MA]]
+    if (sampleRows) b.finalizer(sampledOut) else b.toIntf(b.finalizer(sampledOut)).t.ops.elem.asInstanceOf[Rep[MA]]
   }
 
   def optila_randsample_vector_impl[A:Manifest,VA:Manifest](v: Interface[Vector[A]], numSamples: Rep[Int])(implicit b: VectorBuilder[A,VA]) = {
@@ -117,4 +123,38 @@ trait LanguageImplOpsStandard extends LanguageImplOps {
     }
   }
   */
+  
+  def optila_randelem_impl[A:Manifest](v: Interface[Vector[A]]): Rep[A] = {
+    val n = random(v.length-1)
+    v(n)
+  }
+  
+  def optila_matrix_determinant22_impl[A:Manifest:Arith](x: Interface[Matrix[A]]): Rep[A] = {
+    x(0,0)*x(1,1)-x(0,1)*x(1,0)
+  }
+  
+  def optila_matrix_determinant33_impl[A:Manifest:Arith](x: Interface[Matrix[A]]): Rep[A] = {
+    x(0,0)*x(1,1)*x(2,2) + x(0,1)*x(1,2)*x(2,0) + x(0,2)*x(1,0)*x(2,1) -
+    x(0,2)*x(1,1)*x(2,0) - x(0,1)*x(1,0)*x(2,2) - x(0,0)*x(1,2)*x(2,1)
+  }
+  
+  def optila_matrix_determinant44_impl[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]): Rep[A] = {
+    val two = 2.asInstanceOf[A]
+    
+    x(0,1)*x(0,1)*x(2,3)*x(2,3)     - x(2,2)*x(3,3)*x(0,1)*x(0,1)     + two*x(3,3)*x(0,1)*x(0,2)*x(1,2) -
+    two*x(0,1)*x(0,2)*x(1,3)*x(2,3) - two*x(0,1)*x(0,3)*x(1,2)*x(2,3) + two*x(2,2)*x(0,1)*x(0,3)*x(1,3) + 
+    x(0,2)*x(0,2)*x(1,3)*x(1,3)     - x(1,1)*x(3,3)*x(0,2)*x(0,2)     - two*x(0,2)*x(0,3)*x(1,2)*x(1,3) + 
+    two*x(1,1)*x(0,2)*x(0,3)*x(2,3) + x(0,3)*x(0,3)*x(1,2)*x(1,2)     - x(1,1)*x(2,2)*x(0,3)*x(0,3) -
+    x(0,0)*x(3,3)*x(1,2)*x(1,2)     + two*x(0,0)*x(1,2)*x(1,3)*x(2,3) - x(0,0)*x(2,2)*x(1,3)*x(1,3) -
+    x(0,0)*x(1,1)*x(2,3)*x(2,3)     + x(0,0)*x(1,1)*x(2,2)*x(3,3)    
+  }
+    
+  def optila_matrix_determinant_impl[A:Manifest:Arith:Numeric](x: Interface[Matrix[A]]): Rep[A] = {
+    if (x.numRows == 2 && x.numCols == 2) optila_matrix_determinant22_impl(x)
+    else if (x.numRows == 3 && x.numCols == 3) optila_matrix_determinant33_impl(x)
+    else if (x.numRows == 4 && x.numCols == 4) optila_matrix_determinant44_impl(x)
+    else {
+      fatal("Matrix determinants for matrices > 4x4 is not implemented yet")
+    }
+  }
 }

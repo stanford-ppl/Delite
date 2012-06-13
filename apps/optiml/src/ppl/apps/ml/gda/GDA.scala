@@ -41,8 +41,8 @@ trait GDA extends OptiMLApplication {
 
     val y_zeros = y count { _ == false } 
     val y_ones = y count { _ == true }
-    val mu0_num = sumIf[DenseVector[Double],VectorView[Double]](0,m) { !y(_) } { x(_) } 
-    val mu1_num = sumIf[DenseVector[Double],VectorView[Double]](0,m) { y(_) } { x(_) } 
+    val mu0_num = sumIf[DenseVector[Double],DenseVectorView[Double]](0,m) { !y(_) } { x(_) } 
+    val mu1_num = sumIf[DenseVector[Double],DenseVectorView[Double]](0,m) { y(_) } { x(_) } 
     
     //println("y_zeros: " + y_zeros)
     //println("y_ones: " + y_ones)

@@ -3,7 +3,7 @@ package ppl.delite.framework.extern.codegen
 import _root_.scala.virtualization.lms.common._
 import _root_.scala.virtualization.lms.internal._
 import collection.mutable.{ListBuffer}
-import collection.mutable.{HashMap, Map => MMap}
+import collection.mutable.{HashSet, HashMap, Map => MMap}
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
 
 import ppl.delite.framework.{Config, DeliteApplication}
@@ -15,6 +15,35 @@ trait GenericGenExternal extends GenericNestedCodegen {
   val IR: DeliteOpsExp
   import IR._
 
+  val generatedOps = HashSet[String]()
+    
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case e:DeliteOpExternal[Any] =>
+      // generate library once only
+      if (!generatedOps.contains(e.funcName)) {
+        try {
+          emitExternalLib(e)
+          generatedOps += e.funcName
+        }
+        catch {
+          case g: GenerationFailedException =>
+        }        
+      }      
+      // generate external call for this node
+      emitExternalNode(sym, e)
+      
+    case _ => super.emitNode(sym, rhs) 
+  }
+  
+  // external generators implement emitExternalNode instead of emitNode
+  def emitExternalNode(sym: Sym[Any], rhs: Def[Any]): Unit = {
+    throw new GenerationFailedException("don't know how to generate external call for " + rhs)
+  }
+  
+  def emitExternalLib(rhs: Def[Any]): Unit = {
+    throw new GenerationFailedException("don't know how to generate external lib for " + rhs)
+  }
+        
   ///////////////////
   // generator config
   

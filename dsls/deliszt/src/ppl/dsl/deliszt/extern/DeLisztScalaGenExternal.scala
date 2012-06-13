@@ -9,8 +9,8 @@ trait DeLisztScalaGenExternal extends ScalaGenExternalBase {
   val IR: DeLisztExp
   import IR._
 
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-    case _ => super.emitNode(sym, rhs)
+  override def emitExternalNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case _ => super.emitExternalNode(sym, rhs)
   }
     
   override def emitExternalLib(rhs: Def[Any]): Unit = rhs match {

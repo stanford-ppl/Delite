@@ -11,25 +11,62 @@ import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatC
 import ppl.dsl.optiml._
 import scala.reflect.SourceContext
 
-trait OptiMLDenseVectorOps extends VectorOps with ppl.dsl.optila.vector.DenseVectorOps {
+trait OptiMLDenseVectorOpsLowPriority extends ppl.dsl.optila.vector.DenseVectorOps {
+  this: OptiML =>
+  
+  implicit def denseToVecOverrides[A:Manifest](x: Rep[DenseVector[A]]) = new OptiMLDenseVecOpsOverrides(x)
+}
+trait OptiMLDenseVectorOps extends OptiMLDenseVectorOpsLowPriority {
   this: OptiML =>
   
   //implicit def repToOptiMLVecOverrides[A:Manifest](x: Rep[A])(implicit toIntf: Rep[A] => Interface[Vector[A]]) = new OptiMLVecOpsOverrides(x)
   
   // overrides for OptiLA types - we have to override each OptiLA type conversion, otherwise the implicit priorities tie :(
-  implicit def denseToVecOverrides[A:Manifest](x: Rep[DenseVector[A]]) = new OptiMLVecOpsOverrides(x)  
+  implicit def denseToVecOverrides2[A:Manifest](x: Rep[DenseVector[A]]) = new OptiMLVecOpsOverridesAlternate(x)
 }
-
-trait OptiMLVectorViewOps extends VectorOps with ppl.dsl.optila.vector.VectorViewOps {
+trait OptiMLSparseVectorOpsLowPriority extends ppl.dsl.optila.vector.SparseVectorOps {
   this: OptiML =>
   
-  implicit def viewToVecOverrides[A:Manifest](x: Rep[VectorView[A]]) = new OptiMLVecOpsOverrides(x)  
+  implicit def sparseToVecOverrides[A:Manifest](x: Rep[SparseVector[A]]) = new OptiMLSparseVecOpsOverrides(x)
 }
-
-trait OptiMLRangeVectorOps extends VectorOps with ppl.dsl.optila.vector.RangeVectorOps {
+trait OptiMLSparseVectorOps extends OptiMLSparseVectorOpsLowPriority {
   this: OptiML =>
   
-  implicit def rangeToVecOverrides(x: Rep[RangeVector]) = new OptiMLVecOpsOverrides(x)  
+  implicit def sparseToVecOverrides2[A:Manifest](x: Rep[SparseVector[A]]) = new OptiMLVecOpsOverridesAlternate(x)
+}
+
+
+trait OptiMLDenseVectorViewOpsLowPriority extends ppl.dsl.optila.vector.DenseVectorViewOps {
+  this: OptiML =>
+  
+  implicit def denseViewToVecOverrides[A:Manifest](x: Rep[DenseVectorView[A]]) = new OptiMLDenseVecViewOpsOverrides(x)  
+}
+trait OptiMLDenseVectorViewOps extends OptiMLDenseVectorViewOpsLowPriority {
+  this: OptiML =>
+    
+  implicit def denseViewToVecOverrides2[A:Manifest](x: Rep[DenseVectorView[A]]) = new OptiMLVecOpsOverridesAlternate(x)
+}
+trait OptiMLSparseVectorViewOpsLowPriority extends ppl.dsl.optila.vector.SparseVectorViewOps {
+  this: OptiML =>
+  
+  implicit def sparseViewToVecOverrides[A:Manifest](x: Rep[SparseVectorView[A]]) = new OptiMLSparseVecViewOpsOverrides(x)  
+}
+trait OptiMLSparseVectorViewOps extends OptiMLSparseVectorViewOpsLowPriority {
+  this: OptiML =>
+    
+  implicit def sparseViewToVecOverrides2[A:Manifest](x: Rep[SparseVectorView[A]]) = new OptiMLVecOpsOverridesAlternate(x)
+}
+
+
+trait OptiMLRangeVectorOpsLowPriority extends ppl.dsl.optila.vector.RangeVectorOps {
+  this: OptiML =>
+  
+  implicit def rangeToVecOverrides(x: Rep[RangeVector]) = new OptiMLRangeVecOpsOverrides(x)  
+}
+trait OptiMLRangeVectorOps extends OptiMLRangeVectorOpsLowPriority {
+  this: OptiML =>
+  
+  implicit def rangeToVecOverrides2(x: Rep[RangeVector]) = new OptiMLVecOpsOverridesAlternate(x)
 }
 
 trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
@@ -55,16 +92,36 @@ trait VectorOps extends ppl.dsl.optila.vector.VectorOps {
   //   override def vfindToIntf(x: Rep[VFINDR]) = indexVecDenseToInterface(x)
   //   //override def find(pred: Rep[A] => Rep[Boolean]) = vector_find_override(x,pred)
   // }
+
+  trait OptiMLVecOpsOverrides[A] extends VecOpsCls[A] {
+    def apply(indices: Interface[IndexVector])(implicit ctx: SourceContext) = vector_apply_indices[A,VA](x, indices)    
+    def apply(indices: Rep[Int]*)(implicit ctx: SourceContext) = vector_apply_indices[A,VA](x, IndexVector(indices: _*))
+    def update(i: Interface[IndexVector], y: Rep[A])(implicit o: Overloaded1, ctx: SourceContext) = vector_update_indices(x,i,y)
+    //def update(i: Interface[IndexVector], y: Var[A])(implicit o: Overloaded2, ctx: SourceContext) = vector_update_indices(x,i,readVar(y))        
+    //override def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = x.update(n, y) // ?        
+  }
   
-  class OptiMLVecOpsOverrides[A:Manifest](x: Interface[Vector[A]]) {
-    def update(i: Interface[IndexVector], y: Rep[A])(implicit o: Overloaded1, ctx: SourceContext) = vector_update_indices(x,i,y)    
-    def update(n: Rep[Int], y: Rep[A])(implicit ctx: SourceContext) = x.update(n, y) // ?
+  class OptiMLVecOpsOverridesAlternate[A:Manifest](x: Interface[Vector[A]]) {
     def find(pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext) = vector_find_override(x, pred)
   }
+  
+  class OptiMLDenseVecOpsOverrides[A:Manifest](x: Rep[DenseVector[A]]) extends DenseVecOpsCls(x) with OptiMLVecOpsOverrides[A] {
+    def sortWithIndex(implicit o: Ordering[A], ctx: SourceContext): (Rep[DenseVector[A]], Rep[IndexVectorDense]) = densevector_sortwithindex(x)
+  }
+  class OptiMLSparseVecOpsOverrides[A:Manifest](x: Rep[SparseVector[A]]) extends SparseVecOpsCls(x) with OptiMLVecOpsOverrides[A] 
+  class OptiMLDenseVecViewOpsOverrides[A:Manifest](x: Rep[DenseVectorView[A]]) extends DenseVectorViewOpsCls(x) with OptiMLVecOpsOverrides[A] 
+  class OptiMLSparseVecViewOpsOverrides[A:Manifest](x: Rep[SparseVectorView[A]]) extends SparseVectorViewOpsCls(x) with OptiMLVecOpsOverrides[A] 
+  class OptiMLRangeVecOpsOverrides(x: Rep[RangeVector]) extends RangeVecOpsCls(x) with OptiMLVecOpsOverrides[Int] 
 
   // class defs
+  def vector_apply_indices[A:Manifest,VA:Manifest](x: Interface[Vector[A]], indices: Interface[IndexVector])(implicit b: VectorBuilder[A,VA], ctx: SourceContext): Rep[VA]  
   def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Rep[A])(implicit ctx: SourceContext): Rep[Unit]
   def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Rep[A] => Rep[Boolean])(implicit ctx: SourceContext): Rep[IndexVectorDense]
+  def densevector_sortwithindex[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext): (Rep[DenseVector[A]], Rep[IndexVectorDense])
+  
+  // internal   
+  // this is here and not in ArrayOps because it is not a typical member of Scala's array
+  def array_sortwithindex[A:Manifest](x: Rep[Array[A]])(implicit ctx: SourceContext): (Rep[Array[A]], Rep[Array[Int]])
 }
 
 trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps with VariablesExp with BaseFatExp {
@@ -79,6 +136,9 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   ////////////////////////////////
   // implemented via delite ops
   
+  case class VectorApplyIndices[A:Manifest,VA:Manifest](x: Interface[Vector[A]], indices: Interface[IndexVector])(implicit val b: VectorBuilder[A,VA])
+    extends DeliteOpSingleWithManifest[A,VA](reifyEffectsHere(vector_apply_indices_impl[A,VA](x,indices)))       
+  
   case class VectorUpdateIndices[A:Manifest](x: Interface[Vector[A]], intf: Interface[IndexVector], y: Exp[A])
     extends DeliteOpForeach[Int] {
 
@@ -92,12 +152,20 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
     extends DeliteOpFilter[A,Int,IndexVectorDense] {
       
     val in = intf.ops.elem.asInstanceOf[Exp[Vector[A]]]
-    def alloc = IndexVector(unit(0))
+    override def alloc(size: Exp[Int]) = IndexVector(size,unit(true))
     def func = e => v // should we make available and use a helper function like index(e)?
     val size = intf.length
 
     def m = manifest[A]  
   }
+  
+  case class ArraySortWithIndex[T:Manifest](x: Exp[Array[T]]) extends Def[(Array[T],Array[Int])] {
+    val m = manifest[T]
+  }  
+  
+  case class DenseVectorSortWithIndex[A:Manifest](x: Rep[DenseVector[A]])
+    extends DeliteOpSingleWithManifest[A,(DenseVector[A],IndexVectorDense)](reifyEffectsHere(densevector_sortwithindex_impl[A](x)))         
+    //extends DeliteOpSingleWithManifest[A,Record{val v: DenseVector[A]; val i: IndexVectorDense}](reifyEffectsHere(densevector_sortwithindex_impl[A](x)))         
 
   /////////////////////
   // object interface
@@ -120,13 +188,18 @@ trait VectorOpsExp extends ppl.dsl.optila.vector.VectorOpsExp with VectorOps wit
   /////////////////////
   // class interface
 
+  def vector_apply_indices[A:Manifest,VA:Manifest](x: Interface[Vector[A]], indices: Interface[IndexVector])(implicit b: VectorBuilder[A,VA], ctx: SourceContext) = reflectPure(VectorApplyIndices[A,VA](x,indices))
   def vector_update_indices[A:Manifest](x: Interface[Vector[A]], i: Interface[IndexVector], y: Exp[A])(implicit ctx: SourceContext) = reflectWrite(x.ops.elem)(VectorUpdateIndices(x,i,y))
   def vector_find_override[A:Manifest](x: Interface[Vector[A]], pred: Exp[A] => Exp[Boolean])(implicit ctx: SourceContext) = reflectPure(VectorFindOverride(x, pred))
+  def array_sortwithindex[A:Manifest](x: Rep[Array[A]])(implicit ctx: SourceContext) = t2(reflectPure(ArraySortWithIndex(x)))
+  def densevector_sortwithindex[A:Manifest](x: Rep[DenseVector[A]])(implicit ctx: SourceContext) = t2(reflectPure(DenseVectorSortWithIndex(x)))
 
   //////////////
   // mirroring
 
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
+    case e@VectorApplyIndices(x,y) => reflectPure(new { override val original = Some(f,e) } with VectorApplyIndices(f(x),f(y))(e.mA,e.mR,e.b))(mtype(manifest[A]),implicitly[SourceContext])    
+    case Reflect(e@VectorApplyIndices(x,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorApplyIndices(f(x),f(y))(e.mA,e.mR,e.b), mapOver(f,u), f(es)))(mtype(manifest[A]))    
     case Reflect(e@VectorUpdateIndices(x,i,y), u, es) => reflectMirrored(Reflect(new { override val original = Some(f,e) } with VectorUpdateIndices(f(x),f(i),f(y)), mapOver(f,u), f(es)))(mtype(manifest[A]))
     case _ => super.mirror(e, f)
   }).asInstanceOf[Exp[A]] // why??
@@ -214,10 +287,22 @@ trait ScalaGenVectorOps extends BaseGenVectorOps with ScalaGenFat {
   val IR: VectorOpsExp
   import IR._
 
-  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
-  //     // these are the ops that call through to the underlying real data structure
-  //     case _ => super.emitNode(sym, rhs)
-  //   }
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case a@ArraySortWithIndex(x) => 
+      stream.println("val " + quote(sym) + " = {")
+      stream.println("val in = " + quote(x))
+      stream.println("val indices = (0 until in.length).toArray.sortWith((a,b) => in(a) < in(b))")
+      stream.println("val data = new Array[" + remap(a.m) + "](in.length)")      
+      stream.println("var i = 0")
+      stream.println("while (i < in.length) {")
+      stream.println("data(i) = in(indices(i))")
+      stream.println("i += 1")
+      stream.println("}")
+      stream.println("(data,indices)")
+      stream.println("}")    
+    
+    case _ => super.emitNode(sym, rhs)
+  }
 }
 
 

@@ -96,17 +96,21 @@ trait OptiML extends OptiMLScalaOpsPkg with OptiLA with RecordOps
   with LanguageOps with ApplicationOps with LBPOps // TODO: LBPOps should be auto-generated with ApplicationOps
   with MLInputReaderOps with MLOutputWriterOps
   with CanSumOps
-  with VectorOps with OptiMLDenseVectorOps with OptiMLVectorViewOps with OptiMLRangeVectorOps
-  with MatrixOps with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops 
+  with VectorOps with OptiMLDenseVectorOps with OptiMLDenseVectorViewOps with OptiMLSparseVectorOps with OptiMLSparseVectorViewOps with OptiMLRangeVectorOps
+  with MatrixOps with OptiMLDenseMatrixOps with OptiMLSparseMatrixOps 
+  with IndexVectorOps with IndexVectorDenseOps with IndexVectorRangeOps with IndexVector2Ops with IndexVectorTriangularOps
   with StreamOps with StreamRowOps
   with GraphOps with EdgeOps with VertexOps with VSetOps
-  with TrainingSetOps with ImageOps with GrayscaleImageOps {
+  with TrainingSetOps with ImageOps with ImageOpsExtension with GrayscaleImageOps {
 
   this: OptiMLApplication =>
 }
 
 // these ops are only available to the compiler (they are restricted from application use)
-trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities with GraphCompilerOps with DeliteCollectionOps {
+trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities with GraphCompilerOps with DeliteCollectionOps 
+  with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard with MatrixImplOpsStandard
+  with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
+  with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard {
 
   this: OptiMLApplication with OptiMLExp =>
 }
@@ -118,13 +122,11 @@ trait OptiMLCompiler extends OptiLACompiler with OptiML with OptiMLUtilities wit
 trait OptiMLExp extends OptiLAExp with OptiMLCompiler with OptiMLScalaOpsPkgExp with RecordOpsExp
   with LanguageOpsExp with ApplicationOpsExp with LBPOpsExp 
   with MLInputReaderOpsExp with MLOutputWriterOpsExp
-  with VectorOpsExpOpt with MatrixOpsExpOpt with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp 
+  with VectorOpsExpOpt with MatrixOpsExpOpt 
+  with IndexVectorOpsExp with IndexVectorDenseOpsExpOpt with IndexVectorRangeOpsExp with IndexVector2OpsExp with IndexVectorTriangularOpsExp
   with StreamOpsExpOpt with StreamRowOpsExpOpt
   with TrainingSetOpsExp with ImageOpsExp with GrayscaleImageOpsExp
   with GraphOpsExp with EdgeOpsExp with VertexOpsExp with VSetOpsExp
-  with LanguageImplOpsStandard with VectorImplOpsStandard with IndexVectorImplOpsStandard
-  with MLInputReaderImplOpsStandard with MLOutputWriterImplOpsStandard with StreamImplOpsStandard
-  with GraphImplOpsStandard with EdgeImplOpsStandard with VertexImplOpsStandard with VerticesImplOpsStandard
   with DeliteAllOverridesExp {
 
   // this: OptiMLApplicationRunner => why doesn't this work?

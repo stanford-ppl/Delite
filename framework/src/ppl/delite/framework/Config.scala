@@ -23,6 +23,7 @@ object Config {
   var useBlas = getProperty("delite.extern.blas", "false") != "false"
   var nestedVariantsLevel = getProperty("nested.variants.level", "0").toInt
   var debug = getProperty("delite.debug","false") != "false"
+  var cacheSyms = getProperty("delite.cache.syms","false") != "false"
   var collectStencil = System.getProperty("deliszt.stencil.enabled", "false") == "true"
   var printGlobals = System.getProperty("delite.print_globals.enabled", "false") == "true"  
 

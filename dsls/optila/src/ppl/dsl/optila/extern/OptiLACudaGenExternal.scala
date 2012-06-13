@@ -18,7 +18,7 @@ trait OptiLACudaGenExternal extends CudaGenExternalBase with CudaGenDataStruct {
   val IR: OptiLAExp
   import IR._
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+  override def emitExternalNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val args = scala.List("'t'", "%1$s.numCols", "%1$s.numRows", "%1$s.data", "%2$s.data", "%3$s.data")
                  .map { _.format(quote(x), quote(y), quote(sym)) }
@@ -37,7 +37,7 @@ trait OptiLACudaGenExternal extends CudaGenExternalBase with CudaGenDataStruct {
       emitMethodCall(sym, e, cuBLAS, args)
       registerKernel(scala.List(sym))
 
-    case _ => super.emitNode(sym, rhs)
+    case _ => super.emitExternalNode(sym, rhs)
   }
     
   override def emitExternalLib(rhs: Def[Any]): Unit = rhs match {

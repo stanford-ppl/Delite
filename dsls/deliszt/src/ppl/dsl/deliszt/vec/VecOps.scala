@@ -200,7 +200,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   case class VecMap[N<:IntM:Manifest:MVal,A:Manifest,B:Manifest](in: Exp[Vec[N,A]], func: Exp[A] => Exp[B])
     extends DeliteOpMap[A,B,Vec[N,B]] {
 
-    def alloc = Vec[N,B](in.size)
+    override def alloc = Vec[N,B](in.size)
     val size = in.size
     
     def n = manifest[N]
@@ -209,7 +209,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   }
   
   abstract class VecArithmeticMap[N<:IntM:Manifest:MVal,A:Manifest:Arith](in: Exp[Vec[N,A]]) extends DeliteOpMap[A,A,Vec[N,A]] {
-    def alloc = Vec[N,A](in.size)
+    override def alloc = Vec[N,A](in.size)
     val size = in.size
     
     def n = manifest[N]
@@ -219,7 +219,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   }
   
   abstract class VecArithmeticZipWith[N<:IntM:Manifest:MVal,A:Manifest:Arith](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]]) extends DeliteOpZipWith[A,A,A,Vec[N,A]] {
-    def alloc = Vec[N,A](inA.size)
+    override def alloc = Vec[N,A](inA.size)
     val size = inA.size
     
     def n = manifest[N]
@@ -229,7 +229,7 @@ trait VecOpsExp extends VecOps with VariablesExp with BaseFatExp {
   }
 
   abstract class VecOrderingZipWith[N<:IntM:Manifest:MVal,A:Manifest:Ordering](inA: Exp[Vec[N,A]], inB: Exp[Vec[N,A]]) extends DeliteOpZipWith[A,A,A,Vec[N,A]] {
-    def alloc = Vec[N,A](inA.size)
+    override def alloc = Vec[N,A](inA.size)
     val size = inA.size
     
     def n = manifest[N]
@@ -516,14 +516,14 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,n) getOrElse super.vec_apply(x,n)    
 
     // case Def(e: DeliteOpLoop[_]) => e.body match {
-    //   case ce: DeliteCollectElem[_,_] => ce.alloc match {
+    //   case ce: DeliteCollectElem[_,_,_] => ce.allocN match {
     //     case Def(Vec3New(a,b,c)) => const_vec_apply(a,b,c,i).asInstanceOf[Option[Exp[A]]] getOrElse super.vec_apply(x,i)
     //     case _ => super.vec_apply(x,i)
     //   }
     //   case _ => super.vec_apply(x,i)
     //}
     case Def(e: DeliteOpMap[A,_,_]) => e.body match {
-      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+      case ce: DeliteCollectElem[_,_,_] => ce.allocN match {
         case Def(Vec3New(a,b,c)) => e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)),_,_)) => e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case _ => super.dc_apply(x,n)    
@@ -531,7 +531,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
       case _ => super.dc_apply(x,n)    
     }
     case Def(e: DeliteOpZipWith[A,A,_,_]) => e.body match {
-      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+      case ce: DeliteCollectElem[_,_,_] => ce.allocN match {
         case Def(Vec3New(a,b,c)) =>
           e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)),_,_)) =>
@@ -551,7 +551,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     case Def(Vec3New(a,b,c)) => true
     case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) => true
     case Def(e: DeliteOpMap[A,_,_]) => e.body match {
-      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+      case ce: DeliteCollectElem[_,_,_] => ce.allocN match {
         case Def(Vec3New(a,b,c)) => true
         case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) => true
         case _ => false
@@ -559,7 +559,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
       case _ => false
     }
     case Def(e: DeliteOpZipWith[A,A,_,_]) => e.body match {
-      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+      case ce: DeliteCollectElem[_,_,_] => ce.allocN match {
         case Def(Vec3New(a,b,c)) => true
         case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) => true
         case _ => false
@@ -589,7 +589,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
     case Def(s@Reflect(fa@FieldApply(f@Def(Reflect(DeLisztFieldWithConstVertex(v),_,_)),idx),u,es)) if (isVec3(v)) => field_raw_apply(f,idx,n)(fa.moM, fa.vtM.typeArguments(1).asInstanceOf[Manifest[A]])
 
     case Def(e: DeliteOpMap[A,_,_]) => e.body match {
-      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+      case ce: DeliteCollectElem[_,_,_] => ce.allocN match {
         case Def(Vec3New(a,b,c)) => e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) => e.func(dc_apply(e.in.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case _ => super.dc_apply(x,n)    
@@ -597,7 +597,7 @@ trait VecOpsExpOpt extends VecOpsExp with DeliteCollectionOpsExp {
       case _ => super.dc_apply(x,n)    
     }
     case Def(e: DeliteOpZipWith[A,A,_,_]) => e.body match {
-      case ce: DeliteCollectElem[_,_] => ce.alloc match {
+      case ce: DeliteCollectElem[_,_,_] => ce.allocN match {
         case Def(Vec3New(a,b,c)) =>
           e.func(dc_apply(e.inA.asInstanceOf[Exp[DeliteCollection[A]]],n),dc_apply(e.inB.asInstanceOf[Exp[DeliteCollection[A]]],n)).asInstanceOf[Exp[A]]
         case Def(Reify(Def(Reflect(Vec3New(a,b,c),u,es)),_,_)) =>

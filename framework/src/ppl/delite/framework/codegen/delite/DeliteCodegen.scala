@@ -8,7 +8,6 @@ import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
-import ppl.delite.framework.extern.DeliteGenExternal
 import scala.reflect.SourceContext
 
 /**
@@ -248,4 +247,4 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
 }
 
-trait DeliteCodeGenPkg extends DeliteGenTaskGraph with DeliteGenExternal
+trait DeliteCodeGenPkg extends DeliteGenTaskGraph

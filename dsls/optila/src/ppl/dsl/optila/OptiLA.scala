@@ -4,7 +4,8 @@ import java.io._
 import scala.reflect.SourceContext
 import scala.virtualization.lms.common._
 import scala.virtualization.lms.internal.{GenericFatCodegen, GenericCodegen}
-import ppl.delite.framework.{Config, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
+import ppl.delite.framework.{Config, ExpressionsOpt, SchedulingOpt, DeliteApplication, DeliteInteractive, DeliteInteractiveRunner}
+import ppl.delite.framework.datastructures._
 import ppl.delite.framework.codegen.Target
 import ppl.delite.framework.codegen.scala.TargetScala
 import ppl.delite.framework.codegen.cuda.TargetCuda
@@ -17,7 +18,7 @@ import ppl.dsl.optila.vector._
 import ppl.dsl.optila.matrix._
 import ppl.dsl.optila.capabilities._
 import ppl.dsl.optila.io._
-
+import ppl.dsl.optila.generic.GenericDefs
 
 /**
  * These separate OptiLA applications from the Exp world.
@@ -97,19 +98,28 @@ trait OptiLACCodeGenPkg extends CGenDSLOps with CGenImplicitOps with CGenOrderin
 /**
  * This the trait that every OptiLA application must extend.
  */
-trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps
-  with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
-  with VectorOps with DenseVectorOps with RangeVectorOps with VectorViewOps //with MatrixRowOps with MatrixColOps
-  with MatrixOps with DenseMatrixOps
+trait OptiLA extends OptiLAScalaOpsPkg with DeliteCollectionOps with DeliteArrayOps
+  with GenericDefs with LanguageOps with ArithOps with CloneableOps with HasMinMaxOps
+  with VectorOps with DenseVectorOps with SparseVectorOps with RangeVectorOps with DenseVectorViewOps with SparseVectorViewOps //with MatrixRowOps with MatrixColOps
+  with MatrixOps with MatrixBuildableOps with DenseMatrixOps with SparseMatrixOps with SparseMatrixBuildableOps
   with LAInputReaderOps with LAOutputWriterOps {
 
   this: OptiLAApplication =>
 }
 
-// these ops are only available to the compiler (they are restricted from application use)
-trait OptiLACompiler extends OptiLA with OptiLAUtilities with DenseVectorCompilerOps with DenseMatrixCompilerOps with MathOps with RangeOps with IOOps with SeqOps with SetOps
-  with ListOps with HashMapOps with IterableOps with ArrayBufferOps with ExceptionOps {
-    
+trait OptiLACompiler extends OptiLA with OptiLAUtilities 
+  // -- ops only available to the compiler (they are restricted from application use)
+  with DeliteArrayCompilerOps 
+  with DenseVectorCompilerOps with SparseVectorCompilerOps with SparseVectorViewCompilerOps with DenseMatrixCompilerOps with SparseMatrixCompilerOps with SparseMatrixBuildableCompilerOps
+  with MathOps with RangeOps with IOOps with SeqOps with SetOps with ListOps with HashMapOps with IterableOps with ArrayBufferOps with ExceptionOps 
+  // --  kernel implementations
+  with LanguageImplOpsStandard
+  with VectorImplOpsStandard with DenseVectorImplOpsStandard with SparseVectorImplOpsStandard with DenseVectorViewImplOpsStandard with SparseVectorViewImplOps
+  with MatrixImplOpsStandard with DenseMatrixImplOpsStandard with SparseMatrixImplOps with SparseMatrixBuildableImplOps
+  with LAInputReaderImplOpsStandard with LAOutputWriterImplOpsStandard
+  // -- designates the choice of sparse matrix formats for SparseMatrix and SparseMatrixBuildable respectively
+  with SparseMatrixCSRCompilerOps with SparseMatrixCSRImplOps with SparseMatrixCOOCompilerOps with SparseMatrixCOOImplOps with SparseVectorViewCSRImplOps {
+  
   this: OptiLAApplication with OptiLAExp =>
 }
 
@@ -117,16 +127,15 @@ trait OptiLACompiler extends OptiLA with OptiLAUtilities with DenseVectorCompile
 /**
  * These are the corresponding IR nodes for OptiLA.
  */
-trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with VariantsOpsExp 
-  with LanguageOpsExp with ArithOpsExpOpt 
-  with VectorOpsExp with DenseVectorOpsExpOpt with RangeVectorOpsExp with VectorViewOpsExpOpt //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
-  with MatrixOpsExpOpt with DenseMatrixOpsExpOpt
+trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsExp with DeliteArrayOpsExp with VariantsOpsExp 
+  with LanguageOpsExp with ArithOpsExpOpt with CloneableOpsExp
+  with VectorOpsExpOpt with DenseVectorOpsExpOpt with SparseVectorOpsExp with RangeVectorOpsExp with DenseVectorViewOpsExpOpt with SparseVectorViewOpsExpOpt //with MatrixRowOpsExpOpt with MatrixColOpsExpOpt
+  with MatrixOpsExpOpt with DenseMatrixOpsExpOpt with SparseMatrixOpsExp with SparseMatrixBuildableOpsExp
   with LAInputReaderOpsExp with LAOutputWriterOpsExp
   with ExceptionOpsExp
-  with LanguageImplOpsStandard
-  with VectorImplOpsStandard with DenseVectorImplOpsStandard with VectorViewImplOpsStandard with MatrixImplOpsStandard with DenseMatrixImplOpsStandard
-  with LAInputReaderImplOpsStandard with LAOutputWriterImplOpsStandard
-  with DeliteAllOverridesExp {
+  // -- choice of sparse matrix repr
+  with SparseMatrixCSROpsExp with SparseMatrixCOOOpsExp with SparseVectorViewCSROpsExp
+  with ExpressionsOpt with DeliteAllOverridesExp {
 
   // this: OptiLAApplicationRunner => why doesn't this work?
   this: DeliteApplication with OptiLAApplication with OptiLAExp => // can't be OptiLAApplication right now because code generators depend on stuff inside DeliteApplication (via IR)
@@ -139,22 +148,10 @@ trait OptiLAExp extends OptiLACompiler with OptiLAScalaOpsPkgExp with DeliteOpsE
       case _:TargetC => new OptiLACodeGenC{val IR: OptiLAExp.this.type = OptiLAExp.this}
       case _ => err("optila does not support this target")
     }
-  }
-  
-  abstract class DefWithManifest[A:Manifest,R:Manifest] extends Def[R] {
-    val mA = manifest[A]
-    val mR = manifest[R]
   }  
 }
 
-trait OptiLAUtilities {
-  // better way to do this? manifest <:< comparisons seem to fail
-  def isSubtype(x: java.lang.Class[_], cls: java.lang.Class[_]): Boolean = {
-    if ((x == cls) || x.getInterfaces().contains(cls)) true
-    else if (x.getSuperclass() == null) false
-    else isSubtype(x.getSuperclass(), cls)
-  }    
-  
+trait OptiLAUtilities {  
   def err(s: String)(implicit ctx: SourceContext) = {
     println("[optila error]: " + s)
     println("  at " + (ctx.fileName.split("/").last + ":" + ctx.line).mkString("//").mkString(";"))
@@ -167,7 +164,7 @@ trait OptiLAUtilities {
 /**
  * OptiLA code generators
  */
-trait OptiLACodeGenBase extends GenericFatCodegen {
+trait OptiLACodeGenBase extends GenericFatCodegen with SchedulingOpt {
 
   val IR: DeliteApplication with OptiLAExp
   override def initialDefs = IR.deliteGenerator.availableDefs
@@ -212,16 +209,20 @@ trait OptiLACodeGenBase extends GenericFatCodegen {
   }
 }
 
-trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal with ScalaGenDeliteOps
-  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps  
+trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg with OptiLAScalaGenExternal 
+  with ScalaGenDeliteOps with ScalaGenDeliteCollectionOps with ScalaGenDeliteArrayOps
+  with ScalaGenLanguageOps with ScalaGenArithOps with ScalaGenVectorOps with ScalaGenDenseVectorOps with ScalaGenSparseVectorOps
+  with ScalaGenDenseVectorViewOps with ScalaGenSparseVectorViewOps with ScalaGenMatrixOps with ScalaGenDenseMatrixOps with ScalaGenSparseMatrixOps with ScalaGenSparseMatrixBuildableOps  
   //with ScalaGenMatrixRowOps with ScalaGenMatrixColOps
   with ScalaGenExceptionOps
-  with ScalaGenVariantsOps with ScalaGenDeliteCollectionOps
+  with ScalaGenVariantsOps
+  // -- choice of sparse matrix repr
+  with ScalaGenSparseMatrixCSROps with ScalaGenSparseMatrixCOOOps with ScalaGenSparseVectorViewCSROps
   with DeliteScalaGenAllOverrides { //with ScalaGenMLInputReaderOps {
   
   val IR: DeliteApplication with OptiLAExp
 
-  override val specialize = Set("DenseVector", "DenseMatrix"/*, "VectorView"*/)
+  override val specialize = Set("DenseVector", "DenseMatrix", "SparseVector", "SparseMatrixCSR", "SparseMatrixCOO", "DenseVectorView", "SparseVectorViewCSR")
 
   override def genSpec(f: File, dsOut: String) {
     for (s <- List("Double","Int","Float","Long","Boolean")) {
@@ -269,7 +270,7 @@ trait OptiLACodeGenScala extends OptiLACodeGenBase with OptiLAScalaCodeGenPkg wi
 }
 
 trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with OptiLACudaGenExternal with CudaGenDeliteOps
-  with CudaGenArithOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps with CudaGenDataStruct
+  with CudaGenArithOps with CudaGenVectorOps with CudaGenDenseVectorOps with CudaGenDenseVectorViewOps with CudaGenMatrixOps with CudaGenDenseMatrixOps with CudaGenDataStruct
   with CudaGenVariantsOps with CudaGenDeliteCollectionOps
   with DeliteCudaGenAllOverrides { //with CudaGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
   val IR: DeliteApplication with OptiLAExp
@@ -290,16 +291,16 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
       case "ppl.dsl.optila.DenseMatrix[Float]" => "DenseMatrix<float>"
       case "ppl.dsl.optila.DenseMatrix[Double]" => "DenseMatrix<double>"
       case "ppl.dsl.optila.DenseMatrix[Boolean]" => "DenseMatrix<bool>"
-      case "ppl.dsl.optila.VectorView[Int]" => "VectorView<int>"
-      case "ppl.dsl.optila.VectorView[Long]" => "VectorView<long>"
-      case "ppl.dsl.optila.VectorView[Float]" => "VectorView<float>"
-      case "ppl.dsl.optila.VectorView[Double]" => "VectorView<double>"
-      case "ppl.dsl.optila.VectorView[Boolean]" => "VectorView<bool>"
-      //case "ppl.dsl.optila.MatrixRow[Int]" => "VectorView<int>"
-      //case "ppl.dsl.optila.MatrixRow[Long]" => "VectorView<long>"
-      //case "ppl.dsl.optila.MatrixRow[Float]" => "VectorView<float>"
-      //case "ppl.dsl.optila.MatrixRow[Double]" => "VectorView<double>"
-      //case "ppl.dsl.optila.MatrixRow[Boolean]" => "VectorView<bool>"
+      case "ppl.dsl.optila.DenseVectorView[Int]" => "DenseVectorView<int>"
+      case "ppl.dsl.optila.DenseVectorView[Long]" => "DenseVectorView<long>"
+      case "ppl.dsl.optila.DenseVectorView[Float]" => "DenseVectorView<float>"
+      case "ppl.dsl.optila.DenseVectorView[Double]" => "DenseVectorView<double>"
+      case "ppl.dsl.optila.DenseVectorView[Boolean]" => "DenseVectorView<bool>"
+      //case "ppl.dsl.optila.MatrixRow[Int]" => "DenseVectorView<int>"
+      //case "ppl.dsl.optila.MatrixRow[Long]" => "DenseVectorView<long>"
+      //case "ppl.dsl.optila.MatrixRow[Float]" => "DenseVectorView<float>"
+      //case "ppl.dsl.optila.MatrixRow[Double]" => "DenseVectorView<double>"
+      //case "ppl.dsl.optila.MatrixRow[Boolean]" => "DenseVectorView<bool>"
       case "Array[Int]" => "DeliteArray<int>"
       case "Array[Long]" => "DeliteArray<long>"
       case "Array[Float]" => "DeliteArray<float>"
@@ -362,7 +363,7 @@ trait OptiLACodeGenCuda extends OptiLACodeGenBase with OptiLACudaCodeGenPkg with
 
 }
 
-trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg with OptiLAOpenCLGenExternal /*with OpenCLGenLanguageOps*/ with OpenCLGenArithOps with OpenCLGenDeliteOps with OpenCLGenVectorOps with OpenCLGenMatrixOps with OpenCLGenDenseMatrixOps with OpenCLGenDataStruct// with OpenCLGenVectorViewOps
+trait OptiLACodeGenOpenCL extends OptiLACodeGenBase with OptiLAOpenCLCodeGenPkg with OptiLAOpenCLGenExternal /*with OpenCLGenLanguageOps*/ with OpenCLGenArithOps with OpenCLGenDeliteOps with OpenCLGenVectorOps with OpenCLGenMatrixOps with OpenCLGenDenseMatrixOps with OpenCLGenDataStruct// with OpenCLGenDenseVectorViewOps
   /*with OpenCLGenVariantsOps*/ with DeliteOpenCLGenAllOverrides with OpenCLGenDeliteCollectionOps // with DeliteCodeGenOverrideOpenCL // with OpenCLGenMLInputReaderOps  //TODO:DeliteCodeGenOverrideScala needed?
 {
   val IR: DeliteApplication with OptiLAExp

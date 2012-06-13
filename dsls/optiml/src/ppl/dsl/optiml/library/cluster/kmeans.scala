@@ -38,7 +38,7 @@ trait OptiMLKmeans {
 
       // update mu -- move each cluster centroid to the mean of the points assigned to it
       (0::numClusters, * /*0::n*/) { j =>
-        val weightedpoints = sumIf[DenseVector[Double],VectorView[Double]](0, m) (c(_) == j) { x(_) } 
+        val weightedpoints = sumIf[DenseVector[Double],DenseVectorView[Double]](0, m) (c(_) == j) { x(_) } 
         //val points = sumIf(0,m) (c(_) == j) { _ => 1 }
         val points = c.count(_ == j)  // cannot fuse because sum strips first iteration
 
@@ -54,7 +54,7 @@ trait OptiMLKmeans {
     (iter,newMu)
   }
 
-  private def findNearestCluster( x_i: Rep[VectorView[Double]], mu: Rep[DenseMatrix[Double]] ): Rep[Int] = {
+  private def findNearestCluster( x_i: Rep[DenseVectorView[Double]], mu: Rep[DenseMatrix[Double]] ): Rep[Int] = {
     (mu mapRowsToVector { row => dist(x_i, row, SQUARE) }).minIndex
 //    var min_d = Double.PositiveInfinity
 //    var min_j = -1
