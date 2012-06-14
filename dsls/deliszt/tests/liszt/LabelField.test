@@ -1,0 +1,25 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object LabelField {
+	val f = FieldWithConst[Vertex,Int](0)
+	def main() {
+		for(c <- cells(mesh)) {
+		    f(vertex(c,0)) = 1
+		    f(vertex(c,1)) = 1
+		    f(vertex(c,2)) = 1
+		    f(vertex(c,3)) = 1
+		    f(vertex(c,4)) = 1
+		    f(vertex(c,5)) = 1
+		    f(vertex(c,6)) = 1
+		    f(vertex(c,7)) = 1
+		}
+		for(c <- cells(mesh)) {
+		    for(v <- vertices(c)) {
+		        if(f(v) != 1)
+		            Print("something is wrong!",v, " ", f(v))
+		    }
+		}
+	}
+}

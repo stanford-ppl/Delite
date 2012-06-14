@@ -1,0 +1,32 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object Arith {
+	def main() {
+		val a = 1 + 1
+		val b = 1. + 1.
+		val c = 1 - 1
+		val d = 1. - 1.
+		val e = 2 * 3
+		val f = 2. * 3.
+		val g = 3. / 4.
+		val h = 6 % 8
+		val i = 1 == 2
+		val j = 1 < 2
+		val k = 1 > 2
+		val l = 2 <= 2
+		val m = 2 >= 3
+		val n = 2 min 3
+		val o = 2 max 3
+		val p = 2 << 3
+		val q = 8 >> 1
+		val r = 2 | 1
+		val s = 2 & 1
+		val t = 2 ^ 1
+		val u = false || true
+		val v = false && true
+		Print(a," ",b," ",c," ",d," ",e," ",f," ",g," ",h," ",i," ",j," ",k," ",l," ",m," ",n," ",o," ",p," ",q," ",r," ",s," ",t," ",u," ",v)
+	}
+}

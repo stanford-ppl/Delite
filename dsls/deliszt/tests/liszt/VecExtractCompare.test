@@ -1,0 +1,15 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object VecExtractCompare {
+    def main() {
+	val a = Vec(1).x == 1
+	val b = Vec(1).x > 1
+	val c = Vec(1).x != 1
+	Print(a)
+	Print(b)
+	Print(c)
+    }
+}

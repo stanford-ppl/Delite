@@ -1,0 +1,15 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object VecMatrixCompareFail {
+    def main() {
+	val m = Mat(Vec(1,2),Vec(3,4))
+	val v = Vec(1,2)
+	val mv = m * v
+
+	val r = (mv/v)
+	val b = r == m
+	Print(b)
+    }
+}

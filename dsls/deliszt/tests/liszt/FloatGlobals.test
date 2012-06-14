@@ -1,0 +1,22 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object FloatGlobals {
+	var foo = 0.f
+	def main() {
+		for(c <- cells(mesh)) {
+			foo += 2.f
+		}
+		for(c <- cells(mesh)) {
+			foo *= 2.f
+		}
+		for(c <- cells(mesh)) {
+			foo = foo min 2.f
+		}
+		for(c <- cells(mesh)) {
+			foo = foo max 5.f
+		}
+		Print(foo)
+	}
+}

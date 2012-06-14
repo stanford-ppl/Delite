@@ -26,7 +26,7 @@ trait VerticesOpsExp extends VerticesOps with VariablesExp {
 
   case class VerticesToList[VD:Manifest,ED:Manifest](x: Exp[DenseVector[Vertex[VD,ED]]]) extends DeliteOpSingleTask(reifyEffectsHere(vertices_tolist_impl(x)))
   
-  case class VerticesForeach[VD:Manifest,ED:Manifest](in: Exp[DenseVector[Vertex[VD,ED]]], v: Sym[Vertex[VD,ED]], func: Exp[Unit])
+  case class VerticesForeach[VD:Manifest,ED:Manifest](in: Exp[DenseVector[Vertex[VD,ED]]], v: Sym[Vertex[VD,ED]], func: Block[Unit])
     extends DeliteOpForeachBounded[Vertex[VD,ED],Vertex[VD,ED],DenseVector] {
 
     val i = fresh[Int]

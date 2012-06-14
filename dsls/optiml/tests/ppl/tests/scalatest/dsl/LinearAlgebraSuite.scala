@@ -111,7 +111,7 @@ trait LinearAlgebraTestsCommon extends OptiMLApplication with OverloadHack {
     abs(x - y) < .01
   }
 
-  def check(x: Rep[DenseVector[Double]], y: Rep[DenseVector[Double]]): Rep[Boolean] = {
+  def check(x: Interface[Vector[Double]], y: Interface[Vector[Double]]): Rep[Boolean] = {
     if (x.length != y.length) {
       false
     }
@@ -122,9 +122,7 @@ trait LinearAlgebraTestsCommon extends OptiMLApplication with OverloadHack {
     }
   }
 
-  // if we use Overloaded1 here, we get an ambiguous implicit inside Equal; we need to separate
-  // the Overloaded "namespaces" from Application and Framework to be able to use this trick consistently
-  def check(x: Rep[DenseMatrix[Double]], y: Rep[DenseMatrix[Double]])(implicit o: Overloaded9): Rep[Boolean] = {
+  def check(x: Interface[Matrix[Double]], y: Interface[Matrix[Double]])(implicit o: Overloaded24): Rep[Boolean] = {
     if ((x.numRows != y.numRows) || (x.numCols != y.numCols)) {
       false
     }
@@ -135,7 +133,7 @@ trait LinearAlgebraTestsCommon extends OptiMLApplication with OverloadHack {
     }
   }
 
-  def check(x: Rep[Double], y: Rep[Double])(implicit o: Overloaded2): Rep[Boolean] = {
+  def check(x: Rep[Double], y: Rep[Double]): Rep[Boolean] = {
     approx(x,y)
   }
 }

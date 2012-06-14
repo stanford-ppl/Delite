@@ -53,6 +53,14 @@ trait VectorAccessors extends DeliteTestModule with OptiMLApplication {
       collect(allExceptTen(i) == v(i+10))
       i += 1
     }
+    
+    val v2 = Vector(1,2,3,4,5)
+    val vSlice = v2(0::2)
+    collect(vSlice == Vector(1,2))
+    val vSlice2 = v2(3::5)
+    collect(vSlice2 == Vector(4,5))
+    val vSlice3 = v2(4,2,0)
+    collect(vSlice3 == Vector(5,3,1))    
 
     mkReport
   }
@@ -69,6 +77,13 @@ trait VectorOperators extends DeliteTestModule with OptiMLApplication {
     //val vc = v.clone
     //collect(vc.cmp(v) == true)
 
+    val v2 = Vector(1,2,3,4,5)
+    collect(median(v2) == 3)
+    collect(mean(v2) == 3)
+    collect(max(v2) == 5)
+    collect(min(v2) == 1)
+    collect(mean(3,6,2,5) == 4.0)
+    
     mkReport
   }
 }
@@ -193,16 +208,6 @@ trait Loop extends DeliteTestModule with OptiMLApplication {
   }
 }
 
-object ConversionsRunner extends DeliteTestRunner with OptiMLApplicationRunner with Conversions
-trait Conversions extends DeliteTestModule with OptiMLApplication {
-  def main() = {
-
-    // TODO: test int*double, double*int, vec[int]*vec[double], vec[double]*vec[int]
-    collect(true)
-    mkReport
-  }
-}
-
 object CountRunner extends DeliteTestRunner with OptiMLApplicationRunner with Count
 trait Count extends DeliteTestModule with OptiMLApplication {
   def main() = {
@@ -231,7 +236,7 @@ trait Find extends DeliteTestModule with OptiMLApplication {
   def main() = {
 
     val v = Vector(1,2,3,5,5,5,7,8,9,10)
-    val i: Rep[DenseVector[Int]] = v.find { _ == 5 }
+    val i: Rep[DenseVector[Int]] = v.find { _ == 5 }  // AKS FIXME: the override for __equal doesn't work with IndexVectorDense because of the higher kinded type
     collect(i == Vector(3,4,5))
     mkReport
   }

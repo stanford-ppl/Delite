@@ -1,0 +1,14 @@
+liszt: Cell 1: vVertex 1 0
+liszt: Cell 1: vVertex 2 1
+liszt: Cell 1: vVertex 0 2
+liszt: Cell 1: vVertex 3 3
+liszt: Cell 1: eEdge 3 0
+liszt: Cell 1: eEdge 0 1
+liszt: Cell 1: eEdge 1 2
+liszt: Cell 1: eEdge 5 3
+liszt: Cell 1: eEdge 4 4
+liszt: Cell 1: eEdge 2 5
+liszt: Cell 1: fFace 1 0
+liszt: Cell 1: fFace 3 1
+liszt: Cell 1: fFace 0 2
+liszt: Cell 1: fFace 2 3

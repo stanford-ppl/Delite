@@ -1,0 +1,52 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object SizesTest {
+	
+	val interior_set = BoundarySet[Face]("default-interior")
+  val inlet_set = BoundarySet[Face]("inlet")
+  val outlet_set = BoundarySet[Face]("outlet")
+  val far_field_set = BoundarySet[Face]("far_field")
+	
+	def main() {
+		var vertices_count = 0
+		var faces_count = 0
+		var cells_count = 0
+		var edges_count = 0
+		for (v <- vertices(mesh))
+			vertices_count += 1
+		for (v <- faces(mesh))
+			faces_count += 1
+		for (v <- cells(mesh))
+			cells_count += 1
+		for (v <- edges(mesh))
+			edges_count += 1
+		Print(vertices_count, " ", size(vertices(mesh)))
+		Print(faces_count, " ", size(faces(mesh)))
+		Print(cells_count, " ", size(cells(mesh)))
+		Print(edges_count, " ", size(edges(mesh)))
+		
+		
+		var interior_set_count 	= 0
+		var inlet_set_count 		= 0
+		var outlet_set_count 		= 0
+		var far_field_set_count = 0
+		for (f <- interior_set)
+			interior_set_count += 1
+		for (f <- inlet_set)
+			inlet_set_count += 1
+		for (f <- outlet_set)
+			outlet_set_count += 1
+		for (f <- far_field_set)
+			far_field_set_count += 1
+		Print(interior_set_count, " ", size(interior_set))
+		Print(inlet_set_count, " ", size(inlet_set))
+		Print(outlet_set_count, " ", size(outlet_set))
+		Print(far_field_set_count, " ", size(far_field_set))		
+	}
+}
+
+
+

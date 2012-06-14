@@ -1,0 +1,103 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object DenseVectorsMatricesUpto10 {
+	val onesies = 		FieldWithConst[Cell, Vec[_1,Int]](Vec(0))
+	val twosies = 		FieldWithConst[Cell, Vec[_2,Int]](Vec(0,0))
+	val threesies = 	FieldWithConst[Cell, Vec[_3,Int]](Vec(0,0,0))
+	val foursies = 		FieldWithConst[Cell, Vec[_4,Int]](Vec(0,0,0,0))
+	val fivesies = 		FieldWithConst[Cell, Vec[_5,Int]](Vec(0,0,0,0,0))
+	val sixies = 			FieldWithConst[Cell, Vec[_6,Int]](Vec(0,0,0,0,0,0))
+	val sevensies = 	FieldWithConst[Cell, Vec[_7,Int]](Vec(0,0,0,0,0,0,0))
+	val eightsies = 	FieldWithConst[Cell, Vec[_8,Int]](Vec(0,0,0,0,0,0,0,0))
+	val ninesies = 		FieldWithConst[Cell, Vec[_9,Int]](Vec(0,0,0,0,0,0,0,0,0))
+	val tensies = 		FieldWithConst[Cell, Vec[_10,Int]](Vec(0,0,0,0,0,0,0,0,0,0))
+	
+	val m_onesies = 		FieldWithConst[Cell, Mat[_1,_1,Int]](Mat(Vec(0)))
+	val m_twosies = 		FieldWithConst[Cell, Mat[_2,_2,Int]](Mat(Vec(0,0),Vec(0,0)))
+	val m_threesies = 	FieldWithConst[Cell, Mat[_3,_3,Int]](Mat(Vec(0,0,0),Vec(0,0,0),Vec(0,0,0)))
+	val m_foursies = 		FieldWithConst[Cell, Mat[_4,_4,Int]](Mat(Vec(0,0,0,0),Vec(0,0,0,0),Vec(0,0,0,0),Vec(0,0,0,0)))
+	val m_fivesies = 		FieldWithConst[Cell, Mat[_5,_5,Int]](Mat(Vec(0,0,0,0,0),Vec(0,0,0,0,0),Vec(0,0,0,0,0),Vec(0,0,0,0,0),Vec(0,0,0,0,0)))
+	val m_sixies = 			FieldWithConst[Cell, Mat[_6,_6,Int]](Mat(Vec(0,0,0,0,0,0),Vec(0,0,0,0,0,0),Vec(0,0,0,0,0,0),Vec(0,0,0,0,0,0),Vec(0,0,0,0,0,0),Vec(0,0,0,0,0,0)))
+	val m_sevensies = 	FieldWithConst[Cell, Mat[_7,_7,Int]](Mat(Vec(0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0)))
+	val m_eightsies = 	FieldWithConst[Cell, Mat[_8,_8,Int]](Mat(Vec(0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0)))
+	val m_ninesies = 		FieldWithConst[Cell, Mat[_9,_9,Int]](Mat(Vec(0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0)))
+	val m_tensies = 		FieldWithConst[Cell, Mat[_10,_10,Int]](Mat(Vec(0,0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0,0),Vec(0,0,0,0,0,0,0,0,0,0)))
+	
+	val f_onesies = 		FieldWithConst[Cell, Vec[_1,Float]](Vec(0.0f))
+	val f_twosies = 		FieldWithConst[Cell, Vec[_2,Float]](Vec(0.0f,0.0f))
+	val f_threesies = 	FieldWithConst[Cell, Vec[_3,Float]](Vec(0.0f,0.0f,0.0f))
+	val f_foursies = 		FieldWithConst[Cell, Vec[_4,Float]](Vec(0.0f,0.0f,0.0f,0.0f))
+	val f_fivesies = 		FieldWithConst[Cell, Vec[_5,Float]](Vec(0.0f,0.0f,0.0f,0.0f,0.0f))
+	val f_sixies = 			FieldWithConst[Cell, Vec[_6,Float]](Vec(0.0f,0.0f,0.0f,0.0f,0.0f,0.0f))
+	val f_sevensies = 	FieldWithConst[Cell, Vec[_7,Float]](Vec(0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f))
+	val f_eightsies = 	FieldWithConst[Cell, Vec[_8,Float]](Vec(0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f))
+	val f_ninesies = 		FieldWithConst[Cell, Vec[_9,Float]](Vec(0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f))
+	val f_tensies = 		FieldWithConst[Cell, Vec[_10,Float]](Vec(0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f,0.0f))
+	
+	def main() {
+		for (c <- cells(mesh)) {
+			onesies(c) = 		Vec(1)
+			twosies(c) = 		Vec(1,1)
+			threesies(c) =	Vec(1,1,1)
+			foursies(c) = 	Vec(1,1,1,1)
+			fivesies(c) = 	Vec(1,1,1,1,1)
+			sixies(c) = 		Vec(1,1,1,1,1,1)
+			sevensies(c) =	Vec(1,1,1,1,1,1,1)
+			eightsies(c) =	Vec(1,1,1,1,1,1,1,1)
+			ninesies(c) = 	Vec(1,1,1,1,1,1,1,1,1)
+			tensies(c) = 		Vec(1,1,1,1,1,1,1,1,1,1)
+			
+			m_onesies(c) = 		Mat(Vec(1))
+			m_twosies(c) = 		Mat(Vec(1,1),Vec(1,1))
+			m_threesies(c) =	Mat(Vec(1,1,1),Vec(1,1,1),Vec(1,1,1))
+			m_foursies(c) = 	Mat(Vec(1,1,1,1),Vec(1,1,1,1),Vec(1,1,1,1),Vec(1,1,1,1))
+			m_fivesies(c) = 	Mat(Vec(1,1,1,1,1),Vec(1,1,1,1,1),Vec(1,1,1,1,1),Vec(1,1,1,1,1),Vec(1,1,1,1,1))
+			m_sixies(c) = 		Mat(Vec(1,1,1,1,1,1),Vec(1,1,1,1,1,1),Vec(1,1,1,1,1,1),Vec(1,1,1,1,1,1),Vec(1,1,1,1,1,1),Vec(1,1,1,1,1,1))
+			m_sevensies(c) =	Mat(Vec(1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1))
+			m_eightsies(c) =	Mat(Vec(1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1))
+			m_ninesies(c) = 	Mat(Vec(1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1))
+			m_tensies(c) = 		Mat(Vec(1,1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1,1),Vec(1,1,1,1,1,1,1,1,1,1))
+			
+			f_onesies(c) = 		Vec(1.0f)
+			f_twosies(c) = 		Vec(1.0f,1.0f)
+			f_threesies(c) =	Vec(1.0f,1.0f,1.0f)
+			f_foursies(c) = 	Vec(1.0f,1.0f,1.0f,1.0f)
+			f_fivesies(c) = 	Vec(1.0f,1.0f,1.0f,1.0f,1.0f)
+			f_sixies(c) = 		Vec(1.0f,1.0f,1.0f,1.0f,1.0f,1.0f)
+			f_sevensies(c) =	Vec(1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f)
+			f_eightsies(c) =	Vec(1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f)
+			f_ninesies(c) = 	Vec(1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f)
+			f_tensies(c) = 		Vec(1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f,1.0f)
+		}
+		
+		for (c <- cells(mesh)) {
+			Print(onesies(c))
+			Print(twosies(c))
+			Print(threesies(c))
+			Print(foursies(c))
+			Print(fivesies(c))
+			Print(sixies(c))
+			Print(sevensies(c))
+			Print(eightsies(c))
+			Print(ninesies(c))
+			Print(tensies(c))
+			
+			Print(f_onesies(c))
+			Print(f_twosies(c))
+			Print(f_threesies(c))
+			Print(f_foursies(c))
+			Print(f_fivesies(c))
+			Print(f_sixies(c))
+			Print(f_sevensies(c))
+			Print(f_eightsies(c))
+			Print(f_ninesies(c))
+			Print(f_tensies(c))
+		}
+	}
+}
+
+
+

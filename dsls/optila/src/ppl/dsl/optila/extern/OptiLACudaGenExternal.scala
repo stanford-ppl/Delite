@@ -18,26 +18,26 @@ trait OptiLACudaGenExternal extends CudaGenExternalBase with CudaGenDataStruct {
   val IR: OptiLAExp
   import IR._
   
-  override def emitNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
+  override def emitExternalNode(sym: Sym[Any], rhs: Def[Any])(implicit stream: PrintWriter) = rhs match {
     case e@DenseMatrixTimesVectorBLAS(x,y) =>
       val args = scala.List("'t'", "%1$s.numCols", "%1$s.numRows", "%1$s.data", "%2$s.data", "%3$s.data")
-                 .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
+                 .map { _.format(quote(x), quote(y), quote(sym)) }
       emitMethodCall(sym, e, cuBLAS, args)
       registerKernel(scala.List(sym))
 
     case e@DenseMatrixMultiplyBLAS(x,y) =>
       val args = scala.List("'n'", "'n'", "%2$s.numCols", "%1$s.numRows", "%2$s.numRows", "1.0", "%2$s.data", "%2$s.numCols", "%1$s.data", "%1$s.numCols", "0.0", "%3$s.data", "%3$s.numCols")
-                 .map { _.format(quote(getBlockResult(x)), quote(getBlockResult(y)), quote(sym)) }
+                 .map { _.format(quote(x), quote(y), quote(sym)) }
       emitMethodCall(sym, e, cuBLAS, args)
       registerKernel(scala.List(sym))
 
     case e@DenseMatrixSigmoidVectorized(in) =>
       val args = scala.List("%1$s.data", "%2$s.data", "%1$s.numRows*%1$s.numCols")
-                 .map { _.format(quote(getBlockResult(in)), quote(sym)) }
+                 .map { _.format(quote(in), quote(sym)) }
       emitMethodCall(sym, e, cuBLAS, args)
       registerKernel(scala.List(sym))
 
-    case _ => super.emitNode(sym, rhs)
+    case _ => super.emitExternalNode(sym, rhs)
   }
     
   override def emitExternalLib(rhs: Def[Any]): Unit = rhs match {

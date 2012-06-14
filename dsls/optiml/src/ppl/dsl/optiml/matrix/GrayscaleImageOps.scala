@@ -64,7 +64,7 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   // implemented via delite ops
 
   case class GrayscaleImageObjectCartToPolarMagnitude(x: Exp[DenseMatrix[Float]], y: Exp[DenseMatrix[Float]])
-    extends MatrixArithmeticZipWith[Float,DenseMatrix[Float]] {
+    extends MatrixArithmeticZipWith[Float,DenseMatrix[Float],DenseMatrix[Float]] {
 
     val intfA = denseMatToInterface(x)
     val intfB = denseMatToInterface(y)    
@@ -72,7 +72,7 @@ trait GrayscaleImageOpsExp extends GrayscaleImageOps with VariablesExp {
   }
 
   case class GrayscaleImageObjectCartToPolarPhase(x: Exp[DenseMatrix[Float]], y: Exp[DenseMatrix[Float]])
-    extends MatrixArithmeticZipWith[Float,DenseMatrix[Float]] {
+    extends MatrixArithmeticZipWith[Float,DenseMatrix[Float],DenseMatrix[Float]] {
       
     val intfA = denseMatToInterface(x)
     val intfB = denseMatToInterface(y)      

@@ -1,0 +1,1 @@
+add_library(MeshLoader SHARED ppl_dsl_deliszt_datastruct_scala_MeshLoader.cpp MeshLoader.cpp JNICache.cpp)

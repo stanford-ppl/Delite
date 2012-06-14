@@ -1,0 +1,10 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object EmptyFunctions {
+	def bar() = 1
+	def foo() { }
+	def main() {
+	}
+} 

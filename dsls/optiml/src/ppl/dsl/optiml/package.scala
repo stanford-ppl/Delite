@@ -8,18 +8,21 @@ package object optiml {
 
   type Vector[T] = optila.Vector[T]
   type DenseVector[T] = optila.DenseVector[T]
-  //type SparseVector[T] = optila.SparseVector[T]
-  type VectorRow[T] = optila.VectorRow[T]
-  type VectorCol[T] = optila.VectorCol[T]
+  type SparseVector[T] = optila.SparseVector[T]
+  type RowVector[T] = optila.RowVector[T]
+  type ColVector[T] = optila.ColVector[T]
   //type ZeroVector[T] = optila.ZeroVector[T]
   //type EmptyVector[T] = optila.EmptyVector[T]
   type RangeVector = optila.RangeVector
-  type VectorView[T] = optila.VectorView[T]
+  type DenseVectorView[T] = optila.DenseVectorView[T]
+  type SparseVectorView[T] = optila.SparseVectorView[T]
   //type MatrixRow[T] = optila.MatrixRow[T]
   //type MatrixCol[T] = optila.MatrixCol[T]
 
   type Matrix[T] = optila.Matrix[T]
+  type MatrixBuildable[T] = optila.MatrixBuildable[T]
   type DenseMatrix[T] = optila.DenseMatrix[T]
-  //type SparseMatrix[T] = optila.SparseMatrix[T]
+  type SparseMatrix[T] = optila.SparseMatrix[T]
+  type SparseMatrixBuildable[T] = optila.SparseMatrixBuildable[T]
   //type SymmetricMatrix[T] = optila.SymmetricMatrix[T]
 }

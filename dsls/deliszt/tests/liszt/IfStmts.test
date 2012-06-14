@@ -1,0 +1,33 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object IfStmts {
+	val field = FieldWithConst[Cell,Int](5)
+	val boundary = BoundarySet[Face]("inlet")
+	
+	def func(a : Int) : Int = {
+		if(a < 5)
+			return 3
+		return 7
+	}
+	def func2() : Int = {
+		val b = 7
+		val a = if(b < 8) {return 11; 7} else 3
+		return a
+	}
+	def main() {
+		val a = 8
+		if(a < 8) {
+			if(a < 4) {
+				Print("moo")
+			} else Print("moo2")
+		} else Print("correct")
+		Print(func(1),func(6))
+		var moo = if(a < 3) 0 else { Print("running"); 1 }
+		moo = if(a < 3) 0 else { Print("running"); 1 }
+		Print(moo)
+		Print(func2())
+	}
+}

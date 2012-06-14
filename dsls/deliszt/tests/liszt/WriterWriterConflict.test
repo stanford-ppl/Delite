@@ -1,0 +1,21 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object WriterWriterConflict {
+    val cellField = FieldWithConst[Cell, Int](0);
+
+    def main() {
+	for (c <- cells(mesh)) {
+	    for (cc <- cells(c)) {
+		// Two different reductions in same loop = writer/writer conflict
+		cellField(cc) += 5
+		cellField(cc) *= 5
+	    }
+	}
+	// This should never be run!
+	for (c <- cells(mesh)) {
+	    Print(ID(c), ":", cellField(c))
+	}
+    }
+}

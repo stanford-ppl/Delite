@@ -1,0 +1,12 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+
+@lisztcode
+object InlineIfMat {
+    def main() {
+	// Should be equivalent to
+	val a = Mat( Vec(1), Vec(1, 1))
+	Print(a)
+    }
+}

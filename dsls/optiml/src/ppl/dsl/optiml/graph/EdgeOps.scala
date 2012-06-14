@@ -52,6 +52,16 @@ trait EdgeOpsExp extends EdgeOps with EffectExp {
 
   ///////////////////////////////////////////////////
   // implemented via method on real data structure
+  
+  ///////////////////////////////////////////////////
+  // implemented via delite ops
+
+  // case class EdgesForeach[E <:Edge:Manifest](in: Exp[Edges[E]], v: Sym[E], func: Block[Unit])
+  //   extends DeliteOpForeachBounded[Edge,E,Edges] {
+  // 
+  //   val i = fresh[Int]
+  //   val sync = reifyEffects(List())
+  // }
 
   case class EdgeObjectNew[VD:Manifest,ED:Manifest](g: Exp[Graph[VD,ED]], in: Exp[ED], out: Exp[ED], a: Exp[Vertex[VD,ED]], b: Exp[Vertex[VD,ED]])
     extends Def[Edge[VD,ED]] {

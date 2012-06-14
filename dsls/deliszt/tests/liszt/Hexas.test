@@ -1,0 +1,20 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object Hexa {
+
+  def main() {
+      for(c <- cells(mesh)) {
+        for(v withLabel i <- vertices(c)) {
+            Print(c,": v",v," ",i)
+        }
+        for(e withLabel i <- edges(c)) {
+            Print(c,": e",e," ",i)
+        }
+        for(f withLabel i <- faces(c)) {
+            Print(c,": f",f," ",i)
+        }
+      }
+  }
+}

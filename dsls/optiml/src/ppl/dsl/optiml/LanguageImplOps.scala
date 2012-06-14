@@ -5,10 +5,29 @@ trait LanguageImplOps { this: OptiML =>
   def optiml_untilconverged_impl[A:Manifest:Cloneable](
      x: Rep[A], thresh: Rep[Double], max_iter: Rep[Int], clone_prev_val: Rep[Boolean],
      block: Rep[A] => Rep[A], diff: (Rep[A],Rep[A]) => Rep[Double]): Rep[A]  
+  // def optiml_triangular_impl(n: Rep[Int], includeDiagonal: Rep[Boolean]): (Rep[IndexVectorDense],Rep[IndexVectorDense])
 }
 
 trait LanguageImplOpsStandard extends LanguageImplOps {
   this: OptiMLCompiler with OptiMLLift =>
+  
+  // def optiml_triangular_impl(n: Rep[Int], includeDiagonal: Rep[Boolean]) = {
+  //   val cols = IndexVector(0, true)
+  //   val rows = IndexVector(0, true)
+  //   var i = 0
+  //   var j = 0
+  //   while (i < n) {
+  //     var start = if (includeDiagonal) i else i+1
+  //     var j = start
+  //     while (j < n) {
+  //       rows += i        
+  //       cols += j
+  //       j += 1
+  //     }
+  //     i += 1
+  //   }
+  //   (rows,cols)
+  // }
   
   def optiml_untilconverged_impl[VD:Manifest,ED:Manifest](g: Rep[Graph[VD,ED]], block: Rep[Vertex[VD,ED]] => Rep[Unit]) = {
     val vertices = g.vertices

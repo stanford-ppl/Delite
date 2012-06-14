@@ -34,6 +34,6 @@ class Stream[T:Manifest](val numRows: Int, val numCols: Int, val chunkSize: Int,
     }
 
     def vview(start: Int, stride: Int, length: Int, isRow: Boolean) = {
-      new VectorView[T](_data, start, stride, length, isRow)
+      new DenseVectorView[T](_data, start, stride, length, isRow)
     }
 }

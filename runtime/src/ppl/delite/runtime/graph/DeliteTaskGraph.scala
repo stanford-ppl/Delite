@@ -150,9 +150,9 @@ object DeliteTaskGraph {
       case "OP_Single" => new OP_Single(id, "kernel_"+id, resultMap)
       case "OP_External" => new OP_External(id, "kernel_"+id, resultMap)
       case "OP_MultiLoop" =>
-			  val size = getFieldString(op, "sizeValue")
-				val sizeIsConst = getFieldString(op, "sizeType") == "const"				
-				new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
+        val size = getFieldString(op, "sizeValue")
+        val sizeIsConst = getFieldString(op, "sizeType") == "const"
+        new OP_MultiLoop(id, size, sizeIsConst, "kernel_"+id, resultMap, getFieldBoolean(op, "needsCombine"), getFieldBoolean(op, "needsPostProcess"))
       case "OP_Foreach" => new OP_Foreach(id, "kernel_"+id, resultMap)
       case other => error("OP Type not recognized: " + other)
     }
@@ -196,6 +196,7 @@ object DeliteTaskGraph {
     //process target GPU metadata
     for (tgt <- Targets.GPU) {
       if (resultMap.contains(tgt)) processGPUMetadata(op, newop, tgt)
+      else if (resultMap.contains(Targets.C)) processCMetadata(op, newop, tgt) //TODO: this assumes C kernels only used with GPU
     }
 
     //process kernel variant
@@ -542,6 +543,31 @@ object DeliteTaskGraph {
     }
     */
 
+  }
+
+  def processCMetadata(op: Map[Any, Any], newop: DeliteOP, tgt: Targets.Value)(implicit graph: DeliteTaskGraph) {
+    val metadataAll = getFieldMap(op, "metadata")
+    val metadataMap = getFieldMap(metadataAll, "c")
+    val metadata = newop.getGPUMetadata(tgt)
+
+    for (input <- getFieldList(metadataMap, "cppInputs").reverse) { //input list
+      val inputMap = input.asInstanceOf[Map[String,Any]]
+      val sym = inputMap.keys.head
+      val value = inputMap.values.head.asInstanceOf[List[Any]]
+      val data = metadata.newInput(getOp(sym), sym)
+      data.resultType = value.head
+      data.func = value.tail.head
+      data.funcReturn = value.tail.tail.head
+    }
+
+    //output copy
+    for (out <- getFieldList(metadataMap, "cppOutputs").reverse) {
+      val outputMap = out.asInstanceOf[Map[Any,Any]]
+      val output = metadata.newOutput(outputMap.keys.head)
+      val outList = outputMap.values.head.asInstanceOf[List[Any]]
+      output.resultType = outList.head
+      output.funcReturn = outList.tail.head
+    }
   }
 
   def unsupportedType(err:String) = throw new RuntimeException("Unsupported Op Type found: " + err)

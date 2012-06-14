@@ -8,7 +8,6 @@ import ppl.delite.framework.{Config, DeliteApplication}
 import collection.mutable.{ListBuffer}
 import collection.mutable.HashMap
 import java.io.{FileWriter, BufferedWriter, File, PrintWriter}
-import ppl.delite.framework.extern.DeliteGenExternal
 import scala.reflect.SourceContext
 
 /**
@@ -158,7 +157,7 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
    * This is all because we allow individual generators to refine their dependencies, which directly impacts
    * the generated schedule. We may want to consider another organization.
    */
-  override def emitFatBlockFocused(currentScope: List[TTP])(result: List[Exp[Any]])(implicit stream: PrintWriter): Unit = {
+  override def emitFatBlockFocused(currentScope: List[TTP])(result: List[Block[Any]])(implicit stream: PrintWriter): Unit = {
     printlog("-- block for "+result)
     currentScope.foreach(printlog(_))
 
@@ -271,4 +270,4 @@ trait DeliteCodegen extends GenericFatCodegen with BaseGenStaticData with ppl.de
 
 }
 
-trait DeliteCodeGenPkg extends DeliteGenTaskGraph with DeliteGenExternal
+trait DeliteCodeGenPkg extends DeliteGenTaskGraph

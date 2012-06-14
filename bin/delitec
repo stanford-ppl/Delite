@@ -11,7 +11,7 @@ from time import localtime, strftime
 
 import delitecommon
 
-DSLs = ['optiml','optila','optiql','optisdr']
+DSLs = ['optiml','optila','optiql','optisdr','deliszt','optigraph','opticvx']
 LMS_HOME = os.getenv("LMS_HOME")
 lms_version = "lms_2.10.0-M1-virtualized"
 
@@ -22,24 +22,25 @@ def warn(s):
     print("warn: " + s)
 
 def main():
-    usage = "usage: %prog <application runner> [options]"
+    usage = "usage: %prog <application runner> [staging args] [options]"
     parser = OptionParser(usage)
-    parser.add_option("-v", "--verbose", action="store_true", default=False, dest="verbose")
+    parser.add_option("-v", "--verbose", dest="verbose", action="store_true", default=False, help="print delitec environment settings")
     parser.add_option("--nb", dest="no_blas", action="store_true", default=False, help="disable blas calls")
     parser.add_option("--nf", dest="no_fusion", action="store_true", default=False, help="disables op fusion")
     parser.add_option("--gpu", dest="gpu", action="store_true", default=False, help="enables gpu generation")
     parser.add_option("-p", "--profile", dest="profile", action="store_true", default=False, help="enables application profiling")
     parser.add_option("--debug", dest="debug", action="store_true", default=False, help="enables verbose compiler output")
     parser.add_option("--Xdebug", dest="xdebug", action="store_true", default=False, help="enables LMS debug output; for compiler writers only")
+    parser.add_option("--Xnocache", dest="xnocache", action="store_true", default=False, help="disables caching during staging; may reduce memory footprint but decrease code gen performance")
     parser.add_option("-d", "--dest", action="store", dest="build_dir", default=os.getenv("PWD"), help="output location for generated files")
 
     (opts, args) = parser.parse_args()
-    if len(args) != 1:
-        parser.error("only a single application file should be passed to delitec as an argument")
+    if len(args) < 1:
+        parser.error("an application file must be passed to delitec as an argument")
     
     delitecommon.initialize()
     checkLMSEnv()
-    stage(args[0], opts)
+    stage(args[0], args[1:len(args)], opts)
  
 def checkLMSEnv():
     global LMS_HOME
@@ -58,7 +59,7 @@ def checkLMSEnv():
               err("couldn't find the LMS library at: " + lms_home + ". Please set the LMS_HOME environment variable or libs.lms.home entry in delite.properties manually.")
           LMS_HOME = lms_home
 
-def stage(runner, opts):
+def stage(runner, params, opts):
     java_opts = os.getenv("JAVA_OPTS", "")
 
     build_dir = opts.build_dir + "/generated/"
@@ -75,6 +76,8 @@ def stage(runner, opts):
         java_opts = java_opts + " -Ddelite.debug"
     if opts.xdebug == True:
         java_opts = java_opts + " -Dlms.verbosity=3"
+    if opts.xnocache == False:
+        java_opts = java_opts + " -Ddelite.cache.syms"
     java_opts = java_opts + " -Dnested.variants.level=0"
     
     scala_virt_version = delitecommon.scala_virt_version
@@ -110,7 +113,7 @@ def stage(runner, opts):
        print("LMS_HOME = " + LMS_HOME)
 
     print "==  Generating DEG file with options: " + str(opts)
-    java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " " + runner
+    java_cmd = delitecommon.JAVA_HOME + "/bin/java " + java_opts + " " + runner + " " + ' '.join(params)
     #print exec
     ecode = os.system(java_cmd)
     if ecode != 0:

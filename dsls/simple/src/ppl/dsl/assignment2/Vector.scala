@@ -50,14 +50,14 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
   this: SimpleVectorExp =>
     
   //implemented via kernel embedding (sequential)
-  case class PPrint[A:Manifest](x: Exp[Vector[A]], print: Exp[Unit])
+  case class PPrint[A:Manifest](x: Exp[Vector[A]], print: Block[Unit])
     extends DeliteOpSingleTask(print)
   
   //implemented via Delite ops
   case class VectorPlus[A:Manifest:Numeric](inA: Exp[Vector[A]], inB: Exp[Vector[A]])
     extends DeliteOpZipWith[A,A,A,Vector[A]] {
 
-    def alloc = Vector[A](inA.length) // ignored
+    override def alloc = Vector[A](inA.length) // ignored
     override def allocWithArray = data => struct[Vector[A]](List("Vector"), Map("data" -> data))
     val size = copyTransformedOrElse(_.size)(inA.length)
     
@@ -65,7 +65,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
   }
   
   abstract class VectorMap[A:Manifest:Numeric](in: Exp[Vector[A]]) extends DeliteOpMap[A,A,Vector[A]] {
-    def alloc = Vector[A](in.length) // not used
+    override def alloc = Vector[A](in.length) // not used
     override def allocWithArray = data => struct[Vector[A]](List("Vector"), Map("data" -> data))
     val size = copyTransformedOrElse(_.size)(in.length)
   }
@@ -86,7 +86,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
   
   case class VectorFilter[A:Manifest](in: Exp[Vector[A]]) extends DeliteOpFilter[A,A,Vector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
-    def alloc = Vector[A](0) // not used
+    override def alloc = Vector[A](0) // not used
     override def allocWithArray = data => struct[Vector[A]](List("Vector"), Map("data" -> data))
     
     def func = a => a
@@ -114,8 +114,7 @@ trait VectorOpsExp extends VectorOps with VariablesExp with BaseFatExp with Deli
 
   override def dc_size[A:Manifest](x: Exp[DeliteCollection[A]])(implicit ctx: SourceContext): Exp[Int] = ifVector(x)(length(_))(super.dc_size(x))
   override def dc_apply[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int])(implicit ctx: SourceContext): Exp[A] = ifVector(x)(apply(_, idx))(super.dc_apply(x, idx))
-  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int], value: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = ifVector(x)(v => reifyEffectsHere(darray_update(v.data, idx, value)))(super.dc_update(x,idx,value))
-  
+  override def dc_update[A:Manifest](x: Exp[DeliteCollection[A]], idx: Exp[Int], value: Exp[A])(implicit ctx: SourceContext): Exp[Unit] = ifVector(x)(v => reifyEffectsHere(darray_update(v.data, idx, value)))(super.dc_update(x,idx,value))  
 }
 
 /**

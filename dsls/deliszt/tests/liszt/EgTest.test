@@ -1,0 +1,21 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object EgTest {
+	
+	def testfn() : Int = {
+		val a = 5
+		while(a < 5) {
+			main()
+		} 
+		return a
+	}
+	def main() {
+	  Print("MOOSAUCES")
+	  for(f <- faces(mesh)) {
+	  	val f2 = f
+	  	Print("F2: ",ID(f2))
+	  }
+	}
+}

@@ -11,7 +11,7 @@ trait RecordOps extends Base {
     
   def newRecord[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T]
   
-  implicit def RepToRecordOps(r: Rep[Record]) = new RecordOpsCls(r)
+  implicit def repToRecordOps(r: Rep[Record]) = new RecordOpsCls(r)
   
   class RecordOpsCls(r: Rep[Record]) {
     def selectDynamic[T:Manifest](n: String): Rep[T] = recordFieldAccess[T](r,n)
@@ -29,7 +29,7 @@ trait RecordOps extends Base {
   
 }
 
-trait RecordOpsExp extends RecordOps with BaseExp {
+trait RecordOpsExp extends RecordOps with EffectExp {
     
   case class CreateRecord[T:Manifest](fields: Seq[(String,Rep[_])]) extends Def[T]
   case class RecordFieldAccess[T:Manifest](res: Rep[Record], field: String) extends Def[T]
@@ -47,6 +47,11 @@ trait RecordOpsExp extends RecordOps with BaseExp {
   override def syms(e: Any): List[Sym[Any]] = e match { 
     case CreateRecord(fields) => fields flatMap{case (n, rhs) => syms(rhs)} toList
     case _ => super.syms(e)
+  }
+
+  override def readSyms(e: Any): List[Sym[Any]] = e match { 
+    case CreateRecord(fields) => fields flatMap{case (n, rhs) => readSyms(rhs)} toList
+    case _ => super.readSyms(e)
   }
   
   override def boundSyms(e: Any): List[Sym[Any]] = e match {    

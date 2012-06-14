@@ -1,0 +1,17 @@
+#!/bin/bash
+if [[ ! -n "$DIFF_PROGRAM" ]] ; then
+  DIFF_PROGRAM=diff
+fi
+if [[ ! -n "$FDIFF_PROGRAM" ]] ; then
+  FDIFF_PROGRAM=`dirname $0`/../release/lib/fuzzydiff
+fi
+FUZZ=200
+FILE1=`mktemp -t liszt_diff.XXXXXX`
+FILE2=`mktemp -t liszt_diff.XXXXXX`
+sort -t ' ' -k1,1 < $1 | uniq > $FILE1
+sort -t ' ' -k1,1 < $2 | uniq > $FILE2
+$FDIFF_PROGRAM $FILE1 $FILE2 $FUZZ || $DIFF_PROGRAM $FILE1 $FILE2
+RETURN=$?
+rm $FILE1
+rm $FILE2
+exit $RETURN

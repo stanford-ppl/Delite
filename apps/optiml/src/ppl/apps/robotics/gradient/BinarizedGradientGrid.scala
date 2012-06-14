@@ -97,7 +97,7 @@ if (crt_template.match_list.length < 0) println("dummy")
   // Construct a template from a region of a gradient summary image.
   def fillTemplateFromGradientImage(gradSummary: Rep[GrayscaleImage], xc: Rep[Int], yc: Rep[Int], r: Rep[Int], level: Rep[Int]): Rep[BinarizedGradientTemplate] = {
     val span = 2 * r
-    val tpl = BinarizedGradientTemplate(r, null, null, level, DenseVector[Int](span * span, false), IndexVector(0), null, null, null)
+    val tpl = BinarizedGradientTemplate(r, null, null, level, DenseVector[Int](span * span, false), IndexVector(0, true), null, null, null)
 
     //Bear with me, we have to worry a bit about stepping off the image boundaries:
     val (xstart, xoffset) = t2(if (xc - r < 0) (unit(0), r - xc) else (xc - r, unit(0)))
@@ -206,7 +206,7 @@ if (crt_template.match_list.length < 0) println("dummy")
       val bottom = if (a.y + a.height < b.y + b.height) a.y + a.height else b.y + b.height
       val height = bottom - top
       // TODO: why won't this work implicitly?
-      arithToArithOps(2.0f) * height * width / (total_area + 0.000001f) //Return the fraction of intersection
+      2.0f * height * width / (total_area + 0.000001f) //Return the fraction of intersection
       // TODO: can't get this one to kick in either :(
       //chainRepArithToArithOps[Int,Float](height * width) * 2.0f / (total_area + 0.000001f) //Return the fraction of intersection
     } else {

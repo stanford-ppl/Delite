@@ -1,0 +1,27 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object IntReductions {
+	val iField = FieldWithConst[Cell,Int](0)
+	def main() {
+		for(c <- cells(mesh)) {
+			iField(c) += 2
+		}
+		for(c <- cells(mesh)) {
+			iField(c) *= 2
+		}
+		for(c <- cells(mesh)) {
+			iField(c) |= 1
+		}
+		for(c <- cells(mesh)) {
+			iField(c) &= 7
+		}
+		for(c <- cells(mesh)) {
+			iField(c) ^= 7
+		}
+		for(c <- cells(mesh)) {
+			Print(iField(c))
+		}
+	}
+}

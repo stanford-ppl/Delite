@@ -1,0 +1,9 @@
+import Liszt.Language._
+import Liszt.MetaInteger._
+
+@lisztcode
+object SpecialPrintln {
+    def main() {
+        Print("!@#$%^&*()_+:\"<>?,./;'\n\t\r")
+    }
+}

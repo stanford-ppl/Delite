@@ -8,7 +8,7 @@ trait ResultOps extends Base {
   
   class Result extends Struct[Rep]
       
-  def __new[T:Manifest](fields: (String, Boolean, Rep[T] => Rep[_])*): Rep[T] = newResult[T](fields)
+  def __new[T<:Struct[Rep]:Manifest](fields: (String, Boolean, Rep[T] => Rep[_])*): Rep[T] = newResult[T](fields)
     
   def newResult[T:Manifest](fields: Seq[(String,Boolean,Rep[T] => Rep[_])]): Rep[T]
   
