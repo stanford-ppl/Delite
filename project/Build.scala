@@ -6,13 +6,15 @@ object DeliteBuild extends Build {
   
   // FIXME: custom-built scalatest
   val dropboxScalaTestRepo = "Dropbox" at "http://dl.dropbox.com/u/12870350/scala-virtualized"
-  val scalatest = "org.scalatest" % "scalatest_2.10.0-virtualized-SNAPSHOT" % "1.6.1-SNAPSHOT" //% "test"
-  
-  val virtScala = "2.10.0-M1-virtualized"//"2.10.0-virtualized-SNAPSHOT"
+
+  val scalatestCompile = "org.scalatest" % "scalatest_2.10.0-virtualized-SNAPSHOT" % "1.6.1-SNAPSHOT" 
+  val scalatest = scalatestCompile % "test" 
+
+  val virtScala = "2.10.0-M1-virtualized" //"2.10.0-virtualized-SNAPSHOT"
   val virtBuildSettingsBase = Defaults.defaultSettings ++ Seq(
     resolvers += ScalaToolsSnapshots, 
-    organization := "stanford-ppl",
     resolvers += dropboxScalaTestRepo,
+    organization := "stanford-ppl",
     scalaVersion := virtScala,
     scalaBinaryVersion := virtScala,
     publishArtifact in (Compile, packageDoc) := false,
@@ -20,6 +22,7 @@ object DeliteBuild extends Build {
     // needed for scala.tools, which is apparently not included in sbt's built in version
     libraryDependencies += "org.scala-lang" % "scala-library" % virtScala,
     libraryDependencies += "org.scala-lang" % "scala-compiler" % virtScala,
+    libraryDependencies += scalatest,
     // used in delitec to access jars
     retrieveManaged := true,
     scalacOptions += "-Yno-generic-signatures",
@@ -34,7 +37,9 @@ object DeliteBuild extends Build {
   )
 
   val virtBuildSettings = virtBuildSettingsBase ++ Seq(
-    scalaSource in Compile <<= baseDirectory(_ / "src")
+    scalaSource in Compile <<= baseDirectory(_ / "src"),
+    scalaSource in Test <<= baseDirectory(_ / "tests"),
+    parallelExecution in Test := false
   )
 
 
@@ -65,12 +70,15 @@ object DeliteBuild extends Build {
 
   lazy val framework = Project("framework", file("framework"), settings = virtBuildSettings) dependsOn(runtime) // dependency to runtime because of Scopes
 
-  lazy val dsls = Project("dsls", file("dsls"), settings = virtBuildSettings) aggregate(optila, optiml, optiql, optisdr) 
-  lazy val optila = Project("optila", file("dsls/optila"), settings = virtBuildSettings) dependsOn(framework)
-  lazy val optiml = Project("optiml", file("dsls/optiml"), settings = virtBuildSettings) dependsOn(optila)
-  
-  lazy val optisdr = Project("optisdr", file("dsls/optisdr"), settings = virtBuildSettings) dependsOn(optila)
-  lazy val optiql = Project("optiql", file("dsls/optiql"), settings = virtBuildSettings) dependsOn(framework)
+  lazy val deliteTest = Project("delite-test", file("framework/delite-test"), settings = virtBuildSettings ++ Seq(
+    libraryDependencies += scalatestCompile 
+  )) dependsOn(framework, runtime)
+
+  lazy val dsls = Project("dsls", file("dsls"), settings = virtBuildSettings) aggregate(optila, optiml, optiql) 
+  lazy val optila = Project("optila", file("dsls/optila"), settings = virtBuildSettings) dependsOn(framework, deliteTest)
+  lazy val optisdr = Project("optisdr", file("dsls/optisdr"), settings = virtBuildSettings) dependsOn(optila, deliteTest)
+  lazy val optiml = Project("optiml", file("dsls/optiml"), settings = virtBuildSettings) dependsOn(optila, deliteTest)
+  lazy val optiql = Project("optiql", file("dsls/optiql"), settings = virtBuildSettings) dependsOn(framework, deliteTest)
 
   lazy val apps = Project("apps", file("apps"), settings = virtBuildSettings) aggregate(optimlApps, optiqlApps, interopApps)
   lazy val optimlApps = Project("optiml-apps", file("apps/optiml"), settings = virtBuildSettings) dependsOn(optiml)
@@ -80,12 +88,10 @@ object DeliteBuild extends Build {
   lazy val runtime = Project("runtime", file("runtime"), settings = virtBuildSettings)
 
   lazy val tests = Project("tests", file("tests"), settings = virtBuildSettingsBase ++ Seq(
-    scalaSource := file("tests/main-src"),
-    scalaSource in Test := file("tests/src"),
-    libraryDependencies += scalatest,
+    scalaSource in Test <<= baseDirectory(_ / "src"),
     parallelExecution in Test := false
     // don't appear to be able to depend on a different scala version simultaneously, so just using scala-virtualized for everything
-  )) dependsOn(framework, runtime, optiml, optisdr, optimlApps, runtime)
+  )) dependsOn(framework, runtime, optiml, optisdr, optimlApps, runtime, deliteTest)
   
   //dependsOn(framework % "test->compile;compile->compile", optiml % "test->compile;compile->compile", optiql % "test", optimlApps % "test->compile;compile->compile", runtime % "test->compile;compile->compile")
 }
