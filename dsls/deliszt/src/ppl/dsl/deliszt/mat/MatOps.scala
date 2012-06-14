@@ -468,7 +468,7 @@ trait MatOpsExpOpt extends MatOpsExp {
               buf ++= (0 to 2) map { i => reifyEffects(m.func(dc_apply(m.in.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
             case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)), _,_)) => 
               buf ++= (0 to 2) map { i => reifyEffects(m.func(dc_apply(m.in.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
-            case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.alloc.tp.toString)
+            case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.allocN.tp.toString)
                       printdbg(" XXXXXXXXXXXXXXXXXXXXXXX def is: " + findDefinition(ce.allocN.res.asInstanceOf[Sym[Any]]).toString)
            }
         }        
@@ -478,7 +478,7 @@ trait MatOpsExpOpt extends MatOpsExp {
               buf ++= (0 to 2) map { i => reifyEffects(z.func(dc_apply(z.inA.asInstanceOf[Exp[DeliteCollection[A]]],unit(i)),dc_apply(z.inB.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
             case Def(Reify(Def(Reflect(Vec3New(a,b,c), u, es)), _, _)) =>
               buf ++= (0 to 2) map { i => reifyEffects(z.func(dc_apply(z.inA.asInstanceOf[Exp[DeliteCollection[A]]],unit(i)),dc_apply(z.inB.asInstanceOf[Exp[DeliteCollection[A]]],unit(i))).asInstanceOf[Exp[A]]).res }
-           case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.alloc.tp.toString)
+           case _ => printdbg(" XXXXXXXXXXXXXXXXXXXXXXX found non vec3?! : " + ce.allocN.tp.toString)
                      printdbg(" XXXXXXXXXXXXXXXXXXXXXXX def is: " + findDefinition(ce.allocN.res.asInstanceOf[Sym[Any]]).toString)
 	  }
         }            

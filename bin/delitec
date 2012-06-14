@@ -85,18 +85,19 @@ def stage(runner, params, opts):
     SCALA_VIRT_HOME = delitecommon.SCALA_VIRT_HOME
     
     #add classpaths for Delite
+    scala_major_id = delitecommon.scala_major_id
     cp = " -cp "
     cp = cp + LMS_HOME + "/*" + os.pathsep
-    cp = cp + DELITE_HOME + "/framework/target/" + scala_virt_version + "/classes" + os.pathsep
+    cp = cp + DELITE_HOME + "/framework/target/" + scala_major_id + "/classes" + os.pathsep
     
     #DSL cps
     for dsl in DSLs:
-      cp = cp + DELITE_HOME + "/dsls/" + dsl + "/target/" + scala_virt_version + "/classes" + os.pathsep
-      cp = cp + DELITE_HOME + "/apps/" + dsl + "/target/" + scala_virt_version + "/classes" + os.pathsep
+      cp = cp + DELITE_HOME + "/dsls/" + dsl + "/target/" + scala_major_id + "/classes" + os.pathsep
+      cp = cp + DELITE_HOME + "/apps/" + dsl + "/target/" + scala_major_id + "/classes" + os.pathsep
 
     #test cp
-    cp = cp + DELITE_HOME + "/tests/target/" + scala_virt_version + "/classes" + os.pathsep
-    cp = cp + DELITE_HOME + "/target/" + scala_virt_version + "/test-classes" + os.pathsep
+    cp = cp + DELITE_HOME + "/tests/target/" + scala_major_id + "/classes" + os.pathsep
+    cp = cp + DELITE_HOME + "/target/" + scala_major_id + "/test-classes" + os.pathsep
 
     #scala-virt cp
     cp = cp + SCALA_VIRT_HOME + "/scala-library.jar" + os.pathsep
