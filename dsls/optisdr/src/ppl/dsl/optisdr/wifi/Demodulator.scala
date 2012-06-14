@@ -6,7 +6,7 @@ import ppl.dsl.optila.DenseVector
 trait Demodulator16x16 {
   this: OptiSDRApplication =>
   
-  val demodulator = kernel {() => {
+  val demodulator16x16 = kernel {() => {
     val pilotPolarity = Vector[Int](1,1,1,1, -1,-1,-1,1, -1,-1,-1,-1, 1,1,-1,1, -1,-1,1,1, -1,1,1,-1, 1,1,1,1, 1,1,-1,1,
                                               1,1,-1,1, 1,-1,-1,1, 1,1,-1,1, -1,-1,-1,1, -1,1,-1,-1, 1,-1,-1,1, 1,1,1,1, -1,-1,1,1,
                                               -1,-1,1,-1, 1,-1,1,1, -1,-1,-1,1, 1,-1,-1,-1, -1,1,-1,-1, 1,-1,1,1, 1,1,-1,1, -1,1,-1,1,

@@ -21,7 +21,7 @@ trait CyclicStreamOps extends Variables {
   def cyclicstream_new[A:Manifest](x: Rep[Array[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[CyclicStream[A]]
   def cyclicstream_new[A:Manifest](x: Rep[DenseVector[A]], n: Rep[Int])(implicit ctx: SourceContext, o: Overloaded1): Rep[CyclicStream[A]]
   
-  def cyclicstream_apply[A:Manifest](x: Rep[Stream[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
+  def cyclicstream_apply[A:Manifest](x: Rep[CyclicStream[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
   
   def cyclicstream_data[A:Manifest](x: Rep[CyclicStream[A]])(implicit ctx: SourceContext): Rep[Array[A]]
   def cyclicstream_offset[A:Manifest](x: Rep[CyclicStream[A]])(implicit ctx: SourceContext): Rep[Int]
@@ -41,10 +41,10 @@ trait CyclicStreamOpsExp extends CyclicStreamOps with VariablesExp with BaseFatE
   case class CyclicStreamData[A:Manifest](x: Exp[CyclicStream[A]]) extends DefWithManifest[A,Array[A]]
   case class CyclicStreamOffset[A:Manifest](x: Exp[CyclicStream[A]]) extends DefWithManifest[A,Int]
   
-  def cyclicstream_apply[A:Manifest](x: Rep[Stream[A]], n: Rep[Int])(implicit ctx: SourceContext): Rep[A]
+  def cyclicstream_apply[A:Manifest](x: Exp[CyclicStream[A]], n: Rep[Int])(implicit ctx: SourceContext) = reflectPure(CyclicStreamApply(x, n))
   
-  def cyclicstream_data[A:Manifest](x: Rep[CyclicStream[A]])(implicit ctx: SourceContext) = reflectPure(CyclicStreamData(x))
-  def cyclicstream_offset[A:Manifest](x: Rep[CyclicStream[A]])(implicit ctx: SourceContext) = reflectPure(CyclicStreamOffset(x))
+  def cyclicstream_data[A:Manifest](x: Exp[CyclicStream[A]])(implicit ctx: SourceContext) = reflectPure(CyclicStreamData(x))
+  def cyclicstream_offset[A:Manifest](x: Exp[CyclicStream[A]])(implicit ctx: SourceContext) = reflectPure(CyclicStreamOffset(x))
   
   override def mirror[A:Manifest](e: Def[A], f: Transformer)(implicit ctx: SourceContext): Exp[A] = (e match {
     case e@CyclicStreamApply(x,n) => reflectPure(CyclicStreamApply(f(x),f(n))(e.mA))(mtype(manifest[A]),implicitly[SourceContext])
