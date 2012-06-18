@@ -22,14 +22,14 @@ trait DemodulatorApp extends DeliteTestModule with OptiSDRApplication with Demod
   def main() = {
     val a = Vector[Complex](0, false).mutable
     
-    //for(i <- 0 until 80) {
-    //  a += Complex(1, 1)
-    //  a += Complex(-0.5, i / 80.0)
-    //  a += Complex(0.2, 0.4)
-    //  a += Complex(-i / 40.0, 0)
-    //}
+    for(i <- 0 until 80) {
+      a += Complex(1, 1)
+      a += Complex(-0.5, i / 80.0)
+      a += Complex(0.2, 0.4)
+      a += Complex(-i / 40.0, 0)
+    }
     
-    // val c = demodulator16x16()(a.unsafeImmutable.toStream)
+    val c = demodulator16x16()(a.unsafeImmutable.toStream)
     
     collect(true)
     

@@ -94,7 +94,7 @@ trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
     extends DeliteOpMap[A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
 
-    def alloc = DenseVector[A](in.length, !in.isRow)
+    override def alloc = DenseVector[A](in.length, in.isRow)
     def func = e => implicitly[SDRArith[A]].conj(e)
 
     val mA = manifest[A]
@@ -129,7 +129,7 @@ trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
     extends DeliteOpMap[A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
 
-    def alloc = DenseVector[A](in.length, !in.isRow)
+    override def alloc = DenseVector[A](in.length, in.isRow)
     def func = e => implicitly[BitArith[A]].unary_~(e)
 
     val mA = manifest[A]
@@ -139,7 +139,7 @@ trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
     extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(inA.length)
 
-    def alloc = DenseVector[A](inA.length, !inA.isRow)
+    override def alloc = DenseVector[A](inA.length, inA.isRow)
     def func = (a,b) => implicitly[BitArith[A]].&(a,b)
 
     val mA = manifest[A]
@@ -149,7 +149,7 @@ trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
       extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(inA.length)
 
-    def alloc = DenseVector[A](inA.length, !inA.isRow)
+    override def alloc = DenseVector[A](inA.length, inA.isRow)
     def func = (a,b) => implicitly[BitArith[A]].|(a,b)
 
     val mA = manifest[A]
@@ -159,7 +159,7 @@ trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
       extends DeliteOpZipWith[A,A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(inA.length)
 
-    def alloc = DenseVector[A](inA.length, !inA.isRow)
+    override def alloc = DenseVector[A](inA.length, inA.isRow)
     def func = (a,b) => implicitly[BitArith[A]].^(a,b)
 
     val mA = manifest[A]
@@ -169,7 +169,7 @@ trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
       extends DeliteOpMap[A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
 
-    def alloc = DenseVector[A](in.length, !in.isRow)
+    override def alloc = DenseVector[A](in.length, in.isRow)
     def func = e => implicitly[BitArith[A]].<<(e, y)
 
     val mA = manifest[A]
@@ -179,7 +179,7 @@ trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
       extends DeliteOpMap[A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
 
-    def alloc = DenseVector[A](in.length, !in.isRow)
+    override def alloc = DenseVector[A](in.length, in.isRow)
     def func = e => implicitly[BitArith[A]].>>(e, y)
 
     val mA = manifest[A]
@@ -189,7 +189,7 @@ trait SDRVectorOpsExp extends SDRVectorOps with VariablesExp with BaseFatExp {
       extends DeliteOpMap[A,A,DenseVector[A]] {
     val size = copyTransformedOrElse(_.size)(in.length)
 
-    def alloc = DenseVector[A](in.length, !in.isRow)
+    override def alloc = DenseVector[A](in.length, in.isRow)
     def func = e => implicitly[BitArith[A]].>>>(e, y)
 
     val mA = manifest[A]

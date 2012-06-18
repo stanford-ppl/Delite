@@ -11,6 +11,7 @@ import scala.virtualization.lms.internal.{GenerationFailedException, GenericFatC
 
 import ppl.delite.framework.ops.DeliteCollectionOpsExp
 import ppl.delite.framework.datastruct.scala.DeliteCollection
+import ppl.delite.framework.Util._
 
 import ppl.dsl.optisdr._
 import ppl.dsl.optila.DenseVector
@@ -145,7 +146,7 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp wit
   def fsv_obj_oflength[A:Manifest](length: Exp[Int]) = reflectMutable(FSVObjOfLength(length))
   
  abstract class SDRStreamArithmeticMap[A:Manifest:Arith](in: Exp[Stream[A]]) extends DeliteOpMap[A,A,Stream[A]] {
-    def alloc = FakeStreamVector.ofLength[A](in.length)
+    override def alloc = FakeStreamVector.ofLength[A](in.length)
     val size = copyTransformedOrElse(_.size)(in.length)
     
     def m = manifest[A]
@@ -153,7 +154,7 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp wit
   }
   
   abstract class SDRStreamArithmeticZipWith[A:Manifest:Arith](inA: Exp[Stream[A]], inB: Exp[Stream[A]]) extends DeliteOpZipWith[A,A,A,Stream[A]] {
-    def alloc = FakeStreamVector.ofLength[A](inA.length)
+    override def alloc = FakeStreamVector.ofLength[A](inA.length)
     val size = copyTransformedOrElse(_.size)(inA.length)
     
     def m = manifest[A]
@@ -175,7 +176,7 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp wit
   }
   
    abstract class SDRStreamSDRArithmeticMap[A:Manifest:SDRArith](in: Exp[Stream[A]]) extends DeliteOpMap[A,A,Stream[A]] {
-    def alloc = FakeStreamVector.ofLength[A](in.length)
+    override def alloc = FakeStreamVector.ofLength[A](in.length)
     val size = copyTransformedOrElse(_.size)(in.length)
     
     def m = manifest[A]
@@ -183,7 +184,7 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp wit
   }
 
  abstract class SDRStreamBitArithmeticMap[A:Manifest:BitArith](in: Exp[Stream[A]]) extends DeliteOpMap[A,A,Stream[A]] {
-    def alloc = FakeStreamVector.ofLength[A](in.length)
+    override def alloc = FakeStreamVector.ofLength[A](in.length)
     val size = copyTransformedOrElse(_.size)(in.length)
     
     def m = manifest[A]
@@ -191,7 +192,7 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp wit
   }
   
   abstract class SDRStreamBitArithmeticZipWith[A:Manifest:BitArith](inA: Exp[Stream[A]], inB: Exp[Stream[A]]) extends DeliteOpZipWith[A,A,A,Stream[A]] {
-    def alloc = FakeStreamVector.ofLength[A](inA.length)
+    override def alloc = FakeStreamVector.ofLength[A](inA.length)
     val size = copyTransformedOrElse(_.size)(inA.length)
     
     def m = manifest[A]
@@ -329,7 +330,7 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp wit
     
     val _size = if(inA.length < inB.length) inA.length else inB.length
     val size = copyTransformedOrElse(_.size)(_size)
-    def alloc = FakeStreamVector.ofLength[R](_size)
+    override def alloc = FakeStreamVector.ofLength[R](_size)
     
     val mA = manifest[A]
     val mB = manifest[B]
@@ -340,7 +341,7 @@ trait SDRStreamOpsExp extends SDRStreamOps with VariablesExp with BaseFatExp wit
     extends DeliteOpMap[A,R,Stream[R]] {
 
     val size = copyTransformedOrElse(_.size)(in.length)
-    def alloc = FakeStreamVector.ofLength[R](in.length)
+    override def alloc = FakeStreamVector.ofLength[R](in.length)
 
     val mA = manifest[A]
     val mR = manifest[R]
