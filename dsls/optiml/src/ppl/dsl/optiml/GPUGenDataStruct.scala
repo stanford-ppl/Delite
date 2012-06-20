@@ -3,9 +3,10 @@ package ppl.dsl.optiml
 import _root_.scala.virtualization.lms.internal.{Expressions, CudaCodegen}
 
 /* This trait defines methods for copying datastructures between JVM and GPU */
-//TODO: Factor out common things and simplify these methods
+trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct with GPUGenDataStruct
+trait OpenCLGenDataStruct extends ppl.dsl.optila.OpenCLGenDataStruct with GPUGenDataStruct
 
-trait CudaGenDataStruct extends ppl.dsl.optila.CudaGenDataStruct {
+trait GPUGenDataStruct extends ppl.dsl.optila.GPUGenDataStruct {
 
   val IR: Expressions
   import IR._

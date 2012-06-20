@@ -196,7 +196,6 @@ object DeliteTaskGraph {
     //process target GPU metadata
     for (tgt <- Targets.GPU) {
       if (resultMap.contains(tgt)) processGPUMetadata(op, newop, tgt)
-      else if (resultMap.contains(Targets.C)) processCMetadata(op, newop, tgt) //TODO: this assumes C kernels only used with GPU
     }
 
     //process kernel variant
@@ -460,34 +459,10 @@ object DeliteTaskGraph {
       data.resultType = value.head
       data.func = "copyInputHtoD_%s_%s".format(newop.id,sym)
       data.funcReturn = "copyMutableInputDtoH_%s_%s".format(newop.id,sym)
-      tgt match {
-        case Targets.OpenCL => data.objFields = value.tail.head.asInstanceOf[Map[String,String]]
-        case _ =>
-      }
-    }
-
-    val tempSyms = new HashMap[String,DeliteOP]
-    for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) {
-      val key = (temp.asInstanceOf[Map[String,Any]].keys.head)
-      val tempOp = new OP_Single(key, null, null)
-      tempSyms(key) = tempOp
-      metadata.tempOps ::= tempOp
-    }
-
-    def getOpLike(sym: String) = {
-      try getOp(sym)
-      catch { case _ => tempSyms(sym) }
-    }
-
-    for (temp <- getFieldList(metadataMap, "gpuTemps").reverse) { //temporaries list
-      val key = (temp.asInstanceOf[Map[String,Any]].keys.head)
-      val value = (temp.asInstanceOf[Map[String,Any]].values.head).asInstanceOf[List[Any]]
-      val data = metadata.newTemp(key)
-      data.resultType = value.head
-      data.func = "allocFunc_%s".format(key)
-      for (sym <- value.tail.head.asInstanceOf[List[String]].reverse) {
-        data.inputs ::= (getOpLike(sym), sym)
-      }
+      //tgt match {
+      //  case Targets.OpenCL => data.objFields = value.tail.head.asInstanceOf[Map[String,String]]
+      //  case _ =>
+      //}
     }
 
     //output allocation
@@ -498,7 +473,7 @@ object DeliteTaskGraph {
       output.resultType = outList.head
       output.func = "allocFunc_%s".format(outputMap.keys.head)
       for (sym <- outList.tail.head.asInstanceOf[List[String]].reverse) {
-        output.inputs ::= (getOpLike(sym), sym)
+        output.inputs ::= (getOp(sym), sym)
       }
       //output copy
       output.funcReturn = "copyOutputDtoH_%s".format(outputMap.keys.head)
@@ -519,55 +494,13 @@ object DeliteTaskGraph {
       output.loopZeroInputs = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
       output.loopZeroInputs_2 = loopConfig.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.tail.head.asInstanceOf[List[String]]
 
-      tgt match {
-        case Targets.OpenCL => output.objFields = outList.tail.tail.tail.tail.head.asInstanceOf[Map[String,String]]
-        case _ =>
-      }
+      //tgt match {
+      //  case Targets.OpenCL => output.objFields = outList.tail.tail.tail.tail.head.asInstanceOf[Map[String,String]]
+      //  case _ =>
+      //}
 
     }
 
-    /*
-    def fill(field: String) {
-      val list = getFieldList(metadataMap, field)
-      val data = metadata(field)
-      data.func = list.head
-      for (sym <- list.tail.head.asInstanceOf[List[String]].reverse) data.inputs ::= (getOpLike(sym), sym)
-    }
-
-    if (!newop.isInstanceOf[OP_External]){
-      fill("gpuBlockSizeX") //threads/block - x
-      fill("gpuBlockSizeY") //threads/block - y
-      fill("gpuBlockSizeZ") //threads/block - z
-      fill("gpuDimSizeX") //blocks in grid - x
-      fill("gpuDimSizeY") //blocks in grid - y
-    }
-    */
-
-  }
-
-  def processCMetadata(op: Map[Any, Any], newop: DeliteOP, tgt: Targets.Value)(implicit graph: DeliteTaskGraph) {
-    val metadataAll = getFieldMap(op, "metadata")
-    val metadataMap = getFieldMap(metadataAll, "c")
-    val metadata = newop.getGPUMetadata(tgt)
-
-    for (input <- getFieldList(metadataMap, "cppInputs").reverse) { //input list
-      val inputMap = input.asInstanceOf[Map[String,Any]]
-      val sym = inputMap.keys.head
-      val value = inputMap.values.head.asInstanceOf[List[Any]]
-      val data = metadata.newInput(getOp(sym), sym)
-      data.resultType = value.head
-      data.func = value.tail.head
-      data.funcReturn = value.tail.tail.head
-    }
-
-    //output copy
-    for (out <- getFieldList(metadataMap, "cppOutputs").reverse) {
-      val outputMap = out.asInstanceOf[Map[Any,Any]]
-      val output = metadata.newOutput(outputMap.keys.head)
-      val outList = outputMap.values.head.asInstanceOf[List[Any]]
-      output.resultType = outList.head
-      output.funcReturn = outList.tail.head
-    }
   }
 
   def unsupportedType(err:String) = throw new RuntimeException("Unsupported Op Type found: " + err)

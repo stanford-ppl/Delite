@@ -647,14 +647,24 @@ trait OpenCLGenDenseVectorOps extends BaseGenDenseVectorOps with OpenCLGenFat wi
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case DenseVectorApply(x,n) => emitValDef(sym, remap(x.tp) + "_apply(" + quote(x) + "," + quote(n) + ")")
+    case DenseVectorUpdate(x,n,y) => stream.println(remap(x.tp) + "_update(" + quote(x) + "," + quote(n) + "," + quote(y) + ");")
+    case DenseVectorLength(x) => emitValDef(sym, quote(x) + ".length")
+    case DenseVectorIsRow(x) => emitValDef(sym, quote(x) + ".isRow")
+    case DenseVectorRawData(x) => emitValDef(sym, remap(x.tp) + "_getdata(" + quote(x) + ")")
+    case DenseVectorSetLength(x,v) => stream.println(quote(x) + ".length = " + quote(v) + ";")
+    case DenseVectorSetIsRow(x,v) => stream.println(quote(x) + ".isRow = " + quote(v) + ";")
+    case DenseVectorSetRawData(x,v) => stream.println(remap(x.tp) + "_setdata(" + quote(x) + "," + quote(v) + ");")
 
-    // Only allow allocating primitive type Vectors
-    case DenseVectorNew(length, isRow) => {
-      stream.println(addTab()+"%s *devPtr;".format(remap(sym.tp.typeArguments(0))))
-      stream.println(addTab()+"DeliteOpenCLMalloc((void**)&devPtr,%s*sizeof(%s));".format(quote(length),remap(sym.tp.typeArguments(0))))
-      stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,devPtr);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
-    }
-	
+    case DenseVectorNew(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
+    case DenseVectorZeroDouble(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
+    case DenseVectorZeroFloat(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
+    case DenseVectorZeroInt(length, isRow) => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,0);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(length),quote(isRow)))
+    case DenseVectorEmptyDouble() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
+    case DenseVectorEmptyFloat() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
+    case DenseVectorEmptyInt() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
+    case DenseVectorEmpty() => checkGPUAlloc(sym); stream.println(addTab()+"%s *%s_ptr = new %s(0,true);".format(remap(sym.tp),quote(sym),remap(sym.tp)))
+
     case _ => super.emitNode(sym, rhs)
   }
 }

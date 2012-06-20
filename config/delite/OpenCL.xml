@@ -1,0 +1,9 @@
+<DeliteExternalLib>
+<compiler> /usr/bin/g++ </compiler> <!-- path to nvcc -->
+<headers>
+  <prefix> -I </prefix>
+  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include </path> <!-- required for JNI -->
+  <path> /home/kjbrown/java/jdk1.7.0_b147_x86_64/include/linux </path>
+  <path> /usr/local/cuda/include </path>
+</headers>
+</DeliteExternalLib>

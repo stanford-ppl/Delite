@@ -1,16 +1,14 @@
-#include <list>
-#include <map>
-#include <queue>
-#include <iostream>
-#include <CL/cl.h>
+#include "DeliteOpenCL.h"
 
 using namespace std;
 
-extern cl_context context;
-extern cl_command_queue command_queue;
+list<cl_mem> *lastAlloc = new list<cl_mem>();
+queue<FreeItem> *freeList = new queue<FreeItem>();
+map<void*,list<cl_mem>*> *clMemoryMap = new map<void*,list<cl_mem>*>();
 
 void hostInit() {
 	printf("hostInit() is called.\n");
+
 }
 
 /* allocate a buffer and returns the cl_mem object */
@@ -76,29 +74,28 @@ void DeliteOpenCLMemcpyDtoHAsync(void* dptr, cl_mem src, size_t size) {
   clReleaseEvent(event);
 }
 
-list<cl_mem>* lastAlloc = new list<cl_mem>();
+void DeliteOpenCLMemcpyDtoDAsync(cl_mem dst, cl_mem src, size_t size) {
+  cl_event event;
+  cl_int ret = clEnqueueCopyBuffer(command_queue, src, dst, 0, 0, size, 0, NULL, &event);
+	if(ret != CL_SUCCESS)
+  printf("ERROR: DeliteOpenCLMemcpyDtoDAsync failed!\n");
+  clReleaseEvent(event);
+}
 
-struct FreeItem {
-    //cudaEvent_t event;
-    list<void*>* keys;      // List of pointers to the DSL Objects (e.g. pointer to DoubleVector object on the host side)
-};
-
-queue<FreeItem>* freeList = new queue<FreeItem>();
-map<void*,list<cl_mem>*>* clMemoryMap = new map<void*,list<cl_mem>*>();
 
 void freeCLMemory(FreeItem item) {
-    list<void*>::iterator iter;
+    list< pair<void*,bool> >::iterator iter;
     for (iter = item.keys->begin(); iter != item.keys->end(); iter++) {
       //cout << "object ref: " << (long) *iter << endl;
-      if(clMemoryMap->find(*iter) != clMemoryMap->end()) {
-        list<cl_mem>* freePtrList = clMemoryMap->find(*iter)->second;
+      if(clMemoryMap->find((*iter).first) != clMemoryMap->end()) {
+        list<cl_mem>* freePtrList = clMemoryMap->find((*iter).first)->second;
         list<cl_mem>::iterator iter2;
         for (iter2 = freePtrList->begin(); iter2 != freePtrList->end(); iter2++) {
           clReleaseMemObject(*iter2);
         }
-        clMemoryMap->erase(*iter);
+        clMemoryMap->erase((*iter).first);
         delete freePtrList;
-        free(*iter);
+       	if(!((*iter).second)) free((*iter).first);
       }
     }
     delete item.keys;
@@ -222,3 +219,4 @@ cl_mem DeliteOpenCLHostMalloc(size_t size, void *ptr) {
   //if(ret != CL_SUCCESS) printf("ERROR: DeliteOpenCLMalloc failed (%d)!\n",size);
   return buf;
 }
+

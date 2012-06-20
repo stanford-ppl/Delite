@@ -235,3 +235,58 @@ trait ScalaGenDeliteArrayOps extends ScalaGenEffect {
     case _ => super.remap(m)
   }
 }
+
+trait CudaGenDeliteArrayOps extends CudaGenEffect {
+  val IR: DeliteArrayOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    //case DeliteArrayNew(length) =>
+    //  emitValDef(sym, "new Array[" + remap(sym.Type.typeArguments(0)) + "](" + quote(length) + ")")
+    case DeliteArrayLength(da) =>
+      emitValDef(sym, quote(da) + ".length")
+    case DeliteArrayApply(da, idx) =>
+      emitValDef(sym, quote(da) + ".apply(" + quote(idx) + ")")
+    case DeliteArrayUpdate(da, idx, x) =>
+      emitValDef(sym, quote(da) + ".update(" + quote(idx) + "," + quote(x) + ");")
+    case _ => super.emitNode(sym, rhs)
+  }
+
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteArray" => "DeliteArray<" + remap(m.typeArguments(0)) + ">"
+    case _ => super.remap(m)
+  }
+
+  override def isObjectType[A](m: Manifest[A]) : Boolean = m.erasure.getSimpleName match {
+      case "DeliteArray" => true
+      case _ => super.isObjectType(m)
+  }
+}
+
+trait OpenCLGenDeliteArrayOps extends OpenCLGenEffect {
+  val IR: DeliteArrayOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    //case DeliteArrayNew(length) =>
+    //  emitValDef(sym, "new Array[" + remap(sym.Type.typeArguments(0)) + "](" + quote(length) + ")")
+    case DeliteArrayLength(da) =>
+      emitValDef(sym, remap(da.tp) + "_size(" + quote(da) + ")")
+    case DeliteArrayApply(da, idx) =>
+      emitValDef(sym, remap(da.tp) + "_apply(" + quote(da) + "," + quote(idx) + ")")
+    case DeliteArrayUpdate(da, idx, x) =>
+      emitValDef(sym, remap(da.tp) + "_update(" + quote(da) + "," + quote(idx) + "," + quote(x) + ")")
+    case _ => super.emitNode(sym, rhs)
+  }
+
+  override def remap[A](m: Manifest[A]): String = m.erasure.getSimpleName match {
+    case "DeliteArray" => "DeliteArray_" + remap(m.typeArguments(0))
+    case _ => super.remap(m)
+  }
+
+  override def isObjectType[A](m: Manifest[A]) : Boolean = m.erasure.getSimpleName match {
+      case "DeliteArray" => true
+      case _ => super.isObjectType(m)
+  }
+
+}

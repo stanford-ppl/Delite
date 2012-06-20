@@ -60,9 +60,10 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("#include <jni.h>\n") //jni
     out.append("#include <CL/cl.h>\n") //OpenCL API
     out.append("#include \"DeliteOpenCL.cpp\"\n") //Delite-OpenCL interface for DSL
-    out.append("#include \"helperFuncs.h\"\n") //imports all dsl kernels and helper functions
-    out.append("#include \"clblas.h\"\n")
-    out.append("#include \"dsl.h\"\n")
+    out.append("#include \"helperFuncs.cpp\"\n") //imports all dsl kernels and helper functions
+    //out.append("#include \"clblas.h\"\n")
+    //out.append("#include \"dsl.h\"\n")
+    out.append(OpenCLCompile.headers.map(s => "#include \"" + s + "\"\n").mkString(""))
     out.append("#define MAX_SRC_SIZE 1048576\n")
   }
 
@@ -93,6 +94,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
   }
 
   protected def writeGlobalsInitializer(out: StringBuilder) {
+	  out.append("hostInit();\n")
     out.append("env = jnienv;\n")
     // OpenCL device init
     if (System.getProperty("os.name").contains("Windows"))
@@ -145,8 +147,8 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("clFinish(command_queue);\n")
 
     // BLAS init
-    out.append("clblasInit(context,device_id);\n")
-    out.append("clblasSetQueue(command_queue);\n")
+    //out.append("clblasInit(context,device_id);\n")
+    //out.append("clblasSetQueue(command_queue);\n")
   }
 
 
@@ -154,11 +156,15 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
   protected def addKernelCalls(schedule: ArrayDeque[DeliteOP], location: Int, available: ArrayBuffer[(DeliteOP,String)], awaited: ArrayBuffer[DeliteOP], syncList: ArrayBuffer[DeliteOP], out: StringBuilder)(implicit aliases:AliasTable[(DeliteOP,String)]) {
     //available: list of ops with data currently on gpu, have a "g" symbol
     //awaited: list of ops synchronized with but data only resides on cpu, have a "c" symbol
+    val getterList = new ArrayBuffer[String]
     val iter = schedule.iterator
     while (iter.hasNext) {
       val op = iter.next
       //add to available & awaited lists
-      available += Pair(op,op.id)
+      if (op.isInstanceOf[OP_Nested])
+        available += Pair(op,op.id.replaceAll("_"+op.scheduledResource,""))
+      else
+        available ++= op.getGPUMetadata(target).outputs.map(o=>Pair(op,o._2))
       awaited += op
 
       if (op.isInstanceOf[OP_Nested]) makeNestedFunction(op, location)
@@ -168,7 +174,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
         if(!awaited.contains(dep)) { //this dependency does not yet exist for this resource
           awaited += dep
           for (sym <- dep.getOutputs) //TODO: should get and set outputs individually; SMP needs to adopt this strategy as well
-            writeGetter(dep, sym, location, out) //get to synchronize
+            writeGetter(dep, sym, location, getterList, out) //get to synchronize
         }
       }
       //get kernel inputs (dependencies that could require a memory transfer)
@@ -181,42 +187,37 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
           //write a copy function for objects
           if (inData != null) { //only perform a copy for object types
             addInputCopy = true
-            writeInputCopy(input, sym, inData.func, inData.resultType, out)
+            writeInputCopy(input, sym, inData.func, inData.resultType, out, true)
           }
           else if (isPrimitiveType(input.outputType(sym)))
             writeInputCast(input, sym, out) //if primitive type, simply cast to transform from "c" type into "g" type
           else {
-            //TODO: What is this case??
-            assert(op.isInstanceOf[OP_Nested]) //object without copy must be for a nested function call
+            assert(op.isInstanceOf[OP_Nested],op.id+":opencl metadata for output copy not specified") //object without copy must be for a nested function call
             available -= Pair(input,sym) //this input doesn't actually reside on GPU
           }
         }
         else if (needsUpdate(op, input, sym)) { //input exists on device but data is old
           //write a new copy function (input must be an object)
           addInputCopy = true
-          writeInputCopy(input, sym, inData.func, inData.resultType, out)
+          writeInputCopy(input, sym, inData.func, inData.resultType, out, false)
         }
       }
-      /*
       if (addInputCopy) { //if a h2d data transfer occurred
         //sync kernel launch with completion of last input copy
-        out.append("addEvent(h2dStream, kernelStream);\n")
+        //out.append("addEvent(h2dStream, kernelStream);\n")
       }
-      */
 
       //write the temporary allocations
       writeTempAllocs(op, out)
       //write the output allocation
       writeOutputAllocs(op, out)
       //write the call
-      if (op.isInstanceOf[OP_Nested])
-        writeFunctionCall(op, out)
-      else if (op.isInstanceOf[OP_External]) {
-        OpenCLCompile.externList.append(op.id)
-        writeLibraryCall(op, out)
+      op match {
+        case n: OP_Nested => writeFunctionCall(op, out)
+        case e: OP_External => writeLibraryCall(op, out)
+        case m: OP_MultiLoop => writeMultiKernelCall(op, out)
+        case _ => writeKernelCall(op, out)
       }
-      else
-        writeKernelCall(op, out)
 
       //write the setter
       var addSetter = false
@@ -225,16 +226,14 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
       }
       if (addSetter) {
         syncList += op //add op to list that needs sync generation
-        /*
         //sync output copy with kernel completion
-        out.append("addEvent(kernelStream, d2hStream);\n")
-        */
+        //out.append("addEvent(kernelStream, d2hStream);\n")
         //write a setter
-        //TODO: Is this the best time to copy back?
         writeSetters(op, location, out)
       }
       writeDataFrees(op, out, available)
     }
+    writeGetterFrees(getterList, out)
   }
 
   //TODO: should track if data has already been updated - implement current version for each resource - useful for gpu/cluster
@@ -250,19 +249,22 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
 
   protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
     if (op.isInstanceOf[OP_Executable]) {
-      for ((data,name) <- op.getGPUMetadata(target).outputs) {
-        out.append(op.outputType(Targets.OpenCL,name))
+      for ((data,name) <- op.getGPUMetadata(target).outputs if data.resultType!="void") {
+        out.append(op.outputType(target,name))
         out.append("* ")
         out.append(getSymGPU(name))
-        out.append(" = ")
-        out.append(data.func)
-        out.append('(')
-        writeInputList(op, data, out)
-        out.append(");\n")
-        writeMemoryAdd(name, out)
+        if (op.isInstanceOf[OP_MultiLoop])
+          out.append(";\n")
+        else {
+          out.append(" = ")
+          out.append(data.func)
+          out.append('(')
+          writeInputList(op, data, out)
+          out.append(");\n")
+          writeMemoryAdd(name, out)
+        }
       }
     }
-
   }
 
   protected def writeTempAllocs(op: DeliteOP, out: StringBuilder) {
@@ -301,6 +303,8 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
   }
 
   protected def writeKernelCall(op: DeliteOP, out: StringBuilder) {
+    assert(false)
+    /*
     if (op.task == null) return //dummy op
 
     // Create the OpenCL kernel
@@ -350,6 +354,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     }
     out.append("clReleaseEvent(event_"+op.task+");\n")
     out.append("clReleaseKernel("+op.task+");\n")
+    */
   }
 
   protected def writeLibraryCall(op: DeliteOP, out: StringBuilder) {
@@ -364,17 +369,34 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
         out.append(',')
       }
     }
-    writeLibCallInputs(op, out) //then all op inputs
-    //out.append(",kernelStream")
+    writeInputs(op, out) //then all op inputs
     out.append(");\n")
     out.append("clFinish(command_queue);\n")
     //assert(false)
+  }
+
+  protected def writeMultiKernelCall(op: DeliteOP, out: StringBuilder) {
+    if (op.task == null) return //dummy op
+    out.append(op.task) //kernel name
+    out.append('(')
+    var first = true
+    for ((data,name) <- (op.getGPUMetadata(target).outputs) if data.resultType!="void") {
+      if(!first) out.append(',')
+      out.append('&')
+      out.append(getSymGPU(name)) //first kernel inputs are OP outputs
+      first = false
+    }
+    if (!first && (op.getInputs.length > 0 || op.getGPUMetadata(target).temps.length > 0)) out.append(",")
+    writeInputs(op, out, false) //then all op inputs
+    writeTemps(op, out, false) //then all op temporaries
+    out.append(");\n")
   }
 
   protected def writeFunctionCall(op: DeliteOP, out: StringBuilder) {
     if (op.outputType != "Unit") {
       out.append(op.outputType(Targets.OpenCL))
       out.append(' ')
+      if(op.outputType != "Unit") out.append('*')
       out.append(getSymGPU(op.getOutputs.head))
       out.append(" = ")
     }
@@ -397,9 +419,10 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     //assert(false)
   }
 
-  protected def writeGetter(op: DeliteOP, sym: String, location: Int, out: StringBuilder) {
+  protected def writeGetter(op: DeliteOP, sym: String, location: Int, getterList: ArrayBuffer[String], out: StringBuilder) {
     //get data from CPU
     if (op.outputType(sym) != "Unit") { //skip the variable declaration if return type is "Unit"
+      if (!isPrimitiveType(op.outputType(sym))) getterList += getSymCPU(sym)
       out.append(getJNIType(op.outputType(sym)))
       out.append(' ')
       out.append(getSymCPU(sym))
@@ -420,10 +443,20 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     out.append("\"));\n")
   }
 
-  protected def writeInputCopy(op: DeliteOP, sym: String, function: String, opType: String, out: StringBuilder) {
+  protected def writeGetterFrees(getterList: ArrayBuffer[String], out: StringBuilder) {
+    for (g <- getterList) {
+      out.append("env->DeleteLocalRef(")
+      out.append(g)
+      out.append(");\n")
+    }
+  }
+
+  protected def writeInputCopy(op: DeliteOP, sym: String, function: String, opType: String, out: StringBuilder, firstAlloc: Boolean) {
     //copy data from CPU to GPU
-    out.append(opType)
-    out.append("* ")
+    if(firstAlloc) {
+      out.append(opType)
+      out.append("* ")
+    }
     out.append(getSymGPU(sym))
     out.append(" = ")
     out.append(function)
@@ -449,6 +482,25 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     }
   }
 
+  protected def writeInputs(op: DeliteOP, out: StringBuilder, dereference: Boolean = true) {
+    var first = true
+    for ((input,name) <- op.getInputs) {
+      if (!first) out.append(',')
+      first = false
+      if (!isPrimitiveType(input.outputType(name)) && dereference) out.append('*')
+      out.append(getSymGPU(name))
+    }
+  }
+
+  protected def writeTemps(op: DeliteOP, out: StringBuilder, dereference: Boolean = true) {
+    for ((temp, name) <- op.getGPUMetadata(target).temps) {
+      out.append(',')
+      if (dereference) out.append('*')
+      out.append(getSymGPU(name))
+    }
+  }
+
+	/*
   protected def writeOutputs(op: DeliteOP, out: StringBuilder) {
     //if (op.outputType == "Unit") return
 
@@ -465,7 +517,9 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
       }
     }
   }
+  */
 
+  /*
   protected def writeInputs(op: DeliteOP, out: StringBuilder) {
 
     for ((input,name) <- op.getInputs) {
@@ -501,6 +555,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
       out.append(getSymGPU(name))
     }
   }
+  */
 
   protected def writeLibCallInputs(op: DeliteOP, out: StringBuilder) {
     var first = true
@@ -529,7 +584,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
 
     for (name <- op.getOutputs) {
       var deleteLocalRef = false
-      op.getGPUMetadata(target).outputs.find(_._2 == name) match {
+      op.getGPUMetadata(target).outputs.find(o => (o._2==name)&&(o._1.resultType!="void")) match {
         case Some((data, n)) => {
           //copy output from GPU to CPU
           out.append(getJNIType(op.outputType(name))) //jobject
@@ -541,7 +596,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
           out.append("env,") //JNI environment pointer
           out.append(getSymGPU(name)) //C++ object
           out.append(");\n")
-          deleteLocalRef = true
+          if(!isPrimitiveType(op.outputType(name))) deleteLocalRef = true
         }
         case None => //do nothing
       }
@@ -559,7 +614,6 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
       if (op.outputType(name) == "Unit") out.append("boxedUnit") else out.append(getSymCPU(name))
       out.append(");\n")
 
-      //delete LocalRef
       if (deleteLocalRef) {
         out.append("env->DeleteLocalRef(")
         out.append(getSymCPU(name))
@@ -568,7 +622,7 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
     }
   }
 
-  protected def writeDataFrees(op: DeliteOP, out: StringBuilder, available: ArrayBuffer[(DeliteOP,String)]) {
+  protected def writeDataFrees(op: DeliteOP, out: StringBuilder, available: ArrayBuffer[(DeliteOP,String)])(implicit aliases: AliasTable[(DeliteOP,String)]) {
     var count = 0
     val freeItem = "freeItem_" + op.id
 
@@ -577,50 +631,57 @@ trait OpenCLGPUExecutableGenerator extends GPUExecutableGenerator {
       out.append(freeItem)
       out.append(";\n")
       out.append(freeItem)
-      out.append(".keys = new list<void*>();\n")
+      out.append(".keys = new list< pair<void*,bool> >();\n")
     }
 
-    def writeFree(sym: String) {
+    def writeFree(sym: String, isPrim: Boolean) {
       if (count == 0) writeFreeInit()
+      out.append("pair<void*,bool> ")
+      out.append(getSymGPU(sym))
+      out.append("_pair(")
+      out.append(getSymGPU(sym))
+      out.append(",")
+      out.append(isPrim) //Do not free this ptr using free() : primitive type pointers points to device memory
+      out.append(");\n")
       out.append(freeItem)
       out.append(".keys->push_back(")
       out.append(getSymGPU(sym))
-      out.append(");\n")
+      out.append("_pair);\n")
     }
 
     def opFreeable(op: DeliteOP, sym: String) = {
-      op.isInstanceOf[OP_Executable] && available.contains(op,sym)
+      //TODO: Better to make OP_Condition extending OP_Executable?
+      (op.isInstanceOf[OP_Executable] || op.isInstanceOf[OP_Condition]) && available.contains(op,sym)
     }
 
     def outputFreeable(op: DeliteOP, sym: String) = {
-      !isPrimitiveType(op.outputType(sym))
+      if(op.outputType(sym) == "Unit") false
+      else true
     }
 
     //free temps
     for ((temp, name) <- op.getGPUMetadata(target).temps) {
-      writeFree(name)
+      writeFree(name,false)
       count += 1
     }
 
-    //free outputs (?)
-    if (opFreeable(op,op.id)) {
-      for (name <- op.getOutputs if outputFreeable(op, name)) {
-        if (op.getConsumers.filter(c => c.getInputs.contains((op,name)) && c.scheduledResource == op.scheduledResource).size == 0) {
-          writeFree(name)
-          count += 1
-        }
+    //free outputs
+    for (name <- op.getOutputs if(opFreeable(op,name) && outputFreeable(op,name))) {
+      if (op.getConsumers.filter(c => c.getInputs.contains((op,name)) && c.scheduledResource == op.scheduledResource).size == 0) {
+        writeFree(name,isPrimitiveType(op.outputType(name)))
+        count += 1
       }
     }
 
-    //free inputs (?)
-    for ((in,name) <- op.getInputs if(opFreeable(in,name) && outputFreeable(in, name))) {
-      val possible = in.getConsumers.filter(c => c.getInputs.contains((in,name)) && c.scheduledResource == op.scheduledResource)
+    //free inputs
+    for ((in,name) <- op.getInputs if(opFreeable(in,name) && outputFreeable(in,name))) {
       var free = true
-      for (p <- possible) {
-        if (!available.contains(p,p.id)) free = false
+      if (isPrimitiveType(in.outputType(name)) && (in.scheduledResource!=op.scheduledResource)) free = false
+      for ((i,n) <- aliases.get(in,name); c <- i.getConsumers.filter(c => c.getInputs.contains(i,n) && c.scheduledResource == op.scheduledResource)) {
+        if (!available.map(_._1).contains(c)) free = false
       }
       if (free) {
-        writeFree(name)
+        writeFree(name,isPrimitiveType(in.outputType(name)))
         count += 1
       }
     }

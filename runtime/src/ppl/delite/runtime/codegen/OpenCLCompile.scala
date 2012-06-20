@@ -25,6 +25,11 @@ object OpenCLCompile extends CCompile {
     collectKernels()
   }
 
+  private val globalKernels = ArrayBuffer[String]()
+  def addGlobalKernel(str: String) {
+    globalKernels.append(str)
+  }
+
   // Generate the clKernels.cl file to be read by the GPU execution host thread
   // Basically read all the files with .cl extension
   private def collectKernels() {
@@ -34,6 +39,7 @@ object OpenCLCompile extends CCompile {
     //TODO: How to figure out whether target supports double precision? Maybe by calling device properties API
     kernelStr.append("#pragma OPENCL EXTENSION cl_khr_fp64 : enable\n")
     kernelStr.append("#pragma OPENCL EXTENSION cl_khr_byte_addressable_store: enable\n")
+    kernelStr.append("#define MAX_GROUP 4\n")  //TODO: This will get removed by generelizing the GPU HashReduce
     kernelStr.append("__kernel void dummy_kernel(__global float *dummy, int size) {\n")
     kernelStr.append("int i = get_global_id(0);\n")
     kernelStr.append("if(i < size) dummy[i] = dummy[i] + 1;\n")
@@ -46,19 +52,14 @@ object OpenCLCompile extends CCompile {
         kernelStr.append(srcChars.next().asInstanceOf[Char])
       }
     }
-    val devFuncReader = new FileReader(sourceCacheHome + "kernels" + File.separator + "devFuncs.cl")
-    var ch = devFuncReader.read()
-    while (ch != -1) {
-      kernelStr.append(ch.asInstanceOf[Char])
-      ch = devFuncReader.read()
-    }
-    val kernelLists = Directory(Path(sourceCacheHome + "kernels")).files
-    for (file <- kernelLists if((file.extension=="cl")&&(file.name!="devFuncs.cl")&&(!externList.contains(file.name.substring(0,file.name.length-3))))) {
+    val devFuncLists = Directory(Path(sourceCacheHome + "kernels")).files
+    for (file <- devFuncLists if(file.extension=="cl")) {
       val srcChars = file.bytes()
       while (srcChars.hasNext) {
         kernelStr.append(srcChars.next().asInstanceOf[Char])
       }
     }
+    globalKernels.foreach(g => kernelStr.append(g))
     kernelWriter.write(kernelStr.toString)
     kernelWriter.close()
   }

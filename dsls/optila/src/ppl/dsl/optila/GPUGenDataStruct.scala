@@ -1,11 +1,11 @@
 package ppl.dsl.optila
 
-import _root_.scala.virtualization.lms.internal.{Expressions, CudaCodegen}
+import virtualization.lms.internal.{OpenCLCodegen, GPUCodegen, Expressions, CudaCodegen}
 
 /* This trait defines methods for copying datastructures between JVM and GPU */
 //TODO: Factor out common things and simplify these methods
 
-trait CudaGenDataStruct extends CudaCodegen {
+trait GPUGenDataStruct extends GPUCodegen {
 
   val IR: Expressions
   import IR._
@@ -259,138 +259,15 @@ trait CudaGenDataStruct extends CudaCodegen {
     out.toString
   }
 
-  // Dummy methods temporarily just for the compilation
-  //def emitVectorAlloc(newSym:Sym[_],length:String,isRow:String,reset:Boolean,data:String=null) {}
-  //def emitVectorAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
-  //def emitVectorAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
-  //def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null) {}
-  //def emitMatrixAllocSym(newSym:Sym[_], sym:Sym[_], reset:Boolean=false) {}
-  //def emitMatrixAllocRef(newSym:Sym[Any], sym:Sym[Any]) {}
 
-  /*
-  // Generate & register temporary data structures (which could be the output) for GPU kernel
-  def emitVectorAlloc(newSym:Sym[_], length:String, isRow:String, reset:Boolean, data:String=null):Unit = {
-    //TODO: Check if both symbols are Vectors
+}
 
-    //Do not add the same temporary if it already exists
-    if(getKernelTemps contains newSym) return
 
-    helperFuncIdx += 1
+trait CudaGenDataStruct extends CudaCodegen with GPUGenDataStruct {
 
-    val out = new StringBuilder
-    val args = (getKernelOutputs ::: getKernelInputs ::: getKernelTemps) filterNot (_==newSym)
+}
 
-    out.append("\t%s *%s = new %s(%s,%s);\n".format(remap(newSym.tp),quote(newSym),remap(newSym.tp),length,isRow))
+trait OpenCLGenDataStruct extends OpenCLCodegen with GPUGenDataStruct {
 
-    /*
-    // Check if new allocation is needed
-    if(data==null) {
-      out.append("\t%s *devPtr;\n".format(remap(newSym.tp.typeArguments(0))))
-      out.append("\tDeliteCudaMalloc((void**)%s,%s*sizeof(%s));\n".format("&devPtr",length,remap(newSym.tp.typeArguments(0))))
-      if(reset) out.append("\tDeliteCudaMemset(devPtr,0,%s*sizeof(%s));\n".format(length,remap(newSym.tp.typeArguments(0))))
-      out.append("\t%s->length = %s;\n".format(quote(newSym),length))
-      out.append("\t%s->isRow = %s;\n".format(quote(newSym),isRow))
-      out.append("\t%s->data = devPtr;\n".format(quote(newSym)))
-    }
-    else {
-      out.append("\t%s->length = %s;\n".format(quote(newSym),length))
-      out.append("\t%s->isRow = %s;\n".format(quote(newSym),isRow))
-      out.append("\t%s->data = %s;\n".format(quote(newSym),data))      
-    }
-    */
-    out.append("\treturn %s;\n".format(quote(newSym)))
-
-    val allocStr = emitAllocOutput(newSym, null, out.toString, args)
-    helperFuncString.append(allocStr)
-
-    val copyStr = emitCopyOutputDtoH(newSym, null, copyOutputDtoH(newSym))
-    helperFuncString.append(copyStr)
-  }
-
-  /*
-  def vectorPositionMultDimInputs(sym: Sym[Any]) : String = {
-    val out = new StringBuilder
-    //currDim = 1
-    //val currDimStr = getCurrDimStr()
-    out.append("\t%s.data += %s * %s.length;\n".format(quote(sym),currDimStr,quote(sym)))
-    out.toString
-  }
-  */
-
-  def emitMatrixAlloc(newSym:Sym[_], numRows:String, numCols:String, reset:Boolean, data:String=null): Unit = {
-    //TODO: Check if both symbols are Matrices
-
-    //Do not add the same temporary if it already exists
-    if(getKernelTemps contains newSym) return
-
-    helperFuncIdx += 1
-
-    val out = new StringBuilder
-    val args = (getKernelOutputs ::: getKernelInputs ::: getKernelTemps) filterNot (_==newSym)
-
-    out.append("\t%s *%s = new %s(%s,%s);\n".format(remap(newSym.tp),quote(newSym),remap(newSym.tp),numRows,numCols))
-
-    /*
-    // Check if new allocation is needed
-    if(data==null) {
-      out.append("\t%s *devPtr;\n".format(remap(newSym.tp.typeArguments(0))))
-      out.append("\tDeliteCudaMalloc((void**)%s,%s*%s*sizeof(%s));\n".format("&devPtr",numRows,numCols,remap(newSym.tp.typeArguments(0))))
-      if(reset) out.append("\tDeliteCudaMemset(devPtr,0,%s*%s*sizeof(%s));\n".format(numRows,numCols,remap(newSym.tp.typeArguments(0))))
-      out.append("\t%s->numRows = %s;\n".format(quote(newSym),numRows))
-      out.append("\t%s->numCols = %s;\n".format(quote(newSym),numCols))
-      out.append("\t%s->data = devPtr;\n".format(quote(newSym)))
-    }
-    else {
-      out.append("\t%s->numRows = %s;\n".format(quote(newSym),numRows))
-      out.append("\t%s->numCols = %s;\n".format(quote(newSym),numCols))
-      out.append("\t%s->data = %s;\n".format(quote(newSym),data))
-    }
-    */
-    out.append("\treturn %s;\n".format(quote(newSym)))
-
-    val allocStr = emitAllocOutput(newSym, null, out.toString, args)
-    helperFuncString.append(allocStr)
-
-    val copyStr = emitCopyOutputDtoH(newSym, null, copyOutputDtoH(newSym))
-    helperFuncString.append(copyStr)
-
-  }
-
-  def vectorClone(sym: Sym[Any], src: Sym[Any]) : String = {
-    val out = new StringBuilder
-    val typeArg = if(sym.tp.typeArguments.length==0) manifest[Int] else sym.tp.typeArguments(0)
-    val typeStr = remap(typeArg)
-    val numBytesStr = "%s_ptr->length * sizeof(%s)".format(quote(src),remap(typeArg))
-
-    out.append("//calling vectorClone\n")
-    out.append("%s *%s_ptr = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
-    out.append("%s_ptr->length = %s_ptr->length;\n".format(quote(sym),quote(src)))
-    out.append("%s_ptr->isRow = %s_ptr->isRow;\n".format(quote(sym),quote(src)))
-    out.append("%s *devPtr;\n".format(typeStr))
-    out.append("DeliteCudaMalloc((void**)&devPtr,%s);\n".format(numBytesStr))
-    out.append("%s_ptr->data = devPtr;\n".format(quote(sym)))
-    out.append("DeliteCudaMemcpyDtoDAsync(%s_ptr->data,%s_ptr->data,%s);\n".format(quote(sym),quote(src),numBytesStr))
-
-    out.toString
-  }
-
-  def matrixClone(sym: Sym[Any], src: Sym[Any]) : String = {
-    val out = new StringBuilder
-    val typeArg = if(sym.tp.typeArguments.length==0) manifest[Int] else sym.tp.typeArguments(0)
-    val typeStr = remap(typeArg)
-    val numBytesStr = "%s_ptr->numRows * %s_ptr->numCols * sizeof(%s)".format(quote(src),quote(src),remap(typeArg))
-
-    out.append("//calling matrixClone\n")
-    out.append("%s *%s_ptr = new %s();\n".format(remap(sym.tp),quote(sym),remap(sym.tp)))
-    out.append("%s_ptr->numRows = %s_ptr->numRows;\n".format(quote(sym),quote(src)))
-    out.append("%s_ptr->numCols = %s_ptr->numCols;\n".format(quote(sym),quote(src)))
-    out.append("%s *devPtr;\n".format(typeStr))
-    out.append("DeliteCudaMalloc((void**)&devPtr,%s);\n".format(numBytesStr))
-    out.append("%s_ptr->data = devPtr;\n".format(quote(sym)))
-    out.append("DeliteCudaMemcpyDtoDAsync(%s_ptr->data,%s_ptr->data,%s);\n".format(quote(sym),quote(src),numBytesStr))
-
-    out.toString
-  }
-  */
 }
 

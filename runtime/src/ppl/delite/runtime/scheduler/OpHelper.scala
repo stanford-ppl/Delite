@@ -2,9 +2,10 @@ package ppl.delite.runtime.scheduler
 
 import ppl.delite.runtime.graph.ops._
 import ppl.delite.runtime.codegen.kernels.scala._
-import ppl.delite.runtime.codegen.kernels.cuda._
+import ppl.delite.runtime.codegen.kernels._
 import ppl.delite.runtime.graph.DeliteTaskGraph
 import ppl.delite.runtime.graph.targets.Targets
+import ppl.delite.runtime.Config
 
 /**
  * Author: Kevin J. Brown
@@ -34,7 +35,8 @@ object OpHelper {
   }
 
   def splitGPU(op: DeliteOP) = op match {
-    case multi: OP_MultiLoop => MultiLoop_GPU_Array_Generator.makeChunk(multi)
+    case multi: OP_MultiLoop => if(Config.useOpenCL) opencl.MultiLoop_GPU_Array_Generator.makeChunk(multi)
+                                else cuda.MultiLoop_GPU_Array_Generator.makeChunk(multi)
     case foreach: OP_Foreach => foreach.setKernelName(foreach.function); foreach
     case single: OP_Single => error("OP Single cannot be split")
     case external: OP_External => error("OP External cannot be split")

@@ -6,6 +6,12 @@ import ppl.delite.runtime.graph.ops.{OP_Executable, DeliteOP, OP_MultiLoop}
 import ppl.delite.runtime.graph.targets.{OPData, Targets}
 import collection.mutable.ArrayBuffer
 
+// TODO: Optimizations
+// 1. For Reduce/TupleReduce/HashReduce, remove unnecessary scan operation (only used for Collection type).
+//   For those cases the condition kernel does not have to be called separately: Just do in place with HashReduce.
+//   This will remove the memory allocations for bitmap and related memory accesses.
+// 2. Combine all condition checks and reduction templates for each symbol into a single one within a MultiLoop kernel.
+
 object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   def executableName = error("MultiLoop is not a stand-alone executable")
@@ -16,6 +22,10 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   }
   private def needsReductionTuple(op: OP_MultiLoop): Boolean = {
     if (reductionTupleList(op).nonEmpty) true
+    else false
+  }
+  private def needsHashReduction(op: OP_MultiLoop): Boolean = {
+    if (hashReductionList(op).nonEmpty) true
     else false
   }
   private def needsCondition(op: OP_MultiLoop): Boolean = {
@@ -29,8 +39,12 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   private def reductionTupleList(op: OP_MultiLoop): List[(OPData,String)] = {
     op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.loopType=="REDUCE_TUPLE")
   }
+  private def hashReductionList(op: OP_MultiLoop): List[(OPData,String)] = {
+    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.loopType=="HASH_REDUCE")
+  }
+  // Separate condition kernel only needed for COLLECT with condition (i.e., need scan phase later)
   private def conditionList(op: OP_MultiLoop): List[(OPData,String)] = {
-    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond)
+    op.getGPUMetadata(Targets.Cuda).outputs.filter(o => o._1.hasCond && o._1.loopType=="COLLECT")
   }
 
   private def needDeref(op:OP_MultiLoop, in: DeliteOP, sym:String): Boolean = {
@@ -88,6 +102,7 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     out.append("#include <assert.h>\n")
     out.append("#include <thrust/scan.h>\n")
     out.append("#include \"helperFuncs.h\"\n")
+    out.append("#define MAX_GROUP 4\n")  //TODO: This will get removed by generelizing the GPU HashReduce
     out.append("#include \"" + op.id + ".cu\"\n")
     out.append("extern cudaStream_t kernelStream;\n")
   }
@@ -95,8 +110,8 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   private def writeLauncherHeader(out: StringBuilder, op: OP_MultiLoop) {
     out.append("void ")
     out.append(kernelName(op))
-    out.append(op.getOutputs.filter(o => op.outputType(Targets.Cuda,o)!="void").map(o => op.outputType(Targets.Cuda, o) + "** " + o).mkString("(",", ",""))
-    if ((op.getOutputs.filter(o => op.outputType(Targets.Cuda,o)!="void").size>0) && (op.getInputs.size>0)) out.append(", ")
+    out.append(op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").map(o => op.outputType(Targets.Cuda, o._2) + "** " + o._2).mkString("(",", ",""))
+    if ((op.getGPUMetadata(Targets.Cuda).outputs.filter(o => op.outputType(Targets.Cuda,o._2)!="void").size>0) && (op.getInputs.size>0)) out.append(", ")
     writeInputs(out,op,true)
     out.append(")\n")
   }
@@ -107,9 +122,13 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
   private def makeKernels(out: StringBuilder, op: OP_MultiLoop) {
     if(needsCondition(op)) writeConditionKernel(out, op)
-    writeMapReduceKernel(out, op)
-    if(needsReduction(op)) writeReduceKernel(out,op)
-    if(needsReductionTuple(op)) writeReduceTupleKernel(out,op)
+    if(needsHashReduction(op)) {
+      writeHashReduceKernel(out,op)
+    } else {
+      writeMapReduceKernel(out, op)
+      if(needsReduction(op)) writeReduceKernel(out,op)
+      if(needsReductionTuple(op)) writeReduceTupleKernel(out,op)
+    }
   }
 
   private def writeKernelLauncher(out: StringBuilder, op: OP_MultiLoop) {
@@ -124,13 +143,14 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     }
 
     writeOutputAllocs(op, out)
-    writeKernelCall(out, op, "MapReduce")
 
-    if(needsReduction(op)) {
-      writeKernelCall(out, op, "Reduce")
-    }
-    if(needsReductionTuple(op)) {
-      writeKernelCall(out, op, "ReduceTuple")
+    if(needsHashReduction(op)) {
+      writeKernelCall(out, op, "HashReduce1")
+      writeKernelCall(out, op, "HashReduce2")
+    } else {
+      writeKernelCall(out, op, "MapReduce")
+      if(needsReduction(op)) writeKernelCall(out, op, "Reduce")
+      if(needsReductionTuple(op)) writeKernelCall(out, op, "ReduceTuple")
     }
     writeCopyBackReduceKernel(out, op)
 
@@ -138,8 +158,9 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
   }
 
   private def writeKernelCall(out: StringBuilder, op: OP_MultiLoop, id: String) {
-    def dimSize = "(1 +((" + op.size + "-1)/" + blockSize + "))"
-    def blockSize = "1024"
+    def dimSize(size: String) = if(id=="HashReduce1" || id=="HashReduce2") "1 +((" + size + "-1)/(" + blockSize + "/MAX_GROUP))"
+                  else "1 +((" + size + "-1)/" + blockSize + ")"
+    def blockSize = if(id=="HashReduce1" || id=="HashReduce2") "512" else "1024"
     def deref(op: DeliteOP, tp: String) = if (isPrimitiveType(op.outputType(tp))) "" else "*"
     def cudaLaunch(dimConfig: String): String = {
       val str = new StringBuilder
@@ -160,24 +181,23 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
     id match {
       case "Cond" =>
-        out.append("if(" + dimSize +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
-        out.append(cudaLaunch(dimSize + ",1,1)"))
-        //val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
+        out.append("if(" + dimSize(op.size) +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
+        out.append(cudaLaunch(dimSize(op.size) + ",1,1)"))
         val args = conditionList(op).map(o => "bitmap_" + o._2) ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         out.append(args.mkString("(",",",");\n"))
-      case "MapReduce" =>
-        out.append("if(" + dimSize +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
-        out.append(cudaLaunch(dimSize + ",1,1)"))
-        val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ reductionList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
+      case "MapReduce" | "HashReduce1"=>
+        //out.append("if(" + dimSize(op.size) +" > 65536) { printf(\"Grid size for GPU is too large!\\n\"); assert(false); }\n")
+        out.append(cudaLaunch(dimSize(op.size) + ",1,1)"))
+        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => "**" + o._2) ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ (reductionList(op)++hashReductionList(op)).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else ""))
         out.append(args.mkString("(",",",");\n"))
-      case "Reduce" | "ReduceTuple" =>
-        out.append("int num_blocks_" + id + " = " + dimSize + ";\n")
+      case "Reduce" | "ReduceTuple" | "HashReduce2" =>
+        out.append("int num_blocks_" + id + " = " + dimSize(op.size) + ";\n")
         out.append("while(num_blocks_" + id + " != 1) {\n")
-        out.append(cudaLaunch("1+(num_blocks_" + id + "-1)/1024,1,1)"))
-        val args = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => "**" + o).toList ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ reductionList(op).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else "")) ++ List("num_blocks_"+id)
+        out.append(cudaLaunch(""+dimSize("num_blocks_"+id)+",1,1)"))
+        val args = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => "**" + o._2) ++ conditionList(op).map(o => "bitmap_" + o._2 + ", scanmap_" + o._2) ++ (reductionList(op)++hashReductionList(op)).map(o => "temp_" + o._2 + ", temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => "temp_1_" + o._2 + ", temp_1_" + o._2 + "_2, temp_2_" + o._2 + ", temp_2_" + o._2 + "_2") ++ op.getInputs.map(i => deref(i._1,i._2) + i._2 + (if(needDeref(op,i._1,i._2)) "_ptr" else "")) ++ List("num_blocks_"+id)
         out.append(args.mkString("(",",",");\n"))
-        out.append("num_blocks_" + id + " = 1 + (num_blocks_" + id + "-1)/1024;\n")
-        for((odata,osym) <- reductionList(op)) {
+        out.append("num_blocks_" + id + " = " + dimSize("num_blocks_"+id) + ";\n")
+        for((odata,osym) <- reductionList(op)++hashReductionList(op)) {
           out.append(odata.loopFuncOutputType + " *temp_" + osym + "_t = temp_" + osym + ";\n")
           out.append("temp_" + osym + " = temp_" + osym + "_2;\n")
           out.append("temp_" + osym + "_2 = temp_" + osym + "_t;\n")
@@ -204,17 +224,16 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
     id match {
       case "Cond" =>
-        //val params = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => op.outputType(Targets.Cuda, o) + " " + o) ++ conditionList(op).map(o => "unsigned int * bitmap_" + o._2)
         val params = conditionList(op).map(o => "unsigned int * bitmap_" + o._2)
         out.append(params.mkString(","))
         if (params.nonEmpty && op.getInputs.nonEmpty) out.append(',')
         writeInputs(out,op,false)
-      case "MapReduce" | "Reduce" | "ReduceTuple" =>
-        val params = op.getOutputs.filter(o => !isPrimitiveType(op.outputType(o))).map(o => op.outputType(Targets.Cuda, o) + " " + o) ++ conditionList(op).map(o => "unsigned int * bitmap_" + o._2 + ", unsigned int * scanmap_" + o._2) ++ reductionList(op).map(o => o._1.loopFuncOutputType + " *temp_" + o._2 + "," + o._1.loopFuncOutputType + " *temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => o._1.loopFuncOutputType + " *temp_1_" + o._2 + "," + o._1.loopFuncOutputType + " *temp_1_" + o._2 + "_2," + o._1.loopFuncOutputType_2 + " *temp_2_" + o._2 + "," + o._1.loopFuncOutputType_2 + " *temp_2_" + o._2 + "_2")
+      case "MapReduce" | "Reduce" | "ReduceTuple" | "HashReduce1" | "HashReduce2" =>
+        val params = op.getGPUMetadata(Targets.Cuda).outputs.filter(o => !isPrimitiveType(op.outputType(o._2))).map(o => op.outputType(Targets.Cuda, o._2) + " " + o._2) ++ conditionList(op).map(o => "unsigned int * bitmap_" + o._2 + ", unsigned int * scanmap_" + o._2) ++ (reductionList(op)++hashReductionList(op)).map(o => o._1.loopFuncOutputType + " *temp_" + o._2 + "," + o._1.loopFuncOutputType + " *temp_" + o._2 + "_2") ++ reductionTupleList(op).map(o => o._1.loopFuncOutputType + " *temp_1_" + o._2 + "," + o._1.loopFuncOutputType + " *temp_1_" + o._2 + "_2," + o._1.loopFuncOutputType_2 + " *temp_2_" + o._2 + "," + o._1.loopFuncOutputType_2 + " *temp_2_" + o._2 + "_2")
         out.append(params.mkString(","))
         if (params.nonEmpty && op.getInputs.nonEmpty) out.append(',')
         writeInputs(out,op,false)
-        if((id=="Reduce") || (id=="ReduceTuple")) {
+        if((id=="Reduce") || (id=="ReduceTuple") || (id=="HashReduce2")) {
           out.append(", int size")
         }
       case _ => error(id + " is not a known kernel type")
@@ -222,11 +241,16 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
 
     out.append(") {\n")
     out.append("int idxX = blockIdx.x * blockDim.x + threadIdx.x;\n")
+    if(needsHashReduction(op)) {
+      out.append("int chunkIdx = idxX / MAX_GROUP;\n")
+      out.append("int chunkOffset = idxX % MAX_GROUP;\n")
+    }
     addDeref(out, op)
     allocateSharedMem(out, op)
   }
 
   /* Allocate shared memory for reduction operation */
+  //TODO: Check if the local memory requirement is over the maximum (then need to chunk the kernels)
   private def allocateSharedMem(out: StringBuilder, op: OP_MultiLoop) {
     for((odata,osym) <- reductionList(op))
       out.append("__shared__ " + odata.loopFuncOutputType + " smem_" + osym + "[1024];\n")
@@ -234,6 +258,8 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
       out.append("__shared__ " + odata.loopFuncOutputType + " smem_1_" + osym + "[1024];\n")
       out.append("__shared__ " + odata.loopFuncOutputType_2 + " smem_2_" + osym + "[1024];\n")
     }
+    for((odata,osym) <- hashReductionList(op))
+      out.append("__shared__ " + odata.loopFuncOutputType + " smem_" + osym + "[512];\n")
   }
 
   private def writeKernelFooter(out: StringBuilder) {
@@ -355,6 +381,57 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     writeKernelFooter(out)
   }
 
+  //TODO: If the framework tells that all the output symbols share the same keyFunc and condFunc, 
+  //      then below can be more optimized by removing the redundant computations and if-else statements 
+  private def writeHashReduceKernel(out: StringBuilder, op: OP_MultiLoop) {
+    writeKernelHeader(out, op, "HashReduce1")
+    for((odata,osym) <- hashReductionList(op)) {
+      out.append("int groupIdx_" + osym + " = (chunkIdx<" + op.size + ") ? dev_keyFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs_2:+"chunkIdx").mkString("(",",",")") +  ": -1;\n")
+    }
+    for((odata,osym) <- hashReductionList(op)) {
+      if (odata.hasCond) out.append("smem_" + osym + "[threadIdx.x] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+      else out.append("smem_" + osym + "[threadIdx.x] = dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+    }
+    for((odata,osym) <- hashReductionList(op)) {
+      if (odata.hasCond) out.append("if(groupIdx_" + osym + "==chunkOffset && dev_cond_" + funcNameSuffix(op,osym) + "(" + (odata.loopCondInputs:+"chunkIdx").mkString(",") + ")) smem_" + osym + "[threadIdx.x] = dev_valFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"chunkIdx").mkString("(",",",");\n"))
+      else out.append("if(groupIdx_" + osym + "==chunkOffset) smem_" + osym + "[threadIdx.x] = dev_valFunc_" + funcNameSuffix(op,osym) + (odata.loopFuncInputs:+"chunkIdx").mkString("(",",",");\n"))
+    }
+    out.append("__syncthreads();\n")
+    out.append("for(unsigned int s=1; s<blockDim.x/MAX_GROUP; s*=2) {\n")
+    out.append("if((chunkIdx%(2*s))==0) { \n")
+    for((odata,osym) <- hashReductionList(op)) {
+      out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+s*MAX_GROUP]","chunkIdx")).mkString("(",",",");\n"))
+    }
+    out.append("}\n")
+    out.append("__syncthreads();\n")
+    out.append("}\n")
+    out.append("if(threadIdx.x / MAX_GROUP == 0) {\n")
+    for((odata,osym) <- hashReductionList(op)) {
+      out.append("temp_" + osym + "[blockIdx.x*MAX_GROUP+threadIdx.x] = smem_" + osym + "[threadIdx.x];\n")
+    }
+    out.append("}\n")
+    writeKernelFooter(out)
+
+    writeKernelHeader(out, op, "HashReduce2")
+    for((odata,osym) <- hashReductionList(op)) {
+      if (odata.hasCond) {
+        out.append("smem_" + osym + "[threadIdx.x] = ((chunkIdx<size) && dev_cond_" + funcNameSuffix(op,osym) + "(" + (odata.loopCondInputs:+"chunkIdx").mkString(",") + ")) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+      }
+      else {
+        out.append("smem_" + osym + "[threadIdx.x] = (chunkIdx < size) ? temp_" + osym + "[idxX] : dev_zero_" + funcNameSuffix(op,osym) + odata.loopZeroInputs.mkString("(",",",");\n"))
+      }
+      out.append("__syncthreads();\n")
+      out.append("for(unsigned int s=1; s<blockDim.x/MAX_GROUP; s*=2) {\n")
+      out.append("if((chunkIdx%(2*s))==0) { \n")
+      out.append("smem_" + osym + "[threadIdx.x] = dev_reduce_" + funcNameSuffix(op,osym) + (odata.loopReduceInputs++List("smem_"+osym+"[threadIdx.x]","smem_"+osym+"[threadIdx.x+s*MAX_GROUP]","idxX")).mkString("(",",",");\n"))
+      out.append("}\n")
+      out.append("__syncthreads();\n")
+      out.append("}\n")
+      out.append("if(threadIdx.x / MAX_GROUP == 0) temp_" + osym + "_2[blockIdx.x*MAX_GROUP+threadIdx.x] = smem_" + osym + "[threadIdx.x];\n")
+    }
+    writeKernelFooter(out)
+  }
+
   override protected def writeOutputAllocs(op: DeliteOP, out: StringBuilder) {
       for ((odata,osym) <- op.getGPUMetadata(target).outputs if odata.resultType!="void") {// if !isPrimitiveType(op.outputType(osym))) {
         out.append("*" + osym)
@@ -362,8 +439,10 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
         out.append(odata.func)
         out.append('(')
         writeInputList(op, odata, out)
-        if(odata.inputs.nonEmpty && odata.loopType=="COLLECT" && odata.hasCond) out.append(',')
-        if(odata.loopType=="COLLECT" && odata.hasCond) out.append("*" + osym + "_size_ptr")
+        if(odata.inputs.nonEmpty && (odata.loopType=="COLLECT"||odata.loopType=="HASH_REDUCE")) out.append(',')
+        if(odata.loopType=="HASH_REDUCE") out.append("MAX_GROUP")
+        if(odata.loopType=="COLLECT" && !odata.hasCond) out.append(op.asInstanceOf[OP_MultiLoop].size)
+        else if(odata.loopType=="COLLECT" && odata.hasCond) out.append("*" + osym + "_size_ptr")
         out.append(");\n")
         out.append("cudaMemoryMap->insert(pair<void*,list<void*>*>(")
         out.append("*" + osym)
@@ -388,6 +467,9 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
     }
     for((odata,osym) <- reductionTupleList(op)) {
       out.append("DeliteCudaMemcpyDtoDAsync((void*)(*%s),temp_1_%s,sizeof(%s));\n".format(osym,osym,odata.loopFuncOutputType))
+    }
+    for((odata,osym) <- hashReductionList(op)) {
+      out.append("DeliteCudaMemcpyDtoDAsync((void*)((**%s).data),temp_%s,sizeof(%s)*MAX_GROUP);\n".format(osym,osym,odata.loopFuncOutputType))
     }
   }
 
@@ -434,6 +516,12 @@ object MultiLoop_GPU_Array_Generator extends CudaGPUExecutableGenerator {
       out.append("DeliteCudaMalloc((void**)&temp_2_" + osym + ", " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + "));\n")
       out.append(odata.loopFuncOutputType_2 + " *temp_2_" + osym + "_2;\n")
       out.append("DeliteCudaMalloc((void**)&temp_2_" + osym + "_2, " + op.size + "*sizeof(" + odata.loopFuncOutputType_2 + "));\n")
+    }
+    for ((odata,osym) <- hashReductionList(op)) {
+      out.append(odata.loopFuncOutputType + " *temp_" + osym + ";\n")
+      out.append("DeliteCudaMalloc((void**)&temp_" + osym + ", (1+(" + op.size + "-1)/(512/MAX_GROUP))*sizeof(" + odata.loopFuncOutputType + ")*MAX_GROUP);\n")
+      out.append(odata.loopFuncOutputType + " *temp_" + osym + "_2;\n")
+      out.append("DeliteCudaMalloc((void**)&temp_" + osym + "_2, (1+(" + op.size + "-1)/(512/MAX_GROUP))*sizeof(" + odata.loopFuncOutputType + ")*MAX_GROUP);\n")
     }
   }
 

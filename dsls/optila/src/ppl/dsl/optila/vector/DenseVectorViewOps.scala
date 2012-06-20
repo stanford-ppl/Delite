@@ -2,7 +2,7 @@ package ppl.dsl.optila.vector
 
 import java.io.PrintWriter
 import scala.reflect.{Manifest, SourceContext}
-import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase, ScalaGenFat, CudaGenBase, CudaGenFat}
+import scala.virtualization.lms.common.{EffectExp, BaseExp, Base, ScalaGenBase, ScalaGenFat, CudaGenBase, CudaGenFat, OpenCLGenFat}
 import scala.virtualization.lms.util.OverloadHack
 import scala.virtualization.lms.internal.{GenericFatCodegen,GenerationFailedException}
 import ppl.delite.framework.DeliteApplication
@@ -222,6 +222,23 @@ trait CudaGenDenseVectorViewOps extends BaseGenDenseVectorViewOps with CudaGenFa
     }
     case DenseVectorViewApply(x,n) => emitValDef(sym, quote(x) + ".apply(" + quote(n) + ")")
     case DenseVectorViewUpdate(x,n,y) => stream.println(quote(x) + ".update(" + quote(n) + "," + quote(y) + ");\n")
+    case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")
+    case DenseVectorViewIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
+    case _ => super.emitNode(sym, rhs)
+  }
+}
+
+trait OpenCLGenDenseVectorViewOps extends BaseGenDenseVectorViewOps with OpenCLGenFat {
+  val IR: DenseVectorViewOpsExp
+  import IR._
+
+  override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case DenseVectorViewNew(x,start,stride,length,isRow) => {
+      if(!processingHelperFunc) stream.println(remap(sym.tp) + " " + quote(sym) + "(" + quote(x) + "," + quote(start) + "," + quote(stride) + "," + quote(length) + "," + quote(isRow) + ");")
+      else throw new GenerationFailedException("OpenCLGen: DenseVectorViewNew cannot be used in helper functions.")
+    }
+    case DenseVectorViewApply(x,n) => emitValDef(sym, remap(x.tp) + "_apply(" + quote(x) + "," + quote(n) + ")")
+    case DenseVectorViewUpdate(x,n,y) => stream.println(remap(x.tp) + "_update(" + quote(x) + "," + quote(n) + "," + quote(y) + ");\n")
     case DenseVectorViewLength(x)    => emitValDef(sym, quote(x) + ".length")
     case DenseVectorViewIsRow(x)     => emitValDef(sym, quote(x) + ".isRow")
     case _ => super.emitNode(sym, rhs)

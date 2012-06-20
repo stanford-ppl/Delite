@@ -138,6 +138,15 @@ trait CudaGenMatrixOps extends CudaGenBase with CudaGenDataStruct {
   // }
 }
 
+trait OpenCLGenMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
+  val IR: MatrixOpsExp
+  import IR._
+
+  // override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+  //   case _ => super.emitNode(sym, rhs)
+  // }
+}
+
 trait CGenMatrixOps extends CGenBase {
   val IR: MatrixOpsExp
   import IR._

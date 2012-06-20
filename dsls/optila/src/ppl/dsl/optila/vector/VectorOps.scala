@@ -1360,22 +1360,6 @@ trait CudaGenVectorOps extends BaseGenVectorOps with CudaGenFat with CudaGenData
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
     case VectorObjectRange(start, end, stride, isRow) => stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,%s,%s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(start),quote(end),quote(stride),quote(isRow)))
-
-    /* Specialized CUDA code generations for DeliteOpSingleTasks */
-    /*
-    case VectorObjectZeros(len) =>
-        currDim += 1
-        val currDimStr = getCurrDimStr()
-        setCurrDimLength(quote(len))
-        emitVectorAlloc(sym,"%s".format(quote(len)),"true",false) //needs to allocate with new symbol
-        stream.println(addTab()+"if(%s < %s) {".format(currDimStr,quote(len)))
-        tabWidth += 1
-        stream.println(addTab()+"%s.update(%s,0);".format(quote(sym),currDimStr))
-        tabWidth -= 1
-        stream.println(addTab()+"}")
-        currDim -= 1
-    */
-    
     case _ => super.emitNode(sym, rhs)
   }
 }
@@ -1385,6 +1369,7 @@ trait OpenCLGenVectorOps extends BaseGenVectorOps with OpenCLGenFat with OpenCLG
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case VectorObjectRange(start, end, stride, isRow) => stream.println(addTab()+"%s *%s_ptr = new %s(%s,%s,%s,%s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(start),quote(end),quote(stride),quote(isRow)))
     case _ => super.emitNode(sym, rhs)
   }
 }

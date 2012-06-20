@@ -329,38 +329,6 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
     case _ => super.copyMutableInputDtoH(sym)
   }
 
-  override def cloneObject(sym: Sym[Any], src: Sym[Any]) : String = remap(sym.tp) match {
-    //case "RangeVector" => rangeVectorCopyMutableInputDtoH(sym)
-    //case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
-    //case "TrainingSet<double,double>" => trainingSetCopyMutableInputDtoH(sym)
-    //case "TrainingSet<double,int>" => trainingSetCopyMutableInputDtoH(sym)
-    case _ => super.cloneObject(sym,src)
-  }
-
-  /*
-  override def allocOutput(newSym: Sym[_], sym: Sym[_], reset: Boolean = false) : Unit = remap(newSym.tp) match {
-    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => emitMatrixAllocSym(newSym,sym,reset)
-    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => emitVectorAllocSym(newSym,sym,reset)
-    case _ => super.allocOutput(newSym,sym,reset)
-  }
-  */
-
-  /*
-  override def allocReference(newSym: Sym[Any], sym: Sym[Any]) : Unit = remap(newSym.tp) match {
-    case "Matrix<int>" | "Matrix<long>" | "Matrix<float>" | "Matrix<double>" | "Matrix<bool>" => emitMatrixAllocRef(newSym,sym)
-    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => emitVectorAllocRef(newSym,sym)
-    case _ => super.allocReference(newSym,sym)
-  }
-   */
-
-  /*
-  override def positionMultDimInputs(sym: Sym[Any]) : String = remap(sym.tp) match {
-    //TODO: Add matrix reposition, and also do safety check for datastructures that do not have data field
-    case "Vector<int>" | "Vector<long>" | "Vector<float>" | "Vector<double>" | "Vector<bool>" => vectorPositionMultDimInputs(sym)
-    case _ => super.positionMultDimInputs(sym)
-  }
-  */
-
   override def getDSLHeaders: String = {
     val out = new StringBuilder
     out.append(super.getDSLHeaders)
@@ -371,65 +339,43 @@ trait OptiMLCodeGenCuda extends OptiLACodeGenCuda with OptiMLCodeGenBase with Op
 
 }
 
-trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg with OpenCLGenDataStruct
+trait OptiMLCodeGenOpenCL extends OptiLACodeGenOpenCL with OptiMLCodeGenBase with OptiMLOpenCLCodeGenPkg
+  with OpenCLGenDataStruct with OpenCLGenVectorOps with OpenCLGenMatrixOps with OpenCLGenTrainingSetOps
+  with DeliteOpenCLGenAllOverrides
 {
   val IR: DeliteApplication with OptiMLExp
   import IR._
 
   override def isObjectType[T](m: Manifest[T]) : Boolean = m.toString match {
-    case "ppl.dsl.optiml.IndexVector" => true
-    case "ppl.dsl.optiml.TrainingSet[Float, Float]" => true
-    case "ppl.dsl.optiml.TrainingSet[Float, Int]" => true
-    case "ppl.dsl.optiml.TrainingSet[Double, Double]" => true
-    case "ppl.dsl.optiml.TrainingSet[Double, Int]" => true
-    //case "ppl.dsl.optiml.MatrixRow[Float]" => true
+    //case "ppl.dsl.optiml.IndexVector" => true
+    //case "ppl.dsl.optiml.TrainingSet[Double, Double]" => true
+    //case "ppl.dsl.optiml.TrainingSet[Double, Int]" => true
     case _ => super.isObjectType(m)
   }
 
   override def remap[A](m: Manifest[A]) : String = m.toString match {
-    case "ppl.dsl.optiml.IndexVector" => "IndexVector"
-    case "ppl.dsl.optiml.TrainingSet[Float, Float]" => "FloatFloatTrainingSet"
-    case "ppl.dsl.optiml.TrainingSet[Float, Int]" => "FloatIntTrainingSet"
-    case "ppl.dsl.optiml.TrainingSet[Double, Double]" => "DoubleDoubleTrainingSet"
-    case "ppl.dsl.optiml.TrainingSet[Double, Int]" => "DoubleIntTrainingSet"
-    //case "ppl.dsl.optiml.MatrixRow[Float]" => "FloatMatrixRow"
+    //case "ppl.dsl.optiml.IndexVector" => "IndexVector"
+    //case "ppl.dsl.optiml.TrainingSet[Double, Double]" => "DoubleDoubleTrainingSet"
+    //case "ppl.dsl.optiml.TrainingSet[Double, Int]" => "DoubleIntTrainingSet"
     case _ => super.remap(m)
   }
 
   override def copyInputHtoD(sym: Sym[Any]) : String = remap(sym.tp) match {
     case "IndexVector" => indexVectorCopyInputHtoD(sym)
-    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyInputHtoD(sym)
+    case "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyInputHtoD(sym)
     case _ => super.copyInputHtoD(sym)
   }
 
   override def copyMutableInputDtoH(sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "IndexVector" => indexVectorCopyMutableInputHtoD(sym)
-    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyMutableInputHtoD(sym)
+    case "IndexVector" => indexVectorCopyMutableInputDtoH(sym)
+    case "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" => trainingSetCopyMutableInputDtoH(sym)
     case _ => super.copyMutableInputDtoH(sym)
   }
-
-  /*
-  override def disAssembleObject[A](sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "IntMatrix" | "LongMatrix" | "FloatMatrix" | "DoubleMatrix" | "BooleanMatrix" =>
-      "int %s_numRows, int %s_numCols, __global %s *%s_data".format(quote(sym),quote(sym),remap(sym.tp.typeArguments(0)),quote(sym))
-    case "IntVector" | "LongVector" | "FloatVector" | "DoubleVector" | "BooleanVector" =>
-      "char %s_isRow, int %s_length, __global %s *%s_data".format(quote(sym),quote(sym),remap(sym.tp.typeArguments(0)),quote(sym))
-    case _ => super.disAssembleObject(sym)
-  }
-
-  override def reAssembleObject[A](sym: Sym[Any]) : String = remap(sym.tp) match {
-    case "IntMatrix" | "LongMatrix" | "FloatMatrix" | "DoubleMatrix" | "BooleanMatrix" =>
-      "\t%s %s; %s.numRows = %s_numRows; %s.numCols = %s_numCols; %s.data = %s_data".format(remap(sym.tp),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym))
-    case "IntVector" | "LongVector" | "FloatVector" | "DoubleVector" | "BooleanVector" =>
-      "\t%s %s; %s.isRow = %s_isRow; %s.length = %s_length; %s.data = %s_data;".format(remap(sym.tp),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym),quote(sym))
-    case _ => super.disAssembleObject(sym)
-  }
-  */
 
   override def unpackObject[A](sym: Sym[Any]) : Map[String,Manifest[_]] = remap(sym.tp) match {
     case "IndexVector" =>
       Map("isRow"->Manifest.Boolean, "length"->Manifest.Int, "data"->Manifest.Int.arrayManifest)
-    case "FloatFloatTrainingSet" | "FloatIntTrainingSet" | "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" =>
+    case "DoubleDoubleTrainingSet" | "DoubleIntTrainingSet" =>
       val dataArrayType1 = sym.tp.typeArguments(0)
       val dataArrayType2 = sym.tp.typeArguments(1)
       Map("numRows"->Manifest.Int, "numCols"->Manifest.Int, "data"->dataArrayType1.arrayManifest, "data_labels"->dataArrayType2.arrayManifest)

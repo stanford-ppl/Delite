@@ -563,6 +563,15 @@ trait OpenCLGenDenseMatrixOps extends OpenCLGenBase with OpenCLGenDataStruct {
   import IR._
 
   override def emitNode(sym: Sym[Any], rhs: Def[Any]) = rhs match {
+    case DenseMatrixObjectNew(numRows,numCols) => checkGPUAlloc(sym); stream.println("%s *%s_ptr = new %s(%s,%s);".format(remap(sym.tp),quote(sym),remap(sym.tp),quote(numRows),quote(numCols)))
+    case DenseMatrixNumRows(x)  => emitValDef(sym, quote(x) + ".numRows")
+    case DenseMatrixNumCols(x)  => emitValDef(sym, quote(x) + ".numCols")
+    case DenseMatrixRawApply(x,i) => emitValDef(sym, remap(x.tp) + "_dcApply(" + quote(x) + "," + quote(i) + ")")
+    case DenseMatrixRawUpdate(x,i,y) => stream.println(remap(x.tp) + "_dcUpdate(" + quote(x) + "," + quote(i) + "," + quote(y) + ");")
+    case DenseMatrixRawData(x) => emitValDef(sym, remap(x.tp) + "_getdata(" + quote(x) + ")")
+    case DenseMatrixSetNumRows(x,v) => stream.println(quote(x) + ".numRows = " + quote(v) + ";")
+    case DenseMatrixSetNumCols(x,v) => stream.println(quote(x) + ".numCols = " + quote(v) + ";")
+    case DenseMatrixSetRawData(x,data) => stream.println(remap(x.tp) + "_setdata(" + quote(x) + "," + quote(data) + ");")
     case _ => super.emitNode(sym, rhs)
   }
 }
